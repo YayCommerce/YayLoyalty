@@ -4,6 +4,9 @@
   "private": true,
   "scripts": {
     "postinstall": "composer install",
+    "dev": "./scripts/run.sh dev",
+    "build": "./scripts/run.sh build",
+    "release": "./scripts/run.sh release",
     "dev:admin": "pnpm --filter @yayloyalty/admin-page dev",
     "build:admin": "pnpm --filter @yayloyalty/admin-page build",
     "makepot": "wp i18n make-pot . languages/yayloyalty.pot --exclude=node_modules,apps,tests --domain=yayloyalty"
