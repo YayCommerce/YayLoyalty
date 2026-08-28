@@ -1,0 +1,15 @@
+@layer theme, base, components, utilities;
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.yay-dark *));
+
+@import 'tailwindcss/theme.css' layer(theme);
+@import './styles/theme.css';
+@import 'tailwindcss/preflight.css';
+@import './styles/preflight.css';
+@import './styles/custom-header.css';
+
+@import './styles/utility.css';
+.yay-ui {
+  @import 'tailwindcss/utilities.css';
+}

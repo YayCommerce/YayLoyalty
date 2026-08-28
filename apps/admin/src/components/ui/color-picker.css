@@ -1,0 +1,28 @@
+@reference '@/main.css';
+
+.yayui-color-picker {
+  .react-colorful {
+    @apply w-auto;
+  }
+
+  .react-colorful__saturation {
+    @apply mb-3 h-60 w-60 rounded-sm border-b-0;
+  }
+  .react-colorful__saturation-pointer {
+    @apply ring-accent-foreground/50 size-3 rounded-full ring-1 ring-offset-2 ring-offset-white;
+  }
+
+  .react-colorful__hue,
+  .react-colorful__alpha {
+    @apply h-3 rounded-sm;
+  }
+
+  .react-colorful__alpha {
+    @apply mt-2;
+  }
+
+  .react-colorful__hue-pointer,
+  .react-colorful__alpha-pointer {
+    @apply border-background ring-accent-foreground/20 size-3 border-2 ring-1;
+  }
+}

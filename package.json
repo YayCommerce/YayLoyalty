@@ -1,0 +1,14 @@
+{
+  "name": "plugin-yayloyalty",
+  "title": "YayLoyalty Plugin",
+  "private": true,
+  "scripts": {
+    "postinstall": "composer install",
+    "dev:admin": "pnpm --filter @yayloyalty/admin-page dev",
+    "build:admin": "pnpm --filter @yayloyalty/admin-page build",
+    "makepot": "wp i18n make-pot . languages/yayloyalty.pot --exclude=node_modules,apps,tests --domain=yayloyalty"
+  },
+  "keywords": [],
+  "author": "Yay Commerce",
+  "packageManager": "pnpm@11.15.1"
+}

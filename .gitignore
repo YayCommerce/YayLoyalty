@@ -1,0 +1,29 @@
+# Dependencies / generated
+/vendor/
+vendor-prefixed/
+node_modules/
+composer.lock
+pnpm-lock.yaml
+**/pnpm-lock.yaml
+yarn.lock
+**/yarn.lock
+package-lock.json
+**/package-lock.json
+
+# Build output
+/assets/dist/*
+/dist/
+/release/*
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+
+# AI / planning artifacts
+plans/
+.claude/
+CLAUDE.md
+AGENTS.md
+.opencode/
+.repomixignore

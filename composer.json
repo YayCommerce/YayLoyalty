@@ -1,0 +1,26 @@
+{
+  "name": "yaycommerce/yayloyalty",
+  "type": "wordpress-plugin",
+  "require": {
+    "yaycommerce/admin-shell": "^2.5"
+  },
+  "repositories": {
+    "admin-shell": {
+      "type": "vcs",
+      "url": "https://github.com/YayCommerce/yaycommerce-plugin-admin-shell.git"
+    }
+  },
+  "require-dev": {
+    "humbug/php-scoper": "^0.18.18",
+    "thecodingmachine/safe": "^3.4"
+  },
+  "autoload": {
+    "classmap": [
+      "vendor-prefixed/src",
+      "YayLoyaltyPluginAdapter.php"
+    ]
+  },
+  "scripts": {
+    "shell-update": "yaycommerce-update"
+  }
+}

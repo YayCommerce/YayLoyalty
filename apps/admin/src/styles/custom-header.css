@@ -1,0 +1,28 @@
+.yay-ui {
+  /* if browser supports "Anchor" properties then make the header fixed else fallback to relative header */
+  #wpbody-content header {
+    position: static;
+  }
+
+  #wpbody-content main {
+    padding-top: 28px;
+  }
+
+  #wpbody-content {
+    anchor-name: --yay-ui-anchor;
+    padding: 0;
+  }
+
+  @supports (anchor-name: --yay-ui-anchor) {
+    #wpbody-content header {
+      position: fixed;
+      width: anchor-size(--yay-ui-anchor width);
+    }
+
+    #wpbody-content main {
+      padding-top: 84px;
+    }
+  }
+}
+
+
