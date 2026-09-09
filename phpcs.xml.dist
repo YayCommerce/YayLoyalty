@@ -62,6 +62,16 @@
             by review where the signature is not self-explanatory
             (docs/code-standards.md section 2), not by sniff.
         -->
+        <!--
+            Reason: this sniff flags any throw whose message interpolates a
+            variable, on the assumption exception messages reach the browser.
+            They never do here — BaseRestController::error_internal() logs the
+            message and returns a generic string with a correlation id instead,
+            precisely so SQL, table names and paths are not exposed. Keeping the
+            sniff would mean an inline ignore on every diagnostic exception.
+        -->
+        <exclude name="WordPress.Security.EscapeOutput.ExceptionNotEscaped"/>
+
         <exclude name="Squiz.Commenting.FunctionComment"/>
         <exclude name="Squiz.Commenting.ClassComment"/>
         <exclude name="Squiz.Commenting.VariableComment"/>

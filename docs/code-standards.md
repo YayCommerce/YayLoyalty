@@ -87,6 +87,21 @@ The connection is **not ours**. WooCommerce issues `START TRANSACTION` on the sa
 
 Therefore `Transaction::run()` probes for a foreign transaction and takes a savepoint rather than starting one, guards connection identity before every commit/rollback, and treats a failed `ROLLBACK TO SAVEPOINT` as fatal rather than continuing.
 
+### How the foreign-transaction probe works, and why
+
+The probe is a **savepoint round-trip**: take a savepoint, roll back to it, release it. Inside a transaction all three succeed. Outside one, MySQL releases the savepoint the moment the auto-committed statement creating it ends, so `ROLLBACK TO SAVEPOINT` fails with error 1305 — and that failure is the signal. Rolling back to a savepoint taken at the current point discards nothing.
+
+Do not replace this with a server-variable check. Both obvious candidates were tried against the target server (MySQL 8.0.35) and **both failed**:
+
+| Probe | Result |
+|---|---|
+| `SELECT @@in_transaction` | MariaDB-only. MySQL: *"Unknown system variable 'in_transaction'"* |
+| `information_schema.INNODB_TRX` | Returned **zero rows** as `root` (which holds `PROCESS`) with an open transaction that had already inserted |
+
+The `INNODB_TRX` failure is the dangerous one: it returns `'0'` rather than erroring, so a capability check that only asks *"did the query run?"* accepts it and then reports "no transaction" forever. The first implementation of `Transaction` did exactly that and **committed WooCommerce's in-flight work** in testing — the bug the class exists to prevent, reproduced by the class itself.
+
+Verified 2026-09-09: with a foreign transaction open, `Transaction::run()` takes a savepoint, and a subsequent foreign `ROLLBACK` correctly discards both the foreign row and ours.
+
 **Lock order is always `customers` before `ledger`.** Never the reverse — interleaved operations on two users deadlock otherwise.
 
 ## 8. Layers
