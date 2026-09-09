@@ -58,16 +58,16 @@ if ( ! defined( 'YAYLOYALTY_MENU_ORDER' ) ) {
 
 // Plugin classes: YayLoyalty\* → includes/*
 spl_autoload_register(
-    function ( $class ) {
+    function ( $class_name ) {
         $prefix   = __NAMESPACE__;
         $base_dir = __DIR__ . '/includes';
 
         $len = strlen( $prefix );
-        if ( strncmp( $prefix, $class, $len ) !== 0 ) {
+        if ( strncmp( $prefix, $class_name, $len ) !== 0 ) {
             return;
         }
 
-        $relative_class_name = substr( $class, $len );
+        $relative_class_name = substr( $class_name, $len );
 
         $file = $base_dir . str_replace( '\\', '/', $relative_class_name ) . '.php';
 
