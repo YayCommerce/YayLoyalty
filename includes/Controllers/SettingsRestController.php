@@ -2,17 +2,24 @@
 namespace YayLoyalty\Controllers;
 
 use YayLoyalty\Helpers\SettingsHelper;
-use YayLoyalty\Utils\SingletonTrait;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
  * Settings REST endpoints: GET/POST /wp-json/yayloyalty/v1/settings
+ *
+ * Routes are registered from register_routes(), not from the constructor, so
+ * constructing this class has no side effects. SingletonTrait was dropped along
+ * with that: it exists to make a side-effecting constructor run once, and there
+ * is no longer a side effect to guard.
  */
-class SettingsRestController extends BaseRestController {
-    use SingletonTrait;
+class SettingsRestController extends AbstractRestController {
 
-    protected function __construct() {
+    public function get_rest_base(): string {
+        return 'settings';
+    }
+
+    public function register_routes(): void {
         register_rest_route(
             self::REST_NAMESPACE,
             '/settings',
@@ -42,7 +49,7 @@ class SettingsRestController extends BaseRestController {
     }
 
     public function permission_callback(): bool {
-        return current_user_can( 'manage_woocommerce' );
+        return current_user_can( $this->capability() );
     }
 
     public function get_settings( \WP_REST_Request $request ) {
