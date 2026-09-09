@@ -59,7 +59,7 @@ final class LedgerRestController extends AbstractRestController {
         return $this->respond_paginated( $result );
     }
 
-    public function get_item_schema(): array {
+    protected function define_item_schema(): array {
         return [
             '$schema'    => 'http://json-schema.org/draft-04/schema#',
             'title'      => 'yayloyalty_ledger_entry',

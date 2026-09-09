@@ -272,7 +272,7 @@ final class CampaignRestController extends AbstractRestController {
         return (string) $value;
     }
 
-    public function get_item_schema(): array {
+    protected function define_item_schema(): array {
         return [
             '$schema'    => 'http://json-schema.org/draft-04/schema#',
             'title'      => 'yayloyalty_campaign',

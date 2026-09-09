@@ -171,16 +171,65 @@ class Campaign extends AbstractModel {
     }
 
     /**
+     * Does this campaign's `conditions` set match the given customer?
+     *
+     * LITE IS DELIBERATELY PERMISSIVE. Lite stores conditions but cannot
+     * evaluate them, so with no evaluator attached this returns true — a
+     * campaign with conditions still matches.
+     *
+     * The alternative, treating unevaluatable conditions as "never match",
+     * would silently disable every conditional campaign the moment a site
+     * downgraded from Premium. Failing open is the lesser harm here: the
+     * merchant keeps awarding points slightly too broadly rather than
+     * silently stopping.
+     *
+     * Premium's evaluator is stricter in the opposite direction — it FAILS an
+     * unknown condition type, because Premium can evaluate and an unrecognised
+     * type is therefore a real error. Different reasons, different answers.
+     *
+     * @param int $user_id Customer being evaluated.
+     */
+    public function conditions_match( int $user_id ): bool {
+        if ( empty( $this->conditions ) ) {
+            return true;
+        }
+
+        /**
+         * Evaluator for campaign `conditions`.
+         *
+         * Null in Lite. Premium attaches an object exposing
+         * evaluate( array $conditions, int $user_id ): bool.
+         *
+         * Internal seam for first-party Premium code, not a documented
+         * third-party API.
+         *
+         * @param object|null $evaluator
+         */
+        $evaluator = apply_filters( 'yayloyalty_campaign_conditions_evaluator', null );
+
+        if ( null === $evaluator || ! method_exists( $evaluator, 'evaluate' ) ) {
+            return true;
+        }
+
+        return (bool) $evaluator->evaluate( $this->conditions, $user_id );
+    }
+
+    /**
      * Keys each trigger's config may contain.
      *
-     * Pro-only keys are listed and preserved: a site that downgrades must keep
-     * its stored values so an upgrade restores the campaign intact. They are
-     * simply not acted on in Free.
+     * Premium-only keys are listed and preserved HERE IN LITE on purpose: a
+     * site that downgrades must keep its stored values so an upgrade restores
+     * the campaign intact. They are simply not acted on in Lite. Do not "tidy"
+     * them out of this list — that would silently destroy a merchant's
+     * configuration on a temporary downgrade.
+     *
+     * The filter is for Premium to add whitelists for triggers Lite has no
+     * entry for at all (birthday, first_order, …), not to add keys to these.
      *
      * @return array<string, string[]>
      */
-    private static function config_whitelist(): array {
-        return [
+    public static function config_whitelist(): array {
+        $whitelist = [
             CampaignTrigger::PURCHASE => [
                 'points_per_unit',
                 'base',                  // after_discounts | before_discounts
@@ -201,10 +250,20 @@ class Campaign extends AbstractModel {
                 'require_verified',
                 'one_per_product',
                 'daily_cap',
-                // Pro
+                // Premium
                 'media_bonus_points',
             ],
         ];
+
+        /**
+         * Config keys each campaign trigger may store, keyed by trigger.
+         *
+         * Premium's attach point for its own triggers' config. Internal seam
+         * for first-party Premium code, not a documented third-party API.
+         *
+         * @param array<string, string[]> $whitelist
+         */
+        return apply_filters( 'yayloyalty_campaign_config_whitelist', $whitelist );
     }
 
     /**

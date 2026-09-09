@@ -34,9 +34,41 @@ final class CampaignTrigger {
     /**
      * Triggers this build can fire.
      *
+     * FILTERED; all_known() is NOT. That asymmetry is deliberate:
+     *
+     *   all()       = what this build can fire and offer in the UI
+     *   all_known() = what the schema recognises, Premium values included
+     *
+     * Downgrade safety depends on the second staying complete in Lite. If both
+     * were filtered, a site that dropped from Premium to Lite would see its
+     * stored Premium triggers rejected as unknown.
+     *
      * @return string[]
      */
     public static function all(): array {
+        /**
+         * Campaign triggers this build can fire.
+         *
+         * Premium's attach point for its own triggers. Internal seam for
+         * first-party Premium code, not a documented third-party API.
+         *
+         * @param string[] $triggers
+         */
+        return apply_filters( 'yayloyalty_campaign_triggers', self::lite_triggers() );
+    }
+
+    /**
+     * The triggers Lite itself ships, before any filtering.
+     *
+     * Exists so all_known() has an unfiltered base to build on. all_known()
+     * must NOT call all(), or a Premium subscriber adding a trigger would leak
+     * into it — producing duplicates and, worse, making the "recognised"
+     * vocabulary depend on the build. That is the opposite of what downgrade
+     * safety needs.
+     *
+     * @return string[]
+     */
+    private static function lite_triggers(): array {
         return [
             self::PURCHASE,
             self::SIGNUP,
@@ -45,15 +77,17 @@ final class CampaignTrigger {
     }
 
     /**
-     * Every trigger the schema recognises, including Pro.
+     * Every trigger the schema recognises, including Premium ones.
      *
-     * Used for validating stored rows, never for offering choices.
+     * DELIBERATELY UNFILTERED, and deliberately not built from all(). Used for
+     * validating stored rows, never for offering choices: a Lite site holding a
+     * campaign created in Premium must still recognise its trigger.
      *
      * @return string[]
      */
     public static function all_known(): array {
         return array_merge(
-            self::all(),
+            self::lite_triggers(),
             [
                 self::BIRTHDAY,
                 self::FIRST_ORDER,

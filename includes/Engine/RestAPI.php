@@ -46,17 +46,48 @@ class RestAPI {
 
         $ledger_service = new LedgerService( $ledger, $customers );
 
-        return [
+        $controllers = [
             new SettingsRestController(),
             new CustomerRestController( $customers, $ledger_service ),
             new LedgerRestController( $ledger ),
-            // Definition table: repository only, no service. See Phase 5.
+            // Definition table: repository only, no service.
             new CampaignRestController( new CampaignRepository() ),
         ];
+
+        /**
+         * Controllers owning routes in the yayloyalty/v1 namespace.
+         *
+         * The attach point Premium uses to add its own endpoints, so the Lite
+         * build needs no knowledge of them.
+         *
+         * Subscribers MUST return AbstractRestController instances — anything
+         * else is skipped and logged by loyalty_endpoints() rather than fataling
+         * the whole REST API.
+         *
+         * Internal seam for first-party Premium code, not a documented
+         * third-party API.
+         *
+         * @param AbstractRestController[] $controllers
+         */
+        return apply_filters( 'yayloyalty_rest_controllers', $controllers );
     }
 
     public function loyalty_endpoints() {
         foreach ( $this->controllers() as $controller ) {
+            // A filter subscriber returning the wrong type would otherwise
+            // fatal on ->register_routes() and take down every YayLoyalty
+            // endpoint, not just its own.
+            if ( ! $controller instanceof AbstractRestController ) {
+                if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+                    error_log( // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+                        '[yayloyalty] RestAPI: ignoring a yayloyalty_rest_controllers entry that is not an AbstractRestController ('
+                        . ( is_object( $controller ) ? get_class( $controller ) : gettype( $controller ) ) . ').'
+                    );
+                }
+
+                continue;
+            }
+
             $controller->register_routes();
         }
     }

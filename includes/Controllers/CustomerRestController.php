@@ -142,7 +142,7 @@ final class CustomerRestController extends AbstractRestController {
         return $entry->to_array();
     }
 
-    public function get_item_schema(): array {
+    protected function define_item_schema(): array {
         return [
             '$schema'    => 'http://json-schema.org/draft-04/schema#',
             'title'      => 'yayloyalty_customer',

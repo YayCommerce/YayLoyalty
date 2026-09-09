@@ -53,7 +53,40 @@ abstract class AbstractRestController extends BaseRestController {
      *
      * @return array<string, mixed>
      */
-    public function get_item_schema(): array {
+    final public function get_item_schema(): array {
+        $schema = $this->define_item_schema();
+
+        /**
+         * JSON Schema for one item of a YayLoyalty resource.
+         *
+         * Premium's attach point for extending a resource it does not own — for
+         * example describing Premium-only config keys on a campaign.
+         *
+         * FINAL and applied centrally so no subclass can bypass it by
+         * overriding the accessor. Subclasses override define_item_schema().
+         *
+         * SECURITY: this filter cannot reopen mass assignment.
+         * is_readonly_property() checks ALWAYS_READONLY first, so id,
+         * created_at, updated_at, is_builtin, balance_after and actor_id stay
+         * stripped from write args no matter what a subscriber returns.
+         *
+         * Internal seam for first-party Premium code, not a documented
+         * third-party API.
+         *
+         * @param array<string, mixed> $schema
+         * @param string               $rest_base
+         */
+        return apply_filters( 'yayloyalty_rest_item_schema', $schema, $this->get_rest_base() );
+    }
+
+    /**
+     * The resource's own schema, before filtering.
+     *
+     * Override this, not get_item_schema().
+     *
+     * @return array<string, mixed>
+     */
+    protected function define_item_schema(): array {
         return [
             '$schema'    => 'http://json-schema.org/draft-04/schema#',
             'title'      => $this->get_rest_base(),
