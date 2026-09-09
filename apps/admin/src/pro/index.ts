@@ -29,6 +29,18 @@
 export const PRO_BUNDLE_SENTINEL = 'yayloyalty-pro-bundle-a7f3c1';
 
 /**
+ * Pro surfaces, re-exported so shared pages import them from here and never
+ * deep-import from `@/pro/...`.
+ *
+ * A consumer must still guard the JSX with `__IS_PRO__`. Wrapping a pro
+ * component in <ProGate> alone is NOT enough: JSX evaluates its children
+ * eagerly, so `<ProGate><ConditionsPreview /></ProGate>` references the
+ * component at runtime and drags this whole subtree into the Lite bundle.
+ * See CampaignsPage for the pattern that works.
+ */
+export { ConditionsPreview } from './campaigns/ConditionsPreview';
+
+/**
  * Returns the sentinel. Exists so the constant is genuinely reachable code
  * rather than an unreferenced literal a minifier is free to discard.
  */
@@ -52,5 +64,5 @@ export function registerPro(): void {
   // Referencing the marker keeps it in the Pro bundle. Assigning to a
   // window property rather than discarding the value stops a minifier from
   // treating the whole call as removable.
-  ( window as unknown as Record<string, string> ).__yayLoyaltyPro = proBundleMarker();
+  (window as unknown as Record<string, string>).__yayLoyaltyPro = proBundleMarker();
 }

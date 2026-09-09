@@ -1,0 +1,115 @@
+<?php
+namespace YayLoyalty\Pro\Controllers;
+
+use YayLoyalty\Controllers\AbstractRestController;
+use YayLoyalty\Pro\Services\ConditionsEvaluator;
+use YayLoyalty\Repositories\CampaignRepository;
+
+defined( 'ABSPATH' ) || exit;
+
+/**
+ * Pro-only: explain why a customer does or does not match a campaign's
+ * conditions.
+ *
+ * Registered through `yayloyalty_rest_controllers`, so Lite needs no knowledge
+ * of it and the route simply does not exist there — a 404, not a 403. There is
+ * nothing to hide: Lite cannot evaluate conditions at all, so the endpoint
+ * would have no answer to give.
+ *
+ * POST despite being read-only. It takes a user id in a body rather than a
+ * query string, and a preview is a question about a specific customer — not
+ * something that should sit in a URL, a browser history or a server log.
+ */
+final class CampaignPreviewRestController extends AbstractRestController {
+
+    /** @var CampaignRepository */
+    private $campaigns;
+
+    /** @var ConditionsEvaluator */
+    private $evaluator;
+
+    public function __construct( CampaignRepository $campaigns, ConditionsEvaluator $evaluator ) {
+        $this->campaigns = $campaigns;
+        $this->evaluator = $evaluator;
+    }
+
+    /**
+     * Shares the base of the resource it reports on.
+     *
+     * It owns a sub-route of /campaigns rather than a resource of its own, so
+     * it inherits that resource's capability and schema-filter identity.
+     */
+    public function get_rest_base(): string {
+        return 'campaigns';
+    }
+
+    public function register_routes(): void {
+        register_rest_route(
+            self::REST_NAMESPACE,
+            '/campaigns/(?P<id>[\d]+)/preview-conditions',
+            [
+                [
+                    'methods'             => \WP_REST_Server::CREATABLE,
+                    'callback'            => fn( $request ) => $this->exec_read( [ $this, 'preview' ], $request ),
+                    'permission_callback' => [ $this, 'permission_callback' ],
+                    'args'                => [
+                        'user_id' => $this->user_id_param(),
+                    ],
+                ],
+            ]
+        );
+    }
+
+    /**
+     * @return array<string, mixed>|\WP_Error
+     */
+    public function preview( \WP_REST_Request $request ) {
+        $campaign = $this->campaigns->find_campaign( (int) $request['id'] );
+
+        if ( null === $campaign ) {
+            return $this->error_not_found( __( 'Campaign not found.', 'yayloyalty' ) );
+        }
+
+        $user_id    = (int) $request['user_id'];
+        $conditions = $campaign->get_conditions();
+
+        // Mirrors Campaign::conditions_match(): no conditions means everyone
+        // qualifies. Stated here too so the preview cannot drift from it.
+        if ( empty( $conditions ) ) {
+            return [
+                'campaign_id' => (int) $campaign->get_id(),
+                'user_id'     => $user_id,
+                'matches'     => true,
+                'conditions'  => [],
+            ];
+        }
+
+        $results = $this->evaluator->explain( $conditions, $user_id );
+
+        return [
+            'campaign_id' => (int) $campaign->get_id(),
+            'user_id'     => $user_id,
+            // Not recomputed: folding the same results the caller sees is what
+            // guarantees the verdict and the explanation agree.
+            'matches'     => ! in_array( false, array_column( $results, 'matched' ), true ),
+            'conditions'  => $results,
+        ];
+    }
+
+    /**
+     * No item schema: this route returns a report, not a resource.
+     *
+     * It registers no write args either, so the mass-assignment machinery in
+     * AbstractRestController has nothing to filter here.
+     *
+     * @return array<string, mixed>
+     */
+    protected function define_item_schema(): array {
+        return [
+            '$schema'    => 'http://json-schema.org/draft-04/schema#',
+            'title'      => 'yayloyalty_campaign_conditions_preview',
+            'type'       => 'object',
+            'properties' => [],
+        ];
+    }
+}

@@ -264,18 +264,16 @@ if ( null !== $bundle ) {
     // out of the Pro bundle, so asserting this in both directions would
     // fail a healthy Pro package.
     //
-    // Reported as SKIP rather than FAIL while no SPA surface is gated yet:
-    // ProGate currently has no call sites, so Rollup drops it from BOTH
-    // bundles and there is no upgrade prompt to find. Failing here would
-    // only be satisfiable by inventing a call site. The first real gate
-    // lands with the Pro campaign surfaces, after which this reads PASS —
-    // and it should be tightened to a hard assertion at that point.
+    // Lite only. components/pro/ is KEPT in the Lite source tree — do not
+    // confuse it with src/pro/, which is dropped — and its output is the
+    // upgrade prompt. A Pro build has nothing to upsell: ProGate's overlay
+    // branch is dead code under __IS_PRO__ and is correctly shaken out, so
+    // asserting this in both directions would fail a healthy Pro package.
     if ( $is_lite ) {
-        $has_upsell = false !== strpos( $bundle, UPSELL_MARKER );
         record(
             'Lite: upsell surface kept in the bundle (components/pro/)',
-            $has_upsell ? true : null,
-            'No SPA surface is gated yet — ProGate has no call sites, so it is absent from both bundles. Tighten this to a hard check once the first gate ships.'
+            false !== strpos( $bundle, UPSELL_MARKER ),
+            'Lite must render upgrade prompts; without them the tier has no upgrade path in the UI at all'
         );
     }
 

@@ -157,9 +157,21 @@ Stored as `LONGTEXT`, validated in PHP. Every blob carries a `schema_version` ke
 
 Decoding is **total**: malformed stored JSON returns the default and logs. It never throws. A corrupt `config` blob should degrade one campaign, not white-screen the admin.
 
+### Maps and lists take different methods
+
+`Json::encode()` / `decode()` are for **maps** — `campaigns.config`. `Json::encode_list()` / `decode_list()` are for **lists** — `campaigns.conditions`, a list of `{type, operator, value}` triples.
+
+Stamping `schema_version` into a list turns it into an object: `[{…},{…}]` comes back as `{"0":…,"1":…,"schema_version":1}`, and an empty list comes back as `{"schema_version":1}` — not empty. Anything iterating it then finds a stray integer where it expected a record, and anything asking "are there any conditions?" gets the wrong answer. `encode_list()` wraps the payload instead:
+
+```json
+{"schema_version": 1, "items": [ … ]}
+```
+
+`decode_list()` unwraps it and also accepts a bare array and the corrupted `{"0":…}` shape, so no stored row is lost. **[REVIEW]** — pick the pair that matches the column's shape; nothing enforces it.
+
 ## 13. Pro extension seams
 
-YayLoyalty ships as two builds from one repo: **Pro** (the full tree) and **Lite** (built by stripping). **Code says Pro; user-facing copy says "Pro".**
+YayLoyalty ships as two builds from one repo: **Pro** (the full tree) and **Lite** (built by stripping). Code and user-facing copy both say **Pro** — one word, no translation layer.
 
 ### The one rule that makes the split cheap
 
@@ -181,6 +193,8 @@ That is why the Lite build is a directory deletion rather than surgery on shared
 
 These are **internal seams for first-party Pro code**, not a documented third-party API. They may change.
 
+`yayloyalty_rest_item_schema` passes `$rest_base`, which is **not** unique: a Pro controller owning a sub-route of an existing resource shares that resource's base. Match on the schema's `title` as well, or a filter meant for one route silently rewrites another's schema.
+
 ### Markers are a last resort, not a mechanism
 
 There are **no** `@pro-start` / `@pro-end` markers in this codebase, and adding one requires answering: *why won't a filter do?*
@@ -195,6 +209,7 @@ A site that downgrades from Pro to Lite must not have its data treated as corrup
 
 - `CampaignTrigger::all()` is filtered (what this build can *fire*); `all_known()` is **not** (what the schema *recognises*). The asymmetry is the mechanism.
 - `Campaign::config_whitelist()` keeps Pro keys such as `max_points_per_order` in Lite. Do not "tidy" them out — that would destroy a merchant's configuration on a temporary downgrade.
+- `Campaign::validate_config()` **preserves config wholesale for a trigger this build has no whitelist for**, rather than filtering it against an empty list. A whitelist covers the keys of triggers this build knows; a Pro-only trigger is unknown to Lite entirely, and unknown must never mean delete. Without this, the first re-save of a downgraded `birthday` campaign would empty it, and a later upgrade would restore nothing.
 - Lite's `conditions_match()` returns **true** when it cannot evaluate. Failing open keeps a downgraded site awarding slightly too broadly; failing closed would silently disable every conditional campaign.
 
 Pro's evaluator is stricter in the opposite direction — an unknown condition type **fails**, because Pro can evaluate and an unrecognised type is a real error.
@@ -207,6 +222,14 @@ Pro's evaluator is stricter in the opposite direction — an unknown condition t
 | `apps/admin/src/components/pro/` | **kept** | `ProGate`, badge, overlay — the upsell UI Lite must render |
 
 Confusing them either ships pro features in Lite or removes Lite's ability to sell the upgrade.
+
+**`ProGate` alone does not keep Pro code out of the Lite bundle.** JSX evaluates its children eagerly, so `<ProGate><ProThing /></ProGate>` references `ProThing` at runtime and drags all of `@/pro` — sentinel included — into Lite. Guard the child with the constant as well:
+
+```tsx
+<ProGate>{__IS_PRO__ && thing ? <ProThing thing={thing} /> : null}</ProGate>
+```
+
+`ProGate` decides what a user sees; `__IS_PRO__` decides what ships. Both are needed, and `scripts/validate-build.php` fails the release when only the first is present.
 
 ### Gating is build-time only
 

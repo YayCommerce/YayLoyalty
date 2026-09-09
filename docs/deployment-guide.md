@@ -152,10 +152,9 @@ constant. A dynamic `import()` is not a fix — it emits a side chunk, which the
 direct reference to the Pro namespace. It needs to go through a filter seam
 instead; the seven attach points are documented in `code-standards.md` §13.
 
-## Known gap
-
-The **upsell surface** check on the Lite bundle currently reports SKIP. `ProGate`
-has no call sites yet, so Rollup drops it from both bundles and there is no
-upgrade prompt to find. It reads PASS as soon as the first surface is gated, and
-should be tightened into a hard assertion at that point — a Lite build that
-silently loses its upgrade prompts has no upgrade path in the UI at all.
+**Sentinel found in the Lite bundle, from a page that only renders a Pro
+component conditionally.** Wrapping a Pro component in `<ProGate>` is not enough
+on its own. JSX evaluates children eagerly, so `<ProGate><ProThing /></ProGate>`
+references `ProThing` at runtime and pulls all of `@/pro` into Lite. The call
+site needs `__IS_PRO__ && …` around the Pro component as well; `ProGate` decides
+what a user *sees*, the constant decides what *ships*.

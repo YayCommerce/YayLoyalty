@@ -104,7 +104,7 @@ class Campaign extends AbstractModel {
             (string) ( $row['status'] ?? Status::ACTIVE ),
             self::cast_int_default( $row['priority'] ?? 0 ),
             Json::decode( $row['config'] ?? null, [] ),
-            Json::decode( $row['conditions'] ?? null, [] ),
+            Json::decode_list( $row['conditions'] ?? null, [] ),
             self::cast_datetime( $row['starts_at'] ?? null ),
             self::cast_datetime( $row['ends_at'] ?? null ),
             self::cast_bool( $row['is_builtin'] ?? 0 ),
@@ -123,7 +123,8 @@ class Campaign extends AbstractModel {
             'status'     => $this->status,
             'priority'   => $this->priority,
             'config'     => Json::encode( $this->config, self::CONFIG_SCHEMA_VERSION ),
-            'conditions' => Json::encode( $this->conditions, self::CONFIG_SCHEMA_VERSION ),
+            // A list, not a map — see Json::encode_list().
+            'conditions' => Json::encode_list( $this->conditions, self::CONFIG_SCHEMA_VERSION ),
             'starts_at'  => $this->starts_at,
             'ends_at'    => $this->ends_at,
             'is_builtin' => $this->is_builtin ? 1 : 0,
@@ -277,7 +278,20 @@ class Campaign extends AbstractModel {
      * @return array
      */
     public static function validate_config( string $trigger, array $config ): array {
-        $whitelist = self::config_whitelist()[ $trigger ] ?? [];
+        $whitelist = self::config_whitelist()[ $trigger ] ?? null;
+
+        // A trigger this build has no whitelist for was created by another
+        // build — a Pro campaign on a site that downgraded. Lite does not know
+        // that trigger's vocabulary, and "unknown" must never mean "delete":
+        // filtering against an empty whitelist would silently erase the
+        // merchant's configuration the first time anything re-saved the
+        // campaign, and an upgrade would restore an empty campaign.
+        //
+        // Preserving beats validating here. Pro, which does know the
+        // vocabulary, still validates its own triggers normally.
+        if ( null === $whitelist ) {
+            return $config;
+        }
 
         $clean = [];
 
