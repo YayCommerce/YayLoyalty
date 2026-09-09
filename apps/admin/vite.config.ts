@@ -12,9 +12,24 @@ export default defineConfig(({ mode }) => {
   const envDir = path.resolve(__dirname, 'env');
   const env = loadEnv(mode, envDir);
 
+  // The single build-plan gate. BUILD_TYPE=lite produces the Lite bundle;
+  // anything else (including unset, so a plain `pnpm build` stays Premium)
+  // produces Premium.
+  //
+  // A `define` rather than import.meta.env on purpose: it is substituted
+  // inline at every usage site, so `if (__IS_PREMIUM__)` collapses to a
+  // literal and the dead branch is eliminated. An exported const derived from
+  // import.meta.env has to be constant-folded across a module boundary, which
+  // is less reliable — see the sentinel check in scripts/validate-build.php.
+  const isPremiumBuild = process.env.BUILD_TYPE !== 'lite';
+
   return {
     root: './src',
     envDir,
+
+    define: {
+      __IS_PREMIUM__: JSON.stringify(isPremiumBuild),
+    },
 
     plugins: [
       react({ jsxRuntime: 'classic' }),
