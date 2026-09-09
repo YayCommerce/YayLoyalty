@@ -214,6 +214,10 @@ Confusing them either ships pro features in Lite or removes Lite's ability to se
 
 `YayLoyalty::is_pro()` exists for server-side decisions only and is never sent to the browser.
 
+### The split is enforced, not trusted
+
+A stripping build fails silently by nature, so every release is validated against the produced zip and a failure aborts it. `scripts/validate-build.php` checks the sentinel in both directions, confines Lite's `Pro` references to the one guarded seam, and boots the package inside WordPress. See `deployment-guide.md`.
+
 ### The schema filter cannot reopen mass assignment
 
 `get_item_schema()` is **final**; subclasses override `define_item_schema()`. The filter is applied centrally so no subclass can bypass it, and `is_readonly_property()` checks `ALWAYS_READONLY` first — so `id`, `created_at`, `updated_at`, `is_builtin`, `balance_after` and `actor_id` stay stripped from write args regardless of what any subscriber returns.

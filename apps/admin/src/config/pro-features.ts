@@ -23,9 +23,6 @@ export type ProFeature = (typeof PRO_FEATURES)[keyof typeof PRO_FEATURES];
 
 /**
  * Human labels for the upgrade prompts.
- *
- * User-facing copy says "Pro" even though the code says Pro — see
- * docs/code-standards.md.
  */
 export const PRO_FEATURE_LABELS: Record<ProFeature, string> = {
   [PRO_FEATURES.campaignTriggers]: 'Additional earning triggers',
