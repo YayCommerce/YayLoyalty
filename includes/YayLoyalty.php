@@ -22,7 +22,18 @@ class YayLoyalty {
         self::get_instance();
     }
 
-    public static function is_pro(): bool {
-        return class_exists( 'YayLoyalty\Pro\YayLoyaltyPro', true );
+    /**
+     * Is Premium code present in this build?
+     *
+     * This asks one question only: was this zip built as Premium? It is NOT a
+     * licence check. An expired licence stops updates and support, not
+     * features, so nothing here consults licence state.
+     *
+     * Server-side only. The SPA is gated at build time by the __IS_PREMIUM__
+     * Vite define, so this value is deliberately never localized to the
+     * browser — see docs/code-standards.md.
+     */
+    public static function is_premium(): bool {
+        return class_exists( 'YayLoyalty\Premium\YayLoyaltyPremium', true );
     }
 }

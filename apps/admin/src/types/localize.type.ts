@@ -16,7 +16,10 @@ export type Meta = {
     assetsUrl: string;
 
     version: string;
-    isPro: boolean;
+    /*
+     * No premium flag here by design. The SPA is gated at build time by the
+     * __IS_PREMIUM__ Vite define, not by anything PHP sends.
+     */
     reviewed: boolean;
   };
   wcMeta: {
