@@ -42,12 +42,17 @@ final class Installer {
      * @return AbstractTableSchema[]
      */
     public static function schemas(): array {
+        $schemas = [
+            new \YayLoyalty\Database\Schema\CustomersTable(),
+            new \YayLoyalty\Database\Schema\LedgerTable(),
+        ];
+
         /**
          * Table schemas to install.
          *
          * @param AbstractTableSchema[] $schemas
          */
-        return apply_filters( 'yayloyalty_table_schemas', [] );
+        return apply_filters( 'yayloyalty_table_schemas', $schemas );
     }
 
     /**
