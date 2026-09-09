@@ -1,0 +1,71 @@
+import { __, sprintf } from '@wordpress/i18n';
+
+import type { LedgerEntry } from '@/lib/schema/ledger.schema';
+
+/**
+ * Compose a human description for a ledger row.
+ *
+ * DESCRIPTIONS ARE BUILT HERE, NOT STORED. Per the data model, system rows carry
+ * no text in the database precisely so their wording stays translatable and
+ * cannot go stale when copy changes. `note` exists only on manual adjustments,
+ * where an admin's own words are the point.
+ */
+export function describeLedgerEntry(entry: LedgerEntry): string {
+  if (entry.type === 'adjust') {
+    return entry.note?.trim() || __('Manual adjustment', 'yayloyalty');
+  }
+
+  switch (entry.type) {
+    case 'earn':
+      return describeEarn(entry);
+
+    case 'redeem':
+      return __('Redeemed for a reward', 'yayloyalty');
+
+    case 'refund_earn':
+      return entry.order_id
+        ? sprintf(__('Points reclaimed after a refund on order #%d', 'yayloyalty'), entry.order_id)
+        : __('Points reclaimed after a refund', 'yayloyalty');
+
+    case 'refund_redeem':
+      return __('Points returned from a cancelled redemption', 'yayloyalty');
+
+    case 'expire':
+      return __('Points expired', 'yayloyalty');
+
+    default:
+      return __('Balance change', 'yayloyalty');
+  }
+}
+
+function describeEarn(entry: LedgerEntry): string {
+  switch (entry.source) {
+    case 'order':
+      return entry.order_id
+        ? sprintf(__('Earned on order #%d', 'yayloyalty'), entry.order_id)
+        : __('Earned on an order', 'yayloyalty');
+
+    case 'signup':
+      return __('Earned for signing up', 'yayloyalty');
+
+    case 'review':
+      return __('Earned for writing a review', 'yayloyalty');
+
+    case 'referral':
+      return __('Earned from a referral', 'yayloyalty');
+
+    case 'birthday':
+      return __('Birthday bonus', 'yayloyalty');
+
+    case 'import':
+      return __('Imported balance', 'yayloyalty');
+
+    default:
+      return __('Points earned', 'yayloyalty');
+  }
+}
+
+/** Signed display, so a clawback reads as -30 rather than 30. */
+export function formatSignedPoints(points: number): string {
+  return points > 0 ? `+${points}` : String(points);
+}
