@@ -57,14 +57,14 @@ class RestAPI {
         /**
          * Controllers owning routes in the yayloyalty/v1 namespace.
          *
-         * The attach point Premium uses to add its own endpoints, so the Lite
+         * The attach point Pro uses to add its own endpoints, so the Lite
          * build needs no knowledge of them.
          *
          * Subscribers MUST return AbstractRestController instances — anything
          * else is skipped and logged by loyalty_endpoints() rather than fataling
          * the whole REST API.
          *
-         * Internal seam for first-party Premium code, not a documented
+         * Internal seam for first-party Pro code, not a documented
          * third-party API.
          *
          * @param AbstractRestController[] $controllers

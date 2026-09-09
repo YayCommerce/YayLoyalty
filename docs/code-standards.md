@@ -157,19 +157,19 @@ Stored as `LONGTEXT`, validated in PHP. Every blob carries a `schema_version` ke
 
 Decoding is **total**: malformed stored JSON returns the default and logs. It never throws. A corrupt `config` blob should degrade one campaign, not white-screen the admin.
 
-## 13. Premium extension seams
+## 13. Pro extension seams
 
-YayLoyalty ships as two builds from one repo: **Premium** (the full tree) and **Lite** (built by stripping). **Code says Premium; user-facing copy says "Pro".**
+YayLoyalty ships as two builds from one repo: **Pro** (the full tree) and **Lite** (built by stripping). **Code says Pro; user-facing copy says "Pro".**
 
 ### The one rule that makes the split cheap
 
-**Lite contains exactly one reference to Premium** — a guarded `class_exists` in `YayLoyalty::initialize()`. Everything else Premium does, it does by attaching to a filter.
+**Lite contains exactly one reference to Pro** — a guarded `class_exists` in `YayLoyalty::initialize()`. Everything else Pro does, it does by attaching to a filter.
 
-That is why the Lite build is a directory deletion rather than surgery on shared files. Contrast `yay-reviews`, whose bootstrap `use`s Premium classes directly and therefore needs five `@premium-start` marker pairs in one file, plus a validation script to catch the times stripping goes wrong.
+That is why the Lite build is a directory deletion rather than surgery on shared files. Contrast `yay-reviews`, whose bootstrap `use`s its Premium classes directly and therefore needs five `@premium-start` marker pairs in one file, plus a validation script to catch the times stripping goes wrong.
 
 ### The seams
 
-| Premium needs | Hook |
+| Pro needs | Hook |
 |---|---|
 | Its tables | `yayloyalty_table_schemas` |
 | To react to ledger writes | `yayloyalty_ledger_recorded` |
@@ -179,40 +179,40 @@ That is why the Lite build is a directory deletion rather than surgery on shared
 | To extend a resource's schema | `yayloyalty_rest_item_schema` |
 | To evaluate campaign conditions | `yayloyalty_campaign_conditions_evaluator` |
 
-These are **internal seams for first-party Premium code**, not a documented third-party API. They may change.
+These are **internal seams for first-party Pro code**, not a documented third-party API. They may change.
 
 ### Markers are a last resort, not a mechanism
 
-There are **no** `@premium-start` / `@premium-end` markers in this codebase, and adding one requires answering: *why won't a filter do?*
+There are **no** `@pro-start` / `@pro-end` markers in this codebase, and adding one requires answering: *why won't a filter do?*
 
 A marker is a symptom of a missing seam. A mismatched pair silently deletes the wrong lines or leaves a dangling import, and the failure only surfaces when the Lite zip fatals at runtime. If a marker is ever genuinely needed, the stripping script and its validation land in the same change — never after.
 
 ### Strip behaviour, never vocabulary
 
-**Premium enum values, Premium config keys and Premium table schemas stay in the Lite build.**
+**Pro enum values, Pro config keys and Pro table schemas stay in the Lite build.**
 
-A site that downgrades from Premium to Lite must not have its data treated as corrupt. Concretely:
+A site that downgrades from Pro to Lite must not have its data treated as corrupt. Concretely:
 
 - `CampaignTrigger::all()` is filtered (what this build can *fire*); `all_known()` is **not** (what the schema *recognises*). The asymmetry is the mechanism.
-- `Campaign::config_whitelist()` keeps Premium keys such as `max_points_per_order` in Lite. Do not "tidy" them out — that would destroy a merchant's configuration on a temporary downgrade.
+- `Campaign::config_whitelist()` keeps Pro keys such as `max_points_per_order` in Lite. Do not "tidy" them out — that would destroy a merchant's configuration on a temporary downgrade.
 - Lite's `conditions_match()` returns **true** when it cannot evaluate. Failing open keeps a downgraded site awarding slightly too broadly; failing closed would silently disable every conditional campaign.
 
-Premium's evaluator is stricter in the opposite direction — an unknown condition type **fails**, because Premium can evaluate and an unrecognised type is a real error.
+Pro's evaluator is stricter in the opposite direction — an unknown condition type **fails**, because Pro can evaluate and an unrecognised type is a real error.
 
-### Two directories named "premium" in the SPA, with opposite fates
+### Two directories named "pro" in the SPA, with opposite fates
 
 | Directory | Lite build | Contents |
 |---|---|---|
-| `apps/admin/src/premium/` | **deleted** | actual premium features |
-| `apps/admin/src/components/premium/` | **kept** | `PremiumGate`, badge, overlay — the upsell UI Lite must render |
+| `apps/admin/src/pro/` | **deleted** | actual pro features |
+| `apps/admin/src/components/pro/` | **kept** | `ProGate`, badge, overlay — the upsell UI Lite must render |
 
-Confusing them either ships premium features in Lite or removes Lite's ability to sell the upgrade.
+Confusing them either ships pro features in Lite or removes Lite's ability to sell the upgrade.
 
 ### Gating is build-time only
 
-`__IS_PREMIUM__`, a Vite `define`, is the single gate. **No premium flag is localized to the SPA.** One zip carries both the PHP and the JS bundle, so build type is never ambiguous and there is nothing for a runtime flag to disambiguate. Licence state is deliberately not an input: an expired licence stops updates, not features.
+`__IS_PRO__`, a Vite `define`, is the single gate. **No pro flag is localized to the SPA.** One zip carries both the PHP and the JS bundle, so build type is never ambiguous and there is nothing for a runtime flag to disambiguate. Licence state is deliberately not an input: an expired licence stops updates, not features.
 
-`YayLoyalty::is_premium()` exists for server-side decisions only and is never sent to the browser.
+`YayLoyalty::is_pro()` exists for server-side decisions only and is never sent to the browser.
 
 ### The schema filter cannot reopen mass assignment
 

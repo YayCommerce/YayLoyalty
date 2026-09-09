@@ -37,11 +37,11 @@ final class CampaignTrigger {
      * FILTERED; all_known() is NOT. That asymmetry is deliberate:
      *
      *   all()       = what this build can fire and offer in the UI
-     *   all_known() = what the schema recognises, Premium values included
+     *   all_known() = what the schema recognises, Pro values included
      *
      * Downgrade safety depends on the second staying complete in Lite. If both
-     * were filtered, a site that dropped from Premium to Lite would see its
-     * stored Premium triggers rejected as unknown.
+     * were filtered, a site that dropped from Pro to Lite would see its
+     * stored Pro triggers rejected as unknown.
      *
      * @return string[]
      */
@@ -49,8 +49,8 @@ final class CampaignTrigger {
         /**
          * Campaign triggers this build can fire.
          *
-         * Premium's attach point for its own triggers. Internal seam for
-         * first-party Premium code, not a documented third-party API.
+         * Pro's attach point for its own triggers. Internal seam for
+         * first-party Pro code, not a documented third-party API.
          *
          * @param string[] $triggers
          */
@@ -61,7 +61,7 @@ final class CampaignTrigger {
      * The triggers Lite itself ships, before any filtering.
      *
      * Exists so all_known() has an unfiltered base to build on. all_known()
-     * must NOT call all(), or a Premium subscriber adding a trigger would leak
+     * must NOT call all(), or a Pro subscriber adding a trigger would leak
      * into it — producing duplicates and, worse, making the "recognised"
      * vocabulary depend on the build. That is the opposite of what downgrade
      * safety needs.
@@ -77,11 +77,11 @@ final class CampaignTrigger {
     }
 
     /**
-     * Every trigger the schema recognises, including Premium ones.
+     * Every trigger the schema recognises, including Pro ones.
      *
      * DELIBERATELY UNFILTERED, and deliberately not built from all(). Used for
      * validating stored rows, never for offering choices: a Lite site holding a
-     * campaign created in Premium must still recognise its trigger.
+     * campaign created in Pro must still recognise its trigger.
      *
      * @return string[]
      */

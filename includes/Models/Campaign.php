@@ -179,12 +179,12 @@ class Campaign extends AbstractModel {
      *
      * The alternative, treating unevaluatable conditions as "never match",
      * would silently disable every conditional campaign the moment a site
-     * downgraded from Premium. Failing open is the lesser harm here: the
+     * downgraded from Pro. Failing open is the lesser harm here: the
      * merchant keeps awarding points slightly too broadly rather than
      * silently stopping.
      *
-     * Premium's evaluator is stricter in the opposite direction — it FAILS an
-     * unknown condition type, because Premium can evaluate and an unrecognised
+     * Pro's evaluator is stricter in the opposite direction — it FAILS an
+     * unknown condition type, because Pro can evaluate and an unrecognised
      * type is therefore a real error. Different reasons, different answers.
      *
      * @param int $user_id Customer being evaluated.
@@ -197,10 +197,10 @@ class Campaign extends AbstractModel {
         /**
          * Evaluator for campaign `conditions`.
          *
-         * Null in Lite. Premium attaches an object exposing
+         * Null in Lite. Pro attaches an object exposing
          * evaluate( array $conditions, int $user_id ): bool.
          *
-         * Internal seam for first-party Premium code, not a documented
+         * Internal seam for first-party Pro code, not a documented
          * third-party API.
          *
          * @param object|null $evaluator
@@ -217,13 +217,13 @@ class Campaign extends AbstractModel {
     /**
      * Keys each trigger's config may contain.
      *
-     * Premium-only keys are listed and preserved HERE IN LITE on purpose: a
+     * Pro-only keys are listed and preserved HERE IN LITE on purpose: a
      * site that downgrades must keep its stored values so an upgrade restores
      * the campaign intact. They are simply not acted on in Lite. Do not "tidy"
      * them out of this list — that would silently destroy a merchant's
      * configuration on a temporary downgrade.
      *
-     * The filter is for Premium to add whitelists for triggers Lite has no
+     * The filter is for Pro to add whitelists for triggers Lite has no
      * entry for at all (birthday, first_order, …), not to add keys to these.
      *
      * @return array<string, string[]>
@@ -250,7 +250,7 @@ class Campaign extends AbstractModel {
                 'require_verified',
                 'one_per_product',
                 'daily_cap',
-                // Premium
+                // Pro
                 'media_bonus_points',
             ],
         ];
@@ -258,8 +258,8 @@ class Campaign extends AbstractModel {
         /**
          * Config keys each campaign trigger may store, keyed by trigger.
          *
-         * Premium's attach point for its own triggers' config. Internal seam
-         * for first-party Premium code, not a documented third-party API.
+         * Pro's attach point for its own triggers' config. Internal seam
+         * for first-party Pro code, not a documented third-party API.
          *
          * @param array<string, string[]> $whitelist
          */

@@ -59,8 +59,8 @@ abstract class AbstractRestController extends BaseRestController {
         /**
          * JSON Schema for one item of a YayLoyalty resource.
          *
-         * Premium's attach point for extending a resource it does not own — for
-         * example describing Premium-only config keys on a campaign.
+         * Pro's attach point for extending a resource it does not own — for
+         * example describing Pro-only config keys on a campaign.
          *
          * FINAL and applied centrally so no subclass can bypass it by
          * overriding the accessor. Subclasses override define_item_schema().
@@ -70,7 +70,7 @@ abstract class AbstractRestController extends BaseRestController {
          * created_at, updated_at, is_builtin, balance_after and actor_id stay
          * stripped from write args no matter what a subscriber returns.
          *
-         * Internal seam for first-party Premium code, not a documented
+         * Internal seam for first-party Pro code, not a documented
          * third-party API.
          *
          * @param array<string, mixed> $schema
