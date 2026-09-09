@@ -45,6 +45,7 @@ final class Installer {
         $schemas = [
             new \YayLoyalty\Database\Schema\CustomersTable(),
             new \YayLoyalty\Database\Schema\LedgerTable(),
+            new \YayLoyalty\Database\Schema\CampaignsTable(),
         ];
 
         /**
@@ -66,6 +67,8 @@ final class Installer {
         foreach ( self::schemas() as $schema ) {
             dbDelta( $schema->definition() );
         }
+
+        self::seed_builtins();
 
         self::run_migrations();
 
@@ -100,6 +103,59 @@ final class Installer {
             }
         } finally {
             self::release_lock();
+        }
+    }
+
+    /**
+     * Create the built-in campaign rows.
+     *
+     * Idempotent by slug, so repeat installs cannot duplicate them. Runs inside
+     * maybe_upgrade()'s mutex, and the unique key on slug is the backstop if two
+     * requests somehow seed at once.
+     *
+     * Built-ins are addressed by slug rather than id because ids differ between
+     * sites — the Free UI and any import/export bind to the slug.
+     */
+    private static function seed_builtins(): void {
+        $repository = new \YayLoyalty\Repositories\CampaignRepository();
+        $now        = \YayLoyalty\Utils\Dates::now();
+
+        $builtins = [
+            'default-purchase' => [
+                'name'    => __( 'Points for purchases', 'yayloyalty' ),
+                'trigger' => \YayLoyalty\Enums\CampaignTrigger::PURCHASE,
+            ],
+            'signup'           => [
+                'name'    => __( 'Points for signing up', 'yayloyalty' ),
+                'trigger' => \YayLoyalty\Enums\CampaignTrigger::SIGNUP,
+            ],
+            'review'           => [
+                'name'    => __( 'Points for writing a review', 'yayloyalty' ),
+                'trigger' => \YayLoyalty\Enums\CampaignTrigger::REVIEW,
+            ],
+        ];
+
+        foreach ( $builtins as $slug => $spec ) {
+            $repository->seed_builtin(
+                new \YayLoyalty\Models\Campaign(
+                    null,
+                    $spec['name'],
+                    $slug,
+                    $spec['trigger'],
+                    \YayLoyalty\Enums\Status::ACTIVE,
+                    // Priority 0: any campaign a merchant creates outranks the
+                    // built-in and displaces it.
+                    0,
+                    \YayLoyalty\Models\Campaign::default_config( $spec['trigger'] ),
+                    [],
+                    null,
+                    null,
+                    true,
+                    null,
+                    $now,
+                    $now
+                )
+            );
         }
     }
 

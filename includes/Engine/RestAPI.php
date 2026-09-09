@@ -2,9 +2,11 @@
 namespace YayLoyalty\Engine;
 
 use YayLoyalty\Controllers\AbstractRestController;
+use YayLoyalty\Controllers\CampaignRestController;
 use YayLoyalty\Controllers\CustomerRestController;
 use YayLoyalty\Controllers\LedgerRestController;
 use YayLoyalty\Controllers\SettingsRestController;
+use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Services\LedgerService;
@@ -48,6 +50,8 @@ class RestAPI {
             new SettingsRestController(),
             new CustomerRestController( $customers, $ledger_service ),
             new LedgerRestController( $ledger ),
+            // Definition table: repository only, no service. See Phase 5.
+            new CampaignRestController( new CampaignRepository() ),
         ];
     }
 
