@@ -5,7 +5,15 @@
 | **Version** | 0.3 — supersedes the data-model section of `MVP.md` v0.2 |
 | **Date** | 3 September 2026 |
 | **Scope** | Every table YayLoyalty owns across Free, Pro and later releases, every column, and how they relate |
-| **Companion docs** | `PRD.md` · `ROADMAP.md` · `MVP.md` |
+| **Companion docs** | `project-roadmap.md` · `codebase-summary.md` · `system-architecture.md` |
+
+## Implementation Status
+
+**Implemented (v1.0):** `yayloyalty_campaigns`, `yayloyalty_customers`, `yayloyalty_ledger`
+
+**Not implemented:** `rewards`, `redemptions`, `referrals`, `referral_visits`, `tiers`, `tier_history`, `lots`, `lot_allocations`, `events`
+
+See [`project-roadmap.md`](./project-roadmap.md) for implementation status by phase and known gaps. The table specifications below are the authoritative schema design; unimplemented tables are the work plan for phases 1.1, 1.2, and 2.0.
 
 ## Conventions
 
