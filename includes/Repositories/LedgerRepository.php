@@ -29,13 +29,20 @@ final class LedgerRepository extends AbstractRepository {
     }
 
     /**
-     * Find an existing row by its idempotency key.
+     * Find an existing row by its idempotency key: (user_id, source,
+     * reference_type, reference_id) — matches `uniq_ledger_event`.
+     *
+     * Keyed on source, not type: several sources (signup, milestone, renewal)
+     * can share a reference_type, and a type-keyed lookup would treat two
+     * genuinely different events as the same one. user_id is required because
+     * one reference can legitimately produce rows for two different users
+     * (a referral order earns both the advocate and the friend).
      *
      * Returns null for a NULL reference, because MySQL treats NULLs as distinct
      * in the unique index — a manual adjustment can never match an earlier one,
      * and asking is meaningless.
      */
-    public function find_by_reference( string $type, ?string $reference_type, ?int $reference_id ): ?LedgerEntry {
+    public function find_by_reference( int $user_id, string $source, ?string $reference_type, ?int $reference_id ): ?LedgerEntry {
         global $wpdb;
 
         if ( null === $reference_type || null === $reference_id ) {
@@ -45,9 +52,10 @@ final class LedgerRepository extends AbstractRepository {
         $row = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
             $wpdb->prepare(
                 'SELECT * FROM `' . esc_sql( $this->table() ) . '`
-                 WHERE type = %s AND reference_type = %s AND reference_id = %d
+                 WHERE user_id = %d AND source = %s AND reference_type = %s AND reference_id = %d
                  LIMIT 1',
-                $type,
+                $user_id,
+                $source,
                 $reference_type,
                 $reference_id
             ),

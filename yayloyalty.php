@@ -56,6 +56,10 @@ if ( ! defined( 'YAYLOYALTY_MENU_ORDER' ) ) {
     define( 'YAYLOYALTY_MENU_ORDER', 3 );
 }
 
+if ( ! defined( 'YAYLOYALTY_IS_DEVELOPMENT' ) ) {
+    define( 'YAYLOYALTY_IS_DEVELOPMENT', true );
+}
+
 // Plugin classes: YayLoyalty\* → includes/*
 spl_autoload_register(
     function ( $class_name ) {

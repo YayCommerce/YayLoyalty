@@ -2,6 +2,7 @@
 namespace YayLoyalty\Database;
 
 use YayLoyalty\Database\Schema\AbstractTableSchema;
+use YayLoyalty\Database\Triggers\LedgerBalanceTrigger;
 use YayLoyalty\Utils\Log;
 
 defined( 'ABSPATH' ) || exit;
@@ -23,6 +24,11 @@ defined( 'ABSPATH' ) || exit;
  *
  * 3. verify() checks indexes as well as columns, because dbDelta fails silently
  *    on index grammar. See AbstractTableSchema for the grammar rules.
+ *
+ * 4. Triggers are outside dbDelta entirely — it has no grammar for them at
+ *    all, silent or otherwise — so sync_triggers() drops and recreates them
+ *    explicitly on every install()/upgrade, and verify() checks their
+ *    existence the same way it checks indexes. See Triggers\LedgerBalanceTrigger.
  */
 final class Installer {
 
@@ -58,6 +64,21 @@ final class Installer {
     }
 
     /**
+     * Registered triggers.
+     *
+     * dbDelta cannot create these, so they are dropped and recreated
+     * explicitly by sync_triggers() rather than folded into a schema's
+     * definition() string.
+     *
+     * @return LedgerBalanceTrigger[]
+     */
+    private static function triggers(): array {
+        return [
+            new \YayLoyalty\Database\Triggers\LedgerBalanceTrigger(),
+        ];
+    }
+
+    /**
      * Run dbDelta for every registered schema, then stamp the version.
      *
      * Idempotent: safe to run repeatedly.
@@ -68,6 +89,8 @@ final class Installer {
         foreach ( self::schemas() as $schema ) {
             dbDelta( $schema->definition() );
         }
+
+        self::sync_triggers();
 
         self::seed_builtins();
 
@@ -161,6 +184,31 @@ final class Installer {
     }
 
     /**
+     * (Re)create every registered trigger.
+     *
+     * Unconditional DROP + CREATE, same idempotency contract dbDelta gives the
+     * schemas above: safe on every install() call, and the only way an edited
+     * trigger body ever reaches a site that already has the old one.
+     *
+     * A failure here (most likely: the DB user lacks the TRIGGER privilege) is
+     * logged, not thrown — install() must still create the tables and finish
+     * even when a trigger cannot be. verify() below is what surfaces it.
+     */
+    private static function sync_triggers(): void {
+        global $wpdb;
+
+        foreach ( self::triggers() as $trigger ) {
+            $wpdb->query( $trigger->drop_sql() ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.NotPrepared
+
+            $result = $wpdb->query( $trigger->create_sql() ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.NotPrepared
+
+            if ( false === $result ) {
+                self::log( $trigger->name() . ' — failed to create: ' . $wpdb->last_error );
+            }
+        }
+    }
+
+    /**
      * Data migrations that dbDelta cannot express (backfills, index drops,
      * reshapes).
      *
@@ -226,6 +274,13 @@ final class Installer {
             if ( ! empty( $issues ) ) {
                 $problems[ $table ] = $issues;
                 self::log( $table . ' — ' . implode( '; ', $issues ) );
+            }
+        }
+
+        foreach ( self::triggers() as $trigger ) {
+            if ( ! $trigger->exists() ) {
+                $problems[ $trigger->name() ] = [ 'missing trigger' ];
+                self::log( $trigger->name() . ' — missing trigger' );
             }
         }
 

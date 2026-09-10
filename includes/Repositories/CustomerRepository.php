@@ -105,14 +105,24 @@ final class CustomerRepository extends AbstractRepository {
     }
 
     /**
-     * Apply a ledger row's effects to the cached aggregates.
+     * Apply a ledger row's effects to the cached aggregates — every aggregate
+     * except `balance`.
      *
-     * Written as relative arithmetic (balance = balance + ?) rather than
-     * absolute assignment so the statement is correct even if another writer
-     * touched the row between the read and the write. In practice the caller
-     * holds the row lock, but the relative form removes the assumption.
+     * `balance` is deliberately NOT written here. It is maintained by the
+     * `{ledger}_balance_ai` DB trigger (see Database\Triggers\
+     * LedgerBalanceTrigger), which fires on the same INSERT that triggers this
+     * call — writing it in both places would double-count every movement.
+     * Unlike balance, `lifetime_earned`/`lifetime_redeemed` are not a plain
+     * running sum of `points`: LedgerType decides per-row whether a movement
+     * counts toward them (LedgerService::apply_aggregates()), so they stay
+     * here rather than in SQL.
      *
-     * @param int         $balance_delta          Signed.
+     * Written as relative arithmetic (lifetime_earned = lifetime_earned + ?)
+     * rather than absolute assignment so the statement is correct even if
+     * another writer touched the row between the read and the write. In
+     * practice the caller holds the row lock, but the relative form removes
+     * the assumption.
+     *
      * @param int         $lifetime_earned_delta  Signed.
      * @param int         $lifetime_redeemed_delta Signed.
      * @param string|null $activity_at            Set to touch last_activity_at.
@@ -121,7 +131,6 @@ final class CustomerRepository extends AbstractRepository {
      */
     public function apply_delta(
         int $user_id,
-        int $balance_delta,
         int $lifetime_earned_delta,
         int $lifetime_redeemed_delta,
         ?string $activity_at = null,
@@ -130,13 +139,11 @@ final class CustomerRepository extends AbstractRepository {
         global $wpdb;
 
         $sets   = [
-            'balance = balance + %d',
             'lifetime_earned = lifetime_earned + %d',
             'lifetime_redeemed = lifetime_redeemed + %d',
             'updated_at = %s',
         ];
         $values = [
-            $balance_delta,
             $lifetime_earned_delta,
             $lifetime_redeemed_delta,
             Dates::now(),

@@ -75,6 +75,12 @@ Write indexes as `UNIQUE KEY name (cols)` or `KEY name (cols)`. Never bare `UNIQ
 
 `dbDelta` only recognises the `KEY` forms. A bare `UNIQUE (...)` succeeds on first install and then silently fails to normalise on every upgrade — the index quietly disappears on the exact code path nobody tests. Also: name every key, put two spaces after `PRIMARY KEY`, and state `ENGINE=InnoDB` explicitly (savepoints do not exist on MyISAM).
 
+### Triggers are outside dbDelta
+
+`dbDelta` has no grammar for `CREATE TRIGGER` at all — not even the silent-failure kind above; a trigger inside a schema's `definition()` string is simply never applied. A trigger is its own small class (`create_sql()`, `drop_sql()`, `exists()`, one per trigger — see `Database\Triggers\LedgerBalanceTrigger`), registered in `Installer::triggers()`, dropped and recreated unconditionally by `sync_triggers()` on every `install()`/upgrade, and checked by `verify()` the same way a missing index is.
+
+A trigger updating one table from another still fires inside the transaction and connection that did the write that caused it — including any row lock that connection already holds — so it adds no new lock and no new deadlock surface by itself. It does, however, need the `TRIGGER` privilege on the DB user, which some managed hosts withhold; `sync_triggers()` logs a failure rather than throwing, and `verify()`'s "missing trigger" entry is the only signal an admin gets if that happens. Prefer application code over a trigger unless the trigger is replacing a genuine per-request aggregation cost (a `SUM()` at read time) — most cached aggregates on `customers` are already O(1) via `CustomerRepository::apply_delta()`, and a trigger there would just be a second writer for a problem that code already solves.
+
 ## 7. Transactions
 
 **Only `Transaction::run()` opens or nests a transaction.** Raw `START TRANSACTION` / `COMMIT` / `ROLLBACK` are banned outside `Database/Transaction.php`. **[REVIEW]** — no sniff for this; catch it in review.

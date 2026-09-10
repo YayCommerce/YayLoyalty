@@ -85,7 +85,9 @@ Indexes: PK; UNIQUE `slug`; `(status, sort_order)`.
 
 ## `yayloyalty_customers` — one row per member (1.0)
 
-A 1:1 extension of `wp_users`, created lazily on the first earn (or on signup when the signup campaign is on). Holds cached aggregates for O(1) storefront reads and indexed columns for admin sorting/filtering, plus state that is not a ledger aggregate at all (expiry, tier, referral code). Updated only by the `Ledger` service (aggregates) and the tier/referral services (their columns), always inside the same transaction as the fact row that justifies the change; the `UPDATE … SET balance = balance + ?` row lock is what serialises concurrent earns and redeems.
+A 1:1 extension of `wp_users`, created lazily on the first earn (or on signup when the signup campaign is on). Holds cached aggregates for O(1) storefront reads and indexed columns for admin sorting/filtering, plus state that is not a ledger aggregate at all (expiry, tier, referral code). Updated inside the same transaction as the ledger row that justifies the change, always after `CustomerRepository::lock_and_get()` — that row lock is what serialises concurrent earns and redeems for one user. `balance` is maintained by a DB trigger (`{ledger}_balance_ai`, see `Database\Triggers\LedgerBalanceTrigger`) that fires on the ledger insert; every other aggregate (`lifetime_earned`, `lifetime_redeemed`, `last_activity_at`) is written by `LedgerService`/`CustomerRepository::apply_delta()` in PHP, because they are conditional on `LedgerType`, not a plain running sum. Tier/referral columns are updated by their own services.
+
+The `(1.1)`/`(1.2)`/`(Pro)` tags below mark when a column's *feature* ships, not when the *column* does — `lifetime_spend`, `tier_*`, `referral_code` and `birthday_*` are all created by the 1.0 install so that a later release is a data migration (populate an existing NULL/0 column), not a schema change. See `CustomersTable::definition()`.
 
 | Column | Type | Null / default | Meaning |
 |---|---|---|---|
@@ -102,15 +104,15 @@ A 1:1 extension of `wp_users`, created lazily on the first earn (or on signup wh
 | `tier_evaluated_at` | DATETIME | null (1.2) | When the tier was last evaluated; the downgrade job uses it to find customers whose evaluation window has ended. |
 | `tier_progress_value` | DECIMAL(19,4) | null (1.2) | Cached basis value for "$120 to Gold" in the launcher when the basis is rolling-12-month (which is expensive to compute per request). |
 | `referral_code` | VARCHAR(32) | null, unique (1.1) | Generated the first time the customer opens the referral UI. Upper-case, ambiguity-free alphabet. Rotatable; old codes live on in `referrals.referral_code`. |
-| `birthday_month` / `birthday_day` | TINYINT | null (Pro) | No year — only the annual trigger needs it, and it keeps the row out of sensitive-data territory. Idempotency for the yearly award is the ledger's unique key with `reference_type = 'birthday'`, `reference_id = year`. |
+| `birthday_month` / `birthday_day` | TINYINT | null (Pro) | No year — only the annual trigger needs it, and it keeps the row out of sensitive-data territory. Idempotency for the yearly award is the ledger's `uniq_ledger_event` key with `source = 'birthday'`, `reference_type = 'birthday'`, `reference_id = year`. |
 | `joined_at` | DATETIME | not null | When the row was created — the program join date for cohorts. |
 | `updated_at` | DATETIME | not null | |
 
-Indexes: PK; `expires_at`; `tier_id`; UNIQUE `referral_code`; `balance` and `last_activity_at` for admin sorting.
+Indexes: PK; `expires_at`; `tier_id`; UNIQUE `referral_code`; `balance` and `last_activity_at` for admin sorting; `idx_tier_review (tier_id, tier_evaluated_at)` (1.2) — the downgrade job's query is "customers in tier X whose evaluation window has ended", and the single-column `tier_id` index alone would still force scanning every customer in the tier.
 
 ## `yayloyalty_ledger` — every balance change (1.0)
 
-Append-only journal. Nothing updates or deletes rows except GDPR erasure (which sets `user_id = 0`, `actor_id = NULL`, clears `note`). One `earn` row per order, because stacking is highest-priority-only. The unique key on `(type, reference_type, reference_id)` is the idempotency guarantee against duplicate hooks, status bouncing and webhook retries.
+Append-only journal. Nothing updates or deletes rows except GDPR erasure (which sets `user_id = 0`, `actor_id = NULL`, clears `note`). One `earn` row per order, because stacking is highest-priority-only. The unique key `uniq_ledger_event` on `(user_id, source, reference_type, reference_id)` is the idempotency guarantee against duplicate hooks, status bouncing and webhook retries — keyed on `source` rather than `type` because several sources (`signup`, `milestone`, `renewal`) can share a `reference_type`, and `user_id` is part of the key because one reference can legitimately earn two different users (a referral order awards both the advocate and the friend).
 
 | Column | Type | Null / default | Meaning |
 |---|---|---|---|
@@ -129,7 +131,7 @@ Append-only journal. Nothing updates or deletes rows except GDPR erasure (which 
 | `actor_id` | BIGINT UNSIGNED | null | Admin user for manual rows; null for the system. |
 | `created_at` | DATETIME | not null | UTC. |
 
-Indexes: PK; `(user_id, created_at)` for history pages; UNIQUE `(type, reference_type, reference_id)`; `campaign_id`; `redemption_id`; `order_id`; `(type, created_at)` for dashboard aggregates ("issued last 30 days").
+Indexes: PK; `idx_user_history (user_id, id)` for paged history and `ORDER BY id DESC LIMIT 1` balance lookups — `id`, not `created_at`, because same-second rows from one request would otherwise tie; UNIQUE `uniq_ledger_event (user_id, source, reference_type, reference_id)`; `campaign_id`; `redemption_id`; `order_id`; `(type, created_at)` for dashboard aggregates ("issued last 30 days").
 
 Not on this table any more: `expires_at`. Per-earning expiry lives in `lots` (below) so the ledger stays immutable.
 
@@ -356,7 +358,7 @@ erDiagram
 
 These do not change the model; they record how it must be expressed in code so the invariants above survive contact with WordPress.
 
-**dbDelta index grammar.** Every index in `CREATE TABLE` statements must be written as `UNIQUE KEY name (cols)` or `KEY name (cols)`. `dbDelta` only recognises those forms; a bare `UNIQUE (cols)` succeeds on first install and then fails to normalise on every upgrade run, silently dropping the index. The ledger idempotency guarantee depends on `UNIQUE KEY` on `(type, reference_type, reference_id)` existing after upgrades, not just after installs.
+**dbDelta index grammar.** Every index in `CREATE TABLE` statements must be written as `UNIQUE KEY name (cols)` or `KEY name (cols)`. `dbDelta` only recognises those forms; a bare `UNIQUE (cols)` succeeds on first install and then fails to normalise on every upgrade run, silently dropping the index. The ledger idempotency guarantee depends on `UNIQUE KEY` on `(user_id, source, reference_type, reference_id)` existing after upgrades, not just after installs.
 
 **NULLs are distinct in unique keys.** Because MySQL treats NULL as distinct, `adjust` rows — which carry NULL `reference_type`/`reference_id` — never collide on the ledger unique key. Manual adjustments are therefore deliberately **not** idempotent: an admin can grant the same points twice on purpose. This is intended behaviour, not a defect.
 
