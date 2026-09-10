@@ -58,16 +58,16 @@ if ( ! defined( 'YAYLOYALTY_MENU_ORDER' ) ) {
 
 // Plugin classes: YayLoyalty\* → includes/*
 spl_autoload_register(
-    function ( $class ) {
+    function ( $class_name ) {
         $prefix   = __NAMESPACE__;
         $base_dir = __DIR__ . '/includes';
 
         $len = strlen( $prefix );
-        if ( strncmp( $prefix, $class, $len ) !== 0 ) {
+        if ( strncmp( $prefix, $class_name, $len ) !== 0 ) {
             return;
         }
 
-        $relative_class_name = substr( $class, $len );
+        $relative_class_name = substr( $class_name, $len );
 
         $file = $base_dir . str_replace( '\\', '/', $relative_class_name ) . '.php';
 
@@ -110,6 +110,24 @@ if ( ! function_exists( 'YayLoyalty\\plugin_init' ) ) {
 
 if ( ! wp_installing() ) {
     add_action( 'plugins_loaded', 'YayLoyalty\\plugin_init' );
+
+    /*
+     * Schema upgrades run on plugins_loaded, deliberately OUTSIDE plugin_init's
+     * WooCommerce guard and NOT on admin_init.
+     *
+     * admin_init fires only for admin pages, admin-ajax and admin-post, so it
+     * misses REST, cron, front-end and WP-CLI — a headless or REST-driven store
+     * would never migrate after an update. Placing it behind the WooCommerce
+     * check would likewise mean a site with WooCommerce temporarily inactive
+     * never migrates.
+     *
+     * Priority 20 so it runs after plugin_init has booted. The version check
+     * inside is a single option read on the common path.
+     */
+    add_action( 'plugins_loaded', [ \YayLoyalty\Database\Installer::class, 'maybe_upgrade' ], 20 );
+
+    // Blogs created after network activation still need tables.
+    add_action( 'wp_initialize_site', [ \YayLoyalty\Engine\ActDeact::class, 'on_new_site' ], 20 );
 }
 
 register_activation_hook( YAYLOYALTY_FILE, [ \YayLoyalty\Engine\ActDeact::class, 'activate' ] );

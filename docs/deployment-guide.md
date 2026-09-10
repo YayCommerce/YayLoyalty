@@ -1,0 +1,160 @@
+# Deployment Guide
+
+How YayLoyalty Pro and Lite are built, packaged and verified.
+
+One repository produces two zips. Lite is Pro minus `includes/Pro/`, built with
+`BUILD_TYPE=lite` so the admin bundle drops its Pro code too. There is no
+separate Lite branch, no marker surgery on shared files, and no runtime tier
+flag — see `code-standards.md` §13 for the seams that make this work.
+
+## Prerequisites
+
+| Tool | Notes |
+|---|---|
+| PHP CLI | 7.4+ — used by the validator and `php -l` |
+| Composer | `update_shell` regenerates `vendor-prefixed/` via php-scoper |
+| Node + pnpm | Node 22 recommended; `run.sh` falls back to corepack under `~/.nvm` |
+| `zip` / `unzip` | packaging and validation |
+| WP-CLI | optional, enables the headless boot check — see below |
+
+## Releasing
+
+```bash
+./scripts/run.sh release pro 1.2.0        # prompts nothing, sets the version
+./scripts/run.sh release lite --no-prompt # same version, Lite package
+```
+
+Output lands in `release/`:
+
+- `yayloyalty-{version}.zip` — Pro
+- `yayloyalty-lite-{version}.zip` — Lite
+
+**Release Pro first, then Lite with `--no-prompt`.** Version metadata is written
+into the tree once, by whichever command runs first. Prompting twice is how the
+two packages end up carrying different numbers.
+
+`release` with no build type is Pro, so existing habits keep working.
+`./scripts/run.sh build lite` builds just the SPA bundle when you want to look
+at a Lite UI locally.
+
+**After a release, run `composer install`.** The prerelease shell updater strips
+dev dependencies, which takes `phpcs` with it — `composer lint` fails with
+`command not found` until they are reinstalled.
+
+### What actually differs
+
+Both zips unpack to a folder named `yayloyalty`, so a Lite site upgrades to Pro
+by replacing its plugin directory in place.
+
+| | Pro | Lite |
+|---|---|---|
+| `includes/Pro/` | shipped | deleted from the staged copy |
+| `__IS_PRO__` in the bundle | `true` | `false` |
+| Everything else | identical | identical |
+
+SPA sources never ship — only `assets/`, never `apps/` — so `src/pro/` needs no
+deletion step. Its absence from the Lite bundle rests entirely on
+`BUILD_TYPE=lite` reaching Vite's `__IS_PRO__` define, which is why the
+sentinel check below exists.
+
+The Composer autoload dump runs before the strip, and that is safe: Composer's
+classmap covers `vendor-prefixed/src` and the root adapter only. Plugin classes
+resolve through the `file_exists`-guarded autoloader in `yayloyalty.php`, so a
+deleted `includes/Pro/` becomes "class not found" rather than a missing
+`include`.
+
+## Validation
+
+Every release runs `scripts/validate-build.php` against the **zip**, not the
+working tree. A failure aborts the release: the package is renamed
+`*.zip.invalid` so it can be inspected but cannot be mistaken for shippable,
+and `run.sh` exits non-zero.
+
+Run it by hand against any package:
+
+```bash
+php scripts/validate-build.php release/yayloyalty-lite-1.2.0.zip lite
+```
+
+### What it asserts
+
+| Check | Applies to |
+|---|---|
+| Zip unpacks to `yayloyalty/` | both |
+| `release-manifest.json` present, `buildType` matches | both |
+| Version agrees across manifest, plugin header and `YAYLOYALTY_VERSION` | both |
+| Every manifested file present with a matching SHA256 | both |
+| No packaged file missing from the manifest | both |
+| `includes/Pro/` stripped | lite |
+| `includes/Pro/YayLoyaltyPro.php` shipped | pro |
+| Bundle sentinel **absent** from `main.js` | lite |
+| Bundle sentinel **present** in `main.js` | pro |
+| Bundle is a single entry chunk | both |
+| No Pro flag localized to the SPA | both |
+| `php -l` clean across every PHP file | both |
+| `Pro` named only by the guarded seam in `includes/YayLoyalty.php` | lite |
+| No dev-only artifacts (`RegisterDev.php`, `.map`, `.vite`, `.DS_Store`) | both |
+| Plugin boots inside WordPress with no fatal | both |
+| `is_pro()` returns what the build type says | both |
+| Localized payload carries no Pro-shaped key | both |
+
+Two of these deserve explanation.
+
+**The sentinel is checked in both directions.** `registerPro()` writes a marker
+string into the bundle. Absent from Lite proves tree-shaking worked; present in
+Pro proves the Lite assertion is not vacuous. A sentinel accidentally
+eliminated from *both* builds would otherwise make the Lite check pass forever
+while proving nothing.
+
+**Lite still names Pro, and must.** `YayLoyalty::initialize()` keeps its
+guarded `class_exists` plus the call it guards — two tokens, one seam, both in
+`includes/YayLoyalty.php`. Asserting zero references would fail the build for
+correct code, so the validator asserts they are *confined to that file*
+instead. `vendor-prefixed/` is excluded: the scoped admin shell has its own
+licence and plan vocabulary that this plugin neither owns nor strips.
+
+### Enabling the headless boot check
+
+The boot check loads the extracted package inside a real WordPress and asserts
+it initialises without a fatal. It needs WP-CLI, so it reports **SKIP** — never
+a silent pass — when unconfigured:
+
+```bash
+export YAYLOYALTY_WP_CLI="wp --path=/path/to/site"
+export YAYLOYALTY_WP_CLI_ARGS="--skip-plugins=yayloyalty"
+```
+
+The installed copy of this plugin **must** be skipped, or its class
+declarations collide with the extracted one. Add any other plugin that fatals
+on load to the same list.
+
+On a Local (by Flywheel) site:
+
+```bash
+export YAYLOYALTY_WP_CLI="$HOME/.claude/bin/wp-local yaydevs"
+export YAYLOYALTY_WP_CLI_ARGS="--skip-plugins=yayloyalty"
+```
+
+Pass `--require-boot` to treat a skipped check as a failure. Use it in CI, where
+"we could not check" and "it is broken" should have the same consequence.
+
+## When validation fails
+
+The failing row names the problem. The two worth recognising on sight:
+
+**Sentinel found in the Lite bundle.** Something deep-imports from `@/pro/`
+outside the `__IS_PRO__` gate, so Rollup kept the subtree. Everything Pro must
+come through the `@/pro` barrel, imported once from `main.tsx` behind the
+constant. A dynamic `import()` is not a fix — it emits a side chunk, which the
+"single entry chunk" check exists to catch.
+
+**A `Pro` reference outside `includes/YayLoyalty.php`.** Lite code grew a second
+direct reference to the Pro namespace. It needs to go through a filter seam
+instead; the seven attach points are documented in `code-standards.md` §13.
+
+**Sentinel found in the Lite bundle, from a page that only renders a Pro
+component conditionally.** Wrapping a Pro component in `<ProGate>` is not enough
+on its own. JSX evaluates children eagerly, so `<ProGate><ProThing /></ProGate>`
+references `ProThing` at runtime and pulls all of `@/pro` into Lite. The call
+site needs `__IS_PRO__ && …` around the Pro component as well; `ProGate` decides
+what a user *sees*, the constant decides what *ships*.

@@ -3,6 +3,7 @@ import { createHashRouter, redirect } from 'react-router';
 import AppLayout from './AppLayout';
 import NotFoundPage from './pages/404';
 import ErrorPage from './pages/500';
+import CampaignsPage from './pages/campaigns/CampaignsPage';
 import DashboardPage from './pages/dashboard/DashboardPage';
 import PointsPage from './pages/points/PointsPage';
 import ReferralPage from './pages/referral/ReferralPage';
@@ -28,6 +29,10 @@ export function getManagerRouter() {
         {
           path: 'points',
           element: <PointsPage />,
+        },
+        {
+          path: 'campaigns',
+          element: <CampaignsPage />,
         },
         {
           path: 'rewards',

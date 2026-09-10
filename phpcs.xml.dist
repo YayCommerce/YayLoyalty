@@ -1,0 +1,138 @@
+<?xml version="1.0"?>
+<ruleset name="YayLoyalty">
+    <description>Coding standard for YayLoyalty. See docs/code-standards.md.</description>
+
+    <!-- What to scan. -->
+    <file>includes</file>
+    <file>yayloyalty.php</file>
+    <file>YayLoyaltyPluginAdapter.php</file>
+    <file>index.php</file>
+
+    <!-- Never scan: third-party code, generated output, or the JS app. -->
+    <exclude-pattern>*/vendor/*</exclude-pattern>
+    <exclude-pattern>*/vendor-prefixed/*</exclude-pattern>
+    <exclude-pattern>*/node_modules/*</exclude-pattern>
+    <exclude-pattern>*/apps/*</exclude-pattern>
+    <exclude-pattern>*/release/*</exclude-pattern>
+    <exclude-pattern>*/assets/dist/*</exclude-pattern>
+    <exclude-pattern>*/languages/*</exclude-pattern>
+
+    <arg name="extensions" value="php"/>
+    <arg name="colors"/>
+    <arg name="cache" value=".phpcs.cache"/>
+    <arg value="sp"/>
+
+    <!--
+        PHP 7.4 floor. Without this config line PHPCompatibility silently
+        no-ops and the floor declared in the plugin header is unenforced.
+    -->
+    <config name="testVersion" value="7.4-"/>
+    <rule ref="PHPCompatibilityWP"/>
+
+    <!-- Minimum supported WordPress version, for deprecation sniffs. -->
+    <config name="minimum_wp_version" value="6.5"/>
+
+    <rule ref="WordPress-Extra">
+        <!--
+            Reason: the autoloader in yayloyalty.php maps
+            YayLoyalty\Models\Customer -> includes/Models/Customer.php, so PHP
+            class files MUST be PascalCase. This sniff demands
+            class-customer.php and would break autoloading.
+        -->
+        <exclude name="WordPress.Files.FileName"/>
+
+        <!--
+            Reason: this codebase indents with 4 spaces and contains zero tabs.
+            WordPress-Core mandates tabs. Space indent is enforced instead via
+            Generic.WhiteSpace.DisallowTabIndent below.
+        -->
+        <exclude name="Generic.WhiteSpace.DisallowSpaceIndent"/>
+
+        <!--
+            Reason: this codebase uses short array syntax [] consistently
+            across all 15 files (48 occurrences). WPCS 3.x mandates array().
+            Rewriting working code to satisfy a ruleset adopted after the fact
+            is the wrong direction; short syntax is the deliberate house style.
+        -->
+        <exclude name="Universal.Arrays.DisallowShortArraySyntax"/>
+
+        <!--
+            Reason: Squiz.Commenting is noisy on a codebase that documents
+            behaviour rather than restating signatures. Docblocks are required
+            by review where the signature is not self-explanatory
+            (docs/code-standards.md section 2), not by sniff.
+        -->
+        <!--
+            Reason: this sniff flags any throw whose message interpolates a
+            variable, on the assumption exception messages reach the browser.
+            They never do here — BaseRestController::error_internal() logs the
+            message and returns a generic string with a correlation id instead,
+            precisely so SQL, table names and paths are not exposed. Keeping the
+            sniff would mean an inline ignore on every diagnostic exception.
+        -->
+        <exclude name="WordPress.Security.EscapeOutput.ExceptionNotEscaped"/>
+
+        <exclude name="Squiz.Commenting.FunctionComment"/>
+        <exclude name="Squiz.Commenting.ClassComment"/>
+        <exclude name="Squiz.Commenting.VariableComment"/>
+        <exclude name="Squiz.Commenting.FileComment"/>
+    </rule>
+
+    <!-- 4-space indent, no tabs. -->
+    <rule ref="Generic.WhiteSpace.DisallowTabIndent"/>
+    <rule ref="Generic.WhiteSpace.ScopeIndent">
+        <properties>
+            <property name="indent" value="4"/>
+            <property name="tabIndent" value="false"/>
+        </properties>
+    </rule>
+
+    <!-- Aligned => in multi-line arrays. -->
+    <rule ref="WordPress.Arrays.MultipleStatementAlignment"/>
+
+    <!--
+        Reason: manage_woocommerce is a real capability registered by
+        WooCommerce, not by this plugin, so the sniff cannot see it.
+    -->
+    <rule ref="WordPress.WP.Capabilities">
+        <properties>
+            <property name="custom_capabilities" type="array">
+                <element value="manage_woocommerce"/>
+            </property>
+        </properties>
+    </rule>
+
+    <!--
+        Reason: the Vite dev server handles cache-busting via HMR, so passing
+        null as the version is correct there — a ?ver= query string would be
+        meaningless. Applies to the dev registrar only; RegisterProd.php still
+        must pass YAYLOYALTY_VERSION.
+    -->
+    <rule ref="WordPress.WP.EnqueuedResourceParameters.MissingVersion">
+        <exclude-pattern>includes/Engine/Register/RegisterDev.php</exclude-pattern>
+    </rule>
+
+    <!-- Text domain and prefixes. -->
+    <rule ref="WordPress.WP.I18n">
+        <properties>
+            <property name="text_domain" type="array">
+                <element value="yayloyalty"/>
+            </property>
+        </properties>
+    </rule>
+    <rule ref="WordPress.NamingConventions.PrefixAllGlobals">
+        <properties>
+            <property name="prefixes" type="array">
+                <element value="yayloyalty"/>
+                <element value="YAYLOYALTY"/>
+                <element value="YayLoyalty"/>
+            </property>
+        </properties>
+        <!--
+            Reason: this class is intentionally un-namespaced and excluded from
+            PHP-Scoper so runtime class_exists() checks resolve against real
+            WordPress/WooCommerce symbols. See the file's own docblock.
+        -->
+        <exclude-pattern>YayLoyaltyPluginAdapter.php</exclude-pattern>
+    </rule>
+</ruleset>

@@ -4,13 +4,13 @@
 # Usage: ./scripts/run.sh [command]
 #
 # Commands:
-#   dev                - Update admin shell + start Vite dev server (HMR on :3030)
-#   build              - Build admin dashboard for production
-#   release [version]  - Create release ZIP package (prompts for version)
-#   bump <version>     - Bump version number in plugin files
-#   info               - Show current version info
-#   clean              - Remove build artifacts
-#   help               - Show this help message
+#   dev                     - Update admin shell + start Vite dev server (HMR on :3030)
+#   build [pro|lite]        - Build admin dashboard for production
+#   release [pro|lite] [ver]- Create release ZIP package (prompts for version)
+#   bump <version>          - Bump version number in plugin files
+#   info                    - Show current version info
+#   clean                   - Remove build artifacts
+#   help                    - Show this help message
 #
 
 set -e
@@ -127,6 +127,16 @@ get_version() {
     echo "$version"
 }
 
+validate_build_type() {
+    case $1 in
+        pro|lite) ;;
+        *)
+            print_error "Unknown build type: '$1' (expected 'pro' or 'lite')"
+            exit 1
+            ;;
+    esac
+}
+
 # Plugin release version: X.Y.Z, X.Y.Z.W or with a -tag suffix
 validate_version() {
     [[ "$1" =~ ^[0-9]+(\.[0-9]+){2,3}(-[a-zA-Z0-9.]+)?$ ]]
@@ -190,22 +200,33 @@ cmd_dev() {
 }
 
 cmd_build() {
+    local build_type=${1:-pro}
+    validate_build_type "$build_type"
+
     resolve_pnpm
     install_admin_deps
 
-    # package.json build script runs `tsc --noEmit` before vite build
-    print_step "Building admin dashboard (typecheck + build)..."
+    # package.json build script runs `tsc --noEmit` before vite build.
+    #
+    # BUILD_TYPE is the whole SPA side of the split. vite.config.ts turns it
+    # into the __IS_PRO__ define, which is substituted inline so every
+    # `if (__IS_PRO__)` collapses to a literal and the dead branch — along
+    # with everything only it reaches — is dropped. Nothing else distinguishes
+    # the two bundles.
+    print_step "Building admin dashboard ($build_type: typecheck + build)..."
     cd "$ADMIN_DIR"
-    $PNPM build
+    BUILD_TYPE="$build_type" $PNPM build
     print_success "Build complete! Output: $PLUGIN_DIR/assets/dist/admin/"
 }
 
 cmd_release() {
+    local build_type="pro"
     local no_prompt=false
     local requested_version=""
     local arg
     for arg in "$@"; do
         case $arg in
+            pro|lite)    build_type=$arg ;;
             --no-prompt) no_prompt=true ;;
             *) [ -z "$requested_version" ] && requested_version="$arg" ;;
         esac
@@ -222,6 +243,9 @@ cmd_release() {
     print_msg "$CYAN" "╚════════════════════════════════════════════╝"
     echo ""
 
+    # Version metadata is written to the tree here, once. Releasing Pro then
+    # Lite with --no-prompt means the second package inherits the first
+    # package's version instead of asking again and getting a different answer.
     local version
     if [ "$no_prompt" = true ]; then
         version=${requested_version:-$(get_version)}
@@ -231,22 +255,46 @@ cmd_release() {
         version=$(get_version)
     fi
 
+    build_package "$build_type" "$version"
+}
+
+# Assemble, package and validate one build type.
+#
+# Pro and Lite share every step here. Lite adds exactly one thing — deleting
+# includes/Pro/ from the staged copy — plus the BUILD_TYPE the SPA build
+# already reads. Keeping this as one function is what stops the two packages
+# from drifting apart.
+build_package() {
+    local build_type=$1
+    local version=$2
+    validate_build_type "$build_type"
+
     local zip_name="${PLUGIN_SLUG}-${version}.zip"
+    if [ "$build_type" = "lite" ]; then
+        zip_name="${PLUGIN_SLUG}-lite-${version}.zip"
+    fi
 
     echo ""
+    print_info "Build type: $build_type"
     print_info "Version: $version"
     print_info "Output: release/$zip_name"
     echo ""
 
     update_shell prerelease
 
-    # Regenerate autoload without dev deps for a consistent release
+    # Regenerate autoload without dev deps for a consistent release.
+    # Safe to run before the Pro strip: composer's classmap covers
+    # vendor-prefixed/src and the adapter only. Plugin classes load through the
+    # file_exists-guarded autoloader in yayloyalty.php, so a deleted
+    # includes/Pro/ resolves to "class not found" rather than a missing include.
     cd "$PLUGIN_DIR"
     composer dump-autoload --no-dev --classmap-authoritative --quiet
 
-    cmd_build
+    cmd_build "$build_type"
 
-    # Assemble package in a temp folder named after the plugin slug
+    # Assemble package in a temp folder named after the plugin slug.
+    # Both build types use the same folder name so a Lite site upgrading to
+    # Pro replaces its plugin directory in place.
     local temp_dir="$RELEASE_DIR/$PLUGIN_SLUG"
     rm -rf "$temp_dir"
     mkdir -p "$temp_dir"
@@ -267,12 +315,24 @@ cmd_release() {
     cp "$PLUGIN_DIR/vendor/autoload.php" "$temp_dir/vendor/"
     cp -r "$PLUGIN_DIR/vendor/composer" "$temp_dir/vendor/"
 
+    # The Lite strip. Note the path: inside $temp_dir, never $PLUGIN_DIR.
+    # SPA sources are already excluded from both packages — only assets/ ships,
+    # not apps/ — so apps/admin/src/pro/ needs no deletion here. Its exclusion
+    # from the Lite bundle rests entirely on BUILD_TYPE=lite, which is what
+    # validate-build.php's sentinel check exists to verify.
+    if [ "$build_type" = "lite" ]; then
+        print_step "Stripping Pro code..."
+        rm -rf "$temp_dir/includes/Pro"
+    fi
+
     # Strip dev-only artifacts
     rm -f "$temp_dir/includes/Engine/Register/RegisterDev.php"
     rm -rf "$temp_dir/assets/dist/admin/.vite" 2>/dev/null || true
     find "$temp_dir" -name ".DS_Store" -delete 2>/dev/null || true
     find "$temp_dir" -name "*.map" -delete 2>/dev/null || true
     find "$temp_dir" -name ".gitkeep" -delete 2>/dev/null || true
+
+    write_manifest "$temp_dir" "$version" "$build_type"
 
     print_step "Creating ZIP archive..."
     cd "$RELEASE_DIR"
@@ -284,6 +344,17 @@ cmd_release() {
     cd "$PLUGIN_DIR"
     composer dump-autoload --classmap-authoritative --quiet
 
+    # Validation runs against the zip, and a failure ends the release. A
+    # stripping build fails silently by nature; a warning here would be read
+    # once and ignored forever.
+    print_step "Validating package..."
+    if ! php "$SCRIPT_DIR/validate-build.php" "$RELEASE_DIR/$zip_name" "$build_type"; then
+        mv "$RELEASE_DIR/$zip_name" "$RELEASE_DIR/$zip_name.invalid"
+        print_error "Validation failed — release aborted"
+        print_info "Rejected package kept for inspection: release/$zip_name.invalid"
+        exit 1
+    fi
+
     local size
     size=$(du -h "$RELEASE_DIR/$zip_name" | cut -f1)
 
@@ -291,6 +362,51 @@ cmd_release() {
     print_success "Release package created!"
     print_info "Package: $RELEASE_DIR/$zip_name"
     print_info "Size: $size"
+}
+
+# Write release-manifest.json: SHA256 of every packaged file.
+#
+# Gives a release an integrity record and makes two packages diffable without
+# unzipping them. validate-build.php checks both directions — every listed
+# file present and unchanged, and no packaged file missing from the list —
+# which is how a file surviving a strip gets noticed.
+write_manifest() {
+    local dir=$1
+    local version=$2
+    local build_type=$3
+    local manifest="$dir/release-manifest.json"
+
+    print_step "Writing release manifest..."
+    rm -f "$manifest"
+
+    {
+        echo "{"
+        echo "  \"plugin\": \"$PLUGIN_SLUG\","
+        echo "  \"version\": \"$version\","
+        echo "  \"buildType\": \"$build_type\","
+        echo "  \"generatedAt\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\","
+        echo "  \"files\": {"
+
+        local first=true line hash rel
+        while IFS= read -r line; do
+            hash=${line%% *}
+            rel=${line#*  }
+            rel=${rel#./}
+            if [ "$first" = true ]; then
+                first=false
+            else
+                echo ","
+            fi
+            printf '    "%s": "%s"' "$rel" "$hash"
+        # The manifest excludes itself: the redirection below truncates it
+        # before find runs, so hashing it would record the hash of an empty
+        # file. validate-build.php skips it on the other side too.
+        done < <(cd "$dir" && find . -type f ! -name "release-manifest.json" | sort | tr '\n' '\0' | xargs -0 shasum -a 256)
+
+        echo ""
+        echo "  }"
+        echo "}"
+    } > "$manifest"
 }
 
 cmd_bump() {
@@ -337,18 +453,22 @@ cmd_help() {
     echo ""
     echo "Commands:"
     echo "  dev                          Update admin shell + start Vite dev server (:3030)"
-    echo "  build                        Build admin dashboard for production"
-    echo "  release [version|--no-prompt] Create release ZIP in release/"
+    echo "  build [pro|lite]             Build admin dashboard (default: pro)"
+    echo "  release [pro|lite] [version] Create release ZIP in release/ (default: pro)"
     echo "  bump <version>               Bump version in plugin files"
     echo "  info                         Show current version info"
     echo "  clean                        Remove build artifacts"
     echo "  help                         Show this help message"
     echo ""
     echo "Examples:"
-    echo "  ./scripts/run.sh dev                    # Dev server with HMR"
-    echo "  ./scripts/run.sh release                # Package (prompts version)"
-    echo "  ./scripts/run.sh release 1.0.1          # Bump to 1.0.1 and package"
-    echo "  ./scripts/run.sh release --no-prompt    # Package current version"
+    echo "  ./scripts/run.sh dev                     # Dev server with HMR"
+    echo "  ./scripts/run.sh release                 # Pro package (prompts version)"
+    echo "  ./scripts/run.sh release 1.0.1           # Bump to 1.0.1 and package Pro"
+    echo "  ./scripts/run.sh release lite --no-prompt # Lite package at the current version"
+    echo ""
+    echo "Releasing both: Pro first (it sets the version), then Lite with"
+    echo "--no-prompt so both packages carry the same number."
+    echo "See docs/deployment-guide.md."
 }
 
 # ─── Main ───────────────────────────────────────────────────────────────

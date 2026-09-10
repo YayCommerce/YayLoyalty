@@ -1,20 +1,31 @@
 import path from 'path';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
-import { defineConfig, loadEnv } from 'vite';
+import { defineConfig } from 'vite';
 import pluginExternal from 'vite-plugin-external';
 
 // Dev server port — must match RegisterDev.php (includes/Engine/Register/RegisterDev.php)
 const DEV_PORT = 3030;
 
 // https://vitejs.dev/config/
-export default defineConfig(({ mode }) => {
-  const envDir = path.resolve(__dirname, 'env');
-  const env = loadEnv(mode, envDir);
+export default defineConfig(() => {
+  // The single build-plan gate. BUILD_TYPE=lite produces the Lite bundle;
+  // anything else (including unset, so a plain `pnpm build` stays Pro)
+  // produces Pro.
+  //
+  // A `define` rather than import.meta.env on purpose: it is substituted
+  // inline at every usage site, so `if (__IS_PRO__)` collapses to a
+  // literal and the dead branch is eliminated. An exported const derived from
+  // import.meta.env has to be constant-folded across a module boundary, which
+  // is less reliable — see the sentinel check in scripts/validate-build.php.
+  const isProBuild = process.env.BUILD_TYPE !== 'lite';
 
   return {
     root: './src',
-    envDir,
+
+    define: {
+      __IS_PRO__: JSON.stringify(isProBuild),
+    },
 
     plugins: [
       react({ jsxRuntime: 'classic' }),
@@ -53,7 +64,12 @@ export default defineConfig(({ mode }) => {
       cors: true,
       strictPort: true,
       port: DEV_PORT,
-      origin: env.VITE_SERVER_ORIGIN,
+      // WordPress serves the admin page from its own origin, so asset URLs the
+      // dev server emits must be absolute or the browser resolves them against
+      // the WP host and the module never loads. Derived from DEV_PORT rather
+      // than read from an env file: the port is already fixed here, and the two
+      // must agree.
+      origin: `http://localhost:${DEV_PORT}`,
       hmr: {
         port: DEV_PORT,
         host: 'localhost',

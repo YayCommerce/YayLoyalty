@@ -1,5 +1,5 @@
 import { ComponentProps } from 'react';
-import { Coins, Crown, Gift, Share2 } from 'lucide-react';
+import { Coins, Crown, Gift, Megaphone, Share2 } from 'lucide-react';
 import { NavLink } from 'react-router';
 import { __ } from '@wordpress/i18n';
 
@@ -21,6 +21,12 @@ export function HeaderMenu() {
         <NavLink to="/points">
           <Coins className="stroke-2" />
           <span>{__('Points', 'yayloyalty')}</span>
+        </NavLink>
+      </CustomMenuItem>
+      <CustomMenuItem asChild key="campaigns">
+        <NavLink to="/campaigns">
+          <Megaphone className="stroke-2" />
+          <span>{__('Campaigns', 'yayloyalty')}</span>
         </NavLink>
       </CustomMenuItem>
       <CustomMenuItem asChild key="rewards">

@@ -1,0 +1,304 @@
+# YayLoyalty — Code Standards
+
+Enforced by `phpcs.xml.dist` where a sniff exists; enforced by review where one does not. Rules marked **[REVIEW]** have no automated check — they are the ones most worth catching in a pull request.
+
+Companion: [`data-model.md`](./data-model.md).
+
+---
+
+## 1. File naming
+
+The one genuine conflict in this repo, resolved explicitly.
+
+The autoloader in `yayloyalty.php` maps `YayLoyalty\Models\Customer` → `includes/Models/Customer.php`. **PHP class filenames must therefore be PascalCase**, matching the class name exactly. `WordPress.Files.FileName` (which wants `class-customer.php`) is excluded from the ruleset for this reason.
+
+| Kind | Case | Example |
+|---|---|---|
+| PHP class file | PascalCase — **mandatory**, autoloader depends on it | `Models/LedgerEntry.php` |
+| React component | PascalCase | `DashboardPage.tsx` |
+| TS module | kebab + dot-namespace | `settings.api.ts`, `customer.queries.ts` |
+| Docs, plans | kebab-case | `code-standards.md` |
+
+## 2. PHP style
+
+- 4-space indent. No tabs.
+- Aligned `=>` in multi-line array literals.
+- Spaces inside parentheses: `foo( $bar )`.
+- `defined( 'ABSPATH' ) || exit;` at the top of **every** PHP file.
+- Return types on all public methods. PHP 7.4 supports them; use them.
+- Docblocks on public methods where the signature is not self-explanatory.
+
+## 3. Casing
+
+| Element | Case |
+|---|---|
+| Methods, properties, variables | `snake_case` |
+| Classes, interfaces, traits | PascalCase |
+| Constants | `UPPER_SNAKE` |
+| Hooks | `yayloyalty_` prefix |
+
+Filters carry data. Actions cause side effects. Do not use a filter for its side effects.
+
+## 4. Dates — always UTC
+
+**Never use `current_time()` for anything that gets stored.** Always `Dates::now()`, which returns `gmdate( 'Y-m-d H:i:s' )`.
+
+Every `DATETIME` in this plugin is UTC. Conversion to the site timezone happens only at the edges: admin form rendering, email templates, REST responses intended for display. A timestamp that enters the database in site time is a bug that surfaces months later as an off-by-hours expiry.
+
+## 5. Money — bind as `%s`, never `%f`
+
+Every `DECIMAL(19,4)` column is carried as a **string** end to end, and bound with `%s`.
+
+Binding a decimal through `%f` converts it to a float, and floats cannot represent most decimal fractions exactly. The affected columns are precisely the ones where a rounding error is a financial defect: `rate_snapshot`, `base_value`, `value`, `lifetime_spend`, `threshold`, `tier_progress_value`, `basis_value`.
+
+**[REVIEW]** In TypeScript, money is `z.string()`. Never `parseFloat` a money field; typing it as a string makes TS reject arithmetic on it.
+
+## 6. Database access
+
+**`$wpdb` appears only in `Repositories/` and `Database/`.** Nowhere else — not in controllers, services, models, helpers or engine classes.
+
+- One repository per table. A repository never touches a second table.
+- A repository **never opens a transaction**. Atomicity is a service concern.
+- All SQL prepared. `search` terms go through `$wpdb->esc_like()` before `prepare()`.
+- `orderby` is whitelisted per repository. Never interpolate a caller-supplied column name.
+- **Never memoize `$wpdb->prefix` or a table name.** Multisite activation switches blogs mid-request; a cached prefix installs every blog's tables into the wrong one.
+
+### Write methods throw
+
+`$wpdb->insert()` returns `false` on failure — it does not throw. Because rollback in this codebase is exception-driven, a repository that quietly returns `false` will let a failed write commit.
+
+Every repository write checks the return value and `$wpdb->last_error`, then throws `QueryException`.
+
+### Index DDL grammar
+
+Write indexes as `UNIQUE KEY name (cols)` or `KEY name (cols)`. Never bare `UNIQUE (cols)`, never `INDEX`.
+
+`dbDelta` only recognises the `KEY` forms. A bare `UNIQUE (...)` succeeds on first install and then silently fails to normalise on every upgrade — the index quietly disappears on the exact code path nobody tests. Also: name every key, put two spaces after `PRIMARY KEY`, and state `ENGINE=InnoDB` explicitly (savepoints do not exist on MyISAM).
+
+## 7. Transactions
+
+**Only `Transaction::run()` opens or nests a transaction.** Raw `START TRANSACTION` / `COMMIT` / `ROLLBACK` are banned outside `Database/Transaction.php`. **[REVIEW]** — no sniff for this; catch it in review.
+
+The connection is **not ours**. WooCommerce issues `START TRANSACTION` on the same `global $wpdb` (`wc_transaction_query`), and so do sibling Yay plugins installed alongside this one. Consequences:
+
+- At depth 0 we may already be inside someone else's transaction. Issuing `START TRANSACTION` there **implicitly commits their in-flight work** — a loyalty plugin corrupting order data on the host's rollback path.
+- `$wpdb` silently reconnects on error 2006 and resumes in autocommit, so a depth counter can outlive the transaction it counts.
+- A deadlock (error 1213) rolls back everything and destroys every savepoint.
+
+Therefore `Transaction::run()` probes for a foreign transaction and takes a savepoint rather than starting one, guards connection identity before every commit/rollback, and treats a failed `ROLLBACK TO SAVEPOINT` as fatal rather than continuing.
+
+### How the foreign-transaction probe works, and why
+
+The probe is a **savepoint round-trip**: take a savepoint, roll back to it, release it. Inside a transaction all three succeed. Outside one, MySQL releases the savepoint the moment the auto-committed statement creating it ends, so `ROLLBACK TO SAVEPOINT` fails with error 1305 — and that failure is the signal. Rolling back to a savepoint taken at the current point discards nothing.
+
+Do not replace this with a server-variable check. Both obvious candidates were tried against the target server (MySQL 8.0.35) and **both failed**:
+
+| Probe | Result |
+|---|---|
+| `SELECT @@in_transaction` | MariaDB-only. MySQL: *"Unknown system variable 'in_transaction'"* |
+| `information_schema.INNODB_TRX` | Returned **zero rows** as `root` (which holds `PROCESS`) with an open transaction that had already inserted |
+
+The `INNODB_TRX` failure is the dangerous one: it returns `'0'` rather than erroring, so a capability check that only asks *"did the query run?"* accepts it and then reports "no transaction" forever. The first implementation of `Transaction` did exactly that and **committed WooCommerce's in-flight work** in testing — the bug the class exists to prevent, reproduced by the class itself.
+
+Verified 2026-09-09: with a foreign transaction open, `Transaction::run()` takes a savepoint, and a subsequent foreign `ROLLBACK` correctly discards both the foreign row and ours.
+
+**Lock order is always `customers` before `ledger`.** Never the reverse — interleaved operations on two users deadlock otherwise.
+
+## 8. Layers
+
+| Layer | Owns | Must not |
+|---|---|---|
+| `Models/` | Typed data, casts, REST shape | Touch the database |
+| `Repositories/` | All SQL for exactly one table | Open transactions; touch a second table |
+| `Services/` | Invariants, transactions, cross-table writes | Contain SQL |
+| `Controllers/` | HTTP shape, schema, permissions | Contain SQL or business invariants |
+
+**Definition tables get no service.** A service that only forwards CRUD to one repository is ceremony. Add one when an operation must touch a second table atomically — that is when it earns its existence.
+
+### `Utils/` vs `Helpers/`
+
+Two directories that look interchangeable and are not.
+
+| | Holds | Test |
+|---|---|---|
+| `Utils/` | Stateless, all-static, no plugin state — `Dates`, `Json`, `Log`, `Table` | Could you lift it into another plugin by changing one constant? |
+| `Helpers/` | Glue that knows this plugin's options, shapes and screens — `SettingsHelper`, `LocalizeHelper` | Does it read plugin state or build a payload for our UI? |
+
+A util that starts reading an option belongs in `Helpers/`. Neither directory is a home for business rules: those live in `Models/` and `Services/`.
+
+### Logging
+
+**`Utils\Log`, never bare `error_log()`.** It writes to WooCommerce → Status → Logs when WooCommerce has loaded, falling back to `error_log()` for activation and early bootstrap, so a merchant and a support agent can actually read what happened.
+
+Pick the level by asking who needs the line, not how noisy it is:
+
+| Level | Written | For |
+|---|---|---|
+| `Log::error()` | always | A permanent fault: a failed install, an unhandled exception |
+| `Log::warning()` | always | Survivable misconfiguration — a filter subscriber that had to be ignored |
+| `Log::debug()` | WP_DEBUG only | Diagnostics on a hot path, safe to be noisy |
+
+**Do not gate an error behind `WP_DEBUG`.** Production has it off by definition, which is the one moment the record matters. The 500 handler hands the user a correlation id to quote at support; when that line is only written in debug mode, the id refers to nothing.
+
+### Table names come from `Utils\Table`
+
+`Table::name( 'customers' )` — the schema class that CREATEs a table and the repository that reads it must derive the name from the same place, or the repository queries a table the installer never made and the symptom is "no rows", not an error. **[REVIEW]** Never memoize the result, and never cache `$wpdb->prefix`: multisite activation loops `switch_to_blog()`.
+
+### Instantiation: services and repositories are plain objects
+
+`Utils/SingletonTrait` is for bootstrap classes only (`RestAPI`, `Settings`, `RegisterFacade`). **Models, Repositories and Services never use it**, for two reasons:
+
+- `get_instance( ...$args )` silently ignores `$args` after the first call, so constructor injection and the trait are incompatible — the second caller silently gets the first caller's dependencies.
+- `get_instance()` is `public static`, so it hands global access to anything that wants it.
+
+**[REVIEW]** `LedgerService` is the only class that receives both `LedgerRepository` and `CustomerRepository`, and it is constructed in exactly one place. PHP has no package-private, so this is a convention plus a single construction site plus this review rule — **not** something the language enforces. Do not describe it as "structural".
+
+## 9. REST
+
+- Namespace `yayloyalty/v1`. Routes registered in `register_routes()`, never in a constructor.
+- Every resource declares `get_item_schema()`, with `context` (`view`/`edit`) and `readonly` on every property.
+- **`readonly` properties are stripped from write args, not merely ignored.** Build write args by filtering the schema. Passing the schema whole makes every endpoint mass-assignable: a `PUT` carrying `is_builtin` or `actor_id` would otherwise defeat the guards that depend on them.
+- Server-owned and always readonly: `id`, `created_at`, `updated_at`, `is_builtin`, `balance_after`, `actor_id`, and every aggregate on `customers`.
+- `actor_id` is always `get_current_user_id()`. Never read it from a request body.
+- ID route params are `(?P<id>[\d]+)` with a `validate_callback` confirming the record exists.
+- Payload fields are `snake_case`. The pagination envelope is camelCase (`currentPage`, `totalPage`, `totalItems`, `perPage`, `data`), matching `PaginatedResponse<T>` in the admin app — one envelope, not two.
+- Error responses never echo `$exception->getMessage()`; log the detail, return a generic message with a correlation id.
+
+## 10. PHP 7.4 pseudo-enums
+
+No native enums. Closed vocabularies are `final class` + `const` + `all()` + `is_valid()` + `assert()`.
+
+**`assert()` runs at the service boundary, not in the repository.** With no enum type there is no compile-time check, so if the service does not assert, an invalid value surfaces only as a DB error — far from the caller, with a message that names a column instead of the mistake.
+
+Fact-table entities are immutable **by convention**: private properties, getters only, no setters, `with_*()` returns a clone. `readonly` does not exist in 7.4, so the convention is the enforcement. Say so in each such class's docblock.
+
+## 11. Status and liveness
+
+`status` stores merchant **intent** only: `active`, `paused`, `draft`. Never `scheduled` or `ended`.
+
+Whether something is live *right now* is computed at read time from `status` plus `starts_at`/`ends_at`, evaluated against the **event's** timestamp — an order's award time, not the current request time. A late-processed order must be scored under the rules that were live when it happened.
+
+**No cron job may flip a status.** If you find yourself writing one, the model is being worked around.
+
+## 12. JSON columns
+
+Stored as `LONGTEXT`, validated in PHP. Every blob carries a `schema_version` key so formats can evolve without a table migration.
+
+Decoding is **total**: malformed stored JSON returns the default and logs. It never throws. A corrupt `config` blob should degrade one campaign, not white-screen the admin.
+
+### Maps and lists take different methods
+
+`Json::encode()` / `decode()` are for **maps** — `campaigns.config`. `Json::encode_list()` / `decode_list()` are for **lists** — `campaigns.conditions`, a list of `{type, operator, value}` triples.
+
+Stamping `schema_version` into a list turns it into an object: `[{…},{…}]` comes back as `{"0":…,"1":…,"schema_version":1}`, and an empty list comes back as `{"schema_version":1}` — not empty. Anything iterating it then finds a stray integer where it expected a record, and anything asking "are there any conditions?" gets the wrong answer. `encode_list()` wraps the payload instead:
+
+```json
+{"schema_version": 1, "items": [ … ]}
+```
+
+`decode_list()` unwraps it and also accepts a bare array and the corrupted `{"0":…}` shape, so no stored row is lost. **[REVIEW]** — pick the pair that matches the column's shape; nothing enforces it.
+
+## 13. Pro extension seams
+
+YayLoyalty ships as two builds from one repo: **Pro** (the full tree) and **Lite** (built by stripping). Code and user-facing copy both say **Pro** — one word, no translation layer.
+
+### The one rule that makes the split cheap
+
+**Lite contains exactly one reference to Pro** — a guarded `class_exists` in `YayLoyalty::initialize()`. Everything else Pro does, it does by attaching to a filter.
+
+That is why the Lite build is a directory deletion rather than surgery on shared files. Contrast `yay-reviews`, whose bootstrap `use`s its Premium classes directly and therefore needs five `@premium-start` marker pairs in one file, plus a validation script to catch the times stripping goes wrong.
+
+### The seams
+
+| Pro needs | Hook |
+|---|---|
+| Its tables | `yayloyalty_table_schemas` |
+| To react to ledger writes | `yayloyalty_ledger_recorded` |
+| Its REST endpoints | `yayloyalty_rest_controllers` |
+| Extra campaign triggers | `yayloyalty_campaign_triggers` |
+| Extra campaign config keys | `yayloyalty_campaign_config_whitelist` |
+| To extend a resource's schema | `yayloyalty_rest_item_schema` |
+| To evaluate campaign conditions | `yayloyalty_campaign_conditions_evaluator` |
+
+These are **internal seams for first-party Pro code**, not a documented third-party API. They may change.
+
+`yayloyalty_rest_item_schema` passes `$rest_base`, which is **not** unique: a Pro controller owning a sub-route of an existing resource shares that resource's base. Match on the schema's `title` as well, or a filter meant for one route silently rewrites another's schema.
+
+### Markers are a last resort, not a mechanism
+
+There are **no** `@pro-start` / `@pro-end` markers in this codebase, and adding one requires answering: *why won't a filter do?*
+
+A marker is a symptom of a missing seam. A mismatched pair silently deletes the wrong lines or leaves a dangling import, and the failure only surfaces when the Lite zip fatals at runtime. If a marker is ever genuinely needed, the stripping script and its validation land in the same change — never after.
+
+### Strip behaviour, never vocabulary
+
+**Pro enum values, Pro config keys and Pro table schemas stay in the Lite build.**
+
+A site that downgrades from Pro to Lite must not have its data treated as corrupt. Concretely:
+
+- `CampaignTrigger::all()` is filtered (what this build can *fire*); `all_known()` is **not** (what the schema *recognises*). The asymmetry is the mechanism.
+- `Campaign::config_whitelist()` keeps Pro keys such as `max_points_per_order` in Lite. Do not "tidy" them out — that would destroy a merchant's configuration on a temporary downgrade.
+- `Campaign::validate_config()` **preserves config wholesale for a trigger this build has no whitelist for**, rather than filtering it against an empty list. A whitelist covers the keys of triggers this build knows; a Pro-only trigger is unknown to Lite entirely, and unknown must never mean delete. Without this, the first re-save of a downgraded `birthday` campaign would empty it, and a later upgrade would restore nothing.
+- Lite's `conditions_match()` returns **true** when it cannot evaluate. Failing open keeps a downgraded site awarding slightly too broadly; failing closed would silently disable every conditional campaign.
+
+Pro's evaluator is stricter in the opposite direction — an unknown condition type **fails**, because Pro can evaluate and an unrecognised type is a real error.
+
+### Two directories named "pro" in the SPA, with opposite fates
+
+| Directory | Lite build | Contents |
+|---|---|---|
+| `apps/admin/src/pro/` | **deleted** | actual pro features |
+| `apps/admin/src/components/pro/` | **kept** | `ProGate`, badge, overlay — the upsell UI Lite must render |
+
+Confusing them either ships pro features in Lite or removes Lite's ability to sell the upgrade.
+
+**`ProGate` alone does not keep Pro code out of the Lite bundle.** JSX evaluates its children eagerly, so `<ProGate><ProThing /></ProGate>` references `ProThing` at runtime and drags all of `@/pro` — sentinel included — into Lite. Guard the child with the constant as well:
+
+```tsx
+<ProGate>{__IS_PRO__ && thing ? <ProThing thing={thing} /> : null}</ProGate>
+```
+
+`ProGate` decides what a user sees; `__IS_PRO__` decides what ships. Both are needed, and `scripts/validate-build.php` fails the release when only the first is present.
+
+### Gating is build-time only
+
+`__IS_PRO__`, a Vite `define`, is the single gate. **No pro flag is localized to the SPA.** One zip carries both the PHP and the JS bundle, so build type is never ambiguous and there is nothing for a runtime flag to disambiguate. Licence state is deliberately not an input: an expired licence stops updates, not features.
+
+`YayLoyalty::is_pro()` exists for server-side decisions only and is never sent to the browser.
+
+### The split is enforced, not trusted
+
+A stripping build fails silently by nature, so every release is validated against the produced zip and a failure aborts it. `scripts/validate-build.php` checks the sentinel in both directions, confines Lite's `Pro` references to the one guarded seam, and boots the package inside WordPress. See `deployment-guide.md`.
+
+### The schema filter cannot reopen mass assignment
+
+`get_item_schema()` is **final**; subclasses override `define_item_schema()`. The filter is applied centrally so no subclass can bypass it, and `is_readonly_property()` checks `ALWAYS_READONLY` first — so `id`, `created_at`, `updated_at`, `is_builtin`, `balance_after` and `actor_id` stay stripped from write args regardless of what any subscriber returns.
+
+## 14. Running the linter
+
+```bash
+composer lint      # phpcs
+composer lint:fix  # phpcbf
+```
+
+Every exclusion in `phpcs.xml.dist` carries a one-line reason. **An exclusion without a reason is a bug** — it means a sniff was disabled to make the build green rather than because it was wrong.
+
+### Known blind spot: the linter cannot see PHP 8 syntax **[REVIEW]**
+
+`phpcs.xml.dist` sets `testVersion` to `7.4-` and this is wired correctly — PHPCompatibility does flag constructs newer than the floor *that it knows about*. But `phpcompatibility/php-compatibility` is pinned at 9.3.5, the last stable release, which **predates PHP 8.0 and ships no PHP 8 sniffs**.
+
+Verified 2026-09-09: a file using the nullsafe operator `?->` passes `composer lint` clean.
+
+So the following will **not** be caught by tooling, and are the exact features the PHP 7.4 floor exists to prevent:
+
+- `enum` declarations
+- `match` expressions
+- constructor property promotion
+- `readonly` properties
+- nullsafe operator `?->`
+- named arguments
+- union types
+
+**These are a review responsibility.** Local development runs PHP 8.x, so this code will run fine on the developer's machine and fatal on a 7.4 host. When reviewing, read for these constructs deliberately — the linter passing is not evidence of their absence.
+
+Closing this gap later means either pinning `phpcompatibility/php-compatibility` to `dev-develop` (which has PHP 8.x sniffs) or adding PHPStan with `phpVersion: 70400`. Deliberately deferred; revisit when CI is set up.

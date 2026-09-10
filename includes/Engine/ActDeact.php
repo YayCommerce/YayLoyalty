@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Engine;
 
+use YayLoyalty\Database\Installer;
 use YayLoyalty\Helpers\SettingsHelper;
 
 defined( 'ABSPATH' ) || exit;
@@ -29,14 +30,7 @@ class ActDeact {
         }
 
         if ( function_exists( 'is_multisite' ) && is_multisite() && $network_wide ) {
-            /** @var array<\WP_Site> $blogs */
-            $blogs = get_sites();
-
-            foreach ( $blogs as $blog ) {
-                switch_to_blog( (int) $blog->blog_id );
-                self::single_activate();
-                restore_current_blog();
-            }
+            self::activate_network();
 
             return;
         }
@@ -44,10 +38,80 @@ class ActDeact {
         self::single_activate();
     }
 
+    /**
+     * Activate on every blog in the network.
+     *
+     * get_sites() defaults to a limit of 100, so a naive call silently skips
+     * every blog past the first hundred — they would run without tables until
+     * something noticed. Paginate explicitly.
+     *
+     * switch_to_blog() is wrapped in try/finally: a throw inside
+     * single_activate() would otherwise leave the process pointed at the wrong
+     * blog for the remainder of the request.
+     */
+    private static function activate_network(): void {
+        $paged    = 1;
+        $per_page = 100;
+
+        do {
+            $blogs = get_sites(
+                [
+                    'number'        => $per_page,
+                    'offset'        => ( $paged - 1 ) * $per_page,
+                    'fields'        => 'ids',
+                    'orderby'       => 'id',
+                    'order'         => 'ASC',
+                    'no_found_rows' => true,
+                ]
+            );
+
+            foreach ( $blogs as $blog_id ) {
+                switch_to_blog( (int) $blog_id );
+
+                try {
+                    self::single_activate();
+                } finally {
+                    restore_current_blog();
+                }
+            }
+
+            $returned = count( $blogs );
+            ++$paged;
+        } while ( $returned === $per_page );
+    }
+
+    /**
+     * Create tables on a blog added after the plugin was network-activated.
+     *
+     * Hooked to wp_initialize_site; without it, new blogs never get tables.
+     *
+     * @param \WP_Site $new_site
+     */
+    public static function on_new_site( $new_site ): void {
+        if ( ! function_exists( 'is_plugin_active_for_network' ) ) {
+            require_once ABSPATH . 'wp-admin/includes/plugin.php';
+        }
+
+        if ( ! is_plugin_active_for_network( YAYLOYALTY_BASE_NAME ) ) {
+            return;
+        }
+
+        switch_to_blog( (int) $new_site->blog_id );
+
+        try {
+            self::single_activate();
+        } finally {
+            restore_current_blog();
+        }
+    }
+
     public static function deactivate() {
     }
 
     protected static function single_activate() {
+        // Create tables and stamp the DB version.
+        Installer::install();
+
         // Seed default settings on first activation.
         SettingsHelper::get_settings();
     }

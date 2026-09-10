@@ -2,7 +2,6 @@
 namespace YayLoyalty\Helpers;
 
 use YayLoyalty\Controllers\BaseRestController;
-use YayLoyalty\YayLoyalty;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -36,11 +35,18 @@ class LocalizeHelper {
                 'restNonce'    => wp_create_nonce( 'wp_rest' ),
                 'isBlockTheme' => wp_is_block_theme(),
             ],
+            /*
+             * No pro flag is sent to the browser. The SPA is gated at build
+             * time by the __IS_PRO__ Vite define: one zip carries both the
+             * PHP and the JS bundle, so build type is never ambiguous and there
+             * is nothing for a runtime flag to disambiguate.
+             *
+             * YayLoyalty::is_pro() remains for server-side decisions only.
+             */
             'loyaltyMeta' => [
                 'pluginUrl' => YAYLOYALTY_PLUGIN_URL,
                 'assetsUrl' => YAYLOYALTY_PLUGIN_URL . 'assets',
                 'version'   => YAYLOYALTY_VERSION,
-                'isPro'     => YayLoyalty::is_pro(),
                 'reviewed'  => (bool) get_option( SettingsHelper::OPTION_REVIEWED, false ),
             ],
             'wcMeta'      => [
