@@ -129,9 +129,12 @@ final class Json {
      * and gets stamped on its next save, so no migration is needed to backfill.
      */
 
+    /**
+     * Debug level on purpose: one malformed blob degrades one row, and decoding
+     * happens per row, so a permanent level would flood the log on a table that
+     * has a bad column.
+     */
     private static function log( string $message ): void {
-        if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-            error_log( '[yayloyalty] Json: ' . $message ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-        }
+        Log::debug( 'Json', $message );
     }
 }

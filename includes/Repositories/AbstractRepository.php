@@ -3,6 +3,7 @@ namespace YayLoyalty\Repositories;
 
 use YayLoyalty\Database\QueryException;
 use YayLoyalty\Models\AbstractModel;
+use YayLoyalty\Utils\Table;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -63,12 +64,13 @@ abstract class AbstractRepository {
     }
 
     /**
-     * Fully-qualified table name. Never memoized — see the class docblock.
+     * Fully-qualified table name.
+     *
+     * Same source as the schema class that created the table — see Utils\Table,
+     * including why the result must never be memoized.
      */
     public function table(): string {
-        global $wpdb;
-
-        return $wpdb->prefix . 'yayloyalty_' . $this->table_slug();
+        return Table::name( $this->table_slug() );
     }
 
     /**

@@ -1,6 +1,8 @@
 <?php
 namespace YayLoyalty\Pro\Services;
 
+use YayLoyalty\Utils\Log;
+
 defined( 'ABSPATH' ) || exit;
 
 /**
@@ -237,16 +239,18 @@ final class ConditionsEvaluator {
         $result['matched'] = false;
         $result['reason']  = $reason;
 
-        if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-            error_log( // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-                sprintf(
-                    '[yayloyalty] ConditionsEvaluator: %s (type="%s", operator="%s"). Condition treated as NOT matching.',
-                    $reason,
-                    $result['type'],
-                    $result['operator']
-                )
-            );
-        }
+        // Debug, not warning: this runs once per condition per award, so a
+        // single misconfigured campaign on a busy store would otherwise write a
+        // line per order. The preview endpoint is the surface that surfaces it.
+        Log::debug(
+            'ConditionsEvaluator',
+            sprintf(
+                '%s (type="%s", operator="%s"). Condition treated as NOT matching.',
+                $reason,
+                $result['type'],
+                $result['operator']
+            )
+        );
 
         return $result;
     }

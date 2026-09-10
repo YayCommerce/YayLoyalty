@@ -1,6 +1,8 @@
 <?php
 namespace YayLoyalty\Database\Schema;
 
+use YayLoyalty\Utils\Table;
+
 defined( 'ABSPATH' ) || exit;
 
 /**
@@ -58,13 +60,12 @@ abstract class AbstractTableSchema {
     /**
      * Fully-qualified table name.
      *
-     * Never memoize this. Multisite activation loops switch_to_blog(), and a
-     * cached prefix would install every blog's tables into the first blog.
+     * Delegates to Utils\Table so the schema that CREATEs a table and the
+     * repository that reads it can never spell its name differently. See that
+     * class for why the result must never be memoized.
      */
     public function table_name(): string {
-        global $wpdb;
-
-        return $wpdb->prefix . 'yayloyalty_' . $this->slug();
+        return Table::name( $this->slug() );
     }
 
     /**

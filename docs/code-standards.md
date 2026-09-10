@@ -115,6 +115,35 @@ Verified 2026-09-09: with a foreign transaction open, `Transaction::run()` takes
 
 **Definition tables get no service.** A service that only forwards CRUD to one repository is ceremony. Add one when an operation must touch a second table atomically — that is when it earns its existence.
 
+### `Utils/` vs `Helpers/`
+
+Two directories that look interchangeable and are not.
+
+| | Holds | Test |
+|---|---|---|
+| `Utils/` | Stateless, all-static, no plugin state — `Dates`, `Json`, `Log`, `Table` | Could you lift it into another plugin by changing one constant? |
+| `Helpers/` | Glue that knows this plugin's options, shapes and screens — `SettingsHelper`, `LocalizeHelper` | Does it read plugin state or build a payload for our UI? |
+
+A util that starts reading an option belongs in `Helpers/`. Neither directory is a home for business rules: those live in `Models/` and `Services/`.
+
+### Logging
+
+**`Utils\Log`, never bare `error_log()`.** It writes to WooCommerce → Status → Logs when WooCommerce has loaded, falling back to `error_log()` for activation and early bootstrap, so a merchant and a support agent can actually read what happened.
+
+Pick the level by asking who needs the line, not how noisy it is:
+
+| Level | Written | For |
+|---|---|---|
+| `Log::error()` | always | A permanent fault: a failed install, an unhandled exception |
+| `Log::warning()` | always | Survivable misconfiguration — a filter subscriber that had to be ignored |
+| `Log::debug()` | WP_DEBUG only | Diagnostics on a hot path, safe to be noisy |
+
+**Do not gate an error behind `WP_DEBUG`.** Production has it off by definition, which is the one moment the record matters. The 500 handler hands the user a correlation id to quote at support; when that line is only written in debug mode, the id refers to nothing.
+
+### Table names come from `Utils\Table`
+
+`Table::name( 'customers' )` — the schema class that CREATEs a table and the repository that reads it must derive the name from the same place, or the repository queries a table the installer never made and the symptom is "no rows", not an error. **[REVIEW]** Never memoize the result, and never cache `$wpdb->prefix`: multisite activation loops `switch_to_blog()`.
+
 ### Instantiation: services and repositories are plain objects
 
 `Utils/SingletonTrait` is for bootstrap classes only (`RestAPI`, `Settings`, `RegisterFacade`). **Models, Repositories and Services never use it**, for two reasons:

@@ -2,6 +2,7 @@
 namespace YayLoyalty\Database;
 
 use YayLoyalty\Database\Schema\AbstractTableSchema;
+use YayLoyalty\Utils\Log;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -262,9 +263,13 @@ final class Installer {
         delete_option( self::LOCK_KEY );
     }
 
+    /**
+     * Install problems are logged at error level, not debug.
+     *
+     * A table that failed to create is a permanent fault, and a production site
+     * has WP_DEBUG off — which is precisely when the record is needed.
+     */
     private static function log( string $message ): void {
-        if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-            error_log( '[yayloyalty] Installer: ' . $message ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-        }
+        Log::error( 'Installer', $message );
     }
 }

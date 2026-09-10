@@ -10,6 +10,7 @@ use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Services\LedgerService;
+use YayLoyalty\Utils\Log;
 use YayLoyalty\Utils\SingletonTrait;
 
 defined( 'ABSPATH' ) || exit;
@@ -78,12 +79,14 @@ class RestAPI {
             // fatal on ->register_routes() and take down every YayLoyalty
             // endpoint, not just its own.
             if ( ! $controller instanceof AbstractRestController ) {
-                if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-                    error_log( // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-                        '[yayloyalty] RestAPI: ignoring a yayloyalty_rest_controllers entry that is not an AbstractRestController ('
-                        . ( is_object( $controller ) ? get_class( $controller ) : gettype( $controller ) ) . ').'
-                    );
-                }
+                // Warning, not debug: the subscriber's endpoints are silently
+                // missing from the API, and nobody debugging that would think
+                // to turn WP_DEBUG on first.
+                Log::warning(
+                    'RestAPI',
+                    'ignoring a yayloyalty_rest_controllers entry that is not an AbstractRestController ('
+                    . ( is_object( $controller ) ? get_class( $controller ) : gettype( $controller ) ) . ').'
+                );
 
                 continue;
             }

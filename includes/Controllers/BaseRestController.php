@@ -2,6 +2,7 @@
 namespace YayLoyalty\Controllers;
 
 use YayLoyalty\Database\Transaction;
+use YayLoyalty\Utils\Log;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -106,17 +107,20 @@ abstract class BaseRestController {
     protected function error_internal( \Throwable $ex ): \WP_Error {
         $correlation_id = substr( md5( uniqid( '', true ) ), 0, 12 );
 
-        if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-            error_log( // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-                sprintf(
-                    '[yayloyalty] %s: %s in %s:%d',
-                    $correlation_id,
-                    $ex->getMessage(),
-                    $ex->getFile(),
-                    $ex->getLine()
-                )
-            );
-        }
+        // ALWAYS logged, never gated on WP_DEBUG. The response hands the user
+        // this correlation id to quote at support; if the matching line was
+        // never written the id refers to nothing, and production is exactly
+        // where WP_DEBUG is off.
+        Log::error(
+            'REST',
+            sprintf(
+                '%s: %s in %s:%d',
+                $correlation_id,
+                $ex->getMessage(),
+                $ex->getFile(),
+                $ex->getLine()
+            )
+        );
 
         return new \WP_Error(
             'internal_error',
