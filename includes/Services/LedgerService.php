@@ -110,7 +110,8 @@ final class LedgerService {
                 //    INSERT IGNORE — IGNORE would swallow genuine constraint and
                 //    type errors along with the duplicate.
                 $existing = $this->ledger->find_by_reference(
-                    $draft->get_type(),
+                    $user_id,
+                    $draft->get_source(),
                     $draft->get_reference_type(),
                     $draft->get_reference_id()
                 );

@@ -105,18 +105,25 @@ final class CustomerRepository extends AbstractRepository {
     }
 
     /**
-     * Apply a ledger row's effects to the cached aggregates.
+     * Apply a ledger row's effects to the cached aggregates, `balance`
+     * included.
      *
-     * Written as relative arithmetic (balance = balance + ?) rather than
-     * absolute assignment so the statement is correct even if another writer
-     * touched the row between the read and the write. In practice the caller
-     * holds the row lock, but the relative form removes the assumption.
+     * Written as relative arithmetic (balance = balance + ?, lifetime_earned =
+     * lifetime_earned + ?, ...) rather than absolute assignment, so each
+     * statement is correct even if another writer touched the row between the
+     * read and the write. In practice the caller holds the row lock, but the
+     * relative form removes the assumption.
      *
-     * @param int         $balance_delta          Signed.
-     * @param int         $lifetime_earned_delta  Signed.
+     * `lifetime_earned`/`lifetime_redeemed` are not a plain running sum of
+     * `points` the way `balance` is: LedgerType decides per-row whether a
+     * movement counts toward them (LedgerService::apply_aggregates()), so that
+     * decision is made in PHP before this call, not in SQL.
+     *
+     * @param int         $balance_delta           Signed.
+     * @param int         $lifetime_earned_delta   Signed.
      * @param int         $lifetime_redeemed_delta Signed.
-     * @param string|null $activity_at            Set to touch last_activity_at.
-     * @param string|null $expires_at             New expiry, or null to leave it.
+     * @param string|null $activity_at             Set to touch last_activity_at.
+     * @param string|null $expires_at              New expiry, or null to leave it.
      * @throws QueryException When the write fails.
      */
     public function apply_delta(
