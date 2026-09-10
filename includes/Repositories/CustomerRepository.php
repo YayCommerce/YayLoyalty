@@ -105,32 +105,30 @@ final class CustomerRepository extends AbstractRepository {
     }
 
     /**
-     * Apply a ledger row's effects to the cached aggregates — every aggregate
-     * except `balance`.
+     * Apply a ledger row's effects to the cached aggregates, `balance`
+     * included.
      *
-     * `balance` is deliberately NOT written here. It is maintained by the
-     * `{ledger}_balance_ai` DB trigger (see Database\Triggers\
-     * LedgerBalanceTrigger), which fires on the same INSERT that triggers this
-     * call — writing it in both places would double-count every movement.
-     * Unlike balance, `lifetime_earned`/`lifetime_redeemed` are not a plain
-     * running sum of `points`: LedgerType decides per-row whether a movement
-     * counts toward them (LedgerService::apply_aggregates()), so they stay
-     * here rather than in SQL.
+     * Written as relative arithmetic (balance = balance + ?, lifetime_earned =
+     * lifetime_earned + ?, ...) rather than absolute assignment, so each
+     * statement is correct even if another writer touched the row between the
+     * read and the write. In practice the caller holds the row lock, but the
+     * relative form removes the assumption.
      *
-     * Written as relative arithmetic (lifetime_earned = lifetime_earned + ?)
-     * rather than absolute assignment so the statement is correct even if
-     * another writer touched the row between the read and the write. In
-     * practice the caller holds the row lock, but the relative form removes
-     * the assumption.
+     * `lifetime_earned`/`lifetime_redeemed` are not a plain running sum of
+     * `points` the way `balance` is: LedgerType decides per-row whether a
+     * movement counts toward them (LedgerService::apply_aggregates()), so that
+     * decision is made in PHP before this call, not in SQL.
      *
-     * @param int         $lifetime_earned_delta  Signed.
+     * @param int         $balance_delta           Signed.
+     * @param int         $lifetime_earned_delta   Signed.
      * @param int         $lifetime_redeemed_delta Signed.
-     * @param string|null $activity_at            Set to touch last_activity_at.
-     * @param string|null $expires_at             New expiry, or null to leave it.
+     * @param string|null $activity_at             Set to touch last_activity_at.
+     * @param string|null $expires_at              New expiry, or null to leave it.
      * @throws QueryException When the write fails.
      */
     public function apply_delta(
         int $user_id,
+        int $balance_delta,
         int $lifetime_earned_delta,
         int $lifetime_redeemed_delta,
         ?string $activity_at = null,
@@ -139,11 +137,13 @@ final class CustomerRepository extends AbstractRepository {
         global $wpdb;
 
         $sets   = [
+            'balance = balance + %d',
             'lifetime_earned = lifetime_earned + %d',
             'lifetime_redeemed = lifetime_redeemed + %d',
             'updated_at = %s',
         ];
         $values = [
+            $balance_delta,
             $lifetime_earned_delta,
             $lifetime_redeemed_delta,
             Dates::now(),

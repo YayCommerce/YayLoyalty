@@ -173,6 +173,7 @@ final class LedgerService {
 
         $this->customers->apply_delta(
             $entry->get_user_id(),
+            $points,
             $lifetime_earned_delta,
             $lifetime_redeemed_delta,
             $activity_at,
