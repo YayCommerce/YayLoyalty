@@ -2,6 +2,7 @@
 namespace YayLoyalty\Repositories;
 
 use YayLoyalty\Enums\Status;
+use YayLoyalty\Models\AbstractModel;
 use YayLoyalty\Models\Campaign;
 
 defined( 'ABSPATH' ) || exit;
@@ -9,9 +10,10 @@ defined( 'ABSPATH' ) || exit;
 /**
  * yayloyalty_campaigns.
  *
- * `trigger` is a reserved word in MySQL 8 and is backticked in every query here.
+ * The event column is `trigger_type` (see CampaignsTable): a plain identifier,
+ * so no query here backticks anything.
  *
- * No caching. The original design cached live campaigns per trigger with a
+ * No row caching. The original design cached live campaigns per trigger with a
  * now()-derived TTL, which contradicted the event-time rule it sat next to: a
  * late-processed order would have been scored against today's live set rather
  * than the set live at its award time. A correct cache must key on the
@@ -19,12 +21,60 @@ defined( 'ABSPATH' ) || exit;
  * earning engine. Until then this runs uncached against an indexed table with a
  * handful of rows.
  *
+ * What IS maintained is a monotonic version counter, bumped on every write (see
+ * OPTION_CACHE_VERSION). A later cache keys on it instead of querying
+ * MAX(updated_at) — one autoloaded option read rather than a table scan, and it
+ * moves even when a row is deleted.
+ *
  * Plain object, not a singleton — see docs/code-standards.md section 8.
  */
 final class CampaignRepository extends AbstractRepository {
 
+    /**
+     * Bumped on every insert/update/delete. A consumer compares the value it
+     * cached against the current one to know whether its view is stale.
+     */
+    public const OPTION_CACHE_VERSION = 'yayloyalty_campaigns_version';
+
     protected function table_slug(): string {
         return 'campaigns';
+    }
+
+    /**
+     * Current campaigns cache version. 0 before the first write.
+     */
+    public function cache_version(): int {
+        return (int) get_option( self::OPTION_CACHE_VERSION, 0 );
+    }
+
+    public function insert( AbstractModel $model ): int {
+        $id = parent::insert( $model );
+        $this->bump_cache_version();
+
+        return $id;
+    }
+
+    public function update( int $id, array $data, array $format = [] ): bool {
+        $result = parent::update( $id, $data, $format );
+        $this->bump_cache_version();
+
+        return $result;
+    }
+
+    public function delete( int $id ): bool {
+        $deleted = parent::delete( $id );
+        $this->bump_cache_version();
+
+        return $deleted;
+    }
+
+    /**
+     * Advance the version counter. Cheap and lock-free enough for this: a lost
+     * concurrent increment still changes the value, which is all a staleness
+     * check needs.
+     */
+    private function bump_cache_version(): void {
+        update_option( self::OPTION_CACHE_VERSION, $this->cache_version() + 1 );
     }
 
     protected function model_class(): string {
@@ -71,7 +121,7 @@ final class CampaignRepository extends AbstractRepository {
         $row = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
             $wpdb->prepare(
                 'SELECT * FROM `' . esc_sql( $this->table() ) . '`
-                 WHERE `trigger` = %s
+                 WHERE trigger_type = %s
                    AND status = %s
                    AND ( starts_at IS NULL OR starts_at <= %s )
                    AND ( ends_at IS NULL OR ends_at > %s )
@@ -100,7 +150,7 @@ final class CampaignRepository extends AbstractRepository {
         $where = [];
 
         if ( ! empty( $args['trigger'] ) ) {
-            $where[] = $wpdb->prepare( '`trigger` = %s', $args['trigger'] );
+            $where[] = $wpdb->prepare( 'trigger_type = %s', $args['trigger'] );
         }
 
         if ( ! empty( $args['status'] ) ) {

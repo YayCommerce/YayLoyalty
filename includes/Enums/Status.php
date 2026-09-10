@@ -8,11 +8,13 @@ defined( 'ABSPATH' ) || exit;
  *
  * STATUS IS INTENT; LIVENESS IS DERIVED.
  *
- * There is deliberately no `scheduled` and no `ended`. Whether something is live
+ * The stored vocabulary is active / paused / draft / archived. There is
+ * deliberately no `scheduled` and no `ended` stored: whether something is live
  * right now is computed at read time from status plus starts_at/ends_at, and is
  * evaluated against the EVENT's timestamp — an order's award time, not the
  * current request time — so a late-processed order is scored under the rules
- * that were live when it happened.
+ * that were live when it happened. `scheduled` and `ended` exist only as the
+ * derived answers returned by resolve_display().
  *
  * No cron job may flip a status. If one appears, the model is being worked
  * around.
@@ -28,7 +30,20 @@ final class Status {
     /** Never live; not finished being configured. */
     public const DRAFT = 'draft';
 
+    /** Retired by the merchant. Kept for history; not offered for editing. */
+    public const ARCHIVED = 'archived';
+
     /**
+     * Derived display states — NEVER stored. resolve_display() returns one of
+     * these in place of `active` when the date window puts the row outside its
+     * live period. Excluded from all() on purpose.
+     */
+    public const SCHEDULED = 'scheduled';
+    public const ENDED     = 'ended';
+
+    /**
+     * The stored vocabulary.
+     *
      * @return string[]
      */
     public static function all(): array {
@@ -36,6 +51,7 @@ final class Status {
             self::ACTIVE,
             self::PAUSED,
             self::DRAFT,
+            self::ARCHIVED,
         ];
     }
 
@@ -87,5 +103,36 @@ final class Status {
         }
 
         return true;
+    }
+
+    /**
+     * The label to show for a row: its stored status, or — when that status is
+     * `active` — `scheduled` / `ended` derived from the date window.
+     *
+     * Stored statuses other than `active` (paused, draft, archived) are returned
+     * unchanged: the date window only qualifies an active row.
+     *
+     * $at is the instant to evaluate against. For a display badge that is
+     * "now"; for scoring a late order it is the order's award time.
+     *
+     * @param string      $status    Stored status.
+     * @param string|null $starts_at UTC MySQL datetime, or null for no lower bound.
+     * @param string|null $ends_at   UTC MySQL datetime, or null for no upper bound.
+     * @param string      $at        UTC MySQL datetime to evaluate against.
+     */
+    public static function resolve_display( string $status, ?string $starts_at, ?string $ends_at, string $at ): string {
+        if ( self::ACTIVE !== $status ) {
+            return $status;
+        }
+
+        if ( null !== $starts_at && '' !== $starts_at && $starts_at > $at ) {
+            return self::SCHEDULED;
+        }
+
+        if ( null !== $ends_at && '' !== $ends_at && $ends_at <= $at ) {
+            return self::ENDED;
+        }
+
+        return self::ACTIVE;
     }
 }
