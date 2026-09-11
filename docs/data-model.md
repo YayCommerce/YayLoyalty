@@ -62,11 +62,11 @@ One row per way to earn points. Free seeds three built-in rows and shows only #1
 
 All `DATETIME` columns are UTC (see Conventions). `starts_at` is inclusive, `ends_at` is **exclusive** — a campaign the merchant ends on 30 Nov is stored as `2026-12-01 00:00:00`, so back-to-back windows never overlap.
 
-Indexes: PK; `UNIQUE KEY uk_slug (slug)`; `KEY idx_lookup (trigger_type, status, priority)` for selection; `KEY idx_archived (status, archived_at)` for the archived-campaigns view. The former single-column `starts_at` / `ends_at` indexes were dropped: selection filters the date window in SQL, and the active-campaign cache is invalidated by a version counter (below), not a TTL keyed to the nearest boundary.
+Indexes: PK; `UNIQUE KEY uk_slug (slug)`; `KEY idx_lookup (trigger_type, status, priority)` for selection; `KEY idx_archived (status, archived_at)` for the archived-campaigns view. The former single-column `starts_at` / `ends_at` indexes were dropped: selection filters the date window in SQL.
 
 Liveness: `status = 'active' AND (starts_at IS NULL OR starts_at <= now) AND (ends_at IS NULL OR ends_at > now)`, evaluated against the event's timestamp (the order's award time, not the request time). `Enums\Status::is_live_at()`.
 
-Cache invalidation: every campaign write bumps the `yayloyalty_campaigns_version` option (`CampaignRepository`). A consumer compares its cached value against the current one — one option read instead of `MAX(updated_at)`, and it moves on delete too.
+No caching yet: `CampaignRepository` queries the table directly on every lookup. Caching campaign lookups, and how a cache invalidates, is left to whichever task builds the earning engine — the previous design (a TTL keyed to the nearest `starts_at`/`ends_at`) was dropped for contradicting the event-time liveness rule above, and a version counter was tried and removed for having no reader; both are better designed once the actual consumer exists.
 
 ### config shapes
 
@@ -326,11 +326,11 @@ Written in the same transaction as the fact that caused it, so a webhook can nev
 
 **Order meta** (HPOS-safe via `WC_Order::update_meta_data`): `_yayloyalty_points_pending`, `_yayloyalty_points_earned`, `_yayloyalty_campaign_id`, `_yayloyalty_points_redeemed`, `_yayloyalty_redeem_value`, `_yayloyalty_base_amount`, `_yayloyalty_referral_id` (1.1). Projections for the order edit screen, YayMail placeholders and the customer's order page; never read to compute a balance.
 
-**Options**: `yayloyalty_settings` (JSON: points naming, award status, expiry policy, tier basis and window, redemption placement, fraud limits), `yayloyalty_design` (launcher/dashboard theme), `yayloyalty_wizard_completed`, `yayloyalty_db_version`, `yayloyalty_campaigns_version` (monotonic counter bumped on every campaign write; the active-campaign cache compares against it instead of querying `MAX(updated_at)`).
+**Options**: `yayloyalty_settings` (JSON: points naming, award status, expiry policy, tier basis and window, redemption placement, fraud limits), `yayloyalty_design` (launcher/dashboard theme), `yayloyalty_wizard_completed`, `yayloyalty_db_version`.
 
 **WooCommerce session**: `yayloyalty_redeem_points` carries the amount the shopper chose between cart and checkout until the order exists.
 
-**Cache**: a future cache of live campaigns per trigger type (and of live rewards). Invalidated by the `yayloyalty_campaigns_version` counter — every campaign write bumps it and a reader compares its stored value against the current one, so a stale view is detected without a `MAX(updated_at)` query and a delete still invalidates. The counter exists now (`CampaignRepository`); the cache that reads it does not yet. The earlier design — a transient whose TTL was the nearest future `starts_at`/`ends_at` — was dropped along with the single-column date indexes it depended on.
+**Cache**: none yet. Campaign lookups run uncached (see the campaigns table section above). A cache of live campaigns per trigger type, and its invalidation, belongs to whichever task builds the earning engine.
 
 **Action Scheduler jobs** (the only ones): daily inactivity expiry, daily reminders, referral hold completion (1.1), tier window evaluation (1.2), lot expiry (Pro), event delivery (2.0). None of them watch a clock to flip a status.
 
