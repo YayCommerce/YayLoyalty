@@ -1,26 +1,16 @@
 import { FormEvent, useState } from 'react';
 import { __ } from '@wordpress/i18n';
 
-import { describeLedgerEntry, formatSignedPoints } from '@/lib/helpers/ledger.helper';
 import { parseWPDate } from '@/lib/helpers/format.helper';
-import {
-  useAdjustPointsMutation,
-  useCustomerLedgerQuery,
-  useCustomerQuery,
-} from '@/lib/queries/customer.queries';
+import { describeLedgerEntry, formatSignedPoints } from '@/lib/helpers/ledger.helper';
+import { useAdjustPointsMutation, useCustomerLedgerQuery, useCustomerQuery } from '@/lib/queries/customer.queries';
 import { Badge } from '@/components/ui/badge';
 import { Button, LoadingButton } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import PageLayout from '@/components/layout/PageLayout';
 
 const PER_PAGE = 10;
 
@@ -28,9 +18,9 @@ const PER_PAGE = 10;
  * Proof-of-life view for the ledger slice.
  *
  * Deliberately minimal: this exists to prove the data layer end to end, not to
- * be the finished Points screen. Real UI work is a separate task.
+ * be the finished Customers screen. Real UI work is a separate task.
  */
-export default function PointsPage() {
+export default function CustomersPage() {
   const [userIdInput, setUserIdInput] = useState('');
   const [userId, setUserId] = useState(0);
   const [page, setPage] = useState(1);
@@ -69,14 +59,11 @@ export default function PointsPage() {
   }
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-4 p-6">
+    <PageLayout
+      title={__('Customers', 'yayloyalty')}
+      description={__('Look up a customer to see their point balance and make adjustments.', 'yayloyalty')}
+    >
       <Card>
-        <CardHeader>
-          <CardTitle>{__('Points', 'yayloyalty')}</CardTitle>
-          <CardDescription>
-            {__('Look up a customer to see their balance and adjust it.', 'yayloyalty')}
-          </CardDescription>
-        </CardHeader>
         <CardContent>
           <form className="flex items-end gap-2" onSubmit={lookup}>
             <div className="flex flex-col gap-1">
@@ -106,23 +93,15 @@ export default function PointsPage() {
             {customer.isPending && <Skeleton className="h-8 w-40" />}
 
             {customer.isError && (
-              <p className="text-destructive text-sm">
-                {__('Could not load this customer.', 'yayloyalty')}
-              </p>
+              <p className="text-destructive text-sm">{__('Could not load this customer.', 'yayloyalty')}</p>
             )}
 
             {customer.data && (
               <div className="flex flex-wrap gap-6">
                 <Stat label={__('Balance', 'yayloyalty')} value={customer.data.balance} />
                 <Stat label={__('Pending', 'yayloyalty')} value={customer.data.pending_points} />
-                <Stat
-                  label={__('Lifetime earned', 'yayloyalty')}
-                  value={customer.data.lifetime_earned}
-                />
-                <Stat
-                  label={__('Lifetime redeemed', 'yayloyalty')}
-                  value={customer.data.lifetime_redeemed}
-                />
+                <Stat label={__('Lifetime earned', 'yayloyalty')} value={customer.data.lifetime_earned} />
+                <Stat label={__('Lifetime redeemed', 'yayloyalty')} value={customer.data.lifetime_redeemed} />
               </div>
             )}
 
@@ -157,9 +136,7 @@ export default function PointsPage() {
             </form>
 
             {adjust.isError && (
-              <p className="text-destructive text-sm">
-                {__('The adjustment was rejected.', 'yayloyalty')}
-              </p>
+              <p className="text-destructive text-sm">{__('The adjustment was rejected.', 'yayloyalty')}</p>
             )}
           </CardContent>
         </Card>
@@ -185,20 +162,14 @@ export default function PointsPage() {
                 <TableBody>
                   {history.data?.data.map((entry) => (
                     <TableRow key={entry.id}>
-                      <TableCell className="whitespace-nowrap">
-                        {parseWPDate(entry.created_at)}
-                      </TableCell>
+                      <TableCell className="whitespace-nowrap">{parseWPDate(entry.created_at)}</TableCell>
                       {/* Composed from type/source, never a stored string. */}
                       <TableCell>{describeLedgerEntry(entry)}</TableCell>
                       <TableCell>
                         <Badge variant="secondary">{entry.type}</Badge>
                       </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {formatSignedPoints(entry.points)}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {entry.balance_after}
-                      </TableCell>
+                      <TableCell className="text-right tabular-nums">{formatSignedPoints(entry.points)}</TableCell>
+                      <TableCell className="text-right tabular-nums">{entry.balance_after}</TableCell>
                     </TableRow>
                   ))}
 
@@ -239,7 +210,7 @@ export default function PointsPage() {
           </CardContent>
         </Card>
       )}
-    </div>
+    </PageLayout>
   );
 }
 

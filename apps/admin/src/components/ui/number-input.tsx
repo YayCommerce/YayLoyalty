@@ -163,7 +163,7 @@ function NumberInputChevrons({ className, children, hasUnit = false, ...props }:
     <div
       data-slot="number-input-chevrons"
       className={cn(
-        'bg-background absolute inset-y-0 inset-e-0 flex w-6 flex-col rounded-r-sm border-s opacity-0 transition-opacity duration-500 group-hover/input-group:opacity-100 peer-focus/number-input-input:opacity-100',
+        'bg-background absolute inset-y-0 end-0 flex w-6 flex-col rounded-r-sm border-s opacity-0 transition-opacity duration-500 group-hover/input-group:opacity-100 peer-focus/number-input-input:opacity-100',
         hasUnit && 'static rounded-r-none',
         className,
       )}

@@ -43,7 +43,7 @@ const HeaderNavMenuList = React.forwardRef<HTMLUListElement, HeaderNavMenuListPr
         indicatorRef.current.style.left = '0px';
         indicatorRef.current.style.width = '0px';
       }
-    }, [activeTab, mode]);
+    }, [activeTab, mode, pathname]);
 
     return (
       <Comp
@@ -76,13 +76,13 @@ const HeaderNavMenuItem = React.forwardRef<HTMLLIElement, HeaderNavMenuItemProps
     const Comp = asChild ? Slot : 'li';
     return (
       <Comp
-        data-slot="header-navigation-menu-item"
         className={cn(
           'text-foreground hover:border-border flex cursor-default items-center justify-center gap-1.5 border-b-3 border-solid border-transparent px-5 text-sm shadow-none transition-colors outline-none hover:cursor-pointer',
           'aria-[current=page]:text-shadow-[0_0_0.05px_currentcolor] data-[state=active]:text-shadow-[0_0_0.05px_currentcolor]',
           className,
         )}
         {...props}
+        data-slot="header-navigation-menu-item"
         ref={ref}
       />
     );

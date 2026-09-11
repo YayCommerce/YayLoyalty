@@ -32,7 +32,7 @@ const RadioGroupItem = React.forwardRef<
       >
         <span
           data-slot="radio-group-indicator-inner"
-          className="bg-background absolute top-1/2 left-1/2 size-2 -translate-1/2 rounded-full"
+          className="bg-background absolute top-1/2 left-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full"
         />
       </RadioGroupPrimitive.Indicator>
     </RadioGroupPrimitive.Item>
