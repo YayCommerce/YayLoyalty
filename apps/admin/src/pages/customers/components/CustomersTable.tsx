@@ -63,6 +63,11 @@ export function CustomersTable({
   onSort: (key: SortKey) => void;
 }) {
   const columnCount = countColumns(showProColumns, showSelection);
+  // Nothing to sort or select when the body isn't showing real rows (loading
+  // skeleton, empty store, no filter match) — headers go back to plain text
+  // and the select-all checkbox disables, rather than staying clickable over
+  // an empty table.
+  const isEmpty = !isLoading && rows.length === 0;
 
   return (
     <div className="overflow-x-auto rounded-md border">
@@ -74,21 +79,22 @@ export function CustomersTable({
                 <Checkbox
                   checked={headerSelection === 'all' ? true : headerSelection === 'partial' ? 'indeterminate' : false}
                   onCheckedChange={onToggleAll}
+                  disabled={isEmpty}
                   aria-label={__('Select all rows on this page', 'yayloyalty')}
                 />
               </TableHead>
             )}
-            <SortableHead sortKey="name" label={__('Customer', 'yayloyalty')} sortBy={sortBy} sortDir={sortDir} onSort={onSort} />
+            <SortableHead sortKey="name" label={__('Customer', 'yayloyalty')} sortBy={sortBy} sortDir={sortDir} onSort={onSort} disabled={isEmpty} />
             {showProColumns && (
-              <SortableHead sortKey="tier" label={__('Tier', 'yayloyalty')} sortBy={sortBy} sortDir={sortDir} onSort={onSort} />
+              <SortableHead sortKey="tier" label={__('Tier', 'yayloyalty')} sortBy={sortBy} sortDir={sortDir} onSort={onSort} disabled={isEmpty} />
             )}
-            <SortableHead sortKey="balance" label={__('Balance', 'yayloyalty')} align="right" sortBy={sortBy} sortDir={sortDir} onSort={onSort} />
-            <SortableHead sortKey="pending" label={__('Pending', 'yayloyalty')} align="right" sortBy={sortBy} sortDir={sortDir} onSort={onSort} />
-            <SortableHead sortKey="lifetime" label={__('Lifetime earned', 'yayloyalty')} align="right" sortBy={sortBy} sortDir={sortDir} onSort={onSort} />
-            <SortableHead sortKey="last_activity" label={__('Last activity', 'yayloyalty')} align="right" sortBy={sortBy} sortDir={sortDir} onSort={onSort} />
-            <SortableHead sortKey="expires" label={__('Expires', 'yayloyalty')} align="right" sortBy={sortBy} sortDir={sortDir} onSort={onSort} />
+            <SortableHead sortKey="balance" label={__('Balance', 'yayloyalty')} align="right" sortBy={sortBy} sortDir={sortDir} onSort={onSort} disabled={isEmpty} />
+            <SortableHead sortKey="pending" label={__('Pending', 'yayloyalty')} align="right" sortBy={sortBy} sortDir={sortDir} onSort={onSort} disabled={isEmpty} />
+            <SortableHead sortKey="lifetime" label={__('Lifetime earned', 'yayloyalty')} align="right" sortBy={sortBy} sortDir={sortDir} onSort={onSort} disabled={isEmpty} />
+            <SortableHead sortKey="last_activity" label={__('Last activity', 'yayloyalty')} align="right" sortBy={sortBy} sortDir={sortDir} onSort={onSort} disabled={isEmpty} />
+            <SortableHead sortKey="expires" label={__('Expires', 'yayloyalty')} align="right" sortBy={sortBy} sortDir={sortDir} onSort={onSort} disabled={isEmpty} />
             {showProColumns && (
-              <SortableHead sortKey="referrals" label={__('Referrals', 'yayloyalty')} align="right" sortBy={sortBy} sortDir={sortDir} onSort={onSort} />
+              <SortableHead sortKey="referrals" label={__('Referrals', 'yayloyalty')} align="right" sortBy={sortBy} sortDir={sortDir} onSort={onSort} disabled={isEmpty} />
             )}
           </TableRow>
         </TableHeader>
@@ -127,7 +133,12 @@ export function CustomersTable({
   );
 }
 
-/** Column head with a real sort caret — click toggles asc/desc, clicking a new column switches to it. */
+/**
+ * Column head with a real sort caret — click toggles asc/desc, clicking a
+ * new column switches to it. `disabled` (nothing in the body to sort) drops
+ * to plain, non-interactive text with no caret rather than a dead-looking
+ * clickable button.
+ */
 function SortableHead({
   sortKey,
   label,
@@ -135,6 +146,7 @@ function SortableHead({
   sortBy,
   sortDir,
   onSort,
+  disabled,
 }: {
   sortKey: SortKey;
   label: string;
@@ -142,7 +154,16 @@ function SortableHead({
   sortBy: SortKey;
   sortDir: SortDirection;
   onSort: (key: SortKey) => void;
+  disabled?: boolean;
 }) {
+  if (disabled) {
+    return (
+      <TableHead className={align === 'right' ? 'text-right' : undefined}>
+        <span className="text-muted-foreground text-xs tracking-wide uppercase">{label}</span>
+      </TableHead>
+    );
+  }
+
   const active = sortBy === sortKey;
   const Icon = active ? (sortDir === 'asc' ? ArrowUp : ArrowDown) : ArrowUpDown;
 

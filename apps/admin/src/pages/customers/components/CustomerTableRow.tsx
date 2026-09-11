@@ -3,9 +3,9 @@ import { __ } from '@wordpress/i18n';
 import { parseWPDate } from '@/lib/helpers/format.helper';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { PointsValue } from '@/components/ui/custom/PointsValue';
 import { TableCell, TableRow } from '@/components/ui/table';
 import type { MockCustomer } from '../customers-page.mock-data';
-import { formatPoints } from '../customers-page.mock-data';
 import { BalanceCell, CustomerNameCell } from './CustomersTableCells';
 
 /**
@@ -56,10 +56,10 @@ export function CustomerTableRow({
         <BalanceCell value={customer.balance} stale={stale} />
       </TableCell>
       <TableCell className="text-muted-foreground text-right tabular-nums">
-        {formatPoints(customer.pending_points)}
+        <PointsValue value={customer.pending_points} />
       </TableCell>
       <TableCell className="text-muted-foreground text-right tabular-nums">
-        {formatPoints(customer.lifetime_earned)}
+        <PointsValue value={customer.lifetime_earned} />
       </TableCell>
       <TableCell className="text-muted-foreground text-right">{customer.last_activity_label}</TableCell>
       <TableCell className="text-muted-foreground text-right">

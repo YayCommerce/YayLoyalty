@@ -35,14 +35,3 @@ export type MockCustomer = Pick<Customer, 'user_id' | 'balance' | 'pending_point
   tier: string;
   referrals: number;
 };
-
-/**
- * Balance/points display. Neither existing helper fits a balance column:
- * `formatSignedPoints` (ledger.helper.ts) prefixes `+` on positives, which is
- * correct for a ledger delta but wrong for a balance; `parseWPDecimal`
- * (format.helper.ts) applies WooCommerce currency decimals/separators, which
- * is for money, not points. A plain grouped integer is the honest choice.
- */
-export function formatPoints(value: number): string {
-  return value.toLocaleString();
-}

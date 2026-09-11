@@ -15,7 +15,7 @@ final class CustomerDemoRowsAlpine {
                 'user_id'                   => 1001,
                 'name'                      => 'Marta Bergström',
                 'email'                     => 'marta.bergstrom@example.com',
-                'balance'                   => 12400,
+                'balance'                   => 124000,
                 'pending_points'            => 0,
                 'lifetime_earned'           => 18900,
                 'last_activity_label'       => '2 days ago',

@@ -32,9 +32,7 @@ final class CustomerDemoRows {
      */
     public static function all(): array {
         return array_merge(
-            CustomerDemoRowsAlpine::rows(),
-            CustomerDemoRowsSummit::rows(),
-            CustomerDemoRowsExplorer::rows()
+           
         );
     }
 }
