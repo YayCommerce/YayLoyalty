@@ -121,7 +121,7 @@ Two directories that look interchangeable and are not.
 
 | | Holds | Test |
 |---|---|---|
-| `Utils/` | Stateless, all-static, no plugin state — `Dates`, `Json`, `Log`, `Table` | Could you lift it into another plugin by changing one constant? |
+| `Utils/` | Stateless, all-static, no plugin state — `Dates`, `Json`, `Log`, `Table`, `ConditionValueRules` | Could you lift it into another plugin by changing one constant? |
 | `Helpers/` | Glue that knows this plugin's options, shapes and screens — `SettingsHelper`, `LocalizeHelper` | Does it read plugin state or build a payload for our UI? |
 
 A util that starts reading an option belongs in `Helpers/`. Neither directory is a home for business rules: those live in `Models/` and `Services/`.
@@ -204,7 +204,7 @@ Stamping `schema_version` into a list turns it into an object: `[{…},{…}]` c
 
 `decode_list()` unwraps it and also accepts a bare array and the corrupted `{"0":…}` shape, so no stored row is lost. **[REVIEW]** — pick the pair that matches the column's shape; nothing enforces it.
 
-The vocabulary and per-type rules for `campaigns.conditions` live in `Enums\CampaignConditionType`; `Models\CampaignConditionSet` validates and normalises a set on save (`Campaign::conditions_are_valid()` / `set_conditions()`), mirroring the `config` pair. Named `Campaign*`, not a bare `Condition*` — rewards get their own condition vocabulary (a later task) and must not collide with this one. See `data-model.md` → `conditions`.
+The vocabulary and per-type rules for `campaigns.conditions` live in `Enums\CampaignConditionType`; `Models\CampaignConditionSet` validates and normalises a set on save (`Campaign::conditions_are_valid()` / `set_conditions()`), mirroring the `config` pair. `rewards.conditions` is the same pattern with `Enums\RewardConditionType` / `Models\RewardConditionSet` / `Models\RewardCondition`. Named `Campaign*` and `Reward*`, never a bare `Condition*` — the two vocabularies must not collide, and each is free to grow its own types independently. They are not sibling classes under a shared base; the only thing they share is `Utils\ConditionValueRules`, the handful of value-shape checks (`int`, `int_list`, `string_list`, `between` pairs, list caps) that are identical in both today — extracted so a fix to that logic is made once, not twice. See `data-model.md` → `conditions`.
 
 ## 13. Pro extension seams
 

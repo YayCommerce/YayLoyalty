@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 0.5 — rewards schema added |
+| **Version** | 0.6 — reward conditions added |
 | **Date** | 11 September 2026 |
 | **Scope** | Every table YayLoyalty owns across Free, Pro and later releases, every column, and how they relate |
 | **Companion docs** | `project-roadmap.md` · `codebase-summary.md` · `system-architecture.md` |
@@ -96,7 +96,7 @@ Built-in seed configs: `default-purchase` — 1 pt/unit, `after_discounts`, ship
 
 One row's `conditions` is a JSON **list** of `{type, operator, value}` objects, stored via the `{schema_version, items:[]}` envelope (`Json::encode_list`). All entries are **ANDed**; there is no OR and no nesting. `[]` (the default) means no restrictions. At most **one entry per type** — a duplicate type is rejected on save.
 
-`Enums\CampaignConditionType` holds the vocabulary and the per-type map (operators + value shape); `Models\CampaignConditionSet` validates and normalises a set on save (`Campaign::conditions_are_valid()` rejects; `Campaign::set_conditions()` normalises), mirroring the `config` pair. `Models\CampaignCondition` is the per-entry value object. Named `Campaign*` rather than a bare `Condition*`: rewards get their own condition vocabulary (a later task), and the two must not collide.
+`Enums\CampaignConditionType` holds the vocabulary and the per-type map (operators + value shape); `Models\CampaignConditionSet` validates and normalises a set on save (`Campaign::conditions_are_valid()` rejects; `Campaign::set_conditions()` normalises), mirroring the `config` pair. `Models\CampaignCondition` is the per-entry value object. Named `Campaign*` rather than a bare `Condition*`: rewards have their own condition vocabulary (`Enums\RewardConditionType` / `Models\RewardConditionSet` / `Models\RewardCondition` — see the rewards table's own `conditions` section), and the two must not collide. The two implementations are independent — no shared base class, each free to diverge — except for the value-shape logic they happen to use identically today (`int`, `int_list`, `string_list`, and the `between`/list-cap/integer checks underneath them), which lives once in `Utils\ConditionValueRules` so a fix to it is never made twice.
 
 **Types** — declared cheap-first: the ones above the line are satisfied from data already loaded for the order; the three below each need their own aggregate query, so a future evaluator checks them last and short-circuits on the first failure.
 
@@ -136,7 +136,7 @@ One row per reward. Free seeds one built-in row (the flexible cart discount) and
 | `sort_order` | INT | not null, `0` | Display order in launcher and catalog. |
 | `cost_points` | BIGINT UNSIGNED | null | Fixed cost for a catalog item. **Coupled to `type`, enforced in PHP**: null for `flexible_discount` — the customer picks the amount, so a fixed cost would be meaningless — and required, `>= 1`, for every other type. The database cannot express a rule that depends on another column's value, so `Reward::cost_points_is_valid()` checks both directions before the row is written; a `fixed_coupon` that slipped through with a null cost would be a free redemption. |
 | `config` | LONGTEXT (JSON) | not null, no SQL default (TEXT columns cannot carry one — PHP writes `{}`) | The numbers, keyed by `type`. Validated on save against a per-type map (`Reward::config_schema()` for `flexible_discount`, the 1.0 type, typed; the four Pro types via the `yayloyalty_reward_config_whitelist` seam — key names only, untyped, mirroring how campaigns treat their own Pro-only triggers). Unknown keys and wrong types are rejected before the row is written. Shapes below. |
-| `conditions` | LONGTEXT (JSON) | not null, no SQL default (PHP writes `[]`) | Reserved for reward availability rules (`tier_ids[]`, `roles[]`, `once_per_customer`) — **not yet validated or normalised**; that vocabulary and its `Models\RewardConditionSet` counterpart are a later task, same relationship `CampaignConditionSet` has to campaigns. The column is stored from 1.0 so that task is a data migration, not a schema change. |
+| `conditions` | LONGTEXT (JSON) | not null, no SQL default (PHP writes `[]`) | Availability rules, ANDed — no OR, no nesting. A JSON list of `{type, operator, value}`; `[]` means "available to everyone". Full schema in [`conditions` — availability rules](#conditions--availability-rules) below. |
 | `starts_at` | DATETIME | null | Live from this instant (inclusive). Null = no start bound. |
 | `ends_at` | DATETIME | null | Live until this instant (exclusive), so back-to-back availability windows never overlap. Null = no end bound. |
 | `is_builtin` | TINYINT(1) | `0` | `1` for the seeded cart-discount row: cannot be deleted, cannot be archived; the Free UI binds to it. |
@@ -171,6 +171,34 @@ No caching: `RewardRepository` queries the table directly, same reasoning as `Ca
 `max_total` is a global redemption cap, present on every type, null for unlimited. It exists so an uncapped discount cannot be drained further than the merchant intended once something enforces it — stored from 1.0 even though nothing does yet.
 
 Built-in seed config (`cart-discount`, `flexible_discount`): store currency, 100 points per currency unit, 100-point minimum, no per-order or per-cent caps, a 100-point increment, shown on both cart and checkout, proportional refund policy, no global cap.
+
+### `conditions` — availability rules
+
+One row's `conditions` is a JSON **list** of `{type, operator, value}` objects, stored via the `{schema_version, items:[]}` envelope (`Json::encode_list`), same shape as campaigns. All entries are **ANDed**; there is no OR and no nesting. `[]` (the default) means available to everyone. At most **one entry per type** — a duplicate type is rejected on save.
+
+`Enums\RewardConditionType` holds the vocabulary and the per-type map; `Models\RewardConditionSet` validates and normalises a set on save (`Reward::conditions_are_valid()` rejects; `Reward::set_conditions()` normalises), mirroring the `config` pair — the same relationship `CampaignConditionSet` has to campaigns. It is an **independent implementation**, not a subclass or a shared set: rewards and campaigns are independent features expected to diverge, so each has its own vocabulary file, value object (`Models\RewardCondition`, no `money()`/`country()` — rewards has no shapes that need them) and Set class. The one thing they do share is `Utils\ConditionValueRules` — the `int` / `int_list` / `string_list` value-shape checks and their edge cases (`between` pairs, list caps, the integer check), which are byte-identical between the two vocabularies today; sharing that logic means a fix to it never has to be made twice.
+
+**Types** — declared cheap-first, same convention as campaigns: `user_role` and `customer_ids` are already known for the customer being evaluated; `tier` reads a column on the same row (gated, see below); `lifetime_points` needs one extra read; `redemption_count` needs its own query and is checked last.
+
+| Type | Operators | Value |
+|---|---|---|
+| `user_role` | `in`, `not_in` | list of WP role slugs (lower-cased) |
+| `customer_ids` | `in`, `not_in` | list of user ids (int). **Hard cap 100** — past that, save is rejected pointing the merchant at `user_role` or `tier` |
+| `tier` | `in`, `not_in`, `gte`, `lte` | tier slug, or a list for `in`/`not_in`. **Not available yet** — same gating as campaigns: defined in the vocabulary (`RewardConditionType::all_known()`) but excluded from `all()` until the tier system exists. |
+| `lifetime_points` | `gte`, `lte`, `gt`, `lt`, `eq`, `between` | integer; `between` takes `[low, high]`, `low <= high` |
+| `redemption_count` | `lt`, `lte`, `eq` | non-negative integer. How many times **this customer** has already redeemed **this reward**. `{"type":"redemption_count","operator":"lt","value":1}` is "once per customer"; `lt 3` is "up to three times". Replaces what would have been a boolean `once_per_customer` flag — a flag would have been the only condition in this vocabulary with no operator and no value, a special case in validation, normalisation and any future UI row, and it could never express a limit above one. |
+
+Operators are **not** interchangeable — each type accepts only the operators listed; note `redemption_count` has no `gte`/`gt`/`between`, only the "fewer than" shapes a cap needs. An operator outside the set, an unknown type, a wrong value shape, an empty list value, a duplicate type, `customer_ids` over cap, or a negative `redemption_count` — all are rejected before the row is written.
+
+**Normalisation on save:** a scalar is widened to a one-element array where the type expects a list; ids are cast to int; role slugs are lower-cased; lists are de-duplicated; entries are re-ordered cheap-first.
+
+**Conditions vs `config` — a per-customer fact is a condition; a reward-level property is `config`.** `redemption_count` is per customer, so it is a condition. `config`'s `max_total` looks similar (it caps how much a reward can be redeemed) but is a single global limit across every customer, not a fact about the one being evaluated — so it stays in `config`. Use this test, not the ones a type "looks like it belongs with", when adding a new one.
+
+**Evaluation timing differs from campaigns.** Reward conditions are evaluated **at claim time**, against the instant of the claim. A customer who qualifies as Gold, claims, then drops to Silver keeps the coupon already issued — there is no retroactive re-check, and no order-award timestamp the way `Campaign::is_live_at()` / campaign condition evaluation has one. Do not assume the two evaluate alike.
+
+**`redemption_count` needs an index this schema does not yet create.** It requires `COUNT(*) FROM yayloyalty_redemptions WHERE reward_id = ? AND user_id = ?`; that table does not exist yet (see the `yayloyalty_redemptions` section below), and when it lands it must carry a `KEY (reward_id, user_id)` for this query, or evaluating this condition means a full scan per claim.
+
+**Evaluation** (engine not built yet — a later task, same phase campaigns' evaluator was in before Pro's `ConditionsEvaluator` existed). Noted here so the requirement above is not missed when that engine is designed: it needs the `(reward_id, user_id)` index, and it must evaluate `redemption_count` at claim time, not against any stored liveness window.
 
 ## `yayloyalty_customers` — one row per member (1.0)
 
@@ -246,7 +274,7 @@ Created at order creation for the flexible discount, or at claim time for Pro ca
 | `expires_at` | DATETIME | null | Catalog coupon expiry (Pro). |
 | `created_at` / `updated_at` | DATETIME | not null | |
 
-Indexes: PK; `user_id`; `order_id`; `reward_id`; `(status, created_at)`.
+Indexes: PK; `user_id`; `order_id`; `reward_id`; `(status, created_at)`; **`(reward_id, user_id)`, required** — the `redemption_count` reward condition (see rewards' `conditions` section above) runs `COUNT(*) WHERE reward_id = ? AND user_id = ?` on every evaluation; without this composite index that is a full table scan per claim. Do not build this table without it.
 
 ## `yayloyalty_referrals` — one row per referral relationship (1.1)
 

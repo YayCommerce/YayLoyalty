@@ -17,10 +17,14 @@ defined( 'ABSPATH' ) || exit;
  * liveness, "built-ins are not archivable") are validation, not a cross-table
  * concern. A service wrapping one repository would be ceremony.
  *
- * `conditions` is stored (LONGTEXT, `[]` by default) but not yet validated or
- * normalised here — reward availability conditions (`tier_ids`, `roles`,
- * `once_per_customer`) are their own vocabulary and a later task. Storing the
- * column now means that task is a data migration, not a schema change.
+ * CONDITIONS VS CONFIG — the boundary is "is this a fact about the customer
+ * being evaluated, or a property of the reward itself?" `conditions`
+ * (validated by conditions_are_valid(), normalised by set_conditions(), see
+ * Models\RewardConditionSet) holds customer-specific eligibility rules such as
+ * `redemption_count` — how many times THIS customer has already redeemed THIS
+ * reward. `config`'s `max_total` looks similar but is not a condition: it is a
+ * single global cap on the reward across every customer, so it stays a
+ * reward-level property in `config`.
  */
 class Reward extends AbstractModel {
 
@@ -471,6 +475,19 @@ class Reward extends AbstractModel {
     }
 
     /**
+     * Are these conditions acceptable to store?
+     *
+     * Mirrors config_is_valid(): a non-throwing check for the save boundary so
+     * a bad set is rejected with a 4xx before the row is written. Rejects an
+     * unknown type, an operator a type does not accept, a wrong value shape,
+     * an empty list value, a duplicate type, and customer_ids past its cap.
+     * See Models\RewardConditionSet.
+     */
+    public static function conditions_are_valid( array $conditions ): bool {
+        return RewardConditionSet::is_valid( $conditions );
+    }
+
+    /**
      * Is this cost_points acceptable for this type?
      *
      * The one rule the database cannot express: `flexible_discount` must have
@@ -605,15 +622,16 @@ class Reward extends AbstractModel {
     }
 
     /**
-     * Set the raw conditions list.
+     * Normalise a conditions list and store it.
      *
-     * No validation or normalisation yet — reward conditions are a later
-     * task, with their own vocabulary (tier_ids, roles, once_per_customer).
-     * Until that lands, this stores whatever list it is given as-is; callers
-     * that want an empty reward should pass [].
+     * Mirrors set_config(): the value that lands on the model is the
+     * canonical one — scalars widened to arrays, ids cast to int, role slugs
+     * lower-cased, lists de-duplicated, entries ordered cheap-first for
+     * evaluation. Rejection of a malformed set is conditions_are_valid()'s job
+     * and runs at the save boundary. See Models\RewardConditionSet.
      */
     public function set_conditions( array $conditions ): void {
-        $this->conditions = $conditions;
+        $this->conditions = RewardConditionSet::normalize( $conditions );
     }
 
     public function set_starts_at( ?string $starts_at ): void {
