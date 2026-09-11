@@ -11,20 +11,22 @@ import { BalanceCell, CustomerNameCell } from './CustomersTableCells';
 /**
  * One customer row. Negative balance gets a subtle left-accent tint (never
  * red — see BalanceCell) and shows "—" for Expires instead of a stale date.
- *
- * `showProColumns` also gates the leading checkbox: Pro is the only build
- * with anything to select a row for (the bulk action bar).
  */
 export function CustomerTableRow({
   customer,
   showProColumns,
+  showSelection,
   selected,
   onToggle,
+  stale,
 }: {
   customer: MockCustomer;
   showProColumns: boolean;
+  /** Off during the rebuild toggle even in Pro — no picking rows while balances are frozen. */
+  showSelection: boolean;
   selected: boolean;
   onToggle: (userId: number) => void;
+  stale?: boolean;
 }) {
   const negative = customer.balance < 0;
 
@@ -33,7 +35,7 @@ export function CustomerTableRow({
       data-state={selected ? 'selected' : undefined}
       className={negative ? 'bg-muted/40 border-l-[3px] border-l-muted-foreground/40' : undefined}
     >
-      {showProColumns && (
+      {showSelection && (
         <TableCell>
           <Checkbox
             checked={selected}
@@ -51,7 +53,7 @@ export function CustomerTableRow({
         </TableCell>
       )}
       <TableCell className="text-right">
-        <BalanceCell value={customer.balance} />
+        <BalanceCell value={customer.balance} stale={stale} />
       </TableCell>
       <TableCell className="text-muted-foreground text-right tabular-nums">
         {formatPoints(customer.pending_points)}

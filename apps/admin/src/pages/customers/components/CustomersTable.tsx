@@ -1,35 +1,47 @@
-import { ReactNode, useMemo, useState } from 'react';
+import { ReactNode } from 'react';
 import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import { __ } from '@wordpress/i18n';
 
 import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { MockCustomer } from '../customers-page.mock-data';
-import { defaultSortDirection, sortRows, type SortDirection, type SortKey } from '../customers-page.sort-rows';
+import type { SortDirection, SortKey } from '../customers-page.sort-rows';
 import { CustomerTableRow } from './CustomerTableRow';
 import { CustomersEmptyState } from './CustomersEmptyState';
 import { CustomersSkeletonRows } from './CustomersSkeletonRows';
 
-/** Column count depends only on whether the Pro columns/checkbox are on —
- *  one place, reused by the header and the "no results" row's colSpan. */
-export function countColumns(showProColumns: boolean) {
+/** Column count depends on which optional column groups are on — one place,
+ *  reused by the header and the "no results" row's colSpan. */
+export function countColumns(showProColumns: boolean, showSelection: boolean) {
   // Customer, Balance, Pending, Lifetime earned, Last activity, Expires = 6 always.
-  // Pro adds the leading checkbox column, Tier and Referrals.
-  return 6 + (showProColumns ? 3 : 0);
+  // Pro adds Tier + Referrals; selection adds the leading checkbox column
+  // (off during the rebuild toggle even in Pro — see CustomerTableRow.tsx).
+  return 6 + (showProColumns ? 2 : 0) + (showSelection ? 1 : 0);
 }
 
 type HeaderSelectionState = 'none' | 'partial' | 'all';
 
+/**
+ * Purely presentational: `rows` arrives already sorted AND paginated (one
+ * page's worth) — see CustomersScreen.tsx, which owns both so sorting is
+ * applied to the whole filtered set before slicing a page, not per-page.
+ * This component only renders the caret state and reports clicks upward.
+ */
 export function CustomersTable({
   rows,
   isLoading,
   isStoreEmpty,
   noMatchContent,
   showProColumns,
+  showSelection,
+  staleBalances,
   headerSelection,
   onToggleAll,
   selected,
   onToggleRow,
+  sortBy,
+  sortDir,
+  onSort,
 }: {
   rows: MockCustomer[];
   /** `useCustomersDemoQuery` still in flight — real network latency, not a simulated delay. */
@@ -39,35 +51,25 @@ export function CustomersTable({
   /** What to show when filters narrow a non-empty store to zero rows — see CustomersNoMatchState.tsx. */
   noMatchContent?: ReactNode;
   showProColumns: boolean;
+  /** Off during the rebuild toggle even in Pro — see CustomerTableRow.tsx. */
+  showSelection: boolean;
+  staleBalances: boolean;
   headerSelection: HeaderSelectionState;
   onToggleAll: () => void;
   selected: Set<number>;
   onToggleRow: (userId: number) => void;
+  sortBy: SortKey;
+  sortDir: SortDirection;
+  onSort: (key: SortKey) => void;
 }) {
-  const columnCount = countColumns(showProColumns);
-
-  // Real, client-side sort over the rows already loaded — see
-  // customers-page.sort-rows.ts. Balance/desc is the default for both builds.
-  const [sortBy, setSortBy] = useState<SortKey>('balance');
-  const [sortDir, setSortDir] = useState<SortDirection>('desc');
-
-  function handleSort(key: SortKey) {
-    if (key === sortBy) {
-      setSortDir((current) => (current === 'asc' ? 'desc' : 'asc'));
-    } else {
-      setSortBy(key);
-      setSortDir(defaultSortDirection(key));
-    }
-  }
-
-  const sortedRows = useMemo(() => sortRows(rows, sortBy, sortDir), [rows, sortBy, sortDir]);
+  const columnCount = countColumns(showProColumns, showSelection);
 
   return (
     <div className="overflow-x-auto rounded-md border">
       <Table>
         <TableHeader>
           <TableRow>
-            {showProColumns && (
+            {showSelection && (
               <TableHead>
                 <Checkbox
                   checked={headerSelection === 'all' ? true : headerSelection === 'partial' ? 'indeterminate' : false}
@@ -76,23 +78,23 @@ export function CustomersTable({
                 />
               </TableHead>
             )}
-            <SortableHead sortKey="name" label={__('Customer', 'yayloyalty')} sortBy={sortBy} sortDir={sortDir} onSort={handleSort} />
+            <SortableHead sortKey="name" label={__('Customer', 'yayloyalty')} sortBy={sortBy} sortDir={sortDir} onSort={onSort} />
             {showProColumns && (
-              <SortableHead sortKey="tier" label={__('Tier', 'yayloyalty')} sortBy={sortBy} sortDir={sortDir} onSort={handleSort} />
+              <SortableHead sortKey="tier" label={__('Tier', 'yayloyalty')} sortBy={sortBy} sortDir={sortDir} onSort={onSort} />
             )}
-            <SortableHead sortKey="balance" label={__('Balance', 'yayloyalty')} align="right" sortBy={sortBy} sortDir={sortDir} onSort={handleSort} />
-            <SortableHead sortKey="pending" label={__('Pending', 'yayloyalty')} align="right" sortBy={sortBy} sortDir={sortDir} onSort={handleSort} />
-            <SortableHead sortKey="lifetime" label={__('Lifetime earned', 'yayloyalty')} align="right" sortBy={sortBy} sortDir={sortDir} onSort={handleSort} />
-            <SortableHead sortKey="last_activity" label={__('Last activity', 'yayloyalty')} align="right" sortBy={sortBy} sortDir={sortDir} onSort={handleSort} />
-            <SortableHead sortKey="expires" label={__('Expires', 'yayloyalty')} align="right" sortBy={sortBy} sortDir={sortDir} onSort={handleSort} />
+            <SortableHead sortKey="balance" label={__('Balance', 'yayloyalty')} align="right" sortBy={sortBy} sortDir={sortDir} onSort={onSort} />
+            <SortableHead sortKey="pending" label={__('Pending', 'yayloyalty')} align="right" sortBy={sortBy} sortDir={sortDir} onSort={onSort} />
+            <SortableHead sortKey="lifetime" label={__('Lifetime earned', 'yayloyalty')} align="right" sortBy={sortBy} sortDir={sortDir} onSort={onSort} />
+            <SortableHead sortKey="last_activity" label={__('Last activity', 'yayloyalty')} align="right" sortBy={sortBy} sortDir={sortDir} onSort={onSort} />
+            <SortableHead sortKey="expires" label={__('Expires', 'yayloyalty')} align="right" sortBy={sortBy} sortDir={sortDir} onSort={onSort} />
             {showProColumns && (
-              <SortableHead sortKey="referrals" label={__('Referrals', 'yayloyalty')} align="right" sortBy={sortBy} sortDir={sortDir} onSort={handleSort} />
+              <SortableHead sortKey="referrals" label={__('Referrals', 'yayloyalty')} align="right" sortBy={sortBy} sortDir={sortDir} onSort={onSort} />
             )}
           </TableRow>
         </TableHeader>
         <TableBody>
           {isLoading && <CustomersSkeletonRows columnCount={columnCount} />}
-          {!isLoading && sortedRows.length === 0 && (
+          {!isLoading && rows.length === 0 && (
             <TableRow>
               <TableCell colSpan={columnCount} className="h-auto py-12">
                 {isStoreEmpty ? (
@@ -108,13 +110,15 @@ export function CustomersTable({
             </TableRow>
           )}
           {!isLoading &&
-            sortedRows.map((row) => (
+            rows.map((row) => (
               <CustomerTableRow
                 key={row.user_id}
                 customer={row}
                 showProColumns={showProColumns}
+                showSelection={showSelection}
                 selected={selected.has(row.user_id)}
                 onToggle={onToggleRow}
+                stale={staleBalances}
               />
             ))}
         </TableBody>

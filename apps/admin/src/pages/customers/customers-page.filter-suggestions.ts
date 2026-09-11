@@ -21,6 +21,14 @@ export interface FilterDropSuggestion {
   key: FilterKey;
   label: string;
   count: number;
+  /**
+   * 'without' — drop just this filter, keep the rest ("Without Tier: Alpine").
+   * 'only' — drop every OTHER filter, keep just this one ("Search "x" on its
+   * own"). Search gets 'only': a typed name is usually the intent, and the
+   * other filters are what's fighting it — "Without the search" would keep
+   * exactly the filters causing the zero result and is rarely useful.
+   */
+  phrasing: 'without' | 'only';
 }
 
 function activeFilterKeys(filters: RowFilters, includeTier: boolean): FilterKey[] {
@@ -51,9 +59,11 @@ function describeFilterValue(key: FilterKey, filters: RowFilters): string {
 }
 
 /**
- * One suggestion per currently-active filter, each showing what dropping
- * just that filter (and no other) would yield. Filters that still return
- * nothing on their own are omitted — a "Use this" that stays empty helps no one.
+ * One suggestion per currently-active filter. Search is isolated (every
+ * other filter dropped); every other key is relaxed (just that one filter
+ * dropped, the rest kept) — see `FilterDropSuggestion.phrasing`. Suggestions
+ * that still return nothing are omitted — a "Use this" that stays empty
+ * helps no one.
  */
 export function getFilterDropSuggestions(
   allRows: MockCustomer[],
@@ -61,13 +71,15 @@ export function getFilterDropSuggestions(
   includeTier: boolean,
 ): FilterDropSuggestion[] {
   const suggestions = activeFilterKeys(filters, includeTier).map((key) => {
-    const relaxed: RowFilters = { ...filters, [key]: DEFAULT_ROW_FILTERS[key] };
-    const count = filterRows(allRows, relaxed).length;
+    const phrasing = key === 'search' ? ('only' as const) : ('without' as const);
+    const candidate: RowFilters =
+      phrasing === 'only' ? { ...DEFAULT_ROW_FILTERS, search: filters.search } : { ...filters, [key]: DEFAULT_ROW_FILTERS[key] };
 
     return {
       key,
       label: describeFilterValue(key, filters),
-      count,
+      count: filterRows(allRows, candidate).length,
+      phrasing,
     };
   });
 
@@ -76,4 +88,17 @@ export function getFilterDropSuggestions(
 
 export function countLabel(count: number): string {
   return sprintf(_n('%d customer', '%d customers', count, 'yayloyalty'), count);
+}
+
+/**
+ * Mirrors how `getFilterDropSuggestions` built the candidate it counted:
+ * 'without' reverts just that one filter; 'only' (search) reverts every
+ * OTHER filter and keeps the typed search term.
+ */
+export function patchForSuggestion(suggestion: FilterDropSuggestion, filters: RowFilters): Partial<RowFilters> {
+  if (suggestion.phrasing === 'only') {
+    return { ...DEFAULT_ROW_FILTERS, search: filters.search };
+  }
+
+  return { [suggestion.key]: DEFAULT_ROW_FILTERS[suggestion.key] };
 }

@@ -2,7 +2,7 @@ import { sprintf, __ } from '@wordpress/i18n';
 
 import { Button } from '@/components/ui/button';
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
-import { countLabel, type FilterDropSuggestion, type FilterKey } from '../customers-page.filter-suggestions';
+import { countLabel, type FilterDropSuggestion } from '../customers-page.filter-suggestions';
 
 /**
  * Filters that combine to zero results — not the same screen as a genuinely
@@ -18,7 +18,7 @@ export function CustomersNoMatchState({
 }: {
   activeCount: number;
   suggestions: FilterDropSuggestion[];
-  onUseSuggestion: (key: FilterKey) => void;
+  onUseSuggestion: (suggestion: FilterDropSuggestion) => void;
   onClearAll: () => void;
 }) {
   const title =
@@ -40,10 +40,16 @@ export function CustomersNoMatchState({
         {suggestions.map((suggestion) => (
           <div key={suggestion.key} className="flex w-full items-center gap-3 rounded-md border px-3 py-2 text-sm">
             <span>
-              {__('Without', 'yayloyalty')} <strong>{suggestion.label}</strong>
+              {suggestion.phrasing === 'without' ? (
+                <>
+                  {__('Without', 'yayloyalty')} <strong>{suggestion.label}</strong>
+                </>
+              ) : (
+                sprintf(__('%s on its own', 'yayloyalty'), suggestion.label)
+              )}
             </span>
             <span className="text-muted-foreground ml-auto font-semibold">{countLabel(suggestion.count)}</span>
-            <Button variant="link" size="sm" onClick={() => onUseSuggestion(suggestion.key)}>
+            <Button variant="link" size="sm" onClick={() => onUseSuggestion(suggestion)}>
               {__('Use this', 'yayloyalty')}
             </Button>
           </div>

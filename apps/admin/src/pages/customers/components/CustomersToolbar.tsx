@@ -1,7 +1,5 @@
 import { __ } from '@wordpress/i18n';
 
-import { CAP, Can } from '@/lib/access';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
@@ -15,8 +13,11 @@ import {
 } from '../customers-page.filter-rows';
 
 /**
- * Search + filter row + Export CSV. Every filter is real — see
- * `customers-page.filter-rows.ts` — over the rows already loaded.
+ * Search + filter row. Every filter is real — see `customers-page.filter-rows.ts`
+ * — over the rows already loaded. Export CSV lives one row up now (see
+ * CustomersScreen.tsx / CustomersExportButton.tsx) — with 4 controls, this
+ * row was the one most likely to wrap on a narrower admin viewport, and a
+ * `ml-auto` button wrapping onto its own line read as a layout bug.
  *
  * Free/Pro split is `__IS_PRO__`, directly: the Tier filter simply isn't
  * rendered in a Lite build, matching the Customer list itself (no Tier
@@ -28,12 +29,10 @@ export function CustomersToolbar({
   /** True store (no members at all) — every control goes inert but stays in
    *  place, so the toolbar doesn't pop in later and shift the table down. */
   disabled,
-  exportDisabled,
 }: {
   filters: RowFilters;
   onFiltersChange: (patch: Partial<RowFilters>) => void;
   disabled: boolean;
-  exportDisabled: boolean;
 }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -67,11 +66,6 @@ export function CustomersToolbar({
           disabled={disabled}
         />
       )}
-      <Can cap={CAP.VIEW} disable>
-        <Button variant="outline" size="sm" className="ml-auto" disabled={disabled || exportDisabled}>
-          {__('Export CSV', 'yayloyalty')}
-        </Button>
-      </Can>
     </div>
   );
 }

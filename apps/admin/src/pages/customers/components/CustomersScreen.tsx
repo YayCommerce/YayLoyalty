@@ -1,25 +1,37 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { __ } from '@wordpress/i18n';
 
 import { Card, CardContent } from '@/components/ui/card';
 import { DEFAULT_ROW_FILTERS, type RowFilters } from '../customers-page.filter-rows';
-import { countActiveFilters, getFilterDropSuggestions } from '../customers-page.filter-suggestions';
+import { countActiveFilters, getFilterDropSuggestions, patchForSuggestion } from '../customers-page.filter-suggestions';
 import type { MockCustomer } from '../customers-page.mock-data';
+import { computeHeaderSelection, computeSelectAllCount } from '../customers-page.selection';
+import { defaultSortDirection, sortRows, type SortDirection, type SortKey } from '../customers-page.sort-rows';
 import { CustomersBulkActionBar } from './CustomersBulkActionBar';
+import { CustomersExportButton } from './CustomersExportButton';
 import { CustomersNoMatchState } from './CustomersNoMatchState';
 import { CustomersPagination } from './CustomersPagination';
+import { CustomersRebuildBanner } from './CustomersRebuildBanner';
 import { CustomersSavedSegmentRow } from './CustomersSavedSegmentRow';
 import { CustomersTable } from './CustomersTable';
 import { CustomersToolbar } from './CustomersToolbar';
 
-type HeaderSelectionState = 'none' | 'partial' | 'all';
+const PER_PAGE = 10;
 
 /**
- * The Customers screen body: [saved segment row] → toolbar → [bulk action
- * bar] → table → pagination. Bracketed pieces are Pro-only, gated directly by
- * `__IS_PRO__` — no demo switcher, no upgrade overlay for a feature that
- * simply adds columns rather than walling off the page (same split
- * `CampaignsPage.tsx` uses, and the `useIsPremium`-style check yay-reviews'
- * `PremiumGate` is built on).
+ * The Customers screen body: [saved segment row] + Export CSV → toolbar →
+ * [bulk action bar] → table → pagination.
+ *
+ * Owns every VIEW-only concern for the currently-loaded rows — sort, page
+ * and row selection — since all three interact (sorting reorders before
+ * paginating; "select all" only ever means "this page"; changing the filtered
+ * row set resets both page and selection). `CustomersPage.tsx` owns only the
+ * DATA concerns: the query and the filters that shape `rows`.
+ *
+ * The bracketed Pro pieces are gated directly by `__IS_PRO__` — no demo
+ * switcher, no upgrade overlay for a feature that simply adds columns rather
+ * than walling off the page (same split `CampaignsPage.tsx` uses, and the
+ * `useIsPremium`-style check yay-reviews' `PremiumGate` is built on).
  */
 export function CustomersScreen({
   allRows,
@@ -27,13 +39,9 @@ export function CustomersScreen({
   isLoading,
   filters,
   onFiltersChange,
-  selected,
-  headerSelection,
-  onToggleAll,
-  onToggleRow,
-  onClearSelection,
+  isRebuilding,
 }: {
-  /** Unfiltered row count, for the pagination "{shown} of {total}" label. */
+  /** Unfiltered rows, for the pagination "{range} of {total}" total and the empty-store check. */
   allRows: MockCustomer[];
   /** Already search/filter-narrowed by the page — see CustomersPage.tsx. */
   rows: MockCustomer[];
@@ -41,11 +49,8 @@ export function CustomersScreen({
   isLoading: boolean;
   filters: RowFilters;
   onFiltersChange: (patch: Partial<RowFilters>) => void;
-  selected: Set<number>;
-  headerSelection: HeaderSelectionState;
-  onToggleAll: () => void;
-  onToggleRow: (userId: number) => void;
-  onClearSelection: () => void;
+  /** "Simulate rebuild" toggle (Pro-only, see CustomersPage.tsx) — no real background job. */
+  isRebuilding: boolean;
 }) {
   // A genuinely empty store, not a search/filter matching nobody, and not
   // "still loading" either — see CustomersTable.tsx / CustomersEmptyState.tsx
@@ -55,30 +60,105 @@ export function CustomersScreen({
   const isStoreEmpty = !isLoading && allRows.length === 0;
   const isNoMatch = !isLoading && !isStoreEmpty && rows.length === 0;
 
+  // "Simulate rebuild": every control goes inert and no row can be selected
+  // (see CustomerTableRow.tsx / CustomersRebuildBanner.tsx) while it's on.
+  const controlsDisabled = isStoreEmpty || isRebuilding;
+  const showSelection = __IS_PRO__ && !isRebuilding;
+
   // Real counts, not canned copy — see customers-page.filter-suggestions.ts.
   const suggestions = useMemo(
     () => (isNoMatch ? getFilterDropSuggestions(allRows, filters, __IS_PRO__) : []),
     [isNoMatch, allRows, filters],
   );
 
+  // Sort — real, over the whole filtered set, applied before paging so a
+  // sort click reorders across every page, not just the one on screen.
+  const [sortBy, setSortBy] = useState<SortKey>('balance');
+  const [sortDir, setSortDir] = useState<SortDirection>('desc');
+
+  function handleSort(key: SortKey) {
+    if (key === sortBy) {
+      setSortDir((current) => (current === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortBy(key);
+      setSortDir(defaultSortDirection(key));
+    }
+  }
+
+  const sortedRows = useMemo(() => sortRows(rows, sortBy, sortDir), [rows, sortBy, sortDir]);
+
+  // Real pagination — 10 rows/page over the sorted, filtered set.
+  const [page, setPage] = useState(1);
+  const pageCount = Math.max(1, Math.ceil(sortedRows.length / PER_PAGE));
+  const safePage = Math.min(page, pageCount);
+  const pageRows = sortedRows.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
+
+  // Selection — a Set<user_id>, not scoped to a page: navigating pages keeps
+  // prior picks, but the header checkbox and "select all" only ever act on
+  // the current page (standard admin-table convention once paging is real).
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+
+  // The filtered row set changed (a filter changed) — start over.
+  useEffect(() => {
+    setPage(1);
+    setSelected(new Set());
+  }, [rows]);
+
+  const headerSelection = useMemo(() => computeHeaderSelection(pageRows, selected), [pageRows, selected]);
+
+  function toggleRow(userId: number) {
+    setSelected((current) => {
+      const next = new Set(current);
+      if (next.has(userId)) {
+        next.delete(userId);
+      } else {
+        next.add(userId);
+      }
+      return next;
+    });
+  }
+
+  function toggleAll() {
+    setSelected((current) => {
+      const allOnPageSelected = pageRows.every((row) => current.has(row.user_id));
+      const next = new Set(current);
+      pageRows.forEach((row) => (allOnPageSelected ? next.delete(row.user_id) : next.add(row.user_id)));
+      return next;
+    });
+  }
+
+  // Second bulk-bar tier: the header checkbox only ever selects the current
+  // page, so once there's more than one page, offer expanding to every row
+  // matching the filters — real count, real action, not the canned "11,100".
+  const selectAllCount = computeSelectAllCount(sortedRows, selected, pageCount);
+
+  function selectAllMatching() {
+    setSelected(new Set(sortedRows.map((row) => row.user_id)));
+  }
+
   return (
     <Card>
       <CardContent className="flex flex-col gap-4">
-        {__IS_PRO__ && <CustomersSavedSegmentRow disabled={isStoreEmpty} />}
+        {isRebuilding && <CustomersRebuildBanner />}
 
-        <CustomersToolbar
-          filters={filters}
-          onFiltersChange={onFiltersChange}
-          disabled={isStoreEmpty}
-          exportDisabled={isLoading || rows.length === 0}
-        />
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          {__IS_PRO__ ? <CustomersSavedSegmentRow disabled={controlsDisabled} /> : <span />}
+          <CustomersExportButton disabled={controlsDisabled || isLoading || rows.length === 0} />
+        </div>
 
-        {__IS_PRO__ && selected.size > 0 && (
-          <CustomersBulkActionBar count={selected.size} onClear={onClearSelection} />
+        <CustomersToolbar filters={filters} onFiltersChange={onFiltersChange} disabled={controlsDisabled} />
+
+        {showSelection && selected.size > 0 && (
+          <CustomersBulkActionBar
+            count={selected.size}
+            onClear={() => setSelected(new Set())}
+            selectAllCount={selectAllCount}
+            onSelectAllMatching={selectAllMatching}
+          />
         )}
 
         <CustomersTable
-          rows={rows}
+          rows={pageRows}
           isLoading={isLoading}
           isStoreEmpty={isStoreEmpty}
           noMatchContent={
@@ -86,19 +166,33 @@ export function CustomersScreen({
               <CustomersNoMatchState
                 activeCount={countActiveFilters(filters, __IS_PRO__)}
                 suggestions={suggestions}
-                onUseSuggestion={(key) => onFiltersChange({ [key]: DEFAULT_ROW_FILTERS[key] })}
+                onUseSuggestion={(suggestion) => onFiltersChange(patchForSuggestion(suggestion, filters))}
                 onClearAll={() => onFiltersChange(DEFAULT_ROW_FILTERS)}
               />
             ) : undefined
           }
           showProColumns={__IS_PRO__}
+          showSelection={showSelection}
+          staleBalances={isRebuilding}
           headerSelection={headerSelection}
-          onToggleAll={onToggleAll}
+          onToggleAll={toggleAll}
           selected={selected}
-          onToggleRow={onToggleRow}
+          onToggleRow={toggleRow}
+          sortBy={sortBy}
+          sortDir={sortDir}
+          onSort={handleSort}
         />
 
-        <CustomersPagination shown={rows.length} total={allRows.length} isLoading={isLoading} />
+        <CustomersPagination
+          page={safePage}
+          pageCount={pageCount}
+          total={sortedRows.length}
+          perPage={PER_PAGE}
+          isLoading={isLoading}
+          onPrevious={() => setPage((current) => Math.max(1, current - 1))}
+          onNext={() => setPage((current) => Math.min(pageCount, current + 1))}
+          note={isRebuilding ? __('· balances as of 11:02', 'yayloyalty') : undefined}
+        />
       </CardContent>
     </Card>
   );
