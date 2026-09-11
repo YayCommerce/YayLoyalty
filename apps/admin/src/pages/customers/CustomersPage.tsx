@@ -1,238 +1,116 @@
-import { FormEvent, useState } from 'react';
-import { __, sprintf } from '@wordpress/i18n';
+import { useEffect, useMemo, useState } from 'react';
+import { __ } from '@wordpress/i18n';
 
-import { Can, CAP, ceiling, isAdministrator } from '@/lib/access';
-import { parseWPDate } from '@/lib/helpers/format.helper';
-import { describeLedgerEntry, formatSignedPoints } from '@/lib/helpers/ledger.helper';
-import { useAdjustPointsMutation, useCustomerLedgerQuery, useCustomerQuery } from '@/lib/queries/customer.queries';
-import { Badge } from '@/components/ui/badge';
-import { Button, LoadingButton } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import PageLayout from '@/components/layout/PageLayout';
-
-const PER_PAGE = 10;
+import { ProGate } from '@/components/pro/ProGate';
+import { CustomersScreen } from './components/CustomersScreen';
+import { CustomersUpsellFooter } from './components/CustomersUpsellFooter';
+import { ScenarioSwitcher } from './components/ScenarioSwitcher';
+import { DEFAULT_ROW_FILTERS, filterRows, type RowFilters } from './customers-page.filter-rows';
+import { CUSTOMERS_SCENARIOS, type CustomersScenarioId } from './customers-page.scenarios';
 
 /**
- * Proof-of-life view for the ledger slice.
+ * Customers list screen — designed UI, driven entirely by mock data.
  *
- * Deliberately minimal: this exists to prove the data layer end to end, not to
- * be the finished Customers screen. Real UI work is a separate task.
+ * MOCK-DRIVEN BY DESIGN, NOT AN OVERSIGHT. There is no Customers list REST
+ * endpoint yet (only single-customer / ledger / adjust exist in
+ * `customer.queries.ts`, still used by the real wiring task, not this file).
+ * The on-page `ScenarioSwitcher` browses the 7 designed states without a
+ * backend. When the list endpoint lands: add `useCustomersQuery`, delete the
+ * switcher and every `customers-page.*` module, and wire the `<Can>`-gated
+ * buttons already in place (`CustomersBulkActionBar`, `CustomersToolbar`)
+ * to real handlers.
+ *
+ * Search (by name) and the Balance range / Expiring soon filters ARE real —
+ * see `customers-page.filter-rows.ts` — because they only narrow the rows
+ * already loaded for the current scenario, unlike Export or the bulk actions,
+ * which would need a real dataset behind them to mean anything.
  */
 export default function CustomersPage() {
-  const [userIdInput, setUserIdInput] = useState('');
-  const [userId, setUserId] = useState(0);
-  const [page, setPage] = useState(1);
+  const [scenarioId, setScenarioId] = useState<CustomersScenarioId>('free-list');
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [filters, setFilters] = useState<RowFilters>(DEFAULT_ROW_FILTERS);
 
-  const customer = useCustomerQuery(userId);
-  const history = useCustomerLedgerQuery(userId, page, PER_PAGE);
-  const adjust = useAdjustPointsMutation(userId);
+  const config = CUSTOMERS_SCENARIOS[scenarioId];
 
-  const [points, setPoints] = useState('');
-  const [note, setNote] = useState('');
+  const filteredRows = useMemo(() => filterRows(config.rows, filters), [config.rows, filters]);
 
-  // Administrators bypass the ceiling; everyone else sees it as an input bound.
-  const adjustmentCeiling = isAdministrator() ? 0 : ceiling();
+  // Selection and filters both reset on scenario change: selection is seeded
+  // from the scenario's design intent (`config.selection`), not a live count.
+  useEffect(() => {
+    setFilters(DEFAULT_ROW_FILTERS);
 
-  function lookup(event: FormEvent) {
-    event.preventDefault();
-    setPage(1);
-    setUserId(Number(userIdInput) || 0);
-  }
-
-  function submitAdjustment(event: FormEvent) {
-    event.preventDefault();
-
-    const value = Number(points);
-
-    if (!value || !note.trim()) {
-      return;
+    if (config.selection === 'page-all') {
+      setSelected(new Set(config.rows.map((row) => row.user_id)));
+    } else if (config.selection === 'page-partial') {
+      setSelected(new Set(config.rows.filter((row) => row.selected).map((row) => row.user_id)));
+    } else {
+      setSelected(new Set());
     }
+  }, [config]);
 
-    adjust.mutate(
-      { points: value, note: note.trim() },
-      {
-        onSuccess: () => {
-          setPoints('');
-          setNote('');
-        },
-      },
-    );
+  const headerSelection = useMemo(() => {
+    if (selected.size === 0) return 'none' as const;
+    if (selected.size >= filteredRows.length && filteredRows.length > 0) return 'all' as const;
+    return 'partial' as const;
+  }, [selected, filteredRows.length]);
+
+  function toggleRow(userId: number) {
+    setSelected((current) => {
+      const next = new Set(current);
+      if (next.has(userId)) {
+        next.delete(userId);
+      } else {
+        next.add(userId);
+      }
+      return next;
+    });
   }
+
+  function toggleAll() {
+    // "Select all" acts on the rows currently visible (post search/filter),
+    // never the scenario's full row set.
+    setSelected((current) => (current.size > 0 ? new Set() : new Set(filteredRows.map((row) => row.user_id))));
+  }
+
+  function updateFilters(patch: Partial<RowFilters>) {
+    setFilters((current) => ({ ...current, ...patch }));
+  }
+
+  const screen = (
+    <CustomersScreen
+      config={config}
+      rows={filteredRows}
+      filters={filters}
+      onFiltersChange={updateFilters}
+      selected={selected}
+      headerSelection={headerSelection}
+      onToggleAll={toggleAll}
+      onToggleRow={toggleRow}
+      onClearSelection={() => setSelected(new Set())}
+    />
+  );
 
   return (
     <PageLayout
       title={__('Customers', 'yayloyalty')}
-      description={__('Look up a customer to see their point balance and make adjustments.', 'yayloyalty')}
+      description={config.memberCount ?? <Skeleton className="h-4 w-32" />}
     >
-      <Card>
-        <CardContent>
-          <form className="flex items-end gap-2" onSubmit={lookup}>
-            <div className="flex flex-col gap-1">
-              <label className="text-muted-foreground text-xs" htmlFor="yl-user-id">
-                {__('User ID', 'yayloyalty')}
-              </label>
-              <Input
-                id="yl-user-id"
-                className="w-40"
-                inputMode="numeric"
-                value={userIdInput}
-                onChange={(event) => setUserIdInput(event.target.value)}
-                placeholder="1"
-              />
-            </div>
-            <Button type="submit">{__('Look up', 'yayloyalty')}</Button>
-          </form>
-        </CardContent>
-      </Card>
+      <ScenarioSwitcher value={scenarioId} onChange={setScenarioId} />
 
-      {userId > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{__('Balance', 'yayloyalty')}</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4">
-            {customer.isPending && <Skeleton className="h-8 w-40" />}
-
-            {customer.isError && (
-              <p className="text-destructive text-sm">{__('Could not load this customer.', 'yayloyalty')}</p>
-            )}
-
-            {customer.data && (
-              <div className="flex flex-wrap gap-6">
-                <Stat label={__('Balance', 'yayloyalty')} value={customer.data.balance} />
-                <Stat label={__('Pending', 'yayloyalty')} value={customer.data.pending_points} />
-                <Stat label={__('Lifetime earned', 'yayloyalty')} value={customer.data.lifetime_earned} />
-                <Stat label={__('Lifetime redeemed', 'yayloyalty')} value={customer.data.lifetime_redeemed} />
-              </div>
-            )}
-
-            <form className="flex flex-wrap items-end gap-2" onSubmit={submitAdjustment}>
-              <div className="flex flex-col gap-1">
-                <label className="text-muted-foreground text-xs" htmlFor="yl-points">
-                  {__('Points (negative to deduct)', 'yayloyalty')}
-                </label>
-                <Input
-                  id="yl-points"
-                  className="w-40"
-                  inputMode="numeric"
-                  value={points}
-                  onChange={(event) => setPoints(event.target.value)}
-                  placeholder="100"
-                  {...(adjustmentCeiling > 0 ? { min: -adjustmentCeiling, max: adjustmentCeiling } : {})}
-                />
-                {adjustmentCeiling > 0 && (
-                  // Client-side hint only; the server still decides.
-                  <span className="text-muted-foreground text-xs">
-                    {sprintf(__('Limited to %d points per adjustment.', 'yayloyalty'), adjustmentCeiling)}
-                  </span>
-                )}
-              </div>
-              <div className="flex flex-1 flex-col gap-1">
-                <label className="text-muted-foreground text-xs" htmlFor="yl-note">
-                  {__('Reason', 'yayloyalty')}
-                </label>
-                <Input
-                  id="yl-note"
-                  value={note}
-                  onChange={(event) => setNote(event.target.value)}
-                  placeholder={__('Goodwill gesture', 'yayloyalty')}
-                />
-              </div>
-              {/* Disabled, not hidden: a missing primary CTA reads as a broken feature. */}
-              <Can cap={CAP.MANAGE_POINTS} disable>
-                <LoadingButton type="submit" loading={adjust.isPending}>
-                  {__('Adjust', 'yayloyalty')}
-                </LoadingButton>
-              </Can>
-            </form>
-
-            {adjust.isError && (
-              <p className="text-destructive text-sm">{__('The adjustment was rejected.', 'yayloyalty')}</p>
-            )}
-          </CardContent>
-        </Card>
+      {config.isPro ? (
+        // Pro lock wraps the whole surface for a Pro-only scenario: Lite gets
+        // the upgrade overlay instead of a broken/empty Pro screen.
+        <ProGate>{__IS_PRO__ ? screen : null}</ProGate>
+      ) : (
+        screen
       )}
 
-      {userId > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{__('History', 'yayloyalty')}</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{__('When', 'yayloyalty')}</TableHead>
-                    <TableHead>{__('Description', 'yayloyalty')}</TableHead>
-                    <TableHead>{__('Type', 'yayloyalty')}</TableHead>
-                    <TableHead className="text-right">{__('Points', 'yayloyalty')}</TableHead>
-                    <TableHead className="text-right">{__('Balance', 'yayloyalty')}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {history.data?.data.map((entry) => (
-                    <TableRow key={entry.id}>
-                      <TableCell className="whitespace-nowrap">{parseWPDate(entry.created_at)}</TableCell>
-                      {/* Composed from type/source, never a stored string. */}
-                      <TableCell>{describeLedgerEntry(entry)}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">{entry.type}</Badge>
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">{formatSignedPoints(entry.points)}</TableCell>
-                      <TableCell className="text-right tabular-nums">{entry.balance_after}</TableCell>
-                    </TableRow>
-                  ))}
-
-                  {history.data && history.data.data.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-muted-foreground text-center">
-                        {__('No activity yet.', 'yayloyalty')}
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-
-            {history.data && history.data.totalPage > 1 && (
-              <div className="flex items-center justify-end gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={page <= 1}
-                  onClick={() => setPage((current) => Math.max(1, current - 1))}
-                >
-                  {__('Previous', 'yayloyalty')}
-                </Button>
-                <span className="text-muted-foreground text-xs">
-                  {page} / {history.data.totalPage}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={page >= history.data.totalPage}
-                  onClick={() => setPage((current) => current + 1)}
-                >
-                  {__('Next', 'yayloyalty')}
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+      {/* Lite-only, not `<ProGate>`: the non-inline overlay renders in Lite and
+          children in Pro — the exact inverse of a footer that should show only
+          in Lite. See CustomersUpsellFooter's docblock. */}
+      {!__IS_PRO__ && config.upsellFooter && <CustomersUpsellFooter />}
     </PageLayout>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="flex flex-col">
-      <span className="text-muted-foreground text-xs">{label}</span>
-      <span className="text-2xl tabular-nums">{value}</span>
-    </div>
   );
 }
