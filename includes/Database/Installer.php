@@ -48,6 +48,7 @@ final class Installer {
             new \YayLoyalty\Database\Schema\CustomersTable(),
             new \YayLoyalty\Database\Schema\LedgerTable(),
             new \YayLoyalty\Database\Schema\CampaignsTable(),
+            new \YayLoyalty\Database\Schema\RewardsTable(),
         ];
 
         /**
@@ -71,6 +72,7 @@ final class Installer {
         }
 
         self::seed_builtins();
+        self::seed_builtin_reward();
 
         // Here rather than only on the activation hook: shop_manager does not
         // exist until WooCommerce has been activated once, and this also runs
@@ -164,6 +166,42 @@ final class Installer {
                 )
             );
         }
+    }
+
+    /**
+     * Create the built-in reward row.
+     *
+     * Idempotent by slug, same reasoning and mutex as seed_builtins(): repeat
+     * installs cannot duplicate it, and a merchant's edits are never
+     * overwritten by a later run.
+     */
+    private static function seed_builtin_reward(): void {
+        $repository = new \YayLoyalty\Repositories\RewardRepository();
+        $now        = \YayLoyalty\Utils\Dates::now();
+        $type       = \YayLoyalty\Enums\RewardType::FLEXIBLE_DISCOUNT;
+
+        $repository->seed_builtin(
+            new \YayLoyalty\Models\Reward(
+                null,
+                __( 'Cart discount', 'yayloyalty' ),
+                'cart-discount',
+                $type,
+                \YayLoyalty\Enums\Status::ACTIVE,
+                // Sort order 0: the only reward Free offers, first in the list.
+                0,
+                // cost_points stays null — flexible_discount is the slider type.
+                null,
+                \YayLoyalty\Models\Reward::default_config( $type ),
+                [],
+                null,
+                null,
+                true,
+                null,
+                null,
+                $now,
+                $now
+            )
+        );
     }
 
     /**

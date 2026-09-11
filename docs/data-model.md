@@ -2,16 +2,16 @@
 
 | | |
 |---|---|
-| **Version** | 0.4 — campaigns schema reconciled with code; `conditions` schema added |
-| **Date** | 10 September 2026 |
+| **Version** | 0.5 — rewards schema added |
+| **Date** | 11 September 2026 |
 | **Scope** | Every table YayLoyalty owns across Free, Pro and later releases, every column, and how they relate |
 | **Companion docs** | `project-roadmap.md` · `codebase-summary.md` · `system-architecture.md` |
 
 ## Implementation Status
 
-**Implemented (v1.0):** `yayloyalty_campaigns`, `yayloyalty_customers`, `yayloyalty_ledger`
+**Implemented (1.0):** `yayloyalty_campaigns`, `yayloyalty_rewards`, `yayloyalty_customers`, `yayloyalty_ledger`
 
-**Not implemented:** `rewards`, `redemptions`, `referrals`, `referral_visits`, `tiers`, `tier_history`, `lots`, `lot_allocations`, `events`
+**Not implemented:** `redemptions`, `referrals`, `referral_visits`, `tiers`, `tier_history`, `lots`, `lot_allocations`, `events`
 
 See [`project-roadmap.md`](./project-roadmap.md) for implementation status by phase and known gaps. The table specifications below are the authoritative schema design; unimplemented tables are the work plan for phases 1.1, 1.2, and 2.0.
 
@@ -124,24 +124,53 @@ Operators are **not** interchangeable — each type accepts only the operators l
 
 ## `yayloyalty_rewards` — ways to spend points (1.0)
 
-One row per reward. Free seeds row #1 (the flexible cart discount) and shows it as the "Redeeming" settings page; Pro shows the list and adds catalog items.
+One row per reward. Free seeds one built-in row (the flexible cart discount) and shows it as the "Redeeming" settings page; Pro shows the list and adds catalog items, each backed by a real single-use WooCommerce coupon issued at claim time.
 
 | Column | Type | Null / default | Meaning |
 |---|---|---|---|
 | `id` | BIGINT UNSIGNED AI | PK | Referenced by `redemptions.reward_id`. |
 | `name` | VARCHAR(191) | not null | Label in the launcher, catalog and history ("$5 off", "Free shipping"). |
-| `slug` | VARCHAR(64) | unique | Stable key; built-in is `cart-discount`. |
-| `type` | VARCHAR(20) | not null | `flexible_discount` (slider; any amount within limits) in 1.0. Pro: `fixed_coupon`, `percent_coupon`, `free_shipping`, `free_product` — each claim issues a real single-use WooCommerce coupon. |
-| `status` | VARCHAR(10) | not null, `active` | `active`, `paused`, `draft`. |
-| `sort_order` | INT | `0` | Display order in launcher and catalog. |
-| `cost_points` | BIGINT | null | Fixed cost for catalog items. Null for `flexible_discount` (the customer chooses). |
-| `config` | LONGTEXT (JSON) | not null | `flexible_discount`: `points_per_currency_unit` (100 = 1.00), `min_points`, `max_points_per_order`, `max_percent_of_subtotal`, `increment`, `show_on[]` (`cart`, `checkout`), `refund_policy` (`proportional` \| `full` \| `none`). `fixed_coupon`: `amount`, `min_order`, `coupon_expiry_days`, `exclude_sale_items`. `percent_coupon`: `percent`, `max_discount`. `free_product`: `product_id`, `variation_id`, `qty`. |
-| `conditions` | LONGTEXT (JSON) | not null, `[]` | Pro availability: `tier_ids[]`, `roles[]`, `once_per_customer`. |
-| `starts_at` / `ends_at` | DATETIME | null | Availability window, same semantics as campaigns. |
-| `is_builtin` | TINYINT(1) | `0` | `1` for row #1; cannot be deleted. |
-| `created_at` / `updated_at` | DATETIME | not null | |
+| `slug` | VARCHAR(64) | unique | Stable machine key. Built-in is `cart-discount`. Same rationale as campaigns: code, filters and import/export address rewards by slug because ids differ between sites. |
+| `type` | VARCHAR(32) | not null | What redeeming this reward does: `flexible_discount` (1.0) — a slider; the customer picks the amount within limits. Pro: `fixed_coupon`, `percent_coupon`, `free_shipping`, `free_product` — fixed-cost catalog items. `Enums\RewardType`: `all()` is what this build offers, `all_known()` is the full stored vocabulary — same asymmetry as `CampaignTrigger`, for the same downgrade-safety reason. |
+| `status` | VARCHAR(20) | not null, `active` | Merchant intent only: `active`, `paused`, `draft`, `archived`. Same rule as campaigns — never `scheduled` or `ended` stored; those are derived at read time by `Enums\Status::resolve_display()`. |
+| `sort_order` | INT | not null, `0` | Display order in launcher and catalog. |
+| `cost_points` | BIGINT UNSIGNED | null | Fixed cost for a catalog item. **Coupled to `type`, enforced in PHP**: null for `flexible_discount` — the customer picks the amount, so a fixed cost would be meaningless — and required, `>= 1`, for every other type. The database cannot express a rule that depends on another column's value, so `Reward::cost_points_is_valid()` checks both directions before the row is written; a `fixed_coupon` that slipped through with a null cost would be a free redemption. |
+| `config` | LONGTEXT (JSON) | not null, no SQL default (TEXT columns cannot carry one — PHP writes `{}`) | The numbers, keyed by `type`. Validated on save against a per-type map (`Reward::config_schema()` for `flexible_discount`, the 1.0 type, typed; the four Pro types via the `yayloyalty_reward_config_whitelist` seam — key names only, untyped, mirroring how campaigns treat their own Pro-only triggers). Unknown keys and wrong types are rejected before the row is written. Shapes below. |
+| `conditions` | LONGTEXT (JSON) | not null, no SQL default (PHP writes `[]`) | Reserved for reward availability rules (`tier_ids[]`, `roles[]`, `once_per_customer`) — **not yet validated or normalised**; that vocabulary and its `Models\RewardConditionSet` counterpart are a later task, same relationship `CampaignConditionSet` has to campaigns. The column is stored from 1.0 so that task is a data migration, not a schema change. |
+| `starts_at` | DATETIME | null | Live from this instant (inclusive). Null = no start bound. |
+| `ends_at` | DATETIME | null | Live until this instant (exclusive), so back-to-back availability windows never overlap. Null = no end bound. |
+| `is_builtin` | TINYINT(1) | `0` | `1` for the seeded cart-discount row: cannot be deleted, cannot be archived; the Free UI binds to it. |
+| `created_by` | BIGINT UNSIGNED | null | Admin who created it (audit). |
+| `updated_by` | BIGINT UNSIGNED | null | Admin who last saved it (audit). |
+| `created_at` | DATETIME | not null | UTC. |
+| `updated_at` | DATETIME | not null | UTC. Bumped on every save. |
+| `archived_at` | DATETIME | null | UTC. Set by `Reward::set_status()` when `status` becomes `archived`, cleared when it leaves. |
 
-Indexes: PK; UNIQUE `slug`; `(status, sort_order)`.
+All `DATETIME` columns are UTC (see Conventions). `starts_at` is inclusive, `ends_at` is **exclusive** — same convention as campaigns.
+
+Indexes: PK; `UNIQUE KEY uk_slug (slug)`; `KEY idx_catalog (status, sort_order)` for the launcher/catalog listing; `KEY idx_archived (status, archived_at)` for the archived-rewards view.
+
+Liveness: `status = 'active' AND (starts_at IS NULL OR starts_at <= now) AND (ends_at IS NULL OR ends_at > now)` — `Enums\Status::is_live_at()`, the same implementation campaigns use.
+
+No caching: `RewardRepository` queries the table directly, same reasoning as `CampaignRepository` — nothing yet knows the right cache key or invalidation, and the table is small. That belongs to whichever task builds the redemption engine.
+
+### config shapes
+
+`config` keys per `type`. `flexible_discount` is typed and validated in `Reward::config_schema()`; the Pro types are key lists contributed by `YayLoyaltyPro::add_reward_config_keys()` (kept whitelisted in Free so a downgrade does not lose them).
+
+| Type | Keys |
+|---|---|
+| `flexible_discount` | `currency` (ISO 4217, **required**), `points_per_currency_unit` (number ≥ 0), `min_points` (int ≥ 0), `max_points_per_order` (number ≥ 0, nullable — null means uncapped), `max_percent_of_subtotal` (number ≥ 0, nullable), `increment` (int ≥ 1), `show_on[]` (`cart` \| `checkout`), `refund_policy` (`proportional` \| `full` \| `none`), `max_total` (number ≥ 0, nullable — a global redemption cap; see below) |
+| `fixed_coupon` | `currency`, `amount`, `min_order`, `coupon_expiry_days`, `exclude_sale_items`, `max_total` |
+| `percent_coupon` | `percent`, `max_discount`, `currency`, `min_order`, `coupon_expiry_days`, `exclude_sale_items`, `max_total` |
+| `free_shipping` | `min_order`, `currency`, `coupon_expiry_days`, `max_total` |
+| `free_product` | `product_id`, `variation_id`, `qty`, `coupon_expiry_days`, `max_total` |
+
+`currency` is required wherever a type's config carries a money value — without it, an amount or a points-to-currency rate is ambiguous on any store whose base currency changes or that sells in more than one. `flexible_discount` is the only type this build type-checks that requirement for; Pro validates its own.
+
+`max_total` is a global redemption cap, present on every type, null for unlimited. It exists so an uncapped discount cannot be drained further than the merchant intended once something enforces it — stored from 1.0 even though nothing does yet.
+
+Built-in seed config (`cart-discount`, `flexible_discount`): store currency, 100 points per currency unit, 100-point minimum, no per-order or per-cent caps, a 100-point increment, shown on both cart and checkout, proportional refund policy, no global cap.
 
 ## `yayloyalty_customers` — one row per member (1.0)
 

@@ -225,6 +225,8 @@ That is why the Lite build is a directory deletion rather than surgery on shared
 | Its REST endpoints | `yayloyalty_rest_controllers` |
 | Extra campaign triggers | `yayloyalty_campaign_triggers` |
 | Extra campaign config keys | `yayloyalty_campaign_config_whitelist` |
+| Extra reward types | `yayloyalty_reward_types` |
+| Extra reward config keys | `yayloyalty_reward_config_whitelist` |
 | To extend a resource's schema | `yayloyalty_rest_item_schema` |
 | To evaluate campaign conditions | `yayloyalty_campaign_conditions_evaluator` |
 
@@ -244,8 +246,8 @@ A marker is a symptom of a missing seam. A mismatched pair silently deletes the 
 
 A site that downgrades from Pro to Lite must not have its data treated as corrupt. Concretely:
 
-- `CampaignTrigger::all()` is filtered (what this build can *fire*); `all_known()` is **not** (what the schema *recognises*). The asymmetry is the mechanism.
-- `Campaign::config_whitelist()` keeps Pro keys such as `max_points_per_order` in Lite. Do not "tidy" them out — that would destroy a merchant's configuration on a temporary downgrade.
+- `CampaignTrigger::all()` is filtered (what this build can *fire*); `all_known()` is **not** (what the schema *recognises*). The asymmetry is the mechanism. `RewardType` follows the same shape: `all()` (offerable) vs `all_known()` (recognised).
+- `Campaign::config_whitelist()` keeps Pro keys such as `max_points_per_order` in Lite. Do not "tidy" them out — that would destroy a merchant's configuration on a temporary downgrade. `Reward::config_whitelist()` is the same mechanism for reward types.
 - `Campaign::validate_config()` **preserves config wholesale for a trigger this build has no whitelist for**, rather than filtering it against an empty list. A whitelist covers the keys of triggers this build knows; a Pro-only trigger is unknown to Lite entirely, and unknown must never mean delete. Without this, the first re-save of a downgraded `birthday` campaign would empty it, and a later upgrade would restore nothing.
 - Lite's `conditions_match()` returns **true** when it cannot evaluate. Failing open keeps a downgraded site awarding slightly too broadly; failing closed would silently disable every conditional campaign.
 
