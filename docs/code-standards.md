@@ -263,14 +263,14 @@ Confusing them either ships pro features in Lite or removes Lite's ability to se
 **`ProGate` alone does not keep Pro code out of the Lite bundle.** JSX evaluates its children eagerly, so `<ProGate><ProThing /></ProGate>` references `ProThing` at runtime and drags all of `@/pro` — sentinel included — into Lite. Guard the child with the constant as well:
 
 ```tsx
-<ProGate>{__IS_PRO__ && thing ? <ProThing thing={thing} /> : null}</ProGate>
+<ProGate>{IS_PRO_BUILD && thing ? <ProThing thing={thing} /> : null}</ProGate>
 ```
 
-`ProGate` decides what a user sees; `__IS_PRO__` decides what ships. Both are needed, and `scripts/validate-build.php` fails the release when only the first is present.
+`ProGate` decides what a user sees; `IS_PRO_BUILD` decides what ships. Both are needed, and `scripts/validate-build.php` fails the release when only the first is present.
 
 ### Gating is build-time only
 
-`__IS_PRO__`, a Vite `define`, is the single gate. **No pro flag is localized to the SPA.** One zip carries both the PHP and the JS bundle, so build type is never ambiguous and there is nothing for a runtime flag to disambiguate. Licence state is deliberately not an input: an expired licence stops updates, not features.
+`IS_PRO_BUILD`, a Vite `define`, is the single gate. **No pro flag is localized to the SPA.** One zip carries both the PHP and the JS bundle, so build type is never ambiguous and there is nothing for a runtime flag to disambiguate. Licence state is deliberately not an input: an expired licence stops updates, not features.
 
 `YayLoyalty::is_pro()` exists for server-side decisions only and is never sent to the browser.
 

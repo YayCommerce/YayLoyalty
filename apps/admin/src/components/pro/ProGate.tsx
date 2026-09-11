@@ -1,5 +1,6 @@
 import { ReactNode } from 'react';
 
+import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { UpgradeToProBadge, UpgradeToProOverlay } from '@/components/pro/upgrade-to-pro';
 
 /**
@@ -10,10 +11,8 @@ import { UpgradeToProBadge, UpgradeToProOverlay } from '@/components/pro/upgrade
  * DELETES. Lite needs this to sell the upgrade; without it there would be no
  * upsell surface at all.
  *
- * Gating is the `__IS_PRO__` build constant, substituted inline by Vite, so
- * each branch collapses to a literal and the unused one is dropped from the
- * bundle. That cuts both ways: the Lite bundle loses the pro children, and
- * the Pro bundle loses the overlay.
+ * Gating is `IS_PRO_BUILD`, the build-plan constant (see
+ * `@/lib/is-pro-build`) — not a runtime check.
  *
  * Two modes:
  *
@@ -21,7 +20,7 @@ import { UpgradeToProBadge, UpgradeToProOverlay } from '@/components/pro/upgrade
  *   <ProGate>{children}</>    overlay, for whole panels
  *
  * Note it takes no `isPro` prop and reads nothing from localized data —
- * there is deliberately no runtime pro flag. See globals.d.ts.
+ * there is deliberately no runtime pro flag.
  */
 export function ProGate({
   children,
@@ -33,8 +32,7 @@ export function ProGate({
   inline?: boolean;
   className?: string;
 }) {
-  if (__IS_PRO__) {
-    // In a Pro build this is the only branch that survives the build.
+  if (IS_PRO_BUILD) {
     return <>{children ?? null}</>;
   }
 
@@ -52,7 +50,7 @@ export function ProGate({
 /**
  * True when this bundle was built as Pro.
  *
- * A named export purely so call sites read as intent rather than as a bare
- * global. It is the same build constant, not a runtime check — do not add one.
+ * A function wrapper around `IS_PRO_BUILD` purely so call sites read as
+ * intent — it is the same build constant, not a runtime check, do not add one.
  */
-export const isProBuild = (): boolean => __IS_PRO__;
+export const isProBuild = (): boolean => IS_PRO_BUILD;

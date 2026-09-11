@@ -117,7 +117,7 @@ flowchart LR
 
 **Tech stack:**
 - React 18 with TSX
-- **Vite 6** — bundler; `BUILD_TYPE=lite` → `__IS_PRO__` define = `false`
+- **Vite 6** — bundler; `BUILD_TYPE=lite` → `IS_PRO_BUILD` define = `false`
 - **TanStack Query** — caching, sync, refetch
 - **Zod** — runtime schema validation, type inference
 - **Ky** — lightweight HTTP client
@@ -172,13 +172,13 @@ flowchart TD
 
 | Dir | Lite | Pro | Rule |
 |---|---|---|---|
-| `src/pro/` | **deleted** | shipped | Actual Pro features; tree-shake via `__IS_PRO__ &&` |
+| `src/pro/` | **deleted** | shipped | Actual Pro features; tree-shake via `IS_PRO_BUILD &&` |
 | `src/components/pro/` | **kept** | kept | Upsell UI (ProGate, badge); render always |
 
 **Build process:**
 
-1. `pnpm build --mode lite` → `BUILD_TYPE=lite` → Vite sets `__IS_PRO__ = false`
-2. Dead code elimination: `if (__IS_PRO__) { importPro() }` collapses to `if (false)`
+1. `pnpm build --mode lite` → `BUILD_TYPE=lite` → Vite sets `IS_PRO_BUILD = false`
+2. Dead code elimination: `if (IS_PRO_BUILD) { importPro() }` collapses to `if (false)`
 3. Rollup tree-shakes `@/pro` subtree
 4. Result: Lite bundle has no Pro code, no sentinel
 

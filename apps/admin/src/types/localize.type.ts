@@ -17,8 +17,8 @@ export type Meta = {
 
     version: string;
     /*
-     * No pro flag here by design. The SPA is gated at build time by the
-     * __IS_PRO__ Vite define, not by anything PHP sends.
+     * No pro flag here by design. The SPA is gated at build time by
+     * IS_PRO_BUILD (@/lib/is-pro-build), not by anything PHP sends.
      */
     reviewed: boolean;
   };

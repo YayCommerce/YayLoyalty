@@ -49,12 +49,12 @@ by replacing its plugin directory in place.
 | | Pro | Lite |
 |---|---|---|
 | `includes/Pro/` | shipped | deleted from the staged copy |
-| `__IS_PRO__` in the bundle | `true` | `false` |
+| `IS_PRO_BUILD` in the bundle | `true` | `false` |
 | Everything else | identical | identical |
 
 SPA sources never ship — only `assets/`, never `apps/` — so `src/pro/` needs no
 deletion step. Its absence from the Lite bundle rests entirely on
-`BUILD_TYPE=lite` reaching Vite's `__IS_PRO__` define, which is why the
+`BUILD_TYPE=lite` reaching Vite's `IS_PRO_BUILD` define, which is why the
 sentinel check below exists.
 
 The Composer autoload dump runs before the strip, and that is safe: Composer's
@@ -143,7 +143,7 @@ Pass `--require-boot` to treat a skipped check as a failure. Use it in CI, where
 The failing row names the problem. The two worth recognising on sight:
 
 **Sentinel found in the Lite bundle.** Something deep-imports from `@/pro/`
-outside the `__IS_PRO__` gate, so Rollup kept the subtree. Everything Pro must
+outside the `IS_PRO_BUILD` gate, so Rollup kept the subtree. Everything Pro must
 come through the `@/pro` barrel, imported once from `main.tsx` behind the
 constant. A dynamic `import()` is not a fix — it emits a side chunk, which the
 "single entry chunk" check exists to catch.
@@ -156,5 +156,5 @@ instead; the seven attach points are documented in `code-standards.md` §13.
 component conditionally.** Wrapping a Pro component in `<ProGate>` is not enough
 on its own. JSX evaluates children eagerly, so `<ProGate><ProThing /></ProGate>`
 references `ProThing` at runtime and pulls all of `@/pro` into Lite. The call
-site needs `__IS_PRO__ && …` around the Pro component as well; `ProGate` decides
+site needs `IS_PRO_BUILD && …` around the Pro component as well; `ProGate` decides
 what a user *sees*, the constant decides what *ships*.

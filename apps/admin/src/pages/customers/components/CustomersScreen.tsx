@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { __ } from '@wordpress/i18n';
 
+import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { Card, CardContent } from '@/components/ui/card';
 import { DEFAULT_ROW_FILTERS, type RowFilters } from '../customers-page.filter-rows';
 import { countActiveFilters, getFilterDropSuggestions, patchForSuggestion } from '../customers-page.filter-suggestions';
@@ -8,13 +9,11 @@ import type { MockCustomer } from '../customers-page.mock-data';
 import { computeHeaderSelection, computeSelectAllCount } from '../customers-page.selection';
 import { defaultSortDirection, sortRows, type SortDirection, type SortKey } from '../customers-page.sort-rows';
 import { CustomersBulkActionBar } from './CustomersBulkActionBar';
-import { CustomersExportButton } from './CustomersExportButton';
+import { CustomersFilterBar } from './CustomersFilterBar';
 import { CustomersNoMatchState } from './CustomersNoMatchState';
 import { CustomersPagination } from './CustomersPagination';
 import { CustomersRebuildBanner } from './CustomersRebuildBanner';
-import { CustomersSavedSegmentRow } from './CustomersSavedSegmentRow';
 import { CustomersTable } from './CustomersTable';
-import { CustomersToolbar } from './CustomersToolbar';
 
 const PER_PAGE = 10;
 
@@ -28,7 +27,7 @@ const PER_PAGE = 10;
  * row set resets both page and selection). `CustomersPage.tsx` owns only the
  * DATA concerns: the query and the filters that shape `rows`.
  *
- * The bracketed Pro pieces are gated directly by `__IS_PRO__` — no demo
+ * The bracketed Pro pieces are gated directly by `IS_PRO_BUILD` — no demo
  * switcher, no upgrade overlay for a feature that simply adds columns rather
  * than walling off the page (same split `CampaignsPage.tsx` uses, and the
  * `useIsPremium`-style check yay-reviews' `PremiumGate` is built on).
@@ -63,11 +62,11 @@ export function CustomersScreen({
   // "Simulate rebuild": every control goes inert and no row can be selected
   // (see CustomerTableRow.tsx / CustomersRebuildBanner.tsx) while it's on.
   const controlsDisabled = isStoreEmpty || isRebuilding;
-  const showSelection = __IS_PRO__ && !isRebuilding;
+  const showSelection = IS_PRO_BUILD && !isRebuilding;
 
   // Real counts, not canned copy — see customers-page.filter-suggestions.ts.
   const suggestions = useMemo(
-    () => (isNoMatch ? getFilterDropSuggestions(allRows, filters, __IS_PRO__) : []),
+    () => (isNoMatch ? getFilterDropSuggestions(allRows, filters, IS_PRO_BUILD) : []),
     [isNoMatch, allRows, filters],
   );
 
@@ -141,12 +140,12 @@ export function CustomersScreen({
       <CardContent className="flex flex-col gap-4">
         {isRebuilding && <CustomersRebuildBanner />}
 
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          {__IS_PRO__ ? <CustomersSavedSegmentRow disabled={controlsDisabled} /> : <span />}
-          <CustomersExportButton disabled={controlsDisabled || isLoading || rows.length === 0} />
-        </div>
-
-        <CustomersToolbar filters={filters} onFiltersChange={onFiltersChange} disabled={controlsDisabled} />
+        <CustomersFilterBar
+          disabled={controlsDisabled}
+          exportDisabled={controlsDisabled || isLoading || rows.length === 0}
+          filters={filters}
+          onFiltersChange={onFiltersChange}
+        />
 
         {showSelection && selected.size > 0 && (
           <CustomersBulkActionBar
@@ -164,14 +163,14 @@ export function CustomersScreen({
           noMatchContent={
             isNoMatch ? (
               <CustomersNoMatchState
-                activeCount={countActiveFilters(filters, __IS_PRO__)}
+                activeCount={countActiveFilters(filters, IS_PRO_BUILD)}
                 suggestions={suggestions}
                 onUseSuggestion={(suggestion) => onFiltersChange(patchForSuggestion(suggestion, filters))}
                 onClearAll={() => onFiltersChange(DEFAULT_ROW_FILTERS)}
               />
             ) : undefined
           }
-          showProColumns={__IS_PRO__}
+          showProColumns={IS_PRO_BUILD}
           showSelection={showSelection}
           staleBalances={isRebuilding}
           headerSelection={headerSelection}

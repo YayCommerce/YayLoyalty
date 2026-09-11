@@ -131,7 +131,7 @@ Write operations wrapped in `Transaction::run()`, return correlation ID on 500.
 
 | Path | Contents |
 |---|---|
-| `src/main.tsx` | Entry point; imports Pro barrel if `__IS_PRO__` |
+| `src/main.tsx` | Entry point; imports Pro barrel if `IS_PRO_BUILD` |
 | `src/pages/` | Route pages; `campaigns/` and `points/` have content; others are placeholders |
 | `src/pro/` | **Deleted in Lite build** — Pro feature components (`ConditionsPreview`, sentinel exports) |
 | `src/components/pro/` | **Kept in Lite** — `ProGate`, upsell UI, badge components |
@@ -139,9 +139,9 @@ Write operations wrapped in `Transaction::run()`, return correlation ID on 500.
 | `src/types/` | TypeScript type definitions |
 | `src/hooks/` | Custom React hooks |
 
-**Build-time gate:** `__IS_PRO__` Vite define. Literal substitution → dead code elimination. No runtime pro flag ever sent to browser.
+**Build-time gate:** `IS_PRO_BUILD` Vite define. Literal substitution → dead code elimination. No runtime pro flag ever sent to browser.
 
-**Component gating:** `<ProGate>` gates rendering; `__IS_PRO__ &&` gates inclusion. Both needed.
+**Component gating:** `<ProGate>` gates rendering; `IS_PRO_BUILD &&` gates inclusion. Both needed.
 
 ---
 
@@ -193,7 +193,7 @@ BaseRestController::exec_write( callback, request )
 
 | Step | Command | What |
 |---|---|---|
-| 1. Compile SPA | `pnpm build [--mode pro\|lite]` | Vite bundles to `assets/dist/admin/js/main.js` with `__IS_PRO__` define |
+| 1. Compile SPA | `pnpm build [--mode pro\|lite]` | Vite bundles to `assets/dist/admin/js/main.js` with `IS_PRO_BUILD` define |
 | 2. Stage | Internal to `run.sh` | Copy tree, strip `includes/Pro/` for Lite, run `composer install --no-dev` |
 | 3. Package | `zip -r yayloyalty-{version}.zip yayloyalty/` | Create distributable |
 | 4. Validate | `scripts/validate-build.php` zip build | Check sentinel, Pro/Lite consistency, PHP lint, headless boot |

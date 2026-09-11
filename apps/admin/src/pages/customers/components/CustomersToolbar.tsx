@@ -1,5 +1,7 @@
+import { ReactNode } from 'react';
 import { __ } from '@wordpress/i18n';
 
+import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
@@ -14,12 +16,15 @@ import {
 
 /**
  * Search + filter row. Every filter is real — see `customers-page.filter-rows.ts`
- * — over the rows already loaded. Export CSV lives one row up now (see
- * CustomersScreen.tsx / CustomersExportButton.tsx) — with 4 controls, this
- * row was the one most likely to wrap on a narrower admin viewport, and a
- * `ml-auto` button wrapping onto its own line read as a layout bug.
+ * — over the rows already loaded.
  *
- * Free/Pro split is `__IS_PRO__`, directly: the Tier filter simply isn't
+ * `exportSlot` is Free-only (see CustomersScreen.tsx): 3 filters + Export fit
+ * on one row without wrapping, so Free renders Export here. Pro's 4th filter
+ * (Tier) means Export has to live in its own row instead, alongside the
+ * saved-segment picker — a `ml-auto` button wrapping onto its own line there
+ * read as a layout bug.
+ *
+ * Free/Pro split is `IS_PRO_BUILD`, directly: the Tier filter simply isn't
  * rendered in a Lite build, matching the Customer list itself (no Tier
  * column, no upgrade badge needed for a control that isn't there).
  */
@@ -29,10 +34,12 @@ export function CustomersToolbar({
   /** True store (no members at all) — every control goes inert but stays in
    *  place, so the toolbar doesn't pop in later and shift the table down. */
   disabled,
+  exportSlot,
 }: {
   filters: RowFilters;
   onFiltersChange: (patch: Partial<RowFilters>) => void;
   disabled: boolean;
+  exportSlot?: ReactNode;
 }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -57,7 +64,7 @@ export function CustomersToolbar({
         options={EXPIRING_SOON_OPTIONS}
         disabled={disabled}
       />
-      {__IS_PRO__ && (
+      {IS_PRO_BUILD && (
         <FilterSelect
           placeholder={__('Tier', 'yayloyalty')}
           value={filters.tier}
@@ -66,6 +73,7 @@ export function CustomersToolbar({
           disabled={disabled}
         />
       )}
+      {exportSlot && <div className="ml-auto">{exportSlot}</div>}
     </div>
   );
 }

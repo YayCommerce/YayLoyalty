@@ -18,7 +18,7 @@ import { YayLoyaltyToolTip } from '@/components/ui/custom/YayLoyaltyToolTip';
  * lock keeps the upsell badge; a cap denial greys the control with "You do
  * not have permission". PRO LOCK WINS — telling a shop manager they lack
  * permission for a feature nobody in the store has yet is a support ticket.
- * Evaluate `__IS_PRO__` / <ProGate> first, `can()` second.
+ * Evaluate `IS_PRO_BUILD` / <ProGate> first, `can()` second.
  */
 
 // Partial: a broken localize must degrade to "no capabilities", not a crash.

@@ -5,8 +5,8 @@ import { sprintf, __ } from '@wordpress/i18n';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import PageLayout from '@/components/layout/PageLayout';
+import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { CustomersScreen } from './components/CustomersScreen';
-import { CustomersUpsellFooter } from './components/CustomersUpsellFooter';
 import { DEFAULT_ROW_FILTERS, filterRows, type RowFilters } from './customers-page.filter-rows';
 import { useCustomersDemoQuery } from './customers-page.queries';
 
@@ -21,7 +21,7 @@ import { useCustomersDemoQuery } from './customers-page.queries';
  * CustomersRebuildBanner.tsx). Sort, pagination and row selection are all
  * VIEW-only state and live in `CustomersScreen.tsx` instead.
  *
- * FREE/PRO SPLIT IS `__IS_PRO__`, DIRECTLY — no demo switcher, no upgrade
+ * FREE/PRO SPLIT IS `IS_PRO_BUILD`, DIRECTLY — no demo switcher, no upgrade
  * overlay. Free gets a fully working list (search, sort, filter, export,
  * pagination); Pro adds the Tier/Referrals columns, row selection and the
  * bulk action bar on top of the same list — see `CustomersScreen.tsx`.
@@ -55,7 +55,7 @@ export default function CustomersPage() {
         )
       }
       actions={
-        __IS_PRO__ && (
+        IS_PRO_BUILD && (
           // Demo-only: there is no real background job to reflect, so this is
           // a plain toggle — not a "Tools" trigger. See CustomersRebuildBanner.tsx.
           <Button variant="outline" size="sm" onClick={() => setIsRebuilding((current) => !current)}>
@@ -77,8 +77,6 @@ export default function CustomersPage() {
         onFiltersChange={updateFilters}
         isRebuilding={isRebuilding}
       />
-
-      {!__IS_PRO__ && <CustomersUpsellFooter />}
     </PageLayout>
   );
 }

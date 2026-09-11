@@ -245,7 +245,7 @@ if ( null !== $bundle ) {
         record(
             'Lite: Pro bundle sentinel absent (tree-shaking worked)',
             0 === $sentinel_count,
-            0 === $sentinel_count ? '' : "found $sentinel_count occurrence(s) — a deep import from @/pro/ defeats the __IS_PRO__ gate"
+            0 === $sentinel_count ? '' : "found $sentinel_count occurrence(s) — a deep import from @/pro/ defeats the IS_PRO_BUILD gate"
         );
     } else {
         // Without this the Lite assertion above would pass forever even if
@@ -260,14 +260,14 @@ if ( null !== $bundle ) {
     // Lite only. components/pro/ is KEPT in the Lite source tree — do not
     // confuse it with src/pro/, which is dropped — but its output is the
     // upgrade prompt, and a Pro build has nothing to upsell. ProGate's
-    // overlay branch is dead code under __IS_PRO__ and is correctly shaken
+    // overlay branch is dead code under IS_PRO_BUILD and is correctly shaken
     // out of the Pro bundle, so asserting this in both directions would
     // fail a healthy Pro package.
     //
     // Lite only. components/pro/ is KEPT in the Lite source tree — do not
     // confuse it with src/pro/, which is dropped — and its output is the
     // upgrade prompt. A Pro build has nothing to upsell: ProGate's overlay
-    // branch is dead code under __IS_PRO__ and is correctly shaken out, so
+    // branch is dead code under IS_PRO_BUILD and is correctly shaken out, so
     // asserting this in both directions would fail a healthy Pro package.
     if ( $is_lite ) {
         record(

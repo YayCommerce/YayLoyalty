@@ -4,7 +4,8 @@
 # Usage: ./scripts/run.sh [command]
 #
 # Commands:
-#   dev                     - Update admin shell + start Vite dev server (HMR on :3030)
+#   dev [pro|lite]           - Update admin shell + start Vite dev server (HMR on :3030)
+#                               'free'/'premium' (yay-reviews' spelling) are accepted as aliases
 #   build [pro|lite]        - Build admin dashboard for production
 #   release [pro|lite] [ver]- Create release ZIP package (prompts for version)
 #   bump <version>          - Bump version number in plugin files
@@ -137,6 +138,18 @@ validate_build_type() {
     esac
 }
 
+# Accept yay-reviews' free/premium spelling as aliases for lite/pro, so
+# `./scripts/run.sh dev free` works the same way across both plugins'
+# scripts without introducing a second internal vocabulary — YayLoyalty's own
+# code, docs and BUILD_TYPE env var stay pro/lite throughout.
+resolve_edition_alias() {
+    case "$1" in
+        free)    echo "lite" ;;
+        premium) echo "pro" ;;
+        *)       echo "$1" ;;
+    esac
+}
+
 # Plugin release version: X.Y.Z, X.Y.Z.W or with a -tag suffix
 validate_version() {
     [[ "$1" =~ ^[0-9]+(\.[0-9]+){2,3}(-[a-zA-Z0-9.]+)?$ ]]
@@ -189,18 +202,30 @@ prompt_release_version() {
 # ─── Commands ───────────────────────────────────────────────────────────
 
 cmd_dev() {
+    local build_type
+    build_type=$(resolve_edition_alias "${1:-pro}")
+    validate_build_type "$build_type"
+
     update_shell
     resolve_pnpm
     install_admin_deps
 
     print_info "Make sure YAYLOYALTY_IS_DEVELOPMENT is true in wp-config.php"
-    print_step "Starting Vite dev server (http://localhost:3030)..."
+    print_step "Starting Vite dev server ($build_type: http://localhost:3030)..."
     cd "$ADMIN_DIR"
-    $PNPM dev
+    # vite.config.ts turns this into import.meta.env.VITE_IS_PRO for the
+    # client — see IS_PRO_BUILD in src/lib/is-pro-build.ts. Unlike the build
+    # command, this actually matters for `dev`: the old __IS_PRO__ Vite
+    # `define` was verified NOT to substitute reliably in the dev server's
+    # per-file transform, so a Lite dev server used to still behave like Pro
+    # in the browser. import.meta.env is Vite's own env pipeline and does not
+    # have that problem.
+    BUILD_TYPE="$build_type" $PNPM dev
 }
 
 cmd_build() {
-    local build_type=${1:-pro}
+    local build_type
+    build_type=$(resolve_edition_alias "${1:-pro}")
     validate_build_type "$build_type"
 
     resolve_pnpm
@@ -209,10 +234,10 @@ cmd_build() {
     # package.json build script runs `tsc --noEmit` before vite build.
     #
     # BUILD_TYPE is the whole SPA side of the split. vite.config.ts turns it
-    # into the __IS_PRO__ define, which is substituted inline so every
-    # `if (__IS_PRO__)` collapses to a literal and the dead branch — along
-    # with everything only it reaches — is dropped. Nothing else distinguishes
-    # the two bundles.
+    # into import.meta.env.VITE_IS_PRO (see src/lib/is-pro-build.ts), which
+    # Rollup inlines as a literal so every `if (IS_PRO_BUILD)` collapses and
+    # the dead branch — along with everything only it reaches — is dropped.
+    # Nothing else distinguishes the two bundles.
     print_step "Building admin dashboard ($build_type: typecheck + build)..."
     cd "$ADMIN_DIR"
     BUILD_TYPE="$build_type" $PNPM build
@@ -226,8 +251,8 @@ cmd_release() {
     local arg
     for arg in "$@"; do
         case $arg in
-            pro|lite)    build_type=$arg ;;
-            --no-prompt) no_prompt=true ;;
+            pro|lite|free|premium) build_type=$(resolve_edition_alias "$arg") ;;
+            --no-prompt)           no_prompt=true ;;
             *) [ -z "$requested_version" ] && requested_version="$arg" ;;
         esac
     done
@@ -452,7 +477,7 @@ cmd_help() {
     echo "Usage: ./scripts/run.sh [command]"
     echo ""
     echo "Commands:"
-    echo "  dev                          Update admin shell + start Vite dev server (:3030)"
+    echo "  dev [pro|lite]               Start Vite dev server with HMR (:3030) (default: pro)"
     echo "  build [pro|lite]             Build admin dashboard (default: pro)"
     echo "  release [pro|lite] [version] Create release ZIP in release/ (default: pro)"
     echo "  bump <version>               Bump version in plugin files"
@@ -460,8 +485,13 @@ cmd_help() {
     echo "  clean                        Remove build artifacts"
     echo "  help                         Show this help message"
     echo ""
+    echo "'dev'/'build'/'release' also accept 'free' and 'premium' as aliases"
+    echo "for 'lite' and 'pro' (yay-reviews' spelling) — same effect either way."
+    echo ""
     echo "Examples:"
-    echo "  ./scripts/run.sh dev                     # Dev server with HMR"
+    echo "  ./scripts/run.sh dev                     # Dev server, Pro"
+    echo "  ./scripts/run.sh dev lite                # Dev server, Lite"
+    echo "  ./scripts/run.sh dev free                # Same as 'dev lite'"
     echo "  ./scripts/run.sh release                 # Pro package (prompts version)"
     echo "  ./scripts/run.sh release 1.0.1           # Bump to 1.0.1 and package Pro"
     echo "  ./scripts/run.sh release lite --no-prompt # Lite package at the current version"
