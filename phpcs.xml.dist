@@ -7,8 +7,11 @@
     <file>yayloyalty.php</file>
     <file>YayLoyaltyPluginAdapter.php</file>
     <file>index.php</file>
+    <file>tests</file>
 
     <!-- Never scan: third-party code, generated output, or the JS app. -->
+    <!-- Shims WordPress globals for the unit suite; global functions are the point. -->
+    <exclude-pattern>*/tests/bootstrap.php</exclude-pattern>
     <exclude-pattern>*/vendor/*</exclude-pattern>
     <exclude-pattern>*/vendor-prefixed/*</exclude-pattern>
     <exclude-pattern>*/node_modules/*</exclude-pattern>

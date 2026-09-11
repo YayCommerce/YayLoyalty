@@ -280,27 +280,66 @@ class Campaign extends AbstractModel {
     public static function config_schema(): array {
         return [
             CampaignTrigger::PURCHASE => [
-                'points_per_unit'       => [ 'type' => 'number', 'min' => 0 ],
-                'base'                  => [ 'type' => 'enum', 'values' => [ 'after_discounts', 'before_discounts' ] ],
+                'points_per_unit'       => [
+                    'type' => 'number',
+                    'min'  => 0,
+                ],
+                // multiplier: points_per_unit of the default campaign × multiplier.
+                'mode'                  => [
+                    'type'   => 'enum',
+                    'values' => [ 'rate', 'multiplier' ],
+                ],
+                'multiplier'            => [
+                    'type' => 'number',
+                    'min'  => 0,
+                ],
+                'base'                  => [
+                    'type'   => 'enum',
+                    'values' => [ 'after_discounts', 'before_discounts' ],
+                ],
                 'include_shipping'      => [ 'type' => 'bool' ],
                 'include_tax'           => [ 'type' => 'bool' ],
-                'rounding'              => [ 'type' => 'enum', 'values' => [ 'down', 'nearest', 'up' ] ],
-                'min_subtotal'          => [ 'type' => 'number', 'min' => 0 ],
+                'rounding'              => [
+                    'type'   => 'enum',
+                    'values' => [ 'down', 'nearest', 'up' ],
+                ],
+                'min_subtotal'          => [
+                    'type' => 'number',
+                    'min'  => 0,
+                ],
                 'exclude_coupon_orders' => [ 'type' => 'bool' ],
                 'excluded_product_ids'  => [ 'type' => 'int_list' ],
                 'excluded_category_ids' => [ 'type' => 'int_list' ],
-                'max_points_per_order'  => [ 'type' => 'int', 'min' => 0 ],
-                'daily_cap'             => [ 'type' => 'int', 'min' => 0 ],
+                'max_points_per_order'  => [
+                    'type' => 'int',
+                    'min'  => 0,
+                ],
+                'daily_cap'             => [
+                    'type' => 'int',
+                    'min'  => 0,
+                ],
             ],
             CampaignTrigger::SIGNUP   => [
-                'points' => [ 'type' => 'int', 'min' => 0 ],
+                'points' => [
+                    'type' => 'int',
+                    'min'  => 0,
+                ],
             ],
             CampaignTrigger::REVIEW   => [
-                'points'             => [ 'type' => 'int', 'min' => 0 ],
+                'points'             => [
+                    'type' => 'int',
+                    'min'  => 0,
+                ],
                 'require_verified'   => [ 'type' => 'bool' ],
                 'one_per_product'    => [ 'type' => 'bool' ],
-                'daily_cap'          => [ 'type' => 'int', 'min' => 0 ],
-                'media_bonus_points' => [ 'type' => 'int', 'min' => 0 ],
+                'daily_cap'          => [
+                    'type' => 'int',
+                    'min'  => 0,
+                ],
+                'media_bonus_points' => [
+                    'type' => 'int',
+                    'min'  => 0,
+                ],
             ],
         ];
     }

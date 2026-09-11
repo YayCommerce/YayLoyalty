@@ -87,6 +87,21 @@ All `namespace YayLoyalty\Controllers` → routes under `yayloyalty/v1/`.
 
 Write operations wrapped in `Transaction::run()`, return correlation ID on 500.
 
+### Points engine (includes/Engine/Points/)
+
+`namespace YayLoyalty\Engine\Points`. Computes what an event earns and which campaign paid; writes nothing. See its `README.md` for the two call sites.
+
+| Class | Role |
+|---|---|
+| `PointsEngine` | `evaluate( $trigger, Context, $at )` → `Result`. Candidates → select → compute → cap. Reads campaigns only; no `$wpdb`, no current user, no `time()`, no capability checks |
+| `Context`, `ContextLineItem` | Immutable inputs. Amounts in order currency plus `base_rate`; `get_real_coupon_codes()` drops our own redeem coupon; `get_extra()` for trigger-specific facts (`verified_purchase`) |
+| `ContextFactory` | `from_order()`, `from_product()`, `from_cart()` — the only class that touches WooCommerce. `yayloyalty_context_base_rate` is the multi-currency seam |
+| `Triggers\Registry` + `TriggerHandler` | `PurchaseHandler` (gates: min_subtotal, exclude_coupon_orders, multiplier needs an active default), `SignupHandler`, `ReviewHandler` (require_verified). `with_lite_handlers()` fires `yayloyalty_register_trigger_handlers` for Pro |
+| `BaseCalculator`, `Rounding`, `CapPolicy` | Earning base (exclusions, before/after discounts, tax, loyalty-discount add-back), order-level rounding, per-order and daily caps |
+| `Result`, `Breakdown` | Outcome + how it was reached. Storefront exposes `get_points()` only |
+
+Filters (public API): `yayloyalty_campaign_candidates`, `yayloyalty_campaign_matches`, `yayloyalty_earning_base_amount`, `yayloyalty_points_for_order`.
+
 ### Database
 
 | File | Role |
@@ -152,7 +167,15 @@ Write operations wrapped in `Transaction::run()`, return correlation ID on 500.
 ```
 WooCommerce order reaches award status
   ↓
-Hook listener on order status change
+Hook listener on order status change (F01-4, not built)
+  ↓
+ContextFactory::from_order( $order, $points_earned_today )   ← the only WooCommerce read
+  ↓
+PointsEngine::evaluate( 'purchase', $ctx, $ctx->get_occurred_at() )   pure: campaigns only
+  ├─ CampaignRepository::live_for_trigger()  cached set, liveness filtered at the ORDER's time
+  ├─ first campaign: conditions_match() AND handler->is_eligible()   (gates fall through, never zero)
+  ├─ PurchaseHandler → BaseCalculator → Rounding → CapPolicy
+  └─ Result: points, campaign, breakdown, reference, source | none( reason )
   ↓
 LedgerService::record()
   ↓

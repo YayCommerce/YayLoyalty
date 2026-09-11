@@ -282,12 +282,19 @@ A stripping build fails silently by nature, so every release is validated agains
 
 `get_item_schema()` is **final**; subclasses override `define_item_schema()`. The filter is applied centrally so no subclass can bypass it, and `is_readonly_property()` checks `ALWAYS_READONLY` first — so `id`, `created_at`, `updated_at`, `is_builtin`, `balance_after` and `actor_id` stay stripped from write args regardless of what any subscriber returns.
 
-## 14. Running the linter
+## 14. Running the linter and tests
 
 ```bash
 composer lint      # phpcs
 composer lint:fix  # phpcbf
+composer test      # phpunit — tests/unit, no WordPress bootstrap
 ```
+
+`tests/bootstrap.php` shims `add_filter` / `apply_filters` / `do_action` so pure code that goes through hooks can be tested in milliseconds. Anything that needs `$wpdb` or WooCommerce is not a unit test; until a wp-phpunit harness exists, exercise it through WP-CLI.
+
+### The points engine is pure
+
+`Engine\Points\*` reads campaigns through `CampaignRepository` and nothing else — no `$wpdb`, no WooCommerce globals, no current user, no `time()`, no capability checks. Everything about the event arrives on the `Context`, built by `ContextFactory` (the one class allowed to touch WooCommerce) or by hand in a test. `$at` is the event's time, never `now()`. Config gates (`min_subtotal`, a paused default under a multiplier) are **eligibility**: the engine falls through to the next campaign rather than earning zero or throwing.
 
 Every exclusion in `phpcs.xml.dist` carries a one-line reason. **An exclusion without a reason is a bug** — it means a sniff was disabled to make the build green rather than because it was wrong.
 

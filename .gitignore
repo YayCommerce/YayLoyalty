@@ -30,3 +30,4 @@ AGENTS.md
 
 # phpcs
 .phpcs.cache
+.phpunit.result.cache

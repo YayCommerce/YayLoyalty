@@ -51,14 +51,14 @@ All referral tables (`referrals`, `referral_visits`) specified in data model; no
 
 | Feature | Spec | Status | Details |
 |---|---|---|---|
-| **Lite triggers** | `purchase`, `signup`, `review` | ⚠️ **OFFERABLE, NOT FIREABLE** | Campaigns can be created for them and config is whitelisted, but no earning engine fires any trigger yet |
+| **Lite triggers** | `purchase`, `signup`, `review` | ⚠️ **COMPUTABLE, NOT FIRED** | `PointsEngine` + handlers score all three; nothing listens to WooCommerce events to call it (F01-4) |
 | **Pro triggers** | `birthday`, `first_order`, `order_count`, `spend_milestone` | ⚠️ **OFFERABLE IN PRO, NOT FIREABLE** | Added to `CampaignTrigger::all()` by `YayLoyaltyPro`; Lite recognises them (`all_known()`) so a downgrade keeps the rows |
 | **Referral trigger** | `referral` | ⚠️ **RECOGNIZED, NOT FIREABLE** | Enum only; referral engine not built |
 | **Social trigger** | `social` | ⚠️ **RECOGNIZED, NOT FIREABLE** | Share-for-points not implemented |
 | **Renewal trigger** | `renewal` | ⚠️ **RECOGNIZED, NOT FIREABLE** | Subscription renewal trigger not implemented |
 | **Conditions (Pro)** | Role, product, category, lifetime spend, order count | ✅ SHIPPED (Pro) | ConditionsEvaluator; ANDed logic; preview endpoint |
-| **Points allocation** | `purchase`: points_per_unit, base, rounding, min_subtotal | ⚠️ **CONFIG ONLY** | Keys whitelisted and stored; **earning engine not built** |
-| **Max points cap** | `max_points_per_order`, `daily_cap` | ⚠️ **STORED, UNENFORCED** | Config keys exist; no logic applies caps |
+| **Points allocation** | `purchase`: points_per_unit, base, rounding, min_subtotal, mode/multiplier | ✅ **SHIPPED (engine)** | `BaseCalculator` + `PurchaseHandler`; 46 unit tests; multiplier campaigns need an active default |
+| **Max points cap** | `max_points_per_order`, `daily_cap` | ✅ **SHIPPED (engine)** | `CapPolicy`; `points_earned_today` is the caller's to supply from the ledger |
 | **Campaign editor** | Create, read, update, delete | ⚠️ **API COMPLETE, UI INCOMPLETE** | REST endpoints working; SPA list is read-only |
 | **Scheduling** | `starts_at`, `ends_at` liveness eval | ✅ SHIPPED | Liveness computed at read; no cron flips status |
 
@@ -127,8 +127,7 @@ Ordered by how much of the product each blocks, not by an assigned priority — 
 
 | Gap | What exists | What does not |
 |---|---|---|
-| **No earning engine** | Campaigns, triggers, config whitelist, `LedgerService::record()` | Nothing listens to WooCommerce events and awards points. No campaign of any trigger fires. |
-| **Point caps unenforced** | `max_points_per_order`, `daily_cap` stored and described in the REST schema | Nothing reads them; there is no award path for them to cap |
+| **No order listener** | `PointsEngine` computes points for `purchase`/`signup`/`review`; `LedgerService::record()` writes | Nothing listens to WooCommerce events, calls the engine and records the result (F01-4). `LedgerService` has no `earn()` entry point yet — only `adjust()` |
 | **No campaign editor** | REST create/update/delete; read-only SPA list | No SPA form to create or edit a campaign |
 | **No redemption** | `LedgerType::REDEEM` and refund types; `lifetime_redeemed` maintained | No rewards table, no checkout integration, no REDEEM writer |
 | **No referral program** | `customers.referral_code` column; `referral` trigger recognised | No code generation, attribution, hold, or payout; `referrals` / `referral_visits` tables not created |
@@ -142,6 +141,44 @@ Ordered by how much of the product each blocks, not by an assigned priority — 
 | **No permission matrix** (Pro) | Seven caps on roles; `Capabilities::payload()` | No Settings → Permissions UI or `POST /settings/permissions`; roles are edited with a role plugin for now |
 | **No `uninstall.php`** | `Capabilities::uninstall()` | Nothing calls it; caps and options persist after delete |
 | **Licence routes share the menu cap** | AdminShell applies `get_capability()` (`view`) to menu, licence REST and `LicenseHandler` | A viewer can reach licence endpoints; needs a second adapter method in the shared shell |
+
+---
+
+## Backbone TODOs
+
+Two backbones landed 2026-09-11: capabilities (`Access\Capabilities`) and the points engine (`Engine\Points`). Both are complete for their tickets; these are the follow-ups each one deliberately left to a later ticket, so nobody re-derives them.
+
+### Points engine (F01-3 done) → what calls it
+
+| # | TODO | Where | Ticket |
+|---|---|---|---|
+| 1 | Order lifecycle listener: award status → `ContextFactory::from_order()` → `PointsEngine::evaluate()` per trigger (`purchase`, then `first_order`…) → write the ledger. `actor_id` null. | new `Engine\OrderListener` (or similar) | F01-4 |
+| 2 | `LedgerService::earn( user_id, points, source, reference_type, reference_id, campaign_id )` — only `adjust()` exists. Idempotent on `uniq_ledger_event`. | `Services/LedgerService.php` | F01-4 |
+| 3 | `points_earned_today( user_id )` ledger read to feed `Context::points_earned_today` for `daily_cap`. | `Repositories/LedgerRepository.php` | F01-4 |
+| 4 | Refunds / clawbacks / cancellations (`refund_earn`, `refund_redeem`). | listener | F01-4 |
+| 5 | Review `one_per_product` and review `daily_cap` — need ledger reads, so they are the caller's, not `ReviewHandler`'s. Caller also sets `extra['verified_purchase']`. | review listener | F01-5 |
+| 6 | Pro trigger handlers (`birthday`, `first_order`, `order_count`, `spend_milestone`) registered on `yayloyalty_register_trigger_handlers`. | `Pro/` | Pro |
+| 7 | YayCurrency: return the order's rate on `yayloyalty_context_base_rate`. | integration | later |
+| 8 | Admin "why did this order earn?" preview route (`view`) may return the full `Result`; storefront earn preview (Store API, no cap) must return `get_points()` only. | REST / Store API | F09, F12, F13, F15 |
+| 9 | Guest scoring: `Campaign::conditions_match()` receives user id `0`; Pro's evaluator should treat 0 as "no customer" for customer-bound conditions. | `Pro/Services/ConditionsEvaluator.php` | Pro |
+| 10 | PHPStan level 6 is not in the repo; add it and run on `includes/Engine/Points` first. | tooling | — |
+| 11 | wp-phpunit harness for `CampaignRepository` (cache + liveness against real rows) and `ContextFactory` (real `WC_Order`). Verified by WP-CLI script today. | `tests/integration/` | — |
+
+### Capabilities (backbone done) → what is still open
+
+| # | TODO | Where | Ticket |
+|---|---|---|---|
+| 1 | `uninstall.php` with a delete-data branch calling `Capabilities::uninstall()`. Method exists, nothing calls it. | plugin root | — |
+| 2 | Permissions matrix UI + `POST /settings/permissions` with the five guards (renders only for `manage_options`; administrator row locked; roles from `wp_roles()`; caps-version migration; caps survive deactivation). | Settings → Advanced, `SettingsRestController` | F20 (Pro) |
+| 3 | Settings field for `advanced.adjustment_ceiling` (enforced today, no UI). | Settings → Advanced | F20 (Pro) |
+| 4 | Rewards REST routes take `Capabilities::MANAGE_REWARDS`; the nav/route already do. | `RewardsRestController` | rewards |
+| 5 | `GET /settings` must omit licence key / secrets unless `manage_settings` — nothing secret is in the payload yet. | `SettingsRestController::get_settings()` | when a secret lands |
+| 6 | AdminShell applies one adapter capability (`view`) to the menu, licence REST and `LicenseHandler`; a viewer can reach licence endpoints. Needs a second adapter method in the shared shell. | `yaycommerce/admin-shell` | shell |
+| 7 | Route guard as CI: walk `yayloyalty/v1`, fail on a missing or `__return_true` `permission_callback`. Needs the wp-phpunit harness above. | `tests/integration/` | — |
+
+### Dev-database drift (both)
+
+`dbDelta` adds columns and indexes; it never renames a column or drops an index. Dev sites that predate the `campaigns.trigger` → `trigger_type` rename or the ledger key rename carry stale schema silently. `Installer::run_migrations()` is the seam for a first real migration (`ALTER TABLE … CHANGE`, `DROP INDEX reference`, `DROP INDEX user_created`); until then, reset the plugin tables on an old dev site.
 
 ---
 
@@ -184,7 +221,7 @@ Ordered by how much of the product each blocks, not by an assigned priority — 
 
 **Why triggers are safe to recognize early:** `CampaignTrigger::all()` is filtered (fireable); `all_known()` is not (recognized). A merchant can save a `birthday` campaign in Pro, downgrade to Lite, and upgrade back — the config persists untouched because Lite's `conditions_match()` fails open and `Campaign::validate_config()` preserves unknown trigger config wholesale.
 
-**Why the earning engine is the blocker:** Points are stored and aggregated, but no logic applies the campaign config to an order. Implementation: detect order award status → look up live campaigns for that order's trigger → call `calculate_points()` with purchase amounts, rules, and conditions → `LedgerService::record()`.
+**Why the order listener is the blocker:** `PointsEngine` applies campaign config to an order and answers with points, campaign and ledger reference — but nothing calls it. F01-4 wires: award status → `ContextFactory::from_order()` → `evaluate()` per trigger → `LedgerService::earn()` (to be added). See `includes/Engine/Points/README.md` for both call sites.
 
 ---
 
