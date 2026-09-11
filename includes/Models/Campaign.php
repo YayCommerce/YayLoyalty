@@ -590,12 +590,11 @@ class Campaign extends AbstractModel {
             throw new \InvalidArgumentException( 'YayLoyalty: built-in campaigns cannot be archived.' );
         }
 
-        $was_archived = Status::ARCHIVED === $this->status;
-        $now_archived = Status::ARCHIVED === $status;
-
-        if ( $now_archived && ! $was_archived ) {
-            $this->archived_at = Dates::now();
-        } elseif ( ! $now_archived && $was_archived ) {
+        if ( Status::ARCHIVED === $status ) {
+            if ( Status::ARCHIVED !== $this->status ) { // Set archived_at to now when it was not archived before
+                $this->archived_at = Dates::now();
+            }
+        } else { // Every other status means the campaign is not archived
             $this->archived_at = null;
         }
 
