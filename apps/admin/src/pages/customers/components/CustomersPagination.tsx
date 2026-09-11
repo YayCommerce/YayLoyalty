@@ -1,56 +1,43 @@
-import { sprintf, __ } from '@wordpress/i18n';
-
-import { Button } from '@/components/ui/button';
+import { Pagination } from '@/components/ui/pagination';
 import { Skeleton } from '@/components/ui/skeleton';
 
 /**
- * Real pagination over the sorted, filtered rows — see CustomersScreen.tsx
- * for the slicing. Rolled locally rather than the shared `Pagination`
- * primitive, which renders "Page X of Y" with a go-to-page number input —
- * not what this list needs (`CampaignsPage` sets the same precedent for an
- * inline pager).
+ * Thin wrapper over the shared `Pagination` primitive (same one YayUiKits'
+ * `TablePage.tsx` demos: "Page X of Y" + prev/next + a "Go to" number
+ * input) — converts this screen's 1-based `page`/`pageCount` into that
+ * component's 0-based `pageIndex`.
  */
 export function CustomersPagination({
   page,
   pageCount,
-  total,
-  perPage,
   isLoading,
   onPrevious,
   onNext,
-  /** e.g. "· balances as of 11:02" during the rebuild toggle — see CustomersRebuildBanner.tsx. */
-  note,
+  onPageChange,
+  className,
 }: {
   page: number;
   pageCount: number;
-  total: number;
-  perPage: number;
   isLoading: boolean;
   onPrevious: () => void;
   onNext: () => void;
-  note?: string;
+  onPageChange: (page: number) => void;
+  className?: string;
 }) {
-  const rangeStart = total === 0 ? 0 : (page - 1) * perPage + 1;
-  const rangeEnd = Math.min(page * perPage, total);
+  if (isLoading) {
+    return <Skeleton className={`h-8 w-48 ${className ?? ''}`} />;
+  }
 
   return (
-    <div className="text-muted-foreground flex items-center gap-3 text-xs">
-      {isLoading ? (
-        <Skeleton className="h-3 w-20" />
-      ) : (
-        <span>
-          {sprintf(__('%1$s of %2$d', 'yayloyalty'), `${rangeStart}–${rangeEnd}`, total)}
-          {note ? ` ${note}` : ''}
-        </span>
-      )}
-      <div className="ml-auto flex items-center gap-1.5">
-        <Button variant="outline" size="sm" disabled={isLoading || page <= 1} onClick={onPrevious}>
-          {__('‹ Previous', 'yayloyalty')}
-        </Button>
-        <Button variant="outline" size="sm" disabled={isLoading || page >= pageCount} onClick={onNext}>
-          {__('Next ›', 'yayloyalty')}
-        </Button>
-      </div>
-    </div>
+    <Pagination
+      pageIndex={page - 1}
+      pageCount={pageCount}
+      canPreviousPage={page > 1}
+      canNextPage={page < pageCount}
+      onPreviousPage={onPrevious}
+      onNextPage={onNext}
+      onPageChange={(pageIndex) => onPageChange(pageIndex + 1)}
+      className={className}
+    />
   );
 }

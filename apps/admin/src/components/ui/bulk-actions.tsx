@@ -16,7 +16,7 @@ const BulkActionBox = ({ selected, onClose, children, className }: BulkActionBox
       <div
         className={cn(
           'border-input -my-1.5 items-center gap-2 rounded-lg border p-1 shadow-xs',
-          selected > 1 ? 'flex' : 'hidden',
+          selected > 0 ? 'flex' : 'hidden',
           className,
         )}
       >

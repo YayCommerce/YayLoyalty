@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { __ } from '@wordpress/i18n';
 
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { Card, CardContent } from '@/components/ui/card';
@@ -19,7 +18,9 @@ const PER_PAGE = 10;
 
 /**
  * The Customers screen body: [saved segment row] + Export CSV → toolbar →
- * [bulk action bar] → table → pagination.
+ * table → one footer row: [bulk action bar] (left, once rows are selected)
+ * + pagination (right) — see the combined `<div>` near the bottom, matching
+ * YayUiKits' `BulkActionBox` + `Pagination` layout.
  *
  * Owns every VIEW-only concern for the currently-loaded rows — sort, page
  * and row selection — since all three interact (sorting reorders before
@@ -147,15 +148,6 @@ export function CustomersScreen({
           onFiltersChange={onFiltersChange}
         />
 
-        {showSelection && selected.size > 0 && (
-          <CustomersBulkActionBar
-            count={selected.size}
-            onClear={() => setSelected(new Set())}
-            selectAllCount={selectAllCount}
-            onSelectAllMatching={selectAllMatching}
-          />
-        )}
-
         <CustomersTable
           rows={pageRows}
           isLoading={isLoading}
@@ -182,16 +174,28 @@ export function CustomersScreen({
           onSort={handleSort}
         />
 
-        <CustomersPagination
-          page={safePage}
-          pageCount={pageCount}
-          total={sortedRows.length}
-          perPage={PER_PAGE}
-          isLoading={isLoading}
-          onPrevious={() => setPage((current) => Math.max(1, current - 1))}
-          onNext={() => setPage((current) => Math.min(pageCount, current + 1))}
-          note={isRebuilding ? __('· balances as of 11:02', 'yayloyalty') : undefined}
-        />
+        {/* One bordered footer row: bulk actions (left, once selected) + pagination
+            (right) — matches YayUiKits' TablePage.tsx composition of
+            BulkActionBox + Pagination side by side. */}
+        <div className="flex flex-col items-center gap-3 sm:flex-row">
+          {showSelection && (
+            <CustomersBulkActionBar
+              count={selected.size}
+              onClear={() => setSelected(new Set())}
+              selectAllCount={selectAllCount}
+              onSelectAllMatching={selectAllMatching}
+            />
+          )}
+          <CustomersPagination
+            page={safePage}
+            pageCount={pageCount}
+            isLoading={isLoading}
+            onPrevious={() => setPage((current) => Math.max(1, current - 1))}
+            onNext={() => setPage((current) => Math.min(pageCount, current + 1))}
+            onPageChange={setPage}
+            className="sm:ms-auto"
+          />
+        </div>
       </CardContent>
     </Card>
   );
