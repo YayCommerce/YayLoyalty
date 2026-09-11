@@ -6,20 +6,26 @@ import type { MockCustomer } from './customers-page.mock-data';
  * Real, client-side search + filter over the currently-loaded mock rows —
  * same reasoning as `customers-page.sort-rows.ts`: narrowing the rows already
  * on the page is honest UI-only behaviour, unlike pretending to query a
- * larger dataset that doesn't exist here. Wired into `CustomersToolbar`'s
- * `idle` mode only; the `chips`/`inert` toolbar modes stay static (they are
- * fixed illustrative states, not a filter session to resume).
+ * larger dataset that doesn't exist here.
  */
 export type BalanceRangeValue = 'any' | 'negative' | '0-1000' | '1000-10000' | '10000-plus';
 export type ExpiringSoonValue = 'off' | '30' | '90' | 'none';
+/** 'all' + the tiers `CustomerDemoRows.php` actually hands out. Pro-only — see CustomersToolbar.tsx. */
+export type TierValue = 'all' | 'Alpine' | 'Summit' | 'Explorer';
 
 export interface RowFilters {
   search: string;
   balanceRange: BalanceRangeValue;
   expiringSoon: ExpiringSoonValue;
+  tier: TierValue;
 }
 
-export const DEFAULT_ROW_FILTERS: RowFilters = { search: '', balanceRange: 'any', expiringSoon: 'off' };
+export const DEFAULT_ROW_FILTERS: RowFilters = {
+  search: '',
+  balanceRange: 'any',
+  expiringSoon: 'off',
+  tier: 'all',
+};
 
 export const BALANCE_RANGE_OPTIONS: { value: BalanceRangeValue; label: string }[] = [
   { value: 'any', label: __('Any balance', 'yayloyalty') },
@@ -36,6 +42,13 @@ export const EXPIRING_SOON_OPTIONS: { value: ExpiringSoonValue; label: string }[
   { value: 'none', label: __('No expiry date', 'yayloyalty') },
 ];
 
+export const TIER_OPTIONS: { value: TierValue; label: string }[] = [
+  { value: 'all', label: __('All tiers', 'yayloyalty') },
+  { value: 'Alpine', label: __('Alpine', 'yayloyalty') },
+  { value: 'Summit', label: __('Summit', 'yayloyalty') },
+  { value: 'Explorer', label: __('Explorer', 'yayloyalty') },
+];
+
 export function filterRows(rows: MockCustomer[], filters: RowFilters): MockCustomer[] {
   const query = filters.search.trim().toLowerCase();
   const now = Date.now();
@@ -44,7 +57,8 @@ export function filterRows(rows: MockCustomer[], filters: RowFilters): MockCusto
     (row) =>
       matchesSearch(row, query) &&
       matchesBalanceRange(row.balance, filters.balanceRange) &&
-      matchesExpiringSoon(row.expires_at, filters.expiringSoon, now),
+      matchesExpiringSoon(row.expires_at, filters.expiringSoon, now) &&
+      matchesTier(row.tier, filters.tier),
   );
 }
 
@@ -76,4 +90,8 @@ function matchesExpiringSoon(expiresAt: string | null, option: ExpiringSoonValue
   const daysUntil = (new Date(expiresAt.replace(' ', 'T')).getTime() - now) / (1000 * 60 * 60 * 24);
   const withinDays = Number(option);
   return daysUntil >= 0 && daysUntil <= withinDays;
+}
+
+function matchesTier(tier: string, filterTier: TierValue): boolean {
+  return filterTier === 'all' || tier === filterTier;
 }

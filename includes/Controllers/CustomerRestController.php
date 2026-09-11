@@ -8,8 +8,9 @@ use YayLoyalty\Services\LedgerService;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * GET  /yayloyalty/v1/customers/{id}         — cached aggregates
- * POST /yayloyalty/v1/customers/{id}/adjust  — manual adjustment
+ * GET  /yayloyalty/v1/customers               — TEMPORARY fixed demo rows, see get_items()
+ * GET  /yayloyalty/v1/customers/{id}          — cached aggregates
+ * POST /yayloyalty/v1/customers/{id}/adjust   — manual adjustment
  *
  * Read-side composition lives here rather than in a CustomerService: a service
  * that only forwarded reads to one repository would be ceremony, and it would
@@ -34,6 +35,19 @@ final class CustomerRestController extends AbstractRestController {
     }
 
     public function register_routes(): void {
+        register_rest_route(
+            self::REST_NAMESPACE,
+            '/customers',
+            [
+                [
+                    'methods'             => \WP_REST_Server::READABLE,
+                    'callback'            => fn( $request ) => $this->exec_read( [ $this, 'get_items' ], $request ),
+                    'permission_callback' => $this->requires( Capabilities::VIEW ),
+                    'args'                => $this->get_collection_params(),
+                ],
+            ]
+        );
+
         register_rest_route(
             self::REST_NAMESPACE,
             '/customers/(?P<id>[\d]+)',
@@ -113,6 +127,35 @@ final class CustomerRestController extends AbstractRestController {
         }
 
         return $customer->to_array();
+    }
+
+    /**
+     * TEMPORARY DEMO DATA — NOT A REAL QUERY. See `CustomerDemoRows`.
+     *
+     * `CustomerRepository` has no list/paginate method yet (only
+     * find_by_user_id(), ensure_row(), lock_and_get(), apply_delta() — see the
+     * class docblock), so there is no real Customers list to serve. This lets
+     * the admin Customers screen fetch over a genuine HTTP round trip (and
+     * gives its loading skeleton something real to wait on) instead of
+     * importing a hardcoded array client-side.
+     *
+     * DELETE this method and `CustomerDemoRows`, and replace the body with a
+     * real `CustomerRepository::paginate_filtered()`-style call, once that
+     * repository method exists. `page`/`per_page` are accepted and echoed back
+     * in the envelope for shape-compatibility, but are not applied — there is
+     * only ever one page of demo rows.
+     */
+    public function get_items( \WP_REST_Request $request ) {
+        $rows = CustomerDemoRows::all();
+
+        return $this->respond_paginated(
+            [
+                'items'    => $rows,
+                'total'    => count( $rows ),
+                'page'     => max( 1, (int) $request->get_param( 'page' ) ),
+                'per_page' => max( 1, (int) $request->get_param( 'per_page' ) ?: 20 ),
+            ]
+        );
     }
 
     public function adjust_points( \WP_REST_Request $request ) {

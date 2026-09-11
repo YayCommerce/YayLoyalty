@@ -6,10 +6,8 @@ import { Card, CardContent } from '@/components/ui/card';
 
 /**
  * Lite-only footer promo. Sits at the foot of a working screen and scrolls
- * with it — it must never cover the table, which rules out `<ProGate>`
- * (non-inline mode renders `UpgradeToProOverlay`, a centered dashed panel
- * meant to replace content, not sit below it). Gate this at the call site
- * with `{!__IS_PRO__ && …}` instead — see `CustomersPage.tsx`.
+ * with it — it must never cover the table. Gated at the call site with
+ * `{!__IS_PRO__ && …}` — see `CustomersPage.tsx`.
  */
 export function CustomersUpsellFooter() {
   return (

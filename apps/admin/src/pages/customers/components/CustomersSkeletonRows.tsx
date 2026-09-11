@@ -2,14 +2,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { TableCell, TableRow } from '@/components/ui/table';
 
 /**
- * 8 placeholder rows at full row height (artboard 2e) — the row does not
- * resize once real data lands. Two skeleton lines in the Customer cell match
+ * Placeholder rows shown while `useCustomersDemoQuery` is in flight — see
+ * `customers-page.queries.ts`. Two skeleton lines in the first cell match
  * the name+email two-line pattern; every other cell is a single bar.
  */
 export function CustomersSkeletonRows({ columnCount }: { columnCount: number }) {
   return (
     <>
-      {Array.from({ length: 8 }).map((_, index) => (
+      {Array.from({ length: 6 }).map((_, index) => (
         <TableRow key={index}>
           <TableCell colSpan={columnCount}>
             <div className="flex items-center gap-6">

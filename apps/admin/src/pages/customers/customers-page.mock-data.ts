@@ -1,13 +1,16 @@
 import type { Customer } from '@/lib/schema/customer.schema';
 
 /**
- * DEMO DATA ONLY. Every row and helper in this file (and its sibling
- * `customers-page.mock-rows.ts`) exists to drive the Customers page's 7
- * static demo scenarios (see `customers-page.scenarios.ts`) until a real list
- * endpoint + `useCustomersQuery` land.
+ * MOCK DATA ONLY. `MockCustomer` describes a row fetched from the TEMPORARY
+ * demo endpoint (`customers-page.api.ts` → `GET /customers` →
+ * `CustomerRestController::get_items()` / `CustomerDemoRows.php`), which
+ * stands in for a real Customers list REST endpoint that does not exist yet
+ * (`customer.queries.ts` only has single-customer / ledger / adjust hooks
+ * today). The round trip is real; the six rows it returns are not.
  *
- * Deleted, along with `customers-page.scenarios.ts` and `ScenarioSwitcher`,
- * the day the page reads real rows. Never import this outside `pages/customers/`.
+ * Deleted, along with `customers-page.api.ts`/`.queries.ts` and the PHP side,
+ * the day the page reads a real list. Never import this outside
+ * `pages/customers/`.
  */
 
 /**
@@ -31,8 +34,6 @@ export type MockCustomer = Pick<Customer, 'user_id' | 'balance' | 'pending_point
   last_activity_minutes_ago: number;
   tier: string;
   referrals: number;
-  /** Seeds the design's pre-checked rows for the Pro selection scenarios. */
-  selected: boolean;
 };
 
 /**

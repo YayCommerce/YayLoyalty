@@ -1,4 +1,3 @@
-import { ChevronDown } from 'lucide-react';
 import { __ } from '@wordpress/i18n';
 
 import { CAP, Can } from '@/lib/access';
@@ -8,65 +7,68 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import {
   BALANCE_RANGE_OPTIONS,
   EXPIRING_SOON_OPTIONS,
+  TIER_OPTIONS,
   type BalanceRangeValue,
   type ExpiringSoonValue,
   type RowFilters,
+  type TierValue,
 } from '../customers-page.filter-rows';
-import type { ToolbarConfig } from '../customers-page.scenario-types';
-import { CustomersFilterChips } from './CustomersFilterChips';
 
 /**
- * Search + filter row + Export CSV. Three modes driven by `ScenarioConfig.toolbar`:
- * `idle` (default controls, real search + Balance range/Expiring soon filters
- * over the rows already loaded), `chips` (active filters as removable chips,
- * 4a — a fixed illustrative state, left static), `inert` (same controls, all
- * disabled — 2d/4b).
+ * Search + filter row + Export CSV. Every filter is real — see
+ * `customers-page.filter-rows.ts` — over the rows already loaded.
  *
- * Tier and Negative-balance stay visual-only: no scenario currently needs
- * them wired, and there's no larger dataset behind them to narrow honestly.
+ * Free/Pro split is `__IS_PRO__`, directly: the Tier filter simply isn't
+ * rendered in a Lite build, matching the Customer list itself (no Tier
+ * column, no upgrade badge needed for a control that isn't there).
  */
 export function CustomersToolbar({
-  toolbar,
   filters,
   onFiltersChange,
+  /** True store (no members at all) — every control goes inert but stays in
+   *  place, so the toolbar doesn't pop in later and shift the table down. */
+  disabled,
+  exportDisabled,
 }: {
-  toolbar: ToolbarConfig;
   filters: RowFilters;
   onFiltersChange: (patch: Partial<RowFilters>) => void;
+  disabled: boolean;
+  exportDisabled: boolean;
 }) {
-  const inert = toolbar.mode === 'inert';
-
-  if (toolbar.mode === 'chips') {
-    return <CustomersFilterChips searchValue={toolbar.searchValue ?? ''} chips={toolbar.chips ?? []} exportDisabled />;
-  }
-
   return (
     <div className="flex flex-wrap items-center gap-2">
       <Input
         className="w-70"
         placeholder={__('Search name or email', 'yayloyalty')}
-        disabled={inert}
         value={filters.search}
         onChange={(event) => onFiltersChange({ search: event.target.value })}
+        disabled={disabled}
       />
       <FilterSelect
         placeholder={__('Balance range', 'yayloyalty')}
         value={filters.balanceRange}
         onValueChange={(value) => onFiltersChange({ balanceRange: value as BalanceRangeValue })}
         options={BALANCE_RANGE_OPTIONS}
-        disabled={inert}
+        disabled={disabled}
       />
       <FilterSelect
         placeholder={__('Expiring soon', 'yayloyalty')}
         value={filters.expiringSoon}
         onValueChange={(value) => onFiltersChange({ expiringSoon: value as ExpiringSoonValue })}
         options={EXPIRING_SOON_OPTIONS}
-        disabled={inert}
+        disabled={disabled}
       />
-      {toolbar.showNegativeFilter && <FilterButton label={__('Negative balance: off', 'yayloyalty')} disabled={inert} />}
-      {toolbar.showTierFilter && <FilterButton label={__('Tier: all', 'yayloyalty')} disabled={inert} />}
+      {__IS_PRO__ && (
+        <FilterSelect
+          placeholder={__('Tier', 'yayloyalty')}
+          value={filters.tier}
+          onValueChange={(value) => onFiltersChange({ tier: value as TierValue })}
+          options={TIER_OPTIONS}
+          disabled={disabled}
+        />
+      )}
       <Can cap={CAP.VIEW} disable>
-        <Button variant="outline" size="sm" className="ml-auto" disabled={inert || toolbar.exportDisabled}>
+        <Button variant="outline" size="sm" className="ml-auto" disabled={disabled || exportDisabled}>
           {__('Export CSV', 'yayloyalty')}
         </Button>
       </Can>
@@ -74,7 +76,7 @@ export function CustomersToolbar({
   );
 }
 
-/** A real, working filter dropdown — unlike `FilterButton` below. */
+/** A real, working filter dropdown. */
 function FilterSelect<T extends string>({
   placeholder,
   value,
@@ -102,15 +104,5 @@ function FilterSelect<T extends string>({
         ))}
       </SelectContent>
     </Select>
-  );
-}
-
-function FilterButton({ label, disabled }: { label: string; disabled?: boolean }) {
-  // UI only — opens no real dropdown; the caret communicates "this will filter" for the mockup.
-  return (
-    <Button variant="outline" size="sm" disabled={disabled}>
-      {label}
-      <ChevronDown />
-    </Button>
   );
 }

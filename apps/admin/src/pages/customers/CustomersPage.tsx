@@ -1,54 +1,37 @@
-import { useEffect, useMemo, useState } from 'react';
-import { __ } from '@wordpress/i18n';
+import { useMemo, useState } from 'react';
+import { sprintf, __ } from '@wordpress/i18n';
 
 import { Skeleton } from '@/components/ui/skeleton';
 import PageLayout from '@/components/layout/PageLayout';
-import { ProGate } from '@/components/pro/ProGate';
 import { CustomersScreen } from './components/CustomersScreen';
 import { CustomersUpsellFooter } from './components/CustomersUpsellFooter';
-import { ScenarioSwitcher } from './components/ScenarioSwitcher';
 import { DEFAULT_ROW_FILTERS, filterRows, type RowFilters } from './customers-page.filter-rows';
-import { CUSTOMERS_SCENARIOS, type CustomersScenarioId } from './customers-page.scenarios';
+import { useCustomersDemoQuery } from './customers-page.queries';
 
 /**
- * Customers list screen — designed UI, driven entirely by mock data.
+ * Customers list screen — designed UI, driven by mock data fetched over a
+ * real REST round trip until the real list endpoint lands (see
+ * `customer.queries.ts` — only single-customer / ledger / adjust hooks exist
+ * today; `customers-page.queries.ts` is the TEMPORARY stand-in).
  *
- * MOCK-DRIVEN BY DESIGN, NOT AN OVERSIGHT. There is no Customers list REST
- * endpoint yet (only single-customer / ledger / adjust exist in
- * `customer.queries.ts`, still used by the real wiring task, not this file).
- * The on-page `ScenarioSwitcher` browses the 7 designed states without a
- * backend. When the list endpoint lands: add `useCustomersQuery`, delete the
- * switcher and every `customers-page.*` module, and wire the `<Can>`-gated
- * buttons already in place (`CustomersBulkActionBar`, `CustomersToolbar`)
- * to real handlers.
+ * FREE/PRO SPLIT IS `__IS_PRO__`, DIRECTLY — no demo switcher, no upgrade
+ * overlay. Free gets a fully working list (search, sort, filter, export);
+ * Pro adds the Tier/Referrals columns, row selection and the bulk action bar
+ * on top of the same list — see `CustomersScreen.tsx`.
  *
  * Search (by name) and the Balance range / Expiring soon filters ARE real —
  * see `customers-page.filter-rows.ts` — because they only narrow the rows
- * already loaded for the current scenario, unlike Export or the bulk actions,
- * which would need a real dataset behind them to mean anything.
+ * already loaded, unlike Export or the bulk actions, which would need a real
+ * dataset behind them to mean anything.
  */
 export default function CustomersPage() {
-  const [scenarioId, setScenarioId] = useState<CustomersScenarioId>('free-list');
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [filters, setFilters] = useState<RowFilters>(DEFAULT_ROW_FILTERS);
 
-  const config = CUSTOMERS_SCENARIOS[scenarioId];
+  const customersQuery = useCustomersDemoQuery();
+  const allRows = useMemo(() => customersQuery.data ?? [], [customersQuery.data]);
 
-  const filteredRows = useMemo(() => filterRows(config.rows, filters), [config.rows, filters]);
-
-  // Selection and filters both reset on scenario change: selection is seeded
-  // from the scenario's design intent (`config.selection`), not a live count.
-  useEffect(() => {
-    setFilters(DEFAULT_ROW_FILTERS);
-
-    if (config.selection === 'page-all') {
-      setSelected(new Set(config.rows.map((row) => row.user_id)));
-    } else if (config.selection === 'page-partial') {
-      setSelected(new Set(config.rows.filter((row) => row.selected).map((row) => row.user_id)));
-    } else {
-      setSelected(new Set());
-    }
-  }, [config]);
+  const filteredRows = useMemo(() => filterRows(allRows, filters), [allRows, filters]);
 
   const headerSelection = useMemo(() => {
     if (selected.size === 0) return 'none' as const;
@@ -69,8 +52,7 @@ export default function CustomersPage() {
   }
 
   function toggleAll() {
-    // "Select all" acts on the rows currently visible (post search/filter),
-    // never the scenario's full row set.
+    // "Select all" acts on the rows currently visible (post search/filter).
     setSelected((current) => (current.size > 0 ? new Set() : new Set(filteredRows.map((row) => row.user_id))));
   }
 
@@ -78,39 +60,35 @@ export default function CustomersPage() {
     setFilters((current) => ({ ...current, ...patch }));
   }
 
-  const screen = (
-    <CustomersScreen
-      config={config}
-      rows={filteredRows}
-      filters={filters}
-      onFiltersChange={updateFilters}
-      selected={selected}
-      headerSelection={headerSelection}
-      onToggleAll={toggleAll}
-      onToggleRow={toggleRow}
-      onClearSelection={() => setSelected(new Set())}
-    />
-  );
-
   return (
     <PageLayout
       title={__('Customers', 'yayloyalty')}
-      description={config.memberCount ?? <Skeleton className="h-4 w-32" />}
+      description={
+        customersQuery.isPending ? (
+          <Skeleton className="h-4 w-32" />
+        ) : (
+          sprintf(__('%d program members', 'yayloyalty'), allRows.length)
+        )
+      }
     >
-      <ScenarioSwitcher value={scenarioId} onChange={setScenarioId} />
-
-      {config.isPro ? (
-        // Pro lock wraps the whole surface for a Pro-only scenario: Lite gets
-        // the upgrade overlay instead of a broken/empty Pro screen.
-        <ProGate>{__IS_PRO__ ? screen : null}</ProGate>
-      ) : (
-        screen
+      {customersQuery.isError && (
+        <p className="text-destructive text-sm">{__('Could not load customers.', 'yayloyalty')}</p>
       )}
 
-      {/* Lite-only, not `<ProGate>`: the non-inline overlay renders in Lite and
-          children in Pro — the exact inverse of a footer that should show only
-          in Lite. See CustomersUpsellFooter's docblock. */}
-      {!__IS_PRO__ && config.upsellFooter && <CustomersUpsellFooter />}
+      <CustomersScreen
+        allRows={allRows}
+        rows={filteredRows}
+        isLoading={customersQuery.isPending}
+        filters={filters}
+        onFiltersChange={updateFilters}
+        selected={selected}
+        headerSelection={headerSelection}
+        onToggleAll={toggleAll}
+        onToggleRow={toggleRow}
+        onClearSelection={() => setSelected(new Set())}
+      />
+
+      {!__IS_PRO__ && <CustomersUpsellFooter />}
     </PageLayout>
   );
 }

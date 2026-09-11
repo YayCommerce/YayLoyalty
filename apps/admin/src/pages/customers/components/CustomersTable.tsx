@@ -7,49 +7,47 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import type { MockCustomer } from '../customers-page.mock-data';
 import { defaultSortDirection, sortRows, type SortDirection, type SortKey } from '../customers-page.sort-rows';
 import { CustomerTableRow } from './CustomerTableRow';
+import { CustomersEmptyState } from './CustomersEmptyState';
 import { CustomersSkeletonRows } from './CustomersSkeletonRows';
 
-/** Column count depends only on which optional column groups are on — one
- *  place, reused by the header, the skeleton body and any empty-state colSpan. */
-export function countColumns({ showProColumns, showSelection }: { showProColumns: boolean; showSelection: boolean }) {
+/** Column count depends only on whether the Pro columns/checkbox are on —
+ *  one place, reused by the header and the "no results" row's colSpan. */
+export function countColumns(showProColumns: boolean) {
   // Customer, Balance, Pending, Lifetime earned, Last activity, Expires = 6 always.
-  // Pro adds Tier + Referrals; selection adds the leading checkbox column.
-  return 6 + (showProColumns ? 2 : 0) + (showSelection ? 1 : 0);
+  // Pro adds the leading checkbox column, Tier and Referrals.
+  return 6 + (showProColumns ? 3 : 0);
 }
 
 type HeaderSelectionState = 'none' | 'partial' | 'all';
 
 export function CustomersTable({
   rows,
-  body,
+  isLoading,
+  isStoreEmpty,
+  noMatchContent,
   showProColumns,
-  showSelection,
   headerSelection,
   onToggleAll,
   selected,
   onToggleRow,
-  staleBalances,
-  emptyBlock,
-  toolbarInert,
 }: {
   rows: MockCustomer[];
-  body: 'rows' | 'loading' | 'empty-store' | 'no-match';
+  /** `useCustomersDemoQuery` still in flight — real network latency, not a simulated delay. */
+  isLoading: boolean;
+  /** True store (no members at all) vs. search/filters matching nobody — different messages. */
+  isStoreEmpty: boolean;
+  /** What to show when filters narrow a non-empty store to zero rows — see CustomersNoMatchState.tsx. */
+  noMatchContent?: ReactNode;
   showProColumns: boolean;
-  showSelection: boolean;
   headerSelection: HeaderSelectionState;
   onToggleAll: () => void;
   selected: Set<number>;
   onToggleRow: (userId: number) => void;
-  staleBalances: boolean;
-  emptyBlock?: ReactNode;
-  toolbarInert: boolean;
 }) {
-  const columnCount = countColumns({ showProColumns, showSelection });
+  const columnCount = countColumns(showProColumns);
 
-  // Real, client-side sort over the rows already loaded for this scenario —
-  // see customers-page.sort-rows.ts for why this is the one interactive
-  // control on the page that isn't a no-op. Balance/desc matches every
-  // artboard's default active state.
+  // Real, client-side sort over the rows already loaded — see
+  // customers-page.sort-rows.ts. Balance/desc is the default for both builds.
   const [sortBy, setSortBy] = useState<SortKey>('balance');
   const [sortDir, setSortDir] = useState<SortDirection>('desc');
 
@@ -69,15 +67,11 @@ export function CustomersTable({
       <Table>
         <TableHeader>
           <TableRow>
-            {/* The design omits the header checkbox glyph entirely on the two
-                inert/no-selection Pro scenarios (4a, 4b) — shown here disabled
-                instead of adding a third column-visibility flag for it. */}
-            {showSelection && (
+            {showProColumns && (
               <TableHead>
                 <Checkbox
                   checked={headerSelection === 'all' ? true : headerSelection === 'partial' ? 'indeterminate' : false}
                   onCheckedChange={onToggleAll}
-                  disabled={toolbarInert}
                   aria-label={__('Select all rows on this page', 'yayloyalty')}
                 />
               </TableHead>
@@ -97,31 +91,30 @@ export function CustomersTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {body === 'loading' && <CustomersSkeletonRows columnCount={columnCount} />}
-          {(body === 'empty-store' || body === 'no-match') && (
+          {isLoading && <CustomersSkeletonRows columnCount={columnCount} />}
+          {!isLoading && sortedRows.length === 0 && (
             <TableRow>
               <TableCell colSpan={columnCount} className="h-auto py-12">
-                {emptyBlock}
+                {isStoreEmpty ? (
+                  <CustomersEmptyState />
+                ) : (
+                  (noMatchContent ?? (
+                    <p className="text-muted-foreground text-center text-sm">
+                      {__('No customers match these filters.', 'yayloyalty')}
+                    </p>
+                  ))
+                )}
               </TableCell>
             </TableRow>
           )}
-          {body === 'rows' && sortedRows.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={columnCount} className="text-muted-foreground py-12 text-center">
-                {__('No customers match these filters.', 'yayloyalty')}
-              </TableCell>
-            </TableRow>
-          )}
-          {body === 'rows' &&
+          {!isLoading &&
             sortedRows.map((row) => (
               <CustomerTableRow
                 key={row.user_id}
                 customer={row}
                 showProColumns={showProColumns}
-                showSelection={showSelection}
                 selected={selected.has(row.user_id)}
                 onToggle={onToggleRow}
-                stale={staleBalances}
               />
             ))}
         </TableBody>

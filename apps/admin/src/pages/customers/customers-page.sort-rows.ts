@@ -45,7 +45,12 @@ function compareByKey(a: MockCustomer, b: MockCustomer, key: SortKey): number {
     case 'lifetime':
       return a.lifetime_earned - b.lifetime_earned;
     case 'last_activity':
-      return a.last_activity_minutes_ago - b.last_activity_minutes_ago;
+      // Inverted vs. every other numeric column here: `last_activity_minutes_ago`
+      // is "time elapsed" (smaller = more recent), but desc is documented above
+      // as "most-recent first" — swapping a/b makes desc sort by recency
+      // (smallest elapsed first) instead of by the raw elapsed value (which
+      // would put the OLDEST activity first under desc — the bug this fixes).
+      return b.last_activity_minutes_ago - a.last_activity_minutes_ago;
     case 'referrals':
       return a.referrals - b.referrals;
     default:
