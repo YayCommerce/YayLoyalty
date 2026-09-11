@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Controllers;
 
+use YayLoyalty\Access\Capabilities;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Enums\Status;
 use YayLoyalty\Models\Campaign;
@@ -42,7 +43,7 @@ final class CampaignRestController extends AbstractRestController {
                 [
                     'methods'             => \WP_REST_Server::READABLE,
                     'callback'            => fn( $request ) => $this->exec_read( [ $this, 'get_items' ], $request ),
-                    'permission_callback' => [ $this, 'permission_callback' ],
+                    'permission_callback' => $this->requires( Capabilities::MANAGE_CAMPAIGNS ),
                     'args'                => array_merge(
                         $this->get_collection_params(),
                         [
@@ -60,7 +61,7 @@ final class CampaignRestController extends AbstractRestController {
                 [
                     'methods'             => \WP_REST_Server::CREATABLE,
                     'callback'            => fn( $request ) => $this->exec_write( [ $this, 'create_item' ], $request ),
-                    'permission_callback' => [ $this, 'permission_callback' ],
+                    'permission_callback' => $this->requires( Capabilities::MANAGE_CAMPAIGNS ),
                     'args'                => $this->get_write_args(),
                 ],
                 'schema' => [ $this, 'get_item_schema' ],
@@ -74,18 +75,18 @@ final class CampaignRestController extends AbstractRestController {
                 [
                     'methods'             => \WP_REST_Server::READABLE,
                     'callback'            => fn( $request ) => $this->exec_read( [ $this, 'get_item' ], $request ),
-                    'permission_callback' => [ $this, 'permission_callback' ],
+                    'permission_callback' => $this->requires( Capabilities::MANAGE_CAMPAIGNS ),
                 ],
                 [
                     'methods'             => \WP_REST_Server::EDITABLE,
                     'callback'            => fn( $request ) => $this->exec_write( [ $this, 'update_item' ], $request ),
-                    'permission_callback' => [ $this, 'permission_callback' ],
+                    'permission_callback' => $this->requires( Capabilities::MANAGE_CAMPAIGNS ),
                     'args'                => $this->get_write_args(),
                 ],
                 [
                     'methods'             => \WP_REST_Server::DELETABLE,
                     'callback'            => fn( $request ) => $this->exec_write( [ $this, 'delete_item' ], $request ),
-                    'permission_callback' => [ $this, 'permission_callback' ],
+                    'permission_callback' => $this->requires( Capabilities::MANAGE_CAMPAIGNS ),
                 ],
                 'schema' => [ $this, 'get_item_schema' ],
             ]

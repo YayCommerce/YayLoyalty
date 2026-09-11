@@ -82,6 +82,7 @@ All referral tables (`referrals`, `referral_visits`) specified in data model; no
 | **Lifetime redeemed** | Total points spent (excluding refunds) | ✅ SHIPPED | Maintained by `LedgerService` from ledger type; no redemption flow writes REDEEM rows yet |
 | **Expiry** | Inactivity basis | ⚠️ **TRACKED, NOT ENFORCED** | Fields exist (`expires_at`, `reminder_sent_at`); no job runs |
 | **Expiry per-lot** (Pro) | Lot-based expiry | ❌ NOT STARTED | Lots table unimplemented; no lot tracking |
+| **Adjustment ceiling** | Per-role cap on one manual adjustment | ⚠️ **ENFORCED, NO UI** | `settings.advanced.adjustment_ceiling` (0 = unlimited) checked by `assert_ceiling()`; admins bypass; no settings field to edit it yet |
 | **Rebuild balances** | Replay ledger → recalculate customer row | ❌ NOT STARTED | `balance = SUM(ledger.points)` is the invariant; no rebuild routine or UI exists |
 
 ### VIP Tiers
@@ -116,6 +117,7 @@ All referral tables (`referrals`, `referral_visits`) specified in data model; no
 | **Referral** | ⚠️ PLACEHOLDER | Stub page; referral program not built |
 | **VIP Tiers** | ⚠️ PLACEHOLDER | Stub page; no tier management UI |
 | **Settings** | ⚠️ PLACEHOLDER | Tab shell only; REST endpoint and `SettingsHelper` defaults exist (`general.enabled`, point labels) but the page renders a placeholder |
+| **Capability gating** | ✅ FUNCTIONAL | Nav and routes filtered by `window.yayLoyaltyAdmin.capabilities`; Adjust CTA disabled without `manage_points`; backbone 403s surface as one toast |
 
 ---
 
@@ -137,6 +139,9 @@ Ordered by how much of the product each blocks, not by an assigned priority — 
 | **`yayloyalty_table_schemas` seam unproven** | Filter wired in `Installer`, documented as a Pro seam | No Pro table exists yet, so the strip-a-Pro-table path has never run |
 | **`referral`, `social`, `renewal` triggers** | Recognised by `all_known()` for downgrade safety | Offered by no build; nothing can fire them |
 | **Placeholder pages** | Routes and nav for Dashboard, Rewards, Referral, VIP Tiers, Settings | Each renders `PagePlaceholder` |
+| **No permission matrix** (Pro) | Seven caps on roles; `Capabilities::payload()` | No Settings → Permissions UI or `POST /settings/permissions`; roles are edited with a role plugin for now |
+| **No `uninstall.php`** | `Capabilities::uninstall()` | Nothing calls it; caps and options persist after delete |
+| **Licence routes share the menu cap** | AdminShell applies `get_capability()` (`view`) to menu, licence REST and `LicenseHandler` | A viewer can reach licence endpoints; needs a second adapter method in the shared shell |
 
 ---
 

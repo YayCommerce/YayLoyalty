@@ -130,6 +130,10 @@ if ( ! wp_installing() ) {
      */
     add_action( 'plugins_loaded', [ \YayLoyalty\Database\Installer::class, 'maybe_upgrade' ], 20 );
 
+    // Capability set upgrades, same reasoning: one option read, and roles that
+    // hold a related capability inherit a newly added one.
+    add_action( 'plugins_loaded', [ \YayLoyalty\Access\Capabilities::class, 'migrate' ], 20 );
+
     // Blogs created after network activation still need tables.
     add_action( 'wp_initialize_site', [ \YayLoyalty\Engine\ActDeact::class, 'on_new_site' ], 20 );
 }

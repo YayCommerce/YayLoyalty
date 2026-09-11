@@ -11,6 +11,10 @@ export const settingsSchema = z.object({
     points_label_singular: z.string(),
     points_label_plural: z.string(),
   }),
+  advanced: z.object({
+    /** Largest manual adjustment a non-administrator may make; 0 = unlimited. */
+    adjustment_ceiling: z.number().int().nonnegative(),
+  }),
   /**
    * Stamped by SettingsHelper on every save so the stored shape can evolve
    * without a table migration. A blob written before versioning reads as 0.

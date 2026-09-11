@@ -70,6 +70,8 @@ flowchart TD
 | **Repositories** | All SQL for one table; prepared statements; index selection | Open transactions; touch a second table; throw silently (throw instead) |
 | **Models** | Data shape, casts, REST schema, immutability by convention | Database access |
 
+**Capabilities (`Access\Capabilities`):** seven primitive caps on `WP_Role` — `view`, `manage_points`, `manage_tiers`, `manage_campaigns`, `manage_rewards`, `manage_settings`, `run_tools`. Granted to `administrator` (all) and `shop_manager` (all but settings/tools) by `Installer::install()`; `migrate()` on `plugins_loaded` brings older sites up via `yayloyalty_caps_version`; deactivation removes nothing. Enforced at three points only: the AdminShell menu (`YayLoyaltyPluginAdapter::get_capability()` → `view`), the page render callback, and every route's `permission_callback` (`AbstractRestController::requires()`). Services are user-unaware. The SPA reads `window.yayLoyaltyAdmin.capabilities` (`lib/access.tsx`) to hide screens and disable controls — cosmetics, not a gate. The adjustment ceiling (`settings.advanced.adjustment_ceiling`) is a policy value checked by `assert_ceiling()` after the cap; administrators bypass it.
+
 ---
 
 ## Frontend Architecture (React)
@@ -244,7 +246,7 @@ PointsPage (React)
 ky.post('customers/{user_id}/adjust', { points, note })
     ↓
 CustomerRestController  →  BaseRestController::exec_write()
-    │   permission_callback: current_user_can( 'manage_woocommerce' )
+    │   permission_callback: requires( Capabilities::MANAGE_POINTS ), then assert_ceiling()
     │   args: from get_write_args() — readonly fields already stripped
     │   wraps the callback in Transaction::run()
     ↓

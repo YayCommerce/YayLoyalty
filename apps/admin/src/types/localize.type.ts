@@ -36,4 +36,12 @@ export type Meta = {
 
 export type AdminData = {
   settings: Settings;
+  /**
+   * From YayLoyalty\Access\Capabilities::payload(). Cosmetic input for
+   * hide/disable decisions only; every REST route re-checks on the server.
+   */
+  capabilities: string[];
+  /** Per-adjustment limit for non-administrators; 0 = unlimited. */
+  ceiling: number;
+  isAdministrator: boolean;
 };

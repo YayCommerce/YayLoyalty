@@ -79,7 +79,7 @@ All `namespace YayLoyalty\Controllers` → routes under `yayloyalty/v1/`.
 | Class | Route | Role |
 |---|---|---|
 | `BaseRestController` | — | Error helpers, `exec_read()`, `exec_write()` wrapper |
-| `AbstractRestController` | — | `get_item_schema()` (final, applies filter), `define_item_schema()` (override), `get_write_args()` (readonly stripped), `respond_paginated()`, `permission_callback()` |
+| `AbstractRestController` | — | `get_item_schema()` (final, applies filter), `define_item_schema()` (override), `get_write_args()` (readonly stripped), `respond_paginated()`, `requires( $cap )` (permission callback), `forbidden()`, `assert_ceiling()` |
 | `CustomerRestController` | `yayloyalty/v1/customers/` | List, get, manual adjust |
 | `LedgerRestController` | `yayloyalty/v1/ledger/` | List entries per user |
 | `CampaignRestController` | `yayloyalty/v1/campaigns/` | List, get, create, update campaigns |
@@ -102,6 +102,7 @@ Write operations wrapped in `Transaction::run()`, return correlation ID on 500.
 |---|---|---|
 | `Utils/` — stateless, portable | `Dates` (UTC), `Json` (encode/decode maps; encode_list/decode_list), `Log` (writes to WC logs or `error_log`), `Table` (safe table name), `SingletonTrait` | Lift to another plugin? Yes (almost). |
 | `Helpers/` — plugin-specific glue | `SettingsHelper` (read options), `LocalizeHelper` (build admin payload) | Knows this plugin. |
+| `Access/` — capabilities | `Capabilities` (the seven cap names — campaigns and rewards are separate — role defaults, `install()`/`migrate()`/`uninstall()`, `ceiling()`, `payload()` for the SPA). Checked at the HTTP boundary only; services take an `actor_id`. | Knows this plugin. |
 
 **Key rule:** `Helpers/` reads options and SPA state. `Utils/` never does.
 
@@ -134,7 +135,7 @@ Write operations wrapped in `Transaction::run()`, return correlation ID on 500.
 | `src/pages/` | Route pages; `campaigns/` and `points/` have content; others are placeholders |
 | `src/pro/` | **Deleted in Lite build** — Pro feature components (`ConditionsPreview`, sentinel exports) |
 | `src/components/pro/` | **Kept in Lite** — `ProGate`, upsell UI, badge components |
-| `src/lib/` | Helpers: `api/` (REST calls), `queries/` (TanStack Query), `schema/` (Zod), `helpers/` |
+| `src/lib/` | Helpers: `api/` (REST calls), `queries/` (TanStack Query), `schema/` (Zod), `helpers/`, `access.tsx` (`CAP`, `can()`, `<Can>` — hide/disable by capability from `window.yayLoyaltyAdmin`; cosmetic, the server decides) |
 | `src/types/` | TypeScript type definitions |
 | `src/hooks/` | Custom React hooks |
 
@@ -171,12 +172,12 @@ REST GET /customers/{id} returns updated balance (next sync)
 Browser POST /yayloyalty/v1/campaigns/
   ↓
 Route dispatcher (rest_dispatch_request)
+  ├─ permission_callback: requires( Capabilities::MANAGE_CAMPAIGNS ) → 403 yayloyalty_forbidden
+  ├─ Validate args (readonly stripped)
   ↓
 CampaignRestController::create_item()
   ↓
 BaseRestController::exec_write( callback, request )
-  ├─ Apply capability check
-  ├─ Validate schema (readonly stripped)
   ├─ Call callback (wrapped in Transaction::run())
   ├─ On error: log, return correlation ID
   └─ Return rest_response
@@ -231,6 +232,7 @@ BaseRestController::exec_write( callback, request )
 4. **Money as strings.** Bind `DECIMAL` columns via `%s`, never `%f`.
 5. **One seam in Lite.** Only reference to Pro is guarded `class_exists` in `YayLoyalty::initialize()`.
 6. **Transaction nesting.** Only `Transaction::run()` opens/nests; never raw SQL.
+7. **Caps at the boundary only.** `Access\Capabilities` is checked in the menu, page render and `permission_callback`; services and repositories take an `actor_id` and never call `current_user_can()`. The SPA hides/disables, the server refuses.
 
 ---
 

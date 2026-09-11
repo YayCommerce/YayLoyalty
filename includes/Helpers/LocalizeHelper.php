@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Helpers;
 
+use YayLoyalty\Access\Capabilities;
 use YayLoyalty\Controllers\BaseRestController;
 
 defined( 'ABSPATH' ) || exit;
@@ -14,9 +15,12 @@ class LocalizeHelper {
     public const VAR_META  = 'yayLoyaltyMeta';
 
     public static function get_admin_data() {
-        $admin_data = [
-            'settings' => SettingsHelper::get_settings(),
-        ];
+        $admin_data = array_merge(
+            [ 'settings' => SettingsHelper::get_settings() ],
+            // capabilities, ceiling, isAdministrator — known at render, so the
+            // SPA never round-trips to learn what it may show.
+            Capabilities::payload()
+        );
 
         return apply_filters( 'yayloyalty_localize_admin_data', $admin_data );
     }

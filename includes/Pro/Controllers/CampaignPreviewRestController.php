@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Pro\Controllers;
 
+use YayLoyalty\Access\Capabilities;
 use YayLoyalty\Controllers\AbstractRestController;
 use YayLoyalty\Pro\Services\ConditionsEvaluator;
 use YayLoyalty\Repositories\CampaignRepository;
@@ -51,7 +52,7 @@ final class CampaignPreviewRestController extends AbstractRestController {
                 [
                     'methods'             => \WP_REST_Server::CREATABLE,
                     'callback'            => fn( $request ) => $this->exec_read( [ $this, 'preview' ], $request ),
-                    'permission_callback' => [ $this, 'permission_callback' ],
+                    'permission_callback' => $this->requires( Capabilities::MANAGE_CAMPAIGNS ),
                     'args'                => [
                         'user_id' => $this->user_id_param(),
                     ],

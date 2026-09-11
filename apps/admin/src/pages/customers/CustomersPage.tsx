@@ -1,6 +1,7 @@
 import { FormEvent, useState } from 'react';
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 
+import { Can, CAP, ceiling, isAdministrator } from '@/lib/access';
 import { parseWPDate } from '@/lib/helpers/format.helper';
 import { describeLedgerEntry, formatSignedPoints } from '@/lib/helpers/ledger.helper';
 import { useAdjustPointsMutation, useCustomerLedgerQuery, useCustomerQuery } from '@/lib/queries/customer.queries';
@@ -31,6 +32,9 @@ export default function CustomersPage() {
 
   const [points, setPoints] = useState('');
   const [note, setNote] = useState('');
+
+  // Administrators bypass the ceiling; everyone else sees it as an input bound.
+  const adjustmentCeiling = isAdministrator() ? 0 : ceiling();
 
   function lookup(event: FormEvent) {
     event.preventDefault();
@@ -117,7 +121,14 @@ export default function CustomersPage() {
                   value={points}
                   onChange={(event) => setPoints(event.target.value)}
                   placeholder="100"
+                  {...(adjustmentCeiling > 0 ? { min: -adjustmentCeiling, max: adjustmentCeiling } : {})}
                 />
+                {adjustmentCeiling > 0 && (
+                  // Client-side hint only; the server still decides.
+                  <span className="text-muted-foreground text-xs">
+                    {sprintf(__('Limited to %d points per adjustment.', 'yayloyalty'), adjustmentCeiling)}
+                  </span>
+                )}
               </div>
               <div className="flex flex-1 flex-col gap-1">
                 <label className="text-muted-foreground text-xs" htmlFor="yl-note">
@@ -130,9 +141,12 @@ export default function CustomersPage() {
                   placeholder={__('Goodwill gesture', 'yayloyalty')}
                 />
               </div>
-              <LoadingButton type="submit" loading={adjust.isPending}>
-                {__('Adjust', 'yayloyalty')}
-              </LoadingButton>
+              {/* Disabled, not hidden: a missing primary CTA reads as a broken feature. */}
+              <Can cap={CAP.MANAGE_POINTS} disable>
+                <LoadingButton type="submit" loading={adjust.isPending}>
+                  {__('Adjust', 'yayloyalty')}
+                </LoadingButton>
+              </Can>
             </form>
 
             {adjust.isError && (

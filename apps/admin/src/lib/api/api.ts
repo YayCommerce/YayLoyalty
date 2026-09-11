@@ -1,4 +1,7 @@
 import ky, { Options, ResponsePromise } from 'ky';
+import { toast } from 'sonner';
+
+import { FORBIDDEN_ERROR_CODES } from '@/lib/access';
 
 const _ky = ky.create({
   prefixUrl: window.yayLoyaltyMeta.wpMeta.restRoot,
@@ -15,6 +18,13 @@ const _ky = ky.create({
           if (body?.code === 'rest_cookie_invalid_nonce') {
             // if session expired
             location.reload();
+          }
+
+          // A capability or ceiling refusal from the backbone: one readable
+          // notice, never a raw error or a silent no-op. The error still
+          // propagates so callers can reset their own state.
+          if (FORBIDDEN_ERROR_CODES.includes(body?.code) && typeof body?.message === 'string') {
+            toast.error(body.message);
           }
         }
       },

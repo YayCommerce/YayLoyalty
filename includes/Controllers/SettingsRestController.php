@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Controllers;
 
+use YayLoyalty\Access\Capabilities;
 use YayLoyalty\Helpers\SettingsHelper;
 
 defined( 'ABSPATH' ) || exit;
@@ -27,12 +28,12 @@ class SettingsRestController extends AbstractRestController {
                 [
                     'methods'             => \WP_REST_Server::READABLE,
                     'callback'            => fn( $request ) => $this->exec_read( [ $this, 'get_settings' ], $request ),
-                    'permission_callback' => [ $this, 'permission_callback' ],
+                    'permission_callback' => $this->requires( Capabilities::VIEW ),
                 ],
                 [
                     'methods'             => \WP_REST_Server::CREATABLE,
                     'callback'            => fn( $request ) => $this->exec_write( [ $this, 'save_settings' ], $request ),
-                    'permission_callback' => [ $this, 'permission_callback' ],
+                    'permission_callback' => $this->requires( Capabilities::MANAGE_SETTINGS ),
                 ],
             ]
         );
@@ -43,13 +44,9 @@ class SettingsRestController extends AbstractRestController {
             [
                 'methods'             => \WP_REST_Server::CREATABLE,
                 'callback'            => fn( $request ) => $this->exec_write( [ $this, 'mark_reviewed' ], $request ),
-                'permission_callback' => [ $this, 'permission_callback' ],
+                'permission_callback' => $this->requires( Capabilities::VIEW ),
             ]
         );
-    }
-
-    public function permission_callback(): bool {
-        return current_user_can( $this->capability() );
     }
 
     public function get_settings( \WP_REST_Request $request ) {

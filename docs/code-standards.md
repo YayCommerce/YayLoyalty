@@ -163,6 +163,10 @@ Pick the level by asking who needs the line, not how noisy it is:
 - ID route params are `(?P<id>[\d]+)` with a `validate_callback` confirming the record exists.
 - Payload fields are `snake_case`. The pagination envelope is camelCase (`currentPage`, `totalPage`, `totalItems`, `perPage`, `data`), matching `PaginatedResponse<T>` in the admin app — one envelope, not two.
 - Error responses never echo `$exception->getMessage()`; log the detail, return a generic message with a correlation id.
+- Every admin route sets `'permission_callback' => $this->requires( Capabilities::X )` — one of the seven in `Access\Capabilities` (`view`, `manage_points`, `manage_tiers`, `manage_campaigns`, `manage_rewards`, `manage_settings`, `run_tools`). Never `__return_true` on an admin route. Storefront / Store API routes are gated by session identity, not by these caps.
+- Capabilities are checked at the HTTP boundary only (menu, page render, `permission_callback`). Services, repositories and the earning engine take an `actor_id` and never call `current_user_can()` / `get_current_user_id()` — a cap check inside `LedgerService::record()` breaks every cron, order-hook and WP-CLI path. `grep -r current_user_can includes/Services` must stay empty.
+- The adjustment ceiling (`settings.advanced.adjustment_ceiling`, 0 = unlimited) is a policy value, not a capability. `assert_ceiling()` runs inside the handler after the cap check; administrators bypass it.
+- The SPA hides and disables (`<Can>` in `lib/access.tsx`) and is never a gate. A 403 from the server is the real refusal; `api.ts` turns `yayloyalty_forbidden` / `yayloyalty_adjustment_ceiling` into one toast.
 
 ## 10. PHP 7.4 pseudo-enums
 

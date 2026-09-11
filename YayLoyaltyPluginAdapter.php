@@ -25,6 +25,11 @@ class YayLoyaltyPluginAdapter implements \YayLoyaltyScoped\YayCommerce\AdminShel
 
     public function get_settings_page_callback(): ?callable {
         return function () {
+            // The menu capability hides the link; it does not stop a pasted URL.
+            if ( ! current_user_can( \YayLoyalty\Access\Capabilities::VIEW ) ) {
+                wp_die( esc_html__( 'Sorry, you are not allowed to access this page.', 'yayloyalty' ), 403 );
+            }
+
             echo '<div id="yayloyalty"></div>';
         };
     }
@@ -33,8 +38,13 @@ class YayLoyaltyPluginAdapter implements \YayLoyaltyScoped\YayCommerce\AdminShel
         return YAYLOYALTY_MENU_ORDER;
     }
 
+    /**
+     * Menu capability. AdminShell also applies it to the licence REST routes
+     * and LicenseHandler, so a viewer can reach those; the plugin's own routes
+     * carry their own capability each (see Capabilities).
+     */
     public function get_capability(): string {
-        return 'manage_woocommerce';
+        return \YayLoyalty\Access\Capabilities::VIEW;
     }
 
     public function get_plugin_basename(): string {

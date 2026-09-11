@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Controllers;
 
+use YayLoyalty\Access\Capabilities;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Services\LedgerService;
 
@@ -40,7 +41,7 @@ final class CustomerRestController extends AbstractRestController {
                 [
                     'methods'             => \WP_REST_Server::READABLE,
                     'callback'            => fn( $request ) => $this->exec_read( [ $this, 'get_customer' ], $request ),
-                    'permission_callback' => [ $this, 'permission_callback' ],
+                    'permission_callback' => $this->requires( Capabilities::VIEW ),
                     'args'                => [ 'id' => $this->user_id_param() ],
                 ],
                 'schema' => [ $this, 'get_item_schema' ],
@@ -53,7 +54,7 @@ final class CustomerRestController extends AbstractRestController {
             [
                 'methods'             => \WP_REST_Server::CREATABLE,
                 'callback'            => fn( $request ) => $this->exec_write( [ $this, 'adjust_points' ], $request ),
-                'permission_callback' => [ $this, 'permission_callback' ],
+                'permission_callback' => $this->requires( Capabilities::MANAGE_POINTS ),
                 'args'                => [
                     'id'     => $this->user_id_param(),
                     'points' => [
@@ -77,8 +78,9 @@ final class CustomerRestController extends AbstractRestController {
      *
      * Adjustments are deliberately not idempotent, so a client that retries
      * after a timeout double-grants — ky gives up at 20s while a lock wait can
-     * run to 50s. The ceiling bounds the damage. It does not replace the
-     * capability question (see the plan's open questions).
+     * run to 50s. This sanity cap bounds the damage for everyone, administrators
+     * included. The per-role policy ceiling is assert_ceiling(), applied after
+     * it.
      */
     private function max_adjustment(): int {
         /**
@@ -134,6 +136,14 @@ final class CustomerRestController extends AbstractRestController {
                     number_format_i18n( $max )
                 )
             );
+        }
+
+        // Role policy, after the sanity cap: the ceiling is per-role and
+        // administrators bypass it; the cap above binds everyone.
+        $within_ceiling = $this->assert_ceiling( $points );
+
+        if ( is_wp_error( $within_ceiling ) ) {
+            return $within_ceiling;
         }
 
         // actor_id always comes from the session, never from the request body.

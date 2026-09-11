@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Database;
 
+use YayLoyalty\Access\Capabilities;
 use YayLoyalty\Database\Schema\AbstractTableSchema;
 use YayLoyalty\Utils\Log;
 
@@ -70,6 +71,11 @@ final class Installer {
         }
 
         self::seed_builtins();
+
+        // Here rather than only on the activation hook: shop_manager does not
+        // exist until WooCommerce has been activated once, and this also runs
+        // on every plugin upgrade and for blogs added to a network.
+        Capabilities::install();
 
         self::run_migrations();
 

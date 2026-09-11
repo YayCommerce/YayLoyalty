@@ -1,6 +1,8 @@
 <?php
 namespace YayLoyalty\Controllers;
 
+use YayLoyalty\Access\Capabilities;
+
 defined( 'ABSPATH' ) || exit;
 
 /**
@@ -240,23 +242,65 @@ abstract class AbstractRestController extends BaseRestController {
     }
 
     /**
-     * Capability required for this resource.
+     * Permission callback for a route: the user must hold $cap.
      *
-     * Single method so the capability model can change in one place. Whether
-     * minting points should require a dedicated capability rather than
-     * manage_woocommerce is an open product question; see the plan.
+     * Every admin route reads
+     *   'permission_callback' => $this->requires( Capabilities::MANAGE_POINTS )
+     * — one line, and the whole reason this method exists. Never
+     * '__return_true' on an admin route; storefront and Store API routes are
+     * gated by session identity, not by these caps, and do not use this.
+     *
+     * @return callable(): (true|\WP_Error)
      */
-    public function capability(): string {
-        /**
-         * Capability required for YayLoyalty admin REST routes.
-         *
-         * @param string $capability
-         * @param string $rest_base
-         */
-        return (string) apply_filters( 'yayloyalty_rest_capability', 'manage_woocommerce', $this->get_rest_base() );
+    protected function requires( string $cap ): callable {
+        return function () use ( $cap ) {
+            return current_user_can( $cap ) ? true : $this->forbidden( $cap );
+        };
     }
 
-    public function permission_callback(): bool {
-        return current_user_can( $this->capability() );
+    /**
+     * 403 naming the missing capability, so the SPA can show one consistent
+     * notice and support can see which cap a role lacks.
+     */
+    protected function forbidden( string $cap ): \WP_Error {
+        return new \WP_Error(
+            'yayloyalty_forbidden',
+            __( 'You do not have permission to do that.', 'yayloyalty' ),
+            [
+                'status'     => 403,
+                'capability' => $cap,
+            ]
+        );
+    }
+
+    /**
+     * Ceiling guard for manual adjustments. Call inside the handler, after
+     * the capability check has already passed.
+     *
+     * Administrators bypass it; everyone else, including shop managers, does
+     * not. 0 means unlimited.
+     *
+     * @param int|float|string $amount
+     * @return true|\WP_Error
+     */
+    protected function assert_ceiling( $amount ) {
+        $ceiling = Capabilities::ceiling();
+
+        if ( $ceiling > 0 && abs( (int) $amount ) > $ceiling && ! Capabilities::is_administrator() ) {
+            return new \WP_Error(
+                'yayloyalty_adjustment_ceiling',
+                sprintf(
+                    /* translators: %s: maximum number of points */
+                    __( 'Adjustments are limited to %s points.', 'yayloyalty' ),
+                    number_format_i18n( $ceiling )
+                ),
+                [
+                    'status'  => 403,
+                    'ceiling' => $ceiling,
+                ]
+            );
+        }
+
+        return true;
     }
 }

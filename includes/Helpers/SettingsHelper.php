@@ -26,10 +26,15 @@ class SettingsHelper {
 
     public static function get_default_settings(): array {
         return [
-            'general' => [
+            'general'  => [
                 'enabled'               => true,
                 'points_label_singular' => __( 'Point', 'yayloyalty' ),
                 'points_label_plural'   => __( 'Points', 'yayloyalty' ),
+            ],
+            'advanced' => [
+                // Largest manual adjustment a non-administrator may make in
+                // one call. 0 = unlimited. Read via Capabilities::ceiling().
+                'adjustment_ceiling' => 0,
             ],
         ];
     }
@@ -44,10 +49,13 @@ class SettingsHelper {
      */
     private static function schema(): array {
         return [
-            'general' => [
+            'general'  => [
                 'enabled'               => 'bool',
                 'points_label_singular' => 'text',
                 'points_label_plural'   => 'text',
+            ],
+            'advanced' => [
+                'adjustment_ceiling' => 'int',
             ],
         ];
     }

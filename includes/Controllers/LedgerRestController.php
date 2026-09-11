@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Controllers;
 
+use YayLoyalty\Access\Capabilities;
 use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Repositories\LedgerRepository;
@@ -34,7 +35,7 @@ final class LedgerRestController extends AbstractRestController {
                 [
                     'methods'             => \WP_REST_Server::READABLE,
                     'callback'            => fn( $request ) => $this->exec_read( [ $this, 'get_history' ], $request ),
-                    'permission_callback' => [ $this, 'permission_callback' ],
+                    'permission_callback' => $this->requires( Capabilities::VIEW ),
                     'args'                => array_merge(
                         [ 'id' => $this->user_id_param() ],
                         $this->get_collection_params()
