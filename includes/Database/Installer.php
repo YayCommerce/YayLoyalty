@@ -72,7 +72,6 @@ final class Installer {
         }
 
         self::seed_builtins();
-        self::seed_builtin_reward();
 
         // Here rather than only on the activation hook: shop_manager does not
         // exist until WooCommerce has been activated once, and this also runs
@@ -116,16 +115,27 @@ final class Installer {
     }
 
     /**
-     * Create the built-in campaign rows.
+     * Create every built-in rows.
      *
-     * Idempotent by slug, so repeat installs cannot duplicate them. Runs inside
-     * maybe_upgrade()'s mutex, and the unique key on slug is the backstop if two
-     * requests somehow seed at once.
+     * One entry point so install() has a single call for "seed whatever this
+     * build ships built-in", rather than a growing list of seed_builtin_*()
+     * calls at the call site every time a new definition table gets one.
+     * Idempotent by slug, so repeat installs cannot duplicate any of them.
+     * Runs inside maybe_upgrade()'s mutex, and each table's unique key on
+     * slug is the backstop if two requests somehow seed at once.
+     */
+    private static function seed_builtins(): void {
+        self::seed_builtin_campaigns();
+        self::seed_builtin_reward();
+    }
+
+    /**
+     * Create the built-in campaign rows.
      *
      * Built-ins are addressed by slug rather than id because ids differ between
      * sites — the Free UI and any import/export bind to the slug.
      */
-    private static function seed_builtins(): void {
+    private static function seed_builtin_campaigns(): void {
         $repository = new \YayLoyalty\Repositories\CampaignRepository();
         $now        = \YayLoyalty\Utils\Dates::now();
 
@@ -170,10 +180,6 @@ final class Installer {
 
     /**
      * Create the built-in reward row.
-     *
-     * Idempotent by slug, same reasoning and mutex as seed_builtins(): repeat
-     * installs cannot duplicate it, and a merchant's edits are never
-     * overwritten by a later run.
      */
     private static function seed_builtin_reward(): void {
         $repository = new \YayLoyalty\Repositories\RewardRepository();
