@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| **Version** | 0.3 — supersedes the data-model section of `MVP.md` v0.2 |
-| **Date** | 3 September 2026 |
+| **Version** | 0.4 — campaigns schema reconciled with code; `conditions` schema added |
+| **Date** | 10 September 2026 |
 | **Scope** | Every table YayLoyalty owns across Free, Pro and later releases, every column, and how they relate |
 | **Companion docs** | `project-roadmap.md` · `codebase-summary.md` · `system-architecture.md` |
 
@@ -54,21 +54,73 @@ One row per way to earn points. Free seeds three built-in rows and shows only #1
 | `id` | BIGINT UNSIGNED AI | PK | Row id. Referenced by `ledger.campaign_id`. |
 | `name` | VARCHAR(191) | not null | Merchant-facing label. Appears in the customer's history ("Earned — Double Points Weekend") and Pro analytics. |
 | `slug` | VARCHAR(64) | unique | Stable machine key. Built-ins are `default-purchase`, `signup`, `review`; templates get their own. Code, filters and import/export address campaigns by slug because ids differ between sites. |
-| `trigger` | VARCHAR(20) | not null, idx | The event that fires the campaign: `purchase`, `signup`, `review` (1.0); `birthday`, `first_order`, `order_count`, `spend_milestone`, `referral`, `social`, `renewal` (Pro). Determines which keys `config` may contain. |
-| `status` | VARCHAR(10) | not null, `active` | Merchant intent only: `active`, `paused`, `draft`. Never `scheduled` or `ended` — those are computed from the dates. |
+| `trigger_type` | VARCHAR(32) | not null, idx | The event that fires the campaign: `purchase`, `signup`, `review` (1.0); `birthday`, `first_order`, `order_count`, `spend_milestone`, `referral`, `social`, `renewal` (Pro). Determines which keys `config` may contain. Named `trigger_type`, not `trigger` — `trigger` is a reserved word in MySQL/MariaDB. `Enums\CampaignTrigger`: `all()` is what this build can fire, `all_known()` is the full stored vocabulary; `referral`/`social`/`renewal` are recognised but not yet implemented. |
+| `status` | VARCHAR(20) | not null, `active` | Merchant intent only: `active`, `paused`, `draft`, `archived`. Never `scheduled` or `ended` stored — those are derived at read time by `Enums\Status::resolve_display()` from an `active` status plus the date window. |
 | `priority` | INT | not null, `0` | Among live campaigns of the same trigger, the highest priority wins; ties go to the newest (`id` DESC). The default purchase campaign is `0`, so any Pro campaign that matches replaces it. |
-| `config` | LONGTEXT (JSON) | not null | The numbers. `purchase`: `points_per_unit`, `base` (`after_discounts` \| `before_discounts`), `rounding` (`down` \| `nearest` \| `up`), `min_subtotal`, `exclude_coupon_orders`, `excluded_product_ids[]`, `excluded_category_ids[]`, Pro: `max_points_per_order`, `daily_cap`. `signup`: `points`. `review`: `points`, `require_verified`, `one_per_product`, `daily_cap`, Pro: `media_bonus_points`. |
-| `conditions` | LONGTEXT (JSON) | not null, `[]` | Pro eligibility rules, ANDed: `{type, operator, value}` for roles, product categories, products, lifetime spend, order count, currency, tier. Empty in Free. |
+| `config` | LONGTEXT (JSON) | not null, no SQL default (TEXT columns cannot carry one — PHP writes `{}`) | The numbers, keyed by `trigger_type`. Validated on save against a per-trigger map (`Campaign::config_schema()` for the 1.0 triggers, typed; the four Pro triggers via the `yayloyalty_campaign_config_whitelist` seam). Unknown keys and wrong types are rejected before the row is written. Shapes below. |
+| `conditions` | LONGTEXT (JSON) | not null, no SQL default (PHP writes `[]`) | Eligibility rules, ANDed — no OR, no nesting. A JSON list of `{type, operator, value}`; `[]` means "applies to everyone". Full schema in [`conditions` — eligibility rules](#conditions--eligibility-rules) below. Empty in Free; authored in Pro. |
 | `starts_at` | DATETIME | null | Live from this instant (inclusive). Null = no start bound. Free never sets it. |
 | `ends_at` | DATETIME | null | Live until this instant (exclusive), so back-to-back campaigns never overlap. Null = no end bound. |
-| `is_builtin` | TINYINT(1) | `0` | `1` for the three seeded rows: cannot be deleted; the Free UI binds to them. |
+| `is_builtin` | TINYINT(1) | `0` | `1` for the three seeded rows: cannot be deleted, cannot be archived; the Free UI binds to them. |
 | `created_by` | BIGINT UNSIGNED | null | Admin who created it (audit). |
-| `created_at` | DATETIME | not null | |
-| `updated_at` | DATETIME | not null | Bumped on every save; used to invalidate the active-campaign cache. |
+| `updated_by` | BIGINT UNSIGNED | null | Admin who last saved it (audit). |
+| `created_at` | DATETIME | not null | UTC. |
+| `updated_at` | DATETIME | not null | UTC. Bumped on every save. |
+| `archived_at` | DATETIME | null | UTC. Set by `Campaign::set_status()` when `status` becomes `archived`, cleared when it leaves. |
 
-Indexes: PK; UNIQUE `slug`; `(trigger, status, priority)` for selection; `starts_at`, `ends_at` so the cache TTL can be set to the nearest future boundary.
+All `DATETIME` columns are UTC (see Conventions). `starts_at` is inclusive, `ends_at` is **exclusive** — a campaign the merchant ends on 30 Nov is stored as `2026-12-01 00:00:00`, so back-to-back windows never overlap.
 
-Liveness: `status = 'active' AND (starts_at IS NULL OR starts_at <= now) AND (ends_at IS NULL OR ends_at > now)`, evaluated against the event's timestamp (the order's award time, not the request time).
+Indexes: PK; `UNIQUE KEY uk_slug (slug)`; `KEY idx_lookup (trigger_type, status, priority)` for selection; `KEY idx_archived (status, archived_at)` for the archived-campaigns view. The former single-column `starts_at` / `ends_at` indexes were dropped: selection filters the date window in SQL.
+
+Liveness: `status = 'active' AND (starts_at IS NULL OR starts_at <= now) AND (ends_at IS NULL OR ends_at > now)`, evaluated against the event's timestamp (the order's award time, not the request time). `Enums\Status::is_live_at()`.
+
+No caching yet: `CampaignRepository` queries the table directly on every lookup. Caching campaign lookups, and how a cache invalidates, is left to whichever task builds the earning engine — the previous design (a TTL keyed to the nearest `starts_at`/`ends_at`) was dropped for contradicting the event-time liveness rule above, and a version counter was tried and removed for having no reader; both are better designed once the actual consumer exists.
+
+### config shapes
+
+`config` keys per `trigger_type`. The 1.0 triggers are typed and validated in `Campaign::config_schema()`; the Pro triggers are key lists contributed by `YayLoyaltyPro::add_config_keys()` (kept whitelisted in Free so a downgrade does not lose them).
+
+| Trigger | Keys |
+|---|---|
+| `purchase` | `points_per_unit` (number ≥ 0), `base` (`after_discounts` \| `before_discounts`), `include_shipping` (bool), `include_tax` (bool), `rounding` (`down` \| `nearest` \| `up`), `min_subtotal` (number ≥ 0), `exclude_coupon_orders` (bool), `excluded_product_ids[]` (int), `excluded_category_ids[]` (int), `max_points_per_order` (int ≥ 0, Pro), `daily_cap` (int ≥ 0, Pro) |
+| `signup` | `points` (int ≥ 0) |
+| `review` | `points` (int ≥ 0), `require_verified` (bool), `one_per_product` (bool), `daily_cap` (int ≥ 0), `media_bonus_points` (int ≥ 0, Pro) |
+| `first_order` | `points`, `min_subtotal` |
+| `order_count` | `points`, `order_count` (the N to reach), `repeat` (fire every N, or once) |
+| `spend_milestone` | `points`, `spend_amount` (threshold), `repeat` |
+| `birthday` | `points`, `days_before` (fire this many days ahead of the date) |
+
+Built-in seed configs: `default-purchase` — 1 pt/unit, `after_discounts`, shipping and tax excluded, rounding `down`; `signup` — 100 pts; `review` — 50 pts, verified only.
+
+### `conditions` — eligibility rules
+
+One row's `conditions` is a JSON **list** of `{type, operator, value}` objects, stored via the `{schema_version, items:[]}` envelope (`Json::encode_list`). All entries are **ANDed**; there is no OR and no nesting. `[]` (the default) means no restrictions. At most **one entry per type** — a duplicate type is rejected on save.
+
+`Enums\CampaignConditionType` holds the vocabulary and the per-type map (operators + value shape); `Models\CampaignConditionSet` validates and normalises a set on save (`Campaign::conditions_are_valid()` rejects; `Campaign::set_conditions()` normalises), mirroring the `config` pair. `Models\CampaignCondition` is the per-entry value object. Named `Campaign*` rather than a bare `Condition*`: rewards get their own condition vocabulary (a later task), and the two must not collide.
+
+**Types** — declared cheap-first: the ones above the line are satisfied from data already loaded for the order; the three below each need their own aggregate query, so a future evaluator checks them last and short-circuits on the first failure.
+
+| Type | Operators | Value |
+|---|---|---|
+| `user_role` | `in`, `not_in` | list of WP role slugs (lower-cased) |
+| `customer_ids` | `in`, `not_in` | list of user ids (int). **Hard cap 100** — past that, save is rejected pointing the merchant at `user_role` or `tier` |
+| `currency` | `in`, `not_in` | list of ISO 4217 codes (upper-cased, validated) |
+| `payment_method` | `in`, `not_in` | list of WooCommerce gateway ids |
+| `country` | `in`, `not_in` | `{ "countries": [ISO 3166-1 alpha-2, …], "source": "shipping" \| "billing" \| "any" }`. `source` is **required, no default** — the shipping address is absent on virtual and downloadable orders, so it is never assumed. Codes upper-cased and validated. Replaces what would have been `shipping_country`. |
+| `product_in_cart` | `in`, `not_in` | list of product ids (int) |
+| `category_in_cart` | `in`, `not_in` | list of category term ids (int) |
+| `tier` | `in`, `not_in`, `gte`, `lte` | tier slug, or a list for `in`/`not_in`. **Not available yet** — the tier system is a later task, so `tier` is defined in the vocabulary (`CampaignConditionType::all_known()`) but excluded from `all()`, so a merchant cannot create one today. `gte`/`lte` are ordinal ("Silver or above"), which is why the future `yayloyalty_tiers` table needs an integer `level` column. |
+| `lifetime_points` | `gte`, `lte`, `gt`, `lt`, `eq`, `between` | integer; `between` takes `[low, high]`, `low <= high` |
+| `order_count` | `gte`, `lte`, `gt`, `lt`, `eq`, `between` | integer; `between` as above |
+| `lifetime_spend` | `gte`, `lte`, `gt`, `lt`, `eq`, `between` | `{ "amount": <number>, "currency": "USD" }` — **never a bare number**. `currency` is required and ISO 4217 validated (upper-cased on save). Only orders **in that same currency** count toward the total; there is no exchange-rate conversion. For `between`, `amount` is `[low, high]`. |
+
+Operators are **not** interchangeable — each type accepts only the operators listed. An operator outside the set, an unknown type, a wrong value shape, an empty list value, a missing required sub-key (`currency`, `source`), a duplicate type, or `customer_ids` over cap — all are rejected before the row is written.
+
+**Normalisation on save:** a scalar is widened to a one-element array where the type expects a list; ids are cast to int; country and currency codes are upper-cased; role slugs are lower-cased; lists are de-duplicated; entries are re-ordered cheap-first.
+
+**`product_in_cart` / `category_in_cart` are order-level gates, not line-item scopes.** If the order contains a matching item, the order qualifies and the campaign's **full** point calculation applies to the **entire** order — these do **not** restrict points to the matching line items. Per-line scoping (excluding products/categories from the points base) belongs in `config` (`excluded_product_ids` / `excluded_category_ids`), not here.
+
+**Evaluation** (Pro; `Pro\Services\ConditionsEvaluator`, attached via the `yayloyalty_campaign_conditions_evaluator` seam). The seam passes only a customer id today, so the evaluator covers the customer-fact conditions — `user_role`, `customer_ids`, `lifetime_points`, `order_count`, `lifetime_spend` (same-currency, capped at the 100 newest paid orders). `product_in_cart` / `category_in_cart` fall back to purchase history until the award engine passes the order. `currency`, `country` and `payment_method` describe the order, not the customer, so they are reported as `unsupported_condition_type` — and, per Pro's fail-closed rule for anything it cannot evaluate, do not match — until that engine lands. `tier` is unevaluable until the tier system exists. Lite has no evaluator, so it treats any non-empty set as matching.
 
 ## `yayloyalty_rewards` — ways to spend points (1.0)
 
@@ -288,7 +340,7 @@ Written in the same transaction as the fact that caused it, so a webhook can nev
 
 **WooCommerce session**: `yayloyalty_redeem_points` carries the amount the shopper chose between cart and checkout until the order exists.
 
-**Cache**: a transient (object cache when available) of live campaigns per trigger type and of live rewards. Cleared on any campaign or reward save; its TTL is the nearest future `starts_at`/`ends_at` across all rows, capped at one hour, so it expires itself exactly at a schedule boundary with no job.
+**Cache**: none yet. Campaign lookups run uncached (see the campaigns table section above). A cache of live campaigns per trigger type, and its invalidation, belongs to whichever task builds the earning engine.
 
 **Action Scheduler jobs** (the only ones): daily inactivity expiry, daily reminders, referral hold completion (1.1), tier window evaluation (1.2), lot expiry (Pro), event delivery (2.0). None of them watch a clock to flip a status.
 

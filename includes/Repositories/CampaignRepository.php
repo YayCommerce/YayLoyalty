@@ -9,15 +9,16 @@ defined( 'ABSPATH' ) || exit;
 /**
  * yayloyalty_campaigns.
  *
- * `trigger` is a reserved word in MySQL 8 and is backticked in every query here.
+ * The event column is `trigger_type` (see CampaignsTable): a plain identifier,
+ * so no query here backticks anything.
  *
  * No caching. The original design cached live campaigns per trigger with a
  * now()-derived TTL, which contradicted the event-time rule it sat next to: a
  * late-processed order would have been scored against today's live set rather
  * than the set live at its award time. A correct cache must key on the
  * evaluation timestamp, and the first code that knows the right key is the
- * earning engine. Until then this runs uncached against an indexed table with a
- * handful of rows.
+ * earning engine — including how it invalidates. Until then this runs
+ * uncached against an indexed table with a handful of rows.
  *
  * Plain object, not a singleton — see docs/code-standards.md section 8.
  */
@@ -71,7 +72,7 @@ final class CampaignRepository extends AbstractRepository {
         $row = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
             $wpdb->prepare(
                 'SELECT * FROM `' . esc_sql( $this->table() ) . '`
-                 WHERE `trigger` = %s
+                 WHERE trigger_type = %s
                    AND status = %s
                    AND ( starts_at IS NULL OR starts_at <= %s )
                    AND ( ends_at IS NULL OR ends_at > %s )
@@ -100,7 +101,7 @@ final class CampaignRepository extends AbstractRepository {
         $where = [];
 
         if ( ! empty( $args['trigger'] ) ) {
-            $where[] = $wpdb->prepare( '`trigger` = %s', $args['trigger'] );
+            $where[] = $wpdb->prepare( 'trigger_type = %s', $args['trigger'] );
         }
 
         if ( ! empty( $args['status'] ) ) {

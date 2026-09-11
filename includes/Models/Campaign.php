@@ -3,6 +3,7 @@ namespace YayLoyalty\Models;
 
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Enums\Status;
+use YayLoyalty\Utils\Dates;
 use YayLoyalty\Utils\Json;
 
 defined( 'ABSPATH' ) || exit;
@@ -12,9 +13,14 @@ defined( 'ABSPATH' ) || exit;
  *
  * Definition table, so this is mutable — unlike LedgerEntry, a campaign is
  * edited in place. It has no service: its invariants (valid trigger, whitelisted
- * config keys, derived liveness) are validation, and validation lives here and
- * in the controller schema. A service wrapping one repository would be ceremony.
- * If a campaign operation ever needs a second table atomically, it earns one.
+ * and correctly-typed config keys, derived liveness, "built-ins are not
+ * archivable") are validation, and validation lives here and in the controller
+ * schema. A service wrapping one repository would be ceremony. If a campaign
+ * operation ever needs a second table atomically, it earns one.
+ *
+ * COLUMN vs FIELD: the database column is `trigger_type` (see CampaignsTable for
+ * why). Everywhere else — this model's property, its getter, the REST payload —
+ * the field is `trigger`. from_row()/to_row() are the single mapping point.
  */
 class Campaign extends AbstractModel {
 
@@ -57,11 +63,17 @@ class Campaign extends AbstractModel {
     /** @var int|null */
     private $created_by;
 
+    /** @var int|null */
+    private $updated_by;
+
     /** @var string */
     private $created_at;
 
     /** @var string */
     private $updated_at;
+
+    /** @var string|null */
+    private $archived_at;
 
     public function __construct(
         ?int $id,
@@ -77,22 +89,26 @@ class Campaign extends AbstractModel {
         bool $is_builtin = false,
         ?int $created_by = null,
         string $created_at = '',
-        string $updated_at = ''
+        string $updated_at = '',
+        ?int $updated_by = null,
+        ?string $archived_at = null
     ) {
-        $this->id         = $id;
-        $this->name       = $name;
-        $this->slug       = $slug;
-        $this->trigger    = $trigger;
-        $this->status     = $status;
-        $this->priority   = $priority;
-        $this->config     = $config;
-        $this->conditions = $conditions;
-        $this->starts_at  = $starts_at;
-        $this->ends_at    = $ends_at;
-        $this->is_builtin = $is_builtin;
-        $this->created_by = $created_by;
-        $this->created_at = $created_at;
-        $this->updated_at = $updated_at;
+        $this->id          = $id;
+        $this->name        = $name;
+        $this->slug        = $slug;
+        $this->trigger     = $trigger;
+        $this->status      = $status;
+        $this->priority    = $priority;
+        $this->config      = $config;
+        $this->conditions  = $conditions;
+        $this->starts_at   = $starts_at;
+        $this->ends_at     = $ends_at;
+        $this->is_builtin  = $is_builtin;
+        $this->created_by  = $created_by;
+        $this->created_at  = $created_at;
+        $this->updated_at  = $updated_at;
+        $this->updated_by  = $updated_by;
+        $this->archived_at = $archived_at;
     }
 
     public static function from_row( array $row ): self {
@@ -100,7 +116,7 @@ class Campaign extends AbstractModel {
             self::cast_int( $row['id'] ?? null ),
             (string) ( $row['name'] ?? '' ),
             (string) ( $row['slug'] ?? '' ),
-            (string) ( $row['trigger'] ?? '' ),
+            (string) ( $row['trigger_type'] ?? '' ),
             (string) ( $row['status'] ?? Status::ACTIVE ),
             self::cast_int_default( $row['priority'] ?? 0 ),
             Json::decode( $row['config'] ?? null, [] ),
@@ -110,32 +126,36 @@ class Campaign extends AbstractModel {
             self::cast_bool( $row['is_builtin'] ?? 0 ),
             self::cast_int( $row['created_by'] ?? null ),
             (string) ( $row['created_at'] ?? '' ),
-            (string) ( $row['updated_at'] ?? '' )
+            (string) ( $row['updated_at'] ?? '' ),
+            self::cast_int( $row['updated_by'] ?? null ),
+            self::cast_datetime( $row['archived_at'] ?? null )
         );
     }
 
     public function to_row(): array {
         return [
-            'name'       => $this->name,
-            'slug'       => $this->slug,
-            // Backticked at the query layer; the key itself is the plain name.
-            'trigger'    => $this->trigger,
-            'status'     => $this->status,
-            'priority'   => $this->priority,
-            'config'     => Json::encode( $this->config, self::CONFIG_SCHEMA_VERSION ),
+            'name'         => $this->name,
+            'slug'         => $this->slug,
+            // Model field trigger -> DB column trigger_type.
+            'trigger_type' => $this->trigger,
+            'status'       => $this->status,
+            'priority'     => $this->priority,
+            'config'       => Json::encode( $this->config, self::CONFIG_SCHEMA_VERSION ),
             // A list, not a map — see Json::encode_list().
-            'conditions' => Json::encode_list( $this->conditions, self::CONFIG_SCHEMA_VERSION ),
-            'starts_at'  => $this->starts_at,
-            'ends_at'    => $this->ends_at,
-            'is_builtin' => $this->is_builtin ? 1 : 0,
-            'created_by' => $this->created_by,
-            'created_at' => $this->created_at,
-            'updated_at' => $this->updated_at,
+            'conditions'   => Json::encode_list( $this->conditions, self::CONFIG_SCHEMA_VERSION ),
+            'starts_at'    => $this->starts_at,
+            'ends_at'      => $this->ends_at,
+            'is_builtin'   => $this->is_builtin ? 1 : 0,
+            'created_by'   => $this->created_by,
+            'updated_by'   => $this->updated_by,
+            'created_at'   => $this->created_at,
+            'updated_at'   => $this->updated_at,
+            'archived_at'  => $this->archived_at,
         ];
     }
 
     public function get_format(): array {
-        return [ '%s', '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%s' ];
+        return [ '%s', '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%d', '%d', '%d', '%s', '%s', '%s' ];
     }
 
     public function to_array(): array {
@@ -169,6 +189,22 @@ class Campaign extends AbstractModel {
      */
     public function is_live_at( string $at ): bool {
         return Status::is_live_at( $this->status, $this->starts_at, $this->ends_at, $at );
+    }
+
+    /**
+     * The label to show for this campaign: its stored status, or — when that is
+     * `active` — `scheduled` / `ended` derived from the date window.
+     *
+     * $at defaults to now() because this is a display concern; pass the event's
+     * timestamp to describe how a past order would have seen it.
+     */
+    public function display_status( ?string $at = null ): string {
+        return Status::resolve_display(
+            $this->status,
+            $this->starts_at,
+            $this->ends_at,
+            null !== $at && '' !== $at ? $at : Dates::now()
+        );
     }
 
     /**
@@ -216,45 +252,74 @@ class Campaign extends AbstractModel {
     }
 
     /**
-     * Keys each trigger's config may contain.
+     * Per-trigger config schema: key => spec.
      *
-     * Pro-only keys are listed and preserved HERE IN LITE on purpose: a
-     * site that downgrades must keep its stored values so an upgrade restores
-     * the campaign intact. They are simply not acted on in Lite. Do not "tidy"
-     * them out of this list — that would silently destroy a merchant's
-     * configuration on a temporary downgrade.
+     * The source of truth for what a campaign's `config` may hold, and what
+     * config_is_valid() checks each value against on save.
      *
-     * The filter is for Pro to add whitelists for triggers Lite has no
-     * entry for at all (birthday, first_order, …), not to add keys to these.
+     * Covers the triggers Lite itself defines. Pro triggers — birthday,
+     * first_order, order_count, spend_milestone — carry their own config
+     * vocabulary, contributed through the yayloyalty_campaign_config_whitelist
+     * seam (see config_whitelist()); Lite neither describes nor type-checks them.
+     *
+     * Spec shapes:
+     *   'bool'                              — a JSON boolean
+     *   'string'                            — a JSON string
+     *   'int'   [ 'min' => n ]              — a whole number, optional lower bound
+     *   'number'[ 'min' => n ]              — int or float, optional lower bound
+     *   'enum'  [ 'values' => [ ... ] ]     — a string from a fixed set
+     *   'int_list'                          — a list of whole numbers
+     *
+     * Pro-recognised keys (max_points_per_order, daily_cap, media_bonus_points)
+     * are listed HERE IN LITE on purpose: a site that downgrades must keep its
+     * stored values so an upgrade restores the campaign intact. Lite simply does
+     * not act on them. Do not "tidy" them out.
+     *
+     * @return array<string, array<string, array<string, mixed>>>
+     */
+    public static function config_schema(): array {
+        return [
+            CampaignTrigger::PURCHASE => [
+                'points_per_unit'       => [ 'type' => 'number', 'min' => 0 ],
+                'base'                  => [ 'type' => 'enum', 'values' => [ 'after_discounts', 'before_discounts' ] ],
+                'include_shipping'      => [ 'type' => 'bool' ],
+                'include_tax'           => [ 'type' => 'bool' ],
+                'rounding'              => [ 'type' => 'enum', 'values' => [ 'down', 'nearest', 'up' ] ],
+                'min_subtotal'          => [ 'type' => 'number', 'min' => 0 ],
+                'exclude_coupon_orders' => [ 'type' => 'bool' ],
+                'excluded_product_ids'  => [ 'type' => 'int_list' ],
+                'excluded_category_ids' => [ 'type' => 'int_list' ],
+                'max_points_per_order'  => [ 'type' => 'int', 'min' => 0 ],
+                'daily_cap'             => [ 'type' => 'int', 'min' => 0 ],
+            ],
+            CampaignTrigger::SIGNUP   => [
+                'points' => [ 'type' => 'int', 'min' => 0 ],
+            ],
+            CampaignTrigger::REVIEW   => [
+                'points'             => [ 'type' => 'int', 'min' => 0 ],
+                'require_verified'   => [ 'type' => 'bool' ],
+                'one_per_product'    => [ 'type' => 'bool' ],
+                'daily_cap'          => [ 'type' => 'int', 'min' => 0 ],
+                'media_bonus_points' => [ 'type' => 'int', 'min' => 0 ],
+            ],
+        ];
+    }
+
+    /**
+     * Keys each trigger's config may contain, keyed by trigger.
+     *
+     * Derived from config_schema() so the two never drift, then passed through
+     * the Pro seam. The filter is for Pro to add whitelists for triggers Lite
+     * has no schema entry for at all, not to add keys to these.
      *
      * @return array<string, string[]>
      */
     public static function config_whitelist(): array {
-        $whitelist = [
-            CampaignTrigger::PURCHASE => [
-                'points_per_unit',
-                'base',                  // after_discounts | before_discounts
-                'rounding',              // down | nearest | up
-                'min_subtotal',
-                'exclude_coupon_orders',
-                'excluded_product_ids',
-                'excluded_category_ids',
-                // Pro
-                'max_points_per_order',
-                'daily_cap',
-            ],
-            CampaignTrigger::SIGNUP   => [
-                'points',
-            ],
-            CampaignTrigger::REVIEW   => [
-                'points',
-                'require_verified',
-                'one_per_product',
-                'daily_cap',
-                // Pro
-                'media_bonus_points',
-            ],
-        ];
+        $whitelist = [];
+
+        foreach ( self::config_schema() as $trigger => $keys ) {
+            $whitelist[ $trigger ] = array_keys( $keys );
+        }
 
         /**
          * Config keys each campaign trigger may store, keyed by trigger.
@@ -268,11 +333,112 @@ class Campaign extends AbstractModel {
     }
 
     /**
+     * Is this config acceptable for this trigger?
+     *
+     * Rejects unknown keys and wrong value types BEFORE the row is written — a
+     * malformed config otherwise sits dormant in the database and only misfires
+     * when a real order triggers it.
+     *
+     * A trigger this build has no schema and no whitelist for was created by
+     * another build (a Pro campaign on a downgraded site). Lite cannot judge
+     * that vocabulary, so it does not reject it — validate_config() preserves
+     * the blob wholesale for the same reason.
+     */
+    public static function config_is_valid( string $trigger, array $config ): bool {
+        $schema    = self::config_schema()[ $trigger ] ?? null;
+        $whitelist = self::config_whitelist()[ $trigger ] ?? null;
+
+        if ( null === $schema && null === $whitelist ) {
+            return true;
+        }
+
+        $allowed = null !== $whitelist ? $whitelist : array_keys( (array) $schema );
+
+        foreach ( $config as $key => $value ) {
+            if ( ! in_array( $key, $allowed, true ) ) {
+                return false;
+            }
+
+            // A key the filtered whitelist allows but config_schema() does not
+            // describe is a Pro trigger's own key: accept it untyped.
+            $spec = is_array( $schema ) ? ( $schema[ $key ] ?? null ) : null;
+
+            if ( null !== $spec && ! self::value_matches_spec( $value, $spec ) ) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * @param mixed                $value
+     * @param array<string, mixed> $spec
+     */
+    private static function value_matches_spec( $value, array $spec ): bool {
+        switch ( $spec['type'] ?? '' ) {
+            case 'bool':
+                return is_bool( $value );
+
+            case 'string':
+                return is_string( $value );
+
+            case 'enum':
+                return is_string( $value ) && in_array( $value, (array) ( $spec['values'] ?? [] ), true );
+
+            case 'int':
+                if ( is_bool( $value ) || ! is_numeric( $value ) || floor( (float) $value ) !== (float) $value ) {
+                    return false;
+                }
+
+                return ! isset( $spec['min'] ) || (float) $value >= (float) $spec['min'];
+
+            case 'number':
+                if ( is_bool( $value ) || ! is_numeric( $value ) ) {
+                    return false;
+                }
+
+                return ! isset( $spec['min'] ) || (float) $value >= (float) $spec['min'];
+
+            case 'int_list':
+                if ( ! is_array( $value ) ) {
+                    return false;
+                }
+
+                foreach ( $value as $item ) {
+                    if ( is_bool( $item ) || ! is_numeric( $item ) || floor( (float) $item ) !== (float) $item ) {
+                        return false;
+                    }
+                }
+
+                return true;
+
+            default:
+                return true;
+        }
+    }
+
+    /**
+     * Are these conditions acceptable to store?
+     *
+     * Mirrors config_is_valid(): a non-throwing check for the save boundary so a
+     * bad set is rejected with a 4xx before the row is written, rather than
+     * surfacing later when an order is scored. Rejects an unknown type, an
+     * operator a type does not accept, a wrong value shape, an empty list value,
+     * a duplicate type, a missing required sub-key (currency, source), and
+     * customer_ids past its cap. See Models\CampaignConditionSet.
+     */
+    public static function conditions_are_valid( array $conditions ): bool {
+        return CampaignConditionSet::is_valid( $conditions );
+    }
+
+    /**
      * Drop config keys that do not belong to this trigger.
      *
      * Unknown keys are discarded rather than stored, so a typo cannot sit in the
-     * database looking meaningful. schema_version is preserved because Json
-     * stamps it on write.
+     * database looking meaningful. Type checking is config_is_valid()'s job and
+     * runs at the save boundary; this only shapes the value that gets written.
+     * schema_version is preserved because Json stamps it on write.
      *
      * @param array $config
      * @return array
@@ -315,6 +481,8 @@ class Campaign extends AbstractModel {
                 return [
                     'points_per_unit'       => 1,
                     'base'                  => 'after_discounts',
+                    'include_shipping'      => false,
+                    'include_tax'           => false,
                     'rounding'              => 'down',
                     'min_subtotal'          => 0,
                     'exclude_coupon_orders' => false,
@@ -378,16 +546,59 @@ class Campaign extends AbstractModel {
         return $this->ends_at;
     }
 
+    public function get_created_by(): ?int {
+        return $this->created_by;
+    }
+
+    public function get_updated_by(): ?int {
+        return $this->updated_by;
+    }
+
+    public function get_archived_at(): ?string {
+        return $this->archived_at;
+    }
+
     public function is_builtin(): bool {
         return $this->is_builtin;
+    }
+
+    public function is_archived(): bool {
+        return Status::ARCHIVED === $this->status;
     }
 
     public function set_name( string $name ): void {
         $this->name = $name;
     }
 
+    /**
+     * Set the stored status.
+     *
+     * A built-in campaign cannot be archived: the Free UI binds to it by slug
+     * and the earning engine expects it to exist, so archiving would hide a row
+     * the rest of the system assumes is there.
+     *
+     * archived_at is kept in step with the status here — stamped on the way in,
+     * cleared on the way out — so no caller has to remember to.
+     *
+     * @throws \InvalidArgumentException When $status is unknown, or when
+     *                                   archiving a built-in.
+     */
     public function set_status( string $status ): void {
-        $this->status = Status::assert( $status );
+        $status = Status::assert( $status );
+
+        if ( Status::ARCHIVED === $status && $this->is_builtin ) {
+            throw new \InvalidArgumentException( 'YayLoyalty: built-in campaigns cannot be archived.' );
+        }
+
+        if ( Status::ARCHIVED === $status ) {
+            if ( Status::ARCHIVED !== $this->status ) { // Set archived_at to now when it was not archived before
+                $this->archived_at = Dates::now();
+            }
+        } else { // Every other status means the campaign is not archived
+            $this->archived_at = null;
+        }
+
+        $this->status = $status;
     }
 
     public function set_priority( int $priority ): void {
@@ -398,8 +609,18 @@ class Campaign extends AbstractModel {
         $this->config = self::validate_config( $this->trigger, $config );
     }
 
+    /**
+     * Normalise a conditions list and store it.
+     *
+     * Mirrors set_config(): the value that lands on the model is the canonical
+     * one — scalars widened to arrays, ids cast to int, country/currency codes
+     * upper-cased, role slugs lower-cased, lists de-duplicated, entries ordered
+     * cheap-first for evaluation. Rejection of a malformed set is
+     * conditions_are_valid()'s job and runs at the save boundary. See
+     * Models\CampaignConditionSet.
+     */
     public function set_conditions( array $conditions ): void {
-        $this->conditions = $conditions;
+        $this->conditions = CampaignConditionSet::normalize( $conditions );
     }
 
     public function set_starts_at( ?string $starts_at ): void {
@@ -408,6 +629,10 @@ class Campaign extends AbstractModel {
 
     public function set_ends_at( ?string $ends_at ): void {
         $this->ends_at = $ends_at;
+    }
+
+    public function set_updated_by( ?int $updated_by ): void {
+        $this->updated_by = $updated_by;
     }
 
     public function set_updated_at( string $updated_at ): void {

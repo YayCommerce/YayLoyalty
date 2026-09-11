@@ -1,6 +1,10 @@
 <?php
 namespace YayLoyalty\Pro\Services;
 
+use YayLoyalty\Enums\CampaignConditionType;
+use YayLoyalty\Models\CampaignCondition;
+use YayLoyalty\Models\CampaignConditionSet;
+use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Utils\Log;
 
 defined( 'ABSPATH' ) || exit;
@@ -24,27 +28,38 @@ defined( 'ABSPATH' ) || exit;
  *
  * Different reasons, different answers. Do not "harmonise" them.
  *
+ * VOCABULARY. The types and their operators come from Enums\CampaignConditionType — the
+ * same map Models\CampaignConditionSet validates against on save, so the evaluator can
+ * never accept a shape the validator rejects, or reject one it accepts.
+ *
+ * WHAT IS EVALUATED HERE. This class only has a customer id to work with, so it
+ * covers the conditions that are a fact about the customer: `user_role`,
+ * `customer_ids`, `lifetime_points`, `order_count`, `lifetime_spend`, and — as
+ * an interim, from purchase history — `product_in_cart` / `category_in_cart`.
+ * The conditions that describe the order being placed rather than the customer
+ * (`currency`, `country`, `payment_method`) need the order, which the seam does
+ * not pass yet; until the award engine does, they are reported as
+ * `unsupported_condition_type` and, per the rule above, do not match. `tier` is
+ * not evaluable at all until the tier system exists.
+ *
  * Conditions are ANDed. There is no OR and no nesting: the data model
- * specifies a flat list of {type, operator, value} triples, and a boolean
+ * specifies a flat list of {type, operator, value} objects, and a boolean
  * expression tree is a different feature with a different UI.
  */
 final class ConditionsEvaluator {
 
-    /* --- Condition types --- */
-
-    public const TYPE_ROLE             = 'role';
-    public const TYPE_PRODUCT          = 'product';
-    public const TYPE_PRODUCT_CATEGORY = 'product_category';
-    public const TYPE_LIFETIME_SPEND   = 'lifetime_spend';
-    public const TYPE_ORDER_COUNT      = 'order_count';
-
-    /* --- Operators --- */
-
     /** Set operators: the customer's fact is a list, the condition value is a list. */
-    private const SET_OPERATORS = [ 'in', 'not_in' ];
+    private const SET_OPERATORS = [ CampaignConditionType::OP_IN, CampaignConditionType::OP_NOT_IN ];
 
     /** Numeric operators: the customer's fact is a number. */
-    private const NUMERIC_OPERATORS = [ 'eq', 'neq', 'gt', 'gte', 'lt', 'lte' ];
+    private const NUMERIC_OPERATORS = [
+        CampaignConditionType::OP_EQ,
+        CampaignConditionType::OP_GT,
+        CampaignConditionType::OP_GTE,
+        CampaignConditionType::OP_LT,
+        CampaignConditionType::OP_LTE,
+        CampaignConditionType::OP_BETWEEN,
+    ];
 
     /**
      * Order statuses that count as a purchase.
@@ -55,29 +70,50 @@ final class ConditionsEvaluator {
     private const PAID_STATUSES = [ 'wc-processing', 'wc-completed' ];
 
     /**
-     * How many of a customer's orders to scan for product and category facts.
+     * How many of a customer's orders to scan for purchase-history facts.
      *
      * A ceiling, not a page size. Conditions are evaluated on the hot path of
      * awarding points, and a customer with thousands of orders would otherwise
      * make every award scan all of them. Newest first, so the cap trims the
-     * oldest history — the part least likely to decide eligibility.
+     * oldest history — the part least likely to decide eligibility. The
+     * same-currency `lifetime_spend` total shares this ceiling.
      */
     private const ORDER_SCAN_LIMIT = 100;
 
     /**
-     * Purchased product ids, keyed by user id.
+     * The customer's recent paid orders, keyed by user id. Memoised so a set
+     * with several purchase-history conditions scans once, not once per
+     * condition.
      *
-     * Memoised per request: `product` and `product_category` conditions in the
-     * same set would otherwise each trigger their own order scan.
+     * @var array<int, \WC_Order[]>
+     */
+    private $orders_by_user = [];
+
+    /**
+     * Purchased product ids, keyed by user id.
      *
      * @var array<int, int[]>
      */
     private $purchased_products = [];
 
     /**
+     * Same-currency lifetime spend, keyed by "user_id:CURRENCY".
+     *
+     * @var array<string, float>
+     */
+    private $spend_by_currency = [];
+
+    /**
+     * Lifetime points earned, keyed by user id.
+     *
+     * @var array<int, int>
+     */
+    private $points_by_user = [];
+
+    /**
      * Do all conditions match?
      *
-     * @param array $conditions Flat list of {type, operator, value} triples.
+     * @param array $conditions Flat list of {type, operator, value} objects.
      */
     public function evaluate( array $conditions, int $user_id ): bool {
         foreach ( $this->explain( $conditions, $user_id ) as $result ) {
@@ -100,21 +136,20 @@ final class ConditionsEvaluator {
     public function explain( array $conditions, int $user_id ): array {
         $results = [];
 
-        foreach ( $conditions as $condition ) {
-            $results[] = $this->evaluate_one( is_array( $condition ) ? $condition : [], $user_id );
+        foreach ( CampaignConditionSet::from_array( $conditions )->all() as $condition ) {
+            $results[] = $this->evaluate_one( $condition, $user_id );
         }
 
         return $results;
     }
 
     /**
-     * @param array $condition
      * @return array<string, mixed> {type, operator, value, matched, reason}
      */
-    private function evaluate_one( array $condition, int $user_id ): array {
-        $type     = isset( $condition['type'] ) ? (string) $condition['type'] : '';
-        $operator = isset( $condition['operator'] ) ? (string) $condition['operator'] : '';
-        $value    = $condition['value'] ?? null;
+    private function evaluate_one( CampaignCondition $condition, int $user_id ): array {
+        $type     = $condition->get_type();
+        $operator = $condition->get_operator();
+        $value    = $condition->get_value();
 
         $result = [
             'type'     => $type,
@@ -125,23 +160,53 @@ final class ConditionsEvaluator {
         ];
 
         switch ( $type ) {
-            case self::TYPE_ROLE:
+            case CampaignConditionType::USER_ROLE:
                 return $this->apply_set( $result, $this->user_roles( $user_id ), $operator, $value );
 
-            case self::TYPE_PRODUCT:
+            case CampaignConditionType::CUSTOMER_IDS:
+                return $this->apply_set( $result, [ (string) $user_id ], $operator, $value );
+
+            case CampaignConditionType::PRODUCT_IN_CART:
                 return $this->apply_set( $result, $this->purchased_product_ids( $user_id ), $operator, $value );
 
-            case self::TYPE_PRODUCT_CATEGORY:
+            case CampaignConditionType::CATEGORY_IN_CART:
                 return $this->apply_set( $result, $this->purchased_category_ids( $user_id ), $operator, $value );
 
-            case self::TYPE_LIFETIME_SPEND:
-                return $this->apply_numeric( $result, $this->lifetime_spend( $user_id ), $operator, $value );
+            case CampaignConditionType::LIFETIME_POINTS:
+                return $this->apply_numeric( $result, (float) $this->lifetime_points( $user_id ), $operator, $value );
 
-            case self::TYPE_ORDER_COUNT:
+            case CampaignConditionType::ORDER_COUNT:
                 return $this->apply_numeric( $result, (float) $this->order_count( $user_id ), $operator, $value );
+
+            case CampaignConditionType::LIFETIME_SPEND:
+                return $this->evaluate_lifetime_spend( $result, $user_id, $operator, $value );
         }
 
-        return $this->reject( $result, 'unknown_condition_type' );
+        // A type the vocabulary knows but this class cannot evaluate yet
+        // (needs order context, or the tier system) is distinct from a typo.
+        return $this->reject(
+            $result,
+            CampaignConditionType::is_known( $type ) ? 'unsupported_condition_type' : 'unknown_condition_type'
+        );
+    }
+
+    /**
+     * `lifetime_spend` — value is { amount, currency }, never a bare number.
+     * Only orders in that currency count toward the total; no conversion.
+     *
+     * @param array<string, mixed> $result
+     * @param mixed                $value
+     * @return array<string, mixed>
+     */
+    private function evaluate_lifetime_spend( array $result, int $user_id, string $operator, $value ): array {
+        if ( ! is_array( $value ) || ! isset( $value['currency'] ) ) {
+            return $this->reject( $result, 'malformed_value' );
+        }
+
+        $currency = strtoupper( (string) $value['currency'] );
+        $actual   = $this->spend_in_currency( $user_id, $currency );
+
+        return $this->apply_numeric( $result, $actual, $operator, $value['amount'] ?? null );
     }
 
     /**
@@ -176,13 +241,18 @@ final class ConditionsEvaluator {
 
         $intersects = [] !== array_intersect( $wanted, $actual );
 
-        $result['matched'] = 'in' === $operator ? $intersects : ! $intersects;
+        $result['matched'] = CampaignConditionType::OP_IN === $operator ? $intersects : ! $intersects;
         $result['reason']  = $result['matched'] ? 'matched' : 'no_overlap';
 
         return $result;
     }
 
     /**
+     * Compare a numeric customer fact against the condition value.
+     *
+     * For `between` the value is a [low, high] pair (inclusive both ends);
+     * for every other operator it is a single number.
+     *
      * @param array<string, mixed> $result
      * @param mixed                $value
      * @return array<string, mixed>
@@ -192,6 +262,21 @@ final class ConditionsEvaluator {
             return $this->reject( $result, 'unsupported_operator' );
         }
 
+        if ( CampaignConditionType::OP_BETWEEN === $operator ) {
+            if ( ! is_array( $value ) || ! isset( $value[0], $value[1] )
+                || ! is_numeric( $value[0] ) || ! is_numeric( $value[1] ) ) {
+                return $this->reject( $result, 'non_numeric_value' );
+            }
+
+            $matched = $actual >= (float) $value[0] && $actual <= (float) $value[1];
+
+            $result['matched'] = $matched;
+            $result['reason']  = $matched ? 'matched' : 'out_of_range';
+            $result['actual']  = $actual;
+
+            return $result;
+        }
+
         if ( ! is_numeric( $value ) ) {
             return $this->reject( $result, 'non_numeric_value' );
         }
@@ -199,22 +284,19 @@ final class ConditionsEvaluator {
         $expected = (float) $value;
 
         switch ( $operator ) {
-            case 'eq':
+            case CampaignConditionType::OP_EQ:
                 $matched = abs( $actual - $expected ) < 0.00001;
                 break;
-            case 'neq':
-                $matched = abs( $actual - $expected ) >= 0.00001;
-                break;
-            case 'gt':
+            case CampaignConditionType::OP_GT:
                 $matched = $actual > $expected;
                 break;
-            case 'gte':
+            case CampaignConditionType::OP_GTE:
                 $matched = $actual >= $expected;
                 break;
-            case 'lt':
+            case CampaignConditionType::OP_LT:
                 $matched = $actual < $expected;
                 break;
-            default: // lte
+            default: // OP_LTE
                 $matched = $actual <= $expected;
                 break;
         }
@@ -264,10 +346,18 @@ final class ConditionsEvaluator {
         return $user ? array_values( (array) $user->roles ) : [];
     }
 
-    private function lifetime_spend( int $user_id ): float {
-        return function_exists( 'wc_get_customer_total_spent' )
-            ? (float) wc_get_customer_total_spent( $user_id )
-            : 0.0;
+    private function lifetime_points( int $user_id ): int {
+        if ( isset( $this->points_by_user[ $user_id ] ) ) {
+            return $this->points_by_user[ $user_id ];
+        }
+
+        $customer = ( new CustomerRepository() )->find_by_user_id( $user_id );
+
+        // lifetime_earned, not balance: spending points must not drop a customer
+        // below a lifetime_points threshold.
+        $this->points_by_user[ $user_id ] = null === $customer ? 0 : $customer->get_lifetime_earned();
+
+        return $this->points_by_user[ $user_id ];
     }
 
     private function order_count( int $user_id ): int {
@@ -277,19 +367,43 @@ final class ConditionsEvaluator {
     }
 
     /**
-     * Product ids this customer has bought.
+     * The customer's total in a single currency, over the scanned paid orders.
      *
-     * Variations report their parent product, because a merchant targeting a
-     * product means the product, not one of its sizes.
-     *
-     * @return int[]
+     * No exchange-rate conversion: an order in another currency contributes
+     * nothing. Shares ORDER_SCAN_LIMIT with the purchase-history facts.
      */
-    private function purchased_product_ids( int $user_id ): array {
-        if ( isset( $this->purchased_products[ $user_id ] ) ) {
-            return $this->purchased_products[ $user_id ];
+    private function spend_in_currency( int $user_id, string $currency ): float {
+        $key = $user_id . ':' . $currency;
+
+        if ( isset( $this->spend_by_currency[ $key ] ) ) {
+            return $this->spend_by_currency[ $key ];
         }
 
-        $ids = [];
+        $total = 0.0;
+
+        foreach ( $this->paid_orders( $user_id ) as $order ) {
+            if ( strtoupper( (string) $order->get_currency() ) === $currency ) {
+                $total += (float) $order->get_total();
+            }
+        }
+
+        $this->spend_by_currency[ $key ] = $total;
+
+        return $total;
+    }
+
+    /**
+     * The customer's most recent paid orders, up to ORDER_SCAN_LIMIT. Memoised
+     * and shared by every purchase-history fact.
+     *
+     * @return \WC_Order[]
+     */
+    private function paid_orders( int $user_id ): array {
+        if ( isset( $this->orders_by_user[ $user_id ] ) ) {
+            return $this->orders_by_user[ $user_id ];
+        }
+
+        $orders = [];
 
         if ( function_exists( 'wc_get_orders' ) ) {
             $orders = wc_get_orders(
@@ -301,14 +415,38 @@ final class ConditionsEvaluator {
                     'order'       => 'DESC',
                 ]
             );
+        }
 
-            foreach ( $orders as $order ) {
-                foreach ( $order->get_items() as $item ) {
-                    $product_id = (int) $item->get_product_id();
+        $this->orders_by_user[ $user_id ] = is_array( $orders ) ? $orders : [];
 
-                    if ( $product_id > 0 ) {
-                        $ids[ $product_id ] = $product_id;
-                    }
+        return $this->orders_by_user[ $user_id ];
+    }
+
+    /**
+     * Product ids this customer has bought.
+     *
+     * Variations report their parent product, because a merchant targeting a
+     * product means the product, not one of its sizes.
+     *
+     * INTERIM. The data model defines `product_in_cart` as a gate on the order
+     * being placed, not on purchase history. Until the award engine passes the
+     * order to the seam, "has ever bought" is the closest fact available.
+     *
+     * @return int[]
+     */
+    private function purchased_product_ids( int $user_id ): array {
+        if ( isset( $this->purchased_products[ $user_id ] ) ) {
+            return $this->purchased_products[ $user_id ];
+        }
+
+        $ids = [];
+
+        foreach ( $this->paid_orders( $user_id ) as $order ) {
+            foreach ( $order->get_items() as $item ) {
+                $product_id = (int) $item->get_product_id();
+
+                if ( $product_id > 0 ) {
+                    $ids[ $product_id ] = $product_id;
                 }
             }
         }
@@ -320,6 +458,8 @@ final class ConditionsEvaluator {
 
     /**
      * Category ids the customer has bought from.
+     *
+     * Same interim caveat as purchased_product_ids().
      *
      * @return int[]
      */

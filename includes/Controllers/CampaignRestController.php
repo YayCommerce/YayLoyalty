@@ -203,14 +203,12 @@ final class CampaignRestController extends AbstractRestController {
 
         $data = $campaign->to_row();
 
-        // slug/trigger/created_at are not updatable.
-        unset( $data['slug'], $data['trigger'], $data['created_at'], $data['created_by'], $data['is_builtin'] );
+        // slug/trigger_type/created_at/created_by are fixed at create time.
+        // (The column is trigger_type — see CampaignsTable.) Formats are left to
+        // default to %s; every campaigns column accepts that.
+        unset( $data['slug'], $data['trigger_type'], $data['created_at'], $data['created_by'], $data['is_builtin'] );
 
-        $this->campaigns->update(
-            (int) $request['id'],
-            $data,
-            [ '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%s' ]
-        );
+        $this->campaigns->update( (int) $request['id'], $data );
 
         $updated = $this->campaigns->find_campaign( (int) $request['id'] );
 

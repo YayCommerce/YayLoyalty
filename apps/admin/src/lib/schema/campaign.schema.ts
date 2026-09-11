@@ -48,13 +48,13 @@ export const CAMPAIGN_TRIGGERS = __IS_PRO__
   : LITE_CAMPAIGN_TRIGGERS;
 
 /**
- * Matches Enums\Status.
+ * Stored statuses. Mirrors Enums\Status::all().
  *
- * There is deliberately no 'scheduled' or 'ended'. Status is merchant intent;
- * whether a campaign is live is derived from status plus the date window, and
+ * Merchant intent only. There is deliberately no 'scheduled' or 'ended' here —
+ * whether a campaign is live is derived from status plus the date window,
  * evaluated against the event's timestamp rather than now().
  */
-export const CAMPAIGN_STATUSES = ['active', 'paused', 'draft'] as const;
+export const CAMPAIGN_STATUSES = ['active', 'paused', 'draft', 'archived'] as const;
 
 /** Parses what the server sends — the full known vocabulary, in both builds. */
 export const campaignTriggerSchema = z.enum(ALL_KNOWN_CAMPAIGN_TRIGGERS);
