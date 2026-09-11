@@ -169,10 +169,18 @@ function SortableHead({
 
   return (
     <TableHead className={align === 'right' ? 'text-right' : undefined}>
+      {/* `flex h-full w-full` (not `inline-flex`), not `text-align` on the <th>, does the
+       *  centering here — verified live in Chrome (see git history / PR discussion) that an
+       *  `inline-flex` button inside a table-cell with `vertical-align:middle` centers 2px
+       *  higher when its first child is the icon (SVG) vs. the label (text): the icon-first
+       *  headers (Customer, Tier) sat visibly higher than the label-first ones (Balance,
+       *  Pending, ...), a real Chromium quirk, not something `items-center` alone fixes.
+       *  Filling the cell's full height/width sidesteps it — there's no leftover space left
+       *  for that baseline synthesis to misplace. */}
       <button
         type="button"
         onClick={() => onSort(sortKey)}
-        className={`hover:text-foreground inline-flex cursor-pointer items-center gap-1 text-xs tracking-wide uppercase ${active ? 'text-primary font-semibold' : 'text-muted-foreground'}`}
+        className={`hover:text-foreground flex h-full w-full cursor-pointer items-center gap-1 text-xs font-medium tracking-wide uppercase ${align === 'right' ? 'justify-end' : 'justify-start'} ${active ? 'text-primary' : 'text-muted-foreground'}`}
         aria-label={label}
       >
         {align === 'right' ? (
