@@ -39,7 +39,11 @@ export function ColorPicker({
     defaultValue: defaultValue,
     onChange: onValueChange,
   });
-  const [debouncedSetValue] = useDebounceFn(setValue, 200, { trailing: true, maxWait: 500 });
+  const [debouncedSetValue] = useDebounceFn(
+    (value: unknown) => setValue(value as string),
+    200,
+    { trailing: true, maxWait: 500 }
+  );
   const [open, setOpen] = useState(false);
   return (
     <ColorPickerContext.Provider

@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import PageLayout from '@/components/layout/PageLayout';
 import { ProGate } from '@/components/pro/ProGate';
 import { ConditionsPreview } from '@/pro';
 
@@ -51,12 +52,11 @@ export default function CampaignsPage() {
   const campaigns = useCampaignsQuery({ page, per_page: PER_PAGE, trigger, status });
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-4 p-6">
+    <PageLayout
+      title={__('Campaigns', 'yayloyalty')}
+      description={__('Earning rules. Built-in campaigns cannot be deleted.', 'yayloyalty')}
+    >
       <Card>
-        <CardHeader>
-          <CardTitle>{__('Campaigns', 'yayloyalty')}</CardTitle>
-          <CardDescription>{__('Earning rules. Built-in campaigns cannot be deleted.', 'yayloyalty')}</CardDescription>
-        </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <div className="flex flex-wrap gap-4">
             <FilterGroup
@@ -200,7 +200,7 @@ export default function CampaignsPage() {
           </ProGate>
         </CardContent>
       </Card>
-    </div>
+    </PageLayout>
   );
 }
 

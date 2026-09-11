@@ -12,13 +12,16 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
+} from '@/components/ui/custom/dialog';
 
 function Command({ className, ...props }: React.ComponentProps<typeof CommandPrimitive>) {
   return (
     <CommandPrimitive
       data-slot="command"
-      className={cn('bg-popover text-popover-foreground flex size-full flex-col overflow-hidden rounded-md', className)}
+      className={cn(
+        'bg-popover text-popover-foreground flex h-full w-full flex-col overflow-hidden rounded-md',
+        className,
+      )}
       {...props}
     />
   );
@@ -28,10 +31,18 @@ function CommandDialog({
   title = 'Command Palette',
   description = 'Search for a command to run...',
   children,
+  value,
+  onValueChange,
+  filter,
   ...props
 }: React.ComponentProps<typeof Dialog> & {
   title?: string;
   description?: string;
+  /** Forwarded to the inner `Command`'s controlled *selection* state (which
+   *  item is highlighted) — separate from `CommandInput`'s search text. */
+  value?: string;
+  onValueChange?: (value: string) => void;
+  filter?: React.ComponentProps<typeof Command>['filter'];
 }) {
   return (
     <Dialog {...props}>
@@ -40,7 +51,12 @@ function CommandDialog({
         <DialogDescription>{description}</DialogDescription>
       </DialogHeader>
       <DialogContent className="overflow-hidden p-0">
-        <Command className="**:[[cmdk-group-heading]]:text-muted-foreground **:data-[slot=command-input-wrapper]:h-12 [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-input-wrapper]_svg]:size-5 [&_[cmdk-item]_svg]:size-5 **:[[cmdk-group-heading]]:px-2 **:[[cmdk-group-heading]]:font-medium **:[[cmdk-group]]:px-2 **:[[cmdk-input]]:h-12 **:[[cmdk-item]]:p-2">
+        <Command
+          value={value}
+          onValueChange={onValueChange}
+          filter={filter}
+          className="**:[[cmdk-group-heading]]:text-muted-foreground **:data-[slot=command-input-wrapper]:h-12 [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-input-wrapper]_svg]:size-5 [&_[cmdk-item]_svg]:size-5 **:[[cmdk-group-heading]]:px-2 **:[[cmdk-group-heading]]:font-medium **:[[cmdk-group]]:px-2 **:[[cmdk-input]]:h-12 **:[[cmdk-item]]:px-2 **:[[cmdk-item]]:py-2"
+        >
           {children}
         </Command>
         <DialogCloseIcon />
@@ -69,21 +85,35 @@ const CommandInput = React.forwardRef<
   );
 });
 
-function CommandList({ className, ...props }: React.ComponentProps<typeof CommandPrimitive.List>) {
+const CommandList = React.forwardRef<
+  React.ElementRef<typeof CommandPrimitive.List>,
+  React.ComponentPropsWithoutRef<typeof CommandPrimitive.List>
+>(({ className, ...props }, ref) => {
   return (
     <CommandPrimitive.List
+      ref={ref}
       data-slot="command-list"
       className={cn('max-h-75 scroll-py-1 overflow-x-hidden overflow-y-auto', className)}
       {...props}
     />
   );
-}
+});
+CommandList.displayName = 'CommandList';
 
 function CommandEmpty({ ...props }: React.ComponentProps<typeof CommandPrimitive.Empty>) {
-  return <CommandPrimitive.Empty data-slot="command-empty" className="py-6 text-center text-sm" {...props} />;
+  return (
+    <CommandPrimitive.Empty
+      data-slot="command-empty"
+      className="py-6 text-center text-sm"
+      {...props}
+    />
+  );
 }
 
-function CommandGroup({ className, ...props }: React.ComponentProps<typeof CommandPrimitive.Group>) {
+function CommandGroup({
+  className,
+  ...props
+}: React.ComponentProps<typeof CommandPrimitive.Group>) {
   return (
     <CommandPrimitive.Group
       data-slot="command-group"
@@ -96,7 +126,10 @@ function CommandGroup({ className, ...props }: React.ComponentProps<typeof Comma
   );
 }
 
-function CommandSeparator({ className, ...props }: React.ComponentProps<typeof CommandPrimitive.Separator>) {
+function CommandSeparator({
+  className,
+  ...props
+}: React.ComponentProps<typeof CommandPrimitive.Separator>) {
   return (
     <CommandPrimitive.Separator
       data-slot="command-separator"

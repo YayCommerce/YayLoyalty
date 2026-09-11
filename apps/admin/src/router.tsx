@@ -8,7 +8,10 @@ import DashboardPage from './pages/dashboard/DashboardPage';
 import PointsPage from './pages/points/PointsPage';
 import ReferralPage from './pages/referral/ReferralPage';
 import RewardsPage from './pages/rewards/RewardsPage';
-import SettingsPage from './pages/settings/SettingsPage';
+import AdvancedSettingsPage from './pages/settings/AdvancedSettingsPage';
+import EmailsSettingsPage from './pages/settings/EmailsSettingsPage';
+import GeneralSettingsPage from './pages/settings/GeneralSettingsPage';
+import SettingsLayout from './pages/settings/SettingsLayout';
 import VipTiersPage from './pages/vip-tiers/VipTiersPage';
 
 export function getManagerRouter() {
@@ -48,19 +51,27 @@ export function getManagerRouter() {
         },
         {
           path: 'settings',
+          element: <SettingsLayout />,
           children: [
             {
               index: true,
               loader: () => redirect('/settings/general'),
             },
             {
-              path: ':subMenu',
-              loader: ({ params }) => {
-                if (!params.subMenu || !settingSubMenus.includes(params.subMenu)) {
-                  return redirect('/settings/general');
-                }
-              },
-              element: <SettingsPage />,
+              path: 'general',
+              element: <GeneralSettingsPage />,
+            },
+            {
+              path: 'emails',
+              element: <EmailsSettingsPage />,
+            },
+            {
+              path: 'advanced',
+              element: <AdvancedSettingsPage />,
+            },
+            {
+              path: '*',
+              loader: () => redirect('/settings/general'),
             },
           ],
         },
@@ -72,5 +83,3 @@ export function getManagerRouter() {
     },
   ]);
 }
-
-const settingSubMenus = ['general', 'emails', 'advanced'];

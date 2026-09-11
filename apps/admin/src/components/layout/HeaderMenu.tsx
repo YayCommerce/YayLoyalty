@@ -44,7 +44,7 @@ export function HeaderMenu() {
       <CustomMenuItem asChild key="vip-tiers">
         <NavLink to="/vip-tiers">
           <Crown className="stroke-2" />
-          <span>{__('VIP Tiers', 'yayloyalty')}</span>
+          <span>{__('Tiers', 'yayloyalty')}</span>
         </NavLink>
       </CustomMenuItem>
       <CustomMenuItem asChild key="settings">

@@ -22,7 +22,7 @@ const switchVariants = cva('', {
 const Switch = React.forwardRef<
   React.ElementRef<typeof SwitchPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof SwitchPrimitive.Root> &
-    VariantProps<typeof switchVariants> & { loading?: boolean }
+  VariantProps<typeof switchVariants> & { loading?: boolean }
 >(({ className, loading = false, size, ...props }, ref) => {
   return (
     <SwitchPrimitive.Root
