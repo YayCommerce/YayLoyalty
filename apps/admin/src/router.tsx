@@ -4,8 +4,8 @@ import AppLayout from './AppLayout';
 import NotFoundPage from './pages/404';
 import ErrorPage from './pages/500';
 import CampaignsPage from './pages/campaigns/CampaignsPage';
+import CustomersPage from './pages/customers/CustomersPage';
 import DashboardPage from './pages/dashboard/DashboardPage';
-import PointsPage from './pages/points/PointsPage';
 import ReferralPage from './pages/referral/ReferralPage';
 import RewardsPage from './pages/rewards/RewardsPage';
 import AdvancedSettingsPage from './pages/settings/AdvancedSettingsPage';
@@ -30,8 +30,8 @@ export function getManagerRouter() {
           element: <DashboardPage />,
         },
         {
-          path: 'points',
-          element: <PointsPage />,
+          path: 'customers',
+          element: <CustomersPage />,
         },
         {
           path: 'campaigns',

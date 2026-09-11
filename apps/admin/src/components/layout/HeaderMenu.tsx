@@ -17,10 +17,10 @@ export function HeaderMenu() {
           <span>{__('Dashboard', 'yayloyalty')}</span>
         </NavLink>
       </CustomMenuItem>
-      <CustomMenuItem asChild key="points">
-        <NavLink to="/points">
+      <CustomMenuItem asChild key="customers">
+        <NavLink to="/customers">
           <Coins className="stroke-2" />
-          <span>{__('Points', 'yayloyalty')}</span>
+          <span>{__('Customers', 'yayloyalty')}</span>
         </NavLink>
       </CustomMenuItem>
       <CustomMenuItem asChild key="campaigns">

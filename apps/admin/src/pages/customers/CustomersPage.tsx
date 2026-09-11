@@ -18,9 +18,9 @@ const PER_PAGE = 10;
  * Proof-of-life view for the ledger slice.
  *
  * Deliberately minimal: this exists to prove the data layer end to end, not to
- * be the finished Points screen. Real UI work is a separate task.
+ * be the finished Customers screen. Real UI work is a separate task.
  */
-export default function PointsPage() {
+export default function CustomersPage() {
   const [userIdInput, setUserIdInput] = useState('');
   const [userId, setUserId] = useState(0);
   const [page, setPage] = useState(1);
@@ -60,8 +60,8 @@ export default function PointsPage() {
 
   return (
     <PageLayout
-      title={__('Points', 'yayloyalty')}
-      description={__('Look up a customer to see their balance and adjust it.', 'yayloyalty')}
+      title={__('Customers', 'yayloyalty')}
+      description={__('Look up a customer to see their point balance and make adjustments.', 'yayloyalty')}
     >
       <Card>
         <CardContent>
