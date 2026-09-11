@@ -174,9 +174,11 @@ Fact-table entities are immutable **by convention**: private properties, getters
 
 ## 11. Status and liveness
 
-`status` stores merchant **intent** only: `active`, `paused`, `draft`. Never `scheduled` or `ended`.
+`status` stores merchant **intent** only: `active`, `paused`, `draft`, `archived`. Never `scheduled` or `ended` — those are *derived* labels, produced at read time by `Status::resolve_display()` from an `active` status plus the date window, never written to the column.
 
 Whether something is live *right now* is computed at read time from `status` plus `starts_at`/`ends_at`, evaluated against the **event's** timestamp — an order's award time, not the current request time. A late-processed order must be scored under the rules that were live when it happened.
+
+`archived` is a terminal merchant choice: an archived campaign is kept for history and never fires. Built-in campaigns cannot be archived (`Campaign::set_status()` throws), because the Free UI and the earning engine both assume they exist.
 
 **No cron job may flip a status.** If you find yourself writing one, the model is being worked around.
 
@@ -197,6 +199,8 @@ Stamping `schema_version` into a list turns it into an object: `[{…},{…}]` c
 ```
 
 `decode_list()` unwraps it and also accepts a bare array and the corrupted `{"0":…}` shape, so no stored row is lost. **[REVIEW]** — pick the pair that matches the column's shape; nothing enforces it.
+
+The vocabulary and per-type rules for `campaigns.conditions` live in `Enums\CampaignConditionType`; `Models\CampaignConditionSet` validates and normalises a set on save (`Campaign::conditions_are_valid()` / `set_conditions()`), mirroring the `config` pair. Named `Campaign*`, not a bare `Condition*` — rewards get their own condition vocabulary (a later task) and must not collide with this one. See `data-model.md` → `conditions`.
 
 ## 13. Pro extension seams
 

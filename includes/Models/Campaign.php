@@ -419,6 +419,20 @@ class Campaign extends AbstractModel {
     }
 
     /**
+     * Are these conditions acceptable to store?
+     *
+     * Mirrors config_is_valid(): a non-throwing check for the save boundary so a
+     * bad set is rejected with a 4xx before the row is written, rather than
+     * surfacing later when an order is scored. Rejects an unknown type, an
+     * operator a type does not accept, a wrong value shape, an empty list value,
+     * a duplicate type, a missing required sub-key (currency, source), and
+     * customer_ids past its cap. See Models\CampaignConditionSet.
+     */
+    public static function conditions_are_valid( array $conditions ): bool {
+        return CampaignConditionSet::is_valid( $conditions );
+    }
+
+    /**
      * Drop config keys that do not belong to this trigger.
      *
      * Unknown keys are discarded rather than stored, so a typo cannot sit in the
@@ -596,8 +610,18 @@ class Campaign extends AbstractModel {
         $this->config = self::validate_config( $this->trigger, $config );
     }
 
+    /**
+     * Normalise a conditions list and store it.
+     *
+     * Mirrors set_config(): the value that lands on the model is the canonical
+     * one — scalars widened to arrays, ids cast to int, country/currency codes
+     * upper-cased, role slugs lower-cased, lists de-duplicated, entries ordered
+     * cheap-first for evaluation. Rejection of a malformed set is
+     * conditions_are_valid()'s job and runs at the save boundary. See
+     * Models\CampaignConditionSet.
+     */
     public function set_conditions( array $conditions ): void {
-        $this->conditions = $conditions;
+        $this->conditions = CampaignConditionSet::normalize( $conditions );
     }
 
     public function set_starts_at( ?string $starts_at ): void {
