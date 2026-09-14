@@ -85,13 +85,15 @@ export function CustomersScreen({
 
   // A genuinely empty store, not a search/filter matching nobody, and not
   // "still loading" either — see CustomersTable.tsx / CustomersEmptyState.tsx
-  // for why the first distinction matters. The toolbar goes inert (but stays
-  // in place) once there's nothing to search, filter or export; while
-  // loading it stays live per the design — only the table body skeletons.
+  // for why that distinction matters (different empty-state messaging).
   const isNoMatch = !isLoading && !isStoreEmpty && rows.length === 0;
 
-  // "Simulate rebuild": every control goes inert and no row can be selected
-  // (see CustomerTableRow.tsx / CustomersRebuildBanner.tsx) while it's on.
+  // Toolbar goes inert (but stays in place) once there's nothing to search,
+  // filter or export — deliberately NOT while merely loading (isLoading
+  // plays no part here), so the toolbar stays live and only the table body
+  // shows skeletons. "Simulate rebuild" also disables it: every control goes
+  // inert and no row can be selected (see CustomerTableRow.tsx /
+  // CustomersRebuildBanner.tsx) while it's on.
   const controlsDisabled = isStoreEmpty || isRebuilding;
   const showSelection = IS_PRO_BUILD && !isRebuilding;
 
@@ -124,8 +126,10 @@ export function CustomersScreen({
     setSelection((current) => toggleAllOnPage(current, rows));
   }
 
-  // Second bulk-bar tier: as soon as anything is picked and there's more
-  // data beyond this page, offer expanding to every row matching the filters.
+  // As soon as anything is picked and there's more data beyond this page,
+  // offer expanding the pick to every row matching the filters — rendered
+  // inside the same bulk-action box, not a second one (see
+  // CustomersBulkActionBar.tsx).
   const selectAllCount = computeSelectAllCount(selection, totalItems, pageCount);
 
   function selectAllMatching() {

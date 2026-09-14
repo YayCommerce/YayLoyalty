@@ -5,7 +5,7 @@ import { getCustomersDemo, type CustomersDemoListParams } from './customers-page
 /**
  * TEMPORARY DEMO DATA — see `customers-page.api.ts`.
  *
- * One list query per page/filter combination — the "which filter to drop"
+ * One list query per page/filter/sort combination — the "which filter to drop"
  * suggestions ride along inside this same response once it's empty (see
  * `getCustomersDemo`'s envelope schema), so there's no second query for them.
  */

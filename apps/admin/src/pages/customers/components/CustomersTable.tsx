@@ -22,9 +22,10 @@ export function countColumns(showProColumns: boolean, showSelection: boolean) {
 
 /**
  * Purely presentational: `rows` arrives already sorted AND paginated (one
- * page's worth) — see CustomersScreen.tsx, which owns both so sorting is
- * applied to the whole filtered set before slicing a page, not per-page.
- * This component only renders the caret state and reports clicks upward.
+ * page's worth) — see CustomersPage.tsx, which owns both as server query
+ * params (`orderby`/`order`/`page`), so sorting is applied to the whole
+ * filtered set server-side before slicing a page, not per-page here. This
+ * component only renders the caret state and reports clicks upward.
  *
  * `sort`/`selection` grouped (mirrors CustomersScreen.tsx's own props) since
  * each is really one concern spread across several values.

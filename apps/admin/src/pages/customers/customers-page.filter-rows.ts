@@ -3,7 +3,7 @@ import { __ } from '@wordpress/i18n';
 /**
  * Search/filter option types + labels for the Customers list toolbar.
  *
- * The actual matching now runs server-side — see `CustomerDemoFilters.php`
+ * The actual matching now runs server-side — see `CustomerRowFilters.php`
  * (mirrors this file's values field-for-field) and `customers-page.api.ts` —
  * so results are checked against the whole (demo) dataset, not just whatever
  * page already loaded. This file only keeps the shapes/labels the UI needs.

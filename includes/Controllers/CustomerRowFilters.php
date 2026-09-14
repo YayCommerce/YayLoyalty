@@ -114,8 +114,14 @@ final class CustomerRowFilters {
         return lcfirst( str_replace( '_', '', ucwords( $param, '_' ) ) );
     }
 
+    /** Matches on name OR email — see CustomersToolbar.tsx's "Search name or email" placeholder. */
     private static function matches_search( array $row, string $search ): bool {
-        return '' === $search || false !== strpos( strtolower( (string) $row['name'] ), $search );
+        if ( '' === $search ) {
+            return true;
+        }
+
+        return false !== strpos( strtolower( (string) $row['name'] ), $search )
+            || false !== strpos( strtolower( (string) $row['email'] ), $search );
     }
 
     private static function matches_balance_range( int $balance, string $range ): bool {
@@ -134,7 +140,13 @@ final class CustomerRowFilters {
         }
     }
 
-    /** Days until `expires_at`, evaluated against now — mirrors the TS version. */
+    /**
+     * Days until `expires_at`, evaluated against now.
+     *
+     * No TS equivalent anymore: the client-side `matchesExpiringSoon()` this
+     * once mirrored was deleted once filtering moved entirely server-side —
+     * this is the only implementation of the rule left.
+     */
     private static function matches_expiring_soon( $expires_at, string $option ): bool {
         if ( 'off' === $option ) {
             return true;

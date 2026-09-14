@@ -23,7 +23,7 @@ import { countActiveFilters } from '../customers-page.filter-suggestions';
  * is actually active (`countActiveFilters`) and resets everything at once —
  * same reset `CustomersNoMatchState`'s "Clear all filters" button uses.
  *
- * `exportSlot` is Free-only (see CustomersScreen.tsx): 3 filters + Export fit
+ * `exportSlot` is Free-only (see CustomersFilterBar.tsx): 3 filters + Export fit
  * on one row without wrapping, so Free renders Export here. Pro's 4th filter
  * (Tier) means Export has to live in its own row instead, alongside the
  * saved-segment picker — a `ml-auto` button wrapping onto its own line there
@@ -36,8 +36,9 @@ import { countActiveFilters } from '../customers-page.filter-suggestions';
 export function CustomersToolbar({
   filters,
   onFiltersChange,
-  /** True store (no members at all) — every control goes inert but stays in
-   *  place, so the toolbar doesn't pop in later and shift the table down. */
+  /** True store (no members at all) or mid-"Simulate rebuild" (see
+   *  CustomersScreen.tsx) — every control goes inert but stays in place, so
+   *  the toolbar doesn't pop in later and shift the table down. */
   disabled,
   exportSlot,
 }: {

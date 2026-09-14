@@ -12,9 +12,9 @@ import { Separator } from '@/components/ui/separator';
  * same "Bulk Actions" dropdown trigger (see
  * `YayUiKits/apps/admin-page/src/components/ui/bulk-actions.tsx` and its
  * `routes/patterns/TablePage.tsx` demo). The "N selected" pill only appears
- * once more than one row is picked — that threshold lives inside
- * `BulkActionBox` itself, not re-decided here. Every action in the dropdown
- * is still `<Can>`-gated and performs no action — UI only.
+ * once at least one row is picked — that threshold (`selected > 0`) lives
+ * inside `BulkActionBox` itself, not re-decided here. Every action in the
+ * dropdown is still `<Can>`-gated and performs no action — UI only.
  *
  * "Select all matching filters" is real (see customers-page.selection.ts) —
  * an Ant-Design-Table-style mode flip ("everything matching, minus any you

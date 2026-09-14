@@ -91,10 +91,13 @@ export default function CustomersPage() {
     // that now fits on one) would fetch a page that doesn't apply anymore.
     setPage(1);
 
-    // Only a raw keystroke from the search input ever sends a lone `search`
-    // key (see CustomersToolbar.tsx) — every other change (a select, or a
-    // suggestion/"clear all" patch, which always carries every field) is a
-    // deliberate one-off action and applies immediately, not debounced.
+    // Only a raw keystroke from the search input ever sends a patch that is
+    // exactly `{ search }` (see CustomersToolbar.tsx). Every other change —
+    // a select (a single non-search key), a suggestion dropping one filter
+    // (also single-key, see `patchForSuggestion`'s 'without' case), or a
+    // "clear all"/search-suggestion patch (every field at once) — fails that
+    // shape check and is a deliberate one-off action applied immediately,
+    // not debounced.
     if (Object.keys(patch).length === 1 && patch.search !== undefined) {
       // Trimmed BEFORE it reaches `queryFilters` — that object feeds the
       // query key (see `useCustomersDemoQuery` below), so "abc" and "abc "

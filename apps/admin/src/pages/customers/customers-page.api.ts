@@ -9,12 +9,13 @@ import type { SortDirection, SortKey } from './customers-page.sort-rows';
 /**
  * TEMPORARY DEMO DATA, FETCHED OVER A REAL HTTP ROUND TRIP.
  *
- * `GET /customers` search/filters then slices the same fixed 30 rows by
- * `page`/`per_page` — see `CustomerRestController::get_items()` /
- * `CustomerRowFilters.php` / `CustomerDemoRows.php` on the PHP side, which
- * this schema mirrors field-for-field. This exists so the page has a genuine
- * loading state to show (real network latency), not a simulated `setTimeout`,
- * per an explicit request — not because the demo data became any more real.
+ * `GET /customers` search/filters, sorts, then slices the same fixed 30 rows
+ * by `page`/`per_page` — see `CustomerRestController::get_items()` /
+ * `CustomerRowFilters.php` / `CustomerRowSort.php` / `CustomerDemoRows.php`
+ * on the PHP side, which this schema mirrors field-for-field. This exists so
+ * the page has a genuine loading state to show (real network latency), not a
+ * simulated `setTimeout`, per an explicit request — not because the demo
+ * data became any more real.
  *
  * Deleted, along with the PHP method/class above, once a real Customers list
  * endpoint exists. Never import this outside `pages/customers/`.

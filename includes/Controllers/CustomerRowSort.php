@@ -4,11 +4,14 @@ namespace YayLoyalty\Controllers;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Server-side mirror of `customers-page.sort-rows.ts` — same 8 sort keys and
- * the same tie-break rules (a row with no expiry date always sorts last
- * regardless of direction; "last activity" sorts by recency, not raw
- * elapsed minutes) — so a sorted request returns rows in the exact order
- * the admin list's sort carets describe.
+ * Same 8 sort keys as `customers-page.sort-rows.ts`'s `SortKey` union, so a
+ * sorted request returns rows in the exact order the admin list's sort
+ * carets describe. The tie-break rules below (a row with no expiry date
+ * always sorts last regardless of direction; "last activity" sorts by
+ * recency, not raw elapsed minutes) have no TS counterpart to mirror
+ * anymore — the client-side comparator they were ported from was deleted
+ * once sorting moved entirely server-side; this class is now the only place
+ * they're implemented.
  *
  * Needed once sort has to reach beyond whatever page already loaded: sorting
  * only the 10 rows on screen and calling it "sorted" is wrong the moment
@@ -74,8 +77,11 @@ final class CustomerRowSort {
             case 'lifetime':
                 return $a['lifetime_earned'] <=> $b['lifetime_earned'];
             case 'last_activity':
-                // Swapped, not `$a <=> $b`: elapsed minutes read backwards from
-                // recency (smaller = more recent) — see sort-rows.ts.
+                // Swapped, not `$a <=> $b`: `last_activity_minutes_ago` is
+                // "time elapsed" (smaller = more recent), so swapping a/b
+                // makes desc sort by recency (most-recent first) instead of
+                // by the raw elapsed value (which would put the OLDEST
+                // activity first under desc).
                 return $b['last_activity_minutes_ago'] <=> $a['last_activity_minutes_ago'];
             case 'referrals':
                 return $a['referrals'] <=> $b['referrals'];

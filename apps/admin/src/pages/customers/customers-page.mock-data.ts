@@ -6,7 +6,7 @@ import type { Customer } from '@/lib/schema/customer.schema';
  * `CustomerRestController::get_items()` / `CustomerDemoRows.php`), which
  * stands in for a real Customers list REST endpoint that does not exist yet
  * (`customer.queries.ts` only has single-customer / ledger / adjust hooks
- * today). The round trip is real; the six rows it returns are not.
+ * today). The round trip is real; the 30 fixed rows it returns are not.
  *
  * Deleted, along with `customers-page.api.ts`/`.queries.ts` and the PHP side,
  * the day the page reads a real list. Never import this outside

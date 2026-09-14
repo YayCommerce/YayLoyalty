@@ -13,9 +13,10 @@ defined( 'ABSPATH' ) || exit;
  * `MockCustomer`.
  *
  * 30 rows: enough to exercise the admin list's search, every filter bucket
- * (including boundary balances — see CustomerDemoRowsSummit::rows() — and
- * expiries inside 30/90 days), sort, and real pagination (10/page → 3 pages)
- * without a live backend.
+ * (including boundary balances — see CustomerDemoRowsAlpine::rows()'s 10001
+ * and CustomerDemoRowsExplorer::rows()'s 0/1000/-1000 — and expiries inside
+ * 30/90 days), sort, and real pagination (10/page → 3 pages) without a live
+ * backend.
  *
  * Split by tier into `CustomerDemoRowsAlpine` / `CustomerDemoRowsSummit` /
  * `CustomerDemoRowsExplorer` (this file only merges them) to keep every file
