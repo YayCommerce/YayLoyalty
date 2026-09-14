@@ -2,6 +2,7 @@
 namespace YayLoyalty\Pro;
 
 use YayLoyalty\Enums\CampaignTrigger;
+use YayLoyalty\Enums\RewardType;
 use YayLoyalty\Pro\Controllers\CampaignPreviewRestController;
 use YayLoyalty\Pro\Services\ConditionsEvaluator;
 use YayLoyalty\Repositories\CampaignRepository;
@@ -31,6 +32,8 @@ defined( 'ABSPATH' ) || exit;
  *   yayloyalty_rest_controllers
  *   yayloyalty_campaign_triggers
  *   yayloyalty_campaign_config_whitelist
+ *   yayloyalty_reward_types
+ *   yayloyalty_reward_config_whitelist
  *   yayloyalty_rest_item_schema
  *   yayloyalty_campaign_conditions_evaluator
  *
@@ -70,6 +73,18 @@ final class YayLoyaltyPro {
     ];
 
     /**
+     * Reward types Pro adds to the one Lite ships.
+     *
+     * @var string[]
+     */
+    private const ADDED_REWARD_TYPES = [
+        RewardType::FIXED_COUPON,
+        RewardType::PERCENT_COUPON,
+        RewardType::FREE_SHIPPING,
+        RewardType::FREE_PRODUCT,
+    ];
+
+    /**
      * Attach Pro to Lite's extension seams.
      *
      * Called from YayLoyalty::initialize() behind a class_exists check, so in
@@ -87,6 +102,8 @@ final class YayLoyaltyPro {
 
         add_filter( 'yayloyalty_campaign_triggers', [ self::class, 'add_triggers' ] );
         add_filter( 'yayloyalty_campaign_config_whitelist', [ self::class, 'add_config_keys' ] );
+        add_filter( 'yayloyalty_reward_types', [ self::class, 'add_reward_types' ] );
+        add_filter( 'yayloyalty_reward_config_whitelist', [ self::class, 'add_reward_config_keys' ] );
         add_filter( 'yayloyalty_campaign_conditions_evaluator', [ self::class, 'conditions_evaluator' ] );
         add_filter( 'yayloyalty_rest_controllers', [ self::class, 'add_controllers' ] );
         add_filter( 'yayloyalty_rest_item_schema', [ self::class, 'describe_pro_config' ], 10, 2 );
@@ -157,6 +174,63 @@ final class YayLoyaltyPro {
             'points',
             'spend_amount',
             'repeat',
+        ];
+
+        return $whitelist;
+    }
+
+    /**
+     * Widen the reward types this build can offer.
+     *
+     * RewardType::all_known() is deliberately NOT filtered, so this does not
+     * change what a downgraded site recognises — only what Pro offers.
+     *
+     * @param string[] $types
+     * @return string[]
+     */
+    public static function add_reward_types( array $types ): array {
+        return array_values( array_unique( array_merge( $types, self::ADDED_REWARD_TYPES ) ) );
+    }
+
+    /**
+     * Config keys for the reward types Pro adds.
+     *
+     * @param array<string, string[]> $whitelist
+     * @return array<string, string[]>
+     */
+    public static function add_reward_config_keys( array $whitelist ): array {
+        $whitelist[ RewardType::FIXED_COUPON ] = [
+            'currency',
+            'amount',
+            'min_order',
+            'coupon_expiry_days',
+            'exclude_sale_items',
+            'max_total',
+        ];
+
+        $whitelist[ RewardType::PERCENT_COUPON ] = [
+            'percent',
+            'max_discount',
+            'currency',
+            'min_order',
+            'coupon_expiry_days',
+            'exclude_sale_items',
+            'max_total',
+        ];
+
+        $whitelist[ RewardType::FREE_SHIPPING ] = [
+            'min_order',
+            'currency',
+            'coupon_expiry_days',
+            'max_total',
+        ];
+
+        $whitelist[ RewardType::FREE_PRODUCT ] = [
+            'product_id',
+            'variation_id',
+            'qty',
+            'coupon_expiry_days',
+            'max_total',
         ];
 
         return $whitelist;

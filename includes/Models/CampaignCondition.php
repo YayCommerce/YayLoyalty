@@ -76,10 +76,6 @@ final class CampaignCondition {
         return $this->value;
     }
 
-    public function is_between(): bool {
-        return CampaignConditionType::OP_BETWEEN === $this->operator;
-    }
-
     /**
      * The value as a plain list — for the `in` / `not_in` types. A scalar is
      * wrapped so callers never branch on "array or not".
@@ -94,34 +90,4 @@ final class CampaignCondition {
         return null === $this->value ? [] : [ $this->value ];
     }
 
-    /**
-     * The { amount, currency } of a `lifetime_spend` value; nulls when the value
-     * is not that shape. `amount` is a number, or a [low, high] pair for
-     * `between`.
-     *
-     * @return array{amount: mixed, currency: string|null}
-     */
-    public function money(): array {
-        $value = is_array( $this->value ) ? $this->value : [];
-
-        return [
-            'amount'   => $value['amount'] ?? null,
-            'currency' => isset( $value['currency'] ) ? (string) $value['currency'] : null,
-        ];
-    }
-
-    /**
-     * The { countries, source } of a `country` value.
-     *
-     * @return array{countries: string[], source: string|null}
-     */
-    public function country(): array {
-        $value     = is_array( $this->value ) ? $this->value : [];
-        $countries = isset( $value['countries'] ) && is_array( $value['countries'] ) ? array_values( $value['countries'] ) : [];
-
-        return [
-            'countries' => array_map( 'strval', $countries ),
-            'source'    => isset( $value['source'] ) ? (string) $value['source'] : null,
-        ];
-    }
 }

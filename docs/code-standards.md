@@ -121,7 +121,7 @@ Two directories that look interchangeable and are not.
 
 | | Holds | Test |
 |---|---|---|
-| `Utils/` | Stateless, all-static, no plugin state — `Dates`, `Json`, `Log`, `Table` | Could you lift it into another plugin by changing one constant? |
+| `Utils/` | Stateless, all-static, no plugin state — `Dates`, `Json`, `Log`, `Table`, `ConditionValueRules` | Could you lift it into another plugin by changing one constant? |
 | `Helpers/` | Glue that knows this plugin's options, shapes and screens — `SettingsHelper`, `LocalizeHelper` | Does it read plugin state or build a payload for our UI? |
 
 A util that starts reading an option belongs in `Helpers/`. Neither directory is a home for business rules: those live in `Models/` and `Services/`.
@@ -172,6 +172,8 @@ Pick the level by asking who needs the line, not how noisy it is:
 
 No native enums. Closed vocabularies are `final class` + `const` + `all()` + `is_valid()` + `assert()`.
 
+**When two vocabularies' processing methods are byte-identical, share the methods via a trait — never `extends`.** `CampaignConditionType` and `RewardConditionType` both `use Enums\ConditionTypeMethods` for `all()`/`all_known()`/`is_valid()`/`is_known()`/`operators_for()`/`assert()`, built on a `schema()` the trait declares `abstract` and each class still implements itself. Both stay `final class` with no `extends` and no "is-a" relationship — a trait, unlike a base class, doesn't turn two independent vocabularies into a hierarchy. This is the exception, not a new default: `Status`, `CampaignTrigger` and `RewardType` remain plain, and a trait is worth reaching for only when the bodies are actually identical, not merely similar.
+
 **`assert()` runs at the service boundary, not in the repository.** With no enum type there is no compile-time check, so if the service does not assert, an invalid value surfaces only as a DB error — far from the caller, with a message that names a column instead of the mistake.
 
 Fact-table entities are immutable **by convention**: private properties, getters only, no setters, `with_*()` returns a clone. `readonly` does not exist in 7.4, so the convention is the enforcement. Say so in each such class's docblock.
@@ -204,7 +206,7 @@ Stamping `schema_version` into a list turns it into an object: `[{…},{…}]` c
 
 `decode_list()` unwraps it and also accepts a bare array and the corrupted `{"0":…}` shape, so no stored row is lost. **[REVIEW]** — pick the pair that matches the column's shape; nothing enforces it.
 
-The vocabulary and per-type rules for `campaigns.conditions` live in `Enums\CampaignConditionType`; `Models\CampaignConditionSet` validates and normalises a set on save (`Campaign::conditions_are_valid()` / `set_conditions()`), mirroring the `config` pair. Named `Campaign*`, not a bare `Condition*` — rewards get their own condition vocabulary (a later task) and must not collide with this one. See `data-model.md` → `conditions`.
+The vocabulary and per-type rules for `campaigns.conditions` live in `Enums\CampaignConditionType`; `Models\CampaignConditionSet` validates and normalises a set on save (`Campaign::conditions_are_valid()` / `set_conditions()`), mirroring the `config` pair. `rewards.conditions` is the same pattern with `Enums\RewardConditionType` / `Models\RewardConditionSet` / `Models\RewardCondition`. Named `Campaign*` and `Reward*`, never a bare `Condition*` — the two vocabularies must not collide, and each is free to grow its own types independently. Neither `extends` the other, and there is no shared base class — but two things are genuinely identical between them, so they are shared rather than duplicated: `Enums\ConditionTypeMethods` is a trait supplying `all()`/`all_known()`/`is_valid()`/`is_known()`/`operators_for()`/`assert()`, used by both `CampaignConditionType` and `RewardConditionType` (each still declares its own `schema()` and `UNAVAILABLE` — that's where they diverge); `Utils\ConditionValueRules` is the value-shape checks (`int`, `int_list`, `string_list`, `between` pairs, list caps) used by both `CampaignConditionSet` and `RewardConditionSet`. Both exist so a fix to that logic is made once, not twice — not to merge the vocabularies themselves. See `data-model.md` → `conditions`.
 
 ## 13. Pro extension seams
 
@@ -225,6 +227,8 @@ That is why the Lite build is a directory deletion rather than surgery on shared
 | Its REST endpoints | `yayloyalty_rest_controllers` |
 | Extra campaign triggers | `yayloyalty_campaign_triggers` |
 | Extra campaign config keys | `yayloyalty_campaign_config_whitelist` |
+| Extra reward types | `yayloyalty_reward_types` |
+| Extra reward config keys | `yayloyalty_reward_config_whitelist` |
 | To extend a resource's schema | `yayloyalty_rest_item_schema` |
 | To evaluate campaign conditions | `yayloyalty_campaign_conditions_evaluator` |
 
@@ -244,8 +248,8 @@ A marker is a symptom of a missing seam. A mismatched pair silently deletes the 
 
 A site that downgrades from Pro to Lite must not have its data treated as corrupt. Concretely:
 
-- `CampaignTrigger::all()` is filtered (what this build can *fire*); `all_known()` is **not** (what the schema *recognises*). The asymmetry is the mechanism.
-- `Campaign::config_whitelist()` keeps Pro keys such as `max_points_per_order` in Lite. Do not "tidy" them out — that would destroy a merchant's configuration on a temporary downgrade.
+- `CampaignTrigger::all()` is filtered (what this build can *fire*); `all_known()` is **not** (what the schema *recognises*). The asymmetry is the mechanism. `RewardType` follows the same shape: `all()` (offerable) vs `all_known()` (recognised).
+- `Campaign::config_whitelist()` keeps Pro keys such as `max_points_per_order` in Lite. Do not "tidy" them out — that would destroy a merchant's configuration on a temporary downgrade. `Reward::config_whitelist()` is the same mechanism for reward types.
 - `Campaign::validate_config()` **preserves config wholesale for a trigger this build has no whitelist for**, rather than filtering it against an empty list. A whitelist covers the keys of triggers this build knows; a Pro-only trigger is unknown to Lite entirely, and unknown must never mean delete. Without this, the first re-save of a downgraded `birthday` campaign would empty it, and a later upgrade would restore nothing.
 - Lite's `conditions_match()` returns **true** when it cannot evaluate. Failing open keeps a downgraded site awarding slightly too broadly; failing closed would silently disable every conditional campaign.
 

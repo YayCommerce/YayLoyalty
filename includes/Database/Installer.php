@@ -48,6 +48,7 @@ final class Installer {
             new \YayLoyalty\Database\Schema\CustomersTable(),
             new \YayLoyalty\Database\Schema\LedgerTable(),
             new \YayLoyalty\Database\Schema\CampaignsTable(),
+            new \YayLoyalty\Database\Schema\RewardsTable(),
         ];
 
         /**
@@ -114,16 +115,27 @@ final class Installer {
     }
 
     /**
-     * Create the built-in campaign rows.
+     * Create every built-in rows.
      *
-     * Idempotent by slug, so repeat installs cannot duplicate them. Runs inside
-     * maybe_upgrade()'s mutex, and the unique key on slug is the backstop if two
-     * requests somehow seed at once.
+     * One entry point so install() has a single call for "seed whatever this
+     * build ships built-in", rather than a growing list of seed_builtin_*()
+     * calls at the call site every time a new definition table gets one.
+     * Idempotent by slug, so repeat installs cannot duplicate any of them.
+     * Runs inside maybe_upgrade()'s mutex, and each table's unique key on
+     * slug is the backstop if two requests somehow seed at once.
+     */
+    private static function seed_builtins(): void {
+        self::seed_builtin_campaigns();
+        self::seed_builtin_reward();
+    }
+
+    /**
+     * Create the built-in campaign rows.
      *
      * Built-ins are addressed by slug rather than id because ids differ between
      * sites — the Free UI and any import/export bind to the slug.
      */
-    private static function seed_builtins(): void {
+    private static function seed_builtin_campaigns(): void {
         $repository = new \YayLoyalty\Repositories\CampaignRepository();
         $now        = \YayLoyalty\Utils\Dates::now();
 
@@ -164,6 +176,38 @@ final class Installer {
                 )
             );
         }
+    }
+
+    /**
+     * Create the built-in reward row.
+     */
+    private static function seed_builtin_reward(): void {
+        $repository = new \YayLoyalty\Repositories\RewardRepository();
+        $now        = \YayLoyalty\Utils\Dates::now();
+        $type       = \YayLoyalty\Enums\RewardType::FLEXIBLE_DISCOUNT;
+
+        $repository->seed_builtin(
+            new \YayLoyalty\Models\Reward(
+                null,
+                __( 'Cart discount', 'yayloyalty' ),
+                'cart-discount',
+                $type,
+                \YayLoyalty\Enums\Status::ACTIVE,
+                // Sort order 0: the only reward Free offers, first in the list.
+                0,
+                // cost_points stays null — flexible_discount is the slider type.
+                null,
+                \YayLoyalty\Models\Reward::default_config( $type ),
+                [],
+                null,
+                null,
+                true,
+                null,
+                null,
+                $now,
+                $now
+            )
+        );
     }
 
     /**

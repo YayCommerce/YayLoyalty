@@ -18,8 +18,15 @@ defined( 'ABSPATH' ) || exit;
  * three that each need their own aggregate query — `lifetime_points`,
  * `order_count`, `lifetime_spend`. A future evaluator iterates this order and
  * short-circuits on the first failed condition without having to sort anything.
+ *
+ * `all()` / `all_known()` / `is_valid()` / `is_known()` / `operators_for()` /
+ * `assert()` are ConditionTypeMethods — identical to RewardConditionType's,
+ * so that logic lives once. This class supplies only what actually differs:
+ * the vocabulary itself (the constants and schema() below) and UNAVAILABLE.
  */
 final class CampaignConditionType {
+
+    use ConditionTypeMethods;
 
     /*
      * Operators. Shared spelling; each type accepts only a subset — see schema().
@@ -153,60 +160,5 @@ final class CampaignConditionType {
                 'require_keys' => [ 'currency' ],
             ],
         ];
-    }
-
-    /**
-     * Types a merchant can use today, in evaluation-cost order.
-     *
-     * @return string[]
-     */
-    public static function all(): array {
-        return array_values( array_diff( array_keys( self::schema() ), self::UNAVAILABLE ) );
-    }
-
-    /**
-     * Every type the schema recognises, `tier` included. For reading stored
-     * rows, never for offering choices.
-     *
-     * @return string[]
-     */
-    public static function all_known(): array {
-        return array_keys( self::schema() );
-    }
-
-    public static function is_valid( $value ): bool {
-        return is_string( $value ) && in_array( $value, self::all(), true );
-    }
-
-    public static function is_known( $value ): bool {
-        return is_string( $value ) && in_array( $value, self::all_known(), true );
-    }
-
-    /**
-     * Operators a type accepts, or [] for an unknown type.
-     *
-     * @return string[]
-     */
-    public static function operators_for( string $type ): array {
-        $operators = self::schema()[ $type ]['operators'] ?? [];
-
-        return is_array( $operators ) ? $operators : [];
-    }
-
-    /**
-     * @throws \InvalidArgumentException When $value is not a type a merchant can use.
-     */
-    public static function assert( $value ): string {
-        if ( ! self::is_valid( $value ) ) {
-            throw new \InvalidArgumentException(
-                sprintf(
-                    'YayLoyalty: unknown condition type "%s". Expected one of: %s.',
-                    is_scalar( $value ) ? (string) $value : gettype( $value ),
-                    implode( ', ', self::all() )
-                )
-            );
-        }
-
-        return $value;
     }
 }
