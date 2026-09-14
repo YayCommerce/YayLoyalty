@@ -9,13 +9,15 @@ defined( 'ABSPATH' ) || exit;
  * `customers-page.filter-rows.ts`'s option values so a request returns the
  * same rows the admin list describes in its UI.
  *
- * NOT demo-only, unlike `CustomerDemoRows`: these are the actual filter
- * semantics the product exposes, only running in-memory over the fixed demo
- * rows for now because there's no real row source yet. `apply()`'s current
- * array-filter body gets replaced with real SQL `WHERE` clauses once
- * `CustomerRepository` gains a paginate/filter method (see
- * `CustomerRestController::get_items()`) — this class or its logic doesn't
- * go away the way `CustomerDemoRows` does.
+ * NOT demo-only: these are the actual filter semantics the product exposes.
+ * Currently unwired — the demo list endpoint and its fixed rows
+ * (`CustomerRestController::get_items()` / the old `CustomerDemoRows`) were
+ * removed ahead of a real Customers list endpoint, so nothing calls `apply()`
+ * yet. `apply()`'s current array-filter body gets replaced with real SQL
+ * `WHERE` clauses (or reused as-is over a real row source) once
+ * `CustomerRepository` gains a paginate/filter method and a real
+ * `get_items()` wires it in — this class's logic is meant to survive that
+ * change, not be deleted with the demo code.
  */
 final class CustomerRowFilters {
 
@@ -52,10 +54,12 @@ final class CustomerRowFilters {
     }
 
     /**
-     * "Which filter should I drop?" — for `CustomerRestController::get_items()`
+     * "Which filter should I drop?" — for the real Customers list endpoint
      * to embed in the same response once the current filters match zero rows,
      * instead of the admin app firing one extra request per active filter to
-     * ask. Mirrors `customers-page.filter-suggestions.ts`'s candidate-building
+     * ask (the demo `CustomerRestController::get_items()` used to call this;
+     * whatever replaces it should too). Mirrors
+     * `customers-page.filter-suggestions.ts`'s candidate-building
      * exactly: `search` is isolated (every other filter reverted, search kept
      * — "search on its own"); every other key is just reverted to its default
      * one at a time ("without this one filter").

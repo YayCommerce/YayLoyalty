@@ -3,14 +3,19 @@ import { __ } from '@wordpress/i18n';
 /**
  * Search/filter option types + labels for the Customers list toolbar.
  *
- * The actual matching now runs server-side — see `CustomerRowFilters.php`
- * (mirrors this file's values field-for-field) and `customers-page.api.ts` —
- * so results are checked against the whole (demo) dataset, not just whatever
- * page already loaded. This file only keeps the shapes/labels the UI needs.
+ * The actual matching runs server-side, in `CustomerRowFilters.php` (mirrors
+ * this file's values field-for-field), so results are checked against the
+ * whole dataset, not just whatever page already loaded. This file only keeps
+ * the shapes/labels the UI needs.
+ *
+ * No real list endpoint calls `CustomerRowFilters` yet — the demo one
+ * (`customers-page.api.ts` / `CustomerRestController::get_items()`) was
+ * removed ahead of it; wire the real fetch's params to this file's values
+ * the same way that demo version did.
  */
 export type BalanceRangeValue = 'any' | 'negative' | '0-1000' | '1000-10000' | '10000-plus';
 export type ExpiringSoonValue = 'off' | '30' | '90' | 'none';
-/** 'all' + the tiers `CustomerDemoRows.php` actually hands out. Pro-only — see CustomersToolbar.tsx. */
+/** 'all' + the tiers the backend hands out. Pro-only — see CustomersToolbar.tsx. */
 export type TierValue = 'all' | 'Alpine' | 'Summit' | 'Explorer';
 
 export interface RowFilters {
