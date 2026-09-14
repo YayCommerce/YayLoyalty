@@ -158,20 +158,11 @@ export default function CustomersPage() {
         <ErrorState message={__('Could not load customers.', 'yayloyalty')} onRetry={() => customersQuery.refetch()} />
       ) : (
         <CustomersScreen
-          rows={rows}
-          isLoading={customersQuery.isPending}
-          isStoreEmpty={isStoreEmpty}
-          totalItems={totalItems}
-          suggestions={suggestions}
-          filters={filters}
-          onFiltersChange={updateFilters}
+          list={{ rows, isLoading: customersQuery.isPending, isStoreEmpty, totalItems, suggestions }}
+          filters={{ value: filters, onChange: updateFilters }}
+          sort={{ by: sortBy, dir: sortDir, onChange: handleSort }}
+          pagination={{ page, pageCount, onChange: setPage }}
           isRebuilding={isRebuilding}
-          page={page}
-          pageCount={pageCount}
-          onPageChange={setPage}
-          sortBy={sortBy}
-          sortDir={sortDir}
-          onSort={handleSort}
         />
       )}
     </PageLayout>

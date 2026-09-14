@@ -25,6 +25,9 @@ export function countColumns(showProColumns: boolean, showSelection: boolean) {
  * page's worth) — see CustomersScreen.tsx, which owns both so sorting is
  * applied to the whole filtered set before slicing a page, not per-page.
  * This component only renders the caret state and reports clicks upward.
+ *
+ * `sort`/`selection` grouped (mirrors CustomersScreen.tsx's own props) since
+ * each is really one concern spread across several values.
  */
 export function CustomersTable({
   rows,
@@ -32,15 +35,9 @@ export function CustomersTable({
   isStoreEmpty,
   noMatchContent,
   showProColumns,
-  showSelection,
   staleBalances,
-  headerSelection,
-  onToggleAll,
-  selected,
-  onToggleRow,
-  sortBy,
-  sortDir,
-  onSort,
+  sort,
+  selection,
 }: {
   rows: MockCustomer[];
   /** `useCustomersDemoQuery` still in flight — real network latency, not a simulated delay. */
@@ -50,17 +47,24 @@ export function CustomersTable({
   /** What to show when filters narrow a non-empty store to zero rows — see CustomersNoMatchState.tsx. */
   noMatchContent?: ReactNode;
   showProColumns: boolean;
-  /** Off during the rebuild toggle even in Pro — see CustomerTableRow.tsx. */
-  showSelection: boolean;
   staleBalances: boolean;
-  headerSelection: HeaderSelectionState;
-  onToggleAll: () => void;
-  selected: Set<number>;
-  onToggleRow: (userId: number) => void;
-  sortBy: SortKey;
-  sortDir: SortDirection;
-  onSort: (key: SortKey) => void;
+  sort: {
+    by: SortKey;
+    dir: SortDirection;
+    onChange: (key: SortKey) => void;
+  };
+  selection: {
+    /** Off during the rebuild toggle even in Pro — see CustomerTableRow.tsx. */
+    enabled: boolean;
+    header: HeaderSelectionState;
+    selected: Set<number>;
+    onToggle: (userId: number) => void;
+    onToggleAll: () => void;
+  };
 }) {
+  const { by: sortBy, dir: sortDir, onChange: onSort } = sort;
+  const { enabled: showSelection, header: headerSelection, selected, onToggle: onToggleRow, onToggleAll } = selection;
+
   const columnCount = countColumns(showProColumns, showSelection);
   // Nothing to sort or select when the body isn't showing real rows (loading
   // skeleton, empty store, no filter match) — headers go back to plain text

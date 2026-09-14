@@ -42,42 +42,47 @@ import { CustomersTable } from './CustomersTable';
  * `useIsPremium`-style check yay-reviews' `PremiumGate` is built on).
  */
 export function CustomersScreen({
-  rows,
-  isLoading,
-  isStoreEmpty,
-  totalItems,
-  suggestions,
-  filters,
-  onFiltersChange,
+  list,
+  filters: filtersProp,
+  sort,
+  pagination,
   isRebuilding,
-  page,
-  pageCount,
-  onPageChange,
-  sortBy,
-  sortDir,
-  onSort,
 }: {
-  /** The current page's rows, already search/filter-narrowed AND sorted server-side — see CustomersPage.tsx. */
-  rows: MockCustomer[];
-  /** `useCustomersDemoQuery` still in flight (including a page/sort change — each is its own fetch). */
-  isLoading: boolean;
-  /** The whole store has zero rows, from the server's total — not "this page's filters matched nothing". */
-  isStoreEmpty: boolean;
-  /** The server's row count for the current filters, across every page — see CustomersPage.tsx. */
-  totalItems: number;
-  /** "Which filter to drop" suggestions — fetched by CustomersPage.tsx once filters match zero rows. */
-  suggestions: FilterDropSuggestion[];
-  filters: RowFilters;
-  onFiltersChange: (patch: Partial<RowFilters>) => void;
+  /** Everything the server's list query produced for the current page — see CustomersPage.tsx. */
+  list: {
+    /** Already search/filter-narrowed AND sorted server-side. */
+    rows: MockCustomer[];
+    /** `useCustomersDemoQuery` still in flight (including a page/sort change — each is its own fetch). */
+    isLoading: boolean;
+    /** The whole store has zero rows, from the server's total — not "this page's filters matched nothing". */
+    isStoreEmpty: boolean;
+    /** The server's row count for the current filters, across every page. */
+    totalItems: number;
+    /** "Which filter to drop" — fetched by CustomersPage.tsx once filters match zero rows. */
+    suggestions: FilterDropSuggestion[];
+  };
+  filters: {
+    value: RowFilters;
+    onChange: (patch: Partial<RowFilters>) => void;
+  };
+  sort: {
+    by: SortKey;
+    dir: SortDirection;
+    onChange: (key: SortKey) => void;
+  };
+  pagination: {
+    page: number;
+    pageCount: number;
+    onChange: (page: number) => void;
+  };
   /** "Simulate rebuild" toggle (Pro-only, see CustomersPage.tsx) — no real background job. */
   isRebuilding: boolean;
-  page: number;
-  pageCount: number;
-  onPageChange: (page: number) => void;
-  sortBy: SortKey;
-  sortDir: SortDirection;
-  onSort: (key: SortKey) => void;
 }) {
+  const { rows, isLoading, isStoreEmpty, totalItems, suggestions } = list;
+  const { value: filters, onChange: onFiltersChange } = filtersProp;
+  const { by: sortBy, dir: sortDir, onChange: onSort } = sort;
+  const { page, pageCount, onChange: onPageChange } = pagination;
+
   // A genuinely empty store, not a search/filter matching nobody, and not
   // "still loading" either — see CustomersTable.tsx / CustomersEmptyState.tsx
   // for why the first distinction matters. The toolbar goes inert (but stays
@@ -154,15 +159,15 @@ export function CustomersScreen({
             ) : undefined
           }
           showProColumns={IS_PRO_BUILD}
-          showSelection={showSelection}
           staleBalances={isRebuilding}
-          headerSelection={headerSelection}
-          onToggleAll={toggleAll}
-          selected={selectedOnPage}
-          onToggleRow={toggleRow}
-          sortBy={sortBy}
-          sortDir={sortDir}
-          onSort={onSort}
+          sort={{ by: sortBy, dir: sortDir, onChange: onSort }}
+          selection={{
+            enabled: showSelection,
+            header: headerSelection,
+            selected: selectedOnPage,
+            onToggle: toggleRow,
+            onToggleAll: toggleAll,
+          }}
         />
 
         {/* One bordered footer row: bulk actions (left, once selected) + pagination
