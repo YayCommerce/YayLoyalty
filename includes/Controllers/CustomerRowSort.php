@@ -16,8 +16,10 @@ defined( 'ABSPATH' ) || exit;
  * Needed once sort has to reach beyond whatever page already loaded: sorting
  * only the 10 rows on screen and calling it "sorted" is wrong the moment
  * there's a second page. NOT demo-only, same reasoning as
- * `CustomerRowFilters` — real sort semantics, just run in-memory here until
- * `CustomerRepository` can do it in SQL.
+ * `CustomerRowFilters` — real sort semantics, meant to run in-memory over
+ * whatever row source calls `apply()` until `CustomerRepository` can do it
+ * in SQL. Currently unwired: the demo list endpoint that used to call this
+ * (`CustomerRestController::get_items()`) was removed ahead of a real one.
  */
 final class CustomerRowSort {
 

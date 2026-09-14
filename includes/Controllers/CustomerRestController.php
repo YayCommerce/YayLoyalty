@@ -8,9 +8,13 @@ use YayLoyalty\Services\LedgerService;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * GET  /yayloyalty/v1/customers               — TEMPORARY fixed demo rows, see get_items()
  * GET  /yayloyalty/v1/customers/{id}          — cached aggregates
  * POST /yayloyalty/v1/customers/{id}/adjust   — manual adjustment
+ *
+ * No GET /yayloyalty/v1/customers (list) route yet: the demo version was
+ * removed pending a real `CustomerRepository` list/paginate method — see
+ * `CustomerRowFilters`/`CustomerRowSort`, which still hold the product's real
+ * filter/sort semantics for whichever repository method replaces it.
  *
  * Read-side composition lives here rather than in a CustomerService: a service
  * that only forwarded reads to one repository would be ceremony, and it would
@@ -35,33 +39,6 @@ final class CustomerRestController extends AbstractRestController {
     }
 
     public function register_routes(): void {
-        register_rest_route(
-            self::REST_NAMESPACE,
-            '/customers',
-            [
-                [
-                    'methods'             => \WP_REST_Server::READABLE,
-                    'callback'            => fn( $request ) => $this->exec_read( [ $this, 'get_items' ], $request ),
-                    'permission_callback' => $this->requires( Capabilities::VIEW ),
-                    'args'                => array_merge(
-                        $this->get_collection_params(),
-                        $this->get_demo_filter_params(),
-                        // Overrides the base `orderby` (free-text) with the 8 real sort
-                        // keys — see `CustomerRowSort`. `order` keeps the base definition.
-                        [
-                            'orderby' => [
-                                'description'       => __( 'Column to sort the Customers list by.', 'yayloyalty' ),
-                                'type'               => 'string',
-                                'enum'               => [ 'name', 'tier', 'balance', 'pending', 'lifetime', 'last_activity', 'expires', 'referrals' ],
-                                'default'            => 'balance',
-                                'sanitize_callback'  => 'sanitize_text_field',
-                            ],
-                        ]
-                    ),
-                ],
-            ]
-        );
-
         register_rest_route(
             self::REST_NAMESPACE,
             '/customers/(?P<id>[\d]+)',
@@ -141,103 +118,6 @@ final class CustomerRestController extends AbstractRestController {
         }
 
         return $customer->to_array();
-    }
-
-    /**
-     * The Customers-list-only search/filter params — `search` already lives on
-     * `get_collection_params()`, so only the customer-specific ones are added
-     * here. Values/enums mirror `customers-page.filter-rows.ts` exactly.
-     *
-     * @return array<string, mixed>
-     */
-    private function get_demo_filter_params(): array {
-        return [
-            'balance_range' => [
-                'description'       => __( 'Balance bucket to filter by.', 'yayloyalty' ),
-                'type'              => 'string',
-                'enum'              => [ 'any', 'negative', '0-1000', '1000-10000', '10000-plus' ],
-                'default'           => 'any',
-                'sanitize_callback' => 'sanitize_text_field',
-            ],
-            'expiring_soon' => [
-                'description'       => __( 'Points-expiry window to filter by.', 'yayloyalty' ),
-                'type'              => 'string',
-                'enum'              => [ 'off', '30', '90', 'none' ],
-                'default'           => 'off',
-                'sanitize_callback' => 'sanitize_text_field',
-            ],
-            'tier'          => [
-                'description'       => __( 'Loyalty tier to filter by.', 'yayloyalty' ),
-                'type'              => 'string',
-                'enum'              => [ 'all', 'Alpine', 'Summit', 'Explorer' ],
-                'default'           => 'all',
-                'sanitize_callback' => 'sanitize_text_field',
-            ],
-        ];
-    }
-
-    /**
-     * TEMPORARY DEMO DATA — NOT A REAL QUERY. See `CustomerDemoRows`.
-     *
-     * `CustomerRepository` has no list/paginate method yet (only
-     * find_by_user_id(), ensure_row(), lock_and_get(), apply_delta() — see the
-     * class docblock), so there is no real Customers list to serve. This lets
-     * the admin Customers screen fetch over a genuine HTTP round trip (and
-     * gives its loading skeleton something real to wait on) instead of
-     * importing a hardcoded array client-side.
-     *
-     * `page`/`per_page` ARE applied, and so is search/filter (via
-     * `CustomerRowFilters` — the product's real filter rules, just run
-     * in-memory here) and sort (via `CustomerRowSort`, same reasoning) —
-     * filtered, sorted, THEN sliced, all against the same fixed 30 rows — so
-     * the admin list gets correct results across the whole (demo) dataset
-     * instead of only ever searching/sorting whatever page already loaded.
-     *
-     * A zero-row result also gets a `suggestions` field folded into this same
-     * response (see `CustomerRowFilters::suggestions_for_no_match()`) — the
-     * admin app used to fire one extra request per active filter to ask
-     * "what should I drop?"; now that answer rides along with the empty
-     * result instead of costing a round trip of its own.
-     *
-     * DELETE this method and `CustomerDemoRows`, and replace the body with a
-     * real `CustomerRepository::paginate_filtered()`-style call (likely
-     * reusing `CustomerRowFilters`/`CustomerRowSort`'s rules as SQL `WHERE`/
-     * `ORDER BY` clauses instead of deleting them), once that repository
-     * method exists.
-     */
-    public function get_items( \WP_REST_Request $request ) {
-        $filters = [
-            'search'        => (string) $request->get_param( 'search' ),
-            'balance_range' => (string) $request->get_param( 'balance_range' ),
-            'expiring_soon' => (string) $request->get_param( 'expiring_soon' ),
-            'tier'          => (string) $request->get_param( 'tier' ),
-        ];
-
-        $all_rows = CustomerDemoRows::all();
-        $rows     = CustomerRowFilters::apply( $all_rows, $filters );
-        $rows     = CustomerRowSort::apply(
-            $rows,
-            (string) $request->get_param( 'orderby' ),
-            (string) $request->get_param( 'order' )
-        );
-
-        $page     = max( 1, (int) $request->get_param( 'page' ) );
-        $per_page = max( 1, (int) $request->get_param( 'per_page' ) ?: 20 );
-
-        $envelope = $this->respond_paginated(
-            [
-                'items'    => array_slice( $rows, ( $page - 1 ) * $per_page, $per_page ),
-                'total'    => count( $rows ),
-                'page'     => $page,
-                'per_page' => $per_page,
-            ]
-        );
-
-        if ( 0 === count( $rows ) ) {
-            $envelope['suggestions'] = CustomerRowFilters::suggestions_for_no_match( $all_rows, $filters );
-        }
-
-        return $envelope;
     }
 
     public function adjust_points( \WP_REST_Request $request ) {
