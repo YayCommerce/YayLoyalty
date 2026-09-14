@@ -73,6 +73,11 @@ final class Installer {
 
         self::seed_builtins();
 
+        // Runs exactly once, ever — see InitYayLoyaltyCustomer's own docblock
+        // for the WooCommerce guard and the idempotency mechanism (an option
+        // flag claimed before writing, not stamped after).
+        InitYayLoyaltyCustomer::maybe_create();
+
         // Here rather than only on the activation hook: shop_manager does not
         // exist until WooCommerce has been activated once, and this also runs
         // on every plugin upgrade and for blogs added to a network.
