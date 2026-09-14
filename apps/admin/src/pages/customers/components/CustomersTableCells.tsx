@@ -1,7 +1,7 @@
 import { TriangleAlert } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
-import { PointsValue } from '@/components/ui/custom/PointsValue';
+import { PointsValue } from '@/components/ui/custom/points-value';
 
 /** Two-line Customer cell: name (links to the drawer once it exists) + muted email. */
 export function CustomerNameCell({ name, email }: { name: string; email: string }) {
@@ -24,7 +24,10 @@ export function BalanceCell({ value, stale }: { value: number; stale?: boolean }
 
   return (
     <span
-      className={cn('flex items-center justify-end gap-1.5 tabular-nums', stale ? 'text-muted-foreground font-normal' : 'font-semibold')}
+      className={cn(
+        'flex items-center justify-end gap-1.5 tabular-nums',
+        stale ? 'text-muted-foreground font-normal' : 'font-semibold',
+      )}
     >
       {negative && <TriangleAlert className="text-muted-foreground size-3.5" />}
       <PointsValue value={value} />

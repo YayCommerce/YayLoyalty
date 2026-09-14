@@ -3,7 +3,7 @@ import { __ } from '@wordpress/i18n';
 import { parseWPDate } from '@/lib/helpers/format.helper';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { PointsValue } from '@/components/ui/custom/PointsValue';
+import { PointsValue } from '@/components/ui/custom/points-value';
 import { TableCell, TableRow } from '@/components/ui/table';
 import type { MockCustomer } from '../customers-page.mock-data';
 import { BalanceCell, CustomerNameCell } from './CustomersTableCells';
@@ -33,7 +33,7 @@ export function CustomerTableRow({
   return (
     <TableRow
       data-state={selected ? 'selected' : undefined}
-      className={negative ? 'bg-muted/40 border-l-[3px] border-l-muted-foreground/40' : undefined}
+      className={negative ? 'bg-muted/40 border-l-muted-foreground/40 border-l-[3px]' : undefined}
     >
       {showSelection && (
         <TableCell>

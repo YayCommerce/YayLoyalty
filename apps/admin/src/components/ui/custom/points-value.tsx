@@ -1,5 +1,5 @@
 import { formatCompactPoints, formatPoints, isCompactedPoints } from '@/lib/helpers/points.helper';
-import { YayLoyaltyToolTip } from '@/components/ui/custom/YayLoyaltyToolTip';
+import { YayLoyaltyToolTip } from '@/components/ui/custom/tooltip';
 
 /**
  * Displays a points/balance figure, compacted ("150k+", "2M+", "1B+") once it

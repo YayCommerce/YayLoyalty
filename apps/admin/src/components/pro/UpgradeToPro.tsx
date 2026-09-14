@@ -3,7 +3,7 @@ import { __ } from '@wordpress/i18n';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { YayLoyaltyToolTip } from '@/components/ui/custom/YayLoyaltyToolTip';
+import { YayLoyaltyToolTip } from '@/components/ui/custom/tooltip';
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 
 const yayLoyaltyProUrl = 'https://yaycommerce.com/yayloyalty-for-woocommerce/';

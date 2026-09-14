@@ -2,7 +2,7 @@ import { cloneElement, isValidElement, ReactElement, ReactNode, useMemo } from '
 import { __ } from '@wordpress/i18n';
 
 import { AdminData } from '@/types/localize.type';
-import { YayLoyaltyToolTip } from '@/components/ui/custom/YayLoyaltyToolTip';
+import { YayLoyaltyToolTip } from '@/components/ui/custom/tooltip';
 
 /**
  * The entire client-side capability surface: what the current user may do,

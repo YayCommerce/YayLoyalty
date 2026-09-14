@@ -21,7 +21,7 @@ export function formatPoints(value: number): string {
  * shown, never rounded up, so the trailing "+" always reads as "at least
  * this many". Below `COMPACT_THRESHOLD` this is identical to formatPoints().
  *
- * Pair with `<PointsValue>` (components/ui/custom/PointsValue.tsx) rather
+ * Pair with `<PointsValue>` (components/ui/custom/points-value.tsx) rather
  * than calling this directly in a table cell — a compacted figure needs the
  * exact number available on hover, not just a shorter string.
  */
