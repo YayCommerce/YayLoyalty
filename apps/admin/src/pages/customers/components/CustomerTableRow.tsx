@@ -1,16 +1,21 @@
 import { __ } from '@wordpress/i18n';
 
-import { parseWPDate } from '@/lib/helpers/format.helper';
+import { parseWPDate, parseWPRelativeDate } from '@/lib/helpers/format.helper';
+import type { CustomerListRow } from '@/lib/schema/customer.schema';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { PointsValue } from '@/components/ui/custom/points-value';
 import { TableCell, TableRow } from '@/components/ui/table';
-import type { MockCustomer } from '../customers-page.mock-data';
 import { BalanceCell, CustomerNameCell } from './CustomersTableCells';
 
 /**
  * One customer row. Negative balance gets a subtle left-accent tint (never
  * red — see BalanceCell) and shows "—" for Expires instead of a stale date.
+ *
+ * Tier and Referrals (Pro) always render "—": no `tiers` table and no
+ * referral-count column exist yet, so `CustomerListRow` carries neither field
+ * — this isn't a loading/error state, it's the real (empty) answer. See
+ * `CustomersToolbar.tsx` for the matching Tier filter caveat.
  */
 export function CustomerTableRow({
   customer,
@@ -20,7 +25,7 @@ export function CustomerTableRow({
   onToggle,
   stale,
 }: {
-  customer: MockCustomer;
+  customer: CustomerListRow;
   showProColumns: boolean;
   /** Off during the rebuild toggle even in Pro — no picking rows while balances are frozen. */
   showSelection: boolean;
@@ -49,7 +54,7 @@ export function CustomerTableRow({
       </TableCell>
       {showProColumns && (
         <TableCell>
-          <Badge variant="dimmed-outline">{customer.tier}</Badge>
+          <Badge variant="dimmed-outline">—</Badge>
         </TableCell>
       )}
       <TableCell className="text-right">
@@ -61,13 +66,13 @@ export function CustomerTableRow({
       <TableCell className="text-muted-foreground text-right tabular-nums">
         <PointsValue value={customer.lifetime_earned} />
       </TableCell>
-      <TableCell className="text-muted-foreground text-right">{customer.last_activity_label}</TableCell>
+      <TableCell className="text-muted-foreground text-right">
+        {customer.last_activity_at ? parseWPRelativeDate(customer.last_activity_at) : '—'}
+      </TableCell>
       <TableCell className="text-muted-foreground text-right">
         {!negative && customer.expires_at ? parseWPDate(customer.expires_at) : '—'}
       </TableCell>
-      {showProColumns && (
-        <TableCell className="text-muted-foreground text-right tabular-nums">{customer.referrals}</TableCell>
-      )}
+      {showProColumns && <TableCell className="text-muted-foreground text-right tabular-nums">—</TableCell>}
     </TableRow>
   );
 }

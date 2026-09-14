@@ -17,11 +17,13 @@ defined( 'ABSPATH' ) || exit;
  * yayloyalty_customers.
  *
  * HOW THAT IS ENFORCED, HONESTLY: this is the only class constructed with both
- * repositories, and it is constructed in exactly one place. PHP has no
- * package-private, so that is a convention plus a single construction site plus
- * a review rule — NOT something the object graph or the language enforces. Do
- * not describe it as structural, and do not hand both repositories to anything
- * else.
+ * repositories, and it is constructed in exactly TWO places, both documented,
+ * both reviewed: `Engine\RestAPI::controllers()` (request-time REST) and
+ * `Database\InitYayLoyaltyCustomer::maybe_create()` (one-time install
+ * bootstrap, outside any request). PHP has no package-private, so that is a
+ * convention plus these two named construction sites plus a review rule — NOT
+ * something the object graph or the language enforces. Do not hand both
+ * repositories to a third place; if one is ever needed, name it here too.
  *
  * Every future movement type (earn, redeem, expire, refund_*) enters through
  * record(). award_for_order() is deliberately absent: it belongs with the

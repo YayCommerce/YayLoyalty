@@ -19,9 +19,15 @@ import { countActiveFilters } from '../customers-page.filter-suggestions';
 
 /**
  * Search + filter row. Every filter is real — checked server-side, see
- * `customers-page.api.ts`. "Clear all" only shows up once search or a filter
- * is actually active (`countActiveFilters`) and resets everything at once —
- * same reset `CustomersNoMatchState`'s "Clear all filters" button uses.
+ * `lib/api/customer.api.ts` → `CustomerRepository::paginate_list()`.
+ * "Clear all" only shows up once search or a filter is actually active
+ * (`countActiveFilters`) and resets everything at once — same reset
+ * `CustomersNoMatchState`'s "Clear all filters" button uses.
+ *
+ * Tier is real as a control but not as data: no `tiers` table exists yet, so
+ * every customer's tier is "—" and any non-"all" Tier selection matches zero
+ * rows. Accepted, intentional, temporary (see `CustomerRowFilters.php`) —
+ * kept rather than hidden so the control is already wired once VIP Tiers ships.
  *
  * `exportSlot` is Free-only (see CustomersFilterBar.tsx): 3 filters + Export fit
  * on one row without wrapping, so Free renders Export here. Pro's 4th filter

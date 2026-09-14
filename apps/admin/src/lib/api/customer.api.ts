@@ -1,6 +1,19 @@
+import { z } from 'zod';
+
 import { api } from '@/lib/api/api';
-import { parsePaginated } from '@/lib/api/paginated';
-import { AdjustPointsInput, Customer, customerSchema } from '@/lib/schema/customer.schema';
+import { paginatedSchema, parsePaginated } from '@/lib/api/paginated';
+import {
+  AdjustPointsInput,
+  Customer,
+  customerListRowSchema,
+  customerSchema,
+  CustomerBalanceRange,
+  CustomerExpiringSoon,
+  CustomerSortDirection,
+  CustomerSortKey,
+  CustomerTier,
+  noMatchSuggestionSchema,
+} from '@/lib/schema/customer.schema';
 import { LedgerEntry, ledgerEntrySchema } from '@/lib/schema/ledger.schema';
 
 /**
@@ -35,4 +48,38 @@ export async function adjustCustomerPoints(
   input: AdjustPointsInput,
 ): Promise<LedgerEntry> {
   return ledgerEntrySchema.parse(await api.post(`customers/${userId}/adjust`, { json: input }).json());
+}
+
+export type CustomerListParams = {
+  page?: number;
+  per_page?: number;
+  orderby?: CustomerSortKey;
+  order?: CustomerSortDirection;
+  search?: string;
+  balanceRange?: CustomerBalanceRange;
+  expiringSoon?: CustomerExpiringSoon;
+  tier?: CustomerTier;
+};
+
+const customerListEnvelopeSchema = paginatedSchema(customerListRowSchema).extend({
+  // Absent whenever the result isn't empty — see CustomerRestController::get_items().
+  suggestions: z.array(noMatchSuggestionSchema).optional(),
+});
+
+/** `GET /customers` — the admin Customers list: search + filter + sort + paginate, all server-side. */
+export async function getCustomers(params: CustomerListParams = {}) {
+  const searchParams: Record<string, string> = {};
+
+  if (params.page) searchParams.page = String(params.page);
+  if (params.per_page) searchParams.per_page = String(params.per_page);
+  if (params.orderby) searchParams.orderby = params.orderby;
+  if (params.order) searchParams.order = params.order;
+  if (params.search?.trim()) searchParams.search = params.search.trim();
+  if (params.balanceRange && params.balanceRange !== 'any') searchParams.balance_range = params.balanceRange;
+  if (params.expiringSoon && params.expiringSoon !== 'off') searchParams.expiring_soon = params.expiringSoon;
+  if (params.tier && params.tier !== 'all') searchParams.tier = params.tier;
+
+  const payload = await api.get('customers', { searchParams }).json();
+
+  return customerListEnvelopeSchema.parse(payload);
 }

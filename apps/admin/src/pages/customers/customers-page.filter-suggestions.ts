@@ -3,21 +3,18 @@ import { _n, sprintf, __ } from '@wordpress/i18n';
 import { BALANCE_RANGE_OPTIONS, DEFAULT_ROW_FILTERS, EXPIRING_SOON_OPTIONS, type RowFilters } from './customers-page.filter-rows';
 
 /**
- * "Which single filter should I drop?" — the counts should come from the
- * server, folded into the same list response once the current filters
- * combine to zero results (see `CustomerRowFilters::suggestions_for_no_match()`),
- * not from a second round trip per filter. Only present once 2+ filters are
- * active — with a single filter, the only candidate is "no filters at all",
- * not worth suggesting over "Clear all". This file only turns those raw
- * counts into display text.
- *
- * No real list endpoint returns that response yet — the demo one
- * (`customers-page.api.ts` / `CustomerRestController::get_items()`) was
- * removed ahead of it.
+ * "Which single filter should I drop?" — the counts come from the server,
+ * folded into the same list response once the current filters combine to
+ * zero results (`CustomerRowFilters::candidates_for_no_match()` builds the
+ * candidates; `CustomerRestController::no_match_suggestions()` counts each
+ * via `CustomerRepository::count_list()`), not from a second round trip per
+ * filter. Only present once 2+ filters are active — with a single filter,
+ * the only candidate is "no filters at all", not worth suggesting over
+ * "Clear all". This file only turns those raw counts into display text.
  */
 export type FilterKey = 'search' | 'balanceRange' | 'expiringSoon' | 'tier';
 
-/** A raw `{key, count}` pair as the server is meant to send it (see the demo shape the removed `customers-page.api.ts` used to parse). */
+/** A raw `{key, count}` pair as the server sends it — see `lib/api/customer.api.ts`'s `noMatchSuggestionSchema`. */
 export interface NoMatchSuggestion {
   key: FilterKey;
   count: number;

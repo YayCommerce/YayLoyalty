@@ -1,6 +1,6 @@
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { adjustCustomerPoints, getCustomer, getCustomerLedger } from '@/lib/api/customer.api';
+import { adjustCustomerPoints, getCustomer, getCustomerLedger, getCustomers, type CustomerListParams } from '@/lib/api/customer.api';
 import type { AdjustPointsInput } from '@/lib/schema/customer.schema';
 
 /** ─── Query Options ─────────────────────────────────── */
@@ -19,6 +19,12 @@ export const CUSTOMER_QUERIES = {
       queryFn: () => getCustomerLedger(userId, { page, per_page: perPage }),
       enabled: userId > 0,
     }),
+
+  list: (params: CustomerListParams) =>
+    queryOptions({
+      queryKey: ['customer', 'list', params],
+      queryFn: () => getCustomers(params),
+    }),
 };
 
 /** ─── Hooks ─────────────────────────────────────────── */
@@ -29,6 +35,10 @@ export function useCustomerQuery(userId: number) {
 
 export function useCustomerLedgerQuery(userId: number, page: number, perPage = 10) {
   return useQuery(CUSTOMER_QUERIES.ledger(userId, page, perPage));
+}
+
+export function useCustomersQuery(params: CustomerListParams = {}) {
+  return useQuery(CUSTOMER_QUERIES.list(params));
 }
 
 export function useAdjustPointsMutation(userId: number) {

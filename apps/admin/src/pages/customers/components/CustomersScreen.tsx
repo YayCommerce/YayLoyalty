@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 
+import type { CustomerListRow } from '@/lib/schema/customer.schema';
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { Card, CardContent } from '@/components/ui/card';
 import { DEFAULT_ROW_FILTERS, type RowFilters } from '../customers-page.filter-rows';
 import { countActiveFilters, patchForSuggestion, type FilterDropSuggestion } from '../customers-page.filter-suggestions';
-import type { MockCustomer } from '../customers-page.mock-data';
 import {
   computeHeaderSelection,
   computeSelectAllCount,
@@ -51,8 +51,8 @@ export function CustomersScreen({
   /** Everything the server's list query produced for the current page — see CustomersPage.tsx. */
   list: {
     /** Already search/filter-narrowed AND sorted server-side. */
-    rows: MockCustomer[];
-    /** `useCustomersDemoQuery` still in flight (including a page/sort change — each is its own fetch). */
+    rows: CustomerListRow[];
+    /** `useCustomersQuery` still in flight (including a page/sort change — each is its own fetch). */
     isLoading: boolean;
     /** The whole store has zero rows, from the server's total — not "this page's filters matched nothing". */
     isStoreEmpty: boolean;

@@ -7,30 +7,31 @@ import { Button } from '@/components/ui/button';
 import { ErrorState } from '@/components/ui/custom/error-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import PageLayout from '@/components/layout/PageLayout';
+import { useCustomersQuery } from '@/lib/queries/customer.queries';
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { CustomersScreen } from './components/CustomersScreen';
 import { DEFAULT_ROW_FILTERS, type RowFilters } from './customers-page.filter-rows';
 import { countActiveFilters, toFilterDropSuggestions } from './customers-page.filter-suggestions';
-import { useCustomersDemoQuery } from './customers-page.queries';
 import { defaultSortDirection, type SortDirection, type SortKey } from './customers-page.sort-rows';
 
 const PER_PAGE = 10;
 
 /**
- * Customers list screen — designed UI, driven by mock data fetched over a
- * real REST round trip until the real list endpoint lands (see
- * `customer.queries.ts` — only single-customer / ledger / adjust hooks exist
- * today; `customers-page.queries.ts` is the TEMPORARY stand-in).
+ * Customers list screen — real data, real endpoint. `useCustomersQuery`
+ * (`lib/queries/customer.queries.ts`) calls `GET /customers`, the same
+ * REST resource `useCustomerQuery`/`useAdjustPointsMutation` use for a
+ * single customer — this screen only ever fetches the list projection
+ * (`CustomerListRow`, not `Customer`).
  *
  * Owns the DATA concerns: the list query (one page at a time — `page` here
  * is what triggers each fetch, not a client-side slice of an already-loaded
  * list), the filters and sort (both sent to the server so they check/order
- * the whole demo dataset, not just whatever page loaded — see
- * `customers-page.api.ts`), and the "Simulate rebuild" toggle (no real
- * background job — see CustomersRebuildBanner.tsx). The "which filter to
- * drop" suggestions ride along inside the same list response once it's
- * empty — no second query. Row selection is the one VIEW-only concern left
- * in `CustomersScreen.tsx`.
+ * the whole table, not just whatever page loaded — see
+ * `CustomerRepository::paginate_list()`), and the "Simulate rebuild" toggle
+ * (no real background job — see CustomersRebuildBanner.tsx). The "which
+ * filter to drop" suggestions ride along inside the same list response once
+ * it's empty — no second query. Row selection is the one VIEW-only concern
+ * left in `CustomersScreen.tsx`.
  *
  * FREE/PRO SPLIT IS `IS_PRO_BUILD`, DIRECTLY — no demo switcher, no upgrade
  * overlay. Free gets a fully working list (search, sort, filter, export,
@@ -65,7 +66,7 @@ export default function CustomersPage() {
     { trailing: true, maxWait: 800 },
   );
 
-  const customersQuery = useCustomersDemoQuery({ page, per_page: PER_PAGE, orderby: sortBy, order: sortDir, ...queryFilters });
+  const customersQuery = useCustomersQuery({ page, per_page: PER_PAGE, orderby: sortBy, order: sortDir, ...queryFilters });
   const rows = customersQuery.data?.data ?? [];
   const totalItems = customersQuery.data?.totalItems ?? 0;
   // Zero matches means the server's own totalPage is 0 (ceil(0 / perPage)) —
@@ -80,7 +81,7 @@ export default function CustomersPage() {
   const isStoreEmpty = !customersQuery.isPending && totalItems === 0 && activeFilterCount === 0;
 
   // Raw `{key, count}` pairs the server already folded into this same
-  // response (see `customers-page.api.ts`) — only non-empty once the current
+  // response (see `lib/api/customer.api.ts`) — only non-empty once the current
   // filters match zero rows. Turned into display text from `queryFilters`,
   // the filter state that actually produced this response.
   const suggestions = toFilterDropSuggestions(customersQuery.data?.suggestions ?? [], queryFilters);
@@ -100,7 +101,7 @@ export default function CustomersPage() {
     // not debounced.
     if (Object.keys(patch).length === 1 && patch.search !== undefined) {
       // Trimmed BEFORE it reaches `queryFilters` — that object feeds the
-      // query key (see `useCustomersDemoQuery` below), so "abc" and "abc "
+      // query key (see `useCustomersQuery` below), so "abc" and "abc "
       // must produce the exact same key or every trailing space typed (and
       // then backspaced) re-fetches instead of reusing the cached "abc"
       // result. Leading/trailing spaces alone (or none at all) also count as

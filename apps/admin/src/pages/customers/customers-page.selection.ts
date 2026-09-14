@@ -1,4 +1,4 @@
-import type { MockCustomer } from './customers-page.mock-data';
+import type { CustomerListRow } from '@/lib/schema/customer.schema';
 
 /**
  * Row-selection math for CustomersScreen.tsx — split out to keep that file
@@ -48,7 +48,7 @@ export function toggleRowSelection(state: SelectionState, userId: number): Selec
 }
 
 /** Header checkbox: toggles every row on THIS page only (paging keeps prior picks elsewhere). */
-export function toggleAllOnPage(state: SelectionState, pageRows: MockCustomer[]): SelectionState {
+export function toggleAllOnPage(state: SelectionState, pageRows: CustomerListRow[]): SelectionState {
   const allOnPageSelected = pageRows.length > 0 && pageRows.every((row) => isRowSelected(state, row.user_id));
 
   if (state.mode === 'all') {
@@ -65,7 +65,7 @@ export function toggleAllOnPage(state: SelectionState, pageRows: MockCustomer[])
 export type HeaderSelectionState = 'none' | 'partial' | 'all';
 
 /** The header checkbox's tri-state, scoped to the current page only. */
-export function computeHeaderSelection(pageRows: MockCustomer[], state: SelectionState): HeaderSelectionState {
+export function computeHeaderSelection(pageRows: CustomerListRow[], state: SelectionState): HeaderSelectionState {
   if (pageRows.length === 0) return 'none';
   const selectedOnPage = pageRows.filter((row) => isRowSelected(state, row.user_id)).length;
   if (selectedOnPage === 0) return 'none';

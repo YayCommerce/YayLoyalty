@@ -14,6 +14,22 @@ defined( 'ABSPATH' ) || exit;
  */
 final class CustomerRepository extends AbstractRepository {
 
+    /**
+     * Logical sort key → join-qualified SQL expression, for the admin list's
+     * ORDER BY. A different alphabet from sortable_columns() (bare columns
+     * for the inherited paginate()): these need the `c`/`u` table aliases,
+     * and 'expires' carries no nulls-last information sortable_columns()
+     * has no way to express. Keep in sync with CustomerRowSort::KEYS.
+     */
+    private const LIST_ORDER_COLUMNS = [
+        'name'          => 'u.display_name',
+        'balance'       => 'c.balance',
+        'pending'       => 'c.pending_points',
+        'lifetime'      => 'c.lifetime_earned',
+        'last_activity' => 'c.last_activity_at',
+        'expires'       => 'c.expires_at',
+    ];
+
     protected function table_slug(): string {
         return 'customers';
     }
@@ -183,5 +199,142 @@ final class CustomerRepository extends AbstractRepository {
         if ( false === $result ) {
             throw new QueryException( 'update', $wpdb->last_error, $this->table() . ' (apply_delta)' );
         }
+    }
+
+    /**
+     * The admin Customers list: search + filter + sort + paginate, INNER
+     * JOINed with wp_users for name/email — this table has neither.
+     *
+     * The one exception to "a repository never touches a second table" (see
+     * docs/code-standards.md §6): that rule is about WRITE ownership between
+     * repositories. Nothing here writes wp_users, no repository owns it, and
+     * this read-side lookup against a table nothing in this codebase owns has
+     * nowhere else to live. A loyalty row whose WP user was deleted is
+     * correctly excluded (orphan cleanup is a separate concern).
+     *
+     * @param array<string, mixed>                                      $criteria CustomerRowFilters::to_criteria()'s shape.
+     * @param array{column: string, direction: string, nulls_last: bool} $order    CustomerRowSort::to_order()'s shape.
+     * @return array{items: array<int, array<string, mixed>>, total: int, page: int, per_page: int}
+     */
+    public function paginate_list( array $criteria, array $order, int $page, int $per_page ): array {
+        global $wpdb;
+
+        $page      = max( 1, $page );
+        $per_page  = max( 1, min( $per_page, self::MAX_PER_PAGE ) );
+        $total     = $this->count_list( $criteria );
+        $where_sql = $this->list_where_sql( $criteria );
+        $table     = esc_sql( $this->table() );
+        $users     = esc_sql( $wpdb->users );
+
+        // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared -- $where_sql fragments are already prepared (see where_fragments()); identifiers are escaped above; only LIMIT/OFFSET are bound here.
+        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+            $wpdb->prepare(
+                'SELECT c.user_id, u.display_name AS name, u.user_email AS email,
+                        c.balance, c.pending_points, c.lifetime_earned,
+                        c.last_activity_at, c.expires_at
+                 FROM `' . $table . '` c INNER JOIN `' . $users . '` u ON u.ID = c.user_id'
+                . $where_sql . ' ORDER BY ' . $this->order_by_sql( $order )
+                . ' LIMIT %d OFFSET %d',
+                $per_page,
+                ( $page - 1 ) * $per_page
+            ),
+            ARRAY_A
+        );
+        // phpcs:enable WordPress.DB.PreparedSQL.NotPrepared
+
+        return [
+            'items'    => is_array( $rows ) ? $rows : [],
+            'total'    => $total,
+            'page'     => $page,
+            'per_page' => $per_page,
+        ];
+    }
+
+    /**
+     * Row count for one criteria set — shared by paginate_list() (the total)
+     * and the "which filter to drop" suggestions (one call per candidate).
+     *
+     * @param array<string, mixed> $criteria CustomerRowFilters::to_criteria()'s shape.
+     */
+    public function count_list( array $criteria ): int {
+        global $wpdb;
+
+        $table = esc_sql( $this->table() );
+        $users = esc_sql( $wpdb->users );
+
+        // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared -- list_where_sql()'s fragments are already prepared; identifiers are escaped above.
+        return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+            'SELECT COUNT(*) FROM `' . $table . '` c INNER JOIN `' . $users . '` u ON u.ID = c.user_id'
+            . $this->list_where_sql( $criteria )
+        );
+        // phpcs:enable WordPress.DB.PreparedSQL.NotPrepared
+    }
+
+    private function list_where_sql( array $criteria ): string {
+        $where = $this->where_fragments( $criteria );
+
+        return empty( $where ) ? '' : ' WHERE ' . implode( ' AND ', $where );
+    }
+
+    /**
+     * Each fragment is bound through prepare() (or a literal with no caller
+     * input) before it reaches here — never a raw criteria value.
+     *
+     * @param array<string, mixed> $criteria
+     * @return string[]
+     */
+    private function where_fragments( array $criteria ): array {
+        global $wpdb;
+
+        $where = [];
+
+        if ( '' !== $criteria['search'] ) {
+            $like    = '%' . $wpdb->esc_like( $criteria['search'] ) . '%';
+            $where[] = $wpdb->prepare( '(u.display_name LIKE %s OR u.user_email LIKE %s)', $like, $like );
+        }
+
+        if ( null !== $criteria['balance_min'] ) {
+            $where[] = $wpdb->prepare( 'c.balance >= %d', $criteria['balance_min'] );
+        }
+
+        if ( null !== $criteria['balance_max'] ) {
+            $where[] = $wpdb->prepare( 'c.balance <= %d', $criteria['balance_max'] );
+        }
+
+        if ( $criteria['expires_is_null'] ) {
+            $where[] = 'c.expires_at IS NULL';
+        } elseif ( null !== $criteria['expires_from'] ) {
+            $where[] = $wpdb->prepare(
+                'c.expires_at IS NOT NULL AND c.expires_at >= %s AND c.expires_at <= %s',
+                $criteria['expires_from'],
+                $criteria['expires_to']
+            );
+        }
+
+        if ( null !== $criteria['tier'] ) {
+            // No tiers table exists yet, so no tier name maps to a real
+            // tier_id — every row's tier_id is NULL, so any non-'all'
+            // selection can only ever match nothing. Intentional (see
+            // CustomerRowFilters), not a bug: the filter UI stays real and
+            // becomes meaningful for free once tiers ship.
+            $where[] = 'c.tier_id IS NOT NULL';
+        }
+
+        return $where;
+    }
+
+    /**
+     * @param array{column: string, direction: string, nulls_last: bool} $order
+     */
+    private function order_by_sql( array $order ): string {
+        $column    = self::LIST_ORDER_COLUMNS[ $order['column'] ] ?? self::LIST_ORDER_COLUMNS['balance'];
+        $direction = 'ASC' === $order['direction'] ? 'ASC' : 'DESC';
+
+        // Leading tie-break, not a second ORDER BY term: NULLs sort first in
+        // MySQL ASC order, so "(col IS NULL) ASC" puts them last regardless
+        // of $direction, matching CustomerRowSort::to_order()'s nulls_last.
+        $nulls_last = $order['nulls_last'] ? "({$column} IS NULL) ASC, " : '';
+
+        return $nulls_last . $column . ' ' . $direction;
     }
 }
