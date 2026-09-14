@@ -82,7 +82,7 @@ The admin SPA is built with React 18 + Vite 6 + TanStack Query + Zod validation.
 flowchart LR
     subgraph Pages["Page Routes"]
         Camp["CampaignsPage"]
-        Points["PointsPage"]
+        Cust["CustomersPage"]
         Dash["Dashboard (placeholder)"]
         Other["Rewards, Referral, VIP (placeholders)"]
     end
@@ -110,7 +110,7 @@ flowchart LR
     Components -->|read| ZodSchema
 
     style Camp fill:#4ade80
-    style Points fill:#4ade80
+    style Cust fill:#4ade80
     style Dash fill:#fbbf24
     style Other fill:#fbbf24
 ```
@@ -212,7 +212,7 @@ public static function all_known() {
 
 **Conditions:**
 - Lite's `Campaign::conditions_match()` returns **true** (no evaluator) → awards slightly too broadly
-- Pro's `ConditionsEvaluator::matches()` throws on unknown type → fails strictly
+- Pro's `ConditionsEvaluator::evaluate()` treats an unknown/malformed condition as non-matching (logged at debug, not thrown) — fails strictly per-condition without aborting evaluation
 
 ---
 
@@ -236,14 +236,12 @@ These are **first-party, internal seams** for Pro to attach behavior. Not a thir
 
 ## Request & Data Flow
 
-### Manual points adjustment — the one write path that exists today
+### Manual points adjustment — the write path available today (backend-only)
 
-The only flow that writes the ledger end to end. Every future award path (order, signup, review, referral) will enter at the same place: `LedgerService`.
+The only complete ledger write path currently wired end-to-end. Every future award path (order, signup, review, referral) will enter at the same place: `LedgerService`. The SPA has no UI for this flow; the adjustment interface in the old Points page was removed during the Customers page rewrite. REST endpoints exist and work — this flow diagram is currently unreachable from the admin UI.
 
 ```
-PointsPage (React)
-    ↓ useAdjustPointsMutation
-ky.post('customers/{user_id}/adjust', { points, note })
+REST POST /yayloyalty/v1/customers/{id}/adjust (no SPA caller currently)
     ↓
 CustomerRestController  →  BaseRestController::exec_write()
     │   permission_callback: requires( Capabilities::MANAGE_POINTS ), then assert_ceiling()
@@ -262,7 +260,7 @@ Transaction::run() commits (or releases the savepoint)
     ↓
 do_action( 'yayloyalty_ledger_recorded', $entry )   ← after commit, so a subscriber never sees a rolled-back row
     ↓
-REST returns the LedgerEntry → zod parse → TanStack Query invalidates → PointsPage refetches
+REST returns the LedgerEntry response
 ```
 
 ### Campaign create — REST only, no SPA form yet
@@ -281,7 +279,7 @@ Response: Campaign::to_array()
 
 ### Order award — NOT IMPLEMENTED
 
-No code listens to WooCommerce order events. When it lands it will hook an order status transition, resolve the live campaigns for the `purchase` trigger (`CampaignRepository::find_live_by_trigger()`), check `Campaign::conditions_match()`, and call `LedgerService` — nothing else in the write path changes. See `project-roadmap.md`.
+No code listens to WooCommerce order events. When it lands it will hook an order status transition, resolve the live campaigns for the `purchase` trigger (`CampaignRepository::live_for_trigger()`), check `Campaign::conditions_match()`, and call `LedgerService` — nothing else in the write path changes. See `project-roadmap.md`.
 
 ---
 

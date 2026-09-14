@@ -76,7 +76,7 @@ All referral tables (`referrals`, `referral_visits`) specified in data model; no
 
 | Feature | Spec | Status | Details |
 |---|---|---|---|
-| **Balance display** | Current spendable points | ✅ SHIPPED | REST; SPA Points page; TanStack Query |
+| **Balance display** | Current spendable points | ✅ SHIPPED | REST; SPA Customers page (via TanStack Query); accessible via REST `GET /customers/{id}` |
 | **Pending points** | Awaiting order award | ❌ **COLUMN ONLY** | `customers.pending_points` exists and is inserted as 0; nothing writes it (no order handling yet) |
 | **Lifetime earned** | Net earn total (unaffected by redeem/expire) | ✅ SHIPPED | Updated on earn/adjust; basis for tier (points mode) |
 | **Lifetime redeemed** | Total points spent (excluding refunds) | ✅ SHIPPED | Maintained by `LedgerService` from ledger type; no redemption flow writes REDEEM rows yet |
@@ -111,13 +111,13 @@ All referral tables (`referrals`, `referral_visits`) specified in data model; no
 | Page | Status | Details |
 |---|---|---|
 | **Campaigns** | ✅ FUNCTIONAL | List/view/edit-read-only; Pro conditions preview; no create/update UI |
-| **Points** | ✅ FUNCTIONAL | Customer lookup, balance, ledger history, manual adjust |
+| **Customers** | ⚠️ IN PROGRESS | Server-paginated list (search/filter/sort/export/row-select); no customer detail view yet; bulk-action "Adjust points" is a UI stub (no handler) |
 | **Dashboard** | ⚠️ PLACEHOLDER | Stub page; no analytics yet |
 | **Rewards** | ⚠️ PLACEHOLDER | Stub page; no catalog UI |
 | **Referral** | ⚠️ PLACEHOLDER | Stub page; referral program not built |
 | **VIP Tiers** | ⚠️ PLACEHOLDER | Stub page; no tier management UI |
 | **Settings** | ⚠️ PLACEHOLDER | Tab shell only; REST endpoint and `SettingsHelper` defaults exist (`general.enabled`, point labels) but the page renders a placeholder |
-| **Capability gating** | ✅ FUNCTIONAL | Nav and routes filtered by `window.yayLoyaltyAdmin.capabilities`; Adjust CTA disabled without `manage_points`; backbone 403s surface as one toast |
+| **Capability gating** | ✅ FUNCTIONAL | Nav and routes filtered by `window.yayLoyaltyAdmin.capabilities`; no admin actions currently gated to `manage_points` only (adjust UI was removed); backbone 403s surface as one toast |
 
 ---
 
@@ -127,6 +127,7 @@ Ordered by how much of the product each blocks, not by an assigned priority — 
 
 | Gap | What exists | What does not |
 |---|---|---|
+| **No customer detail / adjust UI** | `useCustomerQuery`, `useAdjustPointsMutation`, `useCustomerLedgerQuery` hooks all exist and call working REST endpoints (`GET /customers/{id}`, `POST /customers/{id}/adjust`) | Customers page is a paginated list view only (no per-customer detail drawer/modal). Bulk-action "Adjust points" menu item in `CustomersBulkActionBar` has no `onClick` handler (UI-only stub). A customer-detail drawer is referenced in code comments as the planned home for this functionality but does not exist yet. |
 | **No order listener** | `PointsEngine` computes points for `purchase`/`signup`/`review`; `LedgerService::record()` writes | Nothing listens to WooCommerce events, calls the engine and records the result (F01-4). `LedgerService` has no `earn()` entry point yet — only `adjust()` |
 | **No campaign editor** | REST create/update/delete; read-only SPA list | No SPA form to create or edit a campaign |
 | **No redemption** | `LedgerType::REDEEM` and refund types; `lifetime_redeemed` maintained | No rewards table, no checkout integration, no REDEEM writer |

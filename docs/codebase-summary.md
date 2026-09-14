@@ -62,7 +62,7 @@ All SQL access **must** go through these. Throw `QueryException` on write failur
 | `Repositories/AbstractRepository.php` | — | Base: `table()` via `Utils\Table`, `find()`, `insert()`, `update()`, `delete()`, `paginate()`; all SQL prepared; write failures throw `QueryException` |
 | `Repositories/CustomerRepository.php` | `customers` | `find_by_user_id()`, `ensure_row()` (INSERT … ON DUPLICATE KEY UPDATE), `lock_and_get()` (SELECT … FOR UPDATE), `apply_delta()` |
 | `Repositories/LedgerRepository.php` | `ledger` | `find_by_reference()`, `paginate_for_user()`, `sum_points_for_user()`, `latest_for_user()` |
-| `Repositories/CampaignRepository.php` | `campaigns` | `find_campaign()`, `find_by_slug()`, `find_live_by_trigger()`, `paginate_filtered()`, `seed_builtin()` |
+| `Repositories/CampaignRepository.php` | `campaigns` | `find_campaign()`, `find_by_slug()`, `live_for_trigger()`, `paginate_filtered()`, `seed_builtin()` |
 
 ### Services (Business logic, transactions)
 
@@ -80,12 +80,14 @@ All `namespace YayLoyalty\Controllers` → routes under `yayloyalty/v1/`.
 |---|---|---|
 | `BaseRestController` | — | Error helpers, `exec_read()`, `exec_write()` wrapper |
 | `AbstractRestController` | — | `get_item_schema()` (final, applies filter), `define_item_schema()` (override), `get_write_args()` (readonly stripped), `respond_paginated()`, `requires( $cap )` (permission callback), `forbidden()`, `assert_ceiling()` |
-| `CustomerRestController` | `yayloyalty/v1/customers/` | List, get, manual adjust |
+| `CustomerRestController` | `yayloyalty/v1/customers/` | Get single customer, manual adjust |
 | `LedgerRestController` | `yayloyalty/v1/ledger/` | List entries per user |
 | `CampaignRestController` | `yayloyalty/v1/campaigns/` | List, get, create, update campaigns |
 | `SettingsRestController` | `yayloyalty/v1/settings/` | Read/update plugin settings |
 
 Write operations wrapped in `Transaction::run()`, return correlation ID on 500.
+
+**Note on `CustomerRestController`:** The demo list endpoint (`GET /customers`) was removed during the Customers page rewrite (commit 90ed6fc). The real paginated list endpoint is pending — `CustomerRowFilters.php` (176 LOC) and `CustomerRowSort.php` (94 LOC) hold the production filter and sort logic, ready to be wired into a `CustomerRepository::paginate()` method once the list fetch implementation lands. The TypeScript mirrors (`customers-page.filter-rows.ts`, `customers-page.sort-rows.ts`) were also preserved for the same reason.
 
 ### Points engine (includes/Engine/Points/)
 
@@ -135,6 +137,8 @@ Filters (public API): `yayloyalty_campaign_candidates`, `yayloyalty_campaign_mat
 - `yayloyalty_rest_controllers` — Add Pro routes
 - `yayloyalty_campaign_triggers` — Add extra triggers
 - `yayloyalty_campaign_config_whitelist` — Whitelist Pro config keys per trigger
+- `yayloyalty_reward_types` — Add Pro reward types
+- `yayloyalty_reward_config_whitelist` — Whitelist Pro reward config keys per type
 - `yayloyalty_rest_item_schema` — Extend REST schemas
 - `yayloyalty_campaign_conditions_evaluator` — Supply evaluator
 
@@ -147,7 +151,7 @@ Filters (public API): `yayloyalty_campaign_candidates`, `yayloyalty_campaign_mat
 | Path | Contents |
 |---|---|
 | `src/main.tsx` | Entry point; imports Pro barrel if `IS_PRO_BUILD` |
-| `src/pages/` | Route pages; `campaigns/` and `points/` have content; others are placeholders |
+| `src/pages/` | Route pages; `campaigns/` and `customers/` have content; others are placeholders |
 | `src/pro/` | **Deleted in Lite build** — Pro feature components (`ConditionsPreview`, sentinel exports) |
 | `src/components/pro/` | **Kept in Lite** — `ProGate`, upsell UI, badge components |
 | `src/lib/` | Helpers: `api/` (REST calls), `queries/` (TanStack Query), `schema/` (Zod), `helpers/`, `access.tsx` (`CAP`, `can()`, `<Can>` — hide/disable by capability from `window.yayLoyaltyAdmin`; cosmetic, the server decides) |
