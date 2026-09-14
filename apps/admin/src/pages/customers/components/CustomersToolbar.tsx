@@ -2,10 +2,12 @@ import { ReactNode } from 'react';
 import { __ } from '@wordpress/i18n';
 
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   BALANCE_RANGE_OPTIONS,
+  DEFAULT_ROW_FILTERS,
   EXPIRING_SOON_OPTIONS,
   TIER_OPTIONS,
   type BalanceRangeValue,
@@ -13,10 +15,13 @@ import {
   type RowFilters,
   type TierValue,
 } from '../customers-page.filter-rows';
+import { countActiveFilters } from '../customers-page.filter-suggestions';
 
 /**
- * Search + filter row. Every filter is real — see `customers-page.filter-rows.ts`
- * — over the rows already loaded.
+ * Search + filter row. Every filter is real — checked server-side, see
+ * `customers-page.api.ts`. "Clear all" only shows up once search or a filter
+ * is actually active (`countActiveFilters`) and resets everything at once —
+ * same reset `CustomersNoMatchState`'s "Clear all filters" button uses.
  *
  * `exportSlot` is Free-only (see CustomersScreen.tsx): 3 filters + Export fit
  * on one row without wrapping, so Free renders Export here. Pro's 4th filter
@@ -72,6 +77,11 @@ export function CustomersToolbar({
           options={TIER_OPTIONS}
           disabled={disabled}
         />
+      )}
+      {countActiveFilters(filters, IS_PRO_BUILD) > 0 && (
+        <Button variant="link" size="sm" disabled={disabled} onClick={() => onFiltersChange(DEFAULT_ROW_FILTERS)}>
+          {__('Clear all', 'yayloyalty')}
+        </Button>
       )}
       {exportSlot && <div className="ml-auto">{exportSlot}</div>}
     </div>

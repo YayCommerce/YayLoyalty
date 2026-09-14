@@ -43,7 +43,7 @@ final class CustomerRestController extends AbstractRestController {
                     'methods'             => \WP_REST_Server::READABLE,
                     'callback'            => fn( $request ) => $this->exec_read( [ $this, 'get_items' ], $request ),
                     'permission_callback' => $this->requires( Capabilities::VIEW ),
-                    'args'                => $this->get_collection_params(),
+                    'args'                => array_merge( $this->get_collection_params(), $this->get_demo_filter_params() ),
                 ],
             ]
         );
@@ -130,6 +130,39 @@ final class CustomerRestController extends AbstractRestController {
     }
 
     /**
+     * The Customers-list-only search/filter params — `search` already lives on
+     * `get_collection_params()`, so only the customer-specific ones are added
+     * here. Values/enums mirror `customers-page.filter-rows.ts` exactly.
+     *
+     * @return array<string, mixed>
+     */
+    private function get_demo_filter_params(): array {
+        return [
+            'balance_range' => [
+                'description'       => __( 'Balance bucket to filter by.', 'yayloyalty' ),
+                'type'              => 'string',
+                'enum'              => [ 'any', 'negative', '0-1000', '1000-10000', '10000-plus' ],
+                'default'           => 'any',
+                'sanitize_callback' => 'sanitize_text_field',
+            ],
+            'expiring_soon' => [
+                'description'       => __( 'Points-expiry window to filter by.', 'yayloyalty' ),
+                'type'              => 'string',
+                'enum'              => [ 'off', '30', '90', 'none' ],
+                'default'           => 'off',
+                'sanitize_callback' => 'sanitize_text_field',
+            ],
+            'tier'          => [
+                'description'       => __( 'Loyalty tier to filter by.', 'yayloyalty' ),
+                'type'              => 'string',
+                'enum'              => [ 'all', 'Alpine', 'Summit', 'Explorer' ],
+                'default'           => 'all',
+                'sanitize_callback' => 'sanitize_text_field',
+            ],
+        ];
+    }
+
+    /**
      * TEMPORARY DEMO DATA — NOT A REAL QUERY. See `CustomerDemoRows`.
      *
      * `CustomerRepository` has no list/paginate method yet (only
@@ -139,21 +172,37 @@ final class CustomerRestController extends AbstractRestController {
      * gives its loading skeleton something real to wait on) instead of
      * importing a hardcoded array client-side.
      *
+     * `page`/`per_page` ARE applied, and so is search/filter (via
+     * `CustomerRowFilters` — the product's real filter rules, just run
+     * in-memory here) — both sliced/matched against the same fixed 30 rows —
+     * so the admin list gets correct results across the whole (demo) dataset
+     * instead of only ever searching whatever page already loaded.
+     *
      * DELETE this method and `CustomerDemoRows`, and replace the body with a
-     * real `CustomerRepository::paginate_filtered()`-style call, once that
-     * repository method exists. `page`/`per_page` are accepted and echoed back
-     * in the envelope for shape-compatibility, but are not applied — there is
-     * only ever one page of demo rows.
+     * real `CustomerRepository::paginate_filtered()`-style call (likely
+     * reusing `CustomerRowFilters`' rules as SQL `WHERE` clauses instead of
+     * deleting them), once that repository method exists.
      */
     public function get_items( \WP_REST_Request $request ) {
-        $rows = CustomerDemoRows::all();
+        $rows = CustomerRowFilters::apply(
+            CustomerDemoRows::all(),
+            [
+                'search'        => (string) $request->get_param( 'search' ),
+                'balance_range' => (string) $request->get_param( 'balance_range' ),
+                'expiring_soon' => (string) $request->get_param( 'expiring_soon' ),
+                'tier'          => (string) $request->get_param( 'tier' ),
+            ]
+        );
+
+        $page     = max( 1, (int) $request->get_param( 'page' ) );
+        $per_page = max( 1, (int) $request->get_param( 'per_page' ) ?: 20 );
 
         return $this->respond_paginated(
             [
-                'items'    => $rows,
+                'items'    => array_slice( $rows, ( $page - 1 ) * $per_page, $per_page ),
                 'total'    => count( $rows ),
-                'page'     => max( 1, (int) $request->get_param( 'page' ) ),
-                'per_page' => max( 1, (int) $request->get_param( 'per_page' ) ?: 20 ),
+                'page'     => $page,
+                'per_page' => $per_page,
             ]
         );
     }

@@ -1,19 +1,15 @@
 import { _n, sprintf, __ } from '@wordpress/i18n';
 
-import {
-  BALANCE_RANGE_OPTIONS,
-  DEFAULT_ROW_FILTERS,
-  EXPIRING_SOON_OPTIONS,
-  filterRows,
-  type RowFilters,
-} from './customers-page.filter-rows';
-import type { MockCustomer } from './customers-page.mock-data';
+import { getCustomersDemo } from './customers-page.api';
+import { BALANCE_RANGE_OPTIONS, DEFAULT_ROW_FILTERS, EXPIRING_SOON_OPTIONS, type RowFilters } from './customers-page.filter-rows';
 
 /**
- * "Which single filter should I drop?" — computed live against the currently
- * loaded rows when the active filters combine to zero results (artboard 4a).
- * Real counts, not canned copy: each suggestion re-runs `filterRows` with
- * exactly one filter reverted to its default.
+ * "Which single filter should I drop?" — computed against the whole (demo)
+ * dataset, not just whatever page happened to load, when the active filters
+ * combine to zero results (artboard 4a). Real counts, not canned copy: each
+ * suggestion re-queries the server with exactly one filter reverted to its
+ * default and reads back `totalItems` — `per_page: 1` keeps each check to a
+ * single row over the wire, since only the count is needed.
  */
 export type FilterKey = 'search' | 'balanceRange' | 'expiringSoon' | 'tier';
 
@@ -65,23 +61,23 @@ function describeFilterValue(key: FilterKey, filters: RowFilters): string {
  * that still return nothing are omitted — a "Use this" that stays empty
  * helps no one.
  */
-export function getFilterDropSuggestions(
-  allRows: MockCustomer[],
-  filters: RowFilters,
-  includeTier: boolean,
-): FilterDropSuggestion[] {
-  const suggestions = activeFilterKeys(filters, includeTier).map((key) => {
-    const phrasing = key === 'search' ? ('only' as const) : ('without' as const);
-    const candidate: RowFilters =
-      phrasing === 'only' ? { ...DEFAULT_ROW_FILTERS, search: filters.search } : { ...filters, [key]: DEFAULT_ROW_FILTERS[key] };
+export async function getFilterDropSuggestions(filters: RowFilters, includeTier: boolean): Promise<FilterDropSuggestion[]> {
+  const suggestions = await Promise.all(
+    activeFilterKeys(filters, includeTier).map(async (key) => {
+      const phrasing = key === 'search' ? ('only' as const) : ('without' as const);
+      const candidate: RowFilters =
+        phrasing === 'only' ? { ...DEFAULT_ROW_FILTERS, search: filters.search } : { ...filters, [key]: DEFAULT_ROW_FILTERS[key] };
 
-    return {
-      key,
-      label: describeFilterValue(key, filters),
-      count: filterRows(allRows, candidate).length,
-      phrasing,
-    };
-  });
+      const { totalItems } = await getCustomersDemo({ ...candidate, per_page: 1 });
+
+      return {
+        key,
+        label: describeFilterValue(key, filters),
+        count: totalItems,
+        phrasing,
+      };
+    }),
+  );
 
   return suggestions.filter((suggestion) => suggestion.count > 0).sort((a, b) => b.count - a.count);
 }

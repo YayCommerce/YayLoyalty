@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { Card, CardContent } from '@/components/ui/card';
 import { DEFAULT_ROW_FILTERS, type RowFilters } from '../customers-page.filter-rows';
-import { countActiveFilters, getFilterDropSuggestions, patchForSuggestion } from '../customers-page.filter-suggestions';
+import { countActiveFilters, patchForSuggestion, type FilterDropSuggestion } from '../customers-page.filter-suggestions';
 import type { MockCustomer } from '../customers-page.mock-data';
 import { computeHeaderSelection, computeSelectAllCount } from '../customers-page.selection';
 import { defaultSortDirection, sortRows, type SortDirection, type SortKey } from '../customers-page.sort-rows';
@@ -14,19 +14,21 @@ import { CustomersPagination } from './CustomersPagination';
 import { CustomersRebuildBanner } from './CustomersRebuildBanner';
 import { CustomersTable } from './CustomersTable';
 
-const PER_PAGE = 10;
-
 /**
  * The Customers screen body: [saved segment row] + Export CSV → toolbar →
  * table → one footer row: [bulk action bar] (left, once rows are selected)
  * + pagination (right) — see the combined `<div>` near the bottom, matching
  * YayUiKits' `BulkActionBox` + `Pagination` layout.
  *
- * Owns every VIEW-only concern for the currently-loaded rows — sort, page
- * and row selection — since all three interact (sorting reorders before
- * paginating; "select all" only ever means "this page"; changing the filtered
- * row set resets both page and selection). `CustomersPage.tsx` owns only the
- * DATA concerns: the query and the filters that shape `rows`.
+ * Owns sort and row selection — VIEW-only concerns over whatever page is
+ * currently loaded. Page and filters are both DATA concerns owned by
+ * `CustomersPage.tsx`: the requested page number and the search/filter values
+ * are all query params sent to the server, so each page/filter change fetches
+ * exactly the matching page instead of paginating or narrowing an
+ * already-fetched full list. Sort is the one exception left client-side: it
+ * only reorders the rows on screen (the one page that's loaded), not the
+ * whole filtered set — server-side sort isn't implemented for this demo
+ * endpoint.
  *
  * The bracketed Pro pieces are gated directly by `IS_PRO_BUILD` — no demo
  * switcher, no upgrade overlay for a feature that simply adds columns rather
@@ -34,30 +36,38 @@ const PER_PAGE = 10;
  * `useIsPremium`-style check yay-reviews' `PremiumGate` is built on).
  */
 export function CustomersScreen({
-  allRows,
   rows,
   isLoading,
+  isStoreEmpty,
+  suggestions,
   filters,
   onFiltersChange,
   isRebuilding,
+  page,
+  pageCount,
+  onPageChange,
 }: {
-  /** Unfiltered rows, for the pagination "{range} of {total}" total and the empty-store check. */
-  allRows: MockCustomer[];
-  /** Already search/filter-narrowed by the page — see CustomersPage.tsx. */
+  /** The current page's rows, already search/filter-narrowed server-side — see CustomersPage.tsx. */
   rows: MockCustomer[];
-  /** `useCustomersDemoQuery` still in flight. */
+  /** `useCustomersDemoQuery` still in flight (including a page change — each page is its own fetch). */
   isLoading: boolean;
+  /** The whole store has zero rows, from the server's total — not "this page's filters matched nothing". */
+  isStoreEmpty: boolean;
+  /** "Which filter to drop" suggestions — fetched by CustomersPage.tsx once filters match zero rows. */
+  suggestions: FilterDropSuggestion[];
   filters: RowFilters;
   onFiltersChange: (patch: Partial<RowFilters>) => void;
   /** "Simulate rebuild" toggle (Pro-only, see CustomersPage.tsx) — no real background job. */
   isRebuilding: boolean;
+  page: number;
+  pageCount: number;
+  onPageChange: (page: number) => void;
 }) {
   // A genuinely empty store, not a search/filter matching nobody, and not
   // "still loading" either — see CustomersTable.tsx / CustomersEmptyState.tsx
   // for why the first distinction matters. The toolbar goes inert (but stays
   // in place) once there's nothing to search, filter or export; while
   // loading it stays live per the design — only the table body skeletons.
-  const isStoreEmpty = !isLoading && allRows.length === 0;
   const isNoMatch = !isLoading && !isStoreEmpty && rows.length === 0;
 
   // "Simulate rebuild": every control goes inert and no row can be selected
@@ -65,14 +75,7 @@ export function CustomersScreen({
   const controlsDisabled = isStoreEmpty || isRebuilding;
   const showSelection = IS_PRO_BUILD && !isRebuilding;
 
-  // Real counts, not canned copy — see customers-page.filter-suggestions.ts.
-  const suggestions = useMemo(
-    () => (isNoMatch ? getFilterDropSuggestions(allRows, filters, IS_PRO_BUILD) : []),
-    [isNoMatch, allRows, filters],
-  );
-
-  // Sort — real, over the whole filtered set, applied before paging so a
-  // sort click reorders across every page, not just the one on screen.
+  // Sort — over the currently-loaded page only (see the class doc above).
   const [sortBy, setSortBy] = useState<SortKey>('balance');
   const [sortDir, setSortDir] = useState<SortDirection>('desc');
 
@@ -87,24 +90,19 @@ export function CustomersScreen({
 
   const sortedRows = useMemo(() => sortRows(rows, sortBy, sortDir), [rows, sortBy, sortDir]);
 
-  // Real pagination — 10 rows/page over the sorted, filtered set.
-  const [page, setPage] = useState(1);
-  const pageCount = Math.max(1, Math.ceil(sortedRows.length / PER_PAGE));
-  const safePage = Math.min(page, pageCount);
-  const pageRows = sortedRows.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
-
   // Selection — a Set<user_id>, not scoped to a page: navigating pages keeps
   // prior picks, but the header checkbox and "select all" only ever act on
   // the current page (standard admin-table convention once paging is real).
   const [selected, setSelected] = useState<Set<number>>(new Set());
 
-  // The filtered row set changed (a filter changed) — start over.
+  // The filters changed — the matching set changed, so past picks may no
+  // longer apply. Page reset lives in CustomersPage.tsx now: it owns page,
+  // since going back to page 1 on a filter change means re-fetching it.
   useEffect(() => {
-    setPage(1);
     setSelected(new Set());
-  }, [rows]);
+  }, [filters]);
 
-  const headerSelection = useMemo(() => computeHeaderSelection(pageRows, selected), [pageRows, selected]);
+  const headerSelection = useMemo(() => computeHeaderSelection(sortedRows, selected), [sortedRows, selected]);
 
   function toggleRow(userId: number) {
     setSelected((current) => {
@@ -120,9 +118,9 @@ export function CustomersScreen({
 
   function toggleAll() {
     setSelected((current) => {
-      const allOnPageSelected = pageRows.every((row) => current.has(row.user_id));
+      const allOnPageSelected = sortedRows.every((row) => current.has(row.user_id));
       const next = new Set(current);
-      pageRows.forEach((row) => (allOnPageSelected ? next.delete(row.user_id) : next.add(row.user_id)));
+      sortedRows.forEach((row) => (allOnPageSelected ? next.delete(row.user_id) : next.add(row.user_id)));
       return next;
     });
   }
@@ -149,7 +147,7 @@ export function CustomersScreen({
         />
 
         <CustomersTable
-          rows={pageRows}
+          rows={sortedRows}
           isLoading={isLoading}
           isStoreEmpty={isStoreEmpty}
           noMatchContent={
@@ -187,12 +185,12 @@ export function CustomersScreen({
             />
           )}
           <CustomersPagination
-            page={safePage}
+            page={page}
             pageCount={pageCount}
             isLoading={isLoading}
-            onPrevious={() => setPage((current) => Math.max(1, current - 1))}
-            onNext={() => setPage((current) => Math.min(pageCount, current + 1))}
-            onPageChange={setPage}
+            onPrevious={() => onPageChange(Math.max(1, page - 1))}
+            onNext={() => onPageChange(Math.min(pageCount, page + 1))}
+            onPageChange={onPageChange}
             className="sm:ms-auto"
           />
         </div>
