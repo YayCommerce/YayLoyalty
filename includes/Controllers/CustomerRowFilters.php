@@ -19,16 +19,24 @@ defined( 'ABSPATH' ) || exit;
  */
 final class CustomerRowFilters {
 
+    /** Every param's "not filtering" value — the same shape `apply()` and `suggestions_for_no_match()` both work with. */
+    private const DEFAULTS = [
+        'search'        => '',
+        'balance_range' => 'any',
+        'expiring_soon' => 'off',
+        'tier'          => 'all',
+    ];
+
     /**
      * @param array<int, array<string, mixed>> $rows
      * @param array<string, string>            $params search / balance_range / expiring_soon / tier
      * @return array<int, array<string, mixed>>
      */
     public static function apply( array $rows, array $params ): array {
-        $search        = strtolower( trim( (string) ( $params['search'] ?? '' ) ) );
-        $balance_range = (string) ( $params['balance_range'] ?? 'any' );
-        $expiring_soon = (string) ( $params['expiring_soon'] ?? 'off' );
-        $tier          = (string) ( $params['tier'] ?? 'all' );
+        $search        = strtolower( trim( (string) ( $params['search'] ?? self::DEFAULTS['search'] ) ) );
+        $balance_range = (string) ( $params['balance_range'] ?? self::DEFAULTS['balance_range'] );
+        $expiring_soon = (string) ( $params['expiring_soon'] ?? self::DEFAULTS['expiring_soon'] );
+        $tier          = (string) ( $params['tier'] ?? self::DEFAULTS['tier'] );
 
         return array_values(
             array_filter(
@@ -41,6 +49,69 @@ final class CustomerRowFilters {
                 }
             )
         );
+    }
+
+    /**
+     * "Which filter should I drop?" — for `CustomerRestController::get_items()`
+     * to embed in the same response once the current filters match zero rows,
+     * instead of the admin app firing one extra request per active filter to
+     * ask. Mirrors `customers-page.filter-suggestions.ts`'s candidate-building
+     * exactly: `search` is isolated (every other filter reverted, search kept
+     * — "search on its own"); every other key is just reverted to its default
+     * one at a time ("without this one filter").
+     *
+     * Only returned once at least 2 filters are active — with a single
+     * filter, the one candidate is always "no filters at all", which isn't
+     * worth suggesting over "Clear all".
+     *
+     * Raw `{key, count}` pairs, not labels/copy: the admin app already owns
+     * the option labels (`customers-page.filter-rows.ts`) and builds display
+     * text from `key` plus its own filter state, so nothing here needs
+     * translating twice. `key` comes back camelCase (`balanceRange`, not
+     * `balance_range`) to match the admin app's `FilterKey` directly.
+     *
+     * @param array<int, array<string, mixed>> $rows    the FULL (unfiltered) row set
+     * @param array<string, string>            $filters the currently-applied params — same shape as apply()
+     * @return array<int, array{key: string, count: int}>
+     */
+    public static function suggestions_for_no_match( array $rows, array $filters ): array {
+        $active_keys = array_keys(
+            array_filter(
+                self::DEFAULTS,
+                fn( $default, $key ) => ( $filters[ $key ] ?? $default ) !== $default,
+                ARRAY_FILTER_USE_BOTH
+            )
+        );
+
+        if ( count( $active_keys ) < 2 ) {
+            return [];
+        }
+
+        $suggestions = [];
+
+        foreach ( $active_keys as $key ) {
+            $candidate = 'search' === $key
+                ? array_merge( self::DEFAULTS, [ 'search' => $filters['search'] ?? '' ] )
+                : array_merge( self::DEFAULTS, $filters, [ $key => self::DEFAULTS[ $key ] ] );
+
+            $count = count( self::apply( $rows, $candidate ) );
+
+            if ( $count > 0 ) {
+                $suggestions[] = [
+                    'key'   => self::param_to_filter_key( $key ),
+                    'count' => $count,
+                ];
+            }
+        }
+
+        usort( $suggestions, fn( $a, $b ) => $b['count'] <=> $a['count'] );
+
+        return $suggestions;
+    }
+
+    /** `balance_range` (wire/param name) → `balanceRange` (the admin app's `FilterKey`). */
+    private static function param_to_filter_key( string $param ): string {
+        return lcfirst( str_replace( '_', '', ucwords( $param, '_' ) ) );
     }
 
     private static function matches_search( array $row, string $search ): bool {

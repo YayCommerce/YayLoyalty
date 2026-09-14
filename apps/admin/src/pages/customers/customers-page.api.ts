@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { api } from '@/lib/api/api';
-import { parsePaginated } from '@/lib/api/paginated';
+import { paginatedSchema } from '@/lib/api/paginated';
 import type { RowFilters } from './customers-page.filter-rows';
 import type { MockCustomer } from './customers-page.mock-data';
 
@@ -10,7 +10,7 @@ import type { MockCustomer } from './customers-page.mock-data';
  *
  * `GET /customers` search/filters then slices the same fixed 30 rows by
  * `page`/`per_page` — see `CustomerRestController::get_items()` /
- * `CustomerDemoFilters.php` / `CustomerDemoRows.php` on the PHP side, which
+ * `CustomerRowFilters.php` / `CustomerDemoRows.php` on the PHP side, which
  * this schema mirrors field-for-field. This exists so the page has a genuine
  * loading state to show (real network latency), not a simulated `setTimeout`,
  * per an explicit request — not because the demo data became any more real.
@@ -32,6 +32,23 @@ const customersDemoItemSchema = z.object({
   referrals: z.number().int(),
 }) satisfies z.ZodType<MockCustomer>;
 
+/**
+ * Raw "drop this filter → N rows" counts the server folds into this same
+ * response once the current filters match zero rows — see
+ * `CustomerRowFilters::suggestions_for_no_match()`. `key` matches the admin
+ * app's `FilterKey` (`customers-page.filter-suggestions.ts`) directly; the
+ * label/phrasing text is built client-side from it, not sent over the wire.
+ */
+const noMatchSuggestionSchema = z.object({
+  key: z.enum(['search', 'balanceRange', 'expiringSoon', 'tier']),
+  count: z.number().int(),
+});
+
+const customersDemoEnvelopeSchema = paginatedSchema(customersDemoItemSchema).extend({
+  // Absent whenever the result isn't empty — see the PHP method above.
+  suggestions: z.array(noMatchSuggestionSchema).optional(),
+});
+
 export type CustomersDemoListParams = { page?: number; per_page?: number } & Partial<RowFilters>;
 
 export async function getCustomersDemo(params: CustomersDemoListParams = {}) {
@@ -48,5 +65,5 @@ export async function getCustomersDemo(params: CustomersDemoListParams = {}) {
 
   const payload = await api.get('customers', { searchParams }).json();
 
-  return parsePaginated(customersDemoItemSchema, payload);
+  return customersDemoEnvelopeSchema.parse(payload);
 }

@@ -1,22 +1,26 @@
 import { _n, sprintf, __ } from '@wordpress/i18n';
 
-import { getCustomersDemo } from './customers-page.api';
 import { BALANCE_RANGE_OPTIONS, DEFAULT_ROW_FILTERS, EXPIRING_SOON_OPTIONS, type RowFilters } from './customers-page.filter-rows';
 
 /**
- * "Which single filter should I drop?" — computed against the whole (demo)
- * dataset, not just whatever page happened to load, when the active filters
- * combine to zero results (artboard 4a). Real counts, not canned copy: each
- * suggestion re-queries the server with exactly one filter reverted to its
- * default and reads back `totalItems` — `per_page: 1` keeps each check to a
- * single row over the wire, since only the count is needed.
+ * "Which single filter should I drop?" — the counts come from the server,
+ * folded into the same list response once the current filters combine to
+ * zero results (see `CustomerRestController::get_items()` /
+ * `CustomerRowFilters::suggestions_for_no_match()`), not from a second round
+ * trip per filter. Only present once 2+ filters are active — with a single
+ * filter, the only candidate is "no filters at all", not worth suggesting
+ * over "Clear all". This file only turns those raw counts into display text.
  */
 export type FilterKey = 'search' | 'balanceRange' | 'expiringSoon' | 'tier';
 
-export interface FilterDropSuggestion {
+/** A raw `{key, count}` pair as the server sends it — see `customers-page.api.ts`. */
+export interface NoMatchSuggestion {
   key: FilterKey;
-  label: string;
   count: number;
+}
+
+export interface FilterDropSuggestion extends NoMatchSuggestion {
+  label: string;
   /**
    * 'without' — drop just this filter, keep the rest ("Without Tier: Alpine").
    * 'only' — drop every OTHER filter, keep just this one ("Search "x" on its
@@ -36,7 +40,12 @@ function activeFilterKeys(filters: RowFilters, includeTier: boolean): FilterKey[
   return keys;
 }
 
-/** Number of filters currently narrowing the list — drives the "No customers match all N filters" title. */
+/**
+ * Number of filters currently narrowing the list — drives the "No customers
+ * match all N filters" title, and gates the suggestion list itself (2+
+ * only — see the class doc above; mirrored server-side so the two never
+ * disagree about when a suggestion is worth showing).
+ */
 export function countActiveFilters(filters: RowFilters, includeTier: boolean): number {
   return activeFilterKeys(filters, includeTier).length;
 }
@@ -55,31 +64,18 @@ function describeFilterValue(key: FilterKey, filters: RowFilters): string {
 }
 
 /**
- * One suggestion per currently-active filter. Search is isolated (every
- * other filter dropped); every other key is relaxed (just that one filter
- * dropped, the rest kept) — see `FilterDropSuggestion.phrasing`. Suggestions
- * that still return nothing are omitted — a "Use this" that stays empty
- * helps no one.
+ * Turns the server's raw `{key, count}` pairs into display-ready
+ * suggestions — pure and synchronous: the label/phrasing text is built from
+ * `filters` (the same state the toolbar renders), not sent over the wire, so
+ * nothing gets translated on both sides of the connection.
  */
-export async function getFilterDropSuggestions(filters: RowFilters, includeTier: boolean): Promise<FilterDropSuggestion[]> {
-  const suggestions = await Promise.all(
-    activeFilterKeys(filters, includeTier).map(async (key) => {
-      const phrasing = key === 'search' ? ('only' as const) : ('without' as const);
-      const candidate: RowFilters =
-        phrasing === 'only' ? { ...DEFAULT_ROW_FILTERS, search: filters.search } : { ...filters, [key]: DEFAULT_ROW_FILTERS[key] };
-
-      const { totalItems } = await getCustomersDemo({ ...candidate, per_page: 1 });
-
-      return {
-        key,
-        label: describeFilterValue(key, filters),
-        count: totalItems,
-        phrasing,
-      };
-    }),
-  );
-
-  return suggestions.filter((suggestion) => suggestion.count > 0).sort((a, b) => b.count - a.count);
+export function toFilterDropSuggestions(raw: NoMatchSuggestion[], filters: RowFilters): FilterDropSuggestion[] {
+  return raw.map(({ key, count }) => ({
+    key,
+    count,
+    label: describeFilterValue(key, filters),
+    phrasing: key === 'search' ? ('only' as const) : ('without' as const),
+  }));
 }
 
 export function countLabel(count: number): string {
@@ -87,9 +83,10 @@ export function countLabel(count: number): string {
 }
 
 /**
- * Mirrors how `getFilterDropSuggestions` built the candidate it counted:
- * 'without' reverts just that one filter; 'only' (search) reverts every
- * OTHER filter and keeps the typed search term.
+ * Mirrors how the server built the candidate it counted (see
+ * `CustomerRowFilters::suggestions_for_no_match()`): 'without' reverts just
+ * that one filter; 'only' (search) reverts every OTHER filter and keeps the
+ * typed search term.
  */
 export function patchForSuggestion(suggestion: FilterDropSuggestion, filters: RowFilters): Partial<RowFilters> {
   if (suggestion.phrasing === 'only') {

@@ -178,27 +178,32 @@ final class CustomerRestController extends AbstractRestController {
      * so the admin list gets correct results across the whole (demo) dataset
      * instead of only ever searching whatever page already loaded.
      *
+     * A zero-row result also gets a `suggestions` field folded into this same
+     * response (see `CustomerRowFilters::suggestions_for_no_match()`) — the
+     * admin app used to fire one extra request per active filter to ask
+     * "what should I drop?"; now that answer rides along with the empty
+     * result instead of costing a round trip of its own.
+     *
      * DELETE this method and `CustomerDemoRows`, and replace the body with a
      * real `CustomerRepository::paginate_filtered()`-style call (likely
      * reusing `CustomerRowFilters`' rules as SQL `WHERE` clauses instead of
      * deleting them), once that repository method exists.
      */
     public function get_items( \WP_REST_Request $request ) {
-        $rows = CustomerRowFilters::apply(
-            CustomerDemoRows::all(),
-            [
-                'search'        => (string) $request->get_param( 'search' ),
-                'balance_range' => (string) $request->get_param( 'balance_range' ),
-                'expiring_soon' => (string) $request->get_param( 'expiring_soon' ),
-                'tier'          => (string) $request->get_param( 'tier' ),
-            ]
-        );
+        $filters = [
+            'search'        => (string) $request->get_param( 'search' ),
+            'balance_range' => (string) $request->get_param( 'balance_range' ),
+            'expiring_soon' => (string) $request->get_param( 'expiring_soon' ),
+            'tier'          => (string) $request->get_param( 'tier' ),
+        ];
+
+        $all_rows = CustomerDemoRows::all();
+        $rows     = CustomerRowFilters::apply( $all_rows, $filters );
 
         $page     = max( 1, (int) $request->get_param( 'page' ) );
         $per_page = max( 1, (int) $request->get_param( 'per_page' ) ?: 20 );
-        
-        
-        return $this->respond_paginated(
+
+        $envelope = $this->respond_paginated(
             [
                 'items'    => array_slice( $rows, ( $page - 1 ) * $per_page, $per_page ),
                 'total'    => count( $rows ),
@@ -206,6 +211,12 @@ final class CustomerRestController extends AbstractRestController {
                 'per_page' => $per_page,
             ]
         );
+
+        if ( 0 === count( $rows ) ) {
+            $envelope['suggestions'] = CustomerRowFilters::suggestions_for_no_match( $all_rows, $filters );
+        }
+
+        return $envelope;
     }
 
     public function adjust_points( \WP_REST_Request $request ) {

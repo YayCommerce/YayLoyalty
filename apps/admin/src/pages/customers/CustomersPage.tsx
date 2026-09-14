@@ -10,8 +10,8 @@ import PageLayout from '@/components/layout/PageLayout';
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { CustomersScreen } from './components/CustomersScreen';
 import { DEFAULT_ROW_FILTERS, type RowFilters } from './customers-page.filter-rows';
-import { countActiveFilters } from './customers-page.filter-suggestions';
-import { useCustomersDemoQuery, useCustomersDemoSuggestionsQuery } from './customers-page.queries';
+import { countActiveFilters, toFilterDropSuggestions } from './customers-page.filter-suggestions';
+import { useCustomersDemoQuery } from './customers-page.queries';
 
 const PER_PAGE = 10;
 
@@ -25,9 +25,10 @@ const PER_PAGE = 10;
  * is what triggers each fetch, not a client-side slice of an already-loaded
  * list), the filters (sent to the server so search/filter check the whole
  * demo dataset, not just whatever page loaded — see `customers-page.api.ts`),
- * the "which filter to drop" suggestions query, and the "Simulate rebuild"
- * toggle (no real background job — see CustomersRebuildBanner.tsx). Sort and
- * row selection stay VIEW-only state in `CustomersScreen.tsx`.
+ * and the "Simulate rebuild" toggle (no real background job — see
+ * CustomersRebuildBanner.tsx). The "which filter to drop" suggestions ride
+ * along inside the same list response once it's empty — no second query.
+ * Sort and row selection stay VIEW-only state in `CustomersScreen.tsx`.
  *
  * FREE/PRO SPLIT IS `IS_PRO_BUILD`, DIRECTLY — no demo switcher, no upgrade
  * overlay. Free gets a fully working list (search, sort, filter, export,
@@ -73,10 +74,12 @@ export default function CustomersPage() {
   // happens here from the filters the page itself is holding.
   const activeFilterCount = countActiveFilters(queryFilters, IS_PRO_BUILD);
   const isStoreEmpty = !customersQuery.isPending && totalItems === 0 && activeFilterCount === 0;
-  const isNoMatch = !customersQuery.isPending && totalItems === 0 && activeFilterCount > 0;
 
-  const suggestionsQuery = useCustomersDemoSuggestionsQuery(queryFilters, IS_PRO_BUILD, isNoMatch);
-  const suggestions = suggestionsQuery.data ?? [];
+  // Raw `{key, count}` pairs the server already folded into this same
+  // response (see `customers-page.api.ts`) — only non-empty once the current
+  // filters match zero rows. Turned into display text from `queryFilters`,
+  // the filter state that actually produced this response.
+  const suggestions = toFilterDropSuggestions(customersQuery.data?.suggestions ?? [], queryFilters);
 
   function updateFilters(patch: Partial<RowFilters>) {
     setFilters((current) => ({ ...current, ...patch }));

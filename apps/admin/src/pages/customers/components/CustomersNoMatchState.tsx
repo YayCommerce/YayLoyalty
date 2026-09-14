@@ -6,9 +6,15 @@ import { countLabel, type FilterDropSuggestion } from '../customers-page.filter-
 
 /**
  * Filters that combine to zero results — not the same screen as a genuinely
- * empty store (see CustomersEmptyState.tsx). Suggestions are real counts
- * from `getFilterDropSuggestions`, and "Use this" actually reverts that one
- * filter via `onUseSuggestion`.
+ * empty store (see CustomersEmptyState.tsx). Suggestions are real counts the
+ * server folds into the list response (`toFilterDropSuggestions`), and "Use
+ * this" actually reverts that one filter via `onUseSuggestion`.
+ *
+ * The suggestion list — and the description line beneath the title — only
+ * ever appear once 2+ filters are active: with exactly 1, the only
+ * candidate is "no filters at all", which isn't a suggestion worth making
+ * over the "Clear all filters" button already below (the server doesn't
+ * even compute suggestions in that case — see `suggestions_for_no_match()`).
  */
 export function CustomersNoMatchState({
   activeCount,
@@ -30,11 +36,13 @@ export function CustomersNoMatchState({
     <Empty className="w-full border-none">
       <EmptyHeader>
         <EmptyTitle>{title}</EmptyTitle>
-        <EmptyDescription>
-          {suggestions.length > 0
-            ? __('Try removing one of the filters below.', 'yayloyalty')
-            : __('Removing any single filter still leaves nobody — try Clear all.', 'yayloyalty')}
-        </EmptyDescription>
+        {activeCount >= 2 && (
+          <EmptyDescription>
+            {suggestions.length > 0
+              ? __('Try removing one of the filters below.', 'yayloyalty')
+              : __('Removing any single filter still leaves nobody — try Clear all.', 'yayloyalty')}
+          </EmptyDescription>
+        )}
       </EmptyHeader>
       <EmptyContent className="max-w-lg gap-2.5">
         {suggestions.map((suggestion) => (
