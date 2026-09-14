@@ -16,21 +16,26 @@ import { Separator } from '@/components/ui/separator';
  * `BulkActionBox` itself, not re-decided here. Every action in the dropdown
  * is still `<Can>`-gated and performs no action — UI only.
  *
- * "Select all matching filters" is real (see CustomersScreen.tsx) — folded
- * into this same bordered box instead of a second banner tier, so selection
- * stays one row like the kit's rather than growing its own two-tier shape.
+ * "Select all matching filters" is real (see CustomersScreen.tsx /
+ * CustomersPage.tsx's `onFetchAllMatchingIds`) — a genuine fetch of every
+ * matching row across every page, not just this one, folded into this same
+ * bordered box instead of a second banner tier so selection stays one row
+ * like the kit's rather than growing its own two-tier shape.
  */
 export function CustomersBulkActionBar({
   count,
   onClear,
   selectAllCount,
   onSelectAllMatching,
+  selectAllPending,
 }: {
   count: number;
   onClear: () => void;
   /** Present only when there's a larger filtered set beyond this page to expand into. */
   selectAllCount?: number;
   onSelectAllMatching?: () => void;
+  /** The "select all N matching" fetch (real, server-side) is in flight. */
+  selectAllPending?: boolean;
 }) {
   return (
     <BulkActionBox selected={count} onClose={onClear}>
@@ -66,8 +71,10 @@ export function CustomersBulkActionBar({
       {selectAllCount !== undefined && (
         <>
           <Separator orientation="vertical" className="h-5!" />
-          <Button variant="link" size="sm" className="font-normal" onClick={onSelectAllMatching}>
-            {sprintf(__('Select all %d matching these filters', 'yayloyalty'), selectAllCount)}
+          <Button variant="link" size="sm" className="font-normal" onClick={onSelectAllMatching} disabled={selectAllPending}>
+            {selectAllPending
+              ? __('Selecting…', 'yayloyalty')
+              : sprintf(__('Select all %d matching these filters', 'yayloyalty'), selectAllCount)}
           </Button>
         </>
       )}

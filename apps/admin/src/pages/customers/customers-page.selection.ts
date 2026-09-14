@@ -20,12 +20,16 @@ export function computeHeaderSelection(pageRows: MockCustomer[], selected: Set<n
  * How many rows the "Select all N matching these filters" link would add —
  * `undefined` when there's nothing to expand into (one page, nothing
  * selected yet, or everything already selected).
+ *
+ * `totalItems` is the server's count for the current filters (see
+ * `CustomersPage.tsx`) across every page, not just the one that's loaded —
+ * with real per-page fetching, "matching" only means something checked
+ * against the whole (demo) dataset, the same reasoning as
+ * `customers-page.filter-suggestions.ts`. No active filter is just the
+ * `DEFAULT_ROW_FILTERS` case: `totalItems` is then the whole store, so this
+ * naturally covers "select every member" too, not only "every match".
  */
-export function computeSelectAllCount(
-  sortedRows: MockCustomer[],
-  selected: Set<number>,
-  pageCount: number,
-): number | undefined {
-  const allFilteredSelected = sortedRows.length > 0 && sortedRows.every((row) => selected.has(row.user_id));
-  return pageCount > 1 && selected.size > 0 && !allFilteredSelected ? sortedRows.length : undefined;
+export function computeSelectAllCount(selected: Set<number>, totalItems: number, pageCount: number): number | undefined {
+  const allMatchingSelected = totalItems > 0 && selected.size >= totalItems;
+  return pageCount > 1 && selected.size > 0 && !allMatchingSelected ? totalItems : undefined;
 }
