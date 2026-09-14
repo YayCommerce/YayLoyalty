@@ -47,7 +47,7 @@ class YayLoyalty {
      * licence check. An expired licence stops updates and support, not
      * features, so nothing here consults licence state.
      *
-     * Server-side only. The SPA is gated at build time by the __IS_PRO__
+     * Server-side only. The SPA is gated at build time by the IS_PRO_BUILD
      * Vite define, so this value is deliberately never localized to the
      * browser — see docs/code-standards.md.
      */

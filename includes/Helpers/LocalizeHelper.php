@@ -41,7 +41,7 @@ class LocalizeHelper {
             ],
             /*
              * No pro flag is sent to the browser. The SPA is gated at build
-             * time by the __IS_PRO__ Vite define: one zip carries both the
+             * time by the IS_PRO_BUILD (import.meta.env.VITE_IS_PRO): one zip carries both the
              * PHP and the JS bundle, so build type is never ambiguous and there
              * is nothing for a runtime flag to disambiguate.
              *

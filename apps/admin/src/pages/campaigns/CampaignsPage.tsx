@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { __ } from '@wordpress/i18n';
 
 import { parseWPDate } from '@/lib/helpers/format.helper';
+import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { useCampaignsQuery } from '@/lib/queries/campaign.queries';
 import {
   CAMPAIGN_STATUSES,
@@ -14,6 +15,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ErrorState } from '@/components/ui/custom/error-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import PageLayout from '@/components/layout/PageLayout';
@@ -27,12 +29,12 @@ const PER_PAGE = 20;
  *
  * Pro triggers are shown in BOTH builds, disabled in Lite rather than hidden —
  * a merchant has to see what upgrading would give them. `locked` is decided at
- * build time from `__IS_PRO__`, so in a Pro build the constant folds to false
+ * build time from `IS_PRO_BUILD`, so in a Pro build the constant folds to false
  * and the badge disappears along with it.
  */
 const TRIGGER_OPTIONS: FilterOption[] = [
   ...LITE_CAMPAIGN_TRIGGERS.map((value) => ({ value })),
-  ...PRO_CAMPAIGN_TRIGGERS.map((value) => ({ value, locked: !__IS_PRO__ })),
+  ...PRO_CAMPAIGN_TRIGGERS.map((value) => ({ value, locked: !IS_PRO_BUILD })),
 ];
 
 const STATUS_OPTIONS: FilterOption[] = CAMPAIGN_STATUSES.map((value) => ({ value }));
@@ -82,7 +84,7 @@ export default function CampaignsPage() {
           {campaigns.isPending && <Skeleton className="h-24 w-full" />}
 
           {campaigns.isError && (
-            <p className="text-destructive text-sm">{__('Could not load campaigns.', 'yayloyalty')}</p>
+            <ErrorState message={__('Could not load campaigns.', 'yayloyalty')} onRetry={() => campaigns.refetch()} />
           )}
 
           {campaigns.data && (
@@ -187,14 +189,14 @@ export default function CampaignsPage() {
             ProGate decides what a user sees: children in Pro, the upgrade
             overlay in Lite.
 
-            The `__IS_PRO__ &&` decides what ships. It is NOT redundant. JSX
+            The `IS_PRO_BUILD &&` decides what ships. It is NOT redundant. JSX
             evaluates children eagerly, so <ProGate><ConditionsPreview /></ProGate>
             would reference the component at runtime and pull all of `@/pro`
             — sentinel included — into the Lite bundle. The build would look
             fine and validate-build.php would fail it. Keep the guard.
           */}
           <ProGate>
-            {__IS_PRO__ && selected ? (
+            {IS_PRO_BUILD && selected ? (
               <ConditionsPreview campaignId={selected.id} conditions={selected.conditions} />
             ) : null}
           </ProGate>

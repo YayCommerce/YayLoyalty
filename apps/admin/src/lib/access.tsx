@@ -2,7 +2,7 @@ import { cloneElement, isValidElement, ReactElement, ReactNode, useMemo } from '
 import { __ } from '@wordpress/i18n';
 
 import { AdminData } from '@/types/localize.type';
-import { YayLoyaltyToolTip } from '@/components/ui/custom/YayLoyaltyToolTip';
+import { YayLoyaltyToolTip } from '@/components/ui/custom/tooltip';
 
 /**
  * The entire client-side capability surface: what the current user may do,
@@ -18,7 +18,7 @@ import { YayLoyaltyToolTip } from '@/components/ui/custom/YayLoyaltyToolTip';
  * lock keeps the upsell badge; a cap denial greys the control with "You do
  * not have permission". PRO LOCK WINS — telling a shop manager they lack
  * permission for a feature nobody in the store has yet is a support ticket.
- * Evaluate `__IS_PRO__` / <ProGate> first, `can()` second.
+ * Evaluate `IS_PRO_BUILD` / <ProGate> first, `can()` second.
  */
 
 // Partial: a broken localize must degrade to "no capabilities", not a crash.

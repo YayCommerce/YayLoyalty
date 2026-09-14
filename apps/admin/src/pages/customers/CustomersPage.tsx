@@ -1,238 +1,173 @@
-import { FormEvent, useState } from 'react';
-import { __, sprintf } from '@wordpress/i18n';
+import { useRef, useState } from 'react';
+import { RefreshCw } from 'lucide-react';
+import { sprintf, __ } from '@wordpress/i18n';
+import { useDebounceFn } from 'rooks';
 
-import { Can, CAP, ceiling, isAdministrator } from '@/lib/access';
-import { parseWPDate } from '@/lib/helpers/format.helper';
-import { describeLedgerEntry, formatSignedPoints } from '@/lib/helpers/ledger.helper';
-import { useAdjustPointsMutation, useCustomerLedgerQuery, useCustomerQuery } from '@/lib/queries/customer.queries';
-import { Badge } from '@/components/ui/badge';
-import { Button, LoadingButton } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { ErrorState } from '@/components/ui/custom/error-state';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import PageLayout from '@/components/layout/PageLayout';
+import { IS_PRO_BUILD } from '@/lib/is-pro-build';
+import { CustomersScreen } from './components/CustomersScreen';
+import { DEFAULT_ROW_FILTERS, type RowFilters } from './customers-page.filter-rows';
+import { countActiveFilters, toFilterDropSuggestions } from './customers-page.filter-suggestions';
+import { useCustomersDemoQuery } from './customers-page.queries';
+import { defaultSortDirection, type SortDirection, type SortKey } from './customers-page.sort-rows';
 
 const PER_PAGE = 10;
 
 /**
- * Proof-of-life view for the ledger slice.
+ * Customers list screen — designed UI, driven by mock data fetched over a
+ * real REST round trip until the real list endpoint lands (see
+ * `customer.queries.ts` — only single-customer / ledger / adjust hooks exist
+ * today; `customers-page.queries.ts` is the TEMPORARY stand-in).
  *
- * Deliberately minimal: this exists to prove the data layer end to end, not to
- * be the finished Customers screen. Real UI work is a separate task.
+ * Owns the DATA concerns: the list query (one page at a time — `page` here
+ * is what triggers each fetch, not a client-side slice of an already-loaded
+ * list), the filters and sort (both sent to the server so they check/order
+ * the whole demo dataset, not just whatever page loaded — see
+ * `customers-page.api.ts`), and the "Simulate rebuild" toggle (no real
+ * background job — see CustomersRebuildBanner.tsx). The "which filter to
+ * drop" suggestions ride along inside the same list response once it's
+ * empty — no second query. Row selection is the one VIEW-only concern left
+ * in `CustomersScreen.tsx`.
+ *
+ * FREE/PRO SPLIT IS `IS_PRO_BUILD`, DIRECTLY — no demo switcher, no upgrade
+ * overlay. Free gets a fully working list (search, sort, filter, export,
+ * pagination); Pro adds the Tier/Referrals columns, row selection and the
+ * bulk action bar on top of the same list — see `CustomersScreen.tsx`.
  */
 export default function CustomersPage() {
-  const [userIdInput, setUserIdInput] = useState('');
-  const [userId, setUserId] = useState(0);
+  // `filters` drives the toolbar UI (instant, so typing never feels laggy).
+  // `queryFilters` drives the actual fetch — same value, except the search
+  // text is committed after a short pause instead of on every keystroke, so
+  // typing a name doesn't fire one API request per character.
+  const [filters, setFilters] = useState<RowFilters>(DEFAULT_ROW_FILTERS);
+  const [queryFilters, setQueryFilters] = useState<RowFilters>(DEFAULT_ROW_FILTERS);
+  const [isRebuilding, setIsRebuilding] = useState(false);
   const [page, setPage] = useState(1);
+  const [sortBy, setSortBy] = useState<SortKey>('balance');
+  const [sortDir, setSortDir] = useState<SortDirection>('desc');
 
-  const customer = useCustomerQuery(userId);
-  const history = useCustomerLedgerQuery(userId, page, PER_PAGE);
-  const adjust = useAdjustPointsMutation(userId);
+  // rooks' `useDebounceFn` has no `.cancel()` — a generation counter does the
+  // same job: a debounced commit only applies if nothing else (Clear all, a
+  // suggestion, another filter, or the search box being cleared back to '')
+  // has happened since it was scheduled. Without this, typing → Clear all
+  // inside the 300ms window let the stale search win once the timer fired.
+  const searchGeneration = useRef(0);
 
-  const [points, setPoints] = useState('');
-  const [note, setNote] = useState('');
+  const [commitSearch] = useDebounceFn(
+    (search: string, generation: number) => {
+      if (generation !== searchGeneration.current) return;
+      setQueryFilters((current) => ({ ...current, search }));
+    },
+    300,
+    { trailing: true, maxWait: 800 },
+  );
 
-  // Administrators bypass the ceiling; everyone else sees it as an input bound.
-  const adjustmentCeiling = isAdministrator() ? 0 : ceiling();
+  const customersQuery = useCustomersDemoQuery({ page, per_page: PER_PAGE, orderby: sortBy, order: sortDir, ...queryFilters });
+  const rows = customersQuery.data?.data ?? [];
+  const totalItems = customersQuery.data?.totalItems ?? 0;
+  // Zero matches means the server's own totalPage is 0 (ceil(0 / perPage)) —
+  // clamp to 1 so the pagination footer reads "1 of 1", not "1 of 0".
+  const pageCount = Math.max(1, customersQuery.data?.totalPage ?? 1);
 
-  function lookup(event: FormEvent) {
-    event.preventDefault();
+  // Zero rows means one of two very different things: a genuinely empty
+  // store, or these filters matching nobody — the server can't tell them
+  // apart (it only ever returns the post-filter count), so that split still
+  // happens here from the filters the page itself is holding.
+  const activeFilterCount = countActiveFilters(queryFilters, IS_PRO_BUILD);
+  const isStoreEmpty = !customersQuery.isPending && totalItems === 0 && activeFilterCount === 0;
+
+  // Raw `{key, count}` pairs the server already folded into this same
+  // response (see `customers-page.api.ts`) — only non-empty once the current
+  // filters match zero rows. Turned into display text from `queryFilters`,
+  // the filter state that actually produced this response.
+  const suggestions = toFilterDropSuggestions(customersQuery.data?.suggestions ?? [], queryFilters);
+
+  function updateFilters(patch: Partial<RowFilters>) {
+    setFilters((current) => ({ ...current, ...patch }));
+    // The matching set changed — a stale page number (e.g. page 3 of a filter
+    // that now fits on one) would fetch a page that doesn't apply anymore.
     setPage(1);
-    setUserId(Number(userIdInput) || 0);
-  }
 
-  function submitAdjustment(event: FormEvent) {
-    event.preventDefault();
+    // Only a raw keystroke from the search input ever sends a patch that is
+    // exactly `{ search }` (see CustomersToolbar.tsx). Every other change —
+    // a select (a single non-search key), a suggestion dropping one filter
+    // (also single-key, see `patchForSuggestion`'s 'without' case), or a
+    // "clear all"/search-suggestion patch (every field at once) — fails that
+    // shape check and is a deliberate one-off action applied immediately,
+    // not debounced.
+    if (Object.keys(patch).length === 1 && patch.search !== undefined) {
+      // Trimmed BEFORE it reaches `queryFilters` — that object feeds the
+      // query key (see `useCustomersDemoQuery` below), so "abc" and "abc "
+      // must produce the exact same key or every trailing space typed (and
+      // then backspaced) re-fetches instead of reusing the cached "abc"
+      // result. Leading/trailing spaces alone (or none at all) also count as
+      // cleared and apply immediately rather than waiting out the debounce.
+      const trimmed = patch.search.trim();
 
-    const value = Number(points);
-
-    if (!value || !note.trim()) {
-      return;
+      if (trimmed !== '') {
+        commitSearch(trimmed, ++searchGeneration.current);
+        return;
+      }
     }
 
-    adjust.mutate(
-      { points: value, note: note.trim() },
-      {
-        onSuccess: () => {
-          setPoints('');
-          setNote('');
-        },
-      },
-    );
+    // Bump the generation first so any debounced keystroke commit still in
+    // flight sees a mismatch and no-ops instead of firing later and
+    // clobbering this immediate change (see the comment by `commitSearch`).
+    searchGeneration.current++;
+    setQueryFilters((current) => ({
+      ...current,
+      ...patch,
+      ...(patch.search !== undefined ? { search: patch.search.trim() } : null),
+    }));
+  }
+
+  function handleSort(key: SortKey) {
+    if (key === sortBy) {
+      setSortDir((current) => (current === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortBy(key);
+      setSortDir(defaultSortDirection(key));
+    }
   }
 
   return (
     <PageLayout
       title={__('Customers', 'yayloyalty')}
-      description={__('Look up a customer to see their point balance and make adjustments.', 'yayloyalty')}
+      description={
+        customersQuery.isPending ? (
+          <Skeleton className="h-4 w-32" />
+        ) : customersQuery.isError ? null : (
+          sprintf(__('%d program members', 'yayloyalty'), totalItems)
+        )
+      }
+      actions={
+        IS_PRO_BUILD && (
+          // Demo-only: there is no real background job to reflect, so this is
+          // a plain toggle — not a "Tools" trigger. See CustomersRebuildBanner.tsx.
+          <Button variant="outline" size="sm" onClick={() => setIsRebuilding((current) => !current)}>
+            <RefreshCw className="size-3.5" />
+            {isRebuilding ? __('Stop simulating rebuild', 'yayloyalty') : __('Simulate rebuild', 'yayloyalty')}
+          </Button>
+        )
+      }
     >
-      <Card>
-        <CardContent>
-          <form className="flex items-end gap-2" onSubmit={lookup}>
-            <div className="flex flex-col gap-1">
-              <label className="text-muted-foreground text-xs" htmlFor="yl-user-id">
-                {__('User ID', 'yayloyalty')}
-              </label>
-              <Input
-                id="yl-user-id"
-                className="w-40"
-                inputMode="numeric"
-                value={userIdInput}
-                onChange={(event) => setUserIdInput(event.target.value)}
-                placeholder="1"
-              />
-            </div>
-            <Button type="submit">{__('Look up', 'yayloyalty')}</Button>
-          </form>
-        </CardContent>
-      </Card>
-
-      {userId > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{__('Balance', 'yayloyalty')}</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4">
-            {customer.isPending && <Skeleton className="h-8 w-40" />}
-
-            {customer.isError && (
-              <p className="text-destructive text-sm">{__('Could not load this customer.', 'yayloyalty')}</p>
-            )}
-
-            {customer.data && (
-              <div className="flex flex-wrap gap-6">
-                <Stat label={__('Balance', 'yayloyalty')} value={customer.data.balance} />
-                <Stat label={__('Pending', 'yayloyalty')} value={customer.data.pending_points} />
-                <Stat label={__('Lifetime earned', 'yayloyalty')} value={customer.data.lifetime_earned} />
-                <Stat label={__('Lifetime redeemed', 'yayloyalty')} value={customer.data.lifetime_redeemed} />
-              </div>
-            )}
-
-            <form className="flex flex-wrap items-end gap-2" onSubmit={submitAdjustment}>
-              <div className="flex flex-col gap-1">
-                <label className="text-muted-foreground text-xs" htmlFor="yl-points">
-                  {__('Points (negative to deduct)', 'yayloyalty')}
-                </label>
-                <Input
-                  id="yl-points"
-                  className="w-40"
-                  inputMode="numeric"
-                  value={points}
-                  onChange={(event) => setPoints(event.target.value)}
-                  placeholder="100"
-                  {...(adjustmentCeiling > 0 ? { min: -adjustmentCeiling, max: adjustmentCeiling } : {})}
-                />
-                {adjustmentCeiling > 0 && (
-                  // Client-side hint only; the server still decides.
-                  <span className="text-muted-foreground text-xs">
-                    {sprintf(__('Limited to %d points per adjustment.', 'yayloyalty'), adjustmentCeiling)}
-                  </span>
-                )}
-              </div>
-              <div className="flex flex-1 flex-col gap-1">
-                <label className="text-muted-foreground text-xs" htmlFor="yl-note">
-                  {__('Reason', 'yayloyalty')}
-                </label>
-                <Input
-                  id="yl-note"
-                  value={note}
-                  onChange={(event) => setNote(event.target.value)}
-                  placeholder={__('Goodwill gesture', 'yayloyalty')}
-                />
-              </div>
-              {/* Disabled, not hidden: a missing primary CTA reads as a broken feature. */}
-              <Can cap={CAP.MANAGE_POINTS} disable>
-                <LoadingButton type="submit" loading={adjust.isPending}>
-                  {__('Adjust', 'yayloyalty')}
-                </LoadingButton>
-              </Can>
-            </form>
-
-            {adjust.isError && (
-              <p className="text-destructive text-sm">{__('The adjustment was rejected.', 'yayloyalty')}</p>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {userId > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{__('History', 'yayloyalty')}</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{__('When', 'yayloyalty')}</TableHead>
-                    <TableHead>{__('Description', 'yayloyalty')}</TableHead>
-                    <TableHead>{__('Type', 'yayloyalty')}</TableHead>
-                    <TableHead className="text-right">{__('Points', 'yayloyalty')}</TableHead>
-                    <TableHead className="text-right">{__('Balance', 'yayloyalty')}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {history.data?.data.map((entry) => (
-                    <TableRow key={entry.id}>
-                      <TableCell className="whitespace-nowrap">{parseWPDate(entry.created_at)}</TableCell>
-                      {/* Composed from type/source, never a stored string. */}
-                      <TableCell>{describeLedgerEntry(entry)}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">{entry.type}</Badge>
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">{formatSignedPoints(entry.points)}</TableCell>
-                      <TableCell className="text-right tabular-nums">{entry.balance_after}</TableCell>
-                    </TableRow>
-                  ))}
-
-                  {history.data && history.data.data.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-muted-foreground text-center">
-                        {__('No activity yet.', 'yayloyalty')}
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-
-            {history.data && history.data.totalPage > 1 && (
-              <div className="flex items-center justify-end gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={page <= 1}
-                  onClick={() => setPage((current) => Math.max(1, current - 1))}
-                >
-                  {__('Previous', 'yayloyalty')}
-                </Button>
-                <span className="text-muted-foreground text-xs">
-                  {page} / {history.data.totalPage}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={page >= history.data.totalPage}
-                  onClick={() => setPage((current) => current + 1)}
-                >
-                  {__('Next', 'yayloyalty')}
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+      {customersQuery.isError ? (
+        // No table underneath: an empty store/no-match state implies a real,
+        // successful 0-row answer from the server — showing it next to "could
+        // not load" claims the request both failed and told us something.
+        <ErrorState message={__('Could not load customers.', 'yayloyalty')} onRetry={() => customersQuery.refetch()} />
+      ) : (
+        <CustomersScreen
+          list={{ rows, isLoading: customersQuery.isPending, isStoreEmpty, totalItems, suggestions }}
+          filters={{ value: filters, onChange: updateFilters }}
+          sort={{ by: sortBy, dir: sortDir, onChange: handleSort }}
+          pagination={{ page, pageCount, onChange: setPage }}
+          isRebuilding={isRebuilding}
+        />
       )}
     </PageLayout>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="flex flex-col">
-      <span className="text-muted-foreground text-xs">{label}</span>
-      <span className="text-2xl tabular-nums">{value}</span>
-    </div>
   );
 }

@@ -1,0 +1,193 @@
+<?php
+namespace YayLoyalty\Controllers;
+
+defined( 'ABSPATH' ) || exit;
+
+/** TEMPORARY DEMO DATA — see `CustomerDemoRows`. The Summit-tier rows. */
+final class CustomerDemoRowsSummit {
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public static function rows(): array {
+        return [
+            [
+                'user_id'                   => 1002,
+                'name'                      => 'Daniel Okonkwo',
+                'email'                     => 'daniel.okonkwo@example.com',
+                'balance'                   => 9850,
+                'pending_points'            => 240,
+                'lifetime_earned'           => 14300,
+                'last_activity_label'       => '12 min ago',
+                'last_activity_minutes_ago' => 12,
+                'expires_at'                => '2027-08-14 00:00:00',
+                'tier'                      => 'Summit',
+                'referrals'                 => 3,
+            ],
+            [
+                'user_id'                   => 1003,
+                'name'                      => 'Priya Raghunathan',
+                'email'                     => 'priya.raghunathan@example.com',
+                'balance'                   => 8200,
+                'pending_points'            => 0,
+                'lifetime_earned'           => 11750,
+                'last_activity_label'       => '47 min ago',
+                'last_activity_minutes_ago' => 47,
+                'expires_at'                => '2028-02-03 00:00:00',
+                'tier'                      => 'Summit',
+                'referrals'                 => 1,
+            ],
+            [
+                'user_id'                   => 1004,
+                'name'                      => 'Yuki Tanaka',
+                'email'                     => 'yuki.tanaka@example.com',
+                'balance'                   => 6540,
+                'pending_points'            => 50,
+                'lifetime_earned'           => 9180,
+                'last_activity_label'       => '1 hour ago',
+                'last_activity_minutes_ago' => 60,
+                'expires_at'                => '2027-11-21 00:00:00',
+                'tier'                      => 'Summit',
+                'referrals'                 => 0,
+            ],
+            [
+                'user_id'                   => 1011,
+                'name'                      => 'Isabella Rossi',
+                'email'                     => 'isabella.rossi@example.com',
+                'balance'                   => 4200,
+                'pending_points'            => 0,
+                'lifetime_earned'           => 6100,
+                'last_activity_label'       => '1 day ago',
+                'last_activity_minutes_ago' => 24 * 60,
+                'expires_at'                => '2027-03-14 00:00:00',
+                'tier'                      => 'Summit',
+                'referrals'                 => 2,
+            ],
+            [
+                // Expires within 31-90 days.
+                'user_id'                   => 1012,
+                'name'                      => 'Noah Andersen',
+                'email'                     => 'noah.andersen@example.com',
+                'balance'                   => 7300,
+                'pending_points'            => 150,
+                'lifetime_earned'           => 9800,
+                'last_activity_label'       => '35 min ago',
+                'last_activity_minutes_ago' => 35,
+                'expires_at'                => '2026-11-01 00:00:00',
+                'tier'                      => 'Summit',
+                'referrals'                 => 5,
+            ],
+            [
+                'user_id'                   => 1013,
+                'name'                      => 'Fatima Zahra',
+                'email'                     => 'fatima.zahra@example.com',
+                'balance'                   => 2950,
+                'pending_points'            => 0,
+                'lifetime_earned'           => 4400,
+                'last_activity_label'       => '4 hours ago',
+                'last_activity_minutes_ago' => 4 * 60,
+                'expires_at'                => '2027-07-22 00:00:00',
+                'tier'                      => 'Summit',
+                'referrals'                 => 1,
+            ],
+            [
+                // Expires within 31-90 days.
+                'user_id'                   => 1014,
+                'name'                      => 'Lucas Silva',
+                'email'                     => 'lucas.silva@example.com',
+                'balance'                   => 6800,
+                'pending_points'            => 300,
+                'lifetime_earned'           => 8900,
+                'last_activity_label'       => '2 days ago',
+                'last_activity_minutes_ago' => 2 * 24 * 60,
+                'expires_at'                => '2026-11-20 00:00:00',
+                'tier'                      => 'Summit',
+                'referrals'                 => 4,
+            ],
+            [
+                'user_id'                   => 1015,
+                'name'                      => 'Mei Lin Chen',
+                'email'                     => 'meilin.chen@example.com',
+                'balance'                   => 5400,
+                'pending_points'            => 0,
+                'lifetime_earned'           => 7200,
+                'last_activity_label'       => '55 min ago',
+                'last_activity_minutes_ago' => 55,
+                'expires_at'                => '2028-02-18 00:00:00',
+                'tier'                      => 'Summit',
+                'referrals'                 => 0,
+            ],
+            [
+                // No expiry, and NOT because balance is negative — see
+                // matchesExpiringSoon() in customers-page.filter-rows.ts.
+                'user_id'                   => 1016,
+                'name'                      => 'Oliver Bennett',
+                'email'                     => 'oliver.bennett@example.com',
+                'balance'                   => 3100,
+                'pending_points'            => 0,
+                'lifetime_earned'           => 3100,
+                'last_activity_label'       => '6 hours ago',
+                'last_activity_minutes_ago' => 6 * 60,
+                'expires_at'                => null,
+                'tier'                      => 'Summit',
+                'referrals'                 => 0,
+            ],
+            [
+                // Negative balance in Summit, not just Explorer — see
+                // BalanceCell.tsx: the treatment is about the number, not the tier.
+                'user_id'                   => 1022,
+                'name'                      => 'Mateusz Kowalski',
+                'email'                     => 'mateusz.kowalski@example.com',
+                'balance'                   => -80,
+                'pending_points'            => 0,
+                'lifetime_earned'           => 310,
+                'last_activity_label'       => '3 days ago',
+                'last_activity_minutes_ago' => 3 * 24 * 60,
+                'expires_at'                => null,
+                'tier'                      => 'Summit',
+                'referrals'                 => 0,
+            ],
+            [
+                // Balance 9,990 — one short of the 10,000+ bucket boundary.
+                // Expires within 30 days.
+                'user_id'                   => 1023,
+                'name'                      => 'Aiko Tanaka',
+                'email'                     => 'aiko.tanaka@example.com',
+                'balance'                   => 9990,
+                'pending_points'            => 0,
+                'lifetime_earned'           => 12500,
+                'last_activity_label'       => '13 min ago',
+                'last_activity_minutes_ago' => 13,
+                'expires_at'                => '2026-10-05 00:00:00',
+                'tier'                      => 'Summit',
+                'referrals'                 => 6,
+            ],
+            [
+                'user_id'                   => 1027,
+                'name'                      => 'Nadia Hassan',
+                'email'                     => 'nadia.hassan@example.com',
+                'balance'                   => 6100,
+                'pending_points'            => 0,
+                'lifetime_earned'           => 7300,
+                'last_activity_label'       => '7 hours ago',
+                'last_activity_minutes_ago' => 7 * 60,
+                'expires_at'                => '2027-02-28 00:00:00',
+                'tier'                      => 'Summit',
+                'referrals'                 => 2,
+            ],
+            [
+                'user_id'                   => 1028,
+                'name'                      => "Liam O'Brien",
+                'email'                     => 'liam.obrien@example.com',
+                'balance'                   => 2500,
+                'pending_points'            => 100,
+                'lifetime_earned'           => 3400,
+                'last_activity_label'       => '25 min ago',
+                'last_activity_minutes_ago' => 25,
+                'expires_at'                => '2027-09-19 00:00:00',
+                'tier'                      => 'Summit',
+                'referrals'                 => 3,
+            ],
+        ];
+    }
+}

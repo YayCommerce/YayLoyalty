@@ -13,19 +13,27 @@ export default defineConfig(() => {
   // anything else (including unset, so a plain `pnpm build` stays Pro)
   // produces Pro.
   //
-  // A `define` rather than import.meta.env on purpose: it is substituted
-  // inline at every usage site, so `if (__IS_PRO__)` collapses to a
-  // literal and the dead branch is eliminated. An exported const derived from
-  // import.meta.env has to be constant-folded across a module boundary, which
-  // is less reliable — see the sentinel check in scripts/validate-build.php.
+  // Exposed via import.meta.env.VITE_IS_PRO (Vite's own env pipeline), NOT a
+  // `define`. A `define` identifier (the previous `__IS_PRO__`) is only
+  // guaranteed to be substituted by Vite's PRODUCTION bundler (Rollup) — the
+  // DEV SERVER's per-file transform was verified to leave it as a raw,
+  // unresolved identifier (reproduced directly on this project: a
+  // `BUILD_TYPE=lite` dev server still served `__IS_PRO__` literally,
+  // unsubstituted, in every module that referenced it — same failure
+  // yay-reviews' apps/admin-settings/vite.config.js documents for the same
+  // vite-plugin-external + esbuild dev-transform combination). Setting
+  // process.env.VITE_IS_PRO here — before Vite's own internal env loading
+  // runs — is picked up by Vite's `VITE_`-prefix convention in both dev and
+  // build, reliably, with no `define` involved.
+  //
+  // See src/lib/is-pro-build.ts for the client-side constant this backs, and
+  // main.tsx for the one call site (Pro's tree-shaking root) that reads
+  // import.meta.env.VITE_IS_PRO directly rather than through that constant.
   const isProBuild = process.env.BUILD_TYPE !== 'lite';
+  process.env.VITE_IS_PRO = isProBuild ? 'true' : 'false';
 
   return {
     root: './src',
-
-    define: {
-      __IS_PRO__: JSON.stringify(isProBuild),
-    },
 
     plugins: [
       react({ jsxRuntime: 'classic' }),

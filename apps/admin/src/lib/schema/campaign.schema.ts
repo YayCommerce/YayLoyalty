@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { IS_PRO_BUILD } from '@/lib/is-pro-build';
+
 /**
  * Mirrors CampaignRestController::get_item_schema().
  *
@@ -40,10 +42,10 @@ export const ALL_KNOWN_CAMPAIGN_TRIGGERS = [
 /**
  * Triggers this build can offer. Mirrors CampaignTrigger::all().
  *
- * Build-time, from the Vite define — never a runtime flag. Used for the UI's
+ * Build-time, from IS_PRO_BUILD — never a runtime flag. Used for the UI's
  * choices only; never for parsing.
  */
-export const CAMPAIGN_TRIGGERS = __IS_PRO__
+export const CAMPAIGN_TRIGGERS = IS_PRO_BUILD
   ? ([...LITE_CAMPAIGN_TRIGGERS, ...PRO_CAMPAIGN_TRIGGERS] as const)
   : LITE_CAMPAIGN_TRIGGERS;
 

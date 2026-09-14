@@ -4,7 +4,7 @@
  * THIS ENTIRE DIRECTORY IS DELETED FOR THE LITE BUILD.
  *
  * Do not deep-import from `@/pro/...` anywhere in shared code. Everything
- * must come through this barrel, imported behind `__IS_PRO__`, so the
+ * must come through this barrel, imported behind the build-plan constant, so the
  * bundler can drop the whole subtree when the constant is false. A deep import
  * from a shared file defeats tree-shaking and survives into the Lite bundle —
  * which is exactly what the sentinel below is there to detect.
@@ -32,7 +32,7 @@ export const PRO_BUNDLE_SENTINEL = 'yayloyalty-pro-bundle-a7f3c1';
  * Pro surfaces, re-exported so shared pages import them from here and never
  * deep-import from `@/pro/...`.
  *
- * A consumer must still guard the JSX with `__IS_PRO__`. Wrapping a pro
+ * A consumer must still guard the JSX with `IS_PRO_BUILD`. Wrapping a pro
  * component in <ProGate> alone is NOT enough: JSX evaluates its children
  * eagerly, so `<ProGate><ConditionsPreview /></ProGate>` references the
  * component at runtime and drags this whole subtree into the Lite bundle.
@@ -49,7 +49,9 @@ export function proBundleMarker(): string {
 }
 
 /**
- * Pro's SPA entry point, called from main.tsx behind `__IS_PRO__`.
+ * Pro's SPA entry point, called from main.tsx behind
+ * `import.meta.env.VITE_IS_PRO === 'true'` (read directly there, not via
+ * `IS_PRO_BUILD` — see main.tsx's comment for why).
  *
  * The one place pro code becomes reachable from the app, which is what
  * makes the whole subtree tree-shakeable: in a Lite build the call site is
