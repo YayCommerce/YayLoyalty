@@ -9,6 +9,7 @@ import type { SortDirection, SortKey } from '../customers-page.sort-rows';
 import { CustomerTableRow } from './CustomerTableRow';
 import { CustomersEmptyState } from './CustomersEmptyState';
 import { CustomersSkeletonRows } from './CustomersSkeletonRows';
+import { HeaderSelectionState } from '../customers-page.selection';
 
 /** Column count depends on which optional column groups are on — one place,
  *  reused by the header and the "no results" row's colSpan. */
@@ -18,8 +19,6 @@ export function countColumns(showProColumns: boolean, showSelection: boolean) {
   // (off during the rebuild toggle even in Pro — see CustomerTableRow.tsx).
   return 6 + (showProColumns ? 2 : 0) + (showSelection ? 1 : 0);
 }
-
-type HeaderSelectionState = 'none' | 'partial' | 'all';
 
 /**
  * Purely presentational: `rows` arrives already sorted AND paginated (one
