@@ -43,7 +43,21 @@ final class CustomerRestController extends AbstractRestController {
                     'methods'             => \WP_REST_Server::READABLE,
                     'callback'            => fn( $request ) => $this->exec_read( [ $this, 'get_items' ], $request ),
                     'permission_callback' => $this->requires( Capabilities::VIEW ),
-                    'args'                => array_merge( $this->get_collection_params(), $this->get_demo_filter_params() ),
+                    'args'                => array_merge(
+                        $this->get_collection_params(),
+                        $this->get_demo_filter_params(),
+                        // Overrides the base `orderby` (free-text) with the 8 real sort
+                        // keys — see `CustomerRowSort`. `order` keeps the base definition.
+                        [
+                            'orderby' => [
+                                'description'       => __( 'Column to sort the Customers list by.', 'yayloyalty' ),
+                                'type'               => 'string',
+                                'enum'               => [ 'name', 'tier', 'balance', 'pending', 'lifetime', 'last_activity', 'expires', 'referrals' ],
+                                'default'            => 'balance',
+                                'sanitize_callback'  => 'sanitize_text_field',
+                            ],
+                        ]
+                    ),
                 ],
             ]
         );
@@ -174,9 +188,10 @@ final class CustomerRestController extends AbstractRestController {
      *
      * `page`/`per_page` ARE applied, and so is search/filter (via
      * `CustomerRowFilters` — the product's real filter rules, just run
-     * in-memory here) — both sliced/matched against the same fixed 30 rows —
-     * so the admin list gets correct results across the whole (demo) dataset
-     * instead of only ever searching whatever page already loaded.
+     * in-memory here) and sort (via `CustomerRowSort`, same reasoning) —
+     * filtered, sorted, THEN sliced, all against the same fixed 30 rows — so
+     * the admin list gets correct results across the whole (demo) dataset
+     * instead of only ever searching/sorting whatever page already loaded.
      *
      * A zero-row result also gets a `suggestions` field folded into this same
      * response (see `CustomerRowFilters::suggestions_for_no_match()`) — the
@@ -186,8 +201,9 @@ final class CustomerRestController extends AbstractRestController {
      *
      * DELETE this method and `CustomerDemoRows`, and replace the body with a
      * real `CustomerRepository::paginate_filtered()`-style call (likely
-     * reusing `CustomerRowFilters`' rules as SQL `WHERE` clauses instead of
-     * deleting them), once that repository method exists.
+     * reusing `CustomerRowFilters`/`CustomerRowSort`'s rules as SQL `WHERE`/
+     * `ORDER BY` clauses instead of deleting them), once that repository
+     * method exists.
      */
     public function get_items( \WP_REST_Request $request ) {
         $filters = [
@@ -199,6 +215,11 @@ final class CustomerRestController extends AbstractRestController {
 
         $all_rows = CustomerDemoRows::all();
         $rows     = CustomerRowFilters::apply( $all_rows, $filters );
+        $rows     = CustomerRowSort::apply(
+            $rows,
+            (string) $request->get_param( 'orderby' ),
+            (string) $request->get_param( 'order' )
+        );
 
         $page     = max( 1, (int) $request->get_param( 'page' ) );
         $per_page = max( 1, (int) $request->get_param( 'per_page' ) ?: 20 );

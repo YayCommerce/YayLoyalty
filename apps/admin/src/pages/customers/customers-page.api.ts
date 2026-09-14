@@ -4,6 +4,7 @@ import { api } from '@/lib/api/api';
 import { paginatedSchema } from '@/lib/api/paginated';
 import type { RowFilters } from './customers-page.filter-rows';
 import type { MockCustomer } from './customers-page.mock-data';
+import type { SortDirection, SortKey } from './customers-page.sort-rows';
 
 /**
  * TEMPORARY DEMO DATA, FETCHED OVER A REAL HTTP ROUND TRIP.
@@ -49,15 +50,22 @@ const customersDemoEnvelopeSchema = paginatedSchema(customersDemoItemSchema).ext
   suggestions: z.array(noMatchSuggestionSchema).optional(),
 });
 
-export type CustomersDemoListParams = { page?: number; per_page?: number } & Partial<RowFilters>;
+export type CustomersDemoListParams = {
+  page?: number;
+  per_page?: number;
+  orderby?: SortKey;
+  order?: SortDirection;
+} & Partial<RowFilters>;
 
 export async function getCustomersDemo(params: CustomersDemoListParams = {}) {
   const searchParams: Record<string, string> = {};
 
   if (params.page) searchParams.page = String(params.page);
   if (params.per_page) searchParams.per_page = String(params.per_page);
-  // Sent to the server so search/filter is checked against the whole (demo)
-  // dataset, not just whatever page happened to already be loaded.
+  // Sent to the server so sort/search/filter are checked against the whole
+  // (demo) dataset, not just whatever page happened to already be loaded.
+  if (params.orderby) searchParams.orderby = params.orderby;
+  if (params.order) searchParams.order = params.order;
   if (params.search?.trim()) searchParams.search = params.search.trim();
   if (params.balanceRange && params.balanceRange !== 'any') searchParams.balance_range = params.balanceRange;
   if (params.expiringSoon && params.expiringSoon !== 'off') searchParams.expiring_soon = params.expiringSoon;

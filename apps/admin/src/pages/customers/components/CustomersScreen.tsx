@@ -15,7 +15,7 @@ import {
   toggleRowSelection,
   type SelectionState,
 } from '../customers-page.selection';
-import { defaultSortDirection, sortRows, type SortDirection, type SortKey } from '../customers-page.sort-rows';
+import type { SortDirection, SortKey } from '../customers-page.sort-rows';
 import { CustomersBulkActionBar } from './CustomersBulkActionBar';
 import { CustomersFilterBar } from './CustomersFilterBar';
 import { CustomersNoMatchState } from './CustomersNoMatchState';
@@ -29,15 +29,12 @@ import { CustomersTable } from './CustomersTable';
  * + pagination (right) — see the combined `<div>` near the bottom, matching
  * YayUiKits' `BulkActionBox` + `Pagination` layout.
  *
- * Owns sort and row selection — VIEW-only concerns over whatever page is
- * currently loaded. Page and filters are both DATA concerns owned by
- * `CustomersPage.tsx`: the requested page number and the search/filter values
- * are all query params sent to the server, so each page/filter change fetches
- * exactly the matching page instead of paginating or narrowing an
- * already-fetched full list. Sort is the one exception left client-side: it
- * only reorders the rows on screen (the one page that's loaded), not the
- * whole filtered set — server-side sort isn't implemented for this demo
- * endpoint.
+ * Owns row selection — the one VIEW-only concern left. Page, filters AND
+ * sort are all DATA concerns owned by `CustomersPage.tsx`: the requested
+ * page number, search/filter values and sort column/direction are all query
+ * params sent to the server, so each change fetches exactly the matching,
+ * correctly-ordered page instead of paginating/narrowing/reordering an
+ * already-fetched full list.
  *
  * The bracketed Pro pieces are gated directly by `IS_PRO_BUILD` — no demo
  * switcher, no upgrade overlay for a feature that simply adds columns rather
@@ -56,10 +53,13 @@ export function CustomersScreen({
   page,
   pageCount,
   onPageChange,
+  sortBy,
+  sortDir,
+  onSort,
 }: {
-  /** The current page's rows, already search/filter-narrowed server-side — see CustomersPage.tsx. */
+  /** The current page's rows, already search/filter-narrowed AND sorted server-side — see CustomersPage.tsx. */
   rows: MockCustomer[];
-  /** `useCustomersDemoQuery` still in flight (including a page change — each page is its own fetch). */
+  /** `useCustomersDemoQuery` still in flight (including a page/sort change — each is its own fetch). */
   isLoading: boolean;
   /** The whole store has zero rows, from the server's total — not "this page's filters matched nothing". */
   isStoreEmpty: boolean;
@@ -74,6 +74,9 @@ export function CustomersScreen({
   page: number;
   pageCount: number;
   onPageChange: (page: number) => void;
+  sortBy: SortKey;
+  sortDir: SortDirection;
+  onSort: (key: SortKey) => void;
 }) {
   // A genuinely empty store, not a search/filter matching nobody, and not
   // "still loading" either — see CustomersTable.tsx / CustomersEmptyState.tsx
@@ -87,21 +90,6 @@ export function CustomersScreen({
   const controlsDisabled = isStoreEmpty || isRebuilding;
   const showSelection = IS_PRO_BUILD && !isRebuilding;
 
-  // Sort — over the currently-loaded page only (see the class doc above).
-  const [sortBy, setSortBy] = useState<SortKey>('balance');
-  const [sortDir, setSortDir] = useState<SortDirection>('desc');
-
-  function handleSort(key: SortKey) {
-    if (key === sortBy) {
-      setSortDir((current) => (current === 'asc' ? 'desc' : 'asc'));
-    } else {
-      setSortBy(key);
-      setSortDir(defaultSortDirection(key));
-    }
-  }
-
-  const sortedRows = useMemo(() => sortRows(rows, sortBy, sortDir), [rows, sortBy, sortDir]);
-
   // Selection — not scoped to a page: navigating pages keeps prior picks.
   // 'all' mode ("every row matching these filters") is an O(1) flag, never a
   // fetch of every matching id — see customers-page.selection.ts.
@@ -114,13 +102,13 @@ export function CustomersScreen({
     setSelection(EMPTY_SELECTION);
   }, [filters]);
 
-  const headerSelection = useMemo(() => computeHeaderSelection(sortedRows, selection), [sortedRows, selection]);
+  const headerSelection = useMemo(() => computeHeaderSelection(rows, selection), [rows, selection]);
 
   // The table only ever needs to know THIS page's checked state — bounded by
   // page size regardless of how large `totalItems` gets, even in 'all' mode.
   const selectedOnPage = useMemo(
-    () => new Set(sortedRows.filter((row) => isRowSelected(selection, row.user_id)).map((row) => row.user_id)),
-    [sortedRows, selection],
+    () => new Set(rows.filter((row) => isRowSelected(selection, row.user_id)).map((row) => row.user_id)),
+    [rows, selection],
   );
 
   function toggleRow(userId: number) {
@@ -128,7 +116,7 @@ export function CustomersScreen({
   }
 
   function toggleAll() {
-    setSelection((current) => toggleAllOnPage(current, sortedRows));
+    setSelection((current) => toggleAllOnPage(current, rows));
   }
 
   // Second bulk-bar tier: as soon as anything is picked and there's more
@@ -152,7 +140,7 @@ export function CustomersScreen({
         />
 
         <CustomersTable
-          rows={sortedRows}
+          rows={rows}
           isLoading={isLoading}
           isStoreEmpty={isStoreEmpty}
           noMatchContent={
@@ -174,7 +162,7 @@ export function CustomersScreen({
           onToggleRow={toggleRow}
           sortBy={sortBy}
           sortDir={sortDir}
-          onSort={handleSort}
+          onSort={onSort}
         />
 
         {/* One bordered footer row: bulk actions (left, once selected) + pagination

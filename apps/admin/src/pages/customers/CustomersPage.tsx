@@ -12,6 +12,7 @@ import { CustomersScreen } from './components/CustomersScreen';
 import { DEFAULT_ROW_FILTERS, type RowFilters } from './customers-page.filter-rows';
 import { countActiveFilters, toFilterDropSuggestions } from './customers-page.filter-suggestions';
 import { useCustomersDemoQuery } from './customers-page.queries';
+import { defaultSortDirection, type SortDirection, type SortKey } from './customers-page.sort-rows';
 
 const PER_PAGE = 10;
 
@@ -23,12 +24,13 @@ const PER_PAGE = 10;
  *
  * Owns the DATA concerns: the list query (one page at a time — `page` here
  * is what triggers each fetch, not a client-side slice of an already-loaded
- * list), the filters (sent to the server so search/filter check the whole
- * demo dataset, not just whatever page loaded — see `customers-page.api.ts`),
- * and the "Simulate rebuild" toggle (no real background job — see
- * CustomersRebuildBanner.tsx). The "which filter to drop" suggestions ride
- * along inside the same list response once it's empty — no second query.
- * Sort and row selection stay VIEW-only state in `CustomersScreen.tsx`.
+ * list), the filters and sort (both sent to the server so they check/order
+ * the whole demo dataset, not just whatever page loaded — see
+ * `customers-page.api.ts`), and the "Simulate rebuild" toggle (no real
+ * background job — see CustomersRebuildBanner.tsx). The "which filter to
+ * drop" suggestions ride along inside the same list response once it's
+ * empty — no second query. Row selection is the one VIEW-only concern left
+ * in `CustomersScreen.tsx`.
  *
  * FREE/PRO SPLIT IS `IS_PRO_BUILD`, DIRECTLY — no demo switcher, no upgrade
  * overlay. Free gets a fully working list (search, sort, filter, export,
@@ -44,6 +46,8 @@ export default function CustomersPage() {
   const [queryFilters, setQueryFilters] = useState<RowFilters>(DEFAULT_ROW_FILTERS);
   const [isRebuilding, setIsRebuilding] = useState(false);
   const [page, setPage] = useState(1);
+  const [sortBy, setSortBy] = useState<SortKey>('balance');
+  const [sortDir, setSortDir] = useState<SortDirection>('desc');
 
   // rooks' `useDebounceFn` has no `.cancel()` — a generation counter does the
   // same job: a debounced commit only applies if nothing else (Clear all, a
@@ -61,7 +65,7 @@ export default function CustomersPage() {
     { trailing: true, maxWait: 800 },
   );
 
-  const customersQuery = useCustomersDemoQuery({ page, per_page: PER_PAGE, ...queryFilters });
+  const customersQuery = useCustomersDemoQuery({ page, per_page: PER_PAGE, orderby: sortBy, order: sortDir, ...queryFilters });
   const rows = customersQuery.data?.data ?? [];
   const totalItems = customersQuery.data?.totalItems ?? 0;
   // Zero matches means the server's own totalPage is 0 (ceil(0 / perPage)) —
@@ -104,6 +108,15 @@ export default function CustomersPage() {
     }
   }
 
+  function handleSort(key: SortKey) {
+    if (key === sortBy) {
+      setSortDir((current) => (current === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortBy(key);
+      setSortDir(defaultSortDirection(key));
+    }
+  }
+
   return (
     <PageLayout
       title={__('Customers', 'yayloyalty')}
@@ -143,6 +156,9 @@ export default function CustomersPage() {
           page={page}
           pageCount={pageCount}
           onPageChange={setPage}
+          sortBy={sortBy}
+          sortDir={sortDir}
+          onSort={handleSort}
         />
       )}
     </PageLayout>
