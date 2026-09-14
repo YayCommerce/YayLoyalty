@@ -25,7 +25,10 @@ export default function PageLayout({
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
-          {description ? <p className="text-muted-foreground text-sm">{description}</p> : null}
+          {/* `<div>`, not `<p>`: `description` is any ReactNode (e.g. CustomersPage.tsx
+              renders a `<Skeleton>` here while loading), and a `<div>` inside a `<p>`
+              is invalid HTML — React warns on it (validateDOMNesting). */}
+          {description ? <div className="text-muted-foreground text-sm">{description}</div> : null}
         </div>
         {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
       </div>
