@@ -5,7 +5,16 @@ import { Card, CardContent } from '@/components/ui/card';
 import { DEFAULT_ROW_FILTERS, type RowFilters } from '../customers-page.filter-rows';
 import { countActiveFilters, patchForSuggestion, type FilterDropSuggestion } from '../customers-page.filter-suggestions';
 import type { MockCustomer } from '../customers-page.mock-data';
-import { computeHeaderSelection, computeSelectAllCount } from '../customers-page.selection';
+import {
+  computeHeaderSelection,
+  computeSelectAllCount,
+  EMPTY_SELECTION,
+  isRowSelected,
+  selectionCount,
+  toggleAllOnPage,
+  toggleRowSelection,
+  type SelectionState,
+} from '../customers-page.selection';
 import { defaultSortDirection, sortRows, type SortDirection, type SortKey } from '../customers-page.sort-rows';
 import { CustomersBulkActionBar } from './CustomersBulkActionBar';
 import { CustomersFilterBar } from './CustomersFilterBar';
@@ -39,6 +48,7 @@ export function CustomersScreen({
   rows,
   isLoading,
   isStoreEmpty,
+  totalItems,
   suggestions,
   filters,
   onFiltersChange,
@@ -53,6 +63,8 @@ export function CustomersScreen({
   isLoading: boolean;
   /** The whole store has zero rows, from the server's total — not "this page's filters matched nothing". */
   isStoreEmpty: boolean;
+  /** The server's row count for the current filters, across every page — see CustomersPage.tsx. */
+  totalItems: number;
   /** "Which filter to drop" suggestions — fetched by CustomersPage.tsx once filters match zero rows. */
   suggestions: FilterDropSuggestion[];
   filters: RowFilters;
@@ -90,48 +102,41 @@ export function CustomersScreen({
 
   const sortedRows = useMemo(() => sortRows(rows, sortBy, sortDir), [rows, sortBy, sortDir]);
 
-  // Selection — a Set<user_id>, not scoped to a page: navigating pages keeps
-  // prior picks, but the header checkbox and "select all" only ever act on
-  // the current page (standard admin-table convention once paging is real).
-  const [selected, setSelected] = useState<Set<number>>(new Set());
+  // Selection — not scoped to a page: navigating pages keeps prior picks.
+  // 'all' mode ("every row matching these filters") is an O(1) flag, never a
+  // fetch of every matching id — see customers-page.selection.ts.
+  const [selection, setSelection] = useState<SelectionState>(EMPTY_SELECTION);
 
   // The filters changed — the matching set changed, so past picks may no
   // longer apply. Page reset lives in CustomersPage.tsx now: it owns page,
   // since going back to page 1 on a filter change means re-fetching it.
   useEffect(() => {
-    setSelected(new Set());
+    setSelection(EMPTY_SELECTION);
   }, [filters]);
 
-  const headerSelection = useMemo(() => computeHeaderSelection(sortedRows, selected), [sortedRows, selected]);
+  const headerSelection = useMemo(() => computeHeaderSelection(sortedRows, selection), [sortedRows, selection]);
+
+  // The table only ever needs to know THIS page's checked state — bounded by
+  // page size regardless of how large `totalItems` gets, even in 'all' mode.
+  const selectedOnPage = useMemo(
+    () => new Set(sortedRows.filter((row) => isRowSelected(selection, row.user_id)).map((row) => row.user_id)),
+    [sortedRows, selection],
+  );
 
   function toggleRow(userId: number) {
-    setSelected((current) => {
-      const next = new Set(current);
-      if (next.has(userId)) {
-        next.delete(userId);
-      } else {
-        next.add(userId);
-      }
-      return next;
-    });
+    setSelection((current) => toggleRowSelection(current, userId));
   }
 
   function toggleAll() {
-    setSelected((current) => {
-      const allOnPageSelected = sortedRows.every((row) => current.has(row.user_id));
-      const next = new Set(current);
-      sortedRows.forEach((row) => (allOnPageSelected ? next.delete(row.user_id) : next.add(row.user_id)));
-      return next;
-    });
+    setSelection((current) => toggleAllOnPage(current, sortedRows));
   }
 
-  // Second bulk-bar tier: the header checkbox only ever selects the current
-  // page, so once there's more than one page, offer expanding to every row
-  // matching the filters — real count, real action, not the canned "11,100".
-  const selectAllCount = computeSelectAllCount(sortedRows, selected, pageCount);
+  // Second bulk-bar tier: as soon as anything is picked and there's more
+  // data beyond this page, offer expanding to every row matching the filters.
+  const selectAllCount = computeSelectAllCount(selection, totalItems, pageCount);
 
   function selectAllMatching() {
-    setSelected(new Set(sortedRows.map((row) => row.user_id)));
+    setSelection({ mode: 'all', excludedIds: new Set() });
   }
 
   return (
@@ -165,7 +170,7 @@ export function CustomersScreen({
           staleBalances={isRebuilding}
           headerSelection={headerSelection}
           onToggleAll={toggleAll}
-          selected={selected}
+          selected={selectedOnPage}
           onToggleRow={toggleRow}
           sortBy={sortBy}
           sortDir={sortDir}
@@ -178,8 +183,8 @@ export function CustomersScreen({
         <div className="flex flex-col items-center gap-3 sm:flex-row">
           {showSelection && (
             <CustomersBulkActionBar
-              count={selected.size}
-              onClear={() => setSelected(new Set())}
+              count={selectionCount(selection, totalItems)}
+              onClear={() => setSelection(EMPTY_SELECTION)}
               selectAllCount={selectAllCount}
               onSelectAllMatching={selectAllMatching}
             />

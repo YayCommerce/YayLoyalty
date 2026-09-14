@@ -113,6 +113,7 @@ export default function CustomersPage() {
         rows={rows}
         isLoading={customersQuery.isPending}
         isStoreEmpty={isStoreEmpty}
+        totalItems={totalItems}
         suggestions={suggestions}
         filters={filters}
         onFiltersChange={updateFilters}

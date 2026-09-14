@@ -16,9 +16,12 @@ import { Separator } from '@/components/ui/separator';
  * `BulkActionBox` itself, not re-decided here. Every action in the dropdown
  * is still `<Can>`-gated and performs no action — UI only.
  *
- * "Select all matching filters" is real (see CustomersScreen.tsx) — folded
- * into this same bordered box instead of a second banner tier, so selection
- * stays one row like the kit's rather than growing its own two-tier shape.
+ * "Select all matching filters" is real (see customers-page.selection.ts) —
+ * an Ant-Design-Table-style mode flip ("everything matching, minus any you
+ * un-check"), not a fetch of every matching row, so it stays instant no
+ * matter how large the real list gets. Folded into this same bordered box
+ * instead of a second banner tier, so selection stays one row like the
+ * kit's rather than growing its own two-tier shape.
  */
 export function CustomersBulkActionBar({
   count,
