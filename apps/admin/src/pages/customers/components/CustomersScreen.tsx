@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { __ } from '@wordpress/i18n';
 
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { Card, CardContent } from '@/components/ui/card';
@@ -40,7 +39,6 @@ export function CustomersScreen({
   rows,
   isLoading,
   isStoreEmpty,
-  totalItems,
   suggestions,
   filters,
   onFiltersChange,
@@ -48,7 +46,6 @@ export function CustomersScreen({
   page,
   pageCount,
   onPageChange,
-  onFetchAllMatchingIds,
 }: {
   /** The current page's rows, already search/filter-narrowed server-side — see CustomersPage.tsx. */
   rows: MockCustomer[];
@@ -56,8 +53,6 @@ export function CustomersScreen({
   isLoading: boolean;
   /** The whole store has zero rows, from the server's total — not "this page's filters matched nothing". */
   isStoreEmpty: boolean;
-  /** The server's row count for the current filters, across every page — see CustomersPage.tsx. */
-  totalItems: number;
   /** "Which filter to drop" suggestions — fetched by CustomersPage.tsx once filters match zero rows. */
   suggestions: FilterDropSuggestion[];
   filters: RowFilters;
@@ -67,8 +62,6 @@ export function CustomersScreen({
   page: number;
   pageCount: number;
   onPageChange: (page: number) => void;
-  /** Fetches every `user_id` matching the current filters (not just this page) — see CustomersPage.tsx. */
-  onFetchAllMatchingIds: () => Promise<number[]>;
 }) {
   // A genuinely empty store, not a search/filter matching nobody, and not
   // "still loading" either — see CustomersTable.tsx / CustomersEmptyState.tsx
@@ -135,24 +128,10 @@ export function CustomersScreen({
   // Second bulk-bar tier: the header checkbox only ever selects the current
   // page, so once there's more than one page, offer expanding to every row
   // matching the filters — real count, real action, not the canned "11,100".
-  const selectAllCount = computeSelectAllCount(selected, totalItems, pageCount);
+  const selectAllCount = computeSelectAllCount(sortedRows, selected, pageCount);
 
-  // Real: fetches every matching `user_id` from the server, not just what's
-  // on this page (see CustomersPage.tsx's `onFetchAllMatchingIds`).
-  const [isSelectingAll, setIsSelectingAll] = useState(false);
-  const [selectAllError, setSelectAllError] = useState(false);
-
-  async function selectAllMatching() {
-    setIsSelectingAll(true);
-    setSelectAllError(false);
-
-    try {
-      setSelected(new Set(await onFetchAllMatchingIds()));
-    } catch {
-      setSelectAllError(true);
-    } finally {
-      setIsSelectingAll(false);
-    }
+  function selectAllMatching() {
+    setSelected(new Set(sortedRows.map((row) => row.user_id)));
   }
 
   return (
@@ -193,12 +172,6 @@ export function CustomersScreen({
           onSort={handleSort}
         />
 
-        {selectAllError && (
-          <p className="text-destructive text-sm">
-            {__('Could not select every matching customer — please try again.', 'yayloyalty')}
-          </p>
-        )}
-
         {/* One bordered footer row: bulk actions (left, once selected) + pagination
             (right) — matches YayUiKits' TablePage.tsx composition of
             BulkActionBox + Pagination side by side. */}
@@ -209,7 +182,6 @@ export function CustomersScreen({
               onClear={() => setSelected(new Set())}
               selectAllCount={selectAllCount}
               onSelectAllMatching={selectAllMatching}
-              selectAllPending={isSelectingAll}
             />
           )}
           <CustomersPagination

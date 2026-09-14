@@ -8,7 +8,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import PageLayout from '@/components/layout/PageLayout';
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { CustomersScreen } from './components/CustomersScreen';
-import { getCustomersDemo } from './customers-page.api';
 import { DEFAULT_ROW_FILTERS, type RowFilters } from './customers-page.filter-rows';
 import { countActiveFilters } from './customers-page.filter-suggestions';
 import { useCustomersDemoQuery, useCustomersDemoSuggestionsQuery } from './customers-page.queries';
@@ -68,17 +67,6 @@ export default function CustomersPage() {
   const suggestionsQuery = useCustomersDemoSuggestionsQuery(queryFilters, IS_PRO_BUILD, isNoMatch);
   const suggestions = suggestionsQuery.data ?? [];
 
-  // "Select all N matching these filters" (see CustomersBulkActionBar.tsx):
-  // a one-off fetch of every row the current filters match, not just this
-  // page, so the bulk bar can select across the whole (demo) dataset. Real
-  // customer volume would want a dedicated "ids matching filters" endpoint
-  // instead of paging through full rows just to read `user_id` — fine here
-  // since the demo store is capped at 30 rows.
-  async function fetchAllMatchingUserIds(): Promise<number[]> {
-    const { data } = await getCustomersDemo({ ...queryFilters, per_page: Math.min(Math.max(totalItems, 1), 100) });
-    return data.map((row) => row.user_id);
-  }
-
   function updateFilters(patch: Partial<RowFilters>) {
     setFilters((current) => ({ ...current, ...patch }));
     // The matching set changed — a stale page number (e.g. page 3 of a filter
@@ -125,7 +113,6 @@ export default function CustomersPage() {
         rows={rows}
         isLoading={customersQuery.isPending}
         isStoreEmpty={isStoreEmpty}
-        totalItems={totalItems}
         suggestions={suggestions}
         filters={filters}
         onFiltersChange={updateFilters}
@@ -133,7 +120,6 @@ export default function CustomersPage() {
         page={page}
         pageCount={pageCount}
         onPageChange={setPage}
-        onFetchAllMatchingIds={fetchAllMatchingUserIds}
       />
     </PageLayout>
   );
