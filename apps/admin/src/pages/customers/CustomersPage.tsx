@@ -95,17 +95,30 @@ export default function CustomersPage() {
     // key (see CustomersToolbar.tsx) — every other change (a select, or a
     // suggestion/"clear all" patch, which always carries every field) is a
     // deliberate one-off action and applies immediately, not debounced.
-    // Clearing the box back to '' also applies immediately rather than
-    // waiting out the debounce for an empty search.
-    if (Object.keys(patch).length === 1 && patch.search !== undefined && patch.search !== '') {
-      commitSearch(patch.search, ++searchGeneration.current);
-    } else {
-      // Bump the generation first so any debounced keystroke commit still in
-      // flight sees a mismatch and no-ops instead of firing later and
-      // clobbering this immediate change (see the comment by `commitSearch`).
-      searchGeneration.current++;
-      setQueryFilters((current) => ({ ...current, ...patch }));
+    if (Object.keys(patch).length === 1 && patch.search !== undefined) {
+      // Trimmed BEFORE it reaches `queryFilters` — that object feeds the
+      // query key (see `useCustomersDemoQuery` below), so "abc" and "abc "
+      // must produce the exact same key or every trailing space typed (and
+      // then backspaced) re-fetches instead of reusing the cached "abc"
+      // result. Leading/trailing spaces alone (or none at all) also count as
+      // cleared and apply immediately rather than waiting out the debounce.
+      const trimmed = patch.search.trim();
+
+      if (trimmed !== '') {
+        commitSearch(trimmed, ++searchGeneration.current);
+        return;
+      }
     }
+
+    // Bump the generation first so any debounced keystroke commit still in
+    // flight sees a mismatch and no-ops instead of firing later and
+    // clobbering this immediate change (see the comment by `commitSearch`).
+    searchGeneration.current++;
+    setQueryFilters((current) => ({
+      ...current,
+      ...patch,
+      ...(patch.search !== undefined ? { search: patch.search.trim() } : null),
+    }));
   }
 
   function handleSort(key: SortKey) {
