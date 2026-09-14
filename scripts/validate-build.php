@@ -38,7 +38,7 @@ declare(strict_types=1);
 // vacuous. Keep in sync with apps/admin/src/pro/index.ts.
 const PRO_BUNDLE_SENTINEL = 'yayloyalty-pro-bundle-a7f3c1';
 
-// Copy from components/pro/upgrade-to-pro.tsx. Lite MUST keep its upsell
+// Copy from components/pro/UpgradeToProBadge.tsx. Lite MUST keep its upsell
 // surface: components/pro/ is kept while src/pro/ is dropped, and confusing
 // the two would silently remove every upgrade prompt from the Lite UI.
 const UPSELL_MARKER = 'Upgrade to PRO to unlock this feature now';

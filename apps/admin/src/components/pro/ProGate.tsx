@@ -1,7 +1,7 @@
 import { ReactNode } from 'react';
 
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
-import { UpgradeToProBadge, UpgradeToProOverlay } from '@/components/pro/upgrade-to-pro';
+import { UpgradeToProBadge, UpgradeToProOverlay } from '@/components/pro/UpgradeToPro';
 
 /**
  * Renders pro content, or the upgrade prompt when this is a Lite build.
