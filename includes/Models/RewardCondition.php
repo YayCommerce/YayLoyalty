@@ -78,10 +78,6 @@ final class RewardCondition {
         return $this->value;
     }
 
-    public function is_between(): bool {
-        return 'between' === $this->operator;
-    }
-
     /**
      * The value as a plain list — for the `in` / `not_in` types. A scalar is
      * wrapped so callers never branch on "array or not".
