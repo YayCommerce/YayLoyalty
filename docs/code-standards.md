@@ -24,7 +24,7 @@ The autoloader in `yayloyalty.php` maps `YayLoyalty\Models\Customer` → `includ
 - 4-space indent. No tabs.
 - Aligned `=>` in multi-line array literals.
 - Spaces inside parentheses: `foo( $bar )`.
-- `defined( 'ABSPATH' ) || exit;` at the top of **every** PHP file.
+- `defined( 'ABSPATH' ) || exit;` at the top of **every** PHP file (except `includes/Utils/SingletonTrait.php`, `includes/Engine/Register/ScriptName.php`, `includes/Engine/Register/RegisterDev.php`).
 - Return types on all public methods. PHP 7.4 supports them; use them.
 - Docblocks on public methods where the signature is not self-explanatory.
 
@@ -146,7 +146,7 @@ Pick the level by asking who needs the line, not how noisy it is:
 
 ### Instantiation: services and repositories are plain objects
 
-`Utils/SingletonTrait` is for bootstrap classes only (`RestAPI`, `Settings`, `RegisterFacade`). **Models, Repositories and Services never use it**, for two reasons:
+`Utils/SingletonTrait` is for bootstrap classes only (`YayLoyalty`, `RestAPI`, `Settings`, `RegisterFacade`, `RegisterProd`, `RegisterDev`). **Models, Repositories and Services never use it**, for two reasons:
 
 - `get_instance( ...$args )` silently ignores `$args` after the first call, so constructor injection and the trait are incompatible — the second caller silently gets the first caller's dependencies.
 - `get_instance()` is `public static`, so it hands global access to anything that wants it.
@@ -231,6 +231,7 @@ That is why the Lite build is a directory deletion rather than surgery on shared
 | Extra reward config keys | `yayloyalty_reward_config_whitelist` |
 | To extend a resource's schema | `yayloyalty_rest_item_schema` |
 | To evaluate campaign conditions | `yayloyalty_campaign_conditions_evaluator` |
+| Other seams | `yayloyalty_max_manual_adjustment`, `yayloyalty_run_migrations`, `yayloyalty_localize_admin_data`, `yayloyalty_localize_meta`, `yayloyalty_pro_booted` |
 
 These are **internal seams for first-party Pro code**, not a documented third-party API. They may change.
 
@@ -274,7 +275,7 @@ Confusing them either ships pro features in Lite or removes Lite's ability to se
 
 ### Gating is build-time only
 
-`IS_PRO_BUILD`, a Vite `define`, is the single gate. **No pro flag is localized to the SPA.** One zip carries both the PHP and the JS bundle, so build type is never ambiguous and there is nothing for a runtime flag to disambiguate. Licence state is deliberately not an input: an expired licence stops updates, not features.
+`IS_PRO_BUILD` is `import.meta.env.VITE_IS_PRO` (environment variable set by `vite.config.ts`), not a Vite `define`. It is the single gate. **No pro flag is localized to the SPA.** One zip carries both the PHP and the JS bundle, so build type is never ambiguous and there is nothing for a runtime flag to disambiguate. Licence state is deliberately not an input: an expired licence stops updates, not features.
 
 `YayLoyalty::is_pro()` exists for server-side decisions only and is never sent to the browser.
 
@@ -289,9 +290,11 @@ A stripping build fails silently by nature, so every release is validated agains
 ## 14. Running the linter and tests
 
 ```bash
-composer lint      # phpcs
-composer lint:fix  # phpcbf
-composer test      # phpunit — tests/unit, no WordPress bootstrap
+composer lint                          # phpcs (WPCS + PHPCompatibility)
+composer lint:fix                      # phpcbf
+composer test                          # phpunit — 46 tests covering Calculators, Handlers, PointsEngine
+pnpm --filter @yayloyalty/admin-page lint   # eslint + prettier on SPA
+./scripts/run.sh build [pro|lite]      # Full build — currently fails at tsc --noEmit due to #7 dangling imports
 ```
 
 `tests/bootstrap.php` shims `add_filter` / `apply_filters` / `do_action` so pure code that goes through hooks can be tested in milliseconds. Anything that needs `$wpdb` or WooCommerce is not a unit test; until a wp-phpunit harness exists, exercise it through WP-CLI.
