@@ -196,7 +196,8 @@ final class CustomerRestController extends AbstractRestController {
 
         $page     = max( 1, (int) $request->get_param( 'page' ) );
         $per_page = max( 1, (int) $request->get_param( 'per_page' ) ?: 20 );
-
+        
+        
         return $this->respond_paginated(
             [
                 'items'    => array_slice( $rows, ( $page - 1 ) * $per_page, $per_page ),

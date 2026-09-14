@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { sprintf, __ } from '@wordpress/i18n';
 import { useDebounceFn } from 'rooks';
 
 import { Button } from '@/components/ui/button';
+import { ErrorState } from '@/components/ui/custom/error-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import PageLayout from '@/components/layout/PageLayout';
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
@@ -43,8 +44,18 @@ export default function CustomersPage() {
   const [isRebuilding, setIsRebuilding] = useState(false);
   const [page, setPage] = useState(1);
 
+  // rooks' `useDebounceFn` has no `.cancel()` — a generation counter does the
+  // same job: a debounced commit only applies if nothing else (Clear all, a
+  // suggestion, another filter, or the search box being cleared back to '')
+  // has happened since it was scheduled. Without this, typing → Clear all
+  // inside the 300ms window let the stale search win once the timer fired.
+  const searchGeneration = useRef(0);
+
   const [commitSearch] = useDebounceFn(
-    (search: string) => setQueryFilters((current) => ({ ...current, search })),
+    (search: string, generation: number) => {
+      if (generation !== searchGeneration.current) return;
+      setQueryFilters((current) => ({ ...current, search }));
+    },
     300,
     { trailing: true, maxWait: 800 },
   );
@@ -77,9 +88,15 @@ export default function CustomersPage() {
     // key (see CustomersToolbar.tsx) — every other change (a select, or a
     // suggestion/"clear all" patch, which always carries every field) is a
     // deliberate one-off action and applies immediately, not debounced.
-    if (Object.keys(patch).length === 1 && patch.search !== undefined) {
-      commitSearch(patch.search);
+    // Clearing the box back to '' also applies immediately rather than
+    // waiting out the debounce for an empty search.
+    if (Object.keys(patch).length === 1 && patch.search !== undefined && patch.search !== '') {
+      commitSearch(patch.search, ++searchGeneration.current);
     } else {
+      // Bump the generation first so any debounced keystroke commit still in
+      // flight sees a mismatch and no-ops instead of firing later and
+      // clobbering this immediate change (see the comment by `commitSearch`).
+      searchGeneration.current++;
       setQueryFilters((current) => ({ ...current, ...patch }));
     }
   }
@@ -90,7 +107,7 @@ export default function CustomersPage() {
       description={
         customersQuery.isPending ? (
           <Skeleton className="h-4 w-32" />
-        ) : (
+        ) : customersQuery.isError ? null : (
           sprintf(__('%d program members', 'yayloyalty'), totalItems)
         )
       }
@@ -105,23 +122,26 @@ export default function CustomersPage() {
         )
       }
     >
-      {customersQuery.isError && (
-        <p className="text-destructive text-sm">{__('Could not load customers.', 'yayloyalty')}</p>
+      {customersQuery.isError ? (
+        // No table underneath: an empty store/no-match state implies a real,
+        // successful 0-row answer from the server — showing it next to "could
+        // not load" claims the request both failed and told us something.
+        <ErrorState message={__('Could not load customers.', 'yayloyalty')} onRetry={() => customersQuery.refetch()} />
+      ) : (
+        <CustomersScreen
+          rows={rows}
+          isLoading={customersQuery.isPending}
+          isStoreEmpty={isStoreEmpty}
+          totalItems={totalItems}
+          suggestions={suggestions}
+          filters={filters}
+          onFiltersChange={updateFilters}
+          isRebuilding={isRebuilding}
+          page={page}
+          pageCount={pageCount}
+          onPageChange={setPage}
+        />
       )}
-
-      <CustomersScreen
-        rows={rows}
-        isLoading={customersQuery.isPending}
-        isStoreEmpty={isStoreEmpty}
-        totalItems={totalItems}
-        suggestions={suggestions}
-        filters={filters}
-        onFiltersChange={updateFilters}
-        isRebuilding={isRebuilding}
-        page={page}
-        pageCount={pageCount}
-        onPageChange={setPage}
-      />
     </PageLayout>
   );
 }

@@ -15,6 +15,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ErrorState } from '@/components/ui/custom/error-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import PageLayout from '@/components/layout/PageLayout';
@@ -83,7 +84,7 @@ export default function CampaignsPage() {
           {campaigns.isPending && <Skeleton className="h-24 w-full" />}
 
           {campaigns.isError && (
-            <p className="text-destructive text-sm">{__('Could not load campaigns.', 'yayloyalty')}</p>
+            <ErrorState message={__('Could not load campaigns.', 'yayloyalty')} onRetry={() => campaigns.refetch()} />
           )}
 
           {campaigns.data && (
