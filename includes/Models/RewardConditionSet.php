@@ -199,18 +199,11 @@ final class RewardConditionSet {
             $type = $condition->get_type();
 
             if ( ! RewardConditionType::is_valid( $type ) ) {
-                throw new \InvalidArgumentException(
-                    sprintf( 'YayLoyalty: unknown condition type "%s".', $type )
-                );
+                throw self::bad( $type, 'is not a known condition type' );
             }
 
             if ( isset( $seen[ $type ] ) ) {
-                throw new \InvalidArgumentException(
-                    sprintf(
-                        'YayLoyalty: condition type "%s" appears more than once. Conditions are ANDed — use a single entry.',
-                        $type
-                    )
-                );
+                throw self::bad( $type, 'appears more than once. Conditions are ANDed — use a single entry' );
             }
             $seen[ $type ] = true;
 
@@ -218,13 +211,9 @@ final class RewardConditionSet {
             $operator = $condition->get_operator();
 
             if ( ! in_array( $operator, $spec['operators'], true ) ) {
-                throw new \InvalidArgumentException(
-                    sprintf(
-                        'YayLoyalty: operator "%s" is not allowed for condition "%s". Allowed: %s.',
-                        $operator,
-                        $type,
-                        implode( ', ', $spec['operators'] )
-                    )
+                throw self::bad(
+                    $type,
+                    sprintf( 'does not allow operator "%s". Allowed: %s', $operator, implode( ', ', $spec['operators'] ) )
                 );
             }
 
@@ -256,5 +245,11 @@ final class RewardConditionSet {
                 // tier schema task lifts the gate.
                 break;
         }
+    }
+
+    private static function bad( string $type, string $why ): \InvalidArgumentException {
+        return new \InvalidArgumentException(
+            sprintf( 'YayLoyalty: condition "%s" %s.', $type, $why )
+        );
     }
 }
