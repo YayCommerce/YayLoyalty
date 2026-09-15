@@ -1,5 +1,6 @@
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import type { RowFilters } from '../customers-page.filter-rows';
+import type { SortDirection, SortKey } from '../customers-page.sort-rows';
 import { CustomersExportButton } from './CustomersExportButton';
 import { CustomersSavedSegmentRow } from './CustomersSavedSegmentRow';
 import { CustomersToolbar } from './CustomersToolbar';
@@ -18,18 +19,23 @@ export function CustomersFilterBar({
   exportDisabled,
   filters,
   onFiltersChange,
+  queryFilters,
+  sort,
 }: {
   disabled: boolean;
   exportDisabled: boolean;
   filters: RowFilters;
   onFiltersChange: (patch: Partial<RowFilters>) => void;
+  /** Committed/debounced filters — what Export should actually fetch. See CustomersScreen.tsx. */
+  queryFilters: RowFilters;
+  sort: { by: SortKey; dir: SortDirection };
 }) {
   if (IS_PRO_BUILD) {
     return (
       <>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <CustomersSavedSegmentRow disabled={disabled} />
-          <CustomersExportButton disabled={exportDisabled} />
+          <CustomersExportButton disabled={exportDisabled} queryFilters={queryFilters} sort={sort} />
         </div>
         <CustomersToolbar filters={filters} onFiltersChange={onFiltersChange} disabled={disabled} />
       </>
@@ -41,7 +47,7 @@ export function CustomersFilterBar({
       filters={filters}
       onFiltersChange={onFiltersChange}
       disabled={disabled}
-      exportSlot={<CustomersExportButton disabled={exportDisabled} />}
+      exportSlot={<CustomersExportButton disabled={exportDisabled} queryFilters={queryFilters} sort={sort} />}
     />
   );
 }

@@ -17,6 +17,18 @@ export type ExpiringSoonValue = CustomerExpiringSoon;
 /** 'all' + the tiers the backend hands out. No tiers table exists yet — any non-'all' value matches zero rows (intentional, see CustomerRowFilters.php). Pro-only — see CustomersToolbar.tsx. */
 export type TierValue = CustomerTier;
 
+/**
+ * Single on/off switch for the Tier filter control, separate from
+ * `IS_PRO_BUILD`. The control is real (server-checked) but the data behind it
+ * isn't — no `tiers` table exists yet, so it can only ever show "0 results".
+ * Off for now so the list doesn't offer a filter that always empties it; flip
+ * back to `true` once VIP Tiers ships. Every call site that gates the Tier
+ * filter reads this — `CustomersToolbar.tsx` (the control itself),
+ * `CustomersPage.tsx` / `CustomersScreen.tsx` (active-filter count feeding
+ * "No customers match N filters" / the no-match suggestions).
+ */
+export const TIER_FILTER_ENABLED = false;
+
 export interface RowFilters {
   search: string;
   balanceRange: BalanceRangeValue;

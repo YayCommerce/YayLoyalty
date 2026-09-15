@@ -9,6 +9,7 @@ import {
   BALANCE_RANGE_OPTIONS,
   DEFAULT_ROW_FILTERS,
   EXPIRING_SOON_OPTIONS,
+  TIER_FILTER_ENABLED,
   TIER_OPTIONS,
   type BalanceRangeValue,
   type ExpiringSoonValue,
@@ -25,9 +26,10 @@ import { countActiveFilters } from '../customers-page.filter-suggestions';
  * `CustomersNoMatchState`'s "Clear all filters" button uses.
  *
  * Tier is real as a control but not as data: no `tiers` table exists yet, so
- * every customer's tier is "—" and any non-"all" Tier selection matches zero
- * rows. Accepted, intentional, temporary (see `CustomerRowFilters.php`) —
- * kept rather than hidden so the control is already wired once VIP Tiers ships.
+ * every customer's tier would be "—" and any non-"all" Tier selection would
+ * match zero rows (see `CustomerRowFilters.php`). Hidden behind
+ * `TIER_FILTER_ENABLED` (`customers-page.filter-rows.ts`) until VIP Tiers
+ * ships — the wiring here is untouched so flipping that flag is all it takes.
  *
  * `exportSlot` is Free-only (see CustomersFilterBar.tsx): 3 filters + Export fit
  * on one row without wrapping, so Free renders Export here. Pro's 4th filter
@@ -76,7 +78,7 @@ export function CustomersToolbar({
         options={EXPIRING_SOON_OPTIONS}
         disabled={disabled}
       />
-      {IS_PRO_BUILD && (
+      {IS_PRO_BUILD && TIER_FILTER_ENABLED && (
         <FilterSelect
           placeholder={__('Tier', 'yayloyalty')}
           value={filters.tier}
@@ -85,7 +87,7 @@ export function CustomersToolbar({
           disabled={disabled}
         />
       )}
-      {countActiveFilters(filters, IS_PRO_BUILD) > 0 && (
+      {countActiveFilters(filters, IS_PRO_BUILD && TIER_FILTER_ENABLED) > 0 && (
         <Button variant="link" size="sm" disabled={disabled} onClick={() => onFiltersChange(DEFAULT_ROW_FILTERS)}>
           {__('Clear all', 'yayloyalty')}
         </Button>

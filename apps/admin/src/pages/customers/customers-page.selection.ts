@@ -1,4 +1,7 @@
+import { useEffect, useMemo, useState } from 'react';
+
 import type { CustomerListRow } from '@/lib/schema/customer.schema';
+import type { RowFilters } from './customers-page.filter-rows';
 
 /**
  * Row-selection math for CustomersScreen.tsx — split out to keep that file
@@ -81,8 +84,67 @@ export function computeHeaderSelection(pageRows: CustomerListRow[], state: Selec
  * not only once the whole page is — matching the design (picking a single
  * row already offers "Select all N matching these filters").
  */
-export function computeSelectAllCount(state: SelectionState, totalItems: number, pageCount: number): number | undefined {
+export function computeSelectAllCount(
+  state: SelectionState,
+  totalItems: number,
+  pageCount: number,
+): number | undefined {
   const count = selectionCount(state, totalItems);
   const allMatchingSelected = totalItems > 0 && count >= totalItems;
   return pageCount > 1 && count > 0 && !allMatchingSelected ? totalItems : undefined;
+}
+
+/**
+ * All the state + derived values `CustomersScreen.tsx` needs to render and
+ * drive row selection — split out (like the rest of this file) to keep that
+ * component under the project's 200-line cap.
+ */
+export function useCustomerRowSelection({
+  rows,
+  queryFilters,
+  totalItems,
+  pageCount,
+}: {
+  rows: CustomerListRow[];
+  /** Committed/debounced filters — see CustomersScreen.tsx for why not the raw, per-keystroke value. */
+  queryFilters: RowFilters;
+  totalItems: number;
+  pageCount: number;
+}) {
+  const [selection, setSelection] = useState<SelectionState>(EMPTY_SELECTION);
+
+  // The matching set changed, so past picks may no longer apply. Page reset
+  // lives in CustomersPage.tsx now: it owns page, since going back to page 1
+  // on a filter change means re-fetching it.
+  useEffect(() => {
+    setSelection(EMPTY_SELECTION);
+  }, [queryFilters]);
+
+  const headerSelection = useMemo(() => computeHeaderSelection(rows, selection), [rows, selection]);
+
+  // The table only ever needs to know THIS page's checked state — bounded by
+  // page size regardless of how large `totalItems` gets, even in 'all' mode.
+  const selectedOnPage = useMemo(
+    () => new Set(rows.filter((row) => isRowSelected(selection, row.user_id)).map((row) => row.user_id)),
+    [rows, selection],
+  );
+
+  // As soon as anything is picked and there's more data beyond this page,
+  // offer expanding the pick to every row matching the filters — rendered
+  // inside the same bulk-action box, not a second one (see
+  // CustomersBulkActionBar.tsx).
+  const selectAllCount = computeSelectAllCount(selection, totalItems, pageCount);
+
+  return {
+    selection,
+    setSelection,
+    headerSelection,
+    selectedOnPage,
+    selectAllCount,
+    toggleRow: (userId: number) => setSelection((current) => toggleRowSelection(current, userId)),
+    toggleAll: () => setSelection((current) => toggleAllOnPage(current, rows)),
+    selectAllMatching: () => setSelection({ mode: 'all', excludedIds: new Set() }),
+    clearSelection: () => setSelection(EMPTY_SELECTION),
+    count: selectionCount(selection, totalItems),
+  };
 }

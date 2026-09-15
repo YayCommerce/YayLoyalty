@@ -1,16 +1,16 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
-import { sprintf, __ } from '@wordpress/i18n';
 import { useDebounceFn } from 'rooks';
+import { __, sprintf } from '@wordpress/i18n';
 
+import { IS_PRO_BUILD } from '@/lib/is-pro-build';
+import { useCustomersQuery } from '@/lib/queries/customer.queries';
 import { Button } from '@/components/ui/button';
 import { ErrorState } from '@/components/ui/custom/error-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import PageLayout from '@/components/layout/PageLayout';
-import { useCustomersQuery } from '@/lib/queries/customer.queries';
-import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { CustomersScreen } from './components/CustomersScreen';
-import { DEFAULT_ROW_FILTERS, type RowFilters } from './customers-page.filter-rows';
+import { DEFAULT_ROW_FILTERS, TIER_FILTER_ENABLED, type RowFilters } from './customers-page.filter-rows';
 import { countActiveFilters, toFilterDropSuggestions } from './customers-page.filter-suggestions';
 import { defaultSortDirection, type SortDirection, type SortKey } from './customers-page.sort-rows';
 
@@ -66,18 +66,38 @@ export default function CustomersPage() {
     { trailing: true, maxWait: 800 },
   );
 
-  const customersQuery = useCustomersQuery({ page, per_page: PER_PAGE, orderby: sortBy, order: sortDir, ...queryFilters });
+  const customersQuery = useCustomersQuery({
+    page,
+    per_page: PER_PAGE,
+    orderby: sortBy,
+    order: sortDir,
+    ...queryFilters,
+  });
   const rows = customersQuery.data?.data ?? [];
   const totalItems = customersQuery.data?.totalItems ?? 0;
+  const serverPageCount = customersQuery.data?.totalPage;
   // Zero matches means the server's own totalPage is 0 (ceil(0 / perPage)) —
   // clamp to 1 so the pagination footer reads "1 of 1", not "1 of 0".
-  const pageCount = Math.max(1, customersQuery.data?.totalPage ?? 1);
+  const pageCount = Math.max(1, serverPageCount ?? 1);
+
+  // A sort change (the only thing besides a filter change that can shrink the
+  // match set without going through `updateFilters`, which already resets
+  // `page` itself) can leave `page` pointing past the new last page — e.g.
+  // sorting while on page 3 of a 2-page result. Snap back to page 1 rather
+  // than rendering whatever the server hands back for an out-of-range page
+  // (with `placeholderData` keeping stale rows visible, that page could
+  // otherwise sit empty or wrong with nothing telling the user why).
+  useEffect(() => {
+    if (serverPageCount !== undefined && page > serverPageCount) {
+      setPage(1);
+    }
+  }, [serverPageCount, page]);
 
   // Zero rows means one of two very different things: a genuinely empty
   // store, or these filters matching nobody — the server can't tell them
   // apart (it only ever returns the post-filter count), so that split still
   // happens here from the filters the page itself is holding.
-  const activeFilterCount = countActiveFilters(queryFilters, IS_PRO_BUILD);
+  const activeFilterCount = countActiveFilters(queryFilters, IS_PRO_BUILD && TIER_FILTER_ENABLED);
   const isStoreEmpty = !customersQuery.isPending && totalItems === 0 && activeFilterCount === 0;
 
   // Raw `{key, count}` pairs the server already folded into this same
@@ -164,6 +184,11 @@ export default function CustomersPage() {
         <CustomersScreen
           list={{ rows, isLoading: customersQuery.isPending, isStoreEmpty, totalItems, suggestions }}
           filters={{ value: filters, onChange: updateFilters }}
+          // The committed, debounced filters — not `filters` above (which
+          // changes on every keystroke). Selection-reset and bulk actions key
+          // off this so typing a search term doesn't wipe a picked selection
+          // before the query it's meant to react to has even been sent.
+          queryFilters={queryFilters}
           sort={{ by: sortBy, dir: sortDir, onChange: handleSort }}
           pagination={{ page, pageCount, onChange: setPage }}
           isRebuilding={isRebuilding}

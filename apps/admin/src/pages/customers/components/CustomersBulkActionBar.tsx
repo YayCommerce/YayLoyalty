@@ -1,10 +1,15 @@
-import { sprintf, __ } from '@wordpress/i18n';
 import { ChevronsUpDown } from 'lucide-react';
+import { __, sprintf } from '@wordpress/i18n';
 
-import { CAP, Can } from '@/lib/access';
+import { Can, CAP } from '@/lib/access';
 import { BulkActionBox } from '@/components/ui/bulk-actions';
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Separator } from '@/components/ui/separator';
 
 /**
@@ -13,8 +18,14 @@ import { Separator } from '@/components/ui/separator';
  * `YayUiKits/apps/admin-page/src/components/ui/bulk-actions.tsx` and its
  * `routes/patterns/TablePage.tsx` demo). The "N selected" pill only appears
  * once at least one row is picked — that threshold (`selected > 0`) lives
- * inside `BulkActionBox` itself, not re-decided here. Every action in the
- * dropdown is still `<Can>`-gated and performs no action — UI only.
+ * inside `BulkActionBox` itself, not re-decided here.
+ *
+ * "Adjust points" and "Export" are real (see `customers-page.bulk-actions.ts`
+ * / `customers-page.export.ts`). "Assign tier" and "Reset expiry" are NOT
+ * offered here: the former needs the Tier feature (`TIER_FILTER_ENABLED` is
+ * off — see `customers-page.filter-rows.ts`), the latter has no REST endpoint
+ * at all yet — showing either would be a control that does nothing when
+ * clicked, worse than not showing it.
  *
  * "Select all matching filters" is real (see customers-page.selection.ts) —
  * an Ant-Design-Table-style mode flip ("everything matching, minus any you
@@ -28,12 +39,18 @@ export function CustomersBulkActionBar({
   onClear,
   selectAllCount,
   onSelectAllMatching,
+  onAdjustPoints,
+  onExport,
+  isExporting,
 }: {
   count: number;
   onClear: () => void;
   /** Present only when there's a larger filtered set beyond this page to expand into. */
   selectAllCount?: number;
   onSelectAllMatching?: () => void;
+  onAdjustPoints: () => void;
+  onExport: () => void;
+  isExporting: boolean;
 }) {
   return (
     <BulkActionBox selected={count} onClose={onClear}>
@@ -53,16 +70,12 @@ export function CustomersBulkActionBar({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" sideOffset={9} className="w-fit min-w-40">
           <Can cap={CAP.MANAGE_POINTS} disable>
-            <DropdownMenuItem>{__('Adjust points', 'yayloyalty')}</DropdownMenuItem>
-          </Can>
-          <Can cap={CAP.MANAGE_TIERS} disable>
-            <DropdownMenuItem>{__('Assign tier', 'yayloyalty')}</DropdownMenuItem>
-          </Can>
-          <Can cap={CAP.MANAGE_POINTS} disable>
-            <DropdownMenuItem>{__('Reset expiry', 'yayloyalty')}</DropdownMenuItem>
+            <DropdownMenuItem onSelect={onAdjustPoints}>{__('Adjust points', 'yayloyalty')}</DropdownMenuItem>
           </Can>
           <Can cap={CAP.VIEW} disable>
-            <DropdownMenuItem>{__('Export', 'yayloyalty')}</DropdownMenuItem>
+            <DropdownMenuItem disabled={isExporting} onSelect={onExport}>
+              {isExporting ? __('Exporting…', 'yayloyalty') : __('Export', 'yayloyalty')}
+            </DropdownMenuItem>
           </Can>
         </DropdownMenuContent>
       </DropdownMenu>

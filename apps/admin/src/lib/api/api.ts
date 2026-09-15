@@ -1,4 +1,4 @@
-import ky, { Options, ResponsePromise } from 'ky';
+import ky, { HTTPError, Options, ResponsePromise } from 'ky';
 import { toast } from 'sonner';
 
 import { FORBIDDEN_ERROR_CODES } from '@/lib/access';
@@ -140,3 +140,32 @@ export const yayLoyaltyApi = createApi(window.yayLoyaltyMeta.wpMeta.restBase);
 export const wordpressApi = createApi('wp/v2');
 
 export const api = yayLoyaltyApi;
+
+/**
+ * The WP REST `WP_Error` shape (`{code, message, data:{status}}`) turned into
+ * one string a toast can show. `error instanceof HTTPError` is how `ky`
+ * signals a non-2xx response. A plain `Error` (e.g. a client-side guard like
+ * `fetchAllMatchingCustomers`'s page-count ceiling) uses its own `.message`
+ * instead — still a message this codebase wrote on purpose, unlike a raw
+ * network failure or a non-JSON body, which fall back to `fallback` rather
+ * than surfacing "[object Object]" or a browser-internal string.
+ * A 403 with a `FORBIDDEN_ERROR_CODES` code has already been toasted by the
+ * `afterResponse` hook above — callers that only want to handle the REST
+ * cases that hook doesn't cover should check `error.response.status` first.
+ */
+export async function getApiErrorMessage(error: unknown, fallback: string): Promise<string> {
+  if (error instanceof HTTPError) {
+    try {
+      const body: { message?: unknown } = await error.response.json();
+      if (typeof body?.message === 'string' && body.message.length > 0) {
+        return body.message;
+      }
+    } catch {
+      // Response body wasn't JSON — fall through to the generic fallback.
+    }
+  } else if (error instanceof Error && error.message.length > 0) {
+    return error.message;
+  }
+
+  return fallback;
+}
