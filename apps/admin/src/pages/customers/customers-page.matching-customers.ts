@@ -3,6 +3,7 @@ import type { CustomerListRow } from '@/lib/schema/customer.schema';
 import type { RowFilters } from './customers-page.filter-rows';
 import { isRowSelected, type SelectionState } from './customers-page.selection';
 import type { SortDirection, SortKey } from './customers-page.sort-rows';
+import { resolveBalanceRangeForQuery } from './customers-page.tier-sample-data';
 
 /**
  * Server cap on `per_page` — see `AbstractRepository::MAX_PER_PAGE`. Used as
@@ -41,9 +42,13 @@ export async function fetchAllMatchingCustomers(
 ): Promise<CustomerListRow[]> {
   const params = {
     search: filters.search,
-    balanceRange: filters.balanceRange,
+    // Same Tier → Balance range substitution `CustomersPage.tsx` sends for
+    // the main list query — a Tier pick as the raw `tier` param matches zero
+    // rows server-side, so Export/bulk-Adjust would silently see nothing to
+    // act on without this. See `customers-page.tier-sample-data.ts`.
+    balanceRange: resolveBalanceRangeForQuery(filters),
     expiringSoon: filters.expiringSoon,
-    tier: filters.tier,
+    tier: 'all' as const,
     orderby: sort.by,
     order: sort.dir,
     per_page: MAX_PER_PAGE,

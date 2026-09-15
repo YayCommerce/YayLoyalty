@@ -26,11 +26,15 @@ import { countActiveFilters } from '../customers-page.filter-suggestions';
  * (`countActiveFilters`) and resets everything at once — same reset
  * `CustomersNoMatchState`'s "Clear all filters" button uses.
  *
- * Tier is real as a control but not as data: no `tiers` table exists yet, so
- * every customer's tier would be "—" and any non-"all" Tier selection would
- * match zero rows (see `CustomerRowFilters.php`). Hidden behind
- * `TIER_FILTER_ENABLED` (`customers-page.filter-rows.ts`) until VIP Tiers
- * ships — the wiring here is untouched so flipping that flag is all it takes.
+ * Tier is a real, working filter — but not against real per-customer tier
+ * data (no `tiers` table exists yet): selecting one substitutes the
+ * equivalent real Balance range bucket instead (see
+ * `customers-page.tier-sample-data.ts` for the mapping and why). Because
+ * both ultimately drive the one `balance_range` wire param, the two
+ * selects are kept MUTUALLY EXCLUSIVE here — picking one resets the other
+ * to its default, so what's shown selected always matches what's actually
+ * sent. `TIER_FILTER_ENABLED` (`customers-page.filter-rows.ts`) is the
+ * on/off switch for the whole control.
  *
  * `exportSlot` is Free-only (see CustomersFilterBar.tsx): 3 filters + Export fit
  * on one row without wrapping, so Free renders Export here. Pro's 4th filter
@@ -75,7 +79,11 @@ export function CustomersToolbar({
       <FilterSelect
         placeholder={__('Balance range', 'yayloyalty')}
         value={filters.balanceRange}
-        onValueChange={(value) => onFiltersChange({ balanceRange: value as BalanceRangeValue })}
+        // Mutually exclusive with Tier — both drive the same `balance_range`
+        // wire param (see the class doc above), so picking a real balance
+        // range clears any Tier selection rather than leaving a stale one
+        // selected that no longer matches what's actually sent.
+        onValueChange={(value) => onFiltersChange({ balanceRange: value as BalanceRangeValue, tier: 'all' })}
         options={BALANCE_RANGE_OPTIONS}
         disabled={disabled}
       />
@@ -90,7 +98,8 @@ export function CustomersToolbar({
         <FilterSelect
           placeholder={__('Tier', 'yayloyalty')}
           value={filters.tier}
-          onValueChange={(value) => onFiltersChange({ tier: value as TierValue })}
+          // Mutually exclusive with Balance range — see the class doc above.
+          onValueChange={(value) => onFiltersChange({ tier: value as TierValue, balanceRange: 'any' })}
           options={TIER_OPTIONS}
           disabled={disabled}
         />

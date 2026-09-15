@@ -13,6 +13,7 @@ import { CustomersScreen } from './components/CustomersScreen';
 import { DEFAULT_ROW_FILTERS, TIER_FILTER_ENABLED, type RowFilters } from './customers-page.filter-rows';
 import { countActiveFilters, toFilterDropSuggestions } from './customers-page.filter-suggestions';
 import { defaultSortDirection, type SortDirection, type SortKey } from './customers-page.sort-rows';
+import { resolveBalanceRangeForQuery } from './customers-page.tier-sample-data';
 
 const PER_PAGE = 10;
 
@@ -72,6 +73,12 @@ export default function CustomersPage() {
     orderby: sortBy,
     order: sortDir,
     ...queryFilters,
+    // The real backend has no tiers table (any non-'all' `tier` wire param
+    // matches zero rows), so a Tier pick is never sent as `tier` — it's
+    // substituted for its equivalent, real `balance_range` bucket instead.
+    // See `customers-page.tier-sample-data.ts`.
+    balanceRange: resolveBalanceRangeForQuery(queryFilters),
+    tier: 'all',
   });
   const rows = customersQuery.data?.data ?? [];
   const totalItems = customersQuery.data?.totalItems ?? 0;
