@@ -1,3 +1,4 @@
+import type { CustomerBalanceRange, CustomerExpiringSoon, CustomerTier } from '@/lib/schema/customer.schema';
 import { Settings } from '@/lib/schema/settings.schema';
 
 export type Meta = {
@@ -44,4 +45,16 @@ export type AdminData = {
   /** Per-adjustment limit for non-administrators; 0 = unlimited. */
   ceiling: number;
   isAdministrator: boolean;
+  /**
+   * Saved Customers-page filter sets. Pro-only — absent on a Lite install,
+   * hence optional. Source of truth: Pro\Helpers\CustomerSegmentsHelper.
+   * Read via `@/pro`'s `readSegmentsFromLocalize()`, never directly — this
+   * type only makes `window.yayLoyaltyAdmin.segments` type-check; the value
+   * unions come from the shared schema, not from `@/pro`, so this file pulls
+   * in nothing Pro-only.
+   */
+  segments?: {
+    name: string;
+    filters: { balanceRange: CustomerBalanceRange; expiringSoon: CustomerExpiringSoon; tier: CustomerTier };
+  }[];
 };

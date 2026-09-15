@@ -5,10 +5,10 @@ import { paginatedSchema, parsePaginated } from '@/lib/api/paginated';
 import {
   AdjustPointsInput,
   Customer,
-  customerListRowSchema,
-  customerSchema,
   CustomerBalanceRange,
   CustomerExpiringSoon,
+  customerListRowSchema,
+  customerSchema,
   CustomerSortDirection,
   CustomerSortKey,
   CustomerTier,
@@ -29,10 +29,7 @@ export async function getCustomer(userId: number): Promise<Customer> {
   return customerSchema.parse(await api.get(`customers/${userId}`).json());
 }
 
-export async function getCustomerLedger(
-  userId: number,
-  params: { page?: number; per_page?: number } = {},
-) {
+export async function getCustomerLedger(userId: number, params: { page?: number; per_page?: number } = {}) {
   const searchParams: Record<string, string> = {};
 
   if (params.page) searchParams.page = String(params.page);
@@ -43,10 +40,7 @@ export async function getCustomerLedger(
   return parsePaginated<typeof ledgerEntrySchema>(ledgerEntrySchema, payload);
 }
 
-export async function adjustCustomerPoints(
-  userId: number,
-  input: AdjustPointsInput,
-): Promise<LedgerEntry> {
+export async function adjustCustomerPoints(userId: number, input: AdjustPointsInput): Promise<LedgerEntry> {
   return ledgerEntrySchema.parse(await api.post(`customers/${userId}/adjust`, { json: input }).json());
 }
 
@@ -66,8 +60,15 @@ const customerListEnvelopeSchema = paginatedSchema(customerListRowSchema).extend
   suggestions: z.array(noMatchSuggestionSchema).optional(),
 });
 
-/** `GET /customers` — the admin Customers list: search + filter + sort + paginate, all server-side. */
-export async function getCustomers(params: CustomerListParams = {}) {
+/**
+ * `GET /customers` — the admin Customers list: search + filter + sort + paginate, all server-side.
+ *
+ * `signal` is optional and only matters to `fetchAllMatchingCustomers()`'s
+ * multi-page loop (Export CSV, bulk Adjust points) — a caller that cancels
+ * mid-loop (e.g. on unmount) aborts whichever request is in flight instead
+ * of letting a large sequential fetch run to completion for no reason.
+ */
+export async function getCustomers(params: CustomerListParams = {}, signal?: AbortSignal) {
   const searchParams: Record<string, string> = {};
 
   if (params.page) searchParams.page = String(params.page);
@@ -79,7 +80,7 @@ export async function getCustomers(params: CustomerListParams = {}) {
   if (params.expiringSoon && params.expiringSoon !== 'off') searchParams.expiring_soon = params.expiringSoon;
   if (params.tier && params.tier !== 'all') searchParams.tier = params.tier;
 
-  const payload = await api.get('customers', { searchParams }).json();
+  const payload = await api.get('customers', { searchParams, signal }).json();
 
   return customerListEnvelopeSchema.parse(payload);
 }

@@ -35,10 +35,17 @@ const MAX_PAGES = 500;
  * not a render, so there's no latency budget to protect — and hitting the
  * list endpoint with N concurrent requests for a store with thousands of
  * customers is worse for the server than N sequential ones.
+ *
+ * `signal` is optional — callers pass one so a large multi-page walk can be
+ * cancelled (e.g. the triggering component unmounts) instead of running to
+ * completion in the background for no reason. Passed straight through to
+ * every `getCustomers()` call; an already-aborted signal makes the very next
+ * one reject immediately rather than firing.
  */
 export async function fetchAllMatchingCustomers(
   filters: RowFilters,
   sort: { by: SortKey; dir: SortDirection },
+  signal?: AbortSignal,
 ): Promise<CustomerListRow[]> {
   const params = {
     search: filters.search,
@@ -54,7 +61,7 @@ export async function fetchAllMatchingCustomers(
     per_page: MAX_PER_PAGE,
   };
 
-  const first = await getCustomers({ ...params, page: 1 });
+  const first = await getCustomers({ ...params, page: 1 }, signal);
 
   if (first.totalPage > MAX_PAGES) {
     throw new Error(
@@ -65,7 +72,7 @@ export async function fetchAllMatchingCustomers(
   const rows = [...first.data];
 
   for (let page = 2; page <= first.totalPage; page++) {
-    const next = await getCustomers({ ...params, page });
+    const next = await getCustomers({ ...params, page }, signal);
     rows.push(...next.data);
   }
 

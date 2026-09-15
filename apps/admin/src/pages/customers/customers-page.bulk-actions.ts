@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { __, _n, sprintf } from '@wordpress/i18n';
 
-import { getApiErrorMessage } from '@/lib/api/api';
+import { getApiErrorMessage, isAbortError } from '@/lib/api/api';
 import { useBulkAdjustPointsMutation } from '@/lib/queries/customer.queries';
 import type { AdjustPointsInput, CustomerListRow } from '@/lib/schema/customer.schema';
 import { exportCustomersToCsv } from './customers-page.export';
@@ -37,6 +37,16 @@ export function useCustomersBulkActions({
   selection: SelectionState;
   setSelection: (selection: SelectionState) => void;
 }) {
+  // Aborts a still-running multi-page fetch (the fallback path in
+  // resolveSelectedRows() below) if this hook's owner unmounts mid-request —
+  // e.g. the merchant navigates away from Customers while a bulk Export or
+  // bulk Adjust is resolving a large matching set.
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => abortRef.current?.abort();
+  }, []);
+
   async function resolveSelectedRows(): Promise<CustomerListRow[]> {
     // Common case: every picked row is already sitting in the currently
     // loaded page (a handful of rows checked, no page navigation since) —
@@ -47,7 +57,9 @@ export function useCustomersBulkActions({
       return resolveSelectedCustomers(rows, selection);
     }
 
-    const matching = await fetchAllMatchingCustomers(queryFilters, sort);
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const matching = await fetchAllMatchingCustomers(queryFilters, sort, controller.signal);
     return resolveSelectedCustomers(matching, selection);
   }
 
@@ -63,6 +75,8 @@ export function useCustomersBulkActions({
       }
       exportCustomersToCsv(selected);
     } catch (error) {
+      // A cancellation (unmount) is not a failure to report.
+      if (isAbortError(error)) return;
       toast.error(await getApiErrorMessage(error, __('Could not export the selected customers.', 'yayloyalty')));
     } finally {
       setIsExporting(false);
@@ -115,6 +129,11 @@ export function useCustomersBulkActions({
         );
       }
     } catch (error) {
+      // A cancellation (unmount) is not a failure to report — and it can
+      // only happen during the resolveSelectedRows() step, never mid-mutation
+      // (that step doesn't take this signal), so a cancellation here always
+      // means the mutation itself never fired.
+      if (isAbortError(error)) return;
       // Covers both resolveSelectedRows() (fetching the matching set) and the
       // mutation itself — either can fail on a network error, and both must
       // surface something rather than an unhandled rejection.

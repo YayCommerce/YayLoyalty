@@ -98,6 +98,8 @@ All referral tables (`referrals`, `referral_visits`) specified in data model; no
 | **Downgrade policy** | Never / window-end | ❌ NOT STARTED | Policy setting exists; no logic |
 | **Basis options** | Lifetime points / rolling 12mo / lifetime spend | ❌ NOT STARTED | Settings designed; no evaluation logic |
 
+**Note:** Admin Customers page displays a cosmetic Tier column and working-but-substituted Tier filter (`customers-page.tier-sample-data.ts`) for UI-check purposes — these derive fake tier labels from customer balance and reuse the existing `balance_range` filter under the hood. This is not real VIP Tier progress; the filter and column will be deleted once the actual tier system ships.
+
 ### Referral Program
 
 | Feature | Spec | Status | Details |
@@ -114,7 +116,7 @@ All referral tables (`referrals`, `referral_visits`) specified in data model; no
 | Page | Status | Details |
 |---|---|---|
 | **Campaigns** | ✅ FUNCTIONAL | List/view/edit-read-only; Pro conditions preview; no create/update UI |
-| **Customers** | ✅ FUNCTIONAL | Server-paginated list (search/filter/sort/export/row-select) against real `GET /customers`; bulk "Adjust points" and "Export" wired to real endpoints (`POST /customers/{id}/adjust`, client-side CSV); no per-customer detail view yet |
+| **Customers** | ✅ FUNCTIONAL | Server-paginated list (search/filter/sort/export/row-select) against real `GET /customers`; bulk "Adjust points" and "Export" wired to real endpoints (`POST /customers/{id}/adjust`, client-side CSV); Tier column and filter are cosmetic sample data over `balance_range` (not real tier feature); Pro adds a real saved-segment picker (`POST /customers/segments`, `yayloyalty_customer_segments` option) — unlike Tier, this is genuine, not sample data; no per-customer detail view yet |
 | **Dashboard** | ⚠️ PLACEHOLDER | Stub page; no analytics yet |
 | **Rewards** | ⚠️ PLACEHOLDER | Stub page; no catalog UI |
 | **Referral** | ⚠️ PLACEHOLDER | Stub page; referral program not built |
@@ -135,7 +137,7 @@ Ordered by how much of the product each blocks, not by an assigned priority — 
 | **No campaign editor** | REST create/update/delete; read-only SPA list | No SPA form to create or edit a campaign |
 | **No redemption** | `LedgerType::REDEEM` and refund types; `lifetime_redeemed` maintained | No rewards table, no checkout integration, no REDEEM writer |
 | **No referral program** | `customers.referral_code` column; `referral` trigger recognised | No code generation, attribution, hold, or payout; `referrals` / `referral_visits` tables not created |
-| **No VIP tiers** | `customers.tier_id`, `tier_evaluated_at`, `tier_progress_value` columns | No `tiers` / `tier_history` tables, no evaluation, no downgrade job |
+| **No VIP tiers** | `customers.tier_id`, `tier_evaluated_at`, `tier_progress_value` columns; Admin Customers page shows cosmetic Tier column + filter (sample data only) | No `tiers` / `tier_history` tables, no evaluation, no downgrade job; sample Tier UI is a stand-in over `balance_range` for testing purposes |
 | **Expiry not enforced** | `expires_at`, `reminder_sent_at` columns | No scheduled job expires points or sends reminders |
 | **`pending_points` never written** | Column exists, inserted as 0 | No order lifecycle handling to move points from pending to awarded |
 | **No event outbox** | — | `events` table not created; no webhook delivery |

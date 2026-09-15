@@ -39,6 +39,7 @@ export const PRO_BUNDLE_SENTINEL = 'yayloyalty-pro-bundle-a7f3c1';
  * See CampaignsPage for the pattern that works.
  */
 export { ConditionsPreview } from './campaigns/ConditionsPreview';
+export { CustomersSavedSegmentRow } from './customers/CustomersSavedSegmentRow';
 
 /**
  * Returns the sentinel. Exists so the constant is genuinely reachable code
