@@ -6,16 +6,19 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { PointsValue } from '@/components/ui/custom/points-value';
 import { TableCell, TableRow } from '@/components/ui/table';
+import { sampleTierForBalance } from '../customers-page.tier-sample-data';
 import { BalanceCell, CustomerNameCell } from './CustomersTableCells';
 
 /**
  * One customer row. Negative balance gets a subtle left-accent tint (never
  * red — see BalanceCell) and shows "—" for Expires instead of a stale date.
  *
- * Tier and Referrals (Pro) always render "—": no `tiers` table and no
- * referral-count column exist yet, so `CustomerListRow` carries neither field
- * — this isn't a loading/error state, it's the real (empty) answer. See
- * `CustomersToolbar.tsx` for the matching Tier filter caveat.
+ * Tier renders `sampleTierForBalance()` — TEMPORARY, UI-check-only sample
+ * data (see `customers-page.tier-sample-data.ts`), not a real column: no
+ * `tiers` table exists yet, so `CustomerListRow` has no real `tier` field.
+ * Referrals (Pro) always renders "—": no referral-count column exists
+ * either, and has no sample-data stand-in (not asked for) — this one really
+ * is the real (empty) answer, not a loading/error state.
  */
 export function CustomerTableRow({
   customer,
@@ -34,6 +37,7 @@ export function CustomerTableRow({
   stale?: boolean;
 }) {
   const negative = customer.balance < 0;
+  const sampleTier = sampleTierForBalance(customer.balance);
 
   return (
     <TableRow
@@ -54,7 +58,7 @@ export function CustomerTableRow({
       </TableCell>
       {showProColumns && (
         <TableCell>
-          <Badge variant="dimmed-outline">—</Badge>
+          <Badge variant="dimmed-outline">{sampleTier ?? '—'}</Badge>
         </TableCell>
       )}
       <TableCell className="text-right">

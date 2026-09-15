@@ -74,14 +74,27 @@ function describeFilterValue(key: FilterKey, filters: RowFilters): string {
  * suggestions — pure and synchronous: the label/phrasing text is built from
  * `filters` (the same state the toolbar renders), not sent over the wire, so
  * nothing gets translated on both sides of the connection.
+ *
+ * `balanceRange` → `tier`: the server only ever sees a real `balance_range`
+ * param — a Tier pick is sent as its equivalent bucket, never as `tier`
+ * (see `customers-page.tier-sample-data.ts`), so its suggestion also comes
+ * back keyed `balanceRange`. Relabel it here when a tier is actually what's
+ * active, or the suggestion would read "Without 0 – 1,000" instead of
+ * "Without Tier: Alpine", and dropping it would look like a no-op (it'd
+ * reset `balanceRange`, which is already at its default whenever a tier is
+ * selected — see the toolbar's mutual-exclusion rule).
  */
 export function toFilterDropSuggestions(raw: NoMatchSuggestion[], filters: RowFilters): FilterDropSuggestion[] {
-  return raw.map(({ key, count }) => ({
-    key,
-    count,
-    label: describeFilterValue(key, filters),
-    phrasing: key === 'search' ? ('only' as const) : ('without' as const),
-  }));
+  return raw.map(({ key: rawKey, count }) => {
+    const key = rawKey === 'balanceRange' && filters.tier !== 'all' ? 'tier' : rawKey;
+
+    return {
+      key,
+      count,
+      label: describeFilterValue(key, filters),
+      phrasing: key === 'search' ? ('only' as const) : ('without' as const),
+    };
+  });
 }
 
 export function countLabel(count: number): string {
