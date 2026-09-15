@@ -13,6 +13,8 @@
 
 **Not implemented:** `redemptions`, `referrals`, `referral_visits`, `tiers`, `tier_history`, `lots`, `lot_allocations`, `events`
 
+Note: `rewards` table exists with schema and repository; seeding works; checkout integration not built.
+
 See [`project-roadmap.md`](./project-roadmap.md) for implementation status by phase and known gaps. The table specifications below are the authoritative schema design; unimplemented tables are the work plan for phases 1.1, 1.2, and 2.0.
 
 ## Conventions
@@ -74,7 +76,7 @@ Indexes: PK; `UNIQUE KEY uk_slug (slug)`; `KEY idx_lookup (trigger_type, status,
 
 Liveness: `status = 'active' AND (starts_at IS NULL OR starts_at <= now) AND (ends_at IS NULL OR ends_at > now)`, evaluated against the event's timestamp (the order's award time, not the request time). `Enums\Status::is_live_at()`.
 
-No caching yet: `CampaignRepository` queries the table directly on every lookup. Caching campaign lookups, and how a cache invalidates, is left to whichever task builds the earning engine — the previous design (a TTL keyed to the nearest `starts_at`/`ends_at`) was dropped for contradicting the event-time liveness rule above, and a version counter was tried and removed for having no reader; both are better designed once the actual consumer exists.
+Caching: `CampaignRepository::all_non_archived()` is cached in `wp_cache` group `yayloyalty` key `campaigns_non_archived` with TTL 3600 seconds. Cache is flushed on insert, update, or delete. Method `flush_cache()` is public for testing.
 
 ### config shapes
 
@@ -82,9 +84,9 @@ No caching yet: `CampaignRepository` queries the table directly on every lookup.
 
 | Trigger | Keys |
 |---|---|
-| `purchase` | `points_per_unit` (number ≥ 0), `base` (`after_discounts` \| `before_discounts`), `include_shipping` (bool), `include_tax` (bool), `rounding` (`down` \| `nearest` \| `up`), `min_subtotal` (number ≥ 0), `exclude_coupon_orders` (bool), `excluded_product_ids[]` (int), `excluded_category_ids[]` (int), `max_points_per_order` (int ≥ 0, Pro), `daily_cap` (int ≥ 0, Pro) |
+| `purchase` | `points_per_unit` (number ≥ 0), `base` (`after_discounts` \| `before_discounts`), `mode` (`rate` \| `multiplier`, for point calculation mode), `multiplier` (for multiplier mode), `include_shipping` (bool), `include_tax` (bool), `rounding` (`down` \| `nearest` \| `up`), `min_subtotal` (number ≥ 0), `exclude_coupon_orders` (bool), `excluded_product_ids[]` (int), `excluded_category_ids[]` (int), `max_points_per_order` (int ≥ 0), `daily_cap` (int ≥ 0) |
 | `signup` | `points` (int ≥ 0) |
-| `review` | `points` (int ≥ 0), `require_verified` (bool), `one_per_product` (bool), `daily_cap` (int ≥ 0), `media_bonus_points` (int ≥ 0, Pro) |
+| `review` | `points` (int ≥ 0, default 50), `require_verified` (bool, default true), `one_per_product` (bool, default true), `daily_cap` (int ≥ 0, default 0), `media_bonus_points` (int ≥ 0, Pro) |
 | `first_order` | `points`, `min_subtotal` |
 | `order_count` | `points`, `order_count` (the N to reach), `repeat` (fire every N, or once) |
 | `spend_milestone` | `points`, `spend_amount` (threshold), `repeat` |
@@ -196,9 +198,7 @@ Operators are **not** interchangeable — each type accepts only the operators l
 
 **Evaluation timing differs from campaigns.** Reward conditions are evaluated **at claim time**, against the instant of the claim. A customer who qualifies as Gold, claims, then drops to Silver keeps the coupon already issued — there is no retroactive re-check, and no order-award timestamp the way `Campaign::is_live_at()` / campaign condition evaluation has one. Do not assume the two evaluate alike.
 
-**`redemption_count` needs an index this schema does not yet create.** It requires `COUNT(*) FROM yayloyalty_redemptions WHERE reward_id = ? AND user_id = ?`; that table does not exist yet (see the `yayloyalty_redemptions` section below), and when it lands it must carry a `KEY (reward_id, user_id)` for this query, or evaluating this condition means a full scan per claim.
-
-**Evaluation** (engine not built yet — a later task, same phase campaigns' evaluator was in before Pro's `ConditionsEvaluator` existed). Noted here so the requirement above is not missed when that engine is designed: it needs the `(reward_id, user_id)` index, and it must evaluate `redemption_count` at claim time, not against any stored liveness window.
+**Evaluation** (engine and UI not built yet — a later task). The engine must evaluate `redemption_count` at claim time, not against any stored liveness window, and query via `COUNT(*) FROM yayloyalty_redemptions WHERE reward_id = ? AND user_id = ?` using the composite index above.
 
 ## `yayloyalty_customers` — one row per member (1.0)
 
@@ -225,7 +225,7 @@ The `(1.1)`/`(1.2)`/`(Pro)` tags below mark when a column's *feature* ships, not
 | `joined_at` | DATETIME | not null | When the row was created — the program join date for cohorts. |
 | `updated_at` | DATETIME | not null | |
 
-Indexes: PK; `expires_at`; `tier_id`; UNIQUE `referral_code`; `balance` and `last_activity_at` for admin sorting; `idx_tier_review (tier_id, tier_evaluated_at)` (1.2) — the downgrade job's query is "customers in tier X whose evaluation window has ended", and the single-column `tier_id` index alone would still force scanning every customer in the tier.
+Indexes: PK; `expires_at`, `tier_id`, `balance`, `last_activity_at` (each a single-column index for sorting/filtering); UNIQUE `referral_code`; `idx_tier_review (tier_id, tier_evaluated_at)` (1.2) — the downgrade job's query is "customers in tier X whose evaluation window has ended", and the single-column `tier_id` index alone would still force scanning every customer in the tier.
 
 ## `yayloyalty_ledger` — every balance change (1.0)
 
@@ -238,8 +238,8 @@ Append-only journal. Nothing updates or deletes rows except GDPR erasure (which 
 | `points` | BIGINT | not null | Signed delta. Positive for `earn`, `refund_redeem`, positive `adjust`; negative for `redeem`, `refund_earn`, `expire`, negative `adjust`. |
 | `balance_after` | BIGINT | not null | Balance immediately after this row. Display in history, and a chain check for the audit tool (`prev.balance_after + points = this.balance_after`). |
 | `type` | VARCHAR(20) | not null, idx | What kind of movement: `earn`, `redeem`, `refund_earn` (clawback of earned points after a refund), `refund_redeem` (return of redeemed points), `expire`, `adjust` (manual). |
-| `source` | VARCHAR(20) | not null | Why: `order`, `signup`, `review`, `referral`, `birthday`, `milestone`, `social`, `renewal`, `manual`, `import`, `expiry`, `system`. Lets history and analytics group without decoding references. |
-| `reference_type` | VARCHAR(20) | null | Namespace of `reference_id`: `order`, `refund`, `comment`, `redemption`, `referral`, `user`, `birthday`, `import`. |
+| `source` | VARCHAR(20) | not null | Why: values from `Enums\LedgerSource` — `order`, `signup`, `review`, `referral`, `birthday`, `milestone`, `social`, `renewal`, `manual`, `import`, `expiry`, `system`. Lets history and analytics group without decoding references. |
+| `reference_type` | VARCHAR(20) | null | Namespace of `reference_id`: values from `Enums\ReferenceType` — `order`, `refund`, `comment`, `redemption`, `referral`, `user`, `birthday`, `import`. |
 | `reference_id` | BIGINT UNSIGNED | null | The id in that namespace: order id for `earn`, refund id for both `refund_*` types (so each partial refund is its own row), comment id for review earn, redemption id for `redeem`, year for `birthday`. |
 | `campaign_id` | BIGINT UNSIGNED | null, idx | The campaign that produced an `earn` row. Null for everything else. Per-campaign analytics is `GROUP BY campaign_id`. |
 | `redemption_id` | BIGINT UNSIGNED | null, idx | For `redeem` and `refund_redeem` rows: the claim this movement belongs to, so partial refunds can be tied back to one redemption. |
@@ -252,9 +252,11 @@ Indexes: PK; `idx_user_history (user_id, id)` for paged history and `ORDER BY id
 
 Not on this table any more: `expires_at`. Per-earning expiry lives in `lots` (below) so the ledger stays immutable.
 
-## `yayloyalty_redemptions` — one row per reward claim (1.0)
+## `yayloyalty_redemptions` — one row per reward claim (1.0, NOT IMPLEMENTED)
 
-Created at order creation for the flexible discount, or at claim time for Pro catalog rewards. It exists because a refund needs the value *and the rate at redemption time*, multi-currency stores need the currency of the discount as a fact, and catalog claims have no order yet. The ledger's `redeem`/`refund_redeem` rows reference this row uniformly for every reward type.
+**Status:** Table not created. Schema designed. Will be created when redemption checkout integration lands.
+
+When built, it will be created at claim time. It exists because a refund needs the value *and the rate at redemption time*, multi-currency stores need the currency of the discount as a fact, and catalog claims have no order yet. The ledger's `redeem`/`refund_redeem` rows reference this row uniformly for every reward type.
 
 | Column | Type | Null / default | Meaning |
 |---|---|---|---|
@@ -274,7 +276,7 @@ Created at order creation for the flexible discount, or at claim time for Pro ca
 | `expires_at` | DATETIME | null | Catalog coupon expiry (Pro). |
 | `created_at` / `updated_at` | DATETIME | not null | |
 
-Indexes: PK; `user_id`; `order_id`; `reward_id`; `(status, created_at)`; **`(reward_id, user_id)`, required** — the `redemption_count` reward condition (see rewards' `conditions` section above) runs `COUNT(*) WHERE reward_id = ? AND user_id = ?` on every evaluation; without this composite index that is a full table scan per claim. Do not build this table without it.
+Indexes: PK; `user_id`; `order_id`; `reward_id`; `(status, created_at)`; **`(reward_id, user_id)`, REQUIRED** — the `redemption_count` reward condition (see rewards' `conditions` section above) runs `COUNT(*) WHERE reward_id = ? AND user_id = ?` on every evaluation; without this composite index that is a full table scan per claim. Do not create this table without it.
 
 ## `yayloyalty_referrals` — one row per referral relationship (1.1)
 
@@ -393,7 +395,7 @@ Written in the same transaction as the fact that caused it, so a webhook can nev
 
 **Order meta** (HPOS-safe via `WC_Order::update_meta_data`): `_yayloyalty_points_pending`, `_yayloyalty_points_earned`, `_yayloyalty_campaign_id`, `_yayloyalty_points_redeemed`, `_yayloyalty_redeem_value`, `_yayloyalty_base_amount`, `_yayloyalty_referral_id` (1.1). Projections for the order edit screen, YayMail placeholders and the customer's order page; never read to compute a balance.
 
-**Options**: `yayloyalty_settings` (JSON: points naming, award status, expiry policy, tier basis and window, redemption placement, fraud limits), `yayloyalty_design` (launcher/dashboard theme), `yayloyalty_wizard_completed`, `yayloyalty_db_version`.
+**Options**: `yayloyalty_settings` (JSON: points naming, award status, expiry policy, tier basis and window, redemption placement, fraud limits), `yayloyalty_reviewed`, `yayloyalty_db_version`, `yayloyalty_caps_version`, `yayloyalty_upgrading` (install lock). Planned, not in code: `yayloyalty_design`, `yayloyalty_wizard_completed`.
 
 **WooCommerce session**: `yayloyalty_redeem_points` carries the amount the shopper chose between cart and checkout until the order exists.
 

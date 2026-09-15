@@ -2,7 +2,7 @@
 
 A loyalty program plugin for WooCommerce with points earning, rewards redemption, referral tracking, and VIP tier management. Shipped as Pro and Lite from one repository.
 
-**Status:** v1.0.0 in development. Core earning system (campaigns, ledger, balance) shipped. Rewards, referrals, and tiers planned for later phases.
+**Status:** v1.0.0 in development. Core earning system (campaigns, ledger, balance) and reward definitions shipped. Referrals and tiers planned for later phases.
 
 ---
 
@@ -65,7 +65,7 @@ composer install
 
 | Path | Contents |
 |---|---|
-| **`includes/`** | PHP backend: controllers, services, repositories, models, enums |
+| **`includes/`** | PHP backend: controllers, services, repositories, models, enums, database schema, access/capabilities, points engine, utilities |
 | **`apps/admin/`** | React 18 + Vite 6 admin dashboard SPA |
 | **`docs/`** | Architecture, standards, data model, roadmap |
 | **`scripts/`** | Build pipeline, validation, dev server |
@@ -88,7 +88,7 @@ composer install
 
 ### Earning
 
-Campaigns define when and how much points are awarded (purchase, signup, review). Config specifies calculation rules; Pro adds conditions (role, product, tier) and extra triggers (birthday, first_order, order_count, spend_milestone).
+Campaigns define when and how much points are awarded (purchase, signup, review). Config specifies calculation rules; Pro adds conditions (role, product, tier) and extra triggers (birthday, first_order, order_count, spend_milestone). Tier condition is unavailable until the VIP tier system ships.
 
 ### Balance
 
@@ -106,20 +106,22 @@ One repository, two zips. Lite = Pro minus `includes/Pro/` and SPA built with `B
 - Campaign conditions: role, product, category, lifetime spend, order count
 - Conditions preview endpoint: POST `/campaigns/{id}/preview-conditions`
 - Advanced config: max_points_per_order, daily_cap, media_bonus_points
+- Reward types: fixed_coupon, percent_coupon, free_shipping, free_product (in addition to Lite's flexible_discount)
 
 ---
 
 ## Checks
 
-There is no automated test suite yet. What runs today:
-
 ```bash
+composer test                  # phpunit — 46 unit tests covering BaseCalculator, PurchaseHandler, PointsEngine
 composer lint                  # phpcs (WPCS + PHPCompatibility, 7.4 floor)
-pnpm --filter @yayloyalty/admin-page lint   # eslint + prettier
+pnpm --filter @yayloyalty/admin-page lint   # eslint + prettier on TypeScript/React
 ./scripts/run.sh release lite --no-prompt   # builds and validates a package end to end
 ```
 
-`scripts/validate-build.php` is the closest thing to an integration test: it boots the packaged plugin inside WordPress when `YAYLOYALTY_WP_CLI` is set — see `docs/deployment-guide.md`.
+`scripts/validate-build.php` boots the packaged plugin inside WordPress when `YAYLOYALTY_WP_CLI` is set — see `docs/deployment-guide.md`.
+
+**Known issue:** The `pnpm build` step currently fails at `tsc --noEmit` due to dangling imports from #7; the customers list endpoint was removed but components still reference the old query files. This must be fixed before the next release.
 
 ---
 

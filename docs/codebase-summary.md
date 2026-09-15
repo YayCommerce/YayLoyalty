@@ -34,7 +34,7 @@ Comprehensive guide to the YayLoyalty plugin repository structure, entry points,
 | `Database/Installer.php` | Schema versioning, migrations, `dbDelta` application |
 | `I18n.php` | Text domain loading |
 
-### Models & Data (3 tables implemented)
+### Models & Data (4 tables implemented)
 
 | File | Table | Role |
 |---|---|---|
@@ -42,6 +42,9 @@ Comprehensive guide to the YayLoyalty plugin repository structure, entry points,
 | `Models/Customer.php` | `yayloyalty_customers` | Cached aggregates (balance, lifetime earned, etc.) |
 | `Models/LedgerEntry.php` | `yayloyalty_ledger` | Immutable fact row; `points` delta, `balance_after`, type, source |
 | `Models/Campaign.php` | `yayloyalty_campaigns` | Earning rule; trigger, config (JSON), conditions (JSON) |
+| `Models/Reward.php` | `yayloyalty_rewards` | Redemption option; type, cost (for catalog), config (JSON), conditions (JSON) |
+| `Models/RewardCondition.php` | — | One condition in a reward's eligibility rules |
+| `Models/RewardConditionSet.php` | — | Validation & normalisation for a reward's conditions array |
 
 ### Enums (PHP 7.4 Pseudo-enums)
 
@@ -51,7 +54,10 @@ All in `Enums/` as `final class` + `const` + `all()` / `all_known()` + `is_valid
 - **`LedgerType`** — `earn`, `redeem`, `refund_earn`, `refund_redeem`, `expire`, `adjust`.
 - **`LedgerSource`** — `order`, `signup`, `review`, `referral`, `birthday`, `milestone`, `social`, `renewal`, `manual`, `import`, `expiry`, `system`.
 - **`ReferenceType`** — `order`, `refund`, `comment`, `redemption`, `referral`, `user`, `birthday`, `import`.
-- **`Status`** — `active`, `paused`, `draft`.
+- **`Status`** — `active`, `paused`, `draft`, `archived`.
+- **`RewardType`** — `flexible_discount` (Lite); plus `fixed_coupon`, `percent_coupon`, `free_shipping`, `free_product` (Pro). `all()` is fireable; `all_known()` is recognised (downgrade-safe).
+- **`CampaignConditionType`** & **`RewardConditionType`** — Eligibility/availability rules; share `Enums\ConditionTypeMethods` trait for common methods.
+- **`ConditionTypeMethods`** — Trait providing `all()`, `all_known()`, `is_valid()`, `is_known()`, `operators_for()`, `assert()` for condition vocabularies.
 
 ### Repositories (SQL layer, one per table)
 
@@ -62,13 +68,14 @@ All SQL access **must** go through these. Throw `QueryException` on write failur
 | `Repositories/AbstractRepository.php` | — | Base: `table()` via `Utils\Table`, `find()`, `insert()`, `update()`, `delete()`, `paginate()`; all SQL prepared; write failures throw `QueryException` |
 | `Repositories/CustomerRepository.php` | `customers` | `find_by_user_id()`, `ensure_row()` (INSERT … ON DUPLICATE KEY UPDATE), `lock_and_get()` (SELECT … FOR UPDATE), `apply_delta()` |
 | `Repositories/LedgerRepository.php` | `ledger` | `find_by_reference()`, `paginate_for_user()`, `sum_points_for_user()`, `latest_for_user()` |
-| `Repositories/CampaignRepository.php` | `campaigns` | `find_campaign()`, `find_by_slug()`, `live_for_trigger()`, `paginate_filtered()`, `seed_builtin()` |
+| `Repositories/CampaignRepository.php` | `campaigns` | `find_campaign()`, `find_by_slug()`, `live_for_trigger($trigger, $at)`, `all_non_archived()` (cached), `find_default_purchase()`, `paginate_filtered()`, `seed_builtin()`, `flush_cache()` |
+| `Repositories/RewardRepository.php` | `rewards` | `find_reward()`, `find_by_slug()`, `paginate_filtered()`, `seed_builtin()` |
 
 ### Services (Business logic, transactions)
 
 | Class | Role |
 |---|---|
-| `Services/LedgerService.php` | **SOLE writer** of ledger. `record()` creates ledger row, updates customer aggregates, fires `yayloyalty_ledger_recorded`, all in `Transaction::run()`. Encapsulates idempotency and lock order. |
+| `Services/LedgerService.php` | **SOLE writer** of ledger. `adjust()` (public) creates ledger row, updates customer aggregates, fires `yayloyalty_ledger_recorded`, all in `Transaction::run()`. Encapsulates idempotency and lock order. `record()` is private; use `adjust()` for manual adjustments. |
 
 **Design rule:** Fact tables get Entity + Repository + Service. Definition tables (campaigns) get Entity + Repository only — no service.
 
@@ -80,14 +87,16 @@ All `namespace YayLoyalty\Controllers` → routes under `yayloyalty/v1/`.
 |---|---|---|
 | `BaseRestController` | — | Error helpers, `exec_read()`, `exec_write()` wrapper |
 | `AbstractRestController` | — | `get_item_schema()` (final, applies filter), `define_item_schema()` (override), `get_write_args()` (readonly stripped), `respond_paginated()`, `requires( $cap )` (permission callback), `forbidden()`, `assert_ceiling()` |
-| `CustomerRestController` | `yayloyalty/v1/customers/` | Get single customer, manual adjust |
-| `LedgerRestController` | `yayloyalty/v1/ledger/` | List entries per user |
-| `CampaignRestController` | `yayloyalty/v1/campaigns/` | List, get, create, update campaigns |
-| `SettingsRestController` | `yayloyalty/v1/settings/` | Read/update plugin settings |
+| `CustomerRestController` | `GET /customers` (list), `GET /customers/{id}`, `POST /customers/{id}/adjust` | List (search/filter/sort/paginate), get one, manual adjust |
+| `LedgerRestController` | `GET /customers/{id}/ledger` | Paginated history per user |
+| `CampaignRestController` | `/campaigns`, `/campaigns/{id}` | CRUD operations on campaigns |
+| `SettingsRestController` | `yayloyalty/v1/settings` | Read/update plugin settings |
+| `CustomerRowFilters`, `CustomerRowSort` | — | Pure helpers for the Customers list's server-side filtering/sorting; SQL-free — `CustomerRepository::paginate_list()`/`count_list()` turn their criteria/order shapes into SQL |
+| `CallbackReturnedError` | — | Error object when a controller callback fails (logged, correlated) |
 
 Write operations wrapped in `Transaction::run()`, return correlation ID on 500.
 
-**Note on `CustomerRestController`:** The demo list endpoint (`GET /customers`) was removed during the Customers page rewrite (commit 90ed6fc). The real paginated list endpoint is pending — `CustomerRowFilters.php` (176 LOC) and `CustomerRowSort.php` (94 LOC) hold the production filter and sort logic, ready to be wired into a `CustomerRepository::paginate()` method once the list fetch implementation lands. The TypeScript mirrors (`customers-page.filter-rows.ts`, `customers-page.sort-rows.ts`) were also preserved for the same reason.
+**Note on `CustomerRestController`:** `GET /customers` is real, not demo data — `CustomerRepository::paginate_list()` queries `yayloyalty_customers` JOINed with `wp_users`. `CustomerRowFilters.php`/`CustomerRowSort.php` own the filter/sort semantics; the controller only translates a request into their SQL-free criteria/order shapes and the result back into wire rows. TypeScript mirrors: `customers-page.filter-rows.ts`, `customers-page.sort-rows.ts`.
 
 ### Points engine (includes/Engine/Points/)
 
@@ -117,7 +126,7 @@ Filters (public API): `yayloyalty_campaign_candidates`, `yayloyalty_campaign_mat
 
 | Type | Classes | Char |
 |---|---|---|
-| `Utils/` — stateless, portable | `Dates` (UTC), `Json` (encode/decode maps; encode_list/decode_list), `Log` (writes to WC logs or `error_log`), `Table` (safe table name), `SingletonTrait` | Lift to another plugin? Yes (almost). |
+| `Utils/` — stateless, portable | `Dates` (UTC), `Json` (encode/decode maps; encode_list/decode_list), `Log` (writes to WC logs or `error_log`), `Table` (safe table name), `SingletonTrait`, `ConditionValueRules` (validation for list/int/between/cap shapes) | Lift to another plugin? Yes (almost). |
 | `Helpers/` — plugin-specific glue | `SettingsHelper` (read options), `LocalizeHelper` (build admin payload) | Knows this plugin. |
 | `Access/` — capabilities | `Capabilities` (the seven cap names — campaigns and rewards are separate — role defaults, `install()`/`migrate()`/`uninstall()`, `ceiling()`, `payload()` for the SPA). Checked at the HTTP boundary only; services take an `actor_id`. | Knows this plugin. |
 
@@ -133,14 +142,22 @@ Filters (public API): `yayloyalty_campaign_candidates`, `yayloyalty_campaign_mat
 
 **Pro seams (filters):**
 - `yayloyalty_table_schemas` — Pro can add tables (currently unused)
-- `yayloyalty_ledger_recorded` — React to ledger writes
-- `yayloyalty_rest_controllers` — Add Pro routes
-- `yayloyalty_campaign_triggers` — Add extra triggers
+- `yayloyalty_ledger_recorded` — React to ledger writes (no subscriber yet)
+- `yayloyalty_rest_controllers` — Add Pro routes (CampaignPreviewRestController)
+- `yayloyalty_campaign_triggers` — Add extra triggers (birthday, first_order, order_count, spend_milestone)
 - `yayloyalty_campaign_config_whitelist` — Whitelist Pro config keys per trigger
-- `yayloyalty_reward_types` — Add Pro reward types
-- `yayloyalty_reward_config_whitelist` — Whitelist Pro reward config keys per type
+- `yayloyalty_reward_types` — Add extra reward types (fixed_coupon, percent_coupon, free_shipping, free_product)
+- `yayloyalty_reward_config_whitelist` — Whitelist Pro config keys per reward type
 - `yayloyalty_rest_item_schema` — Extend REST schemas
-- `yayloyalty_campaign_conditions_evaluator` — Supply evaluator
+- `yayloyalty_campaign_conditions_evaluator` — Supply conditions evaluator instance
+- `yayloyalty_erase_customer_data` — Erase Pro's own per-user data when a WP user is deleted (fired by `Engine\UserLifecycle` after Lite's own erasure)
+
+**Other seams (Pro/Lite/Engine):**
+- `yayloyalty_max_manual_adjustment` — Filter per-role cap on manual adjustments
+- `yayloyalty_run_migrations` — Trigger custom migrations
+- `yayloyalty_localize_admin_data` — Extend SPA payload
+- `yayloyalty_localize_meta` — Add meta tags to admin head
+- `yayloyalty_pro_booted` — Action fired after Pro boot completes
 
 ---
 
@@ -151,14 +168,16 @@ Filters (public API): `yayloyalty_campaign_candidates`, `yayloyalty_campaign_mat
 | Path | Contents |
 |---|---|
 | `src/main.tsx` | Entry point; imports Pro barrel if `IS_PRO_BUILD` |
-| `src/pages/` | Route pages; `campaigns/` and `customers/` have content; others are placeholders |
+| `src/router.tsx` | Hash router with routes for `/dashboard`, `/customers`, `/campaigns`, `/rewards`, `/referral`, `/vip-tiers`, `/settings` (each gated by capability via `<Can>`) |
+| `src/pages/` | Route pages; `campaigns/`, `customers/` and `settings/` have content; Dashboard, Rewards, Referral, VIP Tiers are placeholders |
+| `src/pages/customers/` | Server-paginated list (search/filter/sort/export/row-select), real `GET /customers`; bulk "Adjust points"/"Export" wired to real endpoints; no per-customer detail view yet |
 | `src/pro/` | **Deleted in Lite build** — Pro feature components (`ConditionsPreview`, sentinel exports) |
 | `src/components/pro/` | **Kept in Lite** — `ProGate`, upsell UI, badge components |
-| `src/lib/` | Helpers: `api/` (REST calls), `queries/` (TanStack Query), `schema/` (Zod), `helpers/`, `access.tsx` (`CAP`, `can()`, `<Can>` — hide/disable by capability from `window.yayLoyaltyAdmin`; cosmetic, the server decides) |
+| `src/lib/` | Helpers: `api/` (REST calls), `queries/` (TanStack Query), `schema/` (Zod), `utils.ts`, `is-pro-build.ts`, `helpers/`, `access.tsx` (`CAP`, `can()`, `<Can>` — hide/disable by capability from `window.yayLoyaltyAdmin`; cosmetic, the server decides) |
 | `src/types/` | TypeScript type definitions |
 | `src/hooks/` | Custom React hooks |
 
-**Build-time gate:** `IS_PRO_BUILD` Vite define. Literal substitution → dead code elimination. No runtime pro flag ever sent to browser.
+**Build-time gate:** `IS_PRO_BUILD` is `import.meta.env.VITE_IS_PRO` (NOT a Vite `define`). Set by vite.config.ts from `BUILD_TYPE` environment variable. Literal substitution → dead code elimination. No runtime pro flag ever sent to browser.
 
 **Component gating:** `<ProGate>` gates rendering; `IS_PRO_BUILD &&` gates inclusion. Both needed.
 
@@ -166,20 +185,24 @@ Filters (public API): `yayloyalty_campaign_candidates`, `yayloyalty_campaign_mat
 
 ## Request Flows
 
-### Order Award → Ledger Entry
+### Order Award → Ledger Entry (Not Wired)
 
 ```
+[Currently NOT IMPLEMENTED — Engine built, listener missing]
+
 WooCommerce order reaches award status
   ↓
 Hook listener on order status change (F01-4, not built)
   ↓
 ContextFactory::from_order( $order, $points_earned_today )   ← the only WooCommerce read
   ↓
-PointsEngine::evaluate( 'purchase', $ctx, $ctx->get_occurred_at() )   pure: campaigns only
-  ├─ CampaignRepository::live_for_trigger()  cached set, liveness filtered at the ORDER's time
+PointsEngine::evaluate( 'purchase', $ctx, $ctx->get_occurred_at() )   pure: campaigns only; 46 unit tests
+  ├─ CampaignRepository::live_for_trigger()  liveness filtered at the ORDER's time
   ├─ first campaign: conditions_match() AND handler->is_eligible()   (gates fall through, never zero)
   ├─ PurchaseHandler → BaseCalculator → Rounding → CapPolicy
   └─ Result: points, campaign, breakdown, reference, source | none( reason )
+  ↓
+LedgerService::earn( user_id, points, source, reference_type, reference_id, campaign_id )   [to be added]
   ↓
 LedgerService::record()
   ↓
@@ -220,13 +243,14 @@ BaseRestController::exec_write( callback, request )
 
 | Step | Command | What |
 |---|---|---|
-| 1. Compile SPA | `pnpm build [--mode pro\|lite]` | Vite bundles to `assets/dist/admin/js/main.js` with `IS_PRO_BUILD` define |
-| 2. Stage | Internal to `run.sh` | Copy tree, strip `includes/Pro/` for Lite, run `composer install --no-dev` |
-| 3. Package | `zip -r yayloyalty-{version}.zip yayloyalty/` | Create distributable |
-| 4. Validate | `scripts/validate-build.php` zip build | Check sentinel, Pro/Lite consistency, PHP lint, headless boot |
-| 5. Output | `release/yayloyalty-{version}.zip` | Ready for release |
+| 1. Compile SPA | `pnpm build` (BUILD_TYPE=lite or pro) | Vite bundles to `assets/dist/admin/js/main.js`; `vite.config.ts` sets `VITE_IS_PRO` from `BUILD_TYPE` |
+| 2. TypeScript check | `tsc --noEmit` | Passes on the app's own code; fails only on 3 pre-existing dependencies missing from `package.json` (`@radix-ui/react-alert-dialog`, `@emoji-mart/*`, `@radix-ui/react-progress`) — unrelated to any feature branch, not a regression |
+| 3. Stage | Internal to `run.sh` | Copy tree, strip `includes/Pro/` for Lite, run `composer dump-autoload --no-dev --classmap-authoritative` (dev deps restored after packaging) |
+| 4. Package | `zip -r yayloyalty-{version}.zip yayloyalty/` | Create distributable; strip `.gitkeep`, `RegisterDev.php`, `.map`, `.vite`, `.DS_Store` |
+| 5. Validate | `php scripts/validate-build.php <zip> <pro|lite> [--require-boot]` | Check sentinel, Pro/Lite consistency, PHP lint, headless boot |
+| 6. Output | `release/yayloyalty-{version}.zip` | Ready for release |
 
-**Pro first, Lite second:** Version is stamped once; Lite uses `--no-prompt` to skip re-prompting.
+**Pro first, Lite second:** Version is stamped once; Lite uses `--no-prompt` to skip re-prompting. After release, run `composer install` to restore dev deps.
 
 ---
 
@@ -246,8 +270,8 @@ BaseRestController::exec_write( callback, request )
 - **Plugin init:** `plugins_loaded` hook (late, after WooCommerce)
 - **Admin JS:** Enqueued by `RegisterProd` / `RegisterDev`; communicates via `ky` to REST
 - **REST:** Namespace `yayloyalty/v1`, all under `yayloyalty_rest_controllers` filter
-- **Cron:** Action Scheduler jobs (no traditional WordPress cron)
 - **Headless / WP-CLI:** Runs via `plugins_loaded` — no `admin_init` required
+- **Tests:** `tests/unit/` with `tests/bootstrap.php` shim for hooks (no `$wpdb`, no WooCommerce). Run with `composer test` (46 PHPUnit tests)
 
 ---
 
@@ -267,5 +291,5 @@ BaseRestController::exec_write( callback, request )
 
 - **`code-standards.md`** — PHP/REST conventions, layer rules, enum patterns, transaction safety
 - **`deployment-guide.md`** — Build commands, validation, headless setup
-- **`data-model.md`** — 12-table specification; 3 tables implemented; schema reference
+- **`data-model.md`** — 12-table specification; 4 tables implemented; schema reference
 - **`system-architecture.md`** — Architecture diagrams, Pro/Lite mechanism, build pipeline detail

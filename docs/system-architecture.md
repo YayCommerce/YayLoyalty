@@ -15,6 +15,7 @@ flowchart TD
         CustCtrl["CustomerRestController"]
         LedgCtrl["LedgerRestController"]
         SettCtrl["SettingsRestController"]
+        RewardCtrl["(No RewardRestController)"]
     end
 
     subgraph Services["Service Layer"]
@@ -26,33 +27,39 @@ flowchart TD
         CampRepo["CampaignRepository"]
         CustRepo["CustomerRepository"]
         LedgRepo["LedgerRepository"]
+        RewardRepo["RewardRepository"]
     end
 
     subgraph Models["Model Layer"]
         Campaign["Campaign"]
         Customer["Customer"]
         LedgerEntry["LedgerEntry"]
+        Reward["Reward"]
     end
 
     subgraph DB["Database"]
         CampDB["campaigns table"]
         CustDB["customers table"]
         LedgDB["ledger table"]
+        RewardDB["rewards table"]
     end
 
     CampCtrl -->|call| CampRepo
     CustCtrl -->|call| CustRepo
     LedgCtrl -->|call| LedgRepo
+    RewardCtrl -->|reads only| RewardRepo
     Ledg -->|call| CustRepo
     Ledg -->|call| LedgRepo
 
     CampRepo -->|read/write| CampDB
     CustRepo -->|read/write| CustDB
     LedgRepo -->|read/write| LedgDB
+    RewardRepo -->|read only| RewardDB
 
     CampCtrl -.reads.-> Campaign
     CustCtrl -.reads.-> Customer
     LedgCtrl -.reads.-> LedgerEntry
+    RewardRepo -.hydrate.-> Reward
 
     Repos -.hydrate.-> Models
 
@@ -83,8 +90,8 @@ flowchart LR
     subgraph Pages["Page Routes"]
         Camp["CampaignsPage"]
         Cust["CustomersPage"]
-        Dash["Dashboard (placeholder)"]
-        Other["Rewards, Referral, VIP (placeholders)"]
+        Set["Settings (General/Emails/Advanced stubs)"]
+        Other["Dashboard, Rewards, Referral, VIP (placeholders)"]
     end
 
     subgraph Queries["API / Queries (TanStack Query)"]
@@ -111,17 +118,18 @@ flowchart LR
 
     style Camp fill:#4ade80
     style Cust fill:#4ade80
-    style Dash fill:#fbbf24
+    style Set fill:#fbbf24
     style Other fill:#fbbf24
 ```
 
 **Tech stack:**
 - React 18 with TSX
-- **Vite 6** — bundler; `BUILD_TYPE=lite` → `IS_PRO_BUILD` define = `false`
+- **React Router 7** — hash-based routing
+- **Vite 6** — bundler; `BUILD_TYPE=lite` → `import.meta.env.VITE_IS_PRO` = `false`
 - **TanStack Query** — caching, sync, refetch
 - **Zod** — runtime schema validation, type inference
 - **Ky** — lightweight HTTP client
-- **shadcn/Tailwind** — component library + CSS
+- **shadcn/Tailwind v4** — component library + CSS
 
 ---
 
@@ -177,8 +185,8 @@ flowchart TD
 
 **Build process:**
 
-1. `pnpm build --mode lite` → `BUILD_TYPE=lite` → Vite sets `IS_PRO_BUILD = false`
-2. Dead code elimination: `if (IS_PRO_BUILD) { importPro() }` collapses to `if (false)`
+1. `BUILD_TYPE=lite pnpm build` → `vite.config.ts` sets `VITE_IS_PRO = false` in `import.meta.env`
+2. Dead code elimination: `if (import.meta.env.VITE_IS_PRO) { importPro() }` collapses to `if (false)`
 3. Rollup tree-shakes `@/pro` subtree
 4. Result: Lite bundle has no Pro code, no sentinel
 
@@ -187,6 +195,7 @@ flowchart TD
 - Sentinel **present** in Pro ✓
 - No `Pro` namespace reference outside `includes/YayLoyalty.php` (Lite) ✓
 - Single entry chunk (no dynamic import side-effects) ✓
+- `tsc --noEmit` passes on the app's own code (3 pre-existing dependencies missing from `package.json` — `@radix-ui/react-alert-dialog`, `@emoji-mart/*`, `@radix-ui/react-progress` — are unrelated to any feature branch) ✓
 
 ### Strip Behavior, Not Vocabulary
 
@@ -212,7 +221,7 @@ public static function all_known() {
 
 **Conditions:**
 - Lite's `Campaign::conditions_match()` returns **true** (no evaluator) → awards slightly too broadly
-- Pro's `ConditionsEvaluator::evaluate()` treats an unknown/malformed condition as non-matching (logged at debug, not thrown) — fails strictly per-condition without aborting evaluation
+- Pro's `ConditionsEvaluator::evaluate()` fails closed on unknown/unsupported type (`unsupported_condition_type`) → never awards on a condition it cannot check
 
 ---
 
@@ -226,9 +235,11 @@ These are **first-party, internal seams** for Pro to attach behavior. Not a thir
 | **`yayloyalty_ledger_recorded`** | Fired by `LedgerService` after commit | No subscriber yet |
 | **`yayloyalty_rest_controllers`** | Called by RestAPI to collect controller instances | Pro adds CampaignPreviewRestController |
 | **`yayloyalty_campaign_triggers`** | Called by CampaignTrigger::all() | Pro adds birthday, first_order, order_count, spend_milestone |
-| **`yayloyalty_campaign_config_whitelist`** | Called by `Campaign::config_whitelist()` | Pro adds whitelists for its four triggers. It does **not** add `max_points_per_order` / `daily_cap` — Lite lists those itself so a downgrade preserves them |
-| **`yayloyalty_rest_item_schema`** | Applied inside the final `AbstractRestController::get_item_schema()` | Pro describes `config.max_points_per_order` and `config.daily_cap` on the campaign schema; nothing else yet |
-| **`yayloyalty_campaign_conditions_evaluator`** | Called by Campaign::conditions_match() | Pro supplies ConditionsEvaluator instance |
+| **`yayloyalty_campaign_config_whitelist`** | Called by `Campaign::config_whitelist()` | Pro adds whitelists for its four triggers; Lite does not add `max_points_per_order`/`daily_cap` itself |
+| **`yayloyalty_reward_types`** | Called by RewardType::all() | Pro adds fixed_coupon, percent_coupon, free_shipping, free_product |
+| **`yayloyalty_reward_config_whitelist`** | Called by `Reward::config_whitelist()` | Pro adds config keys for its four types |
+| **`yayloyalty_rest_item_schema`** | Applied inside `AbstractRestController::get_item_schema()` | Pro extends campaign/reward schemas |
+| **`yayloyalty_campaign_conditions_evaluator`** | Called by Campaign::conditions_match() | Pro supplies ConditionsEvaluator instance (fails closed on unknown types) |
 
 **Seam safety:** Match on `$rest_base` (route) and schema `title` — `yayloyalty_rest_item_schema` is shared across resources.
 
@@ -236,12 +247,16 @@ These are **first-party, internal seams** for Pro to attach behavior. Not a thir
 
 ## Request & Data Flow
 
-### Manual points adjustment — the write path available today (backend-only)
+### Manual points adjustment — wired end-to-end, including the SPA
 
-The only complete ledger write path currently wired end-to-end. Every future award path (order, signup, review, referral) will enter at the same place: `LedgerService`. The SPA has no UI for this flow; the adjustment interface in the old Points page was removed during the Customers page rewrite. REST endpoints exist and work — this flow diagram is currently unreachable from the admin UI.
+The only complete ledger write path, and the only one reachable from the admin UI today. Every future award path (order, signup, review, referral) will enter at the same place: `LedgerService`. Reachable from the Customers list's Bulk Actions → "Adjust points" (`CustomersBulkActionBar` → `CustomersAdjustPointsDialog`); there is no bulk REST endpoint, so `useBulkAdjustPointsMutation` fires one request per selected customer.
 
 ```
-REST POST /yayloyalty/v1/customers/{id}/adjust (no SPA caller currently)
+Admin Customers page (React) — Bulk Actions → "Adjust points"
+    ↓
+useBulkAdjustPointsMutation → adjustCustomerPoints( user_id, { points, note } )   one call per selected customer
+    ↓
+ky.post('customers/{user_id}/adjust', { points, note })
     ↓
 CustomerRestController  →  BaseRestController::exec_write()
     │   permission_callback: requires( Capabilities::MANAGE_POINTS ), then assert_ceiling()
@@ -249,7 +264,7 @@ CustomerRestController  →  BaseRestController::exec_write()
     │   wraps the callback in Transaction::run()
     ↓
 LedgerService::adjust( user_id, points, note, actor_id )
-    ↓ record()
+    ↓ record() [private method]
     ├─ CustomerRepository::ensure_row( user_id )   INSERT … ON DUPLICATE KEY UPDATE (create-then-lock)
     ├─ CustomerRepository::lock_and_get( user_id ) SELECT … FOR UPDATE — serialises writers per customer
     ├─ LedgerRepository::insert( entry )           balance_after = locked balance + points
@@ -260,7 +275,7 @@ Transaction::run() commits (or releases the savepoint)
     ↓
 do_action( 'yayloyalty_ledger_recorded', $entry )   ← after commit, so a subscriber never sees a rolled-back row
     ↓
-REST returns the LedgerEntry response
+REST returns the LedgerEntry → zod parse → `useBulkAdjustPointsMutation` invalidates the `['customer']` query prefix → list, detail and ledger all refetch
 ```
 
 ### Campaign create — REST only, no SPA form yet
@@ -277,9 +292,18 @@ CampaignRestController::create_item()  via  exec_write()
 Response: Campaign::to_array()
 ```
 
-### Order award — NOT IMPLEMENTED
+### Order award — NOT IMPLEMENTED (Engine built, Listener missing)
 
-No code listens to WooCommerce order events. When it lands it will hook an order status transition, resolve the live campaigns for the `purchase` trigger (`CampaignRepository::live_for_trigger()`), check `Campaign::conditions_match()`, and call `LedgerService` — nothing else in the write path changes. See `project-roadmap.md`.
+**Engine status:** `PointsEngine` is complete with 46 unit tests for `BaseCalculator`, `PurchaseHandler`, `PointsEngine`, plus `ContextFactory` and `Triggers/Registry`. It computes what an order earns given the live campaigns.
+
+**Missing:** No code listens to WooCommerce order events. `LedgerService::earn()` does not exist yet — only `adjust()` (for manual adjustments). When F01-4 lands, it will:
+1. Hook an order status transition (e.g., `woocommerce_order_status_*`)
+2. Call `ContextFactory::from_order()` to build an immutable context
+3. Resolve live campaigns for the `purchase` trigger via `CampaignRepository::live_for_trigger()`
+4. Call `PointsEngine::evaluate()` — pure, no side effects
+5. Call `LedgerService::earn()` with the result
+
+Nothing else in the write path (lock order, transaction safety, idempotency) changes. See `project-roadmap.md`.
 
 ---
 
@@ -326,4 +350,4 @@ No code listens to WooCommerce order events. When it lands it will hook an order
 - **`codebase-summary.md`** — Directory map, entry points, file reference
 - **`code-standards.md`** — Conventions, layer rules, Pro/Lite seams, transaction safety
 - **`deployment-guide.md`** — Build commands, validation, headless setup
-- **`data-model.md`** — Schema: 12 tables planned; 3 implemented; invariants
+- **`data-model.md`** — Schema: 12 tables planned; 4 implemented; invariants

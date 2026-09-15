@@ -1,6 +1,11 @@
-import { _n, sprintf, __ } from '@wordpress/i18n';
+import { __, _n, sprintf } from '@wordpress/i18n';
 
-import { BALANCE_RANGE_OPTIONS, DEFAULT_ROW_FILTERS, EXPIRING_SOON_OPTIONS, type RowFilters } from './customers-page.filter-rows';
+import {
+  BALANCE_RANGE_OPTIONS,
+  DEFAULT_ROW_FILTERS,
+  EXPIRING_SOON_OPTIONS,
+  type RowFilters,
+} from './customers-page.filter-rows';
 
 /**
  * "Which single filter should I drop?" — the counts come from the server,

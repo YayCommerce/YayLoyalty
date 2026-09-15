@@ -22,6 +22,14 @@ flag — see `code-standards.md` §13 for the seams that make this work.
 ```bash
 ./scripts/run.sh release pro 1.2.0        # prompts nothing, sets the version
 ./scripts/run.sh release lite --no-prompt # same version, Lite package
+
+# Aliases for faster typing:
+./scripts/run.sh release premium 1.2.0
+./scripts/run.sh release free --no-prompt
+./scripts/run.sh bump [pro|lite]          # bump version only
+./scripts/run.sh info                     # show current version
+./scripts/run.sh clean                    # remove build artifacts and vendor
+./scripts/run.sh help                     # show all commands
 ```
 
 Output lands in `release/`:
@@ -54,8 +62,8 @@ by replacing its plugin directory in place.
 
 SPA sources never ship — only `assets/`, never `apps/` — so `src/pro/` needs no
 deletion step. Its absence from the Lite bundle rests entirely on
-`BUILD_TYPE=lite` reaching Vite's `IS_PRO_BUILD` define, which is why the
-sentinel check below exists.
+`BUILD_TYPE=lite` reaching Vite via `vite.config.ts`, which sets `VITE_IS_PRO` in
+`import.meta.env`, which is why the sentinel check below exists.
 
 The Composer autoload dump runs before the strip, and that is safe: Composer's
 classmap covers `vendor-prefixed/src` and the root adapter only. Plugin classes
@@ -87,6 +95,7 @@ php scripts/validate-build.php release/yayloyalty-lite-1.2.0.zip lite
 | No packaged file missing from the manifest | both |
 | `includes/Pro/` stripped | lite |
 | `includes/Pro/YayLoyaltyPro.php` shipped | pro |
+| `.gitkeep` files stripped | both |
 | Bundle sentinel **absent** from `main.js` | lite |
 | Bundle sentinel **present** in `main.js` | pro |
 | Bundle is a single entry chunk | both |
@@ -138,12 +147,20 @@ export YAYLOYALTY_WP_CLI_ARGS="--skip-plugins=yayloyalty"
 Pass `--require-boot` to treat a skipped check as a failure. Use it in CI, where
 "we could not check" and "it is broken" should have the same consequence.
 
+## ## Known Issues
+
+**Build currently fails at `tsc --noEmit` before packaging can start.** Commit #7
+removed the `GET /customers` REST endpoint but left SPA components (`CustomersPage`,
+`CustomersTable`, etc.) importing from the deleted query files. This breaks TypeScript
+validation. The endpoint and query files must be restored or the component imports fixed
+before the next release can complete.
+
 ## When validation fails
 
 The failing row names the problem. The two worth recognising on sight:
 
 **Sentinel found in the Lite bundle.** Something deep-imports from `@/pro/`
-outside the `IS_PRO_BUILD` gate, so Rollup kept the subtree. Everything Pro must
+outside the `import.meta.env.VITE_IS_PRO` gate, so Rollup kept the subtree. Everything Pro must
 come through the `@/pro` barrel, imported once from `main.tsx` behind the
 constant. A dynamic `import()` is not a fix — it emits a side chunk, which the
 "single entry chunk" check exists to catch.
