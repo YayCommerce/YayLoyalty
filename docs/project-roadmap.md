@@ -78,7 +78,7 @@ All referral tables (`referrals`, `referral_visits`) specified in data model; no
 | Feature | Spec | Status | Details |
 |---|---|---|---|
 | **Balance display** | Current spendable points | ✅ SHIPPED | REST `GET /customers/{id}`; SPA Customers page; TanStack Query |
-| **Customers list** | Admin view of all members | ⚠️ **UI/ENDPOINT MISMATCH** | SPA list built in #5; endpoint removed in #7; currently broken build (tsc errors on dangling imports) |
+| **Customers list** | Admin view of all members | ✅ SHIPPED | Real `GET /customers` — search/filter/sort/paginate in SQL, not demo data; see Admin UI → Customers below |
 | **Pending points** | Awaiting order award | ❌ **COLUMN ONLY** | `customers.pending_points` exists and is inserted as 0; nothing writes it (no order handling yet) |
 | **Lifetime earned** | Net earn total (unaffected by redeem/expire) | ✅ SHIPPED | Updated on earn/adjust; basis for tier (points mode) |
 | **Lifetime redeemed** | Total points spent (excluding refunds) | ✅ SHIPPED | Maintained by `LedgerService` from ledger type; no redemption flow writes REDEEM rows yet |
@@ -86,6 +86,7 @@ All referral tables (`referrals`, `referral_visits`) specified in data model; no
 | **Expiry per-lot** (Pro) | Lot-based expiry | ❌ NOT STARTED | Lots table unimplemented; no lot tracking |
 | **Adjustment ceiling** | Per-role cap on one manual adjustment | ⚠️ **ENFORCED, NO UI** | `settings.advanced.adjustment_ceiling` (0 = unlimited) checked by `assert_ceiling()`; admins bypass; no settings field to edit it yet |
 | **Rebuild balances** | Replay ledger → recalculate customer row | ❌ NOT STARTED | `balance = SUM(ledger.points)` is the invariant; no rebuild routine or UI exists |
+| **GDPR erasure on account deletion** | Anonymize ledger, delete customer row | ✅ SHIPPED | `Engine\UserLifecycle` on `deleted_user`/`wpmu_delete_user` → `Services\CustomerErasureService`: ledger rows anonymized (`user_id`→0, `actor_id`/`note`→NULL, never deleted — see `data-model.md`), customers row deleted |
 
 ### VIP Tiers
 
@@ -113,13 +114,13 @@ All referral tables (`referrals`, `referral_visits`) specified in data model; no
 | Page | Status | Details |
 |---|---|---|
 | **Campaigns** | ✅ FUNCTIONAL | List/view/edit-read-only; Pro conditions preview; no create/update UI |
-| **Customers** | ⚠️ **BROKEN** | List UI built; list endpoint removed #7 → tsc errors block build; needs `GET /customers` endpoint + row type |
+| **Customers** | ✅ FUNCTIONAL | Server-paginated list (search/filter/sort/export/row-select) against real `GET /customers`; bulk "Adjust points" and "Export" wired to real endpoints (`POST /customers/{id}/adjust`, client-side CSV); no per-customer detail view yet |
 | **Dashboard** | ⚠️ PLACEHOLDER | Stub page; no analytics yet |
 | **Rewards** | ⚠️ PLACEHOLDER | Stub page; no catalog UI |
 | **Referral** | ⚠️ PLACEHOLDER | Stub page; referral program not built |
 | **VIP Tiers** | ⚠️ PLACEHOLDER | Stub page; no tier management UI |
-| **Settings** | ⚠️ PLACEHOLDER | Three stub tabs (general, emails, advanced); REST endpoint and defaults exist but pages render placeholders |
-| **Capability gating** | ✅ FUNCTIONAL | Nav and routes filtered by `window.yayLoyaltyAdmin.capabilities`; Adjust CTA disabled without `manage_points`; backbone 403s surface as one toast |
+| **Settings** | ⚠️ PLACEHOLDER | Three stub tabs (general, emails, advanced); REST endpoint and `SettingsHelper` defaults exist (`general.enabled`, point labels) but each page renders a placeholder |
+| **Capability gating** | ✅ FUNCTIONAL | Nav and routes filtered by `window.yayLoyaltyAdmin.capabilities`; Customers' "Adjust points"/"Export" bulk actions gated to `manage_points`/`view` via `<Can>`; backbone 403s surface as one toast |
 
 ---
 
@@ -129,8 +130,8 @@ Ordered by how much of the product each blocks, not by an assigned priority — 
 
 | Gap | What exists | What does not |
 |---|---|---|
+| **No customer detail view** | `useCustomerQuery`, `useAdjustPointsMutation`, `useBulkAdjustPointsMutation`, `useCustomerLedgerQuery` hooks all exist and call working REST endpoints (`GET /customers/{id}`, `GET /customers/{id}/ledger`, `POST /customers/{id}/adjust`) | Customers page is a paginated list view only — no per-customer detail drawer/modal to see one member's full history. "Adjust points"/"Export" are wired at the bulk-action level (`CustomersBulkActionBar`), not per-row. |
 | **No order listener** | `PointsEngine` computes points for `purchase`/`signup`/`review`; `LedgerService::adjust()` writes (manual only); 46 unit tests | Nothing listens to WooCommerce events, calls the engine and records the result (F01-4). `LedgerService` has no `earn()` entry point yet |
-| **Customers list broken** | UI built and routed; `CustomerRowFilters` / `CustomerRowSort` exist on server for schema | No `GET /customers` endpoint; #7 removed it. Dangling imports break `tsc --noEmit` → full build fails |
 | **No campaign editor** | REST create/update/delete; read-only SPA list | No SPA form to create or edit a campaign |
 | **No redemption** | `LedgerType::REDEEM` and refund types; `lifetime_redeemed` maintained | No rewards table, no checkout integration, no REDEEM writer |
 | **No referral program** | `customers.referral_code` column; `referral` trigger recognised | No code generation, attribution, hold, or payout; `referrals` / `referral_visits` tables not created |

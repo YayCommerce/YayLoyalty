@@ -87,14 +87,16 @@ All `namespace YayLoyalty\Controllers` → routes under `yayloyalty/v1/`.
 |---|---|---|
 | `BaseRestController` | — | Error helpers, `exec_read()`, `exec_write()` wrapper |
 | `AbstractRestController` | — | `get_item_schema()` (final, applies filter), `define_item_schema()` (override), `get_write_args()` (readonly stripped), `respond_paginated()`, `requires( $cap )` (permission callback), `forbidden()`, `assert_ceiling()` |
-| `CustomerRestController` | `yayloyalty/v1/customers/{id}`, `POST /customers/{id}/adjust` | Get one customer, manual adjust |
-| `LedgerRestController` | `yayloyalty/v1/customers/{id}/ledger` | Paginated history per user |
-| `CampaignRestController` | `yayloyalty/v1/campaigns` | CRUD operations on campaigns |
+| `CustomerRestController` | `GET /customers` (list), `GET /customers/{id}`, `POST /customers/{id}/adjust` | List (search/filter/sort/paginate), get one, manual adjust |
+| `LedgerRestController` | `GET /customers/{id}/ledger` | Paginated history per user |
+| `CampaignRestController` | `/campaigns`, `/campaigns/{id}` | CRUD operations on campaigns |
 | `SettingsRestController` | `yayloyalty/v1/settings` | Read/update plugin settings |
-| `CustomerRowFilters`, `CustomerRowSort` | — | Pure helpers for server-side customer list filtering/sorting (unwired; no `GET /customers` endpoint) |
+| `CustomerRowFilters`, `CustomerRowSort` | — | Pure helpers for the Customers list's server-side filtering/sorting; SQL-free — `CustomerRepository::paginate_list()`/`count_list()` turn their criteria/order shapes into SQL |
 | `CallbackReturnedError` | — | Error object when a controller callback fails (logged, correlated) |
 
 Write operations wrapped in `Transaction::run()`, return correlation ID on 500.
+
+**Note on `CustomerRestController`:** `GET /customers` is real, not demo data — `CustomerRepository::paginate_list()` queries `yayloyalty_customers` JOINed with `wp_users`. `CustomerRowFilters.php`/`CustomerRowSort.php` own the filter/sort semantics; the controller only translates a request into their SQL-free criteria/order shapes and the result back into wire rows. TypeScript mirrors: `customers-page.filter-rows.ts`, `customers-page.sort-rows.ts`.
 
 ### Points engine (includes/Engine/Points/)
 
@@ -148,6 +150,7 @@ Filters (public API): `yayloyalty_campaign_candidates`, `yayloyalty_campaign_mat
 - `yayloyalty_reward_config_whitelist` — Whitelist Pro config keys per reward type
 - `yayloyalty_rest_item_schema` — Extend REST schemas
 - `yayloyalty_campaign_conditions_evaluator` — Supply conditions evaluator instance
+- `yayloyalty_erase_customer_data` — Erase Pro's own per-user data when a WP user is deleted (fired by `Engine\UserLifecycle` after Lite's own erasure)
 
 **Other seams (Pro/Lite/Engine):**
 - `yayloyalty_max_manual_adjustment` — Filter per-role cap on manual adjustments
@@ -166,9 +169,9 @@ Filters (public API): `yayloyalty_campaign_candidates`, `yayloyalty_campaign_mat
 |---|---|
 | `src/main.tsx` | Entry point; imports Pro barrel if `IS_PRO_BUILD` |
 | `src/router.tsx` | Hash router with routes for `/dashboard`, `/customers`, `/campaigns`, `/rewards`, `/referral`, `/vip-tiers`, `/settings` (each gated by capability via `<Can>`) |
-| `src/pages/` | Route pages; `campaigns/` and `settings/` have content; Dashboard, Rewards, Referral, VIP Tiers are placeholders |
-| `src/pages/customers/` | **BROKEN** — CustomersPage built; list UI exists; endpoint + imports removed #7 → tsc errors |
-| `src/pro/` | **Deleted in Lite build** — Pro feature components (sentinel exports) |
+| `src/pages/` | Route pages; `campaigns/`, `customers/` and `settings/` have content; Dashboard, Rewards, Referral, VIP Tiers are placeholders |
+| `src/pages/customers/` | Server-paginated list (search/filter/sort/export/row-select), real `GET /customers`; bulk "Adjust points"/"Export" wired to real endpoints; no per-customer detail view yet |
+| `src/pro/` | **Deleted in Lite build** — Pro feature components (`ConditionsPreview`, sentinel exports) |
 | `src/components/pro/` | **Kept in Lite** — `ProGate`, upsell UI, badge components |
 | `src/lib/` | Helpers: `api/` (REST calls), `queries/` (TanStack Query), `schema/` (Zod), `utils.ts`, `is-pro-build.ts`, `helpers/`, `access.tsx` (`CAP`, `can()`, `<Can>` — hide/disable by capability from `window.yayLoyaltyAdmin`; cosmetic, the server decides) |
 | `src/types/` | TypeScript type definitions |
@@ -241,7 +244,7 @@ BaseRestController::exec_write( callback, request )
 | Step | Command | What |
 |---|---|---|
 | 1. Compile SPA | `pnpm build` (BUILD_TYPE=lite or pro) | Vite bundles to `assets/dist/admin/js/main.js`; `vite.config.ts` sets `VITE_IS_PRO` from `BUILD_TYPE` |
-| 2. TypeScript check | `tsc --noEmit` | **Currently fails due to dangling imports from #7** |
+| 2. TypeScript check | `tsc --noEmit` | Passes on the app's own code; fails only on 3 pre-existing dependencies missing from `package.json` (`@radix-ui/react-alert-dialog`, `@emoji-mart/*`, `@radix-ui/react-progress`) — unrelated to any feature branch, not a regression |
 | 3. Stage | Internal to `run.sh` | Copy tree, strip `includes/Pro/` for Lite, run `composer dump-autoload --no-dev --classmap-authoritative` (dev deps restored after packaging) |
 | 4. Package | `zip -r yayloyalty-{version}.zip yayloyalty/` | Create distributable; strip `.gitkeep`, `RegisterDev.php`, `.map`, `.vite`, `.DS_Store` |
 | 5. Validate | `php scripts/validate-build.php <zip> <pro|lite> [--require-boot]` | Check sentinel, Pro/Lite consistency, PHP lint, headless boot |

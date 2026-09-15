@@ -8,13 +8,15 @@ use YayLoyalty\Services\LedgerService;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * GET  /yayloyalty/v1/customers/{id}          — cached aggregates
- * POST /yayloyalty/v1/customers/{id}/adjust   — manual adjustment
+ * GET  /yayloyalty/v1/customers                — search/filter/sort/paginate
+ * GET  /yayloyalty/v1/customers/{id}            — cached aggregates
+ * POST /yayloyalty/v1/customers/{id}/adjust     — manual adjustment
  *
- * No GET /yayloyalty/v1/customers (list) route yet: the demo version was
- * removed pending a real `CustomerRepository` list/paginate method — see
- * `CustomerRowFilters`/`CustomerRowSort`, which still hold the product's real
- * filter/sort semantics for whichever repository method replaces it.
+ * The list route is real, not demo data: `CustomerRepository::paginate_list()`
+ * queries `yayloyalty_customers` JOINed with `wp_users`. `CustomerRowFilters`/
+ * `CustomerRowSort` still own the product's filter/sort semantics — see their
+ * own docblocks — this controller only turns a request into their SQL-free
+ * criteria/order shapes and a response back into wire rows.
  *
  * Read-side composition lives here rather than in a CustomerService: a service
  * that only forwarded reads to one repository would be ceremony, and it would
@@ -39,6 +41,33 @@ final class CustomerRestController extends AbstractRestController {
     }
 
     public function register_routes(): void {
+        register_rest_route(
+            self::REST_NAMESPACE,
+            '/customers',
+            [
+                [
+                    'methods'             => \WP_REST_Server::READABLE,
+                    'callback'            => fn( $request ) => $this->exec_read( [ $this, 'get_items' ], $request ),
+                    'permission_callback' => $this->requires( Capabilities::VIEW ),
+                    'args'                => array_merge(
+                        $this->get_collection_params(),
+                        $this->list_filter_params(),
+                        // Overrides the base `orderby` (free-text) with the 6 real sort
+                        // keys — see `CustomerRowSort`. `order` keeps the base definition.
+                        [
+                            'orderby' => [
+                                'description'       => __( 'Column to sort the Customers list by.', 'yayloyalty' ),
+                                'type'              => 'string',
+                                'enum'              => [ 'name', 'balance', 'pending', 'lifetime', 'last_activity', 'expires' ],
+                                'default'           => 'balance',
+                                'sanitize_callback' => 'sanitize_text_field',
+                            ],
+                        ]
+                    ),
+                ],
+            ]
+        );
+
         register_rest_route(
             self::REST_NAMESPACE,
             '/customers/(?P<id>[\d]+)',
@@ -94,6 +123,129 @@ final class CustomerRestController extends AbstractRestController {
          * @param int $max
          */
         return (int) apply_filters( 'yayloyalty_max_manual_adjustment', 1000000 );
+    }
+
+    /**
+     * The Customers-list-only search/filter params — `search` already lives on
+     * `get_collection_params()`, so only the customer-specific ones are added
+     * here. Values/enums mirror `customers-page.filter-rows.ts` exactly.
+     *
+     * @return array<string, mixed>
+     */
+    private function list_filter_params(): array {
+        return [
+            'balance_range' => [
+                'description'       => __( 'Balance bucket to filter by.', 'yayloyalty' ),
+                'type'              => 'string',
+                'enum'              => [ 'any', 'negative', '0-1000', '1000-10000', '10000-plus' ],
+                'default'           => 'any',
+                'sanitize_callback' => 'sanitize_text_field',
+            ],
+            'expiring_soon' => [
+                'description'       => __( 'Points-expiry window to filter by.', 'yayloyalty' ),
+                'type'              => 'string',
+                'enum'              => [ 'off', '30', '90', 'none' ],
+                'default'           => 'off',
+                'sanitize_callback' => 'sanitize_text_field',
+            ],
+            'tier'          => [
+                'description'       => __( 'Loyalty tier to filter by (no tiers exist yet — always matches zero rows).', 'yayloyalty' ),
+                'type'              => 'string',
+                'enum'              => [ 'all', 'Alpine', 'Summit', 'Explorer' ],
+                'default'           => 'all',
+                'sanitize_callback' => 'sanitize_text_field',
+            ],
+        ];
+    }
+
+    /**
+     * Real list, real DB — search/filter/sort run in SQL
+     * (`CustomerRepository::paginate_list()`); this method only translates
+     * the request into `CustomerRowFilters`/`CustomerRowSort`'s SQL-free
+     * shapes and the result back into wire rows.
+     *
+     * A zero-row result also gets a `suggestions` field folded into this same
+     * response (see `no_match_suggestions()`) — the admin app fires one
+     * extra request per active filter to ask "what should I drop?" otherwise.
+     */
+    public function get_items( \WP_REST_Request $request ) {
+        $filters = CustomerRowFilters::from_request( $request );
+        $order   = CustomerRowSort::to_order(
+            (string) $request->get_param( 'orderby' ),
+            (string) $request->get_param( 'order' )
+        );
+
+        $result = $this->customers->paginate_list(
+            CustomerRowFilters::to_criteria( $filters ),
+            $order,
+            (int) $request->get_param( 'page' ),
+            (int) $request->get_param( 'per_page' )
+        );
+
+        $envelope = $this->respond_paginated(
+            [
+                'items'    => array_map( [ $this, 'format_row' ], $result['items'] ),
+                'total'    => $result['total'],
+                'page'     => $result['page'],
+                'per_page' => $result['per_page'],
+            ]
+        );
+
+        if ( 0 === $result['total'] ) {
+            $envelope['suggestions'] = $this->no_match_suggestions( $filters );
+        }
+
+        return $envelope;
+    }
+
+    /**
+     * One list row — deliberately not `Models\Customer::to_array()`: this is
+     * a JOIN projection carrying `name`/`email`, which the customer entity
+     * has no place for. `$wpdb` returns every column as a string, so casting
+     * here is mandatory (the admin app parses with zod `z.number().int()`,
+     * which rejects `"640"`).
+     *
+     * @param array<string, mixed> $row
+     * @return array<string, mixed>
+     */
+    private function format_row( array $row ): array {
+        return [
+            'user_id'          => (int) $row['user_id'],
+            'name'             => (string) $row['name'],
+            'email'            => (string) $row['email'],
+            'balance'          => (int) $row['balance'],
+            'pending_points'   => (int) $row['pending_points'],
+            'lifetime_earned'  => (int) $row['lifetime_earned'],
+            'last_activity_at' => $row['last_activity_at'],
+            'expires_at'       => $row['expires_at'],
+        ];
+    }
+
+    /**
+     * "Which filter should I drop?" — one `count_list()` call per candidate
+     * `CustomerRowFilters::candidates_for_no_match()` builds, kept only when
+     * non-zero and sorted by count descending.
+     *
+     * @param array<string, string> $filters
+     * @return array<int, array{key: string, count: int}>
+     */
+    private function no_match_suggestions( array $filters ): array {
+        $suggestions = [];
+
+        foreach ( CustomerRowFilters::candidates_for_no_match( $filters ) as $key => $candidate ) {
+            $count = $this->customers->count_list( CustomerRowFilters::to_criteria( $candidate ) );
+
+            if ( $count > 0 ) {
+                $suggestions[] = [
+                    'key'   => $key,
+                    'count' => $count,
+                ];
+            }
+        }
+
+        usort( $suggestions, fn( $a, $b ) => $b['count'] <=> $a['count'] );
+
+        return $suggestions;
     }
 
     public function get_customer( \WP_REST_Request $request ) {

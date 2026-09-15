@@ -1,8 +1,20 @@
-import { dateI18n, getSettings } from '@wordpress/date';
+import { dateI18n, getSettings, humanTimeDiff } from '@wordpress/date';
 
 export function parseWPDate(date: Date | string | undefined) {
   const { formats } = getSettings();
   return dateI18n(formats.date, date);
+}
+
+/**
+ * "2 days ago"-style relative time for a stored UTC datetime string
+ * (`YYYY-MM-DD HH:mm:ss`, no timezone). Parsed as UTC explicitly — a bare
+ * `new Date('2026-09-01 12:00:00')` is read in the browser's local time by
+ * most engines, which would silently shift "2 days ago" by the site's UTC
+ * offset. One date path: this is the only relative-time formatter, built on
+ * the same `@wordpress/date` `parseWPDate`/`parseWPTime` already use.
+ */
+export function parseWPRelativeDate(date: string) {
+  return humanTimeDiff(new Date(date.replace(' ', 'T') + 'Z'));
 }
 
 export function parseWPTime(date: Date | string) {

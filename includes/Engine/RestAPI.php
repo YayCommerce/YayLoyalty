@@ -37,11 +37,12 @@ class RestAPI {
      * @return AbstractRestController[]
      */
     private function controllers(): array {
-        // THE SINGLE CONSTRUCTION SITE for LedgerService, and the only place
-        // both repositories are held together. See docs/code-standards.md
+        // ONE OF TWO AUTHORISED CONSTRUCTION SITES for LedgerService — the
+        // other is Database\InitYayLoyaltyCustomer::maybe_create() (install-
+        // time bootstrap, see its docblock). See docs/code-standards.md
         // section 8: PHP has no package-private, so "only LedgerService writes
-        // the ledger" is a convention plus this one construction site plus a
-        // review rule. Do not hand both repositories to anything else.
+        // the ledger" is a convention plus these two named sites plus a
+        // review rule. Do not hand both repositories to a third place.
         $customers = new CustomerRepository();
         $ledger    = new LedgerRepository();
 

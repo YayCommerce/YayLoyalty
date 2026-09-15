@@ -89,7 +89,7 @@ The admin SPA is built with React 18 + Vite 6 + TanStack Query + Zod validation.
 flowchart LR
     subgraph Pages["Page Routes"]
         Camp["CampaignsPage"]
-        Cust["CustomersPage (list UI, endpoint pending)"]
+        Cust["CustomersPage"]
         Set["Settings (General/Emails/Advanced stubs)"]
         Other["Dashboard, Rewards, Referral, VIP (placeholders)"]
     end
@@ -117,7 +117,7 @@ flowchart LR
     Components -->|read| ZodSchema
 
     style Camp fill:#4ade80
-    style Cust fill:#fbbf24
+    style Cust fill:#4ade80
     style Set fill:#fbbf24
     style Other fill:#fbbf24
 ```
@@ -195,7 +195,7 @@ flowchart TD
 - Sentinel **present** in Pro ✓
 - No `Pro` namespace reference outside `includes/YayLoyalty.php` (Lite) ✓
 - Single entry chunk (no dynamic import side-effects) ✓
-- `tsc --noEmit` passes (currently fails due to #7 dangling imports) ✗
+- `tsc --noEmit` passes on the app's own code (3 pre-existing dependencies missing from `package.json` — `@radix-ui/react-alert-dialog`, `@emoji-mart/*`, `@radix-ui/react-progress` — are unrelated to any feature branch) ✓
 
 ### Strip Behavior, Not Vocabulary
 
@@ -247,13 +247,15 @@ These are **first-party, internal seams** for Pro to attach behavior. Not a thir
 
 ## Request & Data Flow
 
-### Manual points adjustment — the only write path that exists today
+### Manual points adjustment — wired end-to-end, including the SPA
 
-The only flow that writes the ledger end to end. Every future award path (order, signup, review, referral) will enter at the same place: `LedgerService::earn()` (to be added).
+The only complete ledger write path, and the only one reachable from the admin UI today. Every future award path (order, signup, review, referral) will enter at the same place: `LedgerService`. Reachable from the Customers list's Bulk Actions → "Adjust points" (`CustomersBulkActionBar` → `CustomersAdjustPointsDialog`); there is no bulk REST endpoint, so `useBulkAdjustPointsMutation` fires one request per selected customer.
 
 ```
-Admin Customers page (React)
-    ↓ [manual adjust form, currently no caller]
+Admin Customers page (React) — Bulk Actions → "Adjust points"
+    ↓
+useBulkAdjustPointsMutation → adjustCustomerPoints( user_id, { points, note } )   one call per selected customer
+    ↓
 ky.post('customers/{user_id}/adjust', { points, note })
     ↓
 CustomerRestController  →  BaseRestController::exec_write()
@@ -273,7 +275,7 @@ Transaction::run() commits (or releases the savepoint)
     ↓
 do_action( 'yayloyalty_ledger_recorded', $entry )   ← after commit, so a subscriber never sees a rolled-back row
     ↓
-REST returns the LedgerEntry → zod parse → TanStack Query invalidates → page refetches
+REST returns the LedgerEntry → zod parse → `useBulkAdjustPointsMutation` invalidates the `['customer']` query prefix → list, detail and ledger all refetch
 ```
 
 ### Campaign create — REST only, no SPA form yet

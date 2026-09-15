@@ -1,21 +1,16 @@
-import { useEffect, useMemo, useState } from 'react';
-
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
+import type { CustomerListRow } from '@/lib/schema/customer.schema';
 import { Card, CardContent } from '@/components/ui/card';
-import { DEFAULT_ROW_FILTERS, type RowFilters } from '../customers-page.filter-rows';
-import { countActiveFilters, patchForSuggestion, type FilterDropSuggestion } from '../customers-page.filter-suggestions';
-import type { MockCustomer } from '../customers-page.mock-data';
+import { useCustomersBulkActions } from '../customers-page.bulk-actions';
+import { DEFAULT_ROW_FILTERS, TIER_FILTER_ENABLED, type RowFilters } from '../customers-page.filter-rows';
 import {
-  computeHeaderSelection,
-  computeSelectAllCount,
-  EMPTY_SELECTION,
-  isRowSelected,
-  selectionCount,
-  toggleAllOnPage,
-  toggleRowSelection,
-  type SelectionState,
-} from '../customers-page.selection';
+  countActiveFilters,
+  patchForSuggestion,
+  type FilterDropSuggestion,
+} from '../customers-page.filter-suggestions';
+import { useCustomerRowSelection } from '../customers-page.selection';
 import type { SortDirection, SortKey } from '../customers-page.sort-rows';
+import { CustomersAdjustPointsDialog } from './CustomersAdjustPointsDialog';
 import { CustomersBulkActionBar } from './CustomersBulkActionBar';
 import { CustomersFilterBar } from './CustomersFilterBar';
 import { CustomersNoMatchState } from './CustomersNoMatchState';
@@ -44,6 +39,7 @@ import { CustomersTable } from './CustomersTable';
 export function CustomersScreen({
   list,
   filters: filtersProp,
+  queryFilters,
   sort,
   pagination,
   isRebuilding,
@@ -51,9 +47,13 @@ export function CustomersScreen({
   /** Everything the server's list query produced for the current page — see CustomersPage.tsx. */
   list: {
     /** Already search/filter-narrowed AND sorted server-side. */
-    rows: MockCustomer[];
-    /** `useCustomersDemoQuery` still in flight (including a page/sort change — each is its own fetch). */
+    rows: CustomerListRow[];
+    /** `useCustomersQuery` still in flight AND no data at all yet — drives the full-table skeleton. */
     isLoading: boolean;
+    /** `useCustomersQuery` has a request in flight, period — true for `isLoading` too, but also true for a
+     *  background page/sort/filter refetch that `placeholderData` is keeping previous rows on screen for.
+     *  Drives the toolbar's spinner, the one place that background work is otherwise invisible. */
+    isFetching: boolean;
     /** The whole store has zero rows, from the server's total — not "this page's filters matched nothing". */
     isStoreEmpty: boolean;
     /** The server's row count for the current filters, across every page. */
@@ -65,6 +65,13 @@ export function CustomersScreen({
     value: RowFilters;
     onChange: (patch: Partial<RowFilters>) => void;
   };
+  /**
+   * The committed (debounced) filters — what the current `list` actually
+   * reflects, unlike `filters.value` which updates on every keystroke. Bulk
+   * actions (Export, Adjust points) and the selection-reset effect below key
+   * off this, not `filters.value`.
+   */
+  queryFilters: RowFilters;
   sort: {
     by: SortKey;
     dir: SortDirection;
@@ -78,7 +85,7 @@ export function CustomersScreen({
   /** "Simulate rebuild" toggle (Pro-only, see CustomersPage.tsx) — no real background job. */
   isRebuilding: boolean;
 }) {
-  const { rows, isLoading, isStoreEmpty, totalItems, suggestions } = list;
+  const { rows, isLoading, isFetching, isStoreEmpty, totalItems, suggestions } = list;
   const { value: filters, onChange: onFiltersChange } = filtersProp;
   const { by: sortBy, dir: sortDir, onChange: onSort } = sort;
   const { page, pageCount, onChange: onPageChange } = pagination;
@@ -99,104 +106,110 @@ export function CustomersScreen({
 
   // Selection — not scoped to a page: navigating pages keeps prior picks.
   // 'all' mode ("every row matching these filters") is an O(1) flag, never a
-  // fetch of every matching id — see customers-page.selection.ts.
-  const [selection, setSelection] = useState<SelectionState>(EMPTY_SELECTION);
+  // fetch of every matching id — see customers-page.selection.ts, which also
+  // owns the reset-on-filter-change rule (keyed off `queryFilters`, the
+  // committed/debounced value — not `filters.value`, which changes on every
+  // keystroke and used to wipe a selection before the query it's reacting to
+  // had even fired).
+  const {
+    selection,
+    setSelection,
+    headerSelection,
+    selectedOnPage,
+    selectAllCount,
+    toggleRow,
+    toggleAll,
+    selectAllMatching,
+    clearSelection,
+    count: selectedCount,
+  } = useCustomerRowSelection({ rows, queryFilters, totalItems, pageCount });
 
-  // The filters changed — the matching set changed, so past picks may no
-  // longer apply. Page reset lives in CustomersPage.tsx now: it owns page,
-  // since going back to page 1 on a filter change means re-fetching it.
-  useEffect(() => {
-    setSelection(EMPTY_SELECTION);
-  }, [filters]);
-
-  const headerSelection = useMemo(() => computeHeaderSelection(rows, selection), [rows, selection]);
-
-  // The table only ever needs to know THIS page's checked state — bounded by
-  // page size regardless of how large `totalItems` gets, even in 'all' mode.
-  const selectedOnPage = useMemo(
-    () => new Set(rows.filter((row) => isRowSelected(selection, row.user_id)).map((row) => row.user_id)),
-    [rows, selection],
-  );
-
-  function toggleRow(userId: number) {
-    setSelection((current) => toggleRowSelection(current, userId));
-  }
-
-  function toggleAll() {
-    setSelection((current) => toggleAllOnPage(current, rows));
-  }
-
-  // As soon as anything is picked and there's more data beyond this page,
-  // offer expanding the pick to every row matching the filters — rendered
-  // inside the same bulk-action box, not a second one (see
-  // CustomersBulkActionBar.tsx).
-  const selectAllCount = computeSelectAllCount(selection, totalItems, pageCount);
-
-  function selectAllMatching() {
-    setSelection({ mode: 'all', excludedIds: new Set() });
-  }
+  const {
+    isExporting: isBulkExporting,
+    handleExport: handleBulkExport,
+    isAdjustDialogOpen,
+    setIsAdjustDialogOpen,
+    isAdjustSubmitting,
+    handleAdjustSubmit: handleBulkAdjustSubmit,
+  } = useCustomersBulkActions({ rows, queryFilters, sort, selection, setSelection });
 
   return (
-    <Card>
-      <CardContent className="flex flex-col gap-4">
-        {isRebuilding && <CustomersRebuildBanner />}
+    <>
+      <Card>
+        <CardContent className="flex flex-col gap-4">
+          {isRebuilding && <CustomersRebuildBanner />}
 
-        <CustomersFilterBar
-          disabled={controlsDisabled}
-          exportDisabled={controlsDisabled || isLoading || rows.length === 0}
-          filters={filters}
-          onFiltersChange={onFiltersChange}
-        />
+          <CustomersFilterBar
+            disabled={controlsDisabled}
+            exportDisabled={controlsDisabled || isLoading || rows.length === 0}
+            filters={filters}
+            onFiltersChange={onFiltersChange}
+            queryFilters={queryFilters}
+            sort={sort}
+            isFetching={isFetching}
+          />
 
-        <CustomersTable
-          rows={rows}
-          isLoading={isLoading}
-          isStoreEmpty={isStoreEmpty}
-          noMatchContent={
-            isNoMatch ? (
-              <CustomersNoMatchState
-                activeCount={countActiveFilters(filters, IS_PRO_BUILD)}
-                suggestions={suggestions}
-                onUseSuggestion={(suggestion) => onFiltersChange(patchForSuggestion(suggestion, filters))}
-                onClearAll={() => onFiltersChange(DEFAULT_ROW_FILTERS)}
-              />
-            ) : undefined
-          }
-          showProColumns={IS_PRO_BUILD}
-          staleBalances={isRebuilding}
-          sort={{ by: sortBy, dir: sortDir, onChange: onSort }}
-          selection={{
-            enabled: showSelection,
-            header: headerSelection,
-            selected: selectedOnPage,
-            onToggle: toggleRow,
-            onToggleAll: toggleAll,
-          }}
-        />
+          <CustomersTable
+            rows={rows}
+            isLoading={isLoading}
+            isStoreEmpty={isStoreEmpty}
+            noMatchContent={
+              isNoMatch ? (
+                <CustomersNoMatchState
+                  activeCount={countActiveFilters(filters, IS_PRO_BUILD && TIER_FILTER_ENABLED)}
+                  suggestions={suggestions}
+                  onUseSuggestion={(suggestion) => onFiltersChange(patchForSuggestion(suggestion, filters))}
+                  onClearAll={() => onFiltersChange(DEFAULT_ROW_FILTERS)}
+                />
+              ) : undefined
+            }
+            showProColumns={IS_PRO_BUILD}
+            staleBalances={isRebuilding}
+            sort={{ by: sortBy, dir: sortDir, onChange: onSort }}
+            selection={{
+              enabled: showSelection,
+              header: headerSelection,
+              selected: selectedOnPage,
+              onToggle: toggleRow,
+              onToggleAll: toggleAll,
+            }}
+          />
 
-        {/* One bordered footer row: bulk actions (left, once selected) + pagination
+          {/* One bordered footer row: bulk actions (left, once selected) + pagination
             (right) — matches YayUiKits' TablePage.tsx composition of
             BulkActionBox + Pagination side by side. */}
-        <div className="flex flex-col items-center gap-3 sm:flex-row">
-          {showSelection && (
-            <CustomersBulkActionBar
-              count={selectionCount(selection, totalItems)}
-              onClear={() => setSelection(EMPTY_SELECTION)}
-              selectAllCount={selectAllCount}
-              onSelectAllMatching={selectAllMatching}
+          <div className="flex flex-col items-center gap-3 sm:flex-row">
+            {showSelection && (
+              <CustomersBulkActionBar
+                count={selectedCount}
+                onClear={clearSelection}
+                selectAllCount={selectAllCount}
+                onSelectAllMatching={selectAllMatching}
+                onAdjustPoints={() => setIsAdjustDialogOpen(true)}
+                onExport={handleBulkExport}
+                isExporting={isBulkExporting}
+              />
+            )}
+            <CustomersPagination
+              page={page}
+              pageCount={pageCount}
+              isLoading={isLoading}
+              onPrevious={() => onPageChange(Math.max(1, page - 1))}
+              onNext={() => onPageChange(Math.min(pageCount, page + 1))}
+              onPageChange={onPageChange}
+              className="sm:ms-auto"
             />
-          )}
-          <CustomersPagination
-            page={page}
-            pageCount={pageCount}
-            isLoading={isLoading}
-            onPrevious={() => onPageChange(Math.max(1, page - 1))}
-            onNext={() => onPageChange(Math.min(pageCount, page + 1))}
-            onPageChange={onPageChange}
-            className="sm:ms-auto"
-          />
-        </div>
-      </CardContent>
-    </Card>
+          </div>
+        </CardContent>
+      </Card>
+
+      <CustomersAdjustPointsDialog
+        open={isAdjustDialogOpen}
+        onOpenChange={setIsAdjustDialogOpen}
+        count={selectedCount}
+        isSubmitting={isAdjustSubmitting}
+        onSubmit={handleBulkAdjustSubmit}
+      />
+    </>
   );
 }

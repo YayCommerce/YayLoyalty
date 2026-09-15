@@ -1,4 +1,5 @@
 import { ReactNode } from 'react';
+import { Loader2 } from 'lucide-react';
 import { __ } from '@wordpress/i18n';
 
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
@@ -9,6 +10,7 @@ import {
   BALANCE_RANGE_OPTIONS,
   DEFAULT_ROW_FILTERS,
   EXPIRING_SOON_OPTIONS,
+  TIER_FILTER_ENABLED,
   TIER_OPTIONS,
   type BalanceRangeValue,
   type ExpiringSoonValue,
@@ -19,9 +21,16 @@ import { countActiveFilters } from '../customers-page.filter-suggestions';
 
 /**
  * Search + filter row. Every filter is real — checked server-side, see
- * `customers-page.api.ts`. "Clear all" only shows up once search or a filter
- * is actually active (`countActiveFilters`) and resets everything at once —
- * same reset `CustomersNoMatchState`'s "Clear all filters" button uses.
+ * `lib/api/customer.api.ts` → `CustomerRepository::paginate_list()`.
+ * "Clear all" only shows up once search or a filter is actually active
+ * (`countActiveFilters`) and resets everything at once — same reset
+ * `CustomersNoMatchState`'s "Clear all filters" button uses.
+ *
+ * Tier is real as a control but not as data: no `tiers` table exists yet, so
+ * every customer's tier would be "—" and any non-"all" Tier selection would
+ * match zero rows (see `CustomerRowFilters.php`). Hidden behind
+ * `TIER_FILTER_ENABLED` (`customers-page.filter-rows.ts`) until VIP Tiers
+ * ships — the wiring here is untouched so flipping that flag is all it takes.
  *
  * `exportSlot` is Free-only (see CustomersFilterBar.tsx): 3 filters + Export fit
  * on one row without wrapping, so Free renders Export here. Pro's 4th filter
@@ -40,11 +49,18 @@ export function CustomersToolbar({
    *  CustomersScreen.tsx) — every control goes inert but stays in place, so
    *  the toolbar doesn't pop in later and shift the table down. */
   disabled,
+  /** `useCustomersQuery` has a request in flight — first load AND every
+   *  background page/sort/filter refetch (see `placeholderData` on
+   *  `CUSTOMER_QUERIES.list`, which keeps the previous rows on screen instead
+   *  of a full-table skeleton for those). Without this, that background work
+   *  is invisible: nothing on screen says a new page is on its way. */
+  isFetching,
   exportSlot,
 }: {
   filters: RowFilters;
   onFiltersChange: (patch: Partial<RowFilters>) => void;
   disabled: boolean;
+  isFetching: boolean;
   exportSlot?: ReactNode;
 }) {
   return (
@@ -70,7 +86,7 @@ export function CustomersToolbar({
         options={EXPIRING_SOON_OPTIONS}
         disabled={disabled}
       />
-      {IS_PRO_BUILD && (
+      {IS_PRO_BUILD && TIER_FILTER_ENABLED && (
         <FilterSelect
           placeholder={__('Tier', 'yayloyalty')}
           value={filters.tier}
@@ -79,10 +95,13 @@ export function CustomersToolbar({
           disabled={disabled}
         />
       )}
-      {countActiveFilters(filters, IS_PRO_BUILD) > 0 && (
+      {countActiveFilters(filters, IS_PRO_BUILD && TIER_FILTER_ENABLED) > 0 && (
         <Button variant="link" size="sm" disabled={disabled} onClick={() => onFiltersChange(DEFAULT_ROW_FILTERS)}>
           {__('Clear all', 'yayloyalty')}
         </Button>
+      )}
+      {isFetching && (
+        <Loader2 className="text-muted-foreground size-4 animate-spin" aria-label={__('Loading…', 'yayloyalty')} />
       )}
       {exportSlot && <div className="ml-auto">{exportSlot}</div>}
     </div>

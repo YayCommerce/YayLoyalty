@@ -2,9 +2,9 @@ import { ReactNode } from 'react';
 import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import { __ } from '@wordpress/i18n';
 
+import type { CustomerListRow } from '@/lib/schema/customer.schema';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import type { MockCustomer } from '../customers-page.mock-data';
 import type { SortDirection, SortKey } from '../customers-page.sort-rows';
 import { CustomerTableRow } from './CustomerTableRow';
 import { CustomersEmptyState } from './CustomersEmptyState';
@@ -40,8 +40,8 @@ export function CustomersTable({
   sort,
   selection,
 }: {
-  rows: MockCustomer[];
-  /** `useCustomersDemoQuery` still in flight — real network latency, not a simulated delay. */
+  rows: CustomerListRow[];
+  /** `useCustomersQuery` still in flight — real network latency, not a simulated delay. */
   isLoading: boolean;
   /** True store (no members at all) vs. search/filters matching nobody — different messages. */
   isStoreEmpty: boolean;
@@ -90,7 +90,9 @@ export function CustomersTable({
             )}
             <SortableHead sortKey="name" label={__('Customer', 'yayloyalty')} sortBy={sortBy} sortDir={sortDir} onSort={onSort} disabled={isEmpty} />
             {showProColumns && (
-              <SortableHead sortKey="tier" label={__('Tier', 'yayloyalty')} sortBy={sortBy} sortDir={sortDir} onSort={onSort} disabled={isEmpty} />
+              // Always disabled, not just when isEmpty: no tiers table exists yet, so
+              // every row's tier is "—" — there is nothing to sort (see CustomerTableRow.tsx).
+              <SortableHead sortKey="tier" label={__('Tier', 'yayloyalty')} sortBy={sortBy} sortDir={sortDir} onSort={onSort} disabled />
             )}
             <SortableHead sortKey="balance" label={__('Balance', 'yayloyalty')} align="right" sortBy={sortBy} sortDir={sortDir} onSort={onSort} disabled={isEmpty} />
             <SortableHead sortKey="pending" label={__('Pending', 'yayloyalty')} align="right" sortBy={sortBy} sortDir={sortDir} onSort={onSort} disabled={isEmpty} />
@@ -98,7 +100,8 @@ export function CustomersTable({
             <SortableHead sortKey="last_activity" label={__('Last activity', 'yayloyalty')} align="right" sortBy={sortBy} sortDir={sortDir} onSort={onSort} disabled={isEmpty} />
             <SortableHead sortKey="expires" label={__('Expires', 'yayloyalty')} align="right" sortBy={sortBy} sortDir={sortDir} onSort={onSort} disabled={isEmpty} />
             {showProColumns && (
-              <SortableHead sortKey="referrals" label={__('Referrals', 'yayloyalty')} align="right" sortBy={sortBy} sortDir={sortDir} onSort={onSort} disabled={isEmpty} />
+              // Always disabled: no referral-count column exists yet — see CustomerTableRow.tsx.
+              <SortableHead sortKey="referrals" label={__('Referrals', 'yayloyalty')} align="right" sortBy={sortBy} sortDir={sortDir} onSort={onSort} disabled />
             )}
           </TableRow>
         </TableHeader>
