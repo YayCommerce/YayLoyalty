@@ -5,11 +5,11 @@ import { __ } from '@wordpress/i18n';
 import type { CustomerListRow } from '@/lib/schema/customer.schema';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { HeaderSelectionState } from '../customers-page.selection';
 import type { SortDirection, SortKey } from '../customers-page.sort-rows';
-import { CustomerTableRow } from './CustomerTableRow';
 import { CustomersEmptyState } from './CustomersEmptyState';
 import { CustomersSkeletonRows } from './CustomersSkeletonRows';
-import { HeaderSelectionState } from '../customers-page.selection';
+import { CustomerTableRow } from './CustomerTableRow';
 
 /** Column count depends on which optional column groups are on — one place,
  *  reused by the header and the "no results" row's colSpan. */
@@ -88,20 +88,83 @@ export function CustomersTable({
                 />
               </TableHead>
             )}
-            <SortableHead sortKey="name" label={__('Customer', 'yayloyalty')} sortBy={sortBy} sortDir={sortDir} onSort={onSort} disabled={isEmpty} />
+            <SortableHead
+              sortKey="name"
+              label={__('Customer', 'yayloyalty')}
+              sortBy={sortBy}
+              sortDir={sortDir}
+              onSort={onSort}
+              disabled={isEmpty}
+            />
             {showProColumns && (
-              // Always disabled, not just when isEmpty: no tiers table exists yet, so
-              // every row's tier is "—" — there is nothing to sort (see CustomerTableRow.tsx).
-              <SortableHead sortKey="tier" label={__('Tier', 'yayloyalty')} sortBy={sortBy} sortDir={sortDir} onSort={onSort} disabled />
+              // Always disabled, not just when isEmpty: no tiers table exists yet, so there
+              // is no real column to sort — the cells below only show a UI-check sample
+              // value derived from balance (see customers-page.tier-sample-data.ts).
+              <SortableHead
+                sortKey="tier"
+                label={__('Tier', 'yayloyalty')}
+                sortBy={sortBy}
+                sortDir={sortDir}
+                onSort={onSort}
+                disabled
+              />
             )}
-            <SortableHead sortKey="balance" label={__('Balance', 'yayloyalty')} align="right" sortBy={sortBy} sortDir={sortDir} onSort={onSort} disabled={isEmpty} />
-            <SortableHead sortKey="pending" label={__('Pending', 'yayloyalty')} align="right" sortBy={sortBy} sortDir={sortDir} onSort={onSort} disabled={isEmpty} />
-            <SortableHead sortKey="lifetime" label={__('Lifetime earned', 'yayloyalty')} align="right" sortBy={sortBy} sortDir={sortDir} onSort={onSort} disabled={isEmpty} />
-            <SortableHead sortKey="last_activity" label={__('Last activity', 'yayloyalty')} align="right" sortBy={sortBy} sortDir={sortDir} onSort={onSort} disabled={isEmpty} />
-            <SortableHead sortKey="expires" label={__('Expires', 'yayloyalty')} align="right" sortBy={sortBy} sortDir={sortDir} onSort={onSort} disabled={isEmpty} />
+            <SortableHead
+              sortKey="balance"
+              label={__('Balance', 'yayloyalty')}
+              align="right"
+              sortBy={sortBy}
+              sortDir={sortDir}
+              onSort={onSort}
+              disabled={isEmpty}
+            />
+            <SortableHead
+              sortKey="pending"
+              label={__('Pending', 'yayloyalty')}
+              align="right"
+              sortBy={sortBy}
+              sortDir={sortDir}
+              onSort={onSort}
+              disabled={isEmpty}
+            />
+            <SortableHead
+              sortKey="lifetime"
+              label={__('Lifetime earned', 'yayloyalty')}
+              align="right"
+              sortBy={sortBy}
+              sortDir={sortDir}
+              onSort={onSort}
+              disabled={isEmpty}
+            />
+            <SortableHead
+              sortKey="last_activity"
+              label={__('Last activity', 'yayloyalty')}
+              align="right"
+              sortBy={sortBy}
+              sortDir={sortDir}
+              onSort={onSort}
+              disabled={isEmpty}
+            />
+            <SortableHead
+              sortKey="expires"
+              label={__('Expires', 'yayloyalty')}
+              align="right"
+              sortBy={sortBy}
+              sortDir={sortDir}
+              onSort={onSort}
+              disabled={isEmpty}
+            />
             {showProColumns && (
               // Always disabled: no referral-count column exists yet — see CustomerTableRow.tsx.
-              <SortableHead sortKey="referrals" label={__('Referrals', 'yayloyalty')} align="right" sortBy={sortBy} sortDir={sortDir} onSort={onSort} disabled />
+              <SortableHead
+                sortKey="referrals"
+                label={__('Referrals', 'yayloyalty')}
+                align="right"
+                sortBy={sortBy}
+                sortDir={sortDir}
+                onSort={onSort}
+                disabled
+              />
             )}
           </TableRow>
         </TableHeader>

@@ -20,14 +20,20 @@ export type TierValue = CustomerTier;
 /**
  * Single on/off switch for the Tier filter control, separate from
  * `IS_PRO_BUILD`. The control is real (server-checked) but the data behind it
- * isn't — no `tiers` table exists yet, so it can only ever show "0 results".
- * Off for now so the list doesn't offer a filter that always empties it; flip
- * back to `true` once VIP Tiers ships. Every call site that gates the Tier
- * filter reads this — `CustomersToolbar.tsx` (the control itself),
- * `CustomersPage.tsx` / `CustomersScreen.tsx` (active-filter count feeding
- * "No customers match N filters" / the no-match suggestions).
+ * isn't — no `tiers` table exists yet, so any non-"all" value still matches
+ * zero rows server-side (`CustomerRowFilters.php`'s `c.tier_id IS NOT NULL`
+ * is never true). Back on for UI-checking alongside the sample Tier column
+ * (`customers-page.tier-sample-data.ts`) — the two are NOT connected: the
+ * column's sample value is derived client-side from `balance` purely for
+ * display, while this filter still round-trips to the real, tier-less
+ * backend, so picking a tier here empties the list regardless of what the
+ * column shows. Flip back to `false` (or wire a real filter) once VIP Tiers
+ * ships. Every call site that gates the Tier filter reads this —
+ * `CustomersToolbar.tsx` (the control itself), `CustomersPage.tsx` /
+ * `CustomersScreen.tsx` (active-filter count feeding "No customers match N
+ * filters" / the no-match suggestions).
  */
-export const TIER_FILTER_ENABLED = false;
+export const TIER_FILTER_ENABLED = true;
 
 export interface RowFilters {
   search: string;
