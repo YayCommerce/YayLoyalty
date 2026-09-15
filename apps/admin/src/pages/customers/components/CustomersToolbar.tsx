@@ -1,4 +1,5 @@
 import { ReactNode } from 'react';
+import { Loader2 } from 'lucide-react';
 import { __ } from '@wordpress/i18n';
 
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
@@ -48,11 +49,18 @@ export function CustomersToolbar({
    *  CustomersScreen.tsx) — every control goes inert but stays in place, so
    *  the toolbar doesn't pop in later and shift the table down. */
   disabled,
+  /** `useCustomersQuery` has a request in flight — first load AND every
+   *  background page/sort/filter refetch (see `placeholderData` on
+   *  `CUSTOMER_QUERIES.list`, which keeps the previous rows on screen instead
+   *  of a full-table skeleton for those). Without this, that background work
+   *  is invisible: nothing on screen says a new page is on its way. */
+  isFetching,
   exportSlot,
 }: {
   filters: RowFilters;
   onFiltersChange: (patch: Partial<RowFilters>) => void;
   disabled: boolean;
+  isFetching: boolean;
   exportSlot?: ReactNode;
 }) {
   return (
@@ -91,6 +99,9 @@ export function CustomersToolbar({
         <Button variant="link" size="sm" disabled={disabled} onClick={() => onFiltersChange(DEFAULT_ROW_FILTERS)}>
           {__('Clear all', 'yayloyalty')}
         </Button>
+      )}
+      {isFetching && (
+        <Loader2 className="text-muted-foreground size-4 animate-spin" aria-label={__('Loading…', 'yayloyalty')} />
       )}
       {exportSlot && <div className="ml-auto">{exportSlot}</div>}
     </div>

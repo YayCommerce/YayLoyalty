@@ -182,7 +182,14 @@ export default function CustomersPage() {
         <ErrorState message={__('Could not load customers.', 'yayloyalty')} onRetry={() => customersQuery.refetch()} />
       ) : (
         <CustomersScreen
-          list={{ rows, isLoading: customersQuery.isPending, isStoreEmpty, totalItems, suggestions }}
+          list={{
+            rows,
+            isLoading: customersQuery.isPending,
+            isFetching: customersQuery.isFetching,
+            isStoreEmpty,
+            totalItems,
+            suggestions,
+          }}
           filters={{ value: filters, onChange: updateFilters }}
           // The committed, debounced filters — not `filters` above (which
           // changes on every keystroke). Selection-reset and bulk actions key

@@ -48,8 +48,12 @@ export function CustomersScreen({
   list: {
     /** Already search/filter-narrowed AND sorted server-side. */
     rows: CustomerListRow[];
-    /** `useCustomersQuery` still in flight (including a page/sort change — each is its own fetch). */
+    /** `useCustomersQuery` still in flight AND no data at all yet — drives the full-table skeleton. */
     isLoading: boolean;
+    /** `useCustomersQuery` has a request in flight, period — true for `isLoading` too, but also true for a
+     *  background page/sort/filter refetch that `placeholderData` is keeping previous rows on screen for.
+     *  Drives the toolbar's spinner, the one place that background work is otherwise invisible. */
+    isFetching: boolean;
     /** The whole store has zero rows, from the server's total — not "this page's filters matched nothing". */
     isStoreEmpty: boolean;
     /** The server's row count for the current filters, across every page. */
@@ -81,7 +85,7 @@ export function CustomersScreen({
   /** "Simulate rebuild" toggle (Pro-only, see CustomersPage.tsx) — no real background job. */
   isRebuilding: boolean;
 }) {
-  const { rows, isLoading, isStoreEmpty, totalItems, suggestions } = list;
+  const { rows, isLoading, isFetching, isStoreEmpty, totalItems, suggestions } = list;
   const { value: filters, onChange: onFiltersChange } = filtersProp;
   const { by: sortBy, dir: sortDir, onChange: onSort } = sort;
   const { page, pageCount, onChange: onPageChange } = pagination;
@@ -142,6 +146,7 @@ export function CustomersScreen({
             onFiltersChange={onFiltersChange}
             queryFilters={queryFilters}
             sort={sort}
+            isFetching={isFetching}
           />
 
           <CustomersTable
