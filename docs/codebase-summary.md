@@ -51,6 +51,7 @@ Comprehensive guide to the YayLoyalty plugin repository structure, entry points,
 All in `Enums/` as `final class` + `const` + `all()` / `all_known()` + `is_valid()` + `assert()`:
 
 - **`CampaignTrigger`** — `purchase`, `signup`, `review` (Lite); plus `birthday`, `first_order`, `order_count`, `spend_milestone` (Pro). `all()` is filtered (fireable); `all_known()` is not (recognised).
+- **`CustomerFilters`** — Shared filter vocabulary: `balance_range`, `expiring_soon`, `tier` (range keys); shared by `CustomerRowFilters.php` (REST) and `CustomerSegmentsHelper.php` (saved segments).
 - **`LedgerType`** — `earn`, `redeem`, `refund_earn`, `refund_redeem`, `expire`, `adjust`.
 - **`LedgerSource`** — `order`, `signup`, `review`, `referral`, `birthday`, `milestone`, `social`, `renewal`, `manual`, `import`, `expiry`, `system`.
 - **`ReferenceType`** — `order`, `refund`, `comment`, `redemption`, `referral`, `user`, `birthday`, `import`.
@@ -96,7 +97,7 @@ All `namespace YayLoyalty\Controllers` → routes under `yayloyalty/v1/`.
 
 Write operations wrapped in `Transaction::run()`, return correlation ID on 500.
 
-**Note on `CustomerRestController`:** `GET /customers` is real, not demo data — `CustomerRepository::paginate_list()` queries `yayloyalty_customers` JOINed with `wp_users`. `CustomerRowFilters.php`/`CustomerRowSort.php` own the filter/sort semantics; the controller only translates a request into their SQL-free criteria/order shapes and the result back into wire rows. TypeScript mirrors: `customers-page.filter-rows.ts`, `customers-page.sort-rows.ts`.
+**Note on `CustomerRestController`:** `GET /customers` is real, not demo data — `CustomerRepository::paginate_list()` queries `yayloyalty_customers` JOINed with `wp_users`. `CustomerRowFilters.php`/`CustomerRowSort.php` own the filter/sort semantics; the controller only translates a request into their SQL-free criteria/order shapes and the result back into wire rows. TypeScript mirrors: `customers-page.filter-rows.ts`, `customers-page.sort-rows.ts`. Filter-suggestion keys (`suggestions[].key`) are **wire param names** (snake_case: `balance_range`, `expiring_soon`, `tier`). Saved-segment payload (`filters`) also uses snake_case keys on the wire; `customer-segments.api.ts` converts to/from camelCase for the SPA.
 
 ### Points engine (includes/Engine/Points/)
 
@@ -118,6 +119,7 @@ Filters (public API): `yayloyalty_campaign_candidates`, `yayloyalty_campaign_mat
 | File | Role |
 |---|---|
 | `Database/Installer.php` | Versioned schema; applies via `dbDelta`; runs on `plugins_loaded` priority 20 (outside `plugin_init`) so headless/REST paths upgrade |
+| `Database/InitYayLoyaltyCustomer.php` | Starter data seeding: creates 5 real WooCommerce customers with real ledger history (via `LedgerService::adjust()`); split from Installer to keep both under 200-line cap |
 | `Database/Transaction.php` | Nesting-aware; probes for foreign transactions via savepoint round-trip; guards on reconnect; treats failed rollback as fatal |
 | `Database/QueryException.php` | Thrown by repositories on write failure |
 | `Database/Schema/*Table.php` | `CREATE TABLE` DDL for each table; subclass `AbstractTableSchema` |
@@ -139,8 +141,8 @@ Filters (public API): `yayloyalty_campaign_candidates`, `yayloyalty_campaign_mat
 | `Pro/YayLoyaltyPro.php` | Boot; attaches all Pro filters; fires `yayloyalty_pro_booted` | — |
 | `Pro/Services/ConditionsEvaluator.php` | Evaluates campaign conditions (ANDed); fails on unknown type | `yayloyalty_campaign_conditions_evaluator` |
 | `Pro/Controllers/CampaignPreviewRestController.php` | POST `/campaigns/{id}/preview-conditions` — 404 in Lite | `yayloyalty_rest_controllers` |
-| `Pro/Controllers/CustomerSegmentsRestController.php` | POST `/customers/segments` — save a saved Customers-page filter set (name + filters minus search); 404 in Lite | `yayloyalty_rest_controllers` |
-| `Pro/Helpers/CustomerSegmentsHelper.php` | `yayloyalty_customer_segments` option: site-wide list of `{name, filters}`, whitelisted both directions; name is the identity, duplicates rejected (no upsert) | — |
+| `Pro/Controllers/CustomerSegmentsRestController.php` | POST `/customers/segments`, DELETE `/customers/segments` (name in body) — save/delete saved Customers-page filter sets (name + filters minus search); 404 in Lite | `yayloyalty_rest_controllers` |
+| `Pro/Helpers/CustomerSegmentsHelper.php` | `yayloyalty_customer_segments` option: site-wide list of `{name, filters: {snake_case keys}}`, whitelisted both directions; name is the identity, duplicates rejected (no upsert) | — |
 
 **Pro seams (filters):**
 - `yayloyalty_table_schemas` — Pro can add tables (currently unused)
@@ -172,8 +174,8 @@ Filters (public API): `yayloyalty_campaign_candidates`, `yayloyalty_campaign_mat
 | `src/main.tsx` | Entry point; imports Pro barrel if `IS_PRO_BUILD` |
 | `src/router.tsx` | Hash router with routes for `/dashboard`, `/customers`, `/campaigns`, `/rewards`, `/referral`, `/vip-tiers`, `/settings` (each gated by capability via `<Can>`) |
 | `src/pages/` | Route pages; `campaigns/`, `customers/` and `settings/` have content; Dashboard, Rewards, Referral, VIP Tiers are placeholders |
-| `src/pages/customers/` | Server-paginated list (search/filter/sort/export/row-select), real `GET /customers`; bulk "Adjust points"/"Export" wired to real endpoints; no per-customer detail view yet; Tier column/filter are sample-data stand-ins over `balance_range` (see `customers-page.tier-sample-data.ts`—to be deleted when VIP Tiers ships); Pro adds a saved-segment picker (`src/pro/customers/`) above the toolbar |
-| `src/pro/` | **Deleted in Lite build** — Pro feature components (`ConditionsPreview`, `CustomersSavedSegmentRow` + `customer-segments.api.ts`, sentinel exports) |
+| `src/pages/customers/` | Server-paginated list (search/filter/sort/export/row-select), real `GET /customers`; bulk "Adjust points"/"Export" wired to real endpoints (via `customers-page.bulk-actions.ts`, `customers-page.export.ts`); selection resolves via fast path or sequential walk of `GET /customers` (see `customers-page.matching-customers.ts`, max 500 pages); Tier column/filter are sample-data stand-ins over `balance_range` (see `customers-page.tier-sample-data.ts`—to be deleted when VIP Tiers ships); Pro adds a saved-segment picker above the toolbar |
+| `src/pro/customers/` | **Deleted in Lite build** — saved-segment feature: `CustomersSavedSegmentRow`, `CustomersSaveSegmentDialog`, `customers-saved-segment-row.state.ts`, `customer-segments.api.ts` (converts camelCase ↔ snake_case wire shape) |
 | `src/components/pro/` | **Kept in Lite** — `ProGate`, upsell UI, badge components |
 | `src/lib/` | Helpers: `api/` (REST calls), `queries/` (TanStack Query), `schema/` (Zod), `utils.ts`, `is-pro-build.ts`, `helpers/`, `access.tsx` (`CAP`, `can()`, `<Can>` — hide/disable by capability from `window.yayLoyaltyAdmin`; cosmetic, the server decides) |
 | `src/types/` | TypeScript type definitions |
