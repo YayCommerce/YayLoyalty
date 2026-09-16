@@ -29,33 +29,26 @@ function saveableFiltersOf({ balanceRange, expiringSoon, tier }: RowFilters): Sa
  * `{ ...segment.filters, search: '' }` is the whole job — nothing here
  * debounces or double-fetches.
  *
- * `selected` shows the LAST PICKED segment even after the user changes a
- * filter by hand afterwards — it is a "last applied" indicator, not a live
- * diff against the current filters (KISS: no filter-equality check). ONE
- * exception: once every saveable filter is back at its default (`Clear
- * all`, or hand-clearing each one) there is no active segment by definition,
- * so `selected` itself is reset to "All customers" (the effect below) — not
- * just a derived display value. That distinction matters: without
- * committing the reset into `selected`, a later UNRELATED manual filter
- * change (e.g. Clear all, then picking Tier=Alpine by hand) would make a
- * merely-derived display fall back to the old `selected` again and show a
- * stale, unrelated segment name as if it were still applied.
+ * Standard workflow: changing a filter by hand ALWAYS drops `selected` back
+ * to "All customers", immediately — there is no "sticky last applied
+ * segment" display. `appliedFilters` is therefore DERIVED from `selected`
+ * (the picked segment's filters, or `DEFAULT_ROW_FILTERS` for "All
+ * customers") rather than tracked as its own state, so it can never go
+ * stale relative to what's actually selected. This also covers "Clear all"
+ * (`CustomersToolbar.tsx`), which resets filters straight to
+ * `DEFAULT_ROW_FILTERS` WITHOUT going through `onSelect` — it still counts
+ * as "changed a filter by hand" and drops `selected` to "All customers"
+ * exactly like any other manual change.
  *
  * `showSaveButton` needs BOTH of:
  * - at least one of the three saveable filters is non-default — otherwise
  *   there is nothing to save, it would be indistinguishable from "All
  *   customers". `search` is never part of this: a segment never stores it.
- * - the current filters DIFFER from `appliedFilters` — the saveable filters
- *   as they stood right after the last select-a-segment, successful save,
- *   or successful remove. So picking "bbb" hides the button (current now
+ * - the current filters DIFFER from `appliedFilters` — the selected
+ *   segment's filters right after the last select, successful save, or
+ *   successful remove. So picking "bbb" hides the button (current now
  *   equals what was just applied); hand-changing a filter afterwards shows
- *   it again.
- * Both checks are needed, not just the second: "Clear all"
- * (`CustomersToolbar.tsx`) resets filters straight to `DEFAULT_ROW_FILTERS`
- * WITHOUT going through `onSelect` (it isn't a segment pick), so
- * `appliedFilters` is left stale at whatever segment was last selected —
- * current-vs-applied alone would then read "different" and wrongly show the
- * button for a fully-default, nothing-to-save state.
+ *   it again (and, per the effect below, also drops `selected`).
  *
  * `showRemoveButton` occupies the SAME slot as `showSaveButton` — exactly
  * one of the two (or neither) is ever true. `!showSaveButton` in its
@@ -72,13 +65,17 @@ export function useSavedSegmentPicker({
 }) {
   const [segments, setSegments] = useState<SavedSegment[]>(() => readSegmentsFromLocalize());
   const [selected, setSelected] = useState(ALL_SEGMENTS_VALUE);
-  // The saveable filters as they stood right after the last select, save or
-  // remove. Starts at the current filters: on mount nothing has been
-  // changed by the user yet, so the Save button starts hidden.
-  const [appliedFilters, setAppliedFilters] = useState<SaveableFilters>(() => saveableFiltersOf(filters));
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const current = saveableFiltersOf(filters);
+  // Derived, never its own state: the selected segment's filters, or the
+  // defaults for "All customers". Always in sync with `selected` — see the
+  // hook doc comment for why this replaced a separately-tracked baseline.
+  const selectedSegment = segments.find((item) => item.name === selected);
+  const appliedFilters: SaveableFilters =
+    selected === ALL_SEGMENTS_VALUE
+      ? saveableFiltersOf(DEFAULT_ROW_FILTERS)
+      : (selectedSegment?.filters ?? saveableFiltersOf(DEFAULT_ROW_FILTERS));
   const hasSaveableFilters =
     current.balanceRange !== DEFAULT_ROW_FILTERS.balanceRange ||
     current.expiringSoon !== DEFAULT_ROW_FILTERS.expiringSoon ||
@@ -91,41 +88,36 @@ export function useSavedSegmentPicker({
   const showRemoveButton = selected !== ALL_SEGMENTS_VALUE && !showSaveButton;
 
   // `useLayoutEffect`, not `useEffect`: this runs before the browser paints,
-  // so the trigger never flashes a stale segment name for one frame before
-  // snapping to "All customers".
+  // so a hand-made filter change never flashes the stale segment name for
+  // one frame before snapping to "All customers".
   useLayoutEffect(() => {
-    if (!hasSaveableFilters) {
+    if (selected !== ALL_SEGMENTS_VALUE && differsFromApplied) {
       setSelected(ALL_SEGMENTS_VALUE);
     }
-  }, [hasSaveableFilters]);
+  }, [selected, differsFromApplied]);
 
   function onSelect(value: string) {
     setSelected(value);
 
     if (value === ALL_SEGMENTS_VALUE) {
       onFiltersChange(DEFAULT_ROW_FILTERS);
-      setAppliedFilters(saveableFiltersOf(DEFAULT_ROW_FILTERS));
       return;
     }
 
     const segment = segments.find((item) => item.name === value);
     if (segment) {
       onFiltersChange({ ...segment.filters, search: '' });
-      setAppliedFilters(segment.filters);
     }
   }
 
   function onSaved(list: SavedSegment[]) {
     setSegments(list);
     // append_segment() only ever appends, so the new segment is always last
-    // in the returned list; select and baseline off what the SERVER stored
+    // in the returned list; select off what the SERVER stored
     // (sanitize_text_field() on the PHP side can alter the typed name).
     const saved = list[list.length - 1];
     if (saved) {
       setSelected(saved.name);
-      // The just-saved segment IS the new baseline — nothing left to save
-      // until the user changes a filter again.
-      setAppliedFilters(saved.filters);
     }
   }
 
@@ -135,12 +127,10 @@ export function useSavedSegmentPicker({
       setSegments(list);
       // The removed segment can no longer be "selected" — falls back to the
       // virtual default. Live filters are left untouched (removing only
-      // affects the saved list, not what the table is currently showing),
-      // which is also why the baseline resets to DEFAULT_ROW_FILTERS: if
-      // those filters are still non-default, Save reappears so the exact
+      // affects the saved list, not what the table is currently showing), so
+      // if those filters are still non-default, Save reappears so the exact
       // same state can be saved again, e.g. under a different name.
       setSelected(ALL_SEGMENTS_VALUE);
-      setAppliedFilters(saveableFiltersOf(DEFAULT_ROW_FILTERS));
     },
     onError: async (err) => {
       toast.error(await getApiErrorMessage(err, __('Could not remove the segment.', 'yayloyalty')));
