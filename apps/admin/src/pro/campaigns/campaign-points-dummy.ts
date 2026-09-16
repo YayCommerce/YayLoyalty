@@ -16,8 +16,15 @@ import { CampaignDisplayStatus } from '@/lib/schema/campaign.schema';
  * ledger-backed endpoint, most likely `GROUP BY campaign_id` over `earn`
  * rows in the last 30 days), this file is deleted and toDisplayCampaign() in
  * CampaignTable.tsx reads the real figure instead of this map — everything
- * downstream (formatPoints() and friends, CampaignPointsSummary) is already
- * written against "a number or null", so nothing else changes.
+ * downstream (hasPointsFigure(), `<PointsValue>`, CampaignPointsSummary) is
+ * already written against "a number or null", so nothing else changes.
+ *
+ * Formatting itself is NOT reimplemented here — `@/lib/helpers/points.helper`
+ * (compacting, the 100k+ threshold) and `<PointsValue>`
+ * (`@/components/ui/custom/points-value`, compact + hover-for-exact) already
+ * do that for every points figure in the admin. This file only adds the one
+ * thing genuinely specific to a campaign: whether its display status even
+ * has a meaningful figure to show.
  */
 export const DUMMY_POINTS_LAST_30_DAYS: Record<number, number | null> = {
   1: 38600, // Summit+ members 1.5×
@@ -46,37 +53,15 @@ export const DUMMY_POINTS_LAST_30_DAYS: Record<number, number | null> = {
 
 /**
  * A campaign not running long enough to have a meaningful figure — draft,
- * paused, scheduled — dashes regardless of what the map holds. Archived is
+ * paused, scheduled — has nothing worth showing regardless of what the map
+ * holds; render "—" instead of calling `<PointsValue>`. Archived is
  * deliberately not here: an archived campaign ran before being retired, so
  * its historical figure is real and worth showing (archived rows are
  * filtered out of the table and summary elsewhere, not dashed here).
  */
 const STATUSES_WITHOUT_A_FIGURE: readonly CampaignDisplayStatus[] = ['draft', 'paused', 'scheduled'];
 
-/**
- * The display figure — "—" per STATUSES_WITHOUT_A_FIGURE, else abbreviated
- * above a million (`1.2M`). The exact value stays available via
- * formatPointsExact(); pair the two in a tooltip rather than showing only
- * the rounded one.
- */
-export function formatPoints(points: number | null, status: CampaignDisplayStatus): string {
-  return STATUSES_WITHOUT_A_FIGURE.includes(status) ? '—' : abbreviate(points ?? 0);
-}
-
-/** The un-rounded counterpart to formatPoints() — same dash rule, full number otherwise. */
-export function formatPointsExact(points: number | null, status: CampaignDisplayStatus): string {
-  return STATUSES_WITHOUT_A_FIGURE.includes(status) ? '—' : (points ?? 0).toLocaleString();
-}
-
-/** Whether formatPoints() rounded this figure — i.e., whether showing the exact value is worth a tooltip. */
-export function isPointsAbbreviated(points: number | null, status: CampaignDisplayStatus): boolean {
-  return formatPoints(points, status) !== formatPointsExact(points, status);
-}
-
-function abbreviate(value: number): string {
-  if (value < 1_000_000) {
-    return value.toLocaleString();
-  }
-
-  return `${(value / 1_000_000).toLocaleString(undefined, { maximumFractionDigits: 1 })}M`;
+/** Whether this display status has a meaningful "last 30 days" figure at all — the dash decision, not the number's formatting. */
+export function hasPointsFigure(status: CampaignDisplayStatus): boolean {
+  return !STATUSES_WITHOUT_A_FIGURE.includes(status);
 }

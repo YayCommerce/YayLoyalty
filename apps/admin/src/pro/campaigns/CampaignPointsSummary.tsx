@@ -2,8 +2,8 @@ import { __, sprintf } from '@wordpress/i18n';
 
 import { CampaignDisplayStatus } from '@/lib/schema/campaign.schema';
 import { Card, CardContent } from '@/components/ui/card';
-import { YayLoyaltyToolTip } from '@/components/ui/custom/tooltip';
-import { formatPoints, formatPointsExact, isPointsAbbreviated } from './campaign-points-dummy';
+import { PointsValue } from '@/components/ui/custom/points-value';
+import { hasPointsFigure } from './campaign-points-dummy';
 
 /**
  * "Last 30 days" points-issued summary, below CampaignTable — reads rows
@@ -59,14 +59,7 @@ export function CampaignPointsSummary({
                 />
               </div>
               <span className="text-right font-semibold tabular-nums">
-                {isPointsAbbreviated(row.pointsLast30Days, row.displayStatus) ? (
-                  <YayLoyaltyToolTip
-                    trigger={<span>{formatPoints(row.pointsLast30Days, row.displayStatus)}</span>}
-                    content={formatPointsExact(row.pointsLast30Days, row.displayStatus)}
-                  />
-                ) : (
-                  formatPoints(row.pointsLast30Days, row.displayStatus)
-                )}
+                {hasPointsFigure(row.displayStatus) ? <PointsValue value={row.pointsLast30Days ?? 0} /> : '—'}
               </span>
             </div>
           ))}

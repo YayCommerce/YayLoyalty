@@ -19,6 +19,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { PointsValue } from '@/components/ui/custom/points-value';
 import { YayLoyaltyToolTip } from '@/components/ui/custom/tooltip';
 import {
   DropdownMenu,
@@ -32,12 +33,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import EllipsisIcon from '@/components/icons/EllipsisIcon';
-import {
-  DUMMY_POINTS_LAST_30_DAYS,
-  formatPoints,
-  formatPointsExact,
-  isPointsAbbreviated,
-} from './campaign-points-dummy';
+import { DUMMY_POINTS_LAST_30_DAYS, hasPointsFigure } from './campaign-points-dummy';
 import { CampaignPointsSummary } from './CampaignPointsSummary';
 
 /** Groups larger than this collapse to the default plus this many, highest-priority first. */
@@ -503,14 +499,7 @@ function SortableCampaignRow({ row, isTied }: { row: DisplayCampaign; isTied: bo
       <TableCell className="text-muted-foreground text-xs">{row.conditionsLabel}</TableCell>
       <TableCell className="text-muted-foreground text-xs">{row.scheduleLabel}</TableCell>
       <TableCell className="text-muted-foreground text-right text-xs tabular-nums">
-        {isPointsAbbreviated(row.pointsLast30Days, row.displayStatus) ? (
-          <YayLoyaltyToolTip
-            trigger={<span>{formatPoints(row.pointsLast30Days, row.displayStatus)}</span>}
-            content={formatPointsExact(row.pointsLast30Days, row.displayStatus)}
-          />
-        ) : (
-          formatPoints(row.pointsLast30Days, row.displayStatus)
-        )}
+        {hasPointsFigure(row.displayStatus) ? <PointsValue value={row.pointsLast30Days ?? 0} /> : '—'}
       </TableCell>
       <TableCell className="text-center text-sm font-semibold tabular-nums">{row.priority}</TableCell>
       <TableCell>
