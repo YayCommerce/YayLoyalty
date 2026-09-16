@@ -1,8 +1,7 @@
 import { __ } from '@wordpress/i18n';
 
-import PageLayout from '@/components/layout/PageLayout';
-import { ProGate } from '@/components/pro/ProGate';
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
+import PageLayout from '@/components/layout/PageLayout';
 import { CampaignTable } from '@/pro';
 import BuiltInCampaignList from './BuiltInCampaignList';
 

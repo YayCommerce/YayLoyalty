@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { closestCenter, DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -6,7 +6,15 @@ import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, InfoIcon, Lock, Search } from 'lucide-react';
 import { __, sprintf } from '@wordpress/i18n';
 
-import type { CampaignTrigger } from '@/lib/schema/campaign.schema';
+import { parseWPDate } from '@/lib/helpers/format.helper';
+import { useCampaignsQuery } from '@/lib/queries/campaign.queries';
+import {
+  Campaign,
+  CAMPAIGN_DISPLAY_STATUSES,
+  CampaignDisplayStatus,
+  CampaignTrigger,
+  resolveCampaignDisplayStatus,
+} from '@/lib/schema/campaign.schema';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -25,14 +33,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import EllipsisIcon from '@/components/icons/EllipsisIcon';
 import {
-  CAMPAIGN_DISPLAY_STATUSES,
+  DUMMY_POINTS_LAST_30_DAYS,
   formatPoints,
   formatPointsExact,
   isPointsAbbreviated,
-  type CampaignDisplayStatus,
-  type CampaignTableRow,
-} from './campaign-table.api';
-import { useCampaignTableQuery } from './campaign-table.queries';
+} from './campaign-points-dummy';
 import { CampaignPointsSummary } from './CampaignPointsSummary';
 
 /** Groups larger than this collapse to the default plus this many, highest-priority first. */
@@ -56,66 +61,32 @@ const GROUP_LABELS: Record<CampaignGroupKey, string> = {
   other: __('Other', 'yayloyalty'),
 };
 
-/**
- * The three built-ins a fresh install ships with, and nothing else — see
- * "Campaigns — brand new store" in the wireframe. Client-side rather than a
- * second dummy endpoint: `newStore` is a dev-only preview toggle, not a
- * screen state the server needs to know about.
- *
- * name/slug copied from Installer::seed_builtins() — same constraint as
- * built-in-campaign-list.api.ts's BUILT_IN_CAMPAIGNS, and for the same
- * reason: these represent the identical three rows Lite shows before an
- * upgrade, matched by slug.
- */
-const NEW_STORE_ROWS: CampaignTableRow[] = [
-  {
-    id: 1,
-    name: 'Points for purchases',
-    slug: 'default-purchase',
-    trigger: 'purchase',
-    gives: '1 point per $1',
-    conditions_label: 'No conditions',
-    schedule_label: 'Always on',
-    priority: 0,
-    display_status: 'active',
-    is_builtin: true,
-    points_last_30_days: null,
-  },
-  {
-    id: 2,
-    name: 'Points for signing up',
-    slug: 'signup',
-    trigger: 'signup',
-    gives: '100 points',
-    conditions_label: 'Once per customer',
-    schedule_label: 'Always on',
-    priority: 0,
-    display_status: 'active',
-    is_builtin: true,
-    points_last_30_days: null,
-  },
-  {
-    id: 3,
-    name: 'Points for writing a review',
-    slug: 'review',
-    trigger: 'review',
-    gives: '50 points',
-    conditions_label: 'Verified purchases only',
-    schedule_label: 'Always on',
-    priority: 0,
-    display_status: 'active',
-    is_builtin: true,
-    points_last_30_days: null,
-  },
-];
+/** `Campaign` plus the presentation strings this table shows, computed once from real fields — never a second fetch. */
+interface DisplayCampaign extends Campaign {
+  gives: string;
+  conditionsLabel: string;
+  scheduleLabel: string;
+  displayStatus: CampaignDisplayStatus;
+  /** Dummy, client-side only — see campaign-points-dummy.ts. */
+  pointsLast30Days: number | null;
+}
 
 /**
  * Pro's grouped, prioritised campaigns table — deleted from the Lite build
  * with the rest of `src/pro/`. Lite keeps its own flat, real list in
  * CampaignsPage (a real feature, not gated behind an upgrade overlay).
  *
- * UI ONLY: fetched from a dummy endpoint — see campaign-table.api.ts's SWAP
- * POINT. Every interaction is local state; nothing persists.
+ * ONE LIST, NOT TWO: reads `useCampaignsQuery()` from `@/lib/queries/campaign.queries`
+ * — the same real hook BuiltInCampaignList reads (there, filtered to
+ * `is_builtin`; here, shown whole). The campaign fixture behind it lives
+ * entirely in CampaignRestController's SWAP POINT; this component has no
+ * campaign data of its own. `gives`/`conditionsLabel`/`scheduleLabel`/
+ * `displayStatus` are derived client-side from the real
+ * `config`/`conditions`/`status`/dates — see toDisplayCampaign() — because
+ * the real Campaign shape has no room for precomputed presentation strings,
+ * by design. `pointsLast30Days` is the one exception: it is genuinely dummy,
+ * client-side-only data (see campaign-points-dummy.ts) because no real
+ * aggregate exists yet to read it from at all.
  *
  * Drag-to-reorder changes display order only, never `priority` (a separate
  * stored value) — scoped per group, since priority only ever compares
@@ -124,55 +95,53 @@ const NEW_STORE_ROWS: CampaignTableRow[] = [
  * `newStore` and `noLiveCampaign` are dev-only preview toggles: flip the
  * defaults below, or edit live via React DevTools. No UI control, on purpose.
  *
- * `newStore` swaps in a whole second fixture (NEW_STORE_ROWS) rather than
- * being a derived flag, because no real signal for it exists yet. It is NOT
- * "every row's `points_last_30_days` is null" — that's a rolling window, so
- * a six-month-old store that simply had no orders this month would falsely
- * read as new. The real thing is store-wide and lifetime: has this account
- * ever recorded an earn ledger entry (LedgerRepository has no such query
- * today; sum_points_for_user() is per-customer, not store-wide). Once that
- * exists, `newStore` becomes `!hasEverEarnedPoints` and `rows` stays a single
- * `useCampaignTableQuery()` call either way — no second fetch.
+ * `newStore` filters the same fetched list down to `is_builtin` rather than
+ * swapping in a second fixture, because that is genuinely all a real fresh
+ * store would have. It is a STAND-IN, though, for a fact this build cannot
+ * observe yet: a store that later deletes every custom campaign would look
+ * identical to one that never made any, and the real "new store" signal is
+ * store-wide and lifetime — has this account ever recorded an earn ledger
+ * entry (LedgerRepository has no such query today; sum_points_for_user() is
+ * per-customer, not store-wide). Once that exists, `newStore` becomes
+ * `!hasEverEarnedPoints`; `rows` already reads one list either way.
  */
 export function CampaignTable() {
   const [newStore] = useState(false);
   const [noLiveCampaign] = useState(false);
 
-  const { data, isPending, isError } = useCampaignTableQuery(!newStore);
+  const { data, isPending, isError } = useCampaignsQuery({ per_page: 100 });
+  const allRows = useMemo(() => (data?.data ?? []).map(toDisplayCampaign), [data]);
 
   const [statusFilter, setStatusFilter] = useState<CampaignDisplayStatus | undefined>();
   const [searchQuery, setSearchQuery] = useState('');
   // Local override of fetched order/priority once a drag reorders a group. Seeded lazily from
-  // `data` rather than via an effect — see reorderGroup().
-  const [localRows, setLocalRows] = useState<CampaignTableRow[]>();
+  // `allRows` rather than via an effect — see reorderGroup().
+  const [localRows, setLocalRows] = useState<DisplayCampaign[]>();
 
-  const baseRows = newStore ? NEW_STORE_ROWS : (localRows ?? data ?? []);
+  const baseRows = newStore ? allRows.filter((row) => row.is_builtin) : (localRows ?? allRows);
   const rows = noLiveCampaign ? baseRows.map(pauseIfActivePurchase) : baseRows;
   const hasActivePurchaseCampaign = rows.some(
-    (row) => triggerGroup(row.trigger) === 'purchase' && row.display_status === 'active',
+    (row) => triggerGroup(row.trigger) === 'purchase' && row.displayStatus === 'active',
   );
   const showSearch = rows.length > SEARCH_THRESHOLD;
   // Archived is retired, not merely another status: it stays out of the
   // table entirely unless a merchant asks for it by name. Any other filter
   // (including no filter at all) already excludes it via the equality check.
   const statusFilteredRows = statusFilter
-    ? rows.filter((row) => row.display_status === statusFilter)
-    : rows.filter((row) => row.display_status !== 'archived');
+    ? rows.filter((row) => row.displayStatus === statusFilter)
+    : rows.filter((row) => row.displayStatus !== 'archived');
   const search = searchQuery.trim().toLowerCase();
   const filteredRows =
     showSearch && search
       ? statusFilteredRows.filter((row) => row.name.toLowerCase().includes(search))
       : statusFilteredRows;
 
-  const showLoading = !newStore && isPending;
-  const showError = !newStore && isError;
-
   const groups = GROUP_ORDER.map((key) => ({
     key,
     rows: filteredRows.filter((row) => triggerGroup(row.trigger) === key),
   })).filter((group) => group.rows.length > 0);
 
-  function reorderGroup(groupRows: CampaignTableRow[], event: DragEndEvent) {
+  function reorderGroup(groupRows: DisplayCampaign[], event: DragEndEvent) {
     const { active, over } = event;
 
     if (!over || active.id === over.id) {
@@ -255,7 +224,7 @@ export function CampaignTable() {
               </Select>
             )}
 
-            {/* Inert: this screen has no editor to hand a new campaign off to yet. */}
+            {/* Inert: this screen has no "create" flow yet — the editor only edits an existing (dummy) campaign. */}
             <Button size="sm" onClick={() => {}}>
               {__('Add campaign', 'yayloyalty')}
             </Button>
@@ -287,7 +256,7 @@ export function CampaignTable() {
                   )}
                 </p>
                 <div className="flex flex-wrap items-center gap-3 pt-1">
-                  {/* Inert: no editor and no write endpoint back this screen yet. */}
+                  {/* Inert: no write endpoint back this screen yet — this alert only ever describes the read side of the demo data. */}
                   <Button variant="primary" size="sm" onClick={() => {}}>
                     {__('Switch "Points for purchases" back on', 'yayloyalty')}
                   </Button>
@@ -320,11 +289,11 @@ export function CampaignTable() {
             </Alert>
           )}
 
-          {showLoading && <Skeleton className="h-64 w-full" />}
+          {isPending && <Skeleton className="h-64 w-full" />}
 
-          {showError && <p className="text-destructive text-sm">{__('Could not load campaigns.', 'yayloyalty')}</p>}
+          {isError && <p className="text-destructive text-sm">{__('Could not load campaigns.', 'yayloyalty')}</p>}
 
-          {!showLoading && !showError && groups.length === 0 && (
+          {!isPending && !isError && groups.length === 0 && (
             <Empty>
               <EmptyHeader>
                 <EmptyTitle>{__('No campaigns match this filter', 'yayloyalty')}</EmptyTitle>
@@ -333,7 +302,7 @@ export function CampaignTable() {
             </Empty>
           )}
 
-          {!showLoading && !showError && groups.length > 0 && (
+          {!isPending && !isError && groups.length > 0 && (
             <div className="overflow-hidden rounded-lg border">
               <div className="overflow-x-auto">
                 <Table>
@@ -373,7 +342,7 @@ export function CampaignTable() {
         </CardContent>
       </Card>
 
-      {!showLoading && !showError && <CampaignPointsSummary rows={rows} />}
+      <CampaignPointsSummary rows={rows} />
     </>
   );
 }
@@ -382,8 +351,8 @@ function CampaignGroupSection({
   group,
   onReorder,
 }: {
-  group: { key: CampaignGroupKey; rows: CampaignTableRow[] };
-  onReorder: (groupRows: CampaignTableRow[], event: DragEndEvent) => void;
+  group: { key: CampaignGroupKey; rows: DisplayCampaign[] };
+  onReorder: (groupRows: DisplayCampaign[], event: DragEndEvent) => void;
 }) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
   // Drag handles are drawn but inert in a group of one — likewise this
@@ -480,7 +449,7 @@ function showMoreLabel(group: CampaignGroupKey): string {
 }
 
 /** One draggable row within a CampaignGroupSection. */
-function SortableCampaignRow({ row, isTied }: { row: CampaignTableRow; isTied: boolean }) {
+function SortableCampaignRow({ row, isTied }: { row: DisplayCampaign; isTied: boolean }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: row.id });
 
   return (
@@ -502,7 +471,7 @@ function SortableCampaignRow({ row, isTied }: { row: CampaignTableRow; isTied: b
       </TableCell>
       <TableCell>
         <div className="flex items-center gap-1.5">
-          {/* Inert: the SPA has no campaign editor yet — see ConditionsPreview's docblock. */}
+          {/* Inert: this screen has no editor to hand off to yet. */}
           <Button variant="link" size="sm" className="h-auto p-0 font-semibold">
             {row.name}
           </Button>
@@ -531,22 +500,22 @@ function SortableCampaignRow({ row, isTied }: { row: CampaignTableRow; isTied: b
       </TableCell>
       <TableCell className="text-muted-foreground text-xs">{triggerLabel(row.trigger)}</TableCell>
       <TableCell className="text-xs">{row.gives}</TableCell>
-      <TableCell className="text-muted-foreground text-xs">{row.conditions_label}</TableCell>
-      <TableCell className="text-muted-foreground text-xs">{row.schedule_label}</TableCell>
+      <TableCell className="text-muted-foreground text-xs">{row.conditionsLabel}</TableCell>
+      <TableCell className="text-muted-foreground text-xs">{row.scheduleLabel}</TableCell>
       <TableCell className="text-muted-foreground text-right text-xs tabular-nums">
-        {isPointsAbbreviated(row.points_last_30_days, row.display_status) ? (
+        {isPointsAbbreviated(row.pointsLast30Days, row.displayStatus) ? (
           <YayLoyaltyToolTip
-            trigger={<span>{formatPoints(row.points_last_30_days, row.display_status)}</span>}
-            content={formatPointsExact(row.points_last_30_days, row.display_status)}
+            trigger={<span>{formatPoints(row.pointsLast30Days, row.displayStatus)}</span>}
+            content={formatPointsExact(row.pointsLast30Days, row.displayStatus)}
           />
         ) : (
-          formatPoints(row.points_last_30_days, row.display_status)
+          formatPoints(row.pointsLast30Days, row.displayStatus)
         )}
       </TableCell>
       <TableCell className="text-center text-sm font-semibold tabular-nums">{row.priority}</TableCell>
       <TableCell>
         <Badge variant="outline" className="uppercase">
-          {statusLabel(row.display_status)}
+          {statusLabel(row.displayStatus)}
         </Badge>
       </TableCell>
       <TableCell className="text-right">
@@ -574,9 +543,9 @@ function SortableCampaignRow({ row, isTied }: { row: CampaignTableRow; isTied: b
 }
 
 /** For the `noLiveCampaign` preview: a purchase campaign that was active no longer is. */
-function pauseIfActivePurchase(row: CampaignTableRow): CampaignTableRow {
-  if (triggerGroup(row.trigger) === 'purchase' && row.display_status === 'active') {
-    return { ...row, display_status: 'paused' };
+function pauseIfActivePurchase(row: DisplayCampaign): DisplayCampaign {
+  if (triggerGroup(row.trigger) === 'purchase' && row.displayStatus === 'active') {
+    return { ...row, displayStatus: 'paused' };
   }
 
   return row;
@@ -629,6 +598,8 @@ function statusLabel(status: CampaignDisplayStatus): string {
       return __('Draft', 'yayloyalty');
     case 'archived':
       return __('Archived', 'yayloyalty');
+    case 'ended':
+      return __('Ended', 'yayloyalty');
   }
 }
 
@@ -642,4 +613,73 @@ function campaignCountLabel(count: number): string {
     __('%d campaigns', 'yayloyalty'),
     count,
   );
+}
+
+/**
+ * The real `Campaign` shape has no `gives`/conditions/schedule label and no
+ * derived display status — every one of those is computed here, once, from
+ * `config`/`conditions`/`status`/`starts_at`/`ends_at`. Generic across all
+ * seven triggers, not special-cased to any one dummy row.
+ */
+function toDisplayCampaign(campaign: Campaign): DisplayCampaign {
+  return {
+    ...campaign,
+    gives: givesLabel(campaign.trigger, campaign.config),
+    conditionsLabel: conditionsLabel(campaign.conditions),
+    scheduleLabel: scheduleLabel(campaign.starts_at, campaign.ends_at),
+    displayStatus: resolveCampaignDisplayStatus(campaign.status, campaign.starts_at, campaign.ends_at),
+    pointsLast30Days: DUMMY_POINTS_LAST_30_DAYS[campaign.id] ?? null,
+  };
+}
+
+function givesLabel(trigger: CampaignTrigger, config: Record<string, unknown>): string {
+  if (trigger === 'purchase') {
+    return config.mode === 'multiplier'
+      ? sprintf(
+          /* translators: %s: the multiplier, e.g. "2". */ __('×%s points', 'yayloyalty'),
+          String(config.multiplier ?? 1),
+        )
+      : sprintf(
+          /* translators: %s: points earned per $1 spent. */ __('%s point(s) per $1', 'yayloyalty'),
+          String(config.points_per_unit ?? 0),
+        );
+  }
+
+  // Every other trigger's config carries a flat `points` — see Campaign::config_schema() / YayLoyaltyPro::add_config_keys().
+  return sprintf(/* translators: %s: points awarded. */ __('%s points', 'yayloyalty'), String(config.points ?? 0));
+}
+
+function conditionsLabel(conditions: unknown): string {
+  const list = Array.isArray(conditions) ? conditions : [];
+
+  if (list.length === 0) {
+    return __('No conditions', 'yayloyalty');
+  }
+
+  // Mirrors Enums\CampaignConditionType's vocabulary loosely (slug -> title
+  // case) rather than a hardcoded label per type — good enough for a table
+  // column; a merchant-facing editor would need the real per-type map.
+  return list
+    .map((condition) => humanizeConditionType(String((condition as { type?: unknown }).type ?? '')))
+    .join(', ');
+}
+
+function humanizeConditionType(type: string): string {
+  return type.replace(/_/g, ' ').replace(/^\w/, (char) => char.toUpperCase());
+}
+
+function scheduleLabel(startsAt: string | null, endsAt: string | null): string {
+  if (!startsAt && !endsAt) {
+    return __('Always on', 'yayloyalty');
+  }
+
+  if (startsAt && endsAt) {
+    return `${parseWPDate(startsAt)} – ${parseWPDate(endsAt)}`;
+  }
+
+  if (startsAt) {
+    return sprintf(/* translators: %s: a formatted date. */ __('From %s', 'yayloyalty'), parseWPDate(startsAt));
+  }
+
+  return sprintf(/* translators: %s: a formatted date. */ __('Until %s', 'yayloyalty'), parseWPDate(endsAt as string));
 }

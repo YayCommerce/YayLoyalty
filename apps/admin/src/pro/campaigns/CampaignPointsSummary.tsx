@@ -1,27 +1,34 @@
 import { __, sprintf } from '@wordpress/i18n';
 
+import { CampaignDisplayStatus } from '@/lib/schema/campaign.schema';
 import { Card, CardContent } from '@/components/ui/card';
 import { YayLoyaltyToolTip } from '@/components/ui/custom/tooltip';
-import { formatPoints, formatPointsExact, isPointsAbbreviated, type CampaignTableRow } from './campaign-table.api';
+import { formatPoints, formatPointsExact, isPointsAbbreviated } from './campaign-points-dummy';
 
 /**
  * "Last 30 days" points-issued summary, below CampaignTable — reads rows
  * already in memory, not a separate fetch. Ignores the table's status
  * filter on purpose: it's a global figure, not a view of the filtered list,
  * so it ranks everything handed to it, archived rows aside.
+ *
+ * `pointsLast30Days` is dummy, client-side data — see campaign-points-dummy.ts.
  */
-export function CampaignPointsSummary({ rows: allRows }: { rows: CampaignTableRow[] }) {
+export function CampaignPointsSummary({
+  rows: allRows,
+}: {
+  rows: { id: number; name: string; displayStatus: CampaignDisplayStatus; pointsLast30Days: number | null }[];
+}) {
   // Archived campaigns are retired — this figure shouldn't resurface something a merchant put away.
-  const rows = allRows.filter((row) => row.display_status !== 'archived');
+  const rows = allRows.filter((row) => row.displayStatus !== 'archived');
 
   if (rows.length === 0) {
     return null;
   }
 
-  const ranked = [...rows].sort((a, b) => (b.points_last_30_days ?? -1) - (a.points_last_30_days ?? -1));
-  const total = rows.reduce((sum, row) => sum + (row.points_last_30_days ?? 0), 0);
+  const ranked = [...rows].sort((a, b) => (b.pointsLast30Days ?? -1) - (a.pointsLast30Days ?? -1));
+  const total = rows.reduce((sum, row) => sum + (row.pointsLast30Days ?? 0), 0);
   // At least 1 so a fresh install (every figure null) divides to 0% bars instead of NaN.
-  const max = Math.max(1, ...rows.map((row) => row.points_last_30_days ?? 0));
+  const max = Math.max(1, ...rows.map((row) => row.pointsLast30Days ?? 0));
 
   return (
     <Card>
@@ -48,17 +55,17 @@ export function CampaignPointsSummary({ rows: allRows }: { rows: CampaignTableRo
               <div className="bg-muted h-2 overflow-hidden rounded-full">
                 <div
                   className="bg-primary h-full rounded-full"
-                  style={{ width: `${((row.points_last_30_days ?? 0) / max) * 100}%` }}
+                  style={{ width: `${((row.pointsLast30Days ?? 0) / max) * 100}%` }}
                 />
               </div>
               <span className="text-right font-semibold tabular-nums">
-                {isPointsAbbreviated(row.points_last_30_days, row.display_status) ? (
+                {isPointsAbbreviated(row.pointsLast30Days, row.displayStatus) ? (
                   <YayLoyaltyToolTip
-                    trigger={<span>{formatPoints(row.points_last_30_days, row.display_status)}</span>}
-                    content={formatPointsExact(row.points_last_30_days, row.display_status)}
+                    trigger={<span>{formatPoints(row.pointsLast30Days, row.displayStatus)}</span>}
+                    content={formatPointsExact(row.pointsLast30Days, row.displayStatus)}
                   />
                 ) : (
-                  formatPoints(row.points_last_30_days, row.display_status)
+                  formatPoints(row.pointsLast30Days, row.displayStatus)
                 )}
               </span>
             </div>

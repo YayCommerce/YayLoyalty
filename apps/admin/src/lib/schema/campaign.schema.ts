@@ -68,6 +68,43 @@ export type CampaignTrigger = z.infer<typeof campaignTriggerSchema>;
 export type OfferableCampaignTrigger = (typeof CAMPAIGN_TRIGGERS)[number];
 export type CampaignStatus = z.infer<typeof campaignStatusSchema>;
 
+/**
+ * `CampaignStatus` plus the two labels that are never stored: `scheduled`
+ * and `ended`. Mirrors `Enums\Status::resolve_display()` — display-only,
+ * derived from `status` + the date window, never a value `status` itself
+ * takes.
+ */
+export const CAMPAIGN_DISPLAY_STATUSES = [...CAMPAIGN_STATUSES, 'scheduled', 'ended'] as const;
+
+export type CampaignDisplayStatus = (typeof CAMPAIGN_DISPLAY_STATUSES)[number];
+
+/**
+ * Client-side mirror of `Enums\Status::resolve_display()`. `at` defaults to
+ * now, in the same UTC `YYYY-MM-DD HH:mm:ss` shape every stored datetime
+ * uses — pass the campaign's own dates through unmodified, never converted
+ * to the browser's timezone (see code-standards.md §4).
+ */
+export function resolveCampaignDisplayStatus(
+  status: CampaignStatus,
+  startsAt: string | null,
+  endsAt: string | null,
+  at: string = new Date().toISOString().slice(0, 19).replace('T', ' '),
+): CampaignDisplayStatus {
+  if (status !== 'active') {
+    return status;
+  }
+
+  if (startsAt && startsAt > at) {
+    return 'scheduled';
+  }
+
+  if (endsAt && endsAt <= at) {
+    return 'ended';
+  }
+
+  return 'active';
+}
+
 export const campaignSchema = z.object({
   id: z.number().int(),
   name: z.string(),

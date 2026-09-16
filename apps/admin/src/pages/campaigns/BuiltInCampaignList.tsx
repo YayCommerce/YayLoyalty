@@ -3,6 +3,7 @@ import { ChevronDown, ChevronUp, InfoIcon } from 'lucide-react';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { parseWPCurrency, parseWPDate } from '@/lib/helpers/format.helper';
+import { useCampaignsQuery } from '@/lib/queries/campaign.queries';
 import type { Campaign } from '@/lib/schema/campaign.schema';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -14,13 +15,22 @@ import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components
 import { Segmented, SegmentedItem } from '@/components/ui/segmented';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
-import { useBuiltInCampaignsQuery } from './built-in-campaign-list.queries';
+
+/** Display order for the three built-ins — the trigger group order the wireframe and CampaignTable both use. */
+const BUILTIN_TRIGGER_ORDER: Campaign['trigger'][] = ['purchase', 'signup', 'review'];
 
 /**
  * Lite's campaigns list: three always-present, editable cards — no add, no
  * priority, no conditions, no schedule. Section "1a. Campaigns (Free)" in
- * the wireframe; see built-in-campaign-list.api.ts for the data source and
- * where it disagrees with the wireframe.
+ * the wireframe.
+ *
+ * ONE LIST, NOT TWO: reads the same `useCampaignsQuery()` Pro's CampaignTable
+ * reads (`@/lib/queries/campaign.queries`, backed by `@/lib/api/campaign.api`
+ * and CampaignRestController — real, working REST calls; the fixture behind
+ * them today is CampaignRestController's own SWAP POINT, not a second one
+ * here), filtered to `is_builtin`. Lite never sees the non-builtin rows in
+ * that list because nothing in the Lite build can create one — there is no
+ * create/edit UI for anything but these three cards.
  *
  * Loading/error/empty are handled here, once, at the fetch boundary — cards
  * below never see anything but a loaded list. Expand/collapse and every
@@ -28,7 +38,7 @@ import { useBuiltInCampaignsQuery } from './built-in-campaign-list.queries';
  * see BuiltInCampaignCard's docblock.
  */
 export default function BuiltInCampaignList() {
-  const { data: campaigns, isPending, isError } = useBuiltInCampaignsQuery();
+  const { data, isPending, isError } = useCampaignsQuery({ per_page: 100 });
   const [expandedId, setExpandedId] = useState<number | undefined>();
 
   if (isPending) {
@@ -38,6 +48,10 @@ export default function BuiltInCampaignList() {
   if (isError) {
     return <p className="text-destructive text-sm">{__('Could not load campaigns.', 'yayloyalty')}</p>;
   }
+
+  const campaigns = data.data
+    .filter((campaign) => campaign.is_builtin)
+    .sort((a, b) => BUILTIN_TRIGGER_ORDER.indexOf(a.trigger) - BUILTIN_TRIGGER_ORDER.indexOf(b.trigger));
 
   if (campaigns.length === 0) {
     return (

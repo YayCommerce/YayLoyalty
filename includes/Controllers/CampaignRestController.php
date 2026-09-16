@@ -21,6 +21,20 @@ defined( 'ABSPATH' ) || exit;
  * is marked readonly and stripped from write args by AbstractRestController, so
  * `PUT {"is_builtin":0}` cannot flip it and then walk through the DELETE guard.
  * Never read is_builtin from a request.
+ *
+ * SWAP POINT — reads only. get_items()/get_item() answer from dummy_fixture()
+ * below instead of $this->campaigns, for now: a fresh install's real table
+ * holds exactly the three built-ins (Installer::seed_builtins()), which is not
+ * enough campaigns to build or review the Pro grouped/priority table against
+ * (groups, priority ties, the >20-campaigns search threshold, an archived
+ * row). This is the ONE list both Lite (BuiltInCampaignList, filtered to
+ * is_builtin) and Pro (CampaignTable, shown whole) read — see those
+ * components' docblocks. create_item()/update_item()/delete_item() below are
+ * untouched and already write through $this->campaigns for real; when the
+ * dummy rows are no longer needed, get_items()/get_item() go back to reading
+ * $this->campaigns too and dummy_fixture()/find_dummy_row() are deleted —
+ * nothing else in the SPA changes, since every consumer already goes through
+ * getCampaigns()/getCampaign() in lib/api/campaign.api.ts.
  */
 final class CampaignRestController extends AbstractRestController {
 
@@ -94,7 +108,7 @@ final class CampaignRestController extends AbstractRestController {
     }
 
     public function get_items( \WP_REST_Request $request ) {
-        $result = $this->campaigns->paginate_filtered(
+        $result = $this->filter_dummy_fixture(
             [
                 'page'     => (int) $request['page'],
                 'per_page' => (int) $request['per_page'],
@@ -110,13 +124,13 @@ final class CampaignRestController extends AbstractRestController {
     }
 
     public function get_item( \WP_REST_Request $request ) {
-        $campaign = $this->campaigns->find_campaign( (int) $request['id'] );
+        $campaign = self::find_dummy_row( (int) $request['id'] );
 
         if ( null === $campaign ) {
             return $this->error_not_found( __( 'Campaign not found.', 'yayloyalty' ) );
         }
 
-        return $campaign->to_array();
+        return $campaign;
     }
 
     public function create_item( \WP_REST_Request $request ) {
@@ -258,6 +272,266 @@ final class CampaignRestController extends AbstractRestController {
         }
 
         return $slug;
+    }
+
+    /**
+     * One row of dummy_fixture(), by id. Used by get_item() below; public so
+     * another controller needing the same dummy row (a future campaign
+     * editor's save action, for one) can look it up without a second copy of
+     * dummy_fixture().
+     *
+     * @return array<string, mixed>|null
+     */
+    public static function find_dummy_row( int $id ): ?array {
+        foreach ( self::dummy_fixture() as $row ) {
+            if ( $row['id'] === $id ) {
+                return $row;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * dummy_fixture(), filtered/sorted/paged the way
+     * CampaignRepository::paginate_filtered() does over real rows — same
+     * params, same shape back, so swapping the caller in get_items() is the
+     * entire future change.
+     *
+     * @param array{page:int,per_page:int,orderby:string,order:string,trigger:string,status:string,search:string} $args
+     * @return array{items: mixed[], total: int, page: int, per_page: int}
+     */
+    private function filter_dummy_fixture( array $args ): array {
+        $rows = self::dummy_fixture();
+
+        if ( '' !== $args['trigger'] ) {
+            $rows = array_values( array_filter( $rows, static fn( $row ) => $row['trigger'] === $args['trigger'] ) );
+        }
+
+        if ( '' !== $args['status'] ) {
+            $rows = array_values( array_filter( $rows, static fn( $row ) => $row['status'] === $args['status'] ) );
+        }
+
+        if ( '' !== $args['search'] ) {
+            $needle = strtolower( $args['search'] );
+            $rows   = array_values(
+                array_filter( $rows, static fn( $row ) => false !== stripos( $row['name'], $needle ) )
+            );
+        }
+
+        // Same whitelist as CampaignRepository::sortable_columns().
+        $orderby = in_array( $args['orderby'], [ 'id', 'name', 'priority', 'status', 'created_at', 'updated_at' ], true )
+            ? $args['orderby']
+            : 'priority';
+        $desc    = 'asc' !== strtolower( $args['order'] );
+
+        usort(
+            $rows,
+            static function ( $a, $b ) use ( $orderby, $desc ) {
+                // Ties go to the newest (id DESC) — same rule live campaign
+                // selection uses, see data-model.md.
+                $cmp = $a[ $orderby ] <=> $b[ $orderby ];
+                $cmp = $desc ? -$cmp : $cmp;
+
+                return 0 !== $cmp ? $cmp : ( $b['id'] <=> $a['id'] );
+            }
+        );
+
+        $total    = count( $rows );
+        $per_page = max( 1, $args['per_page'] );
+        $page     = max( 1, $args['page'] );
+
+        return [
+            'items'    => array_slice( $rows, ( $page - 1 ) * $per_page, $per_page ),
+            'total'    => $total,
+            'page'     => $page,
+            'per_page' => $per_page,
+        ];
+    }
+
+    /**
+     * Twenty-two campaigns across every trigger, one archived row, a priority
+     * tie (ids 3 and 9) and enough rows to cross the Pro table's >20 search
+     * threshold — see CampaignTable.tsx. ids 4-6 are the three built-ins:
+     * their name/slug/config must match Installer::seed_builtins() and
+     * Campaign::default_config() exactly, since is_builtin rows are matched
+     * by slug across the app and these are the same rows
+     * BuiltInCampaignList edits.
+     *
+     * `conditions` is `[]` throughout on purpose, even for rows whose name
+     * implies one ("Summit+ members 1.5×", "Clearance category boost" aside,
+     * which uses a real type): the natural fit for most of these is `tier`,
+     * which `CampaignConditionType::all()` excludes (the tier system does not
+     * exist yet) — `conditions_are_valid()` would reject a save that still
+     * carried one, so seeding one here would make opening and re-saving that
+     * campaign in the editor fail validation for a reason invisible in the UI.
+     *
+     * No `points_last_30_days` or other analytics figure here: that needs a
+     * store-wide ledger aggregate that does not exist yet (see
+     * LedgerRepository — sum_points_for_user() is per-customer only). Rather
+     * than fake it on the one real campaign shape, CampaignTable.tsx's "Last
+     * 30 days" column and CampaignPointsSummary widget get that figure from
+     * a plain client-side map (apps/admin/src/pro/campaigns/campaign-points-dummy.ts)
+     * keyed to these same dummy ids, not from this fixture.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private static function dummy_fixture(): array {
+        $purchase_defaults = Campaign::default_config( CampaignTrigger::PURCHASE );
+
+        $multiplier = static fn( float $multiplier ) => array_merge(
+            $purchase_defaults,
+            [
+                'mode'                 => 'multiplier',
+                'multiplier'           => $multiplier,
+                'max_points_per_order' => 0,
+                'daily_cap'            => 0,
+            ]
+        );
+
+        $rate = static fn( float $points_per_unit ) => array_merge(
+            $purchase_defaults,
+            [
+                'mode'                 => 'rate',
+                'points_per_unit'      => $points_per_unit,
+                'max_points_per_order' => 0,
+                'daily_cap'            => 0,
+            ]
+        );
+
+        // Every literal config/conditions array with more than one key is
+        // named ahead of the list, one line per campaign below on purpose.
+        // WPCS still requires each of THESE declarations to be multi-line
+        // (WordPress.Arrays.ArrayDeclarationSpacing) — that rule is about a
+        // literal array's own declaration, not about how it is later passed
+        // around, so a named variable is exempt at its use site even though
+        // not at its declaration.
+        $now = [
+            'created_at' => '2026-06-01 00:00:00',
+            'updated_at' => '2026-09-01 00:00:00',
+        ];
+
+        $trail_shoes_conditions = [
+            [
+                'type'     => 'category_in_cart',
+                'operator' => 'in',
+                'value'    => [ 123 ],
+            ],
+        ];
+        $clearance_conditions   = [
+            [
+                'type'     => 'category_in_cart',
+                'operator' => 'in',
+                'value'    => [ 456 ],
+            ],
+        ];
+
+        $birthday_points_config   = [
+            'points'      => 500,
+            'days_before' => 0,
+        ];
+        $welcome_bonus_config     = [ 'points' => 50 ];
+        $referral_signup_config   = [ 'points' => 25 ];
+        $photo_review_config      = [
+            'points'             => 20,
+            'require_verified'   => false,
+            'one_per_product'    => false,
+            'daily_cap'          => 0,
+            'media_bonus_points' => 0,
+        ];
+        $video_review_config      = [
+            'points'             => 75,
+            'require_verified'   => true,
+            'one_per_product'    => true,
+            'daily_cap'          => 0,
+            'media_bonus_points' => 0,
+        ];
+        $first_order_bonus_config = [
+            'points'       => 150,
+            'min_subtotal' => 0,
+        ];
+        $frequent_buyer_config    = [
+            'points'      => 200,
+            'order_count' => 5,
+            'repeat'      => false,
+        ];
+        $big_spender_config       = [
+            'points'       => 1000,
+            'spend_amount' => 500,
+            'repeat'       => false,
+        ];
+        $anniversary_bonus_config = [
+            'points'      => 300,
+            'days_before' => 0,
+        ];
+        $tier_upgrade_config      = [
+            'points'       => 500,
+            'spend_amount' => 1000,
+            'repeat'       => false,
+        ];
+
+        return [
+            self::dummy_row( 1, 'Summit+ members 1.5×', 'summit-plus-members-1-5x', CampaignTrigger::PURCHASE, Status::ACTIVE, 100, $multiplier( 1.5 ), [], null, null, false, $now ),
+            self::dummy_row( 2, 'Black Friday 2×', 'black-friday-2x', CampaignTrigger::PURCHASE, Status::ACTIVE, 90, $multiplier( 2 ), [], '2026-11-27 00:00:00', '2026-12-01 00:00:00', false, $now ),
+            self::dummy_row( 3, 'Trail Shoes boost', 'trail-shoes-boost', CampaignTrigger::PURCHASE, Status::PAUSED, 80, $rate( 3 ), $trail_shoes_conditions, null, null, false, $now ),
+            self::dummy_row( 4, 'Points for purchases', CampaignRepository::DEFAULT_PURCHASE_SLUG, CampaignTrigger::PURCHASE, Status::ACTIVE, 0, $purchase_defaults, [], null, null, true, $now ),
+            self::dummy_row( 5, 'Points for signing up', 'signup', CampaignTrigger::SIGNUP, Status::ACTIVE, 0, Campaign::default_config( CampaignTrigger::SIGNUP ), [], null, null, true, $now ),
+            self::dummy_row( 6, 'Points for writing a review', 'review', CampaignTrigger::REVIEW, Status::ACTIVE, 0, Campaign::default_config( CampaignTrigger::REVIEW ), [], null, null, true, $now ),
+            self::dummy_row( 7, 'Birthday points', 'birthday-points', CampaignTrigger::BIRTHDAY, Status::DRAFT, 0, $birthday_points_config, [], null, null, false, $now ),
+            self::dummy_row( 8, 'Spring Sale 1.5×', 'spring-sale-1-5x', CampaignTrigger::PURCHASE, Status::ARCHIVED, 5, $multiplier( 1.5 ), [], '2026-03-01 00:00:00', '2026-03-16 00:00:00', false, $now ),
+            self::dummy_row( 9, 'VIP double points', 'vip-double-points', CampaignTrigger::PURCHASE, Status::ACTIVE, 80, $multiplier( 2 ), [], null, null, false, $now ),
+            self::dummy_row( 10, 'Loyalty week 1.2×', 'loyalty-week-1-2x', CampaignTrigger::PURCHASE, Status::ACTIVE, 35, $multiplier( 1.2 ), [], '2026-12-01 00:00:00', '2026-12-08 00:00:00', false, $now ),
+            self::dummy_row( 11, 'Newsletter bonus', 'newsletter-bonus', CampaignTrigger::PURCHASE, Status::ACTIVE, 25, $rate( 2 ), [], null, null, false, $now ),
+            self::dummy_row( 12, 'Weekend flash 1.3×', 'weekend-flash-1-3x', CampaignTrigger::PURCHASE, Status::PAUSED, 15, $multiplier( 1.3 ), [], null, null, false, $now ),
+            self::dummy_row( 13, 'Clearance category boost', 'clearance-category-boost', CampaignTrigger::PURCHASE, Status::DRAFT, 5, $rate( 2 ), $clearance_conditions, null, null, false, $now ),
+            self::dummy_row( 14, 'Welcome bonus boost', 'welcome-bonus-boost', CampaignTrigger::SIGNUP, Status::ACTIVE, 10, $welcome_bonus_config, [], null, null, false, $now ),
+            self::dummy_row( 15, 'Referral signup bonus', 'referral-signup-bonus', CampaignTrigger::SIGNUP, Status::ACTIVE, 5, $referral_signup_config, [], null, null, false, $now ),
+            self::dummy_row( 16, 'Photo review bonus', 'photo-review-bonus', CampaignTrigger::REVIEW, Status::ACTIVE, 10, $photo_review_config, [], null, null, false, $now ),
+            self::dummy_row( 17, 'Video review bonus', 'video-review-bonus', CampaignTrigger::REVIEW, Status::PAUSED, 5, $video_review_config, [], null, null, false, $now ),
+            self::dummy_row( 18, 'First order bonus', 'first-order-bonus', CampaignTrigger::FIRST_ORDER, Status::ACTIVE, 5, $first_order_bonus_config, [], null, null, false, $now ),
+            self::dummy_row( 19, 'Frequent buyer reward', 'frequent-buyer-reward', CampaignTrigger::ORDER_COUNT, Status::ACTIVE, 10, $frequent_buyer_config, [], null, null, false, $now ),
+            self::dummy_row( 20, 'Big spender milestone', 'big-spender-milestone', CampaignTrigger::SPEND_MILESTONE, Status::ACTIVE, 15, $big_spender_config, [], '2027-01-01 00:00:00', null, false, $now ),
+            self::dummy_row( 21, 'Anniversary bonus', 'anniversary-bonus', CampaignTrigger::BIRTHDAY, Status::DRAFT, 20, $anniversary_bonus_config, [], null, null, false, $now ),
+            self::dummy_row( 22, 'Tier upgrade bonus', 'tier-upgrade-bonus', CampaignTrigger::SPEND_MILESTONE, Status::ACTIVE, 25, $tier_upgrade_config, [], null, null, false, $now ),
+        ];
+    }
+
+    /**
+     * @param array<string, mixed>  $config
+     * @param array<int, mixed>     $conditions
+     * @param array{created_at:string,updated_at:string} $timestamps
+     * @return array<string, mixed>
+     */
+    private static function dummy_row(
+        int $id,
+        string $name,
+        string $slug,
+        string $trigger,
+        string $status,
+        int $priority,
+        array $config,
+        array $conditions,
+        ?string $starts_at,
+        ?string $ends_at,
+        bool $is_builtin,
+        array $timestamps
+    ): array {
+        return [
+            'id'         => $id,
+            'name'       => $name,
+            'slug'       => $slug,
+            'trigger'    => $trigger,
+            'status'     => $status,
+            'priority'   => $priority,
+            'config'     => $config,
+            'conditions' => $conditions,
+            'starts_at'  => $starts_at,
+            'ends_at'    => $ends_at,
+            'is_builtin' => $is_builtin,
+            'created_by' => null,
+            'created_at' => $timestamps['created_at'],
+            'updated_at' => $timestamps['updated_at'],
+        ];
     }
 
     /**
