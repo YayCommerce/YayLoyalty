@@ -116,6 +116,7 @@ export function CampaignTable() {
 
   const baseRows = newStore ? allRows.filter((row) => row.is_builtin) : (localRows ?? allRows);
   const rows = noLiveCampaign ? baseRows.map(pauseIfActivePurchase) : baseRows;
+  const archivedCount = rows.filter((row) => row.displayStatus === 'archived').length;
   const hasActivePurchaseCampaign = rows.some(
     (row) => triggerGroup(row.trigger) === 'purchase' && row.displayStatus === 'active',
   );
@@ -170,14 +171,35 @@ export function CampaignTable() {
       <Card>
         <CardContent className="flex flex-col gap-4">
           <div className="flex flex-wrap items-center gap-3">
-            <p className="text-muted-foreground flex-1 text-sm">
-              {newStore
-                ? __('Three ways customers earn points. Nothing has been awarded yet.', 'yayloyalty')
-                : sprintf(
+            <p className="text-foreground flex-1 text-sm">
+              {newStore ? (
+                __('Three ways customers earn points. Nothing has been awarded yet.', 'yayloyalty')
+              ) : (
+                <>
+                  {sprintf(
                     /* translators: %d: total number of campaigns, archived ones included. */
-                    __('%d campaigns. Drag to reorder within a group.', 'yayloyalty'),
+                    __('%d campaigns', 'yayloyalty'),
                     rows.length,
                   )}
+                  {archivedCount > 0 && (
+                    <>
+                      {' - '}
+                      <button
+                        type="button"
+                        className="text-foreground hover:underline"
+                        onClick={() => setStatusFilter('archived')}
+                      >
+                        {sprintf(
+                          /* translators: %d: number of archived campaigns in the list. */
+                          __('%d archived', 'yayloyalty'),
+                          archivedCount,
+                        )}
+                      </button>
+                    </>
+                  )}
+                  {__('. Drag to reorder within a group.', 'yayloyalty')}
+                </>
+              )}
             </p>
 
             {/* Only once scrolling stops being a reasonable way to find one campaign. */}
