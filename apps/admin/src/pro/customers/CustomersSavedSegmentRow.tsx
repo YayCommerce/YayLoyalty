@@ -2,15 +2,17 @@ import { useState } from 'react';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { Can, CAP } from '@/lib/access';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/custom/dialog';
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/custom/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { RowFilters } from '@/pages/customers/customers-page.filter-rows';
 import { ALL_SEGMENTS_VALUE, useSavedSegmentPicker } from './customers-saved-segment-row.state';
@@ -52,15 +54,6 @@ export function CustomersSavedSegmentRow({
     isRemoving,
   } = useSavedSegmentPicker({ filters, onFiltersChange });
   const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
-
-  function handleConfirmedRemove() {
-    // Closes right away rather than waiting for the request: the "Remove
-    // segment" button itself already shows the pending state
-    // (disabled + "Removing…"), so the confirm dialog doesn't need to
-    // duplicate that — its only job was getting a yes/no.
-    setConfirmRemoveOpen(false);
-    onRemove();
-  }
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -104,11 +97,19 @@ export function CustomersSavedSegmentRow({
         </Can>
       )}
 
-      <Dialog open={confirmRemoveOpen} onOpenChange={setConfirmRemoveOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{__('Remove this segment?', 'yayloyalty')}</DialogTitle>
-            <DialogDescription>
+      {/* AlertDialog, not the plain Dialog: this is a destructive
+          confirmation, and AlertDialogContent renders with role="alertdialog"
+          for a screen reader — semantically correct for "are you sure",
+          unlike the form dialog above (CustomersSaveSegmentDialog). Action
+          and Cancel both close the dialog on click on their own (built into
+          the Radix primitive, even with a controlled `open`), so `onRemove`
+          only needs to fire the mutation — no manual setConfirmRemoveOpen(false)
+          call needed here. */}
+      <AlertDialog open={confirmRemoveOpen} onOpenChange={setConfirmRemoveOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{__('Remove this segment?', 'yayloyalty')}</AlertDialogTitle>
+            <AlertDialogDescription>
               {sprintf(
                 /* translators: %s: the saved segment's name. */
                 __(
@@ -117,18 +118,16 @@ export function CustomersSavedSegmentRow({
                 ),
                 selected,
               )}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmRemoveOpen(false)}>
-              {__('Cancel', 'yayloyalty')}
-            </Button>
-            <Button variant="destructive" onClick={handleConfirmedRemove}>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{__('Cancel', 'yayloyalty')}</AlertDialogCancel>
+            <AlertDialogAction className={buttonVariants({ variant: 'destructive' })} onClick={onRemove}>
               {__('Remove', 'yayloyalty')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <CustomersSaveSegmentDialog open={dialogOpen} onOpenChange={setDialogOpen} filters={current} onSaved={onSaved} />
     </div>
