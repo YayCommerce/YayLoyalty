@@ -51,7 +51,7 @@ export default function CampaignsPage() {
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Campaign | undefined>();
 
-  const campaigns = useCampaignsQuery({ page, per_page: PER_PAGE, trigger, status });
+  const campaigns = useCampaignsQuery({ page, perPage: PER_PAGE, trigger, status });
 
   return (
     <PageLayout

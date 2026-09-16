@@ -139,6 +139,8 @@ Filters (public API): `yayloyalty_campaign_candidates`, `yayloyalty_campaign_mat
 | `Pro/YayLoyaltyPro.php` | Boot; attaches all Pro filters; fires `yayloyalty_pro_booted` | — |
 | `Pro/Services/ConditionsEvaluator.php` | Evaluates campaign conditions (ANDed); fails on unknown type | `yayloyalty_campaign_conditions_evaluator` |
 | `Pro/Controllers/CampaignPreviewRestController.php` | POST `/campaigns/{id}/preview-conditions` — 404 in Lite | `yayloyalty_rest_controllers` |
+| `Pro/Controllers/CustomerSegmentsRestController.php` | POST `/customers/segments` — save a saved Customers-page filter set (name + filters minus search); 404 in Lite | `yayloyalty_rest_controllers` |
+| `Pro/Helpers/CustomerSegmentsHelper.php` | `yayloyalty_customer_segments` option: site-wide list of `{name, filters}`, whitelisted both directions; name is the identity, duplicates rejected (no upsert) | — |
 
 **Pro seams (filters):**
 - `yayloyalty_table_schemas` — Pro can add tables (currently unused)
@@ -155,7 +157,7 @@ Filters (public API): `yayloyalty_campaign_candidates`, `yayloyalty_campaign_mat
 **Other seams (Pro/Lite/Engine):**
 - `yayloyalty_max_manual_adjustment` — Filter per-role cap on manual adjustments
 - `yayloyalty_run_migrations` — Trigger custom migrations
-- `yayloyalty_localize_admin_data` — Extend SPA payload
+- `yayloyalty_localize_admin_data` — Extend SPA payload (Pro adds `segments`, the saved Customers-page filter sets — see `Pro/Helpers/CustomerSegmentsHelper.php`)
 - `yayloyalty_localize_meta` — Add meta tags to admin head
 - `yayloyalty_pro_booted` — Action fired after Pro boot completes
 
@@ -170,8 +172,8 @@ Filters (public API): `yayloyalty_campaign_candidates`, `yayloyalty_campaign_mat
 | `src/main.tsx` | Entry point; imports Pro barrel if `IS_PRO_BUILD` |
 | `src/router.tsx` | Hash router with routes for `/dashboard`, `/customers`, `/campaigns`, `/rewards`, `/referral`, `/vip-tiers`, `/settings` (each gated by capability via `<Can>`) |
 | `src/pages/` | Route pages; `campaigns/`, `customers/` and `settings/` have content; Dashboard, Rewards, Referral, VIP Tiers are placeholders |
-| `src/pages/customers/` | Server-paginated list (search/filter/sort/export/row-select), real `GET /customers`; bulk "Adjust points"/"Export" wired to real endpoints; no per-customer detail view yet |
-| `src/pro/` | **Deleted in Lite build** — Pro feature components (`ConditionsPreview`, sentinel exports) |
+| `src/pages/customers/` | Server-paginated list (search/filter/sort/export/row-select), real `GET /customers`; bulk "Adjust points"/"Export" wired to real endpoints; no per-customer detail view yet; Tier column/filter are sample-data stand-ins over `balance_range` (see `customers-page.tier-sample-data.ts`—to be deleted when VIP Tiers ships); Pro adds a saved-segment picker (`src/pro/customers/`) above the toolbar |
+| `src/pro/` | **Deleted in Lite build** — Pro feature components (`ConditionsPreview`, `CustomersSavedSegmentRow` + `customer-segments.api.ts`, sentinel exports) |
 | `src/components/pro/` | **Kept in Lite** — `ProGate`, upsell UI, badge components |
 | `src/lib/` | Helpers: `api/` (REST calls), `queries/` (TanStack Query), `schema/` (Zod), `utils.ts`, `is-pro-build.ts`, `helpers/`, `access.tsx` (`CAP`, `can()`, `<Can>` — hide/disable by capability from `window.yayLoyaltyAdmin`; cosmetic, the server decides) |
 | `src/types/` | TypeScript type definitions |

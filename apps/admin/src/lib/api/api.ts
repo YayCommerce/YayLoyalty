@@ -169,3 +169,15 @@ export async function getApiErrorMessage(error: unknown, fallback: string): Prom
 
   return fallback;
 }
+
+/**
+ * True for the error a `fetch()` throws when its `AbortSignal` fires (e.g. a
+ * caller cancelling `fetchAllMatchingCustomers()`'s multi-page loop on
+ * unmount). Callers check this BEFORE calling `getApiErrorMessage()` — an
+ * intentional cancellation is not a failure to report; toasting one right as
+ * the triggering component unmounts would surface a confusing error for
+ * something the merchant didn't do wrong.
+ */
+export function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && 'AbortError' === error.name;
+}

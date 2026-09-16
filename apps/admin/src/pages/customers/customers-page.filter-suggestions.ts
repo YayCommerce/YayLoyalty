@@ -1,5 +1,6 @@
 import { __, _n, sprintf } from '@wordpress/i18n';
 
+import type { NoMatchSuggestion } from '@/lib/schema/customer.schema';
 import {
   BALANCE_RANGE_OPTIONS,
   DEFAULT_ROW_FILTERS,
@@ -19,13 +20,22 @@ import {
  */
 export type FilterKey = 'search' | 'balanceRange' | 'expiringSoon' | 'tier';
 
-/** A raw `{key, count}` pair as the server sends it — see `lib/api/customer.api.ts`'s `noMatchSuggestionSchema`. */
-export interface NoMatchSuggestion {
+/**
+ * Wire param name → `RowFilters` key. The server's `suggestions[].key` uses
+ * the same spelling as its query params (`balance_range`), and this is the
+ * one place that spelling meets the app's own — the same boundary rule
+ * `lib/api/customer.api.ts` applies in the other direction.
+ */
+const FILTER_KEY_BY_WIRE_KEY: Record<NoMatchSuggestion['key'], FilterKey> = {
+  search: 'search',
+  balance_range: 'balanceRange',
+  expiring_soon: 'expiringSoon',
+  tier: 'tier',
+};
+
+export interface FilterDropSuggestion {
   key: FilterKey;
   count: number;
-}
-
-export interface FilterDropSuggestion extends NoMatchSuggestion {
   label: string;
   /**
    * 'without' — drop just this filter, keep the rest ("Without Tier: Alpine").
@@ -78,15 +88,16 @@ function describeFilterValue(key: FilterKey, filters: RowFilters): string {
  * `balanceRange` → `tier`: the server only ever sees a real `balance_range`
  * param — a Tier pick is sent as its equivalent bucket, never as `tier`
  * (see `customers-page.tier-sample-data.ts`), so its suggestion also comes
- * back keyed `balanceRange`. Relabel it here when a tier is actually what's
+ * back keyed `balance_range`. Relabel it here when a tier is actually what's
  * active, or the suggestion would read "Without 0 – 1,000" instead of
  * "Without Tier: Alpine", and dropping it would look like a no-op (it'd
  * reset `balanceRange`, which is already at its default whenever a tier is
  * selected — see the toolbar's mutual-exclusion rule).
  */
 export function toFilterDropSuggestions(raw: NoMatchSuggestion[], filters: RowFilters): FilterDropSuggestion[] {
-  return raw.map(({ key: rawKey, count }) => {
-    const key = rawKey === 'balanceRange' && filters.tier !== 'all' ? 'tier' : rawKey;
+  return raw.map(({ key: wireKey, count }) => {
+    const filterKey = FILTER_KEY_BY_WIRE_KEY[wireKey];
+    const key = filterKey === 'balanceRange' && filters.tier !== 'all' ? 'tier' : filterKey;
 
     return {
       key,
