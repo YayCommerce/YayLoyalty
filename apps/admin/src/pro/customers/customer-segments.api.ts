@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { api } from '@/lib/api/api';
+import { BALANCE_RANGE_OPTIONS, EXPIRING_SOON_OPTIONS, TIER_OPTIONS } from '@/pages/customers/customers-page.filter-rows';
 
 /**
  * Client for POST/DELETE /customers/segments — saved Customers-page filter sets.
@@ -16,9 +17,9 @@ import { api } from '@/lib/api/api';
 export const savedSegmentSchema = z.object({
   name: z.string(),
   filters: z.object({
-    balanceRange: z.enum(['any', 'negative', '0-1000', '1000-10000', '10000-plus']),
-    expiringSoon: z.enum(['off', '30', '90', 'none']),
-    tier: z.enum(['all', 'Alpine', 'Summit', 'Explorer']),
+    balanceRange: z.enum(BALANCE_RANGE_OPTIONS.map((option) => option.value) as [string, ...string[]]),
+    expiringSoon: z.enum(EXPIRING_SOON_OPTIONS.map((option) => option.value) as [string, ...string[]]),
+    tier: z.enum(TIER_OPTIONS.map((option) => option.value) as [string, ...string[]]),
   }),
 });
 

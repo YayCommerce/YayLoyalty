@@ -2,6 +2,7 @@
 namespace YayLoyalty\Controllers;
 
 use YayLoyalty\Access\Capabilities;
+use YayLoyalty\Enums\CustomerFilters;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Services\LedgerService;
 
@@ -137,22 +138,22 @@ final class CustomerRestController extends AbstractRestController {
             'balance_range' => [
                 'description'       => __( 'Balance bucket to filter by.', 'yayloyalty' ),
                 'type'              => 'string',
-                'enum'              => [ 'any', 'negative', '0-1000', '1000-10000', '10000-plus' ],
-                'default'           => 'any',
+                'enum'              => CustomerFilters::BALANCE_RANGES,
+                'default'           => CustomerFilters::BALANCE_RANGES[0],
                 'sanitize_callback' => 'sanitize_text_field',
             ],
             'expiring_soon' => [
                 'description'       => __( 'Points-expiry window to filter by.', 'yayloyalty' ),
                 'type'              => 'string',
-                'enum'              => [ 'off', '30', '90', 'none' ],
-                'default'           => 'off',
+                'enum'              => CustomerFilters::EXPIRY_RANGES,
+                'default'           => CustomerFilters::EXPIRY_RANGES[0],
                 'sanitize_callback' => 'sanitize_text_field',
             ],
             'tier'          => [
                 'description'       => __( 'Loyalty tier to filter by (no tiers exist yet — always matches zero rows).', 'yayloyalty' ),
                 'type'              => 'string',
-                'enum'              => [ 'all', 'Alpine', 'Summit', 'Explorer' ],
-                'default'           => 'all',
+                'enum'              => CustomerFilters::TIER_RANGES,
+                'default'           => CustomerFilters::TIER_RANGES[0],
                 'sanitize_callback' => 'sanitize_text_field',
             ],
         ];

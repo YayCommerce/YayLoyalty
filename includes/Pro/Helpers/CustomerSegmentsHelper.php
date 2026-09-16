@@ -1,6 +1,8 @@
 <?php
 namespace YayLoyalty\Pro\Helpers;
 
+use YayLoyalty\Enums\CustomerFilters;
+
 defined( 'ABSPATH' ) || exit;
 
 /**
@@ -49,10 +51,10 @@ final class CustomerSegmentsHelper {
      *
      * @var array<string, string[]>
      */
-    private const FILTER_SCHEMA = [
-        'balanceRange' => [ 'any', 'negative', '0-1000', '1000-10000', '10000-plus' ],
-        'expiringSoon' => [ 'off', '30', '90', 'none' ],
-        'tier'         => [ 'all', 'Alpine', 'Summit', 'Explorer' ],
+    public const FILTER_SCHEMA = [
+        'balanceRange' => CustomerFilters::BALANCE_RANGES,
+        'expiringSoon' => CustomerFilters::EXPIRY_RANGES,
+        'tier'         => CustomerFilters::TIER_RANGES,
     ];
 
     /**

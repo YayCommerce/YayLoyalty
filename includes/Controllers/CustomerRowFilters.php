@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Controllers;
 
+use YayLoyalty\Enums\CustomerFilters;
 use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
@@ -25,9 +26,9 @@ final class CustomerRowFilters {
     /** Every param's "not filtering" value — the shape `to_criteria()` and `candidates_for_no_match()` both work with. */
     private const DEFAULTS = [
         'search'        => '',
-        'balance_range' => 'any',
-        'expiring_soon' => 'off',
-        'tier'          => 'all',
+        'balance_range' => CustomerFilters::BALANCE_RANGES[0],
+        'expiring_soon' => CustomerFilters::EXPIRY_RANGES[0],
+        'tier'          => CustomerFilters::TIER_RANGES[0],
     ];
 
     /**
