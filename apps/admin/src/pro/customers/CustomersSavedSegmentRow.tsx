@@ -1,7 +1,16 @@
-import { __ } from '@wordpress/i18n';
+import { useState } from 'react';
+import { __, sprintf } from '@wordpress/i18n';
 
 import { Can, CAP } from '@/lib/access';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/custom/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { RowFilters } from '@/pages/customers/customers-page.filter-rows';
 import { ALL_SEGMENTS_VALUE, useSavedSegmentPicker } from './customers-saved-segment-row.state';
@@ -42,6 +51,16 @@ export function CustomersSavedSegmentRow({
     onRemove,
     isRemoving,
   } = useSavedSegmentPicker({ filters, onFiltersChange });
+  const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
+
+  function handleConfirmedRemove() {
+    // Closes right away rather than waiting for the request: the "Remove
+    // segment" button itself already shows the pending state
+    // (disabled + "Removing…"), so the confirm dialog doesn't need to
+    // duplicate that — its only job was getting a yes/no.
+    setConfirmRemoveOpen(false);
+    onRemove();
+  }
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -78,12 +97,38 @@ export function CustomersSavedSegmentRow({
             size="sm"
             className="text-destructive hover:text-destructive-accent"
             disabled={disabled || isRemoving}
-            onClick={onRemove}
+            onClick={() => setConfirmRemoveOpen(true)}
           >
             {isRemoving ? __('Removing…', 'yayloyalty') : __('Remove segment', 'yayloyalty')}
           </Button>
         </Can>
       )}
+
+      <Dialog open={confirmRemoveOpen} onOpenChange={setConfirmRemoveOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{__('Remove this segment?', 'yayloyalty')}</DialogTitle>
+            <DialogDescription>
+              {sprintf(
+                /* translators: %s: the saved segment's name. */
+                __(
+                  '“%s” will be permanently removed from your saved segments. This does not change the filters or customer list currently shown.',
+                  'yayloyalty',
+                ),
+                selected,
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmRemoveOpen(false)}>
+              {__('Cancel', 'yayloyalty')}
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmedRemove}>
+              {__('Remove', 'yayloyalty')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <CustomersSaveSegmentDialog open={dialogOpen} onOpenChange={setDialogOpen} filters={current} onSaved={onSaved} />
     </div>
