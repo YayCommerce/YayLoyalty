@@ -51,10 +51,11 @@ export type AdminData = {
    * Read via `@/pro`'s `readSegmentsFromLocalize()`, never directly — this
    * type only makes `window.yayLoyaltyAdmin.segments` type-check; the value
    * unions come from the shared schema, not from `@/pro`, so this file pulls
-   * in nothing Pro-only.
+   * in nothing Pro-only. Wire spelling (`snake_case`, like every payload) —
+   * `readSegmentsFromLocalize()` converts to the app's camelCase `SavedSegment`.
    */
   segments?: {
     name: string;
-    filters: { balanceRange: CustomerBalanceRange; expiringSoon: CustomerExpiringSoon; tier: CustomerTier };
+    filters: { balance_range: CustomerBalanceRange; expiring_soon: CustomerExpiringSoon; tier: CustomerTier };
   }[];
 };

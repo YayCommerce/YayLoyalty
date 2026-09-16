@@ -45,16 +45,17 @@ final class CustomerSegmentsHelper {
 
     /**
      * Allowed filter values, keyed by field. First value is that field's
-     * default — mirrors `CustomerRowFilters::DEFAULTS` /
-     * `customers-page.filter-rows.ts`'s `DEFAULT_ROW_FILTERS` (minus `search`,
-     * which a segment never carries).
+     * default. Keys are the same wire/param names `CustomerRowFilters::DEFAULTS`
+     * uses for `GET /customers` (minus `search`, which a segment never
+     * carries) — one spelling of this vocabulary server-side; the admin app
+     * maps to its camelCase `RowFilters` in `pro/customers/customer-segments.api.ts`.
      *
      * @var array<string, string[]>
      */
     public const FILTER_SCHEMA = [
-        'balanceRange' => CustomerFilters::BALANCE_RANGES,
-        'expiringSoon' => CustomerFilters::EXPIRY_RANGES,
-        'tier'         => CustomerFilters::TIER_RANGES,
+        'balance_range' => CustomerFilters::BALANCE_RANGES,
+        'expiring_soon' => CustomerFilters::EXPIRY_RANGES,
+        'tier'          => CustomerFilters::TIER_RANGES,
     ];
 
     /**

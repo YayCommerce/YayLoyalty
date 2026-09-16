@@ -56,9 +56,9 @@ export async function fetchAllMatchingCustomers(
     balanceRange: resolveBalanceRangeForQuery(filters),
     expiringSoon: filters.expiringSoon,
     tier: 'all' as const,
-    orderby: sort.by,
+    orderBy: sort.by,
     order: sort.dir,
-    per_page: MAX_PER_PAGE,
+    perPage: MAX_PER_PAGE,
   };
 
   const first = await getCustomers({ ...params, page: 1 }, signal);

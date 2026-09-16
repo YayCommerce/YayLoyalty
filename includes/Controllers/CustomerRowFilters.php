@@ -91,13 +91,14 @@ final class CustomerRowFilters {
      * filter, the one candidate is always "no filters at all", which isn't
      * worth suggesting over "Clear all".
      *
-     * `key` comes back camelCase (`balanceRange`, not `balance_range`) to
-     * match the admin app's `FilterKey` directly — the admin app already owns
-     * the option labels (`customers-page.filter-rows.ts`) and builds display
-     * text from `key` plus its own filter state, so nothing here translates.
+     * `key` is the wire/param name (`balance_range`), same as the query params
+     * this class reads — the server never learns how the admin app spells its
+     * own filter state. The admin app owns the option labels
+     * (`customers-page.filter-rows.ts`) and maps `key` to its `FilterKey` in
+     * `customers-page.filter-suggestions.ts`, so nothing here translates.
      *
      * @param array<string, string> $filters
-     * @return array<string, array<string, string>> filterKey => candidate params
+     * @return array<string, array<string, string>> param name => candidate params
      */
     public static function candidates_for_no_match( array $filters ): array {
         $active_keys = array_keys(
@@ -119,15 +120,10 @@ final class CustomerRowFilters {
                 ? array_merge( self::DEFAULTS, [ 'search' => $filters['search'] ?? '' ] )
                 : array_merge( self::DEFAULTS, $filters, [ $key => self::DEFAULTS[ $key ] ] );
 
-            $candidates[ self::param_to_filter_key( $key ) ] = $candidate;
+            $candidates[ $key ] = $candidate;
         }
 
         return $candidates;
-    }
-
-    /** `balance_range` (wire/param name) → `balanceRange` (the admin app's `FilterKey`). */
-    private static function param_to_filter_key( string $param ): string {
-        return lcfirst( str_replace( '_', '', ucwords( $param, '_' ) ) );
     }
 
     /**

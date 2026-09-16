@@ -95,9 +95,10 @@ export const campaignSchema = z.object({
 
 export type Campaign = z.infer<typeof campaignSchema>;
 
+/** App-side (camelCase) list params — `campaign.api.ts` maps them to the wire's `per_page`. */
 export const campaignListParamsSchema = z.object({
   page: z.number().int().optional(),
-  per_page: z.number().int().optional(),
+  perPage: z.number().int().optional(),
   trigger: campaignTriggerSchema.optional(),
   status: campaignStatusSchema.optional(),
   search: z.string().optional(),

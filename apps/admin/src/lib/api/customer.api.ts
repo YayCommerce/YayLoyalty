@@ -29,11 +29,11 @@ export async function getCustomer(userId: number): Promise<Customer> {
   return customerSchema.parse(await api.get(`customers/${userId}`).json());
 }
 
-export async function getCustomerLedger(userId: number, params: { page?: number; per_page?: number } = {}) {
+export async function getCustomerLedger(userId: number, params: { page?: number; perPage?: number } = {}) {
   const searchParams: Record<string, string> = {};
 
   if (params.page) searchParams.page = String(params.page);
-  if (params.per_page) searchParams.per_page = String(params.per_page);
+  if (params.perPage) searchParams.per_page = String(params.perPage);
 
   const payload = await api.get(`customers/${userId}/ledger`, { searchParams }).json();
 
@@ -44,10 +44,17 @@ export async function adjustCustomerPoints(userId: number, input: AdjustPointsIn
   return ledgerEntrySchema.parse(await api.post(`customers/${userId}/adjust`, { json: input }).json());
 }
 
+/**
+ * App-side (camelCase) params for `getCustomers()`. The wire spelling
+ * (`per_page`, `orderby`, `balance_range`, `expiring_soon` — WP REST core
+ * style, see `CustomerRestController::get_items()` args) exists only inside
+ * the request builder below: one conversion point, so no caller has to know
+ * how the server spells a query param.
+ */
 export type CustomerListParams = {
   page?: number;
-  per_page?: number;
-  orderby?: CustomerSortKey;
+  perPage?: number;
+  orderBy?: CustomerSortKey;
   order?: CustomerSortDirection;
   search?: string;
   balanceRange?: CustomerBalanceRange;
@@ -72,8 +79,8 @@ export async function getCustomers(params: CustomerListParams = {}, signal?: Abo
   const searchParams: Record<string, string> = {};
 
   if (params.page) searchParams.page = String(params.page);
-  if (params.per_page) searchParams.per_page = String(params.per_page);
-  if (params.orderby) searchParams.orderby = params.orderby;
+  if (params.perPage) searchParams.per_page = String(params.perPage);
+  if (params.orderBy) searchParams.orderby = params.orderBy;
   if (params.order) searchParams.order = params.order;
   if (params.search?.trim()) searchParams.search = params.search.trim();
   if (params.balanceRange && params.balanceRange !== 'any') searchParams.balance_range = params.balanceRange;
