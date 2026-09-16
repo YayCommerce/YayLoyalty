@@ -69,8 +69,8 @@ export default function CustomersPage() {
 
   const customersQuery = useCustomersQuery({
     page,
-    per_page: PER_PAGE,
-    orderby: sortBy,
+    perPage: PER_PAGE,
+    orderBy: sortBy,
     order: sortDir,
     ...queryFilters,
     // The real backend has no tiers table (any non-'all' `tier` wire param

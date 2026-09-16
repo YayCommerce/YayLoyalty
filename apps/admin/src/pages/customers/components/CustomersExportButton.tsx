@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { __ } from '@wordpress/i18n';
 
 import { Can, CAP } from '@/lib/access';
-import { getApiErrorMessage } from '@/lib/api/api';
+import { getApiErrorMessage, isAbortError } from '@/lib/api/api';
 import { Button } from '@/components/ui/button';
 import { exportCustomersToCsv } from '../customers-page.export';
 import type { RowFilters } from '../customers-page.filter-rows';
@@ -29,17 +29,30 @@ export function CustomersExportButton({
   sort: { by: SortKey; dir: SortDirection };
 }) {
   const [isExporting, setIsExporting] = useState(false);
+  // Aborts a still-running multi-page fetch if this component unmounts
+  // (e.g. the merchant navigates away from Customers) mid-export, instead of
+  // letting a large sequential walk finish in the background for nothing.
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => abortRef.current?.abort();
+  }, []);
 
   async function handleExport() {
     setIsExporting(true);
+    const controller = new AbortController();
+    abortRef.current = controller;
     try {
-      const rows = await fetchAllMatchingCustomers(queryFilters, sort);
+      const rows = await fetchAllMatchingCustomers(queryFilters, sort, controller.signal);
       if (rows.length === 0) {
         toast.error(__('No customers to export.', 'yayloyalty'));
         return;
       }
       exportCustomersToCsv(rows);
     } catch (error) {
+      // A cancellation (unmount) is not a failure to report — it's what was
+      // asked for. Toasting it would confuse a merchant who already left.
+      if (isAbortError(error)) return;
       toast.error(await getApiErrorMessage(error, __('Could not export customers.', 'yayloyalty')));
     } finally {
       setIsExporting(false);

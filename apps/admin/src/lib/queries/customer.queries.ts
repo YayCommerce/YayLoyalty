@@ -22,7 +22,7 @@ export const CUSTOMER_QUERIES = {
   ledger: (userId: number, page: number, perPage: number) =>
     queryOptions({
       queryKey: ['customer', 'ledger', userId, page, perPage],
-      queryFn: () => getCustomerLedger(userId, { page, per_page: perPage }),
+      queryFn: () => getCustomerLedger(userId, { page, perPage }),
       enabled: userId > 0,
     }),
 

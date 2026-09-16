@@ -5,10 +5,10 @@ import { paginatedSchema, parsePaginated } from '@/lib/api/paginated';
 import {
   AdjustPointsInput,
   Customer,
-  customerListRowSchema,
-  customerSchema,
   CustomerBalanceRange,
   CustomerExpiringSoon,
+  customerListRowSchema,
+  customerSchema,
   CustomerSortDirection,
   CustomerSortKey,
   CustomerTier,
@@ -29,31 +29,32 @@ export async function getCustomer(userId: number): Promise<Customer> {
   return customerSchema.parse(await api.get(`customers/${userId}`).json());
 }
 
-export async function getCustomerLedger(
-  userId: number,
-  params: { page?: number; per_page?: number } = {},
-) {
+export async function getCustomerLedger(userId: number, params: { page?: number; perPage?: number } = {}) {
   const searchParams: Record<string, string> = {};
 
   if (params.page) searchParams.page = String(params.page);
-  if (params.per_page) searchParams.per_page = String(params.per_page);
+  if (params.perPage) searchParams.per_page = String(params.perPage);
 
   const payload = await api.get(`customers/${userId}/ledger`, { searchParams }).json();
 
   return parsePaginated<typeof ledgerEntrySchema>(ledgerEntrySchema, payload);
 }
 
-export async function adjustCustomerPoints(
-  userId: number,
-  input: AdjustPointsInput,
-): Promise<LedgerEntry> {
+export async function adjustCustomerPoints(userId: number, input: AdjustPointsInput): Promise<LedgerEntry> {
   return ledgerEntrySchema.parse(await api.post(`customers/${userId}/adjust`, { json: input }).json());
 }
 
+/**
+ * App-side (camelCase) params for `getCustomers()`. The wire spelling
+ * (`per_page`, `orderby`, `balance_range`, `expiring_soon` — WP REST core
+ * style, see `CustomerRestController::get_items()` args) exists only inside
+ * the request builder below: one conversion point, so no caller has to know
+ * how the server spells a query param.
+ */
 export type CustomerListParams = {
   page?: number;
-  per_page?: number;
-  orderby?: CustomerSortKey;
+  perPage?: number;
+  orderBy?: CustomerSortKey;
   order?: CustomerSortDirection;
   search?: string;
   balanceRange?: CustomerBalanceRange;
@@ -66,20 +67,27 @@ const customerListEnvelopeSchema = paginatedSchema(customerListRowSchema).extend
   suggestions: z.array(noMatchSuggestionSchema).optional(),
 });
 
-/** `GET /customers` — the admin Customers list: search + filter + sort + paginate, all server-side. */
-export async function getCustomers(params: CustomerListParams = {}) {
+/**
+ * `GET /customers` — the admin Customers list: search + filter + sort + paginate, all server-side.
+ *
+ * `signal` is optional and only matters to `fetchAllMatchingCustomers()`'s
+ * multi-page loop (Export CSV, bulk Adjust points) — a caller that cancels
+ * mid-loop (e.g. on unmount) aborts whichever request is in flight instead
+ * of letting a large sequential fetch run to completion for no reason.
+ */
+export async function getCustomers(params: CustomerListParams = {}, signal?: AbortSignal) {
   const searchParams: Record<string, string> = {};
 
   if (params.page) searchParams.page = String(params.page);
-  if (params.per_page) searchParams.per_page = String(params.per_page);
-  if (params.orderby) searchParams.orderby = params.orderby;
+  if (params.perPage) searchParams.per_page = String(params.perPage);
+  if (params.orderBy) searchParams.orderby = params.orderBy;
   if (params.order) searchParams.order = params.order;
   if (params.search?.trim()) searchParams.search = params.search.trim();
   if (params.balanceRange && params.balanceRange !== 'any') searchParams.balance_range = params.balanceRange;
   if (params.expiringSoon && params.expiringSoon !== 'off') searchParams.expiring_soon = params.expiringSoon;
   if (params.tier && params.tier !== 'all') searchParams.tier = params.tier;
 
-  const payload = await api.get('customers', { searchParams }).json();
+  const payload = await api.get('customers', { searchParams, signal }).json();
 
   return customerListEnvelopeSchema.parse(payload);
 }
