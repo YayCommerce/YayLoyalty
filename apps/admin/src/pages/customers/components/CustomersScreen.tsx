@@ -52,7 +52,7 @@ export function CustomersScreen({
     isLoading: boolean;
     /** `useCustomersQuery` has a request in flight, period — true for `isLoading` too, but also true for a
      *  background page/sort/filter refetch that `placeholderData` is keeping previous rows on screen for.
-     *  Drives the toolbar's spinner, the one place that background work is otherwise invisible. */
+     *  Dims the table so that background work is visible without a spinner. */
     isFetching: boolean;
     /** The whole store has zero rows, from the server's total — not "this page's filters matched nothing". */
     isStoreEmpty: boolean;
@@ -146,12 +146,12 @@ export function CustomersScreen({
             onFiltersChange={onFiltersChange}
             queryFilters={queryFilters}
             sort={sort}
-            isFetching={isFetching}
           />
 
           <CustomersTable
             rows={rows}
             isLoading={isLoading}
+            isFetching={isFetching}
             isStoreEmpty={isStoreEmpty}
             noMatchContent={
               isNoMatch ? (
