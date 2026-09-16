@@ -19,13 +19,14 @@ defined( 'ABSPATH' ) || exit;
  * unvalidated value on the read path is as much a hazard as one on the write
  * path (a stray value renders a blank trigger, or worse, is echoed raw).
  *
- * KNOWN LIMITATION: append_segment() is read-check-write with no locking.
- * Two admins saving different new segments within the same request window
- * can race — the second update_option() wins and silently drops the first
- * admin's addition. Accepted rather than fixed: this option holds a small,
+ * KNOWN LIMITATION: append_segment() and remove_segment() are read-check-write
+ * with no locking. Two admins writing (saving a new segment, removing one, any
+ * mix) within the same request window can race — the second update_option()
+ * wins and silently undoes the first admin's write (a lost save, or a removed
+ * segment reappearing). Accepted rather than fixed: this option holds a small,
  * site-wide list edited by administrators/shop managers, not high-frequency
- * concurrent writers, so the odds and the blast radius (a lost save, not
- * corrupt data — retrying fixes it) do not justify a locking scheme here.
+ * concurrent writers, so the odds and the blast radius (retrying fixes it, no
+ * corrupt data) do not justify a locking scheme here.
  */
 final class CustomerSegmentsHelper {
 
@@ -154,6 +155,43 @@ final class CustomerSegmentsHelper {
             [
                 'schema_version' => self::SCHEMA_VERSION,
                 'items'          => $segments,
+            ],
+            false
+        );
+
+        return self::get_segments();
+    }
+
+    /**
+     * Remove a segment by name (case-insensitive, same rule as
+     * `rejection_reason()`) and persist. Returns the full remaining list on
+     * success, `null` when no stored segment matched — the caller (the REST
+     * controller) turns `null` into a 404. Idempotent by construction: two
+     * removes of the same name can't both succeed, since the second finds
+     * nothing left to match.
+     *
+     * @return array<int, array{name: string, filters: array<string, string>}>|null
+     */
+    public static function remove_segment( string $name ): ?array {
+        $normalized = mb_strtolower( $name );
+        $segments   = self::get_segments();
+
+        $remaining = array_values(
+            array_filter(
+                $segments,
+                static fn( $segment ) => mb_strtolower( $segment['name'] ) !== $normalized
+            )
+        );
+
+        if ( count( $remaining ) === count( $segments ) ) {
+            return null;
+        }
+
+        update_option(
+            self::OPTION_SEGMENTS,
+            [
+                'schema_version' => self::SCHEMA_VERSION,
+                'items'          => $remaining,
             ],
             false
         );

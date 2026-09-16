@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { api } from '@/lib/api/api';
 
 /**
- * Client for POST /customers/segments — saved Customers-page filter sets.
+ * Client for POST/DELETE /customers/segments — saved Customers-page filter sets.
  *
  * Lives under `pro/` because the route only exists in a Pro build — Lite has
  * no `yayloyalty_customer_segments` option and no such feature to offer.
@@ -27,6 +27,18 @@ export type SavedSegment = z.infer<typeof savedSegmentSchema>;
 /** Responses are parsed, not cast — see customer.api.ts. */
 export async function saveSegment(name: string, filters: SavedSegment['filters']): Promise<SavedSegment[]> {
   const payload = await api.post('customers/segments', { json: { name, filters } }).json();
+
+  return z.array(savedSegmentSchema).parse(payload);
+}
+
+/**
+ * `name` goes in the JSON body, not the URL — `Pro\Controllers\CustomerSegmentsRestController`
+ * reads it the same way as `saveSegment()`'s POST, since a segment name is
+ * arbitrary text (spaces, non-ASCII) and WP_REST_Request reads a JSON body
+ * regardless of HTTP method.
+ */
+export async function removeSegment(name: string): Promise<SavedSegment[]> {
+  const payload = await api.delete('customers/segments', { json: { name } }).json();
 
   return z.array(savedSegmentSchema).parse(payload);
 }

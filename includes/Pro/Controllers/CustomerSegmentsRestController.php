@@ -8,8 +8,8 @@ use YayLoyalty\Pro\Helpers\CustomerSegmentsHelper;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Pro-only: POST /yayloyalty/v1/customers/segments — save a Customers-page
- * saved segment, return the full list.
+ * Pro-only: POST/DELETE /yayloyalty/v1/customers/segments — save or remove a
+ * Customers-page saved segment, both returning the full remaining list.
  *
  * Shares the base of a resource it does not own (`customers`), same
  * reasoning as CampaignPreviewRestController: registered through
@@ -18,7 +18,13 @@ defined( 'ABSPATH' ) || exit;
  *
  * No GET route: the list also reaches the SPA via
  * `yayloyalty_localize_admin_data` (see YayLoyaltyPro::add_segments()), so
- * this POST returning the fresh list is enough for the SPA to never refetch.
+ * both POST and DELETE returning the fresh list is enough for the SPA to
+ * never refetch.
+ *
+ * DELETE takes `name` in the JSON body, not a URL path segment: a segment
+ * name is arbitrary text (spaces, non-ASCII), and `WP_REST_Request` reads a
+ * JSON body regardless of HTTP method — same as the existing POST, so there
+ * is no second parsing convention to maintain.
  */
 final class CustomerSegmentsRestController extends AbstractRestController {
 
@@ -53,6 +59,18 @@ final class CustomerSegmentsRestController extends AbstractRestController {
                         ],
                     ],
                 ],
+                [
+                    'methods'             => \WP_REST_Server::DELETABLE,
+                    'callback'            => fn( $request ) => $this->exec_write( [ $this, 'remove' ], $request ),
+                    'permission_callback' => $this->requires( Capabilities::MANAGE_POINTS ),
+                    'args'                => [
+                        'name' => [
+                            'description' => __( 'Name of the segment to remove.', 'yayloyalty' ),
+                            'type'        => 'string',
+                            'required'    => true,
+                        ],
+                    ],
+                ],
             ]
         );
     }
@@ -79,6 +97,25 @@ final class CustomerSegmentsRestController extends AbstractRestController {
         }
 
         return CustomerSegmentsHelper::append_segment( $name, $filters );
+    }
+
+    /**
+     * @return array<int, array{name: string, filters: array<string, string>}>|\WP_Error
+     */
+    public function remove( \WP_REST_Request $request ) {
+        $name = CustomerSegmentsHelper::sanitize_name( (string) $request->get_param( 'name' ) );
+
+        if ( '' === $name ) {
+            return $this->error_invalid_arguments( __( 'A segment needs a name.', 'yayloyalty' ) );
+        }
+
+        $segments = CustomerSegmentsHelper::remove_segment( $name );
+
+        if ( null === $segments ) {
+            return $this->error_not_found( __( 'No segment with that name.', 'yayloyalty' ) );
+        }
+
+        return $segments;
     }
 
     /**
