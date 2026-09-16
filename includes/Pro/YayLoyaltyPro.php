@@ -4,6 +4,8 @@ namespace YayLoyalty\Pro;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Enums\RewardType;
 use YayLoyalty\Pro\Controllers\CampaignPreviewRestController;
+use YayLoyalty\Pro\Controllers\CustomerSegmentsRestController;
+use YayLoyalty\Pro\Helpers\CustomerSegmentsHelper;
 use YayLoyalty\Pro\Services\ConditionsEvaluator;
 use YayLoyalty\Repositories\CampaignRepository;
 
@@ -36,6 +38,7 @@ defined( 'ABSPATH' ) || exit;
  *   yayloyalty_reward_config_whitelist
  *   yayloyalty_rest_item_schema
  *   yayloyalty_campaign_conditions_evaluator
+ *   yayloyalty_localize_admin_data
  *
  * If a feature needs something no seam provides, add a seam to Lite. Reaching
  * for a marker instead is the thing this design exists to avoid.
@@ -107,6 +110,7 @@ final class YayLoyaltyPro {
         add_filter( 'yayloyalty_campaign_conditions_evaluator', [ self::class, 'conditions_evaluator' ] );
         add_filter( 'yayloyalty_rest_controllers', [ self::class, 'add_controllers' ] );
         add_filter( 'yayloyalty_rest_item_schema', [ self::class, 'describe_pro_config' ], 10, 2 );
+        add_filter( 'yayloyalty_localize_admin_data', [ self::class, 'add_segments' ] );
 
         /**
          * Fires once Pro has attached its hooks.
@@ -272,7 +276,21 @@ final class YayLoyaltyPro {
             self::evaluator()
         );
 
+        $controllers[] = new CustomerSegmentsRestController();
+
         return $controllers;
+    }
+
+    /**
+     * Add the saved Customers-page segments to the admin bootstrap payload.
+     *
+     * @param array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    public static function add_segments( array $data ): array {
+        $data['segments'] = CustomerSegmentsHelper::get_segments();
+
+        return $data;
     }
 
     /**

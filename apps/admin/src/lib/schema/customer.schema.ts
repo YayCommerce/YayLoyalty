@@ -48,9 +48,15 @@ export const customerListRowSchema = z.object({
 
 export type CustomerListRow = z.infer<typeof customerListRowSchema>;
 
-/** A raw `{key, count}` "which filter to drop" suggestion — see `CustomerRowFilters::candidates_for_no_match()`. */
+/**
+ * A raw `{key, count}` "which filter to drop" suggestion — see
+ * `CustomerRowFilters::candidates_for_no_match()`. `key` is the wire/query
+ * param name (`balance_range`, not `balanceRange`): the server never learns
+ * how the admin app spells its own filter state — `customers-page.filter-suggestions.ts`
+ * maps it to a `FilterKey`.
+ */
 export const noMatchSuggestionSchema = z.object({
-  key: z.enum(['search', 'balanceRange', 'expiringSoon', 'tier']),
+  key: z.enum(['search', 'balance_range', 'expiring_soon', 'tier']),
   count: z.number().int(),
 });
 
@@ -68,7 +74,8 @@ export type CustomerExpiringSoon = 'off' | '30' | '90' | 'none';
 /** 'all' + the tiers the backend hands out. No tiers table exists yet — any non-'all' value matches zero rows (intentional, see CustomerRowFilters.php). */
 export type CustomerTier = 'all' | 'Alpine' | 'Summit' | 'Explorer';
 /** `tier`/`referrals` have no real backing data (see `CustomerRowSort.php`) — accepted for `defaultSortDirection()` but not offered as a clickable header. */
-export type CustomerSortKey = 'name' | 'tier' | 'balance' | 'pending' | 'lifetime' | 'last_activity' | 'expires' | 'referrals';
+export type CustomerSortKey =
+  'name' | 'tier' | 'balance' | 'pending' | 'lifetime' | 'last_activity' | 'expires' | 'referrals';
 export type CustomerSortDirection = 'asc' | 'desc';
 
 /** Request body for POST /customers/{id}/adjust. */

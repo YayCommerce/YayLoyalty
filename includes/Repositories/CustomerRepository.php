@@ -335,6 +335,14 @@ final class CustomerRepository extends AbstractRepository {
         // of $direction, matching CustomerRowSort::to_order()'s nulls_last.
         $nulls_last = $order['nulls_last'] ? "({$column} IS NULL) ASC, " : '';
 
-        return $nulls_last . $column . ' ' . $direction;
+        // Trailing tie-break on the primary key. Without it, rows tied on
+        // $column have no defined relative order, and MySQL is free to
+        // return them differently across two LIMIT/OFFSET calls with the
+        // same ORDER BY — which is exactly what happens when
+        // fetchAllMatchingCustomers() (Export CSV, bulk Adjust points) pages
+        // through the same query one page at a time: ties can be silently
+        // duplicated onto one page and dropped from another. user_id is
+        // unique, so this makes every page's ordering fully deterministic.
+        return $nulls_last . $column . ' ' . $direction . ', c.user_id ASC';
     }
 }

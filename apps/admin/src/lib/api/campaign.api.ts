@@ -9,7 +9,7 @@ export async function getCampaigns(params: CampaignListParams = {}) {
 
   // Filtering happens server-side so paging stays correct.
   if (params.page) searchParams.page = String(params.page);
-  if (params.per_page) searchParams.per_page = String(params.per_page);
+  if (params.perPage) searchParams.per_page = String(params.perPage);
   if (params.trigger) searchParams.trigger = params.trigger;
   if (params.status) searchParams.status = params.status;
   if (params.search) searchParams.search = params.search;
