@@ -4,6 +4,7 @@ namespace YayLoyalty\Pro;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Enums\RewardType;
 use YayLoyalty\Pro\Controllers\CampaignPreviewRestController;
+use YayLoyalty\Pro\Controllers\CampaignTableRestController;
 use YayLoyalty\Pro\Services\ConditionsEvaluator;
 use YayLoyalty\Repositories\CampaignRepository;
 
@@ -271,6 +272,9 @@ final class YayLoyaltyPro {
             new CampaignRepository(),
             self::evaluator()
         );
+
+        // Dummy data — see CampaignTableRestController's docblock.
+        $controllers[] = new CampaignTableRestController();
 
         return $controllers;
     }
