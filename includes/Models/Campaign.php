@@ -184,8 +184,8 @@ class Campaign extends AbstractModel {
      * late-processed order must be scored under the rules that were live when
      * it happened.
      *
-     * Delegates to Status::is_live_at() so campaigns, rewards and tiers share
-     * one implementation of the rule rather than three copies.
+     * Delegates to Status::is_live_at() so campaigns, rewards (and tiers, when
+     * they land) share one implementation of the rule rather than three copies.
      */
     public function is_live_at( string $at ): bool {
         return Status::is_live_at( $this->status, $this->starts_at, $this->ends_at, $at );
@@ -272,8 +272,9 @@ class Campaign extends AbstractModel {
      *
      * Pro-recognised keys (max_points_per_order, daily_cap, media_bonus_points)
      * are listed HERE IN LITE on purpose: a site that downgrades must keep its
-     * stored values so an upgrade restores the campaign intact. Lite simply does
-     * not act on them. Do not "tidy" them out.
+     * stored values so an upgrade restores the campaign intact. max_points_per_order
+     * and daily_cap are enforced by Engine\Points\CapPolicy in every build;
+     * media_bonus_points is stored but unused. Do not "tidy" any of them out.
      *
      * @return array<string, array<string, array<string, mixed>>>
      */
@@ -374,9 +375,11 @@ class Campaign extends AbstractModel {
     /**
      * Is this config acceptable for this trigger?
      *
-     * Rejects unknown keys and wrong value types BEFORE the row is written — a
-     * malformed config otherwise sits dormant in the database and only misfires
-     * when a real order triggers it.
+     * CampaignRestController runs this before a row is written and answers
+     * 4xx on false: a malformed config would otherwise sit dormant in the
+     * database and only misfire when a real order triggers it. The
+     * schema_version stamp Json adds on write is ignored so a stored config
+     * can be read, edited and sent back as is.
      *
      * A trigger this build has no schema and no whitelist for was created by
      * another build (a Pro campaign on a downgraded site). Lite cannot judge
@@ -394,6 +397,10 @@ class Campaign extends AbstractModel {
         $allowed = null !== $whitelist ? $whitelist : array_keys( (array) $schema );
 
         foreach ( $config as $key => $value ) {
+            if ( Json::SCHEMA_VERSION_KEY === $key ) {
+                continue;
+            }
+
             if ( ! in_array( $key, $allowed, true ) ) {
                 return false;
             }
@@ -460,9 +467,9 @@ class Campaign extends AbstractModel {
     /**
      * Are these conditions acceptable to store?
      *
-     * Mirrors config_is_valid(): a non-throwing check for the save boundary so a
-     * bad set is rejected with a 4xx before the row is written, rather than
-     * surfacing later when an order is scored. Rejects an unknown type, an
+     * Mirrors config_is_valid(): a non-throwing check CampaignRestController
+     * runs before the row is written, answering 4xx rather than letting a bad
+     * set surface later when an order is scored. Rejects an unknown type, an
      * operator a type does not accept, a wrong value shape, an empty list value,
      * a duplicate type, a missing required sub-key (currency, source), and
      * customer_ids past its cap. See Models\CampaignConditionSet.
@@ -475,9 +482,9 @@ class Campaign extends AbstractModel {
      * Drop config keys that do not belong to this trigger.
      *
      * Unknown keys are discarded rather than stored, so a typo cannot sit in the
-     * database looking meaningful. Type checking is config_is_valid()'s job and
-     * runs at the save boundary; this only shapes the value that gets written.
-     * schema_version is preserved because Json stamps it on write.
+     * database looking meaningful. Type checking is config_is_valid()'s job,
+     * which the controller runs first; this only shapes the value that gets
+     * written. schema_version is dropped here because Json re-stamps it on write.
      *
      * @param array $config
      * @return array
@@ -617,9 +624,10 @@ class Campaign extends AbstractModel {
     /**
      * Set the stored status.
      *
-     * A built-in campaign cannot be archived: the Free UI binds to it by slug
-     * and the earning engine expects it to exist, so archiving would hide a row
-     * the rest of the system assumes is there.
+     * A built-in campaign cannot be archived: the engine finds the default
+     * purchase campaign by slug (CampaignRepository::DEFAULT_PURCHASE_SLUG)
+     * and the Free UI lists built-ins by is_builtin/trigger, so archiving
+     * would hide a row the rest of the system assumes is there.
      *
      * archived_at is kept in step with the status here — stamped on the way in,
      * cleared on the way out — so no caller has to remember to.
@@ -660,7 +668,7 @@ class Campaign extends AbstractModel {
      * one — scalars widened to arrays, ids cast to int, country/currency codes
      * upper-cased, role slugs lower-cased, lists de-duplicated, entries ordered
      * cheap-first for evaluation. Rejection of a malformed set is
-     * conditions_are_valid()'s job and runs at the save boundary. See
+     * conditions_are_valid()'s job, which the controller runs first. See
      * Models\CampaignConditionSet.
      */
     public function set_conditions( array $conditions ): void {

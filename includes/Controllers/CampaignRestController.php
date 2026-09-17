@@ -5,6 +5,7 @@ use YayLoyalty\Access\Capabilities;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Enums\Status;
 use YayLoyalty\Models\Campaign;
+use YayLoyalty\Models\CampaignConditionSet;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Utils\Dates;
 
@@ -13,9 +14,9 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Campaigns CRUD — the definition-table template.
  *
- * Rewards and tiers are near-copies of this controller. There is no service
- * layer: the invariants here are validation, and a service wrapping one
- * repository would be ceremony.
+ * Rewards and tiers, when added, should be near-copies of this controller.
+ * There is no service layer: the invariants here are validation, and a
+ * service wrapping one repository would be ceremony.
  *
  * BUILT-IN PROTECTION DEPENDS ON THE SCHEMA, NOT ON THIS HANDLER. `is_builtin`
  * is marked readonly and stripped from write args by AbstractRestController, so
@@ -146,6 +147,17 @@ final class CampaignRestController extends AbstractRestController {
             return $this->error_invalid_arguments( __( 'A campaign needs a name.', 'yayloyalty' ) );
         }
 
+        $config     = (array) ( $request['config'] ?? [] );
+        $conditions = (array) ( $request['conditions'] ?? [] );
+
+        if ( ! Campaign::config_is_valid( $trigger, $config ) ) {
+            return $this->error_invalid_arguments( __( 'The campaign config has an unknown key or a value of the wrong type.', 'yayloyalty' ) );
+        }
+
+        if ( ! Campaign::conditions_are_valid( $conditions ) ) {
+            return $this->error_invalid_arguments( __( 'The campaign conditions are malformed.', 'yayloyalty' ) );
+        }
+
         // Slug is generated server-side and de-duplicated. A client-supplied
         // slug is honoured as a starting point but never trusted to be unique.
         $slug = $this->unique_slug( $request['slug'] ? (string) $request['slug'] : $name );
@@ -159,8 +171,8 @@ final class CampaignRestController extends AbstractRestController {
             $trigger,
             $request['status'] ? Status::assert( (string) $request['status'] ) : Status::ACTIVE,
             null !== $request['priority'] ? (int) $request['priority'] : 0,
-            Campaign::validate_config( $trigger, (array) ( $request['config'] ?? [] ) ),
-            (array) ( $request['conditions'] ?? [] ),
+            Campaign::validate_config( $trigger, $config ),
+            CampaignConditionSet::normalize( $conditions ),
             $this->nullable_date( $request['starts_at'] ),
             $this->nullable_date( $request['ends_at'] ),
             false, // is_builtin is never settable from a request.
@@ -181,6 +193,16 @@ final class CampaignRestController extends AbstractRestController {
 
         if ( null === $campaign ) {
             return $this->error_not_found( __( 'Campaign not found.', 'yayloyalty' ) );
+        }
+
+        // Validate before any setter runs so a rejected request leaves the
+        // model untouched; the setters only normalise.
+        if ( null !== $request['config'] && ! Campaign::config_is_valid( $campaign->get_trigger(), (array) $request['config'] ) ) {
+            return $this->error_invalid_arguments( __( 'The campaign config has an unknown key or a value of the wrong type.', 'yayloyalty' ) );
+        }
+
+        if ( null !== $request['conditions'] && ! Campaign::conditions_are_valid( (array) $request['conditions'] ) ) {
+            return $this->error_invalid_arguments( __( 'The campaign conditions are malformed.', 'yayloyalty' ) );
         }
 
         // slug and trigger are immutable after create, enforced here rather than
@@ -277,9 +299,8 @@ final class CampaignRestController extends AbstractRestController {
 
     /**
      * One row of dummy_fixture(), by id. Used by get_item() below; public so
-     * another controller needing the same dummy row (a future campaign
-     * editor's save action, for one) can look it up without a second copy of
-     * dummy_fixture().
+     * a controller that must resolve a dummy id (none does yet) can reuse it
+     * without a second copy of dummy_fixture().
      *
      * @return array<string, mixed>|null
      */
@@ -296,7 +317,8 @@ final class CampaignRestController extends AbstractRestController {
     /**
      * dummy_fixture(), filtered/sorted/paged the way
      * CampaignRepository::paginate_filtered() does over real rows — same
-     * params, same shape back, so swapping the caller in get_items() is the
+     * params, same shape back (the fixture adds an id DESC tie-break
+     * paginate() does not), so swapping the caller in get_items() is the
      * entire future change.
      *
      * @param array{page:int,per_page:int,orderby:string,order:string,trigger:string,status:string,search:string} $args
@@ -351,29 +373,32 @@ final class CampaignRestController extends AbstractRestController {
     }
 
     /**
-     * Twenty-two campaigns across every trigger, one archived row, a priority
-     * tie (ids 3 and 9) and enough rows to cross the Pro table's >20 search
-     * threshold — see CampaignTable.tsx. ids 4-6 are the three built-ins:
-     * their name/slug/config must match Installer::seed_builtins() and
+     * Twenty-two campaigns across every fireable trigger (Lite's three plus
+     * Pro's ADDED_TRIGGERS), one archived row, a priority tie (ids 3 and 9)
+     * and enough rows to cross the Pro table's >20 search threshold — see
+     * CampaignTable.tsx. ids 4-6 are the three built-ins: their
+     * name/slug/config must match Installer::seed_builtins() and
      * Campaign::default_config() exactly, since is_builtin rows are matched
      * by slug across the app and these are the same rows
      * BuiltInCampaignList edits.
      *
      * `conditions` is `[]` throughout on purpose, even for rows whose name
-     * implies one ("Summit+ members 1.5×", "Clearance category boost" aside,
-     * which uses a real type): the natural fit for most of these is `tier`,
-     * which `CampaignConditionType::all()` excludes (the tier system does not
-     * exist yet) — `conditions_are_valid()` would reject a save that still
+     * implies one ("Summit+ members 1.5×"; "Trail Shoes boost" (id 3) and
+     * "Clearance category boost" (id 13) aside, which both use a real type):
+     * the natural fit for most of these is `tier`, which
+     * `CampaignConditionType::all()` excludes (the tier system does not
+     * exist yet) — `conditions_are_valid()`, called by create_item()/
+     * update_item() before every save, would reject a save that still
      * carried one, so seeding one here would make opening and re-saving that
      * campaign in the editor fail validation for a reason invisible in the UI.
      *
-     * No `points_last_30_days` or other analytics figure here: that needs a
-     * store-wide ledger aggregate that does not exist yet (see
-     * LedgerRepository — sum_points_for_user() is per-customer only). Rather
-     * than fake it on the one real campaign shape, CampaignTable.tsx's "Last
-     * 30 days" column and CampaignPointsSummary widget get that figure from
-     * a plain client-side map (apps/admin/src/pro/campaigns/campaign-points-dummy.ts)
-     * keyed to these same dummy ids, not from this fixture.
+     * No `points_last_30_days` or other analytics figure here: the real
+     * per-campaign aggregate (Pro CampaignPointsRepository::issued_by_campaign())
+     * is keyed on real ids that do not match these dummy ids, so
+     * CampaignTable.tsx's "Last 30 days" column and CampaignPointsSummary
+     * widget read a plain client-side map
+     * (apps/admin/src/pro/campaigns/campaign-points-dummy.ts) keyed to these
+     * same dummy ids, not from this fixture, until the fixture is removed.
      *
      * @return array<int, array<string, mixed>>
      */
