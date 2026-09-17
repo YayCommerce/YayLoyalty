@@ -2,9 +2,13 @@
 namespace YayLoyalty\Controllers;
 
 use YayLoyalty\Access\Capabilities;
-use YayLoyalty\Enums\CustomerFilters;
+use YayLoyalty\Controllers\Schemas\CustomerItemSchema;
+use YayLoyalty\Models\Customer;
 use YayLoyalty\Repositories\CustomerRepository;
+use YayLoyalty\Repositories\LedgerRepository;
+use YayLoyalty\Repositories\RewardRepository;
 use YayLoyalty\Services\LedgerService;
+use YayLoyalty\Utils\PointsMath;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -32,9 +36,22 @@ final class CustomerRestController extends AbstractRestController {
     /** @var LedgerService */
     private $ledger_service;
 
-    public function __construct( CustomerRepository $customers, LedgerService $ledger_service ) {
+    /** @var LedgerRepository Read-only here — counts.ledger only. All writes stay LedgerService's. */
+    private $ledger;
+
+    /** @var RewardRepository Read-only — worth's conversion rate. */
+    private $rewards;
+
+    public function __construct(
+        CustomerRepository $customers,
+        LedgerService $ledger_service,
+        LedgerRepository $ledger,
+        RewardRepository $rewards
+    ) {
         $this->customers      = $customers;
         $this->ledger_service = $ledger_service;
+        $this->ledger         = $ledger;
+        $this->rewards        = $rewards;
     }
 
     public function get_rest_base(): string {
@@ -52,7 +69,7 @@ final class CustomerRestController extends AbstractRestController {
                     'permission_callback' => $this->requires( Capabilities::VIEW ),
                     'args'                => array_merge(
                         $this->get_collection_params(),
-                        $this->list_filter_params(),
+                        CustomerListFormatter::filter_params(),
                         // Overrides the base `orderby` (free-text) with the 6 real sort
                         // keys — see `CustomerRowSort`. `order` keeps the base definition.
                         [
@@ -127,39 +144,6 @@ final class CustomerRestController extends AbstractRestController {
     }
 
     /**
-     * The Customers-list-only search/filter params — `search` already lives on
-     * `get_collection_params()`, so only the customer-specific ones are added
-     * here. Values/enums mirror `customers-page.filter-rows.ts` exactly.
-     *
-     * @return array<string, mixed>
-     */
-    private function list_filter_params(): array {
-        return [
-            'balance_range' => [
-                'description'       => __( 'Balance bucket to filter by.', 'yayloyalty' ),
-                'type'              => 'string',
-                'enum'              => CustomerFilters::BALANCE_RANGES,
-                'default'           => CustomerFilters::BALANCE_RANGES[0],
-                'sanitize_callback' => 'sanitize_text_field',
-            ],
-            'expiring_soon' => [
-                'description'       => __( 'Points-expiry window to filter by.', 'yayloyalty' ),
-                'type'              => 'string',
-                'enum'              => CustomerFilters::EXPIRY_RANGES,
-                'default'           => CustomerFilters::EXPIRY_RANGES[0],
-                'sanitize_callback' => 'sanitize_text_field',
-            ],
-            'tier'          => [
-                'description'       => __( 'Loyalty tier to filter by (no tiers exist yet — always matches zero rows).', 'yayloyalty' ),
-                'type'              => 'string',
-                'enum'              => CustomerFilters::TIER_RANGES,
-                'default'           => CustomerFilters::TIER_RANGES[0],
-                'sanitize_callback' => 'sanitize_text_field',
-            ],
-        ];
-    }
-
-    /**
      * Real list, real DB — search/filter/sort run in SQL
      * (`CustomerRepository::paginate_list()`); this method only translates
      * the request into `CustomerRowFilters`/`CustomerRowSort`'s SQL-free
@@ -185,7 +169,7 @@ final class CustomerRestController extends AbstractRestController {
 
         $envelope = $this->respond_paginated(
             [
-                'items'    => array_map( [ $this, 'format_row' ], $result['items'] ),
+                'items'    => array_map( [ CustomerListFormatter::class, 'format_row' ], $result['items'] ),
                 'total'    => $result['total'],
                 'page'     => $result['page'],
                 'per_page' => $result['per_page'],
@@ -193,71 +177,31 @@ final class CustomerRestController extends AbstractRestController {
         );
 
         if ( 0 === $result['total'] ) {
-            $envelope['suggestions'] = $this->no_match_suggestions( $filters );
+            $envelope['suggestions'] = CustomerListFormatter::no_match_suggestions( $filters, $this->customers );
         }
 
         return $envelope;
     }
 
-    /**
-     * One list row — deliberately not `Models\Customer::to_array()`: this is
-     * a JOIN projection carrying `name`/`email`, which the customer entity
-     * has no place for. `$wpdb` returns every column as a string, so casting
-     * here is mandatory (the admin app parses with zod `z.number().int()`,
-     * which rejects `"640"`).
-     *
-     * @param array<string, mixed> $row
-     * @return array<string, mixed>
-     */
-    private function format_row( array $row ): array {
-        return [
-            'user_id'          => (int) $row['user_id'],
-            'name'             => (string) $row['name'],
-            'email'            => (string) $row['email'],
-            'balance'          => (int) $row['balance'],
-            'pending_points'   => (int) $row['pending_points'],
-            'lifetime_earned'  => (int) $row['lifetime_earned'],
-            'last_activity_at' => $row['last_activity_at'],
-            'expires_at'       => $row['expires_at'],
-        ];
-    }
-
-    /**
-     * "Which filter should I drop?" — one `count_list()` call per candidate
-     * `CustomerRowFilters::candidates_for_no_match()` builds, kept only when
-     * non-zero and sorted by count descending.
-     *
-     * @param array<string, string> $filters
-     * @return array<int, array{key: string, count: int}>
-     */
-    private function no_match_suggestions( array $filters ): array {
-        $suggestions = [];
-
-        foreach ( CustomerRowFilters::candidates_for_no_match( $filters ) as $key => $candidate ) {
-            $count = $this->customers->count_list( CustomerRowFilters::to_criteria( $candidate ) );
-
-            if ( $count > 0 ) {
-                $suggestions[] = [
-                    'key'   => $key,
-                    'count' => $count,
-                ];
-            }
-        }
-
-        usort( $suggestions, fn( $a, $b ) => $b['count'] <=> $a['count'] );
-
-        return $suggestions;
-    }
-
     public function get_customer( \WP_REST_Request $request ) {
         $user_id = (int) $request['id'];
 
-        $customer = $this->customers->find_by_user_id( $user_id );
+        return $this->format_customer( $user_id, $this->customers->find_by_user_id( $user_id ) );
+    }
 
-        if ( null === $customer ) {
-            // A user with no activity is a member with nothing yet, not a 404.
-            // Report zeroes rather than forcing the client to special-case it.
-            return [
+    /**
+     * One `format_customer()` for both branches, so "no activity yet" and
+     * "has a row" build the exact same shape once. `to_array()` already
+     * defines the nine aggregate fields; the no-row default below mirrors it
+     * field-for-field on purpose — a user with no activity is a member with
+     * nothing yet, not a 404.
+     *
+     * @return array<string, mixed>
+     */
+    private function format_customer( int $user_id, ?Customer $customer ): array {
+        $base = null !== $customer
+            ? $customer->to_array()
+            : [
                 'user_id'           => $user_id,
                 'balance'           => 0,
                 'pending_points'    => 0,
@@ -268,9 +212,34 @@ final class CustomerRestController extends AbstractRestController {
                 'joined_at'         => null,
                 'updated_at'        => null,
             ];
-        }
 
-        return $customer->to_array();
+        $user         = get_userdata( $user_id );
+        $ppcu         = $this->rewards->points_per_currency_unit();
+        $ledger_count = $this->ledger->paginate_for_user(
+            $user_id,
+            [
+                'page'     => 1,
+                'per_page' => 1,
+            ]
+        )['total'];
+
+        return $base + [
+            'name'       => $user ? $user->display_name : '',
+            'email'      => $user ? $user->user_email : '',
+            // No deleted_at column yet (docs/data-model.md) — Wave B.
+            'deleted_at' => null,
+            'counts'     => [
+                'ledger'      => $ledger_count,
+                // No activity/redemptions/referrals tables yet — Wave B.
+                'activity'    => 0,
+                'redemptions' => 0,
+                'referrals'   => 0,
+            ],
+            'worth'      => [
+                'currency_amount'          => PointsMath::points_to_currency( (int) $base['balance'], $ppcu ),
+                'points_per_currency_unit' => $ppcu,
+            ],
+        ];
     }
 
     public function adjust_points( \WP_REST_Request $request ) {
@@ -315,55 +284,7 @@ final class CustomerRestController extends AbstractRestController {
             '$schema'    => 'http://json-schema.org/draft-04/schema#',
             'title'      => 'yayloyalty_customer',
             'type'       => 'object',
-            'properties' => [
-                'user_id'           => [
-                    'type'     => 'integer',
-                    'context'  => [ 'view' ],
-                    'readonly' => true,
-                ],
-                // Every aggregate is server-owned: it is derived from the
-                // ledger and must never be settable from a request.
-                'balance'           => [
-                    'type'     => 'integer',
-                    'context'  => [ 'view' ],
-                    'readonly' => true,
-                ],
-                'pending_points'    => [
-                    'type'     => 'integer',
-                    'context'  => [ 'view' ],
-                    'readonly' => true,
-                ],
-                'lifetime_earned'   => [
-                    'type'     => 'integer',
-                    'context'  => [ 'view' ],
-                    'readonly' => true,
-                ],
-                'lifetime_redeemed' => [
-                    'type'     => 'integer',
-                    'context'  => [ 'view' ],
-                    'readonly' => true,
-                ],
-                'last_activity_at'  => [
-                    'type'     => [ 'string', 'null' ],
-                    'context'  => [ 'view' ],
-                    'readonly' => true,
-                ],
-                'expires_at'        => [
-                    'type'     => [ 'string', 'null' ],
-                    'context'  => [ 'view' ],
-                    'readonly' => true,
-                ],
-                'joined_at'         => [
-                    'type'     => [ 'string', 'null' ],
-                    'context'  => [ 'view' ],
-                    'readonly' => true,
-                ],
-                'updated_at'        => [
-                    'type'     => [ 'string', 'null' ],
-                    'context'  => [ 'view' ],
-                    'readonly' => true,
-                ],
-            ],
+            'properties' => CustomerItemSchema::properties(),
         ];
     }
 }

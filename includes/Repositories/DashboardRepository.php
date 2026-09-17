@@ -243,14 +243,12 @@ class DashboardRepository {
     }
 
     /**
-     * The liability valuation rate: the built-in flexible-discount reward's
-     * `points_per_currency_unit`. 0 when the reward or key is missing.
+     * The liability valuation rate. Delegates to RewardRepository — the
+     * config read moved there so CustomerRestController's `worth` stat and
+     * this class's liability stat share one implementation.
      */
     public function points_per_currency_unit(): float {
-        $rewards = $this->rewards ?? new RewardRepository();
-        $reward  = $rewards->find_by_slug( 'cart-discount' );
-
-        return null === $reward ? 0.0 : (float) ( $reward->get_config()['points_per_currency_unit'] ?? 0 );
+        return ( $this->rewards ?? new RewardRepository() )->points_per_currency_unit();
     }
 
     /**

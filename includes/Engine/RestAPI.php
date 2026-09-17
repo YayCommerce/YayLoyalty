@@ -59,12 +59,16 @@ class RestAPI {
         $ledger_service = new LedgerService( $ledger, $customers );
 
         // Read-only cross-table aggregates; reads the ledger, never writes it.
-        $dashboard = new DashboardRepository( new RewardRepository() );
+        $rewards   = new RewardRepository();
+        $dashboard = new DashboardRepository( $rewards );
         $campaigns = new CampaignRepository();
 
         $controllers = [
             new SettingsRestController(),
-            new CustomerRestController( $customers, $ledger_service ),
+            // $ledger and $rewards here are read-only uses (counts.ledger,
+            // worth's conversion rate) — the same instances LedgerService
+            // and DashboardRepository hold, not a second construction.
+            new CustomerRestController( $customers, $ledger_service, $ledger, $rewards ),
             new LedgerRestController( $ledger ),
             // Definition table: repository only, no service.
             new CampaignRestController( $campaigns ),

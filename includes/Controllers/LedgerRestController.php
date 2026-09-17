@@ -2,6 +2,7 @@
 namespace YayLoyalty\Controllers;
 
 use YayLoyalty\Access\Capabilities;
+use YayLoyalty\Controllers\Schemas\LedgerQueryArgs;
 use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Repositories\LedgerRepository;
@@ -38,7 +39,8 @@ final class LedgerRestController extends AbstractRestController {
                     'permission_callback' => $this->requires( Capabilities::VIEW ),
                     'args'                => array_merge(
                         [ 'id' => $this->user_id_param() ],
-                        $this->get_collection_params()
+                        $this->get_collection_params(),
+                        LedgerQueryArgs::all()
                     ),
                 ],
                 'schema' => [ $this, 'get_item_schema' ],
@@ -46,6 +48,14 @@ final class LedgerRestController extends AbstractRestController {
         );
     }
 
+    /**
+     * `type`/`search`/`after`/`before` are registered but not yet applied
+     * here — no new `LedgerRepository` SQL this wave (see `LedgerQueryArgs`
+     * docblock). `type_counts: null` is the wire signal the SPA reads to
+     * disable the ledger tab's filter row rather than let it silently do
+     * nothing against real data. The WP_DEBUG drawer fixture is the only
+     * path that answers these params for now.
+     */
     public function get_history( \WP_REST_Request $request ) {
         $result = $this->ledger->paginate_for_user(
             (int) $request['id'],
@@ -57,7 +67,7 @@ final class LedgerRestController extends AbstractRestController {
             ]
         );
 
-        return $this->respond_paginated( $result );
+        return $this->respond_paginated( $result ) + [ 'type_counts' => null ];
     }
 
     protected function define_item_schema(): array {

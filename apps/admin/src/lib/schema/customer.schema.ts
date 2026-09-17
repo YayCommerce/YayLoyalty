@@ -12,8 +12,30 @@ import { z } from 'zod';
  * Every aggregate is server-owned and derived from the ledger; none of it is
  * writable, which is why there is no separate "create" or "update" shape.
  */
+/**
+ * Row counts behind the drawer's tab labels (`CustomerItemSchema::properties()`).
+ * `activity`/`redemptions`/`referrals` are always 0 on the real path — those
+ * tables don't exist yet; only the WP_DEBUG drawer fixture varies them.
+ */
+export const customerCountsSchema = z.object({
+  ledger: z.number().int(),
+  activity: z.number().int(),
+  redemptions: z.number().int(),
+  referrals: z.number().int(),
+});
+
+/** Balance expressed in store currency — same shape as the dashboard's liability stat. */
+export const customerWorthSchema = z.object({
+  currency_amount: z.number().nullable(),
+  points_per_currency_unit: z.number(),
+});
+
 export const customerSchema = z.object({
   user_id: z.number().int(),
+  /** From wp_users — carried here (not only the list row) so the drawer has an
+   * identity to render on a deep link or a refresh. */
+  name: z.string(),
+  email: z.string(),
   /** Signed: a clawback after a refund can legitimately push this below zero. */
   balance: z.number().int(),
   pending_points: z.number().int(),
@@ -24,6 +46,10 @@ export const customerSchema = z.object({
   expires_at: z.string().nullable(),
   joined_at: z.string().nullable(),
   updated_at: z.string().nullable(),
+  /** Always null on the real path — no deleted_at column yet (docs/data-model.md). */
+  deleted_at: z.string().nullable(),
+  counts: customerCountsSchema,
+  worth: customerWorthSchema,
 });
 
 export type Customer = z.infer<typeof customerSchema>;
