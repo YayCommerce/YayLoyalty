@@ -115,8 +115,8 @@ All referral tables (`referrals`, `referral_visits`) specified in data model; no
 
 | Page | Status | Details |
 |---|---|---|
-| **Campaigns** | ✅ FUNCTIONAL | List/view/edit-read-only; Pro conditions preview; no create/update UI |
-| **Customers** | ✅ FUNCTIONAL | Server-paginated list (search/filter/sort/export/row-select) against real `GET /customers`; bulk "Adjust points" and "Export" wired to real endpoints (`POST /customers/{id}/adjust`, client-side CSV); Tier column and filter are cosmetic sample data over `balance_range` (not real tier feature); Pro adds saved-segment management (`POST/DELETE /customers/segments` — save/apply/remove filter sets); filter suggestions for no-match cases; no per-customer detail view yet |
+| **Campaigns** | ✅ FUNCTIONAL | Lite: three built-in campaign cards (purchase/signup/review), editable in local state only — no save yet. Pro: full table (grouped by trigger, priority, scheduling, conditions) + points summary card. Both read from cosmetic dummy data (22 campaigns for UI-check; `CampaignRestController::dummy_fixture()`—to be deleted when visual iteration stops). Real create/update/delete wired but no SPA form yet. Pro conditions preview endpoint working |
+| **Customers** | ✅ FUNCTIONAL | Server-paginated list (search/filter/sort/export/row-select) against real `GET /customers`; bulk "Adjust points" and "Export" wired to real endpoints (`POST /customers/{id}/adjust`, client-side CSV); background page/sort/filter refetch dims the table to 60% opacity while placeholderData keeps rows on screen (no toolbar spinner); Tier column and filter are cosmetic sample data over `balance_range` (not real tier feature); Pro adds saved-segment management (`POST/DELETE /customers/segments` — save/apply/remove filter sets); filter suggestions for no-match cases; no per-customer detail view yet |
 | **Dashboard** | ⚠️ PLACEHOLDER | Stub page; no analytics yet |
 | **Rewards** | ⚠️ PLACEHOLDER | Stub page; no catalog UI |
 | **Referral** | ⚠️ PLACEHOLDER | Stub page; referral program not built |

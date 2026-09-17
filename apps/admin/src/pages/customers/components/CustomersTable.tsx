@@ -3,6 +3,7 @@ import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import { __ } from '@wordpress/i18n';
 
 import type { CustomerListRow } from '@/lib/schema/customer.schema';
+import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { HeaderSelectionState } from '../customers-page.selection';
@@ -33,6 +34,7 @@ export function countColumns(showProColumns: boolean, showSelection: boolean) {
 export function CustomersTable({
   rows,
   isLoading,
+  isFetching,
   isStoreEmpty,
   noMatchContent,
   showProColumns,
@@ -43,6 +45,10 @@ export function CustomersTable({
   rows: CustomerListRow[];
   /** `useCustomersQuery` still in flight — real network latency, not a simulated delay. */
   isLoading: boolean;
+  /** A background page/sort/filter refetch while `placeholderData` keeps the previous
+   *  rows on screen — the whole bordered table dims so that work is visible without a
+   *  spinner or a layout shift. Not applied over the first-load skeleton. */
+  isFetching: boolean;
   /** True store (no members at all) vs. search/filters matching nobody — different messages. */
   isStoreEmpty: boolean;
   /** What to show when filters narrow a non-empty store to zero rows — see CustomersNoMatchState.tsx. */
@@ -74,7 +80,9 @@ export function CustomersTable({
   const isEmpty = !isLoading && rows.length === 0;
 
   return (
-    <div className="overflow-x-auto rounded-md border">
+    <div
+      className={cn('overflow-x-auto rounded-md border transition-opacity', isFetching && !isLoading && 'opacity-60')}
+    >
       <Table>
         <TableHeader>
           <TableRow>

@@ -26,7 +26,6 @@ export function CustomersFilterBar({
   onFiltersChange,
   queryFilters,
   sort,
-  isFetching,
 }: {
   disabled: boolean;
   exportDisabled: boolean;
@@ -36,7 +35,6 @@ export function CustomersFilterBar({
   queryFilters: RowFilters;
   sort: { by: SortKey; dir: SortDirection };
   /** The list query has a request in flight — see CustomersToolbar.tsx. */
-  isFetching: boolean;
 }) {
   if (IS_PRO_BUILD) {
     return (
@@ -45,12 +43,7 @@ export function CustomersFilterBar({
           <CustomersSavedSegmentRow disabled={disabled} filters={filters} onFiltersChange={onFiltersChange} />
           <CustomersExportButton disabled={exportDisabled} queryFilters={queryFilters} sort={sort} />
         </div>
-        <CustomersToolbar
-          filters={filters}
-          onFiltersChange={onFiltersChange}
-          disabled={disabled}
-          isFetching={isFetching}
-        />
+        <CustomersToolbar filters={filters} onFiltersChange={onFiltersChange} disabled={disabled} />
       </>
     );
   }
@@ -60,7 +53,6 @@ export function CustomersFilterBar({
       filters={filters}
       onFiltersChange={onFiltersChange}
       disabled={disabled}
-      isFetching={isFetching}
       exportSlot={<CustomersExportButton disabled={exportDisabled} queryFilters={queryFilters} sort={sort} />}
     />
   );

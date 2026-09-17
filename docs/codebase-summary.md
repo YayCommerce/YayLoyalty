@@ -99,6 +99,8 @@ Write operations wrapped in `Transaction::run()`, return correlation ID on 500.
 
 **Note on `CustomerRestController`:** `GET /customers` is real, not demo data — `CustomerRepository::paginate_list()` queries `yayloyalty_customers` JOINed with `wp_users`. `CustomerRowFilters.php`/`CustomerRowSort.php` own the filter/sort semantics; the controller only translates a request into their SQL-free criteria/order shapes and the result back into wire rows. TypeScript mirrors: `customers-page.filter-rows.ts`, `customers-page.sort-rows.ts`. Filter-suggestion keys (`suggestions[].key`) are **wire param names** (snake_case: `balance_range`, `expiring_soon`, `tier`). Saved-segment payload (`filters`) also uses snake_case keys on the wire; `customer-segments.api.ts` converts to/from camelCase for the SPA.
 
+**Note on `CampaignRestController`:** `GET /campaigns` currently serves cosmetic dummy rows (22 campaigns: purchase/signup/review/birthday triggers, various statuses, grouping examples) via `dummy_fixture()` method for UI-check purposes; `create`, `update`, `delete` are real. SWAP POINT: when the campaigns UI needs no more visual iteration, `get_items()`/`get_item()` will switch from `dummy_fixture()` to `$this->campaigns` and the dummy methods will be deleted. Nothing else in the SPA changes since every consumer goes through `getCampaigns()`/`getCampaign()` in `lib/api/campaign.api.ts`.
+
 ### Points engine (includes/Engine/Points/)
 
 `namespace YayLoyalty\Engine\Points`. Computes what an event earns and which campaign paid; writes nothing. See its `README.md` for the two call sites.
