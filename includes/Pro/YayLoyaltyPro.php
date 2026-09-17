@@ -5,9 +5,13 @@ use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Enums\RewardType;
 use YayLoyalty\Pro\Controllers\CampaignPreviewRestController;
 use YayLoyalty\Pro\Controllers\CustomerSegmentsRestController;
+use YayLoyalty\Pro\Controllers\DashboardProRestController;
 use YayLoyalty\Pro\Helpers\CustomerSegmentsHelper;
+use YayLoyalty\Pro\Repositories\CampaignPointsRepository;
 use YayLoyalty\Pro\Services\ConditionsEvaluator;
 use YayLoyalty\Repositories\CampaignRepository;
+use YayLoyalty\Repositories\DashboardRepository;
+use YayLoyalty\Services\Dashboard\DashboardCache;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -277,6 +281,11 @@ final class YayLoyaltyPro {
         );
 
         $controllers[] = new CustomerSegmentsRestController();
+        $controllers[] = new DashboardProRestController(
+            new CampaignPointsRepository(),
+            new CampaignRepository(),
+            new DashboardCache( new DashboardRepository() )
+        );
 
         return $controllers;
     }

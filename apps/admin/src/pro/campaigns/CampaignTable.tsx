@@ -33,6 +33,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import EllipsisIcon from '@/components/icons/EllipsisIcon';
+import { conditionsLabel, givesLabel } from './campaign-labels';
 import { DUMMY_POINTS_LAST_30_DAYS, hasPointsFigure } from './campaign-points-dummy';
 import { CampaignPointsSummary } from './CampaignPointsSummary';
 
@@ -641,42 +642,6 @@ function toDisplayCampaign(campaign: Campaign): DisplayCampaign {
     displayStatus: resolveCampaignDisplayStatus(campaign.status, campaign.starts_at, campaign.ends_at),
     pointsLast30Days: DUMMY_POINTS_LAST_30_DAYS[campaign.id] ?? null,
   };
-}
-
-function givesLabel(trigger: CampaignTrigger, config: Record<string, unknown>): string {
-  if (trigger === 'purchase') {
-    return config.mode === 'multiplier'
-      ? sprintf(
-          /* translators: %s: the multiplier, e.g. "2". */ __('×%s points', 'yayloyalty'),
-          String(config.multiplier ?? 1),
-        )
-      : sprintf(
-          /* translators: %s: points earned per $1 spent. */ __('%s point(s) per $1', 'yayloyalty'),
-          String(config.points_per_unit ?? 0),
-        );
-  }
-
-  // Every other trigger's config carries a flat `points` — see Campaign::config_schema() / YayLoyaltyPro::add_config_keys().
-  return sprintf(/* translators: %s: points awarded. */ __('%s points', 'yayloyalty'), String(config.points ?? 0));
-}
-
-function conditionsLabel(conditions: unknown): string {
-  const list = Array.isArray(conditions) ? conditions : [];
-
-  if (list.length === 0) {
-    return __('No conditions', 'yayloyalty');
-  }
-
-  // Mirrors Enums\CampaignConditionType's vocabulary loosely (slug -> title
-  // case) rather than a hardcoded label per type — good enough for a table
-  // column; a merchant-facing editor would need the real per-type map.
-  return list
-    .map((condition) => humanizeConditionType(String((condition as { type?: unknown }).type ?? '')))
-    .join(', ');
-}
-
-function humanizeConditionType(type: string): string {
-  return type.replace(/_/g, ' ').replace(/^\w/, (char) => char.toUpperCase());
 }
 
 function scheduleLabel(startsAt: string | null, endsAt: string | null): string {
