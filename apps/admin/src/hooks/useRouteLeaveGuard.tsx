@@ -9,7 +9,7 @@ export function useRouteLeaveGuard(shouldBlock: boolean, excludedRoutes: string[
   const [showDialog, setShowDialog] = useState(false);
 
   const blocker = useBlocker(
-    ({ nextLocation }) => shouldBlock && excludedRoutes.some((route) => !matchPath(route, nextLocation.pathname)),
+    ({ nextLocation }) => shouldBlock && !excludedRoutes.some((route) => matchPath(route, nextLocation.pathname)),
   );
   useEffect(() => {
     if (blocker.state === 'blocked') {

@@ -48,6 +48,41 @@ export function parseWPCurrency(price: string | number) {
   }
 }
 
+/**
+ * Splits a stored `YYYY-MM-DD HH:mm:ss` UTC datetime string (every
+ * `starts_at`/`ends_at` on the wire — see campaign.schema.ts) into the
+ * `{ date, time }` pair a `DatePicker` + `<Input type="time">` pair needs.
+ * `null`/empty in, empty components out — campaigns' schedule bounds are
+ * nullable ("always on").
+ *
+ * Paired with `joinStoredDateTime` below as the ONE conversion point for this
+ * shape (campaign editor, phase-05's Schedule section): read the raw stored
+ * string via `watch()`, split here for display, join here on change. Never a
+ * bare `new Date('2026-11-27 00:00:00')` — most engines parse that as
+ * browser-local, silently shifting the value by the site's UTC offset (see
+ * code-standards.md §4 and `parseWPRelativeDate`'s comment above).
+ */
+export function splitStoredDateTime(value: string | null | undefined): { date: string; time: string } {
+  if (!value) {
+    return { date: '', time: '' };
+  }
+
+  const [date = '', time = ''] = value.split(' ');
+
+  // HH:mm for the <input type="time">; the stored value's seconds are
+  // rejoined (as :00) by joinStoredDateTime, never carried through the input.
+  return { date, time: time.slice(0, 5) };
+}
+
+/** Reverse of `splitStoredDateTime` — a time-less date defaults to midnight; no date returns `null`. */
+export function joinStoredDateTime(date: string, time: string): string | null {
+  if (!date) {
+    return null;
+  }
+
+  return `${date} ${time || '00:00'}:00`;
+}
+
 export function parseWPDecimal(number: number) {
   const { thousand_sep, decimal_sep, num_decimals } = window.yayLoyaltyMeta.wcMeta.currency_data;
   const formattedNumber = number

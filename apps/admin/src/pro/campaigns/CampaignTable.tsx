@@ -4,14 +4,17 @@ import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, InfoIcon, Lock, Search } from 'lucide-react';
+import { useNavigate } from 'react-router';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { parseWPDate } from '@/lib/helpers/format.helper';
 import { useCampaignsQuery } from '@/lib/queries/campaign.queries';
 import {
   Campaign,
+  CAMPAIGN_CONDITION_TYPES,
   CAMPAIGN_DISPLAY_STATUSES,
   CampaignDisplayStatus,
+  CampaignStatus,
   CampaignTrigger,
   resolveCampaignDisplayStatus,
 } from '@/lib/schema/campaign.schema';
@@ -33,8 +36,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import EllipsisIcon from '@/components/icons/EllipsisIcon';
+import { CampaignGroupKey, conditionTypeLabel, statusLabel, triggerGroup, triggerLabel } from './campaign-labels';
 import { DUMMY_POINTS_LAST_30_DAYS, hasPointsFigure } from './campaign-points-dummy';
 import { CampaignPointsSummary } from './CampaignPointsSummary';
+import type { CampaignEditorDuplicateSeed } from './editor/CampaignEditor';
 
 /** Groups larger than this collapse to the default plus this many, highest-priority first. */
 const VISIBLE_NON_DEFAULT_ROWS = 4;
@@ -44,9 +49,6 @@ const SEARCH_THRESHOLD = 20;
 
 /** Table columns, for colSpan on rows that span the whole width. */
 const COLUMN_COUNT = 10;
-
-/** A campaign only ever competes with others sharing its group — see triggerGroup(). */
-type CampaignGroupKey = 'purchase' | 'signup' | 'review' | 'other';
 
 const GROUP_ORDER: readonly CampaignGroupKey[] = ['purchase', 'signup', 'review', 'other'];
 
@@ -105,7 +107,7 @@ export function CampaignTable() {
   const [newStore] = useState(false);
   const [noLiveCampaign] = useState(false);
 
-  const { data, isPending, isError } = useCampaignsQuery({ per_page: 100 });
+  const { data, isPending, isError } = useCampaignsQuery({ perPage: 100 });
   const allRows = useMemo(() => (data?.data ?? []).map(toDisplayCampaign), [data]);
 
   const [statusFilter, setStatusFilter] = useState<CampaignDisplayStatus | undefined>();
@@ -242,7 +244,14 @@ export function CampaignTable() {
               </Select>
             )}
 
-            {/* Inert: this screen has no "create" flow yet — the editor only edits an existing (dummy) campaign. */}
+            {/*
+              Inert by decision, not by missing wiring: campaigns/:id/edit is a real, working
+              editor (see pro/campaigns/editor/CampaignEditor.tsx), but create_item() is not a
+              SWAP POINT — it persists for real — while get_items()/get_item() still answer from
+              CampaignRestController's dummy fixture. A created row would never appear in this
+              list. Stays inert until the list swaps off the fixture; see that controller's class
+              docblock.
+            */}
             <Button size="sm" onClick={() => {}}>
               {__('Add campaign', 'yayloyalty')}
             </Button>
@@ -469,6 +478,7 @@ function showMoreLabel(group: CampaignGroupKey): string {
 /** One draggable row within a CampaignGroupSection. */
 function SortableCampaignRow({ row, isTied }: { row: DisplayCampaign; isTied: boolean }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: row.id });
+  const navigate = useNavigate();
 
   return (
     <TableRow
@@ -489,8 +499,12 @@ function SortableCampaignRow({ row, isTied }: { row: DisplayCampaign; isTied: bo
       </TableCell>
       <TableCell>
         <div className="flex items-center gap-1.5">
-          {/* Inert: this screen has no editor to hand off to yet. */}
-          <Button variant="link" size="sm" className="h-auto p-0 font-semibold">
+          <Button
+            variant="link"
+            size="sm"
+            className="h-auto p-0 font-semibold"
+            onClick={() => navigate(`/campaigns/${row.id}/edit`)}
+          >
             {row.name}
           </Button>
           {isTied && (
@@ -541,8 +555,30 @@ function SortableCampaignRow({ row, isTied }: { row: DisplayCampaign; isTied: bo
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            {/* Inert: no editor and no write endpoint back this screen yet. */}
-            <DropdownMenuItem onSelect={() => {}}>{__('Duplicate', 'yayloyalty')}</DropdownMenuItem>
+            {/*
+              Opens the same editor as the row link, seeded with a new name and draft status via
+              router state — NOT a createCampaign() call. See CampaignEditor.tsx's docblock: with
+              create_item() persisting for real against a list still reading a dummy fixture, a
+              genuine duplicate would vanish from this table on the very next fetch. Router state
+              rather than a query param — it is meant to be gone on reload, since nothing was
+              actually duplicated for a reload to restore.
+            */}
+            <DropdownMenuItem
+              onSelect={() =>
+                navigate(`/campaigns/${row.id}/edit`, {
+                  state: {
+                    duplicateSeed: {
+                      /* translators: %s: the name of the campaign being duplicated. */
+                      name: sprintf(__('%s (copy)', 'yayloyalty'), row.name),
+                      status: 'draft' as CampaignStatus,
+                    } satisfies CampaignEditorDuplicateSeed,
+                  },
+                })
+              }
+            >
+              {__('Duplicate', 'yayloyalty')}
+            </DropdownMenuItem>
+            {/* Inert: no delete flow in this phase — CampaignRestController's delete_item() is real, but this table has no confirm-and-wire step for it yet. */}
             <DropdownMenuItem variant="destructive" disabled={row.is_builtin} onSelect={() => {}}>
               {__('Delete', 'yayloyalty')}
             </DropdownMenuItem>
@@ -560,58 +596,6 @@ function pauseIfActivePurchase(row: DisplayCampaign): DisplayCampaign {
   }
 
   return row;
-}
-
-/**
- * Campaigns only compete with others sharing a group. `purchase`, `signup`
- * and `review` each get their own; every other trigger — birthday and the
- * remaining Pro triggers — is rare enough today to share a catch-all rather
- * than earn a group of one each.
- */
-function triggerGroup(trigger: CampaignTrigger): CampaignGroupKey {
-  if (trigger === 'purchase' || trigger === 'signup' || trigger === 'review') {
-    return trigger;
-  }
-
-  return 'other';
-}
-
-function triggerLabel(trigger: CampaignTrigger): string {
-  switch (trigger) {
-    case 'purchase':
-      return __('Order placed', 'yayloyalty');
-    case 'signup':
-      return __('Account created', 'yayloyalty');
-    case 'review':
-      return __('Review published', 'yayloyalty');
-    case 'birthday':
-      return __('Birthday', 'yayloyalty');
-    case 'first_order':
-      return __('First order', 'yayloyalty');
-    case 'order_count':
-      return __('Order count reached', 'yayloyalty');
-    case 'spend_milestone':
-      return __('Spend milestone reached', 'yayloyalty');
-    default:
-      return trigger;
-  }
-}
-
-function statusLabel(status: CampaignDisplayStatus): string {
-  switch (status) {
-    case 'active':
-      return __('Active', 'yayloyalty');
-    case 'scheduled':
-      return __('Scheduled', 'yayloyalty');
-    case 'paused':
-      return __('Paused', 'yayloyalty');
-    case 'draft':
-      return __('Draft', 'yayloyalty');
-    case 'archived':
-      return __('Archived', 'yayloyalty');
-    case 'ended':
-      return __('Ended', 'yayloyalty');
-  }
 }
 
 function campaignCountLabel(count: number): string {
@@ -667,15 +651,25 @@ function conditionsLabel(conditions: unknown): string {
     return __('No conditions', 'yayloyalty');
   }
 
-  // Mirrors Enums\CampaignConditionType's vocabulary loosely (slug -> title
-  // case) rather than a hardcoded label per type — good enough for a table
-  // column; a merchant-facing editor would need the real per-type map.
   return list
     .map((condition) => humanizeConditionType(String((condition as { type?: unknown }).type ?? '')))
     .join(', ');
 }
 
+/**
+ * Backed by the real per-type map (`conditionTypeLabel()`, campaign-labels.ts
+ * — built for the campaign editor's Conditions section, phase-05). Falls back
+ * to the old slug-to-title-case approximation only for a type this build
+ * doesn't recognise (e.g. `tier`, or a stored type from a future schema
+ * version) so a stale row never renders blank.
+ */
 function humanizeConditionType(type: string): string {
+  const known = CAMPAIGN_CONDITION_TYPES.find((kind) => kind === type);
+
+  if (known) {
+    return conditionTypeLabel(known);
+  }
+
   return type.replace(/_/g, ' ').replace(/^\w/, (char) => char.toUpperCase());
 }
 

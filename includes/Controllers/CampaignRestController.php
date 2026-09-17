@@ -29,12 +29,29 @@ defined( 'ABSPATH' ) || exit;
  * (groups, priority ties, the >20-campaigns search threshold, an archived
  * row). This is the ONE list both Lite (BuiltInCampaignList, filtered to
  * is_builtin) and Pro (CampaignTable, shown whole) read — see those
- * components' docblocks. create_item()/update_item()/delete_item() below are
- * untouched and already write through $this->campaigns for real; when the
- * dummy rows are no longer needed, get_items()/get_item() go back to reading
- * $this->campaigns too and dummy_fixture()/find_dummy_row() are deleted —
- * nothing else in the SPA changes, since every consumer already goes through
- * getCampaigns()/getCampaign() in lib/api/campaign.api.ts.
+ * components' docblocks. create_item()/delete_item() below are untouched and
+ * already write through $this->campaigns for real; update_item() does not —
+ * see its own SWAP POINT paragraph below. When the dummy rows are no longer
+ * needed, get_items()/get_item() go back to reading $this->campaigns too and
+ * dummy_fixture()/find_dummy_row() are deleted — nothing else in the SPA
+ * changes, since every consumer already goes through getCampaigns()/
+ * getCampaign() in lib/api/campaign.api.ts.
+ *
+ * SWAP POINT — write path, non-persisting. update_item() below resolves the
+ * campaign it edits EXCLUSIVELY through find_dummy_row() (matching
+ * get_item()'s read path exactly, no $this->campaigns->find_campaign()
+ * fallback), validates the request, and returns the updated campaign but
+ * makes no $this->campaigns->update() call — for the same reason as the read
+ * SWAP POINT above: get_item()/get_items() answer from dummy_fixture(), so a
+ * real write would persist against $this->campaigns while every subsequent
+ * read still shows the unchanged dummy row — the editor would appear to save,
+ * then look like it lost the change on reload, which is worse than not
+ * persisting. Resolving through $this->campaigns first would be worse still:
+ * fixture ids 1-3 collide with real auto-increment ids seeded by built-ins,
+ * so an edit to a fixture campaign would silently apply to an unrelated real
+ * row. To restore: put the $this->campaigns->update() call (and re-read) back
+ * into update_item(), and swap its fixture resolution for
+ * $this->campaigns->find_campaign().
  */
 final class CampaignRestController extends AbstractRestController {
 
@@ -150,6 +167,12 @@ final class CampaignRestController extends AbstractRestController {
         // slug is honoured as a starting point but never trusted to be unique.
         $slug = $this->unique_slug( $request['slug'] ? (string) $request['slug'] : $name );
 
+        $conditions = (array) ( $request['conditions'] ?? [] );
+
+        if ( ! Campaign::conditions_are_valid( $conditions ) ) {
+            return $this->error_invalid_arguments( __( 'Invalid campaign conditions.', 'yayloyalty' ) );
+        }
+
         $now = Dates::now();
 
         $campaign = new Campaign(
@@ -160,7 +183,7 @@ final class CampaignRestController extends AbstractRestController {
             $request['status'] ? Status::assert( (string) $request['status'] ) : Status::ACTIVE,
             null !== $request['priority'] ? (int) $request['priority'] : 0,
             Campaign::validate_config( $trigger, (array) ( $request['config'] ?? [] ) ),
-            (array) ( $request['conditions'] ?? [] ),
+            $conditions,
             $this->nullable_date( $request['starts_at'] ),
             $this->nullable_date( $request['ends_at'] ),
             false, // is_builtin is never settable from a request.
@@ -177,11 +200,40 @@ final class CampaignRestController extends AbstractRestController {
     }
 
     public function update_item( \WP_REST_Request $request ) {
-        $campaign = $this->campaigns->find_campaign( (int) $request['id'] );
+        // Resolved from the fixture EXCLUSIVELY, matching get_item()'s read
+        // path — see the class docblock's write SWAP POINT. No
+        // $this->campaigns->find_campaign() fallback: fixture ids 1-3 collide
+        // with real auto-increment ids seeded by built-ins, so trying the real
+        // repository first would resolve a fixture campaign against an
+        // unrelated real row.
+        $row = self::find_dummy_row( (int) $request['id'] );
 
-        if ( null === $campaign ) {
+        if ( null === $row ) {
             return $this->error_not_found( __( 'Campaign not found.', 'yayloyalty' ) );
         }
+
+        // find_dummy_row() returns the REST shape (key `trigger`,
+        // config/conditions already decoded arrays), not the DB shape
+        // from_row() expects (key `trigger_type`, config/conditions as
+        // JSON strings) — Json::decode() only accepts a string, so
+        // handing it an already-decoded array would throw. Built
+        // directly instead of forcing this through from_row().
+        $campaign = new Campaign(
+            $row['id'],
+            $row['name'],
+            $row['slug'],
+            $row['trigger'],
+            $row['status'],
+            $row['priority'],
+            $row['config'],
+            $row['conditions'],
+            $row['starts_at'],
+            $row['ends_at'],
+            $row['is_builtin'],
+            $row['created_by'],
+            $row['created_at'],
+            $row['updated_at']
+        );
 
         // slug and trigger are immutable after create, enforced here rather than
         // by trusting the client to omit them. Built-ins are addressed by slug
@@ -203,6 +255,10 @@ final class CampaignRestController extends AbstractRestController {
         }
 
         if ( null !== $request['conditions'] ) {
+            if ( ! Campaign::conditions_are_valid( (array) $request['conditions'] ) ) {
+                return $this->error_invalid_arguments( __( 'Invalid campaign conditions.', 'yayloyalty' ) );
+            }
+
             $campaign->set_conditions( (array) $request['conditions'] );
         }
 
@@ -216,18 +272,11 @@ final class CampaignRestController extends AbstractRestController {
 
         $campaign->set_updated_at( Dates::now() );
 
-        $data = $campaign->to_row();
-
-        // slug/trigger_type/created_at/created_by are fixed at create time.
-        // (The column is trigger_type — see CampaignsTable.) Formats are left to
-        // default to %s; every campaigns column accepts that.
-        unset( $data['slug'], $data['trigger_type'], $data['created_at'], $data['created_by'], $data['is_builtin'] );
-
-        $this->campaigns->update( (int) $request['id'], $data );
-
-        $updated = $this->campaigns->find_campaign( (int) $request['id'] );
-
-        return null === $updated ? $campaign->to_array() : $updated->to_array();
+        // SWAP POINT — no $this->campaigns->update() call; see the class
+        // docblock. When persistence is restored, write $campaign->to_row()
+        // back with the same fixed-at-create columns stripped first:
+        // `unset( $data['slug'], $data['trigger_type'], $data['created_at'], $data['created_by'], $data['is_builtin'] );`
+        return $campaign->to_array();
     }
 
     public function delete_item( \WP_REST_Request $request ) {

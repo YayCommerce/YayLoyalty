@@ -38,7 +38,7 @@ const BUILTIN_TRIGGER_ORDER: Campaign['trigger'][] = ['purchase', 'signup', 'rev
  * see BuiltInCampaignCard's docblock.
  */
 export default function BuiltInCampaignList() {
-  const { data, isPending, isError } = useCampaignsQuery({ per_page: 100 });
+  const { data, isPending, isError } = useCampaignsQuery({ perPage: 100 });
   const [expandedId, setExpandedId] = useState<number | undefined>();
 
   if (isPending) {
@@ -120,8 +120,8 @@ function BuiltInCampaignCard({
   onToggleExpanded: () => void;
 }) {
   // Local edits only — Save never calls the write endpoint (see
-  // built-in-campaign-list.api.ts's docblock for the swap point). Cancel
-  // just resets these to what the campaign loaded with.
+  // CampaignRestController's SWAP POINT docblock). Cancel just resets these
+  // to what the campaign loaded with.
   const [status, setStatus] = useState(campaign.status);
   const [config, setConfig] = useState(campaign.config);
   const isOn = status === 'active';

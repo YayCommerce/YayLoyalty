@@ -88,7 +88,7 @@ The admin SPA is built with React 18 + Vite 6 + TanStack Query + Zod validation.
 ```mermaid
 flowchart LR
     subgraph Pages["Page Routes"]
-        Camp["CampaignsPage"]
+        Camp["CampaignsPage (list + <br/>CampaignEditorPage)"]
         Cust["CustomersPage"]
         Set["Settings (General/Emails/Advanced stubs)"]
         Other["Dashboard, Rewards, Referral, VIP (placeholders)"]
@@ -289,10 +289,46 @@ do_action( 'yayloyalty_ledger_recorded', $entry )   ← after commit, so a subsc
 REST returns the LedgerEntry → zod parse → `useBulkAdjustPointsMutation` invalidates the `['customer']` query prefix → list, detail and ledger all refetch
 ```
 
+### Campaign editor (Pro-only) — create and edit
+
+**Route:** `/campaigns/:id/edit` (Pro-only; gated by `IS_PRO_BUILD` AND `requires(CAP.MANAGE_CAMPAIGNS)` with Pro lock winning if both apply).
+
+**Access:** Reachable from `CampaignTable` row name-link (detail pre-load) and "Duplicate" action. "Add campaign" intentionally inert — the campaigns list reads from a dummy fixture, not the database, so a genuine create would produce an invisible row (same SWAP POINT as update, below).
+
+**Editor structure:** Six sections (Basics, Trigger, Reward, Conditions, Schedule, Priority) plus a live-updating summary rail ("What this means", "Before it can run", save actions). Uses react-hook-form + zodResolver (first RHF adoption in this codebase). Per-trigger reward config editors for Lite triggers (purchase/signup/review); generic read-only fallback for Pro-only triggers that preserves config byte-for-byte. 10-type condition builder. Nullable start/end scheduling with site-timezone conversion at display/input edges (form/wire values stay raw UTC).
+
+**SWAP POINT caveat:** The PHP update endpoint validates and returns the campaign, but **does NOT persist to the database**. This is a deliberate, explicitly-marked temporary state — both the read-side (list/detail from dummy fixture) and write-side (update validation without persist) SWAP POINTs are intended to be resolved together in a future CRUD task.
+
+```
+GET /campaigns/:id   (read for detail pre-load)
+    ↓
+CampaignRestController::get_item()
+
+POST /yayloyalty/v1/campaigns/:id   (or PUT, depending on implementation)
+    ↓
+CampaignRestController::update_item()  via  exec_write()
+    ├─ CampaignTrigger::is_valid( trigger )        must be fireable in THIS build (all(), filtered)
+    ├─ Campaign::validate_config( trigger, config ) keys whitelisted per trigger
+    ├─ Campaign::conditions_are_valid()            validates the 10-type condition set (NEW: now wired as a real gate, not a stub)
+    ├─ [SWAP POINT: NO persist to database; controller strips readonly fields and returns the validated campaign]
+    └─ Response: Campaign::to_array()
+    
+Admin SPA (CampaignEditorPage)
+    ├─ useUpdateCampaignMutation() (NEW)
+    ├─ six form sections reading/writing through consolidated data layer (campaign.schema.ts/api.ts/queries.ts, extended with updateCampaignInput schema and updateCampaign() call)
+    └─ summary rail live-updates from form state
+```
+
+**Known gaps (not built, not faked):**
+- No product/category/customer search endpoint → id-entry via existing `TagsInput` pickers deferred.
+- No store-wide ledger aggregate → rail's "cost estimate" line omitted.
+- `updated_by` column exists; controller never sets it.
+- `include_shipping` config key still stored but never read by `BaseCalculator` (dead key).
+
 ### Campaign create — REST only, no SPA form yet
 
 ```
-POST /yayloyalty/v1/campaigns   (no admin UI issues this yet; the campaigns page is a read-only list)
+POST /yayloyalty/v1/campaigns   (no admin UI issues this yet; the campaigns page reads from a dummy fixture)
     ↓
 CampaignRestController::create_item()  via  exec_write()
     ├─ CampaignTrigger::is_valid( trigger )        must be fireable in THIS build (all(), filtered)

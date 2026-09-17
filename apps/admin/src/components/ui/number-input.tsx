@@ -122,12 +122,18 @@ const NumberInputInput = forwardRef<HTMLInputElement, NumberInputInputProps>(
     };
 
     const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+      const inputEl = (ref as React.RefObject<HTMLInputElement> | null)?.current;
+
       if (value < min) {
         setValue(min);
-        (ref as React.RefObject<HTMLInputElement>).current!.value = String(min);
+        if (inputEl) {
+          inputEl.value = String(min);
+        }
       } else if (value > max) {
         setValue(max);
-        (ref as React.RefObject<HTMLInputElement>).current!.value = String(max);
+        if (inputEl) {
+          inputEl.value = String(max);
+        }
       }
       onBlur?.(e);
     };
