@@ -14,7 +14,7 @@ One trigger per call. Within a trigger, highest priority wins; across triggers, 
 2. SELECT       first campaign whose conditions match AND whose handler says is_eligible()
                 filter: yayloyalty_campaign_matches
 3. BASE         purchase only: BaseCalculator                           filter: yayloyalty_earning_base_amount
-4. POINTS       rate or multiplier → Rounding                           filter: yayloyalty_points_for_order
+4. POINTS       rate or multiplier → PointsMath::round_points()         filter: yayloyalty_points_for_order
 5. CAPS         CapPolicy: max_points_per_order, daily_cap
 6. RESULT       points + campaign + breakdown + reference + source, or none( reason )
 ```
@@ -80,4 +80,4 @@ return [ 'points' => $result->get_points() ]; // the integer, nothing else
 
 ## Tests
 
-`composer test` — 46 cases under `tests/unit/`, plain PHPUnit, no WordPress bootstrap (`tests/bootstrap.php` shims the hook functions). Integration against real `WC_Order` objects is exercised manually via WP-CLI until a wp-phpunit harness exists.
+`composer test` — 93 cases under `tests/unit/`, plain PHPUnit, no WordPress bootstrap (`tests/bootstrap.php` shims the hook functions). Engine tests plus PointsMath shared vectors. Integration against real `WC_Order` objects is exercised manually via WP-CLI until a wp-phpunit harness exists.

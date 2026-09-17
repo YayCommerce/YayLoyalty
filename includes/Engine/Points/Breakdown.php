@@ -1,6 +1,8 @@
 <?php
 namespace YayLoyalty\Engine\Points;
 
+use YayLoyalty\Utils\PointsMath;
+
 defined( 'ABSPATH' ) || exit;
 
 /**
@@ -43,7 +45,7 @@ final class Breakdown {
 
     /** A flat award: no base, no rate, nothing rounded. */
     public static function flat( int $points, array $notes = [] ): self {
-        return new self( $points, 0.0, 0.0, (float) $points, Rounding::NONE, $notes );
+        return new self( $points, 0.0, 0.0, (float) $points, PointsMath::ROUND_NONE, $notes );
     }
 
     public function get_points(): int {

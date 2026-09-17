@@ -4,13 +4,13 @@ namespace YayLoyalty\Engine\Points\Triggers;
 use YayLoyalty\Engine\Points\BaseCalculator;
 use YayLoyalty\Engine\Points\Breakdown;
 use YayLoyalty\Engine\Points\Context;
-use YayLoyalty\Engine\Points\Rounding;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\ReferenceType;
 use YayLoyalty\Enums\Status;
 use YayLoyalty\Models\Campaign;
 use YayLoyalty\Repositories\CampaignRepository;
+use YayLoyalty\Utils\PointsMath;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -71,7 +71,7 @@ final class PurchaseHandler implements TriggerHandler {
     public function compute_points( Campaign $campaign, Context $ctx ): Breakdown {
         $config   = $campaign->get_config();
         $base     = $this->base_calculator->compute( $campaign, $ctx );
-        $rounding = (string) ( $config['rounding'] ?? Rounding::DOWN );
+        $rounding = (string) ( $config['rounding'] ?? PointsMath::ROUND_DOWN );
 
         if ( $this->is_multiplier( $config ) ) {
             // is_eligible() already guaranteed the default exists and is active.
@@ -82,7 +82,7 @@ final class PurchaseHandler implements TriggerHandler {
         }
 
         $raw    = $base * $rate;
-        $points = Rounding::apply( $raw, $rounding );
+        $points = PointsMath::round_points( $raw, $rounding );
 
         /**
          * Points an order earns from a campaign, after rounding and before caps.

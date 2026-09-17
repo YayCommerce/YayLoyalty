@@ -2,12 +2,13 @@
 namespace YayLoyalty\Services\Dashboard;
 
 use YayLoyalty\Repositories\DashboardRepository;
+use YayLoyalty\Utils\PointsMath;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
  * Composes the cacheable, site-wide part of `GET /dashboard`: stats, series,
- * top earners, recent activity. Arithmetic goes through DashboardMath so the
+ * top earners, recent activity. Ratios go through PointsMath so the
  * null rules are tested once; this class only decides which window feeds
  * which figure.
  *
@@ -47,8 +48,8 @@ final class DashboardStats {
 
         $orders_total       = $repo->count_orders( $window->from_ts(), $window->to_ts() );
         $orders_with_points = $repo->orders_with_points( $from, $to );
-        $rate               = DashboardMath::rate( $orders_with_points, $orders_total );
-        $rate_prev          = DashboardMath::rate(
+        $rate               = PointsMath::pct_of( $orders_with_points, $orders_total );
+        $rate_prev          = PointsMath::pct_of(
             $repo->orders_with_points( $pf, $pt ),
             $repo->count_orders( $window->prev_from_ts(), $window->from_ts() )
         );
@@ -57,27 +58,27 @@ final class DashboardStats {
             'stats'           => [
                 'members'         => [
                     'value'          => $members,
-                    'prev_delta_pct' => DashboardMath::pct_delta( $members, $members_prev ),
+                    'prev_delta_pct' => PointsMath::pct_delta( $members, $members_prev ),
                 ],
                 'points_issued'   => [
                     'value'          => $issued,
-                    'prev_delta_pct' => DashboardMath::pct_delta( $issued, $repo->sum_issued( $pf, $pt ) ),
+                    'prev_delta_pct' => PointsMath::pct_delta( $issued, $repo->sum_issued( $pf, $pt ) ),
                 ],
                 'points_redeemed' => [
                     'value'          => $redeemed,
-                    'prev_delta_pct' => DashboardMath::pct_delta( $redeemed, $repo->sum_redeemed( $pf, $pt ) ),
+                    'prev_delta_pct' => PointsMath::pct_delta( $redeemed, $repo->sum_redeemed( $pf, $pt ) ),
                 ],
                 'liability'       => [
                     'points'                   => $liability,
-                    'currency_amount'          => DashboardMath::currency_amount( $liability, $ppcu ),
+                    'currency_amount'          => PointsMath::points_to_currency( $liability, $ppcu ),
                     'points_per_currency_unit' => $ppcu,
-                    'prev_delta_pct'           => DashboardMath::pct_delta( $liability, $repo->net_balance() - $repo->net_delta( $from, $to ) ),
+                    'prev_delta_pct'           => PointsMath::pct_delta( $liability, $repo->net_balance() - $repo->net_delta( $from, $to ) ),
                 ],
                 'redemption_rate' => [
                     'rate'               => $rate,
                     'orders_with_points' => $orders_with_points,
                     'orders_total'       => $orders_total,
-                    'prev_delta_pct'     => null === $rate || null === $rate_prev ? null : DashboardMath::pct_delta( $rate, $rate_prev ),
+                    'prev_delta_pct'     => null === $rate || null === $rate_prev ? null : PointsMath::pct_delta( $rate, $rate_prev ),
                 ],
             ],
             'series'          => DashboardMath::fill_series(
