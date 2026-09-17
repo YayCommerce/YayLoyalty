@@ -117,7 +117,7 @@ All referral tables (`referrals`, `referral_visits`) specified in data model; no
 |---|---|---|
 | **Campaigns** | ✅ FUNCTIONAL | Lite: three built-in campaign cards (purchase/signup/review), editable in local state only — no save yet. Pro: full table (grouped by trigger, priority, scheduling, conditions) + points summary card. Both read from cosmetic dummy data (22 campaigns for UI-check; `CampaignRestController::dummy_fixture()`—to be deleted when visual iteration stops). Real create/update/delete wired but no SPA form yet. Pro conditions preview endpoint working |
 | **Customers** | ✅ FUNCTIONAL | Server-paginated list (search/filter/sort/export/row-select) against real `GET /customers`; bulk "Adjust points" and "Export" wired to real endpoints (`POST /customers/{id}/adjust`, client-side CSV); background page/sort/filter refetch dims the table to 60% opacity while placeholderData keeps rows on screen (no toolbar spinner); Tier column and filter are cosmetic sample data over `balance_range` (not real tier feature); Pro adds saved-segment management (`POST/DELETE /customers/segments` — save/apply/remove filter sets); filter suggestions for no-match cases; no per-customer detail view yet |
-| **Dashboard** | ⚠️ PLACEHOLDER | Stub page; no analytics yet |
+| **Dashboard** | ✅ SHIPPED | Real `GET /dashboard` (ledger/customers/WC aggregates: 5 stat tiles with deltas, issued-vs-redeemed chart 7/30/90, top earners, recent activity, three notice detectors with per-user dismissal, anomaly panel); Pro adds `GET /dashboard/pro` (campaign breakdown lines, top campaigns) — referrals tile and tier distribution are client dummies until those tables exist. Dev-only `?scenario=` fixtures reproduce every wireframe artboard (WP_DEBUG + Vite dev server) |
 | **Rewards** | ⚠️ PLACEHOLDER | Stub page; no catalog UI |
 | **Referral** | ⚠️ PLACEHOLDER | Stub page; referral program not built |
 | **VIP Tiers** | ⚠️ PLACEHOLDER | Stub page; no tier management UI |
@@ -143,7 +143,7 @@ Ordered by how much of the product each blocks, not by an assigned priority — 
 | **No event outbox** | — | `events` table not created; no webhook delivery |
 | **`yayloyalty_table_schemas` seam unproven** | Filter wired in `Installer`, documented as a Pro seam | No Pro table exists yet, so the strip-a-Pro-table path has never run |
 | **`referral`, `social`, `renewal` triggers** | Recognised by `all_known()` for downgrade safety | Offered by no build; nothing can fire them |
-| **Placeholder pages** | Routes and nav for Dashboard, Rewards, Referral, VIP Tiers, Settings | Each renders `PagePlaceholder` |
+| **Placeholder pages** | Routes and nav for Rewards, Referral, VIP Tiers, Settings | Each renders `PagePlaceholder` |
 | **No permission matrix** (Pro) | Seven caps on roles; `Capabilities::payload()` | No Settings → Permissions UI or `POST /settings/permissions`; roles are edited with a role plugin for now |
 | **No `uninstall.php`** | `Capabilities::uninstall()` | Nothing calls it; caps and options persist after delete |
 | **Licence routes share the menu cap** | AdminShell applies `get_capability()` (`view`) to menu, licence REST and `LicenseHandler` | A viewer can reach licence endpoints; needs a second adapter method in the shared shell |

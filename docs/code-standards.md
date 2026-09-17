@@ -57,7 +57,7 @@ Binding a decimal through `%f` converts it to a float, and floats cannot represe
 
 **`$wpdb` appears only in `Repositories/` and `Database/`.** Nowhere else — not in controllers, services, models, helpers or engine classes.
 
-- One repository per table. A repository never touches a second table.
+- One repository per table. A repository never touches a second table. The one carve-out is **read-only cross-table aggregation** for the dashboard: `Repositories/DashboardRepository` and `Pro/Repositories/CampaignPointsRepository` are standalone classes (not `AbstractRepository`), read several tables, and write nothing — write ownership is unchanged.
 - A repository **never opens a transaction**. Atomicity is a service concern.
 - All SQL prepared. `search` terms go through `$wpdb->esc_like()` before `prepare()`.
 - `orderby` is whitelisted per repository. Never interpolate a caller-supplied column name.
@@ -109,9 +109,11 @@ Verified 2026-09-09: with a foreign transaction open, `Transaction::run()` takes
 | Layer | Owns | Must not |
 |---|---|---|
 | `Models/` | Typed data, casts, REST shape | Touch the database |
-| `Repositories/` | All SQL for exactly one table | Open transactions; touch a second table |
+| `Repositories/` | All SQL for exactly one table | Open transactions; touch a second table¹ |
 | `Services/` | Invariants, transactions, cross-table writes | Contain SQL |
 | `Controllers/` | HTTP shape, schema, permissions | Contain SQL or business invariants |
+
+¹ Exception: `DashboardRepository` and `Pro/Repositories/CampaignPointsRepository` are read-only cross-table classes (see §6 carve-out).
 
 **Definition tables get no service.** A service that only forwards CRUD to one repository is ceremony. Add one when an operation must touch a second table atomically — that is when it earns its existence.
 

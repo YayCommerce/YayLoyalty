@@ -107,13 +107,14 @@ One repository, two zips. Lite = Pro minus `includes/Pro/` and SPA built with `B
 - Conditions preview endpoint: POST `/campaigns/{id}/preview-conditions`
 - Advanced config: max_points_per_order, daily_cap, media_bonus_points
 - Reward types: fixed_coupon, percent_coupon, free_shipping, free_product (in addition to Lite's flexible_discount)
+- Dashboard: referral tile, tier distribution, campaign breakdown, top campaigns (`GET /dashboard/pro`)
 
 ---
 
 ## Checks
 
 ```bash
-composer test                  # phpunit — 46 unit tests covering BaseCalculator, PurchaseHandler, PointsEngine
+composer test                  # phpunit — 86 unit tests: points engine (BaseCalculator, PurchaseHandler, PointsEngine) + dashboard computation (PeriodWindow, DashboardMath, AnomalyDetector, DashboardStats, DashboardNotices)
 composer lint                  # phpcs (WPCS + PHPCompatibility, 7.4 floor)
 pnpm --filter @yayloyalty/admin-page lint   # eslint + prettier on TypeScript/React
 ./scripts/run.sh release lite --no-prompt   # builds and validates a package end to end

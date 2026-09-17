@@ -71,12 +71,14 @@ All SQL access **must** go through these. Throw `QueryException` on write failur
 | `Repositories/LedgerRepository.php` | `ledger` | `find_by_reference()`, `paginate_for_user()`, `sum_points_for_user()`, `latest_for_user()` |
 | `Repositories/CampaignRepository.php` | `campaigns` | `find_campaign()`, `find_by_slug()`, `live_for_trigger($trigger, $at)`, `all_non_archived()` (cached), `find_default_purchase()`, `paginate_filtered()`, `seed_builtin()`, `flush_cache()` |
 | `Repositories/RewardRepository.php` | `rewards` | `find_reward()`, `find_by_slug()`, `paginate_filtered()`, `seed_builtin()` |
+| `Repositories/DashboardRepository.php` | ledger + customers + users + rewards + WC (**read-only, standalone** — not an `AbstractRepository`) | Dashboard aggregates: `count_members()`, `sum_issued()`/`sum_redeemed()`/`net_delta()`, `daily_points()`, `liability_points()`/`net_balance()`, `orders_with_points()`/`orders_with_earn()`, `campaign_points_on_day()`, `top_earners()`, `latest_activity()`, `count_activity_since()`, `count_negative_balances()`, `count_orders()` (WC, unix-timestamp range, completed only), `points_per_currency_unit()` |
 
 ### Services (Business logic, transactions)
 
 | Class | Role |
 |---|---|
-| `Services/LedgerService.php` | **SOLE writer** of ledger. `adjust()` (public) creates ledger row, updates customer aggregates, fires `yayloyalty_ledger_recorded`, all in `Transaction::run()`. Encapsulates idempotency and lock order. `record()` is private; use `adjust()` for manual adjustments. |
+| `Services/Dashboard/` | Pure, unit-tested dashboard computation: `PeriodWindow` (site-tz calendar-day windows → UTC bounds), `DashboardMath` (deltas/rates/zero-fill, null on zero denominators), `AnomalyDetector` (jump rule over active days), `DashboardStats` (composes the payload), `DashboardNotices` (three detectors, structured `{key, severity, fingerprint, data}` — no copy), `DashboardCache` (transient above 10k members, `''`/`'pro'` variants, flushed on `yayloyalty_ledger_recorded` + `yayloyalty_campaigns_changed`), `NoticeDismissals` (per-user meta, applied after the cache) |
+| `Services/LedgerService.php` | **SOLE writer** of ledger. `adjust()` (public) creates ledger row, updates customer aggregates, writes inside `Transaction::run()`, then fires `yayloyalty_ledger_recorded` after it returns. Encapsulates idempotency and lock order. `record()` is private; use `adjust()` for manual adjustments. |
 
 **Design rule:** Fact tables get Entity + Repository + Service. Definition tables (campaigns) get Entity + Repository only — no service.
 
@@ -92,6 +94,7 @@ All `namespace YayLoyalty\Controllers` → routes under `yayloyalty/v1/`.
 | `LedgerRestController` | `GET /customers/{id}/ledger` | Paginated history per user |
 | `CampaignRestController` | `/campaigns`, `/campaigns/{id}` | CRUD operations on campaigns |
 | `SettingsRestController` | `yayloyalty/v1/settings` | Read/update plugin settings |
+| `DashboardRestController` | `GET /dashboard?range=7\|30\|90[&refresh=1]`, `POST /dashboard/notices/dismiss` | Landing-page payload (cap `VIEW`); `scenario` arg exists only under `WP_DEBUG` → `DashboardFixture` artboards (SWAP POINT, dev-only) |
 | `CustomerRowFilters`, `CustomerRowSort` | — | Pure helpers for the Customers list's server-side filtering/sorting; SQL-free — `CustomerRepository::paginate_list()`/`count_list()` turn their criteria/order shapes into SQL |
 | `CallbackReturnedError` | — | Error object when a controller callback fails (logged, correlated) |
 
@@ -143,13 +146,15 @@ Filters (public API): `yayloyalty_campaign_candidates`, `yayloyalty_campaign_mat
 | `Pro/YayLoyaltyPro.php` | Boot; attaches all Pro filters; fires `yayloyalty_pro_booted` | — |
 | `Pro/Services/ConditionsEvaluator.php` | Evaluates campaign conditions (ANDed); fails on unknown type | `yayloyalty_campaign_conditions_evaluator` |
 | `Pro/Controllers/CampaignPreviewRestController.php` | POST `/campaigns/{id}/preview-conditions` — 404 in Lite | `yayloyalty_rest_controllers` |
+| `Pro/Controllers/DashboardProRestController.php` | `GET /dashboard/pro?range=` (rest base `dashboard-pro`) — per-campaign series + top campaigns via `Pro/Repositories/CampaignPointsRepository.php` (standalone read-only, ledger `campaign_id`); referrals/tiers `null` until their tables exist; 404 in Lite | `yayloyalty_rest_controllers` |
 | `Pro/Controllers/CustomerSegmentsRestController.php` | POST `/customers/segments`, DELETE `/customers/segments` (name in body) — save/delete saved Customers-page filter sets (name + filters minus search); 404 in Lite | `yayloyalty_rest_controllers` |
 | `Pro/Helpers/CustomerSegmentsHelper.php` | `yayloyalty_customer_segments` option: site-wide list of `{name, filters: {snake_case keys}}`, whitelisted both directions; name is the identity, duplicates rejected (no upsert) | — |
 
 **Pro seams (filters):**
 - `yayloyalty_table_schemas` — Pro can add tables (currently unused)
-- `yayloyalty_ledger_recorded` — React to ledger writes (no subscriber yet)
-- `yayloyalty_rest_controllers` — Add Pro routes (CampaignPreviewRestController)
+- `yayloyalty_ledger_recorded` — React to ledger writes (subscriber: `DashboardCache::flush`)
+- `yayloyalty_rest_controllers` — Add Pro routes (CampaignPreviewRestController, CustomerSegmentsRestController, DashboardProRestController)
+- `yayloyalty_campaigns_changed` — Fired by `CampaignRepository::flush_cache()` after any campaign write (subscriber: `DashboardCache::flush`)
 - `yayloyalty_campaign_triggers` — Add extra triggers (birthday, first_order, order_count, spend_milestone)
 - `yayloyalty_campaign_config_whitelist` — Whitelist Pro config keys per trigger
 - `yayloyalty_reward_types` — Add extra reward types (fixed_coupon, percent_coupon, free_shipping, free_product)
@@ -175,12 +180,17 @@ Filters (public API): `yayloyalty_campaign_candidates`, `yayloyalty_campaign_mat
 |---|---|
 | `src/main.tsx` | Entry point; imports Pro barrel if `IS_PRO_BUILD` |
 | `src/router.tsx` | Hash router with routes for `/dashboard`, `/customers`, `/campaigns`, `/rewards`, `/referral`, `/vip-tiers`, `/settings` (each gated by capability via `<Can>`) |
-| `src/pages/` | Route pages; `campaigns/`, `customers/` and `settings/` have content; Dashboard, Rewards, Referral, VIP Tiers are placeholders |
+| `src/pages/` | Route pages; `dashboard/`, `campaigns/`, `customers/` and `settings/` have content; Rewards, Referral, VIP Tiers are placeholders |
+| `src/pages/dashboard/` | `DashboardPage.tsx` (one `IS_PRO_BUILD` branch: `DashboardProPanels` from `@/pro` vs `DashboardProTeasers`, both feeding the same `DashboardProSlots`); `components/` (stat tiles/grid, recharts points chart + frame, top earners, recent activity, empty state, cache strip, skeletons, notice strip/card, anomaly panel/settlements); `dashboard-page.copy.ts` + `dashboard-page.notice-copy.ts` own every sentence (server sends structured notice data only); `?scenario=` read from the hash route on the dev server only |
 | `src/pages/campaigns/` | `CampaignsPage.tsx` routes: Lite renders `BuiltInCampaignList` (three fixed cards for purchase/signup/review; edits are local state only, no save yet), Pro renders `CampaignTable` (grouped by trigger) + `CampaignPointsSummary` card. Both read from same `useCampaignsQuery()` (real `GET /campaigns`; currently serves cosmetic dummy data from `CampaignRestController` for UI-check—see SWAP POINT docblock—will switch to real rows when table needs no more visual iteration) |
 | `src/pages/customers/` | Server-paginated list (search/filter/sort/export/row-select), real `GET /customers`; bulk "Adjust points"/"Export" wired to real endpoints (via `customers-page.bulk-actions.ts`, `customers-page.export.ts`); selection resolves via fast path or sequential walk of `GET /customers` (see `customers-page.matching-customers.ts`, max 500 pages); Tier column/filter are sample-data stand-ins over `balance_range` (see `customers-page.tier-sample-data.ts`—to be deleted when VIP Tiers ships); Pro adds a saved-segment picker above the toolbar; table dims to 60% opacity during background page/sort/filter refetch (placeholderData keeps rows on screen; no toolbar spinner) |
 | `src/pro/campaigns/` | **Deleted in Lite build** — Pro campaign features: `CampaignTable.tsx` (full table with grouping, priority, scheduling, conditions); `CampaignPointsSummary.tsx` (points contribution card); `campaign-points-dummy.ts` (cosmetic sample data for points summary—to be deleted when real tier/scheduling analytics land) |
+| `src/pro/dashboard/` | **Deleted in Lite build** — `DashboardProPanels` (render-prop slots), tier distribution, top campaigns, breakdown toggle, `dashboard-pro.api/queries.ts`, `dashboard-pro-dummy.ts` (referrals + tiers, SWAP POINT) |
+| `src/pro/campaigns/campaign-labels.ts` | `givesLabel()` / `conditionsLabel()` shared by `CampaignTable` and `DashboardTopCampaigns` |
 | `src/pro/customers/` | **Deleted in Lite build** — saved-segment feature: `CustomersSavedSegmentRow`, `CustomersSaveSegmentDialog`, `customers-saved-segment-row.state.ts`, `customer-segments.api.ts` (converts camelCase ↔ snake_case wire shape) |
 | `src/components/pro/` | **Kept in Lite** — `ProGate`, upsell UI, badge components |
+| `src/components/ui/chart.tsx` | Vendored shadcn chart primitive for recharts 2 (`.yay-dark` selector, `--chart-1..5` tokens from `styles/theme.css`) |
+| `src/lib/schema/dashboard*.schema.ts` | Zod mirrors of the dashboard contracts: `dashboard.schema.ts` (Free), `dashboard-notice.schema.ts` (per-key notice `data`), `dashboard-pro.schema.ts` (Pro) |
 | `src/lib/` | Helpers: `api/` (REST calls), `queries/` (TanStack Query), `schema/` (Zod), `utils.ts`, `is-pro-build.ts`, `helpers/`, `access.tsx` (`CAP`, `can()`, `<Can>` — hide/disable by capability from `window.yayLoyaltyAdmin`; cosmetic, the server decides) |
 | `src/types/` | TypeScript type definitions |
 | `src/hooks/` | Custom React hooks |
@@ -279,7 +289,7 @@ BaseRestController::exec_write( callback, request )
 - **Admin JS:** Enqueued by `RegisterProd` / `RegisterDev`; communicates via `ky` to REST
 - **REST:** Namespace `yayloyalty/v1`, all under `yayloyalty_rest_controllers` filter
 - **Headless / WP-CLI:** Runs via `plugins_loaded` — no `admin_init` required
-- **Tests:** `tests/unit/` with `tests/bootstrap.php` shim for hooks (no `$wpdb`, no WooCommerce). Run with `composer test` (46 PHPUnit tests)
+- **Tests:** `tests/unit/` with `tests/bootstrap.php` shim for hooks (no `$wpdb`, no WooCommerce). Run with `composer test` (86 PHPUnit tests)
 
 ---
 

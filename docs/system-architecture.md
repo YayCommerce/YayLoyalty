@@ -88,13 +88,15 @@ The admin SPA is built with React 18 + Vite 6 + TanStack Query + Zod validation.
 ```mermaid
 flowchart LR
     subgraph Pages["Page Routes"]
+        Dash["DashboardPage"]
         Camp["CampaignsPage"]
         Cust["CustomersPage"]
         Set["Settings (General/Emails/Advanced stubs)"]
-        Other["Dashboard, Rewards, Referral, VIP (placeholders)"]
+        Other["Rewards, Referral, VIP (placeholders)"]
     end
 
     subgraph Queries["API / Queries (TanStack Query)"]
+        DashQry["dashboard.queries.ts"]
         CampQry["campaign.queries.ts"]
         CustQry["customer.queries.ts"]
         SetQry["settings.queries.ts"]
@@ -116,6 +118,7 @@ flowchart LR
     Pages -->|render| Components["UI Components"]
     Components -->|read| ZodSchema
 
+    style Dash fill:#4ade80
     style Camp fill:#4ade80
     style Cust fill:#4ade80
     style Set fill:#fbbf24
@@ -173,7 +176,7 @@ flowchart TD
     RestCtrlrs -.->|adds| R["CampaignPreviewRestController"]
     Schema -.->|describes| S["config.max_points_per_order, config.daily_cap"]
 
-    Unused["yayloyalty_table_schemas, yayloyalty_ledger_recorded"] -.->|wired in Lite, no Pro subscriber yet| Pro
+    Unused["yayloyalty_table_schemas"] -.->|wired in Lite, no Pro subscriber yet| Pro
 ```
 
 ### SPA Build-Time Gate
@@ -232,8 +235,9 @@ These are **first-party, internal seams** for Pro to attach behavior. Not a thir
 | Filter | Context | Used By |
 |---|---|---|
 | **`yayloyalty_table_schemas`** | Called during Installer to collect table DDL | Pro can add Pro tables (currently unused) |
-| **`yayloyalty_ledger_recorded`** | Fired by `LedgerService` after commit | No subscriber yet |
-| **`yayloyalty_rest_controllers`** | Called by RestAPI to collect controller instances | Pro adds CampaignPreviewRestController |
+| **`yayloyalty_ledger_recorded`** | Fired by `LedgerService` after its own `Transaction::run()` commits (a savepoint when nested in `exec_write`) | `DashboardCache::flush` |
+| **`yayloyalty_campaigns_changed`** | Fired by `CampaignRepository::flush_cache()` after any campaign write | `DashboardCache::flush` (the paused-campaign notice lives in the cached payload) |
+| **`yayloyalty_rest_controllers`** | Called by RestAPI to collect controller instances | Pro adds CampaignPreviewRestController, CustomerSegmentsRestController, DashboardProRestController |
 | **`yayloyalty_campaign_triggers`** | Called by CampaignTrigger::all() | Pro adds birthday, first_order, order_count, spend_milestone |
 | **`yayloyalty_campaign_config_whitelist`** | Called by `Campaign::config_whitelist()` | Pro adds whitelists for its four triggers; Lite does not add `max_points_per_order`/`daily_cap` itself |
 | **`yayloyalty_reward_types`** | Called by RewardType::all() | Pro adds fixed_coupon, percent_coupon, free_shipping, free_product |
@@ -246,6 +250,16 @@ These are **first-party, internal seams** for Pro to attach behavior. Not a thir
 ---
 
 ## Request & Data Flow
+
+### Dashboard — one request in Free, two in Pro
+
+`DashboardPage` → `useDashboardQuery(range)` → `GET /dashboard?range=7|30|90` (cap `VIEW`). The controller builds a `PeriodWindow` (range site-timezone calendar days ending today, previous period = the range before; UTC bounds for SQL, a fixed UTC offset for `DATE()` bucketing) and asks `DashboardStats` (tiles/series/lists via `DashboardRepository` + `DashboardMath`) and `DashboardNotices` (three detectors: negative balances, paused default campaign, points jump via `AnomalyDetector` over its own 30-day series) for the payload. Pro's `DashboardProPanels` issues a second request, `GET /dashboard/pro`, for per-campaign series and top campaigns; both queries sit under the `['dashboard']` key so one invalidation covers them.
+
+**Cache rule.** Above `yayloyalty_dashboard_cache_threshold` members (10,000) the site-wide payload — stats, series, lists and **raw notices** — is served from a transient per range and variant (`yayloyalty_dashboard_v1_[pro_]{range}`, TTL `yayloyalty_dashboard_cache_ttl`, 5 min), flushed on every ledger write and campaign write. Nothing per-user enters the transient: `NoticeDismissals::filter()` (user meta `{key: fingerprint}`) runs after it, so a dismissal hides a notice for that user until its fingerprint changes and it re-surfaces. `refresh=1` flushes first. Below the threshold every request is live.
+
+**Copy lives in the client.** Notices are `{key, severity, fingerprint, data}`; `dashboard-page.notice-copy.ts` composes every title, body and action from `data` (thresholds quoted from `data.threshold`), and ledger rows are described by `ledger.helper.ts` — the same rule as the Customers list.
+
+**Dev scenario switch.** `?scenario=empty|small|large|notices|anomaly` swaps the payload for a `DashboardFixture` artboard. The argument is registered only when `WP_DEBUG` is true and the SPA forwards it only on the Vite dev server (`import.meta.env.DEV`), so a built bundle never sends it; production builds are verified on real data.
 
 ### Customers list & bulk actions data flow
 
