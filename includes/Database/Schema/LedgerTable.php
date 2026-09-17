@@ -32,14 +32,15 @@ defined( 'ABSPATH' ) || exit;
  * reference — manual adjustments — never collide. Manual adjustments are
  * therefore deliberately NOT idempotent: an admin can grant the same points
  * twice on purpose. Intended, and it reads like a bug, so it is stated here,
- * in LedgerService::record(), and in docs/code-standards.md.
+ * in LedgerService::adjust(), and in docs/data-model.md → ledger.
  *
  * `idx_user_history` ON (user_id, id) — not (user_id, created_at). Two rows
  * for the same user can share a created_at down to the second (a campaign
  * firing several earns in one request), which makes created_at ordering
  * ambiguous for "most recent row"; id is strictly monotonic and never ties.
  * It serves the same two queries a (user_id, created_at) index would: paged
- * ledger history for one user, and `ORDER BY id DESC LIMIT 1` for the balance
+ * ledger history for one user, and `ORDER BY id DESC LIMIT 1`
+ * (LedgerRepository::latest_for_user(), uncalled today) for a future
  * reconciliation job. Replaces the older `user_created` key of the same shape.
  */
 final class LedgerTable extends AbstractTableSchema {

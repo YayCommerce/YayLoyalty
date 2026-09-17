@@ -12,17 +12,18 @@ defined( 'ABSPATH' ) || exit;
  *
  * Two rules are easy to get wrong and expensive to get wrong:
  *
- * 1. MONEY BINDS AS %s, NEVER %f. Every DECIMAL(19,4) column is carried as a
- *    PHP string and declared as '%s' in get_format(). Passing a decimal through
- *    a float loses precision on exactly the values where it is a financial
- *    defect: rate_snapshot, base_value, value, lifetime_spend, threshold.
- *    Points are BIGINT and use '%d'.
+ * 1. MONEY BINDS AS %s, NEVER %f. Every DECIMAL(19,4) column MUST be carried
+ *    as a PHP string and declared as '%s' in get_format(), even though none is
+ *    mapped by a model yet — the first will be customers.lifetime_spend.
+ *    Passing a decimal through a float loses precision on exactly the values
+ *    where it is a financial defect. Points are BIGINT and use '%d'.
  *
  * 2. FACT-TABLE ENTITIES ARE IMMUTABLE BY CONVENTION. PHP 7.4 has no readonly,
- *    so subclasses representing append-only rows (ledger entries, redemptions)
- *    declare private properties, expose getters only, and return a clone from
- *    any with_*() method. The convention is the enforcement; there is no
- *    language support to fall back on.
+ *    so subclasses representing append-only rows (today only LedgerEntry; a
+ *    future Redemption model follows the same rules) declare private
+ *    properties, expose getters only, and return a clone from any with_*()
+ *    method. The convention is the enforcement; there is no language support
+ *    to fall back on.
  */
 abstract class AbstractModel {
 
@@ -37,14 +38,17 @@ abstract class AbstractModel {
     /**
      * Column => value map for $wpdb write methods.
      *
-     * Omit the primary key on insert; the caller supplies it for updates.
+     * Omit an AUTO_INCREMENT primary key on insert; a natural key such as
+     * customers.user_id stays. The caller supplies the AUTO_INCREMENT key for
+     * updates.
      *
      * @return array<string, mixed>
      */
     abstract public function to_row(): array;
 
     /**
-     * Public REST representation. snake_case keys, matching get_item_schema().
+     * Public REST representation. snake_case keys, matching the owning
+     * controller's schema where one exists (rewards have no REST surface yet).
      *
      * @return array<string, mixed>
      */

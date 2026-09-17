@@ -10,5 +10,4 @@ final class CustomerFilters {
     public const EXPIRY_RANGES = [ 'off', '30', '90', 'none' ];
 
     public const TIER_RANGES = [ 'all', 'Alpine', 'Summit', 'Explorer' ];
-    
 }

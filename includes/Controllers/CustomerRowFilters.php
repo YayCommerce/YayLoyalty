@@ -146,9 +146,8 @@ final class CustomerRowFilters {
     }
 
     /**
-     * Mirrors the old `matches_expiring_soon()`: a day-window option means
-     * "expires between now and now+N days" (already-expired rows match
-     * neither window, same as before).
+     * A day-window option means "expires between now and now+N days";
+     * already-expired rows match neither window.
      *
      * @return array{0: string|null, 1: string|null, 2: bool} [from, to, is_null].
      */

@@ -42,6 +42,13 @@
   --popover: #ffffff;
   --popover-foreground: #171719;
 
+  /* Chart series palette (dashboard): issued, redeemed, then per-campaign lines. */
+  --chart-1: #3858e9;
+  --chart-2: #f4a20a;
+  --chart-3: #16a34a;
+  --chart-4: #9333ea;
+  --chart-5: #0891b2;
+
   --radius: 0.625rem;
   --default-transition-duration: 0.3s;
 }
@@ -95,6 +102,12 @@
   --color-popover: var(--popover) /* #ffffff */;
   --color-popover-foreground: var(--popover-foreground) /* #171719 */;
 
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
   --font-sans:
     -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif,
     'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
@@ -142,4 +155,10 @@
   --card-foreground: #fafafa;
   --popover: #171719;
   --popover-foreground: #fafafa;
+
+  --chart-1: #7c93ff;
+  --chart-2: #f9bd09;
+  --chart-3: #4ade80;
+  --chart-4: #c084fc;
+  --chart-5: #22d3ee;
 }

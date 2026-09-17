@@ -34,7 +34,6 @@ export function CustomersFilterBar({
   /** Committed/debounced filters — what Export should actually fetch. See CustomersScreen.tsx. */
   queryFilters: RowFilters;
   sort: { by: SortKey; dir: SortDirection };
-  /** The list query has a request in flight — see CustomersToolbar.tsx. */
 }) {
   if (IS_PRO_BUILD) {
     return (

@@ -143,7 +143,7 @@ export function CampaignEditorSummaryRail({
         <Button type="submit" variant="destructive" data-intent="archive" disabled={busy}>
           {__('Archive campaign', 'yayloyalty')}
         </Button>
-        <div className="flex flex-wrap items-center justify-center gap-3 text-sm">``
+        <div className="flex flex-wrap items-center justify-center gap-3 text-sm">
           <Button type="button" variant="link" disabled={busy} onClick={onCancel}>
             {__('Cancel', 'yayloyalty')}
           </Button>

@@ -3,6 +3,7 @@ import { ChevronDown, ChevronUp, InfoIcon } from 'lucide-react';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { parseWPCurrency, parseWPDate } from '@/lib/helpers/format.helper';
+import { roundPoints } from '@/lib/points-math/points-math';
 import { useCampaignsQuery } from '@/lib/queries/campaign.queries';
 import type { Campaign } from '@/lib/schema/campaign.schema';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -16,13 +17,12 @@ import { Segmented, SegmentedItem } from '@/components/ui/segmented';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 
-/** Display order for the three built-ins — the trigger group order the wireframe and CampaignTable both use. */
+/** Display order for the three built-ins — the trigger group order CampaignTable also uses. */
 const BUILTIN_TRIGGER_ORDER: Campaign['trigger'][] = ['purchase', 'signup', 'review'];
 
 /**
  * Lite's campaigns list: three always-present, editable cards — no add, no
- * priority, no conditions, no schedule. Section "1a. Campaigns (Free)" in
- * the wireframe.
+ * priority, no conditions, no schedule.
  *
  * ONE LIST, NOT TWO: reads the same `useCampaignsQuery()` Pro's CampaignTable
  * reads (`@/lib/queries/campaign.queries`, backed by `@/lib/api/campaign.api`
@@ -88,7 +88,7 @@ export default function BuiltInCampaignList() {
 
 function UpsellBanner() {
   // Same destination as UpgradeToProBadge / UpgradeToProOverlay in
-  // components/pro/upgrade-to-pro.tsx — duplicated rather than imported,
+  // components/pro/UpgradeToPro.tsx — duplicated rather than imported,
   // since that constant isn't exported.
   const yayLoyaltyProUrl = 'https://yaycommerce.com/yayloyalty-for-woocommerce/';
 
@@ -119,9 +119,9 @@ function BuiltInCampaignCard({
   expanded: boolean;
   onToggleExpanded: () => void;
 }) {
-  // Local edits only — Save never calls the write endpoint (see
-  // CampaignRestController's SWAP POINT docblock). Cancel just resets these
-  // to what the campaign loaded with.
+  // Local edits only — Save is inert: lib/api/campaign.api.ts has no update
+  // client yet (CampaignRestController::update_item() is real). Cancel just
+  // resets these to what the campaign loaded with.
   const [status, setStatus] = useState(campaign.status);
   const [config, setConfig] = useState(campaign.config);
   const isOn = status === 'active';
@@ -251,8 +251,9 @@ function PurchaseFields({
           </NumberInputRoot>
           <span className="text-muted-foreground text-sm">
             {sprintf(
-              /* translators: %s: the site's currency code, e.g. USD. */
-              __('per $1 (%s) spent', 'yayloyalty'),
+              /* translators: 1: one unit of the store currency, formatted; 2: the site's currency code, e.g. USD. */
+              __('per %1$s (%2$s) spent', 'yayloyalty'),
+              parseWPCurrency(1),
               currency,
             )}
           </span>
@@ -442,9 +443,10 @@ function summarize(trigger: Campaign['trigger'], config: Record<string, unknown>
       const value = config as unknown as PurchaseConfig;
 
       return sprintf(
-        /* translators: %s: points awarded per currency unit spent, e.g. "1". */
-        __('%s point(s) per $1 spent', 'yayloyalty'),
+        /* translators: 1: points awarded per currency unit spent, e.g. "1"; 2: one unit of the store currency, formatted. */
+        __('%1$s point(s) per %2$s spent', 'yayloyalty'),
         String(value.points_per_unit),
+        parseWPCurrency(1),
       );
     }
 
@@ -482,8 +484,7 @@ function summarize(trigger: Campaign['trigger'], config: Record<string, unknown>
 /** The worked example banner — recomputed live as `points_per_unit` / `rounding` change. */
 function worksOut(pointsPerUnit: number, rounding: PurchaseConfig['rounding']): string {
   const exampleSubtotal = 50;
-  const raw = exampleSubtotal * pointsPerUnit;
-  const points = rounding === 'up' ? Math.ceil(raw) : rounding === 'nearest' ? Math.round(raw) : Math.floor(raw);
+  const points = roundPoints(exampleSubtotal * pointsPerUnit, rounding);
 
   return sprintf(
     /* translators: 1: an example order subtotal, formatted as currency; 2: the points it would earn. */

@@ -12,7 +12,9 @@ use YayLoyalty\Engine\Register\ScriptName;
  * Register Facade.
  *
  * Picks RegisterDev (Vite dev server + HMR) or RegisterProd (built assets)
- * based on the YAYLOYALTY_IS_DEVELOPMENT constant (define it in wp-config.php).
+ * based on the YAYLOYALTY_IS_DEVELOPMENT constant. Defaults to development
+ * (yayloyalty.php defines it `true` when absent); define it `false` in
+ * wp-config.php for production.
  *
  * @method static RegisterFacade get_instance()
  */

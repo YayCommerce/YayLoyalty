@@ -4,10 +4,10 @@ namespace YayLoyalty\Tests\Unit;
 use YayLoyalty\Engine\Points\BaseCalculator;
 use YayLoyalty\Engine\Points\CapPolicy;
 use YayLoyalty\Engine\Points\Context;
-use YayLoyalty\Engine\Points\Rounding;
 use YayLoyalty\Engine\Points\Triggers\PurchaseHandler;
 use YayLoyalty\Enums\Status;
 use YayLoyalty\Models\Campaign;
+use YayLoyalty\Utils\PointsMath;
 
 /**
  * Plan §6 cases 14–21, 29, 33 (points, rounding, eligibility) and 30–31 (caps).
@@ -32,7 +32,7 @@ final class PurchaseHandlerTest extends EngineTestCase {
         $campaign = $this->purchase_campaign(
             [
                 'points_per_unit' => 0.5,
-                'rounding'        => Rounding::DOWN,
+                'rounding'        => PointsMath::ROUND_DOWN,
             ]
         );
 
@@ -43,7 +43,7 @@ final class PurchaseHandlerTest extends EngineTestCase {
         $campaign = $this->purchase_campaign(
             [
                 'points_per_unit' => 0.5,
-                'rounding'        => Rounding::NEAREST,
+                'rounding'        => PointsMath::ROUND_NEAREST,
             ]
         );
 
@@ -54,7 +54,7 @@ final class PurchaseHandlerTest extends EngineTestCase {
         $campaign = $this->purchase_campaign(
             [
                 'points_per_unit' => 0.5,
-                'rounding'        => Rounding::UP,
+                'rounding'        => PointsMath::ROUND_UP,
             ]
         );
 
@@ -81,7 +81,7 @@ final class PurchaseHandlerTest extends EngineTestCase {
         $campaign  = $this->purchase_campaign(
             [
                 'points_per_unit' => 0.5,
-                'rounding'        => Rounding::UP,
+                'rounding'        => PointsMath::ROUND_UP,
             ]
         );
         $breakdown = $this->handler()->compute_points( $campaign, $this->context( [ $this->line( 99 ) ] ) );
@@ -89,7 +89,7 @@ final class PurchaseHandlerTest extends EngineTestCase {
         $this->assertSame( 99.0, $breakdown->get_base_amount() );
         $this->assertSame( 0.5, $breakdown->get_rate() );
         $this->assertSame( 49.5, $breakdown->get_raw_points() );
-        $this->assertSame( Rounding::UP, $breakdown->get_rounding() );
+        $this->assertSame( PointsMath::ROUND_UP, $breakdown->get_rounding() );
     }
 
     public function test_points_for_order_filter_fires_with_documented_signature(): void {

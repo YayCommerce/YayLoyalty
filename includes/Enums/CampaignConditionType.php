@@ -16,8 +16,9 @@ defined( 'ABSPATH' ) || exit;
  * cheap-first: checks satisfied from data already loaded for the order (roles,
  * cart contents, the order's currency / country / gateway) come before the
  * three that each need their own aggregate query — `lifetime_points`,
- * `order_count`, `lifetime_spend`. A future evaluator iterates this order and
- * short-circuits on the first failed condition without having to sort anything.
+ * `order_count`, `lifetime_spend`. Pro\Services\ConditionsEvaluator iterates
+ * this order and short-circuits on the first failed condition without having
+ * to sort anything.
  *
  * `all()` / `all_known()` / `is_valid()` / `is_known()` / `operators_for()` /
  * `assert()` are ConditionTypeMethods — identical to RewardConditionType's,
@@ -61,7 +62,7 @@ final class CampaignConditionType {
      *
      * `gte` / `lte` on tier are ORDINAL comparisons ("Silver or above"), which
      * a slug cannot express — so the future `yayloyalty_tiers` table needs an
-     * integer `level` column to compare against.
+     * integer ordinal column (`rank` in docs/data-model.md) to compare against.
      */
     public const TIER = 'tier';
 
@@ -95,7 +96,7 @@ final class CampaignConditionType {
      *                             'money'         — { amount, currency }; amount with `between` is [low, high]
      *                             'tier'          — slug, or list for in/not_in (gated — see TIER)
      *   max           int       cap on list length (customer_ids)
-     *   require_keys  string[]  sub-keys the value object must carry
+     *   require_keys  string[]  documentary only — nothing reads this key
      *   source_values string[]  allowed values for the country `source` sub-key
      *   normalize     string[]  transforms applied on save: array | int | uppercase | lowercase | dedupe
      *

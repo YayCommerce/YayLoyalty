@@ -21,15 +21,18 @@ final class CampaignTrigger {
     public const SIGNUP   = 'signup';
     public const REVIEW   = 'review';
 
-    /* --- Pro. Recognised when stored, not offered in Free. --- */
+    /* --- Pro. Recognised when stored, offered only by Pro. --- */
 
     public const BIRTHDAY        = 'birthday';
     public const FIRST_ORDER     = 'first_order';
     public const ORDER_COUNT     = 'order_count';
     public const SPEND_MILESTONE = 'spend_milestone';
-    public const REFERRAL        = 'referral';
-    public const SOCIAL          = 'social';
-    public const RENEWAL         = 'renewal';
+
+    /* --- Recognised when stored, offered by no build yet. --- */
+
+    public const REFERRAL = 'referral';
+    public const SOCIAL   = 'social';
+    public const RENEWAL  = 'renewal';
 
     /**
      * Triggers this build can fire.

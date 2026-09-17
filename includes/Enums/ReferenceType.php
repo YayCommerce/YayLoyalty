@@ -26,10 +26,10 @@ final class ReferenceType {
     /** wp_comments id, for review rewards. */
     public const COMMENT = 'comment';
 
-    /** yayloyalty_redemptions id. */
+    /** yayloyalty_redemptions id (table not implemented yet; accepted so stored rows round-trip). */
     public const REDEMPTION = 'redemption';
 
-    /** yayloyalty_referrals id. */
+    /** yayloyalty_referrals id (table not implemented yet; accepted so stored rows round-trip). */
     public const REFERRAL = 'referral';
 
     /** wp_users id. */

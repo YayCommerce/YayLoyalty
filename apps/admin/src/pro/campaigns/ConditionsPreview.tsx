@@ -11,8 +11,9 @@ import { previewConditions, type ConditionResult } from './conditions-preview.ap
 /**
  * Pro surface for a campaign's eligibility conditions.
  *
- * DELETED FROM THE LITE BUILD along with the rest of `src/pro/`. Lite renders
- * UpgradeToProOverlay in its place, via the ProGate wrapper at the call site.
+ * TREE-SHAKEN OUT OF THE LITE BUNDLE along with the rest of `src/pro/`.
+ * Exported from @/pro but not mounted anywhere yet; the eventual call site
+ * must guard with IS_PRO_BUILD.
  *
  * A preview, not an editor. Authoring conditions needs a campaign editor, and
  * the SPA has none — the campaigns page is a read-only list. Shipping a
@@ -135,6 +136,8 @@ function describeValue(value: unknown): string {
  * not "customer does not qualify" — Pro fails them deliberately (it can
  * evaluate, so an unrecognised type is a real fault), and saying so is the
  * difference between a merchant fixing the campaign and blaming the customer.
+ * `unsupported_condition_type` is different: the type is recognised but the
+ * evaluator cannot check it yet.
  */
 function describeReason(result: ConditionResult): string {
   switch (result.reason) {
@@ -152,6 +155,8 @@ function describeReason(result: ConditionResult): string {
           );
     case 'unknown_condition_type':
       return __('Unknown condition type', 'yayloyalty');
+    case 'unsupported_condition_type':
+      return __('This condition type is known but cannot be evaluated yet.', 'yayloyalty');
     case 'unsupported_operator':
       return __('Unsupported operator', 'yayloyalty');
     case 'non_numeric_value':

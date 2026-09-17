@@ -1,13 +1,18 @@
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 
-import { CampaignConditionKind, CampaignDisplayStatus, CampaignTrigger } from '@/lib/schema/campaign.schema';
+import { parseWPCurrency } from '@/lib/helpers/format.helper';
+import {
+  CAMPAIGN_CONDITION_TYPES,
+  CampaignConditionKind,
+  CampaignDisplayStatus,
+  CampaignTrigger,
+} from '@/lib/schema/campaign.schema';
 
 /**
- * Campaign presentation strings shared across `CampaignTable` and the editor
- * (`pro/campaigns/editor/`). Extracted from `CampaignTable.tsx` (phase-03 of
- * the campaign editor plan) rather than duplicated — the editor's Trigger and
- * Basics sections (phase-04) reuse `triggerLabel()`/`statusLabel()` verbatim,
- * and the priority ladder (phase-05) reuses `triggerGroup()`.
+ * Campaign presentation strings shared across `CampaignTable`, the editor
+ * (`pro/campaigns/editor/`), and the Pro dashboard's `DashboardTopCampaigns`
+ * — the wire shape carries no presentation strings by design, so every label
+ * here is derived client-side from `trigger`/`config`/`conditions`/`status`.
  */
 
 /** A campaign only ever competes with others sharing its group — see triggerGroup(). */
@@ -48,12 +53,59 @@ export function triggerLabel(trigger: CampaignTrigger): string {
   }
 }
 
+export function givesLabel(trigger: CampaignTrigger, config: Record<string, unknown>): string {
+  if (trigger === 'purchase') {
+    return config.mode === 'multiplier'
+      ? sprintf(
+          /* translators: %s: the multiplier, e.g. "2". */ __('×%s points', 'yayloyalty'),
+          String(config.multiplier ?? 1),
+        )
+      : sprintf(
+          /* translators: 1: points earned per unit of currency spent, 2: one unit of the store currency, formatted. */
+          __('%1$s point(s) per %2$s', 'yayloyalty'),
+          String(config.points_per_unit ?? 0),
+          parseWPCurrency(1),
+        );
+  }
+
+  // Every other trigger's config carries a flat `points` — see Campaign::config_schema() / YayLoyaltyPro::add_config_keys().
+  return sprintf(/* translators: %s: points awarded. */ __('%s points', 'yayloyalty'), String(config.points ?? 0));
+}
+
+export function conditionsLabel(conditions: unknown): string {
+  const list = Array.isArray(conditions) ? conditions : [];
+
+  if (list.length === 0) {
+    return __('No conditions', 'yayloyalty');
+  }
+
+  return list
+    .map((condition) => humanizeConditionType(String((condition as { type?: unknown }).type ?? '')))
+    .join(', ');
+}
+
+/**
+ * Backed by the real per-type map (`conditionTypeLabel()` below — built for
+ * the campaign editor's Conditions section, phase-05). Falls back to a
+ * slug-to-title-case approximation only for a type this build doesn't
+ * recognise (e.g. `tier`, or a stored type from a future schema version) so a
+ * stale row never renders blank.
+ */
+function humanizeConditionType(type: string): string {
+  const known = CAMPAIGN_CONDITION_TYPES.find((kind) => kind === type);
+
+  if (known) {
+    return conditionTypeLabel(known);
+  }
+
+  return type.replace(/_/g, ' ').replace(/^\w/, (char) => char.toUpperCase());
+}
+
 /**
  * The per-type condition label map — built for the campaign editor's
- * Conditions section (phase-05) and reused by `CampaignTable.tsx`'s
- * `humanizeConditionType()` fallback. Covers every offerable type from
- * `CAMPAIGN_CONDITION_TYPES` — `tier` is deliberately absent, matching that
- * list.
+ * Conditions section and reused by `conditionsLabel()`'s fallback
+ * above. Covers every offerable type from `CAMPAIGN_CONDITION_TYPES` —
+ * `tier` is deliberately absent, matching that list.
  */
 export function conditionTypeLabel(type: CampaignConditionKind): string {
   switch (type) {

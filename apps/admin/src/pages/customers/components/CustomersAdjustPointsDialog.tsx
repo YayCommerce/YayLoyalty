@@ -23,7 +23,7 @@ import { Textarea } from '@/components/ui/textarea';
  *
  * Plain `useState` + a manual `zod` check, not `react-hook-form`: two fields,
  * no dependent validation — the library would be pure ceremony here (and
- * nothing else in this app pulls it in yet either).
+ * nothing in src/ imports it yet, though it is declared).
  */
 export function CustomersAdjustPointsDialog({
   open,
@@ -56,9 +56,9 @@ export function CustomersAdjustPointsDialog({
 
   function handleSubmit() {
     // The server also rejects 0 (see CustomerRestController::adjust_points),
-    // but the shared `adjustPointsSchema` only requires an integer — that
-    // stays a pure mirror of the wire shape, so the "must be non-zero" rule
-    // (this form's only extra constraint) is checked here instead.
+    // but the shared `adjustPointsSchema` checks an integer and a non-empty
+    // note — that stays a pure mirror of the wire shape, so the "must be
+    // non-zero" rule (this form's only extra constraint) is checked here.
     if (points === 0) {
       setError(__('Enter a non-zero number of points.', 'yayloyalty'));
       return;

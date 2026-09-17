@@ -14,7 +14,24 @@ export function parseWPDate(date: Date | string | undefined) {
  * the same `@wordpress/date` `parseWPDate`/`parseWPTime` already use.
  */
 export function parseWPRelativeDate(date: string) {
-  return humanTimeDiff(new Date(date.replace(' ', 'T') + 'Z'));
+  return humanTimeDiff(utcToDate(date));
+}
+
+/** A stored UTC MySQL datetime (`YYYY-MM-DD HH:mm:ss`) as a Date — the one parsing rule for every consumer. */
+export function utcToDate(utc: string): Date {
+  return new Date(utc.replace(' ', 'T') + 'Z');
+}
+
+/**
+ * Format a site-calendar date (`YYYY-MM-DD`, no time — e.g. a dashboard
+ * series bucket) without any timezone shift. A bare date string handed to
+ * `dateI18n` is read as *browser-local* midnight and then rendered in the
+ * site zone, which moves it a day whenever the two differ; pinning it to
+ * noon UTC and rendering in UTC keeps the calendar day the server meant.
+ */
+export function parseWPDay(day: string, format?: string) {
+  const { formats } = getSettings();
+  return dateI18n(format ?? formats.date, `${day}T12:00:00Z`, 'UTC');
 }
 
 export function parseWPTime(date: Date | string) {

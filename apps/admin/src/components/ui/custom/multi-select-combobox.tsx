@@ -1,16 +1,9 @@
 import { useState } from 'react';
 
+import { cn } from '@/lib/utils';
 import { Command, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent } from '@/components/ui/popover';
-
-import {
-  ComboboxBadge,
-  ComboboxCheckbox,
-  ComboboxIcon,
-  ComboboxRemove,
-  ComboboxTrigger,
-} from '../combobox';
-import { cn } from '@/lib/utils';
+import { ComboboxBadge, ComboboxCheckbox, ComboboxIcon, ComboboxRemove, ComboboxTrigger } from '../combobox';
 
 export interface MultiSelectComboboxOption {
   value: string;
@@ -27,9 +20,8 @@ export interface MultiSelectComboboxProps {
 }
 
 /**
- * Static multi-select combobox: a fixed option list (unlike MultiProductPicker/
- * MultiCategoryPicker, which search a remote API) toggled via checkboxes in a
- * popover, with selections shown as removable badges in the trigger.
+ * Static multi-select combobox: a fixed option list toggled via checkboxes
+ * in a popover, with selections shown as removable badges in the trigger.
  */
 export function MultiSelectCombobox({
   value,
@@ -82,12 +74,7 @@ export function MultiSelectCombobox({
               {options.map((o) => {
                 const isSelected = selectedValues.includes(o.value);
                 return (
-                  <CommandItem
-                    key={o.value}
-                    value={o.value}
-                    onSelect={() => toggle(o.value)}
-                    className="gap-2"
-                  >
+                  <CommandItem key={o.value} value={o.value} onSelect={() => toggle(o.value)} className="gap-2">
                     <ComboboxCheckbox selected={isSelected} />
                     <span className="truncate">{o.label}</span>
                   </CommandItem>

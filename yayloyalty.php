@@ -56,6 +56,8 @@ if ( ! defined( 'YAYLOYALTY_MENU_ORDER' ) ) {
     define( 'YAYLOYALTY_MENU_ORDER', 3 );
 }
 
+// Defaults to development; a production site MUST define this `false` in
+// wp-config.php, because packaged builds ship without RegisterDev.php.
 if ( ! defined( 'YAYLOYALTY_IS_DEVELOPMENT' ) ) {
     define( 'YAYLOYALTY_IS_DEVELOPMENT', true );
 }

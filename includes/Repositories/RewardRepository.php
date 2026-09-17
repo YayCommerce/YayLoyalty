@@ -8,9 +8,8 @@ defined( 'ABSPATH' ) || exit;
 /**
  * yayloyalty_rewards.
  *
- * No caching, same reasoning as CampaignRepository: nothing here yet knows the
- * right cache key or how it would invalidate, and the table is small. That
- * belongs to whichever task builds the redemption engine.
+ * No caching, unlike CampaignRepository: nothing reads rewards on a hot path
+ * yet. Adding a cache belongs to whichever task builds the redemption engine.
  *
  * Plain object, not a singleton — see docs/code-standards.md section 8.
  */
@@ -85,9 +84,8 @@ final class RewardRepository extends AbstractRepository {
      *
      * Idempotent by slug so repeated installs cannot duplicate it, and so a
      * merchant's edits to the row are never overwritten by a later install
-     * run. Runs under the installer's upgrade mutex, so two concurrent
-     * requests cannot both seed; the unique key on slug is the backstop if
-     * they somehow do.
+     * run. Guarded on the upgrade path (activation calls install() directly);
+     * the unique key on slug is the backstop.
      */
     public function seed_builtin( Reward $reward ): void {
         if ( null !== $this->find_by_slug( $reward->get_slug() ) ) {

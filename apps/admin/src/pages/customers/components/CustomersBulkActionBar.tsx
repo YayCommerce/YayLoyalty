@@ -22,8 +22,9 @@ import { Separator } from '@/components/ui/separator';
  *
  * "Adjust points" and "Export" are real (see `customers-page.bulk-actions.ts`
  * / `customers-page.export.ts`). "Assign tier" and "Reset expiry" are NOT
- * offered here: the former needs the Tier feature (`TIER_FILTER_ENABLED` is
- * off — see `customers-page.filter-rows.ts`), the latter has no REST endpoint
+ * offered here: the former has no tiers table or assign-tier endpoint yet
+ * (`TIER_FILTER_ENABLED` is on — see `customers-page.filter-rows.ts` — but
+ * nothing writes a real per-customer tier), the latter has no REST endpoint
  * at all yet — showing either would be a control that does nothing when
  * clicked, worse than not showing it.
  *

@@ -10,9 +10,9 @@ defined( 'ABSPATH' ) || exit;
  *
  * A segment is `{ name, filters }`. `name` IS the identity: there is no
  * generated id, and `rejection_reason()` rejects an exact-name collision
- * rather than append_segment() overwriting it (nothing in scope needs
- * rename/delete, so an upsert would silently erase whichever segment the
- * name pointed to before).
+ * rather than append_segment() overwriting it (nothing needs rename — delete
+ * is remove_segment() — so an upsert would silently erase whichever segment
+ * the name pointed to before).
  *
  * `filters` mirrors `customers-page.filter-rows.ts`'s `RowFilters` minus
  * `search` field-for-field — a segment is a filter set, not a search.

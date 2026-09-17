@@ -5,13 +5,17 @@
 #
 # Commands:
 #   dev [pro|lite]           - Update admin shell + start Vite dev server (HMR on :3030)
-#                               'free'/'premium' (yay-reviews' spelling) are accepted as aliases
 #   build [pro|lite]        - Build admin dashboard for production
-#   release [pro|lite] [ver]- Create release ZIP package (prompts for version)
+#   release [pro|lite] [ver] [--no-prompt] - Create release ZIP package (prompts for
+#                               version unless --no-prompt, e.g. so a Lite release
+#                               after Pro reuses the same version number)
 #   bump <version>          - Bump version number in plugin files
 #   info                    - Show current version info
 #   clean                   - Remove build artifacts
 #   help                    - Show this help message
+#
+# dev/build/release also accept 'free'/'premium' (yay-reviews' spelling) as
+# aliases for lite/pro.
 #
 
 set -e

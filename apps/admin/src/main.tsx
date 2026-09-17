@@ -6,9 +6,8 @@ import { domAnimation, LazyMotion } from 'motion/react';
 import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router';
 
-import { getManagerRouter } from '@/router';
-
 import { registerPro } from '@/pro';
+import { getManagerRouter } from '@/router';
 
 /*
  * The single entry point for pro SPA code.
@@ -22,8 +21,8 @@ import { registerPro } from '@/pro';
  * Rollup drops the whole subtree.
  *
  * Deliberately not a dynamic import(): that would emit a separate chunk, and
- * validate-build.php greps main.js for the sentinel — pro code in a
- * side-chunk would slip past the check entirely.
+ * scripts/validate-build.php scans main.js for the Pro sentinel — pro code
+ * in a side-chunk would slip past the check entirely.
  *
  * Never deep-import from `@/pro/...` elsewhere; a second importer would
  * survive the Lite build.

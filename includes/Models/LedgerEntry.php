@@ -19,7 +19,8 @@ defined( 'ABSPATH' ) || exit;
  *
  * `balance_after` is the balance immediately following this row. Together the
  * rows form a chain per user: prev.balance_after + points === this.balance_after.
- * The audit tool walks it, so it must be computed inside the customer row lock.
+ * A future audit tool will walk it, so it must be computed inside the customer
+ * row lock.
  *
  * `note` is only ever set on manual adjustments. System rows deliberately store
  * no text: their description is composed at render time from type/source and

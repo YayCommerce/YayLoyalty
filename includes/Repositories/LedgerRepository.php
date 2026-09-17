@@ -85,8 +85,8 @@ final class LedgerRepository extends AbstractRepository {
     /**
      * SUM(points) for a user — the ledger-side half of the balance invariant.
      *
-     * Used by verification and by the future "Rebuild balances" tool, which
-     * replays the ledger to repair the customers cache.
+     * Uncalled today; reserved for the future "Rebuild balances" tool, which
+     * will replay the ledger to repair the customers cache.
      */
     public function sum_points_for_user( int $user_id ): int {
         global $wpdb;
@@ -100,7 +100,8 @@ final class LedgerRepository extends AbstractRepository {
     }
 
     /**
-     * The most recent entry for a user, for the balance_after chain.
+     * The most recent entry for a user. Uncalled today: record() chains
+     * balance_after off the locked customer row, not off this query.
      */
     public function latest_for_user( int $user_id ): ?LedgerEntry {
         global $wpdb;

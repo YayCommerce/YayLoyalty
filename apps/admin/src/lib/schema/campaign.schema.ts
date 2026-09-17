@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 
 /**
- * Mirrors CampaignRestController::get_item_schema().
+ * Mirrors CampaignRestController::define_item_schema().
  *
  * THAT PHP METHOD IS THE SOURCE OF TRUTH.
  */

@@ -5,9 +5,13 @@ use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Enums\RewardType;
 use YayLoyalty\Pro\Controllers\CampaignPreviewRestController;
 use YayLoyalty\Pro\Controllers\CustomerSegmentsRestController;
+use YayLoyalty\Pro\Controllers\DashboardProRestController;
 use YayLoyalty\Pro\Helpers\CustomerSegmentsHelper;
+use YayLoyalty\Pro\Repositories\CampaignPointsRepository;
 use YayLoyalty\Pro\Services\ConditionsEvaluator;
 use YayLoyalty\Repositories\CampaignRepository;
+use YayLoyalty\Repositories\DashboardRepository;
+use YayLoyalty\Services\Dashboard\DashboardCache;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -16,15 +20,17 @@ defined( 'ABSPATH' ) || exit;
  *
  * THIS ENTIRE DIRECTORY IS DELETED FOR THE LITE BUILD. Nothing outside
  * includes/Pro/ may reference a class inside it, with exactly one
- * exception: the guarded class_exists probe in YayLoyalty::initialize().
+ * exception: the guarded class_exists probe in YayLoyalty's constructor
+ * (reached from initialize()).
  *
  * That single guarded reference is what makes the split a directory deletion
  * rather than surgery on shared files — no @pro-start markers anywhere.
  *
  * WIRING ONLY. boot() attaches hooks and constructs collaborators; it does not
  * implement behaviour. Every feature lives in its own layer directory
- * (Models/, Repositories/, Services/, Controllers/, Database/Schema/) mirroring
- * the structure of the Lite tree, so a reader always knows where to look.
+ * (Controllers/, Helpers/, Repositories/, Services/ today; Models/ and
+ * Database/Schema/ added when a feature needs them), mirroring the structure
+ * of the Lite tree, so a reader always knows where to look.
  *
  * Pro reaches Lite only through the seams documented in
  * docs/code-standards.md section 13:
@@ -49,7 +55,7 @@ final class YayLoyaltyPro {
     private static $booted = false;
 
     /**
-     * Shared across the triggers, whitelist and evaluator filters.
+     * Shared by the conditions-evaluator filter and the preview controller.
      *
      * One instance so its per-request memo of a customer's purchased products
      * is actually reused: an award pass evaluating several campaigns for the
@@ -90,8 +96,9 @@ final class YayLoyaltyPro {
     /**
      * Attach Pro to Lite's extension seams.
      *
-     * Called from YayLoyalty::initialize() behind a class_exists check, so in
-     * the Lite build this method simply does not exist and is never reached.
+     * Called from YayLoyalty's constructor (reached from initialize()) behind
+     * a class_exists check, so in the Lite build this method simply does not
+     * exist and is never reached.
      *
      * Runs on plugins_loaded, before rest_api_init, so the trigger and schema
      * filters are in place by the time routes are registered with their enums.
@@ -277,6 +284,11 @@ final class YayLoyaltyPro {
         );
 
         $controllers[] = new CustomerSegmentsRestController();
+        $controllers[] = new DashboardProRestController(
+            new CampaignPointsRepository(),
+            new CampaignRepository(),
+            new DashboardCache( new DashboardRepository() )
+        );
 
         return $controllers;
     }
@@ -294,16 +306,20 @@ final class YayLoyaltyPro {
     }
 
     /**
-     * Describe the capping keys Lite stores but cannot act on.
+     * Describe two of the three Pro-recognised capping keys from
+     * Campaign::config_schema() (max_points_per_order, daily_cap; not
+     * media_bonus_points). max_points_per_order and daily_cap are enforced by
+     * Engine\Points\CapPolicy in every build; media_bonus_points is stored but
+     * unused.
      *
      * Keyed on the schema's title, not on $rest_base: CampaignPreviewRestController
      * shares the `campaigns` base, so matching on the base alone would inject
      * campaign config properties into the preview route's schema too.
      *
      * `config` stays an open object — its keys depend on the trigger, and the
-     * per-trigger whitelist in Campaign is the authority. This only names the
-     * two Pro keys so the REST schema documents them and the UI can introspect
-     * them rather than hard-coding a list.
+     * per-trigger whitelist in Campaign is the authority. This only names
+     * these two keys so the REST schema documents them and the UI can
+     * introspect them rather than hard-coding a list.
      *
      * @param array<string, mixed> $schema
      * @param string               $rest_base

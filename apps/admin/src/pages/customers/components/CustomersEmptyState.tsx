@@ -4,8 +4,9 @@ import { __ } from '@wordpress/i18n';
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 
 /**
- * "No members yet" — a genuinely empty store (the demo endpoint returned
- * zero rows), not a search/filter that happens to match nobody. Those are
+ * "No members yet" — a genuinely empty store (`GET /customers` reported a
+ * total of zero with no filters active), not a search/filter that happens
+ * to match nobody. Those are
  * different situations for a merchant: this one explains what makes a member
  * appear; a filtered-to-zero result says so instead (see CustomersTable.tsx).
  */

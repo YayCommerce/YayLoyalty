@@ -14,7 +14,7 @@ import type { CustomerBalanceRange, CustomerExpiringSoon, CustomerTier } from '@
  */
 export type BalanceRangeValue = CustomerBalanceRange;
 export type ExpiringSoonValue = CustomerExpiringSoon;
-/** 'all' + the tiers the backend hands out. No tiers table exists yet — any non-'all' value matches zero rows (intentional, see CustomerRowFilters.php). Pro-only — see CustomersToolbar.tsx. */
+/** 'all' + CustomerFilters::TIER_RANGES's names — the backend emits no tier. No tiers table exists yet — any non-'all' value matches zero rows (intentional, see CustomerRepository::where_fragments()). Pro-only — see CustomersToolbar.tsx. */
 export type TierValue = CustomerTier;
 
 /**
@@ -67,3 +67,23 @@ export const TIER_OPTIONS: { value: TierValue; label: string }[] = [
   { value: 'Summit', label: __('Summit', 'yayloyalty') },
   { value: 'Explorer', label: __('Explorer', 'yayloyalty') },
 ];
+
+/**
+ * Initial filters from the route's search params — the dashboard's
+ * "Review" deep link is `#/customers?balance_range=negative`. Validated
+ * against the runtime option lists (`CustomerBalanceRange` etc. are type
+ * aliases, erased at runtime); anything unknown falls back to the default.
+ * Read once on mount; filters are never written back to the URL.
+ */
+export function initialFiltersFromSearch(params: URLSearchParams): RowFilters {
+  const pick = <T extends string>(key: string, options: { value: T }[], fallback: T): T => {
+    const raw = params.get(key);
+    return options.some((o) => o.value === raw) ? (raw as T) : fallback;
+  };
+
+  return {
+    ...DEFAULT_ROW_FILTERS,
+    balanceRange: pick('balance_range', BALANCE_RANGE_OPTIONS, DEFAULT_ROW_FILTERS.balanceRange),
+    expiringSoon: pick('expiring_soon', EXPIRING_SOON_OPTIONS, DEFAULT_ROW_FILTERS.expiringSoon),
+  };
+}

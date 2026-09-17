@@ -6,7 +6,7 @@ Computes how many points an event earns and which campaign paid. **Writes nothin
 evaluate( string $trigger, Context $ctx, string $at ): Result
 ```
 
-One trigger per call. Within a trigger, highest priority wins; across triggers, the caller stacks by calling once per trigger. `$at` is the event's UTC time (an order's creation date), never `now()`.
+One trigger per call. Within a trigger, highest priority wins; across triggers, the caller stacks by calling once per trigger. `$at` is the event's UTC time (an order's creation date), never `now()` for a stored event; previews (`from_product`/`from_cart`) evaluate at `now()` by design.
 
 ```
 1. CANDIDATES   CampaignRepository::live_for_trigger( $trigger, $at )   → priority DESC, id DESC
@@ -14,7 +14,7 @@ One trigger per call. Within a trigger, highest priority wins; across triggers, 
 2. SELECT       first campaign whose conditions match AND whose handler says is_eligible()
                 filter: yayloyalty_campaign_matches
 3. BASE         purchase only: BaseCalculator                           filter: yayloyalty_earning_base_amount
-4. POINTS       rate or multiplier → Rounding                           filter: yayloyalty_points_for_order
+4. POINTS       rate or multiplier → PointsMath::round_points()         filter: yayloyalty_points_for_order
 5. CAPS         CapPolicy: max_points_per_order, daily_cap
 6. RESULT       points + campaign + breakdown + reference + source, or none( reason )
 ```
@@ -43,8 +43,9 @@ $ctx    = ContextFactory::from_order( $order, $ledger->points_earned_today( $ord
 $result = $engine->evaluate( CampaignTrigger::PURCHASE, $ctx, $ctx->get_occurred_at() );
 
 if ( $result->is_awarded() ) {
-    // The caller writes the ledger through LedgerService (an earn() entry point is F01-4's to add;
-    // only adjust() exists today). actor_id is null: a customer placing an order is not an actor.
+    // The caller writes the ledger through LedgerService. earn() and points_earned_today()
+    // are both F01-4's to add; only adjust() exists today. actor_id is null: a customer
+    // placing an order is not an actor.
     $ledger_service->earn(
         $ctx->get_user_id(),
         $result->get_points(),
@@ -58,7 +59,7 @@ if ( $result->is_awarded() ) {
 
 Repeat for `first_order` and any other trigger the order satisfies; each is its own ledger row and its own idempotency key.
 
-## Call site 2 — product-page preview (F13/F15)
+## Call site 2 — product-page preview (F13/F15, not wired yet)
 
 ```php
 $ctx    = ContextFactory::from_product( $product, $qty, get_current_user_id() ?: null );
@@ -80,4 +81,4 @@ return [ 'points' => $result->get_points() ]; // the integer, nothing else
 
 ## Tests
 
-`composer test` — 46 cases under `tests/unit/`, plain PHPUnit, no WordPress bootstrap (`tests/bootstrap.php` shims the hook functions). Integration against real `WC_Order` objects is exercised manually via WP-CLI until a wp-phpunit harness exists.
+`composer test` — 99 cases under `tests/unit/`, plain PHPUnit, no WordPress bootstrap (`tests/bootstrap.php` shims the hook functions): engine, PointsMath shared vectors, the dashboard services (`tests/unit/Dashboard/`) and campaign validation (`tests/unit/Models/`). Integration against real `WC_Order` objects is exercised manually via WP-CLI until a wp-phpunit harness exists.

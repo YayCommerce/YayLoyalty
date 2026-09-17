@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 /**
- * Mirrors CustomerRestController::get_item_schema().
+ * Mirrors CustomerRestController::define_item_schema().
  *
  * THAT PHP METHOD IS THE SOURCE OF TRUTH. When a column is added there, add it
  * here; nothing generates one from the other.
@@ -71,7 +71,7 @@ export type NoMatchSuggestion = z.infer<typeof noMatchSuggestionSchema>;
  */
 export type CustomerBalanceRange = 'any' | 'negative' | '0-1000' | '1000-10000' | '10000-plus';
 export type CustomerExpiringSoon = 'off' | '30' | '90' | 'none';
-/** 'all' + the tiers the backend hands out. No tiers table exists yet — any non-'all' value matches zero rows (intentional, see CustomerRowFilters.php). */
+/** 'all' + the tiers the backend hands out. No tiers table exists yet — any non-'all' value matches zero rows (intentional, see CustomerRepository::where_fragments()). */
 export type CustomerTier = 'all' | 'Alpine' | 'Summit' | 'Explorer';
 /** `tier`/`referrals` have no real backing data (see `CustomerRowSort.php`) — accepted for `defaultSortDirection()` but not offered as a clickable header. */
 export type CustomerSortKey =

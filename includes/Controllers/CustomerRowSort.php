@@ -37,7 +37,8 @@ final class CustomerRowSort {
         return [
             'column'     => $column,
             'direction'  => 'ASC' === strtoupper( $order ) ? 'ASC' : self::DEFAULT_DIRECTION,
-            // No-expiry rows sort last regardless of direction — see BalanceCell.tsx.
+            // No-expiry rows sort last regardless of direction — see
+            // customers-page.sort-rows.ts and CustomerRepository::order_by_sql().
             'nulls_last' => 'expires' === $column,
         ];
     }

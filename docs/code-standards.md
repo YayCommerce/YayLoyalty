@@ -59,7 +59,7 @@ Binding a decimal through `%f` converts it to a float, and floats cannot represe
 
 **`$wpdb` appears only in `Repositories/` and `Database/`.** Nowhere else — not in controllers, services, models, helpers or engine classes.
 
-- One repository per table. A repository never touches a second table.
+- One repository per table. A repository never touches a second table. The one carve-out is **read-only cross-table aggregation** for the dashboard: `Repositories/DashboardRepository` and `Pro/Repositories/CampaignPointsRepository` are standalone classes (not `AbstractRepository`), read several tables, and write nothing — write ownership is unchanged.
 - A repository **never opens a transaction**. Atomicity is a service concern.
 - All SQL prepared. `search` terms go through `$wpdb->esc_like()` before `prepare()`.
 - `orderby` is whitelisted per repository. Never interpolate a caller-supplied column name.
@@ -111,9 +111,11 @@ Verified 2026-09-09: with a foreign transaction open, `Transaction::run()` takes
 | Layer | Owns | Must not |
 |---|---|---|
 | `Models/` | Typed data, casts, REST shape | Touch the database |
-| `Repositories/` | All SQL for exactly one table | Open transactions; touch a second table |
+| `Repositories/` | All SQL for exactly one table | Open transactions; touch a second table¹ |
 | `Services/` | Invariants, transactions, cross-table writes | Contain SQL |
 | `Controllers/` | HTTP shape, schema, permissions | Contain SQL or business invariants |
+
+¹ Exception: `DashboardRepository` and `Pro/Repositories/CampaignPointsRepository` are read-only cross-table classes (see §6 carve-out).
 
 **Definition tables get no service.** A service that only forwards CRUD to one repository is ceremony. Add one when an operation must touch a second table atomically — that is when it earns its existence.
 
@@ -123,10 +125,18 @@ Two directories that look interchangeable and are not.
 
 | | Holds | Test |
 |---|---|---|
-| `Utils/` | Stateless, all-static, no plugin state — `Dates`, `Json`, `Log`, `Table`, `ConditionValueRules` | Could you lift it into another plugin by changing one constant? |
+| `Utils/` | Stateless, all-static, no plugin state — `Dates`, `Json`, `Log`, `Table`, `ConditionValueRules`, `PointsMath` | Could you lift it into another plugin by changing one constant? |
 | `Helpers/` | Glue that knows this plugin's options, shapes and screens — `SettingsHelper`, `LocalizeHelper` | Does it read plugin state or build a payload for our UI? |
 
 A util that starts reading an option belongs in `Helpers/`. Neither directory is a home for business rules: those live in `Models/` and `Services/`.
+
+### Points arithmetic is shared with the SPA through `PointsMath`
+
+`Utils\PointsMath` holds the arithmetic every layer needs and none may re-derive: `round_points` (once, at order level, half away from zero; unknown mode rounds down), `pct_delta` (|previous| denominator), `pct_of`, `points_to_currency` — a zero denominator yields `null`, never 0. `apps/admin/src/lib/points-math/points-math.ts` is its camelCase mirror.
+
+**The SPA formats; it does not compute.** When a screen must compute a points figure (an editor preview, a delta, a conversion), it calls `lib/points-math`. Every function has a same-named method in `PointsMath`, and every rule has a key in `tests/fixtures/points-math-vectors.json`, which both `composer test` (`PointsMathVectorsTest`) and `pnpm test` (Vitest) iterate. Adding a primitive on one side without the other fails that side's suite; PHP is the source of truth for expected values, and only inputs every supported PHP release rounds identically belong in the file (PHP 8.4 dropped `round()`'s pre-rounding, so `0.49999999999999994`-style inputs stay out).
+
+Future engines follow the same shape: `Engine/Redemption/` reuses `PointsMath::round_points` and adds its string-money conversion via scaled integers (no bcmath dependency). Money at the boundary remains a decimal string per §5.
 
 ### Logging
 
@@ -208,7 +218,7 @@ Stamping `schema_version` into a list turns it into an object: `[{…},{…}]` c
 
 `decode_list()` unwraps it and also accepts a bare array and the corrupted `{"0":…}` shape, so no stored row is lost. **[REVIEW]** — pick the pair that matches the column's shape; nothing enforces it.
 
-The vocabulary and per-type rules for `campaigns.conditions` live in `Enums\CampaignConditionType`; `Models\CampaignConditionSet` validates and normalises a set on save (`Campaign::conditions_are_valid()` / `set_conditions()`), mirroring the `config` pair. `rewards.conditions` is the same pattern with `Enums\RewardConditionType` / `Models\RewardConditionSet` / `Models\RewardCondition`. Named `Campaign*` and `Reward*`, never a bare `Condition*` — the two vocabularies must not collide, and each is free to grow its own types independently. Neither `extends` the other, and there is no shared base class — but two things are genuinely identical between them, so they are shared rather than duplicated: `Enums\ConditionTypeMethods` is a trait supplying `all()`/`all_known()`/`is_valid()`/`is_known()`/`operators_for()`/`assert()`, used by both `CampaignConditionType` and `RewardConditionType` (each still declares its own `schema()` and `UNAVAILABLE` — that's where they diverge); `Utils\ConditionValueRules` is the value-shape checks (`int`, `int_list`, `string_list`, `between` pairs, list caps) used by both `CampaignConditionSet` and `RewardConditionSet`. Both exist so a fix to that logic is made once, not twice — not to merge the vocabularies themselves. See `data-model.md` → `conditions`.
+The vocabulary and per-type rules for `campaigns.conditions` live in `Enums\CampaignConditionType`; `Models\CampaignConditionSet` validates and normalises a set on save (`CampaignRestController` runs `Campaign::conditions_are_valid()` before writing; `set_conditions()` normalises), mirroring the `config` pair. `rewards.conditions` is the same pattern with `Enums\RewardConditionType` / `Models\RewardConditionSet` / `Models\RewardCondition`. Named `Campaign*` and `Reward*`, never a bare `Condition*` — the two vocabularies must not collide, and each is free to grow its own types independently. Neither `extends` the other, and there is no shared base class — but two things are genuinely identical between them, so they are shared rather than duplicated: `Enums\ConditionTypeMethods` is a trait supplying `all()`/`all_known()`/`is_valid()`/`is_known()`/`operators_for()`/`assert()`, used by both `CampaignConditionType` and `RewardConditionType` (each still declares its own `schema()` and `UNAVAILABLE` — that's where they diverge); `Utils\ConditionValueRules` is the value-shape checks (`int`, `int_list`, `string_list`, `between` pairs, list caps) used by both `CampaignConditionSet` and `RewardConditionSet`. Both exist so a fix to that logic is made once, not twice — not to merge the vocabularies themselves. See `data-model.md` → `conditions`.
 
 ## 13. Pro extension seams
 
@@ -294,8 +304,9 @@ A stripping build fails silently by nature, so every release is validated agains
 ```bash
 composer lint                          # phpcs (WPCS + PHPCompatibility)
 composer lint:fix                      # phpcbf
-composer test                          # phpunit — 46 tests covering Calculators, Handlers, PointsEngine
+composer test                          # phpunit — 99 tests: points engine, dashboard computation, PointsMath + shared vectors, campaign validation
 pnpm --filter @yayloyalty/admin-page lint   # eslint + prettier on SPA
+pnpm --filter @yayloyalty/admin-page test   # vitest — lib/points-math against the same vector file
 ./scripts/run.sh build [pro|lite]      # Full build — currently fails at tsc --noEmit due to #7 dangling imports
 ```
 

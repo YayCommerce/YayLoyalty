@@ -22,12 +22,13 @@ defined( 'ABSPATH' ) || exit;
  * LATER-PHASE COLUMNS ARE DECLARED HERE AHEAD OF THEIR RELEASE, ON PURPOSE.
  * `lifetime_spend`, `tier_id`, `tier_evaluated_at`, `tier_progress_value`
  * (1.2), `referral_code` (1.1) and `birthday_month`/`birthday_day` (Pro) sit
- * unused — nothing reads or writes them yet — until their owning feature
- * ships. Declaring the column now means that feature lands as a data
- * migration for existing installs (populate a NULL/0 column), not a schema
- * change; NULL/0 is a safe default for a column nothing touches yet. When
- * implementing one of these, grep for its name first: the column and its
- * index already exist, only the service/model/REST code is missing.
+ * unused — no feature reads or writes them yet; the only writer is
+ * InitYayLoyaltyCustomer's starter rows — until their owning feature ships.
+ * Declaring the column now means that feature lands as a data migration for
+ * existing installs (populate a NULL/0 column), not a schema change; NULL/0
+ * is a safe default for a column nothing touches yet. When implementing one
+ * of these, grep for its name first: the column and its index already
+ * exist, only the service/model/REST code is missing.
  *
  * `idx_tier_review (tier_id, tier_evaluated_at)` is NOT added yet — the
  * downgrade job that would query it does not exist. See docs/data-model.md.
@@ -38,12 +39,14 @@ defined( 'ABSPATH' ) || exit;
  * Do not "fix" these to UNSIGNED — see Models\Customer for the same note.
  *
  * `lifetime_earned`, `lifetime_redeemed` and `joined_at` are indexed for the
- * same reason `balance` and `last_activity_at` are: CustomerRepository::
- * sortable_columns() promises the admin list can sort by any of them, and an
+ * same reason `balance` and `last_activity_at` are: the admin list sorts via
+ * CustomerRepository::LIST_ORDER_COLUMNS and CustomerRowSort::KEYS, and an
  * ORDER BY on an unindexed column here means a filesort over every member row
- * once the table is no longer tiny. Keep expected_indexes() in this file in
- * sync with sortable_columns() — a column added to one without the other is
- * the bug this pairing exists to prevent.
+ * once the table is no longer tiny. `pending_points` is one of those sort
+ * keys but is NOT indexed here — a known gap, low priority while the table is
+ * small. Keep expected_indexes() in this file in sync with those sort keys —
+ * a column added to one without the other is the bug this pairing exists to
+ * prevent.
  */
 final class CustomersTable extends AbstractTableSchema {
 

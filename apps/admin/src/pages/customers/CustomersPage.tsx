@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
+import { useSearchParams } from 'react-router';
 import { useDebounceFn } from 'rooks';
 import { __, sprintf } from '@wordpress/i18n';
 
@@ -10,7 +11,7 @@ import { ErrorState } from '@/components/ui/custom/error-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import PageLayout from '@/components/layout/PageLayout';
 import { CustomersScreen } from './components/CustomersScreen';
-import { DEFAULT_ROW_FILTERS, TIER_FILTER_ENABLED, type RowFilters } from './customers-page.filter-rows';
+import { initialFiltersFromSearch, TIER_FILTER_ENABLED, type RowFilters } from './customers-page.filter-rows';
 import { countActiveFilters, toFilterDropSuggestions } from './customers-page.filter-suggestions';
 import { defaultSortDirection, type SortDirection, type SortKey } from './customers-page.sort-rows';
 import { resolveBalanceRangeForQuery } from './customers-page.tier-sample-data';
@@ -44,8 +45,12 @@ export default function CustomersPage() {
   // `queryFilters` drives the actual fetch — same value, except the search
   // text is committed after a short pause instead of on every keystroke, so
   // typing a name doesn't fire one API request per character.
-  const [filters, setFilters] = useState<RowFilters>(DEFAULT_ROW_FILTERS);
-  const [queryFilters, setQueryFilters] = useState<RowFilters>(DEFAULT_ROW_FILTERS);
+  // Seeded from `?balance_range=…` ONCE, on mount (the dashboard's "Review"
+  // deep link). Same-route navigation with new params will not re-seed —
+  // acceptable for v1; key the page on `location.search` if that changes.
+  const [searchParams] = useSearchParams();
+  const [filters, setFilters] = useState<RowFilters>(() => initialFiltersFromSearch(searchParams));
+  const [queryFilters, setQueryFilters] = useState<RowFilters>(filters);
   const [isRebuilding, setIsRebuilding] = useState(false);
   const [page, setPage] = useState(1);
   const [sortBy, setSortBy] = useState<SortKey>('balance');

@@ -3,7 +3,7 @@ import { TriangleAlert } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PointsValue } from '@/components/ui/custom/points-value';
 
-/** Two-line Customer cell: name (links to the drawer once it exists) + muted email. */
+/** Two-line Customer cell: name (plain text for now — no customer drawer exists yet) + muted email. */
 export function CustomerNameCell({ name, email }: { name: string; email: string }) {
   return (
     <div className="flex min-w-0 flex-col gap-0.5">

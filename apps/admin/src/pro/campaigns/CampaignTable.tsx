@@ -11,11 +11,9 @@ import { parseWPDate } from '@/lib/helpers/format.helper';
 import { useCampaignsQuery } from '@/lib/queries/campaign.queries';
 import {
   Campaign,
-  CAMPAIGN_CONDITION_TYPES,
   CAMPAIGN_DISPLAY_STATUSES,
   CampaignDisplayStatus,
   CampaignStatus,
-  CampaignTrigger,
   resolveCampaignDisplayStatus,
 } from '@/lib/schema/campaign.schema';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -36,7 +34,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import EllipsisIcon from '@/components/icons/EllipsisIcon';
-import { CampaignGroupKey, conditionTypeLabel, statusLabel, triggerGroup, triggerLabel } from './campaign-labels';
+import {
+  CampaignGroupKey,
+  conditionsLabel,
+  givesLabel,
+  statusLabel,
+  triggerGroup,
+  triggerLabel,
+} from './campaign-labels';
 import { DUMMY_POINTS_LAST_30_DAYS, hasPointsFigure } from './campaign-points-dummy';
 import { CampaignPointsSummary } from './CampaignPointsSummary';
 import type { CampaignEditorDuplicateSeed } from './editor/CampaignEditor';
@@ -70,9 +75,9 @@ interface DisplayCampaign extends Campaign {
 }
 
 /**
- * Pro's grouped, prioritised campaigns table — deleted from the Lite build
- * with the rest of `src/pro/`. Lite keeps its own flat, real list in
- * CampaignsPage (a real feature, not gated behind an upgrade overlay).
+ * Pro's grouped, prioritised campaigns table — tree-shaken out of the Lite
+ * bundle with the rest of `src/pro/`. Lite keeps its own flat, real list in
+ * BuiltInCampaignList (a real feature, not gated behind an upgrade overlay).
  *
  * ONE LIST, NOT TWO: reads `useCampaignsQuery()` from `@/lib/queries/campaign.queries`
  * — the same real hook BuiltInCampaignList reads (there, filtered to
@@ -83,8 +88,8 @@ interface DisplayCampaign extends Campaign {
  * `config`/`conditions`/`status`/dates — see toDisplayCampaign() — because
  * the real Campaign shape has no room for precomputed presentation strings,
  * by design. `pointsLast30Days` is the one exception: it is genuinely dummy,
- * client-side-only data (see campaign-points-dummy.ts) because no real
- * aggregate exists yet to read it from at all.
+ * client-side-only data (see campaign-points-dummy.ts) because no endpoint
+ * yet exposes a per-campaign 30-day figure for the whole list.
  *
  * Drag-to-reorder changes display order only, never `priority` (a separate
  * stored value) — scoped per group, since priority only ever compares
@@ -154,8 +159,8 @@ export function CampaignTable() {
       return;
     }
 
-    // Display order only. `priority` is a separate, stored value set in the
-    // campaign editor — dragging never reads or writes it, it only changes
+    // Display order only. `priority` is a separate, stored value set
+    // through the campaign write API (no SPA editor yet) — dragging never reads or writes it, it only changes
     // which slot in the group each row's own (unchanged) row occupies.
     const reordered = arrayMove(groupRows, fromIndex, toIndex);
     const groupIds = new Set(groupRows.map((row) => row.id));
@@ -283,7 +288,7 @@ export function CampaignTable() {
                   )}
                 </p>
                 <div className="flex flex-wrap items-center gap-3 pt-1">
-                  {/* Inert: no write endpoint back this screen yet — this alert only ever describes the read side of the demo data. */}
+                  {/* Inert: no write client/mutation wired yet (routes exist in CampaignRestController). */}
                   <Button variant="primary" size="sm" onClick={() => {}}>
                     {__('Switch "Points for purchases" back on', 'yayloyalty')}
                   </Button>
@@ -625,52 +630,6 @@ function toDisplayCampaign(campaign: Campaign): DisplayCampaign {
     displayStatus: resolveCampaignDisplayStatus(campaign.status, campaign.starts_at, campaign.ends_at),
     pointsLast30Days: DUMMY_POINTS_LAST_30_DAYS[campaign.id] ?? null,
   };
-}
-
-function givesLabel(trigger: CampaignTrigger, config: Record<string, unknown>): string {
-  if (trigger === 'purchase') {
-    return config.mode === 'multiplier'
-      ? sprintf(
-          /* translators: %s: the multiplier, e.g. "2". */ __('×%s points', 'yayloyalty'),
-          String(config.multiplier ?? 1),
-        )
-      : sprintf(
-          /* translators: %s: points earned per $1 spent. */ __('%s point(s) per $1', 'yayloyalty'),
-          String(config.points_per_unit ?? 0),
-        );
-  }
-
-  // Every other trigger's config carries a flat `points` — see Campaign::config_schema() / YayLoyaltyPro::add_config_keys().
-  return sprintf(/* translators: %s: points awarded. */ __('%s points', 'yayloyalty'), String(config.points ?? 0));
-}
-
-function conditionsLabel(conditions: unknown): string {
-  const list = Array.isArray(conditions) ? conditions : [];
-
-  if (list.length === 0) {
-    return __('No conditions', 'yayloyalty');
-  }
-
-  return list
-    .map((condition) => humanizeConditionType(String((condition as { type?: unknown }).type ?? '')))
-    .join(', ');
-}
-
-/**
- * Backed by the real per-type map (`conditionTypeLabel()`, campaign-labels.ts
- * — built for the campaign editor's Conditions section, phase-05). Falls back
- * to the old slug-to-title-case approximation only for a type this build
- * doesn't recognise (e.g. `tier`, or a stored type from a future schema
- * version) so a stale row never renders blank.
- */
-function humanizeConditionType(type: string): string {
-  const known = CAMPAIGN_CONDITION_TYPES.find((kind) => kind === type);
-
-  if (known) {
-    return conditionTypeLabel(known);
-  }
-
-  return type.replace(/_/g, ' ').replace(/^\w/, (char) => char.toUpperCase());
 }
 
 function scheduleLabel(startsAt: string | null, endsAt: string | null): string {

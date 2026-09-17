@@ -40,7 +40,8 @@ export function CampaignPointsSummary({
 
   const ranked = [...rows].sort((a, b) => (b.pointsLast30Days ?? -1) - (a.pointsLast30Days ?? -1));
   const total = rows.reduce((sum, row) => sum + (row.pointsLast30Days ?? 0), 0);
-  // At least 1 so a fresh install (every figure null) divides to 0% bars instead of NaN.
+  // Dead-defensive: rows are already filtered to pointsLast30Days > 0 above,
+  // and the empty-rows case returns early, so this floor never actually bites.
   const max = Math.max(1, ...rows.map((row) => row.pointsLast30Days ?? 0));
 
   return (

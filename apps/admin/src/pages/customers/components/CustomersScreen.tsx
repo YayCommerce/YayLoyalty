@@ -58,7 +58,7 @@ export function CustomersScreen({
     isStoreEmpty: boolean;
     /** The server's row count for the current filters, across every page. */
     totalItems: number;
-    /** "Which filter to drop" — fetched by CustomersPage.tsx once filters match zero rows. */
+    /** "Which filter to drop" — folded into the same GET /customers response envelope when filters match zero rows; no second fetch. */
     suggestions: FilterDropSuggestion[];
   };
   filters: {
