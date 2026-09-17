@@ -27,7 +27,7 @@ const BUILTIN_TRIGGER_ORDER: Campaign['trigger'][] = ['purchase', 'signup', 'rev
  * update client yet.
  */
 export default function BuiltInCampaignList() {
-  const { data, isPending, isError } = useCampaignsQuery({ per_page: 100 });
+  const { data, isPending, isError } = useCampaignsQuery({ perPage: 100 });
   const [expandedId, setExpandedId] = useState<number | undefined>();
 
   if (isPending) {

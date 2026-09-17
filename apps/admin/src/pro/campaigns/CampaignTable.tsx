@@ -81,7 +81,7 @@ export function CampaignTable() {
   const [newStore] = useState(false);
   const [noLiveCampaign] = useState(false);
 
-  const { data, isPending, isError } = useCampaignsQuery({ per_page: 100 });
+  const { data, isPending, isError } = useCampaignsQuery({ perPage: 100 });
   const allRows = useMemo(() => (data?.data ?? []).map(toDisplayCampaign), [data]);
 
   const [statusFilter, setStatusFilter] = useState<CampaignDisplayStatus | undefined>();
