@@ -77,7 +77,7 @@ All SQL access **must** go through these. Throw `QueryException` on write failur
 
 | Class | Role |
 |---|---|
-| `Services/Dashboard/` | Pure, unit-tested dashboard computation: `PeriodWindow` (site-tz calendar-day windows → UTC bounds), `DashboardMath` (deltas/rates/zero-fill, null on zero denominators), `AnomalyDetector` (jump rule over active days), `DashboardStats` (composes the payload), `DashboardNotices` (three detectors, structured `{key, severity, fingerprint, data}` — no copy), `DashboardCache` (transient above 10k members, `''`/`'pro'` variants, flushed on `yayloyalty_ledger_recorded` + `yayloyalty_campaigns_changed`), `NoticeDismissals` (per-user meta, applied after the cache) |
+| `Services/Dashboard/` | Pure, unit-tested dashboard computation: `PeriodWindow` (site-tz calendar-day windows → UTC bounds), `DashboardMath` (series zero-fill; ratios come from `Utils\PointsMath`), `AnomalyDetector` (jump rule over active days), `DashboardStats` (composes the payload), `DashboardNotices` (three detectors, structured `{key, severity, fingerprint, data}` — no copy), `DashboardCache` (transient above 10k members, `''`/`'pro'` variants, flushed on `yayloyalty_ledger_recorded` + `yayloyalty_campaigns_changed`), `NoticeDismissals` (per-user meta, applied after the cache) |
 | `Services/LedgerService.php` | **SOLE writer** of ledger. `adjust()` (public) creates ledger row, updates customer aggregates, writes inside `Transaction::run()`, then fires `yayloyalty_ledger_recorded` after it returns. Encapsulates idempotency and lock order. `record()` is private; use `adjust()` for manual adjustments. |
 
 **Design rule:** Fact tables get Entity + Repository + Service. Definition tables (campaigns) get Entity + Repository only — no service.
@@ -114,7 +114,7 @@ Write operations wrapped in `Transaction::run()`, return correlation ID on 500.
 | `Context`, `ContextLineItem` | Immutable inputs. Amounts in order currency plus `base_rate`; `get_real_coupon_codes()` drops our own redeem coupon; `get_extra()` for trigger-specific facts (`verified_purchase`) |
 | `ContextFactory` | `from_order()`, `from_product()`, `from_cart()` — the only class that touches WooCommerce. `yayloyalty_context_base_rate` is the multi-currency seam |
 | `Triggers\Registry` + `TriggerHandler` | `PurchaseHandler` (gates: min_subtotal, exclude_coupon_orders, multiplier needs an active default), `SignupHandler`, `ReviewHandler` (require_verified). `with_lite_handlers()` fires `yayloyalty_register_trigger_handlers` for Pro |
-| `BaseCalculator`, `Rounding`, `CapPolicy` | Earning base (exclusions, before/after discounts, tax, loyalty-discount add-back), order-level rounding, per-order and daily caps |
+| `BaseCalculator`, `CapPolicy` | Earning base (exclusions, before/after discounts, tax, loyalty-discount add-back), per-order and daily caps; rounding is `Utils\PointsMath::round_points()` |
 | `Result`, `Breakdown` | Outcome + how it was reached. Storefront exposes `get_points()` only |
 
 Filters (public API): `yayloyalty_campaign_candidates`, `yayloyalty_campaign_matches`, `yayloyalty_earning_base_amount`, `yayloyalty_points_for_order`.
@@ -133,7 +133,7 @@ Filters (public API): `yayloyalty_campaign_candidates`, `yayloyalty_campaign_mat
 
 | Type | Classes | Char |
 |---|---|---|
-| `Utils/` — stateless, portable | `Dates` (UTC), `Json` (encode/decode maps; encode_list/decode_list), `Log` (writes to WC logs or `error_log`), `Table` (safe table name), `SingletonTrait`, `ConditionValueRules` (validation for list/int/between/cap shapes) | Lift to another plugin? Yes (almost). |
+| `Utils/` — stateless, portable | `Dates` (UTC), `Json` (encode/decode maps; encode_list/decode_list), `Log` (writes to WC logs or `error_log`), `Table` (safe table name), `SingletonTrait`, `ConditionValueRules` (validation for list/int/between/cap shapes), `PointsMath` (round_points / pct_delta / pct_of / points_to_currency — mirrored in the SPA, synchronised by `tests/fixtures/points-math-vectors.json`) | Lift to another plugin? Yes (almost). |
 | `Helpers/` — plugin-specific glue | `SettingsHelper` (read options), `LocalizeHelper` (build admin payload) | Knows this plugin. |
 | `Access/` — capabilities | `Capabilities` (the seven cap names — campaigns and rewards are separate — role defaults, `install()`/`migrate()`/`uninstall()`, `ceiling()`, `payload()` for the SPA). Checked at the HTTP boundary only; services take an `actor_id`. | Knows this plugin. |
 
@@ -190,6 +190,7 @@ Filters (public API): `yayloyalty_campaign_candidates`, `yayloyalty_campaign_mat
 | `src/pro/customers/` | **Deleted in Lite build** — saved-segment feature: `CustomersSavedSegmentRow`, `CustomersSaveSegmentDialog`, `customers-saved-segment-row.state.ts`, `customer-segments.api.ts` (converts camelCase ↔ snake_case wire shape) |
 | `src/components/pro/` | **Kept in Lite** — `ProGate`, upsell UI, badge components |
 | `src/components/ui/chart.tsx` | Vendored shadcn chart primitive for recharts 2 (`.yay-dark` selector, `--chart-1..5` tokens from `styles/theme.css`) |
+| `src/lib/points-math/points-math.ts` | camelCase mirror of `Utils\PointsMath`; the only place the SPA computes a points figure. `tests/points-math.vectors.test.ts` (Vitest, `pnpm test`) runs the shared vector file |
 | `src/lib/schema/dashboard*.schema.ts` | Zod mirrors of the dashboard contracts: `dashboard.schema.ts` (Free), `dashboard-notice.schema.ts` (per-key notice `data`), `dashboard-pro.schema.ts` (Pro) |
 | `src/lib/` | Helpers: `api/` (REST calls), `queries/` (TanStack Query), `schema/` (Zod), `utils.ts`, `is-pro-build.ts`, `helpers/`, `access.tsx` (`CAP`, `can()`, `<Can>` — hide/disable by capability from `window.yayLoyaltyAdmin`; cosmetic, the server decides) |
 | `src/types/` | TypeScript type definitions |
@@ -214,10 +215,10 @@ Hook listener on order status change (F01-4, not built)
   ↓
 ContextFactory::from_order( $order, $points_earned_today )   ← the only WooCommerce read
   ↓
-PointsEngine::evaluate( 'purchase', $ctx, $ctx->get_occurred_at() )   pure: campaigns only; 46 unit tests
+PointsEngine::evaluate( 'purchase', $ctx, $ctx->get_occurred_at() )   pure: campaigns only; unit-tested without WordPress
   ├─ CampaignRepository::live_for_trigger()  liveness filtered at the ORDER's time
   ├─ first campaign: conditions_match() AND handler->is_eligible()   (gates fall through, never zero)
-  ├─ PurchaseHandler → BaseCalculator → Rounding → CapPolicy
+  ├─ PurchaseHandler → BaseCalculator → PointsMath::round_points → CapPolicy
   └─ Result: points, campaign, breakdown, reference, source | none( reason )
   ↓
 LedgerService::earn( user_id, points, source, reference_type, reference_id, campaign_id )   [to be added]
@@ -289,7 +290,7 @@ BaseRestController::exec_write( callback, request )
 - **Admin JS:** Enqueued by `RegisterProd` / `RegisterDev`; communicates via `ky` to REST
 - **REST:** Namespace `yayloyalty/v1`, all under `yayloyalty_rest_controllers` filter
 - **Headless / WP-CLI:** Runs via `plugins_loaded` — no `admin_init` required
-- **Tests:** `tests/unit/` with `tests/bootstrap.php` shim for hooks (no `$wpdb`, no WooCommerce). Run with `composer test` (86 PHPUnit tests)
+- **Tests:** `tests/unit/` with `tests/bootstrap.php` shim for hooks (no `$wpdb`, no WooCommerce). Run with `composer test` (93 PHPUnit tests); `pnpm --filter @yayloyalty/admin-page test` runs Vitest over `apps/admin/tests/` against the same `tests/fixtures/points-math-vectors.json`
 
 ---
 

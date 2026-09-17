@@ -123,10 +123,18 @@ Two directories that look interchangeable and are not.
 
 | | Holds | Test |
 |---|---|---|
-| `Utils/` | Stateless, all-static, no plugin state — `Dates`, `Json`, `Log`, `Table`, `ConditionValueRules` | Could you lift it into another plugin by changing one constant? |
+| `Utils/` | Stateless, all-static, no plugin state — `Dates`, `Json`, `Log`, `Table`, `ConditionValueRules`, `PointsMath` | Could you lift it into another plugin by changing one constant? |
 | `Helpers/` | Glue that knows this plugin's options, shapes and screens — `SettingsHelper`, `LocalizeHelper` | Does it read plugin state or build a payload for our UI? |
 
 A util that starts reading an option belongs in `Helpers/`. Neither directory is a home for business rules: those live in `Models/` and `Services/`.
+
+### Points arithmetic is shared with the SPA through `PointsMath`
+
+`Utils\PointsMath` holds the arithmetic every layer needs and none may re-derive: `round_points` (once, at order level, half away from zero; unknown mode rounds down), `pct_delta` (|previous| denominator), `pct_of`, `points_to_currency` — a zero denominator yields `null`, never 0. `apps/admin/src/lib/points-math/points-math.ts` is its camelCase mirror.
+
+**The SPA formats; it does not compute.** When a screen must compute a points figure (an editor preview, a delta, a conversion), it calls `lib/points-math`. Every function has a same-named method in `PointsMath`, and every rule has a key in `tests/fixtures/points-math-vectors.json`, which both `composer test` (`PointsMathVectorsTest`) and `pnpm test` (Vitest) iterate. Adding a primitive on one side without the other fails that side's suite; PHP is the source of truth for expected values, and only inputs every supported PHP release rounds identically belong in the file (PHP 8.4 dropped `round()`'s pre-rounding, so `0.49999999999999994`-style inputs stay out).
+
+Future engines follow the same shape: `Engine/Redemption/` reuses `PointsMath::round_points` and adds its string-money conversion via scaled integers (no bcmath dependency). Money at the boundary remains a decimal string per §5.
 
 ### Logging
 
@@ -294,8 +302,9 @@ A stripping build fails silently by nature, so every release is validated agains
 ```bash
 composer lint                          # phpcs (WPCS + PHPCompatibility)
 composer lint:fix                      # phpcbf
-composer test                          # phpunit — 46 tests covering Calculators, Handlers, PointsEngine
+composer test                          # phpunit — 93 tests: points engine, dashboard computation, PointsMath + shared vectors
 pnpm --filter @yayloyalty/admin-page lint   # eslint + prettier on SPA
+pnpm --filter @yayloyalty/admin-page test   # vitest — lib/points-math against the same vector file
 ./scripts/run.sh build [pro|lite]      # Full build — currently fails at tsc --noEmit due to #7 dangling imports
 ```
 

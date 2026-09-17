@@ -57,7 +57,7 @@ All referral tables (`referrals`, `referral_visits`) specified in data model; no
 | **Social trigger** | `social` | ⚠️ **RECOGNIZED, NOT FIREABLE** | Share-for-points not implemented |
 | **Renewal trigger** | `renewal` | ⚠️ **RECOGNIZED, NOT FIREABLE** | Subscription renewal trigger not implemented |
 | **Conditions (Pro)** | Role, product, category, lifetime spend, order count | ✅ SHIPPED (Pro) | ConditionsEvaluator; ANDed logic; preview endpoint |
-| **Points allocation** | `purchase`: points_per_unit, base, rounding, min_subtotal, mode/multiplier | ✅ **SHIPPED (engine)** | `BaseCalculator` + `PurchaseHandler`; 46 unit tests; multiplier campaigns need an active default |
+| **Points allocation** | `purchase`: points_per_unit, base, rounding, min_subtotal, mode/multiplier | ✅ **SHIPPED (engine)** | `BaseCalculator` + `PurchaseHandler`; 46 engine unit tests, rounding via `Utils\PointsMath`; multiplier campaigns need an active default |
 | **Max points cap** | `max_points_per_order`, `daily_cap` | ✅ **SHIPPED (engine)** | `CapPolicy`; `points_earned_today` is the caller's to supply from the ledger |
 | **Campaign editor** | Create, read, update, delete | ⚠️ **API COMPLETE, UI INCOMPLETE** | REST endpoints working; SPA list is read-only |
 | **Scheduling** | `starts_at`, `ends_at` liveness eval | ✅ SHIPPED | Liveness computed at read; no cron flips status |
@@ -133,7 +133,7 @@ Ordered by how much of the product each blocks, not by an assigned priority — 
 | Gap | What exists | What does not |
 |---|---|---|
 | **No customer detail view** | `useCustomerQuery`, `useAdjustPointsMutation`, `useBulkAdjustPointsMutation`, `useCustomerLedgerQuery` hooks all exist and call working REST endpoints (`GET /customers/{id}`, `GET /customers/{id}/ledger`, `POST /customers/{id}/adjust`) | Customers page is a paginated list view only — no per-customer detail drawer/modal to see one member's full history. "Adjust points"/"Export" are wired at the bulk-action level (`CustomersBulkActionBar`), not per-row. |
-| **No order listener** | `PointsEngine` computes points for `purchase`/`signup`/`review`; `LedgerService::adjust()` writes (manual only); 46 unit tests | Nothing listens to WooCommerce events, calls the engine and records the result (F01-4). `LedgerService` has no `earn()` entry point yet |
+| **No order listener** | `PointsEngine` computes points for `purchase`/`signup`/`review`; `LedgerService::adjust()` writes (manual only); 46 engine unit tests | Nothing listens to WooCommerce events, calls the engine and records the result (F01-4). `LedgerService` has no `earn()` entry point yet |
 | **No campaign editor** | REST create/update/delete; read-only SPA list | No SPA form to create or edit a campaign |
 | **No redemption** | `LedgerType::REDEEM` and refund types; `lifetime_redeemed` maintained | No rewards table, no checkout integration, no REDEEM writer |
 | **No referral program** | `customers.referral_code` column; `referral` trigger recognised | No code generation, attribution, hold, or payout; `referrals` / `referral_visits` tables not created |

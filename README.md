@@ -114,9 +114,10 @@ One repository, two zips. Lite = Pro minus `includes/Pro/` and SPA built with `B
 ## Checks
 
 ```bash
-composer test                  # phpunit — 86 unit tests: points engine (BaseCalculator, PurchaseHandler, PointsEngine) + dashboard computation (PeriodWindow, DashboardMath, AnomalyDetector, DashboardStats, DashboardNotices)
+composer test                  # phpunit — 93 unit tests: points engine (BaseCalculator, PurchaseHandler, PointsEngine), dashboard computation (PeriodWindow, DashboardMath, AnomalyDetector, DashboardStats, DashboardNotices), PointsMath + shared vectors
 composer lint                  # phpcs (WPCS + PHPCompatibility, 7.4 floor)
 pnpm --filter @yayloyalty/admin-page lint   # eslint + prettier on TypeScript/React
+pnpm --filter @yayloyalty/admin-page test   # vitest — lib/points-math against tests/fixtures/points-math-vectors.json (same file phpunit runs)
 ./scripts/run.sh release lite --no-prompt   # builds and validates a package end to end
 ```
 
