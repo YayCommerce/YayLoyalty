@@ -26,8 +26,9 @@ defined( 'ABSPATH' ) || exit;
  * repositories to a third place; if one is ever needed, name it here too.
  *
  * Every future movement type (earn, redeem, expire, refund_*) enters through
- * record(). award_for_order() is deliberately absent: it belongs with the
- * earning engine, which will decide its own boundary.
+ * record(). award_for_order() is deliberately absent: PointsEngine computes
+ * and writes nothing; the order listener (F01-4) will add earn() here — see
+ * Engine/Points/README.md.
  */
 final class LedgerService {
 
@@ -179,7 +180,8 @@ final class LedgerService {
             $lifetime_earned_delta,
             $lifetime_redeemed_delta,
             $activity_at,
-            null // Expiry policy is not implemented yet; see the expiry job.
+            null // Expiry policy is not implemented yet (points lots/expiry are a
+            // later Pro task — see docs/data-model.md `yayloyalty_lots`).
         );
     }
 

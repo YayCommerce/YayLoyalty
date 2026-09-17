@@ -22,7 +22,8 @@ defined( 'ABSPATH' ) || exit;
  * — a set is a flat list with at most one entry per type.
  *
  * This class owns validation and normalisation on save. It does NOT evaluate a
- * set against an order — that is the evaluator's job (Pro) and a separate task.
+ * set against an order — that is Pro\Services\ConditionsEvaluator's job
+ * (customer-fact conditions today; order-level ones await the award engine).
  *
  * Named `CampaignConditionSet`, not the bare `ConditionSet` — rewards have
  * their own condition vocabulary, `Models\RewardConditionSet`, and the two

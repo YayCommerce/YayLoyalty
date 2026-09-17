@@ -205,9 +205,10 @@ final class CustomerRepository extends AbstractRepository {
      * The admin Customers list: search + filter + sort + paginate, INNER
      * JOINed with wp_users for name/email — this table has neither.
      *
-     * The one exception to "a repository never touches a second table" (see
-     * docs/code-standards.md §6): that rule is about WRITE ownership between
-     * repositories. Nothing here writes wp_users, no repository owns it, and
+     * An exception, alongside the read-only dashboard aggregates, to "a
+     * repository never touches a second table" (see docs/code-standards.md
+     * §6): that rule is about WRITE ownership between repositories. Nothing
+     * here writes wp_users, no repository owns it, and
      * this read-side lookup against a table nothing in this codebase owns has
      * nowhere else to live. A loyalty row whose WP user was deleted is
      * correctly excluded (orphan cleanup is a separate concern).

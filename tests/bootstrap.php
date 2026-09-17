@@ -2,12 +2,13 @@
 /**
  * Unit-test bootstrap. NO WordPress.
  *
- * The points engine is pure: it reads campaigns through a repository and
- * otherwise touches only values on the Context. The only WordPress symbols it
- * reaches are `defined( 'ABSPATH' )` guards and the hook functions its
- * documented filters go through, so those are shimmed here — a real WP
- * bootstrap would cost seconds per run and prove nothing extra about
- * arithmetic.
+ * The suite under `tests/unit/` is plain PHP: the points engine, PointsMath's
+ * shared vectors and the dashboard services (Dashboard/) all read only values
+ * passed to them and a repository interface, never `$wpdb` or WooCommerce
+ * globals directly. The only WordPress symbols any of it reaches are
+ * `defined( 'ABSPATH' )` guards and the hook functions its documented filters
+ * go through, so those are shimmed here — a real WP bootstrap would cost
+ * seconds per run and prove nothing extra about arithmetic.
  */
 
 declare(strict_types=1);

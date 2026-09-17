@@ -170,8 +170,9 @@ final class RewardConditionSet {
     /* ─── validation ────────────────────────────────────────────────── */
 
     /**
-     * Non-throwing check for the save boundary — mirrors
-     * Reward::config_is_valid(). Normalises first, then validates the result.
+     * Non-throwing check, mirroring Reward::config_is_valid() — not yet wired
+     * into a controller (no reward controller exists). Normalises first, then
+     * validates the result.
      *
      * @param array<int, mixed> $list
      */

@@ -7,7 +7,8 @@ use YayLoyalty\Helpers\SettingsHelper;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Settings REST endpoints: GET/POST /wp-json/yayloyalty/v1/settings
+ * Settings REST endpoints: GET/POST /wp-json/yayloyalty/v1/settings and
+ * POST /wp-json/yayloyalty/v1/settings/mark-reviewed
  *
  * Routes are registered from register_routes(), not from the constructor, so
  * constructing this class has no side effects. SingletonTrait was dropped along

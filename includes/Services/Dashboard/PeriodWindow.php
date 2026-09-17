@@ -82,7 +82,7 @@ final class PeriodWindow {
         return self::utc( $this->to->modify( '-1 day' ) );
     }
 
-    /** Unix timestamps for WooCommerce order queries: [from, to, prev_from, prev_to]. */
+    /** Unix timestamps for WooCommerce order queries: from, to, prev_from (prev_to is from_ts()). */
     public function from_ts(): int {
         return $this->from->getTimestamp();
     }

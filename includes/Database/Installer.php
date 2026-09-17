@@ -29,7 +29,7 @@ final class Installer {
 
     public const OPTION_DB_VERSION = 'yayloyalty_db_version';
 
-    /** Mutex transient key. */
+    /** Mutex option key. */
     private const LOCK_KEY = 'yayloyalty_upgrading';
 
     /** Mutex lifetime. Long enough for a slow dbDelta, short enough to self-heal. */
@@ -38,8 +38,8 @@ final class Installer {
     /**
      * Registered table schemas.
      *
-     * Populated as slices land. Phase 4 adds customers and ledger; Phase 5 adds
-     * campaigns.
+     * Lite ships customers, ledger, campaigns and rewards; Pro adds its own via
+     * `yayloyalty_table_schemas`.
      *
      * @return AbstractTableSchema[]
      */
@@ -126,8 +126,8 @@ final class Installer {
      * build ships built-in", rather than a growing list of seed_builtin_*()
      * calls at the call site every time a new definition table gets one.
      * Idempotent by slug, so repeat installs cannot duplicate any of them.
-     * Runs inside maybe_upgrade()'s mutex, and each table's unique key on
-     * slug is the backstop if two requests somehow seed at once.
+     * Guarded by the mutex on the upgrade path (activation calls install()
+     * directly); the unique key on slug is the backstop.
      */
     private static function seed_builtins(): void {
         self::seed_builtin_campaigns();

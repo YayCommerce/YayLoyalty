@@ -10,8 +10,8 @@ defined( 'ABSPATH' ) || exit;
  * Trigger name → handler.
  *
  * with_lite_handlers() is the construction site for the 1.0 set and the seam
- * Pro's handlers (birthday, milestones…) attach through, so the engine never
- * needs to know which build it is in.
+ * Pro's future handlers (birthday, milestones…) will attach through, so the
+ * engine never needs to know which build it is in.
  */
 final class Registry {
 

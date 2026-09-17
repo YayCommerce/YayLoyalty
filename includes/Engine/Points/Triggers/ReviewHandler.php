@@ -13,8 +13,9 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Flat points for an approved review.
  *
- * Only `require_verified` is decided here. one_per_product and the review
- * daily_cap need ledger reads, so they belong to the caller that has them.
+ * Only `require_verified` is decided here. `daily_cap` is clamped by
+ * CapPolicy; `one_per_product` needs a ledger lookup and belongs to the
+ * (not yet written) review listener.
  */
 final class ReviewHandler implements TriggerHandler {
 

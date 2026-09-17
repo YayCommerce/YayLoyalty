@@ -117,7 +117,8 @@ class CampaignRepository extends AbstractRepository {
     }
 
     /**
-     * The built-in purchase campaign, whatever its status.
+     * The built-in purchase campaign (archived excepted — it reads the
+     * non-archived cache).
      *
      * Multiplier campaigns multiply its rate, and need to know whether it is
      * active to decide their own eligibility.
@@ -198,9 +199,9 @@ class CampaignRepository extends AbstractRepository {
     /**
      * Insert a built-in row if its slug is not already present.
      *
-     * Idempotent by slug so repeated installs cannot duplicate it. Runs under
-     * the installer's upgrade mutex, so two concurrent requests cannot both
-     * seed; the unique key on slug is the backstop if they somehow do.
+     * Idempotent by slug so repeated installs cannot duplicate it. Guarded on
+     * the upgrade path (activation calls install() directly); the unique key
+     * on slug is the backstop.
      */
     public function seed_builtin( Campaign $campaign ): void {
         if ( null !== $this->find_by_slug( $campaign->get_slug() ) ) {

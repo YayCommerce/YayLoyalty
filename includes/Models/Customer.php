@@ -101,7 +101,8 @@ class Customer extends AbstractModel {
     }
 
     public function get_format(): array {
-        // No decimals on this table yet; lifetime_spend (1.2) will be '%s'.
+        // This model maps no decimal columns yet; the table already has
+        // lifetime_spend/tier_progress_value and they must stay '%s'.
         return [ '%d', '%d', '%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s' ];
     }
 

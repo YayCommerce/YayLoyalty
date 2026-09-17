@@ -17,9 +17,8 @@ defined( 'ABSPATH' ) || exit;
  * exposes the value; validation and normalisation are
  * Models\RewardConditionSet's job.
  *
- * Deliberately smaller than Models\CampaignCondition: rewards' vocabulary has
- * no `money` or `country` shaped values, so there is no money()/country()
- * accessor here to go with them.
+ * Identical in shape to CampaignCondition today; kept separate so each
+ * vocabulary can grow its own accessors.
  */
 final class RewardCondition {
 

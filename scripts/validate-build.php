@@ -38,7 +38,7 @@ declare(strict_types=1);
 // vacuous. Keep in sync with apps/admin/src/pro/index.ts.
 const PRO_BUNDLE_SENTINEL = 'yayloyalty-pro-bundle-a7f3c1';
 
-// Copy from components/pro/UpgradeToProBadge.tsx. Lite MUST keep its upsell
+// Copy from components/pro/UpgradeToPro.tsx. Lite MUST keep its upsell
 // surface: components/pro/ is kept while src/pro/ is dropped, and confusing
 // the two would silently remove every upgrade prompt from the Lite UI.
 const UPSELL_MARKER = 'Upgrade to PRO to unlock this feature now';
@@ -257,13 +257,6 @@ if ( null !== $bundle ) {
         );
     }
 
-    // Lite only. components/pro/ is KEPT in the Lite source tree — do not
-    // confuse it with src/pro/, which is dropped — but its output is the
-    // upgrade prompt, and a Pro build has nothing to upsell. ProGate's
-    // overlay branch is dead code under IS_PRO_BUILD and is correctly shaken
-    // out of the Pro bundle, so asserting this in both directions would
-    // fail a healthy Pro package.
-    //
     // Lite only. components/pro/ is KEPT in the Lite source tree — do not
     // confuse it with src/pro/, which is dropped — and its output is the
     // upgrade prompt. A Pro build has nothing to upsell: ProGate's overlay

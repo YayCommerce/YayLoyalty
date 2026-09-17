@@ -22,9 +22,9 @@ defined( 'ABSPATH' ) || exit;
  * the user from the session, never from the request.
  *
  * `scenario` exists only when WP_DEBUG is on: it swaps the whole payload for
- * a DashboardFixture artboard so every wireframe state can be reviewed on a
- * dev store. The argument is not registered otherwise, so a production
- * request carrying it is simply ignored.
+ * DashboardFixture data so every UI state can be reviewed on a dev store.
+ * The argument is not registered otherwise, so a production request
+ * carrying it is simply ignored.
  */
 final class DashboardRestController extends AbstractRestController {
 

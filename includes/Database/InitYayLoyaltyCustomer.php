@@ -14,11 +14,12 @@ defined( 'ABSPATH' ) || exit;
  * real ledger history via `LedgerService::adjust()`, then fills in the
  * columns the ledger doesn't touch — so a fresh install's admin Customers
  * list AND its ledger history are never empty. See
- * plans/260914-1547-customers-list-real-data/phase-01-*.md.
+ * docs/codebase-summary.md.
  *
  * Split out of Installer.php to keep that file from growing further (already
- * past the project's 200-line guideline) — this is also a distinct concern:
- * "create starter data" vs. "create/verify tables".
+ * past the project's 200-line guideline — see docs/codebase-summary.md) —
+ * this is also a distinct concern: "create starter data" vs.
+ * "create/verify tables".
  *
  * RUNS EXACTLY ONCE, EVER. Called from Installer::install(), which is not
  * WooCommerce-gated, so `wc_create_new_customer()` may not exist yet — that
@@ -42,14 +43,13 @@ defined( 'ABSPATH' ) || exit;
  * to produce one honestly — see docs/project-roadmap.md.
  *
  * SECOND AUTHORISED CONSTRUCTION SITE FOR LedgerService. Its own docblock
- * says it is built in exactly one place (`RestAPI::controllers()`) so that
- * "only LedgerService writes the ledger" stays a reviewable convention, not
- * a promise anything can quietly break. This install-time bootstrap step is
- * the one other deliberate, documented exception — it runs once, outside any
- * request, and reuses the *service* (so aggregate math stays centralised)
- * rather than writing `LedgerRepository`/`CustomerRepository` directly,
- * which would have open-coded `LedgerService::apply_aggregates()`'s rules a
- * second time. `LedgerService.php`'s docblock cross-references this file.
+ * names exactly two construction sites — `RestAPI::controllers()` and this
+ * one — so that "only LedgerService writes the ledger" stays a reviewable
+ * convention, not a promise anything can quietly break. This install-time
+ * bootstrap step runs once, outside any request, and reuses the *service*
+ * (so aggregate math stays centralised) rather than writing
+ * `LedgerRepository`/`CustomerRepository` directly, which would have
+ * open-coded `LedgerService::apply_aggregates()`'s rules a second time.
  */
 final class InitYayLoyaltyCustomer {
 

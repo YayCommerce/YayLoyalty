@@ -5,9 +5,10 @@ use PHPUnit\Framework\TestCase;
 use YayLoyalty\Services\Dashboard\AnomalyDetector;
 
 /**
- * A "jump" is yesterday >= MULTIPLE x the average of the other 29 days, with
- * enough orders and enough history to make the average meaningful. The
- * average excludes yesterday so a spike cannot depress its own multiple.
+ * A "jump" is yesterday >= MULTIPLE x the average of the other active
+ * (non-zero) days, with enough orders and enough history to make the average
+ * meaningful. The average excludes yesterday so a spike cannot depress its
+ * own multiple.
  */
 final class AnomalyDetectorTest extends TestCase {
 

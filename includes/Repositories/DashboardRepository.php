@@ -9,12 +9,13 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Read-only aggregates for the admin dashboard across ledger, customers,
- * rewards and WooCommerce orders.
+ * rewards, WooCommerce orders and wp_users.
  *
  * Deliberately NOT an AbstractRepository: that base is "all SQL for exactly
- * one table" and this class reads four. It writes nothing — the ledger stays
- * LedgerService's alone (docs/code-standards.md §6), and the one-table
- * repositories keep their write ownership.
+ * one table" and this class reads five (the fifth being an INNER JOIN against
+ * wp_users for names). It writes nothing — the ledger stays LedgerService's
+ * alone (docs/code-standards.md §6), and the one-table repositories keep
+ * their write ownership.
  *
  * Every ledger predicate carries `type IN (...)` so MySQL can range-scan
  * `type_created`; `customers` reads sit on the `balance` / `joined_at`

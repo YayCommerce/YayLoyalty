@@ -15,7 +15,9 @@ defined( 'ABSPATH' ) || exit;
  * the same reason: no service, because its invariants (valid type, whitelisted
  * and correctly-typed config keys, the cost_points/type rule, derived
  * liveness, "built-ins are not archivable") are validation, not a cross-table
- * concern. A service wrapping one repository would be ceremony.
+ * concern. A service wrapping one repository would be ceremony. These
+ * validators exist but no write path calls them yet — only
+ * Installer::seed_builtin_reward() writes rows.
  *
  * CONDITIONS VS CONFIG — the boundary is "is this a fact about the customer
  * being evaluated, or a property of the reward itself?" `conditions`
@@ -191,8 +193,8 @@ class Reward extends AbstractModel {
     /**
      * Is this reward live at a given instant?
      *
-     * Delegates to Status::is_live_at() so campaigns, rewards and tiers share
-     * one implementation of the rule rather than three copies.
+     * Delegates to Status::is_live_at() so campaigns, rewards (and tiers, when
+     * they land) share one implementation of the rule rather than three copies.
      */
     public function is_live_at( string $at ): bool {
         return Status::is_live_at( $this->status, $this->starts_at, $this->ends_at, $at );
@@ -215,7 +217,8 @@ class Reward extends AbstractModel {
      * Per-type config schema: key => spec.
      *
      * The source of truth for what a reward's `config` may hold, and what
-     * config_is_valid() checks each value against on save.
+     * config_is_valid() checks each value against — this validator exists but
+     * no write path calls it yet.
      *
      * Covers `flexible_discount`, the type Lite itself offers. The four Pro
      * types — fixed_coupon, percent_coupon, free_shipping, free_product —
@@ -322,12 +325,13 @@ class Reward extends AbstractModel {
     /**
      * Is this config acceptable for this type?
      *
-     * Rejects unknown keys, wrong value types, and a missing `required` key
-     * BEFORE the row is written — mirrors Campaign::config_is_valid(), extended
-     * with the required-key check that rule needs (Campaign's schema has no
-     * required keys today). Same downgrade safety: a type this build has no
-     * schema and no whitelist for was created by another build, so it is
-     * accepted wholesale rather than rejected.
+     * Rejects unknown keys, wrong value types, and a missing `required` key —
+     * mirrors Campaign::config_is_valid(), extended with the required-key
+     * check that rule needs (Campaign's schema has no required keys today).
+     * No write path calls this yet — only Installer::seed_builtin_reward()
+     * writes rows. Same downgrade safety: a type this build has no schema and
+     * no whitelist for was created by another build, so it is accepted
+     * wholesale rather than rejected.
      */
     public static function config_is_valid( string $type, array $config ): bool {
         $schema    = self::config_schema()[ $type ] ?? null;
@@ -504,11 +508,11 @@ class Reward extends AbstractModel {
     /**
      * Are these conditions acceptable to store?
      *
-     * Mirrors config_is_valid(): a non-throwing check for the save boundary so
-     * a bad set is rejected with a 4xx before the row is written. Rejects an
-     * unknown type, an operator a type does not accept, a wrong value shape,
-     * an empty list value, a duplicate type, and customer_ids past its cap.
-     * See Models\RewardConditionSet.
+     * Mirrors config_is_valid(): a non-throwing check, not yet wired into a
+     * controller (no reward controller exists). Rejects an unknown type, an
+     * operator a type does not accept, a wrong value shape, an empty list
+     * value, a duplicate type, and customer_ids past its cap. See
+     * Models\RewardConditionSet.
      */
     public static function conditions_are_valid( array $conditions ): bool {
         return RewardConditionSet::is_valid( $conditions );
@@ -519,9 +523,10 @@ class Reward extends AbstractModel {
      *
      * The one rule the database cannot express: `flexible_discount` must have
      * a null cost_points — the customer picks the amount on a slider — and
-     * every other type must have one set and >= 1. Enforce both directions
-     * here at the save boundary; a fixed_coupon that slips through with a
-     * null cost is a free redemption.
+     * every other type must have one set and >= 1. Enforces both directions,
+     * but no write path calls it yet — only Installer::seed_builtin_reward()
+     * writes rows, so a fixed_coupon with a null cost today would only be a
+     * free redemption once a write path skips this check.
      *
      * A type this build does not recognise at all was created by another
      * build and is accepted without judgement, same downgrade-safety
@@ -611,9 +616,10 @@ class Reward extends AbstractModel {
      * Set the stored status.
      *
      * A built-in reward cannot be archived, for the same reason a built-in
-     * campaign cannot: the Free UI binds to it by slug and expects it to
-     * exist. archived_at is kept in step with status here — stamped on the way
-     * in, cleared on the way out — so no caller has to remember to.
+     * campaign cannot: DashboardRepository depends on finding it by slug
+     * ('cart-discount', via RewardRepository::find_by_slug()) and expects it
+     * to exist. archived_at is kept in step with status here — stamped on the
+     * way in, cleared on the way out — so no caller has to remember to.
      *
      * @throws \InvalidArgumentException When $status is unknown, or when
      *                                   archiving a built-in.
@@ -654,8 +660,8 @@ class Reward extends AbstractModel {
      * Mirrors set_config(): the value that lands on the model is the
      * canonical one — scalars widened to arrays, ids cast to int, role slugs
      * lower-cased, lists de-duplicated, entries ordered cheap-first for
-     * evaluation. Rejection of a malformed set is conditions_are_valid()'s job
-     * and runs at the save boundary. See Models\RewardConditionSet.
+     * evaluation. Rejection of a malformed set is conditions_are_valid()'s
+     * job, but no write path calls it yet. See Models\RewardConditionSet.
      */
     public function set_conditions( array $conditions ): void {
         $this->conditions = RewardConditionSet::normalize( $conditions );

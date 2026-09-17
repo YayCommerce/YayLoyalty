@@ -7,8 +7,9 @@ defined( 'ABSPATH' ) || exit;
  * What a reward does when redeemed.
  *
  * The type determines which keys `config` may contain (see
- * Reward::config_schema()) and, per the HARD RULE enforced by
- * Reward::cost_points_is_valid(), whether `cost_points` must be null or set:
+ * Reward::config_schema()) and, per the HARD RULE
+ * Reward::cost_points_is_valid() expresses (not yet called by any write
+ * path), whether `cost_points` must be null or set:
  * `flexible_discount` is the slider — the customer picks the amount, so
  * `cost_points` stays null; every other type is a fixed-cost catalog item.
  *

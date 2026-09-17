@@ -10,7 +10,7 @@ defined( 'ABSPATH' ) || exit;
  * word in MySQL/MariaDB: naming the column that forces a backtick into every
  * statement that touches it, and a single missed backtick is a syntax error on
  * the one code path nobody tests. `trigger_type` sidesteps the whole class of
- * bug — nothing here or in CampaignRepository backticks anything.
+ * bug — no column identifier here or in CampaignRepository needs a backtick.
  *
  * `status` stores merchant intent only: active, paused, draft, archived.
  * Liveness ("scheduled" / "ended") is NEVER stored — it is derived at read time

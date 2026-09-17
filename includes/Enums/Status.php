@@ -4,7 +4,7 @@ namespace YayLoyalty\Enums;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Merchant intent for a definition row (campaign, reward, tier).
+ * Merchant intent for a definition row (campaign, reward; tiers when they land).
  *
  * STATUS IS INTENT; LIVENESS IS DERIVED.
  *

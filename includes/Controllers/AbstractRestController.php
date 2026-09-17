@@ -247,8 +247,9 @@ abstract class AbstractRestController extends BaseRestController {
      * Every admin route reads
      *   'permission_callback' => $this->requires( Capabilities::MANAGE_POINTS )
      * — one line, and the whole reason this method exists. Never
-     * '__return_true' on an admin route; storefront and Store API routes are
-     * gated by session identity, not by these caps, and do not use this.
+     * '__return_true' on an admin route; future storefront / Store API routes
+     * will be gated by session identity, not by these caps, and must not use
+     * this.
      *
      * @return callable(): (true|\WP_Error)
      */

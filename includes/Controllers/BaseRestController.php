@@ -60,9 +60,9 @@ abstract class BaseRestController {
      *
      * A callback that RETURNS a WP_Error rolls back, exactly as one that throws
      * does. Returning an error was previously treated as success and committed;
-     * SettingsRestController::save_settings() uses that idiom, so once
-     * repositories start writing, a validation failure would have committed
-     * partial work and still answered 4xx.
+     * SettingsRestController::save_settings() and CampaignRestController use
+     * that idiom; without it a validation failure inside a real write would
+     * commit partial work and still answer 4xx.
      *
      * @param  callable         $callback
      * @param  \WP_REST_Request $request

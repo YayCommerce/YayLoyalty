@@ -20,8 +20,9 @@ defined( 'ABSPATH' ) || exit;
  * No custom role is created; caps are granted to roles that already exist.
  * Primitive caps, not meta caps: there is no map_meta_cap filter.
  *
- * All seven exist in Free. Only the matrix editor and the adjustment ceiling
- * are Pro; retrofitting real caps later would mean revisiting every route.
+ * All seven exist in Free. Only the (planned) matrix editor and the
+ * adjustment ceiling are Pro; retrofitting real caps later would mean
+ * revisiting every route.
  */
 final class Capabilities {
 
@@ -113,12 +114,12 @@ final class Capabilities {
      * hardcoded list.
      *
      * Version 0 is a site that has never run install(): grant the defaults.
-     * Later versions add a block per bump, e.g. when 1.2 adds MANAGE_TIERS:
+     * Later versions add a block per bump, e.g. when 1.2 adds MANAGE_REFERRALS:
      *
      *   if ( $stored < 2 ) {
      *       foreach ( wp_roles()->role_objects as $role ) {
      *           if ( $role->has_cap( self::MANAGE_CAMPAIGNS ) ) {
-     *               $role->add_cap( self::MANAGE_TIERS );
+     *               $role->add_cap( self::MANAGE_REFERRALS );
      *           }
      *       }
      *   }
@@ -158,8 +159,8 @@ final class Capabilities {
 
     /**
      * Administrators bypass the adjustment ceiling and are the only ones who
-     * may edit the permission matrix (Pro) — a shop manager must not be able
-     * to grant themselves manage_settings.
+     * may edit the (planned) permission matrix editor — a shop manager must
+     * not be able to grant themselves manage_settings.
      */
     public static function is_administrator(): bool {
         return current_user_can( 'manage_options' );
@@ -170,7 +171,7 @@ final class Capabilities {
      *
      * A policy value, not a capability: yayloyalty_settings['advanced']
      * ['adjustment_ceiling'], 0 = unlimited. Free defaults to 0; Pro's
-     * Advanced screen exposes it.
+     * Advanced screen will expose it (placeholder today).
      */
     public static function ceiling(): int {
         $settings = SettingsHelper::get_settings();

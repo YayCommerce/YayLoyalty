@@ -109,10 +109,11 @@ class ActDeact {
     }
 
     protected static function single_activate() {
-        // Create tables and stamp the DB version.
+        // Tables, DB version stamp, capabilities, built-in campaigns/reward and
+        // one-time starter customers — see Installer::install().
         Installer::install();
 
-        // Seed default settings on first activation.
+        // Warm the settings read (no write — defaults merge on every read).
         SettingsHelper::get_settings();
     }
 }
