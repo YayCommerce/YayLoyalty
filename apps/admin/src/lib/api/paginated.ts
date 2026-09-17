@@ -21,9 +21,6 @@ export function paginatedSchema<T extends z.ZodTypeAny>(item: T) {
 /**
  * Parse a paginated response, keeping the shared PaginatedResponse<T> type.
  */
-export function parsePaginated<T extends z.ZodTypeAny>(
-  item: T,
-  payload: unknown,
-): PaginatedResponse<z.infer<T>> {
+export function parsePaginated<T extends z.ZodTypeAny>(item: T, payload: unknown): PaginatedResponse<z.infer<T>> {
   return paginatedSchema(item).parse(payload);
 }
