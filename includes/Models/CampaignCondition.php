@@ -89,5 +89,4 @@ final class CampaignCondition {
 
         return null === $this->value ? [] : [ $this->value ];
     }
-
 }

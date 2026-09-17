@@ -248,19 +248,46 @@ class Reward extends AbstractModel {
     public static function config_schema(): array {
         return [
             RewardType::FLEXIBLE_DISCOUNT => [
-                'currency'                => [ 'type' => 'currency', 'required' => true ],
-                'points_per_currency_unit' => [ 'type' => 'number', 'min' => 0 ],
-                'min_points'               => [ 'type' => 'int', 'min' => 0 ],
-                'max_points_per_order'     => [ 'type' => 'nullable_number', 'min' => 0 ],
-                'max_percent_of_subtotal'  => [ 'type' => 'nullable_number', 'min' => 0 ],
-                'increment'                => [ 'type' => 'int', 'min' => 1 ],
-                'show_on'                  => [ 'type' => 'enum_list', 'values' => [ 'cart', 'checkout' ] ],
-                'refund_policy'            => [ 'type' => 'enum', 'values' => [ 'proportional', 'full', 'none' ] ],
+                'currency'                 => [
+                    'type'     => 'currency',
+                    'required' => true,
+                ],
+                'points_per_currency_unit' => [
+                    'type' => 'number',
+                    'min'  => 0,
+                ],
+                'min_points'               => [
+                    'type' => 'int',
+                    'min'  => 0,
+                ],
+                'max_points_per_order'     => [
+                    'type' => 'nullable_number',
+                    'min'  => 0,
+                ],
+                'max_percent_of_subtotal'  => [
+                    'type' => 'nullable_number',
+                    'min'  => 0,
+                ],
+                'increment'                => [
+                    'type' => 'int',
+                    'min'  => 1,
+                ],
+                'show_on'                  => [
+                    'type'   => 'enum_list',
+                    'values' => [ 'cart', 'checkout' ],
+                ],
+                'refund_policy'            => [
+                    'type'   => 'enum',
+                    'values' => [ 'proportional', 'full', 'none' ],
+                ],
                 // Global redemption cap; null = unlimited. Nothing enforces it
                 // yet, but it is stored from 1.0 so an uncapped discount cannot
                 // be drained further than the merchant intended once something
                 // does.
-                'max_total'                => [ 'type' => 'nullable_number', 'min' => 0 ],
+                'max_total'                => [
+                    'type' => 'nullable_number',
+                    'min'  => 0,
+                ],
             ],
         ];
     }

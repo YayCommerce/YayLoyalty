@@ -105,7 +105,7 @@ final class RewardConditionType {
                 'max'       => 100,
                 'normalize' => [ 'array', 'int', 'dedupe' ],
             ],
-            self::TIER              => [
+            self::TIER             => [
                 'operators' => [ self::OP_IN, self::OP_NOT_IN, self::OP_GTE, self::OP_LTE ],
                 'value'     => 'tier',
                 'normalize' => [ 'dedupe' ],
