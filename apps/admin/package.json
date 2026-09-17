@@ -13,6 +13,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build --mode production --outDir ../../../assets/dist/admin",
     "lint": "eslint . && prettier --check .",
+    "test": "vitest run",
     "lint:fix": "eslint . --fix && prettier --write ."
   },
   "dependencies": {
@@ -90,7 +91,8 @@
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.46.4",
     "vite": "^6.2.5",
-    "vite-plugin-external": "^6.1.0"
+    "vite-plugin-external": "^6.1.0",
+    "vitest": "^3.2.7"
   },
   "prettier": {
     "printWidth": 120,
