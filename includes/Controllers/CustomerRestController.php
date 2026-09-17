@@ -2,6 +2,7 @@
 namespace YayLoyalty\Controllers;
 
 use YayLoyalty\Access\Capabilities;
+use YayLoyalty\Controllers\Fixtures\CustomerDrawer\CustomerDrawerFixture;
 use YayLoyalty\Controllers\Schemas\CustomerItemSchema;
 use YayLoyalty\Models\Customer;
 use YayLoyalty\Repositories\CustomerRepository;
@@ -94,7 +95,7 @@ final class CustomerRestController extends AbstractRestController {
                     'methods'             => \WP_REST_Server::READABLE,
                     'callback'            => fn( $request ) => $this->exec_read( [ $this, 'get_customer' ], $request ),
                     'permission_callback' => $this->requires( Capabilities::VIEW ),
-                    'args'                => [ 'id' => $this->user_id_param() ],
+                    'args'                => array_merge( [ 'id' => $this->user_id_param() ], CustomerDrawerFixture::scenario_arg() ),
                 ],
                 'schema' => [ $this, 'get_item_schema' ],
             ]
@@ -185,6 +186,10 @@ final class CustomerRestController extends AbstractRestController {
 
     public function get_customer( \WP_REST_Request $request ) {
         $user_id = (int) $request['id'];
+
+        if ( defined( 'WP_DEBUG' ) && WP_DEBUG && ! empty( $request['scenario'] ) ) {
+            return CustomerDrawerFixture::customer( (string) $request['scenario'], $user_id );
+        }
 
         return $this->format_customer( $user_id, $this->customers->find_by_user_id( $user_id ) );
     }

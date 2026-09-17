@@ -1,0 +1,157 @@
+<?php
+namespace YayLoyalty\Controllers\Fixtures\CustomerDrawer;
+
+use YayLoyalty\Enums\LedgerType;
+use YayLoyalty\Utils\Dates;
+
+defined( 'ABSPATH' ) || exit;
+
+/**
+ * Envelope, chain and filtering for the drawer ledger tab's six scenarios.
+ * Per-row type/points/source synthesis lives in `DrawerLedgerGenerator`
+ * (split out to keep this file near the 200-line cap).
+ *
+ * `note`/`order_id`/`campaign_id` are the only fields the client renders text
+ * from (`describeLedgerEntry()`, apps/admin) — there is no literal
+ * "description" here to hand-author, so every scenario is generated rather
+ * than transcribed from the design's example rows.
+ *
+ * Campaign ids 1/3/4 are `CampaignRestController::dummy_fixture()`'s real
+ * ids for "Summit+ members 1.5×"/"Trail Shoes boost"/"Points for purchases"
+ * — the three names the design quotes on earn rows. (The plan's own notes
+ * named ids 1/7/9, borrowed from `DashboardFixture::pro_scenario()`'s
+ * unrelated, separate fictional campaign set — corrected here.)
+ */
+final class DrawerLedger {
+
+    private const CAMPAIGN_IDS = [ 1, 3, 4 ];
+
+    /**
+     * @param array{page?:int,per_page?:int,type?:string,search?:string,after?:string,before?:string} $args
+     * @return array{items: array<int, array<string, mixed>>, total: int, page: int, per_page: int, type_counts: array<string, int>}
+     */
+    public static function envelope( string $scenario, int $user_id, array $args ): array {
+        $rows        = self::rows( $scenario, $user_id );
+        $type_counts = self::type_counts( $rows );
+        $filtered    = self::apply_filters( $rows, $args );
+
+        $page     = max( 1, (int) ( $args['page'] ?? 1 ) );
+        $per_page = max( 1, (int) ( $args['per_page'] ?? 20 ) );
+
+        return [
+            'items'       => array_slice( $filtered, ( $page - 1 ) * $per_page, $per_page ),
+            'total'       => count( $filtered ),
+            'page'        => $page,
+            'per_page'    => $per_page,
+            'type_counts' => $type_counts,
+        ];
+    }
+
+    /**
+     * Newest-first. `balance_after` is derived walking BACKWARD from the
+     * profile's ending balance, so the chain (`prev.balance_after + points
+     * === this.balance_after`) is correct by construction — nothing here
+     * has to solve for a total at the oldest row.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private static function rows( string $scenario, int $user_id ): array {
+        $count   = DrawerProfiles::ledger_count_for( $scenario );
+        $balance = DrawerProfiles::balance_for( $scenario );
+        $types   = DrawerLedgerGenerator::type_sequence( $scenario, $count );
+        $step    = 'large' === $scenario ? 4 * HOUR_IN_SECONDS : DAY_IN_SECONDS;
+
+        $rows = [];
+
+        for ( $i = 0; $i < $count; $i++ ) {
+            $type          = $types[ $i ];
+            $points        = DrawerLedgerGenerator::points_for( $type, $i );
+            $balance_after = $balance;
+            $balance      -= $points;
+
+            $order_id = 4000 + $i;
+            // Real adjust rows carry a NULL reference (LedgerService::adjust()) — only
+            // earn/redeem are ever tied to an order.
+            $has_ref = LedgerType::EARN === $type || LedgerType::REDEEM === $type;
+
+            $rows[] = [
+                'id'             => $count - $i,
+                'user_id'        => $user_id,
+                'points'         => $points,
+                'balance_after'  => $balance_after,
+                'type'           => $type,
+                'source'         => DrawerLedgerGenerator::source_for( $type ),
+                'reference_type' => $has_ref ? 'order' : null,
+                'reference_id'   => $has_ref ? $order_id : null,
+                'campaign_id'    => LedgerType::EARN === $type ? self::CAMPAIGN_IDS[ $i % 3 ] : null,
+                'redemption_id'  => LedgerType::REDEEM === $type ? $order_id : null,
+                'order_id'       => $has_ref ? $order_id : null,
+                'note'           => LedgerType::ADJUST === $type ? 'Goodwill adjustment' : null,
+                'actor_id'       => LedgerType::ADJUST === $type ? 1 : null,
+                'created_at'     => Dates::offset( -$i * $step ),
+            ];
+        }
+
+        return $rows;
+    }
+
+    /** Grouped over the UNFILTERED set — what the filter labels ("Earned 4,190") read from. */
+    private static function type_counts( array $rows ): array {
+        $counts = [
+            'all'    => count( $rows ),
+            'earn'   => 0,
+            'redeem' => 0,
+            'adjust' => 0,
+            'expire' => 0,
+        ];
+
+        foreach ( $rows as $row ) {
+            ++$counts[ self::type_group( $row['type'] ) ];
+        }
+
+        return $counts;
+    }
+
+    private static function apply_filters( array $rows, array $args ): array {
+        $type   = $args['type'] ?? 'all';
+        $search = isset( $args['search'] ) ? strtolower( trim( (string) $args['search'] ) ) : '';
+        $after  = (string) ( $args['after'] ?? '' );
+        $before = (string) ( $args['before'] ?? '' );
+
+        return array_values(
+            array_filter(
+                $rows,
+                static function ( array $row ) use ( $type, $search, $after, $before ): bool {
+                    if ( 'all' !== $type && self::type_group( $row['type'] ) !== $type ) {
+                        return false;
+                    }
+
+                    if ( '' !== $search ) {
+                        $haystack = strtolower( ( $row['note'] ?? '' ) . ' ' . ( $row['order_id'] ?? '' ) );
+
+                        if ( false === strpos( $haystack, $search ) ) {
+                            return false;
+                        }
+                    }
+
+                    $date = substr( $row['created_at'], 0, 10 );
+
+                    return ( '' === $after || $date >= $after ) && ( '' === $before || $date <= $before );
+                }
+            )
+        );
+    }
+
+    /** `earn`/`refund_earn` → `earn`, `redeem`/`refund_redeem` → `redeem` — a grouping, not the raw enum. */
+    private static function type_group( string $type ): string {
+        if ( in_array( $type, [ LedgerType::EARN, LedgerType::REFUND_EARN ], true ) ) {
+            return 'earn';
+        }
+
+        if ( in_array( $type, [ LedgerType::REDEEM, LedgerType::REFUND_REDEEM ], true ) ) {
+            return 'redeem';
+        }
+
+        return $type;
+    }
+}
