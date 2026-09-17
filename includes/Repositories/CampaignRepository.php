@@ -155,6 +155,12 @@ class CampaignRepository extends AbstractRepository {
 
     public function flush_cache(): void {
         wp_cache_delete( self::CACHE_KEY, self::CACHE_GROUP );
+
+        /**
+         * Fires after any campaign write. Internal seam: the dashboard cache
+         * subscribes because its notices depend on campaign status.
+         */
+        do_action( 'yayloyalty_campaigns_changed' );
     }
 
     /**

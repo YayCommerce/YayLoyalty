@@ -589,6 +589,11 @@ class Campaign extends AbstractModel {
         return $this->created_by;
     }
 
+    /** UTC MySQL DATETIME of the last write. */
+    public function get_updated_at(): string {
+        return $this->updated_at;
+    }
+
     public function get_updated_by(): ?int {
         return $this->updated_by;
     }

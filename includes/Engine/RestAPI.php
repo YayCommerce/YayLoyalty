@@ -4,11 +4,18 @@ namespace YayLoyalty\Engine;
 use YayLoyalty\Controllers\AbstractRestController;
 use YayLoyalty\Controllers\CampaignRestController;
 use YayLoyalty\Controllers\CustomerRestController;
+use YayLoyalty\Controllers\DashboardRestController;
 use YayLoyalty\Controllers\LedgerRestController;
 use YayLoyalty\Controllers\SettingsRestController;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\CustomerRepository;
+use YayLoyalty\Repositories\DashboardRepository;
 use YayLoyalty\Repositories\LedgerRepository;
+use YayLoyalty\Repositories\RewardRepository;
+use YayLoyalty\Services\Dashboard\DashboardCache;
+use YayLoyalty\Services\Dashboard\DashboardNotices;
+use YayLoyalty\Services\Dashboard\DashboardStats;
+use YayLoyalty\Services\Dashboard\NoticeDismissals;
 use YayLoyalty\Services\LedgerService;
 use YayLoyalty\Utils\Log;
 use YayLoyalty\Utils\SingletonTrait;
@@ -29,6 +36,9 @@ class RestAPI {
 
     protected function __construct() {
         add_action( 'rest_api_init', [ $this, 'loyalty_endpoints' ] );
+        // Every ledger or campaign write invalidates the (large-store-only) dashboard cache.
+        add_action( 'yayloyalty_ledger_recorded', [ DashboardCache::class, 'flush' ] );
+        add_action( 'yayloyalty_campaigns_changed', [ DashboardCache::class, 'flush' ] );
     }
 
     /**
@@ -48,12 +58,22 @@ class RestAPI {
 
         $ledger_service = new LedgerService( $ledger, $customers );
 
+        // Read-only cross-table aggregates; reads the ledger, never writes it.
+        $dashboard = new DashboardRepository( new RewardRepository() );
+        $campaigns = new CampaignRepository();
+
         $controllers = [
             new SettingsRestController(),
             new CustomerRestController( $customers, $ledger_service ),
             new LedgerRestController( $ledger ),
             // Definition table: repository only, no service.
-            new CampaignRestController( new CampaignRepository() ),
+            new CampaignRestController( $campaigns ),
+            new DashboardRestController(
+                new DashboardStats( $dashboard ),
+                new DashboardCache( $dashboard ),
+                new DashboardNotices( $dashboard, $campaigns ),
+                new NoticeDismissals()
+            ),
         ];
 
         /**
