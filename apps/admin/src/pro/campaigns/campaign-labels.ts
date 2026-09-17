@@ -1,5 +1,6 @@
 import { __, sprintf } from '@wordpress/i18n';
 
+import { parseWPCurrency } from '@/lib/helpers/format.helper';
 import type { CampaignTrigger } from '@/lib/schema/campaign.schema';
 
 /**
@@ -17,8 +18,10 @@ export function givesLabel(trigger: CampaignTrigger, config: Record<string, unkn
           String(config.multiplier ?? 1),
         )
       : sprintf(
-          /* translators: %s: points earned per $1 spent. */ __('%s point(s) per $1', 'yayloyalty'),
+          /* translators: 1: points earned per unit of currency spent, 2: one unit of the store currency, formatted. */
+          __('%1$s point(s) per %2$s', 'yayloyalty'),
           String(config.points_per_unit ?? 0),
+          parseWPCurrency(1),
         );
   }
 

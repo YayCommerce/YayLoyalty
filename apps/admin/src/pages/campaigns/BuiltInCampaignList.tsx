@@ -3,6 +3,7 @@ import { ChevronDown, ChevronUp, InfoIcon } from 'lucide-react';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { parseWPCurrency, parseWPDate } from '@/lib/helpers/format.helper';
+import { roundPoints } from '@/lib/points-math/points-math';
 import { useCampaignsQuery } from '@/lib/queries/campaign.queries';
 import type { Campaign } from '@/lib/schema/campaign.schema';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -251,8 +252,9 @@ function PurchaseFields({
           </NumberInputRoot>
           <span className="text-muted-foreground text-sm">
             {sprintf(
-              /* translators: %s: the site's currency code, e.g. USD. */
-              __('per $1 (%s) spent', 'yayloyalty'),
+              /* translators: 1: one unit of the store currency, formatted; 2: the site's currency code, e.g. USD. */
+              __('per %1$s (%2$s) spent', 'yayloyalty'),
+              parseWPCurrency(1),
               currency,
             )}
           </span>
@@ -442,9 +444,10 @@ function summarize(trigger: Campaign['trigger'], config: Record<string, unknown>
       const value = config as unknown as PurchaseConfig;
 
       return sprintf(
-        /* translators: %s: points awarded per currency unit spent, e.g. "1". */
-        __('%s point(s) per $1 spent', 'yayloyalty'),
+        /* translators: 1: points awarded per currency unit spent, e.g. "1"; 2: one unit of the store currency, formatted. */
+        __('%1$s point(s) per %2$s spent', 'yayloyalty'),
         String(value.points_per_unit),
+        parseWPCurrency(1),
       );
     }
 
@@ -482,8 +485,7 @@ function summarize(trigger: Campaign['trigger'], config: Record<string, unknown>
 /** The worked example banner — recomputed live as `points_per_unit` / `rounding` change. */
 function worksOut(pointsPerUnit: number, rounding: PurchaseConfig['rounding']): string {
   const exampleSubtotal = 50;
-  const raw = exampleSubtotal * pointsPerUnit;
-  const points = rounding === 'up' ? Math.ceil(raw) : rounding === 'nearest' ? Math.round(raw) : Math.floor(raw);
+  const points = roundPoints(exampleSubtotal * pointsPerUnit, rounding);
 
   return sprintf(
     /* translators: 1: an example order subtotal, formatted as currency; 2: the points it would earn. */

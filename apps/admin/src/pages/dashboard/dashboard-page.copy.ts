@@ -2,6 +2,7 @@ import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { parseWPCurrency, parseWPTime, utcToDate } from '@/lib/helpers/format.helper';
 import { formatPoints } from '@/lib/helpers/points.helper';
+import { pctDelta, pointsToCurrency } from '@/lib/points-math/points-math';
 import type { DashboardRange, DashboardSeriesPoint } from '@/lib/schema/dashboard.schema';
 
 /**
@@ -89,8 +90,8 @@ export function noticeTileOverrides(
   pointsPerCurrencyUnit: number,
 ): Partial<Record<'points_issued' | 'liability' | 'redemption_rate', string>> {
   if (pointsJump) {
-    const overnight =
-      pointsPerCurrencyUnit > 0 ? parseWPCurrency(pointsJump.yesterday_points / pointsPerCurrencyUnit) : null;
+    const overnightAmount = pointsToCurrency(pointsJump.yesterday_points, pointsPerCurrencyUnit);
+    const overnight = overnightAmount === null ? null : parseWPCurrency(overnightAmount);
 
     return {
       points_issued: sprintf(__('▲ %s of it yesterday', 'yayloyalty'), formatPoints(pointsJump.yesterday_points)),
@@ -118,17 +119,15 @@ export function noticeTileOverrides(
 
 /**
  * Percentage fall of the last 7 complete days' issuance against the 7
- * before; null unless there was a fall to show. Today is excluded — it is a
- * partial day and would overstate the collapse every morning.
+ * before, whole percent; null unless there was a fall to show — a fall that
+ * rounds to 0% is not a fall. Today is excluded — it is a partial day and
+ * would overstate the collapse every morning.
  */
 export function sevenDayCollapse(series: DashboardSeriesPoint[]): number | null {
   if (series.length < 15) return null;
 
   const sum = (points: DashboardSeriesPoint[]) => points.reduce((acc, p) => acc + p.issued, 0);
-  const recent = sum(series.slice(-8, -1));
-  const before = sum(series.slice(-15, -8));
+  const delta = pctDelta(sum(series.slice(-8, -1)), sum(series.slice(-15, -8)), 0);
 
-  if (before === 0 || recent >= before) return null;
-
-  return Math.round(((before - recent) / before) * 100);
+  return delta === null || delta >= 0 ? null : -delta;
 }

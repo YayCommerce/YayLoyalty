@@ -3,6 +3,7 @@ import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { Can, CAP } from '@/lib/access';
 import { formatPoints } from '@/lib/helpers/points.helper';
+import { pctOf } from '@/lib/points-math/points-math';
 import type { DashboardTierDistribution as Distribution } from '@/lib/schema/dashboard-pro.schema';
 import { Card, CardAction, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ProGate } from '@/components/pro/ProGate';
@@ -12,7 +13,8 @@ const COLORS = ['var(--chart-1)', 'var(--chart-3)', 'var(--chart-4)'];
 /** Artboard 1b: one stacked bar plus a legend row per tier — "Explorer 1,847 · 76.0%". */
 export function DashboardTierDistribution({ tiers }: { tiers: Readonly<NonNullable<Distribution>> }) {
   const total = tiers.reduce((sum, t) => sum + t.members, 0);
-  const pct = (members: number) => (total > 0 ? (members / total) * 100 : 0);
+  // pctOf is null on an empty total; the legend keeps reading 0.0% rather than growing a "—" state for a dummy card.
+  const pct = (members: number) => pctOf(members, total) ?? 0;
 
   return (
     <Card className="gap-3">
