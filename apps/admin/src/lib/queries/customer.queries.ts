@@ -5,6 +5,7 @@ import {
   getCustomer,
   getCustomerLedger,
   getCustomers,
+  type CustomerLedgerParams,
   type CustomerListParams,
 } from '@/lib/api/customer.api';
 import type { AdjustPointsInput } from '@/lib/schema/customer.schema';
@@ -12,18 +13,22 @@ import type { AdjustPointsInput } from '@/lib/schema/customer.schema';
 /** ─── Query Options ─────────────────────────────────── */
 
 export const CUSTOMER_QUERIES = {
-  detail: (userId: number) =>
+  /** `scenario` is part of the key — switching it must refetch, not serve the previous scenario's cache. */
+  detail: (userId: number, scenario?: string) =>
     queryOptions({
-      queryKey: ['customer', 'detail', userId],
-      queryFn: () => getCustomer(userId),
+      queryKey: ['customer', 'detail', userId, scenario ?? null],
+      queryFn: () => getCustomer(userId, scenario),
       enabled: userId > 0,
     }),
 
-  ledger: (userId: number, page: number, perPage: number) =>
+  ledger: (userId: number, params: CustomerLedgerParams) =>
     queryOptions({
-      queryKey: ['customer', 'ledger', userId, page, perPage],
-      queryFn: () => getCustomerLedger(userId, { page, perPage }),
+      queryKey: ['customer', 'ledger', userId, params],
+      queryFn: () => getCustomerLedger(userId, params),
       enabled: userId > 0,
+      // Paging/filtering must not flash a skeleton over rows already on screen.
+      placeholderData: keepPreviousData,
+      retry: 1,
     }),
 
   list: (params: CustomerListParams) =>
@@ -45,12 +50,12 @@ export const CUSTOMER_QUERIES = {
 
 /** ─── Hooks ─────────────────────────────────────────── */
 
-export function useCustomerQuery(userId: number) {
-  return useQuery(CUSTOMER_QUERIES.detail(userId));
+export function useCustomerQuery(userId: number, scenario?: string) {
+  return useQuery(CUSTOMER_QUERIES.detail(userId, scenario));
 }
 
-export function useCustomerLedgerQuery(userId: number, page: number, perPage = 10) {
-  return useQuery(CUSTOMER_QUERIES.ledger(userId, page, perPage));
+export function useCustomerLedgerQuery(userId: number, params: CustomerLedgerParams) {
+  return useQuery(CUSTOMER_QUERIES.ledger(userId, params));
 }
 
 export function useCustomersQuery(params: CustomerListParams = {}) {

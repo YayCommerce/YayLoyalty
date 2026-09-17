@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { api } from '@/lib/api/api';
-import { paginatedSchema, parsePaginated } from '@/lib/api/paginated';
+import { paginatedSchema } from '@/lib/api/paginated';
 import {
   AdjustPointsInput,
   Customer,
@@ -14,7 +14,7 @@ import {
   CustomerTier,
   noMatchSuggestionSchema,
 } from '@/lib/schema/customer.schema';
-import { LedgerEntry, ledgerEntrySchema } from '@/lib/schema/ledger.schema';
+import { LedgerEntry, ledgerEntrySchema, ledgerEnvelopeSchema, LedgerFilterType } from '@/lib/schema/ledger.schema';
 
 /**
  * Every response is `.parse()`d rather than cast.
@@ -25,19 +25,54 @@ import { LedgerEntry, ledgerEntrySchema } from '@/lib/schema/ledger.schema';
  * error at the boundary.
  */
 
-export async function getCustomer(userId: number): Promise<Customer> {
-  return customerSchema.parse(await api.get(`customers/${userId}`).json());
+/**
+ * `scenario` is a dev-only switch: the server registers the argument only
+ * under WP_DEBUG, and this client forwards it only on the Vite dev server
+ * (`import.meta.env.DEV`), so a built bundle never sends it — same rule
+ * `dashboard.api.ts`'s `getDashboard()` follows.
+ */
+export async function getCustomer(userId: number, scenario?: string): Promise<Customer> {
+  const searchParams: Record<string, string> = {};
+
+  if (import.meta.env.DEV && scenario) searchParams.scenario = scenario;
+
+  return customerSchema.parse(await api.get(`customers/${userId}`, { searchParams }).json());
 }
 
-export async function getCustomerLedger(userId: number, params: { page?: number; perPage?: number } = {}) {
+/**
+ * App-side (camelCase) params for `getCustomerLedger()`. The wire spelling
+ * exists only inside the request builder below — one conversion point, as
+ * `getCustomers()` does for the Customers list.
+ */
+export type CustomerLedgerParams = {
+  page?: number;
+  perPage?: number;
+  type?: LedgerFilterType;
+  search?: string;
+  after?: string;
+  before?: string;
+  scenario?: string;
+};
+
+/**
+ * `GET /customers/{id}/ledger`. Parsed with `ledgerEnvelopeSchema`, not the
+ * generic `parsePaginated()` helper — that helper's envelope shape has no
+ * `type_counts` field, so it would silently drop it.
+ */
+export async function getCustomerLedger(userId: number, params: CustomerLedgerParams = {}) {
   const searchParams: Record<string, string> = {};
 
   if (params.page) searchParams.page = String(params.page);
   if (params.perPage) searchParams.per_page = String(params.perPage);
+  if (params.type && params.type !== 'all') searchParams.type = params.type;
+  if (params.search?.trim()) searchParams.search = params.search.trim();
+  if (params.after) searchParams.after = params.after;
+  if (params.before) searchParams.before = params.before;
+  if (import.meta.env.DEV && params.scenario) searchParams.scenario = params.scenario;
 
   const payload = await api.get(`customers/${userId}/ledger`, { searchParams }).json();
 
-  return parsePaginated<typeof ledgerEntrySchema>(ledgerEntrySchema, payload);
+  return ledgerEnvelopeSchema.parse(payload);
 }
 
 export async function adjustCustomerPoints(userId: number, input: AdjustPointsInput): Promise<LedgerEntry> {
