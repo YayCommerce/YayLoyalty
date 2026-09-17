@@ -8,17 +8,20 @@ use YayLoyalty\Utils\Dates;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Dev-only dashboard artboards.
+ * Dev-only dashboard scenario data.
  *
- * SWAP POINT — `GET /dashboard?scenario=…` (WP_DEBUG only) answers from here
- * instead of DashboardStats, for now: a dev store's real ledger holds a
- * handful of seeded rows, which is not enough to build or review the
- * wireframe states against (empty store, a 2,431-member store, a 250k-member
- * cached store, the notice strip, the anomaly panel). Every scenario emits
- * the exact wire shape the SPA parses with `dashboardResponseSchema`, so a
- * drift here fails loudly on the dev server. Nothing else reads this class;
- * when the artboards are signed off it is deleted together with the
- * `scenario` argument and nothing in the SPA changes.
+ * SWAP POINT — `GET /dashboard?scenario=…` (WP_DEBUG only) answers from
+ * DashboardRestController here instead of DashboardStats, and
+ * `GET /dashboard/pro?scenario=…` answers from DashboardProRestController
+ * via pro_scenario(), for now: a dev store's real ledger holds a handful of
+ * seeded rows, which is not enough to build or review UI states against
+ * (empty store, a 2,431-member store, a 250k-member cached store, the
+ * notice strip, the anomaly panel). Every scenario emits the exact wire
+ * shape the SPA parses with `dashboardResponseSchema` (or
+ * `dashboardProResponseSchema` for the Pro payload), so a drift here fails
+ * loudly on the dev server. When the scenarios are signed off this class is
+ * deleted together with both `scenario` arguments and nothing in the SPA
+ * changes.
  */
 final class DashboardFixture {
 
@@ -52,7 +55,7 @@ final class DashboardFixture {
     }
 
     /**
-     * Artboard 1b's Pro panel data for the same scenarios. `referrals` and
+     * Pro panel data for the same scenarios. `referrals` and
      * `tier_distribution` stay null here too — the SPA's own dummies fill
      * them, exactly as on the real path.
      */
@@ -69,7 +72,7 @@ final class DashboardFixture {
                 'purchase',
                 121400,
                 [
-                    'mode'            => 'fixed',
+                    'mode'            => 'rate',
                     'points_per_unit' => 1,
                 ],
                 0,
@@ -267,7 +270,7 @@ final class DashboardFixture {
         );
     }
 
-    /** Artboard 6a: every notice key and severity, in server order. */
+    /** Every notice key and severity, in server order. */
     private static function notices(): array {
         $paused_at = Dates::offset( -8 * DAY_IN_SECONDS );
 
@@ -310,7 +313,7 @@ final class DashboardFixture {
     }
 
     /**
-     * Artboard 6b: yesterday spiked to 41,200 against a 6,100 average.
+     * Yesterday spiked to 41,200 against a 6,100 average.
      *
      * @param string[] $days
      */
