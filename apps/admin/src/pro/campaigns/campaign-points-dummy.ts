@@ -5,17 +5,17 @@ import { CampaignDisplayStatus } from '@/lib/schema/campaign.schema';
  * CampaignPointsSummary's only dummy data. Everything else on those two
  * components comes from the real campaign list (`useCampaignsQuery()`); this
  * one figure does not exist on the real `Campaign` shape and has nothing to
- * come from yet — no store-wide or per-campaign ledger aggregate exists
- * (LedgerRepository's sum_points_for_user() is per-customer only). Rather
- * than fake it on the server (which would mean either bolting a presentation
- * field onto the canonical schema, or a second endpoint/fixture), it lives
- * here as a plain client-side map, keyed to the same dummy ids
- * CampaignRestController::dummy_fixture() uses.
+ * come from yet — no endpoint yet exposes a per-campaign 30-day figure for
+ * the whole list (Pro CampaignPointsRepository::issued_by_campaign() feeds
+ * only the dashboard's top-3). Rather than fake it on the server (which
+ * would mean either bolting a presentation field onto the canonical schema,
+ * or a second endpoint/fixture), it lives here as a plain client-side map,
+ * keyed to the same dummy ids CampaignRestController::dummy_fixture() uses.
  *
- * SWAP POINT. Once a real per-campaign points-issued aggregate exists (a
- * ledger-backed endpoint, most likely `GROUP BY campaign_id` over `earn`
- * rows in the last 30 days), this file is deleted and toDisplayCampaign() in
- * CampaignTable.tsx reads the real figure instead of this map — everything
+ * SWAP POINT. Once `GET /campaigns` surfaces a real per-campaign
+ * points-issued aggregate for the whole list, this file is deleted and
+ * toDisplayCampaign() in CampaignTable.tsx reads the real figure instead of
+ * this map — everything
  * downstream (hasPointsFigure(), `<PointsValue>`, CampaignPointsSummary) is
  * already written against "a number or null", so nothing else changes.
  *
@@ -35,7 +35,7 @@ export const DUMMY_POINTS_LAST_30_DAYS: Record<number, number | null> = {
   6: 9300, // Points for writing a review (built-in)
   7: null, // Birthday points — draft
   8: null, // Spring Sale 1.5× — archived
-  9: 1240000, // VIP double points — above a million on purpose, see abbreviate()
+  9: 1240000, // VIP double points — above a million on purpose, see formatCompactPoints()
   10: 5200,
   11: 3100,
   12: null, // Weekend flash 1.3× — paused

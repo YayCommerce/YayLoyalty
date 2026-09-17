@@ -4,16 +4,17 @@ import { ledgerEntrySchema } from './ledger.schema';
 
 /**
  * Mirrors DashboardRestController::define_item_schema() — `GET /dashboard`
- * and `POST /dashboard/notices/dismiss`. The Pro-only `GET /dashboard/pro`
- * lives in dashboard-pro.schema.ts; per-key notice data in
- * dashboard-notice.schema.ts.
+ * and the dismiss args in its register_routes(). The Pro-only
+ * `GET /dashboard/pro` lives in dashboard-pro.schema.ts; per-key notice data
+ * in dashboard-notice.schema.ts.
  *
  * THOSE PHP METHODS ARE THE SOURCE OF TRUTH. The contract is frozen in
  * `plans/260916-1558-admin-dashboard-page/plan.md`.
  *
- * Null rules (server-owned, see Services\Dashboard\DashboardMath): a zero
- * denominator yields `null`, never `0`. `prev_delta_pct: null` renders as
- * "no previous period"; `rate: null` / `currency_amount: null` render as "—".
+ * Null rules (server-owned, see Utils\PointsMath, mirrored by
+ * lib/points-math): a zero denominator yields `null`, never `0`.
+ * `prev_delta_pct: null` renders as "no previous period"; `rate: null` /
+ * `currency_amount: null` render as "—".
  *
  * Notices carry NO copy. `{ key, severity, fingerprint, data }` only — title,
  * body and actions are composed client-side in
@@ -142,7 +143,7 @@ export const dashboardNoticeSchema = z.object({
    * that user until the fingerprint changes and the notice re-surfaces.
    */
   fingerprint: z.string(),
-  /** Per-key shape; narrowed by the refinements in dashboard-page.notice-copy.ts. */
+  /** Per-key shape; narrowed by parseNoticeData() in dashboard-notice.schema.ts. */
   data: z.record(z.string(), z.unknown()),
 });
 

@@ -20,8 +20,8 @@ export default function CampaignsPage() {
       {/*
         Pro gets its own richer table component (grouped, drag-to-reorder,
         priority) rather than an enhanced version of the Lite markup below —
-        see CampaignTable's docblock for why ProGate wraps it even though
-        this branch is unreachable in a Lite build.
+        guarded by IS_PRO_BUILD (not ProGate) so the @/pro import is
+        tree-shaken — see the @/pro barrel comment.
       */}
       {IS_PRO_BUILD && <CampaignTable />}
 

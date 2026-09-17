@@ -7,7 +7,7 @@ import type { DashboardProSlots } from '../dashboard-page.pro-slots';
 import { DashboardStatTile } from './DashboardStatTile';
 
 /**
- * Lite's view of the four Pro surfaces (artboard 1a nav note): the same
+ * Lite's view of the four Pro surfaces: the same
  * positions, each carrying the PRO badge, so the pair of tiers reads as the
  * screen growing rather than being rearranged. Ships in both builds; never
  * imports from `@/pro`.

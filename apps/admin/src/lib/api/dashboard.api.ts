@@ -13,7 +13,7 @@ import {
  *
  * `scenario` is a dev-only switch: the server registers the argument only
  * under WP_DEBUG, and this client forwards it only on the Vite dev server
- * (`import.meta.env.DEV`), so a built bundle never sends it. Artboard review
+ * (`import.meta.env.DEV`), so a built bundle never sends it. Scenario review
  * therefore happens on the dev server; production builds are verified on
  * real data (plan decision).
  */

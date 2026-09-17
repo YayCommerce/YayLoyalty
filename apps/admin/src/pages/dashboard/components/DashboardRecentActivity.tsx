@@ -40,7 +40,7 @@ function Frame({ description, children }: { description?: string | null; childre
 }
 
 /**
- * Six newest ledger rows — a pulse check, not a feed (artboard 2c #5): when
+ * Six newest ledger rows — a pulse check, not a feed: when
  * more happened today than fits, the header says what fraction is shown.
  * Event text comes from `describeLedgerEntry`, never from the server.
  */

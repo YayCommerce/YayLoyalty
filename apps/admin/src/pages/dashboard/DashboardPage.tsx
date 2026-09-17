@@ -29,7 +29,7 @@ import type { DashboardProSlots } from './dashboard-page.pro-slots';
  * present, and a single Pro/Lite branch (Phase 6) mirroring
  * CampaignsPage.tsx.
  *
- * `?scenario=` in the hash route swaps the payload for a wireframe artboard
+ * `?scenario=` in the hash route swaps the payload for a fixture scenario
  * on the dev server only (see dashboard.api.ts) — reviewers type the URL,
  * there is no UI control.
  */
@@ -64,7 +64,7 @@ export default function DashboardPage() {
         query.isPending ? sprintf(__('Loading the %s…', 'yayloyalty'), rangeSubline(range)) : rangeSubline(range)
       }
     >
-      {/* The thin bar under the header is the only page-level loading indicator (artboard 2b #2). */}
+      {/* The thin bar under the header is the only page-level loading indicator. */}
       <div
         aria-hidden
         className={cn('bg-muted -mt-3 h-0.5 w-full overflow-hidden rounded', !query.isPending && 'invisible')}

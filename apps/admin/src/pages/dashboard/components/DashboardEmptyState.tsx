@@ -7,7 +7,7 @@ import { formatPoints } from '@/lib/helpers/points.helper';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 /**
- * "Your points program is live" (artboard 2a) — shown while the store has no
+ * "Your points program is live" — shown while the store has no
  * members and no points issued. Not a wizard: a fresh install already runs
  * three campaigns and one reward, so this confirms what is live and links
  * to where it is edited.

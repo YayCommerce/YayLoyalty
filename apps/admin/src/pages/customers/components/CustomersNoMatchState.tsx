@@ -1,4 +1,4 @@
-import { sprintf, __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 
 import { Button } from '@/components/ui/button';
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
@@ -14,7 +14,7 @@ import { countLabel, type FilterDropSuggestion } from '../customers-page.filter-
  * ever appear once 2+ filters are active: with exactly 1, the only
  * candidate is "no filters at all", which isn't a suggestion worth making
  * over the "Clear all filters" button already below (the server doesn't
- * even compute suggestions in that case — see `suggestions_for_no_match()`).
+ * even compute suggestions in that case — see `candidates_for_no_match()`).
  */
 export function CustomersNoMatchState({
   activeCount,

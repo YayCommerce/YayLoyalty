@@ -14,7 +14,7 @@ import { DashboardAnomalySettlements } from './DashboardAnomalySettlements';
 const CONFIG: ChartConfig = { issued: { label: __('Issued', 'yayloyalty'), color: 'var(--chart-1)' } };
 
 /**
- * Artboard 6b: one bar per day — totals, not campaigns — with yesterday at
+ * One bar per day — totals, not campaigns — with yesterday at
  * a different weight and the average as a reference line, beside the
  * audit entry for the campaign edited that day. Needs no extra request:
  * bars come from `notice.data.daily`.

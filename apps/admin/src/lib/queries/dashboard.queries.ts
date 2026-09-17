@@ -11,8 +11,8 @@ export const DASHBOARD_QUERIES = {
       queryKey: ['dashboard', 'overview', range, scenario ?? null],
       queryFn: () => getDashboard({ range, scenario }),
       // A range change is a new queryKey; keep the old series on screen
-      // (dimmed, `isPlaceholderData`) instead of dropping to the skeleton —
-      // artboard 2b: "previously loaded figures shown, dimmed".
+      // (dimmed, `isPlaceholderData`) instead of dropping to the skeleton:
+      // previously loaded figures stay shown, dimmed.
       placeholderData: keepPreviousData,
       retry: 1,
       staleTime: 60_000,

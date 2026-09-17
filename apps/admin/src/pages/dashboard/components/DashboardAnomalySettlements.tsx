@@ -6,7 +6,7 @@ import { pointsAsCurrency } from '../dashboard-page.notice-copy';
 
 /**
  * Three ways to settle a jump, each with its real cost, including doing
- * nothing (artboard 6b #5). The dashboard does not choose. The footnote
+ * nothing. The dashboard does not choose. The footnote
  * publishes the rule from `data.threshold` so a merchant can predict it.
  *
  * HONEST ABOUT WHAT IS KNOWN: the ledger can say how many orders and points

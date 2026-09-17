@@ -14,7 +14,7 @@ import type { CustomerBalanceRange, CustomerExpiringSoon, CustomerTier } from '@
  */
 export type BalanceRangeValue = CustomerBalanceRange;
 export type ExpiringSoonValue = CustomerExpiringSoon;
-/** 'all' + the tiers the backend hands out. No tiers table exists yet — any non-'all' value matches zero rows (intentional, see CustomerRowFilters.php). Pro-only — see CustomersToolbar.tsx. */
+/** 'all' + CustomerFilters::TIER_RANGES's names — the backend emits no tier. No tiers table exists yet — any non-'all' value matches zero rows (intentional, see CustomerRepository::where_fragments()). Pro-only — see CustomersToolbar.tsx. */
 export type TierValue = CustomerTier;
 
 /**

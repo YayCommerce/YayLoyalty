@@ -11,7 +11,7 @@ import type { RowFilters } from './customers-page.filter-rows';
  *
  * The Tier FILTER reuses the same idea, but as a real, working filter rather
  * than a display-only stand-in: any non-'all' `tier` wire param always
- * matches zero rows server-side (`CustomerRowFilters.php`'s
+ * matches zero rows server-side (`CustomerRepository::where_fragments()`'s
  * `c.tier_id IS NOT NULL` is never true), so instead of sending one, this
  * substitutes the REAL, already-working `balance_range` filter for the
  * equivalent bucket — same SQL, so pagination/totals/no-match suggestions

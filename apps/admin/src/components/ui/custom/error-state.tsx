@@ -21,10 +21,11 @@ const KIND_ICON: Record<ErrorStateKind, typeof AlertTriangle> = {
 
 /**
  * One shared place for "a query/mutation failed" UI across the admin app —
- * every page used to hand-roll its own `<p className="text-destructive ...">`
- * (see CustomersPage.tsx / CampaignsPage.tsx before this). Same minimal
- * inline banner as those did, but with the extension points already wired
- * in instead of every call site needing a second pass later:
+ * Customers and the dashboard use this; the campaign surfaces (CampaignTable,
+ * BuiltInCampaignList, ConditionsPreview) still hand-roll their own
+ * `<p className="text-destructive ...">` and should migrate. Minimal inline
+ * banner, with the extension points already wired in instead of every call
+ * site needing a second pass later:
  *
  * - `kind` picks the icon now (`KIND_ICON` above) and is where a genuinely
  *   different layout/copy per failure type (offline vs 403 vs 500) plugs in.
@@ -32,9 +33,9 @@ const KIND_ICON: Record<ErrorStateKind, typeof AlertTriangle> = {
  *   don't pass one.
  *
  * Callers only have `kind="generic"` to reach for today — nothing yet
- * distinguishes a network failure from a 500 (see `customersQuery.error` /
- * `campaigns.error`, currently unread) — but the prop exists so that mapping
- * is a change in one place, not a hunt through every page.
+ * distinguishes a network failure from a 500 (every call site destructures
+ * only `isError`, not the underlying error) — but the prop exists so that
+ * mapping is a change in one place, not a hunt through every page.
  */
 export function ErrorState({
   message,

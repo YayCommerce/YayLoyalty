@@ -3,7 +3,7 @@ import { __ } from '@wordpress/i18n';
 import { Segmented, SegmentedItem } from '@/components/ui/segmented';
 import { ProGate } from '@/components/pro/ProGate';
 
-/** Totals | Break down by campaign — the header control beside the range selector (artboard 1b #2). */
+/** Totals | Break down by campaign — the header control beside the range selector. */
 export function DashboardCampaignBreakdownToggle({ on, onChange }: { on: boolean; onChange: (on: boolean) => void }) {
   return (
     <div className="flex items-center gap-2">

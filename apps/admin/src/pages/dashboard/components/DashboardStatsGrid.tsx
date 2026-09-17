@@ -7,7 +7,7 @@ import { PointsValue } from '@/components/ui/custom/points-value';
 import { liabilitySubline, ordersSubline, rangeSubline } from '../dashboard-page.copy';
 import { DashboardStatTile, DashboardStatTileSkeleton } from './DashboardStatTile';
 
-/** Label order is the wireframe's; the skeleton reuses it so both states share one grid. */
+/** Label order is fixed; the skeleton reuses it so both states share one grid. */
 export const STAT_LABELS = () => [
   __('Members', 'yayloyalty'),
   __('Points issued', 'yayloyalty'),
@@ -16,7 +16,7 @@ export const STAT_LABELS = () => [
   __('Redemption rate', 'yayloyalty'),
 ];
 
-/** auto-fit / minmax(184px, 1fr): six tiles on one row at 1440, wrapping as equals below (artboard 2c fix #3). */
+/** auto-fit / minmax(184px, 1fr): six tiles on one row at 1440, wrapping as equals below. */
 const GRID = 'grid gap-4 grid-cols-[repeat(auto-fit,minmax(184px,1fr))]';
 
 /**

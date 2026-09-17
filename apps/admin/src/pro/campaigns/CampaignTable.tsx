@@ -69,9 +69,9 @@ interface DisplayCampaign extends Campaign {
 }
 
 /**
- * Pro's grouped, prioritised campaigns table — deleted from the Lite build
- * with the rest of `src/pro/`. Lite keeps its own flat, real list in
- * CampaignsPage (a real feature, not gated behind an upgrade overlay).
+ * Pro's grouped, prioritised campaigns table — tree-shaken out of the Lite
+ * bundle with the rest of `src/pro/`. Lite keeps its own flat, real list in
+ * BuiltInCampaignList (a real feature, not gated behind an upgrade overlay).
  *
  * ONE LIST, NOT TWO: reads `useCampaignsQuery()` from `@/lib/queries/campaign.queries`
  * — the same real hook BuiltInCampaignList reads (there, filtered to
@@ -82,8 +82,8 @@ interface DisplayCampaign extends Campaign {
  * `config`/`conditions`/`status`/dates — see toDisplayCampaign() — because
  * the real Campaign shape has no room for precomputed presentation strings,
  * by design. `pointsLast30Days` is the one exception: it is genuinely dummy,
- * client-side-only data (see campaign-points-dummy.ts) because no real
- * aggregate exists yet to read it from at all.
+ * client-side-only data (see campaign-points-dummy.ts) because no endpoint
+ * yet exposes a per-campaign 30-day figure for the whole list.
  *
  * Drag-to-reorder changes display order only, never `priority` (a separate
  * stored value) — scoped per group, since priority only ever compares
@@ -153,8 +153,8 @@ export function CampaignTable() {
       return;
     }
 
-    // Display order only. `priority` is a separate, stored value set in the
-    // campaign editor — dragging never reads or writes it, it only changes
+    // Display order only. `priority` is a separate, stored value set
+    // through the campaign write API (no SPA editor yet) — dragging never reads or writes it, it only changes
     // which slot in the group each row's own (unchanged) row occupies.
     const reordered = arrayMove(groupRows, fromIndex, toIndex);
     const groupIds = new Set(groupRows.map((row) => row.id));
@@ -243,7 +243,7 @@ export function CampaignTable() {
               </Select>
             )}
 
-            {/* Inert: this screen has no "create" flow yet — the editor only edits an existing (dummy) campaign. */}
+            {/* Inert: no create flow and no campaign editor exist in the SPA yet. */}
             <Button size="sm" onClick={() => {}}>
               {__('Add campaign', 'yayloyalty')}
             </Button>
@@ -275,7 +275,7 @@ export function CampaignTable() {
                   )}
                 </p>
                 <div className="flex flex-wrap items-center gap-3 pt-1">
-                  {/* Inert: no write endpoint back this screen yet — this alert only ever describes the read side of the demo data. */}
+                  {/* Inert: no write client/mutation wired yet (routes exist in CampaignRestController). */}
                   <Button variant="primary" size="sm" onClick={() => {}}>
                     {__('Switch "Points for purchases" back on', 'yayloyalty')}
                   </Button>
@@ -542,7 +542,7 @@ function SortableCampaignRow({ row, isTied }: { row: DisplayCampaign; isTied: bo
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            {/* Inert: no editor and no write endpoint back this screen yet. */}
+            {/* Inert: no editor and no write client/mutation wired yet (routes exist in CampaignRestController). */}
             <DropdownMenuItem onSelect={() => {}}>{__('Duplicate', 'yayloyalty')}</DropdownMenuItem>
             <DropdownMenuItem variant="destructive" disabled={row.is_builtin} onSelect={() => {}}>
               {__('Delete', 'yayloyalty')}

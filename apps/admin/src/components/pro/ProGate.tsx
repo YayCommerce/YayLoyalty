@@ -7,9 +7,9 @@ import { UpgradeToProBadge, UpgradeToProOverlay } from '@/components/pro/Upgrade
  * Renders pro content, or the upgrade prompt when this is a Lite build.
  *
  * THIS COMPONENT SHIPS IN BOTH BUILDS. It lives in `components/pro/`, which
- * the Lite build KEEPS — as opposed to `@/pro/`, which the Lite build
- * DELETES. Lite needs this to sell the upgrade; without it there would be no
- * upsell surface at all.
+ * the Lite build KEEPS — as opposed to `@/pro/`, which is TREE-SHAKEN OUT OF
+ * THE LITE BUNDLE. Lite needs this to sell the upgrade; without it there
+ * would be no upsell surface at all.
  *
  * Gating is `IS_PRO_BUILD`, the build-plan constant (see
  * `@/lib/is-pro-build`) — not a runtime check.

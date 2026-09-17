@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 /**
- * Mirrors LedgerRestController::get_item_schema().
+ * Mirrors LedgerRestController::define_item_schema().
  *
  * THAT PHP METHOD IS THE SOURCE OF TRUTH. The enums below must stay in step
  * with Enums\LedgerType and Enums\LedgerSource.

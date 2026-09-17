@@ -1,7 +1,8 @@
 /**
  * Pro features — the ONLY import surface for this directory.
  *
- * THIS ENTIRE DIRECTORY IS DELETED FOR THE LITE BUILD.
+ * THIS ENTIRE DIRECTORY IS TREE-SHAKEN OUT OF THE LITE BUNDLE (nothing under
+ * apps/ ships; run.sh deletes only includes/Pro).
  *
  * Do not deep-import from `@/pro/...` anywhere in shared code. Everything
  * must come through this barrel, imported behind the build-plan constant, so the
@@ -60,10 +61,11 @@ export function proBundleMarker(): string {
  * makes the whole subtree tree-shakeable: in a Lite build the call site is
  * eliminated, this module has no importer, and Rollup drops it entirely.
  *
- * Currently registers nothing — the pro campaign surfaces land in a later
- * phase. It is not dead weight even so: it keeps the sentinel genuinely
- * reachable in a Pro build, without which validate-build.php's "absent from
- * Lite" assertion would pass vacuously.
+ * Registers nothing beyond the sentinel: Pro surfaces are reached through
+ * the barrel exports behind IS_PRO_BUILD at each call site. It is not dead
+ * weight even so: it keeps the sentinel genuinely reachable in a Pro build,
+ * without which validate-build.php's "absent from Lite" assertion would
+ * pass vacuously.
  */
 export function registerPro(): void {
   // Referencing the marker keeps it in the Pro bundle. Assigning to a

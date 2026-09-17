@@ -29,7 +29,7 @@ const EXTRA_COLORS = ['var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)'];
  * Issued-vs-redeemed line chart with the 7/30/90 range control. `children`
  * is the header controls slot (Phase 6's breakdown toggle); `extraSeries`
  * adds thin per-campaign lines. When every point is zero the axes still
- * draw and an overlay says so (artboard 2a #3).
+ * draw and an overlay says so.
  */
 export function DashboardPointsChart({
   series,
@@ -89,7 +89,7 @@ export function DashboardPointsChart({
               axisLine={false}
               width={56}
               allowDecimals={false}
-              // An all-zero series still draws a "0" axis line and the dates (artboard 2a #3).
+              // An all-zero series still draws a "0" axis line and the dates.
               domain={[0, empty ? 1 : 'auto']}
               ticks={empty ? [0] : undefined}
               tickFormatter={(value: number) => formatCompactPoints(value)}

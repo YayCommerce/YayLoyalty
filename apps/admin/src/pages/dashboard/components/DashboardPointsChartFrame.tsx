@@ -62,7 +62,7 @@ export function DashboardPointsChartFrame({
   );
 }
 
-/** Same card, same 280px body; the range control stays live so nothing shifts when data lands (artboard 2b). */
+/** Same card, same 280px body; the range control stays live so nothing shifts when data lands. */
 export function DashboardPointsChartSkeleton({
   range,
   onRangeChange,

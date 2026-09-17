@@ -5,7 +5,7 @@ import { DashboardStatsGridSkeleton } from './DashboardStatsGrid';
 import { DashboardTopEarnersSkeleton } from './DashboardTopEarners';
 
 /**
- * First paint (artboard 2b): everything that does not depend on the query
+ * First paint: everything that does not depend on the query
  * renders for real — panel titles, column headers, the range control — and
  * only values are placeholders, with the same row counts and heights as the
  * loaded panels (5 tiles, 280px chart, 3 earners, 6 activity rows) so the

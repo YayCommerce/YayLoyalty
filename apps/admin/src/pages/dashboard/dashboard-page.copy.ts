@@ -9,7 +9,7 @@ import type { DashboardRange, DashboardSeriesPoint } from '@/lib/schema/dashboar
  * The dashboard's sentence builders — every tile sub-line, delta line and
  * denominator in one reviewable place. Pure: no React, no fetch.
  *
- * Null rules (artboard 2a): a count of 0 is a real measurement and renders
+ * Null rules: a count of 0 is a real measurement and renders
  * as "0"; a ratio with no denominator renders as "—"; a change with no
  * previous period reads "no previous period", never 0%.
  */
@@ -80,7 +80,7 @@ export function isSeriesEmpty(series: DashboardSeriesPoint[]): boolean {
 
 /**
  * Tile lines that replace the tidy 30-day delta when a notice makes it
- * misleading (artboards 6a #3, 6b #2). Pure: returns strings or nothing.
+ * misleading. Pure: returns strings or nothing.
  */
 export function noticeTileOverrides(
   series: DashboardSeriesPoint[],

@@ -21,7 +21,7 @@ import { CustomersSaveSegmentDialog } from './CustomersSaveSegmentDialog';
 /**
  * Pro-only saved-segment picker shown above the Customers toolbar.
  *
- * DELETED FROM THE LITE BUILD along with the rest of `src/pro/` — see
+ * TREE-SHAKEN OUT OF THE LITE BUNDLE along with the rest of `src/pro/` — see
  * `CustomersFilterBar.tsx`'s `IS_PRO_BUILD` early return, which is what
  * makes this reachable at all.
  *

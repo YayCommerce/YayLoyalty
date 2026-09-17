@@ -2,8 +2,8 @@ import { formatCompactPoints, formatPoints, isCompactedPoints } from '@/lib/help
 import { YayLoyaltyToolTip } from '@/components/ui/custom/tooltip';
 
 /**
- * Displays a points/balance figure, compacted ("150k+", "2M+", "1B+") once it
- * crosses 100,000 — see points.helper.ts. Compacted values get a hover
+ * Displays a points/balance figure, compacted ("150k+", "2M+", "1B+") at or
+ * above 100,000 — see points.helper.ts. Compacted values get a hover
  * tooltip with the exact number; anything already shown in full doesn't
  * (nothing to reveal).
  *

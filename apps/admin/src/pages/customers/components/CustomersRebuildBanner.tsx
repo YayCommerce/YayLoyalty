@@ -3,7 +3,7 @@ import { __ } from '@wordpress/i18n';
 import { Button } from '@/components/ui/button';
 
 /**
- * Balance-rebuild-in-progress banner (artboard 4b). Grey with a left accent —
+ * Balance-rebuild-in-progress banner. Grey with a left accent —
  * deliberately NOT an error colour: this is progress, not failure. A plain
  * bordered block rather than `Alert variant="destructive"`, which is the
  * tempting-but-wrong shortcut here.
@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/button';
  */
 export function CustomersRebuildBanner() {
   return (
-    <div className="border-muted-foreground/40 bg-muted/40 flex flex-col gap-3 rounded-md border-l-4 border p-4">
+    <div className="border-muted-foreground/40 bg-muted/40 flex flex-col gap-3 rounded-md border border-l-4 p-4">
       <div className="flex flex-col gap-1">
         <span className="text-sm font-semibold">
           {__('Balances are being rebuilt — 1,240 of 2,431 checked', 'yayloyalty')}
@@ -29,7 +29,11 @@ export function CustomersRebuildBanner() {
           )}
         </span>
       </div>
-      <div className="bg-background h-2 w-full overflow-hidden rounded-full border" role="progressbar" aria-valuenow={51}>
+      <div
+        className="bg-background h-2 w-full overflow-hidden rounded-full border"
+        role="progressbar"
+        aria-valuenow={51}
+      >
         <div className="bg-muted-foreground h-full rounded-full" style={{ width: '51%' }} />
       </div>
       <div className="flex flex-wrap items-center gap-4 text-xs">

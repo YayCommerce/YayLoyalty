@@ -4,7 +4,7 @@ import type { ExtraSeries } from './components/DashboardPointsChart';
 
 /**
  * What the Pro tier adds to the dashboard, as slots the Free layout already
- * has room for (artboard 1b: "the screen grows, nothing is rearranged").
+ * has room for: the screen grows, nothing is rearranged.
  * Pro fills them from `@/pro/dashboard/DashboardProPanels`; Lite fills them
  * with `<ProGate inline />` teasers (DashboardProTeasers). The page renders
  * the same tree either way.

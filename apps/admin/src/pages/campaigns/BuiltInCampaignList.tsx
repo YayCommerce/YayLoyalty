@@ -17,13 +17,12 @@ import { Segmented, SegmentedItem } from '@/components/ui/segmented';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 
-/** Display order for the three built-ins — the trigger group order the wireframe and CampaignTable both use. */
+/** Display order for the three built-ins — the trigger group order CampaignTable also uses. */
 const BUILTIN_TRIGGER_ORDER: Campaign['trigger'][] = ['purchase', 'signup', 'review'];
 
 /**
  * Lite's campaigns list: three always-present, editable cards — no add, no
- * priority, no conditions, no schedule. Section "1a. Campaigns (Free)" in
- * the wireframe.
+ * priority, no conditions, no schedule.
  *
  * ONE LIST, NOT TWO: reads the same `useCampaignsQuery()` Pro's CampaignTable
  * reads (`@/lib/queries/campaign.queries`, backed by `@/lib/api/campaign.api`
@@ -89,7 +88,7 @@ export default function BuiltInCampaignList() {
 
 function UpsellBanner() {
   // Same destination as UpgradeToProBadge / UpgradeToProOverlay in
-  // components/pro/upgrade-to-pro.tsx — duplicated rather than imported,
+  // components/pro/UpgradeToPro.tsx — duplicated rather than imported,
   // since that constant isn't exported.
   const yayLoyaltyProUrl = 'https://yaycommerce.com/yayloyalty-for-woocommerce/';
 
@@ -120,9 +119,9 @@ function BuiltInCampaignCard({
   expanded: boolean;
   onToggleExpanded: () => void;
 }) {
-  // Local edits only — Save never calls the write endpoint (see
-  // built-in-campaign-list.api.ts's docblock for the swap point). Cancel
-  // just resets these to what the campaign loaded with.
+  // Local edits only — Save is inert: lib/api/campaign.api.ts has no update
+  // client yet (CampaignRestController::update_item() is real). Cancel just
+  // resets these to what the campaign loaded with.
   const [status, setStatus] = useState(campaign.status);
   const [config, setConfig] = useState(campaign.config);
   const isOn = status === 'active';

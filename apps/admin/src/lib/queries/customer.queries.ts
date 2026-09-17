@@ -88,7 +88,8 @@ const BULK_ADJUST_CONCURRENCY = 10;
  * bulk endpoint, so this fires one request per customer, `BULK_ADJUST_CONCURRENCY`
  * at a time (one failed customer doesn't abort the rest — each chunk resolves
  * via `Promise.allSettled`) and reports how many of each. Adjustments are
- * deliberately not idempotent (see `customer.api.ts`), so this is only ever
+ * deliberately not idempotent (see `CustomerRestController::adjust_points()`,
+ * `LedgerService::adjust()` and `Enums\ReferenceType`), so this is only ever
  * invoked once per dialog submit — the dialog disables its submit button for
  * the duration via `isAdjustSubmitting` (see `customers-page.bulk-actions.ts`).
  */

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { cacheStripTimes } from '../dashboard-page.copy';
 
 /**
- * Artboard 2c #2: above the member threshold the figures come from a cached
+ * Above the member threshold the figures come from a cached
  * payload, and the strip says so plainly with the last/next times so a
  * merchant is never guessing whether they are looking at "now". Rendered
  * only when the response says `cached: true`.

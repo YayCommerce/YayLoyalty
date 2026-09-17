@@ -114,7 +114,7 @@ export function countLabel(count: number): string {
 
 /**
  * Mirrors how the server built the candidate it counted (see
- * `CustomerRowFilters::suggestions_for_no_match()`): 'without' reverts just
+ * `CustomerRowFilters::candidates_for_no_match()`): 'without' reverts just
  * that one filter; 'only' (search) reverts every OTHER filter and keeps the
  * typed search term.
  */
