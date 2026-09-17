@@ -4,20 +4,10 @@ namespace YayLoyalty\Enums;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Merchant intent for a definition row (campaign, reward; tiers when they land).
- *
- * STATUS IS INTENT; LIVENESS IS DERIVED.
- *
- * The stored vocabulary is active / paused / draft / archived. There is
- * deliberately no `scheduled` and no `ended` stored: whether something is live
- * right now is computed at read time from status plus starts_at/ends_at, and is
- * evaluated against the EVENT's timestamp — an order's award time, not the
- * current request time — so a late-processed order is scored under the rules
- * that were live when it happened. `scheduled` and `ended` exist only as the
- * derived answers returned by resolve_display().
- *
- * No cron job may flip a status. If one appears, the model is being worked
- * around.
+ * Merchant intent for a definition row. Status is intent, liveness is
+ * derived: `scheduled` and `ended` are never stored, only computed from the
+ * date window against the event's timestamp, so a late-processed order is
+ * scored under the rules live when it happened. No cron may flip a status.
  */
 final class Status {
 
@@ -33,11 +23,7 @@ final class Status {
     /** Retired by the merchant. Kept for history; not offered for editing. */
     public const ARCHIVED = 'archived';
 
-    /**
-     * Derived display states — NEVER stored. resolve_display() returns one of
-     * these in place of `active` when the date window puts the row outside its
-     * live period. Excluded from all() on purpose.
-     */
+    /** Derived display states, never stored; excluded from all(). */
     public const SCHEDULED = 'scheduled';
     public const ENDED     = 'ended';
 
@@ -78,16 +64,11 @@ final class Status {
     }
 
     /**
-     * Is a row live at a given instant?
+     * Whether a row is live at $at. ends_at is exclusive, so back-to-back windows never overlap.
      *
-     * Shared by every definition table so the rule exists once.
-     *
-     * ends_at is EXCLUSIVE, so back-to-back windows never overlap.
-     *
-     * @param string      $status    Stored status.
      * @param string|null $starts_at UTC MySQL datetime, or null for no lower bound.
      * @param string|null $ends_at   UTC MySQL datetime, or null for no upper bound.
-     * @param string      $at        UTC MySQL datetime of the EVENT being scored.
+     * @param string      $at        UTC MySQL datetime of the event being scored.
      */
     public static function is_live_at( string $status, ?string $starts_at, ?string $ends_at, string $at ): bool {
         if ( self::ACTIVE !== $status ) {
@@ -106,16 +87,9 @@ final class Status {
     }
 
     /**
-     * The label to show for a row: its stored status, or — when that status is
-     * `active` — `scheduled` / `ended` derived from the date window.
+     * The label to show: the stored status, or `scheduled` / `ended` derived
+     * from the date window when it is `active`.
      *
-     * Stored statuses other than `active` (paused, draft, archived) are returned
-     * unchanged: the date window only qualifies an active row.
-     *
-     * $at is the instant to evaluate against. For a display badge that is
-     * "now"; for scoring a late order it is the order's award time.
-     *
-     * @param string      $status    Stored status.
      * @param string|null $starts_at UTC MySQL datetime, or null for no lower bound.
      * @param string|null $ends_at   UTC MySQL datetime, or null for no upper bound.
      * @param string      $at        UTC MySQL datetime to evaluate against.

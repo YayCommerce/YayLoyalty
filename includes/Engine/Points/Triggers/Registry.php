@@ -6,13 +6,7 @@ use YayLoyalty\Repositories\CampaignRepository;
 
 defined( 'ABSPATH' ) || exit;
 
-/**
- * Trigger name → handler.
- *
- * with_lite_handlers() is the construction site for the 1.0 set and the seam
- * Pro's future handlers (birthday, milestones…) will attach through, so the
- * engine never needs to know which build it is in.
- */
+/** Trigger name → handler. with_lite_handlers() is the seam Pro's handlers attach through. */
 final class Registry {
 
     /** @var array<string, TriggerHandler> */
@@ -39,9 +33,7 @@ final class Registry {
         return $this->handlers[ $trigger ];
     }
 
-    /**
-     * The Lite handlers, then whatever the build adds.
-     */
+    /** The Lite handlers, then whatever the build adds. */
     public static function with_lite_handlers( CampaignRepository $campaigns ): self {
         $registry = new self();
 
@@ -50,10 +42,7 @@ final class Registry {
         $registry->register( new ReviewHandler() );
 
         /**
-         * Fires so Pro can register handlers for its own triggers.
-         *
-         * Internal seam for first-party Pro code, not a documented
-         * third-party API.
+         * Lets Pro register handlers for its own triggers. Internal seam, not a public API.
          *
          * @param Registry $registry
          */

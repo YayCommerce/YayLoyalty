@@ -4,18 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { countLabel, type FilterDropSuggestion } from '../customers-page.filter-suggestions';
 
-/**
- * Filters that combine to zero results — not the same screen as a genuinely
- * empty store (see CustomersEmptyState.tsx). Suggestions are real counts the
- * server folds into the list response (`toFilterDropSuggestions`), and "Use
- * this" actually reverts that one filter via `onUseSuggestion`.
- *
- * The suggestion list — and the description line beneath the title — only
- * ever appear once 2+ filters are active: with exactly 1, the only
- * candidate is "no filters at all", which isn't a suggestion worth making
- * over the "Clear all filters" button already below (the server doesn't
- * even compute suggestions in that case — see `candidates_for_no_match()`).
- */
+/** Filters combining to zero results, with real "drop this filter" counts; distinct from an empty store. */
 export function CustomersNoMatchState({
   activeCount,
   suggestions,

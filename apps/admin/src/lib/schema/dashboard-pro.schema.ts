@@ -3,16 +3,9 @@ import { z } from 'zod';
 import { campaignTriggerSchema } from './campaign.schema';
 import { dashboardRangeSchema } from './dashboard.schema';
 
-/**
- * Mirrors the Pro-only DashboardProRestController (`GET /dashboard/pro`,
- * rest base `dashboard-pro`). THAT PHP CLASS IS THE SOURCE OF TRUTH; the
- * contract is frozen in `plans/260916-1558-admin-dashboard-page/plan.md`.
- *
- * `referrals` / `tier_distribution` are `null` until their tables exist; the
- * Pro SPA substitutes `pro/dashboard/dashboard-pro-dummy.ts` for a null.
- */
+/** Mirrors DashboardProRestController, the source of truth. referrals and tier_distribution are null until their tables exist. */
 
-/** `null` until the referrals table exists — the SPA substitutes its dummy. */
+/** null until the referrals table exists; the SPA substitutes its dummy. */
 export const dashboardReferralsSchema = z
   .object({
     completed: z.number().int(),
@@ -22,7 +15,7 @@ export const dashboardReferralsSchema = z
 
 export type DashboardReferrals = z.infer<typeof dashboardReferralsSchema>;
 
-/** `null` until the tiers table exists — the SPA substitutes its dummy. */
+/** null until the tiers table exists; the SPA substitutes its dummy. */
 export const dashboardTierDistributionSchema = z
   .array(
     z.object({
@@ -42,12 +35,7 @@ export const dashboardCampaignSeriesPointSchema = z.object({
 
 export type DashboardCampaignSeriesPoint = z.infer<typeof dashboardCampaignSeriesPointSchema>;
 
-/**
- * Enough of the campaign row for the SPA to compose its meta line with
- * `givesLabel()` / `conditionsLabel()` (pro/campaigns/campaign-labels.ts) —
- * no server-composed labels. Field is `trigger` (wire), not the DB column
- * `trigger_type`; see Models\Campaign.
- */
+/** Enough of the campaign row to compose the meta line client-side; no server labels. */
 export const dashboardTopCampaignSchema = z.object({
   campaign_id: z.number().int(),
   name: z.string(),

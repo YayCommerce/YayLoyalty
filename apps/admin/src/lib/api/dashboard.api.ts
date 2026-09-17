@@ -7,16 +7,7 @@ import {
   type DismissDashboardNoticeParams,
 } from '@/lib/schema/dashboard.schema';
 
-/**
- * `GET /dashboard` — the landing page's single payload, `.parse()`d at the
- * boundary like every other response (see customer.api.ts).
- *
- * `scenario` is a dev-only switch: the server registers the argument only
- * under WP_DEBUG, and this client forwards it only on the Vite dev server
- * (`import.meta.env.DEV`), so a built bundle never sends it. Scenario review
- * therefore happens on the dev server; production builds are verified on
- * real data (plan decision).
- */
+/** GET /dashboard. `scenario` is forwarded only on the dev server, so a built bundle never sends it. */
 export async function getDashboard(params: {
   range: DashboardRange;
   refresh?: boolean;
@@ -30,7 +21,7 @@ export async function getDashboard(params: {
   return dashboardResponseSchema.parse(await api.get('dashboard', { searchParams }).json());
 }
 
-/** `POST /dashboard/notices/dismiss` — per-user; the server takes the user from the session. */
+/** POST /dashboard/notices/dismiss; the server takes the user from the session. */
 export async function dismissDashboardNotice(
   params: DismissDashboardNoticeParams,
 ): Promise<DismissDashboardNoticeParams> {

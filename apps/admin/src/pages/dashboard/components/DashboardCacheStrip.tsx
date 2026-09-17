@@ -3,12 +3,7 @@ import { __ } from '@wordpress/i18n';
 import { Button } from '@/components/ui/button';
 import { cacheStripTimes } from '../dashboard-page.copy';
 
-/**
- * Above the member threshold the figures come from a cached
- * payload, and the strip says so plainly with the last/next times so a
- * merchant is never guessing whether they are looking at "now". Rendered
- * only when the response says `cached: true`.
- */
+/** Says the figures are cached, with last/next times; rendered only when `cached` is true. */
 export function DashboardCacheStrip({
   generatedAt,
   nextRefreshAt,

@@ -4,24 +4,14 @@ namespace YayLoyalty\Engine\Points;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Everything the engine may know about the event being scored.
- *
- * Immutable and WordPress-free. The engine never reads $wpdb, WooCommerce
- * globals, the current user or time(): whatever it needs arrives here, built
- * by ContextFactory (the one class that touches WooCommerce) or by hand in a
- * unit test. That is what keeps the engine testable without a bootstrap.
- *
- * NO actor_id. Who is logged in is a Ledger argument, not a scoring input —
- * manual adjustment, cron expiry and order-hook earning must share one code
- * path, and the engine must not know which one it is on.
- *
- * `extra` carries trigger-specific facts the generic shape has no column for.
- * In 1.0 it holds exactly one key, `verified_purchase`, for reviews. Anything
- * two triggers need becomes a real typed property instead.
+ * Everything the engine may know about the event. Immutable, WordPress-free,
+ * so the engine is testable without a bootstrap. No actor_id: who is logged
+ * in is a ledger argument, not a scoring input. `extra` is for one-trigger
+ * facts; anything two triggers need becomes a typed property.
  */
 final class Context {
 
-    /** The virtual coupon our own redemption applies. Never counts as "used a coupon". */
+    /** Our own redemption coupon; must never count as "used a coupon". */
     public const REDEEM_COUPON_CODE = 'yayloyalty-redeem';
 
     /** @var int|null Null for a guest. */
@@ -143,10 +133,7 @@ final class Context {
     }
 
     /**
-     * Applied coupons other than our own redemption coupon.
-     *
-     * Redeeming points must not read as "used a coupon", or a campaign with
-     * exclude_coupon_orders would silently stop earning for anyone who redeems.
+     * Excludes our redemption coupon, or exclude_coupon_orders would stop earning for anyone who redeems.
      *
      * @return string[]
      */
@@ -172,7 +159,6 @@ final class Context {
     }
 
     /**
-     * @param mixed $fallback
      * @return mixed
      */
     public function get_extra( string $key, $fallback = null ) {

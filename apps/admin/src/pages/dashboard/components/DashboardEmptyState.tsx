@@ -7,15 +7,9 @@ import { formatPoints } from '@/lib/helpers/points.helper';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 /**
- * "Your points program is live" — shown while the store has no
- * members and no points issued. Not a wizard: a fresh install already runs
- * three campaigns and one reward, so this confirms what is live and links
- * to where it is edited.
- *
- * STATIC COPY ON PURPOSE. Reading the campaigns would mean `GET /campaigns`,
- * which needs MANAGE_CAMPAIGNS — a VIEW-only user would get a 403 and a
- * toast on the landing page. The built-ins are fixed by the installer, so
- * naming them here is safe; the edit links are capability-gated instead.
+ * Shown while the store has no members. Static copy on purpose: reading
+ * the campaigns needs MANAGE_CAMPAIGNS, and a view-only user would get a
+ * 403 toast on the landing page. The built-ins are fixed by the installer.
  */
 export function DashboardEmptyState({ pointsPerCurrencyUnit }: { pointsPerCurrencyUnit: number }) {
   const one = parseWPCurrency(1);

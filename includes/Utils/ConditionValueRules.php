@@ -4,35 +4,14 @@ namespace YayLoyalty\Utils;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Shape-level rules shared by every `{type, operator, value}` condition set in
- * this plugin — currently Models\CampaignConditionSet and
- * Models\RewardConditionSet.
- *
- * WHAT LIVES HERE, AND WHAT DOESN'T. A condition set's TYPE VOCABULARY — which
- * types exist, their operators, and any feature-specific value shape such as
- * campaigns' `money` or `country_list` — stays on that feature's own Enum and
- * Set class. Campaigns and rewards are independent features and that
- * vocabulary is expected to diverge. What lives here is the handful of VALUE
- * SHAPES both already share byte-for-byte — `int`, `int_list`, `string_list`
- * — plus the small helpers their edge cases depend on (`between` pairs, list
- * caps, the integer check). A bug in one of those is a bug in every condition
- * type built on it, in both features, so it gets fixed in exactly one place
- * instead of two that can silently drift apart.
- *
- * Stateless and all-static — no plugin option, no WordPress state — so either
- * feature's Set class can call it without depending on the other.
+ * Value-shape rules shared by CampaignConditionSet and RewardConditionSet:
+ * int, int_list, string_list and their helpers. Type vocabularies and
+ * feature-specific shapes (money, country_list) stay on the owning classes.
  */
 final class ConditionValueRules {
 
     /**
-     * Normalise a value using a spec's `normalize` hints: `array` (widen a
-     * scalar to a one-element list; null becomes `[]`), `int` (cast list
-     * items), `uppercase` / `lowercase`, `dedupe`.
-     *
-     * Covers every shape with no structure of its own (`int`, `int_list`,
-     * `string_list`, `tier`). A shape that IS structured — campaigns' `money`
-     * and `country_list` — is normalised by its owning class before ever
-     * reaching here; this function only sees what is left after that.
+     * Applies a spec's normalize hints: array (widen a scalar; null → []), int, uppercase, lowercase, dedupe.
      *
      * @param string[] $hints
      * @param mixed    $value
@@ -67,8 +46,7 @@ final class ConditionValueRules {
     }
 
     /**
-     * Validate a non-empty list of ids or non-empty strings, with an optional
-     * cap on its length.
+     * Validates a non-empty list of ids or strings, optionally capped.
      *
      * @param mixed $value
      */
@@ -97,11 +75,7 @@ final class ConditionValueRules {
     }
 
     /**
-     * Validate an `int` shape value: a plain integer, or — with the `between`
-     * operator — a `[low, high]` pair. `$min`, when given, rejects a value (or
-     * either bound of a pair) below it; e.g. `redemption_count`, which cannot
-     * be negative. Campaigns never passes `$min`, so this reproduces its
-     * original int-shape check exactly.
+     * Validates an int value, or a [low, high] pair with `between`; $min rejects either bound below it.
      *
      * @param mixed $value
      */

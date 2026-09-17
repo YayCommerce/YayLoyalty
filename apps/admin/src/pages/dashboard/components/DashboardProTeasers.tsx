@@ -6,12 +6,7 @@ import { ProGate } from '@/components/pro/ProGate';
 import type { DashboardProSlots } from '../dashboard-page.pro-slots';
 import { DashboardStatTile } from './DashboardStatTile';
 
-/**
- * Lite's view of the four Pro surfaces: the same
- * positions, each carrying the PRO badge, so the pair of tiers reads as the
- * screen growing rather than being rearranged. Ships in both builds; never
- * imports from `@/pro`.
- */
+/** Lite's view of the Pro slots: same positions with the PRO badge. Never imports from @/pro. */
 export function DashboardProTeasers({ children }: { children: (slots: DashboardProSlots) => ReactNode }) {
   return (
     <>

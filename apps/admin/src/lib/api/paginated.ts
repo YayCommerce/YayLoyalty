@@ -2,12 +2,7 @@ import { z } from 'zod';
 
 import { PaginatedResponse } from '@/lib/api/api.type';
 
-/**
- * Build a zod schema for the paginated envelope around a given item schema.
- *
- * Exists so every collection endpoint validates the envelope the same way and
- * no module redefines the pagination shape locally.
- */
+/** The paginated envelope around an item schema, so no module redefines the shape locally. */
 export function paginatedSchema<T extends z.ZodTypeAny>(item: T) {
   return z.object({
     currentPage: z.number().int(),
@@ -18,9 +13,7 @@ export function paginatedSchema<T extends z.ZodTypeAny>(item: T) {
   });
 }
 
-/**
- * Parse a paginated response, keeping the shared PaginatedResponse<T> type.
- */
+/** Parses a paginated response as PaginatedResponse<T>. */
 export function parsePaginated<T extends z.ZodTypeAny>(item: T, payload: unknown): PaginatedResponse<z.infer<T>> {
   return paginatedSchema(item).parse(payload);
 }

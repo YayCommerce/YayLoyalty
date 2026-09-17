@@ -2,13 +2,7 @@ import { z } from 'zod';
 
 import { type DashboardNotice, type DashboardNoticeKey } from './dashboard.schema';
 
-/**
- * Per-key `notice.data` shapes — see Services\Dashboard\DashboardNotices
- * (three real detectors) and Controllers\DashboardFixture (`mail_failures`,
- * `balance_rebuild`, fixture-only). The wire carries only these fields plus
- * `key/severity/fingerprint`; every sentence is composed client-side in
- * `pages/dashboard/dashboard-page.notice-copy.ts`.
- */
+/** Per-key notice.data shapes, mirroring DashboardNotices and the fixture-only keys. Copy is composed client-side. */
 
 export const negativeBalanceDataSchema = z.object({
   count: z.number().int(),
@@ -26,7 +20,7 @@ export const pointsJumpWhatChangedSchema = z.object({
   campaign_id: z.number().int(),
   name: z.string(),
   updated_at: z.string(),
-  /** '' when the editor is unknown (campaign written before `updated_by` was recorded). */
+  /** '' when the editor is unknown. */
   updated_by_name: z.string(),
   orders_affected: z.number().int(),
   points_issued: z.number().int(),
@@ -43,7 +37,7 @@ export const pointsJumpDataSchema = z.object({
   threshold: z.object({ multiple: z.number(), min_orders: z.number().int() }),
   /** WooCommerce Orders list filtered to the month; the day is named in the link text. */
   orders_admin_url: z.string(),
-  /** May be empty: the jump is real regardless of cause. Says who edited when — never what changed. */
+  /** May be empty: the jump is real regardless of cause. Who edited when, never what. */
   what_changed: z.array(pointsJumpWhatChangedSchema),
 });
 
@@ -79,10 +73,7 @@ const DATA_SCHEMAS = {
   balance_rebuild: balanceRebuildDataSchema,
 } as const;
 
-/**
- * Narrow a wire notice to its per-key data. `null` when the data does not
- * match — the strip then skips that notice rather than white-screening.
- */
+/** Narrows a wire notice to its per-key data; null on mismatch so the strip skips it rather than white-screening. */
 export function parseNoticeData(notice: DashboardNotice): TypedNotice | null {
   const schema = isKnownKey(notice.key) ? DATA_SCHEMAS[notice.key] : null;
   const result = schema?.safeParse(notice.data);
@@ -94,7 +85,7 @@ function isKnownKey(key: string): key is DashboardNoticeKey {
   return key in DATA_SCHEMAS;
 }
 
-/** The `points_jump` notice, if present and well-formed — the anomaly panel's input. */
+/** The points_jump notice, if present and well-formed. */
 export function findPointsJump(notices: DashboardNotice[]): { notice: DashboardNotice; data: PointsJumpData } | null {
   const notice = notices.find((n) => n.key === 'points_jump');
   const parsed = notice ? pointsJumpDataSchema.safeParse(notice.data) : null;

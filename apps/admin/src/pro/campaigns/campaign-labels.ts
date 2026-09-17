@@ -3,12 +3,7 @@ import { __, sprintf } from '@wordpress/i18n';
 import { parseWPCurrency } from '@/lib/helpers/format.helper';
 import type { CampaignTrigger } from '@/lib/schema/campaign.schema';
 
-/**
- * Campaign meta-line labels composed client-side from the real
- * `trigger` / `config` / `conditions` — the campaign wire shape carries no
- * presentation strings by design. Shared by CampaignTable (Campaigns page)
- * and DashboardTopCampaigns (Pro dashboard); no new label logic lives here.
- */
+/** Campaign meta-line labels composed from the real fields; the wire carries no presentation strings. */
 
 export function givesLabel(trigger: CampaignTrigger, config: Record<string, unknown>): string {
   if (trigger === 'purchase') {
@@ -25,7 +20,7 @@ export function givesLabel(trigger: CampaignTrigger, config: Record<string, unkn
         );
   }
 
-  // Every other trigger's config carries a flat `points` — see Campaign::config_schema() / YayLoyaltyPro::add_config_keys().
+  // Every other trigger's config carries a flat `points`.
   return sprintf(/* translators: %s: points awarded. */ __('%s points', 'yayloyalty'), String(config.points ?? 0));
 }
 
@@ -36,9 +31,7 @@ export function conditionsLabel(conditions: unknown): string {
     return __('No conditions', 'yayloyalty');
   }
 
-  // Mirrors Enums\CampaignConditionType's vocabulary loosely (slug -> title
-  // case) rather than a hardcoded label per type — good enough for a table
-  // column; a merchant-facing editor would need the real per-type map.
+  // Slug → title case; a merchant-facing editor would need the real per-type map.
   return list
     .map((condition) => humanizeConditionType(String((condition as { type?: unknown }).type ?? '')))
     .join(', ');

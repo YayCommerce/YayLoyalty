@@ -6,9 +6,6 @@ use YayLoyalty\Helpers\SettingsHelper;
 
 defined( 'ABSPATH' ) || exit;
 
-/**
- * Activate and deactivate methods of the plugin.
- */
 class ActDeact {
 
     public static function install_woocommerce_admin_notice() {
@@ -39,15 +36,9 @@ class ActDeact {
     }
 
     /**
-     * Activate on every blog in the network.
-     *
-     * get_sites() defaults to a limit of 100, so a naive call silently skips
-     * every blog past the first hundred — they would run without tables until
-     * something noticed. Paginate explicitly.
-     *
-     * switch_to_blog() is wrapped in try/finally: a throw inside
-     * single_activate() would otherwise leave the process pointed at the wrong
-     * blog for the remainder of the request.
+     * Activates on every blog. Paginated: get_sites() defaults to 100 and
+     * would silently skip the rest. try/finally so a throw cannot leave the
+     * process on the wrong blog.
      */
     private static function activate_network(): void {
         $paged    = 1;
@@ -81,9 +72,7 @@ class ActDeact {
     }
 
     /**
-     * Create tables on a blog added after the plugin was network-activated.
-     *
-     * Hooked to wp_initialize_site; without it, new blogs never get tables.
+     * Creates tables on a blog added after network activation.
      *
      * @param \WP_Site $new_site
      */
@@ -109,11 +98,8 @@ class ActDeact {
     }
 
     protected static function single_activate() {
-        // Tables, DB version stamp, capabilities, built-in campaigns/reward and
-        // one-time starter customers — see Installer::install().
         Installer::install();
 
-        // Warm the settings read (no write — defaults merge on every read).
         SettingsHelper::get_settings();
     }
 }

@@ -8,24 +8,13 @@ use YayLoyalty\Models\Campaign;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * yayloyalty_campaigns.
- *
- * The event column is `trigger_type` (see CampaignsTable): a plain identifier,
- * so no query here backticks anything.
- *
- * CACHES THE UNFILTERED SET, FILTERS LIVENESS IN PHP. The engine scores an
- * order at its creation time, not now(), so a cache of "live campaigns" keyed
- * on today would be wrong for a late-processed order. all_non_archived() is
- * safe to cache because it does not depend on the instant; live_for_trigger()
- * applies the date window per call. Every write through this repository drops
- * the cache, so nothing else has to remember to.
- *
- * Plain object, not a singleton — see docs/code-standards.md section 8. Not
- * final so a unit test can stub the two read methods the engine depends on.
+ * yayloyalty_campaigns. Caches the unfiltered set and filters liveness in
+ * PHP: a cache of "live today" would be wrong for a late-processed order.
+ * Every write drops the cache. Not final so a test can stub the reads.
  */
 class CampaignRepository extends AbstractRepository {
 
-    /** Slug of the built-in purchase campaign seeded by the installer. */
+    /** The built-in purchase campaign seeded by the installer. */
     public const DEFAULT_PURCHASE_SLUG = 'default-purchase';
 
     private const CACHE_GROUP = 'yayloyalty';
@@ -65,10 +54,7 @@ class CampaignRepository extends AbstractRepository {
     }
 
     /**
-     * Every non-archived campaign, highest priority first, ties to the newest.
-     *
-     * One cache key for the whole table: a store has a handful of campaigns,
-     * and one key means one invalidation.
+     * Every non-archived campaign, highest priority first, ties to the newest. One cache key for the table.
      *
      * @return Campaign[]
      */
@@ -99,9 +85,7 @@ class CampaignRepository extends AbstractRepository {
     }
 
     /**
-     * Campaigns live for a trigger at a given instant, in selection order.
-     *
-     * $at is the EVENT's timestamp, not now() — see Campaign::is_live_at().
+     * Campaigns live for a trigger at $at (the event's timestamp, not now()), in selection order.
      *
      * @return Campaign[]
      */
@@ -116,13 +100,7 @@ class CampaignRepository extends AbstractRepository {
         );
     }
 
-    /**
-     * The built-in purchase campaign (archived excepted — it reads the
-     * non-archived cache).
-     *
-     * Multiplier campaigns multiply its rate, and need to know whether it is
-     * active to decide their own eligibility.
-     */
+    /** The built-in purchase campaign, whose rate multiplier campaigns multiply. Null if archived. */
     public function find_default_purchase(): ?Campaign {
         foreach ( $this->all_non_archived() as $campaign ) {
             if ( self::DEFAULT_PURCHASE_SLUG === $campaign->get_slug() ) {
@@ -157,17 +135,12 @@ class CampaignRepository extends AbstractRepository {
     public function flush_cache(): void {
         wp_cache_delete( self::CACHE_KEY, self::CACHE_GROUP );
 
-        /**
-         * Fires after any campaign write. Internal seam: the dashboard cache
-         * subscribes because its notices depend on campaign status.
-         */
+        /** Fires after any campaign write. Internal seam. */
         do_action( 'yayloyalty_campaigns_changed' );
     }
 
     /**
-     * Paginated list with optional trigger/status filters.
-     *
-     * @param array $args Plus 'trigger' and 'status'.
+     * @param array $args paginate()'s, plus 'trigger' and 'status'.
      * @return array{items: Campaign[], total: int, page: int, per_page: int}
      */
     public function paginate_filtered( array $args = [] ): array {
@@ -196,13 +169,7 @@ class CampaignRepository extends AbstractRepository {
         return $this->paginate( $args );
     }
 
-    /**
-     * Insert a built-in row if its slug is not already present.
-     *
-     * Idempotent by slug so repeated installs cannot duplicate it. Guarded on
-     * the upgrade path (activation calls install() directly); the unique key
-     * on slug is the backstop.
-     */
+    /** Inserts a built-in row unless its slug is present; the unique key on slug is the backstop. */
     public function seed_builtin( Campaign $campaign ): void {
         if ( null !== $this->find_by_slug( $campaign->get_slug() ) ) {
             return;

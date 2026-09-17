@@ -4,34 +4,16 @@ namespace YayLoyalty\Enums;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The vocabulary for a campaign's `conditions` — the eligibility rules ANDed
- * together to decide whether a campaign applies to a given order.
- *
- * PHP 7.4 has no enums, so this is a final class of constants plus a per-type
- * map (schema()). The map is the single source the save-time validator and any
- * future admin UI read from: the operators each type accepts and the shape its
- * value must take, in ONE place. Operators are NOT interchangeable across types.
- *
- * DECLARATION ORDER IS EVALUATION COST. Types are declared and returned
- * cheap-first: checks satisfied from data already loaded for the order (roles,
- * cart contents, the order's currency / country / gateway) come before the
- * three that each need their own aggregate query — `lifetime_points`,
- * `order_count`, `lifetime_spend`. Pro\Services\ConditionsEvaluator iterates
- * this order and short-circuits on the first failed condition without having
- * to sort anything.
- *
- * `all()` / `all_known()` / `is_valid()` / `is_known()` / `operators_for()` /
- * `assert()` are ConditionTypeMethods — identical to RewardConditionType's,
- * so that logic lives once. This class supplies only what actually differs:
- * the vocabulary itself (the constants and schema() below) and UNAVAILABLE.
+ * The vocabulary for a campaign's `conditions`: constants plus a per-type
+ * schema() the validator reads. Declaration order is evaluation cost,
+ * cheap-first, so the evaluator short-circuits without sorting. Shared
+ * accessors live in ConditionTypeMethods.
  */
 final class CampaignConditionType {
 
     use ConditionTypeMethods;
 
-    /*
-     * Operators. Shared spelling; each type accepts only a subset — see schema().
-     */
+    // Each type accepts only a subset; see schema().
     public const OP_IN      = 'in';
     public const OP_NOT_IN  = 'not_in';
     public const OP_GTE     = 'gte';
@@ -41,7 +23,7 @@ final class CampaignConditionType {
     public const OP_EQ      = 'eq';
     public const OP_BETWEEN = 'between';
 
-    /* --- cheap: satisfied from data already in memory for the order --- */
+    // Cheap: satisfied from data already loaded for the order.
 
     public const USER_ROLE        = 'user_role';
     public const CUSTOMER_IDS     = 'customer_ids';
@@ -52,30 +34,19 @@ final class CampaignConditionType {
     public const CATEGORY_IN_CART = 'category_in_cart';
 
     /**
-     * tier — the tier system does not exist yet; its schema is a later task.
-     *
-     * The constant and its operator set are defined now so the vocabulary is
-     * complete and a future UI has one source, but tier is deliberately left
-     * out of all(), so nothing here lets a merchant create a tier condition
-     * today. is_known() still recognises it, so a stored row is never treated
-     * as corrupt.
-     *
-     * `gte` / `lte` on tier are ORDINAL comparisons ("Silver or above"), which
-     * a slug cannot express — so the future `yayloyalty_tiers` table needs an
-     * integer ordinal column (`rank` in docs/data-model.md) to compare against.
+     * Defined ahead of the tier system; excluded from all() (see UNAVAILABLE).
+     * gte/lte are ordinal ("Silver or above"), so tiers will need a rank column.
      */
     public const TIER = 'tier';
 
-    /* --- expensive: each needs an aggregate query per evaluation --- */
+    // Expensive: each needs an aggregate query per evaluation.
 
     public const LIFETIME_POINTS = 'lifetime_points';
     public const ORDER_COUNT     = 'order_count';
     public const LIFETIME_SPEND  = 'lifetime_spend';
 
     /**
-     * Types recognised by the schema but not yet offered to merchants. Excluded
-     * from all() so they cannot be created; kept in all_known() so stored rows
-     * round-trip.
+     * Recognised but not yet offered: excluded from all(), kept in all_known() so stored rows round-trip.
      *
      * @var string[]
      */
@@ -84,21 +55,10 @@ final class CampaignConditionType {
     ];
 
     /**
-     * Per-type rules, in evaluation-cost order.
-     *
-     *   operators     string[]  operators this type accepts
-     *   value         string    expected value shape:
-     *                             'string_list'   — non-empty list of strings
-     *                             'int_list'      — non-empty list of integer ids
-     *                             'currency_list' — non-empty list of ISO 4217 codes
-     *                             'country_list'  — { countries: ISO 3166-1 alpha-2[], source }
-     *                             'int'           — an integer; with `between`, a [low, high] pair
-     *                             'money'         — { amount, currency }; amount with `between` is [low, high]
-     *                             'tier'          — slug, or list for in/not_in (gated — see TIER)
-     *   max           int       cap on list length (customer_ids)
-     *   require_keys  string[]  documentary only — nothing reads this key
-     *   source_values string[]  allowed values for the country `source` sub-key
-     *   normalize     string[]  transforms applied on save: array | int | uppercase | lowercase | dedupe
+     * Per-type rules, in evaluation-cost order: operators, value shape
+     * (string_list | int_list | currency_list | country_list | int | money |
+     * tier; `between` takes a [low, high] pair), max list length,
+     * source_values, and the normalize transforms applied on save.
      *
      * @return array<string, array<string, mixed>>
      */

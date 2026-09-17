@@ -34,14 +34,11 @@ export default function Footer({
       }
     };
 
-    // Initial calculation
     updateContainerRect();
 
-    // Listen for window resize and scroll
     window.addEventListener('resize', updateContainerRect);
     window.addEventListener('scroll', updateContainerRect);
 
-    // Use ResizeObserver to watch for container size changes
     let resizeObserver: ResizeObserver | null = null;
     if (containerRef.current && window.ResizeObserver) {
       resizeObserver = new ResizeObserver(updateContainerRect);

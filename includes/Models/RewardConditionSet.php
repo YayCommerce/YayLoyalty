@@ -8,23 +8,10 @@ use YayLoyalty\Utils\Json;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * A reward's `conditions` — an ordered set of RewardCondition value objects.
- *
- * STORAGE. Conditions live in the `conditions` LONGTEXT column already on the
- * rewards table (see RewardsTable) — no new table. The column holds a JSON
- * list written from PHP (LONGTEXT cannot carry a SQL default). An empty list
- * means "no restrictions — the reward is available to everyone". Lists
- * round-trip through the `{ schema_version, items: [...] }` envelope
- * (Json::encode_list / Json::decode_list), same as campaigns.
- *
- * SEMANTICS. Every condition in the set is ANDed. There is no OR and no
- * nesting — a set is a flat list with at most one entry per type.
- *
- * CONDITIONS VS CONFIG. A condition is a fact about the customer being
- * evaluated — `redemption_count` is "how many times THIS customer has claimed
- * THIS reward". A reward-level property that is not customer-specific, such
- * as `max_total` (a global cap on the reward across every customer), belongs
- * in `config`, not here. See Models\Reward's class docblock.
+ * A reward's `conditions`: a flat ANDed list, at most one entry per type,
+ * stored as JSON on the rewards table (empty = available to everyone). A
+ * condition is a fact about the customer; reward-level properties such as
+ * max_total belong in `config`.
  */
 final class RewardConditionSet {
 
@@ -46,8 +33,7 @@ final class RewardConditionSet {
     }
 
     /**
-     * Build from a list of { type, operator, value } maps. Lenient: non-array
-     * entries are dropped and missing keys default. Strictness is validate().
+     * Builds from { type, operator, value } maps. Lenient; strictness is validate().
      *
      * @param array<int, mixed> $list
      */
@@ -63,10 +49,7 @@ final class RewardConditionSet {
         return new self( $conditions );
     }
 
-    /**
-     * Build from the stored column value. Total: malformed JSON yields an
-     * empty set, never an exception (see Utils\Json).
-     */
+    /** Builds from the stored column value; malformed JSON yields an empty set, never an exception. */
     public static function from_json( ?string $raw ): self {
         return self::from_array( Json::decode_list( $raw, [] ) );
     }
@@ -83,10 +66,7 @@ final class RewardConditionSet {
         );
     }
 
-    /**
-     * Encode for the `conditions` column. Same envelope Reward::to_row() uses,
-     * keyed to the shared blob version.
-     */
+    /** Encodes for the `conditions` column, in the envelope Reward::to_row() writes. */
     public function to_json(): string {
         return Json::encode_list( $this->to_array(), Reward::CONFIG_SCHEMA_VERSION );
     }
@@ -106,21 +86,10 @@ final class RewardConditionSet {
         return count( $this->conditions );
     }
 
-    /* ─── normalisation ─────────────────────────────────────────────── */
-
     /**
-     * Canonicalise a raw conditions list for storage:
-     *
-     *   - a scalar becomes a single-element array where the type expects a list
-     *   - ids are cast to int
-     *   - role slugs are lower-cased
-     *   - list values are de-duplicated
-     *   - entries are ordered by evaluation cost (cheap types first), matching
-     *     Enums\RewardConditionType, so an evaluator short-circuits without
-     *     re-sorting
-     *
-     * Best-effort and non-throwing: an unknown type is passed through
-     * untouched for validate() to reject.
+     * Canonicalises a raw list for storage: scalars widened to lists, ids
+     * cast, roles lower-cased, lists de-duplicated, entries ordered
+     * cheap-first. Non-throwing; unknown types pass through for validate().
      *
      * @param array<int, mixed> $list
      * @return array<int, array{type: string, operator: string, value: mixed}>
@@ -167,12 +136,8 @@ final class RewardConditionSet {
         return $out;
     }
 
-    /* ─── validation ────────────────────────────────────────────────── */
-
     /**
-     * Non-throwing check, mirroring Reward::config_is_valid() — not yet wired
-     * into a controller (no reward controller exists). Normalises first, then
-     * validates the result.
+     * Non-throwing check for the save boundary; normalises first.
      *
      * @param array<int, mixed> $list
      */
@@ -241,9 +206,7 @@ final class RewardConditionSet {
                 break;
 
             case 'tier':
-                // Unreachable today: tier is not in RewardConditionType::all(), so
-                // the type check in validate() already threw. Left for when the
-                // tier schema task lifts the gate.
+                // Unreachable until tiers enter RewardConditionType::all().
                 break;
         }
     }

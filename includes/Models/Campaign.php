@@ -9,18 +9,10 @@ use YayLoyalty\Utils\Json;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * An earning rule.
- *
- * Definition table, so this is mutable — unlike LedgerEntry, a campaign is
- * edited in place. It has no service: its invariants (valid trigger, whitelisted
- * and correctly-typed config keys, derived liveness, "built-ins are not
- * archivable") are validation, and validation lives here and in the controller
- * schema. A service wrapping one repository would be ceremony. If a campaign
- * operation ever needs a second table atomically, it earns one.
- *
- * COLUMN vs FIELD: the database column is `trigger_type` (see CampaignsTable for
- * why). Everywhere else — this model's property, its getter, the REST payload —
- * the field is `trigger`. from_row()/to_row() are the single mapping point.
+ * An earning rule. Mutable (a definition, unlike LedgerEntry) and without a
+ * service: its invariants are validation, which lives here and in the
+ * controller schema. The DB column is `trigger_type`; everywhere else the
+ * field is `trigger`, mapped only in from_row()/to_row().
  */
 class Campaign extends AbstractModel {
 
@@ -136,12 +128,10 @@ class Campaign extends AbstractModel {
         return [
             'name'         => $this->name,
             'slug'         => $this->slug,
-            // Model field trigger -> DB column trigger_type.
             'trigger_type' => $this->trigger,
             'status'       => $this->status,
             'priority'     => $this->priority,
             'config'       => Json::encode( $this->config, self::CONFIG_SCHEMA_VERSION ),
-            // A list, not a map — see Json::encode_list().
             'conditions'   => Json::encode_list( $this->conditions, self::CONFIG_SCHEMA_VERSION ),
             'starts_at'    => $this->starts_at,
             'ends_at'      => $this->ends_at,
@@ -178,25 +168,16 @@ class Campaign extends AbstractModel {
     }
 
     /**
-     * Is this campaign live at a given instant?
-     *
-     * $at is the EVENT's timestamp — an order's award time — never now(). A
-     * late-processed order must be scored under the rules that were live when
-     * it happened.
-     *
-     * Delegates to Status::is_live_at() so campaigns, rewards (and tiers, when
-     * they land) share one implementation of the rule rather than three copies.
+     * Whether this campaign is live at $at: the event's timestamp, never now(),
+     * so a late-processed order is scored under the rules live when it happened.
      */
     public function is_live_at( string $at ): bool {
         return Status::is_live_at( $this->status, $this->starts_at, $this->ends_at, $at );
     }
 
     /**
-     * The label to show for this campaign: its stored status, or — when that is
-     * `active` — `scheduled` / `ended` derived from the date window.
-     *
-     * $at defaults to now() because this is a display concern; pass the event's
-     * timestamp to describe how a past order would have seen it.
+     * The label to show: the stored status, or `scheduled` / `ended` derived
+     * from the date window when it is `active`.
      */
     public function display_status( ?string $at = null ): string {
         return Status::resolve_display(
@@ -208,23 +189,9 @@ class Campaign extends AbstractModel {
     }
 
     /**
-     * Does this campaign's `conditions` set match the given customer?
-     *
-     * LITE IS DELIBERATELY PERMISSIVE. Lite stores conditions but cannot
-     * evaluate them, so with no evaluator attached this returns true — a
-     * campaign with conditions still matches.
-     *
-     * The alternative, treating unevaluatable conditions as "never match",
-     * would silently disable every conditional campaign the moment a site
-     * downgraded from Pro. Failing open is the lesser harm here: the
-     * merchant keeps awarding points slightly too broadly rather than
-     * silently stopping.
-     *
-     * Pro's evaluator is stricter in the opposite direction — it FAILS an
-     * unknown condition type, because Pro can evaluate and an unrecognised
-     * type is therefore a real error. Different reasons, different answers.
-     *
-     * @param int $user_id Customer being evaluated.
+     * Whether this campaign's `conditions` match the customer. With no
+     * evaluator attached (Lite) this fails open: failing closed would silently
+     * disable every conditional campaign the moment a site downgraded from Pro.
      */
     public function conditions_match( int $user_id ): bool {
         if ( empty( $this->conditions ) ) {
@@ -232,15 +199,9 @@ class Campaign extends AbstractModel {
         }
 
         /**
-         * Evaluator for campaign `conditions`.
+         * Evaluator for campaign `conditions`; null in Lite. Internal Pro seam, not a public API.
          *
-         * Null in Lite. Pro attaches an object exposing
-         * evaluate( array $conditions, int $user_id ): bool.
-         *
-         * Internal seam for first-party Pro code, not a documented
-         * third-party API.
-         *
-         * @param object|null $evaluator
+         * @param object|null $evaluator Exposes evaluate( array $conditions, int $user_id ): bool.
          */
         $evaluator = apply_filters( 'yayloyalty_campaign_conditions_evaluator', null );
 
@@ -252,29 +213,13 @@ class Campaign extends AbstractModel {
     }
 
     /**
-     * Per-trigger config schema: key => spec.
+     * Per-trigger config schema, key => spec: what `config` may hold and what
+     * config_is_valid() checks against. Lite triggers only; Pro triggers add
+     * theirs through config_whitelist(). Spec types: bool, string,
+     * int|number [min], enum [values], int_list.
      *
-     * The source of truth for what a campaign's `config` may hold, and what
-     * config_is_valid() checks each value against on save.
-     *
-     * Covers the triggers Lite itself defines. Pro triggers — birthday,
-     * first_order, order_count, spend_milestone — carry their own config
-     * vocabulary, contributed through the yayloyalty_campaign_config_whitelist
-     * seam (see config_whitelist()); Lite neither describes nor type-checks them.
-     *
-     * Spec shapes:
-     *   'bool'                              — a JSON boolean
-     *   'string'                            — a JSON string
-     *   'int'   [ 'min' => n ]              — a whole number, optional lower bound
-     *   'number'[ 'min' => n ]              — int or float, optional lower bound
-     *   'enum'  [ 'values' => [ ... ] ]     — a string from a fixed set
-     *   'int_list'                          — a list of whole numbers
-     *
-     * Pro-recognised keys (max_points_per_order, daily_cap, media_bonus_points)
-     * are listed HERE IN LITE on purpose: a site that downgrades must keep its
-     * stored values so an upgrade restores the campaign intact. max_points_per_order
-     * and daily_cap are enforced by Engine\Points\CapPolicy in every build;
-     * media_bonus_points is stored but unused. Do not "tidy" any of them out.
+     * Pro-recognised keys are listed here on purpose: a downgraded site must
+     * keep its stored values so an upgrade restores the campaign intact.
      *
      * @return array<string, array<string, array<string, mixed>>>
      */
@@ -285,7 +230,6 @@ class Campaign extends AbstractModel {
                     'type' => 'number',
                     'min'  => 0,
                 ],
-                // multiplier: points_per_unit of the default campaign × multiplier.
                 'mode'                  => [
                     'type'   => 'enum',
                     'values' => [ 'rate', 'multiplier' ],
@@ -346,11 +290,9 @@ class Campaign extends AbstractModel {
     }
 
     /**
-     * Keys each trigger's config may contain, keyed by trigger.
-     *
-     * Derived from config_schema() so the two never drift, then passed through
-     * the Pro seam. The filter is for Pro to add whitelists for triggers Lite
-     * has no schema entry for at all, not to add keys to these.
+     * Keys each trigger's config may contain, keyed by trigger. Derived from
+     * config_schema() so the two never drift; the filter is for Pro to add
+     * whole triggers, not keys to these.
      *
      * @return array<string, string[]>
      */
@@ -362,10 +304,7 @@ class Campaign extends AbstractModel {
         }
 
         /**
-         * Config keys each campaign trigger may store, keyed by trigger.
-         *
-         * Pro's attach point for its own triggers' config. Internal seam
-         * for first-party Pro code, not a documented third-party API.
+         * Config keys each campaign trigger may store. Internal Pro seam, not a public API.
          *
          * @param array<string, string[]> $whitelist
          */
@@ -373,18 +312,9 @@ class Campaign extends AbstractModel {
     }
 
     /**
-     * Is this config acceptable for this trigger?
-     *
-     * CampaignRestController runs this before a row is written and answers
-     * 4xx on false: a malformed config would otherwise sit dormant in the
-     * database and only misfire when a real order triggers it. The
-     * schema_version stamp Json adds on write is ignored so a stored config
-     * can be read, edited and sent back as is.
-     *
-     * A trigger this build has no schema and no whitelist for was created by
-     * another build (a Pro campaign on a downgraded site). Lite cannot judge
-     * that vocabulary, so it does not reject it — validate_config() preserves
-     * the blob wholesale for the same reason.
+     * Whether a config is acceptable for a trigger; the controller answers 4xx
+     * on false. A trigger this build has no schema or whitelist for came from
+     * another build (Pro campaign on a downgraded site) and is accepted unjudged.
      */
     public static function config_is_valid( string $trigger, array $config ): bool {
         $schema    = self::config_schema()[ $trigger ] ?? null;
@@ -405,8 +335,7 @@ class Campaign extends AbstractModel {
                 return false;
             }
 
-            // A key the filtered whitelist allows but config_schema() does not
-            // describe is a Pro trigger's own key: accept it untyped.
+            // Whitelisted but not in config_schema(): a Pro trigger's own key, accepted untyped.
             $spec = is_array( $schema ) ? ( $schema[ $key ] ?? null ) : null;
 
             if ( null !== $spec && ! self::value_matches_spec( $value, $spec ) ) {
@@ -464,43 +393,17 @@ class Campaign extends AbstractModel {
         }
     }
 
-    /**
-     * Are these conditions acceptable to store?
-     *
-     * Mirrors config_is_valid(): a non-throwing check CampaignRestController
-     * runs before the row is written, answering 4xx rather than letting a bad
-     * set surface later when an order is scored. Rejects an unknown type, an
-     * operator a type does not accept, a wrong value shape, an empty list value,
-     * a duplicate type, a missing required sub-key (currency, source), and
-     * customer_ids past its cap. See Models\CampaignConditionSet.
-     */
+    /** Whether a conditions list is acceptable to store; the controller answers 4xx on false. See CampaignConditionSet. */
     public static function conditions_are_valid( array $conditions ): bool {
         return CampaignConditionSet::is_valid( $conditions );
     }
 
-    /**
-     * Drop config keys that do not belong to this trigger.
-     *
-     * Unknown keys are discarded rather than stored, so a typo cannot sit in the
-     * database looking meaningful. Type checking is config_is_valid()'s job,
-     * which the controller runs first; this only shapes the value that gets
-     * written. schema_version is dropped here because Json re-stamps it on write.
-     *
-     * @param array $config
-     * @return array
-     */
+    /** Drops config keys that do not belong to the trigger. Type checking is config_is_valid()'s job. */
     public static function validate_config( string $trigger, array $config ): array {
         $whitelist = self::config_whitelist()[ $trigger ] ?? null;
 
-        // A trigger this build has no whitelist for was created by another
-        // build — a Pro campaign on a site that downgraded. Lite does not know
-        // that trigger's vocabulary, and "unknown" must never mean "delete":
-        // filtering against an empty whitelist would silently erase the
-        // merchant's configuration the first time anything re-saved the
-        // campaign, and an upgrade would restore an empty campaign.
-        //
-        // Preserving beats validating here. Pro, which does know the
-        // vocabulary, still validates its own triggers normally.
+        // No whitelist means another build's trigger (Pro, on a downgraded site).
+        // Filtering against nothing would erase the merchant's config on the next save.
         if ( null === $whitelist ) {
             return $config;
         }
@@ -516,11 +419,7 @@ class Campaign extends AbstractModel {
         return $clean;
     }
 
-    /**
-     * Default config for a built-in campaign.
-     *
-     * @return array
-     */
+    /** Default config for a built-in campaign. */
     public static function default_config( string $trigger ): array {
         switch ( $trigger ) {
             case CampaignTrigger::PURCHASE:
@@ -622,18 +521,10 @@ class Campaign extends AbstractModel {
     }
 
     /**
-     * Set the stored status.
+     * Sets the stored status and keeps archived_at in step. A built-in cannot
+     * be archived: the engine finds the default purchase campaign by slug.
      *
-     * A built-in campaign cannot be archived: the engine finds the default
-     * purchase campaign by slug (CampaignRepository::DEFAULT_PURCHASE_SLUG)
-     * and the Free UI lists built-ins by is_builtin/trigger, so archiving
-     * would hide a row the rest of the system assumes is there.
-     *
-     * archived_at is kept in step with the status here — stamped on the way in,
-     * cleared on the way out — so no caller has to remember to.
-     *
-     * @throws \InvalidArgumentException When $status is unknown, or when
-     *                                   archiving a built-in.
+     * @throws \InvalidArgumentException When $status is unknown, or when archiving a built-in.
      */
     public function set_status( string $status ): void {
         $status = Status::assert( $status );
@@ -661,16 +552,7 @@ class Campaign extends AbstractModel {
         $this->config = self::validate_config( $this->trigger, $config );
     }
 
-    /**
-     * Normalise a conditions list and store it.
-     *
-     * Mirrors set_config(): the value that lands on the model is the canonical
-     * one — scalars widened to arrays, ids cast to int, country/currency codes
-     * upper-cased, role slugs lower-cased, lists de-duplicated, entries ordered
-     * cheap-first for evaluation. Rejection of a malformed set is
-     * conditions_are_valid()'s job, which the controller runs first. See
-     * Models\CampaignConditionSet.
-     */
+    /** Normalises a conditions list (see CampaignConditionSet) and stores it. Rejection is conditions_are_valid()'s job. */
     public function set_conditions( array $conditions ): void {
         $this->conditions = CampaignConditionSet::normalize( $conditions );
     }

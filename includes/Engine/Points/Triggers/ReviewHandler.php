@@ -10,16 +10,10 @@ use YayLoyalty\Models\Campaign;
 
 defined( 'ABSPATH' ) || exit;
 
-/**
- * Flat points for an approved review.
- *
- * Only `require_verified` is decided here. `daily_cap` is clamped by
- * CapPolicy; `one_per_product` needs a ledger lookup and belongs to the
- * (not yet written) review listener.
- */
+/** Flat points for an approved review. Decides require_verified only; daily_cap is CapPolicy's, one_per_product the listener's. */
 final class ReviewHandler implements TriggerHandler {
 
-    /** Context extra the caller sets: did the reviewer buy the product? */
+    /** Context extra the caller sets: whether the reviewer bought the product. */
     public const EXTRA_VERIFIED_PURCHASE = 'verified_purchase';
 
     public function trigger(): string {

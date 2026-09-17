@@ -4,16 +4,8 @@ namespace YayLoyalty\Enums;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Namespace of a ledger row's reference_id.
- *
- * (user_id, source, reference_type, reference_id) carries the ledger's UNIQUE
- * key, which is the idempotency guarantee against duplicate hooks, order
- * status bouncing and webhook retries.
- *
- * IMPORTANT: MySQL treats NULLs as distinct in a unique index. Rows with a NULL
- * reference — manual adjustments — therefore never collide, which is why manual
- * adjustments are deliberately NOT idempotent: an admin can grant the same
- * points twice on purpose. Intended behaviour, not a defect.
+ * Namespace of a ledger row's reference_id, part of the idempotency key.
+ * NULL (manual adjustments) never collides, so those are not idempotent on purpose.
  */
 final class ReferenceType {
 
@@ -57,9 +49,7 @@ final class ReferenceType {
         ];
     }
 
-    /**
-     * Null is valid: it means "no reference", as on a manual adjustment.
-     */
+    /** Null is valid: "no reference", as on a manual adjustment. */
     public static function is_valid( $value ): bool {
         if ( null === $value ) {
             return true;

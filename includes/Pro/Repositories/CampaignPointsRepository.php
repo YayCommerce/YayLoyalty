@@ -7,18 +7,10 @@ use YayLoyalty\Utils\Table;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Pro-only per-campaign issuance reads over the ledger's `campaign_id`.
- *
- * Standalone (no AbstractRepository) for the same reason as
- * Repositories\DashboardRepository: it is a read-only aggregate, not the
- * owner of a table, and it never writes. Campaign rows themselves come from
- * CampaignRepository::find_campaign() (one SELECT each, hydrated) — no join here.
- *
- * KNOWN MISMATCH while the campaigns SWAP POINT is open: these ids are the
- * real `campaigns` table's, while `GET /campaigns` still serves
- * CampaignRestController::dummy_fixture() ids, so a top campaign here may
- * not appear under the same id on the Campaigns page until that fixture is
- * removed. Harmless on the dev ledger (no `campaign_id` rows yet).
+ * Per-campaign issuance reads over the ledger's campaign_id. Read-only
+ * aggregate, not an AbstractRepository. These are real ids, while
+ * GET /campaigns still serves dummy_fixture() ids, so they may not line up
+ * on the Campaigns page until that fixture is removed.
  */
 class CampaignPointsRepository {
 
@@ -54,9 +46,7 @@ class CampaignPointsRepository {
     }
 
     /**
-     * Points issued per site-timezone day for the given campaigns. Rows only
-     * for (day, campaign) pairs with activity; the caller zero-fills per
-     * campaign with DashboardMath::fill_series.
+     * Points issued per site-timezone day per campaign; only pairs with activity, the caller zero-fills.
      *
      * @param int[] $campaign_ids
      * @return array<int, array{date: string, campaign_id: string, issued: string}>

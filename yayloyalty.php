@@ -56,13 +56,11 @@ if ( ! defined( 'YAYLOYALTY_MENU_ORDER' ) ) {
     define( 'YAYLOYALTY_MENU_ORDER', 3 );
 }
 
-// Defaults to development; a production site MUST define this `false` in
-// wp-config.php, because packaged builds ship without RegisterDev.php.
+// A production site must define this `false`: packaged builds ship without RegisterDev.php.
 if ( ! defined( 'YAYLOYALTY_IS_DEVELOPMENT' ) ) {
     define( 'YAYLOYALTY_IS_DEVELOPMENT', true );
 }
 
-// Plugin classes: YayLoyalty\* → includes/*
 spl_autoload_register(
     function ( $class_name ) {
         $prefix   = __NAMESPACE__;
@@ -83,12 +81,10 @@ spl_autoload_register(
     }
 );
 
-// Scoped admin shell + root adapter (composer classmap: vendor-prefixed/src + adapter).
 require_once __DIR__ . '/vendor/autoload.php';
 require_once __DIR__ . '/YayLoyaltyPluginAdapter.php';
 
-// Boot the shared YayCommerce admin shell early so version election across
-// coexisting Yay plugins happens before menus register.
+// Early, so version election across coexisting Yay plugins happens before menus register.
 add_action(
     'plugins_loaded',
     function () {
@@ -117,23 +113,9 @@ if ( ! function_exists( 'YayLoyalty\\plugin_init' ) ) {
 if ( ! wp_installing() ) {
     add_action( 'plugins_loaded', 'YayLoyalty\\plugin_init' );
 
-    /*
-     * Schema upgrades run on plugins_loaded, deliberately OUTSIDE plugin_init's
-     * WooCommerce guard and NOT on admin_init.
-     *
-     * admin_init fires only for admin pages, admin-ajax and admin-post, so it
-     * misses REST, cron, front-end and WP-CLI — a headless or REST-driven store
-     * would never migrate after an update. Placing it behind the WooCommerce
-     * check would likewise mean a site with WooCommerce temporarily inactive
-     * never migrates.
-     *
-     * Priority 20 so it runs after plugin_init has booted. The version check
-     * inside is a single option read on the common path.
-     */
+    // Outside the WooCommerce guard and not on admin_init, which misses REST, cron and WP-CLI.
     add_action( 'plugins_loaded', [ \YayLoyalty\Database\Installer::class, 'maybe_upgrade' ], 20 );
 
-    // Capability set upgrades, same reasoning: one option read, and roles that
-    // hold a related capability inherit a newly added one.
     add_action( 'plugins_loaded', [ \YayLoyalty\Access\Capabilities::class, 'migrate' ], 20 );
 
     // Blogs created after network activation still need tables.

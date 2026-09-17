@@ -9,17 +9,9 @@ use YayLoyalty\Repositories\CampaignRepository;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Pro-only: explain why a customer does or does not match a campaign's
- * conditions.
- *
- * Registered through `yayloyalty_rest_controllers`, so Lite needs no knowledge
- * of it and the route simply does not exist there — a 404, not a 403. There is
- * nothing to hide: Lite cannot evaluate conditions at all, so the endpoint
- * would have no answer to give.
- *
- * POST despite being read-only. It takes a user id in a body rather than a
- * query string, and a preview is a question about a specific customer — not
- * something that should sit in a URL, a browser history or a server log.
+ * Explains why a customer does or does not match a campaign's conditions.
+ * POST despite being read-only: a question about a specific customer should
+ * not sit in a URL or a server log.
  */
 final class CampaignPreviewRestController extends AbstractRestController {
 
@@ -34,12 +26,7 @@ final class CampaignPreviewRestController extends AbstractRestController {
         $this->evaluator = $evaluator;
     }
 
-    /**
-     * Shares the base of the resource it reports on.
-     *
-     * It owns a sub-route of /campaigns rather than a resource of its own, so
-     * it inherits that resource's capability and schema-filter identity.
-     */
+    /** A sub-route of /campaigns, not a resource of its own. */
     public function get_rest_base(): string {
         return 'campaigns';
     }
@@ -74,8 +61,7 @@ final class CampaignPreviewRestController extends AbstractRestController {
         $user_id    = (int) $request['user_id'];
         $conditions = $campaign->get_conditions();
 
-        // Mirrors Campaign::conditions_match(): no conditions means everyone
-        // qualifies. Stated here too so the preview cannot drift from it.
+        // No conditions means everyone qualifies, as in Campaign::conditions_match().
         if ( empty( $conditions ) ) {
             return [
                 'campaign_id' => (int) $campaign->get_id(),
@@ -90,18 +76,14 @@ final class CampaignPreviewRestController extends AbstractRestController {
         return [
             'campaign_id' => (int) $campaign->get_id(),
             'user_id'     => $user_id,
-            // Not recomputed: folding the same results the caller sees is what
-            // guarantees the verdict and the explanation agree.
+            // Folded from the same results, so verdict and explanation cannot disagree.
             'matches'     => ! in_array( false, array_column( $results, 'matched' ), true ),
             'conditions'  => $results,
         ];
     }
 
     /**
-     * No item schema: this route returns a report, not a resource.
-     *
-     * It registers no write args either, so the mass-assignment machinery in
-     * AbstractRestController has nothing to filter here.
+     * No item schema: this returns a report, not a resource.
      *
      * @return array<string, mixed>
      */

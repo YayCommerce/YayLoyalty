@@ -7,15 +7,9 @@ use YayLoyalty\Utils\PointsMath;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Composes the cacheable, site-wide part of `GET /dashboard`: stats, series,
- * top earners, recent activity. Ratios go through PointsMath so the
- * null rules are tested once; this class only decides which window feeds
- * which figure.
- *
- * Previous liability is approximated as net_balance − net_delta(window): the
- * positive-only filter cannot be rewound without a snapshot, so a customer
- * who crossed zero inside the window is counted slightly differently in the
- * two periods. Documented approximation, not a bug.
+ * Composes the cacheable part of GET /dashboard: stats, series, top earners,
+ * recent activity. Previous liability is approximated as net_balance −
+ * net_delta: the positive-only filter cannot be rewound without a snapshot.
  */
 final class DashboardStats {
 

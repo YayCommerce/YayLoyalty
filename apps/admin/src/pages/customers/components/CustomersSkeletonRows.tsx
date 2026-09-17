@@ -1,11 +1,7 @@
 import { Skeleton } from '@/components/ui/skeleton';
 import { TableCell, TableRow } from '@/components/ui/table';
 
-/**
- * Placeholder rows shown while `useCustomersQuery` is in flight — see
- * `lib/queries/customer.queries.ts`. Two skeleton lines in the first cell
- * match the name+email two-line pattern; every other cell is a single bar.
- */
+/** Placeholder rows while the list loads; the first cell matches the two-line name+email pattern. */
 export function CustomersSkeletonRows({ columnCount }: { columnCount: number }) {
   return (
     <>

@@ -4,23 +4,11 @@ namespace YayLoyalty\Services\Dashboard;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The dashboard's reporting window: N site-timezone calendar days ending
- * today, plus the N days immediately before for "vs previous period" deltas.
- *
- * Pure: the caller injects "now" already carrying the site zone
- * (`new DateTimeImmutable( 'now', wp_timezone() )`), so this class never
- * touches WordPress and is deterministic under test.
- *
- * Bounds are exposed as UTC MySQL strings because every stored DATETIME is
- * UTC (see Utils\Dates). `from` is inclusive, `to` exclusive.
- *
- * DST: `utc_offset_seconds()` is the offset at `from`, and the SQL bucketing
- * applies that single offset to the whole window. After a transition inside
- * the window every daily bucket boundary is off by one hour until `to`, and
- * after a fall-back the last local hour of the final day lands on a date
- * outside `days()` and is dropped from the series (so the chart can total
- * one hour short of the tile). Accepted: once per half-year, one hour, and
- * the window bounds themselves are exact.
+ * The dashboard's reporting window: N site-timezone days ending today, plus
+ * the N before for deltas. Pure: the caller injects "now" in the site zone.
+ * Bounds are UTC MySQL strings, `from` inclusive, `to` exclusive. One UTC
+ * offset (at `from`) buckets the whole window, so a DST transition inside
+ * it shifts daily boundaries by an hour; accepted.
  */
 final class PeriodWindow {
 
@@ -96,8 +84,7 @@ final class PeriodWindow {
     }
 
     /**
-     * Site-timezone calendar dates (`Y-m-d`) covered by the window, ascending.
-     * Always exactly `range()` entries — the chart's x-axis.
+     * Site-timezone dates (Y-m-d) covered by the window, ascending; exactly range() entries.
      *
      * @return string[]
      */
@@ -111,9 +98,7 @@ final class PeriodWindow {
         return $days;
     }
 
-    /**
-     * Seconds to add to a UTC DATETIME so DATE() yields the site calendar day.
-     */
+    /** Seconds to add to a UTC DATETIME so DATE() yields the site calendar day. */
     public function utc_offset_seconds(): int {
         return $this->from->getOffset();
     }

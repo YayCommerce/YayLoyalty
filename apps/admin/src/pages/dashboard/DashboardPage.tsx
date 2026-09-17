@@ -24,14 +24,8 @@ import { noticeTileOverrides, rangeSubline } from './dashboard-page.copy';
 import type { DashboardProSlots } from './dashboard-page.pro-slots';
 
 /**
- * The landing page: composition only. Range state, one query, the notice
- * strip above the tiles, the anomaly panel when a `points_jump` notice is
- * present, and a single Pro/Lite branch (Phase 6) mirroring
- * CampaignsPage.tsx.
- *
- * `?scenario=` in the hash route swaps the payload for a fixture scenario
- * on the dev server only (see dashboard.api.ts) — reviewers type the URL,
- * there is no UI control.
+ * The landing page: composition only, with a single Pro/Lite branch.
+ * `?scenario=` swaps in a fixture on the dev server only; there is no UI control.
  */
 export default function DashboardPage() {
   const [range, setRange] = useState<DashboardRange>(30);
@@ -53,7 +47,6 @@ export default function DashboardPage() {
         data.stats.liability.points_per_currency_unit,
       )
     : {};
-  // A range change keeps the previous payload on screen, dimmed, until the new one lands.
   const isDimmed = query.isPlaceholderData || (query.isFetching && !query.isPending);
 
   return (
@@ -95,10 +88,7 @@ export default function DashboardPage() {
             <DashboardEmptyState pointsPerCurrencyUnit={data.stats.liability.points_per_currency_unit} />
           )}
 
-          {/*
-            One Pro/Lite branch, as in CampaignsPage.tsx. Both sides hand the
-            same slots to the same layout; Lite never imports from `@/pro`.
-          */}
+          {/* Both sides hand the same slots to the same layout; Lite never imports from @/pro. */}
           {IS_PRO_BUILD ? (
             <DashboardProPanels range={range} stats={data.stats} scenario={scenario}>
               {(slots) => (
@@ -139,7 +129,7 @@ export default function DashboardPage() {
   );
 }
 
-/** Tiles, chart and side column — the part of the layout the Pro slots plug into. */
+/** Tiles, chart and side column; where the Pro slots plug in. */
 function DashboardBody({
   data,
   range,

@@ -13,22 +13,10 @@ use YayLoyalty\Utils\Dates;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The only writer of yayloyalty_ledger and the aggregates on
- * yayloyalty_customers.
- *
- * HOW THAT IS ENFORCED, HONESTLY: this is the only class constructed with both
- * repositories, and it is constructed in exactly TWO places, both documented,
- * both reviewed: `Engine\RestAPI::controllers()` (request-time REST) and
- * `Database\InitYayLoyaltyCustomer::maybe_create()` (one-time install
- * bootstrap, outside any request). PHP has no package-private, so that is a
- * convention plus these two named construction sites plus a review rule — NOT
- * something the object graph or the language enforces. Do not hand both
- * repositories to a third place; if one is ever needed, name it here too.
- *
- * Every future movement type (earn, redeem, expire, refund_*) enters through
- * record(). award_for_order() is deliberately absent: PointsEngine computes
- * and writes nothing; the order listener (F01-4) will add earn() here — see
- * Engine/Points/README.md.
+ * The only writer of the ledger and the customer aggregates. Enforced by
+ * convention: constructed in exactly two places, Engine\RestAPI::controllers()
+ * and Database\InitYayLoyaltyCustomer::maybe_create(). Name a third here
+ * before adding it. Every movement type enters through record().
  */
 final class LedgerService {
 
@@ -47,13 +35,9 @@ final class LedgerService {
     }
 
     /**
-     * Manual admin adjustment, positive or negative.
-     *
-     * DELIBERATELY NOT IDEMPOTENT. Adjust rows carry a NULL reference, and MySQL
-     * treats NULLs as distinct in a unique index, so two identical calls create
-     * two rows. That is intended — an admin may grant the same bonus twice on
-     * purpose — and it is why the controller enforces a magnitude ceiling: with
-     * no idempotency, a client that retries after a timeout double-grants.
+     * Manual admin adjustment, positive or negative. Deliberately not
+     * idempotent (NULL reference): an admin may grant the same bonus twice,
+     * which is why the controller enforces a magnitude ceiling.
      *
      * @throws \InvalidArgumentException When points is zero or the type is bad.
      */
@@ -89,9 +73,7 @@ final class LedgerService {
      * @throws \YayLoyalty\Database\QueryException When a write fails.
      */
     private function record( LedgerEntry $draft ): LedgerEntry {
-        // Assert at the SERVICE boundary. PHP 7.4 has no enums, so without this
-        // an invalid value would only surface as a DB error naming a column
-        // rather than the mistake.
+        // No enums in PHP 7.4: without this an invalid type surfaces as a DB error naming a column.
         LedgerType::assert( $draft->get_type() );
         LedgerSource::assert( $draft->get_source() );
         ReferenceType::assert( $draft->get_reference_type() );
@@ -100,18 +82,12 @@ final class LedgerService {
             function () use ( $draft ) {
                 $user_id = $draft->get_user_id();
 
-                // 1. Materialise the row BEFORE locking it. See
-                //    CustomerRepository::ensure_row(): locking a row that does
-                //    not exist takes a gap lock, and two first-touch writers
-                //    would both insert.
+                // Materialise before locking: a missing row gap-locks and two first-touch writers both insert.
                 $this->customers->ensure_row( $user_id );
 
-                // 2. Lock it, then read. Everything below uses this snapshot.
                 $customer = $this->customers->lock_and_get( $user_id );
 
-                // 3. Idempotency, inside the lock. A plain SELECT, not
-                //    INSERT IGNORE — IGNORE would swallow genuine constraint and
-                //    type errors along with the duplicate.
+                // Idempotency inside the lock. A SELECT, not INSERT IGNORE: IGNORE swallows real errors too.
                 $existing = $this->ledger->find_by_reference(
                     $user_id,
                     $draft->get_source(),
@@ -123,19 +99,15 @@ final class LedgerService {
                     return $existing;
                 }
 
-                // 4. Chain balance_after off the locked balance.
                 $balance_after = $customer->get_balance() + $draft->get_points();
 
                 $to_insert = $draft->with_persisted( 0, $balance_after );
                 $insert_id = $this->ledger->insert( $to_insert );
 
-                // 5. Aggregates, per the data model's rules (encoded once on
-                //    LedgerType so they are not open-coded here).
                 $this->apply_aggregates( $draft );
 
                 $persisted = $to_insert->with_persisted( $insert_id, $balance_after );
 
-                // 6. Collect for dispatch AFTER commit — see dispatch_events().
                 $this->pending_events[] = $persisted;
 
                 return $persisted;
@@ -147,9 +119,7 @@ final class LedgerService {
         return $entry;
     }
 
-    /**
-     * Update the cached aggregates for one ledger row.
-     */
+    /** Updates the cached aggregates for one ledger row. */
     private function apply_aggregates( LedgerEntry $entry ): void {
         $type   = $entry->get_type();
         $points = $entry->get_points();
@@ -158,17 +128,14 @@ final class LedgerService {
         $lifetime_redeemed_delta = 0;
 
         if ( LedgerType::affects_lifetime_earned( $type ) ) {
-            // ADJUST counts toward lifetime_earned only when positive: a
-            // negative adjustment must not inflate it, and must not reduce it
-            // either, so it contributes nothing.
+            // A negative ADJUST neither inflates nor reduces lifetime_earned.
             if ( LedgerType::ADJUST !== $type || $points > 0 ) {
                 $lifetime_earned_delta = $points;
             }
         }
 
         if ( LedgerType::affects_lifetime_redeemed( $type ) ) {
-            // lifetime_redeemed = SUM(|redeem|) - SUM(refund_redeem), and it is
-            // unsigned, so a redeem (negative points) increases it.
+            // lifetime_redeemed is unsigned, so a redeem (negative points) increases it.
             $lifetime_redeemed_delta = -$points;
         }
 
@@ -180,24 +147,14 @@ final class LedgerService {
             $lifetime_earned_delta,
             $lifetime_redeemed_delta,
             $activity_at,
-            null // Expiry policy is not implemented yet (points lots/expiry are a
-            // later Pro task — see docs/data-model.md `yayloyalty_lots`).
+            null // Expiry policy is a later Pro task (data-model.md `yayloyalty_lots`).
         );
     }
 
     /**
-     * Fire collected events after the transaction has committed.
-     *
-     * NOT inside the transaction, and the original rationale for doing so was
-     * backwards. A subscriber on a different connection — an object cache write,
-     * an HTTP webhook, a queued job — cannot see uncommitted rows, so it would
-     * observe the change as absent or stale. Cache and HTTP writes are also not
-     * transactional, so a later rollback could not undo them. And firing inside
-     * would hold the customer row lock for the duration of whatever the
-     * subscriber does.
-     *
-     * The 2.0 events outbox is the durable version of this and replaces the
-     * in-memory queue without changing the boundary.
+     * Fires collected events after commit, never inside the transaction: a
+     * subscriber on another connection cannot see uncommitted rows, its
+     * cache/HTTP writes cannot be rolled back, and it would hold the row lock.
      */
     private function dispatch_events(): void {
         $events               = $this->pending_events;

@@ -5,29 +5,20 @@ export function parseWPDate(date: Date | string | undefined) {
   return dateI18n(formats.date, date);
 }
 
-/**
- * "2 days ago"-style relative time for a stored UTC datetime string
- * (`YYYY-MM-DD HH:mm:ss`, no timezone). Parsed as UTC explicitly — a bare
- * `new Date('2026-09-01 12:00:00')` is read in the browser's local time by
- * most engines, which would silently shift "2 days ago" by the site's UTC
- * offset. One date path: this is the only relative-time formatter, built on
- * the same `@wordpress/date` `parseWPDate`/`parseWPTime` already use.
- */
+/** "2 days ago" for a stored UTC datetime. Parsed as UTC explicitly: a bare new Date() reads it as local. */
 export function parseWPRelativeDate(date: string) {
   return humanTimeDiff(utcToDate(date));
 }
 
-/** A stored UTC MySQL datetime (`YYYY-MM-DD HH:mm:ss`) as a Date — the one parsing rule for every consumer. */
+/** A stored UTC MySQL datetime as a Date; the one parsing rule. */
 export function utcToDate(utc: string): Date {
   return new Date(utc.replace(' ', 'T') + 'Z');
 }
 
 /**
- * Format a site-calendar date (`YYYY-MM-DD`, no time — e.g. a dashboard
- * series bucket) without any timezone shift. A bare date string handed to
- * `dateI18n` is read as *browser-local* midnight and then rendered in the
- * site zone, which moves it a day whenever the two differ; pinning it to
- * noon UTC and rendering in UTC keeps the calendar day the server meant.
+ * Formats a site-calendar date without a timezone shift: dateI18n reads a
+ * bare date as browser-local midnight, which moves it a day; pinning to
+ * noon UTC keeps the day the server meant.
  */
 export function parseWPDay(day: string, format?: string) {
   const { formats } = getSettings();

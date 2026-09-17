@@ -2,14 +2,7 @@ import { __, sprintf } from '@wordpress/i18n';
 
 import type { LedgerEntry } from '@/lib/schema/ledger.schema';
 
-/**
- * Compose a human description for a ledger row.
- *
- * DESCRIPTIONS ARE BUILT HERE, NOT STORED. Per the data model, system rows carry
- * no text in the database precisely so their wording stays translatable and
- * cannot go stale when copy changes. `note` exists only on manual adjustments,
- * where an admin's own words are the point.
- */
+/** A human description for a ledger row. Built here, not stored, so system rows stay translatable. */
 export function describeLedgerEntry(entry: LedgerEntry): string {
   if (entry.type === 'adjust') {
     return entry.note?.trim() || __('Manual adjustment', 'yayloyalty');

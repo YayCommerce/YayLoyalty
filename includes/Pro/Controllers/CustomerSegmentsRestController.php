@@ -8,31 +8,13 @@ use YayLoyalty\Pro\Helpers\CustomerSegmentsHelper;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Pro-only: POST/DELETE /yayloyalty/v1/customers/segments — save or remove a
- * Customers-page saved segment, both returning the full remaining list.
- *
- * Shares the base of a resource it does not own (`customers`), same
- * reasoning as CampaignPreviewRestController: registered through
- * `yayloyalty_rest_controllers`, so Lite has no knowledge of it and the
- * route is simply absent — a 404, not a 403.
- *
- * No GET route: the list also reaches the SPA via
- * `yayloyalty_localize_admin_data` (see YayLoyaltyPro::add_segments()), so
- * both POST and DELETE returning the fresh list is enough for the SPA to
- * never refetch.
- *
- * DELETE takes `name` in the JSON body, not a URL path segment: a segment
- * name is arbitrary text (spaces, non-ASCII), and `WP_REST_Request` reads a
- * JSON body regardless of HTTP method — same as the existing POST, so there
- * is no second parsing convention to maintain.
+ * POST/DELETE /customers/segments: save or remove a saved segment, both
+ * returning the remaining list. No GET: the list arrives in the localize
+ * payload. DELETE takes `name` in the body, since a name is arbitrary text.
  */
 final class CustomerSegmentsRestController extends AbstractRestController {
 
-    /**
-     * Owns a sub-route of /customers rather than a resource of its own, so
-     * it inherits that resource's capability identity — see the `title`
-     * note on define_item_schema() below.
-     */
+    /** A sub-route of /customers, not a resource of its own. */
     public function get_rest_base(): string {
         return 'customers';
     }
@@ -119,14 +101,8 @@ final class CustomerSegmentsRestController extends AbstractRestController {
     }
 
     /**
-     * No item schema: this route returns a collection, not a resource, and
-     * registers no write args here (the `args` above are declared directly
-     * on the route instead, since get_write_args() has nothing to filter).
-     *
-     * `title` set explicitly because `customers` is a non-unique
-     * `$rest_base` — CustomerRestController shares it — so any future
-     * `yayloyalty_rest_item_schema` subscriber matching only on the base
-     * would also reach this route unless it checks `title` too.
+     * No item schema: this returns a collection. `title` is set because the
+     * `customers` base is shared, so a schema filter must match on it.
      *
      * @return array<string, mixed>
      */

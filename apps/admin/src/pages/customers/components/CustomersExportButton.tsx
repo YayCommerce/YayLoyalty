@@ -10,15 +10,7 @@ import type { RowFilters } from '../customers-page.filter-rows';
 import { fetchAllMatchingCustomers } from '../customers-page.matching-customers';
 import type { SortDirection, SortKey } from '../customers-page.sort-rows';
 
-/**
- * Split out of `CustomersToolbar` so it can sit in its own header row — see
- * `CustomersFilterBar.tsx` for why (a `ml-auto` button was wrapping onto its
- * own line alongside 3-4 filter controls on a narrower admin viewport).
- *
- * Exports every row matching the current filters — not just the loaded page
- * — via `fetchAllMatchingCustomers`, since there's no server-side export
- * endpoint to delegate to.
- */
+/** Exports every row matching the current filters, client-side: there is no export endpoint. */
 export function CustomersExportButton({
   disabled,
   queryFilters,
@@ -29,9 +21,7 @@ export function CustomersExportButton({
   sort: { by: SortKey; dir: SortDirection };
 }) {
   const [isExporting, setIsExporting] = useState(false);
-  // Aborts a still-running multi-page fetch if this component unmounts
-  // (e.g. the merchant navigates away from Customers) mid-export, instead of
-  // letting a large sequential walk finish in the background for nothing.
+  // Aborts a multi-page fetch if this unmounts mid-export.
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -50,8 +40,6 @@ export function CustomersExportButton({
       }
       exportCustomersToCsv(rows);
     } catch (error) {
-      // A cancellation (unmount) is not a failure to report — it's what was
-      // asked for. Toasting it would confuse a merchant who already left.
       if (isAbortError(error)) return;
       toast.error(await getApiErrorMessage(error, __('Could not export customers.', 'yayloyalty')));
     } finally {

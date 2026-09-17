@@ -2,13 +2,7 @@ import type { ReactNode } from 'react';
 
 import type { ExtraSeries } from './components/DashboardPointsChart';
 
-/**
- * What the Pro tier adds to the dashboard, as slots the Free layout already
- * has room for: the screen grows, nothing is rearranged.
- * Pro fills them from `@/pro/dashboard/DashboardProPanels`; Lite fills them
- * with `<ProGate inline />` teasers (DashboardProTeasers). The page renders
- * the same tree either way.
- */
+/** What Pro adds to the dashboard, as slots the Free layout has room for; Lite fills them with teasers. */
 export type DashboardProSlots = {
   /** Sixth tile, appended to the stats grid. */
   referralsTile: ReactNode;

@@ -9,20 +9,11 @@ use YayLoyalty\Services\LedgerService;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * GET  /yayloyalty/v1/customers                — search/filter/sort/paginate
- * GET  /yayloyalty/v1/customers/{id}            — cached aggregates
- * POST /yayloyalty/v1/customers/{id}/adjust     — manual adjustment
- *
- * The list route is real, not demo data: `CustomerRepository::paginate_list()`
- * queries `yayloyalty_customers` JOINed with `wp_users`. `CustomerRowFilters`/
- * `CustomerRowSort` still own the product's filter/sort semantics — see their
- * own docblocks — this controller only turns a request into their SQL-free
- * criteria/order shapes and a response back into wire rows.
- *
- * Read-side composition lives here rather than in a CustomerService: a service
- * that only forwarded reads to one repository would be ceremony, and it would
- * need the second repository to compose anything — which only LedgerService is
- * allowed to hold.
+ * Customers endpoints: the list (search/filter/sort/paginate), one
+ * customer's aggregates, and manual adjustment. Filter and sort semantics
+ * belong to CustomerRowFilters/CustomerRowSort; this only maps request to
+ * their shapes and rows to the wire. No CustomerService: only LedgerService
+ * may hold both repositories.
  */
 final class CustomerRestController extends AbstractRestController {
 
@@ -53,8 +44,7 @@ final class CustomerRestController extends AbstractRestController {
                     'args'                => array_merge(
                         $this->get_collection_params(),
                         $this->list_filter_params(),
-                        // Overrides the base `orderby` (free-text) with the 6 real sort
-                        // keys — see `CustomerRowSort`. `order` keeps the base definition.
+                        // Replaces the base free-text `orderby` with CustomerRowSort's keys.
                         [
                             'orderby' => [
                                 'description'       => __( 'Column to sort the Customers list by.', 'yayloyalty' ),
@@ -109,13 +99,9 @@ final class CustomerRestController extends AbstractRestController {
     }
 
     /**
-     * Ceiling on a single manual adjustment.
-     *
-     * Adjustments are deliberately not idempotent, so a client that retries
-     * after a timeout double-grants — ky gives up at 20s while a lock wait can
-     * run to 50s. This sanity cap bounds the damage for everyone, administrators
-     * included. The per-role policy ceiling is assert_ceiling(), applied after
-     * it.
+     * Sanity cap on one manual adjustment, administrators included.
+     * Adjustments are not idempotent, so a client retrying after a timeout
+     * double-grants; this bounds the damage.
      */
     private function max_adjustment(): int {
         /**
@@ -127,9 +113,7 @@ final class CustomerRestController extends AbstractRestController {
     }
 
     /**
-     * The Customers-list-only search/filter params — `search` already lives on
-     * `get_collection_params()`, so only the customer-specific ones are added
-     * here. Values/enums mirror `customers-page.filter-rows.ts` exactly.
+     * Customer-specific filter params; enums mirror customers-page.filter-rows.ts.
      *
      * @return array<string, mixed>
      */
@@ -159,16 +143,7 @@ final class CustomerRestController extends AbstractRestController {
         ];
     }
 
-    /**
-     * Real list, real DB — search/filter/sort run in SQL
-     * (`CustomerRepository::paginate_list()`); this method only translates
-     * the request into `CustomerRowFilters`/`CustomerRowSort`'s SQL-free
-     * shapes and the result back into wire rows.
-     *
-     * A zero-row result also gets a `suggestions` field folded into this same
-     * response (see `no_match_suggestions()`) — the admin app fires one
-     * extra request per active filter to ask "what should I drop?" otherwise.
-     */
+    /** The list. A zero-row result carries `suggestions` so the SPA need not ask "what should I drop?" per filter. */
     public function get_items( \WP_REST_Request $request ) {
         $filters = CustomerRowFilters::from_request( $request );
         $order   = CustomerRowSort::to_order(
@@ -200,11 +175,8 @@ final class CustomerRestController extends AbstractRestController {
     }
 
     /**
-     * One list row — deliberately not `Models\Customer::to_array()`: this is
-     * a JOIN projection carrying `name`/`email`, which the customer entity
-     * has no place for. `$wpdb` returns every column as a string, so casting
-     * here is mandatory (the admin app parses with zod `z.number().int()`,
-     * which rejects `"640"`).
+     * One list row: a JOIN projection with name/email, not Customer::to_array().
+     * Casts are mandatory: $wpdb returns strings and the SPA's zod schema rejects "640".
      *
      * @param array<string, mixed> $row
      * @return array<string, mixed>
@@ -223,9 +195,7 @@ final class CustomerRestController extends AbstractRestController {
     }
 
     /**
-     * "Which filter should I drop?" — one `count_list()` call per candidate
-     * `CustomerRowFilters::candidates_for_no_match()` builds, kept only when
-     * non-zero and sorted by count descending.
+     * "Which filter should I drop?": one count per candidate, non-zero only, by count descending.
      *
      * @param array<string, string> $filters
      * @return array<int, array{key: string, count: int}>
@@ -255,8 +225,7 @@ final class CustomerRestController extends AbstractRestController {
         $customer = $this->customers->find_by_user_id( $user_id );
 
         if ( null === $customer ) {
-            // A user with no activity is a member with nothing yet, not a 404.
-            // Report zeroes rather than forcing the client to special-case it.
+            // No activity is a member with nothing yet, not a 404.
             return [
                 'user_id'           => $user_id,
                 'balance'           => 0,
@@ -296,15 +265,13 @@ final class CustomerRestController extends AbstractRestController {
             );
         }
 
-        // Role policy, after the sanity cap: the ceiling is per-role and
-        // administrators bypass it; the cap above binds everyone.
         $within_ceiling = $this->assert_ceiling( $points );
 
         if ( is_wp_error( $within_ceiling ) ) {
             return $within_ceiling;
         }
 
-        // actor_id always comes from the session, never from the request body.
+        // actor_id comes from the session, never the request body.
         $entry = $this->ledger_service->adjust( $user_id, $points, $note, get_current_user_id() );
 
         return $entry->to_array();
@@ -321,8 +288,6 @@ final class CustomerRestController extends AbstractRestController {
                     'context'  => [ 'view' ],
                     'readonly' => true,
                 ],
-                // Every aggregate is server-owned: it is derived from the
-                // ledger and must never be settable from a request.
                 'balance'           => [
                     'type'     => 'integer',
                     'context'  => [ 'view' ],

@@ -2,34 +2,13 @@ import { __ } from '@wordpress/i18n';
 
 import type { CustomerBalanceRange, CustomerExpiringSoon, CustomerTier } from '@/lib/schema/customer.schema';
 
-/**
- * Search/filter option types + labels for the Customers list toolbar.
- *
- * The actual matching runs server-side, in `CustomerRowFilters.php` (mirrors
- * this file's values field-for-field) via `CustomerRepository::paginate_list()`
- * — see `lib/api/customer.api.ts`. This file only keeps the labels/option
- * arrays the UI needs; the value unions themselves are re-exported from
- * `lib/schema/customer.schema.ts`, since `lib/` code (the API layer) needs
- * them too and must not import from `pages/`.
- */
+/** Filter option labels for the Customers toolbar; matching runs server-side in CustomerRowFilters.php. */
 export type BalanceRangeValue = CustomerBalanceRange;
 export type ExpiringSoonValue = CustomerExpiringSoon;
-/** 'all' + CustomerFilters::TIER_RANGES's names — the backend emits no tier. No tiers table exists yet — any non-'all' value matches zero rows (intentional, see CustomerRepository::where_fragments()). Pro-only — see CustomersToolbar.tsx. */
+/** No tiers table yet: any non-'all' value matches zero rows server-side. Pro-only. */
 export type TierValue = CustomerTier;
 
-/**
- * Single on/off switch for the Tier filter control, separate from
- * `IS_PRO_BUILD`. Genuinely filters the list — but not against real
- * per-customer tier data (no `tiers` table exists yet): a pick is
- * substituted for the equivalent real Balance range bucket before it's ever
- * sent, matching the sample Tier column's own balance-derived value (see
- * `customers-page.tier-sample-data.ts` for both). Flip back to `false` (or
- * wire a real one) once VIP Tiers ships a real per-customer tier. Every
- * call site that gates the Tier filter reads this — `CustomersToolbar.tsx`
- * (the control itself), `CustomersPage.tsx` / `CustomersScreen.tsx`
- * (active-filter count feeding "No customers match N filters" / the
- * no-match suggestions).
- */
+/** On/off switch for the Tier filter control, which stands in on balance buckets until VIP Tiers ships. */
 export const TIER_FILTER_ENABLED = true;
 
 export interface RowFilters {
@@ -68,13 +47,7 @@ export const TIER_OPTIONS: { value: TierValue; label: string }[] = [
   { value: 'Explorer', label: __('Explorer', 'yayloyalty') },
 ];
 
-/**
- * Initial filters from the route's search params — the dashboard's
- * "Review" deep link is `#/customers?balance_range=negative`. Validated
- * against the runtime option lists (`CustomerBalanceRange` etc. are type
- * aliases, erased at runtime); anything unknown falls back to the default.
- * Read once on mount; filters are never written back to the URL.
- */
+/** Initial filters from the route's search params (the dashboard's deep link); unknown values fall back to defaults. */
 export function initialFiltersFromSearch(params: URLSearchParams): RowFilters {
   const pick = <T extends string>(key: string, options: { value: T }[], fallback: T): T => {
     const raw = params.get(key);

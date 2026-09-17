@@ -1,10 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from 'react';
 
-/**
- * A hook that manages a state which can be either controlled or uncontrolled. Copy from mantine hooks.
- * Use this for Custom Input components follow Shadcn UI pattern.
- */
+/** State that is either controlled or uncontrolled, for custom inputs. Copied from Mantine hooks. */
 
 export interface UseUncontrolledOptions<T> {
   /** Value for controlled state */

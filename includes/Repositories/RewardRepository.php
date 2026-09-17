@@ -5,14 +5,7 @@ use YayLoyalty\Models\Reward;
 
 defined( 'ABSPATH' ) || exit;
 
-/**
- * yayloyalty_rewards.
- *
- * No caching, unlike CampaignRepository: nothing reads rewards on a hot path
- * yet. Adding a cache belongs to whichever task builds the redemption engine.
- *
- * Plain object, not a singleton — see docs/code-standards.md section 8.
- */
+/** yayloyalty_rewards. No cache yet: nothing reads rewards on a hot path. */
 final class RewardRepository extends AbstractRepository {
 
     protected function table_slug(): string {
@@ -48,9 +41,7 @@ final class RewardRepository extends AbstractRepository {
     }
 
     /**
-     * Paginated list with optional type/status filters.
-     *
-     * @param array $args Plus 'type' and 'status'.
+     * @param array $args paginate()'s, plus 'type' and 'status'.
      * @return array{items: Reward[], total: int, page: int, per_page: int}
      */
     public function paginate_filtered( array $args = [] ): array {
@@ -79,14 +70,7 @@ final class RewardRepository extends AbstractRepository {
         return $this->paginate( $args );
     }
 
-    /**
-     * Insert a built-in row if its slug is not already present.
-     *
-     * Idempotent by slug so repeated installs cannot duplicate it, and so a
-     * merchant's edits to the row are never overwritten by a later install
-     * run. Guarded on the upgrade path (activation calls install() directly);
-     * the unique key on slug is the backstop.
-     */
+    /** Inserts a built-in row unless its slug is present, so a later install never overwrites a merchant's edits. */
     public function seed_builtin( Reward $reward ): void {
         if ( null !== $this->find_by_slug( $reward->get_slug() ) ) {
             return;
