@@ -1,3 +1,4 @@
+import { useSearchParams } from 'react-router';
 import { __ } from '@wordpress/i18n';
 
 import { parseWPDate, parseWPRelativeDate } from '@/lib/helpers/format.helper';
@@ -38,6 +39,8 @@ export function CustomerTableRow({
 }) {
   const negative = customer.balance < 0;
   const sampleTier = sampleTierForBalance(customer.balance);
+  const [searchParams] = useSearchParams();
+  const search = searchParams.toString();
 
   return (
     <TableRow
@@ -54,7 +57,7 @@ export function CustomerTableRow({
         </TableCell>
       )}
       <TableCell>
-        <CustomerNameCell name={customer.name} email={customer.email} />
+        <CustomerNameCell customer={customer} search={search} />
       </TableCell>
       {showProColumns && (
         <TableCell>

@@ -1,15 +1,28 @@
 import { TriangleAlert } from 'lucide-react';
+import { Link } from 'react-router';
 
+import type { CustomerListRow } from '@/lib/schema/customer.schema';
 import { cn } from '@/lib/utils';
 import { PointsValue } from '@/components/ui/custom/points-value';
 
-/** Two-line Customer cell: name (links to the drawer once it exists) + muted email. */
-export function CustomerNameCell({ name, email }: { name: string; email: string }) {
+/**
+ * Two-line Customer cell: name + muted email, linking to the drawer.
+ * `search` is the list page's own current query string (carries `?scenario=`
+ * through, if present) — `CustomerTableRow.tsx` reads it once via
+ * `useSearchParams()` and passes it down rather than each row re-reading it.
+ * `state.row` lets `CustomerDrawer.tsx` render identity instantly, before
+ * its own `useCustomerQuery` resolves.
+ */
+export function CustomerNameCell({ customer, search }: { customer: CustomerListRow; search: string }) {
   return (
-    <div className="flex min-w-0 flex-col gap-0.5">
-      <span className="truncate text-sm">{name}</span>
-      <span className="text-muted-foreground truncate text-xs">{email}</span>
-    </div>
+    <Link
+      to={`/customers/${customer.user_id}${search ? `?${search}` : ''}`}
+      state={{ row: customer }}
+      className="flex min-w-0 flex-col gap-0.5"
+    >
+      <span className="truncate text-sm">{customer.name}</span>
+      <span className="text-muted-foreground truncate text-xs">{customer.email}</span>
+    </Link>
   );
 }
 

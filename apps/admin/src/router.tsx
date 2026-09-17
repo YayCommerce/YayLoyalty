@@ -7,6 +7,7 @@ import NotFoundPage from './pages/404';
 import ErrorPage from './pages/500';
 import CampaignsPage from './pages/campaigns/CampaignsPage';
 import CustomersPage from './pages/customers/CustomersPage';
+import CustomerDrawer from './pages/customers/drawer/CustomerDrawer';
 import DashboardPage from './pages/dashboard/DashboardPage';
 import ReferralPage from './pages/referral/ReferralPage';
 import RewardsPage from './pages/rewards/RewardsPage';
@@ -46,6 +47,9 @@ export function getManagerRouter() {
         {
           path: 'customers',
           element: guarded(CAP.VIEW, <CustomersPage />),
+          // The parent `guarded()` above already covers this child — CAP.VIEW
+          // is checked once, not re-wrapped per route.
+          children: [{ path: ':userId', element: <CustomerDrawer /> }],
         },
         {
           path: 'campaigns',

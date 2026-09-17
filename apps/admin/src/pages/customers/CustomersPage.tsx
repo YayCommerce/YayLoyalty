@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
-import { useSearchParams } from 'react-router';
+import { Outlet, useSearchParams } from 'react-router';
 import { useDebounceFn } from 'rooks';
 import { __, sprintf } from '@wordpress/i18n';
 
@@ -213,6 +213,10 @@ export default function CustomersPage() {
           isRebuilding={isRebuilding}
         />
       )}
+      {/* The drawer route (`customers/:userId`) renders here — the list above
+          stays mounted and keeps its filters/page/sort/selection regardless
+          of whether the list itself errored. */}
+      <Outlet />
     </PageLayout>
   );
 }
