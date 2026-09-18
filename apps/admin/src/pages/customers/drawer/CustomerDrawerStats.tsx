@@ -27,6 +27,16 @@ import {
  * the two lifetime totals are secondary. `Worth` is deliberately NOT shown —
  * 3c drew a sixth Worth stat but 1e, the baseline this drawer follows, does
  * not, and the endpoint's `worth` field stays on the wire either way.
+ *
+ * 5c's mobile artboard draws FOUR stats in a 2×2 grid (Balance, Pending,
+ * Lifetime earned, Expires) — this component keeps all FIVE below `sm` too
+ * (phase 07 decision). `auto-fit`/`minmax(150px,1fr)` already reflows to 2
+ * columns at drawer-sheet mobile widths on its own, just with 5 cells
+ * instead of 4 (a slightly taller grid, one cell wrapping to its own row).
+ * Hiding a real figure to match an artboard's count would break 5c's own
+ * rule (callout 5): "nothing is silently dropped." Unverified visually — no
+ * browser tool in this environment; only the grid's `auto-fit` behaviour at
+ * narrow widths is asserted, not seen.
  */
 export function CustomerDrawerStats({ customer }: { customer: Customer }) {
   const isDeleted = !!customer.deleted_at;

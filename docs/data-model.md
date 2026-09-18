@@ -259,31 +259,65 @@ Indexes: PK; `idx_user_history (user_id, id)` for paged history and `ORDER BY id
 
 Not on this table any more: `expires_at`. Per-earning expiry lives in `lots` (below) so the ledger stays immutable.
 
-## Activity log (not designed) — F09 Wave A
+## Activity log (not designed) — F09 Wave A/B
 
 The customer drawer's Activity log tab (F09) needs a per-customer timeline distinct from the
 ledger: tier changes, expiry resets, balance/expiring-soon reminder emails and admin actions —
 none of which are balance changes, so none belong in `yayloyalty_ledger`. **No table exists for
-this.** Wave A renders the tab's empty state only and never wires a route or a query
-(`apps/admin/src/pages/customers/drawer/tabs/ActivityLogTab.tsx`).
+this.** `GET /customers/{id}/activity` is a real, routed endpoint (Wave B, phase 01) with paging,
+search and a grouped filter, but it always answers an empty envelope on the real path — there is
+nothing to page through yet (`includes/Controllers/ActivityRestController.php`).
 
 The row shape was decided during F09 anyway, so it is not invented later once a table exists to
 match — see `includes/Controllers/Fixtures/CustomerDrawer/DrawerActivity.php` (dev-only,
-`WP_DEBUG`-gated, unrendered): `{ id, occurred_at, event_type, data: {...}, actor_kind:
-'staff'|'automatic'|'customer', actor_name: ?string, staff_only: bool }`. Seven `event_type`s:
-`account_created`, `points_adjusted`, `tier_changed`, `expiry_reset`, `reward_redeemed`,
-`balance_email_sent`, `expiring_soon_email_sent`. Same rule as the ledger's `note`/system-row
-descriptions: no sentence is stored, `data` is structured and copy composes from `event_type` +
-`data` at render time.
+`WP_DEBUG`-gated, the only thing that populates the endpoint today): `{ id, occurred_at,
+event_type, data: {...}, actor_kind: 'staff'|'automatic'|'customer', actor_name: ?string,
+staff_only: bool }`. Seven `event_type`s: `account_created`, `points_adjusted`, `tier_changed`,
+`expiry_reset`, `reward_redeemed`, `balance_email_sent`, `expiring_soon_email_sent`. Same rule as
+the ledger's `note`/system-row descriptions: no sentence is stored, `data` is structured and copy
+composes from `event_type` + `data` at render time.
 
 **Not stored anywhere today:** tier changes, expiry resets, and sent emails (balance /
 expiring-soon) have no persistence at all outside this fixture. Designing and building this
-table is unpriced Wave B work — it is the largest gap this drawer surfaces, and is recorded here
+table is unpriced future work — it is the largest gap this drawer surfaces, and is recorded here
 specifically so it does not go back to living only in a brainstorm report.
+
+## Customer drawer wire blocks not backed by a table — F09 Wave B
+
+Three more drawer surfaces (phases 03/04) ship a real, routed field on `GET /customers/{id}`
+today, fixture-populated under `?scenario=`, `null`/absent on the real path — none of them are new
+tables, all reuse `yayloyalty_customers` columns that already exist or values computed from the
+ledger:
+
+- **`negative_balance`** (phase 04, labelled F23 in code) — `{ cause_ledger_id, cause_reason,
+  cause_amount, reversal_status }`, explaining a negative balance in place (a refund reversed more
+  than was left). `null` whenever `balance >= 0`. See
+  `includes/Controllers/Fixtures/CustomerDrawer/DrawerNegativeBalance.php`.
+- **`expiry.batches`** (phase 03) — the Pro FIFO lot table on the expiring-points panel: an array
+  of `{ earned_from, earned_to, points, expires_at }`, or `null` on the Free build or when the
+  store's expiry model has no batches. This is a **display-only preview** of what
+  `yayloyalty_lots`/`yayloyalty_lot_allocations` (below) will eventually back — those tables are
+  still unimplemented (Pro 1.0), so nothing here reads or writes them.
+- **`points_per_currency_unit`** (phase 03) — a single number (not the removed `worth` object),
+  the rate 4b's/5a's money-equivalent figures multiply by. Restored narrowly after an earlier
+  commit removed `worth` wholesale; see `includes/Controllers/Fixtures/CustomerDrawer/DrawerProfiles.php`.
+
+All three parse through the same Zod schema on the fixture and real paths (`customer.schema.ts`),
+same discipline as everything else in this drawer.
 
 ## `yayloyalty_redemptions` — one row per reward claim (1.0, NOT IMPLEMENTED)
 
 **Status:** Table not created. Schema designed. Will be created when redemption checkout integration lands.
+
+**F09 Wave B (phase 05):** `GET /customers/{id}/redemptions` is a real, routed, paginated endpoint
+today (`includes/Controllers/RedemptionsRestController.php`), always answering an empty envelope
+on the real path. Its wire row is a **deliberate simplification** of the table below, not a preview
+of it: `{ id, reward_id, reward_name, order_id, points (signed), value, currency, status, created_at }`
+drops `base_value`/`rate_snapshot`/`coupon_code`/`coupon_id`/`restored_points`/`expires_at` (this
+tab never displays them) and adds `reward_name`, a display string the real table does not store —
+resolving `reward_id` to a name is an open question (client-side lookup vs. server join), the same
+one the ledger's `campaign_name` already has, deliberately not solved here. `status` is a display
+enum (`applied`/`returned`/`issued`), not the real table's full lifecycle vocabulary above.
 
 When built, it will be created at claim time. It exists because a refund needs the value *and the rate at redemption time*, multi-currency stores need the currency of the discount as a fact, and catalog claims have no order yet. The ledger's `redeem`/`refund_redeem` rows reference this row uniformly for every reward type.
 
@@ -310,6 +344,18 @@ Indexes: PK; `user_id`; `order_id`; `reward_id`; `(status, created_at)`; **`(rew
 ## `yayloyalty_referrals` — one row per referral relationship (1.1)
 
 Tracks a friend from first click to payout. Hashes, not raw emails or IPs, so fraud checks work without storing PII.
+
+**F09 Wave B (phase 06):** `GET /customers/{id}/referrals` is a real, routed, paginated endpoint
+today (`includes/Controllers/ReferralsRestController.php`), always answering an empty envelope on
+the real path. Its wire row is a **deliberate simplification** of the table below, not a preview of
+it: `{ id, referred_name, referred_email, signed_up_at, first_order_id, first_order_total,
+referrer_points, friend_coupon: { label, used }, status ('completed'|'pending'|'lapsed'),
+window_closes_at }` — plain display fields (a name/email pair, not hashes; a `status` for what the
+admin sees, not the real table's attribution/hold-window state machine). `referred_name`/
+`referred_email` are personal data of a THIRD PARTY (the referred customer, not the drawer's own
+subject) — the real endpoint must keep the same `CAP::VIEW` gate and never expose them to a lower
+capability. The envelope also carries `referral_link` and a `campaign` block (`referrer_points`,
+`friend_coupon_label`, `window_days`) — both derived from settings/user data, not new columns.
 
 | Column | Type | Null / default | Meaning |
 |---|---|---|---|

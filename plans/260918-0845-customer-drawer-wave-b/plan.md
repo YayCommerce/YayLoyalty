@@ -1,7 +1,7 @@
 ---
 title: "F09 Customer Drawer — Wave B"
 description: "The six artboards Wave A left undrawn: Activity log, deleted-account, expiring and negative-balance panels, Redemptions and Referrals tables. UI on fixtures; no real-data work."
-status: pending
+status: complete
 priority: P2
 effort: 26h
 branch: paul/feat/customer-drawer
@@ -49,7 +49,7 @@ Out (design elements deliberately dropped): 3e's summary strip and "Rewards X co
 | 04 | [Negative-balance explanation (5a)](phase-04-negative-balance-panel.md) | 3h | complete |
 | 05 | [Redemptions table (3e)](phase-05-redemptions-table.md) | 4h | complete |
 | 06 | [Referrals table (3f)](phase-06-referrals-table.md) | 4h | complete |
-| 07 | [Mobile pass + docs sync (5c)](phase-07-mobile-pass-and-docs-sync.md) | 3h | pending |
+| 07 | [Mobile pass + docs sync (5c)](phase-07-mobile-pass-and-docs-sync.md) | 3h | complete |
 
 ## Dependencies
 
