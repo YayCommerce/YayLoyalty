@@ -5,15 +5,7 @@ use YayLoyalty\Models\LedgerEntry;
 
 defined( 'ABSPATH' ) || exit;
 
-/**
- * yayloyalty_ledger.
- *
- * Append-only: this repository exposes no update() or delete() usage. Rows are
- * inserted and read, never changed. (The base class still defines them; GDPR
- * erasure will be the only caller, and it gets its own reviewed method.)
- *
- * Plain object, not a singleton — see docs/code-standards.md section 8.
- */
+/** yayloyalty_ledger. Append-only: nothing here calls update() or delete(). */
 final class LedgerRepository extends AbstractRepository {
 
     protected function table_slug(): string {
@@ -29,18 +21,8 @@ final class LedgerRepository extends AbstractRepository {
     }
 
     /**
-     * Find an existing row by its idempotency key: (user_id, source,
-     * reference_type, reference_id) — matches `uniq_ledger_event`.
-     *
-     * Keyed on source, not type: several sources (signup, milestone, renewal)
-     * can share a reference_type, and a type-keyed lookup would treat two
-     * genuinely different events as the same one. user_id is required because
-     * one reference can legitimately produce rows for two different users
-     * (a referral order earns both the advocate and the friend).
-     *
-     * Returns null for a NULL reference, because MySQL treats NULLs as distinct
-     * in the unique index — a manual adjustment can never match an earlier one,
-     * and asking is meaningless.
+     * Finds a row by its idempotency key, matching uniq_ledger_event. Null
+     * for a NULL reference: those never collide, so asking is meaningless.
      */
     public function find_by_reference( int $user_id, string $source, ?string $reference_type, ?int $reference_id ): ?LedgerEntry {
         global $wpdb;
@@ -82,12 +64,7 @@ final class LedgerRepository extends AbstractRepository {
         return $this->paginate( $args );
     }
 
-    /**
-     * SUM(points) for a user — the ledger-side half of the balance invariant.
-     *
-     * Used by verification and by the future "Rebuild balances" tool, which
-     * replays the ledger to repair the customers cache.
-     */
+    /** SUM(points) for a user, the ledger-side half of the balance invariant. Reserved for a rebuild tool. */
     public function sum_points_for_user( int $user_id ): int {
         global $wpdb;
 
@@ -99,9 +76,7 @@ final class LedgerRepository extends AbstractRepository {
         );
     }
 
-    /**
-     * The most recent entry for a user, for the balance_after chain.
-     */
+    /** The most recent entry for a user. Uncalled today. */
     public function latest_for_user( int $user_id ): ?LedgerEntry {
         global $wpdb;
 

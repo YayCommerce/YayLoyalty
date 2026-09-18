@@ -6,27 +6,14 @@ import { domAnimation, LazyMotion } from 'motion/react';
 import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router';
 
+import { registerPro } from '@/pro';
 import { getManagerRouter } from '@/router';
 
-import { registerPro } from '@/pro';
-
 /*
- * The single entry point for pro SPA code.
- *
- * STATIC import, called behind a build constant read DIRECTLY here —
- * `import.meta.env.VITE_IS_PRO`, not the `IS_PRO_BUILD` constant everywhere
- * else in the app imports from `@/lib/is-pro-build`. This is the one call
- * site `@/pro` tree-shaking depends on: Vite/Rollup fold a same-file
- * `import.meta.env.VITE_X` comparison into a literal most reliably, so in a
- * Lite build this call is eliminated, `@/pro` loses its only importer, and
- * Rollup drops the whole subtree.
- *
- * Deliberately not a dynamic import(): that would emit a separate chunk, and
- * validate-build.php greps main.js for the sentinel — pro code in a
- * side-chunk would slip past the check entirely.
- *
- * Never deep-import from `@/pro/...` elsewhere; a second importer would
- * survive the Lite build.
+ * The one call site @/pro tree-shaking depends on. Reads import.meta.env
+ * directly, not IS_PRO_BUILD: a same-file comparison folds most reliably.
+ * A static import, not a dynamic one: a side chunk would slip past
+ * validate-build.php's scan of main.js.
  */
 if (import.meta.env.VITE_IS_PRO === 'true') {
   registerPro();

@@ -6,12 +6,8 @@ import { pctDelta, pointsToCurrency } from '@/lib/points-math/points-math';
 import type { DashboardRange, DashboardSeriesPoint } from '@/lib/schema/dashboard.schema';
 
 /**
- * The dashboard's sentence builders — every tile sub-line, delta line and
- * denominator in one reviewable place. Pure: no React, no fetch.
- *
- * Null rules (artboard 2a): a count of 0 is a real measurement and renders
- * as "0"; a ratio with no denominator renders as "—"; a change with no
- * previous period reads "no previous period", never 0%.
+ * The dashboard's sentence builders, pure. A count of 0 renders "0"; a
+ * ratio with no denominator "—"; no previous period reads as such, never 0%.
  */
 
 export const RANGE_LABEL = (range: DashboardRange) => sprintf(_n('%d day', '%d days', range, 'yayloyalty'), range);
@@ -44,7 +40,7 @@ export function ordersSubline(withPoints: number, total: number): string {
   return sprintf(__('%1$s of %2$s orders', 'yayloyalty'), formatPoints(withPoints), formatPoints(total));
 }
 
-/** "871,500 pts at 100 pts = $1" — names the valuation rate so the approximation is visible; "871,500 pts outstanding" without one. */
+/** "871,500 pts at 100 pts = $1"; names the rate so the approximation is visible. */
 export function liabilitySubline(points: number, pointsPerCurrencyUnit: number): string {
   if (pointsPerCurrencyUnit <= 0) {
     return sprintf(__('%s pts outstanding', 'yayloyalty'), formatPoints(points));
@@ -58,7 +54,7 @@ export function liabilitySubline(points: number, pointsPerCurrencyUnit: number):
   );
 }
 
-/** "6 most recent of 41,200 events today" — only when the panel is not the whole story. */
+/** "6 most recent of 41,200 events today", only when the panel is not the whole story. */
 export function activityDenominator(shown: number, totalToday: number): string | null {
   if (totalToday <= shown) return null;
 
@@ -73,15 +69,12 @@ export function cacheStripTimes(generatedAt: string, nextRefreshAt: string | nul
   return nextRefreshAt ? `${updated} · ${sprintf(__('next %s', 'yayloyalty'), at(nextRefreshAt))}` : updated;
 }
 
-/** True when every point in the series is zero — the chart shows its empty overlay but keeps its axes. */
+/** Whether every point is zero; the chart then shows its empty overlay but keeps its axes. */
 export function isSeriesEmpty(series: DashboardSeriesPoint[]): boolean {
   return series.every((p) => p.issued === 0 && p.redeemed === 0);
 }
 
-/**
- * Tile lines that replace the tidy 30-day delta when a notice makes it
- * misleading (artboards 6a #3, 6b #2). Pure: returns strings or nothing.
- */
+/** Tile lines that replace the 30-day delta when a notice makes it misleading. */
 export function noticeTileOverrides(
   series: DashboardSeriesPoint[],
   range: DashboardRange,
@@ -96,7 +89,7 @@ export function noticeTileOverrides(
     return {
       points_issued: sprintf(__('▲ %s of it yesterday', 'yayloyalty'), formatPoints(pointsJump.yesterday_points)),
       ...(overnight ? { liability: sprintf(__('▲ %s overnight', 'yayloyalty'), overnight) } : {}),
-      // Not "unchanged": the real delta may be non-zero. The point is that the jump cannot have moved it.
+      // Not "unchanged": the delta may be non-zero; the jump just cannot have moved it.
       redemption_rate: __('not moved by the jump — this rate counts orders, not points', 'yayloyalty'),
     };
   }
@@ -118,10 +111,8 @@ export function noticeTileOverrides(
 }
 
 /**
- * Percentage fall of the last 7 complete days' issuance against the 7
- * before, whole percent; null unless there was a fall to show — a fall that
- * rounds to 0% is not a fall. Today is excluded — it is a partial day and
- * would overstate the collapse every morning.
+ * Percentage fall of the last 7 complete days against the 7 before; null
+ * unless there was a fall. Today is excluded: a partial day would overstate it.
  */
 export function sevenDayCollapse(series: DashboardSeriesPoint[]): number | null {
   if (series.length < 15) return null;

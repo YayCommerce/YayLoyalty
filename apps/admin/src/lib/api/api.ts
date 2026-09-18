@@ -20,9 +20,7 @@ const _ky = ky.create({
             location.reload();
           }
 
-          // A capability or ceiling refusal from the backbone: one readable
-          // notice, never a raw error or a silent no-op. The error still
-          // propagates so callers can reset their own state.
+          // One readable notice for a capability refusal; the error still propagates.
           if (FORBIDDEN_ERROR_CODES.includes(body?.code) && typeof body?.message === 'string') {
             toast.error(body.message);
           }
@@ -142,16 +140,9 @@ export const wordpressApi = createApi('wp/v2');
 export const api = yayLoyaltyApi;
 
 /**
- * The WP REST `WP_Error` shape (`{code, message, data:{status}}`) turned into
- * one string a toast can show. `error instanceof HTTPError` is how `ky`
- * signals a non-2xx response. A plain `Error` (e.g. a client-side guard like
- * `fetchAllMatchingCustomers`'s page-count ceiling) uses its own `.message`
- * instead — still a message this codebase wrote on purpose, unlike a raw
- * network failure or a non-JSON body, which fall back to `fallback` rather
- * than surfacing "[object Object]" or a browser-internal string.
- * A 403 with a `FORBIDDEN_ERROR_CODES` code has already been toasted by the
- * `afterResponse` hook above — callers that only want to handle the REST
- * cases that hook doesn't cover should check `error.response.status` first.
+ * One toast-ready string from a WP_Error response or a client-side Error;
+ * a network failure or non-JSON body falls back rather than surfacing
+ * "[object Object]". A forbidden 403 was already toasted by afterResponse.
  */
 export async function getApiErrorMessage(error: unknown, fallback: string): Promise<string> {
   if (error instanceof HTTPError) {
@@ -160,9 +151,7 @@ export async function getApiErrorMessage(error: unknown, fallback: string): Prom
       if (typeof body?.message === 'string' && body.message.length > 0) {
         return body.message;
       }
-    } catch {
-      // Response body wasn't JSON — fall through to the generic fallback.
-    }
+    } catch {}
   } else if (error instanceof Error && error.message.length > 0) {
     return error.message;
   }
@@ -170,14 +159,7 @@ export async function getApiErrorMessage(error: unknown, fallback: string): Prom
   return fallback;
 }
 
-/**
- * True for the error a `fetch()` throws when its `AbortSignal` fires (e.g. a
- * caller cancelling `fetchAllMatchingCustomers()`'s multi-page loop on
- * unmount). Callers check this BEFORE calling `getApiErrorMessage()` — an
- * intentional cancellation is not a failure to report; toasting one right as
- * the triggering component unmounts would surface a confusing error for
- * something the merchant didn't do wrong.
- */
+/** The error fetch() throws when its AbortSignal fires. Check before getApiErrorMessage(): a cancellation is not a failure. */
 export function isAbortError(error: unknown): boolean {
   return error instanceof DOMException && 'AbortError' === error.name;
 }

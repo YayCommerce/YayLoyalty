@@ -149,11 +149,16 @@ Pass `--require-boot` to treat a skipped check as a failure. Use it in CI, where
 
 ## ## Known Issues
 
-**Build currently fails at `tsc --noEmit` before packaging can start.** Commit #7
-removed the `GET /customers` REST endpoint but left SPA components (`CustomersPage`,
-`CustomersTable`, etc.) importing from the deleted query files. This breaks TypeScript
-validation. The endpoint and query files must be restored or the component imports fixed
-before the next release can complete.
+**Build currently fails at `tsc --noEmit` before packaging can start.** Five pre-existing
+type errors block it: `emoji-picker-content.tsx` (×2, `@emoji-mart/*` types undeclared),
+`progress.tsx` (`@radix-ui/react-progress` not installed), and a `per_page` vs `perPage`
+mismatch in `BuiltInCampaignList.tsx` and `CampaignTable.tsx`. They must be fixed before
+the next release can complete; `vite build` itself succeeds when run directly.
+
+**Packaged builds ship without `RegisterDev.php`, and `YAYLOYALTY_IS_DEVELOPMENT` defaults
+to `true` when undefined.** A production site must define
+`YAYLOYALTY_IS_DEVELOPMENT` as `false` in `wp-config.php`, otherwise `RegisterFacade`
+selects the dev registrar, finds no class, and registers no admin assets.
 
 ## When validation fails
 

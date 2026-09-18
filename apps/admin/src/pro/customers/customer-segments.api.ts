@@ -8,22 +8,12 @@ import {
 } from '@/pages/customers/customers-page.filter-rows';
 
 /**
- * Client for POST/DELETE /customers/segments — saved Customers-page filter sets.
- *
- * Lives under `pro/` because the route only exists in a Pro build — Lite has
- * no `yayloyalty_customer_segments` option and no such feature to offer.
- * Reached only through the `@/pro` barrel, so a Lite build drops this file
- * with the rest of the subtree.
- *
- * Wire/stored shape mirrors Pro\Helpers\CustomerSegmentsHelper::FILTER_SCHEMA
- * field-for-field, in the wire's `snake_case` (`balance_range`, matching the
- * `GET /customers` query params). The rest of the app only ever sees
- * `SavedSegment`, whose `filters` is a camelCase `RowFilters` subset — the
- * two converters below are the one place the spellings meet, the same
- * boundary rule `lib/api/customer.api.ts` follows.
+ * Client for POST/DELETE /customers/segments. The wire shape mirrors
+ * CustomerSegmentsHelper::FILTER_SCHEMA; the two converters below are the
+ * one place it meets the app's camelCase RowFilters.
  */
 
-/** Enum of an options array's values, keeping the value union (not widened to `string`) so `SavedSegment['filters']` is assignable to `RowFilters`. */
+/** Keeps the value union, not `string`, so SavedSegment['filters'] is assignable to RowFilters. */
 function enumOfOptions<T extends string>(options: readonly { value: T }[]) {
   return z.enum(options.map((option) => option.value) as [T, ...T[]]);
 }
@@ -32,7 +22,7 @@ const balanceRangeSchema = enumOfOptions(BALANCE_RANGE_OPTIONS);
 const expiringSoonSchema = enumOfOptions(EXPIRING_SOON_OPTIONS);
 const tierSchema = enumOfOptions(TIER_OPTIONS);
 
-/** What the REST route and `window.yayLoyaltyAdmin.segments` actually carry. */
+/** What the REST route and window.yayLoyaltyAdmin.segments carry. */
 const savedSegmentWireSchema = z.object({
   name: z.string(),
   filters: z.object({
@@ -66,7 +56,7 @@ function fromWire({ name, filters }: SavedSegmentWire): SavedSegment {
   };
 }
 
-/** Parses the wire list (see customer.api.ts — parsed, not cast) and converts it to the app shape. */
+/** Parses the wire list and converts it to the app shape. */
 function parseSegments(payload: unknown): SavedSegment[] {
   return z.array(savedSegmentWireSchema).parse(payload).map(fromWire);
 }
@@ -77,23 +67,14 @@ export async function saveSegment(name: string, filters: SavedSegment['filters']
   return parseSegments(payload);
 }
 
-/**
- * `name` goes in the JSON body, not the URL — `Pro\Controllers\CustomerSegmentsRestController`
- * reads it the same way as `saveSegment()`'s POST, since a segment name is
- * arbitrary text (spaces, non-ASCII) and WP_REST_Request reads a JSON body
- * regardless of HTTP method.
- */
+/** `name` goes in the JSON body, not the URL: it is arbitrary text. */
 export async function removeSegment(name: string): Promise<SavedSegment[]> {
   const payload = await api.delete('customers/segments', { json: { name } }).json();
 
   return parseSegments(payload);
 }
 
-/**
- * Reads the segments PHP localised at render (`window.yayLoyaltyAdmin.segments`).
- * A broken/absent payload degrades to an empty list rather than crashing the
- * page — same rule `lib/access.tsx` applies to the rest of the bootstrap data.
- */
+/** The segments PHP localised at render; a broken payload degrades to an empty list. */
 export function readSegmentsFromLocalize(): SavedSegment[] {
   const result = z.array(savedSegmentWireSchema).safeParse(window.yayLoyaltyAdmin?.segments ?? []);
 

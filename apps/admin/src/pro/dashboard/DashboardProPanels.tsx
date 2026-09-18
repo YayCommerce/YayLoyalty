@@ -15,7 +15,7 @@ import { DashboardCampaignBreakdownToggle } from './DashboardCampaignBreakdownTo
 import { DashboardTierDistribution } from './DashboardTierDistribution';
 import { DashboardTopCampaigns } from './DashboardTopCampaigns';
 
-/** Above this many members the breakdown starts off: five series over big values is unreadable at 280px (artboard 2c #4). */
+/** Above this many members the breakdown starts off: five series over big values is unreadable at 280px. */
 const BREAKDOWN_DEFAULT_OFF_ABOVE = 10_000;
 
 /**

@@ -11,8 +11,8 @@ import type { NoticeAction } from '../dashboard-page.notice-actions';
 import type { NoticeCopy } from '../dashboard-page.notice-copy';
 
 /**
- * One notice. Severity is about the customer, not the wording (artboard 6a
- * #1): only `affected` gets the dark left rule and a primary button;
+ * One notice. Severity is about the customer, not the wording: only
+ * `affected` gets the dark left rule and a primary button;
  * `waiting` / `progress` are plain with link-style actions. Actions with a
  * `cap` are hidden from users who lack it.
  */

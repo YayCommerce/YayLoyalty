@@ -10,48 +10,21 @@ use YayLoyalty\Utils\Log;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Evaluates a campaign's `conditions` against a customer.
+ * Evaluates a campaign's `conditions` (a flat ANDed list) against a customer.
+ * Attached to Lite through the yayloyalty_campaign_conditions_evaluator seam.
  *
- * Attached to Lite through the `yayloyalty_campaign_conditions_evaluator`
- * seam. Lite stores conditions but cannot evaluate them, so with no evaluator
- * attached Campaign::conditions_match() returns true.
- *
- * THE TWO BUILDS DISAGREE ON UNKNOWNS, DELIBERATELY.
- *
- *   Lite: a condition it cannot evaluate MATCHES. Lite has no evaluator at
- *         all, so treating conditions as blocking would silently disable every
- *         conditional campaign the moment a site downgraded.
- *   Pro:  a condition it cannot evaluate FAILS. Pro *can* evaluate, so an
- *         unrecognised type or operator is a real error — a typo or a
- *         forward-dated config — and awarding points on it would be worse than
- *         withholding them.
- *
- * Different reasons, different answers. Do not "harmonise" them.
- *
- * VOCABULARY. The types and their operators come from Enums\CampaignConditionType — the
- * same map Models\CampaignConditionSet validates against on save, so the evaluator can
- * never accept a shape the validator rejects, or reject one it accepts.
- *
- * WHAT IS EVALUATED HERE. This class only has a customer id to work with, so it
- * covers the conditions that are a fact about the customer: `user_role`,
- * `customer_ids`, `lifetime_points`, `order_count`, `lifetime_spend`, and — as
- * an interim, from purchase history — `product_in_cart` / `category_in_cart`.
- * The conditions that describe the order being placed rather than the customer
- * (`currency`, `country`, `payment_method`) need the order, which the seam does
- * not pass yet; until the award engine does, they are reported as
- * `unsupported_condition_type` and, per the rule above, do not match. `tier` is
- * not evaluable at all until the tier system exists.
- *
- * Conditions are ANDed. There is no OR and no nesting: the data model
- * specifies a flat list of {type, operator, value} objects, and a boolean
- * expression tree is a different feature with a different UI.
+ * Unknowns FAIL here, while Lite (no evaluator) lets them match: Pro can
+ * evaluate, so an unrecognised type is a real error. Do not harmonise them.
+ * Only customer facts are evaluable: order-scoped conditions (currency,
+ * country, payment_method) are unsupported until the seam passes the order,
+ * and product/category_in_cart use purchase history as an interim.
  */
 final class ConditionsEvaluator {
 
-    /** Set operators: the customer's fact is a list, the condition value is a list. */
+    /** The customer's fact and the condition value are both lists. */
     private const SET_OPERATORS = [ CampaignConditionType::OP_IN, CampaignConditionType::OP_NOT_IN ];
 
-    /** Numeric operators: the customer's fact is a number. */
+    /** The customer's fact is a number. */
     private const NUMERIC_OPERATORS = [
         CampaignConditionType::OP_EQ,
         CampaignConditionType::OP_GT,
@@ -61,57 +34,26 @@ final class ConditionsEvaluator {
         CampaignConditionType::OP_BETWEEN,
     ];
 
-    /**
-     * Order statuses that count as a purchase.
-     *
-     * Pending and failed orders are not purchases, and cancelled or refunded
-     * ones have been undone. `processing` counts: the money has changed hands.
-     */
+    /** Statuses that count as a purchase; processing counts because the money has changed hands. */
     private const PAID_STATUSES = [ 'wc-processing', 'wc-completed' ];
 
-    /**
-     * How many of a customer's orders to scan for purchase-history facts.
-     *
-     * A ceiling, not a page size. Conditions are evaluated on the hot path of
-     * awarding points, and a customer with thousands of orders would otherwise
-     * make every award scan all of them. Newest first, so the cap trims the
-     * oldest history — the part least likely to decide eligibility. The
-     * same-currency `lifetime_spend` total shares this ceiling.
-     */
+    /** Newest orders scanned for purchase-history facts; evaluation is on the award hot path. */
     private const ORDER_SCAN_LIMIT = 100;
 
-    /**
-     * The customer's recent paid orders, keyed by user id. Memoised so a set
-     * with several purchase-history conditions scans once, not once per
-     * condition.
-     *
-     * @var array<int, \WC_Order[]>
-     */
+    /** @var array<int, \WC_Order[]> Memoised so several purchase-history conditions scan once. */
     private $orders_by_user = [];
 
-    /**
-     * Purchased product ids, keyed by user id.
-     *
-     * @var array<int, int[]>
-     */
+    /** @var array<int, int[]> */
     private $purchased_products = [];
 
-    /**
-     * Same-currency lifetime spend, keyed by "user_id:CURRENCY".
-     *
-     * @var array<string, float>
-     */
+    /** @var array<string, float> Keyed by "user_id:CURRENCY". */
     private $spend_by_currency = [];
 
-    /**
-     * Lifetime points earned, keyed by user id.
-     *
-     * @var array<int, int>
-     */
+    /** @var array<int, int> */
     private $points_by_user = [];
 
     /**
-     * Do all conditions match?
+     * Whether every condition matches.
      *
      * @param array $conditions Flat list of {type, operator, value} objects.
      */
@@ -126,10 +68,8 @@ final class ConditionsEvaluator {
     }
 
     /**
-     * Per-condition results, for the preview endpoint.
-     *
-     * Same evaluation path as evaluate() — evaluate() is a fold over this — so
-     * the preview can never disagree with what actually happens at award time.
+     * Per-condition results for the preview endpoint. evaluate() folds over
+     * this, so the preview cannot disagree with award time.
      *
      * @return array<int, array<string, mixed>>
      */
@@ -182,8 +122,7 @@ final class ConditionsEvaluator {
                 return $this->evaluate_lifetime_spend( $result, $user_id, $operator, $value );
         }
 
-        // A type the vocabulary knows but this class cannot evaluate yet
-        // (needs order context, or the tier system) is distinct from a typo.
+        // Known but not yet evaluable (needs order context or tiers), distinct from a typo.
         return $this->reject(
             $result,
             CampaignConditionType::is_known( $type ) ? 'unsupported_condition_type' : 'unknown_condition_type'
@@ -191,8 +130,7 @@ final class ConditionsEvaluator {
     }
 
     /**
-     * `lifetime_spend` — value is { amount, currency }, never a bare number.
-     * Only orders in that currency count toward the total; no conversion.
+     * Value is { amount, currency }; only orders in that currency count, no conversion.
      *
      * @param array<string, mixed> $result
      * @param mixed                $value
@@ -210,10 +148,7 @@ final class ConditionsEvaluator {
     }
 
     /**
-     * Compare a list-valued customer fact against a list-valued condition.
-     *
-     * `in` matches when the customer has ANY of the listed values, which is
-     * what a merchant means by "customers who bought from these categories".
+     * Compares a list-valued fact against a list-valued condition; `in` means ANY.
      *
      * @param array<string, mixed> $result
      * @param array                $actual Customer's values.
@@ -248,10 +183,7 @@ final class ConditionsEvaluator {
     }
 
     /**
-     * Compare a numeric customer fact against the condition value.
-     *
-     * For `between` the value is a [low, high] pair (inclusive both ends);
-     * for every other operator it is a single number.
+     * Compares a numeric fact against the condition value: a single number, or an inclusive [low, high] for `between`.
      *
      * @param array<string, mixed> $result
      * @param mixed                $value
@@ -309,10 +241,7 @@ final class ConditionsEvaluator {
     }
 
     /**
-     * Fail a condition and say why.
-     *
-     * Logged rather than thrown: one malformed condition should withhold that
-     * campaign's points, not break the award of every other campaign.
+     * Fails a condition with a reason. Logged, not thrown: one bad condition must not break every other campaign's award.
      *
      * @param array<string, mixed> $result
      * @return array<string, mixed>
@@ -321,9 +250,7 @@ final class ConditionsEvaluator {
         $result['matched'] = false;
         $result['reason']  = $reason;
 
-        // Debug, not warning: this runs once per condition per award, so a
-        // single misconfigured campaign on a busy store would otherwise write a
-        // line per order. The preview endpoint is the surface that surfaces it.
+        // Debug, not warning: one misconfigured campaign would otherwise log a line per order.
         Log::debug(
             'ConditionsEvaluator',
             sprintf(
@@ -336,8 +263,6 @@ final class ConditionsEvaluator {
 
         return $result;
     }
-
-    /* ─── Customer facts ────────────────────────────────────────────── */
 
     /** @return string[] */
     private function user_roles( int $user_id ): array {
@@ -353,8 +278,7 @@ final class ConditionsEvaluator {
 
         $customer = ( new CustomerRepository() )->find_by_user_id( $user_id );
 
-        // lifetime_earned, not balance: spending points must not drop a customer
-        // below a lifetime_points threshold.
+        // lifetime_earned, not balance: spending must not drop a customer below a threshold.
         $this->points_by_user[ $user_id ] = null === $customer ? 0 : $customer->get_lifetime_earned();
 
         return $this->points_by_user[ $user_id ];
@@ -366,12 +290,7 @@ final class ConditionsEvaluator {
             : 0;
     }
 
-    /**
-     * The customer's total in a single currency, over the scanned paid orders.
-     *
-     * No exchange-rate conversion: an order in another currency contributes
-     * nothing. Shares ORDER_SCAN_LIMIT with the purchase-history facts.
-     */
+    /** The customer's total in one currency over the scanned paid orders; no conversion. */
     private function spend_in_currency( int $user_id, string $currency ): float {
         $key = $user_id . ':' . $currency;
 
@@ -393,8 +312,7 @@ final class ConditionsEvaluator {
     }
 
     /**
-     * The customer's most recent paid orders, up to ORDER_SCAN_LIMIT. Memoised
-     * and shared by every purchase-history fact.
+     * The customer's most recent paid orders, up to ORDER_SCAN_LIMIT.
      *
      * @return \WC_Order[]
      */
@@ -423,14 +341,8 @@ final class ConditionsEvaluator {
     }
 
     /**
-     * Product ids this customer has bought.
-     *
-     * Variations report their parent product, because a merchant targeting a
-     * product means the product, not one of its sizes.
-     *
-     * INTERIM. The data model defines `product_in_cart` as a gate on the order
-     * being placed, not on purchase history. Until the award engine passes the
-     * order to the seam, "has ever bought" is the closest fact available.
+     * Product ids the customer has bought; variations report their parent.
+     * Interim for product_in_cart until the seam passes the order.
      *
      * @return int[]
      */
@@ -457,9 +369,7 @@ final class ConditionsEvaluator {
     }
 
     /**
-     * Category ids the customer has bought from.
-     *
-     * Same interim caveat as purchased_product_ids().
+     * Category ids the customer has bought from. Same interim caveat as purchased_product_ids().
      *
      * @return int[]
      */

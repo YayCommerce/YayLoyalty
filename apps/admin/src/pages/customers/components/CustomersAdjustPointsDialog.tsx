@@ -15,16 +15,7 @@ import { Field, FieldContent, FieldError, FieldLabel } from '@/components/ui/fie
 import { NumberInputInput, NumberInputRoot } from '@/components/ui/number-input';
 import { Textarea } from '@/components/ui/textarea';
 
-/**
- * The form for `POST /customers/{id}/adjust`, driven from the Bulk Actions
- * menu (`CustomersBulkActionBar.tsx`) — see `customers-page.bulk-actions.ts`
- * for what happens on submit (one request per selected customer, since
- * there's no bulk endpoint).
- *
- * Plain `useState` + a manual `zod` check, not `react-hook-form`: two fields,
- * no dependent validation — the library would be pure ceremony here (and
- * nothing else in this app pulls it in yet either).
- */
+/** The bulk adjust-points form. Plain useState, not react-hook-form: two fields, no dependent validation. */
 export function CustomersAdjustPointsDialog({
   open,
   onOpenChange,
@@ -45,8 +36,7 @@ export function CustomersAdjustPointsDialog({
 
   function handleOpenChange(next: boolean) {
     if (!next) {
-      // Reset for the next time this opens — a stale points/note value from a
-      // previous bulk action carrying over would be a real footgun here.
+      // A stale value carrying into the next bulk action would be a footgun.
       setPoints(0);
       setNote('');
       setError(null);
@@ -55,10 +45,7 @@ export function CustomersAdjustPointsDialog({
   }
 
   function handleSubmit() {
-    // The server also rejects 0 (see CustomerRestController::adjust_points),
-    // but the shared `adjustPointsSchema` only requires an integer — that
-    // stays a pure mirror of the wire shape, so the "must be non-zero" rule
-    // (this form's only extra constraint) is checked here instead.
+    // adjustPointsSchema stays a pure mirror of the wire shape; non-zero is this form's rule.
     if (points === 0) {
       setError(__('Enter a non-zero number of points.', 'yayloyalty'));
       return;

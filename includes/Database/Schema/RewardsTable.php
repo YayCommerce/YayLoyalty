@@ -4,20 +4,10 @@ namespace YayLoyalty\Database\Schema;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * yayloyalty_rewards — ways to spend points (1.0 columns only).
- *
- * `status` stores merchant intent only: active, paused, draft, archived.
- * Liveness (`scheduled` / `ended`) is NEVER stored — it is derived at read time
- * from status plus starts_at/ends_at, the same rule campaigns use. See
- * Enums\Status::is_live_at() and Enums\Status::resolve_display(). No cron may
- * flip a status.
- *
- * `cost_points` is NULL only for `flexible_discount` — the customer picks the
- * amount on a slider. Every other type is a fixed-cost catalog item and must
- * have `cost_points` >= 1. The database cannot express a rule that depends on
- * another column's value, so this is enforced in PHP: see
- * Reward::cost_points_is_valid(). A fixed_coupon that slipped through with a
- * null cost would be a free redemption.
+ * yayloyalty_rewards. `status` is intent only; liveness is derived (see
+ * Enums\Status). cost_points is NULL only for flexible_discount, enforced
+ * in PHP by Reward::cost_points_is_valid(): a coupon with a null cost would
+ * be a free redemption.
  */
 final class RewardsTable extends AbstractTableSchema {
 
@@ -28,8 +18,6 @@ final class RewardsTable extends AbstractTableSchema {
     public function definition(): string {
         $table = $this->table_name();
 
-        // dbDelta grammar: lowercase types, one field per line, named KEYs (never
-        // INDEX, never bare UNIQUE), two spaces after PRIMARY KEY, ENGINE stated.
         return "CREATE TABLE {$table} (
             id bigint unsigned NOT NULL AUTO_INCREMENT,
             name varchar(191) NOT NULL,

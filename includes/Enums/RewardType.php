@@ -4,25 +4,15 @@ namespace YayLoyalty\Enums;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * What a reward does when redeemed.
- *
- * The type determines which keys `config` may contain (see
- * Reward::config_schema()) and, per the HARD RULE enforced by
- * Reward::cost_points_is_valid(), whether `cost_points` must be null or set:
- * `flexible_discount` is the slider — the customer picks the amount, so
- * `cost_points` stays null; every other type is a fixed-cost catalog item.
- *
- * Same Free/Pro split as CampaignTrigger: Pro types exist as constants because
- * a downgraded site's stored rows must not be treated as corrupt, but all()
- * returns only what this build actually offers.
+ * What a reward does when redeemed; also the key to the per-type config
+ * whitelist and the cost_points rule (flexible_discount is the slider, null
+ * cost; every other type is fixed-cost). Same Free/Pro split as CampaignTrigger.
  */
 final class RewardType {
 
-    /* --- 1.0 --- */
-
     public const FLEXIBLE_DISCOUNT = 'flexible_discount';
 
-    /* --- Pro. Recognised when stored, not offered in Free. --- */
+    // Pro: recognised when stored, not offered in Free.
 
     public const FIXED_COUPON   = 'fixed_coupon';
     public const PERCENT_COUPON = 'percent_coupon';
@@ -30,20 +20,13 @@ final class RewardType {
     public const FREE_PRODUCT   = 'free_product';
 
     /**
-     * Types this build offers.
-     *
-     * FILTERED; all_known() is NOT — same asymmetry as CampaignTrigger, for the
-     * same reason: a site that downgrades from Pro to Lite must still recognise
-     * its stored Pro reward rows, even though Lite cannot create new ones.
+     * Types this build offers. Filtered, unlike all_known(): downgrade safety needs the recognised set to stay complete.
      *
      * @return string[]
      */
     public static function all(): array {
         /**
-         * Reward types this build can offer.
-         *
-         * Pro's attach point for its own types. Internal seam for first-party
-         * Pro code, not a documented third-party API.
+         * Reward types this build can offer. Internal Pro seam, not a public API.
          *
          * @param string[] $types
          */
@@ -51,11 +34,7 @@ final class RewardType {
     }
 
     /**
-     * The types Lite itself ships, before any filtering.
-     *
-     * Exists so all_known() has an unfiltered base to build on — it must NOT
-     * call all(), or a Pro subscriber would leak into the "recognised"
-     * vocabulary and make it depend on the build.
+     * Lite's own types, unfiltered, so all_known() never depends on the build.
      *
      * @return string[]
      */
@@ -66,10 +45,7 @@ final class RewardType {
     }
 
     /**
-     * Every type the schema recognises, Pro types included.
-     *
-     * DELIBERATELY UNFILTERED. Used for validating stored rows, never for
-     * offering choices.
+     * Every type the schema recognises, Pro included. Unfiltered: for validating stored rows, never for offering choices.
      *
      * @return string[]
      */

@@ -18,19 +18,7 @@ import type { RowFilters } from '@/pages/customers/customers-page.filter-rows';
 import { ALL_SEGMENTS_VALUE, useSavedSegmentPicker } from './customers-saved-segment-row.state';
 import { CustomersSaveSegmentDialog } from './CustomersSaveSegmentDialog';
 
-/**
- * Pro-only saved-segment picker shown above the Customers toolbar.
- *
- * DELETED FROM THE LITE BUILD along with the rest of `src/pro/` — see
- * `CustomersFilterBar.tsx`'s `IS_PRO_BUILD` early return, which is what
- * makes this reachable at all.
- *
- * Pure rendering only. All state, derived booleans (`showSaveButton`,
- * `showRemoveButton`) and mutations live in
- * `customers-saved-segment-row.state.ts` — see that file for the
- * select/save/remove design notes, including why the Save and Remove
- * buttons occupy the same slot and are mutually exclusive.
- */
+/** Saved-segment picker above the Customers toolbar. Rendering only; state lives in customers-saved-segment-row.state.ts. */
 export function CustomersSavedSegmentRow({
   disabled,
   filters,

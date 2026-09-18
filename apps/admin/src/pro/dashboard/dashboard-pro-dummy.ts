@@ -1,14 +1,7 @@
 /**
- * Referrals and tier distribution for the Pro dashboard — the only dummy
- * data on that screen. `GET /dashboard/pro` returns `null` for both because
- * neither table exists yet (see docs/data-model.md), and the panels have to
- * be built and reviewed against something.
- *
- * SWAP POINT. When the referrals / tiers tables ship, DashboardProRestController
- * fills the two fields for real and this file is deleted; the consumers
- * already read `response.referrals ?? DUMMY_REFERRALS` and
- * `response.tier_distribution ?? DUMMY_TIER_DISTRIBUTION`, so nothing else
- * changes.
+ * Dummy referrals and tier distribution until their tables exist. Delete
+ * this file once GET /dashboard/pro fills them; consumers already fall
+ * back with `??`.
  */
 
 export const DUMMY_REFERRALS = { completed: 84, prev_delta_pct: 15 } as const;

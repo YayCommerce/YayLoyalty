@@ -6,13 +6,9 @@ use YayLoyalty\Models\Campaign;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The base-currency amount a purchase campaign earns on.
- *
- * Walks the line items, drops excluded products and categories, takes each
- * line's pre- or post-discount total per `base`, optionally adds tax, then
- * adds back the share of our own redemption discount that fell on the
- * included lines — spending points must not reduce future earning. Shipping
- * is never here because it is never a line item.
+ * The base-currency amount a purchase campaign earns on: included lines'
+ * totals per `base`, plus the share of our own redemption discount that
+ * fell on them, since spending points must not reduce future earning.
  */
 final class BaseCalculator {
 
@@ -42,8 +38,7 @@ final class BaseCalculator {
             }
         }
 
-        // Only the included lines' share of the loyalty discount is added
-        // back: the part that discounted an excluded product never counted.
+        // Only the included lines' share: the part on an excluded product never counted.
         if ( ! $before_discounts && $ctx->get_loyalty_discount() > 0 && $ctx->get_order_subtotal() > 0 ) {
             $included += $ctx->get_loyalty_discount() * ( $included_subtotal / $ctx->get_order_subtotal() );
         }

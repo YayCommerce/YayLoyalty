@@ -25,21 +25,12 @@ use YayLoyalty\Utils\SingletonTrait;
 
 defined( 'ABSPATH' ) || exit;
 
-/**
- * Class RestAPI
- *
- * Handles YayLoyalty REST API endpoints.
- *
- * This is the single place controllers are constructed and asked to register
- * their routes. Controllers no longer register from their constructors, so
- * adding one here is the whole wiring step.
- */
+/** The single place controllers are constructed and register their routes. */
 class RestAPI {
     use SingletonTrait;
 
     protected function __construct() {
         add_action( 'rest_api_init', [ $this, 'loyalty_endpoints' ] );
-        // Every ledger or campaign write invalidates the (large-store-only) dashboard cache.
         add_action( 'yayloyalty_ledger_recorded', [ DashboardCache::class, 'flush' ] );
         add_action( 'yayloyalty_campaigns_changed', [ DashboardCache::class, 'flush' ] );
     }
@@ -50,12 +41,7 @@ class RestAPI {
      * @return AbstractRestController[]
      */
     private function controllers(): array {
-        // ONE OF TWO AUTHORISED CONSTRUCTION SITES for LedgerService — the
-        // other is Database\InitYayLoyaltyCustomer::maybe_create() (install-
-        // time bootstrap, see its docblock). See docs/code-standards.md
-        // section 8: PHP has no package-private, so "only LedgerService writes
-        // the ledger" is a convention plus these two named sites plus a
-        // review rule. Do not hand both repositories to a third place.
+        // One of LedgerService's two authorised construction sites; see its docblock.
         $customers = new CustomerRepository();
         $ledger    = new LedgerRepository();
 
@@ -93,17 +79,7 @@ class RestAPI {
         ];
 
         /**
-         * Controllers owning routes in the yayloyalty/v1 namespace.
-         *
-         * The attach point Pro uses to add its own endpoints, so the Lite
-         * build needs no knowledge of them.
-         *
-         * Subscribers MUST return AbstractRestController instances — anything
-         * else is skipped and logged by loyalty_endpoints() rather than fataling
-         * the whole REST API.
-         *
-         * Internal seam for first-party Pro code, not a documented
-         * third-party API.
+         * Controllers owning routes in yayloyalty/v1. Internal Pro seam; anything not an AbstractRestController is skipped and logged.
          *
          * @param AbstractRestController[] $controllers
          */
@@ -112,13 +88,9 @@ class RestAPI {
 
     public function loyalty_endpoints() {
         foreach ( $this->controllers() as $controller ) {
-            // A filter subscriber returning the wrong type would otherwise
-            // fatal on ->register_routes() and take down every YayLoyalty
-            // endpoint, not just its own.
+            // A wrong type would fatal on register_routes() and take down every endpoint.
             if ( ! $controller instanceof AbstractRestController ) {
-                // Warning, not debug: the subscriber's endpoints are silently
-                // missing from the API, and nobody debugging that would think
-                // to turn WP_DEBUG on first.
+                // Warning, not debug: nobody debugging missing endpoints turns WP_DEBUG on first.
                 Log::warning(
                     'RestAPI',
                     'ignoring a yayloyalty_rest_controllers entry that is not an AbstractRestController ('

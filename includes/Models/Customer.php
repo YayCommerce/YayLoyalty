@@ -4,15 +4,9 @@ namespace YayLoyalty\Models;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * A member row: cached aggregates over that user's ledger.
- *
- * Mutable, unlike LedgerEntry — this is a cache, and every value on it can be
- * rebuilt by replaying the ledger.
- *
- * `balance` and `lifetime_earned` are SIGNED. A clawback after a refund can
- * legitimately push a balance below zero, and there is deliberately no guard
- * against it: the dashboard flags negatives, the service does not prevent them.
- * `pending_points` and `lifetime_redeemed` are unsigned.
+ * A member row: cached aggregates over the user's ledger, rebuildable by
+ * replay. balance and lifetime_earned are signed: a refund clawback can
+ * legitimately go below zero, and nothing guards against it.
  */
 class Customer extends AbstractModel {
 
@@ -101,7 +95,7 @@ class Customer extends AbstractModel {
     }
 
     public function get_format(): array {
-        // No decimals on this table yet; lifetime_spend (1.2) will be '%s'.
+        // Decimal columns (lifetime_spend, tier_progress_value), when mapped, must be '%s'.
         return [ '%d', '%d', '%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s' ];
     }
 

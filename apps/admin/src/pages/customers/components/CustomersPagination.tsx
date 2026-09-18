@@ -1,12 +1,7 @@
 import { Pagination } from '@/components/ui/pagination';
 import { Skeleton } from '@/components/ui/skeleton';
 
-/**
- * Thin wrapper over the shared `Pagination` primitive (same one YayUiKits'
- * `TablePage.tsx` demos: "Page X of Y" + prev/next + a "Go to" number
- * input) — converts this screen's 1-based `page`/`pageCount` into that
- * component's 0-based `pageIndex`.
- */
+/** Wraps the shared Pagination primitive, converting this screen's 1-based page into its 0-based pageIndex. */
 export function CustomersPagination({
   page,
   pageCount,

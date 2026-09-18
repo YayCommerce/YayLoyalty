@@ -13,26 +13,9 @@ import {
 import { Separator } from '@/components/ui/separator';
 
 /**
- * Matches YayUiKits' `BulkActionBox` pattern exactly — same component,
- * same "Bulk Actions" dropdown trigger (see
- * `YayUiKits/apps/admin-page/src/components/ui/bulk-actions.tsx` and its
- * `routes/patterns/TablePage.tsx` demo). The "N selected" pill only appears
- * once at least one row is picked — that threshold (`selected > 0`) lives
- * inside `BulkActionBox` itself, not re-decided here.
- *
- * "Adjust points" and "Export" are real (see `customers-page.bulk-actions.ts`
- * / `customers-page.export.ts`). "Assign tier" and "Reset expiry" are NOT
- * offered here: the former needs the Tier feature (`TIER_FILTER_ENABLED` is
- * off — see `customers-page.filter-rows.ts`), the latter has no REST endpoint
- * at all yet — showing either would be a control that does nothing when
- * clicked, worse than not showing it.
- *
- * "Select all matching filters" is real (see customers-page.selection.ts) —
- * an Ant-Design-Table-style mode flip ("everything matching, minus any you
- * un-check"), not a fetch of every matching row, so it stays instant no
- * matter how large the real list gets. Folded into this same bordered box
- * instead of a second banner tier, so selection stays one row like the
- * kit's rather than growing its own two-tier shape.
+ * YayUiKits' BulkActionBox pattern. "Assign tier" and "Reset expiry" are not
+ * offered: neither has an endpoint yet, and a dead control is worse than
+ * none. "Select all matching" is folded into the same box so selection stays one row.
  */
 export function CustomersBulkActionBar({
   count,
@@ -45,7 +28,7 @@ export function CustomersBulkActionBar({
 }: {
   count: number;
   onClear: () => void;
-  /** Present only when there's a larger filtered set beyond this page to expand into. */
+  /** Present only when there is a larger filtered set beyond this page. */
   selectAllCount?: number;
   onSelectAllMatching?: () => void;
   onAdjustPoints: () => void;

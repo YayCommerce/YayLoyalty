@@ -4,24 +4,16 @@ namespace YayLoyalty\Helpers;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Settings storage — single option, validated on the way in and on the way out.
- *
- * Both directions matter. update_settings() previously wrote whatever arrived,
- * and get_settings() still merged unvalidated stored data straight into the
- * page via LocalizeHelper. Sanitising only the write path leaves anything
- * already in the option — or written by an older version, or by another plugin
- * touching the same option name — echoed into the admin screen.
- *
- * Every stored blob carries a schema_version so the shape can evolve without a
- * table migration. A blob without one is version 0 and gets stamped on its next
- * save, so no backfill is needed.
+ * Settings storage: one option, validated on read as well as write, since
+ * the stored blob is localised straight into the admin page and an older
+ * version or another plugin may have written it.
  */
 class SettingsHelper {
 
     public const OPTION_SETTINGS = 'yayloyalty_settings';
     public const OPTION_REVIEWED = 'yayloyalty_reviewed';
 
-    /** Current settings shape. Bump when a migration changes the structure. */
+    /** Bump when a migration changes the stored shape. */
     public const SCHEMA_VERSION = 1;
 
     public static function get_default_settings(): array {
@@ -32,18 +24,14 @@ class SettingsHelper {
                 'points_label_plural'   => __( 'Points', 'yayloyalty' ),
             ],
             'advanced' => [
-                // Largest manual adjustment a non-administrator may make in
-                // one call. 0 = unlimited. Read via Capabilities::ceiling().
+                // 0 = unlimited. Read via Capabilities::ceiling().
                 'adjustment_ceiling' => 0,
             ],
         ];
     }
 
     /**
-     * Type map used by both validate() and sanitize_output().
-     *
-     * Keyed by group, then field. Anything absent here is not a setting and is
-     * dropped in both directions.
+     * Type map by group then field; anything absent is dropped in both directions.
      *
      * @return array<string, array<string, string>>
      */
@@ -60,9 +48,7 @@ class SettingsHelper {
         ];
     }
 
-    /**
-     * Stored settings merged over defaults, sanitised for output.
-     */
+    /** Stored settings merged over defaults, sanitised for output. */
     public static function get_settings(): array {
         $saved = get_option( self::OPTION_SETTINGS, [] );
 
@@ -79,11 +65,7 @@ class SettingsHelper {
         return $merged;
     }
 
-    /**
-     * Validate, merge over defaults, stamp the version, save.
-     *
-     * Unknown keys are dropped rather than persisted.
-     */
+    /** Validates, merges over defaults, stamps the version, saves. */
     public static function update_settings( array $settings ): array {
         $clean = self::validate( $settings );
 
@@ -96,7 +78,7 @@ class SettingsHelper {
     }
 
     /**
-     * Whitelist and coerce incoming settings.
+     * Whitelists and coerces incoming settings.
      *
      * @param array<string, mixed> $input
      * @return array<string, mixed>
@@ -106,10 +88,7 @@ class SettingsHelper {
     }
 
     /**
-     * Whitelist and coerce stored settings on the way out.
-     *
-     * Same rules as validate(); named separately because the intent differs and
-     * the read path is easy to forget.
+     * Whitelists and coerces stored settings on the way out. Same rules as validate(); named so the read path is not forgotten.
      *
      * @param array<string, mixed> $stored
      * @return array<string, mixed>

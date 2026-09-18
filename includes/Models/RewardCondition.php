@@ -4,22 +4,10 @@ namespace YayLoyalty\Models;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * One reward eligibility rule: { type, operator, value }.
- *
- * A value object. Immutable by convention — PHP 7.4 has no `readonly`, so this
- * is private properties and getters only, no setters. Build a changed one with
- * from_array() rather than mutating.
- *
- * `value` is polymorphic; its accepted shapes are defined by
- * Enums\RewardConditionType::schema() — a list for the `in` / `not_in` types,
- * an integer (or a [low, high] pair for `between`) for `lifetime_points`, a
- * non-negative integer for `redemption_count`. This class only holds and
- * exposes the value; validation and normalisation are
- * Models\RewardConditionSet's job.
- *
- * Deliberately smaller than Models\CampaignCondition: rewards' vocabulary has
- * no `money` or `country` shaped values, so there is no money()/country()
- * accessor here to go with them.
+ * One reward eligibility rule: { type, operator, value }. Immutable value
+ * object; `value`'s shapes are RewardConditionType::schema()'s, validated
+ * by RewardConditionSet. Kept separate from CampaignCondition so each can
+ * grow its own accessors.
  */
 final class RewardCondition {
 
@@ -79,8 +67,7 @@ final class RewardCondition {
     }
 
     /**
-     * The value as a plain list — for the `in` / `not_in` types. A scalar is
-     * wrapped so callers never branch on "array or not".
+     * The value as a list; a scalar is wrapped so callers never branch.
      *
      * @return array<int, mixed>
      */

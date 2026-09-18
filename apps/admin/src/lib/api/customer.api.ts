@@ -16,14 +16,7 @@ import {
 } from '@/lib/schema/customer.schema';
 import { LedgerEntry, ledgerEntrySchema, ledgerEnvelopeSchema, LedgerFilterType } from '@/lib/schema/ledger.schema';
 
-/**
- * Every response is `.parse()`d rather than cast.
- *
- * `.json<T>()` is an unchecked TypeScript assertion: it tells the compiler what
- * the shape is without checking. A null where a number is expected then reaches
- * a component and white-screens the page. Parsing turns that into a caught
- * error at the boundary.
- */
+/** Every response is parsed, not cast: `.json<T>()` is unchecked, and a bad shape would white-screen a component. */
 
 /**
  * `scenario` is a dev-only switch: the server registers the argument only
@@ -79,13 +72,7 @@ export async function adjustCustomerPoints(userId: number, input: AdjustPointsIn
   return ledgerEntrySchema.parse(await api.post(`customers/${userId}/adjust`, { json: input }).json());
 }
 
-/**
- * App-side (camelCase) params for `getCustomers()`. The wire spelling
- * (`per_page`, `orderby`, `balance_range`, `expiring_soon` — WP REST core
- * style, see `CustomerRestController::get_items()` args) exists only inside
- * the request builder below: one conversion point, so no caller has to know
- * how the server spells a query param.
- */
+/** App-side params for getCustomers(); the wire spelling exists only in the request builder. */
 export type CustomerListParams = {
   page?: number;
   perPage?: number;
@@ -98,18 +85,11 @@ export type CustomerListParams = {
 };
 
 const customerListEnvelopeSchema = paginatedSchema(customerListRowSchema).extend({
-  // Absent whenever the result isn't empty — see CustomerRestController::get_items().
+  // Absent whenever the result is not empty.
   suggestions: z.array(noMatchSuggestionSchema).optional(),
 });
 
-/**
- * `GET /customers` — the admin Customers list: search + filter + sort + paginate, all server-side.
- *
- * `signal` is optional and only matters to `fetchAllMatchingCustomers()`'s
- * multi-page loop (Export CSV, bulk Adjust points) — a caller that cancels
- * mid-loop (e.g. on unmount) aborts whichever request is in flight instead
- * of letting a large sequential fetch run to completion for no reason.
- */
+/** GET /customers: search, filter, sort and paginate server-side. `signal` lets a multi-page walk cancel. */
 export async function getCustomers(params: CustomerListParams = {}, signal?: AbortSignal) {
   const searchParams: Record<string, string> = {};
 

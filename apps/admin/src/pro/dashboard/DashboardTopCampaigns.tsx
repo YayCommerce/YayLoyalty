@@ -8,7 +8,7 @@ import { ProGate } from '@/components/pro/ProGate';
 import { RANGE_LABEL } from '@/pages/dashboard/dashboard-page.copy';
 import { conditionsLabel, givesLabel } from '../campaigns/campaign-labels';
 
-/** Artboard 1b: three rows — name / points / "gives · priority N · conditions", composed with the Campaigns page's own label helpers. */
+/** Three rows — name / points / "gives · priority N · conditions", composed with the Campaigns page's own label helpers. */
 export function DashboardTopCampaigns({
   campaigns,
   range,

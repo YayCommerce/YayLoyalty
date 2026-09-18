@@ -8,10 +8,11 @@ use YayLoyalty\Utils\PointsMath;
 
 /**
  * The cross-language contract. `tests/fixtures/points-math-vectors.json` is
- * keyed by PointsMath method name; the admin SPA's `lib/points-math` runs the
- * same file under Vitest. A vector added on one side must pass on the other,
- * and a method added without vectors fails here — so the two implementations
- * cannot drift silently.
+ * keyed by PointsMath method name; `apps/admin/tests/points-math.vectors.test.ts`
+ * runs the same file under Vitest against the admin SPA's `lib/points-math`.
+ * A vector added on one side must pass on the other, and a method added
+ * without vectors fails here — so the two implementations cannot drift
+ * silently.
  *
  * Expected values were produced by PHP (the source of truth). Only inputs
  * every supported PHP version (7.4+) rounds identically belong in the file:

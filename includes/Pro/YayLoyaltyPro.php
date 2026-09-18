@@ -16,59 +16,22 @@ use YayLoyalty\Services\Dashboard\DashboardCache;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Pro entry point.
- *
- * THIS ENTIRE DIRECTORY IS DELETED FOR THE LITE BUILD. Nothing outside
- * includes/Pro/ may reference a class inside it, with exactly one
- * exception: the guarded class_exists probe in YayLoyalty::initialize().
- *
- * That single guarded reference is what makes the split a directory deletion
- * rather than surgery on shared files — no @pro-start markers anywhere.
- *
- * WIRING ONLY. boot() attaches hooks and constructs collaborators; it does not
- * implement behaviour. Every feature lives in its own layer directory
- * (Models/, Repositories/, Services/, Controllers/, Database/Schema/) mirroring
- * the structure of the Lite tree, so a reader always knows where to look.
- *
- * Pro reaches Lite only through the seams documented in
- * docs/code-standards.md section 13:
- *
- *   yayloyalty_table_schemas
- *   yayloyalty_ledger_recorded
- *   yayloyalty_rest_controllers
- *   yayloyalty_campaign_triggers
- *   yayloyalty_campaign_config_whitelist
- *   yayloyalty_reward_types
- *   yayloyalty_reward_config_whitelist
- *   yayloyalty_rest_item_schema
- *   yayloyalty_campaign_conditions_evaluator
- *   yayloyalty_localize_admin_data
- *
- * If a feature needs something no seam provides, add a seam to Lite. Reaching
- * for a marker instead is the thing this design exists to avoid.
+ * Pro entry point: wiring only, features live in their layer directories.
+ * includes/Pro/ is deleted for the Lite build; the only reference from
+ * outside is the guarded class_exists probe in YayLoyalty. Pro reaches Lite
+ * only through the seams in docs/code-standards.md § 13 — add a seam, never a marker.
  */
 final class YayLoyaltyPro {
 
-    /** Guards against double-booting if initialize() ever runs twice. */
+    /** Guards against initialize() running twice. */
     private static $booted = false;
 
-    /**
-     * Shared across the triggers, whitelist and evaluator filters.
-     *
-     * One instance so its per-request memo of a customer's purchased products
-     * is actually reused: an award pass evaluating several campaigns for the
-     * same customer would otherwise rescan their orders for each one.
-     *
-     * @var ConditionsEvaluator|null
-     */
+    /** @var ConditionsEvaluator|null One instance so its per-request order memo is reused across campaigns. */
     private static $evaluator = null;
 
     /**
-     * Campaign triggers Pro adds to the three Lite ships.
-     *
-     * A subset of CampaignTrigger's Pro constants: `referral`, `social` and
-     * `renewal` are recognised when stored but not yet fireable by anything,
-     * so offering them would sell a switch that does nothing.
+     * Triggers Pro offers. referral, social and renewal are recognised but not
+     * yet fireable, so offering them would sell a switch that does nothing.
      *
      * @var string[]
      */
@@ -79,11 +42,7 @@ final class YayLoyaltyPro {
         CampaignTrigger::SPEND_MILESTONE,
     ];
 
-    /**
-     * Reward types Pro adds to the one Lite ships.
-     *
-     * @var string[]
-     */
+    /** @var string[] */
     private const ADDED_REWARD_TYPES = [
         RewardType::FIXED_COUPON,
         RewardType::PERCENT_COUPON,
@@ -92,13 +51,8 @@ final class YayLoyaltyPro {
     ];
 
     /**
-     * Attach Pro to Lite's extension seams.
-     *
-     * Called from YayLoyalty::initialize() behind a class_exists check, so in
-     * the Lite build this method simply does not exist and is never reached.
-     *
-     * Runs on plugins_loaded, before rest_api_init, so the trigger and schema
-     * filters are in place by the time routes are registered with their enums.
+     * Attaches Pro to Lite's seams. Runs on plugins_loaded, before
+     * rest_api_init, so the trigger and schema filters precede route registration.
      */
     public static function boot(): void {
         if ( self::$booted ) {
@@ -116,32 +70,17 @@ final class YayLoyaltyPro {
         add_filter( 'yayloyalty_rest_item_schema', [ self::class, 'describe_pro_config' ], 10, 2 );
         add_filter( 'yayloyalty_localize_admin_data', [ self::class, 'add_segments' ] );
 
-        /**
-         * Fires once Pro has attached its hooks.
-         *
-         * The extension point for Pro-internal add-ons; not part of the
-         * Lite build's surface.
-         */
+        /** Fires once Pro has attached its hooks. Pro-internal; absent from Lite. */
         do_action( 'yayloyalty_pro_booted' );
     }
 
-    /**
-     * Has Pro booted in this request?
-     *
-     * Distinct from YayLoyalty::is_pro(), which only asks whether the code
-     * is present. Useful when ordering matters.
-     */
+    /** Whether boot() has run; YayLoyalty::is_pro() only asks whether the code is present. */
     public static function is_booted(): bool {
         return self::$booted;
     }
 
-    /* ─── Seam subscribers ──────────────────────────────────────────── */
-
     /**
-     * Widen the triggers this build can fire.
-     *
-     * CampaignTrigger::all_known() is deliberately NOT filtered, so this does
-     * not change what a downgraded site recognises — only what Pro offers.
+     * Widens the triggers this build offers; all_known() is unfiltered so a downgraded site still recognises them.
      *
      * @param string[] $triggers
      * @return string[]
@@ -151,12 +90,8 @@ final class YayLoyaltyPro {
     }
 
     /**
-     * Config keys for the triggers Pro adds.
-     *
-     * Note what is NOT here: `max_points_per_order` and `daily_cap` on
-     * `purchase`. Lite already whitelists those so a downgraded site keeps
-     * them on re-save — vocabulary is shared, behaviour is not. Adding them
-     * again would be a no-op that implied otherwise.
+     * Config keys for the triggers Pro adds. The purchase capping keys are
+     * not here: Lite whitelists them so a downgraded site keeps them.
      *
      * @param array<string, string[]> $whitelist
      * @return array<string, string[]>
@@ -188,10 +123,7 @@ final class YayLoyaltyPro {
     }
 
     /**
-     * Widen the reward types this build can offer.
-     *
-     * RewardType::all_known() is deliberately NOT filtered, so this does not
-     * change what a downgraded site recognises — only what Pro offers.
+     * Widens the reward types this build offers; all_known() is unfiltered so a downgraded site still recognises them.
      *
      * @param string[] $types
      * @return string[]
@@ -245,21 +177,17 @@ final class YayLoyaltyPro {
     }
 
     /**
-     * Supply the conditions evaluator Lite asks for and never has.
+     * Supplies the conditions evaluator Lite asks for.
      *
      * @param object|null $evaluator
      * @return object
      */
     public static function conditions_evaluator( $evaluator ) {
-        // Pro is the default provider, not the only possible one. An evaluator
-        // a lower-priority subscriber already supplied is left alone rather
-        // than clobbered.
+        // An evaluator a lower-priority subscriber supplied is left alone.
         return null === $evaluator ? self::evaluator() : $evaluator;
     }
 
-    /**
-     * The one evaluator instance for this request.
-     */
+    /** The one evaluator instance for this request. */
     private static function evaluator(): ConditionsEvaluator {
         if ( null === self::$evaluator ) {
             self::$evaluator = new ConditionsEvaluator();
@@ -268,12 +196,7 @@ final class YayLoyaltyPro {
         return self::$evaluator;
     }
 
-    /**
-     * Register Pro's REST controllers.
-     *
-     * @param array $controllers
-     * @return array
-     */
+    /** Registers Pro's REST controllers. */
     public static function add_controllers( array $controllers ): array {
         $controllers[] = new CampaignPreviewRestController(
             new CampaignRepository(),
@@ -291,7 +214,7 @@ final class YayLoyaltyPro {
     }
 
     /**
-     * Add the saved Customers-page segments to the admin bootstrap payload.
+     * Adds the saved Customers-page segments to the admin bootstrap payload.
      *
      * @param array<string, mixed> $data
      * @return array<string, mixed>
@@ -303,16 +226,9 @@ final class YayLoyaltyPro {
     }
 
     /**
-     * Describe the capping keys Lite stores but cannot act on.
-     *
-     * Keyed on the schema's title, not on $rest_base: CampaignPreviewRestController
-     * shares the `campaigns` base, so matching on the base alone would inject
-     * campaign config properties into the preview route's schema too.
-     *
-     * `config` stays an open object — its keys depend on the trigger, and the
-     * per-trigger whitelist in Campaign is the authority. This only names the
-     * two Pro keys so the REST schema documents them and the UI can introspect
-     * them rather than hard-coding a list.
+     * Documents max_points_per_order and daily_cap in the campaign REST schema
+     * so the UI can introspect them. Matched on the schema title, not
+     * $rest_base: the preview controller shares the `campaigns` base.
      *
      * @param array<string, mixed> $schema
      * @param string               $rest_base
@@ -340,8 +256,7 @@ final class YayLoyaltyPro {
             ],
         ];
 
-        // Trigger-dependent keys are validated by Campaign::validate_config(),
-        // not here. Closing the object would reject every other config key.
+        // Closing the object would reject every trigger-dependent key.
         $schema['properties']['config']['additionalProperties'] = true;
 
         return $schema;

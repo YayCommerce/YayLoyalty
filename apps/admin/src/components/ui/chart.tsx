@@ -8,13 +8,16 @@ import { cn } from '@/lib/utils';
  * shadcn/ui `chart` primitive, the revision that targets recharts 2.x
  * (vendored — third-party code, exempt from the 200-LOC guideline).
  *
- * Adapted for this app in three places, all marked "YayLoyalty:" below:
- *   1. the dark-theme selector is `.yay-dark` (see theme-provider.tsx), not `.dark`;
+ * Adapted for this app in three places:
+ *   1. the dark-theme selector is `.yay-dark` (see theme-provider.tsx), not
+ *      `.dark` — marked "YayLoyalty:" below;
  *   2. the `--color-<key>` variables it emits map onto `--chart-1..5`, which
  *      theme.css defines on `:root` / `.yay-dark` and mirrors as
- *      `--color-chart-*` inside `@theme inline`;
+ *      `--color-chart-*` inside `@theme inline` — done by consumers'
+ *      `ChartConfig`, not marked in this file;
  *   3. recharts' arbitrary selectors are not canonical Tailwind classes, so
- *      the canonical-classes lint is disabled for this one file.
+ *      the canonical-classes lint is disabled for this one file — the
+ *      unmarked `eslint-disable` on line 1.
  */
 
 // Format: { THEME_NAME: CSS_SELECTOR }

@@ -12,25 +12,13 @@ import { CustomersEmptyState } from './CustomersEmptyState';
 import { CustomersSkeletonRows } from './CustomersSkeletonRows';
 import { CustomerTableRow } from './CustomerTableRow';
 
-/** Column count depends on which optional column groups are on — one place,
- *  reused by the header and the "no results" row's colSpan. */
+/** Column count for the header and the "no results" row's colSpan. */
 export function countColumns(showProColumns: boolean, showSelection: boolean) {
-  // Customer, Balance, Pending, Lifetime earned, Last activity, Expires = 6 always.
-  // Pro adds Tier + Referrals; selection adds the leading checkbox column
-  // (off during the rebuild toggle even in Pro — see CustomerTableRow.tsx).
+  // Six base columns; Pro adds Tier + Referrals; selection adds the checkbox column.
   return 6 + (showProColumns ? 2 : 0) + (showSelection ? 1 : 0);
 }
 
-/**
- * Purely presentational: `rows` arrives already sorted AND paginated (one
- * page's worth) — see CustomersPage.tsx, which owns both as server query
- * params (`orderby`/`order`/`page`), so sorting is applied to the whole
- * filtered set server-side before slicing a page, not per-page here. This
- * component only renders the caret state and reports clicks upward.
- *
- * `sort`/`selection` grouped (mirrors CustomersScreen.tsx's own props) since
- * each is really one concern spread across several values.
- */
+/** Presentational: rows arrive sorted and paginated server-side; this renders carets and reports clicks. */
 export function CustomersTable({
   rows,
   isLoading,
@@ -43,15 +31,13 @@ export function CustomersTable({
   selection,
 }: {
   rows: CustomerListRow[];
-  /** `useCustomersQuery` still in flight — real network latency, not a simulated delay. */
+  /** No data yet. */
   isLoading: boolean;
-  /** A background page/sort/filter refetch while `placeholderData` keeps the previous
-   *  rows on screen — the whole bordered table dims so that work is visible without a
-   *  spinner or a layout shift. Not applied over the first-load skeleton. */
+  /** A background refetch behind placeholderData; dims the table. Not over the first-load skeleton. */
   isFetching: boolean;
-  /** True store (no members at all) vs. search/filters matching nobody — different messages. */
+  /** No members at all, as opposed to filters matching nobody. */
   isStoreEmpty: boolean;
-  /** What to show when filters narrow a non-empty store to zero rows — see CustomersNoMatchState.tsx. */
+  /** Shown when filters narrow a non-empty store to zero rows. */
   noMatchContent?: ReactNode;
   showProColumns: boolean;
   staleBalances: boolean;
@@ -61,7 +47,7 @@ export function CustomersTable({
     onChange: (key: SortKey) => void;
   };
   selection: {
-    /** Off during the rebuild toggle even in Pro — see CustomerTableRow.tsx. */
+    /** Off during the rebuild toggle even in Pro. */
     enabled: boolean;
     header: HeaderSelectionState;
     selected: Set<number>;
@@ -73,10 +59,6 @@ export function CustomersTable({
   const { enabled: showSelection, header: headerSelection, selected, onToggle: onToggleRow, onToggleAll } = selection;
 
   const columnCount = countColumns(showProColumns, showSelection);
-  // Nothing to sort or select when the body isn't showing real rows (loading
-  // skeleton, empty store, no filter match) — headers go back to plain text
-  // and the select-all checkbox disables, rather than staying clickable over
-  // an empty table.
   const isEmpty = !isLoading && rows.length === 0;
 
   return (
@@ -105,9 +87,7 @@ export function CustomersTable({
               disabled={isEmpty}
             />
             {showProColumns && (
-              // Always disabled, not just when isEmpty: no tiers table exists yet, so there
-              // is no real column to sort — the cells below only show a UI-check sample
-              // value derived from balance (see customers-page.tier-sample-data.ts).
+              // Always disabled: no tiers table yet, the cells show a sample derived from balance.
               <SortableHead
                 sortKey="tier"
                 label={__('Tier', 'yayloyalty')}
@@ -163,7 +143,7 @@ export function CustomersTable({
               disabled={isEmpty}
             />
             {showProColumns && (
-              // Always disabled: no referral-count column exists yet — see CustomerTableRow.tsx.
+              // Always disabled: no referral-count column exists yet.
               <SortableHead
                 sortKey="referrals"
                 label={__('Referrals', 'yayloyalty')}
@@ -211,12 +191,7 @@ export function CustomersTable({
   );
 }
 
-/**
- * Column head with a real sort caret — click toggles asc/desc, clicking a
- * new column switches to it. `disabled` (nothing in the body to sort) drops
- * to plain, non-interactive text with no caret rather than a dead-looking
- * clickable button.
- */
+/** Column head with a sort caret; `disabled` drops to plain text rather than a dead-looking button. */
 function SortableHead({
   sortKey,
   label,
@@ -247,14 +222,8 @@ function SortableHead({
 
   return (
     <TableHead className={align === 'right' ? 'text-right' : undefined}>
-      {/* `flex h-full w-full` (not `inline-flex`), not `text-align` on the <th>, does the
-       *  centering here — verified live in Chrome (see git history / PR discussion) that an
-       *  `inline-flex` button inside a table-cell with `vertical-align:middle` centers 2px
-       *  higher when its first child is the icon (SVG) vs. the label (text): the icon-first
-       *  headers (Customer, Tier) sat visibly higher than the label-first ones (Balance,
-       *  Pending, ...), a real Chromium quirk, not something `items-center` alone fixes.
-       *  Filling the cell's full height/width sidesteps it — there's no leftover space left
-       *  for that baseline synthesis to misplace. */}
+      {/* `flex h-full w-full`, not inline-flex: Chromium centres an inline-flex button 2px
+          higher in a table cell when its first child is an SVG, so icon-first headers sat high. */}
       <button
         type="button"
         onClick={() => onSort(sortKey)}

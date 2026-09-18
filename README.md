@@ -114,7 +114,7 @@ One repository, two zips. Lite = Pro minus `includes/Pro/` and SPA built with `B
 ## Checks
 
 ```bash
-composer test                  # phpunit — 93 unit tests: points engine (BaseCalculator, PurchaseHandler, PointsEngine), dashboard computation (PeriodWindow, DashboardMath, AnomalyDetector, DashboardStats, DashboardNotices), PointsMath + shared vectors
+composer test                  # phpunit — 99 unit tests: points engine (BaseCalculator, PurchaseHandler, PointsEngine), dashboard computation (PeriodWindow, DashboardMath, AnomalyDetector, DashboardStats, DashboardNotices), PointsMath + shared vectors, campaign config/conditions validation
 composer lint                  # phpcs (WPCS + PHPCompatibility, 7.4 floor)
 pnpm --filter @yayloyalty/admin-page lint   # eslint + prettier on TypeScript/React
 pnpm --filter @yayloyalty/admin-page test   # vitest — lib/points-math against tests/fixtures/points-math-vectors.json (same file phpunit runs)
@@ -123,7 +123,7 @@ pnpm --filter @yayloyalty/admin-page test   # vitest — lib/points-math against
 
 `scripts/validate-build.php` boots the packaged plugin inside WordPress when `YAYLOYALTY_WP_CLI` is set — see `docs/deployment-guide.md`.
 
-**Known issue:** The `pnpm build` step currently fails at `tsc --noEmit` due to dangling imports from #7; the customers list endpoint was removed but components still reference the old query files. This must be fixed before the next release.
+**Known issue:** The `pnpm build` step currently fails at `tsc --noEmit` on five pre-existing type errors (`@emoji-mart/*` and `@radix-ui/react-progress` types, and a `per_page`/`perPage` mismatch in two campaign components). This must be fixed before the next release.
 
 ---
 

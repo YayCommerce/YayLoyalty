@@ -8,17 +8,10 @@ use YayLoyalty\Utils\Dates;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Dev-only dashboard artboards.
- *
- * SWAP POINT — `GET /dashboard?scenario=…` (WP_DEBUG only) answers from here
- * instead of DashboardStats, for now: a dev store's real ledger holds a
- * handful of seeded rows, which is not enough to build or review the
- * wireframe states against (empty store, a 2,431-member store, a 250k-member
- * cached store, the notice strip, the anomaly panel). Every scenario emits
- * the exact wire shape the SPA parses with `dashboardResponseSchema`, so a
- * drift here fails loudly on the dev server. Nothing else reads this class;
- * when the artboards are signed off it is deleted together with the
- * `scenario` argument and nothing in the SPA changes.
+ * Dev-only dashboard scenarios, served for `?scenario=` under WP_DEBUG: a
+ * dev ledger is too small to review the UI states against. Every scenario
+ * emits the exact wire shape the SPA parses, so drift fails loudly. Deleted
+ * with both `scenario` args once signed off; nothing in the SPA changes.
  */
 final class DashboardFixture {
 
@@ -51,11 +44,7 @@ final class DashboardFixture {
         }
     }
 
-    /**
-     * Artboard 1b's Pro panel data for the same scenarios. `referrals` and
-     * `tier_distribution` stay null here too — the SPA's own dummies fill
-     * them, exactly as on the real path.
-     */
+    /** Pro panel data for the same scenarios; referrals and tier_distribution stay null, as on the real path. */
     public static function pro_scenario( string $name, int $range ): array {
         $window = PeriodWindow::for_range( $range, new \DateTimeImmutable( 'now', wp_timezone() ) );
         $days   = $window->days();
@@ -69,7 +58,7 @@ final class DashboardFixture {
                 'purchase',
                 121400,
                 [
-                    'mode'            => 'fixed',
+                    'mode'            => 'rate',
                     'points_per_unit' => 1,
                 ],
                 0,
@@ -190,8 +179,7 @@ final class DashboardFixture {
     }
 
     /**
-     * Deterministic daily figures: a slow sine over the range plus seeded
-     * noise, so the chart looks alive and renders identically on every load.
+     * Deterministic daily figures: a slow sine plus seeded noise, identical on every load.
      *
      * @param string[] $days
      * @param string   $spike_on Day to lift to the anomaly figure, if any.
@@ -267,7 +255,7 @@ final class DashboardFixture {
         );
     }
 
-    /** Artboard 6a: every notice key and severity, in server order. */
+    /** Every notice key and severity, in server order. */
     private static function notices(): array {
         $paused_at = Dates::offset( -8 * DAY_IN_SECONDS );
 
@@ -310,7 +298,7 @@ final class DashboardFixture {
     }
 
     /**
-     * Artboard 6b: yesterday spiked to 41,200 against a 6,100 average.
+     * Yesterday spiked to 41,200 against a 6,100 average.
      *
      * @param string[] $days
      */

@@ -6,25 +6,15 @@ use YayLoyalty\Access\Capabilities;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Shared REST resource behaviour.
- *
- * Routes are registered from register_routes(), never from a constructor, so
- * controllers can be constructed without side effects and remain testable.
- *
- * MASS ASSIGNMENT IS THE HAZARD HERE. get_item_schema() describes every column,
- * including server-owned ones. Handing that schema to register_rest_route() as
- * `args` verbatim would let a client set them: a PUT carrying is_builtin would
- * defeat the built-in delete guard, and one carrying actor_id would forge the
- * ledger audit trail. So writable args are BUILT BY FILTERING the schema
- * (get_write_args()), and readonly properties are removed rather than ignored.
+ * Shared REST resource behaviour. Routes register from register_routes(),
+ * never a constructor. Write args are built by filtering the item schema
+ * (get_write_args()): passing the schema verbatim would let a client set
+ * is_builtin or actor_id.
  */
 abstract class AbstractRestController extends BaseRestController {
 
     /**
-     * Properties that are server-owned on every resource.
-     *
-     * Subclasses add their own via get_item_schema()'s readonly flags; these are
-     * always stripped regardless.
+     * Server-owned on every resource; always stripped from write args regardless of schema flags.
      *
      * @var string[]
      */
@@ -37,21 +27,14 @@ abstract class AbstractRestController extends BaseRestController {
         'actor_id',
     ];
 
-    /**
-     * URL segment for this resource, e.g. 'campaigns'.
-     */
+    /** URL segment, e.g. 'campaigns'. */
     abstract public function get_rest_base(): string;
 
-    /**
-     * Register this resource's routes. Called from Engine\RestAPI.
-     */
+    /** Registers this resource's routes. Called from Engine\RestAPI. */
     abstract public function register_routes(): void;
 
     /**
-     * JSON Schema for one item.
-     *
-     * Every property should declare a `type`, a `context` (view and/or edit)
-     * and `readonly` where the server owns the value.
+     * JSON Schema for one item; properties declare type, context and readonly.
      *
      * @return array<string, mixed>
      */
@@ -59,21 +42,8 @@ abstract class AbstractRestController extends BaseRestController {
         $schema = $this->define_item_schema();
 
         /**
-         * JSON Schema for one item of a YayLoyalty resource.
-         *
-         * Pro's attach point for extending a resource it does not own — for
-         * example describing Pro-only config keys on a campaign.
-         *
-         * FINAL and applied centrally so no subclass can bypass it by
-         * overriding the accessor. Subclasses override define_item_schema().
-         *
-         * SECURITY: this filter cannot reopen mass assignment.
-         * is_readonly_property() checks ALWAYS_READONLY first, so id,
-         * created_at, updated_at, is_builtin, balance_after and actor_id stay
-         * stripped from write args no matter what a subscriber returns.
-         *
-         * Internal seam for first-party Pro code, not a documented
-         * third-party API.
+         * JSON Schema for one item of a resource. Internal Pro seam. Cannot
+         * reopen mass assignment: ALWAYS_READONLY is checked before the schema.
          *
          * @param array<string, mixed> $schema
          * @param string               $rest_base
@@ -82,9 +52,7 @@ abstract class AbstractRestController extends BaseRestController {
     }
 
     /**
-     * The resource's own schema, before filtering.
-     *
-     * Override this, not get_item_schema().
+     * The resource's own schema, before filtering. Override this, not get_item_schema().
      *
      * @return array<string, mixed>
      */
@@ -98,10 +66,7 @@ abstract class AbstractRestController extends BaseRestController {
     }
 
     /**
-     * Writable arguments, derived from the schema with readonly stripped.
-     *
-     * Use this for `args` on POST/PUT routes. Never pass get_item_schema()
-     * straight through.
+     * Writable `args` for POST/PUT routes: the schema with readonly stripped.
      *
      * @return array<string, mixed>
      */
@@ -118,7 +83,6 @@ abstract class AbstractRestController extends BaseRestController {
                 continue;
             }
 
-            // Strip presentation-only keys; keep validation-relevant ones.
             unset( $property['readonly'], $property['context'] );
 
             $args[ $name ] = $property;
@@ -128,8 +92,6 @@ abstract class AbstractRestController extends BaseRestController {
     }
 
     /**
-     * Is this property server-owned?
-     *
      * @param array<string, mixed> $property
      */
     protected function is_readonly_property( string $name, array $property ): bool {
@@ -141,8 +103,6 @@ abstract class AbstractRestController extends BaseRestController {
     }
 
     /**
-     * Standard collection parameters.
-     *
      * @return array<string, mixed>
      */
     public function get_collection_params(): array {
@@ -181,10 +141,7 @@ abstract class AbstractRestController extends BaseRestController {
     }
 
     /**
-     * A numeric route parameter that must identify an existing WordPress user.
-     *
-     * Without the validate_callback the route accepts user 0 and becomes an
-     * enumeration oracle.
+     * Route param that must name an existing user; without the validate_callback the route becomes an enumeration oracle.
      *
      * @return array<string, mixed>
      */
@@ -211,11 +168,7 @@ abstract class AbstractRestController extends BaseRestController {
     }
 
     /**
-     * Shape a repository paginate() result for the response.
-     *
-     * Matches PaginatedResponse<T> in apps/admin/src/lib/api/api.type.ts. The
-     * envelope is camelCase while item fields are snake_case: deliberate, so the
-     * admin app keeps one pagination type and PHP/TS field names stay aligned.
+     * Shapes a paginate() result as PaginatedResponse<T>: camelCase envelope, snake_case items.
      *
      * @param array{items: mixed[], total: int, page: int, per_page: int} $result
      * @return array<string, mixed>
@@ -242,13 +195,7 @@ abstract class AbstractRestController extends BaseRestController {
     }
 
     /**
-     * Permission callback for a route: the user must hold $cap.
-     *
-     * Every admin route reads
-     *   'permission_callback' => $this->requires( Capabilities::MANAGE_POINTS )
-     * — one line, and the whole reason this method exists. Never
-     * '__return_true' on an admin route; storefront and Store API routes are
-     * gated by session identity, not by these caps, and do not use this.
+     * Permission callback requiring $cap. Every admin route uses it; never '__return_true'.
      *
      * @return callable(): (true|\WP_Error)
      */
@@ -258,10 +205,7 @@ abstract class AbstractRestController extends BaseRestController {
         };
     }
 
-    /**
-     * 403 naming the missing capability, so the SPA can show one consistent
-     * notice and support can see which cap a role lacks.
-     */
+    /** 403 naming the missing capability, so support can see which cap a role lacks. */
     protected function forbidden( string $cap ): \WP_Error {
         return new \WP_Error(
             'yayloyalty_forbidden',
@@ -274,11 +218,7 @@ abstract class AbstractRestController extends BaseRestController {
     }
 
     /**
-     * Ceiling guard for manual adjustments. Call inside the handler, after
-     * the capability check has already passed.
-     *
-     * Administrators bypass it; everyone else, including shop managers, does
-     * not. 0 means unlimited.
+     * Ceiling guard for manual adjustments; administrators bypass it, 0 means unlimited.
      *
      * @param int|float|string $amount
      * @return true|\WP_Error

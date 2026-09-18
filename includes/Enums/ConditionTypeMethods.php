@@ -4,29 +4,14 @@ namespace YayLoyalty\Enums;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Shared processing for a condition-type vocabulary — `all()`, `all_known()`,
- * `is_valid()`, `is_known()`, `operators_for()`, `assert()` — built entirely
- * from a using class's own `schema()` and `UNAVAILABLE`.
- *
- * CONTRACT for a class using this trait:
- *   - implement `public static function schema(): array` — enforced below,
- *     declared `abstract`.
- *   - declare `public const UNAVAILABLE` — a list of types excluded from
- *     all() but still recognised by all_known(). PHP 7.4 cannot enforce a
- *     trait-required constant the way it enforces a required method (trait
- *     constants only arrived in PHP 8.2), so this is a contract, not a
- *     compile-time check. Every current user declares it, even if `[]`.
- *
- * Operator constants (OP_IN, OP_GTE, …) are deliberately NOT here: a trait
- * cannot hold constants before PHP 8.2 either, and they are inert literal
- * strings with no logic to drift — the duplication this trait exists to
- * remove is in the methods below, not in eight string literals.
+ * Shared accessors for a condition-type vocabulary, built from the using
+ * class's schema() and `public const UNAVAILABLE`. The constant is a
+ * contract, not enforced: PHP 7.4 traits cannot require or hold constants.
  */
 trait ConditionTypeMethods {
 
     /**
-     * Per-type rules, in evaluation-cost order. This is the one method every
-     * user of this trait must supply — see each class for its own vocabulary.
+     * Per-type rules, in evaluation-cost order.
      *
      * @return array<string, array<string, mixed>>
      */
@@ -42,8 +27,7 @@ trait ConditionTypeMethods {
     }
 
     /**
-     * Every type the schema recognises, gated types included. For reading
-     * stored rows, never for offering choices.
+     * Every type the schema recognises, gated ones included; for reading stored rows, never for offering choices.
      *
      * @return string[]
      */

@@ -14,13 +14,8 @@ import { DashboardAnomalySettlements } from './DashboardAnomalySettlements';
 const CONFIG: ChartConfig = { issued: { label: __('Issued', 'yayloyalty'), color: 'var(--chart-1)' } };
 
 /**
- * Artboard 6b: one bar per day — totals, not campaigns — with yesterday at
- * a different weight and the average as a reference line, beside the
- * audit entry for the campaign edited that day. Needs no extra request:
- * bars come from `notice.data.daily`.
- *
- * The right column says who edited and when. It never says *what* changed
- * — no diff exists — so the copy stays honest about what the ledger knows.
+ * Daily totals with yesterday highlighted, beside who edited a campaign
+ * that day. Never says what changed: no diff exists.
  */
 export function DashboardAnomalyPanel({
   data,

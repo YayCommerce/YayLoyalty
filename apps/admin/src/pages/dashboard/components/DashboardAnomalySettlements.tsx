@@ -5,14 +5,9 @@ import type { PointsJumpData, PointsJumpWhatChanged } from '@/lib/schema/dashboa
 import { pointsAsCurrency } from '../dashboard-page.notice-copy';
 
 /**
- * Three ways to settle a jump, each with its real cost, including doing
- * nothing (artboard 6b #5). The dashboard does not choose. The footnote
- * publishes the rule from `data.threshold` so a merchant can predict it.
- *
- * HONEST ABOUT WHAT IS KNOWN: the ledger can say how many orders and points
- * the edited campaign(s) issued on the day — not which part of that was
- * "extra" (no per-campaign baseline exists). So the figures are named as
- * the day's issuance for those campaigns, never as the excess.
+ * Three ways to settle a jump, doing nothing included; the dashboard does
+ * not choose. Figures are named as the day's issuance, never the excess:
+ * no per-campaign baseline exists.
  */
 export function DashboardAnomalySettlements({
   edits,

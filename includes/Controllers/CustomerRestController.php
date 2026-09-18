@@ -14,20 +14,11 @@ use YayLoyalty\Utils\PointsMath;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * GET  /yayloyalty/v1/customers                — search/filter/sort/paginate
- * GET  /yayloyalty/v1/customers/{id}            — cached aggregates
- * POST /yayloyalty/v1/customers/{id}/adjust     — manual adjustment
- *
- * The list route is real, not demo data: `CustomerRepository::paginate_list()`
- * queries `yayloyalty_customers` JOINed with `wp_users`. `CustomerRowFilters`/
- * `CustomerRowSort` still own the product's filter/sort semantics — see their
- * own docblocks — this controller only turns a request into their SQL-free
- * criteria/order shapes and a response back into wire rows.
- *
- * Read-side composition lives here rather than in a CustomerService: a service
- * that only forwarded reads to one repository would be ceremony, and it would
- * need the second repository to compose anything — which only LedgerService is
- * allowed to hold.
+ * Customers endpoints: the list (search/filter/sort/paginate), one
+ * customer's aggregates, and manual adjustment. Filter and sort semantics
+ * belong to CustomerRowFilters/CustomerRowSort; this only maps request to
+ * their shapes and rows to the wire. No CustomerService: only LedgerService
+ * may hold both repositories.
  */
 final class CustomerRestController extends AbstractRestController {
 
@@ -127,13 +118,9 @@ final class CustomerRestController extends AbstractRestController {
     }
 
     /**
-     * Ceiling on a single manual adjustment.
-     *
-     * Adjustments are deliberately not idempotent, so a client that retries
-     * after a timeout double-grants — ky gives up at 20s while a lock wait can
-     * run to 50s. This sanity cap bounds the damage for everyone, administrators
-     * included. The per-role policy ceiling is assert_ceiling(), applied after
-     * it.
+     * Sanity cap on one manual adjustment, administrators included.
+     * Adjustments are not idempotent, so a client retrying after a timeout
+     * double-grants; this bounds the damage.
      */
     private function max_adjustment(): int {
         /**
@@ -290,15 +277,13 @@ final class CustomerRestController extends AbstractRestController {
             );
         }
 
-        // Role policy, after the sanity cap: the ceiling is per-role and
-        // administrators bypass it; the cap above binds everyone.
         $within_ceiling = $this->assert_ceiling( $points );
 
         if ( is_wp_error( $within_ceiling ) ) {
             return $within_ceiling;
         }
 
-        // actor_id always comes from the session, never from the request body.
+        // actor_id comes from the session, never the request body.
         $entry = $this->ledger_service->adjust( $user_id, $points, $note, get_current_user_id() );
 
         return $entry->to_array();

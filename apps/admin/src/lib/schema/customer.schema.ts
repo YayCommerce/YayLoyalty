@@ -1,16 +1,9 @@
 import { z } from 'zod';
 
 /**
- * Mirrors CustomerRestController::get_item_schema().
- *
- * THAT PHP METHOD IS THE SOURCE OF TRUTH. When a column is added there, add it
- * here; nothing generates one from the other.
- *
- * Field names are snake_case to match the PHP payload exactly. The pagination
- * envelope around collections is camelCase — see PaginatedResponse<T>.
- *
- * Every aggregate is server-owned and derived from the ledger; none of it is
- * writable, which is why there is no separate "create" or "update" shape.
+ * Mirrors CustomerRestController::define_item_schema(), the source of
+ * truth; nothing generates one from the other. Every aggregate is
+ * server-owned, so there is no write shape.
  */
 /**
  * Row counts behind the drawer's tab labels (`CustomerItemSchema::properties()`).
@@ -137,13 +130,7 @@ export const customerSchema = z.object({
 
 export type Customer = z.infer<typeof customerSchema>;
 
-/**
- * One row of `GET /customers` (the admin list) — NOT `Customer` above: this is
- * a JOIN projection carrying `name`/`email` from `wp_users` (the customer
- * entity has no place for them), and omits fields the list doesn't render
- * (`lifetime_redeemed`, `joined_at`, `updated_at`). Mirrors
- * `CustomerRestController::format_row()` field-for-field.
- */
+/** One row of GET /customers: a JOIN projection with name/email, mirroring CustomerRestController::format_row(). */
 export const customerListRowSchema = z.object({
   user_id: z.number().int(),
   name: z.string(),
@@ -157,13 +144,7 @@ export const customerListRowSchema = z.object({
 
 export type CustomerListRow = z.infer<typeof customerListRowSchema>;
 
-/**
- * A raw `{key, count}` "which filter to drop" suggestion — see
- * `CustomerRowFilters::candidates_for_no_match()`. `key` is the wire/query
- * param name (`balance_range`, not `balanceRange`): the server never learns
- * how the admin app spells its own filter state — `customers-page.filter-suggestions.ts`
- * maps it to a `FilterKey`.
- */
+/** A "which filter to drop" suggestion; `key` is the wire param name, mapped in customers-page.filter-suggestions.ts. */
 export const noMatchSuggestionSchema = z.object({
   key: z.enum(['search', 'balance_range', 'expiring_soon', 'tier']),
   count: z.number().int(),
@@ -171,18 +152,12 @@ export const noMatchSuggestionSchema = z.object({
 
 export type NoMatchSuggestion = z.infer<typeof noMatchSuggestionSchema>;
 
-/**
- * The Customers list's filter/sort value unions — moved here (not declared
- * page-locally) because `customer.api.ts` needs them and `lib/` must not
- * import from `pages/`. `customers-page.filter-rows.ts` /
- * `customers-page.sort-rows.ts` re-export these; their labels/option arrays
- * are unaffected.
- */
+/** Filter/sort value unions, here because customer.api.ts needs them and lib/ must not import pages/. */
 export type CustomerBalanceRange = 'any' | 'negative' | '0-1000' | '1000-10000' | '10000-plus';
 export type CustomerExpiringSoon = 'off' | '30' | '90' | 'none';
-/** 'all' + the tiers the backend hands out. No tiers table exists yet — any non-'all' value matches zero rows (intentional, see CustomerRowFilters.php). */
+/** No tiers table yet: any non-'all' value matches zero rows server-side. */
 export type CustomerTier = 'all' | 'Alpine' | 'Summit' | 'Explorer';
-/** `tier`/`referrals` have no real backing data (see `CustomerRowSort.php`) — accepted for `defaultSortDirection()` but not offered as a clickable header. */
+/** tier/referrals have no backing data yet; accepted but not offered as a clickable header. */
 export type CustomerSortKey =
   'name' | 'tier' | 'balance' | 'pending' | 'lifetime' | 'last_activity' | 'expires' | 'referrals';
 export type CustomerSortDirection = 'asc' | 'desc';

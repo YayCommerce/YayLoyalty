@@ -6,23 +6,15 @@ import { PointsValue } from '@/components/ui/custom/points-value';
 import { hasPointsFigure } from './campaign-points-dummy';
 
 /**
- * "Last 30 days" points-issued summary, below CampaignTable — reads rows
- * already in memory, not a separate fetch. Ignores the table's status
- * filter on purpose: it's a global figure, not a view of the filtered list,
- * so it ranks everything handed to it, archived and zero-activity rows
- * aside — a bar chart with a full-width entry for "0" next to real figures
- * is noise, not signal.
- *
- * `pointsLast30Days` is dummy, client-side data — see campaign-points-dummy.ts.
+ * "Last 30 days" summary below CampaignTable. Ignores the status filter: a
+ * global figure, not a view of the filtered list. pointsLast30Days is dummy.
  */
 export function CampaignPointsSummary({
   rows: allRows,
 }: {
   rows: { id: number; name: string; displayStatus: CampaignDisplayStatus; pointsLast30Days: number | null }[];
 }) {
-  // Archived campaigns are retired — this figure shouldn't resurface something
-  // a merchant put away. A campaign with nothing issued (no figure at all, or
-  // a real figure of 0) has nothing to rank or bar-chart either.
+  // Archived is retired, and a zero has nothing to bar-chart.
   const rows = allRows.filter(
     (row) => row.displayStatus !== 'archived' && hasPointsFigure(row.displayStatus) && (row.pointsLast30Days ?? 0) > 0,
   );
@@ -40,7 +32,6 @@ export function CampaignPointsSummary({
 
   const ranked = [...rows].sort((a, b) => (b.pointsLast30Days ?? -1) - (a.pointsLast30Days ?? -1));
   const total = rows.reduce((sum, row) => sum + (row.pointsLast30Days ?? 0), 0);
-  // At least 1 so a fresh install (every figure null) divides to 0% bars instead of NaN.
   const max = Math.max(1, ...rows.map((row) => row.pointsLast30Days ?? 0));
 
   return (

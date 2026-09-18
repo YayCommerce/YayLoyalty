@@ -6,24 +6,11 @@ use YayLoyalty\Enums\LedgerType;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * One balance change. Append-only fact.
- *
- * IMMUTABLE BY CONVENTION. PHP 7.4 has no readonly, so this class relies on
- * private properties, getters only, no setters, and with_*() returning a clone.
- * The convention is the enforcement — there is no language support behind it.
- * Do not add a setter here; a mutable ledger entry would let a caller rewrite
- * history that the balance_after chain depends on.
- *
- * `points` is a SIGNED delta: positive for earn, refund_redeem and a positive
- * adjust; negative for redeem, refund_earn, expire and a negative adjust.
- *
- * `balance_after` is the balance immediately following this row. Together the
- * rows form a chain per user: prev.balance_after + points === this.balance_after.
- * The audit tool walks it, so it must be computed inside the customer row lock.
- *
- * `note` is only ever set on manual adjustments. System rows deliberately store
- * no text: their description is composed at render time from type/source and
- * the reference, so it stays translatable and cannot go stale.
+ * One balance change; append-only. Immutable by convention (no setters,
+ * with_*() clones): a mutable entry could rewrite the balance_after chain,
+ * which must be computed inside the customer row lock. `note` is only set
+ * on manual adjustments; system rows compose their text at render time so
+ * it stays translatable.
  */
 final class LedgerEntry extends AbstractModel {
 
@@ -120,9 +107,7 @@ final class LedgerEntry extends AbstractModel {
         );
     }
 
-    /**
-     * Insert payload. `id` is omitted so AUTO_INCREMENT assigns it.
-     */
+    /** Insert payload; `id` is omitted so AUTO_INCREMENT assigns it. */
     public function to_row(): array {
         return [
             'user_id'        => $this->user_id,
@@ -158,19 +143,13 @@ final class LedgerEntry extends AbstractModel {
             'campaign_id'    => $this->campaign_id,
             'redemption_id'  => $this->redemption_id,
             'order_id'       => $this->order_id,
-            // Only adjust rows carry stored text; everything else is composed
-            // client-side from type/source so it stays translatable.
             'note'           => LedgerType::ADJUST === $this->type ? $this->note : null,
             'actor_id'       => $this->actor_id,
             'created_at'     => $this->created_at,
         ];
     }
 
-    /**
-     * Clone carrying the values assigned at insert time.
-     *
-     * The only "mutation" this class allows, and it returns a new instance.
-     */
+    /** Clone carrying the values assigned at insert time; the only mutation this class allows. */
     public function with_persisted( int $id, int $balance_after ): self {
         $clone                = clone $this;
         $clone->id            = $id;

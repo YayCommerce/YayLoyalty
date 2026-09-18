@@ -7,19 +7,13 @@ use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
 
-/**
- * yayloyalty_customers.
- *
- * Plain object, not a singleton — see docs/code-standards.md section 8.
- */
+/** yayloyalty_customers. */
 final class CustomerRepository extends AbstractRepository {
 
     /**
-     * Logical sort key → join-qualified SQL expression, for the admin list's
-     * ORDER BY. A different alphabet from sortable_columns() (bare columns
-     * for the inherited paginate()): these need the `c`/`u` table aliases,
-     * and 'expires' carries no nulls-last information sortable_columns()
-     * has no way to express. Keep in sync with CustomerRowSort::KEYS.
+     * Sort key → join-qualified ORDER BY expression for the admin list.
+     * Separate from sortable_columns(): these need the table aliases. Keep in
+     * sync with CustomerRowSort::KEYS.
      */
     private const LIST_ORDER_COLUMNS = [
         'name'          => 'u.display_name',
@@ -53,18 +47,10 @@ final class CustomerRepository extends AbstractRepository {
     }
 
     /**
-     * Make sure a row exists for this user, without racing.
-     *
-     * CREATE-THEN-LOCK, NEVER CHECK-THEN-CREATE.
-     *
-     * SELECT ... FOR UPDATE on a row that does not exist takes a gap lock, not
-     * a row lock, so two concurrent first-touch requests would both see nothing
-     * and both insert. INSERT ... ON DUPLICATE KEY UPDATE makes the loser a
-     * no-op instead, because user_id is the primary key.
-     *
-     * The `user_id = user_id` assignment is a deliberate no-op: it satisfies the
-     * ON DUPLICATE KEY clause without touching a single stored value, so an
-     * existing customer's aggregates are never disturbed by this call.
+     * Ensures a row exists without racing. Create-then-lock, never
+     * check-then-create: FOR UPDATE on a missing row takes a gap lock, so two
+     * first-touch requests would both insert. The `user_id = user_id`
+     * assignment is a no-op that leaves an existing row untouched.
      *
      * @throws QueryException When the write fails.
      */
@@ -91,10 +77,7 @@ final class CustomerRepository extends AbstractRepository {
     }
 
     /**
-     * Read the row while holding a row lock on it.
-     *
-     * Must be called inside a transaction, and ensure_row() must have run first
-     * — otherwise there is no row to lock and this takes a gap lock instead.
+     * Reads the row under a row lock. Inside a transaction, after ensure_row(): a missing row would gap-lock instead.
      *
      * @throws QueryException When the row is missing after ensure_row().
      */
@@ -121,19 +104,9 @@ final class CustomerRepository extends AbstractRepository {
     }
 
     /**
-     * Apply a ledger row's effects to the cached aggregates, `balance`
-     * included.
-     *
-     * Written as relative arithmetic (balance = balance + ?, lifetime_earned =
-     * lifetime_earned + ?, ...) rather than absolute assignment, so each
-     * statement is correct even if another writer touched the row between the
-     * read and the write. In practice the caller holds the row lock, but the
-     * relative form removes the assumption.
-     *
-     * `lifetime_earned`/`lifetime_redeemed` are not a plain running sum of
-     * `points` the way `balance` is: LedgerType decides per-row whether a
-     * movement counts toward them (LedgerService::apply_aggregates()), so that
-     * decision is made in PHP before this call, not in SQL.
+     * Applies a ledger row's effects to the cached aggregates. Relative
+     * arithmetic (balance = balance + ?), so it is correct even without the
+     * row lock. Which deltas a row counts toward is decided by the caller.
      *
      * @param int         $balance_delta           Signed.
      * @param int         $lifetime_earned_delta   Signed.
@@ -169,8 +142,7 @@ final class CustomerRepository extends AbstractRepository {
             $sets[]   = 'last_activity_at = %s';
             $values[] = $activity_at;
 
-            // Activity clears the "expiring soon" reminder so the next window
-            // sends one reminder, never two.
+            // Activity clears the reminder so the next expiry window sends one, never two.
             $sets[] = 'reminder_sent_at = NULL';
         }
 
@@ -181,12 +153,6 @@ final class CustomerRepository extends AbstractRepository {
 
         $values[] = $user_id;
 
-        /*
-         * $sets holds only literal SQL fragments written above in this method —
-         * every one carries a placeholder and none is derived from caller input.
-         * The values themselves go through prepare() in $values. The sniff
-         * cannot see that the array is closed, hence the scoped ignore.
-         */
         // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared -- $sets contains only literal fragments defined in this method; all values are bound.
         $sql = $wpdb->prepare(
             'UPDATE `' . esc_sql( $this->table() ) . '` SET ' . implode( ', ', $sets ) . ' WHERE user_id = %d',
@@ -202,15 +168,9 @@ final class CustomerRepository extends AbstractRepository {
     }
 
     /**
-     * The admin Customers list: search + filter + sort + paginate, INNER
-     * JOINed with wp_users for name/email — this table has neither.
-     *
-     * The one exception to "a repository never touches a second table" (see
-     * docs/code-standards.md §6): that rule is about WRITE ownership between
-     * repositories. Nothing here writes wp_users, no repository owns it, and
-     * this read-side lookup against a table nothing in this codebase owns has
-     * nowhere else to live. A loyalty row whose WP user was deleted is
-     * correctly excluded (orphan cleanup is a separate concern).
+     * The admin Customers list: search, filter, sort, paginate, INNER JOINed
+     * with wp_users for name/email. A read-side exception to the one-table
+     * rule (docs/code-standards.md § 6), which is about write ownership.
      *
      * @param array<string, mixed>                                      $criteria CustomerRowFilters::to_criteria()'s shape.
      * @param array{column: string, direction: string, nulls_last: bool} $order    CustomerRowSort::to_order()'s shape.
@@ -251,8 +211,7 @@ final class CustomerRepository extends AbstractRepository {
     }
 
     /**
-     * Row count for one criteria set — shared by paginate_list() (the total)
-     * and the "which filter to drop" suggestions (one call per candidate).
+     * Row count for one criteria set.
      *
      * @param array<string, mixed> $criteria CustomerRowFilters::to_criteria()'s shape.
      */
@@ -277,8 +236,7 @@ final class CustomerRepository extends AbstractRepository {
     }
 
     /**
-     * Each fragment is bound through prepare() (or a literal with no caller
-     * input) before it reaches here — never a raw criteria value.
+     * Every fragment is prepared here or a literal; never a raw criteria value.
      *
      * @param array<string, mixed> $criteria
      * @return string[]
@@ -312,11 +270,7 @@ final class CustomerRepository extends AbstractRepository {
         }
 
         if ( null !== $criteria['tier'] ) {
-            // No tiers table exists yet, so no tier name maps to a real
-            // tier_id — every row's tier_id is NULL, so any non-'all'
-            // selection can only ever match nothing. Intentional (see
-            // CustomerRowFilters), not a bug: the filter UI stays real and
-            // becomes meaningful for free once tiers ship.
+            // Matches nothing until tiers ship (every tier_id is NULL). Intentional, see CustomerRowFilters.
             $where[] = 'c.tier_id IS NOT NULL';
         }
 
@@ -330,19 +284,10 @@ final class CustomerRepository extends AbstractRepository {
         $column    = self::LIST_ORDER_COLUMNS[ $order['column'] ] ?? self::LIST_ORDER_COLUMNS['balance'];
         $direction = 'ASC' === $order['direction'] ? 'ASC' : 'DESC';
 
-        // Leading tie-break, not a second ORDER BY term: NULLs sort first in
-        // MySQL ASC order, so "(col IS NULL) ASC" puts them last regardless
-        // of $direction, matching CustomerRowSort::to_order()'s nulls_last.
+        // "(col IS NULL) ASC" puts NULLs last regardless of $direction.
         $nulls_last = $order['nulls_last'] ? "({$column} IS NULL) ASC, " : '';
 
-        // Trailing tie-break on the primary key. Without it, rows tied on
-        // $column have no defined relative order, and MySQL is free to
-        // return them differently across two LIMIT/OFFSET calls with the
-        // same ORDER BY — which is exactly what happens when
-        // fetchAllMatchingCustomers() (Export CSV, bulk Adjust points) pages
-        // through the same query one page at a time: ties can be silently
-        // duplicated onto one page and dropped from another. user_id is
-        // unique, so this makes every page's ordering fully deterministic.
+        // Primary-key tie-break: without it, ties can land on two pages or none when paging through.
         return $nulls_last . $column . ' ' . $direction . ', c.user_id ASC';
     }
 }

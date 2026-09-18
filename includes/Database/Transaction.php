@@ -4,56 +4,32 @@ namespace YayLoyalty\Database;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Nesting-safe database transactions on a connection this plugin does not own.
- *
- * MySQL has no nested transactions, so nesting is emulated with SAVEPOINTs.
- * Three failure modes drive this design; each one silently breaks the ledger
- * invariants if ignored.
- *
- * 1. FOREIGN TRANSACTIONS. WooCommerce issues raw START TRANSACTION on the same
- *    global $wpdb (wc_transaction_query), and so do sibling plugins on this
- *    site. Issuing START TRANSACTION while one is open makes MySQL implicitly
- *    COMMIT their in-flight work — a loyalty plugin corrupting order data on
- *    the host's rollback path. So at depth 0 we probe first and take a
- *    SAVEPOINT instead whenever a transaction is already open.
- *
- * 2. RECONNECTS. wpdb silently reconnects on error 2006 and resumes on a fresh,
- *    autocommitting session. A depth counter alone would keep counting a
- *    transaction that no longer exists, making the later COMMIT a no-op. So the
- *    connection thread id is captured at depth 0 and re-checked before every
- *    commit and rollback.
- *
- * 3. DEADLOCKS. On error 1213 MySQL rolls back everything and destroys every
- *    savepoint, so ROLLBACK TO SAVEPOINT then fails. Every transactional
- *    statement's return value is checked; a failure throws rather than letting
- *    the caller return success for a row that no longer exists.
- *
- * This is the only place in the plugin that issues START TRANSACTION, COMMIT,
- * ROLLBACK or SAVEPOINT.
+ * Nesting-safe transactions on a $wpdb this plugin does not own; the only
+ * place that issues START TRANSACTION, COMMIT, ROLLBACK or SAVEPOINT.
+ * Nesting is emulated with savepoints. A foreign transaction (WooCommerce's
+ * wc_transaction_query) is probed first, since START TRANSACTION would
+ * implicitly commit it; the connection id is re-checked before commit and
+ * rollback because wpdb silently reconnects; every statement's result is
+ * checked because a deadlock destroys every savepoint.
  */
 final class Transaction {
 
-    /** Nesting depth. 0 means no transaction is open on our behalf. */
+    /** 0 means no transaction is open on our behalf. */
     private static $depth = 0;
 
-    /** Thread id of the connection the outermost transaction was opened on. */
+    /** Thread id the outermost transaction was opened on. */
     private static $connection_id = null;
 
-    /** True when we issued START TRANSACTION ourselves at depth 0. */
+    /** Whether we issued START TRANSACTION ourselves at depth 0. */
     private static $owns_outer_transaction = false;
 
-    /** Savepoint name used by the foreign-transaction probe. */
     private const PROBE_SAVEPOINT = 'yl_probe';
 
     /**
-     * Run a callback inside a transaction (or savepoint when nested).
+     * Runs a callback inside a transaction (a savepoint when nested); commits on success, rolls back and rethrows on any Throwable.
      *
-     * Commits on success, rolls back and rethrows on any Throwable.
-     *
-     * @param  callable $callback
      * @return mixed The callback's return value.
-     * @throws \Throwable Whatever the callback threw, or RuntimeException when
-     *                    the transaction itself could not be managed.
+     * @throws \Throwable Whatever the callback threw, or RuntimeException when the transaction could not be managed.
      */
     public static function run( callable $callback ) {
         self::begin();
@@ -70,17 +46,12 @@ final class Transaction {
         return $result;
     }
 
-    /**
-     * Current nesting depth. 0 when nothing is open on our behalf.
-     */
+    /** Current nesting depth; 0 when nothing is open on our behalf. */
     public static function depth(): int {
         return self::$depth;
     }
 
-    /**
-     * True when a transaction was already open at depth 0 that we did not start.
-     * Only meaningful while depth() > 0.
-     */
+    /** Whether a transaction we did not start was open at depth 0. Only meaningful while depth() > 0. */
     public static function has_foreign_transaction(): bool {
         return self::$depth > 0 && ! self::$owns_outer_transaction;
     }
@@ -90,7 +61,7 @@ final class Transaction {
             self::$connection_id = self::current_connection_id();
 
             if ( self::detect_open_transaction() ) {
-                // Someone else's transaction is in flight. Never START here.
+                // Someone else's transaction is in flight; START would commit it.
                 self::$owns_outer_transaction = false;
                 self::execute( 'SAVEPOINT ' . self::savepoint_name( 0 ) );
             } else {
@@ -105,8 +76,7 @@ final class Transaction {
     }
 
     private static function commit(): void {
-        // Decrement first and in a finally-equivalent position so a throw below
-        // cannot strand the counter above 0 for the rest of the request.
+        // Decrement first so a throw below cannot strand the counter for the rest of the request.
         $level = --self::$depth;
 
         try {
@@ -151,10 +121,7 @@ final class Transaction {
     }
 
     /**
-     * Run a transactional statement and treat failure as fatal.
-     *
-     * A failed ROLLBACK TO SAVEPOINT is exactly the deadlock case: continuing
-     * would let the caller report success for work that was discarded.
+     * Runs a transactional statement; failure is fatal, since a failed ROLLBACK TO SAVEPOINT is the deadlock case.
      *
      * @throws \RuntimeException
      */
@@ -173,9 +140,7 @@ final class Transaction {
     }
 
     /**
-     * Fail loudly when the connection changed under us. wpdb's silent reconnect
-     * means the transaction is gone; pretending to commit or roll back would
-     * report success for work that was never in a transaction at all.
+     * Fails when the connection changed under us: after wpdb's silent reconnect the transaction is gone.
      *
      * @throws \RuntimeException
      */
@@ -198,9 +163,7 @@ final class Transaction {
         }
     }
 
-    /**
-     * Thread id of the current connection, or null when it cannot be read.
-     */
+    /** Thread id of the current connection, or null when it cannot be read. */
     private static function current_connection_id(): ?int {
         global $wpdb;
 
@@ -212,32 +175,11 @@ final class Transaction {
     }
 
     /**
-     * Is a transaction already open on this connection that we did not start?
-     *
-     * Implemented as a savepoint round-trip: take a savepoint, then roll back to
-     * it. Inside a transaction both statements succeed. Outside one, MySQL
-     * releases the savepoint as soon as the auto-committed statement that
-     * created it ends, so ROLLBACK TO SAVEPOINT fails with error 1305. The
-     * failure is the signal.
-     *
-     * Rolling back to a savepoint taken at the current point discards nothing —
-     * verified against MySQL 8.0.35 with an uncommitted INSERT in flight, which
-     * survived the probe intact.
-     *
-     * Two server-variable probes were tried first and both failed on the target
-     * server:
-     *   - MariaDB's @@in_transaction does not exist on MySQL ("Unknown system
-     *     variable 'in_transaction'").
-     *   - information_schema.INNODB_TRX returned zero rows on MySQL 8.0.35 even
-     *     as root (which holds PROCESS) with an open, written-to transaction.
-     *     Worse, it returns '0' rather than erroring, so a capability check that
-     *     only asks "did the query run?" accepts it and then silently reports
-     *     "no transaction" forever — which is exactly how the first version of
-     *     this class committed WooCommerce's in-flight work in testing.
-     *
-     * The savepoint probe needs no privileges, is standard SQL on both engines,
-     * and validates itself: it can only succeed where savepoints actually work,
-     * which is the same condition this class needs anyway.
+     * Whether a transaction we did not start is open. A savepoint round-trip:
+     * outside a transaction the savepoint is released with the auto-committed
+     * statement, so ROLLBACK TO SAVEPOINT fails (error 1305). Discards nothing.
+     * Do not swap for @@in_transaction (MariaDB only) or INNODB_TRX (returns
+     * zero rows on MySQL 8 without PROCESS, silently reporting "none").
      */
     private static function detect_open_transaction(): bool {
         global $wpdb;
@@ -248,21 +190,17 @@ final class Transaction {
             $created = $wpdb->query( 'SAVEPOINT ' . self::PROBE_SAVEPOINT ); // phpcs:ignore WordPress.DB
 
             if ( false === $created ) {
-                // Savepoints unavailable (non-InnoDB, or an engine that refuses
-                // them). Treat as "no transaction" so we open our own; nothing
-                // else here can work otherwise.
+                // Savepoints unavailable (non-InnoDB): open our own, nothing else can work.
                 return false;
             }
 
             $rolled_back = $wpdb->query( 'ROLLBACK TO SAVEPOINT ' . self::PROBE_SAVEPOINT ); // phpcs:ignore WordPress.DB
 
             if ( false === $rolled_back ) {
-                // Savepoint vanished with the auto-committed statement: no
-                // transaction was open.
+                // Savepoint vanished with the auto-committed statement: nothing was open.
                 return false;
             }
 
-            // Leave the savepoint namespace as we found it.
             $wpdb->query( 'RELEASE SAVEPOINT ' . self::PROBE_SAVEPOINT ); // phpcs:ignore WordPress.DB
 
             return true;

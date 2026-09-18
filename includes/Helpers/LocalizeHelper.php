@@ -6,10 +6,7 @@ use YayLoyalty\Controllers\BaseRestController;
 
 defined( 'ABSPATH' ) || exit;
 
-/**
- * Localized data for the admin React app.
- * VAR_ADMIN → window.yayLoyaltyAdmin, VAR_META → window.yayLoyaltyMeta.
- */
+/** Localized data for the admin SPA: VAR_ADMIN → window.yayLoyaltyAdmin, VAR_META → window.yayLoyaltyMeta. */
 class LocalizeHelper {
     public const VAR_ADMIN = 'yayLoyaltyAdmin';
     public const VAR_META  = 'yayLoyaltyMeta';
@@ -17,8 +14,6 @@ class LocalizeHelper {
     public static function get_admin_data() {
         $admin_data = array_merge(
             [ 'settings' => SettingsHelper::get_settings() ],
-            // capabilities, ceiling, isAdministrator — known at render, so the
-            // SPA never round-trips to learn what it may show.
             Capabilities::payload()
         );
 
@@ -39,14 +34,7 @@ class LocalizeHelper {
                 'restNonce'    => wp_create_nonce( 'wp_rest' ),
                 'isBlockTheme' => wp_is_block_theme(),
             ],
-            /*
-             * No pro flag is sent to the browser. The SPA is gated at build
-             * time by the IS_PRO_BUILD (import.meta.env.VITE_IS_PRO): one zip carries both the
-             * PHP and the JS bundle, so build type is never ambiguous and there
-             * is nothing for a runtime flag to disambiguate.
-             *
-             * YayLoyalty::is_pro() remains for server-side decisions only.
-             */
+            // No pro flag: the SPA is gated at build time (IS_PRO_BUILD), and one zip carries both.
             'loyaltyMeta' => [
                 'pluginUrl' => YAYLOYALTY_PLUGIN_URL,
                 'assetsUrl' => YAYLOYALTY_PLUGIN_URL . 'assets',

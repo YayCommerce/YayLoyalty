@@ -11,20 +11,10 @@ use YayLoyalty\Services\Dashboard\PeriodWindow;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * GET /yayloyalty/v1/dashboard — the admin landing page's single payload.
- *
- * Read-only aggregates over the ledger, customers and WooCommerce orders,
- * cached site-wide above DashboardCache::THRESHOLD members. `notices` is
- * structured data only ({key, severity, fingerprint, data}); every word of
- * copy is composed in the SPA. Raw notices live in the shared cache; the
- * per-user dismissal filter runs after it, so nothing per-user is ever
- * cached. POST /dashboard/notices/dismiss is the one write, and it takes
- * the user from the session, never from the request.
- *
- * `scenario` exists only when WP_DEBUG is on: it swaps the whole payload for
- * a DashboardFixture artboard so every wireframe state can be reviewed on a
- * dev store. The argument is not registered otherwise, so a production
- * request carrying it is simply ignored.
+ * GET /dashboard: the landing page's single payload, cached site-wide on
+ * large stores with per-user dismissal applied after the cache. Notices are
+ * structured data only; the SPA owns the copy. `scenario` is registered
+ * only under WP_DEBUG.
  */
 final class DashboardRestController extends AbstractRestController {
 
@@ -75,9 +65,7 @@ final class DashboardRestController extends AbstractRestController {
                     'callback'            => fn( $request ) => $this->exec_write( [ $this, 'dismiss_notice' ], $request ),
                     'permission_callback' => $this->requires( Capabilities::VIEW ),
                     'args'                => [
-                        // An explicit sanitize_callback replaces WP's default
-                        // rest_parse_request_arg, which is what enforces enum
-                        // and maxLength — so validation is named explicitly.
+                        // A custom sanitize_callback replaces the default that enforces enum/maxLength, so validate explicitly.
                         'key'         => [
                             'type'              => 'string',
                             'required'          => true,
@@ -144,7 +132,7 @@ final class DashboardRestController extends AbstractRestController {
             fn(): array => $this->stats->build( $window ) + [ 'notices' => $this->notices->collect( $now ) ]
         );
 
-        // Per-user step, deliberately outside the cache.
+        // Per-user, so outside the cache.
         $payload['notices'] = $this->dismissals->filter( $payload['notices'], get_current_user_id() );
 
         return [ 'range' => $range ] + $payload;
@@ -173,7 +161,6 @@ final class DashboardRestController extends AbstractRestController {
             '$schema'    => 'http://json-schema.org/draft-04/schema#',
             'title'      => 'yayloyalty_dashboard',
             'type'       => 'object',
-            // Everything is derived; nothing here is ever written back.
             'properties' => [
                 'range'           => [
                     'type'     => 'integer',

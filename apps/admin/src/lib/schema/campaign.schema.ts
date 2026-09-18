@@ -2,34 +2,18 @@ import { z } from 'zod';
 
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 
-/**
- * Mirrors CampaignRestController::get_item_schema().
- *
- * THAT PHP METHOD IS THE SOURCE OF TRUTH.
- */
+/** Mirrors CampaignRestController::define_item_schema(), the source of truth. */
 
-/**
- * Triggers Lite itself ships. Mirrors CampaignTrigger::lite_triggers().
- */
+/** Mirrors CampaignTrigger::lite_triggers(). */
 export const LITE_CAMPAIGN_TRIGGERS = ['purchase', 'signup', 'review'] as const;
 
-/**
- * Triggers Pro adds. Mirrors YayLoyaltyPro::ADDED_TRIGGERS.
- */
+/** Mirrors YayLoyaltyPro::ADDED_TRIGGERS. */
 export const PRO_CAMPAIGN_TRIGGERS = ['birthday', 'first_order', 'order_count', 'spend_milestone'] as const;
 
 /**
- * Every trigger the API may hand back. Mirrors CampaignTrigger::all_known().
- *
- * THE SPA HALF OF DOWNGRADE SAFETY, and the easiest thing here to get wrong.
- * Parsing must accept Pro values in BOTH builds: a site that drops from Pro to
- * Lite still holds campaigns whose trigger is `birthday`, and a Lite bundle
- * that parsed against the offerable list alone would throw on the campaigns
- * list rather than render it. The PHP half (all_known() staying unfiltered) is
- * not enough on its own — zod would reject what PHP happily returned.
- *
- * `referral`, `social` and `renewal` are recognised for the same reason even
- * though no build offers them yet.
+ * Every trigger the API may hand back, mirroring CampaignTrigger::all_known().
+ * Parsing must accept Pro values in both builds, or a downgraded site's
+ * campaigns list throws instead of rendering.
  */
 export const ALL_KNOWN_CAMPAIGN_TRIGGERS = [
   ...LITE_CAMPAIGN_TRIGGERS,
@@ -39,26 +23,15 @@ export const ALL_KNOWN_CAMPAIGN_TRIGGERS = [
   'renewal',
 ] as const;
 
-/**
- * Triggers this build can offer. Mirrors CampaignTrigger::all().
- *
- * Build-time, from IS_PRO_BUILD — never a runtime flag. Used for the UI's
- * choices only; never for parsing.
- */
+/** Triggers this build offers, mirroring CampaignTrigger::all(). For UI choices only, never parsing. */
 export const CAMPAIGN_TRIGGERS = IS_PRO_BUILD
   ? ([...LITE_CAMPAIGN_TRIGGERS, ...PRO_CAMPAIGN_TRIGGERS] as const)
   : LITE_CAMPAIGN_TRIGGERS;
 
-/**
- * Stored statuses. Mirrors Enums\Status::all().
- *
- * Merchant intent only. There is deliberately no 'scheduled' or 'ended' here —
- * whether a campaign is live is derived from status plus the date window,
- * evaluated against the event's timestamp rather than now().
- */
+/** Stored statuses, mirroring Enums\Status::all(). No scheduled/ended: liveness is derived. */
 export const CAMPAIGN_STATUSES = ['active', 'paused', 'draft', 'archived'] as const;
 
-/** Parses what the server sends — the full known vocabulary, in both builds. */
+/** Parses the full known vocabulary, in both builds. */
 export const campaignTriggerSchema = z.enum(ALL_KNOWN_CAMPAIGN_TRIGGERS);
 export const campaignStatusSchema = z.enum(CAMPAIGN_STATUSES);
 
@@ -68,21 +41,14 @@ export type CampaignTrigger = z.infer<typeof campaignTriggerSchema>;
 export type OfferableCampaignTrigger = (typeof CAMPAIGN_TRIGGERS)[number];
 export type CampaignStatus = z.infer<typeof campaignStatusSchema>;
 
-/**
- * `CampaignStatus` plus the two labels that are never stored: `scheduled`
- * and `ended`. Mirrors `Enums\Status::resolve_display()` — display-only,
- * derived from `status` + the date window, never a value `status` itself
- * takes.
- */
+/** CampaignStatus plus the two derived, never-stored labels. Mirrors Enums\Status::resolve_display(). */
 export const CAMPAIGN_DISPLAY_STATUSES = [...CAMPAIGN_STATUSES, 'scheduled', 'ended'] as const;
 
 export type CampaignDisplayStatus = (typeof CAMPAIGN_DISPLAY_STATUSES)[number];
 
 /**
- * Client-side mirror of `Enums\Status::resolve_display()`. `at` defaults to
- * now, in the same UTC `YYYY-MM-DD HH:mm:ss` shape every stored datetime
- * uses — pass the campaign's own dates through unmodified, never converted
- * to the browser's timezone (see code-standards.md §4).
+ * Mirrors Enums\Status::resolve_display(). `at` is UTC in the stored shape;
+ * pass the campaign's dates through unconverted.
  */
 export function resolveCampaignDisplayStatus(
   status: CampaignStatus,
@@ -113,11 +79,7 @@ export const campaignSchema = z.object({
   trigger: campaignTriggerSchema,
   status: campaignStatusSchema,
   priority: z.number().int(),
-  /**
-   * Shape depends on `trigger`; the server whitelists keys per trigger and
-   * stamps schema_version. Kept loose here on purpose — validating the union
-   * client-side would duplicate the PHP whitelist and drift from it.
-   */
+  /** Loose on purpose: the per-trigger whitelist lives in PHP and would drift if duplicated. */
   config: z.record(z.string(), z.unknown()),
   conditions: z.union([z.record(z.string(), z.unknown()), z.array(z.unknown())]),
   starts_at: z.string().nullable(),
@@ -132,7 +94,7 @@ export const campaignSchema = z.object({
 
 export type Campaign = z.infer<typeof campaignSchema>;
 
-/** App-side (camelCase) list params — `campaign.api.ts` maps them to the wire's `per_page`. */
+/** App-side list params; campaign.api.ts maps them to the wire. */
 export const campaignListParamsSchema = z.object({
   page: z.number().int().optional(),
   perPage: z.number().int().optional(),

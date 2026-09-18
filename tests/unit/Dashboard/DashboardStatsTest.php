@@ -7,9 +7,11 @@ use YayLoyalty\Services\Dashboard\DashboardStats;
 use YayLoyalty\Services\Dashboard\PeriodWindow;
 
 /**
- * DashboardStats composes repository reads through DashboardMath. The stub
- * answers every read from fixed numbers keyed on the window it was asked
- * about, so the assertions pin which window feeds which figure.
+ * DashboardStats composes repository reads: ratios (redemption rate, prev
+ * deltas) go through Utils\PointsMath, and DashboardMath only fills the
+ * series' missing days. The stub answers every read from fixed numbers keyed
+ * on the window it was asked about, so the assertions pin which window feeds
+ * which figure.
  */
 final class DashboardStatsTest extends TestCase {
 

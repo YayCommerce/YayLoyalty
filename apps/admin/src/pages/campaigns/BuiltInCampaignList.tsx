@@ -17,29 +17,17 @@ import { Segmented, SegmentedItem } from '@/components/ui/segmented';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 
-/** Display order for the three built-ins — the trigger group order the wireframe and CampaignTable both use. */
+/** Display order for the three built-ins; same as CampaignTable's group order. */
 const BUILTIN_TRIGGER_ORDER: Campaign['trigger'][] = ['purchase', 'signup', 'review'];
 
 /**
- * Lite's campaigns list: three always-present, editable cards — no add, no
- * priority, no conditions, no schedule. Section "1a. Campaigns (Free)" in
- * the wireframe.
- *
- * ONE LIST, NOT TWO: reads the same `useCampaignsQuery()` Pro's CampaignTable
- * reads (`@/lib/queries/campaign.queries`, backed by `@/lib/api/campaign.api`
- * and CampaignRestController — real, working REST calls; the fixture behind
- * them today is CampaignRestController's own SWAP POINT, not a second one
- * here), filtered to `is_builtin`. Lite never sees the non-builtin rows in
- * that list because nothing in the Lite build can create one — there is no
- * create/edit UI for anything but these three cards.
- *
- * Loading/error/empty are handled here, once, at the fetch boundary — cards
- * below never see anything but a loaded list. Expand/collapse and every
- * field respond to interaction for real (local state), but Save is inert —
- * see BuiltInCampaignCard's docblock.
+ * Lite's campaigns list: three always-present editable cards, from the same
+ * list CampaignTable reads, filtered to is_builtin. Loading/error/empty are
+ * handled here once. Fields edit for real, but Save is inert: there is no
+ * update client yet.
  */
 export default function BuiltInCampaignList() {
-  const { data, isPending, isError } = useCampaignsQuery({ per_page: 100 });
+  const { data, isPending, isError } = useCampaignsQuery({ perPage: 100 });
   const [expandedId, setExpandedId] = useState<number | undefined>();
 
   if (isPending) {
@@ -88,9 +76,7 @@ export default function BuiltInCampaignList() {
 }
 
 function UpsellBanner() {
-  // Same destination as UpgradeToProBadge / UpgradeToProOverlay in
-  // components/pro/upgrade-to-pro.tsx — duplicated rather than imported,
-  // since that constant isn't exported.
+  // Same destination as components/pro/UpgradeToPro.tsx, which does not export it.
   const yayLoyaltyProUrl = 'https://yaycommerce.com/yayloyalty-for-woocommerce/';
 
   return (
@@ -120,9 +106,7 @@ function BuiltInCampaignCard({
   expanded: boolean;
   onToggleExpanded: () => void;
 }) {
-  // Local edits only — Save never calls the write endpoint (see
-  // built-in-campaign-list.api.ts's docblock for the swap point). Cancel
-  // just resets these to what the campaign loaded with.
+  // Local edits only; Save is inert until campaign.api.ts has an update client.
   const [status, setStatus] = useState(campaign.status);
   const [config, setConfig] = useState(campaign.config);
   const isOn = status === 'active';
@@ -192,7 +176,7 @@ function BuiltInCampaignCard({
   );
 }
 
-/** A campaign's config is untyped `Record<string, unknown>` on the wire — narrow it per trigger, once, here. */
+/** Config is untyped on the wire; narrowed per trigger here. */
 interface PurchaseConfig {
   points_per_unit: number;
   base: 'after_discounts' | 'before_discounts';
@@ -204,12 +188,9 @@ interface PurchaseConfig {
 }
 
 /**
- * One label + control row. A plain grid rather than components/ui/field.tsx:
- * that primitive's conditional `has-[...]:items-start` variant fought the
- * fixed-width label column here and produced uneven, oversized gaps between
- * rows (rows whose control wrapped a description ended up far taller than
- * their content, pushing every row after them down). A fixed two-column
- * grid has no such condition to get wrong.
+ * One label + control row. A plain grid, not components/ui/field.tsx: its
+ * conditional `has-[...]:items-start` fought the fixed label column and
+ * produced uneven row gaps.
  */
 function ConfigField({ label, description, children }: { label: string; description?: string; children: ReactNode }) {
   return (
@@ -437,7 +418,7 @@ function ReviewFields({
   );
 }
 
-/** The collapsed row's one-line summary, computed from the current (possibly edited) config. */
+/** The collapsed row's one-line summary, from the current (possibly edited) config. */
 function summarize(trigger: Campaign['trigger'], config: Record<string, unknown>): string {
   switch (trigger) {
     case 'purchase': {
@@ -482,7 +463,7 @@ function summarize(trigger: Campaign['trigger'], config: Record<string, unknown>
   }
 }
 
-/** The worked example banner — recomputed live as `points_per_unit` / `rounding` change. */
+/** The worked-example banner, live as the config changes. */
 function worksOut(pointsPerUnit: number, rounding: PurchaseConfig['rounding']): string {
   const exampleSubtotal = 50;
   const points = roundPoints(exampleSubtotal * pointsPerUnit, rounding);

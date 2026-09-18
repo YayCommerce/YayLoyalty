@@ -8,31 +8,11 @@ use YayLoyalty\Utils\Json;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * A campaign's `conditions` — an ordered set of CampaignCondition value objects.
- *
- * STORAGE. Conditions live in the `conditions` LONGTEXT column on the campaigns
- * table; there is no conditions table. The column holds a JSON list written
- * from PHP (LONGTEXT cannot carry a SQL default). An empty list means "no
- * restrictions — the campaign applies to everyone". Lists round-trip through the
- * `{ schema_version, items: [...] }` envelope (Json::encode_list /
- * Json::decode_list), so the version key never turns the list into an object;
- * to_json() here produces exactly what Campaign::to_row() writes.
- *
- * SEMANTICS. Every condition in the set is ANDed. There is no OR and no nesting
- * — a set is a flat list with at most one entry per type.
- *
- * This class owns validation and normalisation on save. It does NOT evaluate a
- * set against an order — that is the evaluator's job (Pro) and a separate task.
- *
- * Named `CampaignConditionSet`, not the bare `ConditionSet` — rewards have
- * their own condition vocabulary, `Models\RewardConditionSet`, and the two
- * must not collide. The two classes are independent (no shared base, free to
- * diverge as the features do) except for one thing: the handful of value
- * shapes they both use unchanged — `int`, `int_list`, `string_list`, and the
- * `between`/non-empty-list/integer checks underneath them — live once in
- * `Utils\ConditionValueRules` so a fix to that logic never has to be made
- * twice. Shapes only this class needs (`money`, `country_list`,
- * `currency_list`) stay here.
+ * A campaign's `conditions`: a flat ANDed list, at most one entry per type,
+ * stored as JSON in the campaigns table (empty = applies to everyone). Owns
+ * validation and normalisation on save; evaluation is
+ * Pro\Services\ConditionsEvaluator's. Independent of RewardConditionSet
+ * except for the value shapes shared through Utils\ConditionValueRules.
  */
 final class CampaignConditionSet {
 
@@ -54,8 +34,7 @@ final class CampaignConditionSet {
     }
 
     /**
-     * Build from a list of { type, operator, value } maps. Lenient: non-array
-     * entries are dropped and missing keys default. Strictness is validate().
+     * Builds from { type, operator, value } maps. Lenient; strictness is validate().
      *
      * @param array<int, mixed> $list
      */
@@ -71,10 +50,7 @@ final class CampaignConditionSet {
         return new self( $conditions );
     }
 
-    /**
-     * Build from the stored column value. Total: malformed JSON yields an empty
-     * set, never an exception (see Utils\Json).
-     */
+    /** Builds from the stored column value; malformed JSON yields an empty set, never an exception. */
     public static function from_json( ?string $raw ): self {
         return self::from_array( Json::decode_list( $raw, [] ) );
     }
@@ -91,10 +67,7 @@ final class CampaignConditionSet {
         );
     }
 
-    /**
-     * Encode for the `conditions` column. Same envelope Campaign::to_row() uses,
-     * keyed to the shared blob version.
-     */
+    /** Encodes for the `conditions` column, in the envelope Campaign::to_row() writes. */
     public function to_json(): string {
         return Json::encode_list( $this->to_array(), Campaign::CONFIG_SCHEMA_VERSION );
     }
@@ -114,21 +87,11 @@ final class CampaignConditionSet {
         return count( $this->conditions );
     }
 
-    /* ─── normalisation ─────────────────────────────────────────────── */
-
     /**
-     * Canonicalise a raw conditions list for storage:
-     *
-     *   - a scalar becomes a single-element array where the type expects a list
-     *   - ids are cast to int
-     *   - country and currency codes are upper-cased
-     *   - role slugs are lower-cased
-     *   - list values are de-duplicated
-     *   - entries are ordered by evaluation cost (cheap types first), matching
-     *     Enums\CampaignConditionType, so an evaluator short-circuits without re-sorting
-     *
-     * Best-effort and non-throwing: an unknown type is passed through untouched
-     * for validate() to reject.
+     * Canonicalises a raw list for storage: scalars widened to lists, ids cast,
+     * codes upper-cased, roles lower-cased, lists de-duplicated, entries
+     * ordered cheap-first for evaluation. Non-throwing; unknown types pass
+     * through for validate() to reject.
      *
      * @param array<int, mixed> $list
      * @return array<int, array{type: string, operator: string, value: mixed}>
@@ -197,8 +160,7 @@ final class CampaignConditionSet {
             if ( is_array( $value ) && isset( $value['countries'] ) ) {
                 $countries = is_array( $value['countries'] ) ? $value['countries'] : [ $value['countries'] ];
             } elseif ( is_array( $value ) && ! isset( $value['source'] ) ) {
-                // A bare list of codes was supplied; move it under `countries`
-                // and leave `source` absent for validate() to flag.
+                // A bare list of codes: move under `countries`, leave `source` absent for validate() to flag.
                 $countries = $value;
                 $value     = [];
             }
@@ -214,11 +176,8 @@ final class CampaignConditionSet {
         return ConditionValueRules::normalize_scalar( $hints, $value );
     }
 
-    /* ─── validation ────────────────────────────────────────────────── */
-
     /**
-     * Non-throwing check for the save boundary — mirrors
-     * Campaign::config_is_valid(). Normalises first, then validates the result.
+     * Non-throwing check for the save boundary; normalises first.
      *
      * @param array<int, mixed> $list
      */
@@ -365,9 +324,7 @@ final class CampaignConditionSet {
                 break;
 
             case 'tier':
-                // Unreachable today: tier is not in CampaignConditionType::all(), so the
-                // type check in validate() already threw. Left for when the tier
-                // schema task lifts the gate.
+                // Unreachable until tiers enter CampaignConditionType::all().
                 break;
         }
     }
@@ -393,11 +350,7 @@ final class CampaignConditionSet {
         return ConditionValueRules::is_int_like( $value );
     }
 
-    /**
-     * ISO 4217. Format-checked always; membership-checked against WooCommerce's
-     * currency list when it is loaded (this plugin requires WooCommerce, so that
-     * is the normal path — the fallback keeps the value object usable in isolation).
-     */
+    /** ISO 4217 format check, plus membership in WooCommerce's list when it is loaded. */
     private static function is_currency_code( string $code ): bool {
         if ( 1 !== preg_match( '/^[A-Z]{3}$/', $code ) ) {
             return false;
@@ -410,9 +363,7 @@ final class CampaignConditionSet {
         return true;
     }
 
-    /**
-     * ISO 3166-1 alpha-2. Same approach as is_currency_code().
-     */
+    /** ISO 3166-1 alpha-2. Same approach as is_currency_code(). */
     private static function is_country_code( string $code ): bool {
         if ( 1 !== preg_match( '/^[A-Z]{2}$/', $code ) ) {
             return false;

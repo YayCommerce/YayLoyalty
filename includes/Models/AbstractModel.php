@@ -4,64 +4,42 @@ namespace YayLoyalty\Models;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * A typed row. Dumb by design.
- *
- * Models hold data and cast it. They never touch the database — that is a
- * repository's job — and they never enforce cross-table invariants, which is a
- * service's job.
- *
- * Two rules are easy to get wrong and expensive to get wrong:
- *
- * 1. MONEY BINDS AS %s, NEVER %f. Every DECIMAL(19,4) column is carried as a
- *    PHP string and declared as '%s' in get_format(). Passing a decimal through
- *    a float loses precision on exactly the values where it is a financial
- *    defect: rate_snapshot, base_value, value, lifetime_spend, threshold.
- *    Points are BIGINT and use '%d'.
- *
- * 2. FACT-TABLE ENTITIES ARE IMMUTABLE BY CONVENTION. PHP 7.4 has no readonly,
- *    so subclasses representing append-only rows (ledger entries, redemptions)
- *    declare private properties, expose getters only, and return a clone from
- *    any with_*() method. The convention is the enforcement; there is no
- *    language support to fall back on.
+ * A typed row: holds data and casts it, never touches the database or a
+ * cross-table invariant. Money (DECIMAL) is carried as a string and bound
+ * as %s, never %f: a float loses precision exactly where it is a financial
+ * defect. Append-only entities are immutable by convention (getters only,
+ * with_*() returns a clone); PHP 7.4 has no readonly to enforce it.
  */
 abstract class AbstractModel {
 
     /**
-     * Build from a raw database row.
-     *
      * @param array<string, mixed> $row
      * @return static
      */
     abstract public static function from_row( array $row );
 
     /**
-     * Column => value map for $wpdb write methods.
-     *
-     * Omit the primary key on insert; the caller supplies it for updates.
+     * Column => value map for $wpdb writes; omits an AUTO_INCREMENT key, keeps a natural one.
      *
      * @return array<string, mixed>
      */
     abstract public function to_row(): array;
 
     /**
-     * Public REST representation. snake_case keys, matching get_item_schema().
+     * REST representation, snake_case, matching the owning controller's schema.
      *
      * @return array<string, mixed>
      */
     abstract public function to_array(): array;
 
     /**
-     * $wpdb placeholder for each key of to_row(), in the same order.
-     *
-     * '%d' for integers, '%s' for strings, dates AND decimals. Never '%f'.
+     * $wpdb placeholder per to_row() key, same order. '%s' for decimals too; never '%f'.
      *
      * @return string[]
      */
     abstract public function get_format(): array;
 
-    /**
-     * Cast a value to int, treating null and '' as null.
-     */
+    /** Null and '' become null. */
     protected static function cast_int( $value ): ?int {
         if ( null === $value || '' === $value ) {
             return null;
@@ -70,9 +48,7 @@ abstract class AbstractModel {
         return (int) $value;
     }
 
-    /**
-     * Cast a value to int, defaulting to 0. For NOT NULL integer columns.
-     */
+    /** For NOT NULL integer columns. */
     protected static function cast_int_default( $value, int $fallback = 0 ): int {
         if ( null === $value || '' === $value ) {
             return $fallback;
@@ -81,12 +57,7 @@ abstract class AbstractModel {
         return (int) $value;
     }
 
-    /**
-     * Cast a DECIMAL column.
-     *
-     * Returns a STRING, deliberately. Casting to float here would defeat the
-     * whole point of binding with %s downstream.
-     */
+    /** Casts a DECIMAL column to a string, never a float, so %s binding downstream keeps precision. */
     protected static function cast_decimal( $value, ?string $fallback = null ): ?string {
         if ( null === $value || '' === $value ) {
             return $fallback;
@@ -95,9 +66,7 @@ abstract class AbstractModel {
         return (string) $value;
     }
 
-    /**
-     * Cast a nullable DATETIME column, normalising empty and zero dates to null.
-     */
+    /** Empty and zero dates become null. */
     protected static function cast_datetime( $value ): ?string {
         if ( null === $value || '' === $value || '0000-00-00 00:00:00' === $value ) {
             return null;
@@ -106,9 +75,6 @@ abstract class AbstractModel {
         return (string) $value;
     }
 
-    /**
-     * Cast a nullable string column.
-     */
     protected static function cast_string( $value ): ?string {
         if ( null === $value ) {
             return null;
@@ -117,9 +83,6 @@ abstract class AbstractModel {
         return (string) $value;
     }
 
-    /**
-     * Cast a TINYINT(1) column to bool.
-     */
     protected static function cast_bool( $value ): bool {
         return (bool) (int) $value;
     }

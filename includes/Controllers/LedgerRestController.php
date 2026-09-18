@@ -10,12 +10,7 @@ use YayLoyalty\Repositories\LedgerRepository;
 
 defined( 'ABSPATH' ) || exit;
 
-/**
- * GET /yayloyalty/v1/customers/{id}/ledger — paginated history.
- *
- * Read-only by design: the ledger is append-only, and the only way to add a row
- * is through LedgerService. There is no POST here on purpose.
- */
+/** GET /customers/{id}/ledger: paginated history. No POST: only LedgerService adds rows. */
 final class LedgerRestController extends AbstractRestController {
 
     /** @var LedgerRepository */
@@ -98,8 +93,6 @@ final class LedgerRestController extends AbstractRestController {
             '$schema'    => 'http://json-schema.org/draft-04/schema#',
             'title'      => 'yayloyalty_ledger_entry',
             'type'       => 'object',
-            // Every property is readonly: this table is append-only and the
-            // only writer is LedgerService.
             'properties' => [
                 'id'             => [
                     'type'     => 'integer',

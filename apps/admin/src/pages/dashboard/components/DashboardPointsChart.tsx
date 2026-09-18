@@ -17,7 +17,7 @@ import {
 import { isSeriesEmpty } from '../dashboard-page.copy';
 import { CHART_HEIGHT, DashboardPointsChartFrame } from './DashboardPointsChartFrame';
 
-/** One thin per-campaign line (Phase 6's breakdown); merged into the rows by date. */
+/** One thin per-campaign line, merged into the rows by date. */
 export type ExtraSeries = { key: string; label: string; data: { date: string; issued: number }[] };
 
 const NO_EXTRA_SERIES: ExtraSeries[] = [];
@@ -26,10 +26,9 @@ const NO_EXTRA_SERIES: ExtraSeries[] = [];
 const EXTRA_COLORS = ['var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)'];
 
 /**
- * Issued-vs-redeemed line chart with the 7/30/90 range control. `children`
- * is the header controls slot (Phase 6's breakdown toggle); `extraSeries`
- * adds thin per-campaign lines. When every point is zero the axes still
- * draw and an overlay says so (artboard 2a #3).
+ * Issued-vs-redeemed line chart with the range control. `children` is the
+ * header controls slot; `extraSeries` adds per-campaign lines. An all-zero
+ * series still draws its axes under an overlay.
  */
 export function DashboardPointsChart({
   series,
@@ -89,7 +88,7 @@ export function DashboardPointsChart({
               axisLine={false}
               width={56}
               allowDecimals={false}
-              // An all-zero series still draws a "0" axis line and the dates (artboard 2a #3).
+              // An all-zero series still draws a "0" axis line and the dates.
               domain={[0, empty ? 1 : 'auto']}
               ticks={empty ? [0] : undefined}
               tickFormatter={(value: number) => formatCompactPoints(value)}

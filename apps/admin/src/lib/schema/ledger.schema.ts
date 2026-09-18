@@ -48,11 +48,7 @@ export const ledgerEntrySchema = z.object({
   campaign_id: z.number().int().nullable(),
   redemption_id: z.number().int().nullable(),
   order_id: z.number().int().nullable(),
-  /**
-   * Present on manual adjustments only. System rows deliberately store no text
-   * so their description stays translatable — compose those client-side from
-   * type/source rather than expecting a string here.
-   */
+  /** Manual adjustments only; system rows compose their text client-side so it stays translatable. */
   note: z.string().nullable(),
   actor_id: z.number().int().nullable(),
   created_at: z.string(),

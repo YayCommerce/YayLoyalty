@@ -9,20 +9,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { previewConditions, type ConditionResult } from './conditions-preview.api';
 
 /**
- * Pro surface for a campaign's eligibility conditions.
- *
- * DELETED FROM THE LITE BUILD along with the rest of `src/pro/`. Lite renders
- * UpgradeToProOverlay in its place, via the ProGate wrapper at the call site.
- *
- * A preview, not an editor. Authoring conditions needs a campaign editor, and
- * the SPA has none — the campaigns page is a read-only list. Shipping a
- * condition-authoring UI with nowhere to save it would be worse than shipping
- * this: the evaluator is what Pro adds, and this is the surface that shows what
- * it decided and why.
- *
- * The "why" is the point. A merchant asking "why didn't this customer earn
- * points?" gets a per-condition answer from the same evaluation path that runs
- * at award time, rather than a bare yes/no they have to trust.
+ * Per-condition preview of why a customer does or does not match a
+ * campaign, from the same evaluation path that runs at award time. A
+ * preview, not an editor: the SPA has no campaign editor to save into.
+ * Not mounted yet; the call site must guard with IS_PRO_BUILD.
  */
 export function ConditionsPreview({
   campaignId,
@@ -129,12 +119,9 @@ function describeValue(value: unknown): string {
 }
 
 /**
- * Turn the evaluator's reason code into something a merchant can act on.
- *
- * `unknown_condition_type` and `unsupported_operator` are configuration errors,
- * not "customer does not qualify" — Pro fails them deliberately (it can
- * evaluate, so an unrecognised type is a real fault), and saying so is the
- * difference between a merchant fixing the campaign and blaming the customer.
+ * The evaluator's reason code as something a merchant can act on. Unknown
+ * type/operator are configuration errors, not "does not qualify";
+ * unsupported_condition_type is recognised but not yet evaluable.
  */
 function describeReason(result: ConditionResult): string {
   switch (result.reason) {
@@ -152,6 +139,8 @@ function describeReason(result: ConditionResult): string {
           );
     case 'unknown_condition_type':
       return __('Unknown condition type', 'yayloyalty');
+    case 'unsupported_condition_type':
+      return __('This condition type is known but cannot be evaluated yet.', 'yayloyalty');
     case 'unsupported_operator':
       return __('Unsupported operator', 'yayloyalty');
     case 'non_numeric_value':

@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { noticeCopy, noticeSummary } from '../dashboard-page.notice-copy';
 import { DashboardNoticeCard } from './DashboardNoticeCard';
 
-/** Two at a time; four stacked notices push the dashboard below the fold (artboard 6a #2). */
+/** Two at a time; four stacked notices push the dashboard below the fold. */
 const SHOWN = 2;
 
 /**
@@ -38,7 +38,7 @@ export function DashboardNoticeStrip({ notices }: { notices: DashboardNotice[] }
 
   const onDismiss = (notice: DashboardNotice) => {
     if (!(DISMISSABLE_NOTICE_KEYS as readonly string[]).includes(notice.key)) {
-      // Fixture-only keys never persist; hide is a client-side no-op the next load undoes.
+      // Fixture-only keys never persist; explain instead of hiding, so the preview notice stays on screen.
       toast.info(__('This preview notice cannot be dismissed.', 'yayloyalty'));
       return;
     }

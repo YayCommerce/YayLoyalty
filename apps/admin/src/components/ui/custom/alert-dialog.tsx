@@ -13,7 +13,7 @@ import { buttonVariants } from '@/components/ui/button';
  * the whole component (source, closures, JSX) in the Lite bundle even
  * though nothing there ever renders it. Confirmed empirically: removing the
  * annotations brought back `alert-dialog-content` etc. in Lite's `main.js`;
- * adding them removed it. (`../dialog.tsx` doesn't need this only because
+ * adding them removed it. (`./dialog.tsx` doesn't need this only because
  * it's ALSO imported by Lite-shared code regardless — this was never
  * exercised there.)
  */
@@ -37,7 +37,7 @@ function AlertDialogPortal({ ...props }: React.ComponentProps<typeof AlertDialog
 // track animation end) — a plain function component can't receive one
 // ("Function components cannot be given refs"), so every piece that renders
 // an actual DOM node here (Overlay, Content, Action, Cancel — same as
-// DialogOverlay/DialogContent/DialogTrigger in ../dialog.tsx) MUST use
+// DialogOverlay/DialogContent/DialogTrigger in ./dialog.tsx) MUST use
 // React.forwardRef, not a bare function.
 const AlertDialogOverlay = /*#__PURE__*/ React.forwardRef<
   React.ComponentRef<typeof AlertDialogPrimitive.Overlay>,
@@ -90,7 +90,7 @@ function AlertDialogFooter({ className, ...props }: React.ComponentProps<'div'>)
   // `gap-2`, not `sm:space-x-2`: the latter only kicks in at the `sm:`
   // breakpoint and only spaces adjacent siblings — `gap` applies
   // unconditionally and doesn't depend on `flex-col-reverse` vs `flex-row`,
-  // matching DialogFooter in ../dialog.tsx so the two dialog kinds read the
+  // matching DialogFooter in ./dialog.tsx so the two dialog kinds read the
   // same. This is also the fix for the two Cancel/Remove buttons rendering
   // visibly cramped together.
   return (
