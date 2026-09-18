@@ -170,6 +170,19 @@ Two backbones landed 2026-09-11: capabilities (`Access\Capabilities`) and the po
 | 10 | PHPStan level 6 is not in the repo; add it and run on `includes/Engine/Points` first. | tooling | — |
 | 11 | wp-phpunit harness for `CampaignRepository` (cache + liveness against real rows) and `ContextFactory` (real `WC_Order`). Verified by WP-CLI script today. | `tests/integration/` | — |
 
+### Reward engine (scaffold, 2026-09-18) → what implements it
+
+| # | TODO | Where | Ticket |
+|---|---|---|---|
+| 1 | `RewardEngine` gate 1 — liveness. A reward not live at the context's time denies `REASON_NOT_LIVE`. | `Engine\Rewards\RewardEngine::evaluate()` | — |
+| 2 | `RewardEngine` gate 2 — balance vs cost. A balance below the cost denies `REASON_INSUFFICIENT_BALANCE`. Cost is `reward.cost_points` for fixed types, `context.points_requested` for `flexible_discount`. | `Engine\Rewards\RewardEngine::evaluate()` | — |
+| 3 | `RewardEngine` gate 3 — conditions filter. A false from `yayloyalty_reward_conditions_match` (default `true`, args reward and context) denies `REASON_CONDITIONS_NOT_MET`. | `Engine\Rewards\RewardEngine::evaluate()` | — |
+| 4 | `FlexibleDiscountHandler::quote()` — validate config: `min_points`, `increment`, `max_points_per_order`, `max_percent_of_subtotal` (each a `denied()` with its reason), then value via `Utils\PointsMath::points_to_currency()`. | `Engine\Rewards\Handlers\FlexibleDiscountHandler` | — |
+| 5 | Pro handlers registered via `yayloyalty_register_reward_handlers` — one `RewardHandler` per type: `fixed_coupon`, `percent_coupon`, `free_shipping`, `free_product`. | `includes/Pro/` | — |
+| 6 | `ContextFactory` — build `Context` from the cart (or none, for a catalog claim); balance from `CustomerRepository`. The one class allowed to touch WooCommerce. | `Engine\Rewards\` | — |
+| 7 | Write path: `redemptions` table, `RedemptionRepository`, `LedgerService::redeem()`. | separate plan | — |
+| 8 | Checkout hook caller — apply reward, write ledger on valid result. Store API caller. | listener | — |
+
 ### Capabilities (backbone done) → what is still open
 
 | # | TODO | Where | Ticket |
