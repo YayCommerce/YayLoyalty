@@ -1,5 +1,6 @@
 import { formatPoints } from '@/lib/helpers/points.helper';
 import type { Customer } from '@/lib/schema/customer.schema';
+import { ProGate } from '@/components/pro/ProGate';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ActivityLogTab } from './tabs/ActivityLogTab';
 import { LedgerTab } from './tabs/LedgerTab';
@@ -17,7 +18,19 @@ import { TAB_ACTIVITY, TAB_LEDGER, TAB_REDEMPTIONS, TAB_REFERRALS } from './cust
  * `Tabs` instance in the app, so it is overridden here at the call site
  * instead of adding a variant to the primitive nothing else would use.
  */
-function DrawerTab({ value, label, count }: { value: string; label: string; count: number }) {
+function DrawerTab({
+  value,
+  label,
+  count,
+  proGated = false,
+}: {
+  value: string;
+  label: string;
+  count: number;
+  /** Redemptions (3e)/Referrals (3f, phase 06) — a Pro badge beside the
+   *  label, established here for phase 06 to copy verbatim. */
+  proGated?: boolean;
+}) {
   return (
     <TabsTrigger
       value={value}
@@ -30,6 +43,7 @@ function DrawerTab({ value, label, count }: { value: string; label: string; coun
       <span className="text-muted-foreground group-data-[state=active]:text-primary text-xs font-normal tabular-nums">
         {formatPoints(count)}
       </span>
+      {proGated && <ProGate inline />}
     </TabsTrigger>
   );
 }
@@ -41,11 +55,17 @@ function DrawerTab({ value, label, count }: { value: string; label: string; coun
  * is no separate "counts still loading" state to render for). All four tabs
  * exist in both builds (locked decision 6) — no `IS_PRO_BUILD` branch.
  *
- * Ledger and Activity log have real, working bodies (Wave B wires the
- * latter — see `ActivityLogTab.tsx`). Redemptions/Referrals still render
- * their empty state ONLY, whatever their count says: their backing tables
- * do not exist yet (see each tab's own docblock), so a populated view would
- * be unreviewable against reality.
+ * Ledger, Activity log and Redemptions have real, working bodies (Wave B
+ * wires the latter two — see `ActivityLogTab.tsx`/`RedemptionsTab.tsx`).
+ * Referrals still renders its empty state ONLY, whatever its count says:
+ * its backing table does not exist yet, so a populated view would be
+ * unreviewable against reality.
+ *
+ * Redemptions is Pro-only content behind the SAME tab Free sees (locked
+ * decision 6 — no `IS_PRO_BUILD` branch on which tabs exist): `ProGate` adds
+ * a badge beside the label and swaps the body for the upgrade surface on
+ * Lite. `ProGate` is a build-time presentation gate, not access control —
+ * there is no real Pro data behind it to protect, only a dev fixture.
  */
 export function CustomerDrawerTabs({ customer, scenario }: { customer: Customer; scenario?: string }) {
   const firstName = customer.name.split(' ')[0] || customer.name;
@@ -61,7 +81,7 @@ export function CustomerDrawerTabs({ customer, scenario }: { customer: Customer;
         <TabsList className="h-auto w-max min-w-full justify-start gap-5 rounded-none border-b bg-transparent p-0">
           <DrawerTab value="ledger" label={TAB_LEDGER()} count={customer.counts.ledger} />
           <DrawerTab value="activity" label={TAB_ACTIVITY()} count={customer.counts.activity} />
-          <DrawerTab value="redemptions" label={TAB_REDEMPTIONS()} count={customer.counts.redemptions} />
+          <DrawerTab value="redemptions" label={TAB_REDEMPTIONS()} count={customer.counts.redemptions} proGated />
           <DrawerTab value="referrals" label={TAB_REFERRALS()} count={customer.counts.referrals} />
         </TabsList>
       </div>
@@ -77,7 +97,9 @@ export function CustomerDrawerTabs({ customer, scenario }: { customer: Customer;
         <ActivityLogTab userId={customer.user_id} scenario={scenario} />
       </TabsContent>
       <TabsContent value="redemptions">
-        <RedemptionsTab customerFirstName={firstName} />
+        <ProGate>
+          <RedemptionsTab userId={customer.user_id} customerFirstName={firstName} scenario={scenario} />
+        </ProGate>
       </TabsContent>
       <TabsContent value="referrals">
         <ReferralsTab />

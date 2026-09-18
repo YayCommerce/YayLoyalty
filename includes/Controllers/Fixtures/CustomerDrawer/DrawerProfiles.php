@@ -120,4 +120,9 @@ final class DrawerProfiles {
     public static function activity_count_for( string $scenario ): int {
         return ( self::rows()[ $scenario ] ?? self::rows()[''] )[10];
     }
+
+    /** The scenario's redemptions row count — `DrawerRedemptions::rows()` generates exactly this many. */
+    public static function redemptions_count_for( string $scenario ): int {
+        return ( self::rows()[ $scenario ] ?? self::rows()[''] )[11];
+    }
 }

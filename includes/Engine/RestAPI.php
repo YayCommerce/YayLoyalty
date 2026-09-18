@@ -7,6 +7,7 @@ use YayLoyalty\Controllers\CampaignRestController;
 use YayLoyalty\Controllers\CustomerRestController;
 use YayLoyalty\Controllers\DashboardRestController;
 use YayLoyalty\Controllers\LedgerRestController;
+use YayLoyalty\Controllers\RedemptionsRestController;
 use YayLoyalty\Controllers\SettingsRestController;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\CustomerRepository;
@@ -74,6 +75,9 @@ class RestAPI {
             // No repository: the real path answers an empty envelope until an
             // activity table exists (see the controller's own docblock).
             new ActivityRestController(),
+            // Same as ActivityRestController — no repository, empty envelope
+            // on the real path until a redemptions table exists.
+            new RedemptionsRestController(),
             // Definition table: repository only, no service.
             new CampaignRestController( $campaigns ),
             new DashboardRestController(

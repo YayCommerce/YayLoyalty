@@ -16,6 +16,7 @@ import {
   noMatchSuggestionSchema,
 } from '@/lib/schema/customer.schema';
 import { LedgerEntry, ledgerEntrySchema, ledgerEnvelopeSchema, LedgerFilterType } from '@/lib/schema/ledger.schema';
+import { redemptionEnvelopeSchema } from '@/lib/schema/redemption.schema';
 
 /**
  * Every response is `.parse()`d rather than cast.
@@ -110,6 +111,30 @@ export async function getCustomerActivity(userId: number, params: CustomerActivi
   const payload = await api.get(`customers/${userId}/activity`, { searchParams }).json();
 
   return activityEnvelopeSchema.parse(payload);
+}
+
+/** App-side params for `getCustomerRedemptions()`. */
+export type CustomerRedemptionsParams = {
+  page?: number;
+  perPage?: number;
+  scenario?: string;
+};
+
+/**
+ * `GET /customers/{id}/redemptions`. The real path always answers an empty
+ * envelope (no `redemptions` table yet) — same `scenario` dev-only rule as
+ * the other drawer-tab fetchers.
+ */
+export async function getCustomerRedemptions(userId: number, params: CustomerRedemptionsParams = {}) {
+  const searchParams: Record<string, string> = {};
+
+  if (params.page) searchParams.page = String(params.page);
+  if (params.perPage) searchParams.per_page = String(params.perPage);
+  if (import.meta.env.DEV && params.scenario) searchParams.scenario = params.scenario;
+
+  const payload = await api.get(`customers/${userId}/redemptions`, { searchParams }).json();
+
+  return redemptionEnvelopeSchema.parse(payload);
 }
 
 /**

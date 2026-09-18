@@ -122,16 +122,62 @@ Delete
 
 ## Todo List
 
-- [ ] Wire row derived from `docs/data-model.md`, not invented
-- [ ] `reward_name` join question recorded, not solved
-- [ ] Fixture row counts agree with `DrawerProfiles`' `counts_redemptions` for every scenario
-- [ ] At least one "Points returned" row with a positive figure in the default scenario
-- [ ] Empty envelope on the real path with the "zero is true" docblock
-- [ ] Zod parses fixture and real paths identically
-- [ ] Six columns wrap below `sm` using the existing technique
-- [ ] Pager reused or the duplication consciously accepted and documented
-- [ ] `ProGate` badge + body wrap; Free shows the upgrade surface
-- [ ] Every new file < 200 lines
+- [x] Wire row derived from `docs/data-model.md`, not invented
+- [x] `reward_name` join question recorded, not solved
+- [x] Fixture row counts agree with `DrawerProfiles`' `counts_redemptions` for every scenario
+- [x] At least one "Points returned" row with a positive figure in the default scenario
+- [x] Empty envelope on the real path with the "zero is true" docblock
+- [x] Zod parses fixture and real paths identically
+- [x] Six columns wrap below `sm` using the existing technique
+- [x] Pager reused (already `DrawerTabPager` since phase 01's amendment — not re-extracted here)
+- [x] `ProGate` badge + body wrap; Free shows the upgrade surface
+- [x] Every new file < 200 lines
+
+Deviations from plan:
+- **Added a `currency` field** (`"USD"`, fixed) that the plan's own step 1 named in its wire row
+  list but I initially left out of the first draft — caught before verification, not by review.
+  Matches `docs/data-model.md`'s real `currency CHAR(3)` column.
+- **`counts.redemptions` derivation centralized**: added `DrawerProfiles::redemptions_count_for()`,
+  matching the existing `ledger_count_for()`/`activity_count_for()` accessors — the Risk Assessment's
+  "derive from one source" instruction, followed rather than duplicating the count in
+  `DrawerRedemptions.php` itself.
+- **The default (`''`) identity's 6-row story is unreachable via any live REST call**, discovered
+  during this phase's own verification, not specific to Redemptions: `?scenario=` is registered
+  with an `enum` that does NOT include `''` (`CustomerDrawerFixture::SCENARIOS`), so passing
+  `scenario=''` explicitly fails validation (`400`) before reaching any handler; omitting the param
+  entirely skips the fixture branch's `!empty($request['scenario'])` gate and falls through to the
+  real (empty) repository path instead. Confirmed this is NOT new: the already-shipped
+  `GET /customers/{id}` and `GET /customers/{id}/ledger` endpoints have the identical limitation —
+  their own `''` identity rows are equally unreachable via `?scenario=`. `DrawerRedemptions`'s
+  `'' === $scenario` branch exists for the same reason the ledger/activity ones do: documenting what
+  the default identity's data conceptually looks like, and matching the established
+  `rows()[$scenario] ?? rows()['']` fallback shape, even though nothing can currently reach it
+  through the REST layer. Not fixed — pre-existing, affects the whole fixture system, out of this
+  phase's scope. `large`/`deleted`/`new`/real-path were all live-verified instead (see below).
+- **`customer-drawer.copy.ts` is now at exactly 200 lines** — the redemptions copy fit without a
+  second split, but there is no more room left in it. Phase 06 (Referrals) will need its own new
+  copy destination, the same way `customer-drawer.panels.copy.ts` was split out in phase 02.
+
+### Code Review
+
+One High finding, fixed at its root cause rather than at this phase's own call site:
+**`<ProGate inline />` nested inside `TabsTrigger` (a `<button>`) let clicks bubble** —
+`UpgradeToProBadge`'s own `onClick` (`window.open(...)`) had no `stopPropagation()`, so a Lite user
+clicking the Redemptions tab's "Pro" badge both opened the marketing page AND switched the drawer to
+that tab. Every other existing `<ProGate inline />` call site sits inside a plain `<div>`/`CardTitle`,
+never a clickable ancestor, so this was the first composition to surface it. Fixed in
+`UpgradeToProBadge` itself (`components/pro/UpgradeToPro.tsx`), not by adding a workaround at this
+phase's call site — a shared component's own click handler should be safe inside any container, and
+phase 06 (Referrals) copies this exact composition verbatim, so the fix needed to live where every
+future `<ProGate inline />` consumer inherits it.
+
+Everything else came back clean: three-way schema consistency including `currency` (all three layers
+agree), `default_rows()`'s internal correctness despite being unreachable via REST (verified
+statically — 6 rows, correct sign on the refund row, ids/currency assigned correctly), the minimal
+(no ledger-shaped carryover) query/params shape, the 6-column mobile-stacking math, `DrawerTabPager`
+reuse as a genuine non-decision, and no stale references to the old empty-state `RedemptionsTab.tsx`
+leaking into `ReferralsTab.tsx`. Re-verified after the fix: ESLint clean, `tsc --noEmit` no new
+errors, Vitest 63/63, `vite build` clean.
 
 ## Success Criteria
 
@@ -168,3 +214,13 @@ Delete
 No browser automation; dev port 3030 occupied. No visual verification. Verify with
 `composer lint`, `composer test`, `tsc --noEmit`, `vite build`, and a live `rest_do_request()`
 comparing the envelope against 3e's figures.
+
+Live-verified via `rest_do_request()`: `?scenario=large` returns exactly 38 rows with the fixture's
+cycling reward templates and `counts.redemptions` (from the customer endpoint, same scenario)
+agreeing exactly with the redemptions endpoint's own `totalItems` (38 = 38); `?scenario=deleted`
+returns 1 row; `?scenario=new` and the real path both return an empty envelope
+(`totalItems: 0`, `200`). The default identity's 6 specific rows could not be live-verified this
+way — see the Deviations entry above explaining why that path is unreachable via REST for every
+drawer endpoint, not only this one. `composer lint` clean on every touched PHP file (one
+pre-existing, unrelated warning remains), `tsc --noEmit` no new errors, ESLint clean, Vitest 63/63,
+`vite build` clean.

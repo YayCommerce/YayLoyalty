@@ -5,10 +5,12 @@ import {
   getCustomer,
   getCustomerActivity,
   getCustomerLedger,
+  getCustomerRedemptions,
   getCustomers,
   type CustomerActivityParams,
   type CustomerLedgerParams,
   type CustomerListParams,
+  type CustomerRedemptionsParams,
 } from '@/lib/api/customer.api';
 import type { AdjustPointsInput } from '@/lib/schema/customer.schema';
 
@@ -63,6 +65,15 @@ export const CUSTOMER_QUERIES = {
       placeholderData: keepPreviousData,
       retry: 1,
     }),
+
+  redemptions: (userId: number, params: CustomerRedemptionsParams) =>
+    queryOptions({
+      queryKey: ['customer', 'redemptions', userId, params],
+      queryFn: () => getCustomerRedemptions(userId, params),
+      enabled: userId > 0,
+      placeholderData: keepPreviousData,
+      retry: 1,
+    }),
 };
 
 /** ─── Hooks ─────────────────────────────────────────── */
@@ -81,6 +92,10 @@ export function useCustomersQuery(params: CustomerListParams = {}) {
 
 export function useCustomerActivityQuery(userId: number, params: CustomerActivityParams) {
   return useQuery(CUSTOMER_QUERIES.activity(userId, params));
+}
+
+export function useCustomerRedemptionsQuery(userId: number, params: CustomerRedemptionsParams) {
+  return useQuery(CUSTOMER_QUERIES.redemptions(userId, params));
 }
 
 export function useAdjustPointsMutation(userId: number) {

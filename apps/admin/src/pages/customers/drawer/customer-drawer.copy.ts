@@ -113,6 +113,16 @@ export function emptyRedemptionsBody(firstName: string): string {
   return sprintf(__('A row appears here the first time %s redeems a reward.', 'yayloyalty'), firstName);
 }
 
+// ─── Redemptions (3e) ─────────────────────────────────
+export const COLUMN_REWARD = () => __('Reward', 'yayloyalty');
+export const COLUMN_VALUE = () => __('Value', 'yayloyalty');
+export const COLUMN_ORDER = () => __('Order', 'yayloyalty');
+export const COLUMN_STATUS = () => __('Status', 'yayloyalty');
+
+export const REDEMPTION_STATUS_APPLIED = () => __('Applied', 'yayloyalty');
+export const REDEMPTION_STATUS_RETURNED = () => __('Points returned', 'yayloyalty'); // a refund, positive figure
+export const REDEMPTION_STATUS_ISSUED = () => __('Issued', 'yayloyalty');
+
 export const EMPTY_REFERRALS_TITLE = () => __('No referrals yet', 'yayloyalty');
 export const EMPTY_REFERRALS_BODY = () => __('The link works from the day the account exists.', 'yayloyalty');
 
