@@ -1,8 +1,9 @@
 import { parseWPDate, utcToDate } from '@/lib/helpers/format.helper';
 import type { Customer, CustomerListRow } from '@/lib/schema/customer.schema';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
 import { SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Skeleton } from '@/components/ui/skeleton';
+import { isProBuild } from '@/components/pro/ProGate';
 import { ACCOUNT_DELETED_LABEL, memberSince } from './customer-drawer.copy';
 import { CustomerDrawerTierCard } from './CustomerDrawerTierCard';
 import { DrawerBackLink } from './DrawerBackLink';
@@ -31,7 +32,6 @@ export function CustomerDrawerHeader({
   const name = listRow?.name ?? customer?.name;
   const email = listRow?.email ?? customer?.email;
   const isDeleted = !!customer?.deleted_at;
-
   return (
     <SheetHeader className="gap-2">
       <DrawerBackLink onClick={onClose} />
@@ -43,7 +43,7 @@ export function CustomerDrawerHeader({
         {email ?? <Skeleton className="h-4 w-40" />}
         {customer?.joined_at ? ` · ${memberSince(parseWPDate(utcToDate(customer.joined_at)))}` : null}
       </SheetDescription>
-      {customer && <CustomerDrawerTierCard customer={customer} />}
+      {isProBuild() && customer && <CustomerDrawerTierCard customer={customer} />}
     </SheetHeader>
   );
 }

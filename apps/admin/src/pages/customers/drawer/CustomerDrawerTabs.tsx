@@ -1,12 +1,12 @@
 import { formatPoints } from '@/lib/helpers/points.helper';
 import type { Customer } from '@/lib/schema/customer.schema';
-import { ProGate } from '@/components/pro/ProGate';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ProGate } from '@/components/pro/ProGate';
+import { TAB_ACTIVITY, TAB_LEDGER, TAB_REDEMPTIONS, TAB_REFERRALS } from './customer-drawer.copy';
 import { ActivityLogTab } from './tabs/ActivityLogTab';
 import { LedgerTab } from './tabs/LedgerTab';
 import { RedemptionsTab } from './tabs/RedemptionsTab';
 import { ReferralsTab } from './tabs/ReferralsTab';
-import { TAB_ACTIVITY, TAB_LEDGER, TAB_REDEMPTIONS, TAB_REFERRALS } from './customer-drawer.copy';
 
 /**
  * One tab: label with its count beside it, at the smaller, lighter weight
@@ -40,10 +40,14 @@ function DrawerTab({
       className="data-[state=active]:border-primary data-[state=active]:text-primary group -mb-px h-auto flex-none rounded-none border-0 border-b-2 border-transparent px-0 py-2.5 font-medium data-[state=active]:bg-transparent data-[state=active]:shadow-none"
     >
       {label}
-      <span className="text-muted-foreground group-data-[state=active]:text-primary text-xs font-normal tabular-nums">
-        {formatPoints(count)}
-      </span>
-      {proGated && <ProGate inline />}
+
+      {proGated ? (
+        <ProGate inline />
+      ) : (
+        <span className="text-muted-foreground group-data-[state=active]:text-primary text-xs font-normal tabular-nums">
+          {formatPoints(count)}
+        </span>
+      )}
     </TabsTrigger>
   );
 }
