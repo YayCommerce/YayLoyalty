@@ -66,7 +66,7 @@ All referral tables (`referrals`, `referral_visits`) specified in data model; no
 
 | Feature | Spec | Status | Details |
 |---|---|---|---|
-| **Flexible discount** | Points → cart discount, slider | ✅ SHIPPED (schema) | Seeded in Lite; no checkout integration yet |
+| **Flexible discount** | Points → cart discount, slider | ✅ SHIPPED (schema) | Seeded in Lite; engine scaffolded (`Engine/Rewards/`, always denies `not_implemented`); no checkout integration yet |
 | **Fixed/percent coupon** (Pro) | Issue WC coupon | ✅ SHIPPED (schema) | Seeded in Pro; no coupon generation yet |
 | **Free product** (Pro) | Add to cart | ✅ SHIPPED (schema) | Seeded in Pro; no logic yet |
 | **Free shipping** (Pro) | Shipping discount | ✅ SHIPPED (schema) | Seeded in Pro; no logic yet |

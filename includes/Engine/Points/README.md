@@ -81,4 +81,4 @@ return [ 'points' => $result->get_points() ]; // the integer, nothing else
 
 ## Tests
 
-`composer test` — 99 cases under `tests/unit/`, plain PHPUnit, no WordPress bootstrap (`tests/bootstrap.php` shims the hook functions): engine, PointsMath shared vectors, the dashboard services (`tests/unit/Dashboard/`) and campaign validation (`tests/unit/Models/`). Integration against real `WC_Order` objects is exercised manually via WP-CLI until a wp-phpunit harness exists.
+`composer test` — 108 cases under `tests/unit/`, plain PHPUnit, no WordPress bootstrap (`tests/bootstrap.php` shims the hook functions): engine, the reward engine scaffold (`tests/unit/Rewards/`), PointsMath shared vectors, the dashboard services (`tests/unit/Dashboard/`) and campaign validation (`tests/unit/Models/`). Integration against real `WC_Order` objects is exercised manually via WP-CLI until a wp-phpunit harness exists.
