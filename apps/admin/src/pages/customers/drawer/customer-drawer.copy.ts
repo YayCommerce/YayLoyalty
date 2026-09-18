@@ -33,7 +33,7 @@ export const STAT_PENDING = () => __('Pending', 'yayloyalty');
 export const STAT_EXPIRES = () => __('Expires', 'yayloyalty');
 export const STAT_LIFETIME_EARNED = () => __('Lifetime earned', 'yayloyalty');
 export const STAT_LIFETIME_REDEEMED = () => __('Lifetime redeemed', 'yayloyalty');
-export const STAT_WORTH = () => __('Worth', 'yayloyalty');
+// No `Worth` label: the stat was dropped to match 1e (see `CustomerDrawerStats`).
 
 /** 1e note 1 — Pending sits beside Balance but is never added to it. */
 export const PENDING_SUBLINE = () => __('not added to Balance', 'yayloyalty');

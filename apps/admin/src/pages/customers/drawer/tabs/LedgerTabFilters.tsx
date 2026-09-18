@@ -4,7 +4,7 @@ import { formatPoints } from '@/lib/helpers/points.helper';
 import type { LedgerFilterType, LedgerTypeCounts } from '@/lib/schema/ledger.schema';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Segmented, SegmentedItem } from '@/components/ui/segmented';
 import {
   DATE_RANGE_LABEL,
   FILTER_TYPE_ADJUSTED,
@@ -26,10 +26,20 @@ const TYPE_LABELS: Record<LedgerFilterType, () => string> = {
 };
 
 /**
- * Type + per-type counts, date range, search. `typeCounts` is `null` on the
- * real path (Wave A has no type-count query yet) — every control disables
- * and a single line of copy explains why, rather than filters that silently
- * do nothing against real data (worse than no filter UI at all).
+ * Two rows, as 3c draws them: the type filter as one segmented control with
+ * every per-type count on its own segment, then search (taking the width) with
+ * the date range beside it.
+ *
+ * A segmented control, not a dropdown: the counts are the point of the filter
+ * — "4,190 earned, 38 adjusted" tells the admin where to look before they
+ * click, and a dropdown hides exactly that behind one collapsed label (3c
+ * note 3). It carries `FILTER_TYPE_LABEL` as its accessible name since, unlike
+ * the dropdown it replaces, it shows no "Type:" prefix of its own.
+ *
+ * `typeCounts` is `null` on the real path (Wave A has no type-count query yet)
+ * — every control disables and a single line of copy explains why, rather than
+ * filters that silently do nothing against real data (worse than no filter UI
+ * at all). The segments then render bare labels; nothing prints a fake zero.
  */
 export function LedgerTabFilters({
   type,
@@ -52,33 +62,52 @@ export function LedgerTabFilters({
 }) {
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap items-center gap-2">
-        <Select value={type} onValueChange={(value) => onTypeChange(value as LedgerFilterType)} disabled={disabled}>
-          <SelectTrigger size="sm">
-            <span className="text-muted-foreground">{FILTER_TYPE_LABEL()}:</span>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {(Object.keys(TYPE_LABELS) as LedgerFilterType[]).map((key) => (
-              <SelectItem key={key} value={key}>
-                {typeCounts ? `${TYPE_LABELS[key]()} ${formatPoints(typeCounts[key])}` : TYPE_LABELS[key]()}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      {/* Scrolling belongs to this wrapper, not the control: `Segmented` is a
+          fixed `h-8`, so a classic (non-overlay) scrollbar would eat half the
+          track and clip the segments. `w-max` keeps the group hugging its
+          segments the way 3c draws it — never a grey track with a dead tail —
+          while still growing past the wrapper below the `sm` breakpoint. */}
+      <div className="overflow-x-auto">
+        <Segmented
+          shape="square"
+          size="sm"
+          aria-label={FILTER_TYPE_LABEL()}
+          value={type}
+          // A second click on the active segment reports '' (Radix deselect);
+          // ignore it — "no type at all" is not a state this filter has.
+          onValueChange={(value) => value && onTypeChange(value as LedgerFilterType)}
+          disabled={disabled}
+          className="w-max"
+        >
+          {(Object.keys(TYPE_LABELS) as LedgerFilterType[]).map((key) => (
+            <SegmentedItem key={key} value={key} className="px-2.5">
+              {TYPE_LABELS[key]()}
+              {typeCounts && (
+                <span className="text-muted-foreground text-xs tabular-nums">{formatPoints(typeCounts[key])}</span>
+              )}
+            </SegmentedItem>
+          ))}
+        </Segmented>
+      </div>
+      <div className="flex items-center gap-2">
+        <Input
+          className="min-w-0 flex-1"
+          placeholder={SEARCH_PLACEHOLDER()}
+          value={search}
+          onChange={(event) => onSearchChange(event.target.value)}
+          disabled={disabled}
+        />
         <DateRangePicker
           value={range}
           onValueChange={onRangeChange}
           placeholder={DATE_RANGE_LABEL()}
           disabled={disabled}
-          className="w-auto"
-        />
-        <Input
-          className="w-70"
-          placeholder={SEARCH_PLACEHOLDER()}
-          value={search}
-          onChange={(event) => onSearchChange(event.target.value)}
-          disabled={disabled}
+          // `min-w-0` defeats `ComboboxTrigger`'s own `min-w-75` (300px), which
+          // survives `w-auto` — a different tailwind-merge group. Without it the
+          // date control is wider than the search field it sits beside, and on
+          // the full-width sheet below `sm` it holds 300px while the input
+          // collapses to nothing.
+          className="w-auto min-w-0 shrink-0"
         />
       </div>
       {disabled && <p className="text-muted-foreground text-xs">{FILTER_UNAVAILABLE_REASON()}</p>}

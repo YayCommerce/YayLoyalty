@@ -1,6 +1,6 @@
 import { Skeleton } from '@/components/ui/skeleton';
 
-const STAT_COUNT = 6;
+const STAT_COUNT = 5;
 const ACTION_COUNT = 3;
 /** Matches the real ledger page size (phase 06) — not the six rows 3b's
  *  artboard happened to draw, which assumed a six-row page. */
@@ -14,9 +14,15 @@ const LEDGER_ROW_COUNT = 10;
 export function CustomerDrawerSkeleton() {
   return (
     <div className="flex flex-col gap-5">
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-3">
+      {/* Label bar over value bar, matching the borderless stat cells the
+          real grid renders — a single block would flash a card that never
+          appears once the data lands. */}
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-x-4 gap-y-3">
         {Array.from({ length: STAT_COUNT }, (_, index) => (
-          <Skeleton key={index} className="h-20 rounded-lg" />
+          <div key={index} className="flex flex-col gap-1.5">
+            <Skeleton className="h-3 w-20" />
+            <Skeleton className="h-6 w-24" />
+          </div>
         ))}
       </div>
       <div className="flex flex-wrap gap-2">
