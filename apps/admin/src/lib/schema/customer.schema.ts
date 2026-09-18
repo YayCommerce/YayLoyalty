@@ -42,6 +42,34 @@ export const looseEndsSchema = z.object({
 
 export type LooseEnds = z.infer<typeof looseEndsSchema>;
 
+/**
+ * 4b's expiring-batch summary (F09 Wave B) — always `null` outside
+ * `?scenario=expiring`, since it needs `lots`, which doesn't exist yet
+ * (docs/data-model.md). `batches` is separately nullable inside: `null`
+ * means the Free inactivity model (no batches exist at all, not "zero").
+ * Percentages and money are derived client-side — this carries figures only.
+ */
+export const drawerExpiryBatchSchema = z.object({
+  earned_from: z.string(),
+  earned_to: z.string(),
+  points: z.number().int(),
+  expires_at: z.string(),
+});
+
+export const drawerExpirySchema = z.object({
+  expiring_points: z.number().int(),
+  expires_at: z.string(),
+  safe_points: z.number().int(),
+  reminders: z.object({
+    sent_at: z.string().nullable(),
+    next_due_at: z.string().nullable(),
+    window_days: z.number().int(),
+  }),
+  batches: z.array(drawerExpiryBatchSchema).nullable(),
+});
+
+export type DrawerExpiry = z.infer<typeof drawerExpirySchema>;
+
 export const customerSchema = z.object({
   user_id: z.number().int(),
   /** From wp_users — carried here (not only the list row) so the drawer has an
@@ -62,6 +90,10 @@ export const customerSchema = z.object({
   deleted_at: z.string().nullable(),
   counts: customerCountsSchema,
   loose_ends: looseEndsSchema.nullable(),
+  expiry: drawerExpirySchema.nullable(),
+  /** Restored minimally (Wave B) after `worth` was removed wholesale — the
+   *  expiry/negative-balance panels' only remaining need for a currency rate. */
+  points_per_currency_unit: z.number(),
 });
 
 export type Customer = z.infer<typeof customerSchema>;

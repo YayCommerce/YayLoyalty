@@ -74,25 +74,30 @@ final class DrawerProfiles {
         [ $name, $email, $joined_at, $balance, $pending, $lifetime_earned, $lifetime_redeemed, $expires_at, $deleted_at, $ledger, $activity, $redemptions, $referrals ] = $row;
 
         return [
-            'user_id'           => $user_id,
-            'name'              => $name,
-            'email'             => $email,
-            'balance'           => $balance,
-            'pending_points'    => $pending,
-            'lifetime_earned'   => $lifetime_earned,
-            'lifetime_redeemed' => $lifetime_redeemed,
-            'last_activity_at'  => 0 === $ledger ? null : Dates::offset( -DAY_IN_SECONDS ),
-            'expires_at'        => $expires_at,
-            'joined_at'         => $joined_at,
-            'updated_at'        => Dates::now(),
-            'deleted_at'        => $deleted_at,
-            'counts'            => [
+            'user_id'                  => $user_id,
+            'name'                     => $name,
+            'email'                    => $email,
+            'balance'                  => $balance,
+            'pending_points'           => $pending,
+            'lifetime_earned'          => $lifetime_earned,
+            'lifetime_redeemed'        => $lifetime_redeemed,
+            'last_activity_at'         => 0 === $ledger ? null : Dates::offset( -DAY_IN_SECONDS ),
+            'expires_at'               => $expires_at,
+            'joined_at'                => $joined_at,
+            'updated_at'               => Dates::now(),
+            'deleted_at'               => $deleted_at,
+            'counts'                   => [
                 'ledger'      => $ledger,
                 'activity'    => $activity,
                 'redemptions' => $redemptions,
                 'referrals'   => $referrals,
             ],
-            'loose_ends'        => self::loose_ends_for( $scenario ),
+            'loose_ends'               => self::loose_ends_for( $scenario ),
+            'expiry'                   => DrawerExpiry::for_scenario( $scenario, $balance ),
+            // Restored minimally (F09 Wave B phase 03) after the `worth`
+            // object was removed wholesale — 4b/5a's money-equivalent
+            // figures need the rate, `worth`'s display no longer does.
+            'points_per_currency_unit' => self::POINTS_PER_CURRENCY_UNIT,
         ];
     }
 

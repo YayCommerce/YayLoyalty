@@ -9,8 +9,11 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '
 import { CustomerDrawerActions } from './CustomerDrawerActions';
 import { CustomerDrawerDeletedActions } from './CustomerDrawerDeletedActions';
 import { CustomerDrawerDeletedBanner } from './CustomerDrawerDeletedBanner';
+import { CustomerDrawerExpiryPanel } from './CustomerDrawerExpiryPanel';
+import { CustomerDrawerExpiryStats } from './CustomerDrawerExpiryStats';
 import { CustomerDrawerHeader } from './CustomerDrawerHeader';
 import { CustomerDrawerLooseEnds } from './CustomerDrawerLooseEnds';
+import { CustomerDrawerLotBatches } from './CustomerDrawerLotBatches';
 import { CustomerDrawerSkeleton } from './CustomerDrawerSkeleton';
 import { CustomerDrawerStats } from './CustomerDrawerStats';
 import { CustomerDrawerTabs } from './CustomerDrawerTabs';
@@ -95,14 +98,26 @@ export default function CustomerDrawer() {
                     <CustomerDrawerStats customer={query.data} />
                     <CustomerDrawerActions customer={query.data} isLoading={query.isFetching} />
                     {/* 4a's three panels — only reachable via `?scenario=deleted`
-                        (no `deleted_at` column on the real path). Guarding on
-                        both fields together narrows `loose_ends` for all three
-                        below, since the fixture only ever sets them as a pair. */}
+                        (no `deleted_at` column on the real path). This gates
+                        whether they mount at all; each still null-checks its
+                        own fields (prop types don't inherit this narrowing). */}
                     {query.data.deleted_at && query.data.loose_ends && (
                       <>
                         <CustomerDrawerDeletedBanner customer={query.data} />
                         <CustomerDrawerDeletedActions />
                         <CustomerDrawerLooseEnds customer={query.data} />
+                      </>
+                    )}
+                    {/* 4b's three panels — only `?scenario=expiring` sets
+                        `expiry` (needs `lots`, which doesn't exist yet). A
+                        deleted account has expiry stopped, so this and the
+                        block above are mutually exclusive in every real
+                        scenario — never designed as a combined layout. */}
+                    {query.data.expiry && (
+                      <>
+                        <CustomerDrawerExpiryPanel customer={query.data} expiry={query.data.expiry} />
+                        <CustomerDrawerExpiryStats customer={query.data} expiry={query.data.expiry} />
+                        <CustomerDrawerLotBatches batches={query.data.expiry.batches} />
                       </>
                     )}
                     <CustomerDrawerTabs customer={query.data} scenario={scenario} />

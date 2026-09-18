@@ -65,3 +65,63 @@ export function looseEndsLiabilitySentence(balance: string): string {
     balance,
   );
 }
+
+// ─── 4b: expiring points ──────────────────────────────
+
+/** "6,300 of 9,850 points expire on 14 August 2027" */
+export function expiringBannerTitle(expiringPoints: string, balance: string, date: string): string {
+  return sprintf(__('%1$s of %2$s points expire on %3$s', 'yayloyalty'), expiringPoints, balance, date);
+}
+/**
+ * "In 12 days. That is $63.00 about to be lost, and 64% of the balance."
+ * `sharePercent` is `null` when it can't be honestly computed (balance <= 0
+ * — not reachable via any fixture scenario today, but the panel must never
+ * print a fabricated "0%" that reads as reassurance) — the sentence drops
+ * the clause entirely rather than showing a wrong number.
+ */
+export function expiringBannerBody(days: number, money: string, sharePercent: string | null): string {
+  if (null === sharePercent) {
+    return sprintf(
+      // translators: %1$d: days until expiry, %2$s: money value
+      __('In %1$d days. That is %2$s about to be lost.', 'yayloyalty'),
+      days,
+      money,
+    );
+  }
+
+  return sprintf(
+    // translators: %1$d: days until expiry, %2$s: money value, %3$s: percentage of balance
+    __('In %1$d days. That is %2$s about to be lost, and %3$s%% of the balance.', 'yayloyalty'),
+    days,
+    money,
+    sharePercent,
+  );
+}
+export function expiringReminderSentence(sentDate: string, dueDate: string, windowDays: string): string {
+  return sprintf(
+    __('The 30-day reminder went out on %1$s; the %2$s-day one is due on %3$s.', 'yayloyalty'),
+    sentDate,
+    windowDays,
+    dueDate,
+  );
+}
+
+export const ACTION_EXEMPT_FROM_EXPIRY = () => __('Exempt from expiry', 'yayloyalty');
+export const ACTION_SEND_REMINDER_NOW = () => __('Send the reminder now', 'yayloyalty');
+
+export function expiringInDaysLabel(days: number): string {
+  return sprintf(__('Expiring in %d days', 'yayloyalty'), days);
+}
+export function safeBeyondLabel(year: string): string {
+  return sprintf(__('Safe beyond %s', 'yayloyalty'), year);
+}
+
+export const EXPIRY_BATCH_TITLE = () => __('Points, by the batch they were earned in', 'yayloyalty');
+export const EXPIRY_BATCH_COLUMN_EARNED = () => __('Earned', 'yayloyalty');
+export const EXPIRY_BATCH_COLUMN_EXPIRES = () => __('Expires', 'yayloyalty');
+/** 4b's own note — Free has no lot model, so there is nothing to batch. */
+export const EXPIRY_FREE_EXPLANATION = () =>
+  __(
+    'On the free inactivity model there are no batches: the whole balance moves together, and points expire together too.',
+    'yayloyalty',
+  );

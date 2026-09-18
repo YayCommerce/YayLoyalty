@@ -228,14 +228,14 @@ final class CustomerRestController extends AbstractRestController {
         )['total'];
 
         return $base + [
-            'name'       => $user ? $user->display_name : '',
-            'email'      => $user ? $user->user_email : '',
+            'name'                     => $user ? $user->display_name : '',
+            'email'                    => $user ? $user->user_email : '',
             // No `deleted_at` column exists (docs/data-model.md), so the real
             // path can never report a deleted account — 4a is reachable only
             // through `?scenario=deleted`. Not scheduled: Wave B is UI work on
             // fixtures and does not add the column.
-            'deleted_at' => null,
-            'counts'     => [
+            'deleted_at'               => null,
+            'counts'                   => [
                 'ledger'      => $ledger_count,
                 // Zero is the TRUE count here, not a placeholder: no activity,
                 // redemptions or referrals table exists (docs/data-model.md),
@@ -251,7 +251,15 @@ final class CustomerRestController extends AbstractRestController {
             // that only `?scenario=deleted` can ever report (see `deleted_at`
             // above). Structured null, not an absent field — customer.schema.ts
             // parses both paths identically.
-            'loose_ends' => null,
+            'loose_ends'               => null,
+            // Real path can never populate this either: it needs `lots`,
+            // which doesn't exist yet (docs/data-model.md). `expires_at`
+            // above is all the real path knows about a customer's expiry.
+            'expiry'                   => null,
+            // Restored minimally (F09 Wave B phase 03) after `worth` was
+            // removed wholesale — the drawer's expiry/negative-balance
+            // panels need this rate for their money-equivalent figures.
+            'points_per_currency_unit' => $this->rewards->points_per_currency_unit(),
         ];
     }
 
