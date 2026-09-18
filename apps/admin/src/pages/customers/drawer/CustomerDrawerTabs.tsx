@@ -41,10 +41,11 @@ function DrawerTab({ value, label, count }: { value: string; label: string; coun
  * is no separate "counts still loading" state to render for). All four tabs
  * exist in both builds (locked decision 6) — no `IS_PRO_BUILD` branch.
  *
- * Only the ledger tab has a real, working body — Activity log/Redemptions/
- * Referrals render their empty state ONLY, whatever their count says: their
- * backing tables do not exist yet (see each tab's own docblock), so a
- * populated view would be unreviewable against reality.
+ * Ledger and Activity log have real, working bodies (Wave B wires the
+ * latter — see `ActivityLogTab.tsx`). Redemptions/Referrals still render
+ * their empty state ONLY, whatever their count says: their backing tables
+ * do not exist yet (see each tab's own docblock), so a populated view would
+ * be unreviewable against reality.
  */
 export function CustomerDrawerTabs({ customer, scenario }: { customer: Customer; scenario?: string }) {
   const firstName = customer.name.split(' ')[0] || customer.name;
@@ -68,7 +69,7 @@ export function CustomerDrawerTabs({ customer, scenario }: { customer: Customer;
         <LedgerTab userId={customer.user_id} customerFirstName={firstName} scenario={scenario} />
       </TabsContent>
       <TabsContent value="activity">
-        <ActivityLogTab />
+        <ActivityLogTab userId={customer.user_id} scenario={scenario} />
       </TabsContent>
       <TabsContent value="redemptions">
         <RedemptionsTab customerFirstName={firstName} />

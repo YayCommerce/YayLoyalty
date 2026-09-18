@@ -1,17 +1,17 @@
 <?php
 namespace YayLoyalty\Controllers\Fixtures\CustomerDrawer;
 
+use YayLoyalty\Controllers\Schemas\ActivityQueryArgs;
 use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Activity-log rows — structured, not sentences. Wave A does not wire a
- * route or render these (see phase-07's `ActivityLogTab.tsx`, which shows
- * only its empty state); this exists so the row shape is decided now rather
- * than invented later, once the table it belongs to actually exists.
+ * Activity-log rows — structured, not sentences. Written in Wave A so the row
+ * shape was decided while the design was in hand; wired to a real route and
+ * UI in Wave B (`ActivityRestController`, `tabs/ActivityLogTab.tsx`).
  *
- * `customer-drawer.copy.ts` would compose every sentence from `event_type` +
+ * `customer-drawer.copy.ts` composes every sentence from `event_type` +
  * `data`, exactly as `dashboard-page.notice-copy.ts` does for dashboard
  * notices — never from a string stored here.
  */
@@ -52,6 +52,92 @@ final class DrawerActivity {
         return $rows;
     }
 
+    /**
+     * `group`/`search`/date-filtered, paged envelope — what
+     * `ActivityRestController` answers from under `?scenario=`. `total` is
+     * the FILTERED count (what the pager's "1–10 of N" reads), unlike
+     * `counts.activity` on the customer payload, which always stays the
+     * unfiltered total the tab label shows. Filtering mirrors
+     * `DrawerLedger::apply_filters()` field-for-field (search lower-cased and
+     * trimmed, date compared on the `Y-m-d` prefix) so the two tabs behave
+     * identically from the admin's side.
+     *
+     * @param array{page:int,per_page:int,search?:string,after?:string,before?:string} $args
+     * @return array{items: array, total: int, page: int, per_page: int}
+     */
+    public static function envelope( string $scenario, string $group, array $args ): array {
+        $rows = self::apply_filters( self::rows( $scenario ), $group, $args );
+
+        $total    = count( $rows );
+        $page     = max( 1, $args['page'] );
+        $per_page = max( 1, $args['per_page'] );
+
+        return [
+            'items'    => array_slice( $rows, ( $page - 1 ) * $per_page, $per_page ),
+            'total'    => $total,
+            'page'     => $page,
+            'per_page' => $per_page,
+        ];
+    }
+
+    /**
+     * @param array<int, array<string, mixed>>                                 $rows
+     * @param array{search?:string,after?:string,before?:string}               $args
+     * @return array<int, array<string, mixed>>
+     */
+    private static function apply_filters( array $rows, string $group, array $args ): array {
+        $types  = ActivityQueryArgs::event_types_for( $group );
+        $search = isset( $args['search'] ) ? strtolower( trim( (string) $args['search'] ) ) : '';
+        $after  = (string) ( $args['after'] ?? '' );
+        $before = (string) ( $args['before'] ?? '' );
+
+        return array_values(
+            array_filter(
+                $rows,
+                static function ( array $row ) use ( $types, $search, $after, $before ): bool {
+                    if ( null !== $types && ! in_array( $row['event_type'], $types, true ) ) {
+                        return false;
+                    }
+
+                    if ( '' !== $search && ! self::matches_search( $row, $search ) ) {
+                        return false;
+                    }
+
+                    $date = substr( $row['occurred_at'], 0, 10 );
+
+                    return ( '' === $after || $date >= $after ) && ( '' === $before || $date <= $before );
+                }
+            )
+        );
+    }
+
+    /**
+     * Search matches the actor's name plus every string OR int value inside
+     * `data` — the same "whatever a human would recognise" scope
+     * `DrawerLedger::apply_filters()` gives its own `note`/`order_id` search,
+     * just over a row shape where the searchable text is nested rather than
+     * top-level. `order_id` (`reward_redeemed`) is an int in `data`, same as
+     * the ledger's own `order_id` field — included here for the same reason
+     * the ledger's incidental string-concatenation cast includes it: an
+     * admin searching an order number from a support ticket expects both
+     * tabs to find it. Bools (`tier_changed`'s `automatic`) are deliberately
+     * excluded — PHP stringifies `true`/`false` as `"1"`/`""`, which would
+     * make a bare "1" search match every automatic-tier-change row.
+     *
+     * @param array<string, mixed> $row
+     */
+    private static function matches_search( array $row, string $search ): bool {
+        $haystack = strtolower( (string) ( $row['actor_name'] ?? '' ) );
+
+        foreach ( $row['data'] as $value ) {
+            if ( is_string( $value ) || is_int( $value ) ) {
+                $haystack .= ' ' . strtolower( (string) $value );
+            }
+        }
+
+        return false !== strpos( $haystack, $search );
+    }
+
     /** @return array<string, mixed> */
     private static function data_for( string $event_type ): array {
         switch ( $event_type ) {
@@ -65,6 +151,7 @@ final class DrawerActivity {
                     'from_tier' => 'Explorer',
                     'to_tier'   => 'Summit',
                     'automatic' => true,
+                    'threshold' => 5000,
                 ];
             case 'expiry_reset':
                 return [

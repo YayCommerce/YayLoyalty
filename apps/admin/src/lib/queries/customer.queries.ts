@@ -3,8 +3,10 @@ import { keepPreviousData, queryOptions, useMutation, useQuery, useQueryClient }
 import {
   adjustCustomerPoints,
   getCustomer,
+  getCustomerActivity,
   getCustomerLedger,
   getCustomers,
+  type CustomerActivityParams,
   type CustomerLedgerParams,
   type CustomerListParams,
 } from '@/lib/api/customer.api';
@@ -46,6 +48,21 @@ export const CUSTOMER_QUERIES = {
       // unlike the adjust mutation below, which must never auto-retry.
       retry: 1,
     }),
+
+  /**
+   * Paged, exactly like `ledger` above — not the infinite/"Load more" shape
+   * this started as (see `ActivityLogTab.tsx`'s docblock for why it
+   * changed). Same `keepPreviousData` reasoning: paging/filtering must not
+   * flash a skeleton over rows already on screen.
+   */
+  activity: (userId: number, params: CustomerActivityParams) =>
+    queryOptions({
+      queryKey: ['customer', 'activity', userId, params],
+      queryFn: () => getCustomerActivity(userId, params),
+      enabled: userId > 0,
+      placeholderData: keepPreviousData,
+      retry: 1,
+    }),
 };
 
 /** ─── Hooks ─────────────────────────────────────────── */
@@ -60,6 +77,10 @@ export function useCustomerLedgerQuery(userId: number, params: CustomerLedgerPar
 
 export function useCustomersQuery(params: CustomerListParams = {}) {
   return useQuery(CUSTOMER_QUERIES.list(params));
+}
+
+export function useCustomerActivityQuery(userId: number, params: CustomerActivityParams) {
+  return useQuery(CUSTOMER_QUERIES.activity(userId, params));
 }
 
 export function useAdjustPointsMutation(userId: number) {

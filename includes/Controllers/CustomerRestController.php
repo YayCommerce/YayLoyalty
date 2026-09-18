@@ -231,11 +231,19 @@ final class CustomerRestController extends AbstractRestController {
         return $base + [
             'name'       => $user ? $user->display_name : '',
             'email'      => $user ? $user->user_email : '',
-            // No deleted_at column yet (docs/data-model.md) — Wave B.
+            // No `deleted_at` column exists (docs/data-model.md), so the real
+            // path can never report a deleted account — 4a is reachable only
+            // through `?scenario=deleted`. Not scheduled: Wave B is UI work on
+            // fixtures and does not add the column.
             'deleted_at' => null,
             'counts'     => [
                 'ledger'      => $ledger_count,
-                // No activity/redemptions/referrals tables yet — Wave B.
+                // Zero is the TRUE count here, not a placeholder: no activity,
+                // redemptions or referrals table exists (docs/data-model.md),
+                // so there is nothing to count. The fixture path carries real
+                // per-scenario counts instead — see `DrawerProfiles::rows()`.
+                // Each of these becomes a query when its own table ships; they
+                // are three separate features, not one change.
                 'activity'    => 0,
                 'redemptions' => 0,
                 'referrals'   => 0,

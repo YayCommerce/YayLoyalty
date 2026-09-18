@@ -2,6 +2,7 @@
 namespace YayLoyalty\Engine;
 
 use YayLoyalty\Controllers\AbstractRestController;
+use YayLoyalty\Controllers\ActivityRestController;
 use YayLoyalty\Controllers\CampaignRestController;
 use YayLoyalty\Controllers\CustomerRestController;
 use YayLoyalty\Controllers\DashboardRestController;
@@ -70,6 +71,9 @@ class RestAPI {
             // and DashboardRepository hold, not a second construction.
             new CustomerRestController( $customers, $ledger_service, $ledger, $rewards ),
             new LedgerRestController( $ledger ),
+            // No repository: the real path answers an empty envelope until an
+            // activity table exists (see the controller's own docblock).
+            new ActivityRestController(),
             // Definition table: repository only, no service.
             new CampaignRestController( $campaigns ),
             new DashboardRestController(

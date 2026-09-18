@@ -7,8 +7,8 @@ import { useCustomerLedgerQuery } from '@/lib/queries/customer.queries';
 import type { LedgerFilterType } from '@/lib/schema/ledger.schema';
 import { useLedgerCampaignNames } from '../customer-drawer.campaign-names';
 import { toLedgerRow } from '../customer-drawer.ledger-rows';
+import { DrawerTabPager } from './DrawerTabPager';
 import { LedgerTabFilters } from './LedgerTabFilters';
-import { LedgerTabPager } from './LedgerTabPager';
 import { LedgerTabRows } from './LedgerTabRows';
 
 /** Matches `CustomersPage.tsx`'s own `PER_PAGE` — the two screens page alike. */
@@ -91,7 +91,7 @@ export function LedgerTab({
       <div className="overflow-x-auto rounded-md border">
         <LedgerTabRows rows={rows} isLoading={query.isPending} customerFirstName={customerFirstName} />
       </div>
-      <LedgerTabPager
+      <DrawerTabPager
         page={page}
         perPage={PER_PAGE}
         totalItems={totalItems}

@@ -63,4 +63,12 @@ final class CustomerDrawerFixture {
     public static function ledger( string $scenario, int $user_id, array $args ): array {
         return DrawerLedger::envelope( $scenario, $user_id, $args );
     }
+
+    /**
+     * @param array{page:int,per_page:int,search?:string,after?:string,before?:string} $args
+     * @return array{items: array, total: int, page: int, per_page: int}
+     */
+    public static function activity( string $scenario, string $group, array $args ): array {
+        return DrawerActivity::envelope( $scenario, $group, $args );
+    }
 }
