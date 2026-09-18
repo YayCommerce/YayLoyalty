@@ -4,8 +4,8 @@ import { __ } from '@wordpress/i18n';
 import { useCustomerQuery } from '@/lib/queries/customer.queries';
 import type { CustomerListRow } from '@/lib/schema/customer.schema';
 import { ErrorState } from '@/components/ui/custom/error-state';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { useDrawerScenario } from './customer-drawer.scenario';
 import { CustomerDrawerActions } from './CustomerDrawerActions';
 import { CustomerDrawerDeletedActions } from './CustomerDrawerDeletedActions';
 import { CustomerDrawerDeletedBanner } from './CustomerDrawerDeletedBanner';
@@ -19,7 +19,6 @@ import { CustomerDrawerNegativePanel } from './CustomerDrawerNegativePanel';
 import { CustomerDrawerSkeleton } from './CustomerDrawerSkeleton';
 import { CustomerDrawerStats } from './CustomerDrawerStats';
 import { CustomerDrawerTabs } from './CustomerDrawerTabs';
-import { useDrawerScenario } from './customer-drawer.scenario';
 import { DrawerBackLink } from './DrawerBackLink';
 
 /**
@@ -90,11 +89,7 @@ export default function CustomerDrawer() {
         ) : (
           <>
             <CustomerDrawerHeader customer={query.data} listRow={listRow} onClose={close} />
-            {/* `min-h-0` overrides the flex item's default `min-height: auto` —
-                without it this refuses to shrink below its content's natural
-                height instead of being clipped to the remaining panel space,
-                so nothing ever scrolls; it just overflows the fixed Sheet. */}
-            <ScrollArea className="min-h-0 flex-1">
+            <div className="min-h-0 flex-1 overflow-y-auto">
               <div className="flex flex-col gap-5 p-5">
                 {query.isPending || !query.data ? (
                   <CustomerDrawerSkeleton />
@@ -144,7 +139,7 @@ export default function CustomerDrawer() {
                   </>
                 )}
               </div>
-            </ScrollArea>
+            </div>
           </>
         )}
       </SheetContent>

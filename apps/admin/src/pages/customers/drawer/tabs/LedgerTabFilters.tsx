@@ -75,49 +75,53 @@ export function LedgerTabFilters({
   const activeCount = (type !== 'all' ? 1 : 0) + (range?.from ? 1 : 0);
 
   return (
-    <div className="flex flex-col gap-2">
-      <Input
-        placeholder={SEARCH_PLACEHOLDER()}
-        value={search}
-        onChange={(event) => onSearchChange(event.target.value)}
-        disabled={disabled}
-      />
+    <div>
       <DrawerFiltersCollapse activeCount={activeCount} disabled={disabled}>
         {/* Scrolling belongs to this wrapper, not the control: `Segmented` is a
             fixed `h-8`, so a classic (non-overlay) scrollbar would eat half the
             track and clip the segments. `w-max` keeps the group hugging its
             segments the way 3c draws it — never a grey track with a dead tail. */}
-        <div className="overflow-x-auto">
-          <Segmented
-            shape="square"
-            size="sm"
-            aria-label={FILTER_TYPE_LABEL()}
-            value={type}
-            // A second click on the active segment reports '' (Radix deselect);
-            // ignore it — "no type at all" is not a state this filter has.
-            onValueChange={(value) => value && onTypeChange(value as LedgerFilterType)}
-            disabled={disabled}
-            className="w-max"
-          >
-            {(Object.keys(TYPE_LABELS) as LedgerFilterType[]).map((key) => (
-              <SegmentedItem key={key} value={key} className="px-2.5">
-                {TYPE_LABELS[key]()}
-                {typeCounts && (
-                  <span className="text-muted-foreground text-xs tabular-nums">{formatPoints(typeCounts[key])}</span>
-                )}
-              </SegmentedItem>
-            ))}
-          </Segmented>
+        <div className="flex flex-col gap-2">
+          <div className="overflow-x-auto">
+            <Segmented
+              shape="square"
+              size="sm"
+              aria-label={FILTER_TYPE_LABEL()}
+              value={type}
+              // A second click on the active segment reports '' (Radix deselect);
+              // ignore it — "no type at all" is not a state this filter has.
+              onValueChange={(value) => value && onTypeChange(value as LedgerFilterType)}
+              disabled={disabled}
+              className="w-max"
+            >
+              {(Object.keys(TYPE_LABELS) as LedgerFilterType[]).map((key) => (
+                <SegmentedItem key={key} value={key} className="px-2.5">
+                  {TYPE_LABELS[key]()}
+                  {typeCounts && (
+                    <span className="text-muted-foreground text-xs tabular-nums">{formatPoints(typeCounts[key])}</span>
+                  )}
+                </SegmentedItem>
+              ))}
+            </Segmented>
+          </div>
+          <div className="flex items-center gap-2">
+            <Input
+              placeholder={SEARCH_PLACEHOLDER()}
+              value={search}
+              onChange={(event) => onSearchChange(event.target.value)}
+              disabled={disabled}
+            />
+            <DateRangePicker
+              value={range}
+              onValueChange={onRangeChange}
+              placeholder={DATE_RANGE_LABEL()}
+              disabled={disabled}
+              // `min-w-0` defeats `ComboboxTrigger`'s own `min-w-75` (300px),
+              // which survives `w-auto` — a different tailwind-merge group.
+              className="w-auto min-w-0 shrink-0"
+            />
+          </div>
         </div>
-        <DateRangePicker
-          value={range}
-          onValueChange={onRangeChange}
-          placeholder={DATE_RANGE_LABEL()}
-          disabled={disabled}
-          // `min-w-0` defeats `ComboboxTrigger`'s own `min-w-75` (300px),
-          // which survives `w-auto` — a different tailwind-merge group.
-          className="w-auto min-w-0 shrink-0"
-        />
       </DrawerFiltersCollapse>
       {disabled && <p className="text-muted-foreground text-xs">{FILTER_UNAVAILABLE_REASON()}</p>}
     </div>
