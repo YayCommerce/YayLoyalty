@@ -19,6 +19,7 @@ import {
 import { useRouteLeaveGuard } from '@/hooks/useRouteLeaveGuard';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ErrorState } from '@/components/ui/custom/error-state';
 import { YayLoyaltyToolTip } from '@/components/ui/custom/tooltip';
 import { UnsavedChangeDialog } from '@/components/ui/custom/unsaved-changed-dialog';
@@ -53,9 +54,31 @@ export function CampaignEditor({ id }: { id: number }) {
 
   if (campaignQuery.isPending) {
     return (
-      <PageLayout title={<Skeleton className="h-8 w-64" />}>
-        <Skeleton className="h-96 w-full" />
-      </PageLayout>
+      <>
+        <div className="mx-auto flex max-w-6xl items-center gap-2 px-6 pt-6 text-sm">
+          <Skeleton className="h-4 w-24" />
+        </div>
+
+        <PageLayout
+          className="max-w-6xl"
+          title={<Skeleton className="h-8 w-64" />}
+          description={<Skeleton className="h-4 w-40" />}
+        >
+          <div className="flex flex-col items-start gap-5 lg:flex-row">
+            <div className="flex min-w-0 flex-1 flex-col gap-4">
+              {EDITOR_SECTION_TITLES.map((title) => (
+                <CampaignEditorSectionSkeleton key={title} />
+              ))}
+            </div>
+
+            <div className="flex w-full flex-col gap-4 lg:w-85 lg:shrink-0">
+              <Skeleton className="h-28 w-full" />
+              <Skeleton className="h-36 w-full" />
+              <Skeleton className="h-40 w-full" />
+            </div>
+          </div>
+        </PageLayout>
+      </>
     );
   }
 
@@ -266,3 +289,24 @@ function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }
 
 /** What CampaignTable's Duplicate action passes through router state. */
 export type CampaignEditorDuplicateSeed = { name: string; status: CampaignStatus };
+
+/** Placeholder titles only — CampaignEditorSections.tsx's own six section titles are the real ones. */
+const EDITOR_SECTION_TITLES = ['basics', 'trigger', 'reward', 'conditions', 'schedule', 'priority'];
+
+/** Mirrors CampaignEditorSections.tsx's numbered-card shell, so the loading state doesn't jump when the real one mounts. */
+function CampaignEditorSectionSkeleton() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2.5 text-base">
+          <Skeleton className="size-5.5 shrink-0 rounded-full" />
+          <Skeleton className="h-4 w-24" />
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">
+        <Skeleton className="h-9 w-full" />
+        <Skeleton className="h-9 w-2/3" />
+      </CardContent>
+    </Card>
+  );
+}
