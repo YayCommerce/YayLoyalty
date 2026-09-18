@@ -6,8 +6,11 @@ import type { CustomerListRow } from '@/lib/schema/customer.schema';
 import { ErrorState } from '@/components/ui/custom/error-state';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { CustomerDrawerActions } from './CustomerDrawerActions';
 import { CustomerDrawerHeader } from './CustomerDrawerHeader';
 import { CustomerDrawerSkeleton } from './CustomerDrawerSkeleton';
+import { CustomerDrawerStats } from './CustomerDrawerStats';
+import { CustomerDrawerTabs } from './CustomerDrawerTabs';
 import { useDrawerScenario } from './customer-drawer.scenario';
 import { DrawerBackLink } from './DrawerBackLink';
 
@@ -76,8 +79,22 @@ export default function CustomerDrawer() {
         ) : (
           <>
             <CustomerDrawerHeader customer={query.data} listRow={listRow} onClose={close} />
-            <ScrollArea className="flex-1">
-              <div className="p-5">{query.isPending ? <CustomerDrawerSkeleton /> : null}</div>
+            {/* `min-h-0` overrides the flex item's default `min-height: auto` —
+                without it this refuses to shrink below its content's natural
+                height instead of being clipped to the remaining panel space,
+                so nothing ever scrolls; it just overflows the fixed Sheet. */}
+            <ScrollArea className="min-h-0 flex-1">
+              <div className="flex flex-col gap-5 p-5">
+                {query.isPending || !query.data ? (
+                  <CustomerDrawerSkeleton />
+                ) : (
+                  <>
+                    <CustomerDrawerStats customer={query.data} />
+                    <CustomerDrawerActions customer={query.data} isLoading={query.isFetching} />
+                    <CustomerDrawerTabs customer={query.data} scenario={scenario} />
+                  </>
+                )}
+              </div>
             </ScrollArea>
           </>
         )}

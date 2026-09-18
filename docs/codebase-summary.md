@@ -90,8 +90,8 @@ All `namespace YayLoyalty\Controllers` → routes under `yayloyalty/v1/`.
 |---|---|---|
 | `BaseRestController` | — | Error helpers, `exec_read()`, `exec_write()` wrapper |
 | `AbstractRestController` | — | `get_item_schema()` (final, applies filter), `define_item_schema()` (override), `get_write_args()` (readonly stripped), `respond_paginated()`, `requires( $cap )` (permission callback), `forbidden()`, `assert_ceiling()` |
-| `CustomerRestController` | `GET /customers` (list), `GET /customers/{id}`, `POST /customers/{id}/adjust` | List (search/filter/sort/paginate), get one, manual adjust |
-| `LedgerRestController` | `GET /customers/{id}/ledger` | Paginated history per user |
+| `CustomerRestController` | `GET /customers` (list), `GET /customers/{id}`, `POST /customers/{id}/adjust` | List (search/filter/sort/paginate); get one — F09 drawer adds `name`/`email`/`deleted_at`/`counts`/`worth` to the item schema (`Schemas/CustomerItemSchema.php`); manual adjust. `scenario` arg exists only under `WP_DEBUG` → `CustomerDrawerFixture` (SWAP POINT, dev-only, see below) |
+| `LedgerRestController` | `GET /customers/{id}/ledger` | Paginated history per user — F09 drawer adds `type`/`search`/`after`/`before` filter args (`Schemas/LedgerQueryArgs.php`) and a `type_counts` envelope field (`null` on the real path: the real filtered-count query is Wave B, see `docs/data-model.md`'s risk notes). Same `scenario` fixture gate as above |
 | `CampaignRestController` | `/campaigns`, `/campaigns/{id}` | CRUD operations on campaigns |
 | `SettingsRestController` | `yayloyalty/v1/settings` | Read/update plugin settings |
 | `DashboardRestController` | `GET /dashboard?range=7\|30\|90[&refresh=1]`, `POST /dashboard/notices/dismiss` | Landing-page payload (cap `VIEW`); `scenario` arg exists only under `WP_DEBUG` → `DashboardFixture` artboards (SWAP POINT, dev-only) |
@@ -101,6 +101,17 @@ All `namespace YayLoyalty\Controllers` → routes under `yayloyalty/v1/`.
 Write operations wrapped in `Transaction::run()`, return correlation ID on 500.
 
 **Note on `CustomerRestController`:** `GET /customers` is real, not demo data — `CustomerRepository::paginate_list()` queries `yayloyalty_customers` JOINed with `wp_users`. `CustomerRowFilters.php`/`CustomerRowSort.php` own the filter/sort semantics; the controller only translates a request into their SQL-free criteria/order shapes and the result back into wire rows. TypeScript mirrors: `customers-page.filter-rows.ts`, `customers-page.sort-rows.ts`. Filter-suggestion keys (`suggestions[].key`) are **wire param names** (snake_case: `balance_range`, `expiring_soon`, `tier`). Saved-segment payload (`filters`) also uses snake_case keys on the wire; `customer-segments.api.ts` converts to/from camelCase for the SPA.
+
+**Note on the customer drawer fixture (F09):** `GET /customers/{id}` and `GET /customers/{id}/ledger`
+both accept a `scenario` arg registered only under `WP_DEBUG`. When present, both controllers
+short-circuit to `Controllers/Fixtures/CustomerDrawer/CustomerDrawerFixture.php`, which dispatches
+to `DrawerProfiles`/`DrawerLedger`/`DrawerLedgerGenerator`/`DrawerActivity` (six named scenarios:
+default, `large`, `deleted`, `negative`, `new`, `expiring`) — the same `DashboardFixture` pattern,
+split across several sub-200-line files rather than one large one. SWAP POINT: there isn't one —
+unlike `CampaignRestController`'s `dummy_fixture()`, this fixture is never the sole data path; the
+default (no `?scenario=`) request always serves the real repository, so the drawer already agrees
+with the real Customers list without a later switch-over. Every fixture scenario parses through
+the exact same Zod schema as the real path (`customer.schema.ts` / `ledger.schema.ts`).
 
 **Note on `CampaignRestController`:** `GET /campaigns` currently serves cosmetic dummy rows (22 campaigns: purchase/signup/review/birthday triggers, various statuses, grouping examples) via `dummy_fixture()` method for UI-check purposes; `create`, `update`, `delete` are real. SWAP POINT: when the campaigns UI needs no more visual iteration, `get_items()`/`get_item()` will switch from `dummy_fixture()` to `$this->campaigns` and the dummy methods will be deleted. Nothing else in the SPA changes since every consumer goes through `getCampaigns()`/`getCampaign()` in `lib/api/campaign.api.ts`.
 
@@ -179,11 +190,12 @@ Filters (public API): `yayloyalty_campaign_candidates`, `yayloyalty_campaign_mat
 | Path | Contents |
 |---|---|
 | `src/main.tsx` | Entry point; imports Pro barrel if `IS_PRO_BUILD` |
-| `src/router.tsx` | Hash router with routes for `/dashboard`, `/customers`, `/campaigns`, `/rewards`, `/referral`, `/vip-tiers`, `/settings` (each gated by capability via `<Can>`) |
+| `src/router.tsx` | Hash router with routes for `/dashboard`, `/customers`, `/campaigns`, `/rewards`, `/referral`, `/vip-tiers`, `/settings` (each gated by capability via `<Can>`). `/customers` has one child route, `:userId` → `CustomerDrawer` (F09) — the parent's `<Can>` gate covers it, not re-wrapped |
 | `src/pages/` | Route pages; `dashboard/`, `campaigns/`, `customers/` and `settings/` have content; Rewards, Referral, VIP Tiers are placeholders |
 | `src/pages/dashboard/` | `DashboardPage.tsx` (one `IS_PRO_BUILD` branch: `DashboardProPanels` from `@/pro` vs `DashboardProTeasers`, both feeding the same `DashboardProSlots`); `components/` (stat tiles/grid, recharts points chart + frame, top earners, recent activity, empty state, cache strip, skeletons, notice strip/card, anomaly panel/settlements); `dashboard-page.copy.ts` + `dashboard-page.notice-copy.ts` own every sentence (server sends structured notice data only); `?scenario=` read from the hash route on the dev server only |
 | `src/pages/campaigns/` | `CampaignsPage.tsx` routes: Lite renders `BuiltInCampaignList` (three fixed cards for purchase/signup/review; edits are local state only, no save yet), Pro renders `CampaignTable` (grouped by trigger) + `CampaignPointsSummary` card. Both read from same `useCampaignsQuery()` (real `GET /campaigns`; currently serves cosmetic dummy data from `CampaignRestController` for UI-check—see SWAP POINT docblock—will switch to real rows when table needs no more visual iteration) |
 | `src/pages/customers/` | Server-paginated list (search/filter/sort/export/row-select), real `GET /customers`; bulk "Adjust points"/"Export" wired to real endpoints (via `customers-page.bulk-actions.ts`, `customers-page.export.ts`); selection resolves via fast path or sequential walk of `GET /customers` (see `customers-page.matching-customers.ts`, max 500 pages); Tier column/filter are sample-data stand-ins over `balance_range` (see `customers-page.tier-sample-data.ts`—to be deleted when VIP Tiers ships); Pro adds a saved-segment picker above the toolbar; table dims to 60% opacity during background page/sort/filter refetch (placeholderData keeps rows on screen; no toolbar spinner) |
+| `src/pages/customers/drawer/` (F09) | `CustomerDrawer.tsx` — Sheet shell for the `customers/:userId` child route, rendered through the list's `<Outlet/>` so it stays mounted/dimmed behind the drawer; full-screen below `sm` (5c), 600px panel above. Header/stats (six-figure `auto-fit`/`minmax(150px,1fr)` grid, never abbreviated)/actions (Adjust points is the one live action in Wave A; Reset expiry/Export ledger/[Assign tier] are permanently disabled with a stated reason — no endpoint yet) / a 4-tab bar with counts (Points ledger has a real paged+filtered+searched body; Activity log/Redemptions/Referrals render their empty state only — no backing table, see `docs/data-model.md`). `customer-drawer.copy.ts` owns every sentence. `?scenario=` (dev-server only) forwards to the PHP fixture below; the default path always serves the real repository |
 | `src/pro/campaigns/` | **Deleted in Lite build** — Pro campaign features: `CampaignTable.tsx` (full table with grouping, priority, scheduling, conditions); `CampaignPointsSummary.tsx` (points contribution card); `campaign-points-dummy.ts` (cosmetic sample data for points summary—to be deleted when real tier/scheduling analytics land) |
 | `src/pro/dashboard/` | **Deleted in Lite build** — `DashboardProPanels` (render-prop slots), tier distribution, top campaigns, breakdown toggle, `dashboard-pro.api/queries.ts`, `dashboard-pro-dummy.ts` (referrals + tiers, SWAP POINT) |
 | `src/pro/campaigns/campaign-labels.ts` | `givesLabel()` / `conditionsLabel()` shared by `CampaignTable` and `DashboardTopCampaigns` |

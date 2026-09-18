@@ -227,6 +227,13 @@ The `(1.1)`/`(1.2)`/`(Pro)` tags below mark when a column's *feature* ships, not
 
 Indexes: PK; `expires_at`, `tier_id`, `balance`, `last_activity_at` (each a single-column index for sorting/filtering); UNIQUE `referral_code`; `idx_tier_review (tier_id, tier_evaluated_at)` (1.2) — the downgrade job's query is "customers in tier X whose evaluation window has ended", and the single-column `tier_id` index alone would still force scanning every customer in the tier.
 
+**`deleted_at` (F09, wire field only — no column yet).** The customer drawer's `GET /customers/{id}`
+response carries `deleted_at: string | null` (`CustomerItemSchema::properties()`), always `null` on
+the real path today — there is no `deleted_at` column on this table, so nothing can set it. It
+exists on the wire so the drawer's deleted-account treatment (disabled actions, "Balance at
+deletion" labelling) can be built and reviewed now against the WP_DEBUG `deleted` fixture
+scenario, ahead of the actual column + soft-delete write path landing.
+
 ## `yayloyalty_ledger` — every balance change (1.0)
 
 Append-only journal. Nothing updates or deletes rows except GDPR erasure (which sets `user_id = 0`, `actor_id = NULL`, clears `note`). One `earn` row per order, because stacking is highest-priority-only. The unique key `uniq_ledger_event` on `(user_id, source, reference_type, reference_id)` is the idempotency guarantee against duplicate hooks, status bouncing and webhook retries — keyed on `source` rather than `type` because several sources (`signup`, `milestone`, `renewal`) can share a `reference_type`, and `user_id` is part of the key because one reference can legitimately earn two different users (a referral order awards both the advocate and the friend).
@@ -251,6 +258,28 @@ Append-only journal. Nothing updates or deletes rows except GDPR erasure (which 
 Indexes: PK; `idx_user_history (user_id, id)` for paged history and `ORDER BY id DESC LIMIT 1` balance lookups — `id`, not `created_at`, because same-second rows from one request would otherwise tie; UNIQUE `uniq_ledger_event (user_id, source, reference_type, reference_id)`; `campaign_id`; `redemption_id`; `order_id`; `(type, created_at)` for dashboard aggregates ("issued last 30 days").
 
 Not on this table any more: `expires_at`. Per-earning expiry lives in `lots` (below) so the ledger stays immutable.
+
+## Activity log (not designed) — F09 Wave A
+
+The customer drawer's Activity log tab (F09) needs a per-customer timeline distinct from the
+ledger: tier changes, expiry resets, balance/expiring-soon reminder emails and admin actions —
+none of which are balance changes, so none belong in `yayloyalty_ledger`. **No table exists for
+this.** Wave A renders the tab's empty state only and never wires a route or a query
+(`apps/admin/src/pages/customers/drawer/tabs/ActivityLogTab.tsx`).
+
+The row shape was decided during F09 anyway, so it is not invented later once a table exists to
+match — see `includes/Controllers/Fixtures/CustomerDrawer/DrawerActivity.php` (dev-only,
+`WP_DEBUG`-gated, unrendered): `{ id, occurred_at, event_type, data: {...}, actor_kind:
+'staff'|'automatic'|'customer', actor_name: ?string, staff_only: bool }`. Seven `event_type`s:
+`account_created`, `points_adjusted`, `tier_changed`, `expiry_reset`, `reward_redeemed`,
+`balance_email_sent`, `expiring_soon_email_sent`. Same rule as the ledger's `note`/system-row
+descriptions: no sentence is stored, `data` is structured and copy composes from `event_type` +
+`data` at render time.
+
+**Not stored anywhere today:** tier changes, expiry resets, and sent emails (balance /
+expiring-soon) have no persistence at all outside this fixture. Designing and building this
+table is unpriced Wave B work — it is the largest gap this drawer surfaces, and is recorded here
+specifically so it does not go back to living only in a brainstorm report.
 
 ## `yayloyalty_redemptions` — one row per reward claim (1.0, NOT IMPLEMENTED)
 

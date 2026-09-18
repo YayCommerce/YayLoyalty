@@ -1,0 +1,59 @@
+import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react';
+
+import { Button } from '@/components/ui/button';
+import { pagerSummary } from '../customer-drawer.copy';
+
+/**
+ * "1–10 of 4,812 entries · newest first" + ‹ Newer / Older › — not the shared
+ * `components/ui/pagination.tsx` primitive (that one is "Page X of Y" + a
+ * "Go to" number input, a different shape entirely for a different context).
+ * Reuses the same underlying pieces (`Button` + chevron icons) the way
+ * `CustomersPagination.tsx` wraps `Pagination`, per the plan's fallback —
+ * paged, never "Load more" (3c note 3), because the running-balance column
+ * only means something when rows are contiguous.
+ */
+export function LedgerTabPager({
+  page,
+  perPage,
+  totalItems,
+  onPageChange,
+  disabled,
+  isPending,
+}: {
+  page: number;
+  perPage: number;
+  totalItems: number;
+  onPageChange: (page: number) => void;
+  disabled: boolean;
+  /** Blank while the first fetch is in flight (3b note 3) — a real, loaded,
+   *  genuinely empty ledger still shows "0–0 of 0", it just isn't this. */
+  isPending: boolean;
+}) {
+  const pageCount = Math.max(1, Math.ceil(totalItems / perPage));
+  const from = totalItems === 0 ? 0 : (page - 1) * perPage + 1;
+  const to = Math.min(page * perPage, totalItems);
+
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <span className="text-muted-foreground text-sm">{isPending ? '' : pagerSummary(from, to, totalItems)}</span>
+      <div className="flex items-center gap-1">
+        <Button
+          variant="outline"
+          size="icon-sm"
+          onClick={() => onPageChange(page - 1)}
+          disabled={disabled || page <= 1}
+        >
+          <ChevronLeftIcon className="size-4" />
+        </Button>
+        <Button
+          variant="outline"
+          size="icon-sm"
+          onClick={() => onPageChange(page + 1)}
+          disabled={disabled || page >= pageCount}
+        >
+          <ChevronRightIcon className="size-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}

@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ACCOUNT_DELETED_LABEL, memberSince } from './customer-drawer.copy';
+import { CustomerDrawerTierCard } from './CustomerDrawerTierCard';
 import { DrawerBackLink } from './DrawerBackLink';
 
 /**
@@ -42,6 +43,7 @@ export function CustomerDrawerHeader({
         {email ?? <Skeleton className="h-4 w-40" />}
         {customer?.joined_at ? ` · ${memberSince(parseWPDate(utcToDate(customer.joined_at)))}` : null}
       </SheetDescription>
+      {customer && <CustomerDrawerTierCard customer={customer} />}
     </SheetHeader>
   );
 }

@@ -19,6 +19,13 @@ export function memberSince(date: string): string {
 
 export const ACCOUNT_DELETED_LABEL = () => __('ACCOUNT DELETED', 'yayloyalty');
 
+/** Tier card — added post-Wave-A over the sample-data stand-in (see
+ *  `customers-page.tier-sample-data.ts`); "X points to <next tier>". */
+export function tierProgress(points: string, nextTier: string): string {
+  return sprintf(__('%1$s points to %2$s', 'yayloyalty'), points, nextTier);
+}
+export const TOP_TIER_REACHED_LABEL = () => __('Top tier reached', 'yayloyalty');
+
 // ─── Stats (1e/1f/3c) ────────────────────────────────
 
 export const STAT_BALANCE = () => __('Balance', 'yayloyalty');

@@ -41,6 +41,32 @@ export function sampleTierForBalance(balance: number): CustomerTier | null {
 }
 
 /**
+ * Same stand-in, extended with "how many points to the next tier" for the
+ * customer drawer's tier card (F09 — added after Wave A shipped without one;
+ * the plan's locked scope excluded a *real* tier card because there was
+ * nothing real to show, same reasoning as this whole file). `next` is
+ * `null` at the top tier (Explorer) — the card shows a standing "top tier
+ * reached" state there, not a progress figure. `null` overall for a
+ * negative balance, same as `sampleTierForBalance`.
+ */
+export function sampleTierProgress(
+  balance: number,
+): { tier: CustomerTier; next: CustomerTier | null; pointsToNext: number | null } | null {
+  const ascending = [...TIER_SAMPLE_THRESHOLDS].sort((a, b) => a.min - b.min);
+  const index = ascending.findLastIndex((row) => balance >= row.min);
+
+  if (index === -1) return null;
+
+  const next = ascending[index + 1] ?? null;
+
+  return {
+    tier: ascending[index].tier,
+    next: next?.tier ?? null,
+    pointsToNext: next ? next.min - balance : null,
+  };
+}
+
+/**
  * Tier → the real balance-range bucket it stands in for — same boundaries as
  * `TIER_SAMPLE_THRESHOLDS` above and `CustomerRowFilters::balance_bounds()`.
  * 'all' has no bucket of its own; callers only look this up once they've
