@@ -24,12 +24,6 @@ export const customerCountsSchema = z.object({
   referrals: z.number().int(),
 });
 
-/** Balance expressed in store currency — same shape as the dashboard's liability stat. */
-export const customerWorthSchema = z.object({
-  currency_amount: z.number().nullable(),
-  points_per_currency_unit: z.number(),
-});
-
 export const customerSchema = z.object({
   user_id: z.number().int(),
   /** From wp_users — carried here (not only the list row) so the drawer has an
@@ -49,7 +43,6 @@ export const customerSchema = z.object({
   /** Always null on the real path — no deleted_at column yet (docs/data-model.md). */
   deleted_at: z.string().nullable(),
   counts: customerCountsSchema,
-  worth: customerWorthSchema,
 });
 
 export type Customer = z.infer<typeof customerSchema>;

@@ -92,17 +92,7 @@ final class CustomerItemSchema {
                     'redemptions' => [ 'type' => 'integer' ],
                     'referrals'   => [ 'type' => 'integer' ],
                 ],
-            ],
-            'worth'             => [
-                'description' => __( 'Balance expressed in store currency — same shape as the dashboard liability stat.', 'yayloyalty' ),
-                'type'        => 'object',
-                'context'     => [ 'view' ],
-                'readonly'    => true,
-                'properties'  => [
-                    'currency_amount'          => [ 'type' => [ 'number', 'null' ] ],
-                    'points_per_currency_unit' => [ 'type' => 'number' ],
-                ],
-            ],
+            ]
         ];
     }
 }

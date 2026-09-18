@@ -30,9 +30,9 @@ import type { RowFilters } from './customers-page.filter-rows';
  * per-customer tier and its own real filter from the server.
  */
 const TIER_SAMPLE_THRESHOLDS: { min: number; tier: CustomerTier }[] = [
-  { min: 10001, tier: 'Explorer' },
+  { min: 10001, tier: 'Alpine' },
   { min: 1001, tier: 'Summit' },
-  { min: 0, tier: 'Alpine' },
+  { min: 0, tier: 'Explorer' },
 ];
 
 /** `null` (renders "—") for a negative balance — no earned status to show. */
@@ -73,9 +73,9 @@ export function sampleTierProgress(
  * already checked `tier !== 'all'` (see `resolveBalanceRangeForQuery`).
  */
 const TIER_TO_BALANCE_RANGE: Record<Exclude<CustomerTier, 'all'>, CustomerBalanceRange> = {
-  Alpine: '0-1000',
+  Explorer: '0-1000',
   Summit: '1000-10000',
-  Explorer: '10000-plus',
+  Alpine: '10000-plus',
 };
 
 /**

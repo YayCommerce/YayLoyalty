@@ -219,7 +219,6 @@ final class CustomerRestController extends AbstractRestController {
             ];
 
         $user         = get_userdata( $user_id );
-        $ppcu         = $this->rewards->points_per_currency_unit();
         $ledger_count = $this->ledger->paginate_for_user(
             $user_id,
             [
@@ -247,10 +246,6 @@ final class CustomerRestController extends AbstractRestController {
                 'activity'    => 0,
                 'redemptions' => 0,
                 'referrals'   => 0,
-            ],
-            'worth'      => [
-                'currency_amount'          => PointsMath::points_to_currency( (int) $base['balance'], $ppcu ),
-                'points_per_currency_unit' => $ppcu,
             ],
         ];
     }

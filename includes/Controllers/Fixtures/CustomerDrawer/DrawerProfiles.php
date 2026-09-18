@@ -37,7 +37,7 @@ final class DrawerProfiles {
     }
 
     /**
-     * The rate every scenario values `worth` at — matches `Models\Reward`'s
+     * The rate every scenario values
      * built-in `cart-discount` default, so Aisha's 71,340 → $713.40 lands on
      * the exact figure artboard 3c quotes.
      */
@@ -66,11 +66,7 @@ final class DrawerProfiles {
                 'activity'    => $activity,
                 'redemptions' => $redemptions,
                 'referrals'   => $referrals,
-            ],
-            'worth'             => [
-                'currency_amount'          => PointsMath::points_to_currency( $balance, self::POINTS_PER_CURRENCY_UNIT ),
-                'points_per_currency_unit' => self::POINTS_PER_CURRENCY_UNIT,
-            ],
+            ]
         ];
     }
 

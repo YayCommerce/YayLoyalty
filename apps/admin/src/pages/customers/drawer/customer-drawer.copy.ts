@@ -33,7 +33,6 @@ export const STAT_PENDING = () => __('Pending', 'yayloyalty');
 export const STAT_EXPIRES = () => __('Expires', 'yayloyalty');
 export const STAT_LIFETIME_EARNED = () => __('Lifetime earned', 'yayloyalty');
 export const STAT_LIFETIME_REDEEMED = () => __('Lifetime redeemed', 'yayloyalty');
-// No `Worth` label: the stat was dropped to match 1e (see `CustomerDrawerStats`).
 
 /** 1e note 1 — Pending sits beside Balance but is never added to it. */
 export const PENDING_SUBLINE = () => __('not added to Balance', 'yayloyalty');
@@ -107,8 +106,7 @@ export function emptyLedgerBody(firstName: string): string {
 }
 
 export const EMPTY_ACTIVITY_TITLE = () => __('Nothing recorded yet', 'yayloyalty');
-export const EMPTY_ACTIVITY_BODY = () =>
-  __('Tier changes, expiry resets and admin actions appear here.', 'yayloyalty');
+export const EMPTY_ACTIVITY_BODY = () => __('Tier changes, expiry resets and admin actions appear here.', 'yayloyalty');
 
 export const EMPTY_REDEMPTIONS_TITLE = () => __('No rewards redeemed yet', 'yayloyalty');
 export function emptyRedemptionsBody(firstName: string): string {
