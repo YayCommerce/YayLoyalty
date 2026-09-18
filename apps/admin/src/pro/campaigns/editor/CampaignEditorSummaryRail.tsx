@@ -22,30 +22,12 @@ import { conditionTypeLabel, statusLabel, triggerGroup, triggerLabel } from '../
 import { CampaignFormValues, useCampaignEditorContext } from './campaign-editor.form';
 
 /**
- * The wireframe's right rail (annotation 6, docs/campaign-screens/): "What
- * this means", "Before it can run", and the three actions. Both cards are
- * DERIVED VIEWS of live form state via `watch()` — there is no stored copy
- * anywhere in this component, so every keystroke in the sections to the left
- * re-renders this without a refetch.
- *
- * NO COST ESTIMATE: the wireframe's "214 orders would have matched… $418 of
- * liability" line is intentionally absent. There is no store-wide ledger
- * aggregate to compute it from — `LedgerRepository::sum_points_for_user()`
- * is per-customer only, and `CampaignTable.tsx`'s own docblock says the same
- * about `pointsLast30Days` needing `campaign-points-dummy.ts` to fake it for
- * the list. That trick is not repeated here: this screen decides real
- * merchant money, and a plausible-looking fake number here is worse than no
- * number at all. Do not "fix" this by adding one back without a real
- * aggregate to read.
- *
- * Both save actions submit the SAME `<form>` `CampaignEditor.tsx` renders (via
- * `type="submit"`, not a separate click handler) so its resolver-level condition
- * validation (`mergeConditionErrors`, campaign-editor.form.ts) — which blocks an
- * invalid condition value from ever reaching the network — still runs for
- * "Save as draft" exactly as it does for "Save campaign". Which one was pressed
- * is read from the native `SubmitEvent.submitter` in `CampaignEditor.tsx`'s
- * `handleSubmit` callback via this button's `data-intent` attribute, with
- * `onDraftIntent` as a same-signal fallback for browsers lacking `submitter`.
+ * The right rail: "What this means", "Before it can run" and the actions,
+ * all derived from live form state via watch(). No cost estimate: no
+ * store-wide ledger aggregate exists, and a fake figure on a screen that
+ * decides real money is worse than none. Do not add one back without a real
+ * aggregate. Both save buttons are type="submit" on the editor's form so the
+ * resolver runs for a draft save too; data-intent says which was pressed.
  */
 export function CampaignEditorSummaryRail({
   mutation,
@@ -54,16 +36,13 @@ export function CampaignEditorSummaryRail({
 }: {
   mutation: UseMutationResult<Campaign, unknown, CampaignUpdateInput>;
   onCancel: () => void;
-  /** Fallback for Safari < 15.4, which lacks `SubmitEvent.submitter` — see `CampaignEditor.tsx`. */
+  /** Fallback for Safari < 15.4, which lacks SubmitEvent.submitter. */
   onDraftIntent: () => void;
 }) {
   const { watch, formState } = useFormContext<CampaignFormValues>();
   const { campaign } = useCampaignEditorContext();
   const values = watch();
 
-  // Same list query the Priority and Reward sections in `CampaignEditorSections.tsx` already
-  // read (`useCampaignsQuery({ perPage: 100 })`) — reused here rather than fetched twice under a
-  // different key, since react-query dedupes identical query keys anyway.
   const campaignsQuery = useCampaignsQuery({ perPage: 100 });
   const otherCampaigns = campaignsQuery.data?.data ?? [];
 
@@ -90,8 +69,6 @@ export function CampaignEditorSummaryRail({
     defaultPurchaseCampaign,
   });
 
-  // Both save buttons disabled while the mutation is in flight OR RHF's own submit handler
-  // (the conditions guard, the resolver) hasn't finished — never just one or the other.
   const busy = mutation.isPending || formState.isSubmitting;
 
   return (
@@ -158,23 +135,12 @@ export function CampaignEditorSummaryRail({
 
 /* ─── "What this means": pure form values -> prose ───────────────────── */
 
-/**
- * Everything the rail's "What this means" card (above) needs beyond the
- * form's own values — read-only campaign data plus the one lookup
- * (`defaultPurchaseCampaign`) the multiplier branch depends on. Passed in
- * rather than fetched here, so `summarizeCampaign()` stays pure and testable
- * without a query client (phase-06's Architecture note).
- */
+/** What summarizeCampaign() needs beyond form values, passed in so it stays pure. */
 export interface CampaignSummaryContext {
   trigger: CampaignTrigger;
-  /** Store currency code (`window.yayLoyaltyMeta.wcMeta.currency_data.currency`) — read once by the caller. */
+  /** Store currency code, read once by the caller. */
   currency: string;
-  /**
-   * The built-in `purchase` campaign, when one exists — same lookup the
-   * Reward section (`CampaignEditorSections.tsx`) already does
-   * (`useCampaignsQuery` filtered to `is_builtin && trigger === 'purchase'`).
-   * `undefined` means none was found.
-   */
+  /** The built-in purchase campaign; undefined when none. */
   defaultPurchaseCampaign: Campaign | undefined;
 }
 
@@ -184,17 +150,7 @@ const ROUNDING_LABELS: Record<string, string> = {
   up: __('rounded up', 'yayloyalty'),
 };
 
-/**
- * Pure `form values -> prose` for the rail. GENERIC across all seven
- * triggers — Black Friday 2x (the wireframe's example) is one instance of the
- * `purchase` + `multiplier` branch, never special-cased by name or id.
- *
- * Deliberately omits any cost/liability estimate: no store-wide ledger
- * aggregate exists to compute one from (`LedgerRepository::sum_points_for_user()`
- * is per-customer only) — see `campaignReadiness()`'s docblock below and
- * `CampaignEditorSummaryRail`'s above for the fuller note. This function never
- * receives order history, so it cannot fabricate that figure even by mistake.
- */
+/** Form values to prose, generic across every trigger. Never receives order history, so it cannot fabricate a cost figure. */
 export function summarizeCampaign(values: CampaignFormValues, context: CampaignSummaryContext): string[] {
   const sentences: string[] = [];
 
@@ -209,9 +165,7 @@ export function summarizeCampaign(values: CampaignFormValues, context: CampaignS
       sentences.push(...reviewSentences(values));
       break;
     default:
-      // Every Pro trigger with no Lite field map (`RewardFieldsUnknown`,
-      // CampaignEditorSections.tsx) — no invented specifics, since this build
-      // has no typed view of its config.
+      // No typed view of a Pro trigger's config, so no invented specifics.
       sentences.push(
         sprintf(
           /* translators: %s: the trigger's display label, e.g. "Birthday". */
@@ -274,9 +228,6 @@ function purchaseSentences(values: CampaignFormValues, context: CampaignSummaryC
             String(multiplier),
           ),
     );
-    // Annotation 2 correction (reference-wireframe-vs-schema.md): only the rate itself is
-    // inherited. Rounding, base amount, exclusions and minimum subtotal are always this
-    // campaign's own config, in both modes.
     sentences.push(
       __(
         'It uses its own rounding, base amount, minimum subtotal and exclusions below — only the rate is inherited from the default campaign.',
@@ -316,7 +267,7 @@ function purchaseSentences(values: CampaignFormValues, context: CampaignSummaryC
   return sentences;
 }
 
-/** Plain `amount currency` rather than `parseWPCurrency` (store-locale formatted) — the config's raw number is already in the store's base currency, so this keeps the sentence's number matching what the Reward section's input shows. */
+/** Raw `amount currency`, not parseWPCurrency, so the number matches what the Reward input shows. */
 function formatMinSubtotal(amount: number, currency: string): string {
   return `${amount} ${currency}`;
 }
@@ -417,12 +368,7 @@ function dateWindowSentence(startsAt: string | null, endsAt: string | null): str
   );
 }
 
-/**
- * Security: `customer_ids` renders as a COUNT here, never the ids themselves
- * — the rail is a summary, not an export of who this campaign targets. Every
- * other list-shaped condition gets the same count treatment for consistency,
- * even though only `customer_ids` is a hard requirement.
- */
+/** Lists conditions as counts, never values: the rail is a summary, not an export of who a campaign targets. */
 function conditionsSentence(conditions: CampaignCondition[]): string {
   if (conditions.length === 0) {
     return __('Applies to every order in the date range above — no conditions are set.', 'yayloyalty');
@@ -465,30 +411,12 @@ function conditionClause(condition: CampaignCondition): string {
 
 /* ─── "Before it can run": pure form values -> checklist ─────────────── */
 
-/**
- * Everything `campaignReadiness()` needs beyond the form's own values.
- * `hasPriorityCollision` and `defaultPurchaseCampaign` are both lookups over
- * `useCampaignsQuery` that only make sense inside a component — computed by
- * `CampaignEditorSummaryRail` above and handed in, so `campaignReadiness()`
- * stays a pure function testable without a query client (same split as
- * `summarizeCampaign()`).
- */
+/** What campaignReadiness() needs beyond form values, passed in so it stays pure. */
 export interface CampaignReadinessContext {
   trigger: CampaignTrigger;
-  /**
-   * True when another campaign in the same `triggerGroup()` already holds
-   * this campaign's (possibly just-edited) priority — the same tie the
-   * Priority section's ladder (`CampaignEditorSections.tsx`) and
-   * `CampaignTable.tsx`'s "Priority tie" badge already surface, re-read here
-   * for the checklist.
-   */
+  /** Another campaign in the same group holds this (possibly unsaved) priority. */
   hasPriorityCollision: boolean;
-  /**
-   * The built-in `purchase` campaign, when one exists — same lookup the
-   * Reward section's purchase fields (`CampaignEditorSections.tsx`) use for
-   * their own Alert (`useCampaignsQuery` filtered to
-   * `is_builtin && trigger === 'purchase'`).
-   */
+  /** The built-in purchase campaign; undefined when none. */
   defaultPurchaseCampaign: Campaign | undefined;
 }
 
@@ -499,21 +427,11 @@ export interface CampaignReadinessItem {
 
 export interface CampaignReadiness {
   items: CampaignReadinessItem[];
-  /**
-   * Annotation 6 / wireframe: "It becomes Scheduled on save, and Active by
-   * itself on 27 November." — computed with `resolveCampaignDisplayStatus`
-   * (what saving right now would produce) and `parseWPRelativeDate` (when a
-   * still-future start date will flip it again on its own), never hand-rolled
-   * date math.
-   */
+  /** What saving now produces, and when a future start flips it on its own. */
   derivedStatusLine: string;
 }
 
-/**
- * Pure `form values -> checklist` for the rail's "Before it can run" card.
- * GENERIC across all seven triggers — see `summarizeCampaign()`'s docblock
- * above for the same requirement.
- */
+/** Form values to checklist, generic across every trigger. */
 export function campaignReadiness(values: CampaignFormValues, context: CampaignReadinessContext): CampaignReadiness {
   const items: CampaignReadinessItem[] = [
     {
@@ -530,9 +448,8 @@ export function campaignReadiness(values: CampaignFormValues, context: CampaignR
     },
   ];
 
-  // Annotation 2's real consequence (reference-wireframe-vs-schema.md): multiplier mode makes
-  // `PurchaseHandler::is_eligible()` reject every order outright when the default purchase
-  // campaign is missing or not active — this campaign would save fine and then never apply.
+  // Multiplier mode never applies without an active default purchase campaign; the save itself
+  // still succeeds.
   if (context.trigger === 'purchase' && resolvePurchaseMode(values.config) === 'multiplier') {
     items.push({
       label: __('Default purchase campaign exists and is active (required for multiplier mode)', 'yayloyalty'),
@@ -556,9 +473,8 @@ function isRewardConfigured(trigger: CampaignTrigger, config: Record<string, unk
     case 'review':
       return typeof config.points === 'number';
     default:
-      // A Pro trigger with no Lite field map (`RewardFieldsUnknown`, CampaignEditorSections.tsx)
-      // round-trips its config untouched — "configured" here just means it still carries
-      // whatever the campaign already had, not that this build validated any of it.
+      // A Pro trigger's config round-trips untouched; "configured" only means it still carries
+      // something.
       return Object.keys(config ?? {}).length > 0;
   }
 }
@@ -567,9 +483,7 @@ function derivedStatusLine(values: CampaignFormValues): string {
   const savedStatus = resolveCampaignDisplayStatus(values.status, values.starts_at, values.ends_at);
   const savedLabel = statusLabel(savedStatus);
 
-  // Only a status that is 'active' in storage but not yet live (a future `starts_at`) has a
-  // second, unattended transition worth mentioning — every other saved status stays put
-  // until a merchant changes it again.
+  // Only a scheduled campaign has a second, unattended transition worth mentioning.
   if (savedStatus === 'scheduled' && values.starts_at) {
     const futureStatus = resolveCampaignDisplayStatus(
       values.status,

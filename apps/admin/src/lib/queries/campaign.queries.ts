@@ -37,9 +37,7 @@ export function useUpdateCampaignMutation(id: number) {
     mutationKey: ['campaign', 'update', id],
     mutationFn: (input: CampaignUpdateInput) => updateCampaign(id, input),
     onSuccess: () => {
-      // Both change together. Invalidating only detail leaves this
-      // campaign's row on the Campaigns list showing stale name/status/
-      // priority/schedule until staleTime lapses or the page is reloaded.
+      // The list shows the same fields; invalidating only detail leaves its row stale.
       queryClient.invalidateQueries({ queryKey: ['campaign', 'detail', id] });
       queryClient.invalidateQueries({ queryKey: ['campaign', 'list'] });
     },

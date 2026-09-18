@@ -5,14 +5,10 @@ import { CampaignEditor } from '@/pro';
 import NotFoundPage from '../404';
 
 /**
- * Shared, Lite-safe entry for `campaigns/:id/edit` — mirrors CampaignsPage's
- * `IS_PRO_BUILD` branch. Lite has no create/edit UI for anything but
- * BuiltInCampaignList's three always-present cards, so this route 404s there
- * rather than showing an upsell for a URL Lite has no concept of.
- *
- * Imports `CampaignEditor` from the `@/pro` barrel, never
- * `@/pro/campaigns/editor/...` directly — see that barrel's docblock for why
- * a deep import here would drag the whole Pro subtree into the Lite bundle.
+ * Lite-safe entry for campaigns/:id/edit. Lite has no campaign editor, so
+ * the route 404s there rather than upselling a URL Lite has no concept of.
+ * Imports from the `@/pro` barrel, never a deep path, so Lite stays
+ * tree-shaken.
  */
 export default function CampaignEditorPage() {
   const { id } = useParams();

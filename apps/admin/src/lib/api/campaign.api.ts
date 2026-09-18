@@ -23,10 +23,7 @@ export async function getCampaign(id: number): Promise<Campaign> {
   return campaignSchema.parse(await api.get(`campaigns/${id}`).json());
 }
 
-/**
- * `PUT campaigns/{id}` — mirrors `CampaignRestController::update_item()`.
- * Does not persist yet: that method is a SWAP POINT (see its docblock).
- */
+/** PUT campaigns/{id}. Does not persist yet; see update_item()'s swap point. */
 export async function updateCampaign(id: number, input: CampaignUpdateInput): Promise<Campaign> {
   return campaignSchema.parse(await api.put(`campaigns/${id}`, { json: input }).json());
 }

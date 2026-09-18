@@ -146,13 +146,9 @@ export type CampaignListParams = z.infer<typeof campaignListParamsSchema>;
 /* ─── Write: campaignUpdateInputSchema ──────────────────────────────── */
 
 /**
- * `CampaignConditionType::all()`, offerable types only — mirrors
- * `CampaignConditionType::schema()` minus `UNAVAILABLE`.
- *
- * `tier` is deliberately excluded: the tier system does not exist yet, and
- * `CampaignConditionSet::is_valid()` (called from `conditions_are_valid()`)
- * would reject a save that carried one. Do not add it back until the PHP
- * side offers it.
+ * Mirrors CampaignConditionType::schema() minus UNAVAILABLE. `tier` stays
+ * out until the PHP side offers it: CampaignConditionSet rejects a save
+ * that carries one.
  */
 export const CAMPAIGN_CONDITION_TYPES = [
   'user_role',
@@ -169,10 +165,10 @@ export const CAMPAIGN_CONDITION_TYPES = [
 
 export type CampaignConditionKind = (typeof CAMPAIGN_CONDITION_TYPES)[number];
 
-/** Operators `CampaignConditionType::schema()` recognises, across every type. */
+/** Every operator CampaignConditionType::schema() recognises. */
 type CampaignConditionOperator = 'in' | 'not_in' | 'gte' | 'lte' | 'gt' | 'lt' | 'eq' | 'between';
 
-/** The `value` shapes a condition type may require — see `CampaignConditionType::schema()`'s docblock. */
+/** Value shapes, per CampaignConditionType::schema(). */
 type CampaignConditionValueKind = 'string_list' | 'int_list' | 'currency_list' | 'country_list' | 'int' | 'money';
 
 interface CampaignConditionSpec {
@@ -188,11 +184,9 @@ interface CampaignConditionSpec {
 }
 
 /**
- * Client mirror of `CampaignConditionType::schema()`, offerable types only.
- * The form layer (phase-05) reads this to know which operators and value
- * shape to render per condition type — it is UI metadata, not a validator:
- * `CampaignConditionSet` on the server is the actual enforcement point, and
- * duplicating its normalisation rules here would only drift from them.
+ * Client mirror of CampaignConditionType::schema(), offerable types only.
+ * UI metadata, not a validator: CampaignConditionSet enforces on save, and
+ * a duplicate here would only drift from it.
  */
 export const CAMPAIGN_CONDITION_SCHEMA: Record<CampaignConditionKind, CampaignConditionSpec> = {
   user_role: {
@@ -242,16 +236,10 @@ export const CAMPAIGN_CONDITION_SCHEMA: Record<CampaignConditionKind, CampaignCo
 };
 
 /**
- * One entry in a campaign's `conditions` list. `value`'s real shape depends
- * on `type` — see `CAMPAIGN_CONDITION_SCHEMA` — and per-type refinement is a
- * form-layer concern (phase-05), so it stays `unknown` here the same way
- * `campaignSchema.config` does.
- *
- * Plain `z.object`, unlike `config`'s `z.record` — zod silently strips any
- * extra key on a condition entry at submit time. Intentional/acceptable for
- * now: a condition has a known fixed shape (`type`/`operator`/`value`) per
- * type, unlike `config`, which genuinely varies and must round-trip whatever
- * keys the server sent. Not an oversight.
+ * One entry in a campaign's `conditions`. `value` stays unknown because its
+ * shape varies per type (CAMPAIGN_CONDITION_SCHEMA). Plain z.object strips
+ * extra keys on submit, which is fine here: a condition has a fixed shape
+ * per type, unlike `config`.
  */
 export const campaignConditionSchema = z.object({
   type: z.enum(CAMPAIGN_CONDITION_TYPES),
@@ -262,28 +250,22 @@ export const campaignConditionSchema = z.object({
 export type CampaignCondition = z.infer<typeof campaignConditionSchema>;
 
 /**
- * Write body for `PUT campaigns/{id}` — mirrors `update_item()`'s mutable
- * fields exactly.
- *
- * No `slug`, no `trigger`: `update_item()` never calls a trigger setter and
- * `unset()`s both before the row is written (line ~224). Sending either is
- * harmless — the server strips them regardless — but omitting them from the
- * type documents that they cannot actually change post-create.
+ * Write body for PUT campaigns/{id}, mirroring update_item()'s mutable
+ * fields. No slug or trigger: both are immutable after create.
  */
 export const campaignUpdateInputSchema = z
   .object({
     name: z.string().trim().min(1),
     status: campaignStatusSchema,
     priority: z.number().int(),
-    /** Loose on purpose — see `campaignSchema.config`'s docblock. */
+    /** Loose on purpose; see campaignSchema.config. */
     config: z.record(z.string(), z.unknown()),
     conditions: z.array(campaignConditionSchema),
     starts_at: z.string().nullable(),
-    /** Exclusive — see `campaignSchema.ends_at`. */
+    /** Exclusive; see campaignSchema.ends_at. */
     ends_at: z.string().nullable(),
   })
-  // The server does not currently enforce this — see update_item(). String
-  // comparison is correct here: both are fixed-width UTC `YYYY-MM-DD HH:mm:ss`.
+  // String comparison is correct: both are fixed-width UTC YYYY-MM-DD HH:mm:ss.
   .refine((data) => !data.starts_at || !data.ends_at || data.starts_at < data.ends_at, {
     message: 'The start date must be before the end date.',
     path: ['ends_at'],
@@ -297,21 +279,17 @@ type CampaignConfigFieldType = 'bool' | 'string' | 'int' | 'number' | 'enum' | '
 
 interface CampaignConfigFieldSpec {
   type: CampaignConfigFieldType;
-  /** Lower bound — `int` and `number` only. */
+  /** Lower bound; int and number only. */
   min?: number;
-  /** Fixed value set — `enum` only. */
+  /** Fixed value set; enum only. */
   values?: readonly string[];
 }
 
 /**
- * Per-trigger config field map, mirroring `Campaign::config_schema()` for the
- * three triggers Lite itself defines. UI metadata for the form layer to
- * drive its fields off — not validation; `config` stays `z.record` above so
- * this map can never drift into a second whitelist.
- *
- * Pro triggers (`birthday`, `first_order`, `order_count`, `spend_milestone`)
- * have no Lite `config_schema()` entry and therefore no entry here either —
- * phase-04 renders those with no field map.
+ * Per-trigger config field map mirroring Campaign::config_schema() for the
+ * three Lite triggers. UI metadata, not validation: `config` stays z.record
+ * so this can never become a second whitelist. Pro triggers have no Lite
+ * schema and so no entry here.
  */
 export const CAMPAIGN_CONFIG_FIELDS: Record<
   'purchase' | 'signup' | 'review',
@@ -319,12 +297,11 @@ export const CAMPAIGN_CONFIG_FIELDS: Record<
 > = {
   purchase: {
     points_per_unit: { type: 'number', min: 0 },
-    // 'rate' | 'multiplier' — missing means 'rate', see resolvePurchaseMode().
+    // Missing means 'rate'; see resolvePurchaseMode().
     mode: { type: 'enum', values: ['rate', 'multiplier'] },
     multiplier: { type: 'number', min: 0 },
     base: { type: 'enum', values: ['after_discounts', 'before_discounts'] },
-    // Stored but never read by BaseCalculator — a dead key kept so a
-    // downgrade/upgrade round-trip does not lose it. Still render it.
+    // Never read by the calculator; kept so a downgrade/upgrade round trip does not lose it.
     include_shipping: { type: 'bool' },
     include_tax: { type: 'bool' },
     rounding: { type: 'enum', values: ['down', 'nearest', 'up'] },
@@ -343,20 +320,15 @@ export const CAMPAIGN_CONFIG_FIELDS: Record<
     require_verified: { type: 'bool' },
     one_per_product: { type: 'bool' },
     daily_cap: { type: 'int', min: 0 },
-    // In config_schema() but absent from default_config() — default to 0
-    // client-side rather than rendering undefined.
+    // Absent from default_config(); the form defaults it to 0.
     media_bonus_points: { type: 'int', min: 0 },
   },
 };
 
-/** `mode` is absent from `default_config('purchase')` — missing means `'rate'`. */
+/** Absent from default_config('purchase'); missing means 'rate'. */
 export const DEFAULT_PURCHASE_MODE = 'rate' as const;
 
-/**
- * Client mirror of `PurchaseHandler::is_multiplier()`'s
- * `'multiplier' === ($config['mode'] ?? 'rate')`. One place, used by the
- * editor and by `CampaignTable`'s `givesLabel()` — never re-derived inline.
- */
+/** Mirrors PurchaseHandler::is_multiplier(); the one place `mode` is resolved. */
 export function resolvePurchaseMode(config: Record<string, unknown>): 'rate' | 'multiplier' {
   return config.mode === 'multiplier' ? 'multiplier' : DEFAULT_PURCHASE_MODE;
 }

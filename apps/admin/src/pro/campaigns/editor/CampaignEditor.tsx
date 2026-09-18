@@ -37,38 +37,16 @@ import { CampaignEditorSections } from './CampaignEditorSections';
 import { CampaignEditorSummaryRail } from './CampaignEditorSummaryRail';
 
 /**
- * The campaign editor's write surface for `PUT campaigns/{id}` — form
- * provider, layout, and every non-content state. The six sections
- * (Basics/Trigger/Reward/Conditions/Schedule/Priority) render via
- * `CampaignEditorSections.tsx`.
- *
- * FORM LIBRARY: `react-hook-form` + `zodResolver` — the first use of either
- * anywhere in this codebase. `CustomersAdjustPointsDialog.tsx` deliberately
- * skipped both: "Plain `useState` + a manual `zod` check, not
- * `react-hook-form`: two fields, no dependent validation — the library would
- * be pure ceremony here (and nothing else in this app pulls it in yet
- * either)." Every clause of that is false for THIS screen:
- *  1. `components/ui/field.tsx`'s `FieldError` takes RHF's own `FieldError`
- *     shape — the primitive was built for it.
- *  2. `formState.isDirty` feeds `useRouteLeaveGuard` directly below, instead
- *     of hand-rolled dirty-tracking across ~20 trigger-dependent config
- *     fields plus a conditions array.
- *  3. Conditions are a variable-length array — `useFieldArray` territory.
- *  4. Validation is genuinely dependent: `mode` gates `multiplier` vs
- *     `points_per_unit`, `trigger` gates the whole config shape, `starts_at`
- *     gates `ends_at`, `operator: 'between'` gates a pair value.
- * This is a considered divergence from that precedent, not drift from it —
- * see phase-03 (`plans/260916-1547-campaign-editor-ui/`)'s Key Insights for
- * the full reasoning.
+ * The campaign editor: form provider, layout and every non-content state;
+ * the sections render via CampaignEditorSections. First use of
+ * react-hook-form + zodResolver in this app, on purpose: a variable-length
+ * conditions array, dependent validation and a dirty flag for the leave
+ * guard are what the library is for.
  */
 export function CampaignEditor({ id }: { id: number }) {
   const campaignQuery = useCampaignQuery(id);
 
-  // `:id` is user-controlled. An invalid value (0, negative, non-numeric —
-  // CampaignEditorPage.tsx's Number.parseInt turns the latter into NaN) never
-  // reaches the query at all (`enabled: id > 0` on CAMPAIGN_QUERIES.detail),
-  // which would otherwise leave `isPending` true forever with no fetch ever
-  // starting. Reject it the same way an unreachable route would.
+  // An invalid id never enables the query, which would leave isPending true forever.
   if (!(id > 0)) {
     return <NotFoundPage />;
   }
@@ -104,17 +82,7 @@ function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }
   const location = useLocation();
   const mutation = useUpdateCampaignMutation(id);
 
-  /**
-   * `CampaignTable.tsx`'s "Duplicate" action seeds this via router state —
-   * display-only. There is no create endpoint wired to this screen: saving
-   * from a duplicate-seeded editor updates the ORIGINAL campaign (`id`),
-   * exactly like any other edit. A true duplicate that persists as a new row
-   * is out of scope until `create_item()`'s list-visibility problem is
-   * resolved — see `CampaignTable.tsx`'s "Add campaign" comment and
-   * `CampaignRestController`'s class docblock: `create_item()` already
-   * persists for real, but `get_items()` still answers from a dummy fixture,
-   * so a genuinely new row would vanish from the list on the very next fetch.
-   */
+  // Display-only seed from CampaignTable's Duplicate action; saving still updates the original.
   const duplicateSeed = (location.state as { duplicateSeed?: CampaignEditorDuplicateSeed } | null)?.duplicateSeed;
 
   const formValues = useMemo<CampaignFormValues>(() => {
@@ -123,22 +91,15 @@ function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }
     return duplicateSeed ? { ...base, name: duplicateSeed.name, status: duplicateSeed.status } : base;
   }, [campaign, duplicateSeed]);
 
-  // Wraps `zodResolver` rather than using it directly: `conditions[].value` is `z.unknown()`
-  // (campaign.schema.ts) — its shape genuinely varies per type, so `zodResolver` alone never
-  // validates it. `mergeConditionErrors` (campaign-editor.form.ts) runs the per-type checks
-  // `CampaignEditorConditions.tsx` used to gate via an out-of-band native `submit` listener,
-  // now inside RHF's own resolver lifecycle so it covers every save path — this button, "Save
-  // as draft", and `UnsavedChangeDialog`'s Save button alike.
+  // conditions[].value is z.unknown(), so the per-type checks run inside the resolver, where
+  // they cover every save path.
   const resolver: Resolver<CampaignFormValues> = async (values, context, options) => {
     const result = await zodResolver(campaignUpdateInputSchema)(values, context, options);
     return mergeConditionErrors(result, values);
   };
 
-  // `values`, not `defaultValues` + a `useEffect` `reset()` — a refetch
-  // (including the one this form's own successful save triggers) re-seeds
-  // the form cleanly, with no manual effect to get wrong. See phase-03's Key
-  // Insights / Risk Assessment. `resetOptions.keepDirtyValues` protects fields the
-  // merchant is actively editing from being clobbered by such a refetch.
+  // `values`, not defaultValues + reset(): a refetch re-seeds the form on its own, and
+  // keepDirtyValues stops it clobbering a field mid-edit.
   const form = useForm<CampaignFormValues>({
     resolver,
     values: formValues,
@@ -147,42 +108,22 @@ function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }
 
   const { showDialog, confirmLeave, cancelLeave } = useRouteLeaveGuard(form.formState.isDirty);
 
-  // Two fallback sources of truth, both reset at the top of `handleSave`'s submit callback so a
-  // stale value never bleeds into the next, unrelated submit:
-  //  - `isDraftIntentRef`: `event.nativeEvent.submitter` is unsupported in Safari < 15.4 — the
-  //    draft button's own `onClick` (`CampaignEditorSummaryRail.tsx`) sets this as a fallback for
-  //    which button triggered the submit.
-  //  - `isDialogSaveRef`: set just before `UnsavedChangeDialog`'s Save button invokes `handleSave`
-  //    directly (no `<form>` submit event, so no blocked-navigation context otherwise available)
-  //    — see the navigation branch below.
+  // Fallbacks for handleSave, reset at the top of each submit: SubmitEvent.submitter is missing
+  // in Safari < 15.4, and the UnsavedChangeDialog save has no submit event at all.
   const isDraftIntentRef = useRef(false);
   const isDialogSaveRef = useRef(false);
 
-  /**
-   * `input` already carries `status: 'draft'` when this is a "Save as draft"
-   * submit — see `handleSave`'s `submitter` check below. Same mutation, same
-   * endpoint, no separate hook (phase-06's Key Insight: draft is a status
-   * value, not a different write path).
-   */
+  /** Runs the mutation and resets the dirty baseline; a draft save is the same write with status: 'draft'. */
   async function persist(input: ReturnType<typeof formValuesToUpdateInput>): Promise<boolean> {
     try {
       const saved = await mutation.mutateAsync(input);
-      // Reset the dirty baseline to what the SERVER just echoed back
-      // (validated, as far as the API is concerned) BEFORE any navigation
-      // this save triggers reaches the leave guard — otherwise a post-save
-      // redirect would immediately re-trip its own blocker.
+      // Reset before any navigation reaches the leave guard, or the redirect re-trips it.
       form.reset(campaignToFormValues(saved));
-      // Truthful, not more: validation ran and the API answered 200. Nothing
-      // here claims the change is durably stored — it isn't yet, see
-      // CampaignRestController::update_item()'s SWAP POINT docblock. Reloading
-      // this page will show the unchanged fixture row; that is expected,
-      // documented behaviour, not a bug to paper over with different copy.
+      // "Saved", not "stored": update_item() does not persist yet.
       toast.success(__('Campaign saved.', 'yayloyalty'));
       return true;
     } catch (error) {
-      // A 403 with a FORBIDDEN_ERROR_CODES code is already toasted by
-      // api.ts's `afterResponse` hook — check the status before toasting
-      // again here.
+      // api.ts's afterResponse hook already toasts a 403.
       if (!(error instanceof HTTPError && error.response.status === 403)) {
         toast.error(await getApiErrorMessage(error, __('Could not save the campaign.', 'yayloyalty')));
       }
@@ -190,16 +131,9 @@ function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }
     }
   }
 
-  // One `<form onSubmit>` for both save actions — `CampaignEditorSummaryRail.tsx` renders BOTH
-  // buttons as `type="submit"` inside it (not a second click handler each). `event.nativeEvent
-  // .submitter` (a standard `SubmitEvent` field) says which button was actually pressed; when
-  // it's unavailable (Safari < 15.4), `isDraftIntentRef` — set by the draft button's own
-  // `onClick` — is the fallback.
-  /* eslint-disable react-hooks/refs -- react-hook-form's `handleSubmit` only ever invokes these
-     callbacks from an actual submit (a real event handler), never during render; both refs are
-     read once and reset synchronously at the top, before anything async runs. The rule's static
-     analysis can't see through `handleSubmit`'s deferred call — the same reason this config
-     already turns off its sibling `incompatible-library` check. */
+  // One onSubmit for both save buttons; the submitter says which, with the ref as fallback.
+  /* eslint-disable react-hooks/refs -- handleSubmit only invokes these from a real submit, never
+     during render; the rule cannot see through its deferred call. */
   const handleSave = form.handleSubmit(
     async (values, event) => {
       const submitter = (event?.nativeEvent as SubmitEvent | undefined)?.submitter as HTMLElement | null | undefined;
@@ -211,26 +145,19 @@ function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }
       const input = formValuesToUpdateInput(values);
       const saved = await persist(isDraft ? { ...input, status: 'draft' } : input);
 
-      // `confirmLeave` is a no-op outside a blocked navigation — `blocker.proceed`
-      // only exists while `blocker.state === 'blocked'`. Safe to call unconditionally.
-      // Order matters: disarm the guard, THEN navigate — see `persist()`'s reset above.
+      // confirmLeave is a no-op outside a blocked navigation. Disarm the guard, then navigate.
       if (saved) {
         confirmLeave();
 
-        // When this save came from `UnsavedChangeDialog`'s Save button, `confirmLeave()` above
-        // already proceeds to the ORIGINALLY blocked destination (e.g. "Rewards") — navigating to
-        // Campaigns too would override that with the wrong destination. Only navigate here for a
-        // normal, in-page Save click.
+        // A dialog save already proceeds to the originally blocked destination; navigating here
+        // would override it.
         if (!savingFromDialog) {
           navigate('/campaigns');
         }
       }
     },
     (errors) => {
-      // The resolver-level validation (`mergeConditionErrors`, campaign-editor.form.ts) now
-      // populates `formState.errors` through RHF's normal invalid-submit path — `ConditionRow`
-      // already renders each `conditions[i].value` error inline, but a toast makes an invalid,
-      // blocked save impossible to miss.
+      // ConditionRow shows each error inline; the toast makes a blocked save impossible to miss.
       if (errors.conditions) {
         toast.error(__('Please fix the highlighted conditions before saving.', 'yayloyalty'));
       }
@@ -238,16 +165,13 @@ function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }
   );
   /* eslint-enable react-hooks/refs */
 
-  // Trigger/status/dates never change through form state — sourced from the loaded `Campaign`
-  // directly, same as the rest of this header (campaign-editor.form.ts's docblock).
+  // The header renders from the loaded campaign, never form state.
   const displayStatus = resolveCampaignDisplayStatus(campaign.status, campaign.starts_at, campaign.ends_at);
 
   return (
     <CampaignEditorContext.Provider value={{ campaign }}>
       <FormProvider {...form}>
         <form onSubmit={handleSave}>
-          {/* Breadcrumb back to Campaigns — a plain `navigate()` call still goes through
-              `useRouteLeaveGuard`'s blocker above, same as any other in-app navigation. */}
           <div className="mx-auto flex max-w-6xl items-center gap-2 px-6 pt-6 text-sm">
             <Button type="button" variant="link" className="h-auto gap-1 p-0!" onClick={() => navigate('/campaigns')}>
               <ChevronLeft className="size-3.5" />
@@ -270,8 +194,6 @@ function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }
             title={
               <span className="flex flex-wrap items-center gap-2">
                 {campaign.name}
-                {/* Built-in: name stays editable, but no archive/delete surfaces here (delete isn't
-                    wired anywhere in this phase — see CampaignTable.tsx's own still-inert entry). */}
                 {campaign.is_builtin && (
                   <>
                     <Badge variant="outline" className="uppercase">
@@ -286,8 +208,6 @@ function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }
                 <Badge variant="outline" className="uppercase">
                   {statusLabel(displayStatus)}
                 </Badge>
-                {/* Only a 'scheduled' campaign has a future start date worth calling out here —
-                    every other display status is already whatever it will stay until next edited. */}
                 {displayStatus === 'scheduled' && campaign.starts_at && (
                   <span className="text-muted-foreground text-sm font-normal">
                     {sprintf(
@@ -300,9 +220,6 @@ function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }
               </span>
             }
             description={
-              // slug/trigger are read-only for every campaign, not only built-ins — see
-              // campaign-editor.form.ts's docblock. Sourced from the loaded Campaign directly, never
-              // through form state.
               <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                 <Badge variant="outline">{triggerLabel(campaign.trigger)}</Badge>
                 <span aria-hidden>·</span>
@@ -344,5 +261,5 @@ function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }
   );
 }
 
-/** `CampaignTable.tsx`'s "Duplicate" action seeds the editor with this — see the docblock above. */
+/** What CampaignTable's Duplicate action passes through router state. */
 export type CampaignEditorDuplicateSeed = { name: string; status: CampaignStatus };

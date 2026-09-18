@@ -12,47 +12,17 @@ use YayLoyalty\Utils\Dates;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Campaigns CRUD — the definition-table template.
+ * Campaigns CRUD; the template for other definition tables. No service: the
+ * invariants are validation. Built-in protection relies on is_builtin being
+ * readonly in the schema, never on reading it from a request.
  *
- * Rewards and tiers, when added, should be near-copies of this controller.
- * There is no service layer: the invariants here are validation, and a
- * service wrapping one repository would be ceremony.
- *
- * BUILT-IN PROTECTION DEPENDS ON THE SCHEMA, NOT ON THIS HANDLER. `is_builtin`
- * is marked readonly and stripped from write args by AbstractRestController, so
- * `PUT {"is_builtin":0}` cannot flip it and then walk through the DELETE guard.
- * Never read is_builtin from a request.
- *
- * SWAP POINT — reads only. get_items()/get_item() answer from dummy_fixture()
- * below instead of $this->campaigns, for now: a fresh install's real table
- * holds exactly the three built-ins (Installer::seed_builtins()), which is not
- * enough campaigns to build or review the Pro grouped/priority table against
- * (groups, priority ties, the >20-campaigns search threshold, an archived
- * row). This is the ONE list both Lite (BuiltInCampaignList, filtered to
- * is_builtin) and Pro (CampaignTable, shown whole) read — see those
- * components' docblocks. create_item()/delete_item() below are untouched and
- * already write through $this->campaigns for real; update_item() does not —
- * see its own SWAP POINT paragraph below. When the dummy rows are no longer
- * needed, get_items()/get_item() go back to reading $this->campaigns too and
- * dummy_fixture()/find_dummy_row() are deleted — nothing else in the SPA
- * changes, since every consumer already goes through getCampaigns()/
- * getCampaign() in lib/api/campaign.api.ts.
- *
- * SWAP POINT — write path, non-persisting. update_item() below resolves the
- * campaign it edits EXCLUSIVELY through find_dummy_row() (matching
- * get_item()'s read path exactly, no $this->campaigns->find_campaign()
- * fallback), validates the request, and returns the updated campaign but
- * makes no $this->campaigns->update() call — for the same reason as the read
- * SWAP POINT above: get_item()/get_items() answer from dummy_fixture(), so a
- * real write would persist against $this->campaigns while every subsequent
- * read still shows the unchanged dummy row — the editor would appear to save,
- * then look like it lost the change on reload, which is worse than not
- * persisting. Resolving through $this->campaigns first would be worse still:
- * fixture ids 1-3 collide with real auto-increment ids seeded by built-ins,
- * so an edit to a fixture campaign would silently apply to an unrelated real
- * row. To restore: put the $this->campaigns->update() call (and re-read) back
- * into update_item(), and swap its fixture resolution for
- * $this->campaigns->find_campaign().
+ * Reads answer from dummy_fixture() for now: a fresh table holds only the
+ * three built-ins, too few to build the Pro grouped table against.
+ * create_item()/delete_item() already go through $this->campaigns.
+ * update_item() resolves and returns the fixture row without writing: a
+ * real write would vanish behind the fixture on the next read, and fixture
+ * ids 1-3 collide with real built-in ids. Swapping the reads back restores
+ * update_item()'s write and deletes dummy_fixture()/find_dummy_row().
  */
 final class CampaignRestController extends AbstractRestController {
 
@@ -206,24 +176,14 @@ final class CampaignRestController extends AbstractRestController {
     }
 
     public function update_item( \WP_REST_Request $request ) {
-        // Resolved from the fixture EXCLUSIVELY, matching get_item()'s read
-        // path — see the class docblock's write SWAP POINT. No
-        // $this->campaigns->find_campaign() fallback: fixture ids 1-3 collide
-        // with real auto-increment ids seeded by built-ins, so trying the real
-        // repository first would resolve a fixture campaign against an
-        // unrelated real row.
+        // Fixture only, no repository fallback: fixture ids 1-3 collide with real built-in ids.
         $row = self::find_dummy_row( (int) $request['id'] );
 
         if ( null === $row ) {
             return $this->error_not_found( __( 'Campaign not found.', 'yayloyalty' ) );
         }
 
-        // find_dummy_row() returns the REST shape (key `trigger`,
-        // config/conditions already decoded arrays), not the DB shape
-        // from_row() expects (key `trigger_type`, config/conditions as
-        // JSON strings) — Json::decode() only accepts a string, so
-        // handing it an already-decoded array would throw. Built
-        // directly instead of forcing this through from_row().
+        // The fixture row is the REST shape (decoded config/conditions), which from_row() cannot take.
         $campaign = new Campaign(
             $row['id'],
             $row['name'],
@@ -285,10 +245,8 @@ final class CampaignRestController extends AbstractRestController {
         $campaign->set_updated_at( Dates::now() );
         $campaign->set_updated_by( get_current_user_id() );
 
-        // SWAP POINT — no $this->campaigns->update() call; see the class
-        // docblock. When persistence is restored, write $campaign->to_row()
-        // back with the same fixed-at-create columns stripped first:
-        // `unset( $data['slug'], $data['trigger_type'], $data['created_at'], $data['created_by'], $data['is_builtin'] );`
+        // Swap point: no $this->campaigns->update() call; see the class docblock. When restored,
+        // strip slug/trigger_type/created_at/created_by/is_builtin from to_row() before writing.
         return $campaign->to_array();
     }
 

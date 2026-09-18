@@ -25,19 +25,9 @@ import { conditionTypeLabel } from '../campaign-labels';
 import { CampaignFormValues } from './campaign-editor.form';
 
 /**
- * Section 4, Conditions. `useFieldArray` over the form's `conditions` —
- * a flat, ANDed list with at most one entry per type (`CampaignConditionSet`,
- * PHP). The offerable types come from `CAMPAIGN_CONDITION_TYPES`
- * (campaign.schema.ts) — never the wireframe's list, which offers `tier`
- * (gated out server-side) and omits five real types.
- *
- * `conditions[].value` is `z.unknown()` on the shared schema (campaign.schema.ts)
- * — its shape genuinely varies per type — so per-type validation
- * (`validateConditionValue`, below) runs inside `CampaignEditor.tsx`'s custom
- * resolver (`mergeConditionErrors`, campaign-editor.form.ts) rather than here.
- * That keeps it on RHF's normal resolver lifecycle so it fires for every save
- * path — the header's Save button, "Save as draft", and `UnsavedChangeDialog`'s
- * Save — instead of only a native `<form>` `submit` event.
+ * Conditions section: a useFieldArray over a flat, ANDed list with at most
+ * one entry per type. Per-type value validation runs in the editor's
+ * resolver (mergeConditionErrors), not here, so it covers every save path.
  */
 export function CampaignEditorConditions() {
   const { control } = useFormContext<CampaignFormValues>();
@@ -103,7 +93,7 @@ export function CampaignEditorConditions() {
 
 /* ─── one condition's row ────────────────────────────────────────────── */
 
-/** Merchant-facing labels for the operators `CAMPAIGN_CONDITION_SCHEMA` recognises, across every type. */
+/** Merchant-facing labels for every operator CAMPAIGN_CONDITION_SCHEMA recognises. */
 const OPERATOR_LABELS: Record<string, string> = {
   in: __('is any of', 'yayloyalty'),
   not_in: __('is none of', 'yayloyalty'),
@@ -115,12 +105,7 @@ const OPERATOR_LABELS: Record<string, string> = {
   between: __('between', 'yayloyalty'),
 };
 
-/**
- * One row in `CampaignEditorConditions`' list above: the type (fixed once
- * added — `CampaignConditionSet` has no "change a condition's type" concept,
- * only add/remove), an operator `Select` scoped to that type's own operators,
- * the value editor for its kind, and a remove button.
- */
+/** One condition row. The type is fixed once added; only operator and value change. */
 function ConditionRow({ index, type, onRemove }: { index: number; type: CampaignConditionKind; onRemove: () => void }) {
   const { control, setValue, getValues, formState, clearErrors } = useFormContext<CampaignFormValues>();
   const spec = CAMPAIGN_CONDITION_SCHEMA[type];
@@ -128,10 +113,7 @@ function ConditionRow({ index, type, onRemove }: { index: number; type: Campaign
   const condition = useWatch({ control, name: `conditions.${index}` });
   const error = formState.errors.conditions?.[index]?.value;
 
-  // Errors here are raised by `CampaignEditor.tsx`'s custom resolver (`mergeConditionErrors`,
-  // campaign-editor.form.ts) — `value`'s shape varies per type, so the shared zodResolver alone
-  // never validates it. Clear the moment the row becomes valid again, rather than waiting for
-  // the next submit.
+  // A resolver error would otherwise stay until the next submit; clear it as soon as the row is valid.
   useEffect(() => {
     if (error && !validateConditionValue(condition)) {
       clearErrors(`conditions.${index}.value` as `conditions.${number}.value`);
@@ -184,13 +166,7 @@ function ConditionRow({ index, type, onRemove }: { index: number; type: Campaign
   );
 }
 
-/**
- * Dispatch on the value KIND `CAMPAIGN_CONDITION_SCHEMA` (campaign.schema.ts,
- * phase-01) declares for a condition type — the table in phase-05's plan.
- * `type` decides which of the six editors below renders; `operator` only
- * matters to the two numeric kinds, where `between` reshapes the value from
- * a scalar to a `[low, high]` pair (see `reshapeConditionValue()`).
- */
+/** Dispatches on the value kind; `operator` only matters to the numeric kinds, where `between` takes a pair. */
 function ConditionValueEditor({
   index,
   type,
@@ -295,9 +271,7 @@ function CountryListEditor({ index }: { index: number }) {
   const { field } = useController({ control, name: `conditions.${index}.value` });
   const value = (field.value ?? {}) as { countries?: unknown; source?: unknown };
   const countries = Array.isArray(value.countries) ? (value.countries as string[]) : [];
-  // No default source, on purpose: `CampaignConditionSet::validate()` refuses to guess one
-  // because the shipping address is absent on virtual/downloadable orders — the same reason
-  // `validateConditionValue()` below treats a missing source as an error rather than a default.
+  // No default source: the shipping address is absent on virtual orders, so the server refuses to guess one.
   const source = typeof value.source === 'string' ? value.source : '';
 
   return (
@@ -429,18 +403,12 @@ function MoneyValueEditor({ index, operator }: { index: number; operator: string
 
 /* ─── shared helpers: defaults, reshaping, minimal validation ───────── */
 
-/** The first operator `CAMPAIGN_CONDITION_SCHEMA` lists for a type — the sensible default on add. */
+/** The default operator on add. */
 function firstOperatorFor(type: CampaignConditionKind): string {
   return CAMPAIGN_CONDITION_SCHEMA[type].operators[0];
 }
 
-/**
- * A freshly-added condition's starting value — intentionally EMPTY for list
- * shapes (so `validateConditionValue()` flags it immediately, matching
- * `ConditionValueRules::assert_non_empty_list()`'s server-side rejection of
- * an unfilled condition) and a plain `0`/store-currency pair for numeric
- * shapes, which are valid on their own.
- */
+/** Starting value on add: empty for lists so validation flags an unfilled condition; 0 in store currency for numeric kinds. */
 function defaultConditionValue(type: CampaignConditionKind): unknown {
   switch (CAMPAIGN_CONDITION_SCHEMA[type].value) {
     case 'string_list':
@@ -459,16 +427,11 @@ function defaultConditionValue(type: CampaignConditionKind): unknown {
 }
 
 /**
- * Switching a numeric condition's operator to/from `between` changes its
- * value's SHAPE (scalar <-> `[low, high]` pair) — called from `ConditionRow`'s
- * operator `Select` above before the new operator is committed, so form state
- * is never left holding a half-shaped value (a pair under a non-`between`
- * operator, or a scalar under `between`).
- * Non-numeric kinds ignore operator changes entirely: `in`/`not_in` never
- * affects a list's shape.
+ * Switching to or from `between` changes a numeric value's shape (scalar <->
+ * [low, high]); called before the operator is committed so form state never
+ * holds a half-shaped value. Other kinds pass through untouched.
  */
 function reshapeConditionValue(
-  /** `CAMPAIGN_CONDITION_SCHEMA[type].value` — only `'int'`/`'money'` ever reshape; every other kind passes through untouched. */
   valueKind: string,
   currentValue: unknown,
   previousOperator: string,
@@ -511,15 +474,10 @@ function reshapeConditionValue(
 }
 
 /**
- * Minimal client-side validation — the five checks phase-05's plan permits
- * (non-empty lists, `customer_ids` <= 100, `between` ordering, `country`'s
- * `source`, `lifetime_spend`'s `currency`), never the rest of
- * `ConditionValueRules`/`CampaignConditionSet::validate()`. Returns a
- * merchant-facing message, or `null` when the value would pass the server.
- *
- * Exported because `campaign-editor.form.ts`'s `mergeConditionErrors()` reuses
- * it inside `CampaignEditor.tsx`'s resolver — the only export from this file
- * besides the section component itself.
+ * Minimal client-side checks (non-empty lists, the customer_ids cap,
+ * `between` ordering, country source, spend currency), never the rest of
+ * CampaignConditionSet::validate(). Returns a message, or null when the
+ * server would accept the value.
  */
 export function validateConditionValue(condition: CampaignCondition | undefined): string | null {
   if (!condition) {

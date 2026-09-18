@@ -8,22 +8,12 @@ import {
   CampaignTrigger,
 } from '@/lib/schema/campaign.schema';
 
-/**
- * Campaign presentation strings shared across `CampaignTable`, the editor
- * (`pro/campaigns/editor/`), and the Pro dashboard's `DashboardTopCampaigns`
- * — the wire shape carries no presentation strings by design, so every label
- * here is derived client-side from `trigger`/`config`/`conditions`/`status`.
- */
+/** Campaign presentation strings derived from the real fields; the wire carries none. */
 
-/** A campaign only ever competes with others sharing its group — see triggerGroup(). */
+/** A campaign only competes within its group; see triggerGroup(). */
 export type CampaignGroupKey = 'purchase' | 'signup' | 'review' | 'other';
 
-/**
- * Campaigns only compete with others sharing a group. `purchase`, `signup`
- * and `review` each get their own; every other trigger — birthday and the
- * remaining Pro triggers — is rare enough today to share a catch-all rather
- * than earn a group of one each.
- */
+/** purchase/signup/review each get a group; the rarer Pro triggers share a catch-all. */
 export function triggerGroup(trigger: CampaignTrigger): CampaignGroupKey {
   if (trigger === 'purchase' || trigger === 'signup' || trigger === 'review') {
     return trigger;
@@ -84,13 +74,7 @@ export function conditionsLabel(conditions: unknown): string {
     .join(', ');
 }
 
-/**
- * Backed by the real per-type map (`conditionTypeLabel()` below — built for
- * the campaign editor's Conditions section, phase-05). Falls back to a
- * slug-to-title-case approximation only for a type this build doesn't
- * recognise (e.g. `tier`, or a stored type from a future schema version) so a
- * stale row never renders blank.
- */
+/** Falls back to slug-to-title-case for a type this build does not recognise, so a stale row never renders blank. */
 function humanizeConditionType(type: string): string {
   const known = CAMPAIGN_CONDITION_TYPES.find((kind) => kind === type);
 
@@ -101,12 +85,7 @@ function humanizeConditionType(type: string): string {
   return type.replace(/_/g, ' ').replace(/^\w/, (char) => char.toUpperCase());
 }
 
-/**
- * The per-type condition label map — built for the campaign editor's
- * Conditions section and reused by `conditionsLabel()`'s fallback
- * above. Covers every offerable type from `CAMPAIGN_CONDITION_TYPES` —
- * `tier` is deliberately absent, matching that list.
- */
+/** Label per offerable type; `tier` is absent, matching CAMPAIGN_CONDITION_TYPES. */
 export function conditionTypeLabel(type: CampaignConditionKind): string {
   switch (type) {
     case 'user_role':

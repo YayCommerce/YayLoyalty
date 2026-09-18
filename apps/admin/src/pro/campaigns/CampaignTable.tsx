@@ -249,14 +249,8 @@ export function CampaignTable() {
               </Select>
             )}
 
-            {/*
-              Inert by decision, not by missing wiring: campaigns/:id/edit is a real, working
-              editor (see pro/campaigns/editor/CampaignEditor.tsx), but create_item() is not a
-              SWAP POINT — it persists for real — while get_items()/get_item() still answer from
-              CampaignRestController's dummy fixture. A created row would never appear in this
-              list. Stays inert until the list swaps off the fixture; see that controller's class
-              docblock.
-            */}
+            {/* Inert on purpose: create_item() persists for real while the list still reads the
+                dummy fixture, so a created row would never appear here. */}
             <Button size="sm" onClick={() => {}}>
               {__('Add campaign', 'yayloyalty')}
             </Button>
@@ -560,14 +554,9 @@ function SortableCampaignRow({ row, isTied }: { row: DisplayCampaign; isTied: bo
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            {/*
-              Opens the same editor as the row link, seeded with a new name and draft status via
-              router state — NOT a createCampaign() call. See CampaignEditor.tsx's docblock: with
-              create_item() persisting for real against a list still reading a dummy fixture, a
-              genuine duplicate would vanish from this table on the very next fetch. Router state
-              rather than a query param — it is meant to be gone on reload, since nothing was
-              actually duplicated for a reload to restore.
-            */}
+            {/* Seeds the editor via router state rather than creating a row: a real duplicate would
+                vanish from the fixture-backed list on the next fetch. Router state so it is gone on
+                reload, since nothing was created for a reload to restore. */}
             <DropdownMenuItem
               onSelect={() =>
                 navigate(`/campaigns/${row.id}/edit`, {
@@ -583,7 +572,7 @@ function SortableCampaignRow({ row, isTied }: { row: DisplayCampaign; isTied: bo
             >
               {__('Duplicate', 'yayloyalty')}
             </DropdownMenuItem>
-            {/* Inert: no delete flow in this phase — CampaignRestController's delete_item() is real, but this table has no confirm-and-wire step for it yet. */}
+            {/* Inert: no confirm-and-delete flow wired yet. */}
             <DropdownMenuItem variant="destructive" disabled={row.is_builtin} onSelect={() => {}}>
               {__('Delete', 'yayloyalty')}
             </DropdownMenuItem>

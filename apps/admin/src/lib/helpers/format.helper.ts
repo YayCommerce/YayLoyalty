@@ -66,18 +66,10 @@ export function parseWPCurrency(price: string | number) {
 }
 
 /**
- * Splits a stored `YYYY-MM-DD HH:mm:ss` UTC datetime string (every
- * `starts_at`/`ends_at` on the wire — see campaign.schema.ts) into the
- * `{ date, time }` pair a `DatePicker` + `<Input type="time">` pair needs.
- * `null`/empty in, empty components out — campaigns' schedule bounds are
- * nullable ("always on").
- *
- * Paired with `joinStoredDateTime` below as the ONE conversion point for this
- * shape (campaign editor, phase-05's Schedule section): read the raw stored
- * string via `watch()`, split here for display, join here on change. Never a
- * bare `new Date('2026-11-27 00:00:00')` — most engines parse that as
- * browser-local, silently shifting the value by the site's UTC offset (see
- * code-standards.md §4 and `parseWPRelativeDate`'s comment above).
+ * Splits a stored UTC datetime into the { date, time } pair a date picker
+ * and time input take; null in, empty parts out. With joinStoredDateTime,
+ * the one conversion point for this shape: never a bare new Date() on the
+ * string, which most engines read as browser-local (code-standards.md §4).
  */
 export function splitStoredDateTime(value: string | null | undefined): { date: string; time: string } {
   if (!value) {
@@ -86,12 +78,11 @@ export function splitStoredDateTime(value: string | null | undefined): { date: s
 
   const [date = '', time = ''] = value.split(' ');
 
-  // HH:mm for the <input type="time">; the stored value's seconds are
-  // rejoined (as :00) by joinStoredDateTime, never carried through the input.
+  // HH:mm only; joinStoredDateTime restores the :00 seconds.
   return { date, time: time.slice(0, 5) };
 }
 
-/** Reverse of `splitStoredDateTime` — a time-less date defaults to midnight; no date returns `null`. */
+/** Reverse of splitStoredDateTime; a time-less date is midnight, no date is null. */
 export function joinStoredDateTime(date: string, time: string): string | null {
   if (!date) {
     return null;

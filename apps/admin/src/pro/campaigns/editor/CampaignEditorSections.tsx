@@ -26,18 +26,7 @@ import { statusLabel, triggerGroup, triggerLabel } from '../campaign-labels';
 import { CampaignFormValues, useCampaignEditorContext } from './campaign-editor.form';
 import { CampaignEditorConditions } from './CampaignEditorConditions';
 
-/**
- * The editor's six sections, in the wireframe's order (see
- * docs/campaign-screens/YayLoyalty_Campaign_Editor.dc.html, section "1e"):
- * Basics, Trigger, Reward, Conditions, Schedule, Priority.
- *
- * All six render through the shared `CampaignEditorSection` shell (below).
- * Basics/Trigger/Reward/Schedule/Priority live in this file; Conditions is
- * the one section still in its own file (`CampaignEditorConditions.tsx`) —
- * it is the largest single concern (a `useFieldArray` builder with six
- * per-kind value editors) and earns that separation on its own, unlike the
- * others, which were single-caller files with little code each.
- */
+/** The editor's six sections in order. Conditions lives in its own file; it is the one large enough to earn it. */
 export function CampaignEditorSections() {
   return (
     <div className="flex flex-col gap-4">
@@ -70,13 +59,7 @@ export function CampaignEditorSections() {
 
 /* ─── the shared numbered-card shell ─────────────────────────────────── */
 
-/**
- * The wireframe's six numbered cards (docs/campaign-screens/
- * YayLoyalty_Campaign_Editor.dc.html, section "1e"): a circular step badge, a
- * title, and content. Not exported — verified via grep that nothing outside
- * this file ever imported it, so it stays a local implementation detail of
- * the section list above rather than a second public shell.
- */
+/** Numbered card shell for one section. */
 function CampaignEditorSection({ step, title, children }: { step: number; title: string; children?: ReactNode }) {
   return (
     <Card>
@@ -95,22 +78,10 @@ function CampaignEditorSection({ step, title, children }: { step: number; title:
 
 /* ─── §1 Basics ──────────────────────────────────────────────────────── */
 
-/**
- * `CAMPAIGN_STATUSES` minus `archived` — archiving is its own flow (wireframe
- * §1g–1k, out of scope for this editor) and `Campaign::set_status()` throws
- * when archiving a built-in, so it is never an option this control offers.
- */
+/** CAMPAIGN_STATUSES minus archived: archiving is its own flow, and Campaign::set_status() throws for a built-in. */
 const EDITABLE_STATUSES = ['active', 'paused', 'draft'] as const;
 
-/**
- * §1 Basics: `name` (required) and `status`. Two fields the wireframe drew
- * that don't survive contact with the schema are deliberately absent here —
- * see reference-wireframe-vs-schema.md §1:
- *  - "Internal notes": not a column, not a config key, not in the write args.
- *  - `slug`: shown read-only in `CampaignEditor.tsx`'s page description
- *    already (sourced from the loaded `Campaign`, never form state, since
- *    it's immutable after create) — not duplicated here.
- */
+/** Name and status. slug is shown read-only in the page header, not here. */
 function CampaignEditorBasics() {
   const { register, control, formState } = useFormContext<CampaignFormValues>();
 
@@ -131,8 +102,7 @@ function CampaignEditorBasics() {
             control={control}
             name="status"
             render={({ field }) => (
-              // Empty string on re-click of the active item — never write that back, the
-              // same guard the mode/base/rounding toggles below use.
+              // Re-clicking the active item yields an empty string; never write that back.
               <Segmented value={field.value} onValueChange={(value) => value && field.onChange(value)}>
                 {EDITABLE_STATUSES.map((status) => (
                   <SegmentedItem key={status} value={status}>
@@ -154,13 +124,7 @@ function CampaignEditorBasics() {
 
 /* ─── §2 Trigger ─────────────────────────────────────────────────────── */
 
-/**
- * Per-trigger one-line descriptions. Kept local rather than added to
- * `campaign-labels.ts` (reused-not-modified for this phase) — the purchase
- * copy is deliberately soft: reference-wireframe-vs-schema.md §2 found no
- * order-status setting in `settings.schema.ts` to name, so this never claims
- * one exists (e.g. "Completed").
- */
+/** The purchase copy names no order status on purpose: settings has none to point at. */
 function triggerDescription(trigger: CampaignTrigger): string {
   switch (trigger) {
     case 'purchase':
@@ -183,25 +147,15 @@ function triggerDescription(trigger: CampaignTrigger): string {
 }
 
 /**
- * §2 Trigger — only the three LITE triggers (`LITE_CAMPAIGN_TRIGGERS`), even
- * though this editor is itself Pro-only: `CAMPAIGN_CONFIG_FIELDS`
- * (campaign.schema.ts) has no field map for any Pro trigger, so offering one
- * here would route straight into `RewardFieldsUnknown`'s read-only fallback —
- * not a real "create a Pro-trigger campaign" flow. Disabled regardless:
- * `update_item()` `unset()`s `trigger_type` before the row is written, so
- * this is immutable after create (annotation 1's "moves the row" claim is
- * false and not reproduced here — see reference-wireframe-vs-schema.md).
- *
- * Never a form field — sourced from the loaded `Campaign` via
- * `useCampaignEditorContext()`, per `campaign-editor.form.ts`'s docblock.
+ * Read-only trigger radio: trigger is immutable after create and renders
+ * from the loaded Campaign, never form state. Offers only the Lite triggers,
+ * since no Pro trigger has a field map.
  */
 function CampaignEditorTrigger() {
   const { campaign } = useCampaignEditorContext();
 
-  // Downgrade safety: a stored trigger may fall outside this offerable list
-  // (a Pro-trigger campaign, since only the three Lite triggers are offered
-  // above — see this component's docblock). Always include the campaign's
-  // own trigger so the control never renders with nothing selected.
+  // A stored Pro trigger falls outside the offered list; include it so the control never
+  // renders unselected.
   const triggers: readonly CampaignTrigger[] = (LITE_CAMPAIGN_TRIGGERS as readonly CampaignTrigger[]).includes(
     campaign.trigger,
   )
@@ -234,14 +188,7 @@ function CampaignEditorTrigger() {
 
 /* ─── §3 Reward ──────────────────────────────────────────────────────── */
 
-/**
- * §3 Reward — dispatches on the loaded campaign's trigger (never a form
- * field, see `campaign-editor.form.ts`) to the matching config renderer.
- * `purchase`/`signup`/`review` are the three triggers `CAMPAIGN_CONFIG_FIELDS`
- * (campaign.schema.ts) has a field map for; every other — every Pro trigger —
- * has no Lite field map and falls back to `RewardFieldsUnknown`, which must
- * not touch `config` (see that component's docblock below).
- */
+/** Dispatches on the loaded trigger; anything without a field map falls back to RewardFieldsUnknown. */
 function CampaignEditorReward() {
   const { campaign } = useCampaignEditorContext();
 
@@ -257,7 +204,7 @@ function CampaignEditorReward() {
   }
 }
 
-/** `config_schema()['purchase']` — mirrors `CAMPAIGN_CONFIG_FIELDS.purchase` (campaign.schema.ts). */
+/** config_schema()['purchase']; mirrors CAMPAIGN_CONFIG_FIELDS.purchase. */
 interface PurchaseConfig {
   points_per_unit?: number;
   mode?: 'rate' | 'multiplier';
@@ -275,15 +222,10 @@ interface PurchaseConfig {
 }
 
 /**
- * §3 Reward for `purchase` — mode choice plus an Advanced block holding every
- * remaining key.
- *
- * ANNOTATION 2 IS FALSE (reference-wireframe-vs-schema.md): multiplier mode
- * inherits ONLY `points_per_unit` from the default purchase campaign —
- * `PurchaseHandler::compute_points()` reads rounding/base/min_subtotal/
- * exclude_coupon_orders/include_tax/exclusions from THIS campaign's own
- * config regardless of mode. The Advanced block below therefore stays
- * rendered — never hidden — in both modes.
+ * Mode choice plus an Advanced block. Multiplier mode inherits only
+ * points_per_unit from the default campaign; rounding, base, minimum and
+ * exclusions are always this campaign's own, so Advanced renders in both
+ * modes.
  */
 function RewardFieldsPurchase() {
   const { watch, setValue } = useFormContext<CampaignFormValues>();
@@ -293,9 +235,8 @@ function RewardFieldsPurchase() {
   const mode = resolvePurchaseMode(config as Record<string, unknown>);
   const currency = window.yayLoyaltyMeta.wcMeta.currency_data.currency;
 
-  // The `is_eligible()` dependency (annotation 2): a multiplier campaign needs the
-  // default purchase campaign to exist AND be active, or it silently stops applying.
-  // Same list query CampaignTable/BuiltInCampaignList already read, filtered here.
+  // A multiplier campaign silently stops applying unless the default purchase campaign exists
+  // and is active.
   const { data: campaignsData } = useCampaignsQuery({ perPage: 100 });
   const defaultCampaign = campaignsData?.data.find(
     (candidate) => candidate.is_builtin && candidate.trigger === 'purchase',
@@ -312,18 +253,9 @@ function RewardFieldsPurchase() {
 
   return (
     <div className="flex flex-col gap-4">
-      {/*
-        Two cards, one RadioGroup selecting `mode` — both NumberInputRoots stay mounted and
-        bound to their OWN config key regardless of which is selected, so switching modes never
-        clears the inactive one's stored value (Risk Assessment: "Mode toggle discards the
-        inactive field's value"). Only the inactive card's input is disabled, not hidden.
-
-        Each card is three stacked rows — radio + title, then the number input, then the
-        description — rather than a label-wraps-content layout: the radio and its label sit in
-        their own `FieldLabel` row so the number input and description aren't nested inside a
-        `<label>` (still true to L5's "never a labelable control inside another control's label"
-        fix), and the wider three-row shape reads more clearly than a cramped single-row card.
-      */}
+      {/* Both inputs stay mounted and bound to their own key, so switching modes never clears
+          the inactive value; the inactive input is disabled, not hidden. The radio and its label
+          get their own row so no control nests inside another control's label. */}
       <RadioGroup
         value={mode}
         onValueChange={(value) => value && patchConfig({ mode: value as PurchaseConfig['mode'] })}
@@ -361,7 +293,6 @@ function RewardFieldsPurchase() {
         </div>
 
         <div className="has-data-[state=checked]:border-primary has-data-[state=checked]:bg-primary/5 dark:has-data-[state=checked]:bg-primary/10 flex flex-col gap-2.5 rounded-md border p-4">
-          {/* Missing `mode` means 'rate' (resolvePurchaseMode()) — this is that fallback. */}
           <FieldLabel htmlFor="reward-purchase-mode-rate" className="items-center">
             <RadioGroupItem id="reward-purchase-mode-rate" value="rate" />
             <FieldTitle>{__('Set its own rate', 'yayloyalty')}</FieldTitle>
@@ -406,13 +337,7 @@ function RewardFieldsPurchase() {
         {__('Advanced', 'yayloyalty')}
       </button>
 
-      {/* Every remaining `config_schema()['purchase']` key, visible in BOTH modes — see this
-          component's docblock re: annotation 2. Compositions (NumberInput+unit, Segmented, Switch)
-          lifted from BuiltInCampaignList.tsx's PurchaseFields; layout is ui/field.tsx stacked
-          fields, not that file's fixed-width label grid (Key Insight in phase-04's doc). Each
-          Switch field stacks its title above the control (default `Field` orientation) instead of
-          the label-beside-switch `horizontal` orientation — the latter reads as cramped once
-          several of these sit next to each other in this disclosure. */}
+      {/* Every remaining purchase key, visible in both modes. */}
       {advancedOpen && (
         <div className="flex flex-col gap-4">
           <Field>
@@ -468,8 +393,6 @@ function RewardFieldsPurchase() {
             />
           </Field>
           <FieldDescription>
-            {/* Stored but never read by BaseCalculator — still rendered so a downgrade/upgrade
-                round trip doesn't lose it (reference-wireframe-vs-schema.md §3). */}
             {__(
               'Not currently used by point calculations — kept so saving this campaign never loses it.',
               'yayloyalty',
@@ -543,8 +466,6 @@ function RewardFieldsPurchase() {
             </FieldContent>
           </Field>
 
-          {/* No product/category search endpoint exists — raw IDs via TagsInput rather than
-              inventing one (Security Considerations / reference-wireframe-vs-schema.md §3). */}
           <Field>
             <FieldLabel>{__('Excluded products', 'yayloyalty')}</FieldLabel>
             <FieldContent>
@@ -578,13 +499,12 @@ function RewardFieldsPurchase() {
   );
 }
 
-// Ids are positive integers — same check `CampaignEditorConditions.tsx`'s `IntListEditor` uses
-// for its own id-list `TagsInput` entries, so the two never disagree on what counts as a valid id.
+// Same positive-integer check as IntListEditor, so the two agree on a valid id.
 function toIntList(values: string[]): number[] {
   return values.map((value) => Number.parseInt(value, 10)).filter((value) => Number.isInteger(value) && value > 0);
 }
 
-/** `config_schema()['signup']` — a single key. */
+/** config_schema()['signup']. */
 interface SignupConfig {
   points?: number;
 }
@@ -617,7 +537,7 @@ function RewardFieldsSignup() {
   );
 }
 
-/** `config_schema()['review']`. */
+/** config_schema()['review']. */
 interface ReviewConfig {
   points?: number;
   require_verified?: boolean;
@@ -654,8 +574,6 @@ function RewardFieldsReview() {
       </Field>
 
       <Field>
-        {/* In config_schema() but absent from default_config() — default to 0 client-side
-            rather than rendering undefined (reference-wireframe-vs-schema.md §3). */}
         <FieldLabel htmlFor="reward-review-media-bonus">{__('Media bonus', 'yayloyalty')}</FieldLabel>
         <FieldContent>
           <NumberInputRoot
@@ -674,13 +592,11 @@ function RewardFieldsReview() {
         </FieldContent>
       </Field>
 
-      {/* Stacked (default) orientation, matching the Advanced block's switches above — the same
-          "title above, switch below" fix, applied consistently to every switch in this section. */}
       <Field>
         <FieldLabel htmlFor="reward-review-verified">{__('Verified purchases only', 'yayloyalty')}</FieldLabel>
         <Switch
           id="reward-review-verified"
-          className='w-11!'
+          className="w-11!"
           checked={!!config.require_verified}
           onCheckedChange={(require_verified) => patchConfig({ require_verified })}
         />
@@ -690,7 +606,7 @@ function RewardFieldsReview() {
         <FieldLabel htmlFor="reward-review-one-per-product">{__('One review per product', 'yayloyalty')}</FieldLabel>
         <Switch
           id="reward-review-one-per-product"
-          className='w-11!'
+          className="w-11!"
           checked={!!config.one_per_product}
           onCheckedChange={(one_per_product) => patchConfig({ one_per_product })}
         />
@@ -717,21 +633,9 @@ function RewardFieldsReview() {
 }
 
 /**
- * Fallback for any trigger with no `CAMPAIGN_CONFIG_FIELDS` entry — every Pro
- * trigger today, since Lite has no schema for them and their keys arrive
- * through the `yayloyalty_campaign_config_whitelist` PHP filter, untyped.
- *
- * HIGHEST-VALUE CORRECTNESS DETAIL IN THIS PHASE: this component binds
- * NOTHING back to `config` — no `register`/`Controller`/`setValue` anywhere
- * in it, only a `watch()` for the read-only summary below.
- * `campaignToFormValues()` seeds form state with `structuredClone(campaign.config)`
- * verbatim, and because nothing here ever calls `setValue('config', …)`, that
- * clone is exactly what `formValuesToUpdateInput()` sends back on save —
- * byte-for-byte, whatever keys/types it holds. `validate_config()` preserves
- * an unknown trigger's config blob wholesale server-side specifically so a
- * Pro→Lite downgrade doesn't erase it; this component must not be the thing
- * that erases it on the client instead by only round-tripping the subset of
- * keys it happens to render controls for.
+ * Fallback for a trigger with no field map (every Pro trigger). Binds
+ * nothing back to config: the seeded clone must round-trip untouched, or
+ * this would erase on the client what the server preserves for a downgrade.
  */
 function RewardFieldsUnknown({ trigger }: { trigger: CampaignTrigger }) {
   const { watch } = useFormContext<CampaignFormValues>();
@@ -754,9 +658,7 @@ function RewardFieldsUnknown({ trigger }: { trigger: CampaignTrigger }) {
       {entries.length === 0 ? (
         <p className="text-muted-foreground text-sm">{__('No settings stored.', 'yayloyalty')}</p>
       ) : (
-        // Values are rendered as plain text nodes only — never dangerouslySetInnerHTML —
-        // since these are campaign-supplied and untyped for this build (Security
-        // Considerations: never render campaign-supplied strings as HTML).
+        // Plain text nodes only; these values are campaign-supplied and untyped.
         <dl className="flex flex-col gap-1.5 text-sm">
           {entries.map(([key, value]) => (
             <div key={key} className="flex items-baseline justify-between gap-3">
@@ -785,25 +687,10 @@ function formatUnknownConfigValue(value: unknown): string {
 /* ─── §5 Schedule ────────────────────────────────────────────────────── */
 
 /**
- * Section 5, Schedule. `starts_at`/`ends_at` are nullable, exclusive-end,
- * stored UTC `YYYY-MM-DD HH:mm:ss` strings (campaign.schema.ts) — form state
- * holds them raw and unconverted (code-standards.md §4); `splitStoredDateTime`/
- * `joinStoredDateTime` (phase-03) split/rejoin that raw string, still in UTC.
- *
- * The PICKER inputs are a second, separate conversion layer on top of that:
- * `includes/Utils/Dates.php`'s `to_site_tz()` documents that every stored
- * DATETIME is UTC and is converted to the site timezone only at display/input
- * edges — so what the merchant actually sees/types in the date+time fields
- * must be SITE-LOCAL, not raw UTC. `utcStringToSiteLocalParts`/
- * `siteLocalPartsToUtcString` below are that conversion, mirroring
- * `to_site_tz()`'s intent via `@wordpress/date`'s `getSettings().timezone`
- * offset. The underlying RHF form value stays the raw UTC string throughout —
- * conversion happens only in the picker's value/onChange derivation, never in
- * form state.
- *
- * `ends_at` being exclusive cannot be expressed by two date fields alone —
- * see the derived sentence below, the required deliverable this section
- * exists to get right (annotation 4 / phase-05's Risk Assessment).
+ * starts_at/ends_at are nullable, exclusive-end UTC strings held raw in form
+ * state. The picker shows site-local time: utcStringToSiteLocalParts and
+ * siteLocalPartsToUtcString convert at the inputs only. The derived sentence
+ * spells out the exclusive end, which two date fields cannot express.
  */
 function CampaignEditorSchedule() {
   const { control, setValue, formState } = useFormContext<CampaignFormValues>();
@@ -844,8 +731,7 @@ function ScheduleBoundField({
   value: string | null;
   onChange: (next: string | null) => void;
 }) {
-  // Site-local, for display/editing — see this file's docblock. `onChange` below converts back
-  // to the raw stored UTC string; the raw string itself is never touched here.
+  // Site-local for editing; onChange converts back to the raw UTC string.
   const { date, time } = utcStringToSiteLocalParts(value);
 
   function handleDateChange(nextDate: Date | undefined) {
@@ -891,14 +777,9 @@ function ScheduleBoundField({
 /* ─── UTC <-> site-local, the picker's tz conversion edge ────────────── */
 
 /**
- * `getSettings().timezone.offset` — hours (fractional for e.g. `+5:30`) the
- * site's local time is ahead of UTC, mirroring `wp_timezone()`'s offset that
- * `Dates::to_site_tz()` (PHP) applies. A fixed offset, not full IANA/DST-aware
- * math — acceptable here per phase-05's fix guidance ("equivalent moment/
- * date-fns math using the site's UTC offset from `getSettings()`"); it can
- * disagree with `describeWindow()`'s `dateI18n`-based formatting (which IS
- * DST-aware for a named timezone) right around a DST transition, but agrees
- * everywhere else and keeps this section dependency-free.
+ * The site's UTC offset in minutes. A fixed offset, not DST-aware: it can
+ * disagree with dateI18n right around a transition, and keeps this
+ * dependency-free.
  */
 function getSiteOffsetMinutes(): number {
   const settings = getSettings() as unknown as { timezone?: { offset?: number } };
@@ -907,13 +788,7 @@ function getSiteOffsetMinutes(): number {
   return Math.round(offsetHours * 60);
 }
 
-/**
- * Converts a raw stored UTC `{ date, time }` pair to the site-local pair the
- * picker inputs show/accept. Pure offset arithmetic on UTC millisecond
- * components (never a bare `new Date(str)` — code-standards.md §4) —
- * `siteLocalPartsToUtcString` below is its exact inverse, so an unedited
- * round trip through both reproduces the original stored string exactly.
- */
+/** Stored UTC to the site-local pair the picker shows; exact inverse of siteLocalPartsToUtcString. */
 function utcStringToSiteLocalParts(stored: string | null | undefined): { date: string; time: string } {
   const { date, time } = splitStoredDateTime(stored);
 
@@ -928,7 +803,7 @@ function utcStringToSiteLocalParts(stored: string | null | undefined): { date: s
   return utcMsToParts(siteMs);
 }
 
-/** The reverse of `utcStringToSiteLocalParts` — site-local `{ date, time }` back to the raw stored UTC string. */
+/** Reverse of utcStringToSiteLocalParts. */
 function siteLocalPartsToUtcString(date: string, time: string): string | null {
   if (!date) {
     return null;
@@ -942,7 +817,7 @@ function siteLocalPartsToUtcString(date: string, time: string): string | null {
   return joinStoredDateTime(utcDate, utcTime);
 }
 
-/** Reads a millisecond timestamp's UTC calendar fields into a `{ date, time }` pair — no local-tz involvement. */
+/** A timestamp's UTC calendar fields; no local-tz involvement. */
 function utcMsToParts(ms: number): { date: string; time: string } {
   const shifted = new Date(ms);
   const pad = (n: number) => String(n).padStart(2, '0');
@@ -956,15 +831,9 @@ function utcMsToParts(ms: number): { date: string; time: string } {
 /* ─── date <-> Date, for the picker only — never a bare `new Date(str)` ─ */
 
 /**
- * Builds a `Date` purely from a SITE-LOCAL `YYYY-MM-DD`'s own numeric
- * components (already converted by `utcStringToSiteLocalParts` above) —
- * never `new Date(dateString)`. That form parses as browser-local in most
- * engines and would silently shift the calendar day (code-standards.md §4).
- * Reading back only ever uses the LOCAL getters (`localDateToDateString`
- * below) that match how this Date was built, so this function itself does no
- * further timezone conversion — it is a plain day-of-the-month container for
- * the `DatePicker` widget, not a moment in time. The UTC<->site-tz conversion
- * happens once, above, before the string ever reaches here.
+ * A day-of-month container for the DatePicker, built from components:
+ * new Date(str) parses as browser-local and shifts the day. Read back only
+ * with the local getters in localDateToDateString.
  */
 function dateStringToLocalDate(dateStr: string): Date | undefined {
   if (!dateStr) {
@@ -980,7 +849,7 @@ function dateStringToLocalDate(dateStr: string): Date | undefined {
   return new Date(year, month - 1, day);
 }
 
-/** The reverse of `dateStringToLocalDate` — local getters only, matching how the Date was built. */
+/** Reverse of dateStringToLocalDate; local getters only. */
 function localDateToDateString(date: Date | undefined): string {
   if (!date) {
     return '';
@@ -993,16 +862,7 @@ function localDateToDateString(date: Date | undefined): string {
   return `${year}-${month}-${day}`;
 }
 
-/**
- * For the derived sentence's formatted date+time. Builds a real UTC INSTANT
- * (`Date.UTC`, not browser-local components) from the raw stored value, then
- * hands it to `parseWPDate`/`parseWPTime` as-is — `@wordpress/date`'s
- * `dateI18n` (which those call) converts a real instant to the site timezone
- * itself via `moment(...).tz(...)`/`.utcOffset(...)`. Building the `Date` from
- * LOCAL components instead (the previous bug) already misrepresents the
- * instant before `dateI18n` gets to it, double-shifting the result by
- * (site offset − browser offset).
- */
+/** Formats a stored moment for the sentence. A real UTC instant, so dateI18n's own site-tz conversion is not double-shifted. */
 function formatStoredMoment(stored: string): string {
   const { date, time } = splitStoredDateTime(stored);
   const [year, month, day] = date.split('-').map(Number);
@@ -1013,15 +873,10 @@ function formatStoredMoment(stored: string): string {
 }
 
 /**
- * The last day the campaign actually runs. `ends_at` is exclusive, so this is
- * normally one calendar day before it — but only when it lands exactly on a
- * SITE-LOCAL midnight; an `ends_at` with a non-midnight local time (e.g.
- * `23:59`) genuinely runs through its own day, and should name that day, not
- * the one before it. Checked in site-local terms (`utcStringToSiteLocalParts`)
- * since that is what the merchant set and what `describeWindow()`'s sentence
- * is stated to be in. The day-before step subtracts a fixed 24h from the real
- * UTC instant (not from a calendar field) so the result still lands on the
- * correct site-local day once `parseWPDate` converts it.
+ * The last day the campaign runs. ends_at is exclusive, so one day earlier
+ * when it lands on a site-local midnight; a non-midnight end runs through
+ * its own day. Subtracts 24h from the instant, not a calendar field, so the
+ * result stays on the right site-local day.
  */
 function formatDayBeforeStoredMoment(stored: string): string {
   const { date, time } = splitStoredDateTime(stored);
@@ -1035,20 +890,10 @@ function formatDayBeforeStoredMoment(stored: string): string {
 }
 
 /**
- * `@wordpress/date`'s `getSettings().timezone` — its `string` field (an IANA
- * zone like `Europe/Oslo`) is only populated when the site sets a named
- * timezone rather than a bare UTC offset. Verified against no site-specific
- * assumption: fall through to the formatted/raw offset, and only as a last
- * resort a generic "UTC" label — never a fabricated city name (phase-05's
- * Risk Assessment: "`getSettings().timezone` unpopulated").
- *
- * WP core's `offsetFormatted` is UNSIGNED (e.g. `"5:30"` or `"-5"`) and
- * defaults to the string `"0"` for a manual-UTC-offset site with no actual
- * offset — a real, meaningful value, but indistinguishable here from "unset".
- * Treated as "no offset to show" (falls through to the bare "UTC" label)
- * rather than rendering the misleading "UTC0". A positive offset gets an
- * explicit `+` prefix; a negative one already carries its own `-` from WP
- * core, so it is used as-is, never double-signed.
+ * The site timezone as a label: the IANA name when set, else the offset,
+ * else plain "UTC". WP's offsetFormatted is unsigned and "0" for an unset
+ * manual offset, so that case falls through rather than rendering "UTC0",
+ * and a negative value already carries its sign.
  */
 function siteTimezoneLabel(): string {
   const settings = getSettings() as unknown as {
@@ -1078,7 +923,7 @@ function siteTimezoneLabel(): string {
   return __('UTC', 'yayloyalty');
 }
 
-/** The required deliverable: spells out the exclusive end in words (annotation 4). */
+/** Spells out the exclusive end in words. */
 function describeWindow(startsAt: string | null, endsAt: string | null, zoneLabel: string): string {
   if (!startsAt && !endsAt) {
     return __('Always on — no start or end date is set.', 'yayloyalty');
@@ -1116,13 +961,9 @@ function describeWindow(startsAt: string | null, endsAt: string | null, zoneLabe
 /* ─── §6 Priority ────────────────────────────────────────────────────── */
 
 /**
- * Section 6, Priority. The number itself plus the derived ladder of every
- * other campaign sharing this one's trigger group (annotation 5) —
- * `useCampaignsQuery`, filtered by `triggerGroup()`, sorted priority desc
- * with ties to newest (`id` desc), matching `CampaignTable.tsx`'s ordering.
- *
- * No drag-reorder here: `CampaignTable`'s drag changes display order only
- * and never writes `priority` (see its `reorderGroup()`).
+ * The priority number plus the ladder of every campaign in the same trigger
+ * group, ordered as CampaignTable orders them. No drag-reorder: the table's
+ * drag never writes priority either.
  */
 function CampaignEditorPriority() {
   const { control, setValue } = useFormContext<CampaignFormValues>();
@@ -1135,9 +976,7 @@ function CampaignEditorPriority() {
   const ladder = useMemo(() => {
     const rows = (campaignsQuery.data?.data ?? [])
       .filter((row) => triggerGroup(row.trigger) === group)
-      // Reflects the unsaved priority being edited right now — every other row is a saved value
-      // from the query, so this is the one row live-substituted, letting the ladder answer "what
-      // would this reorder to" before the merchant saves.
+      // Substitute the unsaved priority so the ladder answers "what would this reorder to".
       .map((row) => (row.id === campaign.id ? { ...row, priority: priority ?? row.priority } : row));
 
     return [...rows].sort((a, b) => b.priority - a.priority || b.id - a.id);
@@ -1208,7 +1047,7 @@ function CampaignEditorPriority() {
   );
 }
 
-/** Ties go to the newer campaign (higher id) — mirrors `CampaignTable.tsx`'s own tie handling. */
+/** Ties go to the newer campaign, matching CampaignTable. */
 function rowOutranksCurrent(rowPriority: number, rowId: number, currentPriority: number, currentId: number): boolean {
   return rowPriority > currentPriority || (rowPriority === currentPriority && rowId > currentId);
 }
