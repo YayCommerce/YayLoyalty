@@ -751,7 +751,12 @@ function ScheduleBoundField({
       <FieldLabel>{label}</FieldLabel>
       <FieldContent>
         <div className="flex flex-wrap items-center gap-2">
+          {/* Keyed by `date`: DatePicker falls back to an internal uncontrolled cache whenever
+              `value` is undefined (empty), so clearing a field that was picked while it started
+              empty would silently redisplay that stale date. A fresh key each time forces a
+              remount instead, so "no date" always renders as no date. */}
           <DatePicker
+            key={date}
             value={dateStringToLocalDate(date)}
             onValueChange={handleDateChange}
             placeholder={__('No date — always on', 'yayloyalty')}

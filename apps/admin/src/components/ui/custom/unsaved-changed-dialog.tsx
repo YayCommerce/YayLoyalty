@@ -31,7 +31,7 @@ export function UnsavedChangeDialog({
         </DialogHeader>
 
         <DialogFooter>
-          <Button variant="ghost" onClick={onDiscard}>
+          <Button variant="outline" onClick={onDiscard}>
             {__('Discard Changes', 'yayloyalty')}
           </Button>
           <Button onClick={onSave}>{__('Save Changes', 'yayloyalty')}</Button>

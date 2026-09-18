@@ -106,7 +106,7 @@ function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }
     resetOptions: { keepDirtyValues: true },
   });
 
-  const { showDialog, confirmLeave, cancelLeave } = useRouteLeaveGuard(form.formState.isDirty);
+  const { showDialog, confirmLeave, cancelLeave, bypassNext } = useRouteLeaveGuard(form.formState.isDirty);
 
   // Fallbacks for handleSave, reset at the top of each submit: SubmitEvent.submitter is missing
   // in Safari < 15.4, and the UnsavedChangeDialog save has no submit event at all.
@@ -152,6 +152,9 @@ function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }
         // A dialog save already proceeds to the originally blocked destination; navigating here
         // would override it.
         if (!savingFromDialog) {
+          // The reset()-driven isDirty:false above may not have re-rendered yet — bypass this
+          // one navigation so the blocker doesn't re-trip on its own stale closure.
+          bypassNext();
           navigate('/campaigns');
         }
       }
