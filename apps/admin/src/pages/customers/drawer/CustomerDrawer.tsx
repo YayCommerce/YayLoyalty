@@ -14,6 +14,8 @@ import { CustomerDrawerExpiryStats } from './CustomerDrawerExpiryStats';
 import { CustomerDrawerHeader } from './CustomerDrawerHeader';
 import { CustomerDrawerLooseEnds } from './CustomerDrawerLooseEnds';
 import { CustomerDrawerLotBatches } from './CustomerDrawerLotBatches';
+import { CustomerDrawerNegativeActions } from './CustomerDrawerNegativeActions';
+import { CustomerDrawerNegativePanel } from './CustomerDrawerNegativePanel';
 import { CustomerDrawerSkeleton } from './CustomerDrawerSkeleton';
 import { CustomerDrawerStats } from './CustomerDrawerStats';
 import { CustomerDrawerTabs } from './CustomerDrawerTabs';
@@ -47,6 +49,9 @@ export default function CustomerDrawer() {
   const query = useCustomerQuery(isValidId ? userId : 0, scenario);
   const listRow = (location.state as { row?: CustomerListRow } | null)?.row;
   const search = searchParams.toString();
+  // Only ever rendered once `query.data` is confirmed below — the fallback
+  // here just keeps this hook-free derivation unconditional.
+  const firstName = query.data ? query.data.name.split(' ')[0] || query.data.name : '';
 
   function close() {
     navigate({ pathname: '/customers', search: search ? `?${search}` : '' });
@@ -118,6 +123,21 @@ export default function CustomerDrawer() {
                         <CustomerDrawerExpiryPanel customer={query.data} expiry={query.data.expiry} />
                         <CustomerDrawerExpiryStats customer={query.data} expiry={query.data.expiry} />
                         <CustomerDrawerLotBatches batches={query.data.expiry.batches} />
+                      </>
+                    )}
+                    {/* 5a's two panels (F23) — only `?scenario=negative` sets
+                        `negative_balance` (the real path would have to walk
+                        the ledger backwards to assemble it). A deleted or
+                        expiring account is never also this scenario, so this
+                        and the two blocks above are mutually exclusive. Free
+                        AND Pro alike — no `ProGate` anywhere here. */}
+                    {query.data.negative_balance && (
+                      <>
+                        <CustomerDrawerNegativePanel
+                          customerFirstName={firstName}
+                          negativeBalance={query.data.negative_balance}
+                        />
+                        <CustomerDrawerNegativeActions customerFirstName={firstName} />
                       </>
                     )}
                     <CustomerDrawerTabs customer={query.data} scenario={scenario} />

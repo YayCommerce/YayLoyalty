@@ -70,7 +70,19 @@ export function LedgerTabRows({
           // `sm:table-row`/`sm:table-cell`/`sm:w-auto` restore the real table
           // layout above that breakpoint, so column headers stay aligned.
           rows.map((row, index) => (
-            <TableRow key={index} className="flex flex-wrap sm:table-row">
+            <TableRow
+              key={index}
+              // 5a (F09 Wave B): the one row `negative_balance.cause_ledger_id`
+              // names gets the same tinted-panel treatment the tier card and
+              // other header panels use — never a new colour token. Applied
+              // via `box-shadow` (not `border-l`) because Tailwind's border
+              // utilities on a `<tr>` render unreliably across browsers; an
+              // inset shadow paints correctly regardless of table layout.
+              className={cn(
+                'flex flex-wrap sm:table-row',
+                row.isCause && 'bg-muted/50 shadow-[inset_3px_0_0_0_var(--muted-foreground)]',
+              )}
+            >
               <TableCell className="order-3 w-1/2 sm:order-0 sm:w-auto sm:table-cell">{row.date}</TableCell>
               <TableCell className="order-1 w-1/2 sm:order-0 sm:w-auto sm:table-cell">
                 <span className="flex flex-col gap-0.5">

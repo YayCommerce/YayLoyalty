@@ -56,6 +56,17 @@ final class DrawerLedger {
      * @return array<int, array<string, mixed>>
      */
     private static function rows( string $scenario, int $user_id ): array {
+        // 5a (F09 Wave B) needs an exact, real story — "earned 1,000 on
+        // #4102, spent it all on #4150, then #4102 was refunded" — not the
+        // generic procedural rows every other scenario gets. Lives in
+        // `DrawerNegativeBalance.php`, not here: it's the same narrative
+        // `negative_balance.cause_ledger_id` describes, from the ledger
+        // endpoint's side, and keeping both views together in one file beat
+        // splitting them across two that would need to stay in sync anyway.
+        if ( 'negative' === $scenario ) {
+            return DrawerNegativeBalance::ledger_rows( $user_id );
+        }
+
         $count   = DrawerProfiles::ledger_count_for( $scenario );
         $balance = DrawerProfiles::balance_for( $scenario );
         $types   = DrawerLedgerGenerator::type_sequence( $scenario, $count );

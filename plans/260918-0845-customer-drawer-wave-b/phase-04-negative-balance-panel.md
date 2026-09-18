@@ -148,18 +148,54 @@ Delete
 
 ## Todo List
 
-- [ ] Wire shape written down before any code, including the `shape` discriminator
-- [ ] `shape: 'other'` / missing legs render the generic explanation, not a half-filled list
-- [ ] Fixture emits structured legs only; no assembled narrative in PHP
-- [ ] Real path emits `negative_balance: null` with the "would have to walk the ledger" docblock
-- [ ] Zod enum on `shape` so an unknown value fails loudly
-- [ ] Both actions disabled and wired to nothing; write-off feasibility recorded in a comment
-- [ ] Causing ledger row marked; `cause_ledger_id` threaded from the customer payload
-- [ ] No `ProGate` anywhere — this is Free and Pro alike
-- [ ] Stat grid NOT branched on balance sign
-- [ ] Panel sets (deleted / expiring / negative) asserted mutually exclusive
-- [ ] `F23` named in the component docblocks so the feature does not drift again
-- [ ] Every new file < 200 lines
+- [x] Wire shape written down before any code, including the `shape` discriminator
+- [x] `shape: 'other'` / missing legs render the generic explanation, not a half-filled list
+- [x] Fixture emits structured legs only; no assembled narrative in PHP
+- [x] Real path emits `negative_balance: null` with the "would have to walk the ledger" docblock
+- [x] Zod enum on `shape` so an unknown value fails loudly
+- [x] Both actions disabled and wired to nothing; write-off feasibility recorded in a comment
+- [x] Causing ledger row marked; `cause_ledger_id` threaded from the customer payload
+- [x] No `ProGate` anywhere — this is Free and Pro alike
+- [x] Stat grid NOT branched on balance sign (unchanged — this phase never touched the stat grid)
+- [x] Panel sets (deleted / expiring / negative) asserted mutually exclusive
+- [x] `F23` named in the component docblocks so the feature does not drift again
+- [x] Every new file < 200 lines
+
+Deviations from plan:
+- **`DrawerLedger.php`'s `negative` scenario had to be special-cased, not just `DrawerNegativeBalance.php`.**
+  The plan's own step 9 says `cause_ledger_id` "comes from the customer payload," but for the
+  highlighted row to actually exist, the LEDGER endpoint's `negative` scenario had to emit that
+  exact row too — Wave A's generic procedural ledger generator (`DrawerLedgerGenerator`) produces
+  plausible-looking but arbitrary rows per scenario, with no way to guarantee one of them is
+  "earn 1,000 on #4102, then a `refund_earn` reversing it." Added
+  `DrawerNegativeBalance::ledger_rows()` — three exact, hardcoded rows telling 5a's specific story,
+  summing to the scenario's −1,000 balance by construction — and `DrawerLedger::rows()` now
+  special-cases `'negative'` to call it instead of the generic generator. `DrawerProfiles`'s
+  `negative` row's ledger count also changed 4 → 3 to match (was an arbitrary Wave A figure with no
+  specific story behind it; 3 is what this exact narrative actually has).
+- **`negative_scenario_rows()` (later renamed `ledger_rows()`) lives in `DrawerNegativeBalance.php`,
+  not `DrawerLedger.php`** — moved there mid-phase after adding it pushed `DrawerLedger.php` to 225
+  lines, over the cap. Kept the two views of the same story (the customer payload's structured legs
+  and the ledger endpoint's three rows) together in one file rather than splitting them across two
+  that would need to stay in sync anyway — `DrawerLedger.php` just calls
+  `DrawerNegativeBalance::ledger_rows()` now, the same shape as its `DrawerExpiry`/`DrawerProfiles`
+  delegation elsewhere.
+- **Real bug caught by live verification, not code review**: the new `ledger_rows()` used
+  `LedgerSource::ORDER` without importing `YayLoyalty\Enums\LedgerSource` — `DrawerLedger.php`
+  never needed that import before (it only ever went through
+  `DrawerLedgerGenerator::source_for()`, which imports it itself). This wasn't caught by `php -l`
+  or `composer lint` (a missing `use` for a referenced class is not a syntax or style error) — only
+  surfaced as a real HTTP 500 when the ledger endpoint was actually called for `?scenario=negative`.
+  Fixed by adding the import to whichever file ended up owning the method.
+- **Column labels/headings ("What Tom sees" / "What happens next") use the customer's first name,
+  not a fixed name** (`negativeWhatCustomerSeesTitle(firstName)`), and pronouns are avoided
+  entirely in the generic-fallback and write-off-consequence sentences ("an earlier change reversed
+  points already spent" / "an adjustment in {firstName}'s ledger" rather than "his ledger") —
+  matches this session's own house style, not a plan requirement, but worth noting since 5a's own
+  design text uses "he"/"his" throughout.
+- **`firstName` is derived once in `CustomerDrawer.tsx`** (a `query.data ? ... : ''` guard) and
+  passed to both new components as `customerFirstName`, matching the exact convention
+  `CustomerDrawerTabs.tsx` already established for the tab bodies — not re-derived per component.
 
 ## Success Criteria
 
@@ -204,3 +240,47 @@ No browser-automation tool exists here and dev port 3030 is occupied, so no visu
 possible. Verify with `composer lint`, `tsc --noEmit`, `vite build`, and a live `rest_do_request()`
 of the `negative` scenario checking the structured legs against 5a's stated figures. State this in
 the phase's Deviations section on completion, as Wave A did.
+
+Live-verified via `rest_do_request()`: `?scenario=negative`'s customer payload returns
+`negative_balance` with the exact story (`earned`: 1,000 on #4102; `spent`: 1,000 on #4150 for
+"10.00"; `reversed`: 1,000 on #4102; `deficit`: 1,000; `cause_ledger_id`: 3); the ledger endpoint's
+same scenario returns exactly those 3 rows (`refund_earn −1000 → −1000`, `redeem −1000 → 0`,
+`earn +1000 → 1000`), and `cause_ledger_id` matches a real row's `id` in that response — the
+highlighting has something real to point at, not an invented id. `large`/`expiring`/`deleted`/real
+path all confirmed `negative_balance: null`; `large`'s ledger (4,812 rows) confirmed unaffected by
+the `negative`-only special case. `composer lint` clean on every touched PHP file (one pre-existing,
+unrelated warning remains), `tsc --noEmit` no new errors, ESLint clean, Vitest 63/63,
+`vite build` clean. Every touched/created file under the 200-line cap, including after the mid-phase
+`DrawerLedger.php`/`DrawerNegativeBalance.php` split.
+
+### Code Review
+
+One High finding, fixed: **`DrawerNegativeBalance::ledger_rows()` used `$base + [row-specific]`**,
+where PHP's `+` keeps the LEFT operand's value on a key collision — the opposite of
+`array_merge()`. With `$base` on the left, its `null` defaults for `campaign_id`/`redemption_id`
+silently won over the row-specific overrides, so the earn row's `campaign_id: 1` and the redeem
+row's `redemption_id: 4150` both rendered `null`. Neither `php -l` nor `composer lint` catches this
+— it's valid, correctly-styled PHP that does the wrong thing. Caught only because the reviewer
+independently reproduced the operator semantics with `php -r`, not by this phase's own live
+verification (which checked `points`/`balance_after`/`type`/`id`/`cause_ledger_id`, not
+`campaign_id`/`redemption_id`). Fixed by flipping operand order (`[row-specific] + $base`) at all
+three call sites. Live-re-verified: the earn row now returns `campaign_id: 1`, the redeem row
+`redemption_id: 4150` — confirmed via `rest_do_request()` against the real ledger endpoint.
+
+Three Medium/Low findings, all fixed: two stale doc comments still named the pre-rename
+`DrawerLedger::negative_scenario_rows()` (the method moved to `DrawerNegativeBalance::ledger_rows()`
+mid-phase when the file split happened, and two comments weren't updated with it) — corrected in
+`DrawerNegativeBalance.php`'s own docblock and in `DrawerProfiles.php`'s ledger-count comment.
+`CustomerDrawerNegativeActions.tsx` was the one new component whose docblock didn't say "F23" —
+added, matching the other three. One cosmetic `--` → em dash in `CustomerItemSchema.php`.
+
+Everything else came back clean: `shape`/leg narrowing in `CustomerDrawerNegativePanel.tsx` (TS's
+aliased-condition control-flow narrowing correctly types `earned`/`spent`/`reversed` as non-null
+inside the true branch, confirmed via `tsc`), the full `isCause` threading chain end-to-end (every
+hop null-safe and type-correct), the required (not optional) `causeLedgerId` prop on `LedgerTab.tsx`
+(defensible — exactly one call site), the `box-shadow` arbitrary value (`--muted-foreground` is a
+real hex color in this codebase's theme CSS, not an HSL triplet needing wrapping), and the
+write-off-feasibility comment's accuracy (cross-checked against `adjust_points()`'s actual
+requirements — accurate, if slightly optimistic about the ceiling machinery it doesn't mention).
+Re-verified after fixes: ESLint clean, `tsc --noEmit` no new errors, Vitest 63/63, `vite build`
+clean, `composer lint` clean.

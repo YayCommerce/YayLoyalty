@@ -125,3 +125,76 @@ export const EXPIRY_FREE_EXPLANATION = () =>
     'On the free inactivity model there are no batches: the whole balance moves together, and points expire together too.',
     'yayloyalty',
   );
+
+// ─── 5a: negative balance (F23) ───────────────────────
+
+export const NEGATIVE_BALANCE_HEADING = () => __('Why this balance is negative', 'yayloyalty');
+
+/** The three-step story (`shape: 'refund_reversal'`) — composed from the
+ *  fixture's structured legs, never assembled server-side. */
+export function negativeBalanceFactEarned(firstName: string, points: string, orderId: string, date: string): string {
+  return sprintf(
+    __('%1$s earned %2$s points on order #%3$s on %4$s.', 'yayloyalty'),
+    firstName,
+    points,
+    orderId,
+    date,
+  );
+}
+export function negativeBalanceFactSpent(points: string, orderId: string, value: string): string {
+  return sprintf(
+    __('They spent all %1$s of them on order #%2$s — a %3$s discount already used.', 'yayloyalty'),
+    points,
+    orderId,
+    value,
+  );
+}
+export function negativeBalanceFactReversed(orderId: string, points: string): string {
+  return sprintf(
+    __(
+      'Order #%1$s was then refunded, so the %2$s points it issued were reversed. There was nothing left to take back, so the balance went below zero.',
+      'yayloyalty',
+    ),
+    orderId,
+    points,
+  );
+}
+/** `shape: 'other'` — the three-step story doesn't apply (a manual
+ *  adjustment or an expiry clawback, not a refund). One honest sentence
+ *  instead of a half-filled numbered list. */
+export function negativeBalanceGenericExplanation(firstName: string, deficit: string): string {
+  return sprintf(
+    __('%1$s’s balance went %2$s points below zero — an earlier change reversed points already spent.', 'yayloyalty'),
+    firstName,
+    deficit,
+  );
+}
+
+export function negativeWhatCustomerSeesTitle(firstName: string): string {
+  return sprintf(__('What %s sees', 'yayloyalty'), firstName);
+}
+export const NEGATIVE_WHAT_CUSTOMER_SEES_BODY = () =>
+  __(
+    '0 points. No debt, no negative number, no message about owing anything — their rewards page reads as if they have an empty balance.',
+    'yayloyalty',
+  );
+
+export const NEGATIVE_WHAT_HAPPENS_NEXT_TITLE = () => __('What happens next', 'yayloyalty');
+export function negativeWhatHappensNextBody(deficit: string): string {
+  return sprintf(
+    __(
+      'The first %s points earned clear the deficit before anything becomes spendable. Nothing expires while the balance is negative, and it is not counted in your liability.',
+      'yayloyalty',
+    ),
+    deficit,
+  );
+}
+
+export const ACTION_WRITE_OFF_NEGATIVE_BALANCE = () => __('Write off the negative balance', 'yayloyalty');
+export const ACTION_LEAVE_AS_IS = () => __('Leave as is', 'yayloyalty');
+export function negativeWriteOffConsequence(firstName: string): string {
+  return sprintf(
+    __('Writing off sets the balance to 0 with an adjustment in %s’s ledger, naming you.', 'yayloyalty'),
+    firstName,
+  );
+}

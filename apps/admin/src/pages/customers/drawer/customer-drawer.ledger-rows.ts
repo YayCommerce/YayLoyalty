@@ -11,6 +11,10 @@ export type LedgerRow = {
   subLine: string | null;
   points: string;
   balance: string;
+  /** True for the one row `customer.negative_balance.cause_ledger_id` names
+   *  (5a, F09 Wave B) — the row the negative-balance panel above is talking
+   *  about. `false` on every other row, on every other scenario. */
+  isCause: boolean;
 };
 
 /**
@@ -25,13 +29,18 @@ export type LedgerRow = {
  * for redeem/expire/adjust rows would be exactly the fabricated-prose the
  * fixture phase went out of its way to avoid (see phase 02's docblocks).
  */
-export function toLedgerRow(entry: LedgerEntry, campaignNames: Map<number, string>): LedgerRow {
+export function toLedgerRow(
+  entry: LedgerEntry,
+  campaignNames: Map<number, string>,
+  causeLedgerId: number | null = null,
+): LedgerRow {
   return {
     date: parseWPDate(utcToDate(entry.created_at)),
     description: describeLedgerEntry(entry),
     subLine: campaignSubLine(entry, campaignNames),
     points: formatSignedPoints(entry.points),
     balance: formatPoints(entry.balance_after),
+    isCause: entry.id === causeLedgerId,
   };
 }
 

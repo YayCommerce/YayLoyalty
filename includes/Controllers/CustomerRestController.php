@@ -256,6 +256,10 @@ final class CustomerRestController extends AbstractRestController {
             // which doesn't exist yet (docs/data-model.md). `expires_at`
             // above is all the real path knows about a customer's expiry.
             'expiry'                   => null,
+            // Real path can never populate this either: assembling the
+            // earned/spent/reversed story means walking the ledger
+            // backwards, which is its own piece of work and not this wave's.
+            'negative_balance'         => null,
             // Restored minimally (F09 Wave B phase 03) after `worth` was
             // removed wholesale — the drawer's expiry/negative-balance
             // panels need this rate for their money-equivalent figures.

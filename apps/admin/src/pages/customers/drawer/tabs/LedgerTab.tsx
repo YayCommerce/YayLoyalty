@@ -24,10 +24,14 @@ export function LedgerTab({
   userId,
   customerFirstName,
   scenario,
+  causeLedgerId,
 }: {
   userId: number;
   customerFirstName: string;
   scenario?: string;
+  /** 5a's `cause_ledger_id` (F09 Wave B) — the one row to mark, or `null`
+   *  on every scenario without a negative-balance story. */
+  causeLedgerId: number | null;
 }) {
   const [type, setType] = useState<LedgerFilterType>('all');
   const [range, setRange] = useState<DateRange | undefined>(undefined);
@@ -51,7 +55,7 @@ export function LedgerTab({
   });
 
   const campaignNames = useLedgerCampaignNames();
-  const rows = query.data?.data.map((entry) => toLedgerRow(entry, campaignNames)) ?? [];
+  const rows = query.data?.data.map((entry) => toLedgerRow(entry, campaignNames, causeLedgerId)) ?? [];
   const totalItems = query.data?.totalItems ?? 0;
   // Per-type counts describe the UNFILTERED set (see the schema's own
   // docblock) — `null` on the real path means the server can't filter yet.

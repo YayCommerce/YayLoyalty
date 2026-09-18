@@ -32,7 +32,11 @@ final class DrawerProfiles {
             // Same identity as '' — 4b is Daniel again, 12 days from losing
             // 6,300 of his 9,850 points, not a different fictional person.
             'expiring' => [ 'Daniel Okonkwo', 'daniel.okonkwo@example.com', '2024-03-12 00:00:00', 9850, 240, 14300, 4450, '2027-08-14 00:00:00', null, 48, 24, 6, 3 ],
-            'negative' => [ 'Tom Weaver', 'tom.weaver@example.com', '2024-11-11 00:00:00', -1000, 0, 4260, 1000, null, null, 4, 2, 1, 0 ],
+            // 3 ledger rows, not a round number — `DrawerNegativeBalance::ledger_rows()`
+            // tells 5a's exact story (earn 1,000, redeem it, refund reverses
+            // it), and this count must match how
+            // many rows that method actually returns.
+            'negative' => [ 'Tom Weaver', 'tom.weaver@example.com', '2024-11-11 00:00:00', -1000, 0, 4260, 1000, null, null, 3, 2, 1, 0 ],
         ];
     }
 
@@ -94,6 +98,7 @@ final class DrawerProfiles {
             ],
             'loose_ends'               => self::loose_ends_for( $scenario ),
             'expiry'                   => DrawerExpiry::for_scenario( $scenario, $balance ),
+            'negative_balance'         => DrawerNegativeBalance::for_scenario( $scenario, $balance ),
             // Restored minimally (F09 Wave B phase 03) after the `worth`
             // object was removed wholesale — 4b/5a's money-equivalent
             // figures need the rate, `worth`'s display no longer does.

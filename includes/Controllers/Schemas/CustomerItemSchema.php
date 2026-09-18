@@ -142,6 +142,44 @@ final class CustomerItemSchema {
                     ],
                 ],
             ],
+            'negative_balance'         => [
+                'description' => __( 'F09 Wave B, artboard 5a (F23). The earned/spent/reversed story behind a negative balance, when one can be assembled. Always null on the real path — would need walking the ledger backwards.', 'yayloyalty' ),
+                'type'        => [ 'object', 'null' ],
+                'context'     => [ 'view' ],
+                'readonly'    => true,
+                'properties'  => [
+                    'shape'           => [
+                        'type' => 'string',
+                        'enum' => [ 'refund_reversal', 'other' ],
+                    ],
+                    'earned'          => [
+                        'type'       => [ 'object', 'null' ],
+                        'properties' => [
+                            'order_id'    => [ 'type' => 'integer' ],
+                            'points'      => [ 'type' => 'integer' ],
+                            'occurred_at' => [ 'type' => 'string' ],
+                        ],
+                    ],
+                    'spent'           => [
+                        'type'       => [ 'object', 'null' ],
+                        'properties' => [
+                            'order_id' => [ 'type' => 'integer' ],
+                            'points'   => [ 'type' => 'integer' ],
+                            'value'    => [ 'type' => 'string' ],
+                        ],
+                    ],
+                    'reversed'        => [
+                        'type'       => [ 'object', 'null' ],
+                        'properties' => [
+                            'order_id'    => [ 'type' => 'integer' ],
+                            'points'      => [ 'type' => 'integer' ],
+                            'occurred_at' => [ 'type' => 'string' ],
+                        ],
+                    ],
+                    'cause_ledger_id' => [ 'type' => [ 'integer', 'null' ] ],
+                    'deficit'         => [ 'type' => 'integer' ],
+                ],
+            ],
             'points_per_currency_unit' => [
                 'description' => __( 'Conversion rate for money-equivalent figures (drawer expiry/negative-balance panels). Restored minimally after the wider worth object was removed.', 'yayloyalty' ),
                 'type'        => 'number',

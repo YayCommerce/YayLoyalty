@@ -70,6 +70,44 @@ export const drawerExpirySchema = z.object({
 
 export type DrawerExpiry = z.infer<typeof drawerExpirySchema>;
 
+/**
+ * 5a's structured story (F23, F09 Wave B) — always `null` outside
+ * `?scenario=negative`. `shape` is a Zod enum, not a bare string: an unknown
+ * discriminator fails loudly at parse time rather than the panel rendering
+ * a blank or half-filled narrative. `'other'` means the three-step story
+ * cannot be assembled (a manual adjustment or an expiry clawback pushed the
+ * balance below zero, not a refund) — the panel falls back to a generic
+ * explanation, never guessing at legs that are `null`.
+ */
+export const drawerNegativeBalanceShapeSchema = z.enum(['refund_reversal', 'other']);
+export type DrawerNegativeBalanceShape = z.infer<typeof drawerNegativeBalanceShapeSchema>;
+
+const drawerNegativeBalanceLegSchema = z.object({
+  order_id: z.number().int(),
+  points: z.number().int(),
+  occurred_at: z.string(),
+});
+
+export const drawerNegativeBalanceSchema = z.object({
+  shape: drawerNegativeBalanceShapeSchema,
+  earned: drawerNegativeBalanceLegSchema.nullable(),
+  spent: z
+    .object({
+      order_id: z.number().int(),
+      points: z.number().int(),
+      /** Discount value in store currency, e.g. "10.00" — a string, same as
+       *  `Reward`/redemption values elsewhere, never a pre-formatted price. */
+      value: z.string(),
+    })
+    .nullable(),
+  reversed: drawerNegativeBalanceLegSchema.nullable(),
+  /** The real ledger row this story is about — `LedgerTabRows.tsx` marks it. */
+  cause_ledger_id: z.number().int().nullable(),
+  deficit: z.number().int(),
+});
+
+export type DrawerNegativeBalance = z.infer<typeof drawerNegativeBalanceSchema>;
+
 export const customerSchema = z.object({
   user_id: z.number().int(),
   /** From wp_users — carried here (not only the list row) so the drawer has an
@@ -91,6 +129,7 @@ export const customerSchema = z.object({
   counts: customerCountsSchema,
   loose_ends: looseEndsSchema.nullable(),
   expiry: drawerExpirySchema.nullable(),
+  negative_balance: drawerNegativeBalanceSchema.nullable(),
   /** Restored minimally (Wave B) after `worth` was removed wholesale — the
    *  expiry/negative-balance panels' only remaining need for a currency rate. */
   points_per_currency_unit: z.number(),

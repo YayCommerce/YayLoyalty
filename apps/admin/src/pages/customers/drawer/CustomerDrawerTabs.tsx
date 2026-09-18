@@ -66,7 +66,12 @@ export function CustomerDrawerTabs({ customer, scenario }: { customer: Customer;
         </TabsList>
       </div>
       <TabsContent value="ledger">
-        <LedgerTab userId={customer.user_id} customerFirstName={firstName} scenario={scenario} />
+        <LedgerTab
+          userId={customer.user_id}
+          customerFirstName={firstName}
+          scenario={scenario}
+          causeLedgerId={customer.negative_balance?.cause_ledger_id ?? null}
+        />
       </TabsContent>
       <TabsContent value="activity">
         <ActivityLogTab userId={customer.user_id} scenario={scenario} />
