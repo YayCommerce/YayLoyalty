@@ -25,7 +25,9 @@ const SKELETON_ROW_COUNT = 10;
  */
 export function ActivityLogTabRows({ rows, isLoading }: { rows: ActivityRow[]; isLoading: boolean }) {
   return (
-    <Table>
+    // `min-w-max` overrides `Table`'s own `w-full` — see `LedgerTabRows.tsx`'s
+    // identical comment for why the container never scrolled without it.
+    <Table className="min-w-max">
       <TableHeader>
         <TableRow>
           <TableHead>{COLUMN_DATE()}</TableHead>

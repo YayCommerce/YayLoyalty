@@ -31,7 +31,12 @@ export function LedgerTabRows({
   customerFirstName: string;
 }) {
   return (
-    <Table>
+    // `min-w-max` overrides `Table`'s own `w-full` — without it the table can
+    // never be wider than its `overflow-x-auto` ancestor, so `whitespace-nowrap`
+    // cells get squeezed/clipped instead of the container ever scrolling.
+    // Same flexbox-style sizing trap as CustomerDrawer.tsx's vertical scroll
+    // fix, on the width axis instead of height.
+    <Table className="min-w-max">
       <TableHeader>
         <TableRow>
           <TableHead>{COLUMN_DATE()}</TableHead>
