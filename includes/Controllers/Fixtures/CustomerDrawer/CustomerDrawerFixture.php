@@ -79,4 +79,12 @@ final class CustomerDrawerFixture {
     public static function redemptions( string $scenario, array $args ): array {
         return DrawerRedemptions::envelope( $scenario, $args );
     }
+
+    /**
+     * @param array{page:int,per_page:int} $args
+     * @return array{items: array, total: int, page: int, per_page: int, referral_link: string, campaign: array}
+     */
+    public static function referrals( string $scenario, array $args ): array {
+        return DrawerReferrals::envelope( $scenario, $args );
+    }
 }

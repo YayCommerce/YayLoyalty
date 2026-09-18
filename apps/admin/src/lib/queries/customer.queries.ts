@@ -1,16 +1,20 @@
 import { keepPreviousData, queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
+  getCustomerActivity,
+  getCustomerRedemptions,
+  getCustomerReferrals,
+  type CustomerActivityParams,
+  type CustomerRedemptionsParams,
+  type CustomerReferralsParams,
+} from '@/lib/api/customer-drawer.api';
+import {
   adjustCustomerPoints,
   getCustomer,
-  getCustomerActivity,
   getCustomerLedger,
-  getCustomerRedemptions,
   getCustomers,
-  type CustomerActivityParams,
   type CustomerLedgerParams,
   type CustomerListParams,
-  type CustomerRedemptionsParams,
 } from '@/lib/api/customer.api';
 import type { AdjustPointsInput } from '@/lib/schema/customer.schema';
 
@@ -74,6 +78,15 @@ export const CUSTOMER_QUERIES = {
       placeholderData: keepPreviousData,
       retry: 1,
     }),
+
+  referrals: (userId: number, params: CustomerReferralsParams) =>
+    queryOptions({
+      queryKey: ['customer', 'referrals', userId, params],
+      queryFn: () => getCustomerReferrals(userId, params),
+      enabled: userId > 0,
+      placeholderData: keepPreviousData,
+      retry: 1,
+    }),
 };
 
 /** ─── Hooks ─────────────────────────────────────────── */
@@ -96,6 +109,10 @@ export function useCustomerActivityQuery(userId: number, params: CustomerActivit
 
 export function useCustomerRedemptionsQuery(userId: number, params: CustomerRedemptionsParams) {
   return useQuery(CUSTOMER_QUERIES.redemptions(userId, params));
+}
+
+export function useCustomerReferralsQuery(userId: number, params: CustomerReferralsParams) {
+  return useQuery(CUSTOMER_QUERIES.referrals(userId, params));
 }
 
 export function useAdjustPointsMutation(userId: number) {

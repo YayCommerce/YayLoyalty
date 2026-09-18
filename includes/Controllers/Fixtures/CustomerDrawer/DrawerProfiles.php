@@ -125,4 +125,9 @@ final class DrawerProfiles {
     public static function redemptions_count_for( string $scenario ): int {
         return ( self::rows()[ $scenario ] ?? self::rows()[''] )[11];
     }
+
+    /** The scenario's referrals row count — `DrawerReferrals::rows()` generates exactly this many. */
+    public static function referrals_count_for( string $scenario ): int {
+        return ( self::rows()[ $scenario ] ?? self::rows()[''] )[12];
+    }
 }

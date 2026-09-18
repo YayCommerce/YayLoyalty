@@ -123,9 +123,6 @@ export const REDEMPTION_STATUS_APPLIED = () => __('Applied', 'yayloyalty');
 export const REDEMPTION_STATUS_RETURNED = () => __('Points returned', 'yayloyalty'); // a refund, positive figure
 export const REDEMPTION_STATUS_ISSUED = () => __('Issued', 'yayloyalty');
 
-export const EMPTY_REFERRALS_TITLE = () => __('No referrals yet', 'yayloyalty');
-export const EMPTY_REFERRALS_BODY = () => __('The link works from the day the account exists.', 'yayloyalty');
-
 // ─── Activity log (3d) ────────────────────────────────
 
 export const COLUMN_EVENT = () => __('Event', 'yayloyalty');

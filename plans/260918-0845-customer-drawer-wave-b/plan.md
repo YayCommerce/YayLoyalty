@@ -48,7 +48,7 @@ Out (design elements deliberately dropped): 3e's summary strip and "Rewards X co
 | 03 | [Expiring panels + lot batches (4b)](phase-03-expiring-panels-and-lots.md) | 4h | complete |
 | 04 | [Negative-balance explanation (5a)](phase-04-negative-balance-panel.md) | 3h | complete |
 | 05 | [Redemptions table (3e)](phase-05-redemptions-table.md) | 4h | complete |
-| 06 | [Referrals table (3f)](phase-06-referrals-table.md) | 4h | pending |
+| 06 | [Referrals table (3f)](phase-06-referrals-table.md) | 4h | complete |
 | 07 | [Mobile pass + docs sync (5c)](phase-07-mobile-pass-and-docs-sync.md) | 3h | pending |
 
 ## Dependencies
