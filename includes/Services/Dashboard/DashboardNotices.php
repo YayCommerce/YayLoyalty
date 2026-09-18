@@ -10,17 +10,10 @@ use YayLoyalty\Utils\Dates;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The dashboard's three real notice detectors, as structured data only:
- * `{ key, severity, fingerprint, data }`. No title, body or action text —
- * the admin app owns every word (same rule as ledger descriptions), so
- * nothing here calls __().
- *
- * Runs inside the site-wide cached payload; per-user dismissal is applied
- * afterwards by NoticeDismissals. The fingerprint is what a dismissal is
- * keyed on, so it changes exactly when the notice should re-surface.
- *
- * Not final: WordPress is reached only through the two protected methods at
- * the bottom, which the unit test overrides.
+ * The dashboard's notice detectors, as structured data only: the SPA owns
+ * every word. Runs inside the cached payload; dismissal is applied after,
+ * keyed on the fingerprint, which changes exactly when a notice should
+ * re-surface. Not final: a test overrides the two WordPress-touching methods.
  */
 class DashboardNotices {
 
@@ -63,8 +56,7 @@ class DashboardNotices {
             )
         );
 
-        // Index-tagged so equal severities keep detector order on PHP 7.4,
-        // where usort() is not stable.
+        // Index-tagged: usort() is not stable on PHP 7.4.
         $tagged = array_map( static fn( int $i, array $n ): array => [ self::RANK[ $n['severity'] ], $i, $n ], array_keys( $notices ), $notices );
         usort( $tagged, static fn( array $a, array $b ): int => [ $a[0], $a[1] ] <=> [ $b[0], $b[1] ] );
 
@@ -119,10 +111,7 @@ class DashboardNotices {
         ];
     }
 
-    /**
-     * Always evaluated over its own 30-day series, independent of the chart
-     * range, so the notice does not flicker as the admin switches 7/30/90.
-     */
+    /** Over its own 30-day series, independent of the chart range, so it does not flicker on range switch. */
     private function points_jump( \DateTimeImmutable $now_site ): ?array {
         $window = PeriodWindow::for_range( 30, $now_site );
         $days   = $window->days();
@@ -181,7 +170,7 @@ class DashboardNotices {
         ];
     }
 
-    /** Was the campaign's last write on $day, in site time? */
+    /** Whether the campaign's last write was on $day, in site time. */
     private function edited_on( Campaign $campaign, string $day, \DateTimeZone $tz ): bool {
         $updated = date_create_immutable( $campaign->get_updated_at(), new \DateTimeZone( 'UTC' ) );
 
@@ -194,10 +183,7 @@ class DashboardNotices {
         return $user instanceof \WP_User ? $user->display_name : '';
     }
 
-    /**
-     * WooCommerce Orders list filtered to a month (`YYYYMM`) — WC's list
-     * filters by month only; the SPA names the day in the link text.
-     */
+    /** The Orders list filtered to a month (YYYYMM); WC filters by month only. */
     protected function orders_admin_url( string $month ): string {
         $hpos = class_exists( \Automattic\WooCommerce\Utilities\OrderUtil::class )
             && \Automattic\WooCommerce\Utilities\OrderUtil::custom_orders_table_usage_is_enabled();

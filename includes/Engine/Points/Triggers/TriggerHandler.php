@@ -8,13 +8,9 @@ use YayLoyalty\Models\Campaign;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * One trigger's rules: is this campaign eligible for this event, and how
- * many points does it pay.
- *
- * ELIGIBILITY IS NOT CALCULATION. A config gate (min_subtotal, a paused
- * default for a multiplier) fails is_eligible() so the engine falls through
- * to the next campaign; compute_points() is only ever reached for a campaign
- * that already passed, so it has nothing left to fail on and never throws.
+ * One trigger's rules: eligibility and points. A config gate fails
+ * is_eligible() so the engine falls through; compute_points() is reached
+ * only for a campaign that passed and never throws.
  */
 interface TriggerHandler {
 
@@ -25,7 +21,7 @@ interface TriggerHandler {
 
     public function compute_points( Campaign $campaign, Context $ctx ): Breakdown;
 
-    /** A ReferenceType constant: what the ledger row's reference_id names. */
+    /** A ReferenceType constant. */
     public function reference_type(): string;
 
     public function reference_id( Context $ctx ): ?int;

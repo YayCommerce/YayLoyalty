@@ -7,11 +7,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { deltaLine } from '../dashboard-page.copy';
 
 /**
- * One stat tile: label, value, sub-line, delta line. The value is a node so
- * callers pass `<PointsValue>`, a currency string or "—" — this component
- * never formats a number itself. `deltaOverride` replaces the delta line
- * (Phase 5: "▲ 41,200 of it yesterday"); `badge` sits beside the label
- * (Phase 6: the PRO badge on Referrals).
+ * One stat tile. The value is a node, so this never formats a number
+ * itself. `deltaOverride` replaces the delta line; `badge` sits beside the label.
  */
 export function DashboardStatTile({
   label,

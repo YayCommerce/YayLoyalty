@@ -4,18 +4,9 @@ import type { CustomerListRow } from '@/lib/schema/customer.schema';
 import type { RowFilters } from './customers-page.filter-rows';
 
 /**
- * Row-selection math for CustomersScreen.tsx — split out to keep that file
- * under the project's 200-line cap.
- *
- * Selection is either an explicit set of picked ids ('partial'), or "every
- * row matching the current filters, except these" ('all' with an exclusion
- * set) — the same trick Ant Design's Table (`rowSelection.selections`,
- * SELECTION_ALL/SELECTION_INVERT) and most admin tables use to offer "select
- * everything matching this search" without fetching or holding every
- * matching row's id in the browser: switching to 'all' is an O(1) flip, the
- * count comes from the server's `totalItems` (see CustomersPage.tsx), and
- * per-row state stays cheap to check regardless of how large the real match
- * ever gets.
+ * Row-selection math for CustomersScreen. Selection is either picked ids
+ * ('partial') or every matching row except these ('all'), so "select all N
+ * matching" never fetches or holds every id.
  */
 export type SelectionState = { mode: 'partial'; ids: Set<number> } | { mode: 'all'; excludedIds: Set<number> };
 
@@ -25,7 +16,7 @@ export function isRowSelected(state: SelectionState, userId: number): boolean {
   return state.mode === 'all' ? !state.excludedIds.has(userId) : state.ids.has(userId);
 }
 
-/** How many rows are actually selected — `totalItems` is the server's count for the current filters. */
+/** Rows selected; `totalItems` is the server's count for the current filters. */
 export function selectionCount(state: SelectionState, totalItems: number): number {
   return state.mode === 'all' ? Math.max(0, totalItems - state.excludedIds.size) : state.ids.size;
 }
@@ -50,7 +41,7 @@ export function toggleRowSelection(state: SelectionState, userId: number): Selec
   return { mode: 'partial', ids };
 }
 
-/** Header checkbox: toggles every row on THIS page only (paging keeps prior picks elsewhere). */
+/** Header checkbox: toggles this page's rows only; other pages keep their picks. */
 export function toggleAllOnPage(state: SelectionState, pageRows: CustomerListRow[]): SelectionState {
   const allOnPageSelected = pageRows.length > 0 && pageRows.every((row) => isRowSelected(state, row.user_id));
 
@@ -77,12 +68,8 @@ export function computeHeaderSelection(pageRows: CustomerListRow[], state: Selec
 }
 
 /**
- * How many rows the "Select all N matching these filters" link would add —
- * `undefined` when there's nothing to expand into: already in 'all' mode
- * (or a 'partial' pick that already covers every matching row), nothing
- * picked yet, or only one page total. Shows as soon as ANY row is picked —
- * not only once the whole page is — matching the design (picking a single
- * row already offers "Select all N matching these filters").
+ * Count for the "Select all N matching these filters" link; undefined when
+ * there is nothing to expand into. Offered as soon as any row is picked.
  */
 export function computeSelectAllCount(
   state: SelectionState,
@@ -94,11 +81,7 @@ export function computeSelectAllCount(
   return pageCount > 1 && count > 0 && !allMatchingSelected ? totalItems : undefined;
 }
 
-/**
- * All the state + derived values `CustomersScreen.tsx` needs to render and
- * drive row selection — split out (like the rest of this file) to keep that
- * component under the project's 200-line cap.
- */
+/** The selection state and derived values CustomersScreen renders. */
 export function useCustomerRowSelection({
   rows,
   queryFilters,
@@ -106,33 +89,25 @@ export function useCustomerRowSelection({
   pageCount,
 }: {
   rows: CustomerListRow[];
-  /** Committed/debounced filters — see CustomersScreen.tsx for why not the raw, per-keystroke value. */
+  /** Committed filters, not the per-keystroke value, so typing does not reset the selection. */
   queryFilters: RowFilters;
   totalItems: number;
   pageCount: number;
 }) {
   const [selection, setSelection] = useState<SelectionState>(EMPTY_SELECTION);
 
-  // The matching set changed, so past picks may no longer apply. Page reset
-  // lives in CustomersPage.tsx now: it owns page, since going back to page 1
-  // on a filter change means re-fetching it.
+  // The matching set changed, so past picks may no longer apply.
   useEffect(() => {
     setSelection(EMPTY_SELECTION);
   }, [queryFilters]);
 
   const headerSelection = useMemo(() => computeHeaderSelection(rows, selection), [rows, selection]);
 
-  // The table only ever needs to know THIS page's checked state — bounded by
-  // page size regardless of how large `totalItems` gets, even in 'all' mode.
   const selectedOnPage = useMemo(
     () => new Set(rows.filter((row) => isRowSelected(selection, row.user_id)).map((row) => row.user_id)),
     [rows, selection],
   );
 
-  // As soon as anything is picked and there's more data beyond this page,
-  // offer expanding the pick to every row matching the filters — rendered
-  // inside the same bulk-action box, not a second one (see
-  // CustomersBulkActionBar.tsx).
   const selectAllCount = computeSelectAllCount(selection, totalItems, pageCount);
 
   return {

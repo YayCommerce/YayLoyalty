@@ -3,16 +3,11 @@ namespace YayLoyalty\Services\Dashboard;
 
 defined( 'ABSPATH' ) || exit;
 
-/**
- * Dashboard-shaped series helpers, kept pure so the zero-fill rule has a unit
- * test. The generic ratios (deltas, percentages, points → currency) live in
- * Utils\PointsMath, which the admin SPA mirrors.
- */
+/** Dashboard series helpers, pure so the zero-fill rule is unit-tested. Ratios live in Utils\PointsMath. */
 final class DashboardMath {
 
     /**
-     * One entry per day in $days (same order), every $keys column present and
-     * cast to int, missing days zero-filled, rows outside $days dropped.
+     * One entry per day in $days, $keys cast to int, missing days zero-filled, rows outside $days dropped.
      *
      * @param array<int, array<string, mixed>> $rows Grouped SQL rows carrying a `date` column.
      * @param string[]                         $days Calendar dates, ascending.

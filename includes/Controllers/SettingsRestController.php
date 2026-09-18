@@ -6,15 +6,7 @@ use YayLoyalty\Helpers\SettingsHelper;
 
 defined( 'ABSPATH' ) || exit;
 
-/**
- * Settings REST endpoints: GET/POST /wp-json/yayloyalty/v1/settings and
- * POST /wp-json/yayloyalty/v1/settings/mark-reviewed
- *
- * Routes are registered from register_routes(), not from the constructor, so
- * constructing this class has no side effects. SingletonTrait was dropped along
- * with that: it exists to make a side-effecting constructor run once, and there
- * is no longer a side effect to guard.
- */
+/** GET/POST /settings and POST /settings/mark-reviewed. */
 class SettingsRestController extends AbstractRestController {
 
     public function get_rest_base(): string {

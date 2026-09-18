@@ -64,49 +64,24 @@ const GROUP_LABELS: Record<CampaignGroupKey, string> = {
   other: __('Other', 'yayloyalty'),
 };
 
-/** `Campaign` plus the presentation strings this table shows, computed once from real fields — never a second fetch. */
+/** Campaign plus the presentation strings this table shows, computed from real fields. */
 interface DisplayCampaign extends Campaign {
   gives: string;
   conditionsLabel: string;
   scheduleLabel: string;
   displayStatus: CampaignDisplayStatus;
-  /** Dummy, client-side only — see campaign-points-dummy.ts. */
+  /** Dummy, client-side only; see campaign-points-dummy.ts. */
   pointsLast30Days: number | null;
 }
 
 /**
- * Pro's grouped, prioritised campaigns table — tree-shaken out of the Lite
- * bundle with the rest of `src/pro/`. Lite keeps its own flat, real list in
- * BuiltInCampaignList (a real feature, not gated behind an upgrade overlay).
- *
- * ONE LIST, NOT TWO: reads `useCampaignsQuery()` from `@/lib/queries/campaign.queries`
- * — the same real hook BuiltInCampaignList reads (there, filtered to
- * `is_builtin`; here, shown whole). The campaign fixture behind it lives
- * entirely in CampaignRestController's SWAP POINT; this component has no
- * campaign data of its own. `gives`/`conditionsLabel`/`scheduleLabel`/
- * `displayStatus` are derived client-side from the real
- * `config`/`conditions`/`status`/dates — see toDisplayCampaign() — because
- * the real Campaign shape has no room for precomputed presentation strings,
- * by design. `pointsLast30Days` is the one exception: it is genuinely dummy,
- * client-side-only data (see campaign-points-dummy.ts) because no endpoint
- * yet exposes a per-campaign 30-day figure for the whole list.
- *
- * Drag-to-reorder changes display order only, never `priority` (a separate
- * stored value) — scoped per group, since priority only ever compares
- * campaigns sharing a trigger.
- *
- * `newStore` and `noLiveCampaign` are dev-only preview toggles: flip the
- * defaults below, or edit live via React DevTools. No UI control, on purpose.
- *
- * `newStore` filters the same fetched list down to `is_builtin` rather than
- * swapping in a second fixture, because that is genuinely all a real fresh
- * store would have. It is a STAND-IN, though, for a fact this build cannot
- * observe yet: a store that later deletes every custom campaign would look
- * identical to one that never made any, and the real "new store" signal is
- * store-wide and lifetime — has this account ever recorded an earn ledger
- * entry (LedgerRepository has no such query today; sum_points_for_user() is
- * per-customer, not store-wide). Once that exists, `newStore` becomes
- * `!hasEverEarnedPoints`; `rows` already reads one list either way.
+ * Pro's grouped, prioritised campaigns table, reading the same list as
+ * BuiltInCampaignList. Presentation strings are derived client-side
+ * (toDisplayCampaign); pointsLast30Days is dummy until an endpoint exists.
+ * Drag-to-reorder changes display order only, never `priority`.
+ * `newStore` / `noLiveCampaign` are dev-only preview toggles with no UI
+ * control; `newStore` stands in for "has this store ever earned points",
+ * which nothing can query yet.
  */
 export function CampaignTable() {
   const [newStore] = useState(false);
@@ -117,8 +92,7 @@ export function CampaignTable() {
 
   const [statusFilter, setStatusFilter] = useState<CampaignDisplayStatus | undefined>();
   const [searchQuery, setSearchQuery] = useState('');
-  // Local override of fetched order/priority once a drag reorders a group. Seeded lazily from
-  // `allRows` rather than via an effect — see reorderGroup().
+  // Local override once a drag reorders a group; seeded lazily in reorderGroup().
   const [localRows, setLocalRows] = useState<DisplayCampaign[]>();
 
   const baseRows = newStore ? allRows.filter((row) => row.is_builtin) : (localRows ?? allRows);
@@ -128,9 +102,7 @@ export function CampaignTable() {
     (row) => triggerGroup(row.trigger) === 'purchase' && row.displayStatus === 'active',
   );
   const showSearch = rows.length > SEARCH_THRESHOLD;
-  // Archived is retired, not merely another status: it stays out of the
-  // table entirely unless a merchant asks for it by name. Any other filter
-  // (including no filter at all) already excludes it via the equality check.
+  // Archived stays out entirely unless asked for by name.
   const statusFilteredRows = statusFilter
     ? rows.filter((row) => row.displayStatus === statusFilter)
     : rows.filter((row) => row.displayStatus !== 'archived');
@@ -159,9 +131,7 @@ export function CampaignTable() {
       return;
     }
 
-    // Display order only. `priority` is a separate, stored value set
-    // through the campaign write API (no SPA editor yet) — dragging never reads or writes it, it only changes
-    // which slot in the group each row's own (unchanged) row occupies.
+    // Display order only; `priority` is a stored value dragging never touches.
     const reordered = arrayMove(groupRows, fromIndex, toIndex);
     const groupIds = new Set(groupRows.map((row) => row.id));
 
@@ -223,10 +193,7 @@ export function CampaignTable() {
               </InputGroup>
             )}
 
-            {/*
-            Filtering by status is not worth the clutter on a fresh install —
-            three campaigns, all ACTIVE, nothing to filter down to.
-          */}
+            {/* Nothing to filter on a fresh install: three campaigns, all active. */}
             {!newStore && (
               <Select
                 value={statusFilter ?? 'all'}
@@ -256,12 +223,7 @@ export function CampaignTable() {
             </Button>
           </div>
 
-          {/*
-            Not dismissible, deliberately: a closed notice would leave the
-            storefront still promising points while nothing is being
-            awarded. This can only go away by fixing the actual condition —
-            an active purchase campaign, or the storefront copy switched off.
-          */}
+          {/* Not dismissible: the storefront would keep promising points while nothing is awarded. */}
           {!hasActivePurchaseCampaign && (
             <Alert variant="outline" className="gap-y-2">
               <InfoIcon />
@@ -381,23 +343,17 @@ function CampaignGroupSection({
   onReorder: (groupRows: DisplayCampaign[], event: DragEndEvent) => void;
 }) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
-  // Drag handles are drawn but inert in a group of one — likewise this
-  // explanation: nothing about "topmost wins" matters until there is a
-  // second campaign to lose.
+  // "Topmost wins" means nothing until there is a second campaign to lose.
   const hasPriorityToResolve = group.key === 'purchase' && group.rows.length > 1;
 
-  // Defaults stay visible regardless of rank — hiding the fallback campaign
-  // behind a click would be a strange kind of surprise. Everything else caps
-  // at VISIBLE_NON_DEFAULT_ROWS, highest priority first, so the ones that
-  // actually decide an order stay in view without a click.
+  // The default stays visible regardless of rank; the rest cap at VISIBLE_NON_DEFAULT_ROWS.
   const [expanded, setExpanded] = useState(false);
   const nonDefaultRows = group.rows.filter((row) => !row.is_builtin);
   const hiddenRows = expanded ? [] : nonDefaultRows.slice(VISIBLE_NON_DEFAULT_ROWS);
   const hiddenIds = new Set(hiddenRows.map((row) => row.id));
   const visibleRows = group.rows.filter((row) => !hiddenIds.has(row.id));
 
-  // Priority only ever compares campaigns sharing a trigger, so a tie is
-  // scoped to this group — the same reason drag-to-reorder is.
+  // A tie is scoped to the group: priority only compares campaigns sharing a trigger.
   const priorityCounts = new Map<number, number>();
   for (const row of group.rows) {
     priorityCounts.set(row.priority, (priorityCounts.get(row.priority) ?? 0) + 1);
@@ -461,7 +417,7 @@ function CampaignGroupSection({
   );
 }
 
-/** "Show the other purchase campaigns" — "other" on its own for the catch-all group, to avoid "other Other". */
+/** "Show the other purchase campaigns"; bare "other" for the catch-all group, to avoid "other Other". */
 function showMoreLabel(group: CampaignGroupKey): string {
   if (group === 'other') {
     return __('Show the other campaigns', 'yayloyalty');
@@ -604,12 +560,7 @@ function campaignCountLabel(count: number): string {
   );
 }
 
-/**
- * The real `Campaign` shape has no `gives`/conditions/schedule label and no
- * derived display status — every one of those is computed here, once, from
- * `config`/`conditions`/`status`/`starts_at`/`ends_at`. Generic across all
- * seven triggers, not special-cased to any one dummy row.
- */
+/** Derives every presentation string from the real Campaign fields; generic across all triggers. */
 function toDisplayCampaign(campaign: Campaign): DisplayCampaign {
   return {
     ...campaign,

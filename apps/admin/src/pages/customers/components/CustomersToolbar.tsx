@@ -19,38 +19,15 @@ import {
 import { countActiveFilters } from '../customers-page.filter-suggestions';
 
 /**
- * Search + filter row. Every filter is real — checked server-side, see
- * `lib/api/customer.api.ts` → `CustomerRepository::paginate_list()`.
- * "Clear all" only shows up once search or a filter is actually active
- * (`countActiveFilters`) and resets everything at once — same reset
- * `CustomersNoMatchState`'s "Clear all filters" button uses.
- *
- * Tier is a real, working filter — but not against real per-customer tier
- * data (no `tiers` table exists yet): selecting one substitutes the
- * equivalent real Balance range bucket instead (see
- * `customers-page.tier-sample-data.ts` for the mapping and why). Because
- * both ultimately drive the one `balance_range` wire param, the two
- * selects are kept MUTUALLY EXCLUSIVE here — picking one resets the other
- * to its default, so what's shown selected always matches what's actually
- * sent. `TIER_FILTER_ENABLED` (`customers-page.filter-rows.ts`) is the
- * on/off switch for the whole control.
- *
- * `exportSlot` is Free-only (see CustomersFilterBar.tsx): 3 filters + Export fit
- * on one row without wrapping, so Free renders Export here. Pro's 4th filter
- * (Tier) means Export has to live in its own row instead, alongside the
- * saved-segment picker — a `ml-auto` button wrapping onto its own line there
- * read as a layout bug.
- *
- * Free/Pro split is `IS_PRO_BUILD`, directly: the Tier filter simply isn't
- * rendered in a Lite build, matching the Customer list itself (no Tier
- * column, no upgrade badge needed for a control that isn't there).
+ * Search + filter row. Tier and Balance range are mutually exclusive: both
+ * drive the one balance_range param (see customers-page.tier-sample-data.ts).
+ * `exportSlot` is Free-only: with Pro's fourth filter, Export wraps and
+ * moves to the segment row instead.
  */
 export function CustomersToolbar({
   filters,
   onFiltersChange,
-  /** True store (no members at all) or mid-"Simulate rebuild" (see
-   *  CustomersScreen.tsx) — every control goes inert but stays in place, so
-   *  the toolbar doesn't pop in later and shift the table down. */
+  /** Empty store or mid-rebuild: controls go inert but stay in place, so the table does not shift. */
   disabled,
   exportSlot,
 }: {
@@ -71,10 +48,6 @@ export function CustomersToolbar({
       <FilterSelect
         placeholder={__('Balance range', 'yayloyalty')}
         value={filters.balanceRange}
-        // Mutually exclusive with Tier — both drive the same `balance_range`
-        // wire param (see the class doc above), so picking a real balance
-        // range clears any Tier selection rather than leaving a stale one
-        // selected that no longer matches what's actually sent.
         onValueChange={(value) => onFiltersChange({ balanceRange: value as BalanceRangeValue, tier: 'all' })}
         options={BALANCE_RANGE_OPTIONS}
         disabled={disabled}
@@ -90,7 +63,6 @@ export function CustomersToolbar({
         <FilterSelect
           placeholder={__('Tier', 'yayloyalty')}
           value={filters.tier}
-          // Mutually exclusive with Balance range — see the class doc above.
           onValueChange={(value) => onFiltersChange({ tier: value as TierValue, balanceRange: 'any' })}
           options={TIER_OPTIONS}
           disabled={disabled}
@@ -106,7 +78,6 @@ export function CustomersToolbar({
   );
 }
 
-/** A real, working filter dropdown. */
 function FilterSelect<T extends string>({
   placeholder,
   value,

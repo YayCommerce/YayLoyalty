@@ -4,19 +4,10 @@ namespace YayLoyalty\Database;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * A database write failed.
- *
- * This exception is load-bearing, not decorative. $wpdb->insert() and friends
- * return false on failure — they do not throw. Rollback in this codebase is
- * exception-driven (Transaction::run() commits unless a Throwable escapes), so
- * a repository that quietly returns false would let a FAILED write commit and
- * report success.
- *
- * Every repository write therefore checks the return value and $wpdb->last_error
- * and throws this.
- *
- * The message carries SQL detail and is safe to log but never to display;
- * BaseRestController::error_internal() enforces that.
+ * A database write failed. Load-bearing: $wpdb returns false rather than
+ * throwing, and Transaction::run() commits unless a Throwable escapes, so
+ * every repository write must throw this. The message carries SQL: log it,
+ * never display it.
  */
 final class QueryException extends \RuntimeException {
 

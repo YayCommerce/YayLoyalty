@@ -4,11 +4,8 @@ namespace YayLoyalty\Engine\Points;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * One purchasable line of the order, cart or product being scored.
- *
- * Shipping is deliberately not a line item, which is how it stays out of the
- * earning base without a flag. Amounts are in the ORDER currency; the Context
- * carries the rate to base currency.
+ * One purchasable line of the event being scored, in order currency.
+ * Shipping is never a line item; that is how it stays out of the earning base.
  */
 final class ContextLineItem {
 

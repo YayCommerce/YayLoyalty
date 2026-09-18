@@ -9,24 +9,10 @@ use YayLoyalty\Utils\Json;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * A way to spend points.
- *
- * Definition table, so this is mutable — the same shape as Campaign, and for
- * the same reason: no service, because its invariants (valid type, whitelisted
- * and correctly-typed config keys, the cost_points/type rule, derived
- * liveness, "built-ins are not archivable") are validation, not a cross-table
- * concern. A service wrapping one repository would be ceremony. These
- * validators exist but no write path calls them yet — only
- * Installer::seed_builtin_reward() writes rows.
- *
- * CONDITIONS VS CONFIG — the boundary is "is this a fact about the customer
- * being evaluated, or a property of the reward itself?" `conditions`
- * (validated by conditions_are_valid(), normalised by set_conditions(), see
- * Models\RewardConditionSet) holds customer-specific eligibility rules such as
- * `redemption_count` — how many times THIS customer has already redeemed THIS
- * reward. `config`'s `max_total` looks similar but is not a condition: it is a
- * single global cap on the reward across every customer, so it stays a
- * reward-level property in `config`.
+ * A way to spend points. Same shape as Campaign: mutable, no service, its
+ * invariants are validation. `conditions` are facts about the customer being
+ * evaluated (e.g. redemption_count); `config` holds properties of the reward
+ * itself (e.g. the global max_total cap). Only Installer writes rows so far.
  */
 class Reward extends AbstractModel {
 
@@ -153,7 +139,6 @@ class Reward extends AbstractModel {
             'sort_order'  => $this->sort_order,
             'cost_points' => $this->cost_points,
             'config'      => Json::encode( $this->config, self::CONFIG_SCHEMA_VERSION ),
-            // A list, not a map — see Json::encode_list().
             'conditions'  => Json::encode_list( $this->conditions, self::CONFIG_SCHEMA_VERSION ),
             'starts_at'   => $this->starts_at,
             'ends_at'     => $this->ends_at,
@@ -190,20 +175,12 @@ class Reward extends AbstractModel {
         ];
     }
 
-    /**
-     * Is this reward live at a given instant?
-     *
-     * Delegates to Status::is_live_at() so campaigns, rewards (and tiers, when
-     * they land) share one implementation of the rule rather than three copies.
-     */
+    /** Whether this reward is live at $at, the event's timestamp. */
     public function is_live_at( string $at ): bool {
         return Status::is_live_at( $this->status, $this->starts_at, $this->ends_at, $at );
     }
 
-    /**
-     * The label to show for this reward: its stored status, or — when that is
-     * `active` — `scheduled` / `ended` derived from the date window.
-     */
+    /** The label to show: the stored status, or `scheduled` / `ended` derived from the date window when it is `active`. */
     public function display_status( ?string $at = null ): string {
         return Status::resolve_display(
             $this->status,
@@ -214,37 +191,12 @@ class Reward extends AbstractModel {
     }
 
     /**
-     * Per-type config schema: key => spec.
-     *
-     * The source of truth for what a reward's `config` may hold, and what
-     * config_is_valid() checks each value against — this validator exists but
-     * no write path calls it yet.
-     *
-     * Covers `flexible_discount`, the type Lite itself offers. The four Pro
-     * types — fixed_coupon, percent_coupon, free_shipping, free_product —
-     * carry their own key vocabulary, contributed through the
-     * yayloyalty_reward_config_whitelist seam (see config_whitelist()); Lite
-     * neither describes nor type-checks them, mirroring how Campaign treats
-     * its own Pro-only triggers.
-     *
-     * Spec shapes:
-     *   'bool'                          — a JSON boolean
-     *   'string'                        — a JSON string
-     *   'int'    [ 'min' => n ]         — a whole number, optional lower bound
-     *   'number' [ 'min' => n ]         — int or float, optional lower bound
-     *   'enum'   [ 'values' => [...] ]  — a string from a fixed set
-     *   'enum_list' [ 'values' => [...] ] — a list of strings from a fixed set
-     *   'currency'                      — an ISO 4217 code
-     *   'nullable_number' [ 'min' => n ] — null (unlimited), or a number with an
-     *                                      optional lower bound
-     *
-     *   'required' => true              — on any spec, the key must be present,
-     *                                      not merely correctly typed if given.
-     *                                      Only `currency` uses this: without
-     *                                      it, an amount or a points-to-currency
-     *                                      rate is ambiguous on any store whose
-     *                                      base currency changes or that sells
-     *                                      in more than one.
+     * Per-type config schema, key => spec: what `config` may hold and what
+     * config_is_valid() checks against. Lite's flexible_discount only; Pro
+     * types add theirs through config_whitelist(). Spec types: bool, string,
+     * int|number [min], enum|enum_list [values], currency, nullable_number
+     * [min]; `required => true` makes the key mandatory (only currency: a
+     * money value without it is ambiguous once the store currency changes).
      *
      * @return array<string, array<string, array<string, mixed>>>
      */
@@ -283,10 +235,7 @@ class Reward extends AbstractModel {
                     'type'   => 'enum',
                     'values' => [ 'proportional', 'full', 'none' ],
                 ],
-                // Global redemption cap; null = unlimited. Nothing enforces it
-                // yet, but it is stored from 1.0 so an uncapped discount cannot
-                // be drained further than the merchant intended once something
-                // does.
+                // Global redemption cap, null = unlimited. Stored from 1.0 although unenforced yet.
                 'max_total'                => [
                     'type' => 'nullable_number',
                     'min'  => 0,
@@ -296,11 +245,9 @@ class Reward extends AbstractModel {
     }
 
     /**
-     * Keys each type's config may contain, keyed by type.
-     *
-     * Derived from config_schema() so the two never drift, then passed through
-     * the Pro seam — the filter is for Pro to add whitelists for types Lite has
-     * no schema entry for at all, not to add keys to flexible_discount's.
+     * Keys each type's config may contain, keyed by type. Derived from
+     * config_schema() so the two never drift; the filter is for Pro to add
+     * whole types, not keys to flexible_discount's.
      *
      * @return array<string, string[]>
      */
@@ -312,10 +259,7 @@ class Reward extends AbstractModel {
         }
 
         /**
-         * Config keys each reward type may store, keyed by type.
-         *
-         * Pro's attach point for its own types' config. Internal seam for
-         * first-party Pro code, not a documented third-party API.
+         * Config keys each reward type may store. Internal Pro seam, not a public API.
          *
          * @param array<string, string[]> $whitelist
          */
@@ -323,15 +267,9 @@ class Reward extends AbstractModel {
     }
 
     /**
-     * Is this config acceptable for this type?
-     *
-     * Rejects unknown keys, wrong value types, and a missing `required` key —
-     * mirrors Campaign::config_is_valid(), extended with the required-key
-     * check that rule needs (Campaign's schema has no required keys today).
-     * No write path calls this yet — only Installer::seed_builtin_reward()
-     * writes rows. Same downgrade safety: a type this build has no schema and
-     * no whitelist for was created by another build, so it is accepted
-     * wholesale rather than rejected.
+     * Whether a config is acceptable for a type: unknown keys, wrong types and
+     * a missing `required` key fail. A type this build has no schema or
+     * whitelist for came from another build and is accepted unjudged.
      */
     public static function config_is_valid( string $type, array $config ): bool {
         $schema    = self::config_schema()[ $type ] ?? null;
@@ -348,8 +286,7 @@ class Reward extends AbstractModel {
                 return false;
             }
 
-            // A key the filtered whitelist allows but config_schema() does not
-            // describe is a Pro type's own key: accept it untyped.
+            // Whitelisted but not in config_schema(): a Pro type's own key, accepted untyped.
             $spec = is_array( $schema ) ? ( $schema[ $key ] ?? null ) : null;
 
             if ( null !== $spec && ! self::value_matches_spec( $value, $spec ) ) {
@@ -429,12 +366,7 @@ class Reward extends AbstractModel {
         }
     }
 
-    /**
-     * ISO 4217. Format-checked always; membership-checked against
-     * WooCommerce's currency list when it is loaded (this plugin requires
-     * WooCommerce, so that is the normal path — the fallback keeps this class
-     * usable in isolation, e.g. under a plain PHPUnit run).
-     */
+    /** ISO 4217 format check, plus membership in WooCommerce's list when it is loaded (not under plain PHPUnit). */
     private static function is_currency_code( string $code ): bool {
         if ( 1 !== preg_match( '/^[A-Z]{3}$/', $code ) ) {
             return false;
@@ -447,17 +379,7 @@ class Reward extends AbstractModel {
         return true;
     }
 
-    /**
-     * Drop config keys that do not belong to this type.
-     *
-     * Mirrors Campaign::validate_config(): unknown keys are discarded rather
-     * than stored; a type this build has no whitelist for is preserved
-     * wholesale, because "unknown" must never mean "delete" a merchant's
-     * configuration on a downgrade.
-     *
-     * @param array $config
-     * @return array
-     */
+    /** Drops config keys that do not belong to the type. A type with no whitelist is preserved wholesale: "unknown" must never mean "delete" on a downgrade. */
     public static function validate_config( string $type, array $config ): array {
         $whitelist = self::config_whitelist()[ $type ] ?? null;
 
@@ -476,15 +398,7 @@ class Reward extends AbstractModel {
         return $clean;
     }
 
-    /**
-     * Default config for a built-in reward.
-     *
-     * `currency` falls back to the store's currency, since this key is
-     * required wherever config carries a money value and there is no sane
-     * type-only default for it.
-     *
-     * @return array
-     */
+    /** Default config for a built-in reward. `currency` is the store's: it is required and has no type-only default. */
     public static function default_config( string $type ): array {
         switch ( $type ) {
             case RewardType::FLEXIBLE_DISCOUNT:
@@ -505,32 +419,15 @@ class Reward extends AbstractModel {
         }
     }
 
-    /**
-     * Are these conditions acceptable to store?
-     *
-     * Mirrors config_is_valid(): a non-throwing check, not yet wired into a
-     * controller (no reward controller exists). Rejects an unknown type, an
-     * operator a type does not accept, a wrong value shape, an empty list
-     * value, a duplicate type, and customer_ids past its cap. See
-     * Models\RewardConditionSet.
-     */
+    /** Whether a conditions list is acceptable to store. See RewardConditionSet. Not yet wired into a controller. */
     public static function conditions_are_valid( array $conditions ): bool {
         return RewardConditionSet::is_valid( $conditions );
     }
 
     /**
-     * Is this cost_points acceptable for this type?
-     *
-     * The one rule the database cannot express: `flexible_discount` must have
-     * a null cost_points — the customer picks the amount on a slider — and
-     * every other type must have one set and >= 1. Enforces both directions,
-     * but no write path calls it yet — only Installer::seed_builtin_reward()
-     * writes rows, so a fixed_coupon with a null cost today would only be a
-     * free redemption once a write path skips this check.
-     *
-     * A type this build does not recognise at all was created by another
-     * build and is accepted without judgement, same downgrade-safety
-     * reasoning as config_is_valid().
+     * Whether cost_points fits the type: flexible_discount must be null (the
+     * customer picks the amount), every other type >= 1. A null cost on a
+     * coupon type would be a free redemption. Unknown types are accepted unjudged.
      */
     public static function cost_points_is_valid( string $type, ?int $cost_points ): bool {
         if ( ! RewardType::is_known( $type ) ) {
@@ -613,16 +510,10 @@ class Reward extends AbstractModel {
     }
 
     /**
-     * Set the stored status.
+     * Sets the stored status and keeps archived_at in step. A built-in cannot
+     * be archived: DashboardRepository finds it by slug.
      *
-     * A built-in reward cannot be archived, for the same reason a built-in
-     * campaign cannot: DashboardRepository depends on finding it by slug
-     * ('cart-discount', via RewardRepository::find_by_slug()) and expects it
-     * to exist. archived_at is kept in step with status here — stamped on the
-     * way in, cleared on the way out — so no caller has to remember to.
-     *
-     * @throws \InvalidArgumentException When $status is unknown, or when
-     *                                   archiving a built-in.
+     * @throws \InvalidArgumentException When $status is unknown, or when archiving a built-in.
      */
     public function set_status( string $status ): void {
         $status = Status::assert( $status );
@@ -654,15 +545,7 @@ class Reward extends AbstractModel {
         $this->config = self::validate_config( $this->type, $config );
     }
 
-    /**
-     * Normalise a conditions list and store it.
-     *
-     * Mirrors set_config(): the value that lands on the model is the
-     * canonical one — scalars widened to arrays, ids cast to int, role slugs
-     * lower-cased, lists de-duplicated, entries ordered cheap-first for
-     * evaluation. Rejection of a malformed set is conditions_are_valid()'s
-     * job, but no write path calls it yet. See Models\RewardConditionSet.
-     */
+    /** Normalises a conditions list (see RewardConditionSet) and stores it. Rejection is conditions_are_valid()'s job. */
     public function set_conditions( array $conditions ): void {
         $this->conditions = RewardConditionSet::normalize( $conditions );
     }

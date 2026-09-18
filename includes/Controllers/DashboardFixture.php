@@ -8,20 +8,10 @@ use YayLoyalty\Utils\Dates;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Dev-only dashboard scenario data.
- *
- * SWAP POINT — `GET /dashboard?scenario=…` (WP_DEBUG only) answers from
- * DashboardRestController here instead of DashboardStats, and
- * `GET /dashboard/pro?scenario=…` answers from DashboardProRestController
- * via pro_scenario(), for now: a dev store's real ledger holds a handful of
- * seeded rows, which is not enough to build or review UI states against
- * (empty store, a 2,431-member store, a 250k-member cached store, the
- * notice strip, the anomaly panel). Every scenario emits the exact wire
- * shape the SPA parses with `dashboardResponseSchema` (or
- * `dashboardProResponseSchema` for the Pro payload), so a drift here fails
- * loudly on the dev server. When the scenarios are signed off this class is
- * deleted together with both `scenario` arguments and nothing in the SPA
- * changes.
+ * Dev-only dashboard scenarios, served for `?scenario=` under WP_DEBUG: a
+ * dev ledger is too small to review the UI states against. Every scenario
+ * emits the exact wire shape the SPA parses, so drift fails loudly. Deleted
+ * with both `scenario` args once signed off; nothing in the SPA changes.
  */
 final class DashboardFixture {
 
@@ -54,11 +44,7 @@ final class DashboardFixture {
         }
     }
 
-    /**
-     * Pro panel data for the same scenarios. `referrals` and
-     * `tier_distribution` stay null here too — the SPA's own dummies fill
-     * them, exactly as on the real path.
-     */
+    /** Pro panel data for the same scenarios; referrals and tier_distribution stay null, as on the real path. */
     public static function pro_scenario( string $name, int $range ): array {
         $window = PeriodWindow::for_range( $range, new \DateTimeImmutable( 'now', wp_timezone() ) );
         $days   = $window->days();
@@ -193,8 +179,7 @@ final class DashboardFixture {
     }
 
     /**
-     * Deterministic daily figures: a slow sine over the range plus seeded
-     * noise, so the chart looks alive and renders identically on every load.
+     * Deterministic daily figures: a slow sine plus seeded noise, identical on every load.
      *
      * @param string[] $days
      * @param string   $spike_on Day to lift to the anomaly figure, if any.

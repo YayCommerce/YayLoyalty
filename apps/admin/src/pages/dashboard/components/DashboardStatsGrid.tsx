@@ -19,11 +19,7 @@ export const STAT_LABELS = () => [
 /** auto-fit / minmax(184px, 1fr): six tiles on one row at 1440, wrapping as equals below. */
 const GRID = 'grid gap-4 grid-cols-[repeat(auto-fit,minmax(184px,1fr))]';
 
-/**
- * The five Free tiles. `children` appends further tiles (Phase 6's Referrals)
- * without the grid knowing about Pro. `deltaOverrides` lets the notice strip
- * replace a tile's delta line (Phase 5) — keyed by stat.
- */
+/** The five Free tiles. `children` appends Pro tiles; `deltaOverrides` lets the notice strip replace a delta line. */
 export function DashboardStatsGrid({
   stats,
   range,

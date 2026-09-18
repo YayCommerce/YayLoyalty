@@ -8,21 +8,11 @@ use YayLoyalty\Utils\Table;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Read-only aggregates for the admin dashboard across ledger, customers,
- * rewards, WooCommerce orders and wp_users.
- *
- * Deliberately NOT an AbstractRepository: that base is "all SQL for exactly
- * one table" and this class reads five (the fifth being an INNER JOIN against
- * wp_users for names). It writes nothing — the ledger stays LedgerService's
- * alone (docs/code-standards.md §6), and the one-table repositories keep
- * their write ownership.
- *
- * Every ledger predicate carries `type IN (...)` so MySQL can range-scan
- * `type_created`; `customers` reads sit on the `balance` / `joined_at`
- * indexes. Window arguments are UTC MySQL strings from
- * Services\Dashboard\PeriodWindow (`from` inclusive, `to` exclusive).
- *
- * Not final: DashboardStatsTest stubs it with an anonymous subclass.
+ * Read-only dashboard aggregates across ledger, customers, rewards, orders
+ * and wp_users. Not an AbstractRepository (that is one table) and writes
+ * nothing. Every ledger predicate carries `type IN (...)` so the
+ * type_created index range-scans. Windows are UTC MySQL strings, `from`
+ * inclusive, `to` exclusive. Not final: a test stubs it.
  */
 class DashboardRepository {
 
@@ -42,11 +32,7 @@ class DashboardRepository {
         );
     }
 
-    /**
-     * Points issued: positive rows of the types that feed lifetime_earned —
-     * the same population as customers.lifetime_earned, so a positive manual
-     * adjustment counts and the figure is verifiable on a dev store today.
-     */
+    /** Points issued: positive rows of the types that feed lifetime_earned, so the two agree. */
     public function sum_issued( string $from, string $to ): int {
         return $this->sum_points( $this->earn_types(), 'points > 0', $from, $to );
     }
@@ -55,14 +41,13 @@ class DashboardRepository {
         return abs( $this->sum_points( [ LedgerType::REDEEM ], '1 = 1', $from, $to ) );
     }
 
-    /** Signed movement of every type in the window — rewinds liability approximately. */
+    /** Signed movement of every type in the window; rewinds liability approximately. */
     public function net_delta( string $from, string $to ): int {
         return $this->sum_points( LedgerType::all(), '1 = 1', $from, $to );
     }
 
     /**
-     * Issued/redeemed per site-timezone calendar day. Rows only for days
-     * with activity; the caller zero-fills with DashboardMath::fill_series.
+     * Issued/redeemed per site-timezone day; only days with activity, the caller zero-fills.
      *
      * @return array<int, array{date: string, issued: string, redeemed: string}>
      */
@@ -97,10 +82,7 @@ class DashboardRepository {
         return (int) $wpdb->get_var( 'SELECT COALESCE(SUM(balance), 0) FROM `' . esc_sql( Table::name( 'customers' ) ) . '` WHERE balance > 0' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.NotPrepared
     }
 
-    /**
-     * Customers currently below zero — the same INNER JOIN as the Customers
-     * list so the notice count matches what its "Review" deep link shows.
-     */
+    /** Customers below zero; same INNER JOIN as the Customers list so the count matches its deep link. */
     public function count_negative_balances(): int {
         global $wpdb;
 
@@ -109,7 +91,7 @@ class DashboardRepository {
         );
     }
 
-    /** Signed total of every balance — with net_delta(), the previous period's liability. */
+    /** Signed total of every balance; with net_delta(), the previous period's liability. */
     public function net_balance(): int {
         global $wpdb;
 
@@ -121,14 +103,13 @@ class DashboardRepository {
         return $this->count_distinct_orders( [ LedgerType::REDEEM ], $from, $to );
     }
 
-    /** Distinct orders that earned points (positive rows only — a refund_earn clawback is not an award). */
+    /** Distinct orders that earned points; positive rows only, a clawback is not an award. */
     public function orders_with_earn( string $from, string $to ): int {
         return $this->count_distinct_orders( $this->earn_types(), $from, $to, 'AND points > 0' );
     }
 
     /**
-     * Orders and points one campaign earned inside a window (the anomaly
-     * panel's "what changed" row). `campaign_id` index.
+     * Orders and points one campaign earned inside a window.
      *
      * @return array{orders: int, points: int}
      */
@@ -220,11 +201,7 @@ class DashboardRepository {
         // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
     }
 
-    /**
-     * Completed WooCommerce orders created in [$from_ts, $to_ts). Unix
-     * timestamps on purpose: a `Y-m-d` range would be parsed as site-local
-     * whole days and drift from the UTC ledger window.
-     */
+    /** Completed orders created in [$from_ts, $to_ts). Timestamps, not Y-m-d: that would parse as site-local days and drift from the UTC ledger window. */
     public function count_orders( int $from_ts, int $to_ts ): int {
         if ( ! function_exists( 'wc_get_orders' ) ) {
             return 0;
@@ -243,10 +220,7 @@ class DashboardRepository {
         return is_object( $result ) && isset( $result->total ) ? (int) $result->total : 0;
     }
 
-    /**
-     * The liability valuation rate: the built-in flexible-discount reward's
-     * `points_per_currency_unit`. 0 when the reward or key is missing.
-     */
+    /** The liability valuation rate from the built-in flexible-discount reward; 0 when missing. */
     public function points_per_currency_unit(): float {
         $rewards = $this->rewards ?? new RewardRepository();
         $reward  = $rewards->find_by_slug( 'cart-discount' );

@@ -15,17 +15,9 @@ use YayLoyalty\Utils\PointsMath;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Points for an order.
- *
- * Config gates are eligibility, not calculation: "Trail Shoes boost, 3 pts/$,
- * minimum $50" on a $30 order must fall through to the default campaign and
- * earn 1 pt/$ — not earn zero. A program-wide floor is a gate on the default
- * campaign itself.
- *
- * Holds the repository for one reason: a multiplier campaign multiplies the
- * default campaign's rate, and "Black Friday 2×" with the default paused is
- * ineligible — so the customer still earns from the next campaign — rather
- * than an error that aborts the whole evaluation.
+ * Points for an order. Config gates are eligibility, not calculation: a
+ * failed minimum falls through to the next campaign rather than earning
+ * zero. A multiplier campaign with the default paused is likewise ineligible.
  */
 final class PurchaseHandler implements TriggerHandler {
 
@@ -74,7 +66,6 @@ final class PurchaseHandler implements TriggerHandler {
         $rounding = (string) ( $config['rounding'] ?? PointsMath::ROUND_DOWN );
 
         if ( $this->is_multiplier( $config ) ) {
-            // is_eligible() already guaranteed the default exists and is active.
             $default = $this->campaigns->find_default_purchase();
             $rate    = (float) ( $default->get_config()['points_per_unit'] ?? 0 ) * (float) ( $config['multiplier'] ?? 1 );
         } else {

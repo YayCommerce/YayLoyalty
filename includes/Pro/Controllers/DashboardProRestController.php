@@ -13,25 +13,10 @@ use YayLoyalty\Services\Dashboard\PeriodWindow;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Pro-only: GET /yayloyalty/v1/dashboard/pro — the second dashboard request:
- * per-campaign issuance for the breakdown lines and the Top campaigns panel.
- *
- * `referrals` and `tier_distribution` are `null` until their tables exist;
- * the SPA substitutes client-side dummies (pro/dashboard/dashboard-pro-dummy.ts).
- * Top campaigns carry `trigger/config/priority/conditions` so the SPA
- * composes the meta line itself (`givesLabel()`), never a server label.
- *
- * Rest base is `dashboard-pro`, NOT `dashboard`: `yayloyalty_rest_item_schema`
- * subscribers key on the base (describe_pro_config also checks the title,
- * but a base-only subscriber would otherwise match both payloads).
- *
- * Same cache policy as the Free payload — DashboardCache under the 'pro'
- * variant, flushed by the same ledger/campaign hooks — so a >10k store pays
- * for these aggregates once per TTL, not per page view.
- *
- * Registered through `yayloyalty_rest_controllers`, so Lite has no route
- * here at all (404, not 403). `scenario` (WP_DEBUG only) reuses the same
- * fixture class as the Free endpoint — one fixture, both tiers.
+ * GET /dashboard/pro: per-campaign issuance for the breakdown lines and Top
+ * campaigns. referrals and tier_distribution are null until their tables
+ * exist. Rest base is `dashboard-pro`, not `dashboard`, so a base-only
+ * schema subscriber cannot match both payloads. Cached under the 'pro' variant.
  */
 final class DashboardProRestController extends AbstractRestController {
 
@@ -100,7 +85,7 @@ final class DashboardProRestController extends AbstractRestController {
 
         $payload = $this->cache->remember( $range, fn(): array => $this->build( $window ), 'pro' );
 
-        // The Free payload owns the cache strip; this one stays on the frozen contract.
+        // The Free payload owns the cache strip.
         unset( $payload['cached'], $payload['generated_at'], $payload['next_refresh_at'] );
 
         return [ 'range' => $range ] + $payload;
@@ -110,8 +95,7 @@ final class DashboardProRestController extends AbstractRestController {
      * @return array{referrals: null, tier_distribution: null, campaign_series: array, top_campaigns: array}
      */
     private function build( PeriodWindow $window ): array {
-        // Over-fetch, then resolve: a deleted campaign's points stay in the
-        // totals but must not consume one of the three slots.
+        // Over-fetch: a deleted campaign's points must not consume one of the three slots.
         $top_campaigns = [];
 
         foreach ( $this->points->issued_by_campaign( $window->from_utc(), $window->to_utc(), self::TOP_CAMPAIGNS * 2 ) as $entry ) {

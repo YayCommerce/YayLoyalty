@@ -3,33 +3,23 @@ import { keepPreviousData, queryOptions, useMutation, useQuery, useQueryClient }
 import { dismissDashboardNotice, getDashboard } from '@/lib/api/dashboard.api';
 import type { DashboardRange, DashboardResponse, DismissDashboardNoticeParams } from '@/lib/schema/dashboard.schema';
 
-/** ─── Query Options ─────────────────────────────────── */
-
 export const DASHBOARD_QUERIES = {
   overview: (range: DashboardRange, scenario?: string) =>
     queryOptions({
       queryKey: ['dashboard', 'overview', range, scenario ?? null],
       queryFn: () => getDashboard({ range, scenario }),
-      // A range change is a new queryKey; keep the old series on screen
-      // (dimmed, `isPlaceholderData`) instead of dropping to the skeleton:
-      // previously loaded figures stay shown, dimmed.
+      // A range change is a new key; keep the old series on screen, dimmed.
       placeholderData: keepPreviousData,
       retry: 1,
       staleTime: 60_000,
     }),
 };
 
-/** ─── Hooks ─────────────────────────────────────────── */
-
 export function useDashboardQuery(range: DashboardRange, scenario?: string) {
   return useQuery(DASHBOARD_QUERIES.overview(range, scenario));
 }
 
-/**
- * Optimistic dismiss: the notice leaves the strip immediately, the cached
- * overview is patched, and a server refusal (unknown key, 403) rolls back so
- * the notice reappears — callers toast on error.
- */
+/** Optimistic dismiss; a server refusal rolls back so the notice reappears. */
 export function useDismissNoticeMutation() {
   const queryClient = useQueryClient();
 
@@ -61,7 +51,7 @@ export function useDismissNoticeMutation() {
   });
 }
 
-/** "Refresh now" on the cache strip: one request with `refresh=1`, then the normal query refetches. */
+/** "Refresh now": one request with refresh=1, then the normal query refetches. */
 export function useRefreshDashboard(range: DashboardRange) {
   const queryClient = useQueryClient();
 

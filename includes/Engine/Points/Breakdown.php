@@ -5,12 +5,7 @@ use YayLoyalty\Utils\PointsMath;
 
 defined( 'ABSPATH' ) || exit;
 
-/**
- * How a handler arrived at its points: the admin's "why did this order earn?".
- *
- * INTERNAL MERCHANT STRATEGY. Carries the rate and the raw float; the admin
- * preview may render all of it, the storefront must expose the integer only.
- */
+/** How a handler arrived at its points. Carries the rate: the storefront must expose the integer only. */
 final class Breakdown {
 
     /** @var int */

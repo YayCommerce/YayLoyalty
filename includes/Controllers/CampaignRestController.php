@@ -145,8 +145,7 @@ final class CampaignRestController extends AbstractRestController {
             return $this->error_invalid_arguments( __( 'The campaign conditions are malformed.', 'yayloyalty' ) );
         }
 
-        // Slug is generated server-side and de-duplicated. A client-supplied
-        // slug is honoured as a starting point but never trusted to be unique.
+        // A client slug is a starting point, never trusted to be unique.
         $slug = $this->unique_slug( $request['slug'] ? (string) $request['slug'] : $name );
 
         $now = Dates::now();
@@ -201,8 +200,7 @@ final class CampaignRestController extends AbstractRestController {
             $row['updated_at']
         );
 
-        // Validate before any setter runs so a rejected request leaves the
-        // model untouched; the setters only normalise.
+        // Validate before any setter runs so a rejected request leaves the model untouched.
         if ( null !== $request['config'] && ! Campaign::config_is_valid( $campaign->get_trigger(), (array) $request['config'] ) ) {
             return $this->error_invalid_arguments( __( 'The campaign config has an unknown key or a value of the wrong type.', 'yayloyalty' ) );
         }
@@ -211,9 +209,7 @@ final class CampaignRestController extends AbstractRestController {
             return $this->error_invalid_arguments( __( 'The campaign conditions are malformed.', 'yayloyalty' ) );
         }
 
-        // slug and trigger are immutable after create, enforced here rather than
-        // by trusting the client to omit them. Built-ins are addressed by slug
-        // across sites, so a changed slug would break the Free UI's binding.
+        // slug and trigger are immutable after create: built-ins are addressed by slug across sites.
         if ( null !== $request['name'] ) {
             $campaign->set_name( trim( (string) $request['name'] ) );
         }
@@ -257,9 +253,7 @@ final class CampaignRestController extends AbstractRestController {
             return $this->error_not_found( __( 'Campaign not found.', 'yayloyalty' ) );
         }
 
-        // The Free UI binds to built-ins by slug, and the earning engine expects
-        // them to exist. is_builtin is readonly in the schema, so this check
-        // cannot be sidestepped by flipping the flag first.
+        // The engine and the Free UI expect built-ins to exist. is_builtin is readonly, so this cannot be sidestepped.
         if ( $campaign->is_builtin() ) {
             return $this->error_forbidden( __( 'Built-in campaigns cannot be deleted.', 'yayloyalty' ) );
         }
@@ -272,9 +266,7 @@ final class CampaignRestController extends AbstractRestController {
         ];
     }
 
-    /**
-     * A slug that is unique in the table, derived from $source.
-     */
+    /** A slug unique in the table, derived from $source. */
     private function unique_slug( string $source ): string {
         $base = sanitize_title( $source );
 
@@ -295,9 +287,7 @@ final class CampaignRestController extends AbstractRestController {
     }
 
     /**
-     * One row of dummy_fixture(), by id. Used by get_item() below; public so
-     * a controller that must resolve a dummy id (none does yet) can reuse it
-     * without a second copy of dummy_fixture().
+     * One row of dummy_fixture(), by id.
      *
      * @return array<string, mixed>|null
      */
@@ -312,11 +302,8 @@ final class CampaignRestController extends AbstractRestController {
     }
 
     /**
-     * dummy_fixture(), filtered/sorted/paged the way
-     * CampaignRepository::paginate_filtered() does over real rows — same
-     * params, same shape back (the fixture adds an id DESC tie-break
-     * paginate() does not), so swapping the caller in get_items() is the
-     * entire future change.
+     * dummy_fixture() filtered, sorted and paged with the same params and
+     * shape as CampaignRepository::paginate_filtered(), so the swap back is one call.
      *
      * @param array{page:int,per_page:int,orderby:string,order:string,trigger:string,status:string,search:string} $args
      * @return array{items: mixed[], total: int, page: int, per_page: int}
@@ -339,7 +326,6 @@ final class CampaignRestController extends AbstractRestController {
             );
         }
 
-        // Same whitelist as CampaignRepository::sortable_columns().
         $orderby = in_array( $args['orderby'], [ 'id', 'name', 'priority', 'status', 'created_at', 'updated_at' ], true )
             ? $args['orderby']
             : 'priority';
@@ -348,8 +334,7 @@ final class CampaignRestController extends AbstractRestController {
         usort(
             $rows,
             static function ( $a, $b ) use ( $orderby, $desc ) {
-                // Ties go to the newest (id DESC) — same rule live campaign
-                // selection uses, see data-model.md.
+                // Ties go to the newest, as live campaign selection does (data-model.md).
                 $cmp = $a[ $orderby ] <=> $b[ $orderby ];
                 $cmp = $desc ? -$cmp : $cmp;
 
@@ -370,32 +355,11 @@ final class CampaignRestController extends AbstractRestController {
     }
 
     /**
-     * Twenty-two campaigns across every fireable trigger (Lite's three plus
-     * Pro's ADDED_TRIGGERS), one archived row, a priority tie (ids 3 and 9)
-     * and enough rows to cross the Pro table's >20 search threshold — see
-     * CampaignTable.tsx. ids 4-6 are the three built-ins: their
-     * name/slug/config must match Installer::seed_builtins() and
-     * Campaign::default_config() exactly, since is_builtin rows are matched
-     * by slug across the app and these are the same rows
-     * BuiltInCampaignList edits.
-     *
-     * `conditions` is `[]` throughout on purpose, even for rows whose name
-     * implies one ("Summit+ members 1.5×"; "Trail Shoes boost" (id 3) and
-     * "Clearance category boost" (id 13) aside, which both use a real type):
-     * the natural fit for most of these is `tier`, which
-     * `CampaignConditionType::all()` excludes (the tier system does not
-     * exist yet) — `conditions_are_valid()`, called by create_item()/
-     * update_item() before every save, would reject a save that still
-     * carried one, so seeding one here would make opening and re-saving that
-     * campaign in the editor fail validation for a reason invisible in the UI.
-     *
-     * No `points_last_30_days` or other analytics figure here: the real
-     * per-campaign aggregate (Pro CampaignPointsRepository::issued_by_campaign())
-     * is keyed on real ids that do not match these dummy ids, so
-     * CampaignTable.tsx's "Last 30 days" column and CampaignPointsSummary
-     * widget read a plain client-side map
-     * (apps/admin/src/pro/campaigns/campaign-points-dummy.ts) keyed to these
-     * same dummy ids, not from this fixture, until the fixture is removed.
+     * Twenty-two campaigns: every fireable trigger, an archived row, a
+     * priority tie (ids 3 and 9), enough to cross the Pro table's search
+     * threshold. ids 4-6 must match Installer::seed_builtins() exactly: they
+     * are the rows BuiltInCampaignList edits. `conditions` stays `[]` where
+     * the natural fit is `tier`, which validation rejects until tiers exist.
      *
      * @return array<int, array<string, mixed>>
      */
@@ -422,13 +386,7 @@ final class CampaignRestController extends AbstractRestController {
             ]
         );
 
-        // Every literal config/conditions array with more than one key is
-        // named ahead of the list, one line per campaign below on purpose.
-        // WPCS still requires each of THESE declarations to be multi-line
-        // (WordPress.Arrays.ArrayDeclarationSpacing) — that rule is about a
-        // literal array's own declaration, not about how it is later passed
-        // around, so a named variable is exempt at its use site even though
-        // not at its declaration.
+        // Multi-key arrays are named here so each campaign below fits one line under WPCS.
         $now = [
             'created_at' => '2026-06-01 00:00:00',
             'updated_at' => '2026-09-01 00:00:00',
@@ -620,8 +578,6 @@ final class CampaignRestController extends AbstractRestController {
                     'type'        => [ 'string', 'null' ],
                     'context'     => [ 'view', 'edit' ],
                 ],
-                // Server-owned. ALWAYS_READONLY covers these too, but declaring
-                // them keeps the schema honest as documentation.
                 'is_builtin' => [
                     'type'     => 'boolean',
                     'context'  => [ 'view' ],

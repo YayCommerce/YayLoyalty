@@ -6,18 +6,9 @@ use YayLoyalty\Enums\CampaignConditionType;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * One eligibility rule: { type, operator, value }.
- *
- * A value object. Immutable by convention — PHP 7.4 has no `readonly`, so this
- * is private properties and getters only, no setters. Build a changed one with
- * from_array() rather than mutating.
- *
- * `value` is polymorphic; its accepted shapes are defined by
- * Enums\CampaignConditionType::schema() — a list for the `in` / `not_in` types, an
- * integer (or a [low, high] pair for `between`) for the count types, a
- * { amount, currency } map for `lifetime_spend`, a { countries, source } map for
- * `country`. This class only holds and exposes the value. Validation and
- * normalisation are Models\CampaignConditionSet's job.
+ * One campaign eligibility rule: { type, operator, value }. Immutable value
+ * object; `value`'s shapes are CampaignConditionType::schema()'s, validated
+ * by CampaignConditionSet.
  */
 final class CampaignCondition {
 
@@ -77,8 +68,7 @@ final class CampaignCondition {
     }
 
     /**
-     * The value as a plain list — for the `in` / `not_in` types. A scalar is
-     * wrapped so callers never branch on "array or not".
+     * The value as a list; a scalar is wrapped so callers never branch.
      *
      * @return array<int, mixed>
      */

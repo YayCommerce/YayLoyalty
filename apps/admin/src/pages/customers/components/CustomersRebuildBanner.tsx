@@ -3,17 +3,9 @@ import { __ } from '@wordpress/i18n';
 import { Button } from '@/components/ui/button';
 
 /**
- * Balance-rebuild-in-progress banner. Grey with a left accent —
- * deliberately NOT an error colour: this is progress, not failure. A plain
- * bordered block rather than `Alert variant="destructive"`, which is the
- * tempting-but-wrong shortcut here.
- *
- * The progress bar is a plain div, not `@/components/ui/custom/progress`:
- * that file imports `@radix-ui/react-progress`, which isn't in package.json
- * (pre-existing gap, unrelated to this page).
- *
- * All copy/percent here is static demo text behind the "Simulate rebuild"
- * toggle (see CustomersPage.tsx) — there is no real background job.
+ * Balance-rebuild banner, static demo copy behind the "Simulate rebuild"
+ * toggle. Grey, not an error colour: progress, not failure. A plain div
+ * bar: components/ui/custom/progress imports a package not in package.json.
  */
 export function CustomersRebuildBanner() {
   return (

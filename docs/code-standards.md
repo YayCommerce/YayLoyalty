@@ -337,3 +337,30 @@ So the following will **not** be caught by tooling, and are the exact features t
 **These are a review responsibility.** Local development runs PHP 8.x, so this code will run fine on the developer's machine and fatal on a 7.4 host. When reviewing, read for these constructs deliberately — the linter passing is not evidence of their absence.
 
 Closing this gap later means either pinning `phpcompatibility/php-compatibility` to `dev-develop` (which has PHP 8.x sniffs) or adding PHPStan with `phpVersion: 70400`. Deliberately deferred; revisit when CI is set up.
+
+---
+
+## 15. Comments **[REVIEW]**
+
+Two kinds of comment, two rules.
+
+**Docblocks** (class, public/protected method, constant, hook) start with one line saying *what this does for its caller* — the contract an IDE shows before the body is read. Keep it unless the name and signature already say it (`get_id()`: cut; `award()` "points for an order, idempotent per reference": keep). After that line, only the *why* and the `@param` / `@return` / `@throws` a caller relies on — typed signatures already say the rest. A docblock never opens with a caveat: if there is a why, the purpose line comes first.
+
+**Inline comments** (inside a body) default to none. **Code shows *how*; comment only to carry *why* — a non-obvious constraint, deliberate deviation, gotcha, or workaround.** Keep the one fact a reader needs at that line, in the fewest words; two lines is the usual ceiling, longer only for a WordPress or WooCommerce behaviour the code works around. Never narrate the code ("loop over campaigns"), narrate the change ("fixed X", "as requested"), or mark block ends.
+
+"Restates the name" means the line adds nothing beyond the identifier — no caller context, trigger, unit, or side effect. A summary that adds one of those is a contract, not a restatement.
+
+When a comment does exist, it states only what is true of the code directly beneath it — the invariant it protects and what breaks without it. Never what other code does, what the code used to do, or what it will do. Cross-cutting rationale lives in `docs/system-architecture.md` or `docs/data-model.md`; the comment points at it in one line.
+
+A comment survives review when all four hold:
+
+1. **Owns its claim** — describes only the code beneath it, not the SPA, a controller, cron, or a commit.
+2. **States an invariant or a why** — what this code guarantees or guards, and what breaks without it.
+3. **Not derivable** — reading the code would not tell you this. Library semantics (TanStack, react-hook-form, WooCommerce, WP core) are not ours to document unless the code works around them.
+4. **Points, doesn't repeat** — if a doc has the full rationale, the comment is one line plus a pointer.
+
+Cut: other-module behaviour · narrated history · restated code or library defaults · rationale duplicated from `docs/` · future tense and promises · performance folklore · design or plan IDs.
+
+Keep: the docblock purpose line · guards whose removal is a silent bug · ordering constraints · WordPress/WooCommerce behaviours the code works around · every `@throws` a caller depends on · real `TODO:` markers (one line, what and why not now) · `translators:` and `phpcs:ignore` directives.
+
+The review question is: *would deleting this comment make the next bug harder to avoid, or the next reader unable to tell what this is for?* If neither, delete it.

@@ -6,14 +6,9 @@ use YayLoyalty\Models\Campaign;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The answer to "what does this event earn, and which campaign paid?".
- *
- * `reason` is '' when awarded, otherwise one of the REASON_* constants. The
- * admin's "customers aren't earning" banner and the support simulator depend
- * on telling "no campaign exists" from "none applied" from "it rounded to 0".
- *
- * The caller writes the ledger from reference_type / reference_id / source;
- * the engine itself writes nothing.
+ * What an event earns and which campaign paid. `reason` is '' when awarded,
+ * else a REASON_* constant: the admin must tell "no campaign" from "none
+ * applied" from "rounded to 0". The caller writes the ledger from it.
  */
 final class Result {
 

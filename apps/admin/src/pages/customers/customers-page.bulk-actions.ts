@@ -15,14 +15,7 @@ import {
 import { EMPTY_SELECTION, type SelectionState } from './customers-page.selection';
 import type { SortDirection, SortKey } from './customers-page.sort-rows';
 
-/**
- * Bulk Export + bulk Adjust points — split out of `CustomersScreen.tsx` to
- * keep that file under the project's 200-line cap. Both share one problem:
- * neither the query nor 'all'-mode selection (see `customers-page.selection.ts`)
- * necessarily holds the full list of matching rows client-side, so both
- * resolve the actual target rows the same way — `resolveSelectedRows()`
- * below, fast path and all — before doing their real work.
- */
+/** Bulk Export and Adjust points. Both resolve the target rows through resolveSelectedRows() first. */
 export function useCustomersBulkActions({
   rows,
   queryFilters,
@@ -30,17 +23,14 @@ export function useCustomersBulkActions({
   selection,
   setSelection,
 }: {
-  /** Currently loaded page — see `resolveSelectedRows()`'s fast path below. */
+  /** The loaded page, for resolveSelectedRows()'s fast path. */
   rows: CustomerListRow[];
   queryFilters: RowFilters;
   sort: { by: SortKey; dir: SortDirection };
   selection: SelectionState;
   setSelection: (selection: SelectionState) => void;
 }) {
-  // Aborts a still-running multi-page fetch (the fallback path in
-  // resolveSelectedRows() below) if this hook's owner unmounts mid-request —
-  // e.g. the merchant navigates away from Customers while a bulk Export or
-  // bulk Adjust is resolving a large matching set.
+  // Aborts a multi-page fetch if the owner unmounts mid-request.
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -48,11 +38,6 @@ export function useCustomersBulkActions({
   }, []);
 
   async function resolveSelectedRows(): Promise<CustomerListRow[]> {
-    // Common case: every picked row is already sitting in the currently
-    // loaded page (a handful of rows checked, no page navigation since) —
-    // skip the round trip and resolve straight from what's already in hand
-    // instead of re-fetching the whole matching set just to filter it back
-    // down to the same rows.
     if (isSelectionFullyLoaded(rows, selection)) {
       return resolveSelectedCustomers(rows, selection);
     }
@@ -75,7 +60,6 @@ export function useCustomersBulkActions({
       }
       exportCustomersToCsv(selected);
     } catch (error) {
-      // A cancellation (unmount) is not a failure to report.
       if (isAbortError(error)) return;
       toast.error(await getApiErrorMessage(error, __('Could not export the selected customers.', 'yayloyalty')));
     } finally {
@@ -84,12 +68,8 @@ export function useCustomersBulkActions({
   }
 
   const [isAdjustDialogOpen, setIsAdjustDialogOpen] = useState(false);
-  // Covers BOTH phases of a submit — resolving the target rows (a network
-  // call that can take a while on a large store) and the mutation itself —
-  // so the dialog's submit button stays disabled the whole time. Relying on
-  // `bulkAdjustMutation.isPending` alone left a window during the resolve
-  // step where the button was still clickable, and a second click there
-  // would fire two overlapping (non-idempotent, see the mutation) batches.
+  // Covers the resolve step too: isPending alone left a window where a second click
+  // fired two overlapping, non-idempotent batches.
   const [isAdjustSubmitting, setIsAdjustSubmitting] = useState(false);
   const bulkAdjustMutation = useBulkAdjustPointsMutation();
 
@@ -118,8 +98,7 @@ export function useCustomersBulkActions({
         setIsAdjustDialogOpen(false);
         setSelection(EMPTY_SELECTION);
       } else {
-        // Partial failure — leave the dialog open and the selection intact so
-        // the merchant can see the summary and decide whether to retry.
+        // Partial failure: leave the dialog open so the merchant can decide whether to retry.
         toast.error(
           sprintf(
             __('%1$d succeeded, %2$d failed. Points ceilings or permissions may differ per customer.', 'yayloyalty'),
@@ -129,14 +108,8 @@ export function useCustomersBulkActions({
         );
       }
     } catch (error) {
-      // A cancellation (unmount) is not a failure to report — and it can
-      // only happen during the resolveSelectedRows() step, never mid-mutation
-      // (that step doesn't take this signal), so a cancellation here always
-      // means the mutation itself never fired.
+      // An abort can only happen during resolve, so the mutation never fired.
       if (isAbortError(error)) return;
-      // Covers both resolveSelectedRows() (fetching the matching set) and the
-      // mutation itself — either can fail on a network error, and both must
-      // surface something rather than an unhandled rejection.
       toast.error(
         await getApiErrorMessage(error, __('Could not adjust points for the selected customers.', 'yayloyalty')),
       );

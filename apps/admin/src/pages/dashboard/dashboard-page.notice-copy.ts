@@ -9,13 +9,9 @@ import type { DashboardNotice } from '@/lib/schema/dashboard.schema';
 import { scrollToAnomalyPanel, type NoticeAction } from './dashboard-page.notice-actions';
 
 /**
- * Every word of every notice, keyed by `notice.key`. The server sends
- * structured data only (see DashboardNotices.php); this is the one place
- * that turns it into sentences, so copy review happens here.
- *
- * Rules: thresholds are quoted from `data.threshold`, never hard-coded; the
- * anomaly copy says a campaign was *edited* and never claims what changed
- * (no diff exists server-side); dates/currency go through the WP helpers.
+ * Every word of every notice, from the server's structured data.
+ * Thresholds are quoted from data, never hard-coded; the anomaly copy says
+ * a campaign was edited and never claims what changed (no diff exists).
  */
 
 export type NoticeCopy = {
@@ -69,7 +65,7 @@ function copyFor(n: TypedNotice): NoticeCopy {
             formatPoints(n.data.orders_without_points),
           ),
         ),
-        // deferred: reactivation mutation — rendered disabled so the action is discoverable (user decision).
+        // TODO: reactivation mutation; rendered disabled so the action is discoverable.
         primary: {
           kind: 'disabled',
           label: __('Switch it back on', 'yayloyalty'),
@@ -163,7 +159,7 @@ export function noticeSummary(notice: DashboardNotice): string {
     case 'balance_rebuild':
       return __('a balance rebuild in progress', 'yayloyalty');
     default:
-      // Unknown keys never reach the strip (parseNoticeData drops them); satisfy the open wire type.
+      // Unknown keys never reach the strip; this satisfies the open wire type.
       return notice.key;
   }
 }

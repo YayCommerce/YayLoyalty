@@ -3,15 +3,7 @@ namespace YayLoyalty\Enums;
 
 defined( 'ABSPATH' ) || exit;
 
-/**
- * Why a balance moved.
- *
- * Distinct from LedgerType, which says what kind of movement it was. Source
- * lets history and analytics group rows without decoding reference_type /
- * reference_id.
- *
- * See LedgerType for why assert() belongs at the service boundary.
- */
+/** Why a balance moved; LedgerType says what kind of movement it was. */
 final class LedgerSource {
 
     public const ORDER     = 'order';

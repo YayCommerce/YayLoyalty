@@ -4,17 +4,11 @@ namespace YayLoyalty\Utils;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The points arithmetic every layer shares: engine, dashboard, and — through
- * a same-named mirror in `apps/admin/src/lib/points-math/` — the admin SPA.
- *
- * Kept pure so every rounding and null rule has a unit test. Rule shared by
- * every ratio here: a zero denominator yields null, never 0 — the SPA renders
- * "—" / "no previous period" for null and would otherwise show a misleading 0%.
- *
- * Every public method has a key in `tests/fixtures/points-math-vectors.json`
- * and a camelCase export on the TS side; both test suites iterate that file,
- * so adding a rule on one side without the other fails that side's tests.
- * PHP is the source of truth for expected values.
+ * The points arithmetic every layer shares, mirrored in
+ * apps/admin/src/lib/points-math/. A zero denominator yields null, never 0:
+ * the SPA renders "—" for null. Every public method has a vector in
+ * tests/fixtures/points-math-vectors.json that both suites iterate; PHP is
+ * the source of truth.
  */
 final class PointsMath {
 
@@ -22,15 +16,12 @@ final class PointsMath {
     public const ROUND_NEAREST = 'nearest';
     public const ROUND_UP      = 'up';
 
-    /** Breakdown marker for flat awards, which never round. Not a config value. */
+    /** Breakdown marker for flat awards, which never round; not a config value. */
     public const ROUND_NONE = 'none';
 
     /**
-     * Raw points to a whole number, ONCE, at order level. Half away from zero.
-     *
-     * Never per line item: rounding each line down would lose up to a point per
-     * line and make the total depend on how the cart was split. An unknown
-     * mode rounds down — the conservative direction for a liability.
+     * Raw points to a whole number, once at order level, never per line: the
+     * total must not depend on how the cart was split. An unknown mode rounds down.
      */
     public static function round_points( float $raw, string $mode ): int {
         switch ( $mode ) {
@@ -47,13 +38,8 @@ final class PointsMath {
     }
 
     /**
-     * Percentage change from $previous to $current; null when there is no
-     * previous figure to compare against.
-     *
-     * The denominator is |previous| so the sign always follows the direction
-     * of travel: a signed base (liability's previous period is
-     * net_balance - net_delta, which can dip below zero) would otherwise
-     * report a rise as a fall.
+     * Percentage change from $previous to $current; null with no previous.
+     * Denominator is |previous| so a negative base cannot report a rise as a fall.
      *
      * @param int|float $current
      * @param int|float $previous
@@ -68,9 +54,7 @@ final class PointsMath {
         return round( ( (float) $current - $previous ) / abs( $previous ) * 100, $decimals );
     }
 
-    /**
-     * $part as a percentage of $whole, 1 dp; null when $whole is zero.
-     */
+    /** $part as a percentage of $whole, 1 dp; null when $whole is zero. */
     public static function pct_of( int $part, int $whole ): ?float {
         if ( 0 === $whole ) {
             return null;
@@ -80,8 +64,7 @@ final class PointsMath {
     }
 
     /**
-     * Points expressed in store currency at $points_per_currency_unit, 2 dp;
-     * null when no usable conversion rate exists.
+     * Points in store currency, 2 dp; null when no usable rate exists.
      *
      * @param int|float $points_per_currency_unit
      */

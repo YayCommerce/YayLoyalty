@@ -58,7 +58,7 @@ export function givesLabel(trigger: CampaignTrigger, config: Record<string, unkn
         );
   }
 
-  // Every other trigger's config carries a flat `points` — see Campaign::config_schema() / YayLoyaltyPro::add_config_keys().
+  // Every other trigger's config carries a flat `points`.
   return sprintf(/* translators: %s: points awarded. */ __('%s points', 'yayloyalty'), String(config.points ?? 0));
 }
 

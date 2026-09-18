@@ -14,33 +14,18 @@
  *                           The installed copy of this plugin MUST be skipped
  *                           or its classes collide with the extracted one.
  *
- * Why this exists: a stripping build fails silently by nature. Deleting a
- * directory produces a zip that installs, activates and looks correct while
- * quietly still carrying the code it was supposed to drop — or quietly
- * missing code it was supposed to keep. Every check below is here because
- * nothing else in the pipeline would notice.
- *
- * Validation runs against the ZIP, never the working tree, so what ships is
- * what was checked.
- *
- * PHP 7.4 compatible: this runs on whatever CLI php the packager has.
- *
- * Single file on purpose. It is a standalone build tool invoked by
- * scripts/run.sh and by CI; splitting it across includes would mean the
- * validator itself needs a loader, and a validator that can fail to load is
- * worse than a long one.
+ * A stripping build fails silently: the zip installs and looks correct while
+ * carrying code it should have dropped. Runs against the ZIP, never the
+ * working tree. PHP 7.4, single file: a validator that needs a loader can
+ * fail to load.
  */
 
 declare(strict_types=1);
 
-// The marker registerPro() writes into the bundle. Absent from Lite proves
-// tree-shaking worked; present in Pro proves the absence assertion is not
-// vacuous. Keep in sync with apps/admin/src/pro/index.ts.
+// Written by registerPro(); keep in sync with apps/admin/src/pro/index.ts.
 const PRO_BUNDLE_SENTINEL = 'yayloyalty-pro-bundle-a7f3c1';
 
-// Copy from components/pro/UpgradeToPro.tsx. Lite MUST keep its upsell
-// surface: components/pro/ is kept while src/pro/ is dropped, and confusing
-// the two would silently remove every upgrade prompt from the Lite UI.
+// From components/pro/UpgradeToPro.tsx, which Lite keeps (src/pro/ is what is dropped).
 const UPSELL_MARKER = 'Upgrade to PRO to unlock this feature now';
 
 const PLUGIN_SLUG = 'yayloyalty';
@@ -48,7 +33,7 @@ const PLUGIN_SLUG = 'yayloyalty';
 // The one file allowed to name the Pro namespace in a Lite build.
 const PRO_REFERENCE_FILE = 'includes/YayLoyalty.php';
 
-// The guarded class_exists plus the call it guards. Two tokens, one seam.
+// The guarded class_exists plus the call it guards.
 const PRO_REFERENCE_LIMIT = 2;
 
 // ─── Result collection ──────────────────────────────────────────────────
@@ -56,9 +41,7 @@ const PRO_REFERENCE_LIMIT = 2;
 $results = [];
 
 /**
- * Record a check outcome. $ok true = PASS, false = FAIL, null = SKIP.
- *
- * @param bool|null $ok
+ * @param bool|null $ok true = PASS, false = FAIL, null = SKIP.
  */
 function record(string $name, $ok, string $detail = ''): void {
     global $results;
@@ -174,8 +157,7 @@ if ( is_array( $manifest ) && isset( $manifest['files'] ) ) {
         'manifest says ' . var_export( $manifest['buildType'] ?? null, true ) . ", asked for '$build_type'"
     );
 
-    // Version has to agree in three places or an upgrade check somewhere
-    // compares the wrong numbers.
+    // The version must agree in three places.
     $main_php     = (string) @file_get_contents( $root . '/' . PLUGIN_SLUG . '.php' );
     $const_ok     = preg_match( "/define\(\s*'YAYLOYALTY_VERSION',\s*'([^']+)'/", $main_php, $m_const );
     $header_ok    = preg_match( '/^\s*\*\s*Version:\s*(\S+)/m', $main_php, $m_header );
@@ -189,9 +171,7 @@ if ( is_array( $manifest ) && isset( $manifest['files'] ) ) {
         "manifest=$manifest_ver header=$header_ver constant=$const_ver"
     );
 
-    // Integrity: every listed file present and unmodified, and nothing
-    // present that was not listed. The second half is what catches a stray
-    // file surviving a strip.
+    // Unlisted files are what catch a stray file surviving a strip.
     $mismatched = [];
     foreach ( $manifest['files'] as $rel => $expected_hash ) {
         $abs = $root . '/' . $rel;
@@ -248,8 +228,7 @@ if ( null !== $bundle ) {
             0 === $sentinel_count ? '' : "found $sentinel_count occurrence(s) — a deep import from @/pro/ defeats the IS_PRO_BUILD gate"
         );
     } else {
-        // Without this the Lite assertion above would pass forever even if
-        // the sentinel had been dropped from both builds by accident.
+        // Without this the Lite assertion would pass forever if the sentinel were dropped from both builds.
         record(
             'Pro: Pro bundle sentinel present (Lite check is not vacuous)',
             $sentinel_count > 0,
@@ -257,11 +236,7 @@ if ( null !== $bundle ) {
         );
     }
 
-    // Lite only. components/pro/ is KEPT in the Lite source tree — do not
-    // confuse it with src/pro/, which is dropped — and its output is the
-    // upgrade prompt. A Pro build has nothing to upsell: ProGate's overlay
-    // branch is dead code under IS_PRO_BUILD and is correctly shaken out, so
-    // asserting this in both directions would fail a healthy Pro package.
+    // Lite only: in Pro the upsell branch is correctly shaken out.
     if ( $is_lite ) {
         record(
             'Lite: upsell surface kept in the bundle (components/pro/)',
@@ -270,8 +245,7 @@ if ( null !== $bundle ) {
         );
     }
 
-    // Only the main entry should exist: a side chunk would carry Pro code
-    // past a grep that only reads main.js.
+    // A side chunk would carry Pro code past a grep that only reads main.js.
     $js_files = glob( $root . '/assets/dist/admin/js/*.js' ) ?: [];
     record(
         'Bundle is a single entry chunk',
@@ -329,9 +303,7 @@ record(
 if ( $is_lite ) {
     $refs = [];
     foreach ( $php_files as $rel ) {
-        // First-party code only. vendor-prefixed/ is the scoped YayCommerce
-        // admin shell, which has its own licence and "Pro" plan vocabulary
-        // that this plugin neither owns nor strips.
+        // The scoped admin shell has its own "Pro" vocabulary this plugin does not strip.
         if ( 0 === strpos( $rel, 'vendor-prefixed/' ) || 0 === strpos( $rel, 'vendor/' ) ) {
             continue;
         }
@@ -352,9 +324,7 @@ if ( $is_lite ) {
         $detail[] = "$rel x$count";
     }
 
-    // Asserting zero would fail the build for correct code: the guarded
-    // class_exists and the call it guards must survive into Lite, or a
-    // Lite install could never detect a Pro drop-in.
+    // Not zero: the guarded class_exists must survive so Lite can detect a Pro drop-in.
     record(
         'Lite: Pro named only by the guarded seam in ' . PRO_REFERENCE_FILE,
         $confined,
@@ -391,10 +361,7 @@ render_and_exit( $work, $require_boot );
 
 // ─── Functions ──────────────────────────────────────────────────────────
 
-/**
- * Remove comments from PHP source so a reference count reflects code, not
- * the (deliberately extensive) prose explaining the Pro seams.
- */
+/** Strips comments so a reference count reflects code, not prose about the seams. */
 function strip_php_comments(string $src): string {
     $out = '';
     foreach ( token_get_all( $src ) as $token ) {
@@ -411,12 +378,8 @@ function strip_php_comments(string $src): string {
 }
 
 /**
- * Load the extracted plugin inside a real WordPress and assert it boots.
- *
- * This is the check that catches what static greps cannot: a stripped class
- * that something still instantiates, an autoloader that resolves to a deleted
- * file, a fatal on init. It needs WordPress, so it SKIPS loudly when no
- * WP-CLI is configured rather than passing silently.
+ * Boots the extracted plugin inside a real WordPress: catches a stripped
+ * class something still instantiates. Skips loudly without WP-CLI.
  */
 function run_boot_check(string $root, string $build_type): void {
     $wp_cli = getenv( 'YAYLOYALTY_WP_CLI' );
@@ -473,10 +436,7 @@ function run_boot_check(string $root, string $build_type): void {
     );
 }
 
-/**
- * The script handed to `wp eval-file`. Kept as a string so the validator
- * stays one file; it runs in the WordPress process, not this one.
- */
+/** The script handed to `wp eval-file`; a string so the validator stays one file. */
 function boot_script_source(): string {
     return <<<'BOOT'
 <?php
@@ -491,8 +451,7 @@ list( $dir, $expected ) = $args;
 
 require_once rtrim( $dir, '/' ) . '/yayloyalty.php';
 
-// plugin_init() returns early without WooCommerce; initialize() directly so
-// the singletons are exercised either way.
+// plugin_init() returns early without WooCommerce; initialize() exercises the singletons either way.
 \YayLoyalty\plugin_init();
 \YayLoyalty\YayLoyalty::initialize();
 
@@ -524,7 +483,7 @@ echo 'YAYLOYALTY_BOOT_RESULT:' . wp_json_encode(
 BOOT;
 }
 
-/** Print the results table and exit with the right code. */
+/** Prints the results table and exits with the right code. */
 function render_and_exit(string $work, bool $require_boot): void {
     global $results;
 

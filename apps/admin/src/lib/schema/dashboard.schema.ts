@@ -3,23 +3,10 @@ import { z } from 'zod';
 import { ledgerEntrySchema } from './ledger.schema';
 
 /**
- * Mirrors DashboardRestController::define_item_schema() — `GET /dashboard`
- * and the dismiss args in its register_routes(). The Pro-only
- * `GET /dashboard/pro` lives in dashboard-pro.schema.ts; per-key notice data
- * in dashboard-notice.schema.ts.
- *
- * THOSE PHP METHODS ARE THE SOURCE OF TRUTH. The contract is frozen in
- * `plans/260916-1558-admin-dashboard-page/plan.md`.
- *
- * Null rules (server-owned, see Utils\PointsMath, mirrored by
- * lib/points-math): a zero denominator yields `null`, never `0`.
- * `prev_delta_pct: null` renders as "no previous period"; `rate: null` /
- * `currency_amount: null` render as "—".
- *
- * Notices carry NO copy. `{ key, severity, fingerprint, data }` only — title,
- * body and actions are composed client-side in
- * `pages/dashboard/dashboard-page.notice-copy.ts` from `key` + `data`, the
- * same rule as ledger descriptions (see ledger.schema.ts `note`).
+ * Mirrors DashboardRestController::define_item_schema(), the source of
+ * truth. A zero denominator yields null, never 0: null renders as "—" or
+ * "no previous period". Notices carry no copy; dashboard-page.notice-copy.ts
+ * composes it from key + data.
  */
 
 export const DASHBOARD_RANGES = [7, 30, 90] as const;
@@ -28,7 +15,7 @@ export const dashboardRangeSchema = z.union([z.literal(7), z.literal(30), z.lite
 
 export type DashboardRange = z.infer<typeof dashboardRangeSchema>;
 
-/** Percentage change vs the previous window, 1 dp. `null` = nothing to compare against. */
+/** Percentage change vs the previous window; null = nothing to compare against. */
 const prevDeltaPct = z.number().nullable();
 
 export const dashboardStatSchema = z.object({
@@ -43,7 +30,7 @@ export const dashboardLiabilitySchema = z.object({
   points: z.number().int(),
   /** `points / points_per_currency_unit`, 2 dp; `null` when the rate is <= 0. */
   currency_amount: z.number().nullable(),
-  /** From the built-in `cart-discount` reward — the single valuation rate; named on the tile. */
+  /** From the built-in cart-discount reward; named on the tile. */
   points_per_currency_unit: z.number(),
   prev_delta_pct: prevDeltaPct,
 });
@@ -71,7 +58,7 @@ export const dashboardStatsSchema = z.object({
 
 export type DashboardStats = z.infer<typeof dashboardStatsSchema>;
 
-/** One site-timezone calendar day. The series always has exactly `range` rows. */
+/** One site-timezone day; the series always has exactly `range` rows. */
 export const dashboardSeriesPointSchema = z.object({
   date: z.string(),
   issued: z.number().int(),
@@ -131,17 +118,10 @@ export type DismissableNoticeKey = z.infer<typeof dismissableNoticeKeySchema>;
 export type DashboardNoticeSeverity = z.infer<typeof dashboardNoticeSeveritySchema>;
 
 export const dashboardNoticeSchema = z.object({
-  /**
-   * Open on the wire on purpose: a key this build does not know (a newer
-   * server, a Pro-only detector) must drop that one notice, not fail the
-   * whole landing page. Known keys narrow via dashboard-notice.schema.ts.
-   */
+  /** Open on purpose: an unknown key must drop that one notice, not fail the page. */
   key: z.string(),
   severity: dashboardNoticeSeveritySchema,
-  /**
-   * Dismissal identity: a dismissed `(key, fingerprint)` stays hidden for
-   * that user until the fingerprint changes and the notice re-surfaces.
-   */
+  /** Dismissal identity; a dismissed notice re-surfaces when this changes. */
   fingerprint: z.string(),
   /** Per-key shape; narrowed by parseNoticeData() in dashboard-notice.schema.ts. */
   data: z.record(z.string(), z.unknown()),
@@ -153,7 +133,7 @@ export const dashboardResponseSchema = z.object({
   range: dashboardRangeSchema,
   /** UTC, Dates::now() format. */
   generated_at: z.string(),
-  /** True only above the member threshold where the transient cache is active. */
+  /** Only above the member threshold where the transient cache is active. */
   cached: z.boolean(),
   /** UTC; present only when `cached`. */
   next_refresh_at: z.string().nullable(),

@@ -1,10 +1,7 @@
 import { useEffect, useState } from 'react';
 import { matchPath, useBlocker } from 'react-router';
 
-/**
- * Hook that guards unsaved form changes.
- * Returns control for showing custom modal.
- */
+/** Blocks in-app navigation while a form has unsaved changes and hands the blocked transition to the caller. */
 export function useRouteLeaveGuard(shouldBlock: boolean, excludedRoutes: string[] = []) {
   const [showDialog, setShowDialog] = useState(false);
 
@@ -17,7 +14,6 @@ export function useRouteLeaveGuard(shouldBlock: boolean, excludedRoutes: string[
     }
   }, [blocker]);
 
-  // Confirm Dialog actions
   const confirmLeave = () => {
     setShowDialog(false);
     blocker.proceed?.();

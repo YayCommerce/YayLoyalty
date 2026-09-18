@@ -4,56 +4,37 @@ namespace YayLoyalty\Enums;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The event that fires a campaign.
- *
- * The trigger determines which keys `config` may contain, so this enum is also
- * the key to the per-trigger config whitelist in Campaign::validate_config().
- *
- * Pro triggers exist as constants because stored rows may reference them — a
- * site that downgrades from Pro must not have its campaigns rejected as
- * corrupt — but all() returns only what this build can actually fire.
+ * The event that fires a campaign; also the key to the per-trigger config
+ * whitelist. Pro triggers are constants so a downgraded site's rows are not
+ * rejected as corrupt, but all() returns only what this build can fire.
  */
 final class CampaignTrigger {
-
-    /* --- 1.0 --- */
 
     public const PURCHASE = 'purchase';
     public const SIGNUP   = 'signup';
     public const REVIEW   = 'review';
 
-    /* --- Pro. Recognised when stored, offered only by Pro. --- */
+    // Pro: recognised when stored, offered only by Pro.
 
     public const BIRTHDAY        = 'birthday';
     public const FIRST_ORDER     = 'first_order';
     public const ORDER_COUNT     = 'order_count';
     public const SPEND_MILESTONE = 'spend_milestone';
 
-    /* --- Recognised when stored, offered by no build yet. --- */
+    // Recognised when stored, offered by no build yet.
 
     public const REFERRAL = 'referral';
     public const SOCIAL   = 'social';
     public const RENEWAL  = 'renewal';
 
     /**
-     * Triggers this build can fire.
-     *
-     * FILTERED; all_known() is NOT. That asymmetry is deliberate:
-     *
-     *   all()       = what this build can fire and offer in the UI
-     *   all_known() = what the schema recognises, Pro values included
-     *
-     * Downgrade safety depends on the second staying complete in Lite. If both
-     * were filtered, a site that dropped from Pro to Lite would see its
-     * stored Pro triggers rejected as unknown.
+     * Triggers this build can fire. Filtered, unlike all_known(): downgrade safety needs the recognised set to stay complete.
      *
      * @return string[]
      */
     public static function all(): array {
         /**
-         * Campaign triggers this build can fire.
-         *
-         * Pro's attach point for its own triggers. Internal seam for
-         * first-party Pro code, not a documented third-party API.
+         * Campaign triggers this build can fire. Internal Pro seam, not a public API.
          *
          * @param string[] $triggers
          */
@@ -61,13 +42,7 @@ final class CampaignTrigger {
     }
 
     /**
-     * The triggers Lite itself ships, before any filtering.
-     *
-     * Exists so all_known() has an unfiltered base to build on. all_known()
-     * must NOT call all(), or a Pro subscriber adding a trigger would leak
-     * into it — producing duplicates and, worse, making the "recognised"
-     * vocabulary depend on the build. That is the opposite of what downgrade
-     * safety needs.
+     * Lite's own triggers, unfiltered, so all_known() never depends on the build.
      *
      * @return string[]
      */
@@ -80,11 +55,7 @@ final class CampaignTrigger {
     }
 
     /**
-     * Every trigger the schema recognises, including Pro ones.
-     *
-     * DELIBERATELY UNFILTERED, and deliberately not built from all(). Used for
-     * validating stored rows, never for offering choices: a Lite site holding a
-     * campaign created in Pro must still recognise its trigger.
+     * Every trigger the schema recognises, Pro included. Unfiltered: for validating stored rows, never for offering choices.
      *
      * @return string[]
      */

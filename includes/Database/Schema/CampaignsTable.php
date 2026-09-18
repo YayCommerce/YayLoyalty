@@ -4,20 +4,9 @@ namespace YayLoyalty\Database\Schema;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * yayloyalty_campaigns — earning rules (1.0 columns only).
- *
- * The event column is `trigger_type`, NOT `trigger`. `trigger` is a reserved
- * word in MySQL/MariaDB: naming the column that forces a backtick into every
- * statement that touches it, and a single missed backtick is a syntax error on
- * the one code path nobody tests. `trigger_type` sidesteps the whole class of
- * bug — no column identifier here or in CampaignRepository needs a backtick.
- *
- * `status` stores merchant intent only: active, paused, draft, archived.
- * Liveness ("scheduled" / "ended") is NEVER stored — it is derived at read time
- * from status plus starts_at/ends_at, evaluated against the EVENT's timestamp.
- * See Enums\Status::is_live_at() and Enums\Status::resolve_display(). No cron
- * may flip a status.
- *
+ * yayloyalty_campaigns. The event column is trigger_type, not trigger: a
+ * reserved word would need a backtick in every statement, and one missed
+ * is a syntax error. `status` is intent only; liveness is derived (see Enums\Status).
  */
 final class CampaignsTable extends AbstractTableSchema {
 
@@ -28,8 +17,6 @@ final class CampaignsTable extends AbstractTableSchema {
     public function definition(): string {
         $table = $this->table_name();
 
-        // dbDelta grammar: lowercase types, one field per line, named KEYs (never
-        // INDEX, never bare UNIQUE), two spaces after PRIMARY KEY, ENGINE stated.
         return "CREATE TABLE {$table} (
             id bigint unsigned NOT NULL AUTO_INCREMENT,
             name varchar(191) NOT NULL,

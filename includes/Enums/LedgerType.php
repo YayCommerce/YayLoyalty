@@ -4,16 +4,8 @@ namespace YayLoyalty\Enums;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Kinds of balance movement.
- *
- * PHP 7.4 has no enums, so closed vocabularies are a final class of constants
- * plus a validator. assert() is called at the SERVICE boundary, never in a
- * repository: with no compile-time check, an invalid value would otherwise
- * surface only as a DB error, far from the caller and naming a column rather
- * than the mistake.
- *
- * The affects_* helpers encode the data model's aggregate rules in one place so
- * LedgerService never open-codes them.
+ * Kinds of balance movement. assert() runs at the service boundary; the
+ * affects_* helpers hold the data model's aggregate rules in one place.
  */
 final class LedgerType {
 
@@ -71,32 +63,19 @@ final class LedgerType {
     }
 
     /**
-     * Does a row of this type move customers.lifetime_earned?
-     *
-     * Data model: lifetime_earned = SUM(earn) + SUM(adjust > 0) - SUM(|refund_earn|).
-     * redeem and expire never touch it, so spending points never demotes a tier.
-     *
-     * ADJUST is included because a positive adjustment counts as earning; the
-     * caller applies the sign, and a negative adjust must not increase it.
+     * lifetime_earned = SUM(earn) + SUM(adjust > 0) - SUM(|refund_earn|).
+     * Spending never demotes a tier; the caller applies ADJUST's sign.
      */
     public static function affects_lifetime_earned( string $type ): bool {
         return in_array( $type, [ self::EARN, self::REFUND_EARN, self::ADJUST ], true );
     }
 
-    /**
-     * Does a row of this type move customers.lifetime_redeemed?
-     *
-     * Data model: lifetime_redeemed = SUM(|redeem|) - SUM(refund_redeem).
-     */
+    /** lifetime_redeemed = SUM(|redeem|) - SUM(refund_redeem). */
     public static function affects_lifetime_redeemed( string $type ): bool {
         return in_array( $type, [ self::REDEEM, self::REFUND_REDEEM ], true );
     }
 
-    /**
-     * Does a row of this type count as customer activity for expiry purposes?
-     *
-     * Data model: last_activity_at tracks the last earn or redeem.
-     */
+    /** Whether the row touches last_activity_at: the last earn or redeem. */
     public static function is_activity( string $type ): bool {
         return in_array( $type, [ self::EARN, self::REDEEM ], true );
     }

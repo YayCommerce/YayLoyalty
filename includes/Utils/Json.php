@@ -4,30 +4,20 @@ namespace YayLoyalty\Utils;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * JSON columns.
- *
- * WooCommerce's minimum MySQL/MariaDB versions do not guarantee a native JSON
- * type, so JSON lives in LONGTEXT and is validated in PHP. Every blob carries a
- * schema_version key so formats can evolve without a table migration.
- *
- * Decoding is TOTAL: malformed stored data returns the default and logs. It
- * never throws. A corrupt config blob should degrade one campaign, not
- * white-screen the admin.
+ * JSON columns: LONGTEXT validated in PHP (WooCommerce's minimum MySQL has no
+ * native JSON), every blob stamped with schema_version. Decoding never
+ * throws: a corrupt blob degrades one row, not the whole admin.
  */
 final class Json {
 
     public const SCHEMA_VERSION_KEY = 'schema_version';
 
-    /** Envelope key holding a list payload. @see encode_list() */
+    /** Envelope key holding a list payload; see encode_list(). */
     public const ITEMS_KEY = 'items';
 
     /**
-     * Encode a MAP for storage, stamping the schema version.
-     *
-     * For list-shaped payloads use encode_list(). Stamping a string key into a
-     * list turns it into an object: `[{…},{…}]` would come back as
-     * `{"0":…,"1":…,"schema_version":1}`, and anything iterating it would find
-     * a stray integer where it expected a record.
+     * Encodes a map, stamping the schema version. Lists use encode_list():
+     * stamping a string key into a list turns it into an object.
      *
      * @param array $data    Payload. Any existing schema_version is overwritten.
      * @param int   $version Schema version to stamp.
@@ -47,10 +37,9 @@ final class Json {
     }
 
     /**
-     * Decode a stored blob. Never throws.
+     * Decodes a stored blob. Never throws.
      *
-     * @param string|null $raw     Stored column value.
-     * @param array       $fallback Returned when $raw is empty or malformed.
+     * @param array $fallback Returned when $raw is empty or malformed.
      */
     public static function decode( ?string $raw, array $fallback = [] ): array {
         if ( null === $raw || '' === trim( (string) $raw ) ) {
@@ -69,19 +58,8 @@ final class Json {
     }
 
     /**
-     * Encode a LIST for storage, wrapped so the version has somewhere to live.
-     *
-     * `campaigns.conditions` is a list of {type, operator, value} triples, and
-     * a list cannot carry a version key without ceasing to be a list. The
-     * envelope keeps the payload a genuine array:
-     *
-     *   {"schema_version": 1, "items": [ {...}, {...} ]}
-     *
-     * An empty list stays an empty list on the way back, which matters: code
-     * asking "does this campaign have conditions?" must get a straight answer,
-     * not an array containing only bookkeeping.
-     *
-     * @param array $items
+     * Encodes a list in a {"schema_version", "items"} envelope, since a list
+     * cannot carry a version key and stay a list. An empty list round-trips empty.
      */
     public static function encode_list( array $items, int $version ): string {
         return self::encode(
@@ -91,14 +69,9 @@ final class Json {
     }
 
     /**
-     * Decode a list written by encode_list(). Never throws.
-     *
-     * Also accepts two older shapes so no stored row is lost: a bare JSON
-     * array, and the corrupted `{"0":…,"schema_version":1}` an earlier
-     * encode() produced when handed a list.
-     *
-     * @param string|null $raw
-     * @param array       $fallback
+     * Decodes a list written by encode_list(). Never throws. Also accepts a
+     * bare array and the `{"0":…,"schema_version":1}` shape an earlier
+     * encode() produced, so no stored row is lost.
      */
     public static function decode_list( ?string $raw, array $fallback = [] ): array {
         $decoded = self::decode( $raw, $fallback );
@@ -109,8 +82,6 @@ final class Json {
 
         unset( $decoded[ self::SCHEMA_VERSION_KEY ] );
 
-        // What remains is either a bare list or a salvaged one; anything whose
-        // entries are not records is not a condition list.
         foreach ( $decoded as $item ) {
             if ( ! is_array( $item ) ) {
                 return $fallback;
@@ -120,20 +91,7 @@ final class Json {
         return array_values( $decoded );
     }
 
-    /*
-     * Deliberately absent: version_of().
-     *
-     * Nothing reads a schema version until a second version exists, so it would
-     * ship with zero call sites. Add it with the first migration that actually
-     * branches on the version. A blob with no schema_version key is version 0
-     * and gets stamped on its next save, so no migration is needed to backfill.
-     */
-
-    /**
-     * Debug level on purpose: one malformed blob degrades one row, and decoding
-     * happens per row, so a permanent level would flood the log on a table that
-     * has a bad column.
-     */
+    /** Debug level: decoding runs per row, so a bad column would otherwise flood the log. */
     private static function log( string $message ): void {
         Log::debug( 'Json', $message );
     }

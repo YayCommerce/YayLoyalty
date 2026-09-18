@@ -7,23 +7,13 @@ use YayLoyalty\Utils\Dates;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The Customers list's real search/filter rules — search, balance-range
- * buckets, expiring-soon window, tier — mirrored field-for-field with
- * `customers-page.filter-rows.ts`'s option values so a request returns the
- * same rows the admin list describes in its UI.
- *
- * SQL-FREE ON PURPOSE. `to_criteria()` turns raw wire params into a
- * normalised, logical criteria array — no `$wpdb`, no SQL fragments.
- * `CustomerRepository::where_fragments()` is the only place that turns a
- * criterion into a prepared `WHERE` clause (see docs/code-standards.md §6:
- * `$wpdb` belongs in `Repositories/`, not `Controllers/`). This class still
- * owns every threshold, bucket edge and day-window — the product knowledge
- * survives; only the per-row `array_filter` body it used to run in memory
- * is gone, replaced by `CustomerRepository::paginate_list()`.
+ * The Customers list's filter rules (search, balance buckets, expiring-soon
+ * window, tier), mirroring customers-page.filter-rows.ts. SQL-free: it
+ * owns every threshold and edge, CustomerRepository turns them into WHERE.
  */
 final class CustomerRowFilters {
 
-    /** Every param's "not filtering" value — the shape `to_criteria()` and `candidates_for_no_match()` both work with. */
+    /** Every param's "not filtering" value. */
     private const DEFAULTS = [
         'search'        => '',
         'balance_range' => CustomerFilters::BALANCE_RANGES[0],
@@ -32,8 +22,7 @@ final class CustomerRowFilters {
     ];
 
     /**
-     * Raw wire params off the request, defaulted — the shape every other
-     * method here expects.
+     * Wire params off the request, defaulted.
      *
      * @return array<string, string>
      */
@@ -47,10 +36,7 @@ final class CustomerRowFilters {
     }
 
     /**
-     * Normalises raw filter params into logical criteria
-     * `CustomerRepository::where_fragments()` turns into SQL. Same numbers,
-     * same windows as the old row-matchers — just returned as bounds instead
-     * of applied to one row at a time.
+     * Normalises filter params into the logical criteria CustomerRepository turns into SQL.
      *
      * @param array<string, string> $filters search / balance_range / expiring_soon / tier
      * @return array{
@@ -81,21 +67,9 @@ final class CustomerRowFilters {
     }
 
     /**
-     * "Which filter should I drop?" candidate PARAM SETS — same active-filter
-     * detection and "isolate the search" rule as before, but returns what to
-     * count rather than a count: counting now costs a DB round trip
-     * (`CustomerRepository::count_list()`), which only the REST controller
-     * can afford to do per candidate.
-     *
-     * Only returned once at least 2 filters are active — with a single
-     * filter, the one candidate is always "no filters at all", which isn't
-     * worth suggesting over "Clear all".
-     *
-     * `key` is the wire/param name (`balance_range`), same as the query params
-     * this class reads — the server never learns how the admin app spells its
-     * own filter state. The admin app owns the option labels
-     * (`customers-page.filter-rows.ts`) and maps `key` to its `FilterKey` in
-     * `customers-page.filter-suggestions.ts`, so nothing here translates.
+     * "Which filter should I drop?" candidate param sets, for the controller
+     * to count. Empty below two active filters: the one candidate would be
+     * "no filters", not worth suggesting over "Clear all".
      *
      * @param array<string, string> $filters
      * @return array<string, array<string, string>> param name => candidate params
@@ -146,8 +120,7 @@ final class CustomerRowFilters {
     }
 
     /**
-     * A day-window option means "expires between now and now+N days";
-     * already-expired rows match neither window.
+     * A day-window option means now..now+N days; already-expired rows match neither.
      *
      * @return array{0: string|null, 1: string|null, 2: bool} [from, to, is_null].
      */

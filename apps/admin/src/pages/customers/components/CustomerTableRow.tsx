@@ -10,15 +10,9 @@ import { sampleTierForBalance } from '../customers-page.tier-sample-data';
 import { BalanceCell, CustomerNameCell } from './CustomersTableCells';
 
 /**
- * One customer row. Negative balance gets a subtle left-accent tint (never
- * red — see BalanceCell) and shows "—" for Expires instead of a stale date.
- *
- * Tier renders `sampleTierForBalance()` — TEMPORARY, UI-check-only sample
- * data (see `customers-page.tier-sample-data.ts`), not a real column: no
- * `tiers` table exists yet, so `CustomerListRow` has no real `tier` field.
- * Referrals (Pro) always renders "—": no referral-count column exists
- * either, and has no sample-data stand-in (not asked for) — this one really
- * is the real (empty) answer, not a loading/error state.
+ * One customer row. A negative balance gets a left-accent tint, never red.
+ * Tier shows sample data derived from balance until a tiers table exists;
+ * Referrals always shows "—", the real empty answer.
  */
 export function CustomerTableRow({
   customer,
@@ -30,7 +24,7 @@ export function CustomerTableRow({
 }: {
   customer: CustomerListRow;
   showProColumns: boolean;
-  /** Off during the rebuild toggle even in Pro — no picking rows while balances are frozen. */
+  /** Off during the rebuild toggle: no picking rows while balances are frozen. */
   showSelection: boolean;
   selected: boolean;
   onToggle: (userId: number) => void;

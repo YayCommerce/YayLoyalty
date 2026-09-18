@@ -4,21 +4,11 @@ namespace YayLoyalty\Services\Dashboard;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Flags a one-day points jump worth a notice.
- *
- * Yesterday counts as a jump when it reached MULTIPLE x the average of the
- * other ACTIVE days in the 30-day series, was backed by at least MIN_ORDERS
- * orders (so a single manual adjustment does not trip it), and the store has
- * at least MIN_HISTORY_DAYS such days (so a launch week is not "a jump" over
- * an empty history).
- *
- * Only non-zero days enter the average. A store that issues points on
- * weekends only would otherwise see every ordinary Saturday flagged as
- * ~3x its zero-padded weekly mean. The average excludes yesterday so a spike
- * cannot depress its own multiple.
- *
- * Pure — the caller supplies the series (zero-filled over all 30 days, see
- * DashboardMath::fill_series) and the order count.
+ * Flags a one-day points jump: yesterday at MULTIPLE x the average of the
+ * other active days, backed by MIN_ORDERS orders (not one manual
+ * adjustment), with MIN_HISTORY_DAYS of history (not a launch week). Only
+ * non-zero days enter the average, or a weekend-only store would flag
+ * every Saturday; yesterday is excluded so a spike cannot depress its own multiple.
  */
 final class AnomalyDetector {
 

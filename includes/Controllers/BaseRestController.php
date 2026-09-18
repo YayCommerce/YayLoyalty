@@ -6,11 +6,7 @@ use YayLoyalty\Utils\Log;
 
 defined( 'ABSPATH' ) || exit;
 
-/**
- * Class BaseRestController
- *
- * Provides common methods for REST controllers.
- */
+/** Request execution wrappers shared by every REST controller. */
 abstract class BaseRestController {
 
     public const REST_NAMESPACE = 'yayloyalty/v1';
@@ -32,11 +28,8 @@ abstract class BaseRestController {
     }
 
     /**
-     * Execute Routes which DO NOT Write to DB.
-     * Treat deep thrown error as internal_error
+     * Runs a read-only route; any throwable becomes a 500.
      *
-     * @param  callable         $callback
-     * @param  \WP_REST_Request $request
      * @return \WP_REST_Response|\WP_Error|void
      */
     public function exec_read( $callback, \WP_REST_Request $request ) {
@@ -51,21 +44,10 @@ abstract class BaseRestController {
     }
 
     /**
-     * Execute Routes which DO Write to DB, auto-rollback on error.
+     * Runs a writing route inside Transaction::run(). A callback that returns
+     * a WP_Error rolls back like one that throws, or a validation failure
+     * would commit partial work and still answer 4xx.
      *
-     * Transaction handling is delegated to Transaction::run() rather than
-     * issuing START TRANSACTION here. MySQL has no nested transactions, so a
-     * service that opens its own would otherwise have its inner COMMIT commit
-     * this method's work, and this method's ROLLBACK would be a silent no-op.
-     *
-     * A callback that RETURNS a WP_Error rolls back, exactly as one that throws
-     * does. Returning an error was previously treated as success and committed;
-     * SettingsRestController::save_settings() and CampaignRestController use
-     * that idiom; without it a validation failure inside a real write would
-     * commit partial work and still answer 4xx.
-     *
-     * @param  callable         $callback
-     * @param  \WP_REST_Request $request
      * @return \WP_REST_Response|\WP_Error|void
      */
     public function exec_write( $callback, $request ) {
@@ -79,8 +61,6 @@ abstract class BaseRestController {
                     $result = $callback( $request );
 
                     if ( is_wp_error( $result ) ) {
-                        // Unwound by the catch below, which returns the
-                        // original WP_Error untouched.
                         throw new CallbackReturnedError( $result );
                     }
 
@@ -98,19 +78,11 @@ abstract class BaseRestController {
         }
     }
 
-    /**
-     * Generic 500 with a correlation id.
-     *
-     * The exception message is logged, never returned: it carries SQL, table
-     * names and filesystem paths.
-     */
+    /** Generic 500 with a correlation id. The message is logged, never returned: it carries SQL and paths. */
     protected function error_internal( \Throwable $ex ): \WP_Error {
         $correlation_id = substr( md5( uniqid( '', true ) ), 0, 12 );
 
-        // ALWAYS logged, never gated on WP_DEBUG. The response hands the user
-        // this correlation id to quote at support; if the matching line was
-        // never written the id refers to nothing, and production is exactly
-        // where WP_DEBUG is off.
+        // Never gated on WP_DEBUG: the correlation id must refer to a line that was written.
         Log::error(
             'REST',
             sprintf(

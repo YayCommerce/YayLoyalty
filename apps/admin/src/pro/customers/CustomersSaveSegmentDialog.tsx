@@ -17,12 +17,7 @@ import { Field, FieldContent, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { saveSegment, type SavedSegment } from './customer-segments.api';
 
-/**
- * The "Save current filters as segment" dialog — split out of
- * `CustomersSavedSegmentRow.tsx` to keep that file under this repo's
- * 200-line guideline. Owns nothing but the name input and the save
- * mutation; the picker/dropdown state lives in the parent.
- */
+/** The "Save current filters as segment" dialog: the name input and the save mutation only. */
 export function CustomersSaveSegmentDialog({
   open,
   onOpenChange,
@@ -31,7 +26,7 @@ export function CustomersSaveSegmentDialog({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** The live filters to save — already built key-by-key by the caller, so `search` cannot leak in. */
+  /** The filters to save, built key-by-key by the caller so `search` cannot leak in. */
   filters: SavedSegment['filters'];
   /** Called with the full, server-confirmed list once a save succeeds. */
   onSaved: (list: SavedSegment[]) => void;
@@ -46,9 +41,7 @@ export function CustomersSaveSegmentDialog({
       onOpenChange(false);
     },
     onError: async (err) => {
-      // Dialog stays open and the typed name is kept (including on a
-      // duplicate-name 400), so the user can edit and retry — same pattern
-      // as the bulk "Adjust points" dialog (customers-page.bulk-actions.ts).
+      // The dialog stays open with the typed name so the user can edit and retry.
       toast.error(await getApiErrorMessage(err, __('Could not save the segment.', 'yayloyalty')));
     },
   });

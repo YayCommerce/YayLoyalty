@@ -3,8 +3,6 @@ import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/r
 import { getSettings, postSettings } from '@/lib/api/settings.api';
 import type { Settings } from '@/lib/schema/settings.schema';
 
-/** ─── Query Options ─────────────────────────────────── */
-
 export const SETTINGS_QUERIES = {
   main: queryOptions({
     queryKey: ['settings', 'main'],
@@ -17,8 +15,6 @@ export const SETTINGS_QUERIES = {
     staleTime: Infinity,
   }),
 };
-
-/** ─── Hooks ─────────────────────────────────────────── */
 
 export function useSettingsQuery() {
   return useQuery(SETTINGS_QUERIES.main);

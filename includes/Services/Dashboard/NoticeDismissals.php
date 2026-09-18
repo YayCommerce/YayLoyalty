@@ -4,22 +4,15 @@ namespace YayLoyalty\Services\Dashboard;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Per-user dashboard notice dismissals, in user meta as `{ key: fingerprint }`.
- *
- * A dismissal hides a notice only while its fingerprint is unchanged: the
- * detectors choose fingerprints that move exactly when the situation does
- * (the negative-balance bucket grows, the campaign is paused again, a new
- * day spikes), so a dismissed notice that becomes true again re-surfaces
- * on its own. Applied AFTER the shared cache — this is the only per-user
- * step in the dashboard payload.
- *
- * Thin WordPress wrapper; no unit test.
+ * Per-user notice dismissals in user meta as { key: fingerprint }. A
+ * dismissal holds only while the fingerprint is unchanged, so a notice that
+ * becomes true again re-surfaces. Applied after the shared cache.
  */
 final class NoticeDismissals {
 
     public const META_KEY = 'yayloyalty_dashboard_dismissed';
 
-    /** The only keys a client may dismiss — fixture-only keys never persist. */
+    /** The only keys a client may dismiss; fixture-only keys never persist. */
     public const DISMISSABLE = [ 'negative_balance', 'default_campaign_paused', 'points_jump' ];
 
     /**
