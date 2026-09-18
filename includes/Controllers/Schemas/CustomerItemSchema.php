@@ -92,7 +92,25 @@ final class CustomerItemSchema {
                     'redemptions' => [ 'type' => 'integer' ],
                     'referrals'   => [ 'type' => 'integer' ],
                 ],
-            ]
+            ],
+            'loose_ends'        => [
+                'description' => __( 'F09 Wave B, artboard 4a. Void coupons, still-credited referrals, and whether a deleted account still counts toward the member total. Always null on the real path, same reason as deleted_at.', 'yayloyalty' ),
+                'type'        => [ 'object', 'null' ],
+                'context'     => [ 'view' ],
+                'readonly'    => true,
+                'properties'  => [
+                    'void_coupons'        => [
+                        'type'       => 'object',
+                        'properties' => [
+                            'count'   => [ 'type' => 'integer' ],
+                            'example' => [ 'type' => [ 'string', 'null' ] ],
+                        ],
+                    ],
+                    'credited_referrals'  => [ 'type' => 'integer' ],
+                    'counted_in_members'  => [ 'type' => 'boolean' ],
+                    'kept_ledger_entries' => [ 'type' => 'integer' ],
+                ],
+            ],
         ];
     }
 }

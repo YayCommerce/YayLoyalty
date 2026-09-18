@@ -24,6 +24,24 @@ export const customerCountsSchema = z.object({
   referrals: z.number().int(),
 });
 
+/**
+ * 4a's "Loose ends this leaves" facts (F09 Wave B) — always `null` outside
+ * `?scenario=deleted`, since it is keyed off a deletion the real path can
+ * never report (no `deleted_at` column). `void_coupons.example` is a single
+ * illustrative label ("$5 off"), not a list — the fixture only ever needs one.
+ */
+export const looseEndsSchema = z.object({
+  void_coupons: z.object({
+    count: z.number().int(),
+    example: z.string().nullable(),
+  }),
+  credited_referrals: z.number().int(),
+  counted_in_members: z.boolean(),
+  kept_ledger_entries: z.number().int(),
+});
+
+export type LooseEnds = z.infer<typeof looseEndsSchema>;
+
 export const customerSchema = z.object({
   user_id: z.number().int(),
   /** From wp_users — carried here (not only the list row) so the drawer has an
@@ -43,6 +61,7 @@ export const customerSchema = z.object({
   /** Always null on the real path — no deleted_at column yet (docs/data-model.md). */
   deleted_at: z.string().nullable(),
   counts: customerCountsSchema,
+  loose_ends: looseEndsSchema.nullable(),
 });
 
 export type Customer = z.infer<typeof customerSchema>;

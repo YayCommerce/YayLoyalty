@@ -247,6 +247,11 @@ final class CustomerRestController extends AbstractRestController {
                 'redemptions' => 0,
                 'referrals'   => 0,
             ],
+            // Real path can never populate this: it's keyed off a deletion
+            // that only `?scenario=deleted` can ever report (see `deleted_at`
+            // above). Structured null, not an absent field — customer.schema.ts
+            // parses both paths identically.
+            'loose_ends' => null,
         ];
     }
 

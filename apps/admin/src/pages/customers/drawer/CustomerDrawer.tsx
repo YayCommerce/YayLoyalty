@@ -7,7 +7,10 @@ import { ErrorState } from '@/components/ui/custom/error-state';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { CustomerDrawerActions } from './CustomerDrawerActions';
+import { CustomerDrawerDeletedActions } from './CustomerDrawerDeletedActions';
+import { CustomerDrawerDeletedBanner } from './CustomerDrawerDeletedBanner';
 import { CustomerDrawerHeader } from './CustomerDrawerHeader';
+import { CustomerDrawerLooseEnds } from './CustomerDrawerLooseEnds';
 import { CustomerDrawerSkeleton } from './CustomerDrawerSkeleton';
 import { CustomerDrawerStats } from './CustomerDrawerStats';
 import { CustomerDrawerTabs } from './CustomerDrawerTabs';
@@ -91,6 +94,17 @@ export default function CustomerDrawer() {
                   <>
                     <CustomerDrawerStats customer={query.data} />
                     <CustomerDrawerActions customer={query.data} isLoading={query.isFetching} />
+                    {/* 4a's three panels — only reachable via `?scenario=deleted`
+                        (no `deleted_at` column on the real path). Guarding on
+                        both fields together narrows `loose_ends` for all three
+                        below, since the fixture only ever sets them as a pair. */}
+                    {query.data.deleted_at && query.data.loose_ends && (
+                      <>
+                        <CustomerDrawerDeletedBanner customer={query.data} />
+                        <CustomerDrawerDeletedActions />
+                        <CustomerDrawerLooseEnds customer={query.data} />
+                      </>
+                    )}
                     <CustomerDrawerTabs customer={query.data} scenario={scenario} />
                   </>
                 )}

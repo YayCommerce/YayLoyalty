@@ -37,6 +37,31 @@ final class DrawerProfiles {
     }
 
     /**
+     * 4a's "Loose ends this leaves" facts — only the `deleted` scenario has
+     * any (every other scenario reads `null` via `loose_ends_for()`).
+     * Structured only: "1 · $5 off" is composed client-side from
+     * `count`+`example`, never stored as a sentence here.
+     *
+     * @var array<string, array{void_coupons: array{count:int,example:?string}, credited_referrals:int, counted_in_members:bool, kept_ledger_entries:int}>
+     */
+    private const LOOSE_ENDS = [
+        'deleted' => [
+            'void_coupons'        => [
+                'count'   => 1,
+                'example' => '$5 off',
+            ],
+            'credited_referrals'  => 2,
+            'counted_in_members'  => false,
+            'kept_ledger_entries' => 24,
+        ],
+    ];
+
+    /** @return array{void_coupons: array{count:int,example:?string}, credited_referrals:int, counted_in_members:bool, kept_ledger_entries:int}|null */
+    public static function loose_ends_for( string $scenario ): ?array {
+        return self::LOOSE_ENDS[ $scenario ] ?? null;
+    }
+
+    /**
      * The rate every scenario values
      * built-in `cart-discount` default, so Aisha's 71,340 → $713.40 lands on
      * the exact figure artboard 3c quotes.
@@ -66,7 +91,8 @@ final class DrawerProfiles {
                 'activity'    => $activity,
                 'redemptions' => $redemptions,
                 'referrals'   => $referrals,
-            ]
+            ],
+            'loose_ends'        => self::loose_ends_for( $scenario ),
         ];
     }
 

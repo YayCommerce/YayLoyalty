@@ -118,15 +118,64 @@ Delete
 
 ## Todo List
 
-- [ ] `loose_ends` wire shape written down before any code
-- [ ] Fixture emits structured fields only; `null` for every non-deleted scenario
-- [ ] Real path emits `loose_ends: null` and says why in a docblock
-- [ ] Zod parses fixture and real paths identically
-- [ ] Three panels render only when `deleted_at` is non-null
-- [ ] Four actions each carry their own distinct reason
-- [ ] Export stays disabled (divergence from the artboard) and the divergence is documented in code
-- [ ] Panels sit in the scrolling body, not the sticky header
-- [ ] Every new file < 200 lines
+- [x] `loose_ends` wire shape written down before any code
+- [x] Fixture emits structured fields only; `null` for every non-deleted scenario
+- [x] Real path emits `loose_ends: null` and says why in a docblock
+- [x] Zod parses fixture and real paths identically
+- [x] Three panels render only when `deleted_at` is non-null
+- [x] Four actions each carry their own distinct reason
+- [x] Export stays disabled (divergence from the artboard) and the divergence is documented in code
+- [x] Panels sit in the scrolling body, not the sticky header
+- [x] Every new file < 200 lines
+
+Deviations from plan:
+- **`customer-drawer.copy.ts` split before this phase touched it.** It was at 190/200 lines
+  (flagged in phase 01's review, twice) — adding 4a's ~15 new strings would have pushed it over.
+  Created `customer-drawer.panels.copy.ts` for the three header-level edge-state panels (4a here;
+  4b and 5a next, per this phase's own "Next Steps") rather than reopening the main module again in
+  phase 03 and 04. Same house rules: flat exported functions, every entry a function.
+- **`CustomerItemSchema.php` also updated**, though the plan's file list didn't name it. It defines
+  `GET /customers/{id}`'s JSON Schema `properties` (used by REST discovery/OPTIONS) and already
+  documents `deleted_at`/`counts` field-for-field with `format_customer()` — leaving `loose_ends`
+  out of it would make the endpoint's own schema lie about its response shape. Fixed a pre-existing,
+  unrelated `phpcs` violation in the same file while there (missing trailing comma in `counts`'
+  multi-line array) since the new `loose_ends` entry needed the identical trailing comma anyway.
+- **`CustomerDrawer.tsx` gates whether the three panels mount at all** on `deleted_at && loose_ends`
+  — that is a runtime rendering decision, not a type-narrowing one. The children still receive the
+  whole `customer: Customer` prop, and prop types don't inherit call-site narrowing, so
+  `CustomerDrawerDeletedBanner`/`CustomerDrawerLooseEnds` each still need (and keep) their own
+  internal null check before reading `loose_ends`. An earlier draft of this note claimed the parent
+  guard removed the need for those — code review caught that the claim didn't match what TypeScript
+  actually does; corrected here rather than removing the (correct, necessary) child guards.
+- **Adjust points reuses `DELETED_ACCOUNT_ACTION_REASON()`**; Reset expiry does not — code review
+  flagged that string ("there is nobody to spend the points") as a non-sequitur next to a disabled
+  Reset expiry button (extending a deadline isn't about spending). Added
+  `DELETED_RESET_EXPIRY_REASON()` with the more general framing the existing string's own docblock
+  already used ("no owner left to act on"), reused for Reset expiry specifically. Export and
+  Anonymise keep their own distinct reasons (`DELETED_EXPORT_REASON`/`DELETED_ANONYMISE_REASON`) per
+  the plan's explicit instruction that those two must stay distinct from each other.
+
+Live-verified via `rest_do_request()`: `?scenario=deleted` returns `loose_ends` with the artboard's
+exact figures (1 void coupon "$5 off", 2 credited referrals, not counted, 24 kept entries) and
+`deleted_at: "2026-09-08 00:00:00"`; `?scenario=large` and the real path (no `?scenario=`) both
+return `loose_ends: null` alongside `deleted_at: null`, confirming the guard never fires outside the
+`deleted` scenario.
+
+**No live browser verification was possible** — no browser-automation tool in this environment, dev
+port 3030 occupied. Verified instead: `composer lint` clean on every touched PHP file (one
+pre-existing, unrelated warning remains in `CustomerRowFilters.php`), `tsc --noEmit` no new errors
+(same 5 pre-existing, unrelated ones), ESLint clean, Vitest 63/63, production `vite build` clean.
+
+### Code Review
+
+Two Medium findings, both fixed (see the corrected Deviations entries above — one was a doc-accuracy
+fix, one a copy-wording fix): the parent-guard/narrowing claim was corrected to match what
+TypeScript actually does; `DELETED_RESET_EXPIRY_REASON()` was added so Reset expiry no longer reuses
+spend-specific wording. One Low style note (banner checks two fields, loose-ends checks one) resolved
+with a one-line comment rather than a code change — the asymmetry is correct, just needed explaining.
+Everything else — three-way schema consistency (PHP fixture → JSON Schema → Zod), the deliberate
+non-extraction from `CustomerDrawerActions.tsx`, dead code — came back clean. Re-verified after
+fixes: ESLint clean, `tsc --noEmit` no new errors, ready to commit.
 
 ## Success Criteria
 

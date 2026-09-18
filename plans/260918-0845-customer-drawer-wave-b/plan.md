@@ -44,7 +44,7 @@ Out (design elements deliberately dropped): 3e's summary strip and "Rewards X co
 | # | Phase | Effort | Status |
 |---|---|---|---|
 | 01 | [Activity log tab (3d)](phase-01-activity-log-tab.md) | 5h | complete |
-| 02 | [Deleted-account panels (4a)](phase-02-deleted-account-panels.md) | 3h | pending |
+| 02 | [Deleted-account panels (4a)](phase-02-deleted-account-panels.md) | 3h | complete |
 | 03 | [Expiring panels + lot batches (4b)](phase-03-expiring-panels-and-lots.md) | 4h | pending |
 | 04 | [Negative-balance explanation (5a)](phase-04-negative-balance-panel.md) | 3h | pending |
 | 05 | [Redemptions table (3e)](phase-05-redemptions-table.md) | 4h | pending |
