@@ -1,27 +1,39 @@
 import { keepPreviousData, queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
+  getCustomerActivity,
+  getCustomerRedemptions,
+  getCustomerReferrals,
+  type CustomerActivityParams,
+  type DrawerPageOnlyParams,
+} from '@/lib/api/customer-drawer.api';
+import {
   adjustCustomerPoints,
   getCustomer,
   getCustomerLedger,
   getCustomers,
+  type CustomerLedgerParams,
   type CustomerListParams,
 } from '@/lib/api/customer.api';
 import type { AdjustPointsInput } from '@/lib/schema/customer.schema';
 
 export const CUSTOMER_QUERIES = {
-  detail: (userId: number) =>
+  /** `scenario` is part of the key — switching it must refetch, not serve the previous scenario's cache. */
+  detail: (userId: number, scenario?: string) =>
     queryOptions({
-      queryKey: ['customer', 'detail', userId],
-      queryFn: () => getCustomer(userId),
+      queryKey: ['customer', 'detail', userId, scenario ?? null],
+      queryFn: () => getCustomer(userId, scenario),
       enabled: userId > 0,
     }),
 
-  ledger: (userId: number, page: number, perPage: number) =>
+  ledger: (userId: number, params: CustomerLedgerParams) =>
     queryOptions({
-      queryKey: ['customer', 'ledger', userId, page, perPage],
-      queryFn: () => getCustomerLedger(userId, { page, perPage }),
+      queryKey: ['customer', 'ledger', userId, params],
+      queryFn: () => getCustomerLedger(userId, params),
       enabled: userId > 0,
+      // Paging/filtering must not flash a skeleton over rows already on screen.
+      placeholderData: keepPreviousData,
+      retry: 1,
     }),
 
   list: (params: CustomerListParams) =>
@@ -33,18 +45,65 @@ export const CUSTOMER_QUERIES = {
       // Safe for an idempotent GET; the adjust mutation must never auto-retry.
       retry: 1,
     }),
+
+  /**
+   * Paged, exactly like `ledger` above — not the infinite/"Load more" shape
+   * this started as (see `ActivityLogTab.tsx`'s docblock for why it
+   * changed). Same `keepPreviousData` reasoning: paging/filtering must not
+   * flash a skeleton over rows already on screen.
+   */
+  activity: (userId: number, params: CustomerActivityParams) =>
+    queryOptions({
+      queryKey: ['customer', 'activity', userId, params],
+      queryFn: () => getCustomerActivity(userId, params),
+      enabled: userId > 0,
+      placeholderData: keepPreviousData,
+      retry: 1,
+    }),
+
+  redemptions: (userId: number, params: DrawerPageOnlyParams) =>
+    queryOptions({
+      queryKey: ['customer', 'redemptions', userId, params],
+      queryFn: () => getCustomerRedemptions(userId, params),
+      enabled: userId > 0,
+      placeholderData: keepPreviousData,
+      retry: 1,
+    }),
+
+  referrals: (userId: number, params: DrawerPageOnlyParams) =>
+    queryOptions({
+      queryKey: ['customer', 'referrals', userId, params],
+      queryFn: () => getCustomerReferrals(userId, params),
+      enabled: userId > 0,
+      placeholderData: keepPreviousData,
+      retry: 1,
+    }),
 };
 
-export function useCustomerQuery(userId: number) {
-  return useQuery(CUSTOMER_QUERIES.detail(userId));
+/** ─── Hooks ─────────────────────────────────────────── */
+
+export function useCustomerQuery(userId: number, scenario?: string) {
+  return useQuery(CUSTOMER_QUERIES.detail(userId, scenario));
 }
 
-export function useCustomerLedgerQuery(userId: number, page: number, perPage = 10) {
-  return useQuery(CUSTOMER_QUERIES.ledger(userId, page, perPage));
+export function useCustomerLedgerQuery(userId: number, params: CustomerLedgerParams) {
+  return useQuery(CUSTOMER_QUERIES.ledger(userId, params));
 }
 
 export function useCustomersQuery(params: CustomerListParams = {}) {
   return useQuery(CUSTOMER_QUERIES.list(params));
+}
+
+export function useCustomerActivityQuery(userId: number, params: CustomerActivityParams) {
+  return useQuery(CUSTOMER_QUERIES.activity(userId, params));
+}
+
+export function useCustomerRedemptionsQuery(userId: number, params: DrawerPageOnlyParams) {
+  return useQuery(CUSTOMER_QUERIES.redemptions(userId, params));
+}
+
+export function useCustomerReferralsQuery(userId: number, params: DrawerPageOnlyParams) {
+  return useQuery(CUSTOMER_QUERIES.referrals(userId, params));
 }
 
 export function useAdjustPointsMutation(userId: number) {

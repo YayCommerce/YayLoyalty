@@ -114,7 +114,7 @@ One repository, two zips. Lite = Pro minus `includes/Pro/` and SPA built with `B
 ## Checks
 
 ```bash
-composer test                  # phpunit — 108 unit tests: points engine (BaseCalculator, PurchaseHandler, PointsEngine), reward engine scaffold (Result, Registry, RewardEngine), dashboard computation (PeriodWindow, DashboardMath, AnomalyDetector, DashboardStats, DashboardNotices), PointsMath + shared vectors, campaign config/conditions validation
+composer test                  # phpunit — 115 unit tests: points engine (BaseCalculator, PurchaseHandler, PointsEngine), reward engine scaffold (Result, Registry, RewardEngine), dashboard computation (PeriodWindow, DashboardMath, AnomalyDetector, DashboardStats, DashboardNotices), PointsMath + shared vectors, campaign config/conditions validation, drawer query-arg groupings + fixture helpers (Controllers/)
 composer lint                  # phpcs (WPCS + PHPCompatibility, 7.4 floor)
 pnpm --filter @yayloyalty/admin-page lint   # eslint + prettier on TypeScript/React
 pnpm --filter @yayloyalty/admin-page test   # vitest — lib/points-math against tests/fixtures/points-math-vectors.json (same file phpunit runs)

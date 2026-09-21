@@ -306,7 +306,7 @@ A stripping build fails silently by nature, so every release is validated agains
 ```bash
 composer lint                          # phpcs (WPCS + PHPCompatibility)
 composer lint:fix                      # phpcbf
-composer test                          # phpunit — 108 tests: points engine, reward engine scaffold, dashboard computation, PointsMath + shared vectors, campaign validation
+composer test                          # phpunit — 115 tests: points engine, reward engine scaffold, dashboard computation, PointsMath + shared vectors, campaign validation, drawer query-arg groupings + fixture helpers
 pnpm --filter @yayloyalty/admin-page lint   # eslint + prettier on SPA
 pnpm --filter @yayloyalty/admin-page test   # vitest — lib/points-math against the same vector file
 ./scripts/run.sh build [pro|lite]      # Full build — currently fails at tsc --noEmit due to #7 dangling imports
