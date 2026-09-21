@@ -119,6 +119,21 @@ Write operations wrapped in `Transaction::run()`, return correlation ID on 500.
 
 Filters (public API): `yayloyalty_campaign_candidates`, `yayloyalty_campaign_matches`, `yayloyalty_earning_base_amount`, `yayloyalty_points_for_order`.
 
+### Reward engine (includes/Engine/Rewards/) — scaffold
+
+`namespace YayLoyalty\Engine\Rewards`. Evaluates whether a customer may claim one reward right now, at what cost and for what value. The customer already chose the reward, so there is no candidate scan: generic gates first (liveness, balance vs cost, conditions filter — all TODO), then the type's own quote. Writes nothing; pure (no `$wpdb`, no WooCommerce, no current user, no `time()`). The balance is a `Context` input, never a lookup.
+
+| Class | Role |
+|---|---|
+| `RewardEngine` | `evaluate( Reward, Context ): Result`. Delegation to type handler after gates. All gates are TODOs (1: liveness, 2: balance vs cost, 3: conditions filter); stubs always deny `not_implemented` |
+| `Context` | Immutable inputs: user id (nullable for guests), balance, points_requested (flexible_discount only), cart_subtotal (nullable), currency, evaluation time |
+| `Result` | Outcome + snapshot. `allowed( Reward, points, value, currency, rate_snapshot )` or `denied( reason )`. Reasons: `not_live`, `insufficient_balance`, `conditions_not_met`, `not_implemented`, or handler-specific |
+| `Handlers\Registry` | Type → handler. `with_lite_handlers()` registers only `FlexibleDiscountHandler`, then fires `yayloyalty_register_reward_handlers` for Pro |
+| `Handlers\RewardHandler` | Interface: `type()` and `quote( Reward, Context ): Result`. No `is_eligible()` — no fall-through; a gate failure is `denied()` |
+| `Handlers\FlexibleDiscountHandler` | Lite's only type; stub returns `denied( not_implemented )`. When implemented: validate config (min_points, increment, max_points_per_order, max_percent_of_subtotal), then value via `Utils\PointsMath` |
+
+**Scaffold status:** wiring (registry lookup, delegation, Pro seam) is real; every gate and the Lite handler always deny `not_implemented`. See `includes/Engine/Rewards/README.md` for "Implementing this engine" — gates 1–3, FlexibleDiscountHandler quote, Pro handlers (fixed_coupon, percent_coupon, free_shipping, free_product), then write path.
+
 ### Database
 
 | File | Role |
@@ -155,10 +170,12 @@ Filters (public API): `yayloyalty_campaign_candidates`, `yayloyalty_campaign_mat
 - `yayloyalty_ledger_recorded` — React to ledger writes (subscriber: `DashboardCache::flush`)
 - `yayloyalty_rest_controllers` — Add Pro routes (CampaignPreviewRestController, CustomerSegmentsRestController, DashboardProRestController)
 - `yayloyalty_campaigns_changed` — Fired by `CampaignRepository::flush_cache()` after any campaign write (subscriber: `DashboardCache::flush`)
+- `yayloyalty_register_trigger_handlers` — Add Pro handlers for its triggers (birthday, first_order, order_count, spend_milestone) to `Engine\Points\Triggers\Registry`
 - `yayloyalty_campaign_triggers` — Add extra triggers (birthday, first_order, order_count, spend_milestone)
 - `yayloyalty_campaign_config_whitelist` — Whitelist Pro config keys per trigger
 - `yayloyalty_reward_types` — Add extra reward types (fixed_coupon, percent_coupon, free_shipping, free_product)
 - `yayloyalty_reward_config_whitelist` — Whitelist Pro config keys per reward type
+- `yayloyalty_register_reward_handlers` — Add Pro reward handlers (fixed_coupon, percent_coupon, free_shipping, free_product) to `Engine\Rewards\Handlers\Registry`; mirrors `yayloyalty_register_trigger_handlers`
 - `yayloyalty_rest_item_schema` — Extend REST schemas
 - `yayloyalty_campaign_conditions_evaluator` — Supply conditions evaluator instance
 - `yayloyalty_erase_customer_data` — Erase Pro's own per-user data when a WP user is deleted (fired by `Engine\UserLifecycle` after Lite's own erasure)
@@ -290,7 +307,7 @@ BaseRestController::exec_write( callback, request )
 - **Admin JS:** Enqueued by `RegisterProd` / `RegisterDev`; communicates via `ky` to REST
 - **REST:** Namespace `yayloyalty/v1`, all under `yayloyalty_rest_controllers` filter
 - **Headless / WP-CLI:** Runs via `plugins_loaded` — no `admin_init` required
-- **Tests:** `tests/unit/` with `tests/bootstrap.php` shim for hooks (no `$wpdb`, no WooCommerce). Run with `composer test` (99 PHPUnit tests); `pnpm --filter @yayloyalty/admin-page test` runs Vitest over `apps/admin/tests/` against the same `tests/fixtures/points-math-vectors.json`
+- **Tests:** `tests/unit/` with `tests/bootstrap.php` shim for hooks (no `$wpdb`, no WooCommerce). Run with `composer test` (108 PHPUnit tests); `pnpm --filter @yayloyalty/admin-page test` runs Vitest over `apps/admin/tests/` against the same `tests/fixtures/points-math-vectors.json`
 
 ---
 

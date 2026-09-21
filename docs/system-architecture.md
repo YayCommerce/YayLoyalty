@@ -242,6 +242,7 @@ These are **first-party, internal seams** for Pro to attach behavior. Not a thir
 | **`yayloyalty_campaign_config_whitelist`** | Called by `Campaign::config_whitelist()` | Pro adds whitelists for its four triggers; `max_points_per_order`/`daily_cap` are already in Lite's purchase schema and enforced by `Engine\Points\CapPolicy` |
 | **`yayloyalty_reward_types`** | Called by RewardType::all() | Pro adds fixed_coupon, percent_coupon, free_shipping, free_product |
 | **`yayloyalty_reward_config_whitelist`** | Called by `Reward::config_whitelist()` | Pro adds config keys for its four types |
+| **`yayloyalty_register_reward_handlers`** | Fired by `Engine\Rewards\Handlers\Registry::with_lite_handlers()` | Pro registers a `RewardHandler` per reward type; unused until Pro handlers exist |
 | **`yayloyalty_rest_item_schema`** | Applied inside `AbstractRestController::get_item_schema()` | Pro extends campaign/reward schemas |
 | **`yayloyalty_campaign_conditions_evaluator`** | Called by Campaign::conditions_match() | Pro supplies ConditionsEvaluator instance (fails closed on unknown types) |
 
@@ -365,6 +366,10 @@ Response: Campaign::to_array()
 5. Call `LedgerService::earn()` with the result
 
 Nothing else in the write path (lock order, transaction safety, idempotency) changes. See `project-roadmap.md`.
+
+### Redemption — SCAFFOLDED (Engine wiring only)
+
+`RewardEngine` is complete with wiring (registry lookup, delegation, Pro seam) but all evaluation gates (liveness, balance vs cost, conditions filter) are TODO and the Lite handler always denies `not_implemented`. Missing: gates 1–3, `FlexibleDiscountHandler::quote()`, Pro handlers, the write path (`redemptions` table, `RedemptionRepository`, `LedgerService::redeem()`), `ContextFactory` (build Context from cart), and the checkout hook. Call order: customer picks reward → `Context` built from cart/balance → `RewardEngine::evaluate()` → if allowed, caller writes ledger via `LedgerService::redeem()`. See `includes/Engine/Rewards/README.md`.
 
 ---
 
