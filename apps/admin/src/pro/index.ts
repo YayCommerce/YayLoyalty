@@ -18,6 +18,7 @@ export const PRO_BUNDLE_SENTINEL = 'yayloyalty-pro-bundle-a7f3c1';
 export { ConditionsPreview } from './campaigns/ConditionsPreview';
 export { CampaignTable } from './campaigns/CampaignTable';
 export { CampaignEditor } from './campaigns/editor/CampaignEditor';
+export { CampaignPerformance } from './campaigns/performance/CampaignPerformance';
 export { CustomersSavedSegmentRow } from './customers/CustomersSavedSegmentRow';
 export { DashboardProPanels } from './dashboard/DashboardProPanels';
 

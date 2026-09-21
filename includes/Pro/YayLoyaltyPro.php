@@ -3,6 +3,7 @@ namespace YayLoyalty\Pro;
 
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Enums\RewardType;
+use YayLoyalty\Pro\Controllers\CampaignPerformanceRestController;
 use YayLoyalty\Pro\Controllers\CampaignPreviewRestController;
 use YayLoyalty\Pro\Controllers\CustomerSegmentsRestController;
 use YayLoyalty\Pro\Controllers\DashboardProRestController;
@@ -209,6 +210,7 @@ final class YayLoyaltyPro {
             new CampaignRepository(),
             new DashboardCache( new DashboardRepository() )
         );
+        $controllers[] = new CampaignPerformanceRestController( new DashboardRepository() );
 
         return $controllers;
     }

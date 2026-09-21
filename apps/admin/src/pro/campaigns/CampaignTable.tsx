@@ -7,8 +7,8 @@ import { GripVertical, InfoIcon, Lock, Search } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { __, sprintf } from '@wordpress/i18n';
 
-import { parseWPDate } from '@/lib/helpers/format.helper';
 import { useCampaignsQuery } from '@/lib/queries/campaign.queries';
+import { hasPerformancePage } from '@/lib/schema/campaign-performance.schema';
 import {
   Campaign,
   CAMPAIGN_DISPLAY_STATUSES,
@@ -38,6 +38,7 @@ import {
   CampaignGroupKey,
   conditionsLabel,
   givesLabel,
+  scheduleLabel,
   statusLabel,
   triggerGroup,
   triggerLabel,
@@ -510,6 +511,11 @@ function SortableCampaignRow({ row, isTied }: { row: DisplayCampaign; isTied: bo
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            {hasPerformancePage(row.trigger) && (
+              <DropdownMenuItem onSelect={() => navigate(`/campaigns/${row.id}/performance`)}>
+                {__('View performance', 'yayloyalty')}
+              </DropdownMenuItem>
+            )}
             {/* Seeds the editor via router state rather than creating a row: a real duplicate would
                 vanish from the fixture-backed list on the next fetch. Router state so it is gone on
                 reload, since nothing was created for a reload to restore. */}
@@ -570,20 +576,4 @@ function toDisplayCampaign(campaign: Campaign): DisplayCampaign {
     displayStatus: resolveCampaignDisplayStatus(campaign.status, campaign.starts_at, campaign.ends_at),
     pointsLast30Days: DUMMY_POINTS_LAST_30_DAYS[campaign.id] ?? null,
   };
-}
-
-function scheduleLabel(startsAt: string | null, endsAt: string | null): string {
-  if (!startsAt && !endsAt) {
-    return __('Always on', 'yayloyalty');
-  }
-
-  if (startsAt && endsAt) {
-    return `${parseWPDate(startsAt)} – ${parseWPDate(endsAt)}`;
-  }
-
-  if (startsAt) {
-    return sprintf(/* translators: %s: a formatted date. */ __('From %s', 'yayloyalty'), parseWPDate(startsAt));
-  }
-
-  return sprintf(/* translators: %s: a formatted date. */ __('Until %s', 'yayloyalty'), parseWPDate(endsAt as string));
 }
