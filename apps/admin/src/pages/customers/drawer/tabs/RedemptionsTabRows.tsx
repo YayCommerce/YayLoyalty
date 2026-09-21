@@ -2,17 +2,17 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import type { RedemptionRow } from '../customer-drawer.redemption-rows';
 import {
   COLUMN_DATE,
   COLUMN_ORDER,
+  COLUMN_POINTS,
   COLUMN_REWARD,
   COLUMN_STATUS,
   COLUMN_VALUE,
-  COLUMN_POINTS,
   EMPTY_REDEMPTIONS_TITLE,
   emptyRedemptionsBody,
 } from '../customer-drawer.copy';
+import type { RedemptionRow } from '../customer-drawer.redemption-rows';
 
 const COLUMN_COUNT = 6;
 const SKELETON_ROW_COUNT = 10;
@@ -32,8 +32,13 @@ export function RedemptionsTabRows({
   customerFirstName: string;
 }) {
   return (
-    <Table className="min-w-max">
-      <TableHeader>
+    // `sm:min-w-max` + `block`/`sm:table` on Table/TableBody, header hidden
+    // below `sm` — see LedgerTabRows.tsx's docblock: a flexed `<tr>` inside a
+    // real `<table>`/`<tbody>` doesn't stretch to the table's width in
+    // Chromium (verified live), so those ancestors must leave table layout
+    // too, not just `tr`/`td`.
+    <Table className="block sm:table sm:min-w-max">
+      <TableHeader className="hidden sm:table-header-group">
         <TableRow>
           <TableHead>{COLUMN_DATE()}</TableHead>
           <TableHead>{COLUMN_REWARD()}</TableHead>
@@ -43,7 +48,7 @@ export function RedemptionsTabRows({
           <TableHead className="text-right">{COLUMN_STATUS()}</TableHead>
         </TableRow>
       </TableHeader>
-      <TableBody>
+      <TableBody className="block sm:table-row-group">
         {isLoading ? (
           Array.from({ length: SKELETON_ROW_COUNT }, (_, index) => (
             <TableRow key={index}>
@@ -64,24 +69,28 @@ export function RedemptionsTabRows({
         ) : (
           rows.map((row, index) => (
             <TableRow key={index} className="flex flex-wrap sm:table-row">
-              <TableCell className="order-1 w-1/2 sm:order-0 sm:w-auto sm:table-cell">{row.date}</TableCell>
-              <TableCell className="order-2 w-1/2 sm:order-0 sm:w-auto sm:table-cell">{row.reward}</TableCell>
-              <TableCell className="order-3 w-1/2 text-right sm:order-0 sm:w-auto sm:table-cell">
+              <TableCell className="order-1 w-1/2 whitespace-normal sm:order-0 sm:table-cell sm:w-auto sm:whitespace-nowrap">
+                {row.date}
+              </TableCell>
+              <TableCell className="order-2 w-1/2 whitespace-normal sm:order-0 sm:table-cell sm:w-auto sm:whitespace-nowrap">
+                {row.reward}
+              </TableCell>
+              <TableCell className="order-3 w-1/2 text-right whitespace-normal sm:order-0 sm:table-cell sm:w-auto sm:whitespace-nowrap">
                 {row.value}
               </TableCell>
               <TableCell
                 className={cn(
-                  'order-4 w-1/2 text-right tabular-nums sm:order-0 sm:w-auto sm:table-cell',
+                  'order-4 w-1/2 text-right whitespace-normal tabular-nums sm:order-0 sm:table-cell sm:w-auto sm:whitespace-nowrap',
                   row.points.startsWith('-') && 'text-destructive',
                   row.points.startsWith('+') && 'text-success',
                 )}
               >
                 {row.points}
               </TableCell>
-              <TableCell className="text-muted-foreground order-5 w-1/2 text-right sm:order-0 sm:w-auto sm:table-cell">
+              <TableCell className="text-muted-foreground order-5 w-1/2 text-right whitespace-normal sm:order-0 sm:table-cell sm:w-auto sm:whitespace-nowrap">
                 {row.order}
               </TableCell>
-              <TableCell className="order-6 w-1/2 text-right sm:order-0 sm:w-auto sm:table-cell">
+              <TableCell className="order-6 w-1/2 text-right whitespace-normal sm:order-0 sm:table-cell sm:w-auto sm:whitespace-nowrap">
                 <Badge variant="outline">{row.status}</Badge>
               </TableCell>
             </TableRow>

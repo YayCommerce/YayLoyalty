@@ -25,17 +25,20 @@ const SKELETON_ROW_COUNT = 10;
  */
 export function ActivityLogTabRows({ rows, isLoading }: { rows: ActivityRow[]; isLoading: boolean }) {
   return (
-    // `min-w-max` overrides `Table`'s own `w-full` — see `LedgerTabRows.tsx`'s
-    // identical comment for why the container never scrolled without it.
-    <Table className="min-w-max">
-      <TableHeader>
+    // `sm:min-w-max` + `block`/`sm:table` on Table/TableBody, header hidden
+    // below `sm` — see `LedgerTabRows.tsx`'s docblock: a flexed `<tr>` inside
+    // a real `<table>`/`<tbody>` doesn't stretch to the table's width in
+    // Chromium (verified live), so those ancestors must leave table layout
+    // too, not just `tr`/`td`.
+    <Table className="block sm:table sm:min-w-max">
+      <TableHeader className="hidden sm:table-header-group">
         <TableRow>
           <TableHead>{COLUMN_DATE()}</TableHead>
           <TableHead>{COLUMN_EVENT()}</TableHead>
           <TableHead className="text-right">{COLUMN_BY()}</TableHead>
         </TableRow>
       </TableHeader>
-      <TableBody>
+      <TableBody className="block sm:table-row-group">
         {isLoading ? (
           Array.from({ length: SKELETON_ROW_COUNT }, (_, index) => (
             <TableRow key={index}>
@@ -54,19 +57,19 @@ export function ActivityLogTabRows({ rows, isLoading }: { rows: ActivityRow[]; i
         ) : (
           rows.map((row, index) => (
             <TableRow key={index} className="flex flex-wrap sm:table-row">
-              <TableCell className="order-1 w-1/2 sm:order-0 sm:w-auto sm:table-cell">
+              <TableCell className="order-1 w-1/2 whitespace-normal sm:order-0 sm:table-cell sm:w-auto sm:whitespace-nowrap">
                 <span className="flex flex-col gap-0.5">
                   <span className="text-muted-foreground">{row.date}</span>
                   <span className="text-muted-foreground text-xs">{row.time}</span>
                 </span>
               </TableCell>
-              <TableCell className="order-2 w-full sm:order-0 sm:w-auto sm:table-cell">
+              <TableCell className="order-2 w-full whitespace-normal sm:order-0 sm:table-cell sm:w-auto sm:whitespace-nowrap">
                 <span className="flex flex-col gap-0.5">
                   <span>{row.title}</span>
                   <span className="text-muted-foreground text-xs">{row.subLine}</span>
                 </span>
               </TableCell>
-              <TableCell className="order-3 w-full text-right sm:order-0 sm:w-auto sm:table-cell">
+              <TableCell className="order-3 w-full text-right whitespace-normal sm:order-0 sm:table-cell sm:w-auto sm:whitespace-nowrap">
                 <span className="flex items-center justify-end gap-1.5">
                   {row.isEmail && <Mail className="text-muted-foreground size-3.5" />}
                   {row.isStaffOnly && (

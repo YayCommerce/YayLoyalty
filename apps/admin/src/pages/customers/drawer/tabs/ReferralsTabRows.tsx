@@ -23,8 +23,13 @@ const SKELETON_ROW_COUNT = 10;
  */
 export function ReferralsTabRows({ rows, isLoading }: { rows: ReferralRow[]; isLoading: boolean }) {
   return (
-    <Table className="min-w-max">
-      <TableHeader>
+    // `sm:min-w-max` + `block`/`sm:table` on Table/TableBody, header hidden
+    // below `sm` — see LedgerTabRows.tsx's docblock: a flexed `<tr>` inside a
+    // real `<table>`/`<tbody>` doesn't stretch to the table's width in
+    // Chromium (verified live), so those ancestors must leave table layout
+    // too, not just `tr`/`td`.
+    <Table className="block sm:table sm:min-w-max">
+      <TableHeader className="hidden sm:table-header-group">
         <TableRow>
           <TableHead>{COLUMN_REFERRED()}</TableHead>
           <TableHead>{COLUMN_SIGNED_UP()}</TableHead>
@@ -34,7 +39,7 @@ export function ReferralsTabRows({ rows, isLoading }: { rows: ReferralRow[]; isL
           <TableHead className="text-right">{COLUMN_REFERRAL_STATUS()}</TableHead>
         </TableRow>
       </TableHeader>
-      <TableBody>
+      <TableBody className="block sm:table-row-group">
         {isLoading ? (
           Array.from({ length: SKELETON_ROW_COUNT }, (_, index) => (
             <TableRow key={index}>
@@ -53,19 +58,23 @@ export function ReferralsTabRows({ rows, isLoading }: { rows: ReferralRow[]; isL
         ) : (
           rows.map((row, index) => (
             <TableRow key={index} className="flex flex-wrap sm:table-row">
-              <TableCell className="order-1 w-1/2 sm:order-0 sm:w-auto sm:table-cell">
+              <TableCell className="order-1 w-1/2 whitespace-normal sm:order-0 sm:table-cell sm:w-auto sm:whitespace-nowrap">
                 <div className="font-medium">{row.referredName}</div>
                 <div className="text-muted-foreground text-xs">{row.referredEmail}</div>
               </TableCell>
-              <TableCell className="order-2 w-1/2 sm:order-0 sm:w-auto sm:table-cell">{row.signedUpAt}</TableCell>
-              <TableCell className="order-3 w-1/2 sm:order-0 sm:w-auto sm:table-cell">{row.firstOrder}</TableCell>
-              <TableCell className="order-4 w-1/2 text-right tabular-nums sm:order-0 sm:w-auto sm:table-cell">
+              <TableCell className="order-2 w-1/2 whitespace-normal sm:order-0 sm:table-cell sm:w-auto sm:whitespace-nowrap">
+                {row.signedUpAt}
+              </TableCell>
+              <TableCell className="order-3 w-1/2 whitespace-normal sm:order-0 sm:table-cell sm:w-auto sm:whitespace-nowrap">
+                {row.firstOrder}
+              </TableCell>
+              <TableCell className="order-4 w-1/2 text-right whitespace-normal tabular-nums sm:order-0 sm:table-cell sm:w-auto sm:whitespace-nowrap">
                 {row.referrerPoints}
               </TableCell>
-              <TableCell className="text-muted-foreground order-5 w-1/2 text-right sm:order-0 sm:w-auto sm:table-cell">
+              <TableCell className="text-muted-foreground order-5 w-1/2 text-right whitespace-normal sm:order-0 sm:table-cell sm:w-auto sm:whitespace-nowrap">
                 {row.friendCoupon}
               </TableCell>
-              <TableCell className="order-6 w-1/2 text-right sm:order-0 sm:w-auto sm:table-cell">
+              <TableCell className="order-6 w-1/2 text-right whitespace-normal sm:order-0 sm:table-cell sm:w-auto sm:whitespace-nowrap">
                 <Badge variant="outline">{row.status}</Badge>
                 {row.statusNote && <div className="text-muted-foreground mt-1 text-xs">{row.statusNote}</div>}
               </TableCell>

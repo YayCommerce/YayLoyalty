@@ -8,8 +8,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { HeaderSelectionState } from '../customers-page.selection';
 import type { SortDirection, SortKey } from '../customers-page.sort-rows';
+import { CustomersCardList } from './CustomersCardList';
 import { CustomersEmptyState } from './CustomersEmptyState';
 import { CustomersSkeletonRows } from './CustomersSkeletonRows';
+import { CustomersSortDropdown } from './CustomersSortDropdown';
 import { CustomerTableRow } from './CustomerTableRow';
 
 /** Column count for the header and the "no results" row's colSpan. */
@@ -18,7 +20,13 @@ export function countColumns(showProColumns: boolean, showSelection: boolean) {
   return 6 + (showProColumns ? 2 : 0) + (showSelection ? 1 : 0);
 }
 
-/** Presentational: rows arrive sorted and paginated server-side; this renders carets and reports clicks. */
+/**
+ * Presentational: rows arrive sorted and paginated server-side; this renders
+ * carets and reports clicks. Below `sm`, renders 5c's card list instead
+ * (`CustomersCardList`/`CustomerCardRow`) — CSS-only switching, both trees
+ * always mount (see `DrawerFiltersCollapse.tsx`'s docblock for why this
+ * codebase does it that way rather than a JS media-query hook).
+ */
 export function CustomersTable({
   rows,
   isLoading,
@@ -62,132 +70,153 @@ export function CustomersTable({
   const isEmpty = !isLoading && rows.length === 0;
 
   return (
-    <div
-      className={cn('overflow-x-auto rounded-md border transition-opacity', isFetching && !isLoading && 'opacity-60')}
-    >
-      <Table>
-        <TableHeader>
-          <TableRow>
-            {showSelection && (
-              <TableHead>
-                <Checkbox
-                  checked={headerSelection === 'all' ? true : headerSelection === 'partial' ? 'indeterminate' : false}
-                  onCheckedChange={onToggleAll}
-                  disabled={isEmpty}
-                  aria-label={__('Select all rows on this page', 'yayloyalty')}
-                />
-              </TableHead>
-            )}
-            <SortableHead
-              sortKey="name"
-              label={__('Customer', 'yayloyalty')}
-              sortBy={sortBy}
-              sortDir={sortDir}
-              onSort={onSort}
-              disabled={isEmpty}
-            />
-            {showProColumns && (
-              // Always disabled: no tiers table yet, the cells show a sample derived from balance.
+    <>
+      {/* 5c's mobile card list — CSS-only switching against the desktop
+          table below, same convention as DrawerFiltersCollapse.tsx. No
+          selection here (see CustomerCardRow.tsx); the sort dropdown is
+          the card list's stand-in for the desktop headers' click-to-sort. */}
+      <div className="flex flex-col gap-3 sm:hidden">
+        <CustomersSortDropdown by={sortBy} dir={sortDir} onChange={onSort} disabled={isEmpty} />
+        <CustomersCardList
+          rows={rows}
+          isLoading={isLoading}
+          isFetching={isFetching}
+          isStoreEmpty={isStoreEmpty}
+          noMatchContent={noMatchContent}
+          showProColumns={showProColumns}
+          staleBalances={staleBalances}
+        />
+      </div>
+      <div
+        className={cn(
+          'hidden overflow-x-auto rounded-md border transition-opacity sm:block',
+          isFetching && !isLoading && 'opacity-60',
+        )}
+      >
+        <Table>
+          <TableHeader>
+            <TableRow>
+              {showSelection && (
+                <TableHead>
+                  <Checkbox
+                    checked={headerSelection === 'all' ? true : headerSelection === 'partial' ? 'indeterminate' : false}
+                    onCheckedChange={onToggleAll}
+                    disabled={isEmpty}
+                    aria-label={__('Select all rows on this page', 'yayloyalty')}
+                  />
+                </TableHead>
+              )}
               <SortableHead
-                sortKey="tier"
-                label={__('Tier', 'yayloyalty')}
+                sortKey="name"
+                label={__('Customer', 'yayloyalty')}
                 sortBy={sortBy}
                 sortDir={sortDir}
                 onSort={onSort}
-                disabled
+                disabled={isEmpty}
               />
-            )}
-            <SortableHead
-              sortKey="balance"
-              label={__('Balance', 'yayloyalty')}
-              align="right"
-              sortBy={sortBy}
-              sortDir={sortDir}
-              onSort={onSort}
-              disabled={isEmpty}
-            />
-            <SortableHead
-              sortKey="pending"
-              label={__('Pending', 'yayloyalty')}
-              align="right"
-              sortBy={sortBy}
-              sortDir={sortDir}
-              onSort={onSort}
-              disabled={isEmpty}
-            />
-            <SortableHead
-              sortKey="lifetime"
-              label={__('Lifetime earned', 'yayloyalty')}
-              align="right"
-              sortBy={sortBy}
-              sortDir={sortDir}
-              onSort={onSort}
-              disabled={isEmpty}
-            />
-            <SortableHead
-              sortKey="last_activity"
-              label={__('Last activity', 'yayloyalty')}
-              align="right"
-              sortBy={sortBy}
-              sortDir={sortDir}
-              onSort={onSort}
-              disabled={isEmpty}
-            />
-            <SortableHead
-              sortKey="expires"
-              label={__('Expires', 'yayloyalty')}
-              align="right"
-              sortBy={sortBy}
-              sortDir={sortDir}
-              onSort={onSort}
-              disabled={isEmpty}
-            />
-            {showProColumns && (
-              // Always disabled: no referral-count column exists yet.
+              {showProColumns && (
+                // Always disabled: no tiers table yet, the cells show a sample derived from balance.
+                <SortableHead
+                  sortKey="tier"
+                  label={__('Tier', 'yayloyalty')}
+                  sortBy={sortBy}
+                  sortDir={sortDir}
+                  onSort={onSort}
+                  disabled
+                />
+              )}
               <SortableHead
-                sortKey="referrals"
-                label={__('Referrals', 'yayloyalty')}
+                sortKey="balance"
+                label={__('Balance', 'yayloyalty')}
                 align="right"
                 sortBy={sortBy}
                 sortDir={sortDir}
                 onSort={onSort}
-                disabled
+                disabled={isEmpty}
               />
-            )}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {isLoading && <CustomersSkeletonRows columnCount={columnCount} />}
-          {!isLoading && rows.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={columnCount} className="h-auto py-12">
-                {isStoreEmpty ? (
-                  <CustomersEmptyState />
-                ) : (
-                  (noMatchContent ?? (
-                    <p className="text-muted-foreground text-center text-sm">
-                      {__('No customers match these filters.', 'yayloyalty')}
-                    </p>
-                  ))
-                )}
-              </TableCell>
+              <SortableHead
+                sortKey="pending"
+                label={__('Pending', 'yayloyalty')}
+                align="right"
+                sortBy={sortBy}
+                sortDir={sortDir}
+                onSort={onSort}
+                disabled={isEmpty}
+              />
+              <SortableHead
+                sortKey="lifetime"
+                label={__('Lifetime earned', 'yayloyalty')}
+                align="right"
+                sortBy={sortBy}
+                sortDir={sortDir}
+                onSort={onSort}
+                disabled={isEmpty}
+              />
+              <SortableHead
+                sortKey="last_activity"
+                label={__('Last activity', 'yayloyalty')}
+                align="right"
+                sortBy={sortBy}
+                sortDir={sortDir}
+                onSort={onSort}
+                disabled={isEmpty}
+              />
+              <SortableHead
+                sortKey="expires"
+                label={__('Expires', 'yayloyalty')}
+                align="right"
+                sortBy={sortBy}
+                sortDir={sortDir}
+                onSort={onSort}
+                disabled={isEmpty}
+              />
+              {showProColumns && (
+                // Always disabled: no referral-count column exists yet.
+                <SortableHead
+                  sortKey="referrals"
+                  label={__('Referrals', 'yayloyalty')}
+                  align="right"
+                  sortBy={sortBy}
+                  sortDir={sortDir}
+                  onSort={onSort}
+                  disabled
+                />
+              )}
             </TableRow>
-          )}
-          {!isLoading &&
-            rows.map((row) => (
-              <CustomerTableRow
-                key={row.user_id}
-                customer={row}
-                showProColumns={showProColumns}
-                showSelection={showSelection}
-                selected={selected.has(row.user_id)}
-                onToggle={onToggleRow}
-                stale={staleBalances}
-              />
-            ))}
-        </TableBody>
-      </Table>
-    </div>
+          </TableHeader>
+          <TableBody>
+            {isLoading && <CustomersSkeletonRows columnCount={columnCount} />}
+            {!isLoading && rows.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={columnCount} className="h-auto py-12">
+                  {isStoreEmpty ? (
+                    <CustomersEmptyState />
+                  ) : (
+                    (noMatchContent ?? (
+                      <p className="text-muted-foreground text-center text-sm">
+                        {__('No customers match these filters.', 'yayloyalty')}
+                      </p>
+                    ))
+                  )}
+                </TableCell>
+              </TableRow>
+            )}
+            {!isLoading &&
+              rows.map((row) => (
+                <CustomerTableRow
+                  key={row.user_id}
+                  customer={row}
+                  showProColumns={showProColumns}
+                  showSelection={showSelection}
+                  selected={selected.has(row.user_id)}
+                  onToggle={onToggleRow}
+                  stale={staleBalances}
+                />
+              ))}
+          </TableBody>
+        </Table>
+      </div>
+    </>
   );
 }
 
