@@ -6,6 +6,42 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
 
 ## Unreleased
 
+### Changed — Customer drawer: one definition per fact, one implementation per pattern (2026-09-21)
+
+A review-driven cleanup of the drawer, wire-neutral on every endpoint (fixture payloads were
+diffed byte-for-byte before/after) and visually unchanged bar one 8px gap noted below.
+
+- **Dead code:** `DrawerFiltersCollapse.tsx` (the mobile "Filters (N)" trigger) had stopped being
+  rendered but its file, import, `activeCount` and docblock remained — removed. The Wave B note
+  below describing that collapse is now history.
+- **Source of truth:** `LedgerQueryArgs::group_of()` owns the raw-type→filter-group mapping;
+  `ActivityQueryArgs::EVENT_TYPES`/`ACTOR_KINDS` are the one PHP definition and the activity item
+  schema now declares them as `enum`s (it previously omitted `event_type`'s enum, so the declared
+  contract was looser than its Zod mirror). `DrawerProfiles` uses keyed rows with
+  `profile()`/`identity_of()` instead of positional tuples and five index accessors; the
+  negative-balance story and expiry figures are read off their own ledger rows/batches instead of
+  being restated "in sync". `GET /customers/{id}`'s no-row default is `new Customer($id)`'s own
+  `to_array()`, not a hand-copied literal. The `WP_DEBUG` + `?scenario=` gate lives once server-side
+  (`CustomerDrawerFixture::requested()`) and once client-side (`hooks/useDevScenario.ts`, shared
+  with the dashboard); request builders no longer re-check `import.meta.env.DEV`. TS:
+  `ledgerTypeCountsSchema`'s shape is `satisfies Record<LedgerFilterType, …>` so key drift fails
+  `tsc`; `customerSchema` extends `customerListRowSchema`.
+- **Dedup:** the four tab tables share `tabs/DrawerTable.tsx` (shell, skeleton, empty state) and a
+  `drawerCell()` class helper; `LedgerTab`/`ActivityLogTab` share `useDrawerTabQueryState()`
+  (`customer-drawer.tab-query-state.ts`) and `tabs/DrawerTabFilters.tsx`, replacing the two
+  per-tab filter components; `DRAWER_PAGE_SIZE` replaces nine `= 10` constants; the five drawer
+  fetchers share `DrawerPageParams`/`toDrawerSearchParams()`; `formatStoredDate()` replaces the
+  `parseWPDate(utcToDate())` pair. PHP fixtures share `CustomerDrawerFixture::page()`,
+  `search_needle()`, `in_date_window()`, `with_ids()`; the three no-table controllers use
+  `AbstractRestController::respond_empty_page()`.
+- **Tests:** `tests/unit/Controllers/` pins both filter groupings to their enums and the fixture
+  paging/precedence/date-window helpers (115 PHPUnit tests now).
+- **Known rendered delta:** the ledger's disabled-filter reason line sits in the filter column's
+  8px gap rather than flush under the search row. Accessible name added to the activity group
+  control.
+
+Plans: `plans/260921-1536-customer-drawer-source-of-truth/`, `plans/260921-1619-customer-drawer-dedup/`.
+
 ### Added — F09 Customer Drawer, Wave B
 
 The six artboards Wave A left undrawn, still UI-first on the same `WP_DEBUG`-gated fixture — no
