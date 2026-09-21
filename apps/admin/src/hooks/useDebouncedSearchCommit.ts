@@ -4,7 +4,7 @@ import { useDebounceFn } from 'rooks';
 /**
  * Extracted from `CustomersPage.tsx`'s original inline block — same policy,
  * now shared by every screen with a debounced search box (the Customers
- * list, the drawer's ledger tab).
+ * list, the drawer tabs via `useDrawerTabQueryState`).
  *
  * An EMPTY value (search cleared, or trimmed down to nothing) commits
  * immediately — there's nothing worth waiting out. A NON-EMPTY value

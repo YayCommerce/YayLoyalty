@@ -28,16 +28,17 @@ final class CustomerDrawerFixture {
     public const SCENARIOS = [ 'new', 'large', 'deleted', 'expiring', 'negative' ];
 
     /**
-     * The `scenario` REST arg descriptor — shared by `CustomerRestController`
-     * and `LedgerRestController` so the gate and the enum are defined once.
-     * Registered only under `WP_DEBUG`; absent otherwise, so a production
-     * request carrying `?scenario=` is ignored by WP REST arg handling
-     * rather than reaching either controller's handler.
+     * The `scenario` REST arg descriptor every drawer controller merges into
+     * its route args, so the enum is defined once. Registered only under
+     * `WP_DEBUG`, which is what gives dev requests enum validation. WP REST
+     * still exposes an unregistered `?scenario=` via `$request['scenario']`,
+     * so `requested()` re-checks `enabled()` — that check, not registration,
+     * is the production guard.
      *
      * @return array<string, mixed>
      */
     public static function scenario_arg(): array {
-        if ( ! defined( 'WP_DEBUG' ) || ! WP_DEBUG ) {
+        if ( ! self::enabled() ) {
             return [];
         }
 
@@ -52,12 +53,76 @@ final class CustomerDrawerFixture {
         ];
     }
 
+    /** The scenario a request asks for, or null for the real repository path — the one gate every handler reads. */
+    public static function requested( \WP_REST_Request $request ): ?string {
+        if ( ! self::enabled() || empty( $request['scenario'] ) ) {
+            return null;
+        }
+
+        return (string) $request['scenario'];
+    }
+
+    private static function enabled(): bool {
+        return defined( 'WP_DEBUG' ) && WP_DEBUG;
+    }
+
+    /**
+     * One page of already-filtered rows in the shape `respond_paginated()` takes.
+     *
+     * @param array<int, array<string, mixed>> $rows
+     * @param array{page:int,per_page:int}    $args
+     * @return array{items: array, total: int, page: int, per_page: int}
+     */
+    public static function page( array $rows, array $args ): array {
+        $page     = max( 1, $args['page'] );
+        $per_page = max( 1, $args['per_page'] );
+
+        return [
+            'items'    => array_slice( $rows, ( $page - 1 ) * $per_page, $per_page ),
+            'total'    => count( $rows ),
+            'page'     => $page,
+            'per_page' => $per_page,
+        ];
+    }
+
+    /** Lower-cased, trimmed `search` arg; `''` when absent. */
+    public static function search_needle( array $args ): string {
+        return strtolower( trim( (string) ( $args['search'] ?? '' ) ) );
+    }
+
+    /** Whether a UTC datetime's `Y-m-d` day falls inside the `after`/`before` args (each optional, inclusive). */
+    public static function in_date_window( string $datetime, array $args ): bool {
+        $day    = substr( $datetime, 0, 10 );
+        $after  = (string) ( $args['after'] ?? '' );
+        $before = (string) ( $args['before'] ?? '' );
+
+        return ( '' === $after || $day >= $after ) && ( '' === $before || $day <= $before );
+    }
+
+    /**
+     * Ids counting down from `count($rows)`, newest first, plus any defaults
+     * every row shares.
+     *
+     * @param array<int, array<string, mixed>> $rows
+     * @param array<string, mixed>             $defaults
+     * @return array<int, array<string, mixed>>
+     */
+    public static function with_ids( array $rows, array $defaults = [] ): array {
+        $count = count( $rows );
+
+        foreach ( $rows as $i => $row ) {
+            $rows[ $i ] = [ 'id' => $count - $i ] + $row + $defaults;
+        }
+
+        return $rows;
+    }
+
     public static function customer( string $scenario, int $user_id ): array {
         return DrawerProfiles::to_wire( $scenario, $user_id );
     }
 
     /**
-     * @param array{page?:int,per_page?:int,type?:string,search?:string,after?:string,before?:string} $args
+     * @param array{page:int,per_page:int,type?:string,search?:string,after?:string,before?:string} $args
      * @return array{items: array, total: int, page: int, per_page: int, type_counts: array}
      */
     public static function ledger( string $scenario, int $user_id, array $args ): array {

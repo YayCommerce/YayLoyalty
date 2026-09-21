@@ -2,12 +2,9 @@ import { useState } from 'react';
 
 import { useCustomerReferralsQuery } from '@/lib/queries/customer.queries';
 import { toReferralRow } from '../customer-drawer.referral-rows';
-import { DrawerTabPager } from './DrawerTabPager';
+import { DRAWER_PAGE_SIZE, DrawerTabPager } from './DrawerTabPager';
 import { ReferralsTabHeader } from './ReferralsTabHeader';
 import { ReferralsTabRows } from './ReferralsTabRows';
-
-/** Matches every other paged drawer tab's own `PER_PAGE`. */
-const PER_PAGE = 10;
 
 /**
  * 3f — table only (the summary strip and "Revenue referred" are cut, see
@@ -17,7 +14,7 @@ const PER_PAGE = 10;
 export function ReferralsTab({ userId, scenario }: { userId: number; scenario?: string }) {
   const [page, setPage] = useState(1);
 
-  const query = useCustomerReferralsQuery(userId, { page, perPage: PER_PAGE, scenario });
+  const query = useCustomerReferralsQuery(userId, { page, perPage: DRAWER_PAGE_SIZE, scenario });
 
   const rows = query.data?.data.map(toReferralRow) ?? [];
   const totalItems = query.data?.totalItems ?? 0;
@@ -30,7 +27,7 @@ export function ReferralsTab({ userId, scenario }: { userId: number; scenario?: 
       </div>
       <DrawerTabPager
         page={page}
-        perPage={PER_PAGE}
+        perPage={DRAWER_PAGE_SIZE}
         totalItems={totalItems}
         onPageChange={setPage}
         disabled={query.isFetching}

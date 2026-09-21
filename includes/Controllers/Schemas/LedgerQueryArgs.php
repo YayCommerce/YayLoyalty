@@ -32,6 +32,19 @@ final class LedgerQueryArgs {
         return [ 'all', 'earn', 'redeem', LedgerType::ADJUST, LedgerType::EXPIRE ];
     }
 
+    /** The filter group a raw `LedgerType` value belongs to. */
+    public static function group_of( string $type ): string {
+        if ( in_array( $type, [ LedgerType::EARN, LedgerType::REFUND_EARN ], true ) ) {
+            return 'earn';
+        }
+
+        if ( in_array( $type, [ LedgerType::REDEEM, LedgerType::REFUND_REDEEM ], true ) ) {
+            return 'redeem';
+        }
+
+        return $type;
+    }
+
     /**
      * @return array<string, mixed>
      */

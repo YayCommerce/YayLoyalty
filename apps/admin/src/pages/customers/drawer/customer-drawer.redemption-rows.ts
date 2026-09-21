@@ -1,7 +1,11 @@
-import { parseWPDate, parseWPCurrency, utcToDate } from '@/lib/helpers/format.helper';
+import { formatStoredDate, parseWPCurrency } from '@/lib/helpers/format.helper';
 import { formatSignedPoints } from '@/lib/helpers/ledger.helper';
 import type { RedemptionEntry } from '@/lib/schema/redemption.schema';
-import { REDEMPTION_STATUS_APPLIED, REDEMPTION_STATUS_ISSUED, REDEMPTION_STATUS_RETURNED } from './customer-drawer.copy';
+import {
+  REDEMPTION_STATUS_APPLIED,
+  REDEMPTION_STATUS_ISSUED,
+  REDEMPTION_STATUS_RETURNED,
+} from './customer-drawer.copy';
 
 export type RedemptionRow = {
   date: string;
@@ -20,7 +24,7 @@ export type RedemptionRow = {
  */
 export function toRedemptionRow(entry: RedemptionEntry): RedemptionRow {
   return {
-    date: parseWPDate(utcToDate(entry.created_at)),
+    date: formatStoredDate(entry.created_at),
     reward: entry.reward_name,
     value: parseWPCurrency(entry.value),
     points: formatSignedPoints(entry.points),

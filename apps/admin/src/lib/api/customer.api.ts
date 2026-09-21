@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { api } from '@/lib/api/api';
+import { toDrawerSearchParams, type DrawerPageParams } from '@/lib/api/customer-drawer.api';
 import { paginatedSchema } from '@/lib/api/paginated';
 import {
   AdjustPointsInput,
@@ -21,34 +22,16 @@ import { LedgerEntry, ledgerEntrySchema, ledgerEnvelopeSchema, LedgerFilterType 
 
 /** Every response is parsed, not cast: `.json<T>()` is unchecked, and a bad shape would white-screen a component. */
 
-/**
- * `scenario` is a dev-only switch: the server registers the argument only
- * under WP_DEBUG, and this client forwards it only on the Vite dev server
- * (`import.meta.env.DEV`), so a built bundle never sends it — same rule
- * `dashboard.api.ts`'s `getDashboard()` follows.
- */
+/** `scenario` is the dev-only fixture switch; only `useDevScenario()` ever produces one. */
 export async function getCustomer(userId: number, scenario?: string): Promise<Customer> {
   const searchParams: Record<string, string> = {};
 
-  if (import.meta.env.DEV && scenario) searchParams.scenario = scenario;
+  if (scenario) searchParams.scenario = scenario;
 
   return customerSchema.parse(await api.get(`customers/${userId}`, { searchParams }).json());
 }
 
-/**
- * App-side (camelCase) params for `getCustomerLedger()`. The wire spelling
- * exists only inside the request builder below — one conversion point, as
- * `getCustomers()` does for the Customers list.
- */
-export type CustomerLedgerParams = {
-  page?: number;
-  perPage?: number;
-  type?: LedgerFilterType;
-  search?: string;
-  after?: string;
-  before?: string;
-  scenario?: string;
-};
+export type CustomerLedgerParams = DrawerPageParams & { type?: LedgerFilterType };
 
 /**
  * `GET /customers/{id}/ledger`. Parsed with `ledgerEnvelopeSchema`, not the
@@ -56,15 +39,9 @@ export type CustomerLedgerParams = {
  * `type_counts` field, so it would silently drop it.
  */
 export async function getCustomerLedger(userId: number, params: CustomerLedgerParams = {}) {
-  const searchParams: Record<string, string> = {};
+  const searchParams = toDrawerSearchParams(params);
 
-  if (params.page) searchParams.page = String(params.page);
-  if (params.perPage) searchParams.per_page = String(params.perPage);
   if (params.type && params.type !== 'all') searchParams.type = params.type;
-  if (params.search?.trim()) searchParams.search = params.search.trim();
-  if (params.after) searchParams.after = params.after;
-  if (params.before) searchParams.before = params.before;
-  if (import.meta.env.DEV && params.scenario) searchParams.scenario = params.scenario;
 
   const payload = await api.get(`customers/${userId}/ledger`, { searchParams }).json();
 

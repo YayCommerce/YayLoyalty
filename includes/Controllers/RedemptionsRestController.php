@@ -48,13 +48,14 @@ final class RedemptionsRestController extends AbstractRestController {
     }
 
     public function get_history( \WP_REST_Request $request ) {
-        $user_id  = (int) $request['id'];
         $page     = (int) $request['page'];
         $per_page = (int) $request['per_page'];
 
-        if ( defined( 'WP_DEBUG' ) && WP_DEBUG && ! empty( $request['scenario'] ) ) {
+        $scenario = CustomerDrawerFixture::requested( $request );
+
+        if ( null !== $scenario ) {
             $result = CustomerDrawerFixture::redemptions(
-                (string) $request['scenario'],
+                $scenario,
                 [
                     'page'     => $page,
                     'per_page' => $per_page,
@@ -64,18 +65,8 @@ final class RedemptionsRestController extends AbstractRestController {
             return $this->respond_paginated( $result );
         }
 
-        // Real path: no table, no rows, no error. $user_id stays validated
-        // via user_id_param() even though nothing here looks it up yet.
-        unset( $user_id );
-
-        return $this->respond_paginated(
-            [
-                'items'    => [],
-                'total'    => 0,
-                'page'     => $page,
-                'per_page' => $per_page,
-            ]
-        );
+        // No table yet — `id` is validated by user_id_param() but nothing looks it up.
+        return $this->respond_empty_page( $request );
     }
 
     protected function define_item_schema(): array {

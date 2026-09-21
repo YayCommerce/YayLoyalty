@@ -1,7 +1,7 @@
 import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { CAP } from '@/lib/access';
-import { parseWPCurrency, parseWPDate, parseWPDay, parseWPTime, utcToDate } from '@/lib/helpers/format.helper';
+import { formatStoredDate, parseWPCurrency, parseWPDay, parseWPTime, utcToDate } from '@/lib/helpers/format.helper';
 import { formatPoints } from '@/lib/helpers/points.helper';
 import { pointsToCurrency } from '@/lib/points-math/points-math';
 import { parseNoticeData, type TypedNotice } from '@/lib/schema/dashboard-notice.schema';
@@ -59,7 +59,7 @@ function copyFor(n: TypedNotice): NoticeCopy {
         title: __("Customers aren't earning points on purchases", 'yayloyalty'),
         body: sprintf(
           __('The default campaign has been paused since %1$s. %2$s and awarded nothing.', 'yayloyalty'),
-          parseWPDate(utcToDate(n.data.paused_since)),
+          formatStoredDate(n.data.paused_since),
           sprintf(
             _n('%s order has completed', '%s orders have completed', n.data.orders_without_points, 'yayloyalty'),
             formatPoints(n.data.orders_without_points),
@@ -123,7 +123,7 @@ function copyFor(n: TypedNotice): NoticeCopy {
             'yayloyalty',
           ),
           formatPoints(n.data.failed),
-          parseWPDate(utcToDate(n.data.since)),
+          formatStoredDate(n.data.since),
         ),
         body: __("This is the site's mail, not just ours — order confirmations may be failing too.", 'yayloyalty'),
         secondary: { kind: 'link', label: __('Check mail settings', 'yayloyalty'), href: '/settings/general' },

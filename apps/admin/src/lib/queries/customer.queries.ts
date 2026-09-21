@@ -5,8 +5,7 @@ import {
   getCustomerRedemptions,
   getCustomerReferrals,
   type CustomerActivityParams,
-  type CustomerRedemptionsParams,
-  type CustomerReferralsParams,
+  type DrawerPageOnlyParams,
 } from '@/lib/api/customer-drawer.api';
 import {
   adjustCustomerPoints,
@@ -63,7 +62,7 @@ export const CUSTOMER_QUERIES = {
       retry: 1,
     }),
 
-  redemptions: (userId: number, params: CustomerRedemptionsParams) =>
+  redemptions: (userId: number, params: DrawerPageOnlyParams) =>
     queryOptions({
       queryKey: ['customer', 'redemptions', userId, params],
       queryFn: () => getCustomerRedemptions(userId, params),
@@ -72,7 +71,7 @@ export const CUSTOMER_QUERIES = {
       retry: 1,
     }),
 
-  referrals: (userId: number, params: CustomerReferralsParams) =>
+  referrals: (userId: number, params: DrawerPageOnlyParams) =>
     queryOptions({
       queryKey: ['customer', 'referrals', userId, params],
       queryFn: () => getCustomerReferrals(userId, params),
@@ -111,11 +110,11 @@ export function useCustomerActivityQuery(userId: number, params: CustomerActivit
   return useQuery(CUSTOMER_QUERIES.activity(userId, params));
 }
 
-export function useCustomerRedemptionsQuery(userId: number, params: CustomerRedemptionsParams) {
+export function useCustomerRedemptionsQuery(userId: number, params: DrawerPageOnlyParams) {
   return useQuery(CUSTOMER_QUERIES.redemptions(userId, params));
 }
 
-export function useCustomerReferralsQuery(userId: number, params: CustomerReferralsParams) {
+export function useCustomerReferralsQuery(userId: number, params: DrawerPageOnlyParams) {
   return useQuery(CUSTOMER_QUERIES.referrals(userId, params));
 }
 

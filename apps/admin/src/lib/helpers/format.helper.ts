@@ -10,6 +10,11 @@ export function parseWPRelativeDate(date: string) {
   return humanTimeDiff(utcToDate(date));
 }
 
+/** A stored UTC datetime in the site's date format. */
+export function formatStoredDate(utc: string) {
+  return parseWPDate(utcToDate(utc));
+}
+
 /** A stored UTC MySQL datetime as a Date; the one parsing rule. */
 export function utcToDate(utc: string): Date {
   return new Date(utc.replace(' ', 'T') + 'Z');

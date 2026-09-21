@@ -24,8 +24,8 @@ export function countColumns(showProColumns: boolean, showSelection: boolean) {
  * Presentational: rows arrive sorted and paginated server-side; this renders
  * carets and reports clicks. Below `sm`, renders 5c's card list instead
  * (`CustomersCardList`/`CustomerCardRow`) — CSS-only switching, both trees
- * always mount (see `DrawerFiltersCollapse.tsx`'s docblock for why this
- * codebase does it that way rather than a JS media-query hook).
+ * always mount: Tailwind's `sm:` breakpoint decides visibility, not a JS
+ * media-query hook this codebase has no pattern for.
  */
 export function CustomersTable({
   rows,
@@ -72,7 +72,7 @@ export function CustomersTable({
   return (
     <>
       {/* 5c's mobile card list — CSS-only switching against the desktop
-          table below, same convention as DrawerFiltersCollapse.tsx. No
+          table below. No
           selection here (see CustomerCardRow.tsx); the sort dropdown is
           the card list's stand-in for the desktop headers' click-to-sort. */}
       <div className="flex flex-col gap-3 sm:hidden">

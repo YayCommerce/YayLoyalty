@@ -30,13 +30,12 @@ final class DrawerReferrals {
         'window_days'         => 90,
     ];
 
-    /** Each scenario's referral code — `''`/`expiring` match 3f's "daniel-4f2" verbatim. */
+    /** Each identity's referral code — `''` matches 3f's "daniel-4f2" verbatim. */
     private const REFERRAL_CODES = [
         ''         => 'daniel-4f2',
         'new'      => 'lena-9c1',
         'large'    => 'aisha-7e4',
         'deleted'  => 'erik-2a8',
-        'expiring' => 'daniel-4f2',
         'negative' => 'tom-5d6',
     ];
 
@@ -107,16 +106,9 @@ final class DrawerReferrals {
      * @return array{items: array, total: int, page: int, per_page: int, referral_link: string, campaign: array}
      */
     public static function envelope( string $scenario, array $args ): array {
-        $rows     = self::rows( $scenario );
-        $page     = max( 1, $args['page'] );
-        $per_page = max( 1, $args['per_page'] );
-        $code     = self::REFERRAL_CODES[ $scenario ] ?? self::REFERRAL_CODES[''];
+        $code = self::REFERRAL_CODES[ DrawerProfiles::identity_of( $scenario ) ];
 
-        return [
-            'items'         => array_slice( $rows, ( $page - 1 ) * $per_page, $per_page ),
-            'total'         => count( $rows ),
-            'page'          => $page,
-            'per_page'      => $per_page,
+        return CustomerDrawerFixture::page( self::rows( $scenario ), $args ) + [
             'referral_link' => "nordvik.example/r/{$code}",
             'campaign'      => self::CAMPAIGN,
         ];
@@ -126,14 +118,14 @@ final class DrawerReferrals {
      * @return array<int, array<string, mixed>>
      */
     private static function rows( string $scenario ): array {
-        $count = DrawerProfiles::referrals_count_for( $scenario );
+        $count = DrawerProfiles::profile( $scenario )['counts']['referrals'];
 
         if ( 0 === $count ) {
             return [];
         }
 
-        if ( '' === $scenario || 'expiring' === $scenario ) {
-            return self::with_ids( self::default_rows() );
+        if ( '' === DrawerProfiles::identity_of( $scenario ) ) {
+            return CustomerDrawerFixture::with_ids( self::default_rows() );
         }
 
         $template = self::templates()[0];
@@ -156,17 +148,6 @@ final class DrawerReferrals {
             ];
         }
 
-        return self::with_ids( $rows );
-    }
-
-    /** @return array<int, array<string, mixed>> */
-    private static function with_ids( array $rows ): array {
-        $count = count( $rows );
-
-        foreach ( $rows as $i => $row ) {
-            $rows[ $i ] = [ 'id' => $count - $i ] + $row;
-        }
-
-        return $rows;
+        return CustomerDrawerFixture::with_ids( $rows );
     }
 }

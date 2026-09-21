@@ -3,6 +3,9 @@ import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { pagerSummary } from '../customer-drawer.copy';
 
+/** Rows per page on every paged drawer tab, and the skeleton row count while one loads. */
+export const DRAWER_PAGE_SIZE = 10;
+
 /**
  * "1–10 of 4,812 entries · newest first" + ‹ Newer / Older › — not the shared
  * `components/ui/pagination.tsx` primitive (that one is "Page X of Y" + a

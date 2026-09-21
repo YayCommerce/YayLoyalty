@@ -3,9 +3,9 @@ import { __ } from '@wordpress/i18n';
 
 import { useCustomerQuery } from '@/lib/queries/customer.queries';
 import type { CustomerListRow } from '@/lib/schema/customer.schema';
+import { useDevScenario } from '@/hooks/useDevScenario';
 import { ErrorState } from '@/components/ui/custom/error-state';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { useDrawerScenario } from './customer-drawer.scenario';
 import { CustomerDrawerActions } from './CustomerDrawerActions';
 import { CustomerDrawerDeletedActions } from './CustomerDrawerDeletedActions';
 import { CustomerDrawerDeletedBanner } from './CustomerDrawerDeletedBanner';
@@ -38,7 +38,7 @@ export default function CustomerDrawer() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const scenario = useDrawerScenario();
+  const scenario = useDevScenario();
 
   const userId = Number(userIdParam);
   const isValidId = Number.isFinite(userId) && userId >= 1;
@@ -135,7 +135,7 @@ export default function CustomerDrawer() {
                         <CustomerDrawerNegativeActions customerFirstName={firstName} />
                       </>
                     )}
-                    <CustomerDrawerTabs customer={query.data} scenario={scenario} />
+                    <CustomerDrawerTabs customer={query.data} customerFirstName={firstName} scenario={scenario} />
                   </>
                 )}
               </div>

@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Controllers\Fixtures\CustomerDrawer;
 
+use YayLoyalty\Controllers\Schemas\LedgerQueryArgs;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Utils\Dates;
 
@@ -27,24 +28,14 @@ final class DrawerLedger {
     private const CAMPAIGN_IDS = [ 1, 3, 4 ];
 
     /**
-     * @param array{page?:int,per_page?:int,type?:string,search?:string,after?:string,before?:string} $args
+     * @param array{page:int,per_page:int,type?:string,search?:string,after?:string,before?:string} $args
      * @return array{items: array<int, array<string, mixed>>, total: int, page: int, per_page: int, type_counts: array<string, int>}
      */
     public static function envelope( string $scenario, int $user_id, array $args ): array {
-        $rows        = self::rows( $scenario, $user_id );
-        $type_counts = self::type_counts( $rows );
-        $filtered    = self::apply_filters( $rows, $args );
+        $rows = self::rows( $scenario, $user_id );
 
-        $page     = max( 1, (int) ( $args['page'] ?? 1 ) );
-        $per_page = max( 1, (int) ( $args['per_page'] ?? 20 ) );
-
-        return [
-            'items'       => array_slice( $filtered, ( $page - 1 ) * $per_page, $per_page ),
-            'total'       => count( $filtered ),
-            'page'        => $page,
-            'per_page'    => $per_page,
-            'type_counts' => $type_counts,
-        ];
+        return CustomerDrawerFixture::page( self::apply_filters( $rows, $args ), $args )
+            + [ 'type_counts' => self::type_counts( $rows ) ];
     }
 
     /**
@@ -67,8 +58,9 @@ final class DrawerLedger {
             return DrawerNegativeBalance::ledger_rows( $user_id );
         }
 
-        $count   = DrawerProfiles::ledger_count_for( $scenario );
-        $balance = DrawerProfiles::balance_for( $scenario );
+        $profile = DrawerProfiles::profile( $scenario );
+        $count   = $profile['counts']['ledger'];
+        $balance = $profile['balance'];
         $types   = DrawerLedgerGenerator::type_sequence( $scenario, $count );
         $step    = 'large' === $scenario ? 4 * HOUR_IN_SECONDS : DAY_IN_SECONDS;
 
@@ -108,16 +100,11 @@ final class DrawerLedger {
 
     /** Grouped over the UNFILTERED set — what the filter labels ("Earned 4,190") read from. */
     private static function type_counts( array $rows ): array {
-        $counts = [
-            'all'    => count( $rows ),
-            'earn'   => 0,
-            'redeem' => 0,
-            'adjust' => 0,
-            'expire' => 0,
-        ];
+        $counts        = array_fill_keys( LedgerQueryArgs::filter_types(), 0 );
+        $counts['all'] = count( $rows );
 
         foreach ( $rows as $row ) {
-            ++$counts[ self::type_group( $row['type'] ) ];
+            ++$counts[ LedgerQueryArgs::group_of( $row['type'] ) ];
         }
 
         return $counts;
@@ -125,15 +112,13 @@ final class DrawerLedger {
 
     private static function apply_filters( array $rows, array $args ): array {
         $type   = $args['type'] ?? 'all';
-        $search = isset( $args['search'] ) ? strtolower( trim( (string) $args['search'] ) ) : '';
-        $after  = (string) ( $args['after'] ?? '' );
-        $before = (string) ( $args['before'] ?? '' );
+        $search = CustomerDrawerFixture::search_needle( $args );
 
         return array_values(
             array_filter(
                 $rows,
-                static function ( array $row ) use ( $type, $search, $after, $before ): bool {
-                    if ( 'all' !== $type && self::type_group( $row['type'] ) !== $type ) {
+                static function ( array $row ) use ( $type, $search, $args ): bool {
+                    if ( 'all' !== $type && LedgerQueryArgs::group_of( $row['type'] ) !== $type ) {
                         return false;
                     }
 
@@ -145,24 +130,9 @@ final class DrawerLedger {
                         }
                     }
 
-                    $date = substr( $row['created_at'], 0, 10 );
-
-                    return ( '' === $after || $date >= $after ) && ( '' === $before || $date <= $before );
+                    return CustomerDrawerFixture::in_date_window( $row['created_at'], $args );
                 }
             )
         );
-    }
-
-    /** `earn`/`refund_earn` → `earn`, `redeem`/`refund_redeem` → `redeem` — a grouping, not the raw enum. */
-    private static function type_group( string $type ): string {
-        if ( in_array( $type, [ LedgerType::EARN, LedgerType::REFUND_EARN ], true ) ) {
-            return 'earn';
-        }
-
-        if ( in_array( $type, [ LedgerType::REDEEM, LedgerType::REFUND_REDEEM ], true ) ) {
-            return 'redeem';
-        }
-
-        return $type;
     }
 }

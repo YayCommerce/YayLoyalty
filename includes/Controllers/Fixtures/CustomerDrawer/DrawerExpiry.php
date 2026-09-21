@@ -25,9 +25,8 @@ final class DrawerExpiry {
 
     /**
      * Batch data for the `expiring` scenario — Daniel Okonkwo's 9,850 points
-     * across three earn windows, one of which (6,300) is 4b's expiring lot.
-     * Points sum to his balance (`DrawerProfiles::rows()`'s `expiring` row)
-     * by construction: 6300 + 2180 + 1370 = 9850.
+     * across three earn windows, the first of which (6,300) is 4b's expiring
+     * lot. Must sum to his `DrawerProfiles` balance: 6300 + 2180 + 1370 = 9850.
      *
      * @return array<int, array{earned_from:string, earned_to:string, points:int, expires_at:string}>
      */
@@ -57,20 +56,19 @@ final class DrawerExpiry {
     /**
      * @return array{expiring_points:int, expires_at:string, safe_points:int, reminders:array{sent_at:?string,next_due_at:?string,window_days:int}, batches:?array}|null
      */
-    public static function for_scenario( string $scenario, int $balance ): ?array {
+    public static function for_scenario( string $scenario ): ?array {
         if ( 'expiring' !== $scenario ) {
             return null;
         }
 
-        $batches         = self::batches();
-        $expiring_batch  = $batches[0];
-        $expiring_points = $expiring_batch['points'];
-        $expires_at      = $expiring_batch['expires_at'] . ' 00:00:00';
+        $batches        = self::batches();
+        $expiring_batch = array_shift( $batches );
+        $expires_at     = $expiring_batch['expires_at'] . ' 00:00:00';
 
         return [
-            'expiring_points' => $expiring_points,
+            'expiring_points' => $expiring_batch['points'],
             'expires_at'      => $expires_at,
-            'safe_points'     => $balance - $expiring_points,
+            'safe_points'     => array_sum( array_column( $batches, 'points' ) ),
             'reminders'       => [
                 // 30-day reminder already sent; the 7-day one is upcoming —
                 // both anchored to `expires_at`, not "now", so they stay
@@ -79,7 +77,7 @@ final class DrawerExpiry {
                 'next_due_at' => Dates::offset( -7 * DAY_IN_SECONDS, $expires_at ),
                 'window_days' => 7,
             ],
-            'batches'         => $batches,
+            'batches'         => self::batches(),
         ];
     }
 }

@@ -14,7 +14,7 @@ import { paginatedSchema } from '@/lib/api/paginated';
  * real table an input change, not a UI rewrite.
  */
 
-/** The seven event kinds artboard 3d shows. Matches `DrawerActivity::EVENT_TYPES`. */
+/** The seven event kinds artboard 3d shows. Matches `ActivityQueryArgs::EVENT_TYPES`. */
 export const ACTIVITY_EVENT_TYPES = [
   'account_created',
   'points_adjusted',

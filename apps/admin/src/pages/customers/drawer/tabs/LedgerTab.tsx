@@ -1,24 +1,36 @@
-import { useState } from 'react';
-import { format } from 'date-fns';
-import type { DateRange } from 'react-day-picker';
-
-import { useDebouncedSearchCommit } from '@/hooks/useDebouncedSearchCommit';
 import { useCustomerLedgerQuery } from '@/lib/queries/customer.queries';
-import type { LedgerFilterType } from '@/lib/schema/ledger.schema';
+import { LEDGER_FILTER_TYPES, type LedgerFilterType } from '@/lib/schema/ledger.schema';
 import { useLedgerCampaignNames } from '../customer-drawer.campaign-names';
+import {
+  FILTER_TYPE_ADJUSTED,
+  FILTER_TYPE_ALL,
+  FILTER_TYPE_EARNED,
+  FILTER_TYPE_EXPIRED,
+  FILTER_TYPE_LABEL,
+  FILTER_TYPE_REDEEMED,
+  FILTER_UNAVAILABLE_REASON,
+  SEARCH_PLACEHOLDER,
+} from '../customer-drawer.copy';
 import { toLedgerRow } from '../customer-drawer.ledger-rows';
-import { DrawerTabPager } from './DrawerTabPager';
-import { LedgerTabFilters } from './LedgerTabFilters';
+import { useDrawerTabQueryState } from '../customer-drawer.tab-query-state';
+import { DrawerTabFilters } from './DrawerTabFilters';
+import { DRAWER_PAGE_SIZE, DrawerTabPager } from './DrawerTabPager';
 import { LedgerTabRows } from './LedgerTabRows';
 
-/** Matches `CustomersPage.tsx`'s own `PER_PAGE` — the two screens page alike. */
-const PER_PAGE = 10;
+const TYPE_LABELS: Record<LedgerFilterType, () => string> = {
+  all: FILTER_TYPE_ALL,
+  earn: FILTER_TYPE_EARNED,
+  redeem: FILTER_TYPE_REDEEMED,
+  adjust: FILTER_TYPE_ADJUSTED,
+  expire: FILTER_TYPE_EXPIRED,
+};
 
 /**
- * Owns filter state (`type`, `search`, `range`, `page`) and the ledger
- * query; composes filters → rows → pager. Any filter change resets to page
- * 1 — the matching set changed, so a stale page number could fetch past the
- * new last page.
+ * Filters → rows → pager over `useDrawerTabQueryState`. The type filter is
+ * a segmented control with every per-type count on its segment — "4,190
+ * earned, 38 adjusted" tells the admin where to look before they click
+ * (3c note 3). `type_counts` is `null` on the real path (no type-count
+ * query yet), which disables the whole row with a stated reason.
  */
 export function LedgerTab({
   userId,
@@ -29,77 +41,45 @@ export function LedgerTab({
   userId: number;
   customerFirstName: string;
   scenario?: string;
-  /** 5a's `cause_ledger_id` (F09 Wave B) — the one row to mark, or `null`
-   *  on every scenario without a negative-balance story. */
+  /** 5a's `cause_ledger_id` — the one row to mark, or `null` on every scenario without a negative-balance story. */
   causeLedgerId: number | null;
 }) {
-  const [type, setType] = useState<LedgerFilterType>('all');
-  const [range, setRange] = useState<DateRange | undefined>(undefined);
-  const [search, setSearch] = useState('');
-  const [querySearch, setQuerySearch] = useState('');
-  const [page, setPage] = useState(1);
-
-  // See `useDebouncedSearchCommit`'s docblock: `cancelPending()` is called
-  // from every OTHER filter change below so a search commit still in flight
-  // can't fire after and silently overwrite a type/range change.
-  const { commit: commitSearch, cancelPending: cancelPendingSearch } = useDebouncedSearchCommit(setQuerySearch);
-
-  const query = useCustomerLedgerQuery(userId, {
-    page,
-    perPage: PER_PAGE,
-    type,
-    search: querySearch,
-    after: range?.from ? format(range.from, 'yyyy-MM-dd') : undefined,
-    before: range?.to ? format(range.to, 'yyyy-MM-dd') : undefined,
-    scenario,
-  });
+  const state = useDrawerTabQueryState<LedgerFilterType>('all');
+  const query = useCustomerLedgerQuery(userId, { ...state.pageParams, type: state.filter, scenario });
 
   const campaignNames = useLedgerCampaignNames();
   const rows = query.data?.data.map((entry) => toLedgerRow(entry, campaignNames, causeLedgerId)) ?? [];
   const totalItems = query.data?.totalItems ?? 0;
-  // Per-type counts describe the UNFILTERED set (see the schema's own
-  // docblock) — `null` on the real path means the server can't filter yet.
+  // Per-type counts describe the UNFILTERED set (see the schema's own docblock).
   const typeCounts = query.data?.type_counts ?? null;
-  const canFilter = typeCounts != null;
-
-  function handleSearchChange(value: string) {
-    setSearch(value);
-    commitSearch(value);
-    setPage(1);
-  }
-
-  function handleTypeChange(value: LedgerFilterType) {
-    cancelPendingSearch();
-    setType(value);
-    setPage(1);
-  }
-
-  function handleRangeChange(value: DateRange | undefined) {
-    cancelPendingSearch();
-    setRange(value);
-    setPage(1);
-  }
 
   return (
     <div className="flex flex-col gap-3">
-      <LedgerTabFilters
-        type={type}
-        onTypeChange={handleTypeChange}
-        typeCounts={typeCounts}
-        range={range}
-        onRangeChange={handleRangeChange}
-        search={search}
-        onSearchChange={handleSearchChange}
-        disabled={!canFilter}
+      <DrawerTabFilters
+        options={LEDGER_FILTER_TYPES.map((type) => ({
+          value: type,
+          label: TYPE_LABELS[type](),
+          count: typeCounts?.[type],
+        }))}
+        value={state.filter}
+        onChange={state.setFilter}
+        ariaLabel={FILTER_TYPE_LABEL()}
+        range={state.range}
+        onRangeChange={state.setRange}
+        search={state.search}
+        onSearchChange={state.setSearch}
+        searchPlaceholder={SEARCH_PLACEHOLDER()}
+        disabled={typeCounts === null}
+        disabledReason={FILTER_UNAVAILABLE_REASON()}
       />
       <div className="overflow-x-auto rounded-md border">
         <LedgerTabRows rows={rows} isLoading={query.isPending} customerFirstName={customerFirstName} />
       </div>
       <DrawerTabPager
-        page={page}
-        perPage={PER_PAGE}
+        page={state.page}
+        perPage={DRAWER_PAGE_SIZE}
         totalItems={totalItems}
-        onPageChange={setPage}
+        onPageChange={state.setPage}
         disabled={query.isFetching}
         isPending={query.isPending}
       />

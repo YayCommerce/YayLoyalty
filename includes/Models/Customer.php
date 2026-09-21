@@ -108,8 +108,9 @@ class Customer extends AbstractModel {
             'lifetime_redeemed' => $this->lifetime_redeemed,
             'last_activity_at'  => $this->last_activity_at,
             'expires_at'        => $this->expires_at,
-            'joined_at'         => $this->joined_at,
-            'updated_at'        => $this->updated_at,
+            // A row always has both; a member with no row yet reports null, not ''.
+            'joined_at'         => '' !== $this->joined_at ? $this->joined_at : null,
+            'updated_at'        => '' !== $this->updated_at ? $this->updated_at : null,
         ];
     }
 

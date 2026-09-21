@@ -69,9 +69,15 @@ function DrawerTab({
  * access control — there is no real Pro data behind it to protect, only a
  * dev fixture.
  */
-export function CustomerDrawerTabs({ customer, scenario }: { customer: Customer; scenario?: string }) {
-  const firstName = customer.name.split(' ')[0] || customer.name;
-
+export function CustomerDrawerTabs({
+  customer,
+  customerFirstName: firstName,
+  scenario,
+}: {
+  customer: Customer;
+  customerFirstName: string;
+  scenario?: string;
+}) {
   return (
     <Tabs defaultValue="ledger">
       {/* The scroll container is this wrapper, never `TabsList` itself:

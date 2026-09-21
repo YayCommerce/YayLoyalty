@@ -18,43 +18,44 @@ defined( 'ABSPATH' ) || exit;
  * optimise the `shape` discriminator away because this fixture only emits
  * one value.
  *
- * `earned`/`reversed.occurred_at` and `cause_ledger_id` MUST stay in sync
- * with `self::ledger_rows()` below — they describe the same three rows from
- * two different endpoints, and the negative-balance panel points the ledger
- * tab at `cause_ledger_id` to highlight the real row.
+ * The story and `ledger_rows()` describe the same three rows from two
+ * endpoints, so the story is read off the rows rather than typed twice.
  */
 final class DrawerNegativeBalance {
-
-    /** The `negative` scenario's ledger row ids — see `self::ledger_rows()`. */
-    private const CAUSE_LEDGER_ID = 3;
 
     /**
      * @return array{shape:string, earned:?array, spent:?array, reversed:?array, cause_ledger_id:?int, deficit:int}|null
      */
-    public static function for_scenario( string $scenario, int $balance ): ?array {
+    public static function for_scenario( string $scenario ): ?array {
         if ( 'negative' !== $scenario ) {
             return null;
         }
 
+        $rows     = array_column( self::ledger_rows( 0 ), null, 'type' );
+        $earned   = $rows[ LedgerType::EARN ];
+        $spent    = $rows[ LedgerType::REDEEM ];
+        $reversed = $rows[ LedgerType::REFUND_EARN ];
+
         return [
             'shape'           => 'refund_reversal',
             'earned'          => [
-                'order_id'    => 4102,
-                'points'      => 1000,
-                'occurred_at' => Dates::offset( -3 * DAY_IN_SECONDS ),
+                'order_id'    => $earned['order_id'],
+                'points'      => $earned['points'],
+                'occurred_at' => $earned['created_at'],
             ],
             'spent'           => [
-                'order_id' => 4150,
-                'points'   => 1000,
+                'order_id' => $spent['order_id'],
+                'points'   => -$spent['points'],
+                // The discount the points bought — not a ledger column.
                 'value'    => '10.00',
             ],
             'reversed'        => [
-                'order_id'    => 4102,
-                'points'      => 1000,
-                'occurred_at' => Dates::offset( -DAY_IN_SECONDS ),
+                'order_id'    => $reversed['order_id'],
+                'points'      => -$reversed['points'],
+                'occurred_at' => $reversed['created_at'],
             ],
-            'cause_ledger_id' => self::CAUSE_LEDGER_ID,
-            'deficit'         => abs( $balance ),
+            'cause_ledger_id' => $reversed['id'],
+            'deficit'         => abs( $reversed['balance_after'] ),
         ];
     }
 
@@ -63,7 +64,7 @@ final class DrawerNegativeBalance {
      * 1,000 on #4102 → redeem all 1,000 on #4150 → #4102 refunded, reversing
      * the 1,000 it issued. Sums to the `negative` scenario's −1,000 balance
      * by construction: +1000 − 1000 − 1000 = −1000. Newest first, like every
-     * other scenario's rows. Row 3's id MUST stay `self::CAUSE_LEDGER_ID`.
+     * other scenario's rows; one row per type, which `for_scenario()` relies on.
      *
      * @return array<int, array<string, mixed>>
      */
@@ -82,7 +83,7 @@ final class DrawerNegativeBalance {
             // `array_merge()`) — `$base + [...]` would have silently kept
             // `$base`'s `null` defaults instead of these overrides.
             [
-                'id'             => self::CAUSE_LEDGER_ID,
+                'id'             => 3,
                 'points'         => -1000,
                 'balance_after'  => -1000,
                 'type'           => LedgerType::REFUND_EARN,

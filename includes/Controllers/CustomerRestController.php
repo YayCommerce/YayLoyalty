@@ -174,36 +174,23 @@ final class CustomerRestController extends AbstractRestController {
     public function get_customer( \WP_REST_Request $request ) {
         $user_id = (int) $request['id'];
 
-        if ( defined( 'WP_DEBUG' ) && WP_DEBUG && ! empty( $request['scenario'] ) ) {
-            return CustomerDrawerFixture::customer( (string) $request['scenario'], $user_id );
+        $scenario = CustomerDrawerFixture::requested( $request );
+
+        if ( null !== $scenario ) {
+            return CustomerDrawerFixture::customer( $scenario, $user_id );
         }
 
         return $this->format_customer( $user_id, $this->customers->find_by_user_id( $user_id ) );
     }
 
     /**
-     * One `format_customer()` for both branches, so "no activity yet" and
-     * "has a row" build the exact same shape once. `to_array()` already
-     * defines the nine aggregate fields; the no-row default below mirrors it
-     * field-for-field on purpose — a user with no activity is a member with
-     * nothing yet, not a 404.
+     * A user with no activity is a member with nothing yet, not a 404 — the
+     * model's own defaults are that empty shape.
      *
      * @return array<string, mixed>
      */
     private function format_customer( int $user_id, ?Customer $customer ): array {
-        $base = null !== $customer
-            ? $customer->to_array()
-            : [
-                'user_id'           => $user_id,
-                'balance'           => 0,
-                'pending_points'    => 0,
-                'lifetime_earned'   => 0,
-                'lifetime_redeemed' => 0,
-                'last_activity_at'  => null,
-                'expires_at'        => null,
-                'joined_at'         => null,
-                'updated_at'        => null,
-            ];
+        $base = ( $customer ?? new Customer( $user_id ) )->to_array();
 
         $user         = get_userdata( $user_id );
         $ledger_count = $this->ledger->paginate_for_user(
