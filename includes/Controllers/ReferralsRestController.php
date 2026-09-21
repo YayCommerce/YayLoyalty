@@ -57,9 +57,11 @@ final class ReferralsRestController extends AbstractRestController {
         $page     = (int) $request['page'];
         $per_page = (int) $request['per_page'];
 
-        if ( defined( 'WP_DEBUG' ) && WP_DEBUG && ! empty( $request['scenario'] ) ) {
+        $scenario = CustomerDrawerFixture::requested( $request );
+
+        if ( null !== $scenario ) {
             $result        = CustomerDrawerFixture::referrals(
-                (string) $request['scenario'],
+                $scenario,
                 [
                     'page'     => $page,
                     'per_page' => $per_page,

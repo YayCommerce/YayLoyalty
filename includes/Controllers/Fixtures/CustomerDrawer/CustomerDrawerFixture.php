@@ -28,16 +28,17 @@ final class CustomerDrawerFixture {
     public const SCENARIOS = [ 'new', 'large', 'deleted', 'expiring', 'negative' ];
 
     /**
-     * The `scenario` REST arg descriptor — shared by `CustomerRestController`
-     * and `LedgerRestController` so the gate and the enum are defined once.
-     * Registered only under `WP_DEBUG`; absent otherwise, so a production
-     * request carrying `?scenario=` is ignored by WP REST arg handling
-     * rather than reaching either controller's handler.
+     * The `scenario` REST arg descriptor every drawer controller merges into
+     * its route args, so the enum is defined once. Registered only under
+     * `WP_DEBUG`, which is what gives dev requests enum validation. WP REST
+     * still exposes an unregistered `?scenario=` via `$request['scenario']`,
+     * so `requested()` re-checks `enabled()` — that check, not registration,
+     * is the production guard.
      *
      * @return array<string, mixed>
      */
     public static function scenario_arg(): array {
-        if ( ! defined( 'WP_DEBUG' ) || ! WP_DEBUG ) {
+        if ( ! self::enabled() ) {
             return [];
         }
 
@@ -50,6 +51,19 @@ final class CustomerDrawerFixture {
                 'sanitize_callback' => 'sanitize_key',
             ],
         ];
+    }
+
+    /** The scenario a request asks for, or null for the real repository path — the one gate every handler reads. */
+    public static function requested( \WP_REST_Request $request ): ?string {
+        if ( ! self::enabled() || empty( $request['scenario'] ) ) {
+            return null;
+        }
+
+        return (string) $request['scenario'];
+    }
+
+    private static function enabled(): bool {
+        return defined( 'WP_DEBUG' ) && WP_DEBUG;
     }
 
     public static function customer( string $scenario, int $user_id ): array {

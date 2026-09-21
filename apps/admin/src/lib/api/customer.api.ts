@@ -18,16 +18,11 @@ import { LedgerEntry, ledgerEntrySchema, ledgerEnvelopeSchema, LedgerFilterType 
 
 /** Every response is parsed, not cast: `.json<T>()` is unchecked, and a bad shape would white-screen a component. */
 
-/**
- * `scenario` is a dev-only switch: the server registers the argument only
- * under WP_DEBUG, and this client forwards it only on the Vite dev server
- * (`import.meta.env.DEV`), so a built bundle never sends it — same rule
- * `dashboard.api.ts`'s `getDashboard()` follows.
- */
+/** `scenario` is the dev-only fixture switch; only `useDevScenario()` ever produces one. */
 export async function getCustomer(userId: number, scenario?: string): Promise<Customer> {
   const searchParams: Record<string, string> = {};
 
-  if (import.meta.env.DEV && scenario) searchParams.scenario = scenario;
+  if (scenario) searchParams.scenario = scenario;
 
   return customerSchema.parse(await api.get(`customers/${userId}`, { searchParams }).json());
 }
@@ -61,7 +56,7 @@ export async function getCustomerLedger(userId: number, params: CustomerLedgerPa
   if (params.search?.trim()) searchParams.search = params.search.trim();
   if (params.after) searchParams.after = params.after;
   if (params.before) searchParams.before = params.before;
-  if (import.meta.env.DEV && params.scenario) searchParams.scenario = params.scenario;
+  if (params.scenario) searchParams.scenario = params.scenario;
 
   const payload = await api.get(`customers/${userId}/ledger`, { searchParams }).json();
 

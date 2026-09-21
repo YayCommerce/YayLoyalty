@@ -56,9 +56,11 @@ final class LedgerRestController extends AbstractRestController {
     public function get_history( \WP_REST_Request $request ) {
         $user_id = (int) $request['id'];
 
-        if ( defined( 'WP_DEBUG' ) && WP_DEBUG && ! empty( $request['scenario'] ) ) {
+        $scenario = CustomerDrawerFixture::requested( $request );
+
+        if ( null !== $scenario ) {
             $result      = CustomerDrawerFixture::ledger(
-                (string) $request['scenario'],
+                $scenario,
                 $user_id,
                 [
                     'page'     => (int) $request['page'],

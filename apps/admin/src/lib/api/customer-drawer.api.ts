@@ -9,7 +9,7 @@ import { referralEnvelopeSchema } from '@/lib/schema/referral.schema';
  * its 200-line cap; `getCustomer()`/`getCustomerLedger()`/`getCustomers()`
  * stay there since callers outside the drawer also use them. Same
  * `.parse()`-everything discipline as `customer.api.ts` (see its own
- * docblock) and the same dev-only `scenario` forwarding rule.
+ * docblock); `scenario` only ever comes from `useDevScenario()`.
  */
 
 /** App-side params for `getCustomerActivity()` — mirrors `CustomerLedgerParams`' shape. */
@@ -25,8 +25,7 @@ export type CustomerActivityParams = {
 
 /**
  * `GET /customers/{id}/activity`. The real path always answers an empty
- * envelope (no `activity` table yet) — same `scenario` dev-only rule as
- * `getCustomer()`/`getCustomerLedger()`.
+ * envelope (no `activity` table yet).
  */
 export async function getCustomerActivity(userId: number, params: CustomerActivityParams = {}) {
   const searchParams: Record<string, string> = {};
@@ -37,7 +36,7 @@ export async function getCustomerActivity(userId: number, params: CustomerActivi
   if (params.search?.trim()) searchParams.search = params.search.trim();
   if (params.after) searchParams.after = params.after;
   if (params.before) searchParams.before = params.before;
-  if (import.meta.env.DEV && params.scenario) searchParams.scenario = params.scenario;
+  if (params.scenario) searchParams.scenario = params.scenario;
 
   const payload = await api.get(`customers/${userId}/activity`, { searchParams }).json();
 
@@ -53,15 +52,14 @@ export type CustomerRedemptionsParams = {
 
 /**
  * `GET /customers/{id}/redemptions`. The real path always answers an empty
- * envelope (no `redemptions` table yet) — same `scenario` dev-only rule as
- * the other drawer-tab fetchers.
+ * envelope (no `redemptions` table yet).
  */
 export async function getCustomerRedemptions(userId: number, params: CustomerRedemptionsParams = {}) {
   const searchParams: Record<string, string> = {};
 
   if (params.page) searchParams.page = String(params.page);
   if (params.perPage) searchParams.per_page = String(params.perPage);
-  if (import.meta.env.DEV && params.scenario) searchParams.scenario = params.scenario;
+  if (params.scenario) searchParams.scenario = params.scenario;
 
   const payload = await api.get(`customers/${userId}/redemptions`, { searchParams }).json();
 
@@ -77,8 +75,7 @@ export type CustomerReferralsParams = {
 
 /**
  * `GET /customers/{id}/referrals`. The real path always answers an empty
- * envelope (no `referrals` table yet) — same `scenario` dev-only rule as
- * the other drawer-tab fetchers. Parsed with `referralEnvelopeSchema`, not
+ * envelope (no `referrals` table yet). Parsed with `referralEnvelopeSchema`, not
  * the generic `parsePaginated()` helper, which would drop `referral_link`/`campaign`.
  */
 export async function getCustomerReferrals(userId: number, params: CustomerReferralsParams = {}) {
@@ -86,7 +83,7 @@ export async function getCustomerReferrals(userId: number, params: CustomerRefer
 
   if (params.page) searchParams.page = String(params.page);
   if (params.perPage) searchParams.per_page = String(params.perPage);
-  if (import.meta.env.DEV && params.scenario) searchParams.scenario = params.scenario;
+  if (params.scenario) searchParams.scenario = params.scenario;
 
   const payload = await api.get(`customers/${userId}/referrals`, { searchParams }).json();
 

@@ -56,9 +56,11 @@ final class ActivityRestController extends AbstractRestController {
         $page     = (int) $request['page'];
         $per_page = (int) $request['per_page'];
 
-        if ( defined( 'WP_DEBUG' ) && WP_DEBUG && ! empty( $request['scenario'] ) ) {
+        $scenario = CustomerDrawerFixture::requested( $request );
+
+        if ( null !== $scenario ) {
             $result = CustomerDrawerFixture::activity(
-                (string) $request['scenario'],
+                $scenario,
                 $group,
                 [
                     'page'     => $page,
