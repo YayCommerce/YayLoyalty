@@ -16,7 +16,6 @@ import {
   FILTER_UNAVAILABLE_REASON,
   SEARCH_PLACEHOLDER,
 } from '../customer-drawer.copy';
-import { DrawerFiltersCollapse } from './DrawerFiltersCollapse';
 
 const TYPE_LABELS: Record<LedgerFilterType, () => string> = {
   all: FILTER_TYPE_ALL,
@@ -41,15 +40,6 @@ const TYPE_LABELS: Record<LedgerFilterType, () => string> = {
  * — every control disables and a single line of copy explains why, rather than
  * filters that silently do nothing against real data (worse than no filter UI
  * at all). The segments then render bare labels; nothing prints a fake zero.
- *
- * Below `sm` (5c callout 2, phase 07): the type control and date range
- * collapse into `DrawerFiltersCollapse`'s single "Filters (N)" trigger;
- * search is the explicit exception and stays outside, full width, at every
- * width. This is the one deliberate visual change from the shipped desktop
- * layout — at `sm` and above, the date range now sits beside the type
- * control inside the (always-inline-there) collapse wrapper rather than
- * beside search as before. Documented in phase-07's Deviations; unverified
- * beyond reading the classes (no browser tool in this environment).
  */
 export function LedgerTabFilters({
   type,
@@ -70,10 +60,6 @@ export function LedgerTabFilters({
   onSearchChange: (value: string) => void;
   disabled: boolean;
 }) {
-  // Non-default state only — search isn't counted here, it's already visible
-  // on its own (counting it would double-report the same active filter).
-  const activeCount = (type !== 'all' ? 1 : 0) + (range?.from ? 1 : 0);
-
   return (
     <div>
       <div className="flex flex-col gap-2">

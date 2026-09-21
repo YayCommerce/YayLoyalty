@@ -89,9 +89,8 @@ export function LedgerTabRows({
           // `w-1/2` so they sit on one line. Date and Balance keep their own
           // `<td>` for the real desktop columns (`hidden sm:table-cell`) and
           // are duplicated once more, inline, inside the left/right blocks
-          // (`sm:hidden`) — the same "mounts twice, CSS picks one" technique
-          // `DrawerFiltersCollapse.tsx` uses, so there is one source of truth
-          // for the value and no JS branching on breakpoint.
+          // (`sm:hidden`) — "mounts twice, CSS picks one", so there is one
+          // source of truth for the value and no JS branching on breakpoint.
           rows.map((row, index) => (
             <TableRow
               key={index}
