@@ -128,6 +128,8 @@ export const REDEMPTION_STATUS_ISSUED = () => __('Issued', 'yayloyalty');
 export const COLUMN_EVENT = () => __('Event', 'yayloyalty');
 export const COLUMN_BY = () => __('By', 'yayloyalty');
 
+/** Accessible name for the group control — it shows no "Show:" prefix of its own. */
+export const ACTIVITY_GROUP_LABEL = () => __('Show', 'yayloyalty');
 export const ACTIVITY_GROUP_ALL = () => __('All', 'yayloyalty');
 export const ACTIVITY_GROUP_ADMIN = () => __('Admin actions', 'yayloyalty');
 export const ACTIVITY_GROUP_TIER = () => __('Tier changes', 'yayloyalty');

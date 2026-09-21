@@ -1,92 +1,65 @@
-import { useState } from 'react';
-import { format } from 'date-fns';
-import type { DateRange } from 'react-day-picker';
-
 import { useCustomerActivityQuery } from '@/lib/queries/customer.queries';
-import type { ActivityGroup } from '@/lib/schema/activity.schema';
-import { useDebouncedSearchCommit } from '@/hooks/useDebouncedSearchCommit';
+import { ACTIVITY_GROUPS, type ActivityGroup } from '@/lib/schema/activity.schema';
 import { toActivityRow } from '../customer-drawer.activity-rows';
-import { ACTIVITY_FOOTER_NOTE } from '../customer-drawer.copy';
-import { ActivityLogTabFilters } from './ActivityLogTabFilters';
+import {
+  ACTIVITY_FOOTER_NOTE,
+  ACTIVITY_GROUP_ADMIN,
+  ACTIVITY_GROUP_ALL,
+  ACTIVITY_GROUP_EMAILS,
+  ACTIVITY_GROUP_EXPIRY,
+  ACTIVITY_GROUP_LABEL,
+  ACTIVITY_GROUP_TIER,
+  ACTIVITY_SEARCH_PLACEHOLDER,
+} from '../customer-drawer.copy';
+import { useDrawerTabQueryState } from '../customer-drawer.tab-query-state';
 import { ActivityLogTabRows } from './ActivityLogTabRows';
+import { DrawerTabFilters } from './DrawerTabFilters';
 import { DRAWER_PAGE_SIZE, DrawerTabPager } from './DrawerTabPager';
 
+const GROUP_LABELS: Record<ActivityGroup, () => string> = {
+  all: ACTIVITY_GROUP_ALL,
+  admin: ACTIVITY_GROUP_ADMIN,
+  tier: ACTIVITY_GROUP_TIER,
+  expiry: ACTIVITY_GROUP_EXPIRY,
+  emails: ACTIVITY_GROUP_EMAILS,
+};
+
 /**
- * Owns filter state (`group`, `search`, `range`, `page`) and the activity
- * query; composes filters → rows → pager — the exact same shape
- * `LedgerTab.tsx` uses.
- *
- * **Started as "Load more" (3d), now paged.** The artboard draws Load more
- * because the tab has no running-balance column forcing contiguous pages
- * the way the ledger's does (3c note 3) — that reasoning was, and still is,
- * correct. It just didn't anticipate what the `large` scenario's 1,940 rows
- * feel like to browse with only a group filter and no search: reviewing the
- * shipped tab surfaced that gap, so this switched to the ledger's full
- * filter set (group + search + date range) and its pager, at the cost of
- * diverging from 3d's literal control. Any filter change resets to page 1,
- * same as the ledger.
+ * Filters → rows → pager over `useDrawerTabQueryState`, the same shape as
+ * `LedgerTab`. Paged rather than 3d's "Load more": the `large` scenario's
+ * 1,940 rows were unbrowsable with only a group filter, so this took the
+ * ledger's full filter set and pager. Groups carry no counts and nothing
+ * ever disables — the real path's `0` total is genuinely true whatever the
+ * filters are set to, not a "server can't filter yet" signal.
  */
 export function ActivityLogTab({ userId, scenario }: { userId: number; scenario?: string }) {
-  const [group, setGroup] = useState<ActivityGroup>('all');
-  const [range, setRange] = useState<DateRange | undefined>(undefined);
-  const [search, setSearch] = useState('');
-  const [querySearch, setQuerySearch] = useState('');
-  const [page, setPage] = useState(1);
-
-  // See `useDebouncedSearchCommit`'s docblock: `cancelPending()` is called
-  // from every OTHER filter change below so a search commit still in flight
-  // can't fire after and silently overwrite a group/range change.
-  const { commit: commitSearch, cancelPending: cancelPendingSearch } = useDebouncedSearchCommit(setQuerySearch);
-
-  const query = useCustomerActivityQuery(userId, {
-    page,
-    perPage: DRAWER_PAGE_SIZE,
-    group,
-    search: querySearch,
-    after: range?.from ? format(range.from, 'yyyy-MM-dd') : undefined,
-    before: range?.to ? format(range.to, 'yyyy-MM-dd') : undefined,
-    scenario,
-  });
+  const state = useDrawerTabQueryState<ActivityGroup>('all');
+  const query = useCustomerActivityQuery(userId, { ...state.pageParams, group: state.filter, scenario });
 
   const rows = query.data?.data.map(toActivityRow) ?? [];
   const totalItems = query.data?.totalItems ?? 0;
 
-  function handleSearchChange(value: string) {
-    setSearch(value);
-    commitSearch(value);
-    setPage(1);
-  }
-
-  function handleGroupChange(value: ActivityGroup) {
-    cancelPendingSearch();
-    setGroup(value);
-    setPage(1);
-  }
-
-  function handleRangeChange(value: DateRange | undefined) {
-    cancelPendingSearch();
-    setRange(value);
-    setPage(1);
-  }
-
   return (
     <div className="flex flex-col gap-3">
-      <ActivityLogTabFilters
-        group={group}
-        onGroupChange={handleGroupChange}
-        range={range}
-        onRangeChange={handleRangeChange}
-        search={search}
-        onSearchChange={handleSearchChange}
+      <DrawerTabFilters
+        options={ACTIVITY_GROUPS.map((group) => ({ value: group, label: GROUP_LABELS[group]() }))}
+        value={state.filter}
+        onChange={state.setFilter}
+        ariaLabel={ACTIVITY_GROUP_LABEL()}
+        range={state.range}
+        onRangeChange={state.setRange}
+        search={state.search}
+        onSearchChange={state.setSearch}
+        searchPlaceholder={ACTIVITY_SEARCH_PLACEHOLDER()}
       />
       <div className="overflow-x-auto rounded-md border">
         <ActivityLogTabRows rows={rows} isLoading={query.isPending} />
       </div>
       <DrawerTabPager
-        page={page}
+        page={state.page}
         perPage={DRAWER_PAGE_SIZE}
         totalItems={totalItems}
-        onPageChange={setPage}
+        onPageChange={state.setPage}
         disabled={query.isFetching}
         isPending={query.isPending}
       />
