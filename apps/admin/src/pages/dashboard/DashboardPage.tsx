@@ -1,5 +1,4 @@
 import { useState, type ReactNode } from 'react';
-import { useSearchParams } from 'react-router';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
@@ -7,6 +6,7 @@ import { useDashboardQuery, useRefreshDashboard } from '@/lib/queries/dashboard.
 import { findPointsJump } from '@/lib/schema/dashboard-notice.schema';
 import type { DashboardRange, DashboardResponse, DashboardStats } from '@/lib/schema/dashboard.schema';
 import { cn } from '@/lib/utils';
+import { useDevScenario } from '@/hooks/useDevScenario';
 import { ErrorState } from '@/components/ui/custom/error-state';
 import PageLayout from '@/components/layout/PageLayout';
 import { DashboardProPanels } from '@/pro';
@@ -29,8 +29,7 @@ import type { DashboardProSlots } from './dashboard-page.pro-slots';
  */
 export default function DashboardPage() {
   const [range, setRange] = useState<DashboardRange>(30);
-  const [searchParams] = useSearchParams();
-  const scenario = import.meta.env.DEV ? (searchParams.get('scenario') ?? undefined) : undefined;
+  const scenario = useDevScenario();
 
   const query = useDashboardQuery(range, scenario);
   const refresh = useRefreshDashboard(range);

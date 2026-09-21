@@ -7,7 +7,7 @@ import {
   type DismissDashboardNoticeParams,
 } from '@/lib/schema/dashboard.schema';
 
-/** GET /dashboard. `scenario` is forwarded only on the dev server, so a built bundle never sends it. */
+/** GET /dashboard. `scenario` is the dev-only fixture switch; only `useDevScenario()` ever produces one. */
 export async function getDashboard(params: {
   range: DashboardRange;
   refresh?: boolean;
@@ -16,7 +16,7 @@ export async function getDashboard(params: {
   const searchParams: Record<string, string> = { range: String(params.range) };
 
   if (params.refresh) searchParams.refresh = '1';
-  if (import.meta.env.DEV && params.scenario) searchParams.scenario = params.scenario;
+  if (params.scenario) searchParams.scenario = params.scenario;
 
   return dashboardResponseSchema.parse(await api.get('dashboard', { searchParams }).json());
 }

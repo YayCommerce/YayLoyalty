@@ -41,7 +41,23 @@ final class RewardRepository extends AbstractRepository {
     }
 
     /**
-     * @param array $args paginate()'s, plus 'type' and 'status'.
+     * The liability/worth valuation rate: the built-in flexible-discount
+     * reward's `points_per_currency_unit`. 0 when the reward or key is
+     * missing. Lives here (a reward-config read) rather than on
+     * DashboardRepository, which delegates to this method — one
+     * implementation for both the dashboard's liability stat and the
+     * customer drawer's `worth` stat.
+     */
+    public function points_per_currency_unit(): float {
+        $reward = $this->find_by_slug( 'cart-discount' );
+
+        return null === $reward ? 0.0 : (float) ( $reward->get_config()['points_per_currency_unit'] ?? 0 );
+    }
+
+    /**
+     * Paginated list with optional type/status filters.
+     *
+     * @param array $args Plus 'type' and 'status'.
      * @return array{items: Reward[], total: int, page: int, per_page: int}
      */
     public function paginate_filtered( array $args = [] ): array {

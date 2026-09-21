@@ -1,7 +1,8 @@
 import { z } from 'zod';
 
 import { api } from '@/lib/api/api';
-import { paginatedSchema, parsePaginated } from '@/lib/api/paginated';
+import { toDrawerSearchParams, type DrawerPageParams } from '@/lib/api/customer-drawer.api';
+import { paginatedSchema } from '@/lib/api/paginated';
 import {
   AdjustPointsInput,
   Customer,
@@ -14,23 +15,34 @@ import {
   CustomerTier,
   noMatchSuggestionSchema,
 } from '@/lib/schema/customer.schema';
-import { LedgerEntry, ledgerEntrySchema } from '@/lib/schema/ledger.schema';
+import { LedgerEntry, ledgerEntrySchema, ledgerEnvelopeSchema, LedgerFilterType } from '@/lib/schema/ledger.schema';
 
 /** Every response is parsed, not cast: `.json<T>()` is unchecked, and a bad shape would white-screen a component. */
 
-export async function getCustomer(userId: number): Promise<Customer> {
-  return customerSchema.parse(await api.get(`customers/${userId}`).json());
-}
-
-export async function getCustomerLedger(userId: number, params: { page?: number; perPage?: number } = {}) {
+/** `scenario` is the dev-only fixture switch; only `useDevScenario()` ever produces one. */
+export async function getCustomer(userId: number, scenario?: string): Promise<Customer> {
   const searchParams: Record<string, string> = {};
 
-  if (params.page) searchParams.page = String(params.page);
-  if (params.perPage) searchParams.per_page = String(params.perPage);
+  if (scenario) searchParams.scenario = scenario;
+
+  return customerSchema.parse(await api.get(`customers/${userId}`, { searchParams }).json());
+}
+
+export type CustomerLedgerParams = DrawerPageParams & { type?: LedgerFilterType };
+
+/**
+ * `GET /customers/{id}/ledger`. Parsed with `ledgerEnvelopeSchema`, not the
+ * generic `parsePaginated()` helper — that helper's envelope shape has no
+ * `type_counts` field, so it would silently drop it.
+ */
+export async function getCustomerLedger(userId: number, params: CustomerLedgerParams = {}) {
+  const searchParams = toDrawerSearchParams(params);
+
+  if (params.type && params.type !== 'all') searchParams.type = params.type;
 
   const payload = await api.get(`customers/${userId}/ledger`, { searchParams }).json();
 
-  return parsePaginated<typeof ledgerEntrySchema>(ledgerEntrySchema, payload);
+  return ledgerEnvelopeSchema.parse(payload);
 }
 
 export async function adjustCustomerPoints(userId: number, input: AdjustPointsInput): Promise<LedgerEntry> {
