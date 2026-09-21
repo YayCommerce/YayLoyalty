@@ -1,47 +1,26 @@
 import { useState } from 'react';
 import { __ } from '@wordpress/i18n';
 
-import { formatPoints } from '@/lib/helpers/points.helper';
 import { adjustPointsSchema, type AdjustPointsInput, type AdjustPointsPreview } from '@/lib/schema/customer.schema';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/custom/dialog';
+import { Dialog, DialogContent } from '@/components/ui/custom/dialog';
 import { Field, FieldContent, FieldError, FieldLabel } from '@/components/ui/field';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { AdjustPointsAmountField } from './adjust-points/AdjustPointsAmountField';
 import { AdjustPointsBulkPanels } from './adjust-points/AdjustPointsBulkPanels';
 import { AdjustPointsFields } from './adjust-points/AdjustPointsFields';
+import { AdjustPointsFooter } from './adjust-points/AdjustPointsFooter';
+import { AdjustPointsHeader } from './adjust-points/AdjustPointsHeader';
 import { AdjustPointsNegativeBalancePanel } from './adjust-points/AdjustPointsNegativeBalancePanel';
 import { AdjustPointsOptions } from './adjust-points/AdjustPointsOptions';
 import { AdjustPointsStaleBalanceBanner } from './adjust-points/AdjustPointsStaleBalanceBanner';
-import { AMOUNT_EACH_LABEL, bulkHeaderTitle, BULK_HEADER_SUBTITLE, bulkNotifyByEmailCount, bulkSubmitLabel } from './customers-adjust-points.bulk.copy';
-import {
-  ADJUST_POINTS_TITLE,
-  AMOUNT_LABEL,
-  COULD_NOT_VERIFY_BODY,
-  COULD_NOT_VERIFY_TITLE,
-  FOOTER_NOTICE,
-  REASON_HELPER,
-  REASON_LABEL,
-  REASON_PLACEHOLDER,
-  RETRY_LABEL,
-  singleCustomerHeader,
-  staleHeaderSubtitle,
-  submitLabel,
-} from './customers-adjust-points.copy';
+import { AMOUNT_EACH_LABEL, bulkNotifyByEmailCount } from './customers-adjust-points.bulk.copy';
+import { AMOUNT_LABEL, COULD_NOT_VERIFY_BODY, COULD_NOT_VERIFY_TITLE, FOOTER_NOTICE, REASON_HELPER, REASON_LABEL, REASON_PLACEHOLDER, RETRY_LABEL } from './customers-adjust-points.copy';
 import { canSubmit, initialAdjustFormState, newBalance, signedPoints, type AdjustFormState } from './customers-adjust-points.form-state';
 import { useAdjustPreviewBaseline } from './customers-adjust-points.use-preview-baseline';
 import { useBulkSelection } from './customers-adjust-points.use-bulk-selection';
-import type { RowFilters } from '../customers-page.filter-rows';
-import { pointsToMoney } from '../drawer/customer-drawer.money';
+import { DEFAULT_ROW_FILTERS, type RowFilters } from '../customers-page.filter-rows';
 
 /**
  * Adjust points — single (count === 1, from the drawer) or bulk (count > 1,
@@ -78,7 +57,14 @@ export function CustomersAdjustPointsDialog({
     isLoading: boolean;
     isFetching: boolean;
     error: unknown;
-    refetch: () => Promise<{ data?: AdjustPointsPreview }>;
+    /**
+     * react-query's `refetch()` never rejects and, on a failed fetch,
+     * resolves with the *previous* successful `data` plus a set `error` —
+     * so `fresh.data` alone cannot tell a fresh read from a failed one that
+     * happened to return the cached baseline. Every caller of this must
+     * check `error` explicitly or it fails open (see handleSubmit below).
+     */
+    refetch: () => Promise<{ data?: AdjustPointsPreview; error?: unknown }>;
   };
   /** Rows deselected under "select all matching" — the server's preview count knows only the filter. */
   excludedCount?: number;
@@ -164,10 +150,14 @@ export function CustomersAdjustPointsDialog({
       const fresh = await preview.refetch().finally(() => setIsCheckingBeforeSubmit(false));
       const latest = fresh.data?.customers[0] ?? null;
 
-      // No record or still stale against the acknowledged baseline: abort
-      // either way. A failed/empty re-check becomes `isUnverified` on the
-      // next render, never treated as "not stale".
-      if (!latest || baseline.isStaleAgainst(latest)) return;
+      // A failed refetch never rejects and resolves with the *previous*
+      // successful data plus a set `error` — checking `error` explicitly is
+      // required, or a failed re-check silently "verifies" against the
+      // stale cache it already had (the exact fail-open this guard exists
+      // to prevent). No record or still stale against the acknowledged
+      // baseline: abort either way. Any of the three becomes `isUnverified`
+      // on the next render, never treated as "not stale".
+      if (fresh.error || !latest || baseline.isStaleAgainst(latest)) return;
 
       onSubmit(result.data);
       return;
@@ -178,26 +168,18 @@ export function CustomersAdjustPointsDialog({
     onSubmit(result.data, bulk.effectiveCount);
   }
 
-  function headerDescription() {
-    if (isSingle && preview.isLoading) return <Skeleton className="h-4 w-40" />;
-    if (isSingle && singleCustomer) {
-      const money = pointsToMoney(singleCustomer.balance, pointsPerCurrencyUnit);
-      const line = singleCustomerHeader(singleCustomer.name, formatPoints(singleCustomer.balance), money);
-      return isStale && openedBalance !== null ? `${line} · ${staleHeaderSubtitle(formatPoints(openedBalance))}` : line;
-    }
-    if (!isSingle) return BULK_HEADER_SUBTITLE();
-    return '';
-  }
-
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-h-[90vh] sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{ADJUST_POINTS_TITLE()}</DialogTitle>
-          <DialogDescription asChild>
-            <div>{headerDescription()}</div>
-          </DialogDescription>
-        </DialogHeader>
+        <AdjustPointsHeader
+          isSingle={isSingle}
+          isLoading={preview.isLoading}
+          singleCustomer={singleCustomer}
+          pointsPerCurrencyUnit={pointsPerCurrencyUnit}
+          isStale={isStale}
+          openedBalance={openedBalance}
+          bulkEffectiveCount={bulk.effectiveCount}
+        />
 
         {isUnverified && (
           <Alert variant="outline" destructive>
@@ -225,7 +207,7 @@ export function CustomersAdjustPointsDialog({
           <AdjustPointsNegativeBalancePanel state={state} customerName={singleCustomer.name} balance={singleCustomer.balance} />
         )}
 
-        <AdjustPointsAmountField state={state} onChange={patchState} label={AMOUNT_LABEL()} />
+        <AdjustPointsAmountField state={state} onChange={patchState} label={isSingle ? AMOUNT_LABEL() : AMOUNT_EACH_LABEL()} />
 
         {isSingle && singleCustomer && (
           <AdjustPointsFields
@@ -236,6 +218,23 @@ export function CustomersAdjustPointsDialog({
             lifetimeEarned={singleCustomer.lifetime_earned}
             pointsPerCurrencyUnit={pointsPerCurrencyUnit}
             showResultPanel={!isNegativeStart || balanceAfter >= 0}
+          />
+        )}
+
+        {!isSingle && (
+          <AdjustPointsBulkPanels
+            state={state}
+            effectiveCount={bulk.effectiveCount}
+            isCountLoading={bulk.usedFilters && preview.isLoading}
+            selectionMode={selectionMode}
+            filters={filters ?? DEFAULT_ROW_FILTERS}
+            notShownOnPage={bulk.notShownOnPage}
+            pointsPerCurrencyUnit={pointsPerCurrencyUnit}
+            liabilityPoints={preview.data?.liability_points ?? null}
+            hasPreviewError={!!preview.error}
+            isOverLimit={bulk.isOverLimit}
+            acknowledged={bulk.acknowledged}
+            onAcknowledgedChange={bulk.setAcknowledged}
           />
         )}
 
@@ -252,25 +251,27 @@ export function CustomersAdjustPointsDialog({
           </FieldContent>
         </Field>
 
-        <AdjustPointsOptions state={state} onChange={patchState} />
+        <AdjustPointsOptions
+          state={state}
+          onChange={patchState}
+          notifyCountLabel={!isSingle ? bulkNotifyByEmailCount(bulk.effectiveCount) : undefined}
+        />
 
         {validationError && <FieldError>{validationError}</FieldError>}
 
         <p className="text-muted-foreground text-xs">{FOOTER_NOTICE()}</p>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={isSubmitting}>
-            {__('Cancel', 'yayloyalty')}
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={isSubmitting || isCheckingBeforeSubmit || preview.isLoading || !submitEnabled}
-          >
-            {isSubmitting || isCheckingBeforeSubmit
-              ? __('Applying…', 'yayloyalty')
-              : submitLabel(state.direction, formatPoints(state.amount), state.amount === 0)}
-          </Button>
-        </DialogFooter>
+        <AdjustPointsFooter
+          isSingle={isSingle}
+          state={state}
+          effectiveCount={bulk.effectiveCount}
+          isSubmitting={isSubmitting}
+          isCheckingBeforeSubmit={isCheckingBeforeSubmit}
+          isPreviewLoading={preview.isLoading}
+          submitEnabled={submitEnabled}
+          onCancel={() => handleOpenChange(false)}
+          onSubmit={handleSubmit}
+        />
       </DialogContent>
     </Dialog>
   );

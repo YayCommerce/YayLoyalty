@@ -52,6 +52,8 @@ export function AdjustPointsBulkPanels({
   notShownOnPage,
   pointsPerCurrencyUnit,
   liabilityPoints,
+  hasPreviewError,
+  isOverLimit,
   acknowledged,
   onAcknowledgedChange,
 }: {
@@ -64,6 +66,9 @@ export function AdjustPointsBulkPanels({
   notShownOnPage: number;
   pointsPerCurrencyUnit: number;
   liabilityPoints: number | null;
+  /** The preview errored: `liabilityPoints` can't be trusted, so the liability line is hidden rather than guessed at. */
+  hasPreviewError: boolean;
+  isOverLimit: boolean;
   acknowledged: boolean;
   onAcknowledgedChange: (checked: boolean) => void;
 }) {
@@ -71,7 +76,6 @@ export function AdjustPointsBulkPanels({
   const total = bulkTotalPoints(state, effectiveCount);
   const totalMoney = pointsToMoney(total, pointsPerCurrencyUnit);
   const projection = bulkLiabilityProjection(state.direction, total, liabilityPoints);
-  const isOverLimit = effectiveCount > MAX_BULK_ROWS;
 
   return (
     <div className="flex flex-col gap-4">
@@ -90,7 +94,8 @@ export function AdjustPointsBulkPanels({
         <div className="flex flex-col gap-1">
           <p className="text-sm font-medium">{bulkTotalsLine(effectiveCount, formatPoints(state.amount))}</p>
           <p className="text-sm">{bulkTotalPointsLine(formatPoints(total), totalMoney)}</p>
-          {liabilityLine(projection, state.direction, pointsPerCurrencyUnit)}
+          {/* liabilityPoints can't be trusted after a failed preview — omit rather than guess. */}
+          {!hasPreviewError && liabilityLine(projection, state.direction, pointsPerCurrencyUnit)}
         </div>
       )}
 

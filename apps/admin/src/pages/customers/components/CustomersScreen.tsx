@@ -100,6 +100,7 @@ export function CustomersScreen({
     setIsAdjustDialogOpen,
     isAdjustSubmitting,
     handleAdjustSubmit: handleBulkAdjustSubmit,
+    acknowledgementResetKey,
   } = useCustomersBulkActions({ rows, queryFilters, sort, selection, setSelection });
 
   // 'all' mode asks the server to COUNT the filter; a real tier matches zero
@@ -203,6 +204,10 @@ export function CustomersScreen({
         onSubmit={handleBulkAdjustSubmit}
         preview={preview}
         excludedCount={excludedCount}
+        selectionMode={selection.mode}
+        filters={queryFilters}
+        rowsOnPage={rows.length}
+        acknowledgementResetKey={acknowledgementResetKey}
       />
     </>
   );

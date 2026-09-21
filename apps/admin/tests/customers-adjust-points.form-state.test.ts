@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  bulkEffectiveCount,
   bulkLiabilityProjection,
   bulkTotalPoints,
   canSubmit,
@@ -189,6 +190,30 @@ describe('canSubmit', () => {
 describe('bulkTotalPoints', () => {
   it('multiplies the per-customer amount by the effective count', () => {
     expect(bulkTotalPoints(state({ amount: 500 }), 340)).toBe(170000);
+  });
+});
+
+describe('bulkEffectiveCount', () => {
+  it('is the raw client count when the selection is not a filter ("all") selection', () => {
+    expect(bulkEffectiveCount(false, 340, undefined, 5)).toBe(340);
+    expect(bulkEffectiveCount(false, 340, 500, 5)).toBe(340);
+  });
+
+  it('subtracts excludedCount from the server COUNT once it has resolved', () => {
+    expect(bulkEffectiveCount(true, 335, 340, 5)).toBe(335);
+  });
+
+  it(
+    'falls back to the already-net client count while the server COUNT is unresolved, ' +
+      'without subtracting excludedCount a second time (regression: previously under-counted by excludedCount)',
+    () => {
+      // count is selectionCount()'s own output: totalItems (340) - excludedIds.size (5) = 335, already net.
+      expect(bulkEffectiveCount(true, 335, undefined, 5)).toBe(335);
+    },
+  );
+
+  it('floors at 0', () => {
+    expect(bulkEffectiveCount(true, 0, 3, 5)).toBe(0);
   });
 });
 

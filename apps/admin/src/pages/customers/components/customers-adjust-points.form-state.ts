@@ -154,3 +154,21 @@ export function bulkLiabilityProjection(
   }
   return { kind: 'delta', delta: totalPoints };
 }
+
+/**
+ * The bulk header/totals/acknowledgement count for "select all matching".
+ * `count` (the client's `selectionCount()`) is already net of
+ * `excludedCount` for 'all' mode — it is the right fallback for as long as
+ * the server COUNT hasn't resolved yet, including permanently if the
+ * preview errors. Only the raw server COUNT needs `excludedCount`
+ * subtracted; doing it to both would under-count by `excludedCount` twice.
+ */
+export function bulkEffectiveCount(
+  usedFilters: boolean,
+  count: number,
+  previewCount: number | undefined,
+  excludedCount: number,
+): number {
+  if (!usedFilters) return count;
+  return previewCount !== undefined ? Math.max(0, previewCount - excludedCount) : count;
+}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { MAX_BULK_ROWS } from './adjust-points/AdjustPointsBulkPanels';
+import { bulkEffectiveCount } from './customers-adjust-points.form-state';
 
 /**
  * Bulk-only derived numbers + the liability acknowledgement checkbox.
@@ -34,9 +35,7 @@ export function useBulkSelection({
   }, [acknowledgementResetKey]);
 
   const usedFilters = !isSingle && selectionMode === 'all';
-  // 'all' mode can carry deselected rows; the server counts the filter, not
-  // the deselection — same arithmetic as selectionCount() (customers-page.selection.ts).
-  const effectiveCount = usedFilters ? Math.max(0, (previewCount ?? count) - excludedCount) : count;
+  const effectiveCount = bulkEffectiveCount(usedFilters, count, previewCount, excludedCount);
   const notShownOnPage = usedFilters ? Math.max(0, effectiveCount - rowsOnPage) : 0;
   const isOverLimit = !isSingle && effectiveCount > MAX_BULK_ROWS;
 

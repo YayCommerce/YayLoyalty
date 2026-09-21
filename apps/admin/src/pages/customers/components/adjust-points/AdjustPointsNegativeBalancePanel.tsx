@@ -14,10 +14,10 @@ import { newBalance, pointsToClearDeficit, type AdjustFormState } from '../custo
  * this adjustment does. Distinct from 2c (`AdjustPointsFields`'s negative-
  * outcome panel, "this adjustment would go negative"): this one is "it
  * already is", and stays visible above the fields even before an amount is
- * typed. Its own "after this adjustment" figures only show while the
- * balance would still be negative — once it would cross back to zero or
- * above, `AdjustPointsFields`'s normal result panel takes over instead (see
- * `showResultPanel` there).
+ * typed. Its own "after this adjustment" figures only show once an amount
+ * is typed (`amount > 0`) and only while the balance would still be
+ * negative — once it would cross back to zero or above, `AdjustPointsFields`'s
+ * normal result panel takes over instead (see `showResultPanel` there).
  */
 export function AdjustPointsNegativeBalancePanel({
   state,
@@ -29,7 +29,7 @@ export function AdjustPointsNegativeBalancePanel({
   balance: number;
 }) {
   const balanceAfter = newBalance(state, balance);
-  const stillNegative = balanceAfter < 0;
+  const stillNegative = state.amount > 0 && balanceAfter < 0;
 
   return (
     <div className="bg-muted/50 flex flex-col gap-2 rounded-md border px-3.5 py-3 text-xs">
