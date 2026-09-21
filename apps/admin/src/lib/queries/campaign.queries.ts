@@ -1,7 +1,7 @@
-import { queryOptions, useQuery } from '@tanstack/react-query';
+import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { getCampaign, getCampaigns } from '@/lib/api/campaign.api';
-import type { CampaignListParams } from '@/lib/schema/campaign.schema';
+import { getCampaign, getCampaigns, updateCampaign } from '@/lib/api/campaign.api';
+import type { CampaignListParams, CampaignUpdateInput } from '@/lib/schema/campaign.schema';
 
 /** ─── Query Options ─────────────────────────────────── */
 
@@ -28,4 +28,18 @@ export function useCampaignsQuery(params: CampaignListParams = {}) {
 
 export function useCampaignQuery(id: number) {
   return useQuery(CAMPAIGN_QUERIES.detail(id));
+}
+
+export function useUpdateCampaignMutation(id: number) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationKey: ['campaign', 'update', id],
+    mutationFn: (input: CampaignUpdateInput) => updateCampaign(id, input),
+    onSuccess: () => {
+      // The list shows the same fields; invalidating only detail leaves its row stale.
+      queryClient.invalidateQueries({ queryKey: ['campaign', 'detail', id] });
+      queryClient.invalidateQueries({ queryKey: ['campaign', 'list'] });
+    },
+  });
 }

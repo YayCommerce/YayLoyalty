@@ -5,6 +5,7 @@ import { Can, CAP, Capability } from '@/lib/access';
 import AppLayout from './AppLayout';
 import NotFoundPage from './pages/404';
 import ErrorPage from './pages/500';
+import CampaignEditorPage from './pages/campaigns/CampaignEditorPage';
 import CampaignsPage from './pages/campaigns/CampaignsPage';
 import CustomersPage from './pages/customers/CustomersPage';
 import CustomerDrawer from './pages/customers/drawer/CustomerDrawer';
@@ -54,6 +55,10 @@ export function getManagerRouter() {
         {
           path: 'campaigns',
           element: guarded(CAP.MANAGE_CAMPAIGNS, <CampaignsPage />),
+        },
+        {
+          path: 'campaigns/:id/edit',
+          element: guarded(CAP.MANAGE_CAMPAIGNS, <CampaignEditorPage />),
         },
         {
           path: 'rewards',

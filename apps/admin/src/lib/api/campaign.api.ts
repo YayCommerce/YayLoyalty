@@ -1,6 +1,6 @@
 import { api } from '@/lib/api/api';
 import { parsePaginated } from '@/lib/api/paginated';
-import { Campaign, CampaignListParams, campaignSchema } from '@/lib/schema/campaign.schema';
+import { Campaign, CampaignListParams, campaignSchema, CampaignUpdateInput } from '@/lib/schema/campaign.schema';
 
 /** Responses are parsed, not cast — see customer.api.ts. */
 
@@ -21,4 +21,9 @@ export async function getCampaigns(params: CampaignListParams = {}) {
 
 export async function getCampaign(id: number): Promise<Campaign> {
   return campaignSchema.parse(await api.get(`campaigns/${id}`).json());
+}
+
+/** PUT campaigns/{id}. Does not persist yet; see update_item()'s swap point. */
+export async function updateCampaign(id: number, input: CampaignUpdateInput): Promise<Campaign> {
+  return campaignSchema.parse(await api.put(`campaigns/${id}`, { json: input }).json());
 }

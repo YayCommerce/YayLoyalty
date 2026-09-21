@@ -104,3 +104,193 @@ export const campaignListParamsSchema = z.object({
 });
 
 export type CampaignListParams = z.infer<typeof campaignListParamsSchema>;
+
+/* ─── Write: campaignUpdateInputSchema ──────────────────────────────── */
+
+/**
+ * Mirrors CampaignConditionType::schema() minus UNAVAILABLE. `tier` stays
+ * out until the PHP side offers it: CampaignConditionSet rejects a save
+ * that carries one.
+ */
+export const CAMPAIGN_CONDITION_TYPES = [
+  'user_role',
+  'customer_ids',
+  'currency',
+  'payment_method',
+  'country',
+  'product_in_cart',
+  'category_in_cart',
+  'lifetime_points',
+  'order_count',
+  'lifetime_spend',
+] as const;
+
+export type CampaignConditionKind = (typeof CAMPAIGN_CONDITION_TYPES)[number];
+
+/** Every operator CampaignConditionType::schema() recognises. */
+type CampaignConditionOperator = 'in' | 'not_in' | 'gte' | 'lte' | 'gt' | 'lt' | 'eq' | 'between';
+
+/** Value shapes, per CampaignConditionType::schema(). */
+type CampaignConditionValueKind = 'string_list' | 'int_list' | 'currency_list' | 'country_list' | 'int' | 'money';
+
+interface CampaignConditionSpec {
+  /** Operators this type accepts. Not interchangeable across types. */
+  operators: readonly CampaignConditionOperator[];
+  value: CampaignConditionValueKind;
+  /** Cap on list length — only `customer_ids` sets this (100). */
+  max?: number;
+  /** Sub-keys the value object must carry (`country`, `lifetime_spend`). */
+  requireKeys?: readonly string[];
+  /** Allowed values for `country`'s `source` sub-key. */
+  sourceValues?: readonly string[];
+}
+
+/**
+ * Client mirror of CampaignConditionType::schema(), offerable types only.
+ * UI metadata, not a validator: CampaignConditionSet enforces on save, and
+ * a duplicate here would only drift from it.
+ */
+export const CAMPAIGN_CONDITION_SCHEMA: Record<CampaignConditionKind, CampaignConditionSpec> = {
+  user_role: {
+    operators: ['in', 'not_in'],
+    value: 'string_list',
+  },
+  customer_ids: {
+    operators: ['in', 'not_in'],
+    value: 'int_list',
+    max: 100,
+  },
+  currency: {
+    operators: ['in', 'not_in'],
+    value: 'currency_list',
+  },
+  payment_method: {
+    operators: ['in', 'not_in'],
+    value: 'string_list',
+  },
+  country: {
+    operators: ['in', 'not_in'],
+    value: 'country_list',
+    requireKeys: ['source'],
+    sourceValues: ['shipping', 'billing', 'any'],
+  },
+  product_in_cart: {
+    operators: ['in', 'not_in'],
+    value: 'int_list',
+  },
+  category_in_cart: {
+    operators: ['in', 'not_in'],
+    value: 'int_list',
+  },
+  lifetime_points: {
+    operators: ['gte', 'lte', 'gt', 'lt', 'eq', 'between'],
+    value: 'int',
+  },
+  order_count: {
+    operators: ['gte', 'lte', 'gt', 'lt', 'eq', 'between'],
+    value: 'int',
+  },
+  lifetime_spend: {
+    operators: ['gte', 'lte', 'gt', 'lt', 'eq', 'between'],
+    value: 'money',
+    requireKeys: ['currency'],
+  },
+};
+
+/**
+ * One entry in a campaign's `conditions`. `value` stays unknown because its
+ * shape varies per type (CAMPAIGN_CONDITION_SCHEMA). Plain z.object strips
+ * extra keys on submit, which is fine here: a condition has a fixed shape
+ * per type, unlike `config`.
+ */
+export const campaignConditionSchema = z.object({
+  type: z.enum(CAMPAIGN_CONDITION_TYPES),
+  operator: z.string(),
+  value: z.unknown(),
+});
+
+export type CampaignCondition = z.infer<typeof campaignConditionSchema>;
+
+/**
+ * Write body for PUT campaigns/{id}, mirroring update_item()'s mutable
+ * fields. No slug or trigger: both are immutable after create.
+ */
+export const campaignUpdateInputSchema = z
+  .object({
+    name: z.string().trim().min(1),
+    status: campaignStatusSchema,
+    priority: z.number().int(),
+    /** Loose on purpose; see campaignSchema.config. */
+    config: z.record(z.string(), z.unknown()),
+    conditions: z.array(campaignConditionSchema),
+    starts_at: z.string().nullable(),
+    /** Exclusive; see campaignSchema.ends_at. */
+    ends_at: z.string().nullable(),
+  })
+  // String comparison is correct: both are fixed-width UTC YYYY-MM-DD HH:mm:ss.
+  .refine((data) => !data.starts_at || !data.ends_at || data.starts_at < data.ends_at, {
+    message: 'The start date must be before the end date.',
+    path: ['ends_at'],
+  });
+
+export type CampaignUpdateInput = z.infer<typeof campaignUpdateInputSchema>;
+
+/* ─── Write: per-trigger config field maps ──────────────────────────── */
+
+type CampaignConfigFieldType = 'bool' | 'string' | 'int' | 'number' | 'enum' | 'int_list';
+
+interface CampaignConfigFieldSpec {
+  type: CampaignConfigFieldType;
+  /** Lower bound; int and number only. */
+  min?: number;
+  /** Fixed value set; enum only. */
+  values?: readonly string[];
+}
+
+/**
+ * Per-trigger config field map mirroring Campaign::config_schema() for the
+ * three Lite triggers. UI metadata, not validation: `config` stays z.record
+ * so this can never become a second whitelist. Pro triggers have no Lite
+ * schema and so no entry here.
+ */
+export const CAMPAIGN_CONFIG_FIELDS: Record<
+  'purchase' | 'signup' | 'review',
+  Record<string, CampaignConfigFieldSpec>
+> = {
+  purchase: {
+    points_per_unit: { type: 'number', min: 0 },
+    // Missing means 'rate'; see resolvePurchaseMode().
+    mode: { type: 'enum', values: ['rate', 'multiplier'] },
+    multiplier: { type: 'number', min: 0 },
+    base: { type: 'enum', values: ['after_discounts', 'before_discounts'] },
+    // Never read by the calculator; kept so a downgrade/upgrade round trip does not lose it.
+    include_shipping: { type: 'bool' },
+    include_tax: { type: 'bool' },
+    rounding: { type: 'enum', values: ['down', 'nearest', 'up'] },
+    min_subtotal: { type: 'number', min: 0 },
+    exclude_coupon_orders: { type: 'bool' },
+    excluded_product_ids: { type: 'int_list' },
+    excluded_category_ids: { type: 'int_list' },
+    max_points_per_order: { type: 'int', min: 0 },
+    daily_cap: { type: 'int', min: 0 },
+  },
+  signup: {
+    points: { type: 'int', min: 0 },
+  },
+  review: {
+    points: { type: 'int', min: 0 },
+    require_verified: { type: 'bool' },
+    one_per_product: { type: 'bool' },
+    daily_cap: { type: 'int', min: 0 },
+    // Absent from default_config(); the form defaults it to 0.
+    media_bonus_points: { type: 'int', min: 0 },
+  },
+};
+
+/** Absent from default_config('purchase'); missing means 'rate'. */
+export const DEFAULT_PURCHASE_MODE = 'rate' as const;
+
+/** Mirrors PurchaseHandler::is_multiplier(); the one place `mode` is resolved. */
+export function resolvePurchaseMode(config: Record<string, unknown>): 'rate' | 'multiplier' {
+  return config.mode === 'multiplier' ? 'multiplier' : DEFAULT_PURCHASE_MODE;
+}

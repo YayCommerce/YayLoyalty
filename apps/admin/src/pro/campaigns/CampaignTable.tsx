@@ -4,6 +4,7 @@ import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, InfoIcon, Lock, Search } from 'lucide-react';
+import { useNavigate } from 'react-router';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { parseWPDate } from '@/lib/helpers/format.helper';
@@ -12,7 +13,7 @@ import {
   Campaign,
   CAMPAIGN_DISPLAY_STATUSES,
   CampaignDisplayStatus,
-  CampaignTrigger,
+  CampaignStatus,
   resolveCampaignDisplayStatus,
 } from '@/lib/schema/campaign.schema';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -33,9 +34,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import EllipsisIcon from '@/components/icons/EllipsisIcon';
-import { conditionsLabel, givesLabel } from './campaign-labels';
+import {
+  CampaignGroupKey,
+  conditionsLabel,
+  givesLabel,
+  statusLabel,
+  triggerGroup,
+  triggerLabel,
+} from './campaign-labels';
 import { DUMMY_POINTS_LAST_30_DAYS, hasPointsFigure } from './campaign-points-dummy';
 import { CampaignPointsSummary } from './CampaignPointsSummary';
+import type { CampaignEditorDuplicateSeed } from './editor/CampaignEditor';
 
 /** Groups larger than this collapse to the default plus this many, highest-priority first. */
 const VISIBLE_NON_DEFAULT_ROWS = 4;
@@ -45,9 +54,6 @@ const SEARCH_THRESHOLD = 20;
 
 /** Table columns, for colSpan on rows that span the whole width. */
 const COLUMN_COUNT = 10;
-
-/** A campaign only competes within its group; see triggerGroup(). */
-type CampaignGroupKey = 'purchase' | 'signup' | 'review' | 'other';
 
 const GROUP_ORDER: readonly CampaignGroupKey[] = ['purchase', 'signup', 'review', 'other'];
 
@@ -210,7 +216,8 @@ export function CampaignTable() {
               </Select>
             )}
 
-            {/* Inert: no create flow and no campaign editor exist in the SPA yet. */}
+            {/* Inert on purpose: create_item() persists for real while the list still reads the
+                dummy fixture, so a created row would never appear here. */}
             <Button size="sm" onClick={() => {}}>
               {__('Add campaign', 'yayloyalty')}
             </Button>
@@ -426,6 +433,7 @@ function showMoreLabel(group: CampaignGroupKey): string {
 /** One draggable row within a CampaignGroupSection. */
 function SortableCampaignRow({ row, isTied }: { row: DisplayCampaign; isTied: boolean }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: row.id });
+  const navigate = useNavigate();
 
   return (
     <TableRow
@@ -446,8 +454,12 @@ function SortableCampaignRow({ row, isTied }: { row: DisplayCampaign; isTied: bo
       </TableCell>
       <TableCell>
         <div className="flex items-center gap-1.5">
-          {/* Inert: this screen has no editor to hand off to yet. */}
-          <Button variant="link" size="sm" className="h-auto p-0 font-semibold">
+          <Button
+            variant="link"
+            size="sm"
+            className="h-auto p-0 font-semibold"
+            onClick={() => navigate(`/campaigns/${row.id}/edit`)}
+          >
             {row.name}
           </Button>
           {isTied && (
@@ -498,8 +510,25 @@ function SortableCampaignRow({ row, isTied }: { row: DisplayCampaign; isTied: bo
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            {/* Inert: no editor and no write client/mutation wired yet (routes exist in CampaignRestController). */}
-            <DropdownMenuItem onSelect={() => {}}>{__('Duplicate', 'yayloyalty')}</DropdownMenuItem>
+            {/* Seeds the editor via router state rather than creating a row: a real duplicate would
+                vanish from the fixture-backed list on the next fetch. Router state so it is gone on
+                reload, since nothing was created for a reload to restore. */}
+            <DropdownMenuItem
+              onSelect={() =>
+                navigate(`/campaigns/${row.id}/edit`, {
+                  state: {
+                    duplicateSeed: {
+                      /* translators: %s: the name of the campaign being duplicated. */
+                      name: sprintf(__('%s (copy)', 'yayloyalty'), row.name),
+                      status: 'draft' as CampaignStatus,
+                    } satisfies CampaignEditorDuplicateSeed,
+                  },
+                })
+              }
+            >
+              {__('Duplicate', 'yayloyalty')}
+            </DropdownMenuItem>
+            {/* Inert: no confirm-and-delete flow wired yet. */}
             <DropdownMenuItem variant="destructive" disabled={row.is_builtin} onSelect={() => {}}>
               {__('Delete', 'yayloyalty')}
             </DropdownMenuItem>
@@ -517,53 +546,6 @@ function pauseIfActivePurchase(row: DisplayCampaign): DisplayCampaign {
   }
 
   return row;
-}
-
-/** The group a campaign competes in; the rare Pro triggers share a catch-all rather than a group of one each. */
-function triggerGroup(trigger: CampaignTrigger): CampaignGroupKey {
-  if (trigger === 'purchase' || trigger === 'signup' || trigger === 'review') {
-    return trigger;
-  }
-
-  return 'other';
-}
-
-function triggerLabel(trigger: CampaignTrigger): string {
-  switch (trigger) {
-    case 'purchase':
-      return __('Order placed', 'yayloyalty');
-    case 'signup':
-      return __('Account created', 'yayloyalty');
-    case 'review':
-      return __('Review published', 'yayloyalty');
-    case 'birthday':
-      return __('Birthday', 'yayloyalty');
-    case 'first_order':
-      return __('First order', 'yayloyalty');
-    case 'order_count':
-      return __('Order count reached', 'yayloyalty');
-    case 'spend_milestone':
-      return __('Spend milestone reached', 'yayloyalty');
-    default:
-      return trigger;
-  }
-}
-
-function statusLabel(status: CampaignDisplayStatus): string {
-  switch (status) {
-    case 'active':
-      return __('Active', 'yayloyalty');
-    case 'scheduled':
-      return __('Scheduled', 'yayloyalty');
-    case 'paused':
-      return __('Paused', 'yayloyalty');
-    case 'draft':
-      return __('Draft', 'yayloyalty');
-    case 'archived':
-      return __('Archived', 'yayloyalty');
-    case 'ended':
-      return __('Ended', 'yayloyalty');
-  }
 }
 
 function campaignCountLabel(count: number): string {
