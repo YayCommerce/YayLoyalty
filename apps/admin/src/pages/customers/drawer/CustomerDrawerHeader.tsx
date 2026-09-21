@@ -1,4 +1,4 @@
-import { parseWPDate, utcToDate } from '@/lib/helpers/format.helper';
+import { formatStoredDate } from '@/lib/helpers/format.helper';
 import type { Customer, CustomerListRow } from '@/lib/schema/customer.schema';
 import { Badge } from '@/components/ui/badge';
 import { SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -41,7 +41,7 @@ export function CustomerDrawerHeader({
       </div>
       <SheetDescription>
         {email ?? <Skeleton className="h-4 w-40" />}
-        {customer?.joined_at ? ` · ${memberSince(parseWPDate(utcToDate(customer.joined_at)))}` : null}
+        {customer?.joined_at ? ` · ${memberSince(formatStoredDate(customer.joined_at))}` : null}
       </SheetDescription>
       {isProBuild() && customer && <CustomerDrawerTierCard customer={customer} />}
     </SheetHeader>

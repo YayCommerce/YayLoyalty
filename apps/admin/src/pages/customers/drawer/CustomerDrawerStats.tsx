@@ -1,9 +1,8 @@
 import { TriangleAlert } from 'lucide-react';
 
-import { parseWPDate, utcToDate } from '@/lib/helpers/format.helper';
+import { formatStoredDate } from '@/lib/helpers/format.helper';
 import { formatPoints } from '@/lib/helpers/points.helper';
 import type { Customer } from '@/lib/schema/customer.schema';
-import { CustomerDrawerStat } from './CustomerDrawerStat';
 import {
   BALANCE_AT_DELETION_LABEL,
   BALANCE_AT_DELETION_SUBLINE,
@@ -15,6 +14,7 @@ import {
   STAT_LIFETIME_REDEEMED,
   STAT_PENDING,
 } from './customer-drawer.copy';
+import { CustomerDrawerStat } from './CustomerDrawerStat';
 
 /**
  * Five stats on the `auto-fit / minmax(150px,1fr)` grid — three columns at the
@@ -68,7 +68,7 @@ export function CustomerDrawerStats({ customer }: { customer: Customer }) {
       />
       <CustomerDrawerStat
         label={STAT_EXPIRES()}
-        value={customer.expires_at && !isDeleted ? parseWPDate(utcToDate(customer.expires_at)) : '—'}
+        value={customer.expires_at && !isDeleted ? formatStoredDate(customer.expires_at) : '—'}
         subLine={isDeleted ? EXPIRY_STOPPED_SUBLINE() : undefined}
       />
       <CustomerDrawerStat label={STAT_LIFETIME_EARNED()} value={formatPoints(customer.lifetime_earned)} />

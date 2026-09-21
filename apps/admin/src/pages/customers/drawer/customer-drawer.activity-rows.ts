@@ -1,15 +1,8 @@
+import { formatStoredDate, parseWPDate, parseWPTime, utcToDate } from '@/lib/helpers/format.helper';
 import { formatSignedPoints } from '@/lib/helpers/ledger.helper';
-import { parseWPDate, parseWPTime, utcToDate } from '@/lib/helpers/format.helper';
 import { formatPoints } from '@/lib/helpers/points.helper';
 import type { ActivityEntry } from '@/lib/schema/activity.schema';
 import {
-  activityAccountCreatedSubLine,
-  activityBalanceEmailSubLine,
-  activityExpiringSoonEmailSubLine,
-  activityExpiryResetSubLine,
-  activityPointsAdjustedSubLine,
-  activityRewardRedeemedSubLine,
-  activityTierChangedSubLine,
   ACTIVITY_TITLE_ACCOUNT_CREATED,
   ACTIVITY_TITLE_BALANCE_EMAIL_SENT,
   ACTIVITY_TITLE_EXPIRING_SOON_EMAIL_SENT,
@@ -17,6 +10,13 @@ import {
   ACTIVITY_TITLE_POINTS_ADJUSTED,
   ACTIVITY_TITLE_REWARD_REDEEMED,
   ACTIVITY_TITLE_TIER_CHANGED,
+  activityAccountCreatedSubLine,
+  activityBalanceEmailSubLine,
+  activityExpiringSoonEmailSubLine,
+  activityExpiryResetSubLine,
+  activityPointsAdjustedSubLine,
+  activityRewardRedeemedSubLine,
+  activityTierChangedSubLine,
   AUTOMATIC_ACTOR_LABEL,
   CUSTOMER_ACTOR_LABEL,
 } from './customer-drawer.copy';
@@ -106,8 +106,8 @@ function subLineFor(entry: ActivityEntry, occurred: Date): string {
       );
     case 'expiry_reset':
       return activityExpiryResetSubLine(
-        parseWPDate(utcToDate(str(data, 'from'))),
-        parseWPDate(utcToDate(str(data, 'to'))),
+        formatStoredDate(str(data, 'from')),
+        formatStoredDate(str(data, 'to')),
         str(data, 'note'),
       );
     case 'reward_redeemed':

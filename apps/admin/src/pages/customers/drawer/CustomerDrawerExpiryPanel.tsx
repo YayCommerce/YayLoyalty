@@ -1,6 +1,6 @@
 import { TriangleAlert } from 'lucide-react';
 
-import { parseWPDate, utcToDate } from '@/lib/helpers/format.helper';
+import { formatStoredDate, parseWPDate, utcToDate } from '@/lib/helpers/format.helper';
 import { formatPoints } from '@/lib/helpers/points.helper';
 import type { Customer, DrawerExpiry } from '@/lib/schema/customer.schema';
 import { Button } from '@/components/ui/button';
@@ -62,8 +62,8 @@ export function CustomerDrawerExpiryPanel({ customer, expiry }: { customer: Cust
           {expiry.reminders.sent_at && expiry.reminders.next_due_at && (
             <p className="text-muted-foreground text-xs">
               {expiringReminderSentence(
-                parseWPDate(utcToDate(expiry.reminders.sent_at)),
-                parseWPDate(utcToDate(expiry.reminders.next_due_at)),
+                formatStoredDate(expiry.reminders.sent_at),
+                formatStoredDate(expiry.reminders.next_due_at),
                 String(expiry.reminders.window_days),
               )}
             </p>

@@ -135,7 +135,7 @@ export default function CustomerDrawer() {
                         <CustomerDrawerNegativeActions customerFirstName={firstName} />
                       </>
                     )}
-                    <CustomerDrawerTabs customer={query.data} scenario={scenario} />
+                    <CustomerDrawerTabs customer={query.data} customerFirstName={firstName} scenario={scenario} />
                   </>
                 )}
               </div>

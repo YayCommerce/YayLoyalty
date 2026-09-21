@@ -1,15 +1,15 @@
-import { parseWPCurrency, parseWPDate, utcToDate } from '@/lib/helpers/format.helper';
+import { formatStoredDate, parseWPCurrency } from '@/lib/helpers/format.helper';
 import { formatPoints } from '@/lib/helpers/points.helper';
 import type { DrawerNegativeBalance } from '@/lib/schema/customer.schema';
 import {
+  NEGATIVE_BALANCE_HEADING,
+  NEGATIVE_WHAT_CUSTOMER_SEES_BODY,
+  NEGATIVE_WHAT_HAPPENS_NEXT_TITLE,
   negativeBalanceFactEarned,
   negativeBalanceFactReversed,
   negativeBalanceFactSpent,
   negativeBalanceGenericExplanation,
-  NEGATIVE_BALANCE_HEADING,
   negativeWhatCustomerSeesTitle,
-  NEGATIVE_WHAT_CUSTOMER_SEES_BODY,
-  NEGATIVE_WHAT_HAPPENS_NEXT_TITLE,
   negativeWhatHappensNextBody,
 } from './customer-drawer.panels.copy';
 
@@ -43,10 +43,12 @@ export function CustomerDrawerNegativePanel({
               customerFirstName,
               formatPoints(earned.points),
               String(earned.order_id),
-              parseWPDate(utcToDate(earned.occurred_at)),
+              formatStoredDate(earned.occurred_at),
             )}
           </li>
-          <li>{negativeBalanceFactSpent(formatPoints(spent.points), String(spent.order_id), parseWPCurrency(spent.value))}</li>
+          <li>
+            {negativeBalanceFactSpent(formatPoints(spent.points), String(spent.order_id), parseWPCurrency(spent.value))}
+          </li>
           <li>{negativeBalanceFactReversed(String(reversed.order_id), formatPoints(reversed.points))}</li>
         </ol>
       ) : (
