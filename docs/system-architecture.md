@@ -319,7 +319,7 @@ GET /campaigns/:id   (read for detail pre-load)
     ↓
 CampaignRestController::get_item()
 
-POST /yayloyalty/v1/campaigns/:id   (or PUT, depending on implementation)
+POST|PUT|PATCH /yayloyalty/v1/campaigns/:id   (WP_REST_Server::EDITABLE)
     ↓
 CampaignRestController::update_item()  via  exec_write()
     ├─ CampaignTrigger::is_valid( trigger )        must be fireable in THIS build (all(), filtered)
