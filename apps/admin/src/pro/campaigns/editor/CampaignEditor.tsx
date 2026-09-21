@@ -10,6 +10,7 @@ import { __, sprintf } from '@wordpress/i18n';
 import { getApiErrorMessage } from '@/lib/api/api';
 import { parseWPRelativeDate } from '@/lib/helpers/format.helper';
 import { useCampaignQuery, useUpdateCampaignMutation } from '@/lib/queries/campaign.queries';
+import { hasPerformancePage } from '@/lib/schema/campaign-performance.schema';
 import {
   Campaign,
   CampaignStatus,
@@ -264,6 +265,9 @@ function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }
                 onDraftIntent={() => {
                   isDraftIntentRef.current = true;
                 }}
+                onPerformance={
+                  hasPerformancePage(campaign.trigger) ? () => navigate(`/campaigns/${id}/performance`) : undefined
+                }
               />
             </div>
           </PageLayout>

@@ -6,6 +6,7 @@ import AppLayout from './AppLayout';
 import NotFoundPage from './pages/404';
 import ErrorPage from './pages/500';
 import CampaignEditorPage from './pages/campaigns/CampaignEditorPage';
+import CampaignPerformancePage from './pages/campaigns/CampaignPerformancePage';
 import CampaignsPage from './pages/campaigns/CampaignsPage';
 import CustomersPage from './pages/customers/CustomersPage';
 import DashboardPage from './pages/dashboard/DashboardPage';
@@ -55,6 +56,10 @@ export function getManagerRouter() {
         {
           path: 'campaigns/:id/edit',
           element: guarded(CAP.MANAGE_CAMPAIGNS, <CampaignEditorPage />),
+        },
+        {
+          path: 'campaigns/:id/performance',
+          element: guarded(CAP.MANAGE_CAMPAIGNS, <CampaignPerformancePage />),
         },
         {
           path: 'rewards',

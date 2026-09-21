@@ -1,6 +1,6 @@
 import { __, sprintf } from '@wordpress/i18n';
 
-import { parseWPCurrency } from '@/lib/helpers/format.helper';
+import { parseWPCurrency, parseWPDate } from '@/lib/helpers/format.helper';
 import {
   CAMPAIGN_CONDITION_TYPES,
   CampaignConditionKind,
@@ -111,6 +111,22 @@ export function conditionTypeLabel(type: CampaignConditionKind): string {
     default:
       return type;
   }
+}
+
+export function scheduleLabel(startsAt: string | null, endsAt: string | null): string {
+  if (!startsAt && !endsAt) {
+    return __('Always on', 'yayloyalty');
+  }
+
+  if (startsAt && endsAt) {
+    return `${parseWPDate(startsAt)} – ${parseWPDate(endsAt)}`;
+  }
+
+  if (startsAt) {
+    return sprintf(/* translators: %s: a formatted date. */ __('From %s', 'yayloyalty'), parseWPDate(startsAt));
+  }
+
+  return sprintf(/* translators: %s: a formatted date. */ __('Until %s', 'yayloyalty'), parseWPDate(endsAt as string));
 }
 
 export function statusLabel(status: CampaignDisplayStatus): string {
