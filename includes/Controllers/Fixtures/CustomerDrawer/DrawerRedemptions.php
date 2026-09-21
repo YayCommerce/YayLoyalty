@@ -135,14 +135,14 @@ final class DrawerRedemptions {
      * @return array<int, array<string, mixed>>
      */
     private static function rows( string $scenario ): array {
-        $count = DrawerProfiles::redemptions_count_for( $scenario );
+        $count = DrawerProfiles::profile( $scenario )['counts']['redemptions'];
 
         if ( 0 === $count ) {
             return [];
         }
 
         // `default_rows()` is already newest-first, as written.
-        if ( '' === $scenario || 'expiring' === $scenario ) {
+        if ( '' === DrawerProfiles::identity_of( $scenario ) ) {
             return self::with_ids( self::default_rows() );
         }
 

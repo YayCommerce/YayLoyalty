@@ -65,6 +65,16 @@ export const LEDGER_FILTER_TYPES = ['all', 'earn', 'redeem', 'adjust', 'expire']
 export const ledgerFilterTypeSchema = z.enum(LEDGER_FILTER_TYPES);
 export type LedgerFilterType = z.infer<typeof ledgerFilterTypeSchema>;
 
+// `satisfies`, not `z.record()`: zod 3 types record keys as optional, and
+// this way a key added to or dropped from LEDGER_FILTER_TYPES fails tsc here.
+const ledgerTypeCountsShape = {
+  all: z.number().int(),
+  earn: z.number().int(),
+  redeem: z.number().int(),
+  adjust: z.number().int(),
+  expire: z.number().int(),
+} satisfies Record<LedgerFilterType, z.ZodTypeAny>;
+
 /**
  * Per-type counts over the UNFILTERED set — what the ledger tab's filter
  * labels ("All 4,812", "Earned 4,190") read from. `null` means the server
@@ -72,13 +82,7 @@ export type LedgerFilterType = z.infer<typeof ledgerFilterTypeSchema>;
  * `LedgerRestController::get_history()`); the drawer renders the filter row
  * disabled with a stated reason when this is null.
  */
-export const ledgerTypeCountsSchema = z.object({
-  all: z.number().int(),
-  earn: z.number().int(),
-  redeem: z.number().int(),
-  adjust: z.number().int(),
-  expire: z.number().int(),
-});
+export const ledgerTypeCountsSchema = z.object(ledgerTypeCountsShape);
 
 export type LedgerTypeCounts = z.infer<typeof ledgerTypeCountsSchema>;
 

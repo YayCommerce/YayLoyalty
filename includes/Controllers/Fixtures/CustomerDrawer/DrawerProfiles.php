@@ -7,37 +7,123 @@ use YayLoyalty\Utils\PointsMath;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The six drawer scenarios' identities and header stats — see
+ * The drawer scenarios' identities and header stats — see
  * `CustomerDrawerFixture` for the gate this feeds. Figures are taken
- * verbatim from the design's artboards 1e/1f/3a/3c/4a/4b/5a; `expiring`
- * reuses `''` (default)'s identity because the design draws it as the same
- * fictional person (Daniel Okonkwo) in a different state, not a new one.
+ * verbatim from the design's artboards 1e/1f/3a/3c/4a/4b/5a.
  */
 final class DrawerProfiles {
 
     /**
-     * One row per scenario: [name, email, joined_at, balance, pending,
-     * lifetime_earned, lifetime_redeemed, expires_at, deleted_at,
-     * counts_ledger, counts_activity, counts_redemptions, counts_referrals].
-     * `''` is the default (no `?scenario=`) artboard — Daniel Okonkwo.
+     * One profile per identity. `''` is the default (no `?scenario=`)
+     * artboard — Daniel Okonkwo. `expiring` has no row of its own: it is
+     * Daniel in a different state (see `identity_of()`), and only `expiry`
+     * differs, which `DrawerExpiry` keys on the raw scenario.
      *
-     * @return array<string, array{0:string,1:string,2:string,3:int,4:int,5:int,6:int,7:?string,8:?string,9:int,10:int,11:int,12:int}>
+     * @return array<string, array<string, mixed>>
      */
     private static function rows(): array {
         return [
-            ''         => [ 'Daniel Okonkwo', 'daniel.okonkwo@example.com', '2024-03-12 00:00:00', 9850, 240, 14300, 4450, '2027-08-14 00:00:00', null, 48, 24, 6, 3 ],
-            'new'      => [ 'Lena Haugen', 'lena.haugen@example.com', '2026-09-09 00:00:00', 0, 0, 0, 0, null, null, 0, 0, 0, 0 ],
-            'large'    => [ 'Aisha Bello', 'aisha.bello@example.com', '2023-11-03 00:00:00', 71340, 405, 138210, 66870, '2027-09-09 00:00:00', null, 4812, 1940, 38, 12 ],
-            'deleted'  => [ 'Erik Halvorsen', 'erik.halvorsen@example.com', '2025-02-04 00:00:00', 1850, 0, 6420, 4570, null, '2026-09-08 00:00:00', 24, 6, 1, 2 ],
-            // Same identity as '' — 4b is Daniel again, 12 days from losing
-            // 6,300 of his 9,850 points, not a different fictional person.
-            'expiring' => [ 'Daniel Okonkwo', 'daniel.okonkwo@example.com', '2024-03-12 00:00:00', 9850, 240, 14300, 4450, '2027-08-14 00:00:00', null, 48, 24, 6, 3 ],
-            // 3 ledger rows, not a round number — `DrawerNegativeBalance::ledger_rows()`
-            // tells 5a's exact story (earn 1,000, redeem it, refund reverses
-            // it), and this count must match how
-            // many rows that method actually returns.
-            'negative' => [ 'Tom Weaver', 'tom.weaver@example.com', '2024-11-11 00:00:00', -1000, 0, 4260, 1000, null, null, 3, 2, 1, 0 ],
+            ''         => [
+                'name'              => 'Daniel Okonkwo',
+                'email'             => 'daniel.okonkwo@example.com',
+                'joined_at'         => '2024-03-12 00:00:00',
+                'balance'           => 9850,
+                'pending'           => 240,
+                'lifetime_earned'   => 14300,
+                'lifetime_redeemed' => 4450,
+                'expires_at'        => '2027-08-14 00:00:00',
+                'deleted_at'        => null,
+                'counts'            => [
+                    'ledger'      => 48,
+                    'activity'    => 24,
+                    'redemptions' => 6,
+                    'referrals'   => 3,
+                ],
+            ],
+            'new'      => [
+                'name'              => 'Lena Haugen',
+                'email'             => 'lena.haugen@example.com',
+                'joined_at'         => '2026-09-09 00:00:00',
+                'balance'           => 0,
+                'pending'           => 0,
+                'lifetime_earned'   => 0,
+                'lifetime_redeemed' => 0,
+                'expires_at'        => null,
+                'deleted_at'        => null,
+                'counts'            => [
+                    'ledger'      => 0,
+                    'activity'    => 0,
+                    'redemptions' => 0,
+                    'referrals'   => 0,
+                ],
+            ],
+            'large'    => [
+                'name'              => 'Aisha Bello',
+                'email'             => 'aisha.bello@example.com',
+                'joined_at'         => '2023-11-03 00:00:00',
+                'balance'           => 71340,
+                'pending'           => 405,
+                'lifetime_earned'   => 138210,
+                'lifetime_redeemed' => 66870,
+                'expires_at'        => '2027-09-09 00:00:00',
+                'deleted_at'        => null,
+                'counts'            => [
+                    'ledger'      => 4812,
+                    'activity'    => 1940,
+                    'redemptions' => 38,
+                    'referrals'   => 12,
+                ],
+            ],
+            'deleted'  => [
+                'name'              => 'Erik Halvorsen',
+                'email'             => 'erik.halvorsen@example.com',
+                'joined_at'         => '2025-02-04 00:00:00',
+                'balance'           => 1850,
+                'pending'           => 0,
+                'lifetime_earned'   => 6420,
+                'lifetime_redeemed' => 4570,
+                'expires_at'        => null,
+                'deleted_at'        => '2026-09-08 00:00:00',
+                'counts'            => [
+                    'ledger'      => 24,
+                    'activity'    => 6,
+                    'redemptions' => 1,
+                    'referrals'   => 2,
+                ],
+            ],
+            'negative' => [
+                'name'              => 'Tom Weaver',
+                'email'             => 'tom.weaver@example.com',
+                'joined_at'         => '2024-11-11 00:00:00',
+                'balance'           => -1000,
+                'pending'           => 0,
+                'lifetime_earned'   => 4260,
+                'lifetime_redeemed' => 1000,
+                'expires_at'        => null,
+                'deleted_at'        => null,
+                'counts'            => [
+                    // The ledger tells 5a's exact story, so its rows are the count.
+                    'ledger'      => count( DrawerNegativeBalance::ledger_rows( 0 ) ),
+                    'activity'    => 2,
+                    'redemptions' => 1,
+                    'referrals'   => 0,
+                ],
+            ],
         ];
+    }
+
+    /** The profile a scenario renders — `expiring` is Daniel (`''`); unknown scenarios fall back to him too. */
+    public static function identity_of( string $scenario ): string {
+        if ( 'expiring' === $scenario || ! isset( self::rows()[ $scenario ] ) ) {
+            return '';
+        }
+
+        return $scenario;
+    }
+
+    /** @return array<string, mixed> */
+    public static function profile( string $scenario ): array {
+        return self::rows()[ self::identity_of( $scenario ) ];
     }
 
     /**
@@ -66,68 +152,33 @@ final class DrawerProfiles {
     }
 
     /**
-     * The rate every scenario values
-     * built-in `cart-discount` default, so Aisha's 71,340 → $713.40 lands on
-     * the exact figure artboard 3c quotes.
+     * The rate every scenario values points at — the built-in `cart-discount`
+     * reward's default, so Aisha's 71,340 → $713.40 lands on the exact figure
+     * artboard 3c quotes.
      */
     private const POINTS_PER_CURRENCY_UNIT = 100;
 
     public static function to_wire( string $scenario, int $user_id ): array {
-        $row = self::rows()[ $scenario ] ?? self::rows()[''];
-
-        [ $name, $email, $joined_at, $balance, $pending, $lifetime_earned, $lifetime_redeemed, $expires_at, $deleted_at, $ledger, $activity, $redemptions, $referrals ] = $row;
+        $row = self::profile( $scenario );
 
         return [
             'user_id'                  => $user_id,
-            'name'                     => $name,
-            'email'                    => $email,
-            'balance'                  => $balance,
-            'pending_points'           => $pending,
-            'lifetime_earned'          => $lifetime_earned,
-            'lifetime_redeemed'        => $lifetime_redeemed,
-            'last_activity_at'         => 0 === $ledger ? null : Dates::offset( -DAY_IN_SECONDS ),
-            'expires_at'               => $expires_at,
-            'joined_at'                => $joined_at,
+            'name'                     => $row['name'],
+            'email'                    => $row['email'],
+            'balance'                  => $row['balance'],
+            'pending_points'           => $row['pending'],
+            'lifetime_earned'          => $row['lifetime_earned'],
+            'lifetime_redeemed'        => $row['lifetime_redeemed'],
+            'last_activity_at'         => 0 === $row['counts']['ledger'] ? null : Dates::offset( -DAY_IN_SECONDS ),
+            'expires_at'               => $row['expires_at'],
+            'joined_at'                => $row['joined_at'],
             'updated_at'               => Dates::now(),
-            'deleted_at'               => $deleted_at,
-            'counts'                   => [
-                'ledger'      => $ledger,
-                'activity'    => $activity,
-                'redemptions' => $redemptions,
-                'referrals'   => $referrals,
-            ],
+            'deleted_at'               => $row['deleted_at'],
+            'counts'                   => $row['counts'],
             'loose_ends'               => self::loose_ends_for( $scenario ),
-            'expiry'                   => DrawerExpiry::for_scenario( $scenario, $balance ),
-            'negative_balance'         => DrawerNegativeBalance::for_scenario( $scenario, $balance ),
-            // Restored minimally (F09 Wave B phase 03) after the `worth`
-            // object was removed wholesale — 4b/5a's money-equivalent
-            // figures need the rate, `worth`'s display no longer does.
+            'expiry'                   => DrawerExpiry::for_scenario( $scenario ),
+            'negative_balance'         => DrawerNegativeBalance::for_scenario( $scenario ),
             'points_per_currency_unit' => self::POINTS_PER_CURRENCY_UNIT,
         ];
-    }
-
-    /** The scenario's ending balance — what `DrawerLedger` walks its chain backward from. */
-    public static function balance_for( string $scenario ): int {
-        return ( self::rows()[ $scenario ] ?? self::rows()[''] )[3];
-    }
-
-    /** The scenario's ledger row count — `DrawerLedger::rows()` generates exactly this many. */
-    public static function ledger_count_for( string $scenario ): int {
-        return ( self::rows()[ $scenario ] ?? self::rows()[''] )[9];
-    }
-
-    /** The scenario's activity row count — `DrawerActivity::rows()` generates exactly this many. */
-    public static function activity_count_for( string $scenario ): int {
-        return ( self::rows()[ $scenario ] ?? self::rows()[''] )[10];
-    }
-
-    /** The scenario's redemptions row count — `DrawerRedemptions::rows()` generates exactly this many. */
-    public static function redemptions_count_for( string $scenario ): int {
-        return ( self::rows()[ $scenario ] ?? self::rows()[''] )[11];
-    }
-
-    /** The scenario's referrals row count — `DrawerReferrals::rows()` generates exactly this many. */
-    public static function referrals_count_for( string $scenario ): int {
-        return ( self::rows()[ $scenario ] ?? self::rows()[''] )[12];
     }
 }

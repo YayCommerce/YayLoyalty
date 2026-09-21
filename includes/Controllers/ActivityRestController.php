@@ -105,6 +105,7 @@ final class ActivityRestController extends AbstractRestController {
                 ],
                 'event_type'  => [
                     'type'     => 'string',
+                    'enum'     => ActivityQueryArgs::EVENT_TYPES,
                     'context'  => [ 'view' ],
                     'readonly' => true,
                 ],
@@ -116,7 +117,7 @@ final class ActivityRestController extends AbstractRestController {
                 ],
                 'actor_kind'  => [
                     'type'     => 'string',
-                    'enum'     => [ 'staff', 'automatic', 'customer' ],
+                    'enum'     => ActivityQueryArgs::ACTOR_KINDS,
                     'context'  => [ 'view' ],
                     'readonly' => true,
                 ],

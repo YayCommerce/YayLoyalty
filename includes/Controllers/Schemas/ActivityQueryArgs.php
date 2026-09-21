@@ -10,14 +10,27 @@ defined( 'ABSPATH' ) || exit;
  * own args field-for-field (same descriptions, same `validate_date`), so the
  * two tabs' filter rows behave identically from the admin's side.
  *
- * `group` is a GROUPING over the seven `event_type`s
- * (`DrawerActivity::EVENT_TYPES`), not a partition: `expiring_soon_email_sent`
- * belongs to BOTH `expiry` and `emails` on purpose — it is a lens ("what am I
- * looking for"), not a mutually-exclusive category. Do not "fix" the overlap.
+ * `group` is a GROUPING over the seven `event_type`s (`EVENT_TYPES`), not a
+ * partition: `expiring_soon_email_sent` belongs to BOTH `expiry` and `emails`
+ * on purpose — it is a lens ("what am I looking for"), not a mutually-exclusive
+ * category. Do not "fix" the overlap.
  */
 final class ActivityQueryArgs {
 
     public const GROUPS = [ 'all', 'admin', 'tier', 'expiry', 'emails' ];
+
+    /** The seven event kinds artboard 3d shows. */
+    public const EVENT_TYPES = [
+        'account_created',
+        'points_adjusted',
+        'tier_changed',
+        'expiry_reset',
+        'reward_redeemed',
+        'balance_email_sent',
+        'expiring_soon_email_sent',
+    ];
+
+    public const ACTOR_KINDS = [ 'staff', 'automatic', 'customer' ];
 
     /**
      * @return array<string, mixed>

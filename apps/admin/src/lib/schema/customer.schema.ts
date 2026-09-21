@@ -101,10 +101,9 @@ export const drawerNegativeBalanceSchema = z.object({
 
 export type DrawerNegativeBalance = z.infer<typeof drawerNegativeBalanceSchema>;
 
-export const customerSchema = z.object({
+/** One row of GET /customers: a JOIN projection with name/email, mirroring CustomerListFormatter::format_row(). */
+export const customerListRowSchema = z.object({
   user_id: z.number().int(),
-  /** From wp_users — carried here (not only the list row) so the drawer has an
-   * identity to render on a deep link or a refresh. */
   name: z.string(),
   email: z.string(),
   /** Signed: a clawback after a refund can legitimately push this below zero. */
@@ -112,9 +111,16 @@ export const customerSchema = z.object({
   pending_points: z.number().int(),
   /** Signed. Unaffected by redemptions, so spending never demotes a tier. */
   lifetime_earned: z.number().int(),
-  lifetime_redeemed: z.number().int(),
   last_activity_at: z.string().nullable(),
   expires_at: z.string().nullable(),
+});
+
+export type CustomerListRow = z.infer<typeof customerListRowSchema>;
+
+/** GET /customers/{id}: the list row (name/email included so a deep link or a
+ * refresh has an identity to render) plus the drawer-only aggregates and panels. */
+export const customerSchema = customerListRowSchema.extend({
+  lifetime_redeemed: z.number().int(),
   joined_at: z.string().nullable(),
   updated_at: z.string().nullable(),
   /** Always null on the real path — no deleted_at column yet (docs/data-model.md). */
@@ -129,20 +135,6 @@ export const customerSchema = z.object({
 });
 
 export type Customer = z.infer<typeof customerSchema>;
-
-/** One row of GET /customers: a JOIN projection with name/email, mirroring CustomerRestController::format_row(). */
-export const customerListRowSchema = z.object({
-  user_id: z.number().int(),
-  name: z.string(),
-  email: z.string(),
-  balance: z.number().int(),
-  pending_points: z.number().int(),
-  lifetime_earned: z.number().int(),
-  last_activity_at: z.string().nullable(),
-  expires_at: z.string().nullable(),
-});
-
-export type CustomerListRow = z.infer<typeof customerListRowSchema>;
 
 /** A "which filter to drop" suggestion; `key` is the wire param name, mapped in customers-page.filter-suggestions.ts. */
 export const noMatchSuggestionSchema = z.object({

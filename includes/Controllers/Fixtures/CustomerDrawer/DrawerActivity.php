@@ -17,26 +17,15 @@ defined( 'ABSPATH' ) || exit;
  */
 final class DrawerActivity {
 
-    /** The seven event kinds artboard 3d shows. */
-    private const EVENT_TYPES = [
-        'account_created',
-        'points_adjusted',
-        'tier_changed',
-        'expiry_reset',
-        'reward_redeemed',
-        'balance_email_sent',
-        'expiring_soon_email_sent',
-    ];
-
     /**
      * @return array<int, array{id:int, occurred_at:string, event_type:string, data:array<string,mixed>, actor_kind:string, actor_name:?string, staff_only:bool}>
      */
     public static function rows( string $scenario ): array {
-        $count = DrawerProfiles::activity_count_for( $scenario );
+        $count = DrawerProfiles::profile( $scenario )['counts']['activity'];
         $rows  = [];
 
         for ( $i = 0; $i < $count; $i++ ) {
-            $event_type = self::EVENT_TYPES[ $i % count( self::EVENT_TYPES ) ];
+            $event_type = ActivityQueryArgs::EVENT_TYPES[ $i % count( ActivityQueryArgs::EVENT_TYPES ) ];
 
             $rows[] = [
                 'id'          => $count - $i,
