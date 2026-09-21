@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { Can, CAP } from '@/lib/access';
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
-import { useAdjustPointsMutation } from '@/lib/queries/customer.queries';
+import { useAdjustPointsMutation, useAdjustPointsPreviewQuery } from '@/lib/queries/customer.queries';
 import type { Customer } from '@/lib/schema/customer.schema';
 import { Button } from '@/components/ui/button';
 import { CustomersAdjustPointsDialog } from '../components/CustomersAdjustPointsDialog';
@@ -36,6 +36,10 @@ export function CustomerDrawerActions({ customer, isLoading }: { customer: Custo
   const [isAdjustOpen, setIsAdjustOpen] = useState(false);
   const adjustMutation = useAdjustPointsMutation(customer.user_id);
   const isDeleted = !!customer.deleted_at;
+
+  // Memoised so the query key is stable across renders while the dialog is open.
+  const previewInput = useMemo(() => ({ customerIds: [customer.user_id] }), [customer.user_id]);
+  const preview = useAdjustPointsPreviewQuery(previewInput, isAdjustOpen);
 
   const disabledReason = isDeleted
     ? DELETED_ACCOUNT_ACTION_REASON()
@@ -73,6 +77,7 @@ export function CustomerDrawerActions({ customer, isLoading }: { customer: Custo
         count={1}
         isSubmitting={adjustMutation.isPending}
         onSubmit={(input) => adjustMutation.mutate(input, { onSuccess: () => setIsAdjustOpen(false) })}
+        preview={preview}
       />
     </div>
   );

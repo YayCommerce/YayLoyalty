@@ -169,3 +169,34 @@ export const adjustPointsSchema = z.object({
 });
 
 export type AdjustPointsInput = z.infer<typeof adjustPointsSchema>;
+
+/** One hydrated customer in an adjust-preview response; only present for a single, enrolled id. */
+export const adjustPointsPreviewCustomerSchema = z.object({
+  user_id: z.number().int(),
+  name: z.string(),
+  email: z.string(),
+  balance: z.number().int(),
+  lifetime_earned: z.number().int(),
+});
+
+export type AdjustPointsPreviewCustomer = z.infer<typeof adjustPointsPreviewCustomerSchema>;
+
+/** Mirrors CustomerAdjustPreviewRestController::envelope(). */
+export const adjustPointsPreviewSchema = z.object({
+  count: z.number().int(),
+  customers: z.array(adjustPointsPreviewCustomerSchema),
+  liability_points: z.number().int().nullable(),
+  points_per_currency_unit: z.number(),
+  fetched_at: z.string(),
+});
+
+export type AdjustPointsPreview = z.infer<typeof adjustPointsPreviewSchema>;
+
+/**
+ * `filters` is typed structurally here (not as `RowFilters`) so this
+ * lib-level module never imports from `pages/customers/` — the page's
+ * `RowFilters` is structurally compatible and passed in as-is.
+ */
+export type AdjustPointsPreviewInput =
+  | { customerIds: number[] }
+  | { filters: { search: string; balanceRange: string; expiringSoon: string; tier: string } };

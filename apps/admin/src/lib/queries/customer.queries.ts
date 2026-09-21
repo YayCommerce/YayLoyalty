@@ -13,10 +13,11 @@ import {
   getCustomer,
   getCustomerLedger,
   getCustomers,
+  previewAdjustPoints,
   type CustomerLedgerParams,
   type CustomerListParams,
 } from '@/lib/api/customer.api';
-import type { AdjustPointsInput } from '@/lib/schema/customer.schema';
+import type { AdjustPointsInput, AdjustPointsPreviewInput } from '@/lib/schema/customer.schema';
 
 export const CUSTOMER_QUERIES = {
   /** `scenario` is part of the key — switching it must refetch, not serve the previous scenario's cache. */
@@ -79,6 +80,17 @@ export const CUSTOMER_QUERIES = {
       placeholderData: keepPreviousData,
       retry: 1,
     }),
+
+  /** The adjust dialog's live snapshot. staleTime 0: a cached balance would defeat the 3b stale-balance guard. */
+  adjustPreview: (input: AdjustPointsPreviewInput, enabled: boolean) =>
+    queryOptions({
+      queryKey: ['customer', 'adjust-preview', input],
+      queryFn: ({ signal }) => previewAdjustPoints(input, signal),
+      enabled,
+      staleTime: 0,
+      refetchOnWindowFocus: false,
+      retry: 1,
+    }),
 };
 
 /** ─── Hooks ─────────────────────────────────────────── */
@@ -107,6 +119,10 @@ export function useCustomerReferralsQuery(userId: number, params: CustomerReferr
   return useQuery(CUSTOMER_QUERIES.referrals(userId, params));
 }
 
+export function useAdjustPointsPreviewQuery(input: AdjustPointsPreviewInput, enabled: boolean) {
+  return useQuery(CUSTOMER_QUERIES.adjustPreview(input, enabled));
+}
+
 export function useAdjustPointsMutation(userId: number) {
   const queryClient = useQueryClient();
 
@@ -118,6 +134,7 @@ export function useAdjustPointsMutation(userId: number) {
       queryClient.invalidateQueries({ queryKey: ['customer', 'detail', userId] });
       queryClient.invalidateQueries({ queryKey: ['customer', 'ledger', userId] });
       queryClient.invalidateQueries({ queryKey: ['customer', 'list'] });
+      queryClient.invalidateQueries({ queryKey: ['customer', 'adjust-preview'] });
     },
   });
 }

@@ -4,6 +4,7 @@ namespace YayLoyalty\Engine;
 use YayLoyalty\Controllers\AbstractRestController;
 use YayLoyalty\Controllers\ActivityRestController;
 use YayLoyalty\Controllers\CampaignRestController;
+use YayLoyalty\Controllers\CustomerAdjustPreviewRestController;
 use YayLoyalty\Controllers\CustomerRestController;
 use YayLoyalty\Controllers\DashboardRestController;
 use YayLoyalty\Controllers\LedgerRestController;
@@ -58,6 +59,9 @@ class RestAPI {
             // worth's conversion rate) — the same instances LedgerService
             // and DashboardRepository hold, not a second construction.
             new CustomerRestController( $customers, $ledger_service, $ledger, $rewards ),
+            // Same read-only $customers/$rewards instances as above, plus
+            // $dashboard for its liability aggregate — not a second construction.
+            new CustomerAdjustPreviewRestController( $customers, $dashboard, $rewards ),
             new LedgerRestController( $ledger ),
             // No repository: the real path answers an empty envelope until an
             // activity table exists (see the controller's own docblock).

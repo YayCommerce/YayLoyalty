@@ -5,6 +5,7 @@ import { __, _n, sprintf } from '@wordpress/i18n';
 import { getApiErrorMessage, isAbortError } from '@/lib/api/api';
 import { useBulkAdjustPointsMutation } from '@/lib/queries/customer.queries';
 import type { AdjustPointsInput, CustomerListRow } from '@/lib/schema/customer.schema';
+import { bulkSelectionChanged } from './components/customers-adjust-points.bulk.copy';
 import { exportCustomersToCsv } from './customers-page.export';
 import type { RowFilters } from './customers-page.filter-rows';
 import {
@@ -71,15 +72,31 @@ export function useCustomersBulkActions({
   // Covers the resolve step too: isPending alone left a window where a second click
   // fired two overlapping, non-idempotent batches.
   const [isAdjustSubmitting, setIsAdjustSubmitting] = useState(false);
+  // Bumped to tell the dialog to clear its liability acknowledgement after a
+  // selection-changed abort below — a fresh count deserves a fresh consent.
+  const [acknowledgementResetKey, setAcknowledgementResetKey] = useState(0);
   const bulkAdjustMutation = useBulkAdjustPointsMutation();
 
-  async function handleAdjustSubmit(input: AdjustPointsInput) {
+  /**
+   * `expectedCount` is the figure the dialog showed and the admin
+   * acknowledged. `resolveSelectedRows()` below already re-resolves the
+   * matching set fresh (it has to, to get the ids to fan out over) — for
+   * "select all matching" that is at least as strong as a plain re-COUNT,
+   * so this reuses it rather than firing a second, redundant preview call.
+   */
+  async function handleAdjustSubmit(input: AdjustPointsInput, expectedCount?: number) {
     setIsAdjustSubmitting(true);
     try {
       const selected = await resolveSelectedRows();
 
       if (selected.length === 0) {
         toast.error(__('No selected customers to adjust.', 'yayloyalty'));
+        return;
+      }
+
+      if (selection.mode === 'all' && expectedCount !== undefined && selected.length !== expectedCount) {
+        toast.error(bulkSelectionChanged(selected.length, expectedCount));
+        setAcknowledgementResetKey((key) => key + 1);
         return;
       }
 
@@ -125,5 +142,6 @@ export function useCustomersBulkActions({
     setIsAdjustDialogOpen,
     isAdjustSubmitting,
     handleAdjustSubmit,
+    acknowledgementResetKey,
   };
 }

@@ -4,6 +4,9 @@ import { api } from '@/lib/api/api';
 import { paginatedSchema } from '@/lib/api/paginated';
 import {
   AdjustPointsInput,
+  adjustPointsPreviewSchema,
+  AdjustPointsPreview,
+  AdjustPointsPreviewInput,
   Customer,
   CustomerBalanceRange,
   CustomerExpiringSoon,
@@ -70,6 +73,35 @@ export async function getCustomerLedger(userId: number, params: CustomerLedgerPa
 
 export async function adjustCustomerPoints(userId: number, input: AdjustPointsInput): Promise<LedgerEntry> {
   return ledgerEntrySchema.parse(await api.post(`customers/${userId}/adjust`, { json: input }).json());
+}
+
+/**
+ * `POST /customers/adjust/preview`: a read-only snapshot for the adjust
+ * dialog. POST despite being a read — mirrors the server's own reason (a
+ * customer-id list should not sit in a URL or a server log).
+ *
+ * This mapping is spelling-only (camelCase → snake_case), same rule as
+ * `getCustomers()` below. The tier → balance-bucket substitution
+ * (`resolveBalanceRangeForQuery`) is page-specific domain logic and must
+ * happen before `input` reaches here — this stays page-agnostic.
+ */
+export async function previewAdjustPoints(
+  input: AdjustPointsPreviewInput,
+  signal?: AbortSignal,
+): Promise<AdjustPointsPreview> {
+  const json =
+    'customerIds' in input
+      ? { customer_ids: input.customerIds }
+      : {
+          filters: {
+            search: input.filters.search,
+            balance_range: input.filters.balanceRange,
+            expiring_soon: input.filters.expiringSoon,
+            tier: input.filters.tier,
+          },
+        };
+
+  return adjustPointsPreviewSchema.parse(await api.post('customers/adjust/preview', { json, signal }).json());
 }
 
 /** App-side params for getCustomers(); the wire spelling exists only in the request builder. */
