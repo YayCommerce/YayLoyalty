@@ -2,17 +2,14 @@ import { useState } from 'react';
 import { format } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
 
-import { useDebouncedSearchCommit } from '@/hooks/useDebouncedSearchCommit';
 import { useCustomerActivityQuery } from '@/lib/queries/customer.queries';
 import type { ActivityGroup } from '@/lib/schema/activity.schema';
+import { useDebouncedSearchCommit } from '@/hooks/useDebouncedSearchCommit';
 import { toActivityRow } from '../customer-drawer.activity-rows';
 import { ACTIVITY_FOOTER_NOTE } from '../customer-drawer.copy';
 import { ActivityLogTabFilters } from './ActivityLogTabFilters';
 import { ActivityLogTabRows } from './ActivityLogTabRows';
-import { DrawerTabPager } from './DrawerTabPager';
-
-/** Matches `LedgerTab.tsx`'s own `PER_PAGE` — the two tabs page alike. */
-const PER_PAGE = 10;
+import { DRAWER_PAGE_SIZE, DrawerTabPager } from './DrawerTabPager';
 
 /**
  * Owns filter state (`group`, `search`, `range`, `page`) and the activity
@@ -43,7 +40,7 @@ export function ActivityLogTab({ userId, scenario }: { userId: number; scenario?
 
   const query = useCustomerActivityQuery(userId, {
     page,
-    perPage: PER_PAGE,
+    perPage: DRAWER_PAGE_SIZE,
     group,
     search: querySearch,
     after: range?.from ? format(range.from, 'yyyy-MM-dd') : undefined,
@@ -87,7 +84,7 @@ export function ActivityLogTab({ userId, scenario }: { userId: number; scenario?
       </div>
       <DrawerTabPager
         page={page}
-        perPage={PER_PAGE}
+        perPage={DRAWER_PAGE_SIZE}
         totalItems={totalItems}
         onPageChange={setPage}
         disabled={query.isFetching}

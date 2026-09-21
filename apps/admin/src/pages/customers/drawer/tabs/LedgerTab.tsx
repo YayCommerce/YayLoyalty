@@ -2,17 +2,14 @@ import { useState } from 'react';
 import { format } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
 
-import { useDebouncedSearchCommit } from '@/hooks/useDebouncedSearchCommit';
 import { useCustomerLedgerQuery } from '@/lib/queries/customer.queries';
 import type { LedgerFilterType } from '@/lib/schema/ledger.schema';
+import { useDebouncedSearchCommit } from '@/hooks/useDebouncedSearchCommit';
 import { useLedgerCampaignNames } from '../customer-drawer.campaign-names';
 import { toLedgerRow } from '../customer-drawer.ledger-rows';
-import { DrawerTabPager } from './DrawerTabPager';
+import { DRAWER_PAGE_SIZE, DrawerTabPager } from './DrawerTabPager';
 import { LedgerTabFilters } from './LedgerTabFilters';
 import { LedgerTabRows } from './LedgerTabRows';
-
-/** Matches `CustomersPage.tsx`'s own `PER_PAGE` — the two screens page alike. */
-const PER_PAGE = 10;
 
 /**
  * Owns filter state (`type`, `search`, `range`, `page`) and the ledger
@@ -46,7 +43,7 @@ export function LedgerTab({
 
   const query = useCustomerLedgerQuery(userId, {
     page,
-    perPage: PER_PAGE,
+    perPage: DRAWER_PAGE_SIZE,
     type,
     search: querySearch,
     after: range?.from ? format(range.from, 'yyyy-MM-dd') : undefined,
@@ -97,7 +94,7 @@ export function LedgerTab({
       </div>
       <DrawerTabPager
         page={page}
-        perPage={PER_PAGE}
+        perPage={DRAWER_PAGE_SIZE}
         totalItems={totalItems}
         onPageChange={setPage}
         disabled={query.isFetching}

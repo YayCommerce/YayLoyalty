@@ -2,11 +2,8 @@ import { useState } from 'react';
 
 import { useCustomerRedemptionsQuery } from '@/lib/queries/customer.queries';
 import { toRedemptionRow } from '../customer-drawer.redemption-rows';
-import { DrawerTabPager } from './DrawerTabPager';
+import { DRAWER_PAGE_SIZE, DrawerTabPager } from './DrawerTabPager';
 import { RedemptionsTabRows } from './RedemptionsTabRows';
-
-/** Matches `LedgerTab.tsx`'s own `PER_PAGE` — every paged drawer tab pages alike. */
-const PER_PAGE = 10;
 
 /**
  * 3e — table only (the summary strip and "Rewards X could use now" are cut,
@@ -25,7 +22,7 @@ export function RedemptionsTab({
 }) {
   const [page, setPage] = useState(1);
 
-  const query = useCustomerRedemptionsQuery(userId, { page, perPage: PER_PAGE, scenario });
+  const query = useCustomerRedemptionsQuery(userId, { page, perPage: DRAWER_PAGE_SIZE, scenario });
 
   const rows = query.data?.data.map(toRedemptionRow) ?? [];
   const totalItems = query.data?.totalItems ?? 0;
@@ -37,7 +34,7 @@ export function RedemptionsTab({
       </div>
       <DrawerTabPager
         page={page}
-        perPage={PER_PAGE}
+        perPage={DRAWER_PAGE_SIZE}
         totalItems={totalItems}
         onPageChange={setPage}
         disabled={query.isFetching}

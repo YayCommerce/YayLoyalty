@@ -1,10 +1,8 @@
 import { Skeleton } from '@/components/ui/skeleton';
+import { DRAWER_PAGE_SIZE } from './tabs/DrawerTabPager';
 
 const STAT_COUNT = 5;
 const ACTION_COUNT = 3;
-/** Matches the real ledger page size (phase 06) — not the six rows 3b's
- *  artboard happened to draw, which assumed a six-row page. */
-const LEDGER_ROW_COUNT = 10;
 
 /**
  * 3b's loading state: identity (`CustomerDrawerHeader`) and, once built, the
@@ -31,7 +29,7 @@ export function CustomerDrawerSkeleton() {
         ))}
       </div>
       <div className="flex flex-col gap-2">
-        {Array.from({ length: LEDGER_ROW_COUNT }, (_, index) => (
+        {Array.from({ length: DRAWER_PAGE_SIZE }, (_, index) => (
           <Skeleton key={index} className="h-10 w-full" />
         ))}
       </div>
