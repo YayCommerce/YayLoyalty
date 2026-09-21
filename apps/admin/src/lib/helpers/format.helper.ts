@@ -56,6 +56,32 @@ export function parseWPCurrency(price: string | number) {
   }
 }
 
+/**
+ * Splits a stored UTC datetime into the { date, time } pair a date picker
+ * and time input take; null in, empty parts out. With joinStoredDateTime,
+ * the one conversion point for this shape: never a bare new Date() on the
+ * string, which most engines read as browser-local (code-standards.md §4).
+ */
+export function splitStoredDateTime(value: string | null | undefined): { date: string; time: string } {
+  if (!value) {
+    return { date: '', time: '' };
+  }
+
+  const [date = '', time = ''] = value.split(' ');
+
+  // HH:mm only; joinStoredDateTime restores the :00 seconds.
+  return { date, time: time.slice(0, 5) };
+}
+
+/** Reverse of splitStoredDateTime; a time-less date is midnight, no date is null. */
+export function joinStoredDateTime(date: string, time: string): string | null {
+  if (!date) {
+    return null;
+  }
+
+  return `${date} ${time || '00:00'}:00`;
+}
+
 export function parseWPDecimal(number: number) {
   const { thousand_sep, decimal_sep, num_decimals } = window.yayLoyaltyMeta.wcMeta.currency_data;
   const formattedNumber = number

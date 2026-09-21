@@ -17,9 +17,12 @@ defined( 'ABSPATH' ) || exit;
  * readonly in the schema, never on reading it from a request.
  *
  * Reads answer from dummy_fixture() for now: a fresh table holds only the
- * three built-ins, too few to build the Pro grouped table against. Writes
- * already go through $this->campaigns; swapping the reads back deletes
- * dummy_fixture()/find_dummy_row() and changes nothing in the SPA.
+ * three built-ins, too few to build the Pro grouped table against.
+ * create_item()/delete_item() already go through $this->campaigns.
+ * update_item() resolves and returns the fixture row without writing: a
+ * real write would vanish behind the fixture on the next read, and fixture
+ * ids 1-3 collide with real built-in ids. Swapping the reads back restores
+ * update_item()'s write and deletes dummy_fixture()/find_dummy_row().
  */
 final class CampaignRestController extends AbstractRestController {
 
@@ -172,11 +175,30 @@ final class CampaignRestController extends AbstractRestController {
     }
 
     public function update_item( \WP_REST_Request $request ) {
-        $campaign = $this->campaigns->find_campaign( (int) $request['id'] );
+        // Fixture only, no repository fallback: fixture ids 1-3 collide with real built-in ids.
+        $row = self::find_dummy_row( (int) $request['id'] );
 
-        if ( null === $campaign ) {
+        if ( null === $row ) {
             return $this->error_not_found( __( 'Campaign not found.', 'yayloyalty' ) );
         }
+
+        // The fixture row is the REST shape (decoded config/conditions), which from_row() cannot take.
+        $campaign = new Campaign(
+            $row['id'],
+            $row['name'],
+            $row['slug'],
+            $row['trigger'],
+            $row['status'],
+            $row['priority'],
+            $row['config'],
+            $row['conditions'],
+            $row['starts_at'],
+            $row['ends_at'],
+            $row['is_builtin'],
+            $row['created_by'],
+            $row['created_at'],
+            $row['updated_at']
+        );
 
         // Validate before any setter runs so a rejected request leaves the model untouched.
         if ( null !== $request['config'] && ! Campaign::config_is_valid( $campaign->get_trigger(), (array) $request['config'] ) ) {
@@ -219,16 +241,9 @@ final class CampaignRestController extends AbstractRestController {
         $campaign->set_updated_at( Dates::now() );
         $campaign->set_updated_by( get_current_user_id() );
 
-        $data = $campaign->to_row();
-
-        // Fixed at create time.
-        unset( $data['slug'], $data['trigger_type'], $data['created_at'], $data['created_by'], $data['is_builtin'] );
-
-        $this->campaigns->update( (int) $request['id'], $data );
-
-        $updated = $this->campaigns->find_campaign( (int) $request['id'] );
-
-        return null === $updated ? $campaign->to_array() : $updated->to_array();
+        // Swap point: no $this->campaigns->update() call; see the class docblock. When restored,
+        // strip slug/trigger_type/created_at/created_by/is_builtin from to_row() before writing.
+        return $campaign->to_array();
     }
 
     public function delete_item( \WP_REST_Request $request ) {

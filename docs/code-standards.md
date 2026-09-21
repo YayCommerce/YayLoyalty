@@ -45,6 +45,8 @@ Filters carry data. Actions cause side effects. Do not use a filter for its side
 
 Every `DATETIME` in this plugin is UTC. Conversion to the site timezone happens only at the edges: admin form rendering, email templates, REST responses intended for display. A timestamp that enters the database in site time is a bug that surfaces months later as an off-by-hours expiry.
 
+**Conversion pattern:** One conversion point per screen. Example: `CampaignEditorSchedule.tsx` reads raw UTC `starts_at`/`ends_at` from the form state, converts to site timezone at render time via `splitStoredDateTime()` for the date/time inputs, and joins them back to UTC at the form boundary via `joinStoredDateTime()` before sending to the API. Helpers: `src/lib/helpers/format.helper.ts` → `splitStoredDateTime( storedUtcString, siteTimezoneOffset ) → { date, time }` and `joinStoredDateTime( date, time, siteTimezoneOffset ) → storedUtcString`. This keeps conversion logic in one place and prevents off-by-one-day errors (e.g., "ending 30 November" stores through midnight starting 1 December, not 23:59:59 on the 30th).
+
 ## 5. Money — bind as `%s`, never `%f`
 
 Every `DECIMAL(19,4)` column is carried as a **string** end to end, and bound with `%s`.
