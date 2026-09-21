@@ -238,7 +238,9 @@ That is why the Lite build is a directory deletion rather than surgery on shared
 | Extra campaign triggers | `yayloyalty_campaign_triggers` |
 | Extra campaign config keys | `yayloyalty_campaign_config_whitelist` |
 | Extra reward types | `yayloyalty_reward_types` |
+| Trigger handlers for its types | `yayloyalty_register_trigger_handlers` |
 | Extra reward config keys | `yayloyalty_reward_config_whitelist` |
+| Reward handlers for its types | `yayloyalty_register_reward_handlers` |
 | To extend a resource's schema | `yayloyalty_rest_item_schema` |
 | To evaluate campaign conditions | `yayloyalty_campaign_conditions_evaluator` |
 | Other seams | `yayloyalty_max_manual_adjustment`, `yayloyalty_run_migrations`, `yayloyalty_localize_admin_data`, `yayloyalty_localize_meta`, `yayloyalty_pro_booted` |
@@ -302,7 +304,7 @@ A stripping build fails silently by nature, so every release is validated agains
 ```bash
 composer lint                          # phpcs (WPCS + PHPCompatibility)
 composer lint:fix                      # phpcbf
-composer test                          # phpunit — 99 tests: points engine, dashboard computation, PointsMath + shared vectors, campaign validation
+composer test                          # phpunit — 108 tests: points engine, reward engine scaffold, dashboard computation, PointsMath + shared vectors, campaign validation
 pnpm --filter @yayloyalty/admin-page lint   # eslint + prettier on SPA
 pnpm --filter @yayloyalty/admin-page test   # vitest — lib/points-math against the same vector file
 ./scripts/run.sh build [pro|lite]      # Full build — currently fails at tsc --noEmit due to #7 dangling imports
@@ -315,6 +317,8 @@ pnpm --filter @yayloyalty/admin-page test   # vitest — lib/points-math against
 `Engine\Points\*` reads campaigns through `CampaignRepository` and nothing else — no `$wpdb`, no WooCommerce globals, no current user, no `time()`, no capability checks. Everything about the event arrives on the `Context`, built by `ContextFactory` (the one class allowed to touch WooCommerce) or by hand in a test. `$at` is the event's time, never `now()`. Config gates (`min_subtotal`, a paused default under a multiplier) are **eligibility**: the engine falls through to the next campaign rather than earning zero or throwing.
 
 Every exclusion in `phpcs.xml.dist` carries a one-line reason. **An exclusion without a reason is a bug** — it means a sniff was disabled to make the build green rather than because it was wrong.
+
+`Engine\Rewards\*` follows the same rule; its `Context` carries the balance as an input so the engine never reads the ledger, and there is no `ContextFactory` for it yet.
 
 ### Known blind spot: the linter cannot see PHP 8 syntax **[REVIEW]**
 
