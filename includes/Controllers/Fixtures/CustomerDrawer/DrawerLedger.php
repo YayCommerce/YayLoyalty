@@ -28,24 +28,14 @@ final class DrawerLedger {
     private const CAMPAIGN_IDS = [ 1, 3, 4 ];
 
     /**
-     * @param array{page?:int,per_page?:int,type?:string,search?:string,after?:string,before?:string} $args
+     * @param array{page:int,per_page:int,type?:string,search?:string,after?:string,before?:string} $args
      * @return array{items: array<int, array<string, mixed>>, total: int, page: int, per_page: int, type_counts: array<string, int>}
      */
     public static function envelope( string $scenario, int $user_id, array $args ): array {
-        $rows        = self::rows( $scenario, $user_id );
-        $type_counts = self::type_counts( $rows );
-        $filtered    = self::apply_filters( $rows, $args );
+        $rows = self::rows( $scenario, $user_id );
 
-        $page     = max( 1, (int) ( $args['page'] ?? 1 ) );
-        $per_page = max( 1, (int) ( $args['per_page'] ?? 20 ) );
-
-        return [
-            'items'       => array_slice( $filtered, ( $page - 1 ) * $per_page, $per_page ),
-            'total'       => count( $filtered ),
-            'page'        => $page,
-            'per_page'    => $per_page,
-            'type_counts' => $type_counts,
-        ];
+        return CustomerDrawerFixture::page( self::apply_filters( $rows, $args ), $args )
+            + [ 'type_counts' => self::type_counts( $rows ) ];
     }
 
     /**
@@ -122,14 +112,12 @@ final class DrawerLedger {
 
     private static function apply_filters( array $rows, array $args ): array {
         $type   = $args['type'] ?? 'all';
-        $search = isset( $args['search'] ) ? strtolower( trim( (string) $args['search'] ) ) : '';
-        $after  = (string) ( $args['after'] ?? '' );
-        $before = (string) ( $args['before'] ?? '' );
+        $search = CustomerDrawerFixture::search_needle( $args );
 
         return array_values(
             array_filter(
                 $rows,
-                static function ( array $row ) use ( $type, $search, $after, $before ): bool {
+                static function ( array $row ) use ( $type, $search, $args ): bool {
                     if ( 'all' !== $type && LedgerQueryArgs::group_of( $row['type'] ) !== $type ) {
                         return false;
                     }
@@ -142,9 +130,7 @@ final class DrawerLedger {
                         }
                     }
 
-                    $date = substr( $row['created_at'], 0, 10 );
-
-                    return ( '' === $after || $date >= $after ) && ( '' === $before || $date <= $before );
+                    return CustomerDrawerFixture::in_date_window( $row['created_at'], $args );
                 }
             )
         );

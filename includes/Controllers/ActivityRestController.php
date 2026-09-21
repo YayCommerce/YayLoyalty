@@ -51,7 +51,6 @@ final class ActivityRestController extends AbstractRestController {
     }
 
     public function get_history( \WP_REST_Request $request ) {
-        $user_id  = (int) $request['id'];
         $group    = (string) $request['group'];
         $page     = (int) $request['page'];
         $per_page = (int) $request['per_page'];
@@ -74,19 +73,8 @@ final class ActivityRestController extends AbstractRestController {
             return $this->respond_paginated( $result );
         }
 
-        // Real path: no table, no rows, no error — an empty page is the
-        // truthful answer, not a degraded one. $user_id is unused here
-        // (nothing to look up yet) but stays validated via user_id_param().
-        unset( $user_id );
-
-        return $this->respond_paginated(
-            [
-                'items'    => [],
-                'total'    => 0,
-                'page'     => $page,
-                'per_page' => $per_page,
-            ]
-        );
+        // No table yet — `id` is validated by user_id_param() but nothing looks it up.
+        return $this->respond_empty_page( $request );
     }
 
     protected function define_item_schema(): array {

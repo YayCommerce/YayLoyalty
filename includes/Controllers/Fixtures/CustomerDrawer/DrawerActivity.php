@@ -46,27 +46,13 @@ final class DrawerActivity {
      * `ActivityRestController` answers from under `?scenario=`. `total` is
      * the FILTERED count (what the pager's "1–10 of N" reads), unlike
      * `counts.activity` on the customer payload, which always stays the
-     * unfiltered total the tab label shows. Filtering mirrors
-     * `DrawerLedger::apply_filters()` field-for-field (search lower-cased and
-     * trimmed, date compared on the `Y-m-d` prefix) so the two tabs behave
-     * identically from the admin's side.
+     * unfiltered total the tab label shows.
      *
      * @param array{page:int,per_page:int,search?:string,after?:string,before?:string} $args
      * @return array{items: array, total: int, page: int, per_page: int}
      */
     public static function envelope( string $scenario, string $group, array $args ): array {
-        $rows = self::apply_filters( self::rows( $scenario ), $group, $args );
-
-        $total    = count( $rows );
-        $page     = max( 1, $args['page'] );
-        $per_page = max( 1, $args['per_page'] );
-
-        return [
-            'items'    => array_slice( $rows, ( $page - 1 ) * $per_page, $per_page ),
-            'total'    => $total,
-            'page'     => $page,
-            'per_page' => $per_page,
-        ];
+        return CustomerDrawerFixture::page( self::apply_filters( self::rows( $scenario ), $group, $args ), $args );
     }
 
     /**
@@ -76,14 +62,12 @@ final class DrawerActivity {
      */
     private static function apply_filters( array $rows, string $group, array $args ): array {
         $types  = ActivityQueryArgs::event_types_for( $group );
-        $search = isset( $args['search'] ) ? strtolower( trim( (string) $args['search'] ) ) : '';
-        $after  = (string) ( $args['after'] ?? '' );
-        $before = (string) ( $args['before'] ?? '' );
+        $search = CustomerDrawerFixture::search_needle( $args );
 
         return array_values(
             array_filter(
                 $rows,
-                static function ( array $row ) use ( $types, $search, $after, $before ): bool {
+                static function ( array $row ) use ( $types, $search, $args ): bool {
                     if ( null !== $types && ! in_array( $row['event_type'], $types, true ) ) {
                         return false;
                     }
@@ -92,9 +76,7 @@ final class DrawerActivity {
                         return false;
                     }
 
-                    $date = substr( $row['occurred_at'], 0, 10 );
-
-                    return ( '' === $after || $date >= $after ) && ( '' === $before || $date <= $before );
+                    return CustomerDrawerFixture::in_date_window( $row['occurred_at'], $args );
                 }
             )
         );

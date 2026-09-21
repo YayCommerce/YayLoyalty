@@ -24,6 +24,9 @@ defined( 'ABSPATH' ) || exit;
  */
 final class DrawerRedemptions {
 
+    /** Every scenario checks out in the same currency — no multi-currency scenario is in scope. */
+    private const DEFAULTS = [ 'currency' => 'USD' ];
+
     /** The default identity's 6 rows — 3e's exact figures, verbatim. */
     private static function default_rows(): array {
         return [
@@ -119,16 +122,7 @@ final class DrawerRedemptions {
      * @return array{items: array, total: int, page: int, per_page: int}
      */
     public static function envelope( string $scenario, array $args ): array {
-        $rows     = self::rows( $scenario );
-        $page     = max( 1, $args['page'] );
-        $per_page = max( 1, $args['per_page'] );
-
-        return [
-            'items'    => array_slice( $rows, ( $page - 1 ) * $per_page, $per_page ),
-            'total'    => count( $rows ),
-            'page'     => $page,
-            'per_page' => $per_page,
-        ];
+        return CustomerDrawerFixture::page( self::rows( $scenario ), $args );
     }
 
     /**
@@ -143,7 +137,7 @@ final class DrawerRedemptions {
 
         // `default_rows()` is already newest-first, as written.
         if ( '' === DrawerProfiles::identity_of( $scenario ) ) {
-            return self::with_ids( self::default_rows() );
+            return CustomerDrawerFixture::with_ids( self::default_rows(), self::DEFAULTS );
         }
 
         $templates = self::templates();
@@ -159,19 +153,6 @@ final class DrawerRedemptions {
             ];
         }
 
-        return self::with_ids( $rows );
-    }
-
-    /** @return array<int, array<string, mixed>> */
-    private static function with_ids( array $rows ): array {
-        $count = count( $rows );
-
-        foreach ( $rows as $i => $row ) {
-            // Every scenario checks out in the same currency — no
-            // multi-currency scenario is in scope this wave.
-            $rows[ $i ] = [ 'id' => $count - $i ] + $row + [ 'currency' => 'USD' ];
-        }
-
-        return $rows;
+        return CustomerDrawerFixture::with_ids( $rows, self::DEFAULTS );
     }
 }

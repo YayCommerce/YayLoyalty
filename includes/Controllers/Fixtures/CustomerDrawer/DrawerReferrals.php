@@ -106,16 +106,9 @@ final class DrawerReferrals {
      * @return array{items: array, total: int, page: int, per_page: int, referral_link: string, campaign: array}
      */
     public static function envelope( string $scenario, array $args ): array {
-        $rows     = self::rows( $scenario );
-        $page     = max( 1, $args['page'] );
-        $per_page = max( 1, $args['per_page'] );
-        $code     = self::REFERRAL_CODES[ DrawerProfiles::identity_of( $scenario ) ];
+        $code = self::REFERRAL_CODES[ DrawerProfiles::identity_of( $scenario ) ];
 
-        return [
-            'items'         => array_slice( $rows, ( $page - 1 ) * $per_page, $per_page ),
-            'total'         => count( $rows ),
-            'page'          => $page,
-            'per_page'      => $per_page,
+        return CustomerDrawerFixture::page( self::rows( $scenario ), $args ) + [
             'referral_link' => "nordvik.example/r/{$code}",
             'campaign'      => self::CAMPAIGN,
         ];
@@ -132,7 +125,7 @@ final class DrawerReferrals {
         }
 
         if ( '' === DrawerProfiles::identity_of( $scenario ) ) {
-            return self::with_ids( self::default_rows() );
+            return CustomerDrawerFixture::with_ids( self::default_rows() );
         }
 
         $template = self::templates()[0];
@@ -155,17 +148,6 @@ final class DrawerReferrals {
             ];
         }
 
-        return self::with_ids( $rows );
-    }
-
-    /** @return array<int, array<string, mixed>> */
-    private static function with_ids( array $rows ): array {
-        $count = count( $rows );
-
-        foreach ( $rows as $i => $row ) {
-            $rows[ $i ] = [ 'id' => $count - $i ] + $row;
-        }
-
-        return $rows;
+        return CustomerDrawerFixture::with_ids( $rows );
     }
 }

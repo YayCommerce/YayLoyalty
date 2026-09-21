@@ -66,12 +66,63 @@ final class CustomerDrawerFixture {
         return defined( 'WP_DEBUG' ) && WP_DEBUG;
     }
 
+    /**
+     * One page of already-filtered rows in the shape `respond_paginated()` takes.
+     *
+     * @param array<int, array<string, mixed>> $rows
+     * @param array{page:int,per_page:int}    $args
+     * @return array{items: array, total: int, page: int, per_page: int}
+     */
+    public static function page( array $rows, array $args ): array {
+        $page     = max( 1, $args['page'] );
+        $per_page = max( 1, $args['per_page'] );
+
+        return [
+            'items'    => array_slice( $rows, ( $page - 1 ) * $per_page, $per_page ),
+            'total'    => count( $rows ),
+            'page'     => $page,
+            'per_page' => $per_page,
+        ];
+    }
+
+    /** Lower-cased, trimmed `search` arg; `''` when absent. */
+    public static function search_needle( array $args ): string {
+        return strtolower( trim( (string) ( $args['search'] ?? '' ) ) );
+    }
+
+    /** Whether a UTC datetime's `Y-m-d` day falls inside the `after`/`before` args (each optional, inclusive). */
+    public static function in_date_window( string $datetime, array $args ): bool {
+        $day    = substr( $datetime, 0, 10 );
+        $after  = (string) ( $args['after'] ?? '' );
+        $before = (string) ( $args['before'] ?? '' );
+
+        return ( '' === $after || $day >= $after ) && ( '' === $before || $day <= $before );
+    }
+
+    /**
+     * Ids counting down from `count($rows)`, newest first, plus any defaults
+     * every row shares.
+     *
+     * @param array<int, array<string, mixed>> $rows
+     * @param array<string, mixed>             $defaults
+     * @return array<int, array<string, mixed>>
+     */
+    public static function with_ids( array $rows, array $defaults = [] ): array {
+        $count = count( $rows );
+
+        foreach ( $rows as $i => $row ) {
+            $rows[ $i ] = [ 'id' => $count - $i ] + $row + $defaults;
+        }
+
+        return $rows;
+    }
+
     public static function customer( string $scenario, int $user_id ): array {
         return DrawerProfiles::to_wire( $scenario, $user_id );
     }
 
     /**
-     * @param array{page?:int,per_page?:int,type?:string,search?:string,after?:string,before?:string} $args
+     * @param array{page:int,per_page:int,type?:string,search?:string,after?:string,before?:string} $args
      * @return array{items: array, total: int, page: int, per_page: int, type_counts: array}
      */
     public static function ledger( string $scenario, int $user_id, array $args ): array {
