@@ -53,6 +53,9 @@ final class LedgerEntry extends AbstractModel {
     /** @var int|null */
     private $actor_id;
 
+    /** @var string|null Engine\Earning\IdempotencyKey string for system rows; null for manual adjustments. */
+    private $idempotency_key;
+
     /** @var string */
     private $created_at;
 
@@ -70,22 +73,24 @@ final class LedgerEntry extends AbstractModel {
         ?int $order_id = null,
         ?string $note = null,
         ?int $actor_id = null,
-        string $created_at = ''
+        string $created_at = '',
+        ?string $idempotency_key = null
     ) {
-        $this->id             = $id;
-        $this->user_id        = $user_id;
-        $this->points         = $points;
-        $this->balance_after  = $balance_after;
-        $this->type           = $type;
-        $this->source         = $source;
-        $this->reference_type = $reference_type;
-        $this->reference_id   = $reference_id;
-        $this->campaign_id    = $campaign_id;
-        $this->redemption_id  = $redemption_id;
-        $this->order_id       = $order_id;
-        $this->note           = $note;
-        $this->actor_id       = $actor_id;
-        $this->created_at     = $created_at;
+        $this->id              = $id;
+        $this->user_id         = $user_id;
+        $this->points          = $points;
+        $this->balance_after   = $balance_after;
+        $this->type            = $type;
+        $this->source          = $source;
+        $this->reference_type  = $reference_type;
+        $this->reference_id    = $reference_id;
+        $this->campaign_id     = $campaign_id;
+        $this->redemption_id   = $redemption_id;
+        $this->order_id        = $order_id;
+        $this->note            = $note;
+        $this->actor_id        = $actor_id;
+        $this->created_at      = $created_at;
+        $this->idempotency_key = $idempotency_key;
     }
 
     public static function from_row( array $row ): self {
@@ -103,31 +108,33 @@ final class LedgerEntry extends AbstractModel {
             self::cast_int( $row['order_id'] ?? null ),
             self::cast_string( $row['note'] ?? null ),
             self::cast_int( $row['actor_id'] ?? null ),
-            (string) ( $row['created_at'] ?? '' )
+            (string) ( $row['created_at'] ?? '' ),
+            self::cast_string( $row['idempotency_key'] ?? null )
         );
     }
 
     /** Insert payload; `id` is omitted so AUTO_INCREMENT assigns it. */
     public function to_row(): array {
         return [
-            'user_id'        => $this->user_id,
-            'points'         => $this->points,
-            'balance_after'  => $this->balance_after,
-            'type'           => $this->type,
-            'source'         => $this->source,
-            'reference_type' => $this->reference_type,
-            'reference_id'   => $this->reference_id,
-            'campaign_id'    => $this->campaign_id,
-            'redemption_id'  => $this->redemption_id,
-            'order_id'       => $this->order_id,
-            'note'           => $this->note,
-            'actor_id'       => $this->actor_id,
-            'created_at'     => $this->created_at,
+            'user_id'         => $this->user_id,
+            'points'          => $this->points,
+            'balance_after'   => $this->balance_after,
+            'type'            => $this->type,
+            'source'          => $this->source,
+            'reference_type'  => $this->reference_type,
+            'reference_id'    => $this->reference_id,
+            'campaign_id'     => $this->campaign_id,
+            'redemption_id'   => $this->redemption_id,
+            'order_id'        => $this->order_id,
+            'note'            => $this->note,
+            'actor_id'        => $this->actor_id,
+            'idempotency_key' => $this->idempotency_key,
+            'created_at'      => $this->created_at,
         ];
     }
 
     public function get_format(): array {
-        return [ '%d', '%d', '%d', '%s', '%s', '%s', '%d', '%d', '%d', '%d', '%s', '%d', '%s' ];
+        return [ '%d', '%d', '%d', '%s', '%s', '%s', '%d', '%d', '%d', '%d', '%s', '%d', '%s', '%s' ];
     }
 
     public function to_array(): array {
@@ -200,5 +207,10 @@ final class LedgerEntry extends AbstractModel {
 
     public function get_created_at(): string {
         return $this->created_at;
+    }
+
+    /** Null for manual adjustments, which are deliberately not idempotent. */
+    public function get_idempotency_key(): ?string {
+        return $this->idempotency_key;
     }
 }

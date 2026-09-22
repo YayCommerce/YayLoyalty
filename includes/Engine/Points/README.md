@@ -3,13 +3,13 @@
 Computes how many points an event earns and which campaign paid. **Writes nothing.**
 
 ```
-evaluate( string $trigger, Context $ctx, string $at ): Result
+evaluate( string $trigger, Context $ctx ): Result
 ```
 
-One trigger per call. Within a trigger, highest priority wins; across triggers, the caller stacks by calling once per trigger. `$at` is the event's UTC time (an order's creation date), never `now()` for a stored event; previews (`from_product`/`from_cart`) evaluate at `now()` by design.
+One trigger per call. Within a trigger, highest priority wins; across triggers, the caller stacks by calling once per trigger. Liveness is scored at `Context::occurred_at` — the event's UTC time (an order's creation date), never `now()` for a stored event; there is no separate timestamp argument. `ContextFactory::from_order()` throws when the order has no creation date. Previews (`from_product`/`from_cart`) evaluate at `now()` by design.
 
 ```
-1. CANDIDATES   CampaignRepository::live_for_trigger( $trigger, $at )   → priority DESC, id DESC
+1. CANDIDATES   CampaignRepository::live_for_trigger( $trigger, $ctx->get_occurred_at() )   → priority DESC, id DESC
                 filter: yayloyalty_campaign_candidates
 2. SELECT       first campaign whose conditions match AND whose handler says is_eligible()
                 filter: yayloyalty_campaign_matches
@@ -36,34 +36,15 @@ $engine    = new PointsEngine( Registry::with_lite_handlers( $campaigns ), $camp
 
 `Registry::with_lite_handlers()` fires `yayloyalty_register_trigger_handlers` so Pro can add its own triggers.
 
-## Call site 1 — award path (order listener, F01-4)
+## Call site 1 — award path
 
-```php
-$ctx    = ContextFactory::from_order( $order, $ledger->points_earned_today( $order->get_customer_id() ) );
-$result = $engine->evaluate( CampaignTrigger::PURCHASE, $ctx, $ctx->get_occurred_at() );
-
-if ( $result->is_awarded() ) {
-    // The caller writes the ledger through LedgerService. earn() and points_earned_today()
-    // are both F01-4's to add; only adjust() exists today. actor_id is null: a customer
-    // placing an order is not an actor.
-    $ledger_service->earn(
-        $ctx->get_user_id(),
-        $result->get_points(),
-        $result->get_source(),
-        $result->get_reference_type(),
-        $result->get_reference_id(),
-        $result->get_campaign()->get_id()
-    );
-}
-```
-
-Repeat for `first_order` and any other trigger the order satisfies; each is its own ledger row and its own idempotency key.
+Lives in `Engine/Earning/` (see its README): `Listeners\OrderListener` builds the Context, `EarningService::preview()` / `award()` run the two moments, `LedgerService::earn()` writes. The engine is never called with a hand-made timestamp.
 
 ## Call site 2 — product-page preview (F13/F15, not wired yet)
 
 ```php
 $ctx    = ContextFactory::from_product( $product, $qty, get_current_user_id() ?: null );
-$result = $engine->evaluate( CampaignTrigger::PURCHASE, $ctx, $ctx->get_occurred_at() );
+$result = $engine->evaluate( CampaignTrigger::PURCHASE, $ctx );
 
 return [ 'points' => $result->get_points() ]; // the integer, nothing else
 ```
@@ -81,4 +62,4 @@ return [ 'points' => $result->get_points() ]; // the integer, nothing else
 
 ## Tests
 
-`composer test` — 115 cases under `tests/unit/`, plain PHPUnit, no WordPress bootstrap (`tests/bootstrap.php` shims the hook functions): engine, the reward engine scaffold (`tests/unit/Rewards/`), PointsMath shared vectors, the dashboard services (`tests/unit/Dashboard/`), campaign validation (`tests/unit/Models/`) and the drawer's query-arg groupings/fixture helpers (`tests/unit/Controllers/`). Integration against real `WC_Order` objects is exercised manually via WP-CLI until a wp-phpunit harness exists.
+`composer test` — 152 cases under `tests/unit/` (27 incomplete by design: the earning-split invariants in `tests/unit/Earning/`, `tests/unit/Services/` and `tests/unit/ContextFactoryTest.php`), plain PHPUnit, no WordPress bootstrap (`tests/bootstrap.php` shims the hook functions): engine, the earning orchestration scaffold (`Engine/Earning/`), the reward engine scaffold (`tests/unit/Rewards/`), PointsMath shared vectors, the dashboard services (`tests/unit/Dashboard/`), campaign validation (`tests/unit/Models/`) and the drawer's query-arg groupings/fixture helpers (`tests/unit/Controllers/`). Integration against real `WC_Order` objects is exercised manually via WP-CLI until a wp-phpunit harness exists.

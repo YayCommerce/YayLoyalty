@@ -51,7 +51,7 @@ All referral tables (`referrals`, `referral_visits`) specified in data model; no
 
 | Feature | Spec | Status | Details |
 |---|---|---|---|
-| **Lite triggers** | `purchase`, `signup`, `review` | ⚠️ **COMPUTABLE, NOT FIRED** | `PointsEngine` + handlers score all three; nothing listens to WooCommerce events to call it (F01-4) |
+| **Lite triggers** | `purchase`, `signup`, `review` | ⚠️ **COMPUTABLE, NOT FIRED** | `PointsEngine` + handlers score all three; `Engine\Earning\Listeners\*` exist as stubs and are not registered at boot (F01-4) |
 | **Pro triggers** | `birthday`, `first_order`, `order_count`, `spend_milestone` | ⚠️ **OFFERABLE IN PRO, NOT FIREABLE** | Added to `CampaignTrigger::all()` by `YayLoyaltyPro`; Lite recognises them (`all_known()`) so a downgrade keeps the rows |
 | **Referral trigger** | `referral` | ⚠️ **RECOGNIZED, NOT FIREABLE** | Enum only; referral engine not built |
 | **Social trigger** | `social` | ⚠️ **RECOGNIZED, NOT FIREABLE** | Share-for-points not implemented |
@@ -79,14 +79,14 @@ All referral tables (`referrals`, `referral_visits`) specified in data model; no
 |---|---|---|---|
 | **Balance display** | Current spendable points | ✅ SHIPPED | REST `GET /customers/{id}`; SPA Customers page; TanStack Query |
 | **Customers list** | Admin view of all members | ✅ SHIPPED | Real `GET /customers` — search/filter/sort/paginate in SQL, not demo data; see Admin UI → Customers below |
-| **Pending points** | Awaiting order award | ❌ **COLUMN ONLY** | `customers.pending_points` exists and is inserted as 0; nothing writes it (no order handling yet) |
+| **Pending points** | Awaiting order award | ❌ **COLUMN ONLY** | `customers.pending_points` exists and is inserted as 0; `Engine\Earning\PendingPoints` and `CustomerRepository::apply_pending_delta()` are stubs (F01-4) |
 | **Lifetime earned** | Net earn total (unaffected by redeem/expire) | ✅ SHIPPED | Updated on earn/adjust; basis for tier (points mode) |
 | **Lifetime redeemed** | Total points spent (excluding refunds) | ✅ SHIPPED | Maintained by `LedgerService` from ledger type; no redemption flow writes REDEEM rows yet |
 | **Expiry** | Inactivity basis | ⚠️ **TRACKED, NOT ENFORCED** | Fields exist (`expires_at`, `reminder_sent_at`); no job runs |
 | **Expiry per-lot** (Pro) | Lot-based expiry | ❌ NOT STARTED | Lots table unimplemented; no lot tracking |
 | **Adjustment ceiling** | Per-role cap on one manual adjustment | ⚠️ **ENFORCED, NO UI** | `settings.advanced.adjustment_ceiling` (0 = unlimited) checked by `assert_ceiling()`; admins bypass; no settings field to edit it yet |
 | **Rebuild balances** | Replay ledger → recalculate customer row | ❌ NOT STARTED | `balance = SUM(ledger.points)` is the invariant; no rebuild routine or UI exists |
-| **GDPR erasure on account deletion** | Anonymize ledger, delete customer row | ✅ SHIPPED | `Engine\UserLifecycle` on `deleted_user`/`wpmu_delete_user` → `Services\CustomerErasureService`: ledger rows anonymized (`user_id`→0, `actor_id`/`note`→NULL, never deleted — see `data-model.md`), customers row deleted |
+| **GDPR erasure on account deletion** | Anonymize ledger, delete customer row | ❌ **NOT STARTED** | No `Engine\UserLifecycle` or `Services\CustomerErasureService` exist; no implementation |
 
 ### VIP Tiers
 
@@ -121,7 +121,7 @@ All referral tables (`referrals`, `referral_visits`) specified in data model; no
 | **Rewards** | ⚠️ PLACEHOLDER | Stub page; no catalog UI |
 | **Referral** | ⚠️ PLACEHOLDER | Stub page; referral program not built |
 | **VIP Tiers** | ⚠️ PLACEHOLDER | Stub page; no tier management UI |
-| **Settings** | ⚠️ PLACEHOLDER | Three stub tabs (general, emails, advanced); REST endpoint and `SettingsHelper` defaults exist (`general.enabled`, point labels) but each page renders a placeholder |
+| **Settings** | ⚠️ PLACEHOLDER | Three stub tabs (general, emails, advanced); REST endpoint and `SettingsHelper` defaults exist (`general.enabled`, point labels) but each tab renders an inline "not implemented yet" Card (Rewards/Referral/VIP render `PagePlaceholder`) |
 | **Capability gating** | ✅ FUNCTIONAL | Nav and routes filtered by `window.yayLoyaltyAdmin.capabilities`; Customers' "Adjust points"/"Export" bulk actions gated to `manage_points`/`view` via `<Can>`; backbone 403s surface as one toast |
 
 ---
@@ -133,20 +133,24 @@ Ordered by how much of the product each blocks, not by an assigned priority — 
 | Gap | What exists | What does not |
 |---|---|---|
 | **Drawer tabs without tables** | Customer drawer (`customers/:userId`) with `GET /customers/{id}/activity`, `/redemptions`, `/referrals` routes and Zod contracts | No `activity`, `redemptions` or `referrals` table — the real path always answers an empty envelope and `counts` stay `0`; `type_counts` on the ledger tab is `null` on the real path. Reset expiry / Export ledger have no endpoint (buttons disabled) |
-| **No order listener** | `PointsEngine` computes points for `purchase`/`signup`/`review`; `LedgerService::adjust()` writes (manual only); 46 engine unit tests | Nothing listens to WooCommerce events, calls the engine and records the result (F01-4). `LedgerService` has no `earn()` entry point yet |
-| **Campaign editor does not persist** | Pro edit form (`/campaigns/:id/edit`), `useUpdateCampaignMutation`, server-side validation of config + conditions | `CampaignRestController::update_item()` never calls the repository; the list/detail read from `dummy_fixture()`, so a real write would be invisible. No create form. Both SWAP POINTs resolve together |
+| **Campaign list/detail/performance unconditionally fixture-backed** | `GET /campaigns`, `GET /campaigns/{id}`, `GET /campaigns/{id}/performance` — dummy (22 rows) and performance respectively via `CampaignRestController` and `CampaignPerformanceFixture` | No switch: these ship in the production zip and are what a site sees until swapped for real data. Marked as swap points in controller docblocks |
+| **Campaign editor does not persist** | Pro edit form (`/campaigns/:id/edit`), `useUpdateCampaignMutation`, server-side validation of config + conditions | `CampaignRestController::update_item()` never calls the repository; PUT validates and echoes the campaign. No create form. Both SWAP POINTs resolve together |
+| **Award path is a scaffold** | `PointsEngine` computes points for `purchase`/`signup`/`review`; `LedgerService::adjust()` writes (manual only); `Engine/Earning/` fixes the shape — listeners, gates, `EarningService::preview()`/`award()`, `LedgerService::earn()`, single-column `idempotency_key` guard — with 27 incomplete tests as the spec | Every scaffold body is a `TODO(F01-4)` stub and the listeners are not registered at boot, so nothing listens to WooCommerce events yet |
 | **No redemption** | `rewards` table + `RewardEngine` scaffold (always denies `not_implemented`); `LedgerType::REDEEM` and refund types; `lifetime_redeemed` maintained | No `redemptions` table, no checkout integration, no REDEEM writer |
 | **No referral program** | `customers.referral_code` column; `referral` trigger recognised | No code generation, attribution, hold, or payout; `referrals` / `referral_visits` tables not created |
 | **No VIP tiers** | `customers.tier_id`, `tier_evaluated_at`, `tier_progress_value` columns; Admin Customers page shows cosmetic Tier column + filter (sample data only) | No `tiers` / `tier_history` tables, no evaluation, no downgrade job; sample Tier UI is a stand-in over `balance_range` for testing purposes |
+| **Drawer wire fields always null on real path** | Customer drawer carries `deleted_at`, `expiry.batches`, `negative_balance`, `loose_ends` — parsed through same Zod schema fixture and real paths | Fields exist on the wire for UI review; real path always `null` because `deleted_at` column, `lots`/`lot_allocations`, and activity table do not exist yet |
 | **Expiry not enforced** | `expires_at`, `reminder_sent_at` columns | No scheduled job expires points or sends reminders |
-| **`pending_points` never written** | Column exists, inserted as 0 | No order lifecycle handling to move points from pending to awarded |
+| **`pending_points` never written** | Column exists, inserted as 0; `PendingPoints::stage()`/`release()` stubs | No order lifecycle handling to move points from pending to awarded (F01-4) |
 | **No event outbox** | — | `events` table not created; no webhook delivery |
 | **`yayloyalty_table_schemas` seam unproven** | Filter wired in `Installer`, documented as a Pro seam | No Pro table exists yet, so the strip-a-Pro-table path has never run |
 | **`referral`, `social`, `renewal` triggers** | Recognised by `all_known()` for downgrade safety | Offered by no build; nothing can fire them |
-| **Placeholder pages** | Routes and nav for Rewards, Referral, VIP Tiers, Settings | Each renders `PagePlaceholder` |
+| **Placeholder pages** | Routes and nav for Rewards, Referral, VIP Tiers | Each renders `PagePlaceholder` |
+| **Settings tabs incomplete** | Stub tabs (general, emails, advanced); REST endpoint and `SettingsHelper` defaults exist | Each settings tab renders an inline "not implemented yet" Card (unlike Rewards/Referral/VIP) |
 | **No permission matrix** (Pro) | Seven caps on roles; `Capabilities::payload()` | No Settings → Permissions UI or `POST /settings/permissions`; roles are edited with a role plugin for now |
 | **No `uninstall.php`** | `Capabilities::uninstall()` | Nothing calls it; caps and options persist after delete |
 | **Licence routes share the menu cap** | AdminShell applies `get_capability()` (`view`) to menu, licence REST and `LicenseHandler` | A viewer can reach licence endpoints; needs a second adapter method in the shared shell |
+| **No SPA tests for drawer/editor/performance** | Controllers fixture-tested; points engine (46 unit tests + shared TS vectors); dashboard computation; PointsMath sync | Customer drawer, campaign editor, campaign performance have no client-side test coverage |
 
 ---
 
@@ -158,15 +162,15 @@ Two backbones landed 2026-09-11: capabilities (`Access\Capabilities`) and the po
 
 | # | TODO | Where | Ticket |
 |---|---|---|---|
-| 1 | Order lifecycle listener: award status → `ContextFactory::from_order()` → `PointsEngine::evaluate()` per trigger (`purchase`, then `first_order`…) → write the ledger. `actor_id` null. | new `Engine\OrderListener` (or similar) | F01-4 |
-| 2 | `LedgerService::earn( user_id, points, source, reference_type, reference_id, campaign_id )` — only `adjust()` exists. Idempotent on `uniq_ledger_event`. | `Services/LedgerService.php` | F01-4 |
-| 3 | `points_earned_today( user_id )` ledger read to feed `Context::points_earned_today` for `daily_cap`. | `Repositories/LedgerRepository.php` | F01-4 |
-| 4 | Refunds / clawbacks / cancellations (`refund_earn`, `refund_redeem`). | listener | F01-4 |
+| 1 | Order lifecycle listener: award status → `ContextFactory::from_order()` → `EarningService::preview()`/`award()` per trigger (`purchase`, then `first_order`…) → `LedgerService::earn()`. `actor_id` null. Scaffolded 2026-09-22; bodies are stubs, not registered at boot. | `Engine\Earning\Listeners\OrderListener` | F01-4 |
+| 2 | `LedgerService::earn( LedgerEntry $draft ): Outcome` — stubbed; idempotent on the single `idempotency_key` column (`Engine\Earning\IdempotencyKey`). Scaffold and invariants: `includes/Engine/Earning/README.md`. | `Services/LedgerService.php` | F01-4 |
+| 3 | `points_earned_today( user_id, at )` ledger read to feed `Context::points_earned_today` for `daily_cap` — stubbed. | `Repositories/LedgerRepository.php` | F01-4 |
+| 4 | Refunds / clawbacks / cancellations (`refund_earn`, `refund_redeem`). Attachment points exist (`OrderListener::on_refunded()`, `ReviewListener::on_unapproved()`); undesigned. | listener | F01-4 |
 | 5 | Review `one_per_product` and review `daily_cap` — need ledger reads, so they are the caller's, not `ReviewHandler`'s. Caller also sets `extra['verified_purchase']`. | review listener | F01-5 |
 | 6 | Pro trigger handlers (`birthday`, `first_order`, `order_count`, `spend_milestone`) registered on `yayloyalty_register_trigger_handlers`. | `Pro/` | Pro |
 | 7 | YayCurrency: return the order's rate on `yayloyalty_context_base_rate`. | integration | later |
 | 8 | Admin "why did this order earn?" preview route (`view`) may return the full `Result`; storefront earn preview (Store API, no cap) must return `get_points()` only. | REST / Store API | F09, F12, F13, F15 |
-| 9 | Guest scoring: `Campaign::conditions_match()` receives user id `0`; Pro's evaluator should treat 0 as "no customer" for customer-bound conditions. | `Pro/Services/ConditionsEvaluator.php` | Pro |
+| 9 | Guest scoring: the evaluator receives a `Context` with `user_id` null and no `CustomerFacts`; customer-bound conditions must not match. | `Pro/Services/ConditionsEvaluator.php` | Pro |
 | 10 | PHPStan level 6 is not in the repo; add it and run on `includes/Engine/Points` first. | tooling | — |
 | 11 | wp-phpunit harness for `CampaignRepository` (cache + liveness against real rows) and `ContextFactory` (real `WC_Order`). Verified by WP-CLI script today. | `tests/integration/` | — |
 
@@ -240,7 +244,7 @@ Two backbones landed 2026-09-11: capabilities (`Access\Capabilities`) and the po
 
 **Why triggers are safe to recognize early:** `CampaignTrigger::all()` is filtered (fireable); `all_known()` is not (recognized). A merchant can save a `birthday` campaign in Pro, downgrade to Lite, and upgrade back — the config persists untouched because Lite's `conditions_match()` fails open and `Campaign::validate_config()` preserves unknown trigger config wholesale.
 
-**Why the order listener is the blocker:** `PointsEngine` applies campaign config to an order and answers with points, campaign and ledger reference — but nothing calls it. F01-4 wires: award status → `ContextFactory::from_order()` → `evaluate()` per trigger → `LedgerService::earn()` (to be added). See `includes/Engine/Points/README.md` for both call sites.
+**Why the order listener is the blocker:** `PointsEngine` applies campaign config to an order and answers with points, campaign and ledger reference — but nothing calls it in production. The call path is scaffolded in `includes/Engine/Earning/` (listener → `ContextFactory::from_order()` → `EarningService::preview()`/`award()` → `LedgerService::earn()`); F01-4 fills the stub bodies and registers the listeners. See `includes/Engine/Earning/README.md` for the invariants and `includes/Engine/Points/README.md` for both engine call sites.
 
 ---
 

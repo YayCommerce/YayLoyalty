@@ -28,8 +28,8 @@ final class PointsEngineTest extends EngineTestCase {
         return new PointsEngine( Registry::with_lite_handlers( $repository ), $repository, new CapPolicy() );
     }
 
-    private function purchase( array $campaigns, ?Context $ctx = null, string $at = self::AT ): Result {
-        return $this->engine( $campaigns )->evaluate( CampaignTrigger::PURCHASE, $ctx ?? $this->context( [ $this->line( 100 ) ] ), $at );
+    private function purchase( array $campaigns, ?Context $ctx = null ): Result {
+        return $this->engine( $campaigns )->evaluate( CampaignTrigger::PURCHASE, $ctx ?? $this->context( [ $this->line( 100 ) ] ) );
     }
 
     /* --- Candidates --- */
@@ -120,7 +120,7 @@ final class PointsEngineTest extends EngineTestCase {
     public function test_unknown_trigger_throws(): void {
         $this->expectException( \InvalidArgumentException::class );
 
-        $this->engine( [] )->evaluate( 'birthday', $this->context( [] ), self::AT );
+        $this->engine( [] )->evaluate( 'birthday', $this->context( [] ) );
     }
 
     /* --- Filters --- */
@@ -165,7 +165,7 @@ final class PointsEngineTest extends EngineTestCase {
 
     public function test_signup_is_flat_and_references_the_user(): void {
         $campaign = $this->flat_campaign( CampaignTrigger::SIGNUP, [ 'points' => 100 ] );
-        $result   = $this->engine( [ $campaign ] )->evaluate( CampaignTrigger::SIGNUP, $this->context( [], 0.0, [], 1.0, 0, 42 ), self::AT );
+        $result   = $this->engine( [ $campaign ] )->evaluate( CampaignTrigger::SIGNUP, $this->context( [], 0.0, [], 1.0, 0, 42 ) );
 
         $this->assertSame( 100, $result->get_points() );
         $this->assertSame( ReferenceType::USER, $result->get_reference_type() );
@@ -182,7 +182,7 @@ final class PointsEngineTest extends EngineTestCase {
             ]
         );
         $ctx      = $this->context( [], 0.0, [], 1.0, 0, 7, [ ReviewHandler::EXTRA_VERIFIED_PURCHASE => true ], 901 );
-        $result   = $this->engine( [ $campaign ] )->evaluate( CampaignTrigger::REVIEW, $ctx, self::AT );
+        $result   = $this->engine( [ $campaign ] )->evaluate( CampaignTrigger::REVIEW, $ctx );
 
         $this->assertSame( 50, $result->get_points() );
         $this->assertSame( ReferenceType::COMMENT, $result->get_reference_type() );
@@ -200,7 +200,7 @@ final class PointsEngineTest extends EngineTestCase {
         );
         $ctx      = $this->context( [], 0.0, [], 1.0, 0, 7, [ ReviewHandler::EXTRA_VERIFIED_PURCHASE => false ], 901 );
 
-        $this->assertSame( Result::REASON_NOT_ELIGIBLE, $this->engine( [ $campaign ] )->evaluate( CampaignTrigger::REVIEW, $ctx, self::AT )->get_reason() );
+        $this->assertSame( Result::REASON_NOT_ELIGIBLE, $this->engine( [ $campaign ] )->evaluate( CampaignTrigger::REVIEW, $ctx )->get_reason() );
     }
 
     public function test_35_review_require_verified_absent_key_is_skipped(): void {
@@ -213,6 +213,6 @@ final class PointsEngineTest extends EngineTestCase {
         );
         $ctx      = $this->context( [], 0.0, [], 1.0, 0, 7, [], 901 );
 
-        $this->assertSame( Result::REASON_NOT_ELIGIBLE, $this->engine( [ $campaign ] )->evaluate( CampaignTrigger::REVIEW, $ctx, self::AT )->get_reason() );
+        $this->assertSame( Result::REASON_NOT_ELIGIBLE, $this->engine( [ $campaign ] )->evaluate( CampaignTrigger::REVIEW, $ctx )->get_reason() );
     }
 }

@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| **Version** | 0.6 — reward conditions added |
-| **Date** | 11 September 2026 |
+| **Version** | 0.7 — verified state and corrections |
+| **Date** | 22 September 2026 |
 | **Scope** | Every table YayLoyalty owns across Free, Pro and later releases, every column, and how they relate |
 | **Companion docs** | `project-roadmap.md` · `codebase-summary.md` · `system-architecture.md` |
 
@@ -122,7 +122,7 @@ Operators are **not** interchangeable — each type accepts only the operators l
 
 **`product_in_cart` / `category_in_cart` are order-level gates, not line-item scopes.** If the order contains a matching item, the order qualifies and the campaign's **full** point calculation applies to the **entire** order — these do **not** restrict points to the matching line items. Per-line scoping (excluding products/categories from the points base) belongs in `config` (`excluded_product_ids` / `excluded_category_ids`), not here.
 
-**Evaluation** (Pro; `Pro\Services\ConditionsEvaluator`, attached via the `yayloyalty_campaign_conditions_evaluator` seam). The seam passes only a customer id today, so the evaluator covers the customer-fact conditions — `user_role`, `customer_ids`, `lifetime_points`, `order_count`, `lifetime_spend` (same-currency, capped at the 100 newest paid orders). `product_in_cart` / `category_in_cart` fall back to purchase history until the award engine passes the order. `currency`, `country` and `payment_method` describe the order, not the customer, so they are reported as `unsupported_condition_type` — and, per Pro's fail-closed rule for anything it cannot evaluate, do not match — until that engine lands. `tier` is unevaluable until the tier system exists. Lite has no evaluator, so it treats any non-empty set as matching.
+**Evaluation** (Pro; `Pro\Services\ConditionsEvaluator`, attached via the `yayloyalty_campaign_conditions_evaluator` seam). The seam passes the engine `Context` — customer facts pre-read by `ContextFactory::customer_facts()` (`Engine\Points\CustomerFacts`) plus the order's own currency, coupons and lines — so the evaluator is meant to compare, never query. Interim: it still folds `explain()` over the user id, so today it covers the customer-fact conditions — `user_role`, `customer_ids`, `lifetime_points`, `order_count`, `lifetime_spend` (same-currency, capped at the 100 newest paid orders). `product_in_cart` / `category_in_cart` fall back to purchase history until the award engine passes the order. `currency`, `country` and `payment_method` describe the order, not the customer, so they are reported as `unsupported_condition_type` — and, per Pro's fail-closed rule for anything it cannot evaluate, do not match — until that engine lands. `tier` is unevaluable until the tier system exists. Lite has no evaluator, so it treats any non-empty set as matching.
 
 ## `yayloyalty_rewards` — ways to spend points (1.0)
 
@@ -154,7 +154,7 @@ Indexes: PK; `UNIQUE KEY uk_slug (slug)`; `KEY idx_catalog (status, sort_order)`
 
 Liveness: `status = 'active' AND (starts_at IS NULL OR starts_at <= now) AND (ends_at IS NULL OR ends_at > now)` — `Enums\Status::is_live_at()`, the same implementation campaigns use.
 
-No caching: `RewardRepository` queries the table directly, same reasoning as `CampaignRepository` — nothing yet knows the right cache key or invalidation, and the table is small. That belongs to whichever task builds the redemption engine.
+No caching: `RewardRepository` queries the table directly; nothing yet knows the right cache key or invalidation, and the table is small. That belongs to whichever task builds the redemption engine.
 
 ### config shapes
 
@@ -221,11 +221,11 @@ The `(1.1)`/`(1.2)`/`(Pro)` tags below mark when a column's *feature* ships, not
 | `tier_evaluated_at` | DATETIME | null (1.2) | When the tier was last evaluated; the downgrade job uses it to find customers whose evaluation window has ended. |
 | `tier_progress_value` | DECIMAL(19,4) | null (1.2) | Cached basis value for "$120 to Gold" in the launcher when the basis is rolling-12-month (which is expensive to compute per request). |
 | `referral_code` | VARCHAR(32) | null, unique (1.1) | Generated the first time the customer opens the referral UI. Upper-case, ambiguity-free alphabet. Rotatable; old codes live on in `referrals.referral_code`. |
-| `birthday_month` / `birthday_day` | TINYINT | null (Pro) | No year — only the annual trigger needs it, and it keeps the row out of sensitive-data territory. Idempotency for the yearly award is the ledger's `uniq_ledger_event` key with `source = 'birthday'`, `reference_type = 'birthday'`, `reference_id = year`. |
+| `birthday_month` / `birthday_day` | TINYINT | null (Pro) | No year — only the annual trigger needs it, and it keeps the row out of sensitive-data territory. Idempotency for the yearly award is the ledger's `idempotency_key` `earn:{user_id}:birthday:{year}:birthday`. |
 | `joined_at` | DATETIME | not null | When the row was created — the program join date for cohorts. |
 | `updated_at` | DATETIME | not null | |
 
-Indexes: PK; `expires_at`, `tier_id`, `balance`, `last_activity_at` (each a single-column index for sorting/filtering); UNIQUE `referral_code`; `idx_tier_review (tier_id, tier_evaluated_at)` (1.2) — the downgrade job's query is "customers in tier X whose evaluation window has ended", and the single-column `tier_id` index alone would still force scanning every customer in the tier.
+Indexes: PK; `expires_at`, `tier_id`, `balance`, `last_activity_at`, `lifetime_earned`, `lifetime_redeemed`, `joined_at` (each a single-column index for sorting/filtering); UNIQUE `referral_code`; `idx_tier_review (tier_id, tier_evaluated_at)` (1.2) — the downgrade job's query is "customers in tier X whose evaluation window has ended", and the single-column `tier_id` index alone would still force scanning every customer in the tier.
 
 **`deleted_at` (F09, wire field only — no column yet).** The customer drawer's `GET /customers/{id}`
 response carries `deleted_at: string | null` (`CustomerItemSchema::properties()`), always `null` on
@@ -236,7 +236,7 @@ scenario, ahead of the actual column + soft-delete write path landing.
 
 ## `yayloyalty_ledger` — every balance change (1.0)
 
-Append-only journal. Nothing updates or deletes rows except GDPR erasure (which sets `user_id = 0`, `actor_id = NULL`, clears `note`). One `earn` row per order, because stacking is highest-priority-only. The unique key `uniq_ledger_event` on `(user_id, source, reference_type, reference_id)` is the idempotency guarantee against duplicate hooks, status bouncing and webhook retries — keyed on `source` rather than `type` because several sources (`signup`, `milestone`, `renewal`) can share a `reference_type`, and `user_id` is part of the key because one reference can legitimately earn two different users (a referral order awards both the advocate and the friend).
+Append-only journal. Nothing updates or deletes rows except GDPR erasure (which sets `user_id = 0`, `actor_id = NULL`, clears `note`). One `earn` row per order **per trigger**: within a trigger stacking is highest-priority-only, across triggers an order may earn once each (`purchase`, then Pro's `first_order` …). The idempotency guarantee against duplicate hooks, status bouncing and webhook retries is one column under one unique index: `idempotency_key`, composed by `Engine\Earning\IdempotencyKey` as `{type}:{user_id}:{reference_type}:{reference_id}:{trigger}` (`earn:7:order:1234:purchase`). The user is in the key because one reference can pay two people (a referral order pays advocate and friend); the trigger because one order may earn once per trigger. The former composite `uniq_ledger_event (user_id, source, reference_type, reference_id)` is no longer in the DDL; `Installer::run_migrations()` drops it on upgraded sites (stubbed until F01-4 — until then both indexes coexist there, harmlessly, since only NULL-keyed adjust rows exist).
 
 | Column | Type | Null / default | Meaning |
 |---|---|---|---|
@@ -248,14 +248,15 @@ Append-only journal. Nothing updates or deletes rows except GDPR erasure (which 
 | `source` | VARCHAR(20) | not null | Why: values from `Enums\LedgerSource` — `order`, `signup`, `review`, `referral`, `birthday`, `milestone`, `social`, `renewal`, `manual`, `import`, `expiry`, `system`. Lets history and analytics group without decoding references. |
 | `reference_type` | VARCHAR(20) | null | Namespace of `reference_id`: values from `Enums\ReferenceType` — `order`, `refund`, `comment`, `redemption`, `referral`, `user`, `birthday`, `import`. |
 | `reference_id` | BIGINT UNSIGNED | null | The id in that namespace: order id for `earn`, refund id for both `refund_*` types (so each partial refund is its own row), comment id for review earn, redemption id for `redeem`, year for `birthday`. |
-| `campaign_id` | BIGINT UNSIGNED | null, idx | The campaign that produced an `earn` row. Null for everything else. Per-campaign analytics is `GROUP BY campaign_id`. |
+| `campaign_id` | BIGINT UNSIGNED | null, idx | The campaign that produced an `earn` row. Null for everything else. Per-campaign analytics is `GROUP BY campaign_id`. `GET /campaigns/{id}/performance` is fixture-backed today but will aggregate over this column when implemented. |
 | `redemption_id` | BIGINT UNSIGNED | null, idx | For `redeem` and `refund_redeem` rows: the claim this movement belongs to, so partial refunds can be tied back to one redemption. |
 | `order_id` | BIGINT UNSIGNED | null, idx | Denormalised for every order-related row (`earn`, `refund_earn`, `redeem`, `refund_redeem`), so "all points activity for order #1234" is one indexed query for the order screen and support. |
 | `note` | VARCHAR(500) | null | Admin reason on `adjust` rows only. System rows have no stored text: their description is composed at render time from `type`/`source`/reference, so it is translatable and never goes stale. |
 | `actor_id` | BIGINT UNSIGNED | null | Admin user for manual rows; null for the system. |
+| `idempotency_key` | VARCHAR(96) | null, unique | `Engine\Earning\IdempotencyKey::compose()` for system rows; NULL for `adjust`, which is deliberately not idempotent. The unique index is the guard; `LedgerService::earn()` attempts the insert and turns MySQL 1062 into `Outcome::duplicate`, a normal return. |
 | `created_at` | DATETIME | not null | UTC. |
 
-Indexes: PK; `idx_user_history (user_id, id)` for paged history and `ORDER BY id DESC LIMIT 1` balance lookups — `id`, not `created_at`, because same-second rows from one request would otherwise tie; UNIQUE `uniq_ledger_event (user_id, source, reference_type, reference_id)`; `campaign_id`; `redemption_id`; `order_id`; `(type, created_at)` for dashboard aggregates ("issued last 30 days").
+Indexes: PK; `idx_user_history (user_id, id)` for paged history and `ORDER BY id DESC LIMIT 1` balance lookups — `id`, not `created_at`, because same-second rows from one request would otherwise tie; UNIQUE `uniq_idempotency_key (idempotency_key)`; `campaign_id`; `redemption_id`; `order_id`; `(type, created_at)` for dashboard aggregates ("issued last 30 days").
 
 Not on this table any more: `expires_at`. Per-earning expiry lives in `lots` (below) so the ledger stays immutable.
 
@@ -270,7 +271,7 @@ nothing to page through yet (`includes/Controllers/ActivityRestController.php`).
 
 The row shape was decided during F09 anyway, so it is not invented later once a table exists to
 match — see `includes/Controllers/Fixtures/CustomerDrawer/DrawerActivity.php` (dev-only,
-`WP_DEBUG`-gated, the only thing that populates the endpoint today): `{ id, occurred_at,
+`WP_DEBUG`-gated via `CustomerDrawerFixture::requested()`, the only thing that populates the endpoint today): `{ id, occurred_at,
 event_type, data: {...}, actor_kind: 'staff'|'automatic'|'customer', actor_name: ?string,
 staff_only: bool }`. Seven `event_type`s: `account_created`, `points_adjusted`, `tier_changed`,
 `expiry_reset`, `reward_redeemed`, `balance_email_sent`, `expiring_soon_email_sent`. Same rule as
@@ -297,7 +298,7 @@ ledger:
   of `{ earned_from, earned_to, points, expires_at }`, or `null` on the Free build or when the
   store's expiry model has no batches. This is a **display-only preview** of what
   `yayloyalty_lots`/`yayloyalty_lot_allocations` (below) will eventually back — those tables are
-  still unimplemented (Pro 1.0), so nothing here reads or writes them.
+  still unimplemented (Pro 1.0), so nothing here reads or writes them. Fixture: `includes/Controllers/Fixtures/CustomerDrawer/DrawerExpiry.php`.
 - **`points_per_currency_unit`** (phase 03) — a single number (not the removed `worth` object),
   the rate 4b's/5a's money-equivalent figures multiply by. Restored narrowly after an earlier
   commit removed `worth` wholesale; see `includes/Controllers/Fixtures/CustomerDrawer/DrawerProfiles.php`.
@@ -470,11 +471,13 @@ Written in the same transaction as the fact that caused it, so a webhook can nev
 
 **Order meta** (HPOS-safe via `WC_Order::update_meta_data`): `_yayloyalty_points_pending`, `_yayloyalty_points_earned`, `_yayloyalty_campaign_id`, `_yayloyalty_points_redeemed`, `_yayloyalty_redeem_value`, `_yayloyalty_base_amount`, `_yayloyalty_referral_id` (1.1). Projections for the order edit screen, YayMail placeholders and the customer's order page; never read to compute a balance.
 
-**Options**: `yayloyalty_settings` (JSON: points naming, award status, expiry policy, tier basis and window, redemption placement, fraud limits), `yayloyalty_reviewed`, `yayloyalty_db_version`, `yayloyalty_caps_version`, `yayloyalty_upgrading` (install lock). Planned, not in code: `yayloyalty_design`, `yayloyalty_wizard_completed`.
+**User meta**: `_yayloyalty_opted_out` (truthy = the customer stopped earning; `Engine\Earning\ProgramGate`).
+
+**Options**: `yayloyalty_settings` (JSON: points naming, `general.excluded_roles`, award status, expiry policy, tier basis and window, redemption placement, fraud limits), `yayloyalty_reviewed`, `yayloyalty_db_version`, `yayloyalty_caps_version`, `yayloyalty_upgrading` (install lock). Planned, not in code: `yayloyalty_design`, `yayloyalty_wizard_completed`.
 
 **WooCommerce session**: `yayloyalty_redeem_points` carries the amount the shopper chose between cart and checkout until the order exists.
 
-**Cache**: none yet. Campaign lookups run uncached (see the campaigns table section above). A cache of live campaigns per trigger type, and its invalidation, belongs to whichever task builds the earning engine.
+**Cache**: `CampaignRepository` caches non-archived campaigns in `wp_cache` (TTL 3600 seconds) and `DashboardCache` uses transients for aggregates (above 10k members, TTL 5 minutes). Nothing else cached.
 
 **Action Scheduler jobs** (the only ones): daily inactivity expiry, daily reminders, referral hold completion (1.1), tier window evaluation (1.2), lot expiry (Pro), event delivery (2.0). None of them watch a clock to flip a status.
 
@@ -526,9 +529,9 @@ erDiagram
 - `customers.lifetime_redeemed = SUM(|redeem|) − SUM(refund_redeem)`.
 - `customers.pending_points = SUM(_yayloyalty_points_pending)` over the user's orders not yet awarded or cancelled.
 - `redemptions.restored_points ≤ redemptions.points`, always.
-- Exactly one `earn` row per order; exactly one `redeem` row per redemption.
+- Exactly one `earn` row per order per trigger; exactly one `redeem` row per redemption.
 - `ledger.balance_after` forms an unbroken chain per user.
-- Only the `Ledger` service inserts ledger rows or updates `customers` aggregates, and it does both in one transaction.
+- Only `LedgerService` inserts ledger rows or updates `customers` aggregates, and it does both in one transaction.
 
 ## Write paths, table by table
 
@@ -552,9 +555,9 @@ erDiagram
 
 These do not change the model; they record how it must be expressed in code so the invariants above survive contact with WordPress.
 
-**dbDelta index grammar.** Every index in `CREATE TABLE` statements must be written as `UNIQUE KEY name (cols)` or `KEY name (cols)`. `dbDelta` only recognises those forms; a bare `UNIQUE (cols)` succeeds on first install and then fails to normalise on every upgrade run, silently dropping the index. The ledger idempotency guarantee depends on `UNIQUE KEY` on `(user_id, source, reference_type, reference_id)` existing after upgrades, not just after installs.
+**dbDelta index grammar.** Every index in `CREATE TABLE` statements must be written as `UNIQUE KEY name (cols)` or `KEY name (cols)`. `dbDelta` only recognises those forms; a bare `UNIQUE (cols)` succeeds on first install and then fails to normalise on every upgrade run, silently dropping the index. The ledger idempotency guarantee depends on `UNIQUE KEY uniq_idempotency_key` existing after upgrades, not just after installs. `dbDelta` also never *drops* an index: superseded ones (`uniq_ledger_event`) go through `Installer::run_migrations()`.
 
-**NULLs are distinct in unique keys.** Because MySQL treats NULL as distinct, `adjust` rows — which carry NULL `reference_type`/`reference_id` — never collide on the ledger unique key. Manual adjustments are therefore deliberately **not** idempotent: an admin can grant the same points twice on purpose. This is intended behaviour, not a defect.
+**NULLs are distinct in unique keys.** Because MySQL treats NULL as distinct, `adjust` rows — which carry a NULL `idempotency_key` — never collide on the ledger unique key. Manual adjustments are therefore deliberately **not** idempotent: an admin can grant the same points twice on purpose. This is intended behaviour, not a defect.
 
 **`customers.user_id` is the PRIMARY KEY**, and it is what makes lazy row creation safe. `SELECT ... FOR UPDATE` on a row that does not yet exist takes a gap lock, not a row lock, so a check-then-create pattern lets two concurrent first-touch writes create two rows and permanently break `balance = SUM(ledger.points)`. Always materialise the row (insert-or-ignore on the primary key) **before** locking it.
 

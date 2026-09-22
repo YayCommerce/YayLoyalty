@@ -168,6 +168,18 @@ final class CustomerRepository extends AbstractRepository {
     }
 
     /**
+     * Moves customers.pending_points by a signed delta (stage +N, release or
+     * discard −N). Relative arithmetic like apply_delta(); the caller holds
+     * the row lock when it also writes the ledger. Never below zero.
+     *
+     * @throws QueryException When the write fails.
+     */
+    public function apply_pending_delta( int $user_id, int $delta ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
+        // TODO(F01-4): UPDATE … SET pending_points = GREATEST(0, pending_points + %d), updated_at = %s WHERE user_id = %d; throw QueryException on false.
+        throw new \RuntimeException( 'Not implemented' );
+    }
+
+    /**
      * The admin Customers list: search, filter, sort, paginate, INNER JOINed
      * with wp_users for name/email. A read-side exception to the one-table
      * rule (docs/code-standards.md § 6), which is about write ownership.
