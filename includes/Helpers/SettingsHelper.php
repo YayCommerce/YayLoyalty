@@ -22,6 +22,8 @@ class SettingsHelper {
                 'enabled'               => true,
                 'points_label_singular' => __( 'Point', 'yayloyalty' ),
                 'points_label_plural'   => __( 'Points', 'yayloyalty' ),
+                // Role slugs that never earn; read by Engine\Earning\ProgramGate.
+                'excluded_roles'        => [],
             ],
             'advanced' => [
                 // 0 = unlimited. Read via Capabilities::ceiling().
@@ -41,6 +43,7 @@ class SettingsHelper {
                 'enabled'               => 'bool',
                 'points_label_singular' => 'text',
                 'points_label_plural'   => 'text',
+                'excluded_roles'        => 'slug_list',
             ],
             'advanced' => [
                 'adjustment_ceiling' => 'int',
@@ -132,6 +135,9 @@ class SettingsHelper {
 
             case 'int':
                 return (int) $value;
+
+            case 'slug_list':
+                return array_values( array_filter( array_map( 'sanitize_key', (array) $value ) ) );
 
             case 'text':
             default:

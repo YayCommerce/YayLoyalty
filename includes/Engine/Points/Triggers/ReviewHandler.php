@@ -10,7 +10,7 @@ use YayLoyalty\Models\Campaign;
 
 defined( 'ABSPATH' ) || exit;
 
-/** Flat points for an approved review. Decides require_verified only; daily_cap is CapPolicy's, one_per_product the listener's. */
+/** Flat points for an approved review. Decides require_verified only; daily_cap is CapPolicy's, one_per_product an Engine\Earning\Gate's. */
 final class ReviewHandler implements TriggerHandler {
 
     /** Context extra the caller sets: whether the reviewer bought the product. */

@@ -11,7 +11,9 @@ defined( 'ABSPATH' ) || exit;
  * How many points an event earns and which campaign paid. One trigger per
  * call (triggers stack across calls, highest priority wins within one);
  * writes nothing. Pure: reads campaigns and the Context only, scored at
- * $at (the event time, never now()). No capability checks: runs from cron.
+ * the Context's occurred_at (the event time, never now()) — there is no
+ * separate timestamp argument, so a caller cannot score an order under
+ * today's campaigns by mistake. No capability checks: runs from cron.
  */
 final class PointsEngine {
 
@@ -32,12 +34,12 @@ final class PointsEngine {
 
     /**
      * @param string  $trigger A CampaignTrigger constant.
-     * @param Context $ctx     The event.
-     * @param string  $at      UTC MySQL datetime to evaluate liveness at.
+     * @param Context $ctx     The event; liveness is evaluated at its occurred_at.
      * @throws \InvalidArgumentException When no handler owns the trigger.
      */
-    public function evaluate( string $trigger, Context $ctx, string $at ): Result {
+    public function evaluate( string $trigger, Context $ctx ): Result {
         $handler = $this->registry->get( $trigger );
+        $at      = $ctx->get_occurred_at();
 
         /**
          * Live campaigns for a trigger, highest priority first.
@@ -60,7 +62,7 @@ final class PointsEngine {
              * @param Campaign $campaign
              * @param Context  $ctx
              */
-            $matches = apply_filters( 'yayloyalty_campaign_matches', $campaign->conditions_match( (int) $ctx->get_user_id() ), $campaign, $ctx );
+            $matches = apply_filters( 'yayloyalty_campaign_matches', $campaign->conditions_match( $ctx ), $campaign, $ctx );
 
             if ( ! $matches || ! $handler->is_eligible( $campaign, $ctx ) ) {
                 continue;

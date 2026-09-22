@@ -163,7 +163,7 @@ Pick the level by asking who needs the line, not how noisy it is:
 - `get_instance( ...$args )` silently ignores `$args` after the first call, so constructor injection and the trait are incompatible — the second caller silently gets the first caller's dependencies.
 - `get_instance()` is `public static`, so it hands global access to anything that wants it.
 
-**[REVIEW]** `LedgerService` is the only class that receives both `LedgerRepository` and `CustomerRepository`, and it is constructed in exactly two named places: `Engine\RestAPI::controllers()` (request-time REST) and `Database\InitYayLoyaltyCustomer::maybe_create()` (one-time install bootstrap, outside any request — needs real ledger rows so its starter customers don't break `balance = SUM(ledger.points)`). PHP has no package-private, so this is a convention plus these two named construction sites plus this review rule — **not** something the language enforces. Do not describe it as "structural"; a third site needs the same review, not a silent `new LedgerService(...)`.
+**[REVIEW]** `LedgerService` is the only class that receives both `LedgerRepository` and `CustomerRepository`, and it is constructed in exactly three named places: `Engine\RestAPI::controllers()` (request-time REST), `Database\InitYayLoyaltyCustomer::maybe_create()` (one-time install bootstrap, outside any request — needs real ledger rows so its starter customers don't break `balance = SUM(ledger.points)`) and `Engine\Earning\EarningService::build()` (the award path's composition root). PHP has no package-private, so this is a convention plus these three named construction sites plus this review rule — **not** something the language enforces. Do not describe it as "structural"; a fourth site needs the same review, not a silent `new LedgerService(...)`.
 
 ## 9. REST
 
@@ -314,7 +314,7 @@ A stripping build fails silently by nature, so every release is validated agains
 ```bash
 composer lint                          # phpcs (WPCS + PHPCompatibility)
 composer lint:fix                      # phpcbf
-composer test                          # phpunit — 115 tests: points engine, reward engine scaffold, dashboard computation, PointsMath + shared vectors, campaign validation, drawer query-arg groupings + fixture helpers
+composer test                          # phpunit — 152 tests (27 incomplete = the earning-split specification): points engine, earning orchestration scaffold, reward engine scaffold, dashboard computation, PointsMath + shared vectors, campaign validation, drawer query-arg groupings + fixture helpers
 pnpm --filter @yayloyalty/admin-page lint   # eslint + prettier on SPA
 pnpm --filter @yayloyalty/admin-page test   # vitest — lib/points-math against the same vector file
 ./scripts/run.sh build [pro|lite]      # Full build — currently fails at tsc --noEmit due to 3 pre-existing missing-dependency type errors

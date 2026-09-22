@@ -163,7 +163,7 @@ Two backbones landed 2026-09-11: capabilities (`Access\Capabilities`) and the po
 | # | TODO | Where | Ticket |
 |---|---|---|---|
 | 1 | Order lifecycle listener: award status → `ContextFactory::from_order()` → `PointsEngine::evaluate()` per trigger (`purchase`, then `first_order`…) → write the ledger. `actor_id` null. | new `Engine\OrderListener` (or similar) | F01-4 |
-| 2 | `LedgerService::earn( user_id, points, source, reference_type, reference_id, campaign_id )` — only `adjust()` exists. Idempotent on `uniq_ledger_event`. | `Services/LedgerService.php` | F01-4 |
+| 2 | `LedgerService::earn( LedgerEntry $draft ): Outcome` — stubbed; idempotent on the single `idempotency_key` column (`Engine\Earning\IdempotencyKey`). Scaffold and invariants: `includes/Engine/Earning/README.md`. | `Services/LedgerService.php` | F01-4 |
 | 3 | `points_earned_today( user_id )` ledger read to feed `Context::points_earned_today` for `daily_cap`. | `Repositories/LedgerRepository.php` | F01-4 |
 | 4 | Refunds / clawbacks / cancellations (`refund_earn`, `refund_redeem`). | listener | F01-4 |
 | 5 | Review `one_per_product` and review `daily_cap` — need ledger reads, so they are the caller's, not `ReviewHandler`'s. Caller also sets `extra['verified_purchase']`. | review listener | F01-5 |

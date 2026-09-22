@@ -3,6 +3,7 @@ namespace YayLoyalty\Models;
 
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Enums\Status;
+use YayLoyalty\Engine\Points\Context;
 use YayLoyalty\Utils\Dates;
 use YayLoyalty\Utils\Json;
 
@@ -189,11 +190,14 @@ class Campaign extends AbstractModel {
     }
 
     /**
-     * Whether this campaign's `conditions` match the customer. With no
-     * evaluator attached (Lite) this fails open: failing closed would silently
-     * disable every conditional campaign the moment a site downgraded from Pro.
+     * Whether this campaign's `conditions` match the event. The evaluator
+     * receives the Context — customer facts read up front by
+     * ContextFactory::customer_facts() plus the order's own currency, coupons
+     * and lines — so it compares and never queries. With no evaluator
+     * attached (Lite) this fails open: failing closed would silently disable
+     * every conditional campaign the moment a site downgraded from Pro.
      */
-    public function conditions_match( int $user_id ): bool {
+    public function conditions_match( Context $ctx ): bool {
         if ( empty( $this->conditions ) ) {
             return true;
         }
@@ -201,7 +205,7 @@ class Campaign extends AbstractModel {
         /**
          * Evaluator for campaign `conditions`; null in Lite. Internal Pro seam, not a public API.
          *
-         * @param object|null $evaluator Exposes evaluate( array $conditions, int $user_id ): bool.
+         * @param object|null $evaluator Exposes evaluate( array $conditions, Context $ctx ): bool.
          */
         $evaluator = apply_filters( 'yayloyalty_campaign_conditions_evaluator', null );
 
@@ -209,7 +213,7 @@ class Campaign extends AbstractModel {
             return true;
         }
 
-        return (bool) $evaluator->evaluate( $this->conditions, $user_id );
+        return (bool) $evaluator->evaluate( $this->conditions, $ctx );
     }
 
     /**

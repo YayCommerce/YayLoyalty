@@ -2,6 +2,7 @@
 namespace YayLoyalty\Services;
 
 use YayLoyalty\Database\Transaction;
+use YayLoyalty\Engine\Earning\Outcome;
 use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Enums\ReferenceType;
@@ -13,10 +14,12 @@ use YayLoyalty\Utils\Dates;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The only writer of the ledger and the customer aggregates. Enforced by
- * convention: constructed in exactly two places, Engine\RestAPI::controllers()
- * and Database\InitYayLoyaltyCustomer::maybe_create(). Name a third here
- * before adding it. Every movement type enters through record().
+ * The only writer of the ledger and the customer aggregates — the award
+ * writer of the two-moment split (docs/points-engine-scout.md). Enforced by
+ * convention: constructed in exactly three places, Engine\RestAPI::controllers(),
+ * Database\InitYayLoyaltyCustomer::maybe_create() and
+ * Engine\Earning\EarningService::build(). Name a fourth here before adding
+ * it. Manual rows enter through record(); system rows through earn().
  */
 final class LedgerService {
 
@@ -27,7 +30,7 @@ final class LedgerService {
     private $customers;
 
     /** @var LedgerEntry[] Events collected in-transaction, dispatched after commit. */
-    private $pending_events = [];
+    private $queued_events = [];
 
     public function __construct( LedgerRepository $ledger, CustomerRepository $customers ) {
         $this->ledger    = $ledger;
@@ -67,7 +70,31 @@ final class LedgerService {
     }
 
     /**
-     * The single write path.
+     * Commits one evaluated award: ledger row, customer aggregates, in one
+     * transaction under the customer's row lock.
+     *
+     * Preconditions: $draft is an EARN row with a non-null idempotency_key
+     * (Engine\Earning\IdempotencyKey::compose()), points > 0, created_at
+     * set by the caller. Nothing slow or externally fallible may run inside.
+     *
+     * Postconditions: exactly one of — Outcome::awarded( persisted row ) with
+     * balance_after = locked balance + points and aggregates moved; or
+     * Outcome::duplicate( existing row ) when the UNIQUE index rejected the
+     * insert (QueryException::is_duplicate_key()), which is a normal outcome,
+     * not an error, and leaves every aggregate untouched. Any other failure
+     * rethrows and Transaction::run() has rolled back. Events are queued and
+     * fire after commit through dispatch_events().
+     *
+     * @throws \InvalidArgumentException When the draft is not an earn row or lacks a key.
+     * @throws \YayLoyalty\Database\QueryException When a write other than a duplicate fails.
+     */
+    public function earn( LedgerEntry $draft ): Outcome { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
+        // TODO(F01-4): assert EARN + key; Transaction::run: ensure_row, lock_and_get, optional find_by_idempotency_key pre-check, try insert catch is_duplicate_key → Outcome::duplicate, apply_aggregates, queue event; then dispatch_events; return Outcome::awarded.
+        throw new \RuntimeException( 'Not implemented' );
+    }
+
+    /**
+     * The manual write path (no idempotency key, so no duplicate branch).
      *
      * @throws \InvalidArgumentException When the draft's vocabulary is invalid.
      * @throws \YayLoyalty\Database\QueryException When a write fails.
@@ -87,18 +114,6 @@ final class LedgerService {
 
                 $customer = $this->customers->lock_and_get( $user_id );
 
-                // Idempotency inside the lock. A SELECT, not INSERT IGNORE: IGNORE swallows real errors too.
-                $existing = $this->ledger->find_by_reference(
-                    $user_id,
-                    $draft->get_source(),
-                    $draft->get_reference_type(),
-                    $draft->get_reference_id()
-                );
-
-                if ( null !== $existing ) {
-                    return $existing;
-                }
-
                 $balance_after = $customer->get_balance() + $draft->get_points();
 
                 $to_insert = $draft->with_persisted( 0, $balance_after );
@@ -108,7 +123,7 @@ final class LedgerService {
 
                 $persisted = $to_insert->with_persisted( $insert_id, $balance_after );
 
-                $this->pending_events[] = $persisted;
+                $this->queued_events[] = $persisted;
 
                 return $persisted;
             }
@@ -155,10 +170,13 @@ final class LedgerService {
      * Fires collected events after commit, never inside the transaction: a
      * subscriber on another connection cannot see uncommitted rows, its
      * cache/HTTP writes cannot be rolled back, and it would hold the row lock.
+     * Known gap: when nested (exec_write, EarningService::award) this runs
+     * after the savepoint release, before the outer commit — gate on
+     * Transaction::depth() === 0 when the award path lands.
      */
     private function dispatch_events(): void {
-        $events               = $this->pending_events;
-        $this->pending_events = [];
+        $events              = $this->queued_events;
+        $this->queued_events = [];
 
         foreach ( $events as $entry ) {
             /**

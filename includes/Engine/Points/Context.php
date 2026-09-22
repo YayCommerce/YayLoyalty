@@ -56,6 +56,9 @@ final class Context {
     /** @var array<string, mixed> */
     private $extra;
 
+    /** @var CustomerFacts|null Null for a guest, or for a preview that did not read them. */
+    private $customer_facts;
+
     /**
      * @param ContextLineItem[]    $line_items
      * @param string[]             $coupon_codes
@@ -76,7 +79,8 @@ final class Context {
         ?int $order_id = null,
         ?int $comment_id = null,
         int $points_earned_today = 0,
-        array $extra = []
+        array $extra = [],
+        ?CustomerFacts $customer_facts = null
     ) {
         $this->user_id              = $user_id;
         $this->occurred_at          = $occurred_at;
@@ -92,6 +96,7 @@ final class Context {
         $this->comment_id           = $comment_id;
         $this->points_earned_today  = max( 0, $points_earned_today );
         $this->extra                = $extra;
+        $this->customer_facts       = $customer_facts;
     }
 
     public function get_user_id(): ?int {
@@ -156,6 +161,11 @@ final class Context {
 
     public function get_points_earned_today(): int {
         return $this->points_earned_today;
+    }
+
+    /** What conditions may compare against; null means "no customer facts", which order-only conditions can still match. */
+    public function get_customer_facts(): ?CustomerFacts {
+        return $this->customer_facts;
     }
 
     /**
