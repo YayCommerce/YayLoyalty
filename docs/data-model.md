@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| **Version** | 0.6 — reward conditions added |
-| **Date** | 11 September 2026 |
+| **Version** | 0.7 — verified state and corrections |
+| **Date** | 22 September 2026 |
 | **Scope** | Every table YayLoyalty owns across Free, Pro and later releases, every column, and how they relate |
 | **Companion docs** | `project-roadmap.md` · `codebase-summary.md` · `system-architecture.md` |
 
@@ -154,7 +154,7 @@ Indexes: PK; `UNIQUE KEY uk_slug (slug)`; `KEY idx_catalog (status, sort_order)`
 
 Liveness: `status = 'active' AND (starts_at IS NULL OR starts_at <= now) AND (ends_at IS NULL OR ends_at > now)` — `Enums\Status::is_live_at()`, the same implementation campaigns use.
 
-No caching: `RewardRepository` queries the table directly, same reasoning as `CampaignRepository` — nothing yet knows the right cache key or invalidation, and the table is small. That belongs to whichever task builds the redemption engine.
+No caching: `RewardRepository` queries the table directly; nothing yet knows the right cache key or invalidation, and the table is small. That belongs to whichever task builds the redemption engine.
 
 ### config shapes
 
@@ -225,7 +225,7 @@ The `(1.1)`/`(1.2)`/`(Pro)` tags below mark when a column's *feature* ships, not
 | `joined_at` | DATETIME | not null | When the row was created — the program join date for cohorts. |
 | `updated_at` | DATETIME | not null | |
 
-Indexes: PK; `expires_at`, `tier_id`, `balance`, `last_activity_at` (each a single-column index for sorting/filtering); UNIQUE `referral_code`; `idx_tier_review (tier_id, tier_evaluated_at)` (1.2) — the downgrade job's query is "customers in tier X whose evaluation window has ended", and the single-column `tier_id` index alone would still force scanning every customer in the tier.
+Indexes: PK; `expires_at`, `tier_id`, `balance`, `last_activity_at`, `lifetime_earned`, `lifetime_redeemed`, `joined_at` (each a single-column index for sorting/filtering); UNIQUE `referral_code`; `idx_tier_review (tier_id, tier_evaluated_at)` (1.2) — the downgrade job's query is "customers in tier X whose evaluation window has ended", and the single-column `tier_id` index alone would still force scanning every customer in the tier.
 
 **`deleted_at` (F09, wire field only — no column yet).** The customer drawer's `GET /customers/{id}`
 response carries `deleted_at: string | null` (`CustomerItemSchema::properties()`), always `null` on
@@ -248,7 +248,7 @@ Append-only journal. Nothing updates or deletes rows except GDPR erasure (which 
 | `source` | VARCHAR(20) | not null | Why: values from `Enums\LedgerSource` — `order`, `signup`, `review`, `referral`, `birthday`, `milestone`, `social`, `renewal`, `manual`, `import`, `expiry`, `system`. Lets history and analytics group without decoding references. |
 | `reference_type` | VARCHAR(20) | null | Namespace of `reference_id`: values from `Enums\ReferenceType` — `order`, `refund`, `comment`, `redemption`, `referral`, `user`, `birthday`, `import`. |
 | `reference_id` | BIGINT UNSIGNED | null | The id in that namespace: order id for `earn`, refund id for both `refund_*` types (so each partial refund is its own row), comment id for review earn, redemption id for `redeem`, year for `birthday`. |
-| `campaign_id` | BIGINT UNSIGNED | null, idx | The campaign that produced an `earn` row. Null for everything else. Per-campaign analytics is `GROUP BY campaign_id`. |
+| `campaign_id` | BIGINT UNSIGNED | null, idx | The campaign that produced an `earn` row. Null for everything else. Per-campaign analytics is `GROUP BY campaign_id`. `GET /campaigns/{id}/performance` is fixture-backed today but will aggregate over this column when implemented. |
 | `redemption_id` | BIGINT UNSIGNED | null, idx | For `redeem` and `refund_redeem` rows: the claim this movement belongs to, so partial refunds can be tied back to one redemption. |
 | `order_id` | BIGINT UNSIGNED | null, idx | Denormalised for every order-related row (`earn`, `refund_earn`, `redeem`, `refund_redeem`), so "all points activity for order #1234" is one indexed query for the order screen and support. |
 | `note` | VARCHAR(500) | null | Admin reason on `adjust` rows only. System rows have no stored text: their description is composed at render time from `type`/`source`/reference, so it is translatable and never goes stale. |
@@ -270,7 +270,7 @@ nothing to page through yet (`includes/Controllers/ActivityRestController.php`).
 
 The row shape was decided during F09 anyway, so it is not invented later once a table exists to
 match — see `includes/Controllers/Fixtures/CustomerDrawer/DrawerActivity.php` (dev-only,
-`WP_DEBUG`-gated, the only thing that populates the endpoint today): `{ id, occurred_at,
+`WP_DEBUG`-gated via `CustomerDrawerFixture::requested()`, the only thing that populates the endpoint today): `{ id, occurred_at,
 event_type, data: {...}, actor_kind: 'staff'|'automatic'|'customer', actor_name: ?string,
 staff_only: bool }`. Seven `event_type`s: `account_created`, `points_adjusted`, `tier_changed`,
 `expiry_reset`, `reward_redeemed`, `balance_email_sent`, `expiring_soon_email_sent`. Same rule as
@@ -297,7 +297,7 @@ ledger:
   of `{ earned_from, earned_to, points, expires_at }`, or `null` on the Free build or when the
   store's expiry model has no batches. This is a **display-only preview** of what
   `yayloyalty_lots`/`yayloyalty_lot_allocations` (below) will eventually back — those tables are
-  still unimplemented (Pro 1.0), so nothing here reads or writes them.
+  still unimplemented (Pro 1.0), so nothing here reads or writes them. Fixture: `includes/Controllers/Fixtures/CustomerDrawer/DrawerExpiry.php`.
 - **`points_per_currency_unit`** (phase 03) — a single number (not the removed `worth` object),
   the rate 4b's/5a's money-equivalent figures multiply by. Restored narrowly after an earlier
   commit removed `worth` wholesale; see `includes/Controllers/Fixtures/CustomerDrawer/DrawerProfiles.php`.
@@ -474,7 +474,7 @@ Written in the same transaction as the fact that caused it, so a webhook can nev
 
 **WooCommerce session**: `yayloyalty_redeem_points` carries the amount the shopper chose between cart and checkout until the order exists.
 
-**Cache**: none yet. Campaign lookups run uncached (see the campaigns table section above). A cache of live campaigns per trigger type, and its invalidation, belongs to whichever task builds the earning engine.
+**Cache**: `CampaignRepository` caches non-archived campaigns in `wp_cache` (TTL 3600 seconds) and `DashboardCache` uses transients for aggregates (above 10k members, TTL 5 minutes). Nothing else cached.
 
 **Action Scheduler jobs** (the only ones): daily inactivity expiry, daily reminders, referral hold completion (1.1), tier window evaluation (1.2), lot expiry (Pro), event delivery (2.0). None of them watch a clock to flip a status.
 
@@ -528,7 +528,7 @@ erDiagram
 - `redemptions.restored_points ≤ redemptions.points`, always.
 - Exactly one `earn` row per order; exactly one `redeem` row per redemption.
 - `ledger.balance_after` forms an unbroken chain per user.
-- Only the `Ledger` service inserts ledger rows or updates `customers` aggregates, and it does both in one transaction.
+- Only `LedgerService` inserts ledger rows or updates `customers` aggregates, and it does both in one transaction.
 
 ## Write paths, table by table
 

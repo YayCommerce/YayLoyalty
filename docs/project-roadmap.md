@@ -86,7 +86,7 @@ All referral tables (`referrals`, `referral_visits`) specified in data model; no
 | **Expiry per-lot** (Pro) | Lot-based expiry | ❌ NOT STARTED | Lots table unimplemented; no lot tracking |
 | **Adjustment ceiling** | Per-role cap on one manual adjustment | ⚠️ **ENFORCED, NO UI** | `settings.advanced.adjustment_ceiling` (0 = unlimited) checked by `assert_ceiling()`; admins bypass; no settings field to edit it yet |
 | **Rebuild balances** | Replay ledger → recalculate customer row | ❌ NOT STARTED | `balance = SUM(ledger.points)` is the invariant; no rebuild routine or UI exists |
-| **GDPR erasure on account deletion** | Anonymize ledger, delete customer row | ✅ SHIPPED | `Engine\UserLifecycle` on `deleted_user`/`wpmu_delete_user` → `Services\CustomerErasureService`: ledger rows anonymized (`user_id`→0, `actor_id`/`note`→NULL, never deleted — see `data-model.md`), customers row deleted |
+| **GDPR erasure on account deletion** | Anonymize ledger, delete customer row | ❌ **NOT STARTED** | No `Engine\UserLifecycle` or `Services\CustomerErasureService` exist; no implementation |
 
 ### VIP Tiers
 
@@ -121,7 +121,7 @@ All referral tables (`referrals`, `referral_visits`) specified in data model; no
 | **Rewards** | ⚠️ PLACEHOLDER | Stub page; no catalog UI |
 | **Referral** | ⚠️ PLACEHOLDER | Stub page; referral program not built |
 | **VIP Tiers** | ⚠️ PLACEHOLDER | Stub page; no tier management UI |
-| **Settings** | ⚠️ PLACEHOLDER | Three stub tabs (general, emails, advanced); REST endpoint and `SettingsHelper` defaults exist (`general.enabled`, point labels) but each page renders a placeholder |
+| **Settings** | ⚠️ PLACEHOLDER | Three stub tabs (general, emails, advanced); REST endpoint and `SettingsHelper` defaults exist (`general.enabled`, point labels) but each tab renders an inline "not implemented yet" Card (Rewards/Referral/VIP render `PagePlaceholder`) |
 | **Capability gating** | ✅ FUNCTIONAL | Nav and routes filtered by `window.yayLoyaltyAdmin.capabilities`; Customers' "Adjust points"/"Export" bulk actions gated to `manage_points`/`view` via `<Can>`; backbone 403s surface as one toast |
 
 ---
@@ -133,20 +133,24 @@ Ordered by how much of the product each blocks, not by an assigned priority — 
 | Gap | What exists | What does not |
 |---|---|---|
 | **Drawer tabs without tables** | Customer drawer (`customers/:userId`) with `GET /customers/{id}/activity`, `/redemptions`, `/referrals` routes and Zod contracts | No `activity`, `redemptions` or `referrals` table — the real path always answers an empty envelope and `counts` stay `0`; `type_counts` on the ledger tab is `null` on the real path. Reset expiry / Export ledger have no endpoint (buttons disabled) |
+| **Campaign list/detail/performance unconditionally fixture-backed** | `GET /campaigns`, `GET /campaigns/{id}`, `GET /campaigns/{id}/performance` — dummy (22 rows) and performance respectively via `CampaignRestController` and `CampaignPerformanceFixture` | No switch: these ship in the production zip and are what a site sees until swapped for real data. Marked as swap points in controller docblocks |
+| **Campaign editor does not persist** | Pro edit form (`/campaigns/:id/edit`), `useUpdateCampaignMutation`, server-side validation of config + conditions | `CampaignRestController::update_item()` never calls the repository; PUT validates and echoes the campaign. No create form. Both SWAP POINTs resolve together |
 | **No order listener** | `PointsEngine` computes points for `purchase`/`signup`/`review`; `LedgerService::adjust()` writes (manual only); 46 engine unit tests | Nothing listens to WooCommerce events, calls the engine and records the result (F01-4). `LedgerService` has no `earn()` entry point yet |
-| **Campaign editor does not persist** | Pro edit form (`/campaigns/:id/edit`), `useUpdateCampaignMutation`, server-side validation of config + conditions | `CampaignRestController::update_item()` never calls the repository; the list/detail read from `dummy_fixture()`, so a real write would be invisible. No create form. Both SWAP POINTs resolve together |
 | **No redemption** | `rewards` table + `RewardEngine` scaffold (always denies `not_implemented`); `LedgerType::REDEEM` and refund types; `lifetime_redeemed` maintained | No `redemptions` table, no checkout integration, no REDEEM writer |
 | **No referral program** | `customers.referral_code` column; `referral` trigger recognised | No code generation, attribution, hold, or payout; `referrals` / `referral_visits` tables not created |
 | **No VIP tiers** | `customers.tier_id`, `tier_evaluated_at`, `tier_progress_value` columns; Admin Customers page shows cosmetic Tier column + filter (sample data only) | No `tiers` / `tier_history` tables, no evaluation, no downgrade job; sample Tier UI is a stand-in over `balance_range` for testing purposes |
+| **Drawer wire fields always null on real path** | Customer drawer carries `deleted_at`, `expiry.batches`, `negative_balance`, `loose_ends` — parsed through same Zod schema fixture and real paths | Fields exist on the wire for UI review; real path always `null` because `deleted_at` column, `lots`/`lot_allocations`, and activity table do not exist yet |
 | **Expiry not enforced** | `expires_at`, `reminder_sent_at` columns | No scheduled job expires points or sends reminders |
 | **`pending_points` never written** | Column exists, inserted as 0 | No order lifecycle handling to move points from pending to awarded |
 | **No event outbox** | — | `events` table not created; no webhook delivery |
 | **`yayloyalty_table_schemas` seam unproven** | Filter wired in `Installer`, documented as a Pro seam | No Pro table exists yet, so the strip-a-Pro-table path has never run |
 | **`referral`, `social`, `renewal` triggers** | Recognised by `all_known()` for downgrade safety | Offered by no build; nothing can fire them |
-| **Placeholder pages** | Routes and nav for Rewards, Referral, VIP Tiers, Settings | Each renders `PagePlaceholder` |
+| **Placeholder pages** | Routes and nav for Rewards, Referral, VIP Tiers | Each renders `PagePlaceholder` |
+| **Settings tabs incomplete** | Stub tabs (general, emails, advanced); REST endpoint and `SettingsHelper` defaults exist | Each settings tab renders an inline "not implemented yet" Card (unlike Rewards/Referral/VIP) |
 | **No permission matrix** (Pro) | Seven caps on roles; `Capabilities::payload()` | No Settings → Permissions UI or `POST /settings/permissions`; roles are edited with a role plugin for now |
 | **No `uninstall.php`** | `Capabilities::uninstall()` | Nothing calls it; caps and options persist after delete |
 | **Licence routes share the menu cap** | AdminShell applies `get_capability()` (`view`) to menu, licence REST and `LicenseHandler` | A viewer can reach licence endpoints; needs a second adapter method in the shared shell |
+| **No SPA tests for drawer/editor/performance** | Controllers fixture-tested; points engine (46 unit tests + shared TS vectors); dashboard computation; PointsMath sync | Customer drawer, campaign editor, campaign performance have no client-side test coverage |
 
 ---
 

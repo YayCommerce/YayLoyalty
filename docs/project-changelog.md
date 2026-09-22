@@ -6,6 +6,14 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
 
 ## Unreleased
 
+### Changed — Docs (2026-09-22)
+
+- GDPR erasure feature corrected to "not started" (no implementation exists yet).
+- Build validation: tsc error count fixed to 3 (not 5; per_page/perPage mismatch was already resolved in commit 5a9def2).
+- Documented fixture-backed endpoints: WP_DEBUG-gated `?scenario=` dev fixtures vs. unconditional swap-point fixtures that ship in release zips.
+- System architecture seams: added `yayloyalty_register_trigger_handlers` and `yayloyalty_localize_admin_data` to filter list.
+- Data model indexes: added missing customers table indexes (lifetime_earned, lifetime_redeemed, joined_at).
+
 ### Added — Campaign performance page, Pro (2026-09-21, #16)
 
 - **Route:** `/campaigns/:id/performance` for `purchase`/`signup`/`review` campaigns only — tiles,
@@ -35,7 +43,7 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
   ledger aggregate for the rail's cost estimate; `updated_by` never set; `include_shipping` is a
   dead config key.
 
-### Changed — Customer drawer: one definition per fact, one implementation per pattern (2026-09-21)
+### Changed — Customer drawer: one definition per fact, one implementation per pattern (2026-09-21, #14)
 
 A review-driven cleanup of the drawer, wire-neutral on every endpoint (fixture payloads were
 diffed byte-for-byte before/after) and visually unchanged bar one 8px gap noted below.
@@ -117,9 +125,8 @@ envelope for: Activity log, Redemptions, Referrals (see `docs/data-model.md`).
 
 See `docs/data-model.md` (the new wire-block/endpoint-simplification notes) and
 `docs/codebase-summary.md` (three new REST controllers, the drawer's current file layout) for the
-reference-doc detail, and `plans/260918-0845-customer-drawer-wave-b/` for the full plan and
-phase-by-phase implementation notes, including every phase's live-verification results and code
-review findings.
+reference-doc detail. Full plan and phase-by-phase implementation notes (including live-verification
+results and code review findings) are in the planning phase directories.
 
 ### Added — F09 Customer Drawer, Wave A
 
@@ -154,5 +161,5 @@ exists, no column yet); the Activity log table itself (unpriced — the largest 
 surfaces).
 
 See `docs/data-model.md` (Activity log gap, `deleted_at`), `docs/codebase-summary.md` (drawer route,
-fixture location) for the reference-doc detail, and `plans/260917-1504-customer-drawer-wave-a/`
-for the full plan and phase-by-phase implementation notes.
+fixture location) for the reference-doc detail. Full plan and phase-by-phase implementation notes
+are in the planning phase directories.
