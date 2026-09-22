@@ -13,9 +13,9 @@ import type { AdjustFormState } from '../customers-adjust-points.form-state';
 
 /**
  * Lifetime toggle · customer-facing description toggle · notify-by-email
- * toggle. All three are UI-only this ticket — the submit payload stays
- * `{ points, note }`; nothing here is sent to the server yet. Reused by
- * both the single (count === 1) and bulk (count > 1) layouts.
+ * toggle. The lifetime toggle is wired into the submit payload; the other
+ * two stay UI-only this ticket — nothing they hold is sent to the server
+ * yet. Reused by both the single (count === 1) and bulk (count > 1) layouts.
  */
 export function AdjustPointsOptions({
   state,
@@ -29,7 +29,6 @@ export function AdjustPointsOptions({
 }) {
   return (
     <div className="flex flex-col gap-3">
-      {/* UI-only this ticket — see the file docblock. */}
       <label className="flex items-start gap-2.5">
         <Checkbox
           checked={state.adjustLifetime}

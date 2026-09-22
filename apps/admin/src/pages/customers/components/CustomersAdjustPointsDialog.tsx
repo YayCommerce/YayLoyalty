@@ -27,9 +27,9 @@ import { DEFAULT_ROW_FILTERS, type RowFilters } from '../customers-page.filter-r
  * from the Customers list). Plain useState, not react-hook-form: this stays
  * a flat set of fields with one shared blockers gate, no dependent forms.
  *
- * Lifetime toggle, customer-facing description and notify-by-email are
- * local component state ONLY — the submit payload is unchanged from before
- * this redesign (`{ points, note }`). See plan.md's scope guardrails.
+ * `adjustLifetime` is wired into the submit payload (`{ points, note,
+ * adjustLifetime }`). Customer-facing description and notify-by-email stay
+ * local component state ONLY, unwired — see plan.md's scope guardrails.
  */
 export function CustomersAdjustPointsDialog({
   open,
@@ -139,7 +139,11 @@ export function CustomersAdjustPointsDialog({
     }) && !bulk.isOverLimit;
 
   async function handleSubmit() {
-    const result = adjustPointsSchema.safeParse({ points: signedPoints(state), note: state.reason });
+    const result = adjustPointsSchema.safeParse({
+      points: signedPoints(state),
+      note: state.reason,
+      adjustLifetime: state.adjustLifetime,
+    });
 
     if (!result.success) {
       setValidationError(result.error.issues[0]?.message ?? __('Invalid input.', 'yayloyalty'));

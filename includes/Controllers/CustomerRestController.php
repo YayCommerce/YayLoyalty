@@ -112,6 +112,13 @@ final class CustomerRestController extends AbstractRestController {
                         'required'          => true,
                         'sanitize_callback' => 'sanitize_text_field',
                     ],
+                    // Off for a balance-only correction (e.g. undoing a mistaken adjustment)
+                    // that must not also inflate the earned total or tier progress.
+                    'adjust_lifetime' => [
+                        'description' => __( 'Whether this adjustment also moves lifetime_earned, not the balance only.', 'yayloyalty' ),
+                        'type'        => 'boolean',
+                        'default'     => true,
+                    ],
                 ],
             ]
         );
@@ -242,9 +249,10 @@ final class CustomerRestController extends AbstractRestController {
     }
 
     public function adjust_points( \WP_REST_Request $request ) {
-        $user_id = (int) $request['id'];
-        $points  = (int) $request['points'];
-        $note    = (string) $request['note'];
+        $user_id         = (int) $request['id'];
+        $points          = (int) $request['points'];
+        $note            = (string) $request['note'];
+        $adjust_lifetime = (bool) $request['adjust_lifetime'];
 
         if ( 0 === $points ) {
             return $this->error_invalid_arguments(
@@ -271,7 +279,7 @@ final class CustomerRestController extends AbstractRestController {
         }
 
         // actor_id comes from the session, never the request body.
-        $entry = $this->ledger_service->adjust( $user_id, $points, $note, get_current_user_id() );
+        $entry = $this->ledger_service->adjust( $user_id, $points, $note, get_current_user_id(), $adjust_lifetime );
 
         return $entry->to_array();
     }

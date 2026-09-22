@@ -49,7 +49,9 @@ export async function getCustomerLedger(userId: number, params: CustomerLedgerPa
 }
 
 export async function adjustCustomerPoints(userId: number, input: AdjustPointsInput): Promise<LedgerEntry> {
-  return ledgerEntrySchema.parse(await api.post(`customers/${userId}/adjust`, { json: input }).json());
+  const json = { points: input.points, note: input.note, adjust_lifetime: input.adjustLifetime };
+
+  return ledgerEntrySchema.parse(await api.post(`customers/${userId}/adjust`, { json }).json());
 }
 
 /**

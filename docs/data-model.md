@@ -211,7 +211,7 @@ The `(1.1)`/`(1.2)`/`(Pro)` tags below mark when a column's *feature* ships, not
 | `user_id` | BIGINT UNSIGNED | PK | `wp_users.ID`. Row existence = "is a member". |
 | `balance` | BIGINT | not null, `0` | Spendable points. Signed: a clawback after a refund can push it below zero, which the dashboard flags. Equals `SUM(ledger.points)` for the user. |
 | `pending_points` | BIGINT UNSIGNED | not null, `0` | Points on orders that exist but have not reached the award status. Shown as "pending" in the launcher; never spendable. Equals the sum of `_yayloyalty_points_pending` across the user's unawarded orders. |
-| `lifetime_earned` | BIGINT | not null, `0` | Net points ever earned: `earn` + positive `adjust` − `refund_earn`. Unaffected by `redeem` and `expire`. This, not `balance`, is the tier basis in points mode — so spending points never demotes anyone. |
+| `lifetime_earned` | BIGINT | not null, `0` | Net points ever earned: `earn` + positive `adjust` − `refund_earn`. A manual `adjust` only counts here when the admin left "Adjust lifetime totals too" on (`LedgerService::adjust()`'s `$adjust_lifetime`, default true) — off writes the ledger row and moves `balance` only. Unaffected by `redeem` and `expire`. This, not `balance`, is the tier basis in points mode — so spending points never demotes anyone. |
 | `lifetime_redeemed` | BIGINT UNSIGNED | not null, `0` | `|redeem|` − `refund_redeem`. Dashboard and per-customer stats. |
 | `lifetime_spend` | DECIMAL(19,4) | `0` (1.2) | Net paid order totals in base currency, maintained from order award/refund events. Tier basis in spend mode. The one aggregate not derivable from the ledger; rebuilt from orders. |
 | `last_activity_at` | DATETIME | null | Timestamp of the last `earn` or `redeem`. Drives inactivity expiry. |
@@ -525,7 +525,7 @@ erDiagram
 ## Invariants
 
 - `customers.balance = SUM(ledger.points)` per user.
-- `customers.lifetime_earned = SUM(earn) + SUM(adjust > 0) − SUM(|refund_earn|)`; `redeem` and `expire` never touch it.
+- `customers.lifetime_earned = SUM(earn) + SUM(adjust > 0 where adjust_lifetime) − SUM(|refund_earn|)`; `redeem` and `expire` never touch it.
 - `customers.lifetime_redeemed = SUM(|redeem|) − SUM(refund_redeem)`.
 - `customers.pending_points = SUM(_yayloyalty_points_pending)` over the user's orders not yet awarded or cancelled.
 - `redemptions.restored_points ≤ redemptions.points`, always.

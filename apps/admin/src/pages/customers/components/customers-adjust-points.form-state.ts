@@ -9,7 +9,7 @@ export type AdjustFormState = {
   amount: number; // always a positive magnitude; direction carries the sign
   confirmAmount: number;
   reason: string;
-  adjustLifetime: boolean; // UI-only this ticket — see the dialog's docblock
+  adjustLifetime: boolean; // wired into the submit payload — see the dialog's docblock
   showCustomerNote: boolean;
   customerNote: string;
   notifyByEmail: boolean;

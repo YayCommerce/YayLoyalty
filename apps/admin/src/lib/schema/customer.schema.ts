@@ -154,10 +154,11 @@ export type CustomerSortKey =
   'name' | 'tier' | 'balance' | 'pending' | 'lifetime' | 'last_activity' | 'expires' | 'referrals';
 export type CustomerSortDirection = 'asc' | 'desc';
 
-/** Request body for POST /customers/{id}/adjust. */
+/** Request body for POST /customers/{id}/adjust — `adjustLifetime` maps to the wire's `adjust_lifetime` in customer.api.ts. */
 export const adjustPointsSchema = z.object({
   points: z.number().int(),
   note: z.string().min(1),
+  adjustLifetime: z.boolean(),
 });
 
 export type AdjustPointsInput = z.infer<typeof adjustPointsSchema>;
