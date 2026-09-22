@@ -17,16 +17,23 @@ export function useAdjustPreviewBaseline(
   isSingle: boolean,
   singleCustomer: AdjustPointsPreviewCustomer | undefined,
   refetch: () => Promise<{ data?: AdjustPointsPreview }>,
+  isFetching: boolean,
 ) {
   const [baselineSnapshot, setBaselineSnapshot] = useState<AdjustPointsPreviewCustomer | null>(null);
   const [openedBalance, setOpenedBalance] = useState<number | null>(null);
 
   useEffect(() => {
-    if (baselineSnapshot === null && singleCustomer) {
+    // `enabled` flips true→true across a close/reopen without unmounting the
+    // query, so react-query serves last render's cached record synchronously
+    // (isFetching true) before the staleTime:0 refetch lands. Capturing that
+    // stale first render as the baseline is what makes a just-submitted
+    // adjustment look like a concurrent change on reopen — wait for the
+    // in-flight fetch to settle before treating a record as the baseline.
+    if (baselineSnapshot === null && singleCustomer && !isFetching) {
       setBaselineSnapshot(singleCustomer);
       setOpenedBalance(singleCustomer.balance);
     }
-  }, [baselineSnapshot, singleCustomer]);
+  }, [baselineSnapshot, singleCustomer, isFetching]);
 
   async function handleReload() {
     const fresh = await refetch();

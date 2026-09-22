@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { __ } from '@wordpress/i18n';
 
 import { adjustPointsSchema, type AdjustPointsInput, type AdjustPointsPreview } from '@/lib/schema/customer.schema';
@@ -85,7 +85,7 @@ export function CustomersAdjustPointsDialog({
   const singleCustomer = isSingle ? preview.data?.customers[0] : undefined;
   const pointsPerCurrencyUnit = preview.data?.points_per_currency_unit ?? 0;
 
-  const baseline = useAdjustPreviewBaseline(isSingle, singleCustomer, preview.refetch);
+  const baseline = useAdjustPreviewBaseline(isSingle, singleCustomer, preview.refetch, preview.isFetching);
   const { isStale, openedBalance } = baseline;
 
   const bulk = useBulkSelection({
@@ -102,14 +102,21 @@ export function CustomersAdjustPointsDialog({
     setState((current) => ({ ...current, ...patch }));
   }
 
+  // Keyed on `open`, not folded into handleOpenChange below: the caller may
+  // also close this dialog directly (CustomerDrawerActions/bulk-actions set
+  // `open` to false from the submit mutation's onSuccess, bypassing
+  // handleOpenChange entirely). A stale value carrying into the next
+  // adjustment would be a footgun either way.
+  useEffect(() => {
+    if (open) return;
+    setState(initialAdjustFormState());
+    setValidationError(null);
+    baseline.reset();
+    bulk.resetAcknowledged();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reset handles must run once per open->close edge, not on their own churn.
+  }, [open]);
+
   function handleOpenChange(next: boolean) {
-    if (!next) {
-      // A stale value carrying into the next adjustment would be a footgun.
-      setState(initialAdjustFormState());
-      setValidationError(null);
-      baseline.reset();
-      bulk.resetAcknowledged();
-    }
     onOpenChange(next);
   }
 
