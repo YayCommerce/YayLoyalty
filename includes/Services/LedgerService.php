@@ -17,7 +17,7 @@ defined( 'ABSPATH' ) || exit;
  * The only writer of the ledger and the customer aggregates — the award
  * writer of the two-moment split (docs/points-engine-scout.md). Enforced by
  * convention: constructed in exactly three places, Engine\RestAPI::controllers(),
- * Database\InitYayLoyaltyCustomer::maybe_create() and
+ * Database\InitYayLoyaltyCustomer::maybe_create() and (once its body lands)
  * Engine\Earning\EarningService::build(). Name a fourth here before adding
  * it. Manual rows enter through record(); system rows through earn().
  */

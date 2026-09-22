@@ -12,8 +12,8 @@ defined( 'ABSPATH' ) || exit;
  * call (triggers stack across calls, highest priority wins within one);
  * writes nothing. Pure: reads campaigns and the Context only, scored at
  * the Context's occurred_at (the event time, never now()) — there is no
- * separate timestamp argument, so a caller cannot score an order under
- * today's campaigns by mistake. No capability checks: runs from cron.
+ * separate timestamp argument; the Context is the only way a time gets in.
+ * No capability checks: runs from cron.
  */
 final class PointsEngine {
 
@@ -62,7 +62,7 @@ final class PointsEngine {
              * @param Campaign $campaign
              * @param Context  $ctx
              */
-            $matches = apply_filters( 'yayloyalty_campaign_matches', $campaign->conditions_match( $ctx ), $campaign, $ctx );
+            $matches = apply_filters( 'yayloyalty_campaign_matches', $this->conditions_match( $campaign, $ctx ), $campaign, $ctx );
 
             if ( ! $matches || ! $handler->is_eligible( $campaign, $ctx ) ) {
                 continue;
@@ -79,5 +79,34 @@ final class PointsEngine {
         }
 
         return Result::none( Result::REASON_NOT_ELIGIBLE );
+    }
+
+    /**
+     * Whether the campaign's `conditions` match the event. The evaluator
+     * receives the Context — customer facts read up front by
+     * ContextFactory::customer_facts() plus the order's own currency, coupons
+     * and lines — so it compares and never queries. With no evaluator
+     * attached (Lite) this fails open: failing closed would silently disable
+     * every conditional campaign the moment a site downgraded from Pro.
+     */
+    private function conditions_match( Campaign $campaign, Context $ctx ): bool {
+        $conditions = $campaign->get_conditions();
+
+        if ( empty( $conditions ) ) {
+            return true;
+        }
+
+        /**
+         * Evaluator for campaign `conditions`; null in Lite. Internal Pro seam, not a public API.
+         *
+         * @param object|null $evaluator Exposes evaluate( array $conditions, Context $ctx ): bool.
+         */
+        $evaluator = apply_filters( 'yayloyalty_campaign_conditions_evaluator', null );
+
+        if ( null === $evaluator || ! method_exists( $evaluator, 'evaluate' ) ) {
+            return true;
+        }
+
+        return (bool) $evaluator->evaluate( $conditions, $ctx );
     }
 }

@@ -22,7 +22,7 @@ final class PendingPointsTest extends TestCase {
         $this->markTestIncomplete( 'release() with no pending meta returns 0 and writes nothing — award must not depend on staging.' );
     }
 
-    public function test_discard_shares_the_release_flag_so_a_status_bounce_cannot_release_twice(): void {
-        $this->markTestIncomplete( 'discard() then release(): second returns 0.' );
+    public function test_release_on_cancel_then_on_award_moves_pending_once(): void {
+        $this->markTestIncomplete( 'release() from on_cancelled then from award: second returns 0; the flag is shared.' );
     }
 }

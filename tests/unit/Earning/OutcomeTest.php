@@ -19,15 +19,15 @@ final class OutcomeTest extends TestCase {
         $outcome = Outcome::duplicate( $this->entry() );
 
         $this->assertSame( Outcome::DUPLICATE, $outcome->get_status() );
-        $this->assertTrue( $outcome->is_duplicate() );
-        $this->assertFalse( $outcome->is_awarded() );
         $this->assertSame( 7, $outcome->get_entry()->get_id() );
+        $this->assertNull( $outcome->get_evaluation() );
         $this->assertSame( '', $outcome->get_reason() );
     }
 
     public function test_skipped_carries_the_reason_and_no_row(): void {
         $outcome = Outcome::skipped( 'program_paused' );
 
+        $this->assertSame( Outcome::SKIPPED, $outcome->get_status() );
         $this->assertSame( 'program_paused', $outcome->get_reason() );
         $this->assertNull( $outcome->get_entry() );
         $this->assertNull( $outcome->get_evaluation() );

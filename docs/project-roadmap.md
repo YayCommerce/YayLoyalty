@@ -170,7 +170,7 @@ Two backbones landed 2026-09-11: capabilities (`Access\Capabilities`) and the po
 | 6 | Pro trigger handlers (`birthday`, `first_order`, `order_count`, `spend_milestone`) registered on `yayloyalty_register_trigger_handlers`. | `Pro/` | Pro |
 | 7 | YayCurrency: return the order's rate on `yayloyalty_context_base_rate`. | integration | later |
 | 8 | Admin "why did this order earn?" preview route (`view`) may return the full `Result`; storefront earn preview (Store API, no cap) must return `get_points()` only. | REST / Store API | F09, F12, F13, F15 |
-| 9 | Guest scoring: `Campaign::conditions_match()` receives user id `0`; Pro's evaluator should treat 0 as "no customer" for customer-bound conditions. | `Pro/Services/ConditionsEvaluator.php` | Pro |
+| 9 | Guest scoring: the evaluator receives a `Context` with `user_id` null and no `CustomerFacts`; customer-bound conditions must not match. | `Pro/Services/ConditionsEvaluator.php` | Pro |
 | 10 | PHPStan level 6 is not in the repo; add it and run on `includes/Engine/Points` first. | tooling | — |
 | 11 | wp-phpunit harness for `CampaignRepository` (cache + liveness against real rows) and `ContextFactory` (real `WC_Order`). Verified by WP-CLI script today. | `tests/integration/` | — |
 

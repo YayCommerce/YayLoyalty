@@ -42,20 +42,13 @@ final class Outcome {
         return new self( self::SKIPPED, null, $evaluation, $reason );
     }
 
+    /** Produced by the writer (LedgerService::earn()), which never sees the evaluation — so none is carried. */
     public static function duplicate( LedgerEntry $existing ): self {
         return new self( self::DUPLICATE, $existing, null, '' );
     }
 
     public function get_status(): string {
         return $this->status;
-    }
-
-    public function is_awarded(): bool {
-        return self::AWARDED === $this->status;
-    }
-
-    public function is_duplicate(): bool {
-        return self::DUPLICATE === $this->status;
     }
 
     /** The persisted row for awarded, the pre-existing row for duplicate, null for skipped. */

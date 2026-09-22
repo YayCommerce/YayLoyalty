@@ -18,7 +18,7 @@ final class PendingPoints {
     /** The staged figure; its presence is the "already staged" key. */
     public const META_PENDING = '_yayloyalty_points_pending';
 
-    /** The release flag, separate from the figure: set exactly once, at award or discard. */
+    /** The release flag, separate from the figure: set exactly once, at award or cancel. */
     public const META_RELEASED = '_yayloyalty_points_released';
 
     /** Projections written at award for the order screen and emails; never read to compute a balance. */
@@ -48,20 +48,12 @@ final class PendingPoints {
      * by the figure's presence. Returns the released amount, 0 when nothing
      * was staged or it was released already — the award path ignores the
      * value and must succeed when staging never ran. Called inside the award
-     * transaction so the cache and the ledger move together.
+     * transaction so the cache and the ledger move together, and on cancel
+     * or failure, where the same flag stops a later status bounce into the
+     * award status from releasing twice.
      */
     public function release( int $order_id ): int { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
         // TODO(F01-4): wc_get_order; return 0 if META_RELEASED set or META_PENDING absent; set META_RELEASED = created UTC; apply_pending_delta( user, −pending ); return pending.
-        throw new \RuntimeException( 'Not implemented' );
-    }
-
-    /**
-     * Same as release(), for an order that will never be awarded (cancelled,
-     * failed). Same flag, so a later status bounce into the award status
-     * cannot release twice. The award itself is still guarded by the ledger.
-     */
-    public function discard( int $order_id ): int { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(F01-4): identical to release(); the shared body becomes a private method when both are written.
         throw new \RuntimeException( 'Not implemented' );
     }
 

@@ -247,7 +247,7 @@ public static function all_known() {
 **Lite has no birthday campaign trigger** but can still store `trigger = 'birthday'` and `config` wholesale. On upgrade, birthday campaigns work. On downgrade, they persist silently (safe).
 
 **Conditions:**
-- Lite's `Campaign::conditions_match()` returns **true** (no evaluator) → awards slightly too broadly
+- Lite's `PointsEngine::conditions_match()` returns **true** (no evaluator) → awards slightly too broadly
 - Pro's `ConditionsEvaluator::evaluate()` fails closed on unknown/unsupported type (`unsupported_condition_type`) → never awards on a condition it cannot check
 
 ---
@@ -269,7 +269,7 @@ These are **first-party, internal seams** for Pro to attach behavior. Not a thir
 | **`yayloyalty_register_trigger_handlers`** | Fired by `Engine\Points\Triggers\Registry::with_lite_handlers()` | Pro registers handlers for birthday, first_order, order_count, spend_milestone |
 | **`yayloyalty_register_reward_handlers`** | Fired by `Engine\Rewards\Handlers\Registry::with_lite_handlers()` | Pro registers a `RewardHandler` per reward type; unused until Pro handlers exist |
 | **`yayloyalty_rest_item_schema`** | Applied inside `AbstractRestController::get_item_schema()` | Pro extends campaign/reward schemas |
-| **`yayloyalty_campaign_conditions_evaluator`** | Called by Campaign::conditions_match() | Pro supplies ConditionsEvaluator instance (fails closed on unknown types) |
+| **`yayloyalty_campaign_conditions_evaluator`** | Called by `Engine\Points\PointsEngine::conditions_match()` with the engine `Context` | Pro supplies ConditionsEvaluator instance (fails closed on unknown types) |
 | **`yayloyalty_localize_admin_data`** | Called by `LocalizeHelper` to extend SPA payload | Pro adds `segments` (saved Customers-page filter sets) and paid feature flags |
 
 **Seam safety:** Match on `$rest_base` (route) and schema `title` — `yayloyalty_rest_item_schema` is shared across resources.

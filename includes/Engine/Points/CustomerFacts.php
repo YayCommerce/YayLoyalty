@@ -7,12 +7,10 @@ defined( 'ABSPATH' ) || exit;
  * What a campaign condition may know about the customer, read once by
  * ContextFactory before evaluation so the evaluator compares values and
  * queries nothing. Immutable. Absent (null on the Context) for a guest.
- * Roles are on the Context itself; the order's own facts (currency,
- * coupons, lines) are too.
+ * Identity and roles are on the Context itself; so are the order's own
+ * facts (currency, coupons, lines).
  */
 final class CustomerFacts {
-
-    private int $user_id;
 
     /** lifetime_earned, not balance: spending must not drop a customer below a threshold. */
     private int $lifetime_points;
@@ -36,7 +34,6 @@ final class CustomerFacts {
      * @param int[]                $purchased_category_ids
      */
     public function __construct(
-        int $user_id,
         int $lifetime_points,
         int $order_count,
         array $spend_by_currency,
@@ -44,17 +41,12 @@ final class CustomerFacts {
         array $purchased_category_ids,
         ?int $tier_id = null
     ) {
-        $this->user_id                = $user_id;
         $this->lifetime_points        = $lifetime_points;
         $this->order_count            = $order_count;
         $this->spend_by_currency      = $spend_by_currency;
         $this->purchased_product_ids  = array_values( array_map( 'intval', $purchased_product_ids ) );
         $this->purchased_category_ids = array_values( array_map( 'intval', $purchased_category_ids ) );
         $this->tier_id                = $tier_id;
-    }
-
-    public function get_user_id(): int {
-        return $this->user_id;
     }
 
     public function get_lifetime_points(): int {

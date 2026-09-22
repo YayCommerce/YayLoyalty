@@ -28,7 +28,7 @@ hook → Listener → ContextFactory::from_order( $order, points_earned_today ) 
 4. The index is the guard. A pre-check may skip a known duplicate; the insert is attempted and error 1062 becomes `Outcome::duplicate`, a normal return.
 5. `CustomerRepository::lock_and_get()` runs before the insert so `balance_after` stays an unbroken chain per customer.
 6. Nothing slow or externally fallible runs inside the transaction; hooks fire after commit.
-7. `Engine/Points/*` stays pure. `ProgramGate` is the one place on the path that reads settings and user meta; campaign conditions compare against `CustomerFacts` read once by `ContextFactory::customer_facts()`, so the Pro evaluator queries nothing at evaluation time.
+7. `Engine/Points/*` stays pure. `ProgramGate` is the one place on the path that reads settings and user meta; campaign conditions are meant to compare against `CustomerFacts` read once by `ContextFactory::customer_facts()`; until `ConditionsEvaluator::evaluate()` is rewritten it still queries (interim fold over the user id).
 
 ## Status
 

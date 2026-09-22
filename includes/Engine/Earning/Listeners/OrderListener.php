@@ -43,9 +43,9 @@ final class OrderListener {
         // TODO(F01-4): wc_get_order; same Context build as on_created; service->award( PURCHASE, ctx ); Pro adds first_order/order_count/spend_milestone via a filter over the trigger list.
     }
 
-    /** Pending discard for an order that will never award. */
+    /** Pending release for an order that will never award. */
     public function on_cancelled( int $order_id ): void {
-        // TODO(F01-4): pending->discard( order_id ).
+        // TODO(F01-4): pending->release( order_id ).
     }
 
     /**
