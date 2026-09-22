@@ -198,7 +198,7 @@ flowchart TD
 - Sentinel **present** in Pro ✓
 - No `Pro` namespace reference outside `includes/YayLoyalty.php` (Lite) ✓
 - Single entry chunk (no dynamic import side-effects) ✓
-- `tsc --noEmit` passes on the app's own code (3 pre-existing dependencies missing from `package.json` — `@radix-ui/react-alert-dialog`, `@emoji-mart/*`, `@radix-ui/react-progress` — are unrelated to any feature branch) ✓
+- `tsc --noEmit` passes on the app's own code (3 pre-existing errors from 2 files whose dependencies were never added to `package.json` — `@emoji-mart/data`/`@emoji-mart/react`, `@radix-ui/react-progress` — pre-existing on `main`, unrelated to any feature branch) ✓
 
 ### Strip Behavior, Not Vocabulary
 
@@ -319,7 +319,7 @@ GET /campaigns/:id   (read for detail pre-load)
     ↓
 CampaignRestController::get_item()
 
-POST /yayloyalty/v1/campaigns/:id   (or PUT, depending on implementation)
+POST|PUT|PATCH /yayloyalty/v1/campaigns/:id   (WP_REST_Server::EDITABLE)
     ↓
 CampaignRestController::update_item()  via  exec_write()
     ├─ CampaignTrigger::is_valid( trigger )        must be fireable in THIS build (all(), filtered)
@@ -353,6 +353,28 @@ CampaignRestController::create_item()  via  exec_write()
     ↓
 Response: Campaign::to_array()
 ```
+
+### Campaign performance (Pro-only) — fixture-backed, real endpoint shape
+
+**Route:** `/campaigns/:id/performance` (Pro-only; gated by `IS_PRO_BUILD` AND `requires(CAP.MANAGE_CAMPAIGNS)`). Supports `purchase`, `signup`, `review` only — any other trigger (e.g. `birthday`) 404s from both the loaded campaign client-side and the server's own trigger allowlist.
+
+**Access:** `CampaignTable`'s row menu ("View performance") and the campaign editor rail's "Performance" link, both rendered only when `hasPerformancePage(trigger)` is true.
+
+**Contract** (canonical version: `plans/260918-0834-campaign-performance-ui/phase-01-pro-performance-endpoint-and-fixture.md#architecture`): `GET /campaigns/{id}/performance` returns `{ window, totals, daily, skipped, estimate }`; `GET /campaigns/{id}/performance/entries` returns a paged/searchable row list (order/signup/review depending on trigger). **Nullability rule:** every nullable field means "not applicable to this trigger" or "not computable yet" — never `0`. A purchase-only total is `null` on a signup/review campaign; an average is `null` on zero entries (division by zero), not `0`. The SPA renders `null` as `—`, same rule the dashboard uses for its own null fields.
+
+```
+GET /campaigns/:id/performance
+    ↓
+CampaignPerformanceRestController::get_performance()
+    ├─ resolve_row()  404 for unknown id OR unsupported trigger (identical either way — no timing/error-shape difference an unauthorized trigger check could leak)
+    └─ [SWAP POINT: answers entirely from CampaignPerformanceFixture — deterministic-per-id, invented]
+    ↓
+Response validated by lib/schema/campaign-performance.schema.ts (zod)
+    ↓
+CampaignPerformance.tsx: useCampaignQuery (header) + useCampaignPerformanceQuery (tiles/chart/side panel) — independent; a summary failure never hides the header
+```
+
+**Swap procedure** (see the controller's own class docblock): `get_performance()` moves to a new `CampaignPerformanceRepository` aggregate over `ledger` rows carrying `campaign_id`, wrapped in `DashboardCache` (large-table per-request aggregate); `skipped`/`estimate` may ship `null` at first since both need re-evaluating every order in the window — the SPA already hides each panel on `null`. `get_entries()` moves to a paged `ledger` query (`WHERE campaign_id = ? ORDER BY created_at DESC, id DESC`) joined to `customers`, through `respond_paginated()` exactly as today. `CampaignPerformanceFixture` is then deleted. **No SPA change either way** — both routes are already real HTTP calls.
 
 ### Order award — NOT IMPLEMENTED (Engine built, Listener missing)
 

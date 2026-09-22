@@ -33,11 +33,13 @@ export function CampaignEditorSummaryRail({
   mutation,
   onCancel,
   onDraftIntent,
+  onPerformance,
 }: {
   mutation: UseMutationResult<Campaign, unknown, CampaignUpdateInput>;
   onCancel: () => void;
   /** Fallback for Safari < 15.4, which lacks SubmitEvent.submitter. */
   onDraftIntent: () => void;
+  onPerformance?: () => void;
 }) {
   const { watch, formState } = useFormContext<CampaignFormValues>();
   const { campaign } = useCampaignEditorContext();
@@ -124,9 +126,11 @@ export function CampaignEditorSummaryRail({
           <Button type="button" variant="link" disabled={busy} onClick={onCancel}>
             {__('Cancel', 'yayloyalty')}
           </Button>
-          <Button type="button" variant="link" disabled={busy}>
-            {__('Performance', 'yayloyalty')}
-          </Button>
+          {onPerformance && (
+            <Button type="button" variant="link" disabled={busy} onClick={onPerformance}>
+              {__('Performance', 'yayloyalty')}
+            </Button>
+          )}
         </div>
       </div>
     </div>

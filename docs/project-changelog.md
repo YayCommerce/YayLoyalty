@@ -6,6 +6,35 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
 
 ## Unreleased
 
+### Added — Campaign performance page, Pro (2026-09-21, #16)
+
+- **Route:** `/campaigns/:id/performance` for `purchase`/`signup`/`review` campaigns only — tiles,
+  daily chart, skipped/estimate side panel, paged + searchable entries table. Reached from
+  `CampaignTable`'s row menu and the editor rail, both behind `hasPerformancePage(trigger)`.
+- **Endpoint:** `Pro/Controllers/CampaignPerformanceRestController` — `GET /campaigns/{id}/performance`
+  and `.../performance/entries`, cap `MANAGE_CAMPAIGNS`, 404 for unknown id or unsupported trigger
+  alike. Answers from `CampaignPerformanceFixture` (deterministic per id); SWAP POINT and the swap
+  procedure are in `system-architecture.md` → "Campaign performance".
+- **Contract rule:** a `null` field means "not applicable to this trigger" or "not computable yet",
+  never `0`; the SPA renders `null` as `—`.
+- Also: `components/ui/custom/stat-tile.tsx` (tile without a delta line), `CampaignTable` row
+  menu, `campaign-labels.ts` extended.
+
+### Added — Campaign editor, Pro (2026-09-21, #13)
+
+- **Route:** `/campaigns/:id/edit` — six sections (Basics, Trigger, Reward, Conditions, Schedule,
+  Priority) plus a live summary rail. `react-hook-form` + `zodResolver` (first use in the SPA);
+  `useRouteLeaveGuard` blocks navigation with unsaved changes. Lite mounts a 404 at the route.
+- **Data layer:** `lib/schema/campaign.schema.ts` gained `campaignUpdateInputSchema`;
+  `updateCampaign()` / `useUpdateCampaignMutation()` added.
+- **Server:** `CampaignRestController::update_item()` now runs `Campaign::conditions_are_valid()`
+  as a real gate, validates the config whitelist and echoes the campaign — **without persisting**.
+  The read side still serves `dummy_fixture()`, so a persisted edit would be invisible; the two
+  SWAP POINTs are meant to be flipped together. "Add campaign" stays inert for the same reason.
+- **Known gaps:** no product/category/customer search endpoint (id entry only); no store-wide
+  ledger aggregate for the rail's cost estimate; `updated_by` never set; `include_shipping` is a
+  dead config key.
+
 ### Changed — Customer drawer: one definition per fact, one implementation per pattern (2026-09-21)
 
 A review-driven cleanup of the drawer, wire-neutral on every endpoint (fixture payloads were

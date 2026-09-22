@@ -2,7 +2,7 @@
 
 A loyalty program plugin for WooCommerce with points earning, rewards redemption, referral tracking, and VIP tier management. Shipped as Pro and Lite from one repository.
 
-**Status:** v1.0.0 in development. Core earning system (campaigns, ledger, balance) and reward definitions shipped. Referrals and tiers planned for later phases.
+**Status:** v1.0.0 in development. Core earning system (campaigns, ledger, balance) and reward definitions shipped; admin Dashboard, Customers list + per-customer drawer are live. Nothing awards points yet (no order listener) and no redemption flow exists. Referrals and tiers planned for later phases.
 
 ---
 
@@ -105,6 +105,8 @@ One repository, two zips. Lite = Pro minus `includes/Pro/` and SPA built with `B
 - Extra campaign triggers: birthday, first_order, order_count, spend_milestone
 - Campaign conditions: role, product, category, lifetime spend, order count
 - Conditions preview endpoint: POST `/campaigns/{id}/preview-conditions`
+- Campaign table + edit form (`/campaigns/:id/edit`; saves validate but do not persist yet) and performance page (`/campaigns/:id/performance`, fixture-backed)
+- Saved Customers-page segments: POST/DELETE `/customers/segments`
 - Advanced config: max_points_per_order, daily_cap, media_bonus_points
 - Reward types: fixed_coupon, percent_coupon, free_shipping, free_product (in addition to Lite's flexible_discount)
 - Dashboard: referral tile, tier distribution, campaign breakdown, top campaigns (`GET /dashboard/pro`)
