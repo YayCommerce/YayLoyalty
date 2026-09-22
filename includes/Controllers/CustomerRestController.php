@@ -2,7 +2,6 @@
 namespace YayLoyalty\Controllers;
 
 use YayLoyalty\Access\Capabilities;
-use YayLoyalty\Controllers\Fixtures\CustomerDrawer\CustomerDrawerFixture;
 use YayLoyalty\Controllers\Schemas\CustomerItemSchema;
 use YayLoyalty\Models\Customer;
 use YayLoyalty\Repositories\CustomerRepository;
@@ -86,7 +85,7 @@ final class CustomerRestController extends AbstractRestController {
                     'methods'             => \WP_REST_Server::READABLE,
                     'callback'            => fn( $request ) => $this->exec_read( [ $this, 'get_customer' ], $request ),
                     'permission_callback' => $this->requires( Capabilities::VIEW ),
-                    'args'                => array_merge( [ 'id' => $this->user_id_param() ], CustomerDrawerFixture::scenario_arg() ),
+                    'args'                => [ 'id' => $this->user_id_param() ],
                 ],
                 'schema' => [ $this, 'get_item_schema' ],
             ]
@@ -174,12 +173,6 @@ final class CustomerRestController extends AbstractRestController {
     public function get_customer( \WP_REST_Request $request ) {
         $user_id = (int) $request['id'];
 
-        $scenario = CustomerDrawerFixture::requested( $request );
-
-        if ( null !== $scenario ) {
-            return CustomerDrawerFixture::customer( $scenario, $user_id );
-        }
-
         return $this->format_customer( $user_id, $this->customers->find_by_user_id( $user_id ) );
     }
 
@@ -204,27 +197,23 @@ final class CustomerRestController extends AbstractRestController {
         return $base + [
             'name'                     => $user ? $user->display_name : '',
             'email'                    => $user ? $user->user_email : '',
-            // No `deleted_at` column exists (docs/data-model.md), so the real
-            // path can never report a deleted account — 4a is reachable only
-            // through `?scenario=deleted`. Not scheduled: Wave B is UI work on
-            // fixtures and does not add the column.
+            // No `deleted_at` column exists (docs/data-model.md), so this is
+            // always null until the column + soft-delete write path land.
             'deleted_at'               => null,
             'counts'                   => [
                 'ledger'      => $ledger_count,
                 // Zero is the TRUE count here, not a placeholder: no activity,
                 // redemptions or referrals table exists (docs/data-model.md),
-                // so there is nothing to count. The fixture path carries real
-                // per-scenario counts instead — see `DrawerProfiles::rows()`.
-                // Each of these becomes a query when its own table ships; they
-                // are three separate features, not one change.
+                // so there is nothing to count. Each of these becomes a query
+                // when its own table ships; they are three separate features,
+                // not one change.
                 'activity'    => 0,
                 'redemptions' => 0,
                 'referrals'   => 0,
             ],
             // Real path can never populate this: it's keyed off a deletion
-            // that only `?scenario=deleted` can ever report (see `deleted_at`
-            // above). Structured null, not an absent field — customer.schema.ts
-            // parses both paths identically.
+            // the real path cannot report (see `deleted_at` above). Structured
+            // null, not an absent field — customer.schema.ts parses this shape.
             'loose_ends'               => null,
             // Real path can never populate this either: it needs `lots`,
             // which doesn't exist yet (docs/data-model.md). `expires_at`

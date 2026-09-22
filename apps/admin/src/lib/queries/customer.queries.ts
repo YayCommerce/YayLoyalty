@@ -18,11 +18,10 @@ import {
 import type { AdjustPointsInput } from '@/lib/schema/customer.schema';
 
 export const CUSTOMER_QUERIES = {
-  /** `scenario` is part of the key — switching it must refetch, not serve the previous scenario's cache. */
-  detail: (userId: number, scenario?: string) =>
+  detail: (userId: number) =>
     queryOptions({
-      queryKey: ['customer', 'detail', userId, scenario ?? null],
-      queryFn: () => getCustomer(userId, scenario),
+      queryKey: ['customer', 'detail', userId],
+      queryFn: () => getCustomer(userId),
       enabled: userId > 0,
     }),
 
@@ -82,8 +81,8 @@ export const CUSTOMER_QUERIES = {
 
 /** ─── Hooks ─────────────────────────────────────────── */
 
-export function useCustomerQuery(userId: number, scenario?: string) {
-  return useQuery(CUSTOMER_QUERIES.detail(userId, scenario));
+export function useCustomerQuery(userId: number) {
+  return useQuery(CUSTOMER_QUERIES.detail(userId));
 }
 
 export function useCustomerLedgerQuery(userId: number, params: CustomerLedgerParams) {

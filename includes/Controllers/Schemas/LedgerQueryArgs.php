@@ -13,8 +13,7 @@ defined( 'ABSPATH' ) || exit;
  * Registered on every request, real path included, but the real path has no
  * SQL behind them yet (Wave B: cheap `WHERE`/`BETWEEN`/`LIKE` filters, an
  * expensive `GROUP BY` for per-type counts — two different costs, not
- * bundled). The WP_DEBUG-gated drawer fixture is the only thing that reads
- * them for now; the real handler accepts and ignores them, returning
+ * bundled). The real handler accepts and ignores them, returning
  * `type_counts: null` as the "server cannot filter yet" signal the SPA
  * renders a disabled filter row from.
  */

@@ -181,14 +181,14 @@ export function activityRewardRedeemedSubLine(reward: string, orderId: string): 
 export function activityBalanceEmailSubLine(subject: string): string {
   return sprintf(__('"%s"', 'yayloyalty'), subject);
 }
-/** `deadline` is derived client-side from `occurred_at` + `window_days` — not a fixture field. */
+/** `deadline` is derived client-side from `occurred_at` + `window_days`. */
 export function activityExpiringSoonEmailSubLine(windowDays: string, deadline: string): string {
   return sprintf(__('%1$s-day reminder · deadline was %2$s', 'yayloyalty'), windowDays, deadline);
 }
 
 /** Search placeholder for the activity tab's own filter row — distinct from
  *  the ledger's `SEARCH_PLACEHOLDER` (no "order number" here; matches the
- *  event text and who did it instead — see `DrawerActivity::matches_search()`). */
+ *  event text and who did it instead). */
 export const ACTIVITY_SEARCH_PLACEHOLDER = () => __('Search event or who did it', 'yayloyalty');
 
 /** 3d's footer note — load-bearing: stops an admin hunting for an adjustment here. */

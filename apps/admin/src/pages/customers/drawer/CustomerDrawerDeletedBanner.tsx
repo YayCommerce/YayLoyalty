@@ -7,8 +7,7 @@ import { deletedBannerBody, deletedBannerTitle } from './customer-drawer.panels.
  * 4a's banner: the deletion date, then why the ledger survives it.
  * `CustomerDrawer.tsx` only renders this (and its two sibling panels) once
  * `customer.deleted_at` and `customer.loose_ends` are both non-null — the
- * real path can never satisfy that (no `deleted_at` column), so this is
- * reachable only through `?scenario=deleted`.
+ * real path can never satisfy that today (no `deleted_at` column).
  */
 export function CustomerDrawerDeletedBanner({ customer }: { customer: Customer }) {
   if (!customer.deleted_at || !customer.loose_ends) return null;

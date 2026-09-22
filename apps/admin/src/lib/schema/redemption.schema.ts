@@ -8,8 +8,8 @@ import { paginatedSchema } from '@/lib/api/paginated';
  *
  * The real path always answers an empty envelope — no `yayloyalty_redemptions`
  * table exists yet (docs/data-model.md, 1.0, designed but not implemented).
- * The WP_DEBUG drawer fixture (`DrawerRedemptions.php`) is the only thing
- * that populates one for now; both parse through this same schema.
+ * When it ships, only the server handler changes — this schema is already
+ * the contract.
  */
 
 /** Matches `RedemptionsRestController`'s `status` enum — a display status,

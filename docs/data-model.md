@@ -231,8 +231,7 @@ Indexes: PK; `expires_at`, `tier_id`, `balance`, `last_activity_at` (each a sing
 response carries `deleted_at: string | null` (`CustomerItemSchema::properties()`), always `null` on
 the real path today — there is no `deleted_at` column on this table, so nothing can set it. It
 exists on the wire so the drawer's deleted-account treatment (disabled actions, "Balance at
-deletion" labelling) can be built and reviewed now against the WP_DEBUG `deleted` fixture
-scenario, ahead of the actual column + soft-delete write path landing.
+deletion" labelling) is already built, ahead of the actual column + soft-delete write path landing.
 
 ## `yayloyalty_ledger` — every balance change (1.0)
 
@@ -269,8 +268,7 @@ search and a grouped filter, but it always answers an empty envelope on the real
 nothing to page through yet (`includes/Controllers/ActivityRestController.php`).
 
 The row shape was decided during F09 anyway, so it is not invented later once a table exists to
-match — see `includes/Controllers/Fixtures/CustomerDrawer/DrawerActivity.php` (dev-only,
-`WP_DEBUG`-gated, the only thing that populates the endpoint today): `{ id, occurred_at,
+match — see `activity.schema.ts` / `ActivityRestController::define_item_schema()`: `{ id, occurred_at,
 event_type, data: {...}, actor_kind: 'staff'|'automatic'|'customer', actor_name: ?string,
 staff_only: bool }`. Seven `event_type`s: `account_created`, `points_adjusted`, `tier_changed`,
 `expiry_reset`, `reward_redeemed`, `balance_email_sent`, `expiring_soon_email_sent`. Same rule as
@@ -278,21 +276,20 @@ the ledger's `note`/system-row descriptions: no sentence is stored, `data` is st
 composes from `event_type` + `data` at render time.
 
 **Not stored anywhere today:** tier changes, expiry resets, and sent emails (balance /
-expiring-soon) have no persistence at all outside this fixture. Designing and building this
-table is unpriced future work — it is the largest gap this drawer surfaces, and is recorded here
-specifically so it does not go back to living only in a brainstorm report.
+expiring-soon) have no persistence at all. Designing and building this table is unpriced future
+work — it is the largest gap this drawer surfaces, and is recorded here specifically so it does
+not go back to living only in a brainstorm report.
 
 ## Customer drawer wire blocks not backed by a table — F09 Wave B
 
 Three more drawer surfaces (phases 03/04) ship a real, routed field on `GET /customers/{id}`
-today, fixture-populated under `?scenario=`, `null`/absent on the real path — none of them are new
-tables, all reuse `yayloyalty_customers` columns that already exist or values computed from the
-ledger:
+today, always `null`/absent on the real path — none of them are new tables, all reuse
+`yayloyalty_customers` columns that already exist or values computed from the ledger:
 
 - **`negative_balance`** (phase 04, labelled F23 in code) — `{ cause_ledger_id, cause_reason,
   cause_amount, reversal_status }`, explaining a negative balance in place (a refund reversed more
-  than was left). `null` whenever `balance >= 0`. See
-  `includes/Controllers/Fixtures/CustomerDrawer/DrawerNegativeBalance.php`.
+  than was left). `null` whenever `balance >= 0`; the real path would have to walk the ledger
+  backwards to assemble it, which it doesn't do yet.
 - **`expiry.batches`** (phase 03) — the Pro FIFO lot table on the expiring-points panel: an array
   of `{ earned_from, earned_to, points, expires_at }`, or `null` on the Free build or when the
   store's expiry model has no batches. This is a **display-only preview** of what
@@ -300,10 +297,10 @@ ledger:
   still unimplemented (Pro 1.0), so nothing here reads or writes them.
 - **`points_per_currency_unit`** (phase 03) — a single number (not the removed `worth` object),
   the rate 4b's/5a's money-equivalent figures multiply by. Restored narrowly after an earlier
-  commit removed `worth` wholesale; see `includes/Controllers/Fixtures/CustomerDrawer/DrawerProfiles.php`.
+  commit removed `worth` wholesale; see `CustomerRestController.php`.
 
-All three parse through the same Zod schema on the fixture and real paths (`customer.schema.ts`),
-same discipline as everything else in this drawer.
+All three parse through the same Zod schema (`customer.schema.ts`), same discipline as everything
+else in this drawer.
 
 ## `yayloyalty_redemptions` — one row per reward claim (1.0, NOT IMPLEMENTED)
 

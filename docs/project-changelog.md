@@ -6,6 +6,28 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
 
 ## Unreleased
 
+### Removed — Customer drawer `?scenario=` fixture system (2026-09-22)
+
+The drawer's UI had been fully verified against every fixture scenario, so the WP_DEBUG-gated
+dev-only data source is no longer needed — only the real path remains.
+
+- **Deleted:** `includes/Controllers/Fixtures/CustomerDrawer/` (9 PHP classes: `CustomerDrawerFixture`,
+  `DrawerProfiles`, `DrawerLedger`, `DrawerLedgerGenerator`, `DrawerActivity`, `DrawerExpiry`,
+  `DrawerNegativeBalance`, `DrawerRedemptions`, `DrawerReferrals`) and their unit test.
+- **Server:** the five drawer controllers (`CustomerRestController`, `LedgerRestController`,
+  `ActivityRestController`, `RedemptionsRestController`, `ReferralsRestController`) no longer
+  register a `scenario` arg or branch on it — each now runs only the real path that was already
+  there (honest empty envelopes for Activity/Redemptions/Referrals; `null` blocks for
+  `deleted_at`/`expiry`/`negative_balance` — none of those tables/columns exist yet, see
+  `data-model.md`).
+- **SPA:** `useDevScenario()` (`hooks/useDevScenario.ts`) is no longer called anywhere under the
+  drawer — it is still used by the Dashboard page, so the hook itself stays. All drawer api/query
+  functions dropped their `scenario` parameter.
+- **No behavior change** on the real path: every response byte is identical to a pre-change
+  request made without `?scenario=`.
+- Wire shapes the fixtures documented (activity rows, `negative_balance`, `expiry.batches`,
+  redemption/referral rows) remain fully documented in `data-model.md` — nothing was lost.
+
 ### Added — Campaign performance page, Pro (2026-09-21, #16)
 
 - **Route:** `/campaigns/:id/performance` for `purchase`/`signup`/`review` campaigns only — tiles,

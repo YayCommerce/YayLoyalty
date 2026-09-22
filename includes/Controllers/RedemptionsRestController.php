@@ -2,7 +2,6 @@
 namespace YayLoyalty\Controllers;
 
 use YayLoyalty\Access\Capabilities;
-use YayLoyalty\Controllers\Fixtures\CustomerDrawer\CustomerDrawerFixture;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -13,9 +12,8 @@ defined( 'ABSPATH' ) || exit;
  * No `redemptions` table exists yet — `docs/data-model.md`'s
  * `yayloyalty_redemptions` is designed but not implemented (1.0) — so the
  * real path always answers an EMPTY envelope, matching `counts.redemptions`
- * on `CustomerRestController::format_customer()`. The WP_DEBUG-gated drawer
- * fixture (`DrawerRedemptions`) is the only thing that answers this for now;
- * when the real table ships, only `get_history()` below changes.
+ * on `CustomerRestController::format_customer()`. When the real table ships,
+ * only `get_history()` below changes.
  *
  * A separate controller, the same shape `ActivityRestController` uses for
  * the same reason: keeps both this file and `CustomerRestController` under
@@ -38,8 +36,7 @@ final class RedemptionsRestController extends AbstractRestController {
                     'permission_callback' => $this->requires( Capabilities::VIEW ),
                     'args'                => array_merge(
                         [ 'id' => $this->user_id_param() ],
-                        $this->get_collection_params(),
-                        CustomerDrawerFixture::scenario_arg()
+                        $this->get_collection_params()
                     ),
                 ],
                 'schema' => [ $this, 'get_item_schema' ],
@@ -48,23 +45,6 @@ final class RedemptionsRestController extends AbstractRestController {
     }
 
     public function get_history( \WP_REST_Request $request ) {
-        $page     = (int) $request['page'];
-        $per_page = (int) $request['per_page'];
-
-        $scenario = CustomerDrawerFixture::requested( $request );
-
-        if ( null !== $scenario ) {
-            $result = CustomerDrawerFixture::redemptions(
-                $scenario,
-                [
-                    'page'     => $page,
-                    'per_page' => $per_page,
-                ]
-            );
-
-            return $this->respond_paginated( $result );
-        }
-
         // No table yet — `id` is validated by user_id_param() but nothing looks it up.
         return $this->respond_empty_page( $request );
     }
@@ -86,7 +66,7 @@ final class RedemptionsRestController extends AbstractRestController {
                     'readonly' => true,
                 ],
                 'reward_name' => [
-                    'description' => __( 'Display name only. The real table stores reward_id; resolving it is an open question, deliberately not solved here (see DrawerRedemptions.php).', 'yayloyalty' ),
+                    'description' => __( 'Display name only. The real table stores reward_id; resolving it is an open question, deliberately not solved here.', 'yayloyalty' ),
                     'type'        => 'string',
                     'context'     => [ 'view' ],
                     'readonly'    => true,

@@ -36,8 +36,8 @@ const EMAIL_EVENT_TYPES = new Set<ActivityEntry['event_type']>(['balance_email_s
 /**
  * Row → what the activity table renders. Pure — no fetch, no React. Mirrors
  * `customer-drawer.ledger-rows.ts`'s own shape: every sentence is composed
- * here from `event_type` + `data`, never stored as a string on the fixture
- * (see `DrawerActivity.php`'s docblock).
+ * here from `event_type` + `data`, never stored as a string server-side
+ * (see docs/data-model.md's "Activity log" section).
  */
 export function toActivityRow(entry: ActivityEntry): ActivityRow {
   const occurred = utcToDate(entry.occurred_at);

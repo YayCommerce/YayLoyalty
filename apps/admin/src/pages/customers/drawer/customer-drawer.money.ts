@@ -3,9 +3,9 @@ import { parseWPCurrency, utcToDate } from '@/lib/helpers/format.helper';
 /**
  * Points → money, using `customer.points_per_currency_unit` (restored
  * minimally on the wire after `worth` was removed wholesale — see
- * `DrawerProfiles.php`/`CustomerRestController.php`). `null` when the rate is
- * unconfigured (0) — the same guard the removed `worth` stat applied
- * server-side, now done here since only the raw rate is on the wire.
+ * `CustomerRestController.php`). `null` when the rate is unconfigured (0) —
+ * the same guard the removed `worth` stat applied server-side, now done here
+ * since only the raw rate is on the wire.
  *
  * Shared by the expiry panel/stats (4b) — money is derived client-side
  * everywhere in this drawer, never pre-computed and stored.

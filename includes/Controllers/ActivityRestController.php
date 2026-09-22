@@ -2,7 +2,6 @@
 namespace YayLoyalty\Controllers;
 
 use YayLoyalty\Access\Capabilities;
-use YayLoyalty\Controllers\Fixtures\CustomerDrawer\CustomerDrawerFixture;
 use YayLoyalty\Controllers\Schemas\ActivityQueryArgs;
 
 defined( 'ABSPATH' ) || exit;
@@ -14,10 +13,9 @@ defined( 'ABSPATH' ) || exit;
  * No `activity` table exists yet (docs/data-model.md → "Activity log (not
  * designed)"), so the real path always answers an EMPTY envelope — zero is
  * the true count, not a placeholder, matching `counts.activity` on
- * `CustomerRestController::format_customer()`. The WP_DEBUG-gated drawer
- * fixture (`DrawerActivity`) is the only thing that answers this for now;
- * when a real table ships, only `get_history()` below changes — the schema
- * and its Zod mirror (`activity.schema.ts`) are already the contract.
+ * `CustomerRestController::format_customer()`. When a real table ships, only
+ * `get_history()` below changes — the schema and its Zod mirror
+ * (`activity.schema.ts`) are already the contract.
  *
  * A separate controller rather than a method on `CustomerRestController`,
  * the same way `LedgerRestController` owns `/customers/{id}/ledger`: keeps
@@ -41,8 +39,7 @@ final class ActivityRestController extends AbstractRestController {
                     'args'                => array_merge(
                         [ 'id' => $this->user_id_param() ],
                         $this->get_collection_params(),
-                        ActivityQueryArgs::all(),
-                        CustomerDrawerFixture::scenario_arg()
+                        ActivityQueryArgs::all()
                     ),
                 ],
                 'schema' => [ $this, 'get_item_schema' ],
@@ -51,28 +48,6 @@ final class ActivityRestController extends AbstractRestController {
     }
 
     public function get_history( \WP_REST_Request $request ) {
-        $group    = (string) $request['group'];
-        $page     = (int) $request['page'];
-        $per_page = (int) $request['per_page'];
-
-        $scenario = CustomerDrawerFixture::requested( $request );
-
-        if ( null !== $scenario ) {
-            $result = CustomerDrawerFixture::activity(
-                $scenario,
-                $group,
-                [
-                    'page'     => $page,
-                    'per_page' => $per_page,
-                    'search'   => (string) $request['search'],
-                    'after'    => (string) $request['after'],
-                    'before'   => (string) $request['before'],
-                ]
-            );
-
-            return $this->respond_paginated( $result );
-        }
-
         // No table yet — `id` is validated by user_id_param() but nothing looks it up.
         return $this->respond_empty_page( $request );
     }

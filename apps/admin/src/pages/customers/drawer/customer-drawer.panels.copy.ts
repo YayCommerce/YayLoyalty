@@ -75,9 +75,8 @@ export function expiringBannerTitle(expiringPoints: string, balance: string, dat
 /**
  * "In 12 days. That is $63.00 about to be lost, and 64% of the balance."
  * `sharePercent` is `null` when it can't be honestly computed (balance <= 0
- * — not reachable via any fixture scenario today, but the panel must never
- * print a fabricated "0%" that reads as reassurance) — the sentence drops
- * the clause entirely rather than showing a wrong number.
+ * — the panel must never print a fabricated "0%" that reads as reassurance)
+ * — the sentence drops the clause entirely rather than showing a wrong number.
  */
 export function expiringBannerBody(days: number, money: string, sharePercent: string | null): string {
   if (null === sharePercent) {

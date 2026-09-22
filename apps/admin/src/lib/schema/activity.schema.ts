@@ -8,10 +8,8 @@ import { paginatedSchema } from '@/lib/api/paginated';
  * `ledger.schema.ts`'s own docblock convention.
  *
  * The real path always answers an empty envelope (no `activity` table yet,
- * `docs/data-model.md`); the `WP_DEBUG`-gated drawer fixture
- * (`DrawerActivity.php`) is the only thing that populates one for now. Both
- * parse through this same schema — that is what keeps the eventual swap to a
- * real table an input change, not a UI rewrite.
+ * `docs/data-model.md`). When a real table ships, only the server handler
+ * changes — this schema is already the contract.
  */
 
 /** The seven event kinds artboard 3d shows. Matches `ActivityQueryArgs::EVENT_TYPES`. */

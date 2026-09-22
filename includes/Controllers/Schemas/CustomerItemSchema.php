@@ -76,7 +76,7 @@ final class CustomerItemSchema {
                 'readonly' => true,
             ],
             'deleted_at'               => [
-                'description' => __( 'When the underlying WordPress user was deleted. Always null today — no deleted_at column exists yet (docs/data-model.md); only the WP_DEBUG drawer fixture sets it, for artboard 4a.', 'yayloyalty' ),
+                'description' => __( 'When the underlying WordPress user was deleted. Always null today — no deleted_at column exists yet (docs/data-model.md).', 'yayloyalty' ),
                 'type'        => [ 'string', 'null' ],
                 'context'     => [ 'view' ],
                 'readonly'    => true,
