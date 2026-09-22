@@ -45,7 +45,7 @@ Filters carry data. Actions cause side effects. Do not use a filter for its side
 
 Every `DATETIME` in this plugin is UTC. Conversion to the site timezone happens only at the edges: admin form rendering, email templates, REST responses intended for display. A timestamp that enters the database in site time is a bug that surfaces months later as an off-by-hours expiry.
 
-**Conversion pattern:** One conversion point per screen. Example: `CampaignEditorSchedule.tsx` reads raw UTC `starts_at`/`ends_at` from the form state, converts to site timezone at render time via `splitStoredDateTime()` for the date/time inputs, and joins them back to UTC at the form boundary via `joinStoredDateTime()` before sending to the API. Helpers: `src/lib/helpers/format.helper.ts` → `splitStoredDateTime( storedUtcString, siteTimezoneOffset ) → { date, time }` and `joinStoredDateTime( date, time, siteTimezoneOffset ) → storedUtcString`. This keeps conversion logic in one place and prevents off-by-one-day errors (e.g., "ending 30 November" stores through midnight starting 1 December, not 23:59:59 on the 30th).
+**Conversion pattern:** One conversion point per screen. Example: `CampaignEditorSections.tsx` (Schedule section) reads raw UTC `starts_at`/`ends_at` from the form state, converts to site timezone at render time via `splitStoredDateTime()` for the date/time inputs, and joins them back to UTC at the form boundary via `joinStoredDateTime()` before sending to the API. Helpers: `src/lib/helpers/format.helper.ts` → `splitStoredDateTime( storedUtcString, siteTimezoneOffset ) → { date, time }` and `joinStoredDateTime( date, time, siteTimezoneOffset ) → storedUtcString`. This keeps conversion logic in one place and prevents off-by-one-day errors (e.g., "ending 30 November" stores through midnight starting 1 December, not 23:59:59 on the 30th).
 
 ## 5. Money — bind as `%s`, never `%f`
 
@@ -182,6 +182,14 @@ Pick the level by asking who needs the line, not how noisy it is:
 - The adjustment ceiling (`settings.advanced.adjustment_ceiling`, 0 = unlimited) is a policy value, not a capability. `assert_ceiling()` runs inside the handler after the cap check; administrators bypass it.
 - The SPA hides and disables (`<Can>` in `lib/access.tsx`) and is never a gate. A 403 from the server is the real refusal; `api.ts` turns `yayloyalty_forbidden` / `yayloyalty_adjustment_ceiling` into one toast.
 
+### Dev fixtures and swap points
+
+Two conventions for fixture data coexist:
+
+**Shared schema/query-arg classes** — `Controllers/Schemas/{CustomerItemSchema,LedgerQueryArgs,ActivityQueryArgs}.php` live in one place and are reused by both controllers (real path) and fixtures (dev-only path), so a contract change is made once.
+
+**Dev-only fixture gate** — `WP_DEBUG`-gated fixtures (`CustomerDrawerFixture`, `DashboardFixture`) are reached via a `scenario` query arg, checked server-side by `requested()` helper — the real path (no arg) always returns real data. A "swap point" fixture (`CampaignRestController::dummy_fixture()`, `CampaignPerformanceFixture`) is never optional; it ships in the release zip. Mark swap-point fixtures in controller docblocks and list them in `project-roadmap.md` Known Gaps.
+
 ## 10. PHP 7.4 pseudo-enums
 
 No native enums. Closed vocabularies are `final class` + `const` + `all()` + `is_valid()` + `assert()`.
@@ -311,7 +319,7 @@ composer lint:fix                      # phpcbf
 composer test                          # phpunit — 115 tests: points engine, reward engine scaffold, dashboard computation, PointsMath + shared vectors, campaign validation, drawer query-arg groupings + fixture helpers
 pnpm --filter @yayloyalty/admin-page lint   # eslint + prettier on SPA
 pnpm --filter @yayloyalty/admin-page test   # vitest — lib/points-math against the same vector file
-./scripts/run.sh build [pro|lite]      # Full build — currently fails at tsc --noEmit due to #7 dangling imports
+./scripts/run.sh build [pro|lite]      # Full build — currently fails at tsc --noEmit due to 3 pre-existing missing-dependency type errors
 ```
 
 `tests/bootstrap.php` shims `add_filter` / `apply_filters` / `do_action` so pure code that goes through hooks can be tested in milliseconds. Anything that needs `$wpdb` or WooCommerce is not a unit test; until a wp-phpunit harness exists, exercise it through WP-CLI.

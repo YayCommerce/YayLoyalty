@@ -125,7 +125,7 @@ pnpm --filter @yayloyalty/admin-page test   # vitest — lib/points-math against
 
 `scripts/validate-build.php` boots the packaged plugin inside WordPress when `YAYLOYALTY_WP_CLI` is set — see `docs/deployment-guide.md`.
 
-**Known issue:** The `pnpm build` step currently fails at `tsc --noEmit` on five pre-existing type errors (`@emoji-mart/*` and `@radix-ui/react-progress` types, and a `per_page`/`perPage` mismatch in two campaign components). This must be fixed before the next release.
+**Known issue:** The `pnpm build` step currently fails at `tsc --noEmit` on three pre-existing type errors: `emoji-picker-content.tsx` (×2, `@emoji-mart/*` types undeclared) and `progress.tsx` (`@radix-ui/react-progress` not installed). This must be fixed before the next release.
 
 ---
 

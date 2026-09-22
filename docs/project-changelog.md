@@ -89,7 +89,7 @@ dev-only data source is no longer needed — only the real path remains.
   ledger aggregate for the rail's cost estimate; `updated_by` never set; `include_shipping` is a
   dead config key.
 
-### Changed — Customer drawer: one definition per fact, one implementation per pattern (2026-09-21)
+### Changed — Customer drawer: one definition per fact, one implementation per pattern (2026-09-21, #14)
 
 A review-driven cleanup of the drawer, wire-neutral on every endpoint (fixture payloads were
 diffed byte-for-byte before/after) and visually unchanged bar one 8px gap noted below.
@@ -131,6 +131,7 @@ The six artboards Wave A left undrawn, still UI-first on the same `WP_DEBUG`-gat
 schema, no migration, no real-data work this wave either.
 
 **Shipped:**
+
 - Activity log tab: full ledger-parity paging + search + date range (replacing an earlier
   "Load more" draft) and a grouped filter (All / Admin actions / Tier changes / Expiry / Emails,
   deliberately overlapping — a lens, not a partition). `GET /customers/{id}/activity` is now a
@@ -171,9 +172,8 @@ envelope for: Activity log, Redemptions, Referrals (see `docs/data-model.md`).
 
 See `docs/data-model.md` (the new wire-block/endpoint-simplification notes) and
 `docs/codebase-summary.md` (three new REST controllers, the drawer's current file layout) for the
-reference-doc detail, and `plans/260918-0845-customer-drawer-wave-b/` for the full plan and
-phase-by-phase implementation notes, including every phase's live-verification results and code
-review findings.
+reference-doc detail. Full plan and phase-by-phase implementation notes (including live-verification
+results and code review findings) are in the planning phase directories.
 
 ### Added — F09 Customer Drawer, Wave A
 
@@ -186,6 +186,7 @@ real data is a controller-only change, never an SPA change (every fixture scenar
 the same Zod schema as the real path).
 
 **Shipped:**
+
 - Six-stat header (Balance, Pending, Expires, Lifetime earned, Lifetime redeemed, Worth) on an
   `auto-fit`/`minmax(150px,1fr)` grid; figures are never abbreviated.
 - Actions row: Adjust points (live — reuses the existing bulk-adjust dialog/mutation/invalidation);
@@ -208,5 +209,5 @@ exists, no column yet); the Activity log table itself (unpriced — the largest 
 surfaces).
 
 See `docs/data-model.md` (Activity log gap, `deleted_at`), `docs/codebase-summary.md` (drawer route,
-fixture location) for the reference-doc detail, and `plans/260917-1504-customer-drawer-wave-a/`
-for the full plan and phase-by-phase implementation notes.
+fixture location) for the reference-doc detail. Full plan and phase-by-phase implementation notes
+are in the planning phase directories.
