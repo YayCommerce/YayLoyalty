@@ -260,7 +260,7 @@ These are **first-party, internal seams** for Pro to attach behavior. Not a thir
 
 **Copy lives in the client.** Notices are `{key, severity, fingerprint, data}`; `dashboard-page.notice-copy.ts` composes every title, body and action from `data` (thresholds quoted from `data.threshold`), and ledger rows are described by `ledger.helper.ts` — the same rule as the Customers list.
 
-**Dev scenario switch.** `?scenario=empty|small|large|notices|anomaly` swaps the payload for a `DashboardFixture` artboard. The argument is registered only when `WP_DEBUG` is true and the SPA forwards it only on the Vite dev server (`import.meta.env.DEV`), so a built bundle never sends it; production builds are verified on real data.
+**Dev scenario switch.** `?scenario=empty|small|large|notices|anomaly` swaps the payload for a `DashboardFixture` artboard. The argument is registered only when `WP_DEBUG` is true and the SPA reads it only through `hooks/useDevScenario.ts` (`undefined` outside the Vite dev server, so a built bundle never sends it); production builds are verified on real data.
 
 ### Customers list & bulk actions data flow
 
@@ -319,7 +319,7 @@ GET /campaigns/:id   (read for detail pre-load)
     ↓
 CampaignRestController::get_item()
 
-POST /yayloyalty/v1/campaigns/:id   (or PUT, depending on implementation)
+POST|PUT|PATCH /yayloyalty/v1/campaigns/:id   (WP_REST_Server::EDITABLE)
     ↓
 CampaignRestController::update_item()  via  exec_write()
     ├─ CampaignTrigger::is_valid( trigger )        must be fireable in THIS build (all(), filtered)

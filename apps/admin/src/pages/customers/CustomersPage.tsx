@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
-import { useSearchParams } from 'react-router';
-import { useDebounceFn } from 'rooks';
+import { Outlet, useSearchParams } from 'react-router';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { useCustomersQuery } from '@/lib/queries/customer.queries';
+import { useDebouncedSearchCommit } from '@/hooks/useDebouncedSearchCommit';
 import { Button } from '@/components/ui/button';
 import { ErrorState } from '@/components/ui/custom/error-state';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -35,17 +35,10 @@ export default function CustomersPage() {
   const [sortBy, setSortBy] = useState<SortKey>('balance');
   const [sortDir, setSortDir] = useState<SortDirection>('desc');
 
-  // useDebounceFn has no .cancel(): a debounced commit applies only if nothing
-  // else changed the filters since, or typing → Clear all lets the stale search win.
-  const searchGeneration = useRef(0);
-
-  const [commitSearch] = useDebounceFn(
-    (search: string, generation: number) => {
-      if (generation !== searchGeneration.current) return;
-      setQueryFilters((current) => ({ ...current, search }));
-    },
-    300,
-    { trailing: true, maxWait: 800 },
+  // See `useDebouncedSearchCommit`'s own docblock for why a generation
+  // counter guards this and why `cancelPending()` exists alongside `commit()`.
+  const { commit: commitSearch, cancelPending: cancelPendingSearch } = useDebouncedSearchCommit((search) =>
+    setQueryFilters((current) => ({ ...current, search })),
   );
 
   const customersQuery = useCustomersQuery({
@@ -82,19 +75,22 @@ export default function CustomersPage() {
     setFilters((current) => ({ ...current, ...patch }));
     setPage(1);
 
-    // Only a search keystroke sends exactly `{ search }`; every other change applies immediately.
+    // Only a raw keystroke from the search input ever sends a patch that is
+    // exactly `{ search }` (see CustomersToolbar.tsx). Every other change —
+    // a select (a single non-search key), a suggestion dropping one filter
+    // (also single-key, see `patchForSuggestion`'s 'without' case), or a
+    // "clear all"/search-suggestion patch (every field at once) — fails that
+    // shape check and is a deliberate one-off action applied immediately,
+    // not debounced. `commitSearch` itself trims and applies immediately
+    // when the trimmed value is empty (see the hook's own docblock).
     if (Object.keys(patch).length === 1 && patch.search !== undefined) {
-      // Trimmed before it reaches the query key, so "abc " reuses the cached "abc".
-      const trimmed = patch.search.trim();
-
-      if (trimmed !== '') {
-        commitSearch(trimmed, ++searchGeneration.current);
-        return;
-      }
+      commitSearch(patch.search);
+      return;
     }
 
-    // Invalidates any debounced commit still in flight.
-    searchGeneration.current++;
+    // Cancel any debounced keystroke commit still in flight so it can't fire
+    // later and clobber this immediate change (see `cancelPending`'s docblock).
+    cancelPendingSearch();
     setQueryFilters((current) => ({
       ...current,
       ...patch,
@@ -152,6 +148,10 @@ export default function CustomersPage() {
           isRebuilding={isRebuilding}
         />
       )}
+      {/* The drawer route (`customers/:userId`) renders here — the list above
+          stays mounted and keeps its filters/page/sort/selection regardless
+          of whether the list itself errored. */}
+      <Outlet />
     </PageLayout>
   );
 }

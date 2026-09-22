@@ -2,9 +2,14 @@
 namespace YayLoyalty\Controllers;
 
 use YayLoyalty\Access\Capabilities;
-use YayLoyalty\Enums\CustomerFilters;
+use YayLoyalty\Controllers\Fixtures\CustomerDrawer\CustomerDrawerFixture;
+use YayLoyalty\Controllers\Schemas\CustomerItemSchema;
+use YayLoyalty\Models\Customer;
 use YayLoyalty\Repositories\CustomerRepository;
+use YayLoyalty\Repositories\LedgerRepository;
+use YayLoyalty\Repositories\RewardRepository;
 use YayLoyalty\Services\LedgerService;
+use YayLoyalty\Utils\PointsMath;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -23,9 +28,22 @@ final class CustomerRestController extends AbstractRestController {
     /** @var LedgerService */
     private $ledger_service;
 
-    public function __construct( CustomerRepository $customers, LedgerService $ledger_service ) {
+    /** @var LedgerRepository Read-only here — counts.ledger only. All writes stay LedgerService's. */
+    private $ledger;
+
+    /** @var RewardRepository Read-only — worth's conversion rate. */
+    private $rewards;
+
+    public function __construct(
+        CustomerRepository $customers,
+        LedgerService $ledger_service,
+        LedgerRepository $ledger,
+        RewardRepository $rewards
+    ) {
         $this->customers      = $customers;
         $this->ledger_service = $ledger_service;
+        $this->ledger         = $ledger;
+        $this->rewards        = $rewards;
     }
 
     public function get_rest_base(): string {
@@ -43,8 +61,9 @@ final class CustomerRestController extends AbstractRestController {
                     'permission_callback' => $this->requires( Capabilities::VIEW ),
                     'args'                => array_merge(
                         $this->get_collection_params(),
-                        $this->list_filter_params(),
-                        // Replaces the base free-text `orderby` with CustomerRowSort's keys.
+                        CustomerListFormatter::filter_params(),
+                        // Overrides the base `orderby` (free-text) with the 6 real sort
+                        // keys — see `CustomerRowSort`. `order` keeps the base definition.
                         [
                             'orderby' => [
                                 'description'       => __( 'Column to sort the Customers list by.', 'yayloyalty' ),
@@ -67,7 +86,7 @@ final class CustomerRestController extends AbstractRestController {
                     'methods'             => \WP_REST_Server::READABLE,
                     'callback'            => fn( $request ) => $this->exec_read( [ $this, 'get_customer' ], $request ),
                     'permission_callback' => $this->requires( Capabilities::VIEW ),
-                    'args'                => [ 'id' => $this->user_id_param() ],
+                    'args'                => array_merge( [ 'id' => $this->user_id_param() ], CustomerDrawerFixture::scenario_arg() ),
                 ],
                 'schema' => [ $this, 'get_item_schema' ],
             ]
@@ -113,37 +132,15 @@ final class CustomerRestController extends AbstractRestController {
     }
 
     /**
-     * Customer-specific filter params; enums mirror customers-page.filter-rows.ts.
+     * Real list, real DB — search/filter/sort run in SQL
+     * (`CustomerRepository::paginate_list()`); this method only translates
+     * the request into `CustomerRowFilters`/`CustomerRowSort`'s SQL-free
+     * shapes and the result back into wire rows.
      *
-     * @return array<string, mixed>
+     * A zero-row result also gets a `suggestions` field folded into this same
+     * response (see `no_match_suggestions()`) — the admin app fires one
+     * extra request per active filter to ask "what should I drop?" otherwise.
      */
-    private function list_filter_params(): array {
-        return [
-            'balance_range' => [
-                'description'       => __( 'Balance bucket to filter by.', 'yayloyalty' ),
-                'type'              => 'string',
-                'enum'              => CustomerFilters::BALANCE_RANGES,
-                'default'           => CustomerFilters::BALANCE_RANGES[0],
-                'sanitize_callback' => 'sanitize_text_field',
-            ],
-            'expiring_soon' => [
-                'description'       => __( 'Points-expiry window to filter by.', 'yayloyalty' ),
-                'type'              => 'string',
-                'enum'              => CustomerFilters::EXPIRY_RANGES,
-                'default'           => CustomerFilters::EXPIRY_RANGES[0],
-                'sanitize_callback' => 'sanitize_text_field',
-            ],
-            'tier'          => [
-                'description'       => __( 'Loyalty tier to filter by (no tiers exist yet — always matches zero rows).', 'yayloyalty' ),
-                'type'              => 'string',
-                'enum'              => CustomerFilters::TIER_RANGES,
-                'default'           => CustomerFilters::TIER_RANGES[0],
-                'sanitize_callback' => 'sanitize_text_field',
-            ],
-        ];
-    }
-
-    /** The list. A zero-row result carries `suggestions` so the SPA need not ask "what should I drop?" per filter. */
     public function get_items( \WP_REST_Request $request ) {
         $filters = CustomerRowFilters::from_request( $request );
         $order   = CustomerRowSort::to_order(
@@ -160,7 +157,7 @@ final class CustomerRestController extends AbstractRestController {
 
         $envelope = $this->respond_paginated(
             [
-                'items'    => array_map( [ $this, 'format_row' ], $result['items'] ),
+                'items'    => array_map( [ CustomerListFormatter::class, 'format_row' ], $result['items'] ),
                 'total'    => $result['total'],
                 'page'     => $result['page'],
                 'per_page' => $result['per_page'],
@@ -168,78 +165,80 @@ final class CustomerRestController extends AbstractRestController {
         );
 
         if ( 0 === $result['total'] ) {
-            $envelope['suggestions'] = $this->no_match_suggestions( $filters );
+            $envelope['suggestions'] = CustomerListFormatter::no_match_suggestions( $filters, $this->customers );
         }
 
         return $envelope;
     }
 
-    /**
-     * One list row: a JOIN projection with name/email, not Customer::to_array().
-     * Casts are mandatory: $wpdb returns strings and the SPA's zod schema rejects "640".
-     *
-     * @param array<string, mixed> $row
-     * @return array<string, mixed>
-     */
-    private function format_row( array $row ): array {
-        return [
-            'user_id'          => (int) $row['user_id'],
-            'name'             => (string) $row['name'],
-            'email'            => (string) $row['email'],
-            'balance'          => (int) $row['balance'],
-            'pending_points'   => (int) $row['pending_points'],
-            'lifetime_earned'  => (int) $row['lifetime_earned'],
-            'last_activity_at' => $row['last_activity_at'],
-            'expires_at'       => $row['expires_at'],
-        ];
-    }
-
-    /**
-     * "Which filter should I drop?": one count per candidate, non-zero only, by count descending.
-     *
-     * @param array<string, string> $filters
-     * @return array<int, array{key: string, count: int}>
-     */
-    private function no_match_suggestions( array $filters ): array {
-        $suggestions = [];
-
-        foreach ( CustomerRowFilters::candidates_for_no_match( $filters ) as $key => $candidate ) {
-            $count = $this->customers->count_list( CustomerRowFilters::to_criteria( $candidate ) );
-
-            if ( $count > 0 ) {
-                $suggestions[] = [
-                    'key'   => $key,
-                    'count' => $count,
-                ];
-            }
-        }
-
-        usort( $suggestions, fn( $a, $b ) => $b['count'] <=> $a['count'] );
-
-        return $suggestions;
-    }
-
     public function get_customer( \WP_REST_Request $request ) {
         $user_id = (int) $request['id'];
 
-        $customer = $this->customers->find_by_user_id( $user_id );
+        $scenario = CustomerDrawerFixture::requested( $request );
 
-        if ( null === $customer ) {
-            // No activity is a member with nothing yet, not a 404.
-            return [
-                'user_id'           => $user_id,
-                'balance'           => 0,
-                'pending_points'    => 0,
-                'lifetime_earned'   => 0,
-                'lifetime_redeemed' => 0,
-                'last_activity_at'  => null,
-                'expires_at'        => null,
-                'joined_at'         => null,
-                'updated_at'        => null,
-            ];
+        if ( null !== $scenario ) {
+            return CustomerDrawerFixture::customer( $scenario, $user_id );
         }
 
-        return $customer->to_array();
+        return $this->format_customer( $user_id, $this->customers->find_by_user_id( $user_id ) );
+    }
+
+    /**
+     * A user with no activity is a member with nothing yet, not a 404 — the
+     * model's own defaults are that empty shape.
+     *
+     * @return array<string, mixed>
+     */
+    private function format_customer( int $user_id, ?Customer $customer ): array {
+        $base = ( $customer ?? new Customer( $user_id ) )->to_array();
+
+        $user         = get_userdata( $user_id );
+        $ledger_count = $this->ledger->paginate_for_user(
+            $user_id,
+            [
+                'page'     => 1,
+                'per_page' => 1,
+            ]
+        )['total'];
+
+        return $base + [
+            'name'                     => $user ? $user->display_name : '',
+            'email'                    => $user ? $user->user_email : '',
+            // No `deleted_at` column exists (docs/data-model.md), so the real
+            // path can never report a deleted account — 4a is reachable only
+            // through `?scenario=deleted`. Not scheduled: Wave B is UI work on
+            // fixtures and does not add the column.
+            'deleted_at'               => null,
+            'counts'                   => [
+                'ledger'      => $ledger_count,
+                // Zero is the TRUE count here, not a placeholder: no activity,
+                // redemptions or referrals table exists (docs/data-model.md),
+                // so there is nothing to count. The fixture path carries real
+                // per-scenario counts instead — see `DrawerProfiles::rows()`.
+                // Each of these becomes a query when its own table ships; they
+                // are three separate features, not one change.
+                'activity'    => 0,
+                'redemptions' => 0,
+                'referrals'   => 0,
+            ],
+            // Real path can never populate this: it's keyed off a deletion
+            // that only `?scenario=deleted` can ever report (see `deleted_at`
+            // above). Structured null, not an absent field — customer.schema.ts
+            // parses both paths identically.
+            'loose_ends'               => null,
+            // Real path can never populate this either: it needs `lots`,
+            // which doesn't exist yet (docs/data-model.md). `expires_at`
+            // above is all the real path knows about a customer's expiry.
+            'expiry'                   => null,
+            // Real path can never populate this either: assembling the
+            // earned/spent/reversed story means walking the ledger
+            // backwards, which is its own piece of work and not this wave's.
+            'negative_balance'         => null,
+            // Restored minimally (F09 Wave B phase 03) after `worth` was
+            // removed wholesale — the drawer's expiry/negative-balance
+            // panels need this rate for their money-equivalent figures.
+            'points_per_currency_unit' => $this->rewards->points_per_currency_unit(),
+        ];
     }
 
     public function adjust_points( \WP_REST_Request $request ) {
@@ -282,53 +281,7 @@ final class CustomerRestController extends AbstractRestController {
             '$schema'    => 'http://json-schema.org/draft-04/schema#',
             'title'      => 'yayloyalty_customer',
             'type'       => 'object',
-            'properties' => [
-                'user_id'           => [
-                    'type'     => 'integer',
-                    'context'  => [ 'view' ],
-                    'readonly' => true,
-                ],
-                'balance'           => [
-                    'type'     => 'integer',
-                    'context'  => [ 'view' ],
-                    'readonly' => true,
-                ],
-                'pending_points'    => [
-                    'type'     => 'integer',
-                    'context'  => [ 'view' ],
-                    'readonly' => true,
-                ],
-                'lifetime_earned'   => [
-                    'type'     => 'integer',
-                    'context'  => [ 'view' ],
-                    'readonly' => true,
-                ],
-                'lifetime_redeemed' => [
-                    'type'     => 'integer',
-                    'context'  => [ 'view' ],
-                    'readonly' => true,
-                ],
-                'last_activity_at'  => [
-                    'type'     => [ 'string', 'null' ],
-                    'context'  => [ 'view' ],
-                    'readonly' => true,
-                ],
-                'expires_at'        => [
-                    'type'     => [ 'string', 'null' ],
-                    'context'  => [ 'view' ],
-                    'readonly' => true,
-                ],
-                'joined_at'         => [
-                    'type'     => [ 'string', 'null' ],
-                    'context'  => [ 'view' ],
-                    'readonly' => true,
-                ],
-                'updated_at'        => [
-                    'type'     => [ 'string', 'null' ],
-                    'context'  => [ 'view' ],
-                    'readonly' => true,
-                ],
-            ],
+            'properties' => CustomerItemSchema::properties(),
         ];
     }
 }

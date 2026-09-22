@@ -2,10 +2,13 @@
 namespace YayLoyalty\Engine;
 
 use YayLoyalty\Controllers\AbstractRestController;
+use YayLoyalty\Controllers\ActivityRestController;
 use YayLoyalty\Controllers\CampaignRestController;
 use YayLoyalty\Controllers\CustomerRestController;
 use YayLoyalty\Controllers\DashboardRestController;
 use YayLoyalty\Controllers\LedgerRestController;
+use YayLoyalty\Controllers\RedemptionsRestController;
+use YayLoyalty\Controllers\ReferralsRestController;
 use YayLoyalty\Controllers\SettingsRestController;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\CustomerRepository;
@@ -44,13 +47,28 @@ class RestAPI {
 
         $ledger_service = new LedgerService( $ledger, $customers );
 
-        $dashboard = new DashboardRepository( new RewardRepository() );
+        // Read-only cross-table aggregates; reads the ledger, never writes it.
+        $rewards   = new RewardRepository();
+        $dashboard = new DashboardRepository( $rewards );
         $campaigns = new CampaignRepository();
 
         $controllers = [
             new SettingsRestController(),
-            new CustomerRestController( $customers, $ledger_service ),
+            // $ledger and $rewards here are read-only uses (counts.ledger,
+            // worth's conversion rate) — the same instances LedgerService
+            // and DashboardRepository hold, not a second construction.
+            new CustomerRestController( $customers, $ledger_service, $ledger, $rewards ),
             new LedgerRestController( $ledger ),
+            // No repository: the real path answers an empty envelope until an
+            // activity table exists (see the controller's own docblock).
+            new ActivityRestController(),
+            // Same as ActivityRestController — no repository, empty envelope
+            // on the real path until a redemptions table exists.
+            new RedemptionsRestController(),
+            // Same again — no repository, empty envelope on the real path
+            // until a referrals table exists.
+            new ReferralsRestController(),
+            // Definition table: repository only, no service.
             new CampaignRestController( $campaigns ),
             new DashboardRestController(
                 new DashboardStats( $dashboard ),

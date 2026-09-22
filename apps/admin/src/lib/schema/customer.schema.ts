@@ -5,35 +5,136 @@ import { z } from 'zod';
  * truth; nothing generates one from the other. Every aggregate is
  * server-owned, so there is no write shape.
  */
-export const customerSchema = z.object({
-  user_id: z.number().int(),
-  /** Signed: a clawback after a refund can legitimately push this below zero. */
-  balance: z.number().int(),
-  pending_points: z.number().int(),
-  /** Signed. Unaffected by redemptions, so spending never demotes a tier. */
-  lifetime_earned: z.number().int(),
-  lifetime_redeemed: z.number().int(),
-  last_activity_at: z.string().nullable(),
-  expires_at: z.string().nullable(),
-  joined_at: z.string().nullable(),
-  updated_at: z.string().nullable(),
+/**
+ * Row counts behind the drawer's tab labels (`CustomerItemSchema::properties()`).
+ * `activity`/`redemptions`/`referrals` are always 0 on the real path — those
+ * tables don't exist yet; only the WP_DEBUG drawer fixture varies them.
+ */
+export const customerCountsSchema = z.object({
+  ledger: z.number().int(),
+  activity: z.number().int(),
+  redemptions: z.number().int(),
+  referrals: z.number().int(),
 });
 
-export type Customer = z.infer<typeof customerSchema>;
+/**
+ * 4a's "Loose ends this leaves" facts (F09 Wave B) — always `null` outside
+ * `?scenario=deleted`, since it is keyed off a deletion the real path can
+ * never report (no `deleted_at` column). `void_coupons.example` is a single
+ * illustrative label ("$5 off"), not a list — the fixture only ever needs one.
+ */
+export const looseEndsSchema = z.object({
+  void_coupons: z.object({
+    count: z.number().int(),
+    example: z.string().nullable(),
+  }),
+  credited_referrals: z.number().int(),
+  counted_in_members: z.boolean(),
+  kept_ledger_entries: z.number().int(),
+});
 
-/** One row of GET /customers: a JOIN projection with name/email, mirroring CustomerRestController::format_row(). */
+export type LooseEnds = z.infer<typeof looseEndsSchema>;
+
+/**
+ * 4b's expiring-batch summary (F09 Wave B) — always `null` outside
+ * `?scenario=expiring`, since it needs `lots`, which doesn't exist yet
+ * (docs/data-model.md). `batches` is separately nullable inside: `null`
+ * means the Free inactivity model (no batches exist at all, not "zero").
+ * Percentages and money are derived client-side — this carries figures only.
+ */
+export const drawerExpiryBatchSchema = z.object({
+  earned_from: z.string(),
+  earned_to: z.string(),
+  points: z.number().int(),
+  expires_at: z.string(),
+});
+
+export const drawerExpirySchema = z.object({
+  expiring_points: z.number().int(),
+  expires_at: z.string(),
+  safe_points: z.number().int(),
+  reminders: z.object({
+    sent_at: z.string().nullable(),
+    next_due_at: z.string().nullable(),
+    window_days: z.number().int(),
+  }),
+  batches: z.array(drawerExpiryBatchSchema).nullable(),
+});
+
+export type DrawerExpiry = z.infer<typeof drawerExpirySchema>;
+
+/**
+ * 5a's structured story (F23, F09 Wave B) — always `null` outside
+ * `?scenario=negative`. `shape` is a Zod enum, not a bare string: an unknown
+ * discriminator fails loudly at parse time rather than the panel rendering
+ * a blank or half-filled narrative. `'other'` means the three-step story
+ * cannot be assembled (a manual adjustment or an expiry clawback pushed the
+ * balance below zero, not a refund) — the panel falls back to a generic
+ * explanation, never guessing at legs that are `null`.
+ */
+export const drawerNegativeBalanceShapeSchema = z.enum(['refund_reversal', 'other']);
+export type DrawerNegativeBalanceShape = z.infer<typeof drawerNegativeBalanceShapeSchema>;
+
+const drawerNegativeBalanceLegSchema = z.object({
+  order_id: z.number().int(),
+  points: z.number().int(),
+  occurred_at: z.string(),
+});
+
+export const drawerNegativeBalanceSchema = z.object({
+  shape: drawerNegativeBalanceShapeSchema,
+  earned: drawerNegativeBalanceLegSchema.nullable(),
+  spent: z
+    .object({
+      order_id: z.number().int(),
+      points: z.number().int(),
+      /** Discount value in store currency, e.g. "10.00" — a string, same as
+       *  `Reward`/redemption values elsewhere, never a pre-formatted price. */
+      value: z.string(),
+    })
+    .nullable(),
+  reversed: drawerNegativeBalanceLegSchema.nullable(),
+  /** The real ledger row this story is about — `LedgerTabRows.tsx` marks it. */
+  cause_ledger_id: z.number().int().nullable(),
+  deficit: z.number().int(),
+});
+
+export type DrawerNegativeBalance = z.infer<typeof drawerNegativeBalanceSchema>;
+
+/** One row of GET /customers: a JOIN projection with name/email, mirroring CustomerListFormatter::format_row(). */
 export const customerListRowSchema = z.object({
   user_id: z.number().int(),
   name: z.string(),
   email: z.string(),
+  /** Signed: a clawback after a refund can legitimately push this below zero. */
   balance: z.number().int(),
   pending_points: z.number().int(),
+  /** Signed. Unaffected by redemptions, so spending never demotes a tier. */
   lifetime_earned: z.number().int(),
   last_activity_at: z.string().nullable(),
   expires_at: z.string().nullable(),
 });
 
 export type CustomerListRow = z.infer<typeof customerListRowSchema>;
+
+/** GET /customers/{id}: the list row (name/email included so a deep link or a
+ * refresh has an identity to render) plus the drawer-only aggregates and panels. */
+export const customerSchema = customerListRowSchema.extend({
+  lifetime_redeemed: z.number().int(),
+  joined_at: z.string().nullable(),
+  updated_at: z.string().nullable(),
+  /** Always null on the real path — no deleted_at column yet (docs/data-model.md). */
+  deleted_at: z.string().nullable(),
+  counts: customerCountsSchema,
+  loose_ends: looseEndsSchema.nullable(),
+  expiry: drawerExpirySchema.nullable(),
+  negative_balance: drawerNegativeBalanceSchema.nullable(),
+  /** Restored minimally (Wave B) after `worth` was removed wholesale — the
+   *  expiry/negative-balance panels' only remaining need for a currency rate. */
+  points_per_currency_unit: z.number(),
+});
+
+export type Customer = z.infer<typeof customerSchema>;
 
 /** A "which filter to drop" suggestion; `key` is the wire param name, mapped in customers-page.filter-suggestions.ts. */
 export const noMatchSuggestionSchema = z.object({
