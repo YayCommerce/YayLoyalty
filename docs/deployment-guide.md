@@ -147,13 +147,20 @@ export YAYLOYALTY_WP_CLI_ARGS="--skip-plugins=yayloyalty"
 Pass `--require-boot` to treat a skipped check as a failure. Use it in CI, where
 "we could not check" and "it is broken" should have the same consequence.
 
-## ## Known Issues
+## Known Issues
 
-**Build currently fails at `tsc --noEmit` before packaging can start.** Five pre-existing
-type errors block it: `emoji-picker-content.tsx` (×2, `@emoji-mart/*` types undeclared),
-`progress.tsx` (`@radix-ui/react-progress` not installed), and a `per_page` vs `perPage`
-mismatch in `BuiltInCampaignList.tsx` and `CampaignTable.tsx`. They must be fixed before
+**Build currently fails at `tsc --noEmit` before packaging can start.** Three pre-existing
+type errors block it: `emoji-picker-content.tsx` (×2, `@emoji-mart/*` types undeclared) and
+`progress.tsx` (`@radix-ui/react-progress` not installed). They must be fixed before
 the next release can complete; `vite build` itself succeeds when run directly.
+
+### Fixture-backed endpoints
+
+Two categories of fixture data ship in this plugin, with different visibility rules:
+
+**Dev-only `?scenario=` fixtures** (WP_DEBUG-gated): Drawer sub-routes (`GET /customers/{id}/ledger`, `.../activity`, `.../redemptions`, `.../referrals`) and dashboard (`GET /dashboard`) accept a `scenario` query arg only when `WP_DEBUG` is true. The gate is checked server-side by `CustomerDrawerFixture::requested()` and `DashboardFixture::requested()` respectively. Production sites with `WP_DEBUG = false` cannot reach these fixtures; requests without the arg always return real data or honest empty envelopes.
+
+**Unconditional swap-point fixtures**: Campaign list/detail (`GET /campaigns`, `GET /campaigns/{id}`) and campaign performance (`GET /campaigns/{id}/performance`) are ENTIRELY fixture-backed via `CampaignRestController::dummy_fixture()` and `CampaignPerformanceFixture`. These ship in the zip and are what a production site sees until swapped for real data. The validator does not flag them; they are marked as swap points in their controller docblocks.
 
 **Packaged builds ship without `RegisterDev.php`, and `YAYLOYALTY_IS_DEVELOPMENT` defaults
 to `true` when undefined.** A production site must define

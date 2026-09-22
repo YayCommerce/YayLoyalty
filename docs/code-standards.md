@@ -45,7 +45,7 @@ Filters carry data. Actions cause side effects. Do not use a filter for its side
 
 Every `DATETIME` in this plugin is UTC. Conversion to the site timezone happens only at the edges: admin form rendering, email templates, REST responses intended for display. A timestamp that enters the database in site time is a bug that surfaces months later as an off-by-hours expiry.
 
-**Conversion pattern:** One conversion point per screen. Example: `CampaignEditorSchedule.tsx` reads raw UTC `starts_at`/`ends_at` from the form state, converts to site timezone at render time via `splitStoredDateTime()` for the date/time inputs, and joins them back to UTC at the form boundary via `joinStoredDateTime()` before sending to the API. Helpers: `src/lib/helpers/format.helper.ts` → `splitStoredDateTime( storedUtcString, siteTimezoneOffset ) → { date, time }` and `joinStoredDateTime( date, time, siteTimezoneOffset ) → storedUtcString`. This keeps conversion logic in one place and prevents off-by-one-day errors (e.g., "ending 30 November" stores through midnight starting 1 December, not 23:59:59 on the 30th).
+**Conversion pattern:** One conversion point per screen. Example: `CampaignEditorSections.tsx` (Schedule section) reads raw UTC `starts_at`/`ends_at` from the form state, converts to site timezone at render time via `splitStoredDateTime()` for the date/time inputs, and joins them back to UTC at the form boundary via `joinStoredDateTime()` before sending to the API. Helpers: `src/lib/helpers/format.helper.ts` → `splitStoredDateTime( storedUtcString, siteTimezoneOffset ) → { date, time }` and `joinStoredDateTime( date, time, siteTimezoneOffset ) → storedUtcString`. This keeps conversion logic in one place and prevents off-by-one-day errors (e.g., "ending 30 November" stores through midnight starting 1 December, not 23:59:59 on the 30th).
 
 ## 5. Money — bind as `%s`, never `%f`
 
@@ -163,7 +163,7 @@ Pick the level by asking who needs the line, not how noisy it is:
 - `get_instance( ...$args )` silently ignores `$args` after the first call, so constructor injection and the trait are incompatible — the second caller silently gets the first caller's dependencies.
 - `get_instance()` is `public static`, so it hands global access to anything that wants it.
 
-**[REVIEW]** `LedgerService` is the only class that receives both `LedgerRepository` and `CustomerRepository`, and it is constructed in exactly two named places: `Engine\RestAPI::controllers()` (request-time REST) and `Database\InitYayLoyaltyCustomer::maybe_create()` (one-time install bootstrap, outside any request — needs real ledger rows so its starter customers don't break `balance = SUM(ledger.points)`). PHP has no package-private, so this is a convention plus these two named construction sites plus this review rule — **not** something the language enforces. Do not describe it as "structural"; a third site needs the same review, not a silent `new LedgerService(...)`.
+**[REVIEW]** `LedgerService` is the only class that receives both `LedgerRepository` and `CustomerRepository`, and it is constructed in exactly three named places: `Engine\RestAPI::controllers()` (request-time REST), `Database\InitYayLoyaltyCustomer::maybe_create()` (one-time install bootstrap, outside any request — needs real ledger rows so its starter customers don't break `balance = SUM(ledger.points)`) and `Engine\Earning\EarningService::build()` (the award path's composition root; a stub until F01-4). PHP has no package-private, so this is a convention plus these three named construction sites plus this review rule — **not** something the language enforces. Do not describe it as "structural"; a fourth site needs the same review, not a silent `new LedgerService(...)`.
 
 ## 9. REST
 
@@ -179,6 +179,14 @@ Pick the level by asking who needs the line, not how noisy it is:
 - Capabilities are checked at the HTTP boundary only (menu, page render, `permission_callback`). Services, repositories and the earning engine take an `actor_id` and never call `current_user_can()` / `get_current_user_id()` — a cap check inside `LedgerService::record()` breaks every cron, order-hook and WP-CLI path. `grep -r current_user_can includes/Services` must stay empty.
 - The adjustment ceiling (`settings.advanced.adjustment_ceiling`, 0 = unlimited) is a policy value, not a capability. `assert_ceiling()` runs inside the handler after the cap check; administrators bypass it.
 - The SPA hides and disables (`<Can>` in `lib/access.tsx`) and is never a gate. A 403 from the server is the real refusal; `api.ts` turns `yayloyalty_forbidden` / `yayloyalty_adjustment_ceiling` into one toast.
+
+### Dev fixtures and swap points
+
+Two conventions for fixture data coexist:
+
+**Shared schema/query-arg classes** — `Controllers/Schemas/{CustomerItemSchema,LedgerQueryArgs,ActivityQueryArgs}.php` live in one place and are reused by both controllers (real path) and fixtures (dev-only path), so a contract change is made once.
+
+**Dev-only fixture gate** — `WP_DEBUG`-gated fixtures (`CustomerDrawerFixture`, `DashboardFixture`) are reached via a `scenario` query arg, checked server-side by `requested()` helper — the real path (no arg) always returns real data. A "swap point" fixture (`CampaignRestController::dummy_fixture()`, `CampaignPerformanceFixture`) is never optional; it ships in the release zip. Mark swap-point fixtures in controller docblocks and list them in `project-roadmap.md` Known Gaps.
 
 ## 10. PHP 7.4 pseudo-enums
 
@@ -306,17 +314,17 @@ A stripping build fails silently by nature, so every release is validated agains
 ```bash
 composer lint                          # phpcs (WPCS + PHPCompatibility)
 composer lint:fix                      # phpcbf
-composer test                          # phpunit — 115 tests: points engine, reward engine scaffold, dashboard computation, PointsMath + shared vectors, campaign validation, drawer query-arg groupings + fixture helpers
+composer test                          # phpunit — 152 tests (27 incomplete = the earning-split specification in `tests/unit/Earning/`, `tests/unit/Services/`, `tests/unit/ContextFactoryTest.php`): points engine, earning orchestration scaffold, reward engine scaffold, dashboard computation, PointsMath + shared vectors, campaign validation, drawer query-arg groupings + fixture helpers
 pnpm --filter @yayloyalty/admin-page lint   # eslint + prettier on SPA
 pnpm --filter @yayloyalty/admin-page test   # vitest — lib/points-math against the same vector file
-./scripts/run.sh build [pro|lite]      # Full build — currently fails at tsc --noEmit due to #7 dangling imports
+./scripts/run.sh build [pro|lite]      # Full build — currently fails at tsc --noEmit due to 3 pre-existing missing-dependency type errors
 ```
 
 `tests/bootstrap.php` shims `add_filter` / `apply_filters` / `do_action` so pure code that goes through hooks can be tested in milliseconds. Anything that needs `$wpdb` or WooCommerce is not a unit test; until a wp-phpunit harness exists, exercise it through WP-CLI.
 
 ### The points engine is pure
 
-`Engine\Points\*` reads campaigns through `CampaignRepository` and nothing else — no `$wpdb`, no WooCommerce globals, no current user, no `time()`, no capability checks. Everything about the event arrives on the `Context`, built by `ContextFactory` (the one class allowed to touch WooCommerce) or by hand in a test. `$at` is the event's time, never `now()`. Config gates (`min_subtotal`, a paused default under a multiplier) are **eligibility**: the engine falls through to the next campaign rather than earning zero or throwing.
+`Engine\Points\*` reads campaigns through `CampaignRepository` and nothing else — no `$wpdb`, no WooCommerce globals, no current user, no `time()`, no capability checks. Everything about the event arrives on the `Context`, built by `ContextFactory` (the one class allowed to touch WooCommerce) or by hand in a test. The engine takes no timestamp argument: liveness is scored at `Context::occurred_at`, the event's time, never `now()` (`ContextFactory::from_order()` throws when the order has no creation date). Config gates (`min_subtotal`, a paused default under a multiplier) are **eligibility**: the engine falls through to the next campaign rather than earning zero or throwing.
 
 Every exclusion in `phpcs.xml.dist` carries a one-line reason. **An exclusion without a reason is a bug** — it means a sniff was disabled to make the build green rather than because it was wrong.
 

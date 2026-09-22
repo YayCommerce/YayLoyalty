@@ -4,11 +4,13 @@ namespace YayLoyalty\Database\Schema;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Append-only truth; customers is derived from it. uniq_ledger_event on
- * (user_id, source, reference_type, reference_id) is the idempotency
- * guarantee: source not type (sources share reference types), user_id
- * included (a referral order earns two users). NULL references (manual
- * adjustments) never collide, so those are deliberately not idempotent.
+ * Append-only truth; customers is derived from it. uniq_idempotency_key on
+ * the single `idempotency_key` column is the idempotency guarantee: one
+ * string composed by Engine\Earning\IdempotencyKey (type, user, reference
+ * and trigger — an order may earn once per trigger per user), one guard, no nullable
+ * composite. NULL keys (manual adjustments) never collide, so those are
+ * deliberately not idempotent. The former composite uniq_ledger_event is
+ * dropped by Installer::run_migrations() — dbDelta cannot drop an index.
  * idx_user_history is (user_id, id): created_at can tie within a second.
  * See docs/data-model.md.
  */
@@ -35,9 +37,10 @@ final class LedgerTable extends AbstractTableSchema {
             order_id bigint unsigned DEFAULT NULL,
             note varchar(500) DEFAULT NULL,
             actor_id bigint unsigned DEFAULT NULL,
+            idempotency_key varchar(96) DEFAULT NULL,
             created_at datetime NOT NULL,
             PRIMARY KEY  (id),
-            UNIQUE KEY uniq_ledger_event (user_id,source,reference_type,reference_id),
+            UNIQUE KEY uniq_idempotency_key (idempotency_key),
             KEY idx_user_history (user_id,id),
             KEY campaign_id (campaign_id),
             KEY redemption_id (redemption_id),
@@ -61,6 +64,7 @@ final class LedgerTable extends AbstractTableSchema {
             'order_id',
             'note',
             'actor_id',
+            'idempotency_key',
             'created_at',
         ];
     }
@@ -69,7 +73,7 @@ final class LedgerTable extends AbstractTableSchema {
         return [
             'PRIMARY',
             // Missing means duplicate awards; Installer::verify() exists for this.
-            'uniq_ledger_event',
+            'uniq_idempotency_key',
             'idx_user_history',
             'campaign_id',
             'redemption_id',

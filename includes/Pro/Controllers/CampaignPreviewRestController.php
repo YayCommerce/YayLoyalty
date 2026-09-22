@@ -61,7 +61,7 @@ final class CampaignPreviewRestController extends AbstractRestController {
         $user_id    = (int) $request['user_id'];
         $conditions = $campaign->get_conditions();
 
-        // No conditions means everyone qualifies, as in Campaign::conditions_match().
+        // No conditions means everyone qualifies, as in PointsEngine::conditions_match().
         if ( empty( $conditions ) ) {
             return [
                 'campaign_id' => (int) $campaign->get_id(),

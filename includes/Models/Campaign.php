@@ -189,30 +189,6 @@ class Campaign extends AbstractModel {
     }
 
     /**
-     * Whether this campaign's `conditions` match the customer. With no
-     * evaluator attached (Lite) this fails open: failing closed would silently
-     * disable every conditional campaign the moment a site downgraded from Pro.
-     */
-    public function conditions_match( int $user_id ): bool {
-        if ( empty( $this->conditions ) ) {
-            return true;
-        }
-
-        /**
-         * Evaluator for campaign `conditions`; null in Lite. Internal Pro seam, not a public API.
-         *
-         * @param object|null $evaluator Exposes evaluate( array $conditions, int $user_id ): bool.
-         */
-        $evaluator = apply_filters( 'yayloyalty_campaign_conditions_evaluator', null );
-
-        if ( null === $evaluator || ! method_exists( $evaluator, 'evaluate' ) ) {
-            return true;
-        }
-
-        return (bool) $evaluator->evaluate( $this->conditions, $user_id );
-    }
-
-    /**
      * Per-trigger config schema, key => spec: what `config` may hold and what
      * config_is_valid() checks against. Lite triggers only; Pro triggers add
      * theirs through config_whitelist(). Spec types: bool, string,

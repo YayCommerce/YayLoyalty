@@ -2,7 +2,7 @@
 
 A loyalty program plugin for WooCommerce with points earning, rewards redemption, referral tracking, and VIP tier management. Shipped as Pro and Lite from one repository.
 
-**Status:** v1.0.0 in development. Core earning system (campaigns, ledger, balance) and reward definitions shipped; admin Dashboard, Customers list + per-customer drawer are live. Nothing awards points yet (no order listener) and no redemption flow exists. Referrals and tiers planned for later phases.
+**Status:** v1.0.0 in development. Core earning system (campaigns, ledger, balance) and reward definitions shipped; admin Dashboard, Customers list + per-customer drawer are live. Nothing awards points yet: the award path (`includes/Engine/Earning/` — listeners, gates, `LedgerService::earn()`) is scaffolded with stub bodies and not registered at boot; no redemption flow exists. Referrals and tiers planned for later phases.
 
 ---
 
@@ -116,7 +116,7 @@ One repository, two zips. Lite = Pro minus `includes/Pro/` and SPA built with `B
 ## Checks
 
 ```bash
-composer test                  # phpunit — 115 unit tests: points engine (BaseCalculator, PurchaseHandler, PointsEngine), reward engine scaffold (Result, Registry, RewardEngine), dashboard computation (PeriodWindow, DashboardMath, AnomalyDetector, DashboardStats, DashboardNotices), PointsMath + shared vectors, campaign config/conditions validation, drawer query-arg groupings + fixture helpers (Controllers/)
+composer test                  # phpunit — 152 unit tests, 27 incomplete by design (the earning-split invariants): points engine (BaseCalculator, PurchaseHandler, PointsEngine), earning orchestration scaffold (IdempotencyKey, Outcome, EarningService), reward engine scaffold (Result, Registry, RewardEngine), dashboard computation (PeriodWindow, DashboardMath, AnomalyDetector, DashboardStats, DashboardNotices), PointsMath + shared vectors, campaign config/conditions validation, drawer query-arg groupings + fixture helpers (Controllers/)
 composer lint                  # phpcs (WPCS + PHPCompatibility, 7.4 floor)
 pnpm --filter @yayloyalty/admin-page lint   # eslint + prettier on TypeScript/React
 pnpm --filter @yayloyalty/admin-page test   # vitest — lib/points-math against tests/fixtures/points-math-vectors.json (same file phpunit runs)
@@ -125,7 +125,7 @@ pnpm --filter @yayloyalty/admin-page test   # vitest — lib/points-math against
 
 `scripts/validate-build.php` boots the packaged plugin inside WordPress when `YAYLOYALTY_WP_CLI` is set — see `docs/deployment-guide.md`.
 
-**Known issue:** The `pnpm build` step currently fails at `tsc --noEmit` on five pre-existing type errors (`@emoji-mart/*` and `@radix-ui/react-progress` types, and a `per_page`/`perPage` mismatch in two campaign components). This must be fixed before the next release.
+**Known issue:** The `pnpm build` step currently fails at `tsc --noEmit` on three pre-existing type errors: `emoji-picker-content.tsx` (×2, `@emoji-mart/*` types undeclared) and `progress.tsx` (`@radix-ui/react-progress` not installed). This must be fixed before the next release.
 
 ---
 

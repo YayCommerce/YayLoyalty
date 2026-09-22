@@ -6,6 +6,38 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
 
 ## Unreleased
 
+### Added — Earning orchestration scaffold (2026-09-22)
+
+- **`includes/Engine/Earning/`:** the evaluate/award split around the pure `PointsEngine`.
+  `EarningService::preview()` (gates → engine) and `award()` (preview again at the same
+  `occurred_at`, then `LedgerService::earn()` in one transaction), `Gate` + `ProgramGate`
+  (`excluded_roles` setting, `_yayloyalty_opted_out` user meta), `PendingPoints`, `Outcome`
+  (`awarded` | `skipped` | `duplicate`), `IdempotencyKey`, and `Listeners/{Order,Signup,Review}Listener`.
+  Every body is a `TODO(F01-4)` stub except `IdempotencyKey`, `Outcome`, `CustomerFacts` and the
+  gate-chain loop; listeners are not registered at boot. Invariants in the package README.
+- **Ledger idempotency:** one `idempotency_key VARCHAR(96)` column under UNIQUE
+  `uniq_idempotency_key` (`{type}:{user_id}:{reference_type}:{reference_id}:{trigger}`) replaces the
+  composite `uniq_ledger_event`; `Installer::run_migrations()` → `drop_index_if_exists()` (stub)
+  removes the old index on upgrade. `LedgerEntry::get_idempotency_key()`; null on `adjust`.
+- **Engine:** `PointsEngine::evaluate()` drops its `$at` argument and reads `Context::occurred_at`;
+  `ContextFactory::from_order()` throws without an order creation date. New `CustomerFacts`
+  (read once by `ContextFactory::customer_facts()`) so `ConditionsEvaluator` compares instead of
+  querying — interim: it still folds over the user id. `Campaign::conditions_match()` moved into `PointsEngine` (private), keeping the model engine-free.
+- **Repositories:** `LedgerRepository::find_by_idempotency_key()` / `points_earned_today()`,
+  `CustomerRepository::apply_pending_delta()` (stubs); `find_by_reference()` / `latest_for_user()` removed.
+- **Settings:** `excluded_roles` (`slug_list`) added to `SettingsHelper` defaults.
+- **Tests:** 115 → 152 cases; the 27 incomplete ones under `tests/unit/Earning/`, `tests/unit/Services/`
+  and `ContextFactoryTest.php` are the scaffold's specification. `docs/points-engine-scout.md` records
+  the pre-scaffold inventory.
+
+### Changed — Docs (2026-09-22)
+
+- GDPR erasure feature corrected to "not started" (no implementation exists yet).
+- Build validation: tsc error count fixed to 3 (not 5; per_page/perPage mismatch was already resolved in commit 5a9def2).
+- Documented fixture-backed endpoints: WP_DEBUG-gated `?scenario=` dev fixtures vs. unconditional swap-point fixtures that ship in release zips.
+- System architecture seams: added `yayloyalty_register_trigger_handlers` and `yayloyalty_localize_admin_data` to filter list.
+- Data model indexes: added missing customers table indexes (lifetime_earned, lifetime_redeemed, joined_at).
+
 ### Added — Campaign performance page, Pro (2026-09-21, #16)
 
 - **Route:** `/campaigns/:id/performance` for `purchase`/`signup`/`review` campaigns only — tiles,
@@ -35,7 +67,7 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
   ledger aggregate for the rail's cost estimate; `updated_by` never set; `include_shipping` is a
   dead config key.
 
-### Changed — Customer drawer: one definition per fact, one implementation per pattern (2026-09-21)
+### Changed — Customer drawer: one definition per fact, one implementation per pattern (2026-09-21, #14)
 
 A review-driven cleanup of the drawer, wire-neutral on every endpoint (fixture payloads were
 diffed byte-for-byte before/after) and visually unchanged bar one 8px gap noted below.
@@ -117,9 +149,8 @@ envelope for: Activity log, Redemptions, Referrals (see `docs/data-model.md`).
 
 See `docs/data-model.md` (the new wire-block/endpoint-simplification notes) and
 `docs/codebase-summary.md` (three new REST controllers, the drawer's current file layout) for the
-reference-doc detail, and `plans/260918-0845-customer-drawer-wave-b/` for the full plan and
-phase-by-phase implementation notes, including every phase's live-verification results and code
-review findings.
+reference-doc detail. Full plan and phase-by-phase implementation notes (including live-verification
+results and code review findings) are in the planning phase directories.
 
 ### Added — F09 Customer Drawer, Wave A
 
@@ -154,5 +185,5 @@ exists, no column yet); the Activity log table itself (unpriced — the largest 
 surfaces).
 
 See `docs/data-model.md` (Activity log gap, `deleted_at`), `docs/codebase-summary.md` (drawer route,
-fixture location) for the reference-doc detail, and `plans/260917-1504-customer-drawer-wave-a/`
-for the full plan and phase-by-phase implementation notes.
+fixture location) for the reference-doc detail. Full plan and phase-by-phase implementation notes
+are in the planning phase directories.

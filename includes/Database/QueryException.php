@@ -43,4 +43,15 @@ final class QueryException extends \RuntimeException {
     public function get_operation(): string {
         return $this->operation;
     }
+
+    /**
+     * Whether the failed write hit a UNIQUE index (MySQL error 1062). The
+     * award path treats that as "already awarded", a normal outcome, so
+     * the unique constraint — not a pre-check — is the guarantee. Decided
+     * from the driver error, never from the message text.
+     */
+    public function is_duplicate_key(): bool {
+        // TODO(F01-4): capture $wpdb->dbh->errno (wpdb's magic getter exposes dbh) in the constructor and compare to 1062 here.
+        throw new \RuntimeException( 'Not implemented' );
+    }
 }

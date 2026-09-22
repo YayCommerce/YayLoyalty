@@ -29,9 +29,11 @@ Comprehensive guide to the YayLoyalty plugin repository structure, entry points,
 | `Engine/Register/RegisterProd.php`   | Registers scripts/styles for production                                                                   |
 | `Engine/Register/RegisterDev.php`    | Registers dev server origin for HMR (Vite)                                                                |
 | `Engine/Register/RegisterFacade.php` | Facade that selects RegisterProd or RegisterDev                                                           |
+| `Engine/Register/ScriptName.php`     | Safe script handle enum                                                                                    |
 | `Engine/Admin/Settings.php`          | Loads admin menu items and pages                                                                          |
 | `Engine/ActDeact.php`                | Activation, deactivation, multisite hooks, installer trigger                                              |
 | `Database/Installer.php`             | Schema versioning, migrations, `dbDelta` application                                                      |
+| `Fallback.php`                       | Plugin fallback for network activation contexts                                                            |
 | `I18n.php`                           | Text domain loading                                                                                       |
 
 ### Models & Data (4 tables implemented)
@@ -40,11 +42,12 @@ Comprehensive guide to the YayLoyalty plugin repository structure, entry points,
 | ------------------------------- | ---------------------- | ----------------------------------------------------------------------------- |
 | `Models/AbstractModel.php`      | —                      | Base class; `to_array()`, REST shape cast methods                             |
 | `Models/Customer.php`           | `yayloyalty_customers` | Cached aggregates (balance, lifetime earned, etc.)                            |
-| `Models/LedgerEntry.php`        | `yayloyalty_ledger`    | Immutable fact row; `points` delta, `balance_after`, type, source             |
+| `Models/LedgerEntry.php`        | `yayloyalty_ledger`    | Immutable fact row; `points` delta, `balance_after`, type, source, `idempotency_key` (null on `adjust`) |
 | `Models/Campaign.php`           | `yayloyalty_campaigns` | Earning rule; trigger, config (JSON), conditions (JSON)                       |
 | `Models/Reward.php`             | `yayloyalty_rewards`   | Redemption option; type, cost (for catalog), config (JSON), conditions (JSON) |
 | `Models/RewardCondition.php`    | —                      | One condition in a reward's eligibility rules                                 |
 | `Models/RewardConditionSet.php` | —                      | Validation & normalisation for a reward's conditions array                    |
+| `Models/CampaignCondition.php`  | —                      | One condition in a campaign's eligibility rules                               |
 
 ### Enums (PHP 7.4 Pseudo-enums)
 
@@ -68,7 +71,7 @@ All SQL access **must** go through these. Throw `QueryException` on write failur
 | -------------------------------------- | --------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `Repositories/AbstractRepository.php`  | —                                                                                                   | Base: `table()` via `Utils\Table`, `find()`, `insert()`, `update()`, `delete()`, `paginate()`; all SQL prepared; write failures throw `QueryException`                                                                                                                                                                                                                                                          |
 | `Repositories/CustomerRepository.php`  | `customers`                                                                                         | `find_by_user_id()`, `ensure_row()` (INSERT … ON DUPLICATE KEY UPDATE), `lock_and_get()` (SELECT … FOR UPDATE), `apply_delta()`                                                                                                                                                                                                                                                                                 |
-| `Repositories/LedgerRepository.php`    | `ledger`                                                                                            | `find_by_reference()`, `paginate_for_user()`, `sum_points_for_user()`, `latest_for_user()`                                                                                                                                                                                                                                                                                                                      |
+| `Repositories/LedgerRepository.php`    | `ledger`                                                                                            | `paginate_for_user()`, `sum_points_for_user()`; scaffold stubs `find_by_idempotency_key()`, `points_earned_today()`                                                                                                                                                                                                                                                                                                                      |
 | `Repositories/CampaignRepository.php`  | `campaigns`                                                                                         | `find_campaign()`, `find_by_slug()`, `live_for_trigger($trigger, $at)`, `all_non_archived()` (cached), `find_default_purchase()`, `paginate_filtered()`, `seed_builtin()`, `flush_cache()`                                                                                                                                                                                                                      |
 | `Repositories/RewardRepository.php`    | `rewards`                                                                                           | `find_reward()`, `find_by_slug()`, `paginate_filtered()`, `seed_builtin()`                                                                                                                                                                                                                                                                                                                                      |
 | `Repositories/DashboardRepository.php` | ledger + customers + users + rewards + WC (**read-only, standalone** — not an `AbstractRepository`) | Dashboard aggregates: `count_members()`, `sum_issued()`/`sum_redeemed()`/`net_delta()`, `daily_points()`, `liability_points()`/`net_balance()`, `orders_with_points()`/`orders_with_earn()`, `campaign_points_on_day()`, `top_earners()`, `latest_activity()`, `count_activity_since()`, `count_negative_balances()`, `count_orders()` (WC, unix-timestamp range, completed only), `points_per_currency_unit()` |
@@ -78,7 +81,8 @@ All SQL access **must** go through these. Throw `QueryException` on write failur
 | Class                        | Role                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `Services/Dashboard/`        | Pure, unit-tested dashboard computation: `PeriodWindow` (site-tz calendar-day windows → UTC bounds), `DashboardMath` (series zero-fill; ratios come from `Utils\PointsMath`), `AnomalyDetector` (jump rule over active days), `DashboardStats` (composes the payload), `DashboardNotices` (three detectors, structured `{key, severity, fingerprint, data}` — no copy), `DashboardCache` (transient above 10k members, `''`/`'pro'` variants, flushed on `yayloyalty_ledger_recorded` + `yayloyalty_campaigns_changed`), `NoticeDismissals` (per-user meta, applied after the cache) |
-| `Services/LedgerService.php` | **SOLE writer** of ledger. `adjust()` (public) creates ledger row, updates customer aggregates, writes inside `Transaction::run()`, then fires `yayloyalty_ledger_recorded` after it returns. Encapsulates idempotency and lock order. `record()` is private; use `adjust()` for manual adjustments.                                                                                                                                                                                                                                                                                 |
+| `Services/LedgerService.php` | **SOLE writer** of ledger. `adjust()` (public) creates ledger row, updates customer aggregates, writes inside `Transaction::run()`, then fires `yayloyalty_ledger_recorded` after it returns. Encapsulates idempotency and lock order. `record()` is private; use `adjust()` for manual adjustments. `earn( LedgerEntry $draft ): Outcome` is the award-path entry point — a scaffold stub until F01-4 (lock customer row → INSERT under `uniq_idempotency_key` → aggregates; MySQL 1062 becomes `Outcome::duplicate`). |
+| `Services/Dashboard/*` | Dashboard computation: `PeriodWindow`, `DashboardMath`, `AnomalyDetector`, `DashboardStats`, `DashboardNotices`, `DashboardCache`. |                                                                                                                                                                                                                                                                                 |
 
 **Design rule:** Fact tables get Entity + Repository + Service. Definition tables (campaigns) get Entity + Repository only — no service.
 
@@ -97,9 +101,10 @@ All `namespace YayLoyalty\Controllers` → routes under `yayloyalty/v1/`.
 | `ReferralsRestController`               | `GET /customers/{id}/referrals`                                                 | Paginated referral rows (F09 Wave B, phase 06) — same shape again; envelope also carries `referral_link`/`campaign`. Fixture via `DrawerReferrals.php`. Pro-gated tab body, same as Redemptions                                                                                                                                                                                                     |
 | `CampaignRestController`                | `/campaigns`, `/campaigns/{id}`                                                 | CRUD on campaigns. Reads serve `dummy_fixture()`; `update_item()` validates (trigger, config whitelist, conditions) and returns the row without writing — both are one SWAP POINT, see the note below                                                                                                                                                                                                 |
 | `SettingsRestController`                | `yayloyalty/v1/settings`                                                        | Read/update plugin settings                                                                                                                                                                                                                                                                                                                                                                         |
-| `DashboardRestController`               | `GET /dashboard?range=7\|30\|90[&refresh=1]`, `POST /dashboard/notices/dismiss` | Landing-page payload (cap `VIEW`); `scenario` arg exists only under `WP_DEBUG` → `DashboardFixture` artboards (SWAP POINT, dev-only)                                                                                                                                                                                                                                                                |
+| `DashboardRestController`               | `GET /dashboard?range=7\|30\|90[&refresh=1]`, `POST /dashboard/notices/dismiss` | Landing-page payload (cap `VIEW`); `scenario` arg exists only under `WP_DEBUG` → `DashboardFixture` artboards (SWAP POINT, dev-only) |
+| `DashboardFixture`                      | —                                                                               | Dev-only fixture scenarios for every dashboard artboard; WP_DEBUG-gated via `requested()`                                                                                                                                                                                                                                                                |
 | `CustomerRowFilters`, `CustomerRowSort` | —                                                                               | Pure helpers for the Customers list's server-side filtering/sorting; SQL-free — `CustomerRepository::paginate_list()`/`count_list()` turn their criteria/order shapes into SQL                                                                                                                                                                                                                      |
-| `CustomerListFormatter`                 | —                                                                               | `GET /customers` route args (`filter_params()`) and wire-row / no-match-suggestion shaping, split from `CustomerRestController` for the 200-line cap; sibling of the two helpers above                                                                                                                                                                                                              |
+| `CustomerListFormatter`                 | —                                                                               | `GET /customers` route args (`filter_params()`) and wire-row / no-match-suggestion shaping, split from `CustomerRestController` for readability; sibling of the two helpers above                                                                                                                                                                                                              |
 | `Schemas/*`                             | —                                                                               | Shared REST vocab: `CustomerItemSchema` (drawer item schema), `LedgerQueryArgs` (filter args + `group_of()`), `ActivityQueryArgs` (`EVENT_TYPES`/`ACTOR_KINDS`) — referenced by controllers and the drawer fixtures alike                                                                                                                                                                             |
 | `CallbackReturnedError`                 | —                                                                               | Error object when a controller callback fails (logged, correlated)                                                                                                                                                                                                                                                                                                                                  |
 
@@ -145,14 +150,30 @@ identical on every endpoint added through Wave B.
 
 | Class                                  | Role                                                                                                                                                                                                                                 |
 | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `PointsEngine`                         | `evaluate( $trigger, Context, $at )` → `Result`. Candidates → select → compute → cap. Reads campaigns only; no `$wpdb`, no current user, no `time()`, no capability checks                                                           |
+| `PointsEngine`                         | `evaluate( $trigger, Context )` → `Result`; liveness scored at `Context::occurred_at`. Candidates → select → compute → cap. Reads campaigns only; no `$wpdb`, no current user, no `time()`, no capability checks                        |
 | `Context`, `ContextLineItem`           | Immutable inputs. Amounts in order currency plus `base_rate`; `get_real_coupon_codes()` drops our own redeem coupon; `get_extra()` for trigger-specific facts (`verified_purchase`)                                                  |
-| `ContextFactory`                       | `from_order()`, `from_product()`, `from_cart()` — the only class that touches WooCommerce. `yayloyalty_context_base_rate` is the multi-currency seam                                                                                 |
+| `ContextFactory`                       | `from_order()`, `from_product()`, `from_cart()` — the only class that touches WooCommerce; `from_user()`, `from_comment()`, `customer_facts()` are scaffold stubs. `yayloyalty_context_base_rate` is the multi-currency seam            |
+| `CustomerFacts`                        | Customer facts read once by `ContextFactory::customer_facts()` (lifetime points, order count, spend per currency, purchased product/category ids, tier) so Pro's `ConditionsEvaluator` compares instead of querying                    |
 | `Triggers\Registry` + `TriggerHandler` | `PurchaseHandler` (gates: min_subtotal, exclude_coupon_orders, multiplier needs an active default), `SignupHandler`, `ReviewHandler` (require_verified). `with_lite_handlers()` fires `yayloyalty_register_trigger_handlers` for Pro |
 | `BaseCalculator`, `CapPolicy`          | Earning base (exclusions, before/after discounts, tax, loyalty-discount add-back), per-order and daily caps; rounding is `Utils\PointsMath::round_points()`                                                                          |
 | `Result`, `Breakdown`                  | Outcome + how it was reached. Storefront exposes `get_points()` only                                                                                                                                                                 |
 
 Filters (public API): `yayloyalty_campaign_candidates`, `yayloyalty_campaign_matches`, `yayloyalty_earning_base_amount`, `yayloyalty_points_for_order`.
+
+### Earning orchestration (includes/Engine/Earning/) — scaffold
+
+`namespace YayLoyalty\Engine\Earning`. The award path around the pure engine: listeners build a `Context`, `EarningService` runs gates then `PointsEngine::evaluate()` (**preview**), and `award()` repeats the preview at the same `occurred_at` then writes through `LedgerService::earn()` inside one `Transaction::run()`. See its `README.md` for the seven invariants; the test names under `tests/unit/Earning/` are the specification.
+
+| Class | Role |
+|---|---|
+| `EarningService` | `build()` composition root (constructs `LedgerService`, see `code-standards.md` §8); `preview( $trigger, Context ): Result`; `award( $trigger, Context ): Outcome`. Gate chain iteration is real; bodies are stubs |
+| `Gate` + `ProgramGate` | `check( $trigger, Context ): ?string` — a reason to skip, or null. `ProgramGate` is the one place on the path that reads settings (`excluded_roles`) and user meta (`_yayloyalty_opted_out`) |
+| `IdempotencyKey` | `compose( type, user_id, reference_type, reference_id, trigger )` → `earn:7:order:1234:purchase`; the ledger's single-column UNIQUE guard |
+| `Outcome` | `awarded( entry, evaluation )`, `skipped( reason )`, `duplicate( existing )` — a duplicate insert is a normal return, never an exception |
+| `PendingPoints` | `stage()` / `release()` / `mark_awarded()` over order meta `_yayloyalty_points_pending` / `_yayloyalty_points_released` and `CustomerRepository::apply_pending_delta()` (all stubs) |
+| `Listeners\OrderListener`, `SignupListener`, `ReviewListener` | One per event family; `register()` binds the WooCommerce / WP hooks, handlers only build a `Context` and call the service. Not registered at boot until their bodies exist |
+
+**Scaffold status:** real: `IdempotencyKey`, `Outcome`, `CustomerFacts`, the gate-chain loop. Stubs (`TODO(F01-4)`): every listener body, `preview()`/`award()`, `PendingPoints`, `LedgerService::earn()`, `LedgerRepository::find_by_idempotency_key()`/`points_earned_today()`, `Installer::drop_index_if_exists()` (drops the former `uniq_ledger_event`). Refund / clawback attaches at `OrderListener::on_refunded()` and `ReviewListener::on_unapproved()` and is not designed yet.
 
 ### Reward engine (includes/Engine/Rewards/) — scaffold
 
@@ -173,8 +194,8 @@ Filters (public API): `yayloyalty_campaign_candidates`, `yayloyalty_campaign_mat
 
 | File                                  | Role                                                                                                                                                                      |
 | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Database/Installer.php`              | Versioned schema; applies via `dbDelta`; runs on `plugins_loaded` priority 20 (outside `plugin_init`) so headless/REST paths upgrade                                      |
-| `Database/InitYayLoyaltyCustomer.php` | Starter data seeding: creates 5 real WooCommerce customers with real ledger history (via `LedgerService::adjust()`); split from Installer to keep both under 200-line cap |
+| `Database/Installer.php`              | Versioned schema; applies via `dbDelta`; runs on `plugins_loaded` priority 20 (outside `plugin_init`) so headless/REST paths upgrade. `run_migrations()` holds what `dbDelta` cannot express (index drops; `drop_index_if_exists()` is a stub) |
+| `Database/InitYayLoyaltyCustomer.php` | Starter data seeding: creates 5 real WooCommerce customers with real ledger history (via `LedgerService::adjust()`); split from Installer for readability |
 | `Database/Transaction.php`            | Nesting-aware; probes for foreign transactions via savepoint round-trip; guards on reconnect; treats failed rollback as fatal                                             |
 | `Database/QueryException.php`         | Thrown by repositories on write failure                                                                                                                                   |
 | `Database/Schema/*Table.php`          | `CREATE TABLE` DDL for each table; subclass `AbstractTableSchema`                                                                                                         |
@@ -215,7 +236,6 @@ Filters (public API): `yayloyalty_campaign_candidates`, `yayloyalty_campaign_mat
 - `yayloyalty_register_reward_handlers` — Add Pro reward handlers (fixed_coupon, percent_coupon, free_shipping, free_product) to `Engine\Rewards\Handlers\Registry`; mirrors `yayloyalty_register_trigger_handlers`
 - `yayloyalty_rest_item_schema` — Extend REST schemas
 - `yayloyalty_campaign_conditions_evaluator` — Supply conditions evaluator instance
-- `yayloyalty_erase_customer_data` — Erase Pro's own per-user data when a WP user is deleted (fired by `Engine\UserLifecycle` after Lite's own erasure)
 
 **Other seams (Pro/Lite/Engine):**
 
@@ -239,9 +259,10 @@ Filters (public API): `yayloyalty_campaign_candidates`, `yayloyalty_campaign_mat
 | `src/pages/dashboard/` | `DashboardPage.tsx` (one `IS_PRO_BUILD` branch: `DashboardProPanels` from `@/pro` vs `DashboardProTeasers`, both feeding the same `DashboardProSlots`); `components/` (stat tiles/grid, recharts points chart + frame, top earners, recent activity, empty state, cache strip, skeletons, notice strip/card, anomaly panel/settlements); `dashboard-page.copy.ts` + `dashboard-page.notice-copy.ts` own every sentence (server sends structured notice data only); `?scenario=` read from the hash route on the dev server only |
 | `src/pages/campaigns/` | `CampaignsPage.tsx` routes: Lite renders `BuiltInCampaignList` (three fixed cards for purchase/signup/review; edits are local state only, no save yet), Pro renders `CampaignTable` (grouped by trigger) + `CampaignPointsSummary` card. Both read from same `useCampaignsQuery()` (real `GET /campaigns`; currently serves cosmetic dummy data from `CampaignRestController` for UI-check—see SWAP POINT docblock—will switch to real rows when table needs no more visual iteration) |
 | `src/pages/customers/` | Server-paginated list (search/filter/sort/export/row-select), real `GET /customers`; bulk "Adjust points"/"Export" wired to real endpoints (via `customers-page.bulk-actions.ts`, `customers-page.export.ts`); selection resolves via fast path or sequential walk of `GET /customers` (see `customers-page.matching-customers.ts`, max 500 pages); Tier column/filter are sample-data stand-ins over `balance_range` (see `customers-page.tier-sample-data.ts`—to be deleted when VIP Tiers ships); Pro adds a saved-segment picker above the toolbar; table dims to 60% opacity during background page/sort/filter refetch (placeholderData keeps rows on screen; no toolbar spinner); below `sm` the `<Table>` is swapped for `components/CustomersCardList.tsx` (same three states) and column-header sorting for `CustomersSortDropdown.tsx`; the search box debounces through `hooks/useDebouncedSearchCommit.ts` (empty commits immediately, non-empty 300ms/`maxWait` 800ms, generation counter cancels stale commits) |
-| `src/pages/customers/drawer/` (F09, Wave A+B complete) | `CustomerDrawer.tsx` — Sheet shell for the `customers/:userId` child route, rendered through the list's `<Outlet/>` so it stays mounted/dimmed behind the drawer; full-screen below `sm` (5c), 600px panel above. Header/stats (five-stat `auto-fit`/`minmax(150px,1fr)` grid, never abbreviated, 2-column reflow below `sm` — see `CustomerDrawerStats.tsx`'s docblock for the 4-vs-5 decision)/actions (Adjust points is the one live action; Reset expiry/Export ledger/[Assign tier] are permanently disabled with a stated reason — no endpoint yet)/deleted-account, expiring-points and negative-balance panels (mutually exclusive, header-level, `?scenario=deleted\|expiring\|negative`) / a 4-tab bar with counts, all four with real paged bodies now (Points ledger, Activity log, Redemptions, Referrals — the latter two `ProGate`-badged, Pro-only content behind a tab both builds see). Every tab table renders through `tabs/DrawerTable.tsx` (shell, skeleton, empty state, `drawerCell()` responsive cell class); the two filterable tabs own their state through `customer-drawer.tab-query-state.ts` (`useDrawerTabQueryState`) and render `tabs/DrawerTabFilters.tsx`; `DRAWER_PAGE_SIZE` (`tabs/DrawerTabPager.tsx`) is the one page size. `customer-drawer.copy.ts` + `customer-drawer.panels.copy.ts` + `customer-drawer.referrals.copy.ts` own every sentence between them (split once the first hit its 200-line cap). `?scenario=` (read only by `hooks/useDevScenario.ts`, `undefined` outside the Vite dev server) forwards to the PHP fixture below; the default path always serves the real repository or an honest empty envelope (Activity/Redemptions/Referrals — no backing table exists for any of them yet, see `docs/data-model.md`) |
+| `src/pages/customers/drawer/` (F09, Wave A+B complete) | `CustomerDrawer.tsx` — Sheet shell for the `customers/:userId` child route, rendered through the list's `<Outlet/>` so it stays mounted/dimmed behind the drawer; full-screen below `sm` (5c), 600px panel above. Header/stats (five-stat `auto-fit`/`minmax(150px,1fr)` grid, never abbreviated, 2-column reflow below `sm` — see `CustomerDrawerStats.tsx`'s docblock for the 4-vs-5 decision)/actions (Adjust points is the one live action; Reset expiry/Export ledger/[Assign tier] are permanently disabled with a stated reason — no endpoint yet)/deleted-account, expiring-points and negative-balance panels (mutually exclusive, header-level, `?scenario=deleted\|expiring\|negative`) / a 4-tab bar with counts, all four with real paged bodies now (Points ledger, Activity log, Redemptions, Referrals — the latter two `ProGate`-badged, Pro-only content behind a tab both builds see). Every tab table renders through `tabs/DrawerTable.tsx` (shell, skeleton, empty state, `drawerCell()` responsive cell class); the two filterable tabs own their state through `customer-drawer.tab-query-state.ts` (`useDrawerTabQueryState`) and render `tabs/DrawerTabFilters.tsx`; `DRAWER_PAGE_SIZE` (`tabs/DrawerTabPager.tsx`) is the one page size. `customer-drawer.copy.ts` + `customer-drawer.panels.copy.ts` + `customer-drawer.referrals.copy.ts` own every sentence between them (split for readability). `?scenario=` (read only by `hooks/useDevScenario.ts`, `undefined` outside the Vite dev server) forwards to the PHP fixture below; the default path always serves the real repository or an honest empty envelope (Activity/Redemptions/Referrals — no backing table exists for any of them yet, see `docs/data-model.md`) |
 | `src/pro/campaigns/` | **Deleted in Lite build** — Pro campaign features: `CampaignTable.tsx` (full table with grouping, priority, scheduling, conditions); `CampaignPointsSummary.tsx` (points contribution card); `campaign-points-dummy.ts` (cosmetic sample data for points summary—to be deleted when real tier/scheduling analytics land) |
 | `src/pro/campaigns/editor/` | **Deleted in Lite build** — Campaign edit form (`campaigns/:id/edit`): `CampaignEditor.tsx` (loads the campaign, owns the react-hook-form instance — first RHF + `zodResolver` use in the codebase — and `useRouteLeaveGuard` for unsaved changes), `CampaignEditorSections.tsx` (Basics/Trigger/Reward/Schedule/Priority; per-trigger reward config editors for the Lite triggers, read-only passthrough for Pro-only triggers), `CampaignEditorConditions.tsx` (10-type condition builder + `validateConditionValue()`), `CampaignEditorSummaryRail.tsx` ("What this means"/"Before it can run"/save + Performance link), `campaign-editor.form.ts` (`CampaignFormValues` = `CampaignUpdateInput`; `trigger` is immutable on edit; `starts_at`/`ends_at` stay raw UTC — the Schedule section converts at its inputs only). Saves go through `useUpdateCampaignMutation()` → `updateCampaign()`; the server validates but does not persist yet (SWAP POINT above) |
+| `src/pro/campaigns/conditions-preview.api.ts` | **Deleted in Lite build** — API wrapper for POST `/campaigns/{id}/preview-conditions` endpoint |
 | `src/pro/campaigns/performance/` | **Deleted in Lite build** — Campaign performance page (`campaigns/:id/performance`, purchase/signup/review only): `CampaignPerformance.tsx` (composes the page/route entry), `CampaignPerformanceTiles/Chart/SidePanel/Entries.tsx` (tiles use `components/ui/custom/stat-tile.tsx`, the delta-less sibling of `DashboardStatTile`), `campaign-performance.copy.ts` (pure, trigger-aware copy), `campaign-performance.api/queries.ts`. Reads `lib/schema/campaign-performance.schema.ts`; entry points are `CampaignTable`'s row menu and the editor rail's "Performance" link (both gated by `hasPerformancePage(trigger)`) |
 | `src/pro/dashboard/` | **Deleted in Lite build** — `DashboardProPanels` (render-prop slots), tier distribution, top campaigns, breakdown toggle, `dashboard-pro.api/queries.ts`, `dashboard-pro-dummy.ts` (referrals + tiers, SWAP POINT) |
 | `src/pro/campaigns/campaign-labels.ts` | `givesLabel()` / `conditionsLabel()` shared by `CampaignTable` and `DashboardTopCampaigns` |
@@ -250,6 +271,7 @@ Filters (public API): `yayloyalty_campaign_candidates`, `yayloyalty_campaign_mat
 | `src/components/ui/chart.tsx` | Vendored shadcn chart primitive for recharts 2 (`.yay-dark` selector, `--chart-1..5` tokens from `styles/theme.css`) |
 | `src/lib/points-math/points-math.ts` | camelCase mirror of `Utils\PointsMath`; the only place the SPA computes a points figure. `tests/points-math.vectors.test.ts` (Vitest, `pnpm test`) runs the shared vector file |
 | `src/lib/schema/dashboard*.schema.ts` | Zod mirrors of the dashboard contracts: `dashboard.schema.ts` (Free), `dashboard-notice.schema.ts` (per-key notice `data`), `dashboard-pro.schema.ts` (Pro) |
+| `src/lib/api/customer-drawer.api.ts` | API wrapper for customer drawer endpoints (ledger, activity, redemptions, referrals) |
 | `src/lib/` | Helpers: `api/` (REST calls), `queries/` (TanStack Query), `schema/` (Zod), `utils.ts`, `is-pro-build.ts`, `helpers/`, `access.tsx` (`CAP`, `can()`, `<Can>` — hide/disable by capability from `window.yayLoyaltyAdmin`; cosmetic, the server decides) |
 | `src/types/` | TypeScript type definitions |
 | `src/hooks/` | `useDebouncedSearchCommit` (shared search debounce policy — Customers list + drawer tabs), `useDevScenario` (the one client-side `?scenario=` reader; `undefined` outside the Vite dev server), `useRouteLeaveGuard` (unsaved-changes dialog on navigation — campaign editor), `useCombinedRefs`, `useUncontrolled` |
@@ -262,36 +284,41 @@ Filters (public API): `yayloyalty_campaign_candidates`, `yayloyalty_campaign_mat
 
 ## Request Flows
 
-### Order Award → Ledger Entry (Not Wired)
+### Order Award → Ledger Entry (Scaffolded, not wired at boot)
 
 ```
-[Currently NOT IMPLEMENTED — Engine built, listener missing]
+[SCAFFOLD — shape is real, bodies are TODO(F01-4); listeners are not registered from YayLoyalty::__construct() yet]
 
-WooCommerce order reaches award status
+WooCommerce order created / reaches award status
   ↓
-Hook listener on order status change (F01-4, not built)
+Engine\Earning\Listeners\OrderListener::on_created() / on_awardable()
   ↓
-ContextFactory::from_order( $order, $points_earned_today )   ← the only WooCommerce read
+ContextFactory::from_order( $order, LedgerRepository::points_earned_today() )   ← the only WooCommerce read; occurred_at = order creation date
   ↓
-PointsEngine::evaluate( 'purchase', $ctx, $ctx->get_occurred_at() )   pure: campaigns only; unit-tested without WordPress
-  ├─ CampaignRepository::live_for_trigger()  liveness filtered at the ORDER's time
-  ├─ first campaign: conditions_match() AND handler->is_eligible()   (gates fall through, never zero)
-  ├─ PurchaseHandler → BaseCalculator → PointsMath::round_points → CapPolicy
-  └─ Result: points, campaign, breakdown, reference, source | none( reason )
+EarningService::preview( 'purchase', $ctx )
+  ├─ gates: ProgramGate (excluded_roles, _yayloyalty_opted_out) → Outcome::skipped( reason )
+  └─ PointsEngine::evaluate( 'purchase', $ctx )   pure: campaigns only; liveness at the ORDER's time
+       ├─ CampaignRepository::live_for_trigger()
+       ├─ first campaign: conditions_match() AND handler->is_eligible()   (gates fall through, never zero)
+       ├─ PurchaseHandler → BaseCalculator → PointsMath::round_points → CapPolicy
+       └─ Result: points, campaign, breakdown, reference, source | none( reason )
+  ↓ on_created: PendingPoints::stage()   idempotent on _yayloyalty_points_pending
+  ↓ on_awardable:
+EarningService::award( 'purchase', $ctx )   preview again, same occurred_at
   ↓
-LedgerService::earn( user_id, points, source, reference_type, reference_id, campaign_id )   [to be added]
+Transaction::run()
+  ├─ LedgerService::earn( $draft )
+  │    ├─ CustomerRepository::lock_and_get()      SELECT … FOR UPDATE → unbroken balance_after chain
+  │    ├─ LedgerRepository::insert()              UNIQUE uniq_idempotency_key; MySQL 1062 → Outcome::duplicate
+  │    └─ CustomerRepository::apply_delta()       balance, lifetime_earned
+  └─ PendingPoints::release() / mark_awarded()
+  ↓ after commit
+do_action( 'yayloyalty_ledger_recorded' ), do_action( 'yayloyalty_points_awarded' )
   ↓
-LedgerService::record()
-  ↓
-  ├─ Lock customers row (gap lock → row lock)
-  ├─ Insert ledger row
-  ├─ Update customers balance + aggregates
-  ├─ Insert lots (Pro only)
-  ├─ Fire do_action( 'yayloyalty_ledger_recorded' )
-  └─ Commit (or savepoint release)
-  ↓
-REST GET /customers/{id} returns updated balance (next sync)
+Outcome: awarded | skipped( reason ) | duplicate
 ```
+
+`SignupListener` (`user_register` → `ContextFactory::from_user()`) and `ReviewListener` (comment approval → `from_comment()`) follow the same preview/award shape without the pending stage. Refund / clawback hangs off `OrderListener::on_refunded()` and `ReviewListener::on_unapproved()` — undesigned.
 
 ### Admin API Request Flow
 
@@ -348,7 +375,7 @@ BaseRestController::exec_write( callback, request )
 - **Admin JS:** Enqueued by `RegisterProd` / `RegisterDev`; communicates via `ky` to REST
 - **REST:** Namespace `yayloyalty/v1`, all under `yayloyalty_rest_controllers` filter
 - **Headless / WP-CLI:** Runs via `plugins_loaded` — no `admin_init` required
-- **Tests:** `tests/unit/` with `tests/bootstrap.php` shim for hooks (no `$wpdb`, no WooCommerce). Run with `composer test` (115 PHPUnit tests); `pnpm --filter @yayloyalty/admin-page test` runs Vitest over `apps/admin/tests/` against the same `tests/fixtures/points-math-vectors.json`
+- **Tests:** `tests/unit/` with `tests/bootstrap.php` shim for hooks (no `$wpdb`, no WooCommerce). Run with `composer test` (152 PHPUnit tests, 27 incomplete by design — the earning-split specification under `tests/unit/Earning/`, `tests/unit/Services/` and `tests/unit/ContextFactoryTest.php`); `pnpm --filter @yayloyalty/admin-page test` runs Vitest over `apps/admin/tests/` against the same `tests/fixtures/points-math-vectors.json`
 
 ---
 

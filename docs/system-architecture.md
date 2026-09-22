@@ -14,12 +14,17 @@ flowchart TD
         CampCtrl["CampaignRestController"]
         CustCtrl["CustomerRestController"]
         LedgCtrl["LedgerRestController"]
+        DashCtrl["DashboardRestController"]
+        ActCtrl["ActivityRestController"]
+        RedCtrl["RedemptionsRestController"]
+        RefCtrl["ReferralsRestController"]
         SettCtrl["SettingsRestController"]
         RewardCtrl["(No RewardRestController)"]
     end
 
     subgraph Services["Service Layer"]
         Ledg["LedgerService"]
+        DashSvc["Dashboard/* (PeriodWindow, DashboardMath, etc.)"]
         note1["(SOLE ledger writer)"]
     end
 
@@ -28,6 +33,7 @@ flowchart TD
         CustRepo["CustomerRepository"]
         LedgRepo["LedgerRepository"]
         RewardRepo["RewardRepository"]
+        DashRepo["DashboardRepository"]
     end
 
     subgraph Models["Model Layer"]
@@ -125,6 +131,18 @@ flowchart LR
     style Other fill:#fbbf24
 ```
 
+**Page routes:**
+
+| Route | Component | Status |
+|---|---|---|
+| `/dashboard` | `DashboardPage` | ✅ shipped |
+| `/customers` | `CustomersPage` (list) | ✅ shipped |
+| `/customers/:userId` | `CustomerDrawer` (F09) | ✅ shipped |
+| `/campaigns` | `CampaignsPage` (list, fixture-backed) | ⚠️ fixture data |
+| `/campaigns/:id/edit` | `CampaignEditor` (Pro only) | ⚠️ not persisted |
+| `/campaigns/:id/performance` | `CampaignPerformance` (Pro only) | ⚠️ fixture data |
+| `/rewards`, `/referral`, `/vip-tiers`, `/settings` | Stubs | ⚠️ placeholders |
+
 **Tech stack:**
 - React 18 with TSX
 - **React Router 7** — hash-based routing
@@ -166,17 +184,23 @@ flowchart TD
     Pro -->|add_filter| Triggers["yayloyalty_campaign_triggers"]
     Pro -->|add_filter| ConfigWL["yayloyalty_campaign_config_whitelist"]
     Pro -->|add_filter| CondEval["yayloyalty_campaign_conditions_evaluator"]
+    Pro -->|add_filter| RewardTypes["yayloyalty_reward_types"]
+    Pro -->|add_filter| RewardWL["yayloyalty_reward_config_whitelist"]
     Pro -->|add_filter| RestCtrlrs["yayloyalty_rest_controllers"]
     Pro -->|add_filter| Schema["yayloyalty_rest_item_schema"]
-    Pro -->|do_action| ProBooted["yayloyalty_pro_booted"]
+    Pro -->|add_filter| LocalizeData["yayloyalty_localize_admin_data"]
 
+    RestCtrlrs -.->|adds 4 controllers| Ctrls["CampaignPreviewRestController, CampaignPerformanceRestController, DashboardProRestController, CustomerSegmentsRestController"]
+    
     Triggers -.->|offers| T["birthday, first_order, order_count, spend_milestone"]
-    ConfigWL -.->|whitelists config for those 4 triggers only| C["Lite already lists max_points_per_order / daily_cap"]
+    ConfigWL -.->|whitelists config for those 4 triggers| C["Lite already lists max_points_per_order / daily_cap"]
     CondEval -.->|supplies| E["ConditionsEvaluator"]
-    RestCtrlrs -.->|adds| R["CampaignPreviewRestController"]
-    Schema -.->|describes| S["config.max_points_per_order, config.daily_cap"]
+    RewardTypes -.->|offers| RT["fixed_coupon, percent_coupon, free_shipping, free_product"]
+    RewardWL -.->|whitelists config for those types| RW["per-type key lists"]
+    Schema -.->|extends| S["REST item schemas"]
+    LocalizeData -.->|adds| LD["segments, paid settings"]
 
-    Unused["yayloyalty_table_schemas"] -.->|wired in Lite, no Pro subscriber yet| Pro
+    Pro -->|do_action| ProBooted["yayloyalty_pro_booted"]
 ```
 
 ### SPA Build-Time Gate
@@ -223,7 +247,7 @@ public static function all_known() {
 **Lite has no birthday campaign trigger** but can still store `trigger = 'birthday'` and `config` wholesale. On upgrade, birthday campaigns work. On downgrade, they persist silently (safe).
 
 **Conditions:**
-- Lite's `Campaign::conditions_match()` returns **true** (no evaluator) → awards slightly too broadly
+- Lite's `PointsEngine::conditions_match()` returns **true** (no evaluator) → awards slightly too broadly
 - Pro's `ConditionsEvaluator::evaluate()` fails closed on unknown/unsupported type (`unsupported_condition_type`) → never awards on a condition it cannot check
 
 ---
@@ -236,15 +260,18 @@ These are **first-party, internal seams** for Pro to attach behavior. Not a thir
 |---|---|---|
 | **`yayloyalty_table_schemas`** | Called during Installer to collect table DDL | Pro can add Pro tables (currently unused) |
 | **`yayloyalty_ledger_recorded`** | Fired by `LedgerService` after its own `Transaction::run()` commits (a savepoint when nested in `exec_write`) | `DashboardCache::flush` |
+| **`yayloyalty_points_awarded`** | To be fired by `Engine\Earning\EarningService::award()` after commit, once per awarded `Outcome` (scaffold; not fired yet) | nothing yet — emails, YayMail placeholders |
 | **`yayloyalty_campaigns_changed`** | Fired by `CampaignRepository::flush_cache()` after any campaign write | `DashboardCache::flush` (the paused-campaign notice lives in the cached payload) |
-| **`yayloyalty_rest_controllers`** | Called by RestAPI to collect controller instances | Pro adds CampaignPreviewRestController, CustomerSegmentsRestController, DashboardProRestController |
+| **`yayloyalty_rest_controllers`** | Called by RestAPI to collect controller instances | Pro adds CampaignPreviewRestController, CampaignPerformanceRestController, DashboardProRestController, CustomerSegmentsRestController |
 | **`yayloyalty_campaign_triggers`** | Called by CampaignTrigger::all() | Pro adds birthday, first_order, order_count, spend_milestone |
 | **`yayloyalty_campaign_config_whitelist`** | Called by `Campaign::config_whitelist()` | Pro adds whitelists for its four triggers; `max_points_per_order`/`daily_cap` are already in Lite's purchase schema and enforced by `Engine\Points\CapPolicy` |
 | **`yayloyalty_reward_types`** | Called by RewardType::all() | Pro adds fixed_coupon, percent_coupon, free_shipping, free_product |
 | **`yayloyalty_reward_config_whitelist`** | Called by `Reward::config_whitelist()` | Pro adds config keys for its four types |
+| **`yayloyalty_register_trigger_handlers`** | Fired by `Engine\Points\Triggers\Registry::with_lite_handlers()` | Pro registers handlers for birthday, first_order, order_count, spend_milestone |
 | **`yayloyalty_register_reward_handlers`** | Fired by `Engine\Rewards\Handlers\Registry::with_lite_handlers()` | Pro registers a `RewardHandler` per reward type; unused until Pro handlers exist |
 | **`yayloyalty_rest_item_schema`** | Applied inside `AbstractRestController::get_item_schema()` | Pro extends campaign/reward schemas |
-| **`yayloyalty_campaign_conditions_evaluator`** | Called by Campaign::conditions_match() | Pro supplies ConditionsEvaluator instance (fails closed on unknown types) |
+| **`yayloyalty_campaign_conditions_evaluator`** | Called by `Engine\Points\PointsEngine::conditions_match()` with the engine `Context` | Pro supplies ConditionsEvaluator instance (fails closed on unknown types) |
+| **`yayloyalty_localize_admin_data`** | Called by `LocalizeHelper` to extend SPA payload | Pro adds `segments` (saved Customers-page filter sets) and paid feature flags |
 
 **Seam safety:** Match on `$rest_base` (route) and schema `title` — `yayloyalty_rest_item_schema` is shared across resources.
 
@@ -272,6 +299,10 @@ Selection state (`customers-page.selection.ts`) is either `{ mode: 'partial', id
 2. **Fetch path:** otherwise (`'all'` mode always, or `'partial'` with picks on other pages) `fetchAllMatchingCustomers()` walks `GET /customers` with the same committed filters and sort at `per_page=100`, sequentially, up to `MAX_PAGES = 500` (fails fast with a "narrow the filters" error beyond that); abortable via `AbortSignal` on unmount. `resolveSelectedCustomers()` then narrows the result to the selection (`ids`, or everything minus `excludedIds`). Ordering is stable across pages because the server's `ORDER BY` ends in `c.user_id ASC`.
 
 See `customers-page.matching-customers.ts` for selection resolution; `customers-page.bulk-actions.ts` for both actions; `customers-page.export.ts` for RFC 4180 CSV generation (CRLF, UTF-8 BOM).
+
+### Customer drawer (F09) — per-customer detail view
+
+Opened from Customers-list row; shows balance, stats, four tabs (Points ledger + three empty-on-real-path tabs: Activity, Redemptions, Referrals). All five drawer endpoints (`GET /customers/{id}`, `/ledger`, `/activity`, `/redemptions`, `/referrals`) accept a `scenario` query arg only when `WP_DEBUG` is true, reaching `CustomerDrawerFixture` with named scenarios (new/large/deleted/negative/expiring). The default (no arg) always returns real data or an honest empty envelope. Schema validation is identical for both paths via Zod mirrors in `src/lib/schema/`. Shared helpers: `Schemas/CustomerItemSchema.php` (the item shape), `Schemas/LedgerQueryArgs.php` (filter groups + vocabulary), `Controllers/CustomerListFormatter.php` (wire shape helpers).
 
 ### Manual points adjustment — wired end-to-end, including the SPA
 
@@ -360,7 +391,7 @@ Response: Campaign::to_array()
 
 **Access:** `CampaignTable`'s row menu ("View performance") and the campaign editor rail's "Performance" link, both rendered only when `hasPerformancePage(trigger)` is true.
 
-**Contract** (canonical version: `plans/260918-0834-campaign-performance-ui/phase-01-pro-performance-endpoint-and-fixture.md#architecture`): `GET /campaigns/{id}/performance` returns `{ window, totals, daily, skipped, estimate }`; `GET /campaigns/{id}/performance/entries` returns a paged/searchable row list (order/signup/review depending on trigger). **Nullability rule:** every nullable field means "not applicable to this trigger" or "not computable yet" — never `0`. A purchase-only total is `null` on a signup/review campaign; an average is `null` on zero entries (division by zero), not `0`. The SPA renders `null` as `—`, same rule the dashboard uses for its own null fields.
+**Contract:** `GET /campaigns/{id}/performance` returns `{ window, totals, daily, skipped, estimate }`; `GET /campaigns/{id}/performance/entries` returns a paged/searchable row list (order/signup/review depending on trigger). **Nullability rule:** every nullable field means "not applicable to this trigger" or "not computable yet" — never `0`. A purchase-only total is `null` on a signup/review campaign; an average is `null` on zero entries (division by zero), not `0`. The SPA renders `null` as `—`, same rule the dashboard uses for its own null fields. Full specification lives in `lib/schema/campaign-performance.schema.ts` and the `CampaignPerformanceRestController` docblock.
 
 ```
 GET /campaigns/:id/performance
@@ -376,18 +407,15 @@ CampaignPerformance.tsx: useCampaignQuery (header) + useCampaignPerformanceQuery
 
 **Swap procedure** (see the controller's own class docblock): `get_performance()` moves to a new `CampaignPerformanceRepository` aggregate over `ledger` rows carrying `campaign_id`, wrapped in `DashboardCache` (large-table per-request aggregate); `skipped`/`estimate` may ship `null` at first since both need re-evaluating every order in the window — the SPA already hides each panel on `null`. `get_entries()` moves to a paged `ledger` query (`WHERE campaign_id = ? ORDER BY created_at DESC, id DESC`) joined to `customers`, through `respond_paginated()` exactly as today. `CampaignPerformanceFixture` is then deleted. **No SPA change either way** — both routes are already real HTTP calls.
 
-### Order award — NOT IMPLEMENTED (Engine built, Listener missing)
+### Order award — SCAFFOLDED (shape real, bodies stubbed, not registered at boot)
 
-**Engine status:** `PointsEngine` is complete with 46 unit tests for `BaseCalculator`, `PurchaseHandler`, `PointsEngine`, plus `ContextFactory` and `Triggers/Registry`; its rounding step is `Utils\PointsMath::round_points()`, covered by the shared PHP/TS vector suite. It computes what an order earns given the live campaigns.
+**Engine status:** `PointsEngine` is complete with 46 unit tests for `BaseCalculator`, `PurchaseHandler`, `PointsEngine`, plus `ContextFactory` and `Triggers/Registry`; its rounding step is `Utils\PointsMath::round_points()`, covered by the shared PHP/TS vector suite. It computes what an order earns given the live campaigns, at `Context::occurred_at` (no timestamp argument).
 
-**Missing:** No code listens to WooCommerce order events. `LedgerService::earn()` does not exist yet — only `adjust()` (for manual adjustments). When F01-4 lands, it will:
-1. Hook an order status transition (e.g., `woocommerce_order_status_*`)
-2. Call `ContextFactory::from_order()` to build an immutable context
-3. Resolve live campaigns for the `purchase` trigger via `CampaignRepository::live_for_trigger()`
-4. Call `PointsEngine::evaluate()` — pure, no side effects
-5. Call `LedgerService::earn()` with the result
+**Scaffold (`includes/Engine/Earning/`, 2026-09-22):** the award path is split into two moments that share one `Context` and one `occurred_at`:
+1. **Evaluation** — `Listeners\OrderListener` → `ContextFactory::from_order()` → `EarningService::preview()`: `Gate` chain (`ProgramGate`: excluded roles, opt-out meta) then `PointsEngine::evaluate()`. Pure; the result is staged as pending order meta on order creation.
+2. **Award** — `EarningService::award()` previews again, then inside one `Transaction::run()`: `CustomerRepository::lock_and_get()` → `LedgerRepository::insert()` under the single-column UNIQUE `idempotency_key` (`IdempotencyKey::compose()`; MySQL 1062 → `Outcome::duplicate`, a normal return) → aggregates → `PendingPoints::release()`. Hooks (`yayloyalty_ledger_recorded`, `yayloyalty_points_awarded`) fire after commit.
 
-Nothing else in the write path (lock order, transaction safety, idempotency) changes. See `project-roadmap.md`.
+**Still missing (F01-4):** every stub body — listener handlers, `preview()`/`award()`, `PendingPoints`, `LedgerService::earn()`, `LedgerRepository::find_by_idempotency_key()`/`points_earned_today()`, `Installer::drop_index_if_exists()` for the superseded `uniq_ledger_event` — plus registering the listeners from `YayLoyalty::__construct()` via `EarningService::build()`. Refund / clawback is an attachment point, not a design. The seven invariants and the full call graph are in `includes/Engine/Earning/README.md`; the incomplete tests under `tests/unit/Earning/` are the specification.
 
 ### Redemption — SCAFFOLDED (Engine wiring only)
 
@@ -409,7 +437,7 @@ Nothing else in the write path (lock order, transaction safety, idempotency) cha
    - If `ROLLBACK TO SAVEPOINT` fails with error 1305, we're outside
 2. If foreign transaction detected: take savepoint instead of `START TRANSACTION`
 3. Else: start real transaction
-4. Guard connection identity before commit/rollback (detect reconnect on error 2006)
+4. Guard connection identity before commit/rollback (compare connection ids to detect reconnect)
 5. Treat failed rollback as fatal (not recoverable)
 
 **Lock order: Always `customers` before `ledger`**
