@@ -235,7 +235,7 @@ These are **first-party, internal seams** for Pro to attach behavior. Not a thir
 | Filter | Context | Used By |
 |---|---|---|
 | **`yayloyalty_table_schemas`** | Called during Installer to collect table DDL | Pro can add Pro tables (currently unused) |
-| **`yayloyalty_ledger_recorded`** | Fired by `LedgerService` after its own `Transaction::run()` commits (a savepoint when nested in `exec_write`) | `DashboardCache::flush` |
+| **`yayloyalty_ledger_recorded`** | Fired by `LedgerService` after its own `Transaction::run()` commits (a savepoint when nested in `exec_write`) | `DashboardCache::flush`; `Engine\CustomerActivityListener::on_ledger_recorded` — captures `account_created`/`points_adjusted` into `yayloyalty_customer_meta` |
 | **`yayloyalty_campaigns_changed`** | Fired by `CampaignRepository::flush_cache()` after any campaign write | `DashboardCache::flush` (the paused-campaign notice lives in the cached payload) |
 | **`yayloyalty_rest_controllers`** | Called by RestAPI to collect controller instances | Pro adds CampaignPreviewRestController, CustomerSegmentsRestController, DashboardProRestController |
 | **`yayloyalty_campaign_triggers`** | Called by CampaignTrigger::all() | Pro adds birthday, first_order, order_count, spend_milestone |
@@ -303,6 +303,35 @@ do_action( 'yayloyalty_ledger_recorded', $entry )   ← after commit, so a subsc
     ↓
 REST returns the LedgerEntry → zod parse → `useBulkAdjustPointsMutation` invalidates the `['customer']` query prefix → list, detail and ledger all refetch
 ```
+
+### Account-deletion capture — the first WP-core-hook subscriptions in this codebase
+
+Every prior hook in this table is a `yayloyalty_*` seam this plugin itself fires. `delete_user`/
+`wpmu_delete_user` are the first subscriptions to a raw WP-core hook, both registered directly in
+`yayloyalty.php` (no dedicated Listeners/Hooks class exists) because multisite fires
+`wpmu_delete_user` INSTEAD of `delete_user`, never both:
+
+```
+wp_delete_user( $id )                          wpmu_delete_user( $id )
+    │ do_action('delete_user', $id, ..., $user)     │ do_action('wpmu_delete_user', $id, $user)
+    ▼                                                ▼
+CustomerActivityListener::on_delete_user()      CustomerActivityListener::on_wpmu_delete_user()
+    │ bails if is_multisite()                        │ always trusted as "really gone"
+    └──────────────────┬──────────────────────────────┘
+                        ▼ try/catch \Throwable → Log::error
+           CustomerActivityService::record_account_deleted()
+                        │ CustomerRepository::find_by_user_id() — non-member → no-op
+                        │ CustomerMetaRepository::has() — already captured → no-op
+                        ▼
+           CustomerMetaRepository::insert( 'account_deleted' row )
+```
+
+No `Transaction::run()` here (one single-table insert; the WP deletion itself is not this plugin's
+transaction to hold open). `yayloyalty_customers` and `yayloyalty_ledger` are read-only in this
+path and never touched — the frozen balance IS the point. `GET /customers/{id}/activity` reads
+these rows for real now (three of eight event types have a writer); it is no longer an empty
+envelope on every request, only for a customer whose sole history would be one of the five
+unwritten event types.
 
 ### Campaign editor (Pro-only) — create and edit
 

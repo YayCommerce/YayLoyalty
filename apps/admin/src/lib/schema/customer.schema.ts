@@ -7,7 +7,8 @@ import { z } from 'zod';
  */
 /**
  * Row counts behind the drawer's tab labels (`CustomerItemSchema::properties()`).
- * `activity`/`redemptions`/`referrals` are always 0 — those tables don't exist yet.
+ * `ledger`/`activity` are real; `redemptions`/`referrals` are always 0 —
+ * those tables don't exist yet.
  */
 export const customerCountsSchema = z.object({
   ledger: z.number().int(),
@@ -17,18 +18,22 @@ export const customerCountsSchema = z.object({
 });
 
 /**
- * 4a's "Loose ends this leaves" facts (F09 Wave B) — always `null` today,
- * since it is keyed off a deletion the real path can never report (no
- * `deleted_at` column). `void_coupons.example` is a single illustrative
- * label ("$5 off"), not a list.
+ * 4a's "Loose ends this leaves" facts (F09 Wave B) — non-null exactly when
+ * `deleted_at` is non-null. `kept_ledger_entries` is always real;
+ * `void_coupons`/`credited_referrals`/`counted_in_members` are always
+ * `null` — no redemptions/referrals/member-count feature exists — and
+ * render as "Not tracked yet" rather than being hidden.
+ * `void_coupons.example` is a single illustrative label ("$5 off"), not a list.
  */
 export const looseEndsSchema = z.object({
-  void_coupons: z.object({
-    count: z.number().int(),
-    example: z.string().nullable(),
-  }),
-  credited_referrals: z.number().int(),
-  counted_in_members: z.boolean(),
+  void_coupons: z
+    .object({
+      count: z.number().int(),
+      example: z.string().nullable(),
+    })
+    .nullable(),
+  credited_referrals: z.number().int().nullable(),
+  counted_in_members: z.boolean().nullable(),
   kept_ledger_entries: z.number().int(),
 });
 
@@ -123,7 +128,7 @@ export const customerSchema = customerListRowSchema.extend({
   lifetime_redeemed: z.number().int(),
   joined_at: z.string().nullable(),
   updated_at: z.string().nullable(),
-  /** Always null on the real path — no deleted_at column yet (docs/data-model.md). */
+  /** Derived from the latest account_deleted activity row, gated on the WP user currently being gone — never a column. */
   deleted_at: z.string().nullable(),
   counts: customerCountsSchema,
   loose_ends: looseEndsSchema.nullable(),

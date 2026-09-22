@@ -11,6 +11,7 @@ use YayLoyalty\Controllers\RedemptionsRestController;
 use YayLoyalty\Controllers\ReferralsRestController;
 use YayLoyalty\Controllers\SettingsRestController;
 use YayLoyalty\Repositories\CampaignRepository;
+use YayLoyalty\Repositories\CustomerMetaRepository;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\DashboardRepository;
 use YayLoyalty\Repositories\LedgerRepository;
@@ -52,18 +53,26 @@ class RestAPI {
         $dashboard = new DashboardRepository( $rewards );
         $campaigns = new CampaignRepository();
 
+        // Shared instance: written only by CustomerActivityService (Engine\CustomerActivityListener),
+        // read-only everywhere below.
+        $customer_meta = new CustomerMetaRepository();
+
         $controllers = [
             new SettingsRestController(),
             // $ledger and $rewards here are read-only uses (counts.ledger,
             // worth's conversion rate) — the same instances LedgerService
             // and DashboardRepository hold, not a second construction.
-            new CustomerRestController( $customers, $ledger_service, $ledger, $rewards ),
-            new LedgerRestController( $ledger ),
-            // No repository: the real path answers an empty envelope until an
-            // activity table exists (see the controller's own docblock).
-            new ActivityRestController(),
-            // Same as ActivityRestController — no repository, empty envelope
-            // on the real path until a redemptions table exists.
+            // $customers passed to user_id_param() so a deleted member's
+            // item route still resolves; $customer_meta backs deleted_at/
+            // loose_ends/counts.activity and the list's identity fallback.
+            new CustomerRestController( $customers, $ledger_service, $ledger, $rewards, $customer_meta ),
+            // $customers widens the deleted member's ledger tab past user_id_param()'s default 404.
+            new LedgerRestController( $ledger, $customers ),
+            new ActivityRestController( $customer_meta, $customers ),
+            // No repository: the real path answers an empty envelope until a
+            // redemptions table exists. ProGated tab, always empty either
+            // way — deliberately NOT given the deleted-member id relaxation:
+            // zero behavioural benefit when the tab body never renders content.
             new RedemptionsRestController(),
             // Same again — no repository, empty envelope on the real path
             // until a referrals table exists.

@@ -6,6 +6,38 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
 
 ## Unreleased
 
+### Added — Customer meta table, real account-deletion capture, real activity log (2026-09-22)
+
+- **New table:** `yayloyalty_customer_meta` — generic per-customer key-value event log, doubling as
+  the activity log's backing store (`Models/CustomerMeta.php`, `Repositories/CustomerMetaRepository.php`,
+  `Repositories/CustomerMetaActivitySearch.php`, `Database/Schema/CustomerMetaTable.php`). See
+  `data-model.md` for the full column/index/envelope reference.
+- **Real capture, three of eight `Enums\ActivityEvent` types:** `account_created` and
+  `points_adjusted` (`Services\CustomerActivityService`, subscribed to `yayloyalty_ledger_recorded`)
+  and `account_deleted` (subscribed to `delete_user`/`wpmu_delete_user` — the first WP-core-hook
+  subscriptions in this codebase, `Engine\CustomerActivityListener`). No backfill: a member created
+  before this shipped has an activity log starting today.
+- **`GET /customers/{id}/activity`** now answers real, filtered, paginated rows instead of an
+  always-empty envelope (`ActivityRestController`); a customer whose only history would be one of
+  the five unwritten event types still gets an honest empty page.
+- **Real deleted-account drawer block:** `deleted_at`, identity fallback, and `loose_ends` are real
+  on `GET /customers/{id}` (`CustomerItemFormatter`), gated on the WP user currently being gone
+  (not just a deletion row existing, so a reinstated id self-heals). `yayloyalty_customers` and its
+  balance are kept forever, byte-identical — that frozen balance IS the liability the drawer shows.
+- **Wire contract change:** `loose_ends.void_coupons`/`credited_referrals`/`counted_in_members` are
+  now nullable on both PHP and Zod (`customer.schema.ts`) — `null` renders as "Not tracked yet" in
+  the SPA, not hidden. `activity.schema.ts` gains `account_deleted`; `account_created`'s sub-line
+  copy is now points-only (no campaign name on the real path).
+- **Admin Customers list** (`CustomerRepository::paginate_list()`) switched `wp_users` from
+  `INNER JOIN` to `LEFT JOIN` so a deleted member's row — and the liability it represents — still
+  appears, with `CustomerListFormatter::format_row()` falling back to the deletion snapshot for
+  display.
+- **Docs corrected:** `project-roadmap.md`'s "GDPR erasure on account deletion ✅ SHIPPED" row and
+  `codebase-summary.md`'s `yayloyalty_erase_customer_data` seam both claimed a
+  `Engine\UserLifecycle`/`Services\CustomerErasureService` that never existed — both corrected;
+  anonymisation/erasure remains not started and must be re-specified against the "row kept forever"
+  policy this task locks in.
+
 ### Removed — Customer drawer `?scenario=` fixture system (2026-09-22)
 
 The drawer's UI had been fully verified against every fixture scenario, so the WP_DEBUG-gated

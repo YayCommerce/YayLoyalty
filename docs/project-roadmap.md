@@ -86,7 +86,8 @@ All referral tables (`referrals`, `referral_visits`) specified in data model; no
 | **Expiry per-lot** (Pro) | Lot-based expiry | ❌ NOT STARTED | Lots table unimplemented; no lot tracking |
 | **Adjustment ceiling** | Per-role cap on one manual adjustment | ⚠️ **ENFORCED, NO UI** | `settings.advanced.adjustment_ceiling` (0 = unlimited) checked by `assert_ceiling()`; admins bypass; no settings field to edit it yet |
 | **Rebuild balances** | Replay ledger → recalculate customer row | ❌ NOT STARTED | `balance = SUM(ledger.points)` is the invariant; no rebuild routine or UI exists |
-| **GDPR erasure on account deletion** | Anonymize ledger, delete customer row | ✅ SHIPPED | `Engine\UserLifecycle` on `deleted_user`/`wpmu_delete_user` → `Services\CustomerErasureService`: ledger rows anonymized (`user_id`→0, `actor_id`/`note`→NULL, never deleted — see `data-model.md`), customers row deleted |
+| **Account-deletion capture** | Snapshot identity + facts when a member's WP user is deleted | ✅ SHIPPED | `Engine\CustomerActivityListener` on `delete_user`/`wpmu_delete_user` → `Services\CustomerActivityService::record_account_deleted()`: one `account_deleted` row in `yayloyalty_customer_meta` (email/display_name snapshot, real balance/kept-entries), `yayloyalty_customers` row and ledger kept forever, byte-identical — see `data-model.md` |
+| **GDPR erasure / anonymisation** | Anonymize ledger, erase customer_meta snapshot | ❌ NOT STARTED | Neither `Engine\UserLifecycle` nor `Services\CustomerErasureService` exists. Must be re-specified against the locked "row kept forever" policy above — deleting the customers row, as an earlier draft of this line claimed, would destroy the frozen balance the deletion-capture feature exists to preserve |
 
 ### VIP Tiers
 

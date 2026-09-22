@@ -31,10 +31,16 @@ export function DrawerTabPager({
   totalItems: number;
   onPageChange: (page: number) => void;
   disabled: boolean;
-  /** Blank while the first fetch is in flight (3b note 3) — a real, loaded,
-   *  genuinely empty ledger still shows "0–0 of 0", it just isn't this. */
+  /** Blank while the first fetch is in flight (3b note 3). */
   isPending: boolean;
 }) {
+  // A genuinely empty result (loaded, zero rows) has nothing to page through —
+  // the table's own empty state already says so; showing "0–0 of 0" plus two
+  // disabled chevrons underneath it is noise, not information.
+  if (!isPending && totalItems === 0) {
+    return null;
+  }
+
   const pageCount = Math.max(1, Math.ceil(totalItems / perPage));
   const from = totalItems === 0 ? 0 : (page - 1) * perPage + 1;
   const to = Math.min(page * perPage, totalItems);

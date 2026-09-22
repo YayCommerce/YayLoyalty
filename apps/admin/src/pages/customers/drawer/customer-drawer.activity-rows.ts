@@ -4,6 +4,7 @@ import { formatPoints } from '@/lib/helpers/points.helper';
 import type { ActivityEntry } from '@/lib/schema/activity.schema';
 import {
   ACTIVITY_TITLE_ACCOUNT_CREATED,
+  ACTIVITY_TITLE_ACCOUNT_DELETED,
   ACTIVITY_TITLE_BALANCE_EMAIL_SENT,
   ACTIVITY_TITLE_EXPIRING_SOON_EMAIL_SENT,
   ACTIVITY_TITLE_EXPIRY_RESET,
@@ -11,15 +12,15 @@ import {
   ACTIVITY_TITLE_REWARD_REDEEMED,
   ACTIVITY_TITLE_TIER_CHANGED,
   activityAccountCreatedSubLine,
+  activityAccountDeletedSubLine,
   activityBalanceEmailSubLine,
   activityExpiringSoonEmailSubLine,
   activityExpiryResetSubLine,
   activityPointsAdjustedSubLine,
   activityRewardRedeemedSubLine,
   activityTierChangedSubLine,
-  AUTOMATIC_ACTOR_LABEL,
-  CUSTOMER_ACTOR_LABEL,
-} from './customer-drawer.copy';
+} from './customer-drawer.activity.copy';
+import { AUTOMATIC_ACTOR_LABEL, CUSTOMER_ACTOR_LABEL } from './customer-drawer.copy';
 
 export type ActivityRow = {
   date: string;
@@ -69,6 +70,8 @@ function titleFor(eventType: ActivityEntry['event_type']): string {
       return ACTIVITY_TITLE_BALANCE_EMAIL_SENT();
     case 'expiring_soon_email_sent':
       return ACTIVITY_TITLE_EXPIRING_SOON_EMAIL_SENT();
+    case 'account_deleted':
+      return ACTIVITY_TITLE_ACCOUNT_DELETED();
   }
 }
 
@@ -94,7 +97,7 @@ function subLineFor(entry: ActivityEntry, occurred: Date): string {
 
   switch (entry.event_type) {
     case 'account_created':
-      return activityAccountCreatedSubLine(str(data, 'campaign'), formatPoints(num(data, 'points')));
+      return activityAccountCreatedSubLine(formatPoints(num(data, 'points')));
     case 'points_adjusted':
       return activityPointsAdjustedSubLine(formatSignedPoints(num(data, 'points')), str(data, 'note'));
     case 'tier_changed':
@@ -126,6 +129,8 @@ function subLineFor(entry: ActivityEntry, occurred: Date): string {
 
       return activityExpiringSoonEmailSubLine(formatPoints(windowDays), parseWPDate(deadline));
     }
+    case 'account_deleted':
+      return activityAccountDeletedSubLine(str(data, 'email'), formatPoints(num(data, 'balance_at_deletion')));
   }
 }
 

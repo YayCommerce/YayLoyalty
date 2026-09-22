@@ -5,6 +5,7 @@ use YayLoyalty\Access\Capabilities;
 use YayLoyalty\Controllers\Schemas\LedgerQueryArgs;
 use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
+use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
 
 defined( 'ABSPATH' ) || exit;
@@ -15,8 +16,12 @@ final class LedgerRestController extends AbstractRestController {
     /** @var LedgerRepository */
     private $ledger;
 
-    public function __construct( LedgerRepository $ledger ) {
-        $this->ledger = $ledger;
+    /** @var CustomerRepository Read-only — only the deleted-member id validation. */
+    private $customers;
+
+    public function __construct( LedgerRepository $ledger, CustomerRepository $customers ) {
+        $this->ledger    = $ledger;
+        $this->customers = $customers;
     }
 
     public function get_rest_base(): string {
@@ -33,7 +38,7 @@ final class LedgerRestController extends AbstractRestController {
                     'callback'            => fn( $request ) => $this->exec_read( [ $this, 'get_history' ], $request ),
                     'permission_callback' => $this->requires( Capabilities::VIEW ),
                     'args'                => array_merge(
-                        [ 'id' => $this->user_id_param() ],
+                        [ 'id' => $this->user_id_param( $this->customers ) ],
                         $this->get_collection_params(),
                         LedgerQueryArgs::all()
                     ),

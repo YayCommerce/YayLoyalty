@@ -2,6 +2,7 @@ import { formatPoints } from '@/lib/helpers/points.helper';
 import type { Customer } from '@/lib/schema/customer.schema';
 import {
   creditedReferralsValue,
+  LOOSE_END_NOT_TRACKED_YET,
   LOOSE_ENDS_COUNTED_LABEL,
   LOOSE_ENDS_CREDITED_REFERRALS_LABEL,
   LOOSE_ENDS_TITLE,
@@ -14,7 +15,10 @@ import {
 
 /** 4a's "Loose ends this leaves" — the consequences of a deletion nobody
  *  thinks about at the time: void coupons, still-credited referrals, and
- *  whether the member total still counts them. */
+ *  whether the member total still counts them. All three render even when
+ *  `null` (no redemptions/referrals/member-count feature exists yet) — the
+ *  admin sees the fact is unanswered, never a fabricated value. Only
+ *  `kept_ledger_entries` is always real. */
 export function CustomerDrawerLooseEnds({ customer }: { customer: Customer }) {
   // Only `loose_ends` needs checking here — it's the one field this component
   // reads, and TS can't see the parent's `deleted_at && loose_ends` guard
@@ -30,15 +34,25 @@ export function CustomerDrawerLooseEnds({ customer }: { customer: Customer }) {
       <dl className="flex flex-col gap-2 text-sm">
         <div className="flex items-center justify-between gap-3">
           <dt className="text-muted-foreground">{LOOSE_ENDS_VOID_COUPONS_LABEL()}</dt>
-          <dd className="tabular-nums">{voidCouponsValue(formatPoints(void_coupons.count), void_coupons.example)}</dd>
+          <dd className="tabular-nums">
+            {void_coupons
+              ? voidCouponsValue(formatPoints(void_coupons.count), void_coupons.example)
+              : LOOSE_END_NOT_TRACKED_YET()}
+          </dd>
         </div>
         <div className="flex items-center justify-between gap-3">
           <dt className="text-muted-foreground">{LOOSE_ENDS_CREDITED_REFERRALS_LABEL()}</dt>
-          <dd className="tabular-nums">{creditedReferralsValue(formatPoints(credited_referrals))}</dd>
+          <dd className="tabular-nums">
+            {credited_referrals !== null
+              ? creditedReferralsValue(formatPoints(credited_referrals))
+              : LOOSE_END_NOT_TRACKED_YET()}
+          </dd>
         </div>
         <div className="flex items-center justify-between gap-3">
           <dt className="text-muted-foreground">{LOOSE_ENDS_COUNTED_LABEL()}</dt>
-          <dd>{counted_in_members ? YES_LABEL() : NO_LABEL()}</dd>
+          <dd>
+            {counted_in_members === null ? LOOSE_END_NOT_TRACKED_YET() : counted_in_members ? YES_LABEL() : NO_LABEL()}
+          </dd>
         </div>
       </dl>
       <p className="text-muted-foreground text-xs">{looseEndsLiabilitySentence(formatPoints(customer.balance))}</p>

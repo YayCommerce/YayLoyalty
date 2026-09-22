@@ -165,6 +165,8 @@ Pick the level by asking who needs the line, not how noisy it is:
 
 **[REVIEW]** `LedgerService` is the only class that receives both `LedgerRepository` and `CustomerRepository`, and it is constructed in exactly two named places: `Engine\RestAPI::controllers()` (request-time REST) and `Database\InitYayLoyaltyCustomer::maybe_create()` (one-time install bootstrap, outside any request — needs real ledger rows so its starter customers don't break `balance = SUM(ledger.points)`). PHP has no package-private, so this is a convention plus these two named construction sites plus this review rule — **not** something the language enforces. Do not describe it as "structural"; a third site needs the same review, not a silent `new LedgerService(...)`.
 
+**[REVIEW]** `Services\CustomerActivityService` is a second, narrower exception: it holds `CustomerRepository` and `LedgerRepository` alongside `CustomerMetaRepository`, justified only because both are READ-ONLY there (membership check, balance at deletion, kept-entries count) — the sole write target is `customer_meta`. It is constructed in exactly one place, `Engine\CustomerActivityListener::service()`. Any further class needing more than one repository needs this same review, not a silent multi-repository constructor.
+
 ## 9. REST
 
 - Namespace `yayloyalty/v1`. Routes registered in `register_routes()`, never in a constructor.

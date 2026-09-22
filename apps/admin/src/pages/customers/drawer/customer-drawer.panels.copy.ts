@@ -32,17 +32,14 @@ export function deletedBannerBody(keptEntries: string): string {
 
 export const WHAT_CAN_STILL_BE_DONE_TITLE = () => __('What can still be done', 'yayloyalty');
 export const ACTION_ANONYMISE = () => __('Anonymise the record', 'yayloyalty');
-/** `DELETED_ACCOUNT_ACTION_REASON` (main copy module) is spend-specific
- *  wording ("nobody to spend the points") that fits Adjust points but reads
- *  as a non-sequitur beside a disabled Reset expiry button — extending a
- *  deadline isn't about spending. Same underlying cause (no owner left),
- *  worded generally enough to fit both. */
+/** `DELETED_ACCOUNT_ACTION_REASON` is spend-specific wording that reads as
+ *  a non-sequitur beside Reset expiry — same underlying cause (no owner
+ *  left), worded generally enough to fit both. */
 export const DELETED_RESET_EXPIRY_REASON = () => __('There is no owner left to extend anything for.', 'yayloyalty');
 /** Distinct from `ACTION_EXPORT_LEDGER`'s disabled reason elsewhere in the
  *  drawer — "no job exists yet" and "not built yet" are different facts. */
 export const DELETED_EXPORT_REASON = () => __('No export job exists yet.', 'yayloyalty');
-export const DELETED_ANONYMISE_REASON = () =>
-  __('Not built yet — a separate feature from this drawer.', 'yayloyalty');
+export const DELETED_ANONYMISE_REASON = () => __('Not built yet — a separate feature from this drawer.', 'yayloyalty');
 
 export const LOOSE_ENDS_TITLE = () => __('Loose ends this leaves', 'yayloyalty');
 export const LOOSE_ENDS_VOID_COUPONS_LABEL = () => __('Unused coupons, now void', 'yayloyalty');
@@ -50,6 +47,8 @@ export const LOOSE_ENDS_CREDITED_REFERRALS_LABEL = () => __('Referrals they were
 export const LOOSE_ENDS_COUNTED_LABEL = () => __('Counted in the member total?', 'yayloyalty');
 export const YES_LABEL = () => __('yes', 'yayloyalty');
 export const NO_LABEL = () => __('no', 'yayloyalty');
+/** Shown for a loose-ends fact that is `null` — the fact is unanswered, not hidden (no redemptions/referrals/member-count feature yet). */
+export const LOOSE_END_NOT_TRACKED_YET = () => __('Not tracked yet', 'yayloyalty');
 
 /** "1 · $5 off" — `example` is one illustrative label, not a list. */
 export function voidCouponsValue(count: string, example: string | null): string {
@@ -132,13 +131,7 @@ export const NEGATIVE_BALANCE_HEADING = () => __('Why this balance is negative',
 /** The three-step story (`shape: 'refund_reversal'`) — composed from the
  *  fixture's structured legs, never assembled server-side. */
 export function negativeBalanceFactEarned(firstName: string, points: string, orderId: string, date: string): string {
-  return sprintf(
-    __('%1$s earned %2$s points on order #%3$s on %4$s.', 'yayloyalty'),
-    firstName,
-    points,
-    orderId,
-    date,
-  );
+  return sprintf(__('%1$s earned %2$s points on order #%3$s on %4$s.', 'yayloyalty'), firstName, points, orderId, date);
 }
 export function negativeBalanceFactSpent(points: string, orderId: string, value: string): string {
   return sprintf(

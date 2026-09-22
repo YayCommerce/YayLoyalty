@@ -76,13 +76,13 @@ final class CustomerItemSchema {
                 'readonly' => true,
             ],
             'deleted_at'               => [
-                'description' => __( 'When the underlying WordPress user was deleted. Always null today — no deleted_at column exists yet (docs/data-model.md).', 'yayloyalty' ),
+                'description' => __( 'Derived from the latest account_deleted row in yayloyalty_customer_meta, gated on the WP user currently being gone (get_userdata() false) — not a column, and never will be. Null while the WP user still resolves, even if a deletion row exists (a reinstated id self-heals).', 'yayloyalty' ),
                 'type'        => [ 'string', 'null' ],
                 'context'     => [ 'view' ],
                 'readonly'    => true,
             ],
             'counts'                   => [
-                'description' => __( 'Row counts behind the drawer tab labels. activity/redemptions/referrals are always 0 on the real path — those tables do not exist yet.', 'yayloyalty' ),
+                'description' => __( 'Row counts behind the drawer tab labels. ledger/activity are real; redemptions/referrals are always 0 — those tables do not exist yet.', 'yayloyalty' ),
                 'type'        => 'object',
                 'context'     => [ 'view' ],
                 'readonly'    => true,
@@ -94,20 +94,20 @@ final class CustomerItemSchema {
                 ],
             ],
             'loose_ends'               => [
-                'description' => __( 'F09 Wave B, artboard 4a. Void coupons, still-credited referrals, and whether a deleted account still counts toward the member total. Always null on the real path, same reason as deleted_at.', 'yayloyalty' ),
+                'description' => __( 'F09 Wave B, artboard 4a. Non-null exactly when deleted_at is non-null. kept_ledger_entries is always real; void_coupons/credited_referrals/counted_in_members are always null — no redemptions/referrals/member-count feature exists — and render as "Not tracked yet" in the SPA rather than being hidden.', 'yayloyalty' ),
                 'type'        => [ 'object', 'null' ],
                 'context'     => [ 'view' ],
                 'readonly'    => true,
                 'properties'  => [
                     'void_coupons'        => [
-                        'type'       => 'object',
+                        'type'       => [ 'object', 'null' ],
                         'properties' => [
                             'count'   => [ 'type' => 'integer' ],
                             'example' => [ 'type' => [ 'string', 'null' ] ],
                         ],
                     ],
-                    'credited_referrals'  => [ 'type' => 'integer' ],
-                    'counted_in_members'  => [ 'type' => 'boolean' ],
+                    'credited_referrals'  => [ 'type' => [ 'integer', 'null' ] ],
+                    'counted_in_members'  => [ 'type' => [ 'boolean', 'null' ] ],
                     'kept_ledger_entries' => [ 'type' => 'integer' ],
                 ],
             ],

@@ -5,8 +5,8 @@ use YayLoyalty\Models\LedgerEntry;
 
 defined( 'ABSPATH' ) || exit;
 
-/** yayloyalty_ledger. Append-only: nothing here calls update() or delete(). */
-final class LedgerRepository extends AbstractRepository {
+/** yayloyalty_ledger. Append-only: nothing here calls update() or delete(). Not final: CustomerActivityServiceTest extends it as a repository double. */
+class LedgerRepository extends AbstractRepository {
 
     protected function table_slug(): string {
         return 'ledger';

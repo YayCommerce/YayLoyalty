@@ -7,8 +7,8 @@ use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
 
-/** yayloyalty_customers. */
-final class CustomerRepository extends AbstractRepository {
+/** yayloyalty_customers. Not final: CustomerActivityServiceTest extends it as a repository double (mirrors DashboardRepository/CampaignRepository). */
+class CustomerRepository extends AbstractRepository {
 
     /**
      * Sort key → join-qualified ORDER BY expression for the admin list.
@@ -168,9 +168,13 @@ final class CustomerRepository extends AbstractRepository {
     }
 
     /**
-     * The admin Customers list: search, filter, sort, paginate, INNER JOINed
-     * with wp_users for name/email. A read-side exception to the one-table
-     * rule (docs/code-standards.md § 6), which is about write ownership.
+     * The admin Customers list: search, filter, sort, paginate, LEFT JOINed
+     * with wp_users for name/email — LEFT, not INNER: a deleted member's
+     * `customers` row must still appear (with `u.*` columns NULL,
+     * `CustomerListFormatter::format_row()` falls back to the
+     * `account_deleted` snapshot for display). A read-side exception to the
+     * one-table rule (docs/code-standards.md § 6), which is about write
+     * ownership.
      *
      * @param array<string, mixed>                                      $criteria CustomerRowFilters::to_criteria()'s shape.
      * @param array{column: string, direction: string, nulls_last: bool} $order    CustomerRowSort::to_order()'s shape.
@@ -192,7 +196,7 @@ final class CustomerRepository extends AbstractRepository {
                 'SELECT c.user_id, u.display_name AS name, u.user_email AS email,
                         c.balance, c.pending_points, c.lifetime_earned,
                         c.last_activity_at, c.expires_at
-                 FROM `' . $table . '` c INNER JOIN `' . $users . '` u ON u.ID = c.user_id'
+                 FROM `' . $table . '` c LEFT JOIN `' . $users . '` u ON u.ID = c.user_id'
                 . $where_sql . ' ORDER BY ' . $this->order_by_sql( $order )
                 . ' LIMIT %d OFFSET %d',
                 $per_page,
@@ -223,7 +227,7 @@ final class CustomerRepository extends AbstractRepository {
 
         // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared -- list_where_sql()'s fragments are already prepared; identifiers are escaped above.
         return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-            'SELECT COUNT(*) FROM `' . $table . '` c INNER JOIN `' . $users . '` u ON u.ID = c.user_id'
+            'SELECT COUNT(*) FROM `' . $table . '` c LEFT JOIN `' . $users . '` u ON u.ID = c.user_id'
             . $this->list_where_sql( $criteria )
         );
         // phpcs:enable WordPress.DB.PreparedSQL.NotPrepared

@@ -227,15 +227,20 @@ The `(1.1)`/`(1.2)`/`(Pro)` tags below mark when a column's *feature* ships, not
 
 Indexes: PK; `expires_at`, `tier_id`, `balance`, `last_activity_at` (each a single-column index for sorting/filtering); UNIQUE `referral_code`; `idx_tier_review (tier_id, tier_evaluated_at)` (1.2) — the downgrade job's query is "customers in tier X whose evaluation window has ended", and the single-column `tier_id` index alone would still force scanning every customer in the tier.
 
-**`deleted_at` (F09, wire field only — no column yet).** The customer drawer's `GET /customers/{id}`
-response carries `deleted_at: string | null` (`CustomerItemSchema::properties()`), always `null` on
-the real path today — there is no `deleted_at` column on this table, so nothing can set it. It
-exists on the wire so the drawer's deleted-account treatment (disabled actions, "Balance at
-deletion" labelling) is already built, ahead of the actual column + soft-delete write path landing.
+**`deleted_at` (F09, real — derived, never a column).** The customer drawer's `GET /customers/{id}`
+response carries `deleted_at: string | null` (`CustomerItemSchema::properties()`), and there will
+never be a `deleted_at` column on this table: this row and its `balance` are kept forever,
+byte-identical, after the underlying WP user is deleted — that frozen balance IS the outstanding
+liability the drawer must keep showing. `deleted_at` is instead DERIVED, at read time, from the
+latest `account_deleted` row in `yayloyalty_customer_meta` (below), gated on `get_userdata()`
+currently returning `false` too — not row existence alone, so a WP user id that is deleted then
+reinstated (backup restore, migration tooling) automatically stops rendering as deleted, with no
+"undelete" event needed. Identity (`name`/`email`) falls back to that row's `display_name`/`email`
+snapshot once the live `WP_User` is gone. See `CustomerItemFormatter::format()`.
 
 ## `yayloyalty_ledger` — every balance change (1.0)
 
-Append-only journal. Nothing updates or deletes rows except GDPR erasure (which sets `user_id = 0`, `actor_id = NULL`, clears `note`). One `earn` row per order, because stacking is highest-priority-only. The unique key `uniq_ledger_event` on `(user_id, source, reference_type, reference_id)` is the idempotency guarantee against duplicate hooks, status bouncing and webhook retries — keyed on `source` rather than `type` because several sources (`signup`, `milestone`, `renewal`) can share a `reference_type`, and `user_id` is part of the key because one reference can legitimately earn two different users (a referral order awards both the advocate and the friend).
+Append-only journal. Nothing updates or deletes rows except GDPR erasure (which sets `user_id = 0`, `actor_id = NULL`, clears `note`) — a future erasure/export tool must also reach `yayloyalty_customer_meta` (below), the one other place PII survives a WP user deletion, AND every OTHER customer's rows too: `actor_name` snapshots the display name of whichever staff member performed an action, scattered across an unbounded number of other customers' activity logs, so a staff member's own erasure request has no defined scope without walking `customer_meta` broadly, not just the deleted customer's own row. One `earn` row per order, because stacking is highest-priority-only. The unique key `uniq_ledger_event` on `(user_id, source, reference_type, reference_id)` is the idempotency guarantee against duplicate hooks, status bouncing and webhook retries — keyed on `source` rather than `type` because several sources (`signup`, `milestone`, `renewal`) can share a `reference_type`, and `user_id` is part of the key because one reference can legitimately earn two different users (a referral order awards both the advocate and the friend).
 
 | Column | Type | Null / default | Meaning |
 |---|---|---|---|
@@ -258,49 +263,101 @@ Indexes: PK; `idx_user_history (user_id, id)` for paged history and `ORDER BY id
 
 Not on this table any more: `expires_at`. Per-earning expiry lives in `lots` (below) so the ledger stays immutable.
 
-## Activity log (not designed) — F09 Wave A/B
+## `yayloyalty_customer_meta` — non-points customer facts + activity log (1.0)
 
-The customer drawer's Activity log tab (F09) needs a per-customer timeline distinct from the
-ledger: tier changes, expiry resets, balance/expiring-soon reminder emails and admin actions —
-none of which are balance changes, so none belong in `yayloyalty_ledger`. **No table exists for
-this.** `GET /customers/{id}/activity` is a real, routed endpoint (Wave B, phase 01) with paging,
-search and a grouped filter, but it always answers an empty envelope on the real path — there is
-nothing to page through yet (`includes/Controllers/ActivityRestController.php`).
+Generic per-customer key-value event log, added to capture account-deletion + a first slice of the
+activity log. `meta_key` doubles as the activity log's `event_type`; `created_at` doubles as
+`occurred_at`; `meta_value` is a JSON envelope carrying `data` plus the three activity display
+fields. Append-only by convention (no caller ever updates or deletes a row) — same discipline as
+the ledger, but no unique key: multiple rows per key are normal (repeated `points_adjusted`), and
+`account_created`/`account_deleted` once-only-ness is a write-side `has()` check, not a DB
+constraint (an accepted, cosmetic-only race under concurrency).
 
-The row shape was decided during F09 anyway, so it is not invented later once a table exists to
-match — see `activity.schema.ts` / `ActivityRestController::define_item_schema()`: `{ id, occurred_at,
-event_type, data: {...}, actor_kind: 'staff'|'automatic'|'customer', actor_name: ?string,
-staff_only: bool }`. Seven `event_type`s: `account_created`, `points_adjusted`, `tier_changed`,
-`expiry_reset`, `reward_redeemed`, `balance_email_sent`, `expiring_soon_email_sent`. Same rule as
-the ledger's `note`/system-row descriptions: no sentence is stored, `data` is structured and copy
-composes from `event_type` + `data` at render time.
+| Column | Type | Null / default | Meaning |
+|---|---|---|---|
+| `id` | BIGINT UNSIGNED AI | PK | |
+| `user_id` | BIGINT UNSIGNED | not null | The member this fact/event belongs to. |
+| `meta_key` | VARCHAR(50) | not null | Also the activity log's `event_type`. |
+| `meta_value` | LONGTEXT | not null | JSON envelope, see below. Validated in PHP (WooCommerce's minimum MySQL has no native JSON), same pattern as `campaigns.conditions`. |
+| `created_at` | DATETIME | not null | UTC. Also the activity log's `occurred_at`. |
 
-**Not stored anywhere today:** tier changes, expiry resets, and sent emails (balance /
-expiring-soon) have no persistence at all. Designing and building this table is unpriced future
-work — it is the largest gap this drawer surfaces, and is recorded here specifically so it does
-not go back to living only in a brainstorm report.
+Indexes: PK; `idx_user_history (user_id, id)` (paged history, same rationale as the ledger's own index — `created_at` can tie within a second); `idx_user_key (user_id, meta_key)`, serving BOTH the group filter (`meta_key IN (...)`) and the `latest(user_id, 'account_deleted')` lookup — no standalone `meta_key` index, this table is never selective without `user_id`.
+
+`meta_value` envelope (`schema_version = 1`):
+
+```json
+{ "schema_version": 1, "data": { }, "actor_kind": "staff|automatic|customer", "actor_name": "Jane|null", "staff_only": false }
+```
+
+Eight `meta_key`/`event_type` values (`Enums\ActivityEvent::ALL`), only three of which have a writer today:
+
+| `event_type` | Writer | Status |
+|---|---|---|
+| `account_created` | `CustomerActivityService::record_account_created()`, on `yayloyalty_ledger_recorded` | **Real.** Means "first loyalty activity", NOT "WP user registered" — a row appears lazily on first ledger write, same as `yayloyalty_customers` itself. No backfill: a member created before this shipped has no row. |
+| `points_adjusted` | `CustomerActivityService::record_points_adjusted()`, on `yayloyalty_ledger_recorded`, filtered to `LedgerType::ADJUST` + `LedgerSource::MANUAL` | **Real.** |
+| `account_deleted` | `CustomerActivityService::record_account_deleted()`, on `delete_user`/`wpmu_delete_user` | **Real.** One row: `email`/`display_name` snapshot, real `balance_at_deletion`/`kept_ledger_entries`, `void_coupons`/`credited_referrals`/`counted_in_members` always `null` (no redemptions/referrals/member-count feature exists — never fabricated). |
+| `tier_changed`, `expiry_reset`, `reward_redeemed`, `balance_email_sent`, `expiring_soon_email_sent` | none | **Unwritten** — tiers, the expiry job, redemptions and balance/expiry emails don't exist as features yet. A customer whose only history would be one of these legitimately has zero activity rows; that is the honest answer, not a bug. |
+
+**Lost-capture diagnostic (account-deletion capture is fire-and-forget by design — never blocks the real WP deletion, so a DB failure at the exact moment of `delete_user` loses that snapshot forever).** No tooling ships for this; it is a documented support/admin query only:
+
+```sql
+SELECT c.user_id
+FROM yayloyalty_customers c
+LEFT JOIN yayloyalty_customer_meta m
+  ON m.user_id = c.user_id AND m.meta_key = 'account_deleted'
+WHERE m.id IS NULL
+```
+
+Cross-check each returned `user_id` against `get_userdata()` returning `false` to confirm it is a real lost capture, not simply a live member who has never been deleted.
+
+## Activity log — F09 Wave A/B, designed and partially implemented
+
+The customer drawer's Activity log tab (F09) is a per-customer timeline distinct from the ledger:
+tier changes, expiry resets, balance/expiring-soon reminder emails and admin actions — none of
+which are balance changes, so none belong in `yayloyalty_ledger`. It is backed by
+`yayloyalty_customer_meta` above. `GET /customers/{id}/activity` is a real, routed endpoint with
+paging, a grouped filter and search, reading real rows for the three captured event types
+(`includes/Controllers/ActivityRestController.php`); a customer whose only history would be one of
+the five unwritten types gets an honest empty page, not an error.
+
+The row shape: `{ id, occurred_at, event_type, data: {...}, actor_kind:
+'staff'|'automatic'|'customer', actor_name: ?string, staff_only: bool }` — see `activity.schema.ts`
+/ `ActivityRestController::define_item_schema()`. Same rule as the ledger's `note`/system-row
+descriptions: no sentence is stored, `data` is structured and copy composes from `event_type` +
+`data` at render time. `search` is a PHP-side match against `data`'s real content fields (+
+`actor_name`), never the JSON envelope's structural keys — see
+`CustomerMetaRepository::paginate_activity()`'s own docblock. `after`/`before` are UTC day bounds,
+no site-timezone conversion, same as every other drawer date filter.
 
 ## Customer drawer wire blocks not backed by a table — F09 Wave B
 
-Three more drawer surfaces (phases 03/04) ship a real, routed field on `GET /customers/{id}`
-today, always `null`/absent on the real path — none of them are new tables, all reuse
-`yayloyalty_customers` columns that already exist or values computed from the ledger:
-
-- **`negative_balance`** (phase 04, labelled F23 in code) — `{ cause_ledger_id, cause_reason,
-  cause_amount, reversal_status }`, explaining a negative balance in place (a refund reversed more
-  than was left). `null` whenever `balance >= 0`; the real path would have to walk the ledger
-  backwards to assemble it, which it doesn't do yet.
-- **`expiry.batches`** (phase 03) — the Pro FIFO lot table on the expiring-points panel: an array
-  of `{ earned_from, earned_to, points, expires_at }`, or `null` on the Free build or when the
-  store's expiry model has no batches. This is a **display-only preview** of what
+- **`loose_ends`** — non-null exactly when `deleted_at` is non-null (above). `kept_ledger_entries`
+  is always real (`COUNT(*)` on the ledger); `void_coupons`/`credited_referrals`/`counted_in_members`
+  are always `null` — no redemptions/referrals/member-count feature exists — and render as "Not
+  tracked yet" in the SPA rather than being hidden or fabricated. See
+  `CustomerItemFormatter::format()`.
+- **`negative_balance`** (labelled F23 in code) — `{ cause_ledger_id, cause_reason, cause_amount,
+  reversal_status }`, explaining a negative balance in place (a refund reversed more than was
+  left). `null` whenever `balance >= 0`; the real path would have to walk the ledger backwards to
+  assemble it, which it doesn't do yet.
+- **`expiry.batches`** — the Pro FIFO lot table on the expiring-points panel: an array of
+  `{ earned_from, earned_to, points, expires_at }`, or `null` on the Free build or when the store's
+  expiry model has no batches. This is a **display-only preview** of what
   `yayloyalty_lots`/`yayloyalty_lot_allocations` (below) will eventually back — those tables are
   still unimplemented (Pro 1.0), so nothing here reads or writes them.
-- **`points_per_currency_unit`** (phase 03) — a single number (not the removed `worth` object),
-  the rate 4b's/5a's money-equivalent figures multiply by. Restored narrowly after an earlier
-  commit removed `worth` wholesale; see `CustomerRestController.php`.
+- **`points_per_currency_unit`** — a single number (not the removed `worth` object), the rate 4b's/
+  5a's money-equivalent figures multiply by. Restored narrowly after an earlier commit removed
+  `worth` wholesale; see `CustomerRestController.php`.
 
-All three parse through the same Zod schema (`customer.schema.ts`), same discipline as everything
+All four parse through the same Zod schema (`customer.schema.ts`), same discipline as everything
 else in this drawer.
+
+**Admin Customers list (`CustomerRepository::paginate_list()`).** `LEFT JOIN`s `wp_users` (was
+`INNER JOIN`): a deleted member's `customers` row must still appear in the list, with the total
+liability it represents, not vanish from the result set/pagination/every filter.
+`CustomerListFormatter::format_row()` falls back to the `account_deleted` snapshot for
+`name`/`email` when the joined `u.*` columns come back `NULL` — display-only: the query's own
+sort/search still runs against the raw (possibly `NULL`) joined columns, no `COALESCE` added.
 
 ## `yayloyalty_redemptions` — one row per reward claim (1.0, NOT IMPLEMENTED)
 
