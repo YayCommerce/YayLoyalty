@@ -363,6 +363,20 @@ these rows for real now (three of eight event types have a writer); it is no lon
 envelope on every request, only for a customer whose sole history would be one of the five
 unwritten event types.
 
+### Signup capture — customers row created at registration
+
+`user_register` (fired by `wp_insert_user()`, including admin-created accounts, not only
+self-registration) is the third raw WP-core-hook subscription, registered in `yayloyalty.php`
+alongside `delete_user`/`wpmu_delete_user`. `CustomerActivityListener::on_user_register()` calls
+`CustomerRepository::ensure_row()` directly — no ledger write, no `yayloyalty_ledger_recorded`
+event, nothing logged to `yayloyalty_customer_meta` (a brand-new account has no points activity
+yet, only a row to reserve at balance 0). This makes `yayloyalty_customers` row creation eager on
+WP registration instead of lazy-on-first-earn; the `account_created` activity-log entry
+(`CustomerActivityService`, subscribed to `yayloyalty_ledger_recorded`) is unaffected and still
+only appears on first ledger write. `ensure_row()` is idempotent (`ON DUPLICATE KEY UPDATE`), so a
+double-fire from a third party is harmless; try/catch `\Throwable` around the call, same as every
+other listener callback, so a DB failure here never blocks WP's own user-creation flow.
+
 ### Campaign editor (Pro-only) — create and edit
 
 **Route:** `/campaigns/:id/edit` (Pro-only; gated by `IS_PRO_BUILD` AND `requires(CAP.MANAGE_CAMPAIGNS)` with Pro lock winning if both apply).
