@@ -22,6 +22,10 @@ final class LedgerServiceTest extends TestCase {
         $this->markTestIncomplete( 'balance, lifetime_earned, last_activity_at unchanged after a duplicate earn().' );
     }
 
+    public function test_redeem_shares_the_earn_write_path_and_never_goes_below_zero(): void {
+        $this->markTestIncomplete( 'redeem(): same ensure_row → lock → insert → aggregates as earn(); locked balance + points < 0 → Outcome::skipped( insufficient_balance ), nothing written; a duplicate key → Outcome::duplicate.' );
+    }
+
     public function test_manual_adjustments_stay_non_idempotent(): void {
         $this->markTestIncomplete( 'adjust() twice with the same note writes two rows: idempotency_key is NULL.' );
     }

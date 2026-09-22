@@ -261,6 +261,9 @@ These are **first-party, internal seams** for Pro to attach behavior. Not a thir
 | **`yayloyalty_table_schemas`** | Called during Installer to collect table DDL | Pro can add Pro tables (currently unused) |
 | **`yayloyalty_ledger_recorded`** | Fired by `LedgerService` after its own `Transaction::run()` commits (a savepoint when nested in `exec_write`) | `DashboardCache::flush` |
 | **`yayloyalty_points_awarded`** | To be fired by `Engine\Earning\EarningService::award()` after commit, once per awarded `Outcome` (scaffold; not fired yet) | nothing yet — emails, YayMail placeholders |
+| **`yayloyalty_points_redeemed`** | To be fired by `Engine\Redemption\RedemptionService::commit()` after commit, once per redeemed `Outcome` (scaffold; not fired yet) | nothing yet |
+| **`yayloyalty_redemption_gates`** | To be applied by `RedemptionService::build()` over `[ ProgramGate, RewardGate ]` (scaffold) | Pro gates (tier-only rewards) |
+| **`yayloyalty_reward_conditions_match`** | To be applied by `Engine\Redemption\RewardGate` with the reward and the `Rewards\Context` (default `true`; scaffold) | Pro reward conditions evaluator |
 | **`yayloyalty_campaigns_changed`** | Fired by `CampaignRepository::flush_cache()` after any campaign write | `DashboardCache::flush` (the paused-campaign notice lives in the cached payload) |
 | **`yayloyalty_rest_controllers`** | Called by RestAPI to collect controller instances | Pro adds CampaignPreviewRestController, CampaignPerformanceRestController, DashboardProRestController, CustomerSegmentsRestController |
 | **`yayloyalty_campaign_triggers`** | Called by CampaignTrigger::all() | Pro adds birthday, first_order, order_count, spend_milestone |
@@ -417,9 +420,17 @@ CampaignPerformance.tsx: useCampaignQuery (header) + useCampaignPerformanceQuery
 
 **Still missing (F01-4):** every stub body — listener handlers, `preview()`/`award()`, `PendingPoints`, `LedgerService::earn()`, `LedgerRepository::find_by_idempotency_key()`/`points_earned_today()`, `Installer::drop_index_if_exists()` for the superseded `uniq_ledger_event` — plus registering the listeners from `YayLoyalty::__construct()` via `EarningService::build()`. Refund / clawback is an attachment point, not a design. The seven invariants and the full call graph are in `includes/Engine/Earning/README.md`; the incomplete tests under `tests/unit/Earning/` are the specification.
 
-### Redemption — SCAFFOLDED (Engine wiring only)
+### Redemption — SCAFFOLDED (three zones, bodies stubbed, not registered at boot)
 
-`RewardEngine` is complete with wiring (registry lookup, delegation, Pro seam) but all evaluation gates (liveness, balance vs cost, conditions filter) are TODO and the Lite handler always denies `not_implemented`. Missing: gates 1–3, `FlexibleDiscountHandler::quote()`, Pro handlers, the write path (`redemptions` table, `RedemptionRepository`, `LedgerService::redeem()`), `ContextFactory` (build Context from cart), and the checkout hook. Call order: customer picks reward → `Context` built from cart/balance → `RewardEngine::evaluate()` → if allowed, caller writes ledger via `LedgerService::redeem()`. See `includes/Engine/Rewards/README.md`.
+**Zone 1 — quote** (`includes/Engine/Rewards/`, pure): `RedemptionService::quote()` → `Quoter` (gates, then `RewardEngine::evaluate()`) → `FlexibleDiscountHandler` → `Clamp::apply()`, the single place every limit is computed (balance, reward max, cart after other coupons, step, min) and reported as `Result::get_bound_by()`. Writes nothing; the only state is one integer in the WC session (`SessionIntent`, `yayloyalty_redeem_points`); the discount value is derived on every recalculation. `CouponProvider` materialises it as the virtual coupon `yayloyalty-redeem` (`woocommerce_get_shop_coupon_data`, `individual_use` false, sorted last via `woocommerce_coupon_sort`).
+
+**Zone 2 — commit** (`includes/Engine/Redemption/`): `RedemptionService::commit()` → `CommitWriter` in one `Transaction::run()`: `lock_and_get` → `RedemptionRepository::find_by_order` (duplicate) → re-quote with the locked balance → redemptions row → `LedgerService::redeem()` (hard-refuses a balance below zero) → order meta `_yayloyalty_points_redeemed` / `_yayloyalty_redeem_value` → session cleared. Affordability is checked at checkout submission (`checkout_error()` from `woocommerce_after_checkout_validation` / `woocommerce_store_api_cart_errors`); a commit that still loses a race leaves the order created without the debit, with an order note.
+
+**Zone 3 — reverse:** not designed. Named seam `Engine\Redemption\Reversal` from `Earning\Listeners\OrderListener::on_cancelled()` / `on_refunded()`.
+
+**Adapters:** `Adapters\ClassicCheckoutAdapter` (shortcode cart/checkout hooks) and `Adapters\StoreApiAdapter` (`ExtendSchema` cart data, `yayloyalty-redeem` update callback) translate hooks into the same three service calls and hold no rule.
+
+**Still missing (F08):** every stub body, `RedemptionsTable` registration in `Installer::schemas()`, `RedemptionService::build()` wiring from `YayLoyalty::__construct()`, the block UI. Real today: `Clamp` (tested), `Quoter` (tested), the value objects. See `includes/Engine/Redemption/README.md`.
 
 ---
 

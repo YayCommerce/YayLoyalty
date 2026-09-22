@@ -136,7 +136,7 @@ Ordered by how much of the product each blocks, not by an assigned priority — 
 | **Campaign list/detail/performance unconditionally fixture-backed** | `GET /campaigns`, `GET /campaigns/{id}`, `GET /campaigns/{id}/performance` — dummy (22 rows) and performance respectively via `CampaignRestController` and `CampaignPerformanceFixture` | No switch: these ship in the production zip and are what a site sees until swapped for real data. Marked as swap points in controller docblocks |
 | **Campaign editor does not persist** | Pro edit form (`/campaigns/:id/edit`), `useUpdateCampaignMutation`, server-side validation of config + conditions | `CampaignRestController::update_item()` never calls the repository; PUT validates and echoes the campaign. No create form. Both SWAP POINTs resolve together |
 | **Award path is a scaffold** | `PointsEngine` computes points for `purchase`/`signup`/`review`; `LedgerService::adjust()` writes (manual only); `Engine/Earning/` fixes the shape — listeners, gates, `EarningService::preview()`/`award()`, `LedgerService::earn()`, single-column `idempotency_key` guard — with 27 incomplete tests as the spec | Every scaffold body is a `TODO(F01-4)` stub and the listeners are not registered at boot, so nothing listens to WooCommerce events yet |
-| **No redemption** | `rewards` table + `RewardEngine` scaffold (always denies `not_implemented`); `LedgerType::REDEEM` and refund types; `lifetime_redeemed` maintained | No `redemptions` table, no checkout integration, no REDEEM writer |
+| **Redemption is a scaffold** | `rewards` table; `Engine/Rewards/` quote with a real, tested `Clamp`; `Engine/Redemption/` fixes the three-zone shape — service, quoter (real), session intent, virtual coupon provider, commit writer, two adapters — with 35 incomplete tests as the spec; `LedgerService::redeem()` and `Earning\IdempotencyKey` widened for redeem rows | Every other body is a `TODO(F08)` stub, nothing is registered at boot, `RedemptionsTable` is not in `Installer::schemas()`; no block UI; Zone 3 (cancel/refund) undesigned |
 | **No referral program** | `customers.referral_code` column; `referral` trigger recognised | No code generation, attribution, hold, or payout; `referrals` / `referral_visits` tables not created |
 | **No VIP tiers** | `customers.tier_id`, `tier_evaluated_at`, `tier_progress_value` columns; Admin Customers page shows cosmetic Tier column + filter (sample data only) | No `tiers` / `tier_history` tables, no evaluation, no downgrade job; sample Tier UI is a stand-in over `balance_range` for testing purposes |
 | **Drawer wire fields always null on real path** | Customer drawer carries `deleted_at`, `expiry.batches`, `negative_balance`, `loose_ends` — parsed through same Zod schema fixture and real paths | Fields exist on the wire for UI review; real path always `null` because `deleted_at` column, `lots`/`lot_allocations`, and activity table do not exist yet |
@@ -174,18 +174,24 @@ Two backbones landed 2026-09-11: capabilities (`Access\Capabilities`) and the po
 | 10 | PHPStan level 6 is not in the repo; add it and run on `includes/Engine/Points` first. | tooling | — |
 | 11 | wp-phpunit harness for `CampaignRepository` (cache + liveness against real rows) and `ContextFactory` (real `WC_Order`). Verified by WP-CLI script today. | `tests/integration/` | — |
 
-### Reward engine (scaffold, 2026-09-18) → what implements it
+### Redemption (scaffold, 2026-09-22) → what implements it
+
+The shape is fixed (`includes/Engine/Redemption/README.md`); each row is one stub body, fillable without touching the others.
 
 | # | TODO | Where | Ticket |
 |---|---|---|---|
-| 1 | `RewardEngine` gate 1 — liveness. A reward not live at the context's time denies `REASON_NOT_LIVE`. | `Engine\Rewards\RewardEngine::evaluate()` | — |
-| 2 | `RewardEngine` gate 2 — balance vs cost. A balance below the cost denies `REASON_INSUFFICIENT_BALANCE`. Cost is `reward.cost_points` for fixed types, `context.points_requested` for `flexible_discount`. | `Engine\Rewards\RewardEngine::evaluate()` | — |
-| 3 | `RewardEngine` gate 3 — conditions filter. A false from `yayloyalty_reward_conditions_match` (default `true`, args reward and context) denies `REASON_CONDITIONS_NOT_MET`. | `Engine\Rewards\RewardEngine::evaluate()` | — |
-| 4 | `FlexibleDiscountHandler::quote()` — validate config: `min_points`, `increment`, `max_points_per_order`, `max_percent_of_subtotal` (each a `denied()` with its reason), then value via `Utils\PointsMath::points_to_currency()`. | `Engine\Rewards\Handlers\FlexibleDiscountHandler` | — |
-| 5 | Pro handlers registered via `yayloyalty_register_reward_handlers` — one `RewardHandler` per type: `fixed_coupon`, `percent_coupon`, `free_shipping`, `free_product`. | `includes/Pro/` | — |
-| 6 | `ContextFactory` — build `Context` from the cart (or none, for a catalog claim); balance from `CustomerRepository`. The one class allowed to touch WooCommerce. | `Engine\Rewards\` | — |
-| 7 | Write path: `redemptions` table, `RedemptionRepository`, `LedgerService::redeem()`. | separate plan | — |
-| 8 | Checkout hook caller — apply reward, write ledger on valid result. Store API caller. | listener | — |
+| 1 | `FlexibleDiscountHandler::quote()` — one line delegating to `Clamp::apply()`. | `Engine\Rewards\Handlers\` | F08 |
+| 2 | `ContextFactory::from_cart()` / `from_order()` — balance from the customer row (locked balance passed in at commit), subtotal net of every coupon but ours, `CustomerFacts`. | `Engine\Rewards\ContextFactory` | F08 |
+| 3 | `ProgramGate` (logged in, program on, `wc_coupons_enabled()`) and `RewardGate` (live, fixed cost vs balance, `yayloyalty_reward_conditions_match`). | `Engine\Redemption\` | F08 |
+| 4 | `SessionIntent::get()/set()/clear()` over `WC()->session`, key `yayloyalty_redeem_points`. | `Engine\Redemption\SessionIntent` | F08 |
+| 5 | `CouponProvider` — `woocommerce_get_shop_coupon_data` (fixed_cart, `individual_use` false), `woocommerce_coupon_sort` (weight PHP_INT_MAX, so last), `sync_cart` on `woocommerce_before_calculate_totals`. | `Engine\Redemption\CouponProvider` | F08 |
+| 6 | `RedemptionsTable::definition()` + registration in `Installer::schemas()`; `RedemptionRepository::find_by_order()`, `count_for_customer()`. | `Database\Schema\`, `Repositories\` | F08 |
+| 7 | `LedgerService::redeem()` — sibling of `earn()` over `record()`; refuses below zero under the lock. | `Services\LedgerService` | F08 |
+| 8 | `CommitWriter::commit()` and its two draft builders + `freeze()`; `RedemptionService::quote()/checkout_error()/commit()/build()` (the `Quoter` is already real). | `Engine\Redemption\` | F08 |
+| 9 | Adapters' hook bodies; register `CouponProvider` + both adapters from `YayLoyalty::__construct()` on storefront requests. | `Engine\Redemption\Adapters\`, `YayLoyalty` | F08 |
+| 10 | Block UI: a storefront package reading `extensions.yayloyalty` and posting the `yayloyalty-redeem` update callback. | new package | F08+ |
+| 11 | Zone 3: `Engine\Redemption\Reversal` from `OrderListener::on_cancelled()/on_refunded()`, `LedgerService::refund_redeem()`, `Redemption::restored_points`. | undesigned | later |
+| 12 | Pro catalog rewards: handlers for `fixed_coupon`, `percent_coupon`, `free_shipping`, `free_product` via `yayloyalty_register_reward_handlers`; real single-use coupons. | `includes/Pro/` | Pro |
 
 ### Capabilities (backbone done) → what is still open
 

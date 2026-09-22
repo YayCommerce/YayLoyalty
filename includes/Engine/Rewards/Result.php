@@ -6,64 +6,80 @@ use YayLoyalty\Models\Reward;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Whether a claim may go ahead and, if so, what it costs and what it is
- * worth. `reason` is '' when allowed, else a REASON_* constant (handlers may
- * add their own strings). `rate_snapshot` is points per currency unit at
- * quote time, kept so a refund reverses at the quoted rate rather than
- * today's. The caller writes the ledger from this; the engine writes nothing.
+ * The quote: whether a claim may go ahead and, if so, what the customer
+ * asked for, what they get, what it is worth and which limit bit. `reason`
+ * is '' when allowed, else a REASON_* constant (gates and handlers may add
+ * their own strings). `rate_snapshot` is points per currency unit at quote
+ * time, kept so a refund reverses at the quoted rate rather than today's.
+ * Never stored: derived from the current cart on every recalculation. The
+ * caller writes the ledger from this; the engine writes nothing.
  */
 final class Result {
 
     public const REASON_NOT_LIVE             = 'not_live';
     public const REASON_INSUFFICIENT_BALANCE = 'insufficient_balance';
     public const REASON_CONDITIONS_NOT_MET   = 'conditions_not_met';
-    public const REASON_NOT_IMPLEMENTED      = 'not_implemented';
+    public const REASON_NO_RATE              = 'no_rate';
 
-    /** @var bool */
-    private $allowed;
+    private bool $allowed;
 
-    /** @var Reward|null */
-    private $reward;
+    private ?Reward $reward;
 
-    /** @var int Points the claim costs. */
-    private $points;
+    /** Points the customer asked to spend; equals `points` for fixed-cost types. */
+    private int $points_requested;
 
-    /** @var float Discount value in `currency`. */
-    private $value;
+    /** Points the claim costs after every limit. */
+    private int $points;
 
-    /** @var string|null */
-    private $currency;
+    /** Discount value in `currency`. */
+    private float $value;
 
-    /** @var float */
-    private $rate_snapshot;
+    private ?string $currency;
 
-    /** @var string */
-    private $reason;
+    private float $rate_snapshot;
+
+    /** A Clamp::BOUND_* constant, '' when the request stood or for fixed-cost types. */
+    private string $bound_by;
+
+    private string $reason;
 
     private function __construct(
         bool $allowed,
         ?Reward $reward,
+        int $points_requested,
         int $points,
         float $value,
         ?string $currency,
         float $rate_snapshot,
+        string $bound_by,
         string $reason
     ) {
-        $this->allowed       = $allowed;
-        $this->reward        = $reward;
-        $this->points        = $points;
-        $this->value         = $value;
-        $this->currency      = $currency;
-        $this->rate_snapshot = $rate_snapshot;
-        $this->reason        = $reason;
+        $this->allowed          = $allowed;
+        $this->reward           = $reward;
+        $this->points_requested = $points_requested;
+        $this->points           = $points;
+        $this->value            = $value;
+        $this->currency         = $currency;
+        $this->rate_snapshot    = $rate_snapshot;
+        $this->bound_by         = $bound_by;
+        $this->reason           = $reason;
     }
 
-    public static function allowed( Reward $reward, int $points, float $value, string $currency, float $rate_snapshot ): self {
-        return new self( true, $reward, $points, $value, $currency, $rate_snapshot, '' );
+    /** Allowed with `points` 0 is a valid quote (nothing to apply yet); a coupon needs `points` > 0. */
+    public static function allowed(
+        Reward $reward,
+        int $points_requested,
+        int $points,
+        float $value,
+        string $currency,
+        float $rate_snapshot,
+        string $bound_by = Clamp::BOUND_NONE
+    ): self {
+        return new self( true, $reward, $points_requested, $points, $value, $currency, $rate_snapshot, $bound_by, '' );
     }
 
     public static function denied( string $reason ): self {
-        return new self( false, null, 0, 0.0, null, 0.0, $reason );
+        return new self( false, null, 0, 0, 0.0, null, 0.0, Clamp::BOUND_NONE, $reason );
     }
 
     public function is_allowed(): bool {
@@ -72,6 +88,10 @@ final class Result {
 
     public function get_reward(): ?Reward {
         return $this->reward;
+    }
+
+    public function get_points_requested(): int {
+        return $this->points_requested;
     }
 
     public function get_points(): int {
@@ -88,6 +108,10 @@ final class Result {
 
     public function get_rate_snapshot(): float {
         return $this->rate_snapshot;
+    }
+
+    public function get_bound_by(): string {
+        return $this->bound_by;
     }
 
     public function get_reason(): string {

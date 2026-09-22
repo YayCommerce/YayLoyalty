@@ -6,6 +6,35 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
 
 ## Unreleased
 
+### Changed — Redemption restructured into three zones (2026-09-22, scaffold)
+
+- **Zone 1 quote (`includes/Engine/Rewards/`):** new `Clamp::apply()` — the single, pure, tested place
+  every limit is computed (balance → `max_points_per_order` → cart after other coupons /
+  `max_percent_of_subtotal`, floored to `increment`, zeroed below `min_points`) and reported as
+  `Result::get_bound_by()`. `Result` widened with `points_requested` and `bound_by`; `Context` gains
+  `CustomerFacts`; new `ContextFactory` (stub). `RewardEngine` loses its gate TODOs (moved to gates);
+  `FlexibleDiscountHandler::quote()` becomes a one-line delegate stub.
+- **Zone 2 commit (`includes/Engine/Redemption/`, new, mirrors `Engine/Earning`):** `RedemptionService`
+  (`quote` / `checkout_error` / `commit`), `Quoter` (real: gates then engine) + `Gate` + `ProgramGate` / `RewardGate`,
+  `SessionIntent` (one integer, `yayloyalty_redeem_points`), `CouponProvider` (virtual
+  `yayloyalty-redeem`, `individual_use` false, sorted last), `CommitWriter` (one transaction, locked
+  re-quote, hard-refuses below zero), `Adapters/ClassicCheckoutAdapter` + `Adapters/StoreApiAdapter`.
+  Zone 3 named as `Engine\Redemption\Reversal`, not designed.
+- **Reused, widened:** `LedgerService::redeem()` beside `earn()` over the same `record()`;
+  `Earning\IdempotencyKey::compose()` fifth segment is now a qualifier — campaign trigger for earn
+  rows, reward type for redeem rows; `Earning\Outcome::redeemed()` and `get_evaluation()` typed
+  `?object` (PHP 7.4 has no unions).
+- **`Repositories\CustomerReader`** (interface, `find_by_user_id()` only), implemented by `CustomerRepository`;
+  `Rewards\ContextFactory` depends on it, so the quote path cannot write by type.
+- **New persistence scaffold:** `Models\Redemption`, `Repositories\RedemptionRepository` (stubs),
+  `Database\Schema\RedemptionsTable` (DDL stub, not registered).
+- **Removed:** `Result::REASON_NOT_IMPLEMENTED` and the test asserting it; the stale `worth`
+  comments on `RewardRepository`, `RestAPI` and `CustomerRestController`.
+- **Tests:** 152 → 208 cases (64 incomplete); `ClampTest` (14 real), `QuoterTest` (3 real),
+  `IdempotencyKeyTest` redeem cases (real), `tests/unit/Redemption/*` specification incl.
+  `test_no_database_write_occurs_during_a_quote`.
+- `docs/redemption-scout.md` records the pre-restructure inventory.
+
 ### Added — Earning orchestration scaffold (2026-09-22)
 
 - **`includes/Engine/Earning/`:** the evaluate/award split around the pure `PointsEngine`.

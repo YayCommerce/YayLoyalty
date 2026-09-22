@@ -55,7 +55,7 @@ class RestAPI {
         $controllers = [
             new SettingsRestController(),
             // $ledger and $rewards here are read-only uses (counts.ledger,
-            // worth's conversion rate) — the same instances LedgerService
+            // the drawer's conversion rate) — the same instances LedgerService
             // and DashboardRepository hold, not a second construction.
             new CustomerRestController( $customers, $ledger_service, $ledger, $rewards ),
             new LedgerRestController( $ledger ),

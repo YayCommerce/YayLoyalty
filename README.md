@@ -116,7 +116,7 @@ One repository, two zips. Lite = Pro minus `includes/Pro/` and SPA built with `B
 ## Checks
 
 ```bash
-composer test                  # phpunit — 152 unit tests, 27 incomplete by design (the earning-split invariants): points engine (BaseCalculator, PurchaseHandler, PointsEngine), earning orchestration scaffold (IdempotencyKey, Outcome, EarningService), reward engine scaffold (Result, Registry, RewardEngine), dashboard computation (PeriodWindow, DashboardMath, AnomalyDetector, DashboardStats, DashboardNotices), PointsMath + shared vectors, campaign config/conditions validation, drawer query-arg groupings + fixture helpers (Controllers/)
+composer test                  # phpunit — 208 unit tests, 64 incomplete by design (the earning-split and redemption-split invariants): points engine (BaseCalculator, PurchaseHandler, PointsEngine), earning orchestration scaffold (IdempotencyKey, Outcome, EarningService), reward engine + clamp (Clamp, Result, Registry, RewardEngine), redemption orchestration scaffold (Quoter real; service, writer, coupon, session, adapters as specification), dashboard computation (PeriodWindow, DashboardMath, AnomalyDetector, DashboardStats, DashboardNotices), PointsMath + shared vectors, campaign config/conditions validation, drawer query-arg groupings + fixture helpers (Controllers/)
 composer lint                  # phpcs (WPCS + PHPCompatibility, 7.4 floor)
 pnpm --filter @yayloyalty/admin-page lint   # eslint + prettier on TypeScript/React
 pnpm --filter @yayloyalty/admin-page test   # vitest — lib/points-math against tests/fixtures/points-math-vectors.json (same file phpunit runs)

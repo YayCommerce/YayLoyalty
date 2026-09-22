@@ -7,8 +7,8 @@ use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
 
-/** yayloyalty_customers. */
-final class CustomerRepository extends AbstractRepository {
+/** yayloyalty_customers. Readers that must not write depend on CustomerReader instead. */
+final class CustomerRepository extends AbstractRepository implements CustomerReader {
 
     /**
      * Sort key → join-qualified ORDER BY expression for the admin list.

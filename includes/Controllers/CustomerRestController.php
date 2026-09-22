@@ -31,7 +31,7 @@ final class CustomerRestController extends AbstractRestController {
     /** @var LedgerRepository Read-only here — counts.ledger only. All writes stay LedgerService's. */
     private $ledger;
 
-    /** @var RewardRepository Read-only — worth's conversion rate. */
+    /** @var RewardRepository Read-only — the drawer's points→money conversion rate. */
     private $rewards;
 
     public function __construct(

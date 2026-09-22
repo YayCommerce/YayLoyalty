@@ -12,9 +12,8 @@ use YayLoyalty\Models\Reward;
 
 /**
  * Wiring only: the engine resolves the handler by type and returns what it
- * quotes. Every gate and the flexible-discount math are stubs, so the Lite
- * build always denies `not_implemented` — the assertion a dev replacing the
- * stub must update.
+ * quotes. Gates live in Engine\Redemption; the maths in Clamp. The Lite
+ * handler is a stub until F08.
  */
 final class RewardEngineTest extends TestCase {
 
@@ -28,12 +27,8 @@ final class RewardEngineTest extends TestCase {
         return new Context( 7, $balance, $points_requested, 50.0, 'USD', self::AT );
     }
 
-    public function test_lite_build_denies_not_implemented(): void {
-        $engine = new RewardEngine( Registry::with_lite_handlers() );
-        $result = $engine->evaluate( $this->flexible_reward(), $this->context() );
-
-        $this->assertFalse( $result->is_allowed() );
-        $this->assertSame( Result::REASON_NOT_IMPLEMENTED, $result->get_reason() );
+    public function test_lite_handler_quotes_through_clamp(): void {
+        $this->markTestIncomplete( 'FlexibleDiscountHandler::quote() returns exactly Clamp::apply() for the Context; replace this when the stub body lands.' );
     }
 
     public function test_unregistered_type_throws(): void {
@@ -44,7 +39,7 @@ final class RewardEngineTest extends TestCase {
 
     public function test_returns_the_handlers_quote_unchanged(): void {
         $reward   = $this->flexible_reward();
-        $expected = Result::allowed( $reward, 100, 5.0, 'USD', 20.0 );
+        $expected = Result::allowed( $reward, 100, 100, 5.0, 'USD', 20.0 );
 
         $registry = new Registry();
         $registry->register(

@@ -16,10 +16,12 @@ defined( 'ABSPATH' ) || exit;
 /**
  * The only writer of the ledger and the customer aggregates — the award
  * writer of the two-moment split (docs/points-engine-scout.md). Enforced by
- * convention: constructed in exactly three places, Engine\RestAPI::controllers(),
- * Database\InitYayLoyaltyCustomer::maybe_create() and (once its body lands)
- * Engine\Earning\EarningService::build(). Name a fourth here before adding
- * it. Manual rows enter through record(); system rows through earn().
+ * convention: constructed in exactly four places, Engine\RestAPI::controllers(),
+ * Database\InitYayLoyaltyCustomer::maybe_create() and (once their bodies
+ * land) Engine\Earning\EarningService::build() and
+ * Engine\Redemption\RedemptionService::build(). Name a fifth here before
+ * adding it. Manual rows enter through adjust(); system rows through earn()
+ * and redeem(), which share record() so there is one write path.
  */
 final class LedgerService {
 
@@ -90,6 +92,36 @@ final class LedgerService {
      */
     public function earn( LedgerEntry $draft ): Outcome { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
         // TODO(F01-4): assert EARN + key; Transaction::run: ensure_row, lock_and_get, optional find_by_idempotency_key pre-check, try insert catch is_duplicate_key → Outcome::duplicate, apply_aggregates, queue event; then dispatch_events; return Outcome::awarded.
+        throw new \RuntimeException( 'Not implemented' );
+    }
+
+    /**
+     * Commits one quoted redemption: the REDEEM row and the customer
+     * aggregates, in one transaction under the customer's row lock. The
+     * redemption commit (Engine\Redemption\CommitWriter) wraps this in its
+     * own Transaction::run(), so the row here and the redemptions row commit
+     * or roll back together.
+     *
+     * Preconditions: $draft is a REDEEM row with points < 0, a non-null
+     * idempotency_key (IdempotencyKey::compose( REDEEM, user, REDEMPTION,
+     * redemption id, reward type )), redemption_id and order_id set,
+     * created_at set by the caller. Nothing slow or externally fallible may
+     * run inside.
+     *
+     * Postconditions: exactly one of — Outcome::redeemed( persisted row ) with
+     * balance_after = locked balance + points (≥ 0) and lifetime_redeemed
+     * moved; Outcome::skipped( Rewards\Result::REASON_INSUFFICIENT_BALANCE )
+     * and nothing written when the locked balance + points would go below
+     * zero — a redemption hard-refuses, unlike a clawback; or
+     * Outcome::duplicate( existing row ) when the UNIQUE index rejected the
+     * insert. Any other failure rethrows and the transaction has rolled back.
+     * Events fire after commit through dispatch_events().
+     *
+     * @throws \InvalidArgumentException When the draft is not a negative redeem row or lacks a key.
+     * @throws \YayLoyalty\Database\QueryException When a write other than a duplicate fails.
+     */
+    public function redeem( LedgerEntry $draft ): Outcome { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
+        // TODO(F08): assert REDEEM, points < 0, key; Transaction::run: ensure_row, lock_and_get, if balance + points < 0 → Outcome::skipped( insufficient_balance ), try insert catch is_duplicate_key → Outcome::duplicate, apply_aggregates, queue event; then dispatch_events; return Outcome::redeemed.
         throw new \RuntimeException( 'Not implemented' );
     }
 
