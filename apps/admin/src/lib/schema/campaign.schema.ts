@@ -235,6 +235,14 @@ export const campaignUpdateInputSchema = z
 
 export type CampaignUpdateInput = z.infer<typeof campaignUpdateInputSchema>;
 
+/** Response of DELETE campaigns/{id}, mirroring delete_item(). */
+export const campaignDeleteResponseSchema = z.object({
+  deleted: z.boolean(),
+  id: z.number().int(),
+});
+
+export type CampaignDeleteResponse = z.infer<typeof campaignDeleteResponseSchema>;
+
 /* ─── Write: per-trigger config field maps ──────────────────────────── */
 
 type CampaignConfigFieldType = 'bool' | 'string' | 'int' | 'number' | 'enum' | 'int_list';

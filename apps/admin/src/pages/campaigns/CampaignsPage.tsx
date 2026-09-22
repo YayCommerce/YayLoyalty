@@ -10,7 +10,7 @@ export default function CampaignsPage() {
   return (
     <PageLayout
       title={__('Campaigns', 'yayloyalty')}
-      description={__('Earning rules. Built-in campaigns cannot be deleted.', 'yayloyalty')}
+      description={__('Earning rules. Built-in campaigns cannot be archived.', 'yayloyalty')}
     >
       {/* IS_PRO_BUILD, not ProGate, so the @/pro import is tree-shaken. */}
       {IS_PRO_BUILD && <CampaignTable />}

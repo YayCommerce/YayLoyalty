@@ -33,10 +33,13 @@ export function CampaignEditorSummaryRail({
   mutation,
   onCancel,
   onDraftIntent,
+  onArchive,
   onPerformance,
 }: {
   mutation: UseMutationResult<Campaign, unknown, CampaignUpdateInput>;
   onCancel: () => void;
+  /** Omitted where archiving is not offered. */
+  onArchive?: () => void;
   /** Fallback for Safari < 15.4, which lacks SubmitEvent.submitter. */
   onDraftIntent: () => void;
   onPerformance?: () => void;
@@ -119,9 +122,17 @@ export function CampaignEditorSummaryRail({
         <Button type="submit" variant="outline" data-intent="draft" disabled={busy} onClick={onDraftIntent}>
           {__('Save as draft', 'yayloyalty')}
         </Button>
-        <Button type="submit" variant="destructive" data-intent="archive" disabled={busy}>
-          {__('Archive campaign', 'yayloyalty')}
-        </Button>
+        {/* type="button": archiving is the dialog's decision, never a form save. */}
+        {onArchive && campaign.status !== 'archived' && (
+          <Button type="button" variant="destructive" disabled={busy || campaign.is_builtin} onClick={onArchive}>
+            {__('Archive campaign', 'yayloyalty')}
+          </Button>
+        )}
+        {onArchive && campaign.is_builtin && (
+          <p className="text-muted-foreground text-center text-xs">
+            {__('Default campaigns can’t be archived. You can pause one instead.', 'yayloyalty')}
+          </p>
+        )}
         <div className="flex flex-wrap items-center justify-center gap-3 text-sm">
           <Button type="button" variant="link" disabled={busy} onClick={onCancel}>
             {__('Cancel', 'yayloyalty')}

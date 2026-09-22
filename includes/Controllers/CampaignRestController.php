@@ -18,11 +18,11 @@ defined( 'ABSPATH' ) || exit;
  *
  * Reads answer from dummy_fixture() for now: a fresh table holds only the
  * three built-ins, too few to build the Pro grouped table against.
- * create_item()/delete_item() already go through $this->campaigns.
- * update_item() resolves and returns the fixture row without writing: a
- * real write would vanish behind the fixture on the next read, and fixture
- * ids 1-3 collide with real built-in ids. Swapping the reads back restores
- * update_item()'s write and deletes dummy_fixture()/find_dummy_row().
+ * create_item() already goes through $this->campaigns. update_item() and
+ * delete_item() resolve the fixture row and answer without writing: a real
+ * write would vanish behind the fixture on the next read, and fixture ids
+ * 1-3 collide with real built-in ids. Swapping the reads back restores both
+ * writes and deletes dummy_fixture()/find_dummy_row().
  */
 final class CampaignRestController extends AbstractRestController {
 
@@ -247,19 +247,20 @@ final class CampaignRestController extends AbstractRestController {
     }
 
     public function delete_item( \WP_REST_Request $request ) {
-        $campaign = $this->campaigns->find_campaign( (int) $request['id'] );
+        // Fixture only, no repository fallback: fixture ids 1-3 collide with real built-in ids.
+        $row = self::find_dummy_row( (int) $request['id'] );
 
-        if ( null === $campaign ) {
+        if ( null === $row ) {
             return $this->error_not_found( __( 'Campaign not found.', 'yayloyalty' ) );
         }
 
         // The engine and the Free UI expect built-ins to exist. is_builtin is readonly, so this cannot be sidestepped.
-        if ( $campaign->is_builtin() ) {
+        if ( $row['is_builtin'] ) {
             return $this->error_forbidden( __( 'Built-in campaigns cannot be deleted.', 'yayloyalty' ) );
         }
 
-        $this->campaigns->delete( (int) $request['id'] );
-
+        // Swap point: no $this->campaigns->delete() call; see the class docblock.
+        // TODO: refuse a campaign with ledger rows once deletes write; the fixture has no ledger to check.
         return [
             'deleted' => true,
             'id'      => (int) $request['id'],
@@ -355,7 +356,8 @@ final class CampaignRestController extends AbstractRestController {
     }
 
     /**
-     * Twenty-two campaigns: every fireable trigger, an archived row, a
+     * Twenty-three campaigns: every fireable trigger, an archived row, an
+     * ended row (id 23, the archive dialog's finished case), a
      * priority tie (ids 3 and 9), enough to cross the Pro table's search
      * threshold. ids 4-6 must match Installer::seed_builtins() exactly: they
      * are the rows BuiltInCampaignList edits. `conditions` stays `[]` where
@@ -474,6 +476,7 @@ final class CampaignRestController extends AbstractRestController {
             self::dummy_row( 20, 'Big spender milestone', 'big-spender-milestone', CampaignTrigger::SPEND_MILESTONE, Status::ACTIVE, 15, $big_spender_config, [], '2027-01-01 00:00:00', null, false, $now ),
             self::dummy_row( 21, 'Anniversary bonus', 'anniversary-bonus', CampaignTrigger::BIRTHDAY, Status::DRAFT, 20, $anniversary_bonus_config, [], null, null, false, $now ),
             self::dummy_row( 22, 'Tier upgrade bonus', 'tier-upgrade-bonus', CampaignTrigger::SPEND_MILESTONE, Status::ACTIVE, 25, $tier_upgrade_config, [], null, null, false, $now ),
+            self::dummy_row( 23, 'Summer Kickoff 2×', 'summer-kickoff-2x', CampaignTrigger::PURCHASE, Status::ACTIVE, 20, $multiplier( 2 ), [], '2026-06-01 00:00:00', '2026-06-15 00:00:00', false, $now ),
         ];
     }
 
