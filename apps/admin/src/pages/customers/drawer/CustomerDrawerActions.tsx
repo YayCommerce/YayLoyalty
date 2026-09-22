@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
+import { toast } from 'sonner';
 
 import { Can, CAP } from '@/lib/access';
+import { getApiErrorMessage } from '@/lib/api/api';
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { useAdjustPointsMutation, useAdjustPointsPreviewQuery } from '@/lib/queries/customer.queries';
 import type { Customer } from '@/lib/schema/customer.schema';
@@ -11,6 +13,8 @@ import {
   ACTION_ASSIGN_TIER,
   ACTION_EXPORT_LEDGER,
   ACTION_RESET_EXPIRY,
+  ADJUST_POINTS_ERROR_FALLBACK,
+  adjustPointsSuccessToast,
   DELETED_ACCOUNT_ACTION_REASON,
   NOT_AVAILABLE_YET_REASON,
   RESET_EXPIRY_NEEDS_POINTS_REASON,
@@ -76,7 +80,17 @@ export function CustomerDrawerActions({ customer, isLoading }: { customer: Custo
         onOpenChange={setIsAdjustOpen}
         count={1}
         isSubmitting={adjustMutation.isPending}
-        onSubmit={(input) => adjustMutation.mutate(input, { onSuccess: () => setIsAdjustOpen(false) })}
+        onSubmit={(input) =>
+          adjustMutation.mutate(input, {
+            onSuccess: () => {
+              setIsAdjustOpen(false);
+              toast.success(adjustPointsSuccessToast(customer.name));
+            },
+            onError: async (error) => {
+              toast.error(await getApiErrorMessage(error, ADJUST_POINTS_ERROR_FALLBACK()));
+            },
+          })
+        }
         preview={preview}
       />
     </div>
