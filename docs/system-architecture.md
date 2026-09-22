@@ -260,6 +260,7 @@ These are **first-party, internal seams** for Pro to attach behavior. Not a thir
 |---|---|---|
 | **`yayloyalty_table_schemas`** | Called during Installer to collect table DDL | Pro can add Pro tables (currently unused) |
 | **`yayloyalty_ledger_recorded`** | Fired by `LedgerService` after its own `Transaction::run()` commits (a savepoint when nested in `exec_write`) | `DashboardCache::flush` |
+| **`yayloyalty_points_awarded`** | To be fired by `Engine\Earning\EarningService::award()` after commit, once per awarded `Outcome` (scaffold; not fired yet) | nothing yet — emails, YayMail placeholders |
 | **`yayloyalty_campaigns_changed`** | Fired by `CampaignRepository::flush_cache()` after any campaign write | `DashboardCache::flush` (the paused-campaign notice lives in the cached payload) |
 | **`yayloyalty_rest_controllers`** | Called by RestAPI to collect controller instances | Pro adds CampaignPreviewRestController, CampaignPerformanceRestController, DashboardProRestController, CustomerSegmentsRestController |
 | **`yayloyalty_campaign_triggers`** | Called by CampaignTrigger::all() | Pro adds birthday, first_order, order_count, spend_milestone |
@@ -406,18 +407,15 @@ CampaignPerformance.tsx: useCampaignQuery (header) + useCampaignPerformanceQuery
 
 **Swap procedure** (see the controller's own class docblock): `get_performance()` moves to a new `CampaignPerformanceRepository` aggregate over `ledger` rows carrying `campaign_id`, wrapped in `DashboardCache` (large-table per-request aggregate); `skipped`/`estimate` may ship `null` at first since both need re-evaluating every order in the window — the SPA already hides each panel on `null`. `get_entries()` moves to a paged `ledger` query (`WHERE campaign_id = ? ORDER BY created_at DESC, id DESC`) joined to `customers`, through `respond_paginated()` exactly as today. `CampaignPerformanceFixture` is then deleted. **No SPA change either way** — both routes are already real HTTP calls.
 
-### Order award — NOT IMPLEMENTED (Engine built, Listener missing)
+### Order award — SCAFFOLDED (shape real, bodies stubbed, not registered at boot)
 
-**Engine status:** `PointsEngine` is complete with 46 unit tests for `BaseCalculator`, `PurchaseHandler`, `PointsEngine`, plus `ContextFactory` and `Triggers/Registry`; its rounding step is `Utils\PointsMath::round_points()`, covered by the shared PHP/TS vector suite. It computes what an order earns given the live campaigns.
+**Engine status:** `PointsEngine` is complete with 46 unit tests for `BaseCalculator`, `PurchaseHandler`, `PointsEngine`, plus `ContextFactory` and `Triggers/Registry`; its rounding step is `Utils\PointsMath::round_points()`, covered by the shared PHP/TS vector suite. It computes what an order earns given the live campaigns, at `Context::occurred_at` (no timestamp argument).
 
-**Missing:** No code listens to WooCommerce order events. `LedgerService::earn()` does not exist yet — only `adjust()` (for manual adjustments). When F01-4 lands, it will:
-1. Hook an order status transition (e.g., `woocommerce_order_status_*`)
-2. Call `ContextFactory::from_order()` to build an immutable context
-3. Resolve live campaigns for the `purchase` trigger via `CampaignRepository::live_for_trigger()`
-4. Call `PointsEngine::evaluate()` — pure, no side effects
-5. Call `LedgerService::earn()` with the result
+**Scaffold (`includes/Engine/Earning/`, 2026-09-22):** the award path is split into two moments that share one `Context` and one `occurred_at`:
+1. **Evaluation** — `Listeners\OrderListener` → `ContextFactory::from_order()` → `EarningService::preview()`: `Gate` chain (`ProgramGate`: excluded roles, opt-out meta) then `PointsEngine::evaluate()`. Pure; the result is staged as pending order meta on order creation.
+2. **Award** — `EarningService::award()` previews again, then inside one `Transaction::run()`: `CustomerRepository::lock_and_get()` → `LedgerRepository::insert()` under the single-column UNIQUE `idempotency_key` (`IdempotencyKey::compose()`; MySQL 1062 → `Outcome::duplicate`, a normal return) → aggregates → `PendingPoints::release()`. Hooks (`yayloyalty_ledger_recorded`, `yayloyalty_points_awarded`) fire after commit.
 
-Nothing else in the write path (lock order, transaction safety, idempotency) changes. See `project-roadmap.md`.
+**Still missing (F01-4):** every stub body — listener handlers, `preview()`/`award()`, `PendingPoints`, `LedgerService::earn()`, `LedgerRepository::find_by_idempotency_key()`/`points_earned_today()`, `Installer::drop_index_if_exists()` for the superseded `uniq_ledger_event` — plus registering the listeners from `YayLoyalty::__construct()` via `EarningService::build()`. Refund / clawback is an attachment point, not a design. The seven invariants and the full call graph are in `includes/Engine/Earning/README.md`; the incomplete tests under `tests/unit/Earning/` are the specification.
 
 ### Redemption — SCAFFOLDED (Engine wiring only)
 

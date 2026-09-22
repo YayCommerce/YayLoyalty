@@ -6,6 +6,30 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
 
 ## Unreleased
 
+### Added — Earning orchestration scaffold (2026-09-22)
+
+- **`includes/Engine/Earning/`:** the evaluate/award split around the pure `PointsEngine`.
+  `EarningService::preview()` (gates → engine) and `award()` (preview again at the same
+  `occurred_at`, then `LedgerService::earn()` in one transaction), `Gate` + `ProgramGate`
+  (`excluded_roles` setting, `_yayloyalty_opted_out` user meta), `PendingPoints`, `Outcome`
+  (`awarded` | `skipped` | `duplicate`), `IdempotencyKey`, and `Listeners/{Order,Signup,Review}Listener`.
+  Every body is a `TODO(F01-4)` stub except `IdempotencyKey`, `Outcome`, `CustomerFacts` and the
+  gate-chain loop; listeners are not registered at boot. Invariants in the package README.
+- **Ledger idempotency:** one `idempotency_key VARCHAR(96)` column under UNIQUE
+  `uniq_idempotency_key` (`{type}:{user_id}:{reference_type}:{reference_id}:{trigger}`) replaces the
+  composite `uniq_ledger_event`; `Installer::run_migrations()` → `drop_index_if_exists()` (stub)
+  removes the old index on upgrade. `LedgerEntry::get_idempotency_key()`; null on `adjust`.
+- **Engine:** `PointsEngine::evaluate()` drops its `$at` argument and reads `Context::occurred_at`;
+  `ContextFactory::from_order()` throws without an order creation date. New `CustomerFacts`
+  (read once by `ContextFactory::customer_facts()`) so `ConditionsEvaluator` compares instead of
+  querying — interim: it still folds over the user id. `Campaign::conditions_match()` moved into `PointsEngine` (private), keeping the model engine-free.
+- **Repositories:** `LedgerRepository::find_by_idempotency_key()` / `points_earned_today()`,
+  `CustomerRepository::apply_pending_delta()` (stubs); `find_by_reference()` / `latest_for_user()` removed.
+- **Settings:** `excluded_roles` (`slug_list`) added to `SettingsHelper` defaults.
+- **Tests:** 115 → 152 cases; the 27 incomplete ones under `tests/unit/Earning/`, `tests/unit/Services/`
+  and `ContextFactoryTest.php` are the scaffold's specification. `docs/points-engine-scout.md` records
+  the pre-scaffold inventory.
+
 ### Changed — Docs (2026-09-22)
 
 - GDPR erasure feature corrected to "not started" (no implementation exists yet).

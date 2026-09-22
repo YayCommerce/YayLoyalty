@@ -324,7 +324,7 @@ pnpm --filter @yayloyalty/admin-page test   # vitest — lib/points-math against
 
 ### The points engine is pure
 
-`Engine\Points\*` reads campaigns through `CampaignRepository` and nothing else — no `$wpdb`, no WooCommerce globals, no current user, no `time()`, no capability checks. Everything about the event arrives on the `Context`, built by `ContextFactory` (the one class allowed to touch WooCommerce) or by hand in a test. `$at` is the event's time, never `now()`. Config gates (`min_subtotal`, a paused default under a multiplier) are **eligibility**: the engine falls through to the next campaign rather than earning zero or throwing.
+`Engine\Points\*` reads campaigns through `CampaignRepository` and nothing else — no `$wpdb`, no WooCommerce globals, no current user, no `time()`, no capability checks. Everything about the event arrives on the `Context`, built by `ContextFactory` (the one class allowed to touch WooCommerce) or by hand in a test. The engine takes no timestamp argument: liveness is scored at `Context::occurred_at`, the event's time, never `now()` (`ContextFactory::from_order()` throws when the order has no creation date). Config gates (`min_subtotal`, a paused default under a multiplier) are **eligibility**: the engine falls through to the next campaign rather than earning zero or throwing.
 
 Every exclusion in `phpcs.xml.dist` carries a one-line reason. **An exclusion without a reason is a bug** — it means a sniff was disabled to make the build green rather than because it was wrong.
 

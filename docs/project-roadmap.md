@@ -51,7 +51,7 @@ All referral tables (`referrals`, `referral_visits`) specified in data model; no
 
 | Feature | Spec | Status | Details |
 |---|---|---|---|
-| **Lite triggers** | `purchase`, `signup`, `review` | ⚠️ **COMPUTABLE, NOT FIRED** | `PointsEngine` + handlers score all three; nothing listens to WooCommerce events to call it (F01-4) |
+| **Lite triggers** | `purchase`, `signup`, `review` | ⚠️ **COMPUTABLE, NOT FIRED** | `PointsEngine` + handlers score all three; `Engine\Earning\Listeners\*` exist as stubs and are not registered at boot (F01-4) |
 | **Pro triggers** | `birthday`, `first_order`, `order_count`, `spend_milestone` | ⚠️ **OFFERABLE IN PRO, NOT FIREABLE** | Added to `CampaignTrigger::all()` by `YayLoyaltyPro`; Lite recognises them (`all_known()`) so a downgrade keeps the rows |
 | **Referral trigger** | `referral` | ⚠️ **RECOGNIZED, NOT FIREABLE** | Enum only; referral engine not built |
 | **Social trigger** | `social` | ⚠️ **RECOGNIZED, NOT FIREABLE** | Share-for-points not implemented |
@@ -79,7 +79,7 @@ All referral tables (`referrals`, `referral_visits`) specified in data model; no
 |---|---|---|---|
 | **Balance display** | Current spendable points | ✅ SHIPPED | REST `GET /customers/{id}`; SPA Customers page; TanStack Query |
 | **Customers list** | Admin view of all members | ✅ SHIPPED | Real `GET /customers` — search/filter/sort/paginate in SQL, not demo data; see Admin UI → Customers below |
-| **Pending points** | Awaiting order award | ❌ **COLUMN ONLY** | `customers.pending_points` exists and is inserted as 0; nothing writes it (no order handling yet) |
+| **Pending points** | Awaiting order award | ❌ **COLUMN ONLY** | `customers.pending_points` exists and is inserted as 0; `Engine\Earning\PendingPoints` and `CustomerRepository::apply_pending_delta()` are stubs (F01-4) |
 | **Lifetime earned** | Net earn total (unaffected by redeem/expire) | ✅ SHIPPED | Updated on earn/adjust; basis for tier (points mode) |
 | **Lifetime redeemed** | Total points spent (excluding refunds) | ✅ SHIPPED | Maintained by `LedgerService` from ledger type; no redemption flow writes REDEEM rows yet |
 | **Expiry** | Inactivity basis | ⚠️ **TRACKED, NOT ENFORCED** | Fields exist (`expires_at`, `reminder_sent_at`); no job runs |
@@ -135,13 +135,13 @@ Ordered by how much of the product each blocks, not by an assigned priority — 
 | **Drawer tabs without tables** | Customer drawer (`customers/:userId`) with `GET /customers/{id}/activity`, `/redemptions`, `/referrals` routes and Zod contracts | No `activity`, `redemptions` or `referrals` table — the real path always answers an empty envelope and `counts` stay `0`; `type_counts` on the ledger tab is `null` on the real path. Reset expiry / Export ledger have no endpoint (buttons disabled) |
 | **Campaign list/detail/performance unconditionally fixture-backed** | `GET /campaigns`, `GET /campaigns/{id}`, `GET /campaigns/{id}/performance` — dummy (22 rows) and performance respectively via `CampaignRestController` and `CampaignPerformanceFixture` | No switch: these ship in the production zip and are what a site sees until swapped for real data. Marked as swap points in controller docblocks |
 | **Campaign editor does not persist** | Pro edit form (`/campaigns/:id/edit`), `useUpdateCampaignMutation`, server-side validation of config + conditions | `CampaignRestController::update_item()` never calls the repository; PUT validates and echoes the campaign. No create form. Both SWAP POINTs resolve together |
-| **No order listener** | `PointsEngine` computes points for `purchase`/`signup`/`review`; `LedgerService::adjust()` writes (manual only); 46 engine unit tests | Nothing listens to WooCommerce events, calls the engine and records the result (F01-4). `LedgerService` has no `earn()` entry point yet |
+| **Award path is a scaffold** | `PointsEngine` computes points for `purchase`/`signup`/`review`; `LedgerService::adjust()` writes (manual only); `Engine/Earning/` fixes the shape — listeners, gates, `EarningService::preview()`/`award()`, `LedgerService::earn()`, single-column `idempotency_key` guard — with 27 incomplete tests as the spec | Every scaffold body is a `TODO(F01-4)` stub and the listeners are not registered at boot, so nothing listens to WooCommerce events yet |
 | **No redemption** | `rewards` table + `RewardEngine` scaffold (always denies `not_implemented`); `LedgerType::REDEEM` and refund types; `lifetime_redeemed` maintained | No `redemptions` table, no checkout integration, no REDEEM writer |
 | **No referral program** | `customers.referral_code` column; `referral` trigger recognised | No code generation, attribution, hold, or payout; `referrals` / `referral_visits` tables not created |
 | **No VIP tiers** | `customers.tier_id`, `tier_evaluated_at`, `tier_progress_value` columns; Admin Customers page shows cosmetic Tier column + filter (sample data only) | No `tiers` / `tier_history` tables, no evaluation, no downgrade job; sample Tier UI is a stand-in over `balance_range` for testing purposes |
 | **Drawer wire fields always null on real path** | Customer drawer carries `deleted_at`, `expiry.batches`, `negative_balance`, `loose_ends` — parsed through same Zod schema fixture and real paths | Fields exist on the wire for UI review; real path always `null` because `deleted_at` column, `lots`/`lot_allocations`, and activity table do not exist yet |
 | **Expiry not enforced** | `expires_at`, `reminder_sent_at` columns | No scheduled job expires points or sends reminders |
-| **`pending_points` never written** | Column exists, inserted as 0 | No order lifecycle handling to move points from pending to awarded |
+| **`pending_points` never written** | Column exists, inserted as 0; `PendingPoints::stage()`/`release()` stubs | No order lifecycle handling to move points from pending to awarded (F01-4) |
 | **No event outbox** | — | `events` table not created; no webhook delivery |
 | **`yayloyalty_table_schemas` seam unproven** | Filter wired in `Installer`, documented as a Pro seam | No Pro table exists yet, so the strip-a-Pro-table path has never run |
 | **`referral`, `social`, `renewal` triggers** | Recognised by `all_known()` for downgrade safety | Offered by no build; nothing can fire them |
@@ -162,10 +162,10 @@ Two backbones landed 2026-09-11: capabilities (`Access\Capabilities`) and the po
 
 | # | TODO | Where | Ticket |
 |---|---|---|---|
-| 1 | Order lifecycle listener: award status → `ContextFactory::from_order()` → `PointsEngine::evaluate()` per trigger (`purchase`, then `first_order`…) → write the ledger. `actor_id` null. | new `Engine\OrderListener` (or similar) | F01-4 |
+| 1 | Order lifecycle listener: award status → `ContextFactory::from_order()` → `EarningService::preview()`/`award()` per trigger (`purchase`, then `first_order`…) → `LedgerService::earn()`. `actor_id` null. Scaffolded 2026-09-22; bodies are stubs, not registered at boot. | `Engine\Earning\Listeners\OrderListener` | F01-4 |
 | 2 | `LedgerService::earn( LedgerEntry $draft ): Outcome` — stubbed; idempotent on the single `idempotency_key` column (`Engine\Earning\IdempotencyKey`). Scaffold and invariants: `includes/Engine/Earning/README.md`. | `Services/LedgerService.php` | F01-4 |
-| 3 | `points_earned_today( user_id )` ledger read to feed `Context::points_earned_today` for `daily_cap`. | `Repositories/LedgerRepository.php` | F01-4 |
-| 4 | Refunds / clawbacks / cancellations (`refund_earn`, `refund_redeem`). | listener | F01-4 |
+| 3 | `points_earned_today( user_id, at )` ledger read to feed `Context::points_earned_today` for `daily_cap` — stubbed. | `Repositories/LedgerRepository.php` | F01-4 |
+| 4 | Refunds / clawbacks / cancellations (`refund_earn`, `refund_redeem`). Attachment points exist (`OrderListener::on_refunded()`, `ReviewListener::on_unapproved()`); undesigned. | listener | F01-4 |
 | 5 | Review `one_per_product` and review `daily_cap` — need ledger reads, so they are the caller's, not `ReviewHandler`'s. Caller also sets `extra['verified_purchase']`. | review listener | F01-5 |
 | 6 | Pro trigger handlers (`birthday`, `first_order`, `order_count`, `spend_milestone`) registered on `yayloyalty_register_trigger_handlers`. | `Pro/` | Pro |
 | 7 | YayCurrency: return the order's rate on `yayloyalty_context_base_rate`. | integration | later |
@@ -244,7 +244,7 @@ Two backbones landed 2026-09-11: capabilities (`Access\Capabilities`) and the po
 
 **Why triggers are safe to recognize early:** `CampaignTrigger::all()` is filtered (fireable); `all_known()` is not (recognized). A merchant can save a `birthday` campaign in Pro, downgrade to Lite, and upgrade back — the config persists untouched because Lite's `conditions_match()` fails open and `Campaign::validate_config()` preserves unknown trigger config wholesale.
 
-**Why the order listener is the blocker:** `PointsEngine` applies campaign config to an order and answers with points, campaign and ledger reference — but nothing calls it. F01-4 wires: award status → `ContextFactory::from_order()` → `evaluate()` per trigger → `LedgerService::earn()` (to be added). See `includes/Engine/Points/README.md` for both call sites.
+**Why the order listener is the blocker:** `PointsEngine` applies campaign config to an order and answers with points, campaign and ledger reference — but nothing calls it in production. The call path is scaffolded in `includes/Engine/Earning/` (listener → `ContextFactory::from_order()` → `EarningService::preview()`/`award()` → `LedgerService::earn()`); F01-4 fills the stub bodies and registers the listeners. See `includes/Engine/Earning/README.md` for the invariants and `includes/Engine/Points/README.md` for both engine call sites.
 
 ---
 

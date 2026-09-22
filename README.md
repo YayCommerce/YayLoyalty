@@ -2,7 +2,7 @@
 
 A loyalty program plugin for WooCommerce with points earning, rewards redemption, referral tracking, and VIP tier management. Shipped as Pro and Lite from one repository.
 
-**Status:** v1.0.0 in development. Core earning system (campaigns, ledger, balance) and reward definitions shipped; admin Dashboard, Customers list + per-customer drawer are live. Nothing awards points yet (no order listener) and no redemption flow exists. Referrals and tiers planned for later phases.
+**Status:** v1.0.0 in development. Core earning system (campaigns, ledger, balance) and reward definitions shipped; admin Dashboard, Customers list + per-customer drawer are live. Nothing awards points yet: the award path (`includes/Engine/Earning/` — listeners, gates, `LedgerService::earn()`) is scaffolded with stub bodies and not registered at boot; no redemption flow exists. Referrals and tiers planned for later phases.
 
 ---
 
