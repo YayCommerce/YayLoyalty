@@ -126,6 +126,10 @@ if ( ! wp_installing() ) {
     add_action( 'delete_user', [ \YayLoyalty\Engine\CustomerActivityListener::class, 'on_delete_user' ], 10, 3 );
     add_action( 'wpmu_delete_user', [ \YayLoyalty\Engine\CustomerActivityListener::class, 'on_wpmu_delete_user' ], 10, 2 );
 
+    // Materialises the customers row at signup instead of on first ledger
+    // event, so a new WP user shows up in the admin customer list right away.
+    add_action( 'user_register', [ \YayLoyalty\Engine\CustomerActivityListener::class, 'on_user_register' ], 10, 1 );
+
     // account_created + points_adjusted capture. Registered here (not inside
     // RestAPI) because no dedicated hook-registration class exists yet in
     // this codebase — every WP-core-hook add_action() is either bootstrap-level

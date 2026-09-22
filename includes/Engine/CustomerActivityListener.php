@@ -14,14 +14,33 @@ defined( 'ABSPATH' ) || exit;
  * First WP-core business-logic listener in this codebase — no dedicated
  * Listeners/Hooks base class exists, so this mirrors the closest
  * precedent (`Engine\ActDeact::on_new_site()`: plain static, guards then
- * works) and is registered directly in `yayloyalty.php`. Three capture
- * hooks share one service factory: `delete_user`/`wpmu_delete_user`
- * (account deletion, phase 02) and `yayloyalty_ledger_recorded`
- * (`account_created` + `points_adjusted`, phase 03). Every callback
- * try/catches `\Throwable` — a failed capture must never block or fatal
- * the WP action it observes.
+ * works) and is registered directly in `yayloyalty.php`. Four capture
+ * hooks share one service/repository factory: `delete_user`/`wpmu_delete_user`
+ * (account deletion, phase 02), `yayloyalty_ledger_recorded`
+ * (`account_created` + `points_adjusted`, phase 03), and `user_register`
+ * (customers row materialised at signup instead of on first ledger event).
+ * Every callback try/catches `\Throwable` — a failed capture must never
+ * block or fatal the WP action it observes.
  */
 final class CustomerActivityListener {
+
+    /**
+     * Materialises the customers row at signup. Uses `ensure_row()` directly
+     * (not `record()`/`ensure_row()` via a ledger write) — a new account has
+     * no points activity yet, so there is nothing to log, only a row to
+     * reserve at balance 0. `ensure_row()` is itself idempotent
+     * (`ON DUPLICATE KEY UPDATE`), so a double-fire from a third party is
+     * harmless.
+     *
+     * @param int $user_id
+     */
+    public static function on_user_register( $user_id ): void {
+        try {
+            ( new CustomerRepository() )->ensure_row( (int) $user_id );
+        } catch ( \Throwable $e ) {
+            Log::error( 'CustomerActivityListener', $e->getMessage() );
+        }
+    }
 
     /**
      * Single-site path. `$reassign` is accepted and ignored: WP only
