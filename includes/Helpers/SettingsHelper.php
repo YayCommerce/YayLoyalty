@@ -24,6 +24,17 @@ class SettingsHelper {
                 'points_label_plural'   => __( 'Points', 'yayloyalty' ),
                 // Role slugs that never earn; read by Engine\Earning\ProgramGate.
                 'excluded_roles'        => [],
+                /*
+                 * TODO(F01-4): 'award_statuses' => [ 'processing', 'completed' ] as a
+                 * slug_list, read only by Engine\Earning\Listeners\OrderListener. Paid is
+                 * a set: a fully virtual order never passes through processing, and many
+                 * physical stores stop there. The UI offers payment received (both),
+                 * order completed (completed only) and a custom multi-select built from
+                 * wc_get_order_statuses() at render time, so statuses another plugin
+                 * registers appear without a release here. Also reserve 'hold_days' => 0
+                 * for a holding period before pending is released — shape only, nothing
+                 * reads it.
+                 */
             ],
             'advanced' => [
                 // 0 = unlimited. Read via Capabilities::ceiling().

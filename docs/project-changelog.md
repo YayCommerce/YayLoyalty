@@ -6,6 +6,42 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
 
 ## Unreleased
 
+### Added — The ledger's duplicate-key guard is real (2026-09-23)
+
+- **`QueryException`** captures the driver's error number at construction (the next statement
+  replaces it) and `is_duplicate_key()` compares it to 1062 — a number from the handle, never a
+  substring of the message. `get_errno()` exposes it for logging.
+- **`LedgerRepository::insert_unless_duplicate()`** returns null instead of throwing when the
+  UNIQUE `idempotency_key` rejects the row, with wpdb's error reporting suppressed for the
+  attempt: the guard firing is the system working and must not log like a failure.
+  `find_by_idempotency_key()` implemented — the pre-check before the insert, and the row
+  `Outcome::duplicate` carries after a collision.
+- **`LedgerService::earn()`** implemented: assert EARN + positive points + key, then one
+  transaction — `ensure_row`, `lock_and_get`, pre-check under the lock, guarded insert,
+  aggregates, queued event. A duplicate moves no aggregate and queues no event.
+  `Outcome::awarded()`'s evaluation is now optional, since the writer never sees the Result.
+- **Verified against MySQL 8** (scratch table, dropped): errno 1062 readable through `wpdb->dbh`
+  after a suppressed insert, one row survives, NULL keys do not collide — so manual `adjust()`
+  rows stay non-idempotent as designed.
+- **Known gap:** the column and index reach a site only through `dbDelta`, which
+  `Installer::maybe_upgrade()` skips while `yayloyalty_db_version` equals `YAYLOYALTY_VERSION`.
+  Sites installed before the DDL changed keep the old ledger and have no guard.
+- **Tests:** 208 → 214; `tests/unit/Database/QueryExceptionTest.php` (6 real). The award path's
+  DB-dependent invariants remain the incomplete specification under `tests/unit/Services/`.
+
+### Changed — Award triggers on a set of statuses (2026-09-23, prose)
+
+- `OrderListener` rewritten as specification: one hook (`woocommerce_order_status_changed`,
+  routed on `$to`, never `get_status()`), award when `$to` is in `general.award_statuses`
+  (default `processing` + `completed`), stage on `pending`/`on-hold`, nothing on `checkout-draft`,
+  `failed` or `refunded` — the last except when `get_total_refunded()` is 0, an out-of-band
+  admin reversal referenced to the order. `on_created` renamed `on_stageable`: staging follows a
+  transition now, not order creation. Bodies remain `TODO(F01-4)`.
+- Settings shape reserved in `SettingsHelper` prose: `general.award_statuses` and an unread
+  `hold_days`. The custom choice list is built from `wc_get_order_statuses()` at render time.
+- `Engine/Earning/README.md` invariants 4–7 rewritten; `system-architecture.md` and
+  `project-roadmap.md` record the guard and the paid-set rule.
+
 ### Changed — Redemption restructured into three zones (2026-09-22, scaffold)
 
 - **Zone 1 quote (`includes/Engine/Rewards/`):** new `Clamp::apply()` — the single, pure, tested place
