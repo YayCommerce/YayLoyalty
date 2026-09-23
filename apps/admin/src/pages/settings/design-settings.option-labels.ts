@@ -99,3 +99,33 @@ export function panelLayoutDescription(layout: DesignPanelLayout): string {
 export function typographyModeLabel(mode: DesignTypographyMode): string {
   return mode === 'custom' ? __('Custom', 'yayloyalty') : __('Inherit from theme', 'yayloyalty');
 }
+
+/**
+ * Radix `Select.Item` rejects an empty-string value (reserved for "no
+ * selection"), but `typography.font: ''` is a legitimate, meaningful value
+ * ("use the theme's font"). This sentinel stands in for it in the UI only —
+ * translate at the form boundary, never store the sentinel itself.
+ */
+export const TYPOGRAPHY_FONT_DEFAULT_VALUE = '__default__';
+
+/**
+ * A curated list, not the closed vocabulary `coerce()` enforces server-side —
+ * `typography.font` stays a plain capped string (DesignCoercion.php), so this
+ * is guidance, not a whitelist; a value saved outside this list still round-trips.
+ * Font names are proper nouns and stay untranslated; only "Default" is a real string.
+ */
+export function typographyFontOptions(): { value: string; label: string }[] {
+  return [
+    { value: TYPOGRAPHY_FONT_DEFAULT_VALUE, label: __('Default (theme font)', 'yayloyalty') },
+    { value: 'Arial', label: 'Arial' },
+    { value: 'Helvetica', label: 'Helvetica' },
+    { value: 'Georgia', label: 'Georgia' },
+    { value: 'Times New Roman', label: 'Times New Roman' },
+    { value: 'Verdana', label: 'Verdana' },
+    { value: 'Trebuchet MS', label: 'Trebuchet MS' },
+    { value: 'Roboto', label: 'Roboto' },
+    { value: 'Open Sans', label: 'Open Sans' },
+    { value: 'Poppins', label: 'Poppins' },
+    { value: 'Montserrat', label: 'Montserrat' },
+  ];
+}

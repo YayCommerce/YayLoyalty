@@ -3,7 +3,6 @@ import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import { designTypographyModeSchema, type Design } from '@/lib/schema/design.schema';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Field, FieldContent, FieldDescription, FieldLabel } from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -14,7 +13,11 @@ import {
   TYPOGRAPHY_SECTION_DESCRIPTION,
   TYPOGRAPHY_SECTION_TITLE,
 } from '@/pages/settings/design-settings.copy';
-import { typographyModeLabel } from '@/pages/settings/design-settings.option-labels';
+import {
+  TYPOGRAPHY_FONT_DEFAULT_VALUE,
+  typographyFontOptions,
+  typographyModeLabel,
+} from '@/pages/settings/design-settings.option-labels';
 
 /**
  * Pro. Mode select; `font` and `custom_css` only render when mode is
@@ -60,9 +63,31 @@ export function DesignTypographySection() {
         {mode === 'custom' && (
           <>
             <Field>
-              <FieldLabel htmlFor="design-typography-font">{TYPOGRAPHY_FONT_LABEL()}</FieldLabel>
+              <FieldLabel>{TYPOGRAPHY_FONT_LABEL()}</FieldLabel>
               <FieldContent>
-                <Input id="design-typography-font" {...register('typography.font')} />
+                <Controller
+                  control={control}
+                  name="typography.font"
+                  render={({ field }) => (
+                    <Select
+                      value={field.value || TYPOGRAPHY_FONT_DEFAULT_VALUE}
+                      onValueChange={(value) =>
+                        field.onChange(value === TYPOGRAPHY_FONT_DEFAULT_VALUE ? '' : value)
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {typographyFontOptions().map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
               </FieldContent>
             </Field>
 
