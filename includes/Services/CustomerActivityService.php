@@ -72,6 +72,9 @@ final class CustomerActivityService {
         $actor_id   = get_current_user_id();
         $actor_kind = $actor_id > 0 ? 'staff' : 'automatic';
 
+        // TODO: the email and display name are kept deliberately for now, so staff can identify a deleted
+        // member. No privacy eraser reaches them yet; register one on wp_privacy_personal_data_erasers
+        // (plus an exporter) before relying on this for GDPR erasure requests.
         $data = [
             'email'               => $email,
             'display_name'        => $display_name,
