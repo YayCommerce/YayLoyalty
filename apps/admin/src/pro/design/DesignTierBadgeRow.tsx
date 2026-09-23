@@ -1,8 +1,6 @@
-import { XIcon } from 'lucide-react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 
 import { designBadgeIconSchema, type Design, type DesignBadgeIcon } from '@/lib/schema/design.schema';
-import { Button } from '@/components/ui/button';
 import {
   ColorPicker,
   ColorPickerContent,
@@ -19,7 +17,6 @@ import {
   TIER_BADGE_LABEL_DESCRIPTION,
   TIER_BADGE_LABEL_LABEL,
   TIER_BADGE_TIER_ID_LABEL,
-  TIER_REMOVE_BADGE_LABEL,
 } from '@/pages/settings/design-settings.copy';
 import { badgeIconLabel } from '@/pages/settings/design-settings.option-labels';
 
@@ -38,13 +35,15 @@ function BadgeIconGlyph({ icon, color }: { icon: DesignBadgeIcon; color: string 
 /**
  * Pro. One `tier.badges[index]` row: a colour-bordered `tier_id` chip doubles
  * as a live preview, a colour swatch, an icon-shape trigger, then the
- * customer-facing `label`. `tier_id` is a free-form slug, not a foreign key
- * — no Tiers entity exists yet (see DesignTierSection's footer note and
- * phase 04's Risk Assessment). The icon control is bound to `DesignBadgeIcon`
+ * customer-facing `label`. No remove control — the badge set is fixed to the
+ * defaults (see DesignTierSection's docblock); only its styling is editable
+ * here. `tier_id` is a free-form slug, not a foreign key — no Tiers entity
+ * exists yet (see DesignTierSection's footer note and phase 04's Risk
+ * Assessment). The icon control is bound to `DesignBadgeIcon`
  * (ring/diamond/square) — never `DesignLauncherIcon`, which offers `custom`
  * with no upload behind it here.
  */
-export function DesignTierBadgeRow({ index, onRemove }: { index: number; onRemove: () => void }) {
+export function DesignTierBadgeRow({ index }: { index: number }) {
   const { control, register } = useFormContext<Design>();
   const color = useWatch({ control, name: `tier.badges.${index}.color` });
 
@@ -112,10 +111,6 @@ export function DesignTierBadgeRow({ index, onRemove }: { index: number; onRemov
           className="min-w-40 flex-1"
           {...register(`tier.badges.${index}.label`)}
         />
-
-        <Button type="button" variant="ghost" size="icon-sm" aria-label={TIER_REMOVE_BADGE_LABEL()} onClick={onRemove}>
-          <XIcon className="size-4" />
-        </Button>
       </div>
 
       <FieldDescription>{TIER_BADGE_LABEL_DESCRIPTION()}</FieldDescription>

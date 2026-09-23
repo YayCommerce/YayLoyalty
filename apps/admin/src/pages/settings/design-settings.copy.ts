@@ -107,14 +107,16 @@ export const TYPOGRAPHY_CUSTOM_CSS_DESCRIPTION = () => __('Saved, not yet applie
 
 export const TIER_SECTION_TITLE = () => __('Tier badges', 'yayloyalty');
 export const TIER_SECTION_DESCRIPTION = () => __('Shown next to a customer’s tier on the storefront.', 'yayloyalty');
-export const TIER_EMPTY_TITLE = () => __('No tier badges yet', 'yayloyalty');
-export const TIER_EMPTY_DESCRIPTION = () => __('Add one for each tier to badge on the storefront.', 'yayloyalty');
-export const TIER_ADD_BADGE_BUTTON_LABEL = () => __('Add badge', 'yayloyalty');
-export const TIER_REMOVE_BADGE_LABEL = () => __('Remove badge', 'yayloyalty');
+export const TIER_EMPTY_TITLE = () => __('No tier badges configured', 'yayloyalty');
+export const TIER_EMPTY_DESCRIPTION = () =>
+  __('Reset to defaults on the Design tab to bring the three tier badges back.', 'yayloyalty');
 export const TIER_BADGE_TIER_ID_LABEL = () => __('Tier ID', 'yayloyalty');
-export const TIER_BADGE_TIER_ID_DESCRIPTION = () => __('Free-form slug — no Tiers entity exists yet.', 'yayloyalty');
+export const TIER_BADGE_TIER_ID_DESCRIPTION = () =>
+  __(
+    'Free-form slug — no Tiers entity exists yet, so this list isn’t configurable; only the styling below is.',
+    'yayloyalty',
+  );
 export const TIER_BADGE_LABEL_LABEL = () => __('Label', 'yayloyalty');
 export const TIER_BADGE_LABEL_DESCRIPTION = () => __('Badge label shown to the customer.', 'yayloyalty');
 export const TIER_BADGE_COLOR_LABEL = () => __('Colour', 'yayloyalty');
 export const TIER_BADGE_ICON_LABEL = () => __('Icon', 'yayloyalty');
-export const TIER_MAX_BADGES_REACHED = () => __('You’ve reached the limit of 20 badges.', 'yayloyalty');

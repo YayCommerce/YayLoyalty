@@ -1,43 +1,32 @@
-import { PlusIcon } from 'lucide-react';
 import { useFieldArray, useFormContext } from 'react-hook-form';
 
-import { designBadgeSchema, type Design } from '@/lib/schema/design.schema';
-import { Button } from '@/components/ui/button';
+import { type Design } from '@/lib/schema/design.schema';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { FieldDescription } from '@/components/ui/field';
 import {
-  TIER_ADD_BADGE_BUTTON_LABEL,
   TIER_BADGE_TIER_ID_DESCRIPTION,
   TIER_EMPTY_DESCRIPTION,
   TIER_EMPTY_TITLE,
-  TIER_MAX_BADGES_REACHED,
   TIER_SECTION_DESCRIPTION,
   TIER_SECTION_TITLE,
 } from '@/pages/settings/design-settings.copy';
 import { DesignTierBadgeRow } from './DesignTierBadgeRow';
 
-/** Matches DesignCoercion::coerce_badge_list()'s server-side cap. */
-const MAX_BADGES = 20;
-
-const EMPTY_BADGE: Design['tier']['badges'][number] = {
-  tier_id: '',
-  color: '#c8c8c8',
-  icon: 'ring',
-  label: '',
-};
-
 /**
- * Pro. `useFieldArray` over `tier.badges` — add/remove, capped at 20 to
- * match the server. `tier_id` is a merchant-entered slug, not a foreign
- * key: no Tiers entity exists yet (`customers.tier_id` is always NULL).
- * When Tiers ships, a reconciliation migration is required (phase 04 Risk
- * Assessment); building Tiers is out of scope here.
+ * Pro. Restyles the badge (label, colour, icon) for each of the tiers the
+ * defaults ship with — no add/remove. There is no Tiers entity yet
+ * (`customers.tier_id` is always NULL), so the SPA has no real tier list to
+ * offer a picker over; letting a merchant invent arbitrary tier slugs here
+ * would just be UI for a feature that doesn't exist. The three-badge set
+ * comes from `DesignSchema::get_default_design()` and stays fixed until a
+ * real Tiers feature ships a reconciliation migration (phase 04 Risk
+ * Assessment). `useFieldArray` is used read-only, for its stable `field.id`
+ * keys — nothing here calls `append`/`remove`.
  */
 export function DesignTierSection() {
   const { control } = useFormContext<Design>();
-  const { fields, append, remove } = useFieldArray({ control, name: 'tier.badges' });
-  const atCap = fields.length >= MAX_BADGES;
+  const { fields } = useFieldArray({ control, name: 'tier.badges' });
 
   return (
     <Card>
@@ -56,28 +45,11 @@ export function DesignTierSection() {
         ) : (
           <div className="flex flex-col gap-3">
             {fields.map((field, index) => (
-              <DesignTierBadgeRow key={field.id} index={index} onRemove={() => remove(index)} />
+              <DesignTierBadgeRow key={field.id} index={index} />
             ))}
           </div>
         )}
 
-        <div className="flex flex-col gap-1.5">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="w-fit"
-            disabled={atCap}
-            onClick={() => append(designBadgeSchema.parse(EMPTY_BADGE))}
-          >
-            <PlusIcon className="size-4" />
-            {TIER_ADD_BADGE_BUTTON_LABEL()}
-          </Button>
-          {atCap && <span className="text-muted-foreground text-xs">{TIER_MAX_BADGES_REACHED()}</span>}
-        </div>
-
-        {/* Moved out of the per-row card (phase 03/04's earlier layout) — one disclaimer for
-            the whole list reads better than repeating it on every badge. */}
         <FieldDescription>{TIER_BADGE_TIER_ID_DESCRIPTION()}</FieldDescription>
       </CardContent>
     </Card>
