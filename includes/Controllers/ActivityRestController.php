@@ -2,28 +2,37 @@
 namespace YayLoyalty\Controllers;
 
 use YayLoyalty\Access\Capabilities;
-use YayLoyalty\Controllers\Fixtures\CustomerDrawer\CustomerDrawerFixture;
 use YayLoyalty\Controllers\Schemas\ActivityQueryArgs;
+use YayLoyalty\Enums\ActivityEvent;
+use YayLoyalty\Repositories\CustomerMetaRepository;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
  * GET /yayloyalty/v1/customers/{id}/activity — paginated activity-log rows
- * (F09 Wave B, artboard 3d).
+ * read from `yayloyalty_customer_meta`.
  *
- * No `activity` table exists yet (docs/data-model.md → "Activity log (not
- * designed)"), so the real path always answers an EMPTY envelope — zero is
- * the true count, not a placeholder, matching `counts.activity` on
- * `CustomerRestController::format_customer()`. The WP_DEBUG-gated drawer
- * fixture (`DrawerActivity`) is the only thing that answers this for now;
- * when a real table ships, only `get_history()` below changes — the schema
- * and its Zod mirror (`activity.schema.ts`) are already the contract.
+ * Only three of the eight `ActivityEvent` kinds have a writer today — see
+ * `Enums\ActivityEvent`'s docblock for which. No backfill: a pre-existing
+ * member's log starts the day this shipped.
+ *
+ * `search` is a PHP-side match against decoded real content fields only
+ * (`CustomerMetaRepository::paginate_activity()`), never the JSON
+ * envelope's structural keys. `after`/`before` are UTC day bounds — no
+ * site-timezone conversion, same as every other drawer filter.
  *
  * A separate controller rather than a method on `CustomerRestController`,
  * the same way `LedgerRestController` owns `/customers/{id}/ledger`: keeps
  * both files under the 200-line cap and mirrors an established shape.
  */
 final class ActivityRestController extends AbstractRestController {
+
+    /** @var CustomerMetaRepository */
+    private $meta;
+
+    public function __construct( CustomerMetaRepository $meta ) {
+        $this->meta = $meta;
+    }
 
     public function get_rest_base(): string {
         return 'activity';
@@ -39,10 +48,9 @@ final class ActivityRestController extends AbstractRestController {
                     'callback'            => fn( $request ) => $this->exec_read( [ $this, 'get_history' ], $request ),
                     'permission_callback' => $this->requires( Capabilities::VIEW ),
                     'args'                => array_merge(
-                        [ 'id' => $this->user_id_param() ],
+                        [ 'id' => $this->member_id_param() ],
                         $this->get_collection_params(),
-                        ActivityQueryArgs::all(),
-                        CustomerDrawerFixture::scenario_arg()
+                        ActivityQueryArgs::all()
                     ),
                 ],
                 'schema' => [ $this, 'get_item_schema' ],
@@ -51,30 +59,21 @@ final class ActivityRestController extends AbstractRestController {
     }
 
     public function get_history( \WP_REST_Request $request ) {
-        $group    = (string) $request['group'];
-        $page     = (int) $request['page'];
-        $per_page = (int) $request['per_page'];
+        $types = ActivityQueryArgs::event_types_for( (string) $request['group'] );
 
-        $scenario = CustomerDrawerFixture::requested( $request );
+        $result = $this->meta->paginate_activity(
+            (int) $request['id'],
+            [
+                'event_types' => $types,
+                'search'      => (string) ( $request['search'] ?? '' ),
+                'after'       => (string) ( $request['after'] ?? '' ),
+                'before'      => (string) ( $request['before'] ?? '' ),
+                'page'        => (int) $request['page'],
+                'per_page'    => (int) $request['per_page'],
+            ]
+        );
 
-        if ( null !== $scenario ) {
-            $result = CustomerDrawerFixture::activity(
-                $scenario,
-                $group,
-                [
-                    'page'     => $page,
-                    'per_page' => $per_page,
-                    'search'   => (string) $request['search'],
-                    'after'    => (string) $request['after'],
-                    'before'   => (string) $request['before'],
-                ]
-            );
-
-            return $this->respond_paginated( $result );
-        }
-
-        // No table yet — `id` is validated by user_id_param() but nothing looks it up.
-        return $this->respond_empty_page( $request );
+        return $this->respond_paginated( $result );
     }
 
     protected function define_item_schema(): array {
@@ -95,7 +94,7 @@ final class ActivityRestController extends AbstractRestController {
                 ],
                 'event_type'  => [
                     'type'     => 'string',
-                    'enum'     => ActivityQueryArgs::EVENT_TYPES,
+                    'enum'     => ActivityEvent::ALL,
                     'context'  => [ 'view' ],
                     'readonly' => true,
                 ],

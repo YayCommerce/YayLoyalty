@@ -3,6 +3,7 @@ namespace YayLoyalty\Repositories;
 
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Models\LedgerEntry;
+use YayLoyalty\Utils\Sql;
 use YayLoyalty\Utils\Table;
 
 defined( 'ABSPATH' ) || exit;
@@ -54,10 +55,10 @@ class DashboardRepository {
     public function daily_points( string $from, string $to, int $offset_seconds ): array {
         global $wpdb;
 
-        $earn_in = $this->placeholders( $this->earn_types() );
-        $all_in  = $this->placeholders( LedgerType::all() );
+        $earn_in = Sql::in_placeholders( $this->earn_types() );
+        $all_in  = Sql::in_placeholders( LedgerType::all() );
 
-        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $earn_in/$all_in are "%s, %s" lists built by placeholders(); every value is bound below.
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $earn_in/$all_in are "%s, %s" lists built by Sql::in_placeholders(); every value is bound below.
         $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
             $wpdb->prepare(
                 "SELECT DATE(DATE_ADD(created_at, INTERVAL %d SECOND)) AS date,
@@ -116,7 +117,7 @@ class DashboardRepository {
     public function campaign_points_on_day( int $campaign_id, string $from, string $to ): array {
         global $wpdb;
 
-        $in = $this->placeholders( $this->earn_types() );
+        $in = Sql::in_placeholders( $this->earn_types() );
 
         // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $in is a "%s, %s" list; every value is bound.
         $row = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
@@ -189,7 +190,7 @@ class DashboardRepository {
     public function count_activity_since( string $from_utc ): int {
         global $wpdb;
 
-        $all_in = $this->placeholders( LedgerType::all() );
+        $all_in = Sql::in_placeholders( LedgerType::all() );
 
         // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $all_in is a "%s, %s" list; every value is bound.
         return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
@@ -235,7 +236,7 @@ class DashboardRepository {
     private function sum_points( array $types, string $extra_where, string $from, string $to ): int {
         global $wpdb;
 
-        $in = $this->placeholders( $types );
+        $in = Sql::in_placeholders( $types );
 
         // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $in is a "%s, %s" list, $extra_where a literal fragment from this class; every value is bound.
         return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
@@ -255,7 +256,7 @@ class DashboardRepository {
     private function count_distinct_orders( array $types, string $from, string $to, string $extra_where = '' ): int {
         global $wpdb;
 
-        $in = $this->placeholders( $types );
+        $in = Sql::in_placeholders( $types );
 
         // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $in is a "%s, %s" list, $extra_where a literal fragment from this class; every value is bound.
         return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
@@ -273,12 +274,5 @@ class DashboardRepository {
      */
     private function earn_types(): array {
         return array_values( array_filter( LedgerType::all(), [ LedgerType::class, 'affects_lifetime_earned' ] ) );
-    }
-
-    /**
-     * @param string[] $values
-     */
-    private function placeholders( array $values ): string {
-        return implode( ', ', array_fill( 0, count( $values ), '%s' ) );
     }
 }

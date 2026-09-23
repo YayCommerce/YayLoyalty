@@ -18,18 +18,26 @@ import {
 } from '@/lib/api/customer.api';
 import type { AdjustPointsInput, AdjustPointsPreviewInput } from '@/lib/schema/customer.schema';
 
+/**
+ * `['customer', kind, userId]` — the one place that owns this shape, so the
+ * factory below and `useAdjustPointsMutation`'s invalidations can't drift
+ * apart into two different prefixes for the same cache entries.
+ */
+function customerKeyPrefix(kind: 'detail' | 'ledger' | 'activity' | 'redemptions' | 'referrals', userId: number) {
+  return ['customer', kind, userId] as const;
+}
+
 export const CUSTOMER_QUERIES = {
-  /** `scenario` is part of the key — switching it must refetch, not serve the previous scenario's cache. */
-  detail: (userId: number, scenario?: string) =>
+  detail: (userId: number) =>
     queryOptions({
-      queryKey: ['customer', 'detail', userId, scenario ?? null],
-      queryFn: () => getCustomer(userId, scenario),
+      queryKey: customerKeyPrefix('detail', userId),
+      queryFn: () => getCustomer(userId),
       enabled: userId > 0,
     }),
 
   ledger: (userId: number, params: CustomerLedgerParams) =>
     queryOptions({
-      queryKey: ['customer', 'ledger', userId, params],
+      queryKey: [...customerKeyPrefix('ledger', userId), params],
       queryFn: () => getCustomerLedger(userId, params),
       enabled: userId > 0,
       // Paging/filtering must not flash a skeleton over rows already on screen.
@@ -48,14 +56,14 @@ export const CUSTOMER_QUERIES = {
     }),
 
   /**
-   * Paged, exactly like `ledger` above — not the infinite/"Load more" shape
-   * this started as (see `ActivityLogTab.tsx`'s docblock for why it
-   * changed). Same `keepPreviousData` reasoning: paging/filtering must not
-   * flash a skeleton over rows already on screen.
+   * Paged, exactly like `ledger` above, not "Load more" (see
+   * `ActivityLogTab.tsx`'s docblock for why). Same `keepPreviousData`
+   * reasoning: paging/filtering must not flash a skeleton over rows already
+   * on screen.
    */
   activity: (userId: number, params: CustomerActivityParams) =>
     queryOptions({
-      queryKey: ['customer', 'activity', userId, params],
+      queryKey: [...customerKeyPrefix('activity', userId), params],
       queryFn: () => getCustomerActivity(userId, params),
       enabled: userId > 0,
       placeholderData: keepPreviousData,
@@ -64,7 +72,7 @@ export const CUSTOMER_QUERIES = {
 
   redemptions: (userId: number, params: DrawerPageOnlyParams) =>
     queryOptions({
-      queryKey: ['customer', 'redemptions', userId, params],
+      queryKey: [...customerKeyPrefix('redemptions', userId), params],
       queryFn: () => getCustomerRedemptions(userId, params),
       enabled: userId > 0,
       placeholderData: keepPreviousData,
@@ -73,7 +81,7 @@ export const CUSTOMER_QUERIES = {
 
   referrals: (userId: number, params: DrawerPageOnlyParams) =>
     queryOptions({
-      queryKey: ['customer', 'referrals', userId, params],
+      queryKey: [...customerKeyPrefix('referrals', userId), params],
       queryFn: () => getCustomerReferrals(userId, params),
       enabled: userId > 0,
       placeholderData: keepPreviousData,
@@ -94,8 +102,8 @@ export const CUSTOMER_QUERIES = {
 
 /** ─── Hooks ─────────────────────────────────────────── */
 
-export function useCustomerQuery(userId: number, scenario?: string) {
-  return useQuery(CUSTOMER_QUERIES.detail(userId, scenario));
+export function useCustomerQuery(userId: number) {
+  return useQuery(CUSTOMER_QUERIES.detail(userId));
 }
 
 export function useCustomerLedgerQuery(userId: number, params: CustomerLedgerParams) {
@@ -130,8 +138,10 @@ export function useAdjustPointsMutation(userId: number) {
     mutationFn: (input: AdjustPointsInput) => adjustCustomerPoints(userId, input),
     onSuccess: () => {
       // The list too, or the row shows the old balance until staleTime lapses.
-      queryClient.invalidateQueries({ queryKey: ['customer', 'detail', userId] });
-      queryClient.invalidateQueries({ queryKey: ['customer', 'ledger', userId] });
+      queryClient.invalidateQueries({ queryKey: customerKeyPrefix('detail', userId) });
+      queryClient.invalidateQueries({ queryKey: customerKeyPrefix('ledger', userId) });
+      // An adjustment writes a `points_adjusted` activity row.
+      queryClient.invalidateQueries({ queryKey: customerKeyPrefix('activity', userId) });
       queryClient.invalidateQueries({ queryKey: ['customer', 'list'] });
       queryClient.invalidateQueries({ queryKey: ['customer', 'adjust-preview'] });
     },

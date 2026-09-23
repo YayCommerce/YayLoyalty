@@ -41,12 +41,12 @@ final class RewardRepository extends AbstractRepository {
     }
 
     /**
-     * The liability/worth valuation rate: the built-in flexible-discount
-     * reward's `points_per_currency_unit`. 0 when the reward or key is
-     * missing. Lives here (a reward-config read) rather than on
-     * DashboardRepository, which delegates to this method — one
-     * implementation for both the dashboard's liability stat and the
-     * customer drawer's `worth` stat.
+     * The one points→money rate: the built-in flexible-discount reward's
+     * `points_per_currency_unit`. 0 when the reward or key is missing. Lives
+     * here (a reward-config read) rather than on DashboardRepository, which
+     * delegates to this method — one implementation for the dashboard's
+     * liability stat, the drawer's money-equivalent figures and (through the
+     * Reward's config in Clamp) the checkout discount itself.
      */
     public function points_per_currency_unit(): float {
         $reward = $this->find_by_slug( 'cart-discount' );

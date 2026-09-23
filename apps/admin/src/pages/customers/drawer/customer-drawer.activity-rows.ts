@@ -1,9 +1,10 @@
 import { formatStoredDate, parseWPDate, parseWPTime, utcToDate } from '@/lib/helpers/format.helper';
 import { formatSignedPoints } from '@/lib/helpers/ledger.helper';
 import { formatPoints } from '@/lib/helpers/points.helper';
-import type { ActivityEntry } from '@/lib/schema/activity.schema';
+import type { ActivityEntry, ActivityEventType } from '@/lib/schema/activity.schema';
 import {
   ACTIVITY_TITLE_ACCOUNT_CREATED,
+  ACTIVITY_TITLE_ACCOUNT_DELETED,
   ACTIVITY_TITLE_BALANCE_EMAIL_SENT,
   ACTIVITY_TITLE_EXPIRING_SOON_EMAIL_SENT,
   ACTIVITY_TITLE_EXPIRY_RESET,
@@ -11,6 +12,7 @@ import {
   ACTIVITY_TITLE_REWARD_REDEEMED,
   ACTIVITY_TITLE_TIER_CHANGED,
   activityAccountCreatedSubLine,
+  activityAccountDeletedSubLine,
   activityBalanceEmailSubLine,
   activityExpiringSoonEmailSubLine,
   activityExpiryResetSubLine,
@@ -19,7 +21,7 @@ import {
   activityTierChangedSubLine,
   AUTOMATIC_ACTOR_LABEL,
   CUSTOMER_ACTOR_LABEL,
-} from './customer-drawer.copy';
+} from './customer-drawer.activity.copy';
 
 export type ActivityRow = {
   date: string;
@@ -31,13 +33,13 @@ export type ActivityRow = {
   isEmail: boolean;
 };
 
-const EMAIL_EVENT_TYPES = new Set<ActivityEntry['event_type']>(['balance_email_sent', 'expiring_soon_email_sent']);
+const EMAIL_EVENT_TYPES = new Set<ActivityEventType>(['balance_email_sent', 'expiring_soon_email_sent']);
 
 /**
  * Row → what the activity table renders. Pure — no fetch, no React. Mirrors
  * `customer-drawer.ledger-rows.ts`'s own shape: every sentence is composed
- * here from `event_type` + `data`, never stored as a string on the fixture
- * (see `DrawerActivity.php`'s docblock).
+ * here from `event_type` + `data`, never stored as a string server-side
+ * (see docs/data-model.md's "Activity log" section).
  */
 export function toActivityRow(entry: ActivityEntry): ActivityRow {
   const occurred = utcToDate(entry.occurred_at);
@@ -53,7 +55,7 @@ export function toActivityRow(entry: ActivityEntry): ActivityRow {
   };
 }
 
-function titleFor(eventType: ActivityEntry['event_type']): string {
+function titleFor(eventType: ActivityEventType): string {
   switch (eventType) {
     case 'account_created':
       return ACTIVITY_TITLE_ACCOUNT_CREATED();
@@ -69,13 +71,15 @@ function titleFor(eventType: ActivityEntry['event_type']): string {
       return ACTIVITY_TITLE_BALANCE_EMAIL_SENT();
     case 'expiring_soon_email_sent':
       return ACTIVITY_TITLE_EXPIRING_SOON_EMAIL_SENT();
+    case 'account_deleted':
+      return ACTIVITY_TITLE_ACCOUNT_DELETED();
   }
 }
 
 /**
  * `data` is `Record<string, unknown>` on the wire — every accessor defends
- * with a fallback rather than trusting the fixture's shape blindly, the
- * same caution `describeLedgerEntry()` takes with ledger rows.
+ * with a fallback rather than trusting its shape blindly, the same caution
+ * `describeLedgerEntry()` takes with ledger rows.
  */
 function str(data: Record<string, unknown>, key: string): string {
   const value = data[key];
@@ -94,7 +98,7 @@ function subLineFor(entry: ActivityEntry, occurred: Date): string {
 
   switch (entry.event_type) {
     case 'account_created':
-      return activityAccountCreatedSubLine(str(data, 'campaign'), formatPoints(num(data, 'points')));
+      return activityAccountCreatedSubLine(formatPoints(num(data, 'points')));
     case 'points_adjusted':
       return activityPointsAdjustedSubLine(formatSignedPoints(num(data, 'points')), str(data, 'note'));
     case 'tier_changed':
@@ -120,12 +124,14 @@ function subLineFor(entry: ActivityEntry, occurred: Date): string {
       return activityBalanceEmailSubLine(str(data, 'subject'));
     case 'expiring_soon_email_sent': {
       // `deadline` is derived client-side (occurred_at + window_days) — not a
-      // fixture field, so there is nothing to keep in sync when it changes.
+      // field the API sends, so there is nothing to keep in sync when it changes.
       const windowDays = num(data, 'window_days');
       const deadline = new Date(occurred.getTime() + windowDays * 24 * 60 * 60 * 1000);
 
       return activityExpiringSoonEmailSubLine(formatPoints(windowDays), parseWPDate(deadline));
     }
+    case 'account_deleted':
+      return activityAccountDeletedSubLine(str(data, 'email'), formatPoints(num(data, 'balance_at_deletion')));
   }
 }
 

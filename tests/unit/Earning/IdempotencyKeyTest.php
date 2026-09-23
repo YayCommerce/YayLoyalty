@@ -6,6 +6,7 @@ use YayLoyalty\Engine\Earning\IdempotencyKey;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Enums\ReferenceType;
+use YayLoyalty\Enums\RewardType;
 
 /** One string, trigger included, fits the column: the ledger's whole idempotency story. */
 final class IdempotencyKeyTest extends TestCase {
@@ -15,6 +16,19 @@ final class IdempotencyKeyTest extends TestCase {
             'earn:7:order:1234:purchase',
             IdempotencyKey::compose( LedgerType::EARN, 7, ReferenceType::ORDER, 1234, CampaignTrigger::PURCHASE )
         );
+    }
+
+    public function test_a_redeem_row_composes_with_the_reward_type_as_its_qualifier(): void {
+        $this->assertSame(
+            'redeem:7:redemption:88:flexible_discount',
+            IdempotencyKey::compose( LedgerType::REDEEM, 7, ReferenceType::REDEMPTION, 88, RewardType::FLEXIBLE_DISCOUNT )
+        );
+    }
+
+    public function test_a_redeem_row_rejects_a_campaign_trigger_as_qualifier(): void {
+        $this->expectException( \InvalidArgumentException::class );
+
+        IdempotencyKey::compose( LedgerType::REDEEM, 7, ReferenceType::REDEMPTION, 88, CampaignTrigger::PURCHASE );
     }
 
     public function test_one_order_earns_a_distinct_key_per_trigger(): void {
@@ -39,7 +53,7 @@ final class IdempotencyKeyTest extends TestCase {
     }
 
     public function test_longest_vocabulary_fits_the_column(): void {
-        $key = IdempotencyKey::compose( LedgerType::REFUND_REDEEM, PHP_INT_MAX, ReferenceType::REDEMPTION, PHP_INT_MAX, CampaignTrigger::SPEND_MILESTONE );
+        $key = IdempotencyKey::compose( LedgerType::REFUND_REDEEM, PHP_INT_MAX, ReferenceType::REDEMPTION, PHP_INT_MAX, RewardType::FLEXIBLE_DISCOUNT );
 
         $this->assertLessThanOrEqual( IdempotencyKey::MAX_LENGTH, strlen( $key ) );
     }

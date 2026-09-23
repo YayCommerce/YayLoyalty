@@ -22,15 +22,14 @@ import {
 
 /**
  * Adjust points · Reset expiry · Export ledger · [Assign tier, Pro only].
- * Adjust points is the one live action in Wave A — it reuses the existing
- * bulk dialog/mutation with `count={1}`, which already invalidates detail +
- * ledger + list on success (see `useAdjustPointsMutation`), so the drawer's
- * own stats refresh without any extra wiring here.
+ * Adjust points is the one live action — it reuses the existing bulk
+ * dialog/mutation with `count={1}`, which already invalidates detail,
+ * ledger, activity and list on success (see `useAdjustPointsMutation`), so
+ * the drawer's own stats refresh without any extra wiring here.
  *
- * The other three have no endpoint yet (Wave B) and are permanently
- * `disabled` — one shared line beneath the row explains why, rather than
- * four separate tooltips (a wall of identical-looking dead buttons with no
- * text reads as broken; see the phase plan's risk note). Priority when more
+ * The other three have no endpoint yet and are `disabled` — one shared line
+ * beneath the row explains why, rather than four separate tooltips (a wall
+ * of identical-looking dead buttons with no text reads as broken). Priority when more
  * than one reason could apply: a deleted account explains everything by
  * itself; otherwise a non-positive balance gets the more specific "needs
  * points to extend" line (it's really about Reset expiry, but doubles as
