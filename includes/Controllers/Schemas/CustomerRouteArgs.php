@@ -36,19 +36,19 @@ final class CustomerRouteArgs {
      */
     public static function adjust(): array {
         return [
-            'points' => [
+            'points'          => [
                 'description' => __( 'Signed number of points to grant or deduct.', 'yayloyalty' ),
                 'type'        => 'integer',
                 'required'    => true,
             ],
-            'note'   => [
+            'note'            => [
                 'description'       => __( 'Reason for the adjustment, shown in history.', 'yayloyalty' ),
                 'type'              => 'string',
                 'required'          => true,
                 'sanitize_callback' => 'sanitize_text_field',
             ],
-            // Off for a balance-only correction (e.g. undoing a mistaken adjustment)
-            // that must not also inflate the earned total or tier progress.
+            // On moves lifetime_earned (and so tier progress) by the same signed amount,
+            // in either direction; off is a balance-only correction.
             'adjust_lifetime' => [
                 'description' => __( 'Whether this adjustment also moves lifetime_earned, not the balance only.', 'yayloyalty' ),
                 'type'        => 'boolean',

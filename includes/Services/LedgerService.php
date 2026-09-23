@@ -44,11 +44,11 @@ final class LedgerService {
      * idempotent (NULL reference): an admin may grant the same bonus twice,
      * which is why the controller enforces a magnitude ceiling.
      *
-     * @param bool $adjust_lifetime False for a balance-only correction: the
-     *             ledger row is still written, but lifetime_earned (and so
-     *             tier progress) does not move. Ignored for points <= 0 —
-     *             ADJUST already never touches lifetime_earned in that
-     *             direction (see LedgerType::affects_lifetime_earned).
+     * @param bool $adjust_lifetime True moves lifetime_earned by the same
+     *             signed amount as the balance, so a deduction can undo a
+     *             mistaken grant's tier progress. False is a balance-only
+     *             correction: the ledger row is still written, but
+     *             lifetime_earned (and so tier progress) does not move.
      *
      * TODO: the balance-only choice is not stored on the ledger row, so
      * lifetime_earned can no longer be rebuilt from the ledger and the
@@ -268,10 +268,7 @@ final class LedgerService {
         $lifetime_redeemed_delta = 0;
 
         if ( $adjust_lifetime && LedgerType::affects_lifetime_earned( $type ) ) {
-            // A negative ADJUST neither inflates nor reduces lifetime_earned.
-            if ( LedgerType::ADJUST !== $type || $points > 0 ) {
-                $lifetime_earned_delta = $points;
-            }
+            $lifetime_earned_delta = $points;
         }
 
         if ( LedgerType::affects_lifetime_redeemed( $type ) ) {
