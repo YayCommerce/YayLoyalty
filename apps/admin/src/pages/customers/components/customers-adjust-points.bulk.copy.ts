@@ -76,7 +76,7 @@ export function bulkSubmitLabel(direction: 'add' | 'remove', amount: string, cou
     : sprintf(__('Add %1$s points to %2$d customers', 'yayloyalty'), amount, count);
 }
 
-/** The existing wording from `customers-page.matching-customers.ts`'s own hard bound. */
+/** `limit` is `MAX_MATCHING_ROWS`; shown by the dialog up front and thrown by the bulk walk. */
 export function bulkTooLargeSelection(limit: number): string {
   return sprintf(
     __('This selection matches too many customers to process in the browser (over %d). Narrow the filters and try again.', 'yayloyalty'),

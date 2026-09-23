@@ -2,6 +2,7 @@ import { formatPoints } from '@/lib/helpers/points.helper';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BALANCE_RANGE_OPTIONS, EXPIRING_SOON_OPTIONS, type RowFilters } from '../../customers-page.filter-rows';
+import { MAX_MATCHING_ROWS } from '../../customers-page.matching-customers';
 import {
   acknowledgeLiability,
   bulkFilterLine,
@@ -20,10 +21,7 @@ import { addsToLiability, POINTS_UNIT } from '../customers-adjust-points.copy';
 import { bulkLiabilityProjection, bulkTotalPoints, type AdjustFormState } from '../customers-adjust-points.form-state';
 import { pointsToMoney } from '../../drawer/customer-drawer.money';
 
-/** Selections over this many rows exceed the same bound the bulk fan-out walk already throws at (`customers-page.matching-customers.ts`'s `MAX_PAGES * MAX_PER_PAGE`). */
-export const MAX_BULK_ROWS = 50_000;
-
-/** Non-default active filters, human-readable — tier is never included (see plan.md's cut-copy decisions). */
+/** Non-default active filters, human-readable — tier is never included: it is sent as its balance bucket. */
 function filterSummary(filters: Pick<RowFilters, 'search' | 'balanceRange' | 'expiringSoon'>): string | null {
   const parts: string[] = [];
 
@@ -87,7 +85,7 @@ export function AdjustPointsBulkPanels({
         {selectionMode === 'all' && notShownOnPage > 0 && (
           <p className="text-muted-foreground text-xs">{bulkNotShownOnPage(notShownOnPage)}</p>
         )}
-        {isOverLimit && <p className="text-destructive text-xs">{bulkTooLargeSelection(MAX_BULK_ROWS)}</p>}
+        {isOverLimit && <p className="text-destructive text-xs">{bulkTooLargeSelection(MAX_MATCHING_ROWS)}</p>}
       </div>
 
       {state.amount > 0 && !isOverLimit && (

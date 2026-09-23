@@ -150,7 +150,8 @@ export function CustomersAdjustPointsDialog({
       isStale,
       needsAcknowledgement: !isSingle,
       acknowledged: bulk.acknowledged,
-    }) && !bulk.isOverLimit;
+      isOverLimit: bulk.isOverLimit,
+    });
 
   async function handleSubmit() {
     const result = adjustPointsSchema.safeParse({

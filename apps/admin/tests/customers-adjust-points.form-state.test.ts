@@ -134,7 +134,7 @@ describe('isStaleSnapshot', () => {
     expect(isStaleSnapshot(record, { ...record, lifetime_earned: 14570 })).toBe(true);
   });
 
-  it('is true for a different customer even with identical figures', () => {
+  it('is true for a different customer (a baseline left from another record)', () => {
     expect(isStaleSnapshot(record, { ...record, user_id: 2 })).toBe(true);
   });
 
@@ -178,6 +178,17 @@ describe('canSubmit', () => {
         acknowledged: true,
       }),
     ).toBe(true);
+  });
+
+  it('blocks a bulk selection over the row limit even when acknowledged', () => {
+    expect(
+      canSubmit(state({ amount: 500, reason: 'ok' }), {
+        ...baseBlockers,
+        needsAcknowledgement: true,
+        acknowledged: true,
+        isOverLimit: true,
+      }),
+    ).toBe(false);
   });
 
   it('blocks an active typo guard until the confirm field matches', () => {

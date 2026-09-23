@@ -57,12 +57,6 @@ export const RESET_EXPIRY_NEEDS_POINTS_REASON = () => __('Needs points to extend
 export const DELETED_ACCOUNT_ACTION_REASON = () =>
   __('This account was deleted — there is nobody to spend the points.', 'yayloyalty');
 
-/** Adjust-points submit result toasts — same pair the Customers list's bulk action already shows. */
-export function adjustPointsSuccessToast(name: string): string {
-  return sprintf(__('Adjusted points for %s.', 'yayloyalty'), name);
-}
-export const ADJUST_POINTS_ERROR_FALLBACK = () => __('Could not adjust points for this customer.', 'yayloyalty');
-
 // ─── Tabs ────────────────────────────────────────────
 
 export const TAB_LEDGER = () => __('Points ledger', 'yayloyalty');

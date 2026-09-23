@@ -11,7 +11,6 @@ use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Repositories\RewardRepository;
 use YayLoyalty\Services\LedgerService;
-use YayLoyalty\Utils\PointsMath;
 
 defined( 'ABSPATH' ) || exit;
 

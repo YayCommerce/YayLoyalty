@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import { MAX_BULK_ROWS } from './adjust-points/AdjustPointsBulkPanels';
+import { MAX_MATCHING_ROWS } from '../customers-page.matching-customers';
 import { bulkEffectiveCount } from './customers-adjust-points.form-state';
 
 /**
@@ -37,7 +37,7 @@ export function useBulkSelection({
   const usedFilters = !isSingle && selectionMode === 'all';
   const effectiveCount = bulkEffectiveCount(usedFilters, count, previewCount, excludedCount);
   const notShownOnPage = usedFilters ? Math.max(0, effectiveCount - rowsOnPage) : 0;
-  const isOverLimit = !isSingle && effectiveCount > MAX_BULK_ROWS;
+  const isOverLimit = !isSingle && effectiveCount > MAX_MATCHING_ROWS;
 
   return {
     acknowledged,

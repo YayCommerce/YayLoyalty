@@ -1,5 +1,7 @@
 import { __, sprintf } from '@wordpress/i18n';
 
+import { TYPO_GUARD_MULTIPLIER } from './customers-adjust-points.form-state';
+
 /**
  * Every sentence in the Adjust-points dialog (single 2a-2d/3a-3b and bulk
  * 2g layouts). Flat exported functions, every entry a function — `__()`
@@ -74,20 +76,26 @@ export function negativeOutcomeLiability(money: string): string {
   );
 }
 
-// ─── Typo guard (2d) ─────────────────────────────────
+// ─── Typo guard ──────────────────────────────────────
 
 export function typoGuardWarning(amount: string, lifetimeEarned: string): string {
   return sprintf(
+    /* translators: 1: amount entered, 2: the customer's lifetime total, 3: the guard's multiplier */
     __(
-      "%1$s points is more than three times this customer's lifetime total (%2$s). Re-enter the amount to confirm.",
+      "%1$s points is more than %3$d times this customer's lifetime total (%2$s). Re-enter the amount to confirm.",
       'yayloyalty',
     ),
     amount,
     lifetimeEarned,
+    TYPO_GUARD_MULTIPLIER,
   );
 }
 export const TYPO_GUARD_EXPLANATION = () =>
-  __("We ask twice for anything over three times a customer's lifetime total.", 'yayloyalty');
+  sprintf(
+    /* translators: %d: the guard's multiplier */
+    __("We ask twice for anything over %d times a customer's lifetime total.", 'yayloyalty'),
+    TYPO_GUARD_MULTIPLIER,
+  );
 export const CONFIRM_AMOUNT_LABEL = () => __('Re-enter the amount', 'yayloyalty');
 export function typoGuardPlaceholder(amount: string): string {
   return sprintf(__('Type %s again', 'yayloyalty'), amount);
@@ -168,13 +176,9 @@ export const RELOAD_BALANCE_LABEL = () => __('Reload the balance', 'yayloyalty')
 export const STALE_KEEPS_VALUES = () => __('your amount and reason are kept', 'yayloyalty');
 export const STALE_BLOCKS_SAVING = () =>
   __('Saving is blocked until the balance is reloaded. Nothing has been written yet.', 'yayloyalty');
-export const IF_SAVED_NOW_TITLE = () => __('If you saved this now', 'yayloyalty');
-/** "Daniel would be left with 270 points rather than 0." */
-export function ifSavedNowBody(name: string, wouldHavePoints: string, insteadOfPoints: string): string {
-  return sprintf(
-    __('%1$s would be left with %2$s points rather than %3$s.', 'yayloyalty'),
-    name,
-    wouldHavePoints,
-    insteadOfPoints,
-  );
+
+/** Single-customer submit result toasts; the bulk run words its own in `customers-page.bulk-actions.ts`. */
+export function adjustPointsSuccessToast(name: string): string {
+  return sprintf(__('Adjusted points for %s.', 'yayloyalty'), name);
 }
+export const ADJUST_POINTS_ERROR_FALLBACK = () => __('Could not adjust points for this customer.', 'yayloyalty');

@@ -23,13 +23,13 @@ import {
 } from '../customers-adjust-points.form-state';
 
 /**
- * Result panel (2b normal / 2c negative outcome / empty) + 2d typo guard.
- * Single-customer only — bulk (phase 05) has no per-customer record to
- * compute a result panel against, and reuses only `AdjustPointsAmountField`.
+ * Result panel (normal / negative outcome / empty) + the typo guard.
+ * Single-customer only — bulk has no per-customer record to compute a
+ * result panel against.
  *
  * `showResultPanel` is false while the customer's *starting* balance is
- * already negative and this adjustment keeps it negative — `3a`'s own panel
- * (`AdjustPointsNegativeBalancePanel`) covers that story instead, so the two
+ * already negative and this adjustment keeps it negative — that case has its
+ * own panel (`AdjustPointsNegativeBalancePanel`) instead, so the two
  * don't render duplicate "after this adjustment" figures. The typo guard is
  * independent of that flag: a mistyped amount can happen regardless of
  * which starting-balance story is showing.
@@ -41,7 +41,7 @@ export function AdjustPointsFields({
   balance,
   lifetimeEarned,
   pointsPerCurrencyUnit,
-  showResultPanel = true,
+  showResultPanel,
 }: {
   state: Pick<AdjustFormState, 'direction' | 'amount' | 'confirmAmount'>;
   onChange: (patch: Partial<AdjustFormState>) => void;
@@ -49,7 +49,7 @@ export function AdjustPointsFields({
   balance: number;
   lifetimeEarned: number;
   pointsPerCurrencyUnit: number;
-  showResultPanel?: boolean;
+  showResultPanel: boolean;
 }) {
   const guardActive = state.amount > 0 && isTypoGuardActive(state, lifetimeEarned, pointsPerCurrencyUnit);
 

@@ -115,18 +115,21 @@ export type SubmitBlockers = {
   /** Bulk only: the liability acknowledgement checkbox. */
   needsAcknowledgement?: boolean;
   acknowledged?: boolean;
+  /** Bulk only: more rows than one bulk run can touch (`MAX_MATCHING_ROWS`). */
+  isOverLimit?: boolean;
 };
 
 /**
- * Every blocking condition in one gate, built as a blockers object from the
- * first commit rather than a boolean retrofitted later — later phases only
- * ever add a flag here, never a new positional argument.
+ * Every rule that blocks submit, in one place — a new rule is a new flag on
+ * `SubmitBlockers`, not a check beside this call. Only "still loading" stays
+ * with the footer: that is a wait, not a rule.
  */
 export function canSubmit(state: AdjustFormState, blockers: SubmitBlockers): boolean {
   if (state.amount <= 0) return false;
   if (state.reason.trim() === '') return false;
   if (blockers.isStale) return false;
   if (blockers.isUnverified) return false;
+  if (blockers.isOverLimit) return false;
   if (blockers.needsAcknowledgement && !blockers.acknowledged) return false;
 
   const guardActive = isTypoGuardActive(state, blockers.lifetimeEarned, blockers.pointsPerCurrencyUnit);

@@ -12,7 +12,7 @@ import {
   type FilterDropSuggestion,
 } from '../customers-page.filter-suggestions';
 import { useCustomerRowSelection } from '../customers-page.selection';
-import { resolveBalanceRangeForQuery } from '../customers-page.tier-sample-data';
+import { toServerFilters } from '../customers-page.tier-sample-data';
 import type { SortDirection, SortKey } from '../customers-page.sort-rows';
 import { CustomersAdjustPointsDialog } from './CustomersAdjustPointsDialog';
 import { CustomersBulkActionBar } from './CustomersBulkActionBar';
@@ -103,20 +103,12 @@ export function CustomersScreen({
     acknowledgementResetKey,
   } = useCustomersBulkActions({ rows, queryFilters, sort, selection, setSelection });
 
-  // 'all' mode asks the server to COUNT the filter; a real tier matches zero
-  // rows server-side, so its balance bucket is substituted first — same rule
-  // fetchAllMatchingCustomers() and CustomersPage already follow. A tick
-  // list already knows its own count, so it goes by id instead.
+  // 'all' mode asks the server to COUNT the filter. A tick list already
+  // knows its own count, so it goes by id instead.
   const previewInput = useMemo<AdjustPointsPreviewInput>(
     () =>
       selection.mode === 'all'
-        ? {
-            filters: {
-              ...queryFilters,
-              balanceRange: resolveBalanceRangeForQuery(queryFilters),
-              tier: 'all',
-            },
-          }
+        ? { filters: toServerFilters(queryFilters) }
         : { customerIds: [...selection.ids] },
     [selection, queryFilters],
   );

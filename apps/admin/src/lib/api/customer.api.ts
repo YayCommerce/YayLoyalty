@@ -56,7 +56,7 @@ export async function adjustCustomerPoints(userId: number, input: AdjustPointsIn
  *
  * This mapping is spelling-only (camelCase → snake_case), same rule as
  * `getCustomers()` below. The tier → balance-bucket substitution
- * (`resolveBalanceRangeForQuery`) is page-specific domain logic and must
+ * (`toServerFilters`) is page-specific domain logic and must
  * happen before `input` reaches here — this stays page-agnostic.
  */
 export async function previewAdjustPoints(

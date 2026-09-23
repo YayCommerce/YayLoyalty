@@ -7,14 +7,13 @@ import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { useAdjustPointsMutation, useAdjustPointsPreviewQuery } from '@/lib/queries/customer.queries';
 import type { Customer } from '@/lib/schema/customer.schema';
 import { Button } from '@/components/ui/button';
+import { ADJUST_POINTS_ERROR_FALLBACK, adjustPointsSuccessToast } from '../components/customers-adjust-points.copy';
 import { CustomersAdjustPointsDialog } from '../components/CustomersAdjustPointsDialog';
 import {
   ACTION_ADJUST_POINTS,
   ACTION_ASSIGN_TIER,
   ACTION_EXPORT_LEDGER,
   ACTION_RESET_EXPIRY,
-  ADJUST_POINTS_ERROR_FALLBACK,
-  adjustPointsSuccessToast,
   DELETED_ACCOUNT_ACTION_REASON,
   NOT_AVAILABLE_YET_REASON,
   RESET_EXPIRY_NEEDS_POINTS_REASON,
