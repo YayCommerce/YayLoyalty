@@ -1,11 +1,12 @@
 import { __, sprintf } from '@wordpress/i18n';
 
 /**
- * Activity-log titles and sub-line composers — moved out of
- * `customer-drawer.copy.ts` once that file hit the 200-line cap (F09 Wave B
- * account-delete task). Same rules as the main copy module: flat exported
- * functions, every entry a function (never a module-scope constant — `__()`
- * must run after the locale loads), pure — no React, no fetch.
+ * Copy for the drawer's Activity log tab (3d) — titles, sub-line composers,
+ * column/group labels, actor labels and the footer note. Split out of
+ * `customer-drawer.copy.ts`, which holds the rest of the drawer's copy.
+ * Same rules: flat exported functions, every entry a function (never a
+ * module-scope constant — `__()` must run after the locale loads), pure —
+ * no React, no fetch.
  */
 
 /** One static title per `event_type` — 3d draws these as plain labels, no interpolation. */
@@ -58,3 +59,30 @@ export function activityExpiringSoonEmailSubLine(windowDays: string, deadline: s
 export function activityAccountDeletedSubLine(email: string, balanceAtDeletion: string): string {
   return sprintf(__('%1$s · %2$s points frozen', 'yayloyalty'), email, balanceAtDeletion);
 }
+
+export const COLUMN_EVENT = () => __('Event', 'yayloyalty');
+export const COLUMN_BY = () => __('By', 'yayloyalty');
+
+/** Accessible name for the group control — it shows no "Show:" prefix of its own. */
+export const ACTIVITY_GROUP_LABEL = () => __('Show', 'yayloyalty');
+export const ACTIVITY_GROUP_ALL = () => __('All', 'yayloyalty');
+export const ACTIVITY_GROUP_ADMIN = () => __('Admin actions', 'yayloyalty');
+export const ACTIVITY_GROUP_TIER = () => __('Tier changes', 'yayloyalty');
+export const ACTIVITY_GROUP_EXPIRY = () => __('Expiry', 'yayloyalty');
+export const ACTIVITY_GROUP_EMAILS = () => __('Emails', 'yayloyalty');
+
+export const STAFF_ONLY_LABEL = () => __('STAFF ONLY', 'yayloyalty');
+export const AUTOMATIC_ACTOR_LABEL = () => __('Automatic', 'yayloyalty');
+export const CUSTOMER_ACTOR_LABEL = () => __('Customer', 'yayloyalty');
+
+/** Search placeholder for the activity tab's own filter row — distinct from
+ *  the ledger's `SEARCH_PLACEHOLDER` (no "order number" here; matches the
+ *  event text and who did it instead). */
+export const ACTIVITY_SEARCH_PLACEHOLDER = () => __('Search event or who did it', 'yayloyalty');
+
+/** 3d's footer note — load-bearing: stops an admin hunting for an adjustment here. */
+export const ACTIVITY_FOOTER_NOTE = () =>
+  __(
+    'Points movements are not repeated here — they live in the points ledger with their running balance.',
+    'yayloyalty',
+  );

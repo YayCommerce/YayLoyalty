@@ -10,7 +10,7 @@ import {
   ACTIVITY_GROUP_LABEL,
   ACTIVITY_GROUP_TIER,
   ACTIVITY_SEARCH_PLACEHOLDER,
-} from '../customer-drawer.copy';
+} from '../customer-drawer.activity.copy';
 import { useDrawerTabQueryState } from '../customer-drawer.tab-query-state';
 import { ActivityLogTabRows } from './ActivityLogTabRows';
 import { DrawerTabFilters } from './DrawerTabFilters';
@@ -29,8 +29,7 @@ const GROUP_LABELS: Record<ActivityGroup, () => string> = {
  * `LedgerTab`. Paged rather than 3d's "Load more": a large store's activity
  * log would be unbrowsable with only a group filter, so this took the
  * ledger's full filter set and pager. Groups carry no counts and nothing
- * ever disables — the real path's `0` total is genuinely true whatever the
- * filters are set to, not a "server can't filter yet" signal.
+ * ever disables.
  */
 export function ActivityLogTab({ userId }: { userId: number }) {
   const state = useDrawerTabQueryState<ActivityGroup>('all');

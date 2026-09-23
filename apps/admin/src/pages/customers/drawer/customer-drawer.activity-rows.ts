@@ -1,7 +1,7 @@
 import { formatStoredDate, parseWPDate, parseWPTime, utcToDate } from '@/lib/helpers/format.helper';
 import { formatSignedPoints } from '@/lib/helpers/ledger.helper';
 import { formatPoints } from '@/lib/helpers/points.helper';
-import type { ActivityEntry } from '@/lib/schema/activity.schema';
+import type { ActivityEntry, ActivityEventType } from '@/lib/schema/activity.schema';
 import {
   ACTIVITY_TITLE_ACCOUNT_CREATED,
   ACTIVITY_TITLE_ACCOUNT_DELETED,
@@ -19,8 +19,9 @@ import {
   activityPointsAdjustedSubLine,
   activityRewardRedeemedSubLine,
   activityTierChangedSubLine,
+  AUTOMATIC_ACTOR_LABEL,
+  CUSTOMER_ACTOR_LABEL,
 } from './customer-drawer.activity.copy';
-import { AUTOMATIC_ACTOR_LABEL, CUSTOMER_ACTOR_LABEL } from './customer-drawer.copy';
 
 export type ActivityRow = {
   date: string;
@@ -32,7 +33,7 @@ export type ActivityRow = {
   isEmail: boolean;
 };
 
-const EMAIL_EVENT_TYPES = new Set<ActivityEntry['event_type']>(['balance_email_sent', 'expiring_soon_email_sent']);
+const EMAIL_EVENT_TYPES = new Set<ActivityEventType>(['balance_email_sent', 'expiring_soon_email_sent']);
 
 /**
  * Row → what the activity table renders. Pure — no fetch, no React. Mirrors
@@ -54,7 +55,7 @@ export function toActivityRow(entry: ActivityEntry): ActivityRow {
   };
 }
 
-function titleFor(eventType: ActivityEntry['event_type']): string {
+function titleFor(eventType: ActivityEventType): string {
   switch (eventType) {
     case 'account_created':
       return ACTIVITY_TITLE_ACCOUNT_CREATED();
@@ -77,8 +78,8 @@ function titleFor(eventType: ActivityEntry['event_type']): string {
 
 /**
  * `data` is `Record<string, unknown>` on the wire — every accessor defends
- * with a fallback rather than trusting the fixture's shape blindly, the
- * same caution `describeLedgerEntry()` takes with ledger rows.
+ * with a fallback rather than trusting its shape blindly, the same caution
+ * `describeLedgerEntry()` takes with ledger rows.
  */
 function str(data: Record<string, unknown>, key: string): string {
   const value = data[key];
@@ -123,7 +124,7 @@ function subLineFor(entry: ActivityEntry, occurred: Date): string {
       return activityBalanceEmailSubLine(str(data, 'subject'));
     case 'expiring_soon_email_sent': {
       // `deadline` is derived client-side (occurred_at + window_days) — not a
-      // fixture field, so there is nothing to keep in sync when it changes.
+      // field the API sends, so there is nothing to keep in sync when it changes.
       const windowDays = num(data, 'window_days');
       const deadline = new Date(occurred.getTime() + windowDays * 24 * 60 * 60 * 1000);
 

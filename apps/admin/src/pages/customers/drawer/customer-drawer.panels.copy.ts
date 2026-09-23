@@ -1,5 +1,7 @@
 import { __, sprintf } from '@wordpress/i18n';
 
+import { formatPoints } from '@/lib/helpers/points.helper';
+
 /**
  * Copy for the drawer's three header-level edge-state panels — deleted (4a),
  * expiring (4b), negative balance (5a). Split out of `customer-drawer.copy.ts`
@@ -50,13 +52,22 @@ export const NO_LABEL = () => __('no', 'yayloyalty');
 /** Shown for a loose-ends fact that is `null` — the fact is unanswered, not hidden (no redemptions/referrals/member-count feature yet). */
 export const LOOSE_END_NOT_TRACKED_YET = () => __('Not tracked yet', 'yayloyalty');
 
-/** "1 · $5 off" — `example` is one illustrative label, not a list. */
-export function voidCouponsValue(count: string, example: string | null): string {
-  return example ? sprintf(__('%1$s · %2$s', 'yayloyalty'), count, example) : count;
+/** "1 · $5 off" — `example` is one illustrative label, not a list. `null`
+ *  (no redemptions feature yet) renders as `LOOSE_END_NOT_TRACKED_YET()`. */
+export function voidCouponsValue(voidCoupons: { count: number; example: string | null } | null): string {
+  if (!voidCoupons) return LOOSE_END_NOT_TRACKED_YET();
+
+  const count = formatPoints(voidCoupons.count);
+  return voidCoupons.example ? sprintf(__('%1$s · %2$s', 'yayloyalty'), count, voidCoupons.example) : count;
 }
-/** "2 · kept" */
-export function creditedReferralsValue(count: string): string {
-  return sprintf(__('%s · kept', 'yayloyalty'), count);
+/** "2 · kept". `null` (no referrals feature yet) renders as `LOOSE_END_NOT_TRACKED_YET()`. */
+export function creditedReferralsValue(count: number | null): string {
+  return null === count ? LOOSE_END_NOT_TRACKED_YET() : sprintf(__('%s · kept', 'yayloyalty'), formatPoints(count));
+}
+/** `null` (no member-count feature yet) renders as `LOOSE_END_NOT_TRACKED_YET()`. */
+export function countedInMembersValue(counted: boolean | null): string {
+  if (null === counted) return LOOSE_END_NOT_TRACKED_YET();
+  return counted ? YES_LABEL() : NO_LABEL();
 }
 export function looseEndsLiabilitySentence(balance: string): string {
   return sprintf(
@@ -128,8 +139,8 @@ export const EXPIRY_FREE_EXPLANATION = () =>
 
 export const NEGATIVE_BALANCE_HEADING = () => __('Why this balance is negative', 'yayloyalty');
 
-/** The three-step story (`shape: 'refund_reversal'`) — composed from the
- *  fixture's structured legs, never assembled server-side. */
+/** The three-step story (`shape: 'refund_reversal'`) — composed here from
+ *  each leg's structured fields, never a pre-built sentence from the API. */
 export function negativeBalanceFactEarned(firstName: string, points: string, orderId: string, date: string): string {
   return sprintf(__('%1$s earned %2$s points on order #%3$s on %4$s.', 'yayloyalty'), firstName, points, orderId, date);
 }

@@ -38,10 +38,7 @@ export type CustomerActivityParams = DrawerPageParams & { group?: ActivityGroup 
 /** Redemptions/Referrals have no filters — paging only. */
 export type DrawerPageOnlyParams = Pick<DrawerPageParams, 'page' | 'perPage'>;
 
-/**
- * `GET /customers/{id}/activity`. The real path always answers an empty
- * envelope (no `activity` table yet).
- */
+/** `GET /customers/{id}/activity`. */
 export async function getCustomerActivity(userId: number, params: CustomerActivityParams = {}) {
   const searchParams = toDrawerSearchParams(params);
 

@@ -40,7 +40,6 @@ export const activityActorKindSchema = z.enum(ACTIVITY_ACTOR_KINDS);
 export const activityGroupSchema = z.enum(ACTIVITY_GROUPS);
 
 export type ActivityEventType = z.infer<typeof activityEventTypeSchema>;
-export type ActivityActorKind = z.infer<typeof activityActorKindSchema>;
 export type ActivityGroup = z.infer<typeof activityGroupSchema>;
 
 export const activityEntrySchema = z.object({
@@ -58,5 +57,3 @@ export const activityEntrySchema = z.object({
 export type ActivityEntry = z.infer<typeof activityEntrySchema>;
 
 export const activityEnvelopeSchema = paginatedSchema(activityEntrySchema);
-
-export type ActivityEnvelope = z.infer<typeof activityEnvelopeSchema>;

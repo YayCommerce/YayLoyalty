@@ -20,7 +20,7 @@ export type RedemptionRow = {
  * Row → what the redemptions table renders. Pure — no fetch, no React.
  * `points` is already signed on the wire (negative spent, positive
  * returned) — `formatSignedPoints()` only adds the `+`, the sign itself
- * comes straight from the fixture.
+ * comes straight from the API.
  */
 export function toRedemptionRow(entry: RedemptionEntry): RedemptionRow {
   return {

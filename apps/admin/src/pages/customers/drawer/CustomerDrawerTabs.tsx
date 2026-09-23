@@ -59,8 +59,8 @@ function DrawerTab({
  * is no separate "counts still loading" state to render for). All four tabs
  * exist in both builds (locked decision 6) — no `IS_PRO_BUILD` branch.
  *
- * All four tabs have real, working bodies now (Wave B wired them one phase
- * at a time — see `ActivityLogTab.tsx`/`RedemptionsTab.tsx`/`ReferralsTab.tsx`).
+ * All four tabs have real, working bodies — see `ActivityLogTab.tsx`/
+ * `RedemptionsTab.tsx`/`ReferralsTab.tsx`.
  *
  * Redemptions and Referrals are Pro-only content behind the SAME tabs Free
  * sees (locked decision 6 — no `IS_PRO_BUILD` branch on which tabs exist):

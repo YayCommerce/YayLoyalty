@@ -17,17 +17,26 @@ import {
 } from '@/lib/api/customer.api';
 import type { AdjustPointsInput } from '@/lib/schema/customer.schema';
 
+/**
+ * `['customer', kind, userId]` — the one place that owns this shape, so the
+ * factory below and `useAdjustPointsMutation`'s invalidations can't drift
+ * apart into two different prefixes for the same cache entries.
+ */
+function customerKeyPrefix(kind: 'detail' | 'ledger' | 'activity' | 'redemptions' | 'referrals', userId: number) {
+  return ['customer', kind, userId] as const;
+}
+
 export const CUSTOMER_QUERIES = {
   detail: (userId: number) =>
     queryOptions({
-      queryKey: ['customer', 'detail', userId],
+      queryKey: customerKeyPrefix('detail', userId),
       queryFn: () => getCustomer(userId),
       enabled: userId > 0,
     }),
 
   ledger: (userId: number, params: CustomerLedgerParams) =>
     queryOptions({
-      queryKey: ['customer', 'ledger', userId, params],
+      queryKey: [...customerKeyPrefix('ledger', userId), params],
       queryFn: () => getCustomerLedger(userId, params),
       enabled: userId > 0,
       // Paging/filtering must not flash a skeleton over rows already on screen.
@@ -53,7 +62,7 @@ export const CUSTOMER_QUERIES = {
    */
   activity: (userId: number, params: CustomerActivityParams) =>
     queryOptions({
-      queryKey: ['customer', 'activity', userId, params],
+      queryKey: [...customerKeyPrefix('activity', userId), params],
       queryFn: () => getCustomerActivity(userId, params),
       enabled: userId > 0,
       placeholderData: keepPreviousData,
@@ -62,7 +71,7 @@ export const CUSTOMER_QUERIES = {
 
   redemptions: (userId: number, params: DrawerPageOnlyParams) =>
     queryOptions({
-      queryKey: ['customer', 'redemptions', userId, params],
+      queryKey: [...customerKeyPrefix('redemptions', userId), params],
       queryFn: () => getCustomerRedemptions(userId, params),
       enabled: userId > 0,
       placeholderData: keepPreviousData,
@@ -71,7 +80,7 @@ export const CUSTOMER_QUERIES = {
 
   referrals: (userId: number, params: DrawerPageOnlyParams) =>
     queryOptions({
-      queryKey: ['customer', 'referrals', userId, params],
+      queryKey: [...customerKeyPrefix('referrals', userId), params],
       queryFn: () => getCustomerReferrals(userId, params),
       enabled: userId > 0,
       placeholderData: keepPreviousData,
@@ -113,10 +122,10 @@ export function useAdjustPointsMutation(userId: number) {
     mutationFn: (input: AdjustPointsInput) => adjustCustomerPoints(userId, input),
     onSuccess: () => {
       // The list too, or the row shows the old balance until staleTime lapses.
-      queryClient.invalidateQueries({ queryKey: ['customer', 'detail', userId] });
-      queryClient.invalidateQueries({ queryKey: ['customer', 'ledger', userId] });
+      queryClient.invalidateQueries({ queryKey: customerKeyPrefix('detail', userId) });
+      queryClient.invalidateQueries({ queryKey: customerKeyPrefix('ledger', userId) });
       // An adjustment writes a `points_adjusted` activity row.
-      queryClient.invalidateQueries({ queryKey: ['customer', 'activity', userId] });
+      queryClient.invalidateQueries({ queryKey: customerKeyPrefix('activity', userId) });
       queryClient.invalidateQueries({ queryKey: ['customer', 'list'] });
     },
   });

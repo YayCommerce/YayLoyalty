@@ -23,11 +23,9 @@ export type LedgerRow = {
  * `description` reuses `describeLedgerEntry()` rather than reimplementing
  * it (dashboard's recent-activity panel already does this). `subLine` is
  * this drawer's own addition, and is deliberately conservative: it only
- * ever states the campaign name, because that is the only extra fact this
- * wave's data actually carries. `LedgerEntry` has no reward name, no
- * "originally earned" date, and no actor display name — inventing those
- * for redeem/expire/adjust rows would be exactly the fabricated-prose the
- * fixture phase went out of its way to avoid (see phase 02's docblocks).
+ * ever states the campaign name, because `LedgerEntry` carries no reward
+ * name, no "originally earned" date, and no actor display name — inventing
+ * those for redeem/expire/adjust rows would be fabricated prose.
  */
 export function toLedgerRow(
   entry: LedgerEntry,

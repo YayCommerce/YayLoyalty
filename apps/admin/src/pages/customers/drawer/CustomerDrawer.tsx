@@ -95,16 +95,18 @@ export default function CustomerDrawer() {
                   <>
                     <CustomerDrawerStats customer={query.data} />
                     <CustomerDrawerActions customer={query.data} isLoading={query.isFetching} />
-                    {/* 4a's three panels — `deleted_at`/`loose_ends` are always
-                        null today (no `deleted_at` column on the real path).
-                        This gates whether they mount at all; each still
-                        null-checks its own fields (prop types don't inherit
-                        this narrowing). */}
+                    {/* 4a's three panels — `deleted_at`/`loose_ends` are one
+                        fact server-side (non-null together); narrowed once
+                        here so the children take typed, non-null props
+                        instead of each re-checking. */}
                     {query.data.deleted_at && query.data.loose_ends && (
                       <>
-                        <CustomerDrawerDeletedBanner customer={query.data} />
+                        <CustomerDrawerDeletedBanner
+                          deletedAt={query.data.deleted_at}
+                          keptEntries={query.data.loose_ends.kept_ledger_entries}
+                        />
                         <CustomerDrawerDeletedActions />
-                        <CustomerDrawerLooseEnds customer={query.data} />
+                        <CustomerDrawerLooseEnds looseEnds={query.data.loose_ends} balance={query.data.balance} />
                       </>
                     )}
                     {/* 4b's three panels — `expiry` is always null today

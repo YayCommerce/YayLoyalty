@@ -42,7 +42,7 @@ export function DrawerTabPager({
   }
 
   const pageCount = Math.max(1, Math.ceil(totalItems / perPage));
-  const from = totalItems === 0 ? 0 : (page - 1) * perPage + 1;
+  const from = (page - 1) * perPage + 1;
   const to = Math.min(page * perPage, totalItems);
 
   return (
