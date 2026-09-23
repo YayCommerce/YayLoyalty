@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| **Version** | 0.7 — verified state and corrections |
-| **Date** | 22 September 2026 |
+| **Version** | 0.8 — redemption scaffold reconciled |
+| **Date** | 23 September 2026 |
 | **Scope** | Every table YayLoyalty owns across Free, Pro and later releases, every column, and how they relate |
 | **Companion docs** | `project-roadmap.md` · `codebase-summary.md` · `system-architecture.md` |
 
@@ -14,6 +14,8 @@
 **Not implemented:** `redemptions`, `referrals`, `referral_visits`, `tiers`, `tier_history`, `lots`, `lot_allocations`, `events`
 
 Note: `rewards` table exists with schema and repository; seeding works; checkout integration not built.
+
+Note: `redemptions` has a schema class (`Database/Schema/RedemptionsTable.php`), a model (`Models/Redemption.php`, real) and a repository (`Repositories/RedemptionRepository.php`, stubs), but no table — `RedemptionsTable` is deliberately absent from `Installer::schemas()` and its `definition()` throws, so nothing creates it. Registering it there is the F08 step that installs the table on the next upgrade.
 
 See [`project-roadmap.md`](./project-roadmap.md) for implementation status by phase and known gaps. The table specifications below are the authoritative schema design; unimplemented tables are the work plan for phases 1.1, 1.2, and 2.0.
 
@@ -236,7 +238,7 @@ scenario, ahead of the actual column + soft-delete write path landing.
 
 ## `yayloyalty_ledger` — every balance change (1.0)
 
-Append-only journal. Nothing updates or deletes rows except GDPR erasure (which sets `user_id = 0`, `actor_id = NULL`, clears `note`). One `earn` row per order **per trigger**: within a trigger stacking is highest-priority-only, across triggers an order may earn once each (`purchase`, then Pro's `first_order` …). The idempotency guarantee against duplicate hooks, status bouncing and webhook retries is one column under one unique index: `idempotency_key`, composed by `Engine\Earning\IdempotencyKey` as `{type}:{user_id}:{reference_type}:{reference_id}:{trigger}` (`earn:7:order:1234:purchase`). The user is in the key because one reference can pay two people (a referral order pays advocate and friend); the trigger because one order may earn once per trigger. The former composite `uniq_ledger_event (user_id, source, reference_type, reference_id)` is no longer in the DDL; `Installer::run_migrations()` drops it on upgraded sites (stubbed until F01-4 — until then both indexes coexist there, harmlessly, since only NULL-keyed adjust rows exist).
+Append-only journal. Nothing updates or deletes rows except GDPR erasure (which sets `user_id = 0`, `actor_id = NULL`, clears `note`). One `earn` row per order **per trigger**: within a trigger stacking is highest-priority-only, across triggers an order may earn once each (`purchase`, then Pro's `first_order` …). The idempotency guarantee against duplicate hooks, status bouncing and webhook retries is one column under one unique index: `idempotency_key`, composed by `Engine\Earning\IdempotencyKey` as `{type}:{user_id}:{reference_type}:{reference_id}:{qualifier}` (`earn:7:order:1234:purchase`, `redeem:7:redemption:88:flexible_discount`). The qualifier is a `CampaignTrigger` on `earn`/`refund_earn` rows and a `RewardType` on `redeem`/`refund_redeem` rows — any build's, so a Pro value stays composable after a downgrade. The user is in the key because one reference can pay two people (a referral order pays advocate and friend); the qualifier because one reference may move points once per trigger when earning and once per reward type when redeeming. The former composite `uniq_ledger_event (user_id, source, reference_type, reference_id)` is no longer in the DDL; `Installer::run_migrations()` drops it on upgraded sites (stubbed until F01-4 — until then both indexes coexist there, harmlessly, since only NULL-keyed adjust rows exist).
 
 | Column | Type | Null / default | Meaning |
 |---|---|---|---|
@@ -253,7 +255,7 @@ Append-only journal. Nothing updates or deletes rows except GDPR erasure (which 
 | `order_id` | BIGINT UNSIGNED | null, idx | Denormalised for every order-related row (`earn`, `refund_earn`, `redeem`, `refund_redeem`), so "all points activity for order #1234" is one indexed query for the order screen and support. |
 | `note` | VARCHAR(500) | null | Admin reason on `adjust` rows only. System rows have no stored text: their description is composed at render time from `type`/`source`/reference, so it is translatable and never goes stale. |
 | `actor_id` | BIGINT UNSIGNED | null | Admin user for manual rows; null for the system. |
-| `idempotency_key` | VARCHAR(96) | null, unique | `Engine\Earning\IdempotencyKey::compose()` for system rows; NULL for `adjust`, which is deliberately not idempotent. The unique index is the guard; `LedgerService::earn()` attempts the insert and turns MySQL 1062 into `Outcome::duplicate`, a normal return. |
+| `idempotency_key` | VARCHAR(96) | null, unique | `Engine\Earning\IdempotencyKey::compose()` for system rows; NULL for `adjust`, which is deliberately not idempotent. The unique index is the guard; `LedgerService::earn()` and its redemption sibling `redeem()` attempt the insert and turn MySQL 1062 into `Outcome::duplicate`, a normal return. |
 | `created_at` | DATETIME | not null | UTC. |
 
 Indexes: PK; `idx_user_history (user_id, id)` for paged history and `ORDER BY id DESC LIMIT 1` balance lookups — `id`, not `created_at`, because same-second rows from one request would otherwise tie; UNIQUE `uniq_idempotency_key (idempotency_key)`; `campaign_id`; `redemption_id`; `order_id`; `(type, created_at)` for dashboard aggregates ("issued last 30 days").
@@ -308,7 +310,7 @@ same discipline as everything else in this drawer.
 
 ## `yayloyalty_redemptions` — one row per reward claim (1.0, NOT IMPLEMENTED)
 
-**Status:** Table not created. Schema designed. Will be created when redemption checkout integration lands.
+**Status:** Table not created. Schema designed, and since F08's scaffold the design is also in code: `Database/Schema/RedemptionsTable.php` declares `expected_columns()`/`expected_indexes()` matching the table below (its `definition()` is a `TODO(F08)` stub that throws), `Models\Redemption` is real and round-trips the row, `Repositories\RedemptionRepository` is stubs. Nothing installs it until `RedemptionsTable` joins `Installer::schemas()`, which is the step that creates the table on the next upgrade.
 
 **F09 Wave B (phase 05):** `GET /customers/{id}/redemptions` is a real, routed, paginated endpoint
 today (`includes/Controllers/RedemptionsRestController.php`), always answering an empty envelope
@@ -340,7 +342,9 @@ When built, it will be created at claim time. It exists because a refund needs t
 | `expires_at` | DATETIME | null | Catalog coupon expiry (Pro). |
 | `created_at` / `updated_at` | DATETIME | not null | |
 
-Indexes: PK; `user_id`; `order_id`; `reward_id`; `(status, created_at)`; **`(reward_id, user_id)`, REQUIRED** — the `redemption_count` reward condition (see rewards' `conditions` section above) runs `COUNT(*) WHERE reward_id = ? AND user_id = ?` on every evaluation; without this composite index that is a full table scan per claim. Do not create this table without it.
+Indexes: PK; UNIQUE `uk_order_reward (order_id, reward_id)`; `user_id`; `order_id`; `reward_id`; `idx_status_created (status, created_at)`; **`idx_reward_user (reward_id, user_id)`, REQUIRED** — the `redemption_count` reward condition (see rewards' `conditions` section above) runs `COUNT(*) WHERE reward_id = ? AND user_id = ?` on every evaluation; without this composite index that is a full table scan per claim. Do not create this table without it.
+
+`uk_order_reward` is the double-debit guard, not an optimisation: an order may carry one claim of a given reward and no more, so a retried checkout, a doubled hook or two concurrent commits collide on the index instead of debiting twice. `Engine\Redemption\CommitWriter` reads through it first (`RedemptionRepository::find_by_order()`) under the customer's row lock and treats the insert's 1062 as the same duplicate answer.
 
 ## `yayloyalty_referrals` — one row per referral relationship (1.1)
 

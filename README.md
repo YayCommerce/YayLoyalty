@@ -2,7 +2,7 @@
 
 A loyalty program plugin for WooCommerce with points earning, rewards redemption, referral tracking, and VIP tier management. Shipped as Pro and Lite from one repository.
 
-**Status:** v1.0.0 in development. Core earning system (campaigns, ledger, balance) and reward definitions shipped; admin Dashboard, Customers list + per-customer drawer are live. Nothing awards points yet: the award path (`includes/Engine/Earning/` — listeners, gates, `LedgerService::earn()`) is scaffolded with stub bodies and not registered at boot; no redemption flow exists. Referrals and tiers planned for later phases.
+**Status:** v1.0.0 in development. Core earning system (campaigns, ledger, balance) and reward definitions shipped; admin Dashboard, Customers list + per-customer drawer are live. Nothing awards or spends points yet: both paths are scaffolded with stub bodies and registered nowhere at boot — the award path in `includes/Engine/Earning/` (listeners, gates, `LedgerService::earn()`) and the redemption path in `includes/Engine/Redemption/` (service, gates, commit writer, checkout adapters, `LedgerService::redeem()`), the latter over a real, tested `Clamp`/`Quoter` and a `redemptions` table that is designed but not installed. Referrals and tiers planned for later phases.
 
 ---
 
@@ -65,7 +65,7 @@ composer install
 
 | Path | Contents |
 |---|---|
-| **`includes/`** | PHP backend: controllers, services, repositories, models, enums, database schema, access/capabilities, points engine, utilities |
+| **`includes/`** | PHP backend: controllers, services, repositories, models, enums, database schema, access/capabilities, the points/earning/reward/redemption engines, utilities |
 | **`apps/admin/`** | React 18 + Vite 6 admin dashboard SPA |
 | **`docs/`** | Architecture, standards, data model, roadmap |
 | **`scripts/`** | Build pipeline, validation, dev server |

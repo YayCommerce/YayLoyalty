@@ -34,6 +34,10 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
   `IdempotencyKeyTest` redeem cases (real), `tests/unit/Redemption/*` specification incl.
   `test_no_database_write_occurs_during_a_quote`.
 - `docs/redemption-scout.md` records the pre-restructure inventory.
+- **Docs (2026-09-23):** `data-model.md` 0.8 catches up — the redemptions section now states what
+  exists in code (schema class, model, stub repository) versus what still creates nothing, documents
+  the `uk_order_reward (order_id, reward_id)` double-debit guard, and the ledger's `idempotency_key`
+  is described with its qualifier segment and both writers.
 
 ### Added — Earning orchestration scaffold (2026-09-22)
 
