@@ -305,7 +305,7 @@ See `customers-page.matching-customers.ts` for selection resolution; `customers-
 
 ### Customer drawer (F09) — per-customer detail view
 
-Opened from Customers-list row; shows balance, stats, four tabs (Points ledger + three empty-on-real-path tabs: Activity, Redemptions, Referrals). All five drawer endpoints (`GET /customers/{id}`, `/ledger`, `/activity`, `/redemptions`, `/referrals`) accept a `scenario` query arg only when `WP_DEBUG` is true, reaching `CustomerDrawerFixture` with named scenarios (new/large/deleted/negative/expiring). The default (no arg) always returns real data or an honest empty envelope. Schema validation is identical for both paths via Zod mirrors in `src/lib/schema/`. Shared helpers: `Schemas/CustomerItemSchema.php` (the item shape), `Schemas/LedgerQueryArgs.php` (filter groups + vocabulary), `Controllers/CustomerListFormatter.php` (wire shape helpers).
+Opened from Customers-list row; shows balance, stats, four tabs (Points ledger and Activity, both real; Redemptions and Referrals, empty envelopes until their tables exist). All five drawer endpoints (`GET /customers/{id}`, `/ledger`, `/activity`, `/redemptions`, `/referrals`) serve real data only, and take their id through `member_id_param()`, so a deleted member's drawer still opens. Responses are validated by Zod mirrors in `src/lib/schema/`. Shared helpers: `Schemas/CustomerItemSchema.php` (the item shape), `Schemas/LedgerQueryArgs.php` (filter groups + vocabulary), `Controllers/CustomerListFormatter.php` (wire shape helpers).
 
 ### Manual points adjustment — wired end-to-end, including the SPA
 

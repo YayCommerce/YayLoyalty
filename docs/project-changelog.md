@@ -6,6 +6,22 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
 
 ## Unreleased
 
+### Changed — Customer routes name which user ids they accept (2026-09-23)
+
+- `AbstractRestController::user_id_param( ?CustomerRepository )` used its argument as a hidden
+  switch: passing a repository also accepted a deleted member. Split into `member_id_param()`
+  (live WP user, or a surviving customers row) for the five drawer reads, and `user_id_param()`
+  (live WP user only) for adjust and Pro's campaign preview. `RedemptionsRestController` and
+  `ReferralsRestController` lose their constructors; `LedgerRestController` and
+  `ActivityRestController` take only their own repository. No route behaviour changed.
+- **Tests:** `tests/integration/Controllers/CustomerIdRouteParamTest.php` (4 tests, 16 route
+  cases) pins it: drawer reads answer 200 for a live and a deleted member and 400 for an unknown
+  id; adjust refuses a deleted member with `id` as the only invalid arg and writes nothing.
+  Integration suite 10 → 26 tests; its bootstrap raises `memory_limit` to 512M because booting
+  the full REST server with WooCommerce's routes outgrows the CLI's 128M.
+- `code-standards.md` § 9, `system-architecture.md`, `deployment-guide.md` and
+  `codebase-summary.md` stop describing the removed customer-drawer `?scenario=` fixtures.
+
 ### Added — The ledger's duplicate-key guard is real (2026-09-23)
 
 - **`QueryException`** captures the driver's error number at construction (the next statement

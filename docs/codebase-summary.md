@@ -125,8 +125,8 @@ reads real `yayloyalty_customer_meta` rows for three of its eight event types (`
 only history would be one of them gets an honest empty page. Redemptions and Referrals still
 always answer an empty envelope — no backing table exists for either yet (see
 `docs/data-model.md`); the ledger and customer-detail paths are fully real, and a deleted member's
-customer/activity/ledger tabs all resolve (`AbstractRestController::user_id_param()`'s optional
-membership fallback). Every response parses through the exact same Zod schema on the SPA
+item route and all four tab routes resolve (`AbstractRestController::member_id_param()`: a live WP
+user or a surviving customers row). Every response parses through the exact same Zod schema on the SPA
 (`customer.schema.ts` / `ledger.schema.ts` / `activity.schema.ts` / `redemption.schema.ts` /
 `referral.schema.ts`).
 

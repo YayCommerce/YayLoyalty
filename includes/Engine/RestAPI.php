@@ -62,18 +62,14 @@ class RestAPI {
             // $ledger and $rewards here are read-only uses (counts.ledger,
             // the drawer's conversion rate) — the same instances LedgerService
             // and DashboardRepository hold, not a second construction.
-            // $customers passed to user_id_param() so a deleted member's
-            // item route still resolves; $customer_meta backs deleted_at/
-            // loose_ends/counts.activity and the list's identity fallback.
+            // $customer_meta backs deleted_at/loose_ends/counts.activity and
+            // the list's identity fallback.
             new CustomerRestController( $customers, $ledger_service, $ledger, $rewards, $customer_meta ),
-            // $customers widens the deleted member's ledger tab past user_id_param()'s default 404.
-            new LedgerRestController( $ledger, $customers ),
-            new ActivityRestController( $customer_meta, $customers ),
-            // $customers only for the deleted-member id relaxation: the Pro build
-            // renders these tabs for a deleted member too, and a 404 there would
-            // stand in for "no rows". Empty envelopes until their tables exist.
-            new RedemptionsRestController( $customers ),
-            new ReferralsRestController( $customers ),
+            new LedgerRestController( $ledger ),
+            new ActivityRestController( $customer_meta ),
+            // Empty envelopes until their tables exist.
+            new RedemptionsRestController(),
+            new ReferralsRestController(),
             // Definition table: repository only, no service.
             new CampaignRestController( $campaigns ),
             new DashboardRestController(

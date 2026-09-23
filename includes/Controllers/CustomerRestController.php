@@ -84,7 +84,7 @@ final class CustomerRestController extends AbstractRestController {
                     'methods'             => \WP_REST_Server::READABLE,
                     'callback'            => fn( $request ) => $this->exec_read( [ $this, 'get_customer' ], $request ),
                     'permission_callback' => $this->requires( Capabilities::VIEW ),
-                    'args'                => [ 'id' => $this->user_id_param( $this->customers ) ],
+                    'args'                => [ 'id' => $this->member_id_param() ],
                 ],
                 'schema' => [ $this, 'get_item_schema' ],
             ]

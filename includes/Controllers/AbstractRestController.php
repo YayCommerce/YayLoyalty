@@ -142,31 +142,40 @@ abstract class AbstractRestController extends BaseRestController {
     }
 
     /**
-     * Route param that must name an existing user; without the validate_callback the route becomes an enumeration oracle.
-     *
-     * Passing `$customers` widens "id resolves" to ALSO accept a WP user
-     * that was deleted but still has a `yayloyalty_customers` row — the
-     * record itself IS the thing being validated (docs/code-standards.md
-     * § 9), the drawer's whole reason to exist for a deleted member. Pass
-     * it ONLY from routes whose id semantics are genuinely "loyalty
-     * member" (Customer/Activity/Ledger item routes) — never by analogy
-     * from an unrelated caller such as Pro's
-     * `CampaignPreviewRestController`, which validates an arbitrary WP
-     * user id for campaign preview and must keep the default (no
-     * membership fallback).
+     * Route param that must name a live WP user; without the validate_callback the route becomes an enumeration oracle.
      *
      * @return array<string, mixed>
      */
-    protected function user_id_param( ?CustomerRepository $customers = null ): array {
+    protected function user_id_param(): array {
+        return $this->id_param( false );
+    }
+
+    /**
+     * Route param that must name a loyalty member, live or deleted: the customers row outlives its WP user, and the
+     * drawer exists to show that row. Only for member reads — writes and unrelated user ids take user_id_param().
+     *
+     * @return array<string, mixed>
+     */
+    protected function member_id_param(): array {
+        return $this->id_param( true );
+    }
+
+    /**
+     * The shared id arg behind user_id_param() and member_id_param().
+     *
+     * @return array<string, mixed>
+     */
+    private function id_param( bool $allow_deleted_member ): array {
         return [
             'description'       => __( 'WordPress user id.', 'yayloyalty' ),
             'type'              => 'integer',
             'required'          => true,
             'sanitize_callback' => 'absint',
-            'validate_callback' => static function ( $value ) use ( $customers ) {
+            'validate_callback' => static function ( $value ) use ( $allow_deleted_member ) {
                 $user_id = absint( $value );
                 $exists  = $user_id >= 1
-                    && ( get_userdata( $user_id ) || ( null !== $customers && null !== $customers->find_by_user_id( $user_id ) ) );
+                    && ( get_userdata( $user_id )
+                        || ( $allow_deleted_member && null !== ( new CustomerRepository() )->find_by_user_id( $user_id ) ) );
 
                 if ( ! $exists ) {
                     return new \WP_Error(

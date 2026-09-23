@@ -2,7 +2,6 @@
 namespace YayLoyalty\Controllers;
 
 use YayLoyalty\Access\Capabilities;
-use YayLoyalty\Repositories\CustomerRepository;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -22,13 +21,6 @@ defined( 'ABSPATH' ) || exit;
  */
 final class RedemptionsRestController extends AbstractRestController {
 
-    /** @var CustomerRepository Read-only — only the deleted-member id validation. */
-    private $customers;
-
-    public function __construct( CustomerRepository $customers ) {
-        $this->customers = $customers;
-    }
-
     public function get_rest_base(): string {
         return 'redemptions';
     }
@@ -43,7 +35,7 @@ final class RedemptionsRestController extends AbstractRestController {
                     'callback'            => fn( $request ) => $this->exec_read( [ $this, 'get_history' ], $request ),
                     'permission_callback' => $this->requires( Capabilities::VIEW ),
                     'args'                => array_merge(
-                        [ 'id' => $this->user_id_param( $this->customers ) ],
+                        [ 'id' => $this->member_id_param() ],
                         $this->get_collection_params()
                     ),
                 ],
@@ -53,7 +45,7 @@ final class RedemptionsRestController extends AbstractRestController {
     }
 
     public function get_history( \WP_REST_Request $request ) {
-        // No table yet — `id` is validated by user_id_param() but nothing looks it up.
+        // No table yet — `id` is validated by member_id_param() but nothing looks it up.
         return $this->respond_empty_page( $request );
     }
 

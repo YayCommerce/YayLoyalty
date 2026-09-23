@@ -5,7 +5,6 @@ use YayLoyalty\Access\Capabilities;
 use YayLoyalty\Controllers\Schemas\ActivityQueryArgs;
 use YayLoyalty\Enums\ActivityEvent;
 use YayLoyalty\Repositories\CustomerMetaRepository;
-use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Utils\Log;
 
 defined( 'ABSPATH' ) || exit;
@@ -36,12 +35,8 @@ final class ActivityRestController extends AbstractRestController {
     /** @var CustomerMetaRepository */
     private $meta;
 
-    /** @var CustomerRepository Read-only — only the deleted-member id validation. */
-    private $customers;
-
-    public function __construct( CustomerMetaRepository $meta, CustomerRepository $customers ) {
-        $this->meta      = $meta;
-        $this->customers = $customers;
+    public function __construct( CustomerMetaRepository $meta ) {
+        $this->meta = $meta;
     }
 
     public function get_rest_base(): string {
@@ -58,7 +53,7 @@ final class ActivityRestController extends AbstractRestController {
                     'callback'            => fn( $request ) => $this->exec_read( [ $this, 'get_history' ], $request ),
                     'permission_callback' => $this->requires( Capabilities::VIEW ),
                     'args'                => array_merge(
-                        [ 'id' => $this->user_id_param( $this->customers ) ],
+                        [ 'id' => $this->member_id_param() ],
                         $this->get_collection_params(),
                         ActivityQueryArgs::all()
                     ),
