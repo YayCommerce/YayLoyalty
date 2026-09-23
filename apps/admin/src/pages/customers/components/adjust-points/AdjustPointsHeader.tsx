@@ -1,10 +1,10 @@
 import { formatPoints } from '@/lib/helpers/points.helper';
-import type { AdjustPointsPreviewCustomer } from '@/lib/schema/customer.schema';
 import { DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/custom/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { bulkHeaderTitle, BULK_HEADER_SUBTITLE } from '../customers-adjust-points.bulk.copy';
-import { ADJUST_POINTS_TITLE, singleCustomerHeader, staleHeaderSubtitle } from '../customers-adjust-points.copy';
 import { pointsToMoney } from '../../drawer/customer-drawer.money';
+import { BULK_HEADER_SUBTITLE, bulkHeaderTitle } from '../customers-adjust-points.bulk.copy';
+import { ADJUST_POINTS_TITLE, singleCustomerHeader, staleHeaderSubtitle } from '../customers-adjust-points.copy';
+import type { AdjustTarget } from '../customers-adjust-points.form-state';
 
 /** Title + description: single-customer identity/balance (with a stale subtitle) or the bulk restatement. */
 export function AdjustPointsHeader({
@@ -18,7 +18,7 @@ export function AdjustPointsHeader({
 }: {
   isSingle: boolean;
   isLoading: boolean;
-  singleCustomer: AdjustPointsPreviewCustomer | undefined;
+  singleCustomer: AdjustTarget | undefined;
   pointsPerCurrencyUnit: number;
   isStale: boolean;
   openedBalance: number | null;

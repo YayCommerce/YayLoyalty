@@ -167,33 +167,20 @@ export const adjustPointsSchema = z.object({
 
 export type AdjustPointsInput = z.infer<typeof adjustPointsSchema>;
 
-/** One hydrated customer in an adjust-preview response; only present for a single, enrolled id. */
-export const adjustPointsPreviewCustomerSchema = z.object({
-  user_id: z.number().int(),
-  name: z.string(),
-  email: z.string(),
-  balance: z.number().int(),
-  lifetime_earned: z.number().int(),
-});
-
-export type AdjustPointsPreviewCustomer = z.infer<typeof adjustPointsPreviewCustomerSchema>;
-
-/** Mirrors CustomerAdjustPreviewRestController::envelope(). */
+/** Mirrors CustomerAdjustPreviewRestController::preview(). `count` is null unless filters were sent. */
 export const adjustPointsPreviewSchema = z.object({
-  count: z.number().int(),
-  customers: z.array(adjustPointsPreviewCustomerSchema),
-  liability_points: z.number().int().nullable(),
+  count: z.number().int().nullable(),
+  liability_points: z.number().int(),
   points_per_currency_unit: z.number(),
-  fetched_at: z.string(),
 });
 
 export type AdjustPointsPreview = z.infer<typeof adjustPointsPreviewSchema>;
 
 /**
- * `filters` is typed structurally here (not as `RowFilters`) so this
- * lib-level module never imports from `pages/customers/` — the page's
- * `RowFilters` is structurally compatible and passed in as-is.
+ * `filters` only for "select all matching" (a ticked list knows its own
+ * count). Typed structurally, not as `RowFilters`, so this lib-level module
+ * never imports from `pages/customers/`.
  */
-export type AdjustPointsPreviewInput =
-  | { customerIds: number[] }
-  | { filters: { search: string; balanceRange: string; expiringSoon: string; tier: string } };
+export type AdjustPointsPreviewInput = {
+  filters?: { search: string; balanceRange: string; expiringSoon: string };
+};

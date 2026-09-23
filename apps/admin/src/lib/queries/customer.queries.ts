@@ -88,7 +88,7 @@ export const CUSTOMER_QUERIES = {
       retry: 1,
     }),
 
-  /** The adjust dialog's live snapshot. staleTime 0: a cached balance would defeat the 3b stale-balance guard. */
+  /** The bulk adjust dialog's count/liability/rate. staleTime 0: each open reads the store as it is now. */
   adjustPreview: (input: AdjustPointsPreviewInput, enabled: boolean) =>
     queryOptions({
       queryKey: ['customer', 'adjust-preview', input],
@@ -143,7 +143,6 @@ export function useAdjustPointsMutation(userId: number) {
       // An adjustment writes a `points_adjusted` activity row.
       queryClient.invalidateQueries({ queryKey: customerKeyPrefix('activity', userId) });
       queryClient.invalidateQueries({ queryKey: ['customer', 'list'] });
-      queryClient.invalidateQueries({ queryKey: ['customer', 'adjust-preview'] });
     },
   });
 }

@@ -1,43 +1,51 @@
 import { useEffect, useState } from 'react';
 
-import type { AdjustPointsPreview, AdjustPointsPreviewCustomer } from '@/lib/schema/customer.schema';
-import { isStaleSnapshot } from './customers-adjust-points.form-state';
+import { isStaleSnapshot, type AdjustTarget } from './customers-adjust-points.form-state';
 
 /**
- * 3b's baseline bookkeeping: the record the admin has acknowledged, the
- * balance first seen (for the stale banner's header sentence), and
- * re-baselining on a successful Reload — never on the submit-time
- * re-check, which must block rather than silently accept a change.
- *
- * Pulled out of the dialog shell purely to keep that file under the repo's
- * line-count guidance; this is state machinery, not a second UI surface, so
- * it stays a hook rather than another component split.
+ * Single-customer baseline bookkeeping: the record the admin has
+ * acknowledged, the balance first seen (for the stale banner's header
+ * sentence), and re-baselining on a successful Reload — never on the
+ * submit-time re-check, which must block rather than silently accept a change.
  */
 export function useAdjustPreviewBaseline(
   open: boolean,
   isSingle: boolean,
-  singleCustomer: AdjustPointsPreviewCustomer | undefined,
-  refetch: () => Promise<{ data?: AdjustPointsPreview }>,
+  singleCustomer: AdjustTarget | undefined,
+  refetch: (() => Promise<{ data?: AdjustTarget; error?: unknown }>) | undefined,
   isFetching: boolean,
 ) {
-  const [baselineSnapshot, setBaselineSnapshot] = useState<AdjustPointsPreviewCustomer | null>(null);
+  const [baselineSnapshot, setBaselineSnapshot] = useState<AdjustTarget | null>(null);
   const [openedBalance, setOpenedBalance] = useState<number | null>(null);
+  const [isOpenReadDone, setIsOpenReadDone] = useState(false);
+
+  // The record may already be cached (the drawer holds the same detail
+  // query), so each open forces one fresh read and baselines only after it.
+  useEffect(() => {
+    if (!open || !isSingle || !refetch) return;
+
+    let isCurrent = true;
+    void refetch().finally(() => {
+      if (isCurrent) setIsOpenReadDone(true);
+    });
+
+    return () => {
+      isCurrent = false;
+      setIsOpenReadDone(false);
+    };
+  }, [open, isSingle]);
 
   useEffect(() => {
-    // While closed the query is disabled but still serves its cached record
-    // with nothing in flight — capturing that would baseline a balance from
-    // before the last adjustment (or another customer). On reopen, wait for
-    // the staleTime:0 refetch to settle before treating a record as the baseline.
-    if (open && baselineSnapshot === null && singleCustomer && !isFetching) {
+    if (open && isOpenReadDone && baselineSnapshot === null && singleCustomer && !isFetching) {
       setBaselineSnapshot(singleCustomer);
       setOpenedBalance(singleCustomer.balance);
     }
-  }, [open, baselineSnapshot, singleCustomer, isFetching]);
+  }, [open, isOpenReadDone, baselineSnapshot, singleCustomer, isFetching]);
 
   async function handleReload() {
+    if (!refetch) return;
     const fresh = await refetch();
-    const latest = fresh.data?.customers[0];
-    if (latest) setBaselineSnapshot(latest);
+    if (fresh.data && !fresh.error) setBaselineSnapshot(fresh.data);
   }
 
   function reset() {
@@ -49,7 +57,7 @@ export function useAdjustPreviewBaseline(
     isStale: isSingle && isStaleSnapshot(baselineSnapshot, singleCustomer ?? null),
     hasBaseline: baselineSnapshot !== null,
     /** For the submit-time re-check, which compares against a *fresh* refetch, not `singleCustomer`. Fails closed without a baseline. */
-    isStaleAgainst: (record: AdjustPointsPreviewCustomer | null) =>
+    isStaleAgainst: (record: AdjustTarget | null) =>
       baselineSnapshot === null || isStaleSnapshot(baselineSnapshot, record),
     openedBalance,
     handleReload,

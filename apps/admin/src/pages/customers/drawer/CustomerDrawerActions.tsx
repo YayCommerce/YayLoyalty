@@ -1,10 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { Can, CAP } from '@/lib/access';
 import { getApiErrorMessage } from '@/lib/api/api';
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
-import { useAdjustPointsMutation, useAdjustPointsPreviewQuery } from '@/lib/queries/customer.queries';
+import { useAdjustPointsMutation, useCustomerQuery } from '@/lib/queries/customer.queries';
 import type { Customer } from '@/lib/schema/customer.schema';
 import { Button } from '@/components/ui/button';
 import { ADJUST_POINTS_ERROR_FALLBACK, adjustPointsSuccessToast } from '../components/customers-adjust-points.copy';
@@ -22,7 +22,7 @@ import {
 /**
  * Adjust points · Reset expiry · Export ledger · [Assign tier, Pro only].
  * Adjust points is the one live action — it reuses the existing bulk
- * dialog/mutation with `count={1}`, which already invalidates detail,
+ * dialog/mutation in its single-customer layout, which already invalidates detail,
  * ledger, activity and list on success (see `useAdjustPointsMutation`), so
  * the drawer's own stats refresh without any extra wiring here.
  *
@@ -39,9 +39,8 @@ export function CustomerDrawerActions({ customer, isLoading }: { customer: Custo
   const adjustMutation = useAdjustPointsMutation(customer.user_id);
   const isDeleted = !!customer.deleted_at;
 
-  // Memoised so the query key is stable across renders while the dialog is open.
-  const previewInput = useMemo(() => ({ customerIds: [customer.user_id] }), [customer.user_id]);
-  const preview = useAdjustPointsPreviewQuery(previewInput, isAdjustOpen);
+  // The drawer's own detail query (same key, same cache): the dialog reads and re-checks the record the drawer shows.
+  const customerQuery = useCustomerQuery(customer.user_id);
 
   const disabledReason = isDeleted
     ? DELETED_ACCOUNT_ACTION_REASON()
@@ -89,7 +88,7 @@ export function CustomerDrawerActions({ customer, isLoading }: { customer: Custo
             },
           })
         }
-        preview={preview}
+        target={{ kind: 'single', customer: customerQuery }}
       />
     </div>
   );

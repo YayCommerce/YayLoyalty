@@ -1,6 +1,9 @@
-import type { AdjustPointsPreviewCustomer } from '@/lib/schema/customer.schema';
+import type { CustomerListRow } from '@/lib/schema/customer.schema';
 
 /** Pure derivations for the Adjust-points dialog — no React, so every branch is vitest-testable in isolation. */
+
+/** The one customer a single adjustment targets — the fields its guards read, from `GET /customers/{id}`. */
+export type AdjustTarget = Pick<CustomerListRow, 'user_id' | 'name' | 'balance' | 'lifetime_earned'>;
 
 export type AdjustDirection = 'add' | 'remove';
 
@@ -94,8 +97,8 @@ export function liabilityDelta(balance: number, balanceAfter: number): number {
  * against a baseline left over from a different customer.
  */
 export function isStaleSnapshot(
-  baseline: AdjustPointsPreviewCustomer | null,
-  latest: AdjustPointsPreviewCustomer | null,
+  baseline: AdjustTarget | null,
+  latest: AdjustTarget | null,
 ): boolean {
   if (!baseline || !latest) return false;
   return (

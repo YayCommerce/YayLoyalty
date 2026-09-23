@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { __ } from '@wordpress/i18n';
 
-import { adjustPointsSchema, type AdjustPointsInput, type AdjustPointsPreview } from '@/lib/schema/customer.schema';
+import { adjustPointsSchema, type AdjustPointsInput, type AdjustPointsPreview, type Customer } from '@/lib/schema/customer.schema';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/custom/dialog';
@@ -23,13 +23,30 @@ import { useBulkSelection } from './customers-adjust-points.use-bulk-selection';
 import { DEFAULT_ROW_FILTERS, type RowFilters } from '../customers-page.filter-rows';
 
 /**
- * Adjust points — single (count === 1, from the drawer) or bulk (count > 1,
- * from the Customers list). Plain useState, not react-hook-form: this stays
- * a flat set of fields with one shared blockers gate, no dependent forms.
+ * A live read the dialog renders from and re-checks against.
+ *
+ * react-query's `refetch()` never rejects and, on a failed fetch, resolves
+ * with the *previous* successful `data` plus a set `error` — so `fresh.data`
+ * alone cannot tell a fresh read from a failed one that happened to return
+ * the cached baseline. Every caller must check `error` explicitly or it
+ * fails open (see handleSubmit below).
+ */
+type LiveRead<T> = {
+  data?: T;
+  isLoading: boolean;
+  isFetching: boolean;
+  error: unknown;
+  refetch: () => Promise<{ data?: T; error?: unknown }>;
+};
+
+/**
+ * Adjust points — one customer (the drawer, or one ticked row) or bulk (the
+ * Customers list). Plain useState, not react-hook-form: this stays a flat
+ * set of fields with one shared blockers gate, no dependent forms.
  *
  * `adjustLifetime` is wired into the submit payload (`{ points, note,
  * adjustLifetime }`). Customer-facing description and notify-by-email stay
- * local component state ONLY, unwired — see plan.md's scope guardrails.
+ * local component state only, not sent to the server yet.
  */
 export function CustomersAdjustPointsDialog({
   open,
@@ -37,7 +54,7 @@ export function CustomersAdjustPointsDialog({
   count,
   isSubmitting,
   onSubmit,
-  preview,
+  target,
   excludedCount = 0,
   selectionMode = 'partial',
   filters,
@@ -51,21 +68,11 @@ export function CustomersAdjustPointsDialog({
   isSubmitting: boolean;
   /** `expectedCount` (bulk only) is the count acknowledged, for bulk-actions' pre-fan-out re-check. */
   onSubmit: (input: AdjustPointsInput, expectedCount?: number) => void;
-  /** Live snapshot from `POST /customers/adjust/preview`. */
-  preview: {
-    data?: AdjustPointsPreview;
-    isLoading: boolean;
-    isFetching: boolean;
-    error: unknown;
-    /**
-     * react-query's `refetch()` never rejects and, on a failed fetch,
-     * resolves with the *previous* successful `data` plus a set `error` —
-     * so `fresh.data` alone cannot tell a fresh read from a failed one that
-     * happened to return the cached baseline. Every caller of this must
-     * check `error` explicitly or it fails open (see handleSubmit below).
-     */
-    refetch: () => Promise<{ data?: AdjustPointsPreview; error?: unknown }>;
-  };
+  /**
+   * Picks the layout. Single reads the customer's own record
+   * (`GET /customers/{id}`); bulk reads `POST /customers/adjust/preview`.
+   */
+  target: { kind: 'single'; customer: LiveRead<Customer> } | { kind: 'bulk'; preview: LiveRead<AdjustPointsPreview> };
   /** Rows deselected under "select all matching" — the server's preview count knows only the filter. */
   excludedCount?: number;
   /** Bulk only: whether the selection is an explicit tick list or "every row matching the filter". */
@@ -81,17 +88,25 @@ export function CustomersAdjustPointsDialog({
   const [validationError, setValidationError] = useState<string | null>(null);
   const [isCheckingBeforeSubmit, setIsCheckingBeforeSubmit] = useState(false);
 
-  const isSingle = count === 1;
-  const singleCustomer = isSingle ? preview.data?.customers[0] : undefined;
-  const pointsPerCurrencyUnit = preview.data?.points_per_currency_unit ?? 0;
+  const isSingle = target.kind === 'single';
+  const source = target.kind === 'single' ? target.customer : target.preview;
+  const singleCustomer = target.kind === 'single' ? target.customer.data : undefined;
+  const previewData = target.kind === 'bulk' ? target.preview.data : undefined;
+  const pointsPerCurrencyUnit = (singleCustomer ?? previewData)?.points_per_currency_unit ?? 0;
 
-  const baseline = useAdjustPreviewBaseline(open, isSingle, singleCustomer, preview.refetch, preview.isFetching);
+  const baseline = useAdjustPreviewBaseline(
+    open,
+    isSingle,
+    singleCustomer,
+    target.kind === 'single' ? target.customer.refetch : undefined,
+    source.isFetching,
+  );
   const { isStale, openedBalance } = baseline;
 
   const bulk = useBulkSelection({
     isSingle,
     count,
-    previewCount: preview.data?.count,
+    previewCount: previewData?.count ?? undefined,
     selectionMode,
     excludedCount,
     rowsOnPage,
@@ -135,7 +150,7 @@ export function CustomersAdjustPointsDialog({
 
   // Fail closed: without a record neither guard below can run. Bulk has no
   // per-customer record to verify against and is not covered by this rule.
-  const isUnverified = isSingle && !preview.isLoading && (!!preview.error || !singleCustomer);
+  const isUnverified = isSingle && !source.isLoading && (!!source.error || !singleCustomer);
   const isNegativeStart = isSingle && !!singleCustomer && singleCustomer.balance < 0;
   const balanceAfter = singleCustomer ? newBalance(state, singleCustomer.balance) : 0;
 
@@ -167,14 +182,14 @@ export function CustomersAdjustPointsDialog({
 
     setValidationError(null);
 
-    if (isSingle) {
+    if (target.kind === 'single') {
       // One cheap read stands between this write and a stale balance — the
       // reactive `isStale` above only catches a change once something else
       // (Reload, a refetch) has already fetched it; this is what actually
       // catches a change made in the seconds since.
       setIsCheckingBeforeSubmit(true);
-      const fresh = await preview.refetch().finally(() => setIsCheckingBeforeSubmit(false));
-      const latest = fresh.data?.customers[0] ?? null;
+      const fresh = await target.customer.refetch().finally(() => setIsCheckingBeforeSubmit(false));
+      const latest = fresh.data ?? null;
 
       // A failed refetch never rejects and resolves with the *previous*
       // successful data plus a set `error` — checking `error` explicitly is
@@ -199,7 +214,7 @@ export function CustomersAdjustPointsDialog({
       <DialogContent className="max-h-[90vh] sm:max-w-lg">
         <AdjustPointsHeader
           isSingle={isSingle}
-          isLoading={preview.isLoading}
+          isLoading={source.isLoading}
           singleCustomer={singleCustomer}
           pointsPerCurrencyUnit={pointsPerCurrencyUnit}
           isStale={isStale}
@@ -212,7 +227,7 @@ export function CustomersAdjustPointsDialog({
             <AlertTitle>{COULD_NOT_VERIFY_TITLE()}</AlertTitle>
             <AlertDescription>
               <p>{COULD_NOT_VERIFY_BODY()}</p>
-              <Button variant="outline" size="sm" onClick={() => preview.refetch()}>
+              <Button variant="outline" size="sm" onClick={() => source.refetch()}>
                 {RETRY_LABEL()}
               </Button>
             </AlertDescription>
@@ -225,7 +240,7 @@ export function CustomersAdjustPointsDialog({
             openedBalance={openedBalance}
             latestBalance={singleCustomer.balance}
             onReload={baseline.handleReload}
-            isReloading={preview.isFetching}
+            isReloading={source.isFetching}
           />
         )}
 
@@ -251,13 +266,13 @@ export function CustomersAdjustPointsDialog({
           <AdjustPointsBulkPanels
             state={state}
             effectiveCount={bulk.effectiveCount}
-            isCountLoading={bulk.usedFilters && preview.isLoading}
+            isCountLoading={bulk.usedFilters && source.isLoading}
             selectionMode={selectionMode}
             filters={filters ?? DEFAULT_ROW_FILTERS}
             notShownOnPage={bulk.notShownOnPage}
             pointsPerCurrencyUnit={pointsPerCurrencyUnit}
-            liabilityPoints={preview.data?.liability_points ?? null}
-            hasPreviewError={!!preview.error}
+            liabilityPoints={previewData?.liability_points ?? null}
+            hasPreviewError={!!source.error}
             isOverLimit={bulk.isOverLimit}
             acknowledged={bulk.acknowledged}
             onAcknowledgedChange={bulk.setAcknowledged}
@@ -293,7 +308,7 @@ export function CustomersAdjustPointsDialog({
           effectiveCount={bulk.effectiveCount}
           isSubmitting={isSubmitting}
           isCheckingBeforeSubmit={isCheckingBeforeSubmit}
-          isPreviewLoading={preview.isLoading}
+          isPreviewLoading={source.isLoading}
           submitEnabled={submitEnabled}
           onCancel={() => handleOpenChange(false)}
           onSubmit={handleSubmit}
