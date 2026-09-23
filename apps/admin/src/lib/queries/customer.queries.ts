@@ -115,6 +115,8 @@ export function useAdjustPointsMutation(userId: number) {
       // The list too, or the row shows the old balance until staleTime lapses.
       queryClient.invalidateQueries({ queryKey: ['customer', 'detail', userId] });
       queryClient.invalidateQueries({ queryKey: ['customer', 'ledger', userId] });
+      // An adjustment writes a `points_adjusted` activity row.
+      queryClient.invalidateQueries({ queryKey: ['customer', 'activity', userId] });
       queryClient.invalidateQueries({ queryKey: ['customer', 'list'] });
     },
   });
