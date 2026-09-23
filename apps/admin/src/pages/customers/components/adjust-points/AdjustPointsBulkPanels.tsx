@@ -1,4 +1,4 @@
-import { formatPoints } from '@/lib/helpers/points.helper';
+import { formatPoints, formatPointsAsMoney } from '@/lib/helpers/points.helper';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BALANCE_RANGE_OPTIONS, EXPIRING_SOON_OPTIONS, type RowFilters } from '../../customers-page.filter-rows';
@@ -19,7 +19,6 @@ import {
 } from '../customers-adjust-points.bulk.copy';
 import { addsToLiability, POINTS_UNIT } from '../customers-adjust-points.copy';
 import { bulkLiabilityProjection, bulkTotalPoints, type AdjustFormState } from '../customers-adjust-points.form-state';
-import { pointsToMoney } from '../../drawer/customer-drawer.money';
 
 /** Non-default active filters, human-readable — tier is never included: it is sent as its balance bucket. */
 function filterSummary(filters: Pick<RowFilters, 'search' | 'balanceRange' | 'expiringSoon'>): string | null {
@@ -72,7 +71,7 @@ export function AdjustPointsBulkPanels({
 }) {
   const summary = selectionMode === 'all' ? filterSummary(filters) : null;
   const total = bulkTotalPoints(state, effectiveCount);
-  const totalMoney = pointsToMoney(total, pointsPerCurrencyUnit);
+  const totalMoney = formatPointsAsMoney(total, pointsPerCurrencyUnit);
   const projection = bulkLiabilityProjection(state.direction, total, liabilityPoints);
 
   return (
@@ -123,14 +122,14 @@ function liabilityLine(
   if (projection.kind === 'none') return null;
 
   if (projection.kind === 'range') {
-    const fromMoney = pointsToMoney(projection.from, pointsPerCurrencyUnit);
-    const toMoney = pointsToMoney(projection.to, pointsPerCurrencyUnit);
+    const fromMoney = formatPointsAsMoney(projection.from, pointsPerCurrencyUnit);
+    const toMoney = formatPointsAsMoney(projection.to, pointsPerCurrencyUnit);
     return fromMoney && toMoney ? (
       <p className="text-muted-foreground text-xs">{bulkLiabilityRange(fromMoney, toMoney)}</p>
     ) : null;
   }
 
-  const deltaMoney = pointsToMoney(projection.delta, pointsPerCurrencyUnit);
+  const deltaMoney = formatPointsAsMoney(projection.delta, pointsPerCurrencyUnit);
   if (!deltaMoney) return null;
 
   return (

@@ -4,7 +4,7 @@ Answers "for this customer, this cart and this reward: how many points can be sp
 
 ```
 evaluate( Reward $reward, Context $ctx ): Result          RewardEngine — type handler lookup + quote
-Clamp::apply( Reward, int $requested, int $balance, ?float $cart_subtotal, string $currency ): Result
+Clamp::apply( Reward, int $requested, int $balance, ?float $cart_subtotal, string $currency, int $decimals ): Result
 ```
 
 One reward per call. The customer already chose the reward, so there is no candidate scan and no eligibility here — liveness, balance vs a fixed cost, conditions and program state are `Engine\Redemption` gates that run **before** `evaluate()`.

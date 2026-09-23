@@ -22,10 +22,11 @@ final class FlexibleDiscountHandler implements RewardHandler {
     /**
      * Precondition: $ctx->get_points_requested() is the session intent (null
      * reads as 0). Postcondition: exactly Clamp::apply( $reward, requested,
-     * $ctx->get_balance(), $ctx->get_cart_subtotal(), $ctx->get_currency() ).
+     * $ctx->get_balance(), $ctx->get_cart_subtotal(), $ctx->get_currency(),
+     * wc_get_price_decimals() ).
      */
     public function quote( Reward $reward, Context $ctx ): Result { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(F08): hand the reward, the requested points cast to int, the balance, the cart subtotal and the currency from the Context to Clamp::apply and return its Result.
+        // TODO(F08): hand the reward, the requested points cast to int, the balance, the cart subtotal and the currency from the Context, plus wc_get_price_decimals(), to Clamp::apply and return its Result.
         throw new \RuntimeException( 'Not implemented' );
     }
 }

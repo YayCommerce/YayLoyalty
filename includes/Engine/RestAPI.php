@@ -77,7 +77,7 @@ class RestAPI {
             // Definition table: repository only, no service.
             new CampaignRestController( $campaigns ),
             new DashboardRestController(
-                new DashboardStats( $dashboard ),
+                new DashboardStats( $dashboard, wc_get_price_decimals() ),
                 new DashboardCache( $dashboard ),
                 new DashboardNotices( $dashboard, $campaigns ),
                 new NoticeDismissals()

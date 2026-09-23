@@ -1,7 +1,6 @@
-import { formatPoints } from '@/lib/helpers/points.helper';
+import { formatPoints, formatPointsAsMoney } from '@/lib/helpers/points.helper';
 import { DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/custom/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { pointsToMoney } from '../../drawer/customer-drawer.money';
 import { BULK_HEADER_SUBTITLE, bulkHeaderTitle } from '../customers-adjust-points.bulk.copy';
 import { ADJUST_POINTS_TITLE, singleCustomerHeader, staleHeaderSubtitle } from '../customers-adjust-points.copy';
 import type { AdjustTarget } from '../customers-adjust-points.form-state';
@@ -27,7 +26,7 @@ export function AdjustPointsHeader({
   function description() {
     if (isSingle && isLoading) return <Skeleton className="h-4 w-40" />;
     if (isSingle && singleCustomer) {
-      const money = pointsToMoney(singleCustomer.balance, pointsPerCurrencyUnit);
+      const money = formatPointsAsMoney(singleCustomer.balance, pointsPerCurrencyUnit);
       const line = singleCustomerHeader(singleCustomer.name, formatPoints(singleCustomer.balance), money);
       return isStale && openedBalance !== null ? `${line} · ${staleHeaderSubtitle(formatPoints(openedBalance))}` : line;
     }

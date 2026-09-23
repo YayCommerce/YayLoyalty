@@ -1,6 +1,5 @@
-import { formatPoints } from '@/lib/helpers/points.helper';
+import { formatPoints, formatPointsAsMoney } from '@/lib/helpers/points.helper';
 import { NumberInputInput, NumberInputRoot } from '@/components/ui/number-input';
-import { pointsToMoney } from '../../drawer/customer-drawer.money';
 import {
   addsToLiability,
   CONFIRM_AMOUNT_LABEL,
@@ -58,14 +57,14 @@ export function AdjustPointsFields({
   }
 
   const balanceAfter = newBalance(state, balance);
-  const balanceAfterMoney = pointsToMoney(balanceAfter, pointsPerCurrencyUnit);
+  const balanceAfterMoney = formatPointsAsMoney(balanceAfter, pointsPerCurrencyUnit);
   const isNegativeOutcome = balanceAfter < 0;
   // Only the portion of a balance above 0 ever counts as liability
   // (`liability_points()` sums `balance > 0`), so this is never the raw
   // signed amount once either side of the adjustment is negative — see
   // `liabilityDelta()`'s docblock.
   const delta = liabilityDelta(balance, balanceAfter);
-  const deltaMoney = pointsToMoney(Math.abs(delta), pointsPerCurrencyUnit);
+  const deltaMoney = formatPointsAsMoney(Math.abs(delta), pointsPerCurrencyUnit);
 
   return (
     <div className="flex flex-col gap-3">

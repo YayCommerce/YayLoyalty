@@ -1,16 +1,4 @@
-import { parseWPCurrency, utcToDate } from '@/lib/helpers/format.helper';
-
-/**
- * Points → money, using `customer.points_per_currency_unit`. `null` when the
- * rate is unconfigured (0) — only the raw rate is on the wire, so the guard
- * lives here.
- *
- * Shared by the expiry panel/stats (4b) — money is derived client-side
- * everywhere in this drawer, never pre-computed and stored.
- */
-export function pointsToMoney(points: number, ratePerCurrencyUnit: number): string | null {
-  return ratePerCurrencyUnit > 0 ? parseWPCurrency(points / ratePerCurrencyUnit) : null;
-}
+import { utcToDate } from '@/lib/helpers/format.helper';
 
 /**
  * Whole days from now until a stored UTC datetime, floored at 0. A plain
