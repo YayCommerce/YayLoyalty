@@ -2,6 +2,7 @@
 namespace YayLoyalty\Controllers;
 
 use YayLoyalty\Access\Capabilities;
+use YayLoyalty\Repositories\CustomerRepository;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -26,6 +27,13 @@ defined( 'ABSPATH' ) || exit;
  */
 final class ReferralsRestController extends AbstractRestController {
 
+    /** @var CustomerRepository Read-only — only the deleted-member id validation. */
+    private $customers;
+
+    public function __construct( CustomerRepository $customers ) {
+        $this->customers = $customers;
+    }
+
     public function get_rest_base(): string {
         return 'referrals';
     }
@@ -40,7 +48,7 @@ final class ReferralsRestController extends AbstractRestController {
                     'callback'            => fn( $request ) => $this->exec_read( [ $this, 'get_history' ], $request ),
                     'permission_callback' => $this->requires( Capabilities::VIEW ),
                     'args'                => array_merge(
-                        [ 'id' => $this->user_id_param() ],
+                        [ 'id' => $this->user_id_param( $this->customers ) ],
                         $this->get_collection_params()
                     ),
                 ],

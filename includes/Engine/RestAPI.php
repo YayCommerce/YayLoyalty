@@ -69,14 +69,11 @@ class RestAPI {
             // $customers widens the deleted member's ledger tab past user_id_param()'s default 404.
             new LedgerRestController( $ledger, $customers ),
             new ActivityRestController( $customer_meta, $customers ),
-            // No repository: the real path answers an empty envelope until a
-            // redemptions table exists. ProGated tab, always empty either
-            // way — deliberately NOT given the deleted-member id relaxation:
-            // zero behavioural benefit when the tab body never renders content.
-            new RedemptionsRestController(),
-            // Same again — no repository, empty envelope on the real path
-            // until a referrals table exists.
-            new ReferralsRestController(),
+            // $customers only for the deleted-member id relaxation: the Pro build
+            // renders these tabs for a deleted member too, and a 404 there would
+            // stand in for "no rows". Empty envelopes until their tables exist.
+            new RedemptionsRestController( $customers ),
+            new ReferralsRestController( $customers ),
             // Definition table: repository only, no service.
             new CampaignRestController( $campaigns ),
             new DashboardRestController(
