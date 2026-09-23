@@ -143,7 +143,7 @@ final class CustomerMeta extends AbstractModel {
     }
 
     /**
-     * The deleted-member identity fallback both drawer formatters read —
+     * The deleted-member identity fallback both customer formatters read —
      * the keys `account_deleted`'s snapshot writes.
      *
      * @return array{name: string, email: string}

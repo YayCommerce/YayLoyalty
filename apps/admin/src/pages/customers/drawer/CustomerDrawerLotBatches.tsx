@@ -21,7 +21,7 @@ import {
  *
  * `batches: null` (the wire contract's OTHER "no batches" case — a store on
  * the inactivity model regardless of build) gets the same explanation:
- * nothing on the real path sends it today, but the component still handles
+ * nothing sends it today, but the component still handles
  * it correctly rather than rendering an empty table.
  */
 export function CustomerDrawerLotBatches({ batches }: { batches: DrawerExpiry['batches'] }) {

@@ -14,7 +14,7 @@ import {
 } from './customer-drawer.panels.copy';
 
 /**
- * 5a (F23) — "Why this balance is negative": up to three numbered facts, or
+ * 5a — "Why this balance is negative": up to three numbered facts, or
  * one generic sentence when the story can't be told (`shape !== 'refund_reversal'`
  * or any leg is `null`). 5a's own claim that a negative balance "always" has
  * the earned→spent→reversed shape only holds for a refund; a manual

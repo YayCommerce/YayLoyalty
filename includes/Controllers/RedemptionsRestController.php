@@ -6,13 +6,12 @@ use YayLoyalty\Access\Capabilities;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * GET /yayloyalty/v1/customers/{id}/redemptions — paginated redemption rows
- * (F09 Wave B, artboard 3e).
+ * GET /yayloyalty/v1/customers/{id}/redemptions — paginated redemption rows.
  *
  * No `redemptions` table exists yet — `docs/data-model.md`'s
  * `yayloyalty_redemptions` is designed but not implemented (1.0) — so the
- * real path always answers an EMPTY envelope, matching `counts.redemptions`
- * on `CustomerRestController::format_customer()`. When the real table ships,
+ * endpoint always answers an EMPTY envelope, matching `counts.redemptions`
+ * from `CustomerItemFormatter::format()`. When the real table ships,
  * only `get_history()` below changes.
  *
  * A separate controller, the same shape `ActivityRestController` uses for

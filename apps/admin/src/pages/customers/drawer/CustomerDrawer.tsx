@@ -24,9 +24,9 @@ import { DrawerBackLink } from './DrawerBackLink';
  * Sheet shell for the `customers/:userId` child route (see `router.tsx`) —
  * rendered through `CustomersPage`'s `<Outlet/>`, so the list underneath
  * stays mounted, dimmed, and keeps its own filters/page/sort/selection while
- * this is open. Owns route params, the identity query, and open/close.
- * Stats, actions and tabs are composed in here by phases 05-06 — this phase
- * only wires the shell, the loading skeleton and the error/not-found state.
+ * this is open. Owns route params, the identity query, open/close, the
+ * loading skeleton and the error/not-found state; composes the stats,
+ * actions, edge-state panels and tabs.
  *
  * Below the `sm` breakpoint `SheetContent` fills the screen (5c) instead of
  * showing as a 600px panel — one component, driven by the CSS breakpoint on
@@ -121,8 +121,8 @@ export default function CustomerDrawer() {
                         <CustomerDrawerLotBatches batches={query.data.expiry.batches} />
                       </>
                     )}
-                    {/* 5a's two panels (F23) — `negative_balance` is always
-                        null today (the real path would have to walk the
+                    {/* 5a's two panels — `negative_balance` is always
+                        null today (the server would have to walk the
                         ledger backwards to assemble it). A deleted or
                         expiring account is never also this case, so this
                         and the two blocks above are mutually exclusive. Free

@@ -6,13 +6,12 @@ use YayLoyalty\Access\Capabilities;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * GET /yayloyalty/v1/customers/{id}/referrals — paginated referral rows
- * (F09 Wave B, artboard 3f).
+ * GET /yayloyalty/v1/customers/{id}/referrals — paginated referral rows.
  *
  * No `referrals` table exists yet — `docs/data-model.md`'s
  * `yayloyalty_referrals` is designed but not implemented (1.1) — so the
- * real path always answers an EMPTY envelope, matching `counts.referrals`
- * on `CustomerRestController::format_customer()`. When the real table ships,
+ * endpoint always answers an EMPTY envelope, matching `counts.referrals`
+ * from `CustomerItemFormatter::format()`. When the real table ships,
  * only `get_history()` below changes.
  *
  * `referred_name`/`referred_email` are personal data of a THIRD PARTY (the

@@ -90,12 +90,10 @@ final class CustomerActivityService {
     }
 
     /**
-     * "First loyalty activity", not "WP registered": the `customers` row now
-     * exists from registration, but this entry waits for the first ledger
-     * write. Writes once per user; accepted race under concurrency
-     * — this table's shape has no unique key to prevent a duplicate, only
-     * `has()` to make it unlikely (cosmetic only, no backfill for members
-     * that already exist).
+     * One `account_created` row on a member's first ledger write — "first loyalty
+     * activity", not "WP registered". Writes once per user; accepted race under
+     * concurrency — this table has no unique key to prevent a duplicate, only
+     * `has()` to make it unlikely (cosmetic only, no backfill for existing members).
      */
     public function record_account_created( LedgerEntry $entry ): void {
         $user_id = $entry->get_user_id();

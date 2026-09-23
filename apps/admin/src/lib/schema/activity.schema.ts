@@ -13,7 +13,7 @@ import { paginatedSchema } from '@/lib/api/paginated';
  * legitimately gets zero rows.
  */
 
-/** Eight event kinds artboard 3d shows. Matches `ActivityQueryArgs::EVENT_TYPES`. */
+/** The eight event kinds, in artboard order. Matches `ActivityEvent::ALL`. */
 export const ACTIVITY_EVENT_TYPES = [
   'account_created',
   'points_adjusted',

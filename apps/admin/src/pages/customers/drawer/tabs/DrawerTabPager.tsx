@@ -11,10 +11,8 @@ export const DRAWER_PAGE_SIZE = 10;
  * `components/ui/pagination.tsx` primitive (that one is "Page X of Y" + a
  * "Go to" number input, a different shape entirely for a different context).
  * Reuses the same underlying pieces (`Button` + chevron icons) the way
- * `CustomersPagination.tsx` wraps `Pagination`, per the plan's fallback —
- * paged, never "Load more" (3c note 3 for the ledger; activity switched from
- * Load more to this same pager once its own row count made Load more
- * unusable). Shared by every drawer tab that pages rather than accumulates —
+ * `CustomersPagination.tsx` wraps `Pagination` — paged, never "Load more"
+ * (3c note 3). Shared by every drawer tab that pages rather than accumulates —
  * `LedgerTab.tsx` and `ActivityLogTab.tsx` both compose it — hence the
  * drawer-generic name rather than `LedgerTabPager`.
  */

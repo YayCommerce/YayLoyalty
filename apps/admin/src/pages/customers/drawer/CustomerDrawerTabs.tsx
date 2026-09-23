@@ -27,8 +27,7 @@ function DrawerTab({
   value: string;
   label: string;
   count: number;
-  /** Redemptions (3e)/Referrals (3f, phase 06) — a Pro badge beside the
-   *  label, established here for phase 06 to copy verbatim. */
+  /** Redemptions (3e)/Referrals (3f) — a Pro badge beside the label. */
   proGated?: boolean;
 }) {
   return (

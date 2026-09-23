@@ -12,7 +12,7 @@ export type LedgerRow = {
   points: string;
   balance: string;
   /** True for the one row `customer.negative_balance.cause_ledger_id` names
-   *  (5a, F09 Wave B) — the row the negative-balance panel above is talking
+   *  (5a) — the row the negative-balance panel above is talking
    *  about. `false` on every other row. */
   isCause: boolean;
 };

@@ -5,7 +5,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Item schema for `GET /customers/{id}` — split out of CustomerRestController
- * to keep that file under the 200-line cap (docs/development-rules.md).
+ * to keep that file under the 200-line cap.
  *
  * Every property is readonly: nothing on this resource is client-writable
  * (manual adjustments go through `POST .../adjust`, a different resource).

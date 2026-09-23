@@ -19,9 +19,7 @@ use YayLoyalty\Services\CustomerActivityService;
  * Doubles are anonymous classes extending the real repositories, the same
  * pattern `DashboardStatsTest` already uses; `AbstractRepository` has no
  * constructor, so each double's own constructor never calls
- * `parent::__construct()`. `$meta->inserted` is a plain public property —
- * objects are handles in PHP, so the service's writes are visible to the
- * test through the same instance without any by-reference juggling.
+ * `parent::__construct()`.
  */
 final class CustomerActivityServiceTest extends TestCase {
 

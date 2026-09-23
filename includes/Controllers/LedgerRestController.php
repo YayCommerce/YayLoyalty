@@ -44,9 +44,8 @@ final class LedgerRestController extends AbstractRestController {
     }
 
     /**
-     * `type`/`search`/`after`/`before` are registered but not yet applied
-     * on the real path — no new `LedgerRepository` SQL this wave (see
-     * `LedgerQueryArgs` docblock). `type_counts: null` is the wire signal
+     * `type`/`search`/`after`/`before` are registered but not applied —
+     * `LedgerRepository` has no SQL behind them yet (see `LedgerQueryArgs`). `type_counts: null` is the wire signal
      * the SPA reads to disable the ledger tab's filter row rather than let
      * it silently do nothing against real data.
      */

@@ -6,7 +6,7 @@ import { paginatedSchema } from '@/lib/api/paginated';
  * Mirrors `ReferralsRestController::define_item_schema()`. THAT PHP METHOD
  * IS THE SOURCE OF TRUTH.
  *
- * The real path always answers an empty envelope — no `yayloyalty_referrals`
+ * The server always answers an empty envelope — no `yayloyalty_referrals`
  * table exists yet (docs/data-model.md, 1.1, designed but not implemented).
  * When it ships, only the server handler changes — this schema is already
  * the contract.

@@ -55,10 +55,10 @@ export const CUSTOMER_QUERIES = {
     }),
 
   /**
-   * Paged, exactly like `ledger` above — not the infinite/"Load more" shape
-   * this started as (see `ActivityLogTab.tsx`'s docblock for why it
-   * changed). Same `keepPreviousData` reasoning: paging/filtering must not
-   * flash a skeleton over rows already on screen.
+   * Paged, exactly like `ledger` above, not "Load more" (see
+   * `ActivityLogTab.tsx`'s docblock for why). Same `keepPreviousData`
+   * reasoning: paging/filtering must not flash a skeleton over rows already
+   * on screen.
    */
   activity: (userId: number, params: CustomerActivityParams) =>
     queryOptions({

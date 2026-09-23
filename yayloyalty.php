@@ -130,10 +130,7 @@ if ( ! wp_installing() ) {
     // event, so a new WP user shows up in the admin customer list right away.
     add_action( 'user_register', [ \YayLoyalty\Engine\CustomerActivityListener::class, 'on_user_register' ], 10, 1 );
 
-    // account_created + points_adjusted capture. Registered here (not inside
-    // RestAPI) because no dedicated hook-registration class exists yet in
-    // this codebase — every WP-core-hook add_action() is either bootstrap-level
-    // here or inline in a small singleton (see CustomerActivityListener's docblock).
+    // account_created + points_adjusted capture.
     add_action( 'yayloyalty_ledger_recorded', [ \YayLoyalty\Engine\CustomerActivityListener::class, 'on_ledger_recorded' ], 10, 1 );
 }
 

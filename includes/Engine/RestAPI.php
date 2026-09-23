@@ -42,7 +42,7 @@ class RestAPI {
      * @return AbstractRestController[]
      */
     private function controllers(): array {
-        // One of LedgerService's two authorised construction sites; see its docblock.
+        // An authorised LedgerService construction site; see its docblock.
         $customers = new CustomerRepository();
         $ledger    = new LedgerRepository();
 

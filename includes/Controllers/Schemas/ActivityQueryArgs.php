@@ -16,8 +16,8 @@ defined( 'ABSPATH' ) || exit;
  * `group` is a GROUPING over the eight `event_type`s (`ActivityEvent::ALL`), not a
  * partition: `expiring_soon_email_sent` belongs to BOTH `expiry` and `emails`
  * on purpose — it is a lens ("what am I looking for"), not a mutually-exclusive
- * category. Do not "fix" the overlap. `account_created` stays in no group
- * (matches today's behaviour — `all` still shows it).
+ * category. Do not "fix" the overlap. `account_created` is in no group;
+ * `all` still shows it.
  */
 final class ActivityQueryArgs {
 

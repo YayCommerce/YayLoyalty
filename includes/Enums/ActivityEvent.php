@@ -6,10 +6,9 @@ defined( 'ABSPATH' ) || exit;
 /**
  * The `meta_key` vocabulary of `yayloyalty_customer_meta`, which doubles as
  * the activity log's `event_type`. Only three of the eight have a writer
- * today: `account_created`, `points_adjusted` (Services\CustomerActivityService,
- * subscribed to `yayloyalty_ledger_recorded`) and `account_deleted`
- * (Engine\CustomerActivityListener, subscribed to `delete_user`/
- * `wpmu_delete_user`). The other five have no source feature yet
+ * today: `account_created`, `points_adjusted` (on `yayloyalty_ledger_recorded`)
+ * and `account_deleted` (on `delete_user`/`wpmu_delete_user`), all written by
+ * Services\CustomerActivityService via Engine\CustomerActivityListener. The other five have no source feature yet
  * (tiers, expiry job, redemptions, balance/expiry emails) — a customer
  * whose only history would be one of them legitimately has zero activity
  * rows; that is the true count, not a bug.

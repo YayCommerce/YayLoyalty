@@ -7,9 +7,9 @@ import { ReferralsTabHeader } from './ReferralsTabHeader';
 import { ReferralsTabRows } from './ReferralsTabRows';
 
 /**
- * 3f — table only (the summary strip and "Revenue referred" are cut, see
- * the phase brief). Structurally a clone of `RedemptionsTab.tsx`: owns
- * paging, no filters this phase, plus the link/campaign header 3e doesn't have.
+ * 3f — table only (the summary strip and "Revenue referred" are cut).
+ * Structurally a clone of `RedemptionsTab.tsx`: owns paging, no filters,
+ * plus the link/campaign header 3e doesn't have.
  */
 export function ReferralsTab({ userId }: { userId: number }) {
   const [page, setPage] = useState(1);

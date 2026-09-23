@@ -20,8 +20,8 @@ defined( 'ABSPATH' ) || exit;
  * Database\InitYayLoyaltyCustomer::maybe_create() and (once their bodies
  * land) Engine\Earning\EarningService::build() and
  * Engine\Redemption\RedemptionService::build(). Name a fifth here before
- * adding it. Manual rows enter through adjust(); system rows through earn()
- * and redeem(), which share record() so there is one write path.
+ * adding it. Manual rows enter through adjust() and record(); system rows
+ * through earn() and redeem(), which add the idempotency-key duplicate branch.
  */
 final class LedgerService {
 

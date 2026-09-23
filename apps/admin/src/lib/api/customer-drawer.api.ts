@@ -50,7 +50,7 @@ export async function getCustomerActivity(userId: number, params: CustomerActivi
 }
 
 /**
- * `GET /customers/{id}/redemptions`. The real path always answers an empty
+ * `GET /customers/{id}/redemptions`. Always answers an empty
  * envelope (no `redemptions` table yet).
  */
 export async function getCustomerRedemptions(userId: number, params: DrawerPageOnlyParams = {}) {
@@ -62,7 +62,7 @@ export async function getCustomerRedemptions(userId: number, params: DrawerPageO
 }
 
 /**
- * `GET /customers/{id}/referrals`. The real path always answers an empty
+ * `GET /customers/{id}/referrals`. Always answers an empty
  * envelope (no `referrals` table yet). Parsed with `referralEnvelopeSchema`, not
  * the generic `parsePaginated()` helper, which would drop `referral_link`/`campaign`.
  */

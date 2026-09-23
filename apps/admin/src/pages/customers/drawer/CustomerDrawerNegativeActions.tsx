@@ -6,7 +6,7 @@ import {
 } from './customer-drawer.panels.copy';
 
 /**
- * 5a's two actions (F23) — two options, no default, per the artboard's own
+ * 5a's two actions — two options, no default, per the artboard's own
  * framing (writing off costs something, leaving it costs nothing but takes
  * longer to resolve itself).
  *

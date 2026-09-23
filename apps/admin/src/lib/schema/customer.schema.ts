@@ -18,7 +18,7 @@ export const customerCountsSchema = z.object({
 });
 
 /**
- * 4a's "Loose ends this leaves" facts (F09 Wave B) — non-null exactly when
+ * 4a's "Loose ends this leaves" facts — non-null exactly when
  * `deleted_at` is non-null. `kept_ledger_entries` is always real;
  * `void_coupons`/`credited_referrals`/`counted_in_members` are always
  * `null` — no redemptions/referrals/member-count feature exists — and
@@ -40,7 +40,7 @@ export const looseEndsSchema = z.object({
 export type LooseEnds = z.infer<typeof looseEndsSchema>;
 
 /**
- * 4b's expiring-batch summary (F09 Wave B) — always `null` today, since it
+ * 4b's expiring-batch summary — always `null` today, since it
  * needs `lots`, which doesn't exist yet (docs/data-model.md). `batches` is
  * separately nullable inside: `null` means the Free inactivity model (no
  * batches exist at all, not "zero"). Percentages and money are derived
@@ -68,8 +68,8 @@ export const drawerExpirySchema = z.object({
 export type DrawerExpiry = z.infer<typeof drawerExpirySchema>;
 
 /**
- * 5a's structured story (F23, F09 Wave B) — always `null` today, since it
- * needs a backwards ledger walk the real path doesn't do yet. `shape` is a
+ * 5a's structured story — always `null` today, since it needs a backwards
+ * ledger walk the server doesn't do yet. `shape` is a
  * Zod enum, not a bare string: an unknown
  * discriminator fails loudly at parse time rather than the panel rendering
  * a blank or half-filled narrative. `'other'` means the three-step story
@@ -134,8 +134,7 @@ export const customerSchema = customerListRowSchema.extend({
   loose_ends: looseEndsSchema.nullable(),
   expiry: drawerExpirySchema.nullable(),
   negative_balance: drawerNegativeBalanceSchema.nullable(),
-  /** Restored minimally (Wave B) after `worth` was removed wholesale — the
-   *  expiry/negative-balance panels' only remaining need for a currency rate. */
+  /** The expiry/negative-balance panels' only currency rate. */
   points_per_currency_unit: z.number(),
 });
 

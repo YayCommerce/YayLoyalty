@@ -5,7 +5,7 @@ import { formatPoints } from '@/lib/helpers/points.helper';
 /**
  * Copy for the drawer's three header-level edge-state panels — deleted (4a),
  * expiring (4b), negative balance (5a). Split out of `customer-drawer.copy.ts`
- * once that file neared the 200-line cap (F09 Wave B phase 02) — the three
+ * once that file neared the 200-line cap — the three
  * panels share one composition (see `CustomerDrawer.tsx`) and share this
  * file rather than each reopening the main copy module.
  *
@@ -135,7 +135,7 @@ export const EXPIRY_FREE_EXPLANATION = () =>
     'yayloyalty',
   );
 
-// ─── 5a: negative balance (F23) ───────────────────────
+// ─── 5a: negative balance ─────────────────────────────
 
 export const NEGATIVE_BALANCE_HEADING = () => __('Why this balance is negative', 'yayloyalty');
 

@@ -11,26 +11,17 @@ use YayLoyalty\Utils\Log;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * First WP-core business-logic listener in this codebase — no dedicated
- * Listeners/Hooks base class exists, so this mirrors the closest
- * precedent (`Engine\ActDeact::on_new_site()`: plain static, guards then
- * works) and is registered directly in `yayloyalty.php`. Four capture
- * hooks share one service/repository factory: `delete_user`/`wpmu_delete_user`
- * (account deletion, phase 02), `yayloyalty_ledger_recorded`
- * (`account_created` + `points_adjusted`, phase 03), and `user_register`
- * (customers row materialised at signup instead of on first ledger event).
- * Every callback try/catches `\Throwable` — a failed capture must never
- * block or fatal the WP action it observes.
+ * Member-activity capture on `user_register`, `delete_user`/`wpmu_delete_user`
+ * and `yayloyalty_ledger_recorded`; registered directly in `yayloyalty.php`.
+ * Every callback catches `\Throwable` — a failed capture must never block or
+ * fatal the WP action it observes.
  */
 final class CustomerActivityListener {
 
     /**
-     * Materialises the customers row at signup. Uses `ensure_row()` directly
-     * (not `record()`/`ensure_row()` via a ledger write) — a new account has
-     * no points activity yet, so there is nothing to log, only a row to
-     * reserve at balance 0. `ensure_row()` is itself idempotent
-     * (`ON DUPLICATE KEY UPDATE`), so a double-fire from a third party is
-     * harmless.
+     * Materialises the customers row at balance 0 at signup; no activity row, as
+     * a new account has no points activity yet. `ensure_row()` is idempotent
+     * (`ON DUPLICATE KEY UPDATE`), so a double-fire from a third party is harmless.
      *
      * Staff are skipped: an admin or shop manager is not a loyalty member
      * just for having an account. "Staff" is WooCommerce's own back-office

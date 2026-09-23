@@ -10,7 +10,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * GET /yayloyalty/v1/customers/{id}/activity — paginated activity-log rows
- * (F09 Wave B, artboard 3d), reading real `yayloyalty_customer_meta` rows.
+ * read from `yayloyalty_customer_meta`.
  *
  * Only three of the eight `ActivityEvent` kinds have a writer today — see
  * `Enums\ActivityEvent`'s docblock for which. No backfill: a pre-existing

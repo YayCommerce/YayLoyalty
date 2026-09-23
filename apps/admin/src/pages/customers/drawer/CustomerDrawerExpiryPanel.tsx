@@ -16,13 +16,12 @@ import {
 
 /**
  * 4b's warning banner + three disabled actions. Rendered only when
- * `customer.expiry` is non-null (always null today — no `lots` table on the
- * real path, docs/data-model.md).
+ * `customer.expiry` is non-null (always null today — no `lots` table,
+ * docs/data-model.md).
  *
  * "Reset expiry" reuses the SAME reason `CustomerDrawerActions.tsx` shows for
- * it in the main actions row (`NOT_AVAILABLE_YET_REASON`) — the plan calls
- * for staying consistent with that component rather than inventing a second
- * reason for one button.
+ * it in the main actions row (`NOT_AVAILABLE_YET_REASON`) — consistent with
+ * that component rather than a second reason for one button.
  * Exempt/Send reminder are new actions with no endpoint anywhere yet, so
  * they get the same generic reason.
  */

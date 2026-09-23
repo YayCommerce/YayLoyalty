@@ -1,9 +1,10 @@
 import { __, sprintf } from '@wordpress/i18n';
 
 /**
- * Every sentence in the customer drawer — header, stats, actions, tabs,
- * ledger filters/columns/pager, and the four per-tab empty states. Pure: no
- * React, no fetch.
+ * The customer drawer's core copy — header, stats, actions, tabs, ledger
+ * filters/columns/pager, and the four per-tab empty states. Activity-log and
+ * edge-panel copy live in `customer-drawer.activity.copy.ts` and
+ * `customer-drawer.panels.copy.ts`. Pure: no React, no fetch.
  *
  * Flat exported functions, not one nested `DRAWER_COPY` object — matches
  * `dashboard-page.copy.ts`'s own style. Every entry is a function, even
@@ -19,7 +20,7 @@ export function memberSince(date: string): string {
 
 export const ACCOUNT_DELETED_LABEL = () => __('ACCOUNT DELETED', 'yayloyalty');
 
-/** Tier card — added post-Wave-A over the sample-data stand-in (see
+/** Tier card, fed by the sample-data stand-in (see
  *  `customers-page.tier-sample-data.ts`); "X points to <next tier>". */
 export function tierProgress(points: string, nextTier: string): string {
   return sprintf(__('%1$s points to %2$s', 'yayloyalty'), points, nextTier);
@@ -79,7 +80,7 @@ export const FILTER_TYPE_EXPIRED = () => __('Expired', 'yayloyalty');
 
 export const SEARCH_PLACEHOLDER = () => __('Search description or order number', 'yayloyalty');
 export const DATE_RANGE_LABEL = () => __('Date range', 'yayloyalty');
-/** Shown under the filter row when `type_counts` is null (real path, Wave A). */
+/** Shown under the filter row when `type_counts` is null. */
 export const FILTER_UNAVAILABLE_REASON = () => __('Filtering arrives with the real ledger query.', 'yayloyalty');
 
 /** "1–10 of 4,812 entries · newest first" */

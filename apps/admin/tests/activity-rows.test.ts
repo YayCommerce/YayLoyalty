@@ -5,8 +5,8 @@ import { toActivityRow } from '@/pages/customers/drawer/customer-drawer.activity
 
 /**
  * `toActivityRow()` composes a row's title/sub-line from `event_type` +
- * `data` — pure, no React. Covers the new real-path cases this task adds
- * (`account_deleted`, points-only `account_created`) plus the defensive
+ * `data` — pure, no React. Covers `account_deleted` and points-only
+ * `account_created` plus the defensive
  * `str()`/`num()` fallbacks for a row with missing `data` keys.
  */
 
