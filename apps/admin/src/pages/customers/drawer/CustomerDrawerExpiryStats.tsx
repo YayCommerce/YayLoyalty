@@ -1,9 +1,9 @@
 import { utcToDate } from '@/lib/helpers/format.helper';
-import { formatPoints } from '@/lib/helpers/points.helper';
+import { formatPoints, formatPointsAsMoney } from '@/lib/helpers/points.helper';
 import type { Customer, DrawerExpiry } from '@/lib/schema/customer.schema';
 import { CustomerDrawerStat } from './CustomerDrawerStat';
 import { STAT_BALANCE, STAT_PENDING } from './customer-drawer.copy';
-import { daysUntil, pointsToMoney } from './customer-drawer.money';
+import { daysUntil } from './customer-drawer.money';
 import { expiringInDaysLabel, safeBeyondLabel } from './customer-drawer.panels.copy';
 
 /**
@@ -22,17 +22,17 @@ export function CustomerDrawerExpiryStats({ customer, expiry }: { customer: Cust
         label={STAT_BALANCE()}
         size="lg"
         value={formatPoints(customer.balance)}
-        subLine={pointsToMoney(customer.balance, rate) ?? undefined}
+        subLine={formatPointsAsMoney(customer.balance, rate) ?? undefined}
       />
       <CustomerDrawerStat
         label={expiringInDaysLabel(daysRemaining)}
         value={formatPoints(expiry.expiring_points)}
-        subLine={pointsToMoney(expiry.expiring_points, rate) ?? undefined}
+        subLine={formatPointsAsMoney(expiry.expiring_points, rate) ?? undefined}
       />
       <CustomerDrawerStat
         label={safeBeyondLabel(safeBeyondYear)}
         value={formatPoints(expiry.safe_points)}
-        subLine={pointsToMoney(expiry.safe_points, rate) ?? undefined}
+        subLine={formatPointsAsMoney(expiry.safe_points, rate) ?? undefined}
       />
       <CustomerDrawerStat label={STAT_PENDING()} value={formatPoints(customer.pending_points)} />
     </div>

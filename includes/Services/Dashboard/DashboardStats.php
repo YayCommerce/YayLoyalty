@@ -19,8 +19,12 @@ final class DashboardStats {
     /** @var DashboardRepository */
     private $repository;
 
-    public function __construct( DashboardRepository $repository ) {
-        $this->repository = $repository;
+    /** @var int The store currency's decimals, for the liability's money figure. */
+    private $currency_decimals;
+
+    public function __construct( DashboardRepository $repository, int $currency_decimals ) {
+        $this->repository        = $repository;
+        $this->currency_decimals = $currency_decimals;
     }
 
     /**
@@ -64,7 +68,7 @@ final class DashboardStats {
                 ],
                 'liability'       => [
                     'points'                   => $liability,
-                    'currency_amount'          => PointsMath::points_to_currency( $liability, $ppcu ),
+                    'currency_amount'          => PointsMath::points_to_currency( $liability, $ppcu, $this->currency_decimals ),
                     'points_per_currency_unit' => $ppcu,
                     'prev_delta_pct'           => PointsMath::pct_delta( $liability, $repo->net_balance() - $repo->net_delta( $from, $to ) ),
                 ],

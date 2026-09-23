@@ -6,6 +6,20 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
 
 ## Unreleased
 
+### Fixed — Points convert to money at the store currency's decimals, one way everywhere (2026-09-23)
+
+- `PointsMath::points_to_currency()` / `pointsToCurrency()` take the currency's decimals
+  (`wc_get_price_decimals()`) instead of a fixed 2: a 3-decimal currency (KWD) kept only 2, and a
+  0-decimal one (VND) rounded twice. `DashboardStats` and `Clamp::apply()` now receive the
+  decimals from their caller; vectors cover 0, 2 and 3 decimals.
+- The customer drawer and adjust dialog used their own `points / rate` label, which let
+  `toFixed()` round the binary float: 1,005 points at 1,000/unit showed $1.00 where the server
+  and dashboard say $1.01. One `formatPointsAsMoney()` now serves the drawer, the dialog and the
+  dashboard (replacing `pointsToMoney()` and `pointsAsCurrency()`).
+- `parseWPCurrency()` applied the store's decimal separator only at exactly 2 decimals
+  (1234.567 in a comma-decimal, 3-decimal store showed `1.234.567` instead of `1.234,567`); it
+  now splits before grouping. The unused `parseWPDecimal()` is removed.
+
 ### Changed — Customer routes name which user ids they accept (2026-09-23)
 
 - `AbstractRestController::user_id_param( ?CustomerRepository )` used its argument as a hidden

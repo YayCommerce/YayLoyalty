@@ -1,8 +1,7 @@
 import { __, _n, sprintf } from '@wordpress/i18n';
 
-import { formatPoints } from '@/lib/helpers/points.helper';
+import { formatPoints, formatPointsAsMoney } from '@/lib/helpers/points.helper';
 import type { PointsJumpData, PointsJumpWhatChanged } from '@/lib/schema/dashboard-notice.schema';
-import { pointsAsCurrency } from '../dashboard-page.notice-copy';
 
 /**
  * Three ways to settle a jump, doing nothing included; the dashboard does
@@ -23,7 +22,7 @@ export function DashboardAnomalySettlements({
 }) {
   const points = edits.reduce((sum, e) => sum + e.points_issued, 0);
   const orderCount = edits.reduce((sum, e) => sum + e.orders_affected, 0);
-  const worth = pointsAsCurrency(points, pointsPerCurrencyUnit);
+  const worth = formatPointsAsMoney(points, pointsPerCurrencyUnit) ?? '';
   const orders = sprintf(_n('%s order', '%s orders', orderCount, 'yayloyalty'), formatPoints(orderCount));
   const issued = sprintf(
     /* translators: 1: points, 2: order count phrase, 3: day. */ __(

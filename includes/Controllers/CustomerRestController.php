@@ -11,7 +11,6 @@ use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Repositories\RewardRepository;
 use YayLoyalty\Services\LedgerService;
-use YayLoyalty\Utils\PointsMath;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -147,7 +146,13 @@ final class CustomerRestController extends AbstractRestController {
         }
 
         // actor_id comes from the session, never the request body.
-        $entry = $this->ledger_service->adjust( (int) $request['id'], $points, (string) $request['note'], get_current_user_id() );
+        $entry = $this->ledger_service->adjust(
+            (int) $request['id'],
+            $points,
+            (string) $request['note'],
+            get_current_user_id(),
+            (bool) $request['adjust_lifetime']
+        );
 
         return $entry->to_array();
     }

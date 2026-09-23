@@ -1,9 +1,8 @@
 import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { CAP } from '@/lib/access';
-import { formatStoredDate, parseWPCurrency, parseWPDay, parseWPTime, utcToDate } from '@/lib/helpers/format.helper';
+import { formatStoredDate, parseWPDay, parseWPTime, utcToDate } from '@/lib/helpers/format.helper';
 import { formatPoints } from '@/lib/helpers/points.helper';
-import { pointsToCurrency } from '@/lib/points-math/points-math';
 import { parseNoticeData, type TypedNotice } from '@/lib/schema/dashboard-notice.schema';
 import type { DashboardNotice } from '@/lib/schema/dashboard.schema';
 import { scrollToAnomalyPanel, type NoticeAction } from './dashboard-page.notice-actions';
@@ -20,13 +19,6 @@ export type NoticeCopy = {
   primary?: NoticeAction;
   secondary?: NoticeAction;
 };
-
-/** Points as store currency, or '' when there is no rate. */
-export function pointsAsCurrency(points: number, pointsPerCurrencyUnit: number): string {
-  const amount = pointsToCurrency(points, pointsPerCurrencyUnit);
-
-  return amount === null ? '' : parseWPCurrency(amount);
-}
 
 export function noticeCopy(notice: DashboardNotice): NoticeCopy | null {
   const typed = parseNoticeData(notice);

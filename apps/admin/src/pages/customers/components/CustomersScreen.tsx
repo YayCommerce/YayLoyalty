@@ -1,5 +1,8 @@
+import { useMemo } from 'react';
+
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
-import type { CustomerListRow } from '@/lib/schema/customer.schema';
+import { useAdjustPointsPreviewQuery, useCustomerQuery } from '@/lib/queries/customer.queries';
+import type { AdjustPointsPreviewInput, CustomerListRow } from '@/lib/schema/customer.schema';
 import { Card, CardContent } from '@/components/ui/card';
 import { useCustomersBulkActions } from '../customers-page.bulk-actions';
 import { DEFAULT_ROW_FILTERS, TIER_FILTER_ENABLED, type RowFilters } from '../customers-page.filter-rows';
@@ -10,6 +13,7 @@ import {
 } from '../customers-page.filter-suggestions';
 import { useCustomerRowSelection } from '../customers-page.selection';
 import type { SortDirection, SortKey } from '../customers-page.sort-rows';
+import { toServerFilters } from '../customers-page.tier-sample-data';
 import { CustomersAdjustPointsDialog } from './CustomersAdjustPointsDialog';
 import { CustomersBulkActionBar } from './CustomersBulkActionBar';
 import { CustomersFilterBar } from './CustomersFilterBar';
@@ -96,7 +100,27 @@ export function CustomersScreen({
     setIsAdjustDialogOpen,
     isAdjustSubmitting,
     handleAdjustSubmit: handleBulkAdjustSubmit,
+    acknowledgementResetKey,
+    recountedCount,
   } = useCustomersBulkActions({ rows, queryFilters, sort, selection, setSelection });
+
+  // One ticked row adjusts like the drawer: against that customer's own
+  // record. Keyed on the selection, not on the dialog being open — the
+  // dialog's fresh read on open would otherwise run against the previous key.
+  const singleId = selection.mode === 'partial' && selection.ids.size === 1 ? [...selection.ids][0] : 0;
+  const customerQuery = useCustomerQuery(singleId);
+
+  // 'all' mode asks the server to COUNT the filter; a tick list knows its own
+  // count, so it sends no filters and reads only liability and rate.
+  const previewInput = useMemo<AdjustPointsPreviewInput>(
+    () => (selection.mode === 'all' ? { filters: toServerFilters(queryFilters) } : {}),
+    [selection.mode, queryFilters],
+  );
+  const preview = useAdjustPointsPreviewQuery(previewInput, isAdjustDialogOpen && singleId === 0);
+
+  // 'all' mode can carry deselected rows; the server counts the filter, not
+  // the deselection. Same arithmetic as selectionCount() in customers-page.selection.ts.
+  const excludedCount = selection.mode === 'all' ? selection.excludedIds.size : 0;
 
   return (
     <>
@@ -174,6 +198,13 @@ export function CustomersScreen({
         count={selectedCount}
         isSubmitting={isAdjustSubmitting}
         onSubmit={handleBulkAdjustSubmit}
+        target={singleId > 0 ? { kind: 'single', customer: customerQuery } : { kind: 'bulk', preview }}
+        excludedCount={excludedCount}
+        selectionMode={selection.mode}
+        filters={queryFilters}
+        rowsOnPage={rows.length}
+        acknowledgementResetKey={acknowledgementResetKey}
+        recountedCount={recountedCount}
       />
     </>
   );

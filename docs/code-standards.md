@@ -132,7 +132,9 @@ A util that starts reading an option belongs in `Helpers/`. Neither directory is
 
 ### Points arithmetic is shared with the SPA through `PointsMath`
 
-`Utils\PointsMath` holds the arithmetic every layer needs and none may re-derive: `round_points` (once, at order level, half away from zero; unknown mode rounds down), `pct_delta` (|previous| denominator), `pct_of`, `points_to_currency` — a zero denominator yields `null`, never 0. `apps/admin/src/lib/points-math/points-math.ts` is its camelCase mirror.
+`Utils\PointsMath` holds the arithmetic every layer needs and none may re-derive: `round_points` (once, at order level, half away from zero; unknown mode rounds down), `pct_delta` (|previous| denominator), `pct_of`, `points_to_currency` (rounds to the store currency's decimals, which the caller passes — `wc_get_price_decimals()` in PHP, `currencyDecimals()` in the SPA) — a zero denominator yields `null`, never 0. `apps/admin/src/lib/points-math/points-math.ts` is its camelCase mirror.
+
+**One points → money label.** The SPA shows points as money only through `formatPointsAsMoney()` (`lib/helpers/points.helper.ts`): `pointsToCurrency()` at the store's decimals, then `parseWPCurrency()`. `parseWPCurrency()` formats and never rounds a points conversion itself — its `toFixed()` rounds the binary float, which lands a half-cent the wrong way (1.005 → 1.00).
 
 **The SPA formats; it does not compute.** When a screen must compute a points figure (an editor preview, a delta, a conversion), it calls `lib/points-math`. Every function has a same-named method in `PointsMath`, and every rule has a key in `tests/fixtures/points-math-vectors.json`, which both `composer test` (`PointsMathVectorsTest`) and `pnpm test` (Vitest) iterate. Adding a primitive on one side without the other fails that side's suite; PHP is the source of truth for expected values, and only inputs every supported PHP release rounds identically belong in the file (PHP 8.4 dropped `round()`'s pre-rounding, so `0.49999999999999994`-style inputs stay out).
 

@@ -27,7 +27,7 @@ final class RedemptionServiceTest extends TestCase {
     }
 
     public function test_quote_is_the_clamp_for_the_session_intent(): void {
-        $this->markTestIncomplete( 'quote() with intent 1000 and balance 350 is Clamp::apply( reward, 1000, 350, subtotal, currency ): 300 points bound by balance.' );
+        $this->markTestIncomplete( 'quote() with intent 1000 and balance 350 is Clamp::apply( reward, 1000, 350, subtotal, currency, decimals ): 300 points bound by balance.' );
     }
 
     public function test_checkout_error_is_null_when_every_requested_point_applies(): void {

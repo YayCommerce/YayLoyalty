@@ -102,7 +102,7 @@ final class DashboardStatsTest extends TestCase {
     }
 
     public function test_stats_and_deltas(): void {
-        $stats = ( new DashboardStats( $this->repository() ) )->build( $this->window() )['stats'];
+        $stats = ( new DashboardStats( $this->repository(), 2 ) )->build( $this->window() )['stats'];
 
         $this->assertSame(
             [
@@ -139,7 +139,8 @@ final class DashboardStatsTest extends TestCase {
                     'net_balance' => 871500,
                     'net_delta'   => 38300,
                 ]
-            )
+            ),
+            2
         ) )->build( $this->window() )['stats']['liability'];
 
         // previous ≈ 871500 − 38300 = 833200 → +4.6%.
@@ -150,7 +151,7 @@ final class DashboardStatsTest extends TestCase {
     }
 
     public function test_liability_currency_is_null_without_a_rate(): void {
-        $liability = ( new DashboardStats( $this->repository( [ 'ppcu' => 0.0 ] ) ) )->build( $this->window() )['stats']['liability'];
+        $liability = ( new DashboardStats( $this->repository( [ 'ppcu' => 0.0 ] ), 2 ) )->build( $this->window() )['stats']['liability'];
 
         $this->assertNull( $liability['currency_amount'] );
         $this->assertSame( 0.0, $liability['points_per_currency_unit'] );
@@ -163,7 +164,8 @@ final class DashboardStatsTest extends TestCase {
                     'count_orders'       => 0,
                     'orders_with_points' => 0,
                 ]
-            )
+            ),
+            2
         ) )->build( $this->window() )['stats']['redemption_rate'];
 
         $this->assertNull( $rate['rate'] );
@@ -172,7 +174,7 @@ final class DashboardStatsTest extends TestCase {
     }
 
     public function test_series_is_zero_filled_to_the_range(): void {
-        $series = ( new DashboardStats( $this->repository() ) )->build( $this->window() )['series'];
+        $series = ( new DashboardStats( $this->repository(), 2 ) )->build( $this->window() )['series'];
 
         $this->assertCount( 30, $series );
         $this->assertSame(
@@ -194,7 +196,7 @@ final class DashboardStatsTest extends TestCase {
     }
 
     public function test_lists_and_today_count(): void {
-        $payload = ( new DashboardStats( $this->repository() ) )->build( $this->window() );
+        $payload = ( new DashboardStats( $this->repository(), 2 ) )->build( $this->window() );
 
         $this->assertSame(
             [

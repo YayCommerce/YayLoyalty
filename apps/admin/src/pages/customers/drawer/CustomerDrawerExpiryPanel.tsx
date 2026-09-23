@@ -1,11 +1,11 @@
 import { TriangleAlert } from 'lucide-react';
 
 import { formatStoredDate, parseWPDate, utcToDate } from '@/lib/helpers/format.helper';
-import { formatPoints } from '@/lib/helpers/points.helper';
+import { formatPoints, formatPointsAsMoney } from '@/lib/helpers/points.helper';
 import type { Customer, DrawerExpiry } from '@/lib/schema/customer.schema';
 import { Button } from '@/components/ui/button';
 import { ACTION_RESET_EXPIRY, NOT_AVAILABLE_YET_REASON } from './customer-drawer.copy';
-import { daysUntil, pointsToMoney } from './customer-drawer.money';
+import { daysUntil } from './customer-drawer.money';
 import {
   ACTION_EXEMPT_FROM_EXPIRY,
   ACTION_SEND_REMINDER_NOW,
@@ -36,7 +36,7 @@ export function CustomerDrawerExpiryPanel({ customer, expiry }: { customer: Cust
   // non-positive balance.
   const sharePercent =
     customer.balance > 0 ? String(Math.round((expiry.expiring_points / customer.balance) * 100)) : null;
-  const money = pointsToMoney(expiry.expiring_points, customer.points_per_currency_unit);
+  const money = formatPointsAsMoney(expiry.expiring_points, customer.points_per_currency_unit);
 
   return (
     <div className="bg-muted/50 flex flex-col gap-3 rounded-md border px-3.5 py-3">

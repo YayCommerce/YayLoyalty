@@ -35,6 +35,16 @@ export function parseWPTime(date: Date | string) {
   return dateI18n(formats.time, date);
 }
 
+/** The store currency's decimals (`wc_get_price_decimals()`), the precision every money figure rounds to. */
+export function currencyDecimals(): number {
+  return window.yayLoyaltyMeta.wcMeta.currency_data.num_decimals;
+}
+
+/**
+ * A money amount in the store's currency format. Formats only: pass a value
+ * already rounded by its owner (e.g. `pointsToCurrency`), since `toFixed`
+ * rounds the binary float and can land a half-cent the wrong way.
+ */
 export function parseWPCurrency(price: string | number) {
   if (typeof price === 'string') {
     price = parseFloat(price);
@@ -42,10 +52,12 @@ export function parseWPCurrency(price: string | number) {
 
   const { symbol, position, thousand_sep, decimal_sep, num_decimals } = window.yayLoyaltyMeta.wcMeta.currency_data;
 
-  const formattedPrice = price
-    .toFixed(num_decimals)
-    .replace(/\B(?=(\d{3})+(?!\d))/g, thousand_sep)
-    .replace(/(\d+)\.(\d{2})$/, `$1${decimal_sep}$2`);
+  // Split before grouping so the separator applies at any number of decimals
+  // and grouping never reaches the fraction.
+  const [whole, fraction] = Math.abs(price).toFixed(num_decimals).split('.');
+  const sign = price < 0 && Number(`${whole}.${fraction ?? 0}`) !== 0 ? '-' : '';
+  const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, thousand_sep);
+  const formattedPrice = `${sign}${grouped}${fraction === undefined ? '' : `${decimal_sep}${fraction}`}`;
 
   switch (position) {
     case 'left':
@@ -85,15 +97,4 @@ export function joinStoredDateTime(date: string, time: string): string | null {
   }
 
   return `${date} ${time || '00:00'}:00`;
-}
-
-export function parseWPDecimal(number: number) {
-  const { thousand_sep, decimal_sep, num_decimals } = window.yayLoyaltyMeta.wcMeta.currency_data;
-  const formattedNumber = number
-    .toFixed(num_decimals)
-    .replace(/\.00$/, '')
-    .replace(/\B(?=(\d{3})+(?!\d))/g, thousand_sep)
-    .replace(/(\d+)\.(\d{2})$/, `$1${decimal_sep}$2`);
-
-  return formattedNumber;
 }

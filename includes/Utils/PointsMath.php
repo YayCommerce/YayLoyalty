@@ -64,15 +64,19 @@ final class PointsMath {
     }
 
     /**
-     * Points in store currency, 2 dp; null when no usable rate exists.
+     * Points in store currency, rounded to that currency's own decimals; null
+     * when no usable rate exists. Decimals are the caller's to pass
+     * (wc_get_price_decimals() at runtime) so this stays free of WordPress —
+     * a fixed 2 would drop a digit from a 3-decimal currency (KWD) and round
+     * a 0-decimal one (VND) twice.
      *
      * @param int|float $points_per_currency_unit
      */
-    public static function points_to_currency( int $points, $points_per_currency_unit ): ?float {
+    public static function points_to_currency( int $points, $points_per_currency_unit, int $decimals ): ?float {
         if ( $points_per_currency_unit <= 0 ) {
             return null;
         }
 
-        return round( $points / $points_per_currency_unit, 2 );
+        return round( $points / $points_per_currency_unit, $decimals );
     }
 }

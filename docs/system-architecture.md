@@ -315,16 +315,16 @@ The only complete ledger write path, and the only one reachable from the admin U
 ```
 Admin Customers page (React) — Bulk Actions → "Adjust points"
     ↓
-useBulkAdjustPointsMutation → adjustCustomerPoints( user_id, { points, note } )   one call per selected customer
+useBulkAdjustPointsMutation → adjustCustomerPoints( user_id, { points, note, adjustLifetime } )   one call per selected customer
     ↓
-ky.post('customers/{user_id}/adjust', { points, note })
+ky.post('customers/{user_id}/adjust', { points, note, adjust_lifetime })
     ↓
 CustomerRestController  →  BaseRestController::exec_write()
     │   permission_callback: requires( Capabilities::MANAGE_POINTS ), then assert_ceiling()
     │   args: from get_write_args() — readonly fields already stripped
     │   wraps the callback in Transaction::run()
     ↓
-LedgerService::adjust( user_id, points, note, actor_id )
+LedgerService::adjust( user_id, points, note, actor_id, adjust_lifetime )
     ↓ record() [private method]
     ├─ CustomerRepository::ensure_row( user_id )   INSERT … ON DUPLICATE KEY UPDATE (create-then-lock)
     ├─ CustomerRepository::lock_and_get( user_id ) SELECT … FOR UPDATE — serialises writers per customer
