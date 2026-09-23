@@ -1,10 +1,15 @@
 import { parseWPDay } from '@/lib/helpers/format.helper';
 import { formatPoints } from '@/lib/helpers/points.helper';
-import { isProBuild } from '@/components/pro/ProGate';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { DrawerExpiry } from '@/lib/schema/customer.schema';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { isProBuild } from '@/components/pro/ProGate';
 import { COLUMN_POINTS } from './customer-drawer.copy';
-import { EXPIRY_BATCH_COLUMN_EARNED, EXPIRY_BATCH_COLUMN_EXPIRES, EXPIRY_BATCH_TITLE, EXPIRY_FREE_EXPLANATION } from './customer-drawer.panels.copy';
+import {
+  EXPIRY_BATCH_COLUMN_EARNED,
+  EXPIRY_BATCH_COLUMN_EXPIRES,
+  EXPIRY_BATCH_TITLE,
+  EXPIRY_FREE_EXPLANATION,
+} from './customer-drawer.panels.copy';
 
 /**
  * 4b's Pro FIFO lot table — "his points, by the batch they were earned in".
@@ -15,9 +20,9 @@ import { EXPIRY_BATCH_COLUMN_EARNED, EXPIRY_BATCH_COLUMN_EXPIRES, EXPIRY_BATCH_T
  * of `ProGate`'s `UpgradeToProOverlay`.
  *
  * `batches: null` (the wire contract's OTHER "no batches" case — a store on
- * the inactivity model regardless of build) gets the same explanation: the
- * `expiring` fixture never actually sends it, but the component still
- * handles it correctly rather than rendering an empty table.
+ * the inactivity model regardless of build) gets the same explanation:
+ * nothing sends it today, but the component still handles
+ * it correctly rather than rendering an empty table.
  */
 export function CustomerDrawerLotBatches({ batches }: { batches: DrawerExpiry['batches'] }) {
   if (!isProBuild() || !batches) {

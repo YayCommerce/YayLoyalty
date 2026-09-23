@@ -11,10 +11,8 @@ export const DRAWER_PAGE_SIZE = 10;
  * `components/ui/pagination.tsx` primitive (that one is "Page X of Y" + a
  * "Go to" number input, a different shape entirely for a different context).
  * Reuses the same underlying pieces (`Button` + chevron icons) the way
- * `CustomersPagination.tsx` wraps `Pagination`, per the plan's fallback —
- * paged, never "Load more" (3c note 3 for the ledger; activity switched from
- * Load more to this same pager once its own row count made Load more
- * unusable). Shared by every drawer tab that pages rather than accumulates —
+ * `CustomersPagination.tsx` wraps `Pagination` — paged, never "Load more"
+ * (3c note 3). Shared by every drawer tab that pages rather than accumulates —
  * `LedgerTab.tsx` and `ActivityLogTab.tsx` both compose it — hence the
  * drawer-generic name rather than `LedgerTabPager`.
  */
@@ -31,12 +29,18 @@ export function DrawerTabPager({
   totalItems: number;
   onPageChange: (page: number) => void;
   disabled: boolean;
-  /** Blank while the first fetch is in flight (3b note 3) — a real, loaded,
-   *  genuinely empty ledger still shows "0–0 of 0", it just isn't this. */
+  /** Blank while the first fetch is in flight (3b note 3). */
   isPending: boolean;
 }) {
+  // A genuinely empty result (loaded, zero rows) has nothing to page through —
+  // the table's own empty state already says so; showing "0–0 of 0" plus two
+  // disabled chevrons underneath it is noise, not information.
+  if (!isPending && totalItems === 0) {
+    return null;
+  }
+
   const pageCount = Math.max(1, Math.ceil(totalItems / perPage));
-  const from = totalItems === 0 ? 0 : (page - 1) * perPage + 1;
+  const from = (page - 1) * perPage + 1;
   const to = Math.min(page * perPage, totalItems);
 
   return (

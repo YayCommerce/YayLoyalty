@@ -7,9 +7,9 @@ import { PointsValue } from '@/components/ui/custom/points-value';
 
 /**
  * Two-line Customer cell: name + muted email, linking to the drawer.
- * `search` is the list page's own current query string (carries `?scenario=`
- * through, if present) — `CustomerTableRow.tsx` reads it once via
- * `useSearchParams()` and passes it down rather than each row re-reading it.
+ * `search` is the list page's own current query string (filters/sort/paging)
+ * — `CustomerTableRow.tsx` reads it once via `useSearchParams()` and passes
+ * it down rather than each row re-reading it.
  * `state.row` lets `CustomerDrawer.tsx` render identity instantly, before
  * its own `useCustomerQuery` resolves.
  */

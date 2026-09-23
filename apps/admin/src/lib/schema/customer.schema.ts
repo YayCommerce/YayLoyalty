@@ -7,8 +7,8 @@ import { z } from 'zod';
  */
 /**
  * Row counts behind the drawer's tab labels (`CustomerItemSchema::properties()`).
- * `activity`/`redemptions`/`referrals` are always 0 on the real path — those
- * tables don't exist yet; only the WP_DEBUG drawer fixture varies them.
+ * `ledger`/`activity` are real; `redemptions`/`referrals` are always 0 —
+ * those tables don't exist yet.
  */
 export const customerCountsSchema = z.object({
   ledger: z.number().int(),
@@ -18,29 +18,33 @@ export const customerCountsSchema = z.object({
 });
 
 /**
- * 4a's "Loose ends this leaves" facts (F09 Wave B) — always `null` outside
- * `?scenario=deleted`, since it is keyed off a deletion the real path can
- * never report (no `deleted_at` column). `void_coupons.example` is a single
- * illustrative label ("$5 off"), not a list — the fixture only ever needs one.
+ * 4a's "Loose ends this leaves" facts — non-null exactly when
+ * `deleted_at` is non-null. `kept_ledger_entries` is always real;
+ * `void_coupons`/`credited_referrals`/`counted_in_members` are always
+ * `null` — no redemptions/referrals/member-count feature exists — and
+ * render as "Not tracked yet" rather than being hidden.
+ * `void_coupons.example` is a single illustrative label ("$5 off"), not a list.
  */
 export const looseEndsSchema = z.object({
-  void_coupons: z.object({
-    count: z.number().int(),
-    example: z.string().nullable(),
-  }),
-  credited_referrals: z.number().int(),
-  counted_in_members: z.boolean(),
+  void_coupons: z
+    .object({
+      count: z.number().int(),
+      example: z.string().nullable(),
+    })
+    .nullable(),
+  credited_referrals: z.number().int().nullable(),
+  counted_in_members: z.boolean().nullable(),
   kept_ledger_entries: z.number().int(),
 });
 
 export type LooseEnds = z.infer<typeof looseEndsSchema>;
 
 /**
- * 4b's expiring-batch summary (F09 Wave B) — always `null` outside
- * `?scenario=expiring`, since it needs `lots`, which doesn't exist yet
- * (docs/data-model.md). `batches` is separately nullable inside: `null`
- * means the Free inactivity model (no batches exist at all, not "zero").
- * Percentages and money are derived client-side — this carries figures only.
+ * 4b's expiring-batch summary — always `null` today, since it
+ * needs `lots`, which doesn't exist yet (docs/data-model.md). `batches` is
+ * separately nullable inside: `null` means the Free inactivity model (no
+ * batches exist at all, not "zero"). Percentages and money are derived
+ * client-side — this carries figures only.
  */
 export const drawerExpiryBatchSchema = z.object({
   earned_from: z.string(),
@@ -64,8 +68,9 @@ export const drawerExpirySchema = z.object({
 export type DrawerExpiry = z.infer<typeof drawerExpirySchema>;
 
 /**
- * 5a's structured story (F23, F09 Wave B) — always `null` outside
- * `?scenario=negative`. `shape` is a Zod enum, not a bare string: an unknown
+ * 5a's structured story — always `null` today, since it needs a backwards
+ * ledger walk the server doesn't do yet. `shape` is a
+ * Zod enum, not a bare string: an unknown
  * discriminator fails loudly at parse time rather than the panel rendering
  * a blank or half-filled narrative. `'other'` means the three-step story
  * cannot be assembled (a manual adjustment or an expiry clawback pushed the
@@ -123,14 +128,13 @@ export const customerSchema = customerListRowSchema.extend({
   lifetime_redeemed: z.number().int(),
   joined_at: z.string().nullable(),
   updated_at: z.string().nullable(),
-  /** Always null on the real path — no deleted_at column yet (docs/data-model.md). */
+  /** Derived from the latest account_deleted activity row, gated on the WP user currently being gone — never a column. */
   deleted_at: z.string().nullable(),
   counts: customerCountsSchema,
   loose_ends: looseEndsSchema.nullable(),
   expiry: drawerExpirySchema.nullable(),
   negative_balance: drawerNegativeBalanceSchema.nullable(),
-  /** Restored minimally (Wave B) after `worth` was removed wholesale — the
-   *  expiry/negative-balance panels' only remaining need for a currency rate. */
+  /** The expiry/negative-balance panels' only currency rate. */
   points_per_currency_unit: z.number(),
 });
 

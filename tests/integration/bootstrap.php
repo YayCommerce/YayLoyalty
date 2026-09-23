@@ -44,6 +44,9 @@ if ( is_string( $yayloyalty_test_socket ) && '' !== $yayloyalty_test_socket ) {
     ini_set( 'mysqli.default_socket', $yayloyalty_test_socket );
 }
 
+// phpcs:ignore WordPress.PHP.IniSet.memory_limit_Disallowed -- route tests boot the whole REST server, WooCommerce's routes included, which outgrows the CLI's 128M.
+ini_set( 'memory_limit', '512M' );
+
 $yayloyalty_test_root = getenv( 'YAYLOYALTY_WP_ROOT' );
 $yayloyalty_test_root = is_string( $yayloyalty_test_root ) && '' !== $yayloyalty_test_root
     ? rtrim( $yayloyalty_test_root, '/' )
