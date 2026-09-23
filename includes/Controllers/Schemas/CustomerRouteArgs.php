@@ -47,6 +47,13 @@ final class CustomerRouteArgs {
                 'required'          => true,
                 'sanitize_callback' => 'sanitize_text_field',
             ],
+            // Off for a balance-only correction (e.g. undoing a mistaken adjustment)
+            // that must not also inflate the earned total or tier progress.
+            'adjust_lifetime' => [
+                'description' => __( 'Whether this adjustment also moves lifetime_earned, not the balance only.', 'yayloyalty' ),
+                'type'        => 'boolean',
+                'default'     => true,
+            ],
         ];
     }
 }
