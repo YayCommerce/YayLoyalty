@@ -13,9 +13,8 @@ import type { AdjustFormState } from '../customers-adjust-points.form-state';
 
 /**
  * Lifetime toggle · customer-facing description toggle · notify-by-email
- * toggle. The lifetime toggle is wired into the submit payload; the other
- * two stay UI-only this ticket — nothing they hold is sent to the server
- * yet. Reused by both the single (count === 1) and bulk (count > 1) layouts.
+ * toggle, for both the single and bulk layouts. Only the lifetime toggle is
+ * sent to the server; the other two are not wired yet.
  */
 export function AdjustPointsOptions({
   state,
@@ -40,7 +39,7 @@ export function AdjustPointsOptions({
         </span>
       </label>
 
-      {/* UI-only this ticket — see the file docblock. */}
+      {/* Not sent to the server yet — see the file docblock. */}
       <div className="flex flex-col gap-2">
         <label className="flex items-center justify-between gap-2.5">
           <span className="text-sm font-medium">{SHOW_CUSTOMER_NOTE_LABEL()}</span>
@@ -60,7 +59,8 @@ export function AdjustPointsOptions({
         )}
       </div>
 
-      {/* UI-only this ticket — see the file docblock. */}
+      {/* TODO: send notifyByEmail with the adjustment and email the customer(s) — nothing is sent today
+          (docs/project-roadmap.md, Points Management → Adjustment email). */}
       <label className="flex items-center justify-between gap-2.5">
         <span className="flex items-center gap-2.5">
           <Checkbox

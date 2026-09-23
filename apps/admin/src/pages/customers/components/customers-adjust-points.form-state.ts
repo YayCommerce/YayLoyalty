@@ -111,9 +111,9 @@ export function isStaleSnapshot(
 export type SubmitBlockers = {
   lifetimeEarned: number;
   pointsPerCurrencyUnit: number;
-  /** 3b: the balance moved since this dialog opened and has not been reloaded. */
+  /** The balance moved since this dialog opened and has not been reloaded. */
   isStale?: boolean;
-  /** The preview errored or returned no record: the guards below cannot run, so submit must not proceed. */
+  /** The customer's record errored or is missing: the guards below cannot run, so submit must not proceed. */
   isUnverified?: boolean;
   /** Bulk only: the liability acknowledgement checkbox. */
   needsAcknowledgement?: boolean;
@@ -141,7 +141,7 @@ export function canSubmit(state: AdjustFormState, blockers: SubmitBlockers): boo
   return true;
 }
 
-/** Bulk total for the `count > 1` layout — `amount * effectiveCount`, never the raw preview count (see phase 05). */
+/** Bulk total — `amount * effectiveCount`, never the raw preview count, which ignores deselected rows. */
 export function bulkTotalPoints(state: Pick<AdjustFormState, 'amount'>, effectiveCount: number): number {
   return state.amount * effectiveCount;
 }

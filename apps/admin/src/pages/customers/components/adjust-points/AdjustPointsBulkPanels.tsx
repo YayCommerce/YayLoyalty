@@ -37,9 +37,9 @@ function filterSummary(filters: Pick<RowFilters, 'search' | 'balanceRange' | 'ex
 }
 
 /**
- * Bulk-only (2g): selection summary + amount totals + no-undo notice with
- * the required acknowledgement checkbox. One file for three single-use
- * blocks, not three — see phase 05's plan file.
+ * Bulk-only: selection summary + amount totals + no-undo notice with the
+ * required acknowledgement checkbox. One file for three single-use blocks
+ * that always render together.
  */
 export function AdjustPointsBulkPanels({
   state,

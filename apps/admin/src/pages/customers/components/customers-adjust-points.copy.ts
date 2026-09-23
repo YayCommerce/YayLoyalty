@@ -3,10 +3,10 @@ import { __, sprintf } from '@wordpress/i18n';
 import { TYPO_GUARD_MULTIPLIER } from './customers-adjust-points.form-state';
 
 /**
- * Every sentence in the Adjust-points dialog (single 2a-2d/3a-3b and bulk
- * 2g layouts). Flat exported functions, every entry a function — `__()`
- * must run after the locale loads, so nothing here is a module-scope
- * constant. Follows `customer-drawer.copy.ts`'s style/section convention.
+ * The Adjust-points dialog's sentences (bulk-only ones live in
+ * `customers-adjust-points.bulk.copy.ts`). Flat exported functions, every
+ * entry a function — `__()` must run after the locale loads, so nothing
+ * here is a module-scope constant. Follows `customer-drawer.copy.ts`'s style/section convention.
  */
 
 // ─── Header ──────────────────────────────────────────
@@ -58,7 +58,7 @@ export function reducesLiability(money: string): string {
   return sprintf(__('Reduces your outstanding liability by %s.', 'yayloyalty'), money);
 }
 
-/** 2c negative-outcome panel — the two sentences are always shown together. */
+/** Negative-outcome panel (this adjustment would go below zero) — the two sentences are always shown together. */
 export function negativeOutcomeSpendable(name: string, coversAmount: string): string {
   return sprintf(
     __(
@@ -123,8 +123,7 @@ export const ADJUST_LIFETIME_SUBTEXT = () =>
 export const SHOW_CUSTOMER_NOTE_LABEL = () => __('Also show a description to the customer', 'yayloyalty');
 /**
  * No store-name field exists on `window.yayLoyaltyMeta` (`types/localize.type.ts`)
- * today, so this always ships the generic fallback the plan names for that case
- * rather than inventing one.
+ * today, so this always ships a generic fallback rather than inventing one.
  */
 export const CUSTOMER_NOTE_PREVIEW = () => __('The customer will see: "Adjustment"', 'yayloyalty');
 export const CUSTOMER_NOTE_PLACEHOLDER = () => __('Adjustment', 'yayloyalty');
@@ -137,7 +136,7 @@ export const FOOTER_NOTICE = () =>
     'yayloyalty',
   );
 
-// ─── 3a: already negative ────────────────────────────
+// ─── Already negative ────────────────────────────────
 
 export const NEGATIVE_BALANCE_TITLE = () => __('This balance is below zero', 'yayloyalty');
 export const NEGATIVE_BALANCE_BODY = () =>
@@ -161,7 +160,7 @@ export function needsMoreBeforeSpendable(name: string, needed: string, toClear: 
 export const NEVER_SHOWN_NEGATIVE = () =>
   __('Their rewards page shows 0 either way — a customer is never shown a negative balance.', 'yayloyalty');
 
-// ─── 3b: balance changed while open ──────────────────
+// ─── Balance changed while open ──────────────────────
 
 export function staleHeaderSubtitle(openedBalance: string): string {
   return sprintf(__('was %s points when this opened', 'yayloyalty'), openedBalance);

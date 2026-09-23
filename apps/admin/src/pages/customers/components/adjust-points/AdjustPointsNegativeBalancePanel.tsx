@@ -10,9 +10,9 @@ import {
 import { newBalance, pointsToClearDeficit, type AdjustFormState } from '../customers-adjust-points.form-state';
 
 /**
- * 3a — the customer's balance is already below zero, independent of what
- * this adjustment does. Distinct from 2c (`AdjustPointsFields`'s negative-
- * outcome panel, "this adjustment would go negative"): this one is "it
+ * The customer's balance is already below zero, independent of what this
+ * adjustment does. Distinct from `AdjustPointsFields`'s negative-outcome
+ * panel ("this adjustment would go negative"): this one is "it
  * already is", and stays visible above the fields even before an amount is
  * typed. Its own "after this adjustment" figures only show once an amount
  * is typed (`amount > 0`) and only while the balance would still be

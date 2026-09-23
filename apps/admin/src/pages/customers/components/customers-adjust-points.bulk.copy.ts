@@ -1,10 +1,9 @@
 import { __, _n, sprintf } from '@wordpress/i18n';
 
 /**
- * Bulk-only strings (artboard 2g). Split from `customers-adjust-points.copy.ts`
- * once that file neared the 200-line cap — same reasoning
- * `customer-drawer.panels.copy.ts` gives for its own split. Same rules: flat
- * exported functions, every entry a function, pure.
+ * The bulk Adjust-points layout's strings. Same rules as
+ * `customers-adjust-points.copy.ts`: flat exported functions, every entry a
+ * function, pure.
  */
 
 export function bulkHeaderTitle(count: number): string {

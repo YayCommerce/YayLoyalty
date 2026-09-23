@@ -11,9 +11,9 @@ import {
 } from '../customers-adjust-points.copy';
 
 /**
- * 3b — the balance moved since this dialog opened. Blocking: the caller
- * gates `canSubmit()` on `isStale` and clears it only once `onReload`
- * succeeds and re-baselines (see the dialog's `handleReload`).
+ * The balance moved since this dialog opened. Blocking: the caller gates
+ * `canSubmit()` on `isStale` and clears it only once `onReload` succeeds and
+ * re-baselines (`useAdjustPreviewBaseline`'s `handleReload`).
  */
 export function AdjustPointsStaleBalanceBanner({
   customerName,
