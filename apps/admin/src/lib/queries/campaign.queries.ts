@@ -5,9 +5,10 @@ import {
   getCampaign,
   getCampaigns,
   updateCampaign,
+  updateCampaignConfig,
   updateCampaignStatus,
 } from '@/lib/api/campaign.api';
-import type { CampaignListParams, CampaignStatus, CampaignUpdateInput } from '@/lib/schema/campaign.schema';
+import type { Campaign, CampaignListParams, CampaignStatus, CampaignUpdateInput } from '@/lib/schema/campaign.schema';
 
 /** ─── Query Options ─────────────────────────────────── */
 
@@ -57,6 +58,20 @@ export function useUpdateCampaignStatusMutation(id: number) {
   return useMutation({
     mutationKey: ['campaign', 'status', id],
     mutationFn: (status: CampaignStatus) => updateCampaignStatus(id, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['campaign', 'detail', id] });
+      queryClient.invalidateQueries({ queryKey: ['campaign', 'list'] });
+    },
+  });
+}
+
+/** BuiltInCampaignList's "Save changes"; see updateCampaignConfig(). */
+export function useUpdateCampaignConfigMutation(id: number) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationKey: ['campaign', 'config', id],
+    mutationFn: (config: Campaign['config']) => updateCampaignConfig(id, config),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['campaign', 'detail', id] });
       queryClient.invalidateQueries({ queryKey: ['campaign', 'list'] });

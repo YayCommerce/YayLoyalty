@@ -3,8 +3,8 @@ namespace YayLoyalty\Pro\Controllers;
 
 use YayLoyalty\Access\Capabilities;
 use YayLoyalty\Controllers\AbstractRestController;
-use YayLoyalty\Controllers\CampaignRestController;
 use YayLoyalty\Enums\CampaignTrigger;
+use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\DashboardRepository;
 
 defined( 'ABSPATH' ) || exit;
@@ -25,10 +25,11 @@ defined( 'ABSPATH' ) || exit;
  * Registered through `yayloyalty_rest_controllers`, so Lite has no route
  * here at all (404, not 403) — same as CampaignPreviewRestController.
  *
- * SWAP POINT. Both handlers answer from CampaignPerformanceFixture, which
- * is deterministic per campaign id but invented, exactly like
- * CampaignRestController::dummy_fixture(). When real per-campaign analytics
- * are ready:
+ * SWAP POINT. Both handlers answer from CampaignPerformanceFixture, which is
+ * deterministic per campaign id but invented — resolve_row() now resolves a
+ * real campaign (CampaignRestController's own fixture is gone), so the
+ * numbers below it are the only invented part left. When real per-campaign
+ * analytics are ready:
  *  - get_performance() calls a new CampaignPerformanceRepository aggregate
  *    over `ledger` rows carrying this campaign_id (`earn` type), plus a
  *    WooCommerce order count for orders_in_window; wrap it in DashboardCache
@@ -41,9 +42,8 @@ defined( 'ABSPATH' ) || exit;
  *    `WHERE campaign_id = ? ORDER BY created_at DESC, id DESC`, joined to
  *    `customers` for the name/search, run through respond_paginated()
  *    exactly as here.
- *  - CampaignPerformanceFixture is deleted; resolve_row() keeps using
- *    find_dummy_row() until CampaignRestController's own read-side SWAP
- *    POINT is resolved separately.
+ *  - CampaignPerformanceFixture is deleted; resolve_row() keeps its
+ *    CampaignRepository lookup as-is.
  * Nothing changes on the SPA side either way: both routes are already real
  * HTTP calls parsed by lib/schema/campaign-performance.schema.ts.
  *
@@ -72,8 +72,12 @@ final class CampaignPerformanceRestController extends AbstractRestController {
     /** @var DashboardRepository */
     private $dashboard;
 
-    public function __construct( DashboardRepository $dashboard ) {
+    /** @var CampaignRepository */
+    private $campaigns;
+
+    public function __construct( DashboardRepository $dashboard, CampaignRepository $campaigns ) {
         $this->dashboard = $dashboard;
+        $this->campaigns = $campaigns;
     }
 
     /**
@@ -168,20 +172,22 @@ final class CampaignPerformanceRestController extends AbstractRestController {
     }
 
     /**
-     * find_dummy_row() plus the trigger gate. Returns null — a plain 404 —
-     * for an unknown id AND for a known id whose trigger this page does not
+     * The real campaign, shaped like CampaignPerformanceFixture expects
+     * (Campaign::to_array()'s keys are the same ones the old fixture row
+     * carried), plus the trigger gate. Returns null — a plain 404 — for an
+     * unknown id AND for a known id whose trigger this page does not
      * support, so a client can't tell the two apart by response shape.
      *
      * @return array<string, mixed>|null
      */
     private function resolve_row( int $id ): ?array {
-        $row = CampaignRestController::find_dummy_row( $id );
+        $campaign = $this->campaigns->find_campaign( $id );
 
-        if ( null === $row || ! in_array( $row['trigger'], self::TRIGGERS, true ) ) {
+        if ( null === $campaign || ! in_array( $campaign->get_trigger(), self::TRIGGERS, true ) ) {
             return null;
         }
 
-        return $row;
+        return $campaign->to_array();
     }
 
     /**

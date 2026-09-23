@@ -80,13 +80,15 @@ function do_action( string $hook, ...$args ): void {
 }
 
 /**
+ * WordPress wraps json_encode() with UTF-8 sanitization this suite never
+ * exercises with malformed input; the encode path (Utils\Json, reached by
+ * Campaign::to_row()) only needs the same return contract.
+ *
  * @param mixed $data
  * @return string|false
  */
-function wp_json_encode( $data ) {
-    $encoded = json_encode( $data ); // phpcs:ignore WordPress.WP.AlternativeFunctions.json_encode_json_encode
-
-    return false === $encoded ? false : $encoded;
+function wp_json_encode( $data, int $options = 0, int $depth = 512 ) {
+    return json_encode( $data, $options, $depth ); // phpcs:ignore WordPress.WP.AlternativeFunctions.json_encode_json_encode
 }
 
 /** Minimal double: only the two properties this codebase ever reads off a WP_User. */

@@ -132,4 +132,49 @@ class LedgerRepository extends AbstractRepository {
             )
         );
     }
+
+    /**
+     * Net points and row count per campaign, any row type — a campaign that
+     * earned and was fully refunded nets 0 points but still has rows, so
+     * callers needing "has this campaign ever been referenced" (the delete
+     * guard) must read `count`, never infer it from `points`. Absent from
+     * the result entirely for an id with no rows at all.
+     *
+     * @param int[] $campaign_ids
+     * @return array<int, array{points: int, count: int}>
+     */
+    public function totals_by_campaign( array $campaign_ids ): array {
+        if ( empty( $campaign_ids ) ) {
+            return [];
+        }
+
+        global $wpdb;
+
+        $ids = array_map( 'intval', $campaign_ids );
+        $in  = implode( ', ', array_fill( 0, count( $ids ), '%d' ) );
+
+        // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- $in is a "%d, %d, …" placeholder list; every value is bound below. Same pattern as Pro\Repositories\CampaignPointsRepository::issued_by_campaign().
+        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+            $wpdb->prepare(
+                'SELECT campaign_id, COALESCE(SUM(points), 0) AS points, COUNT(*) AS row_count
+                 FROM `' . esc_sql( $this->table() ) . "`
+                 WHERE campaign_id IN ({$in})
+                 GROUP BY campaign_id",
+                $ids
+            ),
+            ARRAY_A
+        );
+        // phpcs:enable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+
+        $totals = [];
+
+        foreach ( is_array( $rows ) ? $rows : [] as $row ) {
+            $totals[ (int) $row['campaign_id'] ] = [
+                'points' => (int) $row['points'],
+                'count'  => (int) $row['row_count'],
+            ];
+        }
+
+        return $totals;
+    }
 }

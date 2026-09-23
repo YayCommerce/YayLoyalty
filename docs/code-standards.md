@@ -188,7 +188,7 @@ Two conventions for fixture data coexist:
 
 **Shared schema/query-arg classes** — `Controllers/Schemas/{CustomerItemSchema,LedgerQueryArgs,ActivityQueryArgs}.php` live in one place so a contract change is made once. The **customer drawer has no fixtures and serves real data only**; these classes are used by its real controller paths and by tests. Dashboard and campaign endpoints use fixtures alongside their real paths.
 
-**Dev-only fixture gate** — the `WP_DEBUG`-gated fixture (`DashboardFixture`) is reached via a `scenario` query arg, checked server-side by `requested()` helper — the real path (no arg) always returns real data. A "swap point" fixture (`CampaignRestController::dummy_fixture()`, `CampaignPerformanceFixture`) is never optional; it ships in the release zip. Mark swap-point fixtures in controller docblocks and list them in `project-roadmap.md` Known Gaps.
+**Dev-only fixture gate** — the `WP_DEBUG`-gated fixture (`DashboardFixture`) is reached via a `scenario` query arg, checked server-side by `requested()` helper — the real path (no arg) always returns real data. A "swap point" fixture (`CampaignPerformanceFixture`; `CampaignRestController` had one, resolved when campaign CRUD went real) is never optional; it ships in the release zip. Mark swap-point fixtures in controller docblocks and list them in `project-roadmap.md` Known Gaps.
 
 ## 10. PHP 7.4 pseudo-enums
 

@@ -1,10 +1,17 @@
 import { ReactNode, useState } from 'react';
+import { HTTPError } from 'ky';
 import { ChevronDown, ChevronUp, InfoIcon } from 'lucide-react';
+import { toast } from 'sonner';
 import { __, sprintf } from '@wordpress/i18n';
 
+import { getApiErrorMessage } from '@/lib/api/api';
 import { parseWPCurrency, parseWPDate } from '@/lib/helpers/format.helper';
 import { roundPoints } from '@/lib/points-math/points-math';
-import { useCampaignsQuery } from '@/lib/queries/campaign.queries';
+import {
+  useCampaignsQuery,
+  useUpdateCampaignConfigMutation,
+  useUpdateCampaignStatusMutation,
+} from '@/lib/queries/campaign.queries';
 import type { Campaign } from '@/lib/schema/campaign.schema';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -23,8 +30,8 @@ const BUILTIN_TRIGGER_ORDER: Campaign['trigger'][] = ['purchase', 'signup', 'rev
 /**
  * Lite's campaigns list: three always-present editable cards, from the same
  * list CampaignTable reads, filtered to is_builtin. Loading/error/empty are
- * handled here once. Fields edit for real, but Save is inert: there is no
- * update client yet.
+ * handled here once. The On/Off switch writes immediately (a toggle, not a
+ * draft); config fields are a draft until "Save changes".
  */
 export default function BuiltInCampaignList() {
   const { data, isPending, isError } = useCampaignsQuery({ perPage: 100 });
@@ -106,15 +113,46 @@ function BuiltInCampaignCard({
   expanded: boolean;
   onToggleExpanded: () => void;
 }) {
-  // Local edits only; Save is inert until campaign.api.ts has an update client.
+  // Local draft; config only persists on "Save changes". The switch is not part of the draft —
+  // it writes immediately, below.
   const [status, setStatus] = useState(campaign.status);
   const [config, setConfig] = useState(campaign.config);
   const isOn = status === 'active';
+
+  const statusMutation = useUpdateCampaignStatusMutation(campaign.id);
+  const configMutation = useUpdateCampaignConfigMutation(campaign.id);
 
   function reset() {
     setStatus(campaign.status);
     setConfig(campaign.config);
     onToggleExpanded();
+  }
+
+  async function toggleOn(checked: boolean) {
+    const next = checked ? 'active' : 'paused';
+    setStatus(next); // optimistic; reverted below on failure
+
+    try {
+      await statusMutation.mutateAsync(next);
+    } catch (error) {
+      setStatus(campaign.status);
+
+      // api.ts's afterResponse hook already toasts a 403.
+      if (!(error instanceof HTTPError && error.response.status === 403)) {
+        toast.error(await getApiErrorMessage(error, __('Could not update the campaign.', 'yayloyalty')));
+      }
+    }
+  }
+
+  async function saveConfig() {
+    try {
+      await configMutation.mutateAsync(config);
+      toast.success(__('Campaign saved.', 'yayloyalty'));
+    } catch (error) {
+      if (!(error instanceof HTTPError && error.response.status === 403)) {
+        toast.error(await getApiErrorMessage(error, __('Could not save the campaign.', 'yayloyalty')));
+      }
+    }
   }
 
   return (
@@ -134,7 +172,7 @@ function BuiltInCampaignCard({
 
         {/* Its own click target: toggling on/off isn't "open this card". */}
         <div className="flex items-center gap-2" onClick={(event) => event.stopPropagation()}>
-          <Switch checked={isOn} onCheckedChange={(checked) => setStatus(checked ? 'active' : 'paused')} />
+          <Switch checked={isOn} disabled={statusMutation.isPending} onCheckedChange={toggleOn} />
           <span className="text-sm">{isOn ? __('On', 'yayloyalty') : __('Off', 'yayloyalty')}</span>
         </div>
 
@@ -156,8 +194,8 @@ function BuiltInCampaignCard({
           )}
 
           <div className="flex flex-wrap items-center gap-3 border-t pt-4">
-            <Button size="sm" onClick={() => {}}>
-              {__('Save changes', 'yayloyalty')}
+            <Button size="sm" disabled={configMutation.isPending} onClick={saveConfig}>
+              {configMutation.isPending ? __('Saving…', 'yayloyalty') : __('Save changes', 'yayloyalty')}
             </Button>
             <Button variant="link" size="sm" className="h-auto p-0" onClick={reset}>
               {__('Cancel', 'yayloyalty')}

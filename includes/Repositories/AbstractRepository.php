@@ -153,6 +153,13 @@ abstract class AbstractRepository {
 
         $table = esc_sql( $this->table() );
 
+        // A second ORDER BY column, so a page is stable when $orderby ties (equal priority,
+        // equal status, …): without it MySQL may return ties in a different order per page,
+        // repeating or skipping rows across pages. Ties go to the newest, as the repository
+        // docblocks that promise this already say. Skipped when $orderby already is the key.
+        $primary_key   = esc_sql( $this->primary_key() );
+        $tie_break_sql = $orderby === $this->primary_key() ? '' : ', `' . $primary_key . '` DESC';
+
         // Interpolated identifiers are each constrained: $table is our own slug esc_sql()'d,
         // $orderby/$order are whitelisted literals, $where_sql fragments are already prepared.
         // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared -- identifiers are whitelisted/escaped above; values are bound.
@@ -161,7 +168,7 @@ abstract class AbstractRepository {
         $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
             $wpdb->prepare(
                 'SELECT * FROM `' . $table . '`' . $where_sql
-                . ' ORDER BY `' . esc_sql( $orderby ) . '` ' . $order
+                . ' ORDER BY `' . esc_sql( $orderby ) . '` ' . $order . $tie_break_sql
                 . ' LIMIT %d OFFSET %d',
                 $per_page,
                 ( $page - 1 ) * $per_page

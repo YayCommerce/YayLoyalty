@@ -90,6 +90,10 @@ export const campaignSchema = z.object({
   created_by: z.number().int().nullable(),
   created_at: z.string(),
   updated_at: z.string(),
+  /** Net points awarded, lifetime. Derived from the ledger at read time, never stored. */
+  points_issued: z.number().int(),
+  /** Whether DELETE would succeed: not built-in, and no ledger row names it. */
+  is_deletable: z.boolean(),
 });
 
 export type Campaign = z.infer<typeof campaignSchema>;

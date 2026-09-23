@@ -80,6 +80,8 @@ Liveness: `status = 'active' AND (starts_at IS NULL OR starts_at <= now) AND (en
 
 Caching: `CampaignRepository::all_non_archived()` is cached in `wp_cache` group `yayloyalty` key `campaigns_non_archived` with TTL 3600 seconds. Cache is flushed on insert, update, or delete. Method `flush_cache()` is public for testing.
 
+REST-only derived fields: `points_issued` (net `SUM(ledger.points)` for the campaign, any row type) and `is_deletable` (`NOT is_builtin AND COUNT(ledger rows) = 0`) are computed by `CampaignRestController::decorate()` from `LedgerRepository::totals_by_campaign()` at read time — never stored, never cached. The two are deliberately not derived from each other: a campaign earned-then-fully-refunded nets `points_issued = 0` but still has ledger rows, so `is_deletable` stays `false`.
+
 ### config shapes
 
 `config` keys per `trigger_type`. The 1.0 triggers are typed and validated in `Campaign::config_schema()`; the Pro triggers are key lists contributed by `YayLoyaltyPro::add_config_keys()` (kept whitelisted in Free so a downgrade does not lose them).

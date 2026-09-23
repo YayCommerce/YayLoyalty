@@ -18,14 +18,14 @@ import { windowLabel } from '../performance/campaign-performance.copy';
 export type CampaignArchiveCase = 'delete' | 'finished' | 'live';
 
 /**
- * `null` lifetime points (figure unknown) never resolves to delete: offering
- * a permanent delete on a guess is the one mistake this dialog cannot undo.
+ * `isDeletable` is the server's own delete_item() guard (not built-in, zero
+ * ledger rows), restated for the client — never inferred from a points
+ * total here, since a campaign earned-then-fully-refunded nets 0 points but
+ * still has rows naming it, and offering a permanent delete on that guess
+ * is the one mistake this dialog cannot undo.
  */
-export function resolveArchiveCase(
-  displayStatus: CampaignDisplayStatus,
-  lifetimePoints: number | null,
-): CampaignArchiveCase {
-  if (lifetimePoints === 0) {
+export function resolveArchiveCase(displayStatus: CampaignDisplayStatus, isDeletable: boolean): CampaignArchiveCase {
+  if (isDeletable) {
     return 'delete';
   }
 
@@ -188,15 +188,13 @@ export function liveStanding(campaign: Campaign, displayStatus: CampaignDisplayS
 }
 
 /** Left column of every archive dialog: what survives. */
-export function keepsLines(lifetimePoints: number | null): string[] {
+export function keepsLines(lifetimePoints: number): string[] {
   return [
-    lifetimePoints === null
-      ? __('The points already awarded', 'yayloyalty')
-      : sprintf(
-          /* translators: %s: points phrase, e.g. "12,400 points". */
-          __('The %s already awarded', 'yayloyalty'),
-          pointsPhrase(lifetimePoints),
-        ),
+    sprintf(
+      /* translators: %s: points phrase, e.g. "12,400 points". */
+      __('The %s already awarded', 'yayloyalty'),
+      pointsPhrase(lifetimePoints),
+    ),
     __('Customer history, still naming this campaign', 'yayloyalty'),
     __('Its performance figures in reports', 'yayloyalty'),
   ];

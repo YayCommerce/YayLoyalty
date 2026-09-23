@@ -31,7 +31,6 @@ import {
 } from '@/components/ui/custom/dialog';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
-import { DUMMY_POINTS_LAST_30_DAYS, DUMMY_POINTS_LIFETIME } from '../campaign-points-dummy';
 import { CAMPAIGN_PERFORMANCE_QUERIES } from '../performance/campaign-performance.queries';
 import {
   affectedLine,
@@ -77,9 +76,8 @@ export function CampaignArchiveDialog({
   onViewArchived?: () => void;
 }) {
   const displayStatus = resolveCampaignDisplayStatus(campaign.status, campaign.starts_at, campaign.ends_at);
-  // Swap point: read the lifetime figure off the campaign once the resource exposes it.
-  const lifetimePoints = DUMMY_POINTS_LIFETIME[campaign.id] ?? null;
-  const archiveCase = resolveArchiveCase(displayStatus, lifetimePoints);
+  const lifetimePoints = campaign.points_issued;
+  const archiveCase = resolveArchiveCase(displayStatus, campaign.is_deletable);
   const isEarning = archiveCase === 'live' && displayStatus === 'active';
 
   const wantsPerformance = (archiveCase === 'finished' || isEarning) && hasPerformancePage(campaign.trigger);
@@ -108,7 +106,6 @@ export function CampaignArchiveDialog({
         await statusMutation.mutateAsync(action);
       }
 
-      // "Archived", not "stored": update_item()/delete_item() do not persist yet.
       toast.success(successMessage(action));
       onClose();
       onDone?.(action);
@@ -130,7 +127,7 @@ export function CampaignArchiveDialog({
           ? finishedFigures(campaign.trigger, performanceQuery.data)
           : earningFigures(campaign.trigger, performanceQuery.data);
     }
-  } else if (lifetimePoints !== null && archiveCase !== 'delete') {
+  } else if (archiveCase !== 'delete') {
     figures = isEarning
       ? {
           headline: __('This campaign is live right now', 'yayloyalty'),
@@ -386,7 +383,7 @@ function DeleteBody({
         <span className="text-sm font-semibold">{__('Why this dialog and not the archive one', 'yayloyalty')}</span>
         <p className="text-muted-foreground text-sm">
           {__(
-            'A campaign can be deleted only while its lifetime points issued is exactly 0. The moment it awards a single point, delete is gone for good and archive takes over, even if the points are later spent or expire.',
+            'A campaign can be deleted only while no ledger row names it. The moment it awards a single point, delete is gone for good and archive takes over — even if that point is later refunded back to zero.',
             'yayloyalty',
           )}
         </p>
@@ -672,15 +669,12 @@ function BulkArchiveGroup({ heading, caption, rows }: { heading: string; caption
 
 function toBulkArchiveRow(campaign: Campaign): BulkArchiveRow {
   const displayStatus = resolveCampaignDisplayStatus(campaign.status, campaign.starts_at, campaign.ends_at);
-  // Swap point: read both figures off the campaign once the resource exposes them.
-  const lifetimePoints = DUMMY_POINTS_LIFETIME[campaign.id] ?? null;
 
   return {
     campaign,
     displayStatus,
-    archiveCase: resolveArchiveCase(displayStatus, lifetimePoints),
-    lifetimePoints,
-    pointsLast30Days: DUMMY_POINTS_LAST_30_DAYS[campaign.id] ?? null,
+    archiveCase: resolveArchiveCase(displayStatus, campaign.is_deletable),
+    lifetimePoints: campaign.points_issued,
   };
 }
 

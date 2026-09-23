@@ -210,7 +210,7 @@ final class YayLoyaltyPro {
             new CampaignRepository(),
             new DashboardCache( new DashboardRepository() )
         );
-        $controllers[] = new CampaignPerformanceRestController( new DashboardRepository() );
+        $controllers[] = new CampaignPerformanceRestController( new DashboardRepository(), new CampaignRepository() );
 
         return $controllers;
     }

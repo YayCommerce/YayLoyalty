@@ -145,7 +145,6 @@ function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }
       const saved = await mutation.mutateAsync(input);
       // Reset before any navigation reaches the leave guard, or the redirect re-trips it.
       form.reset(campaignToFormValues(saved));
-      // "Saved", not "stored": update_item() does not persist yet.
       toast.success(__('Campaign saved.', 'yayloyalty'));
       return true;
     } catch (error) {

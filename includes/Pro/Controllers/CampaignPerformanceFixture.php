@@ -1,7 +1,6 @@
 <?php
 namespace YayLoyalty\Pro\Controllers;
 
-use YayLoyalty\Controllers\CampaignRestController;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Enums\Status;
 use YayLoyalty\Models\Campaign;
@@ -80,7 +79,7 @@ final class CampaignPerformanceFixture {
     private static array $entries_cache = [];
 
     /**
-     * @param array<string, mixed> $row find_dummy_row()'s shape.
+     * @param array<string, mixed> $row Campaign::to_array()'s shape.
      * @return array<string, mixed>
      */
     public static function summary( array $row, float $rate ): array {
@@ -143,7 +142,7 @@ final class CampaignPerformanceFixture {
      * @return array{items: mixed[], total: int, page: int, per_page: int}
      */
     public static function entries( array $row, int $page, int $per_page, string $search ): array {
-        // Clamped once, up front — same as CampaignRestController::filter_dummy_fixture().
+        // Clamped once, up front — same as CampaignRepository::paginate_filtered().
         // The route's arg schema declares `page`'s minimum as 1, but WP does
         // not actually enforce `minimum`/`maximum` on a REST arg unless a
         // `validate_callback` is registered for it (none is here), so a raw
@@ -367,9 +366,13 @@ final class CampaignPerformanceFixture {
 
     /**
      * "Where the other orders went" — split into higher_priority / guest /
-     * excluded, roughly 70/20/10 of $total. Campaign #1 (Summit+, the
-     * highest-priority active purchase campaign in the fixture) has nothing
-     * ranked above it, so its own skipped orders split guest/excluded only.
+     * excluded, roughly 70/20/10 of $total. Row id 1 has nothing invented
+     * above it in this generator, so its own skipped orders split
+     * guest/excluded only; every other id gets a higher_priority share.
+     * `campaign_id`/`campaign_name` stay null for it — this generator has no
+     * real second campaign to name, and guest/excluded are null for the
+     * same reason, so this stays consistent with them rather than inventing
+     * one.
      *
      * @param array<string, mixed> $row
      * @return array<int, array{reason: string, count: int, campaign_id: int|null, campaign_name: string|null}>
@@ -398,7 +401,6 @@ final class CampaignPerformanceFixture {
             ];
         }
 
-        $higher       = CampaignRestController::find_dummy_row( 1 );
         $higher_count = (int) round( $total * 0.7 );
         $guest_count  = (int) round( $total * 0.2 );
 
@@ -406,8 +408,8 @@ final class CampaignPerformanceFixture {
             [
                 'reason'        => 'higher_priority',
                 'count'         => $higher_count,
-                'campaign_id'   => $higher['id'] ?? null,
-                'campaign_name' => $higher['name'] ?? null,
+                'campaign_id'   => null,
+                'campaign_name' => null,
             ],
             [
                 'reason'        => 'guest',

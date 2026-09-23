@@ -387,42 +387,44 @@ other listener callback, so a DB failure here never blocks WP's own user-creatio
 
 **Route:** `/campaigns/:id/edit` (Pro-only; gated by `IS_PRO_BUILD` AND `requires(CAP.MANAGE_CAMPAIGNS)` with Pro lock winning if both apply).
 
-**Access:** Reachable from `CampaignTable` row name-link (detail pre-load) and "Duplicate" action. "Add campaign" intentionally inert — the campaigns list reads from a dummy fixture, not the database, so a genuine create would produce an invisible row (same SWAP POINT as update, below).
+**Access:** Reachable from `CampaignTable` row name-link (detail pre-load) and "Duplicate" action. "Add campaign" intentionally inert — there is no create form/dialog wired to the (real) `POST /campaigns` endpoint yet; a follow-up task. "Duplicate" seeds the editor for the *original* campaign, not a new row.
 
 **Editor structure:** Six sections (Basics, Trigger, Reward, Conditions, Schedule, Priority) plus a live-updating summary rail ("What this means", "Before it can run", save actions). Uses react-hook-form + zodResolver (first RHF adoption in this codebase). Per-trigger reward config editors for Lite triggers (purchase/signup/review); generic read-only fallback for Pro-only triggers that preserves config byte-for-byte. 10-type condition builder. Nullable start/end scheduling with site-timezone conversion at display/input edges (form/wire values stay raw UTC).
 
-**SWAP POINT caveat:** The PHP update endpoint validates and returns the campaign, but **does NOT persist to the database**. This is a deliberate, explicitly-marked temporary state — both the read-side (list/detail from dummy fixture) and write-side (update validation without persist) SWAP POINTs are intended to be resolved together in a future CRUD task.
+**Persistence:** The PHP update endpoint persists for real — loads the campaign from `CampaignRepository`, validates, applies whichever fields the request body carries (partial write), and writes via `Campaign::to_update_row()` (pairs `to_row()`'s data with `get_format()`'s placeholders position-for-position, since `$wpdb->update()` consumes `$format` with `array_shift()` — dropping immutable columns from one without the other would silently misalign every placeholder after the cut). Archiving a built-in is rejected with 403 before any setter runs, not via `set_status()`'s exception.
 
 ```
 GET /campaigns/:id   (read for detail pre-load)
     ↓
 CampaignRestController::get_item()
+    └─ decorate(): adds points_issued (SUM over LedgerRepository::totals_by_campaign()) and is_deletable
 
 POST|PUT|PATCH /yayloyalty/v1/campaigns/:id   (WP_REST_Server::EDITABLE)
     ↓
 CampaignRestController::update_item()  via  exec_write()
-    ├─ CampaignTrigger::is_valid( trigger )        must be fireable in THIS build (all(), filtered)
+    ├─ CampaignTrigger::is_valid( trigger )        must be fireable in THIS build (all(), filtered) — trigger itself is immutable after create
     ├─ Campaign::validate_config( trigger, config ) keys whitelisted per trigger
-    ├─ Campaign::conditions_are_valid()            validates the 10-type condition set (NEW: now wired as a real gate, not a stub)
-    ├─ [SWAP POINT: NO persist to database; controller strips readonly fields and returns the validated campaign]
-    └─ Response: Campaign::to_array()
+    ├─ Campaign::conditions_are_valid()            validates the 10-type condition set
+    ├─ archiving a built-in → 403, checked before any setter runs
+    ├─ CampaignRepository::update() via Campaign::to_update_row()
+    └─ Response: decorate() → Campaign::to_array() + points_issued + is_deletable
     
 Admin SPA (CampaignEditorPage)
-    ├─ useUpdateCampaignMutation() (NEW)
-    ├─ six form sections reading/writing through consolidated data layer (campaign.schema.ts/api.ts/queries.ts, extended with updateCampaignInput schema and updateCampaign() call)
+    ├─ useUpdateCampaignMutation()
+    ├─ six form sections reading/writing through consolidated data layer (campaign.schema.ts/api.ts/queries.ts)
     └─ summary rail live-updates from form state
 ```
 
 **Known gaps (not built, not faked):**
+- No create form/dialog — "Add campaign" is inert (follow-up task).
 - No product/category/customer search endpoint → id-entry via existing `TagsInput` pickers deferred.
 - No store-wide ledger aggregate → rail's "cost estimate" line omitted.
-- `updated_by` column exists; controller never sets it.
 - `include_shipping` config key still stored but never read by `BaseCalculator` (dead key).
 
-### Campaign create — REST only, no SPA form yet
+### Campaign create/delete
 
 ```
-POST /yayloyalty/v1/campaigns   (no admin UI issues this yet; the campaigns page reads from a dummy fixture)
+POST /yayloyalty/v1/campaigns   (real; no admin UI issues this yet — see Known gaps above)
     ↓
 CampaignRestController::create_item()  via  exec_write()
     ├─ CampaignTrigger::is_valid( trigger )        must be fireable in THIS build (all(), filtered)
@@ -430,7 +432,15 @@ CampaignRestController::create_item()  via  exec_write()
     ├─ slug generated server-side and de-duplicated; is_builtin never read from the request
     └─ CampaignRepository::insert()
     ↓
-Response: Campaign::to_array()
+Response: decorate() → Campaign::to_array() + points_issued (0) + is_deletable (true)
+
+DELETE /yayloyalty/v1/campaigns/:id
+    ↓
+CampaignRestController::delete_item()  via  exec_write()
+    ├─ is_builtin → 403
+    ├─ LedgerRepository::totals_by_campaign([id]).count > 0 → 409 (archive instead; count, never points — a
+    │  campaign earned-then-fully-refunded nets 0 points but still has rows naming it)
+    └─ CampaignRepository::delete()
 ```
 
 ### Campaign performance (Pro-only) — fixture-backed, real endpoint shape
@@ -445,8 +455,8 @@ Response: Campaign::to_array()
 GET /campaigns/:id/performance
     ↓
 CampaignPerformanceRestController::get_performance()
-    ├─ resolve_row()  404 for unknown id OR unsupported trigger (identical either way — no timing/error-shape difference an unauthorized trigger check could leak)
-    └─ [SWAP POINT: answers entirely from CampaignPerformanceFixture — deterministic-per-id, invented]
+    ├─ resolve_row()  CampaignRepository::find_campaign() (real row) + trigger allowlist; 404 for unknown id OR unsupported trigger (identical either way — no timing/error-shape difference an unauthorized trigger check could leak)
+    └─ [SWAP POINT: the *numbers* still come entirely from CampaignPerformanceFixture — deterministic-per-id, invented. Only the row is real now]
     ↓
 Response validated by lib/schema/campaign-performance.schema.ts (zod)
     ↓

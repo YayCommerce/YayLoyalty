@@ -203,7 +203,7 @@ Two categories of fixture data ship in this plugin, with different visibility ru
 
 **Dev-only `?scenario=` fixtures** (WP_DEBUG-gated): the dashboard (`GET /dashboard`) accepts a `scenario` query arg only when `WP_DEBUG` is true, checked server-side by `DashboardFixture::requested()`. The customer drawer has no fixtures; its routes always serve real data. Production sites with `WP_DEBUG = false` cannot reach these fixtures; requests without the arg always return real data or honest empty envelopes.
 
-**Unconditional swap-point fixtures**: Campaign list/detail (`GET /campaigns`, `GET /campaigns/{id}`) and campaign performance (`GET /campaigns/{id}/performance`) are ENTIRELY fixture-backed via `CampaignRestController::dummy_fixture()` and `CampaignPerformanceFixture`. These ship in the zip and are what a production site sees until swapped for real data. The validator does not flag them; they are marked as swap points in their controller docblocks.
+**Unconditional swap-point fixtures**: Campaign performance (`GET /campaigns/{id}/performance`) is ENTIRELY fixture-backed via `CampaignPerformanceFixture` — real campaign, invented numbers. This ships in the zip and is what a production site sees until swapped for real data. The validator does not flag it; it is marked as a swap point in the controller's docblock. Campaign list/detail/create/update/delete (`GET/POST/PUT/DELETE /campaigns[/{id}]`) are real as of 2026-09-23; `CampaignRestController` no longer has a fixture.
 
 **Packaged builds ship without `RegisterDev.php`, and `YAYLOYALTY_IS_DEVELOPMENT` defaults
 to `true` when undefined.** A production site must define

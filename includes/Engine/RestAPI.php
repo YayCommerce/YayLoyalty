@@ -70,8 +70,8 @@ class RestAPI {
             // Empty envelopes until their tables exist.
             new RedemptionsRestController(),
             new ReferralsRestController(),
-            // Definition table: repository only, no service.
-            new CampaignRestController( $campaigns ),
+            // Definition table: repository only, no service. $ledger is read-only here too.
+            new CampaignRestController( $campaigns, $ledger ),
             new DashboardRestController(
                 new DashboardStats( $dashboard ),
                 new DashboardCache( $dashboard ),

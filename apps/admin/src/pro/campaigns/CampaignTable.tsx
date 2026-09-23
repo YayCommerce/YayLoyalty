@@ -3,11 +3,14 @@ import { closestCenter, DndContext, PointerSensor, useSensor, useSensors, type D
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { HTTPError } from 'ky';
 import { ChevronsUpDown, GripVertical, InfoIcon, Lock, Search } from 'lucide-react';
 import { useNavigate } from 'react-router';
+import { toast } from 'sonner';
 import { __, _n, sprintf } from '@wordpress/i18n';
 
-import { useCampaignsQuery } from '@/lib/queries/campaign.queries';
+import { getApiErrorMessage } from '@/lib/api/api';
+import { useCampaignsQuery, useUpdateCampaignStatusMutation } from '@/lib/queries/campaign.queries';
 import { hasPerformancePage } from '@/lib/schema/campaign-performance.schema';
 import {
   Campaign,
@@ -47,7 +50,6 @@ import {
   triggerGroup,
   triggerLabel,
 } from './campaign-labels';
-import { DUMMY_POINTS_LAST_30_DAYS, hasPointsFigure } from './campaign-points-dummy';
 import { CampaignPointsSummary } from './CampaignPointsSummary';
 import type { CampaignEditorDuplicateSeed } from './editor/CampaignEditor';
 import { CampaignPauseDialog } from './pause/CampaignPauseDialog';
@@ -79,8 +81,6 @@ interface DisplayCampaign extends Campaign {
   conditionsLabel: string;
   scheduleLabel: string;
   displayStatus: CampaignDisplayStatus;
-  /** Dummy, client-side only; see campaign-points-dummy.ts. */
-  pointsLast30Days: number | null;
 }
 
 /** One trigger group as rendered; hiddenRows sit behind "Show the other … campaigns". */
@@ -94,7 +94,7 @@ interface CampaignGroup {
 /**
  * Pro's grouped, prioritised campaigns table, reading the same list as
  * BuiltInCampaignList. Presentation strings are derived client-side
- * (toDisplayCampaign); pointsLast30Days is dummy until an endpoint exists.
+ * (toDisplayCampaign); points_issued is the server's own field.
  * Drag-to-reorder changes display order only, never `priority`.
  * `newStore` / `noLiveCampaign` are dev-only preview toggles with no UI
  * control; `newStore` stands in for "has this store ever earned points",
@@ -127,6 +127,28 @@ export function CampaignTable() {
   const hasActivePurchaseCampaign = rows.some(
     (row) => triggerGroup(row.trigger) === 'purchase' && row.displayStatus === 'active',
   );
+
+  // The one-click fix the "aren't earning points" alert below offers. Read off allRows, never
+  // the toggled/filtered rows: the real built-in, regardless of dev preview state.
+  const defaultPurchaseCampaign = allRows.find((row) => row.is_builtin && triggerGroup(row.trigger) === 'purchase');
+  const reactivatePurchaseMutation = useUpdateCampaignStatusMutation(defaultPurchaseCampaign?.id ?? 0);
+
+  async function reactivateDefaultPurchase() {
+    if (!defaultPurchaseCampaign) {
+      return;
+    }
+
+    try {
+      await reactivatePurchaseMutation.mutateAsync('active');
+      toast.success(__('"Points for purchases" is active again.', 'yayloyalty'));
+    } catch (error) {
+      // api.ts's afterResponse hook already toasts a 403.
+      if (!(error instanceof HTTPError && error.response.status === 403)) {
+        toast.error(await getApiErrorMessage(error, __('Could not switch the campaign back on.', 'yayloyalty')));
+      }
+    }
+  }
+
   const showSearch = rows.length > SEARCH_THRESHOLD;
   // Archived stays out entirely unless asked for by name.
   const statusFilteredRows = statusFilter
@@ -321,8 +343,7 @@ export function CampaignTable() {
               </Select>
             )}
 
-            {/* Inert on purpose: create_item() persists for real while the list still reads the
-                dummy fixture, so a created row would never appear here. */}
+            {/* Inert on purpose: no create form yet (follow-up task) — the REST POST is real. */}
             <Button size="sm" onClick={() => {}}>
               {__('Add campaign', 'yayloyalty')}
             </Button>
@@ -338,7 +359,7 @@ export function CampaignTable() {
               <AlertDescription className="text-foreground gap-3">
                 <p>
                   {__(
-                    'Your storefront still advertises point earning. Since 6 September, 47 orders have completed and awarded nothing.',
+                    'Your storefront still advertises point earning, but completed orders are awarding nothing right now.',
                     'yayloyalty',
                   )}
                 </p>
@@ -348,15 +369,20 @@ export function CampaignTable() {
                     'yayloyalty',
                   )}
                 </p>
-                <div className="flex flex-wrap items-center gap-3 pt-1">
-                  {/* Inert: no write client/mutation wired yet (routes exist in CampaignRestController). */}
-                  <Button variant="primary" size="sm" onClick={() => {}}>
-                    {__('Switch "Points for purchases" back on', 'yayloyalty')}
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => {}}>
-                    {__('Hide earning messages on the storefront', 'yayloyalty')}
-                  </Button>
-                </div>
+                {defaultPurchaseCampaign && (
+                  <div className="flex flex-wrap items-center gap-3 pt-1">
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      disabled={reactivatePurchaseMutation.isPending}
+                      onClick={reactivateDefaultPurchase}
+                    >
+                      {reactivatePurchaseMutation.isPending
+                        ? __('Switching on…', 'yayloyalty')
+                        : __('Switch "Points for purchases" back on', 'yayloyalty')}
+                    </Button>
+                  </div>
+                )}
               </AlertDescription>
             </Alert>
           )}
@@ -415,7 +441,7 @@ export function CampaignTable() {
                       <TableHead>{__('Gives', 'yayloyalty')}</TableHead>
                       <TableHead>{__('Conditions', 'yayloyalty')}</TableHead>
                       <TableHead>{__('Schedule', 'yayloyalty')}</TableHead>
-                      <TableHead className="text-right">{__('Last 30 days', 'yayloyalty')}</TableHead>
+                      <TableHead className="text-right">{__('Points issued', 'yayloyalty')}</TableHead>
                       <TableHead className="text-center">{__('Priority', 'yayloyalty')}</TableHead>
                       <TableHead>{__('Status', 'yayloyalty')}</TableHead>
                       <TableHead className="w-1" />
@@ -747,7 +773,7 @@ function SortableCampaignRow({
       <TableCell className="text-muted-foreground text-xs">{row.conditionsLabel}</TableCell>
       <TableCell className="text-muted-foreground text-xs">{row.scheduleLabel}</TableCell>
       <TableCell className="text-muted-foreground text-right text-xs tabular-nums">
-        {hasPointsFigure(row.displayStatus) ? <PointsValue value={row.pointsLast30Days ?? 0} /> : '—'}
+        <PointsValue value={row.points_issued} />
       </TableCell>
       <TableCell className="text-center text-sm font-semibold tabular-nums">{row.priority}</TableCell>
       <TableCell>
@@ -865,7 +891,7 @@ function campaignCountLabel(count: number): string {
   );
 }
 
-/** Derives every presentation string from the real Campaign fields; generic across all triggers. */
+/** Derives every presentation string from the real Campaign fields; generic across all triggers. points_issued/is_deletable ride along via the spread — they're already on Campaign. */
 function toDisplayCampaign(campaign: Campaign): DisplayCampaign {
   return {
     ...campaign,
@@ -873,6 +899,5 @@ function toDisplayCampaign(campaign: Campaign): DisplayCampaign {
     conditionsLabel: conditionsLabel(campaign.conditions),
     scheduleLabel: scheduleLabel(campaign.starts_at, campaign.ends_at),
     displayStatus: resolveCampaignDisplayStatus(campaign.status, campaign.starts_at, campaign.ends_at),
-    pointsLast30Days: DUMMY_POINTS_LAST_30_DAYS[campaign.id] ?? null,
   };
 }

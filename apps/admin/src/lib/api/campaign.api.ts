@@ -30,17 +30,22 @@ export async function getCampaign(id: number): Promise<Campaign> {
   return campaignSchema.parse(await api.get(`campaigns/${id}`).json());
 }
 
-/** PUT campaigns/{id}. Does not persist yet; see update_item()'s swap point. */
+/** PUT campaigns/{id}. Every field is optional server-side except this type's own required ones; see updateCampaignStatus() for a narrower partial write. */
 export async function updateCampaign(id: number, input: CampaignUpdateInput): Promise<Campaign> {
   return campaignSchema.parse(await api.put(`campaigns/${id}`, { json: input }).json());
 }
 
-/** PUT campaigns/{id} with only `status`, a partial write. Does not persist yet; see update_item()'s swap point. */
+/** PUT campaigns/{id} with only `status` — update_item() applies whichever fields the body carries, so a single-key body is a real partial write, not a full-body requirement in disguise. */
 export async function updateCampaignStatus(id: number, status: CampaignStatus): Promise<Campaign> {
   return campaignSchema.parse(await api.put(`campaigns/${id}`, { json: { status } }).json());
 }
 
-/** DELETE campaigns/{id}. Does not persist yet; see delete_item()'s swap point. */
+/** PUT campaigns/{id} with only `config` — same reasoning as updateCampaignStatus(); BuiltInCampaignList edits config without touching name/priority/conditions/dates. */
+export async function updateCampaignConfig(id: number, config: Campaign['config']): Promise<Campaign> {
+  return campaignSchema.parse(await api.put(`campaigns/${id}`, { json: { config } }).json());
+}
+
+/** DELETE campaigns/{id}. 409s if the campaign has ledger rows; see Campaign.is_deletable. */
 export async function deleteCampaign(id: number) {
   return campaignDeleteResponseSchema.parse(await api.delete(`campaigns/${id}`).json());
 }

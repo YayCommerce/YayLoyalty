@@ -9,9 +9,10 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Per-campaign issuance reads over the ledger's campaign_id. Read-only
- * aggregate, not an AbstractRepository. These are real ids, while
- * GET /campaigns still serves dummy_fixture() ids, so they may not line up
- * on the Campaigns page until that fixture is removed.
+ * aggregate, not an AbstractRepository. Ids now line up with GET /campaigns
+ * (both read real rows), unlike LedgerRepository::totals_by_campaign() this
+ * class does not also need — it counts rows for the delete guard, this
+ * ranks dashboard tiles by SUM(points) alone.
  */
 class CampaignPointsRepository {
 
