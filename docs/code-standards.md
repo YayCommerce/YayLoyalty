@@ -2,7 +2,7 @@
 
 Enforced by `phpcs.xml.dist` where a sniff exists; enforced by review where one does not. Rules marked **[REVIEW]** have no automated check — they are the ones most worth catching in a pull request.
 
-Companion: [`data-model.md`](./data-model.md).
+Companion: [`data-model.md`](./data-model.md). Docs follow the same single-source rule as code: a fact lives in one doc and others link to it (owners listed in [`codebase-summary.md`](./codebase-summary.md#where-each-fact-lives)).
 
 ---
 
@@ -190,7 +190,7 @@ Two conventions for fixture data coexist:
 
 **Shared schema/query-arg classes** — `Controllers/Schemas/{CustomerItemSchema,LedgerQueryArgs,ActivityQueryArgs}.php` live in one place so a contract change is made once. The **customer drawer has no fixtures and serves real data only**; these classes are used by its real controller paths and by tests. Dashboard and campaign endpoints use fixtures alongside their real paths.
 
-**Dev-only fixture gate** — the `WP_DEBUG`-gated fixture (`DashboardFixture`) is reached via a `scenario` query arg, checked server-side by `requested()` helper — the real path (no arg) always returns real data. A "swap point" fixture (`CampaignRestController::dummy_fixture()`, `CampaignPerformanceFixture`) is never optional; it ships in the release zip. Mark swap-point fixtures in controller docblocks and list them in `project-roadmap.md` Known Gaps.
+**Dev-only fixture gate** — the `WP_DEBUG`-gated fixture (`DashboardFixture`) is reached via a `scenario` query arg that is registered only under `WP_DEBUG` and re-checked in the handler — the real path (no arg) always returns real data. A "swap point" fixture (`CampaignRestController::dummy_fixture()`, `CampaignPerformanceFixture`) is never optional; it ships in the release zip. Mark swap-point fixtures in controller docblocks and list them in `project-roadmap.md` Known Gaps.
 
 ## 10. PHP 7.4 pseudo-enums
 
@@ -230,7 +230,7 @@ Stamping `schema_version` into a list turns it into an object: `[{…},{…}]` c
 
 `decode_list()` unwraps it and also accepts a bare array and the corrupted `{"0":…}` shape, so no stored row is lost. **[REVIEW]** — pick the pair that matches the column's shape; nothing enforces it.
 
-The vocabulary and per-type rules for `campaigns.conditions` live in `Enums\CampaignConditionType`; `Models\CampaignConditionSet` validates and normalises a set on save (`CampaignRestController` runs `Campaign::conditions_are_valid()` before writing; `set_conditions()` normalises), mirroring the `config` pair. `rewards.conditions` is the same pattern with `Enums\RewardConditionType` / `Models\RewardConditionSet` / `Models\RewardCondition`. Named `Campaign*` and `Reward*`, never a bare `Condition*` — the two vocabularies must not collide, and each is free to grow its own types independently. Neither `extends` the other, and there is no shared base class — but two things are genuinely identical between them, so they are shared rather than duplicated: `Enums\ConditionTypeMethods` is a trait supplying `all()`/`all_known()`/`is_valid()`/`is_known()`/`operators_for()`/`assert()`, used by both `CampaignConditionType` and `RewardConditionType` (each still declares its own `schema()` and `UNAVAILABLE` — that's where they diverge); `Utils\ConditionValueRules` is the value-shape checks (`int`, `int_list`, `string_list`, `between` pairs, list caps) used by both `CampaignConditionSet` and `RewardConditionSet`. Both exist so a fix to that logic is made once, not twice — not to merge the vocabularies themselves. See `data-model.md` → `conditions`.
+The vocabulary and per-type rules for `campaigns.conditions` live in `Enums\CampaignConditionType`; `Models\CampaignConditionSet` validates and normalises a set on save (`CampaignRestController` runs `Campaign::conditions_are_valid()` before writing; `set_conditions()` normalises), mirroring the `config` pair. `rewards.conditions` is the same pattern with `Enums\RewardConditionType` / `Models\RewardConditionSet` / `Models\RewardCondition`. Named `Campaign*` and `Reward*`, never a bare `Condition*` — the two vocabularies must not collide, and each is free to grow its own types independently. Neither `extends` the other, and there is no shared base class — but two things are genuinely identical between them, so they are shared rather than duplicated: `Enums\ConditionTypeMethods` is a trait supplying `all()`/`all_known()`/`is_valid()`/`is_known()`/`operators_for()`/`assert()`, used by both `CampaignConditionType` and `RewardConditionType` (each still declares its own `schema()` and `UNAVAILABLE` — that's where they diverge); `Utils\ConditionValueRules` is the value-shape checks (`int`, `int_list`, `string_list`, `between` pairs, list caps) used by both `CampaignConditionSet` and `RewardConditionSet`. Both exist so a fix to that logic is made once, not twice — not to merge the vocabularies themselves. See `data-model/campaigns.md` and `data-model/rewards.md` → `conditions`.
 
 ## 13. Pro extension seams
 
@@ -244,20 +244,7 @@ That is why the Lite build is a directory deletion rather than surgery on shared
 
 ### The seams
 
-| Pro needs | Hook |
-|---|---|
-| Its tables | `yayloyalty_table_schemas` |
-| To react to ledger writes | `yayloyalty_ledger_recorded` |
-| Its REST endpoints | `yayloyalty_rest_controllers` |
-| Extra campaign triggers | `yayloyalty_campaign_triggers` |
-| Extra campaign config keys | `yayloyalty_campaign_config_whitelist` |
-| Extra reward types | `yayloyalty_reward_types` |
-| Trigger handlers for its types | `yayloyalty_register_trigger_handlers` |
-| Extra reward config keys | `yayloyalty_reward_config_whitelist` |
-| Reward handlers for its types | `yayloyalty_register_reward_handlers` |
-| To extend a resource's schema | `yayloyalty_rest_item_schema` |
-| To evaluate campaign conditions | `yayloyalty_campaign_conditions_evaluator` |
-| Other seams | `yayloyalty_max_manual_adjustment`, `yayloyalty_run_migrations`, `yayloyalty_localize_admin_data`, `yayloyalty_localize_meta`, `yayloyalty_pro_booted` |
+Every hook, where it fires and who subscribes: [`system-architecture.md` → Internal Extension Seams](./system-architecture.md#internal-extension-seams-filters).
 
 These are **internal seams for first-party Pro code**, not a documented third-party API. They may change.
 
@@ -315,16 +302,21 @@ A stripping build fails silently by nature, so every release is validated agains
 
 ## 14. Running the linter and tests
 
+The one place suite counts and coverage are written down; other docs link here.
+
 ```bash
-composer lint                          # phpcs (WPCS + PHPCompatibility)
+composer lint                          # phpcs (WPCS + PHPCompatibility, 7.4 floor)
 composer lint:fix                      # phpcbf
-composer test                          # phpunit — 229 tests (62 incomplete = the earning-split specification in `tests/unit/Earning/`, `tests/unit/Services/`, `tests/unit/ContextFactoryTest.php` and the redemption-split specification in `tests/unit/Redemption/`): points engine, earning orchestration scaffold, reward engine + clamp, redemption orchestration scaffold, dashboard computation, PointsMath + shared vectors, campaign validation, drawer query-arg groupings + fixture helpers
-pnpm --filter @yayloyalty/admin-page lint   # eslint + prettier on SPA
-pnpm --filter @yayloyalty/admin-page test   # vitest — 120 tests: lib/points-math against the same vector file, money formatting, activity rows, adjust-dialog form state
+./scripts/check-docs.sh                # docs stay split and single-homed: cited paths exist, links resolve, sizes, test counts only here
+composer test                          # phpunit over tests/unit/ — 229 tests, 62 incomplete by design (the earning-split specification in `tests/unit/Earning/`, `tests/unit/Services/`, `tests/unit/ContextFactoryTest.php` and the redemption-split specification in `tests/unit/Redemption/`): points engine (BaseCalculator, PurchaseHandler, PointsEngine), earning orchestration scaffold (IdempotencyKey, Outcome, EarningService), the ledger's duplicate-key guard (QueryException), reward engine + clamp (Clamp, Result, Registry, RewardEngine), redemption orchestration scaffold (Quoter real; service, writer, coupon, session, adapters as specification), dashboard computation (PeriodWindow, DashboardMath, AnomalyDetector, DashboardStats, DashboardNotices), PointsMath + shared vectors, campaign config/conditions validation, drawer query-arg groupings + item formatter (`tests/unit/Controllers/`)
+composer test:integration              # phpunit over tests/integration/ against a real WordPress and MySQL — 27 tests: the ledger's UNIQUE guard, the balance_after chain and non-idempotent manual rows, adjust_lifetime in both directions, and which user ids the customer routes accept (deleted members on the drawer reads, not on adjust). Plugin tables go under a scratch `ylit_` prefix and are dropped afterwards, so the site's own data is never read or written. Needs a WordPress install with the plugin active; see `deployment-guide.md`
+pnpm --filter @yayloyalty/admin-page lint   # eslint + prettier on TypeScript/React
+pnpm --filter @yayloyalty/admin-page test   # vitest over apps/admin/tests/ — 120 tests: lib/points-math against tests/fixtures/points-math-vectors.json (same file phpunit runs), money formatting, activity rows, adjust-dialog form state
 ./scripts/run.sh build [pro|lite]      # Full build — currently fails at tsc --noEmit due to 3 pre-existing missing-dependency type errors
+./scripts/run.sh release lite --no-prompt   # builds and validates a package end to end
 ```
 
-`tests/bootstrap.php` shims `add_filter` / `apply_filters` / `do_action` so pure code that goes through hooks can be tested in milliseconds. Anything that needs `$wpdb` or WooCommerce is not a unit test; until a wp-phpunit harness exists, exercise it through WP-CLI.
+`tests/bootstrap.php` shims `add_filter` / `apply_filters` / `do_action` so pure code that goes through hooks can be tested in milliseconds. Anything that needs `$wpdb` or WooCommerce is not a unit test: it belongs in `tests/integration/`, or, for real `WC_Order` flows the integration suite does not cover yet, is exercised through WP-CLI.
 
 ### The points engine is pure
 

@@ -15,7 +15,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * The only writer of the ledger and the customer aggregates — the award
- * writer of the two-moment split (docs/points-engine-scout.md). Enforced by
+ * writer of the two-moment split (docs/archive/points-engine-scout.md). Enforced by
  * convention: constructed in exactly four places, Engine\RestAPI::controllers(),
  * Database\InitYayLoyaltyCustomer::maybe_create() and (once their bodies
  * land) Engine\Earning\EarningService::build() and
@@ -284,7 +284,7 @@ final class LedgerService {
             $lifetime_earned_delta,
             $lifetime_redeemed_delta,
             $activity_at,
-            null // Expiry policy is a later Pro task (data-model.md `yayloyalty_lots`).
+            null // Expiry policy is a later Pro task (data-model/future-tables.md `yayloyalty_lots`).
         );
     }
 

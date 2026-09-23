@@ -6,6 +6,22 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
 
 ## Unreleased
 
+### Changed — Docs split per table, one owner per fact (2026-09-23)
+
+- `docs/data-model.md` (111 KB) is now a 17 KB index — conventions, relationships, invariants, write
+  paths — with per-table specs in `docs/data-model/` (`campaigns`, `rewards`, `customers-and-ledger`,
+  `redemptions`, `future-tables`). Content moved verbatim; code comments citing a table now name its
+  file.
+- Repeated facts have one owner, listed in `codebase-summary.md` → "Where each fact lives": test
+  suites and counts in `code-standards.md` § 14, Pro seams in `system-architecture.md`, dev fixtures
+  in `deployment-guide.md`, route id rules in `code-standards.md` § 9. Corrected while merging:
+  `yayloyalty_max_manual_adjustment` is a global sanity ceiling, `adjustment_ceiling` is site-wide
+  (non-administrators), the dashboard fixture gate is arg registration plus a handler re-check (no
+  `requested()` helper), and database-backed tests belong in the integration suite.
+- The two point-in-time scout reports moved to `docs/archive/`.
+- **`scripts/check-docs.sh`** guards it: doc paths cited in code exist, relative links resolve, docs
+  stay under 800 lines (the data-model index under 250), test counts appear only in § 14.
+
 ### Added — Adjust points dialog: single and bulk targets, stale-balance check, lifetime option (2026-09-23)
 
 - **Dialog** (`CustomersAdjustPointsDialog.tsx`, `components/adjust-points/`): one dialog with an
@@ -144,7 +160,7 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
 - **Tests:** 152 → 208 cases (64 incomplete); `ClampTest` (14 real), `QuoterTest` (3 real),
   `IdempotencyKeyTest` redeem cases (real), `tests/unit/Redemption/*` specification incl.
   `test_no_database_write_occurs_during_a_quote`.
-- `docs/redemption-scout.md` records the pre-restructure inventory.
+- `docs/archive/redemption-scout.md` records the pre-restructure inventory.
 - **Docs (2026-09-23):** `data-model.md` 0.8 catches up — the redemptions section now states what
   exists in code (schema class, model, stub repository) versus what still creates nothing, documents
   the `uk_order_reward (order_id, reward_id)` double-debit guard, and the ledger's `idempotency_key`
@@ -171,7 +187,7 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
   `CustomerRepository::apply_pending_delta()` (stubs); `find_by_reference()` / `latest_for_user()` removed.
 - **Settings:** `excluded_roles` (`slug_list`) added to `SettingsHelper` defaults.
 - **Tests:** 115 → 152 cases; the 27 incomplete ones under `tests/unit/Earning/`, `tests/unit/Services/`
-  and `ContextFactoryTest.php` are the scaffold's specification. `docs/points-engine-scout.md` records
+  and `ContextFactoryTest.php` are the scaffold's specification. `docs/archive/points-engine-scout.md` records
   the pre-scaffold inventory.
 
 ### Added — Customers row created at WP registration (2026-09-23)
