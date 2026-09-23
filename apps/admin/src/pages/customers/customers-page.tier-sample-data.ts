@@ -48,7 +48,7 @@ export function sampleTierProgress(
  * Tier → the real balance-range bucket it stands in for — same boundaries as
  * `TIER_SAMPLE_THRESHOLDS` above and `CustomerRowFilters::balance_bounds()`.
  * 'all' has no bucket of its own; callers only look this up once they've
- * already checked `tier !== 'all'` (see `resolveBalanceRangeForQuery`).
+ * already checked `tier !== 'all'` (see `toServerFilters`).
  */
 const TIER_TO_BALANCE_RANGE: Record<Exclude<CustomerTier, 'all'>, CustomerBalanceRange> = {
   Explorer: '0-1000',
@@ -56,7 +56,15 @@ const TIER_TO_BALANCE_RANGE: Record<Exclude<CustomerTier, 'all'>, CustomerBalanc
   Alpine: '10000-plus',
 };
 
-/** What to send as balance_range: the tier's bucket when a tier is picked, else the real filter. */
-export function resolveBalanceRangeForQuery(filters: Pick<RowFilters, 'tier' | 'balanceRange'>): CustomerBalanceRange {
-  return filters.tier === 'all' ? filters.balanceRange : TIER_TO_BALANCE_RANGE[filters.tier];
+/**
+ * The filters as every customers request must send them: a Tier pick goes
+ * out as its balance_range bucket and `tier` as 'all', since a real `tier`
+ * param matches nothing server-side. The list, the bulk walk and the
+ * adjust preview all route through this so they count the same rows.
+ */
+export function toServerFilters(filters: RowFilters): RowFilters & { tier: 'all' } {
+  const balanceRange: CustomerBalanceRange =
+    filters.tier === 'all' ? filters.balanceRange : TIER_TO_BALANCE_RANGE[filters.tier];
+
+  return { ...filters, balanceRange, tier: 'all' };
 }

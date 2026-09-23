@@ -111,7 +111,7 @@ final class CampaignPerformanceFixture {
 
         if ( CampaignTrigger::PURCHASE === $row['trigger'] ) {
             $totals['orders_affected']  = $entries_total;
-            $totals['liability_amount'] = PointsMath::points_to_currency( $points_issued, $rate );
+            $totals['liability_amount'] = PointsMath::points_to_currency( $points_issued, $rate, wc_get_price_decimals() );
 
             if ( $has_data ) {
                 $skipped_total                     = (int) round( $entries_total * 0.4 );
@@ -362,7 +362,7 @@ final class CampaignPerformanceFixture {
 
         $default_equivalent = (int) round( $points_issued / $multiplier );
 
-        return PointsMath::points_to_currency( $points_issued - $default_equivalent, $rate );
+        return PointsMath::points_to_currency( $points_issued - $default_equivalent, $rate, wc_get_price_decimals() );
     }
 
     /**
@@ -446,7 +446,7 @@ final class CampaignPerformanceFixture {
             'to'               => $to->format( 'Y-m-d' ),
             'orders'           => $orders,
             'points'           => $points,
-            'liability_amount' => PointsMath::points_to_currency( $points, $rate ),
+            'liability_amount' => PointsMath::points_to_currency( $points, $rate, wc_get_price_decimals() ),
         ];
     }
 

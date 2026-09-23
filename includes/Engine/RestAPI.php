@@ -4,6 +4,7 @@ namespace YayLoyalty\Engine;
 use YayLoyalty\Controllers\AbstractRestController;
 use YayLoyalty\Controllers\ActivityRestController;
 use YayLoyalty\Controllers\CampaignRestController;
+use YayLoyalty\Controllers\CustomerAdjustPreviewRestController;
 use YayLoyalty\Controllers\CustomerRestController;
 use YayLoyalty\Controllers\DashboardRestController;
 use YayLoyalty\Controllers\LedgerRestController;
@@ -65,6 +66,9 @@ class RestAPI {
             // $customer_meta backs deleted_at/loose_ends/counts.activity and
             // the list's identity fallback.
             new CustomerRestController( $customers, $ledger_service, $ledger, $rewards, $customer_meta ),
+            // Same read-only $customers/$rewards instances as above, plus
+            // $dashboard for its liability aggregate — not a second construction.
+            new CustomerAdjustPreviewRestController( $customers, $dashboard, $rewards ),
             new LedgerRestController( $ledger ),
             new ActivityRestController( $customer_meta ),
             // Empty envelopes until their tables exist.
@@ -73,7 +77,7 @@ class RestAPI {
             // Definition table: repository only, no service.
             new CampaignRestController( $campaigns ),
             new DashboardRestController(
-                new DashboardStats( $dashboard ),
+                new DashboardStats( $dashboard, wc_get_price_decimals() ),
                 new DashboardCache( $dashboard ),
                 new DashboardNotices( $dashboard, $campaigns ),
                 new NoticeDismissals()

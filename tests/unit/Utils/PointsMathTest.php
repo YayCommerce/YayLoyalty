@@ -58,13 +58,13 @@ final class PointsMathTest extends TestCase {
     }
 
     public function test_points_to_currency(): void {
-        $this->assertSame( 8715.0, PointsMath::points_to_currency( 871500, 100 ) );
-        $this->assertSame( 0.0, PointsMath::points_to_currency( 0, 100 ) );
-        $this->assertSame( 12.35, PointsMath::points_to_currency( 1235, 100 ) );
+        $this->assertSame( 8715.0, PointsMath::points_to_currency( 871500, 100, 2 ) );
+        $this->assertSame( 0.0, PointsMath::points_to_currency( 0, 100, 2 ) );
+        $this->assertSame( 12.35, PointsMath::points_to_currency( 1235, 100, 2 ) );
     }
 
     public function test_points_to_currency_is_null_without_a_conversion_rate(): void {
-        $this->assertNull( PointsMath::points_to_currency( 500, 0 ) );
-        $this->assertNull( PointsMath::points_to_currency( 500, -1 ) );
+        $this->assertNull( PointsMath::points_to_currency( 500, 0, 2 ) );
+        $this->assertNull( PointsMath::points_to_currency( 500, -1, 2 ) );
     }
 }

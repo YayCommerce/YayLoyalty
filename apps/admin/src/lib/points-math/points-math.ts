@@ -60,11 +60,11 @@ export function pctOf(part: number, whole: number): number | null {
   return roundTo((part / whole) * 100, 1);
 }
 
-/** Mirrors PointsMath::points_to_currency; null when no usable rate exists. */
-export function pointsToCurrency(points: number, pointsPerCurrencyUnit: number): number | null {
+/** Mirrors PointsMath::points_to_currency; null when no usable rate exists. `decimals` is the store currency's. */
+export function pointsToCurrency(points: number, pointsPerCurrencyUnit: number, decimals: number): number | null {
   if (pointsPerCurrencyUnit <= 0) {
     return null;
   }
 
-  return roundTo(points / pointsPerCurrencyUnit, 2);
+  return roundTo(points / pointsPerCurrencyUnit, decimals);
 }

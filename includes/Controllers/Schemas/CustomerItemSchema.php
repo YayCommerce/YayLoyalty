@@ -94,7 +94,7 @@ final class CustomerItemSchema {
                 ],
             ],
             'loose_ends'               => [
-                'description' => __( 'F09 Wave B, artboard 4a. Non-null exactly when deleted_at is non-null. kept_ledger_entries is always real; void_coupons/credited_referrals/counted_in_members are always null — no redemptions/referrals/member-count feature exists — and render as "Not tracked yet" in the SPA rather than being hidden.', 'yayloyalty' ),
+                'description' => __( 'What deleting this member left behind. Non-null exactly when deleted_at is non-null. kept_ledger_entries is always real; void_coupons/credited_referrals/counted_in_members are always null — no redemptions/referrals/member-count feature exists — and render as "Not tracked yet" in the SPA rather than being hidden.', 'yayloyalty' ),
                 'type'        => [ 'object', 'null' ],
                 'context'     => [ 'view' ],
                 'readonly'    => true,
@@ -112,7 +112,7 @@ final class CustomerItemSchema {
                 ],
             ],
             'expiry'                   => [
-                'description' => __( 'F09 Wave B, artboard 4b. Points about to expire, the batch breakdown (Pro FIFO lots), and the reminder schedule. Always null on the real path — needs lots, which does not exist yet.', 'yayloyalty' ),
+                'description' => __( 'Points about to expire, the batch breakdown (Pro FIFO lots), and the reminder schedule. Always null for now — needs lots, which do not exist yet.', 'yayloyalty' ),
                 'type'        => [ 'object', 'null' ],
                 'context'     => [ 'view' ],
                 'readonly'    => true,
@@ -143,7 +143,7 @@ final class CustomerItemSchema {
                 ],
             ],
             'negative_balance'         => [
-                'description' => __( 'F09 Wave B, artboard 5a (F23). The earned/spent/reversed story behind a negative balance, when one can be assembled. Always null on the real path — would need walking the ledger backwards.', 'yayloyalty' ),
+                'description' => __( 'The earned/spent/reversed story behind a negative balance, when one can be assembled. Always null for now — would need walking the ledger backwards.', 'yayloyalty' ),
                 'type'        => [ 'object', 'null' ],
                 'context'     => [ 'view' ],
                 'readonly'    => true,
