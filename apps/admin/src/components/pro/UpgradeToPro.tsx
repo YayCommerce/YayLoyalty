@@ -18,8 +18,8 @@ export function UpgradeToProBadge() {
           onClick={(event) => {
             // `stopPropagation` matters wherever this badge sits inside
             // another clickable element — e.g. `<ProGate inline />` beside a
-            // drawer tab label, inside `TabsTrigger`'s own `<button>` (F09
-            // Wave B). Without it, clicking the badge also fires the tab
+            // drawer tab label, inside `TabsTrigger`'s own `<button>`.
+            // Without it, clicking the badge also fires the tab
             // switch underneath it. A no-op at every other call site, which
             // sits in a plain `<div>`/`CardTitle`, not a clickable ancestor.
             event.stopPropagation();

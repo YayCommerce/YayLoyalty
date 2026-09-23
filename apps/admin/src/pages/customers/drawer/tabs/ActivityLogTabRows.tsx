@@ -3,14 +3,8 @@ import { Mail } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { TableCell, TableHead, TableRow } from '@/components/ui/table';
 import type { ActivityRow } from '../customer-drawer.activity-rows';
-import {
-  COLUMN_BY,
-  COLUMN_DATE,
-  COLUMN_EVENT,
-  EMPTY_ACTIVITY_BODY,
-  EMPTY_ACTIVITY_TITLE,
-  STAFF_ONLY_LABEL,
-} from '../customer-drawer.copy';
+import { COLUMN_BY, COLUMN_EVENT, STAFF_ONLY_LABEL } from '../customer-drawer.activity.copy';
+import { COLUMN_DATE, EMPTY_ACTIVITY_BODY, EMPTY_ACTIVITY_TITLE } from '../customer-drawer.copy';
 import { DRAWER_ROW_CLASS, drawerCell, DrawerTable } from './DrawerTable';
 
 /**

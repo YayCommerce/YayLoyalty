@@ -29,23 +29,21 @@ const TYPE_LABELS: Record<LedgerFilterType, () => string> = {
  * Filters → rows → pager over `useDrawerTabQueryState`. The type filter is
  * a segmented control with every per-type count on its segment — "4,190
  * earned, 38 adjusted" tells the admin where to look before they click
- * (3c note 3). `type_counts` is `null` on the real path (no type-count
+ * (3c note 3). `type_counts` is `null` today (no type-count
  * query yet), which disables the whole row with a stated reason.
  */
 export function LedgerTab({
   userId,
   customerFirstName,
-  scenario,
   causeLedgerId,
 }: {
   userId: number;
   customerFirstName: string;
-  scenario?: string;
-  /** 5a's `cause_ledger_id` — the one row to mark, or `null` on every scenario without a negative-balance story. */
+  /** 5a's `cause_ledger_id` — the one row to mark, or `null` whenever there is no negative-balance story. */
   causeLedgerId: number | null;
 }) {
   const state = useDrawerTabQueryState<LedgerFilterType>('all');
-  const query = useCustomerLedgerQuery(userId, { ...state.pageParams, type: state.filter, scenario });
+  const query = useCustomerLedgerQuery(userId, { ...state.pageParams, type: state.filter });
 
   const campaignNames = useLedgerCampaignNames();
   const rows = query.data?.data.map((entry) => toLedgerRow(entry, campaignNames, causeLedgerId)) ?? [];

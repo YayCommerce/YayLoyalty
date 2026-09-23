@@ -2,10 +2,7 @@ import { __, sprintf } from '@wordpress/i18n';
 
 /**
  * 3f's prose — the Referrals tab's columns, statuses, pending-row copy and
- * campaign sentence. Split from `customer-drawer.copy.ts` (phase 06):
- * that file is at its 200-line hard cap (see plan.md's "Hard constraints"),
- * the same reason `customer-drawer.panels.copy.ts` split off in phase 02.
- * Pure: no React, no fetch.
+ * campaign sentence. Pure: no React, no fetch.
  */
 
 export const EMPTY_REFERRALS_TITLE = () => __('No referrals yet', 'yayloyalty');

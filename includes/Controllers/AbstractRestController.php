@@ -2,6 +2,7 @@
 namespace YayLoyalty\Controllers;
 
 use YayLoyalty\Access\Capabilities;
+use YayLoyalty\Repositories\CustomerRepository;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -141,20 +142,42 @@ abstract class AbstractRestController extends BaseRestController {
     }
 
     /**
-     * Route param that must name an existing user; without the validate_callback the route becomes an enumeration oracle.
+     * Route param that must name a live WP user; without the validate_callback the route becomes an enumeration oracle.
      *
      * @return array<string, mixed>
      */
     protected function user_id_param(): array {
+        return $this->id_param( false );
+    }
+
+    /**
+     * Route param that must name a loyalty member, live or deleted: the customers row outlives its WP user, and the
+     * drawer exists to show that row. Only for member reads — writes and unrelated user ids take user_id_param().
+     *
+     * @return array<string, mixed>
+     */
+    protected function member_id_param(): array {
+        return $this->id_param( true );
+    }
+
+    /**
+     * The shared id arg behind user_id_param() and member_id_param().
+     *
+     * @return array<string, mixed>
+     */
+    private function id_param( bool $allow_deleted_member ): array {
         return [
             'description'       => __( 'WordPress user id.', 'yayloyalty' ),
             'type'              => 'integer',
             'required'          => true,
             'sanitize_callback' => 'absint',
-            'validate_callback' => static function ( $value ) {
+            'validate_callback' => static function ( $value ) use ( $allow_deleted_member ) {
                 $user_id = absint( $value );
+                $exists  = $user_id >= 1
+                    && ( get_userdata( $user_id )
+                        || ( $allow_deleted_member && null !== ( new CustomerRepository() )->find_by_user_id( $user_id ) ) );
 
-                if ( $user_id < 1 || ! get_userdata( $user_id ) ) {
+                if ( ! $exists ) {
                     return new \WP_Error(
                         'not_found',
                         __( 'No such user.', 'yayloyalty' ),
@@ -170,10 +193,15 @@ abstract class AbstractRestController extends BaseRestController {
     /**
      * Shapes a paginate() result as PaginatedResponse<T>: camelCase envelope, snake_case items.
      *
+     * Public (not protected): `CustomerListFormatter::respond_list()` calls
+     * it against the controller instance it is handed, to keep
+     * `CustomerRestController` under the 200-line cap without duplicating
+     * this envelope shape.
+     *
      * @param array{items: mixed[], total: int, page: int, per_page: int} $result
      * @return array<string, mixed>
      */
-    protected function respond_paginated( array $result ): array {
+    public function respond_paginated( array $result ): array {
         $per_page = max( 1, (int) $result['per_page'] );
         $total    = (int) $result['total'];
 

@@ -1,9 +1,11 @@
 import { __, sprintf } from '@wordpress/i18n';
 
+import { formatPoints } from '@/lib/helpers/points.helper';
+
 /**
  * Copy for the drawer's three header-level edge-state panels — deleted (4a),
  * expiring (4b), negative balance (5a). Split out of `customer-drawer.copy.ts`
- * once that file neared the 200-line cap (F09 Wave B phase 02) — the three
+ * once that file neared the 200-line cap — the three
  * panels share one composition (see `CustomerDrawer.tsx`) and share this
  * file rather than each reopening the main copy module.
  *
@@ -32,17 +34,14 @@ export function deletedBannerBody(keptEntries: string): string {
 
 export const WHAT_CAN_STILL_BE_DONE_TITLE = () => __('What can still be done', 'yayloyalty');
 export const ACTION_ANONYMISE = () => __('Anonymise the record', 'yayloyalty');
-/** `DELETED_ACCOUNT_ACTION_REASON` (main copy module) is spend-specific
- *  wording ("nobody to spend the points") that fits Adjust points but reads
- *  as a non-sequitur beside a disabled Reset expiry button — extending a
- *  deadline isn't about spending. Same underlying cause (no owner left),
- *  worded generally enough to fit both. */
+/** `DELETED_ACCOUNT_ACTION_REASON` is spend-specific wording that reads as
+ *  a non-sequitur beside Reset expiry — same underlying cause (no owner
+ *  left), worded generally enough to fit both. */
 export const DELETED_RESET_EXPIRY_REASON = () => __('There is no owner left to extend anything for.', 'yayloyalty');
 /** Distinct from `ACTION_EXPORT_LEDGER`'s disabled reason elsewhere in the
  *  drawer — "no job exists yet" and "not built yet" are different facts. */
 export const DELETED_EXPORT_REASON = () => __('No export job exists yet.', 'yayloyalty');
-export const DELETED_ANONYMISE_REASON = () =>
-  __('Not built yet — a separate feature from this drawer.', 'yayloyalty');
+export const DELETED_ANONYMISE_REASON = () => __('Not built yet — a separate feature from this drawer.', 'yayloyalty');
 
 export const LOOSE_ENDS_TITLE = () => __('Loose ends this leaves', 'yayloyalty');
 export const LOOSE_ENDS_VOID_COUPONS_LABEL = () => __('Unused coupons, now void', 'yayloyalty');
@@ -50,14 +49,25 @@ export const LOOSE_ENDS_CREDITED_REFERRALS_LABEL = () => __('Referrals they were
 export const LOOSE_ENDS_COUNTED_LABEL = () => __('Counted in the member total?', 'yayloyalty');
 export const YES_LABEL = () => __('yes', 'yayloyalty');
 export const NO_LABEL = () => __('no', 'yayloyalty');
+/** Shown for a loose-ends fact that is `null` — the fact is unanswered, not hidden (no redemptions/referrals/member-count feature yet). */
+export const LOOSE_END_NOT_TRACKED_YET = () => __('Not tracked yet', 'yayloyalty');
 
-/** "1 · $5 off" — `example` is one illustrative label, not a list. */
-export function voidCouponsValue(count: string, example: string | null): string {
-  return example ? sprintf(__('%1$s · %2$s', 'yayloyalty'), count, example) : count;
+/** "1 · $5 off" — `example` is one illustrative label, not a list. `null`
+ *  (no redemptions feature yet) renders as `LOOSE_END_NOT_TRACKED_YET()`. */
+export function voidCouponsValue(voidCoupons: { count: number; example: string | null } | null): string {
+  if (!voidCoupons) return LOOSE_END_NOT_TRACKED_YET();
+
+  const count = formatPoints(voidCoupons.count);
+  return voidCoupons.example ? sprintf(__('%1$s · %2$s', 'yayloyalty'), count, voidCoupons.example) : count;
 }
-/** "2 · kept" */
-export function creditedReferralsValue(count: string): string {
-  return sprintf(__('%s · kept', 'yayloyalty'), count);
+/** "2 · kept". `null` (no referrals feature yet) renders as `LOOSE_END_NOT_TRACKED_YET()`. */
+export function creditedReferralsValue(count: number | null): string {
+  return null === count ? LOOSE_END_NOT_TRACKED_YET() : sprintf(__('%s · kept', 'yayloyalty'), formatPoints(count));
+}
+/** `null` (no member-count feature yet) renders as `LOOSE_END_NOT_TRACKED_YET()`. */
+export function countedInMembersValue(counted: boolean | null): string {
+  if (null === counted) return LOOSE_END_NOT_TRACKED_YET();
+  return counted ? YES_LABEL() : NO_LABEL();
 }
 export function looseEndsLiabilitySentence(balance: string): string {
   return sprintf(
@@ -75,9 +85,8 @@ export function expiringBannerTitle(expiringPoints: string, balance: string, dat
 /**
  * "In 12 days. That is $63.00 about to be lost, and 64% of the balance."
  * `sharePercent` is `null` when it can't be honestly computed (balance <= 0
- * — not reachable via any fixture scenario today, but the panel must never
- * print a fabricated "0%" that reads as reassurance) — the sentence drops
- * the clause entirely rather than showing a wrong number.
+ * — the panel must never print a fabricated "0%" that reads as reassurance)
+ * — the sentence drops the clause entirely rather than showing a wrong number.
  */
 export function expiringBannerBody(days: number, money: string, sharePercent: string | null): string {
   if (null === sharePercent) {
@@ -126,20 +135,14 @@ export const EXPIRY_FREE_EXPLANATION = () =>
     'yayloyalty',
   );
 
-// ─── 5a: negative balance (F23) ───────────────────────
+// ─── 5a: negative balance ─────────────────────────────
 
 export const NEGATIVE_BALANCE_HEADING = () => __('Why this balance is negative', 'yayloyalty');
 
-/** The three-step story (`shape: 'refund_reversal'`) — composed from the
- *  fixture's structured legs, never assembled server-side. */
+/** The three-step story (`shape: 'refund_reversal'`) — composed here from
+ *  each leg's structured fields, never a pre-built sentence from the API. */
 export function negativeBalanceFactEarned(firstName: string, points: string, orderId: string, date: string): string {
-  return sprintf(
-    __('%1$s earned %2$s points on order #%3$s on %4$s.', 'yayloyalty'),
-    firstName,
-    points,
-    orderId,
-    date,
-  );
+  return sprintf(__('%1$s earned %2$s points on order #%3$s on %4$s.', 'yayloyalty'), firstName, points, orderId, date);
 }
 export function negativeBalanceFactSpent(points: string, orderId: string, value: string): string {
   return sprintf(

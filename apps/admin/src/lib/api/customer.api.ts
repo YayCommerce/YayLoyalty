@@ -19,13 +19,8 @@ import { LedgerEntry, ledgerEntrySchema, ledgerEnvelopeSchema, LedgerFilterType 
 
 /** Every response is parsed, not cast: `.json<T>()` is unchecked, and a bad shape would white-screen a component. */
 
-/** `scenario` is the dev-only fixture switch; only `useDevScenario()` ever produces one. */
-export async function getCustomer(userId: number, scenario?: string): Promise<Customer> {
-  const searchParams: Record<string, string> = {};
-
-  if (scenario) searchParams.scenario = scenario;
-
-  return customerSchema.parse(await api.get(`customers/${userId}`, { searchParams }).json());
+export async function getCustomer(userId: number): Promise<Customer> {
+  return customerSchema.parse(await api.get(`customers/${userId}`).json());
 }
 
 export type CustomerLedgerParams = DrawerPageParams & { type?: LedgerFilterType };

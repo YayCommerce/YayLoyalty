@@ -2,7 +2,6 @@
 namespace YayLoyalty\Controllers;
 
 use YayLoyalty\Access\Capabilities;
-use YayLoyalty\Controllers\Fixtures\CustomerDrawer\CustomerDrawerFixture;
 use YayLoyalty\Controllers\Schemas\LedgerQueryArgs;
 use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
@@ -34,10 +33,9 @@ final class LedgerRestController extends AbstractRestController {
                     'callback'            => fn( $request ) => $this->exec_read( [ $this, 'get_history' ], $request ),
                     'permission_callback' => $this->requires( Capabilities::VIEW ),
                     'args'                => array_merge(
-                        [ 'id' => $this->user_id_param() ],
+                        [ 'id' => $this->member_id_param() ],
                         $this->get_collection_params(),
-                        LedgerQueryArgs::all(),
-                        CustomerDrawerFixture::scenario_arg()
+                        LedgerQueryArgs::all()
                     ),
                 ],
                 'schema' => [ $this, 'get_item_schema' ],
@@ -46,36 +44,13 @@ final class LedgerRestController extends AbstractRestController {
     }
 
     /**
-     * `type`/`search`/`after`/`before` are registered but not yet applied
-     * on the real path — no new `LedgerRepository` SQL this wave (see
-     * `LedgerQueryArgs` docblock). `type_counts: null` is the wire signal
+     * `type`/`search`/`after`/`before` are registered but not applied —
+     * `LedgerRepository` has no SQL behind them yet (see `LedgerQueryArgs`). `type_counts: null` is the wire signal
      * the SPA reads to disable the ledger tab's filter row rather than let
-     * it silently do nothing against real data. The WP_DEBUG drawer fixture
-     * is the only path that answers these params for now.
+     * it silently do nothing against real data.
      */
     public function get_history( \WP_REST_Request $request ) {
         $user_id = (int) $request['id'];
-
-        $scenario = CustomerDrawerFixture::requested( $request );
-
-        if ( null !== $scenario ) {
-            $result      = CustomerDrawerFixture::ledger(
-                $scenario,
-                $user_id,
-                [
-                    'page'     => (int) $request['page'],
-                    'per_page' => (int) $request['per_page'],
-                    'type'     => (string) $request['type'],
-                    'search'   => (string) $request['search'],
-                    'after'    => (string) $request['after'],
-                    'before'   => (string) $request['before'],
-                ]
-            );
-            $type_counts = $result['type_counts'];
-            unset( $result['type_counts'] );
-
-            return $this->respond_paginated( $result ) + [ 'type_counts' => $type_counts ];
-        }
 
         $result = $this->ledger->paginate_for_user(
             $user_id,
