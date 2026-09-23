@@ -49,6 +49,14 @@ final class LedgerService {
      *             tier progress) does not move. Ignored for points <= 0 —
      *             ADJUST already never touches lifetime_earned in that
      *             direction (see LedgerType::affects_lifetime_earned).
+     *
+     * TODO: the balance-only choice is not stored on the ledger row, so
+     * lifetime_earned can no longer be rebuilt from the ledger and the
+     * dashboard's points-issued total (which counts every positive adjust)
+     * drifts from it. Record it as its own ledger type and drop the flag
+     * from record() and apply_aggregates(). Scheduled after the earning
+     * process; task in docs/project-roadmap.md, Backbone TODOs.
+     *
      * @throws \InvalidArgumentException When points is zero or the type is bad.
      */
     public function adjust( int $user_id, int $points, string $note, int $actor_id, bool $adjust_lifetime = true ): LedgerEntry {
