@@ -116,11 +116,11 @@ One repository, two zips. Lite = Pro minus `includes/Pro/` and SPA built with `B
 ## Checks
 
 ```bash
-composer test                  # phpunit — 228 unit tests, 61 incomplete by design (the earning-split and redemption-split invariants): points engine (BaseCalculator, PurchaseHandler, PointsEngine), earning orchestration scaffold (IdempotencyKey, Outcome, EarningService), the ledger's duplicate-key guard (QueryException), reward engine + clamp (Clamp, Result, Registry, RewardEngine), redemption orchestration scaffold (Quoter real; service, writer, coupon, session, adapters as specification), dashboard computation (PeriodWindow, DashboardMath, AnomalyDetector, DashboardStats, DashboardNotices), PointsMath + shared vectors, campaign config/conditions validation, drawer query-arg groupings + item formatter (Controllers/)
+composer test                  # phpunit — 229 unit tests, 62 incomplete by design (the earning-split and redemption-split invariants): points engine (BaseCalculator, PurchaseHandler, PointsEngine), earning orchestration scaffold (IdempotencyKey, Outcome, EarningService), the ledger's duplicate-key guard (QueryException), reward engine + clamp (Clamp, Result, Registry, RewardEngine), redemption orchestration scaffold (Quoter real; service, writer, coupon, session, adapters as specification), dashboard computation (PeriodWindow, DashboardMath, AnomalyDetector, DashboardStats, DashboardNotices), PointsMath + shared vectors, campaign config/conditions validation, drawer query-arg groupings + item formatter (Controllers/)
 composer test:integration      # phpunit against a real site and server — 27 tests: the ledger's UNIQUE guard, the balance_after chain and non-idempotent manual rows, and which user ids the customer routes accept (deleted members on the drawer reads, not on adjust). Needs a WordPress install with the plugin active; see docs/deployment-guide.md
 composer lint                  # phpcs (WPCS + PHPCompatibility, 7.4 floor)
 pnpm --filter @yayloyalty/admin-page lint   # eslint + prettier on TypeScript/React
-pnpm --filter @yayloyalty/admin-page test   # vitest — lib/points-math against tests/fixtures/points-math-vectors.json (same file phpunit runs)
+pnpm --filter @yayloyalty/admin-page test   # vitest — 120 tests: lib/points-math against tests/fixtures/points-math-vectors.json (same file phpunit runs), money formatting, activity rows, adjust-dialog form state
 ./scripts/run.sh release lite --no-prompt   # builds and validates a package end to end
 ```
 

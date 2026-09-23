@@ -6,6 +6,29 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
 
 ## Unreleased
 
+### Added — Adjust points dialog: single and bulk targets, stale-balance check, lifetime option (2026-09-23)
+
+- **Dialog** (`CustomersAdjustPointsDialog.tsx`, `components/adjust-points/`): one dialog with an
+  explicit single/bulk target, opened from the Customers bulk bar and the drawer. Single reads the
+  customer from `GET /customers/{id}` (the drawer's own query, one fresh read per open); bulk reads
+  **`POST /customers/adjust/preview`** (`CustomerAdjustPreviewRestController`, `manage_points`):
+  a filter's `count` (null for a ticked list), store-wide `liability_points` and
+  `points_per_currency_unit`. `toServerFilters()` owns the tier → `balance_range` substitution for
+  the list, the bulk walk and the preview; `MAX_MATCHING_ROWS` owns the 50,000-row bulk cap.
+- **Guards:** a typo guard asks for the amount twice when it exceeds both 10 currency units' worth
+  of points and `TYPO_GUARD_MULTIPLIER` (3) × the customer's lifetime earned; a pre-submit re-check compares the balance (and user id) to the baseline captured while open and
+  fails closed on a failed refetch or missing baseline; the dialog refuses to close while the
+  check or save runs. A partial bulk failure narrows the selection to the failed customers and
+  resets consent; a "selection changed" abort shows the count the submit resolved.
+- **Adjust lifetime totals too** (`adjust_lifetime` on `POST /customers/{id}/adjust`): on, a grant
+  or a deduction moves `lifetime_earned` by the same signed amount as the balance; off moves the
+  balance only. The ledger row does not record the choice yet — see the roadmap's
+  "Balance-only adjustment" task. Integration suite 26 → 27 tests (`LedgerGuardTest`).
+- **UI only, not wired:** "Notify the customer by email" and "Also show a description to the
+  customer" — both listed as not started in the roadmap.
+- **Tests:** `apps/admin/tests/customers-adjust-points.form-state.test.ts` pins the form-state
+  rules (liability contribution/delta below zero, bulk effective count, `canSubmit()`).
+
 ### Fixed — Points convert to money at the store currency's decimals, one way everywhere (2026-09-23)
 
 - `PointsMath::points_to_currency()` / `pointsToCurrency()` take the currency's decimals
