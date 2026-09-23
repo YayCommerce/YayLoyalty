@@ -13,7 +13,10 @@ class LocalizeHelper {
 
     public static function get_admin_data() {
         $admin_data = array_merge(
-            [ 'settings' => SettingsHelper::get_settings() ],
+            [
+                'settings' => SettingsHelper::get_settings(),
+                'design'   => DesignHelper::get_design(),
+            ],
             Capabilities::payload()
         );
 
@@ -33,6 +36,9 @@ class LocalizeHelper {
                 'restBase'     => BaseRestController::REST_NAMESPACE,
                 'restNonce'    => wp_create_nonce( 'wp_rest' ),
                 'isBlockTheme' => wp_is_block_theme(),
+                // Slug => translated display name, e.g. 'shop_manager' => 'Shop Manager'.
+                // Lets role pickers (Design visibility, etc.) offer real roles instead of free text.
+                'roles'        => wp_roles()->get_names(),
             ],
             // No pro flag: the SPA is gated at build time (IS_PRO_BUILD), and one zip carries both.
             'loyaltyMeta' => [

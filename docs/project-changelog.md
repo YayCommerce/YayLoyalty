@@ -6,6 +6,15 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
 
 ## Unreleased
 
+### Added — Design settings tab (admin UI only, 2026-09-23)
+
+- **New `wp_option`** `yayloyalty_design` (never merged into `yayloyalty_settings`; owns six groups: launcher, storefront_text, visibility, tier, panel, typography) via `DesignHelper`, `DesignSchema`, `DesignCoercion`.
+- **Backend:** `DesignRestController` exposes `GET|POST /design` (cap `VIEW`/`MANAGE_SETTINGS`), `POST /design/reset` (optional `group` param, same cap). `LocalizeHelper::get_admin_data()` now carries `design` for the SPA bootstrap (no fetch flash).
+- **Frontend:** New SPA route `/settings/design` → `DesignSettingsPage`, registered in both `router.tsx` and `SettingsSideNav.tsx`. Three Free sections (Launcher, Storefront text, Visibility) + three Pro sections (Tier badges, Panel, Typography under `src/pro/design/`, re-exported via `pro/index.ts`, gated behind `<ProGate>{IS_PRO_BUILD ? <X/> : null}</ProGate>`). `design.schema.ts` (zod mirror) + `design.api.ts` + `design.queries.ts` (TanStack Query, staleTime: Infinity + refetchOnWindowFocus). Two reset actions: whole-tab reset (save-action row) and storefront-text-only reset (section header, group-scoped).
+- **Build validation:** `scripts/validate-build.php` gains a check that fails if a Pro-only field name appears in a Free-section file without an `IS_PRO_BUILD` guard.
+- **Accepted technical debt:** Tier `badges[].tier_id` is a merchant-entered slug, not a foreign key (tiers table not yet built); `typography.custom_css` is stored but rendered nowhere (sanitisation deferred); Pro gating is build-time only, not an authorisation boundary; concurrent saves resolve last-write-wins (narrowed by refetch-on-focus, same gap as `yayloyalty_settings`).
+- See `plans/260923-1048-design-settings-tab/plan.md` (5 phases, all complete) and `plans/reports/brainstorm-260923-1048-design-settings-data-structure.md` for schema decisions and red-team findings.
+
 ### Added — The ledger's duplicate-key guard is real (2026-09-23)
 
 - **`QueryException`** captures the driver's error number at construction (the next statement

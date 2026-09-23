@@ -121,7 +121,7 @@ All referral tables (`referrals`, `referral_visits`) specified in data model; no
 | **Rewards** | ⚠️ PLACEHOLDER | Stub page; no catalog UI |
 | **Referral** | ⚠️ PLACEHOLDER | Stub page; referral program not built |
 | **VIP Tiers** | ⚠️ PLACEHOLDER | Stub page; no tier management UI |
-| **Settings** | ⚠️ PLACEHOLDER | Three stub tabs (general, emails, advanced); REST endpoint and `SettingsHelper` defaults exist (`general.enabled`, point labels) but each tab renders an inline "not implemented yet" Card (Rewards/Referral/VIP render `PagePlaceholder`) |
+| **Settings** | ⚠️ PARTIAL | Design tab ✅ shipped (Free: Launcher, Storefront text, Visibility; Pro: Tier badges, Panel, Typography); General/Emails/Advanced tabs still render "not implemented yet"; REST endpoint and defaults exist but incomplete (Rewards/Referral/VIP render `PagePlaceholder`) |
 | **Capability gating** | ✅ FUNCTIONAL | Nav and routes filtered by `window.yayLoyaltyAdmin.capabilities`; Customers' "Adjust points"/"Export" bulk actions gated to `manage_points`/`view` via `<Can>`; backbone 403s surface as one toast |
 
 ---
