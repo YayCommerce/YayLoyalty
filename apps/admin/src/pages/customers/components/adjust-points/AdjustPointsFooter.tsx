@@ -34,7 +34,7 @@ export function AdjustPointsFooter({
 
   return (
     <DialogFooter>
-      <Button variant="outline" onClick={onCancel} disabled={isSubmitting}>
+      <Button variant="outline" onClick={onCancel} disabled={isBusy}>
         {__('Cancel', 'yayloyalty')}
       </Button>
       <Button onClick={onSubmit} disabled={isBusy || isPreviewLoading || !submitEnabled}>

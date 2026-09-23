@@ -14,6 +14,7 @@ import { isStaleSnapshot } from './customers-adjust-points.form-state';
  * it stays a hook rather than another component split.
  */
 export function useAdjustPreviewBaseline(
+  open: boolean,
   isSingle: boolean,
   singleCustomer: AdjustPointsPreviewCustomer | undefined,
   refetch: () => Promise<{ data?: AdjustPointsPreview }>,
@@ -23,17 +24,15 @@ export function useAdjustPreviewBaseline(
   const [openedBalance, setOpenedBalance] = useState<number | null>(null);
 
   useEffect(() => {
-    // `enabled` flips true→true across a close/reopen without unmounting the
-    // query, so react-query serves last render's cached record synchronously
-    // (isFetching true) before the staleTime:0 refetch lands. Capturing that
-    // stale first render as the baseline is what makes a just-submitted
-    // adjustment look like a concurrent change on reopen — wait for the
-    // in-flight fetch to settle before treating a record as the baseline.
-    if (baselineSnapshot === null && singleCustomer && !isFetching) {
+    // While closed the query is disabled but still serves its cached record
+    // with nothing in flight — capturing that would baseline a balance from
+    // before the last adjustment (or another customer). On reopen, wait for
+    // the staleTime:0 refetch to settle before treating a record as the baseline.
+    if (open && baselineSnapshot === null && singleCustomer && !isFetching) {
       setBaselineSnapshot(singleCustomer);
       setOpenedBalance(singleCustomer.balance);
     }
-  }, [baselineSnapshot, singleCustomer, isFetching]);
+  }, [open, baselineSnapshot, singleCustomer, isFetching]);
 
   async function handleReload() {
     const fresh = await refetch();
@@ -48,8 +47,10 @@ export function useAdjustPreviewBaseline(
 
   return {
     isStale: isSingle && isStaleSnapshot(baselineSnapshot, singleCustomer ?? null),
-    /** For the submit-time re-check, which compares against a *fresh* refetch, not `singleCustomer`. */
-    isStaleAgainst: (record: AdjustPointsPreviewCustomer | null) => isStaleSnapshot(baselineSnapshot, record),
+    hasBaseline: baselineSnapshot !== null,
+    /** For the submit-time re-check, which compares against a *fresh* refetch, not `singleCustomer`. Fails closed without a baseline. */
+    isStaleAgainst: (record: AdjustPointsPreviewCustomer | null) =>
+      baselineSnapshot === null || isStaleSnapshot(baselineSnapshot, record),
     openedBalance,
     handleReload,
     reset,

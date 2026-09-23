@@ -87,17 +87,22 @@ export function liabilityDelta(balance: number, balanceAfter: number): number {
 }
 
 /**
- * 3b: the record the admin has acknowledged differs from the freshest
- * fetch. `lifetime_earned` is compared too, not just `balance` — it's the
- * typo guard's own threshold input, so a concurrent event that moves it
- * without a net balance change must still raise the banner.
+ * The record the admin has acknowledged differs from the freshest fetch.
+ * `lifetime_earned` is compared too, not just `balance` — it's the typo
+ * guard's own threshold input, so a concurrent event that moves it without
+ * a net balance change must still raise the banner. `user_id` guards
+ * against a baseline left over from a different customer.
  */
 export function isStaleSnapshot(
   baseline: AdjustPointsPreviewCustomer | null,
   latest: AdjustPointsPreviewCustomer | null,
 ): boolean {
   if (!baseline || !latest) return false;
-  return baseline.balance !== latest.balance || baseline.lifetime_earned !== latest.lifetime_earned;
+  return (
+    baseline.user_id !== latest.user_id ||
+    baseline.balance !== latest.balance ||
+    baseline.lifetime_earned !== latest.lifetime_earned
+  );
 }
 
 export type SubmitBlockers = {

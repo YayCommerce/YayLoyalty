@@ -134,6 +134,10 @@ describe('isStaleSnapshot', () => {
     expect(isStaleSnapshot(record, { ...record, lifetime_earned: 14570 })).toBe(true);
   });
 
+  it('is true for a different customer even with identical figures', () => {
+    expect(isStaleSnapshot(record, { ...record, user_id: 2 })).toBe(true);
+  });
+
   it('is true when both changed', () => {
     expect(isStaleSnapshot(record, { ...record, balance: 10120, lifetime_earned: 14570 })).toBe(true);
   });

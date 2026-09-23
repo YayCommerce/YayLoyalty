@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { __ } from '@wordpress/i18n';
 
 import { adjustPointsSchema, type AdjustPointsInput, type AdjustPointsPreview } from '@/lib/schema/customer.schema';
@@ -85,7 +85,7 @@ export function CustomersAdjustPointsDialog({
   const singleCustomer = isSingle ? preview.data?.customers[0] : undefined;
   const pointsPerCurrencyUnit = preview.data?.points_per_currency_unit ?? 0;
 
-  const baseline = useAdjustPreviewBaseline(isSingle, singleCustomer, preview.refetch, preview.isFetching);
+  const baseline = useAdjustPreviewBaseline(open, isSingle, singleCustomer, preview.refetch, preview.isFetching);
   const { isStale, openedBalance } = baseline;
 
   const bulk = useBulkSelection({
@@ -116,7 +116,20 @@ export function CustomersAdjustPointsDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reset handles must run once per open->close edge, not on their own churn.
   }, [open]);
 
+  // Read after handleSubmit's await: a close during the pre-submit check
+  // must cancel the write, not let it land behind a dialog the admin dismissed.
+  const openRef = useRef(open);
+  useEffect(() => {
+    openRef.current = open;
+    return () => {
+      openRef.current = false;
+    };
+  }, [open]);
+
+  const isBusy = isSubmitting || isCheckingBeforeSubmit;
+
   function handleOpenChange(next: boolean) {
+    if (!next && isBusy) return;
     onOpenChange(next);
   }
 
@@ -132,7 +145,8 @@ export function CustomersAdjustPointsDialog({
       // guard inactive rather than firing on a made-up number.
       lifetimeEarned: isSingle ? (singleCustomer?.lifetime_earned ?? 0) : Number.POSITIVE_INFINITY,
       pointsPerCurrencyUnit,
-      isUnverified,
+      // No baseline yet (reopen refetch still in flight): nothing acknowledged to compare against.
+      isUnverified: isUnverified || (isSingle && !baseline.hasBaseline),
       isStale,
       needsAcknowledgement: !isSingle,
       acknowledged: bulk.acknowledged,
@@ -168,7 +182,7 @@ export function CustomersAdjustPointsDialog({
       // to prevent). No record or still stale against the acknowledged
       // baseline: abort either way. Any of the three becomes `isUnverified`
       // on the next render, never treated as "not stale".
-      if (fresh.error || !latest || baseline.isStaleAgainst(latest)) return;
+      if (!openRef.current || fresh.error || !latest || baseline.isStaleAgainst(latest)) return;
 
       onSubmit(result.data);
       return;
