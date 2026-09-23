@@ -78,8 +78,7 @@ const ledgerTypeCountsShape = {
 /**
  * Per-type counts over the UNFILTERED set — what the ledger tab's filter
  * labels ("All 4,812", "Earned 4,190") read from. `null` means the server
- * cannot compute them yet (the real path, Wave A — see
- * `LedgerRestController::get_history()`); the drawer renders the filter row
+ * cannot compute them yet (see `LedgerRestController::get_history()`); the drawer renders the filter row
  * disabled with a stated reason when this is null.
  */
 export const ledgerTypeCountsSchema = z.object(ledgerTypeCountsShape);

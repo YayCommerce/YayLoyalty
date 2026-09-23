@@ -21,9 +21,8 @@ export function sampleTierForBalance(balance: number): CustomerTier | null {
 
 /**
  * Same stand-in, extended with "how many points to the next tier" for the
- * customer drawer's tier card (F09 — added after Wave A shipped without one;
- * the plan's locked scope excluded a *real* tier card because there was
- * nothing real to show, same reasoning as this whole file). `next` is
+ * customer drawer's tier card — a stand-in for the same reason as this
+ * whole file: there is no real per-customer tier to show yet. `next` is
  * `null` at the top tier (Explorer) — the card shows a standing "top tier
  * reached" state there, not a progress figure. `null` overall for a
  * negative balance, same as `sampleTierForBalance`.
