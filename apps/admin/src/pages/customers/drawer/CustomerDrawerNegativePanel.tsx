@@ -19,8 +19,8 @@ import {
  * or any leg is `null`). 5a's own claim that a negative balance "always" has
  * the earned→spent→reversed shape only holds for a refund; a manual
  * adjustment or an expiry clawback pushed below zero would not fit it, so
- * this never assumes all three legs are present just because the fixture
- * currently only emits one `shape`.
+ * this never assumes all three legs are present just because `refund_reversal`
+ * is the only shape exercised so far.
  */
 export function CustomerDrawerNegativePanel({
   customerFirstName,

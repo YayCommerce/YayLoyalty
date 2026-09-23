@@ -120,6 +120,21 @@ if ( ! wp_installing() ) {
 
     // Blogs created after network activation still need tables.
     add_action( 'wp_initialize_site', [ \YayLoyalty\Engine\ActDeact::class, 'on_new_site' ], 20 );
+
+    // Account-deletion capture: both registered because multisite fires
+    // wpmu_delete_user INSTEAD of delete_user, never both.
+    add_action( 'delete_user', [ \YayLoyalty\Engine\CustomerActivityListener::class, 'on_delete_user' ], 10, 3 );
+    add_action( 'wpmu_delete_user', [ \YayLoyalty\Engine\CustomerActivityListener::class, 'on_wpmu_delete_user' ], 10, 2 );
+
+    // Materialises the customers row at signup instead of on first ledger
+    // event, so a new WP user shows up in the admin customer list right away.
+    add_action( 'user_register', [ \YayLoyalty\Engine\CustomerActivityListener::class, 'on_user_register' ], 10, 1 );
+
+    // account_created + points_adjusted capture. Registered here (not inside
+    // RestAPI) because no dedicated hook-registration class exists yet in
+    // this codebase — every WP-core-hook add_action() is either bootstrap-level
+    // here or inline in a small singleton (see CustomerActivityListener's docblock).
+    add_action( 'yayloyalty_ledger_recorded', [ \YayLoyalty\Engine\CustomerActivityListener::class, 'on_ledger_recorded' ], 10, 1 );
 }
 
 register_activation_hook( YAYLOYALTY_FILE, [ \YayLoyalty\Engine\ActDeact::class, 'activate' ] );

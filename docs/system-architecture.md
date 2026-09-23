@@ -259,7 +259,7 @@ These are **first-party, internal seams** for Pro to attach behavior. Not a thir
 | Filter | Context | Used By |
 |---|---|---|
 | **`yayloyalty_table_schemas`** | Called during Installer to collect table DDL | Pro can add Pro tables (currently unused) |
-| **`yayloyalty_ledger_recorded`** | Fired by `LedgerService` after its own `Transaction::run()` commits (a savepoint when nested in `exec_write`) | `DashboardCache::flush` |
+| **`yayloyalty_ledger_recorded`** | Fired by `LedgerService` after its own `Transaction::run()` commits (a savepoint when nested in `exec_write`) | `DashboardCache::flush`; `Engine\CustomerActivityListener::on_ledger_recorded` — captures `account_created`/`points_adjusted` into `yayloyalty_customer_meta` |
 | **`yayloyalty_points_awarded`** | To be fired by `Engine\Earning\EarningService::award()` after commit, once per awarded `Outcome` (scaffold; not fired yet) | nothing yet — emails, YayMail placeholders |
 | **`yayloyalty_points_redeemed`** | To be fired by `Engine\Redemption\RedemptionService::commit()` after commit, once per redeemed `Outcome` (scaffold; not fired yet) | nothing yet |
 | **`yayloyalty_redemption_gates`** | To be applied by `RedemptionService::build()` over `[ ProgramGate, RewardGate ]` (scaffold) | Pro gates (tier-only rewards) |
@@ -305,7 +305,7 @@ See `customers-page.matching-customers.ts` for selection resolution; `customers-
 
 ### Customer drawer (F09) — per-customer detail view
 
-Opened from Customers-list row; shows balance, stats, four tabs (Points ledger + three empty-on-real-path tabs: Activity, Redemptions, Referrals). All five drawer endpoints (`GET /customers/{id}`, `/ledger`, `/activity`, `/redemptions`, `/referrals`) accept a `scenario` query arg only when `WP_DEBUG` is true, reaching `CustomerDrawerFixture` with named scenarios (new/large/deleted/negative/expiring). The default (no arg) always returns real data or an honest empty envelope. Schema validation is identical for both paths via Zod mirrors in `src/lib/schema/`. Shared helpers: `Schemas/CustomerItemSchema.php` (the item shape), `Schemas/LedgerQueryArgs.php` (filter groups + vocabulary), `Controllers/CustomerListFormatter.php` (wire shape helpers).
+Opened from Customers-list row; shows balance, stats, four tabs (Points ledger and Activity, both real; Redemptions and Referrals, empty envelopes until their tables exist). All five drawer endpoints (`GET /customers/{id}`, `/ledger`, `/activity`, `/redemptions`, `/referrals`) serve real data only, and take their id through `member_id_param()`, so a deleted member's drawer still opens. Responses are validated by Zod mirrors in `src/lib/schema/`. Shared helpers: `Schemas/CustomerItemSchema.php` (the item shape), `Schemas/LedgerQueryArgs.php` (filter groups + vocabulary), `Controllers/CustomerListFormatter.php` (wire shape helpers).
 
 ### Manual points adjustment — wired end-to-end, including the SPA
 
@@ -337,6 +337,50 @@ do_action( 'yayloyalty_ledger_recorded', $entry )   ← after commit, so a subsc
     ↓
 REST returns the LedgerEntry → zod parse → `useBulkAdjustPointsMutation` invalidates the `['customer']` query prefix → list, detail and ledger all refetch
 ```
+
+### Account-deletion capture — the first WP-core-hook subscriptions in this codebase
+
+Every prior hook in this table is a `yayloyalty_*` seam this plugin itself fires. `delete_user`/
+`wpmu_delete_user` are the first subscriptions to a raw WP-core hook, both registered directly in
+`yayloyalty.php` (no dedicated Listeners/Hooks class exists) because multisite fires
+`wpmu_delete_user` INSTEAD of `delete_user`, never both:
+
+```
+wp_delete_user( $id )                          wpmu_delete_user( $id )
+    │ do_action('delete_user', $id, ..., $user)     │ do_action('wpmu_delete_user', $id, $user)
+    ▼                                                ▼
+CustomerActivityListener::on_delete_user()      CustomerActivityListener::on_wpmu_delete_user()
+    │ bails if is_multisite()                        │ always trusted as "really gone"
+    └──────────────────┬──────────────────────────────┘
+                        ▼ try/catch \Throwable → Log::error
+           CustomerActivityService::record_account_deleted()
+                        │ CustomerRepository::find_by_user_id() — non-member → no-op
+                        │ CustomerMetaRepository::has() — already captured → no-op
+                        ▼
+           CustomerMetaRepository::insert( 'account_deleted' row )
+```
+
+No `Transaction::run()` here (one single-table insert; the WP deletion itself is not this plugin's
+transaction to hold open). `yayloyalty_customers` and `yayloyalty_ledger` are read-only in this
+path and never touched — the frozen balance IS the point. `GET /customers/{id}/activity` reads
+these rows for real now (three of eight event types have a writer); it is no longer an empty
+envelope on every request, only for a customer whose sole history would be one of the five
+unwritten event types.
+
+### Signup capture — customers row created at registration
+
+`user_register` (fired by `wp_insert_user()`, including admin-created accounts, not only
+self-registration) is the third raw WP-core-hook subscription, registered in `yayloyalty.php`
+alongside `delete_user`/`wpmu_delete_user`. `CustomerActivityListener::on_user_register()` calls
+`CustomerRepository::ensure_row()` directly, except for staff (a user with `edit_posts` or
+`manage_woocommerce`, WooCommerce's own back-office rule: admins, shop managers, editors) — no ledger write, no `yayloyalty_ledger_recorded`
+event, nothing logged to `yayloyalty_customer_meta` (a brand-new account has no points activity
+yet, only a row to reserve at balance 0). This makes `yayloyalty_customers` row creation eager on
+WP registration instead of lazy-on-first-earn; the `account_created` activity-log entry
+(`CustomerActivityService`, subscribed to `yayloyalty_ledger_recorded`) is unaffected and still
+only appears on first ledger write. `ensure_row()` is idempotent (`ON DUPLICATE KEY UPDATE`), so a
+double-fire from a third party is harmless; try/catch `\Throwable` around the call, same as every
+other listener callback, so a DB failure here never blocks WP's own user-creation flow.
 
 ### Campaign editor (Pro-only) — create and edit
 

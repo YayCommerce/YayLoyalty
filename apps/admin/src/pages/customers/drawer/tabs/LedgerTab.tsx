@@ -35,17 +35,15 @@ const TYPE_LABELS: Record<LedgerFilterType, () => string> = {
 export function LedgerTab({
   userId,
   customerFirstName,
-  scenario,
   causeLedgerId,
 }: {
   userId: number;
   customerFirstName: string;
-  scenario?: string;
-  /** 5a's `cause_ledger_id` — the one row to mark, or `null` on every scenario without a negative-balance story. */
+  /** 5a's `cause_ledger_id` — the one row to mark, or `null` whenever there is no negative-balance story. */
   causeLedgerId: number | null;
 }) {
   const state = useDrawerTabQueryState<LedgerFilterType>('all');
-  const query = useCustomerLedgerQuery(userId, { ...state.pageParams, type: state.filter, scenario });
+  const query = useCustomerLedgerQuery(userId, { ...state.pageParams, type: state.filter });
 
   const campaignNames = useLedgerCampaignNames();
   const rows = query.data?.data.map((entry) => toLedgerRow(entry, campaignNames, causeLedgerId)) ?? [];

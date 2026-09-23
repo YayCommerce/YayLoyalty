@@ -3,7 +3,6 @@ import { __ } from '@wordpress/i18n';
 
 import { useCustomerQuery } from '@/lib/queries/customer.queries';
 import type { CustomerListRow } from '@/lib/schema/customer.schema';
-import { useDevScenario } from '@/hooks/useDevScenario';
 import { ErrorState } from '@/components/ui/custom/error-state';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { CustomerDrawerActions } from './CustomerDrawerActions';
@@ -38,14 +37,13 @@ export default function CustomerDrawer() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const scenario = useDevScenario();
 
   const userId = Number(userIdParam);
   const isValidId = Number.isFinite(userId) && userId >= 1;
 
   // `enabled: userId > 0` on the query itself (see customer.queries.ts) means
   // passing 0 here for an invalid id never fires a request.
-  const query = useCustomerQuery(isValidId ? userId : 0, scenario);
+  const query = useCustomerQuery(isValidId ? userId : 0);
   const listRow = (location.state as { row?: CustomerListRow } | null)?.row;
   const search = searchParams.toString();
   // Only ever rendered once `query.data` is confirmed below — the fallback
@@ -97,22 +95,25 @@ export default function CustomerDrawer() {
                   <>
                     <CustomerDrawerStats customer={query.data} />
                     <CustomerDrawerActions customer={query.data} isLoading={query.isFetching} />
-                    {/* 4a's three panels — only reachable via `?scenario=deleted`
-                        (no `deleted_at` column on the real path). This gates
-                        whether they mount at all; each still null-checks its
-                        own fields (prop types don't inherit this narrowing). */}
+                    {/* 4a's three panels — `deleted_at`/`loose_ends` are one
+                        fact server-side (non-null together); narrowed once
+                        here so the children take typed, non-null props
+                        instead of each re-checking. */}
                     {query.data.deleted_at && query.data.loose_ends && (
                       <>
-                        <CustomerDrawerDeletedBanner customer={query.data} />
+                        <CustomerDrawerDeletedBanner
+                          deletedAt={query.data.deleted_at}
+                          keptEntries={query.data.loose_ends.kept_ledger_entries}
+                        />
                         <CustomerDrawerDeletedActions />
-                        <CustomerDrawerLooseEnds customer={query.data} />
+                        <CustomerDrawerLooseEnds looseEnds={query.data.loose_ends} balance={query.data.balance} />
                       </>
                     )}
-                    {/* 4b's three panels — only `?scenario=expiring` sets
-                        `expiry` (needs `lots`, which doesn't exist yet). A
-                        deleted account has expiry stopped, so this and the
-                        block above are mutually exclusive in every real
-                        scenario — never designed as a combined layout. */}
+                    {/* 4b's three panels — `expiry` is always null today
+                        (needs `lots`, which doesn't exist yet). A deleted
+                        account has expiry stopped, so this and the block
+                        above are mutually exclusive in every real scenario —
+                        never designed as a combined layout. */}
                     {query.data.expiry && (
                       <>
                         <CustomerDrawerExpiryPanel customer={query.data} expiry={query.data.expiry} />
@@ -120,10 +121,10 @@ export default function CustomerDrawer() {
                         <CustomerDrawerLotBatches batches={query.data.expiry.batches} />
                       </>
                     )}
-                    {/* 5a's two panels (F23) — only `?scenario=negative` sets
-                        `negative_balance` (the real path would have to walk
-                        the ledger backwards to assemble it). A deleted or
-                        expiring account is never also this scenario, so this
+                    {/* 5a's two panels (F23) — `negative_balance` is always
+                        null today (the real path would have to walk the
+                        ledger backwards to assemble it). A deleted or
+                        expiring account is never also this case, so this
                         and the two blocks above are mutually exclusive. Free
                         AND Pro alike — no `ProGate` anywhere here. */}
                     {query.data.negative_balance && (
@@ -135,7 +136,7 @@ export default function CustomerDrawer() {
                         <CustomerDrawerNegativeActions customerFirstName={firstName} />
                       </>
                     )}
-                    <CustomerDrawerTabs customer={query.data} customerFirstName={firstName} scenario={scenario} />
+                    <CustomerDrawerTabs customer={query.data} customerFirstName={firstName} />
                   </>
                 )}
               </div>

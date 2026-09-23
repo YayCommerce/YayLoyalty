@@ -11,10 +11,10 @@ import { ReferralsTabRows } from './ReferralsTabRows';
  * the phase brief). Structurally a clone of `RedemptionsTab.tsx`: owns
  * paging, no filters this phase, plus the link/campaign header 3e doesn't have.
  */
-export function ReferralsTab({ userId, scenario }: { userId: number; scenario?: string }) {
+export function ReferralsTab({ userId }: { userId: number }) {
   const [page, setPage] = useState(1);
 
-  const query = useCustomerReferralsQuery(userId, { page, perPage: DRAWER_PAGE_SIZE, scenario });
+  const query = useCustomerReferralsQuery(userId, { page, perPage: DRAWER_PAGE_SIZE });
 
   const rows = query.data?.data.map(toReferralRow) ?? [];
   const totalItems = query.data?.totalItems ?? 0;

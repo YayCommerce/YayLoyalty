@@ -10,20 +10,20 @@ Data model v0.3 specifies a roadmap across phases 1.0, 1.1, 1.2, and 2.0. Curren
 
 ### Phase 1.0 — Core (Current Release)
 
-| Table | Spec | Status | Notes |
-|---|---|---|---|
-| **`campaigns`** | Core earning rules | ✅ **SHIPPED** | Full CRUD; trigger filtering (Lite/Pro); Pro conditions evaluator; import/export ready |
-| **`customers`** | Member cache & state | ✅ **SHIPPED** | Lazy-initialized; aggregates; expiry basis; no tier/referral fields yet |
-| **`ledger`** | Balance journal, append-only | ✅ **SHIPPED** | Immutable; idempotent on unique key; SOLE writes via LedgerService |
-| **`rewards`** | Ways to spend points | ✅ **SHIPPED** | Schema, model, repository, enums; Lite seeds flexible_discount; Pro adds coupon types; no checkout integration yet |
-| **`redemptions`** | Reward claim records | ❌ **NOT STARTED** | Fact table; references rewards & ledger; multipart refund tracking |
-| **`referrals`** | Referral relationships | ❌ **NOT STARTED** | Advocate → friend tracking; link attribution; status pipeline |
-| **`referral_visits`** | Link click events | ❌ **NOT STARTED** | Ephemeral; pruned daily; funnel analytics |
-| **`tiers`** | VIP levels | ❌ **NOT STARTED** | Thresholds, perks, ranks; no tier change logic |
-| **`tier_history`** | Tier movement audit | ❌ **NOT STARTED** | Evaluation window, basis capture, manual promotion |
-| **`lots`** | Per-earning expiry | ❌ **NOT STARTED** (Pro) | FIFO consumption; per-lot expiry mutable counter |
-| **`lot_allocations`** | Lot consumption | ❌ **NOT STARTED** (Pro) | Tracks how redemptions/expiry consumed lots |
-| **`events`** | Event outbox | ❌ **NOT STARTED** (2.0) | Webhook/webhook-safe persistence; delivery tracking |
+| Table                 | Spec                         | Status                   | Notes                                                                                                              |
+| --------------------- | ---------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| **`campaigns`**       | Core earning rules           | ✅ **SHIPPED**           | Full CRUD; trigger filtering (Lite/Pro); Pro conditions evaluator; import/export ready                             |
+| **`customers`**       | Member cache & state         | ✅ **SHIPPED**           | Lazy-initialized; aggregates; expiry basis; no tier/referral fields yet                                            |
+| **`ledger`**          | Balance journal, append-only | ✅ **SHIPPED**           | Immutable; idempotent on unique key; SOLE writes via LedgerService                                                 |
+| **`rewards`**         | Ways to spend points         | ✅ **SHIPPED**           | Schema, model, repository, enums; Lite seeds flexible_discount; Pro adds coupon types; no checkout integration yet |
+| **`redemptions`**     | Reward claim records         | ❌ **NOT STARTED**       | Fact table; references rewards & ledger; multipart refund tracking                                                 |
+| **`referrals`**       | Referral relationships       | ❌ **NOT STARTED**       | Advocate → friend tracking; link attribution; status pipeline                                                      |
+| **`referral_visits`** | Link click events            | ❌ **NOT STARTED**       | Ephemeral; pruned daily; funnel analytics                                                                          |
+| **`tiers`**           | VIP levels                   | ❌ **NOT STARTED**       | Thresholds, perks, ranks; no tier change logic                                                                     |
+| **`tier_history`**    | Tier movement audit          | ❌ **NOT STARTED**       | Evaluation window, basis capture, manual promotion                                                                 |
+| **`lots`**            | Per-earning expiry           | ❌ **NOT STARTED** (Pro) | FIFO consumption; per-lot expiry mutable counter                                                                   |
+| **`lot_allocations`** | Lot consumption              | ❌ **NOT STARTED** (Pro) | Tracks how redemptions/expiry consumed lots                                                                        |
+| **`events`**          | Event outbox                 | ❌ **NOT STARTED** (2.0) | Webhook/webhook-safe persistence; delivery tracking                                                                |
 
 ### Phase 1.1 — Referrals
 
@@ -64,14 +64,14 @@ All referral tables (`referrals`, `referral_visits`) specified in data model; no
 
 ### Redemption (Rewards)
 
-| Feature | Spec | Status | Details |
-|---|---|---|---|
-| **Flexible discount** | Points → cart discount, slider | ✅ SHIPPED (schema) | Seeded in Lite; engine scaffolded (`Engine/Rewards/`, always denies `not_implemented`); no checkout integration yet |
-| **Fixed/percent coupon** (Pro) | Issue WC coupon | ✅ SHIPPED (schema) | Seeded in Pro; no coupon generation yet |
-| **Free product** (Pro) | Add to cart | ✅ SHIPPED (schema) | Seeded in Pro; no logic yet |
-| **Free shipping** (Pro) | Shipping discount | ✅ SHIPPED (schema) | Seeded in Pro; no logic yet |
-| **Refund handling** | Proportional/full/none policies | ❌ NOT STARTED | Spec written; no implementation |
-| **Multi-currency** | Value + base_value + rate snapshot | ❌ NOT STARTED | Schema exists; no redemption flow |
+| Feature                        | Spec                               | Status              | Details                                                                                                             |
+| ------------------------------ | ---------------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| **Flexible discount**          | Points → cart discount, slider     | ✅ SHIPPED (schema) | Seeded in Lite; engine scaffolded (`Engine/Rewards/`, always denies `not_implemented`); no checkout integration yet |
+| **Fixed/percent coupon** (Pro) | Issue WC coupon                    | ✅ SHIPPED (schema) | Seeded in Pro; no coupon generation yet                                                                             |
+| **Free product** (Pro)         | Add to cart                        | ✅ SHIPPED (schema) | Seeded in Pro; no logic yet                                                                                         |
+| **Free shipping** (Pro)        | Shipping discount                  | ✅ SHIPPED (schema) | Seeded in Pro; no logic yet                                                                                         |
+| **Refund handling**            | Proportional/full/none policies    | ❌ NOT STARTED      | Spec written; no implementation                                                                                     |
+| **Multi-currency**             | Value + base_value + rate snapshot | ❌ NOT STARTED      | Schema exists; no redemption flow                                                                                   |
 
 ### Points Management
 
@@ -86,43 +86,44 @@ All referral tables (`referrals`, `referral_visits`) specified in data model; no
 | **Expiry per-lot** (Pro) | Lot-based expiry | ❌ NOT STARTED | Lots table unimplemented; no lot tracking |
 | **Adjustment ceiling** | Per-role cap on one manual adjustment | ⚠️ **ENFORCED, NO UI** | `settings.advanced.adjustment_ceiling` (0 = unlimited) checked by `assert_ceiling()`; admins bypass; no settings field to edit it yet |
 | **Rebuild balances** | Replay ledger → recalculate customer row | ❌ NOT STARTED | `balance = SUM(ledger.points)` is the invariant; no rebuild routine or UI exists |
-| **GDPR erasure on account deletion** | Anonymize ledger, delete customer row | ❌ **NOT STARTED** | No `Engine\UserLifecycle` or `Services\CustomerErasureService` exist; no implementation |
+| **Account-deletion capture** | Snapshot identity + facts when a member's WP user is deleted | ✅ SHIPPED | `Engine\CustomerActivityListener` on `delete_user`/`wpmu_delete_user` → `Services\CustomerActivityService::record_account_deleted()`: one `account_deleted` row in `yayloyalty_customer_meta` (email/display_name snapshot, real balance/kept-entries), `yayloyalty_customers` row and ledger kept forever, byte-identical — see `data-model.md` |
+| **GDPR erasure / anonymisation** | Anonymize ledger, erase customer_meta snapshot | ❌ NOT STARTED | Neither `Engine\UserLifecycle` nor `Services\CustomerErasureService` exists. Must be re-specified against the locked "row kept forever" policy above — deleting the customers row, as an earlier draft of this line claimed, would destroy the frozen balance the deletion-capture feature exists to preserve |
 
 ### VIP Tiers
 
-| Feature | Spec | Status | Details |
-|---|---|---|---|
-| **Tier definitions** | Thresholds, perks, badges | ❌ NOT STARTED | Schema designed; no creation UI |
-| **Tier evaluation** | Crossing threshold → promotion/demotion | ❌ NOT STARTED | Logic unbuilt; evaluation window unimplemented |
-| **Tier history** | Audit trail of promotions | ❌ NOT STARTED | Table spec'd; no job to generate rows |
-| **Downgrade policy** | Never / window-end | ❌ NOT STARTED | Policy setting exists; no logic |
-| **Basis options** | Lifetime points / rolling 12mo / lifetime spend | ❌ NOT STARTED | Settings designed; no evaluation logic |
+| Feature              | Spec                                            | Status         | Details                                        |
+| -------------------- | ----------------------------------------------- | -------------- | ---------------------------------------------- |
+| **Tier definitions** | Thresholds, perks, badges                       | ❌ NOT STARTED | Schema designed; no creation UI                |
+| **Tier evaluation**  | Crossing threshold → promotion/demotion         | ❌ NOT STARTED | Logic unbuilt; evaluation window unimplemented |
+| **Tier history**     | Audit trail of promotions                       | ❌ NOT STARTED | Table spec'd; no job to generate rows          |
+| **Downgrade policy** | Never / window-end                              | ❌ NOT STARTED | Policy setting exists; no logic                |
+| **Basis options**    | Lifetime points / rolling 12mo / lifetime spend | ❌ NOT STARTED | Settings designed; no evaluation logic         |
 
 **Note:** Admin Customers page displays a cosmetic Tier column and working-but-substituted Tier filter (`customers-page.tier-sample-data.ts`) for UI-check purposes — these derive fake tier labels from customer balance and reuse the existing `balance_range` filter under the hood. This is not real VIP Tier progress; the filter and column will be deleted once the actual tier system ships.
 
 ### Referral Program
 
-| Feature | Spec | Status | Details |
-|---|---|---|---|
-| **Referral codes** | Generate per user | ❌ NOT STARTED | Field exists (`customers.referral_code`); no generation |
-| **Link attribution** | Cookie-based or code | ❌ NOT STARTED | Click tracking, email code; no implementation |
-| **Friend reward** | Points or coupon | ❌ NOT STARTED | Reward type spec'd; no claim logic |
-| **Hold period** | Before payout | ❌ NOT STARTED | Hold field exists; no job to complete holds |
-| **Velocity checks** | Spam/fraud prevention | ❌ NOT STARTED | IP/email hashing ready; no check logic |
-| **Status pipeline** | pending → signed_up → ordered → completed | ❌ NOT STARTED | Schema designed; no state machine |
+| Feature              | Spec                                      | Status         | Details                                                 |
+| -------------------- | ----------------------------------------- | -------------- | ------------------------------------------------------- |
+| **Referral codes**   | Generate per user                         | ❌ NOT STARTED | Field exists (`customers.referral_code`); no generation |
+| **Link attribution** | Cookie-based or code                      | ❌ NOT STARTED | Click tracking, email code; no implementation           |
+| **Friend reward**    | Points or coupon                          | ❌ NOT STARTED | Reward type spec'd; no claim logic                      |
+| **Hold period**      | Before payout                             | ❌ NOT STARTED | Hold field exists; no job to complete holds             |
+| **Velocity checks**  | Spam/fraud prevention                     | ❌ NOT STARTED | IP/email hashing ready; no check logic                  |
+| **Status pipeline**  | pending → signed_up → ordered → completed | ❌ NOT STARTED | Schema designed; no state machine                       |
 
 ### Admin UI (React)
 
-| Page | Status | Details |
-|---|---|---|
-| **Campaigns** | ✅ FUNCTIONAL | Lite: three built-in campaign cards (purchase/signup/review), editable in local state only — no save yet. Pro: full table (grouped by trigger, priority, scheduling, conditions) + points summary card, plus a per-campaign performance page (`/campaigns/:id/performance`, purchase/signup/review only — tiles, daily chart, skipped/estimate panel, paged entries table) served by `CampaignPerformanceRestController` (fixture-backed, real endpoint shape — same SWAP POINT pattern as the list). Both read from cosmetic dummy data (22 campaigns for UI-check; `CampaignRestController::dummy_fixture()`—to be deleted when visual iteration stops). Pro edit form at `/campaigns/:id/edit` (six sections + summary rail; row name-link and "Duplicate" open it) — saves validate server-side but do not persist (SWAP POINT); no create form ("Add campaign" inert). Pro conditions preview endpoint working |
-| **Customers** | ✅ FUNCTIONAL | Server-paginated list (search/filter/sort/export/row-select) against real `GET /customers`; bulk "Adjust points" and "Export" wired to real endpoints (`POST /customers/{id}/adjust`, client-side CSV); background page/sort/filter refetch dims the table to 60% opacity while placeholderData keeps rows on screen (no toolbar spinner); Tier column and filter are cosmetic sample data over `balance_range` (not real tier feature); Pro adds saved-segment management (`POST/DELETE /customers/segments` — save/apply/remove filter sets); filter suggestions for no-match cases; below `sm` the table becomes a card stack (`CustomersCardList`) with a sort dropdown. Per-customer drawer at `customers/:userId` (F09): header stats, expiry/negative-balance/deleted panels, four paged tabs — Points ledger (real), Activity log / Redemptions / Referrals (honest empty envelopes until their tables exist; the latter two Pro-gated). Adjust points is the drawer's one live action; Reset expiry / Export ledger are disabled (no endpoint). Dev-only `?scenario=` fixtures cover six drawer states |
-| **Dashboard** | ✅ SHIPPED | Real `GET /dashboard` (ledger/customers/WC aggregates: 5 stat tiles with deltas, issued-vs-redeemed chart 7/30/90, top earners, recent activity, three notice detectors with per-user dismissal, anomaly panel); Pro adds `GET /dashboard/pro` (campaign breakdown lines, top campaigns) — referrals tile and tier distribution are client dummies until those tables exist. Dev-only `?scenario=` fixtures reproduce every wireframe artboard (WP_DEBUG + Vite dev server) |
-| **Rewards** | ⚠️ PLACEHOLDER | Stub page; no catalog UI |
-| **Referral** | ⚠️ PLACEHOLDER | Stub page; referral program not built |
-| **VIP Tiers** | ⚠️ PLACEHOLDER | Stub page; no tier management UI |
-| **Settings** | ⚠️ PLACEHOLDER | Three stub tabs (general, emails, advanced); REST endpoint and `SettingsHelper` defaults exist (`general.enabled`, point labels) but each tab renders an inline "not implemented yet" Card (Rewards/Referral/VIP render `PagePlaceholder`) |
-| **Capability gating** | ✅ FUNCTIONAL | Nav and routes filtered by `window.yayLoyaltyAdmin.capabilities`; Customers' "Adjust points"/"Export" bulk actions gated to `manage_points`/`view` via `<Can>`; backbone 403s surface as one toast |
+| Page                  | Status         | Details                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| --------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Campaigns**         | ✅ FUNCTIONAL  | Lite: three built-in campaign cards (purchase/signup/review), editable in local state only — no save yet. Pro: full table (grouped by trigger, priority, scheduling, conditions) + points summary card, plus a per-campaign performance page (`/campaigns/:id/performance`, purchase/signup/review only — tiles, daily chart, skipped/estimate panel, paged entries table) served by `CampaignPerformanceRestController` (fixture-backed, real endpoint shape — same SWAP POINT pattern as the list). Both read from cosmetic dummy data (22 campaigns for UI-check; `CampaignRestController::dummy_fixture()`—to be deleted when visual iteration stops). Pro edit form at `/campaigns/:id/edit` (six sections + summary rail; row name-link and "Duplicate" open it) — saves validate server-side but do not persist (SWAP POINT); no create form ("Add campaign" inert). Pro conditions preview endpoint working                                                                                                                                     |
+| **Customers**         | ✅ FUNCTIONAL  | Server-paginated list (search/filter/sort/export/row-select) against real `GET /customers`; bulk "Adjust points" and "Export" wired to real endpoints (`POST /customers/{id}/adjust`, client-side CSV); background page/sort/filter refetch dims the table to 60% opacity while placeholderData keeps rows on screen (no toolbar spinner); Tier column and filter are cosmetic sample data over `balance_range` (not real tier feature); Pro adds saved-segment management (`POST/DELETE /customers/segments` — save/apply/remove filter sets); filter suggestions for no-match cases; below `sm` the table becomes a card stack (`CustomersCardList`) with a sort dropdown. Per-customer drawer at `customers/:userId` (F09): header stats, expiry/negative-balance/deleted panels, four paged tabs — Points ledger (real), Activity log / Redemptions / Referrals (honest empty envelopes until their tables exist; the latter two Pro-gated). Adjust points is the drawer's one live action; Reset expiry / Export ledger are disabled (no endpoint) |
+| **Dashboard**         | ✅ SHIPPED     | Real `GET /dashboard` (ledger/customers/WC aggregates: 5 stat tiles with deltas, issued-vs-redeemed chart 7/30/90, top earners, recent activity, three notice detectors with per-user dismissal, anomaly panel); Pro adds `GET /dashboard/pro` (campaign breakdown lines, top campaigns) — referrals tile and tier distribution are client dummies until those tables exist. Dev-only `?scenario=` fixtures reproduce every wireframe artboard (WP_DEBUG + Vite dev server)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| **Rewards**           | ⚠️ PLACEHOLDER | Stub page; no catalog UI                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| **Referral**          | ⚠️ PLACEHOLDER | Stub page; referral program not built                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| **VIP Tiers**         | ⚠️ PLACEHOLDER | Stub page; no tier management UI                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| **Settings**          | ⚠️ PLACEHOLDER | Three stub tabs (general, emails, advanced); REST endpoint and `SettingsHelper` defaults exist (`general.enabled`, point labels) but each tab renders an inline "not implemented yet" Card (Rewards/Referral/VIP render `PagePlaceholder`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| **Capability gating** | ✅ FUNCTIONAL  | Nav and routes filtered by `window.yayLoyaltyAdmin.capabilities`; Customers' "Adjust points"/"Export" bulk actions gated to `manage_points`/`view` via `<Can>`; backbone 403s surface as one toast                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 
 ---
 
@@ -195,15 +196,15 @@ The shape is fixed (`includes/Engine/Redemption/README.md`); each row is one stu
 
 ### Capabilities (backbone done) → what is still open
 
-| # | TODO | Where | Ticket |
-|---|---|---|---|
-| 1 | `uninstall.php` with a delete-data branch calling `Capabilities::uninstall()`. Method exists, nothing calls it. | plugin root | — |
-| 2 | Permissions matrix UI + `POST /settings/permissions` with the five guards (renders only for `manage_options`; administrator row locked; roles from `wp_roles()`; caps-version migration; caps survive deactivation). | Settings → Advanced, `SettingsRestController` | F20 (Pro) |
-| 3 | Settings field for `advanced.adjustment_ceiling` (enforced today, no UI). | Settings → Advanced | F20 (Pro) |
-| 4 | Rewards REST routes take `Capabilities::MANAGE_REWARDS`; the nav/route already do. | `RewardsRestController` | rewards |
-| 5 | `GET /settings` must omit licence key / secrets unless `manage_settings` — nothing secret is in the payload yet. | `SettingsRestController::get_settings()` | when a secret lands |
-| 6 | AdminShell applies one adapter capability (`view`) to the menu, licence REST and `LicenseHandler`; a viewer can reach licence endpoints. Needs a second adapter method in the shared shell. | `yaycommerce/admin-shell` | shell |
-| 7 | Route guard as CI: walk `yayloyalty/v1`, fail on a missing or `__return_true` `permission_callback`. Needs the wp-phpunit harness above. | `tests/integration/` | — |
+| #   | TODO                                                                                                                                                                                                                 | Where                                         | Ticket              |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- | ------------------- |
+| 1   | `uninstall.php` with a delete-data branch calling `Capabilities::uninstall()`. Method exists, nothing calls it.                                                                                                      | plugin root                                   | —                   |
+| 2   | Permissions matrix UI + `POST /settings/permissions` with the five guards (renders only for `manage_options`; administrator row locked; roles from `wp_roles()`; caps-version migration; caps survive deactivation). | Settings → Advanced, `SettingsRestController` | F20 (Pro)           |
+| 3   | Settings field for `advanced.adjustment_ceiling` (enforced today, no UI).                                                                                                                                            | Settings → Advanced                           | F20 (Pro)           |
+| 4   | Rewards REST routes take `Capabilities::MANAGE_REWARDS`; the nav/route already do.                                                                                                                                   | `RewardsRestController`                       | rewards             |
+| 5   | `GET /settings` must omit licence key / secrets unless `manage_settings` — nothing secret is in the payload yet.                                                                                                     | `SettingsRestController::get_settings()`      | when a secret lands |
+| 6   | AdminShell applies one adapter capability (`view`) to the menu, licence REST and `LicenseHandler`; a viewer can reach licence endpoints. Needs a second adapter method in the shared shell.                          | `yaycommerce/admin-shell`                     | shell               |
+| 7   | Route guard as CI: walk `yayloyalty/v1`, fail on a missing or `__return_true` `permission_callback`. Needs the wp-phpunit harness above.                                                                             | `tests/integration/`                          | —                   |
 
 ### Dev-database drift (both)
 
@@ -213,20 +214,20 @@ The shape is fixed (`includes/Engine/Redemption/README.md`); each row is one stu
 
 ## Database Schema Completeness
 
-| Table | Phase | Implemented | Reason |
-|---|---|---|---|
-| `campaigns` | 1.0 | ✅ YES | Core earning rules; must be first |
-| `customers` | 1.0 | ✅ YES | Caching layer; required for O(1) storefront reads |
-| `ledger` | 1.0 | ✅ YES | Source of truth; foundation for all analytics |
-| `rewards` | 1.0 | ✅ YES | Schema, model, repository, seeding; redemption flow not built |
-| `redemptions` | 1.0 | ❌ NO | Fact table; no code depends on it; safe to defer |
-| `referrals` | 1.1 | ❌ NO | Separate program; can launch independently |
-| `referral_visits` | 1.1 | ❌ NO | Click tracking; referrals prerequisite |
-| `tiers` | 1.2 | ❌ NO | VIP program; can activate post-launch |
-| `tier_history` | 1.2 | ❌ NO | Audit table; tiers prerequisite |
-| `lots` | 1.0 Pro | ❌ NO | Advanced expiry; Pro-only optional feature |
-| `lot_allocations` | 1.0 Pro | ❌ NO | Lot-based tracking; Pro feature |
-| `events` | 2.0 | ❌ NO | Webhook outbox; 2.0 release |
+| Table             | Phase   | Implemented | Reason                                                        |
+| ----------------- | ------- | ----------- | ------------------------------------------------------------- |
+| `campaigns`       | 1.0     | ✅ YES      | Core earning rules; must be first                             |
+| `customers`       | 1.0     | ✅ YES      | Caching layer; required for O(1) storefront reads             |
+| `ledger`          | 1.0     | ✅ YES      | Source of truth; foundation for all analytics                 |
+| `rewards`         | 1.0     | ✅ YES      | Schema, model, repository, seeding; redemption flow not built |
+| `redemptions`     | 1.0     | ❌ NO       | Fact table; no code depends on it; safe to defer              |
+| `referrals`       | 1.1     | ❌ NO       | Separate program; can launch independently                    |
+| `referral_visits` | 1.1     | ❌ NO       | Click tracking; referrals prerequisite                        |
+| `tiers`           | 1.2     | ❌ NO       | VIP program; can activate post-launch                         |
+| `tier_history`    | 1.2     | ❌ NO       | Audit table; tiers prerequisite                               |
+| `lots`            | 1.0 Pro | ❌ NO       | Advanced expiry; Pro-only optional feature                    |
+| `lot_allocations` | 1.0 Pro | ❌ NO       | Lot-based tracking; Pro feature                               |
+| `events`          | 2.0     | ❌ NO       | Webhook outbox; 2.0 release                                   |
 
 **Migration strategy:** Schema installed on-demand. `Database/Installer::maybe_upgrade()` checks `yayloyalty_db_version` option; any phase table is created when that phase feature is activated (or at install time if included in the current version).
 
@@ -234,13 +235,13 @@ The shape is fixed (`includes/Engine/Redemption/README.md`); each row is one stu
 
 ## Version Roadmap
 
-| Version | Focus | Expected Tables | Earned Triggers |
-|---|---|---|---|
-| **1.0** | Core earning + campaigns | customers, ledger, campaigns | purchase, signup, review |
+| Version     | Focus                         | Expected Tables                | Earned Triggers                                       |
+| ----------- | ----------------------------- | ------------------------------ | ----------------------------------------------------- |
+| **1.0**     | Core earning + campaigns      | customers, ledger, campaigns   | purchase, signup, review                              |
 | **1.0 Pro** | Conditions, advanced triggers | + Pro-specific tables (if any) | + birthday, first_order, order_count, spend_milestone |
-| **1.1** | Referral program | + referrals, referral_visits | + referral |
-| **1.2** | VIP tiers | + tiers, tier_history | (no new triggers; tier basis for existing ones) |
-| **2.0** | Webhooks & events | + events | (event outbox; no new triggers) |
+| **1.1**     | Referral program              | + referrals, referral_visits   | + referral                                            |
+| **1.2**     | VIP tiers                     | + tiers, tier_history          | (no new triggers; tier basis for existing ones)       |
+| **2.0**     | Webhooks & events             | + events                       | (event outbox; no new triggers)                       |
 
 ---
 

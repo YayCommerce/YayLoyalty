@@ -59,24 +59,22 @@ function DrawerTab({
  * is no separate "counts still loading" state to render for). All four tabs
  * exist in both builds (locked decision 6) — no `IS_PRO_BUILD` branch.
  *
- * All four tabs have real, working bodies now (Wave B wired them one phase
- * at a time — see `ActivityLogTab.tsx`/`RedemptionsTab.tsx`/`ReferralsTab.tsx`).
+ * All four tabs have real, working bodies — see `ActivityLogTab.tsx`/
+ * `RedemptionsTab.tsx`/`ReferralsTab.tsx`.
  *
  * Redemptions and Referrals are Pro-only content behind the SAME tabs Free
  * sees (locked decision 6 — no `IS_PRO_BUILD` branch on which tabs exist):
  * `ProGate` adds a badge beside the label and swaps the body for the
  * upgrade surface on Lite. `ProGate` is a build-time presentation gate, not
- * access control — there is no real Pro data behind it to protect, only a
- * dev fixture.
+ * access control — there is no data behind it to protect yet, both tabs
+ * always answer an empty envelope (no `redemptions`/`referrals` table).
  */
 export function CustomerDrawerTabs({
   customer,
   customerFirstName: firstName,
-  scenario,
 }: {
   customer: Customer;
   customerFirstName: string;
-  scenario?: string;
 }) {
   return (
     <Tabs defaultValue="ledger">
@@ -97,21 +95,20 @@ export function CustomerDrawerTabs({
         <LedgerTab
           userId={customer.user_id}
           customerFirstName={firstName}
-          scenario={scenario}
           causeLedgerId={customer.negative_balance?.cause_ledger_id ?? null}
         />
       </TabsContent>
       <TabsContent value="activity">
-        <ActivityLogTab userId={customer.user_id} scenario={scenario} />
+        <ActivityLogTab userId={customer.user_id} />
       </TabsContent>
       <TabsContent value="redemptions">
         <ProGate>
-          <RedemptionsTab userId={customer.user_id} customerFirstName={firstName} scenario={scenario} />
+          <RedemptionsTab userId={customer.user_id} customerFirstName={firstName} />
         </ProGate>
       </TabsContent>
       <TabsContent value="referrals">
         <ProGate>
-          <ReferralsTab userId={customer.user_id} scenario={scenario} />
+          <ReferralsTab userId={customer.user_id} />
         </ProGate>
       </TabsContent>
     </Tabs>

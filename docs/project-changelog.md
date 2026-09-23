@@ -6,6 +6,22 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
 
 ## Unreleased
 
+### Changed — Customer routes name which user ids they accept (2026-09-23)
+
+- `AbstractRestController::user_id_param( ?CustomerRepository )` used its argument as a hidden
+  switch: passing a repository also accepted a deleted member. Split into `member_id_param()`
+  (live WP user, or a surviving customers row) for the five drawer reads, and `user_id_param()`
+  (live WP user only) for adjust and Pro's campaign preview. `RedemptionsRestController` and
+  `ReferralsRestController` lose their constructors; `LedgerRestController` and
+  `ActivityRestController` take only their own repository. No route behaviour changed.
+- **Tests:** `tests/integration/Controllers/CustomerIdRouteParamTest.php` (4 tests, 16 route
+  cases) pins it: drawer reads answer 200 for a live and a deleted member and 400 for an unknown
+  id; adjust refuses a deleted member with `id` as the only invalid arg and writes nothing.
+  Integration suite 10 → 26 tests; its bootstrap raises `memory_limit` to 512M because booting
+  the full REST server with WooCommerce's routes outgrows the CLI's 128M.
+- `code-standards.md` § 9, `system-architecture.md`, `deployment-guide.md` and
+  `codebase-summary.md` stop describing the removed customer-drawer `?scenario=` fixtures.
+
 ### Added — The ledger's duplicate-key guard is real (2026-09-23)
 
 - **`QueryException`** captures the driver's error number at construction (the next statement
@@ -121,13 +137,78 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
   and `ContextFactoryTest.php` are the scaffold's specification. `docs/points-engine-scout.md` records
   the pre-scaffold inventory.
 
-### Changed — Docs (2026-09-22)
+### Added — Customers row created at WP registration (2026-09-22)
 
-- GDPR erasure feature corrected to "not started" (no implementation exists yet).
-- Build validation: tsc error count fixed to 3 (not 5; per_page/perPage mismatch was already resolved in commit 5a9def2).
-- Documented fixture-backed endpoints: WP_DEBUG-gated `?scenario=` dev fixtures vs. unconditional swap-point fixtures that ship in release zips.
-- System architecture seams: added `yayloyalty_register_trigger_handlers` and `yayloyalty_localize_admin_data` to filter list.
-- Data model indexes: added missing customers table indexes (lifetime_earned, lifetime_redeemed, joined_at).
+- New `user_register` hook (`CustomerActivityListener::on_user_register()`, registered in
+  `yayloyalty.php`) calls `CustomerRepository::ensure_row()` for every new WP user, admin-created
+  accounts included, except staff (`edit_posts` or `manage_woocommerce` — admins, shop managers,
+  editors), who are not loyalty members just for having an account. Fixes a gap where a user created in wp-admin never showed up in the admin
+  Customers list until their first points activity — `yayloyalty_customers` row creation is now
+  eager on registration instead of lazy-on-first-earn. No signup bonus, no ledger write, no
+  `account_created` activity-log entry — that stays lazy, tied to the first real ledger write, as
+  before. See `system-architecture.md` → "Signup capture" and `data-model.md` →
+  `yayloyalty_customers`.
+
+### Fixed — Customer drawer empty-state text overflow
+
+- The Points/Activity tabs' empty-state body text (`DrawerTable.tsx`) inherited `whitespace-nowrap`
+  from the base `TableCell` component (meant for data-row cells) and never overrode it, so the
+  empty-state sentence rendered on one unbroken line and overflowed past the drawer, forcing a
+  horizontal scrollbar. Added `whitespace-normal` to the empty-state cell.
+
+### Added — Customer meta table, real account-deletion capture, real activity log (2026-09-22)
+
+- **New table:** `yayloyalty_customer_meta` — generic per-customer key-value event log, doubling as
+  the activity log's backing store (`Models/CustomerMeta.php`, `Repositories/CustomerMetaRepository.php`,
+  `Repositories/CustomerMetaActivitySearch.php`, `Database/Schema/CustomerMetaTable.php`). See
+  `data-model.md` for the full column/index/envelope reference.
+- **Real capture, three of eight `Enums\ActivityEvent` types:** `account_created` and
+  `points_adjusted` (`Services\CustomerActivityService`, subscribed to `yayloyalty_ledger_recorded`)
+  and `account_deleted` (subscribed to `delete_user`/`wpmu_delete_user` — the first WP-core-hook
+  subscriptions in this codebase, `Engine\CustomerActivityListener`). No backfill: a member created
+  before this shipped has an activity log starting today.
+- **`GET /customers/{id}/activity`** now answers real, filtered, paginated rows instead of an
+  always-empty envelope (`ActivityRestController`); a customer whose only history would be one of
+  the five unwritten event types still gets an honest empty page.
+- **Real deleted-account drawer block:** `deleted_at`, identity fallback, and `loose_ends` are real
+  on `GET /customers/{id}` (`CustomerItemFormatter`), gated on the WP user currently being gone
+  (not just a deletion row existing, so a reinstated id self-heals). `yayloyalty_customers` and its
+  balance are kept forever, byte-identical — that frozen balance IS the liability the drawer shows.
+- **Wire contract change:** `loose_ends.void_coupons`/`credited_referrals`/`counted_in_members` are
+  now nullable on both PHP and Zod (`customer.schema.ts`) — `null` renders as "Not tracked yet" in
+  the SPA, not hidden. `activity.schema.ts` gains `account_deleted`; `account_created`'s sub-line
+  copy is now points-only (no campaign name on the real path).
+- **Admin Customers list** (`CustomerRepository::paginate_list()`) switched `wp_users` from
+  `INNER JOIN` to `LEFT JOIN` so a deleted member's row — and the liability it represents — still
+  appears, with `CustomerListFormatter::format_row()` falling back to the deletion snapshot for
+  display.
+- **Docs corrected:** `project-roadmap.md`'s "GDPR erasure on account deletion ✅ SHIPPED" row and
+  `codebase-summary.md`'s `yayloyalty_erase_customer_data` seam both claimed a
+  `Engine\UserLifecycle`/`Services\CustomerErasureService` that never existed — both corrected;
+  anonymisation/erasure remains not started and must be re-specified against the "row kept forever"
+  policy this task locks in.
+
+### Removed — Customer drawer `?scenario=` fixture system (2026-09-22)
+
+The drawer's UI had been fully verified against every fixture scenario, so the WP_DEBUG-gated
+dev-only data source is no longer needed — only the real path remains.
+
+- **Deleted:** `includes/Controllers/Fixtures/CustomerDrawer/` (9 PHP classes: `CustomerDrawerFixture`,
+  `DrawerProfiles`, `DrawerLedger`, `DrawerLedgerGenerator`, `DrawerActivity`, `DrawerExpiry`,
+  `DrawerNegativeBalance`, `DrawerRedemptions`, `DrawerReferrals`) and their unit test.
+- **Server:** the five drawer controllers (`CustomerRestController`, `LedgerRestController`,
+  `ActivityRestController`, `RedemptionsRestController`, `ReferralsRestController`) no longer
+  register a `scenario` arg or branch on it — each now runs only the real path that was already
+  there (honest empty envelopes for Activity/Redemptions/Referrals; `null` blocks for
+  `deleted_at`/`expiry`/`negative_balance` — none of those tables/columns exist yet, see
+  `data-model.md`).
+- **SPA:** `useDevScenario()` (`hooks/useDevScenario.ts`) is no longer called anywhere under the
+  drawer — it is still used by the Dashboard page, so the hook itself stays. All drawer api/query
+  functions dropped their `scenario` parameter.
+- **No behavior change** on the real path: every response byte is identical to a pre-change
+  request made without `?scenario=`.
+- Wire shapes the fixtures documented (activity rows, `negative_balance`, `expiry.batches`,
+  redemption/referral rows) remain fully documented in `data-model.md` — nothing was lost.
 
 ### Added — Campaign performance page, Pro (2026-09-21, #16)
 
@@ -200,6 +281,7 @@ The six artboards Wave A left undrawn, still UI-first on the same `WP_DEBUG`-gat
 schema, no migration, no real-data work this wave either.
 
 **Shipped:**
+
 - Activity log tab: full ledger-parity paging + search + date range (replacing an earlier
   "Load more" draft) and a grouped filter (All / Admin actions / Tier changes / Expiry / Emails,
   deliberately overlapping — a lens, not a partition). `GET /customers/{id}/activity` is now a
@@ -254,6 +336,7 @@ real data is a controller-only change, never an SPA change (every fixture scenar
 the same Zod schema as the real path).
 
 **Shipped:**
+
 - Six-stat header (Balance, Pending, Expires, Lifetime earned, Lifetime redeemed, Worth) on an
   `auto-fit`/`minmax(150px,1fr)` grid; figures are never abbreviated.
 - Actions row: Adjust points (live — reuses the existing bulk-adjust dialog/mutation/invalidation);

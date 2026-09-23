@@ -125,7 +125,7 @@ Two directories that look interchangeable and are not.
 
 | | Holds | Test |
 |---|---|---|
-| `Utils/` | Stateless, all-static, no plugin state — `Dates`, `Json`, `Log`, `Table`, `ConditionValueRules`, `PointsMath` | Could you lift it into another plugin by changing one constant? |
+| `Utils/` | Stateless, all-static, no plugin state — `Dates`, `Json`, `Log`, `Table`, `Sql`, `ConditionValueRules`, `PointsMath` | Could you lift it into another plugin by changing one constant? |
 | `Helpers/` | Glue that knows this plugin's options, shapes and screens — `SettingsHelper`, `LocalizeHelper` | Does it read plugin state or build a payload for our UI? |
 
 A util that starts reading an option belongs in `Helpers/`. Neither directory is a home for business rules: those live in `Models/` and `Services/`.
@@ -165,6 +165,8 @@ Pick the level by asking who needs the line, not how noisy it is:
 
 **[REVIEW]** `LedgerService` is the only class that receives both `LedgerRepository` and `CustomerRepository`, and it is constructed in exactly four named places: `Engine\RestAPI::controllers()` (request-time REST), `Database\InitYayLoyaltyCustomer::maybe_create()` (one-time install bootstrap, outside any request — needs real ledger rows so its starter customers don't break `balance = SUM(ledger.points)`), `Engine\Earning\EarningService::build()` (the award path's composition root; a stub until F01-4) and `Engine\Redemption\RedemptionService::build()` (the commit path's composition root; a stub until F08). PHP has no package-private, so this is a convention plus these four named construction sites plus this review rule — **not** something the language enforces. Do not describe it as "structural"; a fifth site needs the same review, not a silent `new LedgerService(...)`.
 
+**[REVIEW]** `Services\CustomerActivityService` is a second, narrower exception: it holds `CustomerRepository` and `LedgerRepository` alongside `CustomerMetaRepository`, justified only because both are READ-ONLY there (membership check, balance at deletion, kept-entries count) — the sole write target is `customer_meta`. It is constructed in exactly one place, `Engine\CustomerActivityListener::service()`. Any further class needing more than one repository needs this same review, not a silent multi-repository constructor.
+
 ## 9. REST
 
 - Namespace `yayloyalty/v1`. Routes registered in `register_routes()`, never in a constructor.
@@ -172,7 +174,7 @@ Pick the level by asking who needs the line, not how noisy it is:
 - **`readonly` properties are stripped from write args, not merely ignored.** Build write args by filtering the schema. Passing the schema whole makes every endpoint mass-assignable: a `PUT` carrying `is_builtin` or `actor_id` would otherwise defeat the guards that depend on them.
 - Server-owned and always readonly: `id`, `created_at`, `updated_at`, `is_builtin`, `balance_after`, `actor_id`, and every aggregate on `customers`.
 - `actor_id` is always `get_current_user_id()`. Never read it from a request body.
-- ID route params are `(?P<id>[\d]+)` with a `validate_callback` confirming the record exists.
+- ID route params are `(?P<id>[\d]+)` with a `validate_callback` confirming the record exists. For a user id that is `AbstractRestController::member_id_param()` on loyalty-member reads (live WP user, or a deleted one whose customers row survives) and `user_id_param()` everywhere else (writes, and ids that are not "a member", like Pro's campaign preview).
 - Payload fields are `snake_case`. The pagination envelope is camelCase (`currentPage`, `totalPage`, `totalItems`, `perPage`, `data`), matching `PaginatedResponse<T>` in the admin app — one envelope, not two. Query params follow WP REST core spelling (`page`, `per_page`, `orderby`, `order`, `balance_range`). Nothing else on the wire is camelCase — including `suggestions[].key` and saved-segment `filters`, which use the query-param names. In the admin app, everything TS-side is camelCase (`perPage`, `orderBy`, `balanceRange`, `RowFilters`), and the `lib/api/*.api.ts` (or `pro/**/*.api.ts`) request builder is the only place the two spellings meet — callers never write a snake_case key. The `wp_localize_script` bootstrap (`LocalizeHelper`, `window.yayLoyaltyMeta` / `yayLoyaltyAdmin`) is a separate boundary: its top-level keys follow the YayCommerce house camelCase shape (`wpMeta.siteUrl`, `isAdministrator`), `wcMeta.currency_data.*` mirrors WooCommerce core's own keys, and any REST resource embedded in it (`settings`, `segments`) keeps its REST snake_case shape.
 - Error responses never echo `$exception->getMessage()`; log the detail, return a generic message with a correlation id.
 - Every admin route sets `'permission_callback' => $this->requires( Capabilities::X )` — one of the seven in `Access\Capabilities` (`view`, `manage_points`, `manage_tiers`, `manage_campaigns`, `manage_rewards`, `manage_settings`, `run_tools`). Never `__return_true` on an admin route. Storefront / Store API routes are gated by session identity, not by these caps.
@@ -186,7 +188,7 @@ Two conventions for fixture data coexist:
 
 **Shared schema/query-arg classes** — `Controllers/Schemas/{CustomerItemSchema,LedgerQueryArgs,ActivityQueryArgs}.php` live in one place and are reused by both controllers (real path) and fixtures (dev-only path), so a contract change is made once.
 
-**Dev-only fixture gate** — `WP_DEBUG`-gated fixtures (`CustomerDrawerFixture`, `DashboardFixture`) are reached via a `scenario` query arg, checked server-side by `requested()` helper — the real path (no arg) always returns real data. A "swap point" fixture (`CampaignRestController::dummy_fixture()`, `CampaignPerformanceFixture`) is never optional; it ships in the release zip. Mark swap-point fixtures in controller docblocks and list them in `project-roadmap.md` Known Gaps.
+**Dev-only fixture gate** — the `WP_DEBUG`-gated fixture (`DashboardFixture`) is reached via a `scenario` query arg, checked server-side by `requested()` helper — the real path (no arg) always returns real data. A "swap point" fixture (`CampaignRestController::dummy_fixture()`, `CampaignPerformanceFixture`) is never optional; it ships in the release zip. Mark swap-point fixtures in controller docblocks and list them in `project-roadmap.md` Known Gaps.
 
 ## 10. PHP 7.4 pseudo-enums
 
@@ -314,7 +316,7 @@ A stripping build fails silently by nature, so every release is validated agains
 ```bash
 composer lint                          # phpcs (WPCS + PHPCompatibility)
 composer lint:fix                      # phpcbf
-composer test                          # phpunit — 211 tests (61 incomplete = the earning-split specification in `tests/unit/Earning/`, `tests/unit/Services/`, `tests/unit/ContextFactoryTest.php` and the redemption-split specification in `tests/unit/Redemption/`): points engine, earning orchestration scaffold, reward engine + clamp, redemption orchestration scaffold, dashboard computation, PointsMath + shared vectors, campaign validation, drawer query-arg groupings + fixture helpers
+composer test                          # phpunit — 228 tests (61 incomplete = the earning-split specification in `tests/unit/Earning/`, `tests/unit/Services/`, `tests/unit/ContextFactoryTest.php` and the redemption-split specification in `tests/unit/Redemption/`): points engine, earning orchestration scaffold, reward engine + clamp, redemption orchestration scaffold, dashboard computation, PointsMath + shared vectors, campaign validation, drawer query-arg groupings + fixture helpers
 pnpm --filter @yayloyalty/admin-page lint   # eslint + prettier on SPA
 pnpm --filter @yayloyalty/admin-page test   # vitest — lib/points-math against the same vector file
 ./scripts/run.sh build [pro|lite]      # Full build — currently fails at tsc --noEmit due to 3 pre-existing missing-dependency type errors

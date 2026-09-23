@@ -20,8 +20,7 @@ import { CustomerDrawerStat } from './CustomerDrawerStat';
  * Five stats on the `auto-fit / minmax(150px,1fr)` grid — three columns at the
  * drawer's 600px width, which is what 1e/1f draw, and a graceful reflow at the
  * 782px full-screen size and for six-figure figures (3c's fix). Takes
- * `customer` and nothing else: every figure is derived here, so swapping the
- * fixture for the real endpoint later changes no props.
+ * `customer` and nothing else: every figure is derived here.
  *
  * Balance and Pending are the two headline figures (`size="lg"`); Expires and
  * the two lifetime totals are secondary. `Worth` is deliberately NOT shown —

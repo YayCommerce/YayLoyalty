@@ -7,14 +7,13 @@ import { paginatedSchema } from '@/lib/api/paginated';
  * `ActivityQueryArgs`. THAT PHP CODE IS THE SOURCE OF TRUTH — copies
  * `ledger.schema.ts`'s own docblock convention.
  *
- * The real path always answers an empty envelope (no `activity` table yet,
- * `docs/data-model.md`); the `WP_DEBUG`-gated drawer fixture
- * (`DrawerActivity.php`) is the only thing that populates one for now. Both
- * parse through this same schema — that is what keeps the eventual swap to a
- * real table an input change, not a UI rewrite.
+ * The real table backs three of the eight kinds today (`account_created`,
+ * `points_adjusted`, `account_deleted`); the other five have no source
+ * feature yet, so a customer whose only history would be one of them
+ * legitimately gets zero rows.
  */
 
-/** The seven event kinds artboard 3d shows. Matches `ActivityQueryArgs::EVENT_TYPES`. */
+/** Eight event kinds artboard 3d shows. Matches `ActivityQueryArgs::EVENT_TYPES`. */
 export const ACTIVITY_EVENT_TYPES = [
   'account_created',
   'points_adjusted',
@@ -23,6 +22,7 @@ export const ACTIVITY_EVENT_TYPES = [
   'reward_redeemed',
   'balance_email_sent',
   'expiring_soon_email_sent',
+  'account_deleted',
 ] as const;
 
 export const ACTIVITY_ACTOR_KINDS = ['staff', 'automatic', 'customer'] as const;
@@ -40,7 +40,6 @@ export const activityActorKindSchema = z.enum(ACTIVITY_ACTOR_KINDS);
 export const activityGroupSchema = z.enum(ACTIVITY_GROUPS);
 
 export type ActivityEventType = z.infer<typeof activityEventTypeSchema>;
-export type ActivityActorKind = z.infer<typeof activityActorKindSchema>;
 export type ActivityGroup = z.infer<typeof activityGroupSchema>;
 
 export const activityEntrySchema = z.object({
@@ -58,5 +57,3 @@ export const activityEntrySchema = z.object({
 export type ActivityEntry = z.infer<typeof activityEntrySchema>;
 
 export const activityEnvelopeSchema = paginatedSchema(activityEntrySchema);
-
-export type ActivityEnvelope = z.infer<typeof activityEnvelopeSchema>;
