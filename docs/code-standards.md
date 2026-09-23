@@ -163,7 +163,7 @@ Pick the level by asking who needs the line, not how noisy it is:
 - `get_instance( ...$args )` silently ignores `$args` after the first call, so constructor injection and the trait are incompatible — the second caller silently gets the first caller's dependencies.
 - `get_instance()` is `public static`, so it hands global access to anything that wants it.
 
-**[REVIEW]** `LedgerService` is the only class that receives both `LedgerRepository` and `CustomerRepository`, and it is constructed in exactly two named places: `Engine\RestAPI::controllers()` (request-time REST) and `Database\InitYayLoyaltyCustomer::maybe_create()` (one-time install bootstrap, outside any request — needs real ledger rows so its starter customers don't break `balance = SUM(ledger.points)`). PHP has no package-private, so this is a convention plus these two named construction sites plus this review rule — **not** something the language enforces. Do not describe it as "structural"; a third site needs the same review, not a silent `new LedgerService(...)`.
+**[REVIEW]** `LedgerService` is the only class that receives both `LedgerRepository` and `CustomerRepository`, and it is constructed in exactly four named places: `Engine\RestAPI::controllers()` (request-time REST), `Database\InitYayLoyaltyCustomer::maybe_create()` (one-time install bootstrap, outside any request — needs real ledger rows so its starter customers don't break `balance = SUM(ledger.points)`), `Engine\Earning\EarningService::build()` (the award path's composition root; a stub until F01-4) and `Engine\Redemption\RedemptionService::build()` (the commit path's composition root; a stub until F08). PHP has no package-private, so this is a convention plus these four named construction sites plus this review rule — **not** something the language enforces. Do not describe it as "structural"; a fifth site needs the same review, not a silent `new LedgerService(...)`.
 
 **[REVIEW]** `Services\CustomerActivityService` is a second, narrower exception: it holds `CustomerRepository` and `LedgerRepository` alongside `CustomerMetaRepository`, justified only because both are READ-ONLY there (membership check, balance at deletion, kept-entries count) — the sole write target is `customer_meta`. It is constructed in exactly one place, `Engine\CustomerActivityListener::service()`. Any further class needing more than one repository needs this same review, not a silent multi-repository constructor.
 
@@ -316,7 +316,7 @@ A stripping build fails silently by nature, so every release is validated agains
 ```bash
 composer lint                          # phpcs (WPCS + PHPCompatibility)
 composer lint:fix                      # phpcbf
-composer test                          # phpunit — 115 tests: points engine, reward engine scaffold, dashboard computation, PointsMath + shared vectors, campaign validation, drawer query-arg groupings + fixture helpers
+composer test                          # phpunit — 211 tests (61 incomplete = the earning-split specification in `tests/unit/Earning/`, `tests/unit/Services/`, `tests/unit/ContextFactoryTest.php` and the redemption-split specification in `tests/unit/Redemption/`): points engine, earning orchestration scaffold, reward engine + clamp, redemption orchestration scaffold, dashboard computation, PointsMath + shared vectors, campaign validation, drawer query-arg groupings + fixture helpers
 pnpm --filter @yayloyalty/admin-page lint   # eslint + prettier on SPA
 pnpm --filter @yayloyalty/admin-page test   # vitest — lib/points-math against the same vector file
 ./scripts/run.sh build [pro|lite]      # Full build — currently fails at tsc --noEmit due to 3 pre-existing missing-dependency type errors
@@ -326,7 +326,7 @@ pnpm --filter @yayloyalty/admin-page test   # vitest — lib/points-math against
 
 ### The points engine is pure
 
-`Engine\Points\*` reads campaigns through `CampaignRepository` and nothing else — no `$wpdb`, no WooCommerce globals, no current user, no `time()`, no capability checks. Everything about the event arrives on the `Context`, built by `ContextFactory` (the one class allowed to touch WooCommerce) or by hand in a test. `$at` is the event's time, never `now()`. Config gates (`min_subtotal`, a paused default under a multiplier) are **eligibility**: the engine falls through to the next campaign rather than earning zero or throwing.
+`Engine\Points\*` reads campaigns through `CampaignRepository` and nothing else — no `$wpdb`, no WooCommerce globals, no current user, no `time()`, no capability checks. Everything about the event arrives on the `Context`, built by `ContextFactory` (the one class allowed to touch WooCommerce) or by hand in a test. The engine takes no timestamp argument: liveness is scored at `Context::occurred_at`, the event's time, never `now()` (`ContextFactory::from_order()` throws when the order has no creation date). Config gates (`min_subtotal`, a paused default under a multiplier) are **eligibility**: the engine falls through to the next campaign rather than earning zero or throwing.
 
 Every exclusion in `phpcs.xml.dist` carries a one-line reason. **An exclusion without a reason is a bug** — it means a sniff was disabled to make the build green rather than because it was wrong.
 

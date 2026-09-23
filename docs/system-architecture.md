@@ -247,7 +247,7 @@ public static function all_known() {
 **Lite has no birthday campaign trigger** but can still store `trigger = 'birthday'` and `config` wholesale. On upgrade, birthday campaigns work. On downgrade, they persist silently (safe).
 
 **Conditions:**
-- Lite's `Campaign::conditions_match()` returns **true** (no evaluator) → awards slightly too broadly
+- Lite's `PointsEngine::conditions_match()` returns **true** (no evaluator) → awards slightly too broadly
 - Pro's `ConditionsEvaluator::evaluate()` fails closed on unknown/unsupported type (`unsupported_condition_type`) → never awards on a condition it cannot check
 
 ---
@@ -260,6 +260,10 @@ These are **first-party, internal seams** for Pro to attach behavior. Not a thir
 |---|---|---|
 | **`yayloyalty_table_schemas`** | Called during Installer to collect table DDL | Pro can add Pro tables (currently unused) |
 | **`yayloyalty_ledger_recorded`** | Fired by `LedgerService` after its own `Transaction::run()` commits (a savepoint when nested in `exec_write`) | `DashboardCache::flush`; `Engine\CustomerActivityListener::on_ledger_recorded` — captures `account_created`/`points_adjusted` into `yayloyalty_customer_meta` |
+| **`yayloyalty_points_awarded`** | To be fired by `Engine\Earning\EarningService::award()` after commit, once per awarded `Outcome` (scaffold; not fired yet) | nothing yet — emails, YayMail placeholders |
+| **`yayloyalty_points_redeemed`** | To be fired by `Engine\Redemption\RedemptionService::commit()` after commit, once per redeemed `Outcome` (scaffold; not fired yet) | nothing yet |
+| **`yayloyalty_redemption_gates`** | To be applied by `RedemptionService::build()` over `[ ProgramGate, RewardGate ]` (scaffold) | Pro gates (tier-only rewards) |
+| **`yayloyalty_reward_conditions_match`** | To be applied by `Engine\Redemption\RewardGate` with the reward and the `Rewards\Context` (default `true`; scaffold) | Pro reward conditions evaluator |
 | **`yayloyalty_campaigns_changed`** | Fired by `CampaignRepository::flush_cache()` after any campaign write | `DashboardCache::flush` (the paused-campaign notice lives in the cached payload) |
 | **`yayloyalty_rest_controllers`** | Called by RestAPI to collect controller instances | Pro adds CampaignPreviewRestController, CampaignPerformanceRestController, DashboardProRestController, CustomerSegmentsRestController |
 | **`yayloyalty_campaign_triggers`** | Called by CampaignTrigger::all() | Pro adds birthday, first_order, order_count, spend_milestone |
@@ -269,7 +273,7 @@ These are **first-party, internal seams** for Pro to attach behavior. Not a thir
 | **`yayloyalty_register_trigger_handlers`** | Fired by `Engine\Points\Triggers\Registry::with_lite_handlers()` | Pro registers handlers for birthday, first_order, order_count, spend_milestone |
 | **`yayloyalty_register_reward_handlers`** | Fired by `Engine\Rewards\Handlers\Registry::with_lite_handlers()` | Pro registers a `RewardHandler` per reward type; unused until Pro handlers exist |
 | **`yayloyalty_rest_item_schema`** | Applied inside `AbstractRestController::get_item_schema()` | Pro extends campaign/reward schemas |
-| **`yayloyalty_campaign_conditions_evaluator`** | Called by Campaign::conditions_match() | Pro supplies ConditionsEvaluator instance (fails closed on unknown types) |
+| **`yayloyalty_campaign_conditions_evaluator`** | Called by `Engine\Points\PointsEngine::conditions_match()` with the engine `Context` | Pro supplies ConditionsEvaluator instance (fails closed on unknown types) |
 | **`yayloyalty_localize_admin_data`** | Called by `LocalizeHelper` to extend SPA payload | Pro adds `segments` (saved Customers-page filter sets) and paid feature flags |
 
 **Seam safety:** Match on `$rest_base` (route) and schema `title` — `yayloyalty_rest_item_schema` is shared across resources.
@@ -449,22 +453,31 @@ CampaignPerformance.tsx: useCampaignQuery (header) + useCampaignPerformanceQuery
 
 **Swap procedure** (see the controller's own class docblock): `get_performance()` moves to a new `CampaignPerformanceRepository` aggregate over `ledger` rows carrying `campaign_id`, wrapped in `DashboardCache` (large-table per-request aggregate); `skipped`/`estimate` may ship `null` at first since both need re-evaluating every order in the window — the SPA already hides each panel on `null`. `get_entries()` moves to a paged `ledger` query (`WHERE campaign_id = ? ORDER BY created_at DESC, id DESC`) joined to `customers`, through `respond_paginated()` exactly as today. `CampaignPerformanceFixture` is then deleted. **No SPA change either way** — both routes are already real HTTP calls.
 
-### Order award — NOT IMPLEMENTED (Engine built, Listener missing)
+### Order award — SCAFFOLDED (shape real, bodies stubbed, not registered at boot)
 
-**Engine status:** `PointsEngine` is complete with 46 unit tests for `BaseCalculator`, `PurchaseHandler`, `PointsEngine`, plus `ContextFactory` and `Triggers/Registry`; its rounding step is `Utils\PointsMath::round_points()`, covered by the shared PHP/TS vector suite. It computes what an order earns given the live campaigns.
+**Engine status:** `PointsEngine` is complete with 46 unit tests for `BaseCalculator`, `PurchaseHandler`, `PointsEngine`, plus `ContextFactory` and `Triggers/Registry`; its rounding step is `Utils\PointsMath::round_points()`, covered by the shared PHP/TS vector suite. It computes what an order earns given the live campaigns, at `Context::occurred_at` (no timestamp argument).
 
-**Missing:** No code listens to WooCommerce order events. `LedgerService::earn()` does not exist yet — only `adjust()` (for manual adjustments). When F01-4 lands, it will:
-1. Hook an order status transition (e.g., `woocommerce_order_status_*`)
-2. Call `ContextFactory::from_order()` to build an immutable context
-3. Resolve live campaigns for the `purchase` trigger via `CampaignRepository::live_for_trigger()`
-4. Call `PointsEngine::evaluate()` — pure, no side effects
-5. Call `LedgerService::earn()` with the result
+**Scaffold (`includes/Engine/Earning/`, 2026-09-22):** the award path is split into two moments that share one `Context` and one `occurred_at`:
+1. **Evaluation** — `Listeners\OrderListener` → `ContextFactory::from_order()` → `EarningService::preview()`: `Gate` chain (`ProgramGate`: excluded roles, opt-out meta) then `PointsEngine::evaluate()`. Pure; the result is staged as pending order meta on order creation.
+2. **Award** — `EarningService::award()` previews again, then inside one `Transaction::run()`: `CustomerRepository::lock_and_get()` → `LedgerRepository::insert()` under the single-column UNIQUE `idempotency_key` (`IdempotencyKey::compose()`; MySQL 1062 → `Outcome::duplicate`, a normal return) → aggregates → `PendingPoints::release()`. Hooks (`yayloyalty_ledger_recorded`, `yayloyalty_points_awarded`) fire after commit.
 
-Nothing else in the write path (lock order, transaction safety, idempotency) changes. See `project-roadmap.md`.
+**The guard is real (2026-09-23).** `LedgerService::earn()`, `LedgerRepository::find_by_idempotency_key()` / `insert_unless_duplicate()` and `QueryException::is_duplicate_key()` are implemented: the insert is attempted, the driver's 1062 becomes `Outcome::duplicate` carrying the row that won, and wpdb's error reporting is suppressed for the attempt so the guard firing never logs a line that reads like a failure. Verified against MySQL 8 on a scratch table (errno readable through `wpdb->dbh` after a suppressed insert; NULL keys do not collide, so manual `adjust()` rows stay non-idempotent). **Caveat:** the column and index reach a site only through `dbDelta`, and `Installer::maybe_upgrade()` early-returns while the stored `yayloyalty_db_version` equals `YAYLOYALTY_VERSION` — a site installed before the DDL changed keeps the old table and has no guard until the version moves.
 
-### Redemption — SCAFFOLDED (Engine wiring only)
+**Award is a set of statuses, decided in the listener.** `OrderListener` is the only class in the plugin that reads a WooCommerce order status: one hook (`woocommerce_order_status_changed`), routed on `$to`, awarding when `$to` is in `general.award_statuses` (default `processing` + `completed`). A fully downloadable-and-virtual order never passes through `processing`; many physical stores never leave it. The engine, the ledger and every domain service stay status-blind.
 
-`RewardEngine` is complete with wiring (registry lookup, delegation, Pro seam) but all evaluation gates (liveness, balance vs cost, conditions filter) are TODO and the Lite handler always denies `not_implemented`. Missing: gates 1–3, `FlexibleDiscountHandler::quote()`, Pro handlers, the write path (`redemptions` table, `RedemptionRepository`, `LedgerService::redeem()`), `ContextFactory` (build Context from cart), and the checkout hook. Call order: customer picks reward → `Context` built from cart/balance → `RewardEngine::evaluate()` → if allowed, caller writes ledger via `LedgerService::redeem()`. See `includes/Engine/Rewards/README.md`.
+**Still missing (F01-4):** every remaining stub body — listener handlers, `preview()`/`award()`, `PendingPoints`, `LedgerRepository::points_earned_today()`, `Installer::drop_index_if_exists()` for the superseded `uniq_ledger_event` — plus the `award_statuses` / `hold_days` settings shape and registering the listeners from `YayLoyalty::__construct()` via `EarningService::build()`. Refund / clawback is an attachment point, not a design. The ten invariants and the full call graph are in `includes/Engine/Earning/README.md`; the incomplete tests under `tests/unit/Earning/` are the specification.
+
+### Redemption — SCAFFOLDED (three zones, bodies stubbed, not registered at boot)
+
+**Zone 1 — quote** (`includes/Engine/Rewards/`, pure): `RedemptionService::quote()` → `Quoter` (gates, then `RewardEngine::evaluate()`) → `FlexibleDiscountHandler` → `Clamp::apply()`, the single place every limit is computed (balance, reward max, cart after other coupons, step, min) and reported as `Result::get_bound_by()`. Writes nothing; the only state is one integer in the WC session (`SessionIntent`, `yayloyalty_redeem_points`); the discount value is derived on every recalculation. `CouponProvider` materialises it as the virtual coupon `yayloyalty-redeem` (`woocommerce_get_shop_coupon_data`, `individual_use` false, sorted last via `woocommerce_coupon_sort`).
+
+**Zone 2 — commit** (`includes/Engine/Redemption/`): `RedemptionService::commit()` → `CommitWriter` in one `Transaction::run()`: `lock_and_get` → `RedemptionRepository::find_by_order` (duplicate) → re-quote with the locked balance → redemptions row → `LedgerService::redeem()` (hard-refuses a balance below zero) → order meta `_yayloyalty_points_redeemed` / `_yayloyalty_redeem_value` → session cleared. Affordability is checked at checkout submission (`checkout_error()` from `woocommerce_after_checkout_validation` / `woocommerce_store_api_cart_errors`); a commit that still loses a race leaves the order created without the debit, with an order note.
+
+**Zone 3 — reverse:** not designed. Named seam `Engine\Redemption\Reversal` from `Earning\Listeners\OrderListener::on_cancelled()` / `on_refunded()`.
+
+**Adapters:** `Adapters\ClassicCheckoutAdapter` (shortcode cart/checkout hooks) and `Adapters\StoreApiAdapter` (`ExtendSchema` cart data, `yayloyalty-redeem` update callback) translate hooks into the same three service calls and hold no rule.
+
+**Still missing (F08):** every stub body, `RedemptionsTable` registration in `Installer::schemas()`, `RedemptionService::build()` wiring from `YayLoyalty::__construct()`, the block UI. Real today: `Clamp` (tested), `Quoter` (tested), the value objects. See `includes/Engine/Redemption/README.md`.
 
 ---
 

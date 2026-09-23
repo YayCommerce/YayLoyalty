@@ -60,7 +60,7 @@ class RestAPI {
         $controllers = [
             new SettingsRestController(),
             // $ledger and $rewards here are read-only uses (counts.ledger,
-            // worth's conversion rate) — the same instances LedgerService
+            // the drawer's conversion rate) — the same instances LedgerService
             // and DashboardRepository hold, not a second construction.
             // $customers passed to user_id_param() so a deleted member's
             // item route still resolves; $customer_meta backs deleted_at/

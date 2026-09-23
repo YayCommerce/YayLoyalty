@@ -166,10 +166,21 @@ final class Installer {
         );
     }
 
-    /** Data migrations dbDelta cannot express. An empty seam until the first real migration shapes it. */
+    /** Data migrations dbDelta cannot express: it adds columns and indexes but never drops them. */
     private static function run_migrations(): void {
+        self::drop_index_if_exists( 'ledger', 'uniq_ledger_event' );
+
         /** Fires after tables are created/updated and before the version stamp. */
         do_action( 'yayloyalty_run_migrations' );
+    }
+
+    /**
+     * Drops a superseded index; a no-op when it is already gone, so every
+     * upgrade may call it. Precondition: nothing relies on the index for
+     * idempotency any more (the ledger's guard is uniq_idempotency_key).
+     */
+    private static function drop_index_if_exists( string $table_slug, string $index ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
+        // TODO(F01-4): SHOW INDEX FROM table WHERE Key_name = %s; if present, ALTER TABLE … DROP INDEX; Log::warning on failure, never throw mid-upgrade.
     }
 
     /**

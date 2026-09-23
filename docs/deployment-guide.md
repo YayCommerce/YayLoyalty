@@ -147,6 +147,46 @@ export YAYLOYALTY_WP_CLI_ARGS="--skip-plugins=yayloyalty"
 Pass `--require-boot` to treat a skipped check as a failure. Use it in CI, where
 "we could not check" and "it is broken" should have the same consequence.
 
+## The integration suite
+
+`composer test` is plain PHP with no database, which is why the invariants only
+a server can settle — a UNIQUE index rejecting a second award, `SELECT … FOR
+UPDATE`, the `balance_after` chain — sat as incomplete specifications for as
+long as they did. `composer test:integration` is where they become assertions:
+
+```bash
+composer test:integration
+```
+
+It boots a real WordPress through `wp-load.php` and talks to a real MySQL.
+Two environment variables point it at one:
+
+| Variable | Meaning |
+|---|---|
+| `YAYLOYALTY_WP_ROOT` | Document root holding `wp-load.php`. Defaults to the site this copy of the plugin is installed in, so a normal dev checkout needs nothing. |
+| `YAYLOYALTY_TEST_SOCKET` | `mysqld` socket, for a server that is not on PHP's default one. |
+
+On a Local (by Flywheel) site, whose MySQL listens on a per-site socket while
+`wp-config.php` says `localhost`:
+
+```bash
+export YAYLOYALTY_TEST_SOCKET="$HOME/Library/Application Support/Local/run/<site-id>/mysql/mysqld.sock"
+composer test:integration
+```
+
+**It cannot touch the site's data, by construction.** `Utils\Table::name()`
+composes every table name from `$wpdb->prefix` on each call, so the bootstrap
+reassigns that one property to `ylit_` and every plugin table resolves to a
+scratch namespace it creates on entry and drops on exit — asserting the prefix
+before each `DROP`. wpdb's own table properties were resolved during load and
+still point at the site, so WordPress keeps working; no option is written, and
+the site's `yayloyalty_*` tables are never read. The plugin must be active on
+the target site, since that is what loads its classes.
+
+The suite refuses to start rather than guess: a missing `wp-load.php`, a
+missing socket, an inactive plugin, or a site already using the scratch prefix
+each stop it with a message naming the problem.
+
 ## Known Issues
 
 **Build currently fails at `tsc --noEmit` before packaging can start.** Three pre-existing

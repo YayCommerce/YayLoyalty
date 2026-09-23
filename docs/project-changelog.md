@@ -6,6 +6,121 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
 
 ## Unreleased
 
+### Added — The ledger's duplicate-key guard is real (2026-09-23)
+
+- **`QueryException`** captures the driver's error number at construction (the next statement
+  replaces it) and `is_duplicate_key()` compares it to 1062 — a number from the handle, never a
+  substring of the message. `get_errno()` exposes it for logging.
+- **`LedgerRepository::insert_unless_duplicate()`** returns null instead of throwing when the
+  UNIQUE `idempotency_key` rejects the row, with wpdb's error reporting suppressed for the
+  attempt: the guard firing is the system working and must not log like a failure.
+  `find_by_idempotency_key()` implemented — the pre-check before the insert, and the row
+  `Outcome::duplicate` carries after a collision.
+- **`LedgerService::earn()`** implemented: assert EARN + positive points + key, then one
+  transaction — `ensure_row`, `lock_and_get`, pre-check under the lock, guarded insert,
+  aggregates, queued event. A duplicate moves no aggregate and queues no event.
+  `Outcome::awarded()`'s evaluation is now optional, since the writer never sees the Result.
+- **Verified against MySQL 8** (scratch table, dropped): errno 1062 readable through `wpdb->dbh`
+  after a suppressed insert, one row survives, NULL keys do not collide — so manual `adjust()`
+  rows stay non-idempotent as designed.
+- **Known gap:** the column and index reach a site only through `dbDelta`, which
+  `Installer::maybe_upgrade()` skips while `yayloyalty_db_version` equals `YAYLOYALTY_VERSION`.
+  Sites installed before the DDL changed keep the old ledger and have no guard.
+- **Tests:** 208 → 214; `tests/unit/Database/QueryExceptionTest.php` (6 real). The award path's
+  DB-dependent invariants remain the incomplete specification under `tests/unit/Services/`.
+
+### Added — Integration suite with a database under it (2026-09-23)
+
+- **`tests/integration/`** with its own `phpunit-integration.xml.dist` and `composer test:integration`.
+  Boots real WordPress through `wp-load.php` and talks to real MySQL; `YAYLOYALTY_WP_ROOT` and
+  `YAYLOYALTY_TEST_SOCKET` point it at a site, both optional on a normal dev checkout.
+- **Isolation is by table prefix.** `Utils\Table::name()` composes from `$wpdb->prefix` per call, so
+  the bootstrap reassigns it to `ylit_`; plugin tables are created there and dropped at shutdown,
+  with the prefix asserted before each `DROP`. No option written, no site table read. The bootstrap
+  bails on a missing `wp-load.php`, a missing socket, an inactive plugin or a site already on the
+  scratch prefix.
+- **`LedgerGuardTest`** (10 tests, 1 incomplete) proves against MySQL: an award writes one row and
+  moves the aggregates; a second award for one order and trigger is `Outcome::duplicate` carrying
+  the first row; `insert_unless_duplicate()` returns null on the second insert with no pre-check
+  involved, which is the index doing the work; a non-1062 failure still throws; a duplicate moves no
+  aggregate and does not touch `last_activity_at`; `balance_after` is an unbroken chain; manual
+  adjustments write two rows with NULL keys; `yayloyalty_ledger_recorded` fires once, not twice.
+- **`LedgerServiceTest` narrowed** from 7 specifications to 4 — the rest are now assertions
+  elsewhere. Unit suite 214 → 211, incomplete 64 → 61.
+- **Still unproven:** the collision branch inside `earn()` (its pre-check runs under the row lock,
+  so one connection can never reach it), lock serialisation, `redeem()`, and the nested-commit gap
+  in `dispatch_events()`. Each says so in its own `markTestIncomplete`.
+
+### Changed — Award triggers on a set of statuses (2026-09-23, prose)
+
+- `OrderListener` rewritten as specification: one hook (`woocommerce_order_status_changed`,
+  routed on `$to`, never `get_status()`), award when `$to` is in `general.award_statuses`
+  (default `processing` + `completed`), stage on `pending`/`on-hold`, nothing on `checkout-draft`,
+  `failed` or `refunded` — the last except when `get_total_refunded()` is 0, an out-of-band
+  admin reversal referenced to the order. `on_created` renamed `on_stageable`: staging follows a
+  transition now, not order creation. Bodies remain `TODO(F01-4)`.
+- Settings shape reserved in `SettingsHelper` prose: `general.award_statuses` and an unread
+  `hold_days`. The custom choice list is built from `wc_get_order_statuses()` at render time.
+- `Engine/Earning/README.md` invariants 4–7 rewritten; `system-architecture.md` and
+  `project-roadmap.md` record the guard and the paid-set rule.
+
+### Changed — Redemption restructured into three zones (2026-09-22, scaffold)
+
+- **Zone 1 quote (`includes/Engine/Rewards/`):** new `Clamp::apply()` — the single, pure, tested place
+  every limit is computed (balance → `max_points_per_order` → cart after other coupons /
+  `max_percent_of_subtotal`, floored to `increment`, zeroed below `min_points`) and reported as
+  `Result::get_bound_by()`. `Result` widened with `points_requested` and `bound_by`; `Context` gains
+  `CustomerFacts`; new `ContextFactory` (stub). `RewardEngine` loses its gate TODOs (moved to gates);
+  `FlexibleDiscountHandler::quote()` becomes a one-line delegate stub.
+- **Zone 2 commit (`includes/Engine/Redemption/`, new, mirrors `Engine/Earning`):** `RedemptionService`
+  (`quote` / `checkout_error` / `commit`), `Quoter` (real: gates then engine) + `Gate` + `ProgramGate` / `RewardGate`,
+  `SessionIntent` (one integer, `yayloyalty_redeem_points`), `CouponProvider` (virtual
+  `yayloyalty-redeem`, `individual_use` false, sorted last), `CommitWriter` (one transaction, locked
+  re-quote, hard-refuses below zero), `Adapters/ClassicCheckoutAdapter` + `Adapters/StoreApiAdapter`.
+  Zone 3 named as `Engine\Redemption\Reversal`, not designed.
+- **Reused, widened:** `LedgerService::redeem()` beside `earn()` over the same `record()`;
+  `Earning\IdempotencyKey::compose()` fifth segment is now a qualifier — campaign trigger for earn
+  rows, reward type for redeem rows; `Earning\Outcome::redeemed()` and `get_evaluation()` typed
+  `?object` (PHP 7.4 has no unions).
+- **`Repositories\CustomerReader`** (interface, `find_by_user_id()` only), implemented by `CustomerRepository`;
+  `Rewards\ContextFactory` depends on it, so the quote path cannot write by type.
+- **New persistence scaffold:** `Models\Redemption`, `Repositories\RedemptionRepository` (stubs),
+  `Database\Schema\RedemptionsTable` (DDL stub, not registered).
+- **Removed:** `Result::REASON_NOT_IMPLEMENTED` and the test asserting it; the stale `worth`
+  comments on `RewardRepository`, `RestAPI` and `CustomerRestController`.
+- **Tests:** 152 → 208 cases (64 incomplete); `ClampTest` (14 real), `QuoterTest` (3 real),
+  `IdempotencyKeyTest` redeem cases (real), `tests/unit/Redemption/*` specification incl.
+  `test_no_database_write_occurs_during_a_quote`.
+- `docs/redemption-scout.md` records the pre-restructure inventory.
+- **Docs (2026-09-23):** `data-model.md` 0.8 catches up — the redemptions section now states what
+  exists in code (schema class, model, stub repository) versus what still creates nothing, documents
+  the `uk_order_reward (order_id, reward_id)` double-debit guard, and the ledger's `idempotency_key`
+  is described with its qualifier segment and both writers.
+
+### Added — Earning orchestration scaffold (2026-09-22)
+
+- **`includes/Engine/Earning/`:** the evaluate/award split around the pure `PointsEngine`.
+  `EarningService::preview()` (gates → engine) and `award()` (preview again at the same
+  `occurred_at`, then `LedgerService::earn()` in one transaction), `Gate` + `ProgramGate`
+  (`excluded_roles` setting, `_yayloyalty_opted_out` user meta), `PendingPoints`, `Outcome`
+  (`awarded` | `skipped` | `duplicate`), `IdempotencyKey`, and `Listeners/{Order,Signup,Review}Listener`.
+  Every body is a `TODO(F01-4)` stub except `IdempotencyKey`, `Outcome`, `CustomerFacts` and the
+  gate-chain loop; listeners are not registered at boot. Invariants in the package README.
+- **Ledger idempotency:** one `idempotency_key VARCHAR(96)` column under UNIQUE
+  `uniq_idempotency_key` (`{type}:{user_id}:{reference_type}:{reference_id}:{trigger}`) replaces the
+  composite `uniq_ledger_event`; `Installer::run_migrations()` → `drop_index_if_exists()` (stub)
+  removes the old index on upgrade. `LedgerEntry::get_idempotency_key()`; null on `adjust`.
+- **Engine:** `PointsEngine::evaluate()` drops its `$at` argument and reads `Context::occurred_at`;
+  `ContextFactory::from_order()` throws without an order creation date. New `CustomerFacts`
+  (read once by `ContextFactory::customer_facts()`) so `ConditionsEvaluator` compares instead of
+  querying — interim: it still folds over the user id. `Campaign::conditions_match()` moved into `PointsEngine` (private), keeping the model engine-free.
+- **Repositories:** `LedgerRepository::find_by_idempotency_key()` / `points_earned_today()`,
+  `CustomerRepository::apply_pending_delta()` (stubs); `find_by_reference()` / `latest_for_user()` removed.
+- **Settings:** `excluded_roles` (`slug_list`) added to `SettingsHelper` defaults.
+- **Tests:** 115 → 152 cases; the 27 incomplete ones under `tests/unit/Earning/`, `tests/unit/Services/`
+  and `ContextFactoryTest.php` are the scaffold's specification. `docs/points-engine-scout.md` records
+  the pre-scaffold inventory.
+
 ### Added — Customers row created at WP registration (2026-09-22)
 
 - New `user_register` hook (`CustomerActivityListener::on_user_register()`, registered in

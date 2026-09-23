@@ -7,8 +7,11 @@ use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
 
-/** yayloyalty_customers. Not final: CustomerActivityServiceTest extends it as a repository double (mirrors DashboardRepository/CampaignRepository). */
-class CustomerRepository extends AbstractRepository {
+/**
+ * yayloyalty_customers. Readers that must not write depend on CustomerReader instead.
+ * Not final: CustomerActivityServiceTest extends it as a repository double (mirrors DashboardRepository/CampaignRepository).
+ */
+class CustomerRepository extends AbstractRepository implements CustomerReader {
 
     /**
      * Sort key → join-qualified ORDER BY expression for the admin list.
@@ -165,6 +168,18 @@ class CustomerRepository extends AbstractRepository {
         if ( false === $result ) {
             throw new QueryException( 'update', $wpdb->last_error, $this->table() . ' (apply_delta)' );
         }
+    }
+
+    /**
+     * Moves customers.pending_points by a signed delta (stage +N, release or
+     * discard −N). Relative arithmetic like apply_delta(); the caller holds
+     * the row lock when it also writes the ledger. Never below zero.
+     *
+     * @throws QueryException When the write fails.
+     */
+    public function apply_pending_delta( int $user_id, int $delta ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
+        // TODO(F01-4): UPDATE … SET pending_points = GREATEST(0, pending_points + %d), updated_at = %s WHERE user_id = %d; throw QueryException on false.
+        throw new \RuntimeException( 'Not implemented' );
     }
 
     /**

@@ -35,6 +35,7 @@
     "shell-update": "yaycommerce-update",
     "lint": "phpcs",
     "lint:fix": "phpcbf",
-    "test": "phpunit"
+    "test": "phpunit",
+    "test:integration": "phpunit -c phpunit-integration.xml.dist"
   }
 }

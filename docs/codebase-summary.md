@@ -41,8 +41,9 @@ Comprehensive guide to the YayLoyalty plugin repository structure, entry points,
 | ------------------------------- | ---------------------- | ----------------------------------------------------------------------------- |
 | `Models/AbstractModel.php`      | —                      | Base class; `to_array()`, REST shape cast methods                             |
 | `Models/Customer.php`           | `yayloyalty_customers` | Cached aggregates (balance, lifetime earned, etc.)                            |
-| `Models/LedgerEntry.php`        | `yayloyalty_ledger`    | Immutable fact row; `points` delta, `balance_after`, type, source             |
+| `Models/LedgerEntry.php`        | `yayloyalty_ledger`    | Immutable fact row; `points` delta, `balance_after`, type, source, `idempotency_key` (null on `adjust`) |
 | `Models/CustomerMeta.php`       | `yayloyalty_customer_meta` | Non-points customer fact + one activity-log row; `to_array()` is the activity wire shape, not the raw row |
+| `Models/Redemption.php`         | `yayloyalty_redemptions` (table not created yet) | One reward claim: points, value, currency, rate snapshot, coupon, status, restored_points |
 | `Models/Campaign.php`           | `yayloyalty_campaigns` | Earning rule; trigger, config (JSON), conditions (JSON)                       |
 | `Models/Reward.php`             | `yayloyalty_rewards`   | Redemption option; type, cost (for catalog), config (JSON), conditions (JSON) |
 | `Models/RewardCondition.php`    | —                      | One condition in a reward's eligibility rules                                 |
@@ -70,10 +71,12 @@ All SQL access **must** go through these. Throw `QueryException` on write failur
 | Class                                  | Table                                                                                               | Methods                                                                                                                                                                                                                                                                                                                                                                                                         |
 | -------------------------------------- | --------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `Repositories/AbstractRepository.php`  | —                                                                                                   | Base: `table()` via `Utils\Table`, `find()`, `insert()`, `update()`, `delete()`, `paginate()`; all SQL prepared; write failures throw `QueryException`                                                                                                                                                                                                                                                          |
+| `Repositories/CustomerReader.php`      | `customers` (interface) | `find_by_user_id()` only — the read-only face `CustomerRepository` implements; the redemption `ContextFactory` depends on this so the quote path holds nothing that can write |
 | `Repositories/CustomerRepository.php`  | `customers`                                                                                         | `find_by_user_id()`, `ensure_row()` (INSERT … ON DUPLICATE KEY UPDATE), `lock_and_get()` (SELECT … FOR UPDATE), `apply_delta()`                                                                                                                                                                                                                                                                                 |
-| `Repositories/LedgerRepository.php`    | `ledger`                                                                                            | `find_by_reference()`, `paginate_for_user()`, `sum_points_for_user()`, `latest_for_user()`                                                                                                                                                                                                                                                                                                                      |
+| `Repositories/LedgerRepository.php`    | `ledger`                                                                                            | `paginate_for_user()`, `sum_points_for_user()`; scaffold stubs `find_by_idempotency_key()`, `points_earned_today()`                                                                                                                                                                                                                                                                                                                      |
 | `Repositories/CustomerMetaRepository.php` | `customer_meta`                                                                                  | `latest()`, `has()` (once-only write guard), `count_activity()`, `paginate_activity()` (group/search/date-range; search delegates to `CustomerMetaActivitySearch` for the PHP-side filter path); not final, extended as a test double in `CustomerActivityServiceTest`                                                                                                                                       |
 | `Repositories/CampaignRepository.php`  | `campaigns`                                                                                         | `find_campaign()`, `find_by_slug()`, `live_for_trigger($trigger, $at)`, `all_non_archived()` (cached), `find_default_purchase()`, `paginate_filtered()`, `seed_builtin()`, `flush_cache()`                                                                                                                                                                                                                      |
+| `Repositories/RedemptionRepository.php` | `redemptions` (table not created yet) | `find_redemption()`, `find_by_order( order_id, reward_id )` (the double-debit read), `count_for_customer()` (for `redemption_count`) — stubs |
 | `Repositories/RewardRepository.php`    | `rewards`                                                                                           | `find_reward()`, `find_by_slug()`, `paginate_filtered()`, `seed_builtin()`                                                                                                                                                                                                                                                                                                                                      |
 | `Repositories/DashboardRepository.php` | ledger + customers + users + rewards + WC (**read-only, standalone** — not an `AbstractRepository`) | Dashboard aggregates: `count_members()`, `sum_issued()`/`sum_redeemed()`/`net_delta()`, `daily_points()`, `liability_points()`/`net_balance()`, `orders_with_points()`/`orders_with_earn()`, `campaign_points_on_day()`, `top_earners()`, `latest_activity()`, `count_activity_since()`, `count_negative_balances()`, `count_orders()` (WC, unix-timestamp range, completed only), `points_per_currency_unit()` |
 
@@ -82,7 +85,7 @@ All SQL access **must** go through these. Throw `QueryException` on write failur
 | Class                        | Role                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `Services/Dashboard/`        | Pure, unit-tested dashboard computation: `PeriodWindow` (site-tz calendar-day windows → UTC bounds), `DashboardMath` (series zero-fill; ratios come from `Utils\PointsMath`), `AnomalyDetector` (jump rule over active days), `DashboardStats` (composes the payload), `DashboardNotices` (three detectors, structured `{key, severity, fingerprint, data}` — no copy), `DashboardCache` (transient above 10k members, `''`/`'pro'` variants, flushed on `yayloyalty_ledger_recorded` + `yayloyalty_campaigns_changed`), `NoticeDismissals` (per-user meta, applied after the cache) |
-| `Services/LedgerService.php` | **SOLE writer** of ledger. `adjust()` (public) creates ledger row, updates customer aggregates, writes inside `Transaction::run()`, then fires `yayloyalty_ledger_recorded` after it returns. Encapsulates idempotency and lock order. `record()` is private; use `adjust()` for manual adjustments.                                                                                                                                                                                                                                                                                 |
+| `Services/LedgerService.php` | **SOLE writer** of ledger. `adjust()` (public) creates ledger row, updates customer aggregates, writes inside `Transaction::run()`, then fires `yayloyalty_ledger_recorded` after it returns. Encapsulates idempotency and lock order. `record()` is private; use `adjust()` for manual adjustments. `earn( LedgerEntry $draft ): Outcome` is the award-path entry point — a scaffold stub until F01-4 (lock customer row → INSERT under `uniq_idempotency_key` → aggregates; MySQL 1062 becomes `Outcome::duplicate`). `redeem( LedgerEntry $draft ): Outcome` is its redemption sibling over the same `record()` — a stub until F08; hard-refuses a balance below zero. |
 | `Services/CustomerActivityService.php` | Writes `yayloyalty_customer_meta` rows for the three captured activity events: `record_account_deleted()`, `record_account_created()`, `record_points_adjusted()`. `[REVIEW]` (§8): holds `CustomerRepository` + `LedgerRepository` alongside `CustomerMetaRepository`, justified as read-only. Never opens `Transaction::run()` — single-table inserts only. |
 
 **Design rule:** Fact tables get Entity + Repository + Service. Definition tables (campaigns) get Entity + Repository only — no service.
@@ -137,39 +140,71 @@ membership fallback). Every response parses through the exact same Zod schema on
 
 | Class                                  | Role                                                                                                                                                                                                                                 |
 | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `PointsEngine`                         | `evaluate( $trigger, Context, $at )` → `Result`. Candidates → select → compute → cap. Reads campaigns only; no `$wpdb`, no current user, no `time()`, no capability checks                                                           |
+| `PointsEngine`                         | `evaluate( $trigger, Context )` → `Result`; liveness scored at `Context::occurred_at`. Candidates → select → compute → cap. Reads campaigns only; no `$wpdb`, no current user, no `time()`, no capability checks                        |
 | `Context`, `ContextLineItem`           | Immutable inputs. Amounts in order currency plus `base_rate`; `get_real_coupon_codes()` drops our own redeem coupon; `get_extra()` for trigger-specific facts (`verified_purchase`)                                                  |
-| `ContextFactory`                       | `from_order()`, `from_product()`, `from_cart()` — the only class that touches WooCommerce. `yayloyalty_context_base_rate` is the multi-currency seam                                                                                 |
+| `ContextFactory`                       | `from_order()`, `from_product()`, `from_cart()` — the only class that touches WooCommerce; `from_user()`, `from_comment()`, `customer_facts()` are scaffold stubs. `yayloyalty_context_base_rate` is the multi-currency seam            |
+| `CustomerFacts`                        | Customer facts read once by `ContextFactory::customer_facts()` (lifetime points, order count, spend per currency, purchased product/category ids, tier) so Pro's `ConditionsEvaluator` compares instead of querying                    |
 | `Triggers\Registry` + `TriggerHandler` | `PurchaseHandler` (gates: min_subtotal, exclude_coupon_orders, multiplier needs an active default), `SignupHandler`, `ReviewHandler` (require_verified). `with_lite_handlers()` fires `yayloyalty_register_trigger_handlers` for Pro |
 | `BaseCalculator`, `CapPolicy`          | Earning base (exclusions, before/after discounts, tax, loyalty-discount add-back), per-order and daily caps; rounding is `Utils\PointsMath::round_points()`                                                                          |
 | `Result`, `Breakdown`                  | Outcome + how it was reached. Storefront exposes `get_points()` only                                                                                                                                                                 |
 
 Filters (public API): `yayloyalty_campaign_candidates`, `yayloyalty_campaign_matches`, `yayloyalty_earning_base_amount`, `yayloyalty_points_for_order`.
 
-### Reward engine (includes/Engine/Rewards/) — scaffold
+### Earning orchestration (includes/Engine/Earning/) — scaffold
 
-`namespace YayLoyalty\Engine\Rewards`. Evaluates whether a customer may claim one reward right now, at what cost and for what value. The customer already chose the reward, so there is no candidate scan: generic gates first (liveness, balance vs cost, conditions filter — all TODO), then the type's own quote. Writes nothing; pure (no `$wpdb`, no WooCommerce, no current user, no `time()`). The balance is a `Context` input, never a lookup.
+`namespace YayLoyalty\Engine\Earning`. The award path around the pure engine: listeners build a `Context`, `EarningService` runs gates then `PointsEngine::evaluate()` (**preview**), and `award()` repeats the preview at the same `occurred_at` then writes through `LedgerService::earn()` inside one `Transaction::run()`. See its `README.md` for the seven invariants; the test names under `tests/unit/Earning/` are the specification.
 
 | Class | Role |
 |---|---|
-| `RewardEngine` | `evaluate( Reward, Context ): Result`. Delegation to type handler after gates. All gates are TODOs (1: liveness, 2: balance vs cost, 3: conditions filter); stubs always deny `not_implemented` |
-| `Context` | Immutable inputs: user id (nullable for guests), balance, points_requested (flexible_discount only), cart_subtotal (nullable), currency, evaluation time |
-| `Result` | Outcome + snapshot. `allowed( Reward, points, value, currency, rate_snapshot )` or `denied( reason )`. Reasons: `not_live`, `insufficient_balance`, `conditions_not_met`, `not_implemented`, or handler-specific |
-| `Handlers\Registry` | Type → handler. `with_lite_handlers()` registers only `FlexibleDiscountHandler`, then fires `yayloyalty_register_reward_handlers` for Pro |
-| `Handlers\RewardHandler` | Interface: `type()` and `quote( Reward, Context ): Result`. No `is_eligible()` — no fall-through; a gate failure is `denied()` |
-| `Handlers\FlexibleDiscountHandler` | Lite's only type; stub returns `denied( not_implemented )`. When implemented: validate config (min_points, increment, max_points_per_order, max_percent_of_subtotal), then value via `Utils\PointsMath` |
+| `EarningService` | `build()` composition root (constructs `LedgerService`, see `code-standards.md` §8); `preview( $trigger, Context ): Result`; `award( $trigger, Context ): Outcome`. Gate chain iteration is real; bodies are stubs |
+| `Gate` + `ProgramGate` | `check( $trigger, Context ): ?string` — a reason to skip, or null. `ProgramGate` is the one place on the path that reads settings (`excluded_roles`) and user meta (`_yayloyalty_opted_out`) |
+| `IdempotencyKey` | `compose( type, user_id, reference_type, reference_id, trigger )` → `earn:7:order:1234:purchase`; the ledger's single-column UNIQUE guard |
+| `Outcome` | `awarded( entry, evaluation )`, `skipped( reason )`, `duplicate( existing )` — a duplicate insert is a normal return, never an exception |
+| `PendingPoints` | `stage()` / `release()` / `mark_awarded()` over order meta `_yayloyalty_points_pending` / `_yayloyalty_points_released` and `CustomerRepository::apply_pending_delta()` (all stubs) |
+| `Listeners\OrderListener`, `SignupListener`, `ReviewListener` | One per event family; `register()` binds the WooCommerce / WP hooks, handlers only build a `Context` and call the service. Not registered at boot until their bodies exist |
 
-**Scaffold status:** wiring (registry lookup, delegation, Pro seam) is real; every gate and the Lite handler always deny `not_implemented`. See `includes/Engine/Rewards/README.md` for "Implementing this engine" — gates 1–3, FlexibleDiscountHandler quote, Pro handlers (fixed_coupon, percent_coupon, free_shipping, free_product), then write path.
+**Scaffold status:** real: `IdempotencyKey`, `Outcome`, `CustomerFacts`, the gate-chain loop. Stubs (`TODO(F01-4)`): every listener body, `preview()`/`award()`, `PendingPoints`, `LedgerService::earn()`, `LedgerRepository::find_by_idempotency_key()`/`points_earned_today()`, `Installer::drop_index_if_exists()` (drops the former `uniq_ledger_event`). Refund / clawback attaches at `OrderListener::on_refunded()` and `ReviewListener::on_unapproved()` and is not designed yet.
+
+### Reward engine (includes/Engine/Rewards/) — ZONE 1, the quote
+
+`namespace YayLoyalty\Engine\Rewards`. For one customer, one cart and one reward: how many points may be spent, what discount that buys and which limit bit. Writes nothing; pure (no `$wpdb`, no WooCommerce, no current user, no `time()`); runs on every cart recalculation. No eligibility here — gates live in `Engine\Redemption`.
+
+| Class | Role |
+|---|---|
+| `Clamp` | **The one place a limit is computed.** `apply( Reward, int $requested, int $balance, ?float $cart_subtotal, string $currency ): Result` — ceilings balance → `max_points_per_order` → cart (after other coupons, tightened by `max_percent_of_subtotal`), floored to `increment` (one currency unit by default), zeroed below `min_points`; reports the binding ceiling as `BOUND_*`. Real, unit-tested |
+| `RewardEngine` | `evaluate( Reward, Context ): Result` — type handler lookup + quote. Real |
+| `Context` | Immutable inputs: user id (nullable), balance, points_requested, cart_subtotal (net of other coupons, nullable), currency, at, `CustomerFacts` (nullable). Built only by `ContextFactory` or by hand in a test |
+| `ContextFactory` | `from_cart( \WC_Cart, ?int $user_id, ?int $points_requested )`, `from_order( \WC_Order, int $locked_balance )` — the one class on the quote path that reads WooCommerce and the customer row; typed on `Repositories\CustomerReader` so it cannot write. Stubs |
+| `Result` | The quote. `allowed( Reward, requested, points, value, currency, rate_snapshot, bound_by )` or `denied( reason )`. Never stored |
+| `Handlers\Registry`, `Handlers\RewardHandler` | Type → handler; `with_lite_handlers()` fires `yayloyalty_register_reward_handlers` for Pro |
+| `Handlers\FlexibleDiscountHandler` | Lite's only type; one-line delegate to `Clamp`. Stub |
+
+### Redemption orchestration (includes/Engine/Redemption/) — ZONE 2 and the adapters
+
+`namespace YayLoyalty\Engine\Redemption`. The impure shell around the pure quote, mirroring `Engine/Earning` around `Engine/Points`. See its `README.md` for the nine invariants; the test names under `tests/unit/Redemption/` are the specification.
+
+| Class | Role |
+|---|---|
+| `RedemptionService` | `build()` composition root (LedgerService's fourth construction site); `quote( \WC_Cart, ?int $user_id ): Result` (Zone 1, writes nothing); `checkout_error( \WC_Cart, ?int ): ?string` (affordability before totals freeze); `commit( \WC_Order ): Outcome` (Zone 2). Stubs |
+| `Quoter` | The pure half: `quote( Reward, Context ): Result` — gates cheap-first, first reason wins, then the engine. Holds nothing that can write. Real; one instance shared by quote and commit |
+| `Gate` | `check( Reward, Context ): ?string` |
+| `ProgramGate`, `RewardGate` | Logged in / program on / coupons enabled; reward live / fixed cost vs balance / `yayloyalty_reward_conditions_match`. Stubs |
+| `SessionIntent` | The only mutable state on the quote path: one integer, `yayloyalty_redeem_points`, unclamped. Stubs |
+| `CouponProvider` | Virtual coupon `yayloyalty-redeem` via `woocommerce_get_shop_coupon_data` (fixed_cart, `individual_use` false, no free shipping), sorted last via `woocommerce_coupon_sort`, amount re-quoted on every totals run. Stubs |
+| `CommitWriter` | Holds everything that writes. One `Transaction::run()`: lock customer row → duplicate check → re-quote with the locked balance → redemptions row → `LedgerService::redeem()` → order meta. Zone 3 seam named in its docblock. Stubs |
+| `Adapters\ClassicCheckoutAdapter`, `Adapters\StoreApiAdapter` | Hook translation only; both call the same three service methods. Stubs |
+
+**Scaffold status:** real: `Quoter`, `Clamp`, `Result`, `Context`, `Models\Redemption`. Stubs (`TODO(F08)`): everything else above plus `Repositories/RedemptionRepository`, `Database/Schema/RedemptionsTable` (not yet in `Installer::schemas()`), `LedgerService::redeem()`. Not started: the block UI, Zone 3 (cancel/refund), Pro catalog coupons.
 
 ### Database
 
 | File                                  | Role                                                                                                                                                                      |
 | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Database/Installer.php`              | Versioned schema; applies via `dbDelta`; runs on `plugins_loaded` priority 20 (outside `plugin_init`) so headless/REST paths upgrade                                      |
+| `Database/Installer.php`              | Versioned schema; applies via `dbDelta`; runs on `plugins_loaded` priority 20 (outside `plugin_init`) so headless/REST paths upgrade. `run_migrations()` holds what `dbDelta` cannot express (index drops; `drop_index_if_exists()` is a stub) |
 | `Database/InitYayLoyaltyCustomer.php` | Starter data seeding: creates 5 real WooCommerce customers with real ledger history (via `LedgerService::adjust()`); split from Installer to keep both under 200-line cap |
 | `Database/Transaction.php`            | Nesting-aware; probes for foreign transactions via savepoint round-trip; guards on reconnect; treats failed rollback as fatal                                             |
 | `Database/QueryException.php`         | Thrown by repositories on write failure                                                                                                                                   |
-| `Database/Schema/*Table.php`          | `CREATE TABLE` DDL for each table; subclass `AbstractTableSchema`                                                                                                         |
+| `Database/Schema/*Table.php`          | `CREATE TABLE` DDL for each table; subclass `AbstractTableSchema`. `RedemptionsTable` exists as a DDL stub and is not registered yet |
 
 ### Utilities & Helpers
 
@@ -254,36 +289,41 @@ Filters (public API): `yayloyalty_campaign_candidates`, `yayloyalty_campaign_mat
 
 ## Request Flows
 
-### Order Award → Ledger Entry (Not Wired)
+### Order Award → Ledger Entry (Scaffolded, not wired at boot)
 
 ```
-[Currently NOT IMPLEMENTED — Engine built, listener missing]
+[SCAFFOLD — shape is real, bodies are TODO(F01-4); listeners are not registered from YayLoyalty::__construct() yet]
 
-WooCommerce order reaches award status
+WooCommerce order created / reaches award status
   ↓
-Hook listener on order status change (F01-4, not built)
+Engine\Earning\Listeners\OrderListener::on_created() / on_awardable()
   ↓
-ContextFactory::from_order( $order, $points_earned_today )   ← the only WooCommerce read
+ContextFactory::from_order( $order, LedgerRepository::points_earned_today() )   ← the only WooCommerce read; occurred_at = order creation date
   ↓
-PointsEngine::evaluate( 'purchase', $ctx, $ctx->get_occurred_at() )   pure: campaigns only; unit-tested without WordPress
-  ├─ CampaignRepository::live_for_trigger()  liveness filtered at the ORDER's time
-  ├─ first campaign: conditions_match() AND handler->is_eligible()   (gates fall through, never zero)
-  ├─ PurchaseHandler → BaseCalculator → PointsMath::round_points → CapPolicy
-  └─ Result: points, campaign, breakdown, reference, source | none( reason )
+EarningService::preview( 'purchase', $ctx )
+  ├─ gates: ProgramGate (excluded_roles, _yayloyalty_opted_out) → Outcome::skipped( reason )
+  └─ PointsEngine::evaluate( 'purchase', $ctx )   pure: campaigns only; liveness at the ORDER's time
+       ├─ CampaignRepository::live_for_trigger()
+       ├─ first campaign: conditions_match() AND handler->is_eligible()   (gates fall through, never zero)
+       ├─ PurchaseHandler → BaseCalculator → PointsMath::round_points → CapPolicy
+       └─ Result: points, campaign, breakdown, reference, source | none( reason )
+  ↓ on_created: PendingPoints::stage()   idempotent on _yayloyalty_points_pending
+  ↓ on_awardable:
+EarningService::award( 'purchase', $ctx )   preview again, same occurred_at
   ↓
-LedgerService::earn( user_id, points, source, reference_type, reference_id, campaign_id )   [to be added]
+Transaction::run()
+  ├─ LedgerService::earn( $draft )
+  │    ├─ CustomerRepository::lock_and_get()      SELECT … FOR UPDATE → unbroken balance_after chain
+  │    ├─ LedgerRepository::insert()              UNIQUE uniq_idempotency_key; MySQL 1062 → Outcome::duplicate
+  │    └─ CustomerRepository::apply_delta()       balance, lifetime_earned
+  └─ PendingPoints::release() / mark_awarded()
+  ↓ after commit
+do_action( 'yayloyalty_ledger_recorded' ), do_action( 'yayloyalty_points_awarded' )
   ↓
-LedgerService::record()
-  ↓
-  ├─ Lock customers row (gap lock → row lock)
-  ├─ Insert ledger row
-  ├─ Update customers balance + aggregates
-  ├─ Insert lots (Pro only)
-  ├─ Fire do_action( 'yayloyalty_ledger_recorded' )
-  └─ Commit (or savepoint release)
-  ↓
-REST GET /customers/{id} returns updated balance (next sync)
+Outcome: awarded | skipped( reason ) | duplicate
 ```
+
+`SignupListener` (`user_register` → `ContextFactory::from_user()`) and `ReviewListener` (comment approval → `from_comment()`) follow the same preview/award shape without the pending stage. Refund / clawback hangs off `OrderListener::on_refunded()` and `ReviewListener::on_unapproved()` — undesigned.
 
 ### Admin API Request Flow
 
@@ -340,7 +380,7 @@ BaseRestController::exec_write( callback, request )
 - **Admin JS:** Enqueued by `RegisterProd` / `RegisterDev`; communicates via `ky` to REST
 - **REST:** Namespace `yayloyalty/v1`, all under `yayloyalty_rest_controllers` filter
 - **Headless / WP-CLI:** Runs via `plugins_loaded` — no `admin_init` required
-- **Tests:** `tests/unit/` with `tests/bootstrap.php` shim for hooks (no `$wpdb`, no WooCommerce). Run with `composer test` (115 PHPUnit tests); `pnpm --filter @yayloyalty/admin-page test` runs Vitest over `apps/admin/tests/` against the same `tests/fixtures/points-math-vectors.json`
+- **Tests:** `tests/unit/` with `tests/bootstrap.php` shim for hooks (no `$wpdb`, no WooCommerce). Run with `composer test` (211 PHPUnit tests, 61 incomplete by design — the earning-split specification under `tests/unit/Earning/`, `tests/unit/Services/`, `tests/unit/ContextFactoryTest.php` and the redemption-split specification under `tests/unit/Redemption/`); `composer test:integration` runs `tests/integration/` against a real WordPress and MySQL — plugin tables created under a scratch `ylit_` prefix and dropped afterwards, so the site's own data is never read or written; `pnpm --filter @yayloyalty/admin-page test` runs Vitest over `apps/admin/tests/` against the same `tests/fixtures/points-math-vectors.json`
 
 ---
 

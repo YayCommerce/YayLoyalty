@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Pro\Services;
 
+use YayLoyalty\Engine\Points\Context;
 use YayLoyalty\Enums\CampaignConditionType;
 use YayLoyalty\Models\CampaignCondition;
 use YayLoyalty\Models\CampaignConditionSet;
@@ -53,12 +54,17 @@ final class ConditionsEvaluator {
     private $points_by_user = [];
 
     /**
-     * Whether every condition matches.
+     * Whether every condition matches the event. Must become a pure
+     * comparison against $ctx->get_customer_facts() and the Context's own
+     * currency/coupons/lines (which makes currency, country, payment_method
+     * and the *_in_cart types evaluable). Interim: folds explain() over the
+     * user id, so behaviour is unchanged until the facts are wired.
      *
      * @param array $conditions Flat list of {type, operator, value} objects.
      */
-    public function evaluate( array $conditions, int $user_id ): bool {
-        foreach ( $this->explain( $conditions, $user_id ) as $result ) {
+    public function evaluate( array $conditions, Context $ctx ): bool {
+        // TODO(F01-4): compare each condition against $ctx directly and delete the order-scanning helpers below; explain() stays for the preview endpoint, which has no order.
+        foreach ( $this->explain( $conditions, (int) $ctx->get_user_id() ) as $result ) {
             if ( ! $result['matched'] ) {
                 return false;
             }

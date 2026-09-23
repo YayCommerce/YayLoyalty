@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Repositories;
 
+use YayLoyalty\Database\QueryException;
 use YayLoyalty\Models\LedgerEntry;
 
 defined( 'ABSPATH' ) || exit;
@@ -21,30 +22,74 @@ class LedgerRepository extends AbstractRepository {
     }
 
     /**
-     * Finds a row by its idempotency key, matching uniq_ledger_event. Null
-     * for a NULL reference: those never collide, so asking is meaningless.
+     * The row an idempotency key already produced, or null.
+     *
+     * Read twice on the award path, for different reasons. Before the insert
+     * it is only an optimisation — the unique index is the guarantee, and
+     * this SELECT merely avoids burning an AUTO_INCREMENT value on a
+     * duplicate the caller can already see under its row lock. After a
+     * collision it is how the writer names the row that won, which
+     * Outcome::duplicate carries.
      */
-    public function find_by_reference( int $user_id, string $source, ?string $reference_type, ?int $reference_id ): ?LedgerEntry {
+    public function find_by_idempotency_key( string $key ): ?LedgerEntry {
         global $wpdb;
-
-        if ( null === $reference_type || null === $reference_id ) {
-            return null;
-        }
 
         $row = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
             $wpdb->prepare(
-                'SELECT * FROM `' . esc_sql( $this->table() ) . '`
-                 WHERE user_id = %d AND source = %s AND reference_type = %s AND reference_id = %d
-                 LIMIT 1',
-                $user_id,
-                $source,
-                $reference_type,
-                $reference_id
+                'SELECT * FROM `' . esc_sql( $this->table() ) . '` WHERE `idempotency_key` = %s LIMIT 1',
+                $key
             ),
             ARRAY_A
         );
 
-        return is_array( $row ) ? LedgerEntry::from_row( $row ) : null;
+        if ( ! is_array( $row ) ) {
+            return null;
+        }
+
+        $entry = $this->hydrate( $row );
+
+        return $entry instanceof LedgerEntry ? $entry : null;
+    }
+
+    /**
+     * The guarded insert: a UNIQUE `idempotency_key` collision is an answer
+     * here, not a fault, so it comes back as null instead of an exception.
+     * wpdb's error reporting is off for the attempt — the guard firing is
+     * the system working, and it must not leave a line in the log that reads
+     * like a broken write. Every other failure still throws.
+     *
+     * @return int|null Insert id, or null when the key was already present.
+     * @throws QueryException When the insert failed for any other reason.
+     */
+    public function insert_unless_duplicate( LedgerEntry $entry ): ?int {
+        global $wpdb;
+
+        $suppress = $wpdb->suppress_errors( true );
+
+        try {
+            return $this->insert( $entry );
+        } catch ( QueryException $e ) {
+            if ( ! $e->is_duplicate_key() ) {
+                throw $e;
+            }
+
+            return null;
+        } finally {
+            $wpdb->suppress_errors( $suppress );
+        }
+    }
+
+    /**
+     * SUM(points) of earn rows for a user on the calendar day containing $at,
+     * for CapPolicy's daily_cap. The day is the site-timezone day of the
+     * event's own time, not of the request: a late award counts toward the
+     * day the order was placed. 0 for a guest.
+     *
+     * @param string $at UTC MySQL datetime, the Context's occurred_at.
+     */
+    public function points_earned_today( ?int $user_id, string $at ): int { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
+        // TODO(F01-4): site-tz day bounds around $at via Dates::to_site_tz(), back to UTC, then SUM(points) WHERE user_id AND type = earn AND created_at BETWEEN.
+        throw new \RuntimeException( 'Not implemented' );
     }
 
     /**
@@ -74,20 +119,5 @@ class LedgerRepository extends AbstractRepository {
                 $user_id
             )
         );
-    }
-
-    /** The most recent entry for a user. Uncalled today. */
-    public function latest_for_user( int $user_id ): ?LedgerEntry {
-        global $wpdb;
-
-        $row = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-            $wpdb->prepare(
-                'SELECT * FROM `' . esc_sql( $this->table() ) . '` WHERE user_id = %d ORDER BY id DESC LIMIT 1',
-                $user_id
-            ),
-            ARRAY_A
-        );
-
-        return is_array( $row ) ? LedgerEntry::from_row( $row ) : null;
     }
 }
