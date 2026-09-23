@@ -75,13 +75,8 @@ final class CustomerActivityServiceTest extends TestCase {
                 $this->total = $total;
             }
 
-            public function paginate_for_user( int $user_id, array $args = [] ): array {
-                return [
-                    'items'    => [],
-                    'total'    => $this->total,
-                    'page'     => 1,
-                    'per_page' => 1,
-                ];
+            public function count_for_user( int $user_id ): int {
+                return $this->total;
             }
         };
     }
@@ -146,7 +141,7 @@ final class CustomerActivityServiceTest extends TestCase {
         $this->assertCount( 0, $meta->inserted );
     }
 
-    public function test_record_account_deleted_captures_snapshot_and_leaves_unbuildable_facts_null(): void {
+    public function test_record_account_deleted_captures_snapshot_and_omits_unbuildable_facts(): void {
         $meta    = $this->recording_meta();
         $service = new CustomerActivityService(
             $meta,
@@ -162,9 +157,9 @@ final class CustomerActivityServiceTest extends TestCase {
         $this->assertSame( 'Member Name', $data['display_name'] );
         $this->assertSame( 1200, $data['balance_at_deletion'] );
         $this->assertSame( 7, $data['kept_ledger_entries'] );
-        $this->assertNull( $data['void_coupons'] );
-        $this->assertNull( $data['credited_referrals'] );
-        $this->assertNull( $data['counted_in_members'] );
+        $this->assertArrayNotHasKey( 'void_coupons', $data );
+        $this->assertArrayNotHasKey( 'credited_referrals', $data );
+        $this->assertArrayNotHasKey( 'counted_in_members', $data );
     }
 
     public function test_record_account_deleted_writes_nothing_when_already_captured(): void {

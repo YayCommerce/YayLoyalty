@@ -11,7 +11,6 @@ use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Repositories\RewardRepository;
 use YayLoyalty\Services\LedgerService;
-use YayLoyalty\Utils\Log;
 use YayLoyalty\Utils\PointsMath;
 
 defined( 'ABSPATH' ) || exit;
@@ -118,27 +117,14 @@ final class CustomerRestController extends AbstractRestController {
         $base = ( $customer ?? new Customer( $user_id ) )->to_array();
         $user = get_userdata( $user_id );
 
-        try {
-            $activity_count = $this->meta->count_activity( $user_id, ActivityEvent::ALL );
-            // Gated on the WP user currently being gone too — a reinstated id self-heals, no "undelete" event needed.
-            $deletion = false === $user ? $this->meta->latest( $user_id, ActivityEvent::ACCOUNT_DELETED ) : null;
-        } catch ( \Throwable $e ) {
-            // Missing table (version not bumped) or any other failure degrades this block rather than 500ing every customer.
-            Log::error( 'CustomerRestController', $e->getMessage() );
-            $activity_count = 0;
-            $deletion       = null;
-        }
+        $activity_count = $this->meta->count_activity( $user_id );
+        // Gated on the WP user currently being gone too — a reinstated id self-heals, no "undelete" event needed.
+        $deletion = false === $user ? $this->meta->latest( $user_id, ActivityEvent::ACCOUNT_DELETED ) : null;
 
         return CustomerItemFormatter::format(
             $base,
-            CustomerListFormatter::live_identity( $user ),
-            $this->ledger->paginate_for_user(
-                $user_id,
-                [
-                    'page'     => 1,
-                    'per_page' => 1,
-                ]
-            )['total'],
+            CustomerItemFormatter::live_identity( $user ),
+            $this->ledger->count_for_user( $user_id ),
             $activity_count,
             $deletion,
             $this->rewards->points_per_currency_unit()

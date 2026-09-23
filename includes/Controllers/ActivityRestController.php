@@ -5,7 +5,6 @@ use YayLoyalty\Access\Capabilities;
 use YayLoyalty\Controllers\Schemas\ActivityQueryArgs;
 use YayLoyalty\Enums\ActivityEvent;
 use YayLoyalty\Repositories\CustomerMetaRepository;
-use YayLoyalty\Utils\Log;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -13,12 +12,8 @@ defined( 'ABSPATH' ) || exit;
  * GET /yayloyalty/v1/customers/{id}/activity — paginated activity-log rows
  * (F09 Wave B, artboard 3d), reading real `yayloyalty_customer_meta` rows.
  *
- * Only three of the eight `ActivityEvent` kinds have a writer today
- * (`account_created`, `points_adjusted`, `account_deleted` —
- * `Services\CustomerActivityService`); the other five (tier changes,
- * expiry, redemptions, balance/expiry emails) have no source feature, so a
- * customer whose only history would be one of them legitimately gets zero
- * rows — that is the true count, not a bug. No backfill: a pre-existing
+ * Only three of the eight `ActivityEvent` kinds have a writer today — see
+ * `Enums\ActivityEvent`'s docblock for which. No backfill: a pre-existing
  * member's log starts the day this shipped.
  *
  * `search` is a PHP-side match against decoded real content fields only
@@ -64,28 +59,19 @@ final class ActivityRestController extends AbstractRestController {
     }
 
     public function get_history( \WP_REST_Request $request ) {
-        $types = ActivityQueryArgs::event_types_for( (string) $request['group'] ) ?? ActivityEvent::ALL;
+        $types = ActivityQueryArgs::event_types_for( (string) $request['group'] );
 
-        try {
-            $result = $this->meta->paginate_activity(
-                (int) $request['id'],
-                [
-                    'event_types' => $types,
-                    'search'      => (string) ( $request['search'] ?? '' ),
-                    'after'       => (string) ( $request['after'] ?? '' ),
-                    'before'      => (string) ( $request['before'] ?? '' ),
-                    'page'        => (int) $request['page'],
-                    'per_page'    => (int) $request['per_page'],
-                ]
-            );
-        } catch ( \Throwable $e ) {
-            // customer_meta missing (version not bumped yet) or any other
-            // query failure must degrade to an honest empty page, not a
-            // 500 that takes the whole drawer down.
-            Log::error( 'ActivityRestController', $e->getMessage() );
-
-            return $this->respond_empty_page( $request );
-        }
+        $result = $this->meta->paginate_activity(
+            (int) $request['id'],
+            [
+                'event_types' => $types,
+                'search'      => (string) ( $request['search'] ?? '' ),
+                'after'       => (string) ( $request['after'] ?? '' ),
+                'before'      => (string) ( $request['before'] ?? '' ),
+                'page'        => (int) $request['page'],
+                'per_page'    => (int) $request['per_page'],
+            ]
+        );
 
         return $this->respond_paginated( $result );
     }
@@ -108,7 +94,7 @@ final class ActivityRestController extends AbstractRestController {
                 ],
                 'event_type'  => [
                     'type'     => 'string',
-                    'enum'     => ActivityQueryArgs::EVENT_TYPES,
+                    'enum'     => ActivityEvent::ALL,
                     'context'  => [ 'view' ],
                     'readonly' => true,
                 ],

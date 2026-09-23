@@ -2,6 +2,7 @@
 namespace YayLoyalty\Controllers\Schemas;
 
 use YayLoyalty\Enums\ActivityEvent;
+use YayLoyalty\Enums\ActorKind;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -12,7 +13,7 @@ defined( 'ABSPATH' ) || exit;
  * own args field-for-field (same descriptions, same `validate_date`), so the
  * two tabs' filter rows behave identically from the admin's side.
  *
- * `group` is a GROUPING over the eight `event_type`s (`EVENT_TYPES`), not a
+ * `group` is a GROUPING over the eight `event_type`s (`ActivityEvent::ALL`), not a
  * partition: `expiring_soon_email_sent` belongs to BOTH `expiry` and `emails`
  * on purpose — it is a lens ("what am I looking for"), not a mutually-exclusive
  * category. Do not "fix" the overlap. `account_created` stays in no group
@@ -22,10 +23,7 @@ final class ActivityQueryArgs {
 
     public const GROUPS = [ 'all', 'admin', 'tier', 'expiry', 'emails' ];
 
-    /** Eight event kinds — a grouping, not a partition. See ActivityEvent's own docblock for which have writers. */
-    public const EVENT_TYPES = ActivityEvent::ALL;
-
-    public const ACTOR_KINDS = [ 'staff', 'automatic', 'customer' ];
+    public const ACTOR_KINDS = ActorKind::ALL;
 
     /**
      * @return array<string, mixed>
@@ -60,12 +58,11 @@ final class ActivityQueryArgs {
     }
 
     /**
-     * `null` for `all` — the caller skips filtering entirely rather than
-     * matching against a redundant full list.
+     * Never empty: `all` (and any unrecognised group) returns the full ActivityEvent vocabulary.
      *
-     * @return string[]|null
+     * @return string[]
      */
-    public static function event_types_for( string $group ): ?array {
+    public static function event_types_for( string $group ): array {
         switch ( $group ) {
             case 'admin':
                 return [ ActivityEvent::POINTS_ADJUSTED, ActivityEvent::EXPIRY_RESET, ActivityEvent::ACCOUNT_DELETED ];
@@ -76,7 +73,7 @@ final class ActivityQueryArgs {
             case 'emails':
                 return [ ActivityEvent::BALANCE_EMAIL_SENT, ActivityEvent::EXPIRING_SOON_EMAIL_SENT ];
             default:
-                return null;
+                return ActivityEvent::ALL;
         }
     }
 }

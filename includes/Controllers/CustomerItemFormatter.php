@@ -61,11 +61,31 @@ final class CustomerItemFormatter {
             return (string) $live_identity[ $key ];
         }
 
-        if ( null !== $deletion ) {
-            return (string) ( $deletion->get_data()[ $key ] ?? '' );
+        if ( null === $deletion ) {
+            return '';
         }
 
-        return '';
+        $snapshot = $deletion->snapshot_identity();
+
+        return 'email' === $key ? $snapshot['email'] : $snapshot['name'];
+    }
+
+    /**
+     * `{display_name, email}` from a live `WP_User`, or `null` when the WP
+     * user is gone — the shape `format()` expects.
+     *
+     * @param \WP_User|false $user
+     * @return array{display_name: string, email: string}|null
+     */
+    public static function live_identity( $user ): ?array {
+        if ( ! $user ) {
+            return null;
+        }
+
+        return [
+            'display_name' => $user->display_name,
+            'email'        => $user->user_email,
+        ];
     }
 
     /**

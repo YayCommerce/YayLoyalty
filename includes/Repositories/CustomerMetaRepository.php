@@ -1,7 +1,9 @@
 <?php
 namespace YayLoyalty\Repositories;
 
+use YayLoyalty\Enums\ActivityEvent;
 use YayLoyalty\Models\CustomerMeta;
+use YayLoyalty\Utils\Sql;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -9,15 +11,8 @@ defined( 'ABSPATH' ) || exit;
  * yayloyalty_customer_meta. Append-only: nothing here calls update() or
  * delete().
  *
- * `paginate_activity()`'s `search` never LIKEs the raw `meta_value` blob:
- * every row carries the literal structural keys `data`, `actor_kind`,
- * `actor_name`, `staff_only`, `schema_version`, so a raw LIKE would match
- * almost every row on metadata, not content. Candidate rows are instead
- * fetched by `user_id` + `meta_key IN (...)` + date bounds, decoded in PHP,
- * filtered against real content fields only, then paginated in PHP —
- * `per_page` is applied post-filter in that path, not in SQL. Safe only
- * because every query here is already scoped to one customer's small row
- * set (docs/data-model.md), never a cross-customer search.
+ * `paginate_activity()`'s `search` never LIKEs the raw `meta_value` blob —
+ * see `CustomerMetaActivitySearch`'s docblock for why and how.
  *
  * Not final: CustomerActivityServiceTest extends it as a repository double
  * (mirrors DashboardRepository/CampaignRepository, the same reason those
@@ -70,25 +65,16 @@ class CustomerMetaRepository extends AbstractRepository {
         return null !== $id;
     }
 
-    /**
-     * COUNT(*) of rows matching user_id + one of $event_types. An empty
-     * list short-circuits to 0 before building SQL: `IN ()` is invalid.
-     *
-     * @param string[] $event_types
-     */
-    public function count_activity( int $user_id, array $event_types ): int {
-        if ( empty( $event_types ) ) {
-            return 0;
-        }
-
+    /** COUNT(*) of a user's activity-log rows, over the full ActivityEvent vocabulary. */
+    public function count_activity( int $user_id ): int {
         global $wpdb;
 
-        // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared -- build_in_placeholders() emits only a fixed-count %s list; values are bound via prepare() below.
+        // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared -- Sql::in_placeholders() emits only a fixed-count %s list; values are bound via prepare() below.
         return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
             $wpdb->prepare(
                 'SELECT COUNT(*) FROM `' . esc_sql( $this->table() ) . '`
-                 WHERE user_id = %d AND meta_key IN (' . $this->build_in_placeholders( $event_types ) . ')',
-                array_merge( [ $user_id ], $event_types )
+                 WHERE user_id = %d AND meta_key IN (' . Sql::in_placeholders( ActivityEvent::ALL ) . ')',
+                array_merge( [ $user_id ], ActivityEvent::ALL )
             )
         );
         // phpcs:enable WordPress.DB.PreparedSQL.NotPrepared
@@ -118,10 +104,10 @@ class CustomerMetaRepository extends AbstractRepository {
 
         global $wpdb;
 
-        // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- build_in_placeholders() emits only a fixed-count %s list the sniff can't see statically; values are bound via prepare() below.
+        // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- Sql::in_placeholders() emits only a fixed-count %s list the sniff can't see statically; values are bound via prepare() below.
         $where   = [ $wpdb->prepare( 'user_id = %d', $user_id ) ];
         $where[] = $wpdb->prepare(
-            'meta_key IN (' . $this->build_in_placeholders( $event_types ) . ')',
+            'meta_key IN (' . Sql::in_placeholders( $event_types ) . ')',
             $event_types
         );
         // phpcs:enable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
@@ -152,17 +138,5 @@ class CustomerMetaRepository extends AbstractRepository {
         }
 
         return CustomerMetaActivitySearch::paginate( esc_sql( $this->table() ), $where, $search, $page, $per_page );
-    }
-
-    /**
-     * Pure `IN (...)` placeholder fragment: no `$wpdb`, no query building.
-     * Extracted so the bug class this guards against (a miscounted
-     * placeholder list vs bound values) is unit-testable without WordPress
-     * (tests/unit/Repositories/CustomerMetaRepositoryPlaceholdersTest.php).
-     *
-     * @param array $values
-     */
-    private function build_in_placeholders( array $values ): string {
-        return implode( ',', array_fill( 0, count( $values ), '%s' ) );
     }
 }

@@ -2,6 +2,7 @@
 namespace YayLoyalty\Pro\Repositories;
 
 use YayLoyalty\Enums\LedgerType;
+use YayLoyalty\Utils\Sql;
 use YayLoyalty\Utils\Table;
 
 defined( 'ABSPATH' ) || exit;
@@ -22,7 +23,7 @@ class CampaignPointsRepository {
     public function issued_by_campaign( string $from, string $to, int $limit = 3 ): array {
         global $wpdb;
 
-        $in = $this->placeholders( $this->earn_types() );
+        $in = Sql::in_placeholders( $this->earn_types() );
 
         // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $in is a "%s, %s" list; every value is bound.
         $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
@@ -58,8 +59,8 @@ class CampaignPointsRepository {
             return [];
         }
 
-        $types_in = $this->placeholders( $this->earn_types() );
-        $ids_in   = implode( ', ', array_fill( 0, count( $campaign_ids ), '%d' ) );
+        $types_in = Sql::in_placeholders( $this->earn_types() );
+        $ids_in   = Sql::in_placeholders( $campaign_ids, '%d' );
 
         // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $types_in / $ids_in are placeholder lists; every value is bound.
         $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
@@ -82,12 +83,5 @@ class CampaignPointsRepository {
      */
     private function earn_types(): array {
         return array_values( array_filter( LedgerType::all(), [ LedgerType::class, 'affects_lifetime_earned' ] ) );
-    }
-
-    /**
-     * @param string[] $values
-     */
-    private function placeholders( array $values ): string {
-        return implode( ', ', array_fill( 0, count( $values ), '%s' ) );
     }
 }

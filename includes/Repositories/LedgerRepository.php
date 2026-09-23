@@ -109,6 +109,18 @@ class LedgerRepository extends AbstractRepository {
         return $this->paginate( $args );
     }
 
+    /** COUNT(*) of a user's ledger rows — cheaper than paginate_for_user() when only the total is needed. */
+    public function count_for_user( int $user_id ): int {
+        global $wpdb;
+
+        return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+            $wpdb->prepare(
+                'SELECT COUNT(*) FROM `' . esc_sql( $this->table() ) . '` WHERE user_id = %d',
+                $user_id
+            )
+        );
+    }
+
     /** SUM(points) for a user, the ledger-side half of the balance invariant. Reserved for a rebuild tool. */
     public function sum_points_for_user( int $user_id ): int {
         global $wpdb;

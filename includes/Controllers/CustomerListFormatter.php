@@ -139,31 +139,10 @@ final class CustomerListFormatter {
         }
 
         $deletion = $customer_meta->latest( $user_id, ActivityEvent::ACCOUNT_DELETED );
-        $data     = $deletion ? $deletion->get_data() : [];
 
-        return [
-            'name'  => (string) ( $data['display_name'] ?? '' ),
-            'email' => (string) ( $data['email'] ?? '' ),
-        ];
-    }
-
-    /**
-     * `{display_name, email}` from a live `WP_User`, or `null` when the WP
-     * user is gone — the shape `CustomerItemFormatter::format()` expects.
-     * Lives here (not the controller) purely to keep `CustomerRestController`
-     * under the 200-line cap; not otherwise a list concern.
-     *
-     * @param \WP_User|false $user
-     * @return array{display_name: string, email: string}|null
-     */
-    public static function live_identity( $user ): ?array {
-        if ( ! $user ) {
-            return null;
-        }
-
-        return [
-            'display_name' => $user->display_name,
-            'email'        => $user->user_email,
+        return null !== $deletion ? $deletion->snapshot_identity() : [
+            'name'  => '',
+            'email' => '',
         ];
     }
 

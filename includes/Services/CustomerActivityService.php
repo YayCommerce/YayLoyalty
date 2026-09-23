@@ -2,6 +2,7 @@
 namespace YayLoyalty\Services;
 
 use YayLoyalty\Enums\ActivityEvent;
+use YayLoyalty\Enums\ActorKind;
 use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Models\CustomerMeta;
@@ -61,16 +62,9 @@ final class CustomerActivityService {
             return;
         }
 
-        $kept = $this->ledger->paginate_for_user(
-            $user_id,
-            [
-                'page'     => 1,
-                'per_page' => 1,
-            ]
-        )['total'];
+        $kept = $this->ledger->count_for_user( $user_id );
 
-        $actor_id   = get_current_user_id();
-        $actor_kind = $actor_id > 0 ? 'staff' : 'automatic';
+        list( $actor_kind, $actor_name ) = $this->actor( get_current_user_id() );
 
         // TODO: the email and display name are kept deliberately for now, so staff can identify a deleted
         // member. No privacy eraser reaches them yet; register one on wp_privacy_personal_data_erasers
@@ -80,10 +74,6 @@ final class CustomerActivityService {
             'display_name'        => $display_name,
             'balance_at_deletion' => $customer->get_balance(),
             'kept_ledger_entries' => $kept,
-            // No redemptions/referrals/member-count feature exists — never fabricate.
-            'void_coupons'        => null,
-            'credited_referrals'  => null,
-            'counted_in_members'  => null,
         ];
 
         $this->meta->insert(
@@ -92,7 +82,7 @@ final class CustomerActivityService {
                 ActivityEvent::ACCOUNT_DELETED,
                 $data,
                 $actor_kind,
-                $actor_id > 0 ? $this->actor_name( $actor_id ) : null,
+                $actor_name,
                 false,
                 Dates::now()
             )
@@ -122,7 +112,7 @@ final class CustomerActivityService {
         $this->meta->insert(
             // The ledger row's own timestamp, not Dates::now(): so the activity
             // log and the ledger tab agree to the second on when this happened.
-            CustomerMeta::event( $user_id, ActivityEvent::ACCOUNT_CREATED, $data, 'automatic', null, false, $entry->get_created_at() )
+            CustomerMeta::event( $user_id, ActivityEvent::ACCOUNT_CREATED, $data, ActorKind::AUTOMATIC, null, false, $entry->get_created_at() )
         );
     }
 
@@ -137,32 +127,43 @@ final class CustomerActivityService {
             return;
         }
 
-        $actor_id = $entry->get_actor_id();
-
         $data = [
             'points' => $entry->get_points(),
             'note'   => $entry->get_note() ?? '',
         ];
+
+        list( $actor_kind, $actor_name ) = $this->actor( $entry->get_actor_id() );
 
         $this->meta->insert(
             CustomerMeta::event(
                 $entry->get_user_id(),
                 ActivityEvent::POINTS_ADJUSTED,
                 $data,
-                $actor_id ? 'staff' : 'automatic',
-                $actor_id ? $this->actor_name( $actor_id ) : null,
+                $actor_kind,
+                $actor_name,
                 true,
                 $entry->get_created_at()
             )
         );
     }
 
-    /** Snapshotted at write time, never resolved later — a later admin deletion cannot blank the audit trail. */
-    private function actor_name( ?int $actor_id ): ?string {
+    /**
+     * Kind + display name for a write's actor. `> 0` is the one rule for
+     * "was this a person" — `get_current_user_id()` and a ledger row's
+     * `actor_id` both use 0/null for a cron or system context.
+     *
+     * @return array{0: string, 1: string|null}
+     */
+    private function actor( ?int $actor_id ): array {
         if ( null === $actor_id || $actor_id <= 0 ) {
-            return null;
+            return [ ActorKind::AUTOMATIC, null ];
         }
 
+        return [ ActorKind::STAFF, $this->actor_name( $actor_id ) ];
+    }
+
+    /** Snapshotted at write time, never resolved later — a later admin deletion cannot blank the audit trail. */
+    private function actor_name( int $actor_id ): ?string {
         $user = get_userdata( $actor_id );
 
         return ( $user instanceof \WP_User && '' !== $user->display_name ) ? $user->display_name : null;

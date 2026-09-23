@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Models;
 
+use YayLoyalty\Enums\ActorKind;
 use YayLoyalty\Utils\Json;
 
 defined( 'ABSPATH' ) || exit;
@@ -83,7 +84,7 @@ final class CustomerMeta extends AbstractModel {
             self::cast_int_default( $row['user_id'] ?? 0 ),
             (string) ( $row['meta_key'] ?? '' ),
             is_array( $decoded['data'] ?? null ) ? $decoded['data'] : [],
-            (string) ( $decoded['actor_kind'] ?? 'automatic' ),
+            (string) ( $decoded['actor_kind'] ?? ActorKind::AUTOMATIC ),
             self::cast_string( $decoded['actor_name'] ?? null ),
             ! empty( $decoded['staff_only'] ),
             (string) ( $row['created_at'] ?? '' )
@@ -139,6 +140,19 @@ final class CustomerMeta extends AbstractModel {
     /** @return array<string, mixed> */
     public function get_data(): array {
         return $this->data;
+    }
+
+    /**
+     * The deleted-member identity fallback both drawer formatters read —
+     * the keys `account_deleted`'s snapshot writes.
+     *
+     * @return array{name: string, email: string}
+     */
+    public function snapshot_identity(): array {
+        return [
+            'name'  => (string) ( $this->data['display_name'] ?? '' ),
+            'email' => (string) ( $this->data['email'] ?? '' ),
+        ];
     }
 
     public function get_created_at(): string {

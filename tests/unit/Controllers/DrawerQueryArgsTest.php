@@ -29,22 +29,17 @@ final class DrawerQueryArgsTest extends TestCase {
         foreach ( ActivityQueryArgs::GROUPS as $group ) {
             $types = ActivityQueryArgs::event_types_for( $group );
 
-            if ( 'all' === $group ) {
-                $this->assertNull( $types );
-                continue;
-            }
-
             $this->assertNotEmpty( $types, $group );
 
             foreach ( $types as $type ) {
-                $this->assertContains( $type, ActivityQueryArgs::EVENT_TYPES, $group );
+                $this->assertContains( $type, ActivityEvent::ALL, $group );
             }
         }
     }
 
-    public function test_event_types_is_the_activity_event_vocabulary(): void {
-        $this->assertSame( ActivityEvent::ALL, ActivityQueryArgs::EVENT_TYPES );
-        $this->assertContains( ActivityEvent::ACCOUNT_DELETED, ActivityQueryArgs::EVENT_TYPES );
+    public function test_all_group_returns_the_full_activity_event_vocabulary(): void {
+        $this->assertSame( ActivityEvent::ALL, ActivityQueryArgs::event_types_for( 'all' ) );
+        $this->assertContains( ActivityEvent::ACCOUNT_DELETED, ActivityQueryArgs::event_types_for( 'all' ) );
     }
 
     public function test_admin_group_includes_account_deleted(): void {
