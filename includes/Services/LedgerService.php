@@ -90,9 +90,82 @@ final class LedgerService {
      * @throws \InvalidArgumentException When the draft is not an earn row or lacks a key.
      * @throws \YayLoyalty\Database\QueryException When a write other than a duplicate fails.
      */
-    public function earn( LedgerEntry $draft ): Outcome { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(F01-4): assert EARN + key; Transaction::run: ensure_row, lock_and_get, optional find_by_idempotency_key pre-check, try insert catch is_duplicate_key → Outcome::duplicate, apply_aggregates, queue event; then dispatch_events; return Outcome::awarded.
-        throw new \RuntimeException( 'Not implemented' );
+    public function earn( LedgerEntry $draft ): Outcome {
+        $key = $draft->get_idempotency_key();
+
+        if ( LedgerType::EARN !== $draft->get_type() ) {
+            throw new \InvalidArgumentException( 'YayLoyalty: earn() writes EARN rows only.' );
+        }
+
+        if ( null === $key || '' === $key ) {
+            throw new \InvalidArgumentException( 'YayLoyalty: an earn row needs an idempotency key.' );
+        }
+
+        if ( $draft->get_points() < 1 ) {
+            throw new \InvalidArgumentException( 'YayLoyalty: an earn row awards a positive number of points.' );
+        }
+
+        LedgerSource::assert( $draft->get_source() );
+        ReferenceType::assert( $draft->get_reference_type() );
+
+        $outcome = Transaction::run(
+            function () use ( $draft, $key ) {
+                $user_id = $draft->get_user_id();
+
+                // Materialise before locking: a missing row gap-locks and two first-touch writers both insert.
+                $this->customers->ensure_row( $user_id );
+
+                $customer = $this->customers->lock_and_get( $user_id );
+
+                // Under the lock a concurrent award for this user has finished, so this sees its row.
+                $existing = $this->ledger->find_by_idempotency_key( $key );
+
+                if ( null !== $existing ) {
+                    return Outcome::duplicate( $existing );
+                }
+
+                $balance_after = $customer->get_balance() + $draft->get_points();
+
+                $to_insert = $draft->with_persisted( 0, $balance_after );
+                $insert_id = $this->ledger->insert_unless_duplicate( $to_insert );
+
+                if ( null === $insert_id ) {
+                    return Outcome::duplicate( $this->existing_for( $key ) );
+                }
+
+                $this->apply_aggregates( $draft );
+
+                $persisted = $to_insert->with_persisted( $insert_id, $balance_after );
+
+                $this->queued_events[] = $persisted;
+
+                return Outcome::awarded( $persisted );
+            }
+        );
+
+        $this->dispatch_events();
+
+        return $outcome;
+    }
+
+    /**
+     * The row the UNIQUE index rejected this write for. Separate from the
+     * pre-check because here the row must exist: the ledger is append-only
+     * and the insert just failed against it, so a miss means the index and
+     * the table disagree and no outcome would be truthful.
+     *
+     * @throws \RuntimeException When the key that collided matches no row.
+     */
+    private function existing_for( string $key ): LedgerEntry {
+        $existing = $this->ledger->find_by_idempotency_key( $key );
+
+        if ( null === $existing ) {
+            throw new \RuntimeException(
+                sprintf( 'YayLoyalty: idempotency key "%s" collided but matches no ledger row.', $key )
+            );
+        }
+
+        return $existing;
     }
 
     /**
@@ -121,7 +194,7 @@ final class LedgerService {
      * @throws \YayLoyalty\Database\QueryException When a write other than a duplicate fails.
      */
     public function redeem( LedgerEntry $draft ): Outcome { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(F08): assert REDEEM, points < 0, key; Transaction::run: ensure_row, lock_and_get, if balance + points < 0 → Outcome::skipped( insufficient_balance ), try insert catch is_duplicate_key → Outcome::duplicate, apply_aggregates, queue event; then dispatch_events; return Outcome::redeemed.
+        // TODO(F08): mirror earn() — assert REDEEM, points < 0, key; Transaction::run: ensure_row, lock_and_get, if balance + points < 0 → Outcome::skipped( insufficient_balance ), pre-check, insert_unless_duplicate → Outcome::duplicate, apply_aggregates, queue event; then dispatch_events; return Outcome::redeemed.
         throw new \RuntimeException( 'Not implemented' );
     }
 

@@ -38,7 +38,12 @@ final class Outcome {
         $this->reason     = $reason;
     }
 
-    public static function awarded( LedgerEntry $entry, EarnResult $evaluation ): self {
+    /**
+     * $evaluation is null when the writer produced this: LedgerService::earn()
+     * is handed a draft row and never sees the Result behind it, so
+     * EarningService::award(), which has both, re-wraps before returning.
+     */
+    public static function awarded( LedgerEntry $entry, ?EarnResult $evaluation = null ): self {
         return new self( self::AWARDED, $entry, $evaluation, '' );
     }
 
