@@ -125,7 +125,8 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
 
 - New `user_register` hook (`CustomerActivityListener::on_user_register()`, registered in
   `yayloyalty.php`) calls `CustomerRepository::ensure_row()` for every new WP user, admin-created
-  accounts included. Fixes a gap where a user created in wp-admin never showed up in the admin
+  accounts included, except staff (`edit_posts` or `manage_woocommerce` — admins, shop managers,
+  editors), who are not loyalty members just for having an account. Fixes a gap where a user created in wp-admin never showed up in the admin
   Customers list until their first points activity — `yayloyalty_customers` row creation is now
   eager on registration instead of lazy-on-first-earn. No signup bonus, no ledger write, no
   `account_created` activity-log entry — that stays lazy, tied to the first real ledger write, as

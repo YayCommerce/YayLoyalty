@@ -372,7 +372,8 @@ unwritten event types.
 `user_register` (fired by `wp_insert_user()`, including admin-created accounts, not only
 self-registration) is the third raw WP-core-hook subscription, registered in `yayloyalty.php`
 alongside `delete_user`/`wpmu_delete_user`. `CustomerActivityListener::on_user_register()` calls
-`CustomerRepository::ensure_row()` directly — no ledger write, no `yayloyalty_ledger_recorded`
+`CustomerRepository::ensure_row()` directly, except for staff (a user with `edit_posts` or
+`manage_woocommerce`, WooCommerce's own back-office rule: admins, shop managers, editors) — no ledger write, no `yayloyalty_ledger_recorded`
 event, nothing logged to `yayloyalty_customer_meta` (a brand-new account has no points activity
 yet, only a row to reserve at balance 0). This makes `yayloyalty_customers` row creation eager on
 WP registration instead of lazy-on-first-earn; the `account_created` activity-log entry

@@ -97,9 +97,9 @@ final class CustomerActivityService {
     }
 
     /**
-     * "First loyalty activity", not "WP registered": nothing creates a
-     * `customers` row on registration, a row appears lazily on first
-     * ledger write. Writes once per user; accepted race under concurrency
+     * "First loyalty activity", not "WP registered": the `customers` row now
+     * exists from registration, but this entry waits for the first ledger
+     * write. Writes once per user; accepted race under concurrency
      * — this table's shape has no unique key to prevent a duplicate, only
      * `has()` to make it unlikely (cosmetic only, no backfill for members
      * that already exist).

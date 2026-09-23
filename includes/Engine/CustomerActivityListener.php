@@ -32,9 +32,17 @@ final class CustomerActivityListener {
      * (`ON DUPLICATE KEY UPDATE`), so a double-fire from a third party is
      * harmless.
      *
+     * Staff are skipped: an admin or shop manager is not a loyalty member
+     * just for having an account. "Staff" is WooCommerce's own back-office
+     * rule (`wc_prevent_admin_access()`); WP sets the role before this hook.
+     *
      * @param int $user_id
      */
     public static function on_user_register( $user_id ): void {
+        if ( user_can( (int) $user_id, 'edit_posts' ) || user_can( (int) $user_id, 'manage_woocommerce' ) ) {
+            return;
+        }
+
         try {
             ( new CustomerRepository() )->ensure_row( (int) $user_id );
         } catch ( \Throwable $e ) {
