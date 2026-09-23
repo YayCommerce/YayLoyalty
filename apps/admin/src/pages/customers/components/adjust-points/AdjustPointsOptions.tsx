@@ -39,7 +39,8 @@ export function AdjustPointsOptions({
         </span>
       </label>
 
-      {/* Not sent to the server yet — see the file docblock. */}
+      {/* TODO: send customerNote with the adjustment and show it on the customer's points history — nothing is
+          sent or stored today (docs/project-roadmap.md, Points Management → Customer-facing adjustment description). */}
       <div className="flex flex-col gap-2">
         <label className="flex items-center justify-between gap-2.5">
           <span className="text-sm font-medium">{SHOW_CUSTOMER_NOTE_LABEL()}</span>
