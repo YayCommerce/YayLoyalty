@@ -78,9 +78,9 @@ export function AdjustPointsBulkPanels({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
-        <p className="text-sm font-medium">
+        <div className="text-sm font-medium">
           {isCountLoading ? <Skeleton className="h-4 w-28" /> : bulkSelectionCount(effectiveCount)}
-        </p>
+        </div>
         {summary && <p className="text-muted-foreground text-xs">{bulkFilterLine(summary)}</p>}
         {selectionMode === 'all' && notShownOnPage > 0 && (
           <p className="text-muted-foreground text-xs">{bulkNotShownOnPage(notShownOnPage)}</p>

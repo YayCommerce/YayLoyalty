@@ -60,6 +60,7 @@ export function CustomersAdjustPointsDialog({
   filters,
   rowsOnPage = 0,
   acknowledgementResetKey = 0,
+  recountedCount = null,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -83,6 +84,8 @@ export function CustomersAdjustPointsDialog({
   rowsOnPage?: number;
   /** Bulk only: bumped by the caller after a pre-submit count mismatch, to force a fresh consent. */
   acknowledgementResetKey?: number;
+  /** Bulk only: the fresh count a submit resolved when it disagreed with the one shown; replaces it until close. */
+  recountedCount?: number | null;
 }) {
   const [state, setState] = useState<AdjustFormState>(initialAdjustFormState);
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -111,6 +114,8 @@ export function CustomersAdjustPointsDialog({
     excludedCount,
     rowsOnPage,
     acknowledgementResetKey,
+    recountedCount,
+    consentKey: `${state.direction}:${state.amount}`,
   });
 
   function patchState(patch: Partial<AdjustFormState>) {

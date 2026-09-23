@@ -75,7 +75,15 @@ export function useCustomersBulkActions({
   // Bumped to tell the dialog to clear its liability acknowledgement after a
   // selection-changed abort below — a fresh count deserves a fresh consent.
   const [acknowledgementResetKey, setAcknowledgementResetKey] = useState(0);
+  // The count a submit just resolved when it disagreed with the dialog's. The
+  // dialog shows this until closed, so the next submit is checked against a
+  // number the admin re-confirmed rather than the stale preview again.
+  const [recountedCount, setRecountedCount] = useState<number | null>(null);
   const bulkAdjustMutation = useBulkAdjustPointsMutation();
+
+  useEffect(() => {
+    if (!isAdjustDialogOpen) setRecountedCount(null);
+  }, [isAdjustDialogOpen]);
 
   /**
    * `expectedCount` is the figure the dialog showed and the admin
@@ -96,11 +104,12 @@ export function useCustomersBulkActions({
 
       if (selection.mode === 'all' && expectedCount !== undefined && selected.length !== expectedCount) {
         toast.error(bulkSelectionChanged(selected.length, expectedCount));
+        setRecountedCount(selected.length);
         setAcknowledgementResetKey((key) => key + 1);
         return;
       }
 
-      const { succeeded, failed } = await bulkAdjustMutation.mutateAsync({
+      const { succeeded, failed, failedIds } = await bulkAdjustMutation.mutateAsync({
         userIds: selected.map((row) => row.user_id),
         input,
       });
@@ -115,10 +124,17 @@ export function useCustomersBulkActions({
         setIsAdjustDialogOpen(false);
         setSelection(EMPTY_SELECTION);
       } else {
-        // Partial failure: leave the dialog open so the merchant can decide whether to retry.
+        // Partial failure: keep the dialog open, but on the failed customers only —
+        // adjustments are not idempotent, so a retry must never reach the ones that succeeded.
+        setSelection({ mode: 'partial', ids: new Set(failedIds) });
+        setRecountedCount(null);
+        setAcknowledgementResetKey((key) => key + 1);
         toast.error(
           sprintf(
-            __('%1$d succeeded, %2$d failed. Points ceilings or permissions may differ per customer.', 'yayloyalty'),
+            __(
+              '%1$d succeeded, %2$d failed. Points ceilings or permissions may differ per customer. Only the failed customers are still selected.',
+              'yayloyalty',
+            ),
             succeeded,
             failed,
           ),
@@ -143,5 +159,6 @@ export function useCustomersBulkActions({
     isAdjustSubmitting,
     handleAdjustSubmit,
     acknowledgementResetKey,
+    recountedCount,
   };
 }

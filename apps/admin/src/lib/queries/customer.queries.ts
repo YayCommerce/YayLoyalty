@@ -162,17 +162,19 @@ export function useBulkAdjustPointsMutation() {
     mutationKey: ['customer', 'adjust', 'bulk'],
     mutationFn: async ({ userIds, input }: { userIds: number[]; input: AdjustPointsInput }) => {
       let succeeded = 0;
-      let failed = 0;
+      const failedIds: number[] = [];
 
       for (let i = 0; i < userIds.length; i += BULK_ADJUST_CONCURRENCY) {
         const chunk = userIds.slice(i, i + BULK_ADJUST_CONCURRENCY);
         const results = await Promise.allSettled(chunk.map((userId) => adjustCustomerPoints(userId, input)));
 
-        succeeded += results.filter((result) => result.status === 'fulfilled').length;
-        failed += results.filter((result) => result.status === 'rejected').length;
+        results.forEach((result, index) => {
+          if (result.status === 'fulfilled') succeeded++;
+          else failedIds.push(chunk[index]);
+        });
       }
 
-      return { succeeded, failed };
+      return { succeeded, failed: failedIds.length, failedIds };
     },
     // onSettled: a partly failed batch still moved real balances.
     onSettled: () => {

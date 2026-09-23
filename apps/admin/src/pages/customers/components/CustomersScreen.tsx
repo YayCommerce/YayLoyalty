@@ -101,12 +101,14 @@ export function CustomersScreen({
     isAdjustSubmitting,
     handleAdjustSubmit: handleBulkAdjustSubmit,
     acknowledgementResetKey,
+    recountedCount,
   } = useCustomersBulkActions({ rows, queryFilters, sort, selection, setSelection });
 
   // One ticked row adjusts like the drawer: against that customer's own
-  // record. 0 keeps the detail query disabled while the dialog is closed.
+  // record. Keyed on the selection, not on the dialog being open — the
+  // dialog's fresh read on open would otherwise run against the previous key.
   const singleId = selection.mode === 'partial' && selection.ids.size === 1 ? [...selection.ids][0] : 0;
-  const customerQuery = useCustomerQuery(isAdjustDialogOpen ? singleId : 0);
+  const customerQuery = useCustomerQuery(singleId);
 
   // 'all' mode asks the server to COUNT the filter; a tick list knows its own
   // count, so it sends no filters and reads only liability and rate.
@@ -202,6 +204,7 @@ export function CustomersScreen({
         filters={queryFilters}
         rowsOnPage={rows.length}
         acknowledgementResetKey={acknowledgementResetKey}
+        recountedCount={recountedCount}
       />
     </>
   );
