@@ -305,7 +305,7 @@ See `customers-page.matching-customers.ts` for selection resolution; `customers-
 
 ### Customer drawer (F09) — per-customer detail view
 
-Opened from Customers-list row; shows balance, stats, four tabs (Points ledger and Activity, both real; Redemptions and Referrals, empty envelopes until their tables exist). All five drawer endpoints (`GET /customers/{id}`, `/ledger`, `/activity`, `/redemptions`, `/referrals`) serve real data only, and take their id through `member_id_param()`, so a deleted member's drawer still opens. Responses are validated by Zod mirrors in `src/lib/schema/`. Shared helpers: `Schemas/CustomerItemSchema.php` (the item shape), `Schemas/LedgerQueryArgs.php` (filter groups + vocabulary), `Controllers/CustomerListFormatter.php` (wire shape helpers).
+Opened from Customers-list row; shows balance, stats, four tabs (Points ledger and Activity, both real; Redemptions and Referrals, empty envelopes until their tables exist). All five drawer endpoints (`GET /customers/{id}`, `/ledger`, `/activity`, `/redemptions`, `/referrals`) serve real data only (no fixtures), and take their id through `member_id_param()`, so a deleted member's drawer still opens. Responses are validated by Zod mirrors in `src/lib/schema/`. Response shape helpers: `Controllers/CustomerItemFormatter.php` (detail item), `Controllers/Schemas/{CustomerItemSchema,LedgerQueryArgs,ActivityQueryArgs}.php` (shape and filter vocabulary).
 
 ### Manual points adjustment — wired end-to-end, including the SPA
 
@@ -335,7 +335,7 @@ Transaction::run() commits (or releases the savepoint)
     ↓
 do_action( 'yayloyalty_ledger_recorded', $entry )   ← after commit, so a subscriber never sees a rolled-back row
     ↓
-REST returns the LedgerEntry → zod parse → `useBulkAdjustPointsMutation` invalidates the `['customer']` query prefix → list, detail and ledger all refetch
+REST returns the LedgerEntry → zod parse → `useBulkAdjustPointsMutation` invalidates the `['customer', kind, userId]` prefix plus activity → list, detail, ledger and activity all refetch
 ```
 
 ### Account-deletion capture — the first WP-core-hook subscriptions in this codebase
@@ -373,7 +373,8 @@ unwritten event types.
 self-registration) is the third raw WP-core-hook subscription, registered in `yayloyalty.php`
 alongside `delete_user`/`wpmu_delete_user`. `CustomerActivityListener::on_user_register()` calls
 `CustomerRepository::ensure_row()` directly, except for staff (a user with `edit_posts` or
-`manage_woocommerce`, WooCommerce's own back-office rule: admins, shop managers, editors) — no ledger write, no `yayloyalty_ledger_recorded`
+`manage_woocommerce`, WooCommerce's own back-office rule: admins, shop managers, editors), who get
+no row until a ledger write creates one. No ledger write, no `yayloyalty_ledger_recorded`
 event, nothing logged to `yayloyalty_customer_meta` (a brand-new account has no points activity
 yet, only a row to reserve at balance 0). This makes `yayloyalty_customers` row creation eager on
 WP registration instead of lazy-on-first-earn; the `account_created` activity-log entry

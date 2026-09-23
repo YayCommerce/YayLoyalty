@@ -137,7 +137,7 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
   and `ContextFactoryTest.php` are the scaffold's specification. `docs/points-engine-scout.md` records
   the pre-scaffold inventory.
 
-### Added — Customers row created at WP registration (2026-09-22)
+### Added — Customers row created at WP registration (2026-09-23)
 
 - New `user_register` hook (`CustomerActivityListener::on_user_register()`, registered in
   `yayloyalty.php`) calls `CustomerRepository::ensure_row()` for every new WP user, admin-created
@@ -156,7 +156,7 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
   empty-state sentence rendered on one unbroken line and overflowed past the drawer, forcing a
   horizontal scrollbar. Added `whitespace-normal` to the empty-state cell.
 
-### Added — Customer meta table, real account-deletion capture, real activity log (2026-09-22)
+### Added — Customer meta table, real account-deletion capture, real activity log (2026-09-23)
 
 - **New table:** `yayloyalty_customer_meta` — generic per-customer key-value event log, doubling as
   the activity log's backing store (`Models/CustomerMeta.php`, `Repositories/CustomerMetaRepository.php`,
@@ -188,7 +188,7 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
   anonymisation/erasure remains not started and must be re-specified against the "row kept forever"
   policy this task locks in.
 
-### Removed — Customer drawer `?scenario=` fixture system (2026-09-22)
+### Removed — Customer drawer `?scenario=` fixture system (2026-09-23)
 
 The drawer's UI had been fully verified against every fixture scenario, so the WP_DEBUG-gated
 dev-only data source is no longer needed — only the real path remains.

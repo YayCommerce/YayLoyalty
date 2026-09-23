@@ -353,17 +353,10 @@ reversal_status }`, explaining a negative balance in place (a refund reversed mo
   `{ earned_from, earned_to, points, expires_at }`, or `null` on the Free build or when the store's
   expiry model has no batches. This is a **display-only preview** of what
   `yayloyalty_lots`/`yayloyalty_lot_allocations` (below) will eventually back — those tables are
-  <<<<<<< HEAD
   still unimplemented (Pro 1.0), so nothing here reads or writes them.
 - **`points_per_currency_unit`** — a single number (not the removed `worth` object), the rate 4b's/
   5a's money-equivalent figures multiply by. Restored narrowly after an earlier commit removed
-  `worth` wholesale; see `CustomerRestController.php`.
-  =======
-  still unimplemented (Pro 1.0), so nothing here reads or writes them. Fixture: `includes/Controllers/Fixtures/CustomerDrawer/DrawerExpiry.php`.
-- **`points_per_currency_unit`** (phase 03) — a single number (not the removed `worth` object),
-  the rate 4b's/5a's money-equivalent figures multiply by. Restored narrowly after an earlier
-  commit removed `worth` wholesale; see `includes/Controllers/Fixtures/CustomerDrawer/DrawerProfiles.php`.
-  > > > > > > > dev/edd
+  `worth` wholesale.
 
 All four parse through the same Zod schema (`customer.schema.ts`), same discipline as everything
 else in this drawer.

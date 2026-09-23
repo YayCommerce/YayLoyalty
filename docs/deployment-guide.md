@@ -159,6 +159,9 @@ composer test:integration
 ```
 
 It boots a real WordPress through `wp-load.php` and talks to a real MySQL.
+The bootstrap raises PHP's `memory_limit` to 512M — loading the full REST API
+and WooCommerce's routes outgrows the CLI default of 128M.
+
 Two environment variables point it at one:
 
 | Variable | Meaning |
