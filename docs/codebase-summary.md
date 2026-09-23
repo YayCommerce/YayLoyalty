@@ -392,7 +392,7 @@ BaseRestController::exec_write( callback, request )
 - **Admin JS:** Enqueued by `RegisterProd` / `RegisterDev`; communicates via `ky` to REST
 - **REST:** Namespace `yayloyalty/v1`, all under `yayloyalty_rest_controllers` filter
 - **Headless / WP-CLI:** Runs via `plugins_loaded` — no `admin_init` required
-- **Tests:** `tests/unit/` with `tests/bootstrap.php` shim for hooks (no `$wpdb`, no WooCommerce). Run with `composer test` (214 PHPUnit tests, 64 incomplete by design — the earning-split specification under `tests/unit/Earning/`, `tests/unit/Services/`, `tests/unit/ContextFactoryTest.php` and the redemption-split specification under `tests/unit/Redemption/`); `pnpm --filter @yayloyalty/admin-page test` runs Vitest over `apps/admin/tests/` against the same `tests/fixtures/points-math-vectors.json`
+- **Tests:** `tests/unit/` with `tests/bootstrap.php` shim for hooks (no `$wpdb`, no WooCommerce). Run with `composer test` (211 PHPUnit tests, 61 incomplete by design — the earning-split specification under `tests/unit/Earning/`, `tests/unit/Services/`, `tests/unit/ContextFactoryTest.php` and the redemption-split specification under `tests/unit/Redemption/`); `composer test:integration` runs `tests/integration/` against a real WordPress and MySQL — plugin tables created under a scratch `ylit_` prefix and dropped afterwards, so the site's own data is never read or written; `pnpm --filter @yayloyalty/admin-page test` runs Vitest over `apps/admin/tests/` against the same `tests/fixtures/points-math-vectors.json`
 
 ---
 

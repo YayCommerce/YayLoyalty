@@ -29,6 +29,28 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
 - **Tests:** 208 → 214; `tests/unit/Database/QueryExceptionTest.php` (6 real). The award path's
   DB-dependent invariants remain the incomplete specification under `tests/unit/Services/`.
 
+### Added — Integration suite with a database under it (2026-09-23)
+
+- **`tests/integration/`** with its own `phpunit-integration.xml.dist` and `composer test:integration`.
+  Boots real WordPress through `wp-load.php` and talks to real MySQL; `YAYLOYALTY_WP_ROOT` and
+  `YAYLOYALTY_TEST_SOCKET` point it at a site, both optional on a normal dev checkout.
+- **Isolation is by table prefix.** `Utils\Table::name()` composes from `$wpdb->prefix` per call, so
+  the bootstrap reassigns it to `ylit_`; plugin tables are created there and dropped at shutdown,
+  with the prefix asserted before each `DROP`. No option written, no site table read. The bootstrap
+  bails on a missing `wp-load.php`, a missing socket, an inactive plugin or a site already on the
+  scratch prefix.
+- **`LedgerGuardTest`** (10 tests, 1 incomplete) proves against MySQL: an award writes one row and
+  moves the aggregates; a second award for one order and trigger is `Outcome::duplicate` carrying
+  the first row; `insert_unless_duplicate()` returns null on the second insert with no pre-check
+  involved, which is the index doing the work; a non-1062 failure still throws; a duplicate moves no
+  aggregate and does not touch `last_activity_at`; `balance_after` is an unbroken chain; manual
+  adjustments write two rows with NULL keys; `yayloyalty_ledger_recorded` fires once, not twice.
+- **`LedgerServiceTest` narrowed** from 7 specifications to 4 — the rest are now assertions
+  elsewhere. Unit suite 214 → 211, incomplete 64 → 61.
+- **Still unproven:** the collision branch inside `earn()` (its pre-check runs under the row lock,
+  so one connection can never reach it), lock serialisation, `redeem()`, and the nested-commit gap
+  in `dispatch_events()`. Each says so in its own `markTestIncomplete`.
+
 ### Changed — Award triggers on a set of statuses (2026-09-23, prose)
 
 - `OrderListener` rewritten as specification: one hook (`woocommerce_order_status_changed`,

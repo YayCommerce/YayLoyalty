@@ -314,7 +314,7 @@ A stripping build fails silently by nature, so every release is validated agains
 ```bash
 composer lint                          # phpcs (WPCS + PHPCompatibility)
 composer lint:fix                      # phpcbf
-composer test                          # phpunit — 214 tests (64 incomplete = the earning-split specification in `tests/unit/Earning/`, `tests/unit/Services/`, `tests/unit/ContextFactoryTest.php` and the redemption-split specification in `tests/unit/Redemption/`): points engine, earning orchestration scaffold, reward engine + clamp, redemption orchestration scaffold, dashboard computation, PointsMath + shared vectors, campaign validation, drawer query-arg groupings + fixture helpers
+composer test                          # phpunit — 211 tests (61 incomplete = the earning-split specification in `tests/unit/Earning/`, `tests/unit/Services/`, `tests/unit/ContextFactoryTest.php` and the redemption-split specification in `tests/unit/Redemption/`): points engine, earning orchestration scaffold, reward engine + clamp, redemption orchestration scaffold, dashboard computation, PointsMath + shared vectors, campaign validation, drawer query-arg groupings + fixture helpers
 pnpm --filter @yayloyalty/admin-page lint   # eslint + prettier on SPA
 pnpm --filter @yayloyalty/admin-page test   # vitest — lib/points-math against the same vector file
 ./scripts/run.sh build [pro|lite]      # Full build — currently fails at tsc --noEmit due to 3 pre-existing missing-dependency type errors
