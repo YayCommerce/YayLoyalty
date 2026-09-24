@@ -3,6 +3,7 @@ namespace YayLoyalty\Repositories;
 
 use YayLoyalty\Database\QueryException;
 use YayLoyalty\Models\LedgerEntry;
+use YayLoyalty\Utils\Sql;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -151,7 +152,7 @@ class LedgerRepository extends AbstractRepository {
         global $wpdb;
 
         $ids = array_map( 'intval', $campaign_ids );
-        $in  = implode( ', ', array_fill( 0, count( $ids ), '%d' ) );
+        $in  = Sql::in_placeholders( $ids, '%d' );
 
         // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- $in is a "%d, %d, …" placeholder list; every value is bound below. Same pattern as Pro\Repositories\CampaignPointsRepository::issued_by_campaign().
         $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery

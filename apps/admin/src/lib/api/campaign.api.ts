@@ -2,6 +2,7 @@ import { api } from '@/lib/api/api';
 import { parsePaginated } from '@/lib/api/paginated';
 import {
   Campaign,
+  CampaignCreateInput,
   campaignDeleteResponseSchema,
   CampaignListParams,
   campaignSchema,
@@ -28,6 +29,11 @@ export async function getCampaigns(params: CampaignListParams = {}) {
 
 export async function getCampaign(id: number): Promise<Campaign> {
   return campaignSchema.parse(await api.get(`campaigns/${id}`).json());
+}
+
+/** POST campaigns. The server generates `slug` from `name`; nothing is created until this is called. */
+export async function createCampaign(input: CampaignCreateInput): Promise<Campaign> {
+  return campaignSchema.parse(await api.post('campaigns', { json: input }).json());
 }
 
 /** PUT campaigns/{id}. Every field is optional server-side except this type's own required ones; see updateCampaignStatus() for a narrower partial write. */

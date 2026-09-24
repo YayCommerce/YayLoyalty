@@ -1,6 +1,7 @@
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
+  createCampaign,
   deleteCampaign,
   getCampaign,
   getCampaigns,
@@ -8,7 +9,13 @@ import {
   updateCampaignConfig,
   updateCampaignStatus,
 } from '@/lib/api/campaign.api';
-import type { Campaign, CampaignListParams, CampaignStatus, CampaignUpdateInput } from '@/lib/schema/campaign.schema';
+import type {
+  Campaign,
+  CampaignCreateInput,
+  CampaignListParams,
+  CampaignStatus,
+  CampaignUpdateInput,
+} from '@/lib/schema/campaign.schema';
 
 /** ─── Query Options ─────────────────────────────────── */
 
@@ -35,6 +42,19 @@ export function useCampaignsQuery(params: CampaignListParams = {}) {
 
 export function useCampaignQuery(id: number) {
   return useQuery(CAMPAIGN_QUERIES.detail(id));
+}
+
+/** No detail query key: nothing exists to invalidate until the row is created. */
+export function useCreateCampaignMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationKey: ['campaign', 'create'],
+    mutationFn: (input: CampaignCreateInput) => createCampaign(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['campaign', 'list'] });
+    },
+  });
 }
 
 export function useUpdateCampaignMutation(id: number) {

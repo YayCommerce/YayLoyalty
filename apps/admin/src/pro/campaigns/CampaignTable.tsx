@@ -16,7 +16,6 @@ import {
   Campaign,
   CAMPAIGN_DISPLAY_STATUSES,
   CampaignDisplayStatus,
-  CampaignStatus,
   resolveCampaignDisplayStatus,
 } from '@/lib/schema/campaign.schema';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -51,7 +50,6 @@ import {
   triggerLabel,
 } from './campaign-labels';
 import { CampaignPointsSummary } from './CampaignPointsSummary';
-import type { CampaignEditorDuplicateSeed } from './editor/CampaignEditor';
 import { CampaignPauseDialog } from './pause/CampaignPauseDialog';
 
 /** Groups larger than this collapse to the default plus this many, highest-priority first. */
@@ -101,6 +99,7 @@ interface CampaignGroup {
  * which nothing can query yet.
  */
 export function CampaignTable() {
+  const navigate = useNavigate();
   const [newStore] = useState(false);
   const [noLiveCampaign] = useState(false);
 
@@ -343,8 +342,7 @@ export function CampaignTable() {
               </Select>
             )}
 
-            {/* Inert on purpose: no create form yet (follow-up task) — the REST POST is real. */}
-            <Button size="sm" onClick={() => {}}>
+            <Button size="sm" onClick={() => navigate('/campaigns/new')}>
               {__('Add campaign', 'yayloyalty')}
             </Button>
           </div>
@@ -798,22 +796,9 @@ function SortableCampaignRow({
                 {__('View performance', 'yayloyalty')}
               </DropdownMenuItem>
             )}
-            {/* Seeds the editor via router state rather than creating a row: a real duplicate would
-                vanish from the fixture-backed list on the next fetch. Router state so it is gone on
-                reload, since nothing was created for a reload to restore. */}
-            <DropdownMenuItem
-              onSelect={() =>
-                navigate(`/campaigns/${row.id}/edit`, {
-                  state: {
-                    duplicateSeed: {
-                      /* translators: %s: the name of the campaign being duplicated. */
-                      name: sprintf(__('%s (copy)', 'yayloyalty'), row.name),
-                      status: 'draft' as CampaignStatus,
-                    } satisfies CampaignEditorDuplicateSeed,
-                  },
-                })
-              }
-            >
+            {/* Create mode, seeded from this campaign — CampaignCreator's duplicateFrom path.
+                A real POST on Save; this campaign itself is never written to. */}
+            <DropdownMenuItem onSelect={() => navigate(`/campaigns/new/scratch?from=${row.id}`)}>
               {__('Duplicate', 'yayloyalty')}
             </DropdownMenuItem>
             {/* Shown for built-ins too, as their substitute for Archive. Deferred so the dropdown closes first. */}

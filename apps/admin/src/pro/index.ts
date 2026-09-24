@@ -16,8 +16,9 @@ export const PRO_BUNDLE_SENTINEL = 'yayloyalty-pro-bundle-a7f3c1';
  * enough: JSX evaluates children eagerly and drags the subtree into Lite.
  */
 export { ConditionsPreview } from './campaigns/ConditionsPreview';
+export { CampaignTemplatePicker } from './campaigns/add/CampaignTemplatePicker';
 export { CampaignTable } from './campaigns/CampaignTable';
-export { CampaignEditor } from './campaigns/editor/CampaignEditor';
+export { CampaignCreator, CampaignEditor } from './campaigns/editor/CampaignEditor';
 export { CampaignPerformance } from './campaigns/performance/CampaignPerformance';
 export { CustomersSavedSegmentRow } from './customers/CustomersSavedSegmentRow';
 export { DashboardProPanels } from './dashboard/DashboardProPanels';

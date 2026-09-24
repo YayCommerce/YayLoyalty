@@ -7,6 +7,9 @@ import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 /** Mirrors CampaignTrigger::lite_triggers(). */
 export const LITE_CAMPAIGN_TRIGGERS = ['purchase', 'signup', 'review'] as const;
 
+/** The only triggers POST campaigns accepts (create_item() rejects everything else via CampaignTrigger::is_valid()). */
+export type LiteCampaignTrigger = (typeof LITE_CAMPAIGN_TRIGGERS)[number];
+
 /** Mirrors YayLoyaltyPro::ADDED_TRIGGERS. */
 export const PRO_CAMPAIGN_TRIGGERS = ['birthday', 'first_order', 'order_count', 'spend_milestone'] as const;
 
@@ -239,6 +242,14 @@ export const campaignUpdateInputSchema = z
 
 export type CampaignUpdateInput = z.infer<typeof campaignUpdateInputSchema>;
 
+/**
+ * Write body for POST campaigns, mirroring create_item()'s accepted fields.
+ * `trigger` is the one field update has no equivalent for — it is chosen
+ * once, in the chooser, and immutable afterwards. No `slug`: the server
+ * always generates it from `name`.
+ */
+export type CampaignCreateInput = CampaignUpdateInput & { trigger: LiteCampaignTrigger };
+
 /** Response of DELETE campaigns/{id}, mirroring delete_item(). */
 export const campaignDeleteResponseSchema = z.object({
   deleted: z.boolean(),
@@ -297,6 +308,28 @@ export const CAMPAIGN_CONFIG_FIELDS: Record<
     // Absent from default_config(); the form defaults it to 0.
     media_bonus_points: { type: 'int', min: 0 },
   },
+};
+
+/**
+ * Mirrors Campaign::default_config(). Used only when creating: the chooser's
+ * templates start from these, and switching the trigger in the builder
+ * re-seeds config to the new trigger's defaults, since a stale key from the
+ * old trigger would fail Campaign::config_is_valid() on save.
+ */
+export const DEFAULT_CAMPAIGN_CONFIG: Record<LiteCampaignTrigger, Record<string, unknown>> = {
+  purchase: {
+    points_per_unit: 1,
+    base: 'after_discounts',
+    include_shipping: false,
+    include_tax: false,
+    rounding: 'down',
+    min_subtotal: 0,
+    exclude_coupon_orders: false,
+    excluded_product_ids: [],
+    excluded_category_ids: [],
+  },
+  signup: { points: 100 },
+  review: { points: 50, require_verified: true, one_per_product: true, daily_cap: 0 },
 };
 
 /** Absent from default_config('purchase'); missing means 'rate'. */

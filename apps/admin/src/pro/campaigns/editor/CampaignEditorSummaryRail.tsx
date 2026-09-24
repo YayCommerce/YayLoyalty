@@ -1,4 +1,3 @@
-import type { UseMutationResult } from '@tanstack/react-query';
 import { Check, X } from 'lucide-react';
 import { useFormContext } from 'react-hook-form';
 import { __, sprintf } from '@wordpress/i18n';
@@ -9,7 +8,6 @@ import {
   Campaign,
   CampaignCondition,
   CampaignTrigger,
-  CampaignUpdateInput,
   resolveCampaignDisplayStatus,
   resolvePurchaseMode,
 } from '@/lib/schema/campaign.schema';
@@ -36,7 +34,8 @@ export function CampaignEditorSummaryRail({
   onArchive,
   onPerformance,
 }: {
-  mutation: UseMutationResult<Campaign, unknown, CampaignUpdateInput>;
+  /** Only isPending is read here; the create and update mutations differ in their variables type, which this never needs. */
+  mutation: { isPending: boolean };
   onCancel: () => void;
   /** Omitted where archiving is not offered. */
   onArchive?: () => void;
@@ -45,7 +44,7 @@ export function CampaignEditorSummaryRail({
   onPerformance?: () => void;
 }) {
   const { watch, formState } = useFormContext<CampaignFormValues>();
-  const { campaign } = useCampaignEditorContext();
+  const { campaign, trigger } = useCampaignEditorContext();
   const values = watch();
 
   const campaignsQuery = useCampaignsQuery({ perPage: 100 });
@@ -55,7 +54,7 @@ export function CampaignEditorSummaryRail({
     (candidate) => candidate.is_builtin && candidate.trigger === 'purchase',
   );
 
-  const group = triggerGroup(campaign.trigger);
+  const group = triggerGroup(trigger);
   const hasPriorityCollision = otherCampaigns.some(
     (row) => row.id !== campaign.id && triggerGroup(row.trigger) === group && row.priority === values.priority,
   );
@@ -63,13 +62,13 @@ export function CampaignEditorSummaryRail({
   const currency = window.yayLoyaltyMeta.wcMeta.currency_data.currency;
 
   const sentences = summarizeCampaign(values, {
-    trigger: campaign.trigger,
+    trigger,
     currency,
     defaultPurchaseCampaign,
   });
 
   const readiness = campaignReadiness(values, {
-    trigger: campaign.trigger,
+    trigger,
     hasPriorityCollision,
     defaultPurchaseCampaign,
   });

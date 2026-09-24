@@ -6,7 +6,12 @@ import { __, sprintf } from '@wordpress/i18n';
 
 import { joinStoredDateTime, parseWPDate, parseWPTime, splitStoredDateTime } from '@/lib/helpers/format.helper';
 import { useCampaignsQuery } from '@/lib/queries/campaign.queries';
-import { CampaignTrigger, LITE_CAMPAIGN_TRIGGERS, resolvePurchaseMode } from '@/lib/schema/campaign.schema';
+import {
+  CampaignTrigger,
+  LITE_CAMPAIGN_TRIGGERS,
+  LiteCampaignTrigger,
+  resolvePurchaseMode,
+} from '@/lib/schema/campaign.schema';
 import { cn } from '@/lib/utils';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -146,12 +151,19 @@ function triggerDescription(trigger: CampaignTrigger): string {
   }
 }
 
+/** Dispatches on mode: create picks a trigger, edit only ever shows the one already saved. */
+function CampaignEditorTrigger() {
+  const { mode } = useCampaignEditorContext();
+
+  return mode === 'create' ? <CampaignEditorTriggerEditable /> : <CampaignEditorTriggerReadOnly />;
+}
+
 /**
  * Read-only trigger radio: trigger is immutable after create and renders
  * from the loaded Campaign, never form state. Offers only the Lite triggers,
  * since no Pro trigger has a field map.
  */
-function CampaignEditorTrigger() {
+function CampaignEditorTriggerReadOnly() {
   const { campaign } = useCampaignEditorContext();
 
   // A stored Pro trigger falls outside the offered list; include it so the control never
@@ -186,13 +198,49 @@ function CampaignEditorTrigger() {
   );
 }
 
+/**
+ * Editable trigger radio for create mode, restricted to the three Lite
+ * triggers — the only ones a template or "Start from scratch" can offer.
+ * onTriggerChange also resets config/conditions; see CampaignEditorContextValue.
+ */
+function CampaignEditorTriggerEditable() {
+  const { trigger, onTriggerChange } = useCampaignEditorContext();
+
+  return (
+    <div className="flex flex-col gap-3">
+      <RadioGroup
+        value={trigger}
+        onValueChange={(value) => value && onTriggerChange?.(value as LiteCampaignTrigger)}
+        className="gap-3"
+      >
+        {LITE_CAMPAIGN_TRIGGERS.map((candidate) => (
+          <div key={candidate} className="flex items-start gap-2.5">
+            <RadioGroupItem id={`campaign-trigger-${candidate}`} value={candidate} className="mt-0.5" />
+            <FieldContent>
+              <FieldLabel htmlFor={`campaign-trigger-${candidate}`}>{triggerLabel(candidate)}</FieldLabel>
+              <FieldDescription>{triggerDescription(candidate)}</FieldDescription>
+            </FieldContent>
+          </div>
+        ))}
+      </RadioGroup>
+
+      <FieldDescription>
+        {__(
+          'Decides which group of campaigns this one competes with, and which fields Reward shows below. Cannot be changed once the campaign is saved.',
+          'yayloyalty',
+        )}
+      </FieldDescription>
+    </div>
+  );
+}
+
 /* ─── §3 Reward ──────────────────────────────────────────────────────── */
 
-/** Dispatches on the loaded trigger; anything without a field map falls back to RewardFieldsUnknown. */
+/** Dispatches on the effective trigger (context's `trigger`, not campaign.trigger — see CampaignEditorContextValue); anything without a field map falls back to RewardFieldsUnknown. */
 function CampaignEditorReward() {
-  const { campaign } = useCampaignEditorContext();
+  const { trigger } = useCampaignEditorContext();
 
-  switch (campaign.trigger) {
+  switch (trigger) {
     case 'purchase':
       return <RewardFieldsPurchase />;
     case 'signup':
@@ -200,7 +248,7 @@ function CampaignEditorReward() {
     case 'review':
       return <RewardFieldsReview />;
     default:
-      return <RewardFieldsUnknown trigger={campaign.trigger} />;
+      return <RewardFieldsUnknown trigger={trigger} />;
   }
 }
 
@@ -972,11 +1020,12 @@ function describeWindow(startsAt: string | null, endsAt: string | null, zoneLabe
  */
 function CampaignEditorPriority() {
   const { control, setValue } = useFormContext<CampaignFormValues>();
-  const { campaign } = useCampaignEditorContext();
+  const { mode, campaign, trigger } = useCampaignEditorContext();
   const priority = useWatch({ control, name: 'priority' });
+  const name = useWatch({ control, name: 'name' });
   const campaignsQuery = useCampaignsQuery({ perPage: 100 });
 
-  const group = triggerGroup(campaign.trigger);
+  const group = triggerGroup(trigger);
 
   const ladder = useMemo(() => {
     const rows = (campaignsQuery.data?.data ?? [])
@@ -984,8 +1033,19 @@ function CampaignEditorPriority() {
       // Substitute the unsaved priority so the ladder answers "what would this reorder to".
       .map((row) => (row.id === campaign.id ? { ...row, priority: priority ?? row.priority } : row));
 
+    // Create mode: campaign.id (Number.MAX_SAFE_INTEGER) never matches a real row above, so the
+    // unsaved campaign needs its own entry to preview where it lands in its own group.
+    if (mode === 'create') {
+      rows.push({
+        ...campaign,
+        trigger,
+        priority: priority ?? campaign.priority,
+        name: name || __('New campaign', 'yayloyalty'),
+      });
+    }
+
     return [...rows].sort((a, b) => b.priority - a.priority || b.id - a.id);
-  }, [campaignsQuery.data, group, campaign.id, priority]);
+  }, [campaignsQuery.data, group, campaign, trigger, mode, priority, name]);
 
   return (
     <div className="flex flex-col gap-4">

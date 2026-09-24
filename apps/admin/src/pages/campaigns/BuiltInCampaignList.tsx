@@ -18,7 +18,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
-import { Input } from '@/components/ui/input';
 import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
 import { Segmented, SegmentedItem } from '@/components/ui/segmented';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -360,14 +359,6 @@ function PurchaseFields({
         </label>
       </ConfigField>
 
-      {/* Disabled: a real picker needs a WooCommerce product/category search endpoint, which doesn't exist yet. */}
-      <ConfigField label={__('Excluded products', 'yayloyalty')}>
-        <Input disabled placeholder={__('Search products — none excluded', 'yayloyalty')} className="max-w-sm" />
-      </ConfigField>
-
-      <ConfigField label={__('Excluded categories', 'yayloyalty')}>
-        <Input disabled placeholder={__('Search categories — none excluded', 'yayloyalty')} className="max-w-sm" />
-      </ConfigField>
     </>
   );
 }

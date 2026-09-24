@@ -258,6 +258,11 @@ final class CampaignRestController extends AbstractRestController {
             return $this->error_conflict( __( 'This campaign has awarded points. Archive it instead of deleting it.', 'yayloyalty' ) );
         }
 
+        // Unguarded gap: nothing locks between this check and the delete below, and
+        // ledger.campaign_id is a plain KEY, not a FOREIGN KEY, so a row written into that gap
+        // would be orphaned rather than rejected. Not reachable today — the earning listeners
+        // that would write a real campaign_id aren't registered at boot (see Engine/Earning/) —
+        // revisit once they are.
         $this->campaigns->delete( $id );
 
         return [

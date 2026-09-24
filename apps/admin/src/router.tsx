@@ -5,6 +5,8 @@ import { Can, CAP, Capability } from '@/lib/access';
 import AppLayout from './AppLayout';
 import NotFoundPage from './pages/404';
 import ErrorPage from './pages/500';
+import CampaignAddPage from './pages/campaigns/CampaignAddPage';
+import CampaignCreatePage from './pages/campaigns/CampaignCreatePage';
 import CampaignEditorPage from './pages/campaigns/CampaignEditorPage';
 import CampaignPerformancePage from './pages/campaigns/CampaignPerformancePage';
 import CampaignsPage from './pages/campaigns/CampaignsPage';
@@ -56,6 +58,14 @@ export function getManagerRouter() {
         {
           path: 'campaigns',
           element: guarded(CAP.MANAGE_CAMPAIGNS, <CampaignsPage />),
+        },
+        {
+          path: 'campaigns/new',
+          element: guarded(CAP.MANAGE_CAMPAIGNS, <CampaignAddPage />),
+        },
+        {
+          path: 'campaigns/new/:templateId',
+          element: guarded(CAP.MANAGE_CAMPAIGNS, <CampaignCreatePage />),
         },
         {
           path: 'campaigns/:id/edit',
