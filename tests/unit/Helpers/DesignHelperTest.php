@@ -15,7 +15,7 @@ class DesignHelperTest extends TestCase {
 
     protected function setUp(): void {
         $GLOBALS['yayloyalty_test_options']         = [];
-        $GLOBALS['yayloyalty_test_current_user_id'] = 1;
+        $GLOBALS['yayloyalty_test_current_user'] = 1;
     }
 
     /**
@@ -133,8 +133,8 @@ class DesignHelperTest extends TestCase {
     }
 
     /**
-     * List field wholesale replacement, NOT index merge: save visibility.except_pages = []
-     * and assert the stored result is [], not the default [ 'checkout' ].
+     * List field wholesale replacement, NOT index merge: save visibility.include_page_ids = []
+     * over a stored [ 12, 34 ] and assert the result is [], not the old list.
      */
     public function test_list_field_wholesale_replacement(): void {
         // Set a non-empty list first
@@ -142,7 +142,7 @@ class DesignHelperTest extends TestCase {
             DesignHelper::OPTION_DESIGN,
             [
                 'visibility' => [
-                    'except_pages' => [ 'checkout', 'cart' ],
+                    'include_page_ids' => [ 12, 34 ],
                 ],
             ]
         );
@@ -150,14 +150,14 @@ class DesignHelperTest extends TestCase {
         // Save an empty list to replace it
         $input = [
             'visibility' => [
-                'except_pages' => [],
+                'include_page_ids' => [],
             ],
         ];
 
         $result = DesignHelper::update_design( $input );
 
-        // If index-merged, this would be [ 'checkout', 'cart' ]; wholesale-replaced, it's []
-        $this->assertEquals( [], $result['visibility']['except_pages'] );
+        // If index-merged, this would be [ 12, 34 ]; wholesale-replaced, it's []
+        $this->assertEquals( [], $result['visibility']['include_page_ids'] );
     }
 
     /**

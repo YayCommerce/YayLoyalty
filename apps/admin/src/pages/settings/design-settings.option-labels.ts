@@ -61,7 +61,7 @@ export function launcherIconLabel(icon: DesignLauncherIcon): string {
   }
 }
 
-/** Tier badge icon vocabulary — used by phase 04's Pro tier section, kept here with its sibling. */
+/** Tier badge icon vocabulary for the Pro tier section, kept here with its sibling. */
 export function badgeIconLabel(icon: DesignBadgeIcon): string {
   switch (icon) {
     case 'ring':
@@ -80,7 +80,7 @@ export function visibilityScopeLabel(scope: DesignVisibilityScope): string {
     case 'shop_and_product':
       return __('Shop and product pages', 'yayloyalty');
     case 'custom_pages':
-      return __('Custom pages', 'yayloyalty');
+      return __('Only the pages I choose', 'yayloyalty');
   }
 }
 

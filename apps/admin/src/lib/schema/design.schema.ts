@@ -58,7 +58,8 @@ export const designSchema = z.object({
   }),
   visibility: z.object({
     scope: designVisibilityScopeSchema,
-    except_pages: z.array(z.string()),
+    /** Read only when `scope === 'custom_pages'`. */
+    include_page_ids: z.array(z.number().int().positive()),
     hide_on_mobile: z.boolean(),
     hide_for_roles: z.array(z.string()),
   }),

@@ -7,7 +7,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Design storage: one option, validated on read and write, mirroring SettingsHelper — with one deviation:
- * slug_list/badge_list fields are assigned wholesale after the recursive merge (array_replace_recursive
+ * list fields (id_list, slug_list, badge_list) are assigned wholesale after the recursive merge (array_replace_recursive
  * merges lists by index and would resurrect a default a merchant just cleared or shortened). A stored ''
  * storefront_text is literal, never re-substituted; reset() is the only route back to the default wording.
  * Field declarations live in DesignSchema, per-type sanitisation in DesignCoercion; this class is the
@@ -50,7 +50,7 @@ class DesignHelper {
         $dropped                    = self::dropped_keys( $design, $clean );
 
         if ( [] !== $dropped ) {
-            // Otherwise a merchant gets a 200 and believes an invalid value saved; see Requirements.
+            // The route still answers 200, so without this line nothing records that a value was refused.
             Log::debug( 'DesignHelper', 'coerced to default, invalid input for: ' . implode( ', ', $dropped ) );
         }
 
@@ -118,13 +118,13 @@ class DesignHelper {
         return $clean;
     }
 
-    /** Wholesale-assigns present slug_list/badge_list fields — array_replace_recursive merges lists by index; see the class docblock. */
+    /** Wholesale-assigns present list fields — array_replace_recursive merges lists by index; see the class docblock. */
     private static function merge_over( array $base, array $clean ): array {
         $merged = array_replace_recursive( $base, $clean );
 
         foreach ( DesignSchema::schema() as $group => $fields ) {
             foreach ( $fields as $field => $type ) {
-                if ( ( 'slug_list' === $type || 'badge_list' === $type ) && isset( $clean[ $group ][ $field ] ) ) {
+                if ( in_array( $type, [ 'id_list', 'slug_list', 'badge_list' ], true ) && isset( $clean[ $group ][ $field ] ) ) {
                     $merged[ $group ][ $field ] = $clean[ $group ][ $field ];
                 }
             }

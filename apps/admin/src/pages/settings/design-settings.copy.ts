@@ -16,9 +16,8 @@ export const RESET_ERROR_FALLBACK = () => __('Could not reset the design.', 'yay
 export const RESET_CONFIRM_LABEL = () => __('Reset', 'yayloyalty');
 export const CANCEL_LABEL = () => __('Cancel', 'yayloyalty');
 
-/** Whole-tab reset, in the save-action row. Wording deliberately distinct from the
- *  storefront-text reset below — two destructive actions on one screen must never read alike. */
-export const RESET_WHOLE_TAB_BUTTON_LABEL = () => __('Reset to defaults', 'yayloyalty');
+/** Whole-tab reset, in the save-action row. Worded apart from the storefront-text reset: two destructive actions on one screen must never read alike. */
+export const RESET_WHOLE_TAB_BUTTON_LABEL = () => __('Reset all Design settings', 'yayloyalty');
 export const RESET_WHOLE_TAB_CONFIRM_TITLE = () => __('Reset every Design setting?', 'yayloyalty');
 export const RESET_WHOLE_TAB_CONFIRM_DESCRIPTION = () =>
   __(
@@ -46,7 +45,7 @@ export const LAUNCHER_ICON_UPLOAD_DESCRIPTION = () => __('Used only while Icon a
 export const STOREFRONT_SECTION_TITLE = () => __('Storefront text', 'yayloyalty');
 export const STOREFRONT_SECTION_DESCRIPTION = () =>
   __(
-    'The wording shown on your storefront panel. Clearing a field stores it empty — use Reset to defaults to bring back the original wording.',
+    'The wording shown on your storefront panel. The launcher label, balance heading and redeem button can’t be empty; clearing any other field stores it empty. Use Reset to defaults to bring back the original wording.',
     'yayloyalty',
   );
 export const STOREFRONT_LAUNCHER_LABEL_LABEL = () => __('Launcher label', 'yayloyalty');
@@ -65,6 +64,8 @@ export const STOREFRONT_RESET_CONFIRM_DESCRIPTION = () =>
     'This replaces the storefront text fields below with the default wording. Other Design settings, including any unsaved changes, are left alone.',
     'yayloyalty',
   );
+export const STOREFRONT_REQUIRED_ERROR = () =>
+  __('This text is shown on the storefront and can’t be empty.', 'yayloyalty');
 export const STOREFRONT_RESET_SUCCESS_TOAST = () => __('Storefront wording reset to defaults.', 'yayloyalty');
 
 // ─── Visibility section ──────────────────────────────
@@ -73,8 +74,13 @@ export const VISIBILITY_SECTION_TITLE = () => __('Visibility', 'yayloyalty');
 export const VISIBILITY_SECTION_DESCRIPTION = () =>
   __('Where the launcher and panel appear on the storefront.', 'yayloyalty');
 export const VISIBILITY_SCOPE_LABEL = () => __('Show on', 'yayloyalty');
-export const VISIBILITY_EXCEPT_PAGES_LABEL = () => __('Except these pages', 'yayloyalty');
-export const VISIBILITY_EXCEPT_PAGES_PLACEHOLDER = () => __('Add a page slug and press Enter', 'yayloyalty');
+export const VISIBILITY_INCLUDE_PAGES_LABEL = () => __('Show on these pages', 'yayloyalty');
+export const VISIBILITY_INCLUDE_PAGES_PLACEHOLDER = () => __('Select pages…', 'yayloyalty');
+export const VISIBILITY_INCLUDE_PAGES_SEARCH_PLACEHOLDER = () => __('Search pages…', 'yayloyalty');
+export const VISIBILITY_INCLUDE_PAGES_EMPTY = () => __('No published pages match.', 'yayloyalty');
+export const VISIBILITY_INCLUDE_PAGES_LIMIT_NOTE = () =>
+  /* translators: %d: how many pages the picker lists at once. */
+  __('Showing the first %d pages. Search to find others.', 'yayloyalty');
 export const VISIBILITY_HIDE_ON_MOBILE_LABEL = () => __('Hide on mobile', 'yayloyalty');
 export const VISIBILITY_HIDE_FOR_ROLES_LABEL = () => __('Hide for roles', 'yayloyalty');
 export const VISIBILITY_HIDE_FOR_ROLES_PLACEHOLDER = () => __('Select roles…', 'yayloyalty');

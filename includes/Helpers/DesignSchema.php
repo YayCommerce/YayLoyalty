@@ -35,10 +35,10 @@ class DesignSchema {
                 'tier_progress_line'    => __( '{points} points to {tier}', 'yayloyalty' ), // Pro
             ],
             'visibility'      => [
-                'scope'          => 'all_pages',
-                'except_pages'   => [ 'checkout' ],
-                'hide_on_mobile' => false,
-                'hide_for_roles' => [ 'administrator', 'shop_manager' ],
+                'scope'            => 'all_pages',
+                'include_page_ids' => [],
+                'hide_on_mobile'   => false,
+                'hide_for_roles'   => [ 'administrator', 'shop_manager' ],
             ],
             'tier'            => [ // Pro; badge icon vocabulary is DesignCoercion::BADGE_ICONS, not LAUNCHER_ICONS.
                 'badges' => [
@@ -106,10 +106,11 @@ class DesignSchema {
                 'tier_progress_line'    => 'text', // Pro
             ],
             'visibility'      => [
-                'scope'          => [ 'all_pages', 'shop_and_product', 'custom_pages' ],
-                'except_pages'   => 'slug_list',
-                'hide_on_mobile' => 'bool',
-                'hide_for_roles' => 'slug_list',
+                'scope'            => [ 'all_pages', 'shop_and_product', 'custom_pages' ],
+                // Read only when scope is custom_pages: the pages the launcher shows on.
+                'include_page_ids' => 'id_list',
+                'hide_on_mobile'   => 'bool',
+                'hide_for_roles'   => 'slug_list',
             ],
             // Badges carry their own icon field, validated in DesignCoercion::coerce_badge_list() against BADGE_ICONS.
             'tier'            => [ 'badges' => 'badge_list' ], // Pro

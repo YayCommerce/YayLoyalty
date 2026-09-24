@@ -21,9 +21,9 @@ import {
 
 /**
  * Pro. Mode select; `font` and `custom_css` only render when mode is
- * `custom`. `custom_css` is stored but not yet applied to the storefront —
+ * `custom`. `custom_css` is stored but not yet applied to the storefront;
  * a future renderer must emit it via `wp_add_inline_style`, never
- * interpolate it into markup (phase file, Security Considerations).
+ * interpolate it into markup, or merchant CSS becomes an injection path.
  */
 export function DesignTypographySection() {
   const { control, register } = useFormContext<Design>();

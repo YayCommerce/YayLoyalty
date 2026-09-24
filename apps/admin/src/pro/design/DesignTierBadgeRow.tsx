@@ -38,8 +38,7 @@ function BadgeIconGlyph({ icon, color }: { icon: DesignBadgeIcon; color: string 
  * customer-facing `label`. No remove control — the badge set is fixed to the
  * defaults (see DesignTierSection's docblock); only its styling is editable
  * here. `tier_id` is a free-form slug, not a foreign key — no Tiers entity
- * exists yet (see DesignTierSection's footer note and phase 04's Risk
- * Assessment). The icon control is bound to `DesignBadgeIcon`
+ * exists yet (see DesignTierSection's docblock). The icon control is bound to `DesignBadgeIcon`
  * (ring/diamond/square) — never `DesignLauncherIcon`, which offers `custom`
  * with no upload behind it here.
  */

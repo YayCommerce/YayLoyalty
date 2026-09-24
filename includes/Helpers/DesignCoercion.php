@@ -40,6 +40,8 @@ class DesignCoercion {
                 return $color ? $color : null;
             case 'attachment_id':
                 return absint( $value );
+            case 'id_list':
+                return array_slice( array_values( array_unique( array_filter( array_map( 'absint', (array) $value ) ) ) ), 0, 100 );
             case 'slug_list':
                 return array_slice( array_values( array_filter( array_map( 'sanitize_key', (array) $value ) ) ), 0, 100 );
             case 'badge_list':

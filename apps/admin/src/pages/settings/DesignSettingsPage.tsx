@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { HTTPError } from 'ky';
 import { FormProvider, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 
-import { getApiErrorMessage } from '@/lib/api/api';
+import { toastApiError } from '@/lib/api/api';
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { useDesignQuery, useResetDesignMutation, useSaveDesignMutation } from '@/lib/queries/design.queries';
 import { designSchema } from '@/lib/schema/design.schema';
@@ -32,9 +31,9 @@ import { DesignStorefrontTextSection } from './DesignStorefrontTextSection';
 import { DesignVisibilitySection } from './DesignVisibilitySection';
 
 /**
- * The Design tab: form wiring, layout and save/reset/leave-guard state only
- * — every field lives in its own section, which reads and writes through
- * `useFormContext` and takes no props (Architecture note in the phase file).
+ * The Design tab: form wiring, layout and save/reset/leave-guard state only.
+ * Every field lives in its own section, which reads and writes through
+ * `useFormContext` and takes no props.
  */
 export default function DesignSettingsPage() {
   const designQuery = useDesignQuery();
@@ -61,9 +60,7 @@ export default function DesignSettingsPage() {
       confirmLeave();
       toast.success(SAVE_SUCCESS_TOAST());
     } catch (error) {
-      if (!(error instanceof HTTPError && error.response.status === 403)) {
-        toast.error(await getApiErrorMessage(error, SAVE_ERROR_FALLBACK()));
-      }
+      await toastApiError(error, SAVE_ERROR_FALLBACK());
     }
   });
 
@@ -76,9 +73,7 @@ export default function DesignSettingsPage() {
       toast.success(RESET_WHOLE_TAB_SUCCESS_TOAST());
       setResetOpen(false);
     } catch (error) {
-      if (!(error instanceof HTTPError && error.response.status === 403)) {
-        toast.error(await getApiErrorMessage(error, RESET_ERROR_FALLBACK()));
-      }
+      await toastApiError(error, RESET_ERROR_FALLBACK());
     }
   }
 

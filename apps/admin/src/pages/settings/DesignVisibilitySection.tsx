@@ -1,20 +1,27 @@
+import { useState } from 'react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
+import { sprintf } from '@wordpress/i18n';
 
-import { designVisibilityScopeSchema, type Design } from '@/lib/schema/design.schema';
+import { PAGE_PICKER_LIMIT, type WpPageOption } from '@/lib/api/design.api';
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
+import { usePublishedPagesByIdsQuery, usePublishedPagesSearchQuery } from '@/lib/queries/design.queries';
+import { designVisibilityScopeSchema, type Design } from '@/lib/schema/design.schema';
+import { useDebouncedSearchCommit } from '@/hooks/useDebouncedSearchCommit';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { MultiSelectCombobox } from '@/components/ui/custom/multi-select-combobox';
 import { Field, FieldContent, FieldLabel } from '@/components/ui/field';
-import { ProGate } from '@/components/pro/ProGate';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { TagsInput } from '@/components/ui/tags-input';
+import { ProGate } from '@/components/pro/ProGate';
 import {
-  VISIBILITY_EXCEPT_PAGES_LABEL,
-  VISIBILITY_EXCEPT_PAGES_PLACEHOLDER,
   VISIBILITY_HIDE_FOR_ROLES_LABEL,
   VISIBILITY_HIDE_FOR_ROLES_PLACEHOLDER,
   VISIBILITY_HIDE_ON_MOBILE_LABEL,
+  VISIBILITY_INCLUDE_PAGES_EMPTY,
+  VISIBILITY_INCLUDE_PAGES_LABEL,
+  VISIBILITY_INCLUDE_PAGES_LIMIT_NOTE,
+  VISIBILITY_INCLUDE_PAGES_PLACEHOLDER,
+  VISIBILITY_INCLUDE_PAGES_SEARCH_PLACEHOLDER,
   VISIBILITY_SCOPE_LABEL,
   VISIBILITY_SECTION_DESCRIPTION,
   VISIBILITY_SECTION_TITLE,
@@ -23,15 +30,30 @@ import { visibilityScopeLabel } from './design-settings.option-labels';
 
 // Real WP roles from the bootstrap, not free text — a merchant can't typo a role slug
 // that then silently never matches anything server-side.
+const pageOption = (page: WpPageOption) => ({
+  value: String(page.id),
+  label: new DOMParser().parseFromString(page.title.rendered, 'text/html').body.textContent || `#${page.id}`,
+});
+
 const ROLE_OPTIONS = Object.entries(window.yayLoyaltyMeta.wpMeta.roles).map(([value, label]) => ({
   value,
   label,
 }));
 
-/** Scope, except-pages, hide on mobile, hide for roles — custom_pages scope and its except_pages editor are Pro. */
+/** Scope, the chosen pages, hide on mobile, hide for roles — the custom_pages scope and its page picker are Pro. */
 export function DesignVisibilitySection() {
   const { control } = useFormContext<Design>();
   const scope = useWatch({ control, name: 'visibility.scope' });
+  const showPagePicker = IS_PRO_BUILD && scope === 'custom_pages';
+  const includePageIds = useWatch({ control, name: 'visibility.include_page_ids' });
+  const [pageSearch, setPageSearch] = useState('');
+  const { commit: commitPageSearch } = useDebouncedSearchCommit(setPageSearch);
+  const searchQuery = usePublishedPagesSearchQuery(pageSearch, showPagePicker);
+  // Chosen pages by id: a search can leave them out of the results, but their badges still need names.
+  const chosenQuery = usePublishedPagesByIdsQuery(includePageIds, showPagePicker);
+  const pageOptions = (searchQuery.data ?? []).map(pageOption);
+  const chosenPageLabels = Object.fromEntries((chosenQuery.data ?? []).map(pageOption).map((o) => [o.value, o.label]));
+  const atLimit = (searchQuery.data?.length ?? 0) >= PAGE_PICKER_LIMIT;
 
   return (
     <Card>
@@ -53,7 +75,6 @@ export function DesignVisibilitySection() {
                   </SelectTrigger>
                   <SelectContent>
                     {designVisibilityScopeSchema.options.map((option) => {
-                      // Plain option, gated in place per Key Insight 5 — custom_pages is the one Pro value.
                       const gated = option === 'custom_pages' && !IS_PRO_BUILD;
 
                       return (
@@ -72,25 +93,31 @@ export function DesignVisibilitySection() {
           </FieldContent>
         </Field>
 
-        {/* except_pages is gated with the custom_pages scope: it only edits when that scope is active,
-            and a Lite build can only reach it via previously-saved Pro data (the select above blocks
-            picking it). Plain input, gated in place per Key Insight 5. */}
+        {/* Lite can land here only through a stored Pro scope; the select above blocks picking it. */}
         {scope === 'custom_pages' && (
           <Field>
             <FieldLabel>
-              {VISIBILITY_EXCEPT_PAGES_LABEL()}
+              {VISIBILITY_INCLUDE_PAGES_LABEL()}
               {!IS_PRO_BUILD && <ProGate inline />}
             </FieldLabel>
             <FieldContent>
-              {IS_PRO_BUILD && (
+              {showPagePicker && (
                 <Controller
                   control={control}
-                  name="visibility.except_pages"
+                  name="visibility.include_page_ids"
                   render={({ field }) => (
-                    <TagsInput
-                      value={field.value}
-                      onValueChange={field.onChange}
-                      placeholder={VISIBILITY_EXCEPT_PAGES_PLACEHOLDER()}
+                    <MultiSelectCombobox
+                      value={field.value.join(',')}
+                      onChange={(value) => field.onChange(value ? value.split(',').map(Number) : [])}
+                      options={pageOptions}
+                      placeholder={VISIBILITY_INCLUDE_PAGES_PLACEHOLDER()}
+                      search={{
+                        onSearchChange: commitPageSearch,
+                        placeholder: VISIBILITY_INCLUDE_PAGES_SEARCH_PLACEHOLDER(),
+                        emptyText: VISIBILITY_INCLUDE_PAGES_EMPTY(),
+                        selectedLabels: chosenPageLabels,
+                      }}
+                      footer={atLimit && sprintf(VISIBILITY_INCLUDE_PAGES_LIMIT_NOTE(), PAGE_PICKER_LIMIT)}
                     />
                   )}
                 />
