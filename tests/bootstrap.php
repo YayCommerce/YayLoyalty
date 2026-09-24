@@ -158,6 +158,15 @@ function absint( $maybeint ): int {
     return abs( (int) $maybeint );
 }
 
+/** Same as core: the strings "false" and "0", in any case, are false. */
+function rest_sanitize_boolean( $value ): bool {
+    if ( is_string( $value ) && in_array( strtolower( $value ), [ 'false', '0' ], true ) ) {
+        return false;
+    }
+
+    return (bool) $value;
+}
+
 function wp_get_attachment_url( int $attachment_id ) {
     return false;
 }

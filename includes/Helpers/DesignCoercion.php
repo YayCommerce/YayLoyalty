@@ -29,7 +29,7 @@ class DesignCoercion {
                 $choice = sanitize_key( (string) $value );
                 return in_array( $choice, $rule['options'], true ) ? $choice : null;
             case 'bool':
-                return (bool) $value;
+                return rest_sanitize_boolean( $value ); // a plain cast would store the string "false" as true
             case 'int':
                 return min( $rule['max'], max( $rule['min'], (int) $value ) );
             case 'color':

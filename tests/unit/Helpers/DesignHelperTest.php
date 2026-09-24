@@ -452,4 +452,24 @@ class DesignHelperTest extends TestCase {
         $this->assertSame( 24, $result['launcher']['corner_radius'] );
         $this->assertSame( 'bottom_right', $result['launcher']['position'] );
     }
+
+    /** A boolean sent as a string is read the way WordPress reads it, so "false" is false. */
+    public function test_bool_accepts_string_forms(): void {
+        $cases = [
+            'false' => false,
+            'FALSE' => false,
+            '0'     => false,
+            ''      => false,
+            'true'  => true,
+            '1'     => true,
+        ];
+
+        foreach ( $cases as $input => $expected ) {
+            $result = DesignHelper::update_design( [ 'visibility' => [ 'hide_on_mobile' => (string) $input ] ] );
+            $this->assertSame( $expected, $result['visibility']['hide_on_mobile'], "input '{$input}'" );
+        }
+
+        $result = DesignHelper::update_design( [ 'visibility' => [ 'hide_on_mobile' => false ] ] );
+        $this->assertFalse( $result['visibility']['hide_on_mobile'] );
+    }
 }
