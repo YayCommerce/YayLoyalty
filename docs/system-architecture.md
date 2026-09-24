@@ -191,6 +191,8 @@ flowchart TD
     Pro -->|add_filter| RestCtrlrs["yayloyalty_rest_controllers"]
     Pro -->|add_filter| Schema["yayloyalty_rest_item_schema"]
     Pro -->|add_filter| LocalizeData["yayloyalty_localize_admin_data"]
+    Pro -->|add_filter| WCEmails["woocommerce_email_classes"]
+    Pro -->|add_filter| WCEmailGroups["woocommerce_email_groups"]
 
     RestCtrlrs -.->|adds 4 controllers| Ctrls["CampaignPreviewRestController, CampaignPerformanceRestController, DashboardProRestController, CustomerSegmentsRestController"]
     
@@ -201,6 +203,8 @@ flowchart TD
     RewardWL -.->|whitelists config for those types| RW["per-type key lists"]
     Schema -.->|extends| S["REST item schemas"]
     LocalizeData -.->|adds| LD["segments, paid settings"]
+    WCEmails -.->|registers 9 emails| ProEmails["Pro LoyaltyEmail subclasses"]
+    WCEmailGroups -.->|defines groups| Groups["4 groups for the 9 emails"]
 
     Pro -->|do_action| ProBooted["yayloyalty_pro_booted"]
 ```
@@ -512,6 +516,17 @@ CampaignPerformance.tsx: useCampaignQuery (header) + useCampaignPerformanceQuery
 **Lock order: Always `customers` before `ledger`**
 - `ensure_row()` (insert-or-ignore) then `lock_and_get()` (SELECT FOR UPDATE)
 - Reverse order = deadlock in concurrent first-touch writes
+
+### Loyalty emails — registered as WooCommerce email classes
+
+Each loyalty email (points earned, expiring, expired, etc.) is a `WC_Email` subclass. Lite registers 3 emails; Pro adds 9 more (12 total), registered during `YayLoyaltyPro::boot()` through WooCommerce's `woocommerce_email_classes` and `woocommerce_email_groups` filters. The email id (`yayloyalty_points_earned`, …) is the registration key, so it is also the email's settings section; WooCommerce stores its settings in `woocommerce_{id}_settings`. Registration only: no `trigger()` is hooked, so nothing sends yet.
+
+The Admin Emails page (`/settings/emails`) is a wrapper around WooCommerce's own email management:
+- **GET `/emails`** lists registered emails (3 Lite / 12 Pro) with their on/off state and metadata
+- **POST `/emails`** patches the on/off toggle per email (WooCommerce option) and the weekly send throttle (plugin settings)
+- **Edit link** routes to WooCommerce's Emails tab for the specific email
+
+Storage: [data model](./data-model.md) (Options, WooCommerce email settings). Status of sending and the throttle: [roadmap](./project-roadmap.md).
 
 ---
 
