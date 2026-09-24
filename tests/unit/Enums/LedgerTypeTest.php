@@ -4,11 +4,7 @@ namespace YayLoyalty\Tests\Unit\Enums;
 use PHPUnit\Framework\TestCase;
 use YayLoyalty\Enums\LedgerType;
 
-/**
- * CORRECTION (a manual adjustment with "adjust lifetime totals" off) must
- * stay out of every aggregate-affecting set — that exclusion is the entire
- * mechanism apply_aggregates() relies on to leave lifetime_earned untouched.
- */
+/** CORRECTION must stay out of every aggregate-affecting set: it moves balance only. */
 final class LedgerTypeTest extends TestCase {
 
     public function test_correction_is_a_known_type(): void {
@@ -38,7 +34,6 @@ final class LedgerTypeTest extends TestCase {
         $this->assertFalse( LedgerType::is_manual_adjustment( LedgerType::EARN ) );
     }
 
-    /** ADJUST keeps affecting lifetime_earned — only CORRECTION is the balance-only escape hatch. */
     public function test_adjust_still_affects_lifetime_earned(): void {
         $this->assertTrue( LedgerType::affects_lifetime_earned( LedgerType::ADJUST ) );
     }

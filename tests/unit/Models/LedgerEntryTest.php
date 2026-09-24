@@ -6,12 +6,7 @@ use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Models\LedgerEntry;
 
-/**
- * `to_array()` is the wire shape `AbstractRestController::respond_paginated()`
- * serializes — its `note` gate must recognise every manual-adjustment type,
- * not just ADJUST, or a balance-only correction silently loses its reason
- * over the API despite the DB row holding it correctly.
- */
+/** `to_array()` exposes `note` on manual-adjustment rows only; system rows never carry one over the wire. */
 final class LedgerEntryTest extends TestCase {
 
     private function entry( string $type, ?string $note ): LedgerEntry {

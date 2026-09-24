@@ -59,8 +59,7 @@ export type LedgerEntry = z.infer<typeof ledgerEntrySchema>;
 /**
  * The drawer ledger tab's filter vocabulary — a GROUPING over `LEDGER_TYPES`,
  * not the same list: `earn` covers `earn` + `refund_earn`, `redeem` covers
- * `redeem` + `refund_redeem`, `adjust` covers `adjust` + `correction` (a
- * balance-only manual adjustment). Mirrors `LedgerQueryArgs::filter_types()`.
+ * `redeem` + `refund_redeem`, `adjust` covers `adjust` + `correction`. Mirrors `LedgerQueryArgs::filter_types()`.
  */
 export const LEDGER_FILTER_TYPES = ['all', 'earn', 'redeem', 'adjust', 'expire'] as const;
 export const ledgerFilterTypeSchema = z.enum(LEDGER_FILTER_TYPES);

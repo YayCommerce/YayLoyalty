@@ -150,12 +150,7 @@ final class LedgerGuardTest extends IntegrationTestCase {
         $this->assertSame( 100, (int) $this->customer_row( self::USER )['balance'] );
     }
 
-    /**
-     * With the flag on, lifetime_earned follows the balance in both
-     * directions and the row is written as ADJUST; off, lifetime_earned
-     * stays put and the row is written as CORRECTION — the type itself is
-     * what apply_aggregates() gates on, not a stored flag.
-     */
+    /** Flag on: an ADJUST row, lifetime_earned follows the balance both ways. Off: a CORRECTION row, lifetime_earned stays put. */
     public function test_adjust_lifetime_moves_lifetime_earned_by_the_signed_amount(): void {
         $service = $this->ledger_service();
 
