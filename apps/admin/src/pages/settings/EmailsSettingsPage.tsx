@@ -7,26 +7,13 @@ import { __ } from '@wordpress/i18n';
 
 import { getApiErrorMessage } from '@/lib/api/api';
 import { useEmailsQuery, useSaveEmailsMutation } from '@/lib/queries/emails.queries';
-import { emailsFormSchema, EmailsFormValues, EmailsResponse } from '@/lib/schema/emails.schema';
+import { emailsFormSchema, EmailsFormValues, toEmailsFormValues } from '@/lib/schema/emails.schema';
 import { useRouteLeaveGuard } from '@/hooks/useRouteLeaveGuard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { UnsavedChangeDialog } from '@/components/ui/custom/unsaved-changed-dialog';
 import { EmailsTable } from './EmailsTable';
 import { EmailsThrottleCard } from './EmailsThrottleCard';
-
-/** Only the toggles + throttle cap are form state; labels/descriptions/recipient/sending come from query data and are never posted back. */
-function toFormValues(data: EmailsResponse): EmailsFormValues {
-  const emails: Record<string, boolean> = {};
-
-  for (const group of data.groups) {
-    for (const item of group.items) {
-      emails[item.id] = item.enabled;
-    }
-  }
-
-  return { emails, throttlePerWeek: data.throttlePerWeek };
-}
 
 export default function EmailsSettingsPage() {
   const emailsQuery = useEmailsQuery();
@@ -36,7 +23,7 @@ export default function EmailsSettingsPage() {
   // clobbering a field mid-edit, same reasoning as DesignSettingsPage.
   const form = useForm<EmailsFormValues>({
     resolver: zodResolver(emailsFormSchema),
-    values: toFormValues(emailsQuery.data),
+    values: toEmailsFormValues(emailsQuery.data),
     resetOptions: { keepDirtyValues: true },
   });
 
@@ -45,7 +32,7 @@ export default function EmailsSettingsPage() {
   const handleSave = form.handleSubmit(async (values) => {
     try {
       const saved = await saveMutation.mutateAsync(values);
-      form.reset(toFormValues(saved));
+      form.reset(toEmailsFormValues(saved));
       confirmLeave();
       toast.success(__('Email settings saved.', 'yayloyalty'));
     } catch (error) {

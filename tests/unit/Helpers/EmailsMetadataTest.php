@@ -102,10 +102,4 @@ class EmailsMetadataTest extends TestCase {
             array_keys( EmailsMetadata::all_defaults() )
         );
     }
-
-    public function test_tier_reached_description_mentions_variants(): void {
-        $tier_reached = EmailsMetadata::pro_email_groups()['tiers']['items']['tier_reached'];
-
-        $this->assertStringContainsString( '3 variants', $tier_reached['description'] );
-    }
 }

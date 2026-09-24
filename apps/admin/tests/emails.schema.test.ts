@@ -1,12 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { emailsFormSchema, FREE_EMAIL_IDS, type EmailsResponse } from '@/lib/schema/emails.schema';
-
-describe('FREE_EMAIL_IDS', () => {
-  it('lists exactly the 3 Free ids', () => {
-    expect(FREE_EMAIL_IDS).toEqual(['points_earned', 'points_expiring_soon', 'points_expired']);
-  });
-});
+import { emailsFormSchema, toEmailsFormValues, type EmailsResponse } from '@/lib/schema/emails.schema';
 
 describe('emailsFormSchema', () => {
   it('accepts a form covering Free and Pro-only ids (bare string keys)', () => {
@@ -57,24 +51,8 @@ describe('emailsFormSchema', () => {
   });
 });
 
-/**
- * toFormValues conversion function tests. Inlined here (mirrors EmailsSettingsPage.tsx's local
- * helper) since it's not exported — it flattens every group's items into an id => enabled map
- * and carries the throttle cap through unchanged.
- */
-describe('toFormValues', () => {
-  function toFormValues(data: EmailsResponse) {
-    const emails: Record<string, boolean> = {};
-
-    for (const group of data.groups) {
-      for (const item of group.items) {
-        emails[item.id] = item.enabled;
-      }
-    }
-
-    return { emails, throttlePerWeek: data.throttlePerWeek };
-  }
-
+/** Flattens every group's items into an id => enabled map and carries the throttle cap through unchanged. */
+describe('toEmailsFormValues', () => {
   const mockEmailsResponse: EmailsResponse = {
     groups: [
       {
@@ -139,7 +117,7 @@ describe('toFormValues', () => {
   };
 
   it('extracts enabled state from every group, Free and Pro-only alike', () => {
-    const result = toFormValues(mockEmailsResponse);
+    const result = toEmailsFormValues(mockEmailsResponse);
 
     expect(result).toEqual({
       emails: {
@@ -154,19 +132,19 @@ describe('toFormValues', () => {
   });
 
   it('produces a valid form value that passes the schema', () => {
-    const result = toFormValues(mockEmailsResponse);
+    const result = toEmailsFormValues(mockEmailsResponse);
 
     expect(() => emailsFormSchema.parse(result)).not.toThrow();
   });
 
   it('carries the throttle cap through unchanged', () => {
-    const result = toFormValues({ ...mockEmailsResponse, throttlePerWeek: 10 });
+    const result = toEmailsFormValues({ ...mockEmailsResponse, throttlePerWeek: 10 });
 
     expect(result.throttlePerWeek).toBe(10);
   });
 
   it('ignores sending data', () => {
-    const result = toFormValues(mockEmailsResponse);
+    const result = toEmailsFormValues(mockEmailsResponse);
 
     expect(Object.keys(result)).toEqual(['emails', 'throttlePerWeek']);
   });

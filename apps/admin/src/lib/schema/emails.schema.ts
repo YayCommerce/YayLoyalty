@@ -1,16 +1,12 @@
 import { z } from 'zod';
 
-/** Mirrors EmailsMetadata::FREE_EMAIL_IDS — the ids the Lite build's UI renders editable. */
-export const FREE_EMAIL_IDS = ['points_earned', 'points_expiring_soon', 'points_expired'] as const;
-
 /**
  * RHF resolver input; what POST /emails takes. Keyed by a bare string, not a closed enum: the
- * backend now persists all 12 ids (Free and Pro share one store, see EmailsHelper's docblock), and
+ * backend persists every id (Free and Pro share one store, see EmailsHelper's docblock), and
  * a closed enum here would throw the moment a Pro-only id renders in Lite.
  */
 export const emailsFormSchema = z.object({
   emails: z.record(z.string(), z.boolean()),
-  // Not enforced yet (no trigger/cron sends emails this release) — saved for that future task.
   throttlePerWeek: z.number().int().min(0),
 });
 export type EmailsFormValues = z.infer<typeof emailsFormSchema>;
@@ -36,3 +32,16 @@ export type EmailsResponse = {
   sending: EmailsSending;
   throttlePerWeek: number;
 };
+
+/** Only the toggles + throttle cap are form state; labels/descriptions/recipient/sending are never posted back. */
+export function toEmailsFormValues(data: EmailsResponse): EmailsFormValues {
+  const emails: Record<string, boolean> = {};
+
+  for (const group of data.groups) {
+    for (const item of group.items) {
+      emails[item.id] = item.enabled;
+    }
+  }
+
+  return { emails, throttlePerWeek: data.throttlePerWeek };
+}

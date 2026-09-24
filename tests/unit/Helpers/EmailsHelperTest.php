@@ -6,8 +6,8 @@ use YayLoyalty\Helpers\EmailsHelper;
 use YayLoyalty\Helpers\EmailsMetadata;
 
 /**
- * EmailsHelper persists a flat bool map keyed by EmailsMetadata::all_email_ids() (all 12 — Free
- * and Pro share one store). Tests verify: GET merges over defaults, unknown keys dropped, POST
+ * EmailsHelper persists a flat bool map keyed by EmailsMetadata::all_email_ids() (Free and Pro
+ * share one store). Tests verify: GET merges over defaults, unknown keys dropped, POST
  * patches (not wipes) for both Free and Pro-only ids, WooCommerce-inactive safe, get_response()
  * groups shape is correct with isFree computed per item.
  */
@@ -16,7 +16,6 @@ class EmailsHelperTest extends TestCase {
     protected function setUp(): void {
         $GLOBALS['yayloyalty_test_options']         = [];
         $GLOBALS['yayloyalty_test_current_user_id'] = 1;
-        unset( $GLOBALS['yayloyalty_test_blogname'] );
     }
 
     public function test_get_emails_merges_over_defaults(): void {
@@ -120,55 +119,14 @@ class EmailsHelperTest extends TestCase {
         $this->assertEquals( EmailsHelper::get_emails(), $result );
     }
 
-    public function test_sending_reads_woocommerce_options(): void {
-        update_option( 'woocommerce_email_from_name', 'My Shop' );
-        update_option( 'woocommerce_email_from_address', 'shop@example.com' );
-
-        $sending = EmailsHelper::sending();
-
-        $this->assertSame( 'My Shop', $sending['from_name'] );
-        $this->assertSame( 'shop@example.com', $sending['from_address'] );
-        $this->assertStringContainsString( 'page=wc-settings', $sending['wc_emails_url'] );
-        $this->assertStringContainsString( 'tab=email', $sending['wc_emails_url'] );
-    }
-
+    /** Without WooCommerce there is no mailer to ask: blank sender fields, never a fatal. */
     public function test_sending_is_woocommerce_inactive_safe(): void {
-        // No woocommerce_* options stored and no site title set — must not fatal, blank strings only.
         $sending = EmailsHelper::sending();
 
         $this->assertSame( '', $sending['from_name'] );
         $this->assertSame( '', $sending['from_address'] );
-    }
-
-    /**
-     * Mirrors WC_Emails::get_from_name(): when the merchant never saved
-     * woocommerce_email_from_name, WooCommerce's own runtime falls back to the site title rather
-     * than blank — EmailsHelper must show the same value WooCommerce actually sends mail with.
-     */
-    public function test_sending_from_name_falls_back_to_site_title_when_unsaved(): void {
-        $GLOBALS['yayloyalty_test_blogname'] = 'My Store';
-
-        $sending = EmailsHelper::sending();
-
-        $this->assertSame( 'My Store', $sending['from_name'] );
-    }
-
-    public function test_sending_from_address_has_no_fallback_when_unsaved(): void {
-        // Unlike from_name, WC_Emails::get_from_address() has no default — stays blank.
-        $GLOBALS['yayloyalty_test_blogname'] = 'My Store';
-
-        $sending = EmailsHelper::sending();
-
-        $this->assertSame( '', $sending['from_address'] );
-    }
-
-    public function test_sending_from_name_prefers_saved_option_over_site_title(): void {
-        $GLOBALS['yayloyalty_test_blogname'] = 'My Store';
-        update_option( 'woocommerce_email_from_name', 'Explicit Name' );
-
-        $sending = EmailsHelper::sending();
-
-        $this->assertSame( 'Explicit Name', $sending['from_name'] );
+        $this->assertStringContainsString( 'page=wc-settings', $sending['wc_emails_url'] );
+        $this->assertStringContainsString( 'tab=email', $sending['wc_emails_url'] );
     }
 
     public function test_get_throttle_per_week_defaults_to_three(): void {

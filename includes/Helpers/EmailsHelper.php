@@ -4,9 +4,9 @@ namespace YayLoyalty\Helpers;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Emails storage: one option, `{emails: {...12 bools}, throttle_per_week: int}`. The bool map is
- * keyed by EmailsMetadata::all_email_ids() (12 ids — Free and Pro share one persisted store).
- * Every build receives and can save all 12; only which ids the Lite UI renders editable differs
+ * Emails storage: one option, `{emails: {id => bool}, throttle_per_week: int}`. The bool map is
+ * keyed by EmailsMetadata::all_email_ids() (Free and Pro share one persisted store).
+ * Every build receives and can save every id; only which ids the Lite UI renders editable differs
  * client-side (FREE_EMAIL_IDS + IS_PRO_BUILD). This mirrors the existing Design precedent, where
  * Pro schema fields are already accepted server-side unconditionally — the Free/Pro split is
  * enforced by what Lite bundles into its UI, not by a server-side license check
@@ -14,8 +14,8 @@ defined( 'ABSPATH' ) || exit;
  */
 class EmailsHelper {
 
-    public const OPTION_EMAILS    = 'yayloyalty_emails';
-    public const DEFAULT_THROTTLE = 3;
+    public const OPTION_EMAILS             = 'yayloyalty_emails';
+    public const DEFAULT_THROTTLE_PER_WEEK = 3;
 
     /** Raw option, both sub-keys defaulted and type-guarded — never a corrupt shape past this point. */
     private static function stored(): array {
@@ -24,11 +24,11 @@ class EmailsHelper {
 
         return [
             'emails'            => is_array( $raw['emails'] ?? null ) ? $raw['emails'] : [],
-            'throttle_per_week' => $raw['throttle_per_week'] ?? self::DEFAULT_THROTTLE,
+            'throttle_per_week' => $raw['throttle_per_week'] ?? self::DEFAULT_THROTTLE_PER_WEEK,
         ];
     }
 
-    /** Stored bool map merged over defaults for all 12 ids; unknown keys dropped, values cast to bool. */
+    /** Stored bool map merged over defaults for every known id; unknown keys dropped, values cast to bool. */
     public static function get_emails(): array {
         $saved = self::stored()['emails'];
 
@@ -42,7 +42,7 @@ class EmailsHelper {
     }
 
     /**
-     * Whitelists to all 12 known ids, casts to bool, merges over the currently stored value so a
+     * Whitelists to the known ids, casts to bool, merges over the currently stored value so a
      * partial POST is a patch, not a wipe. Unknown keys are silently dropped. Leaves
      * throttle_per_week untouched.
      */
@@ -80,17 +80,16 @@ class EmailsHelper {
 
     /**
      * WooCommerce's own from-name/address plus its Emails settings URL, read live every request —
-     * never stored here. Mirrors WC_Emails::get_from_name()/get_from_address() exactly, including
-     * the from-name fallback to the site title when the merchant never saved that option — a
-     * plain '' default here would show blank even where WooCommerce itself sends real mail with a
-     * name. Blank strings (not a fatal) when WooCommerce is inactive.
+     * never stored here. Blank strings (not a fatal) when WooCommerce is inactive.
      *
      * @return array{from_name: string, from_address: string, wc_emails_url: string}
      */
     public static function sending(): array {
+        $mailer = function_exists( 'WC' ) ? WC()->mailer() : null;
+
         return [
-            'from_name'     => (string) get_option( 'woocommerce_email_from_name', get_bloginfo( 'name', 'display' ) ),
-            'from_address'  => (string) get_option( 'woocommerce_email_from_address', '' ),
+            'from_name'     => $mailer ? (string) $mailer->get_from_name() : '',
+            'from_address'  => $mailer ? (string) $mailer->get_from_address() : '',
             // No section anchor: no WC_Email subclass is registered yet, so this lands on the
             // generic list. A future trigger task registering WC_Email classes can add one.
             'wc_emails_url' => esc_url_raw( admin_url( 'admin.php?page=wc-settings&tab=email' ) ),

@@ -5,8 +5,8 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Static email metadata (labels/descriptions/recipient/defaults). One source of truth —
- * pro_email_groups() covers all 12 ids, including the 3 Free ones (reused, never duplicated).
- * FREE_EMAIL_IDS marks which ids the Lite build's UI renders editable; all 12 are still persisted
+ * pro_email_groups() covers every id, the Free ones included (reused, never duplicated).
+ * FREE_EMAIL_IDS marks which ids the Lite build's UI renders editable; every id is still persisted
  * and returned to every build (see EmailsHelper's docblock). Values are rebuilt on every call, not
  * consts, because __() cannot run inside a const initializer on PHP 7.4.
  */
@@ -18,7 +18,7 @@ class EmailsMetadata {
     public const FREE_EMAIL_IDS = [ 'points_earned', 'points_expiring_soon', 'points_expired' ];
 
     /**
-     * Email groups in display order (5 groups, 12 items total). Free ids (points_earned,
+     * Email groups in display order. Free ids (points_earned,
      * points_expiring_soon, points_expired) live inside the "points" group alongside Pro-only ids —
      * one namespace, no remap needed.
      *
@@ -94,8 +94,7 @@ class EmailsMetadata {
                 'items' => [
                     'tier_reached'     => [
                         'label'           => __( 'Tier reached', 'yayloyalty' ),
-                        // "3 variants" is rendered as static text by the FE; no variant data exists yet.
-                        'description'     => __( 'Sent when a customer reaches a new tier. Has 3 variants.', 'yayloyalty' ),
+                        'description'     => __( 'Sent when a customer reaches a new tier.', 'yayloyalty' ),
                         'recipient'       => 'customer',
                         'default_enabled' => true,
                     ],
@@ -128,7 +127,7 @@ class EmailsMetadata {
     }
 
     /**
-     * All 12 ids, flattened in group/display order.
+     * Every id, flattened in group/display order.
      *
      * @return string[]
      */
@@ -143,7 +142,7 @@ class EmailsMetadata {
     }
 
     /**
-     * id => default_enabled for all 12 ids.
+     * id => default_enabled for every id.
      *
      * @return array<string, bool>
      */
