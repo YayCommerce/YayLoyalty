@@ -332,15 +332,6 @@ if ( $is_lite ) {
     );
 }
 
-// ─── Inline Pro-field gates (source, not the zip) ──────────────────────
-
-// Those field keys legitimately ship in Lite as schema vocabulary (§13), so
-// their presence in the Lite bundle proves nothing — only the source-level
-// guard around each field distinguishes "gated" from "ungated". Read from
-// the repo, not the extracted zip: __DIR__ is scripts/, so this resolves
-// regardless of what the package under validation contains.
-check_inline_pro_field_gates();
-
 // ─── Dev-only artifacts ─────────────────────────────────────────────────
 
 $dev_leftovers = array_values(
@@ -369,43 +360,6 @@ run_boot_check( $root, $build_type );
 render_and_exit( $work, $require_boot );
 
 // ─── Functions ──────────────────────────────────────────────────────────
-
-/**
- * Design's inline Pro-field gates (DesignStorefrontTextSection /
- * DesignVisibilitySection, phase 03) are not covered by anything else: the
- * bundle sentinel only proves the three whole Pro *sections* were shaken
- * out, and phase 03's grep was a one-time manual act nothing re-runs. Fails
- * when a Pro-only field name appears in a file without IS_PRO_BUILD also
- * appearing there, which is the one thing that can drop silently in a
- * later edit.
- */
-function check_inline_pro_field_gates(): void {
-    $pro_only_fields = [ 'referral_card_heading', 'tier_progress_line', 'custom_pages' ];
-    $files           = [
-        __DIR__ . '/../apps/admin/src/pages/settings/DesignStorefrontTextSection.tsx',
-        __DIR__ . '/../apps/admin/src/pages/settings/DesignVisibilitySection.tsx',
-    ];
-
-    $ungated = [];
-    foreach ( $files as $path ) {
-        if ( ! is_file( $path ) ) {
-            continue;
-        }
-        $src = (string) file_get_contents( $path );
-        foreach ( $pro_only_fields as $field ) {
-            if ( false !== strpos( $src, $field ) && false === strpos( $src, 'IS_PRO_BUILD' ) ) {
-                $ungated[] = basename( $path );
-                break;
-            }
-        }
-    }
-
-    record(
-        'Design: inline Pro fields stay guarded with IS_PRO_BUILD',
-        [] === $ungated,
-        implode( ', ', $ungated ) . ' — a Pro-only field name appears without an IS_PRO_BUILD guard in the same file'
-    );
-}
 
 /** Strips comments so a reference count reflects code, not prose about the seams. */
 function strip_php_comments(string $src): string {

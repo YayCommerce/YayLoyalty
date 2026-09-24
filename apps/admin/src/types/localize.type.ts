@@ -1,5 +1,4 @@
 import type { CustomerBalanceRange, CustomerExpiringSoon, CustomerTier } from '@/lib/schema/customer.schema';
-import { Design } from '@/lib/schema/design.schema';
 import { Settings } from '@/lib/schema/settings.schema';
 
 export type Meta = {
@@ -12,8 +11,6 @@ export type Meta = {
     restBase: string;
     restNonce: string;
     isBlockTheme: boolean;
-    /** Slug => translated display name, e.g. `{ shop_manager: 'Shop Manager' }`. */
-    roles: Record<string, string>;
   };
   loyaltyMeta: {
     pluginUrl: string;
@@ -37,7 +34,6 @@ export type Meta = {
 
 export type AdminData = {
   settings: Settings;
-  design: Design;
   /** From Capabilities::payload(). Cosmetic only; every route re-checks server-side. */
   capabilities: string[];
   /** Per-adjustment limit for non-administrators; 0 = unlimited. */
