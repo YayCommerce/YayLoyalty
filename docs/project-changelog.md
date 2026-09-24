@@ -17,12 +17,12 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
   send cap (`throttle_per_week`, not enforced yet) and read-only "Sending" card with WooCommerce's
   live from-name/from-address.
 - **Server:** `EmailsRestController` (GET/POST `/emails`) lists registered emails and manages toggles
-  (WooCommerce options via `EmailsHelper::update_enabled()`) and throttle (plugin settings patch).
-  `EmailsHelper::loyalty_emails()` lists what this build registered; no trigger() hooked yet.
+  (WooCommerce options via `EmailsHelper::update_emails()`) and throttle (plugin settings patch).
+  `EmailsHelper::registered_emails()` lists what this build registered; no trigger() hooked yet.
 - **Storage:** On/off lives in `woocommerce_{id}_settings` (WooCommerce's standard per-email option);
   throttle in `yayloyalty_settings.emails.throttle_per_week`. Old `yayloyalty_emails` option (dev
   data) orphaned and not migrated.
-- **Frontend:** Form state covers email toggles + `throttlePerWeek`; read-only metadata/sending never
+- **Frontend:** Form state covers email toggles + `throttle_per_week`; read-only metadata/sending never
   posted. Editability gated by `IS_PRO_BUILD`.
 - **Tests:** Integration suite (+20 tests, 48 total) covers email registration, REST routes, and
   settings management (reads/writes WC and plugin settings, restoring both after tests).

@@ -45,7 +45,7 @@ class EmailsHelper {
 
     /**
      * Saves only what the patch carries: `emails` (id => on/off) and
-     * `throttle_per_week` (clamped to 0 or more). Returns get_emails().
+     * `throttle_per_week` (SettingsHelper coerces it). Returns get_emails().
      *
      * @param array{emails?: array<string, mixed>, throttle_per_week?: int|string} $patch
      */
@@ -60,8 +60,8 @@ class EmailsHelper {
     }
 
     /**
-     * The loyalty emails this build registered with WooCommerce (3 in Lite, 12 in
-     * Pro), keyed by id; the only ids update_emails() writes.
+     * The loyalty emails this build registered with WooCommerce,
+     * keyed by id; the only ids update_emails() writes.
      *
      * @return array<string, LoyaltyEmail>
      */

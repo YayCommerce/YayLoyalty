@@ -4,7 +4,7 @@ import { settingsSchema } from '@/lib/schema/settings.schema';
 
 /**
  * RHF resolver input; what POST /emails takes. Keyed by a bare string, not a closed enum: the ids
- * are whatever the server registered with WooCommerce (3 in Lite, 12 in Pro).
+ * are whatever the server registered with WooCommerce.
  */
 export const emailsFormSchema = z.object({
   emails: z.record(z.string(), z.boolean()),
