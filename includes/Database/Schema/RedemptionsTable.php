@@ -4,7 +4,7 @@ namespace YayLoyalty\Database\Schema;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * yayloyalty_redemptions, per docs/data-model.md § redemptions. Not yet in
+ * yayloyalty_redemptions, per docs/data-model/redemptions.md. Not yet in
  * Installer::schemas(): registering it there is the F08 step that creates
  * the table on the next upgrade. UNIQUE (order_id, reward_id) is the
  * double-debit guard for the flexible discount; (reward_id, user_id)

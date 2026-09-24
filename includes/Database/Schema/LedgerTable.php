@@ -12,7 +12,7 @@ defined( 'ABSPATH' ) || exit;
  * deliberately not idempotent. The former composite uniq_ledger_event is
  * dropped by Installer::run_migrations() — dbDelta cannot drop an index.
  * idx_user_history is (user_id, id): created_at can tie within a second.
- * See docs/data-model.md.
+ * See docs/data-model/customers-and-ledger.md.
  */
 final class LedgerTable extends AbstractTableSchema {
 
