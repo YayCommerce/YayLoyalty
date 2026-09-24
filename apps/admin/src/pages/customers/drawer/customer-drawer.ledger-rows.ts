@@ -25,7 +25,7 @@ export type LedgerRow = {
  * this drawer's own addition, and is deliberately conservative: it only
  * ever states the campaign name, because `LedgerEntry` carries no reward
  * name, no "originally earned" date, and no actor display name — inventing
- * those for redeem/expire/adjust rows would be fabricated prose.
+ * those for redeem/expire/adjust/correction rows would be fabricated prose.
  */
 export function toLedgerRow(
   entry: LedgerEntry,

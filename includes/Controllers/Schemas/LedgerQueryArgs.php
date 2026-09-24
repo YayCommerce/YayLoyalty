@@ -40,7 +40,7 @@ final class LedgerQueryArgs {
             return 'redeem';
         }
 
-        if ( LedgerType::CORRECTION === $type ) {
+        if ( LedgerType::is_manual_adjustment( $type ) ) {
             return LedgerType::ADJUST;
         }
 

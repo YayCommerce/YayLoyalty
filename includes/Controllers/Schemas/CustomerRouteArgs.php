@@ -48,7 +48,7 @@ final class CustomerRouteArgs {
                 'sanitize_callback' => 'sanitize_text_field',
             ],
             // On moves lifetime_earned (and so tier progress) by the same signed amount,
-            // in either direction; off is a balance-only correction.
+            // in either direction; off writes a balance-only `correction` row.
             'adjust_lifetime' => [
                 'description' => __( 'Whether this adjustment also moves lifetime_earned, not the balance only.', 'yayloyalty' ),
                 'type'        => 'boolean',

@@ -24,7 +24,7 @@ final class LedgerType {
     /** Points removed by the expiry job. */
     public const EXPIRE = 'expire';
 
-    /** Manual admin adjustment, positive or negative. */
+    /** Manual admin adjustment, positive or negative, that also moves lifetime_earned. */
     public const ADJUST = 'adjust';
 
     /** Manual adjustment written with "adjust lifetime totals" off — moves balance only. */
