@@ -90,6 +90,8 @@ export const campaignSchema = z.object({
   created_by: z.number().int().nullable(),
   created_at: z.string(),
   updated_at: z.string(),
+  /** Lifetime, not windowed: 0 means never awarded. */
+  points_issued_lifetime: z.number().int(),
 });
 
 export type Campaign = z.infer<typeof campaignSchema>;

@@ -2,7 +2,7 @@ import { date as wpDate } from '@wordpress/date';
 import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { parseWPCurrency, parseWPDate, parseWPRelativeDate } from '@/lib/helpers/format.helper';
-import { formatPoints } from '@/lib/helpers/points.helper';
+import { formatPoints, pointsPhrase } from '@/lib/helpers/points.helper';
 import type { CampaignPerformance } from '@/lib/schema/campaign-performance.schema';
 import type { Campaign, CampaignDisplayStatus } from '@/lib/schema/campaign.schema';
 import { conditionsLabel, givesLabel, scheduleLabel, statusLabel } from '../campaign-labels';
@@ -18,13 +18,13 @@ import { windowLabel } from '../performance/campaign-performance.copy';
 export type CampaignArchiveCase = 'delete' | 'finished' | 'live';
 
 /**
- * `null` lifetime points (figure unknown) never resolves to delete: offering
- * a permanent delete on a guess is the one mistake this dialog cannot undo.
+ * Only an exact 0 from the server resolves to delete: once a campaign awards
+ * a single point, delete is gone for good.
+ *
+ * TODO: move "never awarded → deletable" to the server (a flag on the
+ * campaign resource, enforced by delete_item()) so the UI stops deciding it.
  */
-export function resolveArchiveCase(
-  displayStatus: CampaignDisplayStatus,
-  lifetimePoints: number | null,
-): CampaignArchiveCase {
+export function resolveArchiveCase(displayStatus: CampaignDisplayStatus, lifetimePoints: number): CampaignArchiveCase {
   if (lifetimePoints === 0) {
     return 'delete';
   }
@@ -119,12 +119,6 @@ export function lifetimeFigures(lifetimePoints: number): ArchiveFigures {
   };
 }
 
-/** "1 point", "12,400 points": the count with its plural-aware noun. */
-export function pointsPhrase(count: number): string {
-  /* translators: %s: number of points, formatted. */
-  return sprintf(_n('%s point', '%s points', count, 'yayloyalty'), formatPoints(count));
-}
-
 function ordersPhrase(count: number): string {
   /* translators: %s: number of orders, formatted. */
   return sprintf(_n('%s order', '%s orders', count, 'yayloyalty'), formatPoints(count));
@@ -188,15 +182,13 @@ export function liveStanding(campaign: Campaign, displayStatus: CampaignDisplayS
 }
 
 /** Left column of every archive dialog: what survives. */
-export function keepsLines(lifetimePoints: number | null): string[] {
+export function keepsLines(lifetimePoints: number): string[] {
   return [
-    lifetimePoints === null
-      ? __('The points already awarded', 'yayloyalty')
-      : sprintf(
-          /* translators: %s: points phrase, e.g. "12,400 points". */
-          __('The %s already awarded', 'yayloyalty'),
-          pointsPhrase(lifetimePoints),
-        ),
+    sprintf(
+      /* translators: %s: points phrase, e.g. "12,400 points". */
+      __('The %s already awarded', 'yayloyalty'),
+      pointsPhrase(lifetimePoints),
+    ),
     __('Customer history, still naming this campaign', 'yayloyalty'),
     __('Its performance figures in reports', 'yayloyalty'),
   ];

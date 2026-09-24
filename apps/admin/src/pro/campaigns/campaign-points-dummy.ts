@@ -32,38 +32,6 @@ export const DUMMY_POINTS_LAST_30_DAYS: Record<number, number | null> = {
   23: 0, // Summer Kickoff 2× — ended in June, nothing in the window
 };
 
-/**
- * Dummy lifetime points issued per campaign, keyed like the map above, until
- * the campaign resource exposes the figure. Lifetime, not a 30-day window: a
- * campaign that paid out once must never read as 0. 0 only for the
- * campaigns that never ran.
- */
-export const DUMMY_POINTS_LIFETIME: Record<number, number> = {
-  1: 412300,
-  2: 0, // scheduled, hasn't run yet
-  3: 57800, // paused, but paid out before that
-  4: 2184500,
-  5: 931200,
-  6: 148600,
-  7: 0, // draft
-  8: 61900, // archived after its March run
-  9: 3120000,
-  10: 0, // scheduled
-  11: 18400,
-  12: 22600, // paused
-  13: 0, // draft
-  14: 9800,
-  15: 4300,
-  16: 3900,
-  17: 2750, // paused
-  18: 15100,
-  19: 6200,
-  20: 0, // scheduled
-  21: 0, // draft
-  22: 7400,
-  23: 84200, // ended
-};
-
 /** Statuses with no meaningful figure. Archived is not here: it ran before retiring, so its figure is real. */
 const STATUSES_WITHOUT_A_FIGURE: readonly CampaignDisplayStatus[] = ['draft', 'paused', 'scheduled'];
 

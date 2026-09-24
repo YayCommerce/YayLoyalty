@@ -5,7 +5,6 @@ import {
   campaignDeleteResponseSchema,
   CampaignListParams,
   campaignSchema,
-  CampaignStatus,
   CampaignUpdateInput,
 } from '@/lib/schema/campaign.schema';
 
@@ -31,13 +30,9 @@ export async function getCampaign(id: number): Promise<Campaign> {
 }
 
 /** PUT campaigns/{id}. Does not persist yet; see update_item()'s swap point. */
-export async function updateCampaign(id: number, input: CampaignUpdateInput): Promise<Campaign> {
+/** Partial: update_item() changes only the fields sent, e.g. `{ status }` to archive or pause. */
+export async function updateCampaign(id: number, input: Partial<CampaignUpdateInput>): Promise<Campaign> {
   return campaignSchema.parse(await api.put(`campaigns/${id}`, { json: input }).json());
-}
-
-/** PUT campaigns/{id} with only `status`, a partial write. Does not persist yet; see update_item()'s swap point. */
-export async function updateCampaignStatus(id: number, status: CampaignStatus): Promise<Campaign> {
-  return campaignSchema.parse(await api.put(`campaigns/${id}`, { json: { status } }).json());
 }
 
 /** DELETE campaigns/{id}. Does not persist yet; see delete_item()'s swap point. */

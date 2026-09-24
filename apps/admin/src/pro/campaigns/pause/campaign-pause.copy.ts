@@ -3,7 +3,7 @@ import { __, _n, _x, sprintf } from '@wordpress/i18n';
 import { parseWPDate } from '@/lib/helpers/format.helper';
 import { Campaign, CampaignDisplayStatus, resolveCampaignDisplayStatus } from '@/lib/schema/campaign.schema';
 import { activeStops, liveStanding } from '../archive/campaign-archive.copy';
-import { givesLabel } from '../campaign-labels';
+import { findBuiltinCampaign, givesLabel } from '../campaign-labels';
 
 /**
  * Copy for CampaignPauseDialog. Per-trigger sentences are written out whole,
@@ -60,10 +60,7 @@ export function pauseStops(
   }
 
   if (!campaign.is_builtin) {
-    const fallback = campaigns?.find(
-      (candidate) => candidate.is_builtin && candidate.trigger === campaign.trigger && candidate.id !== campaign.id,
-    );
-    const [headline, ...lines] = activeStops(campaign, fallback);
+    const [headline, ...lines] = activeStops(campaign, findBuiltinCampaign(campaigns, campaign.trigger));
 
     return { headline, lines };
   }

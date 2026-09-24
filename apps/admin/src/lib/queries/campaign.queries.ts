@@ -1,12 +1,7 @@
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import {
-  deleteCampaign,
-  getCampaign,
-  getCampaigns,
-  updateCampaign,
-  updateCampaignStatus,
-} from '@/lib/api/campaign.api';
+import { deleteCampaign, getCampaign, getCampaigns, updateCampaign } from '@/lib/api/campaign.api';
+import { settleInChunks } from '@/lib/helpers/settle-in-chunks.helper';
 import type { CampaignListParams, CampaignStatus, CampaignUpdateInput } from '@/lib/schema/campaign.schema';
 
 /** ─── Query Options ─────────────────────────────────── */
@@ -41,23 +36,9 @@ export function useUpdateCampaignMutation(id: number) {
 
   return useMutation({
     mutationKey: ['campaign', 'update', id],
-    mutationFn: (input: CampaignUpdateInput) => updateCampaign(id, input),
+    mutationFn: (input: Partial<CampaignUpdateInput>) => updateCampaign(id, input),
     onSuccess: () => {
       // The list shows the same fields; invalidating only detail leaves its row stale.
-      queryClient.invalidateQueries({ queryKey: ['campaign', 'detail', id] });
-      queryClient.invalidateQueries({ queryKey: ['campaign', 'list'] });
-    },
-  });
-}
-
-/** Archive and pause; see updateCampaignStatus(). */
-export function useUpdateCampaignStatusMutation(id: number) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationKey: ['campaign', 'status', id],
-    mutationFn: (status: CampaignStatus) => updateCampaignStatus(id, status),
-    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['campaign', 'detail', id] });
       queryClient.invalidateQueries({ queryKey: ['campaign', 'list'] });
     },
@@ -84,9 +65,6 @@ export interface CampaignBulkWrites {
   deletes: number[];
 }
 
-/** Concurrent requests for a bulk write; same ceiling as the customers bulk adjust. */
-const BULK_WRITE_CONCURRENCY = 10;
-
 /**
  * Archive, pause and delete for several campaigns as one mutation, through
  * the same per-id calls as the single-campaign hooks; there is no bulk
@@ -98,21 +76,15 @@ export function useBulkCampaignWritesMutation() {
   return useMutation({
     mutationKey: ['campaign', 'bulk'],
     mutationFn: async ({ statuses, deletes }: CampaignBulkWrites) => {
-      const writes: (() => Promise<unknown>)[] = [];
-      statuses.forEach(({ id, status }) => writes.push(() => updateCampaignStatus(id, status)));
-      deletes.forEach((id) => writes.push(() => deleteCampaign(id)));
+      const writes: ({ id: number; status: CampaignStatus } | { id: number; status?: never })[] = [
+        ...statuses,
+        ...deletes.map((id) => ({ id })),
+      ];
+      const { succeeded, failedItems } = await settleInChunks(writes, ({ id, status }) =>
+        status ? updateCampaign(id, { status }) : deleteCampaign(id),
+      );
 
-      let succeeded = 0;
-      let failed = 0;
-
-      for (let i = 0; i < writes.length; i += BULK_WRITE_CONCURRENCY) {
-        const results = await Promise.allSettled(writes.slice(i, i + BULK_WRITE_CONCURRENCY).map((write) => write()));
-
-        succeeded += results.filter((result) => result.status === 'fulfilled').length;
-        failed += results.filter((result) => result.status === 'rejected').length;
-      }
-
-      return { succeeded, failed };
+      return { succeeded, failed: failedItems.length };
     },
     // onSettled: a partly failed batch still changed real campaigns.
     onSettled: (_data, _error, { statuses, deletes }) => {

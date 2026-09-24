@@ -1,21 +1,20 @@
 import { useId, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { HTTPError } from 'ky';
 import { CheckIcon, CircleAlert, TriangleAlert } from 'lucide-react';
 import { toast } from 'sonner';
 import { createInterpolateElement } from '@wordpress/element';
 import { __, _n, _x, sprintf } from '@wordpress/i18n';
 
-import { getApiErrorMessage } from '@/lib/api/api';
+import { getApiErrorMessage, toastApiError } from '@/lib/api/api';
 import {
   CampaignBulkWrites,
   useBulkCampaignWritesMutation,
   useCampaignsQuery,
   useDeleteCampaignMutation,
-  useUpdateCampaignStatusMutation,
+  useUpdateCampaignMutation,
 } from '@/lib/queries/campaign.queries';
 import { hasPerformancePage } from '@/lib/schema/campaign-performance.schema';
-import { Campaign, resolveCampaignDisplayStatus } from '@/lib/schema/campaign.schema';
+import type { Campaign, CampaignDisplayStatus } from '@/lib/schema/campaign.schema';
 import { cn } from '@/lib/utils';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -31,7 +30,8 @@ import {
 } from '@/components/ui/custom/dialog';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
-import { DUMMY_POINTS_LAST_30_DAYS, DUMMY_POINTS_LIFETIME } from '../campaign-points-dummy';
+import { findBuiltinCampaign } from '../campaign-labels';
+import { DUMMY_POINTS_LAST_30_DAYS } from '../campaign-points-dummy';
 import { CAMPAIGN_PERFORMANCE_QUERIES } from '../performance/campaign-performance.queries';
 import {
   affectedLine,
@@ -65,21 +65,21 @@ export type CampaignArchiveAction = 'archived' | 'paused' | 'deleted';
  */
 export function CampaignArchiveDialog({
   campaign,
+  displayStatus,
   onClose,
   onDone,
   onViewArchived,
 }: {
   campaign: Campaign;
+  /** The status the opener shows, so the dialog never disagrees with the screen behind it. */
+  displayStatus: CampaignDisplayStatus;
   onClose: () => void;
   /** Runs after a successful write, once the dialog has closed. */
   onDone?: (action: CampaignArchiveAction) => void;
   /** Omitted where there is no Archived view to jump to. */
   onViewArchived?: () => void;
 }) {
-  const displayStatus = resolveCampaignDisplayStatus(campaign.status, campaign.starts_at, campaign.ends_at);
-  // Swap point: read the lifetime figure off the campaign once the resource exposes it.
-  const lifetimePoints = DUMMY_POINTS_LIFETIME[campaign.id] ?? null;
-  const archiveCase = resolveArchiveCase(displayStatus, lifetimePoints);
+  const archiveCase = resolveArchiveCase(displayStatus, campaign.points_issued_lifetime);
   const isEarning = archiveCase === 'live' && displayStatus === 'active';
 
   const wantsPerformance = (archiveCase === 'finished' || isEarning) && hasPerformancePage(campaign.trigger);
@@ -89,11 +89,9 @@ export function CampaignArchiveDialog({
   });
 
   const campaignsQuery = useCampaignsQuery({ perPage: 100 });
-  const fallback = campaignsQuery.data?.data.find(
-    (candidate) => candidate.is_builtin && candidate.trigger === campaign.trigger && candidate.id !== campaign.id,
-  );
+  const fallback = findBuiltinCampaign(campaignsQuery.data?.data, campaign.trigger);
 
-  const statusMutation = useUpdateCampaignStatusMutation(campaign.id);
+  const statusMutation = useUpdateCampaignMutation(campaign.id);
   const deleteMutation = useDeleteCampaignMutation(campaign.id);
   const [pendingAction, setPendingAction] = useState<CampaignArchiveAction>();
   const busy = pendingAction !== undefined;
@@ -105,7 +103,7 @@ export function CampaignArchiveDialog({
       if (action === 'deleted') {
         await deleteMutation.mutateAsync();
       } else {
-        await statusMutation.mutateAsync(action);
+        await statusMutation.mutateAsync({ status: action });
       }
 
       // "Archived", not "stored": update_item()/delete_item() do not persist yet.
@@ -113,10 +111,7 @@ export function CampaignArchiveDialog({
       onClose();
       onDone?.(action);
     } catch (error) {
-      // api.ts's afterResponse hook already toasts a 403.
-      if (!(error instanceof HTTPError && error.response.status === 403)) {
-        toast.error(await getApiErrorMessage(error, failureMessage(action)));
-      }
+      await toastApiError(error, failureMessage(action));
       setPendingAction(undefined);
     }
   }
@@ -130,13 +125,13 @@ export function CampaignArchiveDialog({
           ? finishedFigures(campaign.trigger, performanceQuery.data)
           : earningFigures(campaign.trigger, performanceQuery.data);
     }
-  } else if (lifetimePoints !== null && archiveCase !== 'delete') {
+  } else if (archiveCase !== 'delete') {
     figures = isEarning
       ? {
           headline: __('This campaign is live right now', 'yayloyalty'),
-          detail: lifetimeFigures(lifetimePoints).headline,
+          detail: lifetimeFigures(campaign.points_issued_lifetime).headline,
         }
-      : lifetimeFigures(lifetimePoints);
+      : lifetimeFigures(campaign.points_issued_lifetime);
   }
 
   const title =
@@ -168,7 +163,7 @@ export function CampaignArchiveDialog({
 
               <ListColumns
                 leftTitle={__('Keeps working', 'yayloyalty')}
-                leftLines={keepsLines(lifetimePoints)}
+                leftLines={keepsLines(campaign.points_issued_lifetime)}
                 rightTitle={__('Stops', 'yayloyalty')}
                 right={stopsLines(campaign, displayStatus, fallback)}
               />
@@ -435,7 +430,8 @@ export function CampaignBulkArchiveDialog({
   onDone,
   onViewArchived,
 }: {
-  campaigns: Campaign[];
+  /** Each with the status its table row shows. */
+  campaigns: (Campaign & { displayStatus: CampaignDisplayStatus })[];
   onClose: () => void;
   /** Runs after a batch that changed at least one campaign, once the dialog has closed. */
   onDone?: () => void;
@@ -670,16 +666,15 @@ function BulkArchiveGroup({ heading, caption, rows }: { heading: string; caption
   );
 }
 
-function toBulkArchiveRow(campaign: Campaign): BulkArchiveRow {
-  const displayStatus = resolveCampaignDisplayStatus(campaign.status, campaign.starts_at, campaign.ends_at);
-  // Swap point: read both figures off the campaign once the resource exposes them.
-  const lifetimePoints = DUMMY_POINTS_LIFETIME[campaign.id] ?? null;
+function toBulkArchiveRow(campaign: Campaign & { displayStatus: CampaignDisplayStatus }): BulkArchiveRow {
+  const { displayStatus, points_issued_lifetime: lifetimePoints } = campaign;
 
   return {
     campaign,
     displayStatus,
     archiveCase: resolveArchiveCase(displayStatus, lifetimePoints),
     lifetimePoints,
+    // Swap point: read this off the campaign once the resource exposes it.
     pointsLast30Days: DUMMY_POINTS_LAST_30_DAYS[campaign.id] ?? null,
   };
 }

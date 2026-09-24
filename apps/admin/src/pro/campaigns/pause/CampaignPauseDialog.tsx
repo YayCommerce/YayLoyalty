@@ -1,11 +1,10 @@
-import { HTTPError } from 'ky';
 import { CircleAlert } from 'lucide-react';
 import { toast } from 'sonner';
 import { __, sprintf } from '@wordpress/i18n';
 
-import { getApiErrorMessage } from '@/lib/api/api';
-import { useCampaignsQuery, useUpdateCampaignStatusMutation } from '@/lib/queries/campaign.queries';
-import { Campaign, resolveCampaignDisplayStatus } from '@/lib/schema/campaign.schema';
+import { toastApiError } from '@/lib/api/api';
+import { useCampaignsQuery, useUpdateCampaignMutation } from '@/lib/queries/campaign.queries';
+import type { Campaign, CampaignDisplayStatus } from '@/lib/schema/campaign.schema';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -24,24 +23,29 @@ import { pauseContextLine, pauseStops, resumeLine } from './campaign-pause.copy'
  * earning across the whole store. Mount it only while open, like
  * CampaignArchiveDialog.
  */
-export function CampaignPauseDialog({ campaign, onClose }: { campaign: Campaign; onClose: () => void }) {
-  const displayStatus = resolveCampaignDisplayStatus(campaign.status, campaign.starts_at, campaign.ends_at);
+export function CampaignPauseDialog({
+  campaign,
+  displayStatus,
+  onClose,
+}: {
+  campaign: Campaign;
+  /** The status the opener shows; see CampaignArchiveDialog. */
+  displayStatus: CampaignDisplayStatus;
+  onClose: () => void;
+}) {
   const campaignsQuery = useCampaignsQuery({ perPage: 100 });
   const stops = pauseStops(campaign, displayStatus, campaignsQuery.data?.data);
 
-  const statusMutation = useUpdateCampaignStatusMutation(campaign.id);
+  const statusMutation = useUpdateCampaignMutation(campaign.id);
   const busy = statusMutation.isPending;
 
   async function pause() {
     try {
-      await statusMutation.mutateAsync('paused');
+      await statusMutation.mutateAsync({ status: 'paused' });
       toast.success(__('Campaign paused.', 'yayloyalty'));
       onClose();
     } catch (error) {
-      // api.ts's afterResponse hook already toasts a 403.
-      if (!(error instanceof HTTPError && error.response.status === 403)) {
-        toast.error(await getApiErrorMessage(error, __('Could not pause the campaign.', 'yayloyalty')));
-      }
+      await toastApiError(error, __('Could not pause the campaign.', 'yayloyalty'));
     }
   }
 

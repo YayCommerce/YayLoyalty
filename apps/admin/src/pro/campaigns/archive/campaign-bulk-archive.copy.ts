@@ -1,10 +1,10 @@
 import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { parseWPDate } from '@/lib/helpers/format.helper';
-import { formatPoints } from '@/lib/helpers/points.helper';
+import { formatPoints, pointsPhrase } from '@/lib/helpers/points.helper';
 import type { Campaign, CampaignDisplayStatus } from '@/lib/schema/campaign.schema';
 import { statusLabel } from '../campaign-labels';
-import { CampaignArchiveCase, pointsPhrase } from './campaign-archive.copy';
+import type { CampaignArchiveCase } from './campaign-archive.copy';
 
 /**
  * Copy for CampaignBulkArchiveDialog. Figures are the ones the single dialog
@@ -17,7 +17,7 @@ export interface BulkArchiveRow {
   campaign: Campaign;
   displayStatus: CampaignDisplayStatus;
   archiveCase: CampaignArchiveCase;
-  lifetimePoints: number | null;
+  lifetimePoints: number;
   pointsLast30Days: number | null;
 }
 
@@ -131,15 +131,7 @@ export function bulkSummaryLines(rows: BulkArchiveRow[]): string[] {
 
 /** Closes the summary: points already awarded, which neither archiving nor deleting touches. */
 export function bulkTotalLine(rows: BulkArchiveRow[]): string {
-  // An unknown figure would make any total a guess.
-  if (rows.some((row) => row.lifetimePoints === null)) {
-    return __(
-      'Points already awarded stay exactly where they are, and every ledger row keeps naming its campaign.',
-      'yayloyalty',
-    );
-  }
-
-  const total = rows.reduce((sum, row) => sum + (row.lifetimePoints ?? 0), 0);
+  const total = rows.reduce((sum, row) => sum + row.lifetimePoints, 0);
 
   if (total === 0) {
     return __('None of them has awarded a point, so nothing in customer history refers to them.', 'yayloyalty');
@@ -173,17 +165,13 @@ export function bulkRowFigures(row: BulkArchiveRow): string {
     );
   }
 
-  const parts: string[] = [];
-
-  if (row.lifetimePoints !== null) {
-    parts.push(
-      sprintf(
-        /* translators: %s: points phrase, e.g. "96,800 points". */
-        __('%s lifetime', 'yayloyalty'),
-        pointsPhrase(row.lifetimePoints),
-      ),
-    );
-  }
+  const parts: string[] = [
+    sprintf(
+      /* translators: %s: points phrase, e.g. "96,800 points". */
+      __('%s lifetime', 'yayloyalty'),
+      pointsPhrase(row.lifetimePoints),
+    ),
+  ];
 
   const tail = statusTail(row);
 
@@ -191,7 +179,7 @@ export function bulkRowFigures(row: BulkArchiveRow): string {
     parts.push(tail);
   }
 
-  return parts.length > 0 ? parts.join(' · ') : '—';
+  return parts.join(' · ');
 }
 
 function statusTail({ campaign, displayStatus, pointsLast30Days }: BulkArchiveRow): string | null {

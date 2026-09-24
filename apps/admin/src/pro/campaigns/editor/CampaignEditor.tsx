@@ -7,7 +7,7 @@ import { useLocation, useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import { __, sprintf } from '@wordpress/i18n';
 
-import { getApiErrorMessage } from '@/lib/api/api';
+import { toastApiError } from '@/lib/api/api';
 import { parseWPRelativeDate } from '@/lib/helpers/format.helper';
 import { useCampaignQuery, useUpdateCampaignMutation } from '@/lib/queries/campaign.queries';
 import { hasPerformancePage } from '@/lib/schema/campaign-performance.schema';
@@ -149,10 +149,7 @@ function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }
       toast.success(__('Campaign saved.', 'yayloyalty'));
       return true;
     } catch (error) {
-      // api.ts's afterResponse hook already toasts a 403.
-      if (!(error instanceof HTTPError && error.response.status === 403)) {
-        toast.error(await getApiErrorMessage(error, __('Could not save the campaign.', 'yayloyalty')));
-      }
+      await toastApiError(error, __('Could not save the campaign.', 'yayloyalty'));
       return false;
     }
   }
@@ -295,6 +292,7 @@ function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }
       {archiveOpen && (
         <CampaignArchiveDialog
           campaign={campaign}
+          displayStatus={displayStatus}
           onClose={() => setArchiveOpen(false)}
           onDone={(action) => {
             // Unsaved edits belong to a campaign that has just left the list; the guard would only nag.

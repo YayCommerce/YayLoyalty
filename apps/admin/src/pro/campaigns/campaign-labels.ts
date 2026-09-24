@@ -2,6 +2,7 @@ import { __, sprintf } from '@wordpress/i18n';
 
 import { parseWPCurrency, parseWPDate } from '@/lib/helpers/format.helper';
 import {
+  Campaign,
   CAMPAIGN_CONDITION_TYPES,
   CampaignConditionKind,
   CampaignDisplayStatus,
@@ -9,6 +10,11 @@ import {
 } from '@/lib/schema/campaign.schema';
 
 /** Campaign presentation strings derived from the real fields; the wire carries none. */
+
+/** The built-in (default) campaign for a trigger: what a non-built-in falls back to. undefined while the list loads. */
+export function findBuiltinCampaign(campaigns: Campaign[] | undefined, trigger: CampaignTrigger): Campaign | undefined {
+  return campaigns?.find((candidate) => candidate.is_builtin && candidate.trigger === trigger);
+}
 
 /** A campaign only competes within its group; see triggerGroup(). */
 export type CampaignGroupKey = 'purchase' | 'signup' | 'review' | 'other';
