@@ -7,6 +7,7 @@ import { SideNavMenuItem, SideNavMenuList } from '@/components/ui/navmenu-side';
 /** Single source of truth for the settings tabs — add a tab here and in `router.tsx`. */
 export const SETTINGS_NAV = [
   { to: '/settings/general', label: __('General', 'yayloyalty') },
+  { to: '/settings/design', label: __('Design', 'yayloyalty') },
   { to: '/settings/emails', label: __('Emails', 'yayloyalty') },
   { to: '/settings/advanced', label: __('Advanced', 'yayloyalty') },
 ];

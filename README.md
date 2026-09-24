@@ -122,6 +122,7 @@ composer test                  # phpunit, unit suite
 composer test:integration      # phpunit against a real site and server; see docs/deployment-guide.md
 composer lint                  # phpcs
 ./scripts/check-docs.sh        # docs structure and single-owner checks
+/source-of-truth-check         # Claude Code skill: rules re-declared outside their § 16 owner
 pnpm --filter @yayloyalty/admin-page lint   # eslint + prettier on TypeScript/React
 pnpm --filter @yayloyalty/admin-page test   # vitest
 ./scripts/run.sh release lite --no-prompt   # builds and validates a package end to end

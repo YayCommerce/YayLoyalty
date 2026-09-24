@@ -97,7 +97,7 @@ flowchart LR
         Dash["DashboardPage"]
         Camp["CampaignsPage"]
         Cust["CustomersPage"]
-        Set["Settings (General/Emails/Advanced stubs)"]
+        Set["Settings (Design tab shipped; General/Emails/Advanced stubs)"]
         Other["Rewards, Referral, VIP (placeholders)"]
     end
 
@@ -141,7 +141,8 @@ flowchart LR
 | `/campaigns` | `CampaignsPage` (list, fixture-backed) | ⚠️ fixture data |
 | `/campaigns/:id/edit` | `CampaignEditor` (Pro only) | ⚠️ not persisted |
 | `/campaigns/:id/performance` | `CampaignPerformance` (Pro only) | ⚠️ fixture data |
-| `/rewards`, `/referral`, `/vip-tiers`, `/settings` | Stubs | ⚠️ placeholders |
+| `/settings/design` | `DesignSettingsPage` (Free sections + Pro `tier`/`panel`/`typography`, admin-only, no storefront rendering) | ✅ shipped |
+| `/rewards`, `/referral`, `/vip-tiers`, `/settings` (General/Emails/Advanced) | Stubs | ⚠️ placeholders |
 
 **Tech stack:**
 - React 18 with TSX
@@ -222,6 +223,7 @@ flowchart TD
 - Sentinel **present** in Pro ✓
 - No `Pro` namespace reference outside `includes/YayLoyalty.php` (Lite) ✓
 - Single entry chunk (no dynamic import side-effects) ✓
+- Design's inline Pro fields (in `DesignStorefrontTextSection` / `DesignVisibilitySection`) sit in a file that also references `IS_PRO_BUILD`; checked in source, not the zip ✓
 - `tsc --noEmit` passes on the app's own code (3 pre-existing errors from 2 files whose dependencies were never added to `package.json` — `@emoji-mart/data`/`@emoji-mart/react`, `@radix-ui/react-progress` — pre-existing on `main`, unrelated to any feature branch) ✓
 
 ### Strip Behavior, Not Vocabulary

@@ -308,10 +308,10 @@ The one place suite counts and coverage are written down; other docs link here.
 composer lint                          # phpcs (WPCS + PHPCompatibility, 7.4 floor)
 composer lint:fix                      # phpcbf
 ./scripts/check-docs.sh                # docs stay split and single-homed: cited paths exist, links resolve, sizes, test counts only here
-composer test                          # phpunit over tests/unit/ — 229 tests, 62 incomplete by design (the earning-split specification in `tests/unit/Earning/`, `tests/unit/Services/`, `tests/unit/ContextFactoryTest.php` and the redemption-split specification in `tests/unit/Redemption/`): points engine (BaseCalculator, PurchaseHandler, PointsEngine), earning orchestration scaffold (IdempotencyKey, Outcome, EarningService), the ledger's duplicate-key guard (QueryException), reward engine + clamp (Clamp, Result, Registry, RewardEngine), redemption orchestration scaffold (Quoter real; service, writer, coupon, session, adapters as specification), dashboard computation (PeriodWindow, DashboardMath, AnomalyDetector, DashboardStats, DashboardNotices), PointsMath + shared vectors, campaign config/conditions validation, drawer query-arg groupings + item formatter (`tests/unit/Controllers/`)
+composer test                          # phpunit over tests/unit/ — 254 tests, 62 incomplete by design (the earning-split specification in `tests/unit/Earning/`, `tests/unit/Services/`, `tests/unit/ContextFactoryTest.php` and the redemption-split specification in `tests/unit/Redemption/`): points engine (BaseCalculator, PurchaseHandler, PointsEngine), earning orchestration scaffold (IdempotencyKey, Outcome, EarningService), the ledger's duplicate-key guard (QueryException), reward engine + clamp (Clamp, Result, Registry, RewardEngine), redemption orchestration scaffold (Quoter real; service, writer, coupon, session, adapters as specification), dashboard computation (PeriodWindow, DashboardMath, AnomalyDetector, DashboardStats, DashboardNotices), PointsMath + shared vectors, campaign config/conditions validation, drawer query-arg groupings + item formatter (`tests/unit/Controllers/`), design settings coercion and merge (`tests/unit/Helpers/DesignHelperTest.php`), settings boolean coercion (`tests/unit/Helpers/SettingsHelperTest.php`)
 composer test:integration              # phpunit over tests/integration/ against a real WordPress and MySQL — 31 tests: the ledger's UNIQUE guard, the balance_after chain and non-idempotent manual rows, adjust_lifetime in both directions, which user ids the customer routes accept (deleted members on the drawer reads, not on adjust), and the campaigns route refusing to archive a built-in. Plugin tables go under a scratch `ylit_` prefix and are dropped afterwards, so the site's own data is never read or written. Needs a WordPress install with the plugin active; see `deployment-guide.md`
 pnpm --filter @yayloyalty/admin-page lint   # eslint + prettier on TypeScript/React
-pnpm --filter @yayloyalty/admin-page test   # vitest over apps/admin/tests/ — 123 tests: lib/points-math against tests/fixtures/points-math-vectors.json (same file phpunit runs), money formatting, activity rows, adjust-dialog form state, the chunked bulk-write helper
+pnpm --filter @yayloyalty/admin-page test   # vitest over apps/admin/tests/ — 126 tests: lib/points-math against tests/fixtures/points-math-vectors.json (same file phpunit runs), money formatting, activity rows, adjust-dialog form state, the chunked bulk-write helper, the design schema against the PHP defaults
 ./scripts/run.sh build [pro|lite]      # Full build — currently fails at tsc --noEmit due to 3 pre-existing missing-dependency type errors
 ./scripts/run.sh release lite --no-prompt   # builds and validates a package end to end
 ```
@@ -372,3 +372,38 @@ Cut: other-module behaviour · narrated history · restated code or library defa
 Keep: the docblock purpose line · guards whose removal is a silent bug · ordering constraints · WordPress/WooCommerce behaviours the code works around · every `@throws` a caller depends on · real `TODO:` markers (one line, what and why not now) · `translators:` and `phpcs:ignore` directives.
 
 The review question is: *would deleting this comment make the next bug harder to avoid, or the next reader unable to tell what this is for?* If neither, delete it.
+
+## 16. Single source of truth
+
+**Every rule has one owner; everything else calls it or mirrors it from the table below.**
+
+Two places that decide the same thing leave the reader unable to tell which one wins, and they drift: one gets fixed, the other keeps shipping the old rule. § 8's *Points arithmetic is shared with the SPA through `PointsMath`* and *Table names come from `Utils\Table`* are this rule applied to money math and table names.
+
+| Rule | Owner | Allowed mirrors |
+|---|---|---|
+| Option names, meta keys, table prefix | Constants on the owning class (`SettingsHelper::OPTION_SETTINGS`, `DesignHelper::OPTION_DESIGN`, `Installer::OPTION_DB_VERSION`, …); table names through `Utils\Table::name()` | — |
+| Settings keys, types, defaults | `Helpers\SettingsHelper` (`get_default_settings()`, `schema()`) | `apps/admin/src/lib/schema/settings.schema.ts` |
+| Design tokens, icon lists, bounds | `Helpers\DesignSchema` (`get_default_design()`, `schema()`, `LAUNCHER_ICONS`, `BADGE_ICONS`) | `apps/admin/src/lib/schema/design.schema.ts`; `apps/admin/tests/fixtures/design-defaults.json` (generated by `scripts/dump-design-defaults.php`) |
+| Points arithmetic, rounding | `Utils\PointsMath` | `apps/admin/src/lib/points-math/points-math.ts` (agreement enforced by `tests/fixtures/points-math-vectors.json` in both suites) |
+| Ledger types, statuses, actor kinds, activity events, campaign triggers | `includes/Enums/*`; Pro triggers in `YayLoyaltyPro::ADDED_TRIGGERS` | `LEDGER_TYPES`, `CAMPAIGN_STATUSES`, `LITE_CAMPAIGN_TRIGGERS`, `PRO_CAMPAIGN_TRIGGERS`, `ALL_KNOWN_CAMPAIGN_TRIGGERS`, `CAMPAIGN_TRIGGERS`, `ACTIVITY_EVENT_TYPES`, `ACTIVITY_ACTOR_KINDS` in `apps/admin/src/lib/schema/` |
+| Campaign display status (scheduled, ended) | `Enums\Status::resolve_display()` | `CAMPAIGN_DISPLAY_STATUSES`, `resolveCampaignDisplayStatus()` in `campaign.schema.ts` |
+| Campaign config fields, purchase mode | `Models\Campaign::config_schema()`, `PurchaseHandler::is_multiplier()` | `CAMPAIGN_CONFIG_FIELDS` (UI metadata), `resolvePurchaseMode()` in `campaign.schema.ts` |
+| Condition types, operators, value rules | `Enums\CampaignConditionType`, `Enums\RewardConditionType` (shared `ConditionTypeMethods`), `Utils\ConditionValueRules` | `CAMPAIGN_CONDITION_SCHEMA` in `campaign.schema.ts` (UI metadata, not a validator) |
+| Drawer filter vocabularies | `Controllers\Schemas\LedgerQueryArgs::filter_types()`, `ActivityQueryArgs::GROUPS` | `LEDGER_FILTER_TYPES`, `ACTIVITY_GROUPS` |
+| Capabilities | `Access\Capabilities` | `CAP` in `apps/admin/src/lib/access.tsx` |
+| Permission error codes | `AbstractRestController::forbidden()`, `assert_ceiling()` | `FORBIDDEN_ERROR_CODES` in `apps/admin/src/lib/access.tsx` |
+| REST wire shapes | PHP `to_array()` and the controller's item schema | `*.schema.ts` in `apps/admin/src/lib/schema/`; Pro response schemas in `apps/admin/src/pro/**/*.api.ts` |
+| Points shown as money, bulk writes | `formatPointsAsMoney()` in `lib/helpers/points.helper.ts`, `settleInChunks()` in `lib/helpers/settle-in-chunks.helper.ts` | — |
+| Dev `?scenario=` fixtures | `Controllers\DashboardFixture` (PHP), `hooks/useDevScenario.ts` (SPA) | — |
+| Cross-cutting rationale | `docs/system-architecture.md` | a code comment of one or two lines plus a pointer |
+
+A mirror exists only where the language boundary forces one; it names its owner in a comment and must agree with it. Adding a mirror means adding it to this table with the reason. `/source-of-truth-check` reads this table to flag copies in a diff.
+
+## 17. Readable code **[REVIEW]**
+
+Body-level rules for new and touched code; the caps are soft and existing code is not refactored to meet them.
+
+- **Return early; nest at most two levels.** Each level is one more condition the reader holds in their head to know when a line runs.
+- **One job per function.** If its purpose line needs "and", split it; past ~40 lines, check whether it has. A function doing two jobs can't be reused for either.
+- **Names carry kind and unit.** Booleans read `is_`/`has_`/`can_`, quantities name their unit (`_seconds`, `_bytes`), no abbreviations beyond `id` and `url`. A bare `timeout` or `flag` sends the reader to the call site to find out.
+- **Boring over clever.** No nested ternaries, at most two chained `map`/`filter`/`reduce`, a string function over a regex when it is enough. Clever code is read many more times than it is written.
