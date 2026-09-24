@@ -7,23 +7,53 @@ import { __ } from '@wordpress/i18n';
 
 import { getApiErrorMessage } from '@/lib/api/api';
 import { useEmailsQuery, useSaveEmailsMutation } from '@/lib/queries/emails.queries';
-import { emailsFormSchema, EmailsFormValues, toEmailsFormValues } from '@/lib/schema/emails.schema';
+import { emailsFormSchema, EmailsFormValues, EmailsResponse, toEmailsFormValues } from '@/lib/schema/emails.schema';
+import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { useRouteLeaveGuard } from '@/hooks/useRouteLeaveGuard';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { UnsavedChangeDialog } from '@/components/ui/custom/unsaved-changed-dialog';
+import { Skeleton } from '@/components/ui/skeleton';
+import { ProGate } from '@/components/pro/ProGate';
 import { EmailsTable } from './EmailsTable';
 import { EmailsThrottleCard } from './EmailsThrottleCard';
 
+/**
+ * Loads the registered emails, then mounts the form, so the form's hooks always have data to seed from.
+ * Data is checked before the error: a failed background refetch keeps the old data, and must not
+ * unmount a form with unsaved edits.
+ */
 export default function EmailsSettingsPage() {
   const emailsQuery = useEmailsQuery();
+
+  if (emailsQuery.data) {
+    return <EmailsSettingsForm data={emailsQuery.data} />;
+  }
+
+  if (emailsQuery.isError) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-between gap-3 text-sm">
+          <span className="text-muted-foreground">{__('Email settings could not be loaded.', 'yayloyalty')}</span>
+          <Button type="button" variant="outline" size="sm" onClick={() => void emailsQuery.refetch()}>
+            {__('Retry', 'yayloyalty')}
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return <Skeleton className="h-96 w-full" />;
+}
+
+function EmailsSettingsForm({ data }: { data: EmailsResponse }) {
   const saveMutation = useSaveEmailsMutation();
 
   // `values` (not defaultValues) + keepDirtyValues: a refetch re-seeds the form without
   // clobbering a field mid-edit, same reasoning as DesignSettingsPage.
   const form = useForm<EmailsFormValues>({
     resolver: zodResolver(emailsFormSchema),
-    values: toEmailsFormValues(emailsQuery.data),
+    values: toEmailsFormValues(data),
     resetOptions: { keepDirtyValues: true },
   });
 
@@ -42,13 +72,25 @@ export default function EmailsSettingsPage() {
     }
   });
 
-  const { sending } = emailsQuery.data;
+  const { sending } = data;
 
   return (
     <>
       <FormProvider {...form}>
         <form onSubmit={handleSave} className="flex flex-col gap-4">
-          <EmailsTable groups={emailsQuery.data.groups} wcEmailsUrl={sending.wc_emails_url} />
+          <EmailsTable groups={data.groups} />
+
+          {IS_PRO_BUILD ? null : (
+            <Card>
+              <CardHeader>
+                <CardTitle>{__('More emails in Pro', 'yayloyalty')}</CardTitle>
+                <CardDescription>{__('More loyalty emails come with YayLoyalty Pro.', 'yayloyalty')}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ProGate />
+              </CardContent>
+            </Card>
+          )}
 
           <EmailsThrottleCard />
 

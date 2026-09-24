@@ -1,9 +1,8 @@
 import { z } from 'zod';
 
 /**
- * RHF resolver input; what POST /emails takes. Keyed by a bare string, not a closed enum: the
- * backend persists every id (Free and Pro share one store, see EmailsHelper's docblock), and
- * a closed enum here would throw the moment a Pro-only id renders in Lite.
+ * RHF resolver input; what POST /emails takes. Keyed by a bare string, not a closed enum: the ids
+ * are whatever the server registered with WooCommerce (3 in Lite, 12 in Pro).
  */
 export const emailsFormSchema = z.object({
   emails: z.record(z.string(), z.boolean()),
@@ -12,17 +11,16 @@ export const emailsFormSchema = z.object({
 export type EmailsFormValues = z.infer<typeof emailsFormSchema>;
 
 /**
- * Server-authored static data (labels/descriptions), plain types rather than Zod — nothing to
- * validate. `isFree` is server-computed from EmailsMetadata::FREE_EMAIL_IDS so the FE never
- * duplicates that list; final editability is `item.isFree || IS_PRO_BUILD`.
+ * One registered loyalty email, as EmailsHelper::to_item() builds it. Plain types rather than Zod:
+ * server-authored, nothing to validate. `editUrl` opens the email's own WooCommerce settings screen.
  */
 export type EmailItem = {
   id: string;
-  label: string;
+  title: string;
   description: string;
-  recipient: string;
+  recipient: 'customer' | 'admin';
   enabled: boolean;
-  isFree: boolean;
+  editUrl: string;
 };
 export type EmailGroup = { group: string; groupLabel: string; items: EmailItem[] };
 export type EmailsSending = { from_name: string; from_address: string; wc_emails_url: string };
@@ -33,7 +31,7 @@ export type EmailsResponse = {
   throttlePerWeek: number;
 };
 
-/** Only the toggles + throttle cap are form state; labels/descriptions/recipient/sending are never posted back. */
+/** Only the toggles + throttle cap are form state; titles, links and sending info are never posted back. */
 export function toEmailsFormValues(data: EmailsResponse): EmailsFormValues {
   const emails: Record<string, boolean> = {};
 

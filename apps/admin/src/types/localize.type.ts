@@ -1,6 +1,5 @@
 import type { CustomerBalanceRange, CustomerExpiringSoon, CustomerTier } from '@/lib/schema/customer.schema';
 import { Design } from '@/lib/schema/design.schema';
-import { EmailsResponse } from '@/lib/schema/emails.schema';
 import { Settings } from '@/lib/schema/settings.schema';
 
 export type Meta = {
@@ -39,7 +38,6 @@ export type Meta = {
 export type AdminData = {
   settings: Settings;
   design: Design;
-  emails: EmailsResponse;
   /** From Capabilities::payload(). Cosmetic only; every route re-checks server-side. */
   capabilities: string[];
   /** Per-adjustment limit for non-administrators; 0 = unlimited. */

@@ -1,33 +1,25 @@
 import { Fragment } from 'react';
+import { SendIcon } from 'lucide-react';
 import { Controller, useFormContext } from 'react-hook-form';
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 
-import { IS_PRO_BUILD } from '@/lib/is-pro-build';
-import { EmailGroup, EmailItem, EmailsFormValues } from '@/lib/schema/emails.schema';
+import { EmailGroup, EmailsFormValues } from '@/lib/schema/emails.schema';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { YayLoyaltyToolTip } from '@/components/ui/custom/tooltip';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ProGate } from '@/components/pro/ProGate';
 
 interface EmailsTableProps {
   groups: EmailGroup[];
-  wcEmailsUrl: string;
 }
 
 /**
- * One grouped table for every email (Free + Pro), matching the design — no separate Free/Pro
- * tables. A row is editable when `item.isFree` (server-computed) or this is a Pro build; a
- * Pro-only row in the Lite build renders disabled with an inline upgrade badge next to its label.
- * Card-wrapped the same way DashboardRecentActivity frames its table.
+ * One grouped table for every email this build registered with WooCommerce; each row's switch
+ * edits WooCommerce's own on/off. Card-wrapped the same way DashboardRecentActivity frames its table.
  */
-export function EmailsTable({ groups, wcEmailsUrl }: EmailsTableProps) {
+export function EmailsTable({ groups }: EmailsTableProps) {
   const { control } = useFormContext<EmailsFormValues>();
-
-  function isEditable(item: EmailItem): boolean {
-    return item.isFree || IS_PRO_BUILD;
-  }
 
   return (
     <Card className="gap-3">
@@ -54,16 +46,7 @@ export function EmailsTable({ groups, wcEmailsUrl }: EmailsTableProps) {
               {group.items.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell>
-                    <div className="flex items-center gap-1.5 font-medium">
-                      {item.label}
-                      {/* Static id-based special case: becomes data-driven once tier variants exist. */}
-                      {'tier_reached' === item.id && (
-                        <span className="text-muted-foreground text-xs font-normal">
-                          {__('(3 variants)', 'yayloyalty')}
-                        </span>
-                      )}
-                      {!isEditable(item) && <ProGate inline />}
-                    </div>
+                    <div className="font-medium">{item.title}</div>
                     <div className="text-muted-foreground text-xs">{item.description}</div>
                   </TableCell>
                   <TableCell className="capitalize">{item.recipient}</TableCell>
@@ -72,12 +55,7 @@ export function EmailsTable({ groups, wcEmailsUrl }: EmailsTableProps) {
                       name={`emails.${item.id}`}
                       control={control}
                       render={({ field }) => (
-                        <Switch
-                          checked={field.value ?? item.enabled}
-                          onCheckedChange={field.onChange}
-                          disabled={!isEditable(item)}
-                          aria-label={item.label}
-                        />
+                        <Switch checked={field.value} onCheckedChange={field.onChange} aria-label={item.title} />
                       )}
                     />
                   </TableCell>
@@ -87,16 +65,27 @@ export function EmailsTable({ groups, wcEmailsUrl }: EmailsTableProps) {
                       <YayLoyaltyToolTip
                         trigger={
                           <span>
-                            <Button variant="outline" size="sm" disabled>
-                              {__('Send test', 'yayloyalty')}
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              disabled
+                              /* translators: %s: email title */
+                              aria-label={sprintf(__('Send a test of %s (coming soon)', 'yayloyalty'), item.title)}
+                            >
+                              <SendIcon />
                             </Button>
                           </span>
                         }
-                        content={__('Coming soon', 'yayloyalty')}
+                        content={__('Send test — coming soon', 'yayloyalty')}
                       />
-                      {/* Generic WC Emails list: no section anchor until a WC_Email class is registered for this id. */}
                       <Button asChild variant="ghost" size="sm">
-                        <a href={wcEmailsUrl} target="_blank" rel="noreferrer">
+                        <a
+                          href={item.editUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          /* translators: %s: email title */
+                          aria-label={sprintf(__('Edit template for %s', 'yayloyalty'), item.title)}
+                        >
                           {__('Edit template', 'yayloyalty')}
                         </a>
                       </Button>

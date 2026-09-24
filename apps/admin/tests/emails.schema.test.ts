@@ -1,31 +1,31 @@
 import { describe, expect, it } from 'vitest';
 
-import { emailsFormSchema, toEmailsFormValues, type EmailsResponse } from '@/lib/schema/emails.schema';
+import { emailsFormSchema, toEmailsFormValues, type EmailItem, type EmailsResponse } from '@/lib/schema/emails.schema';
 
 describe('emailsFormSchema', () => {
-  it('accepts a form covering Free and Pro-only ids (bare string keys)', () => {
+  it('accepts whichever ids the server registered (bare string keys, not a closed enum)', () => {
     const result = emailsFormSchema.parse({
       emails: {
-        points_earned: true,
-        points_expiring_soon: false,
-        points_expired: true,
-        reward_claimed: true, // Pro-only id — must be accepted, not a closed enum.
+        yayloyalty_points_earned: true,
+        yayloyalty_reward_claimed: false,
       },
       throttlePerWeek: 3,
     });
 
-    expect(result.emails.points_earned).toBe(true);
-    expect(result.emails.reward_claimed).toBe(true);
+    expect(result.emails.yayloyalty_points_earned).toBe(true);
+    expect(result.emails.yayloyalty_reward_claimed).toBe(false);
   });
 
   it('accepts any subset of ids (record allows partial)', () => {
-    const result = emailsFormSchema.parse({ emails: { points_earned: true }, throttlePerWeek: 3 });
+    const result = emailsFormSchema.parse({ emails: { yayloyalty_points_earned: true }, throttlePerWeek: 3 });
 
-    expect(result.emails).toEqual({ points_earned: true });
+    expect(result.emails).toEqual({ yayloyalty_points_earned: true });
   });
 
   it('rejects non-boolean values', () => {
-    expect(() => emailsFormSchema.parse({ emails: { points_earned: 'true' }, throttlePerWeek: 3 })).toThrow();
+    expect(() =>
+      emailsFormSchema.parse({ emails: { yayloyalty_points_earned: 'true' }, throttlePerWeek: 3 }),
+    ).toThrow();
   });
 
   it('rejects a payload without an emails object', () => {
@@ -51,101 +51,92 @@ describe('emailsFormSchema', () => {
   });
 });
 
-/** Flattens every group's items into an id => enabled map and carries the throttle cap through unchanged. */
-describe('toEmailsFormValues', () => {
-  const mockEmailsResponse: EmailsResponse = {
-    groups: [
-      {
-        group: 'points',
-        groupLabel: 'Points',
-        items: [
-          {
-            id: 'points_earned',
-            label: 'Points earned',
-            description: 'Sent when a customer earns points.',
-            recipient: 'customer',
-            enabled: true,
-            isFree: true,
-          },
-          {
-            id: 'points_expiring_soon',
-            label: 'Points expiring soon',
-            description: 'Sent before points expire.',
-            recipient: 'customer',
-            enabled: false,
-            isFree: true,
-          },
-          {
-            id: 'expiring_final_reminder',
-            label: 'Expiring final reminder',
-            description: 'Last-chance reminder.',
-            recipient: 'customer',
-            enabled: true,
-            isFree: false,
-          },
-          {
-            id: 'points_expired',
-            label: 'Points expired',
-            description: 'Sent after points expire.',
-            recipient: 'customer',
-            enabled: true,
-            isFree: true,
-          },
-        ],
-      },
-      {
-        group: 'rewards',
-        groupLabel: 'Rewards',
-        items: [
-          {
-            id: 'reward_claimed',
-            label: 'Reward claimed',
-            description: 'Sent when a customer claims a reward.',
-            recipient: 'customer',
-            enabled: false,
-            isFree: false,
-          },
-        ],
-      },
-    ],
+function item(id: string, enabled: boolean): EmailItem {
+  return {
+    id,
+    title: id,
+    description: `${id} description`,
+    recipient: 'customer',
+    enabled,
+    editUrl: `http://example.com/wp-admin/admin.php?page=wc-settings&tab=email&section=${id}`,
+  };
+}
+
+function response(groups: EmailsResponse['groups'], throttlePerWeek = 3): EmailsResponse {
+  return {
+    groups,
     sending: {
       from_name: 'Test Shop',
       from_address: 'shop@example.com',
       wc_emails_url: 'http://example.com/wp-admin/admin.php?page=wc-settings&tab=email',
     },
-    throttlePerWeek: 3,
+    throttlePerWeek,
   };
+}
 
-  it('extracts enabled state from every group, Free and Pro-only alike', () => {
-    const result = toEmailsFormValues(mockEmailsResponse);
+/** Lite registers 3 emails in one group; Pro 12 across five. The form covers whatever arrived. */
+const LITE = response([
+  {
+    group: 'yayloyalty_points',
+    groupLabel: 'Loyalty: Points',
+    items: [
+      item('yayloyalty_points_earned', true),
+      item('yayloyalty_points_expiring_soon', true),
+      item('yayloyalty_points_expired', false),
+    ],
+  },
+]);
 
-    expect(result).toEqual({
-      emails: {
-        points_earned: true,
-        points_expiring_soon: false,
-        expiring_final_reminder: true,
-        points_expired: true,
-        reward_claimed: false,
-      },
-      throttlePerWeek: 3,
+const PRO = response([
+  { ...LITE.groups[0], items: [...LITE.groups[0].items, item('yayloyalty_expiring_final_reminder', true)] },
+  {
+    group: 'yayloyalty_rewards',
+    groupLabel: 'Loyalty: Rewards',
+    items: [item('yayloyalty_reward_claimed', true), item('yayloyalty_coupon_issued', true)],
+  },
+  {
+    group: 'yayloyalty_referral',
+    groupLabel: 'Loyalty: Referral',
+    items: [item('yayloyalty_invite_sent', true), item('yayloyalty_referral_reward_earned', true)],
+  },
+  {
+    group: 'yayloyalty_tiers',
+    groupLabel: 'Loyalty: Tiers',
+    items: [
+      item('yayloyalty_tier_reached', true),
+      item('yayloyalty_tier_ending_soon', true),
+      item('yayloyalty_tier_lost', false),
+    ],
+  },
+  { group: 'yayloyalty_birthday', groupLabel: 'Loyalty: Birthday', items: [item('yayloyalty_birthday_points', true)] },
+]);
+
+describe('toEmailsFormValues', () => {
+  it('keeps every registered id with its enabled state (Lite, 3 emails)', () => {
+    expect(toEmailsFormValues(LITE).emails).toEqual({
+      yayloyalty_points_earned: true,
+      yayloyalty_points_expiring_soon: true,
+      yayloyalty_points_expired: false,
     });
   });
 
-  it('produces a valid form value that passes the schema', () => {
-    const result = toEmailsFormValues(mockEmailsResponse);
+  it('keeps every registered id across all groups (Pro, 12 emails)', () => {
+    const emails = toEmailsFormValues(PRO).emails;
 
-    expect(() => emailsFormSchema.parse(result)).not.toThrow();
+    expect(Object.keys(emails)).toHaveLength(12);
+    expect(emails.yayloyalty_tier_lost).toBe(false);
+    expect(emails.yayloyalty_birthday_points).toBe(true);
+  });
+
+  it('produces a valid form value that passes the schema', () => {
+    expect(() => emailsFormSchema.parse(toEmailsFormValues(PRO))).not.toThrow();
   });
 
   it('carries the throttle cap through unchanged', () => {
-    const result = toEmailsFormValues({ ...mockEmailsResponse, throttlePerWeek: 10 });
-
-    expect(result.throttlePerWeek).toBe(10);
+    expect(toEmailsFormValues(response(LITE.groups, 10)).throttlePerWeek).toBe(10);
   });
 
-  it('ignores sending data', () => {
-    const result = toEmailsFormValues(mockEmailsResponse);
-
-    expect(Object.keys(result)).toEqual(['emails', 'throttlePerWeek']);
+  it('posts back only toggles and the cap, never titles, links or sender info', () => {
+    expect(Object.keys(toEmailsFormValues(PRO))).toEqual(['emails', 'throttlePerWeek']);
   });
 });
