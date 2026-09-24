@@ -24,6 +24,10 @@ final class LedgerServiceTest extends TestCase {
         $this->markTestIncomplete( 'redeem(): same ensure_row → lock → insert → aggregates as earn(); locked balance + points < 0 → Outcome::skipped( insufficient_balance ), nothing written; a duplicate key → Outcome::duplicate. Stub until F08.' );
     }
 
+    public function test_adjust_with_lifetime_false_moves_balance_only(): void {
+        $this->markTestIncomplete( 'adjust($user, +100, $note, $actor, false) inserts the ledger row and moves balance, but lifetime_earned is unchanged; adjust_lifetime=true (the default) still moves both.' );
+    }
+
     public function test_ledger_recorded_fires_after_the_outermost_commit(): void {
         $this->markTestIncomplete( 'Nested in an outer Transaction::run(), yayloyalty_ledger_recorded fires after the outer commit, not the savepoint release — the known gap in dispatch_events(). The unnested case is covered in the integration suite.' );
     }

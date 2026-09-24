@@ -254,7 +254,7 @@ public static function all_known() {
 
 ## Internal Extension Seams (Filters)
 
-These are **first-party, internal seams** for Pro to attach behavior. Not a third-party API; may change.
+These are **first-party, internal seams** for Pro to attach behavior. Not a third-party API; may change. This table is the one list of these Pro seams; other docs link here. The points engine's public filters are listed with the engine in [`codebase-summary.md`](./codebase-summary.md#points-engine-includesenginepoints).
 
 | Filter | Context | Used By |
 |---|---|---|
@@ -275,6 +275,11 @@ These are **first-party, internal seams** for Pro to attach behavior. Not a thir
 | **`yayloyalty_rest_item_schema`** | Applied inside `AbstractRestController::get_item_schema()` | Pro extends campaign/reward schemas |
 | **`yayloyalty_campaign_conditions_evaluator`** | Called by `Engine\Points\PointsEngine::conditions_match()` with the engine `Context` | Pro supplies ConditionsEvaluator instance (fails closed on unknown types) |
 | **`yayloyalty_localize_admin_data`** | Called by `LocalizeHelper` to extend SPA payload | Pro adds `segments` (saved Customers-page filter sets) and paid feature flags |
+| **`yayloyalty_localize_meta`** | Applied by `LocalizeHelper` to the localized `meta` payload (currency format and the like) | Extend the SPA meta payload |
+| **`yayloyalty_max_manual_adjustment`** | Applied by `CustomerRestController::validate_adjustment()` | Sanity ceiling on one manual adjustment's absolute points (default 1,000,000), for every role; separate from the site-wide `settings.advanced.adjustment_ceiling` policy (non-administrators only; see `code-standards.md` § 9) |
+| **`yayloyalty_run_migrations`** | Fired by the Installer's migration step | Custom migrations |
+| **`yayloyalty_pro_booted`** | Action fired after Pro boot completes | Pro-only follow-up wiring |
+| **`yayloyalty_erase_customer_data`** | **Documented, unbuilt, never wired** — nothing fires it | Nothing. What runs on `delete_user`/`wpmu_delete_user` today is capture, not erasure: `Engine\CustomerActivityListener` → `Services\CustomerActivityService::record_account_deleted()`. Do not build Pro cleanup against this seam until a real erasure tool fires it |
 
 **Seam safety:** Match on `$rest_base` (route) and schema `title` — `yayloyalty_rest_item_schema` is shared across resources.
 
@@ -290,7 +295,7 @@ These are **first-party, internal seams** for Pro to attach behavior. Not a thir
 
 **Copy lives in the client.** Notices are `{key, severity, fingerprint, data}`; `dashboard-page.notice-copy.ts` composes every title, body and action from `data` (thresholds quoted from `data.threshold`), and ledger rows are described by `ledger.helper.ts` — the same rule as the Customers list.
 
-**Dev scenario switch.** `?scenario=empty|small|large|notices|anomaly` swaps the payload for a `DashboardFixture` artboard. The argument is registered only when `WP_DEBUG` is true and the SPA reads it only through `hooks/useDevScenario.ts` (`undefined` outside the Vite dev server, so a built bundle never sends it); production builds are verified on real data.
+**Dev scenario switch.** A `WP_DEBUG`-only `?scenario=` arg swaps the payload for a fixture artboard; values and both gates: [`deployment-guide.md`](./deployment-guide.md#fixture-backed-endpoints). Production builds are verified on real data.
 
 ### Customers list & bulk actions data flow
 
@@ -314,16 +319,16 @@ The only complete ledger write path, and the only one reachable from the admin U
 ```
 Admin Customers page (React) — Bulk Actions → "Adjust points"
     ↓
-useBulkAdjustPointsMutation → adjustCustomerPoints( user_id, { points, note } )   one call per selected customer
+useBulkAdjustPointsMutation → adjustCustomerPoints( user_id, { points, note, adjustLifetime } )   one call per selected customer
     ↓
-ky.post('customers/{user_id}/adjust', { points, note })
+ky.post('customers/{user_id}/adjust', { points, note, adjust_lifetime })
     ↓
 CustomerRestController  →  BaseRestController::exec_write()
     │   permission_callback: requires( Capabilities::MANAGE_POINTS ), then assert_ceiling()
     │   args: from get_write_args() — readonly fields already stripped
     │   wraps the callback in Transaction::run()
     ↓
-LedgerService::adjust( user_id, points, note, actor_id )
+LedgerService::adjust( user_id, points, note, actor_id, adjust_lifetime )
     ↓ record() [private method]
     ├─ CustomerRepository::ensure_row( user_id )   INSERT … ON DUPLICATE KEY UPDATE (create-then-lock)
     ├─ CustomerRepository::lock_and_get( user_id ) SELECT … FOR UPDATE — serialises writers per customer
@@ -467,7 +472,7 @@ CampaignPerformance.tsx: useCampaignQuery (header) + useCampaignPerformanceQuery
 
 ### Order award — SCAFFOLDED (shape real, bodies stubbed, not registered at boot)
 
-**Engine status:** `PointsEngine` is complete with 46 unit tests for `BaseCalculator`, `PurchaseHandler`, `PointsEngine`, plus `ContextFactory` and `Triggers/Registry`; its rounding step is `Utils\PointsMath::round_points()`, covered by the shared PHP/TS vector suite. It computes what an order earns given the live campaigns, at `Context::occurred_at` (no timestamp argument).
+**Engine status:** `PointsEngine` is complete and unit-tested (`BaseCalculator`, `PurchaseHandler`, `PointsEngine`, plus `ContextFactory` and `Triggers/Registry`); its rounding step is `Utils\PointsMath::round_points()`, covered by the shared PHP/TS vector suite. It computes what an order earns given the live campaigns, at `Context::occurred_at` (no timestamp argument).
 
 **Scaffold (`includes/Engine/Earning/`, 2026-09-22):** the award path is split into two moments that share one `Context` and one `occurred_at`:
 1. **Evaluation** — `Listeners\OrderListener` → `ContextFactory::from_order()` → `EarningService::preview()`: `Gate` chain (`ProgramGate`: excluded roles, opt-out meta) then `PointsEngine::evaluate()`. Pure; the result is staged as pending order meta on order creation.

@@ -1,8 +1,8 @@
 import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { parseWPCurrency, parseWPTime, utcToDate } from '@/lib/helpers/format.helper';
-import { formatPoints } from '@/lib/helpers/points.helper';
-import { pctDelta, pointsToCurrency } from '@/lib/points-math/points-math';
+import { formatPointsAsMoney, formatPoints } from '@/lib/helpers/points.helper';
+import { pctDelta } from '@/lib/points-math/points-math';
 import type { DashboardRange, DashboardSeriesPoint } from '@/lib/schema/dashboard.schema';
 
 /**
@@ -83,8 +83,7 @@ export function noticeTileOverrides(
   pointsPerCurrencyUnit: number,
 ): Partial<Record<'points_issued' | 'liability' | 'redemption_rate', string>> {
   if (pointsJump) {
-    const overnightAmount = pointsToCurrency(pointsJump.yesterday_points, pointsPerCurrencyUnit);
-    const overnight = overnightAmount === null ? null : parseWPCurrency(overnightAmount);
+    const overnight = formatPointsAsMoney(pointsJump.yesterday_points, pointsPerCurrencyUnit);
 
     return {
       points_issued: sprintf(__('▲ %s of it yesterday', 'yayloyalty'), formatPoints(pointsJump.yesterday_points)),

@@ -12,10 +12,11 @@ import {
   getCustomer,
   getCustomerLedger,
   getCustomers,
+  previewAdjustPoints,
   type CustomerLedgerParams,
   type CustomerListParams,
 } from '@/lib/api/customer.api';
-import type { AdjustPointsInput } from '@/lib/schema/customer.schema';
+import type { AdjustPointsInput, AdjustPointsPreviewInput } from '@/lib/schema/customer.schema';
 
 /**
  * `['customer', kind, userId]` — the one place that owns this shape, so the
@@ -86,6 +87,17 @@ export const CUSTOMER_QUERIES = {
       placeholderData: keepPreviousData,
       retry: 1,
     }),
+
+  /** The bulk adjust dialog's count/liability/rate. staleTime 0: each open reads the store as it is now. */
+  adjustPreview: (input: AdjustPointsPreviewInput, enabled: boolean) =>
+    queryOptions({
+      queryKey: ['customer', 'adjust-preview', input],
+      queryFn: ({ signal }) => previewAdjustPoints(input, signal),
+      enabled,
+      staleTime: 0,
+      refetchOnWindowFocus: false,
+      retry: 1,
+    }),
 };
 
 /** ─── Hooks ─────────────────────────────────────────── */
@@ -112,6 +124,10 @@ export function useCustomerRedemptionsQuery(userId: number, params: DrawerPageOn
 
 export function useCustomerReferralsQuery(userId: number, params: DrawerPageOnlyParams) {
   return useQuery(CUSTOMER_QUERIES.referrals(userId, params));
+}
+
+export function useAdjustPointsPreviewQuery(input: AdjustPointsPreviewInput, enabled: boolean) {
+  return useQuery(CUSTOMER_QUERIES.adjustPreview(input, enabled));
 }
 
 export function useAdjustPointsMutation(userId: number) {
@@ -146,17 +162,19 @@ export function useBulkAdjustPointsMutation() {
     mutationKey: ['customer', 'adjust', 'bulk'],
     mutationFn: async ({ userIds, input }: { userIds: number[]; input: AdjustPointsInput }) => {
       let succeeded = 0;
-      let failed = 0;
+      const failedIds: number[] = [];
 
       for (let i = 0; i < userIds.length; i += BULK_ADJUST_CONCURRENCY) {
         const chunk = userIds.slice(i, i + BULK_ADJUST_CONCURRENCY);
         const results = await Promise.allSettled(chunk.map((userId) => adjustCustomerPoints(userId, input)));
 
-        succeeded += results.filter((result) => result.status === 'fulfilled').length;
-        failed += results.filter((result) => result.status === 'rejected').length;
+        results.forEach((result, index) => {
+          if (result.status === 'fulfilled') succeeded++;
+          else failedIds.push(chunk[index]);
+        });
       }
 
-      return { succeeded, failed };
+      return { succeeded, failed: failedIds.length, failedIds };
     },
     // onSettled: a partly failed batch still moved real balances.
     onSettled: () => {

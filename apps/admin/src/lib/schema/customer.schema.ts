@@ -41,8 +41,8 @@ export type LooseEnds = z.infer<typeof looseEndsSchema>;
 
 /**
  * 4b's expiring-batch summary — always `null` today, since it
- * needs `lots`, which doesn't exist yet (docs/data-model.md). `batches` is
- * separately nullable inside: `null` means the Free inactivity model (no
+ * needs `lots`, which doesn't exist yet (docs/data-model/future-tables.md).
+ * `batches` is separately nullable inside: `null` means the Free inactivity model (no
  * batches exist at all, not "zero"). Percentages and money are derived
  * client-side — this carries figures only.
  */
@@ -158,10 +158,29 @@ export type CustomerSortKey =
   'name' | 'tier' | 'balance' | 'pending' | 'lifetime' | 'last_activity' | 'expires' | 'referrals';
 export type CustomerSortDirection = 'asc' | 'desc';
 
-/** Request body for POST /customers/{id}/adjust. */
+/** Request body for POST /customers/{id}/adjust — `adjustLifetime` maps to the wire's `adjust_lifetime` in customer.api.ts. */
 export const adjustPointsSchema = z.object({
   points: z.number().int(),
   note: z.string().min(1),
+  adjustLifetime: z.boolean(),
 });
 
 export type AdjustPointsInput = z.infer<typeof adjustPointsSchema>;
+
+/** Mirrors CustomerAdjustPreviewRestController::preview(). `count` is null unless filters were sent. */
+export const adjustPointsPreviewSchema = z.object({
+  count: z.number().int().nullable(),
+  liability_points: z.number().int(),
+  points_per_currency_unit: z.number(),
+});
+
+export type AdjustPointsPreview = z.infer<typeof adjustPointsPreviewSchema>;
+
+/**
+ * `filters` only for "select all matching" (a ticked list knows its own
+ * count). Typed structurally, not as `RowFilters`, so this lib-level module
+ * never imports from `pages/customers/`.
+ */
+export type AdjustPointsPreviewInput = {
+  filters?: { search: string; balanceRange: string; expiringSoon: string };
+};

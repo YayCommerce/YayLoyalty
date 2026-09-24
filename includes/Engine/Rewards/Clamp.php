@@ -36,16 +36,17 @@ final class Clamp {
      * Preconditions: $requested ≥ 0 (a negative is treated as 0); $balance is
      * the customer's spendable balance at the moment of asking; $cart_subtotal
      * is in $currency and already net of every other coupon, or null for a
-     * claim with no cart (no cart ceiling then).
+     * claim with no cart (no cart ceiling then); $decimals is that currency's
+     * (wc_get_price_decimals() at runtime).
      *
      * Postconditions: Result::allowed() whose get_points() is a multiple of
      * `increment`, ≤ every ceiling, and 0 when below `min_points`; get_value()
-     * = points / points_per_currency_unit at 2 dp; get_bound_by() names the
+     * = points / points_per_currency_unit at $decimals dp; get_bound_by() names the
      * ceiling that reduced the request, or '' when the request stood. The
      * only denial is REASON_NO_RATE for a reward whose config has no usable
      * `points_per_currency_unit`.
      */
-    public static function apply( Reward $reward, int $requested, int $balance, ?float $cart_subtotal, string $currency ): Result {
+    public static function apply( Reward $reward, int $requested, int $balance, ?float $cart_subtotal, string $currency, int $decimals ): Result {
         $config = $reward->get_config();
         $rate   = (float) ( $config['points_per_currency_unit'] ?? 0 );
 
@@ -100,7 +101,7 @@ final class Clamp {
             }
         }
 
-        $value = PointsMath::points_to_currency( $applied, $rate ) ?? 0.0;
+        $value = PointsMath::points_to_currency( $applied, $rate, $decimals ) ?? 0.0;
 
         return Result::allowed( $reward, max( 0, $requested ), $applied, $value, $currency, $rate, $bound_by );
     }

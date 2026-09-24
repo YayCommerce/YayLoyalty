@@ -44,7 +44,7 @@ final class DashboardFixture {
         }
     }
 
-    /** Pro panel data for the same scenarios; referrals and tier_distribution stay null, as on the real path. */
+    /** Pro panel data for the same scenarios; referrals and tier_distribution stay null, as the real endpoint returns them. */
     public static function pro_scenario( string $name, int $range ): array {
         $window = PeriodWindow::for_range( $range, new \DateTimeImmutable( 'now', wp_timezone() ) );
         $days   = $window->days();

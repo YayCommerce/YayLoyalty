@@ -5,6 +5,7 @@ import { __, _n, sprintf } from '@wordpress/i18n';
 import { getApiErrorMessage, isAbortError } from '@/lib/api/api';
 import { useBulkAdjustPointsMutation } from '@/lib/queries/customer.queries';
 import type { AdjustPointsInput, CustomerListRow } from '@/lib/schema/customer.schema';
+import { bulkSelectionChanged } from './components/customers-adjust-points.bulk.copy';
 import { exportCustomersToCsv } from './customers-page.export';
 import type { RowFilters } from './customers-page.filter-rows';
 import {
@@ -71,9 +72,27 @@ export function useCustomersBulkActions({
   // Covers the resolve step too: isPending alone left a window where a second click
   // fired two overlapping, non-idempotent batches.
   const [isAdjustSubmitting, setIsAdjustSubmitting] = useState(false);
+  // Bumped to tell the dialog to clear its liability acknowledgement after a
+  // selection-changed abort below — a fresh count deserves a fresh consent.
+  const [acknowledgementResetKey, setAcknowledgementResetKey] = useState(0);
+  // The count a submit just resolved when it disagreed with the dialog's. The
+  // dialog shows this until closed, so the next submit is checked against a
+  // number the admin re-confirmed rather than the stale preview again.
+  const [recountedCount, setRecountedCount] = useState<number | null>(null);
   const bulkAdjustMutation = useBulkAdjustPointsMutation();
 
-  async function handleAdjustSubmit(input: AdjustPointsInput) {
+  useEffect(() => {
+    if (!isAdjustDialogOpen) setRecountedCount(null);
+  }, [isAdjustDialogOpen]);
+
+  /**
+   * `expectedCount` is the figure the dialog showed and the admin
+   * acknowledged. `resolveSelectedRows()` below already re-resolves the
+   * matching set fresh (it has to, to get the ids to fan out over) — for
+   * "select all matching" that is at least as strong as a plain re-COUNT,
+   * so this reuses it rather than firing a second, redundant preview call.
+   */
+  async function handleAdjustSubmit(input: AdjustPointsInput, expectedCount?: number) {
     setIsAdjustSubmitting(true);
     try {
       const selected = await resolveSelectedRows();
@@ -83,7 +102,14 @@ export function useCustomersBulkActions({
         return;
       }
 
-      const { succeeded, failed } = await bulkAdjustMutation.mutateAsync({
+      if (selection.mode === 'all' && expectedCount !== undefined && selected.length !== expectedCount) {
+        toast.error(bulkSelectionChanged(selected.length, expectedCount));
+        setRecountedCount(selected.length);
+        setAcknowledgementResetKey((key) => key + 1);
+        return;
+      }
+
+      const { succeeded, failed, failedIds } = await bulkAdjustMutation.mutateAsync({
         userIds: selected.map((row) => row.user_id),
         input,
       });
@@ -98,10 +124,17 @@ export function useCustomersBulkActions({
         setIsAdjustDialogOpen(false);
         setSelection(EMPTY_SELECTION);
       } else {
-        // Partial failure: leave the dialog open so the merchant can decide whether to retry.
+        // Partial failure: keep the dialog open, but on the failed customers only —
+        // adjustments are not idempotent, so a retry must never reach the ones that succeeded.
+        setSelection({ mode: 'partial', ids: new Set(failedIds) });
+        setRecountedCount(null);
+        setAcknowledgementResetKey((key) => key + 1);
         toast.error(
           sprintf(
-            __('%1$d succeeded, %2$d failed. Points ceilings or permissions may differ per customer.', 'yayloyalty'),
+            __(
+              '%1$d succeeded, %2$d failed. Points ceilings or permissions may differ per customer. Only the failed customers are still selected.',
+              'yayloyalty',
+            ),
             succeeded,
             failed,
           ),
@@ -125,5 +158,7 @@ export function useCustomersBulkActions({
     setIsAdjustDialogOpen,
     isAdjustSubmitting,
     handleAdjustSubmit,
+    acknowledgementResetKey,
+    recountedCount,
   };
 }

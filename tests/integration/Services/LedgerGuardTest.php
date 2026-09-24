@@ -150,6 +150,22 @@ final class LedgerGuardTest extends IntegrationTestCase {
         $this->assertSame( 100, (int) $this->customer_row( self::USER )['balance'] );
     }
 
+    /** With the flag on, lifetime_earned follows the balance in both directions; off, it stays put. */
+    public function test_adjust_lifetime_moves_lifetime_earned_by_the_signed_amount(): void {
+        $service = $this->ledger_service();
+
+        $service->adjust( self::USER, 500, 'Grant', 1, true );
+        $service->adjust( self::USER, -200, 'Undo part of the grant', 1, true );
+        $this->assertSame( 300, (int) $this->customer_row( self::USER )['lifetime_earned'] );
+
+        $service->adjust( self::USER, 100, 'Balance-only grant', 1, false );
+        $service->adjust( self::USER, -50, 'Balance-only deduction', 1, false );
+
+        $row = $this->customer_row( self::USER );
+        $this->assertSame( 300, (int) $row['lifetime_earned'] );
+        $this->assertSame( 350, (int) $row['balance'] );
+    }
+
     public function test_the_recorded_hook_fires_for_an_award_and_not_for_a_duplicate(): void {
         $fired = 0;
 

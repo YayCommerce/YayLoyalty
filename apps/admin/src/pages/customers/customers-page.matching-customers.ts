@@ -1,15 +1,19 @@
 import { getCustomers } from '@/lib/api/customer.api';
 import type { CustomerListRow } from '@/lib/schema/customer.schema';
+import { bulkTooLargeSelection } from './components/customers-adjust-points.bulk.copy';
 import type { RowFilters } from './customers-page.filter-rows';
 import { isRowSelected, type SelectionState } from './customers-page.selection';
 import type { SortDirection, SortKey } from './customers-page.sort-rows';
-import { resolveBalanceRangeForQuery } from './customers-page.tier-sample-data';
+import { toServerFilters } from './customers-page.tier-sample-data';
 
 /** The server's per_page cap (AbstractRepository::MAX_PER_PAGE), so the walk takes the fewest requests. */
 const MAX_PER_PAGE = 100;
 
-/** Ceiling on pages one bulk action walks (50,000 rows); beyond that, fail fast rather than hang the tab. */
+/** Ceiling on pages one bulk action walks; beyond that, fail fast rather than hang the tab. */
 const MAX_PAGES = 500;
+
+/** The most rows one bulk action can touch (50,000) — the adjust dialog blocks a larger selection up front. */
+export const MAX_MATCHING_ROWS = MAX_PAGES * MAX_PER_PAGE;
 
 /**
  * Every row matching the current filters, for bulk actions. Sequential, not
@@ -22,11 +26,7 @@ export async function fetchAllMatchingCustomers(
   signal?: AbortSignal,
 ): Promise<CustomerListRow[]> {
   const params = {
-    search: filters.search,
-    // Same tier → balance_range substitution as the list query, or a Tier pick matches nothing.
-    balanceRange: resolveBalanceRangeForQuery(filters),
-    expiringSoon: filters.expiringSoon,
-    tier: 'all' as const,
+    ...toServerFilters(filters),
     orderBy: sort.by,
     order: sort.dir,
     perPage: MAX_PER_PAGE,
@@ -35,9 +35,7 @@ export async function fetchAllMatchingCustomers(
   const first = await getCustomers({ ...params, page: 1 }, signal);
 
   if (first.totalPage > MAX_PAGES) {
-    throw new Error(
-      `This selection matches too many customers to process in the browser (over ${MAX_PAGES * MAX_PER_PAGE}). Narrow the filters and try again.`,
-    );
+    throw new Error(bulkTooLargeSelection(MAX_MATCHING_ROWS));
   }
 
   const rows = [...first.data];
