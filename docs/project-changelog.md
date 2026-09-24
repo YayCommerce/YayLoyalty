@@ -13,8 +13,11 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
   `apply_aggregates()` gates purely on `LedgerType::affects_lifetime_earned()`, so the `$adjust_lifetime`
   flag is no longer threaded through `record()`/`apply_aggregates()` — the row's own type decides.
   `customers.lifetime_earned = SUM(earn) + SUM(adjust) − SUM(|refund_earn|)` is fully rebuildable from
-  the ledger again, and `DashboardRepository`/Pro `CampaignPointsRepository`'s `earn_types()` exclude
-  `correction` for free (both derive from `affects_lifetime_earned()`).
+  the ledger again. `DashboardRepository` and Pro `CampaignPointsRepository` drop their private
+  `earn_types()` copies for `LedgerType::lifetime_earned_types()`, so points-issued excludes `correction`;
+  `LedgerType::is_manual_adjustment()` (adjust + correction) gates the activity log and `note` exposure.
+- Tests: `LedgerTypeTest`, `LedgerEntryTest`, a `correction` case in `CustomerActivityServiceTest`;
+  `LedgerGuardTest` asserts the written type. Unit suite 254 → 264 tests (62 → 61 incomplete).
 - SPA: `correction` added to the ledger type enum, grouped into the drawer's existing "Adjust" filter
   bucket (`LedgerQueryArgs::group_of()`), described as "Balance correction" (or the admin's note) by
   `describeLedgerEntry()`.

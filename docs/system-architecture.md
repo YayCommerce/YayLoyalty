@@ -330,7 +330,7 @@ CustomerRestController  →  BaseRestController::exec_write()
     │   args: from get_write_args() — readonly fields already stripped
     │   wraps the callback in Transaction::run()
     ↓
-LedgerService::adjust( user_id, points, note, actor_id, adjust_lifetime )
+LedgerService::adjust( user_id, points, note, actor_id, adjust_lifetime )   type: ADJUST, or CORRECTION (balance only) when adjust_lifetime is false
     ↓ record() [private method]
     ├─ CustomerRepository::ensure_row( user_id )   INSERT … ON DUPLICATE KEY UPDATE (create-then-lock)
     ├─ CustomerRepository::lock_and_get( user_id ) SELECT … FOR UPDATE — serialises writers per customer
