@@ -11,9 +11,6 @@ defined( 'ABSPATH' ) || exit;
  */
 class DesignCoercion {
 
-    /** Tier badge shape — separate from DesignSchema::LAUNCHER_ICONS; the ring/diamond overlap is coincidence, not shared. */
-    public const BADGE_ICONS = [ 'ring', 'diamond', 'square' ];
-
     private const STRUCTURAL_LABELS   = [ 'launcher_label', 'balance_heading', 'redeem_button' ];
     private const DEFAULT_BADGE_COLOR = '#c8c8c8';
 
@@ -31,8 +28,6 @@ class DesignCoercion {
         switch ( $type ) {
             case 'bool':
                 return (bool) $value;
-            case 'int':
-                return (int) $value;
             case 'radius':
                 return min( 24, max( 0, (int) $value ) );
             case 'color':
@@ -101,7 +96,7 @@ class DesignCoercion {
             $out[] = [
                 'tier_id' => mb_substr( $tier_id, 0, 60 ),
                 'color'   => $color ? $color : self::DEFAULT_BADGE_COLOR,
-                'icon'    => in_array( $icon, self::BADGE_ICONS, true ) ? $icon : 'ring',
+                'icon'    => in_array( $icon, DesignSchema::BADGE_ICONS, true ) ? $icon : 'ring',
                 'label'   => mb_substr( sanitize_text_field( (string) ( $entry['label'] ?? '' ) ), 0, 60 ),
             ];
 

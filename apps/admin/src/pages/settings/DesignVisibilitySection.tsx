@@ -28,13 +28,13 @@ import {
 } from './design-settings.copy';
 import { visibilityScopeLabel } from './design-settings.option-labels';
 
-// Real WP roles from the bootstrap, not free text — a merchant can't typo a role slug
-// that then silently never matches anything server-side.
 const pageOption = (page: WpPageOption) => ({
   value: String(page.id),
   label: new DOMParser().parseFromString(page.title.rendered, 'text/html').body.textContent || `#${page.id}`,
 });
 
+// Real WP roles from the bootstrap, not free text — a merchant can't typo a role slug
+// that then silently never matches anything server-side.
 const ROLE_OPTIONS = Object.entries(window.yayLoyaltyMeta.wpMeta.roles).map(([value, label]) => ({
   value,
   label,

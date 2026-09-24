@@ -115,7 +115,7 @@ export const TIER_SECTION_TITLE = () => __('Tier badges', 'yayloyalty');
 export const TIER_SECTION_DESCRIPTION = () => __('Shown next to a customer’s tier on the storefront.', 'yayloyalty');
 export const TIER_EMPTY_TITLE = () => __('No tier badges configured', 'yayloyalty');
 export const TIER_EMPTY_DESCRIPTION = () =>
-  __('Reset to defaults on the Design tab to bring the three tier badges back.', 'yayloyalty');
+  __('Use Reset all Design settings to bring the three tier badges back.', 'yayloyalty');
 export const TIER_BADGE_TIER_ID_LABEL = () => __('Tier ID', 'yayloyalty');
 export const TIER_BADGE_TIER_ID_DESCRIPTION = () =>
   __(

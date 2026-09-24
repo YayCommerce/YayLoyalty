@@ -10,9 +10,8 @@ defined( 'ABSPATH' ) || exit;
  * list fields (id_list, slug_list, badge_list) are assigned wholesale after the recursive merge (array_replace_recursive
  * merges lists by index and would resurrect a default a merchant just cleared or shortened). A stored ''
  * storefront_text is literal, never re-substituted; reset() is the only route back to the default wording.
- * Field declarations live in DesignSchema, per-type sanitisation in DesignCoercion; this class is the
- * persistence/merge orchestrator — split three ways because the field surface (six groups, ~30 fields, two
- * closed icon vocabularies) made one file unreadable at the project's file-size budget.
+ * Field declarations live in DesignSchema and per-type sanitisation in DesignCoercion, which keeps each file
+ * inside the project's file-size budget.
  */
 class DesignHelper {
 

@@ -5,13 +5,12 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Design field declaration: defaults and the group/field/type whitelist DesignHelper::apply_schema() coerces
- * against. Split out of DesignHelper to keep the ~30-field, two-icon-vocabulary schema readable on its own —
- * DesignCoercion holds the per-type sanitisation, DesignHelper stays the persistence/merge orchestrator.
+ * against. The launcher and tier badge icons are separate vocabularies: different UI elements, free to diverge.
  */
 class DesignSchema {
 
-    /** Launcher icon row — separate from DesignCoercion::BADGE_ICONS: different shapes, independent evolution. */
     public const LAUNCHER_ICONS = [ 'default', 'circle', 'diamond', 'bar', 'ring', 'line', 'custom' ];
+    public const BADGE_ICONS    = [ 'ring', 'diamond', 'square' ];
 
     public static function get_default_design(): array {
         return [
@@ -40,7 +39,7 @@ class DesignSchema {
                 'hide_on_mobile'   => false,
                 'hide_for_roles'   => [ 'administrator', 'shop_manager' ],
             ],
-            'tier'            => [ // Pro; badge icon vocabulary is DesignCoercion::BADGE_ICONS, not LAUNCHER_ICONS.
+            'tier'            => [ // Pro
                 'badges' => [
                     [
                         'tier_id' => 'explorer',
@@ -72,7 +71,7 @@ class DesignSchema {
                 'mode'       => 'inherit',
                 'font'       => '',
                 // Stored and sanitised, but rendered nowhere yet — CSS exfiltration is an open risk, deferred to
-                // whoever ships storefront CSS rendering; see DesignCoercion::coerce()'s 'textarea' case.
+                // whoever ships storefront CSS rendering.
                 'custom_css' => '',
             ],
         ];
@@ -92,7 +91,6 @@ class DesignSchema {
                 'button_style'   => [ 'icon', 'label', 'both' ],
                 'brand_color'    => 'color',
                 'corner_radius'  => 'radius',
-                // Own closed vocabulary (LAUNCHER_ICONS), not the tier badge one — see DesignCoercion::BADGE_ICONS.
                 'icon'           => self::LAUNCHER_ICONS,
                 'icon_upload_id' => 'attachment_id',
             ],
@@ -102,7 +100,7 @@ class DesignSchema {
                 'earn_rate_line'        => 'text',
                 'redeem_button'         => 'text',
                 'signed_out_prompt'     => 'text',
-                'referral_card_heading' => 'text',
+                'referral_card_heading' => 'text', // Pro
                 'tier_progress_line'    => 'text', // Pro
             ],
             'visibility'      => [
@@ -112,18 +110,17 @@ class DesignSchema {
                 'hide_on_mobile'   => 'bool',
                 'hide_for_roles'   => 'slug_list',
             ],
-            // Badges carry their own icon field, validated in DesignCoercion::coerce_badge_list() against BADGE_ICONS.
             'tier'            => [ 'badges' => 'badge_list' ], // Pro
-            'panel'           => [
+            'panel'           => [ // Pro
                 'layout'                     => [ 'compact', 'full' ],
                 'show_referral_card'         => 'bool',
                 'show_progress_to_next_tier' => 'bool',
-                'show_reward_catalog'        => 'bool', // Pro
+                'show_reward_catalog'        => 'bool',
             ],
-            'typography'      => [
+            'typography'      => [ // Pro
                 'mode'       => [ 'inherit', 'custom' ],
                 'font'       => 'text',
-                'custom_css' => 'textarea', // Pro
+                'custom_css' => 'textarea',
             ],
         ];
     }

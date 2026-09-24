@@ -28,7 +28,6 @@ if ( ! function_exists( 'wp_get_attachment_url' ) ) {
     }
 }
 
-// Autoload the plugin classes
 spl_autoload_register(
     static function ( string $class_name ): void {
         $prefix = 'YayLoyalty\\';
@@ -45,10 +44,5 @@ spl_autoload_register(
     }
 );
 
-require_once ABSPATH . 'includes/Helpers/DesignSchema.php';
-require_once ABSPATH . 'includes/Helpers/DesignCoercion.php';
-require_once ABSPATH . 'includes/Helpers/DesignHelper.php';
-
-// Dump with consistent formatting
 $design = \YayLoyalty\Helpers\DesignHelper::get_design();
 echo json_encode( $design, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) . "\n";

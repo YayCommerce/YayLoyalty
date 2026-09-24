@@ -20,8 +20,9 @@ import { DesignTierBadgeRow } from './DesignTierBadgeRow';
  * offer a picker over; letting a merchant invent arbitrary tier slugs here
  * would just be UI for a feature that doesn't exist. The three-badge set
  * comes from `DesignSchema::get_default_design()` and stays fixed until a
- * real Tiers feature ships a migration that maps these badges onto its tiers. `useFieldArray` is used read-only, for its stable `field.id`
- * keys — nothing here calls `append`/`remove`.
+ * real Tiers feature ships a migration that maps these badges onto its tiers.
+ * `useFieldArray` is used read-only, for its stable `field.id` keys — nothing
+ * here calls `append`/`remove`.
  */
 export function DesignTierSection() {
   const { control } = useFormContext<Design>();

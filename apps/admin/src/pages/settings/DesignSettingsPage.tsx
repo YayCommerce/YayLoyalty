@@ -68,8 +68,8 @@ export default function DesignSettingsPage() {
     }
   });
 
-  // The one sanctioned full-form reset call site: no group, so every group — including Pro
-  // ones a Lite build cannot see — comes back, and form.reset(returned) is correct here.
+  // No group, so every group comes back — including Pro ones a Lite build cannot see —
+  // which is what makes a whole-form reset correct here; the storefront reset must not do this.
   async function handleResetWholeTab() {
     try {
       const returned = await resetMutation.mutateAsync(undefined);
