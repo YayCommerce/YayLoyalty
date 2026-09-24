@@ -19,6 +19,7 @@ flowchart TD
         RedCtrl["RedemptionsRestController"]
         RefCtrl["ReferralsRestController"]
         SettCtrl["SettingsRestController"]
+        EmailCtrl["EmailsRestController"]
         RewardCtrl["(No RewardRestController)"]
     end
 
@@ -97,7 +98,7 @@ flowchart LR
         Dash["DashboardPage"]
         Camp["CampaignsPage"]
         Cust["CustomersPage"]
-        Set["Settings (Design tab shipped; General/Emails/Advanced stubs)"]
+        Set["Settings (Design + Emails tabs shipped; General/Advanced stubs)"]
         Other["Rewards, Referral, VIP (placeholders)"]
     end
 
@@ -142,7 +143,8 @@ flowchart LR
 | `/campaigns/:id/edit` | `CampaignEditor` (Pro only) | ⚠️ not persisted |
 | `/campaigns/:id/performance` | `CampaignPerformance` (Pro only) | ⚠️ fixture data |
 | `/settings/design` | `DesignSettingsPage` (Free sections + Pro `tier`/`panel`/`typography`, admin-only, no storefront rendering) | ✅ shipped |
-| `/rewards`, `/referral`, `/vip-tiers`, `/settings` (General/Emails/Advanced) | Stubs | ⚠️ placeholders |
+| `/settings/emails` | `EmailsSettingsPage` (one unified 12-email table; 3 Free ids editable in Lite, all 12 editable in Pro, Pro-only rows disabled + inline upgrade badge in Lite) | ✅ shipped |
+| `/rewards`, `/referral`, `/vip-tiers`, `/settings` (General/Advanced) | Stubs | ⚠️ placeholders |
 
 **Tech stack:**
 - React 18 with TSX

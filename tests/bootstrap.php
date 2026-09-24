@@ -113,3 +113,43 @@ function get_userdata( int $user_id ) {
 function get_current_user_id(): int {
     return $GLOBALS['yayloyalty_test_current_user'] ?? 0;
 }
+
+/** Tests set $GLOBALS['yayloyalty_test_options'][$key] to store/retrieve values. Mirrors WordPress behavior. */
+function get_option( string $option, $default = false ) {
+    return $GLOBALS['yayloyalty_test_options'][ $option ] ?? $default;
+}
+
+/**
+ * Tests set $GLOBALS['yayloyalty_test_options'][$key] to store/retrieve values. Ignores autoload
+ * param in tests. Untyped, matching real WP: callers pass bool, 'yes'/'no', or null.
+ *
+ * @param mixed $autoload
+ */
+function update_option( string $option, $value, $autoload = null ): void {
+    $GLOBALS['yayloyalty_test_options'][ $option ] = $value;
+}
+
+/** Removes an option from the test store. */
+function delete_option( string $option ): void {
+    unset( $GLOBALS['yayloyalty_test_options'][ $option ] );
+}
+
+/** Minimal translation function: returns the message as-is (no translation in unit tests). */
+function __( string $text, string $domain = 'default' ): string {
+    return $text;
+}
+
+/** Minimal admin URL builder: just appends the path to a base. */
+function admin_url( string $path = '' ): string {
+    return 'http://example.local/wp-admin/' . ltrim( $path, '/' );
+}
+
+/** Minimal URL escaper: just returns the URL as-is (safe for test assertions). */
+function esc_url_raw( string $url ): string {
+    return $url;
+}
+
+/** Tests set $GLOBALS['yayloyalty_test_blogname'] for the 'name' arg; every other arg returns ''. */
+function get_bloginfo( string $show = '', string $filter = 'raw' ): string {
+    return 'name' === $show ? ( $GLOBALS['yayloyalty_test_blogname'] ?? '' ) : '';
+}

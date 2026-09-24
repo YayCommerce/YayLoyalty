@@ -6,6 +6,38 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
 
 ## Unreleased
 
+### Added — Settings → Emails tab: one unified table, all 12 email types (2026-09-23)
+
+- **Backend:** New wp_option `yayloyalty_emails` (autoload off), shape `{emails: {...12 bools},
+  throttle_per_week: int}` — the toggle map and the weekly send-cap setting share one option.
+  `EmailsHelper::update_emails()` whitelists against `EmailsMetadata::all_email_ids()` (not just
+  the 3 Free ids) and patches only its `emails` sub-key, leaving `throttle_per_week` untouched
+  (and vice versa for `update_throttle_per_week()`). New REST route `GET/POST
+  /yayloyalty/v1/emails` via `EmailsRestController`, backed by `EmailsHelper` (persistence) +
+  `EmailsMetadata` (static label/description/recipient metadata, one source of truth —
+  `pro_email_groups()` — split from `EmailsHelper` for the 200-line budget). Response shape is
+  `{groups: [...5 groups, 12 items], sending: {...}, throttlePerWeek: int}`; each item carries a
+  server-computed `isFree` flag. Route wired in `RestAPI::controllers()`, served in
+  `LocalizeHelper::get_admin_data()` under the `emails` key. Caps: `GET` requires `VIEW`, `POST`
+  requires `MANAGE_SETTINGS`. No server-side license/build check — matches the existing Design
+  precedent where Pro fields are already accepted unconditionally; the Free/Pro split is enforced
+  by what the Lite UI renders editable, not by the backend. The throttle cap isn't enforced yet
+  (no trigger/cron sends loyalty emails this release) — saved now so that future task needs no
+  settings migration.
+- **Frontend:** New page `EmailsSettingsPage.tsx` + `EmailsTable.tsx` — a single grouped table
+  (Points/Rewards/Referral/Tiers/Birthday) shown identically in both builds, matching the design
+  mockup rather than two separate Free/Pro tables. A row is editable when `item.isFree` or the
+  build is Pro; Pro-only rows in the Lite build render disabled with an inline `<ProGate inline />`
+  upgrade badge next to the label. Data layer: `emails.schema.ts`, `emails.api.ts`,
+  `emails.queries.ts` (TanStack Query + Zod pattern). From name/address read live from
+  WooCommerce options, display-only — `from_name` mirrors `WC_Emails::get_from_name()` exactly,
+  including its fallback to the site title when the merchant never saved that option (a plain
+  empty default showed blank where WooCommerce itself sends real mail with a name); `from_address`
+  has no such fallback, matching `WC_Emails::get_from_address()`.
+- **Out of scope (next task):** `WC_Email` registration, `wp_mail` sending, triggers/cron,
+  YayMail detection, send-test execution, template overrides. Edit template links to
+  WooCommerce → Settings → Emails list (no anchor yet).
+
 ### Fixed — Points convert to money at the store currency's decimals, one way everywhere (2026-09-23)
 
 - `PointsMath::points_to_currency()` / `pointsToCurrency()` take the currency's decimals
