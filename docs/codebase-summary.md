@@ -72,7 +72,7 @@ All in `Enums/` as `final class` + `const` + `all()` / `all_known()` + `is_valid
 
 - **`CampaignTrigger`** — `purchase`, `signup`, `review` (Lite); plus `birthday`, `first_order`, `order_count`, `spend_milestone` (Pro). `all()` is filtered (fireable); `all_known()` is not (recognised).
 - **`CustomerFilters`** — Shared filter vocabulary: `balance_range`, `expiring_soon`, `tier` (range keys); shared by `CustomerRowFilters.php` (REST) and `CustomerSegmentsHelper.php` (saved segments).
-- **`LedgerType`** — `earn`, `redeem`, `refund_earn`, `refund_redeem`, `expire`, `adjust`.
+- **`LedgerType`** — `earn`, `redeem`, `refund_earn`, `refund_redeem`, `expire`, `adjust`, `correction`.
 - **`LedgerSource`** — `order`, `signup`, `review`, `referral`, `birthday`, `milestone`, `social`, `renewal`, `manual`, `import`, `expiry`, `system`.
 - **`ReferenceType`** — `order`, `refund`, `comment`, `redemption`, `referral`, `user`, `birthday`, `import`.
 - **`ActivityEvent`** — the `yayloyalty_customer_meta.meta_key` vocabulary, also the activity log's `event_type`: `account_created`, `points_adjusted`, `tier_changed`, `expiry_reset`, `reward_redeemed`, `balance_email_sent`, `expiring_soon_email_sent`, `account_deleted`. Only the first, second and last have a writer.

@@ -44,18 +44,10 @@ final class LedgerService {
      * idempotent (NULL reference): an admin may grant the same bonus twice,
      * which is why the controller enforces a magnitude ceiling.
      *
-     * @param bool $adjust_lifetime True moves lifetime_earned by the same
-     *             signed amount as the balance, so a deduction can undo a
-     *             mistaken grant's tier progress. False is a balance-only
-     *             correction: the ledger row is still written, but
-     *             lifetime_earned (and so tier progress) does not move.
-     *
-     * TODO: the balance-only choice is not stored on the ledger row, so
-     * lifetime_earned can no longer be rebuilt from the ledger and the
-     * dashboard's points-issued total (which counts every positive adjust)
-     * drifts from it. Record it as its own ledger type and drop the flag
-     * from record() and apply_aggregates(). Scheduled after the earning
-     * process; task in docs/project-roadmap.md, Backbone TODOs.
+     * @param bool $adjust_lifetime True writes an ADJUST row: lifetime_earned
+     *             moves by the same signed amount as the balance, so a
+     *             deduction can undo a mistaken grant's tier progress. False
+     *             writes a CORRECTION row: balance only.
      *
      * @throws \InvalidArgumentException When points is zero or the type is bad.
      */
@@ -69,7 +61,7 @@ final class LedgerService {
             $user_id,
             $points,
             0, // balance_after is computed inside the lock.
-            LedgerType::ADJUST,
+            $adjust_lifetime ? LedgerType::ADJUST : LedgerType::CORRECTION,
             LedgerSource::MANUAL,
             null,
             null,
@@ -81,7 +73,7 @@ final class LedgerService {
             Dates::now()
         );
 
-        return $this->record( $draft, $adjust_lifetime );
+        return $this->record( $draft );
     }
 
     /**
@@ -217,14 +209,14 @@ final class LedgerService {
      * @throws \InvalidArgumentException When the draft's vocabulary is invalid.
      * @throws \YayLoyalty\Database\QueryException When a write fails.
      */
-    private function record( LedgerEntry $draft, bool $adjust_lifetime = true ): LedgerEntry {
+    private function record( LedgerEntry $draft ): LedgerEntry {
         // No enums in PHP 7.4: without this an invalid type surfaces as a DB error naming a column.
         LedgerType::assert( $draft->get_type() );
         LedgerSource::assert( $draft->get_source() );
         ReferenceType::assert( $draft->get_reference_type() );
 
         $entry = Transaction::run(
-            function () use ( $draft, $adjust_lifetime ) {
+            function () use ( $draft ) {
                 $user_id = $draft->get_user_id();
 
                 // Materialise before locking: a missing row gap-locks and two first-touch writers both insert.
@@ -237,7 +229,7 @@ final class LedgerService {
                 $to_insert = $draft->with_persisted( 0, $balance_after );
                 $insert_id = $this->ledger->insert( $to_insert );
 
-                $this->apply_aggregates( $draft, $adjust_lifetime );
+                $this->apply_aggregates( $draft );
 
                 $persisted = $to_insert->with_persisted( $insert_id, $balance_after );
 
@@ -253,21 +245,17 @@ final class LedgerService {
     }
 
     /**
-     * Updates the cached aggregates for one ledger row.
-     *
-     * @param bool $adjust_lifetime The manual adjust dialog's "balance only"
-     *             escape hatch: false leaves lifetime_earned untouched.
-     *             Always true for earned/redeemed system rows — only
-     *             LedgerService::adjust() ever passes false.
+     * Updates the cached aggregates for one ledger row, gated only on the
+     * row's type (`LedgerType::affects_lifetime_earned()` and siblings).
      */
-    private function apply_aggregates( LedgerEntry $entry, bool $adjust_lifetime = true ): void {
+    private function apply_aggregates( LedgerEntry $entry ): void {
         $type   = $entry->get_type();
         $points = $entry->get_points();
 
         $lifetime_earned_delta   = 0;
         $lifetime_redeemed_delta = 0;
 
-        if ( $adjust_lifetime && LedgerType::affects_lifetime_earned( $type ) ) {
+        if ( LedgerType::affects_lifetime_earned( $type ) ) {
             $lifetime_earned_delta = $points;
         }
 
