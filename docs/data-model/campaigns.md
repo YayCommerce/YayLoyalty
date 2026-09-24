@@ -29,7 +29,7 @@ All `DATETIME` columns are UTC (see [Conventions](../data-model.md#conventions))
 
 Indexes: PK; `UNIQUE KEY uk_slug (slug)`; `KEY idx_lookup (trigger_type, status, priority)` for selection; `KEY idx_archived (status, archived_at)` for the archived-campaigns view. The former single-column `starts_at` / `ends_at` indexes were dropped: selection filters the date window in SQL.
 
-Liveness: `status = 'active' AND (starts_at IS NULL OR starts_at <= now) AND (ends_at IS NULL OR ends_at > now)`, evaluated against the event's timestamp (the order's award time, not the request time). `Enums\Status::is_live_at()`.
+Liveness: `status = 'active' AND (starts_at IS NULL OR starts_at <= now) AND (ends_at IS NULL OR ends_at > now)`, evaluated against the event's timestamp — for an order, its **creation date**, not the award date or the request time, so the same order scores the same way at both evaluation moments regardless of what campaigns changed while it was unpaid (see [`data-model/points-lifecycle.md`](./points-lifecycle.md#01--the-two-moments)). `Enums\Status::is_live_at()`.
 
 Caching: `CampaignRepository::all_non_archived()` is cached in `wp_cache` group `yayloyalty` key `campaigns_non_archived` with TTL 3600 seconds. Cache is flushed on insert, update, or delete. Method `flush_cache()` is public for testing.
 
