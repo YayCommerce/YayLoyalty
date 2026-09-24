@@ -4,32 +4,34 @@ namespace YayLoyalty\Helpers;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Per-type sanitisation for DesignHelper::apply_schema() — one branch per DesignSchema::schema() type value,
- * plus the badge_list special case. Split out of DesignHelper so the coercion rules (length caps, the
- * structural-label non-empty rule, badge dedup) read as one focused unit; DesignSchema owns the field
- * declarations this dispatches against, DesignHelper owns persistence and the merge.
+ * Cleans one design value by its DesignSchema rule. Knows types, never field names: every limit comes
+ * from the rule. Returns null when the value is invalid, and the caller then keeps the prior value.
  */
 class DesignCoercion {
 
-    private const STRUCTURAL_LABELS   = [ 'launcher_label', 'balance_heading', 'redeem_button' ];
     private const DEFAULT_BADGE_COLOR = '#c8c8c8';
 
     /**
-     * @param mixed           $value
-     * @param string|string[] $type Schema type, or a closed choice list.
+     * Returns $value cleaned by $rule, or null when it is invalid.
+     *
+     * Types, with the limit keys each reads:
+     * choice (options), bool, int (min, max), color, attachment_id, id_list, slug_list, badge_list,
+     * text (max = 200, required = false), textarea (max = 20000).
+     * List types must return a re-indexed list: DesignHelper replaces a list whole but merges a keyed array.
+     *
+     * @param mixed                $value
+     * @param array<string, mixed> $rule DesignSchema::schema() entry: its type plus any limits.
      * @return mixed
      */
-    public static function coerce( $value, $type, string $group, string $field ) {
-        if ( is_array( $type ) ) {
-            $choice = sanitize_key( (string) $value );
-            return in_array( $choice, $type, true ) ? $choice : null;
-        }
-
-        switch ( $type ) {
+    public static function coerce( $value, array $rule ) {
+        switch ( $rule['type'] ) {
+            case 'choice':
+                $choice = sanitize_key( (string) $value );
+                return in_array( $choice, $rule['options'], true ) ? $choice : null;
             case 'bool':
                 return (bool) $value;
-            case 'radius':
-                return min( 24, max( 0, (int) $value ) );
+            case 'int':
+                return min( $rule['max'], max( $rule['min'], (int) $value ) );
             case 'color':
                 $color = sanitize_hex_color( (string) $value );
                 return $color ? $color : null;
@@ -40,34 +42,32 @@ class DesignCoercion {
             case 'slug_list':
                 return array_slice( array_values( array_filter( array_map( 'sanitize_key', (array) $value ) ) ), 0, 100 );
             case 'badge_list':
-                return self::coerce_badge_list( $value );
+                return self::badge_list( $value );
             case 'textarea':
-                return mb_substr( sanitize_textarea_field( (string) $value ), 0, 20000 ); // only custom_css uses this type
+                return mb_substr( sanitize_textarea_field( (string) $value ), 0, $rule['max'] ?? 20000 );
             case 'text':
             default:
-                return self::coerce_text( (string) $value, $group, $field );
+                return self::text( (string) $value, $rule['max'] ?? 200, $rule['required'] ?? false );
         }
     }
 
-    /** Structural labels reject blank server-side — the SPA's zod .min(1) is a usability nicety on top, not the only guard. */
-    private static function coerce_text( string $value, string $group, string $field ) {
+    /** A required text refuses blank on the server too; the SPA's non-empty check is only a convenience. */
+    private static function text( string $value, int $max, bool $required ): ?string {
         $text = sanitize_text_field( $value );
 
-        if ( 'storefront_text' === $group && '' === trim( $text ) && in_array( $field, self::STRUCTURAL_LABELS, true ) ) {
+        if ( $required && '' === trim( $text ) ) {
             return null;
         }
 
-        $cap = 'typography' === $group && 'font' === $field ? 120 : 200; // font is the one 'text' field with a narrower cap
-
-        return mb_substr( $text, 0, $cap );
+        return mb_substr( $text, 0, $max );
     }
 
     /**
      * [] is a merchant deleting every badge and is stored; null means every entry was malformed and is not a
-     * wipe — apply_schema() then omits tier.badges from the clean array, so the stored value survives.
+     * wipe — DesignHelper then omits tier.badges from the clean array, so the stored value survives.
      * Duplicate tier_id (the only thing a future Tiers migration can match on) is deduped, first kept.
      */
-    private static function coerce_badge_list( $value ): ?array {
+    private static function badge_list( $value ): ?array {
         if ( ! is_array( $value ) ) {
             return null;
         }
