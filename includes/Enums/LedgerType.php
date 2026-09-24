@@ -24,8 +24,11 @@ final class LedgerType {
     /** Points removed by the expiry job. */
     public const EXPIRE = 'expire';
 
-    /** Manual admin adjustment, positive or negative. */
+    /** Manual admin adjustment, positive or negative, that also moves lifetime_earned. */
     public const ADJUST = 'adjust';
+
+    /** Manual adjustment written with "adjust lifetime totals" off — moves balance only. */
+    public const CORRECTION = 'correction';
 
     /**
      * @return string[]
@@ -38,6 +41,7 @@ final class LedgerType {
             self::REFUND_REDEEM,
             self::EXPIRE,
             self::ADJUST,
+            self::CORRECTION,
         ];
     }
 
@@ -63,12 +67,24 @@ final class LedgerType {
     }
 
     /**
-     * lifetime_earned = SUM(earn) + SUM(adjust) - SUM(|refund_earn|), counting
-     * only adjusts made with "adjust lifetime totals" on. Spending (redeem,
-     * expire) never demotes a tier; an admin's deduction can.
+     * lifetime_earned = SUM(earn) + SUM(adjust) - SUM(|refund_earn|). Spending
+     * (redeem, expire) and `correction` never move it, so never demote a
+     * tier; an admin's `adjust` deduction can.
      */
     public static function affects_lifetime_earned( string $type ): bool {
         return in_array( $type, [ self::EARN, self::REFUND_EARN, self::ADJUST ], true );
+    }
+
+    /**
+     * @return string[] Types that feed customers.lifetime_earned.
+     */
+    public static function lifetime_earned_types(): array {
+        return array_values( array_filter( self::all(), [ self::class, 'affects_lifetime_earned' ] ) );
+    }
+
+    /** Whether the row is an admin's manual adjustment, with or without lifetime totals. */
+    public static function is_manual_adjustment( string $type ): bool {
+        return in_array( $type, [ self::ADJUST, self::CORRECTION ], true );
     }
 
     /** lifetime_redeemed = SUM(|redeem|) - SUM(refund_redeem). */

@@ -224,6 +224,7 @@ flowchart TD
 - Sentinel **present** in Pro ✓
 - No `Pro` namespace reference outside `includes/YayLoyalty.php` (Lite) ✓
 - Single entry chunk (no dynamic import side-effects) ✓
+- Design's inline Pro fields (in `DesignStorefrontTextSection` / `DesignVisibilitySection`) sit in a file that also references `IS_PRO_BUILD`; checked in source, not the zip ✓
 - `tsc --noEmit` passes on the app's own code (3 pre-existing errors from 2 files whose dependencies were never added to `package.json` — `@emoji-mart/data`/`@emoji-mart/react`, `@radix-ui/react-progress` — pre-existing on `main`, unrelated to any feature branch) ✓
 
 ### Strip Behavior, Not Vocabulary
@@ -330,7 +331,7 @@ CustomerRestController  →  BaseRestController::exec_write()
     │   args: from get_write_args() — readonly fields already stripped
     │   wraps the callback in Transaction::run()
     ↓
-LedgerService::adjust( user_id, points, note, actor_id, adjust_lifetime )
+LedgerService::adjust( user_id, points, note, actor_id, adjust_lifetime )   type: ADJUST, or CORRECTION (balance only) when adjust_lifetime is false
     ↓ record() [private method]
     ├─ CustomerRepository::ensure_row( user_id )   INSERT … ON DUPLICATE KEY UPDATE (create-then-lock)
     ├─ CustomerRepository::lock_and_get( user_id ) SELECT … FOR UPDATE — serialises writers per customer

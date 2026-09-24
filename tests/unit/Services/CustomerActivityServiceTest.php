@@ -116,6 +116,17 @@ final class CustomerActivityServiceTest extends TestCase {
         $this->assertCount( 0, $meta->inserted );
     }
 
+    /** A balance-only adjustment (CORRECTION) is still a manual admin action — same activity log entry as ADJUST. */
+    public function test_record_points_adjusted_writes_for_correction_manual(): void {
+        $meta    = $this->recording_meta();
+        $service = new CustomerActivityService( $meta, $this->customers(), $this->ledger() );
+
+        $service->record_points_adjusted( $this->make_ledger_entry( LedgerType::CORRECTION, LedgerSource::MANUAL, 100, 9, 'balance only' ) );
+
+        $this->assertCount( 1, $meta->inserted );
+        $this->assertSame( ActivityEvent::POINTS_ADJUSTED, $meta->inserted[0]->get_meta_key() );
+    }
+
     public function test_record_account_created_writes_once(): void {
         $meta    = $this->recording_meta();
         $service = new CustomerActivityService( $meta, $this->customers(), $this->ledger() );
