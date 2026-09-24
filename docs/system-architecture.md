@@ -97,7 +97,7 @@ flowchart LR
         Dash["DashboardPage"]
         Camp["CampaignsPage"]
         Cust["CustomersPage"]
-        Set["Settings (General/Emails/Advanced stubs)"]
+        Set["Settings (Design tab shipped; General/Emails/Advanced stubs)"]
         Other["Rewards, Referral, VIP (placeholders)"]
     end
 

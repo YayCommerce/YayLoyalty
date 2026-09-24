@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
-import { conditionTypeLabel, statusLabel, triggerGroup, triggerLabel } from '../campaign-labels';
+import { conditionTypeLabel, findBuiltinCampaign, statusLabel, triggerGroup, triggerLabel } from '../campaign-labels';
 import { CampaignFormValues, useCampaignEditorContext } from './campaign-editor.form';
 
 /**
@@ -50,9 +50,7 @@ export function CampaignEditorSummaryRail({
   const campaignsQuery = useCampaignsQuery({ perPage: 100 });
   const otherCampaigns = campaignsQuery.data?.data ?? [];
 
-  const defaultPurchaseCampaign = otherCampaigns.find(
-    (candidate) => candidate.is_builtin && candidate.trigger === 'purchase',
-  );
+  const defaultPurchaseCampaign = findBuiltinCampaign(otherCampaigns, 'purchase');
 
   const group = triggerGroup(trigger);
   const hasPriorityCollision = otherCampaigns.some(

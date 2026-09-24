@@ -89,6 +89,14 @@ interface CampaignGroup {
   hiddenRows: DisplayCampaign[];
 }
 
+/** One trigger group as rendered; hiddenRows sit behind "Show the other … campaigns". */
+interface CampaignGroup {
+  key: CampaignGroupKey;
+  rows: DisplayCampaign[];
+  visibleRows: DisplayCampaign[];
+  hiddenRows: DisplayCampaign[];
+}
+
 /**
  * Pro's grouped, prioritised campaigns table, reading the same list as
  * BuiltInCampaignList. Presentation strings are derived client-side

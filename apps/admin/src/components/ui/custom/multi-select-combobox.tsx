@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
 import { cn } from '@/lib/utils';
-import { Command, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent } from '@/components/ui/popover';
 import { ComboboxBadge, ComboboxCheckbox, ComboboxIcon, ComboboxRemove, ComboboxTrigger } from '../combobox';
 
@@ -17,11 +17,22 @@ export interface MultiSelectComboboxProps {
   options: MultiSelectComboboxOption[];
   placeholder?: string;
   disabled?: boolean;
+  /** Server-side search: the caller fetches `options` for each term, so the list is not filtered here. */
+  search?: {
+    onSearchChange: (term: string) => void;
+    placeholder: string;
+    emptyText: string;
+    /** Labels for chosen values the current results leave out, so their badges keep a name. */
+    selectedLabels: Record<string, string>;
+  };
+  /** Shown under the list, e.g. that only the first N results are listed. */
+  footer?: React.ReactNode;
 }
 
 /**
- * Static multi-select combobox: a fixed option list toggled via checkboxes
- * in a popover, with selections shown as removable badges in the trigger.
+ * Multi-select combobox: options toggled via checkboxes in a popover, with
+ * selections shown as removable badges in the trigger. Static by default;
+ * pass `search` when the caller loads options per search term.
  */
 export function MultiSelectCombobox({
   value,
@@ -29,11 +40,16 @@ export function MultiSelectCombobox({
   options,
   placeholder = 'Select…',
   disabled,
+  search,
+  footer,
 }: MultiSelectComboboxProps) {
   const [open, setOpen] = useState(false);
 
   const selectedValues = value ? value.split(',').filter(Boolean) : [];
-  const selectedOptions = options.filter((o) => selectedValues.includes(o.value));
+  const selectedOptions = selectedValues.map((selected) => ({
+    value: selected,
+    label: options.find((o) => o.value === selected)?.label ?? search?.selectedLabels[selected] ?? selected,
+  }));
 
   const toggle = (optionValue: string) => {
     const next = selectedValues.includes(optionValue)
@@ -68,8 +84,10 @@ export function MultiSelectCombobox({
         <ComboboxIcon />
       </ComboboxTrigger>
       <PopoverContent className="w-(--radix-popover-trigger-width) p-0" align="start">
-        <Command>
+        <Command shouldFilter={!search}>
+          {search && <CommandInput placeholder={search.placeholder} onValueChange={search.onSearchChange} />}
           <CommandList>
+            {search && <CommandEmpty>{search.emptyText}</CommandEmpty>}
             <CommandGroup>
               {options.map((o) => {
                 const isSelected = selectedValues.includes(o.value);
@@ -82,6 +100,7 @@ export function MultiSelectCombobox({
               })}
             </CommandGroup>
           </CommandList>
+          {footer && <div className="text-muted-foreground border-t px-3 py-2 text-xs">{footer}</div>}
         </Command>
       </PopoverContent>
     </Popover>

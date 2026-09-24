@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import { __, sprintf } from '@wordpress/i18n';
 
-import { getApiErrorMessage } from '@/lib/api/api';
+import { toastApiError } from '@/lib/api/api';
 import { parseWPRelativeDate } from '@/lib/helpers/format.helper';
 import { useCampaignQuery, useCreateCampaignMutation, useUpdateCampaignMutation } from '@/lib/queries/campaign.queries';
 import { hasPerformancePage } from '@/lib/schema/campaign-performance.schema';
@@ -143,10 +143,7 @@ function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }
       toast.success(__('Campaign saved.', 'yayloyalty'));
       return true;
     } catch (error) {
-      // api.ts's afterResponse hook already toasts a 403.
-      if (!(error instanceof HTTPError && error.response.status === 403)) {
-        toast.error(await getApiErrorMessage(error, __('Could not save the campaign.', 'yayloyalty')));
-      }
+      await toastApiError(error, __('Could not save the campaign.', 'yayloyalty'));
       return false;
     }
   }

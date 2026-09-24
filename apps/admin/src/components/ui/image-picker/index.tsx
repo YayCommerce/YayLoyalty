@@ -2,13 +2,16 @@ import { Trash } from '@phosphor-icons/react';
 
 import { Button } from '../button';
 
+/** What wp.media hands back on select; the id is what a caller like the design launcher icon needs to persist. */
+export type ImagePickerSelection = { id: number; url: string };
+
 function ImagePicker({
   coverSrc,
   onSelectCover,
   onRemoveCover,
 }: {
   coverSrc: string;
-  onSelectCover: (src: string) => void;
+  onSelectCover: (selection: ImagePickerSelection) => void;
   onRemoveCover: (src: string) => void;
 }) {
   const imgFallback = '';
@@ -24,7 +27,8 @@ function ImagePicker({
       const attachment = file_frame.state().get('selection').first().toJSON();
       const attachment_thumbnail = attachment.sizes.full || attachment.sizes.thumbnail;
 
-      onSelectCover(attachment_thumbnail.url);
+      // wp.media's attachment object already carries both; no second picker variant needed.
+      onSelectCover({ id: attachment.id, url: attachment_thumbnail.url });
     });
     // Finally, open the modal.
     file_frame.open();

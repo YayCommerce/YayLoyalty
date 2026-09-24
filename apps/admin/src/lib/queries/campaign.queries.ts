@@ -62,7 +62,7 @@ export function useUpdateCampaignMutation(id: number) {
 
   return useMutation({
     mutationKey: ['campaign', 'update', id],
-    mutationFn: (input: CampaignUpdateInput) => updateCampaign(id, input),
+    mutationFn: (input: Partial<CampaignUpdateInput>) => updateCampaign(id, input),
     onSuccess: () => {
       // The list shows the same fields; invalidating only detail leaves its row stale.
       queryClient.invalidateQueries({ queryKey: ['campaign', 'detail', id] });

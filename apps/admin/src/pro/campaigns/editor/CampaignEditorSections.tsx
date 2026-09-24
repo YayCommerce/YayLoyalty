@@ -27,7 +27,7 @@ import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { TagsInput } from '@/components/ui/tags-input';
-import { statusLabel, triggerGroup, triggerLabel } from '../campaign-labels';
+import { findBuiltinCampaign, statusLabel, triggerGroup, triggerLabel } from '../campaign-labels';
 import { CampaignFormValues, useCampaignEditorContext } from './campaign-editor.form';
 import { CampaignEditorConditions } from './CampaignEditorConditions';
 
@@ -286,9 +286,7 @@ function RewardFieldsPurchase() {
   // A multiplier campaign silently stops applying unless the default purchase campaign exists
   // and is active.
   const { data: campaignsData } = useCampaignsQuery({ perPage: 100 });
-  const defaultCampaign = campaignsData?.data.find(
-    (candidate) => candidate.is_builtin && candidate.trigger === 'purchase',
-  );
+  const defaultCampaign = findBuiltinCampaign(campaignsData?.data, 'purchase');
   const defaultPointsPerUnit =
     typeof defaultCampaign?.config.points_per_unit === 'number' ? defaultCampaign.config.points_per_unit : undefined;
 
