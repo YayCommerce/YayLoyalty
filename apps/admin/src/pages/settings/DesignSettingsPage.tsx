@@ -51,12 +51,16 @@ export default function DesignSettingsPage() {
 
   const { showDialog, confirmLeave, cancelLeave } = useRouteLeaveGuard(form.formState.isDirty);
 
+  // form.reset() merges resetOptions, so without this override keepDirtyValues would also keep
+  // every edited field over what the server just returned (its sanitised save, or the defaults).
+  const replaceAllValues = { keepDirtyValues: false };
+
   // The Design page stays on its own route after a save, so there is no bypassNext()/navigate()
   // dance CampaignEditor needs — just reset before confirmLeave() so the guard doesn't re-trip.
   const handleSave = form.handleSubmit(async (values) => {
     try {
       const saved = await saveMutation.mutateAsync(values);
-      form.reset(designToFormValues(saved));
+      form.reset(designToFormValues(saved), replaceAllValues);
       confirmLeave();
       toast.success(SAVE_SUCCESS_TOAST());
     } catch (error) {
@@ -69,7 +73,7 @@ export default function DesignSettingsPage() {
   async function handleResetWholeTab() {
     try {
       const returned = await resetMutation.mutateAsync(undefined);
-      form.reset(designToFormValues(returned));
+      form.reset(designToFormValues(returned), replaceAllValues);
       toast.success(RESET_WHOLE_TAB_SUCCESS_TOAST());
       setResetOpen(false);
     } catch (error) {
