@@ -7,10 +7,10 @@ use YayLoyalty\Helpers\EmailsHelper;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * GET/POST /emails.
+ * GET/POST /emails: the loyalty emails' on/off (stored by WooCommerce) and the weekly throttle.
  *
- * No get_item_schema(): the whitelist lives in EmailsMetadata::all_email_ids(), following the
- * DesignRestController sibling — one whitelist for a single-option resource, not two.
+ * No get_item_schema(): the registered loyalty emails are the whitelist, so a second list here
+ * would only drift from it.
  */
 class EmailsRestController extends AbstractRestController {
 
@@ -48,14 +48,15 @@ class EmailsRestController extends AbstractRestController {
             return $this->error_invalid_arguments();
         }
 
-        EmailsHelper::update_emails( $params['emails'] );
+        // Checked before any write: a rolled-back transaction does not undo a persistent object cache.
+        if ( isset( $params['throttlePerWeek'] ) && ! is_numeric( $params['throttlePerWeek'] ) ) {
+            return $this->error_invalid_arguments();
+        }
+
+        EmailsHelper::update_enabled( $params['emails'] );
 
         // Optional: a patch, same as emails — omit to leave the stored cap untouched.
         if ( isset( $params['throttlePerWeek'] ) ) {
-            if ( ! is_numeric( $params['throttlePerWeek'] ) ) {
-                return $this->error_invalid_arguments();
-            }
-
             EmailsHelper::update_throttle_per_week( (int) $params['throttlePerWeek'] );
         }
 

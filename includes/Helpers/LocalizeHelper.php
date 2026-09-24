@@ -16,7 +16,6 @@ class LocalizeHelper {
             [
                 'settings' => SettingsHelper::get_settings(),
                 'design'   => DesignHelper::get_design(),
-                'emails'   => EmailsHelper::get_response(),
             ],
             Capabilities::payload()
         );

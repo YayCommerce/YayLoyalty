@@ -1,81 +1,62 @@
 <?php
 namespace YayLoyalty\Helpers;
 
+use YayLoyalty\Engine\Emails\LoyaltyEmail;
+
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Emails storage: one option, `{emails: {id => bool}, throttle_per_week: int}`. The bool map is
- * keyed by EmailsMetadata::all_email_ids() (Free and Pro share one persisted store).
- * Every build receives and can save every id; only which ids the Lite UI renders editable differs
- * client-side (FREE_EMAIL_IDS + IS_PRO_BUILD). This mirrors the existing Design precedent, where
- * Pro schema fields are already accepted server-side unconditionally — the Free/Pro split is
- * enforced by what Lite bundles into its UI, not by a server-side license check
- * (docs/code-standards.md §13).
+ * Backs the Emails settings page. Each email's on/off, subject, heading and
+ * template belong to WooCommerce (the LoyaltyEmail's own settings); the weekly
+ * throttle lives in plugin settings. Building WooCommerce's mailer constructs
+ * every WooCommerce email, so it happens here, on /emails requests only.
  */
 class EmailsHelper {
 
-    public const OPTION_EMAILS             = 'yayloyalty_emails';
-    public const DEFAULT_THROTTLE_PER_WEEK = 3;
-
-    /** Raw option, both sub-keys defaulted and type-guarded — never a corrupt shape past this point. */
-    private static function stored(): array {
-        $raw = get_option( self::OPTION_EMAILS, [] );
-        $raw = is_array( $raw ) ? $raw : [];
-
-        return [
-            'emails'            => is_array( $raw['emails'] ?? null ) ? $raw['emails'] : [],
-            'throttle_per_week' => $raw['throttle_per_week'] ?? self::DEFAULT_THROTTLE_PER_WEEK,
-        ];
-    }
-
-    /** Stored bool map merged over defaults for every known id; unknown keys dropped, values cast to bool. */
-    public static function get_emails(): array {
-        $saved = self::stored()['emails'];
-
-        $emails = [];
-
-        foreach ( EmailsMetadata::all_defaults() as $id => $default ) {
-            $emails[ $id ] = array_key_exists( $id, $saved ) ? (bool) $saved[ $id ] : $default;
+    /**
+     * The registered loyalty emails (3 in Lite, 12 in Pro), keyed by id.
+     *
+     * @return array<string, LoyaltyEmail>
+     */
+    public static function loyalty_emails(): array {
+        if ( ! function_exists( 'WC' ) ) {
+            return [];
         }
 
-        return $emails;
+        return array_filter(
+            WC()->mailer()->get_emails(),
+            static function ( $email ) {
+                return $email instanceof LoyaltyEmail;
+            }
+        );
     }
 
     /**
-     * Whitelists to the known ids, casts to bool, merges over the currently stored value so a
-     * partial POST is a patch, not a wipe. Unknown keys are silently dropped. Leaves
-     * throttle_per_week untouched.
+     * Turns loyalty emails on or off in WooCommerce's own option, the one its
+     * Emails screen edits. Ids that are not a registered loyalty email are ignored.
+     *
+     * @param array<string, mixed> $enabled_by_id Email id => on/off.
      */
-    public static function update_emails( array $emails ): array {
-        $current  = self::stored();
-        $to_store = self::get_emails();
-
-        foreach ( EmailsMetadata::all_email_ids() as $id ) {
-            if ( array_key_exists( $id, $emails ) ) {
-                $to_store[ $id ] = (bool) $emails[ $id ];
+    public static function update_enabled( array $enabled_by_id ): void {
+        foreach ( self::loyalty_emails() as $email ) {
+            if ( ! array_key_exists( $email->id, $enabled_by_id ) ) {
+                continue;
             }
+
+            $yes_or_no = rest_sanitize_boolean( $enabled_by_id[ $email->id ] ) ? 'yes' : 'no';
+            $email->update_option( 'enabled', $yes_or_no );
+            // WC_Email reads `enabled` once, when built; keep this request's instance in step with what was saved.
+            $email->enabled = $yes_or_no;
         }
-
-        $current['emails'] = $to_store;
-        update_option( self::OPTION_EMAILS, $current, false );
-
-        return self::get_emails();
     }
 
-    /** Weekly per-customer send cap; not enforced yet (no trigger/cron sends emails this release) — saved for that future task. */
     public static function get_throttle_per_week(): int {
-        return max( 0, (int) self::stored()['throttle_per_week'] );
+        return SettingsHelper::get_settings()['emails']['throttle_per_week'];
     }
 
-    /** Leaves the emails bool map untouched. @return int The clamped, stored value. */
+    /** @return int The stored value, never negative. */
     public static function update_throttle_per_week( int $per_week ): int {
-        $value = max( 0, $per_week );
-
-        $current                      = self::stored();
-        $current['throttle_per_week'] = $value;
-        update_option( self::OPTION_EMAILS, $current, false );
-
-        return $value;
+        return SettingsHelper::update_settings( [ 'emails' => [ 'throttle_per_week' => $per_week ] ] )['emails']['throttle_per_week'];
     }
 
     /**
@@ -90,49 +71,60 @@ class EmailsHelper {
         return [
             'from_name'     => $mailer ? (string) $mailer->get_from_name() : '',
             'from_address'  => $mailer ? (string) $mailer->get_from_address() : '',
-            // No section anchor: no WC_Email subclass is registered yet, so this lands on the
-            // generic list. A future trigger task registering WC_Email classes can add one.
-            'wc_emails_url' => esc_url_raw( admin_url( 'admin.php?page=wc-settings&tab=email' ) ),
+            'wc_emails_url' => self::wc_emails_url(),
         ];
     }
 
     /**
-     * Merged GET/POST response: every email grouped by category with its live enabled state and
-     * whether it's part of the Free set (isFree) — the FE decides final editability as
-     * `isFree || IS_PRO_BUILD`.
+     * GET/POST /emails response: the registered loyalty emails grouped as
+     * WooCommerce groups them, plus the sender card and the throttle.
      *
      * @return array{groups: array<int, array<string, mixed>>, sending: array<string, string>, throttlePerWeek: int}
      */
     public static function get_response(): array {
-        $enabled = self::get_emails();
-
         $groups = [];
 
-        foreach ( EmailsMetadata::pro_email_groups() as $group => $data ) {
-            $items = [];
+        foreach ( self::loyalty_emails() as $email ) {
+            $group = $email->email_group;
 
-            foreach ( $data['items'] as $id => $item ) {
-                $items[] = [
-                    'id'          => $id,
-                    'label'       => $item['label'],
-                    'description' => $item['description'],
-                    'recipient'   => $item['recipient'],
-                    'enabled'     => $enabled[ $id ],
-                    'isFree'      => in_array( $id, EmailsMetadata::FREE_EMAIL_IDS, true ),
+            if ( ! isset( $groups[ $group ] ) ) {
+                $groups[ $group ] = [
+                    'group'      => $group,
+                    'groupLabel' => $email->get_email_group_title(),
+                    'items'      => [],
                 ];
             }
 
-            $groups[] = [
-                'group'      => $group,
-                'groupLabel' => $data['label'],
-                'items'      => $items,
-            ];
+            $groups[ $group ]['items'][] = self::to_item( $email );
         }
 
         return [
-            'groups'          => $groups,
+            'groups'          => array_values( $groups ),
             'sending'         => self::sending(),
             'throttlePerWeek' => self::get_throttle_per_week(),
         ];
+    }
+
+    /** One row of the Emails table; `editUrl` opens this email's own WooCommerce settings screen. */
+    private static function to_item( LoyaltyEmail $email ): array {
+        return [
+            'id'          => $email->id,
+            'title'       => $email->get_title(),
+            'description' => $email->get_description(),
+            'recipient'   => $email->is_customer_email() ? 'customer' : 'admin',
+            'enabled'     => $email->is_enabled(),
+            'editUrl'     => self::wc_emails_url( $email->id ),
+        ];
+    }
+
+    /** WooCommerce's Emails settings list, or one email's screen when a section (its id) is given. */
+    private static function wc_emails_url( string $section = '' ): string {
+        $path = 'admin.php?page=wc-settings&tab=email';
+
+        if ( '' !== $section ) {
+            $path .= '&section=' . $section;
+        }
+
+        return esc_url_raw( admin_url( $path ) );
     }
 }

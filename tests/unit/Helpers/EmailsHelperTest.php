@@ -3,120 +3,18 @@ namespace YayLoyalty\Tests\Unit\Helpers;
 
 use PHPUnit\Framework\TestCase;
 use YayLoyalty\Helpers\EmailsHelper;
-use YayLoyalty\Helpers\EmailsMetadata;
+use YayLoyalty\Helpers\SettingsHelper;
 
 /**
- * EmailsHelper persists a flat bool map keyed by EmailsMetadata::all_email_ids() (Free and Pro
- * share one store). Tests verify: GET merges over defaults, unknown keys dropped, POST
- * patches (not wipes) for both Free and Pro-only ids, WooCommerce-inactive safe, get_response()
- * groups shape is correct with isFree computed per item.
+ * The parts of EmailsHelper that need no WooCommerce: the weekly throttle, kept
+ * in plugin settings, and the sender card when WooCommerce is inactive. Listing
+ * and toggling emails go through WooCommerce's mailer, so the integration suite
+ * covers those.
  */
 class EmailsHelperTest extends TestCase {
 
     protected function setUp(): void {
-        $GLOBALS['yayloyalty_test_options']         = [];
-        $GLOBALS['yayloyalty_test_current_user_id'] = 1;
-    }
-
-    public function test_get_emails_merges_over_defaults(): void {
-        update_option( EmailsHelper::OPTION_EMAILS, [ 'emails' => [ 'points_earned' => false ] ] );
-
-        $result = EmailsHelper::get_emails();
-
-        $this->assertFalse( $result['points_earned'] );
-        $this->assertTrue( $result['points_expiring_soon'] ); // default true
-        $this->assertFalse( $result['points_expired'] ); // default false
-    }
-
-    public function test_get_emails_covers_all_twelve_ids(): void {
-        $result = EmailsHelper::get_emails();
-
-        $this->assertCount( 12, $result );
-        $this->assertEqualsCanonicalizing( EmailsMetadata::all_email_ids(), array_keys( $result ) );
-    }
-
-    public function test_get_emails_corrupt_option_reverts_to_defaults(): void {
-        update_option( EmailsHelper::OPTION_EMAILS, 'corrupted' );
-
-        $result = EmailsHelper::get_emails();
-
-        $this->assertEquals( EmailsMetadata::all_defaults(), $result );
-    }
-
-    public function test_get_emails_drops_unknown_keys(): void {
-        update_option(
-            EmailsHelper::OPTION_EMAILS,
-            [
-                'emails' => [
-                    'points_earned' => true,
-                    'fake_key'      => true,
-                ],
-            ]
-        );
-
-        $result = EmailsHelper::get_emails();
-
-        $this->assertArrayNotHasKey( 'fake_key', $result );
-    }
-
-    public function test_get_emails_casts_truthy_values_to_bool(): void {
-        update_option(
-            EmailsHelper::OPTION_EMAILS,
-            [
-                'emails' => [
-                    'points_earned'  => 1,
-                    'points_expired' => 0,
-                ],
-            ]
-        );
-
-        $result = EmailsHelper::get_emails();
-
-        $this->assertSame( true, $result['points_earned'] );
-        $this->assertSame( false, $result['points_expired'] );
-    }
-
-    public function test_update_emails_persists_a_free_id(): void {
-        EmailsHelper::update_emails( [ 'points_expired' => true ] );
-
-        $this->assertTrue( EmailsHelper::get_emails()['points_expired'] );
-    }
-
-    public function test_update_emails_persists_a_pro_only_id(): void {
-        EmailsHelper::update_emails( [ 'reward_claimed' => false ] );
-
-        $this->assertFalse( EmailsHelper::get_emails()['reward_claimed'] );
-    }
-
-    public function test_update_emails_is_a_patch_not_a_wipe(): void {
-        EmailsHelper::update_emails( [ 'points_earned' => false ] );
-        EmailsHelper::update_emails( [ 'points_expired' => true ] );
-
-        $result = EmailsHelper::get_emails();
-
-        // The first call's change must survive the second, unrelated call.
-        $this->assertFalse( $result['points_earned'] );
-        $this->assertTrue( $result['points_expired'] );
-    }
-
-    public function test_update_emails_drops_unknown_keys(): void {
-        EmailsHelper::update_emails( [ 'evil_key' => true ] );
-
-        $stored = get_option( EmailsHelper::OPTION_EMAILS );
-
-        $this->assertArrayNotHasKey( 'evil_key', $stored['emails'] );
-    }
-
-    public function test_update_emails_casts_to_bool(): void {
-        EmailsHelper::update_emails( [ 'points_earned' => 0 ] );
-
-        $this->assertSame( false, EmailsHelper::get_emails()['points_earned'] );
-    }
-
-    public function test_update_emails_returns_full_get_emails_shape(): void {
-        $result = EmailsHelper::update_emails( [ 'points_earned' => false ] );
-
-        $this->assertEquals( EmailsHelper::get_emails(), $result );
+        $GLOBALS['yayloyalty_test_options'] = [];
     }
 
     /** Without WooCommerce there is no mailer to ask: blank sender fields, never a fatal. */
@@ -133,152 +31,32 @@ class EmailsHelperTest extends TestCase {
         $this->assertSame( 3, EmailsHelper::get_throttle_per_week() );
     }
 
-    public function test_update_throttle_per_week_persists(): void {
+    public function test_update_throttle_per_week_persists_in_plugin_settings(): void {
         EmailsHelper::update_throttle_per_week( 10 );
 
         $this->assertSame( 10, EmailsHelper::get_throttle_per_week() );
+        $this->assertSame( 10, SettingsHelper::get_settings()['emails']['throttle_per_week'] );
     }
 
     public function test_update_throttle_per_week_clamps_negative_to_zero(): void {
-        EmailsHelper::update_throttle_per_week( -5 );
-
+        $this->assertSame( 0, EmailsHelper::update_throttle_per_week( -5 ) );
         $this->assertSame( 0, EmailsHelper::get_throttle_per_week() );
     }
 
-    /** Both live in the same wp_option — this is the point of the merge. */
-    public function test_emails_and_throttle_share_one_option(): void {
-        EmailsHelper::update_emails( [ 'points_earned' => false ] );
+    /** A throttle-only write must not reset the rest of the plugin settings. */
+    public function test_update_throttle_per_week_keeps_other_stored_settings(): void {
+        SettingsHelper::update_settings(
+            [
+                'general'  => [ 'points_label_singular' => 'Star' ],
+                'advanced' => [ 'adjustment_ceiling' => 50 ],
+            ]
+        );
+
         EmailsHelper::update_throttle_per_week( 5 );
 
-        $raw = get_option( EmailsHelper::OPTION_EMAILS );
-
-        $this->assertArrayHasKey( 'emails', $raw );
-        $this->assertArrayHasKey( 'throttle_per_week', $raw );
-        $this->assertFalse( $raw['emails']['points_earned'] );
-        $this->assertSame( 5, $raw['throttle_per_week'] );
-    }
-
-    public function test_update_emails_does_not_reset_throttle_per_week(): void {
-        EmailsHelper::update_throttle_per_week( 8 );
-        EmailsHelper::update_emails( [ 'points_earned' => false ] );
-
-        $this->assertSame( 8, EmailsHelper::get_throttle_per_week() );
-    }
-
-    public function test_update_throttle_per_week_does_not_reset_emails(): void {
-        EmailsHelper::update_emails( [ 'points_expired' => true ] );
-        EmailsHelper::update_throttle_per_week( 8 );
-
-        $this->assertTrue( EmailsHelper::get_emails()['points_expired'] );
-    }
-
-    public function test_get_response_has_five_groups(): void {
-        $response = EmailsHelper::get_response();
-
-        $this->assertArrayHasKey( 'groups', $response );
-        $this->assertArrayHasKey( 'sending', $response );
-        $this->assertArrayHasKey( 'throttlePerWeek', $response );
-        $this->assertCount( 5, $response['groups'] );
-        $this->assertEqualsCanonicalizing(
-            [ 'points', 'rewards', 'referral', 'tiers', 'birthday' ],
-            array_column( $response['groups'], 'group' )
-        );
-    }
-
-    public function test_get_response_has_twelve_items_total(): void {
-        $response = EmailsHelper::get_response();
-
-        $total = 0;
-        foreach ( $response['groups'] as $group ) {
-            $total += count( $group['items'] );
-        }
-
-        $this->assertSame( 12, $total );
-    }
-
-    public function test_get_response_item_shape(): void {
-        $response = EmailsHelper::get_response();
-        $points   = $this->find_group( $response, 'points' );
-        $item     = $points['items'][0];
-
-        $this->assertArrayHasKey( 'id', $item );
-        $this->assertArrayHasKey( 'label', $item );
-        $this->assertArrayHasKey( 'description', $item );
-        $this->assertArrayHasKey( 'recipient', $item );
-        $this->assertArrayHasKey( 'enabled', $item );
-        $this->assertArrayHasKey( 'isFree', $item );
-        $this->assertArrayNotHasKey( 'default_enabled', $item );
-    }
-
-    public function test_get_response_marks_free_ids_correctly(): void {
-        $response = EmailsHelper::get_response();
-        $points   = $this->find_group( $response, 'points' );
-
-        foreach ( $points['items'] as $item ) {
-            $expected = in_array( $item['id'], EmailsMetadata::FREE_EMAIL_IDS, true );
-            $this->assertSame( $expected, $item['isFree'], "isFree mismatch for {$item['id']}" );
-        }
-    }
-
-    public function test_get_response_enabled_reflects_persisted_state_for_free_id(): void {
-        EmailsHelper::update_emails( [ 'points_expired' => true ] );
-
-        $response = EmailsHelper::get_response();
-        $points   = $this->find_group( $response, 'points' );
-        $item     = $this->find_item( $points, 'points_expired' );
-
-        $this->assertTrue( $item['enabled'] );
-    }
-
-    public function test_get_response_enabled_reflects_persisted_state_for_pro_only_id(): void {
-        EmailsHelper::update_emails( [ 'reward_claimed' => false ] );
-
-        $response = EmailsHelper::get_response();
-        $rewards  = $this->find_group( $response, 'rewards' );
-        $item     = $this->find_item( $rewards, 'reward_claimed' );
-
-        $this->assertFalse( $item['enabled'] );
-    }
-
-    public function test_get_response_throttle_reflects_persisted_value(): void {
-        EmailsHelper::update_throttle_per_week( 7 );
-
-        $this->assertSame( 7, EmailsHelper::get_response()['throttlePerWeek'] );
-    }
-
-    public function test_get_response_empty_option_uses_defaults(): void {
-        $response = EmailsHelper::get_response();
-        $points   = $this->find_group( $response, 'points' );
-
-        $this->assertTrue( $this->find_item( $points, 'points_earned' )['enabled'] );
-        $this->assertFalse( $this->find_item( $points, 'points_expired' )['enabled'] );
-    }
-
-    /**
-     * @param array<string, mixed> $response
-     * @return array<string, mixed>
-     */
-    private function find_group( array $response, string $group ): array {
-        foreach ( $response['groups'] as $entry ) {
-            if ( $group === $entry['group'] ) {
-                return $entry;
-            }
-        }
-
-        $this->fail( "group not found: {$group}" );
-    }
-
-    /**
-     * @param array<string, mixed> $group
-     * @return array<string, mixed>
-     */
-    private function find_item( array $group, string $id ): array {
-        foreach ( $group['items'] as $item ) {
-            if ( $id === $item['id'] ) {
-                return $item;
-            }
-        }
-
-        $this->fail( "item not found: {$id}" );
+        $settings = SettingsHelper::get_settings();
+        $this->assertSame( 'Star', $settings['general']['points_label_singular'] );
+        $this->assertSame( 50, $settings['advanced']['adjustment_ceiling'] );
+        $this->assertSame( 5, $settings['emails']['throttle_per_week'] );
     }
 }
