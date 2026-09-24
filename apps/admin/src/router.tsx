@@ -14,6 +14,7 @@ import DashboardPage from './pages/dashboard/DashboardPage';
 import ReferralPage from './pages/referral/ReferralPage';
 import RewardsPage from './pages/rewards/RewardsPage';
 import AdvancedSettingsPage from './pages/settings/AdvancedSettingsPage';
+import DesignSettingsPage from './pages/settings/DesignSettingsPage';
 import EmailsSettingsPage from './pages/settings/EmailsSettingsPage';
 import GeneralSettingsPage from './pages/settings/GeneralSettingsPage';
 import SettingsLayout from './pages/settings/SettingsLayout';
@@ -88,6 +89,10 @@ export function getManagerRouter() {
             {
               path: 'general',
               element: <GeneralSettingsPage />,
+            },
+            {
+              path: 'design',
+              element: <DesignSettingsPage />,
             },
             {
               path: 'emails',
