@@ -52,7 +52,7 @@ Append-only journal. Nothing updates or deletes rows except GDPR erasure (which 
 |---|---|---|---|
 | `id` | BIGINT UNSIGNED AI | PK | Referenced by `lots.ledger_id`, `lot_allocations.ledger_id`, `referrals.advocate_ledger_id`. |
 | `user_id` | BIGINT UNSIGNED | not null, idx | Whose balance changed. |
-| `points` | BIGINT | not null | Signed delta. Positive for `earn`, `refund_redeem`, positive `adjust`; negative for `redeem`, `refund_earn`, `expire`, negative `adjust`. |
+| `points` | BIGINT | not null | Signed delta. Positive for `earn`, `refund_redeem`, positive `adjust`/`correction`; negative for `redeem`, `refund_earn`, `expire`, negative `adjust`/`correction`. |
 | `balance_after` | BIGINT | not null | Balance immediately after this row. Display in history, and a chain check for a future audit tool (`prev.balance_after + points = this.balance_after`). |
 | `type` | VARCHAR(20) | not null, idx | What kind of movement: `earn`, `redeem`, `refund_earn` (clawback of earned points after a refund), `refund_redeem` (return of redeemed points), `expire`, `adjust` (manual, moves `lifetime_earned`), `correction` (manual, balance-only — the admin left "Adjust lifetime totals too" off). |
 | `source` | VARCHAR(20) | not null | Why: values from `Enums\LedgerSource` — `order`, `signup`, `review`, `referral`, `birthday`, `milestone`, `social`, `renewal`, `manual`, `import`, `expiry`, `system`. Lets history and analytics group without decoding references. |

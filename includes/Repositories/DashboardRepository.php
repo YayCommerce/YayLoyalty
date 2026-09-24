@@ -35,7 +35,7 @@ class DashboardRepository {
 
     /** Points issued: positive rows of the types that feed lifetime_earned, so the two agree. */
     public function sum_issued( string $from, string $to ): int {
-        return $this->sum_points( $this->earn_types(), 'points > 0', $from, $to );
+        return $this->sum_points( LedgerType::lifetime_earned_types(), 'points > 0', $from, $to );
     }
 
     public function sum_redeemed( string $from, string $to ): int {
@@ -55,7 +55,7 @@ class DashboardRepository {
     public function daily_points( string $from, string $to, int $offset_seconds ): array {
         global $wpdb;
 
-        $earn_in = Sql::in_placeholders( $this->earn_types() );
+        $earn_in = Sql::in_placeholders( LedgerType::lifetime_earned_types() );
         $all_in  = Sql::in_placeholders( LedgerType::all() );
 
         // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $earn_in/$all_in are "%s, %s" lists built by Sql::in_placeholders(); every value is bound below.
@@ -67,7 +67,7 @@ class DashboardRepository {
                  FROM `" . esc_sql( Table::name( 'ledger' ) ) . "`
                  WHERE type IN ({$all_in}) AND created_at >= %s AND created_at < %s
                  GROUP BY 1 ORDER BY 1",
-                array_merge( [ $offset_seconds ], $this->earn_types(), [ LedgerType::REDEEM ], LedgerType::all(), [ $from, $to ] )
+                array_merge( [ $offset_seconds ], LedgerType::lifetime_earned_types(), [ LedgerType::REDEEM ], LedgerType::all(), [ $from, $to ] )
             ),
             ARRAY_A
         );
@@ -106,7 +106,7 @@ class DashboardRepository {
 
     /** Distinct orders that earned points; positive rows only, a clawback is not an award. */
     public function orders_with_earn( string $from, string $to ): int {
-        return $this->count_distinct_orders( $this->earn_types(), $from, $to, 'AND points > 0' );
+        return $this->count_distinct_orders( LedgerType::lifetime_earned_types(), $from, $to, 'AND points > 0' );
     }
 
     /**
@@ -117,14 +117,14 @@ class DashboardRepository {
     public function campaign_points_on_day( int $campaign_id, string $from, string $to ): array {
         global $wpdb;
 
-        $in = Sql::in_placeholders( $this->earn_types() );
+        $in = Sql::in_placeholders( LedgerType::lifetime_earned_types() );
 
         // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $in is a "%s, %s" list; every value is bound.
         $row = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
             $wpdb->prepare(
                 'SELECT COUNT(DISTINCT order_id) AS orders, COALESCE(SUM(points), 0) AS points FROM `' . esc_sql( Table::name( 'ledger' ) ) . "`
                  WHERE campaign_id = %d AND points > 0 AND type IN ({$in}) AND created_at >= %s AND created_at < %s",
-                array_merge( [ $campaign_id ], $this->earn_types(), [ $from, $to ] )
+                array_merge( [ $campaign_id ], LedgerType::lifetime_earned_types(), [ $from, $to ] )
             ),
             ARRAY_A
         );
@@ -267,12 +267,5 @@ class DashboardRepository {
             )
         );
         // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
-    }
-
-    /**
-     * @return string[] Types that feed customers.lifetime_earned.
-     */
-    private function earn_types(): array {
-        return array_values( array_filter( LedgerType::all(), [ LedgerType::class, 'affects_lifetime_earned' ] ) );
     }
 }

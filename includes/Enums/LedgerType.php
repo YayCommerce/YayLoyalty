@@ -76,6 +76,18 @@ final class LedgerType {
         return in_array( $type, [ self::EARN, self::REFUND_EARN, self::ADJUST ], true );
     }
 
+    /**
+     * @return string[] Types that feed customers.lifetime_earned.
+     */
+    public static function lifetime_earned_types(): array {
+        return array_values( array_filter( self::all(), [ self::class, 'affects_lifetime_earned' ] ) );
+    }
+
+    /** Whether the row is an admin's manual adjustment, with or without lifetime totals. */
+    public static function is_manual_adjustment( string $type ): bool {
+        return in_array( $type, [ self::ADJUST, self::CORRECTION ], true );
+    }
+
     /** lifetime_redeemed = SUM(|redeem|) - SUM(refund_redeem). */
     public static function affects_lifetime_redeemed( string $type ): bool {
         return in_array( $type, [ self::REDEEM, self::REFUND_REDEEM ], true );

@@ -150,7 +150,7 @@ final class LedgerEntry extends AbstractModel {
             'campaign_id'    => $this->campaign_id,
             'redemption_id'  => $this->redemption_id,
             'order_id'       => $this->order_id,
-            'note'           => in_array( $this->type, [ LedgerType::ADJUST, LedgerType::CORRECTION ], true ) ? $this->note : null,
+            'note'           => LedgerType::is_manual_adjustment( $this->type ) ? $this->note : null,
             'actor_id'       => $this->actor_id,
             'created_at'     => $this->created_at,
         ];

@@ -248,10 +248,8 @@ final class LedgerService {
     }
 
     /**
-     * Updates the cached aggregates for one ledger row. Gates purely on the
-     * row's own type — `LedgerType::CORRECTION` (a manual adjustment with
-     * "adjust lifetime totals" off) is excluded from `affects_lifetime_earned()`
-     * by design, so no separate flag is needed here.
+     * Updates the cached aggregates for one ledger row, gated only on the
+     * row's type (`LedgerType::affects_lifetime_earned()` and siblings).
      */
     private function apply_aggregates( LedgerEntry $entry ): void {
         $type   = $entry->get_type();

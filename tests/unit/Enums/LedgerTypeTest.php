@@ -28,6 +28,16 @@ final class LedgerTypeTest extends TestCase {
         $this->assertFalse( LedgerType::is_activity( LedgerType::CORRECTION ) );
     }
 
+    public function test_lifetime_earned_types_exclude_correction(): void {
+        $this->assertSame( [ LedgerType::EARN, LedgerType::REFUND_EARN, LedgerType::ADJUST ], LedgerType::lifetime_earned_types() );
+    }
+
+    public function test_manual_adjustment_covers_adjust_and_correction_only(): void {
+        $this->assertTrue( LedgerType::is_manual_adjustment( LedgerType::ADJUST ) );
+        $this->assertTrue( LedgerType::is_manual_adjustment( LedgerType::CORRECTION ) );
+        $this->assertFalse( LedgerType::is_manual_adjustment( LedgerType::EARN ) );
+    }
+
     /** ADJUST keeps affecting lifetime_earned — only CORRECTION is the balance-only escape hatch. */
     public function test_adjust_still_affects_lifetime_earned(): void {
         $this->assertTrue( LedgerType::affects_lifetime_earned( LedgerType::ADJUST ) );

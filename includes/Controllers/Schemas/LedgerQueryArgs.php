@@ -20,8 +20,8 @@ final class LedgerQueryArgs {
 
     /**
      * Grouped filter vocabulary, not the raw `LedgerType` enum: `earn` covers
-     * `earn` + `refund_earn`, `redeem` covers `redeem` + `refund_redeem`.
-     * Five labels over six ledger types — `all` plus the four groups the
+     * `earn` + `refund_earn`, `redeem` covers `redeem` + `refund_redeem`,
+     * `adjust` covers `adjust` + `correction`. `all` plus the four groups the
      * artboards show.
      *
      * @return string[]
@@ -40,8 +40,6 @@ final class LedgerQueryArgs {
             return 'redeem';
         }
 
-        // A balance-only manual adjustment (LedgerType::CORRECTION) shares the "Adjust" filter bucket
-        // with LedgerType::ADJUST — same admin action, own label client-side.
         if ( LedgerType::CORRECTION === $type ) {
             return LedgerType::ADJUST;
         }
