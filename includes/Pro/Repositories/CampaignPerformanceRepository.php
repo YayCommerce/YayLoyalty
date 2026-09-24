@@ -27,7 +27,7 @@ class CampaignPerformanceRepository {
     public function totals( int $campaign_id ): array {
         global $wpdb;
 
-        $in = Sql::in_placeholders( $this->earn_types() );
+        $in = Sql::in_placeholders( LedgerType::lifetime_earned_types() );
 
         // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $in is a "%s, %s" list; every value is bound.
         $row = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
@@ -38,7 +38,7 @@ class CampaignPerformanceRepository {
                         COUNT(DISTINCT user_id) AS customers_earned
                  FROM `' . esc_sql( Table::name( 'ledger' ) ) . "`
                  WHERE campaign_id = %d AND points > 0 AND type IN ({$in})",
-                array_merge( [ $campaign_id ], $this->earn_types() )
+                array_merge( [ $campaign_id ], LedgerType::lifetime_earned_types() )
             ),
             ARRAY_A
         );
@@ -67,13 +67,13 @@ class CampaignPerformanceRepository {
         $page     = max( 1, $page );
         $per_page = max( 1, $per_page );
 
-        $in = Sql::in_placeholders( $this->earn_types() );
+        $in = Sql::in_placeholders( LedgerType::lifetime_earned_types() );
 
         // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- {$in} is a "%s, %s" placeholder list; every value is bound.
         $where = [
             $wpdb->prepare(
                 "l.campaign_id = %d AND l.points > 0 AND l.type IN ({$in})",
-                array_merge( [ $campaign_id ], $this->earn_types() )
+                array_merge( [ $campaign_id ], LedgerType::lifetime_earned_types() )
             ),
         ];
         // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
@@ -90,13 +90,13 @@ class CampaignPerformanceRepository {
 
         // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared -- $where fragments are each already prepared above; identifiers are escaped above; only LIMIT/OFFSET are bound here.
         $total = (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-            'SELECT COUNT(*) FROM `' . $table . '` l INNER JOIN `' . $users . '` u ON u.ID = l.user_id' . $where_sql
+            'SELECT COUNT(*) FROM `' . $table . '` l LEFT JOIN `' . $users . '` u ON u.ID = l.user_id' . $where_sql
         );
 
         $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
             $wpdb->prepare(
                 'SELECT l.id, l.user_id, u.display_name AS customer_name, l.points, l.created_at, l.reference_type, l.reference_id
-                 FROM `' . $table . '` l INNER JOIN `' . $users . '` u ON u.ID = l.user_id'
+                 FROM `' . $table . '` l LEFT JOIN `' . $users . '` u ON u.ID = l.user_id'
                 . $where_sql . ' ORDER BY l.created_at DESC, l.id DESC LIMIT %d OFFSET %d',
                 $per_page,
                 ( $page - 1 ) * $per_page
@@ -148,7 +148,11 @@ class CampaignPerformanceRepository {
         return [
             'id'            => (int) $row['id'],
             'customer_id'   => (int) $row['user_id'],
-            'customer_name' => (string) $row['customer_name'],
+            // LEFT JOIN: a deleted member's rows stay in totals(), so they stay listed too.
+            'customer_name' => null !== $row['customer_name']
+                ? (string) $row['customer_name']
+                /* translators: %d: the deleted customer's former user id. */
+                : sprintf( __( 'Deleted customer #%d', 'yayloyalty' ), (int) $row['user_id'] ),
             'points'        => (int) $row['points'],
             'created_at'    => (string) $row['created_at'],
             'reference'     => $this->reference( $reference_type, $reference_id ),
@@ -204,12 +208,5 @@ class CampaignPerformanceRepository {
         return $hpos
             ? admin_url( 'admin.php?page=wc-orders&action=edit&id=' . $order_id )
             : admin_url( 'post.php?post=' . $order_id . '&action=edit' );
-    }
-
-    /**
-     * @return string[] Types that feed customers.lifetime_earned — same set CampaignPointsRepository uses.
-     */
-    private function earn_types(): array {
-        return array_values( array_filter( LedgerType::all(), [ LedgerType::class, 'affects_lifetime_earned' ] ) );
     }
 }

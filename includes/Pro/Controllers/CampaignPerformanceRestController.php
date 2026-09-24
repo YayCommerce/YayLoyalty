@@ -301,17 +301,10 @@ final class CampaignPerformanceRestController extends AbstractRestController {
         $now = ( new \DateTimeImmutable( 'now', $tz ) )->setTime( 0, 0, 0 );
 
         $starts = $this->site_midnight( $row['starts_at'], $tz );
-        $ends   = $this->site_midnight( $row['ends_at'], $tz );
+        // ends_at is exclusive, so the last live day is the one holding the second before it — a 10:00 end keeps that morning.
+        $last_day = $this->site_midnight( $row['ends_at'], $tz, '-1 second' );
 
-        $to = $now;
-
-        if ( null !== $ends ) {
-            $ended = $ends->modify( '-1 day' );
-
-            if ( $ended < $to ) {
-                $to = $ended;
-            }
-        }
+        $to = null !== $last_day && $last_day < $now ? $last_day : $now;
 
         $from = $to->modify( '-29 days' );
 
@@ -332,14 +325,18 @@ final class CampaignPerformanceRestController extends AbstractRestController {
         ];
     }
 
-    private function site_midnight( ?string $utc, \DateTimeZone $tz ): ?\DateTimeImmutable {
+    private function site_midnight( ?string $utc, \DateTimeZone $tz, string $shift = '' ): ?\DateTimeImmutable {
         if ( null === $utc || '' === $utc ) {
             return null;
         }
 
         $date = date_create_immutable( $utc, new \DateTimeZone( 'UTC' ) );
 
-        return null === $date ? null : $date->setTimezone( $tz )->setTime( 0, 0, 0 );
+        if ( false === $date ) {
+            return null;
+        }
+
+        return ( '' === $shift ? $date : $date->modify( $shift ) )->setTimezone( $tz )->setTime( 0, 0, 0 );
     }
 
     /**

@@ -148,6 +148,10 @@ final class CampaignRestController extends AbstractRestController {
             return $this->error_invalid_arguments( __( 'The campaign conditions are malformed.', 'yayloyalty' ) );
         }
 
+        if ( ! self::dates_in_order( $this->nullable_date( $request['starts_at'] ), $this->nullable_date( $request['ends_at'] ) ) ) {
+            return $this->error_invalid_arguments( __( 'The campaign must end after it starts.', 'yayloyalty' ) );
+        }
+
         // A client slug is a starting point, never trusted to be unique.
         $slug = $this->unique_slug( $request['slug'] ? (string) $request['slug'] : $name );
 
@@ -199,6 +203,18 @@ final class CampaignRestController extends AbstractRestController {
             return $this->error_forbidden( __( 'Built-in campaigns cannot be archived.', 'yayloyalty' ) );
         }
 
+        if ( null !== $request['name'] && '' === trim( (string) $request['name'] ) ) {
+            return $this->error_invalid_arguments( __( 'A campaign needs a name.', 'yayloyalty' ) );
+        }
+
+        // Checked against the stored date when the request leaves one side out.
+        $starts_at = $request->has_param( 'starts_at' ) ? $this->nullable_date( $request['starts_at'] ) : $campaign->get_starts_at();
+        $ends_at   = $request->has_param( 'ends_at' ) ? $this->nullable_date( $request['ends_at'] ) : $campaign->get_ends_at();
+
+        if ( ! self::dates_in_order( $starts_at, $ends_at ) ) {
+            return $this->error_invalid_arguments( __( 'The campaign must end after it starts.', 'yayloyalty' ) );
+        }
+
         // slug and trigger are immutable after create: built-ins are addressed by slug across sites.
         if ( null !== $request['name'] ) {
             $campaign->set_name( trim( (string) $request['name'] ) );
@@ -220,13 +236,8 @@ final class CampaignRestController extends AbstractRestController {
             $campaign->set_conditions( (array) $request['conditions'] );
         }
 
-        if ( $request->has_param( 'starts_at' ) ) {
-            $campaign->set_starts_at( $this->nullable_date( $request['starts_at'] ) );
-        }
-
-        if ( $request->has_param( 'ends_at' ) ) {
-            $campaign->set_ends_at( $this->nullable_date( $request['ends_at'] ) );
-        }
+        $campaign->set_starts_at( $starts_at );
+        $campaign->set_ends_at( $ends_at );
 
         $campaign->set_updated_at( Dates::now() );
         $campaign->set_updated_by( get_current_user_id() );
@@ -323,6 +334,11 @@ final class CampaignRestController extends AbstractRestController {
     /**
      * @param mixed $value
      */
+    /** Whether an open-ended or unscheduled side passes, and two set dates run forward (ends_at is exclusive, so equal is empty). */
+    private static function dates_in_order( ?string $starts_at, ?string $ends_at ): bool {
+        return null === $starts_at || null === $ends_at || strtotime( $starts_at . ' UTC' ) < strtotime( $ends_at . ' UTC' );
+    }
+
     private function nullable_date( $value ): ?string {
         if ( null === $value || '' === $value ) {
             return null;
@@ -404,7 +420,7 @@ final class CampaignRestController extends AbstractRestController {
                     'readonly' => true,
                 ],
                 'points_issued' => [
-                    'description' => __( 'Net points this campaign has awarded, lifetime. Derived from the ledger at read time, never stored.', 'yayloyalty' ),
+                    'description' => __( 'Points this campaign has awarded, lifetime: positive earn-type ledger rows, the same measure as its performance page. Derived at read time, never stored.', 'yayloyalty' ),
                     'type'        => 'integer',
                     'context'     => [ 'view' ],
                     'readonly'    => true,

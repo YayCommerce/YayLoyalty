@@ -2,6 +2,7 @@
 namespace YayLoyalty\Repositories;
 
 use YayLoyalty\Database\QueryException;
+use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Models\LedgerEntry;
 use YayLoyalty\Utils\Sql;
 
@@ -135,11 +136,12 @@ class LedgerRepository extends AbstractRepository {
     }
 
     /**
-     * Net points and row count per campaign, any row type — a campaign that
-     * earned and was fully refunded nets 0 points but still has rows, so
-     * callers needing "has this campaign ever been referenced" (the delete
-     * guard) must read `count`, never infer it from `points`. Absent from
-     * the result entirely for an id with no rows at all.
+     * Points issued and row count per campaign. `points` sums only positive
+     * earn-type rows, the measure the performance page and dashboard use, so
+     * the list and the page cannot disagree. `count` is every row of any type:
+     * the delete guard needs "has any row ever named this campaign", which
+     * `points` cannot answer once a campaign's awards are refunded. Absent
+     * from the result entirely for an id with no rows at all.
      *
      * @param int[] $campaign_ids
      * @return array<int, array{points: int, count: int}>
@@ -151,17 +153,19 @@ class LedgerRepository extends AbstractRepository {
 
         global $wpdb;
 
-        $ids = array_map( 'intval', $campaign_ids );
-        $in  = Sql::in_placeholders( $ids, '%d' );
+        $ids      = array_map( 'intval', $campaign_ids );
+        $in       = Sql::in_placeholders( $ids, '%d' );
+        $types    = LedgerType::lifetime_earned_types();
+        $types_in = Sql::in_placeholders( $types );
 
         // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- $in is a "%d, %d, …" placeholder list; every value is bound below. Same pattern as Pro\Repositories\CampaignPointsRepository::issued_by_campaign().
         $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
             $wpdb->prepare(
-                'SELECT campaign_id, COALESCE(SUM(points), 0) AS points, COUNT(*) AS row_count
-                 FROM `' . esc_sql( $this->table() ) . "`
+                "SELECT campaign_id, COALESCE(SUM(CASE WHEN points > 0 AND type IN ({$types_in}) THEN points ELSE 0 END), 0) AS points, COUNT(*) AS row_count
+                 FROM `" . esc_sql( $this->table() ) . "`
                  WHERE campaign_id IN ({$in})
                  GROUP BY campaign_id",
-                $ids
+                array_merge( $types, $ids )
             ),
             ARRAY_A
         );

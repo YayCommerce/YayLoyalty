@@ -27,7 +27,7 @@ final class CampaignPerformanceRepositoryTest extends IntegrationTestCase {
 
     private CampaignPerformanceRepository $repository;
 
-    /** A real WP user, needed only by paginate_entries()'s INNER JOIN wp_users — totals() has no such dependency. */
+    /** A real WP user, so paginate_entries() has a display name to join; totals() has no such dependency. */
     private int $real_user_id;
 
     protected function setUp(): void {
@@ -283,6 +283,27 @@ final class CampaignPerformanceRepositoryTest extends IntegrationTestCase {
         // Signup (user) reference: no secondary record to link to.
         $this->assertNull( $by_points[30]['reference'] );
         $this->assertNull( $by_points[30]['subtotal'] );
+    }
+
+    public function test_paginate_entries_lists_a_deleted_customers_rows(): void {
+        $campaign_id = $this->insert_campaign( CampaignTrigger::PURCHASE );
+        $gone        = 987654321;
+
+        $this->assertFalse( get_userdata( $gone ) );
+
+        $this->insert_row(
+            $campaign_id,
+            [
+                'user_id'  => $gone,
+                'points'   => 40,
+                'order_id' => 7001,
+            ]
+        );
+
+        $page = $this->repository->paginate_entries( $campaign_id, 1, 10, '' );
+
+        $this->assertSame( $this->repository->totals( $campaign_id )['entries_total'], $page['total'] );
+        $this->assertSame( 'Deleted customer #' . $gone, $page['items'][0]['customer_name'] );
     }
 
     private function insert_campaign( string $trigger ): int {

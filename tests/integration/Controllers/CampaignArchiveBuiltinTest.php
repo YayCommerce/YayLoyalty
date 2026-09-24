@@ -90,6 +90,66 @@ final class CampaignArchiveBuiltinTest extends IntegrationTestCase {
         $this->assertSame( $performance->get_data()['totals']['points_issued'], $campaign->get_data()['points_issued'] );
     }
 
+    public function test_update_refuses_a_blank_name(): void {
+        $id = $this->insert_campaign( false );
+
+        $this->assertSame( 400, $this->put( $id, [ 'name' => '   ' ] )->get_status() );
+        $this->assertNotSame( '', ( new CampaignRepository() )->find_campaign( $id )->get_name() );
+    }
+
+    public function test_create_refuses_an_end_before_the_start(): void {
+        $request = new \WP_REST_Request( 'POST', '/yayloyalty/v1/campaigns' );
+        $request->set_body_params(
+            [
+                'name'      => 'Backwards',
+                'trigger'   => CampaignTrigger::PURCHASE,
+                'starts_at' => '2026-09-01 00:00:00',
+                'ends_at'   => '2026-08-01 00:00:00',
+            ]
+        );
+
+        $this->assertSame( 400, rest_do_request( $request )->get_status() );
+    }
+
+    public function test_update_checks_a_new_end_against_the_stored_start(): void {
+        $id = $this->insert_campaign( false, '2026-09-01 00:00:00' );
+
+        $this->assertSame( 400, $this->put( $id, [ 'ends_at' => '2026-09-01 00:00:00' ] )->get_status() );
+        $this->assertSame( 200, $this->put( $id, [ 'ends_at' => '2026-09-02 00:00:00' ] )->get_status() );
+    }
+
+    public function test_points_issued_ignores_negative_rows_but_they_still_block_delete(): void {
+        $id = $this->insert_campaign( false );
+        $this->award( $id, 500 );
+        $this->award( $id, -500, LedgerType::REFUND_EARN, 1 );
+
+        $campaign = rest_do_request( new \WP_REST_Request( 'GET', "/yayloyalty/v1/campaigns/{$id}" ) )->get_data();
+
+        $this->assertSame( 500, $campaign['points_issued'] );
+        $this->assertFalse( $campaign['is_deletable'] );
+    }
+
+    public function test_the_chart_keeps_the_last_part_day_of_a_mid_day_end(): void {
+        $midday   = $this->insert_campaign( false, '2026-06-01 00:00:00', '2026-06-15 10:00:00' );
+        $midnight = $this->insert_campaign( false, '2026-06-01 00:00:00', '2026-06-15 00:00:00' );
+
+        $this->assertSame( '2026-06-15', $this->chart_window( $midday )['to'] );
+        $this->assertSame( '2026-06-14', $this->chart_window( $midnight )['to'] );
+    }
+
+    /** @return array{from: string, to: string} */
+    private function chart_window( int $id ): array {
+        return rest_do_request( new \WP_REST_Request( 'GET', "/yayloyalty/v1/campaigns/{$id}/performance" ) )->get_data()['window'];
+    }
+
+    /** @param array<string, mixed> $body */
+    private function put( int $id, array $body ): \WP_REST_Response {
+        $request = new \WP_REST_Request( 'PUT', sprintf( '/yayloyalty/v1/campaigns/%d', $id ) );
+        $request->set_body_params( $body );
+
+        return rest_do_request( $request );
+    }
+
     private function put_status( int $id, string $status ): \WP_REST_Response {
         $request = new \WP_REST_Request( 'PUT', sprintf( '/yayloyalty/v1/campaigns/%d', $id ) );
         $request->set_body_params( [ 'status' => $status ] );
@@ -119,17 +179,17 @@ final class CampaignArchiveBuiltinTest extends IntegrationTestCase {
     }
 
     /** One real EARN row, straight through the repository — same reasoning CampaignPerformanceRepositoryTest has for bypassing LedgerService::earn(). */
-    private function award( int $campaign_id, int $points ): void {
+    private function award( int $campaign_id, int $points, string $type = LedgerType::EARN, int $reference_offset = 0 ): void {
         ( new LedgerRepository() )->insert(
             new LedgerEntry(
                 null,
                 900001,
                 $points,
                 0,
-                LedgerType::EARN,
+                $type,
                 LedgerSource::ORDER,
                 ReferenceType::ORDER,
-                555000 + $campaign_id,
+                555000 + $campaign_id + $reference_offset,
                 $campaign_id,
                 null,
                 555000 + $campaign_id,
