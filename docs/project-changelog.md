@@ -6,6 +6,21 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
 
 ## Unreleased
 
+### Fixed — Balance-only adjustments are rebuildable from the ledger again (2026-09-24)
+
+- New `LedgerType::CORRECTION`: a manual adjustment with "Adjust lifetime totals too" off now writes a
+  `correction` row instead of an ordinary `adjust` row. `LedgerService::adjust()` picks the type up front;
+  `apply_aggregates()` gates purely on `LedgerType::affects_lifetime_earned()`, so the `$adjust_lifetime`
+  flag is no longer threaded through `record()`/`apply_aggregates()` — the row's own type decides.
+  `customers.lifetime_earned = SUM(earn) + SUM(adjust) − SUM(|refund_earn|)` is fully rebuildable from
+  the ledger again, and `DashboardRepository`/Pro `CampaignPointsRepository`'s `earn_types()` exclude
+  `correction` for free (both derive from `affects_lifetime_earned()`).
+- SPA: `correction` added to the ledger type enum, grouped into the drawer's existing "Adjust" filter
+  bucket (`LedgerQueryArgs::group_of()`), described as "Balance correction" (or the admin's note) by
+  `describeLedgerEntry()`.
+- Pre-existing balance-only `adjust` rows (written before this change) stay indistinguishable from real
+  adjustments — accepted, dev data only, no backfill.
+
 ### Added — Campaign archive, pause and bulk actions (2026-09-24)
 
 - **Dialogs** (`pro/campaigns/archive/`, `pro/campaigns/pause/`): single and bulk archive, and pause,
@@ -56,8 +71,9 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
   resets consent; a "selection changed" abort shows the count the submit resolved.
 - **Adjust lifetime totals too** (`adjust_lifetime` on `POST /customers/{id}/adjust`): on, a grant
   or a deduction moves `lifetime_earned` by the same signed amount as the balance; off moves the
-  balance only. The ledger row does not record the choice yet — see the roadmap's
-  "Balance-only adjustment" task. Integration suite 26 → 27 tests (`LedgerGuardTest`).
+  balance only. Integration suite 26 → 27 tests (`LedgerGuardTest`). The ledger row now records the
+  choice as its own type (`LedgerType::CORRECTION`) — see "Fixed — Balance-only adjustments are
+  rebuildable from the ledger again" below.
 - **UI only, not wired:** "Notify the customer by email" and "Also show a description to the
   customer" — both listed as not started in the roadmap.
 - **Tests:** `apps/admin/tests/customers-adjust-points.form-state.test.ts` pins the form-state

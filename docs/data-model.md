@@ -125,7 +125,7 @@ erDiagram
 ## Invariants
 
 - `customers.balance = SUM(ledger.points)` per user.
-- `customers.lifetime_earned = SUM(earn) + SUM(adjust where adjust_lifetime) − SUM(|refund_earn|)`; `redeem` and `expire` never touch it. **Not yet rebuildable:** `adjust_lifetime` is not stored on the ledger row, so this sum cannot be computed from the ledger until balance-only adjustments get their own type (roadmap → Backbone TODOs).
+- `customers.lifetime_earned = SUM(earn) + SUM(adjust) − SUM(|refund_earn|)`; `redeem`, `expire` and `correction` (a balance-only manual adjustment) never touch it — fully rebuildable from the ledger, since the type itself, not a separate flag, decides.
 - `customers.lifetime_redeemed = SUM(|redeem|) − SUM(refund_redeem)`.
 - `customers.pending_points = SUM(_yayloyalty_points_pending)` over the user's orders not yet awarded or cancelled.
 - `redemptions.restored_points ≤ redemptions.points`, always.

@@ -208,20 +208,6 @@ The shape is fixed (`includes/Engine/Redemption/README.md`); each row is one stu
 | 6   | AdminShell applies one adapter capability (`view`) to the menu, licence REST and `LicenseHandler`; a viewer can reach licence endpoints. Needs a second adapter method in the shared shell.                          | `yaycommerce/admin-shell`                     | shell               |
 | 7   | Route guard as CI: walk `yayloyalty/v1`, fail on a missing or `__return_true` `permission_callback`. Needs the wp-phpunit harness above.                                                                             | `tests/integration/`                          | —                   |
 
-### Balance-only adjustment → record it on the ledger row
-
-Scheduled after the earning process (F01-4). The adjust dialog's "Adjust lifetime totals too" turned off (`adjust_lifetime=false`) moves `balance` but not `lifetime_earned`, yet the ledger row it writes is an ordinary `adjust` — so `lifetime_earned` is no longer rebuildable from the ledger (principle 1 in `data-model.md`), and `DashboardRepository::sum_issued()` / Pro `CampaignPointsRepository` (both via `earn_types()`) count points `lifetime_earned` excludes.
-
-| # | TODO | Where |
-|---|---|---|
-| 1 | New `LedgerType::CORRECTION` (`'correction'`, fits `varchar(20)`, no migration). Add to `all()`; leave out of `affects_lifetime_earned()`, `affects_lifetime_redeemed()`, `is_activity()`. Fix the `affects_lifetime_earned` docblock formula. | `Enums/LedgerType.php` |
-| 2 | `adjust()` writes `CORRECTION` when `$adjust_lifetime` is false, in either direction (with the flag on, a deduction lowers `lifetime_earned` just as a grant raises it, so it stays `ADJUST`). Drop the `$adjust_lifetime` param from `record()` and `apply_aggregates()` — the type now decides. Remove the TODO. | `Services/LedgerService.php` |
-| 3 | `earn_types()` in both repositories picks up the change for free (derived from `affects_lifetime_earned`); verify `sum_issued()` and campaign points exclude corrections. | `DashboardRepository`, `Pro/CampaignPointsRepository` |
-| 4 | SPA: add `correction` to the ledger type enum; label it (e.g. "Balance correction") in the ledger rows/helper; decide whether the ledger tab's "Adjust" filter and `type_counts` include it (recommend yes — same filter bucket, own label). | `lib/schema/ledger.schema.ts`, `lib/helpers/ledger.helper.ts`, drawer ledger rows, `LedgerQueryArgs` |
-| 5 | Existing rows: balance-only adjusts written before this change are plain `adjust` and cannot be told apart. Accept (dev data only) or reset dev tables — no backfill is possible. | — |
-| 6 | Tests: integration cases in `LedgerGuardTest` — ±N with flag off writes `correction`, moves balance only; ±N with flag on writes `adjust`, moves both by the same signed amount. Unit: `LedgerType` sets. Replace the incomplete stub in `LedgerServiceTest`. | `tests/integration/Services/`, `tests/unit/` |
-| 7 | Docs: drop the "not yet rebuildable" note and restate the invariant as `SUM(earn) + SUM(adjust) − SUM(\|refund_earn\|)` with `correction` listed as balance-only; add the type to the ledger `type` column table. | `docs/data-model.md`, `docs/data-model/customers-and-ledger.md` |
-
 ### Dev-database drift (both)
 
 `dbDelta` adds columns and indexes; it never renames a column or drops an index. Dev sites that predate the `campaigns.trigger` → `trigger_type` rename or the ledger key rename carry stale schema silently. `Installer::run_migrations()` is the seam for a first real migration (`ALTER TABLE … CHANGE`, `DROP INDEX reference`, `DROP INDEX user_created`); until then, reset the plugin tables on an old dev site.
