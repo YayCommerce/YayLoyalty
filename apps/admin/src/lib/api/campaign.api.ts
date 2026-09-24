@@ -37,7 +37,7 @@ export async function createCampaign(input: CampaignCreateInput): Promise<Campai
 }
 
 /** PUT campaigns/{id}. Every field is optional server-side except this type's own required ones; see updateCampaignStatus() for a narrower partial write. */
-export async function updateCampaign(id: number, input: CampaignUpdateInput): Promise<Campaign> {
+export async function updateCampaign(id: number, input: Partial<CampaignUpdateInput>): Promise<Campaign> {
   return campaignSchema.parse(await api.put(`campaigns/${id}`, { json: input }).json());
 }
 

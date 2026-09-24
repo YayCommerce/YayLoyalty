@@ -384,10 +384,7 @@ function CampaignCreatorForm({ template, duplicateFrom }: { template: CampaignTe
       toast.success(__('Campaign created.', 'yayloyalty'));
       return true;
     } catch (error) {
-      // api.ts's afterResponse hook already toasts a 403.
-      if (!(error instanceof HTTPError && error.response.status === 403)) {
-        toast.error(await getApiErrorMessage(error, __('Could not create the campaign.', 'yayloyalty')));
-      }
+      await toastApiError(error, __('Could not create the campaign.', 'yayloyalty'));
       return false;
     }
   }

@@ -238,15 +238,14 @@ final class CampaignRestController extends AbstractRestController {
     }
 
     public function delete_item( \WP_REST_Request $request ) {
-        // Fixture only, no repository fallback: fixture ids 1-3 collide with real built-in ids.
-        $row = self::find_dummy_row( (int) $request['id'] );
+        $campaign = $this->campaigns->find_campaign( (int) $request['id'] );
 
-        if ( null === $row ) {
+        if ( null === $campaign ) {
             return $this->error_not_found( __( 'Campaign not found.', 'yayloyalty' ) );
         }
 
         // The engine and the Free UI expect built-ins to exist. is_builtin is readonly, so this cannot be sidestepped.
-        if ( $row['is_builtin'] ) {
+        if ( $campaign->is_builtin() ) {
             return $this->error_forbidden( __( 'Built-in campaigns cannot be deleted.', 'yayloyalty' ) );
         }
 
@@ -319,20 +318,6 @@ final class CampaignRestController extends AbstractRestController {
             },
             $campaigns
         );
-    }
-
-    /**
-     * The campaign resource with its lifetime points issued, which the model
-     * does not carry. Swap point: a ledger sum by campaign_id replaces the
-     * fixture figure passed in here.
-     *
-     * @param array<string, mixed> $campaign
-     * @return array<string, mixed>
-     */
-    private static function with_lifetime( array $campaign, int $points_issued_lifetime ): array {
-        $campaign['points_issued_lifetime'] = $points_issued_lifetime;
-
-        return $campaign;
     }
 
     /**

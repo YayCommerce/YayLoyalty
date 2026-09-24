@@ -391,13 +391,15 @@ other listener callback, so a DB failure here never blocks WP's own user-creatio
 
 ### Campaign editor (Pro-only) — create and edit
 
-**Route:** `/campaigns/:id/edit` (Pro-only; gated by `IS_PRO_BUILD` AND `requires(CAP.MANAGE_CAMPAIGNS)` with Pro lock winning if both apply).
+**Routes:** `/campaigns/new` (template chooser) → `/campaigns/new/:templateId` (create form), and `/campaigns/:id/edit` (edit form). Pro-only; gated by `IS_PRO_BUILD` AND `requires(CAP.MANAGE_CAMPAIGNS)` with Pro lock winning if both apply.
 
-**Access:** Reachable from `CampaignTable` row name-link (detail pre-load) and "Duplicate" action. "Add campaign" intentionally inert — there is no create form/dialog wired to the (real) `POST /campaigns` endpoint yet; a follow-up task. "Duplicate" seeds the editor for the *original* campaign, not a new row.
+**Access:** "Add campaign" on `CampaignsPage`/`CampaignTable` opens the chooser. `CampaignTable`'s row name-link opens edit. Its "Duplicate" action opens create pre-seeded from that row (`navigate('/campaigns/new/scratch?from=' + row.id)`) — a real new campaign on Save, never a mutation of the source.
 
-**Editor structure:** Six sections (Basics, Trigger, Reward, Conditions, Schedule, Priority) plus a live-updating summary rail ("What this means", "Before it can run", save actions). Uses react-hook-form + zodResolver (first RHF adoption in this codebase). Per-trigger reward config editors for Lite triggers (purchase/signup/review); generic read-only fallback for Pro-only triggers that preserves config byte-for-byte. 10-type condition builder. Nullable start/end scheduling with site-timezone conversion at display/input edges (form/wire values stay raw UTC).
+**Create flow:** `CampaignTemplatePicker` (`pro/campaigns/add/`) shows one card per supported trigger's starting point plus "Start from scratch", each seeding the create form with a template's own `name`/`priority`/`config`/`conditions` and `status: 'draft'`. Nothing is written until Save — a template is a starting point, not a commitment. Duplicate seeds the same form via `duplicateToFormValues()` instead of a template's `seed()`: every field copied from the source except `id`/`slug`, name gets " (copy)", status resets to `draft`.
 
-**Persistence:** The PHP update endpoint persists for real — loads the campaign from `CampaignRepository`, validates, applies whichever fields the request body carries (partial write), and writes via `Campaign::to_update_row()` (pairs `to_row()`'s data with `get_format()`'s placeholders position-for-position, since `$wpdb->update()` consumes `$format` with `array_shift()` — dropping immutable columns from one without the other would silently misalign every placeholder after the cut). Archiving a built-in is rejected with 403 before any setter runs, not via `set_status()`'s exception.
+**Editor structure:** One component tree, two modes (`CampaignEditorContext`'s `mode: 'create' | 'edit'`). Six sections (Basics, Trigger, Reward, Conditions, Schedule, Priority) plus a live-updating summary rail ("What this means", "Before it can run", save actions). `trigger` lives outside react-hook-form state — in context, as `campaign.trigger` (edit, immutable) or component state plus `onTriggerChange` (create) — because changing it also resets `config`/`conditions`, which a plain form field can't drive from the section that owns it. Uses react-hook-form + zodResolver (first RHF adoption in this codebase). Per-trigger reward config editors for Lite triggers (purchase/signup/review); generic read-only fallback for Pro-only triggers that preserves config byte-for-byte. 10-type condition builder. Nullable start/end scheduling with site-timezone conversion at display/input edges (form/wire values stay raw UTC).
+
+**Persistence:** Both endpoints persist for real. Create validates trigger/config/conditions, generates and de-duplicates the slug server-side, and inserts via `CampaignRepository::insert()`. Update loads the campaign from `CampaignRepository`, validates, applies whichever fields the request body carries (partial write), and writes via `Campaign::to_update_row()` (pairs `to_row()`'s data with `get_format()`'s placeholders position-for-position, since `$wpdb->update()` consumes `$format` with `array_shift()` — dropping immutable columns from one without the other would silently misalign every placeholder after the cut). Archiving a built-in is rejected with 403 before any setter runs, not via `set_status()`'s exception.
 
 ```
 GET /campaigns/:id   (read for detail pre-load)
@@ -415,14 +417,13 @@ CampaignRestController::update_item()  via  exec_write()
     ├─ CampaignRepository::update() via Campaign::to_update_row()
     └─ Response: decorate() → Campaign::to_array() + points_issued + is_deletable
     
-Admin SPA (CampaignEditorPage)
-    ├─ useUpdateCampaignMutation()
+Admin SPA (CampaignEditor / CampaignCreator, one component tree)
+    ├─ useUpdateCampaignMutation() / useCreateCampaignMutation()
     ├─ six form sections reading/writing through consolidated data layer (campaign.schema.ts/api.ts/queries.ts)
     └─ summary rail live-updates from form state
 ```
 
 **Known gaps (not built, not faked):**
-- No create form/dialog — "Add campaign" is inert (follow-up task).
 - No product/category/customer search endpoint → id-entry via existing `TagsInput` pickers deferred.
 - No store-wide ledger aggregate → rail's "cost estimate" line omitted.
 - `include_shipping` config key still stored but never read by `BaseCalculator` (dead key).
@@ -430,7 +431,7 @@ Admin SPA (CampaignEditorPage)
 ### Campaign create/delete
 
 ```
-POST /yayloyalty/v1/campaigns   (real; no admin UI issues this yet — see Known gaps above)
+POST /yayloyalty/v1/campaigns
     ↓
 CampaignRestController::create_item()  via  exec_write()
     ├─ CampaignTrigger::is_valid( trigger )        must be fireable in THIS build (all(), filtered)
