@@ -16,6 +16,7 @@ A fact is written out in one doc; every other doc links to it. Update the owner,
 | Pro seams (hooks): where each fires, who subscribes | [`system-architecture.md` → Internal Extension Seams](./system-architecture.md#internal-extension-seams-filters) |
 | `WP_DEBUG` / `?scenario=` dev fixtures | [`deployment-guide.md` → Fixture-backed endpoints](./deployment-guide.md#fixture-backed-endpoints) |
 | Tables and columns | [`data-model.md`](./data-model.md) and its per-table files in `data-model/` |
+| Which place owns each code rule, and its allowed mirrors | [`code-standards.md` § 16](./code-standards.md#16-single-source-of-truth) |
 
 ---
 
