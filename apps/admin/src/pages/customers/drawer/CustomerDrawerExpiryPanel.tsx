@@ -1,11 +1,11 @@
 import { TriangleAlert } from 'lucide-react';
 
 import { formatStoredDate, parseWPDate, utcToDate } from '@/lib/helpers/format.helper';
-import { formatPoints } from '@/lib/helpers/points.helper';
+import { formatPoints, formatPointsAsMoney } from '@/lib/helpers/points.helper';
 import type { Customer, DrawerExpiry } from '@/lib/schema/customer.schema';
 import { Button } from '@/components/ui/button';
 import { ACTION_RESET_EXPIRY, NOT_AVAILABLE_YET_REASON } from './customer-drawer.copy';
-import { daysUntil, pointsToMoney } from './customer-drawer.money';
+import { daysUntil } from './customer-drawer.money';
 import {
   ACTION_EXEMPT_FROM_EXPIRY,
   ACTION_SEND_REMINDER_NOW,
@@ -16,28 +16,27 @@ import {
 
 /**
  * 4b's warning banner + three disabled actions. Rendered only when
- * `customer.expiry` is non-null (only the `expiring` scenario sets it — no
- * `lots` table on the real path, docs/data-model.md).
+ * `customer.expiry` is non-null (always null today — no `lots` table,
+ * docs/data-model/future-tables.md).
  *
  * "Reset expiry" reuses the SAME reason `CustomerDrawerActions.tsx` shows for
- * it in the main actions row (`NOT_AVAILABLE_YET_REASON`, since this
- * scenario's balance is positive) — the plan calls for staying consistent
- * with that component rather than inventing a second reason for one button.
+ * it in the main actions row (`NOT_AVAILABLE_YET_REASON`) — consistent with
+ * that component rather than a second reason for one button.
  * Exempt/Send reminder are new actions with no endpoint anywhere yet, so
  * they get the same generic reason.
  */
 export function CustomerDrawerExpiryPanel({ customer, expiry }: { customer: Customer; expiry: DrawerExpiry }) {
   const expiresAt = utcToDate(expiry.expires_at);
   const daysRemaining = daysUntil(expiry.expires_at);
-  // `customer.balance` guarded against zero/negative — `negative` is a real
-  // scenario elsewhere, and this math must never divide by it even though
+  // `customer.balance` guarded against zero/negative — a customer can carry
+  // a negative balance, and this math must never divide by it even though
   // `expiry` itself is null there today (defensive, not reachable yet). `null`
   // (not a fabricated "0%") when it can't be honestly computed — printing
   // zero would read as reassurance for what could be a majority of a
   // non-positive balance.
   const sharePercent =
     customer.balance > 0 ? String(Math.round((expiry.expiring_points / customer.balance) * 100)) : null;
-  const money = pointsToMoney(expiry.expiring_points, customer.points_per_currency_unit);
+  const money = formatPointsAsMoney(expiry.expiring_points, customer.points_per_currency_unit);
 
   return (
     <div className="bg-muted/50 flex flex-col gap-3 rounded-md border px-3.5 py-3">

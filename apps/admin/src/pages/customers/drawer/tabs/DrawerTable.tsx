@@ -49,7 +49,7 @@ export function DrawerTable({
           ))
         ) : isEmpty ? (
           <TableRow>
-            <TableCell colSpan={columnCount} className="h-auto py-12 text-center">
+            <TableCell colSpan={columnCount} className="h-auto py-12 text-center whitespace-normal">
               <p className="text-sm font-medium">{emptyTitle}</p>
               <p className="text-muted-foreground mx-auto mt-1 max-w-sm text-sm">{emptyBody}</p>
             </TableCell>

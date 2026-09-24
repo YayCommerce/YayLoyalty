@@ -5,6 +5,9 @@ import { toDrawerSearchParams, type DrawerPageParams } from '@/lib/api/customer-
 import { paginatedSchema } from '@/lib/api/paginated';
 import {
   AdjustPointsInput,
+  adjustPointsPreviewSchema,
+  AdjustPointsPreview,
+  AdjustPointsPreviewInput,
   Customer,
   CustomerBalanceRange,
   CustomerExpiringSoon,
@@ -19,13 +22,8 @@ import { LedgerEntry, ledgerEntrySchema, ledgerEnvelopeSchema, LedgerFilterType 
 
 /** Every response is parsed, not cast: `.json<T>()` is unchecked, and a bad shape would white-screen a component. */
 
-/** `scenario` is the dev-only fixture switch; only `useDevScenario()` ever produces one. */
-export async function getCustomer(userId: number, scenario?: string): Promise<Customer> {
-  const searchParams: Record<string, string> = {};
-
-  if (scenario) searchParams.scenario = scenario;
-
-  return customerSchema.parse(await api.get(`customers/${userId}`, { searchParams }).json());
+export async function getCustomer(userId: number): Promise<Customer> {
+  return customerSchema.parse(await api.get(`customers/${userId}`).json());
 }
 
 export type CustomerLedgerParams = DrawerPageParams & { type?: LedgerFilterType };
@@ -46,7 +44,33 @@ export async function getCustomerLedger(userId: number, params: CustomerLedgerPa
 }
 
 export async function adjustCustomerPoints(userId: number, input: AdjustPointsInput): Promise<LedgerEntry> {
-  return ledgerEntrySchema.parse(await api.post(`customers/${userId}/adjust`, { json: input }).json());
+  const json = { points: input.points, note: input.note, adjust_lifetime: input.adjustLifetime };
+
+  return ledgerEntrySchema.parse(await api.post(`customers/${userId}/adjust`, { json }).json());
+}
+
+/**
+ * `POST /customers/adjust/preview`: the bulk adjust dialog's count,
+ * liability and rate. This mapping is spelling-only (camelCase →
+ * snake_case), same rule as `getCustomers()` below. The tier →
+ * balance-bucket substitution (`toServerFilters`) is page-specific domain
+ * logic and must happen before `input` reaches here.
+ */
+export async function previewAdjustPoints(
+  input: AdjustPointsPreviewInput,
+  signal?: AbortSignal,
+): Promise<AdjustPointsPreview> {
+  const json = input.filters
+    ? {
+        filters: {
+          search: input.filters.search,
+          balance_range: input.filters.balanceRange,
+          expiring_soon: input.filters.expiringSoon,
+        },
+      }
+    : {};
+
+  return adjustPointsPreviewSchema.parse(await api.post('customers/adjust/preview', { json, signal }).json());
 }
 
 /** App-side params for getCustomers(); the wire spelling exists only in the request builder. */

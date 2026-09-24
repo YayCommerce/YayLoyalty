@@ -1,9 +1,10 @@
 import { __, sprintf } from '@wordpress/i18n';
 
 /**
- * Every sentence in the customer drawer — header, stats, actions, tabs,
- * ledger filters/columns/pager, and the four per-tab empty states. Pure: no
- * React, no fetch.
+ * The customer drawer's core copy — header, stats, actions, tabs, ledger
+ * filters/columns/pager, and the four per-tab empty states. Activity-log and
+ * edge-panel copy live in `customer-drawer.activity.copy.ts` and
+ * `customer-drawer.panels.copy.ts`. Pure: no React, no fetch.
  *
  * Flat exported functions, not one nested `DRAWER_COPY` object — matches
  * `dashboard-page.copy.ts`'s own style. Every entry is a function, even
@@ -19,7 +20,7 @@ export function memberSince(date: string): string {
 
 export const ACCOUNT_DELETED_LABEL = () => __('ACCOUNT DELETED', 'yayloyalty');
 
-/** Tier card — added post-Wave-A over the sample-data stand-in (see
+/** Tier card, fed by the sample-data stand-in (see
  *  `customers-page.tier-sample-data.ts`); "X points to <next tier>". */
 export function tierProgress(points: string, nextTier: string): string {
   return sprintf(__('%1$s points to %2$s', 'yayloyalty'), points, nextTier);
@@ -79,7 +80,7 @@ export const FILTER_TYPE_EXPIRED = () => __('Expired', 'yayloyalty');
 
 export const SEARCH_PLACEHOLDER = () => __('Search description or order number', 'yayloyalty');
 export const DATE_RANGE_LABEL = () => __('Date range', 'yayloyalty');
-/** Shown under the filter row when `type_counts` is null (real path, Wave A). */
+/** Shown under the filter row when `type_counts` is null. */
 export const FILTER_UNAVAILABLE_REASON = () => __('Filtering arrives with the real ledger query.', 'yayloyalty');
 
 /** "1–10 of 4,812 entries · newest first" */
@@ -122,78 +123,3 @@ export const COLUMN_STATUS = () => __('Status', 'yayloyalty');
 export const REDEMPTION_STATUS_APPLIED = () => __('Applied', 'yayloyalty');
 export const REDEMPTION_STATUS_RETURNED = () => __('Points returned', 'yayloyalty'); // a refund, positive figure
 export const REDEMPTION_STATUS_ISSUED = () => __('Issued', 'yayloyalty');
-
-// ─── Activity log (3d) ────────────────────────────────
-
-export const COLUMN_EVENT = () => __('Event', 'yayloyalty');
-export const COLUMN_BY = () => __('By', 'yayloyalty');
-
-/** Accessible name for the group control — it shows no "Show:" prefix of its own. */
-export const ACTIVITY_GROUP_LABEL = () => __('Show', 'yayloyalty');
-export const ACTIVITY_GROUP_ALL = () => __('All', 'yayloyalty');
-export const ACTIVITY_GROUP_ADMIN = () => __('Admin actions', 'yayloyalty');
-export const ACTIVITY_GROUP_TIER = () => __('Tier changes', 'yayloyalty');
-export const ACTIVITY_GROUP_EXPIRY = () => __('Expiry', 'yayloyalty');
-export const ACTIVITY_GROUP_EMAILS = () => __('Emails', 'yayloyalty');
-
-export const STAFF_ONLY_LABEL = () => __('STAFF ONLY', 'yayloyalty');
-export const AUTOMATIC_ACTOR_LABEL = () => __('Automatic', 'yayloyalty');
-export const CUSTOMER_ACTOR_LABEL = () => __('Customer', 'yayloyalty');
-
-/** One static title per `event_type` — 3d draws these as plain labels, no interpolation. */
-export const ACTIVITY_TITLE_ACCOUNT_CREATED = () => __('Account created', 'yayloyalty');
-export const ACTIVITY_TITLE_POINTS_ADJUSTED = () => __('Points adjusted', 'yayloyalty');
-export const ACTIVITY_TITLE_TIER_CHANGED = () => __('Tier changed', 'yayloyalty');
-export const ACTIVITY_TITLE_EXPIRY_RESET = () => __('Expiry reset', 'yayloyalty');
-export const ACTIVITY_TITLE_REWARD_REDEEMED = () => __('Reward redeemed', 'yayloyalty');
-export const ACTIVITY_TITLE_BALANCE_EMAIL_SENT = () => __('Points balance email sent', 'yayloyalty');
-export const ACTIVITY_TITLE_EXPIRING_SOON_EMAIL_SENT = () => __('Expiring soon email sent', 'yayloyalty');
-
-/** Every sub-line composes from `event_type` + `data` — see `customer-drawer.activity-rows.ts`. */
-export function activityAccountCreatedSubLine(campaign: string, points: string): string {
-  return sprintf(__('%1$s · %2$s points', 'yayloyalty'), campaign, points);
-}
-export function activityPointsAdjustedSubLine(points: string, note: string): string {
-  return sprintf(__('%1$s · "%2$s"', 'yayloyalty'), points, note);
-}
-/** "Explorer → Summit · automatic · reached 5,000 lifetime points" */
-export function activityTierChangedSubLine(
-  fromTier: string,
-  toTier: string,
-  automatic: boolean,
-  threshold: string,
-): string {
-  const mode = automatic ? __('automatic', 'yayloyalty') : __('manual', 'yayloyalty');
-  return sprintf(
-    __('%1$s → %2$s · %3$s · reached %4$s lifetime points', 'yayloyalty'),
-    fromTier,
-    toTier,
-    mode,
-    threshold,
-  );
-}
-export function activityExpiryResetSubLine(from: string, to: string, note: string): string {
-  return sprintf(__('%1$s → %2$s · "%3$s"', 'yayloyalty'), from, to, note);
-}
-export function activityRewardRedeemedSubLine(reward: string, orderId: string): string {
-  return sprintf(__('%1$s · order #%2$s', 'yayloyalty'), reward, orderId);
-}
-export function activityBalanceEmailSubLine(subject: string): string {
-  return sprintf(__('"%s"', 'yayloyalty'), subject);
-}
-/** `deadline` is derived client-side from `occurred_at` + `window_days` — not a fixture field. */
-export function activityExpiringSoonEmailSubLine(windowDays: string, deadline: string): string {
-  return sprintf(__('%1$s-day reminder · deadline was %2$s', 'yayloyalty'), windowDays, deadline);
-}
-
-/** Search placeholder for the activity tab's own filter row — distinct from
- *  the ledger's `SEARCH_PLACEHOLDER` (no "order number" here; matches the
- *  event text and who did it instead — see `DrawerActivity::matches_search()`). */
-export const ACTIVITY_SEARCH_PLACEHOLDER = () => __('Search event or who did it', 'yayloyalty');
-
-/** 3d's footer note — load-bearing: stops an admin hunting for an adjustment here. */
-export const ACTIVITY_FOOTER_NOTE = () =>
-  __(
-    'Points movements are not repeated here — they live in the points ledger with their running balance.',
-    'yayloyalty',
-  );

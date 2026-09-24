@@ -335,7 +335,7 @@ final class CampaignRestController extends AbstractRestController {
         usort(
             $rows,
             static function ( $a, $b ) use ( $orderby, $desc ) {
-                // Ties go to the newest, as live campaign selection does (data-model.md).
+                // Ties go to the newest, as live campaign selection does (data-model/campaigns.md).
                 $cmp = $a[ $orderby ] <=> $b[ $orderby ];
                 $cmp = $desc ? -$cmp : $cmp;
 

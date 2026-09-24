@@ -14,7 +14,7 @@ import { CustomersScreen } from './components/CustomersScreen';
 import { initialFiltersFromSearch, TIER_FILTER_ENABLED, type RowFilters } from './customers-page.filter-rows';
 import { countActiveFilters, toFilterDropSuggestions } from './customers-page.filter-suggestions';
 import { defaultSortDirection, type SortDirection, type SortKey } from './customers-page.sort-rows';
-import { resolveBalanceRangeForQuery } from './customers-page.tier-sample-data';
+import { toServerFilters } from './customers-page.tier-sample-data';
 
 const PER_PAGE = 10;
 
@@ -46,10 +46,7 @@ export default function CustomersPage() {
     perPage: PER_PAGE,
     orderBy: sortBy,
     order: sortDir,
-    ...queryFilters,
-    // No tiers table yet: a Tier pick is sent as its equivalent balance_range bucket.
-    balanceRange: resolveBalanceRangeForQuery(queryFilters),
-    tier: 'all',
+    ...toServerFilters(queryFilters),
   });
   const rows = customersQuery.data?.data ?? [];
   const totalItems = customersQuery.data?.totalItems ?? 0;

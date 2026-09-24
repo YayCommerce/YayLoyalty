@@ -10,8 +10,8 @@ import { DrawerBackLink } from './DrawerBackLink';
 
 /**
  * Identity block: name, email, member-since, the `ACCOUNT DELETED` badge
- * (4a's header treatment only — the full loose-ends panel is out of scope
- * for Wave A), and the `‹ Customers` back link 5c shows below the `sm`
+ * (4a's header treatment only — the loose-ends panel renders elsewhere),
+ * and the `‹ Customers` back link 5c shows below the `sm`
  * breakpoint (the Sheet becomes a full-screen view there, so a back link
  * replaces relying on the overlay click to close it).
  *

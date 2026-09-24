@@ -2,7 +2,7 @@
 
 A loyalty program plugin for WooCommerce with points earning, rewards redemption, referral tracking, and VIP tier management. Shipped as Pro and Lite from one repository.
 
-**Status:** v1.0.0 in development. Core earning system (campaigns, ledger, balance) and reward definitions shipped; admin Dashboard, Customers list + per-customer drawer are live. Nothing awards points yet: the award path (`includes/Engine/Earning/` — listeners, gates, `LedgerService::earn()`) is scaffolded with stub bodies and not registered at boot; no redemption flow exists. Referrals and tiers planned for later phases.
+**Status:** v1.0.0 in development. Core earning system (campaigns, ledger, balance) and reward definitions shipped; admin Dashboard, Customers list + per-customer drawer are live. Nothing awards or spends points yet: both paths are scaffolded with stub bodies and registered nowhere at boot — the award path in `includes/Engine/Earning/` (listeners, gates), whose ledger guard — attempt the insert, turn the UNIQUE index's 1062 into "already awarded" — is real and verified, and the redemption path in `includes/Engine/Redemption/` (service, gates, commit writer, checkout adapters, `LedgerService::redeem()`), the latter over a real, tested `Clamp`/`Quoter` and a `redemptions` table that is designed but not installed. Referrals and tiers planned for later phases.
 
 ---
 
@@ -65,7 +65,7 @@ composer install
 
 | Path | Contents |
 |---|---|
-| **`includes/`** | PHP backend: controllers, services, repositories, models, enums, database schema, access/capabilities, points engine, utilities |
+| **`includes/`** | PHP backend: controllers, services, repositories, models, enums, database schema, access/capabilities, the points/earning/reward/redemption engines, utilities |
 | **`apps/admin/`** | React 18 + Vite 6 admin dashboard SPA |
 | **`docs/`** | Architecture, standards, data model, roadmap |
 | **`scripts/`** | Build pipeline, validation, dev server |
@@ -115,11 +115,15 @@ One repository, two zips. Lite = Pro minus `includes/Pro/` and SPA built with `B
 
 ## Checks
 
+What each suite checks and its current count: [`docs/code-standards.md` § 14](./docs/code-standards.md#14-running-the-linter-and-tests).
+
 ```bash
-composer test                  # phpunit — 152 unit tests, 27 incomplete by design (the earning-split invariants): points engine (BaseCalculator, PurchaseHandler, PointsEngine), earning orchestration scaffold (IdempotencyKey, Outcome, EarningService), reward engine scaffold (Result, Registry, RewardEngine), dashboard computation (PeriodWindow, DashboardMath, AnomalyDetector, DashboardStats, DashboardNotices), PointsMath + shared vectors, campaign config/conditions validation, drawer query-arg groupings + fixture helpers (Controllers/)
-composer lint                  # phpcs (WPCS + PHPCompatibility, 7.4 floor)
+composer test                  # phpunit, unit suite
+composer test:integration      # phpunit against a real site and server; see docs/deployment-guide.md
+composer lint                  # phpcs
+./scripts/check-docs.sh        # docs structure and single-owner checks
 pnpm --filter @yayloyalty/admin-page lint   # eslint + prettier on TypeScript/React
-pnpm --filter @yayloyalty/admin-page test   # vitest — lib/points-math against tests/fixtures/points-math-vectors.json (same file phpunit runs)
+pnpm --filter @yayloyalty/admin-page test   # vitest
 ./scripts/run.sh release lite --no-prompt   # builds and validates a package end to end
 ```
 

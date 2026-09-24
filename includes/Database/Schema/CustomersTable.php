@@ -9,7 +9,8 @@ defined( 'ABSPATH' ) || exit;
  * ON DUPLICATE KEY no-op. balance and lifetime_earned are signed on
  * purpose (refund clawbacks). Later-phase columns are declared ahead so
  * their feature lands as a data migration, not a schema change. Indexed
- * columns must stay in sync with CustomerRowSort::KEYS. See docs/data-model.md.
+ * columns must stay in sync with CustomerRowSort::KEYS. See
+ * docs/data-model/customers-and-ledger.md.
  */
 final class CustomersTable extends AbstractTableSchema {
 

@@ -4,16 +4,18 @@ namespace YayLoyalty\Engine\Earning;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Enums\ReferenceType;
+use YayLoyalty\Enums\RewardType;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The one string behind the ledger's UNIQUE guard: "earn:7:order:1234:purchase".
+ * The one string behind the ledger's UNIQUE guard, shared by earning and
+ * redemption: "earn:7:order:1234:purchase", "redeem:7:redemption:88:flexible_discount".
  * Includes the user because one reference may legitimately pay two people
- * (a referral order pays advocate and friend), and the trigger because one
- * order may earn once per trigger — and nothing else, so two hooks, a status
- * bounce or a retry all compose the same key and collide on the index
- * instead of double-paying.
+ * (a referral order pays advocate and friend), and a qualifier because one
+ * reference may move points once per trigger (earn) or per reward type
+ * (redeem) — and nothing else, so two hooks, a status bounce or a retry all
+ * compose the same key and collide on the index instead of double-moving.
  */
 final class IdempotencyKey {
 
@@ -23,14 +25,14 @@ final class IdempotencyKey {
     private const SEPARATOR = ':';
 
     /**
-     * @param string $type           A LedgerType constant (earn today; refund types when clawbacks land).
+     * @param string $type           A LedgerType constant (earn and redeem today; refund types when clawbacks land).
      * @param int    $user_id        Whose balance moves.
      * @param string $reference_type A ReferenceType constant.
-     * @param int    $reference_id   The id in that namespace (order id, comment id, user id, year).
-     * @param string $trigger        A CampaignTrigger constant, any build's (a Pro trigger stays composable after a downgrade).
+     * @param int    $reference_id   The id in that namespace (order id, comment id, user id, year, redemption id).
+     * @param string $qualifier      A CampaignTrigger for earn/refund_earn rows, a RewardType for redeem/refund_redeem rows — any build's, so a Pro value stays composable after a downgrade.
      * @throws \InvalidArgumentException When any part is outside its vocabulary or an id is not positive.
      */
-    public static function compose( string $type, int $user_id, string $reference_type, int $reference_id, string $trigger ): string {
+    public static function compose( string $type, int $user_id, string $reference_type, int $reference_id, string $qualifier ): string {
         LedgerType::assert( $type );
 
         if ( $user_id < 1 ) {
@@ -45,11 +47,13 @@ final class IdempotencyKey {
             throw new \InvalidArgumentException( 'YayLoyalty: an idempotency key needs a positive reference id.' );
         }
 
-        if ( ! CampaignTrigger::is_known( $trigger ) ) {
-            throw new \InvalidArgumentException( sprintf( 'YayLoyalty: unknown campaign trigger "%s".', $trigger ) );
+        $is_redeem = in_array( $type, [ LedgerType::REDEEM, LedgerType::REFUND_REDEEM ], true );
+
+        if ( $is_redeem ? ! RewardType::is_known( $qualifier ) : ! CampaignTrigger::is_known( $qualifier ) ) {
+            throw new \InvalidArgumentException( sprintf( 'YayLoyalty: unknown %s "%s".', $is_redeem ? 'reward type' : 'campaign trigger', $qualifier ) );
         }
 
-        $key = implode( self::SEPARATOR, [ $type, (string) $user_id, $reference_type, (string) $reference_id, $trigger ] );
+        $key = implode( self::SEPARATOR, [ $type, (string) $user_id, $reference_type, (string) $reference_id, $qualifier ] );
 
         if ( strlen( $key ) > self::MAX_LENGTH ) {
             throw new \InvalidArgumentException( 'YayLoyalty: idempotency key exceeds the column width.' );

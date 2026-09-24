@@ -1,12 +1,13 @@
 <?php
 namespace YayLoyalty\Repositories;
 
+use YayLoyalty\Database\QueryException;
 use YayLoyalty\Models\LedgerEntry;
 
 defined( 'ABSPATH' ) || exit;
 
-/** yayloyalty_ledger. Append-only: nothing here calls update() or delete(). */
-final class LedgerRepository extends AbstractRepository {
+/** yayloyalty_ledger. Append-only: nothing here calls update() or delete(). Not final: CustomerActivityServiceTest extends it as a repository double. */
+class LedgerRepository extends AbstractRepository {
 
     protected function table_slug(): string {
         return 'ledger';
@@ -21,13 +22,61 @@ final class LedgerRepository extends AbstractRepository {
     }
 
     /**
-     * The row an idempotency key already produced, or null. An optimisation
-     * for the award path only: the unique index is the guarantee, this SELECT
-     * merely avoids burning an AUTO_INCREMENT value on a known duplicate.
+     * The row an idempotency key already produced, or null.
+     *
+     * Read twice on the award path, for different reasons. Before the insert
+     * it is only an optimisation — the unique index is the guarantee, and
+     * this SELECT merely avoids burning an AUTO_INCREMENT value on a
+     * duplicate the caller can already see under its row lock. After a
+     * collision it is how the writer names the row that won, which
+     * Outcome::duplicate carries.
      */
-    public function find_by_idempotency_key( string $key ): ?LedgerEntry { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(F01-4): SELECT * … WHERE idempotency_key = %s LIMIT 1, hydrate via LedgerEntry::from_row().
-        throw new \RuntimeException( 'Not implemented' );
+    public function find_by_idempotency_key( string $key ): ?LedgerEntry {
+        global $wpdb;
+
+        $row = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+            $wpdb->prepare(
+                'SELECT * FROM `' . esc_sql( $this->table() ) . '` WHERE `idempotency_key` = %s LIMIT 1',
+                $key
+            ),
+            ARRAY_A
+        );
+
+        if ( ! is_array( $row ) ) {
+            return null;
+        }
+
+        $entry = $this->hydrate( $row );
+
+        return $entry instanceof LedgerEntry ? $entry : null;
+    }
+
+    /**
+     * The guarded insert: a UNIQUE `idempotency_key` collision is an answer
+     * here, not a fault, so it comes back as null instead of an exception.
+     * wpdb's error reporting is off for the attempt — the guard firing is
+     * the system working, and it must not leave a line in the log that reads
+     * like a broken write. Every other failure still throws.
+     *
+     * @return int|null Insert id, or null when the key was already present.
+     * @throws QueryException When the insert failed for any other reason.
+     */
+    public function insert_unless_duplicate( LedgerEntry $entry ): ?int {
+        global $wpdb;
+
+        $suppress = $wpdb->suppress_errors( true );
+
+        try {
+            return $this->insert( $entry );
+        } catch ( QueryException $e ) {
+            if ( ! $e->is_duplicate_key() ) {
+                throw $e;
+            }
+
+            return null;
+        } finally {
+            $wpdb->suppress_errors( $suppress );
+        }
     }
 
     /**
@@ -58,6 +107,18 @@ final class LedgerRepository extends AbstractRepository {
         }
 
         return $this->paginate( $args );
+    }
+
+    /** COUNT(*) of a user's ledger rows — cheaper than paginate_for_user() when only the total is needed. */
+    public function count_for_user( int $user_id ): int {
+        global $wpdb;
+
+        return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+            $wpdb->prepare(
+                'SELECT COUNT(*) FROM `' . esc_sql( $this->table() ) . '` WHERE user_id = %d',
+                $user_id
+            )
+        );
     }
 
     /** SUM(points) for a user, the ledger-side half of the balance invariant. Reserved for a rebuild tool. */

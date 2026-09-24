@@ -10,11 +10,9 @@ defined( 'ABSPATH' ) || exit;
  * ledger tab needs — split out of LedgerRestController to keep it near the
  * 200-line cap.
  *
- * Registered on every request, real path included, but the real path has no
- * SQL behind them yet (Wave B: cheap `WHERE`/`BETWEEN`/`LIKE` filters, an
- * expensive `GROUP BY` for per-type counts — two different costs, not
- * bundled). The WP_DEBUG-gated drawer fixture is the only thing that reads
- * them for now; the real handler accepts and ignores them, returning
+ * Registered but with no SQL behind them yet (cheap `WHERE`/`BETWEEN`/`LIKE`
+ * filters and an expensive `GROUP BY` for per-type counts are two different
+ * costs, not bundled). The handler accepts and ignores them, returning
  * `type_counts: null` as the "server cannot filter yet" signal the SPA
  * renders a disabled filter row from.
  */

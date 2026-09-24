@@ -4,6 +4,7 @@ namespace YayLoyalty\Engine;
 use YayLoyalty\Controllers\AbstractRestController;
 use YayLoyalty\Controllers\ActivityRestController;
 use YayLoyalty\Controllers\CampaignRestController;
+use YayLoyalty\Controllers\CustomerAdjustPreviewRestController;
 use YayLoyalty\Controllers\CustomerRestController;
 use YayLoyalty\Controllers\DashboardRestController;
 use YayLoyalty\Controllers\LedgerRestController;
@@ -11,6 +12,7 @@ use YayLoyalty\Controllers\RedemptionsRestController;
 use YayLoyalty\Controllers\ReferralsRestController;
 use YayLoyalty\Controllers\SettingsRestController;
 use YayLoyalty\Repositories\CampaignRepository;
+use YayLoyalty\Repositories\CustomerMetaRepository;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\DashboardRepository;
 use YayLoyalty\Repositories\LedgerRepository;
@@ -41,7 +43,7 @@ class RestAPI {
      * @return AbstractRestController[]
      */
     private function controllers(): array {
-        // One of LedgerService's two authorised construction sites; see its docblock.
+        // An authorised LedgerService construction site; see its docblock.
         $customers = new CustomerRepository();
         $ledger    = new LedgerRepository();
 
@@ -52,26 +54,30 @@ class RestAPI {
         $dashboard = new DashboardRepository( $rewards );
         $campaigns = new CampaignRepository();
 
+        // Shared instance: written only by CustomerActivityService (Engine\CustomerActivityListener),
+        // read-only everywhere below.
+        $customer_meta = new CustomerMetaRepository();
+
         $controllers = [
             new SettingsRestController(),
             // $ledger and $rewards here are read-only uses (counts.ledger,
-            // worth's conversion rate) — the same instances LedgerService
+            // the drawer's conversion rate) — the same instances LedgerService
             // and DashboardRepository hold, not a second construction.
-            new CustomerRestController( $customers, $ledger_service, $ledger, $rewards ),
+            // $customer_meta backs deleted_at/loose_ends/counts.activity and
+            // the list's identity fallback.
+            new CustomerRestController( $customers, $ledger_service, $ledger, $rewards, $customer_meta ),
+            // Same read-only $customers/$rewards instances as above, plus
+            // $dashboard for its liability aggregate — not a second construction.
+            new CustomerAdjustPreviewRestController( $customers, $dashboard, $rewards ),
             new LedgerRestController( $ledger ),
-            // No repository: the real path answers an empty envelope until an
-            // activity table exists (see the controller's own docblock).
-            new ActivityRestController(),
-            // Same as ActivityRestController — no repository, empty envelope
-            // on the real path until a redemptions table exists.
+            new ActivityRestController( $customer_meta ),
+            // Empty envelopes until their tables exist.
             new RedemptionsRestController(),
-            // Same again — no repository, empty envelope on the real path
-            // until a referrals table exists.
             new ReferralsRestController(),
             // Definition table: repository only, no service.
             new CampaignRestController( $campaigns ),
             new DashboardRestController(
-                new DashboardStats( $dashboard ),
+                new DashboardStats( $dashboard, wc_get_price_decimals() ),
                 new DashboardCache( $dashboard ),
                 new DashboardNotices( $dashboard, $campaigns ),
                 new NoticeDismissals()

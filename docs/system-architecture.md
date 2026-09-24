@@ -254,13 +254,16 @@ public static function all_known() {
 
 ## Internal Extension Seams (Filters)
 
-These are **first-party, internal seams** for Pro to attach behavior. Not a third-party API; may change.
+These are **first-party, internal seams** for Pro to attach behavior. Not a third-party API; may change. This table is the one list of these Pro seams; other docs link here. The points engine's public filters are listed with the engine in [`codebase-summary.md`](./codebase-summary.md#points-engine-includesenginepoints).
 
 | Filter | Context | Used By |
 |---|---|---|
 | **`yayloyalty_table_schemas`** | Called during Installer to collect table DDL | Pro can add Pro tables (currently unused) |
-| **`yayloyalty_ledger_recorded`** | Fired by `LedgerService` after its own `Transaction::run()` commits (a savepoint when nested in `exec_write`) | `DashboardCache::flush` |
+| **`yayloyalty_ledger_recorded`** | Fired by `LedgerService` after its own `Transaction::run()` commits (a savepoint when nested in `exec_write`) | `DashboardCache::flush`; `Engine\CustomerActivityListener::on_ledger_recorded` — captures `account_created`/`points_adjusted` into `yayloyalty_customer_meta` |
 | **`yayloyalty_points_awarded`** | To be fired by `Engine\Earning\EarningService::award()` after commit, once per awarded `Outcome` (scaffold; not fired yet) | nothing yet — emails, YayMail placeholders |
+| **`yayloyalty_points_redeemed`** | To be fired by `Engine\Redemption\RedemptionService::commit()` after commit, once per redeemed `Outcome` (scaffold; not fired yet) | nothing yet |
+| **`yayloyalty_redemption_gates`** | To be applied by `RedemptionService::build()` over `[ ProgramGate, RewardGate ]` (scaffold) | Pro gates (tier-only rewards) |
+| **`yayloyalty_reward_conditions_match`** | To be applied by `Engine\Redemption\RewardGate` with the reward and the `Rewards\Context` (default `true`; scaffold) | Pro reward conditions evaluator |
 | **`yayloyalty_campaigns_changed`** | Fired by `CampaignRepository::flush_cache()` after any campaign write | `DashboardCache::flush` (the paused-campaign notice lives in the cached payload) |
 | **`yayloyalty_rest_controllers`** | Called by RestAPI to collect controller instances | Pro adds CampaignPreviewRestController, CampaignPerformanceRestController, DashboardProRestController, CustomerSegmentsRestController |
 | **`yayloyalty_campaign_triggers`** | Called by CampaignTrigger::all() | Pro adds birthday, first_order, order_count, spend_milestone |
@@ -272,6 +275,11 @@ These are **first-party, internal seams** for Pro to attach behavior. Not a thir
 | **`yayloyalty_rest_item_schema`** | Applied inside `AbstractRestController::get_item_schema()` | Pro extends campaign/reward schemas |
 | **`yayloyalty_campaign_conditions_evaluator`** | Called by `Engine\Points\PointsEngine::conditions_match()` with the engine `Context` | Pro supplies ConditionsEvaluator instance (fails closed on unknown types) |
 | **`yayloyalty_localize_admin_data`** | Called by `LocalizeHelper` to extend SPA payload | Pro adds `segments` (saved Customers-page filter sets) and paid feature flags |
+| **`yayloyalty_localize_meta`** | Applied by `LocalizeHelper` to the localized `meta` payload (currency format and the like) | Extend the SPA meta payload |
+| **`yayloyalty_max_manual_adjustment`** | Applied by `CustomerRestController::validate_adjustment()` | Sanity ceiling on one manual adjustment's absolute points (default 1,000,000), for every role; separate from the site-wide `settings.advanced.adjustment_ceiling` policy (non-administrators only; see `code-standards.md` § 9) |
+| **`yayloyalty_run_migrations`** | Fired by the Installer's migration step | Custom migrations |
+| **`yayloyalty_pro_booted`** | Action fired after Pro boot completes | Pro-only follow-up wiring |
+| **`yayloyalty_erase_customer_data`** | **Documented, unbuilt, never wired** — nothing fires it | Nothing. What runs on `delete_user`/`wpmu_delete_user` today is capture, not erasure: `Engine\CustomerActivityListener` → `Services\CustomerActivityService::record_account_deleted()`. Do not build Pro cleanup against this seam until a real erasure tool fires it |
 
 **Seam safety:** Match on `$rest_base` (route) and schema `title` — `yayloyalty_rest_item_schema` is shared across resources.
 
@@ -287,7 +295,7 @@ These are **first-party, internal seams** for Pro to attach behavior. Not a thir
 
 **Copy lives in the client.** Notices are `{key, severity, fingerprint, data}`; `dashboard-page.notice-copy.ts` composes every title, body and action from `data` (thresholds quoted from `data.threshold`), and ledger rows are described by `ledger.helper.ts` — the same rule as the Customers list.
 
-**Dev scenario switch.** `?scenario=empty|small|large|notices|anomaly` swaps the payload for a `DashboardFixture` artboard. The argument is registered only when `WP_DEBUG` is true and the SPA reads it only through `hooks/useDevScenario.ts` (`undefined` outside the Vite dev server, so a built bundle never sends it); production builds are verified on real data.
+**Dev scenario switch.** A `WP_DEBUG`-only `?scenario=` arg swaps the payload for a fixture artboard; values and both gates: [`deployment-guide.md`](./deployment-guide.md#fixture-backed-endpoints). Production builds are verified on real data.
 
 ### Customers list & bulk actions data flow
 
@@ -302,7 +310,7 @@ See `customers-page.matching-customers.ts` for selection resolution; `customers-
 
 ### Customer drawer (F09) — per-customer detail view
 
-Opened from Customers-list row; shows balance, stats, four tabs (Points ledger + three empty-on-real-path tabs: Activity, Redemptions, Referrals). All five drawer endpoints (`GET /customers/{id}`, `/ledger`, `/activity`, `/redemptions`, `/referrals`) accept a `scenario` query arg only when `WP_DEBUG` is true, reaching `CustomerDrawerFixture` with named scenarios (new/large/deleted/negative/expiring). The default (no arg) always returns real data or an honest empty envelope. Schema validation is identical for both paths via Zod mirrors in `src/lib/schema/`. Shared helpers: `Schemas/CustomerItemSchema.php` (the item shape), `Schemas/LedgerQueryArgs.php` (filter groups + vocabulary), `Controllers/CustomerListFormatter.php` (wire shape helpers).
+Opened from Customers-list row; shows balance, stats, four tabs (Points ledger and Activity, both real; Redemptions and Referrals, empty envelopes until their tables exist). All five drawer endpoints (`GET /customers/{id}`, `/ledger`, `/activity`, `/redemptions`, `/referrals`) serve real data only (no fixtures), and take their id through `member_id_param()`, so a deleted member's drawer still opens. Responses are validated by Zod mirrors in `src/lib/schema/`. Response shape helpers: `Controllers/CustomerItemFormatter.php` (detail item), `Controllers/Schemas/{CustomerItemSchema,LedgerQueryArgs,ActivityQueryArgs}.php` (shape and filter vocabulary).
 
 ### Manual points adjustment — wired end-to-end, including the SPA
 
@@ -311,16 +319,16 @@ The only complete ledger write path, and the only one reachable from the admin U
 ```
 Admin Customers page (React) — Bulk Actions → "Adjust points"
     ↓
-useBulkAdjustPointsMutation → adjustCustomerPoints( user_id, { points, note } )   one call per selected customer
+useBulkAdjustPointsMutation → adjustCustomerPoints( user_id, { points, note, adjustLifetime } )   one call per selected customer
     ↓
-ky.post('customers/{user_id}/adjust', { points, note })
+ky.post('customers/{user_id}/adjust', { points, note, adjust_lifetime })
     ↓
 CustomerRestController  →  BaseRestController::exec_write()
     │   permission_callback: requires( Capabilities::MANAGE_POINTS ), then assert_ceiling()
     │   args: from get_write_args() — readonly fields already stripped
     │   wraps the callback in Transaction::run()
     ↓
-LedgerService::adjust( user_id, points, note, actor_id )
+LedgerService::adjust( user_id, points, note, actor_id, adjust_lifetime )
     ↓ record() [private method]
     ├─ CustomerRepository::ensure_row( user_id )   INSERT … ON DUPLICATE KEY UPDATE (create-then-lock)
     ├─ CustomerRepository::lock_and_get( user_id ) SELECT … FOR UPDATE — serialises writers per customer
@@ -332,8 +340,53 @@ Transaction::run() commits (or releases the savepoint)
     ↓
 do_action( 'yayloyalty_ledger_recorded', $entry )   ← after commit, so a subscriber never sees a rolled-back row
     ↓
-REST returns the LedgerEntry → zod parse → `useBulkAdjustPointsMutation` invalidates the `['customer']` query prefix → list, detail and ledger all refetch
+REST returns the LedgerEntry → zod parse → `useBulkAdjustPointsMutation` invalidates the `['customer', kind, userId]` prefix plus activity → list, detail, ledger and activity all refetch
 ```
+
+### Account-deletion capture — the first WP-core-hook subscriptions in this codebase
+
+Every prior hook in this table is a `yayloyalty_*` seam this plugin itself fires. `delete_user`/
+`wpmu_delete_user` are the first subscriptions to a raw WP-core hook, both registered directly in
+`yayloyalty.php` (no dedicated Listeners/Hooks class exists) because multisite fires
+`wpmu_delete_user` INSTEAD of `delete_user`, never both:
+
+```
+wp_delete_user( $id )                          wpmu_delete_user( $id )
+    │ do_action('delete_user', $id, ..., $user)     │ do_action('wpmu_delete_user', $id, $user)
+    ▼                                                ▼
+CustomerActivityListener::on_delete_user()      CustomerActivityListener::on_wpmu_delete_user()
+    │ bails if is_multisite()                        │ always trusted as "really gone"
+    └──────────────────┬──────────────────────────────┘
+                        ▼ try/catch \Throwable → Log::error
+           CustomerActivityService::record_account_deleted()
+                        │ CustomerRepository::find_by_user_id() — non-member → no-op
+                        │ CustomerMetaRepository::has() — already captured → no-op
+                        ▼
+           CustomerMetaRepository::insert( 'account_deleted' row )
+```
+
+No `Transaction::run()` here (one single-table insert; the WP deletion itself is not this plugin's
+transaction to hold open). `yayloyalty_customers` and `yayloyalty_ledger` are read-only in this
+path and never touched — the frozen balance IS the point. `GET /customers/{id}/activity` reads
+these rows for real now (three of eight event types have a writer); it is no longer an empty
+envelope on every request, only for a customer whose sole history would be one of the five
+unwritten event types.
+
+### Signup capture — customers row created at registration
+
+`user_register` (fired by `wp_insert_user()`, including admin-created accounts, not only
+self-registration) is the third raw WP-core-hook subscription, registered in `yayloyalty.php`
+alongside `delete_user`/`wpmu_delete_user`. `CustomerActivityListener::on_user_register()` calls
+`CustomerRepository::ensure_row()` directly, except for staff (a user with `edit_posts` or
+`manage_woocommerce`, WooCommerce's own back-office rule: admins, shop managers, editors), who get
+no row until a ledger write creates one. No ledger write, no `yayloyalty_ledger_recorded`
+event, nothing logged to `yayloyalty_customer_meta` (a brand-new account has no points activity
+yet, only a row to reserve at balance 0). This makes `yayloyalty_customers` row creation eager on
+WP registration instead of lazy-on-first-earn; the `account_created` activity-log entry
+(`CustomerActivityService`, subscribed to `yayloyalty_ledger_recorded`) is unaffected and still
+only appears on first ledger write. `ensure_row()` is idempotent (`ON DUPLICATE KEY UPDATE`), so a
+double-fire from a third party is harmless; try/catch `\Throwable` around the call, same as every
+other listener callback, so a DB failure here never blocks WP's own user-creation flow.
 
 ### Campaign editor (Pro-only) — create and edit
 
@@ -409,17 +462,29 @@ CampaignPerformance.tsx: useCampaignQuery (header) + useCampaignPerformanceQuery
 
 ### Order award — SCAFFOLDED (shape real, bodies stubbed, not registered at boot)
 
-**Engine status:** `PointsEngine` is complete with 46 unit tests for `BaseCalculator`, `PurchaseHandler`, `PointsEngine`, plus `ContextFactory` and `Triggers/Registry`; its rounding step is `Utils\PointsMath::round_points()`, covered by the shared PHP/TS vector suite. It computes what an order earns given the live campaigns, at `Context::occurred_at` (no timestamp argument).
+**Engine status:** `PointsEngine` is complete and unit-tested (`BaseCalculator`, `PurchaseHandler`, `PointsEngine`, plus `ContextFactory` and `Triggers/Registry`); its rounding step is `Utils\PointsMath::round_points()`, covered by the shared PHP/TS vector suite. It computes what an order earns given the live campaigns, at `Context::occurred_at` (no timestamp argument).
 
 **Scaffold (`includes/Engine/Earning/`, 2026-09-22):** the award path is split into two moments that share one `Context` and one `occurred_at`:
 1. **Evaluation** — `Listeners\OrderListener` → `ContextFactory::from_order()` → `EarningService::preview()`: `Gate` chain (`ProgramGate`: excluded roles, opt-out meta) then `PointsEngine::evaluate()`. Pure; the result is staged as pending order meta on order creation.
 2. **Award** — `EarningService::award()` previews again, then inside one `Transaction::run()`: `CustomerRepository::lock_and_get()` → `LedgerRepository::insert()` under the single-column UNIQUE `idempotency_key` (`IdempotencyKey::compose()`; MySQL 1062 → `Outcome::duplicate`, a normal return) → aggregates → `PendingPoints::release()`. Hooks (`yayloyalty_ledger_recorded`, `yayloyalty_points_awarded`) fire after commit.
 
-**Still missing (F01-4):** every stub body — listener handlers, `preview()`/`award()`, `PendingPoints`, `LedgerService::earn()`, `LedgerRepository::find_by_idempotency_key()`/`points_earned_today()`, `Installer::drop_index_if_exists()` for the superseded `uniq_ledger_event` — plus registering the listeners from `YayLoyalty::__construct()` via `EarningService::build()`. Refund / clawback is an attachment point, not a design. The seven invariants and the full call graph are in `includes/Engine/Earning/README.md`; the incomplete tests under `tests/unit/Earning/` are the specification.
+**The guard is real (2026-09-23).** `LedgerService::earn()`, `LedgerRepository::find_by_idempotency_key()` / `insert_unless_duplicate()` and `QueryException::is_duplicate_key()` are implemented: the insert is attempted, the driver's 1062 becomes `Outcome::duplicate` carrying the row that won, and wpdb's error reporting is suppressed for the attempt so the guard firing never logs a line that reads like a failure. Verified against MySQL 8 on a scratch table (errno readable through `wpdb->dbh` after a suppressed insert; NULL keys do not collide, so manual `adjust()` rows stay non-idempotent). **Caveat:** the column and index reach a site only through `dbDelta`, and `Installer::maybe_upgrade()` early-returns while the stored `yayloyalty_db_version` equals `YAYLOYALTY_VERSION` — a site installed before the DDL changed keeps the old table and has no guard until the version moves.
 
-### Redemption — SCAFFOLDED (Engine wiring only)
+**Award is a set of statuses, decided in the listener.** `OrderListener` is the only class in the plugin that reads a WooCommerce order status: one hook (`woocommerce_order_status_changed`), routed on `$to`, awarding when `$to` is in `general.award_statuses` (default `processing` + `completed`). A fully downloadable-and-virtual order never passes through `processing`; many physical stores never leave it. The engine, the ledger and every domain service stay status-blind.
 
-`RewardEngine` is complete with wiring (registry lookup, delegation, Pro seam) but all evaluation gates (liveness, balance vs cost, conditions filter) are TODO and the Lite handler always denies `not_implemented`. Missing: gates 1–3, `FlexibleDiscountHandler::quote()`, Pro handlers, the write path (`redemptions` table, `RedemptionRepository`, `LedgerService::redeem()`), `ContextFactory` (build Context from cart), and the checkout hook. Call order: customer picks reward → `Context` built from cart/balance → `RewardEngine::evaluate()` → if allowed, caller writes ledger via `LedgerService::redeem()`. See `includes/Engine/Rewards/README.md`.
+**Still missing (F01-4):** every remaining stub body — listener handlers, `preview()`/`award()`, `PendingPoints`, `LedgerRepository::points_earned_today()`, `Installer::drop_index_if_exists()` for the superseded `uniq_ledger_event` — plus the `award_statuses` / `hold_days` settings shape and registering the listeners from `YayLoyalty::__construct()` via `EarningService::build()`. Refund / clawback is an attachment point, not a design. The ten invariants and the full call graph are in `includes/Engine/Earning/README.md`; the incomplete tests under `tests/unit/Earning/` are the specification.
+
+### Redemption — SCAFFOLDED (three zones, bodies stubbed, not registered at boot)
+
+**Zone 1 — quote** (`includes/Engine/Rewards/`, pure): `RedemptionService::quote()` → `Quoter` (gates, then `RewardEngine::evaluate()`) → `FlexibleDiscountHandler` → `Clamp::apply()`, the single place every limit is computed (balance, reward max, cart after other coupons, step, min) and reported as `Result::get_bound_by()`. Writes nothing; the only state is one integer in the WC session (`SessionIntent`, `yayloyalty_redeem_points`); the discount value is derived on every recalculation. `CouponProvider` materialises it as the virtual coupon `yayloyalty-redeem` (`woocommerce_get_shop_coupon_data`, `individual_use` false, sorted last via `woocommerce_coupon_sort`).
+
+**Zone 2 — commit** (`includes/Engine/Redemption/`): `RedemptionService::commit()` → `CommitWriter` in one `Transaction::run()`: `lock_and_get` → `RedemptionRepository::find_by_order` (duplicate) → re-quote with the locked balance → redemptions row → `LedgerService::redeem()` (hard-refuses a balance below zero) → order meta `_yayloyalty_points_redeemed` / `_yayloyalty_redeem_value` → session cleared. Affordability is checked at checkout submission (`checkout_error()` from `woocommerce_after_checkout_validation` / `woocommerce_store_api_cart_errors`); a commit that still loses a race leaves the order created without the debit, with an order note.
+
+**Zone 3 — reverse:** not designed. Named seam `Engine\Redemption\Reversal` from `Earning\Listeners\OrderListener::on_cancelled()` / `on_refunded()`.
+
+**Adapters:** `Adapters\ClassicCheckoutAdapter` (shortcode cart/checkout hooks) and `Adapters\StoreApiAdapter` (`ExtendSchema` cart data, `yayloyalty-redeem` update callback) translate hooks into the same three service calls and hold no rule.
+
+**Still missing (F08):** every stub body, `RedemptionsTable` registration in `Installer::schemas()`, `RedemptionService::build()` wiring from `YayLoyalty::__construct()`, the block UI. Real today: `Clamp` (tested), `Quoter` (tested), the value objects. See `includes/Engine/Redemption/README.md`.
 
 ---
 

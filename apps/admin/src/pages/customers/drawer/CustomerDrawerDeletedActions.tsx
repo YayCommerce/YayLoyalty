@@ -29,8 +29,8 @@ function DeletedActionRow({ label, reason }: { label: string; reason: string }) 
  * between the two components — they are different shapes on purpose.
  *
  * Export stays disabled here too, even though 4a's own artboard draws it
- * live — this drawer has no export job anywhere yet (Wave A left the main
- * actions row's Export disabled for the same reason), so 4a doesn't get a
+ * live — this drawer has no export job anywhere yet (the main actions row's
+ * Export is disabled for the same reason), so 4a doesn't get a
  * special live button the rest of the drawer doesn't have.
  */
 export function CustomerDrawerDeletedActions() {

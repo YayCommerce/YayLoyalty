@@ -2,7 +2,7 @@
 
 Enforced by `phpcs.xml.dist` where a sniff exists; enforced by review where one does not. Rules marked **[REVIEW]** have no automated check — they are the ones most worth catching in a pull request.
 
-Companion: [`data-model.md`](./data-model.md).
+Companion: [`data-model.md`](./data-model.md). Docs follow the same single-source rule as code: a fact lives in one doc and others link to it (owners listed in [`codebase-summary.md`](./codebase-summary.md#where-each-fact-lives)).
 
 ---
 
@@ -125,14 +125,16 @@ Two directories that look interchangeable and are not.
 
 | | Holds | Test |
 |---|---|---|
-| `Utils/` | Stateless, all-static, no plugin state — `Dates`, `Json`, `Log`, `Table`, `ConditionValueRules`, `PointsMath` | Could you lift it into another plugin by changing one constant? |
+| `Utils/` | Stateless, all-static, no plugin state — `Dates`, `Json`, `Log`, `Table`, `Sql`, `ConditionValueRules`, `PointsMath` | Could you lift it into another plugin by changing one constant? |
 | `Helpers/` | Glue that knows this plugin's options, shapes and screens — `SettingsHelper`, `LocalizeHelper` | Does it read plugin state or build a payload for our UI? |
 
 A util that starts reading an option belongs in `Helpers/`. Neither directory is a home for business rules: those live in `Models/` and `Services/`.
 
 ### Points arithmetic is shared with the SPA through `PointsMath`
 
-`Utils\PointsMath` holds the arithmetic every layer needs and none may re-derive: `round_points` (once, at order level, half away from zero; unknown mode rounds down), `pct_delta` (|previous| denominator), `pct_of`, `points_to_currency` — a zero denominator yields `null`, never 0. `apps/admin/src/lib/points-math/points-math.ts` is its camelCase mirror.
+`Utils\PointsMath` holds the arithmetic every layer needs and none may re-derive: `round_points` (once, at order level, half away from zero; unknown mode rounds down), `pct_delta` (|previous| denominator), `pct_of`, `points_to_currency` (rounds to the store currency's decimals, which the caller passes — `wc_get_price_decimals()` in PHP, `currencyDecimals()` in the SPA) — a zero denominator yields `null`, never 0. `apps/admin/src/lib/points-math/points-math.ts` is its camelCase mirror.
+
+**One points → money label.** The SPA shows points as money only through `formatPointsAsMoney()` (`lib/helpers/points.helper.ts`): `pointsToCurrency()` at the store's decimals, then `parseWPCurrency()`. `parseWPCurrency()` formats and never rounds a points conversion itself — its `toFixed()` rounds the binary float, which lands a half-cent the wrong way (1.005 → 1.00).
 
 **The SPA formats; it does not compute.** When a screen must compute a points figure (an editor preview, a delta, a conversion), it calls `lib/points-math`. Every function has a same-named method in `PointsMath`, and every rule has a key in `tests/fixtures/points-math-vectors.json`, which both `composer test` (`PointsMathVectorsTest`) and `pnpm test` (Vitest) iterate. Adding a primitive on one side without the other fails that side's suite; PHP is the source of truth for expected values, and only inputs every supported PHP release rounds identically belong in the file (PHP 8.4 dropped `round()`'s pre-rounding, so `0.49999999999999994`-style inputs stay out).
 
@@ -163,7 +165,9 @@ Pick the level by asking who needs the line, not how noisy it is:
 - `get_instance( ...$args )` silently ignores `$args` after the first call, so constructor injection and the trait are incompatible — the second caller silently gets the first caller's dependencies.
 - `get_instance()` is `public static`, so it hands global access to anything that wants it.
 
-**[REVIEW]** `LedgerService` is the only class that receives both `LedgerRepository` and `CustomerRepository`, and it is constructed in exactly three named places: `Engine\RestAPI::controllers()` (request-time REST), `Database\InitYayLoyaltyCustomer::maybe_create()` (one-time install bootstrap, outside any request — needs real ledger rows so its starter customers don't break `balance = SUM(ledger.points)`) and `Engine\Earning\EarningService::build()` (the award path's composition root; a stub until F01-4). PHP has no package-private, so this is a convention plus these three named construction sites plus this review rule — **not** something the language enforces. Do not describe it as "structural"; a fourth site needs the same review, not a silent `new LedgerService(...)`.
+**[REVIEW]** `LedgerService` is the only class that receives both `LedgerRepository` and `CustomerRepository`, and it is constructed in exactly four named places: `Engine\RestAPI::controllers()` (request-time REST), `Database\InitYayLoyaltyCustomer::maybe_create()` (one-time install bootstrap, outside any request — needs real ledger rows so its starter customers don't break `balance = SUM(ledger.points)`), `Engine\Earning\EarningService::build()` (the award path's composition root; a stub until F01-4) and `Engine\Redemption\RedemptionService::build()` (the commit path's composition root; a stub until F08). PHP has no package-private, so this is a convention plus these four named construction sites plus this review rule — **not** something the language enforces. Do not describe it as "structural"; a fifth site needs the same review, not a silent `new LedgerService(...)`.
+
+**[REVIEW]** `Services\CustomerActivityService` is a second, narrower exception: it holds `CustomerRepository` and `LedgerRepository` alongside `CustomerMetaRepository`, justified only because both are READ-ONLY there (membership check, balance at deletion, kept-entries count) — the sole write target is `customer_meta`. It is constructed in exactly one place, `Engine\CustomerActivityListener::service()`. Any further class needing more than one repository needs this same review, not a silent multi-repository constructor.
 
 ## 9. REST
 
@@ -172,7 +176,7 @@ Pick the level by asking who needs the line, not how noisy it is:
 - **`readonly` properties are stripped from write args, not merely ignored.** Build write args by filtering the schema. Passing the schema whole makes every endpoint mass-assignable: a `PUT` carrying `is_builtin` or `actor_id` would otherwise defeat the guards that depend on them.
 - Server-owned and always readonly: `id`, `created_at`, `updated_at`, `is_builtin`, `balance_after`, `actor_id`, and every aggregate on `customers`.
 - `actor_id` is always `get_current_user_id()`. Never read it from a request body.
-- ID route params are `(?P<id>[\d]+)` with a `validate_callback` confirming the record exists.
+- ID route params are `(?P<id>[\d]+)` with a `validate_callback` confirming the record exists. For a user id that is `AbstractRestController::member_id_param()` on loyalty-member reads (live WP user, or a deleted one whose customers row survives) and `user_id_param()` everywhere else (writes, and ids that are not "a member", like Pro's campaign preview).
 - Payload fields are `snake_case`. The pagination envelope is camelCase (`currentPage`, `totalPage`, `totalItems`, `perPage`, `data`), matching `PaginatedResponse<T>` in the admin app — one envelope, not two. Query params follow WP REST core spelling (`page`, `per_page`, `orderby`, `order`, `balance_range`). Nothing else on the wire is camelCase — including `suggestions[].key` and saved-segment `filters`, which use the query-param names. In the admin app, everything TS-side is camelCase (`perPage`, `orderBy`, `balanceRange`, `RowFilters`), and the `lib/api/*.api.ts` (or `pro/**/*.api.ts`) request builder is the only place the two spellings meet — callers never write a snake_case key. The `wp_localize_script` bootstrap (`LocalizeHelper`, `window.yayLoyaltyMeta` / `yayLoyaltyAdmin`) is a separate boundary: its top-level keys follow the YayCommerce house camelCase shape (`wpMeta.siteUrl`, `isAdministrator`), `wcMeta.currency_data.*` mirrors WooCommerce core's own keys, and any REST resource embedded in it (`settings`, `segments`) keeps its REST snake_case shape.
 - Error responses never echo `$exception->getMessage()`; log the detail, return a generic message with a correlation id.
 - Every admin route sets `'permission_callback' => $this->requires( Capabilities::X )` — one of the seven in `Access\Capabilities` (`view`, `manage_points`, `manage_tiers`, `manage_campaigns`, `manage_rewards`, `manage_settings`, `run_tools`). Never `__return_true` on an admin route. Storefront / Store API routes are gated by session identity, not by these caps.
@@ -184,9 +188,9 @@ Pick the level by asking who needs the line, not how noisy it is:
 
 Two conventions for fixture data coexist:
 
-**Shared schema/query-arg classes** — `Controllers/Schemas/{CustomerItemSchema,LedgerQueryArgs,ActivityQueryArgs}.php` live in one place and are reused by both controllers (real path) and fixtures (dev-only path), so a contract change is made once.
+**Shared schema/query-arg classes** — `Controllers/Schemas/{CustomerItemSchema,LedgerQueryArgs,ActivityQueryArgs}.php` live in one place so a contract change is made once. The **customer drawer has no fixtures and serves real data only**; these classes are used by its real controller paths and by tests. Dashboard and campaign endpoints use fixtures alongside their real paths.
 
-**Dev-only fixture gate** — `WP_DEBUG`-gated fixtures (`CustomerDrawerFixture`, `DashboardFixture`) are reached via a `scenario` query arg, checked server-side by `requested()` helper — the real path (no arg) always returns real data. A "swap point" fixture (`CampaignRestController::dummy_fixture()`, `CampaignPerformanceFixture`) is never optional; it ships in the release zip. Mark swap-point fixtures in controller docblocks and list them in `project-roadmap.md` Known Gaps.
+**Dev-only fixture gate** — the `WP_DEBUG`-gated fixture (`DashboardFixture`) is reached via a `scenario` query arg that is registered only under `WP_DEBUG` and re-checked in the handler — the real path (no arg) always returns real data. A "swap point" fixture (`CampaignRestController::dummy_fixture()`, `CampaignPerformanceFixture`) is never optional; it ships in the release zip. Mark swap-point fixtures in controller docblocks and list them in `project-roadmap.md` Known Gaps.
 
 ## 10. PHP 7.4 pseudo-enums
 
@@ -226,7 +230,7 @@ Stamping `schema_version` into a list turns it into an object: `[{…},{…}]` c
 
 `decode_list()` unwraps it and also accepts a bare array and the corrupted `{"0":…}` shape, so no stored row is lost. **[REVIEW]** — pick the pair that matches the column's shape; nothing enforces it.
 
-The vocabulary and per-type rules for `campaigns.conditions` live in `Enums\CampaignConditionType`; `Models\CampaignConditionSet` validates and normalises a set on save (`CampaignRestController` runs `Campaign::conditions_are_valid()` before writing; `set_conditions()` normalises), mirroring the `config` pair. `rewards.conditions` is the same pattern with `Enums\RewardConditionType` / `Models\RewardConditionSet` / `Models\RewardCondition`. Named `Campaign*` and `Reward*`, never a bare `Condition*` — the two vocabularies must not collide, and each is free to grow its own types independently. Neither `extends` the other, and there is no shared base class — but two things are genuinely identical between them, so they are shared rather than duplicated: `Enums\ConditionTypeMethods` is a trait supplying `all()`/`all_known()`/`is_valid()`/`is_known()`/`operators_for()`/`assert()`, used by both `CampaignConditionType` and `RewardConditionType` (each still declares its own `schema()` and `UNAVAILABLE` — that's where they diverge); `Utils\ConditionValueRules` is the value-shape checks (`int`, `int_list`, `string_list`, `between` pairs, list caps) used by both `CampaignConditionSet` and `RewardConditionSet`. Both exist so a fix to that logic is made once, not twice — not to merge the vocabularies themselves. See `data-model.md` → `conditions`.
+The vocabulary and per-type rules for `campaigns.conditions` live in `Enums\CampaignConditionType`; `Models\CampaignConditionSet` validates and normalises a set on save (`CampaignRestController` runs `Campaign::conditions_are_valid()` before writing; `set_conditions()` normalises), mirroring the `config` pair. `rewards.conditions` is the same pattern with `Enums\RewardConditionType` / `Models\RewardConditionSet` / `Models\RewardCondition`. Named `Campaign*` and `Reward*`, never a bare `Condition*` — the two vocabularies must not collide, and each is free to grow its own types independently. Neither `extends` the other, and there is no shared base class — but two things are genuinely identical between them, so they are shared rather than duplicated: `Enums\ConditionTypeMethods` is a trait supplying `all()`/`all_known()`/`is_valid()`/`is_known()`/`operators_for()`/`assert()`, used by both `CampaignConditionType` and `RewardConditionType` (each still declares its own `schema()` and `UNAVAILABLE` — that's where they diverge); `Utils\ConditionValueRules` is the value-shape checks (`int`, `int_list`, `string_list`, `between` pairs, list caps) used by both `CampaignConditionSet` and `RewardConditionSet`. Both exist so a fix to that logic is made once, not twice — not to merge the vocabularies themselves. See `data-model/campaigns.md` and `data-model/rewards.md` → `conditions`.
 
 ## 13. Pro extension seams
 
@@ -240,20 +244,7 @@ That is why the Lite build is a directory deletion rather than surgery on shared
 
 ### The seams
 
-| Pro needs | Hook |
-|---|---|
-| Its tables | `yayloyalty_table_schemas` |
-| To react to ledger writes | `yayloyalty_ledger_recorded` |
-| Its REST endpoints | `yayloyalty_rest_controllers` |
-| Extra campaign triggers | `yayloyalty_campaign_triggers` |
-| Extra campaign config keys | `yayloyalty_campaign_config_whitelist` |
-| Extra reward types | `yayloyalty_reward_types` |
-| Trigger handlers for its types | `yayloyalty_register_trigger_handlers` |
-| Extra reward config keys | `yayloyalty_reward_config_whitelist` |
-| Reward handlers for its types | `yayloyalty_register_reward_handlers` |
-| To extend a resource's schema | `yayloyalty_rest_item_schema` |
-| To evaluate campaign conditions | `yayloyalty_campaign_conditions_evaluator` |
-| Other seams | `yayloyalty_max_manual_adjustment`, `yayloyalty_run_migrations`, `yayloyalty_localize_admin_data`, `yayloyalty_localize_meta`, `yayloyalty_pro_booted` |
+Every hook, where it fires and who subscribes: [`system-architecture.md` → Internal Extension Seams](./system-architecture.md#internal-extension-seams-filters).
 
 These are **internal seams for first-party Pro code**, not a documented third-party API. They may change.
 
@@ -311,16 +302,21 @@ A stripping build fails silently by nature, so every release is validated agains
 
 ## 14. Running the linter and tests
 
+The one place suite counts and coverage are written down; other docs link here.
+
 ```bash
-composer lint                          # phpcs (WPCS + PHPCompatibility)
+composer lint                          # phpcs (WPCS + PHPCompatibility, 7.4 floor)
 composer lint:fix                      # phpcbf
-composer test                          # phpunit — 152 tests (27 incomplete = the earning-split specification in `tests/unit/Earning/`, `tests/unit/Services/`, `tests/unit/ContextFactoryTest.php`): points engine, earning orchestration scaffold, reward engine scaffold, dashboard computation, PointsMath + shared vectors, campaign validation, drawer query-arg groupings + fixture helpers
-pnpm --filter @yayloyalty/admin-page lint   # eslint + prettier on SPA
-pnpm --filter @yayloyalty/admin-page test   # vitest — lib/points-math against the same vector file
+./scripts/check-docs.sh                # docs stay split and single-homed: cited paths exist, links resolve, sizes, test counts only here
+composer test                          # phpunit over tests/unit/ — 229 tests, 62 incomplete by design (the earning-split specification in `tests/unit/Earning/`, `tests/unit/Services/`, `tests/unit/ContextFactoryTest.php` and the redemption-split specification in `tests/unit/Redemption/`): points engine (BaseCalculator, PurchaseHandler, PointsEngine), earning orchestration scaffold (IdempotencyKey, Outcome, EarningService), the ledger's duplicate-key guard (QueryException), reward engine + clamp (Clamp, Result, Registry, RewardEngine), redemption orchestration scaffold (Quoter real; service, writer, coupon, session, adapters as specification), dashboard computation (PeriodWindow, DashboardMath, AnomalyDetector, DashboardStats, DashboardNotices), PointsMath + shared vectors, campaign config/conditions validation, drawer query-arg groupings + item formatter (`tests/unit/Controllers/`)
+composer test:integration              # phpunit over tests/integration/ against a real WordPress and MySQL — 27 tests: the ledger's UNIQUE guard, the balance_after chain and non-idempotent manual rows, adjust_lifetime in both directions, and which user ids the customer routes accept (deleted members on the drawer reads, not on adjust). Plugin tables go under a scratch `ylit_` prefix and are dropped afterwards, so the site's own data is never read or written. Needs a WordPress install with the plugin active; see `deployment-guide.md`
+pnpm --filter @yayloyalty/admin-page lint   # eslint + prettier on TypeScript/React
+pnpm --filter @yayloyalty/admin-page test   # vitest over apps/admin/tests/ — 120 tests: lib/points-math against tests/fixtures/points-math-vectors.json (same file phpunit runs), money formatting, activity rows, adjust-dialog form state
 ./scripts/run.sh build [pro|lite]      # Full build — currently fails at tsc --noEmit due to 3 pre-existing missing-dependency type errors
+./scripts/run.sh release lite --no-prompt   # builds and validates a package end to end
 ```
 
-`tests/bootstrap.php` shims `add_filter` / `apply_filters` / `do_action` so pure code that goes through hooks can be tested in milliseconds. Anything that needs `$wpdb` or WooCommerce is not a unit test; until a wp-phpunit harness exists, exercise it through WP-CLI.
+`tests/bootstrap.php` shims `add_filter` / `apply_filters` / `do_action` so pure code that goes through hooks can be tested in milliseconds. Anything that needs `$wpdb` or WooCommerce is not a unit test: it belongs in `tests/integration/`, or, for real `WC_Order` flows the integration suite does not cover yet, is exercised through WP-CLI.
 
 ### The points engine is pure
 

@@ -6,10 +6,10 @@ import { paginatedSchema } from '@/lib/api/paginated';
  * Mirrors `ReferralsRestController::define_item_schema()`. THAT PHP METHOD
  * IS THE SOURCE OF TRUTH.
  *
- * The real path always answers an empty envelope — no `yayloyalty_referrals`
- * table exists yet (docs/data-model.md, 1.1, designed but not implemented).
- * The WP_DEBUG drawer fixture (`DrawerReferrals.php`) is the only thing
- * that populates one for now; both parse through this same schema.
+ * The server always answers an empty envelope — no `yayloyalty_referrals`
+ * table exists yet (docs/data-model/future-tables.md, 1.1, designed but not implemented).
+ * When it ships, only the server handler changes — this schema is already
+ * the contract.
  *
  * `referred_name`/`referred_email` are personal data of a THIRD PARTY (the
  * referred customer, not the one the drawer belongs to).

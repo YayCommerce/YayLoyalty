@@ -7,11 +7,9 @@ import { tierProgress, TOP_TIER_REACHED_LABEL } from './customer-drawer.copy';
 /**
  * TEMPORARY, UI-CHECK-ONLY — the same sample-data stand-in the Customers
  * list's Tier column uses (`customers-page.tier-sample-data.ts`), not a
- * real feature: no `tiers` table exists yet (`docs/data-model.md`, 1.2).
+ * real feature: no `tiers` table exists yet (`docs/data-model/future-tables.md`, 1.2).
  *
- * The Wave A plan's locked scope excluded a tier card entirely because
- * there was nothing real to show — added after, at the user's request,
- * reusing the existing stand-in rather than inventing a second one. Delete
+ * Reuses the list's stand-in rather than inventing a second one. Delete
  * alongside the rest of that stand-in once VIP Tiers ships a real
  * per-customer tier.
  *

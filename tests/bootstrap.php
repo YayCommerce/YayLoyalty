@@ -9,6 +9,11 @@
  * `defined( 'ABSPATH' )` guards and the hook functions its documented filters
  * go through, so those are shimmed here — a real WP bootstrap would cost
  * seconds per run and prove nothing extra about arithmetic.
+ *
+ * `CustomerActivityServiceTest` additionally reaches `wp_json_encode()`
+ * (via `Utils\Json`), `get_userdata()` and `get_current_user_id()` — three
+ * one-line shims below, backed by test-controlled globals, never a real
+ * WP_User or database.
  */
 
 declare(strict_types=1);
@@ -72,4 +77,39 @@ function do_action( string $hook, ...$args ): void {
     foreach ( $GLOBALS['yayloyalty_test_hooks'][ $hook ] ?? [] as $callback ) {
         $callback( ...$args );
     }
+}
+
+/**
+ * @param mixed $data
+ * @return string|false
+ */
+function wp_json_encode( $data ) {
+    $encoded = json_encode( $data ); // phpcs:ignore WordPress.WP.AlternativeFunctions.json_encode_json_encode
+
+    return false === $encoded ? false : $encoded;
+}
+
+/** Minimal double: only the two properties this codebase ever reads off a WP_User. */
+if ( ! class_exists( 'WP_User' ) ) {
+    class WP_User {
+        /** @var string */
+        public $display_name;
+
+        /** @var string */
+        public $user_email;
+
+        public function __construct( string $display_name = '', string $user_email = '' ) {
+            $this->display_name = $display_name;
+            $this->user_email   = $user_email;
+        }
+    }
+}
+
+/** Tests set $GLOBALS['yayloyalty_test_users'][$id] to a WP_User instance (or leave unset for "no such user"). */
+function get_userdata( int $user_id ) {
+    return $GLOBALS['yayloyalty_test_users'][ $user_id ] ?? false;
+}
+
+function get_current_user_id(): int {
+    return $GLOBALS['yayloyalty_test_current_user'] ?? 0;
 }

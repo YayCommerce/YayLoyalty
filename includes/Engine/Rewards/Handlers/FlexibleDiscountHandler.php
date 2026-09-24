@@ -9,13 +9,9 @@ use YayLoyalty\Models\Reward;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Points → cart discount at the customer's chosen amount. quote() must, in
- * order: reject a null points_requested; check config `min_points`,
- * `increment`, `max_points_per_order`, `max_percent_of_subtotal` (each a
- * denied() with its own reason); then value = points / points_per_currency_unit
- * rounded through Utils\PointsMath, rate_snapshot = points_per_currency_unit.
- *
- * Scaffold: denies `not_implemented`.
+ * Points → cart discount at the customer's chosen amount. The maths is
+ * Clamp::apply(), the single source of every limit; this handler only
+ * unpacks the Context for it. Scaffold: stub.
  */
 final class FlexibleDiscountHandler implements RewardHandler {
 
@@ -23,7 +19,14 @@ final class FlexibleDiscountHandler implements RewardHandler {
         return RewardType::FLEXIBLE_DISCOUNT;
     }
 
-    public function quote( Reward $reward, Context $ctx ): Result {
-        return Result::denied( Result::REASON_NOT_IMPLEMENTED );
+    /**
+     * Precondition: $ctx->get_points_requested() is the session intent (null
+     * reads as 0). Postcondition: exactly Clamp::apply( $reward, requested,
+     * $ctx->get_balance(), $ctx->get_cart_subtotal(), $ctx->get_currency(),
+     * wc_get_price_decimals() ).
+     */
+    public function quote( Reward $reward, Context $ctx ): Result { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
+        // TODO(F08): hand the reward, the requested points cast to int, the balance, the cart subtotal and the currency from the Context, plus wc_get_price_decimals(), to Clamp::apply and return its Result.
+        throw new \RuntimeException( 'Not implemented' );
     }
 }

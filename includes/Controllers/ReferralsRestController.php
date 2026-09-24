@@ -2,20 +2,17 @@
 namespace YayLoyalty\Controllers;
 
 use YayLoyalty\Access\Capabilities;
-use YayLoyalty\Controllers\Fixtures\CustomerDrawer\CustomerDrawerFixture;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
- * GET /yayloyalty/v1/customers/{id}/referrals — paginated referral rows
- * (F09 Wave B, artboard 3f).
+ * GET /yayloyalty/v1/customers/{id}/referrals — paginated referral rows.
  *
- * No `referrals` table exists yet — `docs/data-model.md`'s
+ * No `referrals` table exists yet — `docs/data-model/future-tables.md`'s
  * `yayloyalty_referrals` is designed but not implemented (1.1) — so the
- * real path always answers an EMPTY envelope, matching `counts.referrals`
- * on `CustomerRestController::format_customer()`. The WP_DEBUG-gated drawer
- * fixture (`DrawerReferrals`) is the only thing that answers this for now;
- * when the real table ships, only `get_history()` below changes.
+ * endpoint always answers an EMPTY envelope, matching `counts.referrals`
+ * from `CustomerItemFormatter::format()`. When the real table ships,
+ * only `get_history()` below changes.
  *
  * `referred_name`/`referred_email` are personal data of a THIRD PARTY (the
  * referred customer, not the one this drawer belongs to). The real endpoint
@@ -42,9 +39,8 @@ final class ReferralsRestController extends AbstractRestController {
                     'callback'            => fn( $request ) => $this->exec_read( [ $this, 'get_history' ], $request ),
                     'permission_callback' => $this->requires( Capabilities::VIEW ),
                     'args'                => array_merge(
-                        [ 'id' => $this->user_id_param() ],
-                        $this->get_collection_params(),
-                        CustomerDrawerFixture::scenario_arg()
+                        [ 'id' => $this->member_id_param() ],
+                        $this->get_collection_params()
                     ),
                 ],
                 'schema' => [ $this, 'get_item_schema' ],
@@ -53,30 +49,7 @@ final class ReferralsRestController extends AbstractRestController {
     }
 
     public function get_history( \WP_REST_Request $request ) {
-        $page     = (int) $request['page'];
-        $per_page = (int) $request['per_page'];
-
-        $scenario = CustomerDrawerFixture::requested( $request );
-
-        if ( null !== $scenario ) {
-            $result        = CustomerDrawerFixture::referrals(
-                $scenario,
-                [
-                    'page'     => $page,
-                    'per_page' => $per_page,
-                ]
-            );
-            $referral_link = $result['referral_link'];
-            $campaign      = $result['campaign'];
-            unset( $result['referral_link'], $result['campaign'] );
-
-            return $this->respond_paginated( $result ) + [
-                'referral_link' => $referral_link,
-                'campaign'      => $campaign,
-            ];
-        }
-
-        // No table yet — `id` is validated by user_id_param() but nothing looks it up.
+        // No table yet — `id` is validated by member_id_param() but nothing looks it up.
         return $this->respond_empty_page( $request ) + [
             'referral_link' => '',
             'campaign'      => null,
