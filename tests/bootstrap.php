@@ -14,6 +14,11 @@
  * (via `Utils\Json`), `get_userdata()` and `get_current_user_id()` — three
  * one-line shims below, backed by test-controlled globals, never a real
  * WP_User or database.
+ *
+ * `DesignHelperTest` reaches the options API and WordPress's sanitisers: the
+ * options live in `$GLOBALS['yayloyalty_test_options']`, and the sanitisers
+ * are close-enough approximations of core's (the tests assert the coercion
+ * rules, not core's exact character handling).
  */
 
 declare(strict_types=1);
@@ -112,4 +117,47 @@ function get_userdata( int $user_id ) {
 
 function get_current_user_id(): int {
     return $GLOBALS['yayloyalty_test_current_user'] ?? 0;
+}
+
+/** Tests reset $GLOBALS['yayloyalty_test_options'] in setUp(). */
+function get_option( string $option, $default_value = false ) {
+    return $GLOBALS['yayloyalty_test_options'][ $option ] ?? $default_value;
+}
+
+function update_option( string $option, $value, $autoload = null ): bool {
+    $GLOBALS['yayloyalty_test_options'][ $option ] = $value;
+    return true;
+}
+
+function delete_option( string $option ): bool {
+    unset( $GLOBALS['yayloyalty_test_options'][ $option ] );
+    return true;
+}
+
+function __( string $text, string $domain = 'default' ): string {
+    return $text;
+}
+
+function sanitize_key( $key ): string {
+    return preg_replace( '/[^a-z0-9_\-]/', '', strtolower( (string) $key ) );
+}
+
+function sanitize_hex_color( string $color ): ?string {
+    return 1 === preg_match( '/^#([A-Fa-f0-9]{3}){1,2}$/', $color ) ? $color : null;
+}
+
+function sanitize_text_field( string $str ): string {
+    return trim( preg_replace( '/[\r\n\t ]+/', ' ', strip_tags( $str ) ) );
+}
+
+function sanitize_textarea_field( string $str ): string {
+    return trim( strip_tags( $str ) );
+}
+
+function absint( $maybeint ): int {
+    return abs( (int) $maybeint );
+}
+
+function wp_get_attachment_url( int $attachment_id ) {
+    return false;
 }
