@@ -40,7 +40,7 @@ export function EmailsTable({ groups }: EmailsTableProps) {
             <Fragment key={group.group}>
               <TableRow className="hover:bg-transparent">
                 <TableCell colSpan={4} className="text-muted-foreground text-xs font-semibold uppercase">
-                  {group.groupLabel}
+                  {group.group_label}
                 </TableCell>
               </TableRow>
               {group.items.map((item) => (
@@ -80,7 +80,7 @@ export function EmailsTable({ groups }: EmailsTableProps) {
                       />
                       <Button asChild variant="ghost" size="sm">
                         <a
-                          href={item.editUrl}
+                          href={item.edit_url}
                           target="_blank"
                           rel="noreferrer"
                           /* translators: %s: email title */

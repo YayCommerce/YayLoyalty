@@ -6,9 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
 
 /**
- * Weekly per-customer send cap. Not enforced yet — no trigger/cron sends loyalty emails this
- * release (EmailsHelper::get_throttle_per_week()'s docblock); the value is saved now so that
- * future task doesn't need a settings migration.
+ * Weekly per-customer send cap. Not enforced yet — nothing sends loyalty emails this release;
+ * the value is saved now so sending needs no settings migration.
  */
 export function EmailsThrottleCard() {
   const { control } = useFormContext<EmailsFormValues>();
@@ -22,7 +21,7 @@ export function EmailsThrottleCard() {
         <div className="flex items-center gap-3">
           <Controller
             control={control}
-            name="throttlePerWeek"
+            name="throttle_per_week"
             render={({ field }) => (
               <NumberInputRoot className="w-32" min={0} value={field.value} onValueChange={field.onChange}>
                 <NumberInputInput />

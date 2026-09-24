@@ -9,7 +9,7 @@ describe('emailsFormSchema', () => {
         yayloyalty_points_earned: true,
         yayloyalty_reward_claimed: false,
       },
-      throttlePerWeek: 3,
+      throttle_per_week: 3,
     });
 
     expect(result.emails.yayloyalty_points_earned).toBe(true);
@@ -17,37 +17,37 @@ describe('emailsFormSchema', () => {
   });
 
   it('accepts any subset of ids (record allows partial)', () => {
-    const result = emailsFormSchema.parse({ emails: { yayloyalty_points_earned: true }, throttlePerWeek: 3 });
+    const result = emailsFormSchema.parse({ emails: { yayloyalty_points_earned: true }, throttle_per_week: 3 });
 
     expect(result.emails).toEqual({ yayloyalty_points_earned: true });
   });
 
   it('rejects non-boolean values', () => {
     expect(() =>
-      emailsFormSchema.parse({ emails: { yayloyalty_points_earned: 'true' }, throttlePerWeek: 3 }),
+      emailsFormSchema.parse({ emails: { yayloyalty_points_earned: 'true' }, throttle_per_week: 3 }),
     ).toThrow();
   });
 
   it('rejects a payload without an emails object', () => {
-    expect(() => emailsFormSchema.parse({ throttlePerWeek: 3 })).toThrow();
+    expect(() => emailsFormSchema.parse({ throttle_per_week: 3 })).toThrow();
   });
 
-  it('rejects a payload without throttlePerWeek', () => {
+  it('rejects a payload without throttle_per_week', () => {
     expect(() => emailsFormSchema.parse({ emails: {} })).toThrow();
   });
 
-  it('rejects a negative throttlePerWeek', () => {
-    expect(() => emailsFormSchema.parse({ emails: {}, throttlePerWeek: -1 })).toThrow();
+  it('rejects a negative throttle_per_week', () => {
+    expect(() => emailsFormSchema.parse({ emails: {}, throttle_per_week: -1 })).toThrow();
   });
 
-  it('rejects a non-integer throttlePerWeek', () => {
-    expect(() => emailsFormSchema.parse({ emails: {}, throttlePerWeek: 1.5 })).toThrow();
+  it('rejects a non-integer throttle_per_week', () => {
+    expect(() => emailsFormSchema.parse({ emails: {}, throttle_per_week: 1.5 })).toThrow();
   });
 
-  it('accepts a zero throttlePerWeek', () => {
-    const result = emailsFormSchema.parse({ emails: {}, throttlePerWeek: 0 });
+  it('accepts a zero throttle_per_week', () => {
+    const result = emailsFormSchema.parse({ emails: {}, throttle_per_week: 0 });
 
-    expect(result.throttlePerWeek).toBe(0);
+    expect(result.throttle_per_week).toBe(0);
   });
 });
 
@@ -58,11 +58,11 @@ function item(id: string, enabled: boolean): EmailItem {
     description: `${id} description`,
     recipient: 'customer',
     enabled,
-    editUrl: `http://example.com/wp-admin/admin.php?page=wc-settings&tab=email&section=${id}`,
+    edit_url: `http://example.com/wp-admin/admin.php?page=wc-settings&tab=email&section=${id}`,
   };
 }
 
-function response(groups: EmailsResponse['groups'], throttlePerWeek = 3): EmailsResponse {
+function response(groups: EmailsResponse['groups'], throttle_per_week = 3): EmailsResponse {
   return {
     groups,
     sending: {
@@ -70,7 +70,7 @@ function response(groups: EmailsResponse['groups'], throttlePerWeek = 3): Emails
       from_address: 'shop@example.com',
       wc_emails_url: 'http://example.com/wp-admin/admin.php?page=wc-settings&tab=email',
     },
-    throttlePerWeek,
+    throttle_per_week,
   };
 }
 
@@ -78,7 +78,7 @@ function response(groups: EmailsResponse['groups'], throttlePerWeek = 3): Emails
 const LITE = response([
   {
     group: 'yayloyalty_points',
-    groupLabel: 'Loyalty: Points',
+    group_label: 'Loyalty: Points',
     items: [
       item('yayloyalty_points_earned', true),
       item('yayloyalty_points_expiring_soon', true),
@@ -91,24 +91,24 @@ const PRO = response([
   { ...LITE.groups[0], items: [...LITE.groups[0].items, item('yayloyalty_expiring_final_reminder', true)] },
   {
     group: 'yayloyalty_rewards',
-    groupLabel: 'Loyalty: Rewards',
+    group_label: 'Loyalty: Rewards',
     items: [item('yayloyalty_reward_claimed', true), item('yayloyalty_coupon_issued', true)],
   },
   {
     group: 'yayloyalty_referral',
-    groupLabel: 'Loyalty: Referral',
+    group_label: 'Loyalty: Referral',
     items: [item('yayloyalty_invite_sent', true), item('yayloyalty_referral_reward_earned', true)],
   },
   {
     group: 'yayloyalty_tiers',
-    groupLabel: 'Loyalty: Tiers',
+    group_label: 'Loyalty: Tiers',
     items: [
       item('yayloyalty_tier_reached', true),
       item('yayloyalty_tier_ending_soon', true),
       item('yayloyalty_tier_lost', false),
     ],
   },
-  { group: 'yayloyalty_birthday', groupLabel: 'Loyalty: Birthday', items: [item('yayloyalty_birthday_points', true)] },
+  { group: 'yayloyalty_birthday', group_label: 'Loyalty: Birthday', items: [item('yayloyalty_birthday_points', true)] },
 ]);
 
 describe('toEmailsFormValues', () => {
@@ -133,10 +133,10 @@ describe('toEmailsFormValues', () => {
   });
 
   it('carries the throttle cap through unchanged', () => {
-    expect(toEmailsFormValues(response(LITE.groups, 10)).throttlePerWeek).toBe(10);
+    expect(toEmailsFormValues(response(LITE.groups, 10)).throttle_per_week).toBe(10);
   });
 
   it('posts back only toggles and the cap, never titles, links or sender info', () => {
-    expect(Object.keys(toEmailsFormValues(PRO))).toEqual(['emails', 'throttlePerWeek']);
+    expect(Object.keys(toEmailsFormValues(PRO))).toEqual(['emails', 'throttle_per_week']);
   });
 });

@@ -24,7 +24,7 @@ final class EmailsRouteTest extends TestCase {
         $this->require_woocommerce_mailer();
 
         $this->snapshot_options( SettingsHelper::OPTION_SETTINGS );
-        foreach ( EmailsHelper::loyalty_emails() as $email ) {
+        foreach ( EmailsHelper::registered_emails() as $email ) {
             $this->snapshot_options( $email->get_option_key() );
         }
 
@@ -52,9 +52,9 @@ final class EmailsRouteTest extends TestCase {
     public function test_get_lists_every_registered_loyalty_email_with_its_woocommerce_state(): void {
         $items = $this->items( $this->get()->get_data() );
 
-        $this->assertCount( count( EmailsHelper::loyalty_emails() ), $items );
+        $this->assertCount( count( EmailsHelper::registered_emails() ), $items );
 
-        foreach ( EmailsHelper::loyalty_emails() as $email ) {
+        foreach ( EmailsHelper::registered_emails() as $email ) {
             $this->assertSame( $email->is_enabled(), $items[ $email->id ]['enabled'], $email->id );
             $this->assertSame( 'customer', $items[ $email->id ]['recipient'], $email->id );
             $this->assertArrayNotHasKey( 'isFree', $items[ $email->id ] );
@@ -64,7 +64,7 @@ final class EmailsRouteTest extends TestCase {
     public function test_edit_url_opens_the_emails_own_woocommerce_section(): void {
         $items = $this->items( $this->get()->get_data() );
 
-        $this->assertStringContainsString( 'section=yayloyalty_points_earned', $items['yayloyalty_points_earned']['editUrl'] );
+        $this->assertStringContainsString( 'section=yayloyalty_points_earned', $items['yayloyalty_points_earned']['edit_url'] );
     }
 
     public function test_post_writes_woocommerces_enabled_option_and_leaves_others_alone(): void {
@@ -90,13 +90,40 @@ final class EmailsRouteTest extends TestCase {
         $response = $this->post( [ 'emails' => [ 'not_a_loyalty_email' => true ] ] );
 
         $this->assertSame( 200, $response->get_status() );
-        foreach ( EmailsHelper::loyalty_emails() as $email ) {
+        foreach ( EmailsHelper::registered_emails() as $email ) {
             $this->assertSame( $this->saved_options[ $email->get_option_key() ], get_option( $email->get_option_key(), null ), $email->id );
         }
     }
 
     public function test_post_without_emails_is_rejected(): void {
-        $this->assertSame( 400, $this->post( [ 'throttlePerWeek' => 2 ] )->get_status() );
+        $this->assertSame( 400, $this->post( [ 'throttle_per_week' => 2 ] )->get_status() );
+    }
+
+    /** Checked before any write: a rolled-back transaction does not undo a persistent object cache. */
+    public function test_post_with_a_non_numeric_throttle_is_rejected_before_any_write(): void {
+        $this->set_enabled_in_woocommerce( 'yayloyalty_points_earned', 'yes' );
+        $throttle = SettingsHelper::get_settings()['emails']['throttle_per_week'];
+
+        $response = $this->post(
+            [
+                'emails'            => [ 'yayloyalty_points_earned' => false ],
+                'throttle_per_week' => 'abc',
+            ]
+        );
+
+        $this->assertSame( 400, $response->get_status() );
+        $this->assertSame( 'yes', get_option( 'woocommerce_yayloyalty_points_earned_settings' )['enabled'] );
+        $this->assertSame( $throttle, SettingsHelper::get_settings()['emails']['throttle_per_week'] );
+    }
+
+    public function test_response_keys_are_snake_case(): void {
+        $data  = $this->get()->get_data();
+        $group = $data['groups'][0];
+
+        $this->assertArrayHasKey( 'throttle_per_week', $data );
+        $this->assertArrayHasKey( 'group_label', $group );
+        $this->assertArrayNotHasKey( 'groupLabel', $group );
+        $this->assertArrayHasKey( 'edit_url', $group['items'][0] );
     }
 
     public function test_post_saves_the_throttle_into_plugin_settings_without_resetting_them(): void {
@@ -104,12 +131,12 @@ final class EmailsRouteTest extends TestCase {
 
         $response = $this->post(
             [
-                'emails'          => [],
-                'throttlePerWeek' => -4,
+                'emails'            => [],
+                'throttle_per_week' => -4,
             ]
         );
 
-        $this->assertSame( 0, $response->get_data()['throttlePerWeek'] );
+        $this->assertSame( 0, $response->get_data()['throttle_per_week'] );
         $this->assertSame( 0, SettingsHelper::get_settings()['emails']['throttle_per_week'] );
         $this->assertSame( 'Star', SettingsHelper::get_settings()['general']['points_label_singular'] );
     }

@@ -8,14 +8,13 @@ import { settingsSchema } from '@/lib/schema/settings.schema';
  */
 export const emailsFormSchema = z.object({
   emails: z.record(z.string(), z.boolean()),
-  /** The emails.throttle_per_week plugin setting, under its wire name. */
-  throttlePerWeek: settingsSchema.shape.emails.shape.throttle_per_week,
+  throttle_per_week: settingsSchema.shape.emails.shape.throttle_per_week,
 });
 export type EmailsFormValues = z.infer<typeof emailsFormSchema>;
 
 /**
- * One registered loyalty email, as EmailsHelper::to_item() builds it. Plain types rather than Zod:
- * server-authored, nothing to validate. `editUrl` opens the email's own WooCommerce settings screen.
+ * One registered loyalty email, as EmailsHelper::to_row() builds it. Plain types rather than Zod:
+ * server-authored, nothing to validate. `edit_url` opens the email's own WooCommerce settings screen.
  */
 export type EmailItem = {
   id: string;
@@ -23,15 +22,15 @@ export type EmailItem = {
   description: string;
   recipient: 'customer' | 'admin';
   enabled: boolean;
-  editUrl: string;
+  edit_url: string;
 };
-export type EmailGroup = { group: string; groupLabel: string; items: EmailItem[] };
+export type EmailGroup = { group: string; group_label: string; items: EmailItem[] };
 export type EmailsSending = { from_name: string; from_address: string; wc_emails_url: string };
 
 export type EmailsResponse = {
   groups: EmailGroup[];
   sending: EmailsSending;
-  throttlePerWeek: number;
+  throttle_per_week: number;
 };
 
 /** Only the toggles + throttle cap are form state; titles, links and sending info are never posted back. */
@@ -44,5 +43,5 @@ export function toEmailsFormValues(data: EmailsResponse): EmailsFormValues {
     }
   }
 
-  return { emails, throttlePerWeek: data.throttlePerWeek };
+  return { emails, throttle_per_week: data.throttle_per_week };
 }

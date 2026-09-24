@@ -38,7 +38,7 @@ class EmailsRestController extends AbstractRestController {
     }
 
     public function get_emails( \WP_REST_Request $request ) {
-        return EmailsHelper::get_response();
+        return EmailsHelper::get_emails();
     }
 
     public function save_emails( \WP_REST_Request $request ) {
@@ -49,17 +49,10 @@ class EmailsRestController extends AbstractRestController {
         }
 
         // Checked before any write: a rolled-back transaction does not undo a persistent object cache.
-        if ( isset( $params['throttlePerWeek'] ) && ! is_numeric( $params['throttlePerWeek'] ) ) {
+        if ( isset( $params['throttle_per_week'] ) && ! is_numeric( $params['throttle_per_week'] ) ) {
             return $this->error_invalid_arguments();
         }
 
-        EmailsHelper::update_enabled( $params['emails'] );
-
-        // Optional: a patch, same as emails — omit to leave the stored cap untouched.
-        if ( isset( $params['throttlePerWeek'] ) ) {
-            EmailsHelper::update_throttle_per_week( (int) $params['throttlePerWeek'] );
-        }
-
-        return EmailsHelper::get_response();
+        return EmailsHelper::update_emails( $params );
     }
 }
