@@ -13,7 +13,7 @@ Data model v0.3 specifies a roadmap across phases 1.0, 1.1, 1.2, and 2.0. Curren
 | Table                 | Spec                         | Status                   | Notes                                                                                                              |
 | --------------------- | ---------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------ |
 | **`campaigns`**       | Core earning rules           | ✅ **SHIPPED**           | Full CRUD; trigger filtering (Lite/Pro); Pro conditions evaluator; import/export ready                             |
-| **`customers`**       | Member cache & state         | ✅ **SHIPPED**           | Lazy-initialized; aggregates; expiry basis; no tier/referral fields yet                                            |
+| **`customers`**       | Member cache & state         | ✅ **SHIPPED**           | Lazy-initialized; aggregates; expiry basis; tier/referral columns exist but nothing writes them yet                                            |
 | **`ledger`**          | Balance journal, append-only | ✅ **SHIPPED**           | Immutable; idempotent on unique key; SOLE writes via LedgerService                                                 |
 | **`rewards`**         | Ways to spend points         | ✅ **SHIPPED**           | Schema, model, repository, enums; Lite seeds flexible_discount; Pro adds coupon types; no checkout integration yet |
 | **`redemptions`**     | Reward claim records         | ❌ **NOT STARTED**       | Fact table; references rewards & ledger; multipart refund tracking                                                 |
@@ -263,6 +263,6 @@ The shape is fixed (`includes/Engine/Redemption/README.md`); each row is one stu
 
 ## Related Documentation
 
-- **`data-model.md`** — Full schema specification (12 tables, relationships, invariants)
+- **`data-model.md`** — Full schema specification (13 tables, relationships, invariants)
 - **`code-standards.md`** — Implementation rules for new features
 - **`codebase-summary.md`** — Current code structure and entry points

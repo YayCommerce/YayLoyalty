@@ -26,7 +26,7 @@ flag — see `code-standards.md` §13 for the seams that make this work.
 # Aliases for faster typing:
 ./scripts/run.sh release premium 1.2.0
 ./scripts/run.sh release free --no-prompt
-./scripts/run.sh bump [pro|lite]          # bump version only
+./scripts/run.sh bump <version>           # bump version only
 ./scripts/run.sh info                     # show current version
 ./scripts/run.sh clean                    # remove build artifacts and vendor
 ./scripts/run.sh help                     # show all commands

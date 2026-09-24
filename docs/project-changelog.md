@@ -217,6 +217,18 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
   so one connection can never reach it), lock serialisation, `redeem()`, and the nested-commit gap
   in `dispatch_events()`. Each says so in its own `markTestIncomplete`.
 
+### Added — Customers row created at WP registration (2026-09-23)
+
+- New `user_register` hook (`CustomerActivityListener::on_user_register()`, registered in
+  `yayloyalty.php`) calls `CustomerRepository::ensure_row()` for every new WP user, admin-created
+  accounts included, except staff (`edit_posts` or `manage_woocommerce` — admins, shop managers,
+  editors), who are not loyalty members just for having an account. Fixes a gap where a user created in wp-admin never showed up in the admin
+  Customers list until their first points activity — `yayloyalty_customers` row creation is now
+  eager on registration instead of lazy-on-first-earn. No signup bonus, no ledger write, no
+  `account_created` activity-log entry — that stays lazy, tied to the first real ledger write, as
+  before. See `system-architecture.md` → "Signup capture" and `data-model.md` →
+  `yayloyalty_customers`.
+
 ### Changed — Award triggers on a set of statuses (2026-09-23, prose)
 
 - `OrderListener` rewritten as specification: one hook (`woocommerce_order_status_changed`,
@@ -286,18 +298,6 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
 - **Tests:** 115 → 152 cases; the 27 incomplete ones under `tests/unit/Earning/`, `tests/unit/Services/`
   and `ContextFactoryTest.php` are the scaffold's specification. `docs/archive/points-engine-scout.md` records
   the pre-scaffold inventory.
-
-### Added — Customers row created at WP registration (2026-09-23)
-
-- New `user_register` hook (`CustomerActivityListener::on_user_register()`, registered in
-  `yayloyalty.php`) calls `CustomerRepository::ensure_row()` for every new WP user, admin-created
-  accounts included, except staff (`edit_posts` or `manage_woocommerce` — admins, shop managers,
-  editors), who are not loyalty members just for having an account. Fixes a gap where a user created in wp-admin never showed up in the admin
-  Customers list until their first points activity — `yayloyalty_customers` row creation is now
-  eager on registration instead of lazy-on-first-earn. No signup bonus, no ledger write, no
-  `account_created` activity-log entry — that stays lazy, tied to the first real ledger write, as
-  before. See `system-architecture.md` → "Signup capture" and `data-model.md` →
-  `yayloyalty_customers`.
 
 ### Fixed — Customer drawer empty-state text overflow
 

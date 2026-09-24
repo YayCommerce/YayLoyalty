@@ -19,6 +19,9 @@ flowchart TD
         RedCtrl["RedemptionsRestController"]
         RefCtrl["ReferralsRestController"]
         SettCtrl["SettingsRestController"]
+        DesignCtrl["DesignRestController"]
+        EmailsCtrl["EmailsRestController"]
+        CustAdjustCtrl["CustomerAdjustPreviewRestController"]
         RewardCtrl["(No RewardRestController)"]
     end
 
@@ -426,6 +429,8 @@ Admin SPA (CampaignEditorPage)
     └─ summary rail live-updates from form state
 ```
 
+**Pro bulk actions:** Archive, pause, and other status changes from the campaigns table's row menu and bulk-action bar (CampaignBulkActionBar, CampaignArchiveDialog, CampaignPauseDialog) submit through the same `update_item()` endpoint, subject to the same guards (no archiving built-ins, same config/conditions validation).
+
 **Known gaps (not built, not faked):**
 - No product/category/customer search endpoint → id-entry via existing `TagsInput` pickers deferred.
 - No store-wide ledger aggregate → rail's "cost estimate" line omitted.
@@ -550,4 +555,4 @@ Storage: [data model](./data-model.md) (Options, WooCommerce email settings). St
 - **`codebase-summary.md`** — Directory map, entry points, file reference
 - **`code-standards.md`** — Conventions, layer rules, Pro/Lite seams, transaction safety
 - **`deployment-guide.md`** — Build commands, validation, headless setup
-- **`data-model.md`** — Schema: 12 tables planned; 4 implemented; invariants
+- **`data-model.md`** — Schema: 13 tables planned; 5 implemented; invariants

@@ -9,7 +9,7 @@
 
 ## Implementation Status
 
-**Implemented (1.0):** `yayloyalty_campaigns`, `yayloyalty_rewards`, `yayloyalty_customers`, `yayloyalty_ledger`
+**Implemented (1.0):** `yayloyalty_campaigns`, `yayloyalty_rewards`, `yayloyalty_customers`, `yayloyalty_customer_meta`, `yayloyalty_ledger`
 
 **Not implemented:** `redemptions`, `referrals`, `referral_visits`, `tiers`, `tier_history`, `lots`, `lot_allocations`, `events`
 
@@ -47,6 +47,7 @@ These do not change the model; they record how it must be expressed in code so t
 | `yayloyalty_campaigns`       | definition        | 1.0     | earning rule                        |
 | `yayloyalty_rewards`         | definition        | 1.0     | way to spend points                 |
 | `yayloyalty_customers`       | state             | 1.0     | member (extends `wp_users`)         |
+| `yayloyalty_customer_meta`   | fact, append-only | 1.0     | per-customer event                  |
 | `yayloyalty_ledger`          | fact, append-only | 1.0     | balance change                      |
 | `yayloyalty_redemptions`     | fact              | 1.0     | reward claim                        |
 | `yayloyalty_referrals`       | fact              | 1.1     | referral relationship               |

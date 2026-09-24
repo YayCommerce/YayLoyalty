@@ -79,7 +79,7 @@ composer install
 - **[`docs/system-architecture.md`](./docs/system-architecture.md)** — Layers, Pro/Lite build mechanism, request flows, Mermaid diagrams
 - **[`docs/code-standards.md`](./docs/code-standards.md)** — PHP conventions, REST patterns, database rules, Pro/Lite seams
 - **[`docs/deployment-guide.md`](./docs/deployment-guide.md)** — Build commands, validation, headless setup
-- **[`docs/data-model.md`](./docs/data-model.md)** — Full schema: 12 planned tables, relationships, invariants; implementation status
+- **[`docs/data-model.md`](./docs/data-model.md)** — Full schema: 13 planned tables, relationships, invariants; implementation status
 - **[`docs/project-roadmap.md`](./docs/project-roadmap.md)** — What's implemented, gaps, next phases
 
 ---
