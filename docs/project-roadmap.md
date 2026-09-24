@@ -13,7 +13,7 @@ Data model v0.3 specifies a roadmap across phases 1.0, 1.1, 1.2, and 2.0. Curren
 | Table                 | Spec                         | Status                   | Notes                                                                                                              |
 | --------------------- | ---------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------ |
 | **`campaigns`**       | Core earning rules           | ✅ **SHIPPED**           | Full CRUD; trigger filtering (Lite/Pro); Pro conditions evaluator; import/export ready                             |
-| **`customers`**       | Member cache & state         | ✅ **SHIPPED**           | Lazy-initialized; aggregates; expiry basis; no tier/referral fields yet                                            |
+| **`customers`**       | Member cache & state         | ✅ **SHIPPED**           | Lazy-initialized; aggregates; expiry basis; tier/referral columns exist but nothing writes them yet                                            |
 | **`ledger`**          | Balance journal, append-only | ✅ **SHIPPED**           | Immutable; idempotent on unique key; SOLE writes via LedgerService                                                 |
 | **`rewards`**         | Ways to spend points         | ✅ **SHIPPED**           | Schema, model, repository, enums; Lite seeds flexible_discount; Pro adds coupon types; no checkout integration yet |
 | **`redemptions`**     | Reward claim records         | ❌ **NOT STARTED**       | Fact table; references rewards & ledger; multipart refund tracking                                                 |
@@ -84,8 +84,10 @@ All referral tables (`referrals`, `referral_visits`) specified in data model; no
 | **Lifetime redeemed** | Total points spent (excluding refunds) | ✅ SHIPPED | Maintained by `LedgerService` from ledger type; no redemption flow writes REDEEM rows yet |
 | **Expiry** | Inactivity basis | ⚠️ **TRACKED, NOT ENFORCED** | Fields exist (`expires_at`, `reminder_sent_at`); no job runs |
 | **Expiry per-lot** (Pro) | Lot-based expiry | ❌ NOT STARTED | Lots table unimplemented; no lot tracking |
+| **Email triggers** | Send transactional emails on events | ❌ NOT STARTED | Email classes registered (3 Lite / 12 Pro); no trigger() hooked, no cron or Action Scheduler job wired. Admin Emails settings page controls on/off toggles (WooCommerce integration) and weekly throttle cap (stored but not enforced). |
+| **Email throttle** | Per-customer max sends per week | ⚠️ **STORED, NOT ENFORCED** | `yayloyalty_settings.emails.throttle_per_week` (default 3, non-negative int); no job enforces the limit yet. |
 | **Adjustment ceiling** | Per-role cap on one manual adjustment | ⚠️ **ENFORCED, NO UI** | `settings.advanced.adjustment_ceiling` (0 = unlimited) checked by `assert_ceiling()`; admins bypass; no settings field to edit it yet |
-| **Adjustment email** | Tell the customer about a manual adjustment | ❌ NOT STARTED | The adjust dialog's "Notify the customer by email" checkbox (single and bulk) is UI-only: `notifyByEmail` is not in the `POST /customers/{id}/adjust` body, and no email is sent. Needs the body arg, a WooCommerce email class, and a bulk-safe send (one email per customer, not per request retry) |
+| **Adjustment email** | Tell the customer about a manual adjustment | ❌ NOT STARTED | The adjust dialog's "Notify the customer by email" checkbox (single and bulk) is UI-only: `notifyByEmail` is not in the `POST /customers/{id}/adjust` body, and no email is sent. Will be a `LoyaltyEmail` subclass (part of `Engine/Emails` or `Pro/Emails` when built). Needs the body arg, trigger wiring, and a bulk-safe send (one email per customer, not per request retry) |
 | **Customer-facing adjustment description** | Text the customer sees for a manual adjustment | ❌ NOT STARTED | The adjust dialog's "Also show a description to the customer" toggle and its text field are UI-only: `customerNote` is not in the `POST /customers/{id}/adjust` body and nothing stores it. The ledger's `note` is staff-only, so this needs its own home (a ledger column, or `customer_meta`), the body arg, and a customer-side points history to show it in — none exists yet. Until then the preview line's "Adjustment" fallback is what a customer would see |
 | **Rebuild balances** | Replay ledger → recalculate customer row | ❌ NOT STARTED | `balance = SUM(ledger.points)` is the invariant; no rebuild routine or UI exists |
 | **Account-deletion capture** | Snapshot identity + facts when a member's WP user is deleted | ✅ SHIPPED | `Engine\CustomerActivityListener` on `delete_user`/`wpmu_delete_user` → `Services\CustomerActivityService::record_account_deleted()`: one `account_deleted` row in `yayloyalty_customer_meta` (email/display_name snapshot, real balance/kept-entries), `yayloyalty_customers` row and ledger kept forever, byte-identical — see `data-model/customers-and-ledger.md` |
@@ -124,7 +126,7 @@ All referral tables (`referrals`, `referral_visits`) specified in data model; no
 | **Rewards** | ⚠️ PLACEHOLDER | Stub page; no catalog UI |
 | **Referral** | ⚠️ PLACEHOLDER | Stub page; referral program not built |
 | **VIP Tiers** | ⚠️ PLACEHOLDER | Stub page; no tier management UI |
-| **Settings** | ⚠️ PLACEHOLDER | Three stub tabs (general, emails, advanced); REST endpoint and `SettingsHelper` defaults exist (`general.enabled`, point labels) but each tab renders an inline "not implemented yet" Card (Rewards/Referral/VIP render `PagePlaceholder`) |
+| **Settings** | ⚠️ PARTIAL | Design tab shipped (admin-side only; nothing renders on the storefront yet). Emails tab shipped (12 transactional email toggles, weekly throttle cap, read-only WC sending config). General and Advanced are stubs; REST endpoint and `SettingsHelper` defaults exist (`general.enabled`, point labels) but each renders an inline "not implemented yet" Card (Rewards/Referral/VIP render `PagePlaceholder`) |
 | **Capability gating** | ✅ FUNCTIONAL | Nav and routes filtered by `window.yayLoyaltyAdmin.capabilities`; Customers' "Adjust points"/"Export" bulk actions gated to `manage_points`/`view` via `<Can>`; backbone 403s surface as one toast |
 
 ---
@@ -148,9 +150,11 @@ Ordered by how much of the product each blocks, not by an assigned priority — 
 | **`referral`, `social`, `renewal` triggers** | Recognised by `all_known()` for downgrade safety | Offered by no build; nothing can fire them |
 | **Placeholder pages** | Routes and nav for Rewards, Referral, VIP Tiers | Each renders `PagePlaceholder` |
 | **Settings tabs incomplete** | Stub tabs (general, emails, advanced); REST endpoint and `SettingsHelper` defaults exist | Each settings tab renders an inline "not implemented yet" Card (unlike Rewards/Referral/VIP) |
+| **Design not rendered** | `yayloyalty_design` saved and validated; Design tab edits it | No storefront launcher or panel reads it; `typography.custom_css` must go through `wp_add_inline_style` when it does |
 | **No permission matrix** (Pro) | Seven caps on roles; `Capabilities::payload()` | No Settings → Permissions UI or `POST /settings/permissions`; roles are edited with a role plugin for now |
 | **No `uninstall.php`** | `Capabilities::uninstall()` | Nothing calls it; caps and options persist after delete |
 | **Licence routes share the menu cap** | AdminShell applies `get_capability()` (`view`) to menu, licence REST and `LicenseHandler` | A viewer can reach licence endpoints; needs a second adapter method in the shared shell |
+| **Rules decided in two places** | § 16 owner table in `code-standards.md`; `/source-of-truth-check --all` | First full run (2026-09-24): 21 copies and 7 drifted mirrors. Highest risk: `settings.schema.ts` lacks `general.excluded_roles` and requires `adjustment_ceiling` ≥ 0 while PHP stores negatives; points rounding copied outside `PointsMath` (`Clamp::points_in()`, fixtures, `CustomerDrawerExpiryPanel`) |
 | **No SPA tests for drawer/editor/performance** | Controllers fixture-tested; points engine (unit tests + shared TS vectors); dashboard computation; PointsMath sync | Customer drawer, campaign editor, campaign performance have no client-side test coverage |
 
 ---
@@ -206,20 +210,6 @@ The shape is fixed (`includes/Engine/Redemption/README.md`); each row is one stu
 | 6   | AdminShell applies one adapter capability (`view`) to the menu, licence REST and `LicenseHandler`; a viewer can reach licence endpoints. Needs a second adapter method in the shared shell.                          | `yaycommerce/admin-shell`                     | shell               |
 | 7   | Route guard as CI: walk `yayloyalty/v1`, fail on a missing or `__return_true` `permission_callback`. Needs the wp-phpunit harness above.                                                                             | `tests/integration/`                          | —                   |
 
-### Balance-only adjustment → record it on the ledger row
-
-Scheduled after the earning process (F01-4). The adjust dialog's "Adjust lifetime totals too" turned off (`adjust_lifetime=false`) moves `balance` but not `lifetime_earned`, yet the ledger row it writes is an ordinary `adjust` — so `lifetime_earned` is no longer rebuildable from the ledger (principle 1 in `data-model.md`), and `DashboardRepository::sum_issued()` / Pro `CampaignPointsRepository` (both via `earn_types()`) count points `lifetime_earned` excludes.
-
-| # | TODO | Where |
-|---|---|---|
-| 1 | New `LedgerType::CORRECTION` (`'correction'`, fits `varchar(20)`, no migration). Add to `all()`; leave out of `affects_lifetime_earned()`, `affects_lifetime_redeemed()`, `is_activity()`. Fix the `affects_lifetime_earned` docblock formula. | `Enums/LedgerType.php` |
-| 2 | `adjust()` writes `CORRECTION` when `$adjust_lifetime` is false, in either direction (with the flag on, a deduction lowers `lifetime_earned` just as a grant raises it, so it stays `ADJUST`). Drop the `$adjust_lifetime` param from `record()` and `apply_aggregates()` — the type now decides. Remove the TODO. | `Services/LedgerService.php` |
-| 3 | `earn_types()` in both repositories picks up the change for free (derived from `affects_lifetime_earned`); verify `sum_issued()` and campaign points exclude corrections. | `DashboardRepository`, `Pro/CampaignPointsRepository` |
-| 4 | SPA: add `correction` to the ledger type enum; label it (e.g. "Balance correction") in the ledger rows/helper; decide whether the ledger tab's "Adjust" filter and `type_counts` include it (recommend yes — same filter bucket, own label). | `lib/schema/ledger.schema.ts`, `lib/helpers/ledger.helper.ts`, drawer ledger rows, `LedgerQueryArgs` |
-| 5 | Existing rows: balance-only adjusts written before this change are plain `adjust` and cannot be told apart. Accept (dev data only) or reset dev tables — no backfill is possible. | — |
-| 6 | Tests: integration cases in `LedgerGuardTest` — ±N with flag off writes `correction`, moves balance only; ±N with flag on writes `adjust`, moves both by the same signed amount. Unit: `LedgerType` sets. Replace the incomplete stub in `LedgerServiceTest`. | `tests/integration/Services/`, `tests/unit/` |
-| 7 | Docs: drop the "not yet rebuildable" note and restate the invariant as `SUM(earn) + SUM(adjust) − SUM(\|refund_earn\|)` with `correction` listed as balance-only; add the type to the ledger `type` column table. | `docs/data-model.md`, `docs/data-model/customers-and-ledger.md` |
-
 ### Dev-database drift (both)
 
 `dbDelta` adds columns and indexes; it never renames a column or drops an index. Dev sites that predate the `campaigns.trigger` → `trigger_type` rename or the ledger key rename carry stale schema silently. `Installer::run_migrations()` is the seam for a first real migration (`ALTER TABLE … CHANGE`, `DROP INDEX reference`, `DROP INDEX user_created`); until then, reset the plugin tables on an old dev site.
@@ -271,6 +261,6 @@ Scheduled after the earning process (F01-4). The adjust dialog's "Adjust lifetim
 
 ## Related Documentation
 
-- **`data-model.md`** — Full schema specification (12 tables, relationships, invariants)
+- **`data-model.md`** — Full schema specification (13 tables, relationships, invariants)
 - **`code-standards.md`** — Implementation rules for new features
 - **`codebase-summary.md`** — Current code structure and entry points

@@ -10,7 +10,7 @@ import { paginatedSchema } from '@/lib/api/paginated';
  */
 
 /** Matches Enums\LedgerType. */
-export const LEDGER_TYPES = ['earn', 'redeem', 'refund_earn', 'refund_redeem', 'expire', 'adjust'] as const;
+export const LEDGER_TYPES = ['earn', 'redeem', 'refund_earn', 'refund_redeem', 'expire', 'adjust', 'correction'] as const;
 
 /** Matches Enums\LedgerSource. */
 export const LEDGER_SOURCES = [
@@ -59,7 +59,7 @@ export type LedgerEntry = z.infer<typeof ledgerEntrySchema>;
 /**
  * The drawer ledger tab's filter vocabulary — a GROUPING over `LEDGER_TYPES`,
  * not the same list: `earn` covers `earn` + `refund_earn`, `redeem` covers
- * `redeem` + `refund_redeem`. Mirrors `LedgerQueryArgs::filter_types()`.
+ * `redeem` + `refund_redeem`, `adjust` covers `adjust` + `correction`. Mirrors `LedgerQueryArgs::filter_types()`.
  */
 export const LEDGER_FILTER_TYPES = ['all', 'earn', 'redeem', 'adjust', 'expire'] as const;
 export const ledgerFilterTypeSchema = z.enum(LEDGER_FILTER_TYPES);

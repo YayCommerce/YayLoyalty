@@ -79,7 +79,7 @@ composer install
 - **[`docs/system-architecture.md`](./docs/system-architecture.md)** — Layers, Pro/Lite build mechanism, request flows, Mermaid diagrams
 - **[`docs/code-standards.md`](./docs/code-standards.md)** — PHP conventions, REST patterns, database rules, Pro/Lite seams
 - **[`docs/deployment-guide.md`](./docs/deployment-guide.md)** — Build commands, validation, headless setup
-- **[`docs/data-model.md`](./docs/data-model.md)** — Full schema: 12 planned tables, relationships, invariants; implementation status
+- **[`docs/data-model.md`](./docs/data-model.md)** — Full schema: 13 planned tables, relationships, invariants; implementation status
 - **[`docs/project-roadmap.md`](./docs/project-roadmap.md)** — What's implemented, gaps, next phases
 
 ---
@@ -122,6 +122,7 @@ composer test                  # phpunit, unit suite
 composer test:integration      # phpunit against a real site and server; see docs/deployment-guide.md
 composer lint                  # phpcs
 ./scripts/check-docs.sh        # docs structure and single-owner checks
+/source-of-truth-check         # Claude Code skill: rules re-declared outside their § 16 owner
 pnpm --filter @yayloyalty/admin-page lint   # eslint + prettier on TypeScript/React
 pnpm --filter @yayloyalty/admin-page test   # vitest
 ./scripts/run.sh release lite --no-prompt   # builds and validates a package end to end

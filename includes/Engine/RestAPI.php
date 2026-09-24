@@ -8,6 +8,7 @@ use YayLoyalty\Controllers\CustomerAdjustPreviewRestController;
 use YayLoyalty\Controllers\CustomerRestController;
 use YayLoyalty\Controllers\DashboardRestController;
 use YayLoyalty\Controllers\DesignRestController;
+use YayLoyalty\Controllers\EmailsRestController;
 use YayLoyalty\Controllers\LedgerRestController;
 use YayLoyalty\Controllers\RedemptionsRestController;
 use YayLoyalty\Controllers\ReferralsRestController;
@@ -62,6 +63,7 @@ class RestAPI {
         $controllers = [
             new SettingsRestController(),
             new DesignRestController(),
+            new EmailsRestController(),
             // $ledger and $rewards here are read-only uses (counts.ledger,
             // the drawer's conversion rate) — the same instances LedgerService
             // and DashboardRepository hold, not a second construction.

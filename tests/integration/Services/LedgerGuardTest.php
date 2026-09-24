@@ -150,16 +150,20 @@ final class LedgerGuardTest extends IntegrationTestCase {
         $this->assertSame( 100, (int) $this->customer_row( self::USER )['balance'] );
     }
 
-    /** With the flag on, lifetime_earned follows the balance in both directions; off, it stays put. */
+    /** Flag on: an ADJUST row, lifetime_earned follows the balance both ways. Off: a CORRECTION row, lifetime_earned stays put. */
     public function test_adjust_lifetime_moves_lifetime_earned_by_the_signed_amount(): void {
         $service = $this->ledger_service();
 
-        $service->adjust( self::USER, 500, 'Grant', 1, true );
-        $service->adjust( self::USER, -200, 'Undo part of the grant', 1, true );
+        $grant = $service->adjust( self::USER, 500, 'Grant', 1, true );
+        $undo  = $service->adjust( self::USER, -200, 'Undo part of the grant', 1, true );
         $this->assertSame( 300, (int) $this->customer_row( self::USER )['lifetime_earned'] );
+        $this->assertSame( LedgerType::ADJUST, $grant->get_type() );
+        $this->assertSame( LedgerType::ADJUST, $undo->get_type() );
 
-        $service->adjust( self::USER, 100, 'Balance-only grant', 1, false );
-        $service->adjust( self::USER, -50, 'Balance-only deduction', 1, false );
+        $balance_only     = $service->adjust( self::USER, 100, 'Balance-only grant', 1, false );
+        $balance_only_neg = $service->adjust( self::USER, -50, 'Balance-only deduction', 1, false );
+        $this->assertSame( LedgerType::CORRECTION, $balance_only->get_type() );
+        $this->assertSame( LedgerType::CORRECTION, $balance_only_neg->get_type() );
 
         $row = $this->customer_row( self::USER );
         $this->assertSame( 300, (int) $row['lifetime_earned'] );

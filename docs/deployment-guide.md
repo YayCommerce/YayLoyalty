@@ -26,7 +26,7 @@ flag — see `code-standards.md` §13 for the seams that make this work.
 # Aliases for faster typing:
 ./scripts/run.sh release premium 1.2.0
 ./scripts/run.sh release free --no-prompt
-./scripts/run.sh bump [pro|lite]          # bump version only
+./scripts/run.sh bump <version>           # bump version only
 ./scripts/run.sh info                     # show current version
 ./scripts/run.sh clean                    # remove build artifacts and vendor
 ./scripts/run.sh help                     # show all commands
@@ -177,13 +177,15 @@ export YAYLOYALTY_TEST_SOCKET="$HOME/Library/Application Support/Local/run/<site
 composer test:integration
 ```
 
-**It cannot touch the site's data, by construction.** `Utils\Table::name()`
+**Plugin tables are in a scratch namespace; options are read and restored.** `Utils\Table::name()`
 composes every table name from `$wpdb->prefix` on each call, so the bootstrap
 reassigns that one property to `ylit_` and every plugin table resolves to a
 scratch namespace it creates on entry and drops on exit — asserting the prefix
-before each `DROP`. wpdb's own table properties were resolved during load and
-still point at the site, so WordPress keeps working; no option is written, and
-the site's `yayloyalty_*` tables are never read. The plugin must be active on
+before each `DROP`. Some tests (email registration, settings management) read and write
+WooCommerce email options (`woocommerce_*_settings`) and plugin settings (`yayloyalty_settings`);
+both are captured before each test and restored afterwards via `WooCommerceEmailsFixture`.
+wpdb's own table properties were resolved during load and still point at the site, so WordPress
+keeps working and `wp_options` is accessible for test setup/teardown. The plugin must be active on
 the target site, since that is what loads its classes.
 
 The suite refuses to start rather than guess: a missing `wp-load.php`, a

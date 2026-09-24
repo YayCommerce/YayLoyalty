@@ -8,6 +8,10 @@ export function describeLedgerEntry(entry: LedgerEntry): string {
     return entry.note?.trim() || __('Manual adjustment', 'yayloyalty');
   }
 
+  if (entry.type === 'correction') {
+    return entry.note?.trim() || __('Balance correction', 'yayloyalty');
+  }
+
   switch (entry.type) {
     case 'earn':
       return describeEarn(entry);

@@ -6,6 +6,84 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
 
 ## Unreleased
 
+### Added — Email Settings page: loyalty transactional emails as WooCommerce email classes (2026-09-24)
+
+- **Email registration:** Each loyalty email is a `WC_Email` subclass registered via WooCommerce's
+  `woocommerce_email_classes` and `woocommerce_email_groups` filters. Lite registers 3 (points earned,
+  expiring, expired); Pro adds 9 more (birthday, tier changes, referral, rewards, coupon issued). Email
+  id is the registration key and WooCommerce settings option name (`woocommerce_{id}_settings`).
+- **Admin page** (`/settings/emails`, `EmailsSettingsPage.tsx`): per-email toggles grouped by category
+  (Points, Rewards, Referral, Tiers, Promo). Free shows 3 editable; Pro shows 12. Weekly per-customer
+  send cap (`throttle_per_week`, not enforced yet) and read-only "Sending" card with WooCommerce's
+  live from-name/from-address.
+- **Server:** `EmailsRestController` (GET/POST `/emails`) lists registered emails and manages toggles
+  (WooCommerce options via `EmailsHelper::update_emails()`) and throttle (plugin settings patch).
+  `EmailsHelper::registered_emails()` lists what this build registered; no trigger() hooked yet.
+- **Storage:** On/off lives in `woocommerce_{id}_settings` (WooCommerce's standard per-email option);
+  throttle in `yayloyalty_settings.emails.throttle_per_week`. Old `yayloyalty_emails` option (dev
+  data) orphaned and not migrated.
+- **Frontend:** Form state covers email toggles + `throttle_per_week`; read-only metadata/sending never
+  posted. Editability gated by `IS_PRO_BUILD`.
+- **Tests:** Integration suite (+20 tests, 48 total) covers email registration, REST routes, and
+  settings management (reads/writes WC and plugin settings, restoring both after tests).
+
+### Changed — Plugin settings are now patched, not replaced (2026-09-24)
+
+- `SettingsHelper::update_settings()` is now a field-level patch: writes only the fields sent in the
+  request, preserving unchanged fields and never storing defaults. POST `/settings` (via
+  `SettingsRestController`) is therefore idempotent and safe for partial updates (e.g., changing only
+  `emails.throttle_per_week` without affecting other settings). Mirrors POST `/design` behavior.
+
+### Fixed — Balance-only adjustments are rebuildable from the ledger again (2026-09-24)
+
+- New `LedgerType::CORRECTION`: a manual adjustment with "Adjust lifetime totals too" off now writes a
+  `correction` row instead of an ordinary `adjust` row. `LedgerService::adjust()` picks the type up front;
+  `apply_aggregates()` gates purely on `LedgerType::affects_lifetime_earned()`, so the `$adjust_lifetime`
+  flag is no longer threaded through `record()`/`apply_aggregates()` — the row's own type decides.
+  `customers.lifetime_earned = SUM(earn) + SUM(adjust) − SUM(|refund_earn|)` is fully rebuildable from
+  the ledger again. `DashboardRepository` and Pro `CampaignPointsRepository` drop their private
+  `earn_types()` copies for `LedgerType::lifetime_earned_types()`, so points-issued excludes `correction`;
+  `LedgerType::is_manual_adjustment()` (adjust + correction) gates the activity log and `note` exposure.
+- Tests: `LedgerTypeTest`, `LedgerEntryTest`, a `correction` case in `CustomerActivityServiceTest`;
+  `LedgerGuardTest` asserts the written type. Unit suite 254 → 264 tests (62 → 61 incomplete).
+- SPA: `correction` added to the ledger type enum, grouped into the drawer's existing "Adjust" filter
+  bucket (`LedgerQueryArgs::group_of()`), described as "Balance correction" (or the admin's note) by
+  `describeLedgerEntry()`.
+- Pre-existing balance-only `adjust` rows (written before this change) stay indistinguishable from real
+  adjustments — accepted, dev data only, no backfill.
+
+### Added — Source-of-truth check (2026-09-24)
+
+- **Standards:** `code-standards.md` § 16 names one owner per rule (option names, settings,
+  design bounds, points math, enums, conditions, capabilities, wire shapes, fixtures) and the
+  mirrors the PHP/TS boundary forces; § 17 adds four body-level readability rules for new code.
+- **Skill:** `/source-of-truth-check` (`.claude/skills/`, now tracked) reports code in a diff,
+  a branch (`--branch`, against `dev/edd`) or the whole repo (`--all`) that re-declares a rule
+  the table assigns elsewhere, and fixes only on approval. `evals/cases.md` holds 8 seeded cases.
+
+### Added — Design settings tab (2026-09-24)
+
+- **Admin** (`/settings/design`, `pages/settings/Design*`, Pro sections in `pro/design/`): launcher,
+  storefront text and visibility (Free); panel, typography and tier badges (Pro, mounted through
+  `@/pro`). "Only the pages I choose" picks published pages (`visibility.include_page_ids`) with a
+  searchable picker that lists the first 20 A-Z; hide-for-roles offers real roles from the new
+  `wpMeta.roles` bootstrap key. Admin-side only: nothing renders on the storefront yet.
+- **Storage:** own option `yayloyalty_design` via `DesignHelper`; each field's rule (type plus
+  limits) is declared in `DesignSchema::schema()` and applied by `DesignCoercion`. Lists replace
+  their default whole. A blank launcher label, balance heading or redeem button is refused.
+- **REST:** `GET/POST /design`, `POST /design/reset` (one group, or all when no group is sent).
+- **Build:** `validate-build.php` fails when a Pro-only design field appears in its section file
+  without an `IS_PRO_BUILD` guard. Fixture `apps/admin/tests/fixtures/design-defaults.json` is
+  regenerated by `php scripts/dump-design-defaults.php`.
+
+### Fixed — Booleans and form resets (2026-09-24)
+
+- `DesignCoercion` and `SettingsHelper` read booleans with `rest_sanitize_boolean()`, so a posted
+  `"false"` or `"0"` is stored as false instead of true.
+- `form.reset()` merges the form's `resetOptions`, so `keepDirtyValues: true` also kept edited
+  fields after a save. The campaign editor save and the Design save and reset-all now pass
+  `keepDirtyValues: false`.
+
 ### Added — Campaign archive, pause and bulk actions (2026-09-24)
 
 - **Dialogs** (`pro/campaigns/archive/`, `pro/campaigns/pause/`): single and bulk archive, and pause,
@@ -56,8 +134,9 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
   resets consent; a "selection changed" abort shows the count the submit resolved.
 - **Adjust lifetime totals too** (`adjust_lifetime` on `POST /customers/{id}/adjust`): on, a grant
   or a deduction moves `lifetime_earned` by the same signed amount as the balance; off moves the
-  balance only. The ledger row does not record the choice yet — see the roadmap's
-  "Balance-only adjustment" task. Integration suite 26 → 27 tests (`LedgerGuardTest`).
+  balance only. Integration suite 26 → 27 tests (`LedgerGuardTest`). The ledger row now records the
+  choice as its own type (`LedgerType::CORRECTION`) — see "Fixed — Balance-only adjustments are
+  rebuildable from the ledger again" below.
 - **UI only, not wired:** "Notify the customer by email" and "Also show a description to the
   customer" — both listed as not started in the roadmap.
 - **Tests:** `apps/admin/tests/customers-adjust-points.form-state.test.ts` pins the form-state
@@ -138,6 +217,18 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
   so one connection can never reach it), lock serialisation, `redeem()`, and the nested-commit gap
   in `dispatch_events()`. Each says so in its own `markTestIncomplete`.
 
+### Added — Customers row created at WP registration (2026-09-23)
+
+- New `user_register` hook (`CustomerActivityListener::on_user_register()`, registered in
+  `yayloyalty.php`) calls `CustomerRepository::ensure_row()` for every new WP user, admin-created
+  accounts included, except staff (`edit_posts` or `manage_woocommerce` — admins, shop managers,
+  editors), who are not loyalty members just for having an account. Fixes a gap where a user created in wp-admin never showed up in the admin
+  Customers list until their first points activity — `yayloyalty_customers` row creation is now
+  eager on registration instead of lazy-on-first-earn. No signup bonus, no ledger write, no
+  `account_created` activity-log entry — that stays lazy, tied to the first real ledger write, as
+  before. See `system-architecture.md` → "Signup capture" and `data-model.md` →
+  `yayloyalty_customers`.
+
 ### Changed — Award triggers on a set of statuses (2026-09-23, prose)
 
 - `OrderListener` rewritten as specification: one hook (`woocommerce_order_status_changed`,
@@ -207,18 +298,6 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
 - **Tests:** 115 → 152 cases; the 27 incomplete ones under `tests/unit/Earning/`, `tests/unit/Services/`
   and `ContextFactoryTest.php` are the scaffold's specification. `docs/archive/points-engine-scout.md` records
   the pre-scaffold inventory.
-
-### Added — Customers row created at WP registration (2026-09-23)
-
-- New `user_register` hook (`CustomerActivityListener::on_user_register()`, registered in
-  `yayloyalty.php`) calls `CustomerRepository::ensure_row()` for every new WP user, admin-created
-  accounts included, except staff (`edit_posts` or `manage_woocommerce` — admins, shop managers,
-  editors), who are not loyalty members just for having an account. Fixes a gap where a user created in wp-admin never showed up in the admin
-  Customers list until their first points activity — `yayloyalty_customers` row creation is now
-  eager on registration instead of lazy-on-first-earn. No signup bonus, no ledger write, no
-  `account_created` activity-log entry — that stays lazy, tied to the first real ledger write, as
-  before. See `system-architecture.md` → "Signup capture" and `data-model.md` →
-  `yayloyalty_customers`.
 
 ### Fixed — Customer drawer empty-state text overflow
 

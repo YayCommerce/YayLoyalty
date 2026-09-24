@@ -24,7 +24,7 @@ class CampaignPointsRepository {
     public function issued_by_campaign( string $from, string $to, int $limit = 3 ): array {
         global $wpdb;
 
-        $in = Sql::in_placeholders( $this->earn_types() );
+        $in = Sql::in_placeholders( LedgerType::lifetime_earned_types() );
 
         // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $in is a "%s, %s" list; every value is bound.
         $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
@@ -32,7 +32,7 @@ class CampaignPointsRepository {
                 'SELECT campaign_id, SUM(points) AS points FROM `' . esc_sql( Table::name( 'ledger' ) ) . "`
                  WHERE points > 0 AND campaign_id IS NOT NULL AND type IN ({$in}) AND created_at >= %s AND created_at < %s
                  GROUP BY campaign_id ORDER BY points DESC, campaign_id ASC LIMIT %d",
-                array_merge( $this->earn_types(), [ $from, $to, $limit ] )
+                array_merge( LedgerType::lifetime_earned_types(), [ $from, $to, $limit ] )
             ),
             ARRAY_A
         );
@@ -60,7 +60,7 @@ class CampaignPointsRepository {
             return [];
         }
 
-        $types_in = Sql::in_placeholders( $this->earn_types() );
+        $types_in = Sql::in_placeholders( LedgerType::lifetime_earned_types() );
         $ids_in   = Sql::in_placeholders( $campaign_ids, '%d' );
 
         // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $types_in / $ids_in are placeholder lists; every value is bound.
@@ -70,19 +70,12 @@ class CampaignPointsRepository {
                  FROM `' . esc_sql( Table::name( 'ledger' ) ) . "`
                  WHERE points > 0 AND type IN ({$types_in}) AND campaign_id IN ({$ids_in}) AND created_at >= %s AND created_at < %s
                  GROUP BY 1, 2 ORDER BY 1, 2",
-                array_merge( [ $offset_seconds ], $this->earn_types(), array_map( 'intval', $campaign_ids ), [ $from, $to ] )
+                array_merge( [ $offset_seconds ], LedgerType::lifetime_earned_types(), array_map( 'intval', $campaign_ids ), [ $from, $to ] )
             ),
             ARRAY_A
         );
         // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
 
         return is_array( $rows ) ? $rows : [];
-    }
-
-    /**
-     * @return string[] Types that feed customers.lifetime_earned.
-     */
-    private function earn_types(): array {
-        return array_values( array_filter( LedgerType::all(), [ LedgerType::class, 'affects_lifetime_earned' ] ) );
     }
 }
