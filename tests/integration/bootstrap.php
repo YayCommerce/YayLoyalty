@@ -130,3 +130,4 @@ foreach ( \YayLoyalty\Database\Installer::schemas() as $yayloyalty_test_schema )
 register_shutdown_function( 'yayloyalty_test_drop_tables' );
 
 require_once __DIR__ . '/IntegrationTestCase.php';
+require_once __DIR__ . '/WooCommerceEmailsFixture.php';

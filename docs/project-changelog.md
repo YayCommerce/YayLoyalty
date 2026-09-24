@@ -6,6 +6,34 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
 
 ## Unreleased
 
+### Added — Email Settings page: loyalty transactional emails as WooCommerce email classes (2026-09-24)
+
+- **Email registration:** Each loyalty email is a `WC_Email` subclass registered via WooCommerce's
+  `woocommerce_email_classes` and `woocommerce_email_groups` filters. Lite registers 3 (points earned,
+  expiring, expired); Pro adds 9 more (birthday, tier changes, referral, rewards, coupon issued). Email
+  id is the registration key and WooCommerce settings option name (`woocommerce_{id}_settings`).
+- **Admin page** (`/settings/emails`, `EmailsSettingsPage.tsx`): per-email toggles grouped by category
+  (Points, Rewards, Referral, Tiers, Promo). Free shows 3 editable; Pro shows 12. Weekly per-customer
+  send cap (`throttle_per_week`, not enforced yet) and read-only "Sending" card with WooCommerce's
+  live from-name/from-address.
+- **Server:** `EmailsRestController` (GET/POST `/emails`) lists registered emails and manages toggles
+  (WooCommerce options via `EmailsHelper::update_emails()`) and throttle (plugin settings patch).
+  `EmailsHelper::registered_emails()` lists what this build registered; no trigger() hooked yet.
+- **Storage:** On/off lives in `woocommerce_{id}_settings` (WooCommerce's standard per-email option);
+  throttle in `yayloyalty_settings.emails.throttle_per_week`. Old `yayloyalty_emails` option (dev
+  data) orphaned and not migrated.
+- **Frontend:** Form state covers email toggles + `throttle_per_week`; read-only metadata/sending never
+  posted. Editability gated by `IS_PRO_BUILD`.
+- **Tests:** Integration suite (+20 tests, 48 total) covers email registration, REST routes, and
+  settings management (reads/writes WC and plugin settings, restoring both after tests).
+
+### Changed — Plugin settings are now patched, not replaced (2026-09-24)
+
+- `SettingsHelper::update_settings()` is now a field-level patch: writes only the fields sent in the
+  request, preserving unchanged fields and never storing defaults. POST `/settings` (via
+  `SettingsRestController`) is therefore idempotent and safe for partial updates (e.g., changing only
+  `emails.throttle_per_week` without affecting other settings). Mirrors POST `/design` behavior.
+
 ### Fixed — Balance-only adjustments are rebuildable from the ledger again (2026-09-24)
 
 - New `LedgerType::CORRECTION`: a manual adjustment with "Adjust lifetime totals too" off now writes a

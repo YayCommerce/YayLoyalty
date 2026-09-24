@@ -167,6 +167,16 @@ function rest_sanitize_boolean( $value ): bool {
     return (bool) $value;
 }
 
+/** Minimal admin URL builder: appends the path to a fixed base. */
+function admin_url( string $path = '' ): string {
+    return 'http://example.local/wp-admin/' . ltrim( $path, '/' );
+}
+
+/** Returns the URL as-is; unit tests assert on its parts, not its escaping. */
+function esc_url_raw( string $url ): string {
+    return $url;
+}
+
 function wp_get_attachment_url( int $attachment_id ) {
     return false;
 }

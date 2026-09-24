@@ -14,6 +14,7 @@ class YayLoyalty {
         \YayLoyalty\Engine\RestAPI::get_instance();
         \YayLoyalty\Engine\Register\RegisterFacade::get_instance();
         \YayLoyalty\Engine\Admin\Settings::get_instance();
+        \YayLoyalty\Engine\Emails\Emails::get_instance();
 
         // The only reference to Pro in the Lite tree; do not add a second, use a seam (code-standards.md § 13).
         // Before rest_api_init and any campaign read, so Pro's filters are attached first.
