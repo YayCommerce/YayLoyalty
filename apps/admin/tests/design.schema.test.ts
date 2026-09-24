@@ -3,10 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { designSchema } from '@/lib/schema/design.schema';
 import fixture from './fixtures/design-defaults.json';
 
-/**
- * Round-trip validation: designSchema parses the PHP default payload,
- * rejects invalid enum values, and accepts edge cases like empty badge arrays.
- */
+/** designSchema parses the PHP default payload, rejects unknown enum values and accepts an empty badge list. */
 describe('designSchema', () => {
   it('parses the PHP default design', () => {
     const result = designSchema.parse(fixture);

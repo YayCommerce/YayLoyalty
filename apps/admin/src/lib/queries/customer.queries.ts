@@ -16,6 +16,7 @@ import {
   type CustomerLedgerParams,
   type CustomerListParams,
 } from '@/lib/api/customer.api';
+import { settleInChunks } from '@/lib/helpers/settle-in-chunks.helper';
 import type { AdjustPointsInput, AdjustPointsPreviewInput } from '@/lib/schema/customer.schema';
 
 /**
@@ -147,12 +148,9 @@ export function useAdjustPointsMutation(userId: number) {
   });
 }
 
-/** Concurrent requests for the bulk adjust; thousands at once would be a self-inflicted spike. */
-const BULK_ADJUST_CONCURRENCY = 10;
-
 /**
- * One POST /customers/{id}/adjust per customer, BULK_ADJUST_CONCURRENCY at
- * a time; a failed customer does not abort the rest. Adjustments are not
+ * One POST /customers/{id}/adjust per customer, through settleInChunks();
+ * a failed customer does not abort the rest. Adjustments are not
  * idempotent, so the dialog must never submit this twice.
  */
 export function useBulkAdjustPointsMutation() {
@@ -161,20 +159,9 @@ export function useBulkAdjustPointsMutation() {
   return useMutation({
     mutationKey: ['customer', 'adjust', 'bulk'],
     mutationFn: async ({ userIds, input }: { userIds: number[]; input: AdjustPointsInput }) => {
-      let succeeded = 0;
-      const failedIds: number[] = [];
+      const { succeeded, failedItems } = await settleInChunks(userIds, (userId) => adjustCustomerPoints(userId, input));
 
-      for (let i = 0; i < userIds.length; i += BULK_ADJUST_CONCURRENCY) {
-        const chunk = userIds.slice(i, i + BULK_ADJUST_CONCURRENCY);
-        const results = await Promise.allSettled(chunk.map((userId) => adjustCustomerPoints(userId, input)));
-
-        results.forEach((result, index) => {
-          if (result.status === 'fulfilled') succeeded++;
-          else failedIds.push(chunk[index]);
-        });
-      }
-
-      return { succeeded, failed: failedIds.length, failedIds };
+      return { succeeded, failed: failedItems.length, failedIds: failedItems };
     },
     // onSettled: a partly failed batch still moved real balances.
     onSettled: () => {

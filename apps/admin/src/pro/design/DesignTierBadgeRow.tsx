@@ -35,13 +35,8 @@ function BadgeIconGlyph({ icon, color }: { icon: DesignBadgeIcon; color: string 
 /**
  * Pro. One `tier.badges[index]` row: a colour-bordered `tier_id` chip doubles
  * as a live preview, a colour swatch, an icon-shape trigger, then the
- * customer-facing `label`. No remove control — the badge set is fixed to the
- * defaults (see DesignTierSection's docblock); only its styling is editable
- * here. `tier_id` is a free-form slug, not a foreign key — no Tiers entity
- * exists yet (see DesignTierSection's footer note and phase 04's Risk
- * Assessment). The icon control is bound to `DesignBadgeIcon`
- * (ring/diamond/square) — never `DesignLauncherIcon`, which offers `custom`
- * with no upload behind it here.
+ * customer-facing `label`. No remove control: the badge set is fixed (see
+ * DesignTierSection's docblock).
  */
 export function DesignTierBadgeRow({ index }: { index: number }) {
   const { control, register } = useFormContext<Design>();
@@ -81,10 +76,7 @@ export function DesignTierBadgeRow({ index }: { index: number }) {
               {/* [&>svg]:hidden drops the shared trigger's chevron — this picker is a bare
                   shape swatch, matching the colour swatch beside it; the shared component
                   itself is untouched so every other select keeps its chevron. */}
-              <SelectTrigger
-                aria-label={TIER_BADGE_ICON_LABEL()}
-                className="w-9 justify-center px-2 [&>svg]:hidden"
-              >
+              <SelectTrigger aria-label={TIER_BADGE_ICON_LABEL()} className="w-9 justify-center px-2 [&>svg]:hidden">
                 <span className="flex size-4 items-center justify-center">
                   <BadgeIconGlyph icon={field.value} color={color} />
                 </span>

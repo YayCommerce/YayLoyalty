@@ -372,9 +372,8 @@ render_and_exit( $work, $require_boot );
 
 /**
  * Design's inline Pro-field gates (DesignStorefrontTextSection /
- * DesignVisibilitySection, phase 03) are not covered by anything else: the
- * bundle sentinel only proves the three whole Pro *sections* were shaken
- * out, and phase 03's grep was a one-time manual act nothing re-runs. Fails
+ * DesignVisibilitySection) are not covered by anything else: the bundle
+ * sentinel only proves the three whole Pro *sections* were shaken out. Fails
  * when a Pro-only field name appears in a file without IS_PRO_BUILD also
  * appearing there, which is the one thing that can drop silently in a
  * later edit.

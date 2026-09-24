@@ -29,6 +29,7 @@ export const DUMMY_POINTS_LAST_30_DAYS: Record<number, number | null> = {
   20: null, // Big spender milestone — scheduled
   21: null, // Anniversary bonus — draft
   22: 2100,
+  23: 0, // Summer Kickoff 2× — ended in June, nothing in the window
 };
 
 /** Statuses with no meaningful figure. Archived is not here: it ran before retiring, so its figure is real. */

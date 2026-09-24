@@ -41,7 +41,6 @@ export function launcherButtonStyleLabel(style: DesignLauncherButtonStyle): stri
   }
 }
 
-/** Launcher icon vocabulary — separate from badgeIconLabel below; the two never share a value's meaning. */
 export function launcherIconLabel(icon: DesignLauncherIcon): string {
   switch (icon) {
     case 'default':
@@ -61,7 +60,6 @@ export function launcherIconLabel(icon: DesignLauncherIcon): string {
   }
 }
 
-/** Tier badge icon vocabulary — used by phase 04's Pro tier section, kept here with its sibling. */
 export function badgeIconLabel(icon: DesignBadgeIcon): string {
   switch (icon) {
     case 'ring':
@@ -80,16 +78,14 @@ export function visibilityScopeLabel(scope: DesignVisibilityScope): string {
     case 'shop_and_product':
       return __('Shop and product pages', 'yayloyalty');
     case 'custom_pages':
-      return __('Custom pages', 'yayloyalty');
+      return __('Only the pages I choose', 'yayloyalty');
   }
 }
 
-/** Two options only — a ternary, unlike the 3+-option switches above. */
 export function panelLayoutLabel(layout: DesignPanelLayout): string {
   return layout === 'compact' ? __('Compact', 'yayloyalty') : __('Full', 'yayloyalty');
 }
 
-/** Ternary, mirrors panelLayoutLabel() — one short line naming what each layout includes. */
 export function panelLayoutDescription(layout: DesignPanelLayout): string {
   return layout === 'compact'
     ? __('Balance and redeem only', 'yayloyalty')

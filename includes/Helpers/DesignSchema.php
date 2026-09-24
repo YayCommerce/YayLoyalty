@@ -4,14 +4,13 @@ namespace YayLoyalty\Helpers;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Design field declaration: defaults and the group/field/type whitelist DesignHelper::apply_schema() coerces
- * against. Split out of DesignHelper to keep the ~30-field, two-icon-vocabulary schema readable on its own —
- * DesignCoercion holds the per-type sanitisation, DesignHelper stays the persistence/merge orchestrator.
+ * Design field declaration: defaults and the group/field/rule whitelist DesignHelper::apply_schema() coerces
+ * against. The launcher and tier badge icons are separate vocabularies: different UI elements, free to diverge.
  */
 class DesignSchema {
 
-    /** Launcher icon row — separate from DesignCoercion::BADGE_ICONS: different shapes, independent evolution. */
     public const LAUNCHER_ICONS = [ 'default', 'circle', 'diamond', 'bar', 'ring', 'line', 'custom' ];
+    public const BADGE_ICONS    = [ 'ring', 'diamond', 'square' ];
 
     public static function get_default_design(): array {
         return [
@@ -35,12 +34,12 @@ class DesignSchema {
                 'tier_progress_line'    => __( '{points} points to {tier}', 'yayloyalty' ), // Pro
             ],
             'visibility'      => [
-                'scope'          => 'all_pages',
-                'except_pages'   => [ 'checkout' ],
-                'hide_on_mobile' => false,
-                'hide_for_roles' => [ 'administrator', 'shop_manager' ],
+                'scope'            => 'all_pages',
+                'include_page_ids' => [],
+                'hide_on_mobile'   => false,
+                'hide_for_roles'   => [ 'administrator', 'shop_manager' ],
             ],
-            'tier'            => [ // Pro; badge icon vocabulary is DesignCoercion::BADGE_ICONS, not LAUNCHER_ICONS.
+            'tier'            => [ // Pro
                 'badges' => [
                     [
                         'tier_id' => 'explorer',
@@ -72,57 +71,90 @@ class DesignSchema {
                 'mode'       => 'inherit',
                 'font'       => '',
                 // Stored and sanitised, but rendered nowhere yet — CSS exfiltration is an open risk, deferred to
-                // whoever ships storefront CSS rendering; see DesignCoercion::coerce()'s 'textarea' case.
+                // whoever ships storefront CSS rendering.
                 'custom_css' => '',
             ],
         ];
     }
 
     /**
-     * Type map by group then field; anything absent is dropped in both directions. An array value is a
-     * closed choice list. Declares every field in both builds so a Lite downgrade never wipes a merchant's
-     * stored Pro design (code-standards.md §13).
+     * Every field's rule: its type plus any limits. Anything absent is dropped in both directions.
+     * Declares every field in both builds so a Lite downgrade never wipes a merchant's stored Pro design
+     * (code-standards.md §13). DesignCoercion::coerce() documents each type and its default limits.
      *
-     * @return array<string, array<string, string|string[]>>
+     * @return array<string, array<string, array<string, mixed>>>
      */
     public static function schema(): array {
         return [
             'launcher'        => [
-                'position'       => [ 'bottom_right', 'bottom_left', 'top_right', 'top_left' ],
-                'button_style'   => [ 'icon', 'label', 'both' ],
-                'brand_color'    => 'color',
-                'corner_radius'  => 'radius',
-                // Own closed vocabulary (LAUNCHER_ICONS), not the tier badge one — see DesignCoercion::BADGE_ICONS.
-                'icon'           => self::LAUNCHER_ICONS,
-                'icon_upload_id' => 'attachment_id',
+                'position'       => [
+                    'type'    => 'choice',
+                    'options' => [ 'bottom_right', 'bottom_left', 'top_right', 'top_left' ],
+                ],
+                'button_style'   => [
+                    'type'    => 'choice',
+                    'options' => [ 'icon', 'label', 'both' ],
+                ],
+                'brand_color'    => [ 'type' => 'color' ],
+                'corner_radius'  => [
+                    'type' => 'int',
+                    'min'  => 0,
+                    'max'  => 24,
+                ],
+                'icon'           => [
+                    'type'    => 'choice',
+                    'options' => self::LAUNCHER_ICONS,
+                ],
+                'icon_upload_id' => [ 'type' => 'attachment_id' ],
             ],
             'storefront_text' => [
-                'launcher_label'        => 'text',
-                'balance_heading'       => 'text',
-                'earn_rate_line'        => 'text',
-                'redeem_button'         => 'text',
-                'signed_out_prompt'     => 'text',
-                'referral_card_heading' => 'text',
-                'tier_progress_line'    => 'text', // Pro
+                'launcher_label'        => [
+                    'type'     => 'text',
+                    'required' => true,
+                ],
+                'balance_heading'       => [
+                    'type'     => 'text',
+                    'required' => true,
+                ],
+                'earn_rate_line'        => [ 'type' => 'text' ],
+                'redeem_button'         => [
+                    'type'     => 'text',
+                    'required' => true,
+                ],
+                'signed_out_prompt'     => [ 'type' => 'text' ],
+                'referral_card_heading' => [ 'type' => 'text' ], // Pro
+                'tier_progress_line'    => [ 'type' => 'text' ], // Pro
             ],
             'visibility'      => [
-                'scope'          => [ 'all_pages', 'shop_and_product', 'custom_pages' ],
-                'except_pages'   => 'slug_list',
-                'hide_on_mobile' => 'bool',
-                'hide_for_roles' => 'slug_list',
+                'scope'            => [
+                    'type'    => 'choice',
+                    'options' => [ 'all_pages', 'shop_and_product', 'custom_pages' ],
+                ],
+                // Read only when scope is custom_pages: the pages the launcher shows on.
+                'include_page_ids' => [ 'type' => 'id_list' ],
+                'hide_on_mobile'   => [ 'type' => 'bool' ],
+                'hide_for_roles'   => [ 'type' => 'slug_list' ],
             ],
-            // Badges carry their own icon field, validated in DesignCoercion::coerce_badge_list() against BADGE_ICONS.
-            'tier'            => [ 'badges' => 'badge_list' ], // Pro
-            'panel'           => [
-                'layout'                     => [ 'compact', 'full' ],
-                'show_referral_card'         => 'bool',
-                'show_progress_to_next_tier' => 'bool',
-                'show_reward_catalog'        => 'bool', // Pro
+            'tier'            => [ 'badges' => [ 'type' => 'badge_list' ] ], // Pro
+            'panel'           => [ // Pro
+                'layout'                     => [
+                    'type'    => 'choice',
+                    'options' => [ 'compact', 'full' ],
+                ],
+                'show_referral_card'         => [ 'type' => 'bool' ],
+                'show_progress_to_next_tier' => [ 'type' => 'bool' ],
+                'show_reward_catalog'        => [ 'type' => 'bool' ],
             ],
-            'typography'      => [
-                'mode'       => [ 'inherit', 'custom' ],
-                'font'       => 'text',
-                'custom_css' => 'textarea', // Pro
+            'typography'      => [ // Pro
+                'mode'       => [
+                    'type'    => 'choice',
+                    'options' => [ 'inherit', 'custom' ],
+                ],
+                'font'       => [
+                    'type' => 'text',
+                    'max'  => 120,
+                ],
+                'custom_css' => [ 'type' => 'textarea' ],
             ],
         ];
     }

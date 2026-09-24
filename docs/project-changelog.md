@@ -6,6 +6,24 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
 
 ## Unreleased
 
+### Added — Campaign archive, pause and bulk actions (2026-09-24)
+
+- **Dialogs** (`pro/campaigns/archive/`, `pro/campaigns/pause/`): single and bulk archive, and pause,
+  opened from `CampaignTable`'s row menu and bulk bar. Copy lives in pure `*.copy.ts` files; figures
+  come from the resource's new readonly **`points_issued_lifetime`** (fixture value set through
+  `CampaignRestController::with_lifetime()`, the one swap point for the real ledger sum). Archived
+  rows are hidden unless filtered for by name; built-ins can't be selected for archive.
+- **Server:** `update_item()` answers 403 when a built-in is set to `archived` (pausing stays
+  allowed); `delete_item()` now resolves the fixture row and does not write, like update — fixture
+  ids 1-3 collide with real built-in ids. The fixture grows to 23 rows (an ended row for the
+  archive dialog's finished case). Integration test: `CampaignArchiveBuiltinTest`.
+- **Shared helpers:** `settleInChunks()` (`lib/helpers/settle-in-chunks.helper.ts`, 10 in flight)
+  replaces the copied chunked `allSettled` loops in the Customers and campaigns bulk writes;
+  `BulkActionsMenu`, `findBuiltinCampaign()`, `toastApiError()` (stays quiet only for codes
+  `afterResponse` already toasted, so a plain 403 now shows) and `pointsPhrase()` (moved to
+  `points.helper.ts`) replace per-screen copies. `updateCampaign()` takes a partial body.
+- **Docs:** removed a duplicated `CampaignPerformanceRestController` note in `codebase-summary.md`.
+
 ### Changed — Docs split per table, one owner per fact (2026-09-23)
 
 - `docs/data-model.md` (111 KB) is now a 17 KB index — conventions, relationships, invariants, write

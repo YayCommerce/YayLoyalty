@@ -19,9 +19,7 @@
     },
     "visibility": {
         "scope": "all_pages",
-        "except_pages": [
-            "checkout"
-        ],
+        "include_page_ids": [],
         "hide_on_mobile": false,
         "hide_for_roles": [
             "administrator",

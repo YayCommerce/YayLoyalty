@@ -15,7 +15,7 @@ class DesignHelperTest extends TestCase {
 
     protected function setUp(): void {
         $GLOBALS['yayloyalty_test_options']         = [];
-        $GLOBALS['yayloyalty_test_current_user_id'] = 1;
+        $GLOBALS['yayloyalty_test_current_user'] = 1;
     }
 
     /**
@@ -133,8 +133,8 @@ class DesignHelperTest extends TestCase {
     }
 
     /**
-     * List field wholesale replacement, NOT index merge: save visibility.except_pages = []
-     * and assert the stored result is [], not the default [ 'checkout' ].
+     * List field wholesale replacement, NOT index merge: save visibility.include_page_ids = []
+     * over a stored [ 12, 34 ] and assert the result is [], not the old list.
      */
     public function test_list_field_wholesale_replacement(): void {
         // Set a non-empty list first
@@ -142,7 +142,7 @@ class DesignHelperTest extends TestCase {
             DesignHelper::OPTION_DESIGN,
             [
                 'visibility' => [
-                    'except_pages' => [ 'checkout', 'cart' ],
+                    'include_page_ids' => [ 12, 34 ],
                 ],
             ]
         );
@@ -150,14 +150,14 @@ class DesignHelperTest extends TestCase {
         // Save an empty list to replace it
         $input = [
             'visibility' => [
-                'except_pages' => [],
+                'include_page_ids' => [],
             ],
         ];
 
         $result = DesignHelper::update_design( $input );
 
-        // If index-merged, this would be [ 'checkout', 'cart' ]; wholesale-replaced, it's []
-        $this->assertEquals( [], $result['visibility']['except_pages'] );
+        // If index-merged, this would be [ 12, 34 ]; wholesale-replaced, it's []
+        $this->assertEquals( [], $result['visibility']['include_page_ids'] );
     }
 
     /**
@@ -357,5 +357,119 @@ class DesignHelperTest extends TestCase {
         $this->assertEquals( $defaults['launcher']['position'], $result['launcher']['position'] );
         // storefront_text is restored entirely
         $this->assertEquals( $defaults['storefront_text'], $result['storefront_text'] );
+    }
+
+    /** A blank required storefront label is refused and keeps its prior value; the optional ones store the blank. */
+    public function test_blank_required_label_keeps_prior_value(): void {
+        $result = DesignHelper::update_design(
+            [
+                'storefront_text' => [
+                    'launcher_label'        => '   ',
+                    'balance_heading'       => '',
+                    'redeem_button'         => '<b></b>',
+                    'signed_out_prompt'     => '',
+                    'referral_card_heading' => '',
+                    'tier_progress_line'    => '',
+                ],
+            ]
+        );
+
+        $this->assertSame( '', $result['storefront_text']['signed_out_prompt'] );
+        $this->assertSame( '', $result['storefront_text']['referral_card_heading'] );
+        $this->assertSame( '', $result['storefront_text']['tier_progress_line'] );
+
+        $defaults = DesignSchema::get_default_design()['storefront_text'];
+        $this->assertEquals( $defaults['launcher_label'], $result['storefront_text']['launcher_label'] );
+        $this->assertEquals( $defaults['balance_heading'], $result['storefront_text']['balance_heading'] );
+        $this->assertEquals( $defaults['redeem_button'], $result['storefront_text']['redeem_button'] );
+    }
+
+    /** Text is capped at 200 characters, the font name at 120, custom CSS at 20 000. */
+    public function test_text_length_caps(): void {
+        $result = DesignHelper::update_design(
+            [
+                'storefront_text' => [ 'signed_out_prompt' => str_repeat( 'a', 250 ) ],
+                'typography'      => [
+                    'font'       => str_repeat( 'f', 150 ),
+                    'custom_css' => str_repeat( 'c', 20050 ),
+                ],
+            ]
+        );
+
+        $this->assertSame( 200, mb_strlen( $result['storefront_text']['signed_out_prompt'] ) );
+        $this->assertSame( 120, mb_strlen( $result['typography']['font'] ) );
+        $this->assertSame( 20000, mb_strlen( $result['typography']['custom_css'] ) );
+    }
+
+    /** An invalid colour is refused and the default survives. */
+    public function test_invalid_color_keeps_default(): void {
+        $result = DesignHelper::update_design( [ 'launcher' => [ 'brand_color' => 'not-a-colour' ] ] );
+
+        $this->assertEquals( DesignSchema::get_default_design()['launcher']['brand_color'], $result['launcher']['brand_color'] );
+    }
+
+    /** Page ids become positive integers, deduped, capped at 100. */
+    public function test_page_ids_cleaned_and_capped(): void {
+        $result = DesignHelper::update_design( [ 'visibility' => [ 'include_page_ids' => [ 5, '5', 0, -3, 'x', 9 ] ] ] );
+        $this->assertSame( [ 5, 3, 9 ], $result['visibility']['include_page_ids'] );
+
+        $result = DesignHelper::update_design( [ 'visibility' => [ 'include_page_ids' => range( 1, 150 ) ] ] );
+        $this->assertCount( 100, $result['visibility']['include_page_ids'] );
+    }
+
+    /** Role slugs are sanitised and empty ones dropped. */
+    public function test_role_slugs_sanitised(): void {
+        $result = DesignHelper::update_design( [ 'visibility' => [ 'hide_for_roles' => [ 'Shop Manager!', '' ] ] ] );
+
+        $this->assertSame( [ 'shopmanager' ], $result['visibility']['hide_for_roles'] );
+    }
+
+    /** An attachment id is cast to a non-negative integer. */
+    public function test_attachment_id_cast(): void {
+        $result = DesignHelper::update_design( [ 'launcher' => [ 'icon_upload_id' => '12abc' ] ] );
+
+        $this->assertSame( 12, $result['launcher']['icon_upload_id'] );
+    }
+
+    /** Choices are matched after sanitize_key, so case differences still match. */
+    public function test_choice_matched_case_insensitively(): void {
+        $result = DesignHelper::update_design( [ 'launcher' => [ 'position' => 'BOTTOM_LEFT' ] ] );
+
+        $this->assertSame( 'bottom_left', $result['launcher']['position'] );
+    }
+
+    /** Bad values already in the stored option are cleaned on read, not only on write. */
+    public function test_stored_values_cleaned_on_read(): void {
+        $GLOBALS['yayloyalty_test_options'][ DesignHelper::OPTION_DESIGN ] = [
+            'launcher' => [
+                'corner_radius' => 99,
+                'position'      => 'middle',
+            ],
+        ];
+
+        $result = DesignHelper::get_design();
+
+        $this->assertSame( 24, $result['launcher']['corner_radius'] );
+        $this->assertSame( 'bottom_right', $result['launcher']['position'] );
+    }
+
+    /** A boolean sent as a string is read the way WordPress reads it, so "false" is false. */
+    public function test_bool_accepts_string_forms(): void {
+        $cases = [
+            'false' => false,
+            'FALSE' => false,
+            '0'     => false,
+            ''      => false,
+            'true'  => true,
+            '1'     => true,
+        ];
+
+        foreach ( $cases as $input => $expected ) {
+            $result = DesignHelper::update_design( [ 'visibility' => [ 'hide_on_mobile' => (string) $input ] ] );
+            $this->assertSame( $expected, $result['visibility']['hide_on_mobile'], "input '{$input}'" );
+        }
+
+        $result = DesignHelper::update_design( [ 'visibility' => [ 'hide_on_mobile' => false ] ] );
+        $this->assertFalse( $result['visibility']['hide_on_mobile'] );
     }
 }

@@ -66,7 +66,7 @@ function PanelToggleRow({
 /**
  * Pro. Layout radio cards (with a wireframe preview) on the left, the panel's
  * optional blocks on the right. Same no-props `useFormContext` shape as the
- * Free sections (phase 03) — mounted through `@/pro`, never imported directly
+ * Free sections — mounted through `@/pro`, never imported directly
  * (pro/index.ts docblock).
  */
 export function DesignPanelSection() {

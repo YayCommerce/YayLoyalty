@@ -6,13 +6,10 @@ use YayLoyalty\Utils\Log;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Design storage: one option, validated on read and write, mirroring SettingsHelper — with one deviation:
- * slug_list/badge_list fields are assigned wholesale after the recursive merge (array_replace_recursive
- * merges lists by index and would resurrect a default a merchant just cleared or shortened). A stored ''
- * storefront_text is literal, never re-substituted; reset() is the only route back to the default wording.
- * Field declarations live in DesignSchema, per-type sanitisation in DesignCoercion; this class is the
- * persistence/merge orchestrator — split three ways because the field surface (six groups, ~30 fields, two
- * closed icon vocabularies) made one file unreadable at the project's file-size budget.
+ * Design storage: one option, cleaned by DesignSchema's rules on read and on write, like SettingsHelper.
+ * A list replaces its default whole rather than merging by index, so a list the merchant cleared or
+ * shortened stays that way. A stored '' storefront text is literal; reset() is the only route back to
+ * the default wording.
  */
 class DesignHelper {
 
@@ -21,8 +18,8 @@ class DesignHelper {
 
     /** Stored design merged over defaults, sanitised for output, plus the derived launcher icon URL. */
     public static function get_design(): array {
-        $saved  = get_option( self::OPTION_DESIGN, [] );
-        $merged = self::merge_over( DesignSchema::get_default_design(), self::sanitize_output( is_array( $saved ) ? $saved : [] ) );
+        $saved  = self::load_stored();
+        $merged = self::merge_over( DesignSchema::get_default_design(), self::sanitize_output( $saved ) );
 
         $merged['schema_version'] = isset( $saved['schema_version'] ) ? (int) $saved['schema_version'] : self::SCHEMA_VERSION;
 
@@ -41,16 +38,14 @@ class DesignHelper {
      * logs what was dropped.
      */
     public static function update_design( array $design ): array {
-        $current                    = get_option( self::OPTION_DESIGN, [] );
-        $current                    = self::sanitize_output( is_array( $current ) ? $current : [] );
-        $base                       = self::merge_over( DesignSchema::get_default_design(), $current );
+        $base                       = self::merge_over( DesignSchema::get_default_design(), self::sanitize_output( self::load_stored() ) );
         $clean                      = self::validate( $design );
         $to_store                   = self::merge_over( $base, $clean );
         $to_store['schema_version'] = self::SCHEMA_VERSION;
         $dropped                    = self::dropped_keys( $design, $clean );
 
         if ( [] !== $dropped ) {
-            // Otherwise a merchant gets a 200 and believes an invalid value saved; see Requirements.
+            // The route still answers 200, so without this line nothing records that a value was refused.
             Log::debug( 'DesignHelper', 'coerced to default, invalid input for: ' . implode( ', ', $dropped ) );
         }
 
@@ -73,8 +68,7 @@ class DesignHelper {
             return self::get_design();
         }
 
-        $stored           = get_option( self::OPTION_DESIGN, [] );
-        $stored           = is_array( $stored ) ? $stored : [];
+        $stored           = self::load_stored();
         $stored[ $group ] = DesignSchema::get_default_design()[ $group ];
 
         update_option( self::OPTION_DESIGN, $stored, false );
@@ -101,12 +95,12 @@ class DesignHelper {
                 continue;
             }
 
-            foreach ( $fields as $field => $type ) {
+            foreach ( $fields as $field => $rule ) {
                 if ( ! array_key_exists( $field, $data[ $group ] ) ) {
                     continue;
                 }
 
-                $value = DesignCoercion::coerce( $data[ $group ][ $field ], $type, $group, $field );
+                $value = DesignCoercion::coerce( $data[ $group ][ $field ], $rule );
 
                 // null means "invalid" for every type coerce() returns; skip so the default survives the merge.
                 if ( null !== $value ) {
@@ -118,19 +112,27 @@ class DesignHelper {
         return $clean;
     }
 
-    /** Wholesale-assigns present slug_list/badge_list fields — array_replace_recursive merges lists by index; see the class docblock. */
-    private static function merge_over( array $base, array $clean ): array {
-        $merged = array_replace_recursive( $base, $clean );
+    /** The stored option, or [] when it is missing or not an array. */
+    private static function load_stored(): array {
+        $stored = get_option( self::OPTION_DESIGN, [] );
 
-        foreach ( DesignSchema::schema() as $group => $fields ) {
-            foreach ( $fields as $field => $type ) {
-                if ( ( 'slug_list' === $type || 'badge_list' === $type ) && isset( $clean[ $group ][ $field ] ) ) {
-                    $merged[ $group ][ $field ] = $clean[ $group ][ $field ];
-                }
-            }
+        return is_array( $stored ) ? $stored : [];
+    }
+
+    /** $clean over $base: groups merge key by key, and a list replaces the base list whole instead of merging by index. */
+    private static function merge_over( array $base, array $clean ): array {
+        foreach ( $clean as $key => $value ) {
+            $base[ $key ] = self::is_map( $value ) && self::is_map( $base[ $key ] ?? null )
+                ? self::merge_over( $base[ $key ], $value )
+                : $value;
         }
 
-        return $merged;
+        return $base;
+    }
+
+    /** An array that is not a list, so [] counts as a list; PHP 7.4 has no array_is_list(). */
+    private static function is_map( $value ): bool {
+        return is_array( $value ) && array_values( $value ) !== $value;
     }
 
     /**

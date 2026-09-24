@@ -61,7 +61,7 @@ class DesignRestController extends AbstractRestController {
         return DesignHelper::update_design( $design );
     }
 
-    /** An unknown group is a whitelist miss inside DesignHelper::reset(), not an error — the tab still resets to a no-op. */
+    /** An unknown group is not an error: DesignHelper::reset() changes nothing and returns the stored design. */
     public function reset_design( \WP_REST_Request $request ) {
         $group = $request->get_param( 'group' );
 

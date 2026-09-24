@@ -11,8 +11,8 @@ import { ColorPicker } from '@/components/ui/color-picker';
 import { Field, FieldContent, FieldDescription, FieldLabel } from '@/components/ui/field';
 import { ImagePicker } from '@/components/ui/image-picker';
 import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Segmented, SegmentedItem } from '@/components/ui/segmented';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   LAUNCHER_BRAND_COLOR_LABEL,
   LAUNCHER_BUTTON_STYLE_LABEL,
@@ -95,7 +95,14 @@ export function DesignLauncherSection() {
               control={control}
               name="launcher.corner_radius"
               render={({ field }) => (
-                <NumberInputRoot size="small" className="w-28" min={0} max={24} value={field.value} onValueChange={field.onChange}>
+                <NumberInputRoot
+                  size="small"
+                  className="w-28"
+                  min={0}
+                  max={24}
+                  value={field.value}
+                  onValueChange={field.onChange}
+                >
                   <NumberInputInput id="design-launcher-corner-radius" />
                   <NumberInputUnit unit="px" />
                 </NumberInputRoot>

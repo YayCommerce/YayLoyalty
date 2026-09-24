@@ -412,6 +412,7 @@ CampaignRestController::update_item()  via  exec_write()
     ├─ CampaignTrigger::is_valid( trigger )        must be fireable in THIS build (all(), filtered)
     ├─ Campaign::validate_config( trigger, config ) keys whitelisted per trigger
     ├─ Campaign::conditions_are_valid()            validates the 10-type condition set (NEW: now wired as a real gate, not a stub)
+    ├─ is_builtin AND status → archived           403 yayloyalty_forbidden (pausing a built-in stays allowed)
     ├─ [SWAP POINT: NO persist to database; controller strips readonly fields and returns the validated campaign]
     └─ Response: Campaign::to_array()
     

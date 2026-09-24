@@ -142,7 +142,7 @@ class SettingsHelper {
     private static function coerce( $value, string $type ) {
         switch ( $type ) {
             case 'bool':
-                return (bool) $value;
+                return rest_sanitize_boolean( $value ); // a plain cast would store the string "false" as true
 
             case 'int':
                 return (int) $value;

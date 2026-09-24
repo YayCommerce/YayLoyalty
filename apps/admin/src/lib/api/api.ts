@@ -159,6 +159,27 @@ export async function getApiErrorMessage(error: unknown, fallback: string): Prom
   return fallback;
 }
 
+/**
+ * Toasts a failed request, unless afterResponse already toasted it as a
+ * capability refusal. Other 403s, such as a built-in campaign refusing to be
+ * archived, carry their own message and still need one.
+ */
+export async function toastApiError(error: unknown, fallback: string): Promise<void> {
+  if (error instanceof HTTPError && error.response.status === 403) {
+    // A clone: getApiErrorMessage() reads the same body afterwards.
+    const body: { code?: unknown } | null = await error.response
+      .clone()
+      .json()
+      .catch(() => null);
+
+    if (typeof body?.code === 'string' && (FORBIDDEN_ERROR_CODES as readonly string[]).includes(body.code)) {
+      return;
+    }
+  }
+
+  toast.error(await getApiErrorMessage(error, fallback));
+}
+
 /** The error fetch() throws when its AbortSignal fires. Check before getApiErrorMessage(): a cancellation is not a failure. */
 export function isAbortError(error: unknown): boolean {
   return error instanceof DOMException && 'AbortError' === error.name;

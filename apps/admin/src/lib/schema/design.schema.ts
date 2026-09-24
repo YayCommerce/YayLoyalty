@@ -1,12 +1,13 @@
 import { z } from 'zod';
 
-/** Mirrors DesignSchema (DesignHelper's field-set source of truth). */
+/**
+ * Mirrors DesignSchema (DesignHelper's field-set source of truth). The launcher and
+ * tier badge icons are separate vocabularies: different UI elements, free to diverge.
+ */
 
-// Own closed vocabulary — not the tier badge one, see designBadgeIconSchema below.
 export const designLauncherIconSchema = z.enum(['default', 'circle', 'diamond', 'bar', 'ring', 'line', 'custom']);
 export type DesignLauncherIcon = z.infer<typeof designLauncherIconSchema>;
 
-// Separate from designLauncherIconSchema by design: different UI elements, free to diverge.
 export const designBadgeIconSchema = z.enum(['ring', 'diamond', 'square']);
 export type DesignBadgeIcon = z.infer<typeof designBadgeIconSchema>;
 
@@ -58,7 +59,8 @@ export const designSchema = z.object({
   }),
   visibility: z.object({
     scope: designVisibilityScopeSchema,
-    except_pages: z.array(z.string()),
+    /** Read only when `scope === 'custom_pages'`. */
+    include_page_ids: z.array(z.number().int().positive()),
     hide_on_mobile: z.boolean(),
     hide_for_roles: z.array(z.string()),
   }),
@@ -79,7 +81,7 @@ export const designSchema = z.object({
     font: z.string(),
     custom_css: z.string(),
   }),
-  /** Stamped by DesignHelper on save; a blob written before versioning reads as 0. */
+  /** Stamped by DesignHelper on save; a design never saved reports the current version. */
   schema_version: z.number().int().optional(),
 });
 
