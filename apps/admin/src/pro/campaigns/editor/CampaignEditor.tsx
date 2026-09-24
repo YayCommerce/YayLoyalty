@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { HTTPError } from 'ky';
 import { ChevronLeft, Lock } from 'lucide-react';
@@ -7,7 +7,7 @@ import { useLocation, useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import { __, sprintf } from '@wordpress/i18n';
 
-import { getApiErrorMessage } from '@/lib/api/api';
+import { toastApiError } from '@/lib/api/api';
 import { parseWPRelativeDate } from '@/lib/helpers/format.helper';
 import { useCampaignQuery, useUpdateCampaignMutation } from '@/lib/queries/campaign.queries';
 import { hasPerformancePage } from '@/lib/schema/campaign-performance.schema';
@@ -27,6 +27,7 @@ import { UnsavedChangeDialog } from '@/components/ui/custom/unsaved-changed-dial
 import { Skeleton } from '@/components/ui/skeleton';
 import PageLayout from '@/components/layout/PageLayout';
 import NotFoundPage from '@/pages/404';
+import { CampaignArchiveDialog } from '../archive/CampaignArchiveDialog';
 import { statusLabel, triggerLabel } from '../campaign-labels';
 import {
   CampaignEditorContext,
@@ -136,6 +137,7 @@ function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }
   // in Safari < 15.4, and the UnsavedChangeDialog save has no submit event at all.
   const isDraftIntentRef = useRef(false);
   const isDialogSaveRef = useRef(false);
+  const [archiveOpen, setArchiveOpen] = useState(false);
 
   /** Runs the mutation and resets the dirty baseline; a draft save is the same write with status: 'draft'. */
   async function persist(input: ReturnType<typeof formValuesToUpdateInput>): Promise<boolean> {
@@ -147,10 +149,7 @@ function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }
       toast.success(__('Campaign saved.', 'yayloyalty'));
       return true;
     } catch (error) {
-      // api.ts's afterResponse hook already toasts a 403.
-      if (!(error instanceof HTTPError && error.response.status === 403)) {
-        toast.error(await getApiErrorMessage(error, __('Could not save the campaign.', 'yayloyalty')));
-      }
+      await toastApiError(error, __('Could not save the campaign.', 'yayloyalty'));
       return false;
     }
   }
@@ -228,7 +227,7 @@ function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }
                     </Badge>
                     <YayLoyaltyToolTip
                       trigger={<Lock className="text-muted-foreground size-3.5" />}
-                      content={__('Built-in campaigns cannot be deleted.', 'yayloyalty')}
+                      content={__('Built-in campaigns cannot be archived.', 'yayloyalty')}
                     />
                   </>
                 )}
@@ -265,6 +264,8 @@ function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }
                 onDraftIntent={() => {
                   isDraftIntentRef.current = true;
                 }}
+                // A duplicate seed still points at the original, which archive (or delete) would hit.
+                onArchive={duplicateSeed ? undefined : () => setArchiveOpen(true)}
                 onPerformance={
                   hasPerformancePage(campaign.trigger) ? () => navigate(`/campaigns/${id}/performance`) : undefined
                 }
@@ -287,6 +288,21 @@ function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }
           return handleSave();
         }}
       />
+
+      {archiveOpen && (
+        <CampaignArchiveDialog
+          campaign={campaign}
+          displayStatus={displayStatus}
+          onClose={() => setArchiveOpen(false)}
+          onDone={(action) => {
+            // Unsaved edits belong to a campaign that has just left the list; the guard would only nag.
+            if (action !== 'paused') {
+              bypassNext();
+              navigate('/campaigns');
+            }
+          }}
+        />
+      )}
     </CampaignEditorContext.Provider>
   );
 }

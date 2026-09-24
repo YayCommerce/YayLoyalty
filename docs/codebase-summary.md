@@ -151,6 +151,8 @@ routes take which id rule: `code-standards.md` § 9). Every response parses thro
 
 **Note on `CampaignPerformanceRestController`:** Both routes answer entirely from `CampaignPerformanceFixture` (deterministic-per-id, invented data — a second, independent fixture from `CampaignRestController::dummy_fixture()`). SWAP POINT: a future `CampaignPerformanceRepository` aggregate over `ledger` rows carrying `campaign_id` replaces the fixture calls; the fixture class is then deleted. No SPA change either way — both routes are already real HTTP calls parsed by `lib/schema/campaign-performance.schema.ts`. See that controller's class docblock for the full swap procedure.
 
+**Note on `CampaignPerformanceRestController`:** Both routes answer entirely from `CampaignPerformanceFixture` (deterministic-per-id, invented data — a second, independent fixture from `CampaignRestController::dummy_fixture()`). SWAP POINT: a future `CampaignPerformanceRepository` aggregate over `ledger` rows carrying `campaign_id` replaces the fixture calls; the fixture class is then deleted. No SPA change either way — both routes are already real HTTP calls parsed by `lib/schema/campaign-performance.schema.ts`. See that controller's class docblock for the full swap procedure.
+
 ### Points engine (includes/Engine/Points/)
 
 `namespace YayLoyalty\Engine\Points`. Computes what an event earns and which campaign paid; writes nothing. See its `README.md` for the two call sites.

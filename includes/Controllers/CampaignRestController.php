@@ -18,11 +18,12 @@ defined( 'ABSPATH' ) || exit;
  *
  * Reads answer from dummy_fixture() for now: a fresh table holds only the
  * three built-ins, too few to build the Pro grouped table against.
- * create_item()/delete_item() already go through $this->campaigns.
- * update_item() resolves and returns the fixture row without writing: a
- * real write would vanish behind the fixture on the next read, and fixture
- * ids 1-3 collide with real built-in ids. Swapping the reads back restores
- * update_item()'s write and deletes dummy_fixture()/find_dummy_row().
+ * create_item() already goes through $this->campaigns. update_item() and
+ * delete_item() resolve the fixture row and answer without writing: a real
+ * write would vanish behind the fixture on the next read, and fixture ids
+ * 1-3 collide with real built-in ids. Swapping the reads back restores both
+ * writes and deletes dummy_fixture()/find_dummy_row(). points_issued_lifetime
+ * is a fixture figure too; with_lifetime() is where the real one goes.
  */
 final class CampaignRestController extends AbstractRestController {
 
@@ -171,7 +172,8 @@ final class CampaignRestController extends AbstractRestController {
 
         $created = $this->campaigns->find_campaign( $id );
 
-        return null === $created ? $campaign->to_array() : $created->to_array();
+        // A new campaign has never awarded.
+        return self::with_lifetime( null === $created ? $campaign->to_array() : $created->to_array(), 0 );
     }
 
     public function update_item( \WP_REST_Request $request ) {
@@ -199,6 +201,11 @@ final class CampaignRestController extends AbstractRestController {
             $row['created_at'],
             $row['updated_at']
         );
+
+        // A built-in is its trigger's fallback and cannot be retired, only paused; same reason as delete_item().
+        if ( $row['is_builtin'] && Status::ARCHIVED === $request['status'] ) {
+            return $this->error_forbidden( __( 'Built-in campaigns cannot be archived.', 'yayloyalty' ) );
+        }
 
         // Validate before any setter runs so a rejected request leaves the model untouched.
         if ( null !== $request['config'] && ! Campaign::config_is_valid( $campaign->get_trigger(), (array) $request['config'] ) ) {
@@ -243,23 +250,24 @@ final class CampaignRestController extends AbstractRestController {
 
         // Swap point: no $this->campaigns->update() call; see the class docblock. When restored,
         // strip slug/trigger_type/created_at/created_by/is_builtin from to_row() before writing.
-        return $campaign->to_array();
+        return self::with_lifetime( $campaign->to_array(), $row['points_issued_lifetime'] );
     }
 
     public function delete_item( \WP_REST_Request $request ) {
-        $campaign = $this->campaigns->find_campaign( (int) $request['id'] );
+        // Fixture only, no repository fallback: fixture ids 1-3 collide with real built-in ids.
+        $row = self::find_dummy_row( (int) $request['id'] );
 
-        if ( null === $campaign ) {
+        if ( null === $row ) {
             return $this->error_not_found( __( 'Campaign not found.', 'yayloyalty' ) );
         }
 
         // The engine and the Free UI expect built-ins to exist. is_builtin is readonly, so this cannot be sidestepped.
-        if ( $campaign->is_builtin() ) {
+        if ( $row['is_builtin'] ) {
             return $this->error_forbidden( __( 'Built-in campaigns cannot be deleted.', 'yayloyalty' ) );
         }
 
-        $this->campaigns->delete( (int) $request['id'] );
-
+        // Swap point: no $this->campaigns->delete() call; see the class docblock.
+        // TODO: refuse a campaign with ledger rows once deletes write; the fixture has no ledger to check.
         return [
             'deleted' => true,
             'id'      => (int) $request['id'],
@@ -355,11 +363,16 @@ final class CampaignRestController extends AbstractRestController {
     }
 
     /**
-     * Twenty-two campaigns: every fireable trigger, an archived row, a
+     * Twenty-three campaigns: every fireable trigger, an archived row, an
+     * ended row (id 23, the archive dialog's finished case), a
      * priority tie (ids 3 and 9), enough to cross the Pro table's search
      * threshold. ids 4-6 must match Installer::seed_builtins() exactly: they
      * are the rows BuiltInCampaignList edits. `conditions` stays `[]` where
      * the natural fit is `tier`, which validation rejects until tiers exist.
+     * The last argument, lifetime points issued, is 0 only for rows that never
+     * ran (scheduled, draft); an archived or paused row paid out before. An
+     * ended row's figure must equal CampaignPerformanceFixture's points_issued
+     * for it: its window is the whole run, and the archive dialogs show both.
      *
      * @return array<int, array<string, mixed>>
      */
@@ -452,28 +465,29 @@ final class CampaignRestController extends AbstractRestController {
         ];
 
         return [
-            self::dummy_row( 1, 'Summit+ members 1.5×', 'summit-plus-members-1-5x', CampaignTrigger::PURCHASE, Status::ACTIVE, 100, $multiplier( 1.5 ), [], null, null, false, $now ),
-            self::dummy_row( 2, 'Black Friday 2×', 'black-friday-2x', CampaignTrigger::PURCHASE, Status::ACTIVE, 90, $multiplier( 2 ), [], '2026-11-27 00:00:00', '2026-12-01 00:00:00', false, $now ),
-            self::dummy_row( 3, 'Trail Shoes boost', 'trail-shoes-boost', CampaignTrigger::PURCHASE, Status::PAUSED, 80, $rate( 3 ), $trail_shoes_conditions, null, null, false, $now ),
-            self::dummy_row( 4, 'Points for purchases', CampaignRepository::DEFAULT_PURCHASE_SLUG, CampaignTrigger::PURCHASE, Status::ACTIVE, 0, $purchase_defaults, [], null, null, true, $now ),
-            self::dummy_row( 5, 'Points for signing up', 'signup', CampaignTrigger::SIGNUP, Status::ACTIVE, 0, Campaign::default_config( CampaignTrigger::SIGNUP ), [], null, null, true, $now ),
-            self::dummy_row( 6, 'Points for writing a review', 'review', CampaignTrigger::REVIEW, Status::ACTIVE, 0, Campaign::default_config( CampaignTrigger::REVIEW ), [], null, null, true, $now ),
-            self::dummy_row( 7, 'Birthday points', 'birthday-points', CampaignTrigger::BIRTHDAY, Status::DRAFT, 0, $birthday_points_config, [], null, null, false, $now ),
-            self::dummy_row( 8, 'Spring Sale 1.5×', 'spring-sale-1-5x', CampaignTrigger::PURCHASE, Status::ARCHIVED, 5, $multiplier( 1.5 ), [], '2026-03-01 00:00:00', '2026-03-16 00:00:00', false, $now ),
-            self::dummy_row( 9, 'VIP double points', 'vip-double-points', CampaignTrigger::PURCHASE, Status::ACTIVE, 80, $multiplier( 2 ), [], null, null, false, $now ),
-            self::dummy_row( 10, 'Loyalty week 1.2×', 'loyalty-week-1-2x', CampaignTrigger::PURCHASE, Status::ACTIVE, 35, $multiplier( 1.2 ), [], '2026-12-01 00:00:00', '2026-12-08 00:00:00', false, $now ),
-            self::dummy_row( 11, 'Newsletter bonus', 'newsletter-bonus', CampaignTrigger::PURCHASE, Status::ACTIVE, 25, $rate( 2 ), [], null, null, false, $now ),
-            self::dummy_row( 12, 'Weekend flash 1.3×', 'weekend-flash-1-3x', CampaignTrigger::PURCHASE, Status::PAUSED, 15, $multiplier( 1.3 ), [], null, null, false, $now ),
-            self::dummy_row( 13, 'Clearance category boost', 'clearance-category-boost', CampaignTrigger::PURCHASE, Status::DRAFT, 5, $rate( 2 ), $clearance_conditions, null, null, false, $now ),
-            self::dummy_row( 14, 'Welcome bonus boost', 'welcome-bonus-boost', CampaignTrigger::SIGNUP, Status::ACTIVE, 10, $welcome_bonus_config, [], null, null, false, $now ),
-            self::dummy_row( 15, 'Referral signup bonus', 'referral-signup-bonus', CampaignTrigger::SIGNUP, Status::ACTIVE, 5, $referral_signup_config, [], null, null, false, $now ),
-            self::dummy_row( 16, 'Photo review bonus', 'photo-review-bonus', CampaignTrigger::REVIEW, Status::ACTIVE, 10, $photo_review_config, [], null, null, false, $now ),
-            self::dummy_row( 17, 'Video review bonus', 'video-review-bonus', CampaignTrigger::REVIEW, Status::PAUSED, 5, $video_review_config, [], null, null, false, $now ),
-            self::dummy_row( 18, 'First order bonus', 'first-order-bonus', CampaignTrigger::FIRST_ORDER, Status::ACTIVE, 5, $first_order_bonus_config, [], null, null, false, $now ),
-            self::dummy_row( 19, 'Frequent buyer reward', 'frequent-buyer-reward', CampaignTrigger::ORDER_COUNT, Status::ACTIVE, 10, $frequent_buyer_config, [], null, null, false, $now ),
-            self::dummy_row( 20, 'Big spender milestone', 'big-spender-milestone', CampaignTrigger::SPEND_MILESTONE, Status::ACTIVE, 15, $big_spender_config, [], '2027-01-01 00:00:00', null, false, $now ),
-            self::dummy_row( 21, 'Anniversary bonus', 'anniversary-bonus', CampaignTrigger::BIRTHDAY, Status::DRAFT, 20, $anniversary_bonus_config, [], null, null, false, $now ),
-            self::dummy_row( 22, 'Tier upgrade bonus', 'tier-upgrade-bonus', CampaignTrigger::SPEND_MILESTONE, Status::ACTIVE, 25, $tier_upgrade_config, [], null, null, false, $now ),
+            self::dummy_row( 1, 'Summit+ members 1.5×', 'summit-plus-members-1-5x', CampaignTrigger::PURCHASE, Status::ACTIVE, 100, $multiplier( 1.5 ), [], null, null, false, $now, 412300 ),
+            self::dummy_row( 2, 'Black Friday 2×', 'black-friday-2x', CampaignTrigger::PURCHASE, Status::ACTIVE, 90, $multiplier( 2 ), [], '2026-11-27 00:00:00', '2026-12-01 00:00:00', false, $now, 0 ),
+            self::dummy_row( 3, 'Trail Shoes boost', 'trail-shoes-boost', CampaignTrigger::PURCHASE, Status::PAUSED, 80, $rate( 3 ), $trail_shoes_conditions, null, null, false, $now, 57800 ),
+            self::dummy_row( 4, 'Points for purchases', CampaignRepository::DEFAULT_PURCHASE_SLUG, CampaignTrigger::PURCHASE, Status::ACTIVE, 0, $purchase_defaults, [], null, null, true, $now, 2184500 ),
+            self::dummy_row( 5, 'Points for signing up', 'signup', CampaignTrigger::SIGNUP, Status::ACTIVE, 0, Campaign::default_config( CampaignTrigger::SIGNUP ), [], null, null, true, $now, 931200 ),
+            self::dummy_row( 6, 'Points for writing a review', 'review', CampaignTrigger::REVIEW, Status::ACTIVE, 0, Campaign::default_config( CampaignTrigger::REVIEW ), [], null, null, true, $now, 148600 ),
+            self::dummy_row( 7, 'Birthday points', 'birthday-points', CampaignTrigger::BIRTHDAY, Status::DRAFT, 0, $birthday_points_config, [], null, null, false, $now, 0 ),
+            self::dummy_row( 8, 'Spring Sale 1.5×', 'spring-sale-1-5x', CampaignTrigger::PURCHASE, Status::ARCHIVED, 5, $multiplier( 1.5 ), [], '2026-03-01 00:00:00', '2026-03-16 00:00:00', false, $now, 61900 ),
+            self::dummy_row( 9, 'VIP double points', 'vip-double-points', CampaignTrigger::PURCHASE, Status::ACTIVE, 80, $multiplier( 2 ), [], null, null, false, $now, 3120000 ),
+            self::dummy_row( 10, 'Loyalty week 1.2×', 'loyalty-week-1-2x', CampaignTrigger::PURCHASE, Status::ACTIVE, 35, $multiplier( 1.2 ), [], '2026-12-01 00:00:00', '2026-12-08 00:00:00', false, $now, 0 ),
+            self::dummy_row( 11, 'Newsletter bonus', 'newsletter-bonus', CampaignTrigger::PURCHASE, Status::ACTIVE, 25, $rate( 2 ), [], null, null, false, $now, 18400 ),
+            self::dummy_row( 12, 'Weekend flash 1.3×', 'weekend-flash-1-3x', CampaignTrigger::PURCHASE, Status::PAUSED, 15, $multiplier( 1.3 ), [], null, null, false, $now, 22600 ),
+            self::dummy_row( 13, 'Clearance category boost', 'clearance-category-boost', CampaignTrigger::PURCHASE, Status::DRAFT, 5, $rate( 2 ), $clearance_conditions, null, null, false, $now, 0 ),
+            self::dummy_row( 14, 'Welcome bonus boost', 'welcome-bonus-boost', CampaignTrigger::SIGNUP, Status::ACTIVE, 10, $welcome_bonus_config, [], null, null, false, $now, 9800 ),
+            self::dummy_row( 15, 'Referral signup bonus', 'referral-signup-bonus', CampaignTrigger::SIGNUP, Status::ACTIVE, 5, $referral_signup_config, [], null, null, false, $now, 4300 ),
+            self::dummy_row( 16, 'Photo review bonus', 'photo-review-bonus', CampaignTrigger::REVIEW, Status::ACTIVE, 10, $photo_review_config, [], null, null, false, $now, 3900 ),
+            self::dummy_row( 17, 'Video review bonus', 'video-review-bonus', CampaignTrigger::REVIEW, Status::PAUSED, 5, $video_review_config, [], null, null, false, $now, 2750 ),
+            self::dummy_row( 18, 'First order bonus', 'first-order-bonus', CampaignTrigger::FIRST_ORDER, Status::ACTIVE, 5, $first_order_bonus_config, [], null, null, false, $now, 15100 ),
+            self::dummy_row( 19, 'Frequent buyer reward', 'frequent-buyer-reward', CampaignTrigger::ORDER_COUNT, Status::ACTIVE, 10, $frequent_buyer_config, [], null, null, false, $now, 6200 ),
+            self::dummy_row( 20, 'Big spender milestone', 'big-spender-milestone', CampaignTrigger::SPEND_MILESTONE, Status::ACTIVE, 15, $big_spender_config, [], '2027-01-01 00:00:00', null, false, $now, 0 ),
+            self::dummy_row( 21, 'Anniversary bonus', 'anniversary-bonus', CampaignTrigger::BIRTHDAY, Status::DRAFT, 20, $anniversary_bonus_config, [], null, null, false, $now, 0 ),
+            self::dummy_row( 22, 'Tier upgrade bonus', 'tier-upgrade-bonus', CampaignTrigger::SPEND_MILESTONE, Status::ACTIVE, 25, $tier_upgrade_config, [], null, null, false, $now, 7400 ),
+            self::dummy_row( 23, 'Summer Kickoff 2×', 'summer-kickoff-2x', CampaignTrigger::PURCHASE, Status::ACTIVE, 20, $multiplier( 2 ), [], '2026-06-01 00:00:00', '2026-06-15 00:00:00', false, $now, 15384 ),
         ];
     }
 
@@ -495,24 +509,40 @@ final class CampaignRestController extends AbstractRestController {
         ?string $starts_at,
         ?string $ends_at,
         bool $is_builtin,
-        array $timestamps
+        array $timestamps,
+        int $points_issued_lifetime
     ): array {
         return [
-            'id'         => $id,
-            'name'       => $name,
-            'slug'       => $slug,
-            'trigger'    => $trigger,
-            'status'     => $status,
-            'priority'   => $priority,
-            'config'     => $config,
-            'conditions' => $conditions,
-            'starts_at'  => $starts_at,
-            'ends_at'    => $ends_at,
-            'is_builtin' => $is_builtin,
-            'created_by' => null,
-            'created_at' => $timestamps['created_at'],
-            'updated_at' => $timestamps['updated_at'],
+            'id'                     => $id,
+            'name'                   => $name,
+            'slug'                   => $slug,
+            'trigger'                => $trigger,
+            'status'                 => $status,
+            'priority'               => $priority,
+            'config'                 => $config,
+            'conditions'             => $conditions,
+            'starts_at'              => $starts_at,
+            'ends_at'                => $ends_at,
+            'is_builtin'             => $is_builtin,
+            'created_by'             => null,
+            'created_at'             => $timestamps['created_at'],
+            'updated_at'             => $timestamps['updated_at'],
+            'points_issued_lifetime' => $points_issued_lifetime,
         ];
+    }
+
+    /**
+     * The campaign resource with its lifetime points issued, which the model
+     * does not carry. Swap point: a ledger sum by campaign_id replaces the
+     * fixture figure passed in here.
+     *
+     * @param array<string, mixed> $campaign
+     * @return array<string, mixed>
+     */
+    private static function with_lifetime( array $campaign, int $points_issued_lifetime ): array {
+        $campaign['points_issued_lifetime'] = $points_issued_lifetime;
+
+        return $campaign;
     }
 
     /**
@@ -532,71 +562,77 @@ final class CampaignRestController extends AbstractRestController {
             'title'      => 'yayloyalty_campaign',
             'type'       => 'object',
             'properties' => [
-                'id'         => [
+                'id'                     => [
                     'type'     => 'integer',
                     'context'  => [ 'view' ],
                     'readonly' => true,
                 ],
-                'name'       => [
+                'name'                   => [
                     'type'    => 'string',
                     'context' => [ 'view', 'edit' ],
                 ],
-                'slug'       => [
+                'slug'                   => [
                     'description' => __( 'Stable machine key. Generated on create and immutable afterwards.', 'yayloyalty' ),
                     'type'        => 'string',
                     'context'     => [ 'view', 'edit' ],
                 ],
-                'trigger'    => [
+                'trigger'                => [
                     'type'    => 'string',
                     'enum'    => CampaignTrigger::all(),
                     'context' => [ 'view', 'edit' ],
                 ],
-                'status'     => [
+                'status'                 => [
                     'description' => __( 'Merchant intent only. Liveness is derived from the dates.', 'yayloyalty' ),
                     'type'        => 'string',
                     'enum'        => Status::all(),
                     'context'     => [ 'view', 'edit' ],
                 ],
-                'priority'   => [
+                'priority'               => [
                     'type'    => 'integer',
                     'context' => [ 'view', 'edit' ],
                 ],
-                'config'     => [
+                'config'                 => [
                     'type'    => 'object',
                     'context' => [ 'view', 'edit' ],
                 ],
-                'conditions' => [
+                'conditions'             => [
                     'type'    => [ 'object', 'array' ],
                     'context' => [ 'view', 'edit' ],
                 ],
-                'starts_at'  => [
+                'starts_at'              => [
                     'type'    => [ 'string', 'null' ],
                     'context' => [ 'view', 'edit' ],
                 ],
-                'ends_at'    => [
+                'ends_at'                => [
                     'description' => __( 'Exclusive: a campaign is not live at exactly this instant.', 'yayloyalty' ),
                     'type'        => [ 'string', 'null' ],
                     'context'     => [ 'view', 'edit' ],
                 ],
-                'is_builtin' => [
+                'is_builtin'             => [
                     'type'     => 'boolean',
                     'context'  => [ 'view' ],
                     'readonly' => true,
                 ],
-                'created_by' => [
+                'created_by'             => [
                     'type'     => [ 'integer', 'null' ],
                     'context'  => [ 'view' ],
                     'readonly' => true,
                 ],
-                'created_at' => [
+                'created_at'             => [
                     'type'     => 'string',
                     'context'  => [ 'view' ],
                     'readonly' => true,
                 ],
-                'updated_at' => [
+                'updated_at'             => [
                     'type'     => 'string',
                     'context'  => [ 'view' ],
                     'readonly' => true,
+                ],
+                'points_issued_lifetime' => [
+                    'description' => __( 'Lifetime points issued, not windowed: 0 means the campaign never awarded.', 'yayloyalty' ),
+                    'type'        => 'integer',
+                    'context'     => [ 'view' ],
+                    'readonly'    => true,
                 ],
             ],
         ];
