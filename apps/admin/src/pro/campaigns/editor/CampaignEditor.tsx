@@ -143,8 +143,9 @@ function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }
   async function persist(input: ReturnType<typeof formValuesToUpdateInput>): Promise<boolean> {
     try {
       const saved = await mutation.mutateAsync(input);
-      // Reset before any navigation reaches the leave guard, or the redirect re-trips it.
-      form.reset(campaignToFormValues(saved));
+      // Reset before any navigation reaches the leave guard, or the redirect re-trips it. reset() merges
+      // resetOptions, so without keepDirtyValues: false every edited field would outlive the server's copy.
+      form.reset(campaignToFormValues(saved), { keepDirtyValues: false });
       // "Saved", not "stored": update_item() does not persist yet.
       toast.success(__('Campaign saved.', 'yayloyalty'));
       return true;

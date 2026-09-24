@@ -1,0 +1,63 @@
+{
+    "launcher": {
+        "position": "bottom_right",
+        "button_style": "both",
+        "brand_color": "#1f6fb2",
+        "corner_radius": 8,
+        "icon": "default",
+        "icon_upload_id": 0,
+        "icon_upload_url": ""
+    },
+    "storefront_text": {
+        "launcher_label": "Rewards",
+        "balance_heading": "Your points",
+        "earn_rate_line": "Earn {points} points per {amount} spent",
+        "redeem_button": "Apply points",
+        "signed_out_prompt": "Sign in to earn points on this order",
+        "referral_card_heading": "Invite a friend, get {amount} points",
+        "tier_progress_line": "{points} points to {tier}"
+    },
+    "visibility": {
+        "scope": "all_pages",
+        "include_page_ids": [],
+        "hide_on_mobile": false,
+        "hide_for_roles": [
+            "administrator",
+            "shop_manager"
+        ]
+    },
+    "tier": {
+        "badges": [
+            {
+                "tier_id": "explorer",
+                "color": "#c8c8c8",
+                "icon": "ring",
+                "label": "Explorer"
+            },
+            {
+                "tier_id": "summit",
+                "color": "#8a8a8a",
+                "icon": "diamond",
+                "label": "Summit"
+            },
+            {
+                "tier_id": "alpine",
+                "color": "#2a2a2a",
+                "icon": "square",
+                "label": "Alpine"
+            }
+        ]
+    },
+    "panel": {
+        "layout": "compact",
+        "show_referral_card": true,
+        "show_progress_to_next_tier": true,
+        "show_reward_catalog": false
+    },
+    "typography": {
+        "mode": "inherit",
+        "font": "",
+        "custom_css": ""
+    },
+    "schema_version": 1
+}
