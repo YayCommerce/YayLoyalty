@@ -8,10 +8,10 @@ import PageLayout from '@/components/layout/PageLayout';
 import { CampaignTemplate, getCampaignTemplates } from './campaign-templates';
 
 /**
- * "Add a campaign" chooser (YayLoyalty_Campaign_Editor.dc.html §1d): pick a
- * template or start from scratch: each opens the builder in create mode via
- * campaigns/new/:templateId. A static catalog, so there is no loading or
- * error state to render. No "Duplicate a campaign" card — CampaignTable's
+ * "Add a campaign" chooser: pick a template or start from scratch. Each
+ * opens the builder in create mode via campaigns/new/:templateId. A static
+ * catalog, so there is no loading or error state to render. No "Duplicate a
+ * campaign" card — CampaignTable's
  * row menu offers that directly against a specific campaign, which this
  * page has no way to pick one from.
  */

@@ -305,7 +305,8 @@ function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }
  * until Save — see the chooser's own subtitle.
  */
 export function CampaignCreator({ templateId, duplicateFromId }: { templateId: string; duplicateFromId?: number }) {
-  const template = findTemplate(templateId);
+  // Memoised so CampaignCreatorForm's seed stays stable: findTemplate() builds a fresh object per call.
+  const template = useMemo(() => findTemplate(templateId), [templateId]);
   // enabled: id > 0 inside the hook means an absent duplicateFromId never fetches.
   const sourceQuery = useCampaignQuery(duplicateFromId ?? 0);
 

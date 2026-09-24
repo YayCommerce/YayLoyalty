@@ -4,13 +4,11 @@ import { DEFAULT_CAMPAIGN_CONFIG, LiteCampaignTrigger } from '@/lib/schema/campa
 import { CampaignFormValues } from '../editor/campaign-editor.form';
 
 /**
- * One card on the "Add a campaign" chooser (YayLoyalty_Campaign_Editor.dc.html
- * §1d). Of the wireframe's six, three don't survive the purchase/signup/
- * review scope: First-order bonus and Birthday points need Pro-only
+ * One card on the "Add a campaign" chooser. First-order bonus, Birthday
+ * points and VIP multiplier are left out: the first two need Pro-only
  * triggers, and VIP multiplier needs a tier condition that
- * CampaignConditionSet rejects today. Welcome bonus and Review reward
- * replace them so every supported trigger has a starting point — the
- * wireframe covered none for signup or review.
+ * CampaignConditionSet rejects today. Welcome bonus and Review reward give
+ * signup and review a starting point.
  */
 export interface CampaignTemplate {
   /** The URL segment at campaigns/new/:templateId. */

@@ -3,13 +3,12 @@ import { closestCenter, DndContext, PointerSensor, useSensor, useSensors, type D
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { HTTPError } from 'ky';
-import { ChevronsUpDown, GripVertical, InfoIcon, Lock, Search } from 'lucide-react';
+import { GripVertical, InfoIcon, Lock, Search } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
-import { __, _n, sprintf } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 
-import { getApiErrorMessage } from '@/lib/api/api';
+import { toastApiError } from '@/lib/api/api';
 import { useCampaignsQuery, useUpdateCampaignStatusMutation } from '@/lib/queries/campaign.queries';
 import { hasPerformancePage } from '@/lib/schema/campaign-performance.schema';
 import {
@@ -24,6 +23,7 @@ import { BulkActionBox } from '@/components/ui/bulk-actions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import { BulkActionsMenu } from '@/components/ui/custom/bulk-actions-menu';
 import { PointsValue } from '@/components/ui/custom/points-value';
 import { YayLoyaltyToolTip } from '@/components/ui/custom/tooltip';
 import {
@@ -35,7 +35,6 @@ import {
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import EllipsisIcon from '@/components/icons/EllipsisIcon';
@@ -79,14 +78,6 @@ interface DisplayCampaign extends Campaign {
   conditionsLabel: string;
   scheduleLabel: string;
   displayStatus: CampaignDisplayStatus;
-}
-
-/** One trigger group as rendered; hiddenRows sit behind "Show the other … campaigns". */
-interface CampaignGroup {
-  key: CampaignGroupKey;
-  rows: DisplayCampaign[];
-  visibleRows: DisplayCampaign[];
-  hiddenRows: DisplayCampaign[];
 }
 
 /** One trigger group as rendered; hiddenRows sit behind "Show the other … campaigns". */
@@ -149,10 +140,7 @@ export function CampaignTable() {
       await reactivatePurchaseMutation.mutateAsync('active');
       toast.success(__('"Points for purchases" is active again.', 'yayloyalty'));
     } catch (error) {
-      // api.ts's afterResponse hook already toasts a 403.
-      if (!(error instanceof HTTPError && error.response.status === 403)) {
-        toast.error(await getApiErrorMessage(error, __('Could not switch the campaign back on.', 'yayloyalty')));
-      }
+      await toastApiError(error, __('Could not switch the campaign back on.', 'yayloyalty'));
     }
   }
 
@@ -536,7 +524,7 @@ export function CampaignTable() {
 }
 
 /**
- * YayUiKits' BulkActionBox pattern, as CustomersBulkActionBar uses it.
+ * YayUiKits' BulkActionBox with the shared BulkActionsMenu, as CustomersBulkActionBar uses it.
  * Archive is the only bulk action: it is the only one with a designed
  * confirmation, and a dead control is worse than none.
  */
@@ -551,33 +539,12 @@ function CampaignBulkActionBar({
 }) {
   return (
     <BulkActionBox selected={count} onClose={onClear} className="w-fit">
-      <span className="text-sm font-semibold">
-        {sprintf(
-          /* translators: %d: number of selected campaigns. */
-          _n('%d selected', '%d selected', count, 'yayloyalty'),
-          count,
-        )}
-      </span>
-      <Separator orientation="vertical" className="ml-2 h-5!" />
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            className="hover:text-primary hover:bg-primary/6 group flex cursor-pointer items-center gap-1.5 px-2.5 pe-2 font-normal"
-          >
-            <span>{__('Bulk Actions', 'yayloyalty')}</span>
-            <span className="group-hover:text-primary text-muted-foreground flex items-center">
-              <ChevronsUpDown className="size-3.5 stroke-[2.5px]" />
-            </span>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" sideOffset={9} className="w-fit min-w-30">
-          {/* Deferred so the dropdown closes and restores focus to this trigger before the dialog opens. */}
-          <DropdownMenuItem variant="destructive" onSelect={() => setTimeout(onArchive, 0)}>
-            {__('Archive', 'yayloyalty')}
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <BulkActionsMenu count={count} contentClassName="min-w-30">
+        {/* Deferred so the dropdown closes and restores focus to this trigger before the dialog opens. */}
+        <DropdownMenuItem variant="destructive" onSelect={() => setTimeout(onArchive, 0)}>
+          {__('Archive', 'yayloyalty')}
+        </DropdownMenuItem>
+      </BulkActionsMenu>
     </BulkActionBox>
   );
 }

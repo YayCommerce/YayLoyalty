@@ -1,12 +1,11 @@
 import { useId, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { HTTPError } from 'ky';
 import { CheckIcon, CircleAlert, TriangleAlert } from 'lucide-react';
 import { toast } from 'sonner';
 import { createInterpolateElement } from '@wordpress/element';
 import { __, _n, _x, sprintf } from '@wordpress/i18n';
 
-import { getApiErrorMessage } from '@/lib/api/api';
+import { getApiErrorMessage, toastApiError } from '@/lib/api/api';
 import {
   CampaignBulkWrites,
   useBulkCampaignWritesMutation,
@@ -31,6 +30,7 @@ import {
 } from '@/components/ui/custom/dialog';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
+import { findBuiltinCampaign } from '../campaign-labels';
 import { CAMPAIGN_PERFORMANCE_QUERIES } from '../performance/campaign-performance.queries';
 import {
   affectedLine,
@@ -87,9 +87,7 @@ export function CampaignArchiveDialog({
   });
 
   const campaignsQuery = useCampaignsQuery({ perPage: 100 });
-  const fallback = campaignsQuery.data?.data.find(
-    (candidate) => candidate.is_builtin && candidate.trigger === campaign.trigger && candidate.id !== campaign.id,
-  );
+  const fallback = findBuiltinCampaign(campaignsQuery.data?.data, campaign.trigger);
 
   const statusMutation = useUpdateCampaignStatusMutation(campaign.id);
   const deleteMutation = useDeleteCampaignMutation(campaign.id);
@@ -110,10 +108,7 @@ export function CampaignArchiveDialog({
       onClose();
       onDone?.(action);
     } catch (error) {
-      // api.ts's afterResponse hook already toasts a 403.
-      if (!(error instanceof HTTPError && error.response.status === 403)) {
-        toast.error(await getApiErrorMessage(error, failureMessage(action)));
-      }
+      await toastApiError(error, failureMessage(action));
       setPendingAction(undefined);
     }
   }

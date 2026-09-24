@@ -1,9 +1,8 @@
-import { HTTPError } from 'ky';
 import { CircleAlert } from 'lucide-react';
 import { toast } from 'sonner';
 import { __, sprintf } from '@wordpress/i18n';
 
-import { getApiErrorMessage } from '@/lib/api/api';
+import { toastApiError } from '@/lib/api/api';
 import { useCampaignsQuery, useUpdateCampaignStatusMutation } from '@/lib/queries/campaign.queries';
 import { Campaign, resolveCampaignDisplayStatus } from '@/lib/schema/campaign.schema';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -38,10 +37,7 @@ export function CampaignPauseDialog({ campaign, onClose }: { campaign: Campaign;
       toast.success(__('Campaign paused.', 'yayloyalty'));
       onClose();
     } catch (error) {
-      // api.ts's afterResponse hook already toasts a 403.
-      if (!(error instanceof HTTPError && error.response.status === 403)) {
-        toast.error(await getApiErrorMessage(error, __('Could not pause the campaign.', 'yayloyalty')));
-      }
+      await toastApiError(error, __('Could not pause the campaign.', 'yayloyalty'));
     }
   }
 

@@ -1,10 +1,10 @@
 import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { parseWPDate } from '@/lib/helpers/format.helper';
-import { formatPoints } from '@/lib/helpers/points.helper';
+import { formatPoints, pointsPhrase } from '@/lib/helpers/points.helper';
 import type { Campaign, CampaignDisplayStatus } from '@/lib/schema/campaign.schema';
 import { statusLabel } from '../campaign-labels';
-import { CampaignArchiveCase, pointsPhrase } from './campaign-archive.copy';
+import type { CampaignArchiveCase } from './campaign-archive.copy';
 
 /**
  * Copy for CampaignBulkArchiveDialog. Figures are the ones the single dialog

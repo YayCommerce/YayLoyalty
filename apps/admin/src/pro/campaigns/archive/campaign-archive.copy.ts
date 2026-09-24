@@ -2,7 +2,7 @@ import { date as wpDate } from '@wordpress/date';
 import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { parseWPCurrency, parseWPDate, parseWPRelativeDate } from '@/lib/helpers/format.helper';
-import { formatPoints } from '@/lib/helpers/points.helper';
+import { formatPoints, pointsPhrase } from '@/lib/helpers/points.helper';
 import type { CampaignPerformance } from '@/lib/schema/campaign-performance.schema';
 import type { Campaign, CampaignDisplayStatus } from '@/lib/schema/campaign.schema';
 import { conditionsLabel, givesLabel, scheduleLabel, statusLabel } from '../campaign-labels';
@@ -120,12 +120,6 @@ export function lifetimeFigures(lifetimePoints: number): ArchiveFigures {
       pointsPhrase(lifetimePoints),
     ),
   };
-}
-
-/** "1 point", "12,400 points": the count with its plural-aware noun. */
-export function pointsPhrase(count: number): string {
-  /* translators: %s: number of points, formatted. */
-  return sprintf(_n('%s point', '%s points', count, 'yayloyalty'), formatPoints(count));
 }
 
 function ordersPhrase(count: number): string {

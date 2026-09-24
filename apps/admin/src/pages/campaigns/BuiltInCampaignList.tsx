@@ -1,10 +1,9 @@
 import { ReactNode, useState } from 'react';
-import { HTTPError } from 'ky';
 import { ChevronDown, ChevronUp, InfoIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { __, sprintf } from '@wordpress/i18n';
 
-import { getApiErrorMessage } from '@/lib/api/api';
+import { toastApiError } from '@/lib/api/api';
 import { parseWPCurrency, parseWPDate } from '@/lib/helpers/format.helper';
 import { roundPoints } from '@/lib/points-math/points-math';
 import {
@@ -136,10 +135,7 @@ function BuiltInCampaignCard({
     } catch (error) {
       setStatus(campaign.status);
 
-      // api.ts's afterResponse hook already toasts a 403.
-      if (!(error instanceof HTTPError && error.response.status === 403)) {
-        toast.error(await getApiErrorMessage(error, __('Could not update the campaign.', 'yayloyalty')));
-      }
+      await toastApiError(error, __('Could not update the campaign.', 'yayloyalty'));
     }
   }
 
@@ -148,9 +144,7 @@ function BuiltInCampaignCard({
       await configMutation.mutateAsync(config);
       toast.success(__('Campaign saved.', 'yayloyalty'));
     } catch (error) {
-      if (!(error instanceof HTTPError && error.response.status === 403)) {
-        toast.error(await getApiErrorMessage(error, __('Could not save the campaign.', 'yayloyalty')));
-      }
+      await toastApiError(error, __('Could not save the campaign.', 'yayloyalty'));
     }
   }
 
