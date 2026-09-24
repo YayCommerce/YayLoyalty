@@ -4,56 +4,59 @@ namespace YayLoyalty\Pro\Controllers;
 use YayLoyalty\Access\Capabilities;
 use YayLoyalty\Controllers\AbstractRestController;
 use YayLoyalty\Enums\CampaignTrigger;
+use YayLoyalty\Pro\Repositories\CampaignPerformanceRepository;
+use YayLoyalty\Pro\Repositories\CampaignPointsRepository;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\DashboardRepository;
+use YayLoyalty\Services\Dashboard\DashboardMath;
+use YayLoyalty\Utils\PointsMath;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
  * Pro-only: a single campaign's performance —
- * `GET /campaigns/{id}/performance` (totals, daily chart, "where the other
- * orders went", the pre-launch estimate) and
+ * `GET /campaigns/{id}/performance` (totals + daily chart) and
  * `GET /campaigns/{id}/performance/entries` (the paged, searchable row list
- * behind it: orders / signups / reviews depending on trigger).
+ * behind it: orders / signups / reviews depending on trigger). Real data —
+ * CampaignPerformanceFixture is gone; every figure below now comes from
+ * `ledger` (via CampaignPerformanceRepository / CampaignPointsRepository),
+ * `wp_users` and WooCommerce.
  *
  * Supports `purchase`, `signup` and `review` only (self::TRIGGERS) — the
- * other triggers have no wireframe and no fixture data; resolve_row() 404s
- * for them exactly as it does for an unknown id, so a merchant clicking a
- * link this build never renders and one typing a stray URL see the same
- * thing.
+ * other triggers have no page for this build; resolve_row() 404s for them
+ * exactly as it does for an unknown id, so a merchant clicking a link this
+ * build never renders and one typing a stray URL see the same thing.
  *
  * Registered through `yayloyalty_rest_controllers`, so Lite has no route
  * here at all (404, not 403) — same as CampaignPreviewRestController.
  *
- * SWAP POINT. Both handlers answer from CampaignPerformanceFixture, which is
- * deterministic per campaign id but invented — resolve_row() now resolves a
- * real campaign (CampaignRestController's own fixture is gone), so the
- * numbers below it are the only invented part left. When real per-campaign
- * analytics are ready:
- *  - get_performance() calls a new CampaignPerformanceRepository aggregate
- *    over `ledger` rows carrying this campaign_id (`earn` type), plus a
- *    WooCommerce order count for orders_in_window; wrap it in DashboardCache
- *    the way DashboardProRestController does, since this is a per-request
- *    aggregate over a table that can be large. `skipped` and `estimate` may
- *    ship as `null` at first — both need re-evaluating every order in the
- *    window (skipped) or the same week a year prior (estimate), and the SPA
- *    already hides each panel on `null`.
- *  - get_entries() calls a paged `ledger` query,
- *    `WHERE campaign_id = ? ORDER BY created_at DESC, id DESC`, joined to
- *    `customers` for the name/search, run through respond_paginated()
- *    exactly as here.
- *  - CampaignPerformanceFixture is deleted; resolve_row() keeps its
- *    CampaignRepository lookup as-is.
- * Nothing changes on the SPA side either way: both routes are already real
- * HTTP calls parsed by lib/schema/campaign-performance.schema.ts.
+ * TWO TIME BASES ON PURPOSE. `totals` is lifetime — no date predicate —
+ * so it always agrees with CampaignRestController's own `points_issued`
+ * column (LedgerRepository::totals_by_campaign(), also lifetime). `daily`
+ * (and the `window` that describes it) is the last 30 days, clamped to the
+ * campaign's own run — see chart_window() — because a chart spanning a
+ * campaign's entire life would be unreadable. The chart's own card prints
+ * `window` next to its title (CampaignPerformanceChart.tsx) specifically so
+ * this narrower span is never mistaken for the tiles above it.
  *
- * INVARIANT the real aggregate must preserve: `totals.entries_total` is 0 for
- * a campaign that hasn't started yet (no ledger row can predate its own
- * campaign's `starts_at`). The SPA's empty-state banner
- * (CampaignPerformance.tsx) derives `hasData` from `entries_total` alone and
- * relies on a `scheduled` campaign never having real data to show — it does
- * not separately guard against showing both the banner and populated tiles at
- * once.
+ * NOT CACHED. Do not wrap this in DashboardCache the way
+ * DashboardProRestController does — that cache's key
+ * (DashboardCache::key(), `prefix + variant + range`) carries no campaign
+ * id, so every campaign would read whichever one's request warmed the
+ * transient first. `ledger.campaign_id` is indexed; revisit only if this
+ * specific query is ever shown to be slow.
+ *
+ * `skipped` and `estimate` ship `null` (their panels self-hide, see
+ * CampaignPerformanceSidePanel.tsx): both would need replaying every order
+ * through an engine that does not exist yet (Engine\Earning\EarningService
+ * is scaffold — see its own docblock). Revisit once it is implemented.
+ *
+ * `totals.avg_order_subtotal` also ships `null` for the same "not
+ * implemented yet" reason, one level down: nothing persists the scored
+ * base amount an award was computed from (Engine\Points\Result /
+ * Breakdown compute it, then discard it). If F01-4 stores it on the ledger
+ * row, this and each entry's own `subtotal` both become a plain query
+ * instead of a WooCommerce order lookup.
  */
 final class CampaignPerformanceRestController extends AbstractRestController {
 
@@ -75,9 +78,22 @@ final class CampaignPerformanceRestController extends AbstractRestController {
     /** @var CampaignRepository */
     private $campaigns;
 
-    public function __construct( DashboardRepository $dashboard, CampaignRepository $campaigns ) {
-        $this->dashboard = $dashboard;
-        $this->campaigns = $campaigns;
+    /** @var CampaignPerformanceRepository */
+    private $performance;
+
+    /** @var CampaignPointsRepository */
+    private $points;
+
+    public function __construct(
+        DashboardRepository $dashboard,
+        CampaignRepository $campaigns,
+        CampaignPerformanceRepository $performance,
+        CampaignPointsRepository $points
+    ) {
+        $this->dashboard   = $dashboard;
+        $this->campaigns   = $campaigns;
+        $this->performance = $performance;
+        $this->points      = $points;
     }
 
     /**
@@ -148,7 +164,17 @@ final class CampaignPerformanceRestController extends AbstractRestController {
             return $this->error_not_found( __( 'Campaign not found.', 'yayloyalty' ) );
         }
 
-        return CampaignPerformanceFixture::summary( $row, $this->dashboard->points_per_currency_unit() );
+        $totals = $this->performance->totals( $row['id'] );
+        $window = $this->chart_window( $row );
+
+        return [
+            'campaign_id' => $row['id'],
+            'window'      => $window,
+            'totals'      => $this->shape_totals( $row, $totals ),
+            'daily'       => $this->daily_series( $row['id'], $window ),
+            'skipped'     => null,
+            'estimate'    => null,
+        ];
     }
 
     /**
@@ -161,8 +187,8 @@ final class CampaignPerformanceRestController extends AbstractRestController {
             return $this->error_not_found( __( 'Campaign not found.', 'yayloyalty' ) );
         }
 
-        $result = CampaignPerformanceFixture::entries(
-            $row,
+        $result = $this->performance->paginate_entries(
+            $row['id'],
             (int) $request['page'],
             (int) $request['per_page'],
             (string) $request['search']
@@ -172,11 +198,11 @@ final class CampaignPerformanceRestController extends AbstractRestController {
     }
 
     /**
-     * The real campaign, shaped like CampaignPerformanceFixture expects
-     * (Campaign::to_array()'s keys are the same ones the old fixture row
-     * carried), plus the trigger gate. Returns null — a plain 404 — for an
-     * unknown id AND for a known id whose trigger this page does not
-     * support, so a client can't tell the two apart by response shape.
+     * The real campaign, shaped like CampaignPerformanceRepository expects
+     * (Campaign::to_array()'s keys), plus the trigger gate. Returns null —
+     * a plain 404 — for an unknown id AND for a known id whose trigger this
+     * page does not support, so a client can't tell the two apart by
+     * response shape.
      *
      * @return array<string, mixed>|null
      */
@@ -188,6 +214,181 @@ final class CampaignPerformanceRestController extends AbstractRestController {
         }
 
         return $campaign->to_array();
+    }
+
+    /**
+     * Lifetime `$totals` (see class docblock) into the wire shape — the
+     * derived/nullable fields the repository's own aggregate can't produce
+     * on its own: liability (needs the store's points-to-currency rate) and
+     * "of N completed orders" (a sitewide WooCommerce count, not scoped to
+     * this campaign).
+     *
+     * @param array<string, mixed> $row
+     * @param array{points_issued: int, entries_total: int, orders_affected: int, customers_earned: int} $totals
+     * @return array<string, mixed>
+     */
+    private function shape_totals( array $row, array $totals ): array {
+        $shaped = [
+            'points_issued'           => $totals['points_issued'],
+            'entries_total'           => $totals['entries_total'],
+            'orders_affected'         => null,
+            'orders_total'            => null,
+            'customers_earned'        => null,
+            'avg_points_per_order'    => null,
+            'avg_order_subtotal'      => null,
+            'liability_amount'        => null,
+            'liability_above_default' => null,
+        ];
+
+        if ( CampaignTrigger::PURCHASE !== $row['trigger'] ) {
+            $shaped['customers_earned'] = $totals['customers_earned'];
+
+            return $shaped;
+        }
+
+        $rate = $this->dashboard->points_per_currency_unit();
+
+        $shaped['orders_affected']  = $totals['orders_affected'];
+        $shaped['orders_total']     = $this->dashboard->count_orders( 0, time() + 1 );
+        $shaped['liability_amount'] = PointsMath::points_to_currency( $totals['points_issued'], $rate, wc_get_price_decimals() );
+
+        if ( $totals['orders_affected'] > 0 ) {
+            $shaped['avg_points_per_order'] = intdiv( $totals['points_issued'], $totals['orders_affected'] );
+        }
+
+        $shaped['liability_above_default'] = $this->liability_above_default( $row, $totals['points_issued'], $rate );
+
+        return $shaped;
+    }
+
+    /**
+     * The part of `$points_issued` genuinely above what the default rate
+     * would have awarded — only meaningful for a non-built-in multiplier
+     * campaign (a rate-mode or built-in campaign IS the default, so there is
+     * no "above" to report). Unchanged from CampaignPerformanceFixture's own
+     * version of this — the arithmetic never depended on invented data,
+     * only on this campaign's real config and its (now real) points_issued.
+     *
+     * @param array<string, mixed> $row
+     */
+    private function liability_above_default( array $row, int $points_issued, float $rate ): ?float {
+        if ( 'multiplier' !== ( $row['config']['mode'] ?? 'rate' ) || $row['is_builtin'] ) {
+            return null;
+        }
+
+        $multiplier = (float) ( $row['config']['multiplier'] ?? 1 );
+
+        if ( $multiplier <= 0 ) {
+            return null;
+        }
+
+        $default_equivalent = (int) round( $points_issued / $multiplier );
+
+        return PointsMath::points_to_currency( $points_issued - $default_equivalent, $rate, wc_get_price_decimals() );
+    }
+
+    /**
+     * The chart's own span: up to 30 site-timezone days trailing "now" (or
+     * the campaign's end, if it already ended), clamped to never start
+     * before the campaign itself did. See the class docblock ("TWO TIME
+     * BASES ON PURPOSE") for why this differs from `totals`.
+     *
+     * @param array<string, mixed> $row
+     * @return array{from: string, to: string} Y-m-d, site-tz, both ends inclusive.
+     */
+    private function chart_window( array $row ): array {
+        $tz  = wp_timezone();
+        $now = ( new \DateTimeImmutable( 'now', $tz ) )->setTime( 0, 0, 0 );
+
+        $starts = $this->site_midnight( $row['starts_at'], $tz );
+        $ends   = $this->site_midnight( $row['ends_at'], $tz );
+
+        $to = $now;
+
+        if ( null !== $ends ) {
+            $ended = $ends->modify( '-1 day' );
+
+            if ( $ended < $to ) {
+                $to = $ended;
+            }
+        }
+
+        $from = $to->modify( '-29 days' );
+
+        if ( null !== $starts && $starts > $from ) {
+            $from = $starts;
+        }
+
+        // A campaign scheduled to start after $to (not running yet, or a
+        // same-day flash sale) — floor to a same-day, one-day window rather
+        // than let $from > $to silently produce zero days.
+        if ( $from > $to ) {
+            $to = $from;
+        }
+
+        return [
+            'from' => $from->format( 'Y-m-d' ),
+            'to'   => $to->format( 'Y-m-d' ),
+        ];
+    }
+
+    private function site_midnight( ?string $utc, \DateTimeZone $tz ): ?\DateTimeImmutable {
+        if ( null === $utc || '' === $utc ) {
+            return null;
+        }
+
+        $date = date_create_immutable( $utc, new \DateTimeZone( 'UTC' ) );
+
+        return null === $date ? null : $date->setTimezone( $tz )->setTime( 0, 0, 0 );
+    }
+
+    /**
+     * `$window` (site-tz Y-m-d, inclusive) converted to the UTC bounds
+     * CampaignPointsRepository::daily_by_campaign() needs, zero-filled by
+     * DashboardMath::fill_series() exactly as the dashboard's own daily
+     * series is.
+     *
+     * @param array{from: string, to: string} $window
+     * @return array<int, array{date: string, points: int}>
+     */
+    private function daily_series( int $campaign_id, array $window ): array {
+        $tz = wp_timezone();
+
+        $from = new \DateTimeImmutable( $window['from'] . ' 00:00:00', $tz );
+        $to   = ( new \DateTimeImmutable( $window['to'] . ' 00:00:00', $tz ) )->modify( '+1 day' );
+
+        $rows = $this->points->daily_by_campaign(
+            $from->setTimezone( new \DateTimeZone( 'UTC' ) )->format( 'Y-m-d H:i:s' ),
+            $to->setTimezone( new \DateTimeZone( 'UTC' ) )->format( 'Y-m-d H:i:s' ),
+            $from->getOffset(),
+            [ $campaign_id ]
+        );
+
+        $by_date = array_map(
+            static fn( array $row ): array => [
+                'date'   => $row['date'],
+                'points' => (int) $row['issued'],
+            ],
+            $rows
+        );
+
+        return DashboardMath::fill_series( $by_date, $this->days_between( $window['from'], $window['to'] ), [ 'points' ] );
+    }
+
+    /**
+     * @return string[] Y-m-d, ascending, both ends inclusive.
+     */
+    private function days_between( string $from, string $to ): array {
+        $days   = [];
+        $cursor = new \DateTimeImmutable( $from );
+        $end    = new \DateTimeImmutable( $to );
+
+        while ( $cursor <= $end ) {
+            $days[] = $cursor->format( 'Y-m-d' );
+            $cursor = $cursor->modify( '+1 day' );
+        }
+
+        return $days;
     }
 
     /**

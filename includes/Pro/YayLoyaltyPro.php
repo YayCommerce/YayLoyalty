@@ -8,6 +8,7 @@ use YayLoyalty\Pro\Controllers\CampaignPreviewRestController;
 use YayLoyalty\Pro\Controllers\CustomerSegmentsRestController;
 use YayLoyalty\Pro\Controllers\DashboardProRestController;
 use YayLoyalty\Pro\Helpers\CustomerSegmentsHelper;
+use YayLoyalty\Pro\Repositories\CampaignPerformanceRepository;
 use YayLoyalty\Pro\Repositories\CampaignPointsRepository;
 use YayLoyalty\Pro\Services\ConditionsEvaluator;
 use YayLoyalty\Repositories\CampaignRepository;
@@ -210,7 +211,12 @@ final class YayLoyaltyPro {
             new CampaignRepository(),
             new DashboardCache( new DashboardRepository() )
         );
-        $controllers[] = new CampaignPerformanceRestController( new DashboardRepository(), new CampaignRepository() );
+        $controllers[] = new CampaignPerformanceRestController(
+            new DashboardRepository(),
+            new CampaignRepository(),
+            new CampaignPerformanceRepository(),
+            new CampaignPointsRepository()
+        );
 
         return $controllers;
     }

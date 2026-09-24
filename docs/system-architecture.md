@@ -138,9 +138,10 @@ flowchart LR
 | `/dashboard` | `DashboardPage` | ✅ shipped |
 | `/customers` | `CustomersPage` (list) | ✅ shipped |
 | `/customers/:userId` | `CustomerDrawer` (F09) | ✅ shipped |
-| `/campaigns` | `CampaignsPage` (list, fixture-backed) | ⚠️ fixture data |
-| `/campaigns/:id/edit` | `CampaignEditor` (Pro only) | ⚠️ not persisted |
-| `/campaigns/:id/performance` | `CampaignPerformance` (Pro only) | ⚠️ fixture data |
+| `/campaigns` | `CampaignsPage` (list) | ✅ shipped |
+| `/campaigns/new`, `/campaigns/new/:templateId` | `CampaignTemplatePicker` → `CampaignCreator` (Pro only) | ✅ shipped |
+| `/campaigns/:id/edit` | `CampaignEditor` (Pro only) | ✅ shipped |
+| `/campaigns/:id/performance` | `CampaignPerformance` (Pro only) | ✅ shipped |
 | `/rewards`, `/referral`, `/vip-tiers`, `/settings` | Stubs | ⚠️ placeholders |
 
 **Tech stack:**
@@ -448,27 +449,30 @@ CampaignRestController::delete_item()  via  exec_write()
     └─ CampaignRepository::delete()
 ```
 
-### Campaign performance (Pro-only) — fixture-backed, real endpoint shape
+### Campaign performance (Pro-only) — real ledger aggregate
 
 **Route:** `/campaigns/:id/performance` (Pro-only; gated by `IS_PRO_BUILD` AND `requires(CAP.MANAGE_CAMPAIGNS)`). Supports `purchase`, `signup`, `review` only — any other trigger (e.g. `birthday`) 404s from both the loaded campaign client-side and the server's own trigger allowlist.
 
 **Access:** `CampaignTable`'s row menu ("View performance") and the campaign editor rail's "Performance" link, both rendered only when `hasPerformancePage(trigger)` is true.
 
-**Contract:** `GET /campaigns/{id}/performance` returns `{ window, totals, daily, skipped, estimate }`; `GET /campaigns/{id}/performance/entries` returns a paged/searchable row list (order/signup/review depending on trigger). **Nullability rule:** every nullable field means "not applicable to this trigger" or "not computable yet" — never `0`. A purchase-only total is `null` on a signup/review campaign; an average is `null` on zero entries (division by zero), not `0`. The SPA renders `null` as `—`, same rule the dashboard uses for its own null fields. Full specification lives in `lib/schema/campaign-performance.schema.ts` and the `CampaignPerformanceRestController` docblock.
+**Contract:** `GET /campaigns/{id}/performance` returns `{ window, totals, daily, skipped, estimate }`; `GET /campaigns/{id}/performance/entries` returns a paged/searchable row list (order/signup/review depending on trigger). **Nullability rule:** every nullable field means "not applicable to this trigger" or "not computable yet" — never `0`. A purchase-only total is `null` on a signup/review campaign; an average is `null` on zero entries (division by zero), not `0`. The SPA renders `null` as `—`, same rule the dashboard uses for its own null fields.
+
+**Two time bases, on purpose:** `totals` is lifetime (no date bound), so it always agrees with `CampaignRestController`'s own `points_issued` column. `window`/`daily` is the last 30 days, clamped to the campaign's own run — a chart spanning a campaign's entire life would be unreadable. The chart prints its own `window` next to its title so the narrower span is never mistaken for the lifetime tiles above it. Full specification lives in `lib/schema/campaign-performance.schema.ts` and the `CampaignPerformanceRestController` class docblock.
 
 ```
 GET /campaigns/:id/performance
     ↓
 CampaignPerformanceRestController::get_performance()
     ├─ resolve_row()  CampaignRepository::find_campaign() (real row) + trigger allowlist; 404 for unknown id OR unsupported trigger (identical either way — no timing/error-shape difference an unauthorized trigger check could leak)
-    └─ [SWAP POINT: the *numbers* still come entirely from CampaignPerformanceFixture — deterministic-per-id, invented. Only the row is real now]
+    ├─ CampaignPerformanceRepository::totals()  one aggregate query over `ledger` (SUM/COUNT/COUNT DISTINCT, points>0, campaign_id-scoped) → shape_totals() adds liability (PointsMath) and the sitewide completed-order count (DashboardRepository::count_orders())
+    └─ chart_window() + CampaignPointsRepository::daily_by_campaign()  the 30-day zero-filled series
     ↓
 Response validated by lib/schema/campaign-performance.schema.ts (zod)
     ↓
 CampaignPerformance.tsx: useCampaignQuery (header) + useCampaignPerformanceQuery (tiles/chart/side panel) — independent; a summary failure never hides the header
 ```
 
-**Swap procedure** (see the controller's own class docblock): `get_performance()` moves to a new `CampaignPerformanceRepository` aggregate over `ledger` rows carrying `campaign_id`, wrapped in `DashboardCache` (large-table per-request aggregate); `skipped`/`estimate` may ship `null` at first since both need re-evaluating every order in the window — the SPA already hides each panel on `null`. `get_entries()` moves to a paged `ledger` query (`WHERE campaign_id = ? ORDER BY created_at DESC, id DESC`) joined to `customers`, through `respond_paginated()` exactly as today. `CampaignPerformanceFixture` is then deleted. **No SPA change either way** — both routes are already real HTTP calls.
+**Known limitation:** `skipped`, `estimate` and `totals.avg_order_subtotal` ship `null` unconditionally — all three need either replaying every order through the earning engine (`Engine\Earning\EarningService`, scaffold — see "Order award — SCAFFOLDED" below, F01-4) or a scored base amount the engine does not yet persist. Their panels/sublines already self-hide on `null`; no SPA change needed when F01-4 lands. `GET /campaigns/{id}/performance/entries` (`CampaignPerformanceRepository::paginate_entries()`) is a paged, searchable `ledger` query joined to `wp_users`, real end to end including each purchase row's `subtotal` (`wc_get_order()`).
 
 ### Order award — SCAFFOLDED (shape real, bodies stubbed, not registered at boot)
 

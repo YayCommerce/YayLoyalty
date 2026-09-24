@@ -23,7 +23,7 @@ import { emptyReason } from './campaign-performance.copy';
 import { useCampaignPerformanceQuery } from './campaign-performance.queries';
 import { CampaignPerformanceChart, CampaignPerformanceChartSkeleton } from './CampaignPerformanceChart';
 import { CampaignPerformanceEntries } from './CampaignPerformanceEntries';
-import { CampaignPerformanceSidePanel, CampaignPerformanceSidePanelSkeleton } from './CampaignPerformanceSidePanel';
+import { CampaignPerformanceSidePanel } from './CampaignPerformanceSidePanel';
 import { CampaignPerformanceTiles, CampaignPerformanceTilesSkeleton } from './CampaignPerformanceTiles';
 
 function isNotFound(error: unknown): boolean {
@@ -210,10 +210,7 @@ function CampaignPerformanceBodySkeleton({ trigger }: { trigger: CampaignPerform
   return (
     <div className="flex flex-col gap-4">
       <CampaignPerformanceTilesSkeleton trigger={trigger} />
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-        <CampaignPerformanceChartSkeleton />
-        {trigger === 'purchase' && <CampaignPerformanceSidePanelSkeleton />}
-      </div>
+      <CampaignPerformanceChartSkeleton />
       <Skeleton className="h-64 w-full" />
     </div>
   );

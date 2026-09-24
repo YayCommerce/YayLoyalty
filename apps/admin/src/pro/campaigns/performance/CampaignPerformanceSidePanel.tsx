@@ -106,6 +106,13 @@ function estimateSentence(estimate: NonNullable<Estimate>): string {
  * will end up populated until the summary loads (and a purchase campaign
  * with real data but a near-zero skipped count can legitimately end up with
  * neither, same as the loaded panel returning `null` in that case).
+ *
+ * No current caller: both fields ship `null` unconditionally until the
+ * earning engine exists (F01-4 — see CampaignPerformanceRestController's
+ * class docblock), so CampaignPerformanceBodySkeleton stopped rendering this
+ * rather than promise a panel that never resolves. Kept, not deleted — this
+ * becomes correct again the day skipped/estimate go real, same as
+ * CampaignPerformanceSidePanel itself staying mounted for that day.
  */
 export function CampaignPerformanceSidePanelSkeleton() {
   return (

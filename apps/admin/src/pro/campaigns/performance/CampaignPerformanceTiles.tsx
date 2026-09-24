@@ -41,13 +41,19 @@ export function CampaignPerformanceTiles({
           label={__('Orders affected', 'yayloyalty')}
           value={formatPoints(totals.orders_affected ?? 0)}
           subline={
-            hasData
-              ? sprintf(
-                  /* translators: %s: total number of orders in the reporting window. */
-                  __('of %s orders in the window', 'yayloyalty'),
-                  formatPoints(totals.orders_in_window ?? 0),
-                )
-              : __('none yet', 'yayloyalty')
+            !hasData
+              ? __('none yet', 'yayloyalty')
+              : totals.orders_total === null
+                ? // Unreachable today — the PHP contract sets orders_total whenever trigger is
+                  // 'purchase' (the only case this tile renders), but the type is `nullable()`
+                  // because the field is legitimately null for other triggers. This guards
+                  // against that correlation ever drifting, not a real runtime case right now.
+                  ''
+                : sprintf(
+                    /* translators: %s: total number of completed orders the store has ever had. */
+                    __('of %s completed orders', 'yayloyalty'),
+                    formatPoints(totals.orders_total),
+                  )
           }
         />
       )}
@@ -65,11 +71,15 @@ export function CampaignPerformanceTiles({
           subline={
             totals.avg_points_per_order === null
               ? __('needs at least one order', 'yayloyalty')
-              : sprintf(
-                  /* translators: %s: the average order subtotal, formatted as money. */
-                  __('points · %s average order', 'yayloyalty'),
-                  parseWPCurrency(totals.avg_order_subtotal ?? 0),
-                )
+              : totals.avg_order_subtotal === null
+                ? // avg_order_subtotal isn't computed yet (needs the earning engine's own scored
+                  // base amount, not yet persisted) — say nothing rather than "$0.00 average order".
+                  __('points per order', 'yayloyalty')
+                : sprintf(
+                    /* translators: %s: the average order subtotal, formatted as money. */
+                    __('points · %s average order', 'yayloyalty'),
+                    parseWPCurrency(totals.avg_order_subtotal),
+                  )
           }
         />
       )}
