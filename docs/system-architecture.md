@@ -97,7 +97,7 @@ flowchart LR
         Dash["DashboardPage"]
         Camp["CampaignsPage"]
         Cust["CustomersPage"]
-        Set["Settings (Design tab shipped; General/Emails/Advanced stubs)"]
+        Set["Settings (Design, Emails tabs shipped; General/Advanced stubs)"]
         Other["Rewards, Referral, VIP (placeholders)"]
     end
 
@@ -142,7 +142,8 @@ flowchart LR
 | `/campaigns/:id/edit` | `CampaignEditor` (Pro only) | ⚠️ not persisted |
 | `/campaigns/:id/performance` | `CampaignPerformance` (Pro only) | ⚠️ fixture data |
 | `/settings/design` | `DesignSettingsPage` (Free sections + Pro `tier`/`panel`/`typography`, admin-only, no storefront rendering) | ✅ shipped |
-| `/rewards`, `/referral`, `/vip-tiers`, `/settings` (General/Emails/Advanced) | Stubs | ⚠️ placeholders |
+| `/settings/emails` | `EmailsSettingsPage` (12 transactional email toggles grouped by category, weekly throttle cap, read-only WC sending config) | ✅ shipped |
+| `/rewards`, `/referral`, `/vip-tiers`, `/settings` (General/Advanced) | Stubs | ⚠️ placeholders |
 
 **Tech stack:**
 - React 18 with TSX

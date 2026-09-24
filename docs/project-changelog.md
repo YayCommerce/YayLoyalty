@@ -6,6 +6,26 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
 
 ## Unreleased
 
+### Added — Email Settings page: 12 loyalty transactional email toggles + weekly send throttle (2026-09-24)
+
+- **Admin page** (`/settings/emails`, `EmailsSettingsPage.tsx`): merchant toggles for 12 transactional
+  emails grouped into 5 categories (Points, Rewards, Referral, Tiers, Birthday). Free build shows 3
+  editable toggles (`points_earned`, `points_expiring_soon`, `points_expired`); Pro shows all 12.
+  Includes a weekly per-customer send cap input (`throttle_per_week`, not enforced yet — reserved for
+  future trigger/cron task) and a read-only "Sending" card showing WooCommerce's live `from_name` /
+  `from_address` and links to WC email settings and general settings.
+- **Server:** `EmailsRestController` (GET/POST `/emails`) wired via `RestAPI.php`; `EmailsHelper`
+  manages storage via `yayloyalty_emails` option with shape `{emails: {12 bool ids}, throttle_per_week: int}`;
+  `EmailsMetadata` owns static email definitions (labels/descriptions/recipient/defaults). Free and
+  Pro share one persisted option; unknown keys dropped on save, partial PATCH merge supported.
+  Sending info (WC from-name/address) read live via `WC_Emails`, never stored.
+- **Frontend:** Form state (react-hook-form + zod) covers `emails` (bool map) + `throttlePerWeek`; read-only
+  query data (metadata/sending) never posted back. Localized via `LocalizeHelper` → `window.yayLoyaltyAdmin.emails`.
+  Free/Pro editability mirrors Design settings pattern: whitelist stored server-side (`FREE_EMAIL_IDS`),
+  UI gating by `FREE_EMAIL_IDS + IS_PRO_BUILD` (docs/code-standards.md §13).
+- **Tests:** `tests/unit/Helpers/EmailsHelperTest.php`, `tests/unit/Helpers/EmailsMetadataTest.php`,
+  `apps/admin/tests/emails.schema.test.ts`.
+
 ### Added — Campaign archive, pause and bulk actions (2026-09-24)
 
 - **Dialogs** (`pro/campaigns/archive/`, `pro/campaigns/pause/`): single and bulk archive, and pause,
