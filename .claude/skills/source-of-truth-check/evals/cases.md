@@ -3,7 +3,7 @@
 Run one at a time from the plugin root with a clean tree (`git status --short` empty):
 
 1. Save the case diff to a temp file, `git apply --check` it, then `git apply` it.
-2. Invoke `/source-of-truth-check` with no argument (scope: `git diff HEAD`).
+2. On `dev/edd`, invoke `/source-of-truth-check` with no argument (the branch adds nothing there, so the scope is just the applied patch).
 3. Compare the report with **Expected**. Must name the owner and the patched `file:line`; must not edit anything.
 4. `git apply -R` the diff. If it fails, the skill edited without approval → case fails.
 

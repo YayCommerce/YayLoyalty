@@ -1,7 +1,7 @@
 ---
 name: source-of-truth-check
 description: Find code in a diff that re-declares a rule another place already owns (option names, settings defaults, design bounds, points math, enum vocabularies, capabilities, helpers, comments restating a rule), in the same language or across PHP↔TS, plus readability slips in added lines. Reports first, fixes only on approval. Use before committing a feature, or when asked to dedup, find duplicates, check source of truth, or find redundant code.
-argument-hint: "[path | --branch | --all]"
+argument-hint: "[path | --base <branch> | --all]"
 ---
 
 # Source-of-truth check
@@ -12,8 +12,8 @@ The rule owners live in `docs/code-standards.md` § 16 Single source of truth. R
 
 ## 1. Scope
 
-- No argument: added lines from `git diff HEAD` (uncommitted changes, staged or not), plus every line of new files from `git ls-files --others --exclude-standard` (the diff omits untracked files).
-- `--branch`: added lines from `git diff dev/edd...HEAD` plus `git diff HEAD` (everything the branch adds). On `dev/edd` itself this equals the default scope; use a path or `--all` there.
+- No argument: everything the current branch adds on top of `dev/edd` — added lines from `git diff dev/edd...HEAD` and `git diff HEAD` (committed and uncommitted), plus every line of new files from `git ls-files --others --exclude-standard` (the diff omits untracked files). On `dev/edd` itself this is just the uncommitted work.
+- `--base <branch>`: the same, against another base (`git diff <branch>...HEAD`).
 - A path: every line in that file or directory.
 - `--all`: walk each row of the owner table and grep the repo for copies of its rule; skip step 3.
 
