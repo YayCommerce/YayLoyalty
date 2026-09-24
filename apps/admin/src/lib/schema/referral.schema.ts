@@ -7,7 +7,7 @@ import { paginatedSchema } from '@/lib/api/paginated';
  * IS THE SOURCE OF TRUTH.
  *
  * The server always answers an empty envelope — no `yayloyalty_referrals`
- * table exists yet (docs/data-model.md, 1.1, designed but not implemented).
+ * table exists yet (docs/data-model/future-tables.md, 1.1, designed but not implemented).
  * When it ships, only the server handler changes — this schema is already
  * the contract.
  *

@@ -1,3 +1,5 @@
+import { _n, sprintf } from '@wordpress/i18n';
+
 import { pointsToCurrency } from '@/lib/points-math/points-math';
 import { currencyDecimals, parseWPCurrency } from './format.helper';
 
@@ -9,6 +11,12 @@ const COMPACT_THRESHOLD = 100_000;
 /** Plain grouped integer — "12,400", "-1,000". */
 export function formatPoints(value: number): string {
   return value.toLocaleString();
+}
+
+/** "1 point", "12,400 points": the count with its plural-aware noun. */
+export function pointsPhrase(count: number): string {
+  /* translators: %s: number of points, formatted. */
+  return sprintf(_n('%s point', '%s points', count, 'yayloyalty'), formatPoints(count));
 }
 
 /**

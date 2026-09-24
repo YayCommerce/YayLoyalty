@@ -1,6 +1,12 @@
 import { api } from '@/lib/api/api';
 import { parsePaginated } from '@/lib/api/paginated';
-import { Campaign, CampaignListParams, campaignSchema, CampaignUpdateInput } from '@/lib/schema/campaign.schema';
+import {
+  Campaign,
+  campaignDeleteResponseSchema,
+  CampaignListParams,
+  campaignSchema,
+  CampaignUpdateInput,
+} from '@/lib/schema/campaign.schema';
 
 /** Responses are parsed, not cast — see customer.api.ts. */
 
@@ -24,6 +30,12 @@ export async function getCampaign(id: number): Promise<Campaign> {
 }
 
 /** PUT campaigns/{id}. Does not persist yet; see update_item()'s swap point. */
-export async function updateCampaign(id: number, input: CampaignUpdateInput): Promise<Campaign> {
+/** Partial: update_item() changes only the fields sent, e.g. `{ status }` to archive or pause. */
+export async function updateCampaign(id: number, input: Partial<CampaignUpdateInput>): Promise<Campaign> {
   return campaignSchema.parse(await api.put(`campaigns/${id}`, { json: input }).json());
+}
+
+/** DELETE campaigns/{id}. Does not persist yet; see delete_item()'s swap point. */
+export async function deleteCampaign(id: number) {
+  return campaignDeleteResponseSchema.parse(await api.delete(`campaigns/${id}`).json());
 }

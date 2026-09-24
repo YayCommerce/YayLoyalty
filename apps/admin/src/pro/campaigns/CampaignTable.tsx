@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { closestCenter, DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -18,8 +18,11 @@ import {
 } from '@/lib/schema/campaign.schema';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import { BulkActionBox } from '@/components/ui/bulk-actions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import { BulkActionsMenu } from '@/components/ui/custom/bulk-actions-menu';
 import { PointsValue } from '@/components/ui/custom/points-value';
 import { YayLoyaltyToolTip } from '@/components/ui/custom/tooltip';
 import {
@@ -34,6 +37,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import EllipsisIcon from '@/components/icons/EllipsisIcon';
+import { CampaignArchiveDialog, CampaignBulkArchiveDialog } from './archive/CampaignArchiveDialog';
 import {
   CampaignGroupKey,
   conditionsLabel,
@@ -46,6 +50,7 @@ import {
 import { DUMMY_POINTS_LAST_30_DAYS, hasPointsFigure } from './campaign-points-dummy';
 import { CampaignPointsSummary } from './CampaignPointsSummary';
 import type { CampaignEditorDuplicateSeed } from './editor/CampaignEditor';
+import { CampaignPauseDialog } from './pause/CampaignPauseDialog';
 
 /** Groups larger than this collapse to the default plus this many, highest-priority first. */
 const VISIBLE_NON_DEFAULT_ROWS = 4;
@@ -54,7 +59,10 @@ const VISIBLE_NON_DEFAULT_ROWS = 4;
 const SEARCH_THRESHOLD = 20;
 
 /** Table columns, for colSpan on rows that span the whole width. */
-const COLUMN_COUNT = 10;
+const COLUMN_COUNT = 11;
+
+/** The note under the table that a built-in row's disabled checkbox points to. */
+const BUILTIN_SELECT_REASON_ID = 'campaign-builtin-select-reason';
 
 const GROUP_ORDER: readonly CampaignGroupKey[] = ['purchase', 'signup', 'review', 'other'];
 
@@ -73,6 +81,14 @@ interface DisplayCampaign extends Campaign {
   displayStatus: CampaignDisplayStatus;
   /** Dummy, client-side only; see campaign-points-dummy.ts. */
   pointsLast30Days: number | null;
+}
+
+/** One trigger group as rendered; hiddenRows sit behind "Show the other … campaigns". */
+interface CampaignGroup {
+  key: CampaignGroupKey;
+  rows: DisplayCampaign[];
+  visibleRows: DisplayCampaign[];
+  hiddenRows: DisplayCampaign[];
 }
 
 /**
@@ -95,6 +111,15 @@ export function CampaignTable() {
   const [searchQuery, setSearchQuery] = useState('');
   // Local override once a drag reorders a group; seeded lazily in reorderGroup().
   const [localRows, setLocalRows] = useState<DisplayCampaign[]>();
+  const [expandedGroups, setExpandedGroups] = useState<ReadonlySet<CampaignGroupKey>>(() => new Set());
+  const [selectedIds, setSelectedIds] = useState<ReadonlySet<number>>(() => new Set());
+  // These dialogs open from state, not a Radix Trigger, so Radix has nothing of its own to
+  // refocus on close; captured here and restored explicitly (see captureFocus/restoreFocus).
+  const lastFocusedRef = useRef<HTMLElement | null>(null);
+  const [archiveTarget, setArchiveTarget] = useState<DisplayCampaign>();
+  // A snapshot, so a refetch while the dialog is open cannot change what it acts on.
+  const [bulkArchiveTargets, setBulkArchiveTargets] = useState<DisplayCampaign[]>();
+  const [pauseTarget, setPauseTarget] = useState<DisplayCampaign>();
 
   const baseRows = newStore ? allRows.filter((row) => row.is_builtin) : (localRows ?? allRows);
   const rows = noLiveCampaign ? baseRows.map(pauseIfActivePurchase) : baseRows;
@@ -113,10 +138,89 @@ export function CampaignTable() {
       ? statusFilteredRows.filter((row) => row.name.toLowerCase().includes(search))
       : statusFilteredRows;
 
-  const groups = GROUP_ORDER.map((key) => ({
-    key,
-    rows: filteredRows.filter((row) => triggerGroup(row.trigger) === key),
-  })).filter((group) => group.rows.length > 0);
+  const groups: CampaignGroup[] = GROUP_ORDER.map((key) => {
+    const groupRows = filteredRows.filter((row) => triggerGroup(row.trigger) === key);
+
+    return { key, rows: groupRows, ...splitCollapsedRows(groupRows, expandedGroups.has(key)) };
+  }).filter((group) => group.rows.length > 0);
+
+  // Selection counts only rows on screen, so a filtered-out or collapsed row is never archived unseen.
+  const visibleRows = groups.flatMap((group) => group.visibleRows);
+  const selectableRows = visibleRows.filter(isSelectable);
+  const selectedRows = selectableRows.filter((row) => selectedIds.has(row.id));
+  const allSelectedState =
+    selectedRows.length === 0 ? false : selectedRows.length === selectableRows.length ? true : 'indeterminate';
+
+  // The rows on screen change, so picks made against the old ones no longer apply.
+  function changeStatusFilter(next: CampaignDisplayStatus | undefined) {
+    setStatusFilter(next);
+    setSelectedIds(new Set());
+  }
+
+  function toggleSelected(id: number) {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+
+      return next;
+    });
+  }
+
+  function toggleAllSelected() {
+    setSelectedIds(allSelectedState === true ? new Set() : new Set(selectableRows.map((row) => row.id)));
+  }
+
+  function deselectMany(ids: number[]) {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      ids.forEach((id) => next.delete(id));
+
+      return next;
+    });
+  }
+
+  // The dropdown that opened this has already restored focus to its own trigger by the time
+  // this runs (both are deferred with setTimeout for that reason); captured here since none of
+  // these dialogs has a Trigger of its own for Radix to return focus to on close.
+  function captureFocus() {
+    lastFocusedRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  }
+
+  function restoreFocus() {
+    const target = lastFocusedRef.current;
+    lastFocusedRef.current = null;
+
+    // Deferred so this runs after the closing dialog's own unmount, not before it.
+    if (target) {
+      setTimeout(() => document.contains(target) && target.focus(), 0);
+    }
+  }
+
+  function openPause(row: DisplayCampaign) {
+    captureFocus();
+    setPauseTarget(row);
+  }
+
+  function openArchive(row: DisplayCampaign) {
+    captureFocus();
+    setArchiveTarget(row);
+  }
+
+  function archiveSelected() {
+    captureFocus();
+
+    // One campaign gets its own dialog, which has room for its figures.
+    if (selectedRows.length === 1) {
+      setArchiveTarget(selectedRows[0]);
+    } else {
+      setBulkArchiveTargets(selectedRows);
+    }
+  }
 
   function reorderGroup(groupRows: DisplayCampaign[], event: DragEndEvent) {
     const { active, over } = event;
@@ -165,7 +269,7 @@ export function CampaignTable() {
                       <button
                         type="button"
                         className="text-foreground hover:underline"
-                        onClick={() => setStatusFilter('archived')}
+                        onClick={() => changeStatusFilter('archived')}
                       >
                         {sprintf(
                           /* translators: %d: number of archived campaigns in the list. */
@@ -199,7 +303,7 @@ export function CampaignTable() {
               <Select
                 value={statusFilter ?? 'all'}
                 onValueChange={(value) =>
-                  setStatusFilter(value === 'all' ? undefined : (value as CampaignDisplayStatus))
+                  changeStatusFilter(value === 'all' ? undefined : (value as CampaignDisplayStatus))
                 }
               >
                 <SelectTrigger size="sm">
@@ -297,6 +401,14 @@ export function CampaignTable() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-8">
+                        <Checkbox
+                          checked={allSelectedState}
+                          onCheckedChange={toggleAllSelected}
+                          disabled={selectableRows.length === 0}
+                          aria-label={__('Select all campaigns', 'yayloyalty')}
+                        />
+                      </TableHead>
                       <TableHead className="w-6" />
                       <TableHead>{__('Campaign', 'yayloyalty')}</TableHead>
                       <TableHead>{__('Trigger', 'yayloyalty')}</TableHead>
@@ -311,12 +423,33 @@ export function CampaignTable() {
                   </TableHeader>
                   <TableBody>
                     {groups.map((group) => (
-                      <CampaignGroupSection key={group.key} group={group} onReorder={reorderGroup} />
+                      <CampaignGroupSection
+                        key={group.key}
+                        group={group}
+                        selectedIds={selectedIds}
+                        onToggleSelected={toggleSelected}
+                        onExpand={() => setExpandedGroups((current) => new Set(current).add(group.key))}
+                        onReorder={reorderGroup}
+                        onPause={openPause}
+                        onArchive={openArchive}
+                      />
                     ))}
                   </TableBody>
                 </Table>
               </div>
             </div>
+          )}
+
+          <CampaignBulkActionBar
+            count={selectedRows.length}
+            onClear={() => setSelectedIds(new Set())}
+            onArchive={archiveSelected}
+          />
+
+          {visibleRows.some((row) => row.is_builtin) && (
+            <p id={BUILTIN_SELECT_REASON_ID} className="text-muted-foreground text-xs">
+              {__('Default campaigns can’t be selected: they can never be archived.', 'yayloyalty')}
+            </p>
           )}
 
           {/* Not shown on a fresh install — nothing there is paused or draft to explain yet. */}
@@ -332,27 +465,93 @@ export function CampaignTable() {
       </Card>
 
       <CampaignPointsSummary rows={rows} />
+
+      {archiveTarget && (
+        <CampaignArchiveDialog
+          campaign={archiveTarget}
+          displayStatus={archiveTarget.displayStatus}
+          onClose={() => {
+            setArchiveTarget(undefined);
+            restoreFocus();
+          }}
+          onDone={() => deselectMany([archiveTarget.id])}
+          onViewArchived={() => changeStatusFilter('archived')}
+        />
+      )}
+
+      {bulkArchiveTargets && (
+        <CampaignBulkArchiveDialog
+          campaigns={bulkArchiveTargets}
+          onClose={() => {
+            setBulkArchiveTargets(undefined);
+            restoreFocus();
+          }}
+          onDone={() => deselectMany(bulkArchiveTargets.map((row) => row.id))}
+          onViewArchived={() => changeStatusFilter('archived')}
+        />
+      )}
+
+      {pauseTarget && (
+        <CampaignPauseDialog
+          campaign={pauseTarget}
+          displayStatus={pauseTarget.displayStatus}
+          onClose={() => {
+            setPauseTarget(undefined);
+            restoreFocus();
+          }}
+        />
+      )}
     </>
+  );
+}
+
+/**
+ * YayUiKits' BulkActionBox with the shared BulkActionsMenu, as CustomersBulkActionBar uses it.
+ * Archive is the only bulk action: it is the only one with a designed
+ * confirmation, and a dead control is worse than none.
+ */
+function CampaignBulkActionBar({
+  count,
+  onClear,
+  onArchive,
+}: {
+  count: number;
+  onClear: () => void;
+  onArchive: () => void;
+}) {
+  return (
+    <BulkActionBox selected={count} onClose={onClear} className="w-fit">
+      <BulkActionsMenu count={count} contentClassName="min-w-30">
+        {/* Deferred so the dropdown closes and restores focus to this trigger before the dialog opens. */}
+        <DropdownMenuItem variant="destructive" onSelect={() => setTimeout(onArchive, 0)}>
+          {__('Archive', 'yayloyalty')}
+        </DropdownMenuItem>
+      </BulkActionsMenu>
+    </BulkActionBox>
   );
 }
 
 function CampaignGroupSection({
   group,
+  selectedIds,
+  onToggleSelected,
+  onExpand,
   onReorder,
+  onPause,
+  onArchive,
 }: {
-  group: { key: CampaignGroupKey; rows: DisplayCampaign[] };
+  group: CampaignGroup;
+  selectedIds: ReadonlySet<number>;
+  onToggleSelected: (id: number) => void;
+  onExpand: () => void;
   onReorder: (groupRows: DisplayCampaign[], event: DragEndEvent) => void;
+  onPause: (row: DisplayCampaign) => void;
+  onArchive: (row: DisplayCampaign) => void;
 }) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
   // "Topmost wins" means nothing until there is a second campaign to lose.
   const hasPriorityToResolve = group.key === 'purchase' && group.rows.length > 1;
-
-  // The default stays visible regardless of rank; the rest cap at VISIBLE_NON_DEFAULT_ROWS.
-  const [expanded, setExpanded] = useState(false);
-  const nonDefaultRows = group.rows.filter((row) => !row.is_builtin);
-  const hiddenRows = expanded ? [] : nonDefaultRows.slice(VISIBLE_NON_DEFAULT_ROWS);
-  const hiddenIds = new Set(hiddenRows.map((row) => row.id));
-  const visibleRows = group.rows.filter((row) => !hiddenIds.has(row.id));
+  const { visibleRows, hiddenRows } = group;
 
   // A tie is scoped to the group: priority only compares campaigns sharing a trigger.
   const priorityCounts = new Map<number, number>();
@@ -390,7 +589,15 @@ function CampaignGroupSection({
       >
         <SortableContext items={visibleRows.map((row) => row.id)} strategy={verticalListSortingStrategy}>
           {visibleRows.map((row) => (
-            <SortableCampaignRow key={row.id} row={row} isTied={(priorityCounts.get(row.priority) ?? 0) > 1} />
+            <SortableCampaignRow
+              key={row.id}
+              row={row}
+              isTied={(priorityCounts.get(row.priority) ?? 0) > 1}
+              selected={selectedIds.has(row.id)}
+              onToggleSelected={onToggleSelected}
+              onPause={onPause}
+              onArchive={onArchive}
+            />
           ))}
         </SortableContext>
       </DndContext>
@@ -400,7 +607,7 @@ function CampaignGroupSection({
           <TableCell colSpan={COLUMN_COUNT} className="py-2">
             <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
               {/* Only the visible rows are ever in the DndContext above, so a drag can't reach a collapsed one. */}
-              <Button variant="link" size="sm" className="h-auto p-0" onClick={() => setExpanded(true)}>
+              <Button variant="link" size="sm" className="h-auto p-0" onClick={onExpand}>
                 {showMoreLabel(group.key)}
               </Button>
               <span className="text-muted-foreground text-xs">
@@ -432,7 +639,21 @@ function showMoreLabel(group: CampaignGroupKey): string {
 }
 
 /** One draggable row within a CampaignGroupSection. */
-function SortableCampaignRow({ row, isTied }: { row: DisplayCampaign; isTied: boolean }) {
+function SortableCampaignRow({
+  row,
+  isTied,
+  selected,
+  onToggleSelected,
+  onPause,
+  onArchive,
+}: {
+  row: DisplayCampaign;
+  isTied: boolean;
+  selected: boolean;
+  onToggleSelected: (id: number) => void;
+  onPause: (row: DisplayCampaign) => void;
+  onArchive: (row: DisplayCampaign) => void;
+}) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: row.id });
   const navigate = useNavigate();
 
@@ -440,8 +661,24 @@ function SortableCampaignRow({ row, isTied }: { row: DisplayCampaign; isTied: bo
     <TableRow
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      data-state={isDragging ? 'selected' : undefined}
+      data-state={isDragging || selected ? 'selected' : undefined}
     >
+      <TableCell>
+        {/* Same rule as the menu: a built-in is drawn disabled with its reason, an archived row has nothing to select. */}
+        {row.displayStatus !== 'archived' && (
+          <Checkbox
+            checked={selected}
+            disabled={row.is_builtin}
+            onCheckedChange={() => onToggleSelected(row.id)}
+            aria-label={sprintf(
+              /* translators: %s: the campaign's name. */
+              __('Select “%s”', 'yayloyalty'),
+              row.name,
+            )}
+            aria-describedby={row.is_builtin ? BUILTIN_SELECT_REASON_ID : undefined}
+          />
+        )}
+      </TableCell>
       <TableCell className="px-1">
         <button
           type="button"
@@ -480,7 +717,7 @@ function SortableCampaignRow({ row, isTied }: { row: DisplayCampaign; isTied: bo
               </Badge>
               <YayLoyaltyToolTip
                 trigger={<Lock className="text-muted-foreground size-3" />}
-                content={__('Built-in campaigns cannot be deleted.', 'yayloyalty')}
+                content={__('Built-in campaigns cannot be archived.', 'yayloyalty')}
               />
             </>
           )}
@@ -534,15 +771,58 @@ function SortableCampaignRow({ row, isTied }: { row: DisplayCampaign; isTied: bo
             >
               {__('Duplicate', 'yayloyalty')}
             </DropdownMenuItem>
-            {/* Inert: no confirm-and-delete flow wired yet. */}
-            <DropdownMenuItem variant="destructive" disabled={row.is_builtin} onSelect={() => {}}>
-              {__('Delete', 'yayloyalty')}
-            </DropdownMenuItem>
+            {/* Shown for built-ins too, as their substitute for Archive. Deferred so the dropdown closes first. */}
+            {(row.displayStatus === 'active' || row.displayStatus === 'scheduled') && (
+              <DropdownMenuItem onSelect={() => setTimeout(() => onPause(row), 0)}>
+                {__('Pause', 'yayloyalty')}
+              </DropdownMenuItem>
+            )}
+            {/* Nothing to archive on an archived row. The dialog itself decides archive vs delete. */}
+            {row.displayStatus !== 'archived' && !row.is_builtin && (
+              // Deferred so the dropdown closes and restores focus to this trigger before the dialog opens.
+              <DropdownMenuItem variant="destructive" onSelect={() => setTimeout(() => onArchive(row), 0)}>
+                {__('Archive', 'yayloyalty')}
+              </DropdownMenuItem>
+            )}
+            {/* Drawn disabled with its reason rather than omitted: someone who came looking for
+                Archive gets an answer instead of an absence. */}
+            {row.is_builtin && (
+              <>
+                <DropdownMenuItem variant="destructive" disabled aria-describedby={`campaign-archive-reason-${row.id}`}>
+                  {__('Archive', 'yayloyalty')}
+                  <span className="ml-auto text-[10px] font-semibold tracking-wide uppercase">
+                    {__('Not available', 'yayloyalty')}
+                  </span>
+                </DropdownMenuItem>
+                <p
+                  id={`campaign-archive-reason-${row.id}`}
+                  className="text-muted-foreground max-w-60 px-2 pb-1.5 text-xs"
+                >
+                  {__('Default campaigns can’t be archived. You can pause one instead.', 'yayloyalty')}
+                </p>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </TableCell>
     </TableRow>
   );
+}
+
+/** The default stays visible regardless of rank; the rest cap at VISIBLE_NON_DEFAULT_ROWS until expanded. */
+function splitCollapsedRows(
+  groupRows: DisplayCampaign[],
+  expanded: boolean,
+): Pick<CampaignGroup, 'visibleRows' | 'hiddenRows'> {
+  const hiddenRows = expanded ? [] : groupRows.filter((row) => !row.is_builtin).slice(VISIBLE_NON_DEFAULT_ROWS);
+  const hiddenIds = new Set(hiddenRows.map((row) => row.id));
+
+  return { visibleRows: groupRows.filter((row) => !hiddenIds.has(row.id)), hiddenRows };
+}
+
+/** A built-in can never be archived, and an archived row has nothing left to archive. */
+function isSelectable(row: DisplayCampaign): boolean {
+  return !row.is_builtin && row.displayStatus !== 'archived';
 }
 
 /** For the `noLiveCampaign` preview: a purchase campaign that was active no longer is. */

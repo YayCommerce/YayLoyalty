@@ -41,8 +41,8 @@ export type LooseEnds = z.infer<typeof looseEndsSchema>;
 
 /**
  * 4b's expiring-batch summary — always `null` today, since it
- * needs `lots`, which doesn't exist yet (docs/data-model.md). `batches` is
- * separately nullable inside: `null` means the Free inactivity model (no
+ * needs `lots`, which doesn't exist yet (docs/data-model/future-tables.md).
+ * `batches` is separately nullable inside: `null` means the Free inactivity model (no
  * batches exist at all, not "zero"). Percentages and money are derived
  * client-side — this carries figures only.
  */

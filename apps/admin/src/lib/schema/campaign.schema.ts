@@ -90,6 +90,8 @@ export const campaignSchema = z.object({
   created_by: z.number().int().nullable(),
   created_at: z.string(),
   updated_at: z.string(),
+  /** Lifetime, not windowed: 0 means never awarded. */
+  points_issued_lifetime: z.number().int(),
 });
 
 export type Campaign = z.infer<typeof campaignSchema>;
@@ -234,6 +236,14 @@ export const campaignUpdateInputSchema = z
   });
 
 export type CampaignUpdateInput = z.infer<typeof campaignUpdateInputSchema>;
+
+/** Response of DELETE campaigns/{id}, mirroring delete_item(). */
+export const campaignDeleteResponseSchema = z.object({
+  deleted: z.boolean(),
+  id: z.number().int(),
+});
+
+export type CampaignDeleteResponse = z.infer<typeof campaignDeleteResponseSchema>;
 
 /* ─── Write: per-trigger config field maps ──────────────────────────── */
 
