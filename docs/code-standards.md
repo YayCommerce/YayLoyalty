@@ -208,7 +208,7 @@ Fact-table entities are immutable **by convention**: private properties, getters
 
 Whether something is live *right now* is computed at read time from `status` plus `starts_at`/`ends_at`, evaluated against the **event's** timestamp — an order's award time, not the current request time. A late-processed order must be scored under the rules that were live when it happened.
 
-`archived` is a terminal merchant choice: an archived campaign is kept for history and never fires. Built-in campaigns cannot be archived (`Campaign::set_status()` throws), because the Free UI and the earning engine both assume they exist.
+`archived` is a terminal merchant choice: an archived campaign is kept for history and never fires. Built-in campaigns cannot be archived (`Campaign::set_status()` throws; `CampaignRestController::update_item()` answers 403 first), because the Free UI and the earning engine both assume they exist.
 
 **No cron job may flip a status.** If you find yourself writing one, the model is being worked around.
 
