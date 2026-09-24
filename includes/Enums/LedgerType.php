@@ -27,6 +27,9 @@ final class LedgerType {
     /** Manual admin adjustment, positive or negative. */
     public const ADJUST = 'adjust';
 
+    /** Manual adjustment written with "adjust lifetime totals" off — moves balance only. */
+    public const CORRECTION = 'correction';
+
     /**
      * @return string[]
      */
@@ -38,6 +41,7 @@ final class LedgerType {
             self::REFUND_REDEEM,
             self::EXPIRE,
             self::ADJUST,
+            self::CORRECTION,
         ];
     }
 
@@ -63,8 +67,9 @@ final class LedgerType {
     }
 
     /**
-     * lifetime_earned = SUM(earn) + SUM(adjust) - SUM(|refund_earn|), counting
-     * only adjusts made with "adjust lifetime totals" on. Spending (redeem,
+     * lifetime_earned = SUM(earn) + SUM(adjust) - SUM(|refund_earn|). `correction`
+     * (a manual adjustment written with "adjust lifetime totals" off) is
+     * deliberately excluded — it moves balance only. Spending (redeem,
      * expire) never demotes a tier; an admin's deduction can.
      */
     public static function affects_lifetime_earned( string $type ): bool {

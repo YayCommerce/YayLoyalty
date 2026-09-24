@@ -40,6 +40,12 @@ final class LedgerQueryArgs {
             return 'redeem';
         }
 
+        // A balance-only manual adjustment (LedgerType::CORRECTION) shares the "Adjust" filter bucket
+        // with LedgerType::ADJUST — same admin action, own label client-side.
+        if ( LedgerType::CORRECTION === $type ) {
+            return LedgerType::ADJUST;
+        }
+
         return $type;
     }
 

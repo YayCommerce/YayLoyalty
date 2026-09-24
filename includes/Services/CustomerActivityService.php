@@ -115,13 +115,15 @@ final class CustomerActivityService {
     }
 
     /**
-     * Only a manual admin adjustment (ADJUST + MANUAL) — every other ledger
-     * row is the ledger tab's business, not the activity log's.
-     * `staff_only` is a display flag only (the row quotes an internal admin
-     * note), never access control.
+     * Only a manual admin adjustment (ADJUST or its balance-only sibling
+     * CORRECTION, + MANUAL) — every other ledger row is the ledger tab's
+     * business, not the activity log's. `staff_only` is a display flag only
+     * (the row quotes an internal admin note), never access control.
      */
     public function record_points_adjusted( LedgerEntry $entry ): void {
-        if ( LedgerType::ADJUST !== $entry->get_type() || LedgerSource::MANUAL !== $entry->get_source() ) {
+        $is_manual_adjustment = in_array( $entry->get_type(), [ LedgerType::ADJUST, LedgerType::CORRECTION ], true );
+
+        if ( ! $is_manual_adjustment || LedgerSource::MANUAL !== $entry->get_source() ) {
             return;
         }
 
