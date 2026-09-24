@@ -6,6 +6,15 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
 
 ## Unreleased
 
+### Added — Source-of-truth check (2026-09-24)
+
+- **Standards:** `code-standards.md` § 16 names one owner per rule (option names, settings,
+  design bounds, points math, enums, conditions, capabilities, wire shapes, fixtures) and the
+  mirrors the PHP/TS boundary forces; § 17 adds four body-level readability rules for new code.
+- **Skill:** `/source-of-truth-check` (`.claude/skills/`, now tracked) reports code in a diff,
+  a branch (`--branch`, against `dev/edd`) or the whole repo (`--all`) that re-declares a rule
+  the table assigns elsewhere, and fixes only on approval. `evals/cases.md` holds 8 seeded cases.
+
 ### Added — Design settings tab (2026-09-24)
 
 - **Admin** (`/settings/design`, `pages/settings/Design*`, Pro sections in `pro/design/`): launcher,
