@@ -15,6 +15,7 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { LookupMultiSelect } from '@/components/ui/custom/lookup-multi-select';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Field, FieldContent, FieldDescription, FieldError, FieldLabel, FieldTitle } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -23,7 +24,6 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Segmented, SegmentedItem } from '@/components/ui/segmented';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
-import { TagsInput } from '@/components/ui/tags-input';
 import { findBuiltinCampaign, statusLabel, triggerLabel } from '../campaign-labels';
 import { CampaignFormValues, useCampaignEditorContext } from './campaign-editor.form';
 import { CampaignEditorConditions } from './CampaignEditorConditions';
@@ -512,39 +512,30 @@ function RewardFieldsPurchase() {
           <Field>
             <FieldLabel>{__('Excluded products', 'yayloyalty')}</FieldLabel>
             <FieldContent>
-              <TagsInput
-                value={(config.excluded_product_ids ?? []).map(String)}
-                onValueChange={(next) => patchConfig({ excluded_product_ids: toIntList(next) })}
-                placeholder={__('Add a product ID and press Enter', 'yayloyalty')}
+              <LookupMultiSelect
+                entity="products"
+                value={config.excluded_product_ids ?? []}
+                onChange={(next) => patchConfig({ excluded_product_ids: next })}
+                placeholder={__('Search products', 'yayloyalty')}
               />
-              <FieldDescription>
-                {__('Raw product IDs — there is no product search yet to pick these by name.', 'yayloyalty')}
-              </FieldDescription>
             </FieldContent>
           </Field>
 
           <Field>
             <FieldLabel>{__('Excluded categories', 'yayloyalty')}</FieldLabel>
             <FieldContent>
-              <TagsInput
-                value={(config.excluded_category_ids ?? []).map(String)}
-                onValueChange={(next) => patchConfig({ excluded_category_ids: toIntList(next) })}
-                placeholder={__('Add a category ID and press Enter', 'yayloyalty')}
+              <LookupMultiSelect
+                entity="categories"
+                value={config.excluded_category_ids ?? []}
+                onChange={(next) => patchConfig({ excluded_category_ids: next })}
+                placeholder={__('Search categories', 'yayloyalty')}
               />
-              <FieldDescription>
-                {__('Raw category IDs — there is no category search yet to pick these by name.', 'yayloyalty')}
-              </FieldDescription>
             </FieldContent>
           </Field>
         </div>
       )}
     </div>
   );
-}
-
-// Same positive-integer check as IntListEditor, so the two agree on a valid id.
-function toIntList(values: string[]): number[] {
-  return values.map((value) => Number.parseInt(value, 10)).filter((value) => Number.isInteger(value) && value > 0);
 }
 
 /** config_schema()['signup']. */

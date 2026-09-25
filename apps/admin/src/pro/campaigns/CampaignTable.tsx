@@ -15,6 +15,7 @@ import {
   Campaign,
   CAMPAIGN_DISPLAY_STATUSES,
   CampaignDisplayStatus,
+  LITE_CAMPAIGN_TRIGGERS,
   resolveCampaignDisplayStatus,
 } from '@/lib/schema/campaign.schema';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -540,8 +541,8 @@ function CampaignTableHeader({ selectAll }: { selectAll: ReactNode }) {
   );
 }
 
-/** Every store has at least the three built-ins, one per group; the placeholder draws exactly that. */
-const SKELETON_GROUPS: readonly CampaignGroupKey[] = ['purchase', 'signup', 'review'];
+/** Every store has at least the built-ins, one per Lite trigger's group; the placeholder draws exactly that. */
+const SKELETON_GROUPS: readonly CampaignGroupKey[] = LITE_CAMPAIGN_TRIGGERS.map(triggerGroup);
 
 /** Mirrors the loaded table: real header, a group band and one row per group, cell for cell. */
 function CampaignTableSkeleton() {

@@ -48,7 +48,7 @@ class LocalizeHelper {
                 'reviewed'  => (bool) get_option( SettingsHelper::OPTION_REVIEWED, false ),
             ],
             'wcMeta'      => [
-                'currency_data' => [
+                'currency_data'    => [
                     'currency'     => $currency,
                     'symbol'       => function_exists( 'get_woocommerce_currency_symbol' ) ? html_entity_decode( get_woocommerce_currency_symbol( $currency ) ) : '$',
                     'position'     => get_option( 'woocommerce_currency_pos', 'left' ),
@@ -56,9 +56,44 @@ class LocalizeHelper {
                     'decimal_sep'  => function_exists( 'wc_get_price_decimal_separator' ) ? wc_get_price_decimal_separator() : '.',
                     'num_decimals' => function_exists( 'wc_get_price_decimals' ) ? wc_get_price_decimals() : 2,
                 ],
+                // id => admin title, code => name. The campaign condition pickers offer these
+                // instead of free text; CampaignConditionSet validates currencies against the same list.
+                'payment_gateways' => self::payment_gateways(),
+                'countries'        => self::decoded_names( function_exists( 'WC' ) && WC()->countries ? WC()->countries->get_countries() : [] ),
+                'currencies'       => self::decoded_names( function_exists( 'get_woocommerce_currencies' ) ? get_woocommerce_currencies() : [] ),
             ],
         ];
 
         return apply_filters( 'yayloyalty_localize_meta', $meta );
+    }
+
+    /**
+     * Every registered gateway, enabled or not, as id => admin title; a paused gateway can still
+     * be named by a campaign.
+     *
+     * @return array<string, string>
+     */
+    private static function payment_gateways(): array {
+        if ( ! function_exists( 'WC' ) || ! WC()->payment_gateways ) {
+            return [];
+        }
+
+        $gateways = [];
+
+        foreach ( WC()->payment_gateways->payment_gateways() as $gateway ) {
+            $gateways[ (string) $gateway->id ] = html_entity_decode( wp_strip_all_tags( (string) $gateway->get_method_title() ), ENT_QUOTES );
+        }
+
+        return $gateways;
+    }
+
+    /**
+     * WooCommerce stores some names with entities ("Côte d&#039;Ivoire"); the SPA renders text, not HTML.
+     *
+     * @param array<string, string> $names
+     * @return array<string, string>
+     */
+    private static function decoded_names( array $names ): array {
+        return array_map( static fn( $name ) => html_entity_decode( (string) $name, ENT_QUOTES ), $names );
     }
 }
