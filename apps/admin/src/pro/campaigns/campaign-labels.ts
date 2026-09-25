@@ -1,6 +1,7 @@
-import { __, _n, sprintf } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 
-import { parseWPCurrency, parseWPDate } from '@/lib/helpers/format.helper';
+import { parseWPDate } from '@/lib/helpers/format.helper';
+import { pointsPerCurrencyLabel } from '@/lib/helpers/points.helper';
 import {
   Campaign,
   CAMPAIGN_CONDITION_TYPES,
@@ -58,14 +59,7 @@ export function givesLabel(trigger: CampaignTrigger, config: Record<string, unkn
   }
 
   if (trigger === 'purchase') {
-    const rate = Number(config.points_per_unit ?? 0);
-
-    return sprintf(
-      /* translators: 1: points earned per unit of currency spent; 2: one unit of the store currency, formatted. */
-      _n('%1$s pt per %2$s', '%1$s pts per %2$s', rate, 'yayloyalty'),
-      String(rate),
-      parseWPCurrency(1),
-    );
+    return pointsPerCurrencyLabel(Number(config.points_per_unit ?? 0));
   }
 
   // Every other trigger's config carries a flat `points`.
