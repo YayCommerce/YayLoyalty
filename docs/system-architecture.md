@@ -423,6 +423,9 @@ CampaignRestController::update_item()  via  exec_write()
     ├─ CampaignTrigger::is_valid( trigger )        must be fireable in THIS build (all(), filtered) — trigger itself is immutable after create
     ├─ Campaign::validate_config( trigger, config ) keys whitelisted per trigger
     ├─ Campaign::conditions_are_valid()            validates the 10-type condition set
+    ├─ purchase rate: points_per_unit / multiplier must be > 0 (config_schema exclusive_min), and a rate-mode config must carry points_per_unit → else 400
+    │     a campaign that matches and earns 0 stops every lower-priority campaign, and a missing rate reads as 0
+    ├─ default-purchase switching to multiplier mode → 400 (every multiplier reads its rate)
     ├─ archiving a built-in → 403, checked before any setter runs
     ├─ CampaignRepository::update() via Campaign::to_update_row()
     └─ Response: decorate() → Campaign::to_array() + points_issued + is_deletable
