@@ -1,6 +1,8 @@
 <?php
 namespace YayLoyalty\Services\Dashboard;
 
+use YayLoyalty\Utils\Dates;
+
 defined( 'ABSPATH' ) || exit;
 
 /**
@@ -50,24 +52,24 @@ final class PeriodWindow {
     }
 
     public function from_utc(): string {
-        return self::utc( $this->from );
+        return Dates::to_utc( $this->from );
     }
 
     public function to_utc(): string {
-        return self::utc( $this->to );
+        return Dates::to_utc( $this->to );
     }
 
     public function prev_from_utc(): string {
-        return self::utc( $this->prev_from );
+        return Dates::to_utc( $this->prev_from );
     }
 
     public function prev_to_utc(): string {
-        return self::utc( $this->from );
+        return Dates::to_utc( $this->from );
     }
 
     /** Start of the site's current calendar day, UTC — "today" for activity counts. */
     public function today_from_utc(): string {
-        return self::utc( $this->to->modify( '-1 day' ) );
+        return Dates::to_utc( $this->to->modify( '-1 day' ) );
     }
 
     /** Unix timestamps for WooCommerce order queries: from, to, prev_from (prev_to is from_ts()). */
@@ -115,9 +117,5 @@ final class PeriodWindow {
     /** Seconds to add to a UTC DATETIME so DATE() yields the site calendar day. */
     public function utc_offset_seconds(): int {
         return $this->from->getOffset();
-    }
-
-    private static function utc( \DateTimeImmutable $at ): string {
-        return $at->setTimezone( new \DateTimeZone( 'UTC' ) )->format( 'Y-m-d H:i:s' );
     }
 }

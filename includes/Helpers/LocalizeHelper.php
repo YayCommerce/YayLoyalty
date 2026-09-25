@@ -3,6 +3,7 @@ namespace YayLoyalty\Helpers;
 
 use YayLoyalty\Access\Capabilities;
 use YayLoyalty\Controllers\BaseRestController;
+use YayLoyalty\Utils\Text;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -81,19 +82,17 @@ class LocalizeHelper {
         $gateways = [];
 
         foreach ( WC()->payment_gateways->payment_gateways() as $gateway ) {
-            $gateways[ (string) $gateway->id ] = html_entity_decode( wp_strip_all_tags( (string) $gateway->get_method_title() ), ENT_QUOTES );
+            $gateways[ (string) $gateway->id ] = Text::plain( (string) $gateway->get_method_title() );
         }
 
         return $gateways;
     }
 
     /**
-     * WooCommerce stores some names with entities ("Côte d&#039;Ivoire"); the SPA renders text, not HTML.
-     *
      * @param array<string, string> $names
      * @return array<string, string>
      */
     private static function decoded_names( array $names ): array {
-        return array_map( static fn( $name ) => html_entity_decode( (string) $name, ENT_QUOTES ), $names );
+        return array_map( static fn( $name ) => Text::plain( (string) $name ), $names );
     }
 }

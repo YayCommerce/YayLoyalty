@@ -207,6 +207,35 @@ final class CampaignRestController extends AbstractRestController {
         }
 
         // Validate before any setter runs so a rejected request leaves the model untouched.
+        $error = $this->update_error( $campaign, $request );
+
+        if ( null !== $error ) {
+            return $error;
+        }
+
+        // Checked against the stored date when the request moves one side only. A body that
+        // touches neither date (pause, archive, rename) must still go through on a row whose
+        // stored dates were never in order, or that row could never be repaired or retired.
+        $moves_dates = $request->has_param( 'starts_at' ) || $request->has_param( 'ends_at' );
+        $starts_at   = $request->has_param( 'starts_at' ) ? $this->nullable_date( $request['starts_at'] ) : $campaign->get_starts_at();
+        $ends_at     = $request->has_param( 'ends_at' ) ? $this->nullable_date( $request['ends_at'] ) : $campaign->get_ends_at();
+
+        if ( $moves_dates && ! self::dates_in_order( $starts_at, $ends_at ) ) {
+            return $this->error_invalid_arguments( __( 'The campaign must end after it starts.', 'yayloyalty' ) );
+        }
+
+        self::apply_update( $campaign, $request );
+        $campaign->set_starts_at( $starts_at );
+        $campaign->set_ends_at( $ends_at );
+
+        $update = $campaign->to_update_row();
+        $this->campaigns->update( (int) $campaign->get_id(), $update['data'], $update['format'] );
+
+        return self::decorate( $this->ledger, [ $campaign ] )[0];
+    }
+
+    /** Why an update request must be refused before anything is written, or null when it may proceed. */
+    private function update_error( Campaign $campaign, \WP_REST_Request $request ): ?\WP_Error {
         if ( null !== $request['config'] && ! Campaign::config_is_valid( $campaign->get_trigger(), (array) $request['config'] ) ) {
             return $this->error_invalid_arguments( __( 'The campaign config has an unknown key or a value of the wrong type.', 'yayloyalty' ) );
         }
@@ -231,7 +260,7 @@ final class CampaignRestController extends AbstractRestController {
 
         // Checked here rather than left to set_status()'s exception: a rejected request must
         // answer 403 through this validate-first block, not fall into exec_write()'s 500 path.
-        if ( null !== $request['status'] && Status::ARCHIVED === (string) $request['status'] && $campaign->is_builtin() ) {
+        if ( null !== $request['status'] && Status::ARCHIVED === (string) $request['status'] && ! $campaign->can_archive() ) {
             return $this->error_forbidden( __( 'Built-in campaigns cannot be archived.', 'yayloyalty' ) );
         }
 
@@ -239,18 +268,11 @@ final class CampaignRestController extends AbstractRestController {
             return $this->error_invalid_arguments( __( 'A campaign needs a name.', 'yayloyalty' ) );
         }
 
-        // Checked against the stored date when the request moves one side only. A body that
-        // touches neither date (pause, archive, rename) must still go through on a row whose
-        // stored dates were never in order, or that row could never be repaired or retired.
-        $moves_dates = $request->has_param( 'starts_at' ) || $request->has_param( 'ends_at' );
-        $starts_at   = $request->has_param( 'starts_at' ) ? $this->nullable_date( $request['starts_at'] ) : $campaign->get_starts_at();
-        $ends_at     = $request->has_param( 'ends_at' ) ? $this->nullable_date( $request['ends_at'] ) : $campaign->get_ends_at();
+        return null;
+    }
 
-        if ( $moves_dates && ! self::dates_in_order( $starts_at, $ends_at ) ) {
-            return $this->error_invalid_arguments( __( 'The campaign must end after it starts.', 'yayloyalty' ) );
-        }
-
-        // slug and trigger are immutable after create: built-ins are addressed by slug across sites.
+    /** Copies the request's editable fields onto $campaign; slug and trigger are immutable after create, since built-ins are addressed by slug across sites. */
+    private static function apply_update( Campaign $campaign, \WP_REST_Request $request ): void {
         if ( null !== $request['name'] ) {
             $campaign->set_name( trim( (string) $request['name'] ) );
         }
@@ -271,16 +293,8 @@ final class CampaignRestController extends AbstractRestController {
             $campaign->set_conditions( (array) $request['conditions'] );
         }
 
-        $campaign->set_starts_at( $starts_at );
-        $campaign->set_ends_at( $ends_at );
-
         $campaign->set_updated_at( Dates::now() );
         $campaign->set_updated_by( get_current_user_id() );
-
-        $update = $campaign->to_update_row();
-        $this->campaigns->update( (int) $campaign->get_id(), $update['data'], $update['format'] );
-
-        return self::decorate( $this->ledger, [ $campaign ] )[0];
     }
 
     public function delete_item( \WP_REST_Request $request ) {
@@ -290,7 +304,6 @@ final class CampaignRestController extends AbstractRestController {
             return $this->error_not_found( __( 'Campaign not found.', 'yayloyalty' ) );
         }
 
-        // The engine and the Free UI expect built-ins to exist. is_builtin is readonly, so this cannot be sidestepped.
         if ( $campaign->is_builtin() ) {
             return $this->error_forbidden( __( 'Built-in campaigns cannot be deleted.', 'yayloyalty' ) );
         }
@@ -298,9 +311,7 @@ final class CampaignRestController extends AbstractRestController {
         $id     = (int) $campaign->get_id();
         $totals = $this->ledger->totals_by_campaign( [ $id ] );
 
-        // count, never points: a campaign earned-then-fully-refunded nets 0 points but still has
-        // rows naming it, and deleting would orphan them.
-        if ( ( $totals[ $id ]['count'] ?? 0 ) > 0 ) {
+        if ( ! self::is_deletable( $campaign, $totals[ $id ]['count'] ?? 0 ) ) {
             return $this->error_conflict( __( 'This campaign has awarded points. Archive it instead of deleting it.', 'yayloyalty' ) );
         }
 
@@ -359,22 +370,32 @@ final class CampaignRestController extends AbstractRestController {
 
                 return $campaign->to_array() + [
                     'points_issued' => $total['points'],
-                    'is_deletable'  => ! $campaign->is_builtin() && 0 === $total['count'],
+                    'is_deletable'  => self::is_deletable( $campaign, $total['count'] ),
                 ];
             },
             $campaigns
         );
     }
 
+    /**
+     * Whether $campaign may be deleted: never a built-in (the engine and the Free UI expect them;
+     * is_builtin is readonly, so this cannot be sidestepped), and only with no ledger row naming
+     * it. Rows, never points: a campaign earned-then-fully-refunded nets 0 points but still has
+     * rows, and deleting would orphan them.
+     */
+    private static function is_deletable( Campaign $campaign, int $ledger_rows ): bool {
+        return ! $campaign->is_builtin() && 0 === $ledger_rows;
+    }
+
     /** Whether an open-ended or unscheduled side passes, and two set dates run forward (ends_at is exclusive, so equal is empty). */
     private static function dates_in_order( ?string $starts_at, ?string $ends_at ): bool {
-        return null === $starts_at || null === $ends_at || strtotime( $starts_at . ' UTC' ) < strtotime( $ends_at . ' UTC' );
+        return null === $starts_at || null === $ends_at || Dates::to_timestamp( $starts_at ) < Dates::to_timestamp( $ends_at );
     }
 
     /**
      * Route-arg check for starts_at/ends_at: empty clears the date, anything else must be a
      * full UTC `Y-m-d H:i:s`, the shape the column stores and the SPA sends. Without it a
-     * string strtotime() cannot read passes dates_in_order() (false < int) and lands in the
+     * string strtotime() cannot read passes dates_in_order() (it reads as 0) and lands in the
      * DATETIME column as garbage.
      *
      * @param mixed $value

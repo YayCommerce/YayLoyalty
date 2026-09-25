@@ -4,7 +4,7 @@ import { parseWPCurrency } from '@/lib/helpers/format.helper';
 import { formatPoints } from '@/lib/helpers/points.helper';
 import { ROUNDING } from '@/lib/points-math/points-math';
 import { Campaign, resolvePurchaseMode, resolvePurchaseMultiplier } from '@/lib/schema/campaign.schema';
-import { givesLabel } from '../campaign-labels';
+import { givesLabel, isBuiltinCampaignActive } from '../campaign-labels';
 
 /**
  * What a purchase reward is set to, phrased short for the closed Advanced
@@ -205,16 +205,11 @@ export function effectiveRateSentence(config: Record<string, unknown>, defaultRa
   );
 }
 
-/** Whether the default purchase campaign can lend its rate; mirrors PurchaseHandler::is_eligible, which skips a multiplier otherwise. */
-export function isDefaultPurchaseActive(campaign: Campaign | undefined): boolean {
-  return campaign?.status === 'active';
-}
-
 /** The rate a multiplier multiplies; undefined when the default is missing, not active, or has no rate. */
 export function defaultPurchaseRate(campaign: Campaign | undefined): number | undefined {
   const rate = campaign?.config.points_per_unit;
 
-  return isDefaultPurchaseActive(campaign) && typeof rate === 'number' ? rate : undefined;
+  return isBuiltinCampaignActive(campaign) && typeof rate === 'number' ? rate : undefined;
 }
 
 /** A multiplier campaign's effective rate. Two 2-decimal inputs give at most 4 decimals; toFixed drops float noise such as 3.3000000000000003. */

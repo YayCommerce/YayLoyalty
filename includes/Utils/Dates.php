@@ -24,6 +24,11 @@ final class Dates {
         return gmdate( self::MYSQL_FORMAT, $base + $seconds );
     }
 
+    /** A moment in any zone as a UTC MySQL DATETIME, the form every stored and queried bound takes. */
+    public static function to_utc( \DateTimeImmutable $at ): string {
+        return $at->setTimezone( new \DateTimeZone( 'UTC' ) )->format( self::MYSQL_FORMAT );
+    }
+
     public static function to_timestamp( string $utc ): int {
         return (int) strtotime( $utc . ' UTC' );
     }

@@ -97,7 +97,7 @@ class DashboardNotices {
         }
 
         $since   = $campaign->get_updated_at();
-        $now_utc = $now_site->setTimezone( new \DateTimeZone( 'UTC' ) )->format( Dates::MYSQL_FORMAT );
+        $now_utc = Dates::to_utc( $now_site );
         $orders  = $this->repository->count_orders( Dates::to_timestamp( $since ), $now_site->getTimestamp() );
 
         return [
@@ -125,8 +125,8 @@ class DashboardNotices {
         $yesterday     = $days[ count( $days ) - 2 ];
         $day_start     = new \DateTimeImmutable( $yesterday, $now_site->getTimezone() );
         $day_end       = $day_start->modify( '+1 day' );
-        $day_start_utc = $day_start->setTimezone( new \DateTimeZone( 'UTC' ) )->format( Dates::MYSQL_FORMAT );
-        $day_end_utc   = $day_end->setTimezone( new \DateTimeZone( 'UTC' ) )->format( Dates::MYSQL_FORMAT );
+        $day_start_utc = Dates::to_utc( $day_start );
+        $day_end_utc   = Dates::to_utc( $day_end );
 
         $result = $this->detector->evaluate(
             array_column( $series, 'issued', 'date' ),

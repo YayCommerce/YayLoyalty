@@ -14,6 +14,7 @@ use YayLoyalty\Repositories\DashboardRepository;
 use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Services\Dashboard\DashboardMath;
 use YayLoyalty\Services\Dashboard\PeriodWindow;
+use YayLoyalty\Utils\Dates;
 use YayLoyalty\Utils\PointsMath;
 
 defined( 'ABSPATH' ) || exit;
@@ -308,12 +309,12 @@ final class CampaignPerformanceRestController extends AbstractRestController {
      * @return array{from: string, to: string} Y-m-d, site-tz, both ends inclusive.
      */
     private function chart_window( array $row ): array {
-        $tz  = wp_timezone();
-        $now = ( new \DateTimeImmutable( 'now', $tz ) )->setTime( 0, 0, 0 );
+        $site_timezone = wp_timezone();
+        $now           = ( new \DateTimeImmutable( 'now', $site_timezone ) )->setTime( 0, 0, 0 );
 
-        $starts = $this->site_midnight( $row['starts_at'], $tz );
+        $starts = $this->site_midnight( $row['starts_at'], $site_timezone );
         // ends_at is exclusive, so the last live day is the one holding the second before it — a 10:00 end keeps that morning.
-        $last_day = $this->site_midnight( $row['ends_at'], $tz, '-1 second' );
+        $last_day = $this->site_midnight( $row['ends_at'], $site_timezone, '-1 second' );
 
         $to = null !== $last_day && $last_day < $now ? $last_day : $now;
 
@@ -336,7 +337,7 @@ final class CampaignPerformanceRestController extends AbstractRestController {
         ];
     }
 
-    private function site_midnight( ?string $utc, \DateTimeZone $tz, string $shift = '' ): ?\DateTimeImmutable {
+    private function site_midnight( ?string $utc, \DateTimeZone $site_timezone, string $shift = '' ): ?\DateTimeImmutable {
         if ( null === $utc || '' === $utc ) {
             return null;
         }
@@ -347,7 +348,7 @@ final class CampaignPerformanceRestController extends AbstractRestController {
             return null;
         }
 
-        return ( '' === $shift ? $date : $date->modify( $shift ) )->setTimezone( $tz )->setTime( 0, 0, 0 );
+        return ( '' === $shift ? $date : $date->modify( $shift ) )->setTimezone( $site_timezone )->setTime( 0, 0, 0 );
     }
 
     /**
@@ -360,14 +361,14 @@ final class CampaignPerformanceRestController extends AbstractRestController {
      * @return array<int, array{date: string, points: int}>
      */
     private function daily_series( int $campaign_id, array $window ): array {
-        $tz = wp_timezone();
+        $site_timezone = wp_timezone();
 
-        $from = new \DateTimeImmutable( $window['from'] . ' 00:00:00', $tz );
-        $to   = ( new \DateTimeImmutable( $window['to'] . ' 00:00:00', $tz ) )->modify( '+1 day' );
+        $from = new \DateTimeImmutable( $window['from'] . ' 00:00:00', $site_timezone );
+        $to   = ( new \DateTimeImmutable( $window['to'] . ' 00:00:00', $site_timezone ) )->modify( '+1 day' );
 
         $rows = $this->points->daily_by_campaign(
-            $from->setTimezone( new \DateTimeZone( 'UTC' ) )->format( 'Y-m-d H:i:s' ),
-            $to->setTimezone( new \DateTimeZone( 'UTC' ) )->format( 'Y-m-d H:i:s' ),
+            Dates::to_utc( $from ),
+            Dates::to_utc( $to ),
             $from->getOffset(),
             [ $campaign_id ]
         );

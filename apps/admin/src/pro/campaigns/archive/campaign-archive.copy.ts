@@ -5,7 +5,7 @@ import { parseWPCurrency, parseWPDate, parseWPRelativeDate } from '@/lib/helpers
 import { formatPoints, pointsPhrase } from '@/lib/helpers/points.helper';
 import type { CampaignPerformance } from '@/lib/schema/campaign-performance.schema';
 import type { Campaign, CampaignDisplayStatus } from '@/lib/schema/campaign.schema';
-import { conditionsLabel, givesLabel, scheduleLabel, statusLabel } from '../campaign-labels';
+import { conditionsLabel, givesLabel, isBuiltinCampaignActive, scheduleLabel, statusLabel } from '../campaign-labels';
 
 /**
  * Case resolution and trigger-aware copy for CampaignArchiveDialog. Sentences
@@ -241,7 +241,7 @@ export function activeStops(campaign: Campaign, fallback: Campaign | undefined):
 
   if (fallback) {
     lines.push(
-      fallback.status === 'active'
+      isBuiltinCampaignActive(fallback)
         ? sprintf(
             /* translators: 1: the built-in campaign's name; 2: what it gives, e.g. "1 pt per $1.00". */
             __('What it matched falls back to %1$s at %2$s', 'yayloyalty'),

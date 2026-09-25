@@ -8,7 +8,7 @@ import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 /** Mirrors CampaignTrigger::lite_triggers(). */
 export const LITE_CAMPAIGN_TRIGGERS = ['purchase', 'signup', 'review'] as const;
 
-/** The only triggers POST campaigns accepts (create_item() rejects everything else via CampaignTrigger::is_valid()). */
+/** The triggers the create form offers; the Lite build's POST accepts only these, while Pro adds more through the yayloyalty_campaign_triggers filter that CampaignTrigger::is_valid() reads. */
 export type LiteCampaignTrigger = (typeof LITE_CAMPAIGN_TRIGGERS)[number];
 
 /** Mirrors YayLoyaltyPro::ADDED_TRIGGERS. */
@@ -349,6 +349,11 @@ export const DEFAULT_PURCHASE_MODE = 'rate' as const;
 /** Mirrors PurchaseHandler::is_multiplier(); the one place `mode` is resolved. */
 export function resolvePurchaseMode(config: Record<string, unknown>): 'rate' | 'multiplier' {
   return config.mode === 'multiplier' ? 'multiplier' : DEFAULT_PURCHASE_MODE;
+}
+
+/** The form's side of CampaignRestController::lacks_purchase_rate(): a rate-mode purchase campaign with no numeric rate could never earn, so saving it is refused. */
+export function lacksPurchaseRate(config: Record<string, unknown>): boolean {
+  return resolvePurchaseMode(config) === 'rate' && typeof config.points_per_unit !== 'number';
 }
 
 /** Mirrors PurchaseHandler::multiplier(); the one place a missing factor becomes ×1. */
