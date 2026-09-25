@@ -8,6 +8,7 @@ import {
   CampaignConditionKind,
   CampaignDisplayStatus,
   CampaignTrigger,
+  resolvePurchaseMultiplier,
 } from '@/lib/schema/campaign.schema';
 
 /** Campaign presentation strings derived from the real fields; the wire carries none. */
@@ -54,7 +55,7 @@ export function givesLabel(trigger: CampaignTrigger, config: Record<string, unkn
   if (trigger === 'purchase' && config.mode === 'multiplier') {
     return sprintf(
       /* translators: %s: the multiplier, e.g. "2". */ __('×%s points', 'yayloyalty'),
-      String(config.multiplier ?? 1),
+      String(resolvePurchaseMultiplier(config)),
     );
   }
 

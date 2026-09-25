@@ -185,6 +185,15 @@ describe('campaignReadiness', () => {
     expect(readiness.items[0].ok).toBe(true);
   });
 
+  it('flags a multiplier of 0, which the server refuses', () => {
+    const readiness = campaignReadiness(values({ config: { mode: 'multiplier', multiplier: 0 } }), {
+      trigger: 'purchase',
+      defaultPurchaseCampaign: undefined,
+    });
+
+    expect(readiness.items[0].ok).toBe(false);
+  });
+
   it('flags a multiplier whose default campaign is paused', () => {
     const readiness = campaignReadiness(values({ config: { mode: 'multiplier', multiplier: 2 } }), {
       trigger: 'purchase',

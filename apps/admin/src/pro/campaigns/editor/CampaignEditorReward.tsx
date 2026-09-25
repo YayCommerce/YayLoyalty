@@ -4,7 +4,7 @@ import { useFormContext } from 'react-hook-form';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { usePurchaseCampaignsQuery } from '@/lib/queries/campaign.queries';
-import { CampaignTrigger, resolvePurchaseMode } from '@/lib/schema/campaign.schema';
+import { CampaignTrigger, resolvePurchaseMode, resolvePurchaseMultiplier } from '@/lib/schema/campaign.schema';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { LookupMultiSelect } from '@/components/ui/custom/lookup-multi-select';
 import { Field, FieldContent, FieldDescription, FieldLabel, FieldTitle } from '@/components/ui/field';
@@ -92,7 +92,7 @@ function RewardFieldsPurchase() {
     setValue('config', { ...config, ...patch }, { shouldDirty: true, shouldValidate: true });
   }
 
-  const multiplier = config.multiplier ?? 1;
+  const multiplier = resolvePurchaseMultiplier(config as Record<string, unknown>);
 
   const rateInput = (
     <NumberInputRoot

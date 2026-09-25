@@ -9,6 +9,7 @@ import {
   isCampaignScheduleInOrder,
   resolveCampaignDisplayStatus,
   resolvePurchaseMode,
+  resolvePurchaseMultiplier,
 } from '@/lib/schema/campaign.schema';
 import { conditionTypeLabel, statusLabel, triggerLabel } from '../campaign-labels';
 import { CampaignFormValues } from './campaign-editor.form';
@@ -292,7 +293,7 @@ function isRewardConfigured(trigger: CampaignTrigger, config: Record<string, unk
   switch (trigger) {
     case 'purchase':
       return resolvePurchaseMode(config) === 'multiplier'
-        ? config.multiplier === undefined || typeof config.multiplier === 'number'
+        ? resolvePurchaseMultiplier(config) > 0
         : typeof config.points_per_unit === 'number';
     case 'signup':
     case 'review':

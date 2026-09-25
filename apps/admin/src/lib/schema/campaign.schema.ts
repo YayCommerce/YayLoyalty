@@ -350,3 +350,8 @@ export const DEFAULT_PURCHASE_MODE = 'rate' as const;
 export function resolvePurchaseMode(config: Record<string, unknown>): 'rate' | 'multiplier' {
   return config.mode === 'multiplier' ? 'multiplier' : DEFAULT_PURCHASE_MODE;
 }
+
+/** Mirrors PurchaseHandler::multiplier(); the one place a missing factor becomes ×1. */
+export function resolvePurchaseMultiplier(config: Record<string, unknown>): number {
+  return typeof config.multiplier === 'number' ? config.multiplier : 1;
+}

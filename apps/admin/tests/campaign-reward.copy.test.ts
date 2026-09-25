@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { DEFAULT_CAMPAIGN_CONFIG } from '@/lib/schema/campaign.schema';
+import { DEFAULT_CAMPAIGN_CONFIG, resolvePurchaseMultiplier } from '@/lib/schema/campaign.schema';
 import type { Campaign } from '@/lib/schema/campaign.schema';
 import { givesLabel } from '@/pro/campaigns/campaign-labels';
 import {
@@ -151,6 +151,13 @@ describe('default purchase campaign', () => {
     expect(defaultPurchaseRate(campaign('active', { points_per_unit: 2 }))).toBe(2);
     expect(defaultPurchaseRate(campaign('paused', { points_per_unit: 2 }))).toBeUndefined();
     expect(defaultPurchaseRate(campaign('active', {}))).toBeUndefined();
+  });
+});
+
+describe('resolvePurchaseMultiplier', () => {
+  it('reads a missing factor as ×1, like PurchaseHandler::multiplier()', () => {
+    expect(resolvePurchaseMultiplier({})).toBe(1);
+    expect(resolvePurchaseMultiplier({ multiplier: 2.5 })).toBe(2.5);
   });
 });
 

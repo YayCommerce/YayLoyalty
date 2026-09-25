@@ -3,7 +3,7 @@ import { __, _n, sprintf } from '@wordpress/i18n';
 import { parseWPCurrency } from '@/lib/helpers/format.helper';
 import { formatPoints } from '@/lib/helpers/points.helper';
 import { ROUNDING } from '@/lib/points-math/points-math';
-import { Campaign, resolvePurchaseMode } from '@/lib/schema/campaign.schema';
+import { Campaign, resolvePurchaseMode, resolvePurchaseMultiplier } from '@/lib/schema/campaign.schema';
 import { givesLabel } from '../campaign-labels';
 
 /**
@@ -183,7 +183,7 @@ export function effectiveRateSentence(config: Record<string, unknown>, defaultRa
     return sprintf(__('Earns %s.', 'yayloyalty'), givesLabel('purchase', config));
   }
 
-  const multiplier = typeof config.multiplier === 'number' ? config.multiplier : 1;
+  const multiplier = resolvePurchaseMultiplier(config);
 
   if (defaultRate === undefined) {
     return sprintf(
