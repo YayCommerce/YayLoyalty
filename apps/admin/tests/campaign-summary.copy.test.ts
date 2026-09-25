@@ -90,7 +90,9 @@ describe('summarizeCampaign, purchase', () => {
   });
 
   it('keeps a rate campaign’s rate line whatever the default campaign is doing', () => {
-    expect(summarizeCampaign(values(), { ...purchase, defaultPurchasePending: true })[0]).toBe('Earns 1 pt per $1.00.');
+    expect(summarizeCampaign(values(), { ...purchase, isDefaultPurchasePending: true })[0]).toBe(
+      'Earns 1 pt per $1.00.',
+    );
   });
 
   it('says an active default campaign without a rate leaves the multiplier earning nothing', () => {
@@ -107,7 +109,7 @@ describe('summarizeCampaign, purchase', () => {
   it('leaves the rate out while the default campaign is still loading', () => {
     const summary = summarizeCampaign(values({ config: { mode: 'multiplier', multiplier: 2 } }), {
       ...purchase,
-      defaultPurchasePending: true,
+      isDefaultPurchasePending: true,
     });
 
     expect(summary[0]).toBe('Counted on the subtotal after discounts, rounded down.');

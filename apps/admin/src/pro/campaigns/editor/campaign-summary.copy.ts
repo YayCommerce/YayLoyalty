@@ -12,7 +12,13 @@ import {
 } from '@/lib/schema/campaign.schema';
 import { conditionTypeLabel, statusLabel, triggerLabel } from '../campaign-labels';
 import { CampaignFormValues } from './campaign-editor.form';
-import { effectiveRateSentence, purchaseCountingSentence, purchaseLimitSentences } from './campaign-reward.copy';
+import {
+  defaultPurchaseRate,
+  effectiveRateSentence,
+  isDefaultPurchaseActive,
+  purchaseCountingSentence,
+  purchaseLimitSentences,
+} from './campaign-reward.copy';
 
 /**
  * The rail's words: "What this means" prose and the "Before it can run"
@@ -27,7 +33,7 @@ export interface CampaignSummaryContext {
   /** The built-in purchase campaign; undefined when none, or while it loads. */
   defaultPurchaseCampaign: Campaign | undefined;
   /** True until the default campaign has loaded (or when its load failed), so a multiplier's rate is not guessed. */
-  defaultPurchasePending?: boolean;
+  isDefaultPurchasePending?: boolean;
 }
 
 /** Form values to prose, generic across every trigger. Never receives order history, so it cannot fabricate a cost figure. */
@@ -71,14 +77,8 @@ function purchaseSentences(values: CampaignFormValues, context: CampaignSummaryC
   const sentences: string[] = [];
   const isMultiplier = resolvePurchaseMode(config) === 'multiplier';
 
-  if (!isMultiplier || !context.defaultPurchasePending) {
-    const defaultCampaign = context.defaultPurchaseCampaign;
-    const defaultRate =
-      defaultCampaign?.status === 'active' && typeof defaultCampaign.config.points_per_unit === 'number'
-        ? defaultCampaign.config.points_per_unit
-        : undefined;
-
-    sentences.push(effectiveRateSentence(config, defaultRate));
+  if (!isMultiplier || !context.isDefaultPurchasePending) {
+    sentences.push(effectiveRateSentence(config, defaultPurchaseRate(context.defaultPurchaseCampaign)));
   }
 
   sentences.push(purchaseCountingSentence(config), ...purchaseLimitSentences(config));
@@ -215,26 +215,29 @@ function conditionsSentence(conditions: CampaignCondition[]): string {
 /** A list condition's clause carries its size; null when the list is empty. */
 function conditionClause(condition: CampaignCondition): string | null {
   const label = conditionTypeLabel(condition.type);
-  // Decided by the schema, not the value's shape: a number rule's `between` stores a bare [min, max] pair.
-  const kind = CAMPAIGN_CONDITION_SCHEMA[condition.type].value;
-  const list =
-    kind === 'country_list'
-      ? (condition.value as { countries?: unknown } | null)?.countries
-      : kind.endsWith('_list')
-        ? condition.value
-        : undefined;
+  const list = conditionList(condition);
 
   if (!Array.isArray(list)) {
     return label;
   }
 
-  return list.length === 0
-    ? null
-    : sprintf(
-        /* translators: 1: condition type label; 2: how many values it matches. */ __('%1$s (%2$d)', 'yayloyalty'),
-        label,
-        list.length,
-      );
+  if (list.length === 0) {
+    return null;
+  }
+
+  /* translators: 1: condition type label; 2: how many values it matches. */
+  return sprintf(__('%1$s (%2$d)', 'yayloyalty'), label, list.length);
+}
+
+/** The values a list condition matches; undefined for a number rule. Decided by the schema, not the value's shape: a `between` stores a bare [min, max] pair. */
+function conditionList(condition: CampaignCondition): unknown {
+  const kind = CAMPAIGN_CONDITION_SCHEMA[condition.type].value;
+
+  if (kind === 'country_list') {
+    return (condition.value as { countries?: unknown } | null)?.countries;
+  }
+
+  return kind.endsWith('_list') ? condition.value : undefined;
 }
 
 /* ─── "Before it can run": pure form values -> checklist ─────────────── */
@@ -275,7 +278,7 @@ export function campaignReadiness(values: CampaignFormValues, context: CampaignR
   if (context.trigger === 'purchase' && resolvePurchaseMode(values.config) === 'multiplier') {
     items.push({
       label: __('Default purchase campaign exists and is active (required for multiplier mode)', 'yayloyalty'),
-      ok: context.defaultPurchaseCampaign?.status === 'active',
+      ok: isDefaultPurchaseActive(context.defaultPurchaseCampaign),
     });
   }
 

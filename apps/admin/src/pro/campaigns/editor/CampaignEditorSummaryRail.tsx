@@ -49,7 +49,7 @@ export function CampaignEditorSummaryRail({
     trigger,
     defaultPurchaseCampaign,
     // Not isPending: after a failed load it is false too, and the rail would then call a default it never saw inactive.
-    defaultPurchasePending: needsDefaultPurchase && !purchaseCampaignsQuery.isSuccess,
+    isDefaultPurchasePending: needsDefaultPurchase && !purchaseCampaignsQuery.isSuccess,
   });
 
   const readiness = campaignReadiness(values, {

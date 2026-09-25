@@ -15,7 +15,12 @@ import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { findBuiltinCampaign, givesLabel, triggerLabel } from '../campaign-labels';
 import { CampaignFormValues, useCampaignEditorContext } from './campaign-editor.form';
-import { multipliedRate, purchaseAdvancedPhrases } from './campaign-reward.copy';
+import {
+  defaultPurchaseRate,
+  isDefaultPurchaseActive,
+  multipliedRate,
+  purchaseAdvancedPhrases,
+} from './campaign-reward.copy';
 
 /** Reward section: the per-trigger field maps behind the editor's third card. */
 
@@ -70,15 +75,11 @@ function RewardFieldsPurchase() {
 
   // A multiplier campaign silently stops applying unless the default purchase campaign exists
   // and is active. Asked for in multiplier mode only; rate mode has no use for it.
-  const { data: purchaseCampaigns, isSuccess: purchaseCampaignsLoaded } = usePurchaseCampaignsQuery(
+  const { data: purchaseCampaigns, isSuccess: hasLoadedPurchaseCampaigns } = usePurchaseCampaignsQuery(
     mode === 'multiplier',
   );
   const defaultCampaign = findBuiltinCampaign(purchaseCampaigns?.data, 'purchase');
-  // Only an active default lends its rate; the engine skips a multiplier over a paused or missing one.
-  const defaultPointsPerUnit =
-    defaultCampaign?.status === 'active' && typeof defaultCampaign.config.points_per_unit === 'number'
-      ? defaultCampaign.config.points_per_unit
-      : undefined;
+  const defaultPointsPerUnit = defaultPurchaseRate(defaultCampaign);
 
   function patchConfig(patch: Partial<PurchaseConfig>) {
     // Spread the stored config: keys with no control here, such as include_shipping, must survive a save.
@@ -118,7 +119,7 @@ function RewardFieldsPurchase() {
               active; otherwise say what the option does instead of guessing at a rate. The warning
               below explains a paused or missing default. */}
           <FieldDescription>
-            {mode === 'multiplier' && purchaseCampaignsLoaded && defaultPointsPerUnit !== undefined
+            {mode === 'multiplier' && hasLoadedPurchaseCampaigns && defaultPointsPerUnit !== undefined
               ? sprintf(
                   /* translators: 1: the multiplier, e.g. "2"; 2: the default rate, e.g. "1 pt per $1.00"; 3: the resulting rate, e.g. "2 pts per $1.00". */
                   __('%1$s × %2$s = %3$s.', 'yayloyalty'),
@@ -162,19 +163,17 @@ function RewardFieldsPurchase() {
         </div>
       </RadioGroup>
 
-      {mode === 'multiplier' &&
-        purchaseCampaignsLoaded &&
-        (!defaultCampaign || defaultCampaign.status !== 'active') && (
-          <Alert variant="outline">
-            <TriangleAlert />
-            <AlertDescription>
-              {__(
-                'This campaign will not apply: multiplier mode needs the default purchase campaign to exist and be active.',
-                'yayloyalty',
-              )}
-            </AlertDescription>
-          </Alert>
-        )}
+      {mode === 'multiplier' && hasLoadedPurchaseCampaigns && !isDefaultPurchaseActive(defaultCampaign) && (
+        <Alert variant="outline">
+          <TriangleAlert />
+          <AlertDescription>
+            {__(
+              'This campaign will not apply: multiplier mode needs the default purchase campaign to exist and be active.',
+              'yayloyalty',
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
 
       <Separator />
 
