@@ -1,4 +1,4 @@
-import { __, sprintf } from '@wordpress/i18n';
+import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { parseWPCurrency, parseWPDate } from '@/lib/helpers/format.helper';
 import {
@@ -50,18 +50,22 @@ export function triggerLabel(trigger: CampaignTrigger): string {
 }
 
 export function givesLabel(trigger: CampaignTrigger, config: Record<string, unknown>): string {
+  if (trigger === 'purchase' && config.mode === 'multiplier') {
+    return sprintf(
+      /* translators: %s: the multiplier, e.g. "2". */ __('×%s points', 'yayloyalty'),
+      String(config.multiplier ?? 1),
+    );
+  }
+
   if (trigger === 'purchase') {
-    return config.mode === 'multiplier'
-      ? sprintf(
-          /* translators: %s: the multiplier, e.g. "2". */ __('×%s points', 'yayloyalty'),
-          String(config.multiplier ?? 1),
-        )
-      : sprintf(
-          /* translators: 1: points earned per unit of currency spent, 2: one unit of the store currency, formatted. */
-          __('%1$s point(s) per %2$s', 'yayloyalty'),
-          String(config.points_per_unit ?? 0),
-          parseWPCurrency(1),
-        );
+    const rate = Number(config.points_per_unit ?? 0);
+
+    return sprintf(
+      /* translators: 1: points earned per unit of currency spent; 2: one unit of the store currency, formatted. */
+      _n('%1$s pt per %2$s', '%1$s pts per %2$s', rate, 'yayloyalty'),
+      String(rate),
+      parseWPCurrency(1),
+    );
   }
 
   // Every other trigger's config carries a flat `points`.

@@ -243,7 +243,7 @@ export function activeStops(campaign: Campaign, fallback: Campaign | undefined):
     lines.push(
       fallback.status === 'active'
         ? sprintf(
-            /* translators: 1: the built-in campaign's name; 2: what it gives, e.g. "1 point(s) per $1". */
+            /* translators: 1: the built-in campaign's name; 2: what it gives, e.g. "1 pt per $1.00". */
             __('What it matched falls back to %1$s at %2$s', 'yayloyalty'),
             fallback.name,
             givesLabel(fallback.trigger, fallback.config),

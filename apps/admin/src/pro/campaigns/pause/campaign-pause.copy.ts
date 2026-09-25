@@ -16,7 +16,7 @@ export function pauseContextLine(campaign: Campaign, displayStatus: CampaignDisp
 
   if (campaign.is_builtin) {
     return sprintf(
-      /* translators: 1: the campaign's priority; 2: what it gives, e.g. "1 point per $1". */
+      /* translators: 1: the campaign's priority; 2: what it gives, e.g. "1 pt per $1.00". */
       __('The default campaign · priority %1$d · %2$s', 'yayloyalty'),
       campaign.priority,
       gives,
