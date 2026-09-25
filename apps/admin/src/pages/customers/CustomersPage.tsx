@@ -109,7 +109,7 @@ export default function CustomersPage() {
       title={__('Customers', 'yayloyalty')}
       description={
         customersQuery.isPending ? (
-          <Skeleton className="h-4 w-32" />
+          <Skeleton tone="page" className="h-4 w-32" />
         ) : customersQuery.isError ? null : (
           sprintf(__('%d program members', 'yayloyalty'), totalItems)
         )

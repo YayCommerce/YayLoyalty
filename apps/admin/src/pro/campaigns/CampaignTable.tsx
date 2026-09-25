@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { Fragment, ReactNode, useMemo, useRef, useState } from 'react';
 import { closestCenter, DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -48,7 +48,7 @@ import {
   triggerGroup,
   triggerLabel,
 } from './campaign-labels';
-import { CampaignPointsSummary } from './CampaignPointsSummary';
+import { CampaignPointsSummary, CampaignPointsSummarySkeleton } from './CampaignPointsSummary';
 import { CampaignPauseDialog } from './pause/CampaignPauseDialog';
 
 /** Groups larger than this collapse to the default plus this many, highest-priority first. */
@@ -270,36 +270,44 @@ export function CampaignTable() {
       <Card>
         <CardContent className="flex flex-col gap-4">
           <div className="flex flex-wrap items-center gap-3">
-            <p className="text-foreground flex-1 text-sm">
-              {newStore ? (
-                __('Three ways customers earn points. Nothing has been awarded yet.', 'yayloyalty')
-              ) : (
-                <>
-                  {sprintf(
-                    /* translators: %d: total number of campaigns, archived ones included. */
-                    __('%d campaigns', 'yayloyalty'),
-                    rows.length,
-                  )}
-                  {archivedCount > 0 && (
-                    <>
-                      {' - '}
-                      <button
-                        type="button"
-                        className="text-foreground hover:underline"
-                        onClick={() => changeStatusFilter('archived')}
-                      >
-                        {sprintf(
-                          /* translators: %d: number of archived campaigns in the list. */
-                          __('%d archived', 'yayloyalty'),
-                          archivedCount,
-                        )}
-                      </button>
-                    </>
-                  )}
-                  {__('. Drag to reorder within a group.', 'yayloyalty')}
-                </>
-              )}
-            </p>
+            {isPending && (
+              <div className="flex-1">
+                <Skeleton className="h-4 w-64" />
+              </div>
+            )}
+
+            {!isPending && (
+              <p className="text-foreground flex-1 text-sm">
+                {newStore ? (
+                  __('Three ways customers earn points. Nothing has been awarded yet.', 'yayloyalty')
+                ) : (
+                  <>
+                    {sprintf(
+                      /* translators: %d: total number of campaigns, archived ones included. */
+                      __('%d campaigns', 'yayloyalty'),
+                      rows.length,
+                    )}
+                    {archivedCount > 0 && (
+                      <>
+                        {' - '}
+                        <button
+                          type="button"
+                          className="text-foreground hover:underline"
+                          onClick={() => changeStatusFilter('archived')}
+                        >
+                          {sprintf(
+                            /* translators: %d: number of archived campaigns in the list. */
+                            __('%d archived', 'yayloyalty'),
+                            archivedCount,
+                          )}
+                        </button>
+                      </>
+                    )}
+                    {__('. Drag to reorder within a group.', 'yayloyalty')}
+                  </>
+                )}
+              </p>
+            )}
 
             {/* Only once scrolling stops being a reasonable way to find one campaign. */}
             {showSearch && (
@@ -344,7 +352,7 @@ export function CampaignTable() {
           </div>
 
           {/* Not dismissible: the storefront would keep promising points while nothing is awarded. */}
-          {!hasActivePurchaseCampaign && (
+          {!isPending && !isError && !hasActivePurchaseCampaign && (
             <Alert variant="outline" className="gap-y-2">
               <InfoIcon />
               <AlertTitle className="line-clamp-none text-base">
@@ -402,7 +410,7 @@ export function CampaignTable() {
             </Alert>
           )}
 
-          {isPending && <Skeleton className="h-64 w-full" />}
+          {isPending && <CampaignTableSkeleton />}
 
           {isError && <p className="text-destructive text-sm">{__('Could not load campaigns.', 'yayloyalty')}</p>}
 
@@ -419,28 +427,16 @@ export function CampaignTable() {
             <div className="overflow-hidden rounded-lg border">
               <div className="overflow-x-auto">
                 <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-8">
-                        <Checkbox
-                          checked={allSelectedState}
-                          onCheckedChange={toggleAllSelected}
-                          disabled={selectableRows.length === 0}
-                          aria-label={__('Select all campaigns', 'yayloyalty')}
-                        />
-                      </TableHead>
-                      <TableHead className="w-6" />
-                      <TableHead>{__('Campaign', 'yayloyalty')}</TableHead>
-                      <TableHead>{__('Trigger', 'yayloyalty')}</TableHead>
-                      <TableHead>{__('Gives', 'yayloyalty')}</TableHead>
-                      <TableHead>{__('Conditions', 'yayloyalty')}</TableHead>
-                      <TableHead>{__('Schedule', 'yayloyalty')}</TableHead>
-                      <TableHead className="text-right">{__('Points issued', 'yayloyalty')}</TableHead>
-                      <TableHead className="text-center">{__('Priority', 'yayloyalty')}</TableHead>
-                      <TableHead>{__('Status', 'yayloyalty')}</TableHead>
-                      <TableHead className="w-1" />
-                    </TableRow>
-                  </TableHeader>
+                  <CampaignTableHeader
+                    selectAll={
+                      <Checkbox
+                        checked={allSelectedState}
+                        onCheckedChange={toggleAllSelected}
+                        disabled={selectableRows.length === 0}
+                        aria-label={__('Select all campaigns', 'yayloyalty')}
+                      />
+                    }
+                  />
                   <TableBody>
                     {groups.map((group) => (
                       <CampaignGroupSection
@@ -484,7 +480,7 @@ export function CampaignTable() {
         </CardContent>
       </Card>
 
-      <CampaignPointsSummary rows={rows} />
+      {isPending ? <CampaignPointsSummarySkeleton /> : <CampaignPointsSummary rows={rows} />}
 
       {archiveTarget && (
         <CampaignArchiveDialog
@@ -520,6 +516,94 @@ export function CampaignTable() {
         />
       )}
     </>
+  );
+}
+
+/** The one column header row; the loading table renders it too, so the columns never shift when data lands. */
+function CampaignTableHeader({ selectAll }: { selectAll: ReactNode }) {
+  return (
+    <TableHeader>
+      <TableRow>
+        <TableHead className="w-8">{selectAll}</TableHead>
+        <TableHead className="w-6" />
+        <TableHead>{__('Campaign', 'yayloyalty')}</TableHead>
+        <TableHead>{__('Trigger', 'yayloyalty')}</TableHead>
+        <TableHead>{__('Gives', 'yayloyalty')}</TableHead>
+        <TableHead>{__('Conditions', 'yayloyalty')}</TableHead>
+        <TableHead>{__('Schedule', 'yayloyalty')}</TableHead>
+        <TableHead className="text-right">{__('Points issued', 'yayloyalty')}</TableHead>
+        <TableHead className="text-center">{__('Priority', 'yayloyalty')}</TableHead>
+        <TableHead>{__('Status', 'yayloyalty')}</TableHead>
+        <TableHead className="w-1" />
+      </TableRow>
+    </TableHeader>
+  );
+}
+
+/** Every store has at least the three built-ins, one per group; the placeholder draws exactly that. */
+const SKELETON_GROUPS: readonly CampaignGroupKey[] = ['purchase', 'signup', 'review'];
+
+/** Mirrors the loaded table: real header, a group band and one row per group, cell for cell. */
+function CampaignTableSkeleton() {
+  return (
+    <div className="overflow-hidden rounded-lg border">
+      <div className="overflow-x-auto">
+        <Table>
+          <CampaignTableHeader
+            selectAll={<Checkbox disabled aria-label={__('Select all campaigns', 'yayloyalty')} />}
+          />
+          <TableBody>
+            {SKELETON_GROUPS.map((key) => (
+              <Fragment key={key}>
+                <TableRow className="bg-secondary hover:bg-secondary">
+                  <TableCell colSpan={COLUMN_COUNT} className="h-9 py-0">
+                    <span className="text-xs font-semibold tracking-wide uppercase">{GROUP_LABELS[key]}</span>
+                  </TableCell>
+                </TableRow>
+                <TableRow className="hover:bg-transparent">
+                  <TableCell>
+                    <Checkbox disabled aria-hidden />
+                  </TableCell>
+                  <TableCell className="px-1">
+                    <GripVertical className="text-muted-foreground/40 size-4" />
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1.5">
+                      <Skeleton className="h-4 w-36" />
+                      <Skeleton className="h-5 w-16 rounded-full" />
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-3 w-24" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-3 w-20" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-3 w-20" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-3 w-20" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="ml-auto h-3 w-10" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="mx-auto h-4 w-5" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-5 w-14 rounded-full" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="size-6" />
+                  </TableCell>
+                </TableRow>
+              </Fragment>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
   );
 }
 
