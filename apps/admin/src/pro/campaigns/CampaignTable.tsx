@@ -50,6 +50,7 @@ import {
   triggerLabel,
 } from './campaign-labels';
 import { CampaignPointsSummary, CampaignPointsSummarySkeleton } from './CampaignPointsSummary';
+import { CampaignStatusBadge } from './CampaignStatusBadge';
 import { CampaignPauseDialog } from './pause/CampaignPauseDialog';
 
 /** Groups larger than this collapse to the default plus this many, highest-priority first. */
@@ -837,9 +838,7 @@ function SortableCampaignRow({
       </TableCell>
       <TableCell className="text-center text-sm font-semibold tabular-nums">{row.priority}</TableCell>
       <TableCell>
-        <Badge variant="outline" className="uppercase">
-          {statusLabel(row.displayStatus)}
-        </Badge>
+        <CampaignStatusBadge status={row.displayStatus} />
       </TableCell>
       <TableCell className="text-right">
         <DropdownMenu>

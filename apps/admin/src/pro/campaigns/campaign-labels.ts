@@ -1,3 +1,4 @@
+import type { VariantProps } from 'class-variance-authority';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { parseWPDate } from '@/lib/helpers/format.helper';
@@ -10,6 +11,7 @@ import {
   CampaignTrigger,
   resolvePurchaseMultiplier,
 } from '@/lib/schema/campaign.schema';
+import type { badgeVariants } from '@/components/ui/badge';
 
 /** Campaign presentation strings derived from the real fields; the wire carries none. */
 
@@ -148,5 +150,24 @@ export function statusLabel(status: CampaignDisplayStatus): string {
       return __('Archived', 'yayloyalty');
     case 'ended':
       return __('Ended', 'yayloyalty');
+  }
+}
+
+/** The badge colour for a campaign status; the one reading CampaignStatusBadge renders. */
+export function campaignStatusBadgeVariant(
+  status: CampaignDisplayStatus,
+): VariantProps<typeof badgeVariants>['variant'] {
+  switch (status) {
+    case 'active':
+      return 'success-soft';
+    case 'scheduled':
+      return 'primary-soft';
+    case 'paused':
+      return 'warning-soft';
+    case 'draft':
+      return 'outline';
+    case 'archived':
+    case 'ended':
+      return 'dimmed';
   }
 }

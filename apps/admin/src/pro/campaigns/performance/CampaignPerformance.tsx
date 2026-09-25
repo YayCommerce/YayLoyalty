@@ -11,13 +11,13 @@ import {
 } from '@/lib/schema/campaign-performance.schema';
 import { Campaign, CampaignDisplayStatus, resolveCampaignDisplayStatus } from '@/lib/schema/campaign.schema';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ErrorState } from '@/components/ui/custom/error-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import PageLayout from '@/components/layout/PageLayout';
 import NotFoundPage from '@/pages/404';
-import { conditionsLabel, givesLabel, scheduleLabel, statusLabel } from '../campaign-labels';
+import { conditionsLabel, givesLabel, scheduleLabel } from '../campaign-labels';
+import { CampaignStatusBadge } from '../CampaignStatusBadge';
 import { emptyReason } from './campaign-performance.copy';
 import { useCampaignPerformanceQuery } from './campaign-performance.queries';
 import { CampaignPerformanceChart, CampaignPerformanceChartSkeleton } from './CampaignPerformanceChart';
@@ -103,9 +103,7 @@ export function CampaignPerformance({ id }: { id: number }) {
         title={
           <span className="flex flex-wrap items-center gap-2">
             {campaign.name}
-            <Badge variant="outline" className="uppercase">
-              {statusLabel(displayStatus)}
-            </Badge>
+            <CampaignStatusBadge status={displayStatus} />
           </span>
         }
         description={metaLine}
