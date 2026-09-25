@@ -6,6 +6,7 @@ use YayLoyalty\Enums\ReferenceType;
 use YayLoyalty\Repositories\CustomerMetaRepository;
 use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Utils\Table;
+use YayLoyalty\Utils\WooOrders;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -216,12 +217,8 @@ class CampaignPerformanceRepository {
         return $order instanceof \WC_Order ? (float) $order->get_subtotal() : null;
     }
 
-    /** HPOS-safe order edit URL — same detection DashboardNotices::orders_admin_url() uses for its own (list) URL. */
     private function order_edit_url( int $order_id ): string {
-        $hpos = class_exists( \Automattic\WooCommerce\Utilities\OrderUtil::class )
-            && \Automattic\WooCommerce\Utilities\OrderUtil::custom_orders_table_usage_is_enabled();
-
-        return $hpos
+        return WooOrders::is_hpos()
             ? admin_url( 'admin.php?page=wc-orders&action=edit&id=' . $order_id )
             : admin_url( 'post.php?post=' . $order_id . '&action=edit' );
     }

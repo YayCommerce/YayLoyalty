@@ -4,11 +4,13 @@ namespace YayLoyalty\Pro\Controllers;
 use YayLoyalty\Access\Capabilities;
 use YayLoyalty\Controllers\AbstractRestController;
 use YayLoyalty\Enums\CampaignTrigger;
+use YayLoyalty\Engine\Points\Triggers\PurchaseHandler;
 use YayLoyalty\Pro\Repositories\CampaignPerformanceRepository;
 use YayLoyalty\Pro\Repositories\CampaignPointsRepository;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\DashboardRepository;
 use YayLoyalty\Services\Dashboard\DashboardMath;
+use YayLoyalty\Services\Dashboard\PeriodWindow;
 use YayLoyalty\Utils\PointsMath;
 
 defined( 'ABSPATH' ) || exit;
@@ -272,11 +274,13 @@ final class CampaignPerformanceRestController extends AbstractRestController {
      * @param array<string, mixed> $row
      */
     private function liability_above_default( array $row, int $points_issued, float $rate ): ?float {
-        if ( 'multiplier' !== ( $row['config']['mode'] ?? 'rate' ) || $row['is_builtin'] ) {
+        $config = (array) $row['config'];
+
+        if ( ! PurchaseHandler::is_multiplier( $config ) || $row['is_builtin'] ) {
             return null;
         }
 
-        $multiplier = (float) ( $row['config']['multiplier'] ?? 1 );
+        $multiplier = PurchaseHandler::multiplier( $config );
 
         if ( $multiplier <= 0 ) {
             return null;
@@ -369,23 +373,7 @@ final class CampaignPerformanceRestController extends AbstractRestController {
             $rows
         );
 
-        return DashboardMath::fill_series( $by_date, $this->days_between( $window['from'], $window['to'] ), [ 'points' ] );
-    }
-
-    /**
-     * @return string[] Y-m-d, ascending, both ends inclusive.
-     */
-    private function days_between( string $from, string $to ): array {
-        $days   = [];
-        $cursor = new \DateTimeImmutable( $from );
-        $end    = new \DateTimeImmutable( $to );
-
-        while ( $cursor <= $end ) {
-            $days[] = $cursor->format( 'Y-m-d' );
-            $cursor = $cursor->modify( '+1 day' );
-        }
-
-        return $days;
+        return DashboardMath::fill_series( $by_date, PeriodWindow::days_between( $window['from'], $window['to'] ), [ 'points' ] );
     }
 
     /**

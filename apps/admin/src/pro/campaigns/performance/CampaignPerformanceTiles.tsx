@@ -13,6 +13,40 @@ function gridClass(trigger: CampaignPerformanceTrigger) {
   return trigger === 'purchase' ? 'grid grid-cols-2 gap-3 lg:grid-cols-4' : 'grid grid-cols-2 gap-3';
 }
 
+function ordersSubline(totals: Totals, hasData: boolean): string {
+  if (!hasData) {
+    return __('none yet', 'yayloyalty');
+  }
+  // Unreachable today — the PHP contract sets orders_total whenever trigger is
+  // 'purchase' (the only case this tile renders), but the type is `nullable()`
+  // because the field is legitimately null for other triggers. This guards
+  // against that correlation ever drifting, not a real runtime case right now.
+  if (totals.orders_total === null) {
+    return '';
+  }
+  return sprintf(
+    /* translators: %s: total number of completed orders the store has ever had. */
+    __('of %s completed orders', 'yayloyalty'),
+    formatPoints(totals.orders_total),
+  );
+}
+
+function averagePerOrderSubline(totals: Totals): string {
+  if (totals.avg_points_per_order === null) {
+    return __('needs at least one order', 'yayloyalty');
+  }
+  // avg_order_subtotal isn't computed yet (needs the earning engine's own scored
+  // base amount, not yet persisted) — say nothing rather than "$0.00 average order".
+  if (totals.avg_order_subtotal === null) {
+    return __('points per order', 'yayloyalty');
+  }
+  return sprintf(
+    /* translators: %s: the average order subtotal, formatted as money. */
+    __('points · %s average order', 'yayloyalty'),
+    parseWPCurrency(totals.avg_order_subtotal),
+  );
+}
+
 /**
  * Per-trigger tile set. `hasData` (not the raw counts) picks the empty-state
  * sublines — a real 0 (`orders_affected`/`customers_earned`) still renders as
@@ -40,21 +74,7 @@ export function CampaignPerformanceTiles({
         <StatTile
           label={__('Orders affected', 'yayloyalty')}
           value={formatPoints(totals.orders_affected ?? 0)}
-          subline={
-            !hasData
-              ? __('none yet', 'yayloyalty')
-              : totals.orders_total === null
-                ? // Unreachable today — the PHP contract sets orders_total whenever trigger is
-                  // 'purchase' (the only case this tile renders), but the type is `nullable()`
-                  // because the field is legitimately null for other triggers. This guards
-                  // against that correlation ever drifting, not a real runtime case right now.
-                  ''
-                : sprintf(
-                    /* translators: %s: total number of completed orders the store has ever had. */
-                    __('of %s completed orders', 'yayloyalty'),
-                    formatPoints(totals.orders_total),
-                  )
-          }
+          subline={ordersSubline(totals, hasData)}
         />
       )}
       {trigger !== 'purchase' && (
@@ -68,19 +88,7 @@ export function CampaignPerformanceTiles({
         <StatTile
           label={__('Average per order', 'yayloyalty')}
           value={totals.avg_points_per_order === null ? '—' : formatPoints(totals.avg_points_per_order)}
-          subline={
-            totals.avg_points_per_order === null
-              ? __('needs at least one order', 'yayloyalty')
-              : totals.avg_order_subtotal === null
-                ? // avg_order_subtotal isn't computed yet (needs the earning engine's own scored
-                  // base amount, not yet persisted) — say nothing rather than "$0.00 average order".
-                  __('points per order', 'yayloyalty')
-                : sprintf(
-                    /* translators: %s: the average order subtotal, formatted as money. */
-                    __('points · %s average order', 'yayloyalty'),
-                    parseWPCurrency(totals.avg_order_subtotal),
-                  )
-          }
+          subline={averagePerOrderSubline(totals)}
         />
       )}
       {trigger === 'purchase' && (

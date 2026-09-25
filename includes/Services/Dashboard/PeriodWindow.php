@@ -89,10 +89,24 @@ final class PeriodWindow {
      * @return string[]
      */
     public function days(): array {
-        $days = [];
+        return self::days_between( $this->from->format( 'Y-m-d' ), $this->to->modify( '-1 day' )->format( 'Y-m-d' ) );
+    }
 
-        for ( $i = 0; $i < $this->range; $i++ ) {
-            $days[] = $this->from->modify( sprintf( '+%d days', $i ) )->format( 'Y-m-d' );
+    /**
+     * Every Y-m-d from `$first_day` to `$last_day`, both inclusive, ascending —
+     * the one day-list builder for zero-filled series (this window and the
+     * campaign performance chart).
+     *
+     * @return string[]
+     */
+    public static function days_between( string $first_day, string $last_day ): array {
+        $days   = [];
+        $cursor = new \DateTimeImmutable( $first_day );
+        $end    = new \DateTimeImmutable( $last_day );
+
+        while ( $cursor <= $end ) {
+            $days[] = $cursor->format( 'Y-m-d' );
+            $cursor = $cursor->modify( '+1 day' );
         }
 
         return $days;

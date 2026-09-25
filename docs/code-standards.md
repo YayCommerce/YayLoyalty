@@ -394,7 +394,9 @@ Two places that decide the same thing leave the reader unable to tell which one 
 | Campaign write validation (name required, end after start, date shape) | `Controllers\CampaignRestController` (`dates_in_order()`, `validate_nullable_date()`) | `campaignUpdateInputSchema`, `isCampaignScheduleInOrder()` in `campaign.schema.ts` (form feedback before the request; the editor's summary rail calls the same helper) |
 | Which ledger row counts as "issued" (positive, earn type) | `Repositories\LedgerRepository::issued_row_sql()` — interpolate the fragment, never re-spell the predicate | — |
 | Deleted member's display name and email | `Models\CustomerMeta::snapshot_identity()` on the `account_deleted` row, read through `CustomerMetaRepository::latest()`; `''` when no snapshot was kept | — |
-| Campaign config fields, purchase mode | `Models\Campaign::config_schema()`, `PurchaseHandler::is_multiplier()` | `CAMPAIGN_CONFIG_FIELDS` (UI metadata), `resolvePurchaseMode()` in `campaign.schema.ts` |
+| Campaign config fields, defaults, purchase mode | `Models\Campaign::config_schema()`, `Campaign::default_config()`, `PurchaseHandler::is_multiplier()` / `multiplier()` | `CAMPAIGN_CONFIG_FIELDS` (UI metadata), `DEFAULT_CAMPAIGN_CONFIG` (create-form seeds), `resolvePurchaseMode()` in `campaign.schema.ts` |
+| Site-day list for a zero-filled series | `Services\Dashboard\PeriodWindow::days_between()` | — |
+| WooCommerce order storage (HPOS) for admin links | `Utils\WooOrders::is_hpos()` | — |
 | Condition types, operators, value rules | `Enums\CampaignConditionType`, `Enums\RewardConditionType` (shared `ConditionTypeMethods`), `Utils\ConditionValueRules` | `CAMPAIGN_CONDITION_SCHEMA` in `campaign.schema.ts` (UI metadata, not a validator) |
 | Drawer filter vocabularies | `Controllers\Schemas\LedgerQueryArgs::filter_types()`, `ActivityQueryArgs::GROUPS` | `LEDGER_FILTER_TYPES`, `ACTIVITY_GROUPS` |
 | Capabilities | `Access\Capabilities` | `CAP` in `apps/admin/src/lib/access.tsx` |
