@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { HTTPError } from 'ky';
-import { ChevronLeft, Lock } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
@@ -21,13 +21,13 @@ import { useRouteLeaveGuard } from '@/hooks/useRouteLeaveGuard';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ErrorState } from '@/components/ui/custom/error-state';
-import { YayLoyaltyToolTip } from '@/components/ui/custom/tooltip';
 import { UnsavedChangeDialog } from '@/components/ui/custom/unsaved-changed-dialog';
 import PageLayout from '@/components/layout/PageLayout';
 import NotFoundPage from '@/pages/404';
 import { CampaignTemplate, findTemplate } from '../add/campaign-templates';
 import { CampaignArchiveDialog } from '../archive/CampaignArchiveDialog';
-import { statusLabel, triggerLabel } from '../campaign-labels';
+import { triggerLabel } from '../campaign-labels';
+import { CampaignStatusBadge } from '../CampaignStatusBadge';
 import {
   CampaignCreateSeed,
   CampaignEditorContext,
@@ -153,7 +153,7 @@ function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }
   );
   /* eslint-enable react-hooks/refs */
 
-  // The header renders from the loaded campaign, never form state.
+  // The header renders from the loaded campaign, never form state; "Unsaved changes" says when the two differ.
   const displayStatus = resolveCampaignDisplayStatus(campaign.status, campaign.starts_at, campaign.ends_at);
 
   return (
@@ -165,16 +165,6 @@ function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }
               <ChevronLeft className="size-3.5" />
               {__('Campaigns', 'yayloyalty')}
             </Button>
-            <span aria-hidden className="text-muted-foreground">
-              ·
-            </span>
-            <span className="text-muted-foreground">
-              {sprintf(
-                /* translators: %s: the campaign's display status, lowercased, e.g. "scheduled". */
-                __('Editing a %s campaign', 'yayloyalty'),
-                statusLabel(displayStatus).toLowerCase(),
-              )}
-            </span>
           </div>
 
           <PageLayout
@@ -183,19 +173,11 @@ function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }
               <span className="flex flex-wrap items-center gap-2">
                 {campaign.name}
                 {campaign.is_builtin && (
-                  <>
-                    <Badge variant="outline" className="uppercase">
-                      {__('Default', 'yayloyalty')}
-                    </Badge>
-                    <YayLoyaltyToolTip
-                      trigger={<Lock className="text-muted-foreground size-3.5" />}
-                      content={__('Built-in campaigns cannot be archived.', 'yayloyalty')}
-                    />
-                  </>
+                  <Badge variant="outline" className="uppercase">
+                    {__('Default', 'yayloyalty')}
+                  </Badge>
                 )}
-                <Badge variant="outline" className="uppercase">
-                  {statusLabel(displayStatus)}
-                </Badge>
+                <CampaignStatusBadge status={displayStatus} />
                 {displayStatus === 'scheduled' && campaign.starts_at && (
                   <span className="text-muted-foreground text-sm font-normal">
                     {sprintf(
@@ -205,7 +187,25 @@ function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }
                     )}
                   </span>
                 )}
+                {form.formState.isDirty && (
+                  <span className="text-muted-foreground text-sm font-normal">
+                    {__('Unsaved changes', 'yayloyalty')}
+                  </span>
+                )}
               </span>
+            }
+            actions={
+              hasPerformancePage(campaign.trigger) && (
+                // type="button": this sits inside the form. Disabled mid-save, whose own redirect would race it.
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={mutation.isPending || form.formState.isSubmitting}
+                  onClick={() => navigate(`/campaigns/${id}/performance`)}
+                >
+                  {__('View performance', 'yayloyalty')}
+                </Button>
+              )
             }
             description={
               <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -227,9 +227,6 @@ function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }
                   isDraftIntentRef.current = true;
                 }}
                 onArchive={() => setArchiveOpen(true)}
-                onPerformance={
-                  hasPerformancePage(campaign.trigger) ? () => navigate(`/campaigns/${id}/performance`) : undefined
-                }
               />
             </div>
           </PageLayout>
@@ -399,10 +396,6 @@ function CampaignCreatorForm({ template, duplicateFrom }: { template: CampaignTe
               <ChevronLeft className="size-3.5" />
               {__('Campaigns', 'yayloyalty')}
             </Button>
-            <span aria-hidden className="text-muted-foreground">
-              ·
-            </span>
-            <span className="text-muted-foreground">{__('Creating a new campaign', 'yayloyalty')}</span>
           </div>
 
           <PageLayout
