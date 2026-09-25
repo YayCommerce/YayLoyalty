@@ -604,6 +604,8 @@ function CampaignGroupSection({
         collisionDetection={closestCenter}
         modifiers={[restrictToVerticalAxis]}
         onDragEnd={(event) => onReorder(visibleRows, event)}
+        // The screen-reader announcements are <div>s; rendered here they would sit inside <tbody>.
+        accessibility={{ container: document.body }}
       >
         <SortableContext items={visibleRows.map((row) => row.id)} strategy={verticalListSortingStrategy}>
           {visibleRows.map((row) => (

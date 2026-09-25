@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { __ } from '@wordpress/i18n';
 
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 
@@ -224,7 +225,7 @@ export type CampaignCondition = z.infer<typeof campaignConditionSchema>;
  */
 export const campaignUpdateInputSchema = z
   .object({
-    name: z.string().trim().min(1),
+    name: z.string().trim().min(1, __('A campaign needs a name.', 'yayloyalty')),
     status: campaignStatusSchema,
     priority: z.number().int(),
     /** Loose on purpose; see campaignSchema.config. */
@@ -235,7 +236,7 @@ export const campaignUpdateInputSchema = z
     ends_at: z.string().nullable(),
   })
   .refine((data) => isCampaignScheduleInOrder(data.starts_at, data.ends_at), {
-    message: 'The start date must be before the end date.',
+    message: __('The campaign must end after it starts.', 'yayloyalty'),
     path: ['ends_at'],
   });
 
