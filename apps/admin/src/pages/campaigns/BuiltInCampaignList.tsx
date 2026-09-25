@@ -1,10 +1,11 @@
 import { ReactNode, useState } from 'react';
 import { ChevronDown, ChevronUp, InfoIcon } from 'lucide-react';
 import { toast } from 'sonner';
-import { __, sprintf } from '@wordpress/i18n';
+import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { toastApiError } from '@/lib/api/api';
 import { parseWPCurrency, parseWPDate } from '@/lib/helpers/format.helper';
+import { pointsPerCurrencyLabel } from '@/lib/helpers/points.helper';
 import { roundPoints } from '@/lib/points-math/points-math';
 import {
   useCampaignsQuery,
@@ -253,14 +254,12 @@ function PurchaseFields({
           <NumberInputRoot
             size="small"
             className="w-28"
-            min={0}
+            min={1}
             value={value.points_per_unit}
             onValueChange={(points_per_unit) => onChange({ points_per_unit })}
           >
             <NumberInputInput />
-            <NumberInputUnit
-              unit={value.points_per_unit === 1 ? __('point', 'yayloyalty') : __('points', 'yayloyalty')}
-            />
+            <NumberInputUnit unit={_n('point', 'points', value.points_per_unit, 'yayloyalty')} />
           </NumberInputRoot>
           <span className="text-muted-foreground text-sm">
             {sprintf(
@@ -293,25 +292,16 @@ function PurchaseFields({
         </Segmented>
       </ConfigField>
 
-      <ConfigField label={__('Include in the award basis', 'yayloyalty')}>
-        <div className="flex flex-wrap items-center gap-5">
-          <label className="flex items-center gap-2 text-sm">
-            <Switch
-              size="sm"
-              checked={value.include_shipping}
-              onCheckedChange={(include_shipping) => onChange({ include_shipping })}
-            />
-            {__('Shipping', 'yayloyalty')}
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <Switch
-              size="sm"
-              checked={value.include_tax}
-              onCheckedChange={(include_tax) => onChange({ include_tax })}
-            />
-            {__('Tax', 'yayloyalty')}
-          </label>
-        </div>
+      <ConfigField
+        label={__('Include tax', 'yayloyalty')}
+        description={__('Adds each line’s tax to the amount counted.', 'yayloyalty')}
+      >
+        <Switch
+          size="sm"
+          aria-label={__('Include tax', 'yayloyalty')}
+          checked={value.include_tax}
+          onCheckedChange={(include_tax) => onChange({ include_tax })}
+        />
       </ConfigField>
 
       <ConfigField label={__('Rounding', 'yayloyalty')}>
@@ -352,7 +342,6 @@ function PurchaseFields({
           {__('Exclude orders that used a coupon', 'yayloyalty')}
         </label>
       </ConfigField>
-
     </>
   );
 }
@@ -447,12 +436,8 @@ function summarize(trigger: Campaign['trigger'], config: Record<string, unknown>
     case 'purchase': {
       const value = config as unknown as PurchaseConfig;
 
-      return sprintf(
-        /* translators: 1: points awarded per currency unit spent, e.g. "1"; 2: one unit of the store currency, formatted. */
-        __('%1$s point(s) per %2$s spent', 'yayloyalty'),
-        String(value.points_per_unit),
-        parseWPCurrency(1),
-      );
+      /* translators: %s: a purchase rate, e.g. "1 pt per $1.00". */
+      return sprintf(__('%s spent', 'yayloyalty'), pointsPerCurrencyLabel(value.points_per_unit));
     }
 
     case 'signup': {
@@ -460,7 +445,7 @@ function summarize(trigger: Campaign['trigger'], config: Record<string, unknown>
 
       return sprintf(
         /* translators: %d: points awarded on signup. */
-        __('%d points, once per customer', 'yayloyalty'),
+        _n('%d point, once per customer', '%d points, once per customer', value.points, 'yayloyalty'),
         value.points,
       );
     }
@@ -471,12 +456,12 @@ function summarize(trigger: Campaign['trigger'], config: Record<string, unknown>
       return value.require_verified
         ? sprintf(
             /* translators: %d: points awarded per review. */
-            __('%d points, verified purchases only', 'yayloyalty'),
+            _n('%d point, verified purchases only', '%d points, verified purchases only', value.points, 'yayloyalty'),
             value.points,
           )
         : sprintf(
             /* translators: %d: points awarded per review. */
-            __('%d points', 'yayloyalty'),
+            _n('%d point', '%d points', value.points, 'yayloyalty'),
             value.points,
           );
     }
@@ -493,7 +478,7 @@ function worksOut(pointsPerUnit: number, rounding: PurchaseConfig['rounding']): 
 
   return sprintf(
     /* translators: 1: an example order subtotal, formatted as currency; 2: the points it would earn. */
-    __('A %1$s order earns %2$d points', 'yayloyalty'),
+    _n('A %1$s order earns %2$d point', 'A %1$s order earns %2$d points', points, 'yayloyalty'),
     parseWPCurrency(exampleSubtotal),
     points,
   );
