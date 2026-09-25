@@ -207,11 +207,14 @@ final class CampaignRestController extends AbstractRestController {
             return $this->error_invalid_arguments( __( 'A campaign needs a name.', 'yayloyalty' ) );
         }
 
-        // Checked against the stored date when the request leaves one side out.
-        $starts_at = $request->has_param( 'starts_at' ) ? $this->nullable_date( $request['starts_at'] ) : $campaign->get_starts_at();
-        $ends_at   = $request->has_param( 'ends_at' ) ? $this->nullable_date( $request['ends_at'] ) : $campaign->get_ends_at();
+        // Checked against the stored date when the request moves one side only. A body that
+        // touches neither date (pause, archive, rename) must still go through on a row whose
+        // stored dates were never in order, or that row could never be repaired or retired.
+        $moves_dates = $request->has_param( 'starts_at' ) || $request->has_param( 'ends_at' );
+        $starts_at   = $request->has_param( 'starts_at' ) ? $this->nullable_date( $request['starts_at'] ) : $campaign->get_starts_at();
+        $ends_at     = $request->has_param( 'ends_at' ) ? $this->nullable_date( $request['ends_at'] ) : $campaign->get_ends_at();
 
-        if ( ! self::dates_in_order( $starts_at, $ends_at ) ) {
+        if ( $moves_dates && ! self::dates_in_order( $starts_at, $ends_at ) ) {
             return $this->error_invalid_arguments( __( 'The campaign must end after it starts.', 'yayloyalty' ) );
         }
 
@@ -331,14 +334,32 @@ final class CampaignRestController extends AbstractRestController {
         );
     }
 
-    /**
-     * @param mixed $value
-     */
     /** Whether an open-ended or unscheduled side passes, and two set dates run forward (ends_at is exclusive, so equal is empty). */
     private static function dates_in_order( ?string $starts_at, ?string $ends_at ): bool {
         return null === $starts_at || null === $ends_at || strtotime( $starts_at . ' UTC' ) < strtotime( $ends_at . ' UTC' );
     }
 
+    /**
+     * Route-arg check for starts_at/ends_at: empty clears the date, anything else must be a
+     * full UTC `Y-m-d H:i:s`, the shape the column stores and the SPA sends. Without it a
+     * string strtotime() cannot read passes dates_in_order() (false < int) and lands in the
+     * DATETIME column as garbage.
+     *
+     * @param mixed $value
+     */
+    public static function validate_nullable_date( $value ): bool {
+        if ( null === $value || '' === $value ) {
+            return true;
+        }
+
+        $date = is_string( $value ) ? \DateTimeImmutable::createFromFormat( Dates::MYSQL_FORMAT, $value, new \DateTimeZone( 'UTC' ) ) : false;
+
+        return false !== $date && $date->format( Dates::MYSQL_FORMAT ) === $value;
+    }
+
+    /**
+     * @param mixed $value
+     */
     private function nullable_date( $value ): ?string {
         if ( null === $value || '' === $value ) {
             return null;
@@ -391,13 +412,15 @@ final class CampaignRestController extends AbstractRestController {
                     'context' => [ 'view', 'edit' ],
                 ],
                 'starts_at'     => [
-                    'type'    => [ 'string', 'null' ],
-                    'context' => [ 'view', 'edit' ],
+                    'type'              => [ 'string', 'null' ],
+                    'context'           => [ 'view', 'edit' ],
+                    'validate_callback' => [ self::class, 'validate_nullable_date' ],
                 ],
                 'ends_at'       => [
-                    'description' => __( 'Exclusive: a campaign is not live at exactly this instant.', 'yayloyalty' ),
-                    'type'        => [ 'string', 'null' ],
-                    'context'     => [ 'view', 'edit' ],
+                    'description'       => __( 'Exclusive: a campaign is not live at exactly this instant.', 'yayloyalty' ),
+                    'type'              => [ 'string', 'null' ],
+                    'context'           => [ 'view', 'edit' ],
+                    'validate_callback' => [ self::class, 'validate_nullable_date' ],
                 ],
                 'is_builtin'    => [
                     'type'     => 'boolean',

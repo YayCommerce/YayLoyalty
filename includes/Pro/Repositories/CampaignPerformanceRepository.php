@@ -1,9 +1,10 @@
 <?php
 namespace YayLoyalty\Pro\Repositories;
 
-use YayLoyalty\Enums\LedgerType;
+use YayLoyalty\Enums\ActivityEvent;
 use YayLoyalty\Enums\ReferenceType;
-use YayLoyalty\Utils\Sql;
+use YayLoyalty\Repositories\CustomerMetaRepository;
+use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Utils\Table;
 
 defined( 'ABSPATH' ) || exit;
@@ -11,12 +12,17 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Real aggregates behind CampaignPerformanceRestController, replacing
  * CampaignPerformanceFixture. Every method scopes to one campaign_id with
- * the same `points > 0 AND type IN (earn types)` predicate
- * CampaignPointsRepository already uses, so a campaign's tiles and entries
- * table can never disagree with each other or with CampaignRestController's
- * own `points_issued` column (LedgerRepository::totals_by_campaign()).
+ * LedgerRepository::issued_row_sql(), the one definition of an issued row,
+ * so a campaign's tiles and entries table can never disagree with each other
+ * or with CampaignRestController's own `points_issued` column.
  */
 class CampaignPerformanceRepository {
+
+    private CustomerMetaRepository $customer_meta;
+
+    public function __construct( ?CustomerMetaRepository $customer_meta = null ) {
+        $this->customer_meta = $customer_meta ?? new CustomerMetaRepository();
+    }
 
     /**
      * Lifetime totals — no date bound; see the controller's own docblock
@@ -27,9 +33,9 @@ class CampaignPerformanceRepository {
     public function totals( int $campaign_id ): array {
         global $wpdb;
 
-        $in = Sql::in_placeholders( LedgerType::lifetime_earned_types() );
+        list( $issued, $types ) = LedgerRepository::issued_row_sql();
 
-        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $in is a "%s, %s" list; every value is bound.
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $issued carries a "%s, %s" list; every value is bound.
         $row = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
             $wpdb->prepare(
                 'SELECT COALESCE(SUM(points), 0) AS points_issued,
@@ -37,8 +43,8 @@ class CampaignPerformanceRepository {
                         COUNT(DISTINCT order_id) AS orders_affected,
                         COUNT(DISTINCT user_id) AS customers_earned
                  FROM `' . esc_sql( Table::name( 'ledger' ) ) . "`
-                 WHERE campaign_id = %d AND points > 0 AND type IN ({$in})",
-                array_merge( [ $campaign_id ], LedgerType::lifetime_earned_types() )
+                 WHERE campaign_id = %d AND {$issued}",
+                array_merge( [ $campaign_id ], $types )
             ),
             ARRAY_A
         );
@@ -67,14 +73,11 @@ class CampaignPerformanceRepository {
         $page     = max( 1, $page );
         $per_page = max( 1, $per_page );
 
-        $in = Sql::in_placeholders( LedgerType::lifetime_earned_types() );
+        list( $issued, $types ) = LedgerRepository::issued_row_sql( 'l.' );
 
-        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- {$in} is a "%s, %s" placeholder list; every value is bound.
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $issued carries a "%s, %s" placeholder list; every value is bound.
         $where = [
-            $wpdb->prepare(
-                "l.campaign_id = %d AND l.points > 0 AND l.type IN ({$in})",
-                array_merge( [ $campaign_id ], LedgerType::lifetime_earned_types() )
-            ),
+            $wpdb->prepare( "l.campaign_id = %d AND {$issued}", array_merge( [ $campaign_id ], $types ) ),
         ];
         // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 
@@ -119,6 +122,10 @@ class CampaignPerformanceRepository {
      * is ALL '#' characters reduces to '', and a LIKE against '%%' matches
      * every row — so the reference needle is dropped entirely once it goes
      * empty, rather than being allowed to match everything.
+     *
+     * The name needle reads the joined WP user, so a deleted member (NULL
+     * display_name) is found by reference id only, never by the name their
+     * account_deleted snapshot kept.
      */
     private function search_fragment( string $search ): string {
         global $wpdb;
@@ -149,10 +156,7 @@ class CampaignPerformanceRepository {
             'id'            => (int) $row['id'],
             'customer_id'   => (int) $row['user_id'],
             // LEFT JOIN: a deleted member's rows stay in totals(), so they stay listed too.
-            'customer_name' => null !== $row['customer_name']
-                ? (string) $row['customer_name']
-                /* translators: %d: the deleted customer's former user id. */
-                : sprintf( __( 'Deleted customer #%d', 'yayloyalty' ), (int) $row['user_id'] ),
+            'customer_name' => null !== $row['customer_name'] ? (string) $row['customer_name'] : $this->deleted_name( (int) $row['user_id'] ),
             'points'        => (int) $row['points'],
             'created_at'    => (string) $row['created_at'],
             'reference'     => $this->reference( $reference_type, $reference_id ),
@@ -160,6 +164,18 @@ class CampaignPerformanceRepository {
                 ? $this->order_subtotal( $reference_id )
                 : null,
         ];
+    }
+
+    /**
+     * A deleted member's name from their account_deleted snapshot, or '' when
+     * none was kept — the same fallback the customer list and drawer use
+     * (CustomerListFormatter::identity(), CustomerItemFormatter::identity()),
+     * so one member is named the same way on every screen.
+     */
+    private function deleted_name( int $user_id ): string {
+        $deletion = $this->customer_meta->latest( $user_id, ActivityEvent::ACCOUNT_DELETED );
+
+        return null !== $deletion ? $deletion->snapshot_identity()['name'] : '';
     }
 
     /**

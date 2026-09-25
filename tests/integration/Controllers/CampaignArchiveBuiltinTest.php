@@ -27,8 +27,14 @@ use YayLoyalty\Utils\Dates;
  */
 final class CampaignArchiveBuiltinTest extends IntegrationTestCase {
 
+    private string $site_timezone = '';
+
     protected function setUp(): void {
         parent::setUp();
+
+        // The chart window is cut on site-local days, so its expectations only hold in one zone.
+        $this->site_timezone = (string) get_option( 'timezone_string' );
+        update_option( 'timezone_string', 'UTC' );
 
         $admins = get_users(
             [
@@ -45,6 +51,7 @@ final class CampaignArchiveBuiltinTest extends IntegrationTestCase {
 
     protected function tearDown(): void {
         wp_set_current_user( 0 );
+        update_option( 'timezone_string', $this->site_timezone );
 
         parent::tearDown();
     }
@@ -116,6 +123,23 @@ final class CampaignArchiveBuiltinTest extends IntegrationTestCase {
 
         $this->assertSame( 400, $this->put( $id, [ 'ends_at' => '2026-09-01 00:00:00' ] )->get_status() );
         $this->assertSame( 200, $this->put( $id, [ 'ends_at' => '2026-09-02 00:00:00' ] )->get_status() );
+    }
+
+    /** A row stored with its dates out of order (before the check existed) must still be pausable and repairable. */
+    public function test_a_write_that_leaves_the_dates_alone_skips_the_order_check(): void {
+        $id = $this->insert_campaign( false, '2026-09-02 00:00:00', '2026-09-01 00:00:00' );
+
+        $this->assertSame( 200, $this->put_status( $id, 'paused' )->get_status() );
+        $this->assertSame( 400, $this->put( $id, [ 'ends_at' => '2026-09-01 12:00:00' ] )->get_status() );
+        $this->assertSame( 200, $this->put( $id, [ 'ends_at' => '2026-09-03 00:00:00' ] )->get_status() );
+    }
+
+    public function test_writes_refuse_a_date_that_is_not_a_full_utc_datetime(): void {
+        $id = $this->insert_campaign( false );
+
+        $this->assertSame( 400, $this->put( $id, [ 'starts_at' => 'next tuesday' ] )->get_status() );
+        $this->assertSame( 400, $this->put( $id, [ 'ends_at' => '2026-09-30' ] )->get_status() );
+        $this->assertSame( 200, $this->put( $id, [ 'starts_at' => '' ] )->get_status() );
     }
 
     public function test_points_issued_ignores_negative_rows_but_they_still_block_delete(): void {

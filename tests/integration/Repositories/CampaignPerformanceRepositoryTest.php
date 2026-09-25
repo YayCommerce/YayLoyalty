@@ -1,15 +1,19 @@
 <?php
 namespace YayLoyalty\Tests\Integration\Repositories;
 
+use YayLoyalty\Enums\ActivityEvent;
+use YayLoyalty\Enums\ActorKind;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Enums\ReferenceType;
 use YayLoyalty\Enums\Status;
 use YayLoyalty\Models\Campaign;
+use YayLoyalty\Models\CustomerMeta;
 use YayLoyalty\Models\LedgerEntry;
 use YayLoyalty\Pro\Repositories\CampaignPerformanceRepository;
 use YayLoyalty\Repositories\CampaignRepository;
+use YayLoyalty\Repositories\CustomerMetaRepository;
 use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Tests\Integration\IntegrationTestCase;
 use YayLoyalty\Utils\Dates;
@@ -285,25 +289,53 @@ final class CampaignPerformanceRepositoryTest extends IntegrationTestCase {
         $this->assertNull( $by_points[30]['subtotal'] );
     }
 
-    public function test_paginate_entries_lists_a_deleted_customers_rows(): void {
+    /** Named from the account_deleted snapshot, as the customer list names them; '' when no snapshot was kept. */
+    public function test_paginate_entries_lists_a_deleted_customers_rows_under_their_snapshot_name(): void {
         $campaign_id = $this->insert_campaign( CampaignTrigger::PURCHASE );
         $gone        = 987654321;
+        $unknown     = 987654322;
 
         $this->assertFalse( get_userdata( $gone ) );
+
+        ( new CustomerMetaRepository() )->insert(
+            CustomerMeta::event(
+                $gone,
+                ActivityEvent::ACCOUNT_DELETED,
+                [
+                    'email'        => 'gone@example.test',
+                    'display_name' => 'Gone Member',
+                ],
+                ActorKind::AUTOMATIC,
+                null,
+                false,
+                Dates::now()
+            )
+        );
 
         $this->insert_row(
             $campaign_id,
             [
-                'user_id'  => $gone,
-                'points'   => 40,
-                'order_id' => 7001,
+                'user_id'    => $gone,
+                'points'     => 40,
+                'order_id'   => 7001,
+                'created_at' => Dates::now(),
+            ]
+        );
+        $this->insert_row(
+            $campaign_id,
+            [
+                'user_id'    => $unknown,
+                'points'     => 30,
+                'order_id'   => 7002,
+                'created_at' => Dates::offset( -60 ),
             ]
         );
 
         $page = $this->repository->paginate_entries( $campaign_id, 1, 10, '' );
 
         $this->assertSame( $this->repository->totals( $campaign_id )['entries_total'], $page['total'] );
-        $this->assertSame( 'Deleted customer #' . $gone, $page['items'][0]['customer_name'] );
+        $this->assertSame( 'Gone Member', $page['items'][0]['customer_name'] );
+        $this->assertSame( '', $page['items'][1]['customer_name'] );
     }
 
     private function insert_campaign( string $trigger ): int {
