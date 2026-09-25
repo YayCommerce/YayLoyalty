@@ -45,11 +45,8 @@ export function CampaignEditorSummaryRail({
   const purchaseCampaignsQuery = usePurchaseCampaignsQuery(needsDefaultPurchase);
   const defaultPurchaseCampaign = findBuiltinCampaign(purchaseCampaignsQuery.data?.data, 'purchase');
 
-  const currency = window.yayLoyaltyMeta.wcMeta.currency_data.currency;
-
   const sentences = summarizeCampaign(values, {
     trigger,
-    currency,
     defaultPurchaseCampaign,
     // Not isPending: after a failed load it is false too, and the rail would then call a default it never saw inactive.
     defaultPurchasePending: needsDefaultPurchase && !purchaseCampaignsQuery.isSuccess,

@@ -63,7 +63,7 @@ function RewardFieldsPurchase() {
   const config = watch('config') as PurchaseConfig;
   const mode = resolvePurchaseMode(config as Record<string, unknown>);
   const currency = window.yayLoyaltyMeta.wcMeta.currency_data.currency;
-  const advancedPhrases = purchaseAdvancedPhrases(config as Record<string, unknown>, currency);
+  const advancedPhrases = purchaseAdvancedPhrases(config as Record<string, unknown>);
   // Opens by itself only on mount: a campaign reopened with caps or exclusions shows them, and
   // typing a value later never yanks the block open or shut.
   const [advancedOpen, setAdvancedOpen] = useState(() => advancedPhrases.length > 0);

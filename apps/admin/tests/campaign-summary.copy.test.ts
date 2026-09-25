@@ -35,7 +35,7 @@ function defaultCampaign(status: Campaign['status'], pointsPerUnit = 1): Campaig
   return { status, config: { points_per_unit: pointsPerUnit } } as unknown as Campaign;
 }
 
-const purchase = { trigger: 'purchase' as const, currency: 'USD', defaultPurchaseCampaign: undefined };
+const purchase = { trigger: 'purchase' as const, defaultPurchaseCampaign: undefined };
 
 describe('summarizeCampaign, purchase', () => {
   it('reads a default rate campaign in four lines', () => {
@@ -61,7 +61,7 @@ describe('summarizeCampaign, purchase', () => {
     expect(summarizeCampaign(values({ config }), purchase)).toEqual([
       'Earns 2 pts per $1.00.',
       'Counted on the subtotal after discounts, plus tax, rounded down.',
-      'Does not apply to orders under 500 USD (whole order, before discounts).',
+      'Does not apply to orders under $500.00 (whole order, before discounts).',
       'Capped at 500 pts per order and 1,000 pts per day.',
       'Excluded: 2 products and 1 category.',
       'Runs continuously — no start or end date is set.',

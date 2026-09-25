@@ -36,24 +36,24 @@ const ALL_SET = {
 
 describe('purchaseAdvancedPhrases', () => {
   it('is empty when nothing beyond the defaults is set', () => {
-    expect(purchaseAdvancedPhrases({}, 'USD')).toEqual([]);
-    expect(purchaseAdvancedPhrases(DEFAULT_CAMPAIGN_CONFIG.purchase, 'USD')).toEqual([]);
+    expect(purchaseAdvancedPhrases({})).toEqual([]);
+    expect(purchaseAdvancedPhrases(DEFAULT_CAMPAIGN_CONFIG.purchase)).toEqual([]);
   });
 
   it('names each set value on its own, singular and plural', () => {
-    expect(purchaseAdvancedPhrases({ include_tax: true }, 'USD')).toEqual(['Tax included']);
-    expect(purchaseAdvancedPhrases({ min_subtotal: 500 }, 'USD')).toEqual(['Min 500 USD']);
-    expect(purchaseAdvancedPhrases({ exclude_coupon_orders: true }, 'USD')).toEqual(['No coupon orders']);
-    expect(purchaseAdvancedPhrases({ max_points_per_order: 1 }, 'USD')).toEqual(['Capped at 1 pt/order']);
-    expect(purchaseAdvancedPhrases({ daily_cap: 1000 }, 'USD')).toEqual(['Capped at 1,000 pts/day']);
-    expect(purchaseAdvancedPhrases({ excluded_product_ids: [1] }, 'USD')).toEqual(['1 product excluded']);
-    expect(purchaseAdvancedPhrases({ excluded_category_ids: [1, 2] }, 'USD')).toEqual(['2 categories excluded']);
+    expect(purchaseAdvancedPhrases({ include_tax: true })).toEqual(['Tax included']);
+    expect(purchaseAdvancedPhrases({ min_subtotal: 500 })).toEqual(['Min $500.00']);
+    expect(purchaseAdvancedPhrases({ exclude_coupon_orders: true })).toEqual(['No coupon orders']);
+    expect(purchaseAdvancedPhrases({ max_points_per_order: 1 })).toEqual(['Capped at 1 pt/order']);
+    expect(purchaseAdvancedPhrases({ daily_cap: 1000 })).toEqual(['Capped at 1,000 pts/day']);
+    expect(purchaseAdvancedPhrases({ excluded_product_ids: [1] })).toEqual(['1 product excluded']);
+    expect(purchaseAdvancedPhrases({ excluded_category_ids: [1, 2] })).toEqual(['2 categories excluded']);
   });
 
   it('lists everything set in field order', () => {
-    expect(purchaseAdvancedPhrases(ALL_SET, 'USD')).toEqual([
+    expect(purchaseAdvancedPhrases(ALL_SET)).toEqual([
       'Tax included',
-      'Min 500 USD',
+      'Min $500.00',
       'No coupon orders',
       'Capped at 500 pts/order',
       'Capped at 1,000 pts/day',
@@ -89,29 +89,29 @@ describe('purchaseCountingSentence', () => {
 
 describe('purchaseLimitSentences', () => {
   it('is empty when nothing limits the campaign', () => {
-    expect(purchaseLimitSentences({ include_tax: true }, 'USD')).toEqual([]);
-    expect(purchaseLimitSentences({ max_points_per_order: 0, daily_cap: 0, min_subtotal: 0 }, 'USD')).toEqual([]);
+    expect(purchaseLimitSentences({ include_tax: true })).toEqual([]);
+    expect(purchaseLimitSentences({ max_points_per_order: 0, daily_cap: 0, min_subtotal: 0 })).toEqual([]);
   });
 
   it('groups eligibility, caps and exclusions, one sentence each', () => {
-    expect(purchaseLimitSentences(ALL_SET, 'USD')).toEqual([
-      'Does not apply to orders under 500 USD (whole order, before discounts) or to orders with a coupon.',
+    expect(purchaseLimitSentences(ALL_SET)).toEqual([
+      'Does not apply to orders under $500.00 (whole order, before discounts) or to orders with a coupon.',
       'Capped at 500 pts per order and 1,000 pts per day.',
       'Excluded: 2 products and 1 category.',
     ]);
   });
 
   it('keeps either half of a pair on its own', () => {
-    expect(purchaseLimitSentences({ min_subtotal: 20 }, 'USD')).toEqual([
-      'Does not apply to orders under 20 USD (whole order, before discounts).',
+    expect(purchaseLimitSentences({ min_subtotal: 20 })).toEqual([
+      'Does not apply to orders under $20.00 (whole order, before discounts).',
     ]);
-    expect(purchaseLimitSentences({ exclude_coupon_orders: true }, 'USD')).toEqual([
+    expect(purchaseLimitSentences({ exclude_coupon_orders: true })).toEqual([
       'Does not apply to orders with a coupon.',
     ]);
-    expect(purchaseLimitSentences({ max_points_per_order: 1 }, 'USD')).toEqual(['Capped at 1 pt per order.']);
-    expect(purchaseLimitSentences({ daily_cap: 50 }, 'USD')).toEqual(['Capped at 50 pts per day.']);
-    expect(purchaseLimitSentences({ excluded_product_ids: [1] }, 'USD')).toEqual(['1 product excluded.']);
-    expect(purchaseLimitSentences({ excluded_category_ids: [1, 2] }, 'USD')).toEqual(['2 categories excluded.']);
+    expect(purchaseLimitSentences({ max_points_per_order: 1 })).toEqual(['Capped at 1 pt per order.']);
+    expect(purchaseLimitSentences({ daily_cap: 50 })).toEqual(['Capped at 50 pts per day.']);
+    expect(purchaseLimitSentences({ excluded_product_ids: [1] })).toEqual(['1 product excluded.']);
+    expect(purchaseLimitSentences({ excluded_category_ids: [1, 2] })).toEqual(['2 categories excluded.']);
   });
 });
 

@@ -1,5 +1,6 @@
 import { __, _n, sprintf } from '@wordpress/i18n';
 
+import { parseWPCurrency } from '@/lib/helpers/format.helper';
 import { formatPoints } from '@/lib/helpers/points.helper';
 import { ROUNDING } from '@/lib/points-math/points-math';
 import { resolvePurchaseMode } from '@/lib/schema/campaign.schema';
@@ -38,7 +39,7 @@ function purchaseAdvancedFacts(config: Record<string, unknown>): PurchaseAdvance
 }
 
 /** Short phrases for the closed Advanced toggle, in field order; [] when nothing is set. */
-export function purchaseAdvancedPhrases(config: Record<string, unknown>, currency: string): string[] {
+export function purchaseAdvancedPhrases(config: Record<string, unknown>): string[] {
   const facts = purchaseAdvancedFacts(config);
   const phrases: string[] = [];
 
@@ -47,8 +48,8 @@ export function purchaseAdvancedPhrases(config: Record<string, unknown>, currenc
   }
 
   if (facts.minSubtotal > 0) {
-    /* translators: %s: minimum order subtotal with currency code, e.g. "500 USD". */
-    phrases.push(sprintf(__('Min %s', 'yayloyalty'), formatMinSubtotal(facts.minSubtotal, currency)));
+    /* translators: %s: minimum order subtotal in the store format, e.g. "$500.00". */
+    phrases.push(sprintf(__('Min %s', 'yayloyalty'), parseWPCurrency(facts.minSubtotal)));
   }
 
   if (facts.excludeCouponOrders) {
@@ -108,15 +109,15 @@ export function purchaseCountingSentence(config: Record<string, unknown>): strin
  * has anything set. The minimum names its measure because the engine checks
  * the whole order before discounts, not the amount counted for points.
  */
-export function purchaseLimitSentences(config: Record<string, unknown>, currency: string): string[] {
+export function purchaseLimitSentences(config: Record<string, unknown>): string[] {
   const facts = purchaseAdvancedFacts(config);
   const sentences: string[] = [];
-  const minimum = formatMinSubtotal(facts.minSubtotal, currency);
+  const minimum = parseWPCurrency(facts.minSubtotal);
 
   if (facts.minSubtotal > 0 && facts.excludeCouponOrders) {
     sentences.push(
       sprintf(
-        /* translators: %s: minimum order subtotal with currency code, e.g. "500 USD". */
+        /* translators: %s: minimum order subtotal in the store format, e.g. "$500.00". */
         __(
           'Does not apply to orders under %s (whole order, before discounts) or to orders with a coupon.',
           'yayloyalty',
@@ -127,7 +128,7 @@ export function purchaseLimitSentences(config: Record<string, unknown>, currency
   } else if (facts.minSubtotal > 0) {
     sentences.push(
       sprintf(
-        /* translators: %s: minimum order subtotal with currency code, e.g. "500 USD". */
+        /* translators: %s: minimum order subtotal in the store format, e.g. "$500.00". */
         __('Does not apply to orders under %s (whole order, before discounts).', 'yayloyalty'),
         minimum,
       ),
@@ -207,11 +208,6 @@ export function effectiveRateSentence(config: Record<string, unknown>, defaultRa
 /** A multiplier campaign's effective rate. Two 2-decimal inputs give at most 4 decimals; toFixed drops float noise such as 3.3000000000000003. */
 export function multipliedRate(multiplier: number, defaultRate: number): number {
   return Number((multiplier * defaultRate).toFixed(4));
-}
-
-/** Raw `amount currency`, not parseWPCurrency, so the number matches what the input shows. */
-function formatMinSubtotal(amount: number, currency: string): string {
-  return `${amount} ${currency}`;
 }
 
 function shortPoints(points: number): string {

@@ -24,8 +24,6 @@ import { effectiveRateSentence, purchaseCountingSentence, purchaseLimitSentences
 /** What summarizeCampaign() needs beyond form values, passed in so it stays pure. */
 export interface CampaignSummaryContext {
   trigger: CampaignTrigger;
-  /** Store currency code, read once by the caller. */
-  currency: string;
   /** The built-in purchase campaign; undefined when none, or while it loads. */
   defaultPurchaseCampaign: Campaign | undefined;
   /** True until the default campaign has loaded (or when its load failed), so a multiplier's rate is not guessed. */
@@ -83,7 +81,7 @@ function purchaseSentences(values: CampaignFormValues, context: CampaignSummaryC
     sentences.push(effectiveRateSentence(config, defaultRate));
   }
 
-  sentences.push(purchaseCountingSentence(config), ...purchaseLimitSentences(config, context.currency));
+  sentences.push(purchaseCountingSentence(config), ...purchaseLimitSentences(config));
 
   return sentences;
 }
