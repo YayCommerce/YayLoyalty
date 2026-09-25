@@ -2,6 +2,7 @@
 namespace YayLoyalty\Controllers;
 
 use YayLoyalty\Access\Capabilities;
+use YayLoyalty\Engine\Points\Triggers\PurchaseHandler;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Enums\Status;
 use YayLoyalty\Models\Campaign;
@@ -124,6 +125,19 @@ final class CampaignRestController extends AbstractRestController {
         return self::decorate( $this->ledger, [ $campaign ] )[0];
     }
 
+    /**
+     * Whether a purchase config in rate mode leaves its rate out. The engine reads a missing rate
+     * as 0, and a 0-point match stops every lower-priority campaign from applying; a multiplier
+     * needs no key, since a missing factor is ×1.
+     *
+     * @param array<string, mixed> $config
+     */
+    private static function lacks_purchase_rate( string $trigger, array $config ): bool {
+        return CampaignTrigger::PURCHASE === $trigger
+            && ! PurchaseHandler::is_multiplier( $config )
+            && ! isset( $config['points_per_unit'] );
+    }
+
     public function create_item( \WP_REST_Request $request ) {
         $trigger = (string) $request['trigger'];
 
@@ -142,6 +156,10 @@ final class CampaignRestController extends AbstractRestController {
 
         if ( ! Campaign::config_is_valid( $trigger, $config ) ) {
             return $this->error_invalid_arguments( __( 'The campaign config has an unknown key or a value of the wrong type.', 'yayloyalty' ) );
+        }
+
+        if ( self::lacks_purchase_rate( $trigger, $config ) ) {
+            return $this->error_invalid_arguments( __( 'A purchase campaign needs a rate.', 'yayloyalty' ) );
         }
 
         if ( ! Campaign::conditions_are_valid( $conditions ) ) {
@@ -193,8 +211,22 @@ final class CampaignRestController extends AbstractRestController {
             return $this->error_invalid_arguments( __( 'The campaign config has an unknown key or a value of the wrong type.', 'yayloyalty' ) );
         }
 
+        if ( null !== $request['config'] && self::lacks_purchase_rate( $campaign->get_trigger(), (array) $request['config'] ) ) {
+            return $this->error_invalid_arguments( __( 'A purchase campaign needs a rate.', 'yayloyalty' ) );
+        }
+
         if ( null !== $request['conditions'] && ! Campaign::conditions_are_valid( (array) $request['conditions'] ) ) {
             return $this->error_invalid_arguments( __( 'The campaign conditions are malformed.', 'yayloyalty' ) );
+        }
+
+        // The engine reads the default campaign's rate for every multiplier; the default multiplying
+        // itself would have no rate of its own to start from.
+        if (
+            null !== $request['config']
+            && CampaignRepository::DEFAULT_PURCHASE_SLUG === $campaign->get_slug()
+            && PurchaseHandler::is_multiplier( (array) $request['config'] )
+        ) {
+            return $this->error_invalid_arguments( __( 'The default purchase campaign sets its own rate; it cannot multiply itself.', 'yayloyalty' ) );
         }
 
         // Checked here rather than left to set_status()'s exception: a rejected request must

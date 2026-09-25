@@ -112,6 +112,7 @@ final class CampaignArchiveBuiltinTest extends IntegrationTestCase {
             [
                 'name'      => 'Backwards',
                 'trigger'   => CampaignTrigger::PURCHASE,
+                'config'    => [ 'points_per_unit' => 1 ],
                 'starts_at' => '2026-09-01 00:00:00',
                 'ends_at'   => '2026-08-01 00:00:00',
             ]

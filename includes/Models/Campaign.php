@@ -238,17 +238,19 @@ class Campaign extends AbstractModel {
     public static function config_schema(): array {
         return [
             CampaignTrigger::PURCHASE => [
+                // Above 0, not from 0: a campaign that matches an order and earns 0 still stops the
+                // lower-priority campaigns below it from applying (PointsEngine takes the first match).
                 'points_per_unit'       => [
-                    'type' => 'number',
-                    'min'  => 0,
+                    'type'          => 'number',
+                    'exclusive_min' => 0,
                 ],
                 'mode'                  => [
                     'type'   => 'enum',
                     'values' => [ 'rate', 'multiplier' ],
                 ],
                 'multiplier'            => [
-                    'type' => 'number',
-                    'min'  => 0,
+                    'type'          => 'number',
+                    'exclusive_min' => 0,
                 ],
                 'base'                  => [
                     'type'   => 'enum',
@@ -382,6 +384,10 @@ class Campaign extends AbstractModel {
 
             case 'number':
                 if ( is_bool( $value ) || ! is_numeric( $value ) ) {
+                    return false;
+                }
+
+                if ( isset( $spec['exclusive_min'] ) && (float) $value <= (float) $spec['exclusive_min'] ) {
                     return false;
                 }
 

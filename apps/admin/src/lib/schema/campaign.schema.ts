@@ -275,6 +275,8 @@ interface CampaignConfigFieldSpec {
   type: CampaignConfigFieldType;
   /** Lower bound; int and number only. */
   min?: number;
+  /** Strict lower bound: the value must be above it; number only. */
+  exclusiveMin?: number;
   /** Fixed value set; enum only. */
   values?: readonly string[];
 }
@@ -290,10 +292,10 @@ export const CAMPAIGN_CONFIG_FIELDS: Record<
   Record<string, CampaignConfigFieldSpec>
 > = {
   purchase: {
-    points_per_unit: { type: 'number', min: 0 },
+    points_per_unit: { type: 'number', exclusiveMin: 0 },
     // Missing means 'rate'; see resolvePurchaseMode().
     mode: { type: 'enum', values: ['rate', 'multiplier'] },
-    multiplier: { type: 'number', min: 0 },
+    multiplier: { type: 'number', exclusiveMin: 0 },
     base: { type: 'enum', values: ['after_discounts', 'before_discounts'] },
     // Never read by the calculator; kept so a downgrade/upgrade round trip does not lose it.
     include_shipping: { type: 'bool' },
