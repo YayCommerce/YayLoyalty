@@ -6,6 +6,19 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
 
 ## Unreleased
 
+### Added & Changed — Campaign CRUD end to end: create, update, archive, delete, performance analytics (2026-09-25)
+
+- **Campaign create:** `/campaigns/new` shows a template chooser (`CampaignTemplatePicker.tsx`, three built-in templates: purchase/signup/review); POST `/campaigns` persists to real database. Lite shows read-only built-in cards; Pro shows the picker and form.
+- **Campaign update:** `/campaigns/:id/edit` (Pro only, Lite 404) — six-section form (Basics, Trigger, Reward, Conditions, Schedule, Priority) + live summary rail. PUT `/campaigns/{id}` persists for real: `CampaignRestController::update_item()` validates config/conditions/dates, applies updates, calls `$campaign->to_update_row()` and writes via `CampaignRepository::update()`. Built-in campaigns refuse archive but allow pause/name edit. Lite's three built-in cards have an On/Off toggle + Save changes button (status + config writes only).
+- **Campaign archive/pause:** Dialogs (`pro/campaigns/archive/`, `pro/campaigns/pause/`) opened from table row menu and bulk bar; copy/figures (points_issued_lifetime) live in `*.copy.ts` files. Built-in campaigns cannot be archived (403 from server). `points_issued` is a ledger-derived read field; fixture value was removed and `CampaignPerformanceFixture` (574 lines) is gone.
+- **Campaign performance analytics:** `/campaigns/:id/performance` (Pro only, purchase/signup/review triggers) — **real data from `Pro/Repositories/CampaignPerformanceRepository`** (ledger aggregates + paged/searchable entries), not fixtures. Tiles (points issued, redeemed, unique campaigners, avg order value), daily chart (last 30 days), skipped/estimate side panel (both still `null` — need earning engine F01-4), searchable/paginated entries table. `skipped`, `estimate`, `avg_order_subtotal` remain `null` pending the award path.
+- **Lookup route:** `LookupRestController` — `GET /lookups/{entity}` (products, categories, customers) with `search` or `ids` params, returns paginated `{ items: [{ id, label }] }`. Used by condition value pickers in campaign/reward editors.
+- **Validation & guards:** Rate guards refuse a purchase campaign with rate ≤ 0 or missing (in rate mode), or multiplier on the default purchase campaign (`CampaignRateGuardTest`). Name/date validation (blank names, end before start, dates that are not full UTC datetimes); a write that leaves the dates alone still lands on a legacy row stored out of order. Archive guard refuses to archive built-in campaigns.
+- **Status badge colors:** `CampaignStatusBadge.tsx` + `campaignStatusBadgeVariant()` in `campaign-labels.ts` own one badge variant per display status (active success, scheduled primary, paused warning, draft outline, archived/ended dimmed).
+- **Loading skeletons:** Campaigns list (`CampaignPointsSummarySkeleton`) and editor (`CampaignEditorSkeleton.tsx`) show skeletons shaped like the loaded page.
+- **Utilities:** `Utils\Text::plain()` removes HTML tags and entities from store names; `Utils\WooOrders::is_hpos()` centralizes the one HPOS check for order admin links.
+- **Tests:** Integration suite now 74 tests: campaign archive guard and name/date validation, rate guards (`CampaignRateGuardTest`), lookups by search and id (`LookupRouteTest`), performance repository aggregates/paging/search and deleted-customer snapshot names (`CampaignPerformanceRepositoryTest`). Unit tests for campaign reward copy, status badge colors, stored-date formatting.
+
 ### Added — Email Settings page: loyalty transactional emails as WooCommerce email classes (2026-09-24)
 
 - **Email registration:** Each loyalty email is a `WC_Email` subclass registered via WooCommerce's

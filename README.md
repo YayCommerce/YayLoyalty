@@ -105,7 +105,7 @@ One repository, two zips. Lite = Pro minus `includes/Pro/` and SPA built with `B
 - Extra campaign triggers: birthday, first_order, order_count, spend_milestone
 - Campaign conditions: role, product, category, lifetime spend, order count
 - Conditions preview endpoint: POST `/campaigns/{id}/preview-conditions`
-- Campaign table + edit form (`/campaigns/:id/edit`; saves validate but do not persist yet) and performance page (`/campaigns/:id/performance`, fixture-backed)
+- Campaign table + full CRUD (`/campaigns/new` template chooser → create form, `/campaigns/:id/edit` six-section form + summary rail, persist for real, `/campaigns/:id/performance` real ledger-backed performance analytics for purchase/signup/review only)
 - Saved Customers-page segments: POST/DELETE `/customers/segments`
 - Advanced config: max_points_per_order, daily_cap, media_bonus_points
 - Reward types: fixed_coupon, percent_coupon, free_shipping, free_product (in addition to Lite's flexible_discount)
