@@ -7,9 +7,8 @@ import { getCampaignPerformance, getCampaignPerformanceEntries } from './campaig
 
 /**
  * Keyed under `['campaign', 'performance', id, ...]`, same prefix as `CAMPAIGN_QUERIES`, so a
- * broad `['campaign']` invalidation covers this too. Neither query is invalidated on campaign
- * edit — performance figures only change when the ledger gains rows, never when a campaign's
- * own fields change.
+ * broad `['campaign']` invalidation covers this too. The summary carries the campaign itself
+ * (the page's header), so the campaign write mutations invalidate it along with detail.
  */
 export const CAMPAIGN_PERFORMANCE_QUERIES = {
   summary: (id: number) =>

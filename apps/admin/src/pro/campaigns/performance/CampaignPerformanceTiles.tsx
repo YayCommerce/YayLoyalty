@@ -4,7 +4,7 @@ import { parseWPCurrency } from '@/lib/helpers/format.helper';
 import { formatPoints } from '@/lib/helpers/points.helper';
 import type { CampaignPerformance, CampaignPerformanceTrigger } from '@/lib/schema/campaign-performance.schema';
 import { PointsValue } from '@/components/ui/custom/points-value';
-import { StatTile, StatTileSkeleton } from '@/components/ui/custom/stat-tile';
+import { StatTile } from '@/components/ui/custom/stat-tile';
 
 type Totals = CampaignPerformance['totals'];
 
@@ -106,26 +106,6 @@ export function CampaignPerformanceTiles({
           }
         />
       )}
-    </div>
-  );
-}
-
-export function CampaignPerformanceTilesSkeleton({ trigger }: { trigger: CampaignPerformanceTrigger }) {
-  const labels =
-    trigger === 'purchase'
-      ? [
-          __('Points issued', 'yayloyalty'),
-          __('Orders affected', 'yayloyalty'),
-          __('Average per order', 'yayloyalty'),
-          __('Cost in liability', 'yayloyalty'),
-        ]
-      : [__('Points issued', 'yayloyalty'), __('Customers earned', 'yayloyalty')];
-
-  return (
-    <div className={gridClass(trigger)}>
-      {labels.map((label) => (
-        <StatTileSkeleton key={label} label={label} />
-      ))}
     </div>
   );
 }

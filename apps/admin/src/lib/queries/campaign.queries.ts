@@ -45,6 +45,15 @@ export function useCampaignQuery(id: number) {
   return useQuery(CAMPAIGN_QUERIES.detail(id));
 }
 
+/**
+ * Purchase-group campaigns only, for the editor's multiplier mode, which
+ * inherits the built-in purchase campaign's rate. Off unless `enabled`, so a
+ * rate-mode or non-purchase editor never asks; the full list is the table's.
+ */
+export function usePurchaseCampaignsQuery(enabled: boolean) {
+  return useQuery({ ...CAMPAIGN_QUERIES.list({ trigger: 'purchase', perPage: 100 }), enabled });
+}
+
 /** No detail query key: nothing exists to invalidate until the row is created. */
 export function useCreateCampaignMutation() {
   const queryClient = useQueryClient();
@@ -65,9 +74,10 @@ export function useUpdateCampaignMutation(id: number) {
     mutationKey: ['campaign', 'update', id],
     mutationFn: (input: Partial<CampaignUpdateInput>) => updateCampaign(id, input),
     onSuccess: () => {
-      // The list shows the same fields; invalidating only detail leaves its row stale.
+      // The list and the performance header show the same fields; invalidating only detail leaves them stale.
       queryClient.invalidateQueries({ queryKey: ['campaign', 'detail', id] });
       queryClient.invalidateQueries({ queryKey: ['campaign', 'list'] });
+      queryClient.invalidateQueries({ queryKey: ['campaign', 'performance', id] });
     },
   });
 }
@@ -82,6 +92,7 @@ export function useUpdateCampaignStatusMutation(id: number) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['campaign', 'detail', id] });
       queryClient.invalidateQueries({ queryKey: ['campaign', 'list'] });
+      queryClient.invalidateQueries({ queryKey: ['campaign', 'performance', id] });
     },
   });
 }
@@ -96,6 +107,7 @@ export function useUpdateCampaignConfigMutation(id: number) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['campaign', 'detail', id] });
       queryClient.invalidateQueries({ queryKey: ['campaign', 'list'] });
+      queryClient.invalidateQueries({ queryKey: ['campaign', 'performance', id] });
     },
   });
 }
@@ -109,6 +121,7 @@ export function useDeleteCampaignMutation(id: number) {
     onSuccess: () => {
       // Remove, not invalidate: a refetch of a deleted campaign would only 404.
       queryClient.removeQueries({ queryKey: ['campaign', 'detail', id] });
+      queryClient.removeQueries({ queryKey: ['campaign', 'performance', id] });
       queryClient.invalidateQueries({ queryKey: ['campaign', 'list'] });
     },
   });
@@ -143,8 +156,14 @@ export function useBulkCampaignWritesMutation() {
     },
     // onSettled: a partly failed batch still changed real campaigns.
     onSettled: (_data, _error, { statuses, deletes }) => {
-      statuses.forEach(({ id }) => queryClient.invalidateQueries({ queryKey: ['campaign', 'detail', id] }));
-      deletes.forEach((id) => queryClient.removeQueries({ queryKey: ['campaign', 'detail', id] }));
+      statuses.forEach(({ id }) => {
+        queryClient.invalidateQueries({ queryKey: ['campaign', 'detail', id] });
+        queryClient.invalidateQueries({ queryKey: ['campaign', 'performance', id] });
+      });
+      deletes.forEach((id) => {
+        queryClient.removeQueries({ queryKey: ['campaign', 'detail', id] });
+        queryClient.removeQueries({ queryKey: ['campaign', 'performance', id] });
+      });
       queryClient.invalidateQueries({ queryKey: ['campaign', 'list'] });
     },
   });

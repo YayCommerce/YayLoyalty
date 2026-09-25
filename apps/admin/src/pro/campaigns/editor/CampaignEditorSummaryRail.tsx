@@ -3,7 +3,7 @@ import { useFormContext } from 'react-hook-form';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { parseWPDate, parseWPRelativeDate } from '@/lib/helpers/format.helper';
-import { useCampaignsQuery } from '@/lib/queries/campaign.queries';
+import { usePurchaseCampaignsQuery } from '@/lib/queries/campaign.queries';
 import {
   Campaign,
   CampaignCondition,
@@ -16,8 +16,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Skeleton } from '@/components/ui/skeleton';
-import { conditionTypeLabel, findBuiltinCampaign, statusLabel, triggerGroup, triggerLabel } from '../campaign-labels';
+import { conditionTypeLabel, findBuiltinCampaign, statusLabel, triggerLabel } from '../campaign-labels';
 import { CampaignFormValues, useCampaignEditorContext } from './campaign-editor.form';
 
 /**
@@ -48,15 +47,10 @@ export function CampaignEditorSummaryRail({
   const { campaign, trigger } = useCampaignEditorContext();
   const values = watch();
 
-  const campaignsQuery = useCampaignsQuery({ perPage: 100 });
-  const otherCampaigns = campaignsQuery.data?.data ?? [];
-
-  const defaultPurchaseCampaign = findBuiltinCampaign(otherCampaigns, 'purchase');
-
-  const group = triggerGroup(trigger);
-  const hasPriorityCollision = otherCampaigns.some(
-    (row) => row.id !== campaign.id && triggerGroup(row.trigger) === group && row.priority === values.priority,
-  );
+  // Only a multiplier campaign reads another campaign; everything else here is form state.
+  const needsDefaultPurchase = trigger === 'purchase' && resolvePurchaseMode(values.config) === 'multiplier';
+  const purchaseCampaignsQuery = usePurchaseCampaignsQuery(needsDefaultPurchase);
+  const defaultPurchaseCampaign = findBuiltinCampaign(purchaseCampaignsQuery.data?.data, 'purchase');
 
   const currency = window.yayLoyaltyMeta.wcMeta.currency_data.currency;
 
@@ -68,7 +62,6 @@ export function CampaignEditorSummaryRail({
 
   const readiness = campaignReadiness(values, {
     trigger,
-    hasPriorityCollision,
     defaultPurchaseCampaign,
   });
 
@@ -92,22 +85,18 @@ export function CampaignEditorSummaryRail({
           <CardTitle className="text-base">{__('Before it can run', 'yayloyalty')}</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
-          {campaignsQuery.isPending ? (
-            <Skeleton className="h-16 w-full" />
-          ) : (
-            <ul className="flex flex-col gap-1.5 text-sm">
-              {readiness.items.map((item, index) => (
-                <li key={index} className="flex items-start gap-2">
-                  {item.ok ? (
-                    <Check className="text-success mt-0.5 size-4 shrink-0" />
-                  ) : (
-                    <X className="text-destructive mt-0.5 size-4 shrink-0" />
-                  )}
-                  <span className={cn(!item.ok && 'text-muted-foreground')}>{item.label}</span>
-                </li>
-              ))}
-            </ul>
-          )}
+          <ul className="flex flex-col gap-1.5 text-sm">
+            {readiness.items.map((item, index) => (
+              <li key={index} className="flex items-start gap-2">
+                {item.ok ? (
+                  <Check className="text-success mt-0.5 size-4 shrink-0" />
+                ) : (
+                  <X className="text-destructive mt-0.5 size-4 shrink-0" />
+                )}
+                <span className={cn(!item.ok && 'text-muted-foreground')}>{item.label}</span>
+              </li>
+            ))}
+          </ul>
           <Separator />
           <p className="text-muted-foreground text-xs">{readiness.derivedStatusLine}</p>
         </CardContent>
@@ -427,8 +416,6 @@ function conditionClause(condition: CampaignCondition): string {
 /** What campaignReadiness() needs beyond form values, passed in so it stays pure. */
 export interface CampaignReadinessContext {
   trigger: CampaignTrigger;
-  /** Another campaign in the same group holds this (possibly unsaved) priority. */
-  hasPriorityCollision: boolean;
   /** The built-in purchase campaign; undefined when none. */
   defaultPurchaseCampaign: Campaign | undefined;
 }
@@ -454,10 +441,6 @@ export function campaignReadiness(values: CampaignFormValues, context: CampaignR
     {
       label: __('Dates are coherent (end after start)', 'yayloyalty'),
       ok: isCampaignScheduleInOrder(values.starts_at, values.ends_at),
-    },
-    {
-      label: __('Priority does not collide with another campaign in this group', 'yayloyalty'),
-      ok: !context.hasPriorityCollision,
     },
   ];
 

@@ -109,7 +109,7 @@ final class CampaignRestController extends AbstractRestController {
             ]
         );
 
-        $result['items'] = $this->decorate( $result['items'] );
+        $result['items'] = self::decorate( $this->ledger, $result['items'] );
 
         return $this->respond_paginated( $result );
     }
@@ -121,7 +121,7 @@ final class CampaignRestController extends AbstractRestController {
             return $this->error_not_found( __( 'Campaign not found.', 'yayloyalty' ) );
         }
 
-        return $this->decorate( [ $campaign ] )[0];
+        return self::decorate( $this->ledger, [ $campaign ] )[0];
     }
 
     public function create_item( \WP_REST_Request $request ) {
@@ -178,7 +178,7 @@ final class CampaignRestController extends AbstractRestController {
 
         $created = $this->campaigns->find_campaign( $id );
 
-        return $this->decorate( [ null === $created ? $campaign : $created ] )[0];
+        return self::decorate( $this->ledger, [ null === $created ? $campaign : $created ] )[0];
     }
 
     public function update_item( \WP_REST_Request $request ) {
@@ -248,7 +248,7 @@ final class CampaignRestController extends AbstractRestController {
         $update = $campaign->to_update_row();
         $this->campaigns->update( (int) $campaign->get_id(), $update['data'], $update['format'] );
 
-        return $this->decorate( [ $campaign ] )[0];
+        return self::decorate( $this->ledger, [ $campaign ] )[0];
     }
 
     public function delete_item( \WP_REST_Request $request ) {
@@ -314,9 +314,9 @@ final class CampaignRestController extends AbstractRestController {
      * @param Campaign[] $campaigns
      * @return array<int, array<string, mixed>>
      */
-    private function decorate( array $campaigns ): array {
+    public static function decorate( LedgerRepository $ledger, array $campaigns ): array {
         $ids    = array_map( static fn( Campaign $campaign ) => (int) $campaign->get_id(), $campaigns );
-        $totals = $this->ledger->totals_by_campaign( $ids );
+        $totals = $ledger->totals_by_campaign( $ids );
 
         return array_map(
             static function ( Campaign $campaign ) use ( $totals ) {

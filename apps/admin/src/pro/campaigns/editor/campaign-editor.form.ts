@@ -93,10 +93,8 @@ export function duplicateToFormValues(source: Campaign): CampaignCreateSeed {
 
 /**
  * Placeholder for the editor context's `campaign` in create mode, since
- * nothing is persisted yet. `id` is Number.MAX_SAFE_INTEGER rather than 0:
- * CampaignEditorPriority's ladder breaks priority ties by id, newest wins,
- * and this draft — once saved — gets a higher id than every existing
- * campaign, so the preview should already show it winning ties today.
+ * nothing is persisted yet. `id` is Number.MAX_SAFE_INTEGER rather than 0
+ * so no comparison against a real campaign's id can ever match it.
  */
 export function synthesizeDraftCampaign(): Campaign {
   const now = new Date().toISOString().slice(0, 19).replace('T', ' ');

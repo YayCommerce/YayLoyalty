@@ -3,12 +3,15 @@ namespace YayLoyalty\Pro\Controllers;
 
 use YayLoyalty\Access\Capabilities;
 use YayLoyalty\Controllers\AbstractRestController;
+use YayLoyalty\Controllers\CampaignRestController;
 use YayLoyalty\Enums\CampaignTrigger;
+use YayLoyalty\Models\Campaign;
 use YayLoyalty\Engine\Points\Triggers\PurchaseHandler;
 use YayLoyalty\Pro\Repositories\CampaignPerformanceRepository;
 use YayLoyalty\Pro\Repositories\CampaignPointsRepository;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\DashboardRepository;
+use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Services\Dashboard\DashboardMath;
 use YayLoyalty\Services\Dashboard\PeriodWindow;
 use YayLoyalty\Utils\PointsMath;
@@ -86,16 +89,21 @@ final class CampaignPerformanceRestController extends AbstractRestController {
     /** @var CampaignPointsRepository */
     private $points;
 
+    /** @var LedgerRepository */
+    private $ledger;
+
     public function __construct(
         DashboardRepository $dashboard,
         CampaignRepository $campaigns,
         CampaignPerformanceRepository $performance,
-        CampaignPointsRepository $points
+        CampaignPointsRepository $points,
+        LedgerRepository $ledger
     ) {
         $this->dashboard   = $dashboard;
         $this->campaigns   = $campaigns;
         $this->performance = $performance;
         $this->points      = $points;
+        $this->ledger      = $ledger;
     }
 
     /**
@@ -160,17 +168,20 @@ final class CampaignPerformanceRestController extends AbstractRestController {
      * @return array<string, mixed>|\WP_Error
      */
     public function get_performance( \WP_REST_Request $request ) {
-        $row = $this->resolve_row( (int) $request['id'] );
+        $campaign = $this->resolve_campaign( (int) $request['id'] );
 
-        if ( null === $row ) {
+        if ( null === $campaign ) {
             return $this->error_not_found( __( 'Campaign not found.', 'yayloyalty' ) );
         }
 
+        $row    = $campaign->to_array();
         $totals = $this->performance->totals( $row['id'] );
         $window = $this->chart_window( $row );
 
         return [
             'campaign_id' => $row['id'],
+            // The same shape GET /campaigns/{id} answers, so the page's header needs no second request.
+            'campaign'    => CampaignRestController::decorate( $this->ledger, [ $campaign ] )[0],
             'window'      => $window,
             'totals'      => $this->shape_totals( $row, $totals ),
             'daily'       => $this->daily_series( $row['id'], $window ),
@@ -183,14 +194,14 @@ final class CampaignPerformanceRestController extends AbstractRestController {
      * @return array<string, mixed>|\WP_Error
      */
     public function get_entries( \WP_REST_Request $request ) {
-        $row = $this->resolve_row( (int) $request['id'] );
+        $campaign = $this->resolve_campaign( (int) $request['id'] );
 
-        if ( null === $row ) {
+        if ( null === $campaign ) {
             return $this->error_not_found( __( 'Campaign not found.', 'yayloyalty' ) );
         }
 
         $result = $this->performance->paginate_entries(
-            $row['id'],
+            (int) $campaign->get_id(),
             (int) $request['page'],
             (int) $request['per_page'],
             (string) $request['search']
@@ -200,22 +211,18 @@ final class CampaignPerformanceRestController extends AbstractRestController {
     }
 
     /**
-     * The real campaign, shaped like CampaignPerformanceRepository expects
-     * (Campaign::to_array()'s keys), plus the trigger gate. Returns null —
-     * a plain 404 — for an unknown id AND for a known id whose trigger this
-     * page does not support, so a client can't tell the two apart by
-     * response shape.
-     *
-     * @return array<string, mixed>|null
+     * The real campaign behind the trigger gate. Returns null — a plain 404
+     * — for an unknown id AND for a known id whose trigger this page does
+     * not support, so a client can't tell the two apart by response shape.
      */
-    private function resolve_row( int $id ): ?array {
+    private function resolve_campaign( int $id ): ?Campaign {
         $campaign = $this->campaigns->find_campaign( $id );
 
         if ( null === $campaign || ! in_array( $campaign->get_trigger(), self::TRIGGERS, true ) ) {
             return null;
         }
 
-        return $campaign->to_array();
+        return $campaign;
     }
 
     /**

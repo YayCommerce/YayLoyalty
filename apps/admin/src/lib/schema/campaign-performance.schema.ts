@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { CampaignTrigger } from './campaign.schema';
+import { campaignSchema, CampaignTrigger } from './campaign.schema';
 
 /**
  * Mirrors Pro\Controllers\CampaignPerformanceRestController and
@@ -60,6 +60,8 @@ export type CampaignPerformanceSkip = z.infer<typeof campaignPerformanceSkipSche
 /** `GET /campaigns/{id}/performance` response. */
 export const campaignPerformanceSchema = z.object({
   campaign_id: z.number().int(),
+  /** The campaign itself, verbatim the `GET /campaigns/{id}` shape, so the page's header needs no second request. */
+  campaign: campaignSchema,
   /** Site-timezone dates, both ends inclusive. */
   window: z.object({
     from: z.string(),

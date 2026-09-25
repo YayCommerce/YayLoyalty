@@ -95,6 +95,8 @@ final class CampaignArchiveBuiltinTest extends IntegrationTestCase {
         $this->assertSame( 200, $performance->get_status() );
         $this->assertSame( 15384, $campaign->get_data()['points_issued'] );
         $this->assertSame( $performance->get_data()['totals']['points_issued'], $campaign->get_data()['points_issued'] );
+        // The performance page draws its header from this, so it must be the detail response verbatim.
+        $this->assertSame( $campaign->get_data(), $performance->get_data()['campaign'] );
     }
 
     public function test_update_refuses_a_blank_name(): void {

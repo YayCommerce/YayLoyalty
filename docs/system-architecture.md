@@ -468,7 +468,7 @@ CampaignRestController::delete_item()  via  exec_write()
 
 **Access:** `CampaignTable`'s row menu ("View performance") and the campaign editor rail's "Performance" link, both rendered only when `hasPerformancePage(trigger)` is true.
 
-**Contract:** `GET /campaigns/{id}/performance` returns `{ window, totals, daily, skipped, estimate }`; `GET /campaigns/{id}/performance/entries` returns a paged/searchable row list (order/signup/review depending on trigger). **Nullability rule:** every nullable field means "not applicable to this trigger" or "not computable yet" — never `0`. A purchase-only total is `null` on a signup/review campaign; an average is `null` on zero entries (division by zero), not `0`. The SPA renders `null` as `—`, same rule the dashboard uses for its own null fields.
+**Contract:** `GET /campaigns/{id}/performance` returns `{ campaign, window, totals, daily, skipped, estimate }` — `campaign` is the `GET /campaigns/{id}` shape verbatim (`CampaignRestController::decorate()`), so the page makes no second request for its header; `GET /campaigns/{id}/performance/entries` returns a paged/searchable row list (order/signup/review depending on trigger). **Nullability rule:** every nullable field means "not applicable to this trigger" or "not computable yet" — never `0`. A purchase-only total is `null` on a signup/review campaign; an average is `null` on zero entries (division by zero), not `0`. The SPA renders `null` as `—`, same rule the dashboard uses for its own null fields.
 
 **Two time bases, on purpose:** `totals` is lifetime (no date bound), so it always agrees with `CampaignRestController`'s own `points_issued` column. `window`/`daily` is the last 30 days, clamped to the campaign's own run — a chart spanning a campaign's entire life would be unreadable. The chart prints its own `window` next to its title so the narrower span is never mistaken for the lifetime tiles above it. Full specification lives in `lib/schema/campaign-performance.schema.ts` and the `CampaignPerformanceRestController` class docblock.
 
@@ -482,7 +482,7 @@ CampaignPerformanceRestController::get_performance()
     ↓
 Response validated by lib/schema/campaign-performance.schema.ts (zod)
     ↓
-CampaignPerformance.tsx: useCampaignQuery (header) + useCampaignPerformanceQuery (tiles/chart/side panel) — independent; a summary failure never hides the header
+CampaignPerformance.tsx: one useCampaignPerformanceQuery — header from the embedded campaign, tiles/chart/side panel from the rest
 ```
 
 **Known limitation:** `skipped`, `estimate` and `totals.avg_order_subtotal` ship `null` unconditionally — all three need either replaying every order through the earning engine (`Engine\Earning\EarningService`, scaffold — see "Order award — SCAFFOLDED" below, F01-4) or a scored base amount the engine does not yet persist. Their panels/sublines already self-hide on `null`; no SPA change needed when F01-4 lands. `GET /campaigns/{id}/performance/entries` (`CampaignPerformanceRepository::paginate_entries()`) is a paged, searchable `ledger` query joined to `wp_users`, real end to end including each purchase row's `subtotal` (`wc_get_order()`).

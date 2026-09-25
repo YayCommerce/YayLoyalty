@@ -1,20 +1,18 @@
-import { ReactNode, useMemo, useState } from 'react';
+import { ReactNode, useState } from 'react';
 import { ChevronDown, ChevronUp, TriangleAlert } from 'lucide-react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import { getSettings } from '@wordpress/date';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { joinStoredDateTime, parseWPDate, parseWPTime, splitStoredDateTime } from '@/lib/helpers/format.helper';
-import { useCampaignsQuery } from '@/lib/queries/campaign.queries';
+import { usePurchaseCampaignsQuery } from '@/lib/queries/campaign.queries';
 import {
   CampaignTrigger,
   LITE_CAMPAIGN_TRIGGERS,
   LiteCampaignTrigger,
   resolvePurchaseMode,
 } from '@/lib/schema/campaign.schema';
-import { cn } from '@/lib/utils';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -24,10 +22,9 @@ import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Segmented, SegmentedItem } from '@/components/ui/segmented';
 import { Separator } from '@/components/ui/separator';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { TagsInput } from '@/components/ui/tags-input';
-import { findBuiltinCampaign, statusLabel, triggerGroup, triggerLabel } from '../campaign-labels';
+import { findBuiltinCampaign, statusLabel, triggerLabel } from '../campaign-labels';
 import { CampaignFormValues, useCampaignEditorContext } from './campaign-editor.form';
 import { CampaignEditorConditions } from './CampaignEditorConditions';
 
@@ -284,9 +281,9 @@ function RewardFieldsPurchase() {
   const currency = window.yayLoyaltyMeta.wcMeta.currency_data.currency;
 
   // A multiplier campaign silently stops applying unless the default purchase campaign exists
-  // and is active.
-  const { data: campaignsData } = useCampaignsQuery({ perPage: 100 });
-  const defaultCampaign = findBuiltinCampaign(campaignsData?.data, 'purchase');
+  // and is active. Asked for in multiplier mode only; rate mode has no use for it.
+  const { data: purchaseCampaigns } = usePurchaseCampaignsQuery(mode === 'multiplier');
+  const defaultCampaign = findBuiltinCampaign(purchaseCampaigns?.data, 'purchase');
   const defaultPointsPerUnit =
     typeof defaultCampaign?.config.points_per_unit === 'number' ? defaultCampaign.config.points_per_unit : undefined;
 
@@ -1011,106 +1008,31 @@ function describeWindow(startsAt: string | null, endsAt: string | null, zoneLabe
 
 /* ─── §6 Priority ────────────────────────────────────────────────────── */
 
-/**
- * The priority number plus the ladder of every campaign in the same trigger
- * group, ordered as CampaignTable orders them. No drag-reorder: the table's
- * drag never writes priority either.
- */
+/** The priority number alone; where it lands among its group is the campaigns table's job. */
 function CampaignEditorPriority() {
   const { control, setValue } = useFormContext<CampaignFormValues>();
-  const { mode, campaign, trigger } = useCampaignEditorContext();
   const priority = useWatch({ control, name: 'priority' });
-  const name = useWatch({ control, name: 'name' });
-  const campaignsQuery = useCampaignsQuery({ perPage: 100 });
-
-  const group = triggerGroup(trigger);
-
-  const ladder = useMemo(() => {
-    const rows = (campaignsQuery.data?.data ?? [])
-      .filter((row) => triggerGroup(row.trigger) === group)
-      // Substitute the unsaved priority so the ladder answers "what would this reorder to".
-      .map((row) => (row.id === campaign.id ? { ...row, priority: priority ?? row.priority } : row));
-
-    // Create mode: campaign.id (Number.MAX_SAFE_INTEGER) never matches a real row above, so the
-    // unsaved campaign needs its own entry to preview where it lands in its own group.
-    if (mode === 'create') {
-      rows.push({
-        ...campaign,
-        trigger,
-        priority: priority ?? campaign.priority,
-        name: name || __('New campaign', 'yayloyalty'),
-      });
-    }
-
-    return [...rows].sort((a, b) => b.priority - a.priority || b.id - a.id);
-  }, [campaignsQuery.data, group, campaign, trigger, mode, priority, name]);
 
   return (
-    <div className="flex flex-col gap-4">
-      <Field orientation="responsive">
-        <FieldLabel>{__('Priority', 'yayloyalty')}</FieldLabel>
-        <FieldContent>
-          <NumberInputRoot
-            size="small"
-            className="w-28"
-            min={0}
-            value={priority}
-            onValueChange={(next) => setValue('priority', next, { shouldDirty: true })}
-          >
-            <NumberInputInput />
-          </NumberInputRoot>
-          <FieldDescription>
-            {__(
-              'Higher wins. Within the same group, the highest-priority match applies to an order and the rest are skipped — campaigns never stack.',
-              'yayloyalty',
-            )}
-          </FieldDescription>
-        </FieldContent>
-      </Field>
-
-      {campaignsQuery.isPending && <Skeleton className="h-24 w-full" />}
-
-      {!campaignsQuery.isPending && ladder.length > 0 && (
-        <div className="flex flex-col gap-1.5 rounded-lg border p-3">
-          {ladder.map((row) => {
-            const isCurrent = row.id === campaign.id;
-
-            return (
-              <div
-                key={row.id}
-                className={cn('flex items-center justify-between gap-2 text-sm', isCurrent && 'font-semibold')}
-              >
-                <span className="flex items-center gap-2">
-                  <span className="text-muted-foreground tabular-nums">{row.priority}</span>
-                  {row.name}
-                </span>
-                {isCurrent ? (
-                  <Badge variant="outline" className="uppercase">
-                    {__('This campaign', 'yayloyalty')}
-                  </Badge>
-                ) : (
-                  <span className="text-muted-foreground text-xs">
-                    {rowOutranksCurrent(row.priority, row.id, priority ?? campaign.priority, campaign.id)
-                      ? __('Wins over this', 'yayloyalty')
-                      : __('Skipped when this matches', 'yayloyalty')}
-                  </span>
-                )}
-              </div>
-            );
-          })}
-          <p className="text-muted-foreground pt-1 text-xs">
-            {__(
-              'Campaigns do not stack. For a given order, only the highest-priority match in this group applies.',
-              'yayloyalty',
-            )}
-          </p>
-        </div>
-      )}
-    </div>
+    <Field orientation="responsive">
+      <FieldLabel>{__('Priority', 'yayloyalty')}</FieldLabel>
+      <FieldContent>
+        <NumberInputRoot
+          size="small"
+          className="w-28"
+          min={0}
+          value={priority}
+          onValueChange={(next) => setValue('priority', next, { shouldDirty: true })}
+        >
+          <NumberInputInput />
+        </NumberInputRoot>
+        <FieldDescription>
+          {__(
+            'Higher wins. Within the same group, the highest-priority match applies to an order and the rest are skipped — campaigns never stack.',
+            'yayloyalty',
+          )}
+        </FieldDescription>
+      </FieldContent>
+    </Field>
   );
-}
-
-/** Ties go to the newer campaign, matching CampaignTable. */
-function rowOutranksCurrent(rowPriority: number, rowId: number, currentPriority: number, currentId: number): boolean {
-  return rowPriority > currentPriority || (rowPriority === currentPriority && rowId > currentId);
 }

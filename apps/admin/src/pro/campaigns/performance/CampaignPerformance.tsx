@@ -4,7 +4,6 @@ import { ChevronLeft, InfoIcon } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { __, sprintf } from '@wordpress/i18n';
 
-import { useCampaignQuery } from '@/lib/queries/campaign.queries';
 import {
   CampaignPerformance as CampaignPerformanceData,
   CampaignPerformanceTrigger,
@@ -24,7 +23,7 @@ import { useCampaignPerformanceQuery } from './campaign-performance.queries';
 import { CampaignPerformanceChart, CampaignPerformanceChartSkeleton } from './CampaignPerformanceChart';
 import { CampaignPerformanceEntries } from './CampaignPerformanceEntries';
 import { CampaignPerformanceSidePanel } from './CampaignPerformanceSidePanel';
-import { CampaignPerformanceTiles, CampaignPerformanceTilesSkeleton } from './CampaignPerformanceTiles';
+import { CampaignPerformanceTiles } from './CampaignPerformanceTiles';
 
 function isNotFound(error: unknown): boolean {
   return error instanceof HTTPError && error.response.status === 404;
@@ -33,20 +32,15 @@ function isNotFound(error: unknown): boolean {
 /**
  * Composes the campaign performance page — mirrors `CampaignEditor.tsx`'s
  * state-handling shape (invalid id / pending / error / 404, all before the
- * "real" render). Two independent queries: `useCampaignQuery` (header) and
- * `useCampaignPerformanceQuery` (everything below it) — a failure in the
- * summary never hides the header, since the header only depends on the
- * campaign query.
+ * "real" render). One query: the summary carries the campaign itself, so the
+ * header never costs a second request.
  *
  * A trigger outside `CAMPAIGN_PERFORMANCE_TRIGGERS` (e.g. `birthday`) 404s
- * from the loaded campaign alone — the SPA never even requests the summary.
- * The summary query's OWN 404 (an edge case: the campaign row disappearing
- * server-side between the two fetches) is treated the same way, since the
- * server enforces the identical trigger allowlist on that route.
+ * server-side; `hasPerformancePage` re-checks the loaded campaign only to
+ * narrow the type for the body.
  */
 export function CampaignPerformance({ id }: { id: number }) {
   const navigate = useNavigate();
-  const campaignQuery = useCampaignQuery(id);
   const summaryQuery = useCampaignPerformanceQuery(id);
 
   // react-router keeps the current scroll position on navigation (no full page load) — this
@@ -59,30 +53,26 @@ export function CampaignPerformance({ id }: { id: number }) {
     return <NotFoundPage />;
   }
 
-  if (campaignQuery.isPending) {
-    return (
-      <PageLayout className="max-w-6xl" title={<Skeleton className="h-8 w-64" />}>
-        <Skeleton className="h-96 w-full" />
-      </PageLayout>
-    );
+  if (summaryQuery.isPending) {
+    return <CampaignPerformanceSkeleton />;
   }
 
-  if (campaignQuery.isError) {
-    if (isNotFound(campaignQuery.error)) {
+  if (summaryQuery.isError) {
+    if (isNotFound(summaryQuery.error)) {
       return <NotFoundPage />;
     }
 
     return (
       <PageLayout className="max-w-6xl" title={__('Campaign', 'yayloyalty')}>
         <ErrorState
-          message={__('Could not load this campaign.', 'yayloyalty')}
-          onRetry={() => campaignQuery.refetch()}
+          message={__("Could not load this campaign's performance.", 'yayloyalty')}
+          onRetry={() => summaryQuery.refetch()}
         />
       </PageLayout>
     );
   }
 
-  const campaign = campaignQuery.data;
+  const campaign = summaryQuery.data.campaign;
 
   if (!hasPerformancePage(campaign.trigger)) {
     return <NotFoundPage />;
@@ -125,25 +115,12 @@ export function CampaignPerformance({ id }: { id: number }) {
           </Button>
         }
       >
-        {summaryQuery.isPending ? (
-          <CampaignPerformanceBodySkeleton trigger={trigger} />
-        ) : summaryQuery.isError ? (
-          isNotFound(summaryQuery.error) ? (
-            <NotFoundPage />
-          ) : (
-            <ErrorState
-              message={__("Could not load this campaign's performance.", 'yayloyalty')}
-              onRetry={() => summaryQuery.refetch()}
-            />
-          )
-        ) : (
-          <CampaignPerformanceBody
-            campaign={campaign}
-            trigger={trigger}
-            displayStatus={displayStatus}
-            data={summaryQuery.data}
-          />
-        )}
+        <CampaignPerformanceBody
+          campaign={campaign}
+          trigger={trigger}
+          displayStatus={displayStatus}
+          data={summaryQuery.data}
+        />
       </PageLayout>
     </>
   );
@@ -206,12 +183,30 @@ function CampaignPerformanceBody({
   );
 }
 
-function CampaignPerformanceBodySkeleton({ trigger }: { trigger: CampaignPerformanceTrigger }) {
+/** The loaded page's footprint: back link, header with its action, then the chart card and the entries table. The tiles wait for the trigger. */
+function CampaignPerformanceSkeleton() {
   return (
-    <div className="flex flex-col gap-4">
-      <CampaignPerformanceTilesSkeleton trigger={trigger} />
-      <CampaignPerformanceChartSkeleton />
-      <Skeleton className="h-64 w-full" />
-    </div>
+    <>
+      <div className="mx-auto flex max-w-6xl items-center gap-2 px-6 pt-6 text-sm">
+        <Skeleton tone="page" className="h-4 w-20" />
+      </div>
+
+      <PageLayout
+        className="max-w-6xl"
+        title={
+          <span className="flex items-center gap-2">
+            <Skeleton tone="page" className="h-7 w-64" />
+            <Skeleton tone="page" className="h-5 w-16 rounded-full" />
+          </span>
+        }
+        description={<Skeleton tone="page" className="h-3.5 w-96" />}
+        actions={<Skeleton tone="page" className="h-9 w-32" />}
+      >
+        <div className="flex flex-col gap-4">
+          <CampaignPerformanceChartSkeleton />
+          <Skeleton tone="page" className="h-64 w-full" />
+        </div>
+      </PageLayout>
+    </>
   );
 }

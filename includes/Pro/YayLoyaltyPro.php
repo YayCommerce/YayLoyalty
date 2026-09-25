@@ -13,6 +13,7 @@ use YayLoyalty\Pro\Repositories\CampaignPerformanceRepository;
 use YayLoyalty\Pro\Repositories\CampaignPointsRepository;
 use YayLoyalty\Pro\Services\ConditionsEvaluator;
 use YayLoyalty\Repositories\CampaignRepository;
+use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Repositories\DashboardRepository;
 use YayLoyalty\Services\Dashboard\DashboardCache;
 
@@ -218,7 +219,8 @@ final class YayLoyaltyPro {
             new DashboardRepository(),
             new CampaignRepository(),
             new CampaignPerformanceRepository(),
-            new CampaignPointsRepository()
+            new CampaignPointsRepository(),
+            new LedgerRepository()
         );
 
         return $controllers;
