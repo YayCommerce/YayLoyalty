@@ -57,14 +57,20 @@ interface PurchaseConfig {
   daily_cap?: number;
 }
 
+/** The server refuses a rate or multiplier of 0 or below; the inputs keep 2 decimals, so this is their first step above 0. */
+const SMALLEST_PURCHASE_FACTOR = 0.01;
+
 /**
- * Mode choice plus an Advanced block. Multiplier mode inherits only
+ * The default campaign's own rate, or a rate/multiplier choice for any other
+ * purchase campaign, plus an Advanced block. Multiplier mode inherits only
  * points_per_unit from the default campaign; rounding, base, minimum and
  * exclusions are always this campaign's own, so Advanced renders in both
  * modes.
  */
 function RewardFieldsPurchase() {
   const { watch, setValue } = useFormContext<CampaignFormValues>();
+  // Every multiplier multiplies this campaign's rate, so it only ever sets its own.
+  const isDefaultCampaign = useCampaignEditorContext().campaign.is_builtin;
   const config = watch('config') as PurchaseConfig;
   const mode = resolvePurchaseMode(config as Record<string, unknown>);
   const currency = window.yayLoyaltyMeta.wcMeta.currency_data.currency;
@@ -88,92 +94,114 @@ function RewardFieldsPurchase() {
 
   const multiplier = config.multiplier ?? 1;
 
+  const rateInput = (
+    <NumberInputRoot
+      size="small"
+      className="w-36"
+      min={SMALLEST_PURCHASE_FACTOR}
+      decimalScale={2}
+      disabled={mode !== 'rate' && !isDefaultCampaign}
+      value={config.points_per_unit ?? 0}
+      onValueChange={(value) => patchConfig({ points_per_unit: value })}
+    >
+      <NumberInputInput id="reward-purchase-points-per-unit" />
+      <NumberInputUnit
+        unit={sprintf(
+          /* translators: %s: the store currency code, e.g. "USD". */ __('pts / %s', 'yayloyalty'),
+          currency,
+        )}
+      />
+    </NumberInputRoot>
+  );
+  const rateDescription = (
+    <FieldDescription>
+      {sprintf(
+        /* translators: %s: the store currency code, e.g. "USD". */
+        __('Points for every 1 %s of the amount counted below.', 'yayloyalty'),
+        currency,
+      )}
+    </FieldDescription>
+  );
+
   return (
     <div className="flex flex-col gap-4">
+      {isDefaultCampaign && (
+        <Field>
+          <FieldLabel htmlFor="reward-purchase-points-per-unit">{__('Rate', 'yayloyalty')}</FieldLabel>
+          <FieldContent>
+            {rateInput}
+            {rateDescription}
+          </FieldContent>
+        </Field>
+      )}
+
       {/* Both inputs stay mounted and bound to their own key, so switching modes never clears
           the inactive value; the inactive input is disabled, not hidden. The radio and its label
           get their own row so no control nests inside another control's label. */}
-      <RadioGroup
-        value={mode}
-        onValueChange={(value) => value && patchConfig({ mode: value as PurchaseConfig['mode'] })}
-        className="grid gap-3 sm:grid-cols-2"
-      >
-        <div className="has-data-[state=checked]:border-primary has-data-[state=checked]:bg-primary/5 dark:has-data-[state=checked]:bg-primary/10 flex flex-col gap-2.5 rounded-md border p-4">
-          <FieldLabel htmlFor="reward-purchase-mode-multiplier" className="items-center">
-            <RadioGroupItem id="reward-purchase-mode-multiplier" value="multiplier" />
-            <FieldTitle>{__('Multiply the default rate', 'yayloyalty')}</FieldTitle>
-          </FieldLabel>
-          <NumberInputRoot
-            size="small"
-            className="w-28"
-            min={0}
-            decimalScale={2}
-            disabled={mode !== 'multiplier'}
-            value={config.multiplier ?? 0}
-            onValueChange={(value) => patchConfig({ multiplier: value })}
-          >
-            <NumberInputInput id="reward-purchase-multiplier" autoComplete="off" />
-            <NumberInputUnit unit="×" />
-          </NumberInputRoot>
-          {/* The default's rate is only fetched in multiplier mode and only lent when that campaign is
-              active; otherwise say what the option does instead of guessing at a rate. The warning
-              below explains a paused or missing default. */}
-          <FieldDescription>
-            {mode === 'multiplier' && hasLoadedPurchaseCampaigns && defaultPointsPerUnit !== undefined
-              ? sprintf(
-                  /* translators: 1: the multiplier, e.g. "2"; 2: the default rate, e.g. "1 pt per $1.00"; 3: the resulting rate, e.g. "2 pts per $1.00". */
-                  __('%1$s × %2$s = %3$s.', 'yayloyalty'),
-                  String(multiplier),
-                  givesLabel('purchase', { points_per_unit: defaultPointsPerUnit }),
-                  givesLabel('purchase', { points_per_unit: multipliedRate(multiplier, defaultPointsPerUnit) }),
-                )
-              : __('Multiplies whatever the default purchase campaign awards.', 'yayloyalty')}
-          </FieldDescription>
-        </div>
+      {!isDefaultCampaign && (
+        <RadioGroup
+          value={mode}
+          onValueChange={(value) => value && patchConfig({ mode: value as PurchaseConfig['mode'] })}
+          className="grid gap-3 sm:grid-cols-2"
+        >
+          <div className="has-data-[state=checked]:border-primary has-data-[state=checked]:bg-primary/5 dark:has-data-[state=checked]:bg-primary/10 flex flex-col gap-2.5 rounded-md border p-4">
+            <FieldLabel htmlFor="reward-purchase-mode-multiplier" className="items-center">
+              <RadioGroupItem id="reward-purchase-mode-multiplier" value="multiplier" />
+              <FieldTitle>{__('Multiply the default rate', 'yayloyalty')}</FieldTitle>
+            </FieldLabel>
+            <NumberInputRoot
+              size="small"
+              className="w-28"
+              min={SMALLEST_PURCHASE_FACTOR}
+              decimalScale={2}
+              disabled={mode !== 'multiplier'}
+              value={multiplier}
+              onValueChange={(value) => patchConfig({ multiplier: value })}
+            >
+              <NumberInputInput id="reward-purchase-multiplier" autoComplete="off" />
+              <NumberInputUnit unit="×" />
+            </NumberInputRoot>
+            {/* The default's rate is only fetched in multiplier mode and only lent when that campaign is
+                active; otherwise say what the option does instead of guessing at a rate. The warning
+                below explains a paused or missing default. */}
+            <FieldDescription>
+              {mode === 'multiplier' && hasLoadedPurchaseCampaigns && defaultPointsPerUnit !== undefined
+                ? sprintf(
+                    /* translators: 1: the multiplier, e.g. "2"; 2: the default rate, e.g. "1 pt per $1.00"; 3: the resulting rate, e.g. "2 pts per $1.00". */
+                    __('%1$s × %2$s = %3$s.', 'yayloyalty'),
+                    String(multiplier),
+                    givesLabel('purchase', { points_per_unit: defaultPointsPerUnit }),
+                    givesLabel('purchase', { points_per_unit: multipliedRate(multiplier, defaultPointsPerUnit) }),
+                  )
+                : __('Multiplies whatever the default purchase campaign awards.', 'yayloyalty')}
+            </FieldDescription>
+          </div>
 
-        <div className="has-data-[state=checked]:border-primary has-data-[state=checked]:bg-primary/5 dark:has-data-[state=checked]:bg-primary/10 flex flex-col gap-2.5 rounded-md border p-4">
-          <FieldLabel htmlFor="reward-purchase-mode-rate" className="items-center">
-            <RadioGroupItem id="reward-purchase-mode-rate" value="rate" />
-            <FieldTitle>{__('Set its own rate', 'yayloyalty')}</FieldTitle>
-          </FieldLabel>
-          <NumberInputRoot
-            size="small"
-            className="w-36"
-            min={0}
-            decimalScale={2}
-            disabled={mode !== 'rate'}
-            value={config.points_per_unit ?? 0}
-            onValueChange={(value) => patchConfig({ points_per_unit: value })}
-          >
-            <NumberInputInput id="reward-purchase-points-per-unit" />
-            <NumberInputUnit
-              unit={sprintf(
-                /* translators: %s: the store currency code, e.g. "USD". */ __('pts / %s', 'yayloyalty'),
-                currency,
-              )}
-            />
-          </NumberInputRoot>
-          <FieldDescription>
-            {sprintf(
-              /* translators: %s: the store currency code, e.g. "USD". */
-              __('Points for every 1 %s of the amount counted below.', 'yayloyalty'),
-              currency,
-            )}
-          </FieldDescription>
-        </div>
-      </RadioGroup>
-
-      {mode === 'multiplier' && hasLoadedPurchaseCampaigns && !isDefaultPurchaseActive(defaultCampaign) && (
-        <Alert variant="outline">
-          <TriangleAlert />
-          <AlertDescription>
-            {__(
-              'This campaign will not apply: multiplier mode needs the default purchase campaign to exist and be active.',
-              'yayloyalty',
-            )}
-          </AlertDescription>
-        </Alert>
+          <div className="has-data-[state=checked]:border-primary has-data-[state=checked]:bg-primary/5 dark:has-data-[state=checked]:bg-primary/10 flex flex-col gap-2.5 rounded-md border p-4">
+            <FieldLabel htmlFor="reward-purchase-mode-rate" className="items-center">
+              <RadioGroupItem id="reward-purchase-mode-rate" value="rate" />
+              <FieldTitle>{__('Set its own rate', 'yayloyalty')}</FieldTitle>
+            </FieldLabel>
+            {rateInput}
+            {rateDescription}
+          </div>
+        </RadioGroup>
       )}
+
+      {mode === 'multiplier' &&
+        !isDefaultCampaign &&
+        hasLoadedPurchaseCampaigns &&
+        !isDefaultPurchaseActive(defaultCampaign) && (
+          <Alert variant="outline">
+            <TriangleAlert />
+            <AlertDescription>
+              {__(
+                'This campaign will not apply: multiplier mode needs the default purchase campaign to exist and be active.',
+                'yayloyalty',
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
 
       <Separator />
 

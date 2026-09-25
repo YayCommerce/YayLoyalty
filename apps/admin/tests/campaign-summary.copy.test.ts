@@ -176,6 +176,15 @@ describe('campaignReadiness', () => {
     expect(readiness.items.map((item) => item.ok)).toEqual([true, true]);
   });
 
+  it('counts a multiplier with no stored factor as set, since the engine reads it as ×1', () => {
+    const readiness = campaignReadiness(values({ config: { mode: 'multiplier' } }), {
+      trigger: 'purchase',
+      defaultPurchaseCampaign: { status: 'active', config: { points_per_unit: 1 } } as unknown as Campaign,
+    });
+
+    expect(readiness.items[0].ok).toBe(true);
+  });
+
   it('flags a multiplier whose default campaign is paused', () => {
     const readiness = campaignReadiness(values({ config: { mode: 'multiplier', multiplier: 2 } }), {
       trigger: 'purchase',

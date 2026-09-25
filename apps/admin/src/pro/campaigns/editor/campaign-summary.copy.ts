@@ -292,7 +292,7 @@ function isRewardConfigured(trigger: CampaignTrigger, config: Record<string, unk
   switch (trigger) {
     case 'purchase':
       return resolvePurchaseMode(config) === 'multiplier'
-        ? typeof config.multiplier === 'number'
+        ? config.multiplier === undefined || typeof config.multiplier === 'number'
         : typeof config.points_per_unit === 'number';
     case 'signup':
     case 'review':
