@@ -198,11 +198,15 @@ export function effectiveRateSentence(config: Record<string, unknown>, defaultRa
   return sprintf(
     /* translators: 1: the resulting rate, e.g. "2 pts per $1.00"; 2: the multiplier, e.g. "2"; 3: the default campaign's points per currency unit, e.g. "1". */
     __('Earns %1$s, ×%2$s the default rate of %3$s.', 'yayloyalty'),
-    // Two 2-decimal inputs give at most 4 decimals; toFixed drops float noise such as 3.3000000000000003.
-    givesLabel('purchase', { points_per_unit: Number((multiplier * defaultRate).toFixed(4)) }),
+    givesLabel('purchase', { points_per_unit: multipliedRate(multiplier, defaultRate) }),
     String(multiplier),
     String(defaultRate),
   );
+}
+
+/** A multiplier campaign's effective rate. Two 2-decimal inputs give at most 4 decimals; toFixed drops float noise such as 3.3000000000000003. */
+export function multipliedRate(multiplier: number, defaultRate: number): number {
+  return Number((multiplier * defaultRate).toFixed(4));
 }
 
 /** Raw `amount currency`, not parseWPCurrency, so the number matches what the input shows. */

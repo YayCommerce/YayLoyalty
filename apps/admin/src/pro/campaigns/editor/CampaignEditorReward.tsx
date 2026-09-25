@@ -13,8 +13,9 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Segmented, SegmentedItem } from '@/components/ui/segmented';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
-import { findBuiltinCampaign, triggerLabel } from '../campaign-labels';
+import { findBuiltinCampaign, givesLabel, triggerLabel } from '../campaign-labels';
 import { CampaignFormValues, useCampaignEditorContext } from './campaign-editor.form';
+import { multipliedRate, purchaseAdvancedPhrases } from './campaign-reward.copy';
 
 /** Reward section: the per-trigger field maps behind the editor's third card. */
 
@@ -60,24 +61,28 @@ interface PurchaseConfig {
 function RewardFieldsPurchase() {
   const { watch, setValue } = useFormContext<CampaignFormValues>();
   const config = watch('config') as PurchaseConfig;
-  const [advancedOpen, setAdvancedOpen] = useState(false);
-
   const mode = resolvePurchaseMode(config as Record<string, unknown>);
   const currency = window.yayLoyaltyMeta.wcMeta.currency_data.currency;
+  const advancedPhrases = purchaseAdvancedPhrases(config as Record<string, unknown>, currency);
+  // Opens by itself only on mount: a campaign reopened with caps or exclusions shows them, and
+  // typing a value later never yanks the block open or shut.
+  const [advancedOpen, setAdvancedOpen] = useState(() => advancedPhrases.length > 0);
 
   // A multiplier campaign silently stops applying unless the default purchase campaign exists
   // and is active. Asked for in multiplier mode only; rate mode has no use for it.
-  const { data: purchaseCampaigns } = usePurchaseCampaignsQuery(mode === 'multiplier');
+  const { data: purchaseCampaigns, isSuccess: purchaseCampaignsLoaded } = usePurchaseCampaignsQuery(
+    mode === 'multiplier',
+  );
   const defaultCampaign = findBuiltinCampaign(purchaseCampaigns?.data, 'purchase');
   const defaultPointsPerUnit =
     typeof defaultCampaign?.config.points_per_unit === 'number' ? defaultCampaign.config.points_per_unit : undefined;
 
   function patchConfig(patch: Partial<PurchaseConfig>) {
+    // Spread the stored config: keys with no control here, such as include_shipping, must survive a save.
     setValue('config', { ...config, ...patch }, { shouldDirty: true, shouldValidate: true });
   }
 
   const multiplier = config.multiplier ?? 1;
-  const computedRate = defaultPointsPerUnit !== undefined ? multiplier * defaultPointsPerUnit : undefined;
 
   return (
     <div className="flex flex-col gap-4">
@@ -106,17 +111,20 @@ function RewardFieldsPurchase() {
             <NumberInputInput id="reward-purchase-multiplier" />
             <NumberInputUnit unit="×" />
           </NumberInputRoot>
+          {/* The default's rate is only fetched in multiplier mode; until it loads, say what the
+              option does instead of guessing at a rate. */}
           <FieldDescription>
-            {defaultPointsPerUnit !== undefined
-              ? sprintf(
-                  /* translators: 1: the multiplier, e.g. "2"; 2: the default rate, e.g. "1"; 3: currency code; 4: the resulting rate. */
-                  __('%1$s × the default %2$s point(s) per 1 %3$s = %4$s point(s) per 1 %3$s.', 'yayloyalty'),
-                  String(multiplier),
-                  String(defaultPointsPerUnit),
-                  currency,
-                  String(computedRate),
-                )
-              : __('The default purchase campaign has no rate set yet.', 'yayloyalty')}
+            {mode !== 'multiplier' || !purchaseCampaignsLoaded
+              ? __('Multiplies whatever the default purchase campaign awards.', 'yayloyalty')
+              : defaultPointsPerUnit !== undefined
+                ? sprintf(
+                    /* translators: 1: the multiplier, e.g. "2"; 2: the default rate, e.g. "1 pt per $1.00"; 3: the resulting rate, e.g. "2 pts per $1.00". */
+                    __('%1$s × %2$s = %3$s.', 'yayloyalty'),
+                    String(multiplier),
+                    givesLabel('purchase', { points_per_unit: defaultPointsPerUnit }),
+                    givesLabel('purchase', { points_per_unit: multipliedRate(multiplier, defaultPointsPerUnit) }),
+                  )
+                : __('The default purchase campaign has no rate set yet.', 'yayloyalty')}
           </FieldDescription>
         </div>
 
@@ -127,7 +135,7 @@ function RewardFieldsPurchase() {
           </FieldLabel>
           <NumberInputRoot
             size="small"
-            className="w-28"
+            className="w-36"
             min={0}
             decimalScale={2}
             disabled={mode !== 'rate'}
@@ -135,23 +143,36 @@ function RewardFieldsPurchase() {
             onValueChange={(value) => patchConfig({ points_per_unit: value })}
           >
             <NumberInputInput id="reward-purchase-points-per-unit" />
-            <NumberInputUnit unit={currency} />
+            <NumberInputUnit
+              unit={sprintf(
+                /* translators: %s: the store currency code, e.g. "USD". */ __('pts / %s', 'yayloyalty'),
+                currency,
+              )}
+            />
           </NumberInputRoot>
-          <FieldDescription>{sprintf(__('Points awarded per 1 %s spent.', 'yayloyalty'), currency)}</FieldDescription>
+          <FieldDescription>
+            {sprintf(
+              /* translators: %s: the store currency code, e.g. "USD". */
+              __('Points for every 1 %s of the amount counted below.', 'yayloyalty'),
+              currency,
+            )}
+          </FieldDescription>
         </div>
       </RadioGroup>
 
-      {mode === 'multiplier' && (!defaultCampaign || defaultCampaign.status !== 'active') && (
-        <Alert variant="outline">
-          <TriangleAlert />
-          <AlertDescription>
-            {__(
-              'This campaign will not apply: multiplier mode needs the default purchase campaign to exist and be active.',
-              'yayloyalty',
-            )}
-          </AlertDescription>
-        </Alert>
-      )}
+      {mode === 'multiplier' &&
+        purchaseCampaignsLoaded &&
+        (!defaultCampaign || defaultCampaign.status !== 'active') && (
+          <Alert variant="outline">
+            <TriangleAlert />
+            <AlertDescription>
+              {__(
+                'This campaign will not apply: multiplier mode needs the default purchase campaign to exist and be active.',
+                'yayloyalty',
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
 
       <Separator />
 
@@ -163,6 +184,9 @@ function RewardFieldsPurchase() {
       >
         {advancedOpen ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
         {__('Advanced', 'yayloyalty')}
+        {!advancedOpen && advancedPhrases.length > 0 && (
+          <span className="font-normal">· {advancedPhrases.join(' · ')}</span>
+        )}
       </button>
 
       {/* Every remaining purchase key, visible in both modes. */}
@@ -198,6 +222,7 @@ function RewardFieldsPurchase() {
                 <SegmentedItem value="nearest">{__('Nearest', 'yayloyalty')}</SegmentedItem>
                 <SegmentedItem value="up">{__('Up', 'yayloyalty')}</SegmentedItem>
               </Segmented>
+              <FieldDescription>{__('How a fractional result becomes whole points.', 'yayloyalty')}</FieldDescription>
             </FieldContent>
           </Field>
 
@@ -209,23 +234,8 @@ function RewardFieldsPurchase() {
               checked={!!config.include_tax}
               onCheckedChange={(include_tax) => patchConfig({ include_tax })}
             />
+            <FieldDescription>{__('Adds each line’s tax to the amount counted.', 'yayloyalty')}</FieldDescription>
           </Field>
-
-          <Field>
-            <FieldLabel htmlFor="reward-purchase-include-shipping">{__('Include shipping', 'yayloyalty')}</FieldLabel>
-            <Switch
-              id="reward-purchase-include-shipping"
-              className="w-11!"
-              checked={!!config.include_shipping}
-              onCheckedChange={(include_shipping) => patchConfig({ include_shipping })}
-            />
-          </Field>
-          <FieldDescription>
-            {__(
-              'Not currently used by point calculations — kept so saving this campaign never loses it.',
-              'yayloyalty',
-            )}
-          </FieldDescription>
 
           <Field>
             <FieldLabel htmlFor="reward-purchase-min-subtotal">{__('Minimum order subtotal', 'yayloyalty')}</FieldLabel>
@@ -243,7 +253,10 @@ function RewardFieldsPurchase() {
                 <NumberInputUnit unit={currency} />
               </NumberInputRoot>
               <FieldDescription>
-                {__('Orders below this earn nothing. 0 means every order earns.', 'yayloyalty')}
+                {__(
+                  'This campaign does not apply to orders whose subtotal, before discounts, is under this amount. 0 means no minimum.',
+                  'yayloyalty',
+                )}
               </FieldDescription>
             </FieldContent>
           </Field>
@@ -258,6 +271,12 @@ function RewardFieldsPurchase() {
               checked={!!config.exclude_coupon_orders}
               onCheckedChange={(exclude_coupon_orders) => patchConfig({ exclude_coupon_orders })}
             />
+            <FieldDescription>
+              {__(
+                'This campaign does not apply to orders that used a coupon. Points redeemed through YayLoyalty don’t count as a coupon.',
+                'yayloyalty',
+              )}
+            </FieldDescription>
           </Field>
 
           <Field>
@@ -273,7 +292,7 @@ function RewardFieldsPurchase() {
                 <NumberInputInput id="reward-purchase-max-points" />
                 <NumberInputUnit unit={__('points', 'yayloyalty')} />
               </NumberInputRoot>
-              <FieldDescription>{__('0 means no per-order cap.', 'yayloyalty')}</FieldDescription>
+              <FieldDescription>{__('Applied after rounding. 0 means no cap.', 'yayloyalty')}</FieldDescription>
             </FieldContent>
           </Field>
 
@@ -290,7 +309,9 @@ function RewardFieldsPurchase() {
                 <NumberInputInput id="reward-purchase-daily-cap" />
                 <NumberInputUnit unit={__('points', 'yayloyalty')} />
               </NumberInputRoot>
-              <FieldDescription>{__('0 means no daily cap.', 'yayloyalty')}</FieldDescription>
+              <FieldDescription>
+                {__('Most points one customer can earn from this campaign in a day. 0 means no cap.', 'yayloyalty')}
+              </FieldDescription>
             </FieldContent>
           </Field>
 
@@ -303,6 +324,7 @@ function RewardFieldsPurchase() {
                 onChange={(next) => patchConfig({ excluded_product_ids: next })}
                 placeholder={__('Search products', 'yayloyalty')}
               />
+              <FieldDescription>{__('These lines don’t count toward the amount.', 'yayloyalty')}</FieldDescription>
             </FieldContent>
           </Field>
 
@@ -315,6 +337,7 @@ function RewardFieldsPurchase() {
                 onChange={(next) => patchConfig({ excluded_category_ids: next })}
                 placeholder={__('Search categories', 'yayloyalty')}
               />
+              <FieldDescription>{__('These lines don’t count toward the amount.', 'yayloyalty')}</FieldDescription>
             </FieldContent>
           </Field>
         </div>
