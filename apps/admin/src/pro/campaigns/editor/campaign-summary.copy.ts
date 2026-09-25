@@ -7,16 +7,16 @@ import {
   CampaignCondition,
   CampaignTrigger,
   isCampaignScheduleInOrder,
+  lacksPurchaseRate,
   resolveCampaignDisplayStatus,
   resolvePurchaseMode,
   resolvePurchaseMultiplier,
 } from '@/lib/schema/campaign.schema';
-import { conditionTypeLabel, statusLabel, triggerLabel } from '../campaign-labels';
+import { conditionTypeLabel, isBuiltinCampaignActive, statusLabel, triggerLabel } from '../campaign-labels';
 import { CampaignFormValues } from './campaign-editor.form';
 import {
   defaultPurchaseRate,
   effectiveRateSentence,
-  isDefaultPurchaseActive,
   purchaseCountingSentence,
   purchaseLimitSentences,
 } from './campaign-reward.copy';
@@ -279,7 +279,7 @@ export function campaignReadiness(values: CampaignFormValues, context: CampaignR
   if (context.trigger === 'purchase' && resolvePurchaseMode(values.config) === 'multiplier') {
     items.push({
       label: __('Default purchase campaign exists and is active (required for multiplier mode)', 'yayloyalty'),
-      ok: isDefaultPurchaseActive(context.defaultPurchaseCampaign),
+      ok: isBuiltinCampaignActive(context.defaultPurchaseCampaign),
     });
   }
 
@@ -294,7 +294,7 @@ function isRewardConfigured(trigger: CampaignTrigger, config: Record<string, unk
     case 'purchase':
       return resolvePurchaseMode(config) === 'multiplier'
         ? resolvePurchaseMultiplier(config) > 0
-        : typeof config.points_per_unit === 'number';
+        : !lacksPurchaseRate(config);
     case 'signup':
     case 'review':
       return typeof config.points === 'number';

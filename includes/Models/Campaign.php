@@ -530,6 +530,11 @@ class Campaign extends AbstractModel {
         return $this->is_builtin;
     }
 
+    /** Whether this campaign may be archived: never a built-in, since the engine and the Free UI assume they exist. */
+    public function can_archive(): bool {
+        return ! $this->is_builtin;
+    }
+
     public function is_archived(): bool {
         return Status::ARCHIVED === $this->status;
     }
@@ -547,7 +552,7 @@ class Campaign extends AbstractModel {
     public function set_status( string $status ): void {
         $status = Status::assert( $status );
 
-        if ( Status::ARCHIVED === $status && $this->is_builtin ) {
+        if ( Status::ARCHIVED === $status && ! $this->can_archive() ) {
             throw new \InvalidArgumentException( 'YayLoyalty: built-in campaigns cannot be archived.' );
         }
 

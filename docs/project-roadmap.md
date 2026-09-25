@@ -59,7 +59,7 @@ All referral tables (`referrals`, `referral_visits`) specified in data model; no
 | **Conditions (Pro)** | Role, product, category, lifetime spend, order count | ✅ SHIPPED (Pro) | ConditionsEvaluator; ANDed logic; preview endpoint |
 | **Points allocation** | `purchase`: points_per_unit, base, rounding, min_subtotal, mode/multiplier | ✅ **SHIPPED (engine)** | `BaseCalculator` + `PurchaseHandler`; 46 engine unit tests, rounding via `Utils\PointsMath`; multiplier campaigns need an active default |
 | **Max points cap** | `max_points_per_order`, `daily_cap` | ✅ **SHIPPED (engine)** | `CapPolicy`; `points_earned_today` is the caller's to supply from the ledger |
-| **Campaign editor** | Create, read, update, delete | ✅ **SHIPPED (API + Pro edit UI)** | `/campaigns/:id/edit` — six-section form + summary rail (react-hook-form + zod), persists for real. All four REST verbs read/write the repository; `points_issued`/`is_deletable` are ledger-derived read fields. No create UI yet — "Add campaign" is inert (follow-up task); Lite has no editor route (404) |
+| **Campaign editor** | Create, read, update, delete | ✅ **SHIPPED (API + Pro edit UI)** | `/campaigns/:id/edit` — six-section form + summary rail (react-hook-form + zod), persists for real. All four REST verbs read/write the repository; `points_issued`/`is_deletable` are ledger-derived read fields. Create UI at `/campaigns/new` (template chooser → the same form); Lite has no editor route (404) |
 | **Scheduling** | `starts_at`, `ends_at` liveness eval | ✅ SHIPPED | Liveness computed at read; no cron flips status |
 
 ### Redemption (Rewards)

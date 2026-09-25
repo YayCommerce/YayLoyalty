@@ -2,11 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DEFAULT_CAMPAIGN_CONFIG, resolvePurchaseMultiplier } from '@/lib/schema/campaign.schema';
 import type { Campaign } from '@/lib/schema/campaign.schema';
-import { givesLabel } from '@/pro/campaigns/campaign-labels';
+import { givesLabel, isBuiltinCampaignActive } from '@/pro/campaigns/campaign-labels';
 import {
   defaultPurchaseRate,
   effectiveRateSentence,
-  isDefaultPurchaseActive,
   purchaseAdvancedPhrases,
   purchaseCountingSentence,
   purchaseLimitSentences,
@@ -145,9 +144,9 @@ describe('default purchase campaign', () => {
   const campaign = (status: string, config: Record<string, unknown>) => ({ status, config }) as unknown as Campaign;
 
   it('lends its rate only while active, as the engine requires', () => {
-    expect(isDefaultPurchaseActive(campaign('active', {}))).toBe(true);
-    expect(isDefaultPurchaseActive(campaign('paused', {}))).toBe(false);
-    expect(isDefaultPurchaseActive(undefined)).toBe(false);
+    expect(isBuiltinCampaignActive(campaign('active', {}))).toBe(true);
+    expect(isBuiltinCampaignActive(campaign('paused', {}))).toBe(false);
+    expect(isBuiltinCampaignActive(undefined)).toBe(false);
     expect(defaultPurchaseRate(campaign('active', { points_per_unit: 2 }))).toBe(2);
     expect(defaultPurchaseRate(campaign('paused', { points_per_unit: 2 }))).toBeUndefined();
     expect(defaultPurchaseRate(campaign('active', {}))).toBeUndefined();

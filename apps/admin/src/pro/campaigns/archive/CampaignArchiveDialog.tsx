@@ -30,7 +30,7 @@ import {
 } from '@/components/ui/custom/dialog';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
-import { findBuiltinCampaign } from '../campaign-labels';
+import { campaignStatusBadgeVariant, findBuiltinCampaign } from '../campaign-labels';
 import { CAMPAIGN_PERFORMANCE_QUERIES } from '../performance/campaign-performance.queries';
 import {
   affectedLine,
@@ -649,7 +649,7 @@ function BulkArchiveGroup({ heading, caption, rows }: { heading: string; caption
             <div className="flex min-w-0 flex-1 flex-col gap-1.5 sm:flex-row sm:items-start sm:gap-3">
               <span className="text-sm font-medium sm:w-44 sm:shrink-0">{row.campaign.name}</span>
               <span className="sm:w-24 sm:shrink-0">
-                <Badge variant="outline" className="uppercase">
+                <Badge variant={campaignStatusBadgeVariant(row.displayStatus)} className="uppercase">
                   {bulkRowBadge(row.displayStatus)}
                 </Badge>
               </span>

@@ -2,6 +2,7 @@
 namespace YayLoyalty\Controllers;
 
 use YayLoyalty\Access\Capabilities;
+use YayLoyalty\Utils\Text;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -177,7 +178,7 @@ final class LookupRestController extends AbstractRestController {
     private function item( int $id, string $label ): array {
         return [
             'id'    => $id,
-            'label' => html_entity_decode( wp_strip_all_tags( $label ), ENT_QUOTES ),
+            'label' => Text::plain( $label ),
         ];
     }
 

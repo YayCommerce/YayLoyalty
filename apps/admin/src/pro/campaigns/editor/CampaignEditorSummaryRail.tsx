@@ -25,7 +25,6 @@ export function CampaignEditorSummaryRail({
   onCancel,
   onDraftIntent,
   onArchive,
-  onPerformance,
 }: {
   /** Only isPending is read here; the create and update mutations differ in their variables type, which this never needs. */
   mutation: { isPending: boolean };
@@ -34,7 +33,6 @@ export function CampaignEditorSummaryRail({
   onArchive?: () => void;
   /** Fallback for Safari < 15.4, which lacks SubmitEvent.submitter. */
   onDraftIntent: () => void;
-  onPerformance?: () => void;
 }) {
   const { watch, formState } = useFormContext<CampaignFormValues>();
   const { campaign, trigger } = useCampaignEditorContext();
@@ -112,16 +110,9 @@ export function CampaignEditorSummaryRail({
             {__('Default campaigns can’t be archived. You can pause one instead.', 'yayloyalty')}
           </p>
         )}
-        <div className="flex flex-wrap items-center justify-center gap-3 text-sm">
-          <Button type="button" variant="link" disabled={busy} onClick={onCancel}>
-            {__('Cancel', 'yayloyalty')}
-          </Button>
-          {onPerformance && (
-            <Button type="button" variant="link" disabled={busy} onClick={onPerformance}>
-              {__('Performance', 'yayloyalty')}
-            </Button>
-          )}
-        </div>
+        <Button type="button" variant="link" disabled={busy} onClick={onCancel}>
+          {__('Cancel', 'yayloyalty')}
+        </Button>
       </div>
     </div>
   );

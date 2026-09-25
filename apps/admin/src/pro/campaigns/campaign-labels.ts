@@ -1,3 +1,4 @@
+import type { VariantProps } from 'class-variance-authority';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { parseWPDate } from '@/lib/helpers/format.helper';
@@ -10,12 +11,21 @@ import {
   CampaignTrigger,
   resolvePurchaseMultiplier,
 } from '@/lib/schema/campaign.schema';
+import type { badgeVariants } from '@/components/ui/badge';
 
 /** Campaign presentation strings derived from the real fields; the wire carries none. */
 
 /** The built-in (default) campaign for a trigger: what a non-built-in falls back to. undefined while the list loads. */
-export function findBuiltinCampaign(campaigns: Campaign[] | undefined, trigger: CampaignTrigger): Campaign | undefined {
+export function findBuiltinCampaign<T extends Campaign>(
+  campaigns: T[] | undefined,
+  trigger: CampaignTrigger,
+): T | undefined {
   return campaigns?.find((candidate) => candidate.is_builtin && candidate.trigger === trigger);
+}
+
+/** Whether a built-in still earns in place of what sits above it; mirrors the engine skipping any campaign not active (PurchaseHandler::is_eligible for a multiplier's default). */
+export function isBuiltinCampaignActive(campaign: Campaign | undefined): boolean {
+  return campaign?.status === 'active';
 }
 
 /** A campaign only competes within its group; see triggerGroup(). */
@@ -148,5 +158,24 @@ export function statusLabel(status: CampaignDisplayStatus): string {
       return __('Archived', 'yayloyalty');
     case 'ended':
       return __('Ended', 'yayloyalty');
+  }
+}
+
+/** The badge colour for a campaign status; the one reading CampaignStatusBadge renders. */
+export function campaignStatusBadgeVariant(
+  status: CampaignDisplayStatus,
+): VariantProps<typeof badgeVariants>['variant'] {
+  switch (status) {
+    case 'active':
+      return 'success-soft';
+    case 'scheduled':
+      return 'primary-soft';
+    case 'paused':
+      return 'warning-soft';
+    case 'draft':
+      return 'outline';
+    case 'archived':
+    case 'ended':
+      return 'dimmed';
   }
 }

@@ -132,15 +132,15 @@ class CampaignPerformanceRepository {
         global $wpdb;
 
         $name_like = '%' . $wpdb->esc_like( $search ) . '%';
-        $ref       = ltrim( $search, '#' );
+        $reference = ltrim( $search, '#' );
 
-        if ( '' === $ref ) {
+        if ( '' === $reference ) {
             return $wpdb->prepare( 'u.display_name LIKE %s', $name_like );
         }
 
-        $ref_like = '%' . $wpdb->esc_like( $ref ) . '%';
+        $reference_like = '%' . $wpdb->esc_like( $reference ) . '%';
 
-        return $wpdb->prepare( '(u.display_name LIKE %s OR CAST(l.reference_id AS CHAR) LIKE %s)', $name_like, $ref_like );
+        return $wpdb->prepare( '(u.display_name LIKE %s OR CAST(l.reference_id AS CHAR) LIKE %s)', $name_like, $reference_like );
     }
 
     /**

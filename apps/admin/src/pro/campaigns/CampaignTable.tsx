@@ -43,6 +43,7 @@ import { CampaignArchiveDialog, CampaignBulkArchiveDialog } from './archive/Camp
 import {
   CampaignGroupKey,
   conditionsLabel,
+  findBuiltinCampaign,
   givesLabel,
   scheduleLabel,
   statusLabel,
@@ -50,6 +51,7 @@ import {
   triggerLabel,
 } from './campaign-labels';
 import { CampaignPointsSummary, CampaignPointsSummarySkeleton } from './CampaignPointsSummary';
+import { CampaignStatusBadge } from './CampaignStatusBadge';
 import { CampaignPauseDialog } from './pause/CampaignPauseDialog';
 
 /** Groups larger than this collapse to the default plus this many, highest-priority first. */
@@ -129,7 +131,7 @@ export function CampaignTable() {
 
   // The one-click fix the "aren't earning points" alert below offers. Read off allRows, never
   // the toggled/filtered rows: the real built-in, regardless of dev preview state.
-  const defaultPurchaseCampaign = allRows.find((row) => row.is_builtin && triggerGroup(row.trigger) === 'purchase');
+  const defaultPurchaseCampaign = findBuiltinCampaign(allRows, 'purchase');
   const reactivatePurchaseMutation = useUpdateCampaignStatusMutation(defaultPurchaseCampaign?.id ?? 0);
 
   async function reactivateDefaultPurchase() {
@@ -837,9 +839,7 @@ function SortableCampaignRow({
       </TableCell>
       <TableCell className="text-center text-sm font-semibold tabular-nums">{row.priority}</TableCell>
       <TableCell>
-        <Badge variant="outline" className="uppercase">
-          {statusLabel(row.displayStatus)}
-        </Badge>
+        <CampaignStatusBadge status={row.displayStatus} />
       </TableCell>
       <TableCell className="text-right">
         <DropdownMenu>
