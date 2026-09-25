@@ -468,7 +468,7 @@ CampaignRestController::delete_item()  via  exec_write()
 
 **Route:** `/campaigns/:id/performance` (Pro-only; gated by `IS_PRO_BUILD` AND `requires(CAP.MANAGE_CAMPAIGNS)`). Supports `purchase`, `signup`, `review` only — any other trigger (e.g. `birthday`) 404s from both the loaded campaign client-side and the server's own trigger allowlist.
 
-**Access:** `CampaignTable`'s row menu ("View performance") and the campaign editor rail's "Performance" link, both rendered only when `hasPerformancePage(trigger)` is true.
+**Access:** `CampaignTable`'s row menu ("View performance") and the campaign editor header's "View performance" button, both rendered only when `hasPerformancePage(trigger)` is true.
 
 **Contract:** `GET /campaigns/{id}/performance` returns `{ campaign, window, totals, daily, skipped, estimate }` — `campaign` is the `GET /campaigns/{id}` shape verbatim (`CampaignRestController::decorate()`), so the page makes no second request for its header; `GET /campaigns/{id}/performance/entries` returns a paged/searchable row list (order/signup/review depending on trigger). **Nullability rule:** every nullable field means "not applicable to this trigger" or "not computable yet" — never `0`. A purchase-only total is `null` on a signup/review campaign; an average is `null` on zero entries (division by zero), not `0`. The SPA renders `null` as `—`, same rule the dashboard uses for its own null fields.
 
