@@ -234,13 +234,21 @@ export const campaignUpdateInputSchema = z
     /** Exclusive; see campaignSchema.ends_at. */
     ends_at: z.string().nullable(),
   })
-  // String comparison is correct: both are fixed-width UTC YYYY-MM-DD HH:mm:ss.
-  .refine((data) => !data.starts_at || !data.ends_at || data.starts_at < data.ends_at, {
+  .refine((data) => isCampaignScheduleInOrder(data.starts_at, data.ends_at), {
     message: 'The start date must be before the end date.',
     path: ['ends_at'],
   });
 
 export type CampaignUpdateInput = z.infer<typeof campaignUpdateInputSchema>;
+
+/**
+ * Mirror of CampaignRestController::dates_in_order(): an open side passes, two
+ * set dates must run forward (ends_at is exclusive, so equal is an empty run).
+ * String comparison is correct: both are fixed-width UTC YYYY-MM-DD HH:mm:ss.
+ */
+export function isCampaignScheduleInOrder(startsAt: string | null, endsAt: string | null): boolean {
+  return !startsAt || !endsAt || startsAt < endsAt;
+}
 
 /**
  * Write body for POST campaigns, mirroring create_item()'s accepted fields.

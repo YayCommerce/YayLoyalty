@@ -8,6 +8,7 @@ import {
   Campaign,
   CampaignCondition,
   CampaignTrigger,
+  isCampaignScheduleInOrder,
   resolveCampaignDisplayStatus,
   resolvePurchaseMode,
 } from '@/lib/schema/campaign.schema';
@@ -452,7 +453,7 @@ export function campaignReadiness(values: CampaignFormValues, context: CampaignR
     },
     {
       label: __('Dates are coherent (end after start)', 'yayloyalty'),
-      ok: !values.starts_at || !values.ends_at || values.starts_at < values.ends_at,
+      ok: isCampaignScheduleInOrder(values.starts_at, values.ends_at),
     },
     {
       label: __('Priority does not collide with another campaign in this group', 'yayloyalty'),
