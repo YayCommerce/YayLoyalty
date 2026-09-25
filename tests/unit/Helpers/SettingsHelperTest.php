@@ -4,7 +4,7 @@ namespace YayLoyalty\Tests\Unit\Helpers;
 use PHPUnit\Framework\TestCase;
 use YayLoyalty\Helpers\SettingsHelper;
 
-/** SettingsHelper coerces booleans the way WordPress reads them. */
+/** SettingsHelper coerces each field to its declared type on the way in. */
 class SettingsHelperTest extends TestCase {
 
     protected function setUp(): void {
@@ -24,5 +24,41 @@ class SettingsHelperTest extends TestCase {
             $result = SettingsHelper::update_settings( [ 'general' => [ 'enabled' => (string) $input ] ] );
             $this->assertSame( $expected, $result['general']['enabled'], "input '{$input}'" );
         }
+    }
+
+    public function test_update_settings_writes_only_the_fields_sent(): void {
+        SettingsHelper::update_settings( [ 'general' => [ 'points_label_singular' => 'Star' ] ] );
+        SettingsHelper::update_settings( [ 'advanced' => [ 'adjustment_ceiling' => 50 ] ] );
+
+        $settings = SettingsHelper::get_settings();
+        $this->assertSame( 'Star', $settings['general']['points_label_singular'] );
+        $this->assertSame( 50, $settings['advanced']['adjustment_ceiling'] );
+    }
+
+    /** Defaults stay out of the stored option, so translated defaults like the point labels keep following the site language. */
+    public function test_update_settings_stores_no_default_it_was_not_sent(): void {
+        SettingsHelper::update_settings( [ 'emails' => [ 'throttle_per_week' => 5 ] ] );
+
+        $stored = get_option( SettingsHelper::OPTION_SETTINGS );
+        $this->assertArrayNotHasKey( 'general', $stored );
+        $this->assertSame( 5, $stored['emails']['throttle_per_week'] );
+    }
+
+    public function test_update_settings_can_empty_a_list(): void {
+        SettingsHelper::update_settings( [ 'general' => [ 'excluded_roles' => [ 'editor' ] ] ] );
+        SettingsHelper::update_settings( [ 'general' => [ 'excluded_roles' => [] ] ] );
+
+        $this->assertSame( [], SettingsHelper::get_settings()['general']['excluded_roles'] );
+    }
+
+    public function test_emails_throttle_per_week_defaults_to_three(): void {
+        $this->assertSame( 3, SettingsHelper::get_settings()['emails']['throttle_per_week'] );
+    }
+
+    /** The throttle is a count: a negative value is stored as 0, whoever writes it. */
+    public function test_emails_throttle_per_week_is_never_negative(): void {
+        $result = SettingsHelper::update_settings( [ 'emails' => [ 'throttle_per_week' => -2 ] ] );
+
+        $this->assertSame( 0, $result['emails']['throttle_per_week'] );
     }
 }

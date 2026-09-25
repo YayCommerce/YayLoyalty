@@ -40,6 +40,10 @@ class SettingsHelper {
                 // 0 = unlimited. Read via Capabilities::ceiling().
                 'adjustment_ceiling' => 0,
             ],
+            'emails'   => [
+                // Weekly per-customer cap on loyalty emails; not enforced until emails are sent.
+                'throttle_per_week' => 3,
+            ],
         ];
     }
 
@@ -58,6 +62,9 @@ class SettingsHelper {
             ],
             'advanced' => [
                 'adjustment_ceiling' => 'int',
+            ],
+            'emails'   => [
+                'throttle_per_week' => 'non_negative_int',
             ],
         ];
     }
@@ -79,14 +86,26 @@ class SettingsHelper {
         return $merged;
     }
 
-    /** Validates, merges over defaults, stamps the version, saves. */
+    /**
+     * Saves only the fields sent, over what is stored; returns the merged settings.
+     *
+     * Defaults are never written, so translated defaults such as the point labels
+     * keep following the site language. Fields are replaced one by one rather than
+     * merged recursively, so a list can be emptied.
+     */
     public static function update_settings( array $settings ): array {
-        $clean = self::validate( $settings );
+        $saved  = get_option( self::OPTION_SETTINGS, [] );
+        $stored = self::sanitize_output( is_array( $saved ) ? $saved : [] );
 
-        $to_store                   = array_replace_recursive( self::get_default_settings(), $clean );
-        $to_store['schema_version'] = self::SCHEMA_VERSION;
+        foreach ( self::validate( $settings ) as $group => $fields ) {
+            foreach ( $fields as $field => $value ) {
+                $stored[ $group ][ $field ] = $value;
+            }
+        }
 
-        update_option( self::OPTION_SETTINGS, $to_store );
+        $stored['schema_version'] = self::SCHEMA_VERSION;
+
+        update_option( self::OPTION_SETTINGS, $stored );
 
         return self::get_settings();
     }
@@ -146,6 +165,9 @@ class SettingsHelper {
 
             case 'int':
                 return (int) $value;
+
+            case 'non_negative_int':
+                return max( 0, (int) $value );
 
             case 'slug_list':
                 return array_values( array_filter( array_map( 'sanitize_key', (array) $value ) ) );

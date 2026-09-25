@@ -9,7 +9,7 @@
 
 ## Implementation Status
 
-**Implemented (1.0):** `yayloyalty_campaigns`, `yayloyalty_rewards`, `yayloyalty_customers`, `yayloyalty_ledger`
+**Implemented (1.0):** `yayloyalty_campaigns`, `yayloyalty_rewards`, `yayloyalty_customers`, `yayloyalty_customer_meta`, `yayloyalty_ledger`
 
 **Not implemented:** `redemptions`, `referrals`, `referral_visits`, `tiers`, `tier_history`, `lots`, `lot_allocations`, `events`
 
@@ -47,6 +47,7 @@ These do not change the model; they record how it must be expressed in code so t
 | `yayloyalty_campaigns`       | definition        | 1.0     | earning rule                        |
 | `yayloyalty_rewards`         | definition        | 1.0     | way to spend points                 |
 | `yayloyalty_customers`       | state             | 1.0     | member (extends `wp_users`)         |
+| `yayloyalty_customer_meta`   | fact, append-only | 1.0     | per-customer event                  |
 | `yayloyalty_ledger`          | fact, append-only | 1.0     | balance change                      |
 | `yayloyalty_redemptions`     | fact              | 1.0     | reward claim                        |
 | `yayloyalty_referrals`       | fact              | 1.1     | referral relationship               |
@@ -77,7 +78,9 @@ These do not change the model; they record how it must be expressed in code so t
 
 **User meta**: `_yayloyalty_opted_out` (truthy = the customer stopped earning; `Engine\Earning\ProgramGate`).
 
-**Options**: `yayloyalty_settings` (JSON: points naming, `general.excluded_roles`, award status, expiry policy, tier basis and window, redemption placement, fraud limits), `yayloyalty_design` (JSON, own option, never merged into `yayloyalty_settings`; six groups: `launcher`, `storefront_text`, `visibility` [Free]; `tier`, `panel`, `typography` [Pro]; schema with `schema_version` stamp via `DesignHelper`; Pro fields declared in both builds, UI editability gated by `IS_PRO_BUILD`; admin-side only, nothing yet renders on storefront), `yayloyalty_reviewed`, `yayloyalty_db_version`, `yayloyalty_caps_version`, `yayloyalty_upgrading` (install lock). Planned, not in code: `yayloyalty_wizard_completed`.
+**Options**: `yayloyalty_settings` (JSON: points naming, `general.excluded_roles`, award status, expiry policy, tier basis and window, redemption placement, fraud limits, and `emails.throttle_per_week` — per-customer max sends per week, not enforced yet), `yayloyalty_design` (JSON, own option, never merged into `yayloyalty_settings`; six groups: `launcher`, `storefront_text`, `visibility` [Free]; `tier`, `panel`, `typography` [Pro]; schema with `schema_version` stamp via `DesignHelper`; Pro fields declared in both builds, UI editability gated by `IS_PRO_BUILD`; admin-side only, nothing yet renders on storefront), `yayloyalty_reviewed`, `yayloyalty_db_version`, `yayloyalty_caps_version`, `yayloyalty_upgrading` (install lock). Planned, not in code: `yayloyalty_wizard_completed`.
+
+**WooCommerce email settings**: Per-email on/off (whether WooCommerce sends it) lives in `woocommerce_{id}_settings`, e.g. `woocommerce_yayloyalty_points_earned_settings` (WooCommerce's standard per-email option format, managed by `EmailsHelper::update_emails()` or WooCommerce's Emails screen). Sending from-address and from-name are read live from WooCommerce, never stored in plugin options.
 
 **WooCommerce session**: `yayloyalty_redeem_points` carries the amount the shopper chose between cart and checkout until the order exists.
 

@@ -13,7 +13,7 @@ Data model v0.3 specifies a roadmap across phases 1.0, 1.1, 1.2, and 2.0. Curren
 | Table                 | Spec                         | Status                   | Notes                                                                                                              |
 | --------------------- | ---------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------ |
 | **`campaigns`**       | Core earning rules           | ✅ **SHIPPED**           | Full CRUD; trigger filtering (Lite/Pro); Pro conditions evaluator; import/export ready                             |
-| **`customers`**       | Member cache & state         | ✅ **SHIPPED**           | Lazy-initialized; aggregates; expiry basis; no tier/referral fields yet                                            |
+| **`customers`**       | Member cache & state         | ✅ **SHIPPED**           | Lazy-initialized; aggregates; expiry basis; tier/referral columns exist but nothing writes them yet                                            |
 | **`ledger`**          | Balance journal, append-only | ✅ **SHIPPED**           | Immutable; idempotent on unique key; SOLE writes via LedgerService                                                 |
 | **`rewards`**         | Ways to spend points         | ✅ **SHIPPED**           | Schema, model, repository, enums; Lite seeds flexible_discount; Pro adds coupon types; no checkout integration yet |
 | **`redemptions`**     | Reward claim records         | ❌ **NOT STARTED**       | Fact table; references rewards & ledger; multipart refund tracking                                                 |
@@ -84,8 +84,10 @@ All referral tables (`referrals`, `referral_visits`) specified in data model; no
 | **Lifetime redeemed** | Total points spent (excluding refunds) | ✅ SHIPPED | Maintained by `LedgerService` from ledger type; no redemption flow writes REDEEM rows yet |
 | **Expiry** | Inactivity basis | ⚠️ **TRACKED, NOT ENFORCED** | Fields exist (`expires_at`, `reminder_sent_at`); no job runs |
 | **Expiry per-lot** (Pro) | Lot-based expiry | ❌ NOT STARTED | Lots table unimplemented; no lot tracking |
+| **Email triggers** | Send transactional emails on events | ❌ NOT STARTED | Email classes registered (3 Lite / 12 Pro); no trigger() hooked, no cron or Action Scheduler job wired. Admin Emails settings page controls on/off toggles (WooCommerce integration) and weekly throttle cap (stored but not enforced). |
+| **Email throttle** | Per-customer max sends per week | ⚠️ **STORED, NOT ENFORCED** | `yayloyalty_settings.emails.throttle_per_week` (default 3, non-negative int); no job enforces the limit yet. |
 | **Adjustment ceiling** | Per-role cap on one manual adjustment | ⚠️ **ENFORCED, NO UI** | `settings.advanced.adjustment_ceiling` (0 = unlimited) checked by `assert_ceiling()`; admins bypass; no settings field to edit it yet |
-| **Adjustment email** | Tell the customer about a manual adjustment | ❌ NOT STARTED | The adjust dialog's "Notify the customer by email" checkbox (single and bulk) is UI-only: `notifyByEmail` is not in the `POST /customers/{id}/adjust` body, and no email is sent. Needs the body arg, a WooCommerce email class, and a bulk-safe send (one email per customer, not per request retry) |
+| **Adjustment email** | Tell the customer about a manual adjustment | ❌ NOT STARTED | The adjust dialog's "Notify the customer by email" checkbox (single and bulk) is UI-only: `notifyByEmail` is not in the `POST /customers/{id}/adjust` body, and no email is sent. Will be a `LoyaltyEmail` subclass (part of `Engine/Emails` or `Pro/Emails` when built). Needs the body arg, trigger wiring, and a bulk-safe send (one email per customer, not per request retry) |
 | **Customer-facing adjustment description** | Text the customer sees for a manual adjustment | ❌ NOT STARTED | The adjust dialog's "Also show a description to the customer" toggle and its text field are UI-only: `customerNote` is not in the `POST /customers/{id}/adjust` body and nothing stores it. The ledger's `note` is staff-only, so this needs its own home (a ledger column, or `customer_meta`), the body arg, and a customer-side points history to show it in — none exists yet. Until then the preview line's "Adjustment" fallback is what a customer would see |
 | **Rebuild balances** | Replay ledger → recalculate customer row | ❌ NOT STARTED | `balance = SUM(ledger.points)` is the invariant; no rebuild routine or UI exists |
 | **Account-deletion capture** | Snapshot identity + facts when a member's WP user is deleted | ✅ SHIPPED | `Engine\CustomerActivityListener` on `delete_user`/`wpmu_delete_user` → `Services\CustomerActivityService::record_account_deleted()`: one `account_deleted` row in `yayloyalty_customer_meta` (email/display_name snapshot, real balance/kept-entries), `yayloyalty_customers` row and ledger kept forever, byte-identical — see `data-model/customers-and-ledger.md` |
@@ -261,6 +263,6 @@ The shape is fixed (`includes/Engine/Redemption/README.md`); each row is one stu
 
 ## Related Documentation
 
-- **`data-model.md`** — Full schema specification (12 tables, relationships, invariants)
+- **`data-model.md`** — Full schema specification (13 tables, relationships, invariants)
 - **`code-standards.md`** — Implementation rules for new features
 - **`codebase-summary.md`** — Current code structure and entry points
