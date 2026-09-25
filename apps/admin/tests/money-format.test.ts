@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { parseWPCurrency } from '@/lib/helpers/format.helper';
-import { formatPointsAsMoney } from '@/lib/helpers/points.helper';
+import { formatPointsAsMoney, pointsPerCurrencyLabel } from '@/lib/helpers/points.helper';
 
 /**
  * Money labels against three store currencies. The decimal separator must
@@ -60,5 +60,14 @@ describe('formatPointsAsMoney', () => {
   it('is null without a conversion rate', () => {
     useCurrency(USD);
     expect(formatPointsAsMoney(500, 0)).toBeNull();
+  });
+});
+
+describe('pointsPerCurrencyLabel', () => {
+  it('reads a purchase rate against one unit of the store currency, singular and plural', () => {
+    useCurrency(USD);
+    expect(pointsPerCurrencyLabel(1)).toBe('1 pt per $1.00');
+    expect(pointsPerCurrencyLabel(2)).toBe('2 pts per $1.00');
+    expect(pointsPerCurrencyLabel(1.5)).toBe('1.5 pts per $1.00');
   });
 });

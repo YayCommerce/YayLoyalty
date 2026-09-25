@@ -27,6 +27,11 @@ abstract class BaseRestController {
         return new \WP_Error( 'invalid_arguments', $message, [ 'status' => 400 ] );
     }
 
+    /** The request is well-formed but the resource's current state refuses it (e.g. a delete blocked by references elsewhere). */
+    protected function error_conflict( $message = 'Conflict.' ) {
+        return new \WP_Error( 'conflict', $message, [ 'status' => 409 ] );
+    }
+
     /**
      * Runs a read-only route; any throwable becomes a 500.
      *

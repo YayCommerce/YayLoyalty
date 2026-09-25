@@ -11,10 +11,10 @@ import {
   useBulkCampaignWritesMutation,
   useCampaignsQuery,
   useDeleteCampaignMutation,
-  useUpdateCampaignMutation,
+  useUpdateCampaignStatusMutation,
 } from '@/lib/queries/campaign.queries';
 import { hasPerformancePage } from '@/lib/schema/campaign-performance.schema';
-import type { Campaign, CampaignDisplayStatus } from '@/lib/schema/campaign.schema';
+import { Campaign, resolveCampaignDisplayStatus } from '@/lib/schema/campaign.schema';
 import { cn } from '@/lib/utils';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -31,7 +31,6 @@ import {
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { findBuiltinCampaign } from '../campaign-labels';
-import { DUMMY_POINTS_LAST_30_DAYS } from '../campaign-points-dummy';
 import { CAMPAIGN_PERFORMANCE_QUERIES } from '../performance/campaign-performance.queries';
 import {
   affectedLine,
@@ -65,21 +64,20 @@ export type CampaignArchiveAction = 'archived' | 'paused' | 'deleted';
  */
 export function CampaignArchiveDialog({
   campaign,
-  displayStatus,
   onClose,
   onDone,
   onViewArchived,
 }: {
   campaign: Campaign;
-  /** The status the opener shows, so the dialog never disagrees with the screen behind it. */
-  displayStatus: CampaignDisplayStatus;
   onClose: () => void;
   /** Runs after a successful write, once the dialog has closed. */
   onDone?: (action: CampaignArchiveAction) => void;
   /** Omitted where there is no Archived view to jump to. */
   onViewArchived?: () => void;
 }) {
-  const archiveCase = resolveArchiveCase(displayStatus, campaign.points_issued_lifetime);
+  const displayStatus = resolveCampaignDisplayStatus(campaign.status, campaign.starts_at, campaign.ends_at);
+  const lifetimePoints = campaign.points_issued;
+  const archiveCase = resolveArchiveCase(displayStatus, campaign.is_deletable);
   const isEarning = archiveCase === 'live' && displayStatus === 'active';
 
   const wantsPerformance = (archiveCase === 'finished' || isEarning) && hasPerformancePage(campaign.trigger);
@@ -91,7 +89,7 @@ export function CampaignArchiveDialog({
   const campaignsQuery = useCampaignsQuery({ perPage: 100 });
   const fallback = findBuiltinCampaign(campaignsQuery.data?.data, campaign.trigger);
 
-  const statusMutation = useUpdateCampaignMutation(campaign.id);
+  const statusMutation = useUpdateCampaignStatusMutation(campaign.id);
   const deleteMutation = useDeleteCampaignMutation(campaign.id);
   const [pendingAction, setPendingAction] = useState<CampaignArchiveAction>();
   const busy = pendingAction !== undefined;
@@ -103,10 +101,9 @@ export function CampaignArchiveDialog({
       if (action === 'deleted') {
         await deleteMutation.mutateAsync();
       } else {
-        await statusMutation.mutateAsync({ status: action });
+        await statusMutation.mutateAsync(action);
       }
 
-      // "Archived", not "stored": update_item()/delete_item() do not persist yet.
       toast.success(successMessage(action));
       onClose();
       onDone?.(action);
@@ -129,9 +126,9 @@ export function CampaignArchiveDialog({
     figures = isEarning
       ? {
           headline: __('This campaign is live right now', 'yayloyalty'),
-          detail: lifetimeFigures(campaign.points_issued_lifetime).headline,
+          detail: lifetimeFigures(lifetimePoints).headline,
         }
-      : lifetimeFigures(campaign.points_issued_lifetime);
+      : lifetimeFigures(lifetimePoints);
   }
 
   const title =
@@ -163,7 +160,7 @@ export function CampaignArchiveDialog({
 
               <ListColumns
                 leftTitle={__('Keeps working', 'yayloyalty')}
-                leftLines={keepsLines(campaign.points_issued_lifetime)}
+                leftLines={keepsLines(lifetimePoints)}
                 rightTitle={__('Stops', 'yayloyalty')}
                 right={stopsLines(campaign, displayStatus, fallback)}
               />
@@ -381,7 +378,7 @@ function DeleteBody({
         <span className="text-sm font-semibold">{__('Why this dialog and not the archive one', 'yayloyalty')}</span>
         <p className="text-muted-foreground text-sm">
           {__(
-            'A campaign can be deleted only while its lifetime points issued is exactly 0. The moment it awards a single point, delete is gone for good and archive takes over, even if the points are later spent or expire.',
+            'A campaign can be deleted only while no ledger row names it. The moment it awards a single point, delete is gone for good and archive takes over — even if that point is later refunded back to zero.',
             'yayloyalty',
           )}
         </p>
@@ -430,8 +427,7 @@ export function CampaignBulkArchiveDialog({
   onDone,
   onViewArchived,
 }: {
-  /** Each with the status its table row shows. */
-  campaigns: (Campaign & { displayStatus: CampaignDisplayStatus })[];
+  campaigns: Campaign[];
   onClose: () => void;
   /** Runs after a batch that changed at least one campaign, once the dialog has closed. */
   onDone?: () => void;
@@ -666,16 +662,14 @@ function BulkArchiveGroup({ heading, caption, rows }: { heading: string; caption
   );
 }
 
-function toBulkArchiveRow(campaign: Campaign & { displayStatus: CampaignDisplayStatus }): BulkArchiveRow {
-  const { displayStatus, points_issued_lifetime: lifetimePoints } = campaign;
+function toBulkArchiveRow(campaign: Campaign): BulkArchiveRow {
+  const displayStatus = resolveCampaignDisplayStatus(campaign.status, campaign.starts_at, campaign.ends_at);
 
   return {
     campaign,
     displayStatus,
-    archiveCase: resolveArchiveCase(displayStatus, lifetimePoints),
-    lifetimePoints,
-    // Swap point: read this off the campaign once the resource exposes it.
-    pointsLast30Days: DUMMY_POINTS_LAST_30_DAYS[campaign.id] ?? null,
+    archiveCase: resolveArchiveCase(displayStatus, campaign.is_deletable),
+    lifetimePoints: campaign.points_issued,
   };
 }
 

@@ -148,6 +148,42 @@ class Campaign extends AbstractModel {
         return [ '%s', '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%d', '%d', '%d', '%s', '%s', '%s' ];
     }
 
+    /**
+     * to_row() minus the columns an update must never touch (slug, trigger_type,
+     * created_at, created_by, is_builtin), with get_format() filtered to match
+     * position-for-position. $wpdb->update()'s $format is consumed by
+     * array_shift() — purely positional — so dropping columns from the data
+     * without dropping the same positions from the format silently shifts
+     * every placeholder after the cut. Pairing them here, once, is cheaper
+     * than auditing every caller.
+     *
+     * @return array{data: array<string, mixed>, format: string[]}
+     */
+    public function to_update_row(): array {
+        $row    = $this->to_row();
+        $format = $this->get_format();
+        $keys   = array_keys( $row );
+
+        $immutable = [ 'slug', 'trigger_type', 'created_at', 'created_by', 'is_builtin' ];
+
+        $data        = [];
+        $data_format = [];
+
+        foreach ( $keys as $index => $key ) {
+            if ( in_array( $key, $immutable, true ) ) {
+                continue;
+            }
+
+            $data[ $key ]  = $row[ $key ];
+            $data_format[] = $format[ $index ];
+        }
+
+        return [
+            'data'   => $data,
+            'format' => $data_format,
+        ];
+    }
+
     public function to_array(): array {
         return [
             'id'         => $this->id,
@@ -202,17 +238,19 @@ class Campaign extends AbstractModel {
     public static function config_schema(): array {
         return [
             CampaignTrigger::PURCHASE => [
+                // Above 0, not from 0: a campaign that matches an order and earns 0 still stops the
+                // lower-priority campaigns below it from applying (PointsEngine takes the first match).
                 'points_per_unit'       => [
-                    'type' => 'number',
-                    'min'  => 0,
+                    'type'          => 'number',
+                    'exclusive_min' => 0,
                 ],
                 'mode'                  => [
                     'type'   => 'enum',
                     'values' => [ 'rate', 'multiplier' ],
                 ],
                 'multiplier'            => [
-                    'type' => 'number',
-                    'min'  => 0,
+                    'type'          => 'number',
+                    'exclusive_min' => 0,
                 ],
                 'base'                  => [
                     'type'   => 'enum',
@@ -346,6 +384,10 @@ class Campaign extends AbstractModel {
 
             case 'number':
                 if ( is_bool( $value ) || ! is_numeric( $value ) ) {
+                    return false;
+                }
+
+                if ( isset( $spec['exclusive_min'] ) && (float) $value <= (float) $spec['exclusive_min'] ) {
                     return false;
                 }
 

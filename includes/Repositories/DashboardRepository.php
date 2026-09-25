@@ -33,18 +33,19 @@ class DashboardRepository {
         );
     }
 
-    /** Points issued: positive rows of the types that feed lifetime_earned, so the two agree. */
     public function sum_issued( string $from, string $to ): int {
-        return $this->sum_points( LedgerType::lifetime_earned_types(), 'points > 0', $from, $to );
+        list( $issued, $types ) = LedgerRepository::issued_row_sql();
+
+        return $this->sum_points( $issued, $types, $from, $to );
     }
 
     public function sum_redeemed( string $from, string $to ): int {
-        return abs( $this->sum_points( [ LedgerType::REDEEM ], '1 = 1', $from, $to ) );
+        return abs( $this->sum_points( 'type = %s', [ LedgerType::REDEEM ], $from, $to ) );
     }
 
     /** Signed movement of every type in the window; rewinds liability approximately. */
     public function net_delta( string $from, string $to ): int {
-        return $this->sum_points( LedgerType::all(), '1 = 1', $from, $to );
+        return $this->sum_points( 'type IN (' . Sql::in_placeholders( LedgerType::all() ) . ')', LedgerType::all(), $from, $to );
     }
 
     /**
@@ -55,19 +56,19 @@ class DashboardRepository {
     public function daily_points( string $from, string $to, int $offset_seconds ): array {
         global $wpdb;
 
-        $earn_in = Sql::in_placeholders( LedgerType::lifetime_earned_types() );
-        $all_in  = Sql::in_placeholders( LedgerType::all() );
+        list( $issued, $earn_types ) = LedgerRepository::issued_row_sql();
+        $all_in                      = Sql::in_placeholders( LedgerType::all() );
 
-        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $earn_in/$all_in are "%s, %s" lists built by Sql::in_placeholders(); every value is bound below.
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $issued/$all_in carry "%s, %s" lists; every value is bound below.
         $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
             $wpdb->prepare(
                 "SELECT DATE(DATE_ADD(created_at, INTERVAL %d SECOND)) AS date,
-                        SUM(CASE WHEN points > 0 AND type IN ({$earn_in}) THEN points ELSE 0 END) AS issued,
+                        SUM(CASE WHEN {$issued} THEN points ELSE 0 END) AS issued,
                         SUM(CASE WHEN type = %s THEN -points ELSE 0 END) AS redeemed
                  FROM `" . esc_sql( Table::name( 'ledger' ) ) . "`
                  WHERE type IN ({$all_in}) AND created_at >= %s AND created_at < %s
                  GROUP BY 1 ORDER BY 1",
-                array_merge( [ $offset_seconds ], LedgerType::lifetime_earned_types(), [ LedgerType::REDEEM ], LedgerType::all(), [ $from, $to ] )
+                array_merge( [ $offset_seconds ], $earn_types, [ LedgerType::REDEEM ], LedgerType::all(), [ $from, $to ] )
             ),
             ARRAY_A
         );
@@ -101,12 +102,14 @@ class DashboardRepository {
 
     /** Distinct orders on which points were redeemed. */
     public function orders_with_points( string $from, string $to ): int {
-        return $this->count_distinct_orders( [ LedgerType::REDEEM ], $from, $to );
+        return $this->count_distinct_orders( 'type = %s', [ LedgerType::REDEEM ], $from, $to );
     }
 
-    /** Distinct orders that earned points; positive rows only, a clawback is not an award. */
+    /** Distinct orders that earned points; issued rows only, a clawback is not an award. */
     public function orders_with_earn( string $from, string $to ): int {
-        return $this->count_distinct_orders( LedgerType::lifetime_earned_types(), $from, $to, 'AND points > 0' );
+        list( $issued, $types ) = LedgerRepository::issued_row_sql();
+
+        return $this->count_distinct_orders( $issued, $types, $from, $to );
     }
 
     /**
@@ -117,14 +120,14 @@ class DashboardRepository {
     public function campaign_points_on_day( int $campaign_id, string $from, string $to ): array {
         global $wpdb;
 
-        $in = Sql::in_placeholders( LedgerType::lifetime_earned_types() );
+        list( $issued, $types ) = LedgerRepository::issued_row_sql();
 
-        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $in is a "%s, %s" list; every value is bound.
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $issued carries a "%s, %s" list; every value is bound.
         $row = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
             $wpdb->prepare(
                 'SELECT COUNT(DISTINCT order_id) AS orders, COALESCE(SUM(points), 0) AS points FROM `' . esc_sql( Table::name( 'ledger' ) ) . "`
-                 WHERE campaign_id = %d AND points > 0 AND type IN ({$in}) AND created_at >= %s AND created_at < %s",
-                array_merge( [ $campaign_id ], LedgerType::lifetime_earned_types(), [ $from, $to ] )
+                 WHERE campaign_id = %d AND {$issued} AND created_at >= %s AND created_at < %s",
+                array_merge( [ $campaign_id ], $types, [ $from, $to ] )
             ),
             ARRAY_A
         );
@@ -231,39 +234,36 @@ class DashboardRepository {
     }
 
     /**
-     * @param string[] $types
+     * @param string  $where Prepared-SQL row predicate from this class or LedgerRepository::issued_row_sql().
+     * @param mixed[] $args  The values `$where` binds, in order.
      */
-    private function sum_points( array $types, string $extra_where, string $from, string $to ): int {
+    private function sum_points( string $where, array $args, string $from, string $to ): int {
         global $wpdb;
 
-        $in = Sql::in_placeholders( $types );
-
-        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $in is a "%s, %s" list, $extra_where a literal fragment from this class; every value is bound.
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $where is a placeholder fragment built in this plugin; every value is bound.
         return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
             $wpdb->prepare(
                 'SELECT COALESCE(SUM(points), 0) FROM `' . esc_sql( Table::name( 'ledger' ) ) . "`
-                 WHERE type IN ({$in}) AND created_at >= %s AND created_at < %s AND {$extra_where}",
-                array_merge( $types, [ $from, $to ] )
+                 WHERE {$where} AND created_at >= %s AND created_at < %s",
+                array_merge( $args, [ $from, $to ] )
             )
         );
         // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
     }
 
     /**
-     * @param string[] $types
-     * @param string   $extra_where Literal fragment from this class.
+     * @param string  $where Prepared-SQL row predicate from this class or LedgerRepository::issued_row_sql().
+     * @param mixed[] $args  The values `$where` binds, in order.
      */
-    private function count_distinct_orders( array $types, string $from, string $to, string $extra_where = '' ): int {
+    private function count_distinct_orders( string $where, array $args, string $from, string $to ): int {
         global $wpdb;
 
-        $in = Sql::in_placeholders( $types );
-
-        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $in is a "%s, %s" list, $extra_where a literal fragment from this class; every value is bound.
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $where is a placeholder fragment built in this plugin; every value is bound.
         return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
             $wpdb->prepare(
                 'SELECT COUNT(DISTINCT order_id) FROM `' . esc_sql( Table::name( 'ledger' ) ) . "`
-                 WHERE type IN ({$in}) AND created_at >= %s AND created_at < %s AND order_id IS NOT NULL {$extra_where}",
-                array_merge( $types, [ $from, $to ] )
+                 WHERE {$where} AND created_at >= %s AND created_at < %s AND order_id IS NOT NULL",
+                array_merge( $args, [ $from, $to ] )
             )
         );
         // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber

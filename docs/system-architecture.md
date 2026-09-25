@@ -141,9 +141,10 @@ flowchart LR
 | `/dashboard` | `DashboardPage` | ✅ shipped |
 | `/customers` | `CustomersPage` (list) | ✅ shipped |
 | `/customers/:userId` | `CustomerDrawer` (F09) | ✅ shipped |
-| `/campaigns` | `CampaignsPage` (list, fixture-backed) | ⚠️ fixture data |
-| `/campaigns/:id/edit` | `CampaignEditor` (Pro only) | ⚠️ not persisted |
-| `/campaigns/:id/performance` | `CampaignPerformance` (Pro only) | ⚠️ fixture data |
+| `/campaigns` | `CampaignsPage` (list) | ✅ shipped |
+| `/campaigns/new`, `/campaigns/new/:templateId` | `CampaignTemplatePicker` → `CampaignCreator` (Pro only) | ✅ shipped |
+| `/campaigns/:id/edit` | `CampaignEditor` (Pro only) | ✅ shipped |
+| `/campaigns/:id/performance` | `CampaignPerformance` (Pro only) | ✅ shipped |
 | `/settings/design` | `DesignSettingsPage` (Free sections + Pro `tier`/`panel`/`typography`, admin-only, no storefront rendering) | ✅ shipped |
 | `/settings/emails` | `EmailsSettingsPage` (12 transactional email toggles grouped by category, weekly throttle cap, read-only WC sending config) | ✅ shipped |
 | `/rewards`, `/referral`, `/vip-tiers`, `/settings` (General/Advanced) | Stubs | ⚠️ placeholders |
@@ -400,47 +401,51 @@ other listener callback, so a DB failure here never blocks WP's own user-creatio
 
 ### Campaign editor (Pro-only) — create and edit
 
-**Route:** `/campaigns/:id/edit` (Pro-only; gated by `IS_PRO_BUILD` AND `requires(CAP.MANAGE_CAMPAIGNS)` with Pro lock winning if both apply).
+**Routes:** `/campaigns/new` (template chooser) → `/campaigns/new/:templateId` (create form), and `/campaigns/:id/edit` (edit form). Pro-only; gated by `IS_PRO_BUILD` AND `requires(CAP.MANAGE_CAMPAIGNS)` with Pro lock winning if both apply.
 
-**Access:** Reachable from `CampaignTable` row name-link (detail pre-load) and "Duplicate" action. "Add campaign" intentionally inert — the campaigns list reads from a dummy fixture, not the database, so a genuine create would produce an invisible row (same SWAP POINT as update, below).
+**Access:** "Add campaign" on `CampaignsPage`/`CampaignTable` opens the chooser. `CampaignTable`'s row name-link opens edit. Its "Duplicate" action opens create pre-seeded from that row (`navigate('/campaigns/new/scratch?from=' + row.id)`) — a real new campaign on Save, never a mutation of the source.
 
-**Editor structure:** Six sections (Basics, Trigger, Reward, Conditions, Schedule, Priority) plus a live-updating summary rail ("What this means", "Before it can run", save actions). Uses react-hook-form + zodResolver (first RHF adoption in this codebase). Per-trigger reward config editors for Lite triggers (purchase/signup/review); generic read-only fallback for Pro-only triggers that preserves config byte-for-byte. 10-type condition builder. Nullable start/end scheduling with site-timezone conversion at display/input edges (form/wire values stay raw UTC).
+**Create flow:** `CampaignTemplatePicker` (`pro/campaigns/add/`) shows one card per supported trigger's starting point plus "Start from scratch", each seeding the create form with a template's own `name`/`priority`/`config`/`conditions` and `status: 'draft'`. Nothing is written until Save — a template is a starting point, not a commitment. Duplicate seeds the same form via `duplicateToFormValues()` instead of a template's `seed()`: every field copied from the source except `id`/`slug`, name gets " (copy)", status resets to `draft`.
 
-**SWAP POINT caveat:** The PHP update endpoint validates and returns the campaign, but **does NOT persist to the database**. This is a deliberate, explicitly-marked temporary state — both the read-side (list/detail from dummy fixture) and write-side (update validation without persist) SWAP POINTs are intended to be resolved together in a future CRUD task.
+**Editor structure:** One component tree, two modes (`CampaignEditorContext`'s `mode: 'create' | 'edit'`). Six sections (Basics, Trigger, Reward, Conditions, Schedule, Priority) plus a live-updating summary rail ("What this means", "Before it can run", save actions). `trigger` lives outside react-hook-form state — in context, as `campaign.trigger` (edit, immutable) or component state plus `onTriggerChange` (create) — because changing it also resets `config`/`conditions`, which a plain form field can't drive from the section that owns it. Uses react-hook-form + zodResolver (first RHF adoption in this codebase). Per-trigger reward config editors for Lite triggers (purchase/signup/review); generic read-only fallback for Pro-only triggers that preserves config byte-for-byte. The purchase reward's Advanced block and the rail read the same facts from `editor/campaign-reward.copy.ts`: the collapsed toggle lists what is set, and the rail spells out the rate, how the amount is counted and any limits, with engine truths the fields cannot show (a minimum is checked on the whole order before discounts; a multiplier over a paused or missing default earns nothing). Include shipping has no control because the calculator never reads it; the stored key round-trips. 10-type condition builder whose list values are picked, never typed: roles, payment gateways, countries and currencies come from the bootstrap payload (`LocalizeHelper::get_meta()` → `lib/helpers/meta-options.helper.ts`), products, categories and customers from `GET /lookups/{entity}` (`Controllers\LookupRestController`, shared with the coming reward conditions) through `components/ui/custom/lookup-multi-select.tsx`. Nullable start/end scheduling with site-timezone conversion at display/input edges (form/wire values stay raw UTC).
+
+**Persistence:** Both endpoints persist for real. Create validates trigger/config/conditions, generates and de-duplicates the slug server-side, and inserts via `CampaignRepository::insert()`. Update loads the campaign from `CampaignRepository`, validates, applies whichever fields the request body carries (partial write), and writes via `Campaign::to_update_row()` (pairs `to_row()`'s data with `get_format()`'s placeholders position-for-position, since `$wpdb->update()` consumes `$format` with `array_shift()` — dropping immutable columns from one without the other would silently misalign every placeholder after the cut). Archiving a built-in is rejected with 403 before any setter runs, not via `set_status()`'s exception.
 
 ```
 GET /campaigns/:id   (read for detail pre-load)
     ↓
 CampaignRestController::get_item()
+    └─ decorate(): adds points_issued (SUM over LedgerRepository::totals_by_campaign()) and is_deletable
 
 POST|PUT|PATCH /yayloyalty/v1/campaigns/:id   (WP_REST_Server::EDITABLE)
     ↓
 CampaignRestController::update_item()  via  exec_write()
-    ├─ CampaignTrigger::is_valid( trigger )        must be fireable in THIS build (all(), filtered)
+    ├─ CampaignTrigger::is_valid( trigger )        must be fireable in THIS build (all(), filtered) — trigger itself is immutable after create
     ├─ Campaign::validate_config( trigger, config ) keys whitelisted per trigger
-    ├─ Campaign::conditions_are_valid()            validates the 10-type condition set (NEW: now wired as a real gate, not a stub)
-    ├─ is_builtin AND status → archived           403 yayloyalty_forbidden (pausing a built-in stays allowed)
-    ├─ [SWAP POINT: NO persist to database; controller strips readonly fields and returns the validated campaign]
-    └─ Response: Campaign::to_array()
+    ├─ Campaign::conditions_are_valid()            validates the 10-type condition set
+    ├─ purchase rate: points_per_unit / multiplier must be > 0 (config_schema exclusive_min), and a rate-mode config must carry points_per_unit → else 400
+    │     a campaign that matches and earns 0 stops every lower-priority campaign, and a missing rate reads as 0
+    ├─ default-purchase switching to multiplier mode → 400 (every multiplier reads its rate)
+    ├─ archiving a built-in → 403, checked before any setter runs
+    ├─ CampaignRepository::update() via Campaign::to_update_row()
+    └─ Response: decorate() → Campaign::to_array() + points_issued + is_deletable
     
-Admin SPA (CampaignEditorPage)
-    ├─ useUpdateCampaignMutation() (NEW)
-    ├─ six form sections reading/writing through consolidated data layer (campaign.schema.ts/api.ts/queries.ts, extended with updateCampaignInput schema and updateCampaign() call)
+Admin SPA (CampaignEditor / CampaignCreator, one component tree)
+    ├─ useUpdateCampaignMutation() / useCreateCampaignMutation()
+    ├─ six form sections reading/writing through consolidated data layer (campaign.schema.ts/api.ts/queries.ts)
     └─ summary rail live-updates from form state
 ```
 
 **Pro bulk actions:** Archive, pause, and other status changes from the campaigns table's row menu and bulk-action bar (CampaignBulkActionBar, CampaignArchiveDialog, CampaignPauseDialog) submit through the same `update_item()` endpoint, subject to the same guards (no archiving built-ins, same config/conditions validation).
 
 **Known gaps (not built, not faked):**
-- No product/category/customer search endpoint → id-entry via existing `TagsInput` pickers deferred.
 - No store-wide ledger aggregate → rail's "cost estimate" line omitted.
-- `updated_by` column exists; controller never sets it.
 - `include_shipping` config key still stored but never read by `BaseCalculator` (dead key).
 
-### Campaign create — REST only, no SPA form yet
+### Campaign create/delete
 
 ```
-POST /yayloyalty/v1/campaigns   (no admin UI issues this yet; the campaigns page reads from a dummy fixture)
+POST /yayloyalty/v1/campaigns
     ↓
 CampaignRestController::create_item()  via  exec_write()
     ├─ CampaignTrigger::is_valid( trigger )        must be fireable in THIS build (all(), filtered)
@@ -448,30 +453,41 @@ CampaignRestController::create_item()  via  exec_write()
     ├─ slug generated server-side and de-duplicated; is_builtin never read from the request
     └─ CampaignRepository::insert()
     ↓
-Response: Campaign::to_array()
+Response: decorate() → Campaign::to_array() + points_issued (0) + is_deletable (true)
+
+DELETE /yayloyalty/v1/campaigns/:id
+    ↓
+CampaignRestController::delete_item()  via  exec_write()
+    ├─ is_builtin → 403
+    ├─ LedgerRepository::totals_by_campaign([id]).count > 0 → 409 (archive instead; count, never points — a
+    │  campaign earned-then-fully-refunded nets 0 points but still has rows naming it)
+    └─ CampaignRepository::delete()
 ```
 
-### Campaign performance (Pro-only) — fixture-backed, real endpoint shape
+### Campaign performance (Pro-only) — real ledger aggregate
 
 **Route:** `/campaigns/:id/performance` (Pro-only; gated by `IS_PRO_BUILD` AND `requires(CAP.MANAGE_CAMPAIGNS)`). Supports `purchase`, `signup`, `review` only — any other trigger (e.g. `birthday`) 404s from both the loaded campaign client-side and the server's own trigger allowlist.
 
 **Access:** `CampaignTable`'s row menu ("View performance") and the campaign editor rail's "Performance" link, both rendered only when `hasPerformancePage(trigger)` is true.
 
-**Contract:** `GET /campaigns/{id}/performance` returns `{ window, totals, daily, skipped, estimate }`; `GET /campaigns/{id}/performance/entries` returns a paged/searchable row list (order/signup/review depending on trigger). **Nullability rule:** every nullable field means "not applicable to this trigger" or "not computable yet" — never `0`. A purchase-only total is `null` on a signup/review campaign; an average is `null` on zero entries (division by zero), not `0`. The SPA renders `null` as `—`, same rule the dashboard uses for its own null fields. Full specification lives in `lib/schema/campaign-performance.schema.ts` and the `CampaignPerformanceRestController` docblock.
+**Contract:** `GET /campaigns/{id}/performance` returns `{ campaign, window, totals, daily, skipped, estimate }` — `campaign` is the `GET /campaigns/{id}` shape verbatim (`CampaignRestController::decorate()`), so the page makes no second request for its header; `GET /campaigns/{id}/performance/entries` returns a paged/searchable row list (order/signup/review depending on trigger). **Nullability rule:** every nullable field means "not applicable to this trigger" or "not computable yet" — never `0`. A purchase-only total is `null` on a signup/review campaign; an average is `null` on zero entries (division by zero), not `0`. The SPA renders `null` as `—`, same rule the dashboard uses for its own null fields.
+
+**Two time bases, on purpose:** `totals` is lifetime (no date bound), so it always agrees with `CampaignRestController`'s own `points_issued` column. `window`/`daily` is the last 30 days, clamped to the campaign's own run — a chart spanning a campaign's entire life would be unreadable. The chart prints its own `window` next to its title so the narrower span is never mistaken for the lifetime tiles above it. Full specification lives in `lib/schema/campaign-performance.schema.ts` and the `CampaignPerformanceRestController` class docblock.
 
 ```
 GET /campaigns/:id/performance
     ↓
 CampaignPerformanceRestController::get_performance()
-    ├─ resolve_row()  404 for unknown id OR unsupported trigger (identical either way — no timing/error-shape difference an unauthorized trigger check could leak)
-    └─ [SWAP POINT: answers entirely from CampaignPerformanceFixture — deterministic-per-id, invented]
+    ├─ resolve_row()  CampaignRepository::find_campaign() (real row) + trigger allowlist; 404 for unknown id OR unsupported trigger (identical either way — no timing/error-shape difference an unauthorized trigger check could leak)
+    ├─ CampaignPerformanceRepository::totals()  one aggregate query over `ledger` (SUM/COUNT/COUNT DISTINCT, points>0, campaign_id-scoped) → shape_totals() adds liability (PointsMath) and the sitewide completed-order count (DashboardRepository::count_orders())
+    └─ chart_window() + CampaignPointsRepository::daily_by_campaign()  the 30-day zero-filled series
     ↓
 Response validated by lib/schema/campaign-performance.schema.ts (zod)
     ↓
-CampaignPerformance.tsx: useCampaignQuery (header) + useCampaignPerformanceQuery (tiles/chart/side panel) — independent; a summary failure never hides the header
+CampaignPerformance.tsx: one useCampaignPerformanceQuery — header from the embedded campaign, tiles/chart/side panel from the rest
 ```
 
-**Swap procedure** (see the controller's own class docblock): `get_performance()` moves to a new `CampaignPerformanceRepository` aggregate over `ledger` rows carrying `campaign_id`, wrapped in `DashboardCache` (large-table per-request aggregate); `skipped`/`estimate` may ship `null` at first since both need re-evaluating every order in the window — the SPA already hides each panel on `null`. `get_entries()` moves to a paged `ledger` query (`WHERE campaign_id = ? ORDER BY created_at DESC, id DESC`) joined to `customers`, through `respond_paginated()` exactly as today. `CampaignPerformanceFixture` is then deleted. **No SPA change either way** — both routes are already real HTTP calls.
+**Known limitation:** `skipped`, `estimate` and `totals.avg_order_subtotal` ship `null` unconditionally — all three need either replaying every order through the earning engine (`Engine\Earning\EarningService`, scaffold — see "Order award — SCAFFOLDED" below, F01-4) or a scored base amount the engine does not yet persist. Their panels/sublines already self-hide on `null`; no SPA change needed when F01-4 lands. `GET /campaigns/{id}/performance/entries` (`CampaignPerformanceRepository::paginate_entries()`) is a paged, searchable `ledger` query joined to `wp_users`, real end to end including each purchase row's `subtotal` (`wc_get_order()`).
 
 ### Order award — SCAFFOLDED (shape real, bodies stubbed, not registered at boot)
 

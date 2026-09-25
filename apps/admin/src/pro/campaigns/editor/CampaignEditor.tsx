@@ -1,42 +1,46 @@
 import { useMemo, useRef, useState } from 'react';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { HTTPError } from 'ky';
 import { ChevronLeft, Lock } from 'lucide-react';
-import { FormProvider, Resolver, useForm } from 'react-hook-form';
-import { useLocation, useNavigate } from 'react-router';
+import { FormProvider, useForm } from 'react-hook-form';
+import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { toastApiError } from '@/lib/api/api';
 import { parseWPRelativeDate } from '@/lib/helpers/format.helper';
-import { useCampaignQuery, useUpdateCampaignMutation } from '@/lib/queries/campaign.queries';
+import { useCampaignQuery, useCreateCampaignMutation, useUpdateCampaignMutation } from '@/lib/queries/campaign.queries';
 import { hasPerformancePage } from '@/lib/schema/campaign-performance.schema';
 import {
   Campaign,
-  CampaignStatus,
-  campaignUpdateInputSchema,
+  CampaignCreateInput,
+  DEFAULT_CAMPAIGN_CONFIG,
+  LiteCampaignTrigger,
   resolveCampaignDisplayStatus,
 } from '@/lib/schema/campaign.schema';
 import { useRouteLeaveGuard } from '@/hooks/useRouteLeaveGuard';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ErrorState } from '@/components/ui/custom/error-state';
 import { YayLoyaltyToolTip } from '@/components/ui/custom/tooltip';
 import { UnsavedChangeDialog } from '@/components/ui/custom/unsaved-changed-dialog';
-import { Skeleton } from '@/components/ui/skeleton';
 import PageLayout from '@/components/layout/PageLayout';
 import NotFoundPage from '@/pages/404';
+import { CampaignTemplate, findTemplate } from '../add/campaign-templates';
 import { CampaignArchiveDialog } from '../archive/CampaignArchiveDialog';
 import { statusLabel, triggerLabel } from '../campaign-labels';
 import {
+  CampaignCreateSeed,
   CampaignEditorContext,
+  campaignFormResolver,
   CampaignFormValues,
   campaignToFormValues,
+  duplicateToFormValues,
+  formValuesToCreateInput,
   formValuesToUpdateInput,
-  mergeConditionErrors,
+  synthesizeDraftCampaign,
 } from './campaign-editor.form';
 import { CampaignEditorSections } from './CampaignEditorSections';
+import { CampaignEditorSkeleton } from './CampaignEditorSkeleton';
 import { CampaignEditorSummaryRail } from './CampaignEditorSummaryRail';
 
 /**
@@ -55,33 +59,7 @@ export function CampaignEditor({ id }: { id: number }) {
   }
 
   if (campaignQuery.isPending) {
-    return (
-      <>
-        <div className="mx-auto flex max-w-6xl items-center gap-2 px-6 pt-6 text-sm">
-          <Skeleton className="h-4 w-24" />
-        </div>
-
-        <PageLayout
-          className="max-w-6xl"
-          title={<Skeleton className="h-8 w-64" />}
-          description={<Skeleton className="h-4 w-40" />}
-        >
-          <div className="flex flex-col items-start gap-5 lg:flex-row">
-            <div className="flex min-w-0 flex-1 flex-col gap-4">
-              {EDITOR_SECTION_TITLES.map((title) => (
-                <CampaignEditorSectionSkeleton key={title} />
-              ))}
-            </div>
-
-            <div className="flex w-full flex-col gap-4 lg:w-85 lg:shrink-0">
-              <Skeleton className="h-28 w-full" />
-              <Skeleton className="h-36 w-full" />
-              <Skeleton className="h-40 w-full" />
-            </div>
-          </div>
-        </PageLayout>
-      </>
-    );
+    return <CampaignEditorSkeleton />;
   }
 
   if (campaignQuery.isError) {
@@ -104,29 +82,14 @@ export function CampaignEditor({ id }: { id: number }) {
 
 function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }) {
   const navigate = useNavigate();
-  const location = useLocation();
   const mutation = useUpdateCampaignMutation(id);
 
-  // Display-only seed from CampaignTable's Duplicate action; saving still updates the original.
-  const duplicateSeed = (location.state as { duplicateSeed?: CampaignEditorDuplicateSeed } | null)?.duplicateSeed;
-
-  const formValues = useMemo<CampaignFormValues>(() => {
-    const base = campaignToFormValues(campaign);
-
-    return duplicateSeed ? { ...base, name: duplicateSeed.name, status: duplicateSeed.status } : base;
-  }, [campaign, duplicateSeed]);
-
-  // conditions[].value is z.unknown(), so the per-type checks run inside the resolver, where
-  // they cover every save path.
-  const resolver: Resolver<CampaignFormValues> = async (values, context, options) => {
-    const result = await zodResolver(campaignUpdateInputSchema)(values, context, options);
-    return mergeConditionErrors(result, values);
-  };
+  const formValues = useMemo<CampaignFormValues>(() => campaignToFormValues(campaign), [campaign]);
 
   // `values`, not defaultValues + reset(): a refetch re-seeds the form on its own, and
   // keepDirtyValues stops it clobbering a field mid-edit.
   const form = useForm<CampaignFormValues>({
-    resolver,
+    resolver: campaignFormResolver,
     values: formValues,
     resetOptions: { keepDirtyValues: true },
   });
@@ -143,10 +106,8 @@ function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }
   async function persist(input: ReturnType<typeof formValuesToUpdateInput>): Promise<boolean> {
     try {
       const saved = await mutation.mutateAsync(input);
-      // Reset before any navigation reaches the leave guard, or the redirect re-trips it. reset() merges
-      // resetOptions, so without keepDirtyValues: false every edited field would outlive the server's copy.
-      form.reset(campaignToFormValues(saved), { keepDirtyValues: false });
-      // "Saved", not "stored": update_item() does not persist yet.
+      // Reset before any navigation reaches the leave guard, or the redirect re-trips it.
+      form.reset(campaignToFormValues(saved));
       toast.success(__('Campaign saved.', 'yayloyalty'));
       return true;
     } catch (error) {
@@ -196,7 +157,7 @@ function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }
   const displayStatus = resolveCampaignDisplayStatus(campaign.status, campaign.starts_at, campaign.ends_at);
 
   return (
-    <CampaignEditorContext.Provider value={{ campaign }}>
+    <CampaignEditorContext.Provider value={{ mode: 'edit', campaign, trigger: campaign.trigger }}>
       <FormProvider {...form}>
         <form onSubmit={handleSave}>
           <div className="mx-auto flex max-w-6xl items-center gap-2 px-6 pt-6 text-sm">
@@ -265,8 +226,7 @@ function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }
                 onDraftIntent={() => {
                   isDraftIntentRef.current = true;
                 }}
-                // A duplicate seed still points at the original, which archive (or delete) would hit.
-                onArchive={duplicateSeed ? undefined : () => setArchiveOpen(true)}
+                onArchive={() => setArchiveOpen(true)}
                 onPerformance={
                   hasPerformancePage(campaign.trigger) ? () => navigate(`/campaigns/${id}/performance`) : undefined
                 }
@@ -293,7 +253,6 @@ function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }
       {archiveOpen && (
         <CampaignArchiveDialog
           campaign={campaign}
-          displayStatus={displayStatus}
           onClose={() => setArchiveOpen(false)}
           onDone={(action) => {
             // Unsaved edits belong to a campaign that has just left the list; the guard would only nag.
@@ -308,26 +267,179 @@ function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }
   );
 }
 
-/** What CampaignTable's Duplicate action passes through router state. */
-export type CampaignEditorDuplicateSeed = { name: string; status: CampaignStatus };
+/**
+ * Create-mode entry point for `campaigns/new/:templateId`, optionally
+ * `?from=<id>` for CampaignTable's Duplicate action. Nothing is written
+ * until Save — see the chooser's own subtitle.
+ */
+export function CampaignCreator({ templateId, duplicateFromId }: { templateId: string; duplicateFromId?: number }) {
+  // Memoised so CampaignCreatorForm's seed stays stable: findTemplate() builds a fresh object per call.
+  const template = useMemo(() => findTemplate(templateId), [templateId]);
+  // enabled: id > 0 inside the hook means an absent duplicateFromId never fetches.
+  const sourceQuery = useCampaignQuery(duplicateFromId ?? 0);
 
-/** Placeholder titles only — CampaignEditorSections.tsx's own six section titles are the real ones. */
-const EDITOR_SECTION_TITLES = ['basics', 'trigger', 'reward', 'conditions', 'schedule', 'priority'];
+  if (!template) {
+    return <NotFoundPage />;
+  }
 
-/** Mirrors CampaignEditorSections.tsx's numbered-card shell, so the loading state doesn't jump when the real one mounts. */
-function CampaignEditorSectionSkeleton() {
+  if (!duplicateFromId) {
+    return <CampaignCreatorForm template={template} />;
+  }
+
+  if (sourceQuery.isPending) {
+    return <CampaignEditorSkeleton />;
+  }
+
+  if (sourceQuery.isError) {
+    if (sourceQuery.error instanceof HTTPError && sourceQuery.error.response.status === 404) {
+      return <NotFoundPage />;
+    }
+
+    return (
+      <PageLayout title={__('New campaign', 'yayloyalty')}>
+        <ErrorState
+          message={__('Could not load the campaign to duplicate.', 'yayloyalty')}
+          onRetry={() => sourceQuery.refetch()}
+        />
+      </PageLayout>
+    );
+  }
+
+  return <CampaignCreatorForm template={template} duplicateFrom={sourceQuery.data} />;
+}
+
+function CampaignCreatorForm({ template, duplicateFrom }: { template: CampaignTemplate; duplicateFrom?: Campaign }) {
+  const navigate = useNavigate();
+  const mutation = useCreateCampaignMutation();
+
+  // Stable across this component's life: template and duplicateFrom are each fixed for one visit
+  // to this route (a duplicate source is fetched once, not refetched mid-edit).
+  const seed = useMemo<CampaignCreateSeed>(
+    () =>
+      duplicateFrom ? duplicateToFormValues(duplicateFrom) : { trigger: template.trigger, values: template.seed() },
+    [template, duplicateFrom],
+  );
+  const draftCampaign = useMemo(() => synthesizeDraftCampaign(), []);
+
+  const [trigger, setTrigger] = useState<LiteCampaignTrigger>(seed.trigger);
+
+  // `values`, not defaultValues: matches CampaignEditorForm, though nothing here ever refetches.
+  const form = useForm<CampaignFormValues>({
+    resolver: campaignFormResolver,
+    values: seed.values,
+    resetOptions: { keepDirtyValues: true },
+  });
+
+  const { showDialog, confirmLeave, cancelLeave, bypassNext } = useRouteLeaveGuard(form.formState.isDirty);
+
+  // Fallbacks for handleSave, reset at the top of each submit: SubmitEvent.submitter is missing
+  // in Safari < 15.4, and the UnsavedChangeDialog save has no submit event at all.
+  const isDraftIntentRef = useRef(false);
+  const isDialogSaveRef = useRef(false);
+
+  /** A stale key from the old trigger would fail Campaign::config_is_valid() on save. */
+  function handleTriggerChange(next: LiteCampaignTrigger) {
+    setTrigger(next);
+    form.setValue('config', structuredClone(DEFAULT_CAMPAIGN_CONFIG[next]), {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    form.setValue('conditions', [], { shouldDirty: true, shouldValidate: true });
+  }
+
+  async function persist(input: CampaignCreateInput): Promise<boolean> {
+    try {
+      await mutation.mutateAsync(input);
+      toast.success(__('Campaign created.', 'yayloyalty'));
+      return true;
+    } catch (error) {
+      await toastApiError(error, __('Could not create the campaign.', 'yayloyalty'));
+      return false;
+    }
+  }
+
+  // Mirrors CampaignEditorForm's handleSave; see its comments.
+  /* eslint-disable react-hooks/refs */
+  const handleSave = form.handleSubmit(
+    async (values, event) => {
+      const submitter = (event?.nativeEvent as SubmitEvent | undefined)?.submitter as HTMLElement | null | undefined;
+      const isDraft = submitter ? submitter.dataset.intent === 'draft' : isDraftIntentRef.current;
+      const savingFromDialog = isDialogSaveRef.current;
+      isDraftIntentRef.current = false;
+      isDialogSaveRef.current = false;
+
+      const input = formValuesToCreateInput(values, trigger);
+      const created = await persist(isDraft ? { ...input, status: 'draft' } : input);
+
+      if (created) {
+        confirmLeave();
+
+        if (!savingFromDialog) {
+          bypassNext();
+          navigate('/campaigns');
+        }
+      }
+    },
+    (errors) => {
+      if (errors.conditions) {
+        toast.error(__('Please fix the highlighted conditions before saving.', 'yayloyalty'));
+      }
+    },
+  );
+  /* eslint-enable react-hooks/refs */
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2.5 text-base">
-          <Skeleton className="size-5.5 shrink-0 rounded-full" />
-          <Skeleton className="h-4 w-24" />
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-3">
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-2/3" />
-      </CardContent>
-    </Card>
+    <CampaignEditorContext.Provider
+      value={{ mode: 'create', campaign: draftCampaign, trigger, onTriggerChange: handleTriggerChange }}
+    >
+      <FormProvider {...form}>
+        <form onSubmit={handleSave}>
+          <div className="mx-auto flex max-w-6xl items-center gap-2 px-6 pt-6 text-sm">
+            <Button type="button" variant="link" className="h-auto gap-1 p-0!" onClick={() => navigate('/campaigns')}>
+              <ChevronLeft className="size-3.5" />
+              {__('Campaigns', 'yayloyalty')}
+            </Button>
+            <span aria-hidden className="text-muted-foreground">
+              ·
+            </span>
+            <span className="text-muted-foreground">{__('Creating a new campaign', 'yayloyalty')}</span>
+          </div>
+
+          <PageLayout
+            className="max-w-6xl"
+            title={__('New campaign', 'yayloyalty')}
+            description={<Badge variant="outline">{triggerLabel(trigger)}</Badge>}
+          >
+            <div className="flex flex-col items-start gap-5 lg:flex-row">
+              <div className="min-w-0 flex-1">
+                <CampaignEditorSections />
+              </div>
+
+              <CampaignEditorSummaryRail
+                mutation={mutation}
+                onCancel={() => navigate('/campaigns')}
+                onDraftIntent={() => {
+                  isDraftIntentRef.current = true;
+                }}
+              />
+            </div>
+          </PageLayout>
+        </form>
+      </FormProvider>
+
+      <UnsavedChangeDialog
+        open={showDialog}
+        onOpenChange={(open) => {
+          if (!open) {
+            cancelLeave();
+          }
+        }}
+        onDiscard={confirmLeave}
+        onSave={() => {
+          isDialogSaveRef.current = true;
+          return handleSave();
+        }}
+      />
+    </CampaignEditorContext.Provider>
   );
 }

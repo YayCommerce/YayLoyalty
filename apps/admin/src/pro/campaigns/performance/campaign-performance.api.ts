@@ -9,9 +9,8 @@ import {
 /**
  * Clients for the two Pro-only routes behind CampaignPerformanceRestController.
  * Lite has neither route at all (404, not 403) — see that controller's
- * docblock. Both currently answer from CampaignPerformanceFixture; that is a
- * SWAP POINT on the PHP side only — these two functions do not change when
- * it flips to real data.
+ * docblock. Real data (CampaignPerformanceRepository) — no client change was
+ * needed for that swap, by design.
  *
  * Responses are parsed, not cast — see customer.api.ts.
  */

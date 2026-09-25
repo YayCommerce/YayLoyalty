@@ -1,8 +1,14 @@
 import { dateI18n, getSettings, humanTimeDiff } from '@wordpress/date';
 
+/**
+ * A stored UTC datetime, or a Date, in the site's date format. A string is
+ * parsed as UTC here rather than handed to dateI18n, which reads a bare
+ * string as browser-local and so shifts a midnight instant to the previous
+ * day for any viewer east of the site zone.
+ */
 export function parseWPDate(date: Date | string | undefined) {
   const { formats } = getSettings();
-  return dateI18n(formats.date, date);
+  return dateI18n(formats.date, typeof date === 'string' ? utcToDate(date) : date);
 }
 
 /** "2 days ago" for a stored UTC datetime. Parsed as UTC explicitly: a bare new Date() reads it as local. */
@@ -10,9 +16,9 @@ export function parseWPRelativeDate(date: string) {
   return humanTimeDiff(utcToDate(date));
 }
 
-/** A stored UTC datetime in the site's date format. */
+/** A stored UTC datetime in the site's date format; the same as parseWPDate(), typed for strings only. */
 export function formatStoredDate(utc: string) {
-  return parseWPDate(utcToDate(utc));
+  return parseWPDate(utc);
 }
 
 /** A stored UTC MySQL datetime as a Date; the one parsing rule. */
@@ -30,9 +36,10 @@ export function parseWPDay(day: string, format?: string) {
   return dateI18n(format ?? formats.date, `${day}T12:00:00Z`, 'UTC');
 }
 
+/** A stored UTC datetime, or a Date, in the site's time format; strings are parsed as UTC, as in parseWPDate(). */
 export function parseWPTime(date: Date | string) {
   const { formats } = getSettings();
-  return dateI18n(formats.time, date);
+  return dateI18n(formats.time, typeof date === 'string' ? utcToDate(date) : date);
 }
 
 /** The store currency's decimals (`wc_get_price_decimals()`), the precision every money figure rounds to. */

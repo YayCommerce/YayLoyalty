@@ -1,12 +1,14 @@
 import { __, sprintf } from '@wordpress/i18n';
 
-import { parseWPCurrency, parseWPDate } from '@/lib/helpers/format.helper';
+import { parseWPDate } from '@/lib/helpers/format.helper';
+import { pointsPerCurrencyLabel } from '@/lib/helpers/points.helper';
 import {
   Campaign,
   CAMPAIGN_CONDITION_TYPES,
   CampaignConditionKind,
   CampaignDisplayStatus,
   CampaignTrigger,
+  resolvePurchaseMultiplier,
 } from '@/lib/schema/campaign.schema';
 
 /** Campaign presentation strings derived from the real fields; the wire carries none. */
@@ -50,18 +52,15 @@ export function triggerLabel(trigger: CampaignTrigger): string {
 }
 
 export function givesLabel(trigger: CampaignTrigger, config: Record<string, unknown>): string {
+  if (trigger === 'purchase' && config.mode === 'multiplier') {
+    return sprintf(
+      /* translators: %s: the multiplier, e.g. "2". */ __('×%s points', 'yayloyalty'),
+      String(resolvePurchaseMultiplier(config)),
+    );
+  }
+
   if (trigger === 'purchase') {
-    return config.mode === 'multiplier'
-      ? sprintf(
-          /* translators: %s: the multiplier, e.g. "2". */ __('×%s points', 'yayloyalty'),
-          String(config.multiplier ?? 1),
-        )
-      : sprintf(
-          /* translators: 1: points earned per unit of currency spent, 2: one unit of the store currency, formatted. */
-          __('%1$s point(s) per %2$s', 'yayloyalty'),
-          String(config.points_per_unit ?? 0),
-          parseWPCurrency(1),
-        );
+    return pointsPerCurrencyLabel(Number(config.points_per_unit ?? 0));
   }
 
   // Every other trigger's config carries a flat `points`.

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { __ } from '@wordpress/i18n';
 
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 
@@ -6,6 +7,9 @@ import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 
 /** Mirrors CampaignTrigger::lite_triggers(). */
 export const LITE_CAMPAIGN_TRIGGERS = ['purchase', 'signup', 'review'] as const;
+
+/** The only triggers POST campaigns accepts (create_item() rejects everything else via CampaignTrigger::is_valid()). */
+export type LiteCampaignTrigger = (typeof LITE_CAMPAIGN_TRIGGERS)[number];
 
 /** Mirrors YayLoyaltyPro::ADDED_TRIGGERS. */
 export const PRO_CAMPAIGN_TRIGGERS = ['birthday', 'first_order', 'order_count', 'spend_milestone'] as const;
@@ -90,8 +94,10 @@ export const campaignSchema = z.object({
   created_by: z.number().int().nullable(),
   created_at: z.string(),
   updated_at: z.string(),
-  /** Lifetime, not windowed: 0 means never awarded. */
-  points_issued_lifetime: z.number().int(),
+  /** Net points awarded, lifetime. Derived from the ledger at read time, never stored. */
+  points_issued: z.number().int(),
+  /** Whether DELETE would succeed: not built-in, and no ledger row names it. */
+  is_deletable: z.boolean(),
 });
 
 export type Campaign = z.infer<typeof campaignSchema>;
@@ -219,7 +225,7 @@ export type CampaignCondition = z.infer<typeof campaignConditionSchema>;
  */
 export const campaignUpdateInputSchema = z
   .object({
-    name: z.string().trim().min(1),
+    name: z.string().trim().min(1, __('A campaign needs a name.', 'yayloyalty')),
     status: campaignStatusSchema,
     priority: z.number().int(),
     /** Loose on purpose; see campaignSchema.config. */
@@ -229,13 +235,29 @@ export const campaignUpdateInputSchema = z
     /** Exclusive; see campaignSchema.ends_at. */
     ends_at: z.string().nullable(),
   })
-  // String comparison is correct: both are fixed-width UTC YYYY-MM-DD HH:mm:ss.
-  .refine((data) => !data.starts_at || !data.ends_at || data.starts_at < data.ends_at, {
-    message: 'The start date must be before the end date.',
+  .refine((data) => isCampaignScheduleInOrder(data.starts_at, data.ends_at), {
+    message: __('The campaign must end after it starts.', 'yayloyalty'),
     path: ['ends_at'],
   });
 
 export type CampaignUpdateInput = z.infer<typeof campaignUpdateInputSchema>;
+
+/**
+ * Mirror of CampaignRestController::dates_in_order(): an open side passes, two
+ * set dates must run forward (ends_at is exclusive, so equal is an empty run).
+ * String comparison is correct: both are fixed-width UTC YYYY-MM-DD HH:mm:ss.
+ */
+export function isCampaignScheduleInOrder(startsAt: string | null, endsAt: string | null): boolean {
+  return !startsAt || !endsAt || startsAt < endsAt;
+}
+
+/**
+ * Write body for POST campaigns, mirroring create_item()'s accepted fields.
+ * `trigger` is the one field update has no equivalent for — it is chosen
+ * once, in the chooser, and immutable afterwards. No `slug`: the server
+ * always generates it from `name`.
+ */
+export type CampaignCreateInput = CampaignUpdateInput & { trigger: LiteCampaignTrigger };
 
 /** Response of DELETE campaigns/{id}, mirroring delete_item(). */
 export const campaignDeleteResponseSchema = z.object({
@@ -253,6 +275,8 @@ interface CampaignConfigFieldSpec {
   type: CampaignConfigFieldType;
   /** Lower bound; int and number only. */
   min?: number;
+  /** Strict lower bound: the value must be above it; number only. */
+  exclusiveMin?: number;
   /** Fixed value set; enum only. */
   values?: readonly string[];
 }
@@ -268,10 +292,10 @@ export const CAMPAIGN_CONFIG_FIELDS: Record<
   Record<string, CampaignConfigFieldSpec>
 > = {
   purchase: {
-    points_per_unit: { type: 'number', min: 0 },
+    points_per_unit: { type: 'number', exclusiveMin: 0 },
     // Missing means 'rate'; see resolvePurchaseMode().
     mode: { type: 'enum', values: ['rate', 'multiplier'] },
-    multiplier: { type: 'number', min: 0 },
+    multiplier: { type: 'number', exclusiveMin: 0 },
     base: { type: 'enum', values: ['after_discounts', 'before_discounts'] },
     // Never read by the calculator; kept so a downgrade/upgrade round trip does not lose it.
     include_shipping: { type: 'bool' },
@@ -297,10 +321,37 @@ export const CAMPAIGN_CONFIG_FIELDS: Record<
   },
 };
 
+/**
+ * Mirrors Campaign::default_config(). Used only when creating: the chooser's
+ * templates start from these, and switching the trigger in the builder
+ * re-seeds config to the new trigger's defaults, since a stale key from the
+ * old trigger would fail Campaign::config_is_valid() on save.
+ */
+export const DEFAULT_CAMPAIGN_CONFIG: Record<LiteCampaignTrigger, Record<string, unknown>> = {
+  purchase: {
+    points_per_unit: 1,
+    base: 'after_discounts',
+    include_shipping: false,
+    include_tax: false,
+    rounding: 'down',
+    min_subtotal: 0,
+    exclude_coupon_orders: false,
+    excluded_product_ids: [],
+    excluded_category_ids: [],
+  },
+  signup: { points: 100 },
+  review: { points: 50, require_verified: true, one_per_product: true, daily_cap: 0 },
+};
+
 /** Absent from default_config('purchase'); missing means 'rate'. */
 export const DEFAULT_PURCHASE_MODE = 'rate' as const;
 
 /** Mirrors PurchaseHandler::is_multiplier(); the one place `mode` is resolved. */
 export function resolvePurchaseMode(config: Record<string, unknown>): 'rate' | 'multiplier' {
   return config.mode === 'multiplier' ? 'multiplier' : DEFAULT_PURCHASE_MODE;
+}
+
+/** Mirrors PurchaseHandler::multiplier(); the one place a missing factor becomes ×1. */
+export function resolvePurchaseMultiplier(config: Record<string, unknown>): number {
+  return typeof config.multiplier === 'number' ? config.multiplier : 1;
 }

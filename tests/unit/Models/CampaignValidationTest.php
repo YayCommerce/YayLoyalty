@@ -36,6 +36,20 @@ final class CampaignValidationTest extends TestCase {
         $this->assertFalse( Campaign::config_is_valid( CampaignTrigger::SIGNUP, [ 'points' => 10.5 ] ) );
     }
 
+    public function test_a_purchase_rate_or_multiplier_must_be_above_zero(): void {
+        $this->assertFalse( Campaign::config_is_valid( CampaignTrigger::PURCHASE, [ 'points_per_unit' => 0 ] ) );
+        $this->assertFalse( Campaign::config_is_valid( CampaignTrigger::PURCHASE, [ 'points_per_unit' => -1 ] ) );
+        $this->assertTrue( Campaign::config_is_valid( CampaignTrigger::PURCHASE, [ 'points_per_unit' => 0.01 ] ) );
+        $this->assertFalse( Campaign::config_is_valid( CampaignTrigger::PURCHASE, [ 'multiplier' => 0 ] ) );
+        $this->assertTrue( Campaign::config_is_valid( CampaignTrigger::PURCHASE, [ 'multiplier' => 1.5 ] ) );
+        $this->assertFalse( Campaign::config_is_valid( CampaignTrigger::PURCHASE, [ 'multiplier' => -2 ] ) );
+        $this->assertFalse( Campaign::config_is_valid( CampaignTrigger::PURCHASE, [ 'points_per_unit' => '0' ] ) );
+    }
+
+    public function test_an_inclusive_minimum_still_accepts_zero(): void {
+        $this->assertTrue( Campaign::config_is_valid( CampaignTrigger::PURCHASE, [ 'min_subtotal' => 0 ] ) );
+    }
+
     public function test_config_accepts_the_schema_version_a_stored_blob_carries(): void {
         // GET /campaigns/{id} returns config with the version stamp Json adds
         // on write; a client editing and sending it back must not be rejected.

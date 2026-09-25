@@ -6,9 +6,9 @@ import { toast } from 'sonner';
 import { __ } from '@wordpress/i18n';
 
 import { getApiErrorMessage } from '@/lib/api/api';
+import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { useEmailsQuery, useSaveEmailsMutation } from '@/lib/queries/emails.queries';
 import { emailsFormSchema, EmailsFormValues, EmailsResponse, toEmailsFormValues } from '@/lib/schema/emails.schema';
-import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { useRouteLeaveGuard } from '@/hooks/useRouteLeaveGuard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -43,7 +43,7 @@ export default function EmailsSettingsPage() {
     );
   }
 
-  return <Skeleton className="h-96 w-full" />;
+  return <Skeleton tone="page" className="h-96 w-full" />;
 }
 
 function EmailsSettingsForm({ data }: { data: EmailsResponse }) {

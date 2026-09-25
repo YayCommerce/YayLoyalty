@@ -19,6 +19,16 @@ export function pointsPhrase(count: number): string {
   return sprintf(_n('%s point', '%s points', count, 'yayloyalty'), formatPoints(count));
 }
 
+/** "1 pt per $1.00", "2 pts per $1.00": a purchase rate against one unit of the store currency. */
+export function pointsPerCurrencyLabel(rate: number): string {
+  return sprintf(
+    /* translators: 1: points earned per unit of currency spent; 2: one unit of the store currency, formatted. */
+    _n('%1$s pt per %2$s', '%1$s pts per %2$s', rate, 'yayloyalty'),
+    String(rate),
+    parseWPCurrency(1),
+  );
+}
+
 /**
  * "150k+", "2M+": floored, never rounded up, so "+" reads as "at least".
  * Pair with <PointsValue> in a cell so the exact number is available on hover.

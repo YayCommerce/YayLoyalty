@@ -3,13 +3,18 @@ import { PlusIcon, XIcon } from 'lucide-react';
 import { useController, useFieldArray, useFormContext, useWatch } from 'react-hook-form';
 import { __, sprintf } from '@wordpress/i18n';
 
+import { countryOptions, currencyOptions, paymentGatewayOptions, roleOptions } from '@/lib/helpers/meta-options.helper';
 import {
   CAMPAIGN_CONDITION_SCHEMA,
   CAMPAIGN_CONDITION_TYPES,
   CampaignCondition,
   CampaignConditionKind,
 } from '@/lib/schema/campaign.schema';
+import { LookupEntity } from '@/lib/schema/lookup.schema';
 import { Button } from '@/components/ui/button';
+import { LookupMultiSelect } from '@/components/ui/custom/lookup-multi-select';
+import { MultiSelectComboboxOption } from '@/components/ui/custom/multi-select-combobox';
+import { OptionListSelect } from '@/components/ui/custom/option-list-select';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,7 +25,6 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/u
 import { FieldError } from '@/components/ui/field';
 import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { TagsInput } from '@/components/ui/tags-input';
 import { conditionTypeLabel } from '../campaign-labels';
 import { CampaignFormValues } from './campaign-editor.form';
 
@@ -166,7 +170,12 @@ function ConditionRow({ index, type, onRemove }: { index: number; type: Campaign
   );
 }
 
-/** Dispatches on the value kind; `operator` only matters to the numeric kinds, where `between` takes a pair. */
+/**
+ * One editor per condition type. Lists come from pickers, never free text:
+ * roles, gateways, currencies and countries from the bootstrap's own
+ * vocabularies, customers, products and categories through the lookup
+ * route. The numeric kinds take `operator`, where `between` means a pair.
+ */
 function ConditionValueEditor({
   index,
   type,
@@ -176,83 +185,84 @@ function ConditionValueEditor({
   type: CampaignConditionKind;
   operator: string;
 }) {
-  const spec = CAMPAIGN_CONDITION_SCHEMA[type];
-
-  switch (spec.value) {
-    case 'string_list':
-      return <StringListEditor index={index} />;
-    case 'int_list':
-      return <IntListEditor index={index} max={spec.max} />;
-    case 'currency_list':
-      return <StringListEditor index={index} uppercase placeholder={__('e.g. USD', 'yayloyalty')} />;
-    case 'country_list':
+  switch (type) {
+    case 'user_role':
+      return <OptionListEditor index={index} options={roleOptions()} placeholder={__('Choose roles', 'yayloyalty')} />;
+    case 'payment_method':
+      return (
+        <OptionListEditor
+          index={index}
+          options={paymentGatewayOptions()}
+          placeholder={__('Choose payment methods', 'yayloyalty')}
+        />
+      );
+    case 'currency':
+      return (
+        <OptionListEditor
+          index={index}
+          options={currencyOptions()}
+          placeholder={__('Choose currencies', 'yayloyalty')}
+        />
+      );
+    case 'country':
       return <CountryListEditor index={index} />;
-    case 'int':
-      return <IntValueEditor index={index} operator={operator} />;
-    case 'money':
+    case 'customer_ids':
+      return (
+        <LookupListEditor
+          index={index}
+          entity="customers"
+          placeholder={__('Search customers', 'yayloyalty')}
+          max={CAMPAIGN_CONDITION_SCHEMA[type].max}
+        />
+      );
+    case 'product_in_cart':
+      return <LookupListEditor index={index} entity="products" placeholder={__('Search products', 'yayloyalty')} />;
+    case 'category_in_cart':
+      return <LookupListEditor index={index} entity="categories" placeholder={__('Search categories', 'yayloyalty')} />;
+    case 'lifetime_spend':
       return <MoneyValueEditor index={index} operator={operator} />;
     default:
-      return null;
+      return <IntValueEditor index={index} operator={operator} />;
   }
 }
 
-/* ─── list editors (string_list / currency_list) ────────────────────── */
+/* ─── list editors ───────────────────────────────────────────────────── */
 
-function StringListEditor({
+/** A static vocabulary (roles, gateways, currencies) held as a string list. */
+function OptionListEditor({
   index,
-  uppercase = false,
-  placeholder = __('Type a value and press Enter', 'yayloyalty'),
+  options,
+  placeholder,
 }: {
   index: number;
-  uppercase?: boolean;
-  placeholder?: string;
+  options: MultiSelectComboboxOption[];
+  placeholder: string;
 }) {
   const { control } = useFormContext<CampaignFormValues>();
   const { field } = useController({ control, name: `conditions.${index}.value` });
   const value = Array.isArray(field.value) ? (field.value as string[]) : [];
 
-  return (
-    <TagsInput
-      value={value}
-      onValueChange={(next) => field.onChange(uppercase ? next.map((item) => item.toUpperCase()) : next)}
-      placeholder={placeholder}
-    />
-  );
+  return <OptionListSelect value={value} onChange={field.onChange} options={options} placeholder={placeholder} />;
 }
 
-/* ─── int_list (customer_ids / product_in_cart / category_in_cart) ─── */
-
-function IntListEditor({ index, max }: { index: number; max?: number }) {
+/** Ids picked by name through the lookup route (customers, products, categories). */
+function LookupListEditor({
+  index,
+  entity,
+  placeholder,
+  max,
+}: {
+  index: number;
+  entity: LookupEntity;
+  placeholder: string;
+  max?: number;
+}) {
   const { control } = useFormContext<CampaignFormValues>();
   const { field } = useController({ control, name: `conditions.${index}.value` });
-  const numbers = Array.isArray(field.value) ? (field.value as number[]) : [];
-
-  function handleChange(next: string[]) {
-    const parsed = next
-      .map((raw) => Number.parseInt(raw, 10))
-      .filter((parsedId) => Number.isInteger(parsedId) && parsedId > 0);
-    const deduped = Array.from(new Set(parsed));
-
-    field.onChange(max ? deduped.slice(0, max) : deduped);
-  }
+  const ids = Array.isArray(field.value) ? (field.value as number[]) : [];
 
   return (
-    <div className="flex flex-col gap-1">
-      <TagsInput
-        value={numbers.map(String)}
-        onValueChange={handleChange}
-        placeholder={__('Enter an id and press Enter', 'yayloyalty')}
-      />
-      {max && (
-        <span className="text-muted-foreground text-[11px]">
-          {sprintf(
-            /* translators: %d: the max number of ids this condition accepts. */
-            __('Up to %d ids — for a larger segment, use a customer role condition instead.', 'yayloyalty'),
-            max,
-          )}
-        </span>
-      )}
-    </div>
+    <LookupMultiSelect entity={entity} value={ids} onChange={field.onChange} placeholder={placeholder} max={max} />
   );
 }
 
@@ -276,12 +286,14 @@ function CountryListEditor({ index }: { index: number }) {
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <TagsInput
-        className="min-w-56 flex-1"
-        value={countries}
-        onValueChange={(next) => field.onChange({ countries: next.map((code) => code.toUpperCase()), source })}
-        placeholder={__('Country code, e.g. US', 'yayloyalty')}
-      />
+      <div className="min-w-56 flex-1">
+        <OptionListSelect
+          value={countries}
+          onChange={(next) => field.onChange({ countries: next, source })}
+          options={countryOptions()}
+          placeholder={__('Choose countries', 'yayloyalty')}
+        />
+      </div>
       <Select value={source || undefined} onValueChange={(next) => field.onChange({ countries, source: next })}>
         <SelectTrigger size="sm" className="w-40">
           <SelectValue placeholder={__('Which address?', 'yayloyalty')} />
