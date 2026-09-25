@@ -74,8 +74,11 @@ function RewardFieldsPurchase() {
     mode === 'multiplier',
   );
   const defaultCampaign = findBuiltinCampaign(purchaseCampaigns?.data, 'purchase');
+  // Only an active default lends its rate; the engine skips a multiplier over a paused or missing one.
   const defaultPointsPerUnit =
-    typeof defaultCampaign?.config.points_per_unit === 'number' ? defaultCampaign.config.points_per_unit : undefined;
+    defaultCampaign?.status === 'active' && typeof defaultCampaign.config.points_per_unit === 'number'
+      ? defaultCampaign.config.points_per_unit
+      : undefined;
 
   function patchConfig(patch: Partial<PurchaseConfig>) {
     // Spread the stored config: keys with no control here, such as include_shipping, must survive a save.
@@ -108,23 +111,22 @@ function RewardFieldsPurchase() {
             value={config.multiplier ?? 0}
             onValueChange={(value) => patchConfig({ multiplier: value })}
           >
-            <NumberInputInput id="reward-purchase-multiplier" />
+            <NumberInputInput id="reward-purchase-multiplier" autoComplete="off" />
             <NumberInputUnit unit="×" />
           </NumberInputRoot>
-          {/* The default's rate is only fetched in multiplier mode; until it loads, say what the
-              option does instead of guessing at a rate. */}
+          {/* The default's rate is only fetched in multiplier mode and only lent when that campaign is
+              active; otherwise say what the option does instead of guessing at a rate. The warning
+              below explains a paused or missing default. */}
           <FieldDescription>
-            {mode !== 'multiplier' || !purchaseCampaignsLoaded
-              ? __('Multiplies whatever the default purchase campaign awards.', 'yayloyalty')
-              : defaultPointsPerUnit !== undefined
-                ? sprintf(
-                    /* translators: 1: the multiplier, e.g. "2"; 2: the default rate, e.g. "1 pt per $1.00"; 3: the resulting rate, e.g. "2 pts per $1.00". */
-                    __('%1$s × %2$s = %3$s.', 'yayloyalty'),
-                    String(multiplier),
-                    givesLabel('purchase', { points_per_unit: defaultPointsPerUnit }),
-                    givesLabel('purchase', { points_per_unit: multipliedRate(multiplier, defaultPointsPerUnit) }),
-                  )
-                : __('The default purchase campaign has no rate set yet.', 'yayloyalty')}
+            {mode === 'multiplier' && purchaseCampaignsLoaded && defaultPointsPerUnit !== undefined
+              ? sprintf(
+                  /* translators: 1: the multiplier, e.g. "2"; 2: the default rate, e.g. "1 pt per $1.00"; 3: the resulting rate, e.g. "2 pts per $1.00". */
+                  __('%1$s × %2$s = %3$s.', 'yayloyalty'),
+                  String(multiplier),
+                  givesLabel('purchase', { points_per_unit: defaultPointsPerUnit }),
+                  givesLabel('purchase', { points_per_unit: multipliedRate(multiplier, defaultPointsPerUnit) }),
+                )
+              : __('Multiplies whatever the default purchase campaign awards.', 'yayloyalty')}
           </FieldDescription>
         </div>
 
