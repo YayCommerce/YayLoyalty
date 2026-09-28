@@ -151,6 +151,8 @@ function describeReason(result: ConditionResult): string {
       return __('Unsupported operator', 'yayloyalty');
     case 'non_numeric_value':
       return __('Value is not a number', 'yayloyalty');
+    case 'malformed_value':
+      return __('Value is malformed — re-save the condition', 'yayloyalty');
     default:
       return result.reason;
   }
