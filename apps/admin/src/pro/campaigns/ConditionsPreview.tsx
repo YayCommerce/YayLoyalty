@@ -121,7 +121,9 @@ function describeValue(value: unknown): string {
 /**
  * The evaluator's reason code as something a merchant can act on. Unknown
  * type/operator are configuration errors, not "does not qualify";
- * unsupported_condition_type is recognised but not yet evaluable.
+ * unsupported_condition_type is recognised but not yet evaluable;
+ * needs_order is an order-scoped condition this customer-only preview
+ * cannot check.
  */
 function describeReason(result: ConditionResult): string {
   switch (result.reason) {
@@ -141,6 +143,10 @@ function describeReason(result: ConditionResult): string {
       return __('Unknown condition type', 'yayloyalty');
     case 'unsupported_condition_type':
       return __('This condition type is known but cannot be evaluated yet.', 'yayloyalty');
+    case 'no_customer':
+      return __('Needs a signed-in customer', 'yayloyalty');
+    case 'needs_order':
+      return __('Checked against an order — not evaluable in a customer preview', 'yayloyalty');
     case 'unsupported_operator':
       return __('Unsupported operator', 'yayloyalty');
     case 'non_numeric_value':
