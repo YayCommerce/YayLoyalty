@@ -167,7 +167,7 @@ Two backbones landed 2026-09-11: capabilities (`Access\Capabilities`) and the po
 
 | # | TODO | Where | Ticket |
 |---|---|---|---|
-| 1 | Order lifecycle listener: award status → `ContextFactory::from_order()` → `EarningService::preview()`/`award()` per trigger (`purchase`, then `first_order`…) → `LedgerService::earn()`. `actor_id` null. Scaffolded 2026-09-22; registered at boot 2026-09-28 (`register()`/`route()`/`award_statuses()` implemented); `on_stageable()`/`on_awardable()`/`on_cancelled()` bodies still stubs. | `Engine\Earning\Listeners\OrderListener` | F01-4 |
+| 1 | Order lifecycle listener: award status → `ContextFactory::from_order()` → `EarningService::preview()`/`award()` per trigger (`purchase`, then `first_order`…) → `LedgerService::earn()`. `actor_id` null. Scaffolded 2026-09-22; registered at boot 2026-09-28 (`register()`/`route()`/`award_statuses()` implemented); `on_stageable()`/`on_awardable()` implemented (call `preview_and_log()`, logging to debug); `on_cancelled()` and refund/approve bodies still stubs. | `Engine\Earning\Listeners\OrderListener` | F01-4 |
 | 2 | `LedgerService::earn( LedgerEntry $draft ): Outcome` — stubbed; idempotent on the single `idempotency_key` column (`Engine\Earning\IdempotencyKey`). Scaffold and invariants: `includes/Engine/Earning/README.md`. | `Services/LedgerService.php` | F01-4 |
 | 3 | `points_earned_today( user_id, at )` ledger read to feed `Context::points_earned_today` for `daily_cap` — stubbed. | `Repositories/LedgerRepository.php` | F01-4 |
 | 4 | Refunds / clawbacks / cancellations (`refund_earn`, `refund_redeem`). Attachment points exist (`OrderListener::on_refunded()`, `ReviewListener::on_unapproved()`); undesigned. | listener | F01-4 |
@@ -175,7 +175,7 @@ Two backbones landed 2026-09-11: capabilities (`Access\Capabilities`) and the po
 | 6 | Pro trigger handlers (`birthday`, `first_order`, `order_count`, `spend_milestone`) registered on `yayloyalty_register_trigger_handlers`. | `Pro/` | Pro |
 | 7 | YayCurrency: return the order's rate on `yayloyalty_context_base_rate`. | integration | later |
 | 8 | Admin "why did this order earn?" preview route (`view`) may return the full `Result`; storefront earn preview (Store API, no cap) must return `get_points()` only. | REST / Store API | F09, F12, F13, F15 |
-| 9 | Guest scoring: the evaluator receives a `Context` with `user_id` null and no `CustomerFacts`; customer-bound conditions must not match. | `Pro/Services/ConditionsEvaluator.php` | Pro |
+| 9 | ~~Guest scoring: the evaluator receives a `Context` with `user_id` null and no `CustomerFacts`; customer-bound conditions must not match.~~ **Done (2026-09-28):** `ConditionsEvaluator::explain()` returns `no_customer` reason when a customer-scoped condition is evaluated with `user_id` null. | `Pro/Services/ConditionsEvaluator.php` | Pro |
 | 10 | PHPStan level 6 is not in the repo; add it and run on `includes/Engine/Points` first. | tooling | — |
 | 11 | wp-phpunit harness for `CampaignRepository` (cache + liveness against real rows) and `ContextFactory` (real `WC_Order`). Verified by WP-CLI script today. | `tests/integration/` | — |
 

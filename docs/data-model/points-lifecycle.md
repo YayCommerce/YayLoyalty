@@ -17,7 +17,9 @@ two (points back out) is designed here but has no corresponding code yet — do 
 |---|---|---|
 | `PointsEngine::evaluate()` | `Engine/Points/PointsEngine.php` | **Implemented** |
 | `ContextFactory::from_order()` | `Engine/Points/ContextFactory.php` | **Implemented** |
-| `ContextFactory::from_user()` / `from_comment()` / `customer_facts()` | same | Stub |
+| `ContextFactory::from_user()` / `from_comment()` | same | Stub |
+| `ContextFactory::customer_facts()` | same | **Implemented** — calls `CustomerFactsReader::read()` when evaluator attached |
+| `CustomerFactsReader::read()` | `Engine/Points/CustomerFactsReader.php` | **Implemented** |
 | `PurchaseHandler`, `Registry`, `IdempotencyKey::compose()` | `Engine/Points/Triggers/*`, `Engine/Earning/IdempotencyKey.php` | **Implemented** |
 | `LedgerService::earn()` | `Services/LedgerService.php` | **Implemented** |
 | `LedgerService::redeem()` | `Services/LedgerService.php` | Stub (`TODO(F08)`) |
@@ -25,8 +27,8 @@ two (points back out) is designed here but has no corresponding code yet — do 
 | `EarningService::build()` | `Engine/Earning/EarningService.php` | **Implemented** |
 | `EarningService::preview()` / `award()` | `Engine/Earning/EarningService.php` | Stub |
 | `PendingPoints::stage()` / `release()` / `mark_awarded()` | `Engine/Earning/PendingPoints.php` | Stub |
-| `ProgramGate::check()` | `Engine/Earning/ProgramGate.php` | Stub |
-| `OrderListener::register()` / `on_status_changed()` / `on_order_created()` / `route()` / `award_statuses()` | `Engine/Earning/Listeners/OrderListener.php` | **Implemented** — hooks only; `on_stageable()`/`on_awardable()`/`on_cancelled()`/`on_refunded()` bodies still Stub |
+| `ProgramGate::check()` | `Engine/Earning/ProgramGate.php` | **Implemented** |
+| `OrderListener::register()` / `on_status_changed()` / `on_order_created()` / `route()` / `award_statuses()` | `Engine/Earning/Listeners/OrderListener.php` | **Implemented** — hooks only; `on_stageable()` and `on_awardable()` **implemented** (call `preview_and_log()`); `on_cancelled()`/`on_refunded()` bodies still Stub |
 | `ReviewListener`, `SignupListener` — `register()` and their hook adapters | same directory | **Implemented** — hooks only; `on_approved()`/`on_unapproved()`/`on_registered()` bodies still Stub |
 | `CommitWriter::commit()` (redemption) | `Engine/Redemption/CommitWriter.php` | Stub — its own docblock calls the cancel/refund side "Zone 3 ... undesigned" |
 
@@ -73,9 +75,8 @@ Gates run before the engine because they are cheap and because the engine must n
 users, roles or the ledger — it is pure, replayable, and runs from cron. Each gate exits with a
 reason string (`Gate::check()` returns `?string`), never a bare `false`; that reason is what an
 admin's "customers aren't earning" banner would read, and what `Result::none()` / `Outcome::skipped()`
-carry back to the caller. `EarningService::blocked_reason()` walks the gate list in order and the
-first non-null reason wins — this part is implemented; the gates themselves (`ProgramGate` today,
-whatever `yayloyalty_earning_gates` appends later) are stubs.
+carry back to the caller. `ProgramGate` is implemented and evaluates paused status, no customer, opt-out meta, and excluded roles. `EarningService::blocked_reason()` walks the gate list in order and the
+first non-null reason wins; other gates attach via `yayloyalty_earning_gates` filter.
 
 Everything above the write boundary is re-runnable and side-effect-free. Everything below it runs
 exactly once per idempotency key. A gate that needs the ledger (e.g. a daily-cap check) belongs
