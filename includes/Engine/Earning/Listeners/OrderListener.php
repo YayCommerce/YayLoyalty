@@ -3,6 +3,8 @@ namespace YayLoyalty\Engine\Earning\Listeners;
 
 use YayLoyalty\Engine\Earning\EarningService;
 use YayLoyalty\Engine\Earning\PendingPoints;
+use YayLoyalty\Engine\Points\ContextFactory;
+use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Utils\Log;
@@ -118,11 +120,11 @@ final class OrderListener {
      * interpret: it falls through and nothing happens.
      */
     private function route( int $order_id, string $to, \WC_Order $order ): void {
-        if ( in_array( $to, $this->award_statuses(), true ) ) {
+        if ( in_array( $to, SettingsHelper::award_statuses(), true ) ) {
             try {
                 $this->on_awardable( $order_id );
-            } catch ( \RuntimeException $e ) { // TODO(step-2): remove once on_awardable() is implemented.
-                Log::warning( 'OrderListener', 'award skipped for order #' . $order_id . ': ' . $e->getMessage() );
+            } catch ( \Throwable $e ) { // A listener must never break an order save.
+                Log::error( 'OrderListener', 'award failed for order #' . $order_id . ': ' . $e->getMessage() );
             }
             return;
         }
@@ -131,8 +133,8 @@ final class OrderListener {
             case 'on-hold':
                 try {
                     $this->on_stageable( $order_id );
-                } catch ( \RuntimeException $e ) { // TODO(step-2): remove once on_stageable() is implemented.
-                    Log::warning( 'OrderListener', 'stage skipped for order #' . $order_id . ': ' . $e->getMessage() );
+                } catch ( \Throwable $e ) { // A listener must never break an order save.
+                    Log::error( 'OrderListener', 'stage failed for order #' . $order_id . ': ' . $e->getMessage() );
                 }
                 break;
             case 'cancelled':
@@ -162,12 +164,44 @@ final class OrderListener {
 
     /** Evaluation moment: preview at the order's creation date, stage the figure. */
     public function on_stageable( int $order_id ): void {
-        // TODO(F01-4): wc_get_order; ContextFactory::from_order( order, ledger->points_earned_today( user, occurred_at ) ); service->preview( PURCHASE, ctx ); pending->stage( order_id, user_id, points ).
+        $this->preview_and_log( $order_id, 'stage' );
+        // TODO(F01-4): stage the preview's points: pending->stage( order_id, user_id, points ).
     }
 
     /** Award moment: one award() per trigger the order satisfies (purchase, then Pro's order triggers). */
     public function on_awardable( int $order_id ): void {
-        // TODO(F01-4): wc_get_order; same Context build as on_stageable; service->award( PURCHASE, ctx ); Pro adds first_order/order_count/spend_milestone via a filter over the trigger list.
+        $this->preview_and_log( $order_id, 'award' );
+        // TODO(F01-4): replace the preview with service->award( PURCHASE, ctx ), ctx built with ledger->points_earned_today( user, occurred_at ); Pro adds first_order/order_count/spend_milestone via a filter over the trigger list.
+    }
+
+    /**
+     * Logs which campaign the order would earn from, how many points, or why
+     * none. Writes nothing. points_earned_today is 0, so a daily cap is not
+     * applied yet.
+     *
+     * @throws \InvalidArgumentException When the order has no creation date (route() catches it).
+     */
+    private function preview_and_log( int $order_id, string $moment ): void {
+        $order = wc_get_order( $order_id );
+
+        if ( ! $order instanceof \WC_Order ) {
+            return;
+        }
+
+        $result   = $this->service->preview( CampaignTrigger::PURCHASE, ContextFactory::from_order( $order ) );
+        $campaign = $result->get_campaign();
+
+        Log::debug(
+            'OrderListener',
+            sprintf(
+                'order #%d %s preview: campaign=%s points=%d reason=%s',
+                $order_id,
+                $moment,
+                $campaign ? $campaign->get_id() : 'none',
+                $result->get_points(),
+                $result->get_reason() ? $result->get_reason() : 'awarded'
+            )
+        );
     }
 
     /** Pending release for an order that will never award; also restores a redemption still applied to it. */
@@ -182,16 +216,5 @@ final class OrderListener {
      */
     public function on_refunded( int $order_id, int $refund_id ): void {
         // TODO(F01-4): clawback (refund_earn) — design pending; do not implement here until LedgerService gains a refund entry point.
-    }
-
-    /**
-     * Statuses that mean the money arrived, newest settings read each time
-     * so a merchant's change applies to the next transition.
-     *
-     * @return string[]
-     */
-    private function award_statuses(): array {
-        $statuses = SettingsHelper::get_settings()['general']['award_statuses'] ?? [];
-        return ( is_array( $statuses ) && ! empty( $statuses ) ) ? array_values( array_map( 'strval', $statuses ) ) : [ 'processing', 'completed' ];
     }
 }
