@@ -17,6 +17,9 @@ defined( 'ABSPATH' ) || exit;
  */
 final class PointsEngine {
 
+    /** Filter that attaches a campaign-conditions evaluator (Pro); nothing subscribes in Lite. Internal seam. */
+    public const CONDITIONS_EVALUATOR_FILTER = 'yayloyalty_campaign_conditions_evaluator';
+
     /** @var Registry */
     private $registry;
 
@@ -101,7 +104,7 @@ final class PointsEngine {
          *
          * @param object|null $evaluator Exposes evaluate( array $conditions, Context $ctx ): bool.
          */
-        $evaluator = apply_filters( 'yayloyalty_campaign_conditions_evaluator', null );
+        $evaluator = apply_filters( self::CONDITIONS_EVALUATOR_FILTER, null ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name.
 
         if ( null === $evaluator || ! method_exists( $evaluator, 'evaluate' ) ) {
             return true;

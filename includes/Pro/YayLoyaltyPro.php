@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Pro;
 
+use YayLoyalty\Engine\Points\PointsEngine;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Enums\RewardType;
 use YayLoyalty\Pro\Controllers\CampaignPerformanceRestController;
@@ -30,7 +31,7 @@ final class YayLoyaltyPro {
     /** Guards against initialize() running twice. */
     private static $booted = false;
 
-    /** @var ConditionsEvaluator|null One instance so its per-request order memo is reused across campaigns. */
+    /** @var ConditionsEvaluator|null */
     private static $evaluator = null;
 
     /**
@@ -69,7 +70,7 @@ final class YayLoyaltyPro {
         add_filter( 'yayloyalty_campaign_config_whitelist', [ self::class, 'add_config_keys' ] );
         add_filter( 'yayloyalty_reward_types', [ self::class, 'add_reward_types' ] );
         add_filter( 'yayloyalty_reward_config_whitelist', [ self::class, 'add_reward_config_keys' ] );
-        add_filter( 'yayloyalty_campaign_conditions_evaluator', [ self::class, 'conditions_evaluator' ] );
+        add_filter( PointsEngine::CONDITIONS_EVALUATOR_FILTER, [ self::class, 'conditions_evaluator' ] );
         add_filter( 'yayloyalty_rest_controllers', [ self::class, 'add_controllers' ] );
         add_filter( 'yayloyalty_rest_item_schema', [ self::class, 'describe_pro_config' ], 10, 2 );
         add_filter( 'yayloyalty_localize_admin_data', [ self::class, 'add_segments' ] );

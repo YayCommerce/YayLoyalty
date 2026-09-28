@@ -26,7 +26,7 @@ class SettingsHelper {
                 'excluded_roles'        => [],
                 /*
                  * TODO(F01-4): 'award_statuses' => [ 'processing', 'completed' ] as a
-                 * slug_list, read only by Engine\Earning\Listeners\OrderListener. Paid is
+                 * slug_list, read through award_statuses(). Paid is
                  * a set: a fully virtual order never passes through processing, and many
                  * physical stores stop there. The UI offers payment received (both),
                  * order completed (completed only) and a custom multi-select built from
@@ -67,6 +67,18 @@ class SettingsHelper {
                 'throttle_per_week' => 'non_negative_int',
             ],
         ];
+    }
+
+    /**
+     * Order statuses that mean paid (general.award_statuses), read fresh each
+     * call so a merchant's change applies to the next order event.
+     *
+     * @return string[]
+     */
+    public static function award_statuses(): array {
+        $statuses = self::get_settings()['general']['award_statuses'] ?? [];
+
+        return ( is_array( $statuses ) && ! empty( $statuses ) ) ? array_values( array_map( 'strval', $statuses ) ) : [ 'processing', 'completed' ];
     }
 
     /** Stored settings merged over defaults, sanitised for output. */

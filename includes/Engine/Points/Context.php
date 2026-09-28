@@ -14,6 +14,11 @@ final class Context {
     /** Our own redemption coupon; must never count as "used a coupon". */
     public const REDEEM_COUPON_CODE = 'yayloyalty-redeem';
 
+    /** Order facts in `extra` for campaign conditions; strings, '' when unknown. */
+    public const EXTRA_PAYMENT_METHOD   = 'payment_method';
+    public const EXTRA_BILLING_COUNTRY  = 'billing_country';
+    public const EXTRA_SHIPPING_COUNTRY = 'shipping_country';
+
     /** @var int|null Null for a guest. */
     private $user_id;
 
