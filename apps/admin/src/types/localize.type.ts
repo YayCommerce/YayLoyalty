@@ -32,6 +32,12 @@ export type Meta = {
       decimal_sep: string;
       num_decimals: number;
     };
+    /** Every registered gateway, id => admin title. */
+    payment_gateways: Record<string, string>;
+    /** ISO country code => name. */
+    countries: Record<string, string>;
+    /** ISO 4217 code => name. */
+    currencies: Record<string, string>;
   };
 };
 

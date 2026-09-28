@@ -10,6 +10,7 @@ use YayLoyalty\Controllers\DashboardRestController;
 use YayLoyalty\Controllers\DesignRestController;
 use YayLoyalty\Controllers\EmailsRestController;
 use YayLoyalty\Controllers\LedgerRestController;
+use YayLoyalty\Controllers\LookupRestController;
 use YayLoyalty\Controllers\RedemptionsRestController;
 use YayLoyalty\Controllers\ReferralsRestController;
 use YayLoyalty\Controllers\SettingsRestController;
@@ -78,8 +79,10 @@ class RestAPI {
             // Empty envelopes until their tables exist.
             new RedemptionsRestController(),
             new ReferralsRestController(),
-            // Definition table: repository only, no service.
-            new CampaignRestController( $campaigns ),
+            // Picker name lookups; no repository, it reads WooCommerce and WP core directly.
+            new LookupRestController(),
+            // Definition table: repository only, no service. $ledger is read-only here too.
+            new CampaignRestController( $campaigns, $ledger ),
             new DashboardRestController(
                 new DashboardStats( $dashboard, wc_get_price_decimals() ),
                 new DashboardCache( $dashboard ),

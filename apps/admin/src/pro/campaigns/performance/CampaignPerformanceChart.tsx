@@ -25,7 +25,13 @@ function isEmpty(daily: Daily): boolean {
   return daily.length === 0 || daily.every((d) => d.points === 0);
 }
 
-/** One bar per day of `window`, zero-filled by the server — see `CampaignPerformanceFixture::group_by_day()`. */
+/**
+ * One bar per day of `window`, zero-filled by the server. `window` is the
+ * chart's own last-30-days span, not the lifetime totals shown above it —
+ * see CampaignPerformanceRestController's class docblock ("TWO TIME BASES
+ * ON PURPOSE") — which is exactly why this card prints `windowLabel(window)`
+ * next to its own title rather than assuming the reader already knows.
+ */
 export function CampaignPerformanceChart({ window, daily }: { window: CampaignPerformance['window']; daily: Daily }) {
   const empty = isEmpty(daily);
 

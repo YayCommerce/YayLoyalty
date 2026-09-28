@@ -4,13 +4,47 @@ import { parseWPCurrency } from '@/lib/helpers/format.helper';
 import { formatPoints } from '@/lib/helpers/points.helper';
 import type { CampaignPerformance, CampaignPerformanceTrigger } from '@/lib/schema/campaign-performance.schema';
 import { PointsValue } from '@/components/ui/custom/points-value';
-import { StatTile, StatTileSkeleton } from '@/components/ui/custom/stat-tile';
+import { StatTile } from '@/components/ui/custom/stat-tile';
 
 type Totals = CampaignPerformance['totals'];
 
 /** Purchase gets 4 tiles across `lg`; signup/review get 2 — same breakpoint both states use. */
 function gridClass(trigger: CampaignPerformanceTrigger) {
   return trigger === 'purchase' ? 'grid grid-cols-2 gap-3 lg:grid-cols-4' : 'grid grid-cols-2 gap-3';
+}
+
+function ordersSubline(totals: Totals, hasData: boolean): string {
+  if (!hasData) {
+    return __('none yet', 'yayloyalty');
+  }
+  // Unreachable today — the PHP contract sets orders_total whenever trigger is
+  // 'purchase' (the only case this tile renders), but the type is `nullable()`
+  // because the field is legitimately null for other triggers. This guards
+  // against that correlation ever drifting, not a real runtime case right now.
+  if (totals.orders_total === null) {
+    return '';
+  }
+  return sprintf(
+    /* translators: %s: total number of completed orders the store has ever had. */
+    __('of %s completed orders', 'yayloyalty'),
+    formatPoints(totals.orders_total),
+  );
+}
+
+function averagePerOrderSubline(totals: Totals): string {
+  if (totals.avg_points_per_order === null) {
+    return __('needs at least one order', 'yayloyalty');
+  }
+  // avg_order_subtotal isn't computed yet (needs the earning engine's own scored
+  // base amount, not yet persisted) — say nothing rather than "$0.00 average order".
+  if (totals.avg_order_subtotal === null) {
+    return __('points per order', 'yayloyalty');
+  }
+  return sprintf(
+    /* translators: %s: the average order subtotal, formatted as money. */
+    __('points · %s average order', 'yayloyalty'),
+    parseWPCurrency(totals.avg_order_subtotal),
+  );
 }
 
 /**
@@ -40,15 +74,7 @@ export function CampaignPerformanceTiles({
         <StatTile
           label={__('Orders affected', 'yayloyalty')}
           value={formatPoints(totals.orders_affected ?? 0)}
-          subline={
-            hasData
-              ? sprintf(
-                  /* translators: %s: total number of orders in the reporting window. */
-                  __('of %s orders in the window', 'yayloyalty'),
-                  formatPoints(totals.orders_in_window ?? 0),
-                )
-              : __('none yet', 'yayloyalty')
-          }
+          subline={ordersSubline(totals, hasData)}
         />
       )}
       {trigger !== 'purchase' && (
@@ -62,15 +88,7 @@ export function CampaignPerformanceTiles({
         <StatTile
           label={__('Average per order', 'yayloyalty')}
           value={totals.avg_points_per_order === null ? '—' : formatPoints(totals.avg_points_per_order)}
-          subline={
-            totals.avg_points_per_order === null
-              ? __('needs at least one order', 'yayloyalty')
-              : sprintf(
-                  /* translators: %s: the average order subtotal, formatted as money. */
-                  __('points · %s average order', 'yayloyalty'),
-                  parseWPCurrency(totals.avg_order_subtotal ?? 0),
-                )
-          }
+          subline={averagePerOrderSubline(totals)}
         />
       )}
       {trigger === 'purchase' && (
@@ -88,26 +106,6 @@ export function CampaignPerformanceTiles({
           }
         />
       )}
-    </div>
-  );
-}
-
-export function CampaignPerformanceTilesSkeleton({ trigger }: { trigger: CampaignPerformanceTrigger }) {
-  const labels =
-    trigger === 'purchase'
-      ? [
-          __('Points issued', 'yayloyalty'),
-          __('Orders affected', 'yayloyalty'),
-          __('Average per order', 'yayloyalty'),
-          __('Cost in liability', 'yayloyalty'),
-        ]
-      : [__('Points issued', 'yayloyalty'), __('Customers earned', 'yayloyalty')];
-
-  return (
-    <div className={gridClass(trigger)}>
-      {labels.map((label) => (
-        <StatTileSkeleton key={label} label={label} />
-      ))}
     </div>
   );
 }

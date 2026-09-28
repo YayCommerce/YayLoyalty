@@ -1,19 +1,31 @@
+import type { VariantProps } from 'class-variance-authority';
 import { __, sprintf } from '@wordpress/i18n';
 
-import { parseWPCurrency, parseWPDate } from '@/lib/helpers/format.helper';
+import { parseWPDate } from '@/lib/helpers/format.helper';
+import { pointsPerCurrencyLabel } from '@/lib/helpers/points.helper';
 import {
   Campaign,
   CAMPAIGN_CONDITION_TYPES,
   CampaignConditionKind,
   CampaignDisplayStatus,
   CampaignTrigger,
+  resolvePurchaseMultiplier,
 } from '@/lib/schema/campaign.schema';
+import type { badgeVariants } from '@/components/ui/badge';
 
 /** Campaign presentation strings derived from the real fields; the wire carries none. */
 
 /** The built-in (default) campaign for a trigger: what a non-built-in falls back to. undefined while the list loads. */
-export function findBuiltinCampaign(campaigns: Campaign[] | undefined, trigger: CampaignTrigger): Campaign | undefined {
+export function findBuiltinCampaign<T extends Campaign>(
+  campaigns: T[] | undefined,
+  trigger: CampaignTrigger,
+): T | undefined {
   return campaigns?.find((candidate) => candidate.is_builtin && candidate.trigger === trigger);
+}
+
+/** Whether a built-in still earns in place of what sits above it; mirrors the engine skipping any campaign not active (PurchaseHandler::is_eligible for a multiplier's default). */
+export function isBuiltinCampaignActive(campaign: Campaign | undefined): boolean {
+  return campaign?.status === 'active';
 }
 
 /** A campaign only competes within its group; see triggerGroup(). */
@@ -50,18 +62,15 @@ export function triggerLabel(trigger: CampaignTrigger): string {
 }
 
 export function givesLabel(trigger: CampaignTrigger, config: Record<string, unknown>): string {
+  if (trigger === 'purchase' && config.mode === 'multiplier') {
+    return sprintf(
+      /* translators: %s: the multiplier, e.g. "2". */ __('×%s points', 'yayloyalty'),
+      String(resolvePurchaseMultiplier(config)),
+    );
+  }
+
   if (trigger === 'purchase') {
-    return config.mode === 'multiplier'
-      ? sprintf(
-          /* translators: %s: the multiplier, e.g. "2". */ __('×%s points', 'yayloyalty'),
-          String(config.multiplier ?? 1),
-        )
-      : sprintf(
-          /* translators: 1: points earned per unit of currency spent, 2: one unit of the store currency, formatted. */
-          __('%1$s point(s) per %2$s', 'yayloyalty'),
-          String(config.points_per_unit ?? 0),
-          parseWPCurrency(1),
-        );
+    return pointsPerCurrencyLabel(Number(config.points_per_unit ?? 0));
   }
 
   // Every other trigger's config carries a flat `points`.
@@ -149,5 +158,24 @@ export function statusLabel(status: CampaignDisplayStatus): string {
       return __('Archived', 'yayloyalty');
     case 'ended':
       return __('Ended', 'yayloyalty');
+  }
+}
+
+/** The badge colour for a campaign status; the one reading CampaignStatusBadge renders. */
+export function campaignStatusBadgeVariant(
+  status: CampaignDisplayStatus,
+): VariantProps<typeof badgeVariants>['variant'] {
+  switch (status) {
+    case 'active':
+      return 'success-soft';
+    case 'scheduled':
+      return 'primary-soft';
+    case 'paused':
+      return 'warning-soft';
+    case 'draft':
+      return 'outline';
+    case 'archived':
+    case 'ended':
+      return 'dimmed';
   }
 }

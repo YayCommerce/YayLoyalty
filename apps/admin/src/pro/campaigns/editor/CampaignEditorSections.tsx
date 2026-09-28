@@ -1,32 +1,24 @@
-import { ReactNode, useMemo, useState } from 'react';
-import { ChevronDown, ChevronUp, TriangleAlert } from 'lucide-react';
+import { ReactNode } from 'react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import { getSettings } from '@wordpress/date';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { joinStoredDateTime, parseWPDate, parseWPTime, splitStoredDateTime } from '@/lib/helpers/format.helper';
-import { useCampaignsQuery } from '@/lib/queries/campaign.queries';
-import { CampaignTrigger, LITE_CAMPAIGN_TRIGGERS, resolvePurchaseMode } from '@/lib/schema/campaign.schema';
-import { cn } from '@/lib/utils';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
+import { CampaignTrigger, LITE_CAMPAIGN_TRIGGERS, LiteCampaignTrigger } from '@/lib/schema/campaign.schema';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DatePicker } from '@/components/ui/date-picker';
-import { Field, FieldContent, FieldDescription, FieldError, FieldLabel, FieldTitle } from '@/components/ui/field';
+import { Field, FieldContent, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
+import { NumberInputInput, NumberInputRoot } from '@/components/ui/number-input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Segmented, SegmentedItem } from '@/components/ui/segmented';
-import { Separator } from '@/components/ui/separator';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Switch } from '@/components/ui/switch';
-import { TagsInput } from '@/components/ui/tags-input';
-import { findBuiltinCampaign, statusLabel, triggerGroup, triggerLabel } from '../campaign-labels';
+import { statusLabel, triggerLabel } from '../campaign-labels';
 import { CampaignFormValues, useCampaignEditorContext } from './campaign-editor.form';
 import { CampaignEditorConditions } from './CampaignEditorConditions';
+import { CampaignEditorReward } from './CampaignEditorReward';
 
-/** The editor's six sections in order. Conditions lives in its own file; it is the one large enough to earn it. */
+/** The editor's six sections in order. Conditions and Reward live in their own files; they are the two large enough to earn it. */
 export function CampaignEditorSections() {
   return (
     <div className="flex flex-col gap-4">
@@ -146,12 +138,19 @@ function triggerDescription(trigger: CampaignTrigger): string {
   }
 }
 
+/** Dispatches on mode: create picks a trigger, edit only ever shows the one already saved. */
+function CampaignEditorTrigger() {
+  const { mode } = useCampaignEditorContext();
+
+  return mode === 'create' ? <CampaignEditorTriggerEditable /> : <CampaignEditorTriggerReadOnly />;
+}
+
 /**
  * Read-only trigger radio: trigger is immutable after create and renders
  * from the loaded Campaign, never form state. Offers only the Lite triggers,
  * since no Pro trigger has a field map.
  */
-function CampaignEditorTrigger() {
+function CampaignEditorTriggerReadOnly() {
   const { campaign } = useCampaignEditorContext();
 
   // A stored Pro trigger falls outside the offered list; include it so the control never
@@ -186,500 +185,40 @@ function CampaignEditorTrigger() {
   );
 }
 
-/* ─── §3 Reward ──────────────────────────────────────────────────────── */
-
-/** Dispatches on the loaded trigger; anything without a field map falls back to RewardFieldsUnknown. */
-function CampaignEditorReward() {
-  const { campaign } = useCampaignEditorContext();
-
-  switch (campaign.trigger) {
-    case 'purchase':
-      return <RewardFieldsPurchase />;
-    case 'signup':
-      return <RewardFieldsSignup />;
-    case 'review':
-      return <RewardFieldsReview />;
-    default:
-      return <RewardFieldsUnknown trigger={campaign.trigger} />;
-  }
-}
-
-/** config_schema()['purchase']; mirrors CAMPAIGN_CONFIG_FIELDS.purchase. */
-interface PurchaseConfig {
-  points_per_unit?: number;
-  mode?: 'rate' | 'multiplier';
-  multiplier?: number;
-  base?: 'after_discounts' | 'before_discounts';
-  include_shipping?: boolean;
-  include_tax?: boolean;
-  rounding?: 'down' | 'nearest' | 'up';
-  min_subtotal?: number;
-  exclude_coupon_orders?: boolean;
-  excluded_product_ids?: number[];
-  excluded_category_ids?: number[];
-  max_points_per_order?: number;
-  daily_cap?: number;
-}
-
 /**
- * Mode choice plus an Advanced block. Multiplier mode inherits only
- * points_per_unit from the default campaign; rounding, base, minimum and
- * exclusions are always this campaign's own, so Advanced renders in both
- * modes.
+ * Editable trigger radio for create mode, restricted to the three Lite
+ * triggers — the only ones a template or "Start from scratch" can offer.
+ * onTriggerChange also resets config/conditions; see CampaignEditorContextValue.
  */
-function RewardFieldsPurchase() {
-  const { watch, setValue } = useFormContext<CampaignFormValues>();
-  const config = watch('config') as PurchaseConfig;
-  const [advancedOpen, setAdvancedOpen] = useState(false);
-
-  const mode = resolvePurchaseMode(config as Record<string, unknown>);
-  const currency = window.yayLoyaltyMeta.wcMeta.currency_data.currency;
-
-  // A multiplier campaign silently stops applying unless the default purchase campaign exists
-  // and is active.
-  const { data: campaignsData } = useCampaignsQuery({ perPage: 100 });
-  const defaultCampaign = findBuiltinCampaign(campaignsData?.data, 'purchase');
-  const defaultPointsPerUnit =
-    typeof defaultCampaign?.config.points_per_unit === 'number' ? defaultCampaign.config.points_per_unit : undefined;
-
-  function patchConfig(patch: Partial<PurchaseConfig>) {
-    setValue('config', { ...config, ...patch }, { shouldDirty: true, shouldValidate: true });
-  }
-
-  const multiplier = config.multiplier ?? 1;
-  const computedRate = defaultPointsPerUnit !== undefined ? multiplier * defaultPointsPerUnit : undefined;
-
-  return (
-    <div className="flex flex-col gap-4">
-      {/* Both inputs stay mounted and bound to their own key, so switching modes never clears
-          the inactive value; the inactive input is disabled, not hidden. The radio and its label
-          get their own row so no control nests inside another control's label. */}
-      <RadioGroup
-        value={mode}
-        onValueChange={(value) => value && patchConfig({ mode: value as PurchaseConfig['mode'] })}
-        className="grid gap-3 sm:grid-cols-2"
-      >
-        <div className="has-data-[state=checked]:border-primary has-data-[state=checked]:bg-primary/5 dark:has-data-[state=checked]:bg-primary/10 flex flex-col gap-2.5 rounded-md border p-4">
-          <FieldLabel htmlFor="reward-purchase-mode-multiplier" className="items-center">
-            <RadioGroupItem id="reward-purchase-mode-multiplier" value="multiplier" />
-            <FieldTitle>{__('Multiply the default rate', 'yayloyalty')}</FieldTitle>
-          </FieldLabel>
-          <NumberInputRoot
-            size="small"
-            className="w-28"
-            min={0}
-            decimalScale={2}
-            disabled={mode !== 'multiplier'}
-            value={config.multiplier ?? 0}
-            onValueChange={(value) => patchConfig({ multiplier: value })}
-          >
-            <NumberInputInput id="reward-purchase-multiplier" />
-            <NumberInputUnit unit="×" />
-          </NumberInputRoot>
-          <FieldDescription>
-            {defaultPointsPerUnit !== undefined
-              ? sprintf(
-                  /* translators: 1: the multiplier, e.g. "2"; 2: the default rate, e.g. "1"; 3: currency code; 4: the resulting rate. */
-                  __('%1$s × the default %2$s point(s) per 1 %3$s = %4$s point(s) per 1 %3$s.', 'yayloyalty'),
-                  String(multiplier),
-                  String(defaultPointsPerUnit),
-                  currency,
-                  String(computedRate),
-                )
-              : __('The default purchase campaign has no rate set yet.', 'yayloyalty')}
-          </FieldDescription>
-        </div>
-
-        <div className="has-data-[state=checked]:border-primary has-data-[state=checked]:bg-primary/5 dark:has-data-[state=checked]:bg-primary/10 flex flex-col gap-2.5 rounded-md border p-4">
-          <FieldLabel htmlFor="reward-purchase-mode-rate" className="items-center">
-            <RadioGroupItem id="reward-purchase-mode-rate" value="rate" />
-            <FieldTitle>{__('Set its own rate', 'yayloyalty')}</FieldTitle>
-          </FieldLabel>
-          <NumberInputRoot
-            size="small"
-            className="w-28"
-            min={0}
-            decimalScale={2}
-            disabled={mode !== 'rate'}
-            value={config.points_per_unit ?? 0}
-            onValueChange={(value) => patchConfig({ points_per_unit: value })}
-          >
-            <NumberInputInput id="reward-purchase-points-per-unit" />
-            <NumberInputUnit unit={currency} />
-          </NumberInputRoot>
-          <FieldDescription>{sprintf(__('Points awarded per 1 %s spent.', 'yayloyalty'), currency)}</FieldDescription>
-        </div>
-      </RadioGroup>
-
-      {mode === 'multiplier' && (!defaultCampaign || defaultCampaign.status !== 'active') && (
-        <Alert variant="outline">
-          <TriangleAlert />
-          <AlertDescription>
-            {__(
-              'This campaign will not apply: multiplier mode needs the default purchase campaign to exist and be active.',
-              'yayloyalty',
-            )}
-          </AlertDescription>
-        </Alert>
-      )}
-
-      <Separator />
-
-      <button
-        type="button"
-        onClick={() => setAdvancedOpen((open) => !open)}
-        className="text-muted-foreground flex w-fit items-center gap-1.5 text-sm font-medium"
-        aria-expanded={advancedOpen}
-      >
-        {advancedOpen ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
-        {__('Advanced', 'yayloyalty')}
-      </button>
-
-      {/* Every remaining purchase key, visible in both modes. */}
-      {advancedOpen && (
-        <div className="flex flex-col gap-4">
-          <Field>
-            <FieldLabel>{__('Base amount', 'yayloyalty')}</FieldLabel>
-            <FieldContent>
-              <Segmented
-                value={config.base ?? 'after_discounts'}
-                onValueChange={(value) => value && patchConfig({ base: value as PurchaseConfig['base'] })}
-              >
-                <SegmentedItem value="after_discounts">{__('After discounts', 'yayloyalty')}</SegmentedItem>
-                <SegmentedItem value="before_discounts">{__('Before discounts', 'yayloyalty')}</SegmentedItem>
-              </Segmented>
-              <FieldDescription>
-                {__(
-                  'What the points are calculated on. After discounts means a coupon reduces the points too.',
-                  'yayloyalty',
-                )}
-              </FieldDescription>
-            </FieldContent>
-          </Field>
-
-          <Field>
-            <FieldLabel>{__('Rounding', 'yayloyalty')}</FieldLabel>
-            <FieldContent>
-              <Segmented
-                value={config.rounding ?? 'down'}
-                onValueChange={(value) => value && patchConfig({ rounding: value as PurchaseConfig['rounding'] })}
-              >
-                <SegmentedItem value="down">{__('Down', 'yayloyalty')}</SegmentedItem>
-                <SegmentedItem value="nearest">{__('Nearest', 'yayloyalty')}</SegmentedItem>
-                <SegmentedItem value="up">{__('Up', 'yayloyalty')}</SegmentedItem>
-              </Segmented>
-            </FieldContent>
-          </Field>
-
-          <Field>
-            <FieldLabel htmlFor="reward-purchase-include-tax">{__('Include tax', 'yayloyalty')}</FieldLabel>
-            <Switch
-              id="reward-purchase-include-tax"
-              className="w-11!"
-              checked={!!config.include_tax}
-              onCheckedChange={(include_tax) => patchConfig({ include_tax })}
-            />
-          </Field>
-
-          <Field>
-            <FieldLabel htmlFor="reward-purchase-include-shipping">{__('Include shipping', 'yayloyalty')}</FieldLabel>
-            <Switch
-              id="reward-purchase-include-shipping"
-              className="w-11!"
-              checked={!!config.include_shipping}
-              onCheckedChange={(include_shipping) => patchConfig({ include_shipping })}
-            />
-          </Field>
-          <FieldDescription>
-            {__(
-              'Not currently used by point calculations — kept so saving this campaign never loses it.',
-              'yayloyalty',
-            )}
-          </FieldDescription>
-
-          <Field>
-            <FieldLabel htmlFor="reward-purchase-min-subtotal">{__('Minimum order subtotal', 'yayloyalty')}</FieldLabel>
-            <FieldContent>
-              <NumberInputRoot
-                size="small"
-                className="w-32"
-                min={0}
-                decimalScale={2}
-                fixedDecimalScale
-                value={config.min_subtotal ?? 0}
-                onValueChange={(min_subtotal) => patchConfig({ min_subtotal })}
-              >
-                <NumberInputInput id="reward-purchase-min-subtotal" />
-                <NumberInputUnit unit={currency} />
-              </NumberInputRoot>
-              <FieldDescription>
-                {__('Orders below this earn nothing. 0 means every order earns.', 'yayloyalty')}
-              </FieldDescription>
-            </FieldContent>
-          </Field>
-
-          <Field>
-            <FieldLabel htmlFor="reward-purchase-exclude-coupon">
-              {__('Exclude orders that used a coupon', 'yayloyalty')}
-            </FieldLabel>
-            <Switch
-              id="reward-purchase-exclude-coupon"
-              className="w-11!"
-              checked={!!config.exclude_coupon_orders}
-              onCheckedChange={(exclude_coupon_orders) => patchConfig({ exclude_coupon_orders })}
-            />
-          </Field>
-
-          <Field>
-            <FieldLabel htmlFor="reward-purchase-max-points">{__('Maximum points per order', 'yayloyalty')}</FieldLabel>
-            <FieldContent>
-              <NumberInputRoot
-                size="small"
-                className="w-32"
-                min={0}
-                value={config.max_points_per_order ?? 0}
-                onValueChange={(max_points_per_order) => patchConfig({ max_points_per_order })}
-              >
-                <NumberInputInput id="reward-purchase-max-points" />
-                <NumberInputUnit unit={__('points', 'yayloyalty')} />
-              </NumberInputRoot>
-              <FieldDescription>{__('0 means no per-order cap.', 'yayloyalty')}</FieldDescription>
-            </FieldContent>
-          </Field>
-
-          <Field>
-            <FieldLabel htmlFor="reward-purchase-daily-cap">{__('Daily cap', 'yayloyalty')}</FieldLabel>
-            <FieldContent>
-              <NumberInputRoot
-                size="small"
-                className="w-32"
-                min={0}
-                value={config.daily_cap ?? 0}
-                onValueChange={(daily_cap) => patchConfig({ daily_cap })}
-              >
-                <NumberInputInput id="reward-purchase-daily-cap" />
-                <NumberInputUnit unit={__('points', 'yayloyalty')} />
-              </NumberInputRoot>
-              <FieldDescription>{__('0 means no daily cap.', 'yayloyalty')}</FieldDescription>
-            </FieldContent>
-          </Field>
-
-          <Field>
-            <FieldLabel>{__('Excluded products', 'yayloyalty')}</FieldLabel>
-            <FieldContent>
-              <TagsInput
-                value={(config.excluded_product_ids ?? []).map(String)}
-                onValueChange={(next) => patchConfig({ excluded_product_ids: toIntList(next) })}
-                placeholder={__('Add a product ID and press Enter', 'yayloyalty')}
-              />
-              <FieldDescription>
-                {__('Raw product IDs — there is no product search yet to pick these by name.', 'yayloyalty')}
-              </FieldDescription>
-            </FieldContent>
-          </Field>
-
-          <Field>
-            <FieldLabel>{__('Excluded categories', 'yayloyalty')}</FieldLabel>
-            <FieldContent>
-              <TagsInput
-                value={(config.excluded_category_ids ?? []).map(String)}
-                onValueChange={(next) => patchConfig({ excluded_category_ids: toIntList(next) })}
-                placeholder={__('Add a category ID and press Enter', 'yayloyalty')}
-              />
-              <FieldDescription>
-                {__('Raw category IDs — there is no category search yet to pick these by name.', 'yayloyalty')}
-              </FieldDescription>
-            </FieldContent>
-          </Field>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Same positive-integer check as IntListEditor, so the two agree on a valid id.
-function toIntList(values: string[]): number[] {
-  return values.map((value) => Number.parseInt(value, 10)).filter((value) => Number.isInteger(value) && value > 0);
-}
-
-/** config_schema()['signup']. */
-interface SignupConfig {
-  points?: number;
-}
-
-function RewardFieldsSignup() {
-  const { watch, setValue } = useFormContext<CampaignFormValues>();
-  const config = watch('config') as SignupConfig;
-
-  return (
-    <Field>
-      <FieldLabel htmlFor="reward-signup-points">{__('Award', 'yayloyalty')}</FieldLabel>
-      <FieldContent>
-        <NumberInputRoot
-          size="small"
-          className="w-28"
-          min={0}
-          value={config.points ?? 0}
-          onValueChange={(points) =>
-            setValue('config', { ...config, points }, { shouldDirty: true, shouldValidate: true })
-          }
-        >
-          <NumberInputInput id="reward-signup-points" />
-          <NumberInputUnit unit={__('points', 'yayloyalty')} />
-        </NumberInputRoot>
-        <FieldDescription>
-          {__('Awarded once, the first time a customer creates an account.', 'yayloyalty')}
-        </FieldDescription>
-      </FieldContent>
-    </Field>
-  );
-}
-
-/** config_schema()['review']. */
-interface ReviewConfig {
-  points?: number;
-  require_verified?: boolean;
-  one_per_product?: boolean;
-  daily_cap?: number;
-  media_bonus_points?: number;
-}
-
-function RewardFieldsReview() {
-  const { watch, setValue } = useFormContext<CampaignFormValues>();
-  const config = watch('config') as ReviewConfig;
-
-  function patchConfig(patch: Partial<ReviewConfig>) {
-    setValue('config', { ...config, ...patch }, { shouldDirty: true, shouldValidate: true });
-  }
-
-  return (
-    <>
-      <Field>
-        <FieldLabel htmlFor="reward-review-points">{__('Award', 'yayloyalty')}</FieldLabel>
-        <FieldContent>
-          <NumberInputRoot
-            size="small"
-            className="w-28"
-            min={0}
-            value={config.points ?? 0}
-            onValueChange={(points) => patchConfig({ points })}
-          >
-            <NumberInputInput id="reward-review-points" />
-            <NumberInputUnit unit={__('points', 'yayloyalty')} />
-          </NumberInputRoot>
-          <FieldDescription>{__('Per approved product review.', 'yayloyalty')}</FieldDescription>
-        </FieldContent>
-      </Field>
-
-      <Field>
-        <FieldLabel htmlFor="reward-review-media-bonus">{__('Media bonus', 'yayloyalty')}</FieldLabel>
-        <FieldContent>
-          <NumberInputRoot
-            size="small"
-            className="w-28"
-            min={0}
-            value={config.media_bonus_points ?? 0}
-            onValueChange={(media_bonus_points) => patchConfig({ media_bonus_points })}
-          >
-            <NumberInputInput id="reward-review-media-bonus" />
-            <NumberInputUnit unit={__('points', 'yayloyalty')} />
-          </NumberInputRoot>
-          <FieldDescription>
-            {__('Extra points when the review includes a photo or video.', 'yayloyalty')}
-          </FieldDescription>
-        </FieldContent>
-      </Field>
-
-      <Field>
-        <FieldLabel htmlFor="reward-review-verified">{__('Verified purchases only', 'yayloyalty')}</FieldLabel>
-        <Switch
-          id="reward-review-verified"
-          className="w-11!"
-          checked={!!config.require_verified}
-          onCheckedChange={(require_verified) => patchConfig({ require_verified })}
-        />
-      </Field>
-
-      <Field>
-        <FieldLabel htmlFor="reward-review-one-per-product">{__('One review per product', 'yayloyalty')}</FieldLabel>
-        <Switch
-          id="reward-review-one-per-product"
-          className="w-11!"
-          checked={!!config.one_per_product}
-          onCheckedChange={(one_per_product) => patchConfig({ one_per_product })}
-        />
-      </Field>
-
-      <Field>
-        <FieldLabel htmlFor="reward-review-daily-cap">{__('Daily cap', 'yayloyalty')}</FieldLabel>
-        <FieldContent>
-          <NumberInputRoot
-            size="small"
-            className="w-32"
-            min={0}
-            value={config.daily_cap ?? 0}
-            onValueChange={(daily_cap) => patchConfig({ daily_cap })}
-          >
-            <NumberInputInput id="reward-review-daily-cap" />
-            <NumberInputUnit unit={__('points', 'yayloyalty')} />
-          </NumberInputRoot>
-          <FieldDescription>{__('0 means no daily cap.', 'yayloyalty')}</FieldDescription>
-        </FieldContent>
-      </Field>
-    </>
-  );
-}
-
-/**
- * Fallback for a trigger with no field map (every Pro trigger). Binds
- * nothing back to config: the seeded clone must round-trip untouched, or
- * this would erase on the client what the server preserves for a downgrade.
- */
-function RewardFieldsUnknown({ trigger }: { trigger: CampaignTrigger }) {
-  const { watch } = useFormContext<CampaignFormValues>();
-  const config = watch('config');
-  const entries = Object.entries(config ?? {});
+function CampaignEditorTriggerEditable() {
+  const { trigger, onTriggerChange } = useCampaignEditorContext();
 
   return (
     <div className="flex flex-col gap-3">
+      <RadioGroup
+        value={trigger}
+        onValueChange={(value) => value && onTriggerChange?.(value as LiteCampaignTrigger)}
+        className="gap-3"
+      >
+        {LITE_CAMPAIGN_TRIGGERS.map((candidate) => (
+          <div key={candidate} className="flex items-start gap-2.5">
+            <RadioGroupItem id={`campaign-trigger-${candidate}`} value={candidate} className="mt-0.5" />
+            <FieldContent>
+              <FieldLabel htmlFor={`campaign-trigger-${candidate}`}>{triggerLabel(candidate)}</FieldLabel>
+              <FieldDescription>{triggerDescription(candidate)}</FieldDescription>
+            </FieldContent>
+          </div>
+        ))}
+      </RadioGroup>
+
       <FieldDescription>
-        {sprintf(
-          /* translators: %s: the trigger's display label, e.g. "Birthday". */
-          __(
-            'This build has no editor for the "%s" trigger yet. Its settings are shown below for reference and are saved back unchanged.',
-            'yayloyalty',
-          ),
-          triggerLabel(trigger),
+        {__(
+          'Decides which group of campaigns this one competes with, and which fields Reward shows below. Cannot be changed once the campaign is saved.',
+          'yayloyalty',
         )}
       </FieldDescription>
-
-      {entries.length === 0 ? (
-        <p className="text-muted-foreground text-sm">{__('No settings stored.', 'yayloyalty')}</p>
-      ) : (
-        // Plain text nodes only; these values are campaign-supplied and untyped.
-        <dl className="flex flex-col gap-1.5 text-sm">
-          {entries.map(([key, value]) => (
-            <div key={key} className="flex items-baseline justify-between gap-3">
-              <dt className="text-muted-foreground font-mono text-xs">{key}</dt>
-              <dd className="text-right font-mono text-xs break-all">{formatUnknownConfigValue(value)}</dd>
-            </div>
-          ))}
-        </dl>
-      )}
     </div>
   );
-}
-
-function formatUnknownConfigValue(value: unknown): string {
-  if (value === null || value === undefined) {
-    return '—';
-  }
-
-  if (typeof value === 'object') {
-    return JSON.stringify(value);
-  }
-
-  return String(value);
 }
 
 /* ─── §5 Schedule ────────────────────────────────────────────────────── */
@@ -963,94 +502,31 @@ function describeWindow(startsAt: string | null, endsAt: string | null, zoneLabe
 
 /* ─── §6 Priority ────────────────────────────────────────────────────── */
 
-/**
- * The priority number plus the ladder of every campaign in the same trigger
- * group, ordered as CampaignTable orders them. No drag-reorder: the table's
- * drag never writes priority either.
- */
+/** The priority number alone; where it lands among its group is the campaigns table's job. */
 function CampaignEditorPriority() {
   const { control, setValue } = useFormContext<CampaignFormValues>();
-  const { campaign } = useCampaignEditorContext();
   const priority = useWatch({ control, name: 'priority' });
-  const campaignsQuery = useCampaignsQuery({ perPage: 100 });
-
-  const group = triggerGroup(campaign.trigger);
-
-  const ladder = useMemo(() => {
-    const rows = (campaignsQuery.data?.data ?? [])
-      .filter((row) => triggerGroup(row.trigger) === group)
-      // Substitute the unsaved priority so the ladder answers "what would this reorder to".
-      .map((row) => (row.id === campaign.id ? { ...row, priority: priority ?? row.priority } : row));
-
-    return [...rows].sort((a, b) => b.priority - a.priority || b.id - a.id);
-  }, [campaignsQuery.data, group, campaign.id, priority]);
 
   return (
-    <div className="flex flex-col gap-4">
-      <Field orientation="responsive">
-        <FieldLabel>{__('Priority', 'yayloyalty')}</FieldLabel>
-        <FieldContent>
-          <NumberInputRoot
-            size="small"
-            className="w-28"
-            min={0}
-            value={priority}
-            onValueChange={(next) => setValue('priority', next, { shouldDirty: true })}
-          >
-            <NumberInputInput />
-          </NumberInputRoot>
-          <FieldDescription>
-            {__(
-              'Higher wins. Within the same group, the highest-priority match applies to an order and the rest are skipped — campaigns never stack.',
-              'yayloyalty',
-            )}
-          </FieldDescription>
-        </FieldContent>
-      </Field>
-
-      {campaignsQuery.isPending && <Skeleton className="h-24 w-full" />}
-
-      {!campaignsQuery.isPending && ladder.length > 0 && (
-        <div className="flex flex-col gap-1.5 rounded-lg border p-3">
-          {ladder.map((row) => {
-            const isCurrent = row.id === campaign.id;
-
-            return (
-              <div
-                key={row.id}
-                className={cn('flex items-center justify-between gap-2 text-sm', isCurrent && 'font-semibold')}
-              >
-                <span className="flex items-center gap-2">
-                  <span className="text-muted-foreground tabular-nums">{row.priority}</span>
-                  {row.name}
-                </span>
-                {isCurrent ? (
-                  <Badge variant="outline" className="uppercase">
-                    {__('This campaign', 'yayloyalty')}
-                  </Badge>
-                ) : (
-                  <span className="text-muted-foreground text-xs">
-                    {rowOutranksCurrent(row.priority, row.id, priority ?? campaign.priority, campaign.id)
-                      ? __('Wins over this', 'yayloyalty')
-                      : __('Skipped when this matches', 'yayloyalty')}
-                  </span>
-                )}
-              </div>
-            );
-          })}
-          <p className="text-muted-foreground pt-1 text-xs">
-            {__(
-              'Campaigns do not stack. For a given order, only the highest-priority match in this group applies.',
-              'yayloyalty',
-            )}
-          </p>
-        </div>
-      )}
-    </div>
+    <Field orientation="responsive">
+      <FieldLabel>{__('Priority', 'yayloyalty')}</FieldLabel>
+      <FieldContent>
+        <NumberInputRoot
+          size="small"
+          className="w-28"
+          min={0}
+          value={priority}
+          onValueChange={(next) => setValue('priority', next, { shouldDirty: true })}
+        >
+          <NumberInputInput />
+        </NumberInputRoot>
+        <FieldDescription>
+          {__(
+            'Higher wins. Within the same group, the highest-priority match applies to an order and the rest are skipped — campaigns never stack.',
+            'yayloyalty',
+          )}
+        </FieldDescription>
+      </FieldContent>
+    </Field>
   );
-}
-
-/** Ties go to the newer campaign, matching CampaignTable. */
-function rowOutranksCurrent(rowPriority: number, rowId: number, currentPriority: number, currentId: number): boolean {
-  return rowPriority > currentPriority || (rowPriority === currentPriority && rowId > currentId);
 }

@@ -18,7 +18,6 @@ export interface BulkArchiveRow {
   displayStatus: CampaignDisplayStatus;
   archiveCase: CampaignArchiveCase;
   lifetimePoints: number;
-  pointsLast30Days: number | null;
 }
 
 /** The line under the title. Attention means archiving stops something: it is earning, or about to. */
@@ -133,7 +132,10 @@ export function bulkSummaryLines(rows: BulkArchiveRow[]): string[] {
 export function bulkTotalLine(rows: BulkArchiveRow[]): string {
   const total = rows.reduce((sum, row) => sum + row.lifetimePoints, 0);
 
-  if (total === 0) {
+  // Gated on is_deletable, not on the total being 0: a refunded-to-zero campaign nets 0 points
+  // but still has ledger rows naming it, so "nothing refers to them" would be false for it
+  // specifically — same reason resolveArchiveCase() takes is_deletable, not a points check.
+  if (rows.every((row) => row.campaign.is_deletable)) {
     return __('None of them has awarded a point, so nothing in customer history refers to them.', 'yayloyalty');
   }
 
@@ -155,7 +157,7 @@ export function bulkRowBadge(displayStatus: CampaignDisplayStatus): string {
   return displayStatus === 'active' ? __('Live now', 'yayloyalty') : statusLabel(displayStatus);
 }
 
-/** A listed row's figures, e.g. "96,800 points lifetime · 12,400 in 30 days". */
+/** A listed row's figures, e.g. "96,800 points lifetime · starts 27 Nov". */
 export function bulkRowFigures(row: BulkArchiveRow): string {
   if (row.archiveCase === 'delete') {
     return sprintf(
@@ -182,16 +184,9 @@ export function bulkRowFigures(row: BulkArchiveRow): string {
   return parts.join(' · ');
 }
 
-function statusTail({ campaign, displayStatus, pointsLast30Days }: BulkArchiveRow): string | null {
+/** No 'active' case: there is no windowed figure to add beyond the lifetime one bulkRowFigures() already shows. */
+function statusTail({ campaign, displayStatus }: BulkArchiveRow): string | null {
   switch (displayStatus) {
-    case 'active':
-      return pointsLast30Days === null
-        ? null
-        : sprintf(
-            /* translators: %s: points issued in the last 30 days, formatted. */
-            __('%s in 30 days', 'yayloyalty'),
-            formatPoints(pointsLast30Days),
-          );
     case 'scheduled':
       return sprintf(
         /* translators: %s: the date the campaign starts. */

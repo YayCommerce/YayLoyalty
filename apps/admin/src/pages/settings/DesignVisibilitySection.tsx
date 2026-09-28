@@ -3,6 +3,7 @@ import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import { sprintf } from '@wordpress/i18n';
 
 import { PAGE_PICKER_LIMIT, type WpPageOption } from '@/lib/api/design.api';
+import { roleOptions } from '@/lib/helpers/meta-options.helper';
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { usePublishedPagesByIdsQuery, usePublishedPagesSearchQuery } from '@/lib/queries/design.queries';
 import { designVisibilityScopeSchema, type Design } from '@/lib/schema/design.schema';
@@ -32,13 +33,6 @@ const pageOption = (page: WpPageOption) => ({
   value: String(page.id),
   label: new DOMParser().parseFromString(page.title.rendered, 'text/html').body.textContent || `#${page.id}`,
 });
-
-// Real WP roles from the bootstrap, not free text — a merchant can't typo a role slug
-// that then silently never matches anything server-side.
-const ROLE_OPTIONS = Object.entries(window.yayLoyaltyMeta.wpMeta.roles).map(([value, label]) => ({
-  value,
-  label,
-}));
 
 /** Scope, the chosen pages, hide on mobile, hide for roles — the custom_pages scope and its page picker are Pro. */
 export function DesignVisibilitySection() {
@@ -152,7 +146,7 @@ export function DesignVisibilitySection() {
                 <MultiSelectCombobox
                   value={field.value.join(',')}
                   onChange={(value) => field.onChange(value ? value.split(',') : [])}
-                  options={ROLE_OPTIONS}
+                  options={roleOptions()}
                   placeholder={VISIBILITY_HIDE_FOR_ROLES_PLACEHOLDER()}
                 />
               )}

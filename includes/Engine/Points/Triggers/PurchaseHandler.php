@@ -65,9 +65,9 @@ final class PurchaseHandler implements TriggerHandler {
         $base     = $this->base_calculator->compute( $campaign, $ctx );
         $rounding = (string) ( $config['rounding'] ?? PointsMath::ROUND_DOWN );
 
-        if ( $this->is_multiplier( $config ) ) {
+        if ( self::is_multiplier( $config ) ) {
             $default = $this->campaigns->find_default_purchase();
-            $rate    = (float) ( $default->get_config()['points_per_unit'] ?? 0 ) * (float) ( $config['multiplier'] ?? 1 );
+            $rate    = (float) ( $default->get_config()['points_per_unit'] ?? 0 ) * self::multiplier( $config );
         } else {
             $rate = (float) ( $config['points_per_unit'] ?? 0 );
         }
@@ -102,9 +102,21 @@ final class PurchaseHandler implements TriggerHandler {
     }
 
     /**
+     * Whether a purchase config multiplies the default rate rather than naming its own; a missing mode means rate.
+     * The one decider (code-standards § 16): the performance page's liability split asks here too.
+     *
      * @param array<string, mixed> $config
      */
-    private function is_multiplier( array $config ): bool {
+    public static function is_multiplier( array $config ): bool {
         return 'multiplier' === ( $config['mode'] ?? 'rate' );
+    }
+
+    /**
+     * The factor a multiplier config applies to the default rate; a missing value is ×1.
+     *
+     * @param array<string, mixed> $config
+     */
+    public static function multiplier( array $config ): float {
+        return (float) ( $config['multiplier'] ?? 1 );
     }
 }

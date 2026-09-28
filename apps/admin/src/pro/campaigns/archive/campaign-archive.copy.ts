@@ -5,8 +5,7 @@ import { parseWPCurrency, parseWPDate, parseWPRelativeDate } from '@/lib/helpers
 import { formatPoints, pointsPhrase } from '@/lib/helpers/points.helper';
 import type { CampaignPerformance } from '@/lib/schema/campaign-performance.schema';
 import type { Campaign, CampaignDisplayStatus } from '@/lib/schema/campaign.schema';
-import { conditionsLabel, givesLabel, scheduleLabel, statusLabel } from '../campaign-labels';
-import { windowLabel } from '../performance/campaign-performance.copy';
+import { conditionsLabel, givesLabel, isBuiltinCampaignActive, scheduleLabel, statusLabel } from '../campaign-labels';
 
 /**
  * Case resolution and trigger-aware copy for CampaignArchiveDialog. Sentences
@@ -18,14 +17,14 @@ import { windowLabel } from '../performance/campaign-performance.copy';
 export type CampaignArchiveCase = 'delete' | 'finished' | 'live';
 
 /**
- * Only an exact 0 from the server resolves to delete: once a campaign awards
- * a single point, delete is gone for good.
- *
- * TODO: move "never awarded → deletable" to the server (a flag on the
- * campaign resource, enforced by delete_item()) so the UI stops deciding it.
+ * `isDeletable` is the server's own delete_item() guard (not built-in, zero
+ * ledger rows), restated for the client — never inferred from a points
+ * total here, since a campaign earned-then-fully-refunded nets 0 points but
+ * still has rows naming it, and offering a permanent delete on that guess
+ * is the one mistake this dialog cannot undo.
  */
-export function resolveArchiveCase(displayStatus: CampaignDisplayStatus, lifetimePoints: number): CampaignArchiveCase {
-  if (lifetimePoints === 0) {
+export function resolveArchiveCase(displayStatus: CampaignDisplayStatus, isDeletable: boolean): CampaignArchiveCase {
+  if (isDeletable) {
     return 'delete';
   }
 
@@ -38,10 +37,16 @@ export interface ArchiveFigures {
   detail?: string;
 }
 
-/** Figures for an ended campaign, from its performance summary. */
+/**
+ * Figures for an ended campaign, from its performance summary. `totals` is
+ * lifetime (see CampaignPerformanceRestController's own docblock), so
+ * `detail` states liability only — never a date range, which would now be
+ * the chart's own narrower 30-day window, not the span these lifetime
+ * figures cover. The schedule itself is already in contextLine(), right
+ * above this in the dialog.
+ */
 export function finishedFigures(trigger: Campaign['trigger'], performance: CampaignPerformance): ArchiveFigures {
   const { totals } = performance;
-  const period = windowLabel(performance.window);
 
   if (trigger === 'purchase') {
     return {
@@ -51,7 +56,7 @@ export function finishedFigures(trigger: Campaign['trigger'], performance: Campa
         pointsPhrase(totals.points_issued),
         ordersPhrase(totals.orders_affected ?? 0),
       ),
-      detail: withLiability(period, totals.liability_amount),
+      detail: liabilityDetail(totals.liability_amount),
     };
   }
 
@@ -62,14 +67,14 @@ export function finishedFigures(trigger: Campaign['trigger'], performance: Campa
       pointsPhrase(totals.points_issued),
       customersPhrase(totals.customers_earned ?? 0),
     ),
-    detail: period,
   };
 }
 
 /**
  * Figures for a campaign that is earning right now. Today is looked up by
  * site date, not taken as the window's last day: a dated campaign's window
- * can end in the future.
+ * can end in the future. `totals` is lifetime, so the sentence says "so
+ * far" rather than naming a date range — see finishedFigures()'s own note.
  */
 export function earningFigures(trigger: Campaign['trigger'], performance: CampaignPerformance): ArchiveFigures {
   const { totals } = performance;
@@ -85,12 +90,11 @@ export function earningFigures(trigger: Campaign['trigger'], performance: Campai
     return {
       headline,
       detail: sprintf(
-        /* translators: 1: points phrase for today; 2: points phrase for the window; 3: orders phrase; 4: the window's dates. */
-        __('%1$s today · %2$s across %3$s, %4$s.', 'yayloyalty'),
+        /* translators: 1: points phrase for today; 2: points phrase issued so far; 3: orders phrase. */
+        __('%1$s today · %2$s across %3$s so far.', 'yayloyalty'),
         pointsPhrase(today),
         pointsPhrase(totals.points_issued),
         ordersPhrase(totals.orders_affected ?? 0),
-        windowLabel(performance.window),
       ),
     };
   }
@@ -98,12 +102,11 @@ export function earningFigures(trigger: Campaign['trigger'], performance: Campai
   return {
     headline,
     detail: sprintf(
-      /* translators: 1: points phrase for today; 2: points phrase for the window; 3: customers phrase; 4: the window's dates. */
-      __('%1$s today · %2$s to %3$s, %4$s.', 'yayloyalty'),
+      /* translators: 1: points phrase for today; 2: points phrase issued so far; 3: customers phrase. */
+      __('%1$s today · %2$s to %3$s so far.', 'yayloyalty'),
       pointsPhrase(today),
       pointsPhrase(totals.points_issued),
       customersPhrase(totals.customers_earned ?? 0),
-      windowLabel(performance.window),
     ),
   };
 }
@@ -238,9 +241,9 @@ export function activeStops(campaign: Campaign, fallback: Campaign | undefined):
 
   if (fallback) {
     lines.push(
-      fallback.status === 'active'
+      isBuiltinCampaignActive(fallback)
         ? sprintf(
-            /* translators: 1: the built-in campaign's name; 2: what it gives, e.g. "1 point(s) per $1". */
+            /* translators: 1: the built-in campaign's name; 2: what it gives, e.g. "1 pt per $1.00". */
             __('What it matched falls back to %1$s at %2$s', 'yayloyalty'),
             fallback.name,
             givesLabel(fallback.trigger, fallback.config),
@@ -315,15 +318,14 @@ export function affectedLine(trigger: Campaign['trigger']): string {
     : __('Nothing — 0 points, 0 customers', 'yayloyalty');
 }
 
-function withLiability(period: string, liability: number | null): string {
+function liabilityDetail(liability: number | null): string | undefined {
   if (liability === null) {
-    return period;
+    return undefined;
   }
 
   return sprintf(
-    /* translators: 1: the reporting window's dates; 2: liability, formatted as money. */
-    __('%1$s · %2$s of liability, still on the books until those points are spent.', 'yayloyalty'),
-    period,
+    /* translators: %s: liability, formatted as money. */
+    __('%s of liability, still on the books until those points are spent.', 'yayloyalty'),
     parseWPCurrency(liability),
   );
 }

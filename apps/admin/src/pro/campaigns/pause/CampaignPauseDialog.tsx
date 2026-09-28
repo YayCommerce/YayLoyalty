@@ -3,8 +3,8 @@ import { toast } from 'sonner';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { toastApiError } from '@/lib/api/api';
-import { useCampaignsQuery, useUpdateCampaignMutation } from '@/lib/queries/campaign.queries';
-import type { Campaign, CampaignDisplayStatus } from '@/lib/schema/campaign.schema';
+import { useCampaignsQuery, useUpdateCampaignStatusMutation } from '@/lib/queries/campaign.queries';
+import { Campaign, resolveCampaignDisplayStatus } from '@/lib/schema/campaign.schema';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -23,25 +23,17 @@ import { pauseContextLine, pauseStops, resumeLine } from './campaign-pause.copy'
  * earning across the whole store. Mount it only while open, like
  * CampaignArchiveDialog.
  */
-export function CampaignPauseDialog({
-  campaign,
-  displayStatus,
-  onClose,
-}: {
-  campaign: Campaign;
-  /** The status the opener shows; see CampaignArchiveDialog. */
-  displayStatus: CampaignDisplayStatus;
-  onClose: () => void;
-}) {
+export function CampaignPauseDialog({ campaign, onClose }: { campaign: Campaign; onClose: () => void }) {
+  const displayStatus = resolveCampaignDisplayStatus(campaign.status, campaign.starts_at, campaign.ends_at);
   const campaignsQuery = useCampaignsQuery({ perPage: 100 });
   const stops = pauseStops(campaign, displayStatus, campaignsQuery.data?.data);
 
-  const statusMutation = useUpdateCampaignMutation(campaign.id);
+  const statusMutation = useUpdateCampaignStatusMutation(campaign.id);
   const busy = statusMutation.isPending;
 
   async function pause() {
     try {
-      await statusMutation.mutateAsync({ status: 'paused' });
+      await statusMutation.mutateAsync('paused');
       toast.success(__('Campaign paused.', 'yayloyalty'));
       onClose();
     } catch (error) {

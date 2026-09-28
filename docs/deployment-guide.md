@@ -201,11 +201,11 @@ the next release can complete; `vite build` itself succeeds when run directly.
 
 ### Fixture-backed endpoints
 
-Two categories of fixture data ship in this plugin, with different visibility rules:
+One category of fixture data ships in this plugin:
 
 **Dev-only `?scenario=` fixtures** (WP_DEBUG-gated): the dashboard (`GET /dashboard`) accepts `scenario=empty|small|large|notices|anomaly` only when `WP_DEBUG` is true: `DashboardRestController` registers the arg only then and `get_overview()` re-checks it; each value swaps the payload for a `DashboardFixture` artboard. The SPA reads it only through `hooks/useDevScenario.ts` (`undefined` outside the Vite dev server, so a built bundle never sends it). The customer drawer has no fixtures; its routes always serve real data. Production sites with `WP_DEBUG = false` cannot reach these fixtures; requests without the arg always return real data or honest empty envelopes.
 
-**Unconditional swap-point fixtures**: Campaign list/detail (`GET /campaigns`, `GET /campaigns/{id}`) and campaign performance (`GET /campaigns/{id}/performance`) are ENTIRELY fixture-backed via `CampaignRestController::dummy_fixture()` and `CampaignPerformanceFixture`. These ship in the zip and are what a production site sees until swapped for real data. The validator does not flag them; they are marked as swap points in their controller docblocks.
+Campaign endpoints have no fixtures left. List/detail/create/update/delete (`GET/POST/PUT/DELETE /campaigns[/{id}]`) went real 2026-09-23; performance (`GET /campaigns/{id}/performance[/entries]`) went real 2026-09-24 — `CampaignPerformanceFixture` is deleted, both routes now answer from `Pro/Repositories/CampaignPerformanceRepository.php` (a real `ledger` aggregate). Three of its fields (`skipped`, `estimate`, `totals.avg_order_subtotal`) still ship `null` unconditionally, pending the earning engine (F01-4) — not a fixture, an honestly-absent figure with a self-hiding panel, same category as the drawer's empty envelopes above.
 
 **Packaged builds ship without `RegisterDev.php`, and `YAYLOYALTY_IS_DEVELOPMENT` defaults
 to `true` when undefined.** A production site must define

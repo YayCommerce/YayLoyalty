@@ -2,7 +2,9 @@
 namespace YayLoyalty\Repositories;
 
 use YayLoyalty\Database\QueryException;
+use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Models\LedgerEntry;
+use YayLoyalty\Utils\Sql;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -131,5 +133,69 @@ class LedgerRepository extends AbstractRepository {
                 $user_id
             )
         );
+    }
+
+    /**
+     * The one definition of an "issued" ledger row — a positive row of an earn
+     * type — as a prepared-SQL fragment plus the values it binds. Every SUM or
+     * COUNT of points issued (campaign list, performance page, dashboard tiles
+     * and charts) interpolates this rather than spelling the predicate out, so
+     * they cannot disagree about what counts as issued. `$prefix` qualifies the
+     * columns inside a join (`'l.'`).
+     *
+     * @return array{0: string, 1: string[]} The fragment and the types it binds, in order.
+     */
+    public static function issued_row_sql( string $prefix = '' ): array {
+        $types = LedgerType::lifetime_earned_types();
+
+        return [ "{$prefix}points > 0 AND {$prefix}type IN (" . Sql::in_placeholders( $types ) . ')', $types ];
+    }
+
+    /**
+     * Points issued and row count per campaign. `points` sums only issued rows
+     * (issued_row_sql()), the measure the performance page and dashboard use, so
+     * the list and the page cannot disagree. `count` is every row of any type:
+     * the delete guard needs "has any row ever named this campaign", which
+     * `points` cannot answer once a campaign's awards are refunded. Absent
+     * from the result entirely for an id with no rows at all.
+     *
+     * @param int[] $campaign_ids
+     * @return array<int, array{points: int, count: int}>
+     */
+    public function totals_by_campaign( array $campaign_ids ): array {
+        if ( empty( $campaign_ids ) ) {
+            return [];
+        }
+
+        global $wpdb;
+
+        list( $issued, $types ) = self::issued_row_sql();
+
+        $ids = array_map( 'intval', $campaign_ids );
+        $in  = Sql::in_placeholders( $ids, '%d' );
+
+        // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- $in and $issued carry placeholder lists; every value is bound below.
+        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+            $wpdb->prepare(
+                "SELECT campaign_id, COALESCE(SUM(CASE WHEN {$issued} THEN points ELSE 0 END), 0) AS points, COUNT(*) AS row_count
+                 FROM `" . esc_sql( $this->table() ) . "`
+                 WHERE campaign_id IN ({$in})
+                 GROUP BY campaign_id",
+                array_merge( $types, $ids )
+            ),
+            ARRAY_A
+        );
+        // phpcs:enable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+
+        $totals = [];
+
+        foreach ( is_array( $rows ) ? $rows : [] as $row ) {
+            $totals[ (int) $row['campaign_id'] ] = [
+                'points' => (int) $row['points'],
+                'count'  => (int) $row['row_count'],
+            ];
+        }
+
+        return $totals;
     }
 }

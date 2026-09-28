@@ -2,9 +2,11 @@ import { api } from '@/lib/api/api';
 import { parsePaginated } from '@/lib/api/paginated';
 import {
   Campaign,
+  CampaignCreateInput,
   campaignDeleteResponseSchema,
   CampaignListParams,
   campaignSchema,
+  CampaignStatus,
   CampaignUpdateInput,
 } from '@/lib/schema/campaign.schema';
 
@@ -29,13 +31,27 @@ export async function getCampaign(id: number): Promise<Campaign> {
   return campaignSchema.parse(await api.get(`campaigns/${id}`).json());
 }
 
-/** PUT campaigns/{id}. Does not persist yet; see update_item()'s swap point. */
-/** Partial: update_item() changes only the fields sent, e.g. `{ status }` to archive or pause. */
+/** POST campaigns. The server generates `slug` from `name`; nothing is created until this is called. */
+export async function createCampaign(input: CampaignCreateInput): Promise<Campaign> {
+  return campaignSchema.parse(await api.post('campaigns', { json: input }).json());
+}
+
+/** PUT campaigns/{id}. Every field is optional server-side except this type's own required ones; see updateCampaignStatus() for a narrower partial write. */
 export async function updateCampaign(id: number, input: Partial<CampaignUpdateInput>): Promise<Campaign> {
   return campaignSchema.parse(await api.put(`campaigns/${id}`, { json: input }).json());
 }
 
-/** DELETE campaigns/{id}. Does not persist yet; see delete_item()'s swap point. */
+/** PUT campaigns/{id} with only `status` — update_item() applies whichever fields the body carries, so a single-key body is a real partial write, not a full-body requirement in disguise. */
+export async function updateCampaignStatus(id: number, status: CampaignStatus): Promise<Campaign> {
+  return campaignSchema.parse(await api.put(`campaigns/${id}`, { json: { status } }).json());
+}
+
+/** PUT campaigns/{id} with only `config` — same reasoning as updateCampaignStatus(); BuiltInCampaignList edits config without touching name/priority/conditions/dates. */
+export async function updateCampaignConfig(id: number, config: Campaign['config']): Promise<Campaign> {
+  return campaignSchema.parse(await api.put(`campaigns/${id}`, { json: { config } }).json());
+}
+
+/** DELETE campaigns/{id}. 409s if the campaign has ledger rows; see Campaign.is_deletable. */
 export async function deleteCampaign(id: number) {
   return campaignDeleteResponseSchema.parse(await api.delete(`campaigns/${id}`).json());
 }

@@ -1,10 +1,10 @@
 import { z } from 'zod';
 
-import { CampaignTrigger } from './campaign.schema';
+import { campaignSchema, CampaignTrigger } from './campaign.schema';
 
 /**
  * Mirrors Pro\Controllers\CampaignPerformanceRestController and
- * Pro\Controllers\CampaignPerformanceFixture (`GET /campaigns/{id}/performance`,
+ * Pro\Repositories\CampaignPerformanceRepository (`GET /campaigns/{id}/performance`,
  * `GET /campaigns/{id}/performance/entries`). THOSE PHP CLASSES ARE THE
  * SOURCE OF TRUTH.
  *
@@ -13,6 +13,11 @@ import { CampaignTrigger } from './campaign.schema';
  * campaign; an average is null when there are zero entries to average
  * (division by zero), not 0. Render null as "—", the same rule the dashboard
  * uses for its redemption rate and delta lines.
+ *
+ * `totals` is lifetime (no date bound); `window`/`daily` is the last 30 days
+ * clamped to the campaign's run — see the controller's own class docblock
+ * ("TWO TIME BASES ON PURPOSE") for why. `skipped`, `estimate` and
+ * `avg_order_subtotal` are null until the earning engine (F01-4) exists.
  */
 
 /**
@@ -33,7 +38,11 @@ export function hasPerformancePage(trigger: CampaignTrigger): trigger is Campaig
   return (CAMPAIGN_PERFORMANCE_TRIGGERS as readonly CampaignTrigger[]).includes(trigger);
 }
 
-/** Mirrors `CampaignPerformanceFixture::skipped_breakdown()`'s `reason` values. */
+/**
+ * Why an order in the reporting window didn't earn from this campaign.
+ * Nothing produces `skipped` rows yet — see `skipped`'s own comment below —
+ * so these values are currently unused, kept ready for when it is real.
+ */
 export const CAMPAIGN_SKIP_REASONS = ['higher_priority', 'guest', 'excluded'] as const;
 
 export type CampaignSkipReason = (typeof CAMPAIGN_SKIP_REASONS)[number];
@@ -51,6 +60,8 @@ export type CampaignPerformanceSkip = z.infer<typeof campaignPerformanceSkipSche
 /** `GET /campaigns/{id}/performance` response. */
 export const campaignPerformanceSchema = z.object({
   campaign_id: z.number().int(),
+  /** The campaign itself, verbatim the `GET /campaigns/{id}` shape, so the page's header needs no second request. */
+  campaign: campaignSchema,
   /** Site-timezone dates, both ends inclusive. */
   window: z.object({
     from: z.string(),
@@ -63,13 +74,13 @@ export const campaignPerformanceSchema = z.object({
     entries_total: z.number().int(),
     /** Purchase only. */
     orders_affected: z.number().int().nullable(),
-    /** Purchase with real data only. */
-    orders_in_window: z.number().int().nullable(),
+    /** Purchase only. Lifetime count of the store's own completed orders — NOT scoped to this campaign; the denominator "orders_affected" is a fraction of. */
+    orders_total: z.number().int().nullable(),
     /** Signup / review only: distinct customers who earned from this campaign. */
     customers_earned: z.number().int().nullable(),
     /** Purchase with real data only. */
     avg_points_per_order: z.number().int().nullable(),
-    /** Purchase with real data only. */
+    /** Always null today — needs the earning engine to persist the scored base amount, see the controller's class docblock. */
     avg_order_subtotal: z.number().nullable(),
     /** Purchase only; null when the store has no configured points-to-currency rate. */
     liability_amount: z.number().nullable(),
@@ -83,9 +94,9 @@ export const campaignPerformanceSchema = z.object({
       points: z.number().int(),
     }),
   ),
-  /** "Where the other orders went" — purchase campaigns with real data only; null otherwise (panel hidden). */
+  /** "Where the other orders went" — always null today (panel hidden); needs the earning engine to replay every order, see the controller's class docblock. */
   skipped: z.array(campaignPerformanceSkipSchema).nullable(),
-  /** "What it would have done last year" — purchase campaigns with NO real data yet only; null otherwise (panel hidden). */
+  /** "What it would have done last year" — always null today (panel hidden), same reason as `skipped`. */
   estimate: z
     .object({
       from: z.string(),

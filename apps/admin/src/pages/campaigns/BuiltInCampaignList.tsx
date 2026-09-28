@@ -1,17 +1,23 @@
 import { ReactNode, useState } from 'react';
 import { ChevronDown, ChevronUp, InfoIcon } from 'lucide-react';
-import { __, sprintf } from '@wordpress/i18n';
+import { toast } from 'sonner';
+import { __, _n, sprintf } from '@wordpress/i18n';
 
+import { toastApiError } from '@/lib/api/api';
 import { parseWPCurrency, parseWPDate } from '@/lib/helpers/format.helper';
+import { pointsPerCurrencyLabel } from '@/lib/helpers/points.helper';
 import { roundPoints } from '@/lib/points-math/points-math';
-import { useCampaignsQuery } from '@/lib/queries/campaign.queries';
+import {
+  useCampaignsQuery,
+  useUpdateCampaignConfigMutation,
+  useUpdateCampaignStatusMutation,
+} from '@/lib/queries/campaign.queries';
 import type { Campaign } from '@/lib/schema/campaign.schema';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
-import { Input } from '@/components/ui/input';
 import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
 import { Segmented, SegmentedItem } from '@/components/ui/segmented';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -23,8 +29,8 @@ const BUILTIN_TRIGGER_ORDER: Campaign['trigger'][] = ['purchase', 'signup', 'rev
 /**
  * Lite's campaigns list: three always-present editable cards, from the same
  * list CampaignTable reads, filtered to is_builtin. Loading/error/empty are
- * handled here once. Fields edit for real, but Save is inert: there is no
- * update client yet.
+ * handled here once. The On/Off switch writes immediately (a toggle, not a
+ * draft); config fields are a draft until "Save changes".
  */
 export default function BuiltInCampaignList() {
   const { data, isPending, isError } = useCampaignsQuery({ perPage: 100 });
@@ -106,15 +112,41 @@ function BuiltInCampaignCard({
   expanded: boolean;
   onToggleExpanded: () => void;
 }) {
-  // Local edits only; Save is inert until campaign.api.ts has an update client.
+  // Local draft; config only persists on "Save changes". The switch is not part of the draft —
+  // it writes immediately, below.
   const [status, setStatus] = useState(campaign.status);
   const [config, setConfig] = useState(campaign.config);
   const isOn = status === 'active';
+
+  const statusMutation = useUpdateCampaignStatusMutation(campaign.id);
+  const configMutation = useUpdateCampaignConfigMutation(campaign.id);
 
   function reset() {
     setStatus(campaign.status);
     setConfig(campaign.config);
     onToggleExpanded();
+  }
+
+  async function toggleOn(checked: boolean) {
+    const next = checked ? 'active' : 'paused';
+    setStatus(next); // optimistic; reverted below on failure
+
+    try {
+      await statusMutation.mutateAsync(next);
+    } catch (error) {
+      setStatus(campaign.status);
+
+      await toastApiError(error, __('Could not update the campaign.', 'yayloyalty'));
+    }
+  }
+
+  async function saveConfig() {
+    try {
+      await configMutation.mutateAsync(config);
+      toast.success(__('Campaign saved.', 'yayloyalty'));
+    } catch (error) {
+      await toastApiError(error, __('Could not save the campaign.', 'yayloyalty'));
+    }
   }
 
   return (
@@ -134,7 +166,7 @@ function BuiltInCampaignCard({
 
         {/* Its own click target: toggling on/off isn't "open this card". */}
         <div className="flex items-center gap-2" onClick={(event) => event.stopPropagation()}>
-          <Switch checked={isOn} onCheckedChange={(checked) => setStatus(checked ? 'active' : 'paused')} />
+          <Switch checked={isOn} disabled={statusMutation.isPending} onCheckedChange={toggleOn} />
           <span className="text-sm">{isOn ? __('On', 'yayloyalty') : __('Off', 'yayloyalty')}</span>
         </div>
 
@@ -156,8 +188,8 @@ function BuiltInCampaignCard({
           )}
 
           <div className="flex flex-wrap items-center gap-3 border-t pt-4">
-            <Button size="sm" onClick={() => {}}>
-              {__('Save changes', 'yayloyalty')}
+            <Button size="sm" disabled={configMutation.isPending} onClick={saveConfig}>
+              {configMutation.isPending ? __('Saving…', 'yayloyalty') : __('Save changes', 'yayloyalty')}
             </Button>
             <Button variant="link" size="sm" className="h-auto p-0" onClick={reset}>
               {__('Cancel', 'yayloyalty')}
@@ -222,14 +254,12 @@ function PurchaseFields({
           <NumberInputRoot
             size="small"
             className="w-28"
-            min={0}
+            min={1}
             value={value.points_per_unit}
             onValueChange={(points_per_unit) => onChange({ points_per_unit })}
           >
             <NumberInputInput />
-            <NumberInputUnit
-              unit={value.points_per_unit === 1 ? __('point', 'yayloyalty') : __('points', 'yayloyalty')}
-            />
+            <NumberInputUnit unit={_n('point', 'points', value.points_per_unit, 'yayloyalty')} />
           </NumberInputRoot>
           <span className="text-muted-foreground text-sm">
             {sprintf(
@@ -262,25 +292,16 @@ function PurchaseFields({
         </Segmented>
       </ConfigField>
 
-      <ConfigField label={__('Include in the award basis', 'yayloyalty')}>
-        <div className="flex flex-wrap items-center gap-5">
-          <label className="flex items-center gap-2 text-sm">
-            <Switch
-              size="sm"
-              checked={value.include_shipping}
-              onCheckedChange={(include_shipping) => onChange({ include_shipping })}
-            />
-            {__('Shipping', 'yayloyalty')}
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <Switch
-              size="sm"
-              checked={value.include_tax}
-              onCheckedChange={(include_tax) => onChange({ include_tax })}
-            />
-            {__('Tax', 'yayloyalty')}
-          </label>
-        </div>
+      <ConfigField
+        label={__('Include tax', 'yayloyalty')}
+        description={__('Adds each line’s tax to the amount counted.', 'yayloyalty')}
+      >
+        <Switch
+          size="sm"
+          aria-label={__('Include tax', 'yayloyalty')}
+          checked={value.include_tax}
+          onCheckedChange={(include_tax) => onChange({ include_tax })}
+        />
       </ConfigField>
 
       <ConfigField label={__('Rounding', 'yayloyalty')}>
@@ -320,15 +341,6 @@ function PurchaseFields({
           />
           {__('Exclude orders that used a coupon', 'yayloyalty')}
         </label>
-      </ConfigField>
-
-      {/* Disabled: a real picker needs a WooCommerce product/category search endpoint, which doesn't exist yet. */}
-      <ConfigField label={__('Excluded products', 'yayloyalty')}>
-        <Input disabled placeholder={__('Search products — none excluded', 'yayloyalty')} className="max-w-sm" />
-      </ConfigField>
-
-      <ConfigField label={__('Excluded categories', 'yayloyalty')}>
-        <Input disabled placeholder={__('Search categories — none excluded', 'yayloyalty')} className="max-w-sm" />
       </ConfigField>
     </>
   );
@@ -424,12 +436,8 @@ function summarize(trigger: Campaign['trigger'], config: Record<string, unknown>
     case 'purchase': {
       const value = config as unknown as PurchaseConfig;
 
-      return sprintf(
-        /* translators: 1: points awarded per currency unit spent, e.g. "1"; 2: one unit of the store currency, formatted. */
-        __('%1$s point(s) per %2$s spent', 'yayloyalty'),
-        String(value.points_per_unit),
-        parseWPCurrency(1),
-      );
+      /* translators: %s: a purchase rate, e.g. "1 pt per $1.00". */
+      return sprintf(__('%s spent', 'yayloyalty'), pointsPerCurrencyLabel(value.points_per_unit));
     }
 
     case 'signup': {
@@ -437,7 +445,7 @@ function summarize(trigger: Campaign['trigger'], config: Record<string, unknown>
 
       return sprintf(
         /* translators: %d: points awarded on signup. */
-        __('%d points, once per customer', 'yayloyalty'),
+        _n('%d point, once per customer', '%d points, once per customer', value.points, 'yayloyalty'),
         value.points,
       );
     }
@@ -448,12 +456,12 @@ function summarize(trigger: Campaign['trigger'], config: Record<string, unknown>
       return value.require_verified
         ? sprintf(
             /* translators: %d: points awarded per review. */
-            __('%d points, verified purchases only', 'yayloyalty'),
+            _n('%d point, verified purchases only', '%d points, verified purchases only', value.points, 'yayloyalty'),
             value.points,
           )
         : sprintf(
             /* translators: %d: points awarded per review. */
-            __('%d points', 'yayloyalty'),
+            _n('%d point', '%d points', value.points, 'yayloyalty'),
             value.points,
           );
     }
@@ -470,7 +478,7 @@ function worksOut(pointsPerUnit: number, rounding: PurchaseConfig['rounding']): 
 
   return sprintf(
     /* translators: 1: an example order subtotal, formatted as currency; 2: the points it would earn. */
-    __('A %1$s order earns %2$d points', 'yayloyalty'),
+    _n('A %1$s order earns %2$d point', 'A %1$s order earns %2$d points', points, 'yayloyalty'),
     parseWPCurrency(exampleSubtotal),
     points,
   );

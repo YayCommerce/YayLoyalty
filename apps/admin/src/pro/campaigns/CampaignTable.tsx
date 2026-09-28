@@ -1,19 +1,21 @@
-import { useMemo, useRef, useState } from 'react';
+import { Fragment, ReactNode, useMemo, useRef, useState } from 'react';
 import { closestCenter, DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, InfoIcon, Lock, Search } from 'lucide-react';
 import { useNavigate } from 'react-router';
+import { toast } from 'sonner';
 import { __, sprintf } from '@wordpress/i18n';
 
-import { useCampaignsQuery } from '@/lib/queries/campaign.queries';
+import { toastApiError } from '@/lib/api/api';
+import { useCampaignsQuery, useUpdateCampaignStatusMutation } from '@/lib/queries/campaign.queries';
 import { hasPerformancePage } from '@/lib/schema/campaign-performance.schema';
 import {
   Campaign,
   CAMPAIGN_DISPLAY_STATUSES,
   CampaignDisplayStatus,
-  CampaignStatus,
+  LITE_CAMPAIGN_TRIGGERS,
   resolveCampaignDisplayStatus,
 } from '@/lib/schema/campaign.schema';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -41,15 +43,15 @@ import { CampaignArchiveDialog, CampaignBulkArchiveDialog } from './archive/Camp
 import {
   CampaignGroupKey,
   conditionsLabel,
+  findBuiltinCampaign,
   givesLabel,
   scheduleLabel,
   statusLabel,
   triggerGroup,
   triggerLabel,
 } from './campaign-labels';
-import { DUMMY_POINTS_LAST_30_DAYS, hasPointsFigure } from './campaign-points-dummy';
-import { CampaignPointsSummary } from './CampaignPointsSummary';
-import type { CampaignEditorDuplicateSeed } from './editor/CampaignEditor';
+import { CampaignPointsSummary, CampaignPointsSummarySkeleton } from './CampaignPointsSummary';
+import { CampaignStatusBadge } from './CampaignStatusBadge';
 import { CampaignPauseDialog } from './pause/CampaignPauseDialog';
 
 /** Groups larger than this collapse to the default plus this many, highest-priority first. */
@@ -79,8 +81,6 @@ interface DisplayCampaign extends Campaign {
   conditionsLabel: string;
   scheduleLabel: string;
   displayStatus: CampaignDisplayStatus;
-  /** Dummy, client-side only; see campaign-points-dummy.ts. */
-  pointsLast30Days: number | null;
 }
 
 /** One trigger group as rendered; hiddenRows sit behind "Show the other … campaigns". */
@@ -94,13 +94,14 @@ interface CampaignGroup {
 /**
  * Pro's grouped, prioritised campaigns table, reading the same list as
  * BuiltInCampaignList. Presentation strings are derived client-side
- * (toDisplayCampaign); pointsLast30Days is dummy until an endpoint exists.
+ * (toDisplayCampaign); points_issued is the server's own field.
  * Drag-to-reorder changes display order only, never `priority`.
  * `newStore` / `noLiveCampaign` are dev-only preview toggles with no UI
  * control; `newStore` stands in for "has this store ever earned points",
  * which nothing can query yet.
  */
 export function CampaignTable() {
+  const navigate = useNavigate();
   const [newStore] = useState(false);
   const [noLiveCampaign] = useState(false);
 
@@ -127,6 +128,25 @@ export function CampaignTable() {
   const hasActivePurchaseCampaign = rows.some(
     (row) => triggerGroup(row.trigger) === 'purchase' && row.displayStatus === 'active',
   );
+
+  // The one-click fix the "aren't earning points" alert below offers. Read off allRows, never
+  // the toggled/filtered rows: the real built-in, regardless of dev preview state.
+  const defaultPurchaseCampaign = findBuiltinCampaign(allRows, 'purchase');
+  const reactivatePurchaseMutation = useUpdateCampaignStatusMutation(defaultPurchaseCampaign?.id ?? 0);
+
+  async function reactivateDefaultPurchase() {
+    if (!defaultPurchaseCampaign) {
+      return;
+    }
+
+    try {
+      await reactivatePurchaseMutation.mutateAsync('active');
+      toast.success(__('"Points for purchases" is active again.', 'yayloyalty'));
+    } catch (error) {
+      await toastApiError(error, __('Could not switch the campaign back on.', 'yayloyalty'));
+    }
+  }
+
   const showSearch = rows.length > SEARCH_THRESHOLD;
   // Archived stays out entirely unless asked for by name.
   const statusFilteredRows = statusFilter
@@ -253,36 +273,44 @@ export function CampaignTable() {
       <Card>
         <CardContent className="flex flex-col gap-4">
           <div className="flex flex-wrap items-center gap-3">
-            <p className="text-foreground flex-1 text-sm">
-              {newStore ? (
-                __('Three ways customers earn points. Nothing has been awarded yet.', 'yayloyalty')
-              ) : (
-                <>
-                  {sprintf(
-                    /* translators: %d: total number of campaigns, archived ones included. */
-                    __('%d campaigns', 'yayloyalty'),
-                    rows.length,
-                  )}
-                  {archivedCount > 0 && (
-                    <>
-                      {' - '}
-                      <button
-                        type="button"
-                        className="text-foreground hover:underline"
-                        onClick={() => changeStatusFilter('archived')}
-                      >
-                        {sprintf(
-                          /* translators: %d: number of archived campaigns in the list. */
-                          __('%d archived', 'yayloyalty'),
-                          archivedCount,
-                        )}
-                      </button>
-                    </>
-                  )}
-                  {__('. Drag to reorder within a group.', 'yayloyalty')}
-                </>
-              )}
-            </p>
+            {isPending && (
+              <div className="flex-1">
+                <Skeleton className="h-4 w-64" />
+              </div>
+            )}
+
+            {!isPending && (
+              <p className="text-foreground flex-1 text-sm">
+                {newStore ? (
+                  __('Three ways customers earn points. Nothing has been awarded yet.', 'yayloyalty')
+                ) : (
+                  <>
+                    {sprintf(
+                      /* translators: %d: total number of campaigns, archived ones included. */
+                      __('%d campaigns', 'yayloyalty'),
+                      rows.length,
+                    )}
+                    {archivedCount > 0 && (
+                      <>
+                        {' - '}
+                        <button
+                          type="button"
+                          className="text-foreground hover:underline"
+                          onClick={() => changeStatusFilter('archived')}
+                        >
+                          {sprintf(
+                            /* translators: %d: number of archived campaigns in the list. */
+                            __('%d archived', 'yayloyalty'),
+                            archivedCount,
+                          )}
+                        </button>
+                      </>
+                    )}
+                    {__('. Drag to reorder within a group.', 'yayloyalty')}
+                  </>
+                )}
+              </p>
+            )}
 
             {/* Only once scrolling stops being a reasonable way to find one campaign. */}
             {showSearch && (
@@ -321,15 +349,13 @@ export function CampaignTable() {
               </Select>
             )}
 
-            {/* Inert on purpose: create_item() persists for real while the list still reads the
-                dummy fixture, so a created row would never appear here. */}
-            <Button size="sm" onClick={() => {}}>
+            <Button size="sm" onClick={() => navigate('/campaigns/new')}>
               {__('Add campaign', 'yayloyalty')}
             </Button>
           </div>
 
           {/* Not dismissible: the storefront would keep promising points while nothing is awarded. */}
-          {!hasActivePurchaseCampaign && (
+          {!isPending && !isError && !hasActivePurchaseCampaign && (
             <Alert variant="outline" className="gap-y-2">
               <InfoIcon />
               <AlertTitle className="line-clamp-none text-base">
@@ -338,7 +364,7 @@ export function CampaignTable() {
               <AlertDescription className="text-foreground gap-3">
                 <p>
                   {__(
-                    'Your storefront still advertises point earning. Since 6 September, 47 orders have completed and awarded nothing.',
+                    'Your storefront still advertises point earning, but completed orders are awarding nothing right now.',
                     'yayloyalty',
                   )}
                 </p>
@@ -348,15 +374,20 @@ export function CampaignTable() {
                     'yayloyalty',
                   )}
                 </p>
-                <div className="flex flex-wrap items-center gap-3 pt-1">
-                  {/* Inert: no write client/mutation wired yet (routes exist in CampaignRestController). */}
-                  <Button variant="primary" size="sm" onClick={() => {}}>
-                    {__('Switch "Points for purchases" back on', 'yayloyalty')}
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => {}}>
-                    {__('Hide earning messages on the storefront', 'yayloyalty')}
-                  </Button>
-                </div>
+                {defaultPurchaseCampaign && (
+                  <div className="flex flex-wrap items-center gap-3 pt-1">
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      disabled={reactivatePurchaseMutation.isPending}
+                      onClick={reactivateDefaultPurchase}
+                    >
+                      {reactivatePurchaseMutation.isPending
+                        ? __('Switching on…', 'yayloyalty')
+                        : __('Switch "Points for purchases" back on', 'yayloyalty')}
+                    </Button>
+                  </div>
+                )}
               </AlertDescription>
             </Alert>
           )}
@@ -382,7 +413,7 @@ export function CampaignTable() {
             </Alert>
           )}
 
-          {isPending && <Skeleton className="h-64 w-full" />}
+          {isPending && <CampaignTableSkeleton />}
 
           {isError && <p className="text-destructive text-sm">{__('Could not load campaigns.', 'yayloyalty')}</p>}
 
@@ -399,28 +430,16 @@ export function CampaignTable() {
             <div className="overflow-hidden rounded-lg border">
               <div className="overflow-x-auto">
                 <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-8">
-                        <Checkbox
-                          checked={allSelectedState}
-                          onCheckedChange={toggleAllSelected}
-                          disabled={selectableRows.length === 0}
-                          aria-label={__('Select all campaigns', 'yayloyalty')}
-                        />
-                      </TableHead>
-                      <TableHead className="w-6" />
-                      <TableHead>{__('Campaign', 'yayloyalty')}</TableHead>
-                      <TableHead>{__('Trigger', 'yayloyalty')}</TableHead>
-                      <TableHead>{__('Gives', 'yayloyalty')}</TableHead>
-                      <TableHead>{__('Conditions', 'yayloyalty')}</TableHead>
-                      <TableHead>{__('Schedule', 'yayloyalty')}</TableHead>
-                      <TableHead className="text-right">{__('Last 30 days', 'yayloyalty')}</TableHead>
-                      <TableHead className="text-center">{__('Priority', 'yayloyalty')}</TableHead>
-                      <TableHead>{__('Status', 'yayloyalty')}</TableHead>
-                      <TableHead className="w-1" />
-                    </TableRow>
-                  </TableHeader>
+                  <CampaignTableHeader
+                    selectAll={
+                      <Checkbox
+                        checked={allSelectedState}
+                        onCheckedChange={toggleAllSelected}
+                        disabled={selectableRows.length === 0}
+                        aria-label={__('Select all campaigns', 'yayloyalty')}
+                      />
+                    }
+                  />
                   <TableBody>
                     {groups.map((group) => (
                       <CampaignGroupSection
@@ -464,12 +483,11 @@ export function CampaignTable() {
         </CardContent>
       </Card>
 
-      <CampaignPointsSummary rows={rows} />
+      {isPending ? <CampaignPointsSummarySkeleton /> : <CampaignPointsSummary rows={rows} />}
 
       {archiveTarget && (
         <CampaignArchiveDialog
           campaign={archiveTarget}
-          displayStatus={archiveTarget.displayStatus}
           onClose={() => {
             setArchiveTarget(undefined);
             restoreFocus();
@@ -494,7 +512,6 @@ export function CampaignTable() {
       {pauseTarget && (
         <CampaignPauseDialog
           campaign={pauseTarget}
-          displayStatus={pauseTarget.displayStatus}
           onClose={() => {
             setPauseTarget(undefined);
             restoreFocus();
@@ -502,6 +519,94 @@ export function CampaignTable() {
         />
       )}
     </>
+  );
+}
+
+/** The one column header row; the loading table renders it too, so the columns never shift when data lands. */
+function CampaignTableHeader({ selectAll }: { selectAll: ReactNode }) {
+  return (
+    <TableHeader>
+      <TableRow>
+        <TableHead className="w-8">{selectAll}</TableHead>
+        <TableHead className="w-6" />
+        <TableHead>{__('Campaign', 'yayloyalty')}</TableHead>
+        <TableHead>{__('Trigger', 'yayloyalty')}</TableHead>
+        <TableHead>{__('Gives', 'yayloyalty')}</TableHead>
+        <TableHead>{__('Conditions', 'yayloyalty')}</TableHead>
+        <TableHead>{__('Schedule', 'yayloyalty')}</TableHead>
+        <TableHead className="text-right">{__('Points issued', 'yayloyalty')}</TableHead>
+        <TableHead className="text-center">{__('Priority', 'yayloyalty')}</TableHead>
+        <TableHead>{__('Status', 'yayloyalty')}</TableHead>
+        <TableHead className="w-1" />
+      </TableRow>
+    </TableHeader>
+  );
+}
+
+/** Every store has at least the built-ins, one per Lite trigger's group; the placeholder draws exactly that. */
+const SKELETON_GROUPS: readonly CampaignGroupKey[] = LITE_CAMPAIGN_TRIGGERS.map(triggerGroup);
+
+/** Mirrors the loaded table: real header, a group band and one row per group, cell for cell. */
+function CampaignTableSkeleton() {
+  return (
+    <div className="overflow-hidden rounded-lg border">
+      <div className="overflow-x-auto">
+        <Table>
+          <CampaignTableHeader
+            selectAll={<Checkbox disabled aria-label={__('Select all campaigns', 'yayloyalty')} />}
+          />
+          <TableBody>
+            {SKELETON_GROUPS.map((key) => (
+              <Fragment key={key}>
+                <TableRow className="bg-secondary hover:bg-secondary">
+                  <TableCell colSpan={COLUMN_COUNT} className="h-9 py-0">
+                    <span className="text-xs font-semibold tracking-wide uppercase">{GROUP_LABELS[key]}</span>
+                  </TableCell>
+                </TableRow>
+                <TableRow className="hover:bg-transparent">
+                  <TableCell>
+                    <Checkbox disabled aria-hidden />
+                  </TableCell>
+                  <TableCell className="px-1">
+                    <GripVertical className="text-muted-foreground/40 size-4" />
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1.5">
+                      <Skeleton className="h-4 w-36" />
+                      <Skeleton className="h-5 w-16 rounded-full" />
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-3 w-24" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-3 w-20" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-3 w-20" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-3 w-20" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="ml-auto h-3 w-10" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="mx-auto h-4 w-5" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-5 w-14 rounded-full" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="size-6" />
+                  </TableCell>
+                </TableRow>
+              </Fragment>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
   );
 }
 
@@ -586,6 +691,8 @@ function CampaignGroupSection({
         collisionDetection={closestCenter}
         modifiers={[restrictToVerticalAxis]}
         onDragEnd={(event) => onReorder(visibleRows, event)}
+        // The screen-reader announcements are <div>s; rendered here they would sit inside <tbody>.
+        accessibility={{ container: document.body }}
       >
         <SortableContext items={visibleRows.map((row) => row.id)} strategy={verticalListSortingStrategy}>
           {visibleRows.map((row) => (
@@ -728,13 +835,11 @@ function SortableCampaignRow({
       <TableCell className="text-muted-foreground text-xs">{row.conditionsLabel}</TableCell>
       <TableCell className="text-muted-foreground text-xs">{row.scheduleLabel}</TableCell>
       <TableCell className="text-muted-foreground text-right text-xs tabular-nums">
-        {hasPointsFigure(row.displayStatus) ? <PointsValue value={row.pointsLast30Days ?? 0} /> : '—'}
+        <PointsValue value={row.points_issued} />
       </TableCell>
       <TableCell className="text-center text-sm font-semibold tabular-nums">{row.priority}</TableCell>
       <TableCell>
-        <Badge variant="outline" className="uppercase">
-          {statusLabel(row.displayStatus)}
-        </Badge>
+        <CampaignStatusBadge status={row.displayStatus} />
       </TableCell>
       <TableCell className="text-right">
         <DropdownMenu>
@@ -753,22 +858,9 @@ function SortableCampaignRow({
                 {__('View performance', 'yayloyalty')}
               </DropdownMenuItem>
             )}
-            {/* Seeds the editor via router state rather than creating a row: a real duplicate would
-                vanish from the fixture-backed list on the next fetch. Router state so it is gone on
-                reload, since nothing was created for a reload to restore. */}
-            <DropdownMenuItem
-              onSelect={() =>
-                navigate(`/campaigns/${row.id}/edit`, {
-                  state: {
-                    duplicateSeed: {
-                      /* translators: %s: the name of the campaign being duplicated. */
-                      name: sprintf(__('%s (copy)', 'yayloyalty'), row.name),
-                      status: 'draft' as CampaignStatus,
-                    } satisfies CampaignEditorDuplicateSeed,
-                  },
-                })
-              }
-            >
+            {/* Create mode, seeded from this campaign — CampaignCreator's duplicateFrom path.
+                A real POST on Save; this campaign itself is never written to. */}
+            <DropdownMenuItem onSelect={() => navigate(`/campaigns/new/scratch?from=${row.id}`)}>
               {__('Duplicate', 'yayloyalty')}
             </DropdownMenuItem>
             {/* Shown for built-ins too, as their substitute for Archive. Deferred so the dropdown closes first. */}
@@ -846,7 +938,7 @@ function campaignCountLabel(count: number): string {
   );
 }
 
-/** Derives every presentation string from the real Campaign fields; generic across all triggers. */
+/** Derives every presentation string from the real Campaign fields; generic across all triggers. points_issued/is_deletable ride along via the spread — they're already on Campaign. */
 function toDisplayCampaign(campaign: Campaign): DisplayCampaign {
   return {
     ...campaign,
@@ -854,6 +946,5 @@ function toDisplayCampaign(campaign: Campaign): DisplayCampaign {
     conditionsLabel: conditionsLabel(campaign.conditions),
     scheduleLabel: scheduleLabel(campaign.starts_at, campaign.ends_at),
     displayStatus: resolveCampaignDisplayStatus(campaign.status, campaign.starts_at, campaign.ends_at),
-    pointsLast30Days: DUMMY_POINTS_LAST_30_DAYS[campaign.id] ?? null,
   };
 }
