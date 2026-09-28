@@ -1,11 +1,17 @@
 <?php
 namespace YayLoyalty\Engine\Earning;
 
+use YayLoyalty\Engine\Points\CapPolicy;
 use YayLoyalty\Engine\Points\Context;
 use YayLoyalty\Engine\Points\PointsEngine;
 use YayLoyalty\Engine\Points\Result;
+use YayLoyalty\Engine\Points\Triggers\Registry;
 use YayLoyalty\Models\LedgerEntry;
+use YayLoyalty\Repositories\CampaignRepository;
+use YayLoyalty\Repositories\CustomerRepository;
+use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Services\LedgerService;
+use YayLoyalty\Utils\Log;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -45,8 +51,53 @@ final class EarningService {
      * appends (Pro). Listeners are registered by the caller, not here.
      */
     public static function build(): self {
-        // TODO(F01-4): build a CampaignRepository, the PointsEngine from Registry::with_lite_handlers plus a CapPolicy, a LedgerService from the two repositories, a PendingPoints, and the gate list as ProgramGate followed by whatever the yayloyalty_earning_gates filter appends.
-        throw new \RuntimeException( 'Not implemented' );
+        $campaigns = new CampaignRepository();
+        $customers = new CustomerRepository();
+
+        $engine = new PointsEngine( Registry::with_lite_handlers( $campaigns ), $campaigns, new CapPolicy() );
+        $ledger = new LedgerService( new LedgerRepository(), $customers );
+
+        return new self( $engine, $ledger, new PendingPoints( $customers ), self::gates() );
+    }
+
+    /**
+     * The `yayloyalty_earning_gates` filter's result, ProgramGate always
+     * first: Pro appends, it never replaces.
+     *
+     * @return Gate[]
+     */
+    private static function gates(): array {
+        $default = [ new ProgramGate() ];
+
+        /**
+         * Gates appended after ProgramGate. Internal seam, not a public API.
+         *
+         * @param Gate[] $gates
+         */
+        $gates = apply_filters( 'yayloyalty_earning_gates', $default );
+
+        if ( ! is_array( $gates ) ) {
+            Log::warning( 'EarningService', 'yayloyalty_earning_gates returned a non-array; using the default gate list' );
+
+            return $default;
+        }
+
+        $valid = array_values(
+            array_filter(
+                $gates,
+                static function ( $gate ) {
+                    if ( $gate instanceof Gate ) {
+                        return true;
+                    }
+
+                    Log::warning( 'EarningService', 'yayloyalty_earning_gates returned a non-Gate value (' . ( is_object( $gate ) ? get_class( $gate ) : gettype( $gate ) ) . '); ignoring it' );
+
+                    return false;
+                }
+            )
+        );
+
+        return empty( $valid ) ? $default : $valid;
     }
 
     /**

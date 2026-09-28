@@ -6,6 +6,20 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
 
 ## Unreleased
 
+### Added — Earning listeners connected to their WordPress/WooCommerce events (2026-09-28)
+
+- `EarningService::build()` is now the real composition root (campaigns, customers, `PointsEngine`,
+  `LedgerService`, `PendingPoints`, gates — `ProgramGate` first, then a validated
+  `yayloyalty_earning_gates` filter result), called from `YayLoyalty::__construct()` after Pro boots.
+- `OrderListener` attaches `woocommerce_order_status_changed` and `woocommerce_new_order`, both routed
+  through one status table (award set first, then stage/cancel/refund-zero/no-op cases).
+  `ReviewListener` attaches `comment_post` and `transition_comment_status`, filtered to approved
+  product reviews. `SignupListener` attaches `user_register`.
+- Handler bodies (`on_stageable`, `on_awardable`, `on_cancelled`, `on_refunded`, `on_approved`,
+  `on_unapproved`, `on_registered`) are still no-op stubs — **no points are awarded yet**. Each routing
+  entry point wraps its call to one of them in a removable `try`/`catch` scaffold.
+- **Tests:** +5 unit tests (`ListenerRegistrationTest`) covering hook attachment and the DI graph.
+
 ### Added — Email Settings page: loyalty transactional emails as WooCommerce email classes (2026-09-24)
 
 - **Email registration:** Each loyalty email is a `WC_Email` subclass registered via WooCommerce's

@@ -22,11 +22,12 @@ two (points back out) is designed here but has no corresponding code yet — do 
 | `LedgerService::earn()` | `Services/LedgerService.php` | **Implemented** |
 | `LedgerService::redeem()` | `Services/LedgerService.php` | Stub (`TODO(F08)`) |
 | `LedgerService::refund_earn()` / `refund_redeem()` | `Services/LedgerService.php` | **Does not exist.** No refund entry point has been added to the ledger writer yet |
-| `EarningService::preview()` / `award()` / `build()` | `Engine/Earning/EarningService.php` | Stub |
+| `EarningService::build()` | `Engine/Earning/EarningService.php` | **Implemented** |
+| `EarningService::preview()` / `award()` | `Engine/Earning/EarningService.php` | Stub |
 | `PendingPoints::stage()` / `release()` / `mark_awarded()` | `Engine/Earning/PendingPoints.php` | Stub |
 | `ProgramGate::check()` | `Engine/Earning/ProgramGate.php` | Stub |
-| `OrderListener` (all methods, incl. `register()`) | `Engine/Earning/Listeners/OrderListener.php` | Stub |
-| `ReviewListener`, `SignupListener` | same directory | Stub |
+| `OrderListener::register()` / `on_status_changed()` / `on_order_created()` / `route()` / `award_statuses()` | `Engine/Earning/Listeners/OrderListener.php` | **Implemented** — hooks only; `on_stageable()`/`on_awardable()`/`on_cancelled()`/`on_refunded()` bodies still Stub |
+| `ReviewListener`, `SignupListener` — `register()` and their hook adapters | same directory | **Implemented** — hooks only; `on_approved()`/`on_unapproved()`/`on_registered()` bodies still Stub |
 | `CommitWriter::commit()` (redemption) | `Engine/Redemption/CommitWriter.php` | Stub — its own docblock calls the cancel/refund side "Zone 3 ... undesigned" |
 
 Every stub above already carries a docblock that states its intended contract; this document and
