@@ -2,6 +2,8 @@
 namespace YayLoyalty\Engine\Earning\Listeners;
 
 use YayLoyalty\Engine\Earning\EarningService;
+use YayLoyalty\Engine\Points\ContextFactory;
+use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Utils\Log;
 
 defined( 'ABSPATH' ) || exit;
@@ -9,7 +11,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * The registration event family: one award per user, keyed
  * "earn:{id}:user:{id}:signup", so a re-fired user_register is a duplicate.
- * No preview and no pending: a signup has nothing to stage.
+ * No pending: a signup has nothing to stage.
  */
 final class SignupListener {
 
@@ -24,23 +26,31 @@ final class SignupListener {
         add_action( 'user_register', [ $this, 'on_user_register' ], 10, 1 );
     }
 
-    /**
-     * `user_register` adapter. Temporary: on_registered()'s signature already
-     * matches this hook, so once it is implemented register() attaches it
-     * directly and this adapter is deleted.
-     */
+    /** `user_register` adapter: the catch keeps a scoring failure from breaking the registration. */
     public function on_user_register( int $user_id ): void {
         Log::debug( 'SignupListener', 'user #' . $user_id . ' registered' );
 
         try {
             $this->on_registered( $user_id );
-        } catch ( \RuntimeException $e ) {
-            // TODO(step-3): remove this adapter once on_registered() is implemented; register() then attaches on_registered directly.
-            Log::warning( 'SignupListener', 'award skipped for user #' . $user_id . ': ' . $e->getMessage() );
+        } catch ( \Throwable $e ) { // A listener must never break a registration.
+            Log::error( 'SignupListener', 'signup failed for user #' . $user_id . ': ' . $e->getMessage() );
         }
     }
 
+    /**
+     * Logs which signup campaign the user would earn from, how many points,
+     * or why none. Writes nothing. Scored at the registration time.
+     */
     public function on_registered( int $user_id ): void {
-        // TODO(F01-4): ContextFactory::from_user( user_id, user_registered ); service->award( SIGNUP, ctx ).
+        $user = get_userdata( $user_id );
+
+        if ( ! $user ) {
+            return;
+        }
+
+        $result = $this->service->preview( CampaignTrigger::SIGNUP, ContextFactory::from_user( $user_id, (string) $user->user_registered ) );
+
+        PreviewLog::write( 'SignupListener', 'user #' . $user_id . ' signup', $result );
+        // TODO(F01-4): replace the preview with service->award( SIGNUP, ctx ).
     }
 }

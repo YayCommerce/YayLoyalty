@@ -188,20 +188,9 @@ final class OrderListener {
             return;
         }
 
-        $result   = $this->service->preview( CampaignTrigger::PURCHASE, ContextFactory::from_order( $order ) );
-        $campaign = $result->get_campaign();
+        $result = $this->service->preview( CampaignTrigger::PURCHASE, ContextFactory::from_order( $order ) );
 
-        Log::debug(
-            'OrderListener',
-            sprintf(
-                'order #%d %s preview: campaign=%s points=%d reason=%s',
-                $order_id,
-                $moment,
-                $campaign ? $campaign->get_id() : 'none',
-                $result->get_points(),
-                $result->get_reason() ? $result->get_reason() : 'awarded'
-            )
-        );
+        PreviewLog::write( 'OrderListener', 'order #' . $order_id . ' ' . $moment, $result );
     }
 
     /** Pending release for an order that will never award; also restores a redemption still applied to it. */

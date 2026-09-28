@@ -114,11 +114,41 @@ final class ContextFactory {
     /**
      * The review award Context: occurred_at is the comment's GMT date;
      * `extra[ ReviewHandler::EXTRA_VERIFIED_PURCHASE ]` is set from the
-     * comment's `verified` meta so require_verified can be decided purely.
+     * comment's `verified` meta (WooCommerce writes it at review time) so
+     * require_verified can be decided purely. No lines: the reviewed product
+     * is not an order line.
+     *
+     * @throws \InvalidArgumentException When the comment has no GMT date (imported rows); never now().
      */
-    public static function from_comment( \WP_Comment $comment ): Context { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(F01-4): comment_ID, user_id, comment_date_gmt, verified meta via get_comment_meta( 'verified' ); product from comment_post_ID for one_per_product.
-        throw new \RuntimeException( 'Not implemented' );
+    public static function from_comment( \WP_Comment $comment ): Context {
+        $user_id     = (int) $comment->user_id;
+        $occurred_at = (string) $comment->comment_date_gmt;
+
+        if ( ! Dates::is_valid( $occurred_at ) || 0 === strpos( $occurred_at, '0000' ) ) {
+            throw new \InvalidArgumentException(
+                sprintf( 'YayLoyalty: comment %d has no GMT date to evaluate at.', (int) $comment->comment_ID )
+            );
+        }
+
+        $currency = get_woocommerce_currency();
+
+        return new Context(
+            $user_id > 0 ? $user_id : null,
+            $occurred_at,
+            $currency,
+            self::base_rate( $currency, null ),
+            [],
+            0.0,
+            0.0,
+            0.0,
+            [],
+            self::user_roles( $user_id ),
+            null,
+            (int) $comment->comment_ID,
+            0,
+            [ Triggers\ReviewHandler::EXTRA_VERIFIED_PURCHASE => (bool) get_comment_meta( (int) $comment->comment_ID, 'verified', true ) ],
+            self::customer_facts( $user_id, $occurred_at )
+        );
     }
 
     /**
