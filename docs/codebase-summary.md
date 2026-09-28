@@ -183,14 +183,14 @@ Filters (public API): `yayloyalty_campaign_candidates`, `yayloyalty_campaign_mat
 
 | Class | Role |
 |---|---|
-| `EarningService` | `build()` composition root (constructs `LedgerService`, see `code-standards.md` §8); `preview( $trigger, Context ): Result`; `award( $trigger, Context ): Outcome`. Gate chain iteration is real; bodies are stubs |
+| `EarningService` | `build()` composition root (constructs `LedgerService`, see `code-standards.md` §8) — **implemented**, called from `YayLoyalty::__construct()`; `preview( $trigger, Context ): Result`; `award( $trigger, Context ): Outcome`. Gate chain iteration is real; `preview()`/`award()` bodies are stubs |
 | `Gate` + `ProgramGate` | `check( $trigger, Context ): ?string` — a reason to skip, or null. `ProgramGate` is the one place on the path that reads settings (`excluded_roles`) and user meta (`_yayloyalty_opted_out`) |
 | `IdempotencyKey` | `compose( type, user_id, reference_type, reference_id, trigger )` → `earn:7:order:1234:purchase`; the ledger's single-column UNIQUE guard |
 | `Outcome` | `awarded( entry, evaluation )`, `skipped( reason )`, `duplicate( existing )` — a duplicate insert is a normal return, never an exception |
 | `PendingPoints` | `stage()` / `release()` / `mark_awarded()` over order meta `_yayloyalty_points_pending` / `_yayloyalty_points_released` and `CustomerRepository::apply_pending_delta()` (all stubs) |
-| `Listeners\OrderListener`, `SignupListener`, `ReviewListener` | One per event family; `register()` binds the WooCommerce / WP hooks, handlers only build a `Context` and call the service. Not registered at boot until their bodies exist |
+| `Listeners\OrderListener`, `SignupListener`, `ReviewListener` | One per event family; `register()` binds the WooCommerce / WP hooks — **implemented and registered at boot** (`YayLoyalty::__construct()` → `EarningService::build()`). Handlers still only log and no-op: `on_stageable()`/`on_awardable()`/`on_cancelled()`/`on_refunded()`/`on_approved()`/`on_registered()` bodies are stubs |
 
-**Scaffold status:** real: `IdempotencyKey`, `Outcome`, `CustomerFacts`, the gate-chain loop. Stubs (`TODO(F01-4)`): every listener body, `preview()`/`award()`, `PendingPoints`, `LedgerService::earn()`, `LedgerRepository::find_by_idempotency_key()`/`points_earned_today()`, `Installer::drop_index_if_exists()` (drops the former `uniq_ledger_event`). Refund / clawback attaches at `OrderListener::on_refunded()` and `ReviewListener::on_unapproved()` and is not designed yet.
+**Scaffold status:** real: `IdempotencyKey`, `Outcome`, `CustomerFacts`, the gate-chain loop, `LedgerService::earn()`, `LedgerRepository::find_by_idempotency_key()`. Stubs (`TODO(F01-4)`): every listener **handler** body (`on_stageable`/`on_awardable`/`on_cancelled`/`on_refunded`/`on_approved`/`on_unapproved`/`on_registered`), `preview()`/`award()`, `PendingPoints`, `LedgerRepository::points_earned_today()`, `Installer::drop_index_if_exists()` (drops the former `uniq_ledger_event`). `register()` and the routing entry points (`route()`, `award_statuses()`) are implemented and wired at boot. Refund / clawback attaches at `OrderListener::on_refunded()` and `ReviewListener::on_unapproved()` and is not designed yet.
 
 ### Reward engine (includes/Engine/Rewards/) — ZONE 1, the quote
 
@@ -311,14 +311,14 @@ Lite registers 3 transactional loyalty emails; Pro adds 9 more. Each is a `WC_Em
 
 ## Request Flows
 
-### Order Award → Ledger Entry (Scaffolded, not wired at boot)
+### Order Award → Ledger Entry (listeners wired; award bodies still scaffold)
 
 ```
-[SCAFFOLD — shape is real, bodies are TODO(F01-4); listeners are not registered from YayLoyalty::__construct() yet]
+[Listeners registered from YayLoyalty::__construct() (2026-09-28); everything from on_stageable()/on_awardable() downward is still TODO(F01-4)]
 
 WooCommerce order created / reaches award status
   ↓
-Engine\Earning\Listeners\OrderListener::on_created() / on_awardable()
+Engine\Earning\Listeners\OrderListener::on_status_changed() / on_order_created()  →  route()  →  on_stageable() / on_awardable()
   ↓
 ContextFactory::from_order( $order, LedgerRepository::points_earned_today() )   ← the only WooCommerce read; occurred_at = order creation date
   ↓
