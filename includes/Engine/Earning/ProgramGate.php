@@ -2,6 +2,7 @@
 namespace YayLoyalty\Engine\Earning;
 
 use YayLoyalty\Engine\Points\Context;
+use YayLoyalty\Helpers\SettingsHelper;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -21,8 +22,27 @@ final class ProgramGate implements Gate {
     public const REASON_OPTED_OUT      = 'opted_out';
     public const REASON_EXCLUDED_ROLE  = 'excluded_role';
 
-    public function check( string $trigger, Context $ctx ): ?string {
-        // TODO(F01-4): SettingsHelper general.enabled false → REASON_PROGRAM_PAUSED; null user_id → REASON_NO_CUSTOMER; META_OPTED_OUT truthy → REASON_OPTED_OUT; any of $ctx->get_user_roles() in general.excluded_roles → REASON_EXCLUDED_ROLE; else null.
-        throw new \RuntimeException( 'Not implemented' );
+    public function check( string $trigger, Context $ctx ): ?string { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- the rules apply to every trigger.
+        $general = SettingsHelper::get_settings()['general'];
+
+        if ( ! $general['enabled'] ) {
+            return self::REASON_PROGRAM_PAUSED;
+        }
+
+        $user_id = $ctx->get_user_id();
+
+        if ( null === $user_id ) {
+            return self::REASON_NO_CUSTOMER;
+        }
+
+        if ( get_user_meta( $user_id, self::META_OPTED_OUT, true ) ) {
+            return self::REASON_OPTED_OUT;
+        }
+
+        if ( array_intersect( $ctx->get_user_roles(), $general['excluded_roles'] ) ) {
+            return self::REASON_EXCLUDED_ROLE;
+        }
+
+        return null;
     }
 }
