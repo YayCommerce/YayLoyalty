@@ -78,7 +78,7 @@ final class ContextFactory {
                 Context::EXTRA_BILLING_COUNTRY  => (string) $order->get_billing_country(),
                 Context::EXTRA_SHIPPING_COUNTRY => (string) $order->get_shipping_country(),
             ],
-            self::customer_facts( $user_id, $occurred_at, $order_id )
+            static fn() => self::customer_facts( $user_id, $occurred_at, $order_id )
         );
     }
 
@@ -107,7 +107,7 @@ final class ContextFactory {
             null,
             0,
             [],
-            self::customer_facts( $user_id, $registered_at )
+            static fn() => self::customer_facts( $user_id, $registered_at )
         );
     }
 
@@ -124,7 +124,7 @@ final class ContextFactory {
         $user_id     = (int) $comment->user_id;
         $occurred_at = (string) $comment->comment_date_gmt;
 
-        if ( ! Dates::is_valid( $occurred_at ) || 0 === strpos( $occurred_at, '0000' ) ) {
+        if ( ! Dates::is_valid( $occurred_at ) ) {
             throw new \InvalidArgumentException(
                 sprintf( 'YayLoyalty: comment %d has no GMT date to evaluate at.', (int) $comment->comment_ID )
             );
@@ -147,18 +147,18 @@ final class ContextFactory {
             (int) $comment->comment_ID,
             0,
             [ Triggers\ReviewHandler::EXTRA_VERIFIED_PURCHASE => (bool) get_comment_meta( (int) $comment->comment_ID, 'verified', true ) ],
-            self::customer_facts( $user_id, $occurred_at )
+            static fn() => self::customer_facts( $user_id, $occurred_at )
         );
     }
 
     /**
      * The customer facts conditions compare against, as of $as_of, so the
-     * evaluator can stay pure. Null for a guest, and null when no conditions
-     * evaluator is attached (Lite): nothing would read them, so Lite pays no
-     * order query. An attached evaluator that returns null still costs the read.
+     * evaluator can stay pure. Null for a guest. The from_*() factories pass
+     * this as a loader, so it runs only when a history condition is evaluated
+     * (never in Lite, which has no evaluator).
      */
     public static function customer_facts( ?int $user_id, string $as_of, ?int $exclude_order_id = null ): ?CustomerFacts {
-        if ( null === $user_id || $user_id < 1 || ! has_filter( PointsEngine::CONDITIONS_EVALUATOR_FILTER ) ) {
+        if ( null === $user_id || $user_id < 1 ) {
             return null;
         }
 

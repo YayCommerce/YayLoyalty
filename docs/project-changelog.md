@@ -6,6 +6,30 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
 
 ## Unreleased
 
+### Changed — Order events now find the eligible campaign (preview, debug log only) (2026-09-28)
+
+- `OrderListener::on_stageable()` and `on_awardable()` call `preview_and_log()`, which calls `EarningService::preview()` with the order context and logging the result (campaign id or "none", points, reason) to debug. No writes; preview only.
+- `SignupListener::on_registered()` and `ReviewListener::on_approved()` preview the signup / review trigger the same way (`ContextFactory::from_user()` at registration time, `from_comment()` at the comment date with the verified-purchase meta) and log through the shared `Listeners\PreviewLog`. No writes.
+- `ProgramGate::check()` is now implemented: evaluates paused status, no customer, opt-out meta, and excluded roles; returns a reason string or null.
+- `ContextFactory::customer_facts()` is implemented: calls `CustomerFactsReader::read()` which materializes `CustomerFacts`, reading paid orders created strictly before the event's `occurred_at` and excluding the order being evaluated; `lifetime_points` is `LedgerRepository::lifetime_earned_before()` — the `lifetime_earned` rule over ledger rows created before `occurred_at`, so the event's own award never feeds it. The `from_*()` factories hand it to the `Context` as a loader, run on the first `get_customer_facts()`: an event whose campaigns have no `lifetime_points` / `order_count` / `lifetime_spend` condition reads nothing, and several such conditions read once.
+- **Behaviour changes:** `ConditionsEvaluator` is a pure comparison against the Context. `product_in_cart` and `category_in_cart` read this order's line items, not the customer's purchase history. `currency`, `country` and `payment_method` are now evaluated from the order (previously `unsupported_condition_type`). `no_customer` (guest) and `needs_order` (no order, e.g. the admin preview) are new condition reasons. `order_count` / `lifetime_spend` count paid orders created before this one, with no 100-order scan cap. "Paid" orders are those in the set `general.award_statuses`, read from `SettingsHelper::award_statuses()` — one owner, no hard-coded list.
+- Step-2 catches (award and stage handlers) now catch `\Throwable` and log with `Log::error()` to never break an order save — these are real unhandled exceptions, always logged.
+- **Tests:** `composer test` runs 304 unit tests, 54 incomplete (earning/services/redemption specification). New tests: `tests/unit/Pro/ConditionsEvaluatorTest.php`, `tests/unit/Earning/ProgramGateTest.php`, `tests/integration/Engine/CustomerFactsReaderTest.php`, `tests/integration/Repositories/LedgerLifetimeEarnedBeforeTest.php`.
+
+### Added — Earning listeners connected to their WordPress/WooCommerce events (2026-09-28)
+
+- `EarningService::build()` is now the real composition root (campaigns, customers, `PointsEngine`,
+  `LedgerService`, `PendingPoints`, gates — `ProgramGate` first, then a validated
+  `yayloyalty_earning_gates` filter result), called from `YayLoyalty::__construct()` after Pro boots.
+- `OrderListener` attaches `woocommerce_order_status_changed` and `woocommerce_new_order`, both routed
+  through one status table (award set first, then stage/cancel/refund-zero/no-op cases).
+  `ReviewListener` attaches `comment_post` and `transition_comment_status`, filtered to approved
+  product reviews. `SignupListener` attaches `user_register`.
+- Handler bodies (`on_stageable`, `on_awardable`, `on_cancelled`, `on_refunded`, `on_approved`,
+  `on_unapproved`, `on_registered`) are still no-op stubs — **no points are awarded yet**. Each routing
+  entry point wraps its call to one of them in a removable `try`/`catch` scaffold.
+- **Tests:** +5 unit tests (`ListenerRegistrationTest`) covering hook attachment and the DI graph.
+
 ### Added & Changed — Campaign CRUD end to end: create, update, archive, delete, performance analytics (2026-09-25)
 
 - **Campaign create:** `/campaigns/new` shows a template chooser (`CampaignTemplatePicker.tsx`, three built-in templates: purchase/signup/review); POST `/campaigns` persists to real database. Lite shows read-only built-in cards; Pro shows the picker and form.

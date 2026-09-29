@@ -61,7 +61,7 @@ final class Context {
     /** @var array<string, mixed> */
     private $extra;
 
-    /** @var CustomerFacts|null Null for a guest, or for a preview that did not read them. */
+    /** @var CustomerFacts|\Closure|null A Closure is the loader, replaced by its result on first read. */
     private $customer_facts;
 
     /**
@@ -69,6 +69,9 @@ final class Context {
      * @param string[]             $coupon_codes
      * @param string[]             $user_roles
      * @param array<string, mixed> $extra
+     * @param CustomerFacts|\Closure|null $customer_facts The facts, or a loader returning ?CustomerFacts,
+     *                                                   run on the first get_customer_facts() so an
+     *                                                   event no history condition asks about reads nothing.
      */
     public function __construct(
         ?int $user_id,
@@ -85,8 +88,12 @@ final class Context {
         ?int $comment_id = null,
         int $points_earned_today = 0,
         array $extra = [],
-        ?CustomerFacts $customer_facts = null
+        $customer_facts = null
     ) {
+        if ( null !== $customer_facts && ! $customer_facts instanceof CustomerFacts && ! $customer_facts instanceof \Closure ) {
+            throw new \InvalidArgumentException( 'YayLoyalty: customer_facts must be CustomerFacts, a Closure or null.' );
+        }
+
         $this->user_id              = $user_id;
         $this->occurred_at          = $occurred_at;
         $this->currency             = $currency;
@@ -170,6 +177,11 @@ final class Context {
 
     /** What conditions may compare against; null means "no customer facts", which order-only conditions can still match. */
     public function get_customer_facts(): ?CustomerFacts {
+        if ( $this->customer_facts instanceof \Closure ) {
+            $facts                = ( $this->customer_facts )();
+            $this->customer_facts = $facts instanceof CustomerFacts ? $facts : null;
+        }
+
         return $this->customer_facts;
     }
 

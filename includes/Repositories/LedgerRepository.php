@@ -136,6 +136,32 @@ class LedgerRepository extends AbstractRepository {
     }
 
     /**
+     * A user's lifetime_earned as it stood before $before: the signed SUM of
+     * lifetime_earned_types() rows created strictly earlier. The same rule as
+     * customers.lifetime_earned, frozen at a moment, so an event is scored
+     * without the points it (or anything after it) produced.
+     *
+     * @param string $before UTC MySQL datetime; a row at this exact second is excluded.
+     */
+    public function lifetime_earned_before( int $user_id, string $before ): int {
+        global $wpdb;
+
+        $types = LedgerType::lifetime_earned_types();
+        $in    = Sql::in_placeholders( $types );
+
+        // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $in carries a placeholder list; every value is bound below.
+        $sum = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+            $wpdb->prepare(
+                'SELECT COALESCE(SUM(points), 0) FROM `' . esc_sql( $this->table() ) . "` WHERE user_id = %d AND created_at < %s AND type IN ({$in})",
+                array_merge( [ $user_id, $before ], $types )
+            )
+        );
+        // phpcs:enable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
+
+        return (int) $sum;
+    }
+
+    /**
      * The one definition of an "issued" ledger row — a positive row of an earn
      * type — as a prepared-SQL fragment plus the values it binds. Every SUM or
      * COUNT of points issued (campaign list, performance page, dashboard tiles

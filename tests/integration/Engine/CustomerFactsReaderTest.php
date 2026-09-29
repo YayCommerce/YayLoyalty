@@ -12,8 +12,8 @@ use YayLoyalty\Utils\Dates;
  * Runs on the site's table prefix, not the scratch one: WooCommerce's HPOS
  * tables are named from $wpdb->prefix at query time, so under `ylit_` no
  * order could be stored. Every order and the user are force-deleted in
- * tearDown(); the only plugin-table access is read()'s customers lookup for
- * this fresh user, which finds no row. The order hooks are detached while it
+ * tearDown(); the only plugin-table access is read()'s ledger sum for this
+ * fresh user, which finds no row. The order hooks are detached while it
  * runs, so the earning listener cannot write the site's loyalty tables.
  */
 final class CustomerFactsReaderTest extends IntegrationTestCase {

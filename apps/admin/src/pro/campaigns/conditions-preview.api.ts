@@ -9,7 +9,7 @@ export const conditionResultSchema = z.object({
   operator: z.string(),
   value: z.unknown(),
   matched: z.boolean(),
-  /** Why it matched or did not: matched | no_overlap | out_of_range | unknown_condition_type | … */
+  /** Why it matched or did not: ConditionsEvaluator's reason codes (matched | no_overlap | out_of_range | no_customer | needs_order | malformed_value | …), labelled by describeReason(). */
   reason: z.string(),
   /** Present for numeric conditions: the customer's actual figure. */
   actual: z.number().optional(),
