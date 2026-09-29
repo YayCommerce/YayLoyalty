@@ -25,16 +25,18 @@ class SettingsHelper {
                 // Role slugs that never earn; read by Engine\Earning\ProgramGate.
                 'excluded_roles'        => [],
                 /*
-                 * TODO(F01-4): 'award_statuses' => [ 'processing', 'completed' ] as a
-                 * slug_list, read through award_statuses(). Paid is
-                 * a set: a fully virtual order never passes through processing, and many
-                 * physical stores stop there. The UI offers payment received (both),
-                 * order completed (completed only) and a custom multi-select built from
+                 * Bare order-status slugs that count as paid; read through award_statuses().
+                 * Paid is a set: a fully virtual order never passes through processing, and
+                 * many physical stores stop there.
+                 *
+                 * TODO(F01-4): the UI offers payment received (both), order completed
+                 * (completed only) and a custom multi-select built from
                  * wc_get_order_statuses() at render time, so statuses another plugin
                  * registers appear without a release here. Also reserve 'hold_days' => 0
                  * for a holding period before pending is released — shape only, nothing
                  * reads it.
                  */
+                'award_statuses'        => [ 'processing', 'completed' ],
             ],
             'advanced' => [
                 // 0 = unlimited. Read via Capabilities::ceiling().
@@ -59,6 +61,7 @@ class SettingsHelper {
                 'points_label_singular' => 'text',
                 'points_label_plural'   => 'text',
                 'excluded_roles'        => 'slug_list',
+                'award_statuses'        => 'slug_list',
             ],
             'advanced' => [
                 'adjustment_ceiling' => 'int',
@@ -69,18 +72,6 @@ class SettingsHelper {
         ];
     }
 
-    /**
-     * Order statuses that mean paid (general.award_statuses), read fresh each
-     * call so a merchant's change applies to the next order event.
-     *
-     * @return string[]
-     */
-    public static function award_statuses(): array {
-        $statuses = self::get_settings()['general']['award_statuses'] ?? [];
-
-        return ( is_array( $statuses ) && ! empty( $statuses ) ) ? array_values( array_map( 'strval', $statuses ) ) : [ 'processing', 'completed' ];
-    }
-
     /** Stored settings merged over defaults, sanitised for output. */
     public static function get_settings(): array {
         $saved = get_option( self::OPTION_SETTINGS, [] );
@@ -89,13 +80,31 @@ class SettingsHelper {
             $saved = [];
         }
 
-        $merged = array_replace_recursive( self::get_default_settings(), self::sanitize_output( $saved ) );
+        // Per field, not recursive: a recursive merge would splice a stored list into the default list by index.
+        $merged = self::get_default_settings();
+
+        foreach ( self::sanitize_output( $saved ) as $group => $fields ) {
+            $merged[ $group ] = array_replace( $merged[ $group ], $fields );
+        }
 
         $merged['schema_version'] = isset( $saved['schema_version'] )
             ? (int) $saved['schema_version']
             : self::SCHEMA_VERSION;
 
         return $merged;
+    }
+
+    /**
+     * Bare order-status slugs that count as paid, as woocommerce_order_status_changed reports them.
+     *
+     * An emptied list falls back to the default: a store with no paid status would never award.
+     *
+     * @return string[]
+     */
+    public static function award_statuses(): array {
+        $statuses = self::get_settings()['general']['award_statuses'];
+
+        return empty( $statuses ) ? self::get_default_settings()['general']['award_statuses'] : $statuses;
     }
 
     /**
