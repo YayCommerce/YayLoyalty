@@ -68,7 +68,7 @@ These do not change the model; they record how it must be expressed in code so t
 
 **Process specs:**
 
-- [`data-model/points-lifecycle.md`](./data-model/points-lifecycle.md) — the points earning and reversal lifecycle: the two evaluation moments, the gate pipeline, the award transaction, triggers and idempotency keys, and the (designed, not implemented) reversal/clawback flow. The authoritative reference for any future work on earning, cancellation, refund or clawback.
+- [`data-model/points-lifecycle.md`](./data-model/points-lifecycle.md) — the points earning and reversal lifecycle: why earning works the way the `includes/Engine/Earning/README.md` invariants say, the per-trigger hook and key map, and the (designed, not implemented) reversal/clawback flow, which it owns.
 
 ---
 
