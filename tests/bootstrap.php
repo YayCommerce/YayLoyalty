@@ -126,6 +126,11 @@ function get_option( string $option, $default_value = false ) {
     return $GLOBALS['yayloyalty_test_options'][ $option ] ?? $default_value;
 }
 
+/** Tests set $GLOBALS['yayloyalty_test_user_meta'][ $user_id ][ $key ]; only the single-value form is shimmed. */
+function get_user_meta( $user_id, $key = '', $single = false ) {
+    return $GLOBALS['yayloyalty_test_user_meta'][ $user_id ][ $key ] ?? ( $single ? '' : [] );
+}
+
 function update_option( string $option, $value, $autoload = null ): bool {
     $GLOBALS['yayloyalty_test_options'][ $option ] = $value;
     return true;

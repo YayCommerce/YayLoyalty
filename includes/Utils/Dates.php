@@ -12,6 +12,9 @@ final class Dates {
 
     public const MYSQL_FORMAT = 'Y-m-d H:i:s';
 
+    /** MySQL's zero DATETIME, which WordPress stores for "no date"; strtotime() parses it, so it is checked by name. */
+    public const ZERO = '0000-00-00 00:00:00';
+
     /** Now as a UTC MySQL DATETIME. */
     public static function now(): string {
         return gmdate( self::MYSQL_FORMAT );
@@ -51,7 +54,7 @@ final class Dates {
     }
 
     public static function is_valid( ?string $utc ): bool {
-        if ( null === $utc || '' === $utc ) {
+        if ( null === $utc || '' === $utc || self::ZERO === $utc ) {
             return false;
         }
 

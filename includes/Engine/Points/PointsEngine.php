@@ -17,6 +17,9 @@ defined( 'ABSPATH' ) || exit;
  */
 final class PointsEngine {
 
+    /** Filter that attaches a campaign-conditions evaluator (Pro); nothing subscribes in Lite. Internal seam. */
+    public const CONDITIONS_EVALUATOR_FILTER = 'yayloyalty_campaign_conditions_evaluator';
+
     /** @var Registry */
     private $registry;
 
@@ -83,9 +86,9 @@ final class PointsEngine {
 
     /**
      * Whether the campaign's `conditions` match the event. The evaluator
-     * receives the Context — customer facts read up front by
-     * ContextFactory::customer_facts() plus the order's own currency, coupons
-     * and lines — so it compares and never queries. With no evaluator
+     * receives the Context — customer facts (loaded on first use through
+     * ContextFactory::customer_facts()) plus the order's own currency,
+     * coupons and lines — so it compares and never queries itself. With no evaluator
      * attached (Lite) this fails open: failing closed would silently disable
      * every conditional campaign the moment a site downgraded from Pro.
      */
@@ -101,7 +104,7 @@ final class PointsEngine {
          *
          * @param object|null $evaluator Exposes evaluate( array $conditions, Context $ctx ): bool.
          */
-        $evaluator = apply_filters( 'yayloyalty_campaign_conditions_evaluator', null );
+        $evaluator = apply_filters( self::CONDITIONS_EVALUATOR_FILTER, null ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name.
 
         if ( null === $evaluator || ! method_exists( $evaluator, 'evaluate' ) ) {
             return true;

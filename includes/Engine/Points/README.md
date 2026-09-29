@@ -23,7 +23,7 @@ Config gates are **eligibility, not calculation**: a boost with `min_subtotal 50
 
 ## Rules
 
-- **Pure.** No `$wpdb`, no WooCommerce globals, no current user, no `time()`. `CampaignRepository` is the one class that queries. `ContextFactory` is the one class that touches WooCommerce.
+- **Pure.** No `$wpdb`, no WooCommerce globals, no current user, no `time()`. `CampaignRepository` is the one class that queries. `ContextFactory` and `CustomerFactsReader` are the two classes that touch WooCommerce (and, for the reader, the ledger).
 - **No capability checks, no `actor_id`.** This runs from cron, WP-CLI and order hooks where there is no current user. Permissions live at the HTTP boundary; `actor_id` is a `LedgerService` argument.
 - **The storefront exposes the integer only.** `Result` carries the campaign, the rate and the raw float — merchant strategy. Never `wp_send_json( $result )` on a Store API route; send `$result->get_points()`.
 

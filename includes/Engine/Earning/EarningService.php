@@ -108,9 +108,14 @@ final class EarningService {
      *
      * @return Result Result::none( gate reason ) when a gate blocks, else the engine's answer.
      */
-    public function preview( string $trigger, Context $ctx ): Result { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(F01-4): blocked_reason() first, returning Result::none( reason ) when set; otherwise the engine's evaluate() for the trigger and Context.
-        throw new \RuntimeException( 'Not implemented' );
+    public function preview( string $trigger, Context $ctx ): Result {
+        $reason = $this->blocked_reason( $trigger, $ctx );
+
+        if ( null !== $reason ) {
+            return Result::none( $reason );
+        }
+
+        return $this->engine->evaluate( $trigger, $ctx );
     }
 
     /**
@@ -151,7 +156,7 @@ final class EarningService {
         throw new \RuntimeException( 'Not implemented' );
     }
 
-    /** The gate chain: gates run in order and the first reason stops the rest. Implemented; preview() and award() call it. */
+    /** The gate chain: gates run in order and the first reason stops the rest. */
     private function blocked_reason( string $trigger, Context $ctx ): ?string {
         foreach ( $this->gates as $gate ) {
             $reason = $gate->check( $trigger, $ctx );

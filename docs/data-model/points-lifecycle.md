@@ -9,16 +9,41 @@ for the `ledger`/`customers` column meanings this spec assumes.
 
 ## Implementation status
 
-Points in (§01–§05) are owned by
-[`includes/Engine/Earning/README.md`](../../includes/Engine/Earning/README.md): its invariants are
-the rules and its § Status says what is built. This spec adds only the reasoning and the
-per-trigger map. Points back out (§06–§08) are
-designed here and have no code yet: `LedgerService` has no `refund_earn()` / `refund_redeem()`.
+**This is the authoritative design for both directions. Part one (points in) is mostly built; part
+two (points back out) is designed here but has no corresponding code yet — do not assume any of
+§06–§08 exists in the codebase.** Status per component:
+
+| Component | File | Status |
+|---|---|---|
+| `PointsEngine::evaluate()` | `Engine/Points/PointsEngine.php` | **Implemented** |
+| `ContextFactory::from_order()` | `Engine/Points/ContextFactory.php` | **Implemented** |
+| `ContextFactory::from_user()` / `from_comment()` | same | **Implemented** |
+| `ContextFactory::customer_facts()` | same | **Implemented** — calls `CustomerFactsReader::read()` when evaluator attached |
+| `CustomerFactsReader::read()` | `Engine/Points/CustomerFactsReader.php` | **Implemented** |
+| `PurchaseHandler`, `Registry`, `IdempotencyKey::compose()` | `Engine/Points/Triggers/*`, `Engine/Earning/IdempotencyKey.php` | **Implemented** |
+| `LedgerService::earn()` | `Services/LedgerService.php` | **Implemented** |
+| `LedgerService::redeem()` | `Services/LedgerService.php` | Stub (`TODO(F08)`) |
+| `LedgerService::refund_earn()` / `refund_redeem()` | `Services/LedgerService.php` | **Does not exist.** No refund entry point has been added to the ledger writer yet |
+| `EarningService::build()` | `Engine/Earning/EarningService.php` | **Implemented** |
+| `EarningService::preview()` / `award()` | `Engine/Earning/EarningService.php` | Stub |
+| `PendingPoints::stage()` / `release()` / `mark_awarded()` | `Engine/Earning/PendingPoints.php` | Stub |
+| `ProgramGate::check()` | `Engine/Earning/ProgramGate.php` | **Implemented** |
+| `OrderListener::register()` / `on_status_changed()` / `on_order_created()` / `route()` / `award_statuses()` | `Engine/Earning/Listeners/OrderListener.php` | **Implemented** — hooks only; `on_stageable()` and `on_awardable()` **implemented** (call `preview_and_log()`); `on_cancelled()`/`on_refunded()` bodies still Stub |
+| `ReviewListener`, `SignupListener` — `register()` and their hook adapters | same directory | **Implemented** — `on_registered()` / `on_approved()` preview and log (no writes); `on_unapproved()` still Stub |
+| `CommitWriter::commit()` (redemption) | `Engine/Redemption/CommitWriter.php` | Stub — its own docblock calls the cancel/refund side "Zone 3 ... undesigned" |
+
+Every stub above already carries a docblock that states its intended contract; this document and
+those docblocks agree by construction (same source). Where they don't, the code's docblock is a
+bug in this document — fix here, not there.
 
 ## 01 — The two moments
 
-An order is evaluated twice, at creation and at the award status, at the same timestamp — the
-order's creation date (README invariant 1).
+An order is evaluated twice: once at creation, for the pending figure shown to the shopper, and
+once at the award status, for the real one — because the order (or the campaign catalogue) can
+change in between. Both calls receive the **same timestamp: the order's creation date**
+(`WC_Order::get_date_created()`), never the award date and never `now()`. `ContextFactory::from_order()`
+throws if the order has no creation date rather than falling back to `now()` — an order without one
+is a caller bug, not license to invent an event time.
 
 Using the award time instead would silently deny a customer a promotion they shopped for (a
 Black-Friday 2× campaign that ended before the merchant got around to marking the order
@@ -26,6 +51,9 @@ Completed), and would make the points depend on when staff happened to click a b
 creation date also makes re-running `evaluate()` a year later return the identical number —
 liveness is `Enums\Status::is_live_at()` against that same fixed instant, not against whatever is
 live today.
+
+`PointsEngine::evaluate( $trigger, $ctx )` reads `$ctx->get_occurred_at()` itself; there is no
+separate `$at` parameter to keep in sync with the Context.
 
 ## 02 — The pipeline
 
@@ -47,8 +75,8 @@ Gates run before the engine because they are cheap and because the engine must n
 users, roles or the ledger — it is pure, replayable, and runs from cron. Each gate exits with a
 reason string (`Gate::check()` returns `?string`), never a bare `false`; that reason is what an
 admin's "customers aren't earning" banner would read, and what `Result::none()` / `Outcome::skipped()`
-carry back to the caller. `EarningService::blocked_reason()` walks the gate list in order and the
-first non-null reason wins.
+carry back to the caller. `ProgramGate` is implemented and evaluates paused status, no customer, opt-out meta, and excluded roles. `EarningService::blocked_reason()` walks the gate list in order and the
+first non-null reason wins; other gates attach via `yayloyalty_earning_gates` filter.
 
 Everything above the write boundary is re-runnable and side-effect-free. Everything below it runs
 exactly once per idempotency key. A gate that needs the ledger (e.g. a daily-cap check) belongs
@@ -56,9 +84,28 @@ above the boundary but outside the engine — the engine only ever sees a `Conte
 
 ## 03 — The write transaction
 
-`LedgerService::earn()`: create-then-lock the customer row, insert under the `uniq_idempotency_key`
-guard, move the aggregates, fire hooks after commit — README invariants 3, 4, 8 and 9; the lock
-reasoning is in [`customers-and-ledger.md`](./customers-and-ledger.md).
+One transaction, five steps, in this order (`LedgerService::earn()`, implemented):
+
+1. `CustomerRepository::ensure_row()` — materialise the customer row before locking it. `SELECT ...
+   FOR UPDATE` on a row that doesn't exist yet takes a gap lock, not a row lock, so two concurrent
+   first-touch writers could otherwise both insert.
+2. `CustomerRepository::lock_and_get()` — locks the customer row, serialising every write for this
+   user. A concurrent award for the same user queues up behind this one.
+3. Duplicate check under the lock: `LedgerRepository::find_by_idempotency_key()`. If a row already
+   exists, return `Outcome::duplicate()` — a normal outcome, not an error.
+4. `LedgerRepository::insert_unless_duplicate()` — attempts the insert; the `uniq_idempotency_key`
+   unique index is the real guard, the pre-check in step 3 is only an optimisation. Two processes
+   can both pass a bare `if (already_awarded())` check in the same millisecond; only the unique
+   index cannot be raced. A duplicate-key result here also returns `Outcome::duplicate()` rather
+   than throwing.
+5. `apply_aggregates()` — moves `customers.balance`, `lifetime_earned`, `last_activity_at` inside
+   the same lock, then the transaction commits and `dispatch_events()` fires
+   `yayloyalty_ledger_recorded` **after** commit — a subscriber on another connection cannot see an
+   uncommitted row, and nothing slow or externally fallible runs while the lock is held.
+
+`EarningService::award()` (stub) wraps this with the order-meta side effects: releasing
+`PendingPoints` and writing the award projections happen inside the same transaction as the ledger
+insert, so the cache and the ledger move together or not at all.
 
 ## 04 — Triggers
 
@@ -68,19 +115,29 @@ step — there's nothing to stage because there's no order waiting to be paid.
 
 | Trigger | Shape | Hook | Idempotency key | Fireable in this build? |
 |---|---|---|---|---|
-| Purchase | Deferred | `woocommerce_order_status_changed`, `woocommerce_new_order` | `earn:{user_id}:order:{order_id}:purchase` | Yes |
-| First order | Deferred | `woocommerce_order_status_changed`, `woocommerce_new_order` | `earn:{user_id}:order:{order_id}:first_order` | Pro only — `CampaignTrigger::FIRST_ORDER` is recognised but not in `lite_triggers()` |
+| Purchase | Deferred | `woocommerce_order_status_changed` | `earn:{user_id}:order:{order_id}:purchase` | Yes |
+| First order | Deferred | `woocommerce_order_status_changed` | `earn:{user_id}:order:{order_id}:first_order` | Pro only — `CampaignTrigger::FIRST_ORDER` is recognised but not in `lite_triggers()` |
 | Signup | Immediate | `user_register` | `earn:{user_id}:user:{user_id}:signup` | Yes |
 | Review | Immediate | `comment_post` / `transition_comment_status` | `earn:{user_id}:comment:{comment_id}:review` | Yes |
 
-Keys are composed by `IdempotencyKey::compose()` (README invariant 3); why the user id and the
-qualifier are both in it is in
-[`customers-and-ledger.md`](./customers-and-ledger.md#yayloyalty_ledger--every-balance-change-10).
+The key format is `{type}:{user_id}:{reference_type}:{reference_id}:{qualifier}`, composed by
+`Engine\Earning\IdempotencyKey::compose()` — see
+[`customers-and-ledger.md`](./customers-and-ledger.md#yayloyalty_ledger--every-balance-change-10)
+for the full rationale. **The user id is always the second segment; the trigger (or reward type,
+on the redeem side) is always the last.** Two independent facts are folded into that one string on
+purpose: one reference may legitimately pay two people (the user id — a referral order pays
+advocate and friend), and one reference may legitimately move points more than once (the qualifier
+— an order can earn once for `purchase` and once for `first_order`; a redemption row can be
+refunded and re-redeemed under different reward types). Neither the reference type nor the
+reference id alone is enough to guarantee "once".
 
 ## 05 — Guards
 
-Double award: the UNIQUE key (README invariant 4). Broken `balance_after` chain: the customer row
-lock (invariant 8). Pending underflow on a status bounce: the release-once flag (invariant 2).
+| Guard | Mechanism | Stops | Status |
+|---|---|---|---|
+| Unique idempotency key | `UNIQUE KEY uniq_idempotency_key` on `ledger.idempotency_key`; the insert is the guarantee, the pre-check is only an optimisation | Double award | **Implemented** |
+| Customer row lock | `SELECT balance ... FOR UPDATE` inside the transaction | A broken `balance_after` chain | **Implemented** |
+| Release-once flag | `PendingPoints::META_RELEASED`, separate from the staged-figure meta, set exactly once | Pending underflow on a status bounce (award → cancel → award again) | Designed, not implemented |
 
 ## 06 — The reversal grid (designed, not implemented)
 
@@ -108,7 +165,7 @@ order is still payable.
 ```mermaid
 stateDiagram-v2
     [*] --> Placed: pending / on-hold
-    Placed --> AwardSet: any status in general.award_statuses
+    Placed --> AwardSet: processing / completed
     Placed --> Failed: failed
     Placed --> Cancelled: cancelled / trashed
 
@@ -126,7 +183,7 @@ ledger rows — no separate bookkeeping of "what was clawed" is needed, because 
 that refund id already are that record.
 
 `pending_points` is `bigint unsigned` (`CustomersTable::definition()`); releasing it twice for the
-same order must therefore be guarded (the release-once flag, README invariant 2) rather than relied on to fail safe —
+same order must therefore be guarded (§05's release-once flag) rather than relied on to fail safe —
 an unsigned column doesn't go negative on a double release, it wraps.
 
 ## 08 — Clawback maths (designed, not implemented)

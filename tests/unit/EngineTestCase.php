@@ -4,6 +4,7 @@ namespace YayLoyalty\Tests\Unit;
 use PHPUnit\Framework\TestCase;
 use YayLoyalty\Engine\Points\Context;
 use YayLoyalty\Engine\Points\ContextLineItem;
+use YayLoyalty\Engine\Points\CustomerFacts;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Enums\Status;
 use YayLoyalty\Models\Campaign;
@@ -79,7 +80,8 @@ abstract class EngineTestCase extends TestCase {
         int $earned_today = 0,
         ?int $user_id = 7,
         array $extra = [],
-        ?int $comment_id = null
+        ?int $comment_id = null,
+        ?CustomerFacts $facts = null
     ): Context {
         $subtotal = 0.0;
         $total    = 0.0;
@@ -103,7 +105,8 @@ abstract class EngineTestCase extends TestCase {
             555,
             $comment_id,
             $earned_today,
-            $extra
+            $extra,
+            $facts
         );
     }
 

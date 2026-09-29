@@ -1,6 +1,8 @@
 <?php
 namespace YayLoyalty\Models;
 
+use YayLoyalty\Utils\Dates;
+
 defined( 'ABSPATH' ) || exit;
 
 /**
@@ -68,7 +70,7 @@ abstract class AbstractModel {
 
     /** Empty and zero dates become null. */
     protected static function cast_datetime( $value ): ?string {
-        if ( null === $value || '' === $value || '0000-00-00 00:00:00' === $value ) {
+        if ( null === $value || '' === $value || Dates::ZERO === $value ) {
             return null;
         }
 

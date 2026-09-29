@@ -6,8 +6,9 @@ use YayLoyalty\Utils\Dates;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The only class in the engine that touches WooCommerce. Amounts stay in
- * the order's currency; base_rate carries the conversion and is the whole
+ * Builds Contexts from WooCommerce objects. With CustomerFactsReader, one
+ * of the two engine classes that touch WooCommerce. Amounts stay in the
+ * order's currency; base_rate carries the conversion and is the whole
  * multi-currency seam.
  */
 final class ContextFactory {
@@ -29,8 +30,10 @@ final class ContextFactory {
             );
         }
 
-        $user_id    = (int) $order->get_customer_id();
-        $line_items = [];
+        $user_id     = (int) $order->get_customer_id();
+        $occurred_at = gmdate( Dates::MYSQL_FORMAT, $created->getTimestamp() );
+        $order_id    = $order->get_id() > 0 ? (int) $order->get_id() : null;
+        $line_items  = [];
 
         foreach ( $order->get_items( 'line_item' ) as $item ) {
             if ( ! $item instanceof \WC_Order_Item_Product ) {
@@ -58,7 +61,7 @@ final class ContextFactory {
 
         return new Context(
             $user_id > 0 ? $user_id : null,
-            gmdate( Dates::MYSQL_FORMAT, $created->getTimestamp() ),
+            $occurred_at,
             (string) $order->get_currency(),
             self::base_rate( (string) $order->get_currency(), $order ),
             $line_items,
@@ -67,9 +70,15 @@ final class ContextFactory {
             $loyalty_discount,
             (array) $order->get_coupon_codes(),
             self::user_roles( $user_id ),
-            $order->get_id() > 0 ? (int) $order->get_id() : null,
+            $order_id,
             null,
-            $points_earned_today
+            $points_earned_today,
+            [
+                Context::EXTRA_PAYMENT_METHOD   => (string) $order->get_payment_method(),
+                Context::EXTRA_BILLING_COUNTRY  => (string) $order->get_billing_country(),
+                Context::EXTRA_SHIPPING_COUNTRY => (string) $order->get_shipping_country(),
+            ],
+            static fn() => self::customer_facts( $user_id, $occurred_at, $order_id )
         );
     }
 
@@ -80,31 +89,80 @@ final class ContextFactory {
      *
      * @param string $registered_at UTC MySQL datetime (wp_users.user_registered is already UTC).
      */
-    public static function from_user( int $user_id, string $registered_at ): Context { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(F01-4): user_roles( $user_id ); currency from get_woocommerce_currency(); empty lines, zero amounts, no coupons.
-        throw new \RuntimeException( 'Not implemented' );
+    public static function from_user( int $user_id, string $registered_at ): Context {
+        $currency = get_woocommerce_currency();
+
+        return new Context(
+            $user_id,
+            $registered_at,
+            $currency,
+            self::base_rate( $currency, null ),
+            [],
+            0.0,
+            0.0,
+            0.0,
+            [],
+            self::user_roles( $user_id ),
+            null,
+            null,
+            0,
+            [],
+            static fn() => self::customer_facts( $user_id, $registered_at )
+        );
     }
 
     /**
      * The review award Context: occurred_at is the comment's GMT date;
      * `extra[ ReviewHandler::EXTRA_VERIFIED_PURCHASE ]` is set from the
-     * comment's `verified` meta so require_verified can be decided purely.
+     * comment's `verified` meta (WooCommerce writes it at review time) so
+     * require_verified can be decided purely. No lines: the reviewed product
+     * is not an order line.
+     *
+     * @throws \InvalidArgumentException When the comment has no GMT date (imported rows); never now().
      */
-    public static function from_comment( \WP_Comment $comment ): Context { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(F01-4): comment_ID, user_id, comment_date_gmt, verified meta via get_comment_meta( 'verified' ); product from comment_post_ID for one_per_product.
-        throw new \RuntimeException( 'Not implemented' );
+    public static function from_comment( \WP_Comment $comment ): Context {
+        $user_id     = (int) $comment->user_id;
+        $occurred_at = (string) $comment->comment_date_gmt;
+
+        if ( ! Dates::is_valid( $occurred_at ) ) {
+            throw new \InvalidArgumentException(
+                sprintf( 'YayLoyalty: comment %d has no GMT date to evaluate at.', (int) $comment->comment_ID )
+            );
+        }
+
+        $currency = get_woocommerce_currency();
+
+        return new Context(
+            $user_id > 0 ? $user_id : null,
+            $occurred_at,
+            $currency,
+            self::base_rate( $currency, null ),
+            [],
+            0.0,
+            0.0,
+            0.0,
+            [],
+            self::user_roles( $user_id ),
+            null,
+            (int) $comment->comment_ID,
+            0,
+            [ Triggers\ReviewHandler::EXTRA_VERIFIED_PURCHASE => (bool) get_comment_meta( (int) $comment->comment_ID, 'verified', true ) ],
+            static fn() => self::customer_facts( $user_id, $occurred_at )
+        );
     }
 
     /**
-     * The customer facts conditions compare against, read here — the one
-     * impure class — so the evaluator behind `yayloyalty_campaign_conditions_evaluator`
-     * can be pure. Replaces the reads Pro\Services\ConditionsEvaluator does
-     * today (wc_get_orders, wc_get_customer_order_count, CustomerRepository).
-     * Null for a guest. Callers pass the result as Context's last argument.
+     * The customer facts conditions compare against, as of $as_of, so the
+     * evaluator can stay pure. Null for a guest. The from_*() factories pass
+     * this as a loader, so it runs only when a history condition is evaluated
+     * (never in Lite, which has no evaluator).
      */
-    public static function customer_facts( ?int $user_id ): ?CustomerFacts { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(F01-4): null when no user; CustomerRepository lifetime_earned; wc_get_customer_order_count; the 100 newest paid orders for spend_by_currency and purchased product/category ids; tier_id null until tiers exist.
-        throw new \RuntimeException( 'Not implemented' );
+    public static function customer_facts( ?int $user_id, string $as_of, ?int $exclude_order_id = null ): ?CustomerFacts {
+        if ( null === $user_id || $user_id < 1 ) {
+            return null;
+        }
+
+        return CustomerFactsReader::read( $user_id, $as_of, $exclude_order_id );
     }
 
     /** For the product-page earn preview. */
