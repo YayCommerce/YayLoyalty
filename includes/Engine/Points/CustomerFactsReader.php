@@ -25,6 +25,7 @@ final class CustomerFactsReader {
     public static function read( int $user_id, string $as_of, ?int $exclude_order_id ): CustomerFacts {
         $customer = ( new CustomerRepository() )->find_by_user_id( $user_id );
 
+        // ponytail: hydrates every paid order, paid only when a history condition is evaluated; a COUNT/SUM per order storage if long histories get slow.
         $orders = wc_get_orders(
             [
                 'customer_id'  => $user_id,

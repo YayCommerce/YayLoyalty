@@ -35,7 +35,7 @@ woocommerce_new_order( $id, $order )                                    │  sam
 7. **Statuses that do nothing are a decision, not an omission.** `failed` releases nothing and restores nothing — the order is still payable and a retry lands on an award status. `refunded` is inert too: refunds are driven by refund objects, except when `get_total_refunded()` is 0, which means an admin reversed the order outside WooCommerce and is a full reversal referenced to the order. `checkout-draft` never reaches staging.
 8. `CustomerRepository::lock_and_get()` runs before the insert so `balance_after` stays an unbroken chain per customer.
 9. Nothing slow or externally fallible runs inside the transaction; hooks fire after commit.
-10. `Engine/Points/*` stays pure. `ProgramGate` is the one place on the path that reads settings and user meta; campaign conditions compare against `CustomerFacts` read once by `ContextFactory::customer_facts()` and, if no evaluator is attached (Lite paying zero queries), not read at all. `CustomerFactsReader::read()` (Pro only) materializes facts, filtering to paid orders created strictly before the event timestamp and excluding the order being evaluated.
+10. `Engine/Points/*` stays pure. `ProgramGate` is the one place on the path that reads settings and user meta; campaign conditions compare against `CustomerFacts`, which the Context loads through `ContextFactory::customer_facts()` the first time a history condition asks — at most once per event, and never when no campaign has one (Lite, with no evaluator, never reads them). `CustomerFactsReader::read()` (Pro only) materializes facts, filtering to paid orders created strictly before the event timestamp and excluding the order being evaluated.
 
 ## Status
 

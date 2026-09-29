@@ -4,9 +4,10 @@ namespace YayLoyalty\Engine\Points;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * What a campaign condition may know about the customer, read once by
- * CustomerFactsReader before evaluation so the evaluator compares values
- * and queries nothing. Immutable. Absent (null on the Context) for a guest.
+ * What a campaign condition may know about the customer, read by
+ * CustomerFactsReader the first time a history condition asks the Context
+ * (at most once per event), so the evaluator compares values and queries
+ * nothing itself. Immutable. Absent (null on the Context) for a guest.
  * Identity and roles are on the Context itself; so are the order's own
  * facts (currency, coupons, lines, payment method, countries).
  *

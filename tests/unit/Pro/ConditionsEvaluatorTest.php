@@ -177,6 +177,55 @@ final class ConditionsEvaluatorTest extends EngineTestCase {
         $this->assertSame( 1, $engine->evaluate( CampaignTrigger::PURCHASE, $this->order_ctx() )->get_campaign()->get_id() );
     }
 
+    public function test_facts_are_not_loaded_when_no_history_condition_asks(): void {
+        $loads = 0;
+        $ctx   = $this->lazy_ctx( $loads, new CustomerFacts( 500, 2, [] ) );
+
+        $this->assertTrue( $this->is_met( T::USER_ROLE, T::OP_IN, [ 'customer' ], $ctx ) );
+        $this->assertSame( 0, $loads );
+    }
+
+    public function test_facts_are_loaded_once_however_many_history_conditions_ask(): void {
+        $loads      = 0;
+        $ctx        = $this->lazy_ctx( $loads, new CustomerFacts( 500, 2, [ 'USD' => 250.0 ] ) );
+        $conditions = [
+            [
+                'type'     => T::ORDER_COUNT,
+                'operator' => T::OP_GTE,
+                'value'    => 2,
+            ],
+            [
+                'type'     => T::LIFETIME_SPEND,
+                'operator' => T::OP_GTE,
+                'value'    => [
+                    'amount'   => 100,
+                    'currency' => 'USD',
+                ],
+            ],
+        ];
+
+        $this->assertTrue( ( new ConditionsEvaluator() )->evaluate( $conditions, $ctx ) );
+        $this->assertTrue( ( new ConditionsEvaluator() )->evaluate( $conditions, $ctx ) );
+        $this->assertSame( 1, $loads );
+    }
+
+    public function test_a_loader_returning_null_reads_as_no_customer(): void {
+        $loads = 0;
+
+        $this->assertSame( 'no_customer', $this->row( T::ORDER_COUNT, T::OP_GTE, 1, $this->lazy_ctx( $loads, null ) )['reason'] );
+    }
+
+    /** A customer Context whose facts come from a loader that counts its calls. */
+    private function lazy_ctx( int &$loads, ?CustomerFacts $facts ): Context {
+        $loader = static function () use ( &$loads, $facts ): ?CustomerFacts {
+            ++$loads;
+
+            return $facts;
+        };
+
+        return new Context( 7, self::AT, 'USD', 1.0, [], 0.0, 0.0, 0.0, [], [ 'customer' ], null, null, 0, [], $loader );
+    }
+
     private function with_conditions( Campaign $campaign, array $conditions ): Campaign {
         return new Campaign(
             $campaign->get_id(),
