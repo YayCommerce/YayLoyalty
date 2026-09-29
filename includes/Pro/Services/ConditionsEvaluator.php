@@ -170,10 +170,10 @@ final class ConditionsEvaluator {
         $shipping = (string) $ctx->get_extra( Context::EXTRA_SHIPPING_COUNTRY, '' );
 
         switch ( $value['source'] ?? '' ) {
-            case 'billing':
+            case CampaignConditionType::SOURCE_BILLING:
                 $actual = [ $billing ];
                 break;
-            case 'shipping':
+            case CampaignConditionType::SOURCE_SHIPPING:
                 $actual = [ $shipping ];
                 break;
             default:

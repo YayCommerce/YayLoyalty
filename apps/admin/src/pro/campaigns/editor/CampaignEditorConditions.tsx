@@ -9,6 +9,7 @@ import {
   CAMPAIGN_CONDITION_TYPES,
   CampaignCondition,
   CampaignConditionKind,
+  COUNTRY_SOURCE_VALUES,
 } from '@/lib/schema/campaign.schema';
 import { LookupEntity } from '@/lib/schema/lookup.schema';
 import { Button } from '@/components/ui/button';
@@ -267,8 +268,6 @@ function LookupListEditor({
 }
 
 /* ─── country_list ───────────────────────────────────────────────────── */
-
-const COUNTRY_SOURCE_VALUES = ['shipping', 'billing', 'any'] as const;
 
 const COUNTRY_SOURCE_LABELS: Record<(typeof COUNTRY_SOURCE_VALUES)[number], string> = {
   shipping: __('Shipping address', 'yayloyalty'),

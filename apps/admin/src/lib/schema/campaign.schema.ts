@@ -153,6 +153,9 @@ interface CampaignConditionSpec {
   sourceValues?: readonly string[];
 }
 
+/** Which address a `country` condition reads; mirrors CampaignConditionType::SOURCE_*. */
+export const COUNTRY_SOURCE_VALUES = ['shipping', 'billing', 'any'] as const;
+
 /**
  * Client mirror of CampaignConditionType::schema(), offerable types only.
  * UI metadata, not a validator: CampaignConditionSet enforces on save, and
@@ -180,7 +183,7 @@ export const CAMPAIGN_CONDITION_SCHEMA: Record<CampaignConditionKind, CampaignCo
     operators: ['in', 'not_in'],
     value: 'country_list',
     requireKeys: ['source'],
-    sourceValues: ['shipping', 'billing', 'any'],
+    sourceValues: COUNTRY_SOURCE_VALUES,
   },
   product_in_cart: {
     operators: ['in', 'not_in'],

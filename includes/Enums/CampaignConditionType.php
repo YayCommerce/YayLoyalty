@@ -28,6 +28,11 @@ final class CampaignConditionType {
     public const INPUT_FACTS    = 'facts';
     public const INPUT_ORDER    = 'order';
 
+    /** Which address a `country` condition reads; ANY matches either. */
+    public const SOURCE_SHIPPING = 'shipping';
+    public const SOURCE_BILLING  = 'billing';
+    public const SOURCE_ANY      = 'any';
+
     // About the customer or the order.
 
     public const USER_ROLE        = 'user_role';
@@ -100,7 +105,7 @@ final class CampaignConditionType {
                 'operators'     => [ self::OP_IN, self::OP_NOT_IN ],
                 'value'         => 'country_list',
                 'require_keys'  => [ 'source' ],
-                'source_values' => [ 'shipping', 'billing', 'any' ],
+                'source_values' => [ self::SOURCE_SHIPPING, self::SOURCE_BILLING, self::SOURCE_ANY ],
                 'normalize'     => [ 'array', 'uppercase', 'dedupe' ],
             ],
             self::PRODUCT_IN_CART  => [
