@@ -3,6 +3,7 @@ namespace YayLoyalty\Pro\Services;
 
 use YayLoyalty\Engine\Points\Context;
 use YayLoyalty\Enums\CampaignConditionType;
+use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Models\CampaignCondition;
 use YayLoyalty\Models\CampaignConditionSet;
 use YayLoyalty\Repositories\CustomerRepository;
@@ -34,9 +35,6 @@ final class ConditionsEvaluator {
         CampaignConditionType::OP_LTE,
         CampaignConditionType::OP_BETWEEN,
     ];
-
-    /** Statuses that count as a purchase; processing counts because the money has changed hands. */
-    private const PAID_STATUSES = [ 'wc-processing', 'wc-completed' ];
 
     /** Newest orders scanned for purchase-history facts; evaluation is on the award hot path. */
     private const ORDER_SCAN_LIMIT = 100;
@@ -333,7 +331,7 @@ final class ConditionsEvaluator {
             $orders = wc_get_orders(
                 [
                     'customer_id' => $user_id,
-                    'status'      => self::PAID_STATUSES,
+                    'status'      => SettingsHelper::award_statuses(),
                     'limit'       => self::ORDER_SCAN_LIMIT,
                     'orderby'     => 'date',
                     'order'       => 'DESC',

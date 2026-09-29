@@ -167,7 +167,7 @@ Two backbones landed 2026-09-11: capabilities (`Access\Capabilities`) and the po
 
 | # | TODO | Where | Ticket |
 |---|---|---|---|
-| 1 | Order lifecycle listener: award status → `ContextFactory::from_order()` → `EarningService::preview()`/`award()` per trigger (`purchase`, then `first_order`…) → `LedgerService::earn()`. `actor_id` null. Scaffolded 2026-09-22; registered at boot 2026-09-28 (`register()`/`route()`/`award_statuses()` implemented); `on_stageable()`/`on_awardable()`/`on_cancelled()` bodies still stubs. | `Engine\Earning\Listeners\OrderListener` | F01-4 |
+| 1 | Order lifecycle listener: award status → `ContextFactory::from_order()` → `EarningService::preview()`/`award()` per trigger (`purchase`, then `first_order`…) → `LedgerService::earn()`. `actor_id` null. Scaffolded 2026-09-22; registered at boot 2026-09-28 (`register()`/`route()` implemented; award set read from `SettingsHelper::award_statuses()`); `on_stageable()`/`on_awardable()`/`on_cancelled()` bodies still stubs. | `Engine\Earning\Listeners\OrderListener` | F01-4 |
 | 2 | `LedgerService::earn( LedgerEntry $draft ): Outcome` — stubbed; idempotent on the single `idempotency_key` column (`Engine\Earning\IdempotencyKey`). Scaffold and invariants: `includes/Engine/Earning/README.md`. | `Services/LedgerService.php` | F01-4 |
 | 3 | `points_earned_today( user_id, at )` ledger read to feed `Context::points_earned_today` for `daily_cap` — stubbed. | `Repositories/LedgerRepository.php` | F01-4 |
 | 4 | Refunds / clawbacks / cancellations (`refund_earn`, `refund_redeem`). Attachment points exist (`OrderListener::on_refunded()`, `ReviewListener::on_unapproved()`); undesigned. | listener | F01-4 |

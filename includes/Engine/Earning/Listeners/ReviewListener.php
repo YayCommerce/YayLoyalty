@@ -45,12 +45,7 @@ final class ReviewListener {
 
         Log::debug( 'ReviewListener', 'review #' . $comment_id . ' approved on arrival' );
 
-        try {
-            $this->on_approved( $comment );
-        } catch ( \RuntimeException $e ) {
-            // TODO(step-3): remove this catch once on_approved() is implemented.
-            Log::warning( 'ReviewListener', 'award skipped for review #' . $comment_id . ': ' . $e->getMessage() );
-        }
+        $this->award( $comment );
     }
 
     /** `transition_comment_status` adapter — fires when a review is approved on a later status change. */
@@ -61,10 +56,15 @@ final class ReviewListener {
 
         Log::debug( 'ReviewListener', 'review #' . $comment->comment_ID . ' ' . $old_status . ' -> approved' );
 
+        $this->award( $comment );
+    }
+
+    /** Runs on_approved(), logging instead of throwing while it is still a stub. */
+    private function award( \WP_Comment $comment ): void {
         try {
             $this->on_approved( $comment );
         } catch ( \RuntimeException $e ) {
-            // TODO(step-3): remove this catch once on_approved() is implemented.
+            // TODO(step-3): remove this method once on_approved() is implemented; both adapters then call it directly.
             Log::warning( 'ReviewListener', 'award skipped for review #' . $comment->comment_ID . ': ' . $e->getMessage() );
         }
     }

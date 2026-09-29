@@ -18,7 +18,12 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
 - Handler bodies (`on_stageable`, `on_awardable`, `on_cancelled`, `on_refunded`, `on_approved`,
   `on_unapproved`, `on_registered`) are still no-op stubs — **no points are awarded yet**. Each routing
   entry point wraps its call to one of them in a removable `try`/`catch` scaffold.
-- **Tests:** +5 unit tests (`ListenerRegistrationTest`) covering hook attachment and the DI graph.
+- `general.award_statuses` setting (default `processing` + `completed`, an emptied list reads back as
+  the default) owned by `SettingsHelper::award_statuses()`. Pro's purchase-history conditions now count
+  the same statuses instead of a hardcoded `processing` + `completed` list. `SettingsHelper::get_settings()`
+  merges per field, so a stored list replaces the default list instead of being spliced into it.
+- **Tests:** +5 unit tests (`ListenerRegistrationTest`) covering hook attachment and the DI graph; +2 in
+  `SettingsHelperTest` for the award-set list merge and fallback.
 
 ### Added — Email Settings page: loyalty transactional emails as WooCommerce email classes (2026-09-24)
 

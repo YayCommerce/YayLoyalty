@@ -44,19 +44,7 @@ final class OrderListener {
     /**
      * Attaches the two order hooks; call once at boot, after settings are readable.
      *
-     * Two entry points, on purpose, both funnelled into route(). A per-status
-     * hook (`woocommerce_order_status_completed`) or `woocommerce_payment_complete`
-     * alongside either would describe the same transition from a different
-     * angle and process it several times for no reason — that is still out.
-     * `woocommerce_new_order` is not that: `woocommerce_order_status_changed`
-     * only fires when WooCommerce recorded a non-empty "from" status
-     * (`WC_Abstract_Order::set_status()`), so a brand-new order's very first
-     * status — no prior status to transition from — never reaches it.
-     * `woocommerce_new_order` fires exactly once per order regardless (at
-     * first insert, or at the admin auto-draft → real-status save) and is
-     * the only reliable signal for that first arrival. Where the two land in
-     * the same request (that admin save fires both), route() runs twice for
-     * the same $to; that is free, not a bug — see route()'s docblock.
+     * Why two, and why no others: invariant 6 in `includes/Engine/Earning/README.md`.
      */
     public function register(): void {
         add_action( 'woocommerce_order_status_changed', [ $this, 'on_status_changed' ], 10, 4 );
@@ -92,7 +80,7 @@ final class OrderListener {
      *
      * $from is not a parameter: first arrival wins, and any later call that
      * lands on the same $to — from either hook, including the same-request
-     * double delivery register()'s docblock describes — repeats a step that
+     * double delivery of invariant 6 — repeats a step that
      * is already idempotent (PendingPoints::stage()/release(), invariant 2)
      * or composes the same ledger idempotency key and costs one rejected
      * insert (invariants 3-4). No dedup lives here; none is needed.
@@ -118,45 +106,44 @@ final class OrderListener {
      * interpret: it falls through and nothing happens.
      */
     private function route( int $order_id, string $to, \WC_Order $order ): void {
-        if ( in_array( $to, $this->award_statuses(), true ) ) {
-            try {
-                $this->on_awardable( $order_id );
-            } catch ( \RuntimeException $e ) { // TODO(step-2): remove once on_awardable() is implemented.
-                Log::warning( 'OrderListener', 'award skipped for order #' . $order_id . ': ' . $e->getMessage() );
-            }
+        if ( in_array( $to, SettingsHelper::award_statuses(), true ) ) {
+            $this->run_step( 'award', $order_id, [ $this, 'on_awardable' ], $order_id );
             return;
         }
+
         switch ( $to ) {
             case 'pending':
             case 'on-hold':
-                try {
-                    $this->on_stageable( $order_id );
-                } catch ( \RuntimeException $e ) { // TODO(step-2): remove once on_stageable() is implemented.
-                    Log::warning( 'OrderListener', 'stage skipped for order #' . $order_id . ': ' . $e->getMessage() );
-                }
+                $this->run_step( 'stage', $order_id, [ $this, 'on_stageable' ], $order_id );
                 break;
             case 'cancelled':
             case 'trash':
-                try {
-                    $this->on_cancelled( $order_id );
-                } catch ( \RuntimeException $e ) { // TODO(step-3): remove once on_cancelled() is implemented.
-                    Log::warning( 'OrderListener', 'cancel skipped for order #' . $order_id . ': ' . $e->getMessage() );
-                }
+                $this->run_step( 'cancel', $order_id, [ $this, 'on_cancelled' ], $order_id );
                 break;
             case 'refunded':
-                if ( 0.0 !== (float) $order->get_total_refunded() ) {
-                    break;
-                }
-                try {
-                    $this->on_refunded( $order_id, 0 );
-                } catch ( \RuntimeException $e ) { // TODO(step-3): remove once on_refunded() is implemented.
-                    Log::warning( 'OrderListener', 'refund skipped for order #' . $order_id . ': ' . $e->getMessage() );
+                if ( 0.0 === (float) $order->get_total_refunded() ) {
+                    $this->run_step( 'refund', $order_id, [ $this, 'on_refunded' ], $order_id, 0 );
                 }
                 break;
             case 'failed':
             case 'checkout-draft':
                 // Still payable (failed) or not yet an order (checkout-draft) — neither stages nor awards.
                 break;
+        }
+    }
+
+    /**
+     * Runs one handler, logging instead of throwing when it is still a stub.
+     *
+     * TODO(step-2, step-3): delete once on_awardable/on_stageable/on_cancelled/on_refunded are implemented; route() then calls them directly.
+     *
+     * @param mixed ...$args
+     */
+    private function run_step( string $step, int $order_id, callable $handler, ...$args ): void {
+        try {
+            $handler( ...$args );
+        } catch ( \RuntimeException $e ) {
+            Log::warning( 'OrderListener', $step . ' skipped for order #' . $order_id . ': ' . $e->getMessage() );
         }
     }
 
@@ -182,16 +169,5 @@ final class OrderListener {
      */
     public function on_refunded( int $order_id, int $refund_id ): void {
         // TODO(F01-4): clawback (refund_earn) — design pending; do not implement here until LedgerService gains a refund entry point.
-    }
-
-    /**
-     * Statuses that mean the money arrived, newest settings read each time
-     * so a merchant's change applies to the next transition.
-     *
-     * @return string[]
-     */
-    private function award_statuses(): array {
-        $statuses = SettingsHelper::get_settings()['general']['award_statuses'] ?? [];
-        return ( is_array( $statuses ) && ! empty( $statuses ) ) ? array_values( array_map( 'strval', $statuses ) ) : [ 'processing', 'completed' ];
     }
 }
