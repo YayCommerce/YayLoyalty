@@ -6,29 +6,18 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
 
 ## Unreleased
 
-### Changed — Order events now find the eligible campaign (preview, debug log only) (2026-09-28)
+### Added & Changed — Campaign CRUD end to end: create, update, archive, delete, performance analytics (2026-09-25)
 
-- `OrderListener::on_stageable()` and `on_awardable()` call `preview_and_log()`, which calls `EarningService::preview()` with the order context and logging the result (campaign id or "none", points, reason) to debug. No writes; preview only.
-- `SignupListener::on_registered()` and `ReviewListener::on_approved()` preview the signup / review trigger the same way (`ContextFactory::from_user()` at registration time, `from_comment()` at the comment date with the verified-purchase meta) and log through the shared `Listeners\PreviewLog`. No writes.
-- `ProgramGate::check()` is now implemented: evaluates paused status, no customer, opt-out meta, and excluded roles; returns a reason string or null.
-- `ContextFactory::customer_facts()` is implemented: calls `CustomerFactsReader::read()` (Pro only) which materializes `CustomerFacts`, reading paid orders created strictly before the event's `occurred_at` and excluding the order being evaluated.
-- **Behaviour changes:** `ConditionsEvaluator` is a pure comparison against the Context. `product_in_cart` and `category_in_cart` read this order's line items, not the customer's purchase history. `currency`, `country` and `payment_method` are now evaluated from the order (previously `unsupported_condition_type`). `no_customer` (guest) and `needs_order` (no order, e.g. the admin preview) are new condition reasons. `order_count` / `lifetime_spend` count paid orders created before this one, with no 100-order scan cap. "Paid" orders are those in the set `general.award_statuses`, read from `SettingsHelper::award_statuses()` — one owner, no hard-coded list.
-- Step-2 catches (award and stage handlers) now catch `\Throwable` and log with `Log::error()` to never break an order save — these are real unhandled exceptions, always logged.
-- **Tests:** `composer test` runs 301 unit tests, 54 incomplete (earning/services/redemption specification). New tests: `tests/unit/Pro/ConditionsEvaluatorTest.php`, `tests/unit/Earning/ProgramGateTest.php`, `tests/integration/Engine/CustomerFactsReaderTest.php`.
-
-### Added — Earning listeners connected to their WordPress/WooCommerce events (2026-09-28)
-
-- `EarningService::build()` is now the real composition root (campaigns, customers, `PointsEngine`,
-  `LedgerService`, `PendingPoints`, gates — `ProgramGate` first, then a validated
-  `yayloyalty_earning_gates` filter result), called from `YayLoyalty::__construct()` after Pro boots.
-- `OrderListener` attaches `woocommerce_order_status_changed` and `woocommerce_new_order`, both routed
-  through one status table (award set first, then stage/cancel/refund-zero/no-op cases).
-  `ReviewListener` attaches `comment_post` and `transition_comment_status`, filtered to approved
-  product reviews. `SignupListener` attaches `user_register`.
-- Handler bodies (`on_stageable`, `on_awardable`, `on_cancelled`, `on_refunded`, `on_approved`,
-  `on_unapproved`, `on_registered`) are still no-op stubs — **no points are awarded yet**. Each routing
-  entry point wraps its call to one of them in a removable `try`/`catch` scaffold.
-- **Tests:** +5 unit tests (`ListenerRegistrationTest`) covering hook attachment and the DI graph.
+- **Campaign create:** `/campaigns/new` shows a template chooser (`CampaignTemplatePicker.tsx`, three built-in templates: purchase/signup/review); POST `/campaigns` persists to real database. Lite shows read-only built-in cards; Pro shows the picker and form.
+- **Campaign update:** `/campaigns/:id/edit` (Pro only, Lite 404) — six-section form (Basics, Trigger, Reward, Conditions, Schedule, Priority) + live summary rail. PUT `/campaigns/{id}` persists for real: `CampaignRestController::update_item()` validates config/conditions/dates, applies updates, calls `$campaign->to_update_row()` and writes via `CampaignRepository::update()`. Built-in campaigns refuse archive but allow pause/name edit. Lite's three built-in cards have an On/Off toggle + Save changes button (status + config writes only).
+- **Campaign archive/pause:** Dialogs (`pro/campaigns/archive/`, `pro/campaigns/pause/`) opened from table row menu and bulk bar; copy/figures (points_issued_lifetime) live in `*.copy.ts` files. Built-in campaigns cannot be archived (403 from server). `points_issued` is a ledger-derived read field; fixture value was removed and `CampaignPerformanceFixture` (574 lines) is gone.
+- **Campaign performance analytics:** `/campaigns/:id/performance` (Pro only, purchase/signup/review triggers) — **real data from `Pro/Repositories/CampaignPerformanceRepository`** (ledger aggregates + paged/searchable entries), not fixtures. Tiles (points issued, redeemed, unique campaigners, avg order value), daily chart (last 30 days), skipped/estimate side panel (both still `null` — need earning engine F01-4), searchable/paginated entries table. `skipped`, `estimate`, `avg_order_subtotal` remain `null` pending the award path.
+- **Lookup route:** `LookupRestController` — `GET /lookups/{entity}` (products, categories, customers) with `search` or `ids` params, returns paginated `{ items: [{ id, label }] }`. Used by condition value pickers in campaign/reward editors.
+- **Validation & guards:** Rate guards refuse a purchase campaign with rate ≤ 0 or missing (in rate mode), or multiplier on the default purchase campaign (`CampaignRateGuardTest`). Name/date validation (blank names, end before start, dates that are not full UTC datetimes); a write that leaves the dates alone still lands on a legacy row stored out of order. Archive guard refuses to archive built-in campaigns.
+- **Status badge colors:** `CampaignStatusBadge.tsx` + `campaignStatusBadgeVariant()` in `campaign-labels.ts` own one badge variant per display status (active success, scheduled primary, paused warning, draft outline, archived/ended dimmed).
+- **Loading skeletons:** Campaigns list (`CampaignPointsSummarySkeleton`) and editor (`CampaignEditorSkeleton.tsx`) show skeletons shaped like the loaded page.
+- **Utilities:** `Utils\Text::plain()` removes HTML tags and entities from store names; `Utils\WooOrders::is_hpos()` centralizes the one HPOS check for order admin links.
+- **Tests:** Integration suite now 74 tests: campaign archive guard and name/date validation, rate guards (`CampaignRateGuardTest`), lookups by search and id (`LookupRouteTest`), performance repository aggregates/paging/search and deleted-customer snapshot names (`CampaignPerformanceRepositoryTest`). Unit tests for campaign reward copy, status badge colors, stored-date formatting.
 
 ### Added — Email Settings page: loyalty transactional emails as WooCommerce email classes (2026-09-24)
 
