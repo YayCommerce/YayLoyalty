@@ -3,7 +3,9 @@ namespace YayLoyalty\Engine\Earning\Listeners;
 
 use YayLoyalty\Engine\Earning\EarningService;
 use YayLoyalty\Engine\Earning\PendingPoints;
+use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Repositories\LedgerRepository;
+use YayLoyalty\Utils\Log;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -40,28 +42,48 @@ final class OrderListener {
     }
 
     /**
-     * Attaches the one order hook; call once at boot, after settings are readable.
+     * Attaches the two order hooks; call once at boot, after settings are readable.
      *
-     * One entry point on purpose. Per-status hooks
-     * (`woocommerce_order_status_completed`) and `woocommerce_payment_complete`
-     * describe the same transition from different angles, so registering more
-     * than one of them processes each transition several times and leans on
-     * the ledger's guard to undo the extra work.
+     * Why two, and why no others: invariant 6 in `includes/Engine/Earning/README.md`.
      */
     public function register(): void {
-        // TODO(F01-4): add_action woocommerce_order_status_changed → on_status_changed, 10, 4.
+        add_action( 'woocommerce_order_status_changed', [ $this, 'on_status_changed' ], 10, 4 );
+        add_action( 'woocommerce_new_order', [ $this, 'on_order_created' ], 10, 2 );
     }
 
     /**
-     * The single order entry point: routes one transition by where it landed.
+     * Order status transition entry point.
      *
      * Reads $to, never $order->get_status(): by the time a late-priority
      * callback runs the order may have moved again, and the transition being
-     * handled is the one that was announced.
+     * handled is the one that was announced. $from goes only into the debug
+     * line; see route() for why it plays no part in routing.
+     */
+    public function on_status_changed( int $order_id, string $from, string $to, \WC_Order $order ): void {
+        Log::debug( 'OrderListener', 'order #' . $order_id . ' ' . $from . ' -> ' . $to );
+        $this->route( $order_id, $to, $order );
+    }
+
+    /**
+     * Order creation entry point — covers the arrival route() above cannot
+     * see: WooCommerce never fires `woocommerce_order_status_changed` for a
+     * brand-new order's first status (no prior status to transition from).
+     * Routes on $order->get_status() since there is no $to being announced.
+     */
+    public function on_order_created( int $order_id, \WC_Order $order ): void {
+        Log::debug( 'OrderListener', 'order #' . $order_id . ' created at ' . $order->get_status() );
+        $this->route( $order_id, $order->get_status(), $order );
+    }
+
+    /**
+     * The one routing table, shared by both entry points above.
      *
-     * $from is unused — first arrival wins and any later transition into the
-     * award set composes the same idempotency key, so it costs one rejected
-     * insert and returns Outcome::duplicate.
+     * $from is not a parameter: first arrival wins, and any later call that
+     * lands on the same $to — from either hook, including the same-request
+     * double delivery of invariant 6 — repeats a step that
+     * is already idempotent (PendingPoints::stage()/release(), invariant 2)
+     * or composes the same ledger idempotency key and costs one rejected
+     * insert (invariants 3-4). No dedup lives here; none is needed.
      *
      *   checkout-draft  nothing — a block-checkout draft is not an order yet
      *                   and must never reach staging
@@ -83,8 +105,46 @@ final class OrderListener {
      * Any other status — one another plugin registered — is not ours to
      * interpret: it falls through and nothing happens.
      */
-    public function on_status_changed( int $order_id, string $from, string $to, \WC_Order $order ): void {
-        // TODO(F01-4): switch on $to exactly as the docblock lists; award when in_array( $to, award_statuses(), true ), checked before the single-status branches so a merchant who puts on-hold in the set still gets it.
+    private function route( int $order_id, string $to, \WC_Order $order ): void {
+        if ( in_array( $to, SettingsHelper::award_statuses(), true ) ) {
+            $this->run_step( 'award', $order_id, [ $this, 'on_awardable' ], $order_id );
+            return;
+        }
+
+        switch ( $to ) {
+            case 'pending':
+            case 'on-hold':
+                $this->run_step( 'stage', $order_id, [ $this, 'on_stageable' ], $order_id );
+                break;
+            case 'cancelled':
+            case 'trash':
+                $this->run_step( 'cancel', $order_id, [ $this, 'on_cancelled' ], $order_id );
+                break;
+            case 'refunded':
+                if ( 0.0 === (float) $order->get_total_refunded() ) {
+                    $this->run_step( 'refund', $order_id, [ $this, 'on_refunded' ], $order_id, 0 );
+                }
+                break;
+            case 'failed':
+            case 'checkout-draft':
+                // Still payable (failed) or not yet an order (checkout-draft) — neither stages nor awards.
+                break;
+        }
+    }
+
+    /**
+     * Runs one handler, logging instead of throwing when it is still a stub.
+     *
+     * TODO(step-2, step-3): delete once on_awardable/on_stageable/on_cancelled/on_refunded are implemented; route() then calls them directly.
+     *
+     * @param mixed ...$args
+     */
+    private function run_step( string $step, int $order_id, callable $handler, ...$args ): void {
+        try {
+            $handler( ...$args );
+        } catch ( \RuntimeException $e ) {
+            Log::warning( 'OrderListener', $step . ' skipped for order #' . $order_id . ': ' . $e->getMessage() );
+        }
     }
 
     /** Evaluation moment: preview at the order's creation date, stage the figure. */
@@ -109,16 +169,5 @@ final class OrderListener {
      */
     public function on_refunded( int $order_id, int $refund_id ): void {
         // TODO(F01-4): clawback (refund_earn) — design pending; do not implement here until LedgerService gains a refund entry point.
-    }
-
-    /**
-     * Statuses that mean the money arrived, newest settings read each time
-     * so a merchant's change applies to the next transition.
-     *
-     * @return string[]
-     */
-    private function award_statuses(): array {
-        // TODO(F01-4): SettingsHelper::get_settings()['general']['award_statuses'], defaulting to [ 'processing', 'completed' ]; values are bare slugs, as woocommerce_order_status_changed reports them, never wc- prefixed.
-        return [ 'processing', 'completed' ];
     }
 }

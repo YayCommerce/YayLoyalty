@@ -66,6 +66,10 @@ These do not change the model; they record how it must be expressed in code so t
 - [`data-model/redemptions.md`](./data-model/redemptions.md) — `yayloyalty_redemptions` (designed, not created)
 - [`data-model/future-tables.md`](./data-model/future-tables.md) — referrals, referral visits, tiers, tier history, lots and lot allocations, events
 
+**Process specs:**
+
+- [`data-model/points-lifecycle.md`](./data-model/points-lifecycle.md) — the points earning and reversal lifecycle: why earning works the way the `includes/Engine/Earning/README.md` invariants say, the per-trigger hook and key map, and the (designed, not implemented) reversal/clawback flow, which it owns.
+
 ---
 
 ## Not tables, but part of the model
@@ -144,7 +148,8 @@ erDiagram
 | Order reaches award status   | `ledger` `earn` (with `campaign_id`, `order_id`); `customers` balance, lifetime_earned, pending, last_activity_at, expires_at; order meta; `lots` (Pro); `tier_history` if a threshold was crossed (1.2); `events` (2.0) |
 | Redemption at checkout       | `redemptions` (`applied`); `ledger` `redeem` (with `redemption_id`, `order_id`); `customers` balance, lifetime_redeemed; `lot_allocations` (Pro); order meta                                                             |
 | Order paid                   | `redemptions.status = completed`                                                                                                                                                                                         |
-| Order cancelled / failed     | `customers.pending_points −= N`; if redeemed: `ledger` `refund_redeem`, `redemptions.status = cancelled`, `restored_points`                                                                                              |
+| Order cancelled / trashed    | `customers.pending_points −= N` (released once); if redeemed: `ledger` `refund_redeem`, `redemptions.status = cancelled`, `restored_points`
+| Order failed                 | Nothing. Still payable — a retry lands on the award status and earns then; releasing pending here would let a later retry release it a second time.                                                                                              |
 | Refund created               | `ledger` `refund_earn` (reference = refund id); `ledger` `refund_redeem` per policy; `customers` aggregates; `redemptions.restored_points`                                                                               |
 | Review approved / unapproved | `ledger` `earn` / `refund_earn` (reference = comment id)                                                                                                                                                                 |
 | Manual adjustment            | `ledger` `adjust` (with `actor_id`, `note`); `customers`                                                                                                                                                                 |

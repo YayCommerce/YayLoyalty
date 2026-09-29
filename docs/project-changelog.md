@@ -6,6 +6,24 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
 
 ## Unreleased
 
+### Added — Earning listeners connected to their WordPress/WooCommerce events (2026-09-28)
+
+- `EarningService::build()` is now the real composition root (campaigns, customers, `PointsEngine`,
+  `LedgerService`, `PendingPoints`, gates — `ProgramGate` first, then a validated
+  `yayloyalty_earning_gates` filter result), called from `YayLoyalty::__construct()` after Pro boots.
+- `OrderListener` attaches `woocommerce_order_status_changed` and `woocommerce_new_order`, both routed
+  through one status table (award set first, then stage/cancel/refund-zero/no-op cases).
+  `ReviewListener` attaches `comment_post` and `transition_comment_status`, filtered to approved
+  product reviews. `SignupListener` attaches `user_register`.
+- Handler bodies (`on_stageable`, `on_awardable`, `on_cancelled`, `on_refunded`, `on_approved`,
+  `on_unapproved`, `on_registered`) are still no-op stubs — **no points are awarded yet**. Each routing
+  entry point wraps its call to one of them in a removable `try`/`catch` scaffold.
+- `general.award_statuses` setting (default `processing` + `completed`, an emptied list reads back as
+  the default) owned by `SettingsHelper::award_statuses()`. Pro's purchase-history conditions now count
+  the same statuses instead of a hardcoded `processing` + `completed` list. `SettingsHelper::get_settings()`
+  merges per field, so a stored list replaces the default list instead of being spliced into it.
+- **Tests:** +5 unit tests (`ListenerRegistrationTest`) covering hook attachment and the DI graph; +2 in
+  `SettingsHelperTest` for the award-set list merge and fallback.
 ### Added & Changed — Campaign CRUD end to end: create, update, archive, delete, performance analytics (2026-09-25)
 
 - **Campaign create:** `/campaigns/new` shows a template chooser (`CampaignTemplatePicker.tsx`, three built-in templates: purchase/signup/review); POST `/campaigns` persists to real database. Lite shows read-only built-in cards; Pro shows the picker and form.
