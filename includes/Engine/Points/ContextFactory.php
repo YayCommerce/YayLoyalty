@@ -124,7 +124,7 @@ final class ContextFactory {
         $user_id     = (int) $comment->user_id;
         $occurred_at = (string) $comment->comment_date_gmt;
 
-        if ( ! Dates::is_valid( $occurred_at ) || 0 === strpos( $occurred_at, '0000' ) ) {
+        if ( ! Dates::is_valid( $occurred_at ) ) {
             throw new \InvalidArgumentException(
                 sprintf( 'YayLoyalty: comment %d has no GMT date to evaluate at.', (int) $comment->comment_ID )
             );
