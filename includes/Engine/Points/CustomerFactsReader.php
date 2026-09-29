@@ -2,13 +2,13 @@
 namespace YayLoyalty\Engine\Points;
 
 use YayLoyalty\Helpers\SettingsHelper;
-use YayLoyalty\Repositories\CustomerRepository;
+use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Reads CustomerFacts from WooCommerce and the customers table. With
+ * Reads CustomerFacts from WooCommerce and the ledger. With
  * ContextFactory, one of the two impure boundary classes of the engine;
  * everything that consumes the facts compares values and queries nothing.
  */
@@ -23,8 +23,6 @@ final class CustomerFactsReader {
      * @param int|null $exclude_order_id The order being evaluated, never counted as its own history.
      */
     public static function read( int $user_id, string $as_of, ?int $exclude_order_id ): CustomerFacts {
-        $customer = ( new CustomerRepository() )->find_by_user_id( $user_id );
-
         // ponytail: hydrates every paid order, paid only when a history condition is evaluated; a COUNT/SUM per order storage if long histories get slow.
         $orders = wc_get_orders(
             [
@@ -45,7 +43,7 @@ final class CustomerFactsReader {
         }
 
         return new CustomerFacts(
-            $customer ? $customer->get_lifetime_earned() : 0,
+            ( new LedgerRepository() )->lifetime_earned_before( $user_id, $as_of ),
             count( $orders ),
             $spend_by_currency
         );

@@ -11,11 +11,12 @@ defined( 'ABSPATH' ) || exit;
  * Identity and roles are on the Context itself; so are the order's own
  * facts (currency, coupons, lines, payment method, countries).
  *
- * Order facts are as of the evaluated event: orders created before it,
- * never its own order, whose status is paid when read. The window is fixed
- * but "paid" is not, and lifetime_points is the current total — so an older
- * order paid between stage and award, or points earned meanwhile, can change
- * the facts. Accepted: award re-evaluates and is authoritative.
+ * As of the evaluated event. lifetime_points counts ledger rows created
+ * before it, so the event's own award never feeds it. Order facts count
+ * orders created before it, never its own order, whose status is paid when
+ * read: the window is fixed but "paid" is not, so an older order paid
+ * between stage and award can change them. Accepted: award re-evaluates and
+ * is authoritative.
  */
 final class CustomerFacts {
 
