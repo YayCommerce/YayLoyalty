@@ -30,7 +30,7 @@ A fact is written out in one doc; every other doc links to it. Update the owner,
 | **`scripts/`**         | `run.sh` (dev/build/release), `validate-build.php`, `dump-design-defaults.php` | Build pipeline and validation                                                   |
 | **`docs/`**            | Architecture, standards, model reference, deployment | Living documentation                                                            |
 | **`release/`**         | Packaged zips after `./scripts/run.sh release`       | Output only; not in version control                                             |
-| **`.claude/skills/`**  | Shared Claude Code skills (`source-of-truth-check`)  | Tracked; the rest of `.claude/` (agent memory, worktrees) stays ignored         |
+| **`.claude/skills/`**  | Shared Claude Code skills (`yay:code-corrector`)     | Tracked; the rest of `.claude/` (agent memory, worktrees) stays ignored         |
 | **`vendor-prefixed/`** | Scoped Composer deps via php-scoper                  | Admin shell (not user code)                                                     |
 
 ---

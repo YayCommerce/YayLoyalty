@@ -6,6 +6,10 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
 
 ## Unreleased
 
+### Changed — Skill renamed to `/yay:code-corrector` (2026-09-30)
+
+- `/source-of-truth-check` is now `/yay:code-corrector` (`.claude/skills/code-corrector/`); behavior unchanged.
+
 ### Changed — Order events now find the eligible campaign (preview, debug log only) (2026-09-28)
 
 - `OrderListener::on_stageable()` and `on_awardable()` call `preview_and_log()`, which calls `EarningService::preview()` with the order context and logging the result (campaign id or "none", points, reason) to debug. No writes; preview only.

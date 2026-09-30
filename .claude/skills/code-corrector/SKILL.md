@@ -1,10 +1,10 @@
 ---
-name: source-of-truth-check
+name: yay:code-corrector
 description: Find code in a diff that re-declares a rule another place already owns (option names, settings defaults, design bounds, points math, enum vocabularies, capabilities, helpers, comments restating a rule), in the same language or across PHP↔TS, plus readability slips in added lines. Reports first, fixes only on approval. Use before committing a feature, or when asked to dedup, find duplicates, check source of truth, or find redundant code.
 argument-hint: "[path | --base <branch> | --all]"
 ---
 
-# Source-of-truth check
+# Code corrector
 
 The rule owners live in `docs/code-standards.md` § 16 Single source of truth. Read them from there every run; never keep a copy here.
 
