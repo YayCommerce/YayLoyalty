@@ -154,7 +154,7 @@ Ordered by how much of the product each blocks, not by an assigned priority — 
 | **No permission matrix** (Pro) | Seven caps on roles; `Capabilities::payload()` | No Settings → Permissions UI or `POST /settings/permissions`; roles are edited with a role plugin for now |
 | **No `uninstall.php`** | `Capabilities::uninstall()` | Nothing calls it; caps and options persist after delete |
 | **Licence routes share the menu cap** | AdminShell applies `get_capability()` (`view`) to menu, licence REST and `LicenseHandler` | A viewer can reach licence endpoints; needs a second adapter method in the shared shell |
-| **Rules decided in two places** | § 16 owner table in `code-standards.md`; `/source-of-truth-check --all` | First full run (2026-09-24): 21 copies and 7 drifted mirrors. Highest risk: `settings.schema.ts` lacks `general.excluded_roles` and requires `adjustment_ceiling` ≥ 0 while PHP stores negatives; points rounding copied outside `PointsMath` (`Clamp::points_in()`, fixtures, `CustomerDrawerExpiryPanel`) |
+| **Rules decided in two places** | § 16 owner table in `code-standards.md`; `/yay:code-corrector --all` | First full run (2026-09-24): 21 copies and 7 drifted mirrors. Highest risk: `settings.schema.ts` lacks `general.excluded_roles` and requires `adjustment_ceiling` ≥ 0 while PHP stores negatives; points rounding copied outside `PointsMath` (`Clamp::points_in()`, fixtures, `CustomerDrawerExpiryPanel`) |
 | **No SPA tests for drawer/editor/performance** | Controllers fixture-tested; points engine (unit tests + shared TS vectors); dashboard computation; PointsMath sync | Customer drawer, campaign editor, campaign performance have no client-side test coverage |
 
 ---

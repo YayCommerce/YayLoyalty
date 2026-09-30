@@ -27,6 +27,10 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
 - **Fixes:** order meta is saved without a full HPOS order save inside the award lock; a review config missing `require_verified` / `one_per_product` now follows the review campaign's defaults (both on).
 - **Tests:** the integration bootstrap mirrors every non-core site table (WooCommerce, Action Scheduler, other plugins) into the scratch prefix, and `WooCommerceOrdersFixture` drives real orders, products, reviews and signups with WooCommerce emails and mail off, deleting every site row it creates. New suites cover the award service, pending points, `from_order`, the order flow (stage, award, duplicate, processing, guest, daily cap), signup and reviews. Unit incompletes 53 → 38.
 
+### Changed — Skill renamed to `/yay:code-corrector` (2026-09-30)
+
+- `/source-of-truth-check` is now `/yay:code-corrector` (`.claude/skills/code-corrector/`); behavior unchanged.
+
 ### Changed — Order events now find the eligible campaign (preview, debug log only) (2026-09-28)
 
 - `OrderListener::on_stageable()` and `on_awardable()` call `preview_and_log()`, which calls `EarningService::preview()` with the order context and logging the result (campaign id or "none", points, reason) to debug. No writes; preview only.
