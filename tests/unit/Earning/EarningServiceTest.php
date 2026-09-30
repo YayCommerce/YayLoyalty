@@ -3,6 +3,7 @@ namespace YayLoyalty\Tests\Unit\Earning;
 
 use YayLoyalty\Engine\Earning\EarningService;
 use YayLoyalty\Engine\Earning\Gate;
+use YayLoyalty\Engine\Earning\Outcome;
 use YayLoyalty\Engine\Earning\PendingPoints;
 use YayLoyalty\Engine\Earning\ProgramGate;
 use YayLoyalty\Engine\Points\CapPolicy;
@@ -19,8 +20,8 @@ use YayLoyalty\Tests\Unit\EngineTestCase;
 
 /**
  * The two moments through one service. preview() runs real gates and the
- * real engine over an in-memory repository; award() is specification until
- * its body lands.
+ * real engine over an in-memory repository; award()'s writes are asserted
+ * against a real database in tests/integration/Earning/EarningServiceAwardTest.php.
  */
 final class EarningServiceTest extends EngineTestCase {
 
@@ -96,27 +97,14 @@ final class EarningServiceTest extends EngineTestCase {
         $this->assertTrue( $result->is_awarded() );
     }
 
-    public function test_award_reevaluates_at_the_same_order_creation_date_as_the_preview(): void {
-        $this->markTestIncomplete( 'award(): same Context, same occurred_at, same Result as preview(); a campaign that ended between purchase and award still pays.' );
-    }
-
+    /** The unit harness has no $wpdb, so reaching LedgerService::earn() here would error: skipped proves it was never called. */
     public function test_award_returns_skipped_with_the_gate_reason_and_writes_nothing(): void {
-        $this->markTestIncomplete( 'award(): a gate reason becomes Outcome::skipped( reason ); LedgerService::earn() is never reached.' );
-    }
+        $gate    = $this->gate( ProgramGate::REASON_PROGRAM_PAUSED, new \ArrayObject() );
+        $outcome = $this->service( $this->engine( [ $this->purchase_campaign() ] ), [ $gate ] )
+            ->award( CampaignTrigger::PURCHASE, $this->context( [ $this->line( 100 ) ] ) );
 
-    public function test_award_returns_duplicate_as_a_normal_outcome_not_an_exception(): void {
-        $this->markTestIncomplete( 'award() twice for one order and trigger: second call is Outcome::duplicate carrying the first row; nothing thrown, aggregates unchanged.' );
-    }
-
-    public function test_award_does_not_require_staging_to_have_run(): void {
-        $this->markTestIncomplete( 'award() on an order that was never staged: Outcome::awarded; PendingPoints::release() returned 0.' );
-    }
-
-    public function test_awarded_hook_fires_after_commit_and_only_when_awarded(): void {
-        $this->markTestIncomplete( 'yayloyalty_points_awarded observed after Transaction::run() returns, never inside it, and not for skipped or duplicate.' );
-    }
-
-    public function test_one_order_can_award_once_per_trigger(): void {
-        $this->markTestIncomplete( 'award( purchase ) then award( first_order ) for one order: two rows with distinct idempotency keys.' );
+        $this->assertSame( Outcome::SKIPPED, $outcome->get_status() );
+        $this->assertSame( ProgramGate::REASON_PROGRAM_PAUSED, $outcome->get_reason() );
+        $this->assertNull( $outcome->get_entry() );
     }
 }

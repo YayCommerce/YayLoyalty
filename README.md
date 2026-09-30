@@ -2,7 +2,7 @@
 
 A loyalty program plugin for WooCommerce with points earning, rewards redemption, referral tracking, and VIP tier management. Shipped as Pro and Lite from one repository.
 
-**Status:** v1.0.0 in development. Core earning system (campaigns, ledger, balance) and reward definitions shipped; admin Dashboard, Customers list + per-customer drawer are live. Nothing awards or spends points yet: both paths are scaffolded with stub bodies and registered nowhere at boot — the award path in `includes/Engine/Earning/` (listeners, gates), whose ledger guard — attempt the insert, turn the UNIQUE index's 1062 into "already awarded" — is real and verified, and the redemption path in `includes/Engine/Redemption/` (service, gates, commit writer, checkout adapters, `LedgerService::redeem()`), the latter over a real, tested `Clamp`/`Quoter` and a `redemptions` table that is designed but not installed. Referrals and tiers planned for later phases.
+**Status:** v1.0.0 in development. Core earning system (campaigns, ledger, balance) and reward definitions shipped; admin Dashboard, Customers list + per-customer drawer are live. Points now award: purchases stage as pending and award at `completed`, signups on storefront self-registration, reviews on approval (one per product, daily cap) — `includes/Engine/Earning/`. Points do not come back out yet (cancel/refund clawback is next). Nothing spends points yet: the redemption path in `includes/Engine/Redemption/` (service, gates, commit writer, checkout adapters, `LedgerService::redeem()`) is scaffolded with stub bodies over a real, tested `Clamp`/`Quoter` and a `redemptions` table that is designed but not installed. Referrals and tiers planned for later phases.
 
 ---
 

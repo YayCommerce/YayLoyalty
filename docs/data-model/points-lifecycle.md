@@ -9,8 +9,8 @@ for the `ledger`/`customers` column meanings this spec assumes.
 
 ## Implementation status
 
-**This is the authoritative design for both directions. Part one (points in) is mostly built; part
-two (points back out) is designed here but has no corresponding code yet — do not assume any of
+**This is the authoritative design for both directions. Part one (points in) is built; part two
+(points back out) is designed here but has no corresponding code yet — do not assume any of
 §06–§08 exists in the codebase.** Status per component:
 
 | Component | File | Status |
@@ -25,11 +25,11 @@ two (points back out) is designed here but has no corresponding code yet — do 
 | `LedgerService::redeem()` | `Services/LedgerService.php` | Stub (`TODO(F08)`) |
 | `LedgerService::refund_earn()` / `refund_redeem()` | `Services/LedgerService.php` | **Does not exist.** No refund entry point has been added to the ledger writer yet |
 | `EarningService::build()` | `Engine/Earning/EarningService.php` | **Implemented** |
-| `EarningService::preview()` / `award()` | `Engine/Earning/EarningService.php` | Stub |
-| `PendingPoints::stage()` / `release()` / `mark_awarded()` | `Engine/Earning/PendingPoints.php` | Stub |
+| `EarningService::preview()` / `award()` | `Engine/Earning/EarningService.php` | **Implemented** |
+| `PendingPoints::stage()` / `release()` / `mark_awarded()` | `Engine/Earning/PendingPoints.php` | **Implemented** |
 | `ProgramGate::check()` | `Engine/Earning/ProgramGate.php` | **Implemented** |
-| `OrderListener::register()` / `on_status_changed()` / `on_order_created()` / `route()` | `Engine/Earning/Listeners/OrderListener.php` | **Implemented** — hooks only; `on_stageable()` and `on_awardable()` **implemented** (call `preview_and_log()`); `on_cancelled()`/`on_refunded()` bodies still Stub |
-| `ReviewListener`, `SignupListener` — `register()` and their hook adapters | same directory | **Implemented** — `on_registered()` / `on_approved()` preview and log (no writes); `on_unapproved()` still Stub |
+| `OrderListener::register()` / `on_status_changed()` / `on_order_created()` / `route()` / `on_stageable()` / `on_awardable()` | `Engine/Earning/Listeners/OrderListener.php` | **Implemented** — all hooks and route logic; `on_cancelled()`/`on_refunded()` bodies still Stub |
+| `ReviewListener`, `SignupListener` — `register()`, their hook adapters, `on_registered()` / `on_approved()` | same directory | **Implemented** — award writes; `on_unapproved()` still Stub |
 | `CommitWriter::commit()` (redemption) | `Engine/Redemption/CommitWriter.php` | Stub — its own docblock calls the cancel/refund side "Zone 3 ... undesigned" |
 
 Every stub above already carries a docblock that states its intended contract; this document and
@@ -59,12 +59,12 @@ separate `$at` parameter to keep in sync with the Context.
 
 ```mermaid
 flowchart TD
-    A[Event: order status change / user_register / comment approved] --> B[Program gate]
+    A[Event: order status change / user_register / comment approved] --> D[Build Context — incl. points_earned_today, one_per_product fact]
+    D --> B[Program gate]
     B -->|paused / no customer / opted out / excluded role| X1[Stop — Result::none reason]
-    B --> C[Person / trigger gate]
-    C -->|one-per-product, daily cap, etc.| X2[Stop — Result::none reason]
-    C --> D[Build Context]
-    D --> E[PointsEngine::evaluate]
+    B --> C[Gates appended by Pro]
+    C -->|a Pro gate's reason| X2[Stop — Result::none reason]
+    C --> E[PointsEngine::evaluate — handler eligibility, CapPolicy daily cap]
     E -->|no campaign matches| X3[Stop — Result::none reason]
     E --> F{{WRITE BOUNDARY}}
     F --> G[Award transaction — LedgerService::earn]
@@ -79,8 +79,11 @@ carry back to the caller. `ProgramGate` is implemented and evaluates paused stat
 first non-null reason wins; other gates attach via `yayloyalty_earning_gates` filter.
 
 Everything above the write boundary is re-runnable and side-effect-free. Everything below it runs
-exactly once per idempotency key. A gate that needs the ledger (e.g. a daily-cap check) belongs
-above the boundary but outside the engine — the engine only ever sees a `Context`.
+exactly once per idempotency key. A rule that needs the ledger reads it above the boundary but
+outside the engine, into the `Context`: the listener passes `LedgerRepository::points_earned_today()`
+(per source) for `CapPolicy`'s daily cap, and `ContextFactory::from_comment()` sets
+`ReviewHandler::EXTRA_PRODUCT_ALREADY_EARNED` for `one_per_product`, which the handler decides
+because only it knows the matched campaign's config.
 
 ## 03 — The write transaction
 
@@ -103,7 +106,7 @@ One transaction, five steps, in this order (`LedgerService::earn()`, implemented
    `yayloyalty_ledger_recorded` **after** commit — a subscriber on another connection cannot see an
    uncommitted row, and nothing slow or externally fallible runs while the lock is held.
 
-`EarningService::award()` (stub) wraps this with the order-meta side effects: releasing
+`EarningService::award()` wraps this with the order-meta side effects: releasing
 `PendingPoints` and writing the award projections happen inside the same transaction as the ledger
 insert, so the cache and the ledger move together or not at all.
 
@@ -113,12 +116,12 @@ A deferred trigger (purchase, first order) stages pending points at order creati
 later, at the award status. An immediate trigger (signup, review) evaluates and writes in one
 step — there's nothing to stage because there's no order waiting to be paid.
 
-| Trigger | Shape | Hook | Idempotency key | Fireable in this build? |
+| Trigger | Shape | Hook | Idempotency key | Status |
 |---|---|---|---|---|
-| Purchase | Deferred | `woocommerce_order_status_changed` | `earn:{user_id}:order:{order_id}:purchase` | Yes |
-| First order | Deferred | `woocommerce_order_status_changed` | `earn:{user_id}:order:{order_id}:first_order` | Pro only — `CampaignTrigger::FIRST_ORDER` is recognised but not in `lite_triggers()` |
-| Signup | Immediate | `user_register` | `earn:{user_id}:user:{user_id}:signup` | Yes |
-| Review | Immediate | `comment_post` / `transition_comment_status` | `earn:{user_id}:comment:{comment_id}:review` | Yes |
+| Purchase | Deferred | `woocommerce_order_status_changed` at `completed`; `woocommerce_new_order` stages at `pending`/`on-hold` | `earn:{user_id}:order:{order_id}:purchase` | **Implemented** |
+| First order | Deferred | same as purchase | `earn:{user_id}:order:{order_id}:first_order` | Pro only — `CampaignTrigger::FIRST_ORDER` is recognised but not in `lite_triggers()` |
+| Signup | Immediate | `user_register` (storefront self-registration only) | `earn:{user_id}:user:{user_id}:signup` | **Implemented** |
+| Review | Immediate | `comment_post` / `transition_comment_status` when approved | `earn:{user_id}:comment:{comment_id}:review` | **Implemented** |
 
 The key format is `{type}:{user_id}:{reference_type}:{reference_id}:{qualifier}`, composed by
 `Engine\Earning\IdempotencyKey::compose()` — see
@@ -137,7 +140,7 @@ reference id alone is enough to guarantee "once".
 |---|---|---|---|
 | Unique idempotency key | `UNIQUE KEY uniq_idempotency_key` on `ledger.idempotency_key`; the insert is the guarantee, the pre-check is only an optimisation | Double award | **Implemented** |
 | Customer row lock | `SELECT balance ... FOR UPDATE` inside the transaction | A broken `balance_after` chain | **Implemented** |
-| Release-once flag | `PendingPoints::META_RELEASED`, separate from the staged-figure meta, set exactly once | Pending underflow on a status bounce (award → cancel → award again) | Designed, not implemented |
+| Release-once flag | `PendingPoints::META_RELEASED`, separate from the staged-figure meta, set exactly once | Pending underflow on a status bounce (award → cancel → award again) | **Implemented** |
 
 ## 06 — The reversal grid (designed, not implemented)
 
@@ -164,14 +167,16 @@ order is still payable.
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Placed: pending / on-hold
-    Placed --> AwardSet: processing / completed
-    Placed --> Failed: failed
-    Placed --> Cancelled: cancelled / trashed
+    [*] --> Placed: pending / on-hold (stage points)
+    Placed --> Completed: completed (award & release)
+    Placed --> Failed: failed (no action)
+    Placed --> Processing: processing (no action)
+    Placed --> Cancelled: cancelled / trashed (not yet impl.)
 
-    AwardSet --> [*]: earn row written, pending released once
-    Failed --> [*]: nothing — retry lands back on the award set
-    Cancelled --> [*]: pending released once, redemption restored
+    Completed --> [*]: earn row written, pending released
+    Failed --> [*]: order remains payable
+    Processing --> [*]: no stage or award
+    Cancelled --> [*]: pending released, redeemed restored (not impl.)
 ```
 
 Refund events are driven by refund **objects** (`woocommerce_order_refunded`), never by the
@@ -182,9 +187,10 @@ not to a refund id. A deleted refund (`refund_deleted`) writes the inverse of th
 ledger rows — no separate bookkeeping of "what was clawed" is needed, because the rows keyed to
 that refund id already are that record.
 
-`pending_points` is `bigint unsigned` (`CustomersTable::definition()`); releasing it twice for the
-same order must therefore be guarded (§05's release-once flag) rather than relied on to fail safe —
-an unsigned column doesn't go negative on a double release, it wraps.
+`pending_points` is `bigint unsigned` (`CustomersTable::definition()`), so
+`CustomerRepository::apply_pending_delta()` floors it at 0. The floor only hides a double release —
+it would take the points of another order — so releasing twice is prevented by §05's release-once
+flag, not by the floor.
 
 ## 08 — Clawback maths (designed, not implemented)
 

@@ -6,6 +6,17 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
 
 ## Unreleased
 
+### Added & Changed — Award points for purchases, signups, and reviews (2026-09-30)
+
+- **Award at `completed` only.** `Enums\OrderStatus` owns the rule; the `general.award_statuses` setting is removed (PHP and the TS mirror). `processing` is inert. `CustomerFactsReader` counts `completed` orders as paid history.
+- **Orders:** `OrderListener::on_stageable()` previews the purchase and `PendingPoints::stage()`s it at `pending`/`on-hold` (every new order is announced as `pending` first). `on_awardable()` runs `EarningService::award()` per trigger in `yayloyalty_order_award_triggers` (Lite: `purchase`), notes the outcome on the order, then releases pending whatever the answer, so a skipped award never strands it. Both score the order object the hook passes: HPOS fires `woocommerce_new_order` before line items are saved.
+- **`EarningService::award()`**: re-previews at the order's creation date, then one transaction writes the earn row (`LedgerService::earn()`), releases pending and adds the order meta (`_yayloyalty_points_earned` sums rows, `_yayloyalty_campaign_id` keeps the first). `yayloyalty_points_awarded` fires after commit, only for an awarded row.
+- **Order notes:** "Earned N points (campaign: X).", "No points earned: {reason}." (never for guests), and on a duplicate whose earn was already clawed back "Points for this order were reversed earlier…" (clawback lands in PR B).
+- **Signup** awards only storefront self-registration (no current user, not WP-CLI, cron or an Action Scheduler run). **Reviews** award on approval with `one_per_product` (a Context fact from `ContextFactory::from_comment()`, decided by `ReviewHandler`) and a daily cap per ledger source.
+- **Primitives:** `Transaction::after_commit()` (runs after the outermost commit, dropped on rollback) now carries `yayloyalty_ledger_recorded`, fixing the nested-transaction early fire. `LedgerRepository::points_earned_today( user, at, source )`, `earn_rows_for_order()`, `find_earn_for_reference()`, `refund_rows_for_refund()`, `sum_refunded_for()`; `CustomerRepository::apply_pending_delta()` (floored at 0); `IdempotencyKey::qualifier_of()`; `Dates::site_day_start()`; `Installer::drop_index_if_exists()`.
+- **Fixes:** order meta is saved without a full HPOS order save inside the award lock; a review config missing `require_verified` / `one_per_product` now follows the review campaign's defaults (both on).
+- **Tests:** the integration bootstrap mirrors every non-core site table (WooCommerce, Action Scheduler, other plugins) into the scratch prefix, and `WooCommerceOrdersFixture` drives real orders, products, reviews and signups with WooCommerce emails and mail off, deleting every site row it creates. New suites cover the award service, pending points, `from_order`, the order flow (stage, award, duplicate, processing, guest, daily cap), signup and reviews. Unit incompletes 53 → 38.
+
 ### Changed — Order events now find the eligible campaign (preview, debug log only) (2026-09-28)
 
 - `OrderListener::on_stageable()` and `on_awardable()` call `preview_and_log()`, which calls `EarningService::preview()` with the order context and logging the result (campaign id or "none", points, reason) to debug. No writes; preview only.

@@ -2,11 +2,16 @@
 namespace YayLoyalty\Tests\Integration\Earning;
 
 use YayLoyalty\Engine\Earning\PendingPoints;
+use YayLoyalty\Enums\CampaignTrigger;
+use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Enums\Status;
+use YayLoyalty\Models\LedgerEntry;
 use YayLoyalty\Repositories\CampaignRepository;
+use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Tests\Integration\IntegrationTestCase;
 use YayLoyalty\Tests\Integration\WooCommerceOrdersFixture;
+use YayLoyalty\Utils\Dates;
 
 /** Orders through WooCommerce's own hooks: staged at pending, awarded once at completed, never at processing. */
 final class OrderAwardFlowTest extends IntegrationTestCase {
@@ -87,5 +92,29 @@ final class OrderAwardFlowTest extends IntegrationTestCase {
         $this->assertCount( 0, $this->ledger_rows( $user_id ) );
         $this->assertSame( 0, (int) $this->customer_row( $user_id )['pending_points'] );
         $this->assertNotEmpty( $order->get_meta( PendingPoints::META_RELEASED ) );
+    }
+
+    /** Guests are blocked by ProgramGate at both moments: nothing staged, no row, no note. */
+    public function test_a_guest_order_stages_and_awards_nothing(): void {
+        $order = $this->transition( $this->create_order( null, [ 100 ] ), 'completed' );
+
+        $this->assertSame( '', $order->get_meta( PendingPoints::META_PENDING ) );
+        $this->assertSame( '', $order->get_meta( PendingPoints::META_EARNED ) );
+        $this->assertSame( [], preg_grep( '/points/i', $this->order_notes( $order ) ) );
+    }
+
+    /** The cap counts today's order earnings only: a review earned the same day does not use it up. */
+    public function test_daily_cap_spans_orders_and_ignores_other_sources(): void {
+        ( new CampaignRepository() )->update( $this->campaign_id, [ 'status' => Status::PAUSED ] );
+        $this->create_campaign( CampaignTrigger::PURCHASE, [ 'daily_cap' => 150 ] );
+        $user_id = $this->create_customer();
+        ( new LedgerRepository() )->insert( new LedgerEntry( null, $user_id, 500, 0, LedgerType::EARN, LedgerSource::REVIEW, null, null, null, null, null, null, null, Dates::now() ) );
+
+        $this->transition( $this->create_order( $user_id, [ 100 ] ), 'completed' );
+        $this->transition( $this->create_order( $user_id, [ 100 ] ), 'completed' );
+
+        $orders = array_values( array_filter( $this->ledger_rows( $user_id ), static fn( array $row ): bool => LedgerSource::ORDER === $row['source'] ) );
+
+        $this->assertSame( [ 100, 50 ], array_map( static fn( array $row ): int => (int) $row['points'], $orders ) );
     }
 }

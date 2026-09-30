@@ -7,12 +7,13 @@ use YayLoyalty\Models\Campaign;
 use YayLoyalty\Repositories\CampaignRepository;
 
 /**
- * Real orders, customers and campaigns for tests that drive the earning
- * listeners through WooCommerce's own hooks. Orders live in the scratch
- * copies of WooCommerce's tables (bootstrap.php), but their HPOS placeholder
- * posts, notes and customers are site rows, so cleanup_orders() deletes
- * everything it made; call it from tearDown(). Mail is short-circuited in
- * between, so order emails never leave the site.
+ * Real orders, customers, products, reviews and campaigns for tests that
+ * drive the earning listeners through WooCommerce's own hooks. Orders live
+ * in the scratch copies of WooCommerce's tables (bootstrap.php), but their
+ * HPOS placeholder posts, notes, products, reviews and customers are site
+ * rows, so cleanup_orders() deletes everything it made; call it from
+ * tearDown(). Mail is short-circuited in between, so order emails never
+ * leave the site.
  */
 trait WooCommerceOrdersFixture {
 
@@ -22,13 +23,34 @@ trait WooCommerceOrdersFixture {
     /** @var int[] */
     private $fixture_users = [];
 
-    /** Skips without WooCommerce; otherwise stops mail until cleanup_orders(). Call from setUp(). */
+    /** @var \WC_Product[] */
+    private $fixture_products = [];
+
+    /** @var int[] */
+    private $fixture_comments = [];
+
+    /**
+     * Skips without WooCommerce; otherwise stops mail until cleanup_orders(). Call from setUp().
+     *
+     * Every WooCommerce email is switched off, not just its delivery: rendering
+     * (CSS inlining) runs before wp_mail, and once other tests have loaded the
+     * mailer it costs seconds per status change.
+     */
     private function require_woocommerce(): void {
         if ( ! function_exists( 'wc_create_order' ) ) {
             $this->markTestSkipped( 'WooCommerce is not active on this site.' );
         }
 
         add_filter( 'pre_wp_mail', '__return_false' );
+
+        foreach ( $this->woocommerce_email_ids() as $email_id ) {
+            add_filter( 'woocommerce_email_enabled_' . $email_id, '__return_false' );
+        }
+    }
+
+    /** @return string[] */
+    private function woocommerce_email_ids(): array {
+        return array_values( wp_list_pluck( WC()->mailer()->get_emails(), 'id' ) );
     }
 
     /** A customer-role user, registered while an administrator is current so SignupListener does not award it. */
@@ -57,9 +79,8 @@ trait WooCommerceOrdersFixture {
         );
 
         wp_set_current_user( $previous );
-        $this->fixture_users[] = $user_id;
 
-        return $user_id;
+        return $this->track_user( $user_id );
     }
 
     /**
@@ -100,12 +121,48 @@ trait WooCommerceOrdersFixture {
         return wc_get_order( $order->get_id() );
     }
 
+    /** Tracks a user a test registered itself, so cleanup_orders() deletes it. */
+    private function track_user( int $user_id ): int {
+        $this->fixture_users[] = $user_id;
+
+        return $user_id;
+    }
+
+    private function create_product(): int {
+        $product = new \WC_Product_Simple();
+        $product->set_name( 'YayLoyalty test product' );
+        $product->set_regular_price( '10' );
+        $product->save();
+
+        $this->fixture_products[] = $product;
+
+        return $product->get_id();
+    }
+
+    /** A top-level review inserted unapproved, then approved, so transition_comment_status reaches the listener. */
+    private function approve_new_review( int $user_id, int $product_id ): int {
+        $comment_id = (int) wp_insert_comment(
+            [
+                'comment_post_ID'  => $product_id,
+                'user_id'          => $user_id,
+                'comment_type'     => 'review',
+                'comment_content'  => 'Works as described.',
+                'comment_approved' => 0,
+            ]
+        );
+
+        $this->fixture_comments[] = $comment_id;
+        wp_set_comment_status( $comment_id, 'approve' );
+
+        return $comment_id;
+    }
+
     /**
      * An active campaign for $trigger with its default config, overridden by $config.
      *
      * @param array<string, mixed> $config
      */
-    private function create_campaign( string $trigger = CampaignTrigger::PURCHASE, array $config = [] ): int {
+    private function create_campaign( string $trigger = CampaignTrigger::PURCHASE, array $config = [], ?string $ends_at = null ): int {
         static $sequence = 0;
         ++$sequence;
 
@@ -117,7 +174,10 @@ trait WooCommerceOrdersFixture {
                 $trigger,
                 Status::ACTIVE,
                 0,
-                array_replace( Campaign::default_config( $trigger ), $config )
+                array_replace( Campaign::default_config( $trigger ), $config ),
+                [],
+                null,
+                $ends_at
             )
         );
     }
@@ -145,15 +205,29 @@ trait WooCommerceOrdersFixture {
             $order->delete( true );
         }
 
+        foreach ( $this->fixture_comments as $comment_id ) {
+            wp_delete_comment( $comment_id, true );
+        }
+
+        foreach ( $this->fixture_products as $product ) {
+            $product->delete( true );
+        }
+
         require_once ABSPATH . 'wp-admin/includes/user.php';
 
         foreach ( $this->fixture_users as $user_id ) {
             wp_delete_user( $user_id );
         }
 
-        $this->fixture_orders = [];
-        $this->fixture_users  = [];
+        $this->fixture_orders   = [];
+        $this->fixture_users    = [];
+        $this->fixture_products = [];
+        $this->fixture_comments = [];
 
         remove_filter( 'pre_wp_mail', '__return_false' );
+
+        foreach ( $this->woocommerce_email_ids() as $email_id ) {
+            remove_filter( 'woocommerce_email_enabled_' . $email_id, '__return_false' );
+        }
     }
 }

@@ -270,8 +270,9 @@ These are **first-party, internal seams** for Pro to attach behavior. Not a thir
 | Filter | Context | Used By |
 |---|---|---|
 | **`yayloyalty_table_schemas`** | Called during Installer to collect table DDL | Pro can add Pro tables (currently unused) |
-| **`yayloyalty_ledger_recorded`** | Fired by `LedgerService` after its own `Transaction::run()` commits (a savepoint when nested in `exec_write`) | `DashboardCache::flush`; `Engine\CustomerActivityListener::on_ledger_recorded` — captures `account_created`/`points_adjusted` into `yayloyalty_customer_meta` |
-| **`yayloyalty_points_awarded`** | To be fired by `Engine\Earning\EarningService::award()` after commit, once per awarded `Outcome` (scaffold; not fired yet) | nothing yet — emails, YayMail placeholders |
+| **`yayloyalty_ledger_recorded`** | Fired by `LedgerService` for every row it writes, through `Transaction::after_commit()`: after the outermost commit (also when nested in `exec_write` or `EarningService::award()`), never on rollback | `DashboardCache::flush`; `Engine\CustomerActivityListener::on_ledger_recorded` — captures `account_created`/`points_adjusted` into `yayloyalty_customer_meta` |
+| **`yayloyalty_points_awarded`** | Fired by `Engine\Earning\EarningService::award()` after commit, once per awarded row, with `(Outcome $awarded, Context $ctx)`; never for skipped or duplicate | nothing yet — emails, YayMail placeholders |
+| **`yayloyalty_order_award_triggers`** | Filter applied by `OrderListener::on_awardable()`: the triggers a completed order is awarded for, `[ purchase ]` plus the order | Internal seam: Pro appends its order triggers (`first_order`, …) |
 | **`yayloyalty_points_redeemed`** | To be fired by `Engine\Redemption\RedemptionService::commit()` after commit, once per redeemed `Outcome` (scaffold; not fired yet) | nothing yet |
 | **`yayloyalty_redemption_gates`** | To be applied by `RedemptionService::build()` over `[ ProgramGate, RewardGate ]` (scaffold) | Pro gates (tier-only rewards) |
 | **`yayloyalty_reward_conditions_match`** | To be applied by `Engine\Redemption\RewardGate` with the reward and the `Rewards\Context` (default `true`; scaffold) | Pro reward conditions evaluator |

@@ -51,7 +51,7 @@ All referral tables (`referrals`, `referral_visits`) specified in data model; no
 
 | Feature | Spec | Status | Details |
 |---|---|---|---|
-| **Lite triggers** | `purchase`, `signup`, `review` | ⚠️ **COMPUTABLE, NOT FIRED** | `PointsEngine` + handlers score all three; `Engine\Earning\Listeners\*` exist as stubs and are not registered at boot (F01-4) |
+| **Lite triggers** | `purchase`, `signup`, `review` | ✅ **SHIPPED** | `PointsEngine` + handlers score all three; listeners fire and award via `EarningService::award()`; purchase stages at pending/on-hold and awards at completed |
 | **Pro triggers** | `birthday`, `first_order`, `order_count`, `spend_milestone` | ⚠️ **OFFERABLE IN PRO, NOT FIREABLE** | Added to `CampaignTrigger::all()` by `YayLoyaltyPro`; Lite recognises them (`all_known()`) so a downgrade keeps the rows |
 | **Referral trigger** | `referral` | ⚠️ **RECOGNIZED, NOT FIREABLE** | Enum only; referral engine not built |
 | **Social trigger** | `social` | ⚠️ **RECOGNIZED, NOT FIREABLE** | Share-for-points not implemented |
@@ -79,7 +79,7 @@ All referral tables (`referrals`, `referral_visits`) specified in data model; no
 |---|---|---|---|
 | **Balance display** | Current spendable points | ✅ SHIPPED | REST `GET /customers/{id}`; SPA Customers page; TanStack Query |
 | **Customers list** | Admin view of all members | ✅ SHIPPED | Real `GET /customers` — search/filter/sort/paginate in SQL, not demo data; see Admin UI → Customers below |
-| **Pending points** | Awaiting order award | ❌ **COLUMN ONLY** | `customers.pending_points` exists and is inserted as 0; `Engine\Earning\PendingPoints` and `CustomerRepository::apply_pending_delta()` are stubs (F01-4) |
+| **Pending points** | Awaiting order award | ✅ **SHIPPED** | `customers.pending_points` tracked; `Engine\Earning\PendingPoints` stages/releases/marks_awarded; order meta holds the cached figure |
 | **Lifetime earned** | Net earn total (unaffected by redeem/expire) | ✅ SHIPPED | Updated on earn/adjust; basis for tier (points mode) |
 | **Lifetime redeemed** | Total points spent (excluding refunds) | ✅ SHIPPED | Maintained by `LedgerService` from ledger type; no redemption flow writes REDEEM rows yet |
 | **Expiry** | Inactivity basis | ⚠️ **TRACKED, NOT ENFORCED** | Fields exist (`expires_at`, `reminder_sent_at`); no job runs |

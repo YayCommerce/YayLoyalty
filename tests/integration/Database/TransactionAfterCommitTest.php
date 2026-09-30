@@ -2,14 +2,7 @@
 namespace YayLoyalty\Tests\Integration\Database;
 
 use YayLoyalty\Database\Transaction;
-use YayLoyalty\Engine\Earning\IdempotencyKey;
-use YayLoyalty\Enums\CampaignTrigger;
-use YayLoyalty\Enums\LedgerSource;
-use YayLoyalty\Enums\LedgerType;
-use YayLoyalty\Enums\ReferenceType;
-use YayLoyalty\Models\LedgerEntry;
 use YayLoyalty\Tests\Integration\IntegrationTestCase;
-use YayLoyalty\Utils\Dates;
 
 /** after_commit() fires once, after the outermost commit, and never for a write that was rolled back. */
 final class TransactionAfterCommitTest extends IntegrationTestCase {
@@ -131,7 +124,7 @@ final class TransactionAfterCommitTest extends IntegrationTestCase {
         try {
             Transaction::run(
                 function (): void {
-                    $this->ledger_service()->earn( $this->earn_draft() );
+                    $this->ledger_service()->earn( $this->earn_draft( 4343, 55, 10 ) );
 
                     $this->assertSame( [], $this->fired, 'Fired before the outer commit.' );
                 }
@@ -147,25 +140,5 @@ final class TransactionAfterCommitTest extends IntegrationTestCase {
         return function () use ( $label ): void {
             $this->fired[] = $label;
         };
-    }
-
-    private function earn_draft(): LedgerEntry {
-        return new LedgerEntry(
-            null,
-            4343,
-            10,
-            0,
-            LedgerType::EARN,
-            LedgerSource::ORDER,
-            ReferenceType::ORDER,
-            55,
-            null,
-            null,
-            55,
-            null,
-            null,
-            Dates::now(),
-            IdempotencyKey::compose( LedgerType::EARN, 4343, ReferenceType::ORDER, 55, CampaignTrigger::PURCHASE )
-        );
     }
 }

@@ -178,20 +178,20 @@ were removed once the real path covered every wireframe artboard.
 
 Filters (public API): `yayloyalty_campaign_candidates`, `yayloyalty_campaign_matches`, `yayloyalty_earning_base_amount`, `yayloyalty_points_for_order`.
 
-### Earning orchestration (includes/Engine/Earning/) — scaffold
+### Earning orchestration (includes/Engine/Earning/) — award path shipped
 
-`namespace YayLoyalty\Engine\Earning`. The award path around the pure engine: listeners build a `Context`, `EarningService` runs gates then `PointsEngine::evaluate()` (**preview**), and `award()` repeats the preview at the same `occurred_at` then writes through `LedgerService::earn()` inside one `Transaction::run()`. See its `README.md` for the seven invariants; the test names under `tests/unit/Earning/` are the specification.
+`namespace YayLoyalty\Engine\Earning`. The award path around the pure engine: listeners build a `Context`, `EarningService` runs gates then `PointsEngine::evaluate()` (**preview**), and `award()` repeats the preview at the same `occurred_at` then writes through `LedgerService::earn()` inside one `Transaction::run()`, releases pending, marks awarded in order meta, fires `yayloyalty_points_awarded` after commit. See its `README.md` for the ten invariants; its behaviour is asserted in `tests/integration/Earning/` (real orders, reviews, signups) and `tests/unit/Earning/`.
 
 | Class | Role |
 |---|---|
-| `EarningService` | `build()` composition root (constructs `LedgerService`, see `code-standards.md` §8) — **implemented**, called from `YayLoyalty::__construct()`; `preview( $trigger, Context ): Result`; `award( $trigger, Context ): Outcome`. Gate chain iteration is real; `preview()`/`award()` bodies are stubs |
-| `Gate` + `ProgramGate` | `check( $trigger, Context ): ?string` — a reason to skip, or null. `ProgramGate` is the one place on the path that reads settings (`excluded_roles`) and user meta (`_yayloyalty_opted_out`) |
-| `IdempotencyKey` | `compose( type, user_id, reference_type, reference_id, trigger )` → `earn:7:order:1234:purchase`; the ledger's single-column UNIQUE guard |
-| `Outcome` | `awarded( entry, evaluation )`, `skipped( reason )`, `duplicate( existing )` — a duplicate insert is a normal return, never an exception |
-| `PendingPoints` | `stage()` / `release()` / `mark_awarded()` over order meta `_yayloyalty_points_pending` / `_yayloyalty_points_released` and `CustomerRepository::apply_pending_delta()` (all stubs) |
-| `Listeners\OrderListener`, `SignupListener`, `ReviewListener` | One per event family; `register()` binds the WooCommerce / WP hooks — **implemented and registered at boot** (`YayLoyalty::__construct()` → `EarningService::build()`). Handlers still only log and no-op: `on_stageable()`/`on_awardable()`/`on_cancelled()`/`on_refunded()`/`on_approved()`/`on_registered()` bodies are stubs |
+| `EarningService` | `build()` composition root (constructs `LedgerService`, see `code-standards.md` §8) — **implemented**, called from `YayLoyalty::__construct()`; `preview( $trigger, Context ): Result` — **implemented** (gates → engine → reason/Result); `award( $trigger, Context ): Outcome` — **implemented** (preview → earns/releases/marks_awarded → yayloyalty_points_awarded after commit) |
+| `Gate` + `ProgramGate` | `check( $trigger, Context ): ?string` — a reason to skip, or null. `ProgramGate` is the one place on the path that reads settings (`excluded_roles`) and user meta (`_yayloyalty_opted_out`) — **implemented** |
+| `IdempotencyKey` | `compose( type, user_id, reference_type, reference_id, trigger )` → `earn:7:order:1234:purchase`; the ledger's single-column UNIQUE guard; `qualifier_of()` parses the qualifier — **implemented** |
+| `Outcome` | `awarded( entry, evaluation )`, `skipped( reason )`, `duplicate( existing )` — a duplicate insert is a normal return, never an exception — **implemented** |
+| `PendingPoints` | `stage()` — writes order meta `_yayloyalty_points_pending` and increments customer row; `release()` — sets `_yayloyalty_points_released` once and decrements the customer row; `mark_awarded()` — writes `_yayloyalty_points_earned` (sum), `_yayloyalty_campaign_id` (first) — **implemented** |
+| `Listeners\OrderListener`, `SignupListener`, `ReviewListener` | One per event family; `register()` binds the WooCommerce / WP hooks — **implemented and registered at boot**. Award handlers fire and write: `OrderListener::on_stageable()` stages at `pending`/`on-hold` (from `woocommerce_new_order` or a status transition); `on_awardable()` awards at `completed`; `SignupListener::on_registered()` awards (self-registration only: no current user, not WP-CLI, not cron, not Action Scheduler); `ReviewListener::on_approved()` awards with `one_per_product` and a per-source daily cap — **all implemented** |
 
-**Scaffold status:** real: `IdempotencyKey`, `Outcome`, `CustomerFacts`, `CustomerFactsReader`, `ProgramGate`, the gate-chain loop, `LedgerService::earn()`, `LedgerRepository::find_by_idempotency_key()`. Handlers implemented as preview + debug log (`Listeners\PreviewLog`): `OrderListener::on_stageable()` / `on_awardable()`, `SignupListener::on_registered()`, `ReviewListener::on_approved()`. Stubs (`TODO(F01-4)`): `preview()`/`award()` service bodies, `PendingPoints`, `LedgerRepository::points_earned_today()`, `Installer::drop_index_if_exists()` (drops the former `uniq_ledger_event`), listener handlers `on_cancelled`/`on_refunded`/`on_unapproved`. `register()` and routing entry points (`route()`) are implemented and wired at boot. Refund / clawback attaches at `OrderListener::on_refunded()` and `ReviewListener::on_unapproved()` and is not designed yet.
+**Implementation status:** real: `EarningService::preview()` and `award()`, `PendingPoints::stage()` / `release()` / `mark_awarded()`, `IdempotencyKey::qualifier_of()`, `Outcome`, `CustomerFacts`, `CustomerFactsReader`, `ProgramGate`, the gate-chain loop, `LedgerService::earn()`, `LedgerRepository::find_by_idempotency_key()` / `points_earned_today()` (daily cap by source), `Transaction::after_commit()` for post-commit hooks. Listeners `register()`, routing entry points (`route()`), and award handlers `on_stageable()` / `on_awardable()` / `on_registered()` / `on_approved()` all **implemented and wired at boot**. Stubs: listener handlers `on_cancelled`/`on_refunded`/`on_unapproved` (Phase 05 refund clawback). Refund / clawback attaches at `OrderListener::on_refunded()` and `ReviewListener::on_unapproved()` and is not designed yet.
 
 ### Reward engine (includes/Engine/Rewards/) — ZONE 1, the quote
 
@@ -312,10 +312,10 @@ Lite registers 3 transactional loyalty emails; Pro adds 9 more. Each is a `WC_Em
 
 ## Request Flows
 
-### Order Award → Ledger Entry (listeners wired; award bodies still scaffold)
+### Order Award → Ledger Entry (award path implemented, 2026-09-30)
 
 ```
-[Listeners registered from YayLoyalty::__construct() (2026-09-28); everything from on_stageable()/on_awardable() downward is still TODO(F01-4)]
+[Listeners and award handlers registered from YayLoyalty::__construct(); full award path implemented 2026-09-30]
 
 WooCommerce order created / reaches award status
   ↓

@@ -2,9 +2,17 @@
 namespace YayLoyalty\Tests\Integration;
 
 use PHPUnit\Framework\TestCase;
+use YayLoyalty\Engine\Earning\IdempotencyKey;
+use YayLoyalty\Enums\CampaignTrigger;
+use YayLoyalty\Enums\LedgerSource;
+use YayLoyalty\Enums\LedgerType;
+use YayLoyalty\Enums\ReferenceType;
+use YayLoyalty\Models\LedgerEntry;
+use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Services\LedgerService;
+use YayLoyalty\Utils\Dates;
 
 /**
  * A test with a database under it. Every table is emptied before each test,
@@ -18,10 +26,34 @@ abstract class IntegrationTestCase extends TestCase {
         parent::setUp();
 
         $this->truncate_tables();
+
+        // The campaign list is object-cached; a truncated table would still be served from the previous test.
+        ( new CampaignRepository() )->flush_cache();
     }
 
     protected function ledger_service(): LedgerService {
         return new LedgerService( new LedgerRepository(), new CustomerRepository() );
+    }
+
+    /** A purchase EARN draft for one order, keyed as EarningService::award() keys it. */
+    protected function earn_draft( int $user_id, int $order_id, int $points ): LedgerEntry {
+        return new LedgerEntry(
+            null,
+            $user_id,
+            $points,
+            0,
+            LedgerType::EARN,
+            LedgerSource::ORDER,
+            ReferenceType::ORDER,
+            $order_id,
+            null,
+            null,
+            $order_id,
+            null,
+            null,
+            Dates::now(),
+            IdempotencyKey::compose( LedgerType::EARN, $user_id, ReferenceType::ORDER, $order_id, CampaignTrigger::PURCHASE )
+        );
     }
 
     /**
@@ -58,7 +90,12 @@ abstract class IntegrationTestCase extends TestCase {
         global $wpdb;
 
         foreach ( yayloyalty_test_tables() as $table ) {
-            $wpdb->query( 'TRUNCATE TABLE `' . esc_sql( $table ) . '`' ); // phpcs:ignore WordPress.DB
+            $name = esc_sql( $table );
+
+            // TRUNCATE rebuilds the table even when empty; with every site table mirrored, that dominated the run.
+            if ( null !== $wpdb->get_var( "SELECT 1 FROM `{$name}` LIMIT 1" ) ) { // phpcs:ignore WordPress.DB
+                $wpdb->query( "TRUNCATE TABLE `{$name}`" ); // phpcs:ignore WordPress.DB
+            }
         }
     }
 }

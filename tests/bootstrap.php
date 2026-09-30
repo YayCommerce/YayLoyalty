@@ -187,3 +187,13 @@ function esc_url_raw( string $url ): string {
 function wp_get_attachment_url( int $attachment_id ) {
     return false;
 }
+
+/** Tests set $GLOBALS['yayloyalty_test_doing_cron'] to simulate a cron request. */
+function wp_doing_cron(): bool {
+    return ! empty( $GLOBALS['yayloyalty_test_doing_cron'] );
+}
+
+/** Tests list the hooks "currently running" in $GLOBALS['yayloyalty_test_doing_actions']. */
+function doing_action( $hook_name = null ): bool {
+    return in_array( $hook_name, $GLOBALS['yayloyalty_test_doing_actions'] ?? [], true );
+}
