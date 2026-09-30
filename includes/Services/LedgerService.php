@@ -6,6 +6,7 @@ use YayLoyalty\Engine\Earning\Outcome;
 use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Enums\ReferenceType;
+use YayLoyalty\Models\Customer;
 use YayLoyalty\Models\LedgerEntry;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
@@ -17,8 +18,8 @@ defined( 'ABSPATH' ) || exit;
  * The only writer of the ledger and the customer aggregates — the award
  * writer of the two-moment split (docs/archive/points-engine-scout.md). Enforced by
  * convention: constructed in exactly four places, Engine\RestAPI::controllers(),
- * Database\InitYayLoyaltyCustomer::maybe_create() and (once their bodies
- * land) Engine\Earning\EarningService::build() and
+ * Database\InitYayLoyaltyCustomer::maybe_create(),
+ * Engine\Earning\EarningService::build() and (once its body lands)
  * Engine\Redemption\RedemptionService::build(). Name a fifth here before
  * adding it. Manual rows enter through adjust() and record(); system rows
  * through earn() and redeem(), which add the idempotency-key duplicate branch.
@@ -110,42 +111,74 @@ final class LedgerService {
         LedgerSource::assert( $draft->get_source() );
         ReferenceType::assert( $draft->get_reference_type() );
 
-        $outcome = Transaction::run(
-            function () use ( $draft, $key ) {
-                $user_id = $draft->get_user_id();
+        return $this->write_keyed( $draft );
+    }
 
-                // Materialise before locking: a missing row gap-locks and two first-touch writers both insert.
-                $this->customers->ensure_row( $user_id );
+    /**
+     * The idempotent write every system row goes through: under the
+     * customer's lock, a known key is Outcome::duplicate; otherwise the row
+     * is appended and Outcome::awarded carries it. Precondition: $draft has
+     * an idempotency key and valid vocabulary.
+     */
+    private function write_keyed( LedgerEntry $draft ): Outcome {
+        $key = (string) $draft->get_idempotency_key();
 
-                $customer = $this->customers->lock_and_get( $user_id );
-
-                // Under the lock a concurrent award for this user has finished, so this sees its row.
+        return $this->under_lock(
+            $draft->get_user_id(),
+            function ( Customer $customer ) use ( $draft, $key ): Outcome {
+                // Under the lock a concurrent write for this user has finished, so this sees its row.
                 $existing = $this->ledger->find_by_idempotency_key( $key );
 
                 if ( null !== $existing ) {
                     return Outcome::duplicate( $existing );
                 }
 
-                $balance_after = $customer->get_balance() + $draft->get_points();
+                $persisted = $this->append( $draft, $customer, true );
 
-                $to_insert = $draft->with_persisted( 0, $balance_after );
-                $insert_id = $this->ledger->insert_unless_duplicate( $to_insert );
-
-                if ( null === $insert_id ) {
-                    return Outcome::duplicate( $this->existing_for( $key ) );
-                }
-
-                $this->apply_aggregates( $draft );
-
-                $persisted = $to_insert->with_persisted( $insert_id, $balance_after );
-
-                $this->announce( $persisted );
-
-                return Outcome::awarded( $persisted );
+                return null === $persisted ? Outcome::duplicate( $this->existing_for( $key ) ) : Outcome::awarded( $persisted );
             }
         );
+    }
 
-        return $outcome;
+    /**
+     * Runs $write in one transaction holding the customer's row lock.
+     *
+     * @param callable(Customer): mixed $write
+     * @return mixed What $write returned.
+     */
+    private function under_lock( int $user_id, callable $write ) {
+        return Transaction::run(
+            function () use ( $user_id, $write ) {
+                // Materialise before locking: a missing row gap-locks and two first-touch writers both insert.
+                $this->customers->ensure_row( $user_id );
+
+                return $write( $this->customers->lock_and_get( $user_id ) );
+            }
+        );
+    }
+
+    /**
+     * Inserts $draft at the locked balance, moves the aggregates and
+     * announces the row. Must run under_lock(), so balance_after chains.
+     *
+     * @param bool $keyed True turns a UNIQUE-key collision into null instead of an exception.
+     */
+    private function append( LedgerEntry $draft, Customer $customer, bool $keyed ): ?LedgerEntry {
+        $balance_after = $customer->get_balance() + $draft->get_points();
+        $to_insert     = $draft->with_persisted( 0, $balance_after );
+        $insert_id     = $keyed ? $this->ledger->insert_unless_duplicate( $to_insert ) : $this->ledger->insert( $to_insert );
+
+        if ( null === $insert_id ) {
+            return null;
+        }
+
+        $this->apply_aggregates( $draft );
+
+        $persisted = $to_insert->with_persisted( $insert_id, $balance_after );
+
+        $this->announce( $persisted );
+
+        return $persisted;
     }
 
     /**
@@ -210,31 +243,12 @@ final class LedgerService {
         LedgerSource::assert( $draft->get_source() );
         ReferenceType::assert( $draft->get_reference_type() );
 
-        $entry = Transaction::run(
-            function () use ( $draft ) {
-                $user_id = $draft->get_user_id();
-
-                // Materialise before locking: a missing row gap-locks and two first-touch writers both insert.
-                $this->customers->ensure_row( $user_id );
-
-                $customer = $this->customers->lock_and_get( $user_id );
-
-                $balance_after = $customer->get_balance() + $draft->get_points();
-
-                $to_insert = $draft->with_persisted( 0, $balance_after );
-                $insert_id = $this->ledger->insert( $to_insert );
-
-                $this->apply_aggregates( $draft );
-
-                $persisted = $to_insert->with_persisted( $insert_id, $balance_after );
-
-                $this->announce( $persisted );
-
-                return $persisted;
+        return $this->under_lock(
+            $draft->get_user_id(),
+            function ( Customer $customer ) use ( $draft ): LedgerEntry {
+                return $this->append( $draft, $customer, false );
             }
         );
-
-        return $entry;
     }
 
     /**

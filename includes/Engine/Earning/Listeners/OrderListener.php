@@ -2,11 +2,15 @@
 namespace YayLoyalty\Engine\Earning\Listeners;
 
 use YayLoyalty\Engine\Earning\EarningService;
+use YayLoyalty\Engine\Earning\Outcome;
 use YayLoyalty\Engine\Earning\PendingPoints;
+use YayLoyalty\Engine\Earning\ProgramGate;
 use YayLoyalty\Engine\Points\ContextFactory;
 use YayLoyalty\Enums\CampaignTrigger;
+use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\OrderStatus;
 use YayLoyalty\Repositories\LedgerRepository;
+use YayLoyalty\Utils\Dates;
 use YayLoyalty\Utils\Log;
 
 defined( 'ABSPATH' ) || exit;
@@ -32,7 +36,7 @@ final class OrderListener {
 
     private PendingPoints $pending;
 
-    /** For points_earned_today, the one ledger read the Context needs. */
+    /** For points_earned_today and the reversed-earlier check on a duplicate. */
     private LedgerRepository $ledger;
 
     public function __construct( EarningService $service, PendingPoints $pending, LedgerRepository $ledger ) {
@@ -120,7 +124,7 @@ final class OrderListener {
     private function route( int $order_id, string $to, \WC_Order $order ): void {
         if ( OrderStatus::AWARD === $to ) {
             try {
-                $this->on_awardable( $order_id );
+                $this->on_awardable( $order );
             } catch ( \Throwable $e ) { // A listener must never break an order save.
                 Log::error( 'OrderListener', 'award failed for order #' . $order_id . ': ' . $e->getMessage() );
             }
@@ -130,7 +134,7 @@ final class OrderListener {
             case 'pending':
             case 'on-hold':
                 try {
-                    $this->on_stageable( $order_id );
+                    $this->on_stageable( $order );
                 } catch ( \Throwable $e ) { // A listener must never break an order save.
                     Log::error( 'OrderListener', 'stage failed for order #' . $order_id . ': ' . $e->getMessage() );
                 }
@@ -161,35 +165,80 @@ final class OrderListener {
         }
     }
 
-    /** Evaluation moment: preview at the order's creation date, stage the figure. */
-    public function on_stageable( int $order_id ): void {
-        $this->preview_and_log( $order_id, 'stage' );
-        // TODO(F01-4): stage the preview's points: pending->stage( order_id, user_id, points ).
-    }
-
-    /** Award moment: one award() per trigger the order satisfies (purchase, then Pro's order triggers). */
-    public function on_awardable( int $order_id ): void {
-        $this->preview_and_log( $order_id, 'award' );
-        // TODO(F01-4): replace the preview with service->award( PURCHASE, ctx ), ctx built with ledger->points_earned_today( user, occurred_at ); Pro adds first_order/order_count/spend_milestone via a filter over the trigger list.
-    }
-
     /**
-     * Logs which campaign the order would earn from, how many points, or why
-     * none. Writes nothing. points_earned_today is 0, so a daily cap is not
-     * applied yet.
+     * Evaluation moment: preview the purchase at the order's creation date and stage its points.
+     *
+     * Scores the hook's own object, never a re-read: woocommerce_new_order
+     * fires before WooCommerce saves the line items, so a fresh read has none.
      *
      * @throws \InvalidArgumentException When the order has no creation date (route() catches it).
      */
-    private function preview_and_log( int $order_id, string $moment ): void {
-        $order = wc_get_order( $order_id );
+    public function on_stageable( \WC_Order $order ): void {
+        $order_id = (int) $order->get_id();
+        $result   = $this->service->preview( CampaignTrigger::PURCHASE, ContextFactory::from_order( $order ) );
 
-        if ( ! $order instanceof \WC_Order ) {
-            return;
+        PreviewLog::write( 'OrderListener', 'order #' . $order_id . ' stage', $result );
+
+        if ( $result->is_awarded() ) {
+            $user_id = (int) $order->get_customer_id();
+            $this->pending->stage( $order_id, $user_id > 0 ? $user_id : null, $result->get_points() );
+        }
+    }
+
+    /**
+     * Award moment: one award() per trigger the order satisfies, each noted on the order.
+     *
+     * @throws \InvalidArgumentException When the order has no creation date (route() catches it).
+     */
+    public function on_awardable( \WC_Order $order ): void {
+        $order_id = (int) $order->get_id();
+
+        /**
+         * Triggers one completed order is awarded for, in order. Internal seam: Pro appends its order triggers.
+         *
+         * @param string[]  $triggers CampaignTrigger values.
+         * @param \WC_Order $order
+         */
+        $triggers = (array) apply_filters( 'yayloyalty_order_award_triggers', [ CampaignTrigger::PURCHASE ], $order );
+
+        foreach ( $triggers as $trigger ) {
+            // Rebuilt per trigger: the previous trigger's row counts toward today's cap.
+            $today   = $this->ledger->points_earned_today( (int) $order->get_customer_id(), Dates::now(), LedgerSource::ORDER );
+            $outcome = $this->service->award( (string) $trigger, ContextFactory::from_order( $order, $today ) );
+
+            PreviewLog::write_outcome( 'OrderListener', 'order #' . $order_id . ' ' . $trigger, $outcome );
+            $this->note( $order, $outcome );
         }
 
-        $result = $this->service->preview( CampaignTrigger::PURCHASE, ContextFactory::from_order( $order ) );
+        // Completed ends staging whatever the triggers answered: a skipped award would otherwise leave pending forever.
+        $this->pending->release( $order_id );
+    }
 
-        PreviewLog::write( 'OrderListener', 'order #' . $order_id . ' ' . $moment, $result );
+    /**
+     * Tells the merchant what an award did. Silent for a guest (every guest
+     * order would say so) and for a plain duplicate (a re-fired status).
+     */
+    private function note( \WC_Order $order, Outcome $outcome ): void {
+        $entry = $outcome->get_entry();
+
+        switch ( $outcome->get_status() ) {
+            case Outcome::AWARDED:
+                $campaign = $outcome->get_evaluation() ? $outcome->get_evaluation()->get_campaign() : null;
+                /* translators: 1: points, 2: campaign name */
+                $order->add_order_note( sprintf( __( 'Earned %1$d points (campaign: %2$s).', 'yayloyalty' ), $entry->get_points(), $campaign ? $campaign->get_name() : '-' ) );
+                break;
+            case Outcome::SKIPPED:
+                if ( ProgramGate::REASON_NO_CUSTOMER !== $outcome->get_reason() ) {
+                    /* translators: %s: reason code */
+                    $order->add_order_note( sprintf( __( 'No points earned: %s.', 'yayloyalty' ), $outcome->get_reason() ) );
+                }
+                break;
+            case Outcome::DUPLICATE:
+                if ( $this->ledger->sum_refunded_for( $entry ) > 0 ) {
+                    $order->add_order_note( __( 'Points for this order were reversed earlier and are not awarded again (adjust manually if needed).', 'yayloyalty' ) );
+                }
+                break;
+        }
     }
 
     /** Pending release for an order that will never award; also restores a redemption still applied to it. */

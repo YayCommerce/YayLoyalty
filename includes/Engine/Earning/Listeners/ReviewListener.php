@@ -4,6 +4,9 @@ namespace YayLoyalty\Engine\Earning\Listeners;
 use YayLoyalty\Engine\Earning\EarningService;
 use YayLoyalty\Engine\Points\ContextFactory;
 use YayLoyalty\Enums\CampaignTrigger;
+use YayLoyalty\Enums\LedgerSource;
+use YayLoyalty\Repositories\LedgerRepository;
+use YayLoyalty\Utils\Dates;
 use YayLoyalty\Utils\Log;
 
 defined( 'ABSPATH' ) || exit;
@@ -11,16 +14,18 @@ defined( 'ABSPATH' ) || exit;
 /**
  * The review event family: one award per approved product review, keyed
  * "earn:{user}:comment:{id}:review". Approval can arrive on comment_post or on a
- * later status transition; both build the same Context. The campaign's
- * one_per_product rule is a Gate on the review trigger, not a handler
- * concern (ReviewHandler decides require_verified only).
+ * later status transition; both build the same Context.
  */
 final class ReviewListener {
 
     private EarningService $service;
 
-    public function __construct( EarningService $service ) {
+    /** For points_earned_today, the one ledger read the Context needs. */
+    private LedgerRepository $ledger;
+
+    public function __construct( EarningService $service, LedgerRepository $ledger ) {
         $this->service = $service;
+        $this->ledger  = $ledger;
     }
 
     /**
@@ -74,15 +79,12 @@ final class ReviewListener {
         }
     }
 
-    /**
-     * Logs which review campaign the review would earn from, how many
-     * points, or why none. Writes nothing. Scored at the comment's date.
-     */
+    /** Awards the review campaign, scored at the comment's date against today's review earnings. */
     public function on_approved( \WP_Comment $comment ): void {
-        $result = $this->service->preview( CampaignTrigger::REVIEW, ContextFactory::from_comment( $comment ) );
+        $today   = $this->ledger->points_earned_today( (int) $comment->user_id, Dates::now(), LedgerSource::REVIEW );
+        $outcome = $this->service->award( CampaignTrigger::REVIEW, ContextFactory::from_comment( $comment, $today ) );
 
-        PreviewLog::write( 'ReviewListener', 'review #' . $comment->comment_ID, $result );
-        // TODO(F01-4): replace the preview with service->award( REVIEW, ctx ); one_per_product needs a Gate on the review trigger.
+        PreviewLog::write_outcome( 'ReviewListener', 'review #' . $comment->comment_ID, $outcome );
     }
 
     /** A product review, not a blog comment and not a reply in a review thread. */

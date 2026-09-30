@@ -90,12 +90,36 @@ if ( YAYLOYALTY_TEST_PREFIX === $wpdb->prefix ) {
 $wpdb->prefix = YAYLOYALTY_TEST_PREFIX;
 
 /**
- * Every plugin table, by its scratch name.
+ * WooCommerce's own tables, site name => scratch name. HPOS order code reads
+ * `$wpdb->prefix` on every call, so without these copies an order a test
+ * creates would fail (or land in the site's tables through the `$wpdb`
+ * properties WooCommerce resolved at load).
+ *
+ * @return array<string, string>
+ */
+function yayloyalty_test_woocommerce_tables(): array {
+    global $wpdb;
+
+    $tables = [];
+
+    foreach ( [ 'wc_', 'woocommerce_' ] as $family ) {
+        $like = $wpdb->esc_like( $wpdb->base_prefix . $family ) . '%';
+
+        foreach ( (array) $wpdb->get_col( $wpdb->prepare( 'SHOW TABLES LIKE %s', $like ) ) as $site_table ) { // phpcs:ignore WordPress.DB
+            $tables[ $site_table ] = YAYLOYALTY_TEST_PREFIX . substr( $site_table, strlen( $wpdb->base_prefix ) );
+        }
+    }
+
+    return $tables;
+}
+
+/**
+ * Every scratch table: the plugin's, then the WooCommerce copies.
  *
  * @return string[]
  */
 function yayloyalty_test_tables(): array {
-    $tables = [];
+    $tables = array_values( yayloyalty_test_woocommerce_tables() );
 
     foreach ( \YayLoyalty\Database\Installer::schemas() as $schema ) {
         $name = \YayLoyalty\Utils\Table::name( $schema->slug() );
@@ -127,7 +151,21 @@ foreach ( \YayLoyalty\Database\Installer::schemas() as $yayloyalty_test_schema )
     }
 }
 
+foreach ( yayloyalty_test_woocommerce_tables() as $yayloyalty_test_site_table => $yayloyalty_test_scratch_table ) {
+    if ( false === $wpdb->query( 'CREATE TABLE `' . esc_sql( $yayloyalty_test_scratch_table ) . '` LIKE `' . esc_sql( $yayloyalty_test_site_table ) . '`' ) ) { // phpcs:ignore WordPress.DB
+        yayloyalty_test_bail( sprintf( 'could not copy %s: %s', $yayloyalty_test_site_table, $wpdb->last_error ) );
+    }
+
+    // Order item meta and friends go through $wpdb properties WooCommerce set at load; point them at the copy too.
+    foreach ( get_object_vars( $wpdb ) as $yayloyalty_test_property => $yayloyalty_test_value ) {
+        if ( $yayloyalty_test_site_table === $yayloyalty_test_value ) {
+            $wpdb->$yayloyalty_test_property = $yayloyalty_test_scratch_table;
+        }
+    }
+}
+
 register_shutdown_function( 'yayloyalty_test_drop_tables' );
 
 require_once __DIR__ . '/IntegrationTestCase.php';
 require_once __DIR__ . '/WooCommerceEmailsFixture.php';
+require_once __DIR__ . '/WooCommerceOrdersFixture.php';

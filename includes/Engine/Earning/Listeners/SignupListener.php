@@ -11,7 +11,9 @@ defined( 'ABSPATH' ) || exit;
 /**
  * The registration event family: one award per user, keyed
  * "earn:{id}:user:{id}:signup", so a re-fired user_register is a duplicate.
- * No pending: a signup has nothing to stage.
+ * No pending: a signup has nothing to stage. Only storefront
+ * self-registration earns; an account an admin, an import, WP-CLI or cron
+ * creates does not.
  */
 final class SignupListener {
 
@@ -37,20 +39,36 @@ final class SignupListener {
         }
     }
 
-    /**
-     * Logs which signup campaign the user would earn from, how many points,
-     * or why none. Writes nothing. Scored at the registration time.
-     */
+    /** Awards the signup campaign for a self-registered user, scored at the registration time. */
     public function on_registered( int $user_id ): void {
+        $subject = 'user #' . $user_id . ' signup';
+
+        if ( ! self::is_self_registration() ) {
+            Log::debug( 'SignupListener', $subject . ': not_self_registration' );
+            return;
+        }
+
         $user = get_userdata( $user_id );
 
         if ( ! $user ) {
             return;
         }
 
-        $result = $this->service->preview( CampaignTrigger::SIGNUP, ContextFactory::from_user( $user_id, (string) $user->user_registered ) );
+        $outcome = $this->service->award( CampaignTrigger::SIGNUP, ContextFactory::from_user( $user_id, (string) $user->user_registered ) );
 
-        PreviewLog::write( 'SignupListener', 'user #' . $user_id . ' signup', $result );
-        // TODO(F01-4): replace the preview with service->award( SIGNUP, ctx ).
+        PreviewLog::write_outcome( 'SignupListener', $subject, $outcome );
+    }
+
+    /**
+     * A visitor registering themself: at user_register nobody is logged in
+     * yet, while admin screens, imports and authenticated REST calls have an
+     * acting user. Background runners have none either, so they are excluded
+     * by name: WP-CLI, cron, and Action Scheduler's async (loopback) runner.
+     */
+    public static function is_self_registration(): bool {
+        return 0 === get_current_user_id()
+            && ! ( defined( 'WP_CLI' ) && WP_CLI )
+            && ! wp_doing_cron()
+            && ! doing_action( 'action_scheduler_run_queue' );
     }
 }

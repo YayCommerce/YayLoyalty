@@ -3,29 +3,24 @@ namespace YayLoyalty\Tests\Integration\Engine;
 
 use YayLoyalty\Engine\Points\CustomerFactsReader;
 use YayLoyalty\Tests\Integration\IntegrationTestCase;
+use YayLoyalty\Tests\Integration\WooCommerceOrdersFixture;
 use YayLoyalty\Utils\Dates;
 
 /**
  * Facts against real WooCommerce orders: only paid orders created before
  * the evaluated moment count, and the evaluated order never counts itself.
  *
- * Runs on the site's table prefix, not the scratch one: WooCommerce's HPOS
- * tables are named from $wpdb->prefix at query time, so under `ylit_` no
- * order could be stored. Every order and the user are force-deleted in
- * tearDown(); the only plugin-table access is read()'s ledger sum for this
- * fresh user, which finds no row. The order hooks are detached while it
- * runs, so the earning listener cannot write the site's loyalty tables.
+ * Orders land in the scratch copies of WooCommerce's tables (bootstrap.php)
+ * and WooCommerceOrdersFixture deletes what the site keeps. The order hooks
+ * are detached so the earning listener stays out of the facts under test.
  */
 final class CustomerFactsReaderTest extends IntegrationTestCase {
 
     private const AS_OF = '2026-06-15 12:00:00';
 
+    use WooCommerceOrdersFixture;
+
     private int $user_id = 0;
-
-    /** @var \WC_Order[] */
-    private array $orders = [];
-
-    private string $scratch_prefix = '';
 
     /** Order hooks whose callbacks (the earning listener among them) must not run here. */
     private const DETACHED_HOOKS = [ 'woocommerce_new_order', 'woocommerce_order_status_changed' ];
@@ -34,9 +29,11 @@ final class CustomerFactsReaderTest extends IntegrationTestCase {
     private array $detached = [];
 
     protected function setUp(): void {
-        global $wpdb, $wp_filter;
+        global $wp_filter;
 
         parent::setUp();
+
+        $this->require_woocommerce();
 
         foreach ( self::DETACHED_HOOKS as $hook ) {
             if ( isset( $wp_filter[ $hook ] ) ) {
@@ -45,29 +42,13 @@ final class CustomerFactsReaderTest extends IntegrationTestCase {
             }
         }
 
-        $this->scratch_prefix = $wpdb->prefix;
-        $wpdb->prefix         = $wpdb->base_prefix;
-
-        $this->user_id = (int) wp_insert_user(
-            [
-                'user_login' => 'facts_reader_' . wp_generate_password( 6, false ),
-                'user_pass'  => wp_generate_password(),
-                'role'       => 'customer',
-            ]
-        );
+        $this->user_id = $this->create_customer();
     }
 
     protected function tearDown(): void {
-        global $wpdb, $wp_filter;
+        global $wp_filter;
 
-        foreach ( $this->orders as $order ) {
-            $order->delete( true );
-        }
-
-        require_once ABSPATH . 'wp-admin/includes/user.php';
-        wp_delete_user( $this->user_id );
-
-        $wpdb->prefix = $this->scratch_prefix;
+        $this->cleanup_orders();
 
         foreach ( $this->detached as $hook => $callbacks ) {
             $wp_filter[ $hook ] = $callbacks; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- restoring what setUp() detached.
@@ -114,7 +95,7 @@ final class CustomerFactsReaderTest extends IntegrationTestCase {
         $order->set_status( $status );
         $order->save();
 
-        $this->orders[] = $order;
+        $this->fixture_orders[] = $order;
 
         return $order;
     }

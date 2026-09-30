@@ -40,7 +40,7 @@ final class ListenerRegistrationTest extends TestCase {
     }
 
     public function test_review_listener_registers_both_comment_hooks(): void {
-        ( new ReviewListener( EarningService::build() ) )->register();
+        ( new ReviewListener( EarningService::build(), new LedgerRepository() ) )->register();
 
         $this->assert_only_hook_callback( 'comment_post', ReviewListener::class, 'on_comment_post' );
         $this->assert_only_hook_callback( 'transition_comment_status', ReviewListener::class, 'on_comment_transition' );

@@ -46,8 +46,10 @@ class YayLoyalty {
     private function register_earning_listeners(): void {
         $service = EarningService::build();
 
-        ( new OrderListener( $service, new PendingPoints( new CustomerRepository() ), new LedgerRepository() ) )->register();
-        ( new ReviewListener( $service ) )->register();
+        $ledger = new LedgerRepository();
+
+        ( new OrderListener( $service, new PendingPoints( new CustomerRepository() ), $ledger ) )->register();
+        ( new ReviewListener( $service, $ledger ) )->register();
         ( new SignupListener( $service ) )->register();
     }
 }

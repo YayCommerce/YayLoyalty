@@ -3,6 +3,7 @@ namespace YayLoyalty\Engine\Earning;
 
 use YayLoyalty\Models\LedgerEntry;
 use YayLoyalty\Repositories\CustomerRepository;
+use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -38,9 +39,22 @@ final class PendingPoints {
      * moved by $points, or nothing changed. Returns whether this call staged.
      * Guests (null user) get order meta only. $points 0 stages nothing.
      */
-    public function stage( int $order_id, ?int $user_id, int $points ): bool { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(F01-4): wc_get_order; return false if META_PENDING present or $points < 1; update_meta_data + save; apply_pending_delta( user, +points ) when user; true.
-        throw new \RuntimeException( 'Not implemented' );
+    public function stage( int $order_id, ?int $user_id, int $points ): bool {
+        $order = wc_get_order( $order_id );
+
+        if ( $points < 1 || ! $order instanceof \WC_Order || '' !== (string) $order->get_meta( self::META_PENDING ) ) {
+            return false;
+        }
+
+        $order->update_meta_data( self::META_PENDING, $points );
+        $this->save_meta( $order );
+
+        if ( null !== $user_id ) {
+            $this->customers->ensure_row( $user_id );
+            $this->customers->apply_pending_delta( $user_id, $points );
+        }
+
+        return true;
     }
 
     /**
@@ -52,17 +66,66 @@ final class PendingPoints {
      * or failure, where the same flag stops a later status bounce into the
      * award status from releasing twice.
      */
-    public function release( int $order_id ): int { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(F01-4): wc_get_order; return 0 if META_RELEASED set or META_PENDING absent; set META_RELEASED = created UTC; apply_pending_delta( user, −pending ); return pending.
-        throw new \RuntimeException( 'Not implemented' );
+    public function release( int $order_id ): int {
+        $order = wc_get_order( $order_id );
+
+        if ( ! $order instanceof \WC_Order || '' !== (string) $order->get_meta( self::META_RELEASED ) ) {
+            return 0;
+        }
+
+        $pending = (int) $order->get_meta( self::META_PENDING );
+
+        if ( $pending < 1 ) {
+            return 0;
+        }
+
+        $order->update_meta_data( self::META_RELEASED, Dates::now() );
+        $this->save_meta( $order );
+
+        // The order's customer now, not at staging: a reassigned order releases from its new owner (floored at 0).
+        $user_id = (int) $order->get_customer_id();
+
+        if ( $user_id > 0 ) {
+            $this->customers->apply_pending_delta( $user_id, -$pending );
+        }
+
+        return $pending;
     }
 
     /**
-     * Writes the award projections (META_EARNED, META_CAMPAIGN) after the
-     * ledger row exists. Idempotent: rewrites the same values on a duplicate.
+     * Adds an awarded row to the order's projections: META_EARNED sums every
+     * trigger's row, META_CAMPAIGN keeps the first row's campaign. Call once
+     * per awarded row, never for a duplicate, or the sum double counts.
      */
-    public function mark_awarded( int $order_id, LedgerEntry $entry ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(F01-4): wc_get_order; update_meta_data META_EARNED = points, META_CAMPAIGN = campaign_id; save.
-        throw new \RuntimeException( 'Not implemented' );
+    public function mark_awarded( int $order_id, LedgerEntry $entry ): void {
+        $order = wc_get_order( $order_id );
+
+        if ( ! $order instanceof \WC_Order ) {
+            return;
+        }
+
+        $order->update_meta_data( self::META_EARNED, (int) $order->get_meta( self::META_EARNED ) + $entry->get_points() );
+
+        if ( '' === (string) $order->get_meta( self::META_CAMPAIGN ) && null !== $entry->get_campaign_id() ) {
+            $order->update_meta_data( self::META_CAMPAIGN, $entry->get_campaign_id() );
+        }
+
+        $this->save_meta( $order );
+    }
+
+    /**
+     * Meta only, never a full save: these run inside the award transaction
+     * under the customer lock, where woocommerce_update_order must not fire.
+     * HPOS turns save_meta_data() into save() once date_modified is in the
+     * past; the filter is WooCommerce's own switch for that.
+     */
+    private function save_meta( \WC_Order $order ): void {
+        add_filter( 'woocommerce_orders_table_datastore_should_save_after_meta_change', '__return_false' );
+
+        try {
+            $order->save_meta_data();
+        } finally {
+            remove_filter( 'woocommerce_orders_table_datastore_should_save_after_meta_change', '__return_false' );
+        }
     }
 }
