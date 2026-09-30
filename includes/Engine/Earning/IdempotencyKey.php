@@ -61,4 +61,20 @@ final class IdempotencyKey {
 
         return $key;
     }
+
+    /**
+     * The qualifier compose() put last: the trigger of an earn key, so a
+     * reversal of that earn composes its own key with the same qualifier.
+     *
+     * @throws \InvalidArgumentException When $key does not have compose()'s five parts.
+     */
+    public static function qualifier_of( string $key ): string {
+        $parts = explode( self::SEPARATOR, $key );
+
+        if ( 5 !== count( $parts ) || '' === $parts[4] ) {
+            throw new \InvalidArgumentException( sprintf( 'YayLoyalty: "%s" is not an idempotency key.', $key ) );
+        }
+
+        return $parts[4];
+    }
 }

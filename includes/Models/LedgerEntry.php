@@ -197,6 +197,14 @@ final class LedgerEntry extends AbstractModel {
         return $this->reference_id;
     }
 
+    public function get_campaign_id(): ?int {
+        return $this->campaign_id;
+    }
+
+    public function get_order_id(): ?int {
+        return $this->order_id;
+    }
+
     public function get_note(): ?string {
         return $this->note;
     }

@@ -312,9 +312,9 @@ final class CampaignPerformanceRestController extends AbstractRestController {
         $site_timezone = wp_timezone();
         $now           = ( new \DateTimeImmutable( 'now', $site_timezone ) )->setTime( 0, 0, 0 );
 
-        $starts = $this->site_midnight( $row['starts_at'], $site_timezone );
+        $starts = Dates::site_day_start( $row['starts_at'] );
         // ends_at is exclusive, so the last live day is the one holding the second before it — a 10:00 end keeps that morning.
-        $last_day = $this->site_midnight( $row['ends_at'], $site_timezone, '-1 second' );
+        $last_day = Dates::site_day_start( Dates::is_valid( $row['ends_at'] ) ? Dates::offset( -1, $row['ends_at'] ) : null );
 
         $to = null !== $last_day && $last_day < $now ? $last_day : $now;
 
@@ -335,20 +335,6 @@ final class CampaignPerformanceRestController extends AbstractRestController {
             'from' => $from->format( 'Y-m-d' ),
             'to'   => $to->format( 'Y-m-d' ),
         ];
-    }
-
-    private function site_midnight( ?string $utc, \DateTimeZone $site_timezone, string $shift = '' ): ?\DateTimeImmutable {
-        if ( null === $utc || '' === $utc ) {
-            return null;
-        }
-
-        $date = date_create_immutable( $utc, new \DateTimeZone( 'UTC' ) );
-
-        if ( false === $date ) {
-            return null;
-        }
-
-        return ( '' === $shift ? $date : $date->modify( $shift ) )->setTimezone( $site_timezone )->setTime( 0, 0, 0 );
     }
 
     /**

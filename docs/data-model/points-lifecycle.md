@@ -99,7 +99,7 @@ One transaction, five steps, in this order (`LedgerService::earn()`, implemented
    index cannot be raced. A duplicate-key result here also returns `Outcome::duplicate()` rather
    than throwing.
 5. `apply_aggregates()` — moves `customers.balance`, `lifetime_earned`, `last_activity_at` inside
-   the same lock, then the transaction commits and `dispatch_events()` fires
+   the same lock, then the transaction commits and `announce()` (via `Transaction::after_commit()`) fires
    `yayloyalty_ledger_recorded` **after** commit — a subscriber on another connection cannot see an
    uncommitted row, and nothing slow or externally fallible runs while the lock is held.
 

@@ -23,8 +23,4 @@ final class LedgerServiceTest extends TestCase {
     public function test_redeem_shares_the_earn_write_path_and_never_goes_below_zero(): void {
         $this->markTestIncomplete( 'redeem(): same ensure_row → lock → insert → aggregates as earn(); locked balance + points < 0 → Outcome::skipped( insufficient_balance ), nothing written; a duplicate key → Outcome::duplicate. Stub until F08.' );
     }
-
-    public function test_ledger_recorded_fires_after_the_outermost_commit(): void {
-        $this->markTestIncomplete( 'Nested in an outer Transaction::run(), yayloyalty_ledger_recorded fires after the outer commit, not the savepoint release — the known gap in dispatch_events(). The unnested case is covered in the integration suite.' );
-    }
 }

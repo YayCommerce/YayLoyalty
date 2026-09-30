@@ -31,9 +31,6 @@ final class LedgerService {
     /** @var CustomerRepository */
     private $customers;
 
-    /** @var LedgerEntry[] Events collected in-transaction, dispatched after commit. */
-    private $queued_events = [];
-
     public function __construct( LedgerRepository $ledger, CustomerRepository $customers ) {
         $this->ledger    = $ledger;
         $this->customers = $customers;
@@ -89,8 +86,8 @@ final class LedgerService {
      * Outcome::duplicate( existing row ) when the UNIQUE index rejected the
      * insert (QueryException::is_duplicate_key()), which is a normal outcome,
      * not an error, and leaves every aggregate untouched. Any other failure
-     * rethrows and Transaction::run() has rolled back. Events are queued and
-     * fire after commit through dispatch_events().
+     * rethrows and Transaction::run() has rolled back. The recorded event
+     * fires after the outermost commit (announce()).
      *
      * @throws \InvalidArgumentException When the draft is not an earn row or lacks a key.
      * @throws \YayLoyalty\Database\QueryException When a write other than a duplicate fails.
@@ -142,13 +139,11 @@ final class LedgerService {
 
                 $persisted = $to_insert->with_persisted( $insert_id, $balance_after );
 
-                $this->queued_events[] = $persisted;
+                $this->announce( $persisted );
 
                 return Outcome::awarded( $persisted );
             }
         );
-
-        $this->dispatch_events();
 
         return $outcome;
     }
@@ -193,13 +188,13 @@ final class LedgerService {
      * zero — a redemption hard-refuses, unlike a clawback; or
      * Outcome::duplicate( existing row ) when the UNIQUE index rejected the
      * insert. Any other failure rethrows and the transaction has rolled back.
-     * Events fire after commit through dispatch_events().
+     * The recorded event fires after the outermost commit (announce()).
      *
      * @throws \InvalidArgumentException When the draft is not a negative redeem row or lacks a key.
      * @throws \YayLoyalty\Database\QueryException When a write other than a duplicate fails.
      */
     public function redeem( LedgerEntry $draft ): Outcome { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(F08): mirror earn() — assert REDEEM, points < 0, key; Transaction::run: ensure_row, lock_and_get, if balance + points < 0 → Outcome::skipped( insufficient_balance ), pre-check, insert_unless_duplicate → Outcome::duplicate, apply_aggregates, queue event; then dispatch_events; return Outcome::redeemed.
+        // TODO(F08): mirror earn() — assert REDEEM, points < 0, key; Transaction::run: ensure_row, lock_and_get, if balance + points < 0 → Outcome::skipped( insufficient_balance ), pre-check, insert_unless_duplicate → Outcome::duplicate, apply_aggregates, announce(); return Outcome::redeemed.
         throw new \RuntimeException( 'Not implemented' );
     }
 
@@ -233,13 +228,11 @@ final class LedgerService {
 
                 $persisted = $to_insert->with_persisted( $insert_id, $balance_after );
 
-                $this->queued_events[] = $persisted;
+                $this->announce( $persisted );
 
                 return $persisted;
             }
         );
-
-        $this->dispatch_events();
 
         return $entry;
     }
@@ -277,24 +270,21 @@ final class LedgerService {
     }
 
     /**
-     * Fires collected events after commit, never inside the transaction: a
-     * subscriber on another connection cannot see uncommitted rows, its
-     * cache/HTTP writes cannot be rolled back, and it would hold the row lock.
-     * Known gap: when nested (exec_write, EarningService::award) this runs
-     * after the savepoint release, before the outer commit — gate on
-     * Transaction::depth() === 0 when the award path lands.
+     * Fires the recorded event after the outermost commit, never inside the
+     * transaction: a subscriber on another connection cannot see uncommitted
+     * rows, its cache/HTTP writes cannot be rolled back, and it would hold
+     * the row lock. Dropped when the write rolls back.
      */
-    private function dispatch_events(): void {
-        $events              = $this->queued_events;
-        $this->queued_events = [];
-
-        foreach ( $events as $entry ) {
-            /**
-             * Fires after a ledger row is committed.
-             *
-             * @param LedgerEntry $entry
-             */
-            do_action( 'yayloyalty_ledger_recorded', $entry );
-        }
+    private function announce( LedgerEntry $entry ): void {
+        Transaction::after_commit(
+            static function () use ( $entry ): void {
+                /**
+                 * Fires after a ledger row is committed.
+                 *
+                 * @param LedgerEntry $entry
+                 */
+                do_action( 'yayloyalty_ledger_recorded', $entry );
+            }
+        );
     }
 }

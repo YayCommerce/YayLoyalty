@@ -69,4 +69,17 @@ final class IdempotencyKeyTest extends TestCase {
 
         IdempotencyKey::compose( LedgerType::EARN, 7, ReferenceType::ORDER, 0, CampaignTrigger::PURCHASE );
     }
+
+    /** A reversal keys itself on the earn's trigger, read back from the earn's own key. */
+    public function test_qualifier_of_reads_back_what_compose_put_last(): void {
+        $key = IdempotencyKey::compose( LedgerType::EARN, 7, ReferenceType::ORDER, 1234, CampaignTrigger::FIRST_ORDER );
+
+        $this->assertSame( CampaignTrigger::FIRST_ORDER, IdempotencyKey::qualifier_of( $key ) );
+    }
+
+    public function test_qualifier_of_rejects_a_malformed_key(): void {
+        $this->expectException( \InvalidArgumentException::class );
+
+        IdempotencyKey::qualifier_of( 'earn:7:order:1234' );
+    }
 }
