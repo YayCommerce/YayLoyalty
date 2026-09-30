@@ -137,7 +137,8 @@ class LedgerRepository extends AbstractRepository {
             $values = [ (string) $earn->get_reference_type(), (int) $earn->get_reference_id(), LedgerType::REFUND_EARN ];
         }
 
-        return max( 0, -$this->sum_points( 'user_id = %d AND ' . $scope, array_merge( [ $earn->get_user_id() ], $values ) ) );
+        // A locking read: inside an outer transaction a plain SELECT reads its older snapshot and would over-claw.
+        return max( 0, -$this->sum_points( 'user_id = %d AND ' . $scope, array_merge( [ $earn->get_user_id() ], $values ), true ) );
     }
 
     /**
@@ -258,15 +259,18 @@ class LedgerRepository extends AbstractRepository {
     /**
      * SUM(points) over the rows a prepared WHERE fragment matches; 0 when none.
      *
-     * @param string  $where  Placeholders only; every value arrives in $values.
+     * @param string  $where   Placeholders only; every value arrives in $values.
      * @param mixed[] $values
+     * @param bool    $locking Read the latest committed rows and share-lock them (callers inside a transaction).
      */
-    private function sum_points( string $where, array $values ): int {
+    private function sum_points( string $where, array $values, bool $locking = false ): int {
         global $wpdb;
+
+        $lock_sql = $locking ? ' LOCK IN SHARE MODE' : '';
 
         // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $where carries placeholders only; every value is bound here.
         return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-            $wpdb->prepare( 'SELECT COALESCE(SUM(points), 0) FROM `' . esc_sql( $this->table() ) . "` WHERE {$where}", $values )
+            $wpdb->prepare( 'SELECT COALESCE(SUM(points), 0) FROM `' . esc_sql( $this->table() ) . "` WHERE {$where}{$lock_sql}", $values )
         );
         // phpcs:enable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
     }

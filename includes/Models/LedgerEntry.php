@@ -156,7 +156,15 @@ final class LedgerEntry extends AbstractModel {
         ];
     }
 
-    /** Clone carrying the values assigned at insert time; the only mutation this class allows. */
+    /** Clone with another amount, for a writer that can only decide it under the customer lock. */
+    public function with_points( int $points ): self {
+        $clone         = clone $this;
+        $clone->points = $points;
+
+        return $clone;
+    }
+
+    /** Clone carrying the values assigned at insert time. */
     public function with_persisted( int $id, int $balance_after ): self {
         $clone                = clone $this;
         $clone->id            = $id;

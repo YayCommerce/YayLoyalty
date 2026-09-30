@@ -39,10 +39,14 @@ final class OrderListener {
     /** For points_earned_today and the reversed-earlier check on a duplicate. */
     private LedgerRepository $ledger;
 
-    public function __construct( EarningService $service, PendingPoints $pending, LedgerRepository $ledger ) {
-        $this->service = $service;
-        $this->pending = $pending;
-        $this->ledger  = $ledger;
+    /** Takes the statuses that reverse (cancelled, trash, refunded). */
+    private OrderReversalListener $reversals;
+
+    public function __construct( EarningService $service, PendingPoints $pending, LedgerRepository $ledger, OrderReversalListener $reversals ) {
+        $this->service   = $service;
+        $this->pending   = $pending;
+        $this->ledger    = $ledger;
+        $this->reversals = $reversals;
     }
 
     /**
@@ -61,6 +65,7 @@ final class OrderListener {
      * the only reliable signal for that first arrival. Where the two land in
      * the same request (that admin save fires both), route() runs twice for
      * the same $to; that is free, not a bug — see route()'s docblock.
+     * Refund and trash hooks belong to OrderReversalListener.
      */
     public function register(): void {
         add_action( 'woocommerce_order_status_changed', [ $this, 'on_status_changed' ], 10, 4 );
@@ -109,53 +114,34 @@ final class OrderListener {
      *   completed       award (OrderStatus::AWARD)
      *   failed          nothing: no release, no redemption restore. The order
      *                   is still payable and a retry lands on completed
-     *   cancelled       release pending (once) and restore the redemption if
-     *                   one is still applied
+     *   cancelled       release pending (once) and claw back everything the
+     *                   order earned
      *   trash           as cancelled
-     *   refunded        nothing — refunds are driven by refund objects. One
-     *                   exception, handled here because only the status says
-     *                   so: get_total_refunded() === 0 means an admin reversed
-     *                   the order outside WooCommerce, which is a full
-     *                   reversal referenced to the ORDER, not to a refund id
+     *   refunded        release pending; clawback is driven by refund objects.
+     *                   One exception, handled here because only the status
+     *                   says so: get_total_refunded() === 0 means an admin
+     *                   reversed the order outside WooCommerce, which is a
+     *                   full reversal referenced to the ORDER, not a refund id
      *
      * Any other status — one another plugin registered — is not ours to
      * interpret: it falls through and nothing happens.
      */
     private function route( int $order_id, string $to, \WC_Order $order ): void {
         if ( OrderStatus::AWARD === $to ) {
-            try {
-                $this->on_awardable( $order );
-            } catch ( \Throwable $e ) { // A listener must never break an order save.
-                Log::error( 'OrderListener', 'award failed for order #' . $order_id . ': ' . $e->getMessage() );
-            }
+            $this->guarded( 'award', $order_id, fn() => $this->on_awardable( $order ) );
             return;
         }
         switch ( $to ) {
             case 'pending':
             case 'on-hold':
-                try {
-                    $this->on_stageable( $order );
-                } catch ( \Throwable $e ) { // A listener must never break an order save.
-                    Log::error( 'OrderListener', 'stage failed for order #' . $order_id . ': ' . $e->getMessage() );
-                }
+                $this->guarded( 'stage', $order_id, fn() => $this->on_stageable( $order ) );
                 break;
             case 'cancelled':
             case 'trash':
-                try {
-                    $this->on_cancelled( $order_id );
-                } catch ( \RuntimeException $e ) { // TODO(step-3): remove once on_cancelled() is implemented.
-                    Log::warning( 'OrderListener', 'cancel skipped for order #' . $order_id . ': ' . $e->getMessage() );
-                }
+                $this->guarded( 'cancel', $order_id, fn() => $this->reversals->on_cancelled( $order ) );
                 break;
             case 'refunded':
-                if ( 0.0 !== (float) $order->get_total_refunded() ) {
-                    break;
-                }
-                try {
-                    $this->on_refunded( $order_id, 0 );
-                } catch ( \RuntimeException $e ) { // TODO(step-3): remove once on_refunded() is implemented.
-                    Log::warning( 'OrderListener', 'refund skipped for order #' . $order_id . ': ' . $e->getMessage() );
-                }
+                $this->guarded( 'refund', $order_id, fn() => $this->reversals->on_status_refunded( $order ) );
                 break;
             case 'processing':
             case 'failed':
@@ -241,17 +227,7 @@ final class OrderListener {
         }
     }
 
-    /** Pending release for an order that will never award; also restores a redemption still applied to it. */
-    public function on_cancelled( int $order_id ): void {
-        // TODO(F01-4): pending->release( order_id ); redemption restore attaches here with Engine\Redemption\Reversal (F08), keyed on the order.
-    }
-
-    /**
-     * Clawback seam. Refunds reverse earned points as refund_earn rows keyed
-     * on the refund id; the logic is a later task and attaches here. Reached
-     * from woocommerce_order_refunded, not from the `refunded` status.
-     */
-    public function on_refunded( int $order_id, int $refund_id ): void {
-        // TODO(F01-4): clawback (refund_earn) — design pending; do not implement here until LedgerService gains a refund entry point.
+    private function guarded( string $step, int $order_id, callable $handler ): void {
+        ListenerGuard::run( 'OrderListener', $step . ' failed for order #' . $order_id, $handler );
     }
 }

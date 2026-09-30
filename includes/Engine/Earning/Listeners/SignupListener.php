@@ -32,11 +32,7 @@ final class SignupListener {
     public function on_user_register( int $user_id ): void {
         Log::debug( 'SignupListener', 'user #' . $user_id . ' registered' );
 
-        try {
-            $this->on_registered( $user_id );
-        } catch ( \Throwable $e ) { // A listener must never break a registration.
-            Log::error( 'SignupListener', 'signup failed for user #' . $user_id . ': ' . $e->getMessage() );
-        }
+        ListenerGuard::run( 'SignupListener', 'signup failed for user #' . $user_id, fn() => $this->on_registered( $user_id ) );
     }
 
     /** Awards the signup campaign for a self-registered user, scored at the registration time. */

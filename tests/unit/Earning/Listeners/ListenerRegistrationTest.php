@@ -4,17 +4,18 @@ namespace YayLoyalty\Tests\Unit\Earning\Listeners;
 use PHPUnit\Framework\TestCase;
 use YayLoyalty\Engine\Earning\EarningService;
 use YayLoyalty\Engine\Earning\Listeners\OrderListener;
+use YayLoyalty\Engine\Earning\Listeners\OrderReversalListener;
 use YayLoyalty\Engine\Earning\Listeners\ReviewListener;
 use YayLoyalty\Engine\Earning\Listeners\SignupListener;
 use YayLoyalty\Engine\Earning\PendingPoints;
+use YayLoyalty\Engine\Earning\Reversal;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
 
 /**
- * Step 1's only observable surface: the DI graph builds, and each listener
- * attaches exactly the hooks its register() docblock promises. Nothing about
- * on_stageable/on_awardable/on_cancelled/on_refunded/on_approved/
- * on_unapproved/on_registered — those bodies are still no-ops.
+ * The DI graph builds, and each listener attaches exactly the hooks its
+ * register() docblock promises. What the handlers write is asserted in
+ * tests/integration/Earning/.
  */
 final class ListenerRegistrationTest extends TestCase {
 
@@ -39,8 +40,17 @@ final class ListenerRegistrationTest extends TestCase {
         $this->assert_only_hook_callback( 'woocommerce_new_order', OrderListener::class, 'on_order_created' );
     }
 
+    public function test_order_reversal_listener_registers_refund_and_trash_hooks(): void {
+        $this->reversal_listener()->register();
+
+        $this->assert_only_hook_callback( 'woocommerce_order_refunded', OrderReversalListener::class, 'on_order_refunded' );
+        $this->assert_only_hook_callback( 'woocommerce_refund_deleted', OrderReversalListener::class, 'on_refund_deleted' );
+        $this->assert_only_hook_callback( 'woocommerce_trash_order', OrderReversalListener::class, 'on_order_trashed' );
+        $this->assert_only_hook_callback( 'trashed_post', OrderReversalListener::class, 'on_order_trashed' );
+    }
+
     public function test_review_listener_registers_both_comment_hooks(): void {
-        ( new ReviewListener( EarningService::build(), new LedgerRepository() ) )->register();
+        ( new ReviewListener( EarningService::build(), new LedgerRepository(), Reversal::build() ) )->register();
 
         $this->assert_only_hook_callback( 'comment_post', ReviewListener::class, 'on_comment_post' );
         $this->assert_only_hook_callback( 'transition_comment_status', ReviewListener::class, 'on_comment_transition' );
@@ -54,9 +64,11 @@ final class ListenerRegistrationTest extends TestCase {
     }
 
     private function order_listener(): OrderListener {
-        $customers = new CustomerRepository();
+        return new OrderListener( EarningService::build(), new PendingPoints( new CustomerRepository() ), new LedgerRepository(), $this->reversal_listener() );
+    }
 
-        return new OrderListener( EarningService::build(), new PendingPoints( $customers ), new LedgerRepository() );
+    private function reversal_listener(): OrderReversalListener {
+        return new OrderReversalListener( new PendingPoints( new CustomerRepository() ), Reversal::build() );
     }
 
     /** Exactly one callback on $hook, and it is [ $class, $method ]. */

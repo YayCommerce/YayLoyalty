@@ -2,6 +2,7 @@
 namespace YayLoyalty\Services;
 
 use YayLoyalty\Database\Transaction;
+use YayLoyalty\Engine\Earning\IdempotencyKey;
 use YayLoyalty\Engine\Earning\Outcome;
 use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
@@ -17,14 +18,21 @@ defined( 'ABSPATH' ) || exit;
 /**
  * The only writer of the ledger and the customer aggregates — the award
  * writer of the two-moment split (docs/archive/points-engine-scout.md). Enforced by
- * convention: constructed in exactly four places, Engine\RestAPI::controllers(),
+ * convention: constructed in exactly five places, Engine\RestAPI::controllers(),
  * Database\InitYayLoyaltyCustomer::maybe_create(),
- * Engine\Earning\EarningService::build() and (once its body lands)
- * Engine\Redemption\RedemptionService::build(). Name a fifth here before
- * adding it. Manual rows enter through adjust() and record(); system rows
- * through earn() and redeem(), which add the idempotency-key duplicate branch.
+ * Engine\Earning\EarningService::build(), Engine\Earning\Reversal::build()
+ * and (once its body lands) Engine\Redemption\RedemptionService::build().
+ * Name a sixth here before adding it. Manual rows enter through adjust() and
+ * record(); system rows through earn(), refund_earn(), restore_refund() and
+ * redeem(), which add the idempotency-key duplicate branch.
  */
 final class LedgerService {
+
+    /** Outcome::skipped reason: the earn row is already clawed back as far as it is owed. */
+    public const REASON_NOTHING_TO_CLAW_BACK = 'nothing_to_claw_back';
+
+    /** Outcome::skipped reason: the order was reversed in full, so a deleted refund gives nothing back. */
+    public const REASON_ORDER_REVERSED = 'order_reversed';
 
     /** @var LedgerRepository */
     private $ledger;
@@ -115,22 +123,102 @@ final class LedgerService {
     }
 
     /**
+     * Claws back an earn row up to $owed_total, cumulatively: the row written
+     * is the difference between what is owed now and what earlier reversals of
+     * the same earn already took, computed under the customer lock so two
+     * refunds cannot both take the same slice. Keyed on the reversing
+     * reference and the earn's trigger. The balance may go negative.
+     *
+     * @param int    $owed_total     Total points owed back for $earn so far (capped at its points).
+     * @param string $reference_type ReferenceType::ORDER (cancel), REFUND or COMMENT.
+     * @return Outcome awarded (a REFUND_EARN row), duplicate, or skipped( REASON_NOTHING_TO_CLAW_BACK ).
+     */
+    public function refund_earn( LedgerEntry $earn, int $owed_total, string $reference_type, int $reference_id ): Outcome {
+        $draft = $this->reversal_draft( $earn, LedgerType::REFUND_EARN, 0, $reference_type, $reference_id, null );
+
+        return $this->write_keyed(
+            $draft,
+            function () use ( $earn, $owed_total ): int {
+                return -max( 0, min( $owed_total, $earn->get_points() ) - $this->ledger->sum_refunded_for( $earn ) );
+            },
+            self::REASON_NOTHING_TO_CLAW_BACK
+        );
+    }
+
+    /**
+     * Gives back what one clawback row took, when its refund is deleted: an
+     * ADJUST row referencing the refund, which sum_refunded_for() nets out so
+     * a later refund claws again from the right starting point. Nothing once
+     * the order itself was reversed (cancelled, trashed, refunded outside
+     * WooCommerce): that reversal is final, and restoring would hand back
+     * points on an order that no longer earns.
+     */
+    public function restore_refund( LedgerEntry $refund_row, int $refund_id ): Outcome {
+        $draft      = $this->reversal_draft( $refund_row, LedgerType::ADJUST, abs( $refund_row->get_points() ), ReferenceType::REFUND, $refund_id, sprintf( 'Refund #%d deleted', $refund_id ) );
+        $order_full = $this->reversal_draft( $refund_row, LedgerType::REFUND_EARN, 0, ReferenceType::ORDER, (int) $refund_row->get_order_id(), null );
+
+        return $this->write_keyed(
+            $draft,
+            function () use ( $draft, $order_full ): int {
+                return null === $this->ledger->find_by_idempotency_key( (string) $order_full->get_idempotency_key() ) ? $draft->get_points() : 0;
+            },
+            self::REASON_ORDER_REVERSED
+        );
+    }
+
+    /** A system row undoing part of $source: same customer, source, campaign and order, keyed on the new reference and $source's trigger. */
+    private function reversal_draft( LedgerEntry $source, string $type, int $points, string $reference_type, int $reference_id, ?string $note ): LedgerEntry {
+        $user_id = $source->get_user_id();
+
+        return new LedgerEntry(
+            null,
+            $user_id,
+            $points,
+            0,
+            $type,
+            $source->get_source(),
+            $reference_type,
+            $reference_id,
+            $source->get_campaign_id(),
+            null,
+            $source->get_order_id(),
+            $note,
+            null,
+            Dates::now(),
+            IdempotencyKey::compose( $type, $user_id, $reference_type, $reference_id, IdempotencyKey::qualifier_of( (string) $source->get_idempotency_key() ) )
+        );
+    }
+
+    /**
      * The idempotent write every system row goes through: under the
      * customer's lock, a known key is Outcome::duplicate; otherwise the row
      * is appended and Outcome::awarded carries it. Precondition: $draft has
      * an idempotency key and valid vocabulary.
+     *
+     * @param callable|null $points_under_lock Returns the row's signed points once the lock is held; 0 writes nothing.
+     * @param string        $skip_reason       Outcome::skipped's reason when $points_under_lock returns 0.
      */
-    private function write_keyed( LedgerEntry $draft ): Outcome {
+    private function write_keyed( LedgerEntry $draft, ?callable $points_under_lock = null, string $skip_reason = '' ): Outcome {
         $key = (string) $draft->get_idempotency_key();
 
         return $this->under_lock(
             $draft->get_user_id(),
-            function ( Customer $customer ) use ( $draft, $key ): Outcome {
+            function ( Customer $customer ) use ( $draft, $key, $points_under_lock, $skip_reason ): Outcome {
                 // Under the lock a concurrent write for this user has finished, so this sees its row.
                 $existing = $this->ledger->find_by_idempotency_key( $key );
 
                 if ( null !== $existing ) {
                     return Outcome::duplicate( $existing );
+                }
+
+                if ( null !== $points_under_lock ) {
+                    $points = (int) $points_under_lock();
+
+                    if ( 0 === $points ) {
+                        return Outcome::skipped( $skip_reason );
+                    }
+
+                    $draft = $draft->with_points( $points );
                 }
 
                 $persisted = $this->append( $draft, $customer, true );

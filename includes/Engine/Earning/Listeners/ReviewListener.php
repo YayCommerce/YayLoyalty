@@ -2,6 +2,7 @@
 namespace YayLoyalty\Engine\Earning\Listeners;
 
 use YayLoyalty\Engine\Earning\EarningService;
+use YayLoyalty\Engine\Earning\Reversal;
 use YayLoyalty\Engine\Points\ContextFactory;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Enums\LedgerSource;
@@ -23,9 +24,15 @@ final class ReviewListener {
     /** For points_earned_today, the one ledger read the Context needs. */
     private LedgerRepository $ledger;
 
-    public function __construct( EarningService $service, LedgerRepository $ledger ) {
-        $this->service = $service;
-        $this->ledger  = $ledger;
+    private Reversal $reversal;
+
+    /** Statuses that take a paid review's points back; `delete` is what wp_delete_comment() announces. */
+    private const REVERSING_STATUSES = [ 'unapproved', 'spam', 'trash', 'delete' ];
+
+    public function __construct( EarningService $service, LedgerRepository $ledger, Reversal $reversal ) {
+        $this->service  = $service;
+        $this->ledger   = $ledger;
+        $this->reversal = $reversal;
     }
 
     /**
@@ -56,26 +63,28 @@ final class ReviewListener {
         }
 
         Log::debug( 'ReviewListener', 'review #' . $comment_id . ' approved on arrival' );
-
-        try {
-            $this->on_approved( $comment );
-        } catch ( \Throwable $e ) { // A listener must never break a comment save.
-            Log::error( 'ReviewListener', 'review failed for review #' . $comment_id . ': ' . $e->getMessage() );
-        }
+        ListenerGuard::run( 'ReviewListener', 'review failed for review #' . $comment_id, fn() => $this->on_approved( $comment ) );
     }
 
-    /** `transition_comment_status` adapter — fires when a review is approved on a later status change. */
+    /**
+     * `transition_comment_status` adapter: approval awards; leaving approved
+     * for unapproved, spam, trash or a hard delete takes the points back.
+     * Re-approval awards again only in name: the earn key is spent, so it is
+     * a duplicate (no re-award after a reversal).
+     */
     public function on_comment_transition( string $new_status, string $old_status, \WP_Comment $comment ): void {
-        if ( 'approved' !== $new_status || ! self::is_product_review( $comment ) ) {
+        if ( ! self::is_product_review( $comment ) ) {
             return;
         }
 
-        Log::debug( 'ReviewListener', 'review #' . $comment->comment_ID . ' ' . $old_status . ' -> approved' );
+        $subject = 'review #' . $comment->comment_ID;
 
-        try {
-            $this->on_approved( $comment );
-        } catch ( \Throwable $e ) { // A listener must never break a comment status change.
-            Log::error( 'ReviewListener', 'review failed for review #' . $comment->comment_ID . ': ' . $e->getMessage() );
+        if ( 'approved' === $new_status ) {
+            Log::debug( 'ReviewListener', $subject . ' ' . $old_status . ' -> approved' );
+            ListenerGuard::run( 'ReviewListener', 'review failed for ' . $subject, fn() => $this->on_approved( $comment ) );
+        } elseif ( 'approved' === $old_status && in_array( $new_status, self::REVERSING_STATUSES, true ) ) {
+            Log::debug( 'ReviewListener', $subject . ' approved -> ' . $new_status );
+            ListenerGuard::run( 'ReviewListener', 'reversal failed for ' . $subject, fn() => $this->on_unapproved( $comment ) );
         }
     }
 
@@ -92,8 +101,12 @@ final class ReviewListener {
         return 0 === (int) $comment->comment_parent && 'product' === get_post_type( (int) $comment->comment_post_ID );
     }
 
-    /** Clawback seam for a review that is unapproved or deleted after paying; attaches with the refund design. */
+    /** Takes back everything a review earned; nothing when it never earned. */
     public function on_unapproved( \WP_Comment $comment ): void {
-        // TODO(F01-4): refund_earn keyed on the comment — design pending with OrderListener::on_refunded.
+        $outcome = $this->reversal->full_review( (int) $comment->comment_ID );
+
+        if ( null !== $outcome ) {
+            PreviewLog::write_outcome( 'ReviewListener', 'review #' . $comment->comment_ID . ' reversal', $outcome );
+        }
     }
 }

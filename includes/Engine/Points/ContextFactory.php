@@ -38,19 +38,9 @@ final class ContextFactory {
         $line_items  = [];
 
         foreach ( $order->get_items( 'line_item' ) as $item ) {
-            if ( ! $item instanceof \WC_Order_Item_Product ) {
-                continue;
+            if ( $item instanceof \WC_Order_Item_Product ) {
+                $line_items[] = self::line_item( $item );
             }
-
-            $line_items[] = new ContextLineItem(
-                (int) $item->get_product_id(),
-                $item->get_variation_id() ? (int) $item->get_variation_id() : null,
-                self::category_ids( (int) $item->get_product_id() ),
-                (int) $item->get_quantity(),
-                (float) $item->get_subtotal(),
-                (float) $item->get_total(),
-                (float) $item->get_total_tax()
-            );
         }
 
         $loyalty_discount = 0.0;
@@ -155,6 +145,19 @@ final class ContextFactory {
                 Triggers\ReviewHandler::EXTRA_PRODUCT_ALREADY_EARNED => self::product_already_earned( $comment ),
             ],
             static fn() => self::customer_facts( $user_id, $occurred_at )
+        );
+    }
+
+    /** One order line as the engine sees it; a refund line keeps its negative amounts. */
+    public static function line_item( \WC_Order_Item_Product $item ): ContextLineItem {
+        return new ContextLineItem(
+            (int) $item->get_product_id(),
+            $item->get_variation_id() ? (int) $item->get_variation_id() : null,
+            self::category_ids( (int) $item->get_product_id() ),
+            (int) $item->get_quantity(),
+            (float) $item->get_subtotal(),
+            (float) $item->get_total(),
+            (float) $item->get_total_tax()
         );
     }
 
