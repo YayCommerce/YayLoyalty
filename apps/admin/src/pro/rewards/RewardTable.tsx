@@ -71,7 +71,8 @@ export function RewardTable() {
       return;
     }
 
-    setOrderedRows((current) => arrayMove(current, fromIndex, toIndex));
+    // Moved within screen.rows, the list the indexes came from; the raw list still holds archived rows.
+    setOrderedRows(arrayMove(screen.rows, fromIndex, toIndex));
   }
 
   return (

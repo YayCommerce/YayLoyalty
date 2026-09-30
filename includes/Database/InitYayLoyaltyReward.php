@@ -49,7 +49,9 @@ final class InitYayLoyaltyReward {
 
         $rewards = new RewardRepository();
 
-        foreach ( self::reward_data() as $data ) {
+        // array_filter drops the null free-product row on a store with no published product;
+        // passing it to create_one()'s array param would throw a TypeError past its try/catch.
+        foreach ( array_filter( self::reward_data() ) as $data ) {
             self::create_one( $rewards, $data );
         }
     }
@@ -59,10 +61,6 @@ final class InitYayLoyaltyReward {
      * claimed, so an escaping exception would skip every later row forever.
      */
     private static function create_one( RewardRepository $rewards, array $data ): void {
-        if ( null === $data ) {
-            return; // The free-product row has nothing to reference on this store.
-        }
-
         try {
             $now = Dates::now();
 
