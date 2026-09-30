@@ -1,5 +1,5 @@
-import { ReactNode, useState } from 'react';
-import { ChevronDown, ChevronUp, InfoIcon } from 'lucide-react';
+import { useState } from 'react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { __, _n, sprintf } from '@wordpress/i18n';
 
@@ -13,15 +13,16 @@ import {
   useUpdateCampaignStatusMutation,
 } from '@/lib/queries/campaign.queries';
 import type { Campaign } from '@/lib/schema/campaign.schema';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { ConfigField } from '@/components/ui/custom/config-field';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
 import { Segmented, SegmentedItem } from '@/components/ui/segmented';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
+import { UpgradeToProBanner } from '@/components/pro/UpgradeToPro';
 
 /** Display order for the three built-ins; same as CampaignTable's group order. */
 const BUILTIN_TRIGGER_ORDER: Campaign['trigger'][] = ['purchase', 'signup', 'review'];
@@ -76,30 +77,13 @@ export default function BuiltInCampaignList() {
         />
       ))}
 
-      <UpsellBanner />
+      <UpgradeToProBanner
+        message={__(
+          'Running a sale? Pro lets you add campaigns like double points weekends, category boosts and birthday rewards.',
+          'yayloyalty',
+        )}
+      />
     </div>
-  );
-}
-
-function UpsellBanner() {
-  // Same destination as components/pro/UpgradeToPro.tsx, which does not export it.
-  const yayLoyaltyProUrl = 'https://yaycommerce.com/yayloyalty-for-woocommerce/';
-
-  return (
-    <Alert variant="outline">
-      <InfoIcon />
-      <AlertDescription className="flex-row items-center justify-between gap-3">
-        <span>
-          {__(
-            'Running a sale? Pro lets you add campaigns like double points weekends, category boosts and birthday rewards.',
-            'yayloyalty',
-          )}
-        </span>
-        <Button variant="link" size="sm" className="h-auto shrink-0 p-0" onClick={() => window.open(yayLoyaltyProUrl)}>
-          {__('Upgrade', 'yayloyalty')}
-        </Button>
-      </AlertDescription>
-    </Alert>
   );
 }
 
@@ -217,23 +201,6 @@ interface PurchaseConfig {
   rounding: 'down' | 'nearest' | 'up';
   min_subtotal: number;
   exclude_coupon_orders: boolean;
-}
-
-/**
- * One label + control row. A plain grid, not components/ui/field.tsx: its
- * conditional `has-[...]:items-start` fought the fixed label column and
- * produced uneven row gaps.
- */
-function ConfigField({ label, description, children }: { label: string; description?: string; children: ReactNode }) {
-  return (
-    <div className="grid grid-cols-[14rem_1fr] items-start gap-x-5">
-      <span className="pt-2 text-sm font-medium">{label}</span>
-      <div className="flex flex-col gap-1.5">
-        {children}
-        {description && <p className="text-muted-foreground text-xs">{description}</p>}
-      </div>
-    </div>
-  );
 }
 
 function PurchaseFields({

@@ -38,6 +38,8 @@ export type Meta = {
     countries: Record<string, string>;
     /** ISO 4217 code => name. */
     currencies: Record<string, string>;
+    /** WooCommerce → Settings → General → "Enable the use of coupon codes"; points redemption depends on it. */
+    coupons_enabled: boolean;
   };
 };
 
