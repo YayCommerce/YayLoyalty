@@ -502,7 +502,7 @@ CampaignPerformance.tsx: one useCampaignPerformanceQuery — header from the emb
 
 **Award is one status, decided in the listener.** `OrderListener` is the only class in the plugin that reads a WooCommerce order status: two hooks (`woocommerce_order_status_changed` and `woocommerce_new_order`, the second covering a brand-new order's first status), both routed through one `route( $to )` table. Evaluation runs on both; logging to debug is free. The engine, the ledger and every domain service stay status-blind. Only `completed` awards, owned by `Enums\OrderStatus` — a store must complete orders for them to earn; `processing` is inert.
 
-**Still missing (F01-4):** `preview()`/`award()` service bodies, `PendingPoints`, `LedgerRepository::points_earned_today()`, `Installer::drop_index_if_exists()` for the superseded `uniq_ledger_event`, and listener handler bodies (`on_cancelled`/`on_refunded`/`on_unapproved`). Listener registration (`YayLoyalty::__construct()` → `EarningService::build()`) landed 2026-09-28; `on_stageable()`/`on_awardable()`, `SignupListener::on_registered()` and `ReviewListener::on_approved()` preview and log (no writes) since 2026-09-28. Refund / clawback is an attachment point, not a design. The ten invariants and the full call graph are in `includes/Engine/Earning/README.md`; the incomplete tests under `tests/unit/Earning/` are the specification.
+**Reversal lives beside the award, not below it.** `OrderReversalListener` hears cancel/trash (through `route()`), `woocommerce_order_refunded`, `woocommerce_refund_deleted` and `woocommerce_trash_order` / `trashed_post` (HPOS trash never fires `woocommerce_order_status_changed`); `ReviewListener` hears a paid review leaving `approved`. Both call `Engine\Earning\Reversal`, which writes through `LedgerService::refund_earn()` / `restore_refund()` under the customer lock. Every listener adapter runs through `Listeners\ListenerGuard`. The ten invariants and the full call graph are in `includes/Engine/Earning/README.md`; policy and maths in `docs/data-model/points-lifecycle.md`.
 
 ### Redemption — SCAFFOLDED (three zones, bodies stubbed, not registered at boot)
 
@@ -510,7 +510,7 @@ CampaignPerformance.tsx: one useCampaignPerformanceQuery — header from the emb
 
 **Zone 2 — commit** (`includes/Engine/Redemption/`): `RedemptionService::commit()` → `CommitWriter` in one `Transaction::run()`: `lock_and_get` → `RedemptionRepository::find_by_order` (duplicate) → re-quote with the locked balance → redemptions row → `LedgerService::redeem()` (hard-refuses a balance below zero) → order meta `_yayloyalty_points_redeemed` / `_yayloyalty_redeem_value` → session cleared. Affordability is checked at checkout submission (`checkout_error()` from `woocommerce_after_checkout_validation` / `woocommerce_store_api_cart_errors`); a commit that still loses a race leaves the order created without the debit, with an order note.
 
-**Zone 3 — reverse:** not designed. Named seam `Engine\Redemption\Reversal` from `Earning\Listeners\OrderListener::on_cancelled()` / `on_refunded()`.
+**Zone 3 — reverse:** not designed. Named seam `Engine\Redemption\Reversal` from `Earning\Listeners\OrderReversalListener::on_cancelled()` / `on_order_refunded()`, beside the earn-side clawback already there.
 
 **Adapters:** `Adapters\ClassicCheckoutAdapter` (shortcode cart/checkout hooks) and `Adapters\StoreApiAdapter` (`ExtendSchema` cart data, `yayloyalty-redeem` update callback) translate hooks into the same three service calls and hold no rule.
 

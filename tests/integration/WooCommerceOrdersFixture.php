@@ -88,8 +88,9 @@ trait WooCommerceOrdersFixture {
      * woocommerce_new_order reaches the listener with its lines in place.
      *
      * @param float[] $line_totals
+     * @param int[]   $product_ids Product per line index, for lines a campaign must be able to exclude.
      */
-    private function create_order( ?int $user_id, array $line_totals, string $status = 'pending' ): \WC_Order {
+    private function create_order( ?int $user_id, array $line_totals, string $status = 'pending', array $product_ids = [] ): \WC_Order {
         $order = new \WC_Order();
         $order->set_customer_id( (int) $user_id );
         $order->set_currency( 'USD' );
@@ -97,6 +98,7 @@ trait WooCommerceOrdersFixture {
         foreach ( $line_totals as $index => $total ) {
             $item = new \WC_Order_Item_Product();
             $item->set_name( 'Line ' . ( $index + 1 ) );
+            $item->set_product_id( $product_ids[ $index ] ?? 0 );
             $item->set_quantity( 1 );
             $item->set_subtotal( $total );
             $item->set_total( $total );
@@ -119,6 +121,49 @@ trait WooCommerceOrdersFixture {
         $order->save();
 
         return wc_get_order( $order->get_id() );
+    }
+
+    /**
+     * Refunds whole lines by index through wc_create_refund(), which fires woocommerce_order_refunded.
+     *
+     * @param int[] $line_indexes
+     */
+    private function refund_lines( \WC_Order $order, array $line_indexes ): \WC_Order_Refund {
+        $items  = array_values( $order->get_items() );
+        $lines  = [];
+        $amount = 0.0;
+
+        foreach ( $line_indexes as $index ) {
+            $item                     = $items[ $index ];
+            $lines[ $item->get_id() ] = [
+                'qty'          => $item->get_quantity(),
+                'refund_total' => $item->get_total(),
+            ];
+            $amount                  += (float) $item->get_total();
+        }
+
+        return $this->refund( $order, $amount, $lines );
+    }
+
+    /**
+     * A refund of $amount; without line items it is amount-only, which is what refunding shipping looks like.
+     *
+     * @param array<int, array<string, mixed>> $line_items
+     */
+    private function refund( \WC_Order $order, float $amount, array $line_items = [] ): \WC_Order_Refund {
+        $refund = wc_create_refund(
+            [
+                'order_id'   => $order->get_id(),
+                'amount'     => $amount,
+                'line_items' => $line_items,
+            ]
+        );
+
+        if ( ! $refund instanceof \WC_Order_Refund ) {
+            $this->fail( 'Refund not created: ' . ( is_wp_error( $refund ) ? $refund->get_error_message() : 'unknown' ) );
+        }
+
+        return $refund;
     }
 
     /** Tracks a user a test registered itself, so cleanup_orders() deletes it. */

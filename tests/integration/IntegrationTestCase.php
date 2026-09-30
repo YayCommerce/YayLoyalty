@@ -73,6 +73,15 @@ abstract class IntegrationTestCase extends TestCase {
         return is_array( $row ) ? $row : [];
     }
 
+    /**
+     * Signed points of one customer's ledger rows, oldest first.
+     *
+     * @return int[]
+     */
+    protected function ledger_points( int $user_id ): array {
+        return array_map( 'intval', array_column( $this->ledger_rows( $user_id ), 'points' ) );
+    }
+
     /** Ledger rows for one customer, oldest first. */
     protected function ledger_rows( int $user_id ): array {
         global $wpdb;

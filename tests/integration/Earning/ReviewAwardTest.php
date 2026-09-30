@@ -46,4 +46,33 @@ final class ReviewAwardTest extends IntegrationTestCase {
 
         $this->assertSame( [ $first, $other ], $paid );
     }
+
+    /** Unapproving takes the points back; re-approving does not pay again (the earn key is spent). */
+    public function test_unapprove_reverses_and_reapproval_does_not_reaward(): void {
+        $user_id = $this->create_customer();
+        $comment = $this->approve_new_review( $user_id, $this->create_product() );
+
+        wp_set_comment_status( $comment, 'hold' );
+        wp_set_comment_status( $comment, 'approve' );
+
+        $this->assertSame( [ 50, -50 ], $this->ledger_points( $user_id ) );
+    }
+
+    public function test_trash_then_hard_delete_reverses_once(): void {
+        $user_id = $this->create_customer();
+        $comment = $this->approve_new_review( $user_id, $this->create_product() );
+
+        wp_trash_comment( $comment );
+        wp_delete_comment( $comment, true );
+
+        $this->assertSame( [ 50, -50 ], $this->ledger_points( $user_id ) );
+    }
+
+    public function test_hard_deleting_an_approved_review_reverses(): void {
+        $user_id = $this->create_customer();
+
+        wp_delete_comment( $this->approve_new_review( $user_id, $this->create_product() ), true );
+
+        $this->assertSame( [ 50, -50 ], $this->ledger_points( $user_id ) );
+    }
 }

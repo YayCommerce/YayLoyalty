@@ -93,17 +93,10 @@ final class OrderReversalListener {
         // TODO(F08): restore a redemption still applied to the order (Engine\Redemption), keyed on the order.
     }
 
-    /**
-     * The `refunded` status releases pending always but reverses only when no
-     * refund object exists: get_total_refunded() 0 means the order was marked
-     * refunded outside WooCommerce's refunds, a full reversal keyed on the order.
-     */
+    /** The `refunded` status: releases pending always; reverses in full only when no refund object exists (Reversal::refunded_status()). */
     public function on_status_refunded( \WC_Order $order ): void {
         $this->pending->release( (int) $order->get_id() );
-
-        if ( 0.0 === (float) $order->get_total_refunded() ) {
-            $this->note_reversed( $order, $this->reversal->full_order( $order ), __( 'order refunded', 'yayloyalty' ) );
-        }
+        $this->note_reversed( $order, $this->reversal->refunded_status( $order ), __( 'order refunded', 'yayloyalty' ) );
     }
 
     /**

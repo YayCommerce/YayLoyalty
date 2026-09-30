@@ -113,8 +113,6 @@ final class OrderAwardFlowTest extends IntegrationTestCase {
         $this->transition( $this->create_order( $user_id, [ 100 ] ), 'completed' );
         $this->transition( $this->create_order( $user_id, [ 100 ] ), 'completed' );
 
-        $orders = array_values( array_filter( $this->ledger_rows( $user_id ), static fn( array $row ): bool => LedgerSource::ORDER === $row['source'] ) );
-
-        $this->assertSame( [ 100, 50 ], array_map( static fn( array $row ): int => (int) $row['points'], $orders ) );
+        $this->assertSame( [ 500, 100, 50 ], $this->ledger_points( $user_id ) );
     }
 }

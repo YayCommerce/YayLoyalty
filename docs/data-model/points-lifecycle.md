@@ -9,9 +9,9 @@ for the `ledger`/`customers` column meanings this spec assumes.
 
 ## Implementation status
 
-**This is the authoritative design for both directions. Part one (points in) is built; part two
-(points back out) is designed here but has no corresponding code yet — do not assume any of
-§06–§08 exists in the codebase.** Status per component:
+**This is the authoritative design for both directions. Both are built for earning: points go in
+(§01–§05) and come back out (§06–§08). The spend side of a reversal — restoring redeemed points
+(`refund_redeem`) — belongs to redemption (F08) and has no code yet.** Status per component:
 
 | Component | File | Status |
 |---|---|---|
@@ -23,13 +23,16 @@ for the `ledger`/`customers` column meanings this spec assumes.
 | `PurchaseHandler`, `Registry`, `IdempotencyKey::compose()` | `Engine/Points/Triggers/*`, `Engine/Earning/IdempotencyKey.php` | **Implemented** |
 | `LedgerService::earn()` | `Services/LedgerService.php` | **Implemented** |
 | `LedgerService::redeem()` | `Services/LedgerService.php` | Stub (`TODO(F08)`) |
-| `LedgerService::refund_earn()` / `refund_redeem()` | `Services/LedgerService.php` | **Does not exist.** No refund entry point has been added to the ledger writer yet |
+| `LedgerService::refund_earn()` / `restore_refund()` | `Services/LedgerService.php` | **Implemented** — cumulative clawback under the customer lock; restore of a deleted refund |
+| `LedgerService::refund_redeem()` | `Services/LedgerService.php` | Does not exist (F08) |
+| `Reversal` (`full_order()` / `refund()` / `refund_deleted()` / `full_review()`), `ClawbackMath::owed()` | `Engine/Earning/Reversal.php`, `ClawbackMath.php` | **Implemented** |
 | `EarningService::build()` | `Engine/Earning/EarningService.php` | **Implemented** |
 | `EarningService::preview()` / `award()` | `Engine/Earning/EarningService.php` | **Implemented** |
 | `PendingPoints::stage()` / `release()` / `mark_awarded()` | `Engine/Earning/PendingPoints.php` | **Implemented** |
 | `ProgramGate::check()` | `Engine/Earning/ProgramGate.php` | **Implemented** |
-| `OrderListener::register()` / `on_status_changed()` / `on_order_created()` / `route()` / `on_stageable()` / `on_awardable()` | `Engine/Earning/Listeners/OrderListener.php` | **Implemented** — all hooks and route logic; `on_cancelled()`/`on_refunded()` bodies still Stub |
-| `ReviewListener`, `SignupListener` — `register()`, their hook adapters, `on_registered()` / `on_approved()` | same directory | **Implemented** — award writes; `on_unapproved()` still Stub |
+| `OrderListener::register()` / `on_status_changed()` / `on_order_created()` / `route()` / `on_stageable()` / `on_awardable()` | `Engine/Earning/Listeners/OrderListener.php` | **Implemented** — cancelled/trash/refunded statuses route to `OrderReversalListener` |
+| `OrderReversalListener` — cancel, `refunded` status, `woocommerce_order_refunded`, `woocommerce_refund_deleted`, `woocommerce_trash_order` / `trashed_post` | same directory | **Implemented** |
+| `ReviewListener`, `SignupListener` — `register()`, their hook adapters, `on_registered()` / `on_approved()` | same directory | **Implemented** — award writes; `on_unapproved()` claws back on unapprove / spam / trash / delete |
 | `CommitWriter::commit()` (redemption) | `Engine/Redemption/CommitWriter.php` | Stub — its own docblock calls the cancel/refund side "Zone 3 ... undesigned" |
 
 Every stub above already carries a docblock that states its intended contract; this document and
@@ -142,7 +145,7 @@ reference id alone is enough to guarantee "once".
 | Customer row lock | `SELECT balance ... FOR UPDATE` inside the transaction | A broken `balance_after` chain | **Implemented** |
 | Release-once flag | `PendingPoints::META_RELEASED`, separate from the staged-figure meta, set exactly once | Pending underflow on a status bounce (award → cancel → award again) | **Implemented** |
 
-## 06 — The reversal grid (designed, not implemented)
+## 06 — The reversal grid (earn side implemented)
 
 Earning is provisional until the award; spending is immediate. So reversing an earn is a ledger row
 **only if the award already happened**; reversing a spend always is.
@@ -156,14 +159,27 @@ Restore before clawback, always. Both land in one transaction either way, but `b
 stored chain the customer reads in their history — restoring first avoids recording a transient
 negative that immediately corrects itself.
 
-None of this grid has a writer yet: `LedgerService` has no `refund_earn()` / `refund_redeem()`
-method, and `CommitWriter`'s own docblock names this "Zone 3 ... undesigned" — it needs
-`LedgerService::refund_redeem()` and `Redemption::restored_points` before it can be built at all.
+The earn column is built: `OrderReversalListener::on_cancelled()` releases pending and
+`Reversal::full_order()` writes `refund_earn` per earn row the order has. The spend column is not:
+`CommitWriter`'s own docblock names it "Zone 3 ... undesigned", and it needs
+`LedgerService::refund_redeem()` and `Redemption::restored_points` before it can be built.
+
+Rules the earn side keeps:
+
+- **The balance may go negative.** Points already spent are still owed back; nothing floors the
+  clawback at the balance.
+- **A full reversal is final.** Cancel, trash, a paid review removed, or an order marked refunded
+  outside WooCommerce claws back everything left, keyed on the order (or comment). Completing the
+  order again finds the earn key spent: a duplicate, and an order note tells the merchant to adjust
+  manually. Deleting an earlier refund after a full reversal restores nothing.
+- **Reversal rows copy the earn's user, source, campaign and order** and key on the reversing
+  reference plus the earn's trigger (`IdempotencyKey::qualifier_of()`), so a re-fired hook is a
+  duplicate.
 
 ## 07 — Status machine
 
-Only two order-status transitions act. `failed` looks like it should but does nothing, because the
-order is still payable.
+`pending`/`on-hold` stage, `completed` awards, `cancelled`/trash reverse. `failed` looks like it
+should act but does nothing, because the order is still payable.
 
 ```mermaid
 stateDiagram-v2
@@ -171,28 +187,32 @@ stateDiagram-v2
     Placed --> Completed: completed (award & release)
     Placed --> Failed: failed (no action)
     Placed --> Processing: processing (no action)
-    Placed --> Cancelled: cancelled / trashed (not yet impl.)
+    Placed --> Cancelled: cancelled / trashed (release pending)
+    Completed --> Cancelled: cancelled / trashed (claw back all)
 
     Completed --> [*]: earn row written, pending released
     Failed --> [*]: order remains payable
     Processing --> [*]: no stage or award
-    Cancelled --> [*]: pending released, redeemed restored (not impl.)
+    Cancelled --> [*]: pending released, earn clawed back; redeemed restored (F08)
 ```
 
 Refund events are driven by refund **objects** (`woocommerce_order_refunded`), never by the
 `refunded` status — a status alone carries no refund id to key the ledger row on, and an order can
-be partially refunded more than once. One exception: `get_total_refunded() === 0` on a `refunded`
-order means an admin reversed it outside WooCommerce, a full reversal referenced to the *order*,
-not to a refund id. A deleted refund (`refund_deleted`) writes the inverse of that refund's own
-ledger rows — no separate bookkeeping of "what was clawed" is needed, because the rows keyed to
-that refund id already are that record.
+be partially refunded more than once. One exception: a `refunded` order with no refund object
+(`Reversal::refunded_status()`, read from the database) means an admin reversed it outside WooCommerce, a full reversal referenced to the *order*,
+not to a refund id; the `refunded` status also releases pending. A deleted refund
+(`woocommerce_refund_deleted`) writes the inverse of that refund's own ledger rows as `adjust` rows
+referencing the refund — no separate bookkeeping of "what was clawed" is needed, because the rows
+keyed to that refund id already are that record. HPOS trashes an order without
+`woocommerce_order_status_changed`, so trash is heard on `woocommerce_trash_order` (and
+`trashed_post` for the posts screen).
 
 `pending_points` is `bigint unsigned` (`CustomersTable::definition()`), so
 `CustomerRepository::apply_pending_delta()` floors it at 0. The floor only hides a double release —
 it would take the points of another order — so releasing twice is prevented by §05's release-once
 flag, not by the floor.
 
-## 08 — Clawback maths (designed, not implemented)
+## 08 — Clawback maths (implemented)
 
 Points were earned on the order's **earning base** (subtotal minus discounts, in the campaign's
 terms), so a refund claws back in proportion to the base it removed — a shipping-only or tax-only
@@ -202,25 +222,36 @@ points: three sequential one-third refunds of a 100-point order at `floor(33.33)
 99, not 100. Recomputing cumulatively — `floor(100 × 1/3)`, `floor(100 × 2/3)`, then a shortcut of
 exactly 100 once the order is fully refunded — lands exactly on 100 with no residue.
 
-Bounds this needs once built:
+`ClawbackMath::owed()` owns that formula. The **ratio** is per earn row: the refunded amount of the
+lines that row's campaign counted (`BaseCalculator::includes_line()` — refunding an excluded product
+claws back nothing), summed over every refund of the order so far (refund lines point at the
+original through `_refunded_item_id`), over those lines' original total. Refunds are read from the
+database, not from the order's cached totals, which can still count a deleted refund. An amount-only
+refund (no line items) removes no base and claws back nothing — merchants refund line items for a
+clawback — unless it completes the refund, when the full shortcut applies.
 
-- `points_clawed_back ≤ points_earned`, checked on every refund — a merchant who marks an order
-  Refunded and later adds a real refund object must not claw twice.
-- `redemptions.restored_points ≤ redemptions.points` (already listed as an invariant in
-  [`data-model.md`](../data-model.md#invariants)) — repeated partial refunds can never return more
-  points than were spent.
-- A zero-difference clawback writes no ledger row at all.
+Bounds it keeps:
 
-## Still open
+- `points_clawed_back ≤ points_earned`: `LedgerService::refund_earn()` writes only
+  `min( owed, earned ) − already clawed`, read under the customer lock — a merchant who marks an
+  order Refunded and later adds a real refund object does not claw twice.
+- Already clawed is net of restores: `LedgerRepository::sum_refunded_for()` subtracts the `adjust`
+  rows of deleted refunds, so a later refund claws again from the right point.
+- A zero-difference clawback writes no ledger row at all (`Outcome::skipped( nothing_to_claw_back )`).
+- `redemptions.restored_points ≤ redemptions.points` (listed as an invariant in
+  [`data-model.md`](../data-model.md#invariants)) — the spend side, F08.
 
-- **Reversal policy.** Four decisions are unmade: whether refunds claw back at all (a goodwill
-  mode), whether partial refunds restore proportionally, whether balances may go negative, and what
-  happens when a cancelled order is un-cancelled. Nothing in §06–§08 can be implemented until these
-  are answered.
-- **F01 vs later phases.** §01–§05 (points in) track the F01 plan; §06–§08 (points back out) are
-  designed here but belong to a later phase (`CommitWriter`'s Zone 3, `LedgerService::redeem()`'s
-  `TODO(F08)`). Confirm the phase label for §06–§08 before scheduling it — this document does not
-  assign one.
+## Resolved reversal policy (2026-09-30)
+
+- Refunds always claw back; there is no goodwill mode.
+- A partial refund claws back proportionally and cumulatively (§08); shipping-only and tax-only
+  refunds claw back nothing unless they complete the refund; a full refund lands exactly on what
+  was earned.
+- Balances may go negative.
+- Cancel/trash of an awarded order, or unapprove/spam/trash/delete of a paid review, is a full and
+  final clawback: no re-award, an order note asks the merchant to adjust manually.
+- A deleted refund restores its clawback as an `adjust` row, unless the order was reversed in full.
+- The spend side (`refund_redeem`, restore before clawback) is F08.
 
 Resolved since the design first circulated (kept here so the resolution isn't re-litigated):
 campaign liveness is scored at the order's *creation* date, not its award date

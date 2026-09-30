@@ -66,17 +66,32 @@ final class Reversal {
      * @return Outcome[] One per earn row.
      */
     public function refund( \WC_Order $order, int $refund_id ): array {
-        $fully_refunded = (float) $order->get_remaining_refund_amount() <= 0.0;
+        $refunds        = $this->refunds( (int) $order->get_id() );
+        $refunded_total = array_sum( array_map( static fn( \WC_Order_Refund $refund ): float => (float) $refund->get_amount(), $refunds ) );
+        $decimals       = wc_get_price_decimals();
+        // Rounded like WooCommerce's own remaining amount: 0.35 + 0.10 is not >= 0.45 in floats.
+        $fully_refunded = round( $refunded_total, $decimals ) >= round( (float) $order->get_total(), $decimals );
         $outcomes       = [];
 
         foreach ( $this->ledger->earn_rows_for_order( (int) $order->get_id() ) as $earn ) {
-            list( $original, $refunded ) = $this->bases( $order, $earn );
+            list( $original, $refunded ) = $this->bases( $order, $refunds, $earn );
 
             $owed       = ClawbackMath::owed( $earn->get_points(), $refunded, $original, $fully_refunded );
             $outcomes[] = $this->writer->refund_earn( $earn, $owed, ReferenceType::REFUND, $refund_id );
         }
 
         return $outcomes;
+    }
+
+    /**
+     * The `refunded` status: a full reversal keyed on the order, but only when
+     * no refund object exists — then the order was marked refunded outside
+     * WooCommerce's refunds; otherwise the refund objects already drive it.
+     *
+     * @return Outcome[] One per earn row; none when refund objects exist.
+     */
+    public function refunded_status( \WC_Order $order ): array {
+        return [] === $this->refunds( (int) $order->get_id() ) ? $this->full_order( $order ) : [];
     }
 
     /**
@@ -99,15 +114,33 @@ final class Reversal {
     }
 
     /**
+     * The order's refunds as stored now. Not WC_Order::get_refunds() or its
+     * refund totals: those are cached, and after a refund is deleted the
+     * cache can still count it, which would read as fully refunded.
+     *
+     * @return \WC_Order_Refund[]
+     */
+    private function refunds( int $order_id ): array {
+        return (array) wc_get_orders(
+            [
+                'type'   => 'shop_order_refund',
+                'parent' => $order_id,
+                'limit'  => -1,
+            ]
+        );
+    }
+
+    /**
      * The base an earn row was scored on and how much of it the order's
      * refunds removed, cumulatively. Only lines the earn's campaign counted
      * (BaseCalculator::includes_line()), so refunding an excluded product
      * claws back nothing. Refund lines point at the original through
      * `_refunded_item_id` and carry negative totals.
      *
+     * @param \WC_Order_Refund[] $refunds
      * @return float[] [ original, refunded ]
      */
-    private function bases( \WC_Order $order, LedgerEntry $earn ): array {
+    private function bases( \WC_Order $order, array $refunds, LedgerEntry $earn ): array {
         $campaign = null === $earn->get_campaign_id() ? null : $this->campaigns->find_campaign( (int) $earn->get_campaign_id() );
 
         if ( null === $campaign ) {
@@ -126,7 +159,7 @@ final class Reversal {
 
         $refunded = 0.0;
 
-        foreach ( $order->get_refunds() as $refund ) {
+        foreach ( $refunds as $refund ) {
             foreach ( $refund->get_items() as $line ) {
                 if ( isset( $included[ (int) $line->get_meta( '_refunded_item_id' ) ] ) ) {
                     $refunded += abs( (float) $line->get_total() );

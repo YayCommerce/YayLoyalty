@@ -119,9 +119,9 @@ final class OrderListener {
      *   trash           as cancelled
      *   refunded        release pending; clawback is driven by refund objects.
      *                   One exception, handled here because only the status
-     *                   says so: get_total_refunded() === 0 means an admin
-     *                   reversed the order outside WooCommerce, which is a
-     *                   full reversal referenced to the ORDER, not a refund id
+     *                   says so: no refund object means an admin reversed the
+     *                   order outside WooCommerce, which is a full reversal
+     *                   referenced to the ORDER, not a refund id
      *
      * Any other status — one another plugin registered — is not ours to
      * interpret: it falls through and nothing happens.

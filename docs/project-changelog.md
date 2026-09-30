@@ -6,6 +6,16 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
 
 ## Unreleased
 
+### Added — Points come back out: cancel, refund, review removal (2026-09-30)
+
+- **Cancel and trash** release pending and claw back everything the order earned, per earn row (`Engine\Earning\Reversal::full_order()`), keyed on the order. Trash is heard on `woocommerce_trash_order` / `trashed_post`: HPOS trashes without `woocommerce_order_status_changed`. The `refunded` status releases pending and reverses in full only when no refund object exists (read from the database, not the order's cached refund total).
+- **Refunds** claw back proportionally and cumulatively: `ClawbackMath::owed()` recomputes the total owed from every refund's lines that the earn's campaign counted (`BaseCalculator::includes_line()`), and `LedgerService::refund_earn()` writes only the difference from what is already clawed back, read under the customer lock. Excluded-product, shipping-only and amount-only refunds claw back nothing unless they complete the refund; a full refund lands exactly on what was earned (compared at the store's price decimals). Refunds are read from the database, not the order's cached totals.
+- **Deleted refunds** are restored as an `adjust` row referencing the refund (`LedgerService::restore_refund()`), unless the order was reversed in full.
+- **Reviews** leaving `approved` (unapprove, spam, trash, delete) claw back the whole earn; re-approval is a duplicate.
+- **Policy:** balances may go negative; a full reversal is final (completing the order again adds a "reversed earlier" note instead of points).
+- **Structure:** `OrderReversalListener` holds the refund, refund-deleted and trash hooks and the reversal notes; `ListenerGuard` owns the never-break-the-save catch for every listener; `ContextFactory::line_item()` and `BaseCalculator::includes_line()` are extracted so award and clawback share one line rule.
+- **Tests:** `ClawbackMathTest`; `OrderReversalFlowTest` (cumulative refunds, excluded product, amount-only, cancel below zero, refund then cancel, re-complete, delete and re-refund, delete after cancel, re-fired hook, pending cancel, HPOS trash); review unapprove / re-approve / trash / delete.
+
 ### Added & Changed — Award points for purchases, signups, and reviews (2026-09-30)
 
 - **Award at `completed` only.** `Enums\OrderStatus` owns the rule; the `general.award_statuses` setting is removed (PHP and the TS mirror). `processing` is inert. `CustomerFactsReader` counts `completed` orders as paid history.
