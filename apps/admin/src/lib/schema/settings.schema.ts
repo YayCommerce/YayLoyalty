@@ -8,8 +8,6 @@ export const settingsSchema = z.object({
     points_label_plural: z.string(),
     /** Role slugs that never earn. */
     excluded_roles: z.array(z.string()),
-    /** Bare order-status slugs that count as paid; an empty list reads back as the default. */
-    award_statuses: z.array(z.string()),
   }),
   advanced: z.object({
     /** Largest manual adjustment a non-administrator may make; 0 = unlimited. */

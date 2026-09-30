@@ -5,7 +5,7 @@ use YayLoyalty\Engine\Earning\EarningService;
 use YayLoyalty\Engine\Earning\PendingPoints;
 use YayLoyalty\Engine\Points\ContextFactory;
 use YayLoyalty\Enums\CampaignTrigger;
-use YayLoyalty\Helpers\SettingsHelper;
+use YayLoyalty\Enums\OrderStatus;
 use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Utils\Log;
 
@@ -22,11 +22,9 @@ defined( 'ABSPATH' ) || exit;
  * status string. The engine, the ledger and every domain service are told
  * what to do, never which status asked for it.
  *
- * Paid is a set, not a status. A store whose items are all downloadable and
- * virtual never sees `processing` — needs_processing() is false and
- * payment_complete() goes straight to `completed` — while many physical
- * stores never move an order past `processing`. Awarding on one status
- * breaks one of them, so the award set is a setting, defaulting to both.
+ * Only `completed` awards (OrderStatus::AWARD), a product decision: a store
+ * that leaves orders at `processing` must complete them for them to earn.
+ * Virtual orders reach it straight from payment_complete().
  */
 final class OrderListener {
 
@@ -103,10 +101,10 @@ final class OrderListener {
      *                   and must never reach staging
      *   pending         stage
      *   on-hold         stage, never award: the money has not arrived
-     *   {award set}     award — `processing` + `completed` by default,
-     *                   general.award_statuses in settings
+     *   processing      nothing: money may have arrived, but only completed awards
+     *   completed       award (OrderStatus::AWARD)
      *   failed          nothing: no release, no redemption restore. The order
-     *                   is still payable and a retry lands on an award status
+     *                   is still payable and a retry lands on completed
      *   cancelled       release pending (once) and restore the redemption if
      *                   one is still applied
      *   trash           as cancelled
@@ -120,7 +118,7 @@ final class OrderListener {
      * interpret: it falls through and nothing happens.
      */
     private function route( int $order_id, string $to, \WC_Order $order ): void {
-        if ( in_array( $to, SettingsHelper::award_statuses(), true ) ) {
+        if ( OrderStatus::AWARD === $to ) {
             try {
                 $this->on_awardable( $order_id );
             } catch ( \Throwable $e ) { // A listener must never break an order save.
@@ -155,9 +153,10 @@ final class OrderListener {
                     Log::warning( 'OrderListener', 'refund skipped for order #' . $order_id . ': ' . $e->getMessage() );
                 }
                 break;
+            case 'processing':
             case 'failed':
             case 'checkout-draft':
-                // Still payable (failed) or not yet an order (checkout-draft) — neither stages nor awards.
+                // Paid but not completed, still payable, or not yet an order — none stages or awards.
                 break;
         }
     }

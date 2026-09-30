@@ -78,8 +78,9 @@ final class CustomerFactsReaderTest extends IntegrationTestCase {
 
     public function test_counts_paid_orders_created_before_as_of_excluding_the_evaluated_order(): void {
         $this->order( 'completed', '2026-06-01 10:00:00', 100, 'USD' );
-        $this->order( 'processing', '2026-06-02 10:00:00', 40, 'EUR' );
-        $this->order( 'pending', '2026-06-03 10:00:00', 999, 'USD' );
+        $this->order( 'completed', '2026-06-02 10:00:00', 40, 'EUR' );
+        $this->order( 'processing', '2026-06-03 10:00:00', 999, 'USD' );
+        $this->order( 'pending', '2026-06-04 10:00:00', 999, 'USD' );
         $this->order( 'completed', '2026-07-01 10:00:00', 999, 'USD' );
         $evaluated = $this->order( 'completed', '2026-06-10 10:00:00', 999, 'USD' );
 

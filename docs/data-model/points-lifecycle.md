@@ -28,7 +28,7 @@ two (points back out) is designed here but has no corresponding code yet — do 
 | `EarningService::preview()` / `award()` | `Engine/Earning/EarningService.php` | Stub |
 | `PendingPoints::stage()` / `release()` / `mark_awarded()` | `Engine/Earning/PendingPoints.php` | Stub |
 | `ProgramGate::check()` | `Engine/Earning/ProgramGate.php` | **Implemented** |
-| `OrderListener::register()` / `on_status_changed()` / `on_order_created()` / `route()` / `award_statuses()` | `Engine/Earning/Listeners/OrderListener.php` | **Implemented** — hooks only; `on_stageable()` and `on_awardable()` **implemented** (call `preview_and_log()`); `on_cancelled()`/`on_refunded()` bodies still Stub |
+| `OrderListener::register()` / `on_status_changed()` / `on_order_created()` / `route()` | `Engine/Earning/Listeners/OrderListener.php` | **Implemented** — hooks only; `on_stageable()` and `on_awardable()` **implemented** (call `preview_and_log()`); `on_cancelled()`/`on_refunded()` bodies still Stub |
 | `ReviewListener`, `SignupListener` — `register()` and their hook adapters | same directory | **Implemented** — `on_registered()` / `on_approved()` preview and log (no writes); `on_unapproved()` still Stub |
 | `CommitWriter::commit()` (redemption) | `Engine/Redemption/CommitWriter.php` | Stub — its own docblock calls the cancel/refund side "Zone 3 ... undesigned" |
 

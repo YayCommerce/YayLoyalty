@@ -24,19 +24,6 @@ class SettingsHelper {
                 'points_label_plural'   => __( 'Points', 'yayloyalty' ),
                 // Role slugs that never earn; read by Engine\Earning\ProgramGate.
                 'excluded_roles'        => [],
-                /*
-                 * Bare order-status slugs that count as paid; read through award_statuses().
-                 * Paid is a set: a fully virtual order never passes through processing, and
-                 * many physical stores stop there.
-                 *
-                 * TODO(F01-4): the UI offers payment received (both), order completed
-                 * (completed only) and a custom multi-select built from
-                 * wc_get_order_statuses() at render time, so statuses another plugin
-                 * registers appear without a release here. Also reserve 'hold_days' => 0
-                 * for a holding period before pending is released — shape only, nothing
-                 * reads it.
-                 */
-                'award_statuses'        => [ 'processing', 'completed' ],
             ],
             'advanced' => [
                 // 0 = unlimited. Read via Capabilities::ceiling().
@@ -61,7 +48,6 @@ class SettingsHelper {
                 'points_label_singular' => 'text',
                 'points_label_plural'   => 'text',
                 'excluded_roles'        => 'slug_list',
-                'award_statuses'        => 'slug_list',
             ],
             'advanced' => [
                 'adjustment_ceiling' => 'int',
@@ -92,19 +78,6 @@ class SettingsHelper {
             : self::SCHEMA_VERSION;
 
         return $merged;
-    }
-
-    /**
-     * Bare order-status slugs that count as paid, as woocommerce_order_status_changed reports them.
-     *
-     * An emptied list falls back to the default: a store with no paid status would never award.
-     *
-     * @return string[]
-     */
-    public static function award_statuses(): array {
-        $statuses = self::get_settings()['general']['award_statuses'];
-
-        return empty( $statuses ) ? self::get_default_settings()['general']['award_statuses'] : $statuses;
     }
 
     /**
