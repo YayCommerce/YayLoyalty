@@ -309,8 +309,7 @@ final class CampaignPerformanceRestController extends AbstractRestController {
      * @return array{from: string, to: string} Y-m-d, site-tz, both ends inclusive.
      */
     private function chart_window( array $row ): array {
-        $site_timezone = wp_timezone();
-        $now           = ( new \DateTimeImmutable( 'now', $site_timezone ) )->setTime( 0, 0, 0 );
+        $now = Dates::site_day_start( Dates::now() );
 
         $starts = Dates::site_day_start( $row['starts_at'] );
         // ends_at is exclusive, so the last live day is the one holding the second before it — a 10:00 end keeps that morning.

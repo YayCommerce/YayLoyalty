@@ -52,20 +52,9 @@ final class OrderListener {
     /**
      * Attaches the two order hooks; call once at boot, after settings are readable.
      *
-     * Two entry points, on purpose, both funnelled into route(). A per-status
-     * hook (`woocommerce_order_status_completed`) or `woocommerce_payment_complete`
-     * alongside either would describe the same transition from a different
-     * angle and process it several times for no reason — that is still out.
-     * `woocommerce_new_order` is not that: `woocommerce_order_status_changed`
-     * only fires when WooCommerce recorded a non-empty "from" status
-     * (`WC_Abstract_Order::set_status()`), so a brand-new order's very first
-     * status — no prior status to transition from — never reaches it.
-     * `woocommerce_new_order` fires exactly once per order regardless (at
-     * first insert, or at the admin auto-draft → real-status save) and is
-     * the only reliable signal for that first arrival. Where the two land in
-     * the same request (that admin save fires both), route() runs twice for
-     * the same $to; that is free, not a bug — see route()'s docblock.
-     * Refund and trash hooks belong to OrderReversalListener.
+     * Two hooks because a new order's first status never fires
+     * `woocommerce_order_status_changed` (README invariant 6). Refund and
+     * trash hooks belong to OrderReversalListener.
      */
     public function register(): void {
         add_action( 'woocommerce_order_status_changed', [ $this, 'on_status_changed' ], 10, 4 );
@@ -85,12 +74,7 @@ final class OrderListener {
         $this->route( $order_id, $to, $order );
     }
 
-    /**
-     * Order creation entry point — covers the arrival route() above cannot
-     * see: WooCommerce never fires `woocommerce_order_status_changed` for a
-     * brand-new order's first status (no prior status to transition from).
-     * Routes on $order->get_status() since there is no $to being announced.
-     */
+    /** Order creation entry point: the first status, which on_status_changed() never sees (register()). */
     public function on_order_created( int $order_id, \WC_Order $order ): void {
         Log::debug( 'OrderListener', 'order #' . $order_id . ' created at ' . $order->get_status() );
         $this->route( $order_id, $order->get_status(), $order );
@@ -99,12 +83,8 @@ final class OrderListener {
     /**
      * The one routing table, shared by both entry points above.
      *
-     * $from is not a parameter: first arrival wins, and any later call that
-     * lands on the same $to — from either hook, including the same-request
-     * double delivery register()'s docblock describes — repeats a step that
-     * is already idempotent (PendingPoints::stage()/release(), invariant 2)
-     * or composes the same ledger idempotency key and costs one rejected
-     * insert (invariants 3-4). No dedup lives here; none is needed.
+     * $from is not a parameter and nothing dedups here: re-delivery is
+     * harmless, every step is idempotent (README invariants 2-4).
      *
      *   checkout-draft  nothing — a block-checkout draft is not an order yet
      *                   and must never reach staging
@@ -128,20 +108,20 @@ final class OrderListener {
      */
     private function route( int $order_id, string $to, \WC_Order $order ): void {
         if ( OrderStatus::AWARD === $to ) {
-            $this->guarded( 'award', $order_id, fn() => $this->on_awardable( $order ) );
+            ListenerGuard::for_order( 'OrderListener', 'award', $order_id, fn() => $this->on_awardable( $order ) );
             return;
         }
         switch ( $to ) {
             case 'pending':
             case 'on-hold':
-                $this->guarded( 'stage', $order_id, fn() => $this->on_stageable( $order ) );
+                ListenerGuard::for_order( 'OrderListener', 'stage', $order_id, fn() => $this->on_stageable( $order ) );
                 break;
             case 'cancelled':
             case 'trash':
-                $this->guarded( 'cancel', $order_id, fn() => $this->reversals->on_cancelled( $order ) );
+                ListenerGuard::for_order( 'OrderListener', 'cancel', $order_id, fn() => $this->reversals->on_cancelled( $order ) );
                 break;
             case 'refunded':
-                $this->guarded( 'refund', $order_id, fn() => $this->reversals->on_status_refunded( $order ) );
+                ListenerGuard::for_order( 'OrderListener', 'refund', $order_id, fn() => $this->reversals->on_status_refunded( $order ) );
                 break;
             case 'processing':
             case 'failed':
@@ -189,8 +169,8 @@ final class OrderListener {
 
         foreach ( $triggers as $trigger ) {
             // Rebuilt per trigger: the previous trigger's row counts toward today's cap.
-            $today   = $this->ledger->points_earned_today( (int) $order->get_customer_id(), Dates::now(), LedgerSource::ORDER );
-            $outcome = $this->service->award( (string) $trigger, ContextFactory::from_order( $order, $today ) );
+            $points_earned_today = $this->ledger->points_earned_today( (int) $order->get_customer_id(), Dates::now(), LedgerSource::ORDER );
+            $outcome             = $this->service->award( (string) $trigger, ContextFactory::from_order( $order, $points_earned_today ) );
 
             PreviewLog::write_outcome( 'OrderListener', 'order #' . $order_id . ' ' . $trigger, $outcome );
             $this->note( $order, $outcome );
@@ -225,9 +205,5 @@ final class OrderListener {
                 }
                 break;
         }
-    }
-
-    private function guarded( string $step, int $order_id, callable $handler ): void {
-        ListenerGuard::run( 'OrderListener', $step . ' failed for order #' . $order_id, $handler );
     }
 }

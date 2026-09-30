@@ -129,9 +129,13 @@ class LedgerRepository extends AbstractRepository {
      */
     public function sum_refunded_for( LedgerEntry $earn ): int {
         if ( null !== $earn->get_order_id() ) {
-            $campaign = null === $earn->get_campaign_id() ? 'campaign_id IS NULL' : 'campaign_id = ' . (int) $earn->get_campaign_id();
+            $campaign = null === $earn->get_campaign_id() ? 'campaign_id IS NULL' : 'campaign_id = %d';
             $scope    = "order_id = %d AND {$campaign} AND (type = %s OR (type = %s AND reference_type = %s))";
-            $values   = [ $earn->get_order_id(), LedgerType::REFUND_EARN, LedgerType::ADJUST, ReferenceType::REFUND ];
+            $values   = array_merge(
+                [ $earn->get_order_id() ],
+                null === $earn->get_campaign_id() ? [] : [ (int) $earn->get_campaign_id() ],
+                [ LedgerType::REFUND_EARN, LedgerType::ADJUST, ReferenceType::REFUND ]
+            );
         } else {
             $scope  = 'reference_type = %s AND reference_id = %d AND type = %s';
             $values = [ (string) $earn->get_reference_type(), (int) $earn->get_reference_id(), LedgerType::REFUND_EARN ];
@@ -259,14 +263,14 @@ class LedgerRepository extends AbstractRepository {
     /**
      * SUM(points) over the rows a prepared WHERE fragment matches; 0 when none.
      *
-     * @param string  $where   Placeholders only; every value arrives in $values.
+     * @param string  $where      Placeholders only; every value arrives in $values.
      * @param mixed[] $values
-     * @param bool    $locking Read the latest committed rows and share-lock them (callers inside a transaction).
+     * @param bool    $is_locking Read the latest committed rows and share-lock them (callers inside a transaction).
      */
-    private function sum_points( string $where, array $values, bool $locking = false ): int {
+    private function sum_points( string $where, array $values, bool $is_locking = false ): int {
         global $wpdb;
 
-        $lock_sql = $locking ? ' LOCK IN SHARE MODE' : '';
+        $lock_sql = $is_locking ? ' LOCK IN SHARE MODE' : '';
 
         // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $where carries placeholders only; every value is bound here.
         return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
@@ -295,6 +299,6 @@ class LedgerRepository extends AbstractRepository {
         );
         // phpcs:enable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
 
-        return array_map( [ LedgerEntry::class, 'from_row' ], is_array( $rows ) ? $rows : [] );
+        return array_map( [ $this, 'hydrate' ], is_array( $rows ) ? $rows : [] );
     }
 }

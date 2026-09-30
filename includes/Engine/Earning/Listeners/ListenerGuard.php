@@ -22,4 +22,9 @@ final class ListenerGuard {
             Log::error( $source, $failure . ': ' . $e->getMessage() );
         }
     }
+
+    /** run() for an order step, logged as "{step} failed for order #{id}". */
+    public static function for_order( string $source, string $step, int $order_id, callable $handler ): void {
+        self::run( $source, $step . ' failed for order #' . $order_id, $handler );
+    }
 }

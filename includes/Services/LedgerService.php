@@ -154,13 +154,13 @@ final class LedgerService {
      * points on an order that no longer earns.
      */
     public function restore_refund( LedgerEntry $refund_row, int $refund_id ): Outcome {
-        $draft      = $this->reversal_draft( $refund_row, LedgerType::ADJUST, abs( $refund_row->get_points() ), ReferenceType::REFUND, $refund_id, sprintf( 'Refund #%d deleted', $refund_id ) );
-        $order_full = $this->reversal_draft( $refund_row, LedgerType::REFUND_EARN, 0, ReferenceType::ORDER, (int) $refund_row->get_order_id(), null );
+        $draft          = $this->reversal_draft( $refund_row, LedgerType::ADJUST, abs( $refund_row->get_points() ), ReferenceType::REFUND, $refund_id, sprintf( 'Refund #%d deleted', $refund_id ) );
+        $order_full_key = $this->reversal_key( $refund_row, LedgerType::REFUND_EARN, ReferenceType::ORDER, (int) $refund_row->get_order_id() );
 
         return $this->write_keyed(
             $draft,
-            function () use ( $draft, $order_full ): int {
-                return null === $this->ledger->find_by_idempotency_key( (string) $order_full->get_idempotency_key() ) ? $draft->get_points() : 0;
+            function () use ( $draft, $order_full_key ): int {
+                return null === $this->ledger->find_by_idempotency_key( $order_full_key ) ? $draft->get_points() : 0;
             },
             self::REASON_ORDER_REVERSED
         );
@@ -185,8 +185,13 @@ final class LedgerService {
             $note,
             null,
             Dates::now(),
-            IdempotencyKey::compose( $type, $user_id, $reference_type, $reference_id, IdempotencyKey::qualifier_of( (string) $source->get_idempotency_key() ) )
+            $this->reversal_key( $source, $type, $reference_type, $reference_id )
         );
+    }
+
+    /** The key a reversal row of $type against the given reference carries: $source's customer and trigger. */
+    private function reversal_key( LedgerEntry $source, string $type, string $reference_type, int $reference_id ): string {
+        return IdempotencyKey::compose( $type, $source->get_user_id(), $reference_type, $reference_id, IdempotencyKey::qualifier_of( (string) $source->get_idempotency_key() ) );
     }
 
     /**
@@ -249,12 +254,12 @@ final class LedgerService {
      * Inserts $draft at the locked balance, moves the aggregates and
      * announces the row. Must run under_lock(), so balance_after chains.
      *
-     * @param bool $keyed True turns a UNIQUE-key collision into null instead of an exception.
+     * @param bool $is_keyed True turns a UNIQUE-key collision into null instead of an exception.
      */
-    private function append( LedgerEntry $draft, Customer $customer, bool $keyed ): ?LedgerEntry {
+    private function append( LedgerEntry $draft, Customer $customer, bool $is_keyed ): ?LedgerEntry {
         $balance_after = $customer->get_balance() + $draft->get_points();
         $to_insert     = $draft->with_persisted( 0, $balance_after );
-        $insert_id     = $keyed ? $this->ledger->insert_unless_duplicate( $to_insert ) : $this->ledger->insert( $to_insert );
+        $insert_id     = $is_keyed ? $this->ledger->insert_unless_duplicate( $to_insert ) : $this->ledger->insert( $to_insert );
 
         if ( null === $insert_id ) {
             return null;

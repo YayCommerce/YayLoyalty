@@ -90,8 +90,8 @@ final class ReviewListener {
 
     /** Awards the review campaign, scored at the comment's date against today's review earnings. */
     public function on_approved( \WP_Comment $comment ): void {
-        $today   = $this->ledger->points_earned_today( (int) $comment->user_id, Dates::now(), LedgerSource::REVIEW );
-        $outcome = $this->service->award( CampaignTrigger::REVIEW, ContextFactory::from_comment( $comment, $today ) );
+        $points_earned_today = $this->ledger->points_earned_today( (int) $comment->user_id, Dates::now(), LedgerSource::REVIEW );
+        $outcome             = $this->service->award( CampaignTrigger::REVIEW, ContextFactory::from_comment( $comment, $points_earned_today ) );
 
         PreviewLog::write_outcome( 'ReviewListener', 'review #' . $comment->comment_ID, $outcome );
     }

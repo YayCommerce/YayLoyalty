@@ -42,7 +42,8 @@ final class OrderReversalListener {
 
     /** `woocommerce_order_refunded` adapter: claws back this refund's share of each earn row. */
     public function on_order_refunded( int $order_id, int $refund_id ): void {
-        $this->guarded(
+        ListenerGuard::for_order(
+            'OrderReversalListener',
             'refund #' . $refund_id,
             $order_id,
             function () use ( $order_id, $refund_id ): void {
@@ -58,12 +59,16 @@ final class OrderReversalListener {
 
     /** `woocommerce_refund_deleted` adapter: gives back what that refund clawed. */
     public function on_refund_deleted( int $refund_id, int $order_id ): void {
-        $this->guarded(
+        ListenerGuard::for_order(
+            'OrderReversalListener',
             'refund #' . $refund_id . ' delete',
             $order_id,
             function () use ( $order_id, $refund_id ): void {
-                $restored = $this->log_and_sum( $order_id, 'refund #' . $refund_id . ' deleted', $this->reversal->refund_deleted( $refund_id ) );
+                $outcomes = $this->reversal->refund_deleted( $refund_id );
+                $restored = self::points_moved( $outcomes );
                 $order    = wc_get_order( $order_id );
+
+                self::log_outcomes( $order_id, 'refund #' . $refund_id . ' deleted', $outcomes );
 
                 if ( $restored > 0 && $order instanceof \WC_Order ) {
                     /* translators: 1: refund id, 2: points */
@@ -82,7 +87,7 @@ final class OrderReversalListener {
         $order = wc_get_order( $order_id );
 
         if ( $order instanceof \WC_Order ) {
-            $this->guarded( 'cancel', $order_id, fn() => $this->on_cancelled( $order ) );
+            ListenerGuard::for_order( 'OrderReversalListener', 'cancel', $order_id, fn() => $this->on_cancelled( $order ) );
         }
     }
 
@@ -105,7 +110,9 @@ final class OrderReversalListener {
      * @param Outcome[] $outcomes
      */
     private function note_reversed( \WC_Order $order, array $outcomes, string $reason ): void {
-        $reversed = $this->log_and_sum( (int) $order->get_id(), $reason, $outcomes );
+        self::log_outcomes( (int) $order->get_id(), $reason, $outcomes );
+
+        $reversed = self::points_moved( $outcomes );
 
         if ( $reversed > 0 ) {
             /* translators: 1: points, 2: reason, e.g. "refund #12" */
@@ -114,25 +121,30 @@ final class OrderReversalListener {
     }
 
     /**
-     * Logs each outcome and returns the points the written rows moved, unsigned.
+     * Writes one debug line per outcome.
      *
      * @param Outcome[] $outcomes
      */
-    private function log_and_sum( int $order_id, string $subject, array $outcomes ): int {
+    private static function log_outcomes( int $order_id, string $subject, array $outcomes ): void {
+        foreach ( $outcomes as $outcome ) {
+            PreviewLog::write_outcome( 'OrderReversalListener', 'order #' . $order_id . ' ' . $subject, $outcome );
+        }
+    }
+
+    /**
+     * The points the written rows moved, unsigned.
+     *
+     * @param Outcome[] $outcomes
+     */
+    private static function points_moved( array $outcomes ): int {
         $points = 0;
 
         foreach ( $outcomes as $outcome ) {
-            PreviewLog::write_outcome( 'OrderReversalListener', 'order #' . $order_id . ' ' . $subject, $outcome );
-
             if ( Outcome::AWARDED === $outcome->get_status() ) {
                 $points += abs( $outcome->get_entry()->get_points() );
             }
         }
 
         return $points;
-    }
-
-    private function guarded( string $step, int $order_id, callable $handler ): void {
-        ListenerGuard::run( 'OrderReversalListener', $step . ' failed for order #' . $order_id, $handler );
     }
 }

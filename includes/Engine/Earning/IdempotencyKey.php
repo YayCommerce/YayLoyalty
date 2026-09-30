@@ -25,7 +25,7 @@ final class IdempotencyKey {
     private const SEPARATOR = ':';
 
     /**
-     * @param string $type           A LedgerType constant (earn and redeem today; refund types when clawbacks land).
+     * @param string $type           A LedgerType constant.
      * @param int    $user_id        Whose balance moves.
      * @param string $reference_type A ReferenceType constant.
      * @param int    $reference_id   The id in that namespace (order id, comment id, user id, year, redemption id).

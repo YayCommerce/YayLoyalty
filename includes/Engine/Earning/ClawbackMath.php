@@ -1,6 +1,8 @@
 <?php
 namespace YayLoyalty\Engine\Earning;
 
+use YayLoyalty\Utils\PointsMath;
+
 defined( 'ABSPATH' ) || exit;
 
 /** How many of an earn row's points are owed back after refunds. Pure. */
@@ -15,8 +17,8 @@ final class ClawbackMath {
      * @param float $refunded_base Refunded amount of the lines the earn's campaign counted, across every refund.
      * @param float $original_base Those lines' total when the order was placed.
      */
-    public static function owed( int $earned, float $refunded_base, float $original_base, bool $fully_refunded ): int {
-        if ( $fully_refunded || ( $original_base > 0 && $refunded_base >= $original_base ) ) {
+    public static function owed( int $earned, float $refunded_base, float $original_base, bool $is_fully_refunded ): int {
+        if ( $is_fully_refunded || ( $original_base > 0 && $refunded_base >= $original_base ) ) {
             return $earned;
         }
 
@@ -24,6 +26,6 @@ final class ClawbackMath {
             return 0;
         }
 
-        return (int) floor( $earned * $refunded_base / $original_base );
+        return PointsMath::round_points( $earned * $refunded_base / $original_base, PointsMath::ROUND_DOWN );
     }
 }

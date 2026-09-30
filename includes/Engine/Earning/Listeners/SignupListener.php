@@ -28,7 +28,7 @@ final class SignupListener {
         add_action( 'user_register', [ $this, 'on_user_register' ], 10, 1 );
     }
 
-    /** `user_register` adapter: the catch keeps a scoring failure from breaking the registration. */
+    /** `user_register` adapter. */
     public function on_user_register( int $user_id ): void {
         Log::debug( 'SignupListener', 'user #' . $user_id . ' registered' );
 

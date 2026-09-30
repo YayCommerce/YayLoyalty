@@ -3,6 +3,7 @@ namespace YayLoyalty\Engine\Earning;
 
 use YayLoyalty\Engine\Points\BaseCalculator;
 use YayLoyalty\Engine\Points\ContextFactory;
+use YayLoyalty\Engine\Points\ContextLineItem;
 use YayLoyalty\Enums\ReferenceType;
 use YayLoyalty\Models\LedgerEntry;
 use YayLoyalty\Repositories\CampaignRepository;
@@ -70,13 +71,15 @@ final class Reversal {
         $refunded_total = array_sum( array_map( static fn( \WC_Order_Refund $refund ): float => (float) $refund->get_amount(), $refunds ) );
         $decimals       = wc_get_price_decimals();
         // Rounded like WooCommerce's own remaining amount: 0.35 + 0.10 is not >= 0.45 in floats.
-        $fully_refunded = round( $refunded_total, $decimals ) >= round( (float) $order->get_total(), $decimals );
-        $outcomes       = [];
+        $is_fully_refunded = round( $refunded_total, $decimals ) >= round( (float) $order->get_total(), $decimals );
+        $lines             = self::product_lines( $order );
+        $refunded_lines    = self::refunded_by_line( $refunds );
+        $outcomes          = [];
 
         foreach ( $this->ledger->earn_rows_for_order( (int) $order->get_id() ) as $earn ) {
-            list( $original, $refunded ) = $this->bases( $order, $refunds, $earn );
+            list( $original, $refunded ) = $this->bases( $lines, $refunded_lines, $earn );
 
-            $owed       = ClawbackMath::owed( $earn->get_points(), $refunded, $original, $fully_refunded );
+            $owed       = ClawbackMath::owed( $earn->get_points(), $refunded, $original, $is_fully_refunded );
             $outcomes[] = $this->writer->refund_earn( $earn, $owed, ReferenceType::REFUND, $refund_id );
         }
 
@@ -91,7 +94,7 @@ final class Reversal {
      * @return Outcome[] One per earn row; none when refund objects exist.
      */
     public function refunded_status( \WC_Order $order ): array {
-        return [] === $this->refunds( (int) $order->get_id() ) ? $this->full_order( $order ) : [];
+        return [] === $this->refunds( (int) $order->get_id(), 1 ) ? $this->full_order( $order ) : [];
     }
 
     /**
@@ -118,52 +121,80 @@ final class Reversal {
      * refund totals: those are cached, and after a refund is deleted the
      * cache can still count it, which would read as fully refunded.
      *
+     * @param int $limit -1 for all; 1 when only whether any exists matters.
      * @return \WC_Order_Refund[]
      */
-    private function refunds( int $order_id ): array {
+    private function refunds( int $order_id, int $limit = -1 ): array {
         return (array) wc_get_orders(
             [
                 'type'   => 'shop_order_refund',
                 'parent' => $order_id,
-                'limit'  => -1,
+                'limit'  => $limit,
             ]
         );
+    }
+
+    /**
+     * The order's product lines with the campaign-facing view of each.
+     *
+     * @return array<int, array{0: \WC_Order_Item_Product, 1: ContextLineItem}> item id => [ item, ContextFactory::line_item() ]
+     */
+    private static function product_lines( \WC_Order $order ): array {
+        $lines = [];
+
+        foreach ( $order->get_items() as $item_id => $item ) {
+            if ( $item instanceof \WC_Order_Item_Product ) {
+                $lines[ (int) $item_id ] = [ $item, ContextFactory::line_item( $item ) ];
+            }
+        }
+
+        return $lines;
+    }
+
+    /**
+     * Amount refunded per original line, across every refund. Refund lines
+     * point at the original through `_refunded_item_id` and carry negative totals.
+     *
+     * @param \WC_Order_Refund[] $refunds
+     * @return array<int, float> item id => refunded amount
+     */
+    private static function refunded_by_line( array $refunds ): array {
+        $refunded = [];
+
+        foreach ( $refunds as $refund ) {
+            foreach ( $refund->get_items() as $line ) {
+                $item_id              = (int) $line->get_meta( '_refunded_item_id' );
+                $refunded[ $item_id ] = ( $refunded[ $item_id ] ?? 0.0 ) + abs( (float) $line->get_total() );
+            }
+        }
+
+        return $refunded;
     }
 
     /**
      * The base an earn row was scored on and how much of it the order's
      * refunds removed, cumulatively. Only lines the earn's campaign counted
      * (BaseCalculator::includes_line()), so refunding an excluded product
-     * claws back nothing. Refund lines point at the original through
-     * `_refunded_item_id` and carry negative totals.
+     * claws back nothing.
      *
-     * @param \WC_Order_Refund[] $refunds
+     * @param array<int, array{0: \WC_Order_Item_Product, 1: ContextLineItem}> $lines          product_lines()
+     * @param array<int, float>                                         $refunded_lines refunded_by_line()
      * @return float[] [ original, refunded ]
      */
-    private function bases( \WC_Order $order, array $refunds, LedgerEntry $earn ): array {
+    private function bases( array $lines, array $refunded_lines, LedgerEntry $earn ): array {
         $campaign = null === $earn->get_campaign_id() ? null : $this->campaigns->find_campaign( (int) $earn->get_campaign_id() );
 
         if ( null === $campaign ) {
             Log::warning( 'Reversal', 'campaign of ledger row #' . $earn->get_id() . ' is gone; every line counts toward its refund share' );
         }
 
-        $included = [];
         $original = 0.0;
-
-        foreach ( $order->get_items() as $item_id => $item ) {
-            if ( $item instanceof \WC_Order_Item_Product && ( null === $campaign || BaseCalculator::includes_line( $campaign, ContextFactory::line_item( $item ) ) ) ) {
-                $included[ (int) $item_id ] = true;
-                $original                  += (float) $item->get_total();
-            }
-        }
-
         $refunded = 0.0;
 
-        foreach ( $refunds as $refund ) {
-            foreach ( $refund->get_items() as $line ) {
-                if ( isset( $included[ (int) $line->get_meta( '_refunded_item_id' ) ] ) ) {
-                    $refunded += abs( (float) $line->get_total() );
-                }
+        foreach ( $lines as $item_id => list( $item, $line_item ) ) {
+            if ( null === $campaign || BaseCalculator::includes_line( $campaign, $line_item ) ) {
+                $original += (float) $item->get_total();
+                $refunded += $refunded_lines[ $item_id ] ?? 0.0;
             }
         }
 
