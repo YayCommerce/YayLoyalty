@@ -198,6 +198,25 @@ Found in P4:
   - `Engine/Earning/Listeners/OrderListener.php:56, :87` cite the deleted Earning README.
   - `Controllers/SettingsRestController.php:9` gives the wrong route; it is `/mark-reviewed`.
 
+Found in P5 (gaps against `docs/conventions.md`):
+
+- **Mirror direction.**
+  - `CustomerRowFilters.php:11`, `CustomerRowSort.php:7` and `CustomerListFormatter.php:67-68` say the PHP mirrors the TS.
+  - `CampaignPerformanceRestController.php:68` says it mirrors the SPA's constant, while `campaign-performance.schema.ts:24` says the opposite.
+- **TS copies that name no PHP owner:** `dashboard-notice.schema.ts`, `emails.schema.ts`, `FORBIDDEN_ERROR_CODES` in `access.tsx`, `types/localize.type.ts`, `DASHBOARD_RANGES` in `dashboard.schema.ts`, and the customer filter and sort unions in `customer.schema.ts`.
+- **Money.**
+  - `DashboardFixture.php:168` rounds to a fixed 2 decimals, and `dashboard.schema.ts:31` says "2 dp".
+  - `parseWPCurrency` (`format.helper.ts:56-58`) runs `parseFloat` on string money.
+  - `Engine/Rewards/Result.php` holds value and rate as floats, while `Redemption` stores them as strings.
+- **Dates.** The drawer's activity filters take UTC day bounds built from browser-local picker dates (`ActivityRestController.php:21-22`, `customer-drawer.tab-query-state.ts:58-59`). Reports and daily caps use site-calendar days.
+- **Comments.**
+  - No purpose docblock: `Engine/ActDeact.php`, `Enums/CustomerFilters.php`, `Utils/SingletonTrait.php`.
+  - 4 bare `TODO:`.
+  - About 105 SPA placeholder strings without `translators:`; no lint rule checks them.
+  - 48 `phpcs:ignore` without a reason.
+  - Design-artboard IDs on about 84 lines (the P2 bullet above).
+- **The current user below the HTTP boundary:** `CustomerActivityService.php:67` and `DesignHelper.php:59` read it.
+
 ---
 
 ## 3. Research findings
@@ -328,7 +347,11 @@ yayloyalty/
 
 Order: inventory → approval → removal → one phase per section of the new structure → team workflow → validation. Every phase starts from the latest `dev/edd`, ends in one PR into `dev/edd`, and ticks its checklist in this file. Checks `C1–C16` and the baseline script `B` are in the Appendix.
 
-Exception: P1–P3 were prepared in one session (2026-10-01), on branches stacked on P0, and P4 is stacked on P3. Merge them in order. After each squash merge, rebase the next branch: `git rebase --onto origin/dev/edd <merged-branch> <next-branch>`.
+Exception: P1–P5 were prepared on 2026-10-01 as a stack of branches, each on top of the previous one, starting from P0.
+1. Open each PR against the previous phase's branch, and merge them in order.
+2. After a squash merge, delete the merged branch so that GitHub retargets the next PR to `dev/edd`.
+3. Then merge `dev/edd` into the next branch, so its PR shows only its own commit: use the PR's "Update branch" with a merge, or merge locally.
+4. Never rebase: the branches are pushed, and rebasing them would rewrite pushed history.
 
 ### P0 — Land the plan and freeze the inventory
 - **Goal:** this plan is in the repo; the inventory matches HEAD.
@@ -525,9 +548,46 @@ Exception: P1–P3 were prepared in one session (2026-10-01), on branches stacke
   1. Write both docs. Known-issues entries use the fields Symptom · Cause · Workaround · Remove when.
   2. Add `CLAUDE.md` links. Next to commands that fail today, add "fails today: see `docs/known-issues.md`".
 - **Checklist:**
-  - [ ] each convention confirmed by a named teammate
-  - [ ] each issue reproduced (command + output in the PR)
-  - [ ] do-not-reintroduce ticked
+  - [x] each convention confirmed by a named teammate (Trace Bui)
+  - [x] each issue reproduced (command + output in the PR)
+  - [x] do-not-reintroduce ticked (commit body)
+- **Notes (2026-10-01):**
+  - Branch `trace/docs/harness-p5-conventions-known-issues` is stacked on P4.
+  - **Conventions**, confirmed by Trace Bui on 2026-10-01:
+    - money, dates and time zones, Pro data survives Lite, TypeScript copies name their PHP owner, wire casing, file names and comments;
+    - the layering rules stay in `architecture.md`, and `conventions.md` links to them.
+    - The audit also offered null-not-zero, "the SPA writes every word" and "copy as whole sentences". These were not adopted.
+  - **Reproductions** (Node 22, 2026-10-01).
+    - Tools were called directly rather than through pnpm, so nothing reinstalled. A scratch clone stood in for a fresh one.
+    - Node 20.16: pnpm dies with `ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING`. Node 22: 11.15.1.
+    - Fresh clone, `pnpm --filter @yayloyalty/admin-page exec tsc --version`:
+      - pnpm ran `pnpm install` (+438 packages);
+      - `postinstall` `composer install` then failed with "Could not scan for classes inside "vendor-prefixed/src"": exit 1, and no `vendor/autoload.php`;
+      - `./scripts/run.sh dev` repaired the clone, after which `pnpm install` exited 0.
+    - `run.sh dev` in the clone:
+      - ran a full `composer update`;
+      - printed "./composer.json has been updated" and regenerated `scoper.inc.php`, both identical to HEAD;
+      - rebuilt `vendor-prefixed/`;
+      - its `pnpm dev` re-ran `pnpm install` and `composer install`;
+      - Vite was ready on :3030.
+    - phpcs: 0 errors and 7 warnings (`NoReservedKeywordParameterNames`) in 3 files, exit 1.
+    - ESLint: exit 1, with 1 error (`no-empty`, `api.ts:154`) and 39 warnings: 36 Tailwind canonical-class, 2 unused vars, 1 unused directive.
+    - Prettier, run alone: 30 files and 5 unknown `importOrder*` options, exit 1.
+    - tsc: 3 × TS2307, exit 2.
+    - `release lite --no-prompt` in the clone: removed 58 dev packages, then stopped at the same tsc errors (exit 2) with phpcs and phpunit gone. `composer install` restored them.
+    - `composer test`: "No tests executed!", exit 0. Vitest: "No test files found", exit 1.
+    - `composer test:integration`:
+      - without the socket: the DB error page, exit 0;
+      - with the yaydevs socket: "plugin is not active on this site", exit 1;
+      - the plugin is inactive there and was left inactive, because activation seeds demo users.
+    - A build without `BUILD_TYPE` is Pro: sentinel 1, upsell 0.
+    - `makepot` (new): on the existing build it ran out of memory at PHP's default 128M (exit 255). With 1G it found 1,161 strings, 1,100 of them from the bundle. With no build it found 173, none from JS.
+    - Lockfiles: the fresh clone resolved 13 of 74 direct JS dependencies and 6 of 59 Composer packages differently from the working copy.
+  - **No entry for the blank admin page of a shipped zip** (`YAYLOYALTY_IS_DEVELOPMENT`). It stays in §2.7: reproducing it needs a site install.
+  - **Done here:**
+    - `CLAUDE.md` links each failing command to `known-issues.md`.
+    - The `dev`/`release` side-effect notes became links (P3's note).
+    - §7's stacked-merge note now says to merge `dev/edd` into the next branch, not rebase.
 - **Acceptance:**
   - C6 clean; C9 and C16 clean for the two new files.
   - Every known-issues entry has all 4 fields (`grep -c` per field = entry count).

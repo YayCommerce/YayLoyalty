@@ -116,7 +116,7 @@ One tree builds both editions. Lite is Pro without `includes/Pro/` and without t
   - Their TypeScript shapes are in `apps/admin/src/types/localize.type.ts`.
 - REST calls go through one ky client (`apps/admin/src/lib/api/api.ts`). It prefixes the REST root, sends the nonce as `X-WP-Nonce`, and falls back to `?rest_route=` on plain permalinks.
   - Each resource family has a client module in `apps/admin/src/lib/api/` and TanStack Query options in `apps/admin/src/lib/queries/`.
-  - Its zod schemas in `apps/admin/src/lib/schema/` mirror the PHP response shapes. A schema file's opening comment usually names the PHP code it mirrors.
+  - Its zod schemas in `apps/admin/src/lib/schema/` mirror the PHP response shapes. A schema file's opening comment usually names the PHP code it mirrors, as [the convention](conventions.md#typescript-copies-of-php-name-their-owner) asks.
   - Settings and design start from the localized data instead of a first fetch.
 - Capabilities: `apps/admin/src/lib/access.tsx` mirrors the PHP capability names, and routes, menus and controls hide or disable by them. This is presentation only; the REST permission callbacks are what enforce access.
 - Routing is hash-based (`createHashRouter` in `apps/admin/src/router.tsx`). The WordPress URL stays `admin.php?page=yayloyalty`, and the app's route follows the `#`.
