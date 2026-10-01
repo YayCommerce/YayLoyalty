@@ -5,8 +5,11 @@ use YayLoyalty\Models\Reward;
 
 defined( 'ABSPATH' ) || exit;
 
-/** yayloyalty_rewards. No cache yet: nothing reads rewards on a hot path. */
+/** yayloyalty_rewards. No cache yet: the storefront launcher's one slug read per page is an indexed lookup. */
 final class RewardRepository extends AbstractRepository {
+
+    /** The seeded flexible-discount reward: the points→money rate and Lite's only way to redeem. */
+    public const BUILTIN_DISCOUNT_SLUG = 'cart-discount';
 
     protected function table_slug(): string {
         return 'rewards';
@@ -49,8 +52,11 @@ final class RewardRepository extends AbstractRepository {
      * Reward's config in Clamp) the checkout discount itself.
      */
     public function points_per_currency_unit(): float {
-        $reward = $this->find_by_slug( 'cart-discount' );
+        return self::rate_of( $this->find_by_slug( self::BUILTIN_DISCOUNT_SLUG ) );
+    }
 
+    /** The rate read from an already-loaded built-in reward, for a caller that also needs the reward itself. */
+    public static function rate_of( ?Reward $reward ): float {
         return null === $reward ? 0.0 : (float) ( $reward->get_config()['points_per_currency_unit'] ?? 0 );
     }
 

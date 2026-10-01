@@ -12,6 +12,10 @@ class DesignSchema {
     public const LAUNCHER_ICONS = [ 'default', 'circle', 'diamond', 'bar', 'ring', 'line', 'custom' ];
     public const BADGE_ICONS    = [ 'ring', 'diamond', 'square' ];
 
+    public const SCOPE_ALL_PAGES        = 'all_pages';
+    public const SCOPE_SHOP_AND_PRODUCT = 'shop_and_product';
+    public const SCOPE_CUSTOM_PAGES     = 'custom_pages';
+
     public static function get_default_design(): array {
         return [
             'launcher'        => [
@@ -34,7 +38,7 @@ class DesignSchema {
                 'tier_progress_line'    => __( '{points} points to {tier}', 'yayloyalty' ), // Pro
             ],
             'visibility'      => [
-                'scope'            => 'all_pages',
+                'scope'            => self::SCOPE_ALL_PAGES,
                 'include_page_ids' => [],
                 'hide_on_mobile'   => false,
                 'hide_for_roles'   => [ 'administrator', 'shop_manager' ],
@@ -128,7 +132,7 @@ class DesignSchema {
             'visibility'      => [
                 'scope'            => [
                     'type'    => 'choice',
-                    'options' => [ 'all_pages', 'shop_and_product', 'custom_pages' ],
+                    'options' => [ self::SCOPE_ALL_PAGES, self::SCOPE_SHOP_AND_PRODUCT, self::SCOPE_CUSTOM_PAGES ],
                 ],
                 // Read only when scope is custom_pages: the pages the launcher shows on.
                 'include_page_ids' => [ 'type' => 'id_list' ],

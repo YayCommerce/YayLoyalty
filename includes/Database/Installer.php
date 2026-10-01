@@ -148,7 +148,7 @@ final class Installer {
             new \YayLoyalty\Models\Reward(
                 null,
                 __( 'Cart discount', 'yayloyalty' ),
-                'cart-discount',
+                \YayLoyalty\Repositories\RewardRepository::BUILTIN_DISCOUNT_SLUG,
                 $type,
                 \YayLoyalty\Enums\Status::ACTIVE,
                 0,

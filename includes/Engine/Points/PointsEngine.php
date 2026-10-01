@@ -35,6 +35,11 @@ final class PointsEngine {
         $this->caps      = $caps;
     }
 
+    /** The engine with this build's trigger handlers; Pro adds its own through Registry::with_lite_handlers(). */
+    public static function build( CampaignRepository $campaigns ): self {
+        return new self( Registry::with_lite_handlers( $campaigns ), $campaigns, new CapPolicy() );
+    }
+
     /**
      * @param string  $trigger A CampaignTrigger constant.
      * @param Context $ctx     The event; liveness is evaluated at its occurred_at.

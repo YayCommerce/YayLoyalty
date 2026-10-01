@@ -2,11 +2,9 @@
 namespace YayLoyalty\Engine\Earning;
 
 use YayLoyalty\Database\Transaction;
-use YayLoyalty\Engine\Points\CapPolicy;
 use YayLoyalty\Engine\Points\Context;
 use YayLoyalty\Engine\Points\PointsEngine;
 use YayLoyalty\Engine\Points\Result;
-use YayLoyalty\Engine\Points\Triggers\Registry;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Models\LedgerEntry;
 use YayLoyalty\Repositories\CampaignRepository;
@@ -57,7 +55,7 @@ final class EarningService {
         $campaigns = new CampaignRepository();
         $customers = new CustomerRepository();
 
-        $engine = new PointsEngine( Registry::with_lite_handlers( $campaigns ), $campaigns, new CapPolicy() );
+        $engine = PointsEngine::build( $campaigns );
         $ledger = new LedgerService( new LedgerRepository(), $customers );
 
         return new self( $engine, $ledger, new PendingPoints( $customers ), self::gates() );

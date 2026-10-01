@@ -22,12 +22,17 @@ final class ProgramGate implements Gate {
     public const REASON_OPTED_OUT      = 'opted_out';
     public const REASON_EXCLUDED_ROLE  = 'excluded_role';
 
-    public function check( string $trigger, Context $ctx ): ?string { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- the rules apply to every trigger.
-        $general = SettingsHelper::get_settings()['general'];
+    /** Whether the program is on; the storefront launcher asks this for guests, who have no Context to check. */
+    public static function program_enabled(): bool {
+        return (bool) SettingsHelper::get_settings()['general']['enabled'];
+    }
 
-        if ( ! $general['enabled'] ) {
+    public function check( string $trigger, Context $ctx ): ?string { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- the rules apply to every trigger.
+        if ( ! self::program_enabled() ) {
             return self::REASON_PROGRAM_PAUSED;
         }
+
+        $general = SettingsHelper::get_settings()['general'];
 
         $user_id = $ctx->get_user_id();
 
