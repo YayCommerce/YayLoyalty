@@ -91,14 +91,14 @@ final class Launcher {
         $user_id = get_current_user_id();
         $roles   = $user_id > 0 ? (array) wp_get_current_user()->roles : [];
 
-        $visible = LauncherVisibility::is_visible(
+        $is_visible = LauncherVisibility::is_visible(
             $design['visibility'],
             is_shop() || is_product() || is_product_taxonomy(),
             (int) get_queried_object_id(),
             $roles
         );
 
-        if ( ! $visible ) {
+        if ( ! $is_visible ) {
             return false;
         }
 

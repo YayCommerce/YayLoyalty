@@ -32,7 +32,7 @@ if ( null !== $yayloyalty_signup ) {
 }
 
 if ( null !== $yayloyalty_earn[ CampaignTrigger::PURCHASE ] ) {
-    $yayloyalty_rate    = LauncherCopy::earn_rate( $yayloyalty_text['earn_rate_line'], $yayloyalty_earn[ CampaignTrigger::PURCHASE ] );
+    $yayloyalty_rate    = LauncherCopy::earn_rate( $yayloyalty_text['earn_rate_line'], $yayloyalty_earn[ CampaignTrigger::PURCHASE ], $view['purchase_min'] );
     $yayloyalty_steps[] = null === $yayloyalty_review
         ? $yayloyalty_rate
         /* translators: 1: earn-rate sentence, 2: points for a review. */

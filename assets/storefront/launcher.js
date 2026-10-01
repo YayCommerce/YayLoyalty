@@ -17,7 +17,7 @@
     var trigger = root.querySelector("[data-yl-open]");
     var panel = root.querySelector(".yl-launcher-panel");
     var overlay = root.querySelector(".yl-launcher-overlay");
-    var activityLoaded = false;
+    var isActivityLoaded = false;
     var closeTimer = null;
 
     function isOpen() {
@@ -38,11 +38,11 @@
           first.focus();
         }
       });
-      if (!activityLoaded) {
-        activityLoaded = true;
+      if (!isActivityLoaded) {
+        isActivityLoaded = true;
         // A failed load is retried on the next open rather than left broken for the page's lifetime.
         loadActivity(root, function () {
-          activityLoaded = false;
+          isActivityLoaded = false;
         });
       }
     }
@@ -141,14 +141,14 @@
       var dragDistancePx = Math.max(0, event.clientY - startY);
       panel.style.transform = "translateY(" + dragDistancePx + "px)";
     });
-    function release(event, mayClose) {
+    function release(event, canClose) {
       if (startY === null) {
         return;
       }
       var dragDistancePx = event.clientY - startY;
       startY = null;
       panel.style.transform = "";
-      if (mayClose && dragDistancePx > DRAG_CLOSE_PX) {
+      if (canClose && dragDistancePx > DRAG_CLOSE_PX) {
         close();
       }
     }

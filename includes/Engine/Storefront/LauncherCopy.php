@@ -23,15 +23,14 @@ final class LauncherCopy {
         return ( $points < 0 ? '−' : '+' ) . number_format_i18n( abs( $points ) );
     }
 
-    /** A rate like 1 or 1.5, without trailing zeros. */
+    /**
+     * A rate like 1, 1.5 or 0.004, with every decimal the merchant entered: the admin's
+     * pointsPerCurrencyLabel() prints String(rate), and the two must agree. Ten places at most drops float noise.
+     */
     public static function rate( float $rate ): string {
-        $rate = round( $rate, 2 );
+        $fixed = rtrim( sprintf( '%.10F', $rate ), '0' );
 
-        if ( round( $rate ) === $rate ) {
-            return number_format_i18n( $rate );
-        }
-
-        return number_format_i18n( $rate, round( $rate, 1 ) === $rate ? 1 : 2 );
+        return number_format_i18n( $rate, strlen( $fixed ) - strpos( $fixed, '.' ) - 1 );
     }
 
     /** "$98.50"; a whole amount drops its decimals ("$1"), as the design writes it. */
@@ -44,19 +43,27 @@ final class LauncherCopy {
     /**
      * The Design tab's `earn_rate_line` with its {points} and {amount} filled: "Earn 1 points per $1 spent".
      * The field is optional; left blank, the rate still needs saying, so the Design default stands in.
+     * A campaign minimum is appended, since an order under it earns nothing.
      */
-    public static function earn_rate( string $template, float $points_per_unit ): string {
+    public static function earn_rate( string $template, float $points_per_unit, float $min_subtotal = 0.0 ): string {
         if ( '' === trim( $template ) ) {
             $template = DesignSchema::get_default_design()['storefront_text']['earn_rate_line'];
         }
 
-        return strtr(
+        $line = strtr(
             $template,
             [
                 '{points}' => self::rate( $points_per_unit ),
                 '{amount}' => self::money( 1.0 ),
             ]
         );
+
+        if ( $min_subtotal <= 0 ) {
+            return $line;
+        }
+
+        /* translators: 1: earn-rate sentence, 2: minimum order amount. */
+        return sprintf( __( '%1$s on orders of %2$s or more', 'yayloyalty' ), $line, self::money( $min_subtotal ) );
     }
 
     /** "100 points = $1". */

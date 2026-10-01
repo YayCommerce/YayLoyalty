@@ -3,6 +3,7 @@ namespace YayLoyalty\Engine\Storefront;
 
 use YayLoyalty\Engine\Points\ContextFactory;
 use YayLoyalty\Engine\Points\PointsEngine;
+use YayLoyalty\Engine\Rewards\Clamp;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Models\Reward;
 use YayLoyalty\Repositories\CampaignRepository;
@@ -10,7 +11,6 @@ use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\RewardRepository;
 use YayLoyalty\Utils\Dates;
 use YayLoyalty\Utils\Log;
-use YayLoyalty\Utils\PointsMath;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -45,17 +45,18 @@ final class LauncherPayload {
     public function build( array $design, ?int $user_id ): array {
         $now    = Dates::now();
         $reward = $this->rewards->find_by_slug( RewardRepository::BUILTIN_DISCOUNT_SLUG );
-        $rate   = RewardRepository::rate_of( $reward );
-        $rules  = LauncherEarnRules::from_campaigns( $this->live_campaigns( $now ) );
+        $redeem = self::redeem_rule( $reward, $now );
+        $rules  = LauncherEarnRules::advertise( $this->live_campaigns( $now ), $this->campaigns->find_default_purchase() );
 
         return [
             'launcher'     => $design['launcher'],
             'text'         => $design['storefront_text'],
             'hide_mobile'  => ! empty( $design['visibility']['hide_on_mobile'] ),
-            'earn'         => $rules,
-            'redeem'       => self::redeem_rule( $reward, $rate, $now ),
-            'member'       => null === $user_id ? null : $this->member( $user_id, $rate ),
-            'estimate'     => null === $user_id && null !== $rules[ CampaignTrigger::PURCHASE ] ? $this->product_estimate() : null,
+            'earn'         => $rules['earn'],
+            'purchase_min' => $rules['purchase_min'],
+            'redeem'       => $redeem,
+            'member'       => null === $user_id ? null : $this->member( $user_id, null === $redeem ? null : $reward ),
+            'estimate'     => null === $user_id && null !== $rules['earn'][ CampaignTrigger::PURCHASE ] ? $this->product_estimate() : null,
             'register'     => self::register_route(),
             'account_url'  => (string) wc_get_page_permalink( 'myaccount' ),
             'checkout_url' => (string) wc_get_checkout_url(),
@@ -73,15 +74,28 @@ final class LauncherPayload {
         return $live;
     }
 
-    /** @return array{balance: int, worth: ?float} */
-    private function member( int $user_id, float $rate ): array {
+    /**
+     * @param Reward|null $reward The cart-discount reward when it is live; null hides the worth.
+     * @return array{balance: int, worth: ?float}
+     */
+    private function member( int $user_id, ?Reward $reward ): array {
         $customer = $this->customers->find_by_user_id( $user_id );
         $balance  = null === $customer ? 0 : $customer->get_balance();
 
         return [
             'balance' => $balance,
-            'worth'   => $balance > 0 ? PointsMath::points_to_currency( $balance, $rate, wc_get_price_decimals() ) : null,
+            'worth'   => null === $reward || $balance <= 0 ? null : self::worth( $reward, $balance ),
         ];
+    }
+
+    /**
+     * What the whole balance takes off one order, as checkout would grant it: Clamp owns the steps,
+     * minimum and per-order cap, so the launcher never promises more than the discount pays.
+     */
+    private static function worth( Reward $reward, int $balance ): ?float {
+        $result = Clamp::apply( $reward, $balance, $balance, null, get_woocommerce_currency(), wc_get_price_decimals() );
+
+        return $result->is_allowed() && $result->get_points() > 0 ? $result->get_value() : null;
     }
 
     /**
@@ -89,7 +103,9 @@ final class LauncherPayload {
      *
      * @return array{points_per_unit: float}|null
      */
-    private static function redeem_rule( ?Reward $reward, float $rate, string $now ): ?array {
+    private static function redeem_rule( ?Reward $reward, string $now ): ?array {
+        $rate = RewardRepository::rate_of( $reward );
+
         if ( null === $reward || $rate <= 0 || ! $reward->is_live_at( $now ) ) {
             return null;
         }

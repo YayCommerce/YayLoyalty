@@ -15,11 +15,9 @@ use YayLoyalty\Enums\CampaignTrigger;
 defined( 'ABSPATH' ) || exit;
 
 $yayloyalty_earn = $view['earn'];
-// Flat-points rules share one row shape; purchase states a rate, so it is written out above the loop.
-$yayloyalty_flat_rows = [
-    CampaignTrigger::SIGNUP => __( 'Create an account', 'yayloyalty' ),
-    CampaignTrigger::REVIEW => __( 'Write a review', 'yayloyalty' ),
-];
+// No signup row: a signed-in shopper already has the account it pays for.
+$yayloyalty_purchase = $yayloyalty_earn[ CampaignTrigger::PURCHASE ];
+$yayloyalty_review   = $yayloyalty_earn[ CampaignTrigger::REVIEW ];
 ?>
 <section class="yl:flex yl:flex-col yl:gap-0.5 yl:border-b yl:border-border yl:p-4">
     <p class="yl:m-0 yl:text-[11px] yl:uppercase yl:tracking-[0.06em] yl:text-muted-foreground"><?php echo esc_html( $yayloyalty_text['balance_heading'] ); ?></p>
@@ -34,29 +32,27 @@ $yayloyalty_flat_rows = [
     <?php endif; ?>
 </section>
 
-<?php if ( array_filter( $yayloyalty_earn ) ) : ?>
+<?php if ( null !== $yayloyalty_purchase || null !== $yayloyalty_review ) : ?>
     <section class="<?php echo esc_attr( UiClasses::PANEL_SECTION ); ?>">
         <h3 class="<?php echo esc_attr( UiClasses::SECTION_HEADING ); ?>"><?php esc_html_e( 'Ways to earn', 'yayloyalty' ); ?></h3>
         <ul class="yl:m-0 yl:flex yl:flex-col yl:list-none yl:p-0">
-            <?php if ( null !== $yayloyalty_earn[ CampaignTrigger::PURCHASE ] ) : ?>
+            <?php if ( null !== $yayloyalty_purchase ) : ?>
                 <li class="<?php echo esc_attr( UiClasses::PANEL_ROW ); ?>">
                     <span><?php esc_html_e( 'Make a purchase', 'yayloyalty' ); ?></span>
-                    <span class="yl:text-right yl:font-semibold"><?php echo esc_html( LauncherCopy::earn_rate( $yayloyalty_text['earn_rate_line'], $yayloyalty_earn[ CampaignTrigger::PURCHASE ] ) ); ?></span>
+                    <span class="yl:text-right yl:font-semibold"><?php echo esc_html( LauncherCopy::earn_rate( $yayloyalty_text['earn_rate_line'], $yayloyalty_purchase, $view['purchase_min'] ) ); ?></span>
                 </li>
             <?php endif; ?>
-            <?php foreach ( $yayloyalty_flat_rows as $yayloyalty_trigger => $yayloyalty_label ) : ?>
-                <?php if ( null !== $yayloyalty_earn[ $yayloyalty_trigger ] ) : ?>
-                    <li class="<?php echo esc_attr( UiClasses::PANEL_ROW ); ?>">
-                        <span><?php echo esc_html( $yayloyalty_label ); ?></span>
-                        <span class="yl:whitespace-nowrap yl:font-semibold">
-                            <?php
-                            /* translators: %s: points. */
-                            echo esc_html( sprintf( __( '%s points', 'yayloyalty' ), LauncherCopy::points( $yayloyalty_earn[ $yayloyalty_trigger ] ) ) );
-                            ?>
-                        </span>
-                    </li>
-                <?php endif; ?>
-            <?php endforeach; ?>
+            <?php if ( null !== $yayloyalty_review ) : ?>
+                <li class="<?php echo esc_attr( UiClasses::PANEL_ROW ); ?>">
+                    <span><?php esc_html_e( 'Write a review', 'yayloyalty' ); ?></span>
+                    <span class="yl:whitespace-nowrap yl:font-semibold">
+                        <?php
+                        /* translators: %s: points. */
+                        echo esc_html( sprintf( __( '%s points', 'yayloyalty' ), LauncherCopy::points( $yayloyalty_review ) ) );
+                        ?>
+                    </span>
+                </li>
+            <?php endif; ?>
         </ul>
     </section>
 <?php endif; ?>

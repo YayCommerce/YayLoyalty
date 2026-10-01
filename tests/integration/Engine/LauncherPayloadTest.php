@@ -65,18 +65,7 @@ final class LauncherPayloadTest extends IntegrationTestCase {
     }
 
     public function test_member_payload_has_balance(): void {
-        // Ensure customer row exists first.
-        ( new CustomerRepository() )->ensure_row( $this->customer_user_id );
-
-        // Now we can update the balance.
-        global $wpdb;
-        $wpdb->update(
-            esc_sql( \YayLoyalty\Utils\Table::name( 'customers' ) ),
-            [ 'balance' => 500 ],
-            [ 'user_id' => $this->customer_user_id ],
-            [ '%d' ],
-            [ '%d' ]
-        );
+        $this->set_balance( $this->customer_user_id, 500 );
 
         $payload_builder = new LauncherPayload(
             new CampaignRepository(),
@@ -228,18 +217,7 @@ final class LauncherPayloadTest extends IntegrationTestCase {
     }
 
     public function test_member_has_balance_and_worth(): void {
-        // Ensure customer row exists first.
-        ( new CustomerRepository() )->ensure_row( $this->customer_user_id );
-
-        // Now we can update the balance.
-        global $wpdb;
-        $wpdb->update(
-            esc_sql( \YayLoyalty\Utils\Table::name( 'customers' ) ),
-            [ 'balance' => 100 ],
-            [ 'user_id' => $this->customer_user_id ],
-            [ '%d' ],
-            [ '%d' ]
-        );
+        $this->set_balance( $this->customer_user_id, 100 );
 
         $payload_builder = new LauncherPayload(
             new CampaignRepository(),

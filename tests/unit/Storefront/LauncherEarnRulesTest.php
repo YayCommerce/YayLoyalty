@@ -2,21 +2,43 @@
 namespace YayLoyalty\Tests\Unit\Storefront;
 
 use PHPUnit\Framework\TestCase;
+use YayLoyalty\Engine\Points\PointsEngine;
 use YayLoyalty\Engine\Storefront\LauncherEarnRules;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Enums\Status;
 use YayLoyalty\Models\Campaign;
 
 /**
- * Test LauncherEarnRules::from_campaigns().
+ * Test LauncherEarnRules::advertise().
  *
  * Only built-in campaigns advertise; merchant campaigns are ignored. Multiplier purchases return null,
  * and zero points return null. First built-in per trigger wins, others are ignored.
  */
 final class LauncherEarnRulesTest extends TestCase {
 
+    /** Conditions are enforced (Pro), so a conditioned campaign is not one every shopper gets. */
+    protected function setUp(): void {
+        parent::setUp();
+
+        add_filter(
+            PointsEngine::CONDITIONS_EVALUATOR_FILTER,
+            static function () {
+                return new class() {
+                    public function evaluate(): bool {
+                        return false;
+                    }
+                };
+            }
+        );
+    }
+
+    protected function tearDown(): void {
+        unset( $GLOBALS['yayloyalty_test_hooks'][ PointsEngine::CONDITIONS_EVALUATOR_FILTER ] );
+        parent::tearDown();
+    }
+
     public function test_empty_campaigns_returns_null_for_all(): void {
-        $rules = LauncherEarnRules::from_campaigns( [] );
+        $rules = LauncherEarnRules::advertise( [], null )['earn'];
 
         $this->assertNull( $rules[ CampaignTrigger::PURCHASE ] );
         $this->assertNull( $rules[ CampaignTrigger::SIGNUP ] );
@@ -38,7 +60,7 @@ final class LauncherEarnRulesTest extends TestCase {
             true
         );
 
-        $rules = LauncherEarnRules::from_campaigns( [ $purchase ] );
+        $rules = LauncherEarnRules::advertise( [ $purchase ], null )['earn'];
 
         $this->assertEquals( 2.5, $rules[ CampaignTrigger::PURCHASE ] );
         $this->assertNull( $rules[ CampaignTrigger::SIGNUP ] );
@@ -60,7 +82,7 @@ final class LauncherEarnRulesTest extends TestCase {
             true
         );
 
-        $rules = LauncherEarnRules::from_campaigns( [ $purchase ] );
+        $rules = LauncherEarnRules::advertise( [ $purchase ], null )['earn'];
 
         $this->assertNull( $rules[ CampaignTrigger::PURCHASE ] );
     }
@@ -86,7 +108,7 @@ final class LauncherEarnRulesTest extends TestCase {
             true
         );
 
-        $rules = LauncherEarnRules::from_campaigns( [ $purchase ] );
+        $rules = LauncherEarnRules::advertise( [ $purchase ], null )['earn'];
 
         $this->assertNull( $rules[ CampaignTrigger::PURCHASE ], 'Multiplier purchase should not advertise a rate' );
     }
@@ -106,7 +128,7 @@ final class LauncherEarnRulesTest extends TestCase {
             true
         );
 
-        $rules = LauncherEarnRules::from_campaigns( [ $signup ] );
+        $rules = LauncherEarnRules::advertise( [ $signup ], null )['earn'];
 
         $this->assertSame( 50, $rules[ CampaignTrigger::SIGNUP ] );
         $this->assertNull( $rules[ CampaignTrigger::PURCHASE ] );
@@ -127,7 +149,7 @@ final class LauncherEarnRulesTest extends TestCase {
             true
         );
 
-        $rules = LauncherEarnRules::from_campaigns( [ $signup ] );
+        $rules = LauncherEarnRules::advertise( [ $signup ], null )['earn'];
 
         $this->assertNull( $rules[ CampaignTrigger::SIGNUP ] );
     }
@@ -147,7 +169,7 @@ final class LauncherEarnRulesTest extends TestCase {
             true
         );
 
-        $rules = LauncherEarnRules::from_campaigns( [ $review ] );
+        $rules = LauncherEarnRules::advertise( [ $review ], null )['earn'];
 
         $this->assertSame( 25, $rules[ CampaignTrigger::REVIEW ] );
     }
@@ -172,7 +194,7 @@ final class LauncherEarnRulesTest extends TestCase {
             false
         );
 
-        $rules = LauncherEarnRules::from_campaigns( [ $purchase ] );
+        $rules = LauncherEarnRules::advertise( [ $purchase ], null )['earn'];
 
         $this->assertNull( $rules[ CampaignTrigger::PURCHASE ], 'Non-builtin campaigns with conditions should be ignored' );
     }
@@ -192,7 +214,7 @@ final class LauncherEarnRulesTest extends TestCase {
             false
         );
 
-        $rules = LauncherEarnRules::from_campaigns( [ $purchase ] );
+        $rules = LauncherEarnRules::advertise( [ $purchase ], null )['earn'];
 
         $this->assertEquals( 5.0, $rules[ CampaignTrigger::PURCHASE ], 'Non-builtin campaigns with no conditions should be advertised' );
     }
@@ -231,7 +253,7 @@ final class LauncherEarnRulesTest extends TestCase {
             false // Non-builtin but no conditions
         );
 
-        $rules = LauncherEarnRules::from_campaigns( [ $conditional, $unconditional ] );
+        $rules = LauncherEarnRules::advertise( [ $conditional, $unconditional ], null )['earn'];
 
         $this->assertEquals( 3.0, $rules[ CampaignTrigger::PURCHASE ], 'Non-builtin conditional skipped, unconditional wins' );
     }
@@ -271,7 +293,7 @@ final class LauncherEarnRulesTest extends TestCase {
             true
         );
 
-        $rules = LauncherEarnRules::from_campaigns( [ $multiplier, $rate ] );
+        $rules = LauncherEarnRules::advertise( [ $multiplier, $rate ], null )['earn'];
 
         $this->assertEquals( 4.0, $rules[ CampaignTrigger::PURCHASE ], 'Rate campaign should win when multiplier is first' );
     }
@@ -305,7 +327,7 @@ final class LauncherEarnRulesTest extends TestCase {
             true
         );
 
-        $rules = LauncherEarnRules::from_campaigns( [ $purchase1, $purchase2 ] );
+        $rules = LauncherEarnRules::advertise( [ $purchase1, $purchase2 ], null )['earn'];
 
         $this->assertEquals( 2.0, $rules[ CampaignTrigger::PURCHASE ], 'First builtin should be used' );
     }
@@ -353,7 +375,7 @@ final class LauncherEarnRulesTest extends TestCase {
             true
         );
 
-        $rules = LauncherEarnRules::from_campaigns( [ $purchase, $signup, $review ] );
+        $rules = LauncherEarnRules::advertise( [ $purchase, $signup, $review ], null )['earn'];
 
         $this->assertSame( 1.5, $rules[ CampaignTrigger::PURCHASE ] );
         $this->assertSame( 100, $rules[ CampaignTrigger::SIGNUP ] );
@@ -378,7 +400,7 @@ final class LauncherEarnRulesTest extends TestCase {
         );
 
         // In reality, paused campaigns wouldn't be in the live list, so pass empty array.
-        $rules = LauncherEarnRules::from_campaigns( [] );
+        $rules = LauncherEarnRules::advertise( [], null )['earn'];
 
         $this->assertNull( $rules[ CampaignTrigger::PURCHASE ] );
     }
@@ -399,7 +421,7 @@ final class LauncherEarnRulesTest extends TestCase {
             true
         );
 
-        $rules = LauncherEarnRules::from_campaigns( [ $purchase ] );
+        $rules = LauncherEarnRules::advertise( [ $purchase ], null )['earn'];
 
         // Zero points_per_unit should be treated as null.
         $this->assertNull( $rules[ CampaignTrigger::PURCHASE ], 'Zero points_per_unit should be treated as null' );
@@ -434,7 +456,7 @@ final class LauncherEarnRulesTest extends TestCase {
             false
         );
 
-        $rules = LauncherEarnRules::from_campaigns( [ $purchase_builtin, $purchase_merchant ] );
+        $rules = LauncherEarnRules::advertise( [ $purchase_builtin, $purchase_merchant ], null )['earn'];
 
         $this->assertEquals( 2.0, $rules[ CampaignTrigger::PURCHASE ], 'Only builtin should be used, merchant ignored' );
     }

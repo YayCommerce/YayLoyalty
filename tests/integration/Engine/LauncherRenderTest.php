@@ -221,6 +221,40 @@ final class LauncherRenderTest extends IntegrationTestCase {
         $this->assertStringContainsString( '--primary-foreground:#ffffff', $html, 'Dark brand color should have light (#ffffff) foreground' );
     }
 
+    /** Test case MEM-07 / D6: a signed-in shopper already has the account the signup campaign pays for. */
+    public function test_member_panel_has_no_signup_row(): void {
+        $this->enable_program();
+        $this->create_campaign( CampaignTrigger::SIGNUP, [ 'points' => 100 ] );
+        $this->create_campaign( CampaignTrigger::REVIEW, [ 'points' => 50 ] );
+
+        wp_set_current_user( $this->customer_user_id );
+        $html = $this->rendered();
+
+        $this->assertStringContainsString( 'Write a review', $html );
+        $this->assertStringNotContainsString( 'Create an account', $html );
+    }
+
+    /** Test case EARN-12 / D4: the advertised rate states its campaign's minimum order. */
+    public function test_guest_panel_states_purchase_minimum(): void {
+        $this->enable_program();
+        $this->create_campaign( CampaignTrigger::PURCHASE, [ 'points_per_unit' => 1, 'min_subtotal' => 50 ] );
+
+        wp_set_current_user( 0 );
+        $html = $this->rendered();
+
+        $this->assertStringContainsString( 'or more', $html );
+    }
+
+    private function rendered(): string {
+        $launcher = new Launcher();
+        $launcher->prepare();
+
+        ob_start();
+        $launcher->render();
+
+        return (string) ob_get_clean();
+    }
+
     private function enable_program(): void {
         $settings = SettingsHelper::get_settings();
         $settings['general']['enabled'] = true;

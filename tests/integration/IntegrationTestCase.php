@@ -73,6 +73,14 @@ abstract class IntegrationTestCase extends TestCase {
         return is_array( $row ) ? $row : [];
     }
 
+    /** Sets a customer's cached balance directly, creating the row if needed. */
+    protected function set_balance( int $user_id, int $balance ): void {
+        global $wpdb;
+
+        ( new CustomerRepository() )->ensure_row( $user_id );
+        $wpdb->update( \YayLoyalty\Utils\Table::name( 'customers' ), [ 'balance' => $balance ], [ 'user_id' => $user_id ], [ '%d' ], [ '%d' ] ); // phpcs:ignore WordPress.DB
+    }
+
     /**
      * Signed points of one customer's ledger rows, oldest first.
      *
