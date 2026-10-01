@@ -18,6 +18,8 @@ $yayloyalty_earn = $view['earn'];
 // No signup row: a signed-in shopper already has the account it pays for.
 $yayloyalty_purchase = $yayloyalty_earn[ CampaignTrigger::PURCHASE ];
 $yayloyalty_review   = $yayloyalty_earn[ CampaignTrigger::REVIEW ];
+// Rows printed here (the Design tab's preview); null leaves skeletons for launcher.js to replace.
+$yayloyalty_activity = $view['activity'] ?? null;
 ?>
 <section class="yl:flex yl:flex-col yl:gap-0.5 yl:border-b yl:border-border yl:p-4">
     <p class="yl:m-0 yl:text-[11px] yl:uppercase yl:tracking-[0.06em] yl:text-muted-foreground"><?php echo esc_html( $yayloyalty_text['balance_heading'] ); ?></p>
@@ -60,22 +62,25 @@ $yayloyalty_review   = $yayloyalty_earn[ CampaignTrigger::REVIEW ];
 <section class="<?php echo esc_attr( UiClasses::PANEL_SECTION ); ?>" data-yl-activity aria-live="polite">
     <h3 class="<?php echo esc_attr( UiClasses::SECTION_HEADING ); ?>"><?php esc_html_e( 'Recent activity', 'yayloyalty' ); ?></h3>
     <ul class="yl:m-0 yl:flex yl:flex-col yl:list-none yl:p-0" data-yl-activity-list>
-        <?php for ( $yayloyalty_i = 0; $yayloyalty_i < StorefrontActivityRestController::ROWS; $yayloyalty_i++ ) : ?>
-            <li class="<?php echo esc_attr( UiClasses::PANEL_ROW ); ?>" aria-hidden="true">
-                <span class="<?php echo esc_attr( UiClasses::SKELETON ); ?> yl:h-4 yl:w-40"></span>
-                <span class="<?php echo esc_attr( UiClasses::SKELETON ); ?> yl:h-4 yl:w-10"></span>
-            </li>
-        <?php endfor; ?>
+        <?php if ( null !== $yayloyalty_activity ) : ?>
+            <?php foreach ( $yayloyalty_activity as $yayloyalty_item ) : ?>
+                <?php include __DIR__ . '/activity-row.php'; ?>
+            <?php endforeach; ?>
+        <?php else : ?>
+            <?php for ( $yayloyalty_i = 0; $yayloyalty_i < StorefrontActivityRestController::ROWS; $yayloyalty_i++ ) : ?>
+                <li class="<?php echo esc_attr( UiClasses::PANEL_ROW ); ?>" aria-hidden="true">
+                    <span class="<?php echo esc_attr( UiClasses::SKELETON ); ?> yl:h-4 yl:w-40"></span>
+                    <span class="<?php echo esc_attr( UiClasses::SKELETON ); ?> yl:h-4 yl:w-10"></span>
+                </li>
+            <?php endfor; ?>
+        <?php endif; ?>
     </ul>
     <template data-yl-activity-row>
-        <li class="<?php echo esc_attr( UiClasses::PANEL_ROW ); ?>">
-            <span class="yl:flex yl:flex-col yl:gap-0.5 yl:min-w-0">
-                <span class="yl:truncate" data-yl-label></span>
-                <span class="yl:text-muted-foreground yl:text-[10px]" data-yl-meta></span>
-            </span>
-            <span class="yl:font-semibold yl:tabular-nums" data-yl-delta></span>
-        </li>
+        <?php
+        $yayloyalty_item = null;
+        require __DIR__ . '/activity-row.php';
+        ?>
     </template>
-    <p class="yl:m-0 yl:text-xs yl:text-muted-foreground" data-yl-activity-empty hidden><?php esc_html_e( 'No points activity yet.', 'yayloyalty' ); ?></p>
+    <p class="yl:m-0 yl:text-xs yl:text-muted-foreground" data-yl-activity-empty <?php echo [] === $yayloyalty_activity ? '' : 'hidden'; ?>><?php esc_html_e( 'No points activity yet.', 'yayloyalty' ); ?></p>
     <p class="yl:m-0 yl:text-xs yl:text-muted-foreground" data-yl-activity-error hidden><?php esc_html_e( 'Your recent activity could not be loaded. Try again later.', 'yayloyalty' ); ?></p>
 </section>

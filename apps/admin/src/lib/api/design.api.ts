@@ -13,6 +13,16 @@ export function resetDesign(group?: string) {
   return api.post('design/reset', { json: group ? { group } : {} }).json<Design>();
 }
 
+export type DesignPreviewViewer = 'member' | 'guest';
+
+/** Two whole HTML pages from the server's own launcher templates: the button alone, and the open panel. */
+export type DesignPreview = { collapsed: string; expanded: string };
+
+/** The storefront launcher drawn with an unsaved design; nothing is saved. */
+export function previewDesign(design: Design, viewer: DesignPreviewViewer) {
+  return api.post('design/preview', { json: { design, viewer } }).json<DesignPreview>();
+}
+
 export type WpPageOption = { id: number; title: { rendered: string } };
 
 /** How many pages the picker lists at once; anything past it is reached by searching. */

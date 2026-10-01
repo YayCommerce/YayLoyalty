@@ -425,6 +425,7 @@ Two places that decide the same thing leave the reader unable to tell which one 
 | Where the launcher shows (scope, chosen pages, hidden roles) | `Engine\Storefront\LauncherVisibility::is_visible()`; scope values `Helpers\DesignSchema::SCOPE_*`. `hide_on_mobile` is CSS (`styles/storefront-launcher-layout.css`), not PHP | — |
 | Whether the program is on; whether a shopper can earn (opted out, excluded role) | `Engine\Earning\ProgramGate::program_enabled()`, `ProgramGate::check()` — the launcher calls these, never re-reads the settings | — |
 | Which campaigns the launcher advertises (one per trigger, first in engine order that applies to everyone; multipliers at the rate they pay) | `Engine\Storefront\LauncherEarnRules::advertise()` | — |
+| The launcher's markup (storefront and the Design tab's preview) | `Engine\Storefront\templates/*` through `Launcher::markup()`; the preview page is `LauncherPreview::document()` (sample shopper only, real rates) | — the admin preview shows the server's HTML in a sandboxed iframe, never a React copy |
 | A campaign pays every shopper (no conditions, or none enforced in Lite) | `Engine\Points\PointsEngine::applies_to_everyone()` (the engine's `conditions_match()` and the launcher call it) | — |
 | Points a signup or review campaign pays | `Models\Campaign::flat_points()` (`SignupHandler`, `ReviewHandler`, the launcher) | — |
 | A UTC DATETIME shown in the site's timezone and date format (translated names) | `Utils\Dates::to_site_tz()` | — |

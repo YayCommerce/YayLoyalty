@@ -15,6 +15,8 @@ $yayloyalty_launcher = $view['launcher'];
 $yayloyalty_text     = $view['text'];
 $yayloyalty_member   = $view['member'];
 $yayloyalty_style    = $yayloyalty_launcher['button_style'];
+// Open from the start only in the Design tab's preview, which runs no script.
+$yayloyalty_is_open = ! empty( $view['is_open'] );
 ?>
 <div
     class="yayloyalty-launcher"
@@ -29,7 +31,7 @@ $yayloyalty_style    = $yayloyalty_launcher['button_style'];
     <button
         type="button"
         class="yl-launcher-trigger yl:inline-flex yl:items-center yl:gap-2.5 yl:whitespace-nowrap yl:h-11 yl:rounded-lg yl:px-[18px] yl:bg-primary yl:text-primary-foreground yl:hover:bg-primary-accent yl:shadow-lg yl:text-sm yl:font-medium yl:cursor-pointer yl:transition-colors yl:outline-none yl:focus-visible:ring-[1.5px] yl:focus-visible:ring-ring yl:focus-visible:ring-offset-2"
-        aria-expanded="false"
+        aria-expanded="<?php echo $yayloyalty_is_open ? 'true' : 'false'; ?>"
         aria-controls="yayloyalty-launcher-panel"
         data-yl-open
     >
@@ -45,7 +47,7 @@ $yayloyalty_style    = $yayloyalty_launcher['button_style'];
         <?php endif; ?>
     </button>
 
-    <div class="yl-launcher-overlay" data-yl-close hidden></div>
+    <div class="yl-launcher-overlay" data-yl-close data-state="<?php echo $yayloyalty_is_open ? 'open' : 'closed'; ?>" <?php echo $yayloyalty_is_open ? '' : 'hidden'; ?>></div>
 
     <div
         id="yayloyalty-launcher-panel"
@@ -54,8 +56,8 @@ $yayloyalty_style    = $yayloyalty_launcher['button_style'];
         tabindex="-1"
         aria-modal="true"
         aria-labelledby="yayloyalty-launcher-title"
-        data-state="closed"
-        hidden
+        data-state="<?php echo $yayloyalty_is_open ? 'open' : 'closed'; ?>"
+        <?php echo $yayloyalty_is_open ? '' : 'hidden'; ?>
     >
         <div class="yl-launcher-handle" data-yl-handle aria-hidden="true"><span class="yl:block yl:h-1 yl:w-11 yl:rounded-full yl:bg-border"></span></div>
 

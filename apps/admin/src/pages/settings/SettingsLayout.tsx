@@ -7,7 +7,9 @@ import SettingsSideNav from '@/components/layout/SettingsSideNav';
 /** Settings shell: header + side nav stay mounted while `<Outlet/>` swaps the active tab. */
 export default function SettingsLayout() {
   return (
+    // Dashboard width: the Design tab's live preview sits beside its form.
     <PageLayout
+      className="max-w-7xl"
       title={__('Settings', 'yayloyalty')}
       description={__('Configure how the loyalty program behaves.', 'yayloyalty')}
     >
@@ -16,7 +18,7 @@ export default function SettingsLayout() {
           centers the nav items inside that tall box instead of pinning them to the top. */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
         <SettingsSideNav className="sm:w-48 sm:shrink-0" />
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           <Outlet />
         </div>
       </div>

@@ -1,6 +1,14 @@
 import { keepPreviousData, queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { getDesign, getPublishedPagesByIds, postDesign, resetDesign, searchPublishedPages } from '@/lib/api/design.api';
+import {
+  getDesign,
+  getPublishedPagesByIds,
+  postDesign,
+  previewDesign,
+  resetDesign,
+  searchPublishedPages,
+  type DesignPreviewViewer,
+} from '@/lib/api/design.api';
 import type { Design } from '@/lib/schema/design.schema';
 
 export const DESIGN_QUERIES = {
@@ -38,6 +46,19 @@ export function usePublishedPagesByIdsQuery(ids: number[], enabled: boolean) {
     queryKey: ['wp', 'pages', 'ids', sorted],
     queryFn: () => getPublishedPagesByIds(sorted),
     enabled: enabled && sorted.length > 0,
+    staleTime: Infinity,
+    placeholderData: keepPreviousData,
+  });
+}
+
+/**
+ * The launcher drawn by the server with the unsaved design. Keyed by the design itself, so an edit
+ * back to an earlier value is served from cache; the last pages stay up while the next ones load.
+ */
+export function useDesignPreviewQuery(design: Design, viewer: DesignPreviewViewer) {
+  return useQuery({
+    queryKey: ['design', 'preview', viewer, design],
+    queryFn: () => previewDesign(design, viewer),
     staleTime: Infinity,
     placeholderData: keepPreviousData,
   });

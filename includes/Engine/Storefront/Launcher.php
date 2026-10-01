@@ -22,6 +22,9 @@ defined( 'ABSPATH' ) || exit;
  */
 final class Launcher {
 
+    /** The built stylesheet, relative to the plugin root. */
+    private const STYLE_PATH = 'assets/dist/storefront/launcher.css';
+
     /** @var array|null The templates' view, or null when nothing renders on this request. */
     private $view;
 
@@ -50,7 +53,7 @@ final class Launcher {
             return;
         }
 
-        wp_enqueue_style( ScriptName::STOREFRONT_STYLE, YAYLOYALTY_PLUGIN_URL . 'assets/dist/storefront/launcher.css', [], self::asset_version( 'assets/dist/storefront/launcher.css' ) );
+        wp_enqueue_style( ScriptName::STOREFRONT_STYLE, YAYLOYALTY_PLUGIN_URL . self::STYLE_PATH, [], self::asset_version( self::STYLE_PATH ) );
         wp_enqueue_script(
             ScriptName::STOREFRONT_SCRIPT,
             YAYLOYALTY_PLUGIN_URL . 'assets/storefront/launcher.js',
@@ -78,9 +81,24 @@ final class Launcher {
             return;
         }
 
-        $view = $this->view;
+        echo self::markup( $this->view ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- the templates escape every value.
+    }
 
+    /**
+     * The launcher's HTML for a view: the storefront prints it, the Design tab's preview frames it.
+     *
+     * @param array $view LauncherPayload output plus `style`; optional `is_open` and `activity` (rows to print instead of skeletons).
+     */
+    public static function markup( array $view ): string { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- the included template reads $view.
+        ob_start();
         include __DIR__ . '/templates/launcher.php';
+
+        return (string) ob_get_clean();
+    }
+
+    /** The stylesheet's URL, versioned like the enqueue, for a page that links it itself (the Design tab's preview). */
+    public static function style_url(): string {
+        return add_query_arg( 'ver', self::asset_version( self::STYLE_PATH ), YAYLOYALTY_PLUGIN_URL . self::STYLE_PATH );
     }
 
     private function should_render( array $design ): bool {
@@ -130,7 +148,7 @@ final class Launcher {
      * The kit's tokens re-pointed at the Design tab: brand colour → --primary (and its hover/ring),
      * corner radius → --radius. Foreground flips to dark on a light brand colour so the label stays readable.
      */
-    private static function theme_vars( array $launcher ): string {
+    public static function theme_vars( array $launcher ): string {
         // get_design() has already coerced this to a valid hex (DesignCoercion), so it is safe in a style attribute.
         $color = (string) $launcher['brand_color'];
 

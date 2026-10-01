@@ -43,6 +43,26 @@ final class LauncherPayload {
      * @param int|null $user_id The signed-in shopper; null for a guest.
      */
     public function build( array $design, ?int $user_id ): array {
+        if ( null === $user_id ) {
+            return $this->assemble( $design, null );
+        }
+
+        $customer = $this->customers->find_by_user_id( $user_id );
+
+        return $this->assemble( $design, null === $customer ? 0 : $customer->get_balance() );
+    }
+
+    /**
+     * The same payload for a sample balance (null for a guest): the Design tab's preview has no shopper.
+     *
+     * @param array $design DesignHelper::with_unsaved().
+     */
+    public function preview( array $design, ?int $balance ): array {
+        return $this->assemble( $design, $balance );
+    }
+
+    /** @param int|null $balance The member's balance; null for a guest. */
+    private function assemble( array $design, ?int $balance ): array {
         $now    = Dates::now();
         $reward = $this->rewards->find_by_slug( RewardRepository::BUILTIN_DISCOUNT_SLUG );
         $redeem = self::redeem_rule( $reward, $now );
@@ -55,8 +75,8 @@ final class LauncherPayload {
             'earn'         => $rules['earn'],
             'purchase_min' => $rules['purchase_min'],
             'redeem'       => $redeem,
-            'member'       => null === $user_id ? null : $this->member( $user_id, null === $redeem ? null : $reward ),
-            'estimate'     => null === $user_id && null !== $rules['earn'][ CampaignTrigger::PURCHASE ] ? $this->product_estimate() : null,
+            'member'       => null === $balance ? null : self::member( $balance, null === $redeem ? null : $reward ),
+            'estimate'     => null === $balance && null !== $rules['earn'][ CampaignTrigger::PURCHASE ] ? $this->product_estimate() : null,
             'register'     => self::register_route(),
             'account_url'  => (string) wc_get_page_permalink( 'myaccount' ),
             'checkout_url' => (string) wc_get_checkout_url(),
@@ -78,10 +98,7 @@ final class LauncherPayload {
      * @param Reward|null $reward The cart-discount reward when it is live; null hides the worth.
      * @return array{balance: int, worth: ?float}
      */
-    private function member( int $user_id, ?Reward $reward ): array {
-        $customer = $this->customers->find_by_user_id( $user_id );
-        $balance  = null === $customer ? 0 : $customer->get_balance();
-
+    private static function member( int $balance, ?Reward $reward ): array {
         return [
             'balance' => $balance,
             'worth'   => null === $reward || $balance <= 0 ? null : self::worth( $reward, $balance ),

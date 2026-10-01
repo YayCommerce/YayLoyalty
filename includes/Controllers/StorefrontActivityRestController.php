@@ -59,8 +59,16 @@ final class StorefrontActivityRestController extends AbstractRestController {
 
     /** @return array{items: array<int, array{label: string, meta: string, points: int, delta: string}>} */
     public function get_activity( \WP_REST_Request $request ): array { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- the user comes from the session.
-        $entries = $this->ledger->latest_for_user( get_current_user_id(), self::ROWS );
+        return [ 'items' => self::items( $this->ledger->latest_for_user( get_current_user_id(), self::ROWS ) ) ];
+    }
 
+    /**
+     * Ledger rows as the launcher lists them; the Design tab's preview passes sample rows through the same projection.
+     *
+     * @param \YayLoyalty\Models\LedgerEntry[] $entries
+     * @return array<int, array{label: string, meta: string, points: int, delta: string}>
+     */
+    public static function items( array $entries ): array {
         $store = Text::plain( (string) get_bloginfo( 'name' ) );
         $items = [];
 
@@ -68,13 +76,13 @@ final class StorefrontActivityRestController extends AbstractRestController {
             $row     = ShopperActivityRow::from_entry( $entry, $store );
             $items[] = [
                 'label'  => $row['label'],
-                'meta'   => $this->meta_line( $row['created_at'], $row['order_id'] ),
+                'meta'   => self::meta_line( $row['created_at'], $row['order_id'] ),
                 'points' => $row['points'],
                 'delta'  => LauncherCopy::signed_points( $row['points'] ),
             ];
         }
 
-        return [ 'items' => $items ];
+        return $items;
     }
 
     protected function define_item_schema(): array {
@@ -98,7 +106,7 @@ final class StorefrontActivityRestController extends AbstractRestController {
     }
 
     /** "9 Sept 2026 · order #4207": the date in the site's format and timezone, then the order when there is one. */
-    private function meta_line( string $created_at_utc, ?int $order_id ): string {
+    private static function meta_line( string $created_at_utc, ?int $order_id ): string {
         $date = Dates::to_site_tz( $created_at_utc, (string) get_option( 'date_format' ) );
 
         if ( null === $order_id ) {
