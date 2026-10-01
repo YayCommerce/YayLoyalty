@@ -99,8 +99,7 @@ final class StorefrontActivityRestController extends AbstractRestController {
 
     /** "9 Sept 2026 · order #4207": the date in the site's format and timezone, then the order when there is one. */
     private function meta_line( string $created_at_utc, ?int $order_id ): string {
-        $timestamp = Dates::to_timestamp( $created_at_utc );
-        $date      = 0 === $timestamp ? '' : (string) wp_date( (string) get_option( 'date_format' ), $timestamp );
+        $date = Dates::to_site_tz( $created_at_utc, (string) get_option( 'date_format' ) );
 
         if ( null === $order_id ) {
             return $date;

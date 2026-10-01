@@ -52,21 +52,19 @@ final class Dates {
         return false === $date ? null : $date->setTimezone( wp_timezone() )->setTime( 0, 0 );
     }
 
-    /** For display only. */
+    /**
+     * A UTC DATETIME in the site's timezone, for display only. Through wp_date() so month and day
+     * names follow the site language; an unreadable value comes back unchanged.
+     */
     public static function to_site_tz( string $utc, ?string $format = null ): string {
         if ( null === $format || '' === $format ) {
             $format = self::MYSQL_FORMAT;
         }
 
-        $date = date_create( $utc, timezone_open( 'UTC' ) );
+        $timestamp = self::to_timestamp( $utc );
+        $formatted = 0 === $timestamp ? false : wp_date( $format, $timestamp );
 
-        if ( false === $date ) {
-            return $utc;
-        }
-
-        $date->setTimezone( wp_timezone() );
-
-        return $date->format( $format );
+        return false === $formatted ? $utc : $formatted;
     }
 
     public static function is_valid( ?string $utc ): bool {

@@ -530,6 +530,11 @@ class Campaign extends AbstractModel {
         return $this->is_builtin;
     }
 
+    /** Points a signup or review campaign pays per event; 0 when its config sets none. */
+    public function flat_points(): int {
+        return (int) ( $this->config['points'] ?? 0 );
+    }
+
     /** Whether this campaign may be archived: never a built-in, since the engine and the Free UI assume they exist. */
     public function can_archive(): bool {
         return ! $this->is_builtin;
