@@ -161,6 +161,43 @@ P0 re-sweep (2026-10-01 @ `a8d6fe0`): §2.3 and every row above match HEAD. One 
 - Comments still cite deleted tests (`tests/bootstrap.php:13-21`).
 - About 35 comments under `apps/admin/src/pages/customers/` and in `lib/schema/customer.schema.ts` name UI parts by design-artboard IDs (`3d`, `4a`, `5c`, …). The design file is not in the repo. (Found in P2.)
 
+Found in P4:
+
+- **Pro offers what nothing can award or read.**
+  - Pro offers campaign triggers (birthday, first order, order count, spend milestone) and reward types, but nothing subscribes to `yayloyalty_register_trigger_handlers`, `yayloyalty_register_reward_handlers` or `yayloyalty_order_award_triggers`.
+  - Nothing calls `RewardType::all()`.
+  - So a Pro birthday campaign saves but never awards (`Pro/YayLoyaltyPro.php:43-48`, `Engine/Points/Triggers/Registry.php:49`).
+- **Comments promise Pro subscribers that don't exist:** `YayLoyalty.php:34` (earning gates), `Installer.php:27` (table schemas), `OrderListener.php:163` (award triggers).
+- **The validator is weaker than its comments.**
+  - The sentinel proves only that `main.tsx`'s branch folded. `pro/index.ts:2-10`, `DesignSettingsPage.tsx:92-94` and `validate-build.php:228` overstate it.
+  - Zero Pro references passes, despite the "Not zero" comment (`validate-build.php:320, :327`).
+  - The inline-field check passes when a file is renamed (`:390-392`).
+  - The WP-CLI boot check's `/pro|premium/i` (`:510`) matches Lite's own design keys `signed_out_prompt` and `tier_progress_line`, so it fails whenever enabled.
+  - The single-chunk check globs `js/`, but with `assetsDir: ''` a side chunk would land outside it.
+- **Network-admin detection is broken in the scoped copy.** php-scoper reads `scoper.inc.php`'s `wp_.*`-style exclude-function patterns as literal names, because they have no delimiters. The scoped admin-shell therefore calls `\YayLoyaltyScoped\is_network_admin()` (`vendor-prefixed/src/Support/AdminContext.php:53`). The template comes from admin-shell's own `bin/` scripts.
+- **Pro behaves like Lite in admin-shell.** Both zips ship the same "Lite" adapter, so Pro has no licence or updater and still shows "Go Pro" (`YayLoyaltyPluginAdapter.php`).
+- **Nothing is removed on uninstall.** `Capabilities::uninstall()` has no caller, so tables, options, capabilities and demo users remain.
+- **Capabilities.**
+  - Every version bump re-grants defaults that a merchant removed.
+  - If the first install ran before WooCommerce created `shop_manager`, that role gets nothing until the next bump (`Access/Capabilities.php:63-101`).
+- **The SPA's capability handling.**
+  - The SPA never gates on `MANAGE_SETTINGS` or `RUN_TOOLS`, so a VIEW-only user can press Save and get a 403.
+  - `wp_localize_script` turns `ceiling` and `isAdministrator` into strings, but `types/localize.type.ts` declares them a number and a boolean.
+- **The campaign cache can serve stale rows.** `CampaignRepository::flush_cache()` runs inside the write transaction, not after commit, so a concurrent read can re-cache pre-commit rows for an hour.
+- **Over-long input returns 500, not 400.** Campaign names and adjustment notes have no `maxLength`, so text longer than their `varchar` columns errors out.
+- **`Transaction::run` loses the original exception** when `rollback()` itself throws (`Database/Transaction.php:42-47`).
+- **Dev mode differs from prod.**
+  - The prod stylesheet is enqueued beside Vite's CSS.
+  - React and `@wordpress/date` are bundled rather than external.
+  - The refresh preamble and the `yay-ui` body class are added on every admin screen.
+- **Stale comments:**
+  - `Pro/YayLoyaltyPro.php:31` says "initialize()".
+  - `Helpers/LocalizeHelper.php:44` says "one zip carries both".
+  - `scripts/run.sh:217` and `:372-374`.
+  - `Controllers/CampaignRestController.php:318-322` says listeners "aren't registered at boot"; they are.
+  - `Engine/Earning/Listeners/OrderListener.php:56, :87` cite the deleted Earning README.
+  - `Controllers/SettingsRestController.php:9` gives the wrong route; it is `/mark-reviewed`.
+
 ---
 
 ## 3. Research findings
@@ -291,7 +328,7 @@ yayloyalty/
 
 Order: inventory → approval → removal → one phase per section of the new structure → team workflow → validation. Every phase starts from the latest `dev/edd`, ends in one PR into `dev/edd`, and ticks its checklist in this file. Checks `C1–C16` and the baseline script `B` are in the Appendix.
 
-Exception: P1–P3 were prepared in one session (2026-10-01), on branches stacked on P0. Merge them in order. After each squash merge, rebase the next branch: `git rebase --onto origin/dev/edd <merged-branch> <next-branch>`.
+Exception: P1–P3 were prepared in one session (2026-10-01), on branches stacked on P0, and P4 is stacked on P3. Merge them in order. After each squash merge, rebase the next branch: `git rebase --onto origin/dev/edd <merged-branch> <next-branch>`.
 
 ### P0 — Land the plan and freeze the inventory
 - **Goal:** this plan is in the repo; the inventory matches HEAD.
@@ -437,9 +474,22 @@ Exception: P1–P3 were prepared in one session (2026-10-01), on branches stacke
   1. Write the sections above, each ≤ ~25 lines. No class lists or counts.
   2. Add one "read when…" link in `CLAUDE.md`.
 - **Checklist:**
-  - [ ] audit recorded
+  - [x] audit recorded (commit body)
   - [ ] code owner reviewed accuracy
-  - [ ] do-not-reintroduce ticked
+  - [x] do-not-reintroduce ticked (commit body)
+- **Notes (2026-10-01):**
+  - Branch `trace/docs/harness-p4-architecture` is stacked on P3, which is not merged yet.
+  - Citations give a path and a symbol, never a line number, so routine edits don't make them stale.
+  - C2, C5, C6, C9, C15 and C16 print nothing for `docs/architecture.md` and `CLAUDE.md`.
+  - **`CLAUDE.md` hard rule 3 corrected.**
+    - It said the validator's sentinel check fails a Lite zip that leaks Pro code through `<ProGate>` alone. It doesn't: the sentinel is reachable only through `registerPro()` in `main.tsx`, so it proves only that this branch folded.
+    - A Lite build of a scratch copy of `apps/admin` (Vite run directly, outside the repo) with `<ProGate><DesignTypographySection /></ProGate>` shipped that section's strings. It had sentinel 0, the upsell present and one chunk, so it passes every bundle check.
+  - **For P5:**
+    - `architecture.md` already states three convention candidates as facts of the layering: one repository per table with no transactions, capabilities checked only at the HTTP boundary, and TS schemas naming their PHP owner. `conventions.md` should link to its sections rather than restate them.
+    - New known-issue candidates, still to reproduce:
+      - On a fresh clone, the root `postinstall` (`composer install`) likely fails: `composer.json` classmaps `vendor-prefixed/src`, which doesn't exist until `run.sh dev` creates it.
+      - Each release re-resolves admin-shell and the scoping tools with no lockfile, so the Pro and Lite zips can carry different admin-shell versions.
+  - **For P6:** the five Q3 ADRs hold the why; `architecture.md`'s matching sections hold the mechanism and can link to them.
 - **Acceptance:**
   - C6 clean; C9 and C16 clean for the files this phase adds (README is checked from P11 on).
   - ≤ 250 lines.
@@ -468,7 +518,7 @@ Exception: P1–P3 were prepared in one session (2026-10-01), on branches stacke
   - `run.sh dev` side effects;
   - release leaves `--no-dev` deps, so run `composer install` after;
   - `makepot` needs a build first;
-  - `dev:admin`/`build:admin` ignore `BUILD_TYPE` (always Pro);
+  - `dev:admin`/`build:admin` don't set `BUILD_TYPE`, so they build Pro unless it is exported;
   - `composer test:integration` exits 0 when the database is unreachable (found in P3);
   - untracked lockfiles.
 - **Steps:**

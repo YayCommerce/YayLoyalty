@@ -29,7 +29,7 @@ Run from the repo root on Node 22: `nvm use` reads `.nvmrc`, and pnpm 11 fails o
 
 1. Never hand-edit generated output: `vendor/`, `vendor-prefixed/`, `node_modules/`, `assets/dist/admin/`, `release/`. Change the input and rerun the command that builds it.
 2. Lite names Pro in exactly one place: the guarded `YayLoyaltyPro::boot()` call in `includes/YayLoyalty.php`. Pro attaches only through the filters that `boot()` adds in `includes/Pro/YayLoyaltyPro.php`. `scripts/validate-build.php` fails a Lite zip that names Pro anywhere else.
-3. SPA Pro code lives in `apps/admin/src/pro/` and is imported only through `apps/admin/src/pro/index.ts`. It renders only behind `IS_PRO_BUILD` (`apps/admin/src/lib/is-pro-build.ts`), a build-time constant; never use a runtime or localized flag. `<ProGate>` alone still ships the Pro code into Lite, and the validator's sentinel check fails that zip.
+3. SPA Pro code lives in `apps/admin/src/pro/` and is imported only through `apps/admin/src/pro/index.ts`. It renders only behind `IS_PRO_BUILD` (`apps/admin/src/lib/is-pro-build.ts`), a build-time constant; never use a runtime or localized flag. `<ProGate>` alone still ships the Pro code into Lite, and the validator's sentinel check misses that, so only review catches it.
 4. Product PHP must run on PHP 7.4: no enums, `match`, `readonly`, promoted constructor properties, `?->`, named arguments or union types. phpcs does not detect PHP 8-only syntax and the dev tooling runs on PHP 8, so only review catches it.
 5. Only `LedgerService` (`includes/Services/LedgerService.php`) writes ledger rows and balances. Construct it only in the places its docblock lists.
 
@@ -47,4 +47,5 @@ Run from the repo root on Node 22: `nvm use` reads `.nvmrc`, and pnpm 11 fails o
 
 ## Where to look
 
+- [docs/architecture.md](docs/architecture.md): how the pieces fit: boot, the admin-shell sync, layers and who writes what, data and upgrades, Pro/Lite, the SPA↔WordPress bridge, release and tests. Read it before a change that crosses layers, adds a table or a writer, touches the Pro/Lite split, or changes how the SPA loads or calls WordPress.
 - [docs/plans/](docs/plans/): phased plans. Read it when you continue planned work; the plan with `Status: active` says what comes next.
