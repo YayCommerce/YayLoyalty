@@ -10,11 +10,12 @@ import { designVisibilityScopeSchema, type Design } from '@/lib/schema/design.sc
 import { useDebouncedSearchCommit } from '@/hooks/useDebouncedSearchCommit';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { MultiSelectCombobox } from '@/components/ui/custom/multi-select-combobox';
-import { Field, FieldContent, FieldLabel } from '@/components/ui/field';
+import { Field, FieldContent, FieldDescription, FieldLabel } from '@/components/ui/field';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { ProGate } from '@/components/pro/ProGate';
 import {
+  VISIBILITY_HIDE_FOR_ROLES_DESCRIPTION,
   VISIBILITY_HIDE_FOR_ROLES_LABEL,
   VISIBILITY_HIDE_FOR_ROLES_PLACEHOLDER,
   VISIBILITY_HIDE_ON_MOBILE_LABEL,
@@ -151,6 +152,7 @@ export function DesignVisibilitySection() {
                 />
               )}
             />
+            <FieldDescription>{VISIBILITY_HIDE_FOR_ROLES_DESCRIPTION()}</FieldDescription>
           </FieldContent>
         </Field>
       </CardContent>

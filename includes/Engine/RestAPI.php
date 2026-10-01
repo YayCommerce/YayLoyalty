@@ -14,6 +14,7 @@ use YayLoyalty\Controllers\LookupRestController;
 use YayLoyalty\Controllers\RedemptionsRestController;
 use YayLoyalty\Controllers\ReferralsRestController;
 use YayLoyalty\Controllers\SettingsRestController;
+use YayLoyalty\Controllers\StorefrontActivityRestController;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\CustomerMetaRepository;
 use YayLoyalty\Repositories\CustomerRepository;
@@ -76,6 +77,8 @@ class RestAPI {
             new CustomerAdjustPreviewRestController( $customers, $dashboard, $rewards ),
             new LedgerRestController( $ledger ),
             new ActivityRestController( $customer_meta ),
+            // Shopper route (storefront launcher): session identity, no capability. $ledger is read-only here.
+            new StorefrontActivityRestController( $ledger ),
             // Empty envelopes until their tables exist.
             new RedemptionsRestController(),
             new ReferralsRestController(),

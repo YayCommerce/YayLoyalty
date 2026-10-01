@@ -33,6 +33,10 @@ class YayLoyalty {
 
         // After Pro's boot: its yayloyalty_earning_gates subscriber must be attached before build() applies the filter.
         $this->register_earning_listeners();
+
+        if ( ! is_admin() ) {
+            \YayLoyalty\Engine\Storefront\Launcher::register();
+        }
     }
 
     public static function initialize() {

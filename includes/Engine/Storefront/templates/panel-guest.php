@@ -1,0 +1,103 @@
+<?php
+/**
+ * Guest panel body (1c): the same shell with the balance block replaced by the programme's pitch.
+ *
+ * Rates are stated plainly (they are the argument), at the base rate only: a tier multiplier
+ * belongs to members, and promising it before signup would be untrue.
+ *
+ * @var array $view    Launcher::build_view().
+ * @var array $yayloyalty_text The Design tab's storefront_text.
+ */
+
+use YayLoyalty\Engine\Storefront\LauncherCopy;
+use YayLoyalty\Engine\Storefront\UiClasses;
+use YayLoyalty\Enums\CampaignTrigger;
+
+defined( 'ABSPATH' ) || exit;
+
+$yayloyalty_earn             = $view['earn'];
+$yayloyalty_redeem           = $view['redeem'];
+$yayloyalty_route            = $view['register'];
+$yayloyalty_signup           = null !== $yayloyalty_route ? $yayloyalty_earn[ CampaignTrigger::SIGNUP ] : null;
+$yayloyalty_is_checkout_only = 'checkout' === $yayloyalty_route;
+$yayloyalty_review           = $yayloyalty_earn[ CampaignTrigger::REVIEW ];
+$yayloyalty_steps            = [];
+
+if ( null !== $yayloyalty_signup ) {
+    $yayloyalty_steps[] = $yayloyalty_is_checkout_only
+        /* translators: %s: points. */
+        ? sprintf( __( 'Create an account at checkout — %s points to start', 'yayloyalty' ), LauncherCopy::points( $yayloyalty_signup ) )
+        /* translators: %s: points. */
+        : sprintf( __( 'Create an account — %s points to start', 'yayloyalty' ), LauncherCopy::points( $yayloyalty_signup ) );
+}
+
+if ( null !== $yayloyalty_earn[ CampaignTrigger::PURCHASE ] ) {
+    $yayloyalty_rate    = LauncherCopy::earn_rate( $yayloyalty_text['earn_rate_line'], $yayloyalty_earn[ CampaignTrigger::PURCHASE ] );
+    $yayloyalty_steps[] = null === $yayloyalty_review
+        ? $yayloyalty_rate
+        /* translators: 1: earn-rate sentence, 2: points for a review. */
+        : sprintf( __( '%1$s, and %2$s points for a review', 'yayloyalty' ), $yayloyalty_rate, LauncherCopy::points( $yayloyalty_review ) );
+} elseif ( null !== $yayloyalty_review ) {
+    /* translators: %s: points. */
+    $yayloyalty_steps[] = sprintf( __( 'Earn %s points for a review', 'yayloyalty' ), LauncherCopy::points( $yayloyalty_review ) );
+}
+
+if ( null !== $yayloyalty_redeem ) {
+    /* translators: %s: "100 points = $1". */
+    $yayloyalty_steps[] = sprintf( __( 'Spend them at checkout — %s off', 'yayloyalty' ), LauncherCopy::redeem_rate( $yayloyalty_redeem['points_per_unit'] ) );
+}
+?>
+<section class="yl:flex yl:flex-col yl:gap-2">
+    <?php if ( '' !== trim( $yayloyalty_text['signed_out_prompt'] ) ) : ?>
+        <p class="yl:m-0 yl:text-lg yl:font-semibold yl:leading-snug yl:text-foreground"><?php echo esc_html( $yayloyalty_text['signed_out_prompt'] ); ?></p>
+    <?php endif; ?>
+    <?php if ( null !== $yayloyalty_earn[ CampaignTrigger::PURCHASE ] ) : ?>
+        <p class="<?php echo esc_attr( UiClasses::DESCRIPTION ); ?>"><?php esc_html_e( 'Collect points on every order and spend them on money off your next one. Free to join.', 'yayloyalty' ); ?></p>
+    <?php endif; ?>
+</section>
+
+<?php if ( $yayloyalty_steps ) : ?>
+    <section class="yl:flex yl:flex-col yl:gap-2">
+        <h3 class="<?php echo esc_attr( UiClasses::SECTION_HEADING ); ?>"><?php esc_html_e( 'How it works', 'yayloyalty' ); ?></h3>
+        <ol class="yl:m-0 yl:flex yl:flex-col yl:gap-3 yl:list-none yl:p-0">
+            <?php foreach ( $yayloyalty_steps as $yayloyalty_index => $yayloyalty_step ) : ?>
+                <li class="yl:flex yl:items-start yl:gap-3">
+                    <span class="yl:inline-flex yl:size-6 yl:shrink-0 yl:items-center yl:justify-center yl:rounded-full yl:bg-primary/6 yl:text-primary yl:text-xs yl:font-semibold"><?php echo esc_html( number_format_i18n( $yayloyalty_index + 1 ) ); ?></span>
+                    <span class="yl:pt-0.5"><?php echo esc_html( $yayloyalty_step ); ?></span>
+                </li>
+            <?php endforeach; ?>
+        </ol>
+    </section>
+<?php endif; ?>
+
+<section class="yl:flex yl:flex-col yl:gap-2">
+    <?php if ( null !== $yayloyalty_route ) : ?>
+        <a class="<?php echo esc_attr( UiClasses::button( 'primary' ) ); ?> yl:w-full" href="<?php echo esc_url( $yayloyalty_is_checkout_only ? $view['checkout_url'] : $view['account_url'] ); ?>">
+            <?php
+            if ( null === $yayloyalty_signup ) {
+                echo esc_html( $yayloyalty_is_checkout_only ? __( 'Create an account at checkout', 'yayloyalty' ) : __( 'Create an account', 'yayloyalty' ) );
+            } else {
+                echo esc_html(
+                    $yayloyalty_is_checkout_only
+                        /* translators: %s: points. */
+                        ? sprintf( __( 'Create an account at checkout and get %s points', 'yayloyalty' ), LauncherCopy::points( $yayloyalty_signup ) )
+                        /* translators: %s: points. */
+                        : sprintf( __( 'Create an account and get %s points', 'yayloyalty' ), LauncherCopy::points( $yayloyalty_signup ) )
+                );
+            }
+            ?>
+        </a>
+    <?php endif; ?>
+    <a class="<?php echo esc_attr( UiClasses::button( null !== $yayloyalty_route ? 'outline' : 'primary' ) ); ?> yl:w-full" href="<?php echo esc_url( $view['account_url'] ); ?>">
+        <?php esc_html_e( 'Sign in', 'yayloyalty' ); ?>
+    </a>
+</section>
+
+<?php if ( null !== $view['estimate'] ) : ?>
+    <p class="yl:m-0 yl:rounded-md yl:bg-muted yl:px-3 yl:py-2 yl:text-sm yl:text-foreground">
+        <?php
+        /* translators: %s: points. */
+        echo esc_html( sprintf( __( 'This product would earn you %s points', 'yayloyalty' ), LauncherCopy::points( $view['estimate'] ) ) );
+        ?>
+    </p>
+<?php endif; ?>

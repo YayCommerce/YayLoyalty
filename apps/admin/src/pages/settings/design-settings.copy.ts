@@ -84,6 +84,11 @@ export const VISIBILITY_INCLUDE_PAGES_LIMIT_NOTE = () =>
 export const VISIBILITY_HIDE_ON_MOBILE_LABEL = () => __('Hide on mobile', 'yayloyalty');
 export const VISIBILITY_HIDE_FOR_ROLES_LABEL = () => __('Hide for roles', 'yayloyalty');
 export const VISIBILITY_HIDE_FOR_ROLES_PLACEHOLDER = () => __('Select roles…', 'yayloyalty');
+export const VISIBILITY_HIDE_FOR_ROLES_DESCRIPTION = () =>
+  __(
+    'Store staff are hidden by default, so you will not see the launcher while signed in as one. Preview it in a private window.',
+    'yayloyalty',
+  );
 
 // ─── Panel section (Pro) ──────────────────────────────
 
