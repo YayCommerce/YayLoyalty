@@ -159,6 +159,7 @@ P0 re-sweep (2026-10-01 @ `a8d6fe0`): §2.3 and every row above match HEAD. One 
 - i18n path bugs (`I18n.php:18-19`); a missing text domain in `UpgradeToPro.tsx:33`.
 - JSX runtime mismatch between tsconfig and Vite; unused dependencies.
 - Comments still cite deleted tests (`tests/bootstrap.php:13-21`).
+- About 35 comments under `apps/admin/src/pages/customers/` and in `lib/schema/customer.schema.ts` name UI parts by design-artboard IDs (`3d`, `4a`, `5c`, …). The design file is not in the repo. (Found in P2.)
 
 ---
 
@@ -349,14 +350,18 @@ Exception: P1–P3 were prepared in one session (2026-10-01), on branches stacke
   5. Capture `B` → `after.txt`.
   6. Run C1–C5, C7 and C8.
 - **Checklist:**
-  - [ ] tag pushed
-  - [ ] files removed
-  - [ ] 30 doc pointers, 43 IDs, 5 config/script refs and README lines fixed
-  - [ ] `.gitignore` block gone
-  - [ ] C1–C5 clean
-  - [ ] C7 empty diff
-  - [ ] C8 shows only allowlisted files
+  - [ ] tag pushed (created locally at `a8d6fe0`; Trace pushes it, Q8)
+  - [x] files removed
+  - [x] 30 doc pointers, 43 IDs, 5 config/script refs and README lines fixed
+  - [x] `.gitignore` block gone
+  - [x] C1–C5 clean
+  - [x] C7 empty diff
+  - [x] C8 shows only allowlisted files
   - [ ] team told that `/code-corrector` is gone for good (Q1)
+- **Notes (2026-10-01):**
+  - README lines 122 and 131 carry real content beside the pointer. P2 strips the pointer and keeps the line (§1: "strip dead references").
+  - Stale clauses corrected along with `F01-4`: `campaign-performance.schema.ts:20`, `CampaignPerformanceSidePanel.tsx:110-112`, `CampaignPerformanceRestController.php:55-65` (including its "EarningService is scaffold" claim), and `CampaignPerformanceRepository.php:65-67`.
+  - Beyond §2.4: "Zone 3" in `Engine/Redemption/CommitWriter.php:23` and `Models/Redemption.php:10` was a redemption design label defined only in the deleted docs. Both now say "cancel or refund".
 - **Acceptance:**
   - C1, C2, C3, C4 and C5 print nothing.
   - `diff before.txt after.txt` is empty (C7).

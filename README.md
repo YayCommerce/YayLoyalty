@@ -67,20 +67,8 @@ composer install
 |---|---|
 | **`includes/`** | PHP backend: controllers, services, repositories, models, enums, database schema, access/capabilities, the points/earning/reward/redemption engines, utilities |
 | **`apps/admin/`** | React 18 + Vite 6 admin dashboard SPA |
-| **`docs/`** | Architecture, standards, data model, roadmap |
 | **`scripts/`** | Build pipeline, validation, dev server |
 | **`yayloyalty.php`** | Plugin entry point |
-
----
-
-## Documentation
-
-- **[`docs/codebase-summary.md`](./docs/codebase-summary.md)** — Directory structure, layers, entry points, request flows
-- **[`docs/system-architecture.md`](./docs/system-architecture.md)** — Layers, Pro/Lite build mechanism, request flows, Mermaid diagrams
-- **[`docs/code-standards.md`](./docs/code-standards.md)** — PHP conventions, REST patterns, database rules, Pro/Lite seams
-- **[`docs/deployment-guide.md`](./docs/deployment-guide.md)** — Build commands, validation, headless setup
-- **[`docs/data-model.md`](./docs/data-model.md)** — Full schema: 13 planned tables, relationships, invariants; implementation status
-- **[`docs/project-roadmap.md`](./docs/project-roadmap.md)** — What's implemented, gaps, next phases
 
 ---
 
@@ -115,20 +103,16 @@ One repository, two zips. Lite = Pro minus `includes/Pro/` and SPA built with `B
 
 ## Checks
 
-What each suite checks and its current count: [`docs/code-standards.md` § 14](./docs/code-standards.md#14-running-the-linter-and-tests).
-
 ```bash
 composer test                  # phpunit, unit suite
-composer test:integration      # phpunit against a real site and server; see docs/deployment-guide.md
+composer test:integration      # phpunit against a real site and server
 composer lint                  # phpcs
-./scripts/check-docs.sh        # docs structure and single-owner checks
-/yay:code-corrector            # Claude Code skill: rules re-declared outside their § 16 owner
 pnpm --filter @yayloyalty/admin-page lint   # eslint + prettier on TypeScript/React
 pnpm --filter @yayloyalty/admin-page test   # vitest
 ./scripts/run.sh release lite --no-prompt   # builds and validates a package end to end
 ```
 
-`scripts/validate-build.php` boots the packaged plugin inside WordPress when `YAYLOYALTY_WP_CLI` is set — see `docs/deployment-guide.md`.
+`scripts/validate-build.php` boots the packaged plugin inside WordPress when `YAYLOYALTY_WP_CLI` is set; its header documents the variables.
 
 **Known issue:** The `pnpm build` step currently fails at `tsc --noEmit` on three pre-existing type errors: `emoji-picker-content.tsx` (×2, `@emoji-mart/*` types undeclared) and `progress.tsx` (`@radix-ui/react-progress` not installed). This must be fixed before the next release.
 

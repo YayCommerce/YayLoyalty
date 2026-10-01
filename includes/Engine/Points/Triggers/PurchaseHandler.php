@@ -103,7 +103,7 @@ final class PurchaseHandler implements TriggerHandler {
 
     /**
      * Whether a purchase config multiplies the default rate rather than naming its own; a missing mode means rate.
-     * The one decider (code-standards § 16): the performance page's liability split asks here too.
+     * The one decider: the performance page's liability split asks here too.
      *
      * @param array<string, mixed> $config
      */

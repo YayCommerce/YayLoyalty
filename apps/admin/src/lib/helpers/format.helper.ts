@@ -84,7 +84,7 @@ export function parseWPCurrency(price: string | number) {
  * Splits a stored UTC datetime into the { date, time } pair a date picker
  * and time input take; null in, empty parts out. With joinStoredDateTime,
  * the one conversion point for this shape: never a bare new Date() on the
- * string, which most engines read as browser-local (code-standards.md §4).
+ * string, which most engines read as browser-local.
  */
 export function splitStoredDateTime(value: string | null | undefined): { date: string; time: string } {
   if (!value) {

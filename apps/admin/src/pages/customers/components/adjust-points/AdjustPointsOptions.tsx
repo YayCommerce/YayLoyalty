@@ -40,7 +40,7 @@ export function AdjustPointsOptions({
       </label>
 
       {/* TODO: send customerNote with the adjustment and show it on the customer's points history — nothing is
-          sent or stored today (docs/project-roadmap.md, Points Management → Customer-facing adjustment description). */}
+          sent or stored today. */}
       <div className="flex flex-col gap-2">
         <label className="flex items-center justify-between gap-2.5">
           <span className="text-sm font-medium">{SHOW_CUSTOMER_NOTE_LABEL()}</span>
@@ -60,8 +60,7 @@ export function AdjustPointsOptions({
         )}
       </div>
 
-      {/* TODO: send notifyByEmail with the adjustment and email the customer(s) — nothing is sent today
-          (docs/project-roadmap.md, Points Management → Adjustment email). */}
+      {/* TODO: send notifyByEmail with the adjustment and email the customer(s) — nothing is sent today. */}
       <label className="flex items-center justify-between gap-2.5">
         <span className="flex items-center gap-2.5">
           <Checkbox
