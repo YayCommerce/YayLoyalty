@@ -21,7 +21,7 @@ Commands and hard rules live in [CLAUDE.md](../CLAUDE.md). Citations give a path
 ## Admin-shell sync and scoping
 
 - Admin-shell is a private Composer package (`composer.json`) shared by the YayCommerce plugins. It draws the shared YayCommerce admin menu and its common pages (help, licences, recommended plugins). It also adds this plugin's submenu entry and plugin-row links.
-- Every plugin ships its own copy. To keep the copies from colliding, php-scoper rewrites the package into `vendor-prefixed/` under the `YayLoyaltyScoped` namespace (`scoper.inc.php`).
+- Every plugin ships its own copy. To keep the copies from colliding, php-scoper rewrites the package into `vendor-prefixed/` under the `YayLoyaltyScoped` namespace (`scoper.inc.php`). [The decision record](decisions/2026-10-01-admin-shell-scoped-with-php-scoper.md) says why.
   - The plugin uses only the scoped copy, and that copy loads only through the Composer classmap.
   - With several YayCommerce plugins active, each copy registers its own plugin, and the newest version draws the shared menu.
 - `YayLoyaltyPluginAdapter.php` joins the two:
@@ -54,6 +54,7 @@ Commands and hard rules live in [CLAUDE.md](../CLAUDE.md). Citations give a path
   - It fires `yayloyalty_ledger_recorded` after commit.
   - System rows carry an idempotency key that a unique index backs, so a replayed event can't award twice.
   - Its docblock lists where it may be constructed.
+  - [The decision record](decisions/2026-10-01-ledger-service-sole-writer.md) says why there is one writer and a cached total.
   - Points pending on an open order are a separate cached column, owned by `includes/Engine/Earning/PendingPoints.php`.
 - The domain lives in `includes/Engine/`:
   - Earning listeners (`includes/Engine/Earning/Listeners/`) on WooCommerce order, review and signup hooks call `EarningService::award()` (`includes/Engine/Earning/EarningService.php`). It runs the gates, asks the Points engine, then calls `LedgerService::earn()`, all in one transaction.
@@ -82,7 +83,7 @@ Commands and hard rules live in [CLAUDE.md](../CLAUDE.md). Citations give a path
 
 ## Pro and Lite
 
-One tree builds both editions. Lite is Pro without `includes/Pro/` and without the SPA's Pro code. The rules that keep the split safe are in [CLAUDE.md](../CLAUDE.md); this section is how it works.
+One tree builds both editions. Lite is Pro without `includes/Pro/` and without the SPA's Pro code. The rules that keep the split safe are in [CLAUDE.md](../CLAUDE.md), and the reasons for it in [the decision record](decisions/2026-10-01-build-time-pro-lite-split.md); this section is how it works.
 
 - PHP seam: the constructor of `includes/YayLoyalty.php` calls `YayLoyaltyPro::boot()` when `is_pro()` finds the class. This checks that the Pro code is present; it is not a licence check. In Lite it is false, because the autoloader skips the missing file.
 - `boot()` in `includes/Pro/YayLoyaltyPro.php` is the full list of what Pro changes. Each entry is a filter: either on WooCommerce's email list, or on an extension point that Lite applies itself with a working default. For example, with no conditions evaluator attached, campaign conditions are not applied. Pro adds no capabilities.

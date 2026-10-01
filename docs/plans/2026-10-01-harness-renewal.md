@@ -345,7 +345,7 @@ yayloyalty/
 
 ## 7. Phases
 
-Order: inventory → approval → removal → one phase per section of the new structure → team workflow → validation. Every phase starts from the latest `dev/edd`, ends in one PR into `dev/edd`, and ticks its checklist in this file. Checks `C1–C16` and the baseline script `B` are in the Appendix.
+Order: inventory → approval → removal → one phase per section of the new structure → team workflow → validation. Every phase starts from the latest `dev/edd`, ends in one PR into `dev/edd`, and ticks its checklist in this file. Checks `C1–C17` and the baseline script `B` are in the Appendix.
 
 Exception: P1–P5 were prepared on 2026-10-01 as a stack of branches, each on top of the previous one, starting from P0.
 1. Open each PR against the previous phase's branch, and merge them in order.
@@ -603,10 +603,30 @@ Exception: P1–P5 were prepared on 2026-10-01 as a stack of branches, each on t
   3. Backfill the five app ADRs approved in Q3, each with rationale confirmed by the team: build-time Pro/Lite split; `LedgerService` as sole ledger writer; admin-shell via php-scoper; UTC storage; money as decimal strings.
   4. Add a `CLAUDE.md` link: "read when a change alters an architectural choice".
 - **Checklist:**
-  - [ ] format ADR
-  - [ ] harness ADR
-  - [ ] approved backfills
-  - [ ] do-not-reintroduce ticked
+  - [x] format ADR
+  - [x] harness ADR
+  - [x] approved backfills (reasons confirmed by Trace Bui)
+  - [x] do-not-reintroduce ticked (commit body)
+- **Notes (2026-10-01):**
+  - Branch `trace/docs/harness-p6-decisions` is stacked on P5.
+  - **Format**, set by the first record:
+    - the statuses are `proposed`, `accepted`, `rejected` and `superseded by <link>`;
+    - the file date is the day a record is written, and a backfill's Status names the commit that made the decision;
+    - an accepted record changes only in its Status line, or in a link that a moved file broke;
+    - a record holds the why. `architecture.md` and `conventions.md` keep the mechanism and the rules, and link to it.
+  - **Backfills.** Each reason comes from the commit that made the decision and from the code's own docblocks. Trace Bui confirmed them on 2026-10-01:
+    - Pro/Lite (`6dda53e`, `8a8a827`): Lite goes to WordPress.org, whose guidelines forbid locked or trial features, and paid code mustn't ship in a free download. Neither reason was written down before; Trace confirmed both.
+    - Ledger (`c992f4e`): the cached totals serve reads (the customer list's sorts and filters, the dashboard's sums) and give each write one row to lock. The read side was inferred from the code, and confirmed.
+    - admin-shell (`0270fd4`): a YayCommerce-wide standard, taken over from the YayWholesale scaffold.
+    - UTC (`b6a4bda`): only the reason quoted from `Dates.php`. A drafted explanation (time zone changes, daylight saving) was dropped.
+    - Money (`cab8497`): as drafted.
+  - **Links:** `CLAUDE.md` gains a "read when" bullet. `architecture.md`'s Pro/Lite, admin-shell and ledger sections, and `conventions.md`'s money and dates entries, link to their records.
+  - **Checks:**
+    - C9 now covers `docs/decisions/`, and the new C17 checks record names and headings; P12 bundles it.
+    - C16 stays off `docs/decisions/`: a record is never edited, so a path it names may later disappear for good reason.
+    - Until P7 and P8 land, the harness record names two paths that don't exist yet: `.claude/rules/` and `.claude/settings.json`.
+  - **For P9:** the brainstorming skill links to the format record for when a choice needs a record of its own.
+  - **For P11:** README's "when to write an ADR" links to the format record, which owns it.
 - **Acceptance:**
   - Filenames match `^[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z0-9-]+\.md$`.
   - Each ADR has Status, Context, Decision and Consequences headings.
@@ -739,7 +759,7 @@ Exception: P1–P5 were prepared on 2026-10-01 as a stack of branches, each on t
 - **Goal:** prove the harness works for someone who didn't build it, and leave a repeatable check.
 - **Prerequisites:** P11; a validator who didn't build the harness, named before P12 starts (Q4 deferred the name).
 - **Steps:**
-  1. Add `scripts/check-harness.sh`, bundling C2–C6, C9, C10, C12, C15 and C16 into one exit-coded script. Link it from README § upkeep.
+  1. Add `scripts/check-harness.sh`, bundling C2–C6, C9, C10, C12, C15, C16 and C17 into one exit-coded script. Link it from README § upkeep.
   2. Run the full §8 plan.
   3. Fix-forward every finding.
   4. Set this plan to `Status: done`.
@@ -764,7 +784,7 @@ Exception: P1–P5 were prepared on 2026-10-01 as a stack of branches, each on t
 | V1 | Links resolve | C6 prints nothing |
 | V2 | Paths cited in harness docs exist | C5 + C16 print nothing |
 | V3 | No old references | C2, C3, C4 print nothing |
-| V4 | Size and headers | `CLAUDE.md` < 100 lines; every doc, rule and skill has Purpose + Update when (C9); no imports (C15) |
+| V4 | Size and headers | `CLAUDE.md` < 100 lines; every doc, rule and skill has Purpose + Update when (C9); no imports (C15); decision records well-formed (C17) |
 | V5 | Rules load exactly when relevant | C10 + C11 expectations from P7 |
 | V6 | Settings and hook | C13 + C14; scripted vendor edit refused |
 | V7 | Every documented command runs | Every command in `CLAUDE.md`, `README.md`, rules and skills is run in a **fresh clone** inside a WP `plugins/` dir with Node 22. Outcome = success, or exactly the failure listed in `known-issues.md` (table in the PR). |
@@ -841,7 +861,7 @@ for f in $(git diff --name-only origin/dev/edd...HEAD -- '*.php'); do
     if(s(cp.execSync("git show origin/dev/edd:apps/admin/"+f).toString())!==s(fs.readFileSync(f,"utf8")))console.log("CODE CHANGED apps/admin/"+f)' "$f"; done)
 #   Allowed output: scripts/validate-build.php (message string). The bash help line in scripts/run.sh is reviewed by diff.
 # C9 — headers present
-for f in CLAUDE.md README.md docs/*.md .claude/rules/*.md .claude/skills/*/SKILL.md; do grep -q 'Purpose' "$f" && grep -q 'Update when' "$f" || echo "NO HEADER $f"; done
+for f in CLAUDE.md README.md docs/*.md docs/decisions/*.md .claude/rules/*.md .claude/skills/*/SKILL.md; do grep -q 'Purpose' "$f" && grep -q 'Update when' "$f" || echo "NO HEADER $f"; done
 # C10 — each rule glob matches ≥1 tracked file
 for r in .claude/rules/*.md; do sed -n '/^---$/,/^---$/p' "$r" | grep -oE '"[^"]+"' | tr -d '"' |
   while read -r g; do [ -n "$(git ls-files ":(glob)$g" | head -1)" ] || echo "DEAD GLOB $r $g"; done; done
@@ -863,4 +883,7 @@ grep -nE '(^|[[:space:]])@[A-Za-z0-9_.~/-]+' CLAUDE.md | grep -v '`'
 for f in CLAUDE.md README.md docs/*.md .claude/rules/*.md .claude/skills/*/SKILL.md; do
   grep -oE '`[A-Za-z0-9_.-]+/[A-Za-z0-9_./-]+(:[0-9,-]+)?`' "$f" | tr -d '`' | sed -E 's/:[0-9,-]+$//' |
   grep -vE 'YYYY|^docs/specs/?$|^(origin/)?dev/edd$' | while read -r p; do [ -e "$p" ] || git check-ignore -q "$p" || echo "MISSING $f -> $p"; done; done
+# C17 — decision records: file names and the four headings
+for f in docs/decisions/*.md; do basename "$f" | grep -qE '^[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z0-9-]+\.md$' || echo "BAD NAME $f"
+  for h in Status Context Decision Consequences; do grep -qx "## $h" "$f" || echo "NO $h $f"; done; done
 ```

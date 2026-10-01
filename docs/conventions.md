@@ -12,7 +12,7 @@ The layering rules live in [architecture.md](architecture.md#server-layers-and-w
   - Stored money is `DECIMAL(19,4)`. PHP carries it as a string and binds it with `%s`, never `%f`. REST sends it as a string, and the SPA parses it with `z.string()`.
   - Computed money, such as a points value or a report total, is rounded once, to the store currency's decimals, never to a fixed 2.
   - Points are integers at every layer.
-- **Why:** "a float loses precision exactly where it is a financial defect". A fixed 2 "would drop a digit from a 3-decimal currency (KWD) and round a 0-decimal one (VND) twice".
+- **Why:** "a float loses precision exactly where it is a financial defect". A fixed 2 "would drop a digit from a 3-decimal currency (KWD) and round a 0-decimal one (VND) twice". [The decision record](decisions/2026-10-01-money-as-decimal-strings.md) has the context and the costs.
 - **In code:** `includes/Models/AbstractModel.php`, `includes/Utils/PointsMath.php`.
 
 ## Dates and time zones
@@ -21,7 +21,7 @@ The layering rules live in [architecture.md](architecture.md#server-layers-and-w
   - Store and send datetimes as UTC `Y-m-d H:i:s`, through `includes/Utils/Dates.php`, and never store `current_time()`.
   - Use the site time zone only to group by site-calendar day, as in reports and daily caps.
   - The SPA converts for display and input.
-- **Why:** "a site-time value surfaces months later as an off-by-hours expiry".
+- **Why:** "a site-time value surfaces months later as an off-by-hours expiry". [The decision record](decisions/2026-10-01-store-datetimes-in-utc.md) has the context and the costs.
 - **In code:** `includes/Utils/Dates.php`, `apps/admin/src/lib/helpers/format.helper.ts`.
 
 ## Pro data survives Lite
