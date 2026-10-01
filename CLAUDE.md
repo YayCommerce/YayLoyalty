@@ -38,6 +38,7 @@ Any pnpm command may [run `pnpm install`, and with it `composer install`, first]
 - Branch from `dev/edd` as `<name>/<type>/<topic>`.
 - Every change, docs included, lands through a PR into `dev/edd` (squash merge). Never commit to `dev/edd` or `main` directly; `dev/edd` reaches `main` through its own PR.
 - Commit messages follow Conventional Commits: `type(scope): summary`.
+- End each commit message with `Co-Authored-By: Claude <model> <noreply@anthropic.com>`, naming the model you run as, and each PR description you write with `🤖 Generated with [Claude Code](https://claude.com/claude-code)`. A personal `CLAUDE.local.md` may drop them.
 - Commit or push only when asked. Never force-push a shared branch, rewrite pushed history, skip hooks (`--no-verify`) or change git config.
 - Check `git status` and stage files by name, so personal and generated files stay out.
 

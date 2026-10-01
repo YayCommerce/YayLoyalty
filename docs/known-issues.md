@@ -20,10 +20,17 @@
 
 ## pnpm installs on its own, and the install runs `composer install`
 
-- **Symptom:** a command that should only read or run first runs `pnpm install`. Examples are `pnpm --filter @yayloyalty/admin-page exec tsc --noEmit` and the `pnpm dev` inside `./scripts/run.sh dev`. The root `postinstall` then runs `composer install`, which rewrites `vendor/`.
+- **Symptom:** a command that should only read or run first runs `pnpm install`. Examples are `pnpm --filter @yayloyalty/admin-page exec tsc --noEmit` and the `pnpm dev` inside `./scripts/run.sh dev`. The root `postinstall` then runs `composer install`, which rewrites `vendor/`. `.claude/settings.json` lets Claude run the admin lint, test and type-check without asking, so Claude can set off both installs with no prompt.
 - **Cause:** pnpm 11 checks the dependencies before `run` and `exec`, and installs when `node_modules` is missing or stale. The root `package.json` chains `composer install` onto every install.
 - **Workaround:** run `pnpm install` on purpose after pulling or switching branches, so the check finds nothing to do. To run a check with no install at all, call the tool directly, for example `node node_modules/typescript/bin/tsc --noEmit` from `apps/admin`.
 - **Remove when:** the root `postinstall` is gone, or pnpm's pre-run check is off for this repo.
+
+## The generated-directory guard doesn't see the shell
+
+- **Symptom:** the guard stops Claude's file tools from editing generated output, but a shell command that writes there, such as `sed -i`, `cp` or a redirect, goes through. The generated directories are gitignored, so `git status` doesn't show the change either. Without `jq`, every edit shows a `PreToolUse` hook error and nothing is blocked.
+- **Cause:** `.claude/hooks/guard-generated-paths.sh` runs only before Claude's Edit, Write and NotebookEdit calls, and it reads each call with `jq`. A hook that can't run lets the edit through.
+- **Workaround:** hard rule 1 in [CLAUDE.md](../CLAUDE.md) covers the shell too. To undo a stray write, rerun the command that builds the directory. Install `jq` if the hook error appears.
+- **Remove when:** shell writes to generated output are blocked too.
 
 ## `composer lint` exits 1 with no errors
 

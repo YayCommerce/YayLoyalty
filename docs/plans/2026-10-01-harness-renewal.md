@@ -728,14 +728,52 @@ Exception: P1–P5 were prepared on 2026-10-01 as a stack of branches, each on t
   3. Verify attribution in a scratch branch: if commits lose the default trailer with git instructions off, add the trailer rule to `CLAUDE.md` § Git.
   4. Document in `known-issues.md`: the guard can't see Bash writes; allowlisted pnpm commands may auto-install.
 - **Checklist:**
-  - [ ] hook script
-  - [ ] settings
-  - [ ] C13 and C14 pass
-  - [ ] attribution verified
-  - [ ] do-not-reintroduce ticked
+  - [x] hook script
+  - [x] settings (written by Trace: the auto-mode classifier refused Claude's write)
+  - [x] C13 and C14 pass
+  - [x] attribution verified
+  - [x] do-not-reintroduce ticked (commit body)
+- **Notes (2026-10-01):**
+  - Branch `trace/chore/harness-p8-settings` is stacked on P7.
+  - **The hook goes beyond step 1:**
+    - It also guards `node_modules/`, at any depth, because hard rule 1 lists it.
+    - It reads `notebook_path` as well as `file_path`, because NotebookEdit names its target that way.
+    - It resolves `.`, `..` and relative paths, matches a symlinked project root, and strips Claude Code's worktree prefix, `.claude/worktrees/<name>/`.
+    - The block message names the command that rebuilds the directory, and tells Claude not to write the file through the shell instead.
+    - Without jq it exits 1. Claude Code then shows a hook error and lets the edit through. Blocking every edit instead would stop all work on a machine without jq.
+    - Settings run it in exec form, `"command": "bash"` with the script in `args` (Claude Code 2.1.139 or later). The path then needs no quoting, and the script needs no executable bit.
+    - 37 piped inputs give the expected exit code on `/bin/bash` 3.2.
+    - Not caught: a path that reaches the project through a symlink when the project root is the real path. Claude Code doesn't produce one. Started from a symlink, it resolved its working directory, its file paths and `CLAUDE_PROJECT_DIR` to the real path. Only a symlinked path typed in by hand slips through.
+  - **Live guard check:** a scratch `claude -p` in `acceptEdits` mode was asked to edit `vendor-prefixed/src/Probe.php` and `README.md`. The hook blocked the first edit with its message, and the second went through. A run started from a symlinked directory gave the same result.
+  - **Settings file:** the auto-mode classifier refused Claude's write of `.claude/settings.json`, because the file grants Claude permissions. Trace created it from the reviewed content, keeping A7's `git diff *` and `git log *` after the `--output` finding below.
+  - **Settings, from the docs** (code.claude.com, fetched 2026-10-01):
+    - A rule without `*` matches one exact command, and a trailing ` *` also matches the bare command.
+    - The rules are the commands as `CLAUDE.md` writes them. The exception is `composer lint *`, which also covers the PHP rule's `composer lint -- <files>`.
+    - `git diff` and `git log` are already in Claude Code's built-in read-only set. A7's two rules add only the forms that set prompts for: unquoted globs, and `--output=<file>`, which writes a file.
+    - `claude -p` and the SDK apply a project's allow rules only in a folder whose trust dialog was accepted. Project hooks run either way.
+    - `includeGitInstructions: false` also drops the git status snapshot at session start: the branch, the main branch offered as the PR base (`main`, not `dev/edd`), the status and recent commits.
+  - **Allow rules, checked** with `claude -p --setting-sources project --permission-mode dontAsk`:
+    - In this repo, which is trusted, all seven allowed forms ran, `composer lint -- <file>` included.
+    - The three pnpm commands carried a `timeout 1` prefix. The matcher strips that prefix, so the rule match is the same, and `timeout` isn't installed here, so pnpm never started and couldn't install.
+    - `composer test -- --filter …` and `composer validate` were denied.
+    - `git log --output=<file>` ran and wrote the file.
+    - In an untrusted scratch clone, Claude Code printed "Ignoring 7 permissions.allow entries … this workspace has not been trusted". It still ran plain `git log` and `git diff`, and it denied the `--output` form.
+  - **Attribution** (scratch clones, `claude -p --setting-sources project`, so personal settings didn't apply):
+    - `CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS=1` has the same effect as the key. With it, two scratch commits had no trailer. The control commit ended in `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
+    - Asked to quote its context, a session with git instructions off had neither the attribution reminder nor the Bash tool's git section. The control quoted both. So while the key is off, a personal `attribution` setting changes nothing.
+    - `CLAUDE.md` § Git now states the default commit and PR lines. With git instructions off, a scratch commit then ended in the same trailer. A scratch `CLAUDE.local.md` that declined attribution left it out.
+  - **Known issues:** a new entry for the guard, which doesn't see shell writes and fails open without jq. The pnpm auto-install entry now says the allowlist lets Claude start an install without a prompt.
+  - **Checks:**
+    - C2, C5, C6 and C15 print nothing.
+    - C9 flags only `README.md` (P11) and the skills (P9).
+    - C13: `claude doctor` exits 0 and lists no invalid settings. On a scratch file with a string for `includeGitInstructions`, it printed an "Invalid settings" section naming the key.
+    - C14 passes in its widened form.
+    - C16 prints nothing.
+    - `CLAUDE.md` is 55 lines.
+    - `known-issues.md` has 14 entries, each with all four fields.
 - **Acceptance:**
   - C13: `claude doctor` reports no settings errors.
-  - C14: the hook exits 2 for `vendor/x.php` and 0 for `includes/x.php`.
+  - C14: the hook exits 2 for a path in each generated directory, a `..` spelling included, and 0 for `includes/x.php`.
   - A scratch `claude -p` asked to edit `vendor-prefixed/…` is refused.
   - A scratch commit carries the default trailer.
 - **Risks:**
@@ -929,8 +967,9 @@ probe includes/YayLoyalty.php; probe apps/admin/src/main.tsx; probe scripts/run.
 for d in .claude/skills/*/; do n=$(sed -n 's/^name: *//p' "$d/SKILL.md" | head -1); [ "$n" = "$(basename "$d")" ] && [[ "$n" =~ ^[a-z0-9-]+$ ]] || echo "BAD NAME $d"; done
 # C13 — settings valid
 jq empty .claude/settings.json && claude doctor
-# C14 — guard hook
-for p in vendor/x.php includes/x.php; do echo "{\"tool_input\":{\"file_path\":\"$PWD/$p\"}}" | CLAUDE_PROJECT_DIR=$PWD .claude/hooks/guard-generated-paths.sh; echo "$p exit=$?"; done
+# C14 — guard hook: exit 2 in each generated directory (a ".." spelling too), 0 for includes/x.php
+for p in vendor/x.php vendor-prefixed/x.php node_modules/x.js apps/admin/node_modules/x.js assets/dist/x.js release/x.zip includes/../vendor/x.php includes/x.php; do
+  echo "{\"tool_input\":{\"file_path\":\"$PWD/$p\"}}" | CLAUDE_PROJECT_DIR=$PWD .claude/hooks/guard-generated-paths.sh 2>/dev/null; echo "$p exit=$?"; done
 # C15 — no @imports in CLAUDE.md (backticked mentions are fine)
 grep -nE '(^|[[:space:]])@[A-Za-z0-9_.~/-]+' CLAUDE.md | grep -v '`'
 # C16 — backticked repo paths in harness docs exist (globs, templates, path:line suffixes, the dev/edd branch and gitignored build output handled)
