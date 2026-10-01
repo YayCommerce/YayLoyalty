@@ -90,12 +90,48 @@ if ( YAYLOYALTY_TEST_PREFIX === $wpdb->prefix ) {
 $wpdb->prefix = YAYLOYALTY_TEST_PREFIX;
 
 /**
- * Every plugin table, by its scratch name.
+ * Every site table outside WordPress core and this plugin, site name =>
+ * scratch name. Other plugins (WooCommerce's HPOS orders, Action Scheduler,
+ * review and mail plugins reacting to an order) write wherever `$wpdb`
+ * points, so each gets an empty copy under the scratch prefix: a test can
+ * then drive real WooCommerce hooks without touching site data.
+ *
+ * @return array<string, string>
+ */
+function yayloyalty_test_site_tables(): array {
+    global $wpdb;
+
+    // wpdb's own declarations, before any plugin appended to $wpdb->tables.
+    $defaults = ( new \ReflectionClass( $wpdb ) )->getDefaultProperties();
+    $core     = [];
+
+    foreach ( [ 'tables', 'old_tables', 'global_tables', 'ms_global_tables' ] as $group ) {
+        foreach ( (array) ( $defaults[ $group ] ?? [] ) as $table ) {
+            $core[ $wpdb->base_prefix . $table ] = true;
+        }
+    }
+
+    $own    = $wpdb->base_prefix . \YayLoyalty\Utils\Table::PREFIX;
+    $tables = [];
+
+    foreach ( (array) $wpdb->get_col( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $wpdb->base_prefix ) . '%' ) ) as $site_table ) { // phpcs:ignore WordPress.DB
+        if ( isset( $core[ $site_table ] ) || 0 === strpos( $site_table, $own ) || 0 === strpos( $site_table, YAYLOYALTY_TEST_PREFIX ) ) {
+            continue;
+        }
+
+        $tables[ $site_table ] = YAYLOYALTY_TEST_PREFIX . substr( $site_table, strlen( $wpdb->base_prefix ) );
+    }
+
+    return $tables;
+}
+
+/**
+ * Every scratch table: the site-table copies, then the plugin's.
  *
  * @return string[]
  */
 function yayloyalty_test_tables(): array {
-    $tables = [];
+    $tables = array_values( yayloyalty_test_site_tables() );
 
     foreach ( \YayLoyalty\Database\Installer::schemas() as $schema ) {
         $name = \YayLoyalty\Utils\Table::name( $schema->slug() );
@@ -127,7 +163,21 @@ foreach ( \YayLoyalty\Database\Installer::schemas() as $yayloyalty_test_schema )
     }
 }
 
+foreach ( yayloyalty_test_site_tables() as $yayloyalty_test_site_table => $yayloyalty_test_scratch_table ) {
+    if ( false === $wpdb->query( 'CREATE TABLE `' . esc_sql( $yayloyalty_test_scratch_table ) . '` LIKE `' . esc_sql( $yayloyalty_test_site_table ) . '`' ) ) { // phpcs:ignore WordPress.DB
+        yayloyalty_test_bail( sprintf( 'could not copy %s: %s', $yayloyalty_test_site_table, $wpdb->last_error ) );
+    }
+
+    // Order item meta, Action Scheduler and friends go through $wpdb properties set at load; point them at the copy too.
+    foreach ( get_object_vars( $wpdb ) as $yayloyalty_test_property => $yayloyalty_test_value ) {
+        if ( $yayloyalty_test_site_table === $yayloyalty_test_value ) {
+            $wpdb->$yayloyalty_test_property = $yayloyalty_test_scratch_table;
+        }
+    }
+}
+
 register_shutdown_function( 'yayloyalty_test_drop_tables' );
 
 require_once __DIR__ . '/IntegrationTestCase.php';
 require_once __DIR__ . '/WooCommerceEmailsFixture.php';
+require_once __DIR__ . '/WooCommerceOrdersFixture.php';

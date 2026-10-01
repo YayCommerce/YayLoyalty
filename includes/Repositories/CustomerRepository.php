@@ -177,9 +177,22 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
      *
      * @throws QueryException When the write fails.
      */
-    public function apply_pending_delta( int $user_id, int $delta ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(F01-4): UPDATE … SET pending_points = GREATEST(0, pending_points + %d), updated_at = %s WHERE user_id = %d; throw QueryException on false.
-        throw new \RuntimeException( 'Not implemented' );
+    public function apply_pending_delta( int $user_id, int $delta ): void {
+        global $wpdb;
+
+        // The column is unsigned: MySQL rejects or wraps an underflow, so the floor is applied in SQL.
+        $result = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+            $wpdb->prepare(
+                'UPDATE `' . esc_sql( $this->table() ) . '` SET pending_points = GREATEST(0, CAST(pending_points AS SIGNED) + %d), updated_at = %s WHERE user_id = %d',
+                $delta,
+                Dates::now(),
+                $user_id
+            )
+        );
+
+        if ( false === $result ) {
+            throw new QueryException( 'update', $wpdb->last_error, $this->table() . ' (apply_pending_delta)' );
+        }
     }
 
     /**

@@ -21,8 +21,8 @@ defined( 'ABSPATH' ) || exit;
  * redemptions row and the REDEEM ledger row (through LedgerService — the
  * one ledger writer) together, moves the aggregates and freezes the value
  * onto the order. Zone 3 (cancel / refund) is not here: it attaches as
- * `Engine\Redemption\Reversal` from Earning\Listeners\OrderListener::on_cancelled()
- * / on_refunded(), needs LedgerService::refund_redeem() and
+ * `Engine\Redemption\Reversal` from Earning\Listeners\OrderReversalListener::on_cancelled()
+ * / on_order_refunded(), needs LedgerService::refund_redeem() and
  * Redemption::restored_points, and is undesigned. Scaffold: stubs.
  */
 final class CommitWriter {

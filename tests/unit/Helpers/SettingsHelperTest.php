@@ -51,19 +51,6 @@ class SettingsHelperTest extends TestCase {
         $this->assertSame( [], SettingsHelper::get_settings()['general']['excluded_roles'] );
     }
 
-    /** A stored list replaces the default list whole; a recursive merge would keep the default's tail. */
-    public function test_a_stored_list_replaces_the_default_list(): void {
-        SettingsHelper::update_settings( [ 'general' => [ 'award_statuses' => [ 'on-hold' ] ] ] );
-
-        $this->assertSame( [ 'on-hold' ], SettingsHelper::award_statuses() );
-    }
-
-    public function test_award_statuses_fall_back_to_the_default_when_emptied(): void {
-        SettingsHelper::update_settings( [ 'general' => [ 'award_statuses' => [] ] ] );
-
-        $this->assertSame( [ 'processing', 'completed' ], SettingsHelper::award_statuses() );
-    }
-
     public function test_emails_throttle_per_week_defaults_to_three(): void {
         $this->assertSame( 3, SettingsHelper::get_settings()['emails']['throttle_per_week'] );
     }

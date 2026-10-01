@@ -1,6 +1,8 @@
 <?php
 namespace YayLoyalty\Database;
 
+use YayLoyalty\Utils\Log;
+
 defined( 'ABSPATH' ) || exit;
 
 /**
@@ -22,6 +24,9 @@ final class Transaction {
 
     /** Whether we issued START TRANSACTION ourselves at depth 0. */
     private static $owns_outer_transaction = false;
+
+    /** @var array<int, callable[]> after_commit() callbacks keyed by the depth that registered them. */
+    private static $after_commit = [];
 
     private const PROBE_SAVEPOINT = 'yl_probe';
 
@@ -51,6 +56,23 @@ final class Transaction {
         return self::$depth;
     }
 
+    /**
+     * Runs $callback once the outermost transaction commits; now when none is open.
+     *
+     * A released savepoint hands its callbacks to its parent and a rolled-back
+     * one drops them, so a callback never fires for a write that was undone.
+     * Under a foreign transaction "commit" is our level-0 savepoint release:
+     * best effort, since the owner may still roll back after it.
+     */
+    public static function after_commit( callable $callback ): void {
+        if ( 0 === self::$depth ) {
+            self::run_callbacks( [ $callback ] );
+            return;
+        }
+
+        self::$after_commit[ self::$depth ][] = $callback;
+    }
+
     /** Whether a transaction we did not start was open at depth 0. Only meaningful while depth() > 0. */
     public static function has_foreign_transaction(): bool {
         return self::$depth > 0 && ! self::$owns_outer_transaction;
@@ -77,7 +99,10 @@ final class Transaction {
 
     private static function commit(): void {
         // Decrement first so a throw below cannot strand the counter for the rest of the request.
-        $level = --self::$depth;
+        $level     = --self::$depth;
+        $callbacks = self::$after_commit[ $level + 1 ] ?? [];
+
+        unset( self::$after_commit[ $level + 1 ] );
 
         try {
             self::assert_same_connection( 'commit' );
@@ -96,10 +121,19 @@ final class Transaction {
                 self::reset();
             }
         }
+
+        if ( $level > 0 ) {
+            self::$after_commit[ $level ] = array_merge( self::$after_commit[ $level ] ?? [], $callbacks );
+            return;
+        }
+
+        self::run_callbacks( $callbacks );
     }
 
     private static function rollback(): void {
         $level = --self::$depth;
+
+        unset( self::$after_commit[ $level + 1 ] );
 
         try {
             self::assert_same_connection( 'rollback' );
@@ -209,6 +243,22 @@ final class Transaction {
         }
     }
 
+    /**
+     * A throwing subscriber must not make a committed write look failed to
+     * its caller, so each failure is logged and the rest still run.
+     *
+     * @param callable[] $callbacks
+     */
+    private static function run_callbacks( array $callbacks ): void {
+        foreach ( $callbacks as $callback ) {
+            try {
+                $callback();
+            } catch ( \Throwable $e ) {
+                Log::error( 'Transaction', 'after_commit callback failed: ' . $e->getMessage() );
+            }
+        }
+    }
+
     private static function savepoint_name( int $level ): string {
         return 'yl_' . $level;
     }
@@ -217,5 +267,6 @@ final class Transaction {
         self::$depth                  = 0;
         self::$connection_id          = null;
         self::$owns_outer_transaction = false;
+        self::$after_commit           = [];
     }
 }

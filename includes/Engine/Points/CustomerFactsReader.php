@@ -1,7 +1,7 @@
 <?php
 namespace YayLoyalty\Engine\Points;
 
-use YayLoyalty\Helpers\SettingsHelper;
+use YayLoyalty\Enums\OrderStatus;
 use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Utils\Dates;
 
@@ -16,7 +16,7 @@ final class CustomerFactsReader {
 
     /**
      * Facts as of $as_of (see CustomerFacts for what that window means).
-     * Paid is SettingsHelper::award_statuses(), the same set that awards,
+     * Paid is OrderStatus::paid(), the same status that awards,
      * so order_count and the award path never disagree on what paid means.
      *
      * @param string   $as_of            UTC MySQL datetime; only orders created strictly before it count.
@@ -27,7 +27,7 @@ final class CustomerFactsReader {
         $orders = wc_get_orders(
             [
                 'customer_id'  => $user_id,
-                'status'       => SettingsHelper::award_statuses(),
+                'status'       => OrderStatus::paid(),
                 'date_created' => '<' . Dates::to_timestamp( $as_of ),
                 'exclude'      => $exclude_order_id ? [ $exclude_order_id ] : [],
                 'limit'        => -1,

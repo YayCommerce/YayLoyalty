@@ -36,6 +36,22 @@ final class Dates {
         return (int) strtotime( $utc . ' UTC' );
     }
 
+    /**
+     * Midnight, in the site timezone, of the site-calendar day holding a UTC moment.
+     * Wall-clock midnight, so a DST day stays a calendar day rather than a fixed 24 hours.
+     *
+     * @return \DateTimeImmutable|null Null when $utc is empty or unparsable.
+     */
+    public static function site_day_start( ?string $utc ): ?\DateTimeImmutable {
+        if ( null === $utc || '' === $utc ) {
+            return null;
+        }
+
+        $date = date_create_immutable( $utc, new \DateTimeZone( 'UTC' ) );
+
+        return false === $date ? null : $date->setTimezone( wp_timezone() )->setTime( 0, 0 );
+    }
+
     /** For display only. */
     public static function to_site_tz( string $utc, ?string $format = null ): string {
         if ( null === $format || '' === $format ) {

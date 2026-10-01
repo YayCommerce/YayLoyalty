@@ -2,9 +2,7 @@
 namespace YayLoyalty\Tests\Integration\Services;
 
 use YayLoyalty\Database\QueryException;
-use YayLoyalty\Engine\Earning\IdempotencyKey;
 use YayLoyalty\Engine\Earning\Outcome;
-use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Enums\ReferenceType;
@@ -24,7 +22,7 @@ final class LedgerGuardTest extends IntegrationTestCase {
     private const ORDER = 1234;
 
     public function test_an_award_writes_one_row_and_moves_the_aggregates(): void {
-        $outcome = $this->ledger_service()->earn( $this->earn_draft( 150 ) );
+        $outcome = $this->ledger_service()->earn( $this->earn_draft( self::USER, self::ORDER, 150 ) );
 
         $this->assertSame( Outcome::AWARDED, $outcome->get_status() );
         $this->assertCount( 1, $this->ledger_rows( self::USER ) );
@@ -39,8 +37,8 @@ final class LedgerGuardTest extends IntegrationTestCase {
     public function test_a_second_award_for_one_order_and_trigger_is_a_duplicate(): void {
         $service = $this->ledger_service();
 
-        $first  = $service->earn( $this->earn_draft( 150 ) );
-        $second = $service->earn( $this->earn_draft( 150 ) );
+        $first  = $service->earn( $this->earn_draft( self::USER, self::ORDER, 150 ) );
+        $second = $service->earn( $this->earn_draft( self::USER, self::ORDER, 150 ) );
 
         $this->assertSame( Outcome::AWARDED, $first->get_status() );
         $this->assertSame( Outcome::DUPLICATE, $second->get_status() );
@@ -57,7 +55,7 @@ final class LedgerGuardTest extends IntegrationTestCase {
      */
     public function test_the_index_alone_refuses_the_second_row(): void {
         $repository = new LedgerRepository();
-        $draft      = $this->earn_draft( 150 );
+        $draft      = $this->earn_draft( self::USER, self::ORDER, 150 );
 
         $this->assertIsInt( $repository->insert_unless_duplicate( $draft ) );
         $this->assertNull( $repository->insert_unless_duplicate( $draft ) );
@@ -103,10 +101,10 @@ final class LedgerGuardTest extends IntegrationTestCase {
     public function test_a_duplicate_moves_no_aggregate(): void {
         $service = $this->ledger_service();
 
-        $service->earn( $this->earn_draft( 150 ) );
+        $service->earn( $this->earn_draft( self::USER, self::ORDER, 150 ) );
         $before = $this->customer_row( self::USER );
 
-        $service->earn( $this->earn_draft( 150 ) );
+        $service->earn( $this->earn_draft( self::USER, self::ORDER, 150 ) );
         $after = $this->customer_row( self::USER );
 
         $this->assertSame( (int) $before['balance'], (int) $after['balance'] );
@@ -117,9 +115,9 @@ final class LedgerGuardTest extends IntegrationTestCase {
     public function test_balance_after_is_an_unbroken_chain(): void {
         $service = $this->ledger_service();
 
-        $service->earn( $this->earn_draft( 150, 1 ) );
-        $service->earn( $this->earn_draft( 25, 2 ) );
-        $service->earn( $this->earn_draft( 300, 3 ) );
+        $service->earn( $this->earn_draft( self::USER, 1, 150 ) );
+        $service->earn( $this->earn_draft( self::USER, 2, 25 ) );
+        $service->earn( $this->earn_draft( self::USER, 3, 300 ) );
 
         $previous = 0;
 
@@ -180,8 +178,8 @@ final class LedgerGuardTest extends IntegrationTestCase {
         add_action( 'yayloyalty_ledger_recorded', $listener );
 
         $service = $this->ledger_service();
-        $service->earn( $this->earn_draft( 150 ) );
-        $service->earn( $this->earn_draft( 150 ) );
+        $service->earn( $this->earn_draft( self::USER, self::ORDER, 150 ) );
+        $service->earn( $this->earn_draft( self::USER, self::ORDER, 150 ) );
 
         remove_action( 'yayloyalty_ledger_recorded', $listener );
 
@@ -209,27 +207,5 @@ final class LedgerGuardTest extends IntegrationTestCase {
         $this->expectException( \InvalidArgumentException::class );
 
         $this->ledger_service()->earn( $draft );
-    }
-
-    private function earn_draft( int $points, ?int $order_id = null ): LedgerEntry {
-        $order_id = $order_id ?? self::ORDER;
-
-        return new LedgerEntry(
-            null,
-            self::USER,
-            $points,
-            0,
-            LedgerType::EARN,
-            LedgerSource::ORDER,
-            ReferenceType::ORDER,
-            $order_id,
-            null,
-            null,
-            $order_id,
-            null,
-            null,
-            Dates::now(),
-            IdempotencyKey::compose( LedgerType::EARN, self::USER, ReferenceType::ORDER, $order_id, CampaignTrigger::PURCHASE )
-        );
     }
 }

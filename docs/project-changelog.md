@@ -6,6 +6,27 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
 
 ## Unreleased
 
+### Added — Points come back out: cancel, refund, review removal (2026-09-30)
+
+- **Cancel and trash** release pending and claw back everything the order earned, per earn row (`Engine\Earning\Reversal::full_order()`), keyed on the order. Trash is heard on `woocommerce_trash_order` / `trashed_post`: HPOS trashes without `woocommerce_order_status_changed`. The `refunded` status releases pending and reverses in full only when no refund object exists (read from the database, not the order's cached refund total).
+- **Refunds** claw back proportionally and cumulatively: `ClawbackMath::owed()` recomputes the total owed from every refund's lines that the earn's campaign counted (`BaseCalculator::includes_line()`), and `LedgerService::refund_earn()` writes only the difference from what is already clawed back, read under the customer lock. Excluded-product, shipping-only and amount-only refunds claw back nothing unless they complete the refund; a full refund lands exactly on what was earned (compared at the store's price decimals). Refunds are read from the database, not the order's cached totals.
+- **Deleted refunds** are restored as an `adjust` row referencing the refund (`LedgerService::restore_refund()`), unless the order was reversed in full.
+- **Reviews** leaving `approved` (unapprove, spam, trash, delete) claw back the whole earn; re-approval is a duplicate.
+- **Policy:** balances may go negative; a full reversal is final (completing the order again adds a "reversed earlier" note instead of points).
+- **Structure:** `OrderReversalListener` holds the refund, refund-deleted and trash hooks and the reversal notes; `ListenerGuard` owns the never-break-the-save catch for every listener; `ContextFactory::line_item()` and `BaseCalculator::includes_line()` are extracted so award and clawback share one line rule.
+- **Tests:** `ClawbackMathTest`; `OrderReversalFlowTest` (cumulative refunds, excluded product, amount-only, cancel below zero, refund then cancel, re-complete, delete and re-refund, delete after cancel, re-fired hook, pending cancel, HPOS trash); review unapprove / re-approve / trash / delete.
+
+### Added & Changed — Award points for purchases, signups, and reviews (2026-09-30)
+
+- **Award at `completed` only.** `Enums\OrderStatus` owns the rule; the `general.award_statuses` setting is removed (PHP and the TS mirror). `processing` is inert. `CustomerFactsReader` counts `completed` orders as paid history.
+- **Orders:** `OrderListener::on_stageable()` previews the purchase and `PendingPoints::stage()`s it at `pending`/`on-hold` (every new order is announced as `pending` first). `on_awardable()` runs `EarningService::award()` per trigger in `yayloyalty_order_award_triggers` (Lite: `purchase`), notes the outcome on the order, then releases pending whatever the answer, so a skipped award never strands it. Both score the order object the hook passes: HPOS fires `woocommerce_new_order` before line items are saved.
+- **`EarningService::award()`**: re-previews at the order's creation date, then one transaction writes the earn row (`LedgerService::earn()`), releases pending and adds the order meta (`_yayloyalty_points_earned` sums rows, `_yayloyalty_campaign_id` keeps the first). `yayloyalty_points_awarded` fires after commit, only for an awarded row.
+- **Order notes:** "Earned N points (campaign: X).", "No points earned: {reason}." (never for guests), and on a duplicate whose earn was already clawed back "Points for this order were reversed earlier…" (clawback lands in PR B).
+- **Signup** awards only storefront self-registration (no current user, not WP-CLI, cron or an Action Scheduler run). **Reviews** award on approval with `one_per_product` (a Context fact from `ContextFactory::from_comment()`, decided by `ReviewHandler`) and a daily cap per ledger source.
+- **Primitives:** `Transaction::after_commit()` (runs after the outermost commit, dropped on rollback) now carries `yayloyalty_ledger_recorded`, fixing the nested-transaction early fire. `LedgerRepository::points_earned_today( user, at, source )`, `earn_rows_for_order()`, `find_earn_for_reference()`, `refund_rows_for_refund()`, `sum_refunded_for()`; `CustomerRepository::apply_pending_delta()` (floored at 0); `IdempotencyKey::qualifier_of()`; `Dates::site_day_start()`; `Installer::drop_index_if_exists()`.
+- **Fixes:** order meta is saved without a full HPOS order save inside the award lock; a review config missing `require_verified` / `one_per_product` now follows the review campaign's defaults (both on).
+- **Tests:** the integration bootstrap mirrors every non-core site table (WooCommerce, Action Scheduler, other plugins) into the scratch prefix, and `WooCommerceOrdersFixture` drives real orders, products, reviews and signups with WooCommerce emails and mail off, deleting every site row it creates. New suites cover the award service, pending points, `from_order`, the order flow (stage, award, duplicate, processing, guest, daily cap), signup and reviews. Unit incompletes 53 → 38.
+
 ### Changed — Skill renamed to `/yay:code-corrector` (2026-09-30)
 
 - `/source-of-truth-check` is now `/yay:code-corrector` (`.claude/skills/code-corrector/`); behavior unchanged.

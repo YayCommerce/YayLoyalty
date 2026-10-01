@@ -3,9 +3,11 @@ namespace YayLoyalty;
 
 use YayLoyalty\Engine\Earning\EarningService;
 use YayLoyalty\Engine\Earning\Listeners\OrderListener;
+use YayLoyalty\Engine\Earning\Listeners\OrderReversalListener;
 use YayLoyalty\Engine\Earning\Listeners\ReviewListener;
 use YayLoyalty\Engine\Earning\Listeners\SignupListener;
 use YayLoyalty\Engine\Earning\PendingPoints;
+use YayLoyalty\Engine\Earning\Reversal;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Utils\SingletonTrait;
@@ -46,8 +48,14 @@ class YayLoyalty {
     private function register_earning_listeners(): void {
         $service = EarningService::build();
 
-        ( new OrderListener( $service, new PendingPoints( new CustomerRepository() ), new LedgerRepository() ) )->register();
-        ( new ReviewListener( $service ) )->register();
+        $ledger    = new LedgerRepository();
+        $pending   = new PendingPoints( new CustomerRepository() );
+        $reversal  = Reversal::build();
+        $reversals = new OrderReversalListener( $pending, $reversal );
+
+        ( new OrderListener( $service, $pending, $ledger, $reversals ) )->register();
+        $reversals->register();
+        ( new ReviewListener( $service, $ledger, $reversal ) )->register();
         ( new SignupListener( $service ) )->register();
     }
 }

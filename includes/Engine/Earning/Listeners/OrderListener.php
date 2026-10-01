@@ -2,11 +2,15 @@
 namespace YayLoyalty\Engine\Earning\Listeners;
 
 use YayLoyalty\Engine\Earning\EarningService;
+use YayLoyalty\Engine\Earning\Outcome;
 use YayLoyalty\Engine\Earning\PendingPoints;
+use YayLoyalty\Engine\Earning\ProgramGate;
 use YayLoyalty\Engine\Points\ContextFactory;
 use YayLoyalty\Enums\CampaignTrigger;
-use YayLoyalty\Helpers\SettingsHelper;
+use YayLoyalty\Enums\LedgerSource;
+use YayLoyalty\Enums\OrderStatus;
 use YayLoyalty\Repositories\LedgerRepository;
+use YayLoyalty\Utils\Dates;
 use YayLoyalty\Utils\Log;
 
 defined( 'ABSPATH' ) || exit;
@@ -22,11 +26,9 @@ defined( 'ABSPATH' ) || exit;
  * status string. The engine, the ledger and every domain service are told
  * what to do, never which status asked for it.
  *
- * Paid is a set, not a status. A store whose items are all downloadable and
- * virtual never sees `processing` — needs_processing() is false and
- * payment_complete() goes straight to `completed` — while many physical
- * stores never move an order past `processing`. Awarding on one status
- * breaks one of them, so the award set is a setting, defaulting to both.
+ * Only `completed` awards (OrderStatus::AWARD), a product decision: a store
+ * that leaves orders at `processing` must complete them for them to earn.
+ * Virtual orders reach it straight from payment_complete().
  */
 final class OrderListener {
 
@@ -34,31 +36,25 @@ final class OrderListener {
 
     private PendingPoints $pending;
 
-    /** For points_earned_today, the one ledger read the Context needs. */
+    /** For points_earned_today and the reversed-earlier check on a duplicate. */
     private LedgerRepository $ledger;
 
-    public function __construct( EarningService $service, PendingPoints $pending, LedgerRepository $ledger ) {
-        $this->service = $service;
-        $this->pending = $pending;
-        $this->ledger  = $ledger;
+    /** Takes the statuses that reverse (cancelled, trash, refunded). */
+    private OrderReversalListener $reversals;
+
+    public function __construct( EarningService $service, PendingPoints $pending, LedgerRepository $ledger, OrderReversalListener $reversals ) {
+        $this->service   = $service;
+        $this->pending   = $pending;
+        $this->ledger    = $ledger;
+        $this->reversals = $reversals;
     }
 
     /**
      * Attaches the two order hooks; call once at boot, after settings are readable.
      *
-     * Two entry points, on purpose, both funnelled into route(). A per-status
-     * hook (`woocommerce_order_status_completed`) or `woocommerce_payment_complete`
-     * alongside either would describe the same transition from a different
-     * angle and process it several times for no reason — that is still out.
-     * `woocommerce_new_order` is not that: `woocommerce_order_status_changed`
-     * only fires when WooCommerce recorded a non-empty "from" status
-     * (`WC_Abstract_Order::set_status()`), so a brand-new order's very first
-     * status — no prior status to transition from — never reaches it.
-     * `woocommerce_new_order` fires exactly once per order regardless (at
-     * first insert, or at the admin auto-draft → real-status save) and is
-     * the only reliable signal for that first arrival. Where the two land in
-     * the same request (that admin save fires both), route() runs twice for
-     * the same $to; that is free, not a bug — see route()'s docblock.
+     * Two hooks because a new order's first status never fires
+     * `woocommerce_order_status_changed` (README invariant 6). Refund and
+     * trash hooks belong to OrderReversalListener.
      */
     public function register(): void {
         add_action( 'woocommerce_order_status_changed', [ $this, 'on_status_changed' ], 10, 4 );
@@ -78,12 +74,7 @@ final class OrderListener {
         $this->route( $order_id, $to, $order );
     }
 
-    /**
-     * Order creation entry point — covers the arrival route() above cannot
-     * see: WooCommerce never fires `woocommerce_order_status_changed` for a
-     * brand-new order's first status (no prior status to transition from).
-     * Routes on $order->get_status() since there is no $to being announced.
-     */
+    /** Order creation entry point: the first status, which on_status_changed() never sees (register()). */
     public function on_order_created( int $order_id, \WC_Order $order ): void {
         Log::debug( 'OrderListener', 'order #' . $order_id . ' created at ' . $order->get_status() );
         $this->route( $order_id, $order->get_status(), $order );
@@ -92,118 +83,127 @@ final class OrderListener {
     /**
      * The one routing table, shared by both entry points above.
      *
-     * $from is not a parameter: first arrival wins, and any later call that
-     * lands on the same $to — from either hook, including the same-request
-     * double delivery register()'s docblock describes — repeats a step that
-     * is already idempotent (PendingPoints::stage()/release(), invariant 2)
-     * or composes the same ledger idempotency key and costs one rejected
-     * insert (invariants 3-4). No dedup lives here; none is needed.
+     * $from is not a parameter and nothing dedups here: re-delivery is
+     * harmless, every step is idempotent (README invariants 2-4).
      *
      *   checkout-draft  nothing — a block-checkout draft is not an order yet
      *                   and must never reach staging
      *   pending         stage
      *   on-hold         stage, never award: the money has not arrived
-     *   {award set}     award — `processing` + `completed` by default,
-     *                   general.award_statuses in settings
+     *   processing      nothing: money may have arrived, but only completed awards
+     *   completed       award (OrderStatus::AWARD)
      *   failed          nothing: no release, no redemption restore. The order
-     *                   is still payable and a retry lands on an award status
-     *   cancelled       release pending (once) and restore the redemption if
-     *                   one is still applied
+     *                   is still payable and a retry lands on completed
+     *   cancelled       release pending (once) and claw back everything the
+     *                   order earned
      *   trash           as cancelled
-     *   refunded        nothing — refunds are driven by refund objects. One
-     *                   exception, handled here because only the status says
-     *                   so: get_total_refunded() === 0 means an admin reversed
-     *                   the order outside WooCommerce, which is a full
-     *                   reversal referenced to the ORDER, not to a refund id
+     *   refunded        release pending; clawback is driven by refund objects.
+     *                   One exception, handled here because only the status
+     *                   says so: no refund object means an admin reversed the
+     *                   order outside WooCommerce, which is a full reversal
+     *                   referenced to the ORDER, not a refund id
      *
      * Any other status — one another plugin registered — is not ours to
      * interpret: it falls through and nothing happens.
      */
     private function route( int $order_id, string $to, \WC_Order $order ): void {
-        if ( in_array( $to, SettingsHelper::award_statuses(), true ) ) {
-            try {
-                $this->on_awardable( $order_id );
-            } catch ( \Throwable $e ) { // A listener must never break an order save.
-                Log::error( 'OrderListener', 'award failed for order #' . $order_id . ': ' . $e->getMessage() );
-            }
+        if ( OrderStatus::AWARD === $to ) {
+            ListenerGuard::for_order( 'OrderListener', 'award', $order_id, fn() => $this->on_awardable( $order ) );
             return;
         }
         switch ( $to ) {
             case 'pending':
             case 'on-hold':
-                try {
-                    $this->on_stageable( $order_id );
-                } catch ( \Throwable $e ) { // A listener must never break an order save.
-                    Log::error( 'OrderListener', 'stage failed for order #' . $order_id . ': ' . $e->getMessage() );
-                }
+                ListenerGuard::for_order( 'OrderListener', 'stage', $order_id, fn() => $this->on_stageable( $order ) );
                 break;
             case 'cancelled':
             case 'trash':
-                try {
-                    $this->on_cancelled( $order_id );
-                } catch ( \RuntimeException $e ) { // TODO(step-3): remove once on_cancelled() is implemented.
-                    Log::warning( 'OrderListener', 'cancel skipped for order #' . $order_id . ': ' . $e->getMessage() );
-                }
+                ListenerGuard::for_order( 'OrderListener', 'cancel', $order_id, fn() => $this->reversals->on_cancelled( $order ) );
                 break;
             case 'refunded':
-                if ( 0.0 !== (float) $order->get_total_refunded() ) {
-                    break;
-                }
-                try {
-                    $this->on_refunded( $order_id, 0 );
-                } catch ( \RuntimeException $e ) { // TODO(step-3): remove once on_refunded() is implemented.
-                    Log::warning( 'OrderListener', 'refund skipped for order #' . $order_id . ': ' . $e->getMessage() );
-                }
+                ListenerGuard::for_order( 'OrderListener', 'refund', $order_id, fn() => $this->reversals->on_status_refunded( $order ) );
                 break;
+            case 'processing':
             case 'failed':
             case 'checkout-draft':
-                // Still payable (failed) or not yet an order (checkout-draft) — neither stages nor awards.
+                // Paid but not completed, still payable, or not yet an order — none stages or awards.
                 break;
         }
     }
 
-    /** Evaluation moment: preview at the order's creation date, stage the figure. */
-    public function on_stageable( int $order_id ): void {
-        $this->preview_and_log( $order_id, 'stage' );
-        // TODO(F01-4): stage the preview's points: pending->stage( order_id, user_id, points ).
-    }
-
-    /** Award moment: one award() per trigger the order satisfies (purchase, then Pro's order triggers). */
-    public function on_awardable( int $order_id ): void {
-        $this->preview_and_log( $order_id, 'award' );
-        // TODO(F01-4): replace the preview with service->award( PURCHASE, ctx ), ctx built with ledger->points_earned_today( user, occurred_at ); Pro adds first_order/order_count/spend_milestone via a filter over the trigger list.
-    }
-
     /**
-     * Logs which campaign the order would earn from, how many points, or why
-     * none. Writes nothing. points_earned_today is 0, so a daily cap is not
-     * applied yet.
+     * Evaluation moment: preview the purchase at the order's creation date and stage its points.
+     *
+     * Scores the hook's own object, never a re-read: woocommerce_new_order
+     * fires before WooCommerce saves the line items, so a fresh read has none.
      *
      * @throws \InvalidArgumentException When the order has no creation date (route() catches it).
      */
-    private function preview_and_log( int $order_id, string $moment ): void {
-        $order = wc_get_order( $order_id );
+    public function on_stageable( \WC_Order $order ): void {
+        $order_id = (int) $order->get_id();
+        $result   = $this->service->preview( CampaignTrigger::PURCHASE, ContextFactory::from_order( $order ) );
 
-        if ( ! $order instanceof \WC_Order ) {
-            return;
+        PreviewLog::write( 'OrderListener', 'order #' . $order_id . ' stage', $result );
+
+        if ( $result->is_awarded() ) {
+            $user_id = (int) $order->get_customer_id();
+            $this->pending->stage( $order_id, $user_id > 0 ? $user_id : null, $result->get_points() );
         }
-
-        $result = $this->service->preview( CampaignTrigger::PURCHASE, ContextFactory::from_order( $order ) );
-
-        PreviewLog::write( 'OrderListener', 'order #' . $order_id . ' ' . $moment, $result );
-    }
-
-    /** Pending release for an order that will never award; also restores a redemption still applied to it. */
-    public function on_cancelled( int $order_id ): void {
-        // TODO(F01-4): pending->release( order_id ); redemption restore attaches here with Engine\Redemption\Reversal (F08), keyed on the order.
     }
 
     /**
-     * Clawback seam. Refunds reverse earned points as refund_earn rows keyed
-     * on the refund id; the logic is a later task and attaches here. Reached
-     * from woocommerce_order_refunded, not from the `refunded` status.
+     * Award moment: one award() per trigger the order satisfies, each noted on the order.
+     *
+     * @throws \InvalidArgumentException When the order has no creation date (route() catches it).
      */
-    public function on_refunded( int $order_id, int $refund_id ): void {
-        // TODO(F01-4): clawback (refund_earn) — design pending; do not implement here until LedgerService gains a refund entry point.
+    public function on_awardable( \WC_Order $order ): void {
+        $order_id = (int) $order->get_id();
+
+        /**
+         * Triggers one completed order is awarded for, in order. Internal seam: Pro appends its order triggers.
+         *
+         * @param string[]  $triggers CampaignTrigger values.
+         * @param \WC_Order $order
+         */
+        $triggers = (array) apply_filters( 'yayloyalty_order_award_triggers', [ CampaignTrigger::PURCHASE ], $order );
+
+        foreach ( $triggers as $trigger ) {
+            // Rebuilt per trigger: the previous trigger's row counts toward today's cap.
+            $points_earned_today = $this->ledger->points_earned_today( (int) $order->get_customer_id(), Dates::now(), LedgerSource::ORDER );
+            $outcome             = $this->service->award( (string) $trigger, ContextFactory::from_order( $order, $points_earned_today ) );
+
+            PreviewLog::write_outcome( 'OrderListener', 'order #' . $order_id . ' ' . $trigger, $outcome );
+            $this->note( $order, $outcome );
+        }
+
+        // Completed ends staging whatever the triggers answered: a skipped award would otherwise leave pending forever.
+        $this->pending->release( $order_id );
+    }
+
+    /**
+     * Tells the merchant what an award did. Silent for a guest (every guest
+     * order would say so) and for a plain duplicate (a re-fired status).
+     */
+    private function note( \WC_Order $order, Outcome $outcome ): void {
+        $entry = $outcome->get_entry();
+
+        switch ( $outcome->get_status() ) {
+            case Outcome::AWARDED:
+                $campaign = $outcome->get_evaluation() ? $outcome->get_evaluation()->get_campaign() : null;
+                /* translators: 1: points, 2: campaign name */
+                $order->add_order_note( sprintf( __( 'Earned %1$d points (campaign: %2$s).', 'yayloyalty' ), $entry->get_points(), $campaign ? $campaign->get_name() : '-' ) );
+                break;
+            case Outcome::SKIPPED:
+                if ( ProgramGate::REASON_NO_CUSTOMER !== $outcome->get_reason() ) {
+                    /* translators: %s: reason code */
+                    $order->add_order_note( sprintf( __( 'No points earned: %s.', 'yayloyalty' ), $outcome->get_reason() ) );
+                }
+                break;
+            case Outcome::DUPLICATE:
+                if ( $this->ledger->sum_refunded_for( $entry ) > 0 ) {
+                    $order->add_order_note( __( 'Points for this order were reversed earlier and are not awarded again (adjust manually if needed).', 'yayloyalty' ) );
+                }
+                break;
+        }
     }
 }
