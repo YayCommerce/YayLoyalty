@@ -28,7 +28,7 @@ $yayloyalty_style    = $yayloyalty_launcher['button_style'];
 >
     <button
         type="button"
-        class="yl-launcher-trigger <?php echo esc_attr( UiClasses::button( 'primary', 'none' ) ); ?> yl:h-11 yl:gap-2 yl:px-4 yl:shadow-lg yl:text-sm"
+        class="yl-launcher-trigger yl:inline-flex yl:items-center yl:gap-2.5 yl:whitespace-nowrap yl:h-11 yl:rounded-lg yl:px-[18px] yl:bg-primary yl:text-primary-foreground yl:hover:bg-primary-accent yl:shadow-lg yl:text-sm yl:font-medium yl:cursor-pointer yl:transition-colors yl:outline-none yl:focus-visible:ring-[1.5px] yl:focus-visible:ring-ring yl:focus-visible:ring-offset-2"
         aria-expanded="false"
         aria-controls="yayloyalty-launcher-panel"
         data-yl-open
@@ -38,7 +38,7 @@ $yayloyalty_style    = $yayloyalty_launcher['button_style'];
         <?php endif; ?>
         <span class="yl-launcher-label<?php echo 'icon' === $yayloyalty_style ? ' yl:sr-only' : ''; ?>"><?php echo esc_html( $yayloyalty_text['launcher_label'] ); ?></span>
         <?php if ( null !== $yayloyalty_member ) : ?>
-            <span class="yl:inline-flex yl:items-center yl:rounded-full yl:bg-background yl:text-foreground yl:h-6 yl:px-2 yl:text-xs yl:font-semibold yl:tabular-nums">
+            <span class="yl:inline-flex yl:items-center yl:justify-center yl:rounded-full yl:bg-primary-foreground yl:text-primary yl:h-[22px] yl:min-w-[52px] yl:px-2 yl:text-xs yl:font-semibold yl:tabular-nums">
                 <?php echo esc_html( LauncherCopy::points( $yayloyalty_member['balance'] ) ); ?>
                 <span class="yl:sr-only"><?php esc_html_e( 'points', 'yayloyalty' ); ?></span>
             </span>
@@ -49,7 +49,7 @@ $yayloyalty_style    = $yayloyalty_launcher['button_style'];
 
     <div
         id="yayloyalty-launcher-panel"
-        class="yl-launcher-panel yl:bg-background yl:text-foreground yl:border yl:border-border yl:shadow-lg yl:flex yl:flex-col yl:text-sm"
+        class="yl-launcher-panel yl:bg-background yl:text-foreground yl:border yl:border-border yl:shadow-2xl yl:flex yl:flex-col yl:text-sm"
         role="dialog"
         tabindex="-1"
         aria-modal="true"
@@ -59,14 +59,17 @@ $yayloyalty_style    = $yayloyalty_launcher['button_style'];
     >
         <div class="yl-launcher-handle" data-yl-handle aria-hidden="true"><span class="yl:block yl:h-1 yl:w-10 yl:rounded-full yl:bg-border"></span></div>
 
-        <div class="yl:flex yl:items-center yl:justify-between yl:gap-3 yl:border-b yl:border-divider yl:px-5 yl:py-4">
-            <h2 id="yayloyalty-launcher-title" class="<?php echo esc_attr( UiClasses::TITLE ); ?>"><?php echo esc_html( $yayloyalty_text['launcher_label'] ); ?></h2>
-            <button type="button" class="<?php echo esc_attr( UiClasses::button( 'ghost', 'icon-sm' ) ); ?> yl:text-muted-foreground yl:hover:text-foreground" data-yl-close aria-label="<?php esc_attr_e( 'Close', 'yayloyalty' ); ?>">
+        <div class="yl:flex yl:items-center yl:gap-2.5 yl:bg-primary yl:text-primary-foreground yl:px-4 yl:py-2.5">
+            <?php if ( 'label' !== $yayloyalty_style ) : ?>
+                <span class="yl:inline-flex yl:[&>*]:size-4"><?php echo LauncherIcon::html( $yayloyalty_launcher['icon'], (int) $yayloyalty_launcher['icon_upload_id'] ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- built from fixed SVG strings and esc_url(). ?></span>
+            <?php endif; ?>
+            <h2 id="yayloyalty-launcher-title" class="yl:m-0 yl:text-sm yl:font-semibold yl:leading-tight yl:text-primary-foreground"><?php echo esc_html( $yayloyalty_text['launcher_label'] ); ?></h2>
+            <button type="button" class="yl:ml-auto yl:inline-flex yl:size-7 yl:items-center yl:justify-center yl:rounded-md yl:text-primary-foreground yl:hover:bg-primary-foreground/15 yl:cursor-pointer yl:transition-colors yl:outline-none yl:focus-visible:ring-[1.5px] yl:focus-visible:ring-primary-foreground" data-yl-close aria-label="<?php esc_attr_e( 'Close', 'yayloyalty' ); ?>">
                 <?php echo LauncherIcon::close(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- fixed SVG string. ?>
             </button>
         </div>
 
-        <div class="yl-launcher-body yl:flex yl:flex-col yl:gap-5 yl:overflow-y-auto yl:px-5 yl:py-5">
+        <div class="yl-launcher-body yl:flex yl:flex-col yl:overflow-y-auto">
             <?php
             if ( null !== $yayloyalty_member ) {
                 include __DIR__ . '/panel-member.php';
@@ -77,8 +80,8 @@ $yayloyalty_style    = $yayloyalty_launcher['button_style'];
         </div>
 
         <?php if ( null !== $yayloyalty_member ) : ?>
-            <div class="yl:flex yl:items-center yl:gap-3 yl:border-t yl:border-divider yl:px-5 yl:py-3">
-                <a class="<?php echo esc_attr( UiClasses::button( 'link', 'none' ) ); ?> yl:text-sm" href="<?php echo esc_url( $view['account_url'] ); ?>">
+            <div class="yl:flex yl:items-center yl:gap-2.5 yl:border-t yl:border-border yl:bg-muted/50 yl:px-4 yl:py-3">
+                <a class="yl:text-xs yl:text-primary yl:hover:underline yl:underline-offset-4" href="<?php echo esc_url( $view['account_url'] ); ?>">
                     <?php esc_html_e( 'View all rewards activity', 'yayloyalty' ); ?>
                 </a>
             </div>

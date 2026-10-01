@@ -59,45 +59,44 @@ if ( null === $yayloyalty_signup ) {
     $yayloyalty_register_text = sprintf( __( 'Create an account and get %s points', 'yayloyalty' ), LauncherCopy::points( $yayloyalty_signup ) );
 }
 ?>
-<section class="yl:flex yl:flex-col yl:gap-2">
+<section class="yl:flex yl:flex-col yl:gap-2.5 yl:border-b yl:border-border yl:p-4">
     <?php if ( '' !== trim( $yayloyalty_text['signed_out_prompt'] ) ) : ?>
-        <p class="yl:m-0 yl:text-lg yl:font-semibold yl:leading-snug yl:text-foreground"><?php echo esc_html( $yayloyalty_text['signed_out_prompt'] ); ?></p>
+        <p class="yl:m-0 yl:text-[17px] yl:font-semibold yl:leading-snug yl:text-foreground"><?php echo esc_html( $yayloyalty_text['signed_out_prompt'] ); ?></p>
     <?php endif; ?>
     <?php if ( null !== $yayloyalty_earn[ CampaignTrigger::PURCHASE ] ) : ?>
-        <p class="<?php echo esc_attr( UiClasses::DESCRIPTION ); ?>"><?php esc_html_e( 'Collect points on every order and spend them on money off your next one. Free to join.', 'yayloyalty' ); ?></p>
+        <p class="yl:m-0 yl:text-xs yl:text-muted-foreground"><?php esc_html_e( 'Collect points on every order and spend them on money off your next one. Free to join.', 'yayloyalty' ); ?></p>
     <?php endif; ?>
 </section>
 
 <?php if ( $yayloyalty_steps ) : ?>
-    <section class="yl:flex yl:flex-col yl:gap-2">
+    <section class="<?php echo esc_attr( UiClasses::PANEL_SECTION ); ?>">
         <h3 class="<?php echo esc_attr( UiClasses::SECTION_HEADING ); ?>"><?php esc_html_e( 'How it works', 'yayloyalty' ); ?></h3>
-        <ol class="yl:m-0 yl:flex yl:flex-col yl:gap-3 yl:list-none yl:p-0">
+        <ol class="yl:m-0 yl:flex yl:flex-col yl:list-none yl:p-0">
             <?php foreach ( $yayloyalty_steps as $yayloyalty_index => $yayloyalty_step ) : ?>
-                <li class="yl:flex yl:items-start yl:gap-3">
-                    <span class="yl:inline-flex yl:size-6 yl:shrink-0 yl:items-center yl:justify-center yl:rounded-full yl:bg-primary/6 yl:text-primary yl:text-xs yl:font-semibold"><?php echo esc_html( number_format_i18n( $yayloyalty_index + 1 ) ); ?></span>
-                    <span class="yl:pt-0.5"><?php echo esc_html( $yayloyalty_step ); ?></span>
+                <li class="yl:flex yl:gap-2.5 yl:border-b yl:border-divider yl:py-2.5 yl:text-xs yl:last:border-b-0">
+                    <span class="yl:w-4 yl:shrink-0 yl:text-muted-foreground"><?php echo esc_html( number_format_i18n( $yayloyalty_index + 1 ) ); ?></span>
+                    <span><?php echo esc_html( $yayloyalty_step ); ?></span>
                 </li>
             <?php endforeach; ?>
         </ol>
     </section>
 <?php endif; ?>
 
-<section class="yl:flex yl:flex-col yl:gap-2">
+<section class="yl:flex yl:flex-col yl:gap-2.5 yl:p-4">
     <?php if ( null !== $yayloyalty_route ) : ?>
         <a class="<?php echo esc_attr( UiClasses::button( 'primary' ) ); ?> yl:w-full" href="<?php echo esc_url( $yayloyalty_register_url ); ?>">
             <?php echo esc_html( $yayloyalty_register_text ); ?>
         </a>
     <?php endif; ?>
-    <a class="<?php echo esc_attr( UiClasses::button( null !== $yayloyalty_route ? 'outline' : 'primary' ) ); ?> yl:w-full" href="<?php echo esc_url( $view['account_url'] ); ?>">
+    <a class="<?php echo esc_attr( UiClasses::button( null !== $yayloyalty_route ? 'primary-outline' : 'primary' ) ); ?> yl:w-full" href="<?php echo esc_url( $view['account_url'] ); ?>">
         <?php esc_html_e( 'Sign in', 'yayloyalty' ); ?>
     </a>
+    <?php if ( null !== $view['estimate'] ) : ?>
+        <p class="yl:m-0 yl:text-center yl:text-[11px] yl:text-muted-foreground">
+            <?php
+            /* translators: %s: points. */
+            echo esc_html( sprintf( __( 'This product would earn you %s points', 'yayloyalty' ), LauncherCopy::points( $view['estimate'] ) ) );
+            ?>
+        </p>
+    <?php endif; ?>
 </section>
-
-<?php if ( null !== $view['estimate'] ) : ?>
-    <p class="yl:m-0 yl:rounded-md yl:bg-muted yl:px-3 yl:py-2 yl:text-sm yl:text-foreground">
-        <?php
-        /* translators: %s: points. */
-        echo esc_html( sprintf( __( 'This product would earn you %s points', 'yayloyalty' ), LauncherCopy::points( $view['estimate'] ) ) );
-        ?>
-    </p>
-<?php endif; ?>

@@ -64,20 +64,4 @@ final class LauncherCopy {
         /* translators: 1: points, 2: money amount. */
         return sprintf( __( '%1$s points = %2$s', 'yayloyalty' ), self::rate( $points_per_unit ), self::money( 1.0 ) );
     }
-
-    /** "From 100 points, up to the full order value." or "… up to 50% of the order." */
-    public static function redeem_limits( int $min_points, ?float $max_percent ): string {
-        $upper = null === $max_percent
-            ? __( 'up to the full order value', 'yayloyalty' )
-            /* translators: %s: percentage. */
-            : sprintf( __( 'up to %s%% of the order', 'yayloyalty' ), self::rate( $max_percent ) );
-
-        if ( $min_points <= 0 ) {
-            /* translators: %s: "up to …" clause. */
-            return sprintf( __( 'Use any amount, %s.', 'yayloyalty' ), $upper );
-        }
-
-        /* translators: 1: minimum points, 2: "up to …" clause. */
-        return sprintf( __( 'From %1$s points, %2$s.', 'yayloyalty' ), self::points( $min_points ), $upper );
-    }
 }

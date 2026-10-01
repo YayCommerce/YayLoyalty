@@ -194,11 +194,7 @@
           var row = rowTemplate.content.firstElementChild.cloneNode(true);
           row.querySelector("[data-yl-label]").textContent = item.label;
           row.querySelector("[data-yl-meta]").textContent = item.meta;
-          var delta = row.querySelector("[data-yl-delta]");
-          delta.textContent = item.delta;
-          delta.classList.add(
-            item.points > 0 ? "yl:text-success" : "yl:text-foreground",
-          );
+          row.querySelector("[data-yl-delta]").textContent = item.delta;
           list.appendChild(row);
         });
       })

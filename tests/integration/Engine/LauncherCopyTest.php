@@ -113,24 +113,4 @@ final class LauncherCopyTest extends IntegrationTestCase {
         $this->assertStringContainsString( '100', $result, 'Should contain the rate' );
         $this->assertStringContainsString( '=', $result, 'Should contain equals sign' );
     }
-
-    public function test_redeem_limits_no_minimum(): void {
-        $result = LauncherCopy::redeem_limits( 0, null );
-
-        $this->assertStringContainsString( 'Use any amount', $result, 'Should allow any amount with zero minimum' );
-    }
-
-    public function test_redeem_limits_with_minimum(): void {
-        $result = LauncherCopy::redeem_limits( 100, null );
-
-        $this->assertStringContainsString( 'From', $result, 'Should state the minimum' );
-        $this->assertStringContainsString( '100', $result, 'Should contain the minimum value' );
-    }
-
-    public function test_redeem_limits_with_percent(): void {
-        $result = LauncherCopy::redeem_limits( 50, 50.0 );
-
-        $this->assertStringContainsString( 'From', $result, 'Should state the minimum' );
-        $this->assertStringContainsString( '50', $result, 'Should contain the percent limit' );
-    }
 }

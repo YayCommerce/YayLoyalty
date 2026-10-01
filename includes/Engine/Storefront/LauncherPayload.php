@@ -85,23 +85,16 @@ final class LauncherPayload {
     }
 
     /**
-     * "Ways to redeem", read from the built-in cart-discount reward. Information only until checkout
-     * redemption ships (F08): the panel states the rate, it offers no action.
+     * The built-in cart-discount reward's rate, for the guest panel's "spend them at checkout" step.
      *
-     * @return array{points_per_unit: float, min_points: int, max_percent: ?float}|null
+     * @return array{points_per_unit: float}|null
      */
     private static function redeem_rule( ?Reward $reward, float $rate, string $now ): ?array {
         if ( null === $reward || $rate <= 0 || ! $reward->is_live_at( $now ) ) {
             return null;
         }
 
-        $config = $reward->get_config();
-
-        return [
-            'points_per_unit' => $rate,
-            'min_points'      => (int) ( $config['min_points'] ?? 0 ),
-            'max_percent'     => isset( $config['max_percent_of_subtotal'] ) ? (float) $config['max_percent_of_subtotal'] : null,
-        ];
+        return [ 'points_per_unit' => $rate ];
     }
 
     /**

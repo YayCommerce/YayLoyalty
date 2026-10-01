@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * The admin kit's class lists for the storefront templates, so the launcher looks like the admin UI.
  *
- * Mirrors the `cva` definitions in apps/admin/src/components/ui/{button,badge}.tsx, trimmed to the
+ * Mirrors the `cva` definitions in apps/admin/src/components/ui/button.tsx, trimmed to the
  * variants the launcher uses (add one back when a template first needs it: every listed class ships)
  * and written with the storefront build's `yl:` prefix. The strings stay literal because Tailwind
  * finds classes by scanning this file (apps/admin/src/storefront.css @source); a class built at
@@ -17,45 +17,29 @@ final class UiClasses {
     private const BUTTON_BASE = 'yl:inline-flex yl:items-center yl:justify-center yl:gap-1 yl:whitespace-nowrap yl:rounded-md yl:text-sm yl:font-medium yl:cursor-pointer yl:transition-colors yl:shrink-0 yl:no-underline yl:outline-none yl:focus-visible:ring-[1.5px] yl:focus-visible:ring-ring yl:focus-visible:ring-offset-2 yl:disabled:pointer-events-none yl:disabled:opacity-50';
 
     private const BUTTON_VARIANTS = [
-        'primary' => 'yl:bg-primary yl:text-primary-foreground yl:shadow-xs yl:hover:bg-primary-accent yl:border yl:border-transparent',
-        'outline' => 'yl:border yl:border-border yl:bg-background yl:text-foreground yl:shadow-xs yl:hover:bg-accent yl:hover:text-accent-foreground',
-        'ghost'   => 'yl:bg-transparent yl:text-foreground yl:hover:bg-accent yl:border-0',
-        'link'    => 'yl:bg-transparent yl:text-foreground yl:hover:text-primary yl:hover:underline yl:underline-offset-4 yl:border-0',
+        'primary'         => 'yl:bg-primary yl:text-primary-foreground yl:shadow-xs yl:hover:bg-primary-accent yl:border yl:border-transparent',
+        'primary-outline' => 'yl:border yl:border-primary yl:bg-transparent yl:text-primary yl:hover:border-primary-accent yl:hover:text-primary-accent',
     ];
 
     private const BUTTON_SIZES = [
         'default' => 'yl:h-9 yl:px-4 yl:py-2',
-        'icon-sm' => 'yl:size-8',
-        // The caller sizes it: two height or padding utilities on one element would fight over source order.
-        'none'    => '',
     ];
-
-    private const BADGE_BASE = 'yl:inline-flex yl:items-center yl:justify-center yl:rounded-full yl:border yl:h-5 yl:px-2 yl:text-xs yl:font-medium yl:w-fit yl:whitespace-nowrap yl:shrink-0 yl:gap-1';
-
-    private const BADGE_VARIANTS = [
-        'primary-soft' => 'yl:border-transparent yl:bg-primary/6 yl:text-primary',
-    ];
-
-    /** `<Card>`: the bordered block every panel section sits in. */
-    public const CARD = 'yl:bg-card yl:text-card-foreground yl:flex yl:flex-col yl:gap-3 yl:rounded-lg yl:border yl:border-border yl:p-4';
 
     /** `<Skeleton>` card tone. */
     public const SKELETON = 'yl:animate-pulse yl:rounded-md yl:bg-muted';
 
-    /** `<SheetTitle>` / `<CardDescription>`. */
-    public const TITLE       = 'yl:text-foreground yl:m-0 yl:text-base yl:font-semibold yl:leading-tight';
-    public const DESCRIPTION = 'yl:text-muted-foreground yl:m-0 yl:text-sm yl:font-normal';
+    /** One panel block (balance, ways to earn, …): full-bleed, ruled off from the next. */
+    public const PANEL_SECTION = 'yl:flex yl:flex-col yl:gap-1 yl:border-b yl:border-border yl:px-4 yl:py-3.5 yl:last:border-b-0';
 
     /** Section heading inside the panel ("Ways to earn"). */
-    public const SECTION_HEADING = 'yl:text-muted-foreground yl:m-0 yl:text-xs yl:font-semibold yl:uppercase yl:tracking-wide';
+    public const SECTION_HEADING = 'yl:text-muted-foreground yl:m-0 yl:pb-1 yl:text-[11px] yl:font-semibold yl:uppercase yl:tracking-[0.06em]';
+
+    /** A label-left, value-right line in a panel list. */
+    public const PANEL_ROW = 'yl:flex yl:items-baseline yl:justify-between yl:gap-2.5 yl:border-b yl:border-divider yl:py-2.5 yl:text-xs yl:last:border-b-0';
 
     public static function button( string $variant = 'primary', string $size = 'default' ): string {
         return self::BUTTON_BASE . ' '
             . ( self::BUTTON_VARIANTS[ $variant ] ?? self::BUTTON_VARIANTS['primary'] ) . ' '
             . ( self::BUTTON_SIZES[ $size ] ?? self::BUTTON_SIZES['default'] );
-    }
-
-    public static function badge( string $variant = 'primary-soft' ): string {
-        return self::BADGE_BASE . ' ' . ( self::BADGE_VARIANTS[ $variant ] ?? self::BADGE_VARIANTS['primary-soft'] );
     }
 }

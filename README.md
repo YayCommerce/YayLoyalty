@@ -88,7 +88,7 @@ composer install
 
 ### Storefront Launcher
 
-A read-only floating panel on the shop: the customer's balance, ways to earn, ways to redeem (information only until checkout redemption ships), and recent activity. Configured in the Design tab (position, button style, brand colour, corner radius, icon, text, visibility). See [Storefront Launcher](#storefront-launcher).
+A read-only floating panel on the shop: the customer's balance, ways to earn, and recent activity. Configured in the Design tab (position, button style, brand colour, corner radius, icon, text, visibility). See [Storefront Launcher](#storefront-launcher).
 
 ### Earning
 
@@ -107,7 +107,7 @@ One repository, two zips. Lite = Pro minus `includes/Pro/` and SPA built with `B
 ## Storefront Launcher
 
 The launcher is a read-only floating panel (v1, designs 1a–1e) that displays:
-- **Signed in:** current balance, "worth $X", ways to earn (eligible campaigns), ways to redeem (rate info only), recent activity (3 rows, lazy), "View all rewards activity" footer link.
+- **Signed in:** current balance, "worth $X", ways to earn (eligible campaigns), recent activity (3 rows, lazy), "View all rewards activity" footer link.
 - **Guest:** the Design tab's signed-out prompt, how-it-works steps (from live campaigns), "Sign in", a signup step only when the store lets shoppers register (My Account, or checkout only), and on a product page what it would earn at the base rate.
 - **Collapsed:** icon, label or both, plus a balance badge when signed in.
 - **Mobile (under 600px):** icon + balance pill; the panel opens as a bottom sheet with a drag handle.

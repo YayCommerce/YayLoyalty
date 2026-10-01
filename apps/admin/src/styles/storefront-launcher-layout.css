@@ -22,6 +22,11 @@
   z-index: 99990;
 }
 
+/* The open panel takes the button's place (1b, 1c), so the button steps aside until it closes. */
+.yl-launcher-trigger[aria-expanded='true'] {
+  visibility: hidden;
+}
+
 .yayloyalty-launcher[data-position$='_right'] :is(.yl-launcher-trigger, .yl-launcher-panel) {
   right: var(--yl-offset);
 }
@@ -45,12 +50,12 @@
   background: transparent;
 }
 
-/* Panel (1b, 1c): beside the button's corner, capped at 700px, sections scroll inside. */
+/* Panel (1b, 1c): anchored where the button sits, capped at 700px, sections scroll inside. */
 .yl-launcher-panel {
   position: fixed;
   z-index: 99992;
-  width: 380px;
-  max-height: min(700px, calc(100vh - 2 * var(--yl-offset) - 64px));
+  width: 360px;
+  max-height: min(700px, calc(100vh - 2 * var(--yl-offset)));
   border-radius: var(--radius);
   overflow: hidden;
   opacity: 0;
@@ -65,13 +70,12 @@
   transform: none;
 }
 
-/* Bottom corners open the panel above the button, top corners below it. */
 .yayloyalty-launcher[data-position^='bottom_'] .yl-launcher-panel {
-  bottom: calc(var(--yl-offset) + 56px);
+  bottom: var(--yl-offset);
 }
 
 .yayloyalty-launcher[data-position^='top_'] .yl-launcher-panel {
-  top: calc(var(--yl-offset) + 56px);
+  top: var(--yl-offset);
 }
 
 .yl-launcher-body {

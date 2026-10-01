@@ -276,7 +276,7 @@ Lite registers 3 transactional loyalty emails; Pro adds 9 more. Each is a `WC_Em
 
 ### Storefront Launcher (includes/Engine/Storefront/, assets/)
 
-Read-only floating panel (designs 1a–1e, F13) displaying balance, ways to earn, ways to redeem (info), recent activity (lazy), guest signup/sign-in. Both Lite and Pro ship the same CSS and JS.
+Read-only floating panel (designs 1a–1e, F13) displaying balance, ways to earn, recent activity (lazy), guest signup/sign-in. Both Lite and Pro ship the same CSS and JS.
 
 | File | Role |
 |---|---|
@@ -287,9 +287,9 @@ Read-only floating panel (designs 1a–1e, F13) displaying balance, ways to earn
 | `LauncherIcon` | The button icon per Design `launcher.icon` (inline SVG; lucide Gift for `default`; the uploaded image for `custom`) and the close X |
 | `LauncherEarnRules` | Pure: which live campaigns "Ways to earn" advertises — built-in or condition-free, first in engine order per trigger, multiplier purchase campaigns skipped |
 | `ShopperActivityRow` | One ledger row as the shopper sees it: label (adjustments read "by {store}"), order id, points, date. No note, actor or campaign id |
-| `UiClasses` | The admin kit's class lists, `yl:`-prefixed: `button( variant, size )`, `badge( variant )`, constants `CARD`, `SKELETON`, `TITLE`, `DESCRIPTION`, `SECTION_HEADING`. Allowed mirror (code-standards § 16) |
+| `UiClasses` | The admin kit's class lists, `yl:`-prefixed: `button( variant, size )` (primary, primary-outline), constants `SKELETON`, `PANEL_SECTION`, `SECTION_HEADING`, `PANEL_ROW`. Allowed mirror (code-standards § 16) |
 | `templates/launcher.php` | Shell: trigger button, overlay, dialog (header, scrolling body, member footer); activity URL and nonce as `data-*` attributes |
-| `templates/panel-member.php` | Signed-in panel (balance, worth, ways to earn, ways to redeem, activity section, footer link) |
+| `templates/panel-member.php` | Signed-in panel (balance, worth, ways to earn, activity section, footer link) |
 | `templates/panel-guest.php` | Guest panel (signed_out_prompt, how-it-works, signup/sign-in buttons, product estimate on product page) |
 
 **CSS:** `apps/admin/src/storefront.css` → `assets/dist/storefront/launcher.css` (Tailwind v4, admin kit tokens, `yl:` prefix, scoped to `.yayloyalty-launcher`, no preflight, rem→px in build). Built by `./scripts/run.sh build [pro|lite]` (both Lite and Pro versions build the same CSS).
