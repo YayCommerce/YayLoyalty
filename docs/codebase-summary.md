@@ -46,6 +46,7 @@ A fact is written out in one doc; every other doc links to it. Update the owner,
 | `Engine/Register/RegisterProd.php`   | Registers scripts/styles for production                                                                   |
 | `Engine/Register/RegisterDev.php`    | Registers dev server origin for HMR (Vite)                                                                |
 | `Engine/Register/RegisterFacade.php` | Facade that selects RegisterProd or RegisterDev                                                           |
+| `Engine/Register/ScriptName.php`     | Script/style handle constants shared by RegisterProd and RegisterDev                                      |
 | `Engine/Admin/Settings.php`          | Loads admin menu items and pages                                                                          |
 | `Engine/ActDeact.php`                | Activation, deactivation, multisite hooks, installer trigger                                              |
 | `Engine/CustomerActivityListener.php` | First WP-core business-logic listener: `delete_user`/`wpmu_delete_user` (account-deletion capture) + `yayloyalty_ledger_recorded` (account_created/points_adjusted capture); registered directly in `yayloyalty.php`, no dedicated Listeners/Hooks base class exists |
@@ -81,6 +82,7 @@ All in `Enums/` as `final class` + `const` + `all()` / `all_known()` + `is_valid
 - **`ActivityEvent`** — the `yayloyalty_customer_meta.meta_key` vocabulary, also the activity log's `event_type`: `account_created`, `points_adjusted`, `tier_changed`, `expiry_reset`, `reward_redeemed`, `balance_email_sent`, `expiring_soon_email_sent`, `account_deleted`. Only the first, second and last have a writer.
 - **`ActorKind`** — who performed an activity-log event: `staff`, `automatic`, `customer`. Constants + `ALL` only, like `ActivityEvent`.
 - **`Status`** — `active`, `paused`, `draft`, `archived`.
+- **`OrderStatus`** — `AWARD` (`completed`, the one status that awards) and `paid()` (what counts as a paid order for `CustomerFactsReader`).
 - **`RewardType`** — `flexible_discount` (Lite); plus `fixed_coupon`, `percent_coupon`, `free_shipping`, `free_product` (Pro). `all()` is fireable; `all_known()` is recognised (downgrade-safe).
 - **`CampaignConditionType`** & **`RewardConditionType`** — Eligibility/availability rules; share `Enums\ConditionTypeMethods` trait for common methods.
 - **`ConditionTypeMethods`** — Trait providing `all()`, `all_known()`, `is_valid()`, `is_known()`, `operators_for()`, `assert()` for condition vocabularies.
@@ -159,7 +161,7 @@ were removed once the real path covered every wireframe artboard.
 
 **Note on `CampaignRestController`:** All four verbs are real (`CampaignRepository`). `get_items()`/`get_item()` decorate each row with `points_issued`/`is_deletable` from `LedgerRepository::totals_by_campaign()` (one batched query per response, never per row). `update_item()` writes via `Campaign::to_update_row()` — pairs `to_row()`'s data with `get_format()`'s placeholders position-for-position, since `$wpdb->update()`'s `$format` is consumed positionally and dropping the immutable columns (`slug`, `trigger_type`, `created_at`, `created_by`, `is_builtin`) from one without the other would silently misalign the rest. `delete_item()` 409s when the campaign has any ledger row (count, not points — a refunded-to-zero campaign still has rows naming it).
 
-**Note on `CampaignPerformanceRestController`:** real end to end — `resolve_row()` looks up the real campaign via `CampaignRepository`; `get_performance()`'s totals and `get_entries()`'s rows both come from `Pro\Repositories\CampaignPerformanceRepository` (one aggregate query over `ledger`, plus a paged/searchable query joined to `wp_users`). `totals` is lifetime; the chart's own `window`/`daily` is a 30-day span clamped to the campaign's run — see the controller's class docblock ("TWO TIME BASES ON PURPOSE"). `skipped`, `estimate` and `totals.avg_order_subtotal` still ship `null` — they need the earning engine (F01-4, scaffold), not a missing repository.
+**Note on `CampaignPerformanceRestController`:** real end to end — `resolve_row()` looks up the real campaign via `CampaignRepository`; `get_performance()`'s totals and `get_entries()`'s rows both come from `Pro\Repositories\CampaignPerformanceRepository` (one aggregate query over `ledger`, plus a paged/searchable query joined to `wp_users`). `totals` is lifetime; the chart's own `window`/`daily` is a 30-day span clamped to the campaign's run — see the controller's class docblock ("TWO TIME BASES ON PURPOSE"). `skipped`, `estimate` and `totals.avg_order_subtotal` still ship `null`: the first two need every order replayed through the engine (not built), the third needs the scored base amount stored on the ledger row (computed by `Breakdown`, then discarded). The controller's docblock still calls `EarningService` scaffold — stale since the award path shipped.
 
 ### Points engine (includes/Engine/Points/)
 
@@ -264,12 +266,36 @@ Lite registers 3 transactional loyalty emails; Pro adds 9 more. Each is a `WC_Em
 | `Pro/YayLoyaltyPro.php` | Boot; attaches all Pro filters; fires `yayloyalty_pro_booted` | — |
 | `Pro/Services/ConditionsEvaluator.php` | Evaluates campaign conditions (ANDed) as a pure comparison against the Context; fails on unknown type or missing input | `yayloyalty_campaign_conditions_evaluator` |
 | `Pro/Controllers/CampaignPreviewRestController.php` | POST `/campaigns/{id}/preview-conditions` — 404 in Lite | `yayloyalty_rest_controllers` |
-| `Pro/Controllers/CampaignPerformanceRestController.php` | `GET /campaigns/{id}/performance` (the decorated campaign itself + totals/daily/skipped/estimate), `GET /campaigns/{id}/performance/entries` (paged rows) via `Pro/Repositories/CampaignPerformanceRepository.php` (ledger aggregate + paged/searchable query, real) — cap `MANAGE_CAMPAIGNS`, `purchase`/`signup`/`review` only (other triggers 404); `totals` lifetime, chart `window`/`daily` last-30-days; `skipped`/`estimate`/`avg_order_subtotal` still `null` pending the earning engine (F01-4); 404 in Lite | `yayloyalty_rest_controllers` |
+| `Pro/Controllers/CampaignPerformanceRestController.php` | `GET /campaigns/{id}/performance` (the decorated campaign itself + totals/daily/skipped/estimate), `GET /campaigns/{id}/performance/entries` (paged rows) via `Pro/Repositories/CampaignPerformanceRepository.php` (ledger aggregate + paged/searchable query, real) — cap `MANAGE_CAMPAIGNS`, `purchase`/`signup`/`review` only (other triggers 404); `totals` lifetime, chart `window`/`daily` last-30-days; `skipped`/`estimate`/`avg_order_subtotal` still `null` (see the note under Controllers); 404 in Lite | `yayloyalty_rest_controllers` |
 | `Pro/Controllers/DashboardProRestController.php` | `GET /dashboard/pro?range=` (rest base `dashboard-pro`) — per-campaign series + top campaigns via `Pro/Repositories/CampaignPointsRepository.php` (standalone read-only, ledger `campaign_id`); referrals/tiers `null` until their tables exist; 404 in Lite | `yayloyalty_rest_controllers` |
 | `Pro/Controllers/CustomerSegmentsRestController.php` | POST `/customers/segments`, DELETE `/customers/segments` (name in body) — save/delete saved Customers-page filter sets (name + filters minus search); 404 in Lite | `yayloyalty_rest_controllers` |
 | `Pro/Helpers/CustomerSegmentsHelper.php` | `yayloyalty_customer_segments` option: site-wide list of `{name, filters: {snake_case keys}}`, whitelisted both directions; name is the identity, duplicates rejected (no upsert) | — |
 
 **Seams (filters and actions):** where each fires and who subscribes: [`system-architecture.md` → Internal Extension Seams](./system-architecture.md#internal-extension-seams-filters).
+
+### Storefront Launcher (includes/Engine/Storefront/, assets/)
+
+Read-only floating panel (designs 1a–1e, F13) displaying balance, ways to earn, ways to redeem (info), recent activity (lazy), guest signup/sign-in. Both Lite and Pro ship the same CSS and JS.
+
+| File | Role |
+|---|---|
+| `Launcher.php` | Registered from `YayLoyalty::__construct()` on non-admin requests. `prepare()` on `wp` decides once (visibility, then `ProgramGate`) and builds the view; `enqueue()` / `render()` act only if it did. Brand colour/radius → CSS variables, dark text on a light brand colour |
+| `LauncherVisibility` | Pure: Design tab scope, chosen pages, `hide_for_roles`. The caller passes the conditional tags in |
+| `LauncherPayload` | The templates' view for one request: design + text, balance and worth (members), ways to earn/redeem, where a guest can register, guest product estimate (base rate). Rendered server-side, never sent as JSON |
+| `LauncherCopy` | The panel's formatted text: points, signed points, rates, money via `wc_price()` + `Text::plain()`, the Design tab's `earn_rate_line` filled in, redeem rate and limits |
+| `LauncherIcon` | The button icon per Design `launcher.icon` (inline SVG; lucide Gift for `default`; the uploaded image for `custom`) and the close X |
+| `LauncherEarnRules` | Pure: which live campaigns "Ways to earn" advertises — built-in or condition-free, first in engine order per trigger, multiplier purchase campaigns skipped |
+| `ShopperActivityRow` | One ledger row as the shopper sees it: label (adjustments read "by {store}"), order id, points, date. No note, actor or campaign id |
+| `UiClasses` | The admin kit's class lists, `yl:`-prefixed: `button( variant, size )`, `badge( variant )`, constants `CARD`, `SEPARATOR`, `SKELETON`, `TITLE`, `DESCRIPTION`, `SECTION_HEADING`. Allowed mirror (code-standards § 16) |
+| `templates/launcher.php` | Shell: trigger button, overlay, dialog (header, scrolling body, member footer); activity URL and nonce as `data-*` attributes |
+| `templates/panel-member.php` | Signed-in panel (balance, worth, ways to earn, ways to redeem, activity section, footer link) |
+| `templates/panel-guest.php` | Guest panel (signed_out_prompt, how-it-works, signup/sign-in buttons, product estimate on product page) |
+
+**CSS:** `apps/admin/src/storefront.css` → `assets/dist/storefront/launcher.css` (Tailwind v4, admin kit tokens, `yl:` prefix, scoped to `.yayloyalty-launcher`, no preflight, rem→px in build). Built by `./scripts/run.sh build [pro|lite]` (both Lite and Pro versions build the same CSS).
+
+**JavaScript:** `assets/storefront/launcher.js` (~150 lines) — open/close, focus trap, Esc/tap-outside/drag-handle close, lazy `/me/activity` fetch.
+
+**REST:** `StorefrontActivityRestController` → `GET /me/activity` (session identity, shopper-safe projection, 3 rows).
 
 ---
 
