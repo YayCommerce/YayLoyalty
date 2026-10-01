@@ -63,7 +63,7 @@ final class StorefrontActivityRouteTest extends IntegrationTestCase {
         $response = rest_do_request( new \WP_REST_Request( 'GET', '/yayloyalty/v1/me/activity' ) );
 
         $this->assertSame( 401, $response->get_status() );
-        $this->assertSame( 'yayloyalty_signed_out', $response->get_data()['code'] );
+        $this->assertSame( 'unauthorized', $response->get_data()['code'] );
     }
 
     public function test_signed_in_customer_gets_their_rows(): void {

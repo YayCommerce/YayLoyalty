@@ -18,16 +18,15 @@ defined( 'ABSPATH' ) || exit;
  */
 final class LauncherEarnRules {
 
+    /** The triggers the launcher advertises, in display order: Lite's three. */
+    public const TRIGGERS = [ CampaignTrigger::PURCHASE, CampaignTrigger::SIGNUP, CampaignTrigger::REVIEW ];
+
     /**
      * @param Campaign[] $live Campaigns live now, any trigger, in the engine's selection order.
      * @return array{purchase: ?float, signup: ?int, review: ?int} Points per currency unit, points per signup, points per review; null when not advertised.
      */
     public static function from_campaigns( array $live ): array {
-        $rules = [
-            CampaignTrigger::PURCHASE => null,
-            CampaignTrigger::SIGNUP   => null,
-            CampaignTrigger::REVIEW   => null,
-        ];
+        $rules = array_fill_keys( self::TRIGGERS, null );
 
         foreach ( $live as $campaign ) {
             $trigger = $campaign->get_trigger();

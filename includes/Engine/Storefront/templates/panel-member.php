@@ -16,6 +16,11 @@ defined( 'ABSPATH' ) || exit;
 
 $yayloyalty_earn   = $view['earn'];
 $yayloyalty_redeem = $view['redeem'];
+// Flat-points rules share one row shape; purchase states a rate, so it is written out above the loop.
+$yayloyalty_flat_rows = [
+    CampaignTrigger::SIGNUP => __( 'Create an account', 'yayloyalty' ),
+    CampaignTrigger::REVIEW => __( 'Write a review', 'yayloyalty' ),
+];
 ?>
 <section class="yl:flex yl:flex-col yl:gap-1 yl:rounded-lg yl:bg-muted yl:p-4">
     <p class="<?php echo esc_attr( UiClasses::DESCRIPTION ); ?>"><?php echo esc_html( $yayloyalty_text['balance_heading'] ); ?></p>
@@ -40,34 +45,25 @@ $yayloyalty_redeem = $view['redeem'];
                     <span class="yl:text-muted-foreground yl:text-right"><?php echo esc_html( LauncherCopy::earn_rate( $yayloyalty_text['earn_rate_line'], $yayloyalty_earn[ CampaignTrigger::PURCHASE ] ) ); ?></span>
                 </li>
             <?php endif; ?>
-            <?php if ( null !== $yayloyalty_earn[ CampaignTrigger::SIGNUP ] ) : ?>
-                <li class="yl:flex yl:items-center yl:justify-between yl:gap-3 yl:py-2">
-                    <span class="yl:font-medium"><?php esc_html_e( 'Create an account', 'yayloyalty' ); ?></span>
-                    <span class="<?php echo esc_attr( UiClasses::badge( 'primary-soft' ) ); ?>">
-                        <?php
-                        /* translators: %s: points. */
-                        echo esc_html( sprintf( __( '%s points', 'yayloyalty' ), LauncherCopy::points( $yayloyalty_earn[ CampaignTrigger::SIGNUP ] ) ) );
-                        ?>
-                    </span>
-                </li>
-            <?php endif; ?>
-            <?php if ( null !== $yayloyalty_earn[ CampaignTrigger::REVIEW ] ) : ?>
-                <li class="yl:flex yl:items-center yl:justify-between yl:gap-3 yl:py-2">
-                    <span class="yl:font-medium"><?php esc_html_e( 'Write a review', 'yayloyalty' ); ?></span>
-                    <span class="<?php echo esc_attr( UiClasses::badge( 'primary-soft' ) ); ?>">
-                        <?php
-                        /* translators: %s: points. */
-                        echo esc_html( sprintf( __( '%s points', 'yayloyalty' ), LauncherCopy::points( $yayloyalty_earn[ CampaignTrigger::REVIEW ] ) ) );
-                        ?>
-                    </span>
-                </li>
-            <?php endif; ?>
+            <?php foreach ( $yayloyalty_flat_rows as $yayloyalty_trigger => $yayloyalty_label ) : ?>
+                <?php if ( null !== $yayloyalty_earn[ $yayloyalty_trigger ] ) : ?>
+                    <li class="yl:flex yl:items-center yl:justify-between yl:gap-3 yl:py-2">
+                        <span class="yl:font-medium"><?php echo esc_html( $yayloyalty_label ); ?></span>
+                        <span class="<?php echo esc_attr( UiClasses::badge( 'primary-soft' ) ); ?>">
+                            <?php
+                            /* translators: %s: points. */
+                            echo esc_html( sprintf( __( '%s points', 'yayloyalty' ), LauncherCopy::points( $yayloyalty_earn[ $yayloyalty_trigger ] ) ) );
+                            ?>
+                        </span>
+                    </li>
+                <?php endif; ?>
+            <?php endforeach; ?>
         </ul>
     </section>
 <?php endif; ?>
 
 <?php if ( null !== $yayloyalty_redeem ) : ?>
-    <section class="yl-launcher-redeem yl:flex yl:flex-col yl:gap-2">
+    <section class="yl:flex yl:flex-col yl:gap-2">
         <h3 class="<?php echo esc_attr( UiClasses::SECTION_HEADING ); ?>"><?php esc_html_e( 'Ways to redeem', 'yayloyalty' ); ?></h3>
         <div class="<?php echo esc_attr( UiClasses::CARD ); ?> yl:gap-1">
             <div class="yl:flex yl:items-center yl:justify-between yl:gap-3">

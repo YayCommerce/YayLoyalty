@@ -287,7 +287,7 @@ Read-only floating panel (designs 1a–1e, F13) displaying balance, ways to earn
 | `LauncherIcon` | The button icon per Design `launcher.icon` (inline SVG; lucide Gift for `default`; the uploaded image for `custom`) and the close X |
 | `LauncherEarnRules` | Pure: which live campaigns "Ways to earn" advertises — built-in or condition-free, first in engine order per trigger, multiplier purchase campaigns skipped |
 | `ShopperActivityRow` | One ledger row as the shopper sees it: label (adjustments read "by {store}"), order id, points, date. No note, actor or campaign id |
-| `UiClasses` | The admin kit's class lists, `yl:`-prefixed: `button( variant, size )`, `badge( variant )`, constants `CARD`, `SEPARATOR`, `SKELETON`, `TITLE`, `DESCRIPTION`, `SECTION_HEADING`. Allowed mirror (code-standards § 16) |
+| `UiClasses` | The admin kit's class lists, `yl:`-prefixed: `button( variant, size )`, `badge( variant )`, constants `CARD`, `SKELETON`, `TITLE`, `DESCRIPTION`, `SECTION_HEADING`. Allowed mirror (code-standards § 16) |
 | `templates/launcher.php` | Shell: trigger button, overlay, dialog (header, scrolling body, member footer); activity URL and nonce as `data-*` attributes |
 | `templates/panel-member.php` | Signed-in panel (balance, worth, ways to earn, ways to redeem, activity section, footer link) |
 | `templates/panel-guest.php` | Guest panel (signed_out_prompt, how-it-works, signup/sign-in buttons, product estimate on product page) |

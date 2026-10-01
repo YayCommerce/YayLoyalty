@@ -4,6 +4,7 @@ namespace YayLoyalty\Controllers;
 use YayLoyalty\Engine\Storefront\LauncherCopy;
 use YayLoyalty\Engine\Storefront\ShopperActivityRow;
 use YayLoyalty\Repositories\LedgerRepository;
+use YayLoyalty\Utils\Dates;
 use YayLoyalty\Utils\Text;
 
 defined( 'ABSPATH' ) || exit;
@@ -53,25 +54,17 @@ final class StorefrontActivityRestController extends AbstractRestController {
     public function is_signed_in() {
         return is_user_logged_in()
             ? true
-            : new \WP_Error( 'yayloyalty_signed_out', __( 'Sign in to see your points activity.', 'yayloyalty' ), [ 'status' => 401 ] );
+            : $this->error_unauthorized( __( 'Sign in to see your points activity.', 'yayloyalty' ) );
     }
 
     /** @return array{items: array<int, array{label: string, meta: string, points: int, delta: string}>} */
     public function get_activity( \WP_REST_Request $request ): array { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- the user comes from the session.
-        $result = $this->ledger->paginate_for_user(
-            get_current_user_id(),
-            [
-                'page'     => 1,
-                'per_page' => self::ROWS,
-                'orderby'  => 'id',
-                'order'    => 'desc',
-            ]
-        );
+        $entries = $this->ledger->latest_for_user( get_current_user_id(), self::ROWS );
 
         $store = Text::plain( (string) get_bloginfo( 'name' ) );
         $items = [];
 
-        foreach ( $result['items'] as $entry ) {
+        foreach ( $entries as $entry ) {
             $row     = ShopperActivityRow::from_entry( $entry, $store );
             $items[] = [
                 'label'  => $row['label'],
@@ -98,11 +91,7 @@ final class StorefrontActivityRestController extends AbstractRestController {
             'properties' => [
                 'label'  => $text,
                 'meta'   => [ 'description' => __( 'Date in the site format, then the order number when there is one.', 'yayloyalty' ) ] + $text,
-                'points' => [
-                    'type'     => 'integer',
-                    'context'  => [ 'view' ],
-                    'readonly' => true,
-                ],
+                'points' => [ 'type' => 'integer' ] + $text,
                 'delta'  => [ 'description' => __( 'Signed, formatted points: "+270" or "−120".', 'yayloyalty' ) ] + $text,
             ],
         ];
@@ -110,8 +99,8 @@ final class StorefrontActivityRestController extends AbstractRestController {
 
     /** "9 Sept 2026 · order #4207": the date in the site's format and timezone, then the order when there is one. */
     private function meta_line( string $created_at_utc, ?int $order_id ): string {
-        $timestamp = strtotime( $created_at_utc . ' UTC' );
-        $date      = false === $timestamp ? '' : (string) wp_date( (string) get_option( 'date_format' ), $timestamp );
+        $timestamp = Dates::to_timestamp( $created_at_utc );
+        $date      = 0 === $timestamp ? '' : (string) wp_date( (string) get_option( 'date_format' ), $timestamp );
 
         if ( null === $order_id ) {
             return $date;

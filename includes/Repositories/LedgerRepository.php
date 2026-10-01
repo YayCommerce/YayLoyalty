@@ -162,6 +162,15 @@ class LedgerRepository extends AbstractRepository {
         return $this->paginate( $args );
     }
 
+    /**
+     * A user's newest rows, without paginate()'s COUNT(*): for a caller that never shows a total.
+     *
+     * @return LedgerEntry[]
+     */
+    public function latest_for_user( int $user_id, int $limit ): array {
+        return $this->select_entries( 'user_id = %d', [ $user_id ], max( 1, $limit ), true );
+    }
+
     /** COUNT(*) of a user's ledger rows — cheaper than paginate_for_user() when only the total is needed. */
     public function count_for_user( int $user_id ): int {
         global $wpdb;
@@ -287,14 +296,15 @@ class LedgerRepository extends AbstractRepository {
      * @param int     $limit  0 for no limit.
      * @return LedgerEntry[]
      */
-    private function select_entries( string $where, array $values, int $limit = 0 ): array {
+    private function select_entries( string $where, array $values, int $limit = 0, bool $is_newest_first = false ): array {
         global $wpdb;
 
         $limit_sql = $limit > 0 ? ' LIMIT ' . $limit : '';
+        $order_sql = $is_newest_first ? 'DESC' : 'ASC';
 
         // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $where carries placeholders only; every value is bound here.
         $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-            $wpdb->prepare( 'SELECT * FROM `' . esc_sql( $this->table() ) . "` WHERE {$where} ORDER BY id ASC{$limit_sql}", $values ),
+            $wpdb->prepare( 'SELECT * FROM `' . esc_sql( $this->table() ) . "` WHERE {$where} ORDER BY id {$order_sql}{$limit_sql}", $values ),
             ARRAY_A
         );
         // phpcs:enable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber

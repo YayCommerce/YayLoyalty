@@ -66,7 +66,7 @@ final class LauncherPayload {
     private function live_campaigns( string $now ): array {
         $live = [];
 
-        foreach ( [ CampaignTrigger::PURCHASE, CampaignTrigger::SIGNUP, CampaignTrigger::REVIEW ] as $trigger ) {
+        foreach ( LauncherEarnRules::TRIGGERS as $trigger ) {
             $live = array_merge( $live, $this->campaigns->live_for_trigger( $trigger, $now ) );
         }
 

@@ -46,6 +46,18 @@ if ( null !== $yayloyalty_redeem ) {
     /* translators: %s: "100 points = $1". */
     $yayloyalty_steps[] = sprintf( __( 'Spend them at checkout — %s off', 'yayloyalty' ), LauncherCopy::redeem_rate( $yayloyalty_redeem['points_per_unit'] ) );
 }
+
+$yayloyalty_register_url = $yayloyalty_is_checkout_only ? $view['checkout_url'] : $view['account_url'];
+
+if ( null === $yayloyalty_signup ) {
+    $yayloyalty_register_text = $yayloyalty_is_checkout_only ? __( 'Create an account at checkout', 'yayloyalty' ) : __( 'Create an account', 'yayloyalty' );
+} elseif ( $yayloyalty_is_checkout_only ) {
+    /* translators: %s: points. */
+    $yayloyalty_register_text = sprintf( __( 'Create an account at checkout and get %s points', 'yayloyalty' ), LauncherCopy::points( $yayloyalty_signup ) );
+} else {
+    /* translators: %s: points. */
+    $yayloyalty_register_text = sprintf( __( 'Create an account and get %s points', 'yayloyalty' ), LauncherCopy::points( $yayloyalty_signup ) );
+}
 ?>
 <section class="yl:flex yl:flex-col yl:gap-2">
     <?php if ( '' !== trim( $yayloyalty_text['signed_out_prompt'] ) ) : ?>
@@ -72,20 +84,8 @@ if ( null !== $yayloyalty_redeem ) {
 
 <section class="yl:flex yl:flex-col yl:gap-2">
     <?php if ( null !== $yayloyalty_route ) : ?>
-        <a class="<?php echo esc_attr( UiClasses::button( 'primary' ) ); ?> yl:w-full" href="<?php echo esc_url( $yayloyalty_is_checkout_only ? $view['checkout_url'] : $view['account_url'] ); ?>">
-            <?php
-            if ( null === $yayloyalty_signup ) {
-                echo esc_html( $yayloyalty_is_checkout_only ? __( 'Create an account at checkout', 'yayloyalty' ) : __( 'Create an account', 'yayloyalty' ) );
-            } else {
-                echo esc_html(
-                    $yayloyalty_is_checkout_only
-                        /* translators: %s: points. */
-                        ? sprintf( __( 'Create an account at checkout and get %s points', 'yayloyalty' ), LauncherCopy::points( $yayloyalty_signup ) )
-                        /* translators: %s: points. */
-                        : sprintf( __( 'Create an account and get %s points', 'yayloyalty' ), LauncherCopy::points( $yayloyalty_signup ) )
-                );
-            }
-            ?>
+        <a class="<?php echo esc_attr( UiClasses::button( 'primary' ) ); ?> yl:w-full" href="<?php echo esc_url( $yayloyalty_register_url ); ?>">
+            <?php echo esc_html( $yayloyalty_register_text ); ?>
         </a>
     <?php endif; ?>
     <a class="<?php echo esc_attr( UiClasses::button( null !== $yayloyalty_route ? 'outline' : 'primary' ) ); ?> yl:w-full" href="<?php echo esc_url( $view['account_url'] ); ?>">

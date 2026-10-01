@@ -3,26 +3,39 @@
  * bottom sheet. Imported by src/storefront.css only; plain class names (yl-launcher-*) because these
  * are positions and transitions, not kit styling.
  */
-/* Floating button (1a): bottom right, clear of the footer; themes may move it with the offset variable. */
+/*
+ * Distance from the screen edge (themes override --yayloyalty-launcher-offset, e.g. to clear a sticky
+ * bar) and which way the closed panel sits: below its open spot, above it for the top corners.
+ */
+.yayloyalty-launcher {
+  --yl-offset: var(--yayloyalty-launcher-offset, 32px);
+  --yl-closed-shift: 8px;
+}
+
+.yayloyalty-launcher[data-position^='top_'] {
+  --yl-closed-shift: -8px;
+}
+
+/* Floating button (1a): bottom right by default, clear of the footer. */
 .yl-launcher-trigger {
   position: fixed;
   z-index: 99990;
 }
 
-.yayloyalty-launcher[data-position$='_right'] .yl-launcher-trigger {
-  right: var(--yayloyalty-launcher-offset, 32px);
+.yayloyalty-launcher[data-position$='_right'] :is(.yl-launcher-trigger, .yl-launcher-panel) {
+  right: var(--yl-offset);
 }
 
-.yayloyalty-launcher[data-position$='_left'] .yl-launcher-trigger {
-  left: var(--yayloyalty-launcher-offset, 32px);
+.yayloyalty-launcher[data-position$='_left'] :is(.yl-launcher-trigger, .yl-launcher-panel) {
+  left: var(--yl-offset);
 }
 
 .yayloyalty-launcher[data-position^='bottom_'] .yl-launcher-trigger {
-  bottom: var(--yayloyalty-launcher-offset, 32px);
+  bottom: var(--yl-offset);
 }
 
 .yayloyalty-launcher[data-position^='top_'] .yl-launcher-trigger {
-  top: var(--yayloyalty-launcher-offset, 32px);
+  top: var(--yl-offset);
 }
 
 .yl-launcher-overlay {
@@ -32,16 +45,16 @@
   background: transparent;
 }
 
-/* Panel (1b, 1c): anchored to the button's corner, capped at 700px, sections scroll inside. */
+/* Panel (1b, 1c): beside the button's corner, capped at 700px, sections scroll inside. */
 .yl-launcher-panel {
   position: fixed;
   z-index: 99992;
   width: 380px;
-  max-height: min(700px, calc(100vh - 2 * var(--yayloyalty-launcher-offset, 32px) - 64px));
+  max-height: min(700px, calc(100vh - 2 * var(--yl-offset) - 64px));
   border-radius: var(--radius);
   overflow: hidden;
   opacity: 0;
-  transform: translateY(8px);
+  transform: translateY(var(--yl-closed-shift));
   transition:
     opacity 0.2s ease,
     transform 0.2s ease;
@@ -52,26 +65,13 @@
   transform: none;
 }
 
-.yayloyalty-launcher[data-position$='_right'] .yl-launcher-panel {
-  right: var(--yayloyalty-launcher-offset, 32px);
-}
-
-.yayloyalty-launcher[data-position$='_left'] .yl-launcher-panel {
-  left: var(--yayloyalty-launcher-offset, 32px);
-}
-
+/* Bottom corners open the panel above the button, top corners below it. */
 .yayloyalty-launcher[data-position^='bottom_'] .yl-launcher-panel {
-  bottom: calc(var(--yayloyalty-launcher-offset, 32px) + 56px);
+  bottom: calc(var(--yl-offset) + 56px);
 }
 
-/* Top corners open the panel downward, below the button. */
 .yayloyalty-launcher[data-position^='top_'] .yl-launcher-panel {
-  top: calc(var(--yayloyalty-launcher-offset, 32px) + 56px);
-  transform: translateY(-8px);
-}
-
-.yayloyalty-launcher[data-position^='top_'] .yl-launcher-panel[data-state='open'] {
-  transform: none;
+  top: calc(var(--yl-offset) + 56px);
 }
 
 .yl-launcher-body {
