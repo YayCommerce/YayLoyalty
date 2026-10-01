@@ -18,7 +18,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * The storefront launcher (designs 1a, 1b, 1c, 1e): decides once per request, then enqueues and prints.
  *
- * Read-only in v1: balance, ways to earn and redeem, recent activity. Redeeming arrives with F08.
+ * Read-only in v1: balance, ways to earn, recent activity. Redeeming arrives with F08.
  */
 final class Launcher {
 
@@ -50,17 +50,27 @@ final class Launcher {
             return;
         }
 
-        wp_enqueue_style( ScriptName::STOREFRONT_STYLE, YAYLOYALTY_PLUGIN_URL . 'assets/dist/storefront/launcher.css', [], YAYLOYALTY_VERSION );
+        wp_enqueue_style( ScriptName::STOREFRONT_STYLE, YAYLOYALTY_PLUGIN_URL . 'assets/dist/storefront/launcher.css', [], self::asset_version( 'assets/dist/storefront/launcher.css' ) );
         wp_enqueue_script(
             ScriptName::STOREFRONT_SCRIPT,
             YAYLOYALTY_PLUGIN_URL . 'assets/storefront/launcher.js',
             [],
-            YAYLOYALTY_VERSION,
+            self::asset_version( 'assets/storefront/launcher.js' ),
             [
                 'in_footer' => true,
                 'strategy'  => 'defer',
             ]
         );
+    }
+
+    /**
+     * The plugin version plus the file's mtime: the template and its stylesheet/script change together,
+     * so a rebuild must reach the browser and page caches without a version bump.
+     */
+    private static function asset_version( string $relative_path ): string {
+        $mtime = @filemtime( YAYLOYALTY_PLUGIN_DIR . $relative_path ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- a missing build falls back to the version.
+
+        return false === $mtime ? YAYLOYALTY_VERSION : YAYLOYALTY_VERSION . '.' . $mtime;
     }
 
     public function render(): void {
