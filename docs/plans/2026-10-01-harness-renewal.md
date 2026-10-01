@@ -391,9 +391,26 @@ Exception: P1–P3 were prepared in one session (2026-10-01), on branches stacke
   6. **Plans/specs:** act only on `Status: active` / `accepted`.
   7. **Where to look:** only new-harness files that exist (initially `docs/plans/`). The stripped README is not linked until P11.
 - **Checklist:**
-  - [ ] audit recorded
-  - [ ] every command run
-  - [ ] do-not-reintroduce ticked
+  - [x] audit recorded (commit body)
+  - [x] every command run
+  - [x] do-not-reintroduce ticked (commit body)
+- **Notes (2026-10-01):**
+  - Outcomes on Node 22:
+    - `pnpm install` exits 0.
+    - `composer lint` exits 1 (7 warnings).
+    - `composer test` exits 0 with no tests.
+    - Admin lint exits 1 (eslint: 1 error, 39 warnings).
+    - Admin test exits 1 (no test files).
+    - `tsc --noEmit` exits 1 with the 3 TS2307.
+    - `composer test:integration` prints "Error establishing a database connection" but exits 0.
+    - `run.sh build` exits 2 with the 3 TS2307.
+    - `run.sh dev` serves `/main.tsx` on :3030. Its `composer update` moved 6 Symfony dev packages in the ignored lock; `composer.json`, `scoper.inc.php` and `vendor-prefixed/` came out unchanged.
+    - `run.sh release lite --no-prompt` exits 2 at the same tsc errors, after removing 58 dev packages.
+    - B matches the P2 baseline.
+    - `vendor/`, `vendor-prefixed/` and `composer.lock` were restored from a backup afterwards.
+  - phpcs probe: a file with an enum, `readonly` promotion, union types, `?->`, `match` and named arguments passes PHPCompatibility. Hard rule 4 therefore names review as the only guard.
+  - C16 now skips the `dev/edd` branch name and gitignored build output. C11 gives `claude -p` an empty stdin.
+  - For P5: in `CLAUDE.md`, replace the `dev`/`release` side-effect notes with links to `known-issues.md` rather than restating them there.
 - **Acceptance:**
   - `test $(wc -l < CLAUDE.md) -lt 100`.
   - C6 and C15 clean.
@@ -452,6 +469,7 @@ Exception: P1–P3 were prepared in one session (2026-10-01), on branches stacke
   - release leaves `--no-dev` deps, so run `composer install` after;
   - `makepot` needs a build first;
   - `dev:admin`/`build:admin` ignore `BUILD_TYPE` (always Pro);
+  - `composer test:integration` exits 0 when the database is unreachable (found in P3);
   - untracked lockfiles.
 - **Steps:**
   1. Write both docs. Known-issues entries use the fields Symptom · Cause · Workaround · Remove when.
@@ -719,7 +737,7 @@ for r in .claude/rules/*.md; do sed -n '/^---$/,/^---$/p' "$r" | grep -oE '"[^"]
   while read -r g; do [ -n "$(git ls-files ":(glob)$g" | head -1)" ] || echo "DEAD GLOB $r $g"; done; done
 # C11 — rules load exactly when relevant (InstructionsLoaded log)
 S=$(mktemp -d); L="$S/l.jsonl"; printf '{"hooks":{"InstructionsLoaded":[{"hooks":[{"type":"command","command":"cat >> %s"}]}]}}' "$L" > "$S/s.json"
-probe(){ : > "$L"; claude -p --settings "$S/s.json" --setting-sources project --max-turns 2 --no-session-persistence "Read $1 and reply OK." >/dev/null; sleep 2
+probe(){ : > "$L"; claude -p --settings "$S/s.json" --setting-sources project --max-turns 2 --no-session-persistence "Read $1 and reply OK." </dev/null >/dev/null; sleep 2
   jq -r '[.load_reason, .memory_type, (.file_path|split("/")|last)] | @tsv' "$L" | sort -u; }
 probe includes/YayLoyalty.php; probe apps/admin/src/main.tsx; probe scripts/run.sh; probe README.md
 #   Record any memory_type=User lines: the harness must not depend on personal config.
@@ -731,8 +749,8 @@ jq empty .claude/settings.json && claude doctor
 for p in vendor/x.php includes/x.php; do echo "{\"tool_input\":{\"file_path\":\"$PWD/$p\"}}" | CLAUDE_PROJECT_DIR=$PWD .claude/hooks/guard-generated-paths.sh; echo "$p exit=$?"; done
 # C15 — no @imports in CLAUDE.md (backticked mentions are fine)
 grep -nE '(^|[[:space:]])@[A-Za-z0-9_.~/-]+' CLAUDE.md | grep -v '`'
-# C16 — backticked repo paths in harness docs exist (globs, templates and path:line suffixes handled)
+# C16 — backticked repo paths in harness docs exist (globs, templates, path:line suffixes, the dev/edd branch and gitignored build output handled)
 for f in CLAUDE.md README.md docs/*.md .claude/rules/*.md .claude/skills/*/SKILL.md; do
   grep -oE '`[A-Za-z0-9_.-]+/[A-Za-z0-9_./-]+(:[0-9,-]+)?`' "$f" | tr -d '`' | sed -E 's/:[0-9,-]+$//' |
-  grep -vE 'YYYY|^docs/specs/?$' | while read -r p; do [ -e "$p" ] || echo "MISSING $f -> $p"; done; done
+  grep -vE 'YYYY|^docs/specs/?$|^(origin/)?dev/edd$' | while read -r p; do [ -e "$p" ] || git check-ignore -q "$p" || echo "MISSING $f -> $p"; done; done
 ```
