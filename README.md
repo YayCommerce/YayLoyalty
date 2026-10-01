@@ -86,6 +86,10 @@ composer install
 
 ## Key Concepts
 
+### Storefront Launcher
+
+A read-only floating panel on the shop: the customer's balance, ways to earn, ways to redeem (information only until checkout redemption ships), and recent activity. Configured in the Design tab (position, button style, brand colour, corner radius, icon, text, visibility). See [Storefront Launcher](#storefront-launcher).
+
 ### Earning
 
 Campaigns define when and how much points are awarded (purchase, signup, review). Config specifies calculation rules; Pro adds conditions (role, product, tier) and extra triggers (birthday, first_order, order_count, spend_milestone). Tier condition is unavailable until the VIP tier system ships.
@@ -97,6 +101,39 @@ Every customer's balance = `SUM(ledger.points)`. The ledger is append-only; cust
 ### Pro/Lite
 
 One repository, two zips. Lite = Pro minus `includes/Pro/` and SPA built with `BUILD_TYPE=lite`. The split is transparent: Lite contains exactly one reference to Pro (a guarded `class_exists` in `YayLoyalty::initialize()`), and Pro attaches via filter seams only.
+
+---
+
+## Storefront Launcher
+
+The launcher is a read-only floating panel (v1, designs 1a–1e) that displays:
+- **Signed in:** current balance, "worth $X", ways to earn (eligible campaigns), ways to redeem (rate info only), recent activity (3 rows, lazy), "View all rewards activity" footer link.
+- **Guest:** the Design tab's signed-out prompt, how-it-works steps (from live campaigns), "Sign in", a signup step only when the store lets shoppers register (My Account, or checkout only), and on a product page what it would earn at the base rate.
+- **Collapsed:** icon, label or both, plus a balance badge when signed in.
+- **Mobile (under 600px):** icon + balance pill; the panel opens as a bottom sheet with a drag handle.
+- **Placement:** any of four corners (top corners open the panel downward), 32px from the edge on desktop and 16px on mobile. A theme can move it with the `--yayloyalty-launcher-offset` CSS variable, for example to clear a sticky add-to-cart bar.
+- **Hidden** on the pages and for the roles the Design tab's Visibility card excludes (store staff by default — preview in a private window), when the program is off, and for a shopper who opted out or whose role is excluded from earning.
+
+**Cache caveat:** the balance is printed into the page for signed-in shoppers. Common page caches (WP Rocket, LiteSpeed Cache, W3 Total Cache, Cloudflare APO) skip signed-in visitors by default. A store whose cache serves pages to signed-in visitors could show one shopper's balance to another — exclude signed-in users from page caching on such a store.
+
+### Building the CSS
+
+`apps/admin/src/storefront.css` (with `src/styles/storefront-launcher-layout.css`) builds to `assets/dist/storefront/launcher.css`: the admin kit's tokens and Tailwind v4 utilities, prefixed `yl:` and scoped to `.yayloyalty-launcher`, with no global reset, so a shop theme and the launcher leave each other alone. One file serves Lite and Pro.
+
+```bash
+./scripts/run.sh build [pro|lite]   # full build, includes the storefront CSS
+cd apps/admin && pnpm build:storefront   # just the storefront CSS
+cd apps/admin && pnpm dev:storefront     # rebuild on change (the Vite dev server does not serve it)
+```
+
+Classes used in `includes/Engine/Storefront/templates/` or `assets/storefront/launcher.js` must be written out in full (`yl:bg-primary`), never assembled at runtime: Tailwind only generates classes it finds in those files.
+
+### Implementation
+
+- **Server:** `includes/Engine/Storefront/` — `Launcher` (entry point), `LauncherVisibility`, `LauncherPayload`, `LauncherIcon`, `LauncherCopy`, `LauncherEarnRules`, `ShopperActivityRow`, `UiClasses`. Templated markup in `templates/`. Enqueued via `wp_enqueue_scripts` and rendered in `wp_footer`.
+- **JavaScript:** `assets/storefront/launcher.js` (~150 lines) — open/close, focus trap, Esc/tap-outside/drag-handle close, lazy `/me/activity` fetch.
+- **REST:** `GET /me/activity` — shopper's session identity (no id param), 3 activity rows, shopper-safe projection (no notes/actors/campaign ids).
+- **See also:** `docs/code-standards.md` § 9 (shopper routes), `docs/codebase-summary.md` (Storefront section).
 
 ---
 

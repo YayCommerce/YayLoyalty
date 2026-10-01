@@ -6,6 +6,25 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
 
 ## Unreleased
 
+### Added — Storefront launcher v1: read-only floating panel (2026-10-01)
+
+- **Launcher display** (designs 1a–1e, file `YayLoyalty Storefront.dc.html` F13): floating button (icon/label/both from Design tab, balance badge for members), panel (members: balance + worth, ways to earn, ways to redeem [info only], recent activity lazily from GET /me/activity, "View all rewards activity" → WooCommerce My Account until Rewards tab ships; guests: signed_out_prompt, how-it-works steps, signup step if shoppers can register). Mobile <600px: icon+balance pill, bottom sheet, drag handle. Positions: four corners, top corners open downward. Offset: CSS var --yayloyalty-launcher-offset (32px desktop / 16px mobile).
+- **Visibility** (`Engine\Storefront\LauncherVisibility`): scope/pages/hide_for_roles (default hides administrator+shop_manager), program off, member opted out or excluded role (reuses `ProgramGate`), hide_on_mobile is CSS.
+- **Styling** (`apps/admin/src/storefront.css` → `assets/dist/storefront/launcher.css`): Tailwind v4 with admin kit tokens + `yl:` prefix nested under `.yayloyalty-launcher` (unlayered, 0,2,0), no preflight, scoped reset, `:root` rewritten to `.yayloyalty-launcher` and rem→px in build. `UiClasses.php` mirrors `button.tsx`/`badge.tsx` class lists (allowed mirror).
+- **REST** (`StorefrontActivityRestController`, `GET /me/activity`): session identity (is_user_logged_in + wp_rest nonce), no id param, shopper-safe projection (label, date, order number, points only), 3 rows.
+- **JavaScript** (`assets/storefront/launcher.js` ~150 lines): open/close, Esc/tap-outside/drag-handle close, focus trap, lazy `/me/activity` fetch on first open (rows arrive formatted by the server; a failed load retries on the next open).
+- **Ways to earn** (`LauncherEarnRules`): advertises only built-in or condition-free campaigns; multiplier purchase campaigns skipped. Ways to redeem: rate line only, info-only until F08.
+- **Cache caveat:** Stores whose page cache serves pages to logged-in users may show one shopper's balance to another; common caches skip logged-in users by default.
+- **Tests:** Visibility rules, payload shape (guest has no personal keys), activity route (401 for guests, 3 rows only, shopper-safe), payload balance matches customers.balance, product estimate equals engine at base rate. All four positions, theme CSS isolation, Design tab hidden-role hint.
+
+### Added — Refactors for storefront launcher support (2026-10-01)
+
+- `PointsEngine::build()` — composition root (constructs campaigns repo, calculators, gate, handlers, evaluator); called from `EarningService::build()`.
+- `ProgramGate::program_enabled()` — reads `general.enabled` setting, used by both earning and storefront visibility checks.
+- `DesignSchema::SCOPE_*` constants — the visibility scope values (`all_pages`, `shop_and_product`, `custom_pages`), shared by the schema and `LauncherVisibility`.
+- `RewardRepository::BUILTIN_DISCOUNT_SLUG` replaces the `'cart-discount'` literal (Installer seed, rate read); `rate_of()` reads the rate from an already-loaded reward, so the launcher queries the reward once.
+- `LauncherPayload` — builds the server-rendered view: design + text, balance and worth (members), ways to earn/redeem, guest registration route, guest product estimate.
+
 ### Added — Points come back out: cancel, refund, review removal (2026-09-30)
 
 - **Cancel and trash** release pending and claw back everything the order earned, per earn row (`Engine\Earning\Reversal::full_order()`), keyed on the order. Trash is heard on `woocommerce_trash_order` / `trashed_post`: HPOS trashes without `woocommerce_order_status_changed`. The `refunded` status releases pending and reverses in full only when no refund object exists (read from the database, not the order's cached refund total).

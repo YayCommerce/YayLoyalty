@@ -145,7 +145,7 @@ flowchart LR
 | `/campaigns/new`, `/campaigns/new/:templateId` | `CampaignTemplatePicker` → `CampaignCreator` (Pro only) | ✅ shipped |
 | `/campaigns/:id/edit` | `CampaignEditor` (Pro only) | ✅ shipped |
 | `/campaigns/:id/performance` | `CampaignPerformance` (Pro only) | ✅ shipped |
-| `/settings/design` | `DesignSettingsPage` (Free sections + Pro `tier`/`panel`/`typography`, admin-only, no storefront rendering) | ✅ shipped |
+| `/settings/design` | `DesignSettingsPage` (Free sections + Pro `tier`/`panel`/`typography`, admin-only). Storefront launcher v1 reads: launcher, storefront_text, visibility. Pro panel blocks and typography not rendered yet. | ✅ shipped |
 | `/settings/emails` | `EmailsSettingsPage` (12 transactional email toggles grouped by category, weekly throttle cap, read-only WC sending config) | ✅ shipped |
 | `/rewards`, `/referral`, `/vip-tiers`, `/settings` (General/Advanced) | Stubs | ⚠️ placeholders |
 
@@ -294,6 +294,24 @@ These are **first-party, internal seams** for Pro to attach behavior. Not a thir
 | **`yayloyalty_erase_customer_data`** | **Documented, unbuilt, never wired** — nothing fires it | Nothing. What runs on `delete_user`/`wpmu_delete_user` today is capture, not erasure: `Engine\CustomerActivityListener` → `Services\CustomerActivityService::record_account_deleted()`. Do not build Pro cleanup against this seam until a real erasure tool fires it |
 
 **Seam safety:** Match on `$rest_base` (route) and schema `title` — `yayloyalty_rest_item_schema` is shared across resources.
+
+---
+
+## Storefront Rendering Flow (Launcher v1)
+
+Read-only launcher (designs 1a/1b/1c/1e): a floating button and a panel with balance, ways to earn and redeem, and recent activity for members; the programme's pitch, sign-in and a product estimate for guests. Redeeming arrives with F08. Every rule below lives in `includes/Engine/Storefront/`.
+
+1. **Decide, once** (`wp` action → `Launcher::prepare()`, after the main query so conditional tags are known):
+   - `LauncherVisibility::is_visible()` — Design tab scope, chosen pages, `hide_for_roles` (staff hidden by default). Pure; the caller passes the conditional tags in.
+   - Guests: `ProgramGate::program_enabled()`. Members: the full `ProgramGate::check()` (program on, not opted out, role not excluded) — a shopper who cannot earn sees no panel about earning.
+   - `hide_on_mobile` is a CSS media query, not decided here, so a page cached for one device behaves on another.
+   - Any exception hides the launcher and is logged; it never breaks the page.
+2. **Build the view** (`LauncherPayload::build()`): design + text; balance and its worth (members only); ways to earn (`LauncherEarnRules` — built-in or condition-free campaigns, multipliers skipped); ways to redeem (the built-in reward, read once); where a guest can register (My Account, else checkout, else nowhere); a guest's product-page estimate at base rate (`PointsEngine::build()->evaluate()`, points only). Members also get the activity URL and a `wp_rest` nonce.
+3. **Enqueue** (`wp_enqueue_scripts`): the built `launcher.css` and the deferred plain script `assets/storefront/launcher.js`. No inline data script — the panel is server-rendered.
+4. **Render** (`wp_footer`): `templates/launcher.php` → `panel-member.php` / `panel-guest.php`. Brand colour and corner radius go out as CSS variables on the root; the activity URL and nonce as `data-*` attributes.
+5. **In the browser:** open/close, Esc, focus trap, tap-outside, mobile drag handle. On the first open the script fetches `GET /me/activity` (cookie auth + `X-WP-Nonce`; 401 for guests) and fills three rows; a failed load retries on the next open.
+
+**Cache caveat:** the balance is in the page markup for signed-in shoppers. Common page caches skip signed-in visitors; a store that caches them could show one shopper's balance to another. See README → Storefront launcher.
 
 ---
 
