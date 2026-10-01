@@ -7,6 +7,7 @@ import {
   previewDesign,
   resetDesign,
   searchPublishedPages,
+  type DesignPreviewInput,
   type DesignPreviewViewer,
 } from '@/lib/api/design.api';
 import type { Design } from '@/lib/schema/design.schema';
@@ -55,7 +56,7 @@ export function usePublishedPagesByIdsQuery(ids: number[], enabled: boolean) {
  * The launcher drawn by the server with the unsaved design. Keyed by the design itself, so an edit
  * back to an earlier value is served from cache; the last pages stay up while the next ones load.
  */
-export function useDesignPreviewQuery(design: Design, viewer: DesignPreviewViewer) {
+export function useDesignPreviewQuery(design: DesignPreviewInput, viewer: DesignPreviewViewer) {
   return useQuery({
     queryKey: ['design', 'preview', viewer, design],
     queryFn: () => previewDesign(design, viewer),

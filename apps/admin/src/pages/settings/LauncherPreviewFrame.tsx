@@ -1,8 +1,9 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useState } from 'react';
+import { useResizeObserverRef } from 'rooks';
 
 import { cn } from '@/lib/utils';
 
-/** A phone and a small desktop window: wide enough that the storefront's ≥600px layout applies to the desktop frame. */
+/** A phone and a small desktop window; the desktop width must clear the mobile media query in styles/storefront-launcher-layout.css. */
 const VIEWPORT = {
   desktop: { widthPx: 720, maxScale: 1 },
   mobile: { widthPx: 390, maxScale: 0.68 },
@@ -24,20 +25,10 @@ type LauncherPreviewFrameProps = {
  * `sandbox=""` runs no script and gives the page no access to the admin: it is markup and CSS only.
  */
 export function LauncherPreviewFrame({ html, title, device, viewportHeightPx }: LauncherPreviewFrameProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidthPx, setContainerWidthPx] = useState(0);
+  const [containerRef] = useResizeObserverRef(([entry]) => setContainerWidthPx(entry.contentRect.width));
   const { widthPx, maxScale } = VIEWPORT[device];
   const scale = containerWidthPx > 0 ? Math.min(maxScale, containerWidthPx / widthPx) : maxScale;
-
-  useLayoutEffect(() => {
-    const container = containerRef.current;
-    if (!container) {
-      return;
-    }
-    const observer = new ResizeObserver(([entry]) => setContainerWidthPx(entry.contentRect.width));
-    observer.observe(container);
-    return () => observer.disconnect();
-  }, []);
 
   return (
     <div ref={containerRef} className="w-full">

@@ -1,7 +1,7 @@
 <?php
 /**
  * One "Recent activity" row: empty inside the <template> launcher.js clones and fills, or filled here
- * when the rows are printed server-side (the Design tab's preview).
+ * when the rows are printed server-side.
  *
  * @var array{label: string, meta: string, delta: string}|null $yayloyalty_item
  */

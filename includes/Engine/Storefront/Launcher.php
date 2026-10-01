@@ -134,9 +134,17 @@ final class Launcher {
         $payload = ( new LauncherPayload( new CampaignRepository(), new RewardRepository(), new CustomerRepository() ) )
             ->build( $design, $user_id > 0 ? $user_id : null );
 
+        return self::view( $design, $payload, true );
+    }
+
+    /**
+     * The templates' view from a payload: the Design tab's theme variables and, for a live member, the
+     * activity route launcher.js fetches. The Design tab's preview passes $is_live false and prints rows instead.
+     */
+    public static function view( array $design, array $payload, bool $is_live ): array {
         $payload['style'] = self::theme_vars( $design['launcher'] );
 
-        if ( null !== $payload['member'] ) {
+        if ( $is_live && null !== $payload['member'] ) {
             $payload['activity_url'] = rest_url( StorefrontActivityRestController::REST_NAMESPACE . StorefrontActivityRestController::ROUTE );
             $payload['nonce']        = wp_create_nonce( 'wp_rest' );
         }
@@ -148,7 +156,7 @@ final class Launcher {
      * The kit's tokens re-pointed at the Design tab: brand colour → --primary (and its hover/ring),
      * corner radius → --radius. Foreground flips to dark on a light brand colour so the label stays readable.
      */
-    public static function theme_vars( array $launcher ): string {
+    private static function theme_vars( array $launcher ): string {
         // get_design() has already coerced this to a valid hex (DesignCoercion), so it is safe in a style attribute.
         $color = (string) $launcher['brand_color'];
 

@@ -14,4 +14,9 @@ final class Text {
     public static function plain( string $value ): string {
         return html_entity_decode( wp_strip_all_tags( $value ), ENT_QUOTES );
     }
+
+    /** The site title as plain text, for copy shown to shoppers ("Adjustment by {store}"). */
+    public static function store_name(): string {
+        return self::plain( (string) get_bloginfo( 'name' ) );
+    }
 }

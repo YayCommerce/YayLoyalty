@@ -86,13 +86,7 @@ class DesignRestController extends AbstractRestController {
             return $this->error_invalid_arguments();
         }
 
-        $design    = DesignHelper::with_unsaved( $design );
-        $is_member = 'guest' !== $request->get_param( 'viewer' );
-
-        return [
-            'collapsed' => LauncherPreview::document( $design, $is_member, false ),
-            'expanded'  => LauncherPreview::document( $design, $is_member, true ),
-        ];
+        return LauncherPreview::documents( DesignHelper::with_unsaved( $design ), 'guest' !== $request->get_param( 'viewer' ) );
     }
 
     /** An unknown group is not an error: DesignHelper::reset() changes nothing and returns the stored design. */

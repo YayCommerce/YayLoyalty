@@ -1,11 +1,8 @@
 <?php
 namespace YayLoyalty\Controllers;
 
-use YayLoyalty\Engine\Storefront\LauncherCopy;
 use YayLoyalty\Engine\Storefront\ShopperActivityRow;
 use YayLoyalty\Repositories\LedgerRepository;
-use YayLoyalty\Utils\Dates;
-use YayLoyalty\Utils\Text;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -59,30 +56,7 @@ final class StorefrontActivityRestController extends AbstractRestController {
 
     /** @return array{items: array<int, array{label: string, meta: string, points: int, delta: string}>} */
     public function get_activity( \WP_REST_Request $request ): array { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- the user comes from the session.
-        return [ 'items' => self::items( $this->ledger->latest_for_user( get_current_user_id(), self::ROWS ) ) ];
-    }
-
-    /**
-     * Ledger rows as the launcher lists them; the Design tab's preview passes sample rows through the same projection.
-     *
-     * @param \YayLoyalty\Models\LedgerEntry[] $entries
-     * @return array<int, array{label: string, meta: string, points: int, delta: string}>
-     */
-    public static function items( array $entries ): array {
-        $store = Text::plain( (string) get_bloginfo( 'name' ) );
-        $items = [];
-
-        foreach ( $entries as $entry ) {
-            $row     = ShopperActivityRow::from_entry( $entry, $store );
-            $items[] = [
-                'label'  => $row['label'],
-                'meta'   => self::meta_line( $row['created_at'], $row['order_id'] ),
-                'points' => $row['points'],
-                'delta'  => LauncherCopy::signed_points( $row['points'] ),
-            ];
-        }
-
-        return $items;
+        return [ 'items' => ShopperActivityRow::items( $this->ledger->latest_for_user( get_current_user_id(), self::ROWS ) ) ];
     }
 
     protected function define_item_schema(): array {
@@ -103,20 +77,5 @@ final class StorefrontActivityRestController extends AbstractRestController {
                 'delta'  => [ 'description' => __( 'Signed, formatted points: "+270" or "−120".', 'yayloyalty' ) ] + $text,
             ],
         ];
-    }
-
-    /** "9 Sept 2026 · order #4207": the date in the site's format and timezone, then the order when there is one. */
-    private static function meta_line( string $created_at_utc, ?int $order_id ): string {
-        $date = Dates::to_site_tz( $created_at_utc, (string) get_option( 'date_format' ) );
-
-        if ( null === $order_id ) {
-            return $date;
-        }
-
-        $order  = function_exists( 'wc_get_order' ) ? wc_get_order( $order_id ) : null;
-        $number = $order ? $order->get_order_number() : (string) $order_id;
-
-        /* translators: 1: date, 2: order number. */
-        return sprintf( __( '%1$s · order #%2$s', 'yayloyalty' ), $date, $number );
     }
 }

@@ -15,7 +15,7 @@ $yayloyalty_launcher = $view['launcher'];
 $yayloyalty_text     = $view['text'];
 $yayloyalty_member   = $view['member'];
 $yayloyalty_style    = $yayloyalty_launcher['button_style'];
-// Open from the start only in the Design tab's preview, which runs no script.
+// Drawn open when the page runs no script to open it (the Design tab's preview).
 $yayloyalty_is_open = ! empty( $view['is_open'] );
 ?>
 <div
@@ -23,8 +23,8 @@ $yayloyalty_is_open = ! empty( $view['is_open'] );
     data-position="<?php echo esc_attr( $yayloyalty_launcher['position'] ); ?>"
     data-hide-mobile="<?php echo $view['hide_mobile'] ? '1' : '0'; ?>"
     <?php if ( null !== $yayloyalty_member ) : ?>
-        data-activity-url="<?php echo esc_url( $view['activity_url'] ); ?>"
-        data-nonce="<?php echo esc_attr( $view['nonce'] ); ?>"
+        data-activity-url="<?php echo esc_url( $view['activity_url'] ?? '' ); ?>"
+        data-nonce="<?php echo esc_attr( $view['nonce'] ?? '' ); ?>"
     <?php endif; ?>
     style="<?php echo esc_attr( $view['style'] ); ?>"
 >

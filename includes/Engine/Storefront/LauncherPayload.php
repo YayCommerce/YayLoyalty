@@ -44,25 +44,22 @@ final class LauncherPayload {
      */
     public function build( array $design, ?int $user_id ): array {
         if ( null === $user_id ) {
-            return $this->assemble( $design, null );
+            return $this->for_balance( $design, null );
         }
 
         $customer = $this->customers->find_by_user_id( $user_id );
 
-        return $this->assemble( $design, null === $customer ? 0 : $customer->get_balance() );
+        return $this->for_balance( $design, null === $customer ? 0 : $customer->get_balance() );
     }
 
     /**
-     * The same payload for a sample balance (null for a guest): the Design tab's preview has no shopper.
+     * The payload for a member's balance, or a guest (null). The Design tab's preview passes a sample balance.
+     * The design fields read here are mirrored by DESIGN_PREVIEW_FIELDS (apps/admin/src/lib/api/design.api.ts).
      *
-     * @param array $design DesignHelper::with_unsaved().
+     * @param array    $design  DesignHelper::get_design() or DesignHelper::with_unsaved().
+     * @param int|null $balance The member's balance; null for a guest.
      */
-    public function preview( array $design, ?int $balance ): array {
-        return $this->assemble( $design, $balance );
-    }
-
-    /** @param int|null $balance The member's balance; null for a guest. */
-    private function assemble( array $design, ?int $balance ): array {
+    public function for_balance( array $design, ?int $balance ): array {
         $now    = Dates::now();
         $reward = $this->rewards->find_by_slug( RewardRepository::BUILTIN_DISCOUNT_SLUG );
         $redeem = self::redeem_rule( $reward, $now );

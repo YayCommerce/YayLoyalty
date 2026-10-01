@@ -18,7 +18,7 @@ $yayloyalty_earn = $view['earn'];
 // No signup row: a signed-in shopper already has the account it pays for.
 $yayloyalty_purchase = $yayloyalty_earn[ CampaignTrigger::PURCHASE ];
 $yayloyalty_review   = $yayloyalty_earn[ CampaignTrigger::REVIEW ];
-// Rows printed here (the Design tab's preview); null leaves skeletons for launcher.js to replace.
+// Rows already in hand are printed; null leaves skeletons for launcher.js to replace.
 $yayloyalty_activity = $view['activity'] ?? null;
 ?>
 <section class="yl:flex yl:flex-col yl:gap-0.5 yl:border-b yl:border-border yl:p-4">

@@ -4,6 +4,8 @@ namespace YayLoyalty\Engine\Storefront;
 use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Models\LedgerEntry;
+use YayLoyalty\Utils\Dates;
+use YayLoyalty\Utils\Text;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -14,6 +16,29 @@ defined( 'ABSPATH' ) || exit;
  * reason), no actor id, no campaign id. Adjustments read as made by the store, never by a person.
  */
 final class ShopperActivityRow {
+
+    /**
+     * Ledger rows as the launcher lists them: GET /me/activity's items, and the Design tab's sample rows.
+     *
+     * @param LedgerEntry[] $entries
+     * @return array<int, array{label: string, meta: string, points: int, delta: string}>
+     */
+    public static function items( array $entries ): array {
+        $store = Text::store_name();
+        $items = [];
+
+        foreach ( $entries as $entry ) {
+            $row     = self::from_entry( $entry, $store );
+            $items[] = [
+                'label'  => $row['label'],
+                'meta'   => self::meta_line( $row['created_at'], $row['order_id'] ),
+                'points' => $row['points'],
+                'delta'  => LauncherCopy::signed_points( $row['points'] ),
+            ];
+        }
+
+        return $items;
+    }
 
     /**
      * @param string $store_name Shown on adjustments ("Adjustment by {store}").
@@ -65,5 +90,20 @@ final class ShopperActivityRow {
             default:
                 return __( 'Points earned', 'yayloyalty' );
         }
+    }
+
+    /** "9 Sept 2026 · order #4207": the date in the site's format and timezone, then the order when there is one. */
+    private static function meta_line( string $created_at_utc, ?int $order_id ): string {
+        $date = Dates::to_site_tz( $created_at_utc, (string) get_option( 'date_format' ) );
+
+        if ( null === $order_id ) {
+            return $date;
+        }
+
+        $order  = function_exists( 'wc_get_order' ) ? wc_get_order( $order_id ) : null;
+        $number = $order ? $order->get_order_number() : (string) $order_id;
+
+        /* translators: 1: date, 2: order number. */
+        return sprintf( __( '%1$s · order #%2$s', 'yayloyalty' ), $date, $number );
     }
 }

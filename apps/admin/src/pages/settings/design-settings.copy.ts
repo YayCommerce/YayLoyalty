@@ -1,4 +1,4 @@
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 
 /**
  * Every label, helper and toast string for the Design settings tab.
@@ -147,5 +147,9 @@ export const PREVIEW_FOOTNOTE = () =>
     'yayloyalty',
   );
 export const PREVIEW_HIDDEN_ON_MOBILE = () =>
-  __('Hidden on mobile. Turn off “Hide on mobile” under Visibility to show it.', 'yayloyalty');
+  sprintf(
+    /* translators: %s: the "Hide on mobile" setting's label. */
+    __('Hidden on mobile. Turn off “%s” under Visibility to show it.', 'yayloyalty'),
+    VISIBILITY_HIDE_ON_MOBILE_LABEL(),
+  );
 export const PREVIEW_ERROR = () => __('The preview could not be loaded.', 'yayloyalty');

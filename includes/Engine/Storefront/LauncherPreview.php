@@ -1,7 +1,6 @@
 <?php
 namespace YayLoyalty\Engine\Storefront;
 
-use YayLoyalty\Controllers\StorefrontActivityRestController;
 use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Models\LedgerEntry;
@@ -38,23 +37,28 @@ body{background:#f7f7f7;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sa
 CSS;
 
     /**
+     * The button alone and the open panel, from one view.
+     *
      * @param array $design    DesignHelper::with_unsaved().
      * @param bool  $is_member A signed-in sample shopper (1b/1e), or a guest (1c).
-     * @param bool  $is_open   The panel open, or only the button.
+     * @return array{collapsed: string, expanded: string}
      */
-    public static function document( array $design, bool $is_member, bool $is_open ): string {
-        $payload = new LauncherPayload( new CampaignRepository(), new RewardRepository(), new CustomerRepository() );
-        $view    = $payload->preview( $design, $is_member ? self::SAMPLE_BALANCE : null );
-
-        $view['style']        = Launcher::theme_vars( $design['launcher'] );
-        $view['is_open']      = $is_open;
-        $view['activity_url'] = '';
-        $view['nonce']        = '';
+    public static function documents( array $design, bool $is_member ): array {
+        $payload = ( new LauncherPayload( new CampaignRepository(), new RewardRepository(), new CustomerRepository() ) )
+            ->for_balance( $design, $is_member ? self::SAMPLE_BALANCE : null );
+        $view    = Launcher::view( $design, $payload, false );
 
         if ( $is_member ) {
-            $view['activity'] = StorefrontActivityRestController::items( self::sample_entries() );
+            $view['activity'] = ShopperActivityRow::items( self::sample_entries() );
         }
 
+        return [
+            'collapsed' => self::document( $view + [ 'is_open' => false ] ),
+            'expanded'  => self::document( $view + [ 'is_open' => true ] ),
+        ];
+    }
+
+    private static function document( array $view ): string {
         return '<!doctype html><html><head><meta charset="utf-8">'
             . '<meta name="viewport" content="width=device-width, initial-scale=1">'
             . '<link rel="stylesheet" href="' . esc_url( Launcher::style_url() ) . '">' // phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedStylesheet -- a standalone page for an iframe; there is no WordPress head to enqueue into.
@@ -65,9 +69,7 @@ CSS;
     }
 
     private static function store_frame(): string {
-        $store = Text::plain( (string) get_bloginfo( 'name' ) );
-
-        return '<div class="yl-preview-header"><strong>' . esc_html( $store ) . '</strong><span>' . esc_html__( 'Shop', 'yayloyalty' ) . '</span><span>' . esc_html__( 'Cart', 'yayloyalty' ) . '</span></div>'
+        return '<div class="yl-preview-header"><strong>' . esc_html( Text::store_name() ) . '</strong><span>' . esc_html__( 'Shop', 'yayloyalty' ) . '</span><span>' . esc_html__( 'Cart', 'yayloyalty' ) . '</span></div>'
             . '<div class="yl-preview-lines"><i style="width:38%"></i><i style="width:62%"></i><i style="width:52%"></i></div>';
     }
 

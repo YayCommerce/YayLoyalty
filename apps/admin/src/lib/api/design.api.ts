@@ -18,8 +18,19 @@ export type DesignPreviewViewer = 'member' | 'guest';
 /** Two whole HTML pages from the server's own launcher templates: the button alone, and the open panel. */
 export type DesignPreview = { collapsed: string; expanded: string };
 
+/**
+ * The design fields the storefront launcher draws: a mirror of what `LauncherPayload::for_balance()`
+ * (and `Launcher::view()`) read. A field missing here never redraws the preview; change both together.
+ */
+export const DESIGN_PREVIEW_FIELDS = ['launcher', 'storefront_text', 'visibility.hide_on_mobile'] as const;
+
+/** DESIGN_PREVIEW_FIELDS as the request body; the server fills the rest from the stored design. */
+export type DesignPreviewInput = Pick<Design, 'launcher' | 'storefront_text'> & {
+  visibility: Pick<Design['visibility'], 'hide_on_mobile'>;
+};
+
 /** The storefront launcher drawn with an unsaved design; nothing is saved. */
-export function previewDesign(design: Design, viewer: DesignPreviewViewer) {
+export function previewDesign(design: DesignPreviewInput, viewer: DesignPreviewViewer) {
   return api.post('design/preview', { json: { design, viewer } }).json<DesignPreview>();
 }
 
