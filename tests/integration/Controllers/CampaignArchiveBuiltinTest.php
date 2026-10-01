@@ -36,17 +36,7 @@ final class CampaignArchiveBuiltinTest extends IntegrationTestCase {
         $this->site_timezone = (string) get_option( 'timezone_string' );
         update_option( 'timezone_string', 'UTC' );
 
-        $admins = get_users(
-            [
-                'role'   => 'administrator',
-                'number' => 1,
-                'fields' => 'ID',
-            ]
-        );
-        $this->assertNotEmpty( $admins, 'The site needs one administrator to act as the caller.' );
-
-        wp_set_current_user( (int) $admins[0] );
-        rest_get_server(); // Fires rest_api_init, which is what registers the plugin's routes.
+        $this->act_as_admin();
     }
 
     protected function tearDown(): void {

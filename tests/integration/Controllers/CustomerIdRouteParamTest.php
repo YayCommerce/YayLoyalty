@@ -22,18 +22,7 @@ final class CustomerIdRouteParamTest extends IntegrationTestCase {
     protected function setUp(): void {
         parent::setUp();
 
-        $admins = get_users(
-            [
-                'role'   => 'administrator',
-                'number' => 1,
-                'fields' => 'ID',
-            ]
-        );
-        $this->assertNotEmpty( $admins, 'The site needs one administrator to act as the caller.' );
-
-        $this->admin_id = (int) $admins[0];
-        wp_set_current_user( $this->admin_id );
-        rest_get_server(); // Fires rest_api_init, which is what registers the plugin's routes.
+        $this->admin_id = $this->act_as_admin();
 
         $this->assertFalse( get_userdata( self::DELETED_MEMBER ) );
         $this->assertFalse( get_userdata( self::UNKNOWN_ID ) );

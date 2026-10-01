@@ -55,20 +55,8 @@ trait WooCommerceOrdersFixture {
 
     /** A customer-role user, registered while an administrator is current so SignupListener does not award it. */
     private function create_customer(): int {
-        $admins = get_users(
-            [
-                'role'   => 'administrator',
-                'number' => 1,
-                'fields' => 'ID',
-            ]
-        );
-
-        if ( empty( $admins ) ) {
-            $this->markTestSkipped( 'The site has no administrator to register customers as.' );
-        }
-
         $previous = get_current_user_id();
-        wp_set_current_user( (int) $admins[0] );
+        wp_set_current_user( $this->first_admin_id() );
 
         $user_id = (int) wp_insert_user(
             [

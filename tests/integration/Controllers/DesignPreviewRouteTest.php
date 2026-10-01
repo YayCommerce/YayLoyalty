@@ -25,17 +25,7 @@ final class DesignPreviewRouteTest extends IntegrationTestCase {
         $this->require_woocommerce();
         $this->saved_design = DesignHelper::get_design();
 
-        $admins = get_users(
-            [
-                'role'   => 'administrator',
-                'number' => 1,
-                'fields' => 'ID',
-            ]
-        );
-        $this->assertNotEmpty( $admins, 'The site needs one administrator to act as the caller.' );
-
-        wp_set_current_user( (int) $admins[0] );
-        rest_get_server();
+        $this->act_as_admin();
     }
 
     protected function tearDown(): void {

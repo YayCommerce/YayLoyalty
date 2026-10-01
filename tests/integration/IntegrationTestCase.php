@@ -31,6 +31,35 @@ abstract class IntegrationTestCase extends TestCase {
         ( new CampaignRepository() )->flush_cache();
     }
 
+    /**
+     * Signs in the site's first administrator and registers the REST routes; returns the admin's id.
+     * rest_get_server() fires rest_api_init, which is what registers the plugin's routes.
+     */
+    protected function act_as_admin(): int {
+        $admin_id = $this->first_admin_id();
+        wp_set_current_user( $admin_id );
+        rest_get_server();
+
+        return $admin_id;
+    }
+
+    /** The site's first administrator; the test is skipped on a site without one. */
+    protected function first_admin_id(): int {
+        $admins = get_users(
+            [
+                'role'   => 'administrator',
+                'number' => 1,
+                'fields' => 'ID',
+            ]
+        );
+
+        if ( empty( $admins ) ) {
+            $this->markTestSkipped( 'The site has no administrator to act as.' );
+        }
+
+        return (int) $admins[0];
+    }
+
     protected function ledger_service(): LedgerService {
         return new LedgerService( new LedgerRepository(), new CustomerRepository() );
     }
