@@ -20,6 +20,11 @@ package-lock.json
 .vscode/
 .idea/
 
+# Personal Claude Code files (the shared ones in .claude/ are tracked)
+.claude/settings.local.json
+.claude/worktrees/
+CLAUDE.local.md
+
 # phpcs
 .phpcs.cache
 .phpunit.result.cache

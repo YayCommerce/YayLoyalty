@@ -217,6 +217,19 @@ Found in P5 (gaps against `docs/conventions.md`):
   - Design-artboard IDs on about 84 lines (the P2 bullet above).
 - **The current user below the HTTP boundary:** `CustomerActivityService.php:67` and `DesignHelper.php:59` read it.
 
+Found in P7:
+
+- **Capability refusals toast twice.** The client's `afterResponse` hook already toasts them, and `toastApiError()` skips them. Seven call sites use `toast.error(await getApiErrorMessage(…))` instead, among them `CustomerDrawerActions.tsx` and `customers-page.bulk-actions.ts`.
+- **Three API modules cast instead of parsing.** `settings.api.ts`, `design.api.ts` and `emails.api.ts` use `.json<T>()`. `customer.api.ts` explains why a cast is unsafe.
+- **WordPress script dependencies.**
+  - `@wordpress/date` is missing from `externalDev`, so the dev server bundles its own copy, and WordPress's date settings never reach it. This is inferred from the config, not reproduced.
+  - `wp-components` and `wp-hooks` are enqueued and mapped as externals, but nothing imports them.
+  - The image picker calls `window.wp.media`, but nothing in the plugin calls `wp_enqueue_media()`.
+- **Couplings with no comment.**
+  - `scripts/validate-build.php` reads the upsell sentence in `UpgradeToPro.tsx`, and reads `DesignStorefrontTextSection.tsx` and `DesignVisibilitySection.tsx` by path. None of the three files says so.
+  - The rules now state this from both sides.
+- **A rule no doc sets.** Comments in 12 files cite a "200-line cap" that only the removed standards set.
+
 ---
 
 ## 3. Research findings
@@ -254,7 +267,7 @@ yayloyalty/
 │   ├── rules/
 │   │   ├── php-standards.md   paths: includes/**/*.php, yayloyalty.php, YayLoyaltyPluginAdapter.php, tests/**/*.php, scripts/*.php   (Δ5)
 │   │   ├── react-admin.md     paths: apps/admin/**                                                       (Δ5)
-│   │   └── release.md         paths: scripts/**, scoper.inc.php                                          (Δ5)
+│   │   └── release.md         paths: scripts/**/*, scoper.inc.php                                        (Δ5; P7 note)
 │   └── skills/
 │       ├── brainstorming/     our own → docs/specs/
 │       └── writing-plans/     our own → docs/plans/
@@ -645,10 +658,50 @@ Exception: P1–P5 were prepared on 2026-10-01 as a stack of branches, each on t
      - `run.sh` and `validate-build.php` semantics, version stamping, the Pro → Lite release order.
   3. Write each rule (≤ ~40 lines) with `paths` as a YAML list of quoted globs (A10). Link to `architecture.md` or `conventions.md` sections rather than restating them.
 - **Checklist:**
-  - [ ] ignores added
-  - [ ] audit recorded
-  - [ ] C10 and C11 pass
-  - [ ] do-not-reintroduce ticked
+  - [x] ignores added
+  - [x] audit recorded (commit body)
+  - [x] C10 and C11 pass
+  - [x] do-not-reintroduce ticked (commit body)
+- **Notes (2026-10-01):**
+  - Branch `trace/docs/harness-p7-rules` is stacked on P6.
+  - **How rules load** (checked on Claude Code 2.1.286):
+    - A probe transcript shows that Claude Code strips a rule's frontmatter and HTML comments before it injects the rule. Each rule therefore keeps Purpose and Update when in an HTML comment, as `CLAUDE.md` does, and they cost no context.
+    - `scripts/**` became `scripts/**/*`.
+      - Claude Code reduces a trailing `/**` to the bare directory name, which then matches a `scripts/` directory at any depth. Reading a file in `node_modules/.pnpm/ajv@6.15.0/node_modules/ajv/scripts/` loaded the release rule.
+      - `scripts/**/*` is kept as written and stays anchored to the repo root.
+      - `apps/admin/**` reduces to `apps/admin`, which still contains a slash, so it stays anchored.
+      - A bare file name such as `yayloyalty.php` matches at any depth. No second copy exists in the tree.
+    - C11 now also prints each load's parsed globs and trigger file.
+    - Beyond C11's four probes:
+      - `scripts/validate-build.php` loads both the PHP and the release rule, as accepted below;
+      - `yayloyalty.php`, `YayLoyaltyPluginAdapter.php` and `tests/integration/bootstrap.php` load the PHP rule;
+      - `scoper.inc.php` loads the release rule;
+      - PHP in `vendor-prefixed/` loads none.
+  - **Audit.**
+    - Two read-only sub-audits swept the PHP and SPA code, and each candidate was then checked in the code.
+    - A rule line is one of three things: a coupling no check catches, a reason the code states, or the pattern most of the code follows.
+  - **PHP 7.4.**
+    - Both phpcs and `php -l` on PHP 8.3 accept every construct the PHP rule lists, `str_contains` included.
+    - WordPress 6.5 polyfills only `str_contains`, `str_starts_with`, `str_ends_with` and `array_is_list`. `array_find` and later arrived in 6.8 or after.
+    - The Homebrew PHP 7.4 here doesn't start (missing libffi), so no 7.4 parse was run. Each construct is a PHP 8.0 or 8.1 feature.
+  - **Release tooling.**
+    - `yaycommerce-update` and `yaycommerce-prerelease` rewrite `scoper.inc.php` from their own template, keeping only the prefix and the adapter class.
+    - `/bin/bash` is 3.2 here.
+    - The validator ran alone on a zip already in `release/` (16 passed, 1 skipped) and changed nothing.
+  - **Not reproduced:**
+    - Without a terminal, `release` given no version and no `--no-prompt` likely stops at its version prompt. Under `set -e`, a `read` at end of input exits 1, printing nothing.
+    - The `read` was reproduced on its own under bash 3.2. This session's permission classifier blocked running the real script.
+    - If it's confirmed, the release line in `CLAUDE.md` should tell agents to pass a version or `--no-prompt`.
+  - **Not adopted:**
+    - "final unless it says why": most classes that aren't final give no reason;
+    - "add `import React`": with the classic JSX runtime, files reach WordPress's global React in dev and in prod;
+    - one accessor for the localized globals: none exists;
+    - regenerating the design-defaults fixture: nothing has read it since `a8d6fe0`.
+  - **One coupling, two rules.** `release.md` and `react-admin.md` both state that the validator copies SPA strings and paths, each from its own side, because each rule loads only on its side. A comment in each of the three SPA files would be a better home. That is an app-code change, so it's left to §2.7.
+  - **Checks:**
+    - C2, C5, C6, C10, C15 and C16 print nothing.
+    - C9 flags only `README.md` (P11) and the missing skills (P9).
+    - The rules are 38, 29 and 27 lines long.
 - **Acceptance:**
   - C10: each glob matches ≥ 1 tracked file.
   - C11:
@@ -868,9 +921,10 @@ for r in .claude/rules/*.md; do sed -n '/^---$/,/^---$/p' "$r" | grep -oE '"[^"]
 # C11 — rules load exactly when relevant (InstructionsLoaded log)
 S=$(mktemp -d); L="$S/l.jsonl"; printf '{"hooks":{"InstructionsLoaded":[{"hooks":[{"type":"command","command":"cat >> %s"}]}]}}' "$L" > "$S/s.json"
 probe(){ : > "$L"; claude -p --settings "$S/s.json" --setting-sources project --max-turns 2 --no-session-persistence "Read $1 and reply OK." </dev/null >/dev/null; sleep 2
-  jq -r '[.load_reason, .memory_type, (.file_path|split("/")|last)] | @tsv' "$L" | sort -u; }
+  jq -r '[.load_reason, .memory_type, (.file_path|split("/")|last), ((.globs // [])|join(",")), ((.trigger_file_path // "")|split("/")|last)] | @tsv' "$L" | sort -u; }
 probe includes/YayLoyalty.php; probe apps/admin/src/main.tsx; probe scripts/run.sh; probe README.md
 #   Record any memory_type=User lines: the harness must not depend on personal config.
+#   The globs column is the parsed frontmatter. A rule that loads at session_start has lost its paths.
 # C12 — skill names valid and equal to their directory
 for d in .claude/skills/*/; do n=$(sed -n 's/^name: *//p' "$d/SKILL.md" | head -1); [ "$n" = "$(basename "$d")" ] && [[ "$n" =~ ^[a-z0-9-]+$ ]] || echo "BAD NAME $d"; done
 # C13 — settings valid
