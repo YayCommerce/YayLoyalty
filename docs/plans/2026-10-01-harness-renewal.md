@@ -150,6 +150,8 @@ P0 re-sweep (2026-10-01 @ `a8d6fe0`): §2.3 and every row above match HEAD. One 
 7. The dev toolchain needs PHP ≥ 8.2 (php-scoper 0.18) while the product targets 7.4.
 8. Skill `name:` must be `[a-z0-9-]` and match its directory. Namespaced `x:y` names exist only for plugin skills.
 9. `includeGitInstructions: false` (A7) also removes Claude Code's built-in git safety guidance, so `CLAUDE.md` must restate the git rules the team wants.
+10. The skill listing that Claude Code puts in context cuts every description after 511 characters. This was measured on 2.1.286's listing and is the same for every skill. Text past the cut never reaches the model, "Do not use" clauses included.
+11. When Claude Code 2.1.286 loads a skill, it strips the frontmatter and keeps HTML comments, unlike rules and `CLAUDE.md`. A header in an HTML comment would reach the model on every invocation. A YAML comment in the frontmatter doesn't, and the skill still parses (P9 probes).
 
 ### 2.7 Outside scope — found during the audit, for the app backlog
 
@@ -245,7 +247,7 @@ Official docs (code.claude.com/docs, fetched 2026-10-01) and practitioner source
 | R5 | `.claude/settings.json` = team permissions, hooks and plugins. `settings.local.json` is added to global git excludes only when Claude creates it. `permissions.allow` waits for folder trust. | P7 ignores; P8 settings |
 | R6 | Hooks are deterministic; exit code 2 blocks. The `InstructionsLoaded` event reports `load_reason` (`session_start`, `path_glob_match`, …). | Guard hook (A7); rule-load proof (C11) |
 | R7 | `/doctor prompt-audit` (≥ 2.1.283) flags references to missing files or commands and contradictions. `claude doctor` validates settings. `--setting-sources project` loads only project settings (C11 records any user-scope memory that still loads). | P12 validation, upkeep routine |
-| R8 | Skills: `.claude/skills/<name>/SKILL.md`; the name defaults to the directory; `disable-model-invocation` is for side-effect workflows; descriptions are always in context | Few, specific skills |
+| R8 | Skills: `.claude/skills/<name>/SKILL.md`; the name defaults to the directory; `disable-model-invocation` is for side-effect workflows; descriptions are always in context | Few, specific skills; descriptions ≤ 500 characters (§2.6) |
 | R9 | Context engineering: "just in time … lightweight identifiers (file paths …)"; "CLAUDE.md files are naively dropped into context up front" (anthropic.com/engineering/effective-context-engineering-for-ai-agents) | Docs reached by path when relevant |
 | R10 | HumanLayer, "Writing a good CLAUDE.md" (2025-11-25): task docs in separate files, listed in CLAUDE.md with one-line descriptions; "Prefer pointers to copies"; root file < 60 lines | Same pattern; `file:line` pointers |
 | R11 | ADRs: Nygard's Context / Decision / Status / Consequences; accepted ADRs are superseded, never edited (cognitect.com 2011; adr.github.io/madr) | ADR format (P6) |
@@ -268,16 +270,17 @@ yayloyalty/
 │   │   ├── php-standards.md   paths: includes/**/*.php, yayloyalty.php, YayLoyaltyPluginAdapter.php, tests/**/*.php, scripts/*.php   (Δ5)
 │   │   ├── react-admin.md     paths: apps/admin/**                                                       (Δ5)
 │   │   └── release.md         paths: scripts/**/*, scoper.inc.php                                        (Δ5; P7 note)
-│   └── skills/
-│       ├── brainstorming/     our own → docs/specs/
-│       └── writing-plans/     our own → docs/plans/
+│   └── skills/                our own   (Δ6: yay- names and a review skill, Q10)
+│       ├── yaybrainstorming/  idea → design doc in docs/specs/
+│       ├── yayplan/           design doc → plan in docs/plans/
+│       └── yayreview/         implementation → review against its plan, in a fresh subagent
 └── docs/
     ├── architecture.md        boot & autoload · admin-shell sync & scoping · layers · data · Pro/Lite · SPA↔WP · build/release · tests
     ├── conventions.md         code and domain conventions not inferable from code
     ├── decisions/             YYYY-MM-DD-<slug>.md (Nygard)
     ├── known-issues.md        symptom · cause · workaround · remove-when
     ├── specs/                 YYYY-MM-DD-<topic>-design.md · Status: proposed | accepted | superseded
-    └── plans/                 YYYY-MM-DD-<topic>.md · Status: active | done | superseded (kept as history)
+    └── plans/                 YYYY-MM-DD-<topic>.md, or YYYY-MM-DD-<topic>/ (README.md + phase files) · Status: active | done | superseded (kept as history)
 ```
 
 **Owner map — one home per topic** (each PR from P3 on is checked against it):
@@ -291,7 +294,7 @@ yayloyalty/
 | Gotchas and today's failing checks | `docs/known-issues.md` | link |
 | Why X, not Y | `docs/decisions/` | link |
 | Onboarding, review, promotion and release cadence, agent-tooling use, harness upkeep | `README.md` | link |
-| Spec and plan formats and Status values | the `brainstorming` / `writing-plans` skills | `CLAUDE.md` one-liner: "act only on active/accepted" |
+| Spec and plan formats and Status values; reviewing work against its plan | `yaybrainstorming` (specs), `yayplan` (plans), `yayreview` (reviews) | `CLAUDE.md` one-liner: "act only on active/accepted"; `README.md`: when to use each skill |
 
 ---
 
@@ -316,7 +319,7 @@ yayloyalty/
 - [ ] No status, progress or counts outside `docs/plans/`.
 - [ ] No `@import` in `CLAUDE.md`.
 - [ ] No machine-specific path or tool version outside config files.
-- [ ] Every doc, rule and skill opens with **Purpose** and **Update when** (an HTML comment in `CLAUDE.md`).
+- [ ] Every doc, rule and skill opens with **Purpose** and **Update when**: an HTML comment in `CLAUDE.md` and the rules, and YAML comments in a skill's frontmatter (§2.6, trap 11).
 - [ ] Every topic has exactly one owner (§4); any new doc is linked from `CLAUDE.md` with a "read when…" trigger.
 
 ---
@@ -330,11 +333,11 @@ yayloyalty/
 | A1 | Scope as in §1: README, Engine READMEs, `check-docs.sh` and the `.gitignore` AI block count as old harness |
 | A2 | Unbuilt-feature designs are let go. Tag the last pre-removal commit `harness-v1-final`; comments say "designed, not built yet" without a pointer. |
 | A3 | "Green build" for P2 = **no regression**: identical baseline counts and exit codes. Existing failures are recorded in `known-issues.md`. |
-| A4 | `brainstorming` and `writing-plans` are **our own** skills, written from scratch |
+| A4 | `brainstorming` and `writing-plans` are **our own** skills, written from scratch. Amended by Q10: they are `yaybrainstorming` and `yayplan`. |
 | A5 | CLAUDE.md reaches docs through **plain links with "read when…" triggers**, no `@imports`. P12 tests that Claude opens the right doc; a doc it keeps missing may be promoted to an import, recorded in an ADR. |
 | A6 | Claude Code only, so no `AGENTS.md` |
 | A7 | Committed `.claude/settings.json`: (a) allowlist for `composer lint`, `composer test`, admin lint/test, `tsc --noEmit`, `git diff`, `git log`; (b) PreToolUse guard blocking edits under `vendor/`, `vendor-prefixed/`, `assets/dist/`, `release/`; (c) `includeGitInstructions: false` with Claude Code's **default attribution** kept |
-| A8 | Own skills: brainstorming and writing-plans; no others. Amended by Q1: `code-corrector` is removed, not rebuilt. |
+| A8 | Own skills: brainstorming and writing-plans; no others. Amended by Q1: `code-corrector` is removed, not rebuilt. Amended by Q10: the own skills are `yaybrainstorming`, `yayplan` and `yayreview`. |
 | A9 | Feature IDs become descriptive TODOs. Roadmap and dev changelog are dropped; release notes stay in `readme.txt`. |
 | A10 | Rule globs remapped and PHP narrowed (Δ5) |
 | A11 | `dev/edd` is the long-lived PR base |
@@ -353,6 +356,15 @@ yayloyalty/
 | Q7 | PR-only: every change, docs included, goes branch → PR into `dev/edd`. |
 | Q8 | Tag push approved. P2 may be prepared before the freeze. Trace announces the freeze ≥ 1 day before P2 merges and pushes the tag (CLI push is blocked on this machine, §2.5). |
 | Q9 | Lockfiles stay gitignored, recorded as a known issue in P5. |
+
+**Decided for P9 (approver: Trace Bui; Q10 on 2026-10-01, Q11–Q13 on 2026-10-02):**
+
+| Q | Decision |
+|---|---|
+| Q10 | The team's own skills are `yaybrainstorming`, `yayplan` and `yayreview` (Δ6). Trace drafted all three. The `yay` prefix keeps them apart from personal or plugin skills with the same names, which replaces P9's planned repo-specific descriptions. `yayreview` is new: before the next phase starts or the work merges, a fresh subagent checks the implementation against its plan. A4 and A8 are amended. |
+| Q11 | (a) The skills use §4's Status words: `proposed`, `accepted YYYY-MM-DD` and `superseded by <link>` for specs; `active`, `done YYYY-MM-DD` and `superseded by <link>` for plans. `CLAUDE.md` stays as it is. |
+| Q12 | (a) The skills stay shared across the YayCommerce plugins. This repo's specifics reach them through `CLAUDE.md` and the docs it links, and their files stay repo-neutral. Where the canonical copy lives is not named yet. |
+| Q13 | (a) A new decision record covers the skills. The harness record's Status line adds that the new record supersedes its skills decision. |
 
 ---
 
@@ -638,7 +650,7 @@ Exception: P1–P5 were prepared on 2026-10-01 as a stack of branches, each on t
     - C9 now covers `docs/decisions/`, and the new C17 checks record names and headings; P12 bundles it.
     - C16 stays off `docs/decisions/`: a record is never edited, so a path it names may later disappear for good reason.
     - Until P7 and P8 land, the harness record names two paths that don't exist yet: `.claude/rules/` and `.claude/settings.json`.
-  - **For P9:** the brainstorming skill links to the format record for when a choice needs a record of its own.
+  - **For P9:** `yaybrainstorming` says when a design needs a decision record of its own (P9, item 9).
   - **For P11:** README's "when to write an ADR" links to the format record, which owns it.
 - **Acceptance:**
   - Filenames match `^[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z0-9-]+\.md$`.
@@ -782,31 +794,145 @@ Exception: P1–P5 were prepared on 2026-10-01 as a stack of branches, each on t
   - Trust prompt on first run.
 - **Effort:** S–M (2–3 h).
 
-### P9 — Skills: `brainstorming` + `writing-plans`
-- **Goal:** our own spec → plan pair, writing into `docs/specs/` and `docs/plans/` with Status lines.
-- **Prerequisites:** P8.
+### P9 — Skills: `yaybrainstorming`, `yayplan`, `yayreview`
+- **Goal:** the team's own idea → design → plan → review loop. Specs land in `docs/specs/` and plans in `docs/plans/`, with the Status lines that `CLAUDE.md` acts on.
+- **Prerequisites:** P8; Q11–Q13 answered (§9).
+- **Drafts (Q10):** Trace drafted all three skills on 2026-10-01. They are untracked in `.claude/skills/`. Each has a `SKILL.md` and skill-creator evals in `evals/evals.json`.
+  - `yaybrainstorming`:
+    - explores the code, then clarifies in rounds of 2–3 questions with AskUserQuestion, drawing on `references/question-bank.md`;
+    - compares 2–3 approaches and presents the design in sections;
+    - writes `docs/specs/YYYY-MM-DD-<topic>-design.md` from `references/design-template.md`, reviews it and stops at an approval gate;
+    - allows no code before approval. A change that fits in one sentence gets a five-line fast-path doc, never no doc.
+  - `yayplan`:
+    - plans without touching source;
+    - turns a spec into a single-file plan of up to about 5 tasks, or into a directory plan: a `README.md` that holds the interface contract, plus 2–4 phase files, each a vertical slice;
+    - gives each task Files and Interfaces blocks and checkbox steps: write the test, run it, implement, run it again, commit (`references/plan-template.md`).
+  - `yayreview` (new):
+    - dispatches a fresh general-purpose subagent with a self-contained prompt;
+    - the subagent checks requirements, verification steps, review focus, interfaces, scope and the exit criterion. It returns PASS or FAIL and ties each blocking gap to a plan line;
+    - the implementing session fixes the blocking gaps and asks for one more review, then stops.
+- **Review of the drafts** (2026-10-01, Claude Code 2.1.286):
+  - **Already passing:** C2, C6, C16 and C12's name check. The `.DS_Store` files in two skill directories are gitignored.
+  - **Must fix:**
+    1. **Status words (Q11).**
+       - `design-template.md` writes `draft | approved YYYY-MM-DD`. `CLAUDE.md` acts only on a spec that is `accepted`, so it would treat every new spec as a record.
+       - `plan-template.md` has no Status line in either shape, so no yayplan plan is ever `active`.
+    2. **C9:** no `SKILL.md` has Purpose or Update when.
+    3. **C5:** once the skills are tracked, the eval prompts' example paths, such as `docs/specs/2026-10-01-order-notes-export.md`, are reported missing. Fixed in this revision: C5 now skips `.claude/skills/*/evals/`. It also skips `docs/specs/`, which is history, like `docs/plans/`.
+    4. **The harness decision record** says the own skills are `brainstorming` and `writing-plans`, "and there are no others" (Q13).
+    5. **Descriptions cut short** (§2.6, trap 10).
+       - `yayplan`'s description is 583 characters long and loses "or for executing a plan that already exists".
+       - `yaybrainstorming`'s is 525 and loses "and roadmaps".
+       - `yayreview`'s is 500 and fits.
+       - C12 now checks the length.
+    6. **Wrong diff base.**
+       - `yayreview`'s example is `git diff main...HEAD`. Here the base is `dev/edd`, or the previous phase's branch when branches are stacked.
+       - Only `CLAUDE.md` names that base. With git instructions off, the session gets no git snapshot (P8).
+       - A diff against `main` takes in every commit not yet promoted, so the scope check fails on files the plan never touched.
+  - **Should fix**, in wording that holds in any repo (Q12):
+    7. **Checks that already fail.**
+       - Six commands in `CLAUDE.md` are marked "Fails today". A plan step that expects one of them to exit 0 fails before any change is made.
+       - The reviewer prompt counts every failing step as a gap.
+       - A general-purpose subagent loads `CLAUDE.md` (probe, 2026-10-01). So the reviewer gets `CLAUDE.md`'s "judge a failing check against `dev/edd`", but its prompt contradicts it.
+    8. **Default plan.** Given no argument, `yayreview` takes "the newest file or directory under `docs/plans/`". Here that can be this plan, which isn't in yayplan's format.
+    9. **Repo docs and decision records.**
+       - `yaybrainstorming` step 1 says to read "docs" without naming any, and no step mentions decision records (P6's note).
+       - Step 1 should read the docs that `CLAUDE.md` links for the areas the idea touches.
+       - When the chosen approach makes an architectural choice, the design names the decision record that the implementing PR adds.
+    10. **Commands and commits in plans.**
+        - The template's examples are `vendor/bin/phpunit --filter …` and a one-line `git commit -m`.
+        - A plan should use the commands in `CLAUDE.md`, or a narrower form of one, such as `composer test -- --filter <name>`.
+        - Its commit steps follow `CLAUDE.md` § Git, trailer included.
+  - **Noted, not changed:**
+    - The drafts are written for any YayCommerce plugin. The question bank asks about sibling plugins, page builders and block checkout. The evals use discount rules, wishlists, coupons and `src/Admin/Settings.php`. Q12 decides whether they stay that way.
+    - `yaybrainstorming` gates every behaviour change and refactor, however small. The fast path keeps that cheap.
+    - `yayplan` says to search with Grep and Glob. This session's Claude Code offers neither as a tool, so Claude searches through Bash.
+    - C16 reads only `SKILL.md`. The templates in `references/` hold placeholder paths, such as `exact/path/to/new-file.php`, on purpose.
 - **Steps:**
-  1. `brainstorming` (model- and user-invocable):
-     - interview with AskUserQuestion, covering Pro/Lite, ledger and data impact, REST/SPA, caps, i18n and HPOS;
-     - read `architecture.md`; compare 2–3 approaches;
-     - write `docs/specs/YYYY-MM-DD-<topic>-design.md` with `Status: proposed`;
-     - point to an ADR when a choice is architectural.
-  2. `writing-plans`:
-     - takes a spec path and audits the code;
-     - writes `docs/plans/YYYY-MM-DD-<topic>.md` with `Status: active`, in this plan's format: summary, findings with paths, phases with goal, prerequisites, steps, checklist, mechanical acceptance, risks, effort; validation; open questions;
-     - uses only commands from `CLAUDE.md`.
-  3. Each `description` is specific to this repo, so it can't be confused with a personal plugin skill of the same name.
+  1. Branch from P8 (stacked, §7). Stage the skills by name: each `SKILL.md`, `references/` and `evals/`.
+  2. Fix items 1, 2 and 5–10 in the drafts, under Q11 (a) and Q12 (a):
+     - **Specs:**
+       - `**Status:** proposed` in the template, and in the fast-path doc too;
+       - step 7 sets `accepted YYYY-MM-DD` at the review gate;
+       - when a new spec replaces an older one, its step 5 sets the older one to `superseded by <link>`.
+     - **Plans:**
+       - `**Status:** active` in the single-file header and in a directory plan's `README.md`. Each phase file links back to its README;
+       - the PR that finishes the plan sets `done YYYY-MM-DD`; a replaced plan becomes `superseded by <link>`;
+       - when a review of the whole plan passes, `yayreview`'s report says to set `done`.
+     - **Headers:**
+       - Purpose and Update when go in YAML comments inside each `SKILL.md`'s frontmatter, and that one header covers the whole skill directory;
+       - they don't go in an HTML comment, as in the rules: a skill keeps its HTML comments when it is invoked (§2.6, trap 11).
+     - **Descriptions:** ≤ 500 characters, keeping every "Do not use" clause.
+     - **`yayreview`:**
+       - diffs against the PR's base branch: the one `CLAUDE.md` names, or the previous branch in a stack;
+       - doesn't count a check as a gap when it fails the same way on the base;
+       - given no argument, reviews the newest plan whose Status is `active`.
+     - **`yayplan`:** a step that runs a check that fails today expects "no new failures", compared with the base. Commands and commits follow item 10.
+     - **`yaybrainstorming`:** item 9.
+  3. Write a decision record for Q10, including Q12's answer. With Q13's recommended answer, the harness record's Status line then says that the new record supersedes its skills decision. C17 passes.
+  4. Dry run on a scratch branch with a small YayLoyalty topic. Iterate on the drafts until the outputs pass, then discard the branch:
+     - `/yaybrainstorming <topic>` writes a spec with `**Status:** proposed`, and approving it sets `accepted`;
+     - `/yayplan <that spec>` writes a plan with `**Status:** active`;
+     - once Task 1 is implemented, `/yayreview <that plan>` reviews it in a subagent, against the scratch branch's base;
+     - a one-line bug fix, asked for separately, takes the fast path.
+  5. Optional: run each skill's `evals/evals.json` through skill-creator. The prompts aren't YayLoyalty features, so judge the process, not the facts.
 - **Checklist:**
-  - [ ] both skills
-  - [ ] C12 passes
-  - [ ] toy-topic dry run done and discarded
-  - [ ] do-not-reintroduce ticked
+  - [x] three skills drafted (Trace, untracked)
+  - [x] drafts reviewed against the harness (above)
+  - [x] C5 and C12 updated in the Appendix
+  - [x] Q11–Q13 answered
+  - [x] branch created (step 1)
+  - [x] items 1, 2, 5 and 6 fixed; 7–10 fixed, or declined with a reason
+  - [x] decision record written; harness record's Status line updated
+  - [x] C5, C9, C12 and C16 pass
+  - [x] C17 passes with the new record
+  - [ ] dry run done and discarded
+  - [x] do-not-reintroduce ticked (commit body)
+- **Notes (2026-10-02):**
+  - Trace took the recommended answer to Q11–Q13. Where the canonical copy of the shared skills lives (Q12) is not named yet.
+  - **Fixes applied** to the drafts, all of items 1, 2 and 5–10, worded to hold in any repo:
+    - **Specs:** the template and the fast-path doc start at `**Status:** proposed`. The lifecycle is stated above the template, and steps 5 and 7 set `superseded by` and `accepted`. The hard gate now waits for `accepted`.
+    - **Plans:** both shapes open with `**Status:** active`, and the lifecycle is stated above the template. A phase file's first line points to its README. `yayplan` stops on a design doc that isn't `accepted`.
+    - **`yayreview`:**
+      - diffs against `git diff <base>...HEAD`, with the base from `CLAUDE.md` or the stack, and never assumes `main`;
+      - with no argument, takes the newest `active` plan;
+      - doesn't count a failure that the plan or the docs record on the base as a gap, and doesn't switch branches to check one;
+      - its report says to set `done` when the whole plan passes.
+    - **`yayplan`:**
+      - verification commands come from `CLAUDE.md`, or narrow one of them;
+      - a check that already fails expects "no new failures";
+      - a commit step names the files and the message, and `CLAUDE.md` supplies the format and trailer;
+      - the template runs `composer test -- --filter …`. `composer test` is `phpunit` here, so the filter passes through.
+    - **`yaybrainstorming`:** step 1 reads the docs `CLAUDE.md` links. Step 3 and the template's new **Decision record** line name the record that an architectural choice needs.
+    - **Descriptions:** 489, 498 and 500 characters. Claude Code reloaded the skills during the session, and the listing then showed all three in full.
+    - **Evals:** the expected outputs now include the Status lines, the diff base and the `done` step.
+  - **Header placement**, from scratch-skill probes with `claude -p` on Haiku:
+    - In the transcript, an invoked skill's text began right after its frontmatter, which was gone. An HTML comment under the frontmatter was kept, word for word.
+    - A YAML comment in the frontmatter never appeared in the transcript. The skill still ran, and the listing quoted its description unchanged.
+    - So the headers are YAML comments, which cost nothing at invocation and can't be read as instructions for the task. They also say why they sit there, so nobody moves them into an HTML comment.
+  - **Checks:** C2, C5, C6, C12 and C16 print nothing for the skills, and C9 flags only `README.md` (P11). The eval files are valid JSON. Each frontmatter parses as YAML, with only `name` and `description` as keys. Both Status greps in the acceptance give 2.
+  - **Branch:** `trace/docs/harness-p9-skills` is stacked on P8.
+  - **Decision record** (step 3, Q13 (a)):
+    - [the shared skills record](../decisions/2026-10-02-shared-design-plan-review-skills.md) records Q10–Q13, the options turned down, the 500-character limit and where the headers sit;
+    - the harness record changed only in its Status line, which now says the new record supersedes its skills decision and its other decisions stand;
+    - C17, C6 and C9 pass with both files; C9 still flags only `README.md`.
+  - **Still to do:** the dry run (step 4).
 - **Acceptance:**
-  - C12: name = directory, `^[a-z0-9-]+$`.
-  - On a scratch branch, `/brainstorming <toy>` creates `docs/specs/<date>-<slug>-design.md` with `Status: proposed`.
-  - `/writing-plans <that spec>` creates `docs/plans/<date>-<slug>.md` with `Status: active` and every required heading (grep list).
-- **Risks:** output quality; iterate on the dry run. Optionally use Anthropic's `skill-creator` to write evals.
-- **Effort:** M (4–6 h).
+  - C12: each name equals its directory and matches `^[a-z0-9-]+$`, and each description is ≤ 500 characters.
+  - C9 lists only `README.md` (P11). C5 and C16 print nothing, and C17 passes.
+  - With Q11 (a):
+    - `grep -c '^\*\*Status:\*\* proposed'` on `design-template.md` gives 2: the full doc and the fast-path doc;
+    - `grep -c '^\*\*Status:\*\* active'` on `plan-template.md` gives 2: the single-file plan and the directory README.
+  - The dry run, in Q11's words:
+    - the spec reads `**Status:** proposed`, then `accepted`;
+    - grep finds `**Status:** active`, `**Spec:**`, `## Global constraints`, `## Review focus`, `### Task 1:`, `**Files:**` and `**Interfaces:**` in the plan;
+    - every command in the plan is in `CLAUDE.md`, or is a narrower form of one;
+    - the review ran in a subagent and diffed against the scratch branch's base, and its report opens with `## Verdict:`.
+- **Risks:**
+  - Output quality: iterate on the dry run.
+  - Copies drift: if other YayCommerce repos carry these skills (Q12 (a)), a fix made here has to reach them too.
+  - The broad trigger costs a fast-path doc even for a one-line fix. Narrow the description if that proves too heavy.
+- **Effort:** S–M (2–4 h). The drafts exist, so most of the work is the fixes and the dry run.
 
 ### P10 — dropped (Q1)
 `code-corrector` is removed, not rebuilt. The number stays so phase references don't shift.
@@ -827,8 +953,8 @@ Exception: P1–P5 were prepared on 2026-10-01 as a stack of branches, each on t
     - links to `CLAUDE.md` § Git for the rules;
     - the human parts: review expectations, who promotes `dev/edd` → `main`, release cadence (the procedure is in `release.md` and `run.sh`);
   - **agent tooling:**
-    - when to brainstorm or plan;
-    - Status lifecycle;
+    - when to run `/yaybrainstorming`, `/yayplan` and `/yayreview`;
+    - the Status lifecycle of specs and plans, linking to the skills, which own it;
     - when to write an ADR;
   - **keeping the harness current:**
     - owner map (§4);
@@ -878,14 +1004,16 @@ Exception: P1–P5 were prepared on 2026-10-01 as a stack of branches, each on t
 | V4 | Size and headers | `CLAUDE.md` < 100 lines; every doc, rule and skill has Purpose + Update when (C9); no imports (C15); decision records well-formed (C17) |
 | V5 | Rules load exactly when relevant | C10 + C11 expectations from P7 |
 | V6 | Settings and hook | C13 + C14; scripted vendor edit refused |
-| V7 | Every documented command runs | Every command in `CLAUDE.md`, `README.md`, rules and skills is run in a **fresh clone** inside a WP `plugins/` dir with Node 22. Outcome = success, or exactly the failure listed in `known-issues.md` (table in the PR). |
-| V8 | Agent smoke tests (`claude -p --setting-sources project --output-format stream-json`) | (a) asked for the admin lint command → answer contains it verbatim; (b) asked a Pro/Lite question → a `Read` of `docs/architecture.md` appears in the stream (A5's trigger works; if it misses twice, apply A5's promotion rule); (c) `/brainstorming` → `/writing-plans` toy run → files with Status lines |
+| V7 | Every documented command runs | Every command in `CLAUDE.md`, `README.md`, rules and skills (except the placeholders in skill templates) is run in a **fresh clone** inside a WP `plugins/` dir with Node 22. Outcome = success, or exactly the failure listed in `known-issues.md` (table in the PR). |
+| V8 | Agent smoke tests (`claude -p --setting-sources project --output-format stream-json`) | (a) asked for the admin lint command → answer contains it verbatim; (b) asked a Pro/Lite question → a `Read` of `docs/architecture.md` appears in the stream (A5's trigger works; if it misses twice, apply A5's promotion rule); (c) `/yaybrainstorming` → `/yayplan` → `/yayreview` toy run → a spec and a plan with Status lines, and a review verdict |
 | V9 | `/doctor prompt-audit` | No "missing file/command" or "contradiction" finding left without a disposition |
-| V10 | New teammate end to end | The named validator (Q4) follows `README.md` from a fresh clone: setup → dev server → lint/test → one brainstorm → plan cycle. Every blocker is logged as an issue; pass = zero open blockers. |
+| V10 | New teammate end to end | The named validator (Q4) follows `README.md` from a fresh clone: setup → dev server → lint/test → one brainstorm → plan → review cycle. Every blocker is logged as an issue; pass = zero open blockers. |
 
 ---
 
-## 9. Open questions (all resolved in P1, 2026-10-01; answers in §6)
+## 9. Open questions
+
+Q1–Q9 were resolved in P1 (2026-10-01; answers in §6). Q10 was decided when the P9 drafts were written. Q11–Q13 came out of the review of those drafts, and Trace took the recommended option of each on 2026-10-02 (§6).
 
 - [x] **Q1 — Rebuilt `code-corrector` rule source.** Options:
   - (a) owners discovered from in-code markers (recommended);
@@ -908,6 +1036,18 @@ Exception: P1–P5 were prepared on 2026-10-01 as a stack of branches, each on t
 - [x] **Q7 — Direct commits to `dev/edd`.** History shows docs and refactor commits pushed straight to `dev/edd`. Allowed going forward, or PR-only? This sets `CLAUDE.md` § Git.
 - [x] **Q8 — Docs freeze for P2.** Who announces it, and when? Is the tag push to `origin` approved?
 - [x] **Q9 — Lockfiles.** `composer.lock` and `pnpm-lock.yaml` are gitignored, which undermines "every command runs" on other machines. Leave it as a known issue (default), or approve committing them (an app-tooling change outside this plan)?
+
+**For P9** (resolved 2026-10-02; answers in §6):
+
+- [x] **Q11 — Status words.** The drafts write `draft | approved` on a spec and no Status on a plan. `CLAUDE.md`, §4 and A12 use `proposed | accepted | superseded` for specs and `active | done | superseded` for plans. Options:
+  - (a) the skills adopt §4's words, and `CLAUDE.md` stays as it is (recommended: the words match the decision records' `proposed` and `accepted`, and `superseded` keeps the history readable);
+  - (b) `CLAUDE.md` and §4 adopt `approved`. The skills still need a Status line for plans, and a superseded state.
+- [x] **Q12 — Shared or YayLoyalty-specific skills.** The drafts are written for any YayCommerce plugin (P9, "Noted"). Options:
+  - (a) keep them shared. This repo's specifics reach them through `CLAUDE.md` and the docs it links, and P9's fixes are worded to hold in any repo. Recommended: one set of skills serves the plugin family, and `CLAUDE.md`'s "read when…" links already cover Pro/Lite, new writers, the SPA, money and dates. If (a), say where the canonical copy lives;
+  - (b) tailor them. The question bank names the Pro/Lite seam, `LedgerService`, capabilities, money and dates; the skills link `docs/architecture.md`, `docs/conventions.md` and `docs/decisions/`; the evals use YayLoyalty features.
+- [x] **Q13 — Superseding the skills decision.** The harness record's skills bullet ([A4, A8, Q1]) no longer holds. The format record allows one edit to an accepted record: its Status line, when a later record supersedes it. It doesn't say what happens when only one of a record's decisions changes. Options:
+  - (a) a new record covers the skills, and the harness record's Status line adds that the new record supersedes its skills decision (recommended: one decision changed, so one short record);
+  - (b) a new harness record restates every decision, with the new skills, and supersedes the old one whole.
 
 ---
 
@@ -933,8 +1073,8 @@ git grep -nE 'code-standards|codebase-summary|system-architecture|deployment-gui
 git grep -n '§' -- includes apps tests scripts phpcs.xml.dist yayloyalty.php | grep -vE '^apps/admin/src/pro/campaigns/(editor/(CampaignEditorSections\.tsx|campaign-editor\.form\.ts)|add/campaign-templates\.ts):'
 # C4 — no feature IDs
 git grep -nwE 'F[0-9]{2}(-[0-9]+)?' -- includes apps tests scripts
-# C5 — every docs/*.md path cited anywhere (plans excluded: they describe history) exists
-git grep -ohE 'docs/[A-Za-z0-9_./-]+\.md' -- . ':!docs/plans/' | sort -u | while read -r p; do [ -f "$p" ] || echo "MISSING $p"; done
+# C5 — every docs/*.md path cited anywhere exists (plans and specs excluded: they describe history; skill evals too: their prompts name example files)
+git grep -ohE 'docs/[A-Za-z0-9_./-]+\.md' -- . ':!docs/plans/' ':!docs/specs/' ':!.claude/skills/*/evals/' | sort -u | while read -r p; do [ -f "$p" ] || echo "MISSING $p"; done
 # C6 — relative markdown links resolve
 git ls-files -- '*.md' | grep -E '^(CLAUDE|README)\.md$|^\.claude/|^docs/' | while read -r f; do
   grep -oE '\]\([^)[:space:]]+\)' "$f" | sed -E 's/^\]\(//; s/\)$//; s/#.*$//' | grep -vE '^(https?:|mailto:|$)' |
@@ -963,8 +1103,9 @@ probe(){ : > "$L"; claude -p --settings "$S/s.json" --setting-sources project --
 probe includes/YayLoyalty.php; probe apps/admin/src/main.tsx; probe scripts/run.sh; probe README.md
 #   Record any memory_type=User lines: the harness must not depend on personal config.
 #   The globs column is the parsed frontmatter. A rule that loads at session_start has lost its paths.
-# C12 — skill names valid and equal to their directory
-for d in .claude/skills/*/; do n=$(sed -n 's/^name: *//p' "$d/SKILL.md" | head -1); [ "$n" = "$(basename "$d")" ] && [[ "$n" =~ ^[a-z0-9-]+$ ]] || echo "BAD NAME $d"; done
+# C12 — skill names valid and equal to their directory; descriptions fit the listing (§2.6, trap 10)
+for d in .claude/skills/*/; do n=$(sed -n 's/^name: *//p' "$d/SKILL.md" | head -1); [ "$n" = "$(basename "$d")" ] && [[ "$n" =~ ^[a-z0-9-]+$ ]] || echo "BAD NAME $d"
+  s=$(sed -n 's/^description: *//p' "$d/SKILL.md" | head -1); [ ${#s} -le 500 ] || echo "LONG DESCRIPTION $d (${#s})"; done
 # C13 — settings valid
 jq empty .claude/settings.json && claude doctor
 # C14 — guard hook: exit 2 in each generated directory (a ".." spelling too), 0 for includes/x.php

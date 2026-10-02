@@ -6,7 +6,7 @@
 
 ## Status
 
-Accepted, 2026-10-01. Trace Bui approved these decisions while planning the renewal, and answered its open questions in the plan's P1 review. The IDs in brackets are the plan's: [the harness renewal plan](../plans/2026-10-01-harness-renewal.md) also holds the evidence for each one.
+Accepted, 2026-10-01. Trace Bui approved these decisions while planning the renewal, and answered its open questions in the plan's P1 review. The IDs in brackets are the plan's: [the harness renewal plan](../plans/2026-10-01-harness-renewal.md) also holds the evidence for each one. On 2026-10-02, its skills decision ([A4, A8, Q1]) was superseded by [Three shared skills take work from design to plan to review](2026-10-02-shared-design-plan-review-skills.md). Its other decisions stand.
 
 ## Context
 
