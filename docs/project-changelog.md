@@ -6,6 +6,14 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
 
 ## Unreleased
 
+### Added — Points earned email sends on award (2026-10-02)
+
+- **Trigger:** `Engine\Emails\Emails::send_points_earned()` listens to `yayloyalty_points_awarded` hook, fired after order/signup/review awards complete. Send is synchronous, after commit; mail failure never interrupts award via Transaction catch-and-log.
+- **Filters:** `yayloyalty_points_earned_text` (source-dependent sentence per `LedgerSource`: order/signup/review/generic) and `yayloyalty_points_earned_cta_url` (default My Account). Subject template supports {points}, {points_label} (singular/plural via `SettingsHelper::points_label()`), {balance}.
+- **Extension:** `LoyaltyEmail::extra_template_args()` protected method allows subclasses to merge additional template vars.
+- **Preview:** `woocommerce_prepare_email_for_preview` hook wired to provide sample award data for WooCommerce's settings email preview.
+- **Tests:** `tests/integration/Emails/PointsEarnedEmailTest` (11 tests covering trigger, duplicate prevention, disabled email, source-dependent text, filter application, WooCommerce email settings, and failure handling).
+
 ### Added — Points come back out: cancel, refund, review removal (2026-09-30)
 
 - **Cancel and trash** release pending and claw back everything the order earned, per earn row (`Engine\Earning\Reversal::full_order()`), keyed on the order. Trash is heard on `woocommerce_trash_order` / `trashed_post`: HPOS trashes without `woocommerce_order_status_changed`. The `refunded` status releases pending and reverses in full only when no refund object exists (read from the database, not the order's cached refund total).

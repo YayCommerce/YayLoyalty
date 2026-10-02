@@ -7,6 +7,10 @@
  * @var string    $email_heading
  * @var string    $additional_content
  * @var \WC_Email $email
+ * @var string    $earned_text  What was earned and why, e.g. "You earned 50 Points for order #123." Absent in the settings preview.
+ * @var string    $balance_text The balance after this award, e.g. "120 Points". Absent in the settings preview.
+ * @var string    $cta_url      Where "View your points" links. Absent in the settings preview.
+ * @var \YayLoyalty\Models\LedgerEntry $entry The awarded row. Absent in the settings preview.
  */
 
 use Automattic\WooCommerce\Utilities\FeaturesUtil;
@@ -21,7 +25,22 @@ do_action( 'woocommerce_email_header', $email_heading, $email );
 ?>
 
 <?php echo $is_email_improvements_enabled ? '<div class="email-introduction">' : ''; ?>
+<?php if ( ! empty( $earned_text ) ) : ?>
+<p><?php echo esc_html( $earned_text ); ?></p>
+<?php else : ?>
 <p><?php esc_html_e( 'Thanks for being part of our loyalty program. New points have been added to your account.', 'yayloyalty' ); ?></p>
+<?php endif; ?>
+<?php if ( ! empty( $balance_text ) ) : ?>
+<p>
+    <?php
+    /* translators: %s: points with label, e.g. "120 Points". */
+    echo esc_html( sprintf( __( 'Your balance is now %s.', 'yayloyalty' ), $balance_text ) );
+    ?>
+</p>
+<?php endif; ?>
+<?php if ( ! empty( $cta_url ) ) : ?>
+<p><a class="button" href="<?php echo esc_url( $cta_url ); ?>" style="display:inline-block;padding:12px 24px;text-decoration:none;font-weight:bold;"><?php esc_html_e( 'View your points', 'yayloyalty' ); ?></a></p>
+<?php endif; ?>
 <?php echo $is_email_improvements_enabled ? '</div>' : ''; ?>
 
 <?php

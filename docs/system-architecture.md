@@ -271,7 +271,7 @@ These are **first-party, internal seams** for Pro to attach behavior. Not a thir
 |---|---|---|
 | **`yayloyalty_table_schemas`** | Called during Installer to collect table DDL | Pro can add Pro tables (currently unused) |
 | **`yayloyalty_ledger_recorded`** | Fired by `LedgerService` for every row it writes, through `Transaction::after_commit()`: after the outermost commit (also when nested in `exec_write` or `EarningService::award()`), never on rollback | `DashboardCache::flush`; `Engine\CustomerActivityListener::on_ledger_recorded` — captures `account_created`/`points_adjusted` into `yayloyalty_customer_meta` |
-| **`yayloyalty_points_awarded`** | Fired by `Engine\Earning\EarningService::award()` after commit, once per awarded row, with `(Outcome $awarded, Context $ctx)`; never for skipped or duplicate | nothing yet — emails, YayMail placeholders |
+| **`yayloyalty_points_awarded`** | Fired by `Engine\Earning\EarningService::award()` after commit, once per awarded row, with `(Outcome $awarded, Context $ctx)`; never for skipped or duplicate | `Engine\Emails\Emails::send_points_earned()` — listens to trigger points earned email send (synchronous, after commit) |
 | **`yayloyalty_order_award_triggers`** | Filter applied by `OrderListener::on_awardable()`: the triggers a completed order is awarded for, `[ purchase ]` plus the order | Internal seam: Pro appends its order triggers (`first_order`, …) |
 | **`yayloyalty_points_redeemed`** | To be fired by `Engine\Redemption\RedemptionService::commit()` after commit, once per redeemed `Outcome` (scaffold; not fired yet) | nothing yet |
 | **`yayloyalty_redemption_gates`** | To be applied by `RedemptionService::build()` over `[ ProgramGate, RewardGate ]` (scaffold) | Pro gates (tier-only rewards) |
@@ -541,7 +541,7 @@ CampaignPerformance.tsx: one useCampaignPerformanceQuery — header from the emb
 
 ### Loyalty emails — registered as WooCommerce email classes
 
-Each loyalty email (points earned, expiring, expired, etc.) is a `WC_Email` subclass. Lite registers 3 emails; Pro adds 9 more (12 total), registered during `YayLoyaltyPro::boot()` through WooCommerce's `woocommerce_email_classes` and `woocommerce_email_groups` filters. The email id (`yayloyalty_points_earned`, …) is the registration key, so it is also the email's settings section; WooCommerce stores its settings in `woocommerce_{id}_settings`. Registration only: no `trigger()` is hooked, so nothing sends yet.
+Each loyalty email (points earned, expiring, expired, etc.) is a `WC_Email` subclass. Lite registers 3 emails; Pro adds 9 more (12 total), registered during `YayLoyaltyPro::boot()` through WooCommerce's `woocommerce_email_classes` and `woocommerce_email_groups` filters. The email id (`yayloyalty_points_earned`, …) is the registration key, so it is also the email's settings section; WooCommerce stores its settings in `woocommerce_{id}_settings`. **Points earned email sends:** triggered synchronously by `yayloyalty_points_awarded` after order/signup/review awards, via `Engine\Emails\Emails::send_points_earned()`, with hooks `yayloyalty_points_earned_text` (source-dependent sentence) and `yayloyalty_points_earned_cta_url` (default My Account). Other loyalty emails remain registration-only (no trigger yet).
 
 The Admin Emails page (`/settings/emails`) is a wrapper around WooCommerce's own email management:
 - **GET `/emails`** lists registered emails (3 Lite / 12 Pro) with their on/off state and metadata

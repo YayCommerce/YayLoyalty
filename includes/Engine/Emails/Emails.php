@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Engine\Emails;
 
+use YayLoyalty\Engine\Earning\Outcome;
 use YayLoyalty\Utils\SingletonTrait;
 
 defined( 'ABSPATH' ) || exit;
@@ -15,6 +16,38 @@ class Emails {
     protected function __construct() {
         add_filter( 'woocommerce_email_classes', [ $this, 'add_classes' ] );
         add_filter( 'woocommerce_email_groups', [ $this, 'add_groups' ] );
+        add_action( 'yayloyalty_points_awarded', [ $this, 'send_points_earned' ] );
+        add_filter( 'woocommerce_prepare_email_for_preview', [ $this, 'prepare_preview' ] );
+    }
+
+    /** Sends the Points earned email for one award, synchronously: the hook runs after commit, so a mail failure never touches the award. */
+    public function send_points_earned( Outcome $awarded ): void {
+        $entry = $awarded->get_entry();
+
+        if ( ! $entry || ! function_exists( 'WC' ) ) {
+            return;
+        }
+
+        $email = WC()->mailer()->get_emails()[ PointsEarnedEmail::ID ] ?? null;
+
+        if ( $email instanceof PointsEarnedEmail ) {
+            $email->trigger( $entry );
+        }
+    }
+
+    /**
+     * Gives WooCommerce's settings preview a sample award; it would otherwise
+     * render this email around a dummy order, leaving {points} blank.
+     *
+     * @param \WC_Email $email
+     * @return \WC_Email
+     */
+    public function prepare_preview( $email ) {
+        if ( $email instanceof PointsEarnedEmail ) {
+            $email->prepare( PointsEarnedEmail::sample_entry() );
+        }
+
+        return $email;
     }
 
     /**

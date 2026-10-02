@@ -46,12 +46,27 @@ abstract class LoyaltyEmail extends \WC_Email {
 
     /** The variables every loyalty template receives, named as WooCommerce's own templates name them. */
     private function template_args( bool $plain_text ): array {
-        return [
-            'email_heading'      => $this->get_heading(),
-            'additional_content' => $this->get_additional_content(),
-            'sent_to_admin'      => false,
-            'plain_text'         => $plain_text,
-            'email'              => $this,
-        ];
+        return array_merge(
+            [
+                'email_heading'      => $this->get_heading(),
+                'additional_content' => $this->get_additional_content(),
+                'sent_to_admin'      => false,
+                'plain_text'         => $plain_text,
+                'email'              => $this,
+            ],
+            $this->extra_template_args()
+        );
+    }
+
+    /**
+     * Variables only this email's templates receive, on top of the shared ones.
+     * $this->object may not be the type the email sends for (WooCommerce's
+     * preview sets a dummy order), so an override checks it and returns []
+     * when it does not match; its templates then fall back.
+     *
+     * @return array<string, mixed>
+     */
+    protected function extra_template_args(): array {
+        return [];
     }
 }
