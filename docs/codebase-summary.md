@@ -226,7 +226,7 @@ Lite registers 3 transactional loyalty emails; Pro adds 9 more. Each is a `WC_Em
 |---|---|
 | `Integrations/YayMail/YayMailIntegration` | Boot gate: `class_exists('YaymailPluginAdapter', false) && is_licensed()` when available; registers on `yaymail_register_emails` / `yaymail_register_shortcodes` hooks |
 | `Integrations/YayMail/PointsEarnedYayMailEmail` | Extends `BaseEmail`; swaps WC template via `wc_get_template` when YayMail template enabled; default layout Logo/Heading/Text/Button/Footer |
-| `Integrations/YayMail/PointsEarnedShortcodes` | 10 shortcodes (yaymail_yayloyalty_{customer_name, earned_text, points, points_label, balance, balance_text, balance_value, balance_value_text, order_number, points_url}); values memoized per award; sample award for is_sample |
+| `Integrations/YayMail/PointsEarnedShortcodes` | 10 shortcodes (yaymail_yayloyalty_{customer_name, earned_points, points, points_label, balance, balance_points, balance_value, balance_value_text, order_number, points_url}); values memoized per award; sample award for is_sample |
 
 ### Redemption orchestration (includes/Engine/Redemption/) — ZONE 2 and the adapters
 

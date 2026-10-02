@@ -10,7 +10,7 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
 
 - **Gating:** `class_exists('YaymailPluginAdapter', false) && is_licensed()` when that check exists, same as YayReviews. Registered at `includes/YayLoyalty.php` during boot, fires `yaymail_register_emails` and `yaymail_register_shortcodes` hooks.
 - **Email:** `PointsEarnedYayMailEmail` extends `BaseEmail`; swaps WC template via `wc_get_template` when YayMail template is enabled; default layout is Logo/Heading/Text/Button/Footer.
-- **Shortcodes:** 10 shortcodes yaymail_yayloyalty_{customer_name, earned_text, points, points_label, balance, balance_text, balance_value, balance_value_text, order_number, points_url}; values from `PointsEarnedEmail::get_template_values()`; sample award rendered for is_sample check; subject renders with empty render_data for the award being sent; values memoized per award.
+- **Shortcodes:** 10 shortcodes yaymail_yayloyalty_{customer_name, earned_points, points, points_label, balance, balance_points, balance_value, balance_value_text, order_number, points_url}; values from `PointsEarnedEmail::get_template_values()`; sample award rendered for is_sample check; subject renders with empty render_data for the award being sent; values memoized per award.
 - **Template variables:** `PointsEarnedEmail::get_template_values()` now public; `extra_template_args()` carries points, points_label, balance, balance_value_text, order_number for theme overrides.
 - **Tests:** `tests/integration/Emails/YayMailPointsEarnedTest.php` (5 tests, skipped unless licensed YayMail is active).
 

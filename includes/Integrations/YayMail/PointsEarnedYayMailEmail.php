@@ -47,8 +47,8 @@ class PointsEarnedYayMailEmail extends BaseEmail {
         /* translators: %s: customer's first name. */
         $greeting = sprintf( esc_html__( 'Hi %s,', 'yayloyalty' ), PointsEarnedShortcodes::tag( 'customer_name' ) );
         /* translators: %s: points with label, e.g. "120 Points". */
-        $balance = sprintf( esc_html__( 'Your balance is now %s.', 'yayloyalty' ), '<strong>' . PointsEarnedShortcodes::tag( 'balance_text' ) . '</strong>' );
-        $text    = '<p>' . $greeting . '</p><p>' . PointsEarnedShortcodes::tag( 'earned_text' ) . '</p><p>' . $balance . '</p><p>' . PointsEarnedShortcodes::tag( 'balance_value_text' ) . '</p>';
+        $balance = sprintf( esc_html__( 'Your balance is now %s.', 'yayloyalty' ), '<strong>' . PointsEarnedShortcodes::tag( 'balance_points' ) . '</strong>' );
+        $text    = '<p>' . $greeting . '</p><p>' . PointsEarnedShortcodes::tag( 'earned_points' ) . '</p><p>' . $balance . '</p><p>' . PointsEarnedShortcodes::tag( 'balance_value_text' ) . '</p>';
 
         return ElementsLoader::load_elements(
             [

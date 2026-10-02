@@ -20,12 +20,14 @@ class PointsEarnedShortcodes extends BaseShortcode {
 
     /** Shortcodes whose template value has another name. */
     private const VALUE_KEYS = [
-        'customer_name' => 'greeting_name',
-        'points_url'    => 'cta_url',
+        'customer_name'  => 'greeting_name',
+        'earned_points'  => 'earned_text',
+        'balance_points' => 'balance_text',
+        'points_url'     => 'cta_url',
     ];
 
     /** Values that are already escaped HTML. */
-    private const HTML_KEYS = [ 'earned_text', 'balance_value', 'balance_value_text' ];
+    private const HTML_KEYS = [ 'earned_points', 'balance_value', 'balance_value_text' ];
 
     public $available_email_ids = [ PointsEarnedEmail::ID ];
 
@@ -68,11 +70,11 @@ class PointsEarnedShortcodes extends BaseShortcode {
     private static function descriptions(): array {
         return [
             'customer_name'      => __( 'Customer first name, else display name', 'yayloyalty' ),
-            'earned_text'        => __( 'Sentence saying what was earned and why', 'yayloyalty' ),
+            'earned_points'      => __( 'Sentence saying what was earned and why', 'yayloyalty' ),
             'points'             => __( 'Points earned', 'yayloyalty' ),
             'points_label'       => __( 'Points label for the points earned', 'yayloyalty' ),
             'balance'            => __( 'Balance after this award', 'yayloyalty' ),
-            'balance_text'       => __( 'Balance with its label, e.g. "150 Points"', 'yayloyalty' ),
+            'balance_points'     => __( 'Balance with its label, e.g. "150 Points"', 'yayloyalty' ),
             'balance_value'      => __( 'What the balance is worth; empty while the discount reward is not live', 'yayloyalty' ),
             'balance_value_text' => __( 'Sentence saying what the balance is worth; empty while the discount reward is not live', 'yayloyalty' ),
             'order_number'       => __( 'Order number the points were earned for; empty unless earned from an order', 'yayloyalty' ),

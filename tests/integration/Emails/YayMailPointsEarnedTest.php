@@ -50,7 +50,7 @@ final class YayMailPointsEarnedTest extends IntegrationTestCase {
         $this->assertSame( '50', $this->shortcode( 'points', $render_data ) );
         $this->assertSame( esc_html( SettingsHelper::points_label( 50 ) ), $this->shortcode( 'points_label', $render_data ) );
         $this->assertSame( '150', $this->shortcode( 'balance', $render_data ) );
-        $this->assertStringContainsString( '<strong>50 ' . SettingsHelper::points_label( 50 ) . '</strong>', $this->shortcode( 'earned_text', $render_data ) );
+        $this->assertStringContainsString( '<strong>50 ' . SettingsHelper::points_label( 50 ) . '</strong>', $this->shortcode( 'earned_points', $render_data ) );
     }
 
     /** A real send passes the WooCommerce template args, so the shortcodes read the award being sent. */
@@ -64,7 +64,7 @@ final class YayMailPointsEarnedTest extends IntegrationTestCase {
 
         $this->assertSame( 'Anna', $this->shortcode( 'customer_name', $render_data ) );
         $this->assertSame( (string) $order->get_order_number(), $this->shortcode( 'order_number', $render_data ) );
-        $this->assertStringContainsString( 'for order #' . $order->get_order_number(), $this->shortcode( 'earned_text', $render_data ) );
+        $this->assertStringContainsString( 'for order #' . $order->get_order_number(), $this->shortcode( 'earned_points', $render_data ) );
     }
 
     /** YayMail's subject filter renders a real send with empty render_data; it must not swap in the sample award. */
@@ -82,7 +82,7 @@ final class YayMailPointsEarnedTest extends IntegrationTestCase {
     public function test_every_shortcode_is_registered_for_the_points_earned_email(): void {
         $names = array_column( PointsEarnedShortcodes::get_instance()->get_shortcodes(), 'name' );
 
-        $this->assertContains( 'yaymail_yayloyalty_earned_text', $names );
+        $this->assertContains( 'yaymail_yayloyalty_earned_points', $names );
         $this->assertContains( 'yaymail_yayloyalty_points_url', $names );
         $this->assertSame( [ PointsEarnedEmail::ID ], PointsEarnedShortcodes::get_instance()->available_email_ids );
     }
