@@ -295,7 +295,7 @@ yayloyalty/
 | Gotchas and today's failing checks | `docs/known-issues.md` | link |
 | Why X, not Y | `docs/decisions/` | link |
 | Onboarding, review, promotion and release cadence, agent-tooling use, harness upkeep | `README.md` | link |
-| Spec and plan formats and Status values; reviewing work against its plan; finding duplicated facts and their owners before a PR; the stacked-branch PR-base rule (shared with yayreview, and yaycook) | `yaybrainstorming` (specs), `yayplan` (plans), `yayreview` (reviews), `yaytidy` (duplicates and the PR-base rule) | `CLAUDE.md` one-liner: "act only on active/accepted"; `README.md`: when to use each skill |
+| Spec and plan formats and Status values; reviewing work against its plan; finding duplicated facts and their owners before a PR; the stacked-branch PR-base rule | `yaybrainstorming` (specs), `yayplan` (plans), `yayreview` (reviews), `yaytidy` (duplicates and the PR-base rule) | `CLAUDE.md` one-liner: "act only on active/accepted"; `README.md`: when to use each skill |
 
 ---
 
@@ -371,7 +371,7 @@ yayloyalty/
 
 | Q | Decision |
 |---|---|
-| Q14 | `yaytidy` joins the own skills, and `yaycook` follows in its own PR; see [the yaytidy and yaycook record](../decisions/2026-10-02-add-yaytidy-and-yaycook.md). Amends A8 and Q10. |
+| Q14 | `yaytidy` joins the own skills; see [the yaytidy record](../decisions/2026-10-02-add-yaytidy.md). Amends A8 and Q10. |
 
 ---
 

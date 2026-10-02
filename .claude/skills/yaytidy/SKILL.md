@@ -7,9 +7,8 @@ argument-hint: "[base <ref> | commit <sha> | <path>…]"
 #   the three modes, the run and the report format (references/finding-kinds.md). This header covers
 #   the whole skill directory.
 # Update when: a mode, the run, the kinds of finding or the report changes, or the built-in /simplify
-#   changes how it takes a target. The PR base section is worded the same in yaycook and yayreview:
-#   change all three together. The YayCommerce plugins share this skill: keep its files repo-neutral,
-#   and put a repo's own facts in that repo's CLAUDE.md.
+#   changes how it takes a target. The YayCommerce plugins share this skill: keep its files
+#   repo-neutral, and put a repo's own facts in that repo's CLAUDE.md.
 # This header sits in the frontmatter because Claude Code strips the frontmatter when it loads a
 #   skill, but keeps HTML comments.
 ---

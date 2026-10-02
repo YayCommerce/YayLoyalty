@@ -1,7 +1,7 @@
 # yaytidy Design
 
 **Status:** accepted 2026-10-02; AC 17.2 amended 2026-10-02 to accept (b) as duplicated logic or redundant code, since kind 7 covers a second implementation of something that already exists
-**Related:** split from one request on 2026-10-02 into this design and [the yaycook design](2026-10-02-yaycook-design.md). This work supersedes part of [the shared skills decision record](../decisions/2026-10-02-shared-design-plan-review-skills.md).
+**Related:** this work supersedes part of [the shared skills decision record](../decisions/2026-10-02-shared-design-plan-review-skills.md).
 
 ## Goal
 
@@ -49,7 +49,7 @@ Before opening a PR, a developer runs `/yaytidy`. It finds facts kept in more th
   - in branch mode: the base ref, its short SHA and the number of changed files, with each untracked file named;
   - in commit mode: the commit's short SHA, its subject and its file count;
   - in path mode: the paths and their file count.
-- **The PR-base rule** for branch mode. It is worded the same in yaytidy, yaycook and yayreview:
+- **The PR-base rule** for branch mode:
   1. A base the user names wins. `base <ref>` takes a local branch, `origin/<branch>`, a tag or a SHA, checked with `git rev-parse --verify`. An invalid ref is refused. A named base skips both the detection and the question.
   2. Otherwise, start from the base that `CLAUDE.md` names, and use `origin/<base>` when that ref exists.
   3. List the stack's parents with `git for-each-ref --merged=HEAD --no-merged=<base> refs/heads/`, leaving out the current branch. If there are any, ask, offering:
@@ -153,7 +153,7 @@ Before opening a PR, a developer runs `/yaytidy`. It finds facts kept in more th
 - **Name:** the skill's `name` is `yaytidy`, which equals its directory and matches `^[a-z0-9-]+$` (harness check C12).
 - **Description:** one line of at most 500 characters, because Claude Code's skill listing cuts it off after 511. It keeps its "Do not use" clause, and rules out naming and style requests.
 - **Arguments:** the frontmatter sets `argument-hint: "[base <ref> | commit <sha> | <path>…]"`, so typing `/yaytidy ` shows the three forms. The value is quoted, because YAML reads an unquoted value in brackets as a list, and the hint would lose its brackets.
-- **Header:** Purpose and Update when go in YAML comments in the frontmatter, because Claude Code keeps a loaded skill's HTML comments but drops its frontmatter. The Update when names yaycook and yayreview, which share the PR-base rule.
+- **Header:** Purpose and Update when go in YAML comments in the frontmatter, because Claude Code keeps a loaded skill's HTML comments but drops its frontmatter.
 - **Repo-neutral:** the base, commands, failing checks and rules come from `CLAUDE.md` and the docs it links. No machine paths, tool versions, doc section numbers or line-number citations.
 - **Links:** the skill links its reference files with markdown links, never as backticked paths, because check C16 resolves backticked paths from the repo root.
 - **Banned names:** the removed checker's names, and any hyphenated form of "source of truth" followed by "check" (heading anchors included), appear nowhere. Check C2 rejects them everywhere outside `docs/plans/`.
@@ -181,7 +181,6 @@ Before opening a PR, a developer runs `/yaytidy`. It finds facts kept in more th
 - The Skill tool, which invokes the built-in `simplify`.
 - `CLAUDE.md` and the docs it links, for the base, the commands and the rules.
 - The PreToolUse guard hook in `.claude/settings.json`, which blocks edits to generated directories.
-- yaycook's stop message, which names `/yaytidy` as an optional step before `/yayreview`.
 
 **UI:** In chat. AskUserQuestion offers the fix choice, and the base choice on a stacked branch.
 
@@ -194,7 +193,7 @@ Before opening a PR, a developer runs `/yaytidy`. It finds facts kept in more th
 - **A marker in negated or vague wording:** it doesn't count as an owner. When it claims a mirror, it is reported as a stale marker.
 - **Shared test fixtures that are marked as mirrors and match:** these are not findings.
 
-**Decision record:** the implementing PR adds `docs/decisions/YYYY-MM-DD-add-yaytidy-and-yaycook.md`. It supersedes the shared skills record's decision "these three, and there are no others" ([Q10]), and that record's Status line says so.
+**Decision record:** the implementing PR adds `docs/decisions/YYYY-MM-DD-add-yaytidy.md`. It supersedes the shared skills record's decision "these three, and there are no others" ([Q10]), and that record's Status line says so.
 
 ## Alternatives considered
 
@@ -215,7 +214,6 @@ Before opening a PR, a developer runs `/yaytidy`. It finds facts kept in more th
 
 - A new skill in `.claude/skills/yaytidy/`, which teammates get when they pull.
 - The implementing PR also updates the harness renewal plan: §4's tree and owner map, §6, P11's agent tooling, and V8.
-- yayreview gains the PR-base rule, as described in the yaycook design.
 
 ## Open questions
 
