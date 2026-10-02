@@ -146,14 +146,19 @@ class LedgerRepository extends AbstractRepository {
     }
 
     /**
-     * One user's history, newest first.
+     * One user's history, newest first, narrowed by the drawer's filters.
      *
+     * @param array $args AbstractRepository::paginate() args plus LedgerHistoryFilters::where()'s
+     *                    `types`/`search`/`after`/`before`.
      * @return array{items: LedgerEntry[], total: int, page: int, per_page: int}
      */
     public function paginate_for_user( int $user_id, array $args = [] ): array {
         global $wpdb;
 
-        $args['where'] = [ $wpdb->prepare( 'user_id = %d', $user_id ) ];
+        $args['where'] = array_merge(
+            [ $wpdb->prepare( 'user_id = %d', $user_id ) ],
+            LedgerHistoryFilters::where( $args )
+        );
 
         if ( ! isset( $args['orderby'] ) ) {
             $args['orderby'] = 'id';
@@ -172,6 +177,32 @@ class LedgerRepository extends AbstractRepository {
                 $user_id
             )
         );
+    }
+
+    /**
+     * Row count per raw `LedgerType` over a user's whole history; types with
+     * no rows are absent. Grouping into filter groups is the caller's.
+     *
+     * @return array<string, int>
+     */
+    public function count_by_type_for_user( int $user_id ): array {
+        global $wpdb;
+
+        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+            $wpdb->prepare(
+                'SELECT type, COUNT(*) AS row_count FROM `' . esc_sql( $this->table() ) . '` WHERE user_id = %d GROUP BY type',
+                $user_id
+            ),
+            ARRAY_A
+        );
+
+        $counts = [];
+
+        foreach ( is_array( $rows ) ? $rows : [] as $row ) {
+            $counts[ (string) $row['type'] ] = (int) $row['row_count'];
+        }
+
+        return $counts;
     }
 
     /** SUM(points) for a user, the ledger-side half of the balance invariant. Reserved for a rebuild tool. */

@@ -194,7 +194,7 @@ abstract class AbstractRepository {
     }
 
     /** Prepared LIKE fragment for a free-text search; esc_like() first or % and _ become wildcards. */
-    protected function like_fragment( string $column, string $term ): string {
+    public static function like_fragment( string $column, string $term ): string {
         global $wpdb;
 
         return $wpdb->prepare(

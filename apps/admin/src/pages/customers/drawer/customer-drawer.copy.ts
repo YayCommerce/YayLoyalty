@@ -80,8 +80,6 @@ export const FILTER_TYPE_EXPIRED = () => __('Expired', 'yayloyalty');
 
 export const SEARCH_PLACEHOLDER = () => __('Search description or order number', 'yayloyalty');
 export const DATE_RANGE_LABEL = () => __('Date range', 'yayloyalty');
-/** Shown under the filter row when `type_counts` is null. */
-export const FILTER_UNAVAILABLE_REASON = () => __('Filtering arrives with the real ledger query.', 'yayloyalty');
 
 /** "1–10 of 4,812 entries · newest first" */
 export function pagerSummary(from: number, to: number, total: number): string {

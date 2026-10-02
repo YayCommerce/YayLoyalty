@@ -8,7 +8,6 @@ import {
   FILTER_TYPE_EXPIRED,
   FILTER_TYPE_LABEL,
   FILTER_TYPE_REDEEMED,
-  FILTER_UNAVAILABLE_REASON,
   SEARCH_PLACEHOLDER,
 } from '../customer-drawer.copy';
 import { toLedgerRow } from '../customer-drawer.ledger-rows';
@@ -29,8 +28,7 @@ const TYPE_LABELS: Record<LedgerFilterType, () => string> = {
  * Filters → rows → pager over `useDrawerTabQueryState`. The type filter is
  * a segmented control with every per-type count on its segment — "4,190
  * earned, 38 adjusted" tells the admin where to look before they click
- * (3c note 3). `type_counts` is `null` today (no type-count
- * query yet), which disables the whole row with a stated reason.
+ * (3c note 3).
  */
 export function LedgerTab({
   userId,
@@ -49,7 +47,7 @@ export function LedgerTab({
   const rows = query.data?.data.map((entry) => toLedgerRow(entry, campaignNames, causeLedgerId)) ?? [];
   const totalItems = query.data?.totalItems ?? 0;
   // Per-type counts describe the UNFILTERED set (see the schema's own docblock).
-  const typeCounts = query.data?.type_counts ?? null;
+  const typeCounts = query.data?.type_counts;
 
   return (
     <div className="flex flex-col gap-3">
@@ -67,8 +65,6 @@ export function LedgerTab({
         search={state.search}
         onSearchChange={state.setSearch}
         searchPlaceholder={SEARCH_PLACEHOLDER()}
-        disabled={typeCounts === null}
-        disabledReason={FILTER_UNAVAILABLE_REASON()}
       />
       <div className="overflow-x-auto rounded-md border">
         <LedgerTabRows rows={rows} isLoading={query.isPending} customerFirstName={customerFirstName} />

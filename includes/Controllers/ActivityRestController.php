@@ -18,8 +18,8 @@ defined( 'ABSPATH' ) || exit;
  *
  * `search` is a PHP-side match against decoded real content fields only
  * (`CustomerMetaRepository::paginate_activity()`), never the JSON
- * envelope's structural keys. `after`/`before` are UTC day bounds — no
- * site-timezone conversion, same as every other drawer filter.
+ * envelope's structural keys. `after`/`before` are site-timezone
+ * calendar days (`Dates::site_day_to_utc()`), same as the ledger tab.
  *
  * A separate controller rather than a method on `CustomerRestController`,
  * the same way `LedgerRestController` owns `/customers/{id}/ledger`: keeps

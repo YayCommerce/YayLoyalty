@@ -7,14 +7,8 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * The four extra `GET /customers/{id}/ledger` args the customer drawer's
- * ledger tab needs — split out of LedgerRestController to keep it near the
- * 200-line cap.
- *
- * Registered but with no SQL behind them yet (cheap `WHERE`/`BETWEEN`/`LIKE`
- * filters and an expensive `GROUP BY` for per-type counts are two different
- * costs, not bundled). The handler accepts and ignores them, returning
- * `type_counts: null` as the "server cannot filter yet" signal the SPA
- * renders a disabled filter row from.
+ * ledger tab needs, plus the type-group vocabulary they filter by — split
+ * out of LedgerRestController to keep it near the 200-line cap.
  */
 final class LedgerQueryArgs {
 
@@ -45,6 +39,40 @@ final class LedgerQueryArgs {
         }
 
         return $type;
+    }
+
+    /**
+     * The raw `LedgerType` values a filter group covers; empty for `all`
+     * (no type filter). Derived from group_of() so the grouping lives once.
+     *
+     * @return string[]
+     */
+    public static function types_of( string $group ): array {
+        if ( 'all' === $group ) {
+            return [];
+        }
+
+        return array_values(
+            array_filter( LedgerType::all(), fn( string $type ) => self::group_of( $type ) === $group )
+        );
+    }
+
+    /**
+     * Raw per-`LedgerType` row counts folded into every filter group, `all`
+     * the total — the shape of the endpoint's `type_counts`.
+     *
+     * @param array<string, int> $by_type
+     * @return array<string, int>
+     */
+    public static function group_counts( array $by_type ): array {
+        $counts = array_fill_keys( self::filter_types(), 0 );
+
+        foreach ( $by_type as $type => $count ) {
+            $counts[ self::group_of( $type ) ] += $count;
+            $counts['all']                     += $count;
+        }
+
+        return $counts;
     }
 
     /**

@@ -52,6 +52,21 @@ final class Dates {
         return false === $date ? null : $date->setTimezone( wp_timezone() )->setTime( 0, 0 );
     }
 
+    /**
+     * UTC bound for site-timezone midnight of a `Y-m-d` calendar day, shifted
+     * by $modify (`'+1 day'` for an exclusive end). Wall-clock midnight, as
+     * site_day_start(). Null when $ymd is not a valid `Y-m-d`.
+     */
+    public static function site_day_to_utc( string $ymd, string $modify = '' ): ?string {
+        $start = \DateTimeImmutable::createFromFormat( '!Y-m-d', $ymd, wp_timezone() );
+
+        if ( false === $start ) {
+            return null;
+        }
+
+        return self::to_utc( '' === $modify ? $start : $start->modify( $modify ) );
+    }
+
     /** For display only. */
     public static function to_site_tz( string $utc, ?string $format = null ): string {
         if ( null === $format || '' === $format ) {

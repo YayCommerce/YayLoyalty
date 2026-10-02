@@ -407,6 +407,7 @@ Two places that decide the same thing leave the reader unable to tell which one 
 | Idempotency key format and parsing | `Engine\Earning\IdempotencyKey::compose()` (format), `IdempotencyKey::qualifier_of()` (parse) | — |
 | Post-commit side effects (hooks, emails, state) | `Database\Transaction::after_commit()` (queue and run) | — |
 | Site-timezone midnight of a UTC moment | `Utils\Dates::site_day_start()` | — |
+| Site-timezone midnight of a `Y-m-d` day as a UTC bound (filter and chart day windows) | `Utils\Dates::site_day_to_utc()` — `'+1 day'` for the exclusive end | — |
 | Points owed back after refunds (cumulative ratio, full shortcut) | `Engine\Earning\ClawbackMath::owed()` | — |
 | Which order lines a purchase campaign counts (base and refund share) | `Engine\Points\BaseCalculator::includes_line()` | — |
 | An order line as the engine sees it | `Engine\Points\ContextFactory::line_item()` | — |

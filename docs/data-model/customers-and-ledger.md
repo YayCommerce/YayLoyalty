@@ -145,8 +145,8 @@ The row shape: `{ id, occurred_at, event_type, data: {...}, actor_kind:
 descriptions: no sentence is stored, `data` is structured and copy composes from `event_type` +
 `data` at render time. `search` is a PHP-side match against `data`'s real content fields (+
 `actor_name`), never the JSON envelope's structural keys — see
-`CustomerMetaRepository::paginate_activity()`'s own docblock. `after`/`before` are UTC day bounds,
-no site-timezone conversion, same as every other drawer date filter.
+`CustomerMetaRepository::paginate_activity()`'s own docblock. `after`/`before` are site-timezone
+calendar days converted by `Dates::site_day_to_utc()`, same as the ledger tab's.
 
 ---
 
