@@ -30,6 +30,12 @@
       "prompt": "Find the bugs in my branch before I merge.",
       "expected_output": "Does not invoke yaytidy. Bug hunting belongs to /code-review.",
       "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "/yaytidy src/Admin 'src/Api/*.php'",
+      "expected_output": "Runs path mode on both arguments, expanding the folder and the quoted glob with git ls-files, and checks them against the whole codebase. The first line gives the paths and their file count. If they hold more than 20 files, asks before invoking simplify: run on all, skip it, or stop to narrow. A path that matches no tracked file is refused with the reason. Findings may be anywhere in the paths, and only picked findings are fixed.",
+      "files": []
     }
   ]
 }

@@ -30,9 +30,10 @@ The argument picks the mode. Never offer a menu of modes, and use one mode per r
 |---|---|---|---|---|
 | Branch (default) | `/yaytidy`, or `/yaytidy base <ref>` | `git diff <base>...HEAD`, plus uncommitted and untracked files | the changed paths that still exist | a changed line, or a marker that names a symbol the diff removed or renamed |
 | Commit | `/yaytidy commit <sha>` | not built yet (plan Task 3): say so and stop | | |
-| Path | `/yaytidy <path>…` | not built yet (plan Task 2): say so and stop | | |
+| Path | `/yaytidy <path>…` | one or more files or folders, checked against the whole codebase; `/yaytidy .` covers the whole repo | the paths, asking first when they hold more than 20 files | anything in the paths |
 
 - `base <ref>` applies only to branch mode.
+- In path mode, expand each argument with `git ls-files -- <path>`, so a folder or a quoted glob becomes the tracked files it holds. Refuse a path that matches no tracked file, with that reason, before anything else runs.
 - A bare `/yaytidy` runs branch mode without asking which mode to use.
 
 ## PR base
@@ -60,6 +61,12 @@ The report's first line states the mode and the scope, even when the scope was s
 Branch mode against feature/parent (a1b2c3d): 12 changed files, untracked: src/new-helper.ts
 ```
 
+In path mode, it gives the paths as typed and their file count:
+
+```
+Path mode: src/Admin, src/Api/*.php: 14 files
+```
+
 ## Run
 
 Run these steps in order, once each.
@@ -71,7 +78,10 @@ Run these steps in order, once each.
    - "Stop".
 
    Never commit for them. Then hash every in-scope file with `git hash-object`, note which files are clean, and save the whole repo's `git status --porcelain` with a hash of each dirty file.
-3. **`/simplify`.** Invoke the built-in `simplify` skill through the Skill tool, once, with the target the mode table gives, as space-separated paths. If the Skill tool can't run it, record the reason and go on to the own pass.
+3. **`/simplify`.** Invoke the built-in `simplify` skill through the Skill tool, once, with the target the mode table gives, as space-separated paths. If the Skill tool can't run it, record the reason and go on to the own pass. In path mode, when the target holds more than 20 files, ask first with AskUserQuestion:
+   - "Run /simplify on all <n> files";
+   - "Skip /simplify, own pass only": the report's "Changed by /simplify" reads "skipped";
+   - "Stop to narrow the paths".
 4. **What `/simplify` changed.** Re-hash the in-scope files. List under "Changed by /simplify" each one whose hash changed, with one line on what changed, or "none". Compare `git status --porcelain` and the dirty-file hashes with step 2's, and list any file changed outside the target, offering `git restore <path>` for each one that was clean. Never restore without the user's yes. A `/simplify` edit that touches a contract (see [finding-kinds.md](references/finding-kinds.md)) becomes a `contract` finding that proposes reverting that edit.
 5. **Own pass.** Check the scope as it now stands, without editing anything. Search tracked files with `git grep`, which skips the gitignored generated directories. In branch mode, also find each symbol the diff removed or renamed. That is a name declared on a `-` line of the diff whose declaration `git grep -nw <name>` no longer finds. Report every comment, in any tracked file, that still names it. Each finding includes what the mode table requires.
 6. **Report.** Print the whole report as message text, before the ask, in the layout in [finding-kinds.md](references/finding-kinds.md):

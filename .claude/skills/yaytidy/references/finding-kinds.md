@@ -52,7 +52,7 @@ A `contract` finding is fixed only when the developer picks it by its ID.
 - Fix: <the proposed fix>
 ```
 
-- "Changed by /simplify" reads "none" when nothing changed, or "/simplify not available: <reason>".
+- "Changed by /simplify" reads "none" when nothing changed, "skipped" when the developer chose to skip it, or "/simplify not available: <reason>".
 - IDs are plain numbers, from 1.
 - "Differs" appears only on a drifted mirror.
 - With more than 20 findings, show the 20 that matter most, give the count of the rest, and offer to narrow the scope. Rank by kind: drifted mirror, owner dispute, unowned copy, copy, stale marker, duplicated logic, redundant code. Within a kind, `contract` findings come first.
