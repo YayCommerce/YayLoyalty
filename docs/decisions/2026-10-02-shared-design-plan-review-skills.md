@@ -6,7 +6,7 @@
 
 ## Status
 
-Accepted, 2026-10-02, by Trace Bui, who drafted the skills. It supersedes the skills decision ([A4, A8, Q1]) of the [harness structure record](2026-10-01-harness-structure.md), whose other decisions stand. The IDs in brackets are from [the harness renewal plan](../plans/2026-10-01-harness-renewal.md), which also holds the evidence. Its decision that the own skills are "these three, and there are no others" ([Q10]) is superseded by [the yaytidy record](2026-10-02-add-yaytidy.md); its other decisions stand.
+Accepted, 2026-10-02, by Trace Bui, who drafted the skills. It supersedes the skills decision ([A4, A8, Q1]) of the [harness structure record](2026-10-01-harness-structure.md), whose other decisions stand. The IDs in brackets are from [the harness renewal plan](../plans/2026-10-01-harness-renewal.md), which also holds the evidence. Its decision that the own skills are "these three, and there are no others" ([Q10]) is superseded by [the yaytidy record](2026-10-02-add-yaytidy.md), and its consequence that every behaviour change gets a design doc before any code is superseded by [the plan-without-a-spec record](2026-10-02-plan-without-a-spec.md); its other decisions stand.
 
 ## Context
 

@@ -2,7 +2,7 @@
 
 Every section exists for a reason yayplan depends on. Keep them all; a section that does not apply says "None" rather than disappearing. Scale the content, not the structure: a small change fills this in a few lines per section.
 
-**Status** starts as `proposed`. It becomes `accepted YYYY-MM-DD` when the user approves the design, and `superseded by <link>` when a later design replaces it. Only an accepted design is planned or built.
+**Status** starts as `proposed`. It becomes `accepted YYYY-MM-DD` when the user approves the design, and `superseded by <link>` when a later design replaces it. A design is planned or built only once it is accepted.
 
 ```markdown
 # [Topic] Design

@@ -10,7 +10,7 @@
     {
       "id": 2,
       "prompt": "I want a 'copy to clipboard' button next to every coupon code in the admin coupons list. Plan it.",
-      "expected_output": "Recognises there is no spec. Either asks at most three questions that change the plan (e.g. which list screen, fallback for browsers without the Clipboard API, whether to show a toast) and waits, or, if the codebase answers them, proceeds while stating each assumption explicitly in the hand-off. Any plan written follows the template and names the exact admin screen file, hook, and verification steps.",
+      "expected_output": "Recognises there is no spec and plans anyway, without sending the user to yaybrainstorming. Asks at most three questions that change the plan (e.g. which list screen, fallback for browsers without the Clipboard API, whether to show a toast) and waits, or, if the codebase answers them, proceeds while stating each assumption. The plan's header reads `**Spec:** none, planned from the request`, and its `## Requirements` section holds the goal, out of scope, acceptance criteria with exact values and the answers. It follows the template and names the exact admin screen file, hook, and verification steps.",
       "files": []
     },
     {

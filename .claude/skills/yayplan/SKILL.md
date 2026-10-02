@@ -1,7 +1,7 @@
 ---
 name: yayplan
 description: Turns an accepted spec, issue, or feature request into a step-by-step implementation plan that another engineer or agent can execute without the planner's context. Use when the user asks to plan, break down, scope, sequence, or estimate a feature, refactor, or migration, says "before we touch code" or "write a plan", wants tasks from a spec, or mentions YayPlan, even without the word "plan". Do not use for product planning (PRDs, roadmaps, MVP scoping) or to execute a plan that already exists.
-# Purpose: turns an accepted spec into an implementation plan in docs/plans/ that yayreview can check
+# Purpose: turns an accepted spec, or a request with no spec, into an implementation plan in docs/plans/ that yayreview can check
 #   work against. It owns the plan format, both plan shapes and the plan Status words
 #   (references/plan-template.md). This header covers the whole skill directory.
 # Update when: the plan format, its Status words or the sizing rules change, or yayreview needs
@@ -37,7 +37,7 @@ Plan progress:
 
 ### 1. Collect inputs
 
-Read the spec, issue, design doc, or request the user pointed to. A design doc whose Status is not `accepted` is not ready to plan: say so and stop. If there is no spec and the request is a sentence or two, ask up to three questions whose answers change the plan (scope boundary, acceptance criteria, hard constraints) and wait for them. Do not plan from guesses.
+Read the spec, issue, design doc, or request the user pointed to. A design doc whose Status is not `accepted` is not ready to plan: say so and stop. Any request can be planned without a spec. Then ask up to three questions whose answers change the plan (scope boundary, acceptance criteria, hard constraints) and wait for them, and write the plan's `## Requirements` section from the request and the answers. Do not plan from guesses.
 
 Collect project-wide constraints from the spec and CLAUDE.md (version floors, naming rules, compatibility requirements). They go into the plan verbatim.
 
@@ -73,7 +73,7 @@ Phase rules:
 - The README holds the interface contract shared across phases, once. Phase files consume it; they do not restate it.
 - Only the first phase needs step-level detail now. Later phases list their tasks and the interfaces each produces, and get their steps expanded when the previous phase lands. Steps may be deferred; tasks and interfaces may not.
 - Each phase file opens by pointing back to the README, which holds the plan's Status, then states what it depends on from earlier phases and the exact check that proves it done.
-- The spec's end-to-end verification line becomes the exit criterion of the last phase (or the final verification step of a single-file plan).
+- The spec's end-to-end verification line, or the last acceptance criterion in `## Requirements` when there is no spec, becomes the exit criterion of the last phase (or the final verification step of a single-file plan).
 
 Sizing:
 

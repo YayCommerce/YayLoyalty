@@ -1,6 +1,6 @@
 ---
 name: yaybrainstorming
-description: Turns a feature idea or rough requirement into an accepted design doc that yayplan can plan from without asking questions. Use before any new feature, behaviour change, refactor, or integration that has no accepted design doc yet, even a small one, when the user says "I want to add", "how should we build", "let's design", "think through", or mentions YayBrainstorming. Do not use to write implementation plans (that is yayplan), to execute a plan, or for product-level PRDs and roadmaps.
+description: Turns a feature idea or rough requirement into an accepted design doc that yayplan can plan from without asking questions. Use when the user wants to design a new feature, behaviour change, refactor, or integration before planning it, says "I want to add", "how should we build", "let's design", "think through", or mentions YayBrainstorming. Do not use when the user asks for an implementation plan, even without a spec (that is yayplan), to execute a plan, or for PRDs and roadmaps.
 # Purpose: turns an idea into a design doc in docs/specs/ that yayplan can plan from. It owns the
 #   spec format and its Status words (references/design-template.md) and the interview
 #   (references/question-bank.md). This header covers the whole skill directory.
@@ -17,7 +17,7 @@ Produce `docs/specs/YYYY-MM-DD-<topic>-design.md` that answers everything yaypla
 
 Standing rules for the whole task:
 
-- Hard gate: no code, scaffolding, source edits, or implementation skills until the user approves the design doc and its Status is `accepted`. This applies to every change. A small change gets the fast-path doc, never no doc.
+- Hard gate: once a design is under way, no code, scaffolding, source edits, or implementation skills until the user approves the design doc and its Status is `accepted`. A small change gets the fast-path doc. A request for a plan without a design is yayplan's, not this skill's.
 - The only skill invoked after approval is `yayplan`. Do not invoke it before.
 - Decide with the user, not for them. Present options, recommend one, and record what was rejected and why.
 

@@ -11,9 +11,20 @@ Use this structure for every plan. Keep the header; adapt task count and step co
 
 **Status:** active
 **Goal:** [one sentence: what this builds]
-**Spec:** [path or link to the spec/design doc this plan implements]
+**Spec:** [path or link to the spec/design doc this plan implements, or `none, planned from the request`]
 **Architecture:** [2–3 sentences: the approach and why it was chosen over the obvious alternative]
 **Touches:** [files or packages modified; mark shared code with (shared) and list its consumers]
+
+## Requirements
+
+[Only when there is no spec. Delete this section when `**Spec:**` links one.]
+
+- **Goal:** [one sentence: the user-visible outcome]
+- **Out of scope:** [what this plan does not touch]
+- **Acceptance criteria:**
+  1. [testable statement with exact values]
+  2. [the last one is the end-to-end check that proves the whole change works]
+- **Decided with the user:** [each question asked, with the answer]
 
 ## Global constraints
 
@@ -103,9 +114,20 @@ docs/plans/YYYY-MM-DD-<feature-slug>/
 
 **Status:** active
 **Goal:** [one sentence]
-**Spec:** [path or link]
+**Spec:** [path or link, or `none, planned from the request`]
 **Architecture:** [2–3 sentences]
 **Touches:** [files or packages; mark shared code with (shared) and list its consumers]
+
+## Requirements
+
+[Only when there is no spec. Delete this section when `**Spec:**` links one.]
+
+- **Goal:** [one sentence: the user-visible outcome]
+- **Out of scope:** [what this plan does not touch]
+- **Acceptance criteria:**
+  1. [testable statement with exact values]
+  2. [the last one is the end-to-end check that proves the whole change works]
+- **Decided with the user:** [each question asked, with the answer]
 
 ## Global constraints
 

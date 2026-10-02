@@ -372,6 +372,7 @@ yayloyalty/
 | Q | Decision |
 |---|---|
 | Q14 | `yaytidy` joins the own skills; see [the yaytidy record](../decisions/2026-10-02-add-yaytidy.md). Amends A8 and Q10. |
+| Q15 | `yayplan` may plan any request without a spec, with the requirements in the plan; see [the plan-without-a-spec record](../decisions/2026-10-02-plan-without-a-spec.md). |
 
 ---
 

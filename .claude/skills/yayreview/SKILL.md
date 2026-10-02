@@ -33,7 +33,7 @@ Review an implementation against its plan. Report gaps, not style preferences.
 
 Read, in order:
 1. The plan: <plan path>, and for a directory plan also its README.md (constraints, review focus, interface contract).
-2. The spec it links in its header.
+2. The spec it links in its header. When the header says `none, planned from the request`, the plan's `## Requirements` section stands in for it.
 3. The diff: run `<git diff command>`.
 
 Scope under review: <whole plan | phase N | task N>.
