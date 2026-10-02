@@ -1,6 +1,8 @@
 <?php
 namespace YayLoyalty\Engine\Emails;
 
+use YayLoyalty\Engine\Earning\EarningService;
+use YayLoyalty\Engine\Earning\Outcome;
 use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Helpers\SettingsHelper;
@@ -27,6 +29,8 @@ class PointsEarnedEmail extends LoyaltyEmail {
             '{balance}'      => '',
         ];
 
+        add_action( EarningService::AWARDED_ACTION . '_notification', [ $this, 'trigger' ] );
+
         parent::__construct();
     }
 
@@ -38,9 +42,11 @@ class PointsEarnedEmail extends LoyaltyEmail {
         return __( 'You earned points', 'yayloyalty' );
     }
 
-    /** Mails the customer about one awarded ledger row; no-op when disabled, the row is not a gain, or the user has no email. */
-    public function trigger( LedgerEntry $entry ): void {
-        if ( ! $this->is_enabled() || $entry->get_points() <= 0 ) {
+    /** Mails the customer about one award; no-op when disabled, the row is not a gain, or the user has no email. */
+    public function trigger( Outcome $awarded ): void {
+        $entry = $awarded->get_entry();
+
+        if ( ! $entry || ! $this->is_enabled() || $entry->get_points() <= 0 ) {
             return;
         }
 
@@ -148,12 +154,8 @@ class PointsEarnedEmail extends LoyaltyEmail {
 
     /** "That's worth <strong>$1.50</strong> in rewards." around balance_value(); '' when that is ''. */
     private static function balance_value_text( string $balance_value ): string {
-        if ( '' === $balance_value ) {
-            return '';
-        }
-
         /* translators: %s: money amount, e.g. "$1.50". */
-        return sprintf( esc_html__( 'That\'s worth %s in rewards.', 'yayloyalty' ), '<strong>' . $balance_value . '</strong>' );
+        return '' === $balance_value ? '' : sprintf( esc_html__( 'That\'s worth %s in rewards.', 'yayloyalty' ), '<strong>' . $balance_value . '</strong>' );
     }
 
     /** One whole sentence per source, so translators never assemble fragments; escaped HTML with the points in bold. */

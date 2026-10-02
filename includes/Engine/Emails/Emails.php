@@ -1,8 +1,7 @@
 <?php
 namespace YayLoyalty\Engine\Emails;
 
-use YayLoyalty\Engine\Earning\Outcome;
-use YayLoyalty\Helpers\EmailsHelper;
+use YayLoyalty\Engine\Earning\EarningService;
 use YayLoyalty\Utils\SingletonTrait;
 
 defined( 'ABSPATH' ) || exit;
@@ -17,19 +16,22 @@ class Emails {
     protected function __construct() {
         add_filter( 'woocommerce_email_classes', [ $this, 'add_classes' ] );
         add_filter( 'woocommerce_email_groups', [ $this, 'add_groups' ] );
-        add_action( 'yayloyalty_points_awarded', [ $this, 'send_points_earned' ] );
+        add_filter( 'woocommerce_email_actions', [ $this, 'add_email_actions' ] );
         add_filter( 'woocommerce_prepare_email_for_preview', [ $this, 'prepare_preview' ] );
     }
 
-    /** Sends the Points earned email for one award, synchronously: the hook runs after commit, so a mail failure never touches the award. */
-    public function send_points_earned( Outcome $awarded ): void {
-        $entry = $awarded->get_entry();
+    /**
+     * Has WooCommerce relay the events our emails send on: it builds the mailer before
+     * firing {action}_notification, so each email's listener exists. Names no email
+     * class: WooCommerce reads this on init, before it has loaded WC_Email.
+     *
+     * @param string[] $actions
+     * @return string[]
+     */
+    public function add_email_actions( array $actions ): array {
+        $actions[] = EarningService::AWARDED_ACTION;
 
-        $email = EmailsHelper::registered_emails()[ PointsEarnedEmail::ID ] ?? null;
-
-        if ( $entry && $email instanceof PointsEarnedEmail ) {
-            $email->trigger( $entry );
-        }
+        return $actions;
     }
 
     /**
