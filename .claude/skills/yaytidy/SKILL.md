@@ -54,7 +54,7 @@ If there is no base to start from, or HEAD is detached, ask for a base, or sugge
 
 ## Scope line
 
-The report's first line states the mode and the scope. In branch mode, it gives the base ref, its short SHA and the number of changed files, and names each untracked file. For example:
+The report's first line states the mode and the scope, even when the scope was stated earlier in the run. In branch mode, it gives the base ref, its short SHA and the number of changed files, and names each untracked file by its path, never only a count. For example:
 
 ```
 Branch mode against feature/parent (a1b2c3d): 12 changed files, untracked: src/new-helper.ts
@@ -74,7 +74,12 @@ Run these steps in order, once each.
 3. **`/simplify`.** Invoke the built-in `simplify` skill through the Skill tool, once, with the target the mode table gives, as space-separated paths. If the Skill tool can't run it, record the reason and go on to the own pass.
 4. **What `/simplify` changed.** Re-hash the in-scope files. List under "Changed by /simplify" each one whose hash changed, with one line on what changed, or "none". Compare `git status --porcelain` and the dirty-file hashes with step 2's, and list any file changed outside the target, offering `git restore <path>` for each one that was clean. Never restore without the user's yes. A `/simplify` edit that touches a contract (see [finding-kinds.md](references/finding-kinds.md)) becomes a `contract` finding that proposes reverting that edit.
 5. **Own pass.** Check the scope as it now stands, without editing anything. Search tracked files with `git grep`, which skips the gitignored generated directories. In branch mode, also find each symbol the diff removed or renamed. That is a name declared on a `-` line of the diff whose declaration `git grep -nw <name>` no longer finds. Report every comment, in any tracked file, that still names it. Each finding includes what the mode table requires.
-6. **Report**, in the layout in [finding-kinds.md](references/finding-kinds.md). When nothing is found, it reads "No duplicates or source-of-truth problems in <scope>."
+6. **Report.** Print the whole report as message text, before the ask, in the layout in [finding-kinds.md](references/finding-kinds.md):
+   - the scope line first;
+   - then "Changed by /simplify", even when it reads "none";
+   - then every finding, with its ID, kind, `path:line` for each copy, owner, fix and any `contract` label.
+
+   Don't summarise the findings in prose, and don't say which ones you will fix: the developer picks. When nothing is found, the report reads "No duplicates or source-of-truth problems in <scope>."
 
 Never search `docs/`, `*.md` or `*.txt` files for copies: docs are read only for their rules. Literals in tests are never copies. Never edit a generated directory, and never commit.
 
@@ -82,7 +87,7 @@ Never search `docs/`, `*.md` or `*.txt` files for copies: docs are read only for
 
 Before asking, re-hash the in-scope files. If any hash changed since step 4, say which. The own pass must not change files.
 
-Ask with AskUserQuestion:
+Ask only after the full report is on screen. Ask with AskUserQuestion, and refer to findings by ID:
 - "Fix every finding not labelled contract";
 - "Pick findings by ID": the user types the IDs under Other;
 - "Fix none".
