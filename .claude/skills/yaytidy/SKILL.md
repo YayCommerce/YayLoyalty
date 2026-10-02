@@ -125,3 +125,4 @@ A `contract` finding is applied only when the user picked it by its ID, never th
 3. Apply the picked fixes, and nothing else.
 4. Run each check again. Report each command with its result before and after. A failure is new when the run before the fixes didn't show it. A check that already fails on the base is expected to show no new failures. A test command that ran no tests, such as one that prints "No tests executed!" or "No test files found", counts as failed.
 5. If a fix caused a new failure, say so and offer to revert that fix. Don't commit: the developer does.
+6. When the branch implements a yayplan plan, name the next step: `/yayplancheck` on the whole plan or its last phase, which checks these fixes against the plan.
