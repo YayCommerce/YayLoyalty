@@ -1,6 +1,6 @@
 # Question bank
 
-Pick only the questions the codebase and the request leave open. Three or four well-chosen questions beat a checklist. Group them by topic so each round of two or three questions stays on one topic.
+Pick only the questions the codebase and the request leave open. Group them by topic so each round of two or three questions stays on one topic.
 
 ## Purpose and success
 

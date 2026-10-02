@@ -46,7 +46,7 @@ Before asking anything, read the code around the idea: the files it touches, the
 
 Ask in rounds of two or three related questions per message, one topic per round: purpose and success criteria first, then scope, then constraints and compatibility. Prefer multiple choice with a recommended default; in Claude Code use the AskUserQuestion tool. Wait for answers before the next round.
 
-Stop when you can state purpose, scope in and out, acceptance criteria, and constraints without guessing. Two to four rounds is typical. Never ask something the codebase, CLAUDE.md, or the request already answers. Dig into the hard parts the user may not have considered rather than the obvious ones.
+Stop when you can state purpose, scope in and out, acceptance criteria, and constraints without guessing. Never ask something the codebase, CLAUDE.md, or the request already answers. Dig into the hard parts the user may not have considered rather than the obvious ones.
 
 ### 3. Propose approaches
 
@@ -56,7 +56,7 @@ If the recommended approach makes or reverses an architectural choice (costly to
 
 ### 4. Present the design
 
-Present the design in sections scaled to complexity: a tiny change is one section; a larger one covers architecture, data and storage, integration points, UI, and edge cases. Keep each section under 300 words and end it with "does this look right so far?". Wait, revise if needed, then continue. Do not present the whole design in one message.
+Present the design in sections scaled to complexity: a tiny change is one section; a larger one covers architecture, data and storage, integration points, UI, and edge cases. Keep each section short enough for the user to review in one read, and end it with "does this look right so far?". Wait, revise if needed, then continue. Do not present the whole design in one message.
 
 ### 5. Write the design doc
 
