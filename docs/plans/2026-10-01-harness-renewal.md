@@ -273,6 +273,7 @@ yayloyalty/
 │   └── skills/                our own   (Δ6: yay- names and a review skill, Q10)
 │       ├── yaybrainstorming/  idea → design doc in docs/specs/
 │       ├── yayplan/           design doc → plan in docs/plans/
+│       ├── yaytidy/           before a PR: duplicated facts and their owners, plus /simplify; fixes only what the developer picks
 │       └── yayreview/         implementation → review against its plan, in a fresh subagent
 └── docs/
     ├── architecture.md        boot & autoload · admin-shell sync & scoping · layers · data · Pro/Lite · SPA↔WP · build/release · tests
@@ -294,7 +295,7 @@ yayloyalty/
 | Gotchas and today's failing checks | `docs/known-issues.md` | link |
 | Why X, not Y | `docs/decisions/` | link |
 | Onboarding, review, promotion and release cadence, agent-tooling use, harness upkeep | `README.md` | link |
-| Spec and plan formats and Status values; reviewing work against its plan | `yaybrainstorming` (specs), `yayplan` (plans), `yayreview` (reviews) | `CLAUDE.md` one-liner: "act only on active/accepted"; `README.md`: when to use each skill |
+| Spec and plan formats and Status values; reviewing work against its plan; finding duplicated facts and their owners before a PR; the stacked-branch PR-base rule (shared with yayreview, and yaycook) | `yaybrainstorming` (specs), `yayplan` (plans), `yayreview` (reviews), `yaytidy` (duplicates and the PR-base rule) | `CLAUDE.md` one-liner: "act only on active/accepted"; `README.md`: when to use each skill |
 
 ---
 
@@ -365,6 +366,12 @@ yayloyalty/
 | Q11 | (a) The skills use §4's Status words: `proposed`, `accepted YYYY-MM-DD` and `superseded by <link>` for specs; `active`, `done YYYY-MM-DD` and `superseded by <link>` for plans. `CLAUDE.md` stays as it is. |
 | Q12 | (a) The skills stay shared across the YayCommerce plugins. This repo's specifics reach them through `CLAUDE.md` and the docs it links, and their files stay repo-neutral. Where the canonical copy lives is not named yet. |
 | Q13 | (a) A new decision record covers the skills. The harness record's Status line adds that the new record supersedes its skills decision. |
+
+**Decided after P9 (2026-10-02):**
+
+| Q | Decision |
+|---|---|
+| Q14 | `yaytidy` joins the own skills, and `yaycook` follows in its own PR; see [the yaytidy and yaycook record](../decisions/2026-10-02-add-yaytidy-and-yaycook.md). Amends A8 and Q10. |
 
 ---
 
@@ -953,7 +960,7 @@ Exception: P1–P5 were prepared on 2026-10-01 as a stack of branches, each on t
     - links to `CLAUDE.md` § Git for the rules;
     - the human parts: review expectations, who promotes `dev/edd` → `main`, release cadence (the procedure is in `release.md` and `run.sh`);
   - **agent tooling:**
-    - when to run `/yaybrainstorming`, `/yayplan` and `/yayreview`;
+    - when to run `/yaybrainstorming`, `/yayplan`, `/yaytidy` (before opening a PR) and `/yayreview`;
     - the Status lifecycle of specs and plans, linking to the skills, which own it;
     - when to write an ADR;
   - **keeping the harness current:**
@@ -1005,7 +1012,7 @@ Exception: P1–P5 were prepared on 2026-10-01 as a stack of branches, each on t
 | V5 | Rules load exactly when relevant | C10 + C11 expectations from P7 |
 | V6 | Settings and hook | C13 + C14; scripted vendor edit refused |
 | V7 | Every documented command runs | Every command in `CLAUDE.md`, `README.md`, rules and skills (except the placeholders in skill templates) is run in a **fresh clone** inside a WP `plugins/` dir with Node 22. Outcome = success, or exactly the failure listed in `known-issues.md` (table in the PR). |
-| V8 | Agent smoke tests (`claude -p --setting-sources project --output-format stream-json`) | (a) asked for the admin lint command → answer contains it verbatim; (b) asked a Pro/Lite question → a `Read` of `docs/architecture.md` appears in the stream (A5's trigger works; if it misses twice, apply A5's promotion rule); (c) `/yaybrainstorming` → `/yayplan` → `/yayreview` toy run → a spec and a plan with Status lines, and a review verdict |
+| V8 | Agent smoke tests (`claude -p --setting-sources project --output-format stream-json`) | (a) asked for the admin lint command → answer contains it verbatim; (b) asked a Pro/Lite question → a `Read` of `docs/architecture.md` appears in the stream (A5's trigger works; if it misses twice, apply A5's promotion rule); (c) `/yaybrainstorming` → `/yayplan` → `/yayreview` toy run → a spec and a plan with Status lines, and a review verdict; (d) `claude -p … "/yaytidy base <ref>"` on a scratch branch with one planted unmarked copy → the report's first line names the ref, its short SHA and the file count, and the plant appears as a finding with its owner |
 | V9 | `/doctor prompt-audit` | No "missing file/command" or "contradiction" finding left without a disposition |
 | V10 | New teammate end to end | The named validator (Q4) follows `README.md` from a fresh clone: setup → dev server → lint/test → one brainstorm → plan → review cycle. Every blocker is logged as an issue; pass = zero open blockers. |
 
