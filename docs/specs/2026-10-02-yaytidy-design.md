@@ -1,6 +1,6 @@
 # yaytidy Design
 
-**Status:** accepted 2026-10-02
+**Status:** accepted 2026-10-02; AC 17.2 amended 2026-10-02 to accept (b) as duplicated logic or redundant code, since kind 7 covers a second implementation of something that already exists
 **Related:** split from one request on 2026-10-02 into this design and [the yaycook design](2026-10-02-yaycook-design.md). This work supersedes part of [the shared skills decision record](../decisions/2026-10-02-shared-design-plan-review-skills.md).
 
 ## Goal
@@ -142,7 +142,7 @@ Before opening a PR, a developer runs `/yaytidy`. It finds facts kept in more th
        - Pick none, and discard any edits `/simplify` made with `git restore`.
     2. Run `/yaytidy`. Each plant appears either under "Changed by /simplify" or as its own finding:
        - (a) as a copy or an unowned copy, with owner `includes/Enums/CustomerFilters.php`;
-       - (b) as duplicated logic, pointing at `Sql::in_placeholders()`;
+       - (b) as duplicated logic or redundant code, pointing at `Sql::in_placeholders()`;
        - (c) as a drifted mirror whose owner is `CampaignTrigger::lite_triggers()`.
     3. Pick only (c). The own pass then changes only `campaign.schema.ts`, and the checks show no new failures.
 
