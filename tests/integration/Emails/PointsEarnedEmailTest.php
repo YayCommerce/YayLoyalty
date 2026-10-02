@@ -1,15 +1,15 @@
 <?php
 namespace YayLoyalty\Tests\Integration\Emails;
 
+use YayLoyalty\Database\Installer;
 use YayLoyalty\Engine\Emails\PointsEarnedEmail;
 use YayLoyalty\Enums\CampaignTrigger;
-use YayLoyalty\Enums\RewardType;
 use YayLoyalty\Enums\Status;
 use YayLoyalty\Helpers\SettingsHelper;
-use YayLoyalty\Models\Reward;
 use YayLoyalty\Repositories\RewardRepository;
 use YayLoyalty\Tests\Integration\IntegrationTestCase;
 use YayLoyalty\Tests\Integration\WooCommerceOrdersFixture;
+use YayLoyalty\Utils\Text;
 
 /** Awards reach the customer as one Points earned email, through the real earning hooks and WooCommerce's mailer. */
 final class PointsEarnedEmailTest extends IntegrationTestCase {
@@ -233,7 +233,7 @@ final class PointsEarnedEmailTest extends IntegrationTestCase {
         $this->assertStringContainsString( 'Hi ' . get_userdata( $user_id )->display_name . ',', $this->sent[0]['message'] );
     }
 
-    /** WooCommerce's plain-text cleanup deletes entities it does not know, &#039; among them. */
+    /** Guards LoyaltyEmail::get_content_plain()'s apostrophe fix through a real plain send. */
     public function test_a_plain_text_send_keeps_apostrophes(): void {
         $email             = WC()->mailer()->get_emails()[ PointsEarnedEmail::ID ];
         $email->email_type = 'plain';
@@ -261,8 +261,8 @@ final class PointsEarnedEmailTest extends IntegrationTestCase {
         $this->transition( $this->create_order( $this->customer_with_email(), [ 100 ] ), 'completed' );
 
         $this->assertStringContainsString(
-            "That's worth " . html_entity_decode( wp_strip_all_tags( wc_price( 1 ) ) ) . ' in rewards.',
-            html_entity_decode( wp_strip_all_tags( $this->sent[0]['message'] ), ENT_QUOTES )
+            "That's worth " . Text::plain( wc_price( 1 ) ) . ' in rewards.',
+            Text::plain( $this->sent[0]['message'] )
         );
     }
 
@@ -293,11 +293,12 @@ final class PointsEarnedEmailTest extends IntegrationTestCase {
         $this->assertStringNotContainsString( 'View your points', $html );
     }
 
-    /** The built-in cart-discount reward, as the installer seeds it but at $status; the scratch tables start empty. */
+    /** The built-in reward exactly as an install seeds it, then set to $status; the scratch tables start empty. */
     private function seed_discount_reward( string $status ): void {
-        ( new RewardRepository() )->seed_builtin(
-            new Reward( null, 'Cart discount', 'cart-discount', RewardType::FLEXIBLE_DISCOUNT, $status, 0, null, Reward::default_config( RewardType::FLEXIBLE_DISCOUNT ) )
-        );
+        Installer::seed_builtin_reward();
+
+        $rewards = new RewardRepository();
+        $rewards->update( $rewards->find_by_slug( RewardRepository::CART_DISCOUNT_SLUG )->get_id(), [ 'status' => $status ] );
     }
 
     private function customer_with_email(): int {

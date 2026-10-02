@@ -40,8 +40,12 @@ abstract class LoyaltyEmail extends \WC_Email {
         return wc_get_template_html( $this->template_html, $this->template_args( false ), '', $this->template_base );
     }
 
+    /**
+     * Restores apostrophes that esc_html() encoded: WooCommerce's plain-text
+     * cleanup knows &rsquo; but not &#039;, and deletes entities it does not know.
+     */
     public function get_content_plain() {
-        return wc_get_template_html( $this->template_plain, $this->template_args( true ), '', $this->template_base );
+        return str_replace( '&#039;', "'", wc_get_template_html( $this->template_plain, $this->template_args( true ), '', $this->template_base ) );
     }
 
     /** The variables every loyalty template receives, named as WooCommerce's own templates name them. */
@@ -54,7 +58,7 @@ abstract class LoyaltyEmail extends \WC_Email {
                 'plain_text'         => $plain_text,
                 'email'              => $this,
             ],
-            $this->extra_template_args( $plain_text )
+            $this->extra_template_args()
         );
     }
 
@@ -65,7 +69,7 @@ abstract class LoyaltyEmail extends \WC_Email {
      *
      * @return array<string, mixed>
      */
-    protected function extra_template_args( bool $plain_text ): array { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- the subclass's to use.
+    protected function extra_template_args(): array {
         return [];
     }
 

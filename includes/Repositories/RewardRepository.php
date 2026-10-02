@@ -6,8 +6,11 @@ use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
 
-/** yayloyalty_rewards. No cache yet: nothing reads rewards on a hot path. */
+/** yayloyalty_rewards. No cache yet: the hottest read is one indexed row per points earned email. */
 final class RewardRepository extends AbstractRepository {
+
+    /** The built-in flexible-discount reward the installer seeds; its config holds the one points→money rate. */
+    public const CART_DISCOUNT_SLUG = 'cart-discount';
 
     protected function table_slug(): string {
         return 'rewards';
@@ -50,18 +53,20 @@ final class RewardRepository extends AbstractRepository {
      * Reward's config in Clamp) the checkout discount itself.
      */
     public function points_per_currency_unit(): float {
-        return self::rate_of( $this->find_by_slug( 'cart-discount' ) );
+        $reward = $this->find_by_slug( self::CART_DISCOUNT_SLUG );
+
+        return null === $reward ? 0.0 : self::rate_of( $reward );
     }
 
     /** The same rate, but 0 unless the built-in reward is live, so customers are never shown a reward they cannot spend. */
     public function live_points_per_currency_unit(): float {
-        $reward = $this->find_by_slug( 'cart-discount' );
+        $reward = $this->find_by_slug( self::CART_DISCOUNT_SLUG );
 
         return null !== $reward && $reward->is_live_at( Dates::now() ) ? self::rate_of( $reward ) : 0.0;
     }
 
-    private static function rate_of( ?Reward $reward ): float {
-        return null === $reward ? 0.0 : (float) ( $reward->get_config()['points_per_currency_unit'] ?? 0 );
+    private static function rate_of( Reward $reward ): float {
+        return (float) ( $reward->get_config()['points_per_currency_unit'] ?? 0 );
     }
 
     /**

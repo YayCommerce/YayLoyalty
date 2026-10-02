@@ -80,7 +80,7 @@ class PointsEarnedEmail extends LoyaltyEmail {
         $this->prepare( new LedgerEntry( null, 0, 50, 150, LedgerType::EARN, LedgerSource::ORDER ) );
     }
 
-    protected function extra_template_args( bool $plain_text ): array {
+    protected function extra_template_args(): array {
         if ( ! $this->object instanceof LedgerEntry ) {
             return [];
         }
@@ -90,9 +90,9 @@ class PointsEarnedEmail extends LoyaltyEmail {
         return [
             'entry'         => $entry,
             'greeting_name' => self::greeting_name( $entry->get_user_id() ),
-            'earned_text'   => $this->earned_text( $entry, $plain_text ),
+            'earned_text'   => $this->earned_text( $entry ),
             'balance_text'  => self::points_text( $entry->get_balance_after() ),
-            'balance_value' => self::balance_value( $entry->get_balance_after(), $plain_text ),
+            'balance_value' => self::balance_value( $entry->get_balance_after() ),
             /**
              * Filters where the email's "View your points" link goes.
              *
@@ -120,69 +120,57 @@ class PointsEarnedEmail extends LoyaltyEmail {
     }
 
     /**
-     * What the balance buys at the live discount rate, formatted for the store
-     * currency; '' when the reward is not live or there is nothing to spend.
+     * What the balance buys at the live discount rate, as wc_price() HTML;
+     * '' when the reward is not live or there is nothing to spend.
      */
-    private static function balance_value( int $balance, bool $plain_text ): string {
+    private static function balance_value( int $balance ): string {
         $amount = PointsMath::points_to_currency( $balance, ( new RewardRepository() )->live_points_per_currency_unit(), wc_get_price_decimals() );
 
         if ( null === $amount || $amount <= 0 ) {
             return '';
         }
 
-        return $plain_text ? html_entity_decode( wp_strip_all_tags( wc_price( $amount ) ) ) : wc_price( $amount );
+        return wc_price( $amount );
     }
 
-    /**
-     * One whole sentence per source, so translators never assemble fragments.
-     * The HTML version is escaped and bolds the points; the plain version is
-     * raw text, because WooCommerce's plain-text cleanup deletes &#039;.
-     */
-    private function earned_text( LedgerEntry $entry, bool $plain_text ): string {
-        $escape = $plain_text ? 'strval' : 'esc_html';
-        $points = $escape( self::points_text( $entry->get_points() ) );
-
-        if ( ! $plain_text ) {
-            $points = '<strong>' . $points . '</strong>';
-        }
-
+    /** One whole sentence per source, so translators never assemble fragments; escaped HTML with the points in bold. */
+    private function earned_text( LedgerEntry $entry ): string {
         /* translators: %s: points with label, e.g. "50 Points". */
-        $text = sprintf( $escape( __( 'You earned %s.', 'yayloyalty' ) ), $points );
+        $format = __( 'You earned %s.', 'yayloyalty' );
+        $extra  = [];
 
         switch ( $entry->get_source() ) {
             case LedgerSource::ORDER:
                 $order = $entry->get_order_id() ? wc_get_order( $entry->get_order_id() ) : null;
 
                 if ( $order ) {
-                    $text = sprintf(
-                        /* translators: 1: points with label, e.g. "50 Points"; 2: order number. */
-                        $escape( __( 'You earned %1$s for order #%2$s.', 'yayloyalty' ) ),
-                        $points,
-                        $escape( $order->get_order_number() )
-                    );
+                    /* translators: 1: points with label, e.g. "50 Points"; 2: order number. */
+                    $format = __( 'You earned %1$s for order #%2$s.', 'yayloyalty' );
+                    $extra  = [ $order->get_order_number() ];
                 }
                 break;
 
             case LedgerSource::SIGNUP:
                 /* translators: %s: points with label, e.g. "50 Points". */
-                $text = sprintf( $escape( __( 'You earned %s for creating an account.', 'yayloyalty' ) ), $points );
+                $format = __( 'You earned %s for creating an account.', 'yayloyalty' );
                 break;
 
             case LedgerSource::REVIEW:
                 /* translators: %s: points with label, e.g. "50 Points". */
-                $text = sprintf( $escape( __( 'You earned %s for reviewing a product.', 'yayloyalty' ) ), $points );
+                $format = __( 'You earned %s for reviewing a product.', 'yayloyalty' );
                 break;
         }
 
+        $points = '<strong>' . esc_html( self::points_text( $entry->get_points() ) ) . '</strong>';
+        $text   = vsprintf( esc_html( $format ), array_merge( [ $points ], array_map( 'esc_html', $extra ) ) );
+
         /**
-         * Filters the sentence telling the customer what they earned and why.
-         * The HTML version is escaped HTML that may hold <strong>, printed through
-         * wp_kses_post(); the plain version is raw text, escaped by the template.
+         * Filters the sentence telling the customer what they earned and why:
+         * escaped HTML, printed through wp_kses_post(); the plain-text email strips its tags.
          *
          * @param string      $text
-         * @param LedgerEntry $entry      The awarded row.
-         * @param bool        $plain_text Whether this is the plain-text email.
+         * @param LedgerEntry $entry The awarded row.
          */
-        return (string) apply_filters( 'yayloyalty_points_earned_text', $text, $entry, $plain_text );
+        return (string) apply_filters( 'yayloyalty_points_earned_text', $text, $entry );
     }
 }
