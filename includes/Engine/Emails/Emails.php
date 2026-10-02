@@ -2,6 +2,7 @@
 namespace YayLoyalty\Engine\Emails;
 
 use YayLoyalty\Engine\Earning\Outcome;
+use YayLoyalty\Helpers\EmailsHelper;
 use YayLoyalty\Utils\SingletonTrait;
 
 defined( 'ABSPATH' ) || exit;
@@ -24,27 +25,23 @@ class Emails {
     public function send_points_earned( Outcome $awarded ): void {
         $entry = $awarded->get_entry();
 
-        if ( ! $entry || ! function_exists( 'WC' ) ) {
-            return;
-        }
+        $email = EmailsHelper::registered_emails()[ PointsEarnedEmail::ID ] ?? null;
 
-        $email = WC()->mailer()->get_emails()[ PointsEarnedEmail::ID ] ?? null;
-
-        if ( $email instanceof PointsEarnedEmail ) {
+        if ( $entry && $email instanceof PointsEarnedEmail ) {
             $email->trigger( $entry );
         }
     }
 
     /**
-     * Gives WooCommerce's settings preview a sample award; it would otherwise
-     * render this email around a dummy order, leaving {points} blank.
+     * Gives WooCommerce's settings preview loyalty sample data; it would otherwise
+     * render a loyalty email around a dummy order, leaving {points} blank.
      *
      * @param \WC_Email $email
      * @return \WC_Email
      */
     public function prepare_preview( $email ) {
-        if ( $email instanceof PointsEarnedEmail ) {
-            $email->prepare( PointsEarnedEmail::sample_entry() );
+        if ( $email instanceof LoyaltyEmail ) {
+            $email->prepare_preview();
         }
 
         return $email;

@@ -60,13 +60,15 @@ abstract class LoyaltyEmail extends \WC_Email {
 
     /**
      * Variables only this email's templates receive, on top of the shared ones.
-     * $this->object may not be the type the email sends for (WooCommerce's
-     * preview sets a dummy order), so an override checks it and returns []
-     * when it does not match; its templates then fall back.
+     * An override returns [] while $this->object is not what it sends for
+     * (WooCommerce's preview sets a dummy order); its templates then fall back.
      *
      * @return array<string, mixed>
      */
     protected function extra_template_args(): array {
         return [];
     }
+
+    /** Fills this email with sample data for WooCommerce's settings preview; no-op until the email has data of its own. */
+    public function prepare_preview(): void {}
 }

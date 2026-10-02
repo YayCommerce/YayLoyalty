@@ -6,10 +6,10 @@
  *
  * @var string $email_heading
  * @var string $additional_content
- * @var string $earned_text  What was earned and why, e.g. "You earned 50 Points for order #123." Absent in the settings preview.
- * @var string $balance_text The balance after this award, e.g. "120 Points". Absent in the settings preview.
- * @var string $cta_url      Where "View your points" links. Absent in the settings preview.
- * @var \YayLoyalty\Models\LedgerEntry $entry The awarded row. Absent in the settings preview.
+ * @var string $earned_text  What was earned and why, e.g. "You earned 50 Points for order #123." Absent when there is no award to show.
+ * @var string $balance_text The balance after this award, e.g. "120 Points". Absent when there is no award to show.
+ * @var string $cta_url      Where "View your points" links. Absent when there is no award to show.
+ * @var \YayLoyalty\Models\LedgerEntry $entry The awarded row, for overrides. Absent when there is no award to show.
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -22,13 +22,10 @@ echo "\n=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n\n";
 
 if ( ! empty( $earned_text ) ) {
     echo esc_html( $earned_text ) . "\n\n";
-} else {
-    echo esc_html__( 'Thanks for being part of our loyalty program. New points have been added to your account.', 'yayloyalty' ) . "\n\n";
-}
-
-if ( ! empty( $balance_text ) ) {
     /* translators: %s: points with label, e.g. "120 Points". */
     echo esc_html( sprintf( __( 'Your balance is now %s.', 'yayloyalty' ), $balance_text ) ) . "\n\n";
+} else {
+    echo esc_html__( 'Thanks for being part of our loyalty program. New points have been added to your account.', 'yayloyalty' ) . "\n\n";
 }
 
 if ( ! empty( $cta_url ) ) {

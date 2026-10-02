@@ -38,9 +38,13 @@ class PointsEarnedEmail extends LoyaltyEmail {
 
     /** Mails the customer about one awarded ledger row; no-op when disabled, the row is not a gain, or the user has no email. */
     public function trigger( LedgerEntry $entry ): void {
+        if ( ! $this->is_enabled() || $entry->get_points() <= 0 ) {
+            return;
+        }
+
         $user = get_userdata( $entry->get_user_id() );
 
-        if ( ! $user || ! $user->user_email || $entry->get_points() <= 0 ) {
+        if ( ! $user ) {
             return;
         }
 
@@ -51,7 +55,7 @@ class PointsEarnedEmail extends LoyaltyEmail {
             $this->prepare( $entry );
             $this->recipient = $user->user_email;
 
-            if ( $this->is_enabled() && $this->get_recipient() ) {
+            if ( $this->get_recipient() ) {
                 $this->send( $this->get_recipient(), $this->get_subject(), $this->get_content(), $this->get_headers(), $this->get_attachments() );
             }
         } finally {
@@ -60,8 +64,8 @@ class PointsEarnedEmail extends LoyaltyEmail {
         }
     }
 
-    /** Points the subject placeholders and template variables at $entry; the settings preview uses it with a sample row. */
-    public function prepare( LedgerEntry $entry ): void {
+    /** Points the subject placeholders and template variables at $entry. */
+    private function prepare( LedgerEntry $entry ): void {
         $this->object = $entry;
 
         $this->placeholders['{points}']       = number_format_i18n( $entry->get_points() );
@@ -69,9 +73,9 @@ class PointsEarnedEmail extends LoyaltyEmail {
         $this->placeholders['{balance}']      = number_format_i18n( $entry->get_balance_after() );
     }
 
-    /** A made-up award for WooCommerce's settings preview, which has no real row to show. */
-    public static function sample_entry(): LedgerEntry {
-        return new LedgerEntry( null, 0, 50, 150, LedgerType::EARN, LedgerSource::ORDER );
+    /** WooCommerce's preview has no real award, so it shows a made-up one. */
+    public function prepare_preview(): void {
+        $this->prepare( new LedgerEntry( null, 0, 50, 150, LedgerType::EARN, LedgerSource::ORDER ) );
     }
 
     protected function extra_template_args(): array {
@@ -104,22 +108,21 @@ class PointsEarnedEmail extends LoyaltyEmail {
     private function earned_text( LedgerEntry $entry ): string {
         $points = self::points_text( $entry->get_points() );
 
+        /* translators: %s: points with label, e.g. "50 Points". */
+        $text = sprintf( __( 'You earned %s.', 'yayloyalty' ), $points );
+
         switch ( $entry->get_source() ) {
             case LedgerSource::ORDER:
                 $order = $entry->get_order_id() ? wc_get_order( $entry->get_order_id() ) : null;
 
-                if ( ! $order ) {
-                    /* translators: %s: points with label, e.g. "50 Points". */
-                    $text = sprintf( __( 'You earned %s.', 'yayloyalty' ), $points );
-                    break;
+                if ( $order ) {
+                    $text = sprintf(
+                        /* translators: 1: points with label, e.g. "50 Points"; 2: order number. */
+                        __( 'You earned %1$s for order #%2$s.', 'yayloyalty' ),
+                        $points,
+                        $order->get_order_number()
+                    );
                 }
-
-                $text = sprintf(
-                    /* translators: 1: points with label, e.g. "50 Points"; 2: order number. */
-                    __( 'You earned %1$s for order #%2$s.', 'yayloyalty' ),
-                    $points,
-                    $order->get_order_number()
-                );
                 break;
 
             case LedgerSource::SIGNUP:
@@ -131,10 +134,6 @@ class PointsEarnedEmail extends LoyaltyEmail {
                 /* translators: %s: points with label, e.g. "50 Points". */
                 $text = sprintf( __( 'You earned %s for reviewing a product.', 'yayloyalty' ), $points );
                 break;
-
-            default:
-                /* translators: %s: points with label, e.g. "50 Points". */
-                $text = sprintf( __( 'You earned %s.', 'yayloyalty' ), $points );
         }
 
         /**

@@ -37,7 +37,6 @@ final class PointsEarnedEmailTest extends IntegrationTestCase {
         remove_filter( 'pre_wp_mail', [ $this, 'capture_mail' ], 5 );
         remove_filter( 'pre_wp_mail', [ $this, 'throw_mail' ], 1 );
         remove_filter( 'pre_option_' . SettingsHelper::OPTION_SETTINGS, [ $this, 'pinned_settings' ] );
-        remove_filter( 'woocommerce_email_enabled_' . PointsEarnedEmail::ID, '__return_false' );
         remove_all_filters( 'yayloyalty_points_earned_cta_url' );
         remove_all_filters( 'yayloyalty_points_earned_text' );
         $this->cleanup_orders();
@@ -82,7 +81,7 @@ final class PointsEarnedEmailTest extends IntegrationTestCase {
         $this->assertCount( 1, $this->sent );
         $mail = $this->sent[0];
 
-        $this->assertSame( get_userdata( $user_id )->user_email, is_array( $mail['to'] ) ? $mail['to'][0] : $mail['to'] );
+        $this->assertSame( get_userdata( $user_id )->user_email, $mail['to'] );
         $this->assertStringContainsString( 'You earned 100 Points', $mail['subject'] );
         $this->assertStringNotContainsString( '{points', $mail['subject'] );
         $this->assertStringContainsString( 'You earned 100 Points for order #' . $order->get_order_number() . '.', $mail['message'] );
@@ -212,20 +211,7 @@ final class PointsEarnedEmailTest extends IntegrationTestCase {
         $this->assertStringNotContainsString( 'View your points', $html );
     }
 
-    /** create_customer() leaves user_email empty; a mail needs one. */
     private function customer_with_email(): int {
-        $user_id = $this->create_customer();
-
-        wp_update_user(
-            [
-                'ID'         => $user_id,
-                'user_email' => 'yl_it_' . $user_id . '_' . wp_generate_password( 6, false ) . '@example.com',
-            ]
-        );
-
-        // wp_update_user() mails its own email-change notice.
-        $this->sent = [];
-
-        return $user_id;
+        return $this->create_customer( 'yl_it_' . wp_generate_password( 8, false ) . '@example.com' );
     }
 }

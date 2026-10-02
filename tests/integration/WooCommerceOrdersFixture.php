@@ -54,7 +54,7 @@ trait WooCommerceOrdersFixture {
     }
 
     /** A customer-role user, registered while an administrator is current so SignupListener does not award it. */
-    private function create_customer(): int {
+    private function create_customer( string $email = '' ): int {
         $admins = get_users(
             [
                 'role'   => 'administrator',
@@ -74,6 +74,7 @@ trait WooCommerceOrdersFixture {
             [
                 'user_login' => 'yl_it_' . wp_generate_password( 8, false ),
                 'user_pass'  => wp_generate_password(),
+                'user_email' => $email,
                 'role'       => 'customer',
             ]
         );
