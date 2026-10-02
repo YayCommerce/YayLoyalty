@@ -5,9 +5,9 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * The vocabulary for a campaign's `conditions`: constants plus a per-type
- * schema() the validator reads. Declaration order is evaluation cost,
- * cheap-first, so the evaluator short-circuits without sorting. Shared
- * accessors live in ConditionTypeMethods.
+ * schema() the validator and the evaluator read. Declaration order is the
+ * order conditions are stored in. Shared accessors live in
+ * ConditionTypeMethods.
  */
 final class CampaignConditionType {
 
@@ -23,7 +23,17 @@ final class CampaignConditionType {
     public const OP_EQ      = 'eq';
     public const OP_BETWEEN = 'between';
 
-    // Cheap: satisfied from data already loaded for the order.
+    /** What a condition is compared against: the customer, their CustomerFacts, or the order being scored. */
+    public const INPUT_CUSTOMER = 'customer';
+    public const INPUT_FACTS    = 'facts';
+    public const INPUT_ORDER    = 'order';
+
+    /** Which address a `country` condition reads; ANY matches either. */
+    public const SOURCE_SHIPPING = 'shipping';
+    public const SOURCE_BILLING  = 'billing';
+    public const SOURCE_ANY      = 'any';
+
+    // About the customer or the order.
 
     public const USER_ROLE        = 'user_role';
     public const CUSTOMER_IDS     = 'customer_ids';
@@ -39,7 +49,7 @@ final class CampaignConditionType {
      */
     public const TIER = 'tier';
 
-    // Expensive: each needs an aggregate query per evaluation.
+    // About the customer's history: read once per evaluation by CustomerFactsReader.
 
     public const LIFETIME_POINTS = 'lifetime_points';
     public const ORDER_COUNT     = 'order_count';
@@ -55,49 +65,57 @@ final class CampaignConditionType {
     ];
 
     /**
-     * Per-type rules, in evaluation-cost order: operators, value shape
-     * (string_list | int_list | currency_list | country_list | int | money |
-     * tier; `between` takes a [low, high] pair), max list length,
-     * source_values, and the normalize transforms applied on save.
+     * Per-type rules: operators, value shape (string_list | int_list |
+     * currency_list | country_list | int | money | tier; `between` takes a
+     * [low, high] pair), max list length, source_values, the normalize
+     * transforms applied on save, and the evaluator's input (INPUT_*; none
+     * for tier, which is not evaluable yet).
      *
      * @return array<string, array<string, mixed>>
      */
     public static function schema(): array {
         return [
             self::USER_ROLE        => [
+                'input'     => self::INPUT_CUSTOMER,
                 'operators' => [ self::OP_IN, self::OP_NOT_IN ],
                 'value'     => 'string_list',
                 'normalize' => [ 'array', 'lowercase', 'dedupe' ],
             ],
             self::CUSTOMER_IDS     => [
+                'input'     => self::INPUT_CUSTOMER,
                 'operators' => [ self::OP_IN, self::OP_NOT_IN ],
                 'value'     => 'int_list',
                 'max'       => 100,
                 'normalize' => [ 'array', 'int', 'dedupe' ],
             ],
             self::CURRENCY         => [
+                'input'     => self::INPUT_ORDER,
                 'operators' => [ self::OP_IN, self::OP_NOT_IN ],
                 'value'     => 'currency_list',
                 'normalize' => [ 'array', 'uppercase', 'dedupe' ],
             ],
             self::PAYMENT_METHOD   => [
+                'input'     => self::INPUT_ORDER,
                 'operators' => [ self::OP_IN, self::OP_NOT_IN ],
                 'value'     => 'string_list',
                 'normalize' => [ 'array', 'dedupe' ],
             ],
             self::COUNTRY          => [
+                'input'         => self::INPUT_ORDER,
                 'operators'     => [ self::OP_IN, self::OP_NOT_IN ],
                 'value'         => 'country_list',
                 'require_keys'  => [ 'source' ],
-                'source_values' => [ 'shipping', 'billing', 'any' ],
+                'source_values' => [ self::SOURCE_SHIPPING, self::SOURCE_BILLING, self::SOURCE_ANY ],
                 'normalize'     => [ 'array', 'uppercase', 'dedupe' ],
             ],
             self::PRODUCT_IN_CART  => [
+                'input'     => self::INPUT_ORDER,
                 'operators' => [ self::OP_IN, self::OP_NOT_IN ],
                 'value'     => 'int_list',
                 'normalize' => [ 'array', 'int', 'dedupe' ],
             ],
             self::CATEGORY_IN_CART => [
+                'input'     => self::INPUT_ORDER,
                 'operators' => [ self::OP_IN, self::OP_NOT_IN ],
                 'value'     => 'int_list',
                 'normalize' => [ 'array', 'int', 'dedupe' ],
@@ -108,18 +126,26 @@ final class CampaignConditionType {
                 'normalize' => [ 'dedupe' ],
             ],
             self::LIFETIME_POINTS  => [
+                'input'     => self::INPUT_FACTS,
                 'operators' => [ self::OP_GTE, self::OP_LTE, self::OP_GT, self::OP_LT, self::OP_EQ, self::OP_BETWEEN ],
                 'value'     => 'int',
             ],
             self::ORDER_COUNT      => [
+                'input'     => self::INPUT_FACTS,
                 'operators' => [ self::OP_GTE, self::OP_LTE, self::OP_GT, self::OP_LT, self::OP_EQ, self::OP_BETWEEN ],
                 'value'     => 'int',
             ],
             self::LIFETIME_SPEND   => [
+                'input'        => self::INPUT_FACTS,
                 'operators'    => [ self::OP_GTE, self::OP_LTE, self::OP_GT, self::OP_LT, self::OP_EQ, self::OP_BETWEEN ],
                 'value'        => 'money',
                 'require_keys' => [ 'currency' ],
             ],
         ];
+    }
+
+    /** The INPUT_* a condition type is compared against; null for a type the evaluator cannot evaluate. */
+    public static function input_for( string $type ): ?string {
+        return self::schema()[ $type ]['input'] ?? null;
     }
 }

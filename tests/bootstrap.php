@@ -126,6 +126,11 @@ function get_option( string $option, $default_value = false ) {
     return $GLOBALS['yayloyalty_test_options'][ $option ] ?? $default_value;
 }
 
+/** Tests set $GLOBALS['yayloyalty_test_user_meta'][ $user_id ][ $key ]; only the single-value form is shimmed. */
+function get_user_meta( $user_id, $key = '', $single = false ) {
+    return $GLOBALS['yayloyalty_test_user_meta'][ $user_id ][ $key ] ?? ( $single ? '' : [] );
+}
+
 function update_option( string $option, $value, $autoload = null ): bool {
     $GLOBALS['yayloyalty_test_options'][ $option ] = $value;
     return true;
@@ -181,4 +186,14 @@ function esc_url_raw( string $url ): string {
 
 function wp_get_attachment_url( int $attachment_id ) {
     return false;
+}
+
+/** Tests set $GLOBALS['yayloyalty_test_doing_cron'] to simulate a cron request. */
+function wp_doing_cron(): bool {
+    return ! empty( $GLOBALS['yayloyalty_test_doing_cron'] );
+}
+
+/** Tests list the hooks "currently running" in $GLOBALS['yayloyalty_test_doing_actions']. */
+function doing_action( $hook_name = null ): bool {
+    return in_array( $hook_name, $GLOBALS['yayloyalty_test_doing_actions'] ?? [], true );
 }

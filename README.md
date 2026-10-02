@@ -2,7 +2,7 @@
 
 A loyalty program plugin for WooCommerce with points earning, rewards redemption, referral tracking, and VIP tier management. Shipped as Pro and Lite from one repository.
 
-**Status:** v1.0.0 in development. Core earning system (campaigns, ledger, balance) and reward definitions shipped; admin Dashboard, Customers list + per-customer drawer are live. Nothing awards or spends points yet: both paths are scaffolded with stub bodies and registered nowhere at boot — the award path in `includes/Engine/Earning/` (listeners, gates), whose ledger guard — attempt the insert, turn the UNIQUE index's 1062 into "already awarded" — is real and verified, and the redemption path in `includes/Engine/Redemption/` (service, gates, commit writer, checkout adapters, `LedgerService::redeem()`), the latter over a real, tested `Clamp`/`Quoter` and a `redemptions` table that is designed but not installed. Referrals and tiers planned for later phases.
+**Status:** v1.0.0 in development. Core earning system (campaigns, ledger, balance) and reward definitions shipped; admin Dashboard, Customers list + per-customer drawer are live. Points now award: purchases stage as pending and award at `completed`, signups on storefront self-registration, reviews on approval (one per product, daily cap) — `includes/Engine/Earning/`. Points come back out on cancel, trash, refunds (proportional, cumulative) and review removal; a deleted refund is restored. Nothing spends points yet: the redemption path in `includes/Engine/Redemption/` (service, gates, commit writer, checkout adapters, `LedgerService::redeem()`) is scaffolded with stub bodies over a real, tested `Clamp`/`Quoter` and a `redemptions` table that is designed but not installed. Referrals and tiers planned for later phases.
 
 ---
 
@@ -105,7 +105,7 @@ One repository, two zips. Lite = Pro minus `includes/Pro/` and SPA built with `B
 - Extra campaign triggers: birthday, first_order, order_count, spend_milestone
 - Campaign conditions: role, product, category, lifetime spend, order count
 - Conditions preview endpoint: POST `/campaigns/{id}/preview-conditions`
-- Campaign table + edit form (`/campaigns/:id/edit`; saves validate but do not persist yet) and performance page (`/campaigns/:id/performance`, fixture-backed)
+- Campaign table + full CRUD (`/campaigns/new` template chooser → create form, `/campaigns/:id/edit` six-section form + summary rail, persist for real, `/campaigns/:id/performance` real ledger-backed performance analytics for purchase/signup/review only)
 - Saved Customers-page segments: POST/DELETE `/customers/segments`
 - Advanced config: max_points_per_order, daily_cap, media_bonus_points
 - Reward types: fixed_coupon, percent_coupon, free_shipping, free_product (in addition to Lite's flexible_discount)
@@ -122,7 +122,7 @@ composer test                  # phpunit, unit suite
 composer test:integration      # phpunit against a real site and server; see docs/deployment-guide.md
 composer lint                  # phpcs
 ./scripts/check-docs.sh        # docs structure and single-owner checks
-/source-of-truth-check         # Claude Code skill: rules re-declared outside their § 16 owner
+/yay:code-corrector            # Claude Code skill: rules re-declared outside their § 16 owner
 pnpm --filter @yayloyalty/admin-page lint   # eslint + prettier on TypeScript/React
 pnpm --filter @yayloyalty/admin-page test   # vitest
 ./scripts/run.sh release lite --no-prompt   # builds and validates a package end to end

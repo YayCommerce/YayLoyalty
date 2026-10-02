@@ -23,7 +23,7 @@ package-lock.json
 # AI / planning artifacts
 plans/
 **/.claude/*
-!/.claude/skills/
+!/.claude/skills/code-corrector/
 .opencode/
 .repomixignore
 

@@ -259,7 +259,7 @@ public static function all_known() {
 
 **Conditions:**
 - Lite's `PointsEngine::conditions_match()` returns **true** (no evaluator) → awards slightly too broadly
-- Pro's `ConditionsEvaluator::evaluate()` fails closed on unknown/unsupported type (`unsupported_condition_type`) → never awards on a condition it cannot check
+- Pro's `ConditionsEvaluator::evaluate()` fails closed on an unknown/unsupported type (`unsupported_condition_type`) or a missing input (`no_customer`, `needs_order`) → never awards on a condition it cannot check
 
 ---
 
@@ -270,8 +270,9 @@ These are **first-party, internal seams** for Pro to attach behavior. Not a thir
 | Filter | Context | Used By |
 |---|---|---|
 | **`yayloyalty_table_schemas`** | Called during Installer to collect table DDL | Pro can add Pro tables (currently unused) |
-| **`yayloyalty_ledger_recorded`** | Fired by `LedgerService` after its own `Transaction::run()` commits (a savepoint when nested in `exec_write`) | `DashboardCache::flush`; `Engine\CustomerActivityListener::on_ledger_recorded` — captures `account_created`/`points_adjusted` into `yayloyalty_customer_meta` |
-| **`yayloyalty_points_awarded`** | To be fired by `Engine\Earning\EarningService::award()` after commit, once per awarded `Outcome` (scaffold; not fired yet) | nothing yet — emails, YayMail placeholders |
+| **`yayloyalty_ledger_recorded`** | Fired by `LedgerService` for every row it writes, through `Transaction::after_commit()`: after the outermost commit (also when nested in `exec_write` or `EarningService::award()`), never on rollback | `DashboardCache::flush`; `Engine\CustomerActivityListener::on_ledger_recorded` — captures `account_created`/`points_adjusted` into `yayloyalty_customer_meta` |
+| **`yayloyalty_points_awarded`** | Fired by `Engine\Earning\EarningService::award()` after commit, once per awarded row, with `(Outcome $awarded, Context $ctx)`; never for skipped or duplicate | nothing yet — emails, YayMail placeholders |
+| **`yayloyalty_order_award_triggers`** | Filter applied by `OrderListener::on_awardable()`: the triggers a completed order is awarded for, `[ purchase ]` plus the order | Internal seam: Pro appends its order triggers (`first_order`, …) |
 | **`yayloyalty_points_redeemed`** | To be fired by `Engine\Redemption\RedemptionService::commit()` after commit, once per redeemed `Outcome` (scaffold; not fired yet) | nothing yet |
 | **`yayloyalty_redemption_gates`** | To be applied by `RedemptionService::build()` over `[ ProgramGate, RewardGate ]` (scaffold) | Pro gates (tier-only rewards) |
 | **`yayloyalty_reward_conditions_match`** | To be applied by `Engine\Redemption\RewardGate` with the reward and the `Rewards\Context` (default `true`; scaffold) | Pro reward conditions evaluator |
@@ -509,19 +510,19 @@ CampaignPerformance.tsx: one useCampaignPerformanceQuery — header from the emb
 
 **Known limitation:** `skipped`, `estimate` and `totals.avg_order_subtotal` ship `null` unconditionally — all three need either replaying every order through the earning engine (`Engine\Earning\EarningService`, scaffold — see "Order award — SCAFFOLDED" below, F01-4) or a scored base amount the engine does not yet persist. Their panels/sublines already self-hide on `null`; no SPA change needed when F01-4 lands. `GET /campaigns/{id}/performance/entries` (`CampaignPerformanceRepository::paginate_entries()`) is a paged, searchable `ledger` query joined to `wp_users`, real end to end including each purchase row's `subtotal` (`wc_get_order()`).
 
-### Order award — SCAFFOLDED (shape real, bodies stubbed, not registered at boot)
+### Order award — evaluation live, award stubbed (listeners registered at boot; award bodies stubbed)
 
 **Engine status:** `PointsEngine` is complete and unit-tested (`BaseCalculator`, `PurchaseHandler`, `PointsEngine`, plus `ContextFactory` and `Triggers/Registry`); its rounding step is `Utils\PointsMath::round_points()`, covered by the shared PHP/TS vector suite. It computes what an order earns given the live campaigns, at `Context::occurred_at` (no timestamp argument).
 
-**Scaffold (`includes/Engine/Earning/`, 2026-09-22):** the award path is split into two moments that share one `Context` and one `occurred_at`:
-1. **Evaluation** — `Listeners\OrderListener` → `ContextFactory::from_order()` → `EarningService::preview()`: `Gate` chain (`ProgramGate`: excluded roles, opt-out meta) then `PointsEngine::evaluate()`. Pure; the result is staged as pending order meta on order creation.
+**Evaluation path live (`includes/Engine/Earning/`, 2026-09-22; listeners registered and evaluation logging at boot 2026-09-28):** the award path is split into two moments that share one `Context` and one `occurred_at`:
+1. **Evaluation** — `Listeners\OrderListener` → `ContextFactory::from_order()` → `EarningService::preview()`: `Gate` chain (`ProgramGate`: paused status, no customer, opt-out meta, excluded roles) then `PointsEngine::evaluate()`. Pure; logged to debug with campaign id (or "none"), points, and reason. `CustomerFactsReader` materializes facts (Pro only) from the customers table, reading paid orders before this one.
 2. **Award** — `EarningService::award()` previews again, then inside one `Transaction::run()`: `CustomerRepository::lock_and_get()` → `LedgerRepository::insert()` under the single-column UNIQUE `idempotency_key` (`IdempotencyKey::compose()`; MySQL 1062 → `Outcome::duplicate`, a normal return) → aggregates → `PendingPoints::release()`. Hooks (`yayloyalty_ledger_recorded`, `yayloyalty_points_awarded`) fire after commit.
 
 **The guard is real (2026-09-23).** `LedgerService::earn()`, `LedgerRepository::find_by_idempotency_key()` / `insert_unless_duplicate()` and `QueryException::is_duplicate_key()` are implemented: the insert is attempted, the driver's 1062 becomes `Outcome::duplicate` carrying the row that won, and wpdb's error reporting is suppressed for the attempt so the guard firing never logs a line that reads like a failure. Verified against MySQL 8 on a scratch table (errno readable through `wpdb->dbh` after a suppressed insert; NULL keys do not collide, so manual `adjust()` rows stay non-idempotent). **Caveat:** the column and index reach a site only through `dbDelta`, and `Installer::maybe_upgrade()` early-returns while the stored `yayloyalty_db_version` equals `YAYLOYALTY_VERSION` — a site installed before the DDL changed keeps the old table and has no guard until the version moves.
 
-**Award is a set of statuses, decided in the listener.** `OrderListener` is the only class in the plugin that reads a WooCommerce order status: one hook (`woocommerce_order_status_changed`), routed on `$to`, awarding when `$to` is in `general.award_statuses` (default `processing` + `completed`). A fully downloadable-and-virtual order never passes through `processing`; many physical stores never leave it. The engine, the ledger and every domain service stay status-blind.
+**Award is one status, decided in the listener.** `OrderListener` is the only class in the plugin that reads a WooCommerce order status: two hooks (`woocommerce_order_status_changed` and `woocommerce_new_order`, the second covering a brand-new order's first status), both routed through one `route( $to )` table. Evaluation runs on both; logging to debug is free. The engine, the ledger and every domain service stay status-blind. Only `completed` awards, owned by `Enums\OrderStatus` — a store must complete orders for them to earn; `processing` is inert.
 
-**Still missing (F01-4):** every remaining stub body — listener handlers, `preview()`/`award()`, `PendingPoints`, `LedgerRepository::points_earned_today()`, `Installer::drop_index_if_exists()` for the superseded `uniq_ledger_event` — plus the `award_statuses` / `hold_days` settings shape and registering the listeners from `YayLoyalty::__construct()` via `EarningService::build()`. Refund / clawback is an attachment point, not a design. The ten invariants and the full call graph are in `includes/Engine/Earning/README.md`; the incomplete tests under `tests/unit/Earning/` are the specification.
+**Reversal lives beside the award, not below it.** `OrderReversalListener` hears cancel/trash (through `route()`), `woocommerce_order_refunded`, `woocommerce_refund_deleted` and `woocommerce_trash_order` / `trashed_post` (HPOS trash never fires `woocommerce_order_status_changed`); `ReviewListener` hears a paid review leaving `approved`. Both call `Engine\Earning\Reversal`, which writes through `LedgerService::refund_earn()` / `restore_refund()` under the customer lock. Every listener adapter runs through `Listeners\ListenerGuard`. The ten invariants and the full call graph are in `includes/Engine/Earning/README.md`; policy and maths in `docs/data-model/points-lifecycle.md`.
 
 ### Redemption — SCAFFOLDED (three zones, bodies stubbed, not registered at boot)
 
@@ -529,7 +530,7 @@ CampaignPerformance.tsx: one useCampaignPerformanceQuery — header from the emb
 
 **Zone 2 — commit** (`includes/Engine/Redemption/`): `RedemptionService::commit()` → `CommitWriter` in one `Transaction::run()`: `lock_and_get` → `RedemptionRepository::find_by_order` (duplicate) → re-quote with the locked balance → redemptions row → `LedgerService::redeem()` (hard-refuses a balance below zero) → order meta `_yayloyalty_points_redeemed` / `_yayloyalty_redeem_value` → session cleared. Affordability is checked at checkout submission (`checkout_error()` from `woocommerce_after_checkout_validation` / `woocommerce_store_api_cart_errors`); a commit that still loses a race leaves the order created without the debit, with an order note.
 
-**Zone 3 — reverse:** not designed. Named seam `Engine\Redemption\Reversal` from `Earning\Listeners\OrderListener::on_cancelled()` / `on_refunded()`.
+**Zone 3 — reverse:** not designed. Named seam `Engine\Redemption\Reversal` from `Earning\Listeners\OrderReversalListener::on_cancelled()` / `on_order_refunded()`, beside the earn-side clawback already there.
 
 **Adapters:** `Adapters\ClassicCheckoutAdapter` (shortcode cart/checkout hooks) and `Adapters\StoreApiAdapter` (`ExtendSchema` cart data, `yayloyalty-redeem` update callback) translate hooks into the same three service calls and hold no rule.
 

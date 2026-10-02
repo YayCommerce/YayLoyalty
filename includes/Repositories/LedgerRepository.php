@@ -3,7 +3,9 @@ namespace YayLoyalty\Repositories;
 
 use YayLoyalty\Database\QueryException;
 use YayLoyalty\Enums\LedgerType;
+use YayLoyalty\Enums\ReferenceType;
 use YayLoyalty\Models\LedgerEntry;
+use YayLoyalty\Utils\Dates;
 use YayLoyalty\Utils\Sql;
 
 defined( 'ABSPATH' ) || exit;
@@ -34,23 +36,7 @@ class LedgerRepository extends AbstractRepository {
      * Outcome::duplicate carries.
      */
     public function find_by_idempotency_key( string $key ): ?LedgerEntry {
-        global $wpdb;
-
-        $row = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-            $wpdb->prepare(
-                'SELECT * FROM `' . esc_sql( $this->table() ) . '` WHERE `idempotency_key` = %s LIMIT 1',
-                $key
-            ),
-            ARRAY_A
-        );
-
-        if ( ! is_array( $row ) ) {
-            return null;
-        }
-
-        $entry = $this->hydrate( $row );
-
-        return $entry instanceof LedgerEntry ? $entry : null;
+        return $this->select_entries( '`idempotency_key` = %s', [ $key ], 1 )[0] ?? null;
     }
 
     /**
@@ -82,16 +68,81 @@ class LedgerRepository extends AbstractRepository {
     }
 
     /**
-     * SUM(points) of earn rows for a user on the calendar day containing $at,
-     * for CapPolicy's daily_cap. The day is the site-timezone day of the
-     * event's own time, not of the request: a late award counts toward the
-     * day the order was placed. 0 for a guest.
+     * SUM(points) of one source's earn rows written on the site-timezone
+     * calendar day holding $at, for CapPolicy's daily_cap. Per source, so a
+     * purchase never uses up a review cap. Rows count by created_at, their
+     * write time, so $at should be the moment being awarded. 0 for a guest.
      *
-     * @param string $at UTC MySQL datetime, the Context's occurred_at.
+     * @param string $at     UTC MySQL datetime.
+     * @param string $source A LedgerSource constant.
      */
-    public function points_earned_today( ?int $user_id, string $at ): int { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(F01-4): site-tz day bounds around $at via Dates::to_site_tz(), back to UTC, then SUM(points) WHERE user_id AND type = earn AND created_at BETWEEN.
-        throw new \RuntimeException( 'Not implemented' );
+    public function points_earned_today( ?int $user_id, string $at, string $source ): int {
+        $day_start = Dates::site_day_start( $at );
+
+        if ( null === $user_id || $user_id < 1 || null === $day_start ) {
+            return 0;
+        }
+
+        return $this->sum_points(
+            'user_id = %d AND type = %s AND source = %s AND created_at >= %s AND created_at < %s',
+            [ $user_id, LedgerType::EARN, $source, Dates::to_utc( $day_start ), Dates::to_utc( $day_start->modify( '+1 day' ) ) ]
+        );
+    }
+
+    /**
+     * An order's earn rows, one per trigger that paid, oldest first.
+     *
+     * @return LedgerEntry[]
+     */
+    public function earn_rows_for_order( int $order_id ): array {
+        return $this->select_entries( 'type = %s AND order_id = %d', [ LedgerType::EARN, $order_id ] );
+    }
+
+    /** The earn row a non-order reference paid (a review's comment), or null. */
+    public function find_earn_for_reference( string $reference_type, int $reference_id ): ?LedgerEntry {
+        return $this->select_entries(
+            'type = %s AND reference_type = %s AND reference_id = %d',
+            [ LedgerType::EARN, $reference_type, $reference_id ],
+            1
+        )[0] ?? null;
+    }
+
+    /**
+     * The clawback rows one refund wrote, one per earn row it reversed.
+     *
+     * @return LedgerEntry[]
+     */
+    public function refund_rows_for_refund( int $refund_id ): array {
+        return $this->select_entries(
+            'type = %s AND reference_type = %s AND reference_id = %d',
+            [ LedgerType::REFUND_EARN, ReferenceType::REFUND, $refund_id ]
+        );
+    }
+
+    /**
+     * Points already clawed back from one earn row; never negative.
+     *
+     * An order earn is matched by order and campaign (one earn row per
+     * trigger, each with its campaign), and nets out ADJUST rows referencing
+     * a refund: without them a restored refund would under-claw the next one.
+     * Any other earn is matched by its reference.
+     */
+    public function sum_refunded_for( LedgerEntry $earn ): int {
+        if ( null !== $earn->get_order_id() ) {
+            $campaign = null === $earn->get_campaign_id() ? 'campaign_id IS NULL' : 'campaign_id = %d';
+            $scope    = "order_id = %d AND {$campaign} AND (type = %s OR (type = %s AND reference_type = %s))";
+            $values   = array_merge(
+                [ $earn->get_order_id() ],
+                null === $earn->get_campaign_id() ? [] : [ (int) $earn->get_campaign_id() ],
+                [ LedgerType::REFUND_EARN, LedgerType::ADJUST, ReferenceType::REFUND ]
+            );
+        } else {
+            $scope  = 'reference_type = %s AND reference_id = %d AND type = %s';
+            $values = [ (string) $earn->get_reference_type(), (int) $earn->get_reference_id(), LedgerType::REFUND_EARN ];
+        }
+
+        // A locking read: inside an outer transaction a plain SELECT reads its older snapshot and would over-claw.
+        return max( 0, -$this->sum_points( 'user_id = %d AND ' . $scope, array_merge( [ $earn->get_user_id() ], $values ), true ) );
     }
 
     /**
@@ -125,13 +176,23 @@ class LedgerRepository extends AbstractRepository {
 
     /** SUM(points) for a user, the ledger-side half of the balance invariant. Reserved for a rebuild tool. */
     public function sum_points_for_user( int $user_id ): int {
-        global $wpdb;
+        return $this->sum_points( 'user_id = %d', [ $user_id ] );
+    }
 
-        return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-            $wpdb->prepare(
-                'SELECT COALESCE(SUM(points), 0) FROM `' . esc_sql( $this->table() ) . '` WHERE user_id = %d',
-                $user_id
-            )
+    /**
+     * A user's lifetime_earned as it stood before $before: the signed SUM of
+     * lifetime_earned_types() rows created strictly earlier. The same rule as
+     * customers.lifetime_earned, frozen at a moment, so an event is scored
+     * without the points it (or anything after it) produced.
+     *
+     * @param string $before UTC MySQL datetime; a row at this exact second is excluded.
+     */
+    public function lifetime_earned_before( int $user_id, string $before ): int {
+        $types = LedgerType::lifetime_earned_types();
+
+        return $this->sum_points(
+            'user_id = %d AND created_at < %s AND type IN (' . Sql::in_placeholders( $types ) . ')',
+            array_merge( [ $user_id, $before ], $types )
         );
     }
 
@@ -197,5 +258,47 @@ class LedgerRepository extends AbstractRepository {
         }
 
         return $totals;
+    }
+
+    /**
+     * SUM(points) over the rows a prepared WHERE fragment matches; 0 when none.
+     *
+     * @param string  $where      Placeholders only; every value arrives in $values.
+     * @param mixed[] $values
+     * @param bool    $is_locking Read the latest committed rows and share-lock them (callers inside a transaction).
+     */
+    private function sum_points( string $where, array $values, bool $is_locking = false ): int {
+        global $wpdb;
+
+        $lock_sql = $is_locking ? ' LOCK IN SHARE MODE' : '';
+
+        // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $where carries placeholders only; every value is bound here.
+        return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+            $wpdb->prepare( 'SELECT COALESCE(SUM(points), 0) FROM `' . esc_sql( $this->table() ) . "` WHERE {$where}{$lock_sql}", $values )
+        );
+        // phpcs:enable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
+    }
+
+    /**
+     * Rows a prepared WHERE fragment matches, oldest first.
+     *
+     * @param string  $where  Placeholders only; every value arrives in $values.
+     * @param mixed[] $values
+     * @param int     $limit  0 for no limit.
+     * @return LedgerEntry[]
+     */
+    private function select_entries( string $where, array $values, int $limit = 0 ): array {
+        global $wpdb;
+
+        $limit_sql = $limit > 0 ? ' LIMIT ' . $limit : '';
+
+        // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $where carries placeholders only; every value is bound here.
+        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+            $wpdb->prepare( 'SELECT * FROM `' . esc_sql( $this->table() ) . "` WHERE {$where} ORDER BY id ASC{$limit_sql}", $values ),
+            ARRAY_A
+        );
+        // phpcs:enable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
+
+        return array_map( [ $this, 'hydrate' ], is_array( $rows ) ? $rows : [] );
     }
 }

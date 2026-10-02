@@ -12,6 +12,9 @@ final class Dates {
 
     public const MYSQL_FORMAT = 'Y-m-d H:i:s';
 
+    /** MySQL's zero DATETIME, which WordPress stores for "no date"; strtotime() parses it, so it is checked by name. */
+    public const ZERO = '0000-00-00 00:00:00';
+
     /** Now as a UTC MySQL DATETIME. */
     public static function now(): string {
         return gmdate( self::MYSQL_FORMAT );
@@ -33,6 +36,22 @@ final class Dates {
         return (int) strtotime( $utc . ' UTC' );
     }
 
+    /**
+     * Midnight, in the site timezone, of the site-calendar day holding a UTC moment.
+     * Wall-clock midnight, so a DST day stays a calendar day rather than a fixed 24 hours.
+     *
+     * @return \DateTimeImmutable|null Null when $utc is empty or unparsable.
+     */
+    public static function site_day_start( ?string $utc ): ?\DateTimeImmutable {
+        if ( null === $utc || '' === $utc ) {
+            return null;
+        }
+
+        $date = date_create_immutable( $utc, new \DateTimeZone( 'UTC' ) );
+
+        return false === $date ? null : $date->setTimezone( wp_timezone() )->setTime( 0, 0 );
+    }
+
     /** For display only. */
     public static function to_site_tz( string $utc, ?string $format = null ): string {
         if ( null === $format || '' === $format ) {
@@ -51,7 +70,7 @@ final class Dates {
     }
 
     public static function is_valid( ?string $utc ): bool {
-        if ( null === $utc || '' === $utc ) {
+        if ( null === $utc || '' === $utc || self::ZERO === $utc ) {
             return false;
         }
 

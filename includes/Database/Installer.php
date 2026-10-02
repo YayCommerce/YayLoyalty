@@ -4,6 +4,7 @@ namespace YayLoyalty\Database;
 use YayLoyalty\Access\Capabilities;
 use YayLoyalty\Database\Schema\AbstractTableSchema;
 use YayLoyalty\Utils\Log;
+use YayLoyalty\Utils\Table;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -179,8 +180,23 @@ final class Installer {
      * upgrade may call it. Precondition: nothing relies on the index for
      * idempotency any more (the ledger's guard is uniq_idempotency_key).
      */
-    private static function drop_index_if_exists( string $table_slug, string $index ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(F01-4): SHOW INDEX FROM table WHERE Key_name = %s; if present, ALTER TABLE … DROP INDEX; Log::warning on failure, never throw mid-upgrade.
+    private static function drop_index_if_exists( string $table_slug, string $index ): void {
+        global $wpdb;
+
+        $table = esc_sql( Table::name( $table_slug ) );
+
+        // phpcs:disable WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared -- the table name comes from Table::name(); the index name is bound or backtick-quoted from a literal.
+        $present = $wpdb->get_var( $wpdb->prepare( "SHOW INDEX FROM `{$table}` WHERE Key_name = %s", $index ) );
+
+        if ( null === $present ) {
+            return;
+        }
+
+        // An upgrade must finish; a leftover index costs a little write speed, never correctness.
+        if ( false === $wpdb->query( "ALTER TABLE `{$table}` DROP INDEX `" . esc_sql( $index ) . '`' ) ) {
+            Log::warning( 'Installer', sprintf( 'could not drop index %s on %s: %s', $index, $table, $wpdb->last_error ) );
+        }
+        // phpcs:enable WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
     }
 
     /**

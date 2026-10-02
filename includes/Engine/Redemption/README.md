@@ -6,7 +6,7 @@ Redemption has three zones, and every class belongs to exactly one:
 |---|---|---|---|
 | **1 — QUOTE** | how many points can be spent on this cart, what that buys, why it was limited | `Engine/Rewards/*` (pure) reached through `Quoter` and `RedemptionService::quote()`; `SessionIntent` (the one integer); `CouponProvider` (materialises the quote as a virtual coupon) | writes nothing; runs on every cart recalculation |
 | **2 — COMMIT** | debit once per order: redemptions row + ledger row + customer cache + order meta, one transaction | `RedemptionService::commit()` → `CommitWriter` → `LedgerService::redeem()` | impure by definition |
-| **3 — REVERSE** | cancel / refund restore | **not designed.** Named seam: `Engine\Redemption\Reversal`, attached from `Earning\Listeners\OrderListener::on_cancelled()` / `on_refunded()`; needs `LedgerService::refund_redeem()` and `Redemption::restored_points` | — |
+| **3 — REVERSE** | cancel / refund restore | **not designed.** Named seam: `Engine\Redemption\Reversal`, attached from `Earning\Listeners\OrderReversalListener::on_cancelled()` / `on_order_refunded()`; needs `LedgerService::refund_redeem()` and `Redemption::restored_points` | — |
 
 Around them: `Adapters/*`, one per checkout surface, which only translate hooks into service calls.
 

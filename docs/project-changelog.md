@@ -6,6 +6,68 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
 
 ## Unreleased
 
+### Added — Points come back out: cancel, refund, review removal (2026-09-30)
+
+- **Cancel and trash** release pending and claw back everything the order earned, per earn row (`Engine\Earning\Reversal::full_order()`), keyed on the order. Trash is heard on `woocommerce_trash_order` / `trashed_post`: HPOS trashes without `woocommerce_order_status_changed`. The `refunded` status releases pending and reverses in full only when no refund object exists (read from the database, not the order's cached refund total).
+- **Refunds** claw back proportionally and cumulatively: `ClawbackMath::owed()` recomputes the total owed from every refund's lines that the earn's campaign counted (`BaseCalculator::includes_line()`), and `LedgerService::refund_earn()` writes only the difference from what is already clawed back, read under the customer lock. Excluded-product, shipping-only and amount-only refunds claw back nothing unless they complete the refund; a full refund lands exactly on what was earned (compared at the store's price decimals). Refunds are read from the database, not the order's cached totals.
+- **Deleted refunds** are restored as an `adjust` row referencing the refund (`LedgerService::restore_refund()`), unless the order was reversed in full.
+- **Reviews** leaving `approved` (unapprove, spam, trash, delete) claw back the whole earn; re-approval is a duplicate.
+- **Policy:** balances may go negative; a full reversal is final (completing the order again adds a "reversed earlier" note instead of points).
+- **Structure:** `OrderReversalListener` holds the refund, refund-deleted and trash hooks and the reversal notes; `ListenerGuard` owns the never-break-the-save catch for every listener; `ContextFactory::line_item()` and `BaseCalculator::includes_line()` are extracted so award and clawback share one line rule.
+- **Tests:** `ClawbackMathTest`; `OrderReversalFlowTest` (cumulative refunds, excluded product, amount-only, cancel below zero, refund then cancel, re-complete, delete and re-refund, delete after cancel, re-fired hook, pending cancel, HPOS trash); review unapprove / re-approve / trash / delete.
+
+### Added & Changed — Award points for purchases, signups, and reviews (2026-09-30)
+
+- **Award at `completed` only.** `Enums\OrderStatus` owns the rule; the `general.award_statuses` setting is removed (PHP and the TS mirror). `processing` is inert. `CustomerFactsReader` counts `completed` orders as paid history.
+- **Orders:** `OrderListener::on_stageable()` previews the purchase and `PendingPoints::stage()`s it at `pending`/`on-hold` (every new order is announced as `pending` first). `on_awardable()` runs `EarningService::award()` per trigger in `yayloyalty_order_award_triggers` (Lite: `purchase`), notes the outcome on the order, then releases pending whatever the answer, so a skipped award never strands it. Both score the order object the hook passes: HPOS fires `woocommerce_new_order` before line items are saved.
+- **`EarningService::award()`**: re-previews at the order's creation date, then one transaction writes the earn row (`LedgerService::earn()`), releases pending and adds the order meta (`_yayloyalty_points_earned` sums rows, `_yayloyalty_campaign_id` keeps the first). `yayloyalty_points_awarded` fires after commit, only for an awarded row.
+- **Order notes:** "Earned N points (campaign: X).", "No points earned: {reason}." (never for guests), and on a duplicate whose earn was already clawed back "Points for this order were reversed earlier…" (clawback lands in PR B).
+- **Signup** awards only storefront self-registration (no current user, not WP-CLI, cron or an Action Scheduler run). **Reviews** award on approval with `one_per_product` (a Context fact from `ContextFactory::from_comment()`, decided by `ReviewHandler`) and a daily cap per ledger source.
+- **Primitives:** `Transaction::after_commit()` (runs after the outermost commit, dropped on rollback) now carries `yayloyalty_ledger_recorded`, fixing the nested-transaction early fire. `LedgerRepository::points_earned_today( user, at, source )`, `earn_rows_for_order()`, `find_earn_for_reference()`, `refund_rows_for_refund()`, `sum_refunded_for()`; `CustomerRepository::apply_pending_delta()` (floored at 0); `IdempotencyKey::qualifier_of()`; `Dates::site_day_start()`; `Installer::drop_index_if_exists()`.
+- **Fixes:** order meta is saved without a full HPOS order save inside the award lock; a review config missing `require_verified` / `one_per_product` now follows the review campaign's defaults (both on).
+- **Tests:** the integration bootstrap mirrors every non-core site table (WooCommerce, Action Scheduler, other plugins) into the scratch prefix, and `WooCommerceOrdersFixture` drives real orders, products, reviews and signups with WooCommerce emails and mail off, deleting every site row it creates. New suites cover the award service, pending points, `from_order`, the order flow (stage, award, duplicate, processing, guest, daily cap), signup and reviews. Unit incompletes 53 → 38.
+
+### Changed — Skill renamed to `/yay:code-corrector` (2026-09-30)
+
+- `/source-of-truth-check` is now `/yay:code-corrector` (`.claude/skills/code-corrector/`); behavior unchanged.
+
+### Changed — Order events now find the eligible campaign (preview, debug log only) (2026-09-28)
+
+- `OrderListener::on_stageable()` and `on_awardable()` call `preview_and_log()`, which calls `EarningService::preview()` with the order context and logging the result (campaign id or "none", points, reason) to debug. No writes; preview only.
+- `SignupListener::on_registered()` and `ReviewListener::on_approved()` preview the signup / review trigger the same way (`ContextFactory::from_user()` at registration time, `from_comment()` at the comment date with the verified-purchase meta) and log through the shared `Listeners\PreviewLog`. No writes.
+- `ProgramGate::check()` is now implemented: evaluates paused status, no customer, opt-out meta, and excluded roles; returns a reason string or null.
+- `ContextFactory::customer_facts()` is implemented: calls `CustomerFactsReader::read()` which materializes `CustomerFacts`, reading paid orders created strictly before the event's `occurred_at` and excluding the order being evaluated; `lifetime_points` is `LedgerRepository::lifetime_earned_before()` — the `lifetime_earned` rule over ledger rows created before `occurred_at`, so the event's own award never feeds it. The `from_*()` factories hand it to the `Context` as a loader, run on the first `get_customer_facts()`: an event whose campaigns have no `lifetime_points` / `order_count` / `lifetime_spend` condition reads nothing, and several such conditions read once.
+- **Behaviour changes:** `ConditionsEvaluator` is a pure comparison against the Context. `product_in_cart` and `category_in_cart` read this order's line items, not the customer's purchase history. `currency`, `country` and `payment_method` are now evaluated from the order (previously `unsupported_condition_type`). `no_customer` (guest) and `needs_order` (no order, e.g. the admin preview) are new condition reasons. `order_count` / `lifetime_spend` count paid orders created before this one, with no 100-order scan cap. "Paid" orders are those in the set `general.award_statuses`, read from `SettingsHelper::award_statuses()` — one owner, no hard-coded list.
+- Step-2 catches (award and stage handlers) now catch `\Throwable` and log with `Log::error()` to never break an order save — these are real unhandled exceptions, always logged.
+- **Tests:** `composer test` runs 304 unit tests, 54 incomplete (earning/services/redemption specification). New tests: `tests/unit/Pro/ConditionsEvaluatorTest.php`, `tests/unit/Earning/ProgramGateTest.php`, `tests/integration/Engine/CustomerFactsReaderTest.php`, `tests/integration/Repositories/LedgerLifetimeEarnedBeforeTest.php`.
+
+### Added — Earning listeners connected to their WordPress/WooCommerce events (2026-09-28)
+
+- `EarningService::build()` is now the real composition root (campaigns, customers, `PointsEngine`,
+  `LedgerService`, `PendingPoints`, gates — `ProgramGate` first, then a validated
+  `yayloyalty_earning_gates` filter result), called from `YayLoyalty::__construct()` after Pro boots.
+- `OrderListener` attaches `woocommerce_order_status_changed` and `woocommerce_new_order`, both routed
+  through one status table (award set first, then stage/cancel/refund-zero/no-op cases).
+  `ReviewListener` attaches `comment_post` and `transition_comment_status`, filtered to approved
+  product reviews. `SignupListener` attaches `user_register`.
+- Handler bodies (`on_stageable`, `on_awardable`, `on_cancelled`, `on_refunded`, `on_approved`,
+  `on_unapproved`, `on_registered`) are still no-op stubs — **no points are awarded yet**. Each routing
+  entry point wraps its call to one of them in a removable `try`/`catch` scaffold.
+- **Tests:** +5 unit tests (`ListenerRegistrationTest`) covering hook attachment and the DI graph.
+
+### Added & Changed — Campaign CRUD end to end: create, update, archive, delete, performance analytics (2026-09-25)
+
+- **Campaign create:** `/campaigns/new` shows a template chooser (`CampaignTemplatePicker.tsx`, three built-in templates: purchase/signup/review); POST `/campaigns` persists to real database. Lite shows read-only built-in cards; Pro shows the picker and form.
+- **Campaign update:** `/campaigns/:id/edit` (Pro only, Lite 404) — six-section form (Basics, Trigger, Reward, Conditions, Schedule, Priority) + live summary rail. PUT `/campaigns/{id}` persists for real: `CampaignRestController::update_item()` validates config/conditions/dates, applies updates, calls `$campaign->to_update_row()` and writes via `CampaignRepository::update()`. Built-in campaigns refuse archive but allow pause/name edit. Lite's three built-in cards have an On/Off toggle + Save changes button (status + config writes only).
+- **Campaign archive/pause:** Dialogs (`pro/campaigns/archive/`, `pro/campaigns/pause/`) opened from table row menu and bulk bar; copy/figures (points_issued_lifetime) live in `*.copy.ts` files. Built-in campaigns cannot be archived (403 from server). `points_issued` is a ledger-derived read field; fixture value was removed and `CampaignPerformanceFixture` (574 lines) is gone.
+- **Campaign performance analytics:** `/campaigns/:id/performance` (Pro only, purchase/signup/review triggers) — **real data from `Pro/Repositories/CampaignPerformanceRepository`** (ledger aggregates + paged/searchable entries), not fixtures. Tiles (points issued, redeemed, unique campaigners, avg order value), daily chart (last 30 days), skipped/estimate side panel (both still `null` — need earning engine F01-4), searchable/paginated entries table. `skipped`, `estimate`, `avg_order_subtotal` remain `null` pending the award path.
+- **Lookup route:** `LookupRestController` — `GET /lookups/{entity}` (products, categories, customers) with `search` or `ids` params, returns paginated `{ items: [{ id, label }] }`. Used by condition value pickers in campaign/reward editors.
+- **Validation & guards:** Rate guards refuse a purchase campaign with rate ≤ 0 or missing (in rate mode), or multiplier on the default purchase campaign (`CampaignRateGuardTest`). Name/date validation (blank names, end before start, dates that are not full UTC datetimes); a write that leaves the dates alone still lands on a legacy row stored out of order. Archive guard refuses to archive built-in campaigns.
+- **Status badge colors:** `CampaignStatusBadge.tsx` + `campaignStatusBadgeVariant()` in `campaign-labels.ts` own one badge variant per display status (active success, scheduled primary, paused warning, draft outline, archived/ended dimmed).
+- **Loading skeletons:** Campaigns list (`CampaignPointsSummarySkeleton`) and editor (`CampaignEditorSkeleton.tsx`) show skeletons shaped like the loaded page.
+- **Utilities:** `Utils\Text::plain()` removes HTML tags and entities from store names; `Utils\WooOrders::is_hpos()` centralizes the one HPOS check for order admin links.
+- **Tests:** Integration suite now 74 tests: campaign archive guard and name/date validation, rate guards (`CampaignRateGuardTest`), lookups by search and id (`LookupRouteTest`), performance repository aggregates/paging/search and deleted-customer snapshot names (`CampaignPerformanceRepositoryTest`). Unit tests for campaign reward copy, status badge colors, stored-date formatting.
+
 ### Added — Email Settings page: loyalty transactional emails as WooCommerce email classes (2026-09-24)
 
 - **Email registration:** Each loyalty email is a `WC_Email` subclass registered via WooCommerce's
