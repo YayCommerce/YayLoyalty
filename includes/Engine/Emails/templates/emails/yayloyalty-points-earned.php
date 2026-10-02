@@ -7,8 +7,10 @@
  * @var string    $email_heading
  * @var string    $additional_content
  * @var \WC_Email $email
- * @var string    $earned_text  What was earned and why, e.g. "You earned 50 Points for order #123." Absent when there is no award to show.
- * @var string    $balance_text The balance after this award, e.g. "120 Points". Absent when there is no award to show.
+ * @var string    $greeting_name The customer's first name, else display name; '' for none. Absent when there is no award to show.
+ * @var string    $earned_text   Escaped HTML, e.g. "You earned <strong>50 Points</strong> for order #123." Absent when there is no award to show.
+ * @var string    $balance_text  The balance after this award, e.g. "120 Points". Absent when there is no award to show.
+ * @var string    $balance_value What the balance is worth, as wc_price() HTML; '' when the discount reward is not live. Absent when there is no award to show.
  * @var string    $cta_url      Where "View your points" links. Absent when there is no award to show.
  * @var \YayLoyalty\Models\LedgerEntry $entry The awarded row, for overrides. Absent when there is no award to show.
  */
@@ -26,13 +28,30 @@ do_action( 'woocommerce_email_header', $email_heading, $email );
 
 <?php echo $is_email_improvements_enabled ? '<div class="email-introduction">' : ''; ?>
 <?php if ( ! empty( $earned_text ) ) : ?>
-<p><?php echo esc_html( $earned_text ); ?></p>
+    <?php if ( ! empty( $greeting_name ) ) : ?>
+<p>
+        <?php
+        /* translators: %s: customer's first name. */
+        echo esc_html( sprintf( __( 'Hi %s,', 'yayloyalty' ), $greeting_name ) );
+        ?>
+</p>
+    <?php endif; ?>
+<p><?php echo wp_kses_post( $earned_text ); ?></p>
 <p>
     <?php
     /* translators: %s: points with label, e.g. "120 Points". */
-    echo esc_html( sprintf( __( 'Your balance is now %s.', 'yayloyalty' ), $balance_text ) );
+    echo wp_kses_post( sprintf( esc_html__( 'Your balance is now %s.', 'yayloyalty' ), '<strong>' . esc_html( $balance_text ) . '</strong>' ) );
     ?>
 </p>
+    <?php if ( ! empty( $balance_value ) ) : ?>
+<p>
+        <?php
+        // wc_price() markup, unfiltered: kses would strip its <bdi>, which keeps the amount readable in right-to-left stores.
+        /* translators: %s: money amount, e.g. "$1.50". */
+        printf( esc_html__( 'That\'s worth %s in rewards.', 'yayloyalty' ), '<strong>' . $balance_value . '</strong>' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+        ?>
+</p>
+    <?php endif; ?>
 <?php else : ?>
 <p><?php esc_html_e( 'Thanks for being part of our loyalty program. New points have been added to your account.', 'yayloyalty' ); ?></p>
 <?php endif; ?>

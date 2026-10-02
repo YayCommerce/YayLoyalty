@@ -9,10 +9,12 @@ Detailed record of significant changes, features, and fixes. See `project-roadma
 ### Added — Points earned email sends on award (2026-10-02)
 
 - **Trigger:** `Engine\Emails\Emails::send_points_earned()` listens to `yayloyalty_points_awarded` hook, fired after order/signup/review awards complete. Send is synchronous, after commit; mail failure never interrupts award via Transaction catch-and-log.
-- **Filters:** `yayloyalty_points_earned_text` (source-dependent sentence per `LedgerSource`: order/signup/review/generic) and `yayloyalty_points_earned_cta_url` (default My Account). Subject template supports {points}, {points_label} (singular/plural via `SettingsHelper::points_label()`), {balance}.
-- **Extension:** `LoyaltyEmail::extra_template_args()` protected method allows subclasses to merge additional template vars.
+- **Email body:** Greeting "Hi {first_name}," (fallback to {display_name} if first name unavailable). HTML template bolds points, balance, and value amounts with `<strong>` for emphasis. New conditional line "That's worth {amount} in rewards." displayed only when the built-in cart-discount reward is live (determined by `RewardRepository::live_points_per_currency_unit()`, which returns 0 when the reward is paused or outside its schedule window).
+- **Filters:** `yayloyalty_points_earned_text( $text, LedgerEntry $entry, bool $plain_text )` — HTML value is escaped HTML (may hold `<strong>`, passed through `wp_kses_post()`), plain value is raw text. `yayloyalty_points_earned_cta_url` (default My Account). Subject template supports {points}, {points_label} (singular/plural via `SettingsHelper::points_label()`), {balance}.
+- **Extension:** `LoyaltyEmail::extra_template_args(bool $plain_text)` protected method allows subclasses to merge additional template vars; callers pass `$plain_text` to signal whether HTML tags are safe to output (HTML mode uses `wp_kses_post` for filtered values).
+- **Reward rate helper:** `RewardRepository::live_points_per_currency_unit()` returns the cart-discount reward's conversion rate when active and in-window, 0 otherwise. `points_per_currency_unit()` unchanged: still used for stats/liability and always returns the config value regardless of status.
 - **Preview:** `woocommerce_prepare_email_for_preview` hook wired to provide sample award data for WooCommerce's settings email preview.
-- **Tests:** `tests/integration/Emails/PointsEarnedEmailTest` (11 tests covering trigger, duplicate prevention, disabled email, source-dependent text, filter application, WooCommerce email settings, and failure handling).
+- **Tests:** `tests/integration/Emails/PointsEarnedEmailTest` (18 tests: trigger, duplicate prevention, disabled email, source sentences, filters, greeting, HTML bolding, value line live/paused/missing, plain-text send keeping apostrophes, settings preview, failure handling).
 
 ### Added — Points come back out: cancel, refund, review removal (2026-09-30)
 

@@ -54,7 +54,7 @@ abstract class LoyaltyEmail extends \WC_Email {
                 'plain_text'         => $plain_text,
                 'email'              => $this,
             ],
-            $this->extra_template_args()
+            $this->extra_template_args( $plain_text )
         );
     }
 
@@ -65,7 +65,7 @@ abstract class LoyaltyEmail extends \WC_Email {
      *
      * @return array<string, mixed>
      */
-    protected function extra_template_args(): array {
+    protected function extra_template_args( bool $plain_text ): array { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- the subclass's to use.
         return [];
     }
 
