@@ -29,10 +29,11 @@ The argument picks the mode. Never offer a menu of modes, and use one mode per r
 | Mode | Invocation | Scope | `/simplify` target | Each finding includes |
 |---|---|---|---|---|
 | Branch (default) | `/yaytidy`, or `/yaytidy base <ref>` | `git diff <base>...HEAD`, plus uncommitted and untracked files | the changed paths that still exist | a changed line, or a marker that names a symbol the diff removed or renamed |
-| Commit | `/yaytidy commit <sha>` | not built yet (plan Task 3): say so and stop | | |
+| Commit | `/yaytidy commit <sha>` | the lines one commit changed that still exist now | the commit's files that still exist | a line the commit changed |
 | Path | `/yaytidy <path>…` | one or more files or folders, checked against the whole codebase; `/yaytidy .` covers the whole repo | the paths, asking first when they hold more than 20 files | anything in the paths |
 
 - `base <ref>` applies only to branch mode.
+- Commit mode takes one commit. Refuse a range such as `a..b`, and suggest one run per commit, or `base <ref>`.
 - In path mode, expand each argument with `git ls-files -- <path>`, so a folder or a quoted glob becomes the tracked files it holds. Refuse a path that matches no tracked file, with that reason, before anything else runs.
 - A bare `/yaytidy` runs branch mode without asking which mode to use.
 
@@ -53,12 +54,26 @@ Branch mode diffs against the PR's base. Pick it this way:
 
 If there is no base to start from, or HEAD is detached, ask for a base, or suggest `/yaytidy base <ref>`. If the diff is empty, say so, suggest `/yaytidy commit <sha>` or a path, and stop.
 
+## Commit mode
+
+1. Resolve the SHA with `git rev-parse --verify <sha>^{commit}`, and refuse it unless `git merge-base --is-ancestor <sha> HEAD` succeeds, giving that reason. Nothing else runs before this check.
+2. Find the base the way rule 2 of the PR base section does. If `git merge-base --is-ancestor <sha> <base>` succeeds, the scope line says the commit is already in that base.
+3. Diff against the commit's first parent, `<sha>^1`. For a root commit, use the empty tree, `git hash-object -t tree /dev/null`.
+4. A changed line still exists when `git blame --line-porcelain HEAD -- <file>` attributes it to the commit. Check only those lines. The rewritten count is the lines the commit added, from `git diff --numstat <parent> <sha>`, minus the lines that still exist. Report it; don't check those lines. A file the commit touched that no longer exists counts all its lines as rewritten.
+5. If no changed line still exists, for example because the commit only deleted lines or every line was rewritten later, say there is nothing left to check and stop, without invoking `simplify`.
+
 ## Scope line
 
 The report's first line states the mode and the scope, even when the scope was stated earlier in the run. In branch mode, it gives the base ref, its short SHA and the number of changed files, and names each untracked file by its path, never only a count. For example:
 
 ```
 Branch mode against feature/parent (a1b2c3d): 12 changed files, untracked: src/new-helper.ts
+```
+
+In commit mode, it gives the commit's short SHA, its subject, its file count and the number of rewritten lines, and says when the commit is already in the base:
+
+```
+Commit mode: 3f2c1ab "Add order export": 4 files, 6 changed lines rewritten later (not checked); already in origin/main
 ```
 
 In path mode, it gives the paths as typed and their file count:
