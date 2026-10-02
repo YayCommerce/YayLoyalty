@@ -1,7 +1,9 @@
 <?php
 namespace YayLoyalty\Tests\Integration;
 
+use YayLoyalty\Engine\Emails\PointsEarnedEmail;
 use YayLoyalty\Enums\CampaignTrigger;
+use YayLoyalty\Integrations\YayMail\PointsEarnedYayMailEmail;
 use YayLoyalty\Enums\Status;
 use YayLoyalty\Models\Campaign;
 use YayLoyalty\Repositories\CampaignRepository;
@@ -45,6 +47,28 @@ trait WooCommerceOrdersFixture {
 
         foreach ( $this->woocommerce_email_ids() as $email_id ) {
             add_filter( 'woocommerce_email_enabled_' . $email_id, '__return_false' );
+        }
+
+        $this->detach_yaymail();
+    }
+
+    /**
+     * Keeps YayMail out of loyalty sends. It looks its templates up through
+     * $wpdb->prefix, which points at the scratch tables, so on every send it
+     * misses and inserts a fresh template into the site's own posts table.
+     */
+    private function detach_yaymail(): void {
+        remove_all_filters( 'woocommerce_email_subject_' . PointsEarnedEmail::ID );
+
+        if ( ! class_exists( PointsEarnedYayMailEmail::class, false ) ) {
+            return;
+        }
+
+        $callback = [ PointsEarnedYayMailEmail::get_instance(), 'get_template_file' ];
+        $priority = has_filter( 'wc_get_template', $callback );
+
+        if ( false !== $priority ) {
+            remove_filter( 'wc_get_template', $callback, $priority );
         }
     }
 
