@@ -24,7 +24,7 @@ Identify three things, asking the user only for what you cannot determine:
 - The diff: the branch or commit range that implements that scope. Diff against the PR's base branch, `git diff <base>...HEAD`, where the base is the one CLAUDE.md names, or the previous branch when branches are stacked. Do not assume `main`. For a later phase, take the commits since the previous phase was approved.
 - What "in scope" means: the whole plan, one phase, or one task. Review only that; later tasks are not gaps yet.
 
-A review of the whole plan, or of its last phase, is the final review, and yaytidy runs before it: yaytidy's fixes change code, and only this review checks them against the plan. Unless the user has said yaytidy ran on this branch after the last code change, ask with AskUserQuestion: "Run /yaytidy first" (recommended), or "Review now".
+A review of the whole plan, or of its last phase, is the final review, and yaytidy runs before it: yaytidy's fixes change code, and only this review checks them against the plan. Unless the user has said yaytidy ran on this branch after the last code change, ask with AskUserQuestion: "Run /yaytidy first" (recommended), or "Skip yaytidy, review now".
 
 ### 2. Dispatch the reviewer
 
