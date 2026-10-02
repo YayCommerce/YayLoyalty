@@ -274,7 +274,7 @@ yayloyalty/
 │       ├── yaybrainstorming/  idea → design doc in docs/specs/
 │       ├── yayplan/           design doc → plan in docs/plans/
 │       ├── yaytidy/           before a PR: duplicated facts and their owners, plus /simplify; fixes only what the developer picks
-│       └── yayreview/         implementation → review against its plan, in a fresh subagent
+│       └── yayplancheck/      implementation → review against its plan, in a fresh subagent
 └── docs/
     ├── architecture.md        boot & autoload · admin-shell sync & scoping · layers · data · Pro/Lite · SPA↔WP · build/release · tests
     ├── conventions.md         code and domain conventions not inferable from code
@@ -295,7 +295,7 @@ yayloyalty/
 | Gotchas and today's failing checks | `docs/known-issues.md` | link |
 | Why X, not Y | `docs/decisions/` | link |
 | Onboarding, review, promotion and release cadence, agent-tooling use, harness upkeep | `README.md` | link |
-| Spec and plan formats and Status values; reviewing work against its plan; finding duplicated facts and their owners before a PR; the stacked-branch PR-base rule | `yaybrainstorming` (specs), `yayplan` (plans), `yayreview` (reviews), `yaytidy` (duplicates and the PR-base rule) | `CLAUDE.md` one-liner: "act only on active/accepted"; `README.md`: when to use each skill |
+| Spec and plan formats and Status values; reviewing work against its plan; finding duplicated facts and their owners before a PR; the stacked-branch PR-base rule | `yaybrainstorming` (specs), `yayplan` (plans), `yayplancheck` (reviews), `yaytidy` (duplicates and the PR-base rule) | `CLAUDE.md` one-liner: "act only on active/accepted"; `README.md`: when to use each skill |
 
 ---
 
@@ -338,7 +338,7 @@ yayloyalty/
 | A5 | CLAUDE.md reaches docs through **plain links with "read when…" triggers**, no `@imports`. P12 tests that Claude opens the right doc; a doc it keeps missing may be promoted to an import, recorded in an ADR. |
 | A6 | Claude Code only, so no `AGENTS.md` |
 | A7 | Committed `.claude/settings.json`: (a) allowlist for `composer lint`, `composer test`, admin lint/test, `tsc --noEmit`, `git diff`, `git log`; (b) PreToolUse guard blocking edits under `vendor/`, `vendor-prefixed/`, `assets/dist/`, `release/`; (c) `includeGitInstructions: false` with Claude Code's **default attribution** kept |
-| A8 | Own skills: brainstorming and writing-plans; no others. Amended by Q1: `code-corrector` is removed, not rebuilt. Amended by Q10: the own skills are `yaybrainstorming`, `yayplan` and `yayreview`. |
+| A8 | Own skills: brainstorming and writing-plans; no others. Amended by Q1: `code-corrector` is removed, not rebuilt. Amended by Q10: the own skills are `yaybrainstorming`, `yayplan` and `yayplancheck`. |
 | A9 | Feature IDs become descriptive TODOs. Roadmap and dev changelog are dropped; release notes stay in `readme.txt`. |
 | A10 | Rule globs remapped and PHP narrowed (Δ5) |
 | A11 | `dev/edd` is the long-lived PR base |
@@ -362,7 +362,7 @@ yayloyalty/
 
 | Q | Decision |
 |---|---|
-| Q10 | The team's own skills are `yaybrainstorming`, `yayplan` and `yayreview` (Δ6). Trace drafted all three. The `yay` prefix keeps them apart from personal or plugin skills with the same names, which replaces P9's planned repo-specific descriptions. `yayreview` is new: before the next phase starts or the work merges, a fresh subagent checks the implementation against its plan. A4 and A8 are amended. |
+| Q10 | The team's own skills are `yaybrainstorming`, `yayplan` and `yayplancheck` (Δ6). Trace drafted all three. The `yay` prefix keeps them apart from personal or plugin skills with the same names, which replaces P9's planned repo-specific descriptions. `yayplancheck` is new: before the next phase starts or the work merges, a fresh subagent checks the implementation against its plan. A4 and A8 are amended. |
 | Q11 | (a) The skills use §4's Status words: `proposed`, `accepted YYYY-MM-DD` and `superseded by <link>` for specs; `active`, `done YYYY-MM-DD` and `superseded by <link>` for plans. `CLAUDE.md` stays as it is. |
 | Q12 | (a) The skills stay shared across the YayCommerce plugins. This repo's specifics reach them through `CLAUDE.md` and the docs it links, and their files stay repo-neutral. Where the canonical copy lives is not named yet. |
 | Q13 | (a) A new decision record covers the skills. The harness record's Status line adds that the new record supersedes its skills decision. |
@@ -802,7 +802,7 @@ Exception: P1–P5 were prepared on 2026-10-01 as a stack of branches, each on t
   - Trust prompt on first run.
 - **Effort:** S–M (2–3 h).
 
-### P9 — Skills: `yaybrainstorming`, `yayplan`, `yayreview`
+### P9 — Skills: `yaybrainstorming`, `yayplan`, `yayplancheck`
 - **Goal:** the team's own idea → design → plan → review loop. Specs land in `docs/specs/` and plans in `docs/plans/`, with the Status lines that `CLAUDE.md` acts on.
 - **Prerequisites:** P8; Q11–Q13 answered (§9).
 - **Drafts (Q10):** Trace drafted all three skills on 2026-10-01. They are untracked in `.claude/skills/`. Each has a `SKILL.md` and skill-creator evals in `evals/evals.json`.
@@ -815,7 +815,7 @@ Exception: P1–P5 were prepared on 2026-10-01 as a stack of branches, each on t
     - plans without touching source;
     - turns a spec into a single-file plan of up to about 5 tasks, or into a directory plan: a `README.md` that holds the interface contract, plus 2–4 phase files, each a vertical slice;
     - gives each task Files and Interfaces blocks and checkbox steps: write the test, run it, implement, run it again, commit (`references/plan-template.md`).
-  - `yayreview` (new):
+  - `yayplancheck` (new):
     - dispatches a fresh general-purpose subagent with a self-contained prompt;
     - the subagent checks requirements, verification steps, review focus, interfaces, scope and the exit criterion. It returns PASS or FAIL and ties each blocking gap to a plan line;
     - the implementing session fixes the blocking gaps and asks for one more review, then stops.
@@ -831,10 +831,10 @@ Exception: P1–P5 were prepared on 2026-10-01 as a stack of branches, each on t
     5. **Descriptions cut short** (§2.6, trap 10).
        - `yayplan`'s description is 583 characters long and loses "or for executing a plan that already exists".
        - `yaybrainstorming`'s is 525 and loses "and roadmaps".
-       - `yayreview`'s is 500 and fits.
+       - `yayplancheck`'s is 500 and fits.
        - C12 now checks the length.
     6. **Wrong diff base.**
-       - `yayreview`'s example is `git diff main...HEAD`. Here the base is `dev/edd`, or the previous phase's branch when branches are stacked.
+       - `yayplancheck`'s example is `git diff main...HEAD`. Here the base is `dev/edd`, or the previous phase's branch when branches are stacked.
        - Only `CLAUDE.md` names that base. With git instructions off, the session gets no git snapshot (P8).
        - A diff against `main` takes in every commit not yet promoted, so the scope check fails on files the plan never touched.
   - **Should fix**, in wording that holds in any repo (Q12):
@@ -842,7 +842,7 @@ Exception: P1–P5 were prepared on 2026-10-01 as a stack of branches, each on t
        - Six commands in `CLAUDE.md` are marked "Fails today". A plan step that expects one of them to exit 0 fails before any change is made.
        - The reviewer prompt counts every failing step as a gap.
        - A general-purpose subagent loads `CLAUDE.md` (probe, 2026-10-01). So the reviewer gets `CLAUDE.md`'s "judge a failing check against `dev/edd`", but its prompt contradicts it.
-    8. **Default plan.** Given no argument, `yayreview` takes "the newest file or directory under `docs/plans/`". Here that can be this plan, which isn't in yayplan's format.
+    8. **Default plan.** Given no argument, `yayplancheck` takes "the newest file or directory under `docs/plans/`". Here that can be this plan, which isn't in yayplan's format.
     9. **Repo docs and decision records.**
        - `yaybrainstorming` step 1 says to read "docs" without naming any, and no step mentions decision records (P6's note).
        - Step 1 should read the docs that `CLAUDE.md` links for the areas the idea touches.
@@ -866,12 +866,12 @@ Exception: P1–P5 were prepared on 2026-10-01 as a stack of branches, each on t
      - **Plans:**
        - `**Status:** active` in the single-file header and in a directory plan's `README.md`. Each phase file links back to its README;
        - the PR that finishes the plan sets `done YYYY-MM-DD`; a replaced plan becomes `superseded by <link>`;
-       - when a review of the whole plan passes, `yayreview`'s report says to set `done`.
+       - when a review of the whole plan passes, `yayplancheck`'s report says to set `done`.
      - **Headers:**
        - Purpose and Update when go in YAML comments inside each `SKILL.md`'s frontmatter, and that one header covers the whole skill directory;
        - they don't go in an HTML comment, as in the rules: a skill keeps its HTML comments when it is invoked (§2.6, trap 11).
      - **Descriptions:** ≤ 500 characters, keeping every "Do not use" clause.
-     - **`yayreview`:**
+     - **`yayplancheck`:**
        - diffs against the PR's base branch: the one `CLAUDE.md` names, or the previous branch in a stack;
        - doesn't count a check as a gap when it fails the same way on the base;
        - given no argument, reviews the newest plan whose Status is `active`.
@@ -881,7 +881,7 @@ Exception: P1–P5 were prepared on 2026-10-01 as a stack of branches, each on t
   4. Dry run on a scratch branch with a small YayLoyalty topic. Iterate on the drafts until the outputs pass, then discard the branch:
      - `/yaybrainstorming <topic>` writes a spec with `**Status:** proposed`, and approving it sets `accepted`;
      - `/yayplan <that spec>` writes a plan with `**Status:** active`;
-     - once Task 1 is implemented, `/yayreview <that plan>` reviews it in a subagent, against the scratch branch's base;
+     - once Task 1 is implemented, `/yayplancheck <that plan>` reviews it in a subagent, against the scratch branch's base;
      - a one-line bug fix, asked for separately, takes the fast path.
   5. Optional: run each skill's `evals/evals.json` through skill-creator. The prompts aren't YayLoyalty features, so judge the process, not the facts.
 - **Checklist:**
@@ -901,7 +901,7 @@ Exception: P1–P5 were prepared on 2026-10-01 as a stack of branches, each on t
   - **Fixes applied** to the drafts, all of items 1, 2 and 5–10, worded to hold in any repo:
     - **Specs:** the template and the fast-path doc start at `**Status:** proposed`. The lifecycle is stated above the template, and steps 5 and 7 set `superseded by` and `accepted`. The hard gate now waits for `accepted`.
     - **Plans:** both shapes open with `**Status:** active`, and the lifecycle is stated above the template. A phase file's first line points to its README. `yayplan` stops on a design doc that isn't `accepted`.
-    - **`yayreview`:**
+    - **`yayplancheck`:**
       - diffs against `git diff <base>...HEAD`, with the base from `CLAUDE.md` or the stack, and never assumes `main`;
       - with no argument, takes the newest `active` plan;
       - doesn't count a failure that the plan or the docs record on the base as a gap, and doesn't switch branches to check one;
@@ -961,7 +961,7 @@ Exception: P1–P5 were prepared on 2026-10-01 as a stack of branches, each on t
     - links to `CLAUDE.md` § Git for the rules;
     - the human parts: review expectations, who promotes `dev/edd` → `main`, release cadence (the procedure is in `release.md` and `run.sh`);
   - **agent tooling:**
-    - when to run `/yaybrainstorming`, `/yayplan`, `/yaytidy` (before opening a PR) and `/yayreview`;
+    - when to run `/yaybrainstorming`, `/yayplan`, `/yaytidy` (before opening a PR) and `/yayplancheck`;
     - the Status lifecycle of specs and plans, linking to the skills, which own it;
     - when to write an ADR;
   - **keeping the harness current:**
@@ -1013,7 +1013,7 @@ Exception: P1–P5 were prepared on 2026-10-01 as a stack of branches, each on t
 | V5 | Rules load exactly when relevant | C10 + C11 expectations from P7 |
 | V6 | Settings and hook | C13 + C14; scripted vendor edit refused |
 | V7 | Every documented command runs | Every command in `CLAUDE.md`, `README.md`, rules and skills (except the placeholders in skill templates) is run in a **fresh clone** inside a WP `plugins/` dir with Node 22. Outcome = success, or exactly the failure listed in `known-issues.md` (table in the PR). |
-| V8 | Agent smoke tests (`claude -p --setting-sources project --output-format stream-json`) | (a) asked for the admin lint command → answer contains it verbatim; (b) asked a Pro/Lite question → a `Read` of `docs/architecture.md` appears in the stream (A5's trigger works; if it misses twice, apply A5's promotion rule); (c) `/yaybrainstorming` → `/yayplan` → `/yayreview` toy run → a spec and a plan with Status lines, and a review verdict; (d) `claude -p … "/yaytidy base <ref>"` on a scratch branch with one planted unmarked copy → the report's first line names the ref, its short SHA and the file count, and the plant appears as a finding with its owner |
+| V8 | Agent smoke tests (`claude -p --setting-sources project --output-format stream-json`) | (a) asked for the admin lint command → answer contains it verbatim; (b) asked a Pro/Lite question → a `Read` of `docs/architecture.md` appears in the stream (A5's trigger works; if it misses twice, apply A5's promotion rule); (c) `/yaybrainstorming` → `/yayplan` → `/yayplancheck` toy run → a spec and a plan with Status lines, and a review verdict; (d) `claude -p … "/yaytidy base <ref>"` on a scratch branch with one planted unmarked copy → the report's first line names the ref, its short SHA and the file count, and the plant appears as a finding with its owner |
 | V9 | `/doctor prompt-audit` | No "missing file/command" or "contradiction" finding left without a disposition |
 | V10 | New teammate end to end | The named validator (Q4) follows `README.md` from a fresh clone: setup → dev server → lint/test → one brainstorm → plan → review cycle. Every blocker is logged as an issue; pass = zero open blockers. |
 

@@ -9,7 +9,7 @@ Before opening a PR, a developer runs `/yaytidy`. It finds facts kept in more th
 
 ## Context
 
-- The team's own skills take work from design to plan to review: `yaybrainstorming`, `yayplan` and `yayreview`. None of them checks that a fact has one source of truth.
+- The team's own skills take work from design to plan to review: `yaybrainstorming`, `yayplan` and `yayplancheck`. None of them checks that a fact has one source of truth.
 - A duplicate-rule checker did this until P2 of the harness renewal removed it. The tag `harness-v1-final` keeps it.
   - It worked from a 38-row owner table in a standards doc. The table had grown from 15 rows in a single week, and it went stale.
   - It cited doc section numbers and hard-coded a machine path and `dev/edd`. Claude Code didn't register its name.

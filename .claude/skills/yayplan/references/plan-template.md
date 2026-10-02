@@ -110,7 +110,7 @@ docs/plans/YYYY-MM-DD-<feature-slug>/
 ```markdown
 # [Feature Name] Implementation Plan
 
-> **For agentic workers:** execute phases in order. Read this file, then the current phase file. Do not start a phase until the previous phase's exit criterion has been verified and `/yayreview` has passed on it.
+> **For agentic workers:** execute phases in order. Read this file, then the current phase file. Do not start a phase until the previous phase's exit criterion has been verified and `/yayplancheck` has passed on it.
 
 **Status:** active
 **Goal:** [one sentence]

@@ -1,5 +1,5 @@
 {
-  "skill_name": "yayreview",
+  "skill_name": "yayplancheck",
   "evals": [
     {
       "id": 1,
@@ -16,12 +16,12 @@
     {
       "id": 3,
       "prompt": "Can you tidy up the naming in src/Admin/Settings.php? Some methods are camelCase and some are snake_case.",
-      "expected_output": "Does not invoke yayreview. This is a style request with no plan to review against.",
+      "expected_output": "Does not invoke yayplancheck. This is a style request with no plan to review against.",
       "files": []
     },
     {
       "id": 4,
-      "prompt": "/yayreview",
+      "prompt": "/yayplancheck",
       "expected_output": "In a repo whose only active plan is a roadmap with no '### Task N:' headings, does not review against the roadmap. Says no active yayplan plan was found and asks which plan to review.",
       "files": []
     }

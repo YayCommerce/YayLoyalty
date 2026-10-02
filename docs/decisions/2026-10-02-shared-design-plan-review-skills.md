@@ -1,6 +1,6 @@
 # Three shared skills take work from design to plan to review
 
-**Purpose:** why the team's own Claude Code skills are `yaybrainstorming`, `yayplan` and `yayreview`, why the YayCommerce plugins share them, and why they own the Status words of specs and plans.
+**Purpose:** why the team's own Claude Code skills are `yaybrainstorming`, `yayplan` and `yayplancheck`, why the YayCommerce plugins share them, and why they own the Status words of specs and plans.
 
 **Update when:** never edit it. Supersede it with a new record when a skill is added or removed, the skills stop being shared, or the Status words change.
 
@@ -11,7 +11,7 @@ Accepted, 2026-10-02, by Trace Bui, who drafted the skills. It supersedes the sk
 ## Context
 
 - The harness record planned two skills of the team's own, `brainstorming` and `writing-plans`, and no others. Personal and plugin skills can carry the same plain names, so the plan meant to tell them apart with descriptions specific to this repo.
-- Trace drafted three skills instead. `yaybrainstorming` turns an idea into a design doc, and `yayplan` turns the design into a plan. `yayreview` is new. The session that wrote the code is biased toward it, so a fresh subagent checks the work against the plan before the next phase starts or the work merges.
+- Trace drafted three skills instead. `yaybrainstorming` turns an idea into a design doc, and `yayplan` turns the design into a plan. `yayplancheck` is new. The session that wrote the code is biased toward it, so a fresh subagent checks the work against the plan before the next phase starts or the work merges.
 - The drafts were written for any YayCommerce plugin, not only this one. Tailoring them to YayLoyalty was turned down: it would fork the plugin family's skills, and `CLAUDE.md`'s "read when…" links already lead to this repo's docs on Pro/Lite, new writers, the SPA, money and dates.
 - The drafts gave a spec the words `draft | approved` and gave a plan no Status line at all, but `CLAUDE.md` acts only on an `accepted` spec or an `active` plan. Changing `CLAUDE.md` to `approved` was turned down: the decision records already say `proposed` and `accepted`, and the drafts had no word for a spec or plan that a later one replaces.
 - Only one of the harness record's decisions changed. Restating that whole record in order to supersede it was turned down.
@@ -22,7 +22,7 @@ Accepted, 2026-10-02, by Trace Bui, who drafted the skills. It supersedes the sk
 - [Q10] The team's own skills are these three, and there are no others:
   - `yaybrainstorming` turns an idea into a design doc in `docs/specs/`. No code is written before the doc is accepted;
   - `yayplan` turns an accepted design into a plan in `docs/plans/`, either one file or a directory of phases;
-  - `yayreview` has a fresh subagent review an implementation against its plan and report the gaps that block it.
+  - `yayplancheck` has a fresh subagent review an implementation against its plan and report the gaps that block it.
 - [Q10] The `yay` prefix keeps them apart from personal or plugin skills with plain names.
 - [Q12] The YayCommerce plugins share these skills, so their files stay repo-neutral. Each repo's `CLAUDE.md`, and the docs it links, supply the commands, the PR base, the checks that already fail and where decisions are recorded.
 - [Q11] The skills own the spec and plan formats and their Status words:

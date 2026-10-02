@@ -1,10 +1,10 @@
 ---
 name: yayplan
 description: Turns an accepted spec, issue, or feature request into a step-by-step implementation plan that another engineer or agent can execute without the planner's context. Use when the user asks to plan, break down, scope, sequence, or estimate a feature, refactor, or migration, says "before we touch code" or "write a plan", wants tasks from a spec, or mentions YayPlan, even without the word "plan". Do not use for product planning (PRDs, roadmaps, MVP scoping) or to execute a plan that already exists.
-# Purpose: turns an accepted spec, or a request with no spec, into an implementation plan in docs/plans/ that yayreview can check
+# Purpose: turns an accepted spec, or a request with no spec, into an implementation plan in docs/plans/ that yayplancheck can check
 #   work against. It owns the plan format, both plan shapes and the plan Status words
 #   (references/plan-template.md). This header covers the whole skill directory.
-# Update when: the plan format, its Status words or the sizing rules change, or yayreview needs
+# Update when: the plan format, its Status words or the sizing rules change, or yayplancheck needs
 #   something new from a plan. The YayCommerce plugins share this skill: keep its files repo-neutral,
 #   and put a repo's own facts in that repo's CLAUDE.md.
 # This header sits in the frontmatter because Claude Code strips the frontmatter when it loads a
@@ -108,4 +108,4 @@ Fix issues inline. No second pass needed.
 
 Reply with the plan path (or directory), a short summary (goal, number of tasks or phases, the biggest risk), and anything you had to assume. Ask the user to review. Suggest how to execute (continue in this session after approval, a fresh session per plan or per phase that reads the README plus that phase, or a subagent per task with review between tasks) and recommend one with a one-line reason.
 
-Stop there. Implementation starts only when the user says so. After each phase is implemented (or the whole plan, for a single file), the next step is `/yayreview <plan path>`: a fresh reviewer checks the diff against the plan before the next phase starts or the work is merged.
+Stop there. Implementation starts only when the user says so. After each phase is implemented (or the whole plan, for a single file), the next step is `/yayplancheck <plan path>`: a fresh reviewer checks the diff against the plan before the next phase starts or the work is merged.

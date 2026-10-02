@@ -25,7 +25,7 @@ Accepted, 2026-10-02, by Trace Bui, who accepted [the yaytidy design](../specs/2
 
 ## Decision
 
-- [Q14] The team's own skills are four: `yaybrainstorming`, `yayplan`, `yayreview` and `yaytidy`.
+- [Q14] The team's own skills are four: `yaybrainstorming`, `yayplan`, `yayplancheck` and `yaytidy`.
 - `yaytidy` runs before a PR, on a branch (the default), one commit or given paths:
   - it runs the built-in `/simplify` first, behind a guard that makes its edits visible and lets the developer revert them;
   - it then reports duplicated facts, drifted or stale markers, and duplicated or redundant code, each with its owner and a proposed fix, and fixes only what the developer picks;

@@ -1,6 +1,6 @@
 ---
-name: yayreview
-description: Reviews implemented code against the yayplan plan it was built from, in a fresh subagent, and reports only the gaps that affect correctness or stated requirements. Use after a task, phase, or whole plan has been implemented and before starting the next phase, merging, or calling the work done, when the user says "review against the plan", "check the implementation", "is this finished", or mentions YayReview. Do not use for style review, for code with no plan, or before any implementation exists.
+name: yayplancheck
+description: Reviews implemented code against its yayplan plan, in a fresh subagent, and reports only the gaps that affect correctness or stated requirements. Use after a task, phase, or whole plan has been implemented and before starting the next phase, merging, or calling the work done, when the user says "review against the plan", "check the implementation", "is this finished", or mentions YayPlanCheck. Do not use for style review, for code with no plan, or before any implementation exists.
 # Purpose: checks an implementation against the yayplan plan it was built from, in a fresh subagent.
 #   It owns the review prompt and the report format. This header covers the whole skill directory.
 # Update when: the review procedure or the report format changes, or yayplan's plan format changes.
@@ -10,7 +10,7 @@ description: Reviews implemented code against the yayplan plan it was built from
 #   skill, but keeps HTML comments.
 ---
 
-# YayReview: check the work against the plan
+# YayPlanCheck: check the work against the plan
 
 The session that wrote the code is biased toward it. The reviewer must run in a fresh context that sees only the diff, the plan, and the spec, so dispatch a subagent rather than reviewing inline. The implementing session then receives the gaps and fixes them.
 

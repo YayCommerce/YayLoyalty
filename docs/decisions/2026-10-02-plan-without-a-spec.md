@@ -13,17 +13,17 @@ Accepted, 2026-10-02, by Trace Bui. It supersedes the decision of [the shared sk
 - yaybrainstorming gated every change behind an accepted design doc, and the shared skills record made that a consequence of the skills.
 - yayplan already planned from an issue or a request without a spec, by asking up to three questions. Both texts landed in the same commit, and nothing said which one wins.
 - Both skills' descriptions matched a request such as "I want a copy button, plan it", so the model chose between them.
-- A plan with no spec had nothing to put in its `**Spec:**` line, and yayreview had no acceptance criteria to check against.
+- A plan with no spec had nothing to put in its `**Spec:**` line, and yayplancheck had no acceptance criteria to check against.
 - Options turned down:
   - yayplan refuses without an accepted spec and points to yaybrainstorming: the team wants to plan straight from a request;
   - planning without a spec only for small requests, or only when no architectural choice or shared code is involved: the team chose not to limit it;
-  - leaving the requirements out of the plan: the tasks alone give yayreview nothing to check acceptance against.
+  - leaving the requirements out of the plan: the tasks alone give yayplancheck nothing to check acceptance against.
 
 ## Decision
 
 - yayplan may plan any request without a spec. It asks up to three questions whose answers change the plan, and waits for them.
 - Such a plan reads `**Spec:** none, planned from the request`, and its `## Requirements` section holds the goal, out of scope, the acceptance criteria with exact values, and each question with its answer. The last criterion is the end-to-end check that becomes the plan's final exit criterion.
-- yayreview reads that section in place of a spec.
+- yayplancheck reads that section in place of a spec.
 - yaybrainstorming runs when the user wants a design. Its gate still holds once a design is under way: no code until the design doc is accepted. A request for a plan goes to yayplan.
 
 ## Consequences
