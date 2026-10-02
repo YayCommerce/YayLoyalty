@@ -3,6 +3,7 @@ namespace YayLoyalty\Controllers;
 
 use YayLoyalty\Access\Capabilities;
 use YayLoyalty\Repositories\CustomerRepository;
+use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -287,5 +288,66 @@ abstract class AbstractRestController extends BaseRestController {
         }
 
         return true;
+    }
+
+    /**
+     * Route-arg check for a nullable date: empty clears it, anything else must
+     * be a full UTC `Y-m-d H:i:s`, the shape the column stores and the SPA
+     * sends. Without it a string strtotime() cannot read passes
+     * dates_in_order() (it reads as 0) and lands in the DATETIME column as garbage.
+     *
+     * @param mixed $value
+     */
+    public static function validate_nullable_date( $value ): bool {
+        if ( null === $value || '' === $value ) {
+            return true;
+        }
+
+        $date = is_string( $value ) ? \DateTimeImmutable::createFromFormat( Dates::MYSQL_FORMAT, $value, new \DateTimeZone( 'UTC' ) ) : false;
+
+        return false !== $date && $date->format( Dates::MYSQL_FORMAT ) === $value;
+    }
+
+    /** Whether an open-ended or unscheduled side passes, and two set dates run forward (ends_at is exclusive, so equal is empty). */
+    protected static function dates_in_order( ?string $starts_at, ?string $ends_at ): bool {
+        return null === $starts_at || null === $ends_at || Dates::to_timestamp( $starts_at ) < Dates::to_timestamp( $ends_at );
+    }
+
+    /**
+     * A request's date param as stored: empty means no bound.
+     *
+     * @param mixed $value
+     */
+    protected static function nullable_date( $value ): ?string {
+        if ( null === $value || '' === $value ) {
+            return null;
+        }
+
+        return (string) $value;
+    }
+
+    /**
+     * A slug derived from $source that $is_taken rejects for no row, numbered
+     * on collision and capped to fit VARCHAR(64) with its suffix.
+     *
+     * @param callable(string): bool $is_taken
+     */
+    protected static function unique_slug( string $source, string $fallback, callable $is_taken ): string {
+        $base = sanitize_title( $source );
+
+        if ( '' === $base ) {
+            $base = $fallback;
+        }
+
+        $base = substr( $base, 0, 60 );
+        $slug = $base;
+        $n    = 2;
+
+        while ( $is_taken( $slug ) ) {
+            $slug = substr( $base, 0, 60 - strlen( (string) $n ) - 1 ) . '-' . $n;
+            ++$n;
+        }
+
+        return $slug;
     }
 }

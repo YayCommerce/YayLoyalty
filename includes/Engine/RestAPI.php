@@ -84,7 +84,7 @@ class RestAPI {
             new LookupRestController(),
             // Definition table: repository only, no service. $ledger is read-only here too.
             new CampaignRestController( $campaigns, $ledger ),
-            // Read-only for now, same $rewards instance DashboardRepository holds.
+            // Same $rewards instance DashboardRepository holds.
             new RewardRestController( $rewards ),
             new DashboardRestController(
                 new DashboardStats( $dashboard, wc_get_price_decimals() ),

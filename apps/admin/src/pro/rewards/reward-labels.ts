@@ -2,13 +2,11 @@ import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { formatStoredDate, parseWPCurrency } from '@/lib/helpers/format.helper';
 import { formatPoints } from '@/lib/helpers/points.helper';
-import { Reward } from '@/lib/schema/reward.schema';
+import { CatalogRewardType, claimsPerCustomer, normalizeRewardConditions, Reward } from '@/lib/schema/reward.schema';
 
 /** Reward presentation strings and derived facts; the wire carries none of this — same split as campaign-labels.ts. */
 
 export interface RewardsScreen {
-  /** The seeded flexible-discount row. Present on every real install; absent only were the seed to somehow be missing. */
-  builtin: Reward | undefined;
   /** Every non-archived row, built-in first, in display order. What the table renders. */
   rows: Reward[];
   /** Non-builtin, non-archived rows — what "catalog" means throughout this screen. */
@@ -25,27 +23,10 @@ export function resolveRewardsScreen(rewards: Reward[]): RewardsScreen {
   const rows = builtin ? [builtin, ...catalogRows] : catalogRows;
 
   return {
-    builtin,
     rows,
     catalogRows,
     isInitCase: catalogRows.length === 0,
   };
-}
-
-/** One condition entry, normalised defensively: the wire type is a loose union so a malformed row degrades to an empty list rather than a crash. */
-function conditionList(conditions: Reward['conditions']): { type: string; operator: string; value: unknown }[] {
-  if (!Array.isArray(conditions)) {
-    return [];
-  }
-
-  return conditions.filter(
-    (entry): entry is { type: string; operator: string; value: unknown } =>
-      !!entry && typeof entry === 'object' && 'type' in entry,
-  );
-}
-
-function findCondition(conditions: Reward['conditions'], type: string) {
-  return conditionList(conditions).find((condition) => condition.type === type);
 }
 
 function numberConfig(config: Reward['config'], key: string): number | null {
@@ -66,8 +47,62 @@ export function typeLabel(type: Reward['type']): string {
       return __('Free shipping', 'yayloyalty');
     case 'free_product':
       return __('Free product', 'yayloyalty');
-    default:
-      return type;
+  }
+}
+
+/** A catalog type's starting-point title: the template card heading and a new reward's default name. */
+export function templateTitle(type: CatalogRewardType): string {
+  switch (type) {
+    case 'fixed_coupon':
+      return __('Fixed discount', 'yayloyalty');
+    case 'percent_coupon':
+      return __('Percentage off', 'yayloyalty');
+    case 'free_shipping':
+      return __('Free shipping', 'yayloyalty');
+    case 'free_product':
+      return __('Free product', 'yayloyalty');
+  }
+}
+
+/** Display order of the catalog starting points, on the "Add a reward" page and the empty-state cards. */
+export const REWARD_TEMPLATE_ORDER: CatalogRewardType[] = [
+  'fixed_coupon',
+  'free_shipping',
+  'percent_coupon',
+  'free_product',
+];
+
+/** What a catalog type gives the customer, for the "Add a reward" cards. */
+export function templateDescription(type: CatalogRewardType): string {
+  switch (type) {
+    case 'fixed_coupon':
+      return __(
+        'A set amount off a later order, issued as a single-use coupon when the customer claims it.',
+        'yayloyalty',
+      );
+    case 'percent_coupon':
+      return __('A percentage off a later order, with an optional cap so a large order cannot drain it.', 'yayloyalty');
+    case 'free_shipping':
+      return __(
+        'Free shipping on a later order, issued as a single-use coupon when the customer claims it.',
+        'yayloyalty',
+      );
+    case 'free_product':
+      return __('A product of your choice for free, added to a later order with a single-use coupon.', 'yayloyalty');
+  }
+}
+
+/** A worked example of a catalog type's starting point. */
+export function templateExample(type: CatalogRewardType): string {
+  switch (type) {
+    case 'fixed_coupon':
+      return __('Example: $5 off orders over $25, for 500 points', 'yayloyalty');
+    case 'percent_coupon':
+      return __('Example: 15% off, for 1,500 points', 'yayloyalty');
+    case 'free_shipping':
+      return __('Example: free shipping on one order, for 800 points', 'yayloyalty');
+    case 'free_product':
+      return __('Example: a free product, for 3,000 points', 'yayloyalty');
   }
 }
 
@@ -106,18 +141,18 @@ export function costLabel(reward: Reward): string {
 
 /** "once per customer" (redemption_count lt 1), "up to %d per customer" for a higher cap. Only condition this build renders a phrase for; unknown types are silently skipped. */
 function redemptionLimitLabel(conditions: Reward['conditions']): string | null {
-  const condition = findCondition(conditions, 'redemption_count');
+  const cap = claimsPerCustomer(normalizeRewardConditions(conditions));
 
-  if (!condition || condition.operator !== 'lt' || typeof condition.value !== 'number') {
+  if (cap === null) {
     return null;
   }
 
-  if (condition.value <= 1) {
+  if (cap <= 1) {
     return __('once per customer', 'yayloyalty');
   }
 
   /* translators: %d: maximum number of claims per customer. */
-  return sprintf(__('up to %d per customer', 'yayloyalty'), condition.value);
+  return sprintf(__('up to %d per customer', 'yayloyalty'), cap);
 }
 
 /** The built-in slider's own availability phrase: its limits live in config, not conditions. */

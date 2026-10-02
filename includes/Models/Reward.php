@@ -19,6 +19,12 @@ class Reward extends AbstractModel {
     /** config/conditions blob version. Bump when the shape changes. */
     public const CONFIG_SCHEMA_VERSION = 1;
 
+    /** A `product` value is first an id: a whole number of at least 1. */
+    private const POSITIVE_INT_SPEC = [
+        'type' => 'int',
+        'min'  => 1,
+    ];
+
     /** @var int|null */
     private $id;
 
@@ -155,6 +161,37 @@ class Reward extends AbstractModel {
         return [ '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%s', '%s', '%s', '%d', '%d', '%d', '%s', '%s', '%s' ];
     }
 
+    /**
+     * to_row() minus the columns no update may change, each format kept
+     * paired with its column — $wpdb->update() consumes $format positionally,
+     * so dropping a column without its placeholder shifts every one after it.
+     *
+     * @return array{data: array<string, mixed>, format: string[]}
+     */
+    public function to_update_row(): array {
+        $row    = $this->to_row();
+        $format = $this->get_format();
+
+        $immutable = [ 'slug', 'type', 'created_at', 'created_by', 'is_builtin' ];
+
+        $data        = [];
+        $data_format = [];
+
+        foreach ( array_keys( $row ) as $index => $key ) {
+            if ( in_array( $key, $immutable, true ) ) {
+                continue;
+            }
+
+            $data[ $key ]  = $row[ $key ];
+            $data_format[] = $format[ $index ];
+        }
+
+        return [
+            'data'   => $data,
+            'format' => $data_format,
+        ];
+    }
+
     public function to_array(): array {
         return [
             'id'          => $this->id,
@@ -192,16 +229,15 @@ class Reward extends AbstractModel {
 
     /**
      * Per-type config schema, key => spec: what `config` may hold and what
-     * config_is_valid() checks against. Lite's flexible_discount only; Pro
-     * types add theirs through config_whitelist(). Spec types: bool, string,
-     * int|number [min], enum|enum_list [values], currency, nullable_number
-     * [min]; `required => true` makes the key mandatory (only currency: a
-     * money value without it is ambiguous once the store currency changes).
+     * config_is_valid() checks against. Lite declares flexible_discount; Pro
+     * adds its types through the filter. Spec types: bool, string,
+     * int|number|nullable_int|nullable_number [min, max], enum|enum_list
+     * [values], currency, product; `required => true` makes the key mandatory.
      *
      * @return array<string, array<string, array<string, mixed>>>
      */
     public static function config_schema(): array {
-        return [
+        $schema = [
             RewardType::FLEXIBLE_DISCOUNT => [
                 'currency'                 => [
                     'type'     => 'currency',
@@ -242,63 +278,36 @@ class Reward extends AbstractModel {
                 ],
             ],
         ];
-    }
-
-    /**
-     * Keys each type's config may contain, keyed by type. Derived from
-     * config_schema() so the two never drift; the filter is for Pro to add
-     * whole types, not keys to flexible_discount's.
-     *
-     * @return array<string, string[]>
-     */
-    public static function config_whitelist(): array {
-        $whitelist = [];
-
-        foreach ( self::config_schema() as $type => $keys ) {
-            $whitelist[ $type ] = array_keys( $keys );
-        }
 
         /**
-         * Config keys each reward type may store. Internal Pro seam, not a public API.
+         * Typed config specs per reward type. Internal Pro seam, not a public API.
          *
-         * @param array<string, string[]> $whitelist
+         * @param array<string, array<string, array<string, mixed>>> $schema
          */
-        return apply_filters( 'yayloyalty_reward_config_whitelist', $whitelist );
+        return apply_filters( 'yayloyalty_reward_config_schema', $schema );
     }
 
     /**
      * Whether a config is acceptable for a type: unknown keys, wrong types and
-     * a missing `required` key fail. A type this build has no schema or
-     * whitelist for came from another build and is accepted unjudged.
+     * a missing `required` key fail. A type this build has no schema for
+     * came from another build and is accepted unjudged.
      */
     public static function config_is_valid( string $type, array $config ): bool {
-        $schema    = self::config_schema()[ $type ] ?? null;
-        $whitelist = self::config_whitelist()[ $type ] ?? null;
+        $schema = self::config_schema()[ $type ] ?? null;
 
-        if ( null === $schema && null === $whitelist ) {
+        if ( null === $schema ) {
             return true;
         }
 
-        $allowed = null !== $whitelist ? $whitelist : array_keys( (array) $schema );
-
         foreach ( $config as $key => $value ) {
-            if ( ! in_array( $key, $allowed, true ) ) {
-                return false;
-            }
-
-            // Whitelisted but not in config_schema(): a Pro type's own key, accepted untyped.
-            $spec = is_array( $schema ) ? ( $schema[ $key ] ?? null ) : null;
-
-            if ( null !== $spec && ! self::value_matches_spec( $value, $spec ) ) {
+            if ( ! isset( $schema[ $key ] ) || ! self::value_matches_spec( $value, $schema[ $key ] ) ) {
                 return false;
             }
         }
 
-        if ( is_array( $schema ) ) {
-            foreach ( $schema as $key => $spec ) {
-                if ( ! empty( $spec['required'] ) && ! array_key_exists( $key, $config ) ) {
-                    return false;
-                }
+        foreach ( $schema as $key => $spec ) {
+            if ( ! empty( $spec['required'] ) && ! array_key_exists( $key, $config ) ) {
+                return false;
             }
         }
 
@@ -336,34 +345,63 @@ class Reward extends AbstractModel {
             case 'currency':
                 return is_string( $value ) && self::is_currency_code( $value );
 
+            case 'product':
+                if ( ! self::value_matches_spec( $value, self::POSITIVE_INT_SPEC ) ) {
+                    return false;
+                }
+
+                // Skipped under plain PHPUnit, where WooCommerce is not loaded.
+                return ! function_exists( 'wc_get_product' ) || self::is_rewardable_product( wc_get_product( (int) $value ) );
+
             case 'int':
                 if ( is_bool( $value ) || ! is_numeric( $value ) || floor( (float) $value ) !== (float) $value ) {
                     return false;
                 }
 
-                return ! isset( $spec['min'] ) || (float) $value >= (float) $spec['min'];
+                return self::is_within_bounds( (float) $value, $spec );
 
             case 'number':
                 if ( is_bool( $value ) || ! is_numeric( $value ) ) {
                     return false;
                 }
 
-                return ! isset( $spec['min'] ) || (float) $value >= (float) $spec['min'];
+                return self::is_within_bounds( (float) $value, $spec );
+
+            case 'nullable_int':
+                return null === $value || self::value_matches_spec( $value, [ 'type' => 'int' ] + $spec );
 
             case 'nullable_number':
-                if ( null === $value ) {
-                    return true;
-                }
-
-                if ( is_bool( $value ) || ! is_numeric( $value ) ) {
-                    return false;
-                }
-
-                return ! isset( $spec['min'] ) || (float) $value >= (float) $spec['min'];
+                return null === $value || self::value_matches_spec( $value, [ 'type' => 'number' ] + $spec );
 
             default:
                 return true;
         }
+    }
+
+    /**
+     * @param array<string, mixed> $spec
+     */
+    private static function is_within_bounds( float $value, array $spec ): bool {
+        if ( isset( $spec['min'] ) && $value < (float) $spec['min'] ) {
+            return false;
+        }
+
+        return ! isset( $spec['max'] ) || $value <= (float) $spec['max'];
+    }
+
+    /**
+     * Whether a free-product reward may point at $product: a parent product a
+     * customer can be given, so not a variation and not trashed or unfinished
+     * (draft, pending, scheduled). Private stays allowed: the store owns it.
+     *
+     * @param \WC_Product|false|null $product
+     */
+    private static function is_rewardable_product( $product ): bool {
+        if ( ! $product || $product->is_type( 'variation' ) ) {
+            return false;
+        }
+
+        return in_array( $product->get_status(), [ 'publish', 'private' ], true );
     }
 
     /** ISO 4217 format check, plus membership in WooCommerce's list when it is loaded (not under plain PHPUnit). */
@@ -379,17 +417,17 @@ class Reward extends AbstractModel {
         return true;
     }
 
-    /** Drops config keys that do not belong to the type. A type with no whitelist is preserved wholesale: "unknown" must never mean "delete" on a downgrade. */
+    /** Drops config keys that do not belong to the type. A type with no schema is preserved wholesale: "unknown" must never mean "delete" on a downgrade. */
     public static function validate_config( string $type, array $config ): array {
-        $whitelist = self::config_whitelist()[ $type ] ?? null;
+        $schema = self::config_schema()[ $type ] ?? null;
 
-        if ( null === $whitelist ) {
+        if ( null === $schema ) {
             return $config;
         }
 
         $clean = [];
 
-        foreach ( $whitelist as $key ) {
+        foreach ( array_keys( $schema ) as $key ) {
             if ( array_key_exists( $key, $config ) ) {
                 $clean[ $key ] = $config[ $key ];
             }
@@ -501,6 +539,11 @@ class Reward extends AbstractModel {
         return $this->is_builtin;
     }
 
+    /** Whether this reward may be archived: never the built-in, which the Free UI and DashboardRepository find by slug. */
+    public function can_archive(): bool {
+        return ! $this->is_builtin;
+    }
+
     public function is_archived(): bool {
         return Status::ARCHIVED === $this->status;
     }
@@ -518,7 +561,7 @@ class Reward extends AbstractModel {
     public function set_status( string $status ): void {
         $status = Status::assert( $status );
 
-        if ( Status::ARCHIVED === $status && $this->is_builtin ) {
+        if ( Status::ARCHIVED === $status && ! $this->can_archive() ) {
             throw new \InvalidArgumentException( 'YayLoyalty: built-in rewards cannot be archived.' );
         }
 

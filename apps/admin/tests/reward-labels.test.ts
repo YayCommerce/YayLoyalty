@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { Reward } from '@/lib/schema/reward.schema';
 import {
   availabilityLabel,
   costLabel,
@@ -9,27 +8,7 @@ import {
   rewardSubtitle,
   typeLabel,
 } from '@/pro/rewards/reward-labels';
-
-function reward(overrides: Partial<Reward>): Reward {
-  return {
-    id: 1,
-    name: 'Test reward',
-    slug: 'test-reward',
-    type: 'fixed_coupon',
-    status: 'active',
-    sort_order: 0,
-    cost_points: 500,
-    config: {},
-    conditions: [],
-    starts_at: null,
-    ends_at: null,
-    is_builtin: false,
-    created_by: null,
-    created_at: '2026-01-01 00:00:00',
-    updated_at: '2026-01-01 00:00:00',
-    ...overrides,
-  };
-}
+import { reward } from './fixtures/reward.fixture';
 
 const USD = { symbol: '$', position: 'left', thousand_sep: ',', decimal_sep: '.', num_decimals: 2 };
 
@@ -99,6 +78,14 @@ describe('availabilityLabel', () => {
   it('reads a higher cap as "up to N per customer"', () => {
     const withCondition = reward({
       conditions: [{ type: 'redemption_count', operator: 'lt', value: 3 }],
+    });
+
+    expect(availabilityLabel(withCondition)).toBe('up to 3 per customer');
+  });
+
+  it('reads an lte cap the same way the editor does', () => {
+    const withCondition = reward({
+      conditions: [{ type: 'redemption_count', operator: 'lte', value: 2 }],
     });
 
     expect(availabilityLabel(withCondition)).toBe('up to 3 per customer');

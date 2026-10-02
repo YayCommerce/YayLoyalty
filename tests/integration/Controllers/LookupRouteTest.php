@@ -110,6 +110,39 @@ final class LookupRouteTest extends IntegrationTestCase {
         $this->assertSame( 404, $response->get_status() );
     }
 
+    public function test_a_product_summary_carries_name_and_tracked_stock(): void {
+        $product = wc_get_product( $this->product_id );
+        $product->set_manage_stock( true );
+        $product->set_stock_quantity( 7 );
+        $product->save();
+
+        $response = rest_do_request( new \WP_REST_Request( 'GET', '/yayloyalty/v1/lookups/products/' . $this->product_id ) );
+
+        $this->assertSame( 200, $response->get_status() );
+        $data = $response->get_data();
+        $this->assertSame( 'Lookup Test Enamel Mug', $data['name'] );
+        $this->assertStringContainsString( '12', $data['price'] );
+        $this->assertNull( $data['image_url'] );
+        $this->assertSame( 'instock', $data['stock_status'] );
+        $this->assertSame( 7, $data['stock_quantity'] );
+    }
+
+    public function test_a_missing_product_summary_is_404(): void {
+        $response = rest_do_request( new \WP_REST_Request( 'GET', '/yayloyalty/v1/lookups/products/999999999' ) );
+
+        $this->assertSame( 404, $response->get_status() );
+    }
+
+    public function test_a_trashed_product_summary_is_404(): void {
+        wp_trash_post( $this->product_id );
+
+        $response = rest_do_request( new \WP_REST_Request( 'GET', '/yayloyalty/v1/lookups/products/' . $this->product_id ) );
+
+        wp_untrash_post( $this->product_id );
+
+        $this->assertSame( 404, $response->get_status() );
+    }
+
     /**
      * @param array<string, string> $params
      * @return array<int, array{id: int, label: string}>

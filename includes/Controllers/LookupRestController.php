@@ -50,6 +50,50 @@ final class LookupRestController extends AbstractRestController {
                 ],
             ]
         );
+
+        register_rest_route(
+            self::REST_NAMESPACE,
+            '/lookups/products/(?P<id>[\d]+)',
+            [
+                [
+                    'methods'             => \WP_REST_Server::READABLE,
+                    'callback'            => fn( $request ) => $this->exec_read( [ $this, 'product_summary' ], $request ),
+                    'permission_callback' => $this->requires( Capabilities::VIEW ),
+                ],
+            ]
+        );
+    }
+
+    /**
+     * One product's card: name, SKU, price, categories, thumbnail and live
+     * stock, for an editor that shows what a stored product id points at.
+     * 404 once the product is gone or trashed.
+     *
+     * @return array{id: int, name: string, sku: string, price: string, categories: string, image_url: string|null, stock_status: string, stock_quantity: int|null}|\WP_Error
+     */
+    public function product_summary( \WP_REST_Request $request ) {
+        $product = function_exists( 'wc_get_product' ) ? wc_get_product( (int) $request['id'] ) : null;
+
+        // A trashed product is "deleted" to the merchant; showing it would hide that the reward is broken.
+        if ( ! $product || 'trash' === $product->get_status() ) {
+            return $this->error_not_found( __( 'Product not found.', 'yayloyalty' ) );
+        }
+
+        $image_id  = (int) $product->get_image_id();
+        $image_url = $image_id > 0 ? wp_get_attachment_image_url( $image_id, 'thumbnail' ) : false;
+        $quantity  = $product->managing_stock() ? $product->get_stock_quantity() : null;
+
+        return [
+            'id'             => (int) $product->get_id(),
+            'name'           => Text::plain( $product->get_name() ),
+            'sku'            => (string) $product->get_sku(),
+            'price'          => '' === (string) $product->get_price() ? '' : Text::plain( wc_price( (float) $product->get_price() ) ),
+            'categories'     => Text::plain( (string) wc_get_product_category_list( $product->get_id(), ', ' ) ),
+            'image_url'      => false === $image_url ? null : $image_url,
+            'stock_status'   => (string) $product->get_stock_status(),
+            // Null when WooCommerce tracks no count for it: the status is all there is.
+            'stock_quantity' => null === $quantity ? null : (int) $quantity,
+        ];
     }
 
     /**

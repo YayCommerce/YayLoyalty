@@ -7,7 +7,12 @@ import { GripVertical, InfoIcon, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { __, sprintf } from '@wordpress/i18n';
 
-import { useRewardsQuery } from '@/lib/queries/reward.queries';
+import { toastApiError } from '@/lib/api/api';
+import {
+  useReorderRewardsMutation,
+  useRewardsQuery,
+  useUpdateRewardStatusMutation,
+} from '@/lib/queries/reward.queries';
 import { resolveRewardDisplayStatus, Reward } from '@/lib/schema/reward.schema';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -36,17 +41,19 @@ import {
 import { RewardCatalogEmptyState, RewardCatalogTemplateCards } from './RewardCatalogEmptyState';
 
 /**
- * Pro's Rewards screen: the launcher catalog in display order, real data
- * only — create/edit/delete/redeem stay UI-only until the reward editor and
- * redemption engine exist.
+ * Pro's Rewards screen: the launcher catalog in display order. Rows open the
+ * reward editor and their switch pauses or resumes; delete, duplicate and
+ * redeem stay UI-only until the redemption engine exists.
  */
 export function RewardTable() {
   const navigate = useNavigate();
 
   const { data, isPending, isError } = useRewardsQuery({ perPage: 100 });
+  const isReady = !isPending && !isError;
 
-  // Local override once a drag reorders the list; reset whenever the query's own data changes,
-  // so a refetch always wins over a display-only reorder that was never persisted.
+  const reorderMutation = useReorderRewardsMutation();
+
+  // Shows a drop at once while its save is in flight; every refetch replaces it with the stored order.
   const [orderedRows, setOrderedRows] = useState<Reward[]>([]);
 
   useEffect(() => {
@@ -67,12 +74,20 @@ export function RewardTable() {
     const fromIndex = screen.rows.findIndex((row) => row.id === active.id);
     const toIndex = screen.rows.findIndex((row) => row.id === over.id);
 
-    if (fromIndex === -1 || toIndex === -1) {
+    // The built-in is pinned first by resolveRewardsScreen(); nothing may move into its slot.
+    if (fromIndex === -1 || toIndex === -1 || screen.rows[toIndex].is_builtin) {
       return;
     }
 
     // Moved within screen.rows, the list the indexes came from; the raw list still holds archived rows.
-    setOrderedRows(arrayMove(screen.rows, fromIndex, toIndex));
+    const nextRows = arrayMove(screen.rows, fromIndex, toIndex);
+    setOrderedRows(nextRows);
+    reorderMutation.mutate(
+      nextRows.map((row) => row.id),
+      {
+        onError: (error) => toastApiError(error, __('Could not save the new order.', 'yayloyalty')),
+      },
+    );
   }
 
   return (
@@ -87,11 +102,11 @@ export function RewardTable() {
             )}
             <div className="flex items-center gap-3">
               <Button variant="outline">{__('Redemptions log', 'yayloyalty')}</Button>
-              <Button>{__('Add reward', 'yayloyalty')}</Button>
+              <Button onClick={() => navigate('/rewards/new')}>{__('Add reward', 'yayloyalty')}</Button>
             </div>
           </div>
 
-          {!isPending && !isError && (
+          {isReady && (
             <Alert variant="outline" className={screen.isInitCase ? 'gap-y-2' : undefined}>
               <InfoIcon />
               <AlertDescription
@@ -128,31 +143,32 @@ export function RewardTable() {
 
           {isPending && <RewardTableSkeleton />}
 
-          {!isPending && !isError && (
+          {isReady && (
             <div className="overflow-hidden rounded-lg border">
               <div className="overflow-x-auto">
-                <Table>
-                  <RewardTableHeader />
-                  <TableBody>
-                    <DndContext
-                      sensors={sensors}
-                      collisionDetection={closestCenter}
-                      modifiers={[restrictToVerticalAxis]}
-                      onDragEnd={onDragEnd}
-                    >
+                {/* Outside <Table>: DndContext renders hidden screen-reader <div>s, invalid inside <tbody>. */}
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  modifiers={[restrictToVerticalAxis]}
+                  onDragEnd={onDragEnd}
+                >
+                  <Table>
+                    <RewardTableHeader />
+                    <TableBody>
                       <SortableContext items={screen.rows.map((row) => row.id)} strategy={verticalListSortingStrategy}>
                         {screen.rows.map((row) => (
                           <RewardRow key={row.id} reward={row} />
                         ))}
                       </SortableContext>
-                    </DndContext>
-                  </TableBody>
-                </Table>
+                    </TableBody>
+                  </Table>
+                </DndContext>
               </div>
             </div>
           )}
 
-          {!isPending && !isError && screen.isInitCase && (
+          {isReady && screen.isInitCase && (
             <>
               <RewardCatalogEmptyState />
               <RewardCatalogTemplateCards />
@@ -161,7 +177,7 @@ export function RewardTable() {
         </CardContent>
       </Card>
 
-      {!isPending && !isError && !screen.isInitCase && <RewardInfoCards />}
+      {isReady && !screen.isInitCase && <RewardInfoCards />}
     </div>
   );
 }
@@ -185,15 +201,26 @@ function RewardTableHeader() {
 }
 
 /**
- * One reward row, sortable via dnd-kit — drag reorders the on-screen list
- * only (RewardTable resets it on every refetch); nothing is persisted. Every
- * other control here is UI-only too: the name link, the toggle and the ⋯
- * menu do nothing yet, since create/edit/delete/redeem land with the reward
- * editor and the redemption engine.
+ * One reward row, sortable via dnd-kit; RewardTable saves a drop as the new
+ * display order. The built-in row is locked first. The name opens the editor
+ * and the switch writes active/paused; the ⋯ menu is still UI-only.
  */
 function RewardRow({ reward }: { reward: Reward }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: reward.id });
+  const navigate = useNavigate();
+  const statusMutation = useUpdateRewardStatusMutation(reward.id);
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: reward.id,
+    disabled: reward.is_builtin,
+  });
   const displayStatus = resolveRewardDisplayStatus(reward.status, reward.starts_at, reward.ends_at);
+
+  async function toggle(isOn: boolean) {
+    try {
+      await statusMutation.mutateAsync(isOn ? 'active' : 'paused');
+    } catch (error) {
+      await toastApiError(error, __('Could not change the reward’s status.', 'yayloyalty'));
+    }
+  }
 
   return (
     <TableRow
@@ -202,20 +229,32 @@ function RewardRow({ reward }: { reward: Reward }) {
       data-state={isDragging ? 'selected' : undefined}
     >
       <TableCell className="px-1">
-        <button
-          type="button"
-          className="text-muted-foreground flex cursor-grab touch-none items-center active:cursor-grabbing"
-          aria-label={__('Drag to reorder', 'yayloyalty')}
-          {...attributes}
-          {...listeners}
-        >
-          <GripVertical className="size-4" />
-        </button>
+        {reward.is_builtin ? (
+          <YayLoyaltyToolTip
+            trigger={<GripVertical className="text-muted-foreground/40 size-4 cursor-not-allowed" />}
+            content={__('The default reward always comes first.', 'yayloyalty')}
+          />
+        ) : (
+          <button
+            type="button"
+            className="text-muted-foreground flex cursor-grab touch-none items-center active:cursor-grabbing"
+            aria-label={__('Drag to reorder', 'yayloyalty')}
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="size-4" />
+          </button>
+        )}
       </TableCell>
       <TableCell>
         <div className="flex flex-col gap-0.5">
           <div className="flex items-center gap-1.5">
-            <Button variant="link" size="sm" className="h-auto p-0 font-semibold">
+            <Button
+              variant="link"
+              size="sm"
+              className="h-auto p-0 font-semibold"
+              onClick={() => navigate(`/rewards/${reward.id}/edit`)}
+            >
               {reward.name}
             </Button>
             {reward.is_builtin && (
@@ -245,7 +284,12 @@ function RewardRow({ reward }: { reward: Reward }) {
       <TableCell>
         {displayStatus === 'active' || displayStatus === 'paused' ? (
           <div className="flex items-center gap-2">
-            <Switch size="sm" checked={displayStatus === 'active'} onCheckedChange={() => {}} />
+            <Switch
+              size="sm"
+              checked={displayStatus === 'active'}
+              disabled={statusMutation.isPending}
+              onCheckedChange={toggle}
+            />
             <span className="text-muted-foreground text-xs">
               {displayStatus === 'active' ? __('On', 'yayloyalty') : __('Paused', 'yayloyalty')}
             </span>

@@ -191,7 +191,7 @@ flowchart TD
     Pro -->|add_filter| ConfigWL["yayloyalty_campaign_config_whitelist"]
     Pro -->|add_filter| CondEval["yayloyalty_campaign_conditions_evaluator"]
     Pro -->|add_filter| RewardTypes["yayloyalty_reward_types"]
-    Pro -->|add_filter| RewardWL["yayloyalty_reward_config_whitelist"]
+    Pro -->|add_filter| RewardSchema["yayloyalty_reward_config_schema"]
     Pro -->|add_filter| RestCtrlrs["yayloyalty_rest_controllers"]
     Pro -->|add_filter| Schema["yayloyalty_rest_item_schema"]
     Pro -->|add_filter| LocalizeData["yayloyalty_localize_admin_data"]
@@ -204,7 +204,7 @@ flowchart TD
     ConfigWL -.->|whitelists config for those 4 triggers| C["Lite already lists max_points_per_order / daily_cap"]
     CondEval -.->|supplies| E["ConditionsEvaluator"]
     RewardTypes -.->|offers| RT["fixed_coupon, percent_coupon, free_shipping, free_product"]
-    RewardWL -.->|whitelists config for those types| RW["per-type key lists"]
+    RewardSchema -.->|types config for those types| RW["per-type typed specs (keys derive the whitelist)"]
     Schema -.->|extends| S["REST item schemas"]
     LocalizeData -.->|adds| LD["segments, paid settings"]
     WCEmails -.->|registers 9 emails| ProEmails["Pro LoyaltyEmail subclasses"]
@@ -280,7 +280,7 @@ These are **first-party, internal seams** for Pro to attach behavior. Not a thir
 | **`yayloyalty_campaign_triggers`** | Called by CampaignTrigger::all() | Pro adds birthday, first_order, order_count, spend_milestone |
 | **`yayloyalty_campaign_config_whitelist`** | Called by `Campaign::config_whitelist()` | Pro adds whitelists for its four triggers; `max_points_per_order`/`daily_cap` are already in Lite's purchase schema and enforced by `Engine\Points\CapPolicy` |
 | **`yayloyalty_reward_types`** | Called by RewardType::all() | Pro adds fixed_coupon, percent_coupon, free_shipping, free_product |
-| **`yayloyalty_reward_config_whitelist`** | Called by `Reward::config_whitelist()` | Pro adds config keys for its four types |
+| **`yayloyalty_reward_config_schema`** | Called by `Reward::config_schema()` | Pro adds typed config specs for its four types (`YayLoyaltyPro::add_reward_config_schema()`); its keys are the only ones a reward config may hold |
 | **`yayloyalty_register_trigger_handlers`** | Fired by `Engine\Points\Triggers\Registry::with_lite_handlers()` | Pro registers handlers for birthday, first_order, order_count, spend_milestone |
 | **`yayloyalty_register_reward_handlers`** | Fired by `Engine\Rewards\Handlers\Registry::with_lite_handlers()` | Pro registers a `RewardHandler` per reward type; unused until Pro handlers exist |
 | **`yayloyalty_rest_item_schema`** | Applied inside `AbstractRestController::get_item_schema()` | Pro extends campaign/reward schemas |

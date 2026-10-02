@@ -1,6 +1,6 @@
 import { keepPreviousData, queryOptions, useQuery } from '@tanstack/react-query';
 
-import { getLookup } from '@/lib/api/lookup.api';
+import { getLookup, getProductSummary } from '@/lib/api/lookup.api';
 import type { LookupEntity } from '@/lib/schema/lookup.schema';
 
 /** ─── Query Options ─────────────────────────────────── */
@@ -22,6 +22,17 @@ export const LOOKUP_QUERIES = {
       enabled: ids.length > 0,
       staleTime: 5 * 60_000,
     }),
+
+  productSummary: (id: number) =>
+    queryOptions({
+      queryKey: ['lookup', 'products', 'summary', id],
+      queryFn: () => getProductSummary(id),
+      enabled: id > 0,
+      // Stock is live; a short stale time keeps the card honest without refetching on every render.
+      staleTime: 30_000,
+      // A deleted product answers 404 and stays deleted; retrying only delays the message.
+      retry: false,
+    }),
 };
 
 /** ─── Hooks ─────────────────────────────────────────── */
@@ -33,4 +44,9 @@ export function useLookupSearchQuery(entity: LookupEntity, term: string) {
 /** Labels for ids the picker already holds but has not seen in a search result. */
 export function useLookupLabelsQuery(entity: LookupEntity, ids: number[]) {
   return useQuery(LOOKUP_QUERIES.labels(entity, ids));
+}
+
+/** One product's card data; off while no product is chosen. */
+export function useProductSummaryQuery(id: number | null) {
+  return useQuery(LOOKUP_QUERIES.productSummary(id ?? 0));
 }
