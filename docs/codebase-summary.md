@@ -220,6 +220,14 @@ Lite registers 3 transactional loyalty emails; Pro adds 9 more. Each is a `WC_Em
 | `Pro\Emails\{BirthdayPoints,CouponIssued,ExpiringFinalReminder,InviteSent,ReferralRewardEarned,RewardClaimed,TierEndingSoon,TierLost,TierReached}Email` | Pro: nine more concrete emails |
 | `Pro\Emails\ProEmails` | Pro registrar: four groups (Rewards, Referral, Tier, Promo), nine emails; fired from `YayLoyaltyPro::boot()` |
 
+### Third-party integrations (includes/Integrations/)
+
+| Class | Role |
+|---|---|
+| `Integrations/YayMail/YayMailIntegration` | Boot gate: `class_exists('YaymailPluginAdapter', false) && is_licensed()` when available; registers on `yaymail_register_emails` / `yaymail_register_shortcodes` hooks |
+| `Integrations/YayMail/PointsEarnedYayMailEmail` | Extends `BaseEmail`; swaps WC template via `wc_get_template` when YayMail template enabled; default layout Logo/Heading/Text/Button/Footer |
+| `Integrations/YayMail/PointsEarnedShortcodes` | 10 shortcodes (yaymail_yayloyalty_{customer_name, earned_text, points, points_label, balance, balance_text, balance_value, balance_value_text, order_number, points_url}); values memoized per award; sample award for is_sample |
+
 ### Redemption orchestration (includes/Engine/Redemption/) — ZONE 2 and the adapters
 
 `namespace YayLoyalty\Engine\Redemption`. The impure shell around the pure quote, mirroring `Engine/Earning` around `Engine/Points`. See its `README.md` for the nine invariants; the test names under `tests/unit/Redemption/` are the specification.

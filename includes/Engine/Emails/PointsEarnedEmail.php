@@ -75,9 +75,14 @@ class PointsEarnedEmail extends LoyaltyEmail {
         $this->placeholders['{balance}']      = number_format_i18n( $entry->get_balance_after() );
     }
 
-    /** WooCommerce's preview has no real award, so it shows a made-up one. */
+    /** Previews have no real award, so they show a made-up one, greeting whoever is looking. */
     public function prepare_preview(): void {
-        $this->prepare( new LedgerEntry( null, 0, 50, 150, LedgerType::EARN, LedgerSource::ORDER ) );
+        $this->prepare( new LedgerEntry( null, get_current_user_id(), 50, 150, LedgerType::EARN, LedgerSource::ORDER ) );
+    }
+
+    /** Every value the email shows for its current award, for renderers besides its own templates; [] until one is prepared. */
+    public function get_template_values(): array {
+        return $this->extra_template_args();
     }
 
     protected function extra_template_args(): array {
@@ -85,21 +90,29 @@ class PointsEarnedEmail extends LoyaltyEmail {
             return [];
         }
 
-        $entry = $this->object;
+        $entry         = $this->object;
+        $order         = $entry->get_order_id() ? wc_get_order( $entry->get_order_id() ) : null;
+        $order_number  = $order ? (string) $order->get_order_number() : '';
+        $balance_value = self::balance_value( $entry->get_balance_after() );
 
         return [
-            'entry'         => $entry,
-            'greeting_name' => self::greeting_name( $entry->get_user_id() ),
-            'earned_text'   => $this->earned_text( $entry ),
-            'balance_text'  => self::points_text( $entry->get_balance_after() ),
-            'balance_value' => self::balance_value( $entry->get_balance_after() ),
+            'entry'              => $entry,
+            'greeting_name'      => self::greeting_name( $entry->get_user_id() ),
+            'earned_text'        => $this->earned_text( $entry, $order_number ),
+            'points'             => $this->placeholders['{points}'],
+            'points_label'       => $this->placeholders['{points_label}'],
+            'balance'            => $this->placeholders['{balance}'],
+            'balance_text'       => self::points_text( $entry->get_balance_after() ),
+            'balance_value'      => $balance_value,
+            'balance_value_text' => self::balance_value_text( $balance_value ),
+            'order_number'       => $order_number,
             /**
              * Filters where the email's "View your points" link goes.
              *
              * @param string      $url   My Account by default.
              * @param LedgerEntry $entry The awarded row.
              */
-            'cta_url'       => (string) apply_filters( 'yayloyalty_points_earned_cta_url', wc_get_page_permalink( 'myaccount' ), $entry ),
+            'cta_url'            => (string) apply_filters( 'yayloyalty_points_earned_cta_url', wc_get_page_permalink( 'myaccount' ), $entry ),
         ];
     }
 
@@ -133,20 +146,28 @@ class PointsEarnedEmail extends LoyaltyEmail {
         return wc_price( $amount );
     }
 
+    /** "That's worth <strong>$1.50</strong> in rewards." around balance_value(); '' when that is ''. */
+    private static function balance_value_text( string $balance_value ): string {
+        if ( '' === $balance_value ) {
+            return '';
+        }
+
+        /* translators: %s: money amount, e.g. "$1.50". */
+        return sprintf( esc_html__( 'That\'s worth %s in rewards.', 'yayloyalty' ), '<strong>' . $balance_value . '</strong>' );
+    }
+
     /** One whole sentence per source, so translators never assemble fragments; escaped HTML with the points in bold. */
-    private function earned_text( LedgerEntry $entry ): string {
+    private function earned_text( LedgerEntry $entry, string $order_number ): string {
         /* translators: %s: points with label, e.g. "50 Points". */
         $format = __( 'You earned %s.', 'yayloyalty' );
         $extra  = [];
 
         switch ( $entry->get_source() ) {
             case LedgerSource::ORDER:
-                $order = $entry->get_order_id() ? wc_get_order( $entry->get_order_id() ) : null;
-
-                if ( $order ) {
+                if ( '' !== $order_number ) {
                     /* translators: 1: points with label, e.g. "50 Points"; 2: order number. */
                     $format = __( 'You earned %1$s for order #%2$s.', 'yayloyalty' );
-                    $extra  = [ $order->get_order_number() ];
+                    $extra  = [ $order_number ];
                 }
                 break;
 

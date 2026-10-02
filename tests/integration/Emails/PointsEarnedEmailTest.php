@@ -293,15 +293,49 @@ final class PointsEarnedEmailTest extends IntegrationTestCase {
         $this->assertStringNotContainsString( 'View your points', $html );
     }
 
+    /** Other renderers (YayMail) read the award through get_template_values(), so it must carry what the template shows. */
+    public function test_template_values_carry_the_sent_award(): void {
+        $this->create_campaign();
+        $user_id = $this->customer_with_email();
+        update_user_meta( $user_id, 'first_name', 'Anna' );
+
+        $this->transition( $this->create_order( $user_id, [ 100 ] ), 'completed' );
+        $values = WC()->mailer()->get_emails()[ PointsEarnedEmail::ID ]->get_template_values();
+
+        $this->assertSame( 'Anna', $values['greeting_name'] );
+        $this->assertSame( $user_id, $values['entry']->get_user_id() );
+        $this->assertSame( $values['balance'] . ' ' . SettingsHelper::points_label( $values['entry']->get_balance_after() ), $values['balance_text'] );
+        $this->assertStringContainsString( '<strong>' . $values['points'] . ' ' . $values['points_label'] . '</strong>', $values['earned_text'] );
+        $this->assertNotSame( '', $values['cta_url'] );
+    }
+
+    public function test_template_values_are_empty_before_an_award(): void {
+        $this->assertSame( [], ( new PointsEarnedEmail() )->get_template_values() );
+    }
+
+    public function test_the_sample_award_greets_the_current_user(): void {
+        $user_id = $this->customer_with_email();
+        $email   = new PointsEarnedEmail();
+        wp_set_current_user( $user_id );
+
+        try {
+            $email->prepare_preview();
+        } finally {
+            wp_set_current_user( 0 );
+        }
+
+        $values = $email->get_template_values();
+
+        $this->assertSame( '50', $values['points'] );
+        $this->assertSame( '150', $values['balance'] );
+        $this->assertSame( get_userdata( $user_id )->display_name, $values['greeting_name'] );
+    }
+
     /** The built-in reward exactly as an install seeds it, then set to $status; the scratch tables start empty. */
     private function seed_discount_reward( string $status ): void {
         Installer::seed_builtin_reward();
 
         $rewards = new RewardRepository();
         $rewards->update( $rewards->find_by_slug( RewardRepository::CART_DISCOUNT_SLUG )->get_id(), [ 'status' => $status ] );
-    }
-
-    private function customer_with_email(): int {
-        return $this->create_customer( 'yl_it_' . wp_generate_password( 8, false ) . '@example.com' );
     }
 }

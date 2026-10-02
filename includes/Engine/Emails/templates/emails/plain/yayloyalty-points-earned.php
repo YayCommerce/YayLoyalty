@@ -10,6 +10,7 @@
  * @var string $earned_text   Escaped HTML, e.g. "You earned <strong>50 Points</strong> for order #123." Absent when there is no award to show.
  * @var string $balance_text  The balance after this award, e.g. "120 Points". Absent when there is no award to show.
  * @var string $balance_value What the balance is worth, as wc_price() HTML; '' when the discount reward is not live. Absent when there is no award to show.
+ * @var string $balance_value_text Escaped HTML sentence around $balance_value; '' when that is ''. Absent when there is no award to show.
  * @var string $cta_url      Where "View your points" links. Absent when there is no award to show.
  * @var \YayLoyalty\Models\LedgerEntry $entry The awarded row, for overrides. Absent when there is no award to show.
  */
@@ -34,9 +35,8 @@ if ( ! empty( $earned_text ) ) {
     /* translators: %s: points with label, e.g. "120 Points". */
     echo esc_html( sprintf( __( 'Your balance is now %s.', 'yayloyalty' ), $balance_text ) ) . "\n\n";
 
-    if ( ! empty( $balance_value ) ) {
-        /* translators: %s: money amount, e.g. "$1.50". */
-        echo esc_html( sprintf( __( 'That\'s worth %s in rewards.', 'yayloyalty' ), Text::plain( $balance_value ) ) ) . "\n\n";
+    if ( ! empty( $balance_value_text ) ) {
+        echo esc_html( Text::plain( $balance_value_text ) ) . "\n\n";
     }
 } else {
     echo esc_html__( 'Thanks for being part of our loyalty program. New points have been added to your account.', 'yayloyalty' ) . "\n\n";

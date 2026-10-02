@@ -11,6 +11,7 @@
  * @var string    $earned_text   Escaped HTML, e.g. "You earned <strong>50 Points</strong> for order #123." Absent when there is no award to show.
  * @var string    $balance_text  The balance after this award, e.g. "120 Points". Absent when there is no award to show.
  * @var string    $balance_value What the balance is worth, as wc_price() HTML; '' when the discount reward is not live. Absent when there is no award to show.
+ * @var string    $balance_value_text Escaped HTML, e.g. "That's worth <strong>$1.50</strong> in rewards."; '' when $balance_value is ''. Absent when there is no award to show.
  * @var string    $cta_url      Where "View your points" links. Absent when there is no award to show.
  * @var \YayLoyalty\Models\LedgerEntry $entry The awarded row, for overrides. Absent when there is no award to show.
  */
@@ -43,12 +44,11 @@ do_action( 'woocommerce_email_header', $email_heading, $email );
     echo wp_kses_post( sprintf( esc_html__( 'Your balance is now %s.', 'yayloyalty' ), '<strong>' . esc_html( $balance_text ) . '</strong>' ) );
     ?>
 </p>
-    <?php if ( ! empty( $balance_value ) ) : ?>
+    <?php if ( ! empty( $balance_value_text ) ) : ?>
 <p>
         <?php
         // wc_price() markup, unfiltered: kses would strip its <bdi>, which keeps the amount readable in right-to-left stores.
-        /* translators: %s: money amount, e.g. "$1.50". */
-        printf( esc_html__( 'That\'s worth %s in rewards.', 'yayloyalty' ), '<strong>' . $balance_value . '</strong>' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+        echo $balance_value_text; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
         ?>
 </p>
     <?php endif; ?>
