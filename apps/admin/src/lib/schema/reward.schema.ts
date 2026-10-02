@@ -1,7 +1,12 @@
 import { z } from 'zod';
 import { __ } from '@wordpress/i18n';
 
-import { CampaignStatus, campaignStatusSchema, resolveCampaignDisplayStatus } from '@/lib/schema/campaign.schema';
+import {
+  campaignDeleteResponseSchema,
+  CampaignStatus,
+  campaignStatusSchema,
+  resolveCampaignDisplayStatus,
+} from '@/lib/schema/campaign.schema';
 
 /** Mirrors RewardRestController::define_item_schema(), the source of truth. */
 
@@ -34,6 +39,20 @@ export const rewardStatusSchema = campaignStatusSchema;
 export type RewardStatus = CampaignStatus;
 export const resolveRewardDisplayStatus = resolveCampaignDisplayStatus;
 
+/** Claim figures from RedemptionRepository::summary_by_rewards(); zeros and nulls until the redemptions table exists. */
+export const rewardRedemptionSummarySchema = z.object({
+  /** Every claim row in any status — what decides `is_deletable`. */
+  claimed: z.number().int(),
+  /** Issued coupons not yet expired. */
+  outstanding: z.number().int(),
+  outstanding_customers: z.number().int(),
+  outstanding_points: z.number().int(),
+  first_claimed_at: z.string().nullable(),
+  last_expires_at: z.string().nullable(),
+});
+
+export type RewardRedemptionSummary = z.infer<typeof rewardRedemptionSummarySchema>;
+
 export const rewardSchema = z.object({
   id: z.number().int(),
   name: z.string(),
@@ -55,9 +74,15 @@ export const rewardSchema = z.object({
   created_by: z.number().int().nullable(),
   created_at: z.string(),
   updated_at: z.string(),
+  /** RewardRestController::is_deletable(): not built-in and never claimed. Read it; never re-derive it. */
+  is_deletable: z.boolean(),
+  redemption_summary: rewardRedemptionSummarySchema,
 });
 
 export type Reward = z.infer<typeof rewardSchema>;
+
+/** Same `{ deleted, id }` body the campaigns DELETE answers. */
+export const rewardDeleteResponseSchema = campaignDeleteResponseSchema;
 
 /** App-side list params; reward.api.ts maps them to the wire. */
 export const rewardListParamsSchema = z.object({

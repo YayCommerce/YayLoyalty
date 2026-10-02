@@ -3,6 +3,7 @@ import { parsePaginated } from '@/lib/api/paginated';
 import {
   Reward,
   RewardCreateInput,
+  rewardDeleteResponseSchema,
   RewardListParams,
   rewardSchema,
   RewardStatus,
@@ -39,9 +40,14 @@ export async function updateReward(id: number, input: Partial<RewardUpdateInput>
   return rewardSchema.parse(await api.put(`rewards/${id}`, { json: input }).json());
 }
 
-/** PUT rewards/{id} with only `status`: pause, resume and archive leave every other field as stored. */
+/** PUT rewards/{id} with only `status`: pause, resume, archive and restore leave every other field as stored. */
 export async function updateRewardStatus(id: number, status: RewardStatus): Promise<Reward> {
   return updateReward(id, { status });
+}
+
+/** DELETE rewards/{id}. 409s once the reward has been claimed; see Reward.is_deletable. */
+export async function deleteReward(id: number) {
+  return rewardDeleteResponseSchema.parse(await api.delete(`rewards/${id}`).json());
 }
 
 /** POST rewards/reorder: the listed ids first, in order; RewardRepository::reorder() renumbers every other row after them. */

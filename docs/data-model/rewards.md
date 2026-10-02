@@ -32,6 +32,8 @@ Indexes: PK; `UNIQUE KEY uk_slug (slug)`; `KEY idx_catalog (status, sort_order)`
 
 Liveness: `status = 'active' AND (starts_at IS NULL OR starts_at <= now) AND (ends_at IS NULL OR ends_at > now)` — `Enums\Status::is_live_at()`, the same implementation campaigns use.
 
+Delete: a reward row is hard-deleted only while it is not built-in and no `redemptions` row names it (`RewardRestController::is_deletable()`); otherwise it can only be archived. The claim count and the outstanding-coupon figures on the wire (`redemption_summary`) come from `RedemptionRepository::summary_by_rewards()`, which answers zeros while the redemptions table does not exist.
+
 No caching: `RewardRepository` queries the table directly; nothing yet knows the right cache key or invalidation, and the table is small. That belongs to whichever task builds the redemption engine.
 
 ### config shapes

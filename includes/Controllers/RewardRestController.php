@@ -5,6 +5,7 @@ use YayLoyalty\Access\Capabilities;
 use YayLoyalty\Enums\RewardType;
 use YayLoyalty\Enums\Status;
 use YayLoyalty\Models\Reward;
+use YayLoyalty\Repositories\RedemptionRepository;
 use YayLoyalty\Repositories\RewardRepository;
 use YayLoyalty\Utils\Dates;
 
@@ -13,8 +14,10 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Rewards list, read, write and display order. Same shape as
  * CampaignRestController: no service, the invariants are validation, and a
- * write is validated in full before any setter runs. No delete or redeem
- * route yet.
+ * write is validated in full before any setter runs. No redeem route yet.
+ *
+ * $redemptions is read-only here (is_deletable/redemption_summary
+ * decoration), the same exception CampaignRestController makes for $ledger.
  */
 final class RewardRestController extends AbstractRestController {
 
@@ -24,8 +27,12 @@ final class RewardRestController extends AbstractRestController {
     /** @var RewardRepository */
     private $rewards;
 
-    public function __construct( RewardRepository $rewards ) {
-        $this->rewards = $rewards;
+    /** @var RedemptionRepository */
+    private $redemptions;
+
+    public function __construct( RewardRepository $rewards, RedemptionRepository $redemptions ) {
+        $this->rewards     = $rewards;
+        $this->redemptions = $redemptions;
     }
 
     public function get_rest_base(): string {
@@ -110,6 +117,11 @@ final class RewardRestController extends AbstractRestController {
                     // No `type`: immutable after create, and a stored Pro type must not fail this build's enum.
                     'args'                => array_diff_key( $this->get_write_args(), [ 'type' => true ] ),
                 ],
+                [
+                    'methods'             => \WP_REST_Server::DELETABLE,
+                    'callback'            => fn( $request ) => $this->exec_write( [ $this, 'delete_item' ], $request ),
+                    'permission_callback' => $this->requires( Capabilities::MANAGE_REWARDS ),
+                ],
                 'schema' => [ $this, 'get_item_schema' ],
             ]
         );
@@ -128,6 +140,8 @@ final class RewardRestController extends AbstractRestController {
             ]
         );
 
+        $result['items'] = $this->decorate( $result['items'] );
+
         return $this->respond_paginated( $result );
     }
 
@@ -138,7 +152,7 @@ final class RewardRestController extends AbstractRestController {
             return $this->error_not_found( __( 'Reward not found.', 'yayloyalty' ) );
         }
 
-        return $reward->to_array();
+        return $this->decorate( [ $reward ] )[0];
     }
 
     /** Creates a catalog reward; flexible_discount is never created, only the seeded built-in exists. */
@@ -212,7 +226,7 @@ final class RewardRestController extends AbstractRestController {
         $id      = $this->rewards->insert( $reward );
         $created = $this->rewards->find_reward( $id );
 
-        return null === $created ? $reward->to_array() : $created->to_array();
+        return $this->decorate( [ null === $created ? $reward : $created ] )[0];
     }
 
     /**
@@ -266,7 +280,37 @@ final class RewardRestController extends AbstractRestController {
         $update = $reward->to_update_row();
         $this->rewards->update( (int) $reward->get_id(), $update['data'], $update['format'] );
 
-        return $reward->to_array();
+        return $this->decorate( [ $reward ] )[0];
+    }
+
+    public function delete_item( \WP_REST_Request $request ) {
+        $reward = $this->rewards->find_reward( (int) $request['id'] );
+
+        if ( null === $reward ) {
+            return $this->error_not_found( __( 'Reward not found.', 'yayloyalty' ) );
+        }
+
+        if ( $reward->is_builtin() ) {
+            return $this->error_forbidden( __( 'Built-in rewards cannot be deleted.', 'yayloyalty' ) );
+        }
+
+        $id      = (int) $reward->get_id();
+        $summary = $this->redemptions->summary_by_rewards( [ $id ] )[ $id ] ?? RedemptionRepository::empty_summary();
+
+        if ( ! self::is_deletable( $reward, $summary['claimed'] ) ) {
+            return $this->error_conflict( __( 'This reward has been claimed. Archive it instead of deleting it.', 'yayloyalty' ) );
+        }
+
+        // Unguarded gap: nothing locks between this check and the delete below, and
+        // redemptions.reward_id is a plain KEY, not a FOREIGN KEY, so a claim written into that
+        // gap would be orphaned rather than rejected. Not reachable today — nothing writes
+        // redemptions yet (see Engine/Redemption/) — revisit once the claim path is registered.
+        $this->rewards->delete( $id );
+
+        return [
+            'deleted' => true,
+            'id'      => $id,
+        ];
     }
 
     /**
@@ -399,86 +443,141 @@ final class RewardRestController extends AbstractRestController {
         return null === $value ? null : (int) $value;
     }
 
+    /**
+     * Adds the two redemption-derived fields to each reward's wire shape, in
+     * one batched query rather than one per row. `is_deletable` is
+     * delete_item()'s own guard restated for the client, so the two can never
+     * disagree about what a delete would do.
+     *
+     * @param Reward[] $rewards
+     * @return array<int, array<string, mixed>>
+     */
+    private function decorate( array $rewards ): array {
+        $ids       = array_map( static fn( Reward $reward ) => (int) $reward->get_id(), $rewards );
+        $summaries = $this->redemptions->summary_by_rewards( $ids );
+
+        return array_map(
+            static function ( Reward $reward ) use ( $summaries ) {
+                $summary = $summaries[ (int) $reward->get_id() ] ?? RedemptionRepository::empty_summary();
+
+                return $reward->to_array() + [
+                    'is_deletable'       => self::is_deletable( $reward, $summary['claimed'] ),
+                    'redemption_summary' => $summary,
+                ];
+            },
+            $rewards
+        );
+    }
+
+    /**
+     * Whether $reward may be deleted: never the built-in (the Free UI binds to
+     * it), and only with no redemption row naming it. Rows in any status, never
+     * points: a refunded claim still names the reward in customer history.
+     */
+    private static function is_deletable( Reward $reward, int $redemption_rows ): bool {
+        return ! $reward->is_builtin() && 0 === $redemption_rows;
+    }
+
     protected function define_item_schema(): array {
         return [
             '$schema'    => 'http://json-schema.org/draft-04/schema#',
             'title'      => 'yayloyalty_reward',
             'type'       => 'object',
             'properties' => [
-                'id'          => [
+                'id'                 => [
                     'type'     => 'integer',
                     'context'  => [ 'view' ],
                     'readonly' => true,
                 ],
-                'name'        => [
+                'name'               => [
                     'type'    => 'string',
                     'context' => [ 'view', 'edit' ],
                 ],
-                'slug'        => [
+                'slug'               => [
                     'description' => __( 'Stable machine key, generated on create and immutable afterwards. Built-in is "cart-discount".', 'yayloyalty' ),
                     'type'        => 'string',
                     'context'     => [ 'view', 'edit' ],
                 ],
-                'type'        => [
+                'type'               => [
                     'type'    => 'string',
                     'enum'    => RewardType::all(),
                     'context' => [ 'view', 'edit' ],
                 ],
-                'status'      => [
+                'status'             => [
                     'description' => __( 'Merchant intent only. Liveness is derived from the dates.', 'yayloyalty' ),
                     'type'        => 'string',
                     'enum'        => Status::all(),
                     'context'     => [ 'view', 'edit' ],
                 ],
-                'sort_order'  => [
+                'sort_order'         => [
                     'description' => __( 'Display order in the launcher and catalog. Written only by the reorder route.', 'yayloyalty' ),
                     'type'        => 'integer',
                     'context'     => [ 'view' ],
                     'readonly'    => true,
                 ],
-                'cost_points' => [
+                'cost_points'        => [
                     'description' => __( 'Null for flexible_discount, the customer picks the amount; required for every other type.', 'yayloyalty' ),
                     'type'        => [ 'integer', 'null' ],
                     'context'     => [ 'view', 'edit' ],
                 ],
-                'config'      => [
+                'config'             => [
                     'type'    => 'object',
                     'context' => [ 'view', 'edit' ],
                 ],
-                'conditions'  => [
+                'conditions'         => [
                     'type'    => [ 'object', 'array' ],
                     'context' => [ 'view', 'edit' ],
                 ],
-                'starts_at'   => [
+                'starts_at'          => [
                     'type'              => [ 'string', 'null' ],
                     'context'           => [ 'view', 'edit' ],
                     'validate_callback' => [ self::class, 'validate_nullable_date' ],
                 ],
-                'ends_at'     => [
+                'ends_at'            => [
                     'description'       => __( 'Exclusive: a reward is not live at exactly this instant.', 'yayloyalty' ),
                     'type'              => [ 'string', 'null' ],
                     'context'           => [ 'view', 'edit' ],
                     'validate_callback' => [ self::class, 'validate_nullable_date' ],
                 ],
-                'is_builtin'  => [
+                'is_builtin'         => [
                     'type'     => 'boolean',
                     'context'  => [ 'view' ],
                     'readonly' => true,
                 ],
-                'created_by'  => [
+                'created_by'         => [
                     'type'     => [ 'integer', 'null' ],
                     'context'  => [ 'view' ],
                     'readonly' => true,
                 ],
-                'created_at'  => [
+                'created_at'         => [
                     'type'     => 'string',
                     'context'  => [ 'view' ],
                     'readonly' => true,
                 ],
-                'updated_at'  => [
+                'updated_at'         => [
                     'type'     => 'string',
                     'context'  => [ 'view' ],
                     'readonly' => true,
+                ],
+                'is_deletable'       => [
+                    'description' => __( 'Not built-in and never claimed. DELETE answers 409 otherwise.', 'yayloyalty' ),
+                    'type'        => 'boolean',
+                    'context'     => [ 'view' ],
+                    'readonly'    => true,
+                ],
+                'redemption_summary' => [
+                    'description' => __( 'Claim figures from the redemptions table; zeros and nulls until it exists. Outstanding means an issued coupon that has not expired.', 'yayloyalty' ),
+                    'type'        => 'object',
+                    'context'     => [ 'view' ],
+                    'readonly'    => true,
+                    'properties'  => [
+                        'claimed'               => [ 'type' => 'integer' ],
+                        'outstanding'           => [ 'type' => 'integer' ],
+                        'outstanding_customers' => [ 'type' => 'integer' ],
+                        'outstanding_points'    => [ 'type' => 'integer' ],
+                        'first_claimed_at'      => [ 'type' => [ 'string', 'null' ] ],
+                        'last_expires_at'       => [ 'type' => [ 'string', 'null' ] ],
+                    ],
                 ],
             ],
         ];

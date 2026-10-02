@@ -11,6 +11,8 @@ export interface RewardsScreen {
   rows: Reward[];
   /** Non-builtin, non-archived rows — what "catalog" means throughout this screen. */
   catalogRows: Reward[];
+  /** Archived rows in display order: the Archived view, out of the catalog and never dragged. */
+  archivedRows: Reward[];
   /** No catalog reward exists yet (2a). */
   isInitCase: boolean;
 }
@@ -25,6 +27,7 @@ export function resolveRewardsScreen(rewards: Reward[]): RewardsScreen {
   return {
     rows,
     catalogRows,
+    archivedRows: rewards.filter((reward) => reward.status === 'archived'),
     isInitCase: catalogRows.length === 0,
   };
 }
@@ -222,20 +225,27 @@ function scheduleWindowLabel(startsAt: string | null, endsAt: string | null): st
   return sprintf(__('until %s', 'yayloyalty'), formatStoredDate(endsAt as string));
 }
 
-/** The line under "Rewards": the row count plus, on the init case, that nothing has been redeemed yet — Redeemed is always "—" until the redemptions table exists. */
-export function headerSubtitle(screen: RewardsScreen): string {
+/**
+ * The line under "Rewards", in two parts so the table can put its
+ * "{n} archived" link between them: the row count, then the sentence after
+ * it. On the init case the sentence says nothing has been redeemed yet —
+ * Redeemed stays "—" until F08 defines it; its source is then
+ * `redemption_summary`, the figure the archive dialog already shows.
+ */
+export function headerSubtitle(screen: RewardsScreen): { count: string; detail: string } {
   if (screen.isInitCase) {
-    return __('One reward. Nothing has been redeemed yet.', 'yayloyalty');
+    return {
+      count: __('One reward', 'yayloyalty'),
+      detail: __('Nothing has been redeemed yet.', 'yayloyalty'),
+    };
   }
 
-  return sprintf(
-    /* translators: %d: number of rewards, built-in included. */
-    _n(
-      '%d reward. Drag to reorder — this is the order customers see.',
-      '%d rewards. Drag to reorder — this is the order customers see.',
+  return {
+    count: sprintf(
+      /* translators: %d: number of rewards, built-in included. */
+      _n('%d reward', '%d rewards', screen.rows.length, 'yayloyalty'),
       screen.rows.length,
-      'yayloyalty',
     ),
-    screen.rows.length,
-  );
+    detail: __('Drag to reorder — this is the order customers see.', 'yayloyalty'),
+  };
 }

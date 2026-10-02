@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { Resolver } from 'react-hook-form';
 import { z } from 'zod';
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 
 import { isCampaignScheduleInOrder } from '@/lib/schema/campaign.schema';
 import {
@@ -104,6 +104,18 @@ export function rewardToFormValues(reward: Reward, storeCurrency: string): Rewar
 }
 
 /**
+ * Create-form values seeded from an existing reward, for the table's
+ * Duplicate action: everything copied, the name marked as a copy.
+ */
+export function duplicateToFormValues(source: Reward, storeCurrency: string): RewardFormValues {
+  return {
+    ...rewardToFormValues(source, storeCurrency),
+    /* translators: %s: the name of the reward being duplicated. */
+    name: sprintf(__('%s (copy)', 'yayloyalty'), source.name),
+  };
+}
+
+/**
  * Conditions with the claim cap set to `next`. Unchanged input returns the
  * list as stored, so a rule the editor cannot show (e.g. `eq`) is never
  * dropped by a save that did not touch it.
@@ -153,13 +165,17 @@ export function formValuesToUpdateInput(
   return formValuesToBody(values, reward, normalizeRewardConditions(reward.conditions), intent);
 }
 
-/** POST body for a new reward of `type`. */
+/**
+ * POST body for a new reward of `type`. `sourceConditions` is a duplicated
+ * reward's stored list, so rules the form cannot show survive the copy.
+ */
 export function formValuesToCreateInput(
   values: RewardFormValues,
   type: CatalogRewardType,
   intent: RewardSaveIntent,
+  sourceConditions: RewardCondition[] = [],
 ): RewardCreateInput {
-  return { type, ...formValuesToBody(values, null, [], intent) };
+  return { type, ...formValuesToBody(values, null, sourceConditions, intent) };
 }
 
 function formValuesToBody(

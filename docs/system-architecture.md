@@ -22,7 +22,7 @@ flowchart TD
         DesignCtrl["DesignRestController"]
         EmailsCtrl["EmailsRestController"]
         CustAdjustCtrl["CustomerAdjustPreviewRestController"]
-        RewardCtrl["(No RewardRestController)"]
+        RewardCtrl["RewardRestController"]
     end
 
     subgraph Services["Service Layer"]
@@ -56,14 +56,14 @@ flowchart TD
     CampCtrl -->|call| CampRepo
     CustCtrl -->|call| CustRepo
     LedgCtrl -->|call| LedgRepo
-    RewardCtrl -->|reads only| RewardRepo
+    RewardCtrl -->|reads, writes, deletes| RewardRepo
     Ledg -->|call| CustRepo
     Ledg -->|call| LedgRepo
 
     CampRepo -->|read/write| CampDB
     CustRepo -->|read/write| CustDB
     LedgRepo -->|read/write| LedgDB
-    RewardRepo -->|read only| RewardDB
+    RewardRepo -->|read, write| RewardDB
 
     CampCtrl -.reads.-> Campaign
     CustCtrl -.reads.-> Customer
@@ -463,6 +463,26 @@ CampaignRestController::delete_item()  via  exec_write()
     │  campaign earned-then-fully-refunded nets 0 points but still has rows naming it)
     └─ CampaignRepository::delete()
 ```
+
+### Reward archive/delete
+
+```
+GET/POST/PUT /yayloyalty/v1/rewards[/:id]
+    ↓
+RewardRestController::decorate()  — one batched RedemptionRepository::summary_by_rewards() per response
+    └─ Response: Reward::to_array() + is_deletable + redemption_summary
+       (zeros/null while the redemptions table is not installed: SHOW TABLES first, never memoised)
+
+DELETE /yayloyalty/v1/rewards/:id
+    ↓
+RewardRestController::delete_item()  via  exec_write()
+    ├─ not found → 404
+    ├─ is_builtin → 403
+    ├─ summary_by_rewards([id]).claimed > 0 → 409 (archive instead; rows in any status, never points)
+    └─ RewardRepository::delete()
+```
+
+Archive and restore are the existing status PUT (`archived`; restore writes `paused`, never `active`). The SPA's one entry point — editor "Archive reward" and the table row menu — opens `RewardArchiveDialog`, which picks the delete or archive case from `is_deletable` (`resolveRewardArchiveCase()`); the outstanding-coupons warning renders only when `redemption_summary.outstanding > 0`. Archived rewards live behind the table header's "{n} archived" link (no drag, no switch; Restore / Delete permanently). Same unguarded check-then-delete gap as campaigns, unreachable until the claim path writes redemptions.
 
 ### Campaign performance (Pro-only) — real ledger aggregate
 

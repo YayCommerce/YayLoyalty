@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { claimsPerCustomer, normalizeRewardConditions, Reward, RewardCondition } from '@/lib/schema/reward.schema';
 import {
+  duplicateToFormValues,
   formValuesToCreateInput,
   formValuesToUpdateInput,
   resolveSaveStatus,
@@ -159,5 +160,32 @@ describe('rewardFormSchema bounds mirror the PHP specs', () => {
 
     expect(rewardFormSchema('flexible_discount').safeParse({ ...values, cost_points: null }).success).toBe(true);
     expect(rewardFormSchema('flexible_discount').safeParse({ ...values, cost_points: 100 }).success).toBe(false);
+  });
+});
+
+describe('duplicateToFormValues', () => {
+  it('copies the source and marks the name as a copy', () => {
+    const source = reward({
+      name: '$5 off',
+      cost_points: 700,
+      config: { amount: 5 },
+      starts_at: '2026-11-01 00:00:00',
+    });
+
+    const values = duplicateToFormValues(source, 'USD');
+
+    expect(values.name).toBe('$5 off (copy)');
+    expect(values.cost_points).toBe(700);
+    expect(values.config.amount).toBe(5);
+    expect(values.starts_at).toBe('2026-11-01 00:00:00');
+  });
+});
+
+describe('formValuesToCreateInput with source conditions', () => {
+  it('keeps rules the form cannot show when a reward is duplicated', () => {
+    const role: RewardCondition = { type: 'user_role', operator: 'in', value: ['customer'] };
+    const values = duplicateToFormValues(reward({ conditions: [role] }), 'USD');
+
+    expect(formValuesToCreateInput(values, 'fixed_coupon', 'save', [role]).conditions).toEqual([role]);
   });
 });

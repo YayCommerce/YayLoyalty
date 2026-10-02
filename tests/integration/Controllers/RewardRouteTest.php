@@ -3,14 +3,17 @@ namespace YayLoyalty\Tests\Integration\Controllers;
 
 use YayLoyalty\Enums\RewardType;
 use YayLoyalty\Enums\Status;
+use YayLoyalty\Models\Redemption;
 use YayLoyalty\Models\Reward;
+use YayLoyalty\Repositories\RedemptionRepository;
 use YayLoyalty\Repositories\RewardRepository;
 use YayLoyalty\Tests\Integration\IntegrationTestCase;
 
 /**
  * The rewards routes: the list (built-in first by display order, archived
  * rows still returned), create and partial update with their validate-first
- * guards, and the capability gate on every method.
+ * guards, delete and its redemption guard, and the capability gate on every
+ * method.
  */
 final class RewardRouteTest extends IntegrationTestCase {
 
@@ -24,6 +27,7 @@ final class RewardRouteTest extends IntegrationTestCase {
 
     protected function tearDown(): void {
         wp_set_current_user( 0 );
+        $this->drop_redemptions_table();
 
         if ( $this->subscriber_id > 0 ) {
             require_once ABSPATH . 'wp-admin/includes/user.php';
@@ -255,6 +259,94 @@ final class RewardRouteTest extends IntegrationTestCase {
         $this->assertSame( 0, $this->reward_count() );
     }
 
+    public function test_without_a_redemptions_table_every_catalog_reward_is_deletable_with_a_zero_summary(): void {
+        global $wpdb;
+
+        $this->act_as_admin();
+        $id      = $this->insert_reward( 'Catalog', 'reward-route-catalog', RewardType::FIXED_COUPON, 1, 500 );
+        $builtin = $this->insert_reward( 'Points for discount', 'cart-discount', RewardType::FLEXIBLE_DISCOUNT, 0, null, true );
+
+        $detail = $this->send( 'GET', '/yayloyalty/v1/rewards/' . $id )->get_data();
+        $list   = array_column( $this->get_rewards()['data'], null, 'id' );
+
+        $this->assertSame( '', $wpdb->last_error );
+        $this->assertTrue( $detail['is_deletable'] );
+        $this->assertSame( RedemptionRepository::empty_summary(), $detail['redemption_summary'] );
+        $this->assertTrue( $list[ $id ]['is_deletable'] );
+        $this->assertFalse( $list[ $builtin ]['is_deletable'] );
+    }
+
+    public function test_delete_removes_a_never_claimed_reward(): void {
+        $this->act_as_admin();
+        $id = $this->insert_reward( 'Unclaimed', 'reward-route-unclaimed', RewardType::FIXED_COUPON, 1, 500 );
+
+        $response = $this->send( 'DELETE', '/yayloyalty/v1/rewards/' . $id );
+
+        $this->assertSame( 200, $response->get_status() );
+        $this->assertSame(
+            [
+                'deleted' => true,
+                'id'      => $id,
+            ],
+            $response->get_data()
+        );
+        $this->assertNull( ( new RewardRepository() )->find_reward( $id ) );
+    }
+
+    public function test_delete_refuses_the_builtin_and_an_unknown_id(): void {
+        $this->act_as_admin();
+        $id = $this->insert_reward( 'Points for discount', 'cart-discount', RewardType::FLEXIBLE_DISCOUNT, 0, null, true );
+
+        $this->assertSame( 403, $this->send( 'DELETE', '/yayloyalty/v1/rewards/' . $id )->get_status() );
+        $this->assertNotNull( ( new RewardRepository() )->find_reward( $id ) );
+        $this->assertSame( 404, $this->send( 'DELETE', '/yayloyalty/v1/rewards/999999' )->get_status() );
+    }
+
+    public function test_delete_refuses_a_caller_without_the_capability(): void {
+        $this->act_as_admin();
+        $id = $this->insert_reward( 'Guarded', 'reward-route-guarded', RewardType::FIXED_COUPON, 1, 500 );
+        $this->act_as_subscriber();
+
+        $this->assertSame( 403, $this->send( 'DELETE', '/yayloyalty/v1/rewards/' . $id )->get_status() );
+        $this->assertNotNull( ( new RewardRepository() )->find_reward( $id ) );
+    }
+
+    public function test_a_claimed_reward_is_not_deletable_and_delete_answers_409(): void {
+        $this->act_as_admin();
+        $id = $this->insert_reward( 'Claimed', 'reward-route-claimed', RewardType::FIXED_COUPON, 1, 500 );
+        $this->create_redemptions_table();
+        // Used, not outstanding: any claim row at all blocks the delete.
+        $this->insert_redemption( $id, 7, 500, Redemption::STATUS_USED, null );
+
+        $this->assertFalse( $this->send( 'GET', '/yayloyalty/v1/rewards/' . $id )->get_data()['is_deletable'] );
+        $this->assertSame( 409, $this->send( 'DELETE', '/yayloyalty/v1/rewards/' . $id )->get_status() );
+        $this->assertNotNull( ( new RewardRepository() )->find_reward( $id ) );
+    }
+
+    public function test_the_summary_counts_only_unexpired_issued_coupons_as_outstanding(): void {
+        $this->act_as_admin();
+        $id = $this->insert_reward( 'Counted', 'reward-route-counted', RewardType::FIXED_COUPON, 1, 500 );
+        $this->create_redemptions_table();
+
+        $future = gmdate( 'Y-m-d H:i:s', time() + DAY_IN_SECONDS );
+        $this->insert_redemption( $id, 7, 500, Redemption::STATUS_ISSUED, $future, '2026-01-02 00:00:00' );
+        $this->insert_redemption( $id, 8, 500, Redemption::STATUS_ISSUED, null );
+        $this->insert_redemption( $id, 9, 500, Redemption::STATUS_ISSUED, '2020-01-01 00:00:00' );
+        $this->insert_redemption( $id, 7, 500, Redemption::STATUS_USED, null );
+
+        $this->assertSame(
+            [
+                'claimed'               => 4,
+                'outstanding'           => 2,
+                'outstanding_customers' => 2,
+                'outstanding_points'    => 1000,
+                'first_claimed_at'      => '2026-01-02 00:00:00',
+                'last_expires_at'       => $future,
+            ],
+            $this->send( 'GET', '/yayloyalty/v1/rewards/' . $id )->get_data()['redemption_summary']
+        );
+    }
+
     public function test_get_item_returns_one_reward_and_404s_an_unknown_id(): void {
         $this->act_as_admin();
         $id = $this->insert_reward( 'One', 'reward-route-one', RewardType::FIXED_COUPON, 1, 500 );
@@ -301,6 +393,30 @@ final class RewardRouteTest extends IntegrationTestCase {
         $restored = $repository->find_reward( $id );
         $this->assertSame( Status::ACTIVE, $restored->get_status() );
         $this->assertNull( $restored->get_archived_at() );
+    }
+
+    public function test_restoring_an_archived_reward_as_paused_clears_archived_at(): void {
+        $this->act_as_admin();
+        $id         = $this->insert_reward( 'Retired', 'reward-route-restore', RewardType::FIXED_COUPON, 1, 500 );
+        $repository = new RewardRepository();
+
+        $this->send( 'PUT', '/yayloyalty/v1/rewards/' . $id, [ 'status' => Status::ARCHIVED ] );
+        $response = $this->send( 'PUT', '/yayloyalty/v1/rewards/' . $id, [ 'status' => Status::PAUSED ] );
+
+        $this->assertSame( 200, $response->get_status() );
+        $restored = $repository->find_reward( $id );
+        $this->assertSame( Status::PAUSED, $restored->get_status() );
+        $this->assertNull( $restored->get_archived_at() );
+    }
+
+    public function test_an_archived_never_claimed_reward_can_still_be_deleted(): void {
+        $this->act_as_admin();
+        $id = $this->insert_reward( 'Retired', 'reward-route-archived-delete', RewardType::FIXED_COUPON, 1, 500 );
+        $this->send( 'PUT', '/yayloyalty/v1/rewards/' . $id, [ 'status' => Status::ARCHIVED ] );
+
+        $this->assertTrue( $this->send( 'GET', '/yayloyalty/v1/rewards/' . $id )->get_data()['is_deletable'] );
+        $this->assertSame( 200, $this->send( 'DELETE', '/yayloyalty/v1/rewards/' . $id )->get_status() );
+        $this->assertNull( ( new RewardRepository() )->find_reward( $id ) );
     }
 
     public function test_the_builtin_cannot_be_archived_but_can_be_paused_and_reconfigured(): void {
@@ -447,6 +563,59 @@ final class RewardRouteTest extends IntegrationTestCase {
 
         return ( new RewardRepository() )->insert(
             new Reward( null, $name, $slug, $type, Status::ACTIVE, $sort_order, $cost_points, RewardType::FLEXIBLE_DISCOUNT === $type ? Reward::default_config( $type ) : [], [], null, null, $is_builtin, null, null, $now, $now )
+        );
+    }
+
+    /**
+     * Stands in for the redemptions table until F08 installs it: RedemptionsTable::definition()
+     * still throws, so only the columns summary_by_rewards() reads are created here.
+     */
+    private function create_redemptions_table(): void {
+        global $wpdb;
+
+        $table = ( new RedemptionRepository() )->table();
+        $this->assertStringStartsWith( YAYLOYALTY_TEST_PREFIX, $table );
+
+        $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+            'CREATE TABLE `' . esc_sql( $table ) . '` (
+                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                user_id BIGINT UNSIGNED NOT NULL,
+                reward_id BIGINT UNSIGNED NOT NULL,
+                points BIGINT UNSIGNED NOT NULL,
+                status VARCHAR(12) NOT NULL,
+                expires_at DATETIME NULL,
+                created_at DATETIME NOT NULL,
+                PRIMARY KEY (id),
+                KEY reward_id (reward_id)
+            )'
+        );
+        $this->assertSame( '', $wpdb->last_error );
+    }
+
+    private function drop_redemptions_table(): void {
+        global $wpdb;
+
+        $table = ( new RedemptionRepository() )->table();
+
+        // The prefix check is the only thing standing between this DROP and real data.
+        if ( 0 === strpos( $table, YAYLOYALTY_TEST_PREFIX ) ) {
+            $wpdb->query( 'DROP TABLE IF EXISTS `' . esc_sql( $table ) . '`' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+        }
+    }
+
+    private function insert_redemption( int $reward_id, int $user_id, int $points, string $status, ?string $expires_at, string $created_at = '2026-03-01 00:00:00' ): void {
+        global $wpdb;
+
+        $wpdb->insert( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+            ( new RedemptionRepository() )->table(),
+            [
+                'user_id'    => $user_id,
+                'reward_id'  => $reward_id,
+                'points'     => $points,
+                'status'     => $status,
+                'expires_at' => $expires_at,
+                'created_at' => $created_at,
+            ]
         );
     }
 

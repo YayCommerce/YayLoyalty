@@ -6,6 +6,8 @@ Part of the [data model reference](../data-model.md), which owns the conventions
 
 **Status:** Table not created. Schema designed, and since F08's scaffold the design is also in code: `Database/Schema/RedemptionsTable.php` declares `expected_columns()`/`expected_indexes()` matching the table below (its `definition()` is a `TODO(F08)` stub that throws), `Models\Redemption` is real and round-trips the row, `Repositories\RedemptionRepository` is stubs. Nothing installs it until `RedemptionsTable` joins `Installer::schemas()`, which is the step that creates the table on the next upgrade.
 
+**Rewards archive/delete:** `RedemptionRepository::summary_by_rewards()` is the one real read today — a batched `GROUP BY reward_id` behind a `SHOW TABLES` check, so it answers `[]` until the table is installed. It counts rows in any status (the reward delete guard) and "outstanding" = `status = 'issued' AND (expires_at IS NULL OR expires_at > now)`. Uses the `reward_id` index.
+
 **F09 Wave B (phase 05):** `GET /customers/{id}/redemptions` is a real, routed, paginated endpoint
 today (`includes/Controllers/RedemptionsRestController.php`), always answering an empty envelope
 on the real path. Its wire row is a **deliberate simplification** of the table below, not a preview

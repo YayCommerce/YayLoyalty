@@ -2,6 +2,7 @@ import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/r
 
 import {
   createReward,
+  deleteReward,
   getReward,
   getRewards,
   reorderRewards,
@@ -64,7 +65,7 @@ export function useUpdateRewardMutation(id: number) {
   });
 }
 
-/** Pause, resume and archive; see updateRewardStatus(). */
+/** Pause, resume, archive and restore; see updateRewardStatus(). */
 export function useUpdateRewardStatusMutation(id: number) {
   const queryClient = useQueryClient();
 
@@ -74,6 +75,26 @@ export function useUpdateRewardStatusMutation(id: number) {
     // The response is the stored row, so the detail is written, not refetched.
     onSuccess: (saved) => {
       queryClient.setQueryData(REWARD_QUERIES.detail(id).queryKey, saved);
+      queryClient.invalidateQueries({ queryKey: ['reward', 'list'] });
+    },
+  });
+}
+
+export function useDeleteRewardMutation(id: number) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationKey: ['reward', 'delete', id],
+    mutationFn: () => deleteReward(id),
+    onSuccess: () => {
+      // Remove, not invalidate: a refetch of a deleted reward would only 404.
+      queryClient.removeQueries({ queryKey: REWARD_QUERIES.detail(id).queryKey });
+    },
+    // A 409 means a claim landed since is_deletable was read; refetch so the next dialog opens as archive.
+    onError: () => {
+      queryClient.invalidateQueries({ queryKey: REWARD_QUERIES.detail(id).queryKey });
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['reward', 'list'] });
     },
   });

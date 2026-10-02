@@ -6,25 +6,27 @@ import { toast } from 'sonner';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { toastApiError } from '@/lib/api/api';
+import { useCreateRewardMutation, useRewardQuery, useUpdateRewardMutation } from '@/lib/queries/reward.queries';
 import {
-  useCreateRewardMutation,
-  useRewardQuery,
-  useUpdateRewardMutation,
-  useUpdateRewardStatusMutation,
-} from '@/lib/queries/reward.queries';
-import { CatalogRewardType, isCatalogRewardType, resolveRewardDisplayStatus, Reward } from '@/lib/schema/reward.schema';
+  CatalogRewardType,
+  isCatalogRewardType,
+  normalizeRewardConditions,
+  resolveRewardDisplayStatus,
+  Reward,
+} from '@/lib/schema/reward.schema';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ConfirmDialog } from '@/components/ui/custom/confirm-dialog';
 import { ErrorState } from '@/components/ui/custom/error-state';
 import { UnsavedChangeDialog } from '@/components/ui/custom/unsaved-changed-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import PageLayout from '@/components/layout/PageLayout';
 import NotFoundPage from '@/pages/404';
 import { CampaignStatusBadge } from '@/pro/campaigns/CampaignStatusBadge';
+import { RewardArchiveDialog } from '../archive/RewardArchiveDialog';
 import { templateTitle, typeLabel } from '../reward-labels';
 import { RewardsBackLink } from '../RewardsBackLink';
 import {
+  duplicateToFormValues,
   formValuesToCreateInput,
   formValuesToUpdateInput,
   rewardCreateSeed,
@@ -71,7 +73,6 @@ export function RewardEditor({ id }: { id: number }) {
 function RewardEditorForm({ reward }: { reward: Reward }) {
   const navigate = useNavigate();
   const mutation = useUpdateRewardMutation(reward.id);
-  const statusMutation = useUpdateRewardStatusMutation(reward.id);
   const [archiveOpen, setArchiveOpen] = useState(false);
 
   const formValues = useMemo(() => rewardToFormValues(reward, storeCurrency()), [reward]);
@@ -95,17 +96,10 @@ function RewardEditorForm({ reward }: { reward: Reward }) {
     },
   );
 
-  async function archive() {
-    try {
-      await statusMutation.mutateAsync('archived');
-      toast.success(__('Reward archived.', 'yayloyalty'));
-      setArchiveOpen(false);
-      // Unsaved edits belong to a reward that has just left the catalog; the guard would only nag.
-      bypassNext();
-      navigate('/rewards');
-    } catch (error) {
-      await toastApiError(error, __('Could not archive the reward.', 'yayloyalty'));
-    }
+  function leaveAfterArchiveOrDelete() {
+    // Unsaved edits belong to a reward that has just left the catalog; the guard would only nag.
+    bypassNext();
+    navigate('/rewards');
   }
 
   return (
@@ -129,7 +123,7 @@ function RewardEditorForm({ reward }: { reward: Reward }) {
         }
         reward={reward}
         type={reward.type}
-        busy={mutation.isPending || statusMutation.isPending}
+        busy={mutation.isPending}
         onDraftIntent={markDraftIntent}
         onArchive={() => setArchiveOpen(true)}
         onCancel={() => navigate('/rewards')}
@@ -137,48 +131,79 @@ function RewardEditorForm({ reward }: { reward: Reward }) {
 
       <UnsavedChangeDialog {...leaveDialogProps} />
 
-      <ConfirmDialog
-        open={archiveOpen}
-        onOpenChange={setArchiveOpen}
-        title={sprintf(
-          /* translators: %s: the reward's name. */
-          __('Archive “%s”?', 'yayloyalty'),
-          reward.name,
-        )}
-        description={__(
-          'Customers can no longer claim it. Coupons already claimed keep working until they expire. Unsaved changes on this page are discarded.',
-          'yayloyalty',
-        )}
-        confirmLabel={__('Archive', 'yayloyalty')}
-        cancelLabel={__('Cancel', 'yayloyalty')}
-        variant="destructive"
-        isLoading={statusMutation.isPending}
-        onConfirm={archive}
-      />
+      {archiveOpen && (
+        <RewardArchiveDialog
+          reward={reward}
+          onClose={() => setArchiveOpen(false)}
+          onDone={leaveAfterArchiveOrDelete}
+          discardsUnsavedChanges
+        />
+      )}
     </>
   );
 }
 
-/** Create-mode entry for `rewards/new/:type`; nothing is written until Save or Save draft. */
-export function RewardCreator({ type }: { type: string }) {
+/**
+ * Create-mode entry for `rewards/new/:type`; nothing is written until Save or
+ * Save draft. `duplicateFromId` is the table's Duplicate action: the form
+ * starts from that reward instead of the type's seed.
+ */
+export function RewardCreator({ type, duplicateFromId }: { type: string; duplicateFromId?: number }) {
+  // enabled: id > 0 inside the hook means an absent duplicateFromId never fetches.
+  const sourceQuery = useRewardQuery(duplicateFromId ?? 0);
+
   if (!isCatalogRewardType(type)) {
     return <NotFoundPage />;
   }
 
-  return <RewardCreatorForm type={type} />;
+  if (!duplicateFromId) {
+    return <RewardCreatorForm type={type} />;
+  }
+
+  if (sourceQuery.isPending) {
+    return <RewardEditorSkeleton />;
+  }
+
+  if (sourceQuery.isError) {
+    if (sourceQuery.error instanceof HTTPError && sourceQuery.error.response.status === 404) {
+      return <NotFoundPage />;
+    }
+
+    return (
+      <PageLayout title={__('New reward', 'yayloyalty')}>
+        <ErrorState
+          message={__('Could not load the reward to duplicate.', 'yayloyalty')}
+          onRetry={() => sourceQuery.refetch()}
+        />
+      </PageLayout>
+    );
+  }
+
+  // A hand-edited URL naming another type would seed a form whose fields don't match the copied config.
+  if (sourceQuery.data.type !== type) {
+    return <NotFoundPage />;
+  }
+
+  return <RewardCreatorForm type={type} duplicateFrom={sourceQuery.data} />;
 }
 
-function RewardCreatorForm({ type }: { type: CatalogRewardType }) {
+function RewardCreatorForm({ type, duplicateFrom }: { type: CatalogRewardType; duplicateFrom?: Reward }) {
   const navigate = useNavigate();
   const mutation = useCreateRewardMutation();
 
-  const seed = useMemo(() => rewardCreateSeed(type, storeCurrency()), [type]);
+  // Stable for this visit: type and duplicateFrom are each fixed while the form is mounted.
+  const seed = useMemo(
+    () =>
+      duplicateFrom ? duplicateToFormValues(duplicateFrom, storeCurrency()) : rewardCreateSeed(type, storeCurrency()),
+    [type, duplicateFrom],
+  );
   const resolver = useMemo(() => rewardFormResolver(type), [type]);
   const form = useForm<RewardFormValues>({ resolver, values: seed, resetOptions: { keepDirtyValues: true } });
 
   const { handleSave, markDraftIntent, leaveDialogProps } = useRewardEditorSave(form, async (values, intent) => {
     try {
-      await mutation.mutateAsync(formValuesToCreateInput(values, type, intent));
+      const sourceConditions = duplicateFrom ? normalizeRewardConditions(duplicateFrom.conditions) : [];
+      await mutation.mutateAsync(formValuesToCreateInput(values, type, intent, sourceConditions));
       // The created row lives in the list now; this form's baseline must stop counting as unsaved.
       form.reset(values);
       toast.success(__('Reward created.', 'yayloyalty'));

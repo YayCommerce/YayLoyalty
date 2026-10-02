@@ -141,21 +141,33 @@ describe('resolveRewardsScreen', () => {
     // An archived reward is not a reason to show the empty state; it once had a catalog.
     expect(screen.isInitCase).toBe(true);
   });
+
+  it('collects archived rewards, in display order, for the Archived view', () => {
+    const live = reward({ id: 1 });
+    const first = reward({ id: 2, status: 'archived' });
+    const second = reward({ id: 3, status: 'archived' });
+
+    expect(resolveRewardsScreen([first, live, second]).archivedRows).toEqual([first, second]);
+  });
 });
 
 describe('headerSubtitle', () => {
   it('is the init-case copy when there is no catalog reward', () => {
     const builtin = reward({ id: 1, is_builtin: true, type: 'flexible_discount', cost_points: null });
 
-    expect(headerSubtitle(resolveRewardsScreen([builtin]))).toBe('One reward. Nothing has been redeemed yet.');
+    expect(headerSubtitle(resolveRewardsScreen([builtin]))).toEqual({
+      count: 'One reward',
+      detail: 'Nothing has been redeemed yet.',
+    });
   });
 
   it('counts every visible row, built-in included, once a catalog exists', () => {
     const builtin = reward({ id: 1, is_builtin: true, type: 'flexible_discount', cost_points: null });
     const catalogReward = reward({ id: 2 });
 
-    expect(headerSubtitle(resolveRewardsScreen([builtin, catalogReward]))).toBe(
-      '2 rewards. Drag to reorder — this is the order customers see.',
-    );
+    expect(headerSubtitle(resolveRewardsScreen([builtin, catalogReward]))).toEqual({
+      count: '2 rewards',
+      detail: 'Drag to reorder — this is the order customers see.',
+    });
   });
 });
