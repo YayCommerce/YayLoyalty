@@ -20,7 +20,7 @@ The session that wrote the code is biased toward it. The reviewer must run in a 
 
 Identify three things, asking the user only for what you cannot determine:
 
-- The plan: the path given as the argument, or else the newest plan under `docs/plans/` whose Status is `active`. For a directory plan, which phase file is in scope.
+- The plan: the path given as the argument, or else the newest active plan under `docs/plans/` in yayplan's format, by the date in its name. A plan is in yayplan's format when it has lines that start with `### Task N:` and `**Files:**`; in a directory plan its phase files do, and its `README.md` holds the Status. If no plan qualifies, or two share the newest date, ask. For a directory plan, which phase file is in scope.
 - The diff: the branch or commit range that implements that scope. Diff against the PR's base branch, `git diff <base>...HEAD`, where the base is the one CLAUDE.md names, or the previous branch when branches are stacked. Do not assume `main`. For a later phase, take the commits since the previous phase was approved.
 - What "in scope" means: the whole plan, one phase, or one task. Review only that; later tasks are not gaps yet.
 

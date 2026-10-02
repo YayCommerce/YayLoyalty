@@ -49,7 +49,7 @@ Before deciding anything, find:
 - Shared code: anything consumed by other packages, plugins, or modules. A change there becomes its own task with every consumer listed.
 - The verification commands CLAUDE.md lists (test runner, linter, build step), and which of them already fail on the base branch: CLAUDE.md or the docs it links say so. If there are none, note how the feature is exercised by hand (command, URL, UI action).
 
-Use Read, Grep, and Glob. For a large or unfamiliar area, delegate the search to an Explore subagent and ask it for file paths with line numbers.
+Search tracked files with `git grep`, which skips gitignored generated directories. For a large or unfamiliar area, delegate the search to an Explore subagent and ask it for file paths with line numbers.
 
 ### 3. Decide the file structure
 
