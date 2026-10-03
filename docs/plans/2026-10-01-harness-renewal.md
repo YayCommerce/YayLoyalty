@@ -970,9 +970,23 @@ Exception: P1–P5 were prepared on 2026-10-01 as a stack of branches, each on t
     - personal overrides (`settings.local.json`, `CLAUDE.local.md`);
     - routine `/doctor prompt-audit`.
 - **Checklist:**
-  - [ ] every command run on a clean checkout
+  - [x] every command run on a clean checkout
   - [ ] teammate review
-  - [ ] do-not-reintroduce ticked
+  - [x] do-not-reintroduce ticked (commit body)
+- **Notes (2026-10-03):**
+  - Branch `trace/docs/harness-p11-readme` is stacked on `trace/docs/harness-tidy-skills`, because no harness phase has merged into `dev/edd` yet.
+  - Team facts, from Trace: one teammate other than the author approves each PR; Trace promotes `dev/edd` to `main` before each release; there is no release yet, so the cadence is set at the first one.
+  - Outcomes in a fresh clone of the branch, on Node 22 (`nvm use` read `.nvmrc`):
+    - `corepack enable` exits 0; pnpm was already Corepack's shim.
+    - `./scripts/run.sh dev` ran the sync, created `vendor-prefixed/` and installed the JS packages, then stopped with "Port 3030 is already in use", because the main checkout's dev server held the port (`strictPort`). `git status` stayed clean. P3 recorded the server starting on :3030.
+    - `pnpm install` exits 0.
+    - `composer lint` exits 1 (0 errors, 7 warnings in 3 files). `composer test` exits 0 with "No tests executed!".
+    - `composer test:integration` prints "Error establishing a database connection" and exits 0.
+    - Admin lint exits 1 (1 error, 39 warnings). Admin test exits 1 ("No test files found"). `tsc --noEmit` exits 2 with the 3 TS2307.
+    - `claude -p` in the clone: `CLAUDE.md` loads at `session_start`, `php-standards.md` on reading `includes/YayLoyalty.php`, and nothing extra on reading `README.md`. Without the trust dialog, Claude ignores the 7 `permissions.allow` entries and says so.
+    - Every failure matches `docs/known-issues.md`.
+  - The README now holds the living owner map; §4 stays as the plan's record. `CLAUDE.md` links the README, as P3 deferred.
+  - Commands in both files are one-time setup only: `nvm use`, `./scripts/run.sh dev` and `pnpm install`. The README links `CLAUDE.md` for lint, test and release.
 - **Acceptance:**
   - C6 clean.
   - No command appears in both `README.md` and `CLAUDE.md`, except one-time setup.
