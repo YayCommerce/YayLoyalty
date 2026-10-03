@@ -20,7 +20,7 @@ cd "$(dirname "$SCRIPT_DIR")" || exit 2
 
 # References to the removed harness. code-corrector is removed, so any mention counts.
 check_removed_refs() {
-    git grep -nE 'code-standards|codebase-summary|system-architecture|deployment-guide|project-roadmap|project-changelog|data-model(\.md|/)|points-engine-scout|redemption-scout|check-docs|code-corrector|source-of-truth-check|claudekit|repomix|opencode' -- . ':!docs/plans/' ':!scripts/check-harness.sh'
+    git grep -nE 'code-standards|codebase-summary|system-architecture|deployment-guide|project-roadmap|project-changelog|data-model(\.md|/)|points-engine-scout|redemption-scout|check-docs|code-corrector|source-of-truth-check|claudekit|repomix|opencode|README invariants?' -- . ':!docs/plans/' ':!scripts/check-harness.sh'
 }
 
 # Doc-section citations in code. The campaign editor's own numbered sections are allowed.

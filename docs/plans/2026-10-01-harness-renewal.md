@@ -197,7 +197,7 @@ Found in P4:
   - `Helpers/LocalizeHelper.php:44` says "one zip carries both".
   - `scripts/run.sh:217` and `:372-374`.
   - `Controllers/CampaignRestController.php:318-322` says listeners "aren't registered at boot"; they are.
-  - `Engine/Earning/Listeners/OrderListener.php:56, :87` cite the deleted Earning README.
+  - `Engine/Earning/Listeners/OrderListener.php:56, :87` cite the deleted Earning README. Fixed on 2026-10-03, before P12: each comment now states the reason the README gave, and C2 also matches `README invariant`.
   - `Controllers/SettingsRestController.php:9` gives the wrong route; it is `/mark-reviewed`.
 
 Found in P5 (gaps against `docs/conventions.md`):
@@ -374,6 +374,14 @@ yayloyalty/
 | Q14 | `yaytidy` joins the own skills; see [the yaytidy record](../decisions/2026-10-02-add-yaytidy.md). Amends A8 and Q10. |
 | Q15 | `yayplan` may plan any request without a spec, with the requirements in the plan; see [the plan-without-a-spec record](../decisions/2026-10-02-plan-without-a-spec.md). |
 
+**Decided before P12 (2026-10-03, Trace):**
+
+| Q | Decision |
+|---|---|
+| Q16 | The stack lands before the teammates' branches. On 2026-10-03, `dev/edd` was still `a8d6fe0`, so the stack merges cleanly, and the local `harness-v1-final` tag is correct. Seven teammate branches conflict with it: `jason/feat/rewards-editor`, `paul/feat/email-points-earned`, `paul/feat/frontend-launcher` and `paul/improve/ledger-queries`, which are live, and `jason/feat/reward-screen`, `jason/feat/campaign-editor-archive-ui` and `jason/dev/campaign-editor-performance-ui`, which are older but still wanted. Each gets a fix list: the conflicts, the new old-harness references to rewrite, and what its old-doc edits must move into the new docs. The freeze message asks them not to merge into `dev/edd` until the stack lands, and the 12 PRs merge in a day or two. |
+| Q17 | Trace approves the 12 stack PRs, under Q4. Q4 predates the README's rule that a PR needs a teammate other than its author; the rule applies to every PR after the stack. |
+| Q18 | Trace is the code owner who reviews `docs/architecture.md` for P4. |
+
 ---
 
 ## 7. Phases
@@ -430,7 +438,7 @@ Exception: P1–P5 were prepared on 2026-10-01 as a stack of branches, each on t
   - Tag push approved (Q8).
 - **Steps:**
   1. `pnpm install` (so later pnpm calls don't auto-install), then capture baseline `B` → `before.txt`.
-  2. Tag the base commit locally: `git tag harness-v1-final "$(git merge-base HEAD origin/dev/edd)"`. Trace pushes it before P2 merges: `git push origin harness-v1-final`. If `dev/edd` has moved by then, rebase and re-tag at the new merge base.
+  2. Tag the base commit locally: `git tag harness-v1-final "$(git merge-base HEAD origin/dev/edd)"`. Trace pushes it before P2 merges: `git push origin harness-v1-final`. If `dev/edd` has moved by then, merge it into the stack (never rebase, §7) and move the tag to `dev/edd`'s head just before P2 merges, so the tag still marks the last commit with the old docs.
   3. `git rm` the old harness: `CLAUDE.md`, `.claude/`, `docs/` except `docs/plans/`, `includes/Engine/*/README.md`, `scripts/check-docs.sh`.
   4. Edit every row of §2.4:
      - drop each pointer and keep the *why* in ≤ 1 line;
@@ -1114,7 +1122,7 @@ run(){ echo "### $*"; out=$("$@" 2>&1); c=$?; printf '%s\n' "$out" \
 # C1 — old harness files gone (P2 only)
 git ls-files CLAUDE.md .claude docs 'includes/Engine/*/README.md' scripts/check-docs.sh | grep -v '^docs/plans/'
 # C2 — no references to removed files/tools (code-corrector is removed, so any mention counts)
-git grep -nE 'code-standards|codebase-summary|system-architecture|deployment-guide|project-roadmap|project-changelog|data-model(\.md|/)|points-engine-scout|redemption-scout|check-docs|code-corrector|source-of-truth-check|claudekit|repomix|opencode' -- . ':!docs/plans/'
+git grep -nE 'code-standards|codebase-summary|system-architecture|deployment-guide|project-roadmap|project-changelog|data-model(\.md|/)|points-engine-scout|redemption-scout|check-docs|code-corrector|source-of-truth-check|claudekit|repomix|opencode|README invariants?' -- . ':!docs/plans/'
 # C3 — no doc-section citations in code (the campaign editor's own §1–§6 are allowed)
 git grep -n '§' -- includes apps tests scripts phpcs.xml.dist yayloyalty.php | grep -vE '^apps/admin/src/pro/campaigns/(editor/(CampaignEditorSections\.tsx|campaign-editor\.form\.ts)|add/campaign-templates\.ts):'
 # C4 — no feature IDs
