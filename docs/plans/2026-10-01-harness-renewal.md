@@ -971,7 +971,7 @@ Exception: P1–P5 were prepared on 2026-10-01 as a stack of branches, each on t
     - routine `/doctor prompt-audit`.
 - **Checklist:**
   - [x] every command run on a clean checkout
-  - [ ] teammate review
+  - [x] teammate review
   - [x] do-not-reintroduce ticked (commit body)
 - **Notes (2026-10-03):**
   - Branch `trace/docs/harness-p11-readme` is stacked on `trace/docs/harness-tidy-skills`, because no harness phase has merged into `dev/edd` yet.
