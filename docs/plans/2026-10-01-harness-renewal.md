@@ -3,7 +3,7 @@
 **Status:** active · planned 2026-10-01 against `dev/edd` @ `a8d6fe0`
 **Purpose:** the one plan for replacing this repo's agent/developer harness. One phase = one focused session = one PR.
 **Update when:** a phase starts or finishes (tick its checklist, link its PR), a decision changes (§6), or the inventory drifts (§2).
-**Location:** `docs/plans/2026-10-01-harness-renewal.md`. The old `plans/` ignore rule hides this path, so P0 committed it with `git add -f`. Once tracked, its edits show in `git status`, but staging them still needs `git add -f` until P2 deletes the rule.
+**Location:** `docs/plans/2026-10-01-harness-renewal.md`. The old `plans/` ignore rule hides this path, so P0 committed it with `git add -f`. Once tracked, its edits show in `git status` as usual. P2 deletes the rule.
 
 ## Context
 
@@ -29,7 +29,7 @@ Outcome: a short, progressively disclosed harness, built from a fresh code audit
 
 | Path | Treatment |
 |---|---|
-| `CLAUDE.md`, `.claude/**`, `docs/**` | old harness: delete (P2), rebuild (P3–P9) |
+| `CLAUDE.md`, `.claude/**`, `docs/**` | old harness: delete (P2), rebuild (P3–P10) |
 | `README.md` | old harness: strip dead references (P2), rewrite as the human front door (P11) |
 | `includes/Engine/{Earning,Points,Redemption,Rewards}/README.md` | old harness: delete (P2) |
 | `scripts/check-docs.sh` | old harness: delete (P2); new checks built in P12 |
@@ -41,7 +41,7 @@ Outcome: a short, progressively disclosed harness, built from a fresh code audit
 - No application behaviour changes; P2 edits are comment- and message-only.
 - No fixing pre-existing lint or type failures: "green" means no regression (A3).
 - No CI.
-- Nothing ported from the old harness (§5). The `code-corrector` skill is **removed**, not rebuilt (Q1).
+- Nothing ported from the old harness (§5). The `code-corrector` skill is **rebuilt**, not ported.
 
 ---
 
@@ -110,7 +110,7 @@ Environment: 2026-10-01 @ `a8d6fe0`, PHP 8.3.32, Composer 2.6.5, Node 22.22.2, p
 |---|---|---|---|---|
 | `CLAUDE.md` | 7 | hand-written | read-order, comment rule, skill pointer | delete P2 → new P3 |
 | `.claude/.env.example` | 100 | ClaudeKit template, force-added in #28 | unrelated API keys; nothing uses them | delete P2 |
-| `.claude/skills/code-corrector/` (`SKILL.md`, `evals/cases.md`) | 79 + 211 | team, 2026-09-24 | duplicate-rule finder. Reads `code-standards` §16/§17. Name `yay:code-corrector` is invalid (colon; ≠ dir). Hard-codes the nvm path and `dev/edd`. Eval case 7 no longer applies. | delete P2; not rebuilt (Q1) |
+| `.claude/skills/code-corrector/` (`SKILL.md`, `evals/cases.md`) | 79 + 211 | team, 2026-09-24 | duplicate-rule finder. Reads `code-standards` §16/§17. Name `yay:code-corrector` is invalid (colon; ≠ dir). Hard-codes the nvm path and `dev/edd`. Eval case 7 no longer applies. | delete P2 → **rebuild** P10 |
 | `docs/` (15 files) | 3,987 | ClaudeKit slots + hand-written specs | rules, code maps, data-model specs, runbook, roadmap, changelog, 2 scout reports. Many stale claims (e.g. Pro seam "in `initialize()`"; stubs that are now implemented). | delete P2 (tag `harness-v1-final`) |
 | `README.md` | 145 | ClaudeKit-style, hand-edited | status, setup, release, Pro list, checks | strip P2 → rewrite P11 |
 | `includes/Engine/*/README.md` (4) | 242 | hand-written | module invariants; ship inside release zips | delete P2 |
@@ -136,7 +136,7 @@ P0 re-sweep (2026-10-01 @ `a8d6fe0`): §2.3 and every row above match HEAD. One 
 ### 2.5 Workflow facts (confirmed)
 
 - Branch `<name>/<type>/<topic>` from **`dev/edd`** (long-lived) → PR into `dev/edd` (squash) → `dev/edd` → `main` by PR (merge commit).
-- Commits use Conventional Commits `type(scope): summary`. Docs and refactor commits have also landed directly on `dev/edd`. From now on, every change goes through a PR (Q7).
+- Commits use Conventional Commits `type(scope): summary`. Docs and refactor commits have also landed directly on `dev/edd` (see Q7).
 - No CI. `gh` is unauthenticated on this machine, so branch protection and reviewers are unknown. CLI `git fetch` and `git push` also return 403 here: the keychain token belongs to an account without access. Pushes go through GitHub Desktop, so phase PRs are opened from there or from the web.
 
 ### 2.6 Traps the new harness must avoid (each verified)
@@ -195,12 +195,13 @@ yayloyalty/
 │   ├── settings.json          permission allowlist · generated-dir guard · includeGitInstructions:false   (Δ4)
 │   ├── hooks/guard-generated-paths.sh                                                                      (Δ4)
 │   ├── rules/
-│   │   ├── php-standards.md   paths: includes/**/*.php, yayloyalty.php, YayLoyaltyPluginAdapter.php, tests/**/*.php, scripts/*.php   (Δ5)
+│   │   ├── php-standards.md   paths: includes/**/*.php, yayloyalty.php, tests/**/*.php, scripts/*.php   (Δ5)
 │   │   ├── react-admin.md     paths: apps/admin/**                                                       (Δ5)
 │   │   └── release.md         paths: scripts/**, scoper.inc.php                                          (Δ5)
 │   └── skills/
 │       ├── brainstorming/     our own → docs/specs/
-│       └── writing-plans/     our own → docs/plans/
+│       ├── writing-plans/     our own → docs/plans/
+│       └── code-corrector/    rebuilt (Δ6: the only other own skill)
 └── docs/
     ├── architecture.md        boot & autoload · admin-shell sync & scoping · layers · data · Pro/Lite · SPA↔WP · build/release · tests
     ├── conventions.md         code and domain conventions not inferable from code
@@ -217,7 +218,7 @@ yayloyalty/
 | Daily commands; hard rules; git rules (branching, commits, PR base, safety) | `CLAUDE.md` | link |
 | PHP / SPA / release-tooling rules | the matching `.claude/rules/*.md` | link to `architecture.md` sections |
 | How the pieces fit | `docs/architecture.md` | link |
-| Conventions not in code | `docs/conventions.md` | link |
+| Conventions not in code (including the readable-code rules, if kept — Q1) | `docs/conventions.md` | link |
 | Gotchas and today's failing checks | `docs/known-issues.md` | link |
 | Why X, not Y | `docs/decisions/` | link |
 | Onboarding, review, promotion and release cadence, agent-tooling use, harness upkeep | `README.md` | link |
@@ -236,7 +237,7 @@ yayloyalty/
 | Status, counts, changelog, roadmap in docs | Rot on every PR; needed `check-docs.sh` to police | git history, PRs; the tag keeps the old text readable |
 | Specs for unbuilt tables | Design without code that drifts silently | let go behind tag `harness-v1-final`; fresh spec when built (A2) |
 | Module READMEs in `includes/` | Fourth copy of invariants; they ship in release zips | `architecture.md` + code docblocks |
-| Old `code-corrector` + §16 owner table | Depends on a doc section; invalid name; machine path | nothing: removed (Q1) |
+| Old `code-corrector` + §16 owner table | Depends on a doc section; invalid name; machine path | rebuilt from scratch (P10) |
 | ClaudeKit residue (`.env.example`, `plans/`, `.opencode/`, `.repomixignore`, `**/.claude/*`) | A tool this repo doesn't use; made the harness invisible to git | ignore only personal Claude files |
 
 **Do-not-reintroduce checklist** — every construction PR (P3–P11) ticks it in its description:
@@ -264,33 +265,19 @@ yayloyalty/
 | A5 | CLAUDE.md reaches docs through **plain links with "read when…" triggers**, no `@imports`. P12 tests that Claude opens the right doc; a doc it keeps missing may be promoted to an import, recorded in an ADR. |
 | A6 | Claude Code only, so no `AGENTS.md` |
 | A7 | Committed `.claude/settings.json`: (a) allowlist for `composer lint`, `composer test`, admin lint/test, `tsc --noEmit`, `git diff`, `git log`; (b) PreToolUse guard blocking edits under `vendor/`, `vendor-prefixed/`, `assets/dist/`, `release/`; (c) `includeGitInstructions: false` with Claude Code's **default attribution** kept |
-| A8 | Own skills: brainstorming and writing-plans; no others. Amended by Q1: `code-corrector` is removed, not rebuilt. |
+| A8 | Own skills: brainstorming, writing-plans, and **code-corrector rebuilt**; no others |
 | A9 | Feature IDs become descriptive TODOs. Roadmap and dev changelog are dropped; release notes stay in `readme.txt`. |
 | A10 | Rule globs remapped and PHP narrowed (Δ5) |
 | A11 | `dev/edd` is the long-lived PR base |
 | A12 | Plans and specs are **kept as history** with a Status line that agents check before acting |
 
-**Resolved in P1 (2026-10-01, approver: Trace Bui):**
-
-| Q | Decision |
-|---|---|
-| Q1 | Remove `code-corrector` for good: no rebuild, no owner list. The four readable-code rules are dropped too. P10 is dropped; A8 amended. |
-| Q2 | `YayLoyaltyPluginAdapter.php` joins the `php-standards.md` globs (Δ5). |
-| Q3 | Backfill all five candidates in P6: build-time Pro/Lite split with zip validator; `LedgerService` as sole ledger writer with a cached balance; admin-shell scoped through php-scoper; UTC storage; money as decimal strings. The team still confirms each rationale when it is written. |
-| Q4 | Trace Bui reviews every phase PR. The P12 validator is named later, before P12 starts. |
-| Q5 | Yes: `.nvmrc` (`22`) and `"engines": {"node": ">=22"}` in the root `package.json`, added in P3. |
-| Q6 | Every teammate runs Claude Code ≥ 2.1.283. |
-| Q7 | PR-only: every change, docs included, goes branch → PR into `dev/edd`. |
-| Q8 | Tag push approved. P2 may be prepared before the freeze. Trace announces the freeze ≥ 1 day before P2 merges and pushes the tag (CLI push is blocked on this machine, §2.5). |
-| Q9 | Lockfiles stay gitignored, recorded as a known issue in P5. |
+**Pending (resolved in P1):** see §9.
 
 ---
 
 ## 7. Phases
 
 Order: inventory → approval → removal → one phase per section of the new structure → team workflow → validation. Every phase starts from the latest `dev/edd`, ends in one PR into `dev/edd`, and ticks its checklist in this file. Checks `C1–C16` and the baseline script `B` are in the Appendix.
-
-Exception: P1–P3 were prepared in one session (2026-10-01), on branches stacked on P0. Merge them in order. After each squash merge, rebase the next branch: `git rebase --onto origin/dev/edd <merged-branch> <next-branch>`.
 
 ### P0 — Land the plan and freeze the inventory
 - **Goal:** this plan is in the repo; the inventory matches HEAD.
@@ -318,10 +305,9 @@ Exception: P1–P3 were prepared in one session (2026-10-01), on branches stacke
   2. Adjust the affected phase steps.
   3. Name the P12 validator and the reviewers for each phase.
 - **Checklist:**
-  - [x] §9 empty
-  - [x] §6 updated
-  - [x] reviewers named (Q4)
-  - [ ] P12 validator named (deferred by Q4; needed before P12)
+  - [ ] §9 empty
+  - [ ] §6 updated
+  - [ ] validator and reviewers named
 - **Acceptance:**
   - §9 has no unchecked item.
   - The diff touches only the plan file.
@@ -332,11 +318,11 @@ Exception: P1–P3 were prepared in one session (2026-10-01), on branches stacke
 - **Goal:** the old harness is gone and nothing points at it. Build, lint and test results are identical to before.
 - **Prerequisites:**
   - P1.
-  - Before merge: docs freeze announced ≥ 1 day ahead (Q8: Trace). In-flight branches that touch `docs/` resolve by accepting the deletion.
-  - Tag push approved (Q8).
+  - Docs freeze announced ≥ 1 day ahead. In-flight branches that touch `docs/` resolve by accepting the deletion.
+  - Approval to push the tag.
 - **Steps:**
   1. `pnpm install` (so later pnpm calls don't auto-install), then capture baseline `B` → `before.txt`.
-  2. Tag the base commit locally: `git tag harness-v1-final "$(git merge-base HEAD origin/dev/edd)"`. Trace pushes it before P2 merges: `git push origin harness-v1-final`. If `dev/edd` has moved by then, rebase and re-tag at the new merge base.
+  2. Tag the base commit and push the tag (approved in Q8): `git tag harness-v1-final "$(git merge-base HEAD origin/dev/edd)" && git push origin harness-v1-final`.
   3. `git rm` the old harness: `CLAUDE.md`, `.claude/`, `docs/` except `docs/plans/`, `includes/Engine/*/README.md`, `scripts/check-docs.sh`.
   4. Edit every row of §2.4:
      - drop each pointer and keep the *why* in ≤ 1 line;
@@ -356,7 +342,7 @@ Exception: P1–P3 were prepared in one session (2026-10-01), on branches stacke
   - [ ] C1–C5 clean
   - [ ] C7 empty diff
   - [ ] C8 shows only allowlisted files
-  - [ ] team told that `/code-corrector` is gone for good (Q1)
+  - [ ] team told that `/code-corrector` is unavailable until P10
 - **Acceptance:**
   - C1, C2, C3, C4 and C5 print nothing.
   - `diff before.txt after.txt` is empty (C7).
@@ -378,10 +364,10 @@ Exception: P1–P3 were prepared in one session (2026-10-01), on branches stacke
 - **Steps:**
   1. Maintainer header as an HTML comment (purpose, update-when).
   2. **What** in 2–3 lines.
-  3. **Commands** with the Node 22 requirement. Add `.nvmrc` (`22`) and `"engines": {"node": ">=22"}` to the root `package.json`, so `nvm use` picks Node 22 (Q5). Each command is run, with its outcome recorded in the PR.
+  3. **Commands** with the Node 22 requirement. Each command is run, with its outcome recorded in the PR.
   4. **Hard rules**, ≤ 8, each traceable to code or a validator. Candidates: no edits in generated dirs; pnpm on Node 22; Lite names Pro only through the seam in `includes/YayLoyalty.php`; SPA Pro UI gated by `IS_PRO_BUILD`, never a runtime flag; PHP 7.4-compatible product code; ledger and balances only through `LedgerService`.
   5. **Git**, replacing the built-in guidance per A7:
-     - branch naming, base `dev/edd`, Conventional Commits, PR into `dev/edd`; PR-only, never a direct commit to `dev/edd` or `main` (Q7);
+     - branch naming, base `dev/edd`, Conventional Commits, PR into `dev/edd`;
      - safety rules: commit or push only when asked; never force-push shared branches; never skip hooks.
   6. **Plans/specs:** act only on `Status: active` / `accepted`.
   7. **Where to look:** only new-harness files that exist (initially `docs/plans/`). The stripped README is not linked until P11.
@@ -400,7 +386,7 @@ Exception: P1–P3 were prepared in one session (2026-10-01), on branches stacke
     - integration either runs against a site DB or fails with the recorded DB error.
 - **Risks:**
   - `run.sh dev` mutates `composer.json` and `scoper.inc.php`; state this next to the command.
-  - Node mismatch on teammates' machines: `.nvmrc` covers nvm users (Q5); others switch by hand.
+  - Node mismatch on teammates' machines (Q5).
 - **Effort:** S–M (2–3 h).
 
 ### P4 — `docs/architecture.md`
@@ -436,7 +422,7 @@ Exception: P1–P3 were prepared in one session (2026-10-01), on branches stacke
   - caps checked only at the HTTP boundary;
   - Pro vocabulary kept in Lite;
   - file-naming patterns;
-  - comment policy (the readable-code rules were dropped in Q1).
+  - comment policy and readable-code rules (Q1).
 - **Known issues** — each reproduced now:
   - Node 22 / pnpm 11;
   - pnpm auto-install plus `postinstall`;
@@ -463,11 +449,11 @@ Exception: P1–P3 were prepared in one session (2026-10-01), on branches stacke
 
 ### P6 — `docs/decisions/`
 - **Goal:** an ADR practice with first records.
-- **Prerequisites:** P5.
+- **Prerequisites:** P5; Q3 answered.
 - **Steps:**
   1. `YYYY-MM-DD-record-architecture-decisions.md` defines format, naming, statuses and when to write one.
-  2. `YYYY-MM-DD-harness-structure.md` records A1–A12, the P1 answers and Δ1–Δ5, and notes that the old harness is preserved at tag `harness-v1-final`. It names the tag, not individual old files or the removed skill, so C2 stays clean.
-  3. Backfill the five app ADRs approved in Q3, each with rationale confirmed by the team: build-time Pro/Lite split; `LedgerService` as sole ledger writer; admin-shell via php-scoper; UTC storage; money as decimal strings.
+  2. `YYYY-MM-DD-harness-structure.md` records A1–A12 and Δ1–Δ6, and notes that the old harness is preserved at tag `harness-v1-final`. It names the tag, not individual old files, so C2 stays clean.
+  3. Backfill only the app ADRs approved in Q3, with rationale confirmed by the team.
   4. Add a `CLAUDE.md` link: "read when a change alters an architectural choice".
 - **Checklist:**
   - [ ] format ADR
@@ -564,14 +550,34 @@ Exception: P1–P3 were prepared in one session (2026-10-01), on branches stacke
 - **Risks:** output quality; iterate on the dry run. Optionally use Anthropic's `skill-creator` to write evals.
 - **Effort:** M (4–6 h).
 
-### P10 — dropped (Q1)
-`code-corrector` is removed, not rebuilt. The number stays so phase references don't shift.
+### P10 — Skill: `code-corrector` (rebuilt)
+- **Goal:** a working duplicate-rule and readability checker with no dependency on deleted docs.
+- **Prerequisites:** P9; Q1 answered (rule source).
+- **Steps:**
+  1. Design per Q1, in a short note in the PR. Recommended: owners discovered from code markers (the existing "Mirrors X, the source of truth" comments plus an owner marker convention in `conventions.md`).
+  2. `name: code-corrector`. Arguments `[path | --base <branch> | --all]`; the default base is the `CLAUDE.md` integration branch.
+  3. Report-only until AskUserQuestion approval, then verify with the `CLAUDE.md` commands.
+  4. Fresh `evals/cases.md` seeded against current code.
+- **Checklist:**
+  - [ ] design note approved
+  - [ ] skill
+  - [ ] evals pass
+  - [ ] C12 passes
+  - [ ] no machine paths
+  - [ ] do-not-reintroduce ticked
+- **Acceptance:**
+  - Every eval passes `git apply --check`.
+  - The skill finds every seeded duplicate and reports no finding on the allowed-mirror case.
+  - `grep -rnE '/Users/|\.nvm/' .claude/` is empty.
+  - C12 clean.
+- **Risks:** scope creep into a linter; keep it to owner copies, mirror drift and the Q1 readability rules.
+- **Effort:** M (4–6 h).
 
 ### P11 — Team workflow docs (`README.md`)
 - **Goal:** someone who didn't build this can onboard, work daily, use the agent tooling, and keep the harness current.
-- **Prerequisites:** P9.
+- **Prerequisites:** P10.
 - **Steps:** rewrite `README.md`:
-  - **what** (2 lines) and **requirements** (PHP ≥ 8.2 for tooling and 7.4 for the product, Composer 2, Node 22, pnpm via corepack, WP-CLI, jq, Claude Code ≥ 2.1.283 per Q6);
+  - **what** (2 lines) and **requirements** (PHP ≥ 8.2 for tooling and 7.4 for the product, Composer 2, Node 22, pnpm via corepack, WP-CLI, jq, Claude Code at the Q6 minimum version);
   - **onboarding:**
     - clone into a WP site's `wp-content/plugins/` with WooCommerce active;
     - GitHub access to the private admin-shell repo;
@@ -583,7 +589,7 @@ Exception: P1–P3 were prepared in one session (2026-10-01), on branches stacke
     - links to `CLAUDE.md` § Git for the rules;
     - the human parts: review expectations, who promotes `dev/edd` → `main`, release cadence (the procedure is in `release.md` and `run.sh`);
   - **agent tooling:**
-    - when to brainstorm or plan;
+    - when to brainstorm, plan, or run `/code-corrector`;
     - Status lifecycle;
     - when to write an ADR;
   - **keeping the harness current:**
@@ -604,7 +610,7 @@ Exception: P1–P3 were prepared in one session (2026-10-01), on branches stacke
 
 ### P12 — Final validation
 - **Goal:** prove the harness works for someone who didn't build it, and leave a repeatable check.
-- **Prerequisites:** P11; a validator who didn't build the harness, named before P12 starts (Q4 deferred the name).
+- **Prerequisites:** P11; the validator from P1.
 - **Steps:**
   1. Add `scripts/check-harness.sh`, bundling C2–C6, C9, C10, C12, C15 and C16 into one exit-coded script. Link it from README § upkeep.
   2. Run the full §8 plan.
@@ -635,22 +641,22 @@ Exception: P1–P3 were prepared in one session (2026-10-01), on branches stacke
 | V5 | Rules load exactly when relevant | C10 + C11 expectations from P7 |
 | V6 | Settings and hook | C13 + C14; scripted vendor edit refused |
 | V7 | Every documented command runs | Every command in `CLAUDE.md`, `README.md`, rules and skills is run in a **fresh clone** inside a WP `plugins/` dir with Node 22. Outcome = success, or exactly the failure listed in `known-issues.md` (table in the PR). |
-| V8 | Agent smoke tests (`claude -p --setting-sources project --output-format stream-json`) | (a) asked for the admin lint command → answer contains it verbatim; (b) asked a Pro/Lite question → a `Read` of `docs/architecture.md` appears in the stream (A5's trigger works; if it misses twice, apply A5's promotion rule); (c) `/brainstorming` → `/writing-plans` toy run → files with Status lines |
+| V8 | Agent smoke tests (`claude -p --setting-sources project --output-format stream-json`) | (a) asked for the admin lint command → answer contains it verbatim; (b) asked a Pro/Lite question → a `Read` of `docs/architecture.md` appears in the stream (A5's trigger works; if it misses twice, apply A5's promotion rule); (c) `/brainstorming` → `/writing-plans` toy run → files with Status lines; (d) `/code-corrector` on a seeded diff → seeded finding reported |
 | V9 | `/doctor prompt-audit` | No "missing file/command" or "contradiction" finding left without a disposition |
-| V10 | New teammate end to end | The named validator (Q4) follows `README.md` from a fresh clone: setup → dev server → lint/test → one brainstorm → plan cycle. Every blocker is logged as an issue; pass = zero open blockers. |
+| V10 | New teammate end to end | The P1-named validator follows `README.md` from a fresh clone: setup → dev server → lint/test → one brainstorm → plan cycle → `/code-corrector`. Every blocker is logged as an issue; pass = zero open blockers. |
 
 ---
 
-## 9. Open questions (all resolved in P1, 2026-10-01; answers in §6)
+## 9. Open questions (resolve in P1)
 
-- [x] **Q1 — Rebuilt `code-corrector` rule source.** Options:
+- [ ] **Q1 — Rebuilt `code-corrector` rule source.** Options:
   - (a) owners discovered from in-code markers (recommended);
   - (b) a fresh skill-local owner list built from a code audit;
   - (c) a section of `conventions.md`.
 
   Also: do the four readable-code rules survive (return early / nesting ≤ 2; one job ≈ 40 lines; names carry kind and unit; boring over clever)? If yes, the owner is `conventions.md`.
-- [x] **Q2 — PHP rule glob.** Add `YayLoyaltyPluginAdapter.php` (root PHP, scanned by phpcs) to the narrowed list? Recommended: yes.
-- [x] **Q3 — ADR backfill.** Which existing app decisions get ADRs in P6? Candidates, each provable in code:
+- [ ] **Q2 — PHP rule glob.** Add `YayLoyaltyPluginAdapter.php` (root PHP, scanned by phpcs) to the narrowed list? Recommended: yes.
+- [ ] **Q3 — ADR backfill.** Which existing app decisions get ADRs in P6? Candidates, each provable in code:
   - build-time Pro/Lite split with a zip validator;
   - `LedgerService` as sole ledger writer with a cached balance;
   - admin-shell scoped through php-scoper;
@@ -658,12 +664,12 @@ Exception: P1–P3 were prepared in one session (2026-10-01), on branches stacke
   - money as decimal strings.
 
   Recommended: at most the ones a teammate can state the rationale for.
-- [x] **Q4 — Validator and reviewers.** Who does the P12 walkthrough (must not have built the harness)? Who reviews each phase PR?
-- [x] **Q5 — Node pin.** Add `.nvmrc` (`22`) and `"engines": {"node": ">=22"}` so the documented pnpm commands work under nvm? This is a tooling change outside the harness. Recommended: yes, in P3; otherwise `CLAUDE.md` must tell people to switch Node by hand.
-- [x] **Q6 — Minimum Claude Code version.** ≥ 2.1.283 (for `/doctor prompt-audit`) for every teammate?
-- [x] **Q7 — Direct commits to `dev/edd`.** History shows docs and refactor commits pushed straight to `dev/edd`. Allowed going forward, or PR-only? This sets `CLAUDE.md` § Git.
-- [x] **Q8 — Docs freeze for P2.** Who announces it, and when? Is the tag push to `origin` approved?
-- [x] **Q9 — Lockfiles.** `composer.lock` and `pnpm-lock.yaml` are gitignored, which undermines "every command runs" on other machines. Leave it as a known issue (default), or approve committing them (an app-tooling change outside this plan)?
+- [ ] **Q4 — Validator and reviewers.** Who does the P12 walkthrough (must not have built the harness)? Who reviews each phase PR?
+- [ ] **Q5 — Node pin.** Add `.nvmrc` (`22`) and `"engines": {"node": ">=22"}` so the documented pnpm commands work under nvm? This is a tooling change outside the harness. Recommended: yes, in P3; otherwise `CLAUDE.md` must tell people to switch Node by hand.
+- [ ] **Q6 — Minimum Claude Code version.** ≥ 2.1.283 (for `/doctor prompt-audit`) for every teammate?
+- [ ] **Q7 — Direct commits to `dev/edd`.** History shows docs and refactor commits pushed straight to `dev/edd`. Allowed going forward, or PR-only? This sets `CLAUDE.md` § Git.
+- [ ] **Q8 — Docs freeze for P2.** Who announces it, and when? Is the tag push to `origin` approved?
+- [ ] **Q9 — Lockfiles.** `composer.lock` and `pnpm-lock.yaml` are gitignored, which undermines "every command runs" on other machines. Leave it as a known issue (default), or approve committing them (an app-tooling change outside this plan)?
 
 ---
 
@@ -683,8 +689,8 @@ run(){ echo "### $*"; out=$("$@" 2>&1); c=$?; printf '%s\n' "$out" \
 
 # C1 — old harness files gone (P2 only)
 git ls-files CLAUDE.md .claude docs 'includes/Engine/*/README.md' scripts/check-docs.sh | grep -v '^docs/plans/'
-# C2 — no references to removed files/tools (code-corrector is removed, so any mention counts)
-git grep -nE 'code-standards|codebase-summary|system-architecture|deployment-guide|project-roadmap|project-changelog|data-model(\.md|/)|points-engine-scout|redemption-scout|check-docs|code-corrector|source-of-truth-check|claudekit|repomix|opencode' -- . ':!docs/plans/'
+# C2 — no references to removed files/tools (the rebuilt /code-corrector is allowed; the old /yay: form is not)
+git grep -nE 'code-standards|codebase-summary|system-architecture|deployment-guide|project-roadmap|project-changelog|data-model(\.md|/)|points-engine-scout|redemption-scout|check-docs|yay:code-corrector|source-of-truth-check|claudekit|repomix|opencode' -- . ':!docs/plans/'
 # C3 — no doc-section citations in code (the campaign editor's own §1–§6 are allowed)
 git grep -n '§' -- includes apps tests scripts phpcs.xml.dist yayloyalty.php | grep -vE '^apps/admin/src/pro/campaigns/(editor/(CampaignEditorSections\.tsx|campaign-editor\.form\.ts)|add/campaign-templates\.ts):'
 # C4 — no feature IDs
