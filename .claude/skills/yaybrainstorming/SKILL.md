@@ -23,19 +23,6 @@ Standing rules for the whole task:
 
 ## Workflow
 
-Copy this checklist into your response and tick items as you go:
-
-```
-Design progress:
-- [ ] 1. Explore context
-- [ ] 2. Clarify
-- [ ] 3. Propose approaches
-- [ ] 4. Present the design
-- [ ] 5. Write the design doc
-- [ ] 6. Self-review
-- [ ] 7. Review gate and hand off
-```
-
 ### 1. Explore context
 
 Before asking anything, read the code around the idea: the files it touches, the existing pattern for this kind of feature, the docs CLAUDE.md links for the areas it touches (architecture, conventions, decision records), and recent commits. Note sibling plugins and shared code that would be affected. Then read [references/question-bank.md](references/question-bank.md) and pick only the questions the codebase and the request leave open.

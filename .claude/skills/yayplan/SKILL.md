@@ -23,18 +23,6 @@ Standing rules for the whole task:
 
 ## Workflow
 
-Copy this checklist into your response and tick items as you go:
-
-```
-Plan progress:
-- [ ] 1. Collect inputs
-- [ ] 2. Explore the codebase
-- [ ] 3. Decide the file structure
-- [ ] 4. Write the plan
-- [ ] 5. Self-review
-- [ ] 6. Hand off
-```
-
 ### 1. Collect inputs
 
 Read the spec, issue, design doc, or request the user pointed to. A design doc whose Status is not `accepted` is not ready to plan: say so and stop. Any request can be planned without a spec. Then ask up to three questions whose answers change the plan (scope boundary, acceptance criteria, hard constraints) and wait for them, and write the plan's `## Requirements` section from the request and the answers. Do not plan from guesses.
