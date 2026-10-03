@@ -894,7 +894,7 @@ Exception: P1–P5 were prepared on 2026-10-01 as a stack of branches, each on t
   - [x] decision record written; harness record's Status line updated
   - [x] C5, C9, C12 and C16 pass
   - [x] C17 passes with the new record
-  - [ ] dry run done and discarded
+  - [x] dry run done and discarded (P12, 2026-10-03)
   - [x] do-not-reintroduce ticked (commit body)
 - **Notes (2026-10-02):**
   - Trace took the recommended answer to Q11–Q13. Where the canonical copy of the shared skills lives (Q12) is not named yet.
@@ -925,6 +925,14 @@ Exception: P1–P5 were prepared on 2026-10-01 as a stack of branches, each on t
     - the harness record changed only in its Status line, which now says the new record supersedes its skills decision and its other decisions stand;
     - C17, C6 and C9 pass with both files; C9 still flags only `README.md`.
   - **Still to do:** the dry run (step 4).
+- **Notes (2026-10-03), the dry run** (step 4, run with P12 as V8(c)):
+  - Driven headless with `claude -p` in a fresh clone, on a scratch branch stacked on `trace/docs/harness-p11-readme`. The prompts said to pick the recommended answer wherever a skill would ask a question. Topic: a `wp yayloyalty balance <user-id>` command. The clone and its branches are deleted.
+  - `/yaybrainstorming` wrote `docs/specs/2026-10-03-cli-balance-design.md` at `**Status:** proposed`, listed the 10 questions with its choices, and stopped at the gate. Approval set `accepted 2026-10-03`.
+  - `/yayplan` wrote a two-task single-file plan at `**Status:** active`, with `**Spec:**`, `## Global constraints`, `## Review focus`, `### Task 1:`, `**Files:**` and `**Interfaces:**`. Its commands are `composer test:integration -- --filter …`, `composer lint -- <files>` and `git grep`, plus `wp` commands for the by-hand checks of the new command.
+  - Task 1 was implemented and committed. The integration tests couldn't run, because the clone isn't inside a WordPress site; the session said so and checked the logic with a throwaway script instead.
+  - `/yayplancheck` ran the reviewer as a general-purpose subagent on `git diff trace/docs/harness-p11-readme...HEAD`, and didn't ask about yaytidy for a one-task scope. The report opened with `## Verdict: FAIL`, with one blocking gap: the integration tests never ran. That is the right verdict for this checkout. It made no fix and didn't loop.
+  - A one-line bug, the missing text domain on `UpgradeToPro.tsx`'s tooltip, took the fast path: a 9-line spec at `proposed`, no interview and no alternatives.
+  - Two sessions looked for other Local sites to run the integration suite on, and changed nothing there.
 - **Acceptance:**
   - C12: each name equals its directory and matches `^[a-z0-9-]+$`, and each description is ≤ 500 characters.
   - C9 lists only `README.md` (P11). C5 and C16 print nothing, and C17 passes.
@@ -1003,10 +1011,26 @@ Exception: P1–P5 were prepared on 2026-10-01 as a stack of branches, each on t
   3. Fix-forward every finding.
   4. Set this plan to `Status: done`.
 - **Checklist:**
-  - [ ] script
+  - [x] script
   - [ ] §8 V1–V10 green
   - [ ] walkthrough issues closed
   - [ ] plan status done
+- **Notes (2026-10-03):**
+  - Branch: `trace/docs/harness-p11-readme`, before P12 gets its own branch.
+  - **Step 1:** `scripts/check-harness.sh` runs C2–C6, C9, C10, C12, C15, C16 and C17, prints each finding with its check's name, and exits 1 on any. It passes on `/bin/bash` 3.2, and a planted broken link fails it. The README's upkeep section links it.
+  - **C5 fix:** the Appendix's `':!.claude/skills/*/evals/'` excluded nothing, because of the trailing slash, so C5 always reported the 5 example paths in the skill evals. It is now `':!.claude/skills/*/evals/*'`, here and in the script.
+  - **§8 results:**
+    - V1–V4: the script exits 0, and `CLAUDE.md` is 56 lines.
+    - V5: C10 passes, and C11 gives exactly P7's expectations: `php-standards.md`, `react-admin.md` and `release.md` on their files, no rule for `README.md`, and only `CLAUDE.md` at `session_start`.
+    - V6: C13's `claude doctor` exits 0 with no invalid settings, C14 passes, and a `claude -p` asked to write `vendor-prefixed/harness-probe.txt` was blocked by the hook; no file was created.
+    - V7: every command in `CLAUDE.md`, `README.md`, the rules and `known-issues.md` ran in a fresh clone (P11's notes, plus `run.sh help`, `build lite`, `release pro 1.0.0`, `release lite --no-prompt`, `bash -n`, `php -l`, `composer lint -- <file>`, the direct `tsc`, `pnpm makepot` and `composer install` after release). Each outcome is a success or the failure `known-issues.md` lists. `validate-build.php` had no zip to check, because release fails.
+    - V8 (a): the answer was `pnpm --filter @yayloyalty/admin-page lint`, word for word.
+    - V8 (b), first form: the first Pro/Lite question was answered correctly from `CLAUDE.md`'s hard rule 2 and a Grep, without opening `docs/architecture.md`. The second, a change question, reached `docs/architecture.md` and `docs/conventions.md` through `grep` in Bash.
+    - V8 (b), tightened by Trace on 2026-10-03 to require a Read tool call on `docs/architecture.md` (§8): **two misses.** Both runs of the fixed prompt answered correctly, using only Bash: `grep` on `docs/conventions.md`, then the code. Neither used the Read tool, and neither touched `docs/architecture.md`. A5's promotion rule now applies, and waits for a decision: promote the doc to an `@import` with a decision record, or change the `CLAUDE.md` trigger and run V8 (b) again.
+    - V8 (c): the P9 dry run above.
+    - V8 (d): `/yaytidy base trace/docs/harness-p11-readme` on a scratch branch with a planted unmarked copy of the dev-server URL. The report's first line was `Branch mode against trace/docs/harness-p11-readme (82c9bc4): 1 changed file, untracked: none`, and finding 1 named the copy, with `DEV_PORT` in `apps/admin/vite.config.ts` as its owner.
+    - V9: `/doctor prompt-audit`, read-only, found no missing file or command and no contradiction. Dispositions (Trace, 2026-10-03): the "copy this checklist" blocks in `yaybrainstorming` and `yayplan` are removed (medium confidence; the dry run's replies echoed them for nothing); the flag on `yayplan`'s description, at 498 of 500 characters, is noted: swap a trigger phrase rather than add one.
+    - V10: waits for the validator (P1, Q4).
 - **Acceptance:**
   - `scripts/check-harness.sh` exits 0.
   - V1–V10 pass.
@@ -1027,7 +1051,7 @@ Exception: P1–P5 were prepared on 2026-10-01 as a stack of branches, each on t
 | V5 | Rules load exactly when relevant | C10 + C11 expectations from P7 |
 | V6 | Settings and hook | C13 + C14; scripted vendor edit refused |
 | V7 | Every documented command runs | Every command in `CLAUDE.md`, `README.md`, rules and skills (except the placeholders in skill templates) is run in a **fresh clone** inside a WP `plugins/` dir with Node 22. Outcome = success, or exactly the failure listed in `known-issues.md` (table in the PR). |
-| V8 | Agent smoke tests (`claude -p --setting-sources project --output-format stream-json`) | (a) asked for the admin lint command → answer contains it verbatim; (b) asked a Pro/Lite question → a `Read` of `docs/architecture.md` appears in the stream (A5's trigger works; if it misses twice, apply A5's promotion rule); (c) `/yaybrainstorming` → `/yayplan` → `/yayplancheck` toy run → a spec and a plan with Status lines, and a review verdict; (d) `claude -p … "/yaytidy base <ref>"` on a scratch branch with one planted unmarked copy → the report's first line names the ref, its short SHA and the file count, and the plant appears as a finding with its owner |
+| V8 | Agent smoke tests (`claude -p --setting-sources project --output-format stream-json`) | (a) asked for the admin lint command → answer contains it verbatim; (b) asked, in two fresh sessions, "I want to add a Pro-only option to the Design settings page, with its PHP default and its SPA field. What has to change so the Lite build stays clean? Answer in five lines or fewer; don't edit anything." → in at least one run, the stream holds a Read tool call whose `file_path` ends in `docs/architecture.md` (`jq -r 'select(.type=="assistant") \| .message.content[] \| select(.type=="tool_use" and .name=="Read") \| .input.file_path'`). A `grep`, a `cat` in Bash, or a Read of another doc doesn't count. Two misses apply A5's promotion rule; (c) `/yaybrainstorming` → `/yayplan` → `/yayplancheck` toy run → a spec and a plan with Status lines, and a review verdict; (d) `claude -p … "/yaytidy base <ref>"` on a scratch branch with one planted unmarked copy → the report's first line names the ref, its short SHA and the file count, and the plant appears as a finding with its owner |
 | V9 | `/doctor prompt-audit` | No "missing file/command" or "contradiction" finding left without a disposition |
 | V10 | New teammate end to end | The named validator (Q4) follows `README.md` from a fresh clone: setup → dev server → lint/test → one brainstorm → plan → review cycle. Every blocker is logged as an issue; pass = zero open blockers. |
 
@@ -1096,7 +1120,7 @@ git grep -n '§' -- includes apps tests scripts phpcs.xml.dist yayloyalty.php | 
 # C4 — no feature IDs
 git grep -nwE 'F[0-9]{2}(-[0-9]+)?' -- includes apps tests scripts
 # C5 — every docs/*.md path cited anywhere exists (plans and specs excluded: they describe history; skill evals too: their prompts name example files)
-git grep -ohE 'docs/[A-Za-z0-9_./-]+\.md' -- . ':!docs/plans/' ':!docs/specs/' ':!.claude/skills/*/evals/' | sort -u | while read -r p; do [ -f "$p" ] || echo "MISSING $p"; done
+git grep -ohE 'docs/[A-Za-z0-9_./-]+\.md' -- . ':!docs/plans/' ':!docs/specs/' ':!.claude/skills/*/evals/*' | sort -u | while read -r p; do [ -f "$p" ] || echo "MISSING $p"; done
 # C6 — relative markdown links resolve
 git ls-files -- '*.md' | grep -E '^(CLAUDE|README)\.md$|^\.claude/|^docs/' | while read -r f; do
   grep -oE '\]\([^)[:space:]]+\)' "$f" | sed -E 's/^\]\(//; s/\)$//; s/#.*$//' | grep -vE '^(https?:|mailto:|$)' |

@@ -102,6 +102,8 @@ A typical change runs `/yaybrainstorming`, then `/yayplan`, then you implement i
 - `.claude/settings.local.json`: your own permissions and settings on top of `.claude/settings.json`;
 - `CLAUDE.local.md`: your own instructions on top of `CLAUDE.md`. It may drop the commit and PR trailers that `CLAUDE.md` asks for.
 
+**Mechanical checks.** Run `./scripts/check-harness.sh` before merging a PR that changes a harness file. It checks paths, links, headers, rule globs, skill names and decision records, prints one line per finding, and exits 1 if there is any.
+
 **Prompt audit.** Run `/doctor prompt-audit` in Claude Code after upgrading Claude Code and before merging a PR that changes `CLAUDE.md`, a rule or a skill. Every finding gets a fix, or a reason to keep the text.
 
 ## License
