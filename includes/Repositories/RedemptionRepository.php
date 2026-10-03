@@ -10,7 +10,7 @@ defined( 'ABSPATH' ) || exit;
  * under the customer's row lock; read by the commit's duplicate check, the
  * `redemption_count` reward condition and the customer drawer. Scaffold:
  * stubs; the table itself is Schema\RedemptionsTable, registered in
- * Installer::schemas() when F08 lands.
+ * Installer::schemas() when redemption ships.
  */
 final class RedemptionRepository extends AbstractRepository {
 
@@ -38,7 +38,7 @@ final class RedemptionRepository extends AbstractRepository {
      * (UNIQUE (order_id, reward_id) on the table); null when none.
      */
     public function find_by_order( int $order_id, int $reward_id ): ?Redemption { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(F08): SELECT * WHERE order_id = %d AND reward_id = %d LIMIT 1, hydrated.
+        // TODO(redemption): SELECT * WHERE order_id = %d AND reward_id = %d LIMIT 1, hydrated.
         throw new \RuntimeException( 'Not implemented' );
     }
 
@@ -48,7 +48,7 @@ final class RedemptionRepository extends AbstractRepository {
      * (reward_id, user_id) index, statuses other than cancelled.
      */
     public function count_for_customer( int $reward_id, int $user_id ): int { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(F08): SELECT COUNT(*) WHERE reward_id = %d AND user_id = %d AND status <> 'cancelled'.
+        // TODO(redemption): SELECT COUNT(*) WHERE reward_id = %d AND user_id = %d AND status <> 'cancelled'.
         throw new \RuntimeException( 'Not implemented' );
     }
 }

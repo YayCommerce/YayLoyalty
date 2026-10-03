@@ -16,8 +16,8 @@ import {
 
 /**
  * 4b's warning banner + three disabled actions. Rendered only when
- * `customer.expiry` is non-null (always null today — no `lots` table,
- * docs/data-model/future-tables.md).
+ * `customer.expiry` is non-null (always null today — the `lots` table is
+ * designed, not built yet).
  *
  * "Reset expiry" reuses the SAME reason `CustomerDrawerActions.tsx` shows for
  * it in the main actions row (`NOT_AVAILABLE_YET_REASON`) — consistent with

@@ -53,7 +53,8 @@ final class OrderListener {
      * Attaches the two order hooks; call once at boot, after settings are readable.
      *
      * Two hooks because a new order's first status never fires
-     * `woocommerce_order_status_changed` (README invariant 6). Refund and
+     * `woocommerce_order_status_changed`, which needs a previous status;
+     * `woocommerce_new_order` covers that first status. Refund and
      * trash hooks belong to OrderReversalListener.
      */
     public function register(): void {
@@ -84,7 +85,8 @@ final class OrderListener {
      * The one routing table, shared by both entry points above.
      *
      * $from is not a parameter and nothing dedups here: re-delivery is
-     * harmless, every step is idempotent (README invariants 2-4).
+     * harmless, every step is idempotent: staging checks its order meta, and
+     * the ledger's UNIQUE idempotency key turns a repeat award into a duplicate.
      *
      *   checkout-draft  nothing — a block-checkout draft is not an order yet
      *                   and must never reach staging

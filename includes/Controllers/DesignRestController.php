@@ -10,7 +10,7 @@ defined( 'ABSPATH' ) || exit;
  * GET/POST /design and POST /design/reset.
  *
  * No get_item_schema(): the whitelist lives in DesignSchema::schema(), following the SettingsRestController
- * sibling rather than §9's per-resource rule — one whitelist for a single-option resource, not two.
+ * sibling rather than declaring a per-resource item schema — one whitelist for a single-option resource, not two.
  */
 class DesignRestController extends AbstractRestController {
 

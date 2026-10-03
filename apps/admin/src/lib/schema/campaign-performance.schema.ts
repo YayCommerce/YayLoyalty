@@ -17,7 +17,7 @@ import { campaignSchema, CampaignTrigger } from './campaign.schema';
  * `totals` is lifetime (no date bound); `window`/`daily` is the last 30 days
  * clamped to the campaign's run — see the controller's own class docblock
  * ("TWO TIME BASES ON PURPOSE") for why. `skipped`, `estimate` and
- * `avg_order_subtotal` are null until the earning engine (F01-4) exists.
+ * `avg_order_subtotal` always ship null; the controller's class docblock says why.
  */
 
 /**
@@ -123,7 +123,7 @@ export const campaignPerformanceEntrySchema = z.object({
   customer_id: z.number().int(),
   customer_name: z.string(),
   points: z.number().int(),
-  /** UTC, `Y-m-d H:i:s` — see code-standards.md §4. */
+  /** UTC, `Y-m-d H:i:s`. */
   created_at: z.string(),
   reference: z
     .object({

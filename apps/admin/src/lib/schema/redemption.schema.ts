@@ -7,7 +7,7 @@ import { paginatedSchema } from '@/lib/api/paginated';
  * IS THE SOURCE OF TRUTH.
  *
  * The server always answers an empty envelope — no `yayloyalty_redemptions`
- * table exists yet (docs/data-model/redemptions.md, 1.0, designed but not implemented).
+ * table exists yet (designed, not built yet).
  * When it ships, only the server handler changes — this schema is already
  * the contract.
  */

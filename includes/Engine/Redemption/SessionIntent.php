@@ -16,7 +16,7 @@ final class SessionIntent {
 
     /** Postcondition: the stored integer, 0 when nothing was asked or there is no session. Never negative. */
     public function get(): int {
-        // TODO(F08): read KEY from the WC session as an int, floored at 0; return 0 when there is no session.
+        // TODO(redemption): read KEY from the WC session as an int, floored at 0; return 0 when there is no session.
         throw new \RuntimeException( 'Not implemented' );
     }
 
@@ -26,13 +26,13 @@ final class SessionIntent {
      * Postcondition: get() returns $points; 0 removes the key.
      */
     public function set( int $points ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(F08): floor the points at 0 and store them under KEY in the WC session; a zero delegates to clear.
+        // TODO(redemption): floor the points at 0 and store them under KEY in the WC session; a zero delegates to clear.
         throw new \RuntimeException( 'Not implemented' );
     }
 
     /** Postcondition: get() returns 0. Called by the commit after the order carries the frozen value. */
     public function clear(): void {
-        // TODO(F08): WC()->session->__unset( self::KEY ) when a session exists.
+        // TODO(redemption): WC()->session->__unset( self::KEY ) when a session exists.
         throw new \RuntimeException( 'Not implemented' );
     }
 }

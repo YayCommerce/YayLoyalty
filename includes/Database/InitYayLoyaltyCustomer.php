@@ -24,7 +24,7 @@ final class InitYayLoyaltyCustomer {
     /** build_row() must return keys in this order. */
     private const ROW_FORMAT = [
         'pending_points'   => '%d',
-        // Money is bound as %s, never %f (code-standards.md § 5).
+        // Money is bound as %s, never %f, which rounds through a float.
         'lifetime_spend'   => '%s',
         'last_activity_at' => '%s',
         'expires_at'       => '%s',

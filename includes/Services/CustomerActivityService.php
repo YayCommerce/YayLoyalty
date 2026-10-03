@@ -16,7 +16,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Writes `yayloyalty_customer_meta` rows for the three captured activity
- * events. [REVIEW] (docs/code-standards.md § 8): a third class holding both
+ * events. Deliberately a third class holding both
  * `CustomerRepository` and `LedgerRepository` alongside
  * `CustomerMetaRepository` — justified because both are READ-ONLY here
  * (membership check, balance, kept-entries count) and the only write

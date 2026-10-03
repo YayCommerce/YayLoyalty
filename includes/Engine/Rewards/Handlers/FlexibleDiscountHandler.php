@@ -26,7 +26,7 @@ final class FlexibleDiscountHandler implements RewardHandler {
      * wc_get_price_decimals() ).
      */
     public function quote( Reward $reward, Context $ctx ): Result { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(F08): hand the reward, the requested points cast to int, the balance, the cart subtotal and the currency from the Context, plus wc_get_price_decimals(), to Clamp::apply and return its Result.
+        // TODO(redemption): hand the reward, the requested points cast to int, the balance, the cart subtotal and the currency from the Context, plus wc_get_price_decimals(), to Clamp::apply and return its Result.
         throw new \RuntimeException( 'Not implemented' );
     }
 }

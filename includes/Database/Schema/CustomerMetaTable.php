@@ -9,8 +9,8 @@ defined( 'ABSPATH' ) || exit;
  * doubles as `occurred_at`. No unique key: multiple rows per key are
  * normal (e.g. repeated `points_adjusted`); `account_created`/
  * `account_deleted` once-only-ness is a write-side check
- * (`CustomerMetaRepository::has()`), not a DB constraint — see
- * docs/data-model/customers-and-ledger.md. idx_user_key serves both the group filter
+ * (`CustomerMetaRepository::has()`), not a DB constraint. idx_user_key
+ * serves both the group filter
  * (`meta_key IN (...)`) and the `latest(user_id, 'account_deleted')`
  * lookup; no standalone `meta_key` index — never selective without
  * `user_id`.
