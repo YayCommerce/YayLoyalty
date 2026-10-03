@@ -381,6 +381,7 @@ yayloyalty/
 | Q16 | The stack lands before the teammates' branches. On 2026-10-03, `dev/edd` was still `a8d6fe0`, so the stack merges cleanly, and the local `harness-v1-final` tag is correct. Seven teammate branches conflict with it: `jason/feat/rewards-editor`, `paul/feat/email-points-earned`, `paul/feat/frontend-launcher` and `paul/improve/ledger-queries`, which are live, and `jason/feat/reward-screen`, `jason/feat/campaign-editor-archive-ui` and `jason/dev/campaign-editor-performance-ui`, which are older but still wanted. Each gets a fix list: the conflicts, the new old-harness references to rewrite, and what its old-doc edits must move into the new docs. The freeze message asks them not to merge into `dev/edd` until the stack lands, and the 12 PRs merge in a day or two. |
 | Q17 | Trace approves the 12 stack PRs, under Q4. Q4 predates the README's rule that a PR needs a teammate other than its author; the rule applies to every PR after the stack. |
 | Q18 | Trace is the code owner who reviews `docs/architecture.md` for P4. |
+| Q19 | The stack landed in one PR, not one per phase. P0 and P1 were squash-merged (#45, #57). Two problems then showed up. Every next branch conflicted on the plan file, because a squash commit isn't in the next branch's history. And deleting a merged branch closed the PR stacked on it, rather than retargeting it as §7 assumed. So Trace reverted #45 and #57 and merged the top branch, `trace/docs/harness-p11-readme`, as #59 with a merge commit (`2fbd369`, 2026-10-03). `dev/edd`'s tree is identical to that branch, and every phase's commit, with its audit body, is in the history. This departs from `CLAUDE.md`'s squash rule and §7's one PR per phase, for this stack only. `./scripts/check-harness.sh` passes on `dev/edd`. |
 
 ---
 
@@ -394,6 +395,8 @@ Exception: P1–P5 were prepared on 2026-10-01 as a stack of branches, each on t
 3. Then merge `dev/edd` into the next branch, so its PR shows only its own commit: use the PR's "Update branch" with a merge, or merge locally.
 4. Never rebase: the branches are pushed, and rebasing them would rewrite pushed history.
 
+What happened instead is Q19: steps 2 and 3 failed in practice. A squash commit isn't in the next branch's history, so every "Update branch" conflicted on the plan file. And deleting the merged branch closed the next PR rather than retargeting it. For a future stack, either change each next PR's base to `dev/edd` before deleting the merged branch, or land the stack as one PR.
+
 ### P0 — Land the plan and freeze the inventory
 - **Goal:** this plan is in the repo; the inventory matches HEAD.
 - **Prerequisites:** none.
@@ -405,7 +408,7 @@ Exception: P1–P5 were prepared on 2026-10-01 as a stack of branches, each on t
 - **Checklist:**
   - [x] plan committed
   - [x] sweeps re-run, §2 updated (§2.4 correction above)
-  - [ ] PR merged
+  - [x] PR merged (#45, then landed again with the whole stack in #59, Q19)
 - **Acceptance:**
   - `git ls-files docs/plans/2026-10-01-harness-renewal.md` prints the path.
   - `git diff --name-only origin/dev/edd...HEAD` lists only that file.
@@ -451,14 +454,14 @@ Exception: P1–P5 were prepared on 2026-10-01 as a stack of branches, each on t
   5. Capture `B` → `after.txt`.
   6. Run C1–C5, C7 and C8.
 - **Checklist:**
-  - [ ] tag pushed (created locally at `a8d6fe0`; Trace pushes it, Q8)
+  - [x] tag pushed (`harness-v1-final` at `a8d6fe0`, by Trace, Q8)
   - [x] files removed
   - [x] 30 doc pointers, 43 IDs, 5 config/script refs and README lines fixed
   - [x] `.gitignore` block gone
   - [x] C1–C5 clean
   - [x] C7 empty diff
   - [x] C8 shows only allowlisted files
-  - [ ] team told that `/code-corrector` is gone for good (Q1)
+  - [x] team told that `/code-corrector` is gone for good (Q1; in the freeze notice)
 - **Notes (2026-10-01):**
   - README lines 122 and 131 carry real content beside the pointer. P2 strips the pointer and keeps the line (§1: "strip dead references").
   - Stale clauses corrected along with `F01-4`: `campaign-performance.schema.ts:20`, `CampaignPerformanceSidePanel.tsx:110-112`, `CampaignPerformanceRestController.php:55-65` (including its "EarningService is scaffold" claim), and `CampaignPerformanceRepository.php:65-67`.
@@ -1023,6 +1026,18 @@ Exception: P1–P5 were prepared on 2026-10-01 as a stack of branches, each on t
   - [ ] §8 V1–V10 green
   - [ ] walkthrough issues closed
   - [ ] plan status done
+- **What's left (2026-10-03, after #59):** the harness is on `dev/edd` (Q19), and the phase branches are deleted on GitHub. In order:
+  1. **This bookkeeping:** merge the PR from `trace/docs/harness-landed`, which records Q19, P0's merge, the tag push and the freeze notice.
+  2. **Teammate branches:** share the fix lists with Jason and Paul, and say the stack has landed. They merge `dev/edd` into their branches and follow their lists:
+     - live: `jason/feat/rewards-editor`, `paul/improve/ledger-queries`, `paul/feat/email-points-earned`, `paul/feat/frontend-launcher`;
+     - nothing to merge, so close: `jason/feat/reward-screen`, `jason/feat/campaign-editor-archive-ui`, `jason/dev/campaign-editor-performance-ui`.
+
+     Their PRs then update the new docs as their lists say: storefront and email facts in `docs/architecture.md`, the "No tests" entry in `docs/known-issues.md` once tests return, and the "Fails today" marks in `CLAUDE.md`. Each must pass `./scripts/check-harness.sh`.
+  3. **P4:** Trace reviews `docs/architecture.md` as code owner (Q18), then ticks P4's box. Fixes go in their own PR.
+  4. **P9, open since Q12:** name where the canonical copy of the shared skills lives, and copy the skills to the sibling YayCommerce repos if they use them.
+  5. **V10:** name the validator, someone who didn't build the harness (Q4). They follow `README.md` from a fresh clone of `dev/edd`: setup, the dev server, lint and tests, then one brainstorm, plan and review cycle. Each blocker becomes an issue.
+  6. **Fix forward** every walkthrough finding, then tick "§8 V1–V10 green" and "walkthrough issues closed".
+  7. **Close the plan:** set this plan's Status to `done YYYY-MM-DD` in the PR that closes the last finding.
 - **Notes (2026-10-03):**
   - Branch: `trace/docs/harness-p11-readme`, before P12 gets its own branch.
   - **Step 1:** `scripts/check-harness.sh` runs C2–C6, C9, C10, C12, C15, C16 and C17, prints each finding with its check's name, and exits 1 on any. It passes on `/bin/bash` 3.2, and a planted broken link fails it. The README's upkeep section links it.
