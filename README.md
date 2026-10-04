@@ -77,7 +77,7 @@ A typical change runs `/yaybrainstorming`, then `/yayplan`, then you implement i
 
 **Status lifecycle.** Specs and plans stay in the repo as history. An agent acts only on a spec whose Status is `accepted` or a plan whose Status is `active`. The Status words and when each one is set belong to the templates: [the design template](.claude/skills/yaybrainstorming/references/design-template.md) for specs, and [the plan template](.claude/skills/yayplan/references/plan-template.md) for plans.
 
-**Decision records.** Write one when a change makes or reverses a choice that is costly to undo and that the code can't justify by itself. [The format record](docs/decisions/2026-10-01-record-architecture-decisions.md) gives the examples, the file name and the four headings. The record lands in the PR that makes the change.
+**Decision records.** Write one when a change makes or reverses a choice that is costly to undo and that the code can't justify by itself. [The decision-record practice](docs/decisions/2026-10-04-decision-record-practice.md) gives the examples, the file name and the four headings. The record lands in the PR that makes the change.
 
 ## Keeping the harness current
 

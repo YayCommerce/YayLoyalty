@@ -39,6 +39,8 @@ Commands and hard rules live in [CLAUDE.md](../CLAUDE.md). Citations give a path
 ## Server layers and write ownership
 
 - REST: `includes/Engine/RestAPI.php` is the one place controllers are registered. That happens on `rest_api_init`, under `BaseRestController::REST_NAMESPACE` (yayloyalty/v1). It builds the Lite controllers; Pro builds its own and adds them through the `yayloyalty_rest_controllers` filter on that list.
+  - The redemptions and referrals routes (`RedemptionsRestController`, `ReferralsRestController`) are live in Lite and return empty pages until their tables exist.
+  - Its constructor also subscribes `DashboardCache::flush` to `yayloyalty_ledger_recorded` and `yayloyalty_campaigns_changed`. Above a member-count threshold, `includes/Services/Dashboard/DashboardCache.php` serves the dashboard payload from transients.
 - Controllers extend `includes/Controllers/AbstractRestController.php` (schemas, args, permissions, the pagination envelope). That class extends `includes/Controllers/BaseRestController.php` (execution and errors).
   - Every route's permission callback is `requires()` with one capability. Access is checked there and nowhere deeper: services and the engine take an actor id instead (`includes/Access/Capabilities.php`).
   - Writes go through `exec_write()`, which runs the callback inside `Transaction::run`. A returned `WP_Error` rolls back like an exception. Any other exception becomes a 500 that carries only a correlation id; the details go to the log.
@@ -49,12 +51,13 @@ Commands and hard rules live in [CLAUDE.md](../CLAUDE.md). Citations give a path
 - The layers run controller → service → repository → `$wpdb`:
   - A repository holds all the SQL for one table and never opens a transaction (`includes/Repositories/AbstractRepository.php`). Every failed write throws, which is what makes `Transaction::run` roll back. A few read-side queries, such as the dashboard and the customer list, join other tables.
   - Models (`includes/Models/`) are typed rows that never touch the database. Enums (`includes/Enums/`) are classes of string constants, because the product runs on PHP 7.4.
-  - Campaigns have no service, because their invariants are validation. Their controller calls the repository directly.
+  - Campaigns have no service, because their invariants are validation. Their controller calls the repository directly. `CampaignRepository` keeps the campaign list in the object cache, and a write clears it and fires `yayloyalty_campaigns_changed`.
 - `includes/Services/LedgerService.php` is the only writer of ledger rows and of the customer's cached totals (balance, lifetime earned and redeemed):
   - In one transaction, it locks the customer row (`SELECT … FOR UPDATE`), appends the ledger row with its running `balance_after`, and updates the totals.
   - It fires `yayloyalty_ledger_recorded` after commit.
   - System rows carry an idempotency key that a unique index backs, so a replayed event can't award twice.
   - Its docblock lists where it may be constructed.
+  - A customer row is created at zero by `CustomerRepository::ensure_row()`, which `LedgerService`, `PendingPoints` and `CustomerActivityListener` call. Creating the row is not a ledger write.
   - [The decision record](decisions/2026-10-01-ledger-service-sole-writer.md) says why there is one writer and a cached total.
   - Points pending on an open order sit in order meta, and their sum is a separate cached column on the customer. `includes/Engine/Earning/PendingPoints.php` writes both; only the demo seeder (`includes/Database/InitYayLoyaltyCustomer.php`) also sets the column.
 - The domain lives in `includes/Engine/`:
@@ -63,8 +66,8 @@ Commands and hard rules live in [CLAUDE.md](../CLAUDE.md). Citations give a path
   - Refunds, cancellations, trashed orders and reviews that lose approval go through `includes/Engine/Earning/Reversal.php`. It claws points back through `LedgerService`, or restores them when a refund is deleted.
   - Each listener runs inside `ListenerGuard`, which logs failures and never rethrows, so loyalty can't break an order save.
   - The Points engine (`includes/Engine/Points/`) scores events and writes nothing. It reads live campaigns and a `Context` that `ContextFactory` builds from WooCommerce data.
-  - Redemption (`includes/Engine/Redemption/`, `includes/Engine/Rewards/`) is half built, and nothing hooks it. The quote side works (`Quoter`, `RewardEngine`). The write side, `LedgerService::redeem()` and `RedemptionRepository` included, is stubs marked `TODO(redemption)`.
-  - `includes/Engine/CustomerActivityListener.php` (hooked in `yayloyalty.php`) records account and points activity in `customer_meta`, through `includes/Services/CustomerActivityService.php`.
+  - Redemption (`includes/Engine/Redemption/`, `includes/Engine/Rewards/`) is scaffolding, and nothing hooks it. `Quoter` and `RewardEngine` pass calls along, and `Rewards\Clamp` holds the clamp arithmetic. The gates, the flexible-discount handler, `Rewards\ContextFactory` and the whole write side (`LedgerService::redeem()`, `RedemptionRepository`, `RedemptionsTable`) are stubs marked `TODO(redemption)` that throw.
+  - `includes/Engine/CustomerActivityListener.php` (hooked in `yayloyalty.php`) records account and points activity in `customer_meta`, through `includes/Services/CustomerActivityService.php`. On `user_register` it also creates the new member's customer row, skipping staff.
 
 ## Data and upgrades
 
@@ -77,9 +80,10 @@ Commands and hard rules live in [CLAUDE.md](../CLAUDE.md). Citations give a path
   - It seeds demo customers once per site, when WooCommerce is loaded and the `yayloyalty_init_demo_customers` filter allows it.
   - It grants capabilities and runs migrations.
   - It writes `yayloyalty_db_version` last, so a crash mid-install retries.
-- `yayloyalty_db_version` holds the plugin version, not a schema version. `Installer::maybe_upgrade` re-runs the whole `install()` whenever it differs from `YAYLOYALTY_VERSION`, behind an `add_option` lock. A schema change therefore reaches existing sites only through a version bump.
+- `yayloyalty_db_version` holds the plugin version, not a schema version. `Installer::maybe_upgrade` re-runs the whole `install()` whenever it differs from `YAYLOYALTY_VERSION`, behind an `add_option` lock (`yayloyalty_upgrading`). A schema change therefore reaches existing sites only through a version bump.
 - Capabilities have their own version. `Capabilities::install()` grants the defaults to administrator and shop_manager, then stores `Capabilities::VERSION` in `yayloyalty_caps_version`. `migrate()` re-runs it when the constant is higher than the stored value. `install()` also calls it, so every version bump gives those roles back any default a merchant took away.
 - Settings (`yayloyalty_settings`) and design (`yayloyalty_design`) are options. Each belongs to one helper in `includes/Helpers/`. That helper merges code defaults on read, and whitelists and sanitises on both read and write. The emails' on/off switches live in WooCommerce's own email options.
+- Other stored state: `yayloyalty_reviewed` (`SettingsHelper::OPTION_REVIEWED`, set by `POST /settings/mark-reviewed`), `yayloyalty_demo_customers_initialized` (`InitYayLoyaltyCustomer`), Pro's `yayloyalty_customer_segments` (`includes/Pro/Helpers/CustomerSegmentsHelper.php`), and per-user dashboard notice dismissals in user meta (`includes/Services/Dashboard/NoticeDismissals.php`).
 - Orders are read and written only through WooCommerce's CRUD API, never with SQL on order tables, which keeps the plugin HPOS-compatible. Pending and awarded points sit in order meta. `PendingPoints` saves only the meta, so no full order save runs inside an award.
 - There are no cron or Action Scheduler jobs and no custom post types.
 
@@ -117,7 +121,7 @@ One tree builds both editions. Lite is Pro without `includes/Pro/` and without t
   - Either way the app is one ES module (the facade adds `type="module"`) that depends on WordPress's React and `@wordpress/*` scripts. The production build maps those imports to WordPress globals; the dev server maps only `@wordpress/hooks` and `@wordpress/i18n` and serves its own React (`apps/admin/vite.config.ts`).
 - Data hand-off: `includes/Helpers/LocalizeHelper.php` builds two globals:
   - `yayLoyaltyAdmin` carries settings, design and the current user's capabilities, filtered by `yayloyalty_localize_admin_data`;
-  - `yayLoyaltyMeta` carries the REST root, namespace and `wp_rest` nonce, plus site, plugin and WooCommerce data.
+  - `yayLoyaltyMeta` carries the REST root, namespace and `wp_rest` nonce, plus site, plugin and WooCommerce data, filtered by `yayloyalty_localize_meta`.
   - Their TypeScript shapes are in `apps/admin/src/types/localize.type.ts`.
 - REST calls go through one ky client (`apps/admin/src/lib/api/api.ts`). It prefixes the REST root, sends the nonce as `X-WP-Nonce`, and falls back to `?rest_route=` on plain permalinks.
   - Each resource family has a client module and TanStack Query options: in `apps/admin/src/lib/api/` and `apps/admin/src/lib/queries/` for Lite, and beside the feature in `apps/admin/src/pro/` for Pro.
@@ -167,5 +171,5 @@ The suites hold no test cases today ([known issue](known-issues.md#no-tests-comp
   - It doesn't load `vite.config.ts`, so `IS_PRO_BUILD` is false unless the shell exports `VITE_IS_PRO=true`.
   - Tests sit outside `tsconfig.json`, so `tsc` doesn't check them.
 - **Shared fixtures:**
-  - `tests/fixtures/` holds data that both languages test against, with PHP as the source of truth. For example, `tests/fixtures/points-math-vectors.json` pins `includes/Utils/PointsMath.php` and its twin `apps/admin/src/lib/points-math/points-math.ts`.
+  - `tests/fixtures/` holds data that both languages test against, with PHP as the source of truth. For example, `tests/fixtures/points-math-vectors.json` is meant to pin `includes/Utils/PointsMath.php` and its twin `apps/admin/src/lib/points-math/points-math.ts`; no test reads it today.
   - `scripts/dump-design-defaults.php` prints the defaults of `includes/Helpers/DesignHelper.php`; redirect it into `apps/admin/tests/fixtures/design-defaults.json` to regenerate that fixture.
