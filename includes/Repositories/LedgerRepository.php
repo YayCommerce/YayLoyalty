@@ -148,7 +148,7 @@ class LedgerRepository extends AbstractRepository {
     /**
      * One user's history, newest first, narrowed by the drawer's filters.
      *
-     * @param array $args AbstractRepository::paginate() args plus LedgerHistoryFilters::where()'s
+     * @param array $args AbstractRepository::paginate() args plus history_where()'s
      *                    `types`/`search`/`after`/`before`.
      * @return array{items: LedgerEntry[], total: int, page: int, per_page: int}
      */
@@ -157,7 +157,7 @@ class LedgerRepository extends AbstractRepository {
 
         $args['where'] = array_merge(
             [ $wpdb->prepare( 'user_id = %d', $user_id ) ],
-            LedgerHistoryFilters::where( $args )
+            $this->history_where( $args )
         );
 
         if ( ! isset( $args['orderby'] ) ) {
@@ -289,6 +289,44 @@ class LedgerRepository extends AbstractRepository {
         }
 
         return $totals;
+    }
+
+    /**
+     * Prepared WHERE fragments for paginate_for_user()'s drawer filters.
+     *
+     * Row descriptions ("Earned on order #6730") are composed client-side, so
+     * search can only reach what is stored: a bare or `#`-prefixed number is
+     * also an exact `order_id`, and any text matches the admin's `note`.
+     *
+     * @param array{types?: string[], search?: string, after?: string, before?: string} $args
+     *        `after`/`before` are site-calendar `Y-m-d` days, both inclusive.
+     * @return string[]
+     */
+    private function history_where( array $args ): array {
+        global $wpdb;
+
+        $where = [];
+        $types = $args['types'] ?? [];
+
+        if ( ! empty( $types ) ) {
+            // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- placeholder list only; values bound here.
+            $where[] = $wpdb->prepare( 'type IN (' . Sql::in_placeholders( $types ) . ')', $types );
+        }
+
+        $where = array_merge( $where, $this->site_day_range_where( $args['after'] ?? '', $args['before'] ?? '' ) );
+
+        $search = trim( $args['search'] ?? '' );
+
+        if ( '' !== $search ) {
+            $note_like_sql = $this->like_fragment( 'note', $search );
+            $order_number  = ltrim( $search, '#' );
+
+            $where[] = ctype_digit( $order_number )
+                ? '(' . $wpdb->prepare( 'order_id = %d', (int) $order_number ) . ' OR ' . $note_like_sql . ')'
+                : $note_like_sql;
+        }
+
+        return $where;
     }
 
     /**

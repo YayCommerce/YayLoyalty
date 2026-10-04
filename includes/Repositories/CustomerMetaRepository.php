@@ -114,7 +114,7 @@ class CustomerMetaRepository extends AbstractRepository {
 
         $where = array_merge(
             $where,
-            self::site_day_range_where( (string) ( $args['after'] ?? '' ), (string) ( $args['before'] ?? '' ) )
+            $this->site_day_range_where( (string) ( $args['after'] ?? '' ), (string) ( $args['before'] ?? '' ) )
         );
 
         $search = trim( (string) ( $args['search'] ?? '' ) );

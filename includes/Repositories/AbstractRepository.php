@@ -195,7 +195,7 @@ abstract class AbstractRepository {
     }
 
     /** Prepared LIKE fragment for a free-text search; esc_like() first or % and _ become wildcards. */
-    public static function like_fragment( string $column, string $term ): string {
+    protected function like_fragment( string $column, string $term ): string {
         global $wpdb;
 
         return $wpdb->prepare(
@@ -210,7 +210,7 @@ abstract class AbstractRepository {
      *
      * @return string[]
      */
-    public static function site_day_range_where( string $after, string $before ): array {
+    protected function site_day_range_where( string $after, string $before ): array {
         global $wpdb;
 
         $where = [];
