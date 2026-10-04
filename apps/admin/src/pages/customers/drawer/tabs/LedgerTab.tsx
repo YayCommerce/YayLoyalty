@@ -67,7 +67,12 @@ export function LedgerTab({
         searchPlaceholder={SEARCH_PLACEHOLDER()}
       />
       <div className="overflow-x-auto rounded-md border">
-        <LedgerTabRows rows={rows} isLoading={query.isPending} customerFirstName={customerFirstName} />
+        <LedgerTabRows
+          rows={rows}
+          isLoading={query.isPending}
+          isFiltered={state.isFiltered}
+          customerFirstName={customerFirstName}
+        />
       </div>
       <DrawerTabPager
         page={state.page}

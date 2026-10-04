@@ -107,6 +107,11 @@ export function emptyLedgerBody(firstName: string): string {
 export const EMPTY_ACTIVITY_TITLE = () => __('Nothing recorded yet', 'yayloyalty');
 export const EMPTY_ACTIVITY_BODY = () => __('Tier changes, expiry resets and admin actions appear here.', 'yayloyalty');
 
+// The ledger and activity tabs both show these when a filter hides every row.
+export const EMPTY_FILTERED_TITLE = () => __('Nothing matches these filters', 'yayloyalty');
+export const EMPTY_FILTERED_BODY = () =>
+  __('Try another type, a different search or a wider date range.', 'yayloyalty');
+
 export const EMPTY_REDEMPTIONS_TITLE = () => __('No rewards redeemed yet', 'yayloyalty');
 export function emptyRedemptionsBody(firstName: string): string {
   return sprintf(__('A row appears here the first time %s redeems a reward.', 'yayloyalty'), firstName);
