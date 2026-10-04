@@ -18,9 +18,7 @@ defined( 'ABSPATH' ) || exit;
  * must apply the same `CAP::VIEW` gate as everywhere else in this
  * controller and must never expose them to a lower capability.
  *
- * A separate controller, the same shape `RedemptionsRestController` uses for
- * the same reason: keeps both this file and `CustomerRestController` under
- * the 200-line cap.
+ * A separate controller, the same shape `RedemptionsRestController` uses.
  */
 final class ReferralsRestController extends AbstractRestController {
 

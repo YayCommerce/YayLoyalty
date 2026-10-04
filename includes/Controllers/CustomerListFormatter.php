@@ -9,13 +9,11 @@ use YayLoyalty\Repositories\CustomerRepository;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * `GET /customers` response shaping — split out of CustomerRestController to
- * keep it near the 200-line cap. Sibling to `CustomerRowFilters`/
- * `CustomerRowSort`, which already own the list's filter/sort semantics;
- * this class owns the route args, the full request→response handling
- * (`respond_list()`), and the wire-row/no-match-suggestion shapes built
- * from their output — moved off the controller for the same 200-line
- * reason.
+ * `GET /customers` response shaping, apart from CustomerRestController.
+ * Sibling to `CustomerRowFilters`/`CustomerRowSort`, which already own the
+ * list's filter/sort semantics; this class owns the route args, the full
+ * request→response handling (`respond_list()`), and the
+ * wire-row/no-match-suggestion shapes built from their output.
  */
 final class CustomerListFormatter {
 

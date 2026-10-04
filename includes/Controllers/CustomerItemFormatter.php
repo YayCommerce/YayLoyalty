@@ -6,9 +6,9 @@ use YayLoyalty\Models\CustomerMeta;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * `GET /customers/{id}` response assembly — split out of
- * `CustomerRestController` to keep it under the 200-line cap (mirrors
- * `CustomerListFormatter`). Pure array assembly: no `$wpdb`, no
+ * `GET /customers/{id}` response assembly, apart from
+ * `CustomerRestController` (mirrors `CustomerListFormatter`).
+ * Pure array assembly: no `$wpdb`, no
  * `get_userdata()`, no `__()` — the caller resolves identity and the
  * deletion row first, so this stays unit-testable without a WP bootstrap.
  *

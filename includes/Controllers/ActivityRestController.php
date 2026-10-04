@@ -22,8 +22,7 @@ defined( 'ABSPATH' ) || exit;
  * calendar days (`Dates::site_day_to_utc()`), same as the ledger tab.
  *
  * A separate controller rather than a method on `CustomerRestController`,
- * the same way `LedgerRestController` owns `/customers/{id}/ledger`: keeps
- * both files under the 200-line cap and mirrors an established shape.
+ * the same way `LedgerRestController` owns `/customers/{id}/ledger`.
  */
 final class ActivityRestController extends AbstractRestController {
 

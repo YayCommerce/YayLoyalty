@@ -7,8 +7,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * The four extra `GET /customers/{id}/ledger` args the customer drawer's
- * ledger tab needs, plus the type-group vocabulary they filter by — split
- * out of LedgerRestController to keep it near the 200-line cap.
+ * ledger tab needs, plus the type-group vocabulary they filter by.
  */
 final class LedgerQueryArgs {
 

@@ -13,9 +13,7 @@ defined( 'ABSPATH' ) || exit;
  * from `CustomerItemFormatter::format()`. When the real table ships,
  * only `get_history()` below changes.
  *
- * A separate controller, the same shape `ActivityRestController` uses for
- * the same reason: keeps both this file and `CustomerRestController` under
- * the 200-line cap.
+ * A separate controller, the same shape `ActivityRestController` uses.
  */
 final class RedemptionsRestController extends AbstractRestController {
 
