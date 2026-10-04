@@ -138,8 +138,8 @@ final class Installer {
         }
     }
 
-    /** Seeds the built-in reward; public so tests seed exactly what an install does. */
-    public static function seed_builtin_reward(): void {
+    /** Seeds the built-in reward. */
+    private static function seed_builtin_reward(): void {
         $repository = new \YayLoyalty\Repositories\RewardRepository();
         $now        = \YayLoyalty\Utils\Dates::now();
         $type       = \YayLoyalty\Enums\RewardType::FLEXIBLE_DISCOUNT;

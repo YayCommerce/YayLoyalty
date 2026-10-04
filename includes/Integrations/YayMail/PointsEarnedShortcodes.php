@@ -41,7 +41,7 @@ class PointsEarnedShortcodes extends BaseShortcode {
     private $sample_values = null;
 
     /** A shortcode's name: 'customer_name' → 'yaymail_yayloyalty_customer_name'. */
-    public static function name( string $key ): string {
+    private static function name( string $key ): string {
         return 'yaymail_yayloyalty_' . $key;
     }
 
@@ -57,7 +57,7 @@ class PointsEarnedShortcodes extends BaseShortcode {
             $shortcodes[] = [
                 'name'          => self::name( $key ),
                 'description'   => $description,
-                'group'         => 'yayloyalty_points_earned',
+                'group'         => PointsEarnedEmail::ID,
                 'callback'      => [ $this, 'render' ],
                 'callback_args' => [ 'yayloyalty_key' => $key ],
             ];

@@ -77,13 +77,8 @@ trait WooCommerceOrdersFixture {
         return array_values( wp_list_pluck( WC()->mailer()->get_emails(), 'id' ) );
     }
 
-    /** A customer with a unique address, so the Points earned email has somewhere to go. */
-    private function customer_with_email(): int {
-        return $this->create_customer( 'yl_it_' . wp_generate_password( 8, false ) . '@example.com' );
-    }
-
     /** A customer-role user, registered while an administrator is current so SignupListener does not award it. */
-    private function create_customer( string $email = '' ): int {
+    private function create_customer(): int {
         $admins = get_users(
             [
                 'role'   => 'administrator',
@@ -103,7 +98,6 @@ trait WooCommerceOrdersFixture {
             [
                 'user_login' => 'yl_it_' . wp_generate_password( 8, false ),
                 'user_pass'  => wp_generate_password(),
-                'user_email' => $email,
                 'role'       => 'customer',
             ]
         );

@@ -24,7 +24,7 @@ class YayMailIntegration {
     }
 
     /** Whether YayMail is loaded and, for a build that checks licences, licensed. */
-    public static function is_yaymail_active(): bool {
+    private static function is_yaymail_active(): bool {
         if ( ! class_exists( 'YaymailPluginAdapter', false ) ) {
             return false;
         }
