@@ -24,7 +24,7 @@ final class Installer {
     private const LOCK_TTL = 60;
 
     /**
-     * Registered table schemas; Pro adds its own via yayloyalty_table_schemas.
+     * Registered table schemas; yayloyalty_table_schemas can add more (nothing does yet, Pro included).
      *
      * @return AbstractTableSchema[]
      */
