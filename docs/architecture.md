@@ -9,20 +9,21 @@ Commands and hard rules live in [CLAUDE.md](../CLAUDE.md). Citations give a path
 ## Boot and autoload
 
 - `yayloyalty.php` is the entry point. Each of its constants is defined only when not already defined, so `wp-config.php` can override any of them. `YAYLOYALTY_IS_DEVELOPMENT` is the one a site sets (see [SPA and WordPress](#spa-and-wordpress)).
-- Two autoloaders run. `composer.json` classmaps only the scoped admin-shell in `vendor-prefixed/` and `YayLoyaltyPluginAdapter.php`, loaded through `vendor/autoload.php`. Everything in the `YayLoyalty\` namespace goes through the loader in `yayloyalty.php`, which maps the namespace onto `includes/` and requires a file only if it exists.
+- Two autoloaders run. `composer.json` classmaps only the scoped admin-shell in `vendor-prefixed/src/` and `YayLoyaltyPluginAdapter.php`, loaded through `vendor/autoload.php`; `yayloyalty.php` also requires the adapter directly. Everything in the `YayLoyalty\` namespace goes through the loader in `yayloyalty.php`, which maps the namespace onto `includes/` and requires a file only if it exists.
 - That `file_exists` check lets one tree run with parts missing. Lite has no `includes/Pro/`, and release zips have no `RegisterDev.php`, so code probes those classes with `class_exists` instead of requiring them.
 - Boot runs on `plugins_loaded`:
   - priority 5: admin-shell boots and registers the adapter (see [the next section](#admin-shell-sync-and-scoping));
   - priority 10: `plugin_init()` shows a notice and stops if WooCommerce is missing. Otherwise it declares HPOS compatibility (`includes/Engine/ActDeact.php`), builds the `YayLoyalty` singleton and loads translations;
   - priority 20: `Installer::maybe_upgrade` and `Capabilities::migrate`, which run even without WooCommerce.
-- `includes/YayLoyalty.php` wires the plugin by hand in its constructor, with no container. The order is: REST routes, the script registrar, the admin page, emails, the Pro seam, then the earning listeners. Pro boots before the listeners because `EarningService::build()` reads its filters once, at boot.
-- Activation (`ActDeact::activate`) runs `Installer::install()` on the site, or on every site when network-activated. `wp_initialize_site` covers sites added later. Deactivation does nothing and there is no uninstall routine, so tables, options and capabilities stay behind.
+- `includes/YayLoyalty.php` wires the WooCommerce side by hand in its constructor, with no container. The order is: REST routes, the script registrar, the admin script enqueue (`Admin\Settings`), emails, the Pro seam, then the earning listeners. Pro boots before them so its filters are attached before any campaign read. `EarningService::build()` applies `yayloyalty_earning_gates` once, at boot, so a gate added after it is never seen; Pro adds none today.
+- `yayloyalty.php` attaches the rest itself: the installer and capability upgrades, and the `CustomerActivityListener` hooks.
+- Activation (`ActDeact::activate`) does nothing while WooCommerce is inactive; `Installer::maybe_upgrade` installs on a later request instead. Otherwise it runs `Installer::install()` on the site, or on every site when network-activated. `wp_initialize_site` covers sites added later. Deactivation does nothing and there is no uninstall routine, so tables, options and capabilities stay behind.
 
 ## Admin-shell sync and scoping
 
 - Admin-shell is a private Composer package (`composer.json`) shared by the YayCommerce plugins. It draws the shared YayCommerce admin menu and its common pages (help, licences, recommended plugins). It also adds this plugin's submenu entry and plugin-row links.
 - Every plugin ships its own copy. To keep the copies from colliding, php-scoper rewrites the package into `vendor-prefixed/` under the `YayLoyaltyScoped` namespace (`scoper.inc.php`). [The decision record](decisions/2026-10-01-admin-shell-scoped-with-php-scoper.md) says why.
-  - The plugin uses only the scoped copy, and that copy loads only through the Composer classmap.
+  - The plugin uses only the scoped copy, which loads through the Composer classmap. The unscoped package is in Composer's autoload map too, so a stray `YayCommerce\AdminShell\` reference works in development and fails in a release zip, which doesn't ship `vendor/yaycommerce/`.
   - With several YayCommerce plugins active, each copy registers its own plugin, and the newest version draws the shared menu.
 - `YayLoyaltyPluginAdapter.php` joins the two:
   - It is a global class that implements the scoped menu-adapter interface. It stays out of scoping, so it sees the real WordPress classes.
@@ -33,18 +34,18 @@ Commands and hard rules live in [CLAUDE.md](../CLAUDE.md). Citations give a path
   2. requires php-scoper and thecodingmachine/safe at their latest versions as dev dependencies, which rewrites `composer.json`;
   3. regenerates `scoper.inc.php` from the package's template, keeping only the prefix and the adapter's name;
   4. scopes the package, copies its assets and dumps the classmap.
-- Release runs `vendor/bin/yaycommerce-prerelease`. It repeats those steps and ends with `composer install --no-dev`. A plain `composer install` never builds `vendor-prefixed/`.
+- Release runs a full `composer update`, then `vendor/bin/yaycommerce-prerelease`, once per zip. It repeats those steps and ends with `composer install --no-dev`. A plain `composer install` never builds `vendor-prefixed/`.
 
 ## Server layers and write ownership
 
-- REST: `includes/Engine/RestAPI.php` is the one place controllers are built and registered. That happens on `rest_api_init`, under `BaseRestController::REST_NAMESPACE` (yayloyalty/v1). Pro adds its controllers through the `yayloyalty_rest_controllers` filter on that list.
+- REST: `includes/Engine/RestAPI.php` is the one place controllers are registered. That happens on `rest_api_init`, under `BaseRestController::REST_NAMESPACE` (yayloyalty/v1). It builds the Lite controllers; Pro builds its own and adds them through the `yayloyalty_rest_controllers` filter on that list.
 - Controllers extend `includes/Controllers/AbstractRestController.php` (schemas, args, permissions, the pagination envelope). That class extends `includes/Controllers/BaseRestController.php` (execution and errors).
-  - Every route's permission callback is `requires()` with one capability. Capabilities are checked there and nowhere deeper: services and the engine take an actor id instead (`includes/Access/Capabilities.php`).
+  - Every route's permission callback is `requires()` with one capability. Access is checked there and nowhere deeper: services and the engine take an actor id instead (`includes/Access/Capabilities.php`).
   - Writes go through `exec_write()`, which runs the callback inside `Transaction::run`. A returned `WP_Error` rolls back like an exception. Any other exception becomes a 500 that carries only a correlation id; the details go to the log.
 - `includes/Database/Transaction.php` is the only code that issues transaction SQL.
   - Nested calls become savepoints.
-  - If WooCommerce already opened a transaction, it joins it rather than committing it.
-  - `after_commit()` callbacks run only after the outermost commit.
+  - If a caller, such as WooCommerce, already opened a transaction, it joins it with a savepoint rather than committing it.
+  - `after_commit()` callbacks run after the outermost commit, or at once when no transaction is open. Inside a transaction another caller opened, they run when the plugin's part is released, and that caller can still roll back.
 - The layers run controller → service → repository → `$wpdb`:
   - A repository holds all the SQL for one table and never opens a transaction (`includes/Repositories/AbstractRepository.php`). Every failed write throws, which is what makes `Transaction::run` roll back. A few read-side queries, such as the dashboard and the customer list, join other tables.
   - Models (`includes/Models/`) are typed rows that never touch the database. Enums (`includes/Enums/`) are classes of string constants, because the product runs on PHP 7.4.
@@ -55,28 +56,29 @@ Commands and hard rules live in [CLAUDE.md](../CLAUDE.md). Citations give a path
   - System rows carry an idempotency key that a unique index backs, so a replayed event can't award twice.
   - Its docblock lists where it may be constructed.
   - [The decision record](decisions/2026-10-01-ledger-service-sole-writer.md) says why there is one writer and a cached total.
-  - Points pending on an open order are a separate cached column, owned by `includes/Engine/Earning/PendingPoints.php`.
+  - Points pending on an open order sit in order meta, and their sum is a separate cached column on the customer. `includes/Engine/Earning/PendingPoints.php` writes both; only the demo seeder (`includes/Database/InitYayLoyaltyCustomer.php`) also sets the column.
 - The domain lives in `includes/Engine/`:
-  - Earning listeners (`includes/Engine/Earning/Listeners/`) on WooCommerce order, review and signup hooks call `EarningService::award()` (`includes/Engine/Earning/EarningService.php`). It runs the gates, asks the Points engine, then calls `LedgerService::earn()`, all in one transaction.
-  - Refunds, cancellations and trashed orders go through `includes/Engine/Earning/Reversal.php`. It claws points back through `LedgerService`, or restores them when a refund is deleted.
+  - Earning listeners (`includes/Engine/Earning/Listeners/`) hook WooCommerce order events and WordPress comment and registration events. They stage pending points through `EarningService::preview()` and award through `EarningService::award()` (`includes/Engine/Earning/EarningService.php`).
+  - `award()` runs the gates and asks the Points engine. Then, in one transaction, it calls `LedgerService::earn()`, releases the order's pending points and records the award on the order.
+  - Refunds, cancellations, trashed orders and reviews that lose approval go through `includes/Engine/Earning/Reversal.php`. It claws points back through `LedgerService`, or restores them when a refund is deleted.
   - Each listener runs inside `ListenerGuard`, which logs failures and never rethrows, so loyalty can't break an order save.
   - The Points engine (`includes/Engine/Points/`) scores events and writes nothing. It reads live campaigns and a `Context` that `ContextFactory` builds from WooCommerce data.
-  - Redemption (`includes/Engine/Redemption/`, `includes/Engine/Rewards/`) is designed, not built yet: its stubs are marked `TODO(redemption)`, and nothing hooks them.
+  - Redemption (`includes/Engine/Redemption/`, `includes/Engine/Rewards/`) is half built, and nothing hooks it. The quote side works (`Quoter`, `RewardEngine`). The write side, `LedgerService::redeem()` and `RedemptionRepository` included, is stubs marked `TODO(redemption)`.
   - `includes/Engine/CustomerActivityListener.php` (hooked in `yayloyalty.php`) records account and points activity in `customer_meta`, through `includes/Services/CustomerActivityService.php`.
 
 ## Data and upgrades
 
-- `Installer::schemas()` (`includes/Database/Installer.php`) is the list of installed tables. Each entry is a class in `includes/Database/Schema/` that returns its table's `dbDelta` DDL.
+- `Installer::schemas()` (`includes/Database/Installer.php`) is the list of installed tables, after the `yayloyalty_table_schemas` filter, which nothing hooks today. Each entry is a class in `includes/Database/Schema/` that returns its table's `dbDelta` DDL.
   - A schema class that isn't on the list is only a design.
   - `includes/Database/Schema/RedemptionsTable.php` throws instead of returning DDL.
 - `Table::name()` (`includes/Utils/Table.php`) reads `$wpdb->prefix` on every call and never caches it, because multisite switches blogs. Integration tests rely on the same behaviour to move every plugin table to a scratch prefix.
 - `Installer::install()` is safe to repeat:
   - It runs `dbDelta` for every schema, then seeds the built-ins.
-  - It seeds demo customers, unless the `yayloyalty_init_demo_customers` filter turns that off.
+  - It seeds demo customers once per site, when WooCommerce is loaded and the `yayloyalty_init_demo_customers` filter allows it.
   - It grants capabilities and runs migrations.
   - It writes `yayloyalty_db_version` last, so a crash mid-install retries.
 - `yayloyalty_db_version` holds the plugin version, not a schema version. `Installer::maybe_upgrade` re-runs the whole `install()` whenever it differs from `YAYLOYALTY_VERSION`, behind an `add_option` lock. A schema change therefore reaches existing sites only through a version bump.
-- Capabilities have their own version. `Capabilities::install()` grants the defaults to administrator and shop_manager, then stores `Capabilities::VERSION` in `yayloyalty_caps_version`. `migrate()` re-runs it when the constant is higher than the stored value.
+- Capabilities have their own version. `Capabilities::install()` grants the defaults to administrator and shop_manager, then stores `Capabilities::VERSION` in `yayloyalty_caps_version`. `migrate()` re-runs it when the constant is higher than the stored value. `install()` also calls it, so every version bump gives those roles back any default a merchant took away.
 - Settings (`yayloyalty_settings`) and design (`yayloyalty_design`) are options. Each belongs to one helper in `includes/Helpers/`. That helper merges code defaults on read, and whitelists and sanitises on both read and write. The emails' on/off switches live in WooCommerce's own email options.
 - Orders are read and written only through WooCommerce's CRUD API, never with SQL on order tables, which keeps the plugin HPOS-compatible. Pending and awarded points sit in order meta. `PendingPoints` saves only the meta, so no full order save runs inside an award.
 - There are no cron or Action Scheduler jobs and no custom post types.
@@ -86,37 +88,39 @@ Commands and hard rules live in [CLAUDE.md](../CLAUDE.md). Citations give a path
 One tree builds both editions. Lite is Pro without `includes/Pro/` and without the SPA's Pro code. The rules that keep the split safe are in [CLAUDE.md](../CLAUDE.md), and the reasons for it in [the decision record](decisions/2026-10-01-build-time-pro-lite-split.md); this section is how it works.
 
 - PHP seam: the constructor of `includes/YayLoyalty.php` calls `YayLoyaltyPro::boot()` when `is_pro()` finds the class. This checks that the Pro code is present; it is not a licence check. In Lite it is false, because the autoloader skips the missing file.
-- `boot()` in `includes/Pro/YayLoyaltyPro.php` is the full list of what Pro changes. Each entry is a filter: either on WooCommerce's email list, or on an extension point that Lite applies itself with a working default. For example, with no conditions evaluator attached, campaign conditions are not applied. Pro adds no capabilities.
+- `boot()` in `includes/Pro/YayLoyaltyPro.php` is the full list of what Pro changes. Each hook it adds is a filter: either on WooCommerce's email list, or on an extension point that Lite applies itself with a working default. For example, with no conditions evaluator attached, campaign conditions are not applied. Pro adds no capabilities. `boot()` then fires `yayloyalty_pro_booted`, which nothing uses yet.
 - Stored Pro data survives a move to Lite. `CampaignTrigger` and `RewardType` (`includes/Enums/`) separate `all()`, what this build offers, from `all_known()`, every value that may be stored, so Pro rows still validate.
 - SPA flag: `apps/admin/vite.config.ts` turns `BUILD_TYPE` into `VITE_IS_PRO`. `lite` builds Lite; anything else, including unset, builds Pro. `apps/admin/src/lib/is-pro-build.ts` exposes the result as `IS_PRO_BUILD`. Only `scripts/run.sh` sets `BUILD_TYPE`.
 - Lite drops Pro code only through constant folding and tree-shaking. There is no plug-in registry, alias swap or lint rule.
   - One route table (`apps/admin/src/router.tsx`) and the same pages serve both builds.
-  - Shared code imports Pro components from `apps/admin/src/pro/index.ts` and renders them inside an `IS_PRO_BUILD` branch. In Lite, that branch shows an upsell or a not-found page instead.
+  - Shared code imports Pro components from `apps/admin/src/pro/index.ts` and renders them inside an `IS_PRO_BUILD` branch. In Lite, that branch shows a Lite version, an upsell or a not-found page instead.
   - `<ProGate>` (`apps/admin/src/components/pro/ProGate.tsx`) ships in both builds and swaps in the upsell at runtime. Its check runs inside its own module, so it can't drop its children from the bundle; only the branch at the call site does that.
-- `scripts/validate-build.php` fails a zip when:
-  - Lite still has `includes/Pro/`;
-  - Lite PHP names `Pro` outside `includes/YayLoyalty.php`, once comments are stripped;
+- `scripts/validate-build.php` runs these Pro/Lite checks, among [others](#build-and-release). It fails a zip when:
+  - Lite still has `includes/Pro/`, or Pro lacks `includes/Pro/YayLoyaltyPro.php`;
+  - Lite PHP outside the vendored code names `Pro` anywhere but `includes/YayLoyalty.php`, or more than twice there, once comments are stripped;
   - the bundle sentinel from `apps/admin/src/pro/index.ts` is present in Lite or missing from Pro;
   - Lite lacks the upsell text;
   - the bundle has more than one JS chunk;
-  - any PHP array carries a Pro-flag key such as `isPro`.
-- The sentinel is reachable only through `registerPro()`, which `apps/admin/src/main.tsx` calls inside the build-flag branch. The sentinel check therefore proves only that the Lite flag reached Vite and folded that branch away. It doesn't prove every Pro module was dropped. For example, a Lite build with `<ProGate><DesignTypographySection /></ProGate>` and no `IS_PRO_BUILD` branch ships that section and still passes.
+  - any packaged PHP file has an array key `isPro`, `isPremium`, `is_pro` or `isProBuild`;
+  - a Pro-only design field appears in the two inline design sections without `IS_PRO_BUILD` in the same file. This one reads `apps/admin/src`, not the zip.
+- Today the sentinel is reachable only through `registerPro()`, which `apps/admin/src/main.tsx` calls inside the build-flag branch. The sentinel check therefore proves only that the Lite flag reached Vite and folded that branch away. It doesn't prove every Pro module was dropped. For example, a Lite build with `<ProGate><DesignTypographySection /></ProGate>` and no `IS_PRO_BUILD` branch ships that section and still passes.
 
 ## SPA and WordPress
 
 - The page: admin-shell adds the YayLoyalty submenu from the adapter, and the adapter's callback prints `<div id="yayloyalty">` for `apps/admin/src/main.tsx` to mount into.
   - `includes/Engine/Admin/Settings.php` enqueues the app only on that page's hook suffix, `yaycommerce_page_yayloyalty`.
-  - It also adds the `yay-ui` body class, which scopes the SPA's Tailwind utilities (`apps/admin/src/main.css`).
-- Loading: `includes/Engine/Register/RegisterFacade.php` chooses a registrar by `YAYLOYALTY_IS_DEVELOPMENT`:
-  - `true`: `RegisterDev` loads `/main.tsx` from the Vite dev server on port 3030, plus React's refresh preamble;
-  - anything else: `RegisterProd` loads the fixed files `assets/dist/admin/js/main.js` and `style.css`. There is no manifest.
-  - Either way the app is one ES module (the facade adds `type="module"`) that depends on WordPress's React and `@wordpress/*` scripts. The production build maps those imports to WordPress globals (`apps/admin/vite.config.ts`).
+  - It adds the `yay-ui` body class on every admin screen. That class scopes the SPA's Tailwind utilities (`apps/admin/src/main.css`).
+- Loading: `includes/Engine/Register/RegisterFacade.php` chooses a registrar by `YAYLOYALTY_IS_DEVELOPMENT`, which defaults to `true`:
+  - `true`: `RegisterDev` loads `/main.tsx` from the Vite dev server on port 3030, plus React's refresh preamble. Release zips have no `RegisterDev.php`, so a site running one must define the constant `false`, or the admin page stays blank;
+  - anything else: `RegisterProd` loads the fixed file `assets/dist/admin/js/main.js`. There is no manifest.
+  - The facade registers the built `assets/dist/admin/style.css` in both modes.
+  - Either way the app is one ES module (the facade adds `type="module"`) that depends on WordPress's React and `@wordpress/*` scripts. The production build maps those imports to WordPress globals; the dev server maps only `@wordpress/hooks` and `@wordpress/i18n` and serves its own React (`apps/admin/vite.config.ts`).
 - Data hand-off: `includes/Helpers/LocalizeHelper.php` builds two globals:
   - `yayLoyaltyAdmin` carries settings, design and the current user's capabilities, filtered by `yayloyalty_localize_admin_data`;
   - `yayLoyaltyMeta` carries the REST root, namespace and `wp_rest` nonce, plus site, plugin and WooCommerce data.
   - Their TypeScript shapes are in `apps/admin/src/types/localize.type.ts`.
 - REST calls go through one ky client (`apps/admin/src/lib/api/api.ts`). It prefixes the REST root, sends the nonce as `X-WP-Nonce`, and falls back to `?rest_route=` on plain permalinks.
-  - Each resource family has a client module in `apps/admin/src/lib/api/` and TanStack Query options in `apps/admin/src/lib/queries/`.
+  - Each resource family has a client module and TanStack Query options: in `apps/admin/src/lib/api/` and `apps/admin/src/lib/queries/` for Lite, and beside the feature in `apps/admin/src/pro/` for Pro.
   - Its zod schemas in `apps/admin/src/lib/schema/` mirror the PHP response shapes. A schema file's opening comment usually names the PHP code it mirrors, as [the convention](conventions.md#typescript-copies-of-php-name-their-owner) asks.
   - Settings and design start from the localized data instead of a first fetch.
 - Capabilities: `apps/admin/src/lib/access.tsx` mirrors the PHP capability names, and routes, menus and controls hide or disable by them. This is presentation only; the REST permission callbacks are what enforce access.
@@ -129,7 +133,7 @@ One tree builds both editions. Lite is Pro without `includes/Pro/` and without t
 ## Build and release
 
 - `./scripts/run.sh build` type-checks, then runs `vite build` into `assets/dist/admin/` (`apps/admin/package.json`). `BUILD_TYPE` sets the edition.
-- `./scripts/run.sh release` first stamps the version into the plugin header, `YAYLOYALTY_VERSION` and the `readme.txt` stable tag; `yayloyalty.php` is the version source. Then `build_package` in `scripts/run.sh`:
+- `./scripts/run.sh release` first stamps a new version, when one is given or entered, into the plugin header, `YAYLOYALTY_VERSION` and the `readme.txt` stable tag; `yayloyalty.php` is the version source. Then `build_package` in `scripts/run.sh`:
   1. runs the prerelease sync, which leaves only `--no-dev` Composer packages, and dumps the production classmap;
   2. builds the SPA;
   3. stages `release/yayloyalty/` from an explicit include list: the root plugin files, `includes/`, `assets/`, `languages/`, `vendor-prefixed/` and Composer's autoloader only;
@@ -143,23 +147,25 @@ One tree builds both editions. Lite is Pro without `includes/Pro/` and without t
   - the manifest: build type, hashes, no unlisted files, and a version that matches the header and the constant;
   - `php -l` on every PHP file;
   - that no dev artifacts remain;
-  - a headless WP-CLI boot of the zip, when `YAYLOYALTY_WP_CLI` is set. Otherwise it reports SKIP.
+  - a headless WP-CLI boot of the zip, when `YAYLOYALTY_WP_CLI` is set. Otherwise it reports SKIP, or fails under `--require-boot`, which `run.sh` doesn't pass.
 - `readme.txt` is the WordPress.org readme and carries the release notes.
 
 ## Tests
+
+The suites hold no test cases today ([known issue](known-issues.md#no-tests-composer-test-passes-empty-admin-test-fails)). What follows is the harness new tests run in.
 
 - **Unit** (`phpunit.xml.dist`, `tests/unit/`): plain PHP with no WordPress.
   - `tests/bootstrap.php` maps the namespace onto `includes/` and shims the WordPress functions the tested code reaches.
   - There is no `$wpdb`, so anything that queries belongs in integration.
   - `tests/unit/EngineTestCase.php` builds campaigns and contexts in memory.
 - **Integration** (`phpunit-integration.xml.dist`, `tests/integration/`): `tests/integration/bootstrap.php` boots the WordPress site the plugin is installed in and needs the plugin active.
-  - It sets `$wpdb->prefix` to `ylit_`, which moves every plugin table to a scratch copy, and gives other plugins' tables, WooCommerce's included, empty scratch copies too. It drops all of them at the end.
-  - WordPress core tables, such as users and posts, stay real.
+  - It sets `$wpdb->prefix` to `ylit_` and creates the plugin's tables there, empty. Other plugins' tables, WooCommerce's included, get empty copies under the same prefix. It drops all of them before the run and again at the end.
+  - WordPress core tables, such as users, posts and options, stay real.
   - `tests/integration/IntegrationTestCase.php` truncates tables between tests rather than rolling back, because the code under test opens its own transactions.
-  - The traits beside it create real WooCommerce orders, users, reviews and email settings.
+  - The traits beside it create real users, products, orders, reviews and campaigns, and snapshot the site's WooCommerce email options. Core tables are real, so a test must call their cleanup and restore helpers.
 - **Vitest** (`apps/admin/vitest.config.ts`) runs `apps/admin/tests/**/*.test.ts` in Node, with the `@` alias.
   - It doesn't load `vite.config.ts`, so `IS_PRO_BUILD` is false unless the shell exports `VITE_IS_PRO=true`.
   - Tests sit outside `tsconfig.json`, so `tsc` doesn't check them.
 - **Shared fixtures:**
   - `tests/fixtures/` holds data that both languages test against, with PHP as the source of truth. For example, `tests/fixtures/points-math-vectors.json` pins `includes/Utils/PointsMath.php` and its twin `apps/admin/src/lib/points-math/points-math.ts`.
-  - `scripts/dump-design-defaults.php` regenerates `apps/admin/tests/fixtures/design-defaults.json` from `includes/Helpers/DesignHelper.php`.
+  - `scripts/dump-design-defaults.php` prints the defaults of `includes/Helpers/DesignHelper.php`; redirect it into `apps/admin/tests/fixtures/design-defaults.json` to regenerate that fixture.

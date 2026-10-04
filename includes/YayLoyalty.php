@@ -31,7 +31,7 @@ class YayLoyalty {
             \YayLoyalty\Pro\YayLoyaltyPro::boot();
         }
 
-        // After Pro's boot: its yayloyalty_earning_gates subscriber must be attached before build() applies the filter.
+        // After Pro's boot: build() applies yayloyalty_earning_gates once, so any gate Pro adds must already be attached (it adds none yet).
         $this->register_earning_listeners();
     }
 

@@ -542,8 +542,17 @@ What happened instead is Q19: steps 2 and 3 failed in practice. A squash commit 
   2. Add one "read when…" link in `CLAUDE.md`.
 - **Checklist:**
   - [x] audit recorded (commit body)
-  - [ ] code owner reviewed accuracy
+  - [x] code owner reviewed accuracy (2026-10-04 note)
   - [x] do-not-reintroduce ticked (commit body)
+- **Notes (2026-10-04), code-owner review (Q18):**
+  - Every claim was checked against the code at `d49c2a8`. No mechanism was wrong. About 30 claims overstated, were stale or left out a case, and are corrected. The largest:
+    - activation does nothing without WooCommerce;
+    - `award()` runs the gates and the engine before its transaction;
+    - redemption's quote side is built;
+    - a release zip needs `YAYLOYALTY_IS_DEVELOPMENT` defined `false`;
+    - every version bump re-grants the default capabilities.
+  - Three code comments that contradicted the doc are fixed: the earning-gates comment in `includes/YayLoyalty.php`, `Installer::schemas()`, and `InitYayLoyaltyCustomer`'s count of construction sites.
+  - Trace signs off by merging the PR from `trace/docs/architecture-review`.
 - **Notes (2026-10-01):**
   - Branch `trace/docs/harness-p4-architecture` is stacked on P3, which is not merged yet.
   - Citations give a path and a symbol, never a line number, so routine edits don't make them stale.
