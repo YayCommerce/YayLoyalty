@@ -300,7 +300,7 @@ class LedgerRepository extends AbstractRepository {
      *
      * @param array{types?: string[], search?: string, after?: string, before?: string} $args
      *        `after`/`before` are site-calendar `Y-m-d` days, both inclusive.
-     * @return string[]
+     * @return string[] Already-prepared fragments, for AbstractRepository::paginate()'s `where`.
      */
     private function history_where( array $args ): array {
         global $wpdb;
