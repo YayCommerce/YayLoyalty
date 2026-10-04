@@ -382,6 +382,8 @@ yayloyalty/
 | Q17 | Trace approves the 12 stack PRs, under Q4. Q4 predates the README's rule that a PR needs a teammate other than its author; the rule applies to every PR after the stack. |
 | Q18 | Trace is the code owner who reviews `docs/architecture.md` for P4. |
 | Q19 | The stack landed in one PR, not one per phase. P0 and P1 were squash-merged (#45, #57). Two problems then showed up. Every next branch conflicted on the plan file, because a squash commit isn't in the next branch's history. And deleting a merged branch closed the PR stacked on it, rather than retargeting it as §7 assumed. So Trace reverted #45 and #57 and merged the top branch, `trace/docs/harness-p11-readme`, as #59 with a merge commit (`2fbd369`, 2026-10-03). `dev/edd`'s tree is identical to that branch, and every phase's commit, with its audit body, is in the history. This departs from `CLAUDE.md`'s squash rule and §7's one PR per phase, for this stack only. `./scripts/check-harness.sh` passes on `dev/edd`. |
+| Q20 | The shared skills' canonical copy is `.claude/skills/<name>/` in this repo; see [the canonical-copy record](../decisions/2026-10-03-shared-skills-canonical-copy.md). Another repo copies a skill whole and never edits its copy. Answers the open part of Q12. Bringing the skills to the sibling repos is a separate plan for each repo, which starts with that repo's `CLAUDE.md`. |
+| Q21 | Paul is the P12 validator (V10). Answers the name Q4 deferred. |
 
 ---
 
@@ -426,7 +428,7 @@ What happened instead is Q19: steps 2 and 3 failed in practice. A squash commit 
   - [x] §9 empty
   - [x] §6 updated
   - [x] reviewers named (Q4)
-  - [ ] P12 validator named (deferred by Q4; needed before P12)
+  - [x] P12 validator named: Paul (Q21)
 - **Acceptance:**
   - §9 has no unchecked item.
   - The diff touches only the plan file.
@@ -908,7 +910,7 @@ What happened instead is Q19: steps 2 and 3 failed in practice. A squash commit 
   - [x] dry run done and discarded (P12, 2026-10-03)
   - [x] do-not-reintroduce ticked (commit body)
 - **Notes (2026-10-02):**
-  - Trace took the recommended answer to Q11–Q13. Where the canonical copy of the shared skills lives (Q12) is not named yet.
+  - Trace took the recommended answer to Q11–Q13. Where the canonical copy of the shared skills lives (Q12) is not named yet; named in Q20.
   - **Fixes applied** to the drafts, all of items 1, 2 and 5–10, worded to hold in any repo:
     - **Specs:** the template and the fast-path doc start at `**Status:** proposed`. The lifecycle is stated above the template, and steps 5 and 7 set `superseded by` and `accepted`. The hard gate now waits for `accepted`.
     - **Plans:** both shapes open with `**Status:** active`, and the lifecycle is stated above the template. A phase file's first line points to its README. `yayplan` stops on a design doc that isn't `accepted`.
@@ -1034,8 +1036,8 @@ What happened instead is Q19: steps 2 and 3 failed in practice. A squash commit 
 
      Their PRs then update the new docs as their lists say: storefront and email facts in `docs/architecture.md`, the "No tests" entry in `docs/known-issues.md` once tests return, and the "Fails today" marks in `CLAUDE.md`. Each must pass `./scripts/check-harness.sh`.
   3. **P4:** Trace reviews `docs/architecture.md` as code owner (Q18), then ticks P4's box. Fixes go in their own PR.
-  4. **P9, open since Q12:** name where the canonical copy of the shared skills lives, and copy the skills to the sibling YayCommerce repos if they use them.
-  5. **V10:** name the validator, someone who didn't build the harness (Q4). They follow `README.md` from a fresh clone of `dev/edd`: setup, the dev server, lint and tests, then one brainstorm, plan and review cycle. Each blocker becomes an issue.
+  4. **Done (Q20).** **P9, open since Q12:** name where the canonical copy of the shared skills lives, and copy the skills to the sibling YayCommerce repos if they use them.
+  5. **V10:** the validator is Paul (Q21), who didn't build the harness (Q4). They follow `README.md` from a fresh clone of `dev/edd`: setup, the dev server, lint and tests, then one brainstorm, plan and review cycle. Each blocker becomes an issue.
   6. **Fix forward** every walkthrough finding, then tick "§8 V1–V10 green" and "walkthrough issues closed".
   7. **Close the plan:** set this plan's Status to `done YYYY-MM-DD` in the PR that closes the last finding.
 - **Notes (2026-10-03):**

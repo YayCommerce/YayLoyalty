@@ -7,6 +7,8 @@ description: Turns a feature idea or rough requirement into an accepted design d
 # Update when: the spec format, its Status words or the interview changes, or yayplan needs something
 #   new from a spec. The YayCommerce plugins share this skill: keep its files repo-neutral, and put a
 #   repo's own facts in that repo's CLAUDE.md.
+#   Its canonical copy is YayCommerce/YayLoyalty, .claude/skills/yaybrainstorming/; a copy elsewhere is replaced
+#   whole, never edited (docs/decisions/2026-10-03-shared-skills-canonical-copy.md).
 # This header sits in the frontmatter because Claude Code strips the frontmatter when it loads a
 #   skill, but keeps HTML comments.
 ---

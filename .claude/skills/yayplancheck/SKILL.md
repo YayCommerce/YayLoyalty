@@ -6,6 +6,8 @@ description: Reviews implemented code against its yayplan plan, in a fresh subag
 # Update when: the review procedure or the report format changes, or yayplan's plan format changes.
 #   The YayCommerce plugins share this skill: keep its files repo-neutral, and put a repo's own facts
 #   in that repo's CLAUDE.md.
+#   Its canonical copy is YayCommerce/YayLoyalty, .claude/skills/yayplancheck/; a copy elsewhere is replaced
+#   whole, never edited (docs/decisions/2026-10-03-shared-skills-canonical-copy.md).
 # This header sits in the frontmatter because Claude Code strips the frontmatter when it loads a
 #   skill, but keeps HTML comments.
 ---
