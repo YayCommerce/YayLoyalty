@@ -11,8 +11,8 @@ defined( 'ABSPATH' ) || exit;
  * All SQL for exactly one table. Never opens a transaction or touches a
  * second table (service concerns); every write throws, because
  * Transaction::run() commits unless a Throwable escapes; never memoizes the
- * table name (multisite switches blogs). Not a singleton: see
- * docs/code-standards.md § 8.
+ * table name (multisite switches blogs). Not a singleton: get_instance()
+ * ignores constructor arguments after the first call.
  */
 abstract class AbstractRepository {
 

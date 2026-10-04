@@ -1,0 +1,47 @@
+{
+  "skill_name": "yaytidy",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I'm about to open a PR. Check my branch for duplicated constants and drifted mirrors first.",
+      "expected_output": "Runs branch mode without asking which mode to use. Picks the PR base from CLAUDE.md, and on a stacked branch asks for it, recommending the nearest parent. The report's first line names the base ref, its short SHA, the changed-file count and any untracked files. Asks the user to commit uncommitted in-scope files first, never committing itself. Invokes the built-in simplify skill once, before its own pass, on the changed paths, and lists what it changed under 'Changed by /simplify'. Reports findings with an ID, kind, path:line for each copy, owner or 'no owner:', proposed fix and contract label, then asks: fix every finding not labelled contract, pick by ID, or fix none. Does not commit.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "/yaytidy base origin/main",
+      "expected_output": "Validates origin/main with git rev-parse --verify and uses it without asking for a base or a mode. The first line names origin/main, its short SHA and the number of changed files. An invalid ref would be refused with the reason before any file changes.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "/yaytidy",
+      "expected_output": "On a branch whose diff changed only Markdown files, the report reads 'No code in scope' and the simplify skill is not invoked. No files change.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "Rename the camelCase methods in src/Admin/Settings.php to snake_case.",
+      "expected_output": "Does not invoke yaytidy. This is a naming and style request.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "Find the bugs in my branch before I merge.",
+      "expected_output": "Does not invoke yaytidy. Bug hunting belongs to /code-review.",
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "/yaytidy src/Admin 'src/Api/*.php'",
+      "expected_output": "Runs path mode on both arguments, expanding the folder and the quoted glob with git ls-files, and checks them against the whole codebase. The first line gives the paths and their file count. If they hold more than 20 files, asks before invoking simplify: run on all, skip it, or stop to narrow. A path that matches no tracked file is refused with the reason. Findings may be anywhere in the paths, and only picked findings are fixed.",
+      "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "/yaytidy commit 3f2c1ab",
+      "expected_output": "Runs commit mode. Refuses the SHA with the reason unless it is in HEAD's history. Diffs against the commit's first parent (the empty tree for a root commit) and checks only the lines the commit changed that still exist, found with git blame at HEAD. The first line gives the short SHA, the subject, the file count and the number of changed lines later commits rewrote, which are counted, not checked, and says when the commit is already in the base. simplify gets only the commit's files that still exist. A problem elsewhere in the same files is not reported.",
+      "files": []
+    }
+  ]
+}

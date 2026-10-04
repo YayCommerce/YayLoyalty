@@ -8,8 +8,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * GET /yayloyalty/v1/customers/{id}/referrals — paginated referral rows.
  *
- * No `referrals` table exists yet — `docs/data-model/future-tables.md`'s
- * `yayloyalty_referrals` is designed but not implemented (1.1) — so the
+ * The `yayloyalty_referrals` table is designed, not built yet, so the
  * endpoint always answers an EMPTY envelope, matching `counts.referrals`
  * from `CustomerItemFormatter::format()`. When the real table ships,
  * only `get_history()` below changes.

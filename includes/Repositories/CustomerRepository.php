@@ -201,7 +201,7 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
      * `customers` row must still appear (with `u.*` columns NULL,
      * `CustomerListFormatter::format_row()` falls back to the
      * `account_deleted` snapshot for display). A read-side exception to the
-     * one-table rule (docs/code-standards.md § 6), which is about write
+     * one-table rule, which is about write
      * ownership.
      *
      * @param array<string, mixed>                                      $criteria CustomerRowFilters::to_criteria()'s shape.

@@ -37,13 +37,13 @@ final class ClassicCheckoutAdapter {
      * Called once at boot; classic templates only.
      */
     public function register(): void {
-        // TODO(F08): add_action / add_filter for the six hooks named in the docblock.
+        // TODO(redemption): add_action / add_filter for the six hooks named in the docblock.
         throw new \RuntimeException( 'Not implemented' );
     }
 
     /** Renders the slider/input row from service->quote(): requested, applied, value, and the bound_by explanation; nothing when the quote is denied. Escaped output only. */
     public function render(): void {
-        // TODO(F08): quote = service->quote( WC()->cart, current user or null ); denied → return; echo the escaped row template with data-* for requested/applied/bound_by.
+        // TODO(redemption): quote = service->quote( WC()->cart, current user or null ); denied → return; echo the escaped row template with data-* for requested/applied/bound_by.
         throw new \RuntimeException( 'Not implemented' );
     }
 
@@ -59,7 +59,7 @@ final class ClassicCheckoutAdapter {
      * @return mixed $passthrough, unchanged.
      */
     public function read_intent( $passthrough = null ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(F08): read the field from the posted form (parse_str for the order-review string, the request for cart update), absint it, store it through SessionIntent::set, and return the argument unchanged.
+        // TODO(redemption): read the field from the posted form (parse_str for the order-review string, the request for cart update), absint it, store it through SessionIntent::set, and return the argument unchanged.
         throw new \RuntimeException( 'Not implemented' );
     }
 
@@ -71,7 +71,7 @@ final class ClassicCheckoutAdapter {
      * @param array $data The posted checkout fields.
      */
     public function validate( array $data, \WP_Error $errors ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(F08): key = service->checkout_error( WC()->cart, user ); key → errors->add( 'yayloyalty_redeem', message_for( key ) ).
+        // TODO(redemption): key = service->checkout_error( WC()->cart, user ); key → errors->add( 'yayloyalty_redeem', message_for( key ) ).
         throw new \RuntimeException( 'Not implemented' );
     }
 
@@ -83,7 +83,7 @@ final class ClassicCheckoutAdapter {
      * @param array $posted The posted checkout fields.
      */
     public function on_order_processed( int $order_id, array $posted, \WC_Order $order ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(F08): service->commit( order ).
+        // TODO(redemption): service->commit( order ).
         throw new \RuntimeException( 'Not implemented' );
     }
 }

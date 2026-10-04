@@ -16,8 +16,8 @@ use YayLoyalty\Utils\Dates;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The only writer of the ledger and the customer aggregates — the award
- * writer of the two-moment split (docs/archive/points-engine-scout.md). Enforced by
+ * The only writer of the ledger and the customer aggregates, so the writer
+ * behind EarningService's award moment. Enforced by
  * convention: constructed in exactly five places, Engine\RestAPI::controllers(),
  * Database\InitYayLoyaltyCustomer::maybe_create(),
  * Engine\Earning\EarningService::build(), Engine\Earning\Reversal::build()
@@ -320,7 +320,7 @@ final class LedgerService {
      * @throws \YayLoyalty\Database\QueryException When a write other than a duplicate fails.
      */
     public function redeem( LedgerEntry $draft ): Outcome { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(F08): mirror earn() — assert REDEEM, points < 0, key; Transaction::run: ensure_row, lock_and_get, if balance + points < 0 → Outcome::skipped( insufficient_balance ), pre-check, insert_unless_duplicate → Outcome::duplicate, apply_aggregates, announce(); return Outcome::redeemed.
+        // TODO(redemption): mirror earn() — assert REDEEM, points < 0, key; Transaction::run: ensure_row, lock_and_get, if balance + points < 0 → Outcome::skipped( insufficient_balance ), pre-check, insert_unless_duplicate → Outcome::duplicate, apply_aggregates, announce(); return Outcome::redeemed.
         throw new \RuntimeException( 'Not implemented' );
     }
 
@@ -372,7 +372,7 @@ final class LedgerService {
             $lifetime_earned_delta,
             $lifetime_redeemed_delta,
             $activity_at,
-            null // Expiry policy is a later Pro task (data-model/future-tables.md `yayloyalty_lots`).
+            null // Expiry needs the lots table: designed, not built yet.
         );
     }
 

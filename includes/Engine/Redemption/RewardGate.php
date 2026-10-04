@@ -19,7 +19,7 @@ defined( 'ABSPATH' ) || exit;
 final class RewardGate implements Gate {
 
     public function check( Reward $reward, Context $ctx ): ?string { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(F08): ! reward->is_live_at( ctx->get_at() ) → Result::REASON_NOT_LIVE; cost_points set and > ctx balance → REASON_INSUFFICIENT_BALANCE; apply_filters( yayloyalty_reward_conditions_match, true, reward, ctx ) false → REASON_CONDITIONS_NOT_MET; else null.
+        // TODO(redemption): ! reward->is_live_at( ctx->get_at() ) → Result::REASON_NOT_LIVE; cost_points set and > ctx balance → REASON_INSUFFICIENT_BALANCE; apply_filters( yayloyalty_reward_conditions_match, true, reward, ctx ) false → REASON_CONDITIONS_NOT_MET; else null.
         throw new \RuntimeException( 'Not implemented' );
     }
 }

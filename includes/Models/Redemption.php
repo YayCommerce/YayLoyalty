@@ -7,8 +7,8 @@ defined( 'ABSPATH' ) || exit;
  * One reward claim: what was spent, what it bought, at what rate, on which
  * order — the facts a refund needs later (value and rate at redemption
  * time, never today's). Written once at commit; `status` and
- * `restored_points` are the only columns Zone 3 will move. Money is a
- * decimal string per docs/code-standards.md §5.
+ * `restored_points` are the only columns a cancel or refund moves. Money is a
+ * decimal string, so it never rounds through a float.
  */
 final class Redemption extends AbstractModel {
 

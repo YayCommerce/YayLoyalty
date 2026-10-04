@@ -24,7 +24,7 @@ defined( 'ABSPATH' ) || exit;
  * Pro entry point: wiring only, features live in their layer directories.
  * includes/Pro/ is deleted for the Lite build; the only reference from
  * outside is the guarded class_exists probe in YayLoyalty. Pro reaches Lite
- * only through the seams in docs/code-standards.md § 13 — add a seam, never a marker.
+ * only through the filters attached in boot() — add a seam, never a strip marker.
  */
 final class YayLoyaltyPro {
 

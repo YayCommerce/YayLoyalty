@@ -1,7 +1,7 @@
 /**
  * Mirror of YayLoyalty\Utils\PointsMath, framework-free. A zero denominator
  * yields null, never 0. Every export has a vector in
- * tests/fixtures/points-math-vectors.json that both suites iterate; PHP is
+ * tests/fixtures/points-math-vectors.json for both suites to iterate; PHP is
  * the source of truth. Follows PHP round(), so a preview shows what the
  * engine awards; PHP 8.4 differs at some binary half-boundaries, which the
  * fixture excludes.

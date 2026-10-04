@@ -502,7 +502,7 @@ cmd_help() {
     echo ""
     echo "Releasing both: Pro first (it sets the version), then Lite with"
     echo "--no-prompt so both packages carry the same number."
-    echo "See docs/deployment-guide.md."
+    echo "Release validation and its env vars: see the header of scripts/validate-build.php."
 }
 
 # ─── Main ───────────────────────────────────────────────────────────────
