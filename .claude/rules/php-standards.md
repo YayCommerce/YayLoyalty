@@ -14,7 +14,7 @@ Update when: phpcs.xml.dist changes, the PHP or WordPress floor moves, or one of
 
 # PHP
 
-Layers, writers and boundaries are in [docs/architecture.md § Server layers and write ownership](../../docs/architecture.md#server-layers-and-write-ownership). Money, dates, file names and comments are in [docs/conventions.md](../../docs/conventions.md). Hard rules 2, 4 and 5 in `CLAUDE.md` cover Pro, PHP 7.4 and the ledger.
+Layers, writers and boundaries are in [docs/architecture.md § Server layers and write ownership](../../docs/architecture.md#server-layers-and-write-ownership), and the test harness in [§ Tests](../../docs/architecture.md#tests). Money, dates, file names and comments are in [docs/conventions.md](../../docs/conventions.md). Hard rules 2, 4 and 5 in `CLAUDE.md` cover Pro, PHP 7.4 and the ledger.
 
 ## Style
 

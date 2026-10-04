@@ -10,7 +10,7 @@ Update when: one of these patterns changes, a new coupling to PHP or to scripts/
 
 # Admin SPA
 
-How the SPA loads and calls WordPress is in [docs/architecture.md § SPA and WordPress](../../docs/architecture.md#spa-and-wordpress), and how Lite drops Pro code is in [§ Pro and Lite](../../docs/architecture.md#pro-and-lite). Money, dates, wire casing, file names and TypeScript copies of PHP are in [docs/conventions.md](../../docs/conventions.md). Hard rule 3 in `CLAUDE.md` governs Pro code.
+How the SPA loads and calls WordPress is in [docs/architecture.md § SPA and WordPress](../../docs/architecture.md#spa-and-wordpress), how Lite drops Pro code is in [§ Pro and Lite](../../docs/architecture.md#pro-and-lite), and how Vitest runs in [§ Tests](../../docs/architecture.md#tests). Money, dates, wire casing, file names and TypeScript copies of PHP are in [docs/conventions.md](../../docs/conventions.md). Hard rule 3 in `CLAUDE.md` governs Pro code.
 
 ## Patterns for new code
 

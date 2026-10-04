@@ -6,7 +6,7 @@
 
 ## Status
 
-Accepted, 2026-10-02, by Trace Bui. It supersedes the decision of [the shared skills record](2026-10-02-shared-design-plan-review-skills.md) that "every behaviour change gets a design doc before any code, however small". That record's other decisions stand.
+Superseded by [the harness and shared skills record](2026-10-04-harness-and-shared-skills.md), 2026-10-04. Before that: Accepted, 2026-10-02, by Trace Bui. It supersedes the decision of [the shared skills record](2026-10-02-shared-design-plan-review-skills.md) that "every behaviour change gets a design doc before any code, however small". That record's other decisions stand.
 
 ## Context
 

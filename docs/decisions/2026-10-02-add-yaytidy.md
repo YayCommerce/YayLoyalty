@@ -6,7 +6,7 @@
 
 ## Status
 
-Accepted, 2026-10-02, by Trace Bui, who accepted [the yaytidy design](../specs/2026-10-02-yaytidy-design.md). It supersedes the decision of [the shared skills record](2026-10-02-shared-design-plan-review-skills.md) that the own skills are "these three, and there are no others" ([Q10]). That record's other decisions stand. The IDs in brackets are from [the harness renewal plan](../plans/2026-10-01-harness-renewal.md).
+Superseded by [the harness and shared skills record](2026-10-04-harness-and-shared-skills.md), 2026-10-04. Before that: Accepted, 2026-10-02, by Trace Bui, who accepted [the yaytidy design](../specs/2026-10-02-yaytidy-design.md). It supersedes the decision of [the shared skills record](2026-10-02-shared-design-plan-review-skills.md) that the own skills are "these three, and there are no others" ([Q10]). That record's other decisions stand. The IDs in brackets are from [the harness renewal plan](../plans/2026-10-01-harness-renewal.md).
 
 ## Context
 

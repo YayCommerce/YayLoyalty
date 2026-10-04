@@ -6,7 +6,7 @@
 
 ## Status
 
-Accepted, 2026-10-01, by Trace Bui, with the harness renewal.
+Superseded by [the decision-record practice](2026-10-04-decision-record-practice.md), 2026-10-04. Before that: Accepted, 2026-10-01, by Trace Bui, with the harness renewal.
 
 ## Context
 

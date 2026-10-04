@@ -7,7 +7,7 @@ defined( 'ABSPATH' ) || exit;
  * The points arithmetic every layer shares, mirrored in
  * apps/admin/src/lib/points-math/. A zero denominator yields null, never 0:
  * the SPA renders "—" for null. Every public method has a vector in
- * tests/fixtures/points-math-vectors.json that both suites iterate; PHP is
+ * tests/fixtures/points-math-vectors.json for both suites to iterate; PHP is
  * the source of truth.
  */
 final class PointsMath {
