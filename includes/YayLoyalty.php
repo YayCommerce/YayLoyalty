@@ -24,6 +24,7 @@ class YayLoyalty {
         \YayLoyalty\Engine\Register\RegisterFacade::get_instance();
         \YayLoyalty\Engine\Admin\Settings::get_instance();
         \YayLoyalty\Engine\Emails\Emails::get_instance();
+        \YayLoyalty\Integrations\YayMail\YayMailIntegration::get_instance();
 
         // The only reference to Pro in the Lite tree; Lite strips includes/Pro/ wholesale, so add a seam, never a second reference.
         // Before rest_api_init and any campaign read, so Pro's filters are attached first.

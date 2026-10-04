@@ -28,6 +28,9 @@ defined( 'ABSPATH' ) || exit;
  */
 final class EarningService {
 
+    /** Fired after commit, once per awarded row, with ( Outcome $awarded, Context $ctx ). */
+    public const AWARDED_ACTION = 'yayloyalty_points_awarded';
+
     private PointsEngine $engine;
 
     private LedgerService $ledger;
@@ -175,7 +178,7 @@ final class EarningService {
                  * @param Outcome $awarded Carries the row and the engine Result.
                  * @param Context $ctx
                  */
-                do_action( 'yayloyalty_points_awarded', $awarded, $ctx );
+                do_action( self::AWARDED_ACTION, $awarded, $ctx ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name; the sniff cannot read it.
             }
         );
 
