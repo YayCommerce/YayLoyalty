@@ -38,8 +38,7 @@ const EMAIL_EVENT_TYPES = new Set<ActivityEventType>(['balance_email_sent', 'exp
 /**
  * Row → what the activity table renders. Pure — no fetch, no React. Mirrors
  * `customer-drawer.ledger-rows.ts`'s own shape: every sentence is composed
- * here from `event_type` + `data`, never stored as a string server-side
- * (see docs/data-model/customers-and-ledger.md's "Activity log" section).
+ * here from `event_type` + `data`, never stored as a string server-side.
  */
 export function toActivityRow(entry: ActivityEntry): ActivityRow {
   const occurred = utcToDate(entry.occurred_at);

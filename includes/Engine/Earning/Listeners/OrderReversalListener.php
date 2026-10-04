@@ -95,7 +95,7 @@ final class OrderReversalListener {
     public function on_cancelled( \WC_Order $order ): void {
         $this->pending->release( (int) $order->get_id() );
         $this->note_reversed( $order, $this->reversal->full_order( $order ), __( 'order cancelled', 'yayloyalty' ) );
-        // TODO(F08): restore a redemption still applied to the order (Engine\Redemption), keyed on the order.
+        // TODO(redemption): restore a redemption still applied to the order (Engine\Redemption), keyed on the order.
     }
 
     /** The `refunded` status: releases pending always; reverses in full only when no refund object exists (Reversal::refunded_status()). */

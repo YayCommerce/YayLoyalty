@@ -45,7 +45,7 @@ final class CustomerItemFormatter {
                 'referrals'   => 0,
             ],
             'loose_ends'               => self::loose_ends( $deletion ),
-            // Needs `lots`, which doesn't exist yet (docs/data-model/future-tables.md) — a separate, later feature.
+            // Needs the `lots` table: designed, not built yet.
             'expiry'                   => null,
             // Needs walking the ledger backwards — a separate, later feature.
             'negative_balance'         => null,

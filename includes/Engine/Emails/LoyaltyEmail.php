@@ -36,22 +36,53 @@ abstract class LoyaltyEmail extends \WC_Email {
         $this->form_fields['enabled']['default'] = $this->is_enabled_by_default ? 'yes' : 'no';
     }
 
+    /**
+     * A subject is plain text: decodes the entities that number_format_i18n()
+     * (&nbsp; as a thousands separator) and esc_html()'d placeholders leave,
+     * which WC_Email::send() keeps. Runs after the subject filter, so it covers
+     * what other plugins add there too.
+     */
+    public function get_subject() {
+        return html_entity_decode( parent::get_subject(), ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+    }
+
     public function get_content_html() {
         return wc_get_template_html( $this->template_html, $this->template_args( false ), '', $this->template_base );
     }
 
+    /**
+     * Restores apostrophes that esc_html() encoded: WooCommerce's plain-text
+     * cleanup knows &rsquo; but not &#039;, and deletes entities it does not know.
+     */
     public function get_content_plain() {
-        return wc_get_template_html( $this->template_plain, $this->template_args( true ), '', $this->template_base );
+        return str_replace( '&#039;', "'", wc_get_template_html( $this->template_plain, $this->template_args( true ), '', $this->template_base ) );
     }
 
     /** The variables every loyalty template receives, named as WooCommerce's own templates name them. */
     private function template_args( bool $plain_text ): array {
-        return [
-            'email_heading'      => $this->get_heading(),
-            'additional_content' => $this->get_additional_content(),
-            'sent_to_admin'      => false,
-            'plain_text'         => $plain_text,
-            'email'              => $this,
-        ];
+        return array_merge(
+            [
+                'email_heading'      => $this->get_heading(),
+                'additional_content' => $this->get_additional_content(),
+                'sent_to_admin'      => false,
+                'plain_text'         => $plain_text,
+                'email'              => $this,
+            ],
+            $this->extra_template_args()
+        );
     }
+
+    /**
+     * Variables only this email's templates receive, on top of the shared ones.
+     * An override returns [] while $this->object is not what it sends for
+     * (WooCommerce's preview sets a dummy order); its templates then fall back.
+     *
+     * @return array<string, mixed>
+     */
+    protected function extra_template_args(): array {
+        return [];
+    }
+
+    /** Fills this email with sample data for WooCommerce's settings preview; no-op until the email has data of its own. */
+    public function prepare_preview(): void {}
 }

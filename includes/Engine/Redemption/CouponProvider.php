@@ -35,7 +35,7 @@ final class CouponProvider {
      * boot by the plugin, storefront requests only.
      */
     public function register(): void {
-        // TODO(F08): add_filter for the three hooks named in the docblock, sync_cart at a priority after every other plugin's coupon logic.
+        // TODO(redemption): add_filter for the three hooks named in the docblock, sync_cart at a priority after every other plugin's coupon logic.
         throw new \RuntimeException( 'Not implemented' );
     }
 
@@ -50,7 +50,7 @@ final class CouponProvider {
      * @return mixed
      */
     public function virtual_coupon_data( $data, string $code ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(F08): strict compare code to self::CODE; quote via service->quote( WC()->cart, get_current_user_id() ?: null ); return the fixed_cart array with individual_use false.
+        // TODO(redemption): strict compare code to self::CODE; quote via service->quote( WC()->cart, get_current_user_id() ?: null ); return the fixed_cart array with individual_use false.
         throw new \RuntimeException( 'Not implemented' );
     }
 
@@ -62,7 +62,7 @@ final class CouponProvider {
      * discounts first and our amount is quoted against what is left.
      */
     public function sort_weight( int $sort, \WC_Coupon $coupon ): int { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(F08): return PHP_INT_MAX when the coupon's code is self::CODE, else the given sort.
+        // TODO(redemption): return PHP_INT_MAX when the coupon's code is self::CODE, else the given sort.
         throw new \RuntimeException( 'Not implemented' );
     }
 
@@ -73,7 +73,7 @@ final class CouponProvider {
      * WooCommerce calculates totals; must not trigger a recalculation itself.
      */
     public function sync_cart( \WC_Cart $cart ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(F08): intent > 0 && ! cart->has_discount( self::CODE ) → cart->apply_coupon( self::CODE ) with WC's notice suppressed; intent 0 && has_discount → cart->remove_coupon( self::CODE ).
+        // TODO(redemption): intent > 0 && ! cart->has_discount( self::CODE ) → cart->apply_coupon( self::CODE ) with WC's notice suppressed; intent 0 && has_discount → cart->remove_coupon( self::CODE ).
         throw new \RuntimeException( 'Not implemented' );
     }
 }

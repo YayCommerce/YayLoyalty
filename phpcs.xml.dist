@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <ruleset name="YayLoyalty">
-    <description>Coding standard for YayLoyalty. See docs/code-standards.md.</description>
+    <description>Coding standard for YayLoyalty. Every exclusion below carries a one-line reason.</description>
 
     <!-- What to scan. -->
     <file>includes</file>
@@ -62,8 +62,8 @@
         <!--
             Reason: Squiz.Commenting is noisy on a codebase that documents
             behaviour rather than restating signatures. Docblocks are required
-            by review where the signature is not self-explanatory
-            (docs/code-standards.md section 2), not by sniff.
+            by review where the signature is not self-explanatory, not by
+            sniff.
         -->
         <!--
             Reason: this sniff flags any throw whose message interpolates a

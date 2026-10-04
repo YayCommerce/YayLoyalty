@@ -80,6 +80,13 @@ class SettingsHelper {
         return $merged;
     }
 
+    /** The merchant's point label for $points: singular at exactly 1, plural otherwise. */
+    public static function points_label( int $points ): string {
+        $general = self::get_settings()['general'];
+
+        return 1 === $points ? $general['points_label_singular'] : $general['points_label_plural'];
+    }
+
     /**
      * Saves only the fields sent, over what is stored; returns the merged settings.
      *

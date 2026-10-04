@@ -63,8 +63,7 @@ class CampaignPerformanceRepository {
      * Paged/searchable rows behind the entries table — orders, signups or
      * reviews depending on the campaign's trigger, told apart here by each
      * row's OWN reference_type rather than by re-deriving the campaign's
-     * trigger, so this stays correct whatever reference type F01-4 ends up
-     * writing for a signup award.
+     * trigger, so each trigger handler's reference_type() stays the one mapping.
      *
      * @return array{items: array<int, array<string, mixed>>, total: int, page: int, per_page: int}
      */
