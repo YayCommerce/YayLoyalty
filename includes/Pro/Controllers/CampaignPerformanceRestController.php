@@ -349,7 +349,7 @@ final class CampaignPerformanceRestController extends AbstractRestController {
         $rows = $this->points->daily_by_campaign(
             $from_utc,
             (string) Dates::site_day_to_utc( $window['to'], '+1 day' ),
-            wp_timezone()->getOffset( new \DateTimeImmutable( $from_utc, new \DateTimeZone( 'UTC' ) ) ),
+            wp_timezone()->getOffset( new \DateTimeImmutable( $window['from'], wp_timezone() ) ),
             [ $campaign_id ]
         );
 

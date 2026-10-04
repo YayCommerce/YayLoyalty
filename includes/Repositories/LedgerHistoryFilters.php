@@ -1,7 +1,6 @@
 <?php
 namespace YayLoyalty\Repositories;
 
-use YayLoyalty\Utils\Dates;
 use YayLoyalty\Utils\Sql;
 
 defined( 'ABSPATH' ) || exit;
@@ -32,17 +31,10 @@ final class LedgerHistoryFilters {
             $where[] = $wpdb->prepare( 'type IN (' . Sql::in_placeholders( $types ) . ')', $types );
         }
 
-        $after = Dates::site_day_to_utc( $args['after'] ?? '' );
-
-        if ( null !== $after ) {
-            $where[] = $wpdb->prepare( 'created_at >= %s', $after );
-        }
-
-        $before_end = Dates::site_day_to_utc( $args['before'] ?? '', '+1 day' );
-
-        if ( null !== $before_end ) {
-            $where[] = $wpdb->prepare( 'created_at < %s', $before_end );
-        }
+        $where = array_merge(
+            $where,
+            AbstractRepository::site_day_range_where( $args['after'] ?? '', $args['before'] ?? '' )
+        );
 
         $search = trim( $args['search'] ?? '' );
 

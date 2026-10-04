@@ -3,7 +3,6 @@ namespace YayLoyalty\Repositories;
 
 use YayLoyalty\Enums\ActivityEvent;
 use YayLoyalty\Models\CustomerMeta;
-use YayLoyalty\Utils\Dates;
 use YayLoyalty\Utils\Sql;
 
 defined( 'ABSPATH' ) || exit;
@@ -113,16 +112,10 @@ class CustomerMetaRepository extends AbstractRepository {
         );
         // phpcs:enable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
 
-        $after      = Dates::site_day_to_utc( trim( (string) ( $args['after'] ?? '' ) ) );
-        $before_end = Dates::site_day_to_utc( trim( (string) ( $args['before'] ?? '' ) ), '+1 day' );
-
-        if ( null !== $after ) {
-            $where[] = $wpdb->prepare( 'created_at >= %s', $after );
-        }
-
-        if ( null !== $before_end ) {
-            $where[] = $wpdb->prepare( 'created_at < %s', $before_end );
-        }
+        $where = array_merge(
+            $where,
+            self::site_day_range_where( (string) ( $args['after'] ?? '' ), (string) ( $args['before'] ?? '' ) )
+        );
 
         $search = trim( (string) ( $args['search'] ?? '' ) );
 
