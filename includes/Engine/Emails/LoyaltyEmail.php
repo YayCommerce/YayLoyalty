@@ -36,6 +36,16 @@ abstract class LoyaltyEmail extends \WC_Email {
         $this->form_fields['enabled']['default'] = $this->is_enabled_by_default ? 'yes' : 'no';
     }
 
+    /**
+     * A subject is plain text: decodes the entities that number_format_i18n()
+     * (&nbsp; as a thousands separator) and esc_html()'d placeholders leave,
+     * which WC_Email::send() keeps. Runs after the subject filter, so it covers
+     * what other plugins add there too.
+     */
+    public function get_subject() {
+        return html_entity_decode( parent::get_subject(), ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+    }
+
     public function get_content_html() {
         return wc_get_template_html( $this->template_html, $this->template_args( false ), '', $this->template_base );
     }

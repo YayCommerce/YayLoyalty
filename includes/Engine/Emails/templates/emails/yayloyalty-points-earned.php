@@ -8,7 +8,7 @@
  * @var string    $additional_content
  * @var \WC_Email $email
  * @var string    $greeting_name The customer's first name, else display name; '' for none. Absent when there is no award to show.
- * @var string    $earned_text   Escaped HTML, e.g. "You earned <strong>50 Points</strong> for order #123." Absent when there is no award to show.
+ * @var string    $earned_text   Escaped HTML, e.g. "You earned <strong>50 Points</strong> for order #123."; '' when a filter hides it. Absent when there is no award to show.
  * @var string    $balance_text  The balance after this award, e.g. "120 Points". Absent when there is no award to show.
  * @var string    $balance_value What the balance is worth, as wc_price() HTML; '' when the discount reward is not live. Absent when there is no award to show.
  * @var string    $balance_value_text Escaped HTML, e.g. "That's worth <strong>$1.50</strong> in rewards."; '' when $balance_value is ''. Absent when there is no award to show.
@@ -28,7 +28,7 @@ do_action( 'woocommerce_email_header', $email_heading, $email );
 ?>
 
 <?php echo $is_email_improvements_enabled ? '<div class="email-introduction">' : ''; ?>
-<?php if ( ! empty( $earned_text ) ) : ?>
+<?php if ( ! empty( $entry ) ) : ?>
     <?php if ( ! empty( $greeting_name ) ) : ?>
 <p>
         <?php
@@ -37,7 +37,9 @@ do_action( 'woocommerce_email_header', $email_heading, $email );
         ?>
 </p>
     <?php endif; ?>
+    <?php if ( ! empty( $earned_text ) ) : ?>
 <p><?php echo wp_kses_post( $earned_text ); ?></p>
+    <?php endif; ?>
 <p>
     <?php
     /* translators: %s: points with label, e.g. "120 Points". */

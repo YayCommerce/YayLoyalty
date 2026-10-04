@@ -149,7 +149,8 @@ class PointsEarnedEmail extends LoyaltyEmail {
             return '';
         }
 
-        return wc_price( $amount );
+        // The rate is in the store's base currency; a currency switcher's session currency would mislabel it.
+        return wc_price( $amount, [ 'currency' => get_option( 'woocommerce_currency' ) ] );
     }
 
     /** "That's worth <strong>$1.50</strong> in rewards." around balance_value(); '' when that is ''. */
