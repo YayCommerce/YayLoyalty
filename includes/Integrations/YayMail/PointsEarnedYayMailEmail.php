@@ -43,6 +43,13 @@ class PointsEarnedYayMailEmail extends BaseEmail {
         $this->maybe_disable_block_email_editor();
     }
 
+    /**
+     * The merchant-editable starting layout. Its wording copies the Points
+     * earned templates (`yayloyalty-points-earned.php`) and the values
+     * `PointsEarnedEmail::get_template_values()` builds, which own it, with the
+     * same msgids: change them together. Unlike the templates, it prints the
+     * greeting even when the customer's name is ''.
+     */
     public function get_default_elements() {
         /* translators: %s: customer's first name. */
         $greeting = sprintf( esc_html__( 'Hi %s,', 'yayloyalty' ), PointsEarnedShortcodes::tag( 'customer_name' ) );
