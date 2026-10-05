@@ -123,14 +123,12 @@ class DashboardNotices {
         );
 
         $yesterday     = $days[ count( $days ) - 2 ];
-        $day_start     = new \DateTimeImmutable( $yesterday, $now_site->getTimezone() );
-        $day_end       = $day_start->modify( '+1 day' );
-        $day_start_utc = Dates::to_utc( $day_start );
-        $day_end_utc   = Dates::to_utc( $day_end );
+        $day_start_utc = (string) Dates::site_day_to_utc( $yesterday );
+        $day_end_utc   = (string) Dates::site_day_to_utc( $yesterday, '+1 day' );
 
         $result = $this->detector->evaluate(
             array_column( $series, 'issued', 'date' ),
-            $this->repository->count_orders( $day_start->getTimestamp(), $day_end->getTimestamp() ),
+            $this->repository->count_orders( Dates::to_timestamp( $day_start_utc ), Dates::to_timestamp( $day_end_utc ) ),
             $yesterday
         );
 

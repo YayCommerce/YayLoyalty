@@ -334,7 +334,7 @@ if ( $is_lite ) {
 
 // ─── Inline Pro-field gates (source, not the zip) ──────────────────────
 
-// Those field keys legitimately ship in Lite as schema vocabulary (§13), so
+// Those field keys legitimately ship in Lite (a downgraded site keeps its Pro data), so
 // their presence in the Lite bundle proves nothing — only the source-level
 // guard around each field distinguishes "gated" from "ungated". Read from
 // the repo, not the extracted zip: __DIR__ is scripts/, so this resolves
@@ -432,7 +432,7 @@ function run_boot_check(string $root, string $build_type): void {
         record(
             'Headless boot with no fatal',
             null,
-            'YAYLOYALTY_WP_CLI is not set — see docs/deployment-guide.md. Pass --require-boot to treat this as a failure.'
+            'YAYLOYALTY_WP_CLI is not set; it is documented at the top of scripts/validate-build.php. Pass --require-boot to treat this as a failure.'
         );
         return;
     }

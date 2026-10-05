@@ -5,9 +5,8 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * The two small route-arg fragments `CustomerRestController` needs beyond
- * `CustomerListFormatter::filter_params()` — split out to keep that
- * controller under the 200-line cap, the same reason `ActivityQueryArgs`/
- * `LedgerQueryArgs` exist.
+ * `CustomerListFormatter::filter_params()`, apart from the controller the
+ * way `ActivityQueryArgs`/`LedgerQueryArgs` are.
  */
 final class CustomerRouteArgs {
 

@@ -2,14 +2,15 @@
 namespace YayLoyalty\Repositories;
 
 use YayLoyalty\Models\Reward;
+use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
 
-/** yayloyalty_rewards. No cache yet: the storefront launcher's one slug read per page is an indexed lookup. */
+/** yayloyalty_rewards. No cache yet: the hottest reads are one indexed slug lookup per storefront page and one per points earned email. */
 final class RewardRepository extends AbstractRepository {
 
-    /** The seeded flexible-discount reward: the points→money rate and Lite's only way to redeem. */
-    public const BUILTIN_DISCOUNT_SLUG = 'cart-discount';
+    /** The built-in flexible-discount reward the installer seeds; its config holds the one points→money rate. */
+    public const CART_DISCOUNT_SLUG = 'cart-discount';
 
     protected function table_slug(): string {
         return 'rewards';
@@ -52,7 +53,14 @@ final class RewardRepository extends AbstractRepository {
      * Reward's config in Clamp) the checkout discount itself.
      */
     public function points_per_currency_unit(): float {
-        return self::rate_of( $this->find_by_slug( self::BUILTIN_DISCOUNT_SLUG ) );
+        return self::rate_of( $this->find_by_slug( self::CART_DISCOUNT_SLUG ) );
+    }
+
+    /** The same rate, but 0 unless the built-in reward is live, so customers are never shown a reward they cannot spend. */
+    public function live_points_per_currency_unit(): float {
+        $reward = $this->find_by_slug( self::CART_DISCOUNT_SLUG );
+
+        return null !== $reward && $reward->is_live_at( Dates::now() ) ? self::rate_of( $reward ) : 0.0;
     }
 
     /** The rate read from an already-loaded built-in reward, for a caller that also needs the reward itself. */

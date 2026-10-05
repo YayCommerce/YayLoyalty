@@ -3,6 +3,7 @@ namespace YayLoyalty\Repositories;
 
 use YayLoyalty\Database\QueryException;
 use YayLoyalty\Models\AbstractModel;
+use YayLoyalty\Utils\Dates;
 use YayLoyalty\Utils\Table;
 
 defined( 'ABSPATH' ) || exit;
@@ -11,8 +12,8 @@ defined( 'ABSPATH' ) || exit;
  * All SQL for exactly one table. Never opens a transaction or touches a
  * second table (service concerns); every write throws, because
  * Transaction::run() commits unless a Throwable escapes; never memoizes the
- * table name (multisite switches blogs). Not a singleton: see
- * docs/code-standards.md § 8.
+ * table name (multisite switches blogs). Not a singleton: get_instance()
+ * ignores constructor arguments after the first call.
  */
 abstract class AbstractRepository {
 
@@ -201,6 +202,30 @@ abstract class AbstractRepository {
             '`' . esc_sql( $column ) . '` LIKE %s',
             '%' . $wpdb->esc_like( $term ) . '%'
         );
+    }
+
+    /**
+     * Prepared `created_at` bounds for an inclusive range of site-calendar
+     * `Y-m-d` days; an empty or invalid day adds no bound.
+     *
+     * @return string[]
+     */
+    protected function site_day_range_where( string $after, string $before ): array {
+        global $wpdb;
+
+        $where = [];
+        $start = Dates::site_day_to_utc( trim( $after ) );
+        $end   = Dates::site_day_to_utc( trim( $before ), '+1 day' );
+
+        if ( null !== $start ) {
+            $where[] = $wpdb->prepare( 'created_at >= %s', $start );
+        }
+
+        if ( null !== $end ) {
+            $where[] = $wpdb->prepare( 'created_at < %s', $end );
+        }
+
+        return $where;
     }
 
     /**

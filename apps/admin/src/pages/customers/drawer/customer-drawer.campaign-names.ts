@@ -14,7 +14,7 @@ import { CAMPAIGN_QUERIES } from '@/lib/queries/campaign.queries';
  * Map instead of surfacing an error: no map means no campaign sub-line,
  * never a drawer-wide error state over one missing decoration.
  *
- * Accepted debt (revisit when Export ledger ships — brief §"campaign_name"):
+ * Accepted debt (revisit when Export ledger ships):
  * - Export ledger is a server-side background job with no access to this
  *   client-side map, so exported rows carry no campaign name.
  * - Archived/deleted campaigns may not appear in `GET /campaigns` — an old

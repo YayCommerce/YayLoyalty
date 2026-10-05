@@ -80,8 +80,6 @@ export const FILTER_TYPE_EXPIRED = () => __('Expired', 'yayloyalty');
 
 export const SEARCH_PLACEHOLDER = () => __('Search description or order number', 'yayloyalty');
 export const DATE_RANGE_LABEL = () => __('Date range', 'yayloyalty');
-/** Shown under the filter row when `type_counts` is null. */
-export const FILTER_UNAVAILABLE_REASON = () => __('Filtering arrives with the real ledger query.', 'yayloyalty');
 
 /** "1–10 of 4,812 entries · newest first" */
 export function pagerSummary(from: number, to: number, total: number): string {
@@ -108,6 +106,11 @@ export function emptyLedgerBody(firstName: string): string {
 
 export const EMPTY_ACTIVITY_TITLE = () => __('Nothing recorded yet', 'yayloyalty');
 export const EMPTY_ACTIVITY_BODY = () => __('Tier changes, expiry resets and admin actions appear here.', 'yayloyalty');
+
+// The ledger and activity tabs both show these when a filter hides every row.
+export const EMPTY_FILTERED_TITLE = () => __('Nothing matches these filters', 'yayloyalty');
+export const EMPTY_FILTERED_BODY = () =>
+  __('Try another type, a different search or a wider date range.', 'yayloyalty');
 
 export const EMPTY_REDEMPTIONS_TITLE = () => __('No rewards redeemed yet', 'yayloyalty');
 export function emptyRedemptionsBody(firstName: string): string {

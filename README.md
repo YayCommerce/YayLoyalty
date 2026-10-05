@@ -1,182 +1,113 @@
-# YayLoyalty — Points, Rewards, Referral & VIP for WooCommerce
+<!--
+Purpose: the human front door: requirements, onboarding, the team workflow, when to use the agent tooling, and how to keep the harness current.
+Update when: a requirement or a setup step changes, the review, promotion or release practice changes, a skill is added, renamed or removed, or a harness file gains or loses a topic in the owner map.
+-->
 
-A loyalty program plugin for WooCommerce with points earning, rewards redemption, referral tracking, and VIP tier management. Shipped as Pro and Lite from one repository.
+# YayLoyalty: Points, Rewards, Referral & VIP for WooCommerce
 
-**Status:** v1.0.0 in development. Core earning system (campaigns, ledger, balance) and reward definitions shipped; admin Dashboard, Customers list + per-customer drawer are live. Points now award: purchases stage as pending and award at `completed`, signups on storefront self-registration, reviews on approval (one per product, daily cap) — `includes/Engine/Earning/`. Points come back out on cancel, trash, refunds (proportional, cumulative) and review removal; a deleted refund is restored. Nothing spends points yet: the redemption path in `includes/Engine/Redemption/` (service, gates, commit writer, checkout adapters, `LedgerService::redeem()`) is scaffolded with stub bodies over a real, tested `Clamp`/`Quoter` and a `redemptions` table that is designed but not installed. Referrals and tiers planned for later phases.
-
----
+A loyalty plugin for WooCommerce: points, rewards, referrals and VIP tiers. One repository ships a Pro and a Lite build.
 
 ## Requirements
 
-- **PHP:** 7.4+
-- **WordPress:** 6.5+
-- **WooCommerce:** 10.0+
-- **Node:** 22 (with `~/.nvm` fallback via corepack)
-- **Composer:** latest
-- **pnpm:** required — `preinstall` runs `only-allow pnpm`, so npm and Yarn are rejected
+- A WordPress site with WooCommerce active. The minimum WordPress, WooCommerce and PHP versions are in the plugin header of `yayloyalty.php`.
+- PHP 8.2 or later for the dev tooling. The product itself must run on PHP 7.4.
+- Composer 2.
+- Node 22, with pnpm through Corepack. `package.json` pins the pnpm version.
+- A GitHub account with read access to the private [admin-shell repository](https://github.com/YayCommerce/yaycommerce-plugin-admin-shell). Composer clones it over HTTPS.
+- WP-CLI, for `pnpm makepot` and the release validator's optional boot check.
+- `jq`, which the Claude Code guard hook needs.
+- Claude Code 2.1.283 or later.
 
----
+## Onboarding
 
-## Quick Start
+1. Clone into the site's plugins directory:
 
-### Development Setup
+   ```bash
+   cd <site>/wp-content/plugins
+   git clone https://github.com/YayCommerce/YayLoyalty.git yayloyalty
+   cd yayloyalty
+   ```
 
-```bash
-# Install dependencies
-composer install
-pnpm install
+2. Switch to Node 22 and enable pnpm:
 
-# Run dev server (watch + HMR for admin SPA)
-./scripts/run.sh dev
+   ```bash
+   nvm use
+   corepack enable
+   ```
 
-# Run linter
-composer lint      # phpcs
-composer lint:fix  # phpcbf
-```
+3. Run the dev script, then install from a second terminal:
 
-Dev server starts Vite at `http://localhost:3030`. WordPress admin loads the bundle via HMR.
+   ```bash
+   ./scripts/run.sh dev
+   pnpm install
+   ```
 
-### Build & Release
+   On a fresh clone, `pnpm install` fails until the dev script has created `vendor-prefixed/` ([known issue](docs/known-issues.md#a-fresh-clones-first-install-fails-on-vendor-prefixedsrc)). The dev script ends by starting Vite on port 3030, which keeps running. Run `git status` once it has started: the dev script can rewrite `composer.json` and `scoper.inc.php`.
 
-```bash
-# Build Pro package (default)
-./scripts/run.sh build pro
+4. Activate the plugin in wp-admin. Activation installs the tables and seeds demo customers. `YAYLOYALTY_IS_DEVELOPMENT` defaults to `true`, so wp-admin loads the SPA from the dev server: keep `./scripts/run.sh dev` running while you work in the admin. To load a built bundle instead, define the constant as `false` in `wp-config.php`; the build fails today ([known issue](docs/known-issues.md#type-check-build-and-release-stop-at-missing-modules)).
 
-# Release Pro with version bump
-./scripts/run.sh release pro 1.0.1
+5. Run the lint and test commands in [CLAUDE.md § Commands](CLAUDE.md#commands). Several fail today on `dev/edd`; [docs/known-issues.md](docs/known-issues.md) lists each failure with the output to expect. Your result should match it exactly.
 
-# Release Lite from same version
-./scripts/run.sh release lite --no-prompt
+6. Start Claude Code in the repo with `claude`, and accept the trust dialog. Until you do, Claude ignores the command allowlist in `.claude/settings.json`. Then:
+   - `CLAUDE.md` loads at the start of every session;
+   - a rule in `.claude/rules/` loads when Claude reads a file its `paths` match;
+   - the skills in `.claude/skills/` show up in the skill list, and each loads when you call it or your request matches its description;
+   - the guard hook in `.claude/hooks/` stops Claude's file tools from editing generated directories.
 
-# Output lands in release/
-```
+## Daily workflow
 
-**Pro first, Lite second.** Version is stamped once; Lite uses `--no-prompt` to skip re-prompting.
+The git rules are in [CLAUDE.md § Git](CLAUDE.md#git): branch names, Conventional Commits, PR-only into `dev/edd`, and what an agent may never do. The parts only people do:
 
-After release, reinstall dev dependencies:
+- **Review.** Every PR into `dev/edd` needs one approval from a teammate other than its author, then it is squash-merged.
+- **Promotion.** Trace promotes `dev/edd` to `main` before each release, by a PR with a merge commit.
+- **Releases.** There is no release yet, and the cadence is set at the first one. The release commands are in [CLAUDE.md § Commands](CLAUDE.md#commands). What the release builds and checks is in [docs/architecture.md § Build and release](docs/architecture.md#build-and-release), and the rules for changing it are in [.claude/rules/release.md](.claude/rules/release.md).
 
-```bash
-composer install
-```
+## Agent tooling
 
----
+The team's skills cover a change from idea to PR. Each one is called by name, and its `SKILL.md` holds the details:
 
-## Directory Guide
+| Skill | Run it when | It writes |
+|---|---|---|
+| [`/yaybrainstorming`](.claude/skills/yaybrainstorming/SKILL.md) | you want to design a feature, a behaviour change, a refactor or an integration before planning it | a design doc in `docs/specs/` |
+| [`/yayplan`](.claude/skills/yayplan/SKILL.md) | you have an accepted design doc, or a request you want planned without one | a plan in `docs/plans/` |
+| [`/yaytidy`](.claude/skills/yaytidy/SKILL.md) | before you open a PR | a report of duplicated facts and code, and the fixes you pick |
+| [`/yayplancheck`](.claude/skills/yayplancheck/SKILL.md) | after each phase of a plan, and before merging | a PASS or FAIL review against the plan, from a fresh subagent |
 
-| Path | Contents |
+A typical change runs `/yaybrainstorming`, then `/yayplan`, then you implement it, running `/yayplancheck` after each phase. Before the final review, `/yayplancheck` asks whether to run `/yaytidy` first. A change may also skip the design and go straight to `/yayplan`.
+
+**Status lifecycle.** Specs and plans stay in the repo as history. An agent acts only on a spec whose Status is `accepted` or a plan whose Status is `active`. The Status words and when each one is set belong to the templates: [the design template](.claude/skills/yaybrainstorming/references/design-template.md) for specs, and [the plan template](.claude/skills/yayplan/references/plan-template.md) for plans.
+
+**Decision records.** Write one when a change makes or reverses a choice that is costly to undo and that the code can't justify by itself. [The decision-record practice](docs/decisions/2026-10-04-decision-record-practice.md) gives the examples, the file name and the four headings. The record lands in the PR that makes the change.
+
+## Keeping the harness current
+
+**Owner map.** Each topic has one home. Other files only link to it.
+
+| Topic | Home |
 |---|---|
-| **`includes/`** | PHP backend: controllers, services, repositories, models, enums, database schema, access/capabilities, the points/earning/reward/redemption engines, utilities |
-| **`apps/admin/`** | React 18 + Vite 6 admin dashboard SPA |
-| **`docs/`** | Architecture, standards, data model, roadmap |
-| **`scripts/`** | Build pipeline, validation, dev server |
-| **`yayloyalty.php`** | Plugin entry point |
+| Daily commands, hard rules, git rules | [CLAUDE.md](CLAUDE.md) |
+| PHP, SPA and release-tooling rules | [.claude/rules/](.claude/rules/) |
+| How the pieces fit | [docs/architecture.md](docs/architecture.md) |
+| Conventions the code can't show | [docs/conventions.md](docs/conventions.md) |
+| Gotchas and checks that fail today | [docs/known-issues.md](docs/known-issues.md) |
+| Why X, not Y | [docs/decisions/](docs/decisions/) |
+| Spec and plan formats and their Status words | the `yaybrainstorming` and `yayplan` skills |
+| Reviewing work against its plan | the `yayplancheck` skill |
+| Duplicated facts before a PR, and the stacked-branch PR base | the `yaytidy` skill |
+| Onboarding, review, promotion and release cadence, agent tooling, harness upkeep | this README |
 
----
+**Update-when triggers.** Every harness file opens with a Purpose line and an Update when line: in an HTML comment in `CLAUDE.md`, this README and the rules, in the first lines of each doc and decision record, and in YAML comments in each skill's frontmatter. When your change matches a file's trigger, update that file in the same PR.
 
-## Documentation
+**Personal overrides.** These are gitignored, and the harness must work without them:
+- `.claude/settings.local.json`: your own permissions and settings on top of `.claude/settings.json`;
+- `CLAUDE.local.md`: your own instructions on top of `CLAUDE.md`. It may drop the commit and PR trailers that `CLAUDE.md` asks for.
 
-- **[`docs/codebase-summary.md`](./docs/codebase-summary.md)** — Directory structure, layers, entry points, request flows
-- **[`docs/system-architecture.md`](./docs/system-architecture.md)** — Layers, Pro/Lite build mechanism, request flows, Mermaid diagrams
-- **[`docs/code-standards.md`](./docs/code-standards.md)** — PHP conventions, REST patterns, database rules, Pro/Lite seams
-- **[`docs/deployment-guide.md`](./docs/deployment-guide.md)** — Build commands, validation, headless setup
-- **[`docs/data-model.md`](./docs/data-model.md)** — Full schema: 13 planned tables, relationships, invariants; implementation status
-- **[`docs/project-roadmap.md`](./docs/project-roadmap.md)** — What's implemented, gaps, next phases
+**Shared skills.** The YayCommerce plugins share the four skills, and this repo holds their canonical copy. A change to a skill lands here first, and another repo copies the skill's directory whole, never editing its copy. See [the canonical-copy record](docs/decisions/2026-10-03-shared-skills-canonical-copy.md).
 
----
+**Mechanical checks.** Run `./scripts/check-harness.sh` before merging a PR that changes a harness file. It checks paths, links, headers, rule globs, skill names and decision records, prints one line per finding, and exits 1 if there is any.
 
-## Key Concepts
-
-### Storefront Launcher
-
-A read-only floating panel on the shop: the customer's balance, ways to earn, and recent activity. Configured in the Design tab (position, button style, brand colour, corner radius, icon, text, visibility). See [Storefront Launcher](#storefront-launcher).
-
-### Earning
-
-Campaigns define when and how much points are awarded (purchase, signup, review). Config specifies calculation rules; Pro adds conditions (role, product, tier) and extra triggers (birthday, first_order, order_count, spend_milestone). Tier condition is unavailable until the VIP tier system ships.
-
-### Balance
-
-Every customer's balance = `SUM(ledger.points)`. The ledger is append-only; customer row is a cache updated atomically with each ledger write, always inside a transaction guarded by `LedgerService`.
-
-### Pro/Lite
-
-One repository, two zips. Lite = Pro minus `includes/Pro/` and SPA built with `BUILD_TYPE=lite`. The split is transparent: Lite contains exactly one reference to Pro (a guarded `class_exists` in `YayLoyalty::initialize()`), and Pro attaches via filter seams only.
-
----
-
-## Storefront Launcher
-
-The launcher is a read-only floating panel (v1, designs 1a–1e) that displays:
-- **Signed in:** current balance, "worth $X", ways to earn (eligible campaigns), recent activity (3 rows, lazy), "View all rewards activity" footer link.
-- **Guest:** the Design tab's signed-out prompt, how-it-works steps (from live campaigns), "Sign in", a signup step only when the store lets shoppers register (My Account, or checkout only), and on a product page what it would earn at the base rate.
-- **Collapsed:** icon, label or both, plus a balance badge when signed in.
-- **Mobile (under 600px):** icon + balance pill; the panel opens as a bottom sheet with a drag handle.
-- **Placement:** any of four corners (top corners open the panel downward), 32px from the edge on desktop and 16px on mobile. A theme can move it with the `--yayloyalty-launcher-offset` CSS variable, for example to clear a sticky add-to-cart bar.
-- **Hidden** on the pages and for the roles the Design tab's Visibility card excludes (store staff by default — preview in a private window), when the program is off, and for a shopper who opted out or whose role is excluded from earning.
-
-**Cache caveat:** the balance is printed into the page for signed-in shoppers. Common page caches (WP Rocket, LiteSpeed Cache, W3 Total Cache, Cloudflare APO) skip signed-in visitors by default. A store whose cache serves pages to signed-in visitors could show one shopper's balance to another — exclude signed-in users from page caching on such a store.
-
-### Building the CSS
-
-`apps/admin/src/storefront.css` (with `src/styles/storefront-launcher-layout.css`) builds to `assets/dist/storefront/launcher.css`: the admin kit's tokens and Tailwind v4 utilities, prefixed `yl:` and scoped to `.yayloyalty-launcher`, with no global reset, so a shop theme and the launcher leave each other alone. One file serves Lite and Pro.
-
-```bash
-./scripts/run.sh build [pro|lite]   # full build, includes the storefront CSS
-cd apps/admin && pnpm build:storefront   # just the storefront CSS
-cd apps/admin && pnpm dev:storefront     # rebuild on change (the Vite dev server does not serve it)
-```
-
-Classes used in `includes/Engine/Storefront/templates/` or `assets/storefront/launcher.js` must be written out in full (`yl:bg-primary`), never assembled at runtime: Tailwind only generates classes it finds in those files.
-
-### Implementation
-
-- **Server:** `includes/Engine/Storefront/` — `Launcher` (entry point), `LauncherVisibility`, `LauncherPayload`, `LauncherIcon`, `LauncherCopy`, `LauncherEarnRules`, `ShopperActivityRow`, `UiClasses`. Templated markup in `templates/`. Enqueued via `wp_enqueue_scripts` and rendered in `wp_footer`.
-- **JavaScript:** `assets/storefront/launcher.js` (~150 lines) — open/close, focus trap, Esc/tap-outside/drag-handle close, lazy `/me/activity` fetch.
-- **REST:** `GET /me/activity` — shopper's session identity (no id param), 3 activity rows, shopper-safe projection (no notes/actors/campaign ids).
-- **See also:** `docs/code-standards.md` § 9 (shopper routes), `docs/codebase-summary.md` (Storefront section).
-
----
-
-## Pro Build Features (v1.0)
-
-- Extra campaign triggers: birthday, first_order, order_count, spend_milestone
-- Campaign conditions: role, product, category, lifetime spend, order count
-- Conditions preview endpoint: POST `/campaigns/{id}/preview-conditions`
-- Campaign table + full CRUD (`/campaigns/new` template chooser → create form, `/campaigns/:id/edit` six-section form + summary rail, persist for real, `/campaigns/:id/performance` real ledger-backed performance analytics for purchase/signup/review only)
-- Saved Customers-page segments: POST/DELETE `/customers/segments`
-- Advanced config: max_points_per_order, daily_cap, media_bonus_points
-- Reward types: fixed_coupon, percent_coupon, free_shipping, free_product (in addition to Lite's flexible_discount)
-- Dashboard: referral tile, tier distribution, campaign breakdown, top campaigns (`GET /dashboard/pro`)
-
----
-
-## Checks
-
-What each suite checks and its current count: [`docs/code-standards.md` § 14](./docs/code-standards.md#14-running-the-linter-and-tests).
-
-```bash
-composer test                  # phpunit, unit suite
-composer test:integration      # phpunit against a real site and server; see docs/deployment-guide.md
-composer lint                  # phpcs
-./scripts/check-docs.sh        # docs structure and single-owner checks
-/yay:code-corrector            # Claude Code skill: rules re-declared outside their § 16 owner
-pnpm --filter @yayloyalty/admin-page lint   # eslint + prettier on TypeScript/React
-pnpm --filter @yayloyalty/admin-page test   # vitest
-./scripts/run.sh release lite --no-prompt   # builds and validates a package end to end
-```
-
-`scripts/validate-build.php` boots the packaged plugin inside WordPress when `YAYLOYALTY_WP_CLI` is set — see `docs/deployment-guide.md`.
-
-**Known issue:** The `pnpm build` step currently fails at `tsc --noEmit` on three pre-existing type errors: `emoji-picker-content.tsx` (×2, `@emoji-mart/*` types undeclared) and `progress.tsx` (`@radix-ui/react-progress` not installed). This must be fixed before the next release.
-
----
-
-## Support & Issues
-
-Report issues on GitHub or contact support at YayCommerce.
-
----
+**Prompt audit.** Run `/doctor prompt-audit` in Claude Code after upgrading Claude Code and before merging a PR that changes `CLAUDE.md`, a rule or a skill. Every finding gets a fix, or a reason to keep the text.
 
 ## License
 
-GPLv2 or later — see the plugin header in `yayloyalty.php`.
+GPLv2 or later. See the plugin header in `yayloyalty.php`.

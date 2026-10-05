@@ -77,9 +77,8 @@ const ledgerTypeCountsShape = {
 
 /**
  * Per-type counts over the UNFILTERED set — what the ledger tab's filter
- * labels ("All 4,812", "Earned 4,190") read from. `null` means the server
- * cannot compute them yet (see `LedgerRestController::get_history()`); the drawer renders the filter row
- * disabled with a stated reason when this is null.
+ * labels ("All 4,812", "Earned 4,190") read from. Built by
+ * `LedgerQueryArgs::group_counts()`.
  */
 export const ledgerTypeCountsSchema = z.object(ledgerTypeCountsShape);
 
@@ -91,7 +90,7 @@ export type LedgerTypeCounts = z.infer<typeof ledgerTypeCountsSchema>;
  * helper, which would silently drop `type_counts`.
  */
 export const ledgerEnvelopeSchema = paginatedSchema(ledgerEntrySchema).extend({
-  type_counts: ledgerTypeCountsSchema.nullable(),
+  type_counts: ledgerTypeCountsSchema,
 });
 
 export type LedgerEnvelope = z.infer<typeof ledgerEnvelopeSchema>;

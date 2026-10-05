@@ -39,9 +39,12 @@ export function CustomerDrawerHeader({
         <SheetTitle>{name ?? <Skeleton className="h-5 w-32" />}</SheetTitle>
         {isDeleted && <Badge variant="destructive">{ACCOUNT_DELETED_LABEL()}</Badge>}
       </div>
-      <SheetDescription>
-        {email ?? <Skeleton className="h-4 w-40" />}
-        {customer?.joined_at ? ` · ${memberSince(formatStoredDate(customer.joined_at))}` : null}
+      {/* A div, not Radix's default <p>: the loading Skeleton is a <div>, which a <p> can't hold. */}
+      <SheetDescription asChild>
+        <div>
+          {email ?? <Skeleton className="h-4 w-40" />}
+          {customer?.joined_at ? ` · ${memberSince(formatStoredDate(customer.joined_at))}` : null}
+        </div>
       </SheetDescription>
       {isProBuild() && customer && <CustomerDrawerTierCard customer={customer} />}
     </SheetHeader>

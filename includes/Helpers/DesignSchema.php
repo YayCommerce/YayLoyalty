@@ -83,8 +83,8 @@ class DesignSchema {
 
     /**
      * Every field's rule: its type plus any limits. Anything absent is dropped in both directions.
-     * Declares every field in both builds so a Lite downgrade never wipes a merchant's stored Pro design
-     * (code-standards.md §13). DesignCoercion::coerce() documents each type and its default limits.
+     * Declares every field in both builds so a Lite downgrade never wipes a merchant's stored Pro design.
+     * DesignCoercion::coerce() documents each type and its default limits.
      *
      * @return array<string, array<string, array<string, mixed>>>
      */

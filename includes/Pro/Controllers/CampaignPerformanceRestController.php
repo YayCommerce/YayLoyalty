@@ -54,15 +54,13 @@ defined( 'ABSPATH' ) || exit;
  *
  * `skipped` and `estimate` ship `null` (their panels self-hide, see
  * CampaignPerformanceSidePanel.tsx): both would need replaying every order
- * through an engine that does not exist yet (Engine\Earning\EarningService
- * is scaffold — see its own docblock). Revisit once it is implemented.
+ * through the earning engine, which this endpoint does not do.
  *
- * `totals.avg_order_subtotal` also ships `null` for the same "not
- * implemented yet" reason, one level down: nothing persists the scored
+ * `totals.avg_order_subtotal` also ships `null`: nothing persists the scored
  * base amount an award was computed from (Engine\Points\Result /
- * Breakdown compute it, then discard it). If F01-4 stores it on the ledger
- * row, this and each entry's own `subtotal` both become a plain query
- * instead of a WooCommerce order lookup.
+ * Breakdown compute it, then discard it). Storing it on the ledger row
+ * would make this and each entry's own `subtotal` a plain query instead
+ * of a WooCommerce order lookup.
  */
 final class CampaignPerformanceRestController extends AbstractRestController {
 
@@ -346,15 +344,12 @@ final class CampaignPerformanceRestController extends AbstractRestController {
      * @return array<int, array{date: string, points: int}>
      */
     private function daily_series( int $campaign_id, array $window ): array {
-        $site_timezone = wp_timezone();
-
-        $from = new \DateTimeImmutable( $window['from'] . ' 00:00:00', $site_timezone );
-        $to   = ( new \DateTimeImmutable( $window['to'] . ' 00:00:00', $site_timezone ) )->modify( '+1 day' );
+        $from_utc = (string) Dates::site_day_to_utc( $window['from'] );
 
         $rows = $this->points->daily_by_campaign(
-            Dates::to_utc( $from ),
-            Dates::to_utc( $to ),
-            $from->getOffset(),
+            $from_utc,
+            (string) Dates::site_day_to_utc( $window['to'], '+1 day' ),
+            wp_timezone()->getOffset( new \DateTimeImmutable( $window['from'], wp_timezone() ) ),
             [ $campaign_id ]
         );
 

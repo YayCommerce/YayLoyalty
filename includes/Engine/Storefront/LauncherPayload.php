@@ -61,7 +61,7 @@ final class LauncherPayload {
      */
     public function for_balance( array $design, ?int $balance ): array {
         $now    = Dates::now();
-        $reward = $this->rewards->find_by_slug( RewardRepository::BUILTIN_DISCOUNT_SLUG );
+        $reward = $this->rewards->find_by_slug( RewardRepository::CART_DISCOUNT_SLUG );
         $redeem = self::redeem_rule( $reward, $now );
         $rules  = LauncherEarnRules::advertise( $this->live_campaigns( $now ), $this->campaigns->find_default_purchase() );
 

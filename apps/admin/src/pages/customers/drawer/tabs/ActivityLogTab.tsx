@@ -52,7 +52,7 @@ export function ActivityLogTab({ userId }: { userId: number }) {
         searchPlaceholder={ACTIVITY_SEARCH_PLACEHOLDER()}
       />
       <div className="overflow-x-auto rounded-md border">
-        <ActivityLogTabRows rows={rows} isLoading={query.isPending} />
+        <ActivityLogTabRows rows={rows} isLoading={query.isPending} isFiltered={state.isFiltered} />
       </div>
       <DrawerTabPager
         page={state.page}

@@ -24,7 +24,7 @@ final class Installer {
     private const LOCK_TTL = 60;
 
     /**
-     * Registered table schemas; Pro adds its own via yayloyalty_table_schemas.
+     * Registered table schemas; yayloyalty_table_schemas can add more (nothing does yet, Pro included).
      *
      * @return AbstractTableSchema[]
      */
@@ -148,7 +148,7 @@ final class Installer {
             new \YayLoyalty\Models\Reward(
                 null,
                 __( 'Cart discount', 'yayloyalty' ),
-                \YayLoyalty\Repositories\RewardRepository::BUILTIN_DISCOUNT_SLUG,
+                \YayLoyalty\Repositories\RewardRepository::CART_DISCOUNT_SLUG,
                 $type,
                 \YayLoyalty\Enums\Status::ACTIVE,
                 0,
@@ -170,6 +170,9 @@ final class Installer {
     /** Data migrations dbDelta cannot express: it adds columns and indexes but never drops them. */
     private static function run_migrations(): void {
         self::drop_index_if_exists( 'ledger', 'uniq_ledger_event' );
+        // idx_user_history_type replaced both; dbDelta has already added it by the time this runs.
+        self::drop_index_if_exists( 'ledger', 'idx_user_history' );
+        self::drop_index_if_exists( 'ledger', 'idx_user_type' );
 
         /** Fires after tables are created/updated and before the version stamp. */
         do_action( 'yayloyalty_run_migrations' );

@@ -14,8 +14,8 @@ defined( 'ABSPATH' ) || exit;
  * history through LedgerService::adjust(), so balance = SUM(ledger.points)
  * holds. Runs exactly once: the option flag is claimed with add_option()
  * BEFORE any write (the opposite of the version stamp), because a retry
- * after a mid-loop crash would create a second batch of users. The second
- * of LedgerService's two authorised construction sites.
+ * after a mid-loop crash would create a second batch of users. One of the
+ * construction sites LedgerService's docblock lists.
  */
 final class InitYayLoyaltyCustomer {
 
@@ -24,7 +24,7 @@ final class InitYayLoyaltyCustomer {
     /** build_row() must return keys in this order. */
     private const ROW_FORMAT = [
         'pending_points'   => '%d',
-        // Money is bound as %s, never %f (code-standards.md § 5).
+        // Money is bound as %s, never %f, which rounds through a float.
         'lifetime_spend'   => '%s',
         'last_activity_at' => '%s',
         'expires_at'       => '%s',

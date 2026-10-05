@@ -194,8 +194,7 @@ abstract class AbstractRestController extends BaseRestController {
      * Shapes a paginate() result as PaginatedResponse<T>: camelCase envelope, snake_case items.
      *
      * Public (not protected): `CustomerListFormatter::respond_list()` calls
-     * it against the controller instance it is handed, to keep
-     * `CustomerRestController` under the 200-line cap without duplicating
+     * it against the controller instance it is handed, without duplicating
      * this envelope shape.
      *
      * @param array{items: mixed[], total: int, page: int, per_page: int} $result

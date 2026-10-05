@@ -43,7 +43,7 @@ final class StoreApiAdapter {
      * Called once at boot; no-op when the blocks package is absent.
      */
     public function register(): void {
-        // TODO(F08): guard on class_exists( Automattic\WooCommerce\StoreApi\StoreApi ); register the four attachments named in the docblock.
+        // TODO(redemption): guard on class_exists( Automattic\WooCommerce\StoreApi\StoreApi ); register the four attachments named in the docblock.
         throw new \RuntimeException( 'Not implemented' );
     }
 
@@ -55,7 +55,7 @@ final class StoreApiAdapter {
      * @return array<string, int|float|string|null>
      */
     public function cart_data(): array {
-        // TODO(F08): quote = service->quote( WC()->cart, user ); map to the six keys; denied → applied 0, value 0, reason set.
+        // TODO(redemption): quote = service->quote( WC()->cart, user ); map to the six keys; denied → applied 0, value 0, reason set.
         throw new \RuntimeException( 'Not implemented' );
     }
 
@@ -65,7 +65,7 @@ final class StoreApiAdapter {
      * @return array<string, array>
      */
     public function cart_schema(): array {
-        // TODO(F08): one readonly property per cart_data() key with type and description.
+        // TODO(redemption): one readonly property per cart_data() key with type and description.
         throw new \RuntimeException( 'Not implemented' );
     }
 
@@ -78,7 +78,7 @@ final class StoreApiAdapter {
      * @param array<string, mixed> $data
      */
     public function on_update( array $data ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(F08): read the points key from the payload, absint it, and store it through SessionIntent::set.
+        // TODO(redemption): read the points key from the payload, absint it, and store it through SessionIntent::set.
         throw new \RuntimeException( 'Not implemented' );
     }
 
@@ -88,13 +88,13 @@ final class StoreApiAdapter {
      * service->checkout_error() returns a key; untouched otherwise.
      */
     public function validate( \WP_Error $errors, \WC_Cart $cart ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(F08): key = service->checkout_error( cart, user ); key → errors->add( 'yayloyalty_redeem', message_for( key ) ).
+        // TODO(redemption): key = service->checkout_error( cart, user ); key → errors->add( 'yayloyalty_redeem', message_for( key ) ).
         throw new \RuntimeException( 'Not implemented' );
     }
 
     /** Precondition: the order exists with frozen totals. Postcondition: service->commit( order ) ran once. */
     public function on_order_processed( \WC_Order $order ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(F08): service->commit( order ).
+        // TODO(redemption): service->commit( order ).
         throw new \RuntimeException( 'Not implemented' );
     }
 }

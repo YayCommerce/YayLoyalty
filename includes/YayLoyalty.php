@@ -24,14 +24,15 @@ class YayLoyalty {
         \YayLoyalty\Engine\Register\RegisterFacade::get_instance();
         \YayLoyalty\Engine\Admin\Settings::get_instance();
         \YayLoyalty\Engine\Emails\Emails::get_instance();
+        \YayLoyalty\Integrations\YayMail\YayMailIntegration::get_instance();
 
-        // The only reference to Pro in the Lite tree; do not add a second, use a seam (code-standards.md § 13).
+        // The only reference to Pro in the Lite tree; Lite strips includes/Pro/ wholesale, so add a seam, never a second reference.
         // Before rest_api_init and any campaign read, so Pro's filters are attached first.
         if ( self::is_pro() ) {
             \YayLoyalty\Pro\YayLoyaltyPro::boot();
         }
 
-        // After Pro's boot: its yayloyalty_earning_gates subscriber must be attached before build() applies the filter.
+        // After Pro's boot: build() applies yayloyalty_earning_gates once, so any gate Pro adds must already be attached (it adds none yet).
         $this->register_earning_listeners();
 
         if ( ! is_admin() ) {

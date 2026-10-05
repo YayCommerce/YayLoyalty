@@ -5,6 +5,8 @@ import {
   COLUMN_DATE,
   COLUMN_DESCRIPTION,
   COLUMN_POINTS,
+  EMPTY_FILTERED_BODY,
+  EMPTY_FILTERED_TITLE,
   EMPTY_LEDGER_TITLE,
   emptyLedgerBody,
 } from '../customer-drawer.copy';
@@ -21,10 +23,12 @@ import { DRAWER_ROW_CLASS, drawerCell, DrawerTable } from './DrawerTable';
 export function LedgerTabRows({
   rows,
   isLoading,
+  isFiltered,
   customerFirstName,
 }: {
   rows: LedgerRow[];
   isLoading: boolean;
+  isFiltered: boolean;
   customerFirstName: string;
 }) {
   return (
@@ -32,8 +36,8 @@ export function LedgerTabRows({
       columnCount={4}
       isLoading={isLoading}
       isEmpty={rows.length === 0}
-      emptyTitle={EMPTY_LEDGER_TITLE()}
-      emptyBody={emptyLedgerBody(customerFirstName)}
+      emptyTitle={isFiltered ? EMPTY_FILTERED_TITLE() : EMPTY_LEDGER_TITLE()}
+      emptyBody={isFiltered ? EMPTY_FILTERED_BODY() : emptyLedgerBody(customerFirstName)}
       head={
         <TableRow>
           <TableHead>{COLUMN_DATE()}</TableHead>

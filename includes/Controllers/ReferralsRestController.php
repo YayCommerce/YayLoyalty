@@ -8,8 +8,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * GET /yayloyalty/v1/customers/{id}/referrals — paginated referral rows.
  *
- * No `referrals` table exists yet — `docs/data-model/future-tables.md`'s
- * `yayloyalty_referrals` is designed but not implemented (1.1) — so the
+ * The `yayloyalty_referrals` table is designed, not built yet, so the
  * endpoint always answers an EMPTY envelope, matching `counts.referrals`
  * from `CustomerItemFormatter::format()`. When the real table ships,
  * only `get_history()` below changes.
@@ -19,9 +18,7 @@ defined( 'ABSPATH' ) || exit;
  * must apply the same `CAP::VIEW` gate as everywhere else in this
  * controller and must never expose them to a lower capability.
  *
- * A separate controller, the same shape `RedemptionsRestController` uses for
- * the same reason: keeps both this file and `CustomerRestController` under
- * the 200-line cap.
+ * A separate controller, the same shape `RedemptionsRestController` uses.
  */
 final class ReferralsRestController extends AbstractRestController {
 

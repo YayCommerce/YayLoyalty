@@ -8,15 +8,12 @@ defined( 'ABSPATH' ) || exit;
 /**
  * GET /yayloyalty/v1/customers/{id}/redemptions — paginated redemption rows.
  *
- * No `redemptions` table exists yet — `docs/data-model/redemptions.md`'s
- * `yayloyalty_redemptions` is designed but not implemented (1.0) — so the
+ * The `yayloyalty_redemptions` table is designed, not built yet, so the
  * endpoint always answers an EMPTY envelope, matching `counts.redemptions`
  * from `CustomerItemFormatter::format()`. When the real table ships,
  * only `get_history()` below changes.
  *
- * A separate controller, the same shape `ActivityRestController` uses for
- * the same reason: keeps both this file and `CustomerRestController` under
- * the 200-line cap.
+ * A separate controller, the same shape `ActivityRestController` uses.
  */
 final class RedemptionsRestController extends AbstractRestController {
 
