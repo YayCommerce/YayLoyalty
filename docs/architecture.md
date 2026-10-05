@@ -179,8 +179,7 @@ The suites hold no test cases today ([known issue](known-issues.md#no-tests-comp
 - **Integration** (`phpunit-integration.xml.dist`, `tests/integration/`): `tests/integration/bootstrap.php` boots the WordPress site the plugin is installed in and needs the plugin active.
   - It sets `$wpdb->prefix` to `ylit_` and creates the plugin's tables there, empty. Other plugins' tables, WooCommerce's included, get empty copies under the same prefix. It drops all of them before the run and again at the end.
   - WordPress core tables, such as users, posts and options, stay real.
-  - `tests/integration/IntegrationTestCase.php` truncates tables between tests rather than rolling back, because the code under test opens its own transactions.
-  - The trait beside it, `WooCommerceOrdersFixture`, creates real users, products, orders, reviews and campaigns, switches every WooCommerce email off and keeps YayMail out of loyalty sends. Core tables are real, so a test must call its cleanup helpers.
+  - `tests/integration/IntegrationTestCase.php` truncates tables between tests rather than rolling back, because the code under test opens its own transactions. Core tables are real, so a test cleans up the users, posts and orders it creates.
 - **Vitest** (`apps/admin/vitest.config.ts`) runs `apps/admin/tests/**/*.test.ts` in Node, with the `@` alias.
   - It doesn't load `vite.config.ts`, so `IS_PRO_BUILD` is false unless the shell exports `VITE_IS_PRO=true`.
   - Tests sit outside `tsconfig.json`, so `tsc` doesn't check them.

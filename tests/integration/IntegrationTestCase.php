@@ -31,23 +31,6 @@ abstract class IntegrationTestCase extends TestCase {
         ( new CampaignRepository() )->flush_cache();
     }
 
-    /** The site's first administrator; the test is skipped on a site without one. */
-    protected function first_admin_id(): int {
-        $admins = get_users(
-            [
-                'role'   => 'administrator',
-                'number' => 1,
-                'fields' => 'ID',
-            ]
-        );
-
-        if ( empty( $admins ) ) {
-            $this->markTestSkipped( 'The site has no administrator to act as.' );
-        }
-
-        return (int) $admins[0];
-    }
-
     protected function ledger_service(): LedgerService {
         return new LedgerService( new LedgerRepository(), new CustomerRepository() );
     }
