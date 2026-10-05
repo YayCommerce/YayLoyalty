@@ -25,7 +25,7 @@ export { DashboardProPanels } from './dashboard/DashboardProPanels';
 export { DesignPanelSection } from './design/DesignPanelSection';
 export { DesignTierSection } from './design/DesignTierSection';
 export { DesignTypographySection } from './design/DesignTypographySection';
-export { AdvancedFraudLimitsForm } from './settings/AdvancedFraudLimitsForm';
+export { AdvancedFraudLimitsSection } from './settings/AdvancedFraudLimitsSection';
 
 /** Keeps the sentinel reachable code rather than a literal a minifier may discard. */
 export function proBundleMarker(): string {

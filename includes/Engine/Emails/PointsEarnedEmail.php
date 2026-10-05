@@ -45,7 +45,7 @@ class PointsEarnedEmail extends LoyaltyEmail {
     }
 
     public function get_default_heading() {
-        return __( 'You earned points', 'yayloyalty' );
+        return __( 'You earned {points_label}', 'yayloyalty' );
     }
 
     /** Mails the customer about one award, which Emails::relay_award() passes as its ledger row id. */

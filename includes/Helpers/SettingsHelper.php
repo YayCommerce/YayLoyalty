@@ -16,6 +16,9 @@ class SettingsHelper {
     /** @var array{locale: string, saved: mixed, settings: array}|null The last get_settings() result and what it was built from. */
     private static $cache = null;
 
+    /** Longest points label; the admin form's schema (advanced-settings.form.ts) mirrors it. */
+    public const POINTS_LABEL_MAX_LENGTH = 30;
+
     /** Bump when a migration changes the stored shape. */
     public const SCHEMA_VERSION = 1;
 
@@ -50,8 +53,8 @@ class SettingsHelper {
         return [
             'general'  => [
                 'enabled'               => 'bool',
-                'points_label_singular' => 'text',
-                'points_label_plural'   => 'text',
+                'points_label_singular' => 'points_label',
+                'points_label_plural'   => 'points_label',
                 'excluded_roles'        => 'slug_list',
             ],
             'advanced' => [
@@ -113,6 +116,11 @@ class SettingsHelper {
         $general = self::get_settings()['general'];
 
         return 1 === $points ? $general['points_label_singular'] : $general['points_label_plural'];
+    }
+
+    /** The merchant's plural label, for a sentence with no count: "View your Points". */
+    public static function points_label_plural(): string {
+        return self::get_settings()['general']['points_label_plural'];
     }
 
     /** "50 Points": the amount in the site's number format with the merchant's label, in an order translators set. */
@@ -182,7 +190,14 @@ class SettingsHelper {
                     continue;
                 }
 
-                $clean[ $group ][ $field ] = self::coerce( $data[ $group ][ $field ], $type );
+                $value = self::coerce( $data[ $group ][ $field ], $type );
+
+                // An empty label is never kept: on read the translated default stands, on write the stored label does.
+                if ( 'points_label' === $type && '' === $value ) {
+                    continue;
+                }
+
+                $clean[ $group ][ $field ] = $value;
             }
         }
 
@@ -199,6 +214,9 @@ class SettingsHelper {
 
             case 'non_negative_int':
                 return max( 0, (int) $value );
+
+            case 'points_label':
+                return mb_substr( trim( sanitize_text_field( (string) $value ) ), 0, self::POINTS_LABEL_MAX_LENGTH );
 
             case 'slug_list':
                 return array_values( array_filter( array_map( 'sanitize_key', (array) $value ) ) );

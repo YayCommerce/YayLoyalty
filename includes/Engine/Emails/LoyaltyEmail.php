@@ -1,6 +1,8 @@
 <?php
 namespace YayLoyalty\Engine\Emails;
 
+use YayLoyalty\Helpers\SettingsHelper;
+
 defined( 'ABSPATH' ) || exit;
 
 /**
@@ -32,6 +34,25 @@ abstract class LoyaltyEmail extends \WC_Email {
         parent::init_form_fields();
 
         $this->form_fields['enabled']['default'] = $this->is_enabled_by_default ? 'yes' : 'no';
+    }
+
+    /**
+     * Fills {points_label} with the merchant's plural label unless the email set a count-based one, as
+     * PointsEarnedEmail does. Read on every call, so it follows the customer's locale while sending.
+     *
+     * @param mixed $text Subject, heading or additional content.
+     * @return string
+     */
+    public function format_string( $text ) {
+        if ( ! empty( $this->placeholders['{points_label}'] ) ) {
+            return parent::format_string( $text );
+        }
+
+        $this->placeholders['{points_label}'] = SettingsHelper::points_label_plural();
+        $formatted                            = parent::format_string( $text );
+        $this->placeholders['{points_label}'] = '';
+
+        return $formatted;
     }
 
     /**
