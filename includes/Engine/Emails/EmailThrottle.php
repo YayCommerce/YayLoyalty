@@ -23,8 +23,12 @@ final class EmailThrottle {
         return 0 === $cap || count( self::recent_sends( $user_id ) ) < $cap;
     }
 
-    /** Counts one sent loyalty email against $user_id's week. */
+    /** Counts one sent loyalty email against $user_id's week. Nothing is counted while there is no cap. */
     public static function record( int $user_id ): void {
+        if ( 0 === self::cap() ) {
+            return;
+        }
+
         $sends   = self::recent_sends( $user_id );
         $sends[] = time();
 

@@ -50,14 +50,21 @@ abstract class LoyaltyEmail extends \WC_Email {
     /**
      * Decodes the entities that esc_html() and wptexturize() leave in plain templates, such as &#039;
      * and &#8230;, because WooCommerce's plain-text cleanup deletes every entity it does not list.
-     * &lt;, &gt; and &amp; stay encoded: WooCommerce decodes them only after it strips tags, so text
-     * such as "<3" survives.
+     * <, > and & go back as &lt;, &gt; and &amp;: WooCommerce decodes those only after it strips tags,
+     * so text such as "<3" survives.
      */
     public function get_content_plain() {
         return preg_replace_callback(
-            '/&(?!(?:lt|gt|amp|#0*60|#0*62|#0*38|#x0*3c|#x0*3e|#x0*26);)[^&\s;]+;/i',
+            '/&[^&\s;]+;/',
             static function ( array $entity ): string {
-                return html_entity_decode( $entity[0], ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+                $char    = html_entity_decode( $entity[0], ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+                $encoded = [
+                    '<' => '&lt;',
+                    '>' => '&gt;',
+                    '&' => '&amp;',
+                ];
+
+                return $encoded[ $char ] ?? $char;
             },
             wc_get_template_html( $this->template_plain, $this->template_args( true ), '', $this->template_base )
         );

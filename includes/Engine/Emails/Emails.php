@@ -14,9 +14,6 @@ class Emails {
 
     public const GROUP_POINTS = 'yayloyalty_points';
 
-    /** PointsEarnedEmail's id, kept here so this class can read its settings without loading WC_Email. */
-    public const POINTS_EARNED_ID = 'yayloyalty_points_earned';
-
     /** The email action an award is relayed on. Its only argument is the ledger row id. */
     public const POINTS_EARNED_ACTION = 'yayloyalty_points_earned_email';
 
@@ -44,19 +41,11 @@ class Emails {
     /**
      * Passes an award to the Points earned email as its ledger row id: with deferred emails, WooCommerce
      * before 10.8 serializes an action's arguments, and the award's Context may hold a Closure.
-     * Skipped while the email is off, which also spares building WooCommerce's mailer.
      */
     public function relay_award( Outcome $awarded ): void {
         $entry = $awarded->get_entry();
-        // WC_Email's own settings option, read directly because WC_Email cannot load here.
-        // Unlike is_enabled(), this skips the woocommerce_email_enabled_{id} filter.
-        $settings = get_option( 'woocommerce_' . self::POINTS_EARNED_ID . '_settings' );
 
         if ( ! $entry || null === $entry->get_id() || $entry->get_points() <= 0 ) {
-            return;
-        }
-
-        if ( is_array( $settings ) && 'no' === ( $settings['enabled'] ?? '' ) ) {
             return;
         }
 

@@ -14,7 +14,7 @@ defined( 'ABSPATH' ) || exit;
 /** The points-earned email, sent after each award commits, within the weekly cap. */
 class PointsEarnedEmail extends LoyaltyEmail {
 
-    public const ID = Emails::POINTS_EARNED_ID;
+    public const ID = 'yayloyalty_points_earned';
 
     /** @var LedgerEntry|null The award $values were built for. */
     private $values_entry = null;
@@ -49,12 +49,18 @@ class PointsEarnedEmail extends LoyaltyEmail {
 
     /**
      * Mails the customer about one award, which Emails::relay_award() passes as its ledger row id.
-     * A no-op when the row is not a gain, the email is off, the user has no email or the weekly cap is reached.
+     * A no-op when the row is not a gain or was clawed back, the email is off, the user has no email or the weekly cap is reached.
      */
     public function trigger( int $entry_id ): void {
-        $entry = ( new LedgerRepository() )->find( $entry_id );
+        $ledger = new LedgerRepository();
+        $entry  = $ledger->find( $entry_id );
 
         if ( ! $entry instanceof LedgerEntry || $entry->get_points() <= 0 ) {
+            return;
+        }
+
+        // A deferred send can run after a refund or cancellation took the points back.
+        if ( $ledger->sum_refunded_for( $entry ) >= $entry->get_points() ) {
             return;
         }
 
