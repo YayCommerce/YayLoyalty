@@ -61,7 +61,6 @@
 }
 
 .yl-launcher-label {
-  min-width: 0;
   overflow: hidden;
 }
 
@@ -147,21 +146,23 @@
    * beat the 0,2,0 utilities on the same elements.
    */
   .yayloyalty-launcher[data-position] .yl-launcher-trigger {
-    height: auto;
-    gap: 8px;
-    padding: 11px 14px;
     border-radius: 9999px;
     font-size: 13px;
   }
 
-  .yayloyalty-launcher[data-position] .yl-launcher-trigger:has(svg, img) {
+  /* No icon to collapse to: the label stays, as a smaller pill. */
+  .yayloyalty-launcher[data-position] .yl-launcher-trigger:not(:has(svg, img)) {
+    height: auto;
+    gap: 8px;
+    padding: 11px 14px;
+  }
+
+  /* Always collapsed: the values .yl-launcher-trigger[data-collapsed] owns, repeated because a media query cannot share its selector. */
+  .yl-launcher-trigger:has(svg, img) {
     --yl-trigger-gap: 0px;
     --yl-trigger-pad: 12px;
     --yl-label-cols: 0fr;
     --yl-label-opacity: 0;
-    height: 44px;
-    gap: var(--yl-trigger-gap);
-    padding: 0 var(--yl-trigger-pad);
   }
 
   .yayloyalty-launcher[data-position] .yl-launcher-header {
