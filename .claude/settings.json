@@ -8,8 +8,10 @@
       "Bash(pnpm --filter @yayloyalty/admin-page test)",
       "Bash(pnpm --filter @yayloyalty/admin-page exec tsc --noEmit)",
       "Bash(git diff *)",
-      "Bash(git log *)"
-    ]
+      "Bash(git log *)",
+      "WebFetch(domain:example.com)"
+    ],
+    "deny": ["Bash(gh repo *)", "Bash(gh secret *)", "Bash(gh variable*)"]
   },
   "hooks": {
     "PreToolUse": [
