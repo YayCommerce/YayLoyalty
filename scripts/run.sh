@@ -439,6 +439,61 @@ cmd_clean() {
     print_success "Clean complete"
 }
 
+# Lists docs/backlog/: open items with their unticked boxes, then items whose boxes are all ticked.
+cmd_backlog() {
+    local dir="$PLUGIN_DIR/docs/backlog"
+    local files=()
+    local f
+
+    for f in "$dir"/*.md; do
+        if [ -e "$f" ]; then
+            files+=("$f")
+        fi
+    done
+
+    if [ ${#files[@]} -eq 0 ]; then
+        print_info "Backlog empty"
+        return 0
+    fi
+
+    local done_list=()
+    local summary title ticked total
+
+    for f in "${files[@]}"; do
+        # One line "ticked<TAB>total<TAB>title", then the unticked boxes under ## Done when.
+        summary=$(awk '
+            /^# / && title == "" { title = substr($0, 3) }
+            /^## / { in_done = ($0 == "## Done when") ; next }
+            in_done && /^- \[[xX]\] / { ticked++; total++ }
+            in_done && /^- \[ \] / { total++; open[total] = substr($0, 7) }
+            END {
+                printf "%d\t%d\t%s\n", ticked, total, title
+                for (i = 1; i <= total; i++) if (i in open) print open[i]
+            }
+        ' "$f")
+        ticked=$(printf '%s\n' "$summary" | head -1 | cut -f1)
+        total=$(printf '%s\n' "$summary" | head -1 | cut -f2)
+        title=$(printf '%s\n' "$summary" | head -1 | cut -f3-)
+
+        if [ "$total" -gt 0 ] && [ "$ticked" -eq "$total" ]; then
+            done_list+=("$(basename "$f")  $title")
+            continue
+        fi
+
+        print_msg "$BLUE" "$(basename "$f")  [$ticked/$total]"
+        echo "  $title"
+        printf '%s\n' "$summary" | tail -n +2 | while IFS= read -r line; do
+            if [ -n "$line" ]; then
+                echo "    - [ ] $line"
+            fi
+        done
+    done
+
+    for f in "${done_list[@]+"${done_list[@]}"}"; do
+        print_success "$f  (done, remove)"
+    done
+}
+
 cmd_help() {
     echo "YayLoyalty Dev & Release Script"
     echo ""
@@ -451,6 +506,7 @@ cmd_help() {
     echo "  bump <version>               Bump version in plugin files"
     echo "  info                         Show current version info"
     echo "  clean                        Remove build artifacts"
+    echo "  backlog                      List docs/backlog/ items and their open boxes"
     echo "  help                         Show this help message"
     echo ""
     echo "'dev'/'build'/'release' also accept 'free' and 'premium' as aliases"
@@ -482,6 +538,7 @@ main() {
         bump)    cmd_bump "$@" ;;
         info)    cmd_info "$@" ;;
         clean)   cmd_clean "$@" ;;
+        backlog) cmd_backlog "$@" ;;
         help|*)  cmd_help ;;
     esac
 }

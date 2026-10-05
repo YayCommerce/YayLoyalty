@@ -6,7 +6,7 @@
 
 ## Status
 
-Accepted, 2026-10-04, by Trace Bui. It supersedes, whole, [the harness structure record](2026-10-01-harness-structure.md), [the shared skills record](2026-10-02-shared-design-plan-review-skills.md), [the yaytidy record](2026-10-02-add-yaytidy.md) and [the plan-without-a-spec record](2026-10-02-plan-without-a-spec.md), and restates every decision of theirs still in force. [The canonical-copy record](2026-10-03-shared-skills-canonical-copy.md) stays in force beside it.
+Superseded by [the harness with review backlog record](2026-10-05-harness-with-review-backlog.md), 2026-10-05. Before that: Accepted, 2026-10-04, by Trace Bui. It superseded, whole, [the harness structure record](2026-10-01-harness-structure.md), [the shared skills record](2026-10-02-shared-design-plan-review-skills.md), [the yaytidy record](2026-10-02-add-yaytidy.md) and [the plan-without-a-spec record](2026-10-02-plan-without-a-spec.md), and restates every decision of theirs still in force. [The canonical-copy record](2026-10-03-shared-skills-canonical-copy.md) stays in force beside it.
 
 ## Context
 

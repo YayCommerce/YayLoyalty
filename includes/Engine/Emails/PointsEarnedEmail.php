@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Engine\Emails;
 
+use YayLoyalty\Engine\Redemption\RedemptionService;
 use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Helpers\SettingsHelper;
@@ -14,7 +15,7 @@ defined( 'ABSPATH' ) || exit;
 /** The points-earned email, sent after each award commits, within the weekly cap. */
 class PointsEarnedEmail extends LoyaltyEmail {
 
-    public const ID = Emails::POINTS_EARNED_ID;
+    public const ID = 'yayloyalty_points_earned';
 
     /** @var LedgerEntry|null The award $values were built for. */
     private $values_entry = null;
@@ -47,14 +48,24 @@ class PointsEarnedEmail extends LoyaltyEmail {
         return __( 'You earned points', 'yayloyalty' );
     }
 
-    /**
-     * Mails the customer about one award, which Emails::relay_award() passes as its ledger row id.
-     * A no-op when the row is not a gain, the email is off, the user has no email or the weekly cap is reached.
-     */
+    /** Mails the customer about one award, which Emails::relay_award() passes as its ledger row id. */
     public function trigger( int $entry_id ): void {
-        $entry = ( new LedgerRepository() )->find( $entry_id );
+        $ledger = new LedgerRepository();
+        $entry  = $ledger->find( $entry_id );
 
         if ( ! $entry instanceof LedgerEntry || $entry->get_points() <= 0 ) {
+            return;
+        }
+
+        // is_enabled()'s filter receives $this->object, which must be this award.
+        $this->object = $entry;
+
+        if ( ! $this->is_enabled() ) {
+            return;
+        }
+
+        // A deferred send can run after a refund or cancellation took the points back.
+        if ( $ledger->sum_refunded_for( $entry, false ) >= $entry->get_points() ) {
             return;
         }
 
@@ -68,11 +79,10 @@ class PointsEarnedEmail extends LoyaltyEmail {
         $this->setup_locale();
 
         try {
-            // Before is_enabled(): its filter receives $this->object, which must be this award.
             $this->prepare( $entry );
             $this->recipient = $user->user_email;
 
-            if ( $this->is_enabled() && $this->get_recipient() ) {
+            if ( $this->get_recipient() ) {
                 $this->send_to_customer( $entry->get_user_id() );
             }
         } finally {
@@ -128,16 +138,7 @@ class PointsEarnedEmail extends LoyaltyEmail {
         $order        = $entry->get_order_id() ? wc_get_order( $entry->get_order_id() ) : null;
         $order_number = $order ? (string) $order->get_order_number() : '';
 
-        /**
-         * Filters whether the email says what the balance is worth. Off by default:
-         * customers cannot spend points at checkout until redemption ships.
-         * TODO(redemption): default to true once redemption ships.
-         *
-         * @param bool        $show
-         * @param LedgerEntry $entry The awarded row.
-         */
-        $show_value    = (bool) apply_filters( 'yayloyalty_points_earned_show_balance_value', false, $entry );
-        $balance_value = $show_value ? self::balance_value( $entry->get_balance_after() ) : '';
+        $balance_value = RedemptionService::is_available() ? self::balance_value( $entry->get_balance_after() ) : '';
 
         return self::amounts( $entry ) + [
             'entry'              => $entry,

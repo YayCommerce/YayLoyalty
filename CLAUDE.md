@@ -1,6 +1,6 @@
 <!--
-Purpose: the index every Claude Code session loads first: what this repo is, the commands, the hard rules, the git rules and where to look next.
-Update when: a command, hard rule or git rule changes, or a harness doc is added, moved or removed. Keep it under 100 lines. Detail goes in a linked doc, reached by a "read when…" link.
+Purpose: the index every Claude Code session loads first: what this repo is, the commands, the hard rules, when to add a test, the git rules and where to look next.
+Update when: a command, hard rule, the test rule or a git rule changes, or a harness doc is added, moved or removed. Keep it under 100 lines. Detail goes in a linked doc, reached by a "read when…" link.
 -->
 
 # YayLoyalty
@@ -33,6 +33,10 @@ Any pnpm command may [run `pnpm install`, and with it `composer install`, first]
 4. Product PHP must run on PHP 7.4: no enums, `match`, `readonly`, promoted constructor properties, `?->`, named arguments or union types. phpcs does not detect PHP 8-only syntax and the dev tooling runs on PHP 8, so only review catches it.
 5. Only `LedgerService` (`includes/Services/LedgerService.php`) writes ledger rows and balances. Construct it only in the places its docblock lists.
 
+## Tests
+
+The team keeps only tests that guard real risk, so a test is warranted in two cases: money or ledger logic (points and money math, `LedgerService` writes and balances), or a fixed bug that a test reproduces cheaply. Before adding any test, ask with AskUserQuestion: name the test, its file and suite, and what it guards. Write it only if the user accepts; a request for that test, or a plan whose `**Tests:**` line lists it, counts as acceptance. Otherwise verify with an exact manual check: the command or UI action and the result that means it passed.
+
 ## Git
 
 - Branch from `dev/edd` as `<name>/<type>/<topic>`.
@@ -52,5 +56,6 @@ Any pnpm command may [run `pnpm install`, and with it `composer install`, first]
 - [docs/conventions.md](docs/conventions.md): team rules the code can't show: money, dates and time zones, Pro data in Lite, TypeScript copies of PHP, wire casing, file names and comments. Read it before adding a file, a money or date field, a TypeScript copy of a PHP shape, or anything that stores Pro data.
 - [docs/decisions/](docs/decisions/): the reasons behind architectural choices: the Pro/Lite split, the ledger's single writer, admin-shell scoping, UTC dates, money as strings and this harness. Read the matching record before a change that alters an architectural choice; [the decision-record practice](docs/decisions/2026-10-04-decision-record-practice.md) says when to write a new one. Only `accepted` records are in force.
 - [docs/known-issues.md](docs/known-issues.md): checks that fail today and gotchas, each with a workaround. Read it when a command fails or does something unexpected, before you debug it.
+- [docs/backlog/](docs/backlog/): follow-ups that reviews left open, one file per item, each with a `## Done when` checklist. Read it when you start work in an area, or before you fix something a review flagged. `/yaybacklog` lists, checks and adds items; `./scripts/run.sh backlog` lists them.
 - [README.md](README.md): onboarding, the review, promotion and release practice, when to use each skill, and the owner map of the harness. Read it before adding or moving a harness doc, rule or skill.
 - [docs/plans/](docs/plans/): phased plans. Read it when you continue planned work; the plan with `Status: active` says what comes next.

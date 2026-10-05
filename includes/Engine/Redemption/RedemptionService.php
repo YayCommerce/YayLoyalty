@@ -50,6 +50,12 @@ final class RedemptionService {
         $this->writer   = $writer;
     }
 
+    /** Whether shoppers can spend points at checkout; the launcher and the points earned email show money values only when it is true. */
+    public static function is_available(): bool {
+        // TODO(redemption): return true once checkout redeems the reward.
+        return false;
+    }
+
     /**
      * Composition root: one Quoter (the engine with the build's handlers;
      * gates ProgramGate, RewardGate, then whatever

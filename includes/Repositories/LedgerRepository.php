@@ -134,8 +134,10 @@ class LedgerRepository extends AbstractRepository {
      * trigger, each with its campaign), and nets out ADJUST rows referencing
      * a refund: without them a restored refund would under-claw the next one.
      * Any other earn is matched by its reference.
+     *
+     * @param bool $is_locking False for a read outside a transaction, such as an email check.
      */
-    public function sum_refunded_for( LedgerEntry $earn ): int {
+    public function sum_refunded_for( LedgerEntry $earn, bool $is_locking = true ): int {
         if ( null !== $earn->get_order_id() ) {
             $campaign = null === $earn->get_campaign_id() ? 'campaign_id IS NULL' : 'campaign_id = %d';
             $scope    = "order_id = %d AND {$campaign} AND (type = %s OR (type = %s AND reference_type = %s))";
@@ -149,8 +151,8 @@ class LedgerRepository extends AbstractRepository {
             $values = [ (string) $earn->get_reference_type(), (int) $earn->get_reference_id(), LedgerType::REFUND_EARN ];
         }
 
-        // A locking read: inside an outer transaction a plain SELECT reads its older snapshot and would over-claw.
-        return max( 0, -$this->sum_points( 'user_id = %d AND ' . $scope, array_merge( [ $earn->get_user_id() ], $values ), true ) );
+        // Locking by default: inside an outer transaction a plain SELECT reads its older snapshot and would over-claw.
+        return max( 0, -$this->sum_points( 'user_id = %d AND ' . $scope, array_merge( [ $earn->get_user_id() ], $values ), $is_locking ) );
     }
 
     /**
