@@ -38,7 +38,7 @@ The layering rules live in [architecture.md](architecture.md#server-layers-and-w
 ## TypeScript copies of PHP name their owner
 
 - **Rule:**
-  - A TypeScript copy of a PHP shape or constant, such as a zod schema, the capability names or the points maths, says in its header which PHP code it mirrors and that PHP is the source of truth.
+  - A TypeScript copy of a PHP shape or constant, such as a zod schema, the capability names or the points maths, opens with a comment whose first sentence is `Mirrors <PHP symbol>, the source of truth.`
   - A copy describes data for the UI. It never repeats PHP's validation.
 - **Why:** a rule kept in two places drifts. The per-trigger whitelist "lives in PHP and would drift if duplicated".
 - **In code:** `apps/admin/src/lib/schema/`, `apps/admin/src/lib/access.tsx`, `apps/admin/src/lib/points-math/points-math.ts`.
@@ -67,11 +67,14 @@ The layering rules live in [architecture.md](architecture.md#server-layers-and-w
 
 - **Rule:**
   - Every class opens with a docblock that states its purpose. Comments explain why, not what.
+  - A comment says what the code can't: a reason, a constraint or a contract. It doesn't narrate history or design reviews, describe a mockup, or repeat a reason that another file owns.
+  - No decorative banners and no all-caps emphasis.
   - A to-do is one line, `TODO(<topic>):`, saying what to build, as in `TODO(redemption):`.
-  - Every translatable string with a placeholder has a `translators:` comment. phpcs checks this in PHP; nothing checks it in the SPA.
-  - Every `phpcs:ignore` and `phpcs:disable` gives its reason after `--`.
+  - Every translatable string with a placeholder has a `translators:` comment. phpcs checks this in PHP; nothing checks it in the SPA. In the SPA it is `/* translators: … */`, directly above the `__()` or `_n()` call.
+  - Every `phpcs:ignore` and `phpcs:disable` gives its reason after `--`, and so does every `eslint-disable`.
   - No comment cites another document's path or section number, a feature ID or a design-artboard ID. A comment carries its own reason.
 - **Why:**
   - `phpcs.xml.dist` says the codebase "documents behaviour rather than restating signatures". It adds that docblocks "are required by review where the signature is not self-explanatory, not by sniff".
   - A pointer into another document breaks silently when that document changes.
+  - A narrated history goes stale when the code moves on. The 2026-10-05 sweep found about 30 comments that named deleted tests, renamed methods or behaviour that had changed.
 - **In code:** `phpcs.xml.dist`; `includes/Repositories/AbstractRepository.php` shows the docblock style.
