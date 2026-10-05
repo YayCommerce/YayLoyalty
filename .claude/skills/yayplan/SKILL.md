@@ -39,11 +39,13 @@ Before deciding anything, find:
 - Shared code: anything consumed by other packages, plugins, or modules. A change there becomes its own task with every consumer listed.
 - The verification commands CLAUDE.md lists (test runner, linter, build step), and which of them already fail on the base branch: CLAUDE.md or the docs it links say so. If there are none, note how the feature is exercised by hand (command, URL, UI action).
 
-Search tracked files with `git grep`, which skips gitignored generated directories. For a large or unfamiliar area, delegate the search to an Explore subagent and ask it for file paths with line numbers.
+Search tracked files with `git grep`, which skips gitignored generated directories.
 
 ### 3. Decide the file structure
 
 List every file to create or modify and its single responsibility. Follow the codebase's existing conventions even where you would structure things differently. Propose splitting a file only when you are already modifying it and it has become unwieldy. This list drives the task breakdown: each task produces a self-contained change that makes sense on its own.
+
+Then decide tests with the user; this question does not count toward step 1's three. Propose only the tests CLAUDE.md's test rule warrants, or, when it has none, those where a bug would be costly and a test catches it cheaply. Give each its file, suite and what it guards, ask with AskUserQuestion which to include, and wait. When none is warranted, say so instead of asking. The plan's `**Tests:**` line records the answer, and only those tests get test steps; every other task gets an exact verification step.
 
 ### 4. Write the plan
 
@@ -68,13 +70,13 @@ Phase rules:
 Sizing:
 
 - A task is the smallest change a reviewer could accept or reject on its own, and it ends in a working, verifiable state.
-- A step is one action with one checkable result: "write test X", "run Y, expect Z", "commit".
+- A step is one action with one checkable result: "run Y, expect Z", "commit", or "write test X" for an accepted test.
 - Fold setup, configuration, scaffolding, and docs into the task whose deliverable needs them.
 
 What a step contains, and only that:
 
 - Code step: file path, exact signature (or hook, filter, route, or event name), and the spec values that pin behaviour. The implementer writes the body. Include a body only for an algorithm the signature and tests do not determine.
-- Test step: the test name and its assertions as code, with the spec's exact values.
+- Test step, only for a test the user accepted in step 3: the test name and its assertions as code, with the spec's exact values.
 - Verification step: the command (or URL and action) and the output that means it passed. Commands are the ones CLAUDE.md lists, or a narrower form of one, such as a single test or the changed files. When a check already fails on the base branch, the expected output is no new failures, with the base's result stated.
 - Commit step: the files to stage, by name, and the message. CLAUDE.md's git rules set the message format and any trailer, so the step does not spell out a `git commit` command.
 - Reference to another task: point at that task's Interfaces block. Do not repeat its code.
@@ -88,7 +90,7 @@ Re-read the spec with fresh eyes, then check the plan against it:
 1. Coverage: every spec requirement maps to a task. List gaps and add tasks.
 2. Steps: each step lets the implementer do exactly one reasonable thing, and no step carries more than that.
 3. Consistency: names, signatures, and types match across tasks and across phase files. A method called `clear_cache()` in Task 2 and `clearCache()` in Task 5 is a bug.
-4. Risk: the inputs and failure modes the spec implies but no test exercises. Name the ones most likely to bite a real user in Review Focus, and add a test for each to the task that owns the code.
+4. Risk: the inputs and failure modes the spec implies but no step exercises. Name the ones most likely to bite a real user in Review Focus, and give each a verification step, or its accepted test, in the task that owns the code. Do not add a test the user did not accept.
 5. Proportion: a plan several times longer than the spec has become the code. Replace bodies with signatures and assertions.
 6. Phases (directory plans only): every phase ends in something runnable with an exit criterion, no phase is a bare technical layer, and every interface a later phase consumes appears in the README contract.
 

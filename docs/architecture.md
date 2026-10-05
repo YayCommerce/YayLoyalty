@@ -170,7 +170,7 @@ One tree builds both editions. Lite is Pro without `includes/Pro/` and without t
 
 ## Tests
 
-The suites hold no test cases today ([known issue](known-issues.md#no-tests-composer-test-passes-empty-admin-test-fails)). What follows is the harness new tests run in.
+The suites hold no test cases today ([known issue](known-issues.md#no-tests-composer-test-passes-empty-admin-test-fails)). What follows is the harness new tests run in. When a test is warranted at all is in [CLAUDE.md § Tests](../CLAUDE.md#tests).
 
 - **Unit** (`phpunit.xml.dist`, `tests/unit/`): plain PHP with no WordPress.
   - `tests/bootstrap.php` maps the namespace onto `includes/` and shims the WordPress functions the tested code reaches.

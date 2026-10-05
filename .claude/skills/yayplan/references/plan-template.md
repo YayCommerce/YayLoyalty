@@ -14,6 +14,7 @@ Use this structure for every plan. Keep the header; adapt task count and step co
 **Spec:** [path or link to the spec/design doc this plan implements, or `none, planned from the request`]
 **Architecture:** [2–3 sentences: the approach and why it was chosen over the obvious alternative]
 **Touches:** [files or packages modified; mark shared code with (shared) and list its consumers]
+**Tests:** [each test the user accepted: file, suite and what it guards; or `none`]
 
 ## Requirements
 
@@ -32,7 +33,7 @@ Use this structure for every plan. Keep the header; adapt task count and step co
 
 ## Review focus
 
-[The inputs or failure modes the spec implies but no task's tests cover, that are most likely to bite a real user. One line each: the input or condition, and the behaviour a reasonable person expects. Each line has a matching test in the task that owns the code. An empty section means you checked and found none, not that you skipped the check.]
+[The inputs or failure modes the spec implies but no step exercises, that are most likely to bite a real user. One line each: the input or condition, and the behaviour a reasonable person expects. Each line has a matching verification step, or accepted test, in the task that owns the code. An empty section means you checked and found none, not that you skipped the check.]
 
 ---
 
@@ -41,12 +42,37 @@ Use this structure for every plan. Keep the header; adapt task count and step co
 **Files:**
 - Create: `exact/path/to/new-file.php`
 - Modify: `exact/path/to/existing.php:120-145`
-- Test: `tests/exact/path/to/test-file.php`
 
 **Interfaces:**
 - Consumes: [what this task uses from earlier tasks: exact names and signatures]
 - Produces: [what later tasks rely on: exact function, class, hook, or route names with parameter and return types]
 
+- [ ] **Step 1: Implement `function_under_test( array $input ): string` in `exact/path/to/new-file.php`**
+
+[One line on the approach only where the signature leaves a choice. No body unless the algorithm is undetermined by it.]
+
+- [ ] **Step 2: Verify in the admin**
+
+Open: `/wp-admin/admin.php?page=example-settings`
+Action: enable the toggle, save, reload
+Expected: toggle stays enabled; `get_option( 'example_enabled' )` returns `true`
+
+- [ ] **Step 3: Commit**
+
+Stage: `exact/path/to/new-file.php`, `exact/path/to/existing.php`
+Message: `feat(scope): short description`
+
+### Task 2: [Next component]
+...
+```
+
+A verification step without an expected result is a gap.
+
+## When the user accepted a test for the task
+
+Only a test listed in the plan's `**Tests:**` line gets test steps. Add `- Test: tests/exact/path/to/test-file.php` to the task's Files, and replace the implement and verify steps with:
+
+````markdown
 - [ ] **Step 1: Write the failing test**
 
 ```php
@@ -63,35 +89,13 @@ Expected: FAIL, function not defined
 
 - [ ] **Step 3: Implement `function_under_test( array $input ): string` in `exact/path/to/new-file.php`**
 
-[One line on the approach only where the signature and test leave a choice. No body unless the algorithm is undetermined by them.]
-
 - [ ] **Step 4: Run the test to confirm it passes**
 
 Run: `composer test -- --filter test_specific_behaviour`
 Expected: PASS
+````
 
-- [ ] **Step 5: Commit**
-
-Stage: `tests/exact/path/to/test-file.php`, `exact/path/to/new-file.php`
-Message: `feat(scope): short description`
-
-### Task 2: [Next component]
-...
-```
-
-## When the project has no automated tests
-
-Replace the test steps with a verification step that is still exact:
-
-```markdown
-- [ ] **Step 3: Verify in the admin**
-
-Open: `/wp-admin/admin.php?page=example-settings`
-Action: enable the toggle, save, reload
-Expected: toggle stays enabled; `get_option( 'example_enabled' )` returns `true`
-```
-
-A verification step without an expected result is a gap.
+The commit step then stages the test file too.
 
 ## Phased plans (directory shape)
 
@@ -117,6 +121,7 @@ docs/plans/YYYY-MM-DD-<feature-slug>/
 **Spec:** [path or link, or `none, planned from the request`]
 **Architecture:** [2–3 sentences]
 **Touches:** [files or packages; mark shared code with (shared) and list its consumers]
+**Tests:** [each test the user accepted: file, suite and what it guards; or `none`]
 
 ## Requirements
 
@@ -135,7 +140,7 @@ docs/plans/YYYY-MM-DD-<feature-slug>/
 
 ## Review focus
 
-[Same as the single-file plan. Each line names the phase and task that owns its test.]
+[Same as the single-file plan. Each line names the phase and task that owns its verification step or accepted test.]
 
 ## Phases
 
