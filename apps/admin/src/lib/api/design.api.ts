@@ -13,9 +13,13 @@ export function resetDesign(group?: string) {
   return api.post('design/reset', { json: group ? { group } : {} }).json<Design>();
 }
 
+/** Mirrors the `viewer` that `DesignRestController::preview_design()` reads, which owns it: `guest`, or anything else for the sample member. */
 export type DesignPreviewViewer = 'member' | 'guest';
 
-/** Two whole HTML pages from the server's own launcher templates: the button alone, and the open panel. */
+/**
+ * Two whole HTML pages from the server's own launcher templates: the button alone, and the open panel.
+ * Mirrors the keys `LauncherPreview::documents()` returns, which owns them.
+ */
 export type DesignPreview = { collapsed: string; expanded: string };
 
 /**

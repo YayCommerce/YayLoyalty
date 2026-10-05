@@ -11,6 +11,7 @@
 
 use YayLoyalty\Engine\Storefront\LauncherCopy;
 use YayLoyalty\Engine\Storefront\UiClasses;
+use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Enums\CampaignTrigger;
 
 defined( 'ABSPATH' ) || exit;
@@ -25,21 +26,21 @@ $yayloyalty_steps            = [];
 
 if ( null !== $yayloyalty_signup ) {
     $yayloyalty_steps[] = $yayloyalty_is_checkout_only
-        /* translators: %s: points. */
-        ? sprintf( __( 'Create an account at checkout — %s points to start', 'yayloyalty' ), LauncherCopy::points( $yayloyalty_signup ) )
-        /* translators: %s: points. */
-        : sprintf( __( 'Create an account — %s points to start', 'yayloyalty' ), LauncherCopy::points( $yayloyalty_signup ) );
+        /* translators: %s: points with the store's label, as "50 points". */
+        ? sprintf( __( 'Create an account at checkout — %s to start', 'yayloyalty' ), SettingsHelper::points_text( $yayloyalty_signup ) )
+        /* translators: %s: points with the store's label, as "50 points". */
+        : sprintf( __( 'Create an account — %s to start', 'yayloyalty' ), SettingsHelper::points_text( $yayloyalty_signup ) );
 }
 
 if ( null !== $yayloyalty_earn[ CampaignTrigger::PURCHASE ] ) {
     $yayloyalty_rate    = LauncherCopy::earn_rate( $yayloyalty_text['earn_rate_line'], $yayloyalty_earn[ CampaignTrigger::PURCHASE ], $view['purchase_min'] );
     $yayloyalty_steps[] = null === $yayloyalty_review
         ? $yayloyalty_rate
-        /* translators: 1: earn-rate sentence, 2: points for a review. */
-        : sprintf( __( '%1$s, and %2$s points for a review', 'yayloyalty' ), $yayloyalty_rate, LauncherCopy::points( $yayloyalty_review ) );
+        /* translators: 1: earn-rate sentence, 2: points for a review, with the store's label. */
+        : sprintf( __( '%1$s, and %2$s for a review', 'yayloyalty' ), $yayloyalty_rate, SettingsHelper::points_text( $yayloyalty_review ) );
 } elseif ( null !== $yayloyalty_review ) {
-    /* translators: %s: points. */
-    $yayloyalty_steps[] = sprintf( __( 'Earn %s points for a review', 'yayloyalty' ), LauncherCopy::points( $yayloyalty_review ) );
+    /* translators: %s: points with the store's label, as "50 points". */
+    $yayloyalty_steps[] = sprintf( __( 'Earn %s for a review', 'yayloyalty' ), SettingsHelper::points_text( $yayloyalty_review ) );
 }
 
 if ( null !== $yayloyalty_redeem ) {
@@ -52,11 +53,11 @@ $yayloyalty_register_url = $yayloyalty_is_checkout_only ? $view['checkout_url'] 
 if ( null === $yayloyalty_signup ) {
     $yayloyalty_register_text = $yayloyalty_is_checkout_only ? __( 'Create an account at checkout', 'yayloyalty' ) : __( 'Create an account', 'yayloyalty' );
 } elseif ( $yayloyalty_is_checkout_only ) {
-    /* translators: %s: points. */
-    $yayloyalty_register_text = sprintf( __( 'Create an account at checkout and get %s points', 'yayloyalty' ), LauncherCopy::points( $yayloyalty_signup ) );
+    /* translators: %s: points with the store's label, as "50 points". */
+    $yayloyalty_register_text = sprintf( __( 'Create an account at checkout and get %s', 'yayloyalty' ), SettingsHelper::points_text( $yayloyalty_signup ) );
 } else {
-    /* translators: %s: points. */
-    $yayloyalty_register_text = sprintf( __( 'Create an account and get %s points', 'yayloyalty' ), LauncherCopy::points( $yayloyalty_signup ) );
+    /* translators: %s: points with the store's label, as "50 points". */
+    $yayloyalty_register_text = sprintf( __( 'Create an account and get %s', 'yayloyalty' ), SettingsHelper::points_text( $yayloyalty_signup ) );
 }
 ?>
 <section class="yl:flex yl:flex-col yl:gap-2.5 yl:border-b yl:border-border yl:p-4">
@@ -94,8 +95,8 @@ if ( null === $yayloyalty_signup ) {
     <?php if ( null !== $view['estimate'] ) : ?>
         <p class="yl:m-0 yl:text-center yl:text-[11px] yl:text-muted-foreground">
             <?php
-            /* translators: %s: points. */
-            echo esc_html( sprintf( __( 'This product would earn you %s points', 'yayloyalty' ), LauncherCopy::points( $view['estimate'] ) ) );
+            /* translators: %s: points with the store's label, as "50 points". */
+            echo esc_html( sprintf( __( 'This product would earn you %s', 'yayloyalty' ), SettingsHelper::points_text( $view['estimate'] ) ) );
             ?>
         </p>
     <?php endif; ?>

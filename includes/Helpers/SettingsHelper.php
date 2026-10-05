@@ -87,6 +87,11 @@ class SettingsHelper {
         return 1 === $points ? $general['points_label_singular'] : $general['points_label_plural'];
     }
 
+    /** "50 Points": the amount in the site's number format, then the merchant's label for it. */
+    public static function points_text( int $points ): string {
+        return number_format_i18n( $points ) . ' ' . self::points_label( $points );
+    }
+
     /**
      * Saves only the fields sent, over what is stored; returns the merged settings.
      *

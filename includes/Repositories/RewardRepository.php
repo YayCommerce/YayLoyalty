@@ -58,9 +58,14 @@ final class RewardRepository extends AbstractRepository {
 
     /** The same rate, but 0 unless the built-in reward is live, so customers are never shown a reward they cannot spend. */
     public function live_points_per_currency_unit(): float {
+        return self::rate_of( $this->find_live_cart_discount( Dates::now() ) );
+    }
+
+    /** The built-in reward only while it is live at $now: the one customers can spend, so the only one they are shown. */
+    public function find_live_cart_discount( string $now ): ?Reward {
         $reward = $this->find_by_slug( self::CART_DISCOUNT_SLUG );
 
-        return null !== $reward && $reward->is_live_at( Dates::now() ) ? self::rate_of( $reward ) : 0.0;
+        return null !== $reward && $reward->is_live_at( $now ) ? $reward : null;
     }
 
     /** The rate read from an already-loaded built-in reward, for a caller that also needs the reward itself. */

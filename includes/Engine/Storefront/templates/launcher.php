@@ -8,6 +8,7 @@
 use YayLoyalty\Engine\Storefront\LauncherCopy;
 use YayLoyalty\Engine\Storefront\LauncherIcon;
 use YayLoyalty\Engine\Storefront\UiClasses;
+use YayLoyalty\Helpers\SettingsHelper;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -42,7 +43,7 @@ $yayloyalty_is_open = ! empty( $view['is_open'] );
         <?php if ( null !== $yayloyalty_member ) : ?>
             <span class="yl-launcher-badge yl:inline-flex yl:items-center yl:justify-center yl:rounded-full yl:bg-primary-foreground yl:text-primary yl:h-[22px] yl:min-w-[52px] yl:px-2 yl:text-xs yl:font-semibold yl:tabular-nums">
                 <?php echo esc_html( LauncherCopy::points( $yayloyalty_member['balance'] ) ); ?>
-                <span class="yl:sr-only"><?php esc_html_e( 'points', 'yayloyalty' ); ?></span>
+                <span class="yl:sr-only"><?php echo esc_html( SettingsHelper::points_label( $yayloyalty_member['balance'] ) ); ?></span>
             </span>
         <?php endif; ?>
     </button>

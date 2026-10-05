@@ -11,6 +11,7 @@ use YayLoyalty\Controllers\StorefrontActivityRestController;
 use YayLoyalty\Engine\Storefront\LauncherCopy;
 use YayLoyalty\Engine\Storefront\UiClasses;
 use YayLoyalty\Enums\CampaignTrigger;
+use YayLoyalty\Helpers\SettingsHelper;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -49,8 +50,7 @@ $yayloyalty_activity = $view['activity'] ?? null;
                     <span><?php esc_html_e( 'Write a review', 'yayloyalty' ); ?></span>
                     <span class="yl:whitespace-nowrap yl:font-semibold">
                         <?php
-                        /* translators: %s: points. */
-                        echo esc_html( sprintf( __( '%s points', 'yayloyalty' ), LauncherCopy::points( $yayloyalty_review ) ) );
+                        echo esc_html( SettingsHelper::points_text( $yayloyalty_review ) );
                         ?>
                     </span>
                 </li>

@@ -61,8 +61,8 @@ final class LauncherPayload {
      */
     public function for_balance( array $design, ?int $balance ): array {
         $now      = Dates::now();
-        $reward   = $this->rewards->find_by_slug( RewardRepository::CART_DISCOUNT_SLUG );
-        $redeem   = self::redeem_rule( $reward, $now );
+        $reward   = $this->rewards->find_live_cart_discount( $now );
+        $redeem   = self::redeem_rule( $reward );
         $rules    = LauncherEarnRules::advertise( $this->live_campaigns( $now ), $this->campaigns->find_default_purchase() );
         $register = self::register_route();
 
@@ -120,16 +120,13 @@ final class LauncherPayload {
     /**
      * The built-in cart-discount reward's rate, for the guest panel's "spend them at checkout" step.
      *
+     * @param Reward|null $reward The reward when it is live (RewardRepository::find_live_cart_discount()).
      * @return array{points_per_unit: float}|null
      */
-    private static function redeem_rule( ?Reward $reward, string $now ): ?array {
+    private static function redeem_rule( ?Reward $reward ): ?array {
         $rate = RewardRepository::rate_of( $reward );
 
-        if ( null === $reward || $rate <= 0 || ! $reward->is_live_at( $now ) ) {
-            return null;
-        }
-
-        return [ 'points_per_unit' => $rate ];
+        return $rate > 0 ? [ 'points_per_unit' => $rate ] : null;
     }
 
     /**

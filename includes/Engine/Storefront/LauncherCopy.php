@@ -2,6 +2,7 @@
 namespace YayLoyalty\Engine\Storefront;
 
 use YayLoyalty\Helpers\DesignSchema;
+use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Utils\Text;
 
 defined( 'ABSPATH' ) || exit;
@@ -24,8 +25,9 @@ final class LauncherCopy {
     }
 
     /**
-     * A rate like 1, 1.5 or 0.004, with every decimal the merchant entered: the admin's
-     * pointsPerCurrencyLabel() prints String(rate), and the two must agree. Ten places at most drops float noise.
+     * A rate like 1, 1.5 or 0.004, with every decimal the merchant entered. The admin's
+     * pointsPerCurrencyLabel() owns the digits (it prints String(rate)), and the two must show the same ones;
+     * this copy also localises the separators for shoppers ("1,5" in German). Ten places at most drops float noise.
      */
     public static function rate( float $rate ): string {
         $fixed = rtrim( sprintf( '%.10F', $rate ), '0' );
@@ -66,9 +68,11 @@ final class LauncherCopy {
         return sprintf( __( '%1$s on orders of %2$s or more', 'yayloyalty' ), $line, self::money( $min_subtotal ) );
     }
 
-    /** "100 points = $1". */
+    /** "100 points = $1", with the merchant's label: singular only for a rate of exactly 1. */
     public static function redeem_rate( float $points_per_unit ): string {
-        /* translators: 1: points, 2: money amount. */
-        return sprintf( __( '%1$s points = %2$s', 'yayloyalty' ), self::rate( $points_per_unit ), self::money( 1.0 ) );
+        $label = SettingsHelper::points_label( 1.0 === $points_per_unit ? 1 : 0 );
+
+        /* translators: 1: points per unit of currency, 2: the store's points label, 3: money amount. */
+        return sprintf( __( '%1$s %2$s = %3$s', 'yayloyalty' ), self::rate( $points_per_unit ), $label, self::money( 1.0 ) );
     }
 }
