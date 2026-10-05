@@ -12,7 +12,7 @@ final class NoticeDismissals {
 
     public const META_KEY = 'yayloyalty_dashboard_dismissed';
 
-    /** The only keys a client may dismiss; fixture-only keys never persist. */
+    /** The only keys a client may dismiss. Fixture-only keys never persist. */
     public const DISMISSABLE = [ 'negative_balance', 'default_campaign_paused', 'points_jump' ];
 
     /**
@@ -37,9 +37,7 @@ final class NoticeDismissals {
         update_user_meta( $user_id, self::META_KEY, $dismissed );
     }
 
-    /**
-     * @return array<string, string>
-     */
+    /** @return array<string, string> */
     private function read( int $user_id ): array {
         $meta = get_user_meta( $user_id, self::META_KEY, true );
 

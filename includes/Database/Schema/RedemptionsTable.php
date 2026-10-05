@@ -7,7 +7,7 @@ defined( 'ABSPATH' ) || exit;
  * yayloyalty_redemptions: designed, not built yet. Not yet in
  * Installer::schemas(): registering it there is the step that creates
  * the table on the next upgrade. UNIQUE (order_id, reward_id) is the
- * double-debit guard for the flexible discount; (reward_id, user_id)
+ * double-debit guard for the flexible discount, and (reward_id, user_id)
  * serves the `redemption_count` condition. Scaffold: DDL stub.
  */
 final class RedemptionsTable extends AbstractTableSchema {

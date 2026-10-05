@@ -4,9 +4,8 @@ namespace YayLoyalty\Enums;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * What a reward does when redeemed; also the key to the per-type config
- * whitelist and the cost_points rule (flexible_discount is the slider, null
- * cost; every other type is fixed-cost). Same Free/Pro split as CampaignTrigger.
+ * What a reward does when redeemed. It also keys the per-type config whitelist and the cost_points rule:
+ * flexible_discount is the slider, with a null cost, and every other type has a fixed cost.
  */
 final class RewardType {
 
@@ -69,9 +68,7 @@ final class RewardType {
         return is_string( $value ) && in_array( $value, self::all_known(), true );
     }
 
-    /**
-     * @throws \InvalidArgumentException When $value is not offerable in this build.
-     */
+    /** @throws \InvalidArgumentException When $value is not offerable in this build. */
     public static function assert( $value ): string {
         if ( ! self::is_valid( $value ) ) {
             throw new \InvalidArgumentException(

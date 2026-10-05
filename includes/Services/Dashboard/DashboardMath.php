@@ -3,7 +3,7 @@ namespace YayLoyalty\Services\Dashboard;
 
 defined( 'ABSPATH' ) || exit;
 
-/** Dashboard series helpers, pure so the zero-fill rule is unit-tested. Ratios live in Utils\PointsMath. */
+/** Pure dashboard series helpers. Ratios live in Utils\PointsMath. */
 final class DashboardMath {
 
     /**

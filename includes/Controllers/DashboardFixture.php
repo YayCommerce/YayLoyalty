@@ -10,8 +10,9 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Dev-only dashboard scenarios, served for `?scenario=` under WP_DEBUG: a
  * dev ledger is too small to review the UI states against. Every scenario
- * emits the exact wire shape the SPA parses, so drift fails loudly. Deleted
- * with both `scenario` args once signed off; nothing in the SPA changes.
+ * emits the exact wire shape the SPA parses, so drift fails loudly.
+ *
+ * TODO(dashboard-fixture): delete this class and both `scenario` args once the dashboard states are signed off; the SPA needs no change.
  */
 final class DashboardFixture {
 
@@ -44,7 +45,7 @@ final class DashboardFixture {
         }
     }
 
-    /** Pro panel data for the same scenarios; referrals and tier_distribution stay null, as the real endpoint returns them. */
+    /** Pro panel data for the same scenarios. `referrals` and `tier_distribution` stay null, as the real endpoint returns them. */
     public static function pro_scenario( string $name, int $range ): array {
         $window = PeriodWindow::for_range( $range, new \DateTimeImmutable( 'now', wp_timezone() ) );
         $days   = $window->days();
@@ -144,9 +145,7 @@ final class DashboardFixture {
         return self::stats( 2431, 184200, 61400, 871500, 100, 212, 1190 );
     }
 
-    /**
-     * @param float|null $delta Null → every delta null ("no previous period").
-     */
+    /** @param float|null $delta Null → every delta null ("no previous period"). */
     private static function stats( int $members, int $issued, int $redeemed, int $liability, int $ppcu, int $with_points, int $orders, ?float $delta = 1.0 ): array {
         $d = static fn( float $value ): ?float => null === $delta ? null : $value;
 

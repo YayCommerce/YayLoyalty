@@ -3,9 +3,7 @@
 namespace YayLoyalty;
 
 defined( 'ABSPATH' ) || exit;
-/**
- * I18n Logic
- */
+/** Loads the plugin's translations. */
 class I18n {
 
     public static function load_plugin_textdomain() {

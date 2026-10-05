@@ -21,6 +21,11 @@ class LocalizeHelper {
             Capabilities::payload()
         );
 
+        /**
+         * Data localized for the admin SPA as window.yayLoyaltyAdmin. Pro adds its customer segments.
+         *
+         * @param array<string, mixed> $admin_data Settings, design and the capability payload.
+         */
         return apply_filters( 'yayloyalty_localize_admin_data', $admin_data );
     }
 
@@ -37,11 +42,10 @@ class LocalizeHelper {
                 'restBase'     => BaseRestController::REST_NAMESPACE,
                 'restNonce'    => wp_create_nonce( 'wp_rest' ),
                 'isBlockTheme' => wp_is_block_theme(),
-                // Slug => translated display name, e.g. 'shop_manager' => 'Shop Manager'.
-                // Lets role pickers (Design visibility, etc.) offer real roles instead of free text.
+                // Slug => translated name, so role pickers offer real roles instead of free text.
                 'roles'        => wp_roles()->get_names(),
             ],
-            // No pro flag: the SPA is gated at build time (IS_PRO_BUILD), and one zip carries both.
+            // No Pro flag: the SPA is gated at build time by IS_PRO_BUILD, never at runtime.
             'loyaltyMeta' => [
                 'pluginUrl' => YAYLOYALTY_PLUGIN_URL,
                 'assetsUrl' => YAYLOYALTY_PLUGIN_URL . 'assets',
@@ -57,20 +61,25 @@ class LocalizeHelper {
                     'decimal_sep'  => function_exists( 'wc_get_price_decimal_separator' ) ? wc_get_price_decimal_separator() : '.',
                     'num_decimals' => function_exists( 'wc_get_price_decimals' ) ? wc_get_price_decimals() : 2,
                 ],
-                // id => admin title, code => name. The campaign condition pickers offer these
-                // instead of free text; CampaignConditionSet validates currencies against the same list.
+                // id => admin title and code => name, for the campaign condition pickers.
+                // CampaignConditionSet validates currencies against the same list.
                 'payment_gateways' => self::payment_gateways(),
                 'countries'        => self::decoded_names( function_exists( 'WC' ) && WC()->countries ? WC()->countries->get_countries() : [] ),
                 'currencies'       => self::decoded_names( function_exists( 'get_woocommerce_currencies' ) ? get_woocommerce_currencies() : [] ),
             ],
         ];
 
+        /**
+         * Site, plugin and WooCommerce data localized for the admin SPA as window.yayLoyaltyMeta.
+         *
+         * @param array<string, mixed> $meta Keyed wpMeta, loyaltyMeta and wcMeta.
+         */
         return apply_filters( 'yayloyalty_localize_meta', $meta );
     }
 
     /**
-     * Every registered gateway, enabled or not, as id => admin title; a paused gateway can still
-     * be named by a campaign.
+     * Every registered gateway, enabled or not, as id => admin title, so a campaign can still name
+     * a paused gateway.
      *
      * @return array<string, string>
      */

@@ -12,9 +12,7 @@ final class Table {
 
     public const PREFIX = 'yayloyalty_';
 
-    /**
-     * @param string $slug Table slug without any prefix, e.g. 'customers'.
-     */
+    /** @param string $slug Table slug without any prefix, e.g. 'customers'. */
     public static function name( string $slug ): string {
         global $wpdb;
 

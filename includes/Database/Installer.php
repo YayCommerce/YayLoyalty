@@ -24,7 +24,7 @@ final class Installer {
     private const LOCK_TTL = 60;
 
     /**
-     * Registered table schemas; yayloyalty_table_schemas can add more (nothing does yet, Pro included).
+     * Registered table schemas. The yayloyalty_table_schemas filter can add more.
      *
      * @return AbstractTableSchema[]
      */
@@ -75,7 +75,7 @@ final class Installer {
         }
 
         if ( ! self::acquire_lock() ) {
-            // Another request is upgrading; do not queue behind it.
+            // Another request is upgrading. Do not queue behind it.
             return;
         }
 
@@ -89,7 +89,7 @@ final class Installer {
         }
     }
 
-    /** Seeds every built-in row. Idempotent by slug; the unique key on slug is the backstop. */
+    /** Seeds every built-in row. Idempotent by slug, with the unique key on slug as the backstop. */
     private static function seed_builtins(): void {
         self::seed_builtin_campaigns();
         self::seed_builtin_reward();
@@ -138,7 +138,6 @@ final class Installer {
         }
     }
 
-    /** Seeds the built-in reward. */
     private static function seed_builtin_reward(): void {
         $repository = new \YayLoyalty\Repositories\RewardRepository();
         $now        = \YayLoyalty\Utils\Dates::now();
@@ -170,18 +169,17 @@ final class Installer {
     /** Data migrations dbDelta cannot express: it adds columns and indexes but never drops them. */
     private static function run_migrations(): void {
         self::drop_index_if_exists( 'ledger', 'uniq_ledger_event' );
-        // idx_user_history_type replaced both; dbDelta has already added it by the time this runs.
+        // idx_user_history_type covers both, and dbDelta has already added it by the time this runs.
         self::drop_index_if_exists( 'ledger', 'idx_user_history' );
         self::drop_index_if_exists( 'ledger', 'idx_user_type' );
 
-        /** Fires after tables are created/updated and before the version stamp. */
+        /** Fires after the tables are created or updated, and before the version stamp. */
         do_action( 'yayloyalty_run_migrations' );
     }
 
     /**
-     * Drops a superseded index; a no-op when it is already gone, so every
-     * upgrade may call it. Precondition: nothing relies on the index for
-     * idempotency any more (the ledger's guard is uniq_idempotency_key).
+     * Drops a superseded index. It is a no-op when the index is already gone, so every upgrade may call it.
+     * Use it only for an index nothing relies on for idempotency: the ledger's guard is uniq_idempotency_key.
      */
     private static function drop_index_if_exists( string $table_slug, string $index ): void {
         global $wpdb;
@@ -195,7 +193,7 @@ final class Installer {
             return;
         }
 
-        // An upgrade must finish; a leftover index costs a little write speed, never correctness.
+        // An upgrade must finish. A leftover index costs a little write speed, never correctness.
         if ( false === $wpdb->query( "ALTER TABLE `{$table}` DROP INDEX `" . esc_sql( $index ) . '`' ) ) {
             Log::warning( 'Installer', sprintf( 'could not drop index %s on %s: %s', $index, $table, $wpdb->last_error ) );
         }
@@ -203,7 +201,7 @@ final class Installer {
     }
 
     /**
-     * Confirms dbDelta applied each schema; it reports success even when it skipped an index it could not parse.
+     * Confirms dbDelta applied each schema. dbDelta reports success even when it skipped an index it could not parse.
      *
      * @return array<string, string[]> Problems found, keyed by table name.
      */
@@ -216,7 +214,7 @@ final class Installer {
             $table  = $schema->table_name();
             $issues = [];
 
-            $columns = $wpdb->get_col( 'SHOW COLUMNS FROM `' . esc_sql( $table ) . '`' ); // phpcs:ignore WordPress.DB
+            $columns = $wpdb->get_col( 'SHOW COLUMNS FROM `' . esc_sql( $table ) . '`' ); // phpcs:ignore WordPress.DB -- a schema check on our own escaped table name; it takes no values and must read live.
             $columns = is_array( $columns ) ? $columns : [];
 
             foreach ( $schema->expected_columns() as $column ) {
@@ -225,7 +223,7 @@ final class Installer {
                 }
             }
 
-            $index_rows  = $wpdb->get_results( 'SHOW INDEX FROM `' . esc_sql( $table ) . '`', ARRAY_A ); // phpcs:ignore WordPress.DB
+            $index_rows  = $wpdb->get_results( 'SHOW INDEX FROM `' . esc_sql( $table ) . '`', ARRAY_A ); // phpcs:ignore WordPress.DB -- a schema check on our own escaped table name; it takes no values and must read live.
             $index_names = [];
 
             if ( is_array( $index_rows ) ) {

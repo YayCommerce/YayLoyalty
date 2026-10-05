@@ -8,19 +8,16 @@ use YayLoyalty\Utils\Json;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * A reward's `conditions`: a flat ANDed list, at most one entry per type,
- * stored as JSON on the rewards table (empty = available to everyone). A
- * condition is a fact about the customer; reward-level properties such as
- * max_total belong in `config`.
+ * A reward's `conditions`: a flat ANDed list, at most one entry per type, stored as JSON on the rewards table.
+ * An empty list makes the reward available to everyone. A condition is a fact about the customer.
+ * Reward-level properties such as max_total belong in `config`.
  */
 final class RewardConditionSet {
 
     /** @var RewardCondition[] */
     private $conditions;
 
-    /**
-     * @param RewardCondition[] $conditions
-     */
+    /** @param RewardCondition[] $conditions */
     public function __construct( array $conditions = [] ) {
         $this->conditions = array_values(
             array_filter(
@@ -33,7 +30,7 @@ final class RewardConditionSet {
     }
 
     /**
-     * Builds from { type, operator, value } maps. Lenient; strictness is validate().
+     * Builds from { type, operator, value } maps. Lenient: validate() is the strict check.
      *
      * @param array<int, mixed> $list
      */
@@ -49,14 +46,12 @@ final class RewardConditionSet {
         return new self( $conditions );
     }
 
-    /** Builds from the stored column value; malformed JSON yields an empty set, never an exception. */
+    /** Builds from the stored column value. Malformed JSON yields an empty set, never an exception. */
     public static function from_json( ?string $raw ): self {
         return self::from_array( Json::decode_list( $raw, [] ) );
     }
 
-    /**
-     * @return array<int, array{type: string, operator: string, value: mixed}>
-     */
+    /** @return array<int, array{type: string, operator: string, value: mixed}> */
     public function to_array(): array {
         return array_map(
             static function ( RewardCondition $condition ) {
@@ -71,9 +66,7 @@ final class RewardConditionSet {
         return Json::encode_list( $this->to_array(), Reward::CONFIG_SCHEMA_VERSION );
     }
 
-    /**
-     * @return RewardCondition[]
-     */
+    /** @return RewardCondition[] */
     public function all(): array {
         return $this->conditions;
     }
@@ -89,7 +82,7 @@ final class RewardConditionSet {
     /**
      * Canonicalises a raw list for storage: scalars widened to lists, ids
      * cast, roles lower-cased, lists de-duplicated, entries ordered
-     * cheap-first. Non-throwing; unknown types pass through for validate().
+     * cheap-first. Never throws: unknown types pass through for validate().
      *
      * @param array<int, mixed> $list
      * @return array<int, array{type: string, operator: string, value: mixed}>
@@ -137,7 +130,7 @@ final class RewardConditionSet {
     }
 
     /**
-     * Non-throwing check for the save boundary; normalises first.
+     * Non-throwing check for the save boundary. It normalises first.
      *
      * @param array<int, mixed> $list
      */
@@ -189,7 +182,6 @@ final class RewardConditionSet {
 
     /**
      * @param array<string, mixed> $spec
-     * @param mixed                $value
      */
     private static function validate_value( string $type, array $spec, string $operator, $value ): void {
         switch ( $spec['value'] ?? '' ) {

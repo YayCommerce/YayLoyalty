@@ -4,16 +4,14 @@ namespace YayLoyalty\Enums;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The vocabulary for a campaign's `conditions`: constants plus a per-type
- * schema() the validator and the evaluator read. Declaration order is the
- * order conditions are stored in. Shared accessors live in
- * ConditionTypeMethods.
+ * The vocabulary for a campaign's `conditions`, with a per-type schema() that the validator and the evaluator read.
+ * Declaration order is the order conditions are stored in.
  */
 final class CampaignConditionType {
 
     use ConditionTypeMethods;
 
-    // Each type accepts only a subset; see schema().
+    // Each type accepts only a subset, listed in schema().
     public const OP_IN      = 'in';
     public const OP_NOT_IN  = 'not_in';
     public const OP_GTE     = 'gte';
@@ -23,12 +21,12 @@ final class CampaignConditionType {
     public const OP_EQ      = 'eq';
     public const OP_BETWEEN = 'between';
 
-    /** What a condition is compared against: the customer, their CustomerFacts, or the order being scored. */
+    // What a condition is compared against: the customer, their CustomerFacts, or the order being scored.
     public const INPUT_CUSTOMER = 'customer';
     public const INPUT_FACTS    = 'facts';
     public const INPUT_ORDER    = 'order';
 
-    /** Which address a `country` condition reads; ANY matches either. */
+    // Which address a `country` condition reads. ANY matches either.
     public const SOURCE_SHIPPING = 'shipping';
     public const SOURCE_BILLING  = 'billing';
     public const SOURCE_ANY      = 'any';
@@ -44,7 +42,7 @@ final class CampaignConditionType {
     public const CATEGORY_IN_CART = 'category_in_cart';
 
     /**
-     * Defined ahead of the tier system; excluded from all() (see UNAVAILABLE).
+     * Defined ahead of the tier system, so UNAVAILABLE keeps it out of all().
      * gte/lte are ordinal ("Silver or above"), so tiers will need a rank column.
      */
     public const TIER = 'tier';
@@ -56,7 +54,7 @@ final class CampaignConditionType {
     public const LIFETIME_SPEND  = 'lifetime_spend';
 
     /**
-     * Recognised but not yet offered: excluded from all(), kept in all_known() so stored rows round-trip.
+     * Recognised but not offered yet: all() leaves them out, and all_known() keeps them for stored rows.
      *
      * @var string[]
      */
@@ -65,11 +63,10 @@ final class CampaignConditionType {
     ];
 
     /**
-     * Per-type rules: operators, value shape (string_list | int_list |
-     * currency_list | country_list | int | money | tier; `between` takes a
-     * [low, high] pair), max list length, source_values, the normalize
-     * transforms applied on save, and the evaluator's input (INPUT_*; none
-     * for tier, which is not evaluable yet).
+     * Per-type rules: operators, value shape, max list length, source_values, the normalize transforms
+     * applied on save, and the evaluator's input (INPUT_*). The value shapes are string_list, int_list,
+     * currency_list, country_list, int, money and tier. `between` takes a [low, high] pair.
+     * Tier has no input because it cannot be evaluated yet.
      *
      * @return array<string, array<string, mixed>>
      */
@@ -144,7 +141,7 @@ final class CampaignConditionType {
         ];
     }
 
-    /** The INPUT_* a condition type is compared against; null for a type the evaluator cannot evaluate. */
+    /** The INPUT_* a condition type is compared against, or null for a type the evaluator cannot evaluate. */
     public static function input_for( string $type ): ?string {
         return self::schema()[ $type ]['input'] ?? null;
     }

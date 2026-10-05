@@ -4,16 +4,11 @@ namespace YayLoyalty\Database\Schema;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Generic per-customer key-value event log, non-points customer facts.
- * `meta_key` doubles as the activity log's `event_type`; `created_at`
- * doubles as `occurred_at`. No unique key: multiple rows per key are
- * normal (e.g. repeated `points_adjusted`); `account_created`/
- * `account_deleted` once-only-ness is a write-side check
- * (`CustomerMetaRepository::has()`), not a DB constraint. idx_user_key
- * serves both the group filter
- * (`meta_key IN (...)`) and the `latest(user_id, 'account_deleted')`
- * lookup; no standalone `meta_key` index — never selective without
- * `user_id`.
+ * Per-customer key-value event log of non-points customer facts. `meta_key` is also the activity
+ * log's `event_type`, and `created_at` its `occurred_at`. There is no unique key, because several rows
+ * per key are normal. A write-side check, CustomerMetaRepository::has(), keeps `account_created` and
+ * `account_deleted` to one row each. idx_user_key serves the group filter (`meta_key IN (...)`) and the
+ * latest-`account_deleted` lookup. A standalone `meta_key` index would never be selective without `user_id`.
  */
 final class CustomerMetaTable extends AbstractTableSchema {
 

@@ -19,9 +19,7 @@ final class LedgerSource {
     public const EXPIRY    = 'expiry';
     public const SYSTEM    = 'system';
 
-    /**
-     * @return string[]
-     */
+    /** @return string[] */
     public static function all(): array {
         return [
             self::ORDER,
@@ -43,9 +41,7 @@ final class LedgerSource {
         return is_string( $value ) && in_array( $value, self::all(), true );
     }
 
-    /**
-     * @throws \InvalidArgumentException When $value is not a known source.
-     */
+    /** @throws \InvalidArgumentException When $value is not a known source. */
     public static function assert( $value ): string {
         if ( ! self::is_valid( $value ) ) {
             throw new \InvalidArgumentException(

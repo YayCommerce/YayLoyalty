@@ -4,16 +4,12 @@ namespace YayLoyalty\Controllers\Schemas;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Item schema for `GET /customers/{id}`.
- *
- * Every property is readonly: nothing on this resource is client-writable
- * (manual adjustments go through `POST .../adjust`, a different resource).
+ * Item schema for `GET /customers/{id}`. Every property is readonly: nothing on this resource is
+ * client-writable, and manual adjustments go through `POST .../adjust`, a different resource.
  */
 final class CustomerItemSchema {
 
-    /**
-     * @return array<string, mixed>
-     */
+    /** @return array<string, mixed> */
     public static function properties(): array {
         return [
             'user_id'                  => [
@@ -32,8 +28,6 @@ final class CustomerItemSchema {
                 'context'  => [ 'view' ],
                 'readonly' => true,
             ],
-            // Every aggregate is server-owned: it is derived from the
-            // ledger and must never be settable from a request.
             'balance'                  => [
                 'type'     => 'integer',
                 'context'  => [ 'view' ],
