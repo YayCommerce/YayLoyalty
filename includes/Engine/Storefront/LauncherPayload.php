@@ -142,7 +142,7 @@ final class LauncherPayload {
     }
 
     /**
-     * What this product would earn a guest, at the base rate (design 1c, note 3): no tier multiplier,
+     * What this product would earn a guest, at the base rate: no tier multiplier,
      * since that belongs to members. Null off a product page, on a variable product (its price is a
      * range) or when the engine finds nothing.
      */

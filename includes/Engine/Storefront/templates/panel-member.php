@@ -1,6 +1,6 @@
 <?php
 /**
- * Signed-in panel body (1b; 1e on mobile): balance first, then reference material, each block ruled off.
+ * Signed-in panel body: balance first, then reference material, each block ruled off.
  *
  * @var array $view      Launcher::build_view().
  * @var array $yayloyalty_text   The Design tab's storefront_text.

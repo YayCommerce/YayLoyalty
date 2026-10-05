@@ -40,7 +40,7 @@ CSS;
      * The button alone and the open panel, from one view.
      *
      * @param array $design    DesignHelper::with_unsaved().
-     * @param bool  $is_member A signed-in sample shopper (1b/1e), or a guest (1c).
+     * @param bool  $is_member A signed-in sample shopper, or a guest.
      * @return array{collapsed: string, expanded: string}
      */
     public static function documents( array $design, bool $is_member ): array {
@@ -74,7 +74,7 @@ CSS;
     }
 
     /**
-     * Design 1b's sample history, newest first: an order earning, a redemption, a review.
+     * The member panel's sample history, newest first: an order earning, a redemption, a review.
      *
      * @return LedgerEntry[]
      */

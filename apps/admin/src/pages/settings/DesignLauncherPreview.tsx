@@ -38,7 +38,7 @@ const FRAME_HEIGHT_PX: Record<PreviewDevice, Record<(typeof STAGES)[number]['key
 const REDRAW_DELAY_MS = 300;
 
 /**
- * The launcher as the storefront draws it (designs 1a–1c, 1e), redrawn by the server from the
+ * The launcher as the storefront draws it, redrawn by the server from the
  * unsaved form: collapsed and expanded, on desktop or mobile, for a member or a guest.
  */
 export function DesignLauncherPreview() {

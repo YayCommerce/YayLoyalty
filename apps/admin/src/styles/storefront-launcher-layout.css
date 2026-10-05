@@ -16,13 +16,13 @@
   --yl-closed-shift: -8px;
 }
 
-/* Floating button (1a): bottom right by default, clear of the footer. */
+/* Floating button: bottom right by default, clear of the footer. */
 .yl-launcher-trigger {
   position: fixed;
   z-index: 99990;
 }
 
-/* The open panel takes the button's place (1b, 1c), so the button steps aside until it closes. */
+/* The open panel takes the button's place, so the button steps aside until it closes. */
 .yl-launcher-trigger[aria-expanded='true'] {
   visibility: hidden;
 }
@@ -50,7 +50,7 @@
   background: transparent;
 }
 
-/* Panel (1b, 1c): anchored where the button sits, capped at 700px, sections scroll inside. */
+/* Panel: anchored where the button sits, capped at 700px, sections scroll inside. */
 .yl-launcher-panel {
   position: fixed;
   z-index: 99992;
@@ -88,7 +88,7 @@
   display: none;
 }
 
-/* Mobile (1e): icon + balance pill above the theme's sticky bar; the panel becomes a bottom sheet. */
+/* Mobile: icon + balance pill above the theme's sticky bar; the panel becomes a bottom sheet. */
 @media (max-width: 599px) {
   .yayloyalty-launcher[data-hide-mobile='1'] {
     display: none;
@@ -103,7 +103,7 @@
   }
 
   /*
-   * 1e differs from the desktop panel: a pill whose balance is plain text, and a sheet with a light
+   * On mobile the launcher differs from the desktop panel: a pill whose balance is plain text, and a sheet with a light
    * header (brand-coloured icon, outlined round ✕). [data-position] lifts these to 0,3,0 so they
    * beat the 0,2,0 utilities on the same elements.
    */

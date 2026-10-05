@@ -9,9 +9,9 @@ defined( 'ABSPATH' ) || exit;
 /**
  * GET /me/activity: the signed-in shopper's latest ledger rows, for the storefront launcher.
  *
- * A shopper route, not an admin one: gated by session identity (code-standards.md § 9), so the user
+ * A shopper route, not an admin one: gated by session identity, so the user
  * is always the current one and there is no id param to enumerate. Fetched after the panel opens,
- * so a shopper who only wants their balance never waits on a ledger query (design 1b, note 3).
+ * so a shopper who only wants their balance never waits on a ledger query.
  */
 final class StorefrontActivityRestController extends AbstractRestController {
 

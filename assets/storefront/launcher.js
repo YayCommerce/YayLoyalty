@@ -123,7 +123,7 @@
     return longestMs;
   }
 
-  /** The bottom sheet's handle (1e): drag down past DRAG_CLOSE_PX to dismiss, otherwise snap back. */
+  /** The bottom sheet's handle: drag down past DRAG_CLOSE_PX to dismiss, otherwise snap back. */
   function bindDragToClose(panel, handle, close) {
     if (!handle) {
       return;

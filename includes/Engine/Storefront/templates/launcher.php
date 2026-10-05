@@ -1,6 +1,6 @@
 <?php
 /**
- * Launcher shell: the floating button (1a), the overlay and the panel frame (1b, 1c; a bottom sheet on mobile, 1e).
+ * Launcher shell: the floating button, the overlay and the panel frame (a bottom sheet on mobile).
  *
  * @var array $view Launcher::build_view().
  */

@@ -1,6 +1,6 @@
 <?php
 /**
- * Guest panel body (1c): the same shell with the balance block replaced by the programme's pitch.
+ * Guest panel body: the same shell with the balance block replaced by the programme's pitch.
  *
  * Rates are stated plainly (they are the argument), at the base rate only: a tier multiplier
  * belongs to members, and promising it before signup would be untrue.

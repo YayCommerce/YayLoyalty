@@ -16,9 +16,9 @@ use YayLoyalty\Utils\Log;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The storefront launcher (designs 1a, 1b, 1c, 1e): decides once per request, then enqueues and prints.
+ * The storefront launcher: decides once per request, then enqueues and prints.
  *
- * Read-only in v1: balance, ways to earn, recent activity. Redeeming arrives with F08.
+ * Read-only in v1: balance, ways to earn, recent activity. Redeeming is not built yet.
  */
 final class Launcher {
 

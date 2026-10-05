@@ -10,7 +10,7 @@ defined( 'ABSPATH' ) || exit;
  * variants the launcher uses (add one back when a template first needs it: every listed class ships)
  * and written with the storefront build's `yl:` prefix. The strings stay literal because Tailwind
  * finds classes by scanning this file (apps/admin/src/storefront.css @source); a class built at
- * runtime would never reach the stylesheet. Allowed mirror: code-standards.md § 16.
+ * runtime would never reach the stylesheet. button.tsx owns these lists; change both together.
  */
 final class UiClasses {
 
