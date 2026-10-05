@@ -60,10 +60,15 @@ final class LauncherPayload {
      * @param int|null $balance The member's balance; null for a guest.
      */
     public function for_balance( array $design, ?int $balance ): array {
-        $now    = Dates::now();
-        $reward = $this->rewards->find_by_slug( RewardRepository::CART_DISCOUNT_SLUG );
-        $redeem = self::redeem_rule( $reward, $now );
-        $rules  = LauncherEarnRules::advertise( $this->live_campaigns( $now ), $this->campaigns->find_default_purchase() );
+        $now      = Dates::now();
+        $reward   = $this->rewards->find_by_slug( RewardRepository::CART_DISCOUNT_SLUG );
+        $redeem   = self::redeem_rule( $reward, $now );
+        $rules    = LauncherEarnRules::advertise( $this->live_campaigns( $now ), $this->campaigns->find_default_purchase() );
+        $register = self::register_route();
+
+        if ( null === $register ) {
+            $rules['earn'][ CampaignTrigger::SIGNUP ] = null;
+        }
 
         return [
             'launcher'     => $design['launcher'],
@@ -74,7 +79,7 @@ final class LauncherPayload {
             'redeem'       => $redeem,
             'member'       => null === $balance ? null : self::member( $balance, null === $redeem ? null : $reward ),
             'estimate'     => null === $balance && null !== $rules['earn'][ CampaignTrigger::PURCHASE ] ? $this->product_estimate() : null,
-            'register'     => self::register_route(),
+            'register'     => $register,
             'account_url'  => (string) wc_get_page_permalink( 'myaccount' ),
             'checkout_url' => (string) wc_get_checkout_url(),
         ];

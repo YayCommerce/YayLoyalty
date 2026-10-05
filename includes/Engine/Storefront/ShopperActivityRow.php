@@ -28,31 +28,18 @@ final class ShopperActivityRow {
         $items = [];
 
         foreach ( $entries as $entry ) {
-            $row     = self::from_entry( $entry, $store );
             $items[] = [
-                'label'  => $row['label'],
-                'meta'   => self::meta_line( $row['created_at'], $row['order_id'] ),
-                'points' => $row['points'],
-                'delta'  => LauncherCopy::signed_points( $row['points'] ),
+                'label'  => self::label( $entry, $store ),
+                'meta'   => self::meta_line( $entry->get_created_at(), $entry->get_order_id() ),
+                'points' => $entry->get_points(),
+                'delta'  => LauncherCopy::signed_points( $entry->get_points() ),
             ];
         }
 
         return $items;
     }
 
-    /**
-     * @param string $store_name Shown on adjustments ("Adjustment by {store}").
-     * @return array{label: string, order_id: ?int, points: int, created_at: string}
-     */
-    public static function from_entry( LedgerEntry $entry, string $store_name ): array {
-        return [
-            'label'      => self::label( $entry, $store_name ),
-            'order_id'   => $entry->get_order_id(),
-            'points'     => $entry->get_points(),
-            'created_at' => $entry->get_created_at(),
-        ];
-    }
-
+    /** @param string $store_name Shown on adjustments ("Adjustment by {store}"). */
     private static function label( LedgerEntry $entry, string $store_name ): string {
         switch ( $entry->get_type() ) {
             case LedgerType::EARN:

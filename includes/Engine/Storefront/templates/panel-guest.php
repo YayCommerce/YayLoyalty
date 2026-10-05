@@ -18,7 +18,7 @@ defined( 'ABSPATH' ) || exit;
 $yayloyalty_earn             = $view['earn'];
 $yayloyalty_redeem           = $view['redeem'];
 $yayloyalty_route            = $view['register'];
-$yayloyalty_signup           = null !== $yayloyalty_route ? $yayloyalty_earn[ CampaignTrigger::SIGNUP ] : null;
+$yayloyalty_signup           = $yayloyalty_earn[ CampaignTrigger::SIGNUP ];
 $yayloyalty_is_checkout_only = 'checkout' === $yayloyalty_route;
 $yayloyalty_review           = $yayloyalty_earn[ CampaignTrigger::REVIEW ];
 $yayloyalty_steps            = [];

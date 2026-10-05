@@ -31,18 +31,6 @@ abstract class IntegrationTestCase extends TestCase {
         ( new CampaignRepository() )->flush_cache();
     }
 
-    /**
-     * Signs in the site's first administrator and registers the REST routes; returns the admin's id.
-     * rest_get_server() fires rest_api_init, which is what registers the plugin's routes.
-     */
-    protected function act_as_admin(): int {
-        $admin_id = $this->first_admin_id();
-        wp_set_current_user( $admin_id );
-        rest_get_server();
-
-        return $admin_id;
-    }
-
     /** The site's first administrator; the test is skipped on a site without one. */
     protected function first_admin_id(): int {
         $admins = get_users(
@@ -100,14 +88,6 @@ abstract class IntegrationTestCase extends TestCase {
         );
 
         return is_array( $row ) ? $row : [];
-    }
-
-    /** Sets a customer's cached balance directly, creating the row if needed. */
-    protected function set_balance( int $user_id, int $balance ): void {
-        global $wpdb;
-
-        ( new CustomerRepository() )->ensure_row( $user_id );
-        $wpdb->update( \YayLoyalty\Utils\Table::name( 'customers' ), [ 'balance' => $balance ], [ 'user_id' => $user_id ], [ '%d' ], [ '%d' ] ); // phpcs:ignore WordPress.DB
     }
 
     /**

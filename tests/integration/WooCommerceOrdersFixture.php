@@ -218,9 +218,8 @@ trait WooCommerceOrdersFixture {
      * An active campaign for $trigger with its default config, overridden by $config.
      *
      * @param array<string, mixed> $config
-     * @param array<string, mixed> $fields Optional row fields: slug, priority, conditions, starts_at, status, is_builtin.
      */
-    private function create_campaign( string $trigger = CampaignTrigger::PURCHASE, array $config = [], ?string $ends_at = null, array $fields = [] ): int {
+    private function create_campaign( string $trigger = CampaignTrigger::PURCHASE, array $config = [], ?string $ends_at = null ): int {
         static $sequence = 0;
         ++$sequence;
 
@@ -228,15 +227,14 @@ trait WooCommerceOrdersFixture {
             new Campaign(
                 null,
                 'Earning test ' . $sequence,
-                $fields['slug'] ?? 'earning-test-' . $sequence,
+                'earning-test-' . $sequence,
                 $trigger,
-                $fields['status'] ?? Status::ACTIVE,
-                $fields['priority'] ?? 0,
+                Status::ACTIVE,
+                0,
                 array_replace( Campaign::default_config( $trigger ), $config ),
-                $fields['conditions'] ?? [],
-                $fields['starts_at'] ?? null,
-                $ends_at,
-                $fields['is_builtin'] ?? false
+                [],
+                null,
+                $ends_at
             )
         );
     }

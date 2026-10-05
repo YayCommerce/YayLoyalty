@@ -45,7 +45,7 @@ final class LauncherCopy {
      * The field is optional; left blank, the rate still needs saying, so the Design default stands in.
      * A campaign minimum is appended, since an order under it earns nothing.
      */
-    public static function earn_rate( string $template, float $points_per_unit, float $min_subtotal = 0.0 ): string {
+    public static function earn_rate( string $template, float $points_per_unit, float $min_subtotal ): string {
         if ( '' === trim( $template ) ) {
             $template = DesignSchema::get_default_design()['storefront_text']['earn_rate_line'];
         }
