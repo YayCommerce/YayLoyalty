@@ -344,15 +344,12 @@ final class CampaignPerformanceRestController extends AbstractRestController {
      * @return array<int, array{date: string, points: int}>
      */
     private function daily_series( int $campaign_id, array $window ): array {
-        $site_timezone = wp_timezone();
-
-        $from = new \DateTimeImmutable( $window['from'] . ' 00:00:00', $site_timezone );
-        $to   = ( new \DateTimeImmutable( $window['to'] . ' 00:00:00', $site_timezone ) )->modify( '+1 day' );
+        $from_utc = (string) Dates::site_day_to_utc( $window['from'] );
 
         $rows = $this->points->daily_by_campaign(
-            Dates::to_utc( $from ),
-            Dates::to_utc( $to ),
-            $from->getOffset(),
+            $from_utc,
+            (string) Dates::site_day_to_utc( $window['to'], '+1 day' ),
+            wp_timezone()->getOffset( new \DateTimeImmutable( $window['from'], wp_timezone() ) ),
             [ $campaign_id ]
         );
 

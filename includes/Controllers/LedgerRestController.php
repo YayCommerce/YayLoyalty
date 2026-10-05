@@ -44,10 +44,8 @@ final class LedgerRestController extends AbstractRestController {
     }
 
     /**
-     * `type`/`search`/`after`/`before` are registered but not applied —
-     * `LedgerRepository` has no SQL behind them yet (see `LedgerQueryArgs`). `type_counts: null` is the wire signal
-     * the SPA reads to disable the ledger tab's filter row rather than let
-     * it silently do nothing against real data.
+     * `type_counts` describes the customer's UNFILTERED history, so each
+     * segment keeps its count while another filter is applied.
      */
     public function get_history( \WP_REST_Request $request ) {
         $user_id = (int) $request['id'];
@@ -59,10 +57,16 @@ final class LedgerRestController extends AbstractRestController {
                 'per_page' => (int) $request['per_page'],
                 'orderby'  => $request['orderby'] ? (string) $request['orderby'] : 'id',
                 'order'    => $request['order'] ? (string) $request['order'] : 'desc',
+                'types'    => LedgerQueryArgs::types_of( $request['type'] ),
+                'search'   => (string) $request['search'],
+                'after'    => (string) $request['after'],
+                'before'   => (string) $request['before'],
             ]
         );
 
-        return $this->respond_paginated( $result ) + [ 'type_counts' => null ];
+        $counts = LedgerQueryArgs::group_counts( $this->ledger->count_by_type_for_user( $user_id ) );
+
+        return $this->respond_paginated( $result ) + [ 'type_counts' => $counts ];
     }
 
     protected function define_item_schema(): array {

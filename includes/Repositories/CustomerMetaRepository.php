@@ -12,7 +12,7 @@ defined( 'ABSPATH' ) || exit;
  * delete().
  *
  * `paginate_activity()`'s `search` never LIKEs the raw `meta_value` blob —
- * see `CustomerMetaActivitySearch`'s docblock for why and how.
+ * see `paginate_searched()` for why and how.
  *
  * Not final: CustomerActivityServiceTest extends it as a repository double
  * (mirrors DashboardRepository/CampaignRepository, the same reason those
@@ -112,16 +112,10 @@ class CustomerMetaRepository extends AbstractRepository {
         );
         // phpcs:enable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
 
-        $after  = trim( (string) ( $args['after'] ?? '' ) );
-        $before = trim( (string) ( $args['before'] ?? '' ) );
-
-        if ( '' !== $after ) {
-            $where[] = $wpdb->prepare( 'created_at >= %s', $after . ' 00:00:00' );
-        }
-
-        if ( '' !== $before ) {
-            $where[] = $wpdb->prepare( 'created_at <= %s', $before . ' 23:59:59' );
-        }
+        $where = array_merge(
+            $where,
+            $this->site_day_range_where( (string) ( $args['after'] ?? '' ), (string) ( $args['before'] ?? '' ) )
+        );
 
         $search = trim( (string) ( $args['search'] ?? '' ) );
 
@@ -137,6 +131,64 @@ class CustomerMetaRepository extends AbstractRepository {
             );
         }
 
-        return CustomerMetaActivitySearch::paginate( esc_sql( $this->table() ), $where, $search, $page, $per_page );
+        return $this->paginate_searched( $where, $search, $page, $per_page );
+    }
+
+    /**
+     * Activity rows matching $search in their real content, paginated in PHP.
+     *
+     * `search` never LIKEs the raw `meta_value` blob: every row carries the
+     * literal structural keys `data`, `actor_kind`, `actor_name`,
+     * `staff_only`, `schema_version`, so a raw LIKE would match almost every
+     * row on metadata, not content. Candidate rows are instead fetched by
+     * $where (user_id + meta_key IN (...) + date bounds, no LIMIT — one
+     * customer's history, always small at this scale), decoded, filtered
+     * against real content fields only, then paginated — `per_page` is
+     * applied post-filter, not in SQL.
+     *
+     * @param string[] $where Already-prepared SQL fragments.
+     * @return array{items: CustomerMeta[], total: int, page: int, per_page: int}
+     */
+    private function paginate_searched( array $where, string $search, int $page, int $per_page ): array {
+        global $wpdb;
+
+        $where_sql = ' WHERE ' . implode( ' AND ', $where );
+
+        // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared -- the fragments in $where are already prepared by paginate_activity().
+        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+            'SELECT * FROM `' . esc_sql( $this->table() ) . '`' . $where_sql . ' ORDER BY id DESC',
+            ARRAY_A
+        );
+        // phpcs:enable WordPress.DB.PreparedSQL.NotPrepared
+
+        $matches = [];
+
+        foreach ( is_array( $rows ) ? $rows : [] as $row ) {
+            $item = CustomerMeta::from_row( $row );
+
+            if ( self::activity_matches( $item, $search ) ) {
+                $matches[] = $item;
+            }
+        }
+
+        return [
+            'items'    => array_slice( $matches, ( $page - 1 ) * $per_page, $per_page ),
+            'total'    => count( $matches ),
+            'page'     => $page,
+            'per_page' => $per_page,
+        ];
+    }
+
+    /** Real content fields only: data's string/int values + actor_name — never the JSON envelope's structural keys. */
+    private static function activity_matches( CustomerMeta $item, string $search ): bool {
+        foreach ( $item->get_data() as $value ) {
+            if ( ( is_string( $value ) || is_int( $value ) ) && false !== mb_stripos( (string) $value, $search ) ) {
+                return true;
+            }
+        }
+
+        $actor_name = $item->to_array()['actor_name'];
+
+        return null !== $actor_name && false !== mb_stripos( (string) $actor_name, $search );
     }
 }

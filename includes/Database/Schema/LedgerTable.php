@@ -11,7 +11,9 @@ defined( 'ABSPATH' ) || exit;
  * composite. NULL keys (manual adjustments) never collide, so those are
  * deliberately not idempotent. The former composite uniq_ledger_event is
  * dropped by Installer::run_migrations() — dbDelta cannot drop an index.
- * idx_user_history is (user_id, id): created_at can tie within a second.
+ * idx_user_history_type is (user_id, id, type): id orders history because
+ * created_at can tie within a second, and type lets the drawer's per-type
+ * count and type filter read the index instead of the rows.
  */
 final class LedgerTable extends AbstractTableSchema {
 
@@ -40,7 +42,7 @@ final class LedgerTable extends AbstractTableSchema {
             created_at datetime NOT NULL,
             PRIMARY KEY  (id),
             UNIQUE KEY uniq_idempotency_key (idempotency_key),
-            KEY idx_user_history (user_id,id),
+            KEY idx_user_history_type (user_id,id,type),
             KEY campaign_id (campaign_id),
             KEY redemption_id (redemption_id),
             KEY order_id (order_id),
@@ -73,7 +75,7 @@ final class LedgerTable extends AbstractTableSchema {
             'PRIMARY',
             // Missing means duplicate awards; Installer::verify() exists for this.
             'uniq_idempotency_key',
-            'idx_user_history',
+            'idx_user_history_type',
             'campaign_id',
             'redemption_id',
             'order_id',

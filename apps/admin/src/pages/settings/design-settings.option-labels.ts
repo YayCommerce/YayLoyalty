@@ -12,9 +12,9 @@ import type {
 
 /**
  * Enum-value → label mappers for the Design tab's closed-choice fields.
- * Split out of `design-settings.copy.ts` (flat strings) to keep both files
- * under the 200-line budget — same flat-function convention, just grouped by
- * "maps a value" instead of "is a string".
+ * Kept apart from `design-settings.copy.ts` (flat strings): same
+ * flat-function convention, just grouped by "maps a value" instead of
+ * "is a string".
  */
 
 export function launcherPositionLabel(position: DesignLauncherPosition): string {

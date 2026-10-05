@@ -51,6 +51,8 @@ export function useDrawerTabQueryState<F extends string>(initialFilter: F) {
     setSearch,
     page,
     setPage,
+    /** Reads the committed search, not the box: the rows only change once a search commits. */
+    isFiltered: filter !== initialFilter || querySearch !== '' || range?.from !== undefined,
     pageParams: {
       page,
       perPage: DRAWER_PAGE_SIZE,
