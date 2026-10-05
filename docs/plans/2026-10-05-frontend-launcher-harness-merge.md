@@ -209,7 +209,7 @@ Message: `docs(architecture): describe the storefront launcher and its CSS build
 
 - [x] **Step 1: Edit the two lines**
 
-- `build`: `type-check, then build the SPA into \`assets/dist/admin/\` and the storefront launcher's CSS into \`assets/dist/storefront/\`. [Fails today](docs/known-issues.md).`
+- `build`: "type-check, then build the SPA into `assets/dist/admin/` and the storefront launcher's CSS into `assets/dist/storefront/`.", keeping its "Fails today" link.
 - Rule 1: `assets/dist/admin/` becomes `assets/dist/`, which `.claude/hooks/guard-generated-paths.sh` already guards.
 
 - [ ] **Step 2: Verify**
