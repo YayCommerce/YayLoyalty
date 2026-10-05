@@ -1,7 +1,8 @@
 /**
  * Storefront launcher behaviour: open/close the panel, keep focus inside it, and load "Recent activity"
  * once, after the first open (the balance is already in the page; history is a second request so a
- * shopper checking their points never waits on it).
+ * shopper checking their points never waits on it). Near the page bottom the button folds to its icon,
+ * so it covers less of the footer.
  *
  * Plain script, no build step. Markup and data come from includes/Engine/Storefront/templates/.
  * Class names here are scanned by the storefront Tailwind build, so they must stay literal.
@@ -10,6 +11,8 @@
   "use strict";
 
   var DRAG_CLOSE_PX = 80;
+  var COLLAPSE_WITHIN_PX = 160;
+  var SCROLL_DEADBAND_PX = 4;
   var FOCUSABLE =
     'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -103,6 +106,53 @@
     });
 
     bindDragToClose(panel, root.querySelector("[data-yl-handle]"), close);
+    if (trigger.hasAttribute("data-yl-collapsible")) {
+      bindCollapseOnScroll(trigger);
+    }
+  }
+
+  /**
+   * Folds the button to its icon when the shopper scrolls down to within COLLAPSE_WITHIN_PX of the
+   * page bottom, and unfolds it on the first scroll up. Only collapsing looks at the distance, so
+   * resting on that line cannot flip the state back and forth. The CSS owns the sizes and the motion.
+   */
+  function bindCollapseOnScroll(trigger) {
+    var page = document.documentElement;
+    var lastY = window.scrollY;
+    var isFramePending = false;
+
+    function update() {
+      isFramePending = false;
+      var maxY = Math.max(0, page.scrollHeight - window.innerHeight);
+      // Clamped: the bounce back from an overscroll past the bottom is not the shopper scrolling up.
+      var y = Math.min(Math.max(window.scrollY, 0), maxY);
+      var delta = y - lastY;
+      // lastY is left alone here so a slow scroll still adds up to a direction.
+      if (Math.abs(delta) < SCROLL_DEADBAND_PX) {
+        return;
+      }
+      lastY = y;
+      if (delta < 0) {
+        trigger.removeAttribute("data-collapsed");
+      } else if (
+        maxY - y <= COLLAPSE_WITHIN_PX &&
+        // A page this short is near its bottom from the first pixel; it would fold on any scroll.
+        maxY >= 2 * COLLAPSE_WITHIN_PX
+      ) {
+        trigger.setAttribute("data-collapsed", "");
+      }
+    }
+
+    window.addEventListener(
+      "scroll",
+      function () {
+        if (!isFramePending) {
+          isFramePending = true;
+          window.requestAnimationFrame(update);
+        }
+      },
+      { passive: true },
+    );
   }
 
   /**

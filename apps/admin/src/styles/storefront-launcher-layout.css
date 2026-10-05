@@ -16,10 +16,61 @@
   --yl-closed-shift: -8px;
 }
 
-/* Floating button: bottom right by default, clear of the footer. */
+/*
+ * Floating button: bottom right by default, clear of the footer. Its spacing and the label's width
+ * read from variables, so each collapsed state below only flips them and the geometry has one owner.
+ */
 .yl-launcher-trigger {
+  --yl-trigger-gap: 10px;
+  --yl-trigger-pad: 18px;
+  --yl-label-cols: 1fr;
+  --yl-label-opacity: 1;
   position: fixed;
   z-index: 99990;
+}
+
+/* Icon only, 44px square: set by launcher.js near the page bottom, and printed for the icon button style. */
+.yl-launcher-trigger[data-collapsed] {
+  --yl-trigger-gap: 0px;
+  --yl-trigger-pad: 12px;
+  --yl-label-cols: 0fr;
+  --yl-label-opacity: 0;
+}
+
+/* [data-position] lifts this to 0,3,0, above the scoped reset's `padding: 0` on buttons. */
+.yayloyalty-launcher[data-position] .yl-launcher-trigger {
+  gap: var(--yl-trigger-gap);
+  padding-inline: var(--yl-trigger-pad);
+  transition:
+    background-color 0.15s ease,
+    gap 0.25s ease,
+    padding 0.25s ease;
+}
+
+/*
+ * The label folds through a grid column (1fr to 0fr), which animates its natural width without
+ * measuring it. It is clipped, never hidden, so it stays the button's accessible name.
+ */
+.yl-launcher-label-wrap {
+  display: grid;
+  grid-template-columns: var(--yl-label-cols);
+  opacity: var(--yl-label-opacity);
+  transition:
+    grid-template-columns 0.25s ease,
+    opacity 0.2s ease;
+}
+
+.yl-launcher-label {
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* Out of flow on the button's corner, so it holds still while the button resizes. The ring keeps a white badge visible on a white page. */
+.yl-launcher-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  box-shadow: 0 0 0 2px var(--primary);
 }
 
 /* The open panel takes the button's place, so the button steps aside until it closes. */
@@ -80,7 +131,7 @@
   display: none;
 }
 
-/* Mobile: icon + balance pill above the theme's sticky bar; the panel becomes a bottom sheet. */
+/* Mobile: the button is always collapsed when it has an icon; the panel becomes a bottom sheet. */
 @media (max-width: 599px) {
   .yayloyalty-launcher[data-hide-mobile='1'] {
     display: none;
@@ -90,12 +141,8 @@
     --yayloyalty-launcher-offset: 16px;
   }
 
-  .yl-launcher-trigger:has(svg, img) .yl-launcher-label {
-    display: none;
-  }
-
   /*
-   * On mobile the launcher differs from the desktop panel: a pill whose balance is plain text, and a sheet with a light
+   * On mobile the launcher differs from the desktop panel: a round button, and a sheet with a light
    * header (brand-coloured icon, outlined round ✕). [data-position] lifts these to 0,3,0 so they
    * beat the 0,2,0 utilities on the same elements.
    */
@@ -107,14 +154,14 @@
     font-size: 13px;
   }
 
-  .yayloyalty-launcher[data-position] .yl-launcher-trigger:has(svg, img) .yl-launcher-badge {
-    min-width: 0;
-    height: auto;
-    padding: 0;
-    background: transparent;
-    color: inherit;
-    font-size: 13px;
-    font-weight: 500;
+  .yayloyalty-launcher[data-position] .yl-launcher-trigger:has(svg, img) {
+    --yl-trigger-gap: 0px;
+    --yl-trigger-pad: 12px;
+    --yl-label-cols: 0fr;
+    --yl-label-opacity: 0;
+    height: 44px;
+    gap: var(--yl-trigger-gap);
+    padding: 0 var(--yl-trigger-pad);
   }
 
   .yayloyalty-launcher[data-position] .yl-launcher-header {
@@ -182,6 +229,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .yl-launcher-trigger,
+  .yl-launcher-label-wrap,
   .yl-launcher-panel,
   .yl-launcher-overlay {
     transition: none !important;
