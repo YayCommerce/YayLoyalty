@@ -31,7 +31,7 @@ class PointsEarnedShortcodes extends BaseShortcode {
 
     public $available_email_ids = [ PointsEarnedEmail::ID ];
 
-    /** @var object|null The award $values were built for; one build serves every shortcode in a render. */
+    /** @var object|null The award $values were built for. One build serves every shortcode in a render. */
     private $values_entry = null;
 
     /** @var array<string, mixed> */
@@ -40,7 +40,7 @@ class PointsEarnedShortcodes extends BaseShortcode {
     /** @var array<string, mixed>|null */
     private $sample_values = null;
 
-    /** @var PointsEarnedEmail|null The email whose subject is being filtered; YayMail's subject render does not pass it. */
+    /** @var PointsEarnedEmail|null The email whose subject is being filtered. YayMail's subject render does not pass it. */
     private $subject_email = null;
 
     protected function __construct() {
@@ -52,9 +52,11 @@ class PointsEarnedShortcodes extends BaseShortcode {
     }
 
     /**
+     * Holds the email whose subject is being filtered, for values().
+     *
      * @param string $subject
      * @param mixed  $award The email's object, unused.
-     * @param mixed  $email
+     * @param mixed  $email The email being sent.
      * @return string
      */
     public function hold_subject_email( $subject, $award = null, $email = null ) {
@@ -150,7 +152,7 @@ class PointsEarnedShortcodes extends BaseShortcode {
             return $this->sample_values( $root_email );
         }
 
-        // YayMail's subject filter renders a real send with empty render_data; hold_subject_email() caught the email being sent.
+        // YayMail's subject filter renders a real send with empty render_data, so read the email hold_subject_email() caught.
         $email = $render_data['email'] ?? $this->subject_email;
 
         if ( ! $email instanceof PointsEarnedEmail ) {

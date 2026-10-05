@@ -11,7 +11,7 @@ use YayLoyalty\Utils\PointsMath;
 
 defined( 'ABSPATH' ) || exit;
 
-/** The points-earned email, sent after each award commits. */
+/** The points-earned email, sent after each award commits, within the weekly cap. */
 class PointsEarnedEmail extends LoyaltyEmail {
 
     public const ID = Emails::POINTS_EARNED_ID;
@@ -48,9 +48,8 @@ class PointsEarnedEmail extends LoyaltyEmail {
     }
 
     /**
-     * Mails the customer about one award, relayed by Emails::relay_award() as its ledger row id;
-     * no-op when the row is not a gain, the email is disabled, the user has no email, or the
-     * customer has reached the weekly cap.
+     * Mails the customer about one award, which Emails::relay_award() passes as its ledger row id.
+     * A no-op when the row is not a gain, the email is off, the user has no email or the weekly cap is reached.
      */
     public function trigger( int $entry_id ): void {
         $entry = ( new LedgerRepository() )->find( $entry_id );
@@ -105,7 +104,7 @@ class PointsEarnedEmail extends LoyaltyEmail {
         $this->prepare( new LedgerEntry( null, get_current_user_id(), 50, 150, LedgerType::EARN, LedgerSource::ORDER ) );
     }
 
-    /** Every value the email shows for its current award, for renderers besides its own templates; [] until one is prepared. */
+    /** Every value the email shows for its current award, for other renderers such as YayMail. [] until one is prepared. */
     public function get_template_values(): array {
         return $this->extra_template_args();
     }
@@ -149,7 +148,7 @@ class PointsEarnedEmail extends LoyaltyEmail {
             'balance_value_text' => self::balance_value_text( $balance_value ),
             'order_number'       => $order_number,
             /**
-             * Filters where the email's "View your points" link goes; '' hides the button.
+             * Filters where the email's "View your points" link goes. '' hides the button.
              *
              * @param string      $url   '' by default: the plugin has no customer points page yet.
              * @param LedgerEntry $entry The awarded row.
@@ -170,7 +169,7 @@ class PointsEarnedEmail extends LoyaltyEmail {
     }
 
     /**
-     * What the balance buys at the live discount rate, as wc_price() HTML;
+     * What the balance buys at the live discount rate, as wc_price() HTML.
      * '' when the reward is not live or there is nothing to spend.
      */
     private static function balance_value( int $balance ): string {
@@ -180,17 +179,17 @@ class PointsEarnedEmail extends LoyaltyEmail {
             return '';
         }
 
-        // The rate is in the store's base currency; a currency switcher's session currency would mislabel it.
+        // The rate is in the store's base currency: a currency switcher's session currency would mislabel it.
         return wc_price( $amount, [ 'currency' => get_option( 'woocommerce_currency' ) ] );
     }
 
-    /** "That's worth <strong>$1.50</strong> in rewards." around balance_value(); '' when that is ''. */
+    /** "That's worth <strong>$1.50</strong> in rewards." around balance_value(), or '' when that is ''. */
     private static function balance_value_text( string $balance_value ): string {
         /* translators: %s: money amount, e.g. "$1.50". */
         return '' === $balance_value ? '' : sprintf( esc_html__( 'That\'s worth %s in rewards.', 'yayloyalty' ), '<strong>' . $balance_value . '</strong>' );
     }
 
-    /** One whole sentence per source, so translators never assemble fragments; escaped HTML with the points in bold. */
+    /** Escaped HTML with the points in bold. One whole sentence per source, so translators never assemble fragments. */
     private function earned_text( LedgerEntry $entry, string $order_number ): string {
         /* translators: %s: points with label, e.g. "50 Points". */
         $format = __( 'You earned %s.', 'yayloyalty' );
@@ -220,8 +219,8 @@ class PointsEarnedEmail extends LoyaltyEmail {
         $text   = vsprintf( esc_html( $format ), array_merge( [ $points ], array_map( 'esc_html', $extra ) ) );
 
         /**
-         * Filters the sentence telling the customer what they earned and why:
-         * escaped HTML, printed through wp_kses_post(); the plain-text email strips its tags.
+         * Filters the sentence telling the customer what they earned and why. It is escaped HTML,
+         * printed through wp_kses_post(). The plain-text email strips its tags.
          *
          * @param string      $text
          * @param LedgerEntry $entry The awarded row.
