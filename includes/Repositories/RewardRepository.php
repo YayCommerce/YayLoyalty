@@ -56,12 +56,16 @@ final class RewardRepository extends AbstractRepository {
         return self::rate_of( $this->find_by_slug( self::CART_DISCOUNT_SLUG ) );
     }
 
-    /** The same rate, but 0 unless the built-in reward is live, so customers are never shown a reward they cannot spend. */
+    /** The same rate, but 0 unless the built-in reward is live (see find_live_cart_discount()). */
     public function live_points_per_currency_unit(): float {
         return self::rate_of( $this->find_live_cart_discount( Dates::now() ) );
     }
 
-    /** The built-in reward only while it is live at $now: the one customers can spend, so the only one they are shown. */
+    /**
+     * The built-in reward only while it is live at $now: active, and inside its start and end dates.
+     * Live is what customers are shown, not proof they can spend it: until redemption ships, nothing at
+     * checkout redeems the reward.
+     */
     public function find_live_cart_discount( string $now ): ?Reward {
         $reward = $this->find_by_slug( self::CART_DISCOUNT_SLUG );
 

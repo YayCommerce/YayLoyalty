@@ -26,8 +26,9 @@ final class LauncherCopy {
 
     /**
      * A rate like 1, 1.5 or 0.004, with every decimal the merchant entered. The admin's
-     * pointsPerCurrencyLabel() owns the digits (it prints String(rate)), and the two must show the same ones;
-     * this copy also localises the separators for shoppers ("1,5" in German). Ten places at most drops float noise.
+     * pointsPerCurrencyLabel() owns the digits (it prints String(rate)). This prints at most 10 decimal places,
+     * which drops float noise, so the two show the same digits for any rate entered with 10 or fewer; it also
+     * localises the separators for shoppers ("1,5" in German).
      */
     public static function rate( float $rate ): string {
         $fixed = rtrim( sprintf( '%.10F', $rate ), '0' );

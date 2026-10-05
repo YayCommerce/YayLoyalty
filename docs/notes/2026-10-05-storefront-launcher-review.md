@@ -1,6 +1,6 @@
 # Storefront launcher: open findings from the 2026-10-05 review
 
-**Purpose:** the findings that the `/simplify` and `/yaytidy` review of `paul/feat/frontend-launcher` (against `dev/edd`, 2026-10-05) left unfixed, kept for a deeper look. For each one: how the code behaves today, why it matters, and the options. The fixes that review did make are in `c114910` and `261fe18`, and are not listed here.
+**Purpose:** the findings that the 2026-10-05 reviews of the storefront launcher (`/simplify`, `/yaytidy` and `/code-review`, before it merged into `dev/edd`) left open, kept for a deeper look. For each one: how the code behaves today, why it matters, and the options. The fixes those reviews led to landed with the launcher, and are not listed here.
 
 **Update when:** a finding is fixed or dropped; remove its section. Delete this note when no section is left.
 
@@ -27,5 +27,17 @@ Citations give a path and a symbol; search for the symbol.
 ## 3. `GET /me/activity` returns a field nothing reads
 
 - **Today:** each item has `label`, `meta`, `points` and `delta` (`ShopperActivityRow::items()`, and the item schema in `StorefrontActivityRestController`). `assets/storefront/launcher.js` and `templates/activity-row.php` read only `label`, `meta` and `delta`, and `delta` already carries the signed value.
-- **Why it matters:** an unused field in a public REST response is a contract kept for nobody. Removing it is cheapest before the first release: the route is new on this branch and not on `dev/edd` yet, so nothing outside the plugin can rely on it. After release, removing the field breaks any client that reads it.
+- **Why it matters:** an unused field in a public REST response is a contract kept for nobody. Removing it is cheapest before the first release: the route has not been in a release yet, so nothing outside the plugin can rely on it. After release, removing the field breaks any client that reads it.
 - **Suggested fix:** drop `points` from `ShopperActivityRow::items()`, its `@return` shape and the item schema. Check that `/me/activity` still returns 200 and that the launcher's markup is unchanged. If a shopper-facing client needs the raw number later, add the field back then.
+
+## 4. The launcher promises redemption that isn't built
+
+- **Today:** while the built-in cart-discount reward is live (`RewardRepository::find_live_cart_discount()`), the guest panel lists "Spend them at checkout — 100 Points = $1 off" (`templates/panel-guest.php`, from `LauncherPayload::redeem_rule()`). The member panel shows "worth $X" under the balance (`templates/panel-member.php`, from `LauncherPayload::member()`). The installer seeds the reward active.
+- **Why it matters:** redemption is still stubs marked `TODO(redemption)`, and nothing at checkout redeems the reward. So on a fresh install every shopper is promised money off they can't get. The points earned email makes the same promise, recorded as section 2 of `docs/notes/2026-10-04-points-earned-email-review.md`.
+- **Suggested fix:** one "redemption available" check, false until redemption ships, that both the email and `LauncherPayload::for_balance()` consult. When it is false, the redeem step and the worth line are left out, and the email leaves out its value sentence.
+
+## 5. No test guards the shopper-safe activity projection
+
+- **Today:** `ShopperActivityRow::items()` is the only code that turns ledger rows into what `GET /me/activity` shows, with no admin note, actor id or campaign id. It calls `Text::store_name()`, `get_option()` and `wc_get_order()`, so a unit test without WordPress can't reach it. The public `from_entry()` seam was removed, and the user chose not to restore it.
+- **Why it matters:** a change that leaks admin data into the public response ships unseen. The repo has no tests today (`docs/known-issues.md`), so this gap is part of that, but it is the one with a privacy cost.
+- **Suggested fix:** when tests come back, add an integration test of `GET /me/activity` that writes an adjustment with an admin note and asserts the item keys are exactly `label`, `meta`, `points` and `delta` (without `points` once section 3 lands), with no note text. Or bring back a WordPress-free seam for the label mapping and unit-test that.

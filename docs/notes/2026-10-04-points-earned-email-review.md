@@ -22,8 +22,7 @@ Citations give a path and a symbol; search for the symbol.
 - **Why it is a bug:**
   - Redemption is scaffolding: the gates, the handler and the write side are stubs marked `TODO(redemption)`, and nothing hooks checkout. So on a fresh install every award email says the balance is worth money the customer cannot spend.
   - The plugin adds no My Account endpoint or points view, so the button lands on the plain dashboard with no points shown.
-  - The docblock of `live_points_per_currency_unit()` says "customers are never shown a reward they cannot spend", which is false today.
-- **Suggested fix:** until redemption ships, leave out the value sentence: return 0 from the live rate, or gate it on a "redemption available" check. Then either add a My Account points view, or drop or retarget the button by default, and correct the docblock.
+- **Suggested fix:** until redemption ships, leave out the value sentence: return 0 from the live rate, or gate it on a "redemption available" check. Then either add a My Account points view, or drop or retarget the button by default.
 
 ### 3. The enabled filter sees the previous award
 
