@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Engine\Emails;
 
+use YayLoyalty\Engine\Redemption\RedemptionService;
 use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Helpers\SettingsHelper;
@@ -137,16 +138,7 @@ class PointsEarnedEmail extends LoyaltyEmail {
         $order        = $entry->get_order_id() ? wc_get_order( $entry->get_order_id() ) : null;
         $order_number = $order ? (string) $order->get_order_number() : '';
 
-        /**
-         * Filters whether the email says what the balance is worth. Off by default:
-         * customers cannot spend points at checkout until redemption ships.
-         * TODO(redemption): default to true once redemption ships.
-         *
-         * @param bool        $show
-         * @param LedgerEntry $entry The awarded row.
-         */
-        $show_value    = (bool) apply_filters( 'yayloyalty_points_earned_show_balance_value', false, $entry );
-        $balance_value = $show_value ? self::balance_value( $entry->get_balance_after() ) : '';
+        $balance_value = RedemptionService::is_available() ? self::balance_value( $entry->get_balance_after() ) : '';
 
         return self::amounts( $entry ) + [
             'entry'              => $entry,

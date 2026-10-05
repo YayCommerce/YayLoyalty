@@ -12,7 +12,7 @@
  * @var string    $greeting_name The customer's first name, else display name; '' for none. Absent when there is no award to show.
  * @var string    $earned_text   Escaped HTML, e.g. "You earned <strong>50 Points</strong> for order #123."; '' when a filter hides it. Absent when there is no award to show.
  * @var string    $balance_text  The balance after this award, e.g. "120 Points". Absent when there is no award to show.
- * @var string    $balance_value What the balance is worth, as wc_price() HTML; '' while hidden (the yayloyalty_points_earned_show_balance_value filter, off by default) or the discount reward is not live. Absent when there is no award to show.
+ * @var string    $balance_value What the balance is worth, as wc_price() HTML; '' until redemption ships (RedemptionService::is_available()), or while the discount reward is not live. Absent when there is no award to show.
  * @var string    $balance_value_text Escaped HTML, e.g. "That's worth <strong>$1.50</strong> in rewards."; '' when $balance_value is ''. Absent when there is no award to show.
  * @var string    $points       The points earned, formatted, e.g. "50". Absent when there is no award to show.
  * @var string    $points_label "Point" or "Points", from the merchant's labels. Absent when there is no award to show.
