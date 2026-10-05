@@ -45,7 +45,7 @@ Scope under review: <whole plan | phase N | task N>.
 Check and report:
 - Requirements: every acceptance criterion and every task in scope is implemented. Name any that is missing or partial, with the plan line.
 - Verification: run every test or verification step the in-scope tasks list. Paste the command and its result. A step that fails, or was never added, is a gap, unless the check already failed the same way on <base>, as the plan's expected output or the project's docs record. List those under Evidence. Do not switch branches to find out.
-- Review focus: each edge case listed there has a test that exercises it.
+- Review focus: each edge case listed there has the verification step or accepted test the plan names for it. A test the plan does not list is never a gap.
 - Interfaces: names, signatures, hooks, and routes in the code match the plan's Interfaces blocks and the README contract exactly.
 - Scope: nothing outside the in-scope tasks changed. List any file in the diff the plan does not mention.
 - Exit criterion (phase or plan reviews): run it and paste the result.

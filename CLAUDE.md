@@ -1,6 +1,6 @@
 <!--
-Purpose: the index every Claude Code session loads first: what this repo is, the commands, the hard rules, the git rules and where to look next.
-Update when: a command, hard rule or git rule changes, or a harness doc is added, moved or removed. Keep it under 100 lines. Detail goes in a linked doc, reached by a "read when…" link.
+Purpose: the index every Claude Code session loads first: what this repo is, the commands, the hard rules, when to add a test, the git rules and where to look next.
+Update when: a command, hard rule, the test rule or a git rule changes, or a harness doc is added, moved or removed. Keep it under 100 lines. Detail goes in a linked doc, reached by a "read when…" link.
 -->
 
 # YayLoyalty
@@ -32,6 +32,10 @@ Any pnpm command may [run `pnpm install`, and with it `composer install`, first]
 3. SPA Pro code lives in `apps/admin/src/pro/` and is imported only through `apps/admin/src/pro/index.ts`. It renders only behind `IS_PRO_BUILD` (`apps/admin/src/lib/is-pro-build.ts`), a build-time constant; never use a runtime or localized flag. `<ProGate>` alone still ships the Pro code into Lite, and the validator's sentinel check misses that, so only review catches it.
 4. Product PHP must run on PHP 7.4: no enums, `match`, `readonly`, promoted constructor properties, `?->`, named arguments or union types. phpcs does not detect PHP 8-only syntax and the dev tooling runs on PHP 8, so only review catches it.
 5. Only `LedgerService` (`includes/Services/LedgerService.php`) writes ledger rows and balances. Construct it only in the places its docblock lists.
+
+## Tests
+
+The team keeps only tests that guard real risk, so a test is warranted in two cases: money or ledger logic (points and money math, `LedgerService` writes and balances), or a fixed bug that a test reproduces cheaply. Before adding any test, ask with AskUserQuestion: name the test, its file and suite, and what it guards. Write it only if the user accepts; a request for that test, or a plan whose `**Tests:**` line lists it, counts as acceptance. Otherwise verify with an exact manual check: the command or UI action and the result that means it passed.
 
 ## Git
 
