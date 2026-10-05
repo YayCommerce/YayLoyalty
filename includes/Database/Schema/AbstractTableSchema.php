@@ -18,9 +18,7 @@ abstract class AbstractTableSchema {
 
     abstract public function definition(): string;
 
-    /**
-     * @return string[]
-     */
+    /** @return string[] */
     abstract public function expected_columns(): array;
 
     /**

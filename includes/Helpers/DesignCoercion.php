@@ -19,9 +19,7 @@ class DesignCoercion {
      * text (max = 200, required = false), textarea (max = 20000).
      * List types must return a re-indexed list: DesignHelper replaces a list whole but merges a keyed array.
      *
-     * @param mixed                $value
      * @param array<string, mixed> $rule DesignSchema::schema() entry: its type plus any limits.
-     * @return mixed
      */
     public static function coerce( $value, array $rule ) {
         switch ( $rule['type'] ) {
@@ -29,7 +27,7 @@ class DesignCoercion {
                 $choice = sanitize_key( (string) $value );
                 return in_array( $choice, $rule['options'], true ) ? $choice : null;
             case 'bool':
-                return rest_sanitize_boolean( $value ); // a plain cast would store the string "false" as true
+                return rest_sanitize_boolean( $value ); // A plain cast would store the string "false" as true.
             case 'int':
                 return min( $rule['max'], max( $rule['min'], (int) $value ) );
             case 'color':
@@ -51,7 +49,7 @@ class DesignCoercion {
         }
     }
 
-    /** A required text refuses blank on the server too; the SPA's non-empty check is only a convenience. */
+    /** A required text refuses blank on the server too. The SPA's non-empty check is only a convenience. */
     private static function text( string $value, int $max, bool $required ): ?string {
         $text = sanitize_text_field( $value );
 
@@ -63,9 +61,9 @@ class DesignCoercion {
     }
 
     /**
-     * [] is a merchant deleting every badge and is stored; null means every entry was malformed and is not a
-     * wipe — DesignHelper then omits tier.badges from the clean array, so the stored value survives.
-     * Duplicate tier_id (the only thing a future Tiers migration can match on) is deduped, first kept.
+     * [] means the merchant deleted every badge, and is stored. null means every entry was malformed and is not
+     * a wipe: DesignHelper then leaves tier.badges out of the clean array, so the stored value survives.
+     * A duplicate tier_id is dropped, the first kept, because tier_id is all a future Tiers migration can match on.
      */
     private static function badge_list( $value ): ?array {
         if ( ! is_array( $value ) ) {

@@ -8,10 +8,9 @@ use YayLoyalty\Models\Reward;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * One reward type's rules: what a claim costs and what it is worth. No
- * is_eligible() unlike TriggerHandler: the customer already chose the
- * reward, so there is no fall-through to a next candidate — a config gate
- * that fails is a denied() Result from quote(). Never throws.
+ * One reward type's rules: what a claim costs and what it is worth. Unlike TriggerHandler there is no
+ * is_eligible(): the customer already chose the reward, so a failed config gate is a denied() Result.
+ * Never throws.
  */
 interface RewardHandler {
 

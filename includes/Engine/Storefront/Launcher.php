@@ -17,8 +17,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * The storefront launcher: decides once per request, then enqueues and prints.
- *
- * Read-only in v1: balance, ways to earn, recent activity. Redeeming is not built yet.
+ * Read-only for now: balance, ways to earn and recent activity. Redeeming is not built yet.
  */
 final class Launcher {
 

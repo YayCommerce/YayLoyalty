@@ -6,13 +6,9 @@ use YayLoyalty\Models\Reward;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The quote: whether a claim may go ahead and, if so, what the customer
- * asked for, what they get, what it is worth and which limit bit. `reason`
- * is '' when allowed, else a REASON_* constant (gates and handlers may add
- * their own strings). `rate_snapshot` is points per currency unit at quote
- * time, kept so a refund reverses at the quoted rate rather than today's.
- * Never stored: derived from the current cart on every recalculation. The
- * caller writes the ledger from this; the engine writes nothing.
+ * The quote: whether a claim may go ahead, what the customer asked for and gets, its worth and which
+ * limit bound. `reason` is '' when allowed, else a REASON_* constant or a gate's or handler's own string.
+ * `rate_snapshot` keeps the quoted rate, so a refund reverses at that rate rather than today's.
  */
 final class Result {
 

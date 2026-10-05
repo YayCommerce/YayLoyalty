@@ -7,12 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { CustomerCardRow } from './CustomerCardRow';
 import { CustomersEmptyState } from './CustomersEmptyState';
 
-/**
- * 5c's mobile list body — `CustomersTable.tsx`'s `<Table>` replaced with a
- * divided card stack below `sm`. Mirrors that component's loading/empty/
- * no-match branches exactly (same props, same three states) so the two
- * layouts never disagree on what the current page looks like.
- */
+/** The mobile list body. Its loading, empty and no-match states match CustomersTable's, so the two layouts never disagree. */
 export function CustomersCardList({
   rows,
   isLoading,

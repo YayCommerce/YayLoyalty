@@ -8,17 +8,14 @@ use YayLoyalty\Utils\Dates;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Builds Contexts from WooCommerce objects. With CustomerFactsReader, one
- * of the two engine classes that touch WooCommerce. Amounts stay in the
- * order's currency; base_rate carries the conversion and is the whole
- * multi-currency seam.
+ * Builds Contexts from WooCommerce objects. With CustomerFactsReader, the only engine classes that touch WooCommerce.
+ * Amounts stay in the order's currency. base_rate carries the conversion and is the whole multi-currency seam.
  */
 final class ContextFactory {
 
     /**
-     * The award-path Context: occurred_at is the order's creation date, so
-     * the same order scores the same way at creation and at award, whatever
-     * campaigns changed in between.
+     * occurred_at is the order's creation date, so the order scores the same at creation and at award,
+     * whatever campaigns changed in between.
      *
      * @param int $points_earned_today From the ledger, by the caller; 0 in a preview.
      * @throws \InvalidArgumentException When the order carries no creation date; the caller decides, never now().
@@ -75,8 +72,7 @@ final class ContextFactory {
     }
 
     /**
-     * The signup award Context: no lines, no amounts; occurred_at is the
-     * registration time so a signup campaign that ended since still applies
+     * occurred_at is the registration time, so a signup campaign that has since ended still applies
      * to a late-processed registration.
      *
      * @param string $registered_at UTC MySQL datetime (wp_users.user_registered is already UTC).
@@ -104,12 +100,8 @@ final class ContextFactory {
     }
 
     /**
-     * The review award Context: occurred_at is the comment's GMT date;
-     * `extra[ ReviewHandler::EXTRA_VERIFIED_PURCHASE ]` is set from the
-     * comment's `verified` meta (WooCommerce writes it at review time) and
-     * `extra[ ReviewHandler::EXTRA_PRODUCT_ALREADY_EARNED ]` from the ledger,
-     * so require_verified and one_per_product are decided purely. No lines:
-     * the reviewed product is not an order line.
+     * occurred_at is the comment's GMT date. The verified-purchase and already-earned flags are read
+     * into `extra` here, so ReviewHandler decides purely. No lines: the reviewed product is not an order line.
      *
      * @param int $points_earned_today From the ledger, by the caller; 0 in a preview.
      * @throws \InvalidArgumentException When the comment has no GMT date (imported rows); never now().
@@ -162,10 +154,8 @@ final class ContextFactory {
     }
 
     /**
-     * The customer facts conditions compare against, as of $as_of, so the
-     * evaluator can stay pure. Null for a guest. The from_*() factories pass
-     * this as a loader, so it runs only when a history condition is evaluated
-     * (never in Lite, which has no evaluator).
+     * Null for a guest. The from_*() factories pass it as a loader, so it runs only when a history
+     * condition is evaluated, which never happens in Lite.
      */
     public static function customer_facts( ?int $user_id, string $as_of, ?int $exclude_order_id = null ): ?CustomerFacts {
         if ( null === $user_id || $user_id < 1 ) {

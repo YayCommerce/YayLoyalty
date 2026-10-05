@@ -20,15 +20,11 @@ export type ReferralRow = {
   referrerPoints: string;
   friendCoupon: string;
   status: string;
-  /** Only set for `pending`/`lapsed` — the missing-condition note 3f requires beside the status. */
+  /** Only for `pending` and `lapsed`: what is missing, shown beside the status. */
   statusNote: string | null;
 };
 
-/**
- * Row → what the referrals table renders. Pure — no fetch, no React.
- * `friendCoupon` composes the label with its used/unused/issued state in one
- * string (3f shows both sides of the reward, coupon included).
- */
+/** Maps a referral entry to its table row. `friendCoupon` joins the coupon's label and its state. */
 export function toReferralRow(entry: ReferralEntry): ReferralRow {
   return {
     referredName: entry.referred_name,
@@ -49,11 +45,7 @@ function formatFirstOrder(orderId: number | null, total: string | null): string 
   return `#${orderId} · ${parseWPCurrency(total)}`;
 }
 
-/**
- * `pending`'s coupon reads "issued" rather than "unused" — the friend has
- * been sent the coupon, but the referral itself hasn't qualified yet, so
- * "unused" would misleadingly suggest the referral is otherwise done.
- */
+/** A pending referral's coupon reads "issued", not "unused", which would suggest the referral had qualified. */
 function formatFriendCoupon(coupon: ReferralEntry['friend_coupon'], status: ReferralEntry['status']): string {
   const state =
     status === 'pending' ? COUPON_ISSUED_LABEL() : coupon.used ? COUPON_USED_LABEL() : COUPON_UNUSED_LABEL();

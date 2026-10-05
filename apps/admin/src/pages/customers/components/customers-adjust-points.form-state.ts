@@ -1,8 +1,8 @@
 import type { CustomerListRow } from '@/lib/schema/customer.schema';
 
-/** Pure derivations for the Adjust-points dialog — no React, so every branch is vitest-testable in isolation. */
+/** Pure derivations for the Adjust-points dialog, with no React. */
 
-/** The one customer a single adjustment targets — the fields its guards read, from `GET /customers/{id}`. */
+/** The customer a single adjustment targets: the fields its guards read, from `GET /customers/{id}`. */
 export type AdjustTarget = Pick<CustomerListRow, 'user_id' | 'name' | 'balance' | 'lifetime_earned'>;
 
 export type AdjustDirection = 'add' | 'remove';
@@ -12,7 +12,7 @@ export type AdjustFormState = {
   amount: number; // always a positive magnitude; direction carries the sign
   confirmAmount: number;
   reason: string;
-  adjustLifetime: boolean; // wired into the submit payload — see the dialog's docblock
+  adjustLifetime: boolean;
   showCustomerNote: boolean;
   customerNote: string;
   notifyByEmail: boolean;
@@ -32,11 +32,8 @@ export function initialAdjustFormState(): AdjustFormState {
 }
 
 /**
- * Amounts at or below this floor never trip the typo guard — a new
- * customer's lifetime is 0, and the guard must mean "$10-ish", not "1,000
- * points", so it reads the same on a 100-points-per-$1 store and a
- * 1-point-per-$1 store. Falls back to a flat points number only when the
- * store has no configured conversion rate (money can't be derived at all).
+ * Amounts at or below this floor never trip the typo guard, since a new customer's lifetime is 0.
+ * The floor is in money so it means the same at any points rate. Without a rate it falls back to a flat points number.
  */
 export const TYPO_GUARD_FLOOR_CURRENCY_UNITS = 10;
 export const TYPO_GUARD_FLOOR_POINTS_FALLBACK = 1000;
@@ -79,22 +76,16 @@ export function liabilityContribution(balance: number): number {
 }
 
 /**
- * Change in liability contribution across this adjustment. Deliberately not
- * `signedPoints()`'s raw magnitude: once either side of the adjustment is
- * negative, only the portion above 0 ever counted as liability, so a plain
- * "points moved" figure over- or under-states it (and can go negative when
- * the starting balance is already below zero — see AdjustPointsFields).
+ * Change in liability contribution across this adjustment. Not `signedPoints()`: only the part of a balance
+ * above 0 counts as liability, so the raw points moved misstates it once either side is negative.
  */
 export function liabilityDelta(balance: number, balanceAfter: number): number {
   return liabilityContribution(balanceAfter) - liabilityContribution(balance);
 }
 
 /**
- * The record the admin has acknowledged differs from the freshest fetch.
- * `lifetime_earned` is compared too, not just `balance` — it's the typo
- * guard's own threshold input, so a concurrent event that moves it without
- * a net balance change must still raise the banner. `user_id` guards
- * against a baseline left over from a different customer.
+ * Whether the acknowledged record differs from the latest fetch. `lifetime_earned` is compared too,
+ * because the typo guard reads it. `user_id` catches a baseline left over from another customer.
  */
 export function isStaleSnapshot(
   baseline: AdjustTarget | null,
@@ -148,10 +139,12 @@ export function bulkTotalPoints(state: Pick<AdjustFormState, 'amount'>, effectiv
 
 export type BulkLiabilityProjection =
   | { kind: 'none' }
-  /** Add, with a known store liability: safe to project a "to" figure — no row leaves the positive set. */
+  /** Add, with a known store liability: a "to" figure is safe, since no row leaves the positive set. */
   | { kind: 'range'; from: number; to: number }
-  /** Remove, or liability unknown: `liability_points()` sums `balance > 0` only, so a "to" figure would
-   *  overstate the reduction on any batch containing a balance smaller than the per-customer amount. */
+  /**
+   * Remove, or liability unknown. Only positive balances count, so a "to" figure would overstate
+   * the reduction whenever a balance is smaller than the per-customer amount.
+   */
   | { kind: 'delta'; delta: number };
 
 export function bulkLiabilityProjection(
@@ -167,12 +160,9 @@ export function bulkLiabilityProjection(
 }
 
 /**
- * The bulk header/totals/acknowledgement count for "select all matching".
- * `count` (the client's `selectionCount()`) is already net of
- * `excludedCount` for 'all' mode — it is the right fallback for as long as
- * the server COUNT hasn't resolved yet, including permanently if the
- * preview errors. Only the raw server COUNT needs `excludedCount`
- * subtracted; doing it to both would under-count by `excludedCount` twice.
+ * The bulk count for "select all matching". `count` is already net of `excludedCount`,
+ * and is the fallback until the server COUNT resolves, or for good if the preview fails.
+ * Only the server COUNT needs `excludedCount` subtracted.
  */
 export function bulkEffectiveCount(
   usedFilters: boolean,

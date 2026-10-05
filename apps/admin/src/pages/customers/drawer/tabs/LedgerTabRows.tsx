@@ -14,11 +14,8 @@ import type { LedgerRow } from '../customer-drawer.ledger-rows';
 import { DRAWER_ROW_CLASS, drawerCell, DrawerTable } from './DrawerTable';
 
 /**
- * Headers stay put through every state (3a note 3 — an empty ledger keeps
- * its column headers and filter row so the panel doesn't reflow the moment
- * the first row lands). Below `sm`, each row is two stacked blocks side by
- * side: description+subLine+date on the left, points+balance on the right —
- * date reads as part of the description block rather than its own cell.
+ * Headers stay through every state, so an empty ledger does not reflow when its first row lands.
+ * Below `sm` each row is two blocks: description and date on the left, points and balance on the right.
  */
 export function LedgerTabRows({
   rows,
@@ -47,18 +44,11 @@ export function LedgerTabRows({
         </TableRow>
       }
     >
-      {/* Date and Balance keep their own `<td>` for the desktop columns
-          (`hidden sm:table-cell`) and are rendered once more, inline, inside
-          the left/right blocks (`sm:hidden`) — "mounts twice, CSS picks one",
-          so there is one source of truth for the value and no JS branching
-          on breakpoint. */}
+      {/* Date and Balance render twice, as desktop cells and inside the mobile blocks. CSS picks one. */}
       {rows.map((row, index) => (
         <TableRow
           key={index}
-          // 5a: the one row `negative_balance.cause_ledger_id` names gets the
-          // same tinted-panel treatment the header panels use. Applied via
-          // `box-shadow` (not `border-l`) because Tailwind's border utilities
-          // on a `<tr>` render unreliably across browsers.
+          // The cause row gets the panels' tint, through `box-shadow`: a border on a `<tr>` renders unreliably.
           className={cn(
             DRAWER_ROW_CLASS,
             row.isCause && 'bg-muted/50 shadow-[inset_3px_0_0_0_var(--muted-foreground)]',

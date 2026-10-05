@@ -52,8 +52,7 @@ export function getManagerRouter() {
         {
           path: 'customers',
           element: guarded(CAP.VIEW, <CustomersPage />),
-          // The parent `guarded()` above already covers this child — CAP.VIEW
-          // is checked once, not re-wrapped per route.
+          // The parent's `guarded()` already checks CAP.VIEW for this child.
           children: [{ path: ':userId', element: <CustomerDrawer /> }],
         },
         {

@@ -9,20 +9,9 @@ use YayLoyalty\Repositories\CustomerMetaRepository;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * GET /yayloyalty/v1/customers/{id}/activity — paginated activity-log rows
- * read from `yayloyalty_customer_meta`.
- *
- * Only three of the eight `ActivityEvent` kinds have a writer today — see
- * `Enums\ActivityEvent`'s docblock for which. No backfill: a pre-existing
- * member's log starts the day this shipped.
- *
- * `search` is a PHP-side match against decoded real content fields only
- * (`CustomerMetaRepository::paginate_activity()`), never the JSON
- * envelope's structural keys. `after`/`before` are site-timezone
- * calendar days (`Dates::site_day_to_utc()`), same as the ledger tab.
- *
- * A separate controller rather than a method on `CustomerRestController`,
- * the same way `LedgerRestController` owns `/customers/{id}/ledger`.
+ * GET /yayloyalty/v1/customers/{id}/activity: paginated activity-log rows from `yayloyalty_customer_meta`.
+ * Activity from before the log existed is not backfilled. `after` and `before` are site-timezone
+ * calendar days, as on the ledger tab.
  */
 final class ActivityRestController extends AbstractRestController {
 

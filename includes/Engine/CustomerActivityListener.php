@@ -11,21 +11,15 @@ use YayLoyalty\Utils\Log;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Member-activity capture on `user_register`, `delete_user`/`wpmu_delete_user`
- * and `yayloyalty_ledger_recorded`; registered directly in `yayloyalty.php`.
- * Every callback catches `\Throwable` — a failed capture must never block or
- * fatal the WP action it observes.
+ * Records member activity from the user hooks and `yayloyalty_ledger_recorded`, registered in `yayloyalty.php`.
+ * Every callback catches `\Throwable`: a failed capture must never block the WordPress action it observes.
  */
 final class CustomerActivityListener {
 
     /**
-     * Materialises the customers row at balance 0 at signup; no activity row, as
-     * a new account has no points activity yet. `ensure_row()` is idempotent
-     * (`ON DUPLICATE KEY UPDATE`), so a double-fire from a third party is harmless.
-     *
-     * Staff are skipped: an admin or shop manager is not a loyalty member
-     * just for having an account. "Staff" is WooCommerce's own back-office
-     * rule (`wc_prevent_admin_access()`); WP sets the role before this hook.
+     * Creates the customer's row at balance 0. Staff are skipped: an admin or shop manager
+     * is not a member just for having an account. The staff test is WooCommerce's
+     * `wc_prevent_admin_access()` rule.
      *
      * @param int $user_id
      */
@@ -42,18 +36,12 @@ final class CustomerActivityListener {
     }
 
     /**
-     * Single-site path. `$reassign` is accepted and ignored: WP only
-     * reassigns posts/links, never plugin tables, so loyalty rows stay
-     * keyed to the old user_id forever.
+     * Single-site deletion. On multisite, `delete_user` also fires when a user is only
+     * removed from one blog, so there only `on_wpmu_delete_user()` counts.
+     * `$reassign` is ignored: WordPress reassigns posts, never plugin tables.
      *
-     * On multisite, `wp_delete_user()` still unconditionally fires
-     * `delete_user` even for a "removed from this blog" action that is
-     * NOT a real deletion (it falls through to `remove_user_from_blog()`
-     * instead of deleting the row) — only `on_wpmu_delete_user()` is
-     * trusted as "really gone" there.
-     *
-     * @param int        $user_id
-     * @param int|null   $reassign
+     * @param int           $user_id
+     * @param int|null      $reassign
      * @param \WP_User|null $user
      */
     public static function on_delete_user( $user_id, $reassign = null, $user = null ): void {
@@ -65,9 +53,7 @@ final class CustomerActivityListener {
     }
 
     /**
-     * Multisite path: fires INSTEAD of `delete_user` for a real
-     * network-wide deletion (no `$reassign` param on this hook). This is
-     * the only hook trusted as "really gone" on a multisite install.
+     * Multisite deletion. This hook fires instead of `delete_user` when a user is deleted network-wide.
      *
      * @param int           $user_id
      * @param \WP_User|null $user
@@ -77,10 +63,9 @@ final class CustomerActivityListener {
     }
 
     /**
-     * Guards `$entry`'s type: `yayloyalty_ledger_recorded` is a public
-     * seam a third party could fire with anything.
+     * Checks the type, because a third party could fire `yayloyalty_ledger_recorded` with anything.
      *
-     * @param mixed $entry
+     * @param mixed $entry Expected to be a LedgerEntry; anything else is ignored.
      */
     public static function on_ledger_recorded( $entry ): void {
         if ( ! $entry instanceof LedgerEntry ) {
@@ -97,10 +82,8 @@ final class CustomerActivityListener {
     }
 
     /**
-     * Identity comes from the `WP_User` object when the hook supplied one
-     * (the only moment `user_email`/`display_name` are still readable for
-     * `delete_user`); `get_userdata()` is a defensive fallback for a
-     * third-party caller that fires the hook without it.
+     * Reads the email and name from the hook's `WP_User`: on `delete_user` this is the last moment
+     * they can be read. `get_userdata()` covers a third party that fires the hook without one.
      *
      * @param \WP_User|null $user
      */

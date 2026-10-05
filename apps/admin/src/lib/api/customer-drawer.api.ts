@@ -3,14 +3,7 @@ import { activityEnvelopeSchema, ActivityGroup } from '@/lib/schema/activity.sch
 import { redemptionEnvelopeSchema } from '@/lib/schema/redemption.schema';
 import { referralEnvelopeSchema } from '@/lib/schema/referral.schema';
 
-/**
- * The drawer's three paginated tab-body fetchers — Activity log, Redemptions,
- * Referrals — plus the `DrawerPageParams`/`toDrawerSearchParams()` pair that
- * `getCustomerLedger()` in `customer.api.ts` reuses. `getCustomer()`/
- * `getCustomerLedger()`/`getCustomers()` stay there since callers outside
- * the drawer also use them. Same `.parse()`-everything discipline as
- * `customer.api.ts` (see its own docblock).
- */
+/** The drawer's tab fetchers, plus the paging params that `getCustomerLedger()` reuses. */
 
 /** App-side (camelCase) paging/search params every drawer tab fetcher takes; the wire spelling lives in `toDrawerSearchParams()`. */
 export type DrawerPageParams = {
@@ -35,7 +28,7 @@ export function toDrawerSearchParams(params: DrawerPageParams): Record<string, s
 
 export type CustomerActivityParams = DrawerPageParams & { group?: ActivityGroup };
 
-/** Redemptions/Referrals have no filters — paging only. */
+/** Redemptions and Referrals take paging only. */
 export type DrawerPageOnlyParams = Pick<DrawerPageParams, 'page' | 'perPage'>;
 
 /** `GET /customers/{id}/activity`. */
@@ -49,10 +42,7 @@ export async function getCustomerActivity(userId: number, params: CustomerActivi
   return activityEnvelopeSchema.parse(payload);
 }
 
-/**
- * `GET /customers/{id}/redemptions`. Always answers an empty
- * envelope (no `redemptions` table yet).
- */
+/** `GET /customers/{id}/redemptions`. */
 export async function getCustomerRedemptions(userId: number, params: DrawerPageOnlyParams = {}) {
   const payload = await api
     .get(`customers/${userId}/redemptions`, { searchParams: toDrawerSearchParams(params) })
@@ -62,9 +52,8 @@ export async function getCustomerRedemptions(userId: number, params: DrawerPageO
 }
 
 /**
- * `GET /customers/{id}/referrals`. Always answers an empty
- * envelope (no `referrals` table yet). Parsed with `referralEnvelopeSchema`, not
- * the generic `parsePaginated()` helper, which would drop `referral_link`/`campaign`.
+ * `GET /customers/{id}/referrals`. Parsed with `referralEnvelopeSchema`, not `parsePaginated()`,
+ * which would drop `referral_link` and `campaign`.
  */
 export async function getCustomerReferrals(userId: number, params: DrawerPageOnlyParams = {}) {
   const payload = await api.get(`customers/${userId}/referrals`, { searchParams: toDrawerSearchParams(params) }).json();

@@ -17,7 +17,7 @@ class Emails {
     /** PointsEarnedEmail's id, kept here so this class can read its settings without loading WC_Email. */
     public const POINTS_EARNED_ID = 'yayloyalty_points_earned';
 
-    /** The email action an award is relayed on; its only argument is the ledger row id. */
+    /** The email action an award is relayed on. Its only argument is the ledger row id. */
     public const POINTS_EARNED_ACTION = 'yayloyalty_points_earned_email';
 
     protected function __construct() {
@@ -29,9 +29,8 @@ class Emails {
     }
 
     /**
-     * Has WooCommerce relay the events our emails send on: it builds the mailer before
-     * firing {action}_notification, so each email's listener exists. Names no email
-     * class: WooCommerce reads this on init, before it has loaded WC_Email.
+     * WooCommerce builds the mailer before it fires {action}_notification, so each email's listener exists.
+     * No email class is named here: WooCommerce reads this list on init, before WC_Email loads.
      *
      * @param string[] $actions
      * @return string[]
@@ -43,15 +42,14 @@ class Emails {
     }
 
     /**
-     * Passes an award on to the Points earned email as its ledger row id. With deferred
-     * emails WooCommerce queues an action's arguments, and before 10.8 it serializes them,
-     * which the award's Context (it may hold a Closure) cannot survive. Skips the relay,
-     * and with it building WooCommerce's mailer, while the merchant has the email off.
+     * Passes an award to the Points earned email as its ledger row id: with deferred emails, WooCommerce
+     * before 10.8 serializes an action's arguments, and the award's Context may hold a Closure.
+     * Skipped while the email is off, which also spares building WooCommerce's mailer.
      */
     public function relay_award( Outcome $awarded ): void {
         $entry = $awarded->get_entry();
-        // Mirrors WC_Settings_API::get_option_key() and the 'enabled' field WC_Email::is_enabled() reads;
-        // WC_Email cannot load here. Unlike is_enabled(), skips the woocommerce_email_enabled_{id} filter.
+        // WC_Email's own settings option, read directly because WC_Email cannot load here.
+        // Unlike is_enabled(), this skips the woocommerce_email_enabled_{id} filter.
         $settings = get_option( 'woocommerce_' . self::POINTS_EARNED_ID . '_settings' );
 
         if ( ! $entry || null === $entry->get_id() || $entry->get_points() <= 0 ) {
@@ -64,7 +62,7 @@ class Emails {
 
         /**
          * Fires once per award the Points earned email should report. WooCommerce relays it to
-         * {action}_notification, at once or deferred to the end of the request.
+         * {action}_notification, at once or at the end of the request.
          *
          * @param int $entry_id The awarded ledger row.
          */
@@ -72,8 +70,8 @@ class Emails {
     }
 
     /**
-     * Gives WooCommerce's settings preview loyalty sample data; it would otherwise
-     * render a loyalty email around a dummy order, leaving {points} blank.
+     * Gives WooCommerce's settings preview loyalty sample data. Otherwise it renders a loyalty email
+     * around a dummy order, with {points} blank.
      *
      * @param \WC_Email $email
      * @return \WC_Email

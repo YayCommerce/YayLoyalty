@@ -1,20 +1,16 @@
 /**
- * Mirror of YayLoyalty\Utils\PointsMath, framework-free. A zero denominator
- * yields null, never 0. Every export has a vector in
- * tests/fixtures/points-math-vectors.json for both suites to iterate; PHP is
- * the source of truth. Follows PHP round(), so a preview shows what the
- * engine awards; PHP 8.4 differs at some binary half-boundaries, which the
- * fixture excludes.
+ * Mirrors YayLoyalty\Utils\PointsMath, the source of truth.
+ * A zero denominator yields null, never 0. Rounding follows PHP round(), so a preview shows what the engine awards.
+ * tests/fixtures/points-math-vectors.json holds test vectors for every export.
  */
 
 export const ROUNDING = { DOWN: 'down', NEAREST: 'nearest', UP: 'up' } as const;
 export type RoundingMode = (typeof ROUNDING)[keyof typeof ROUNDING];
 
 /**
- * PHP round(): half away from zero, never -0 (Math.round is half toward
- * +∞). Trimmed to 15 significant digits first so 1.005 × 100 =
- * 100.49999999999999 still rounds up, as PHP ≤ 8.3 pre-rounds; untouched
- * past 1e15 as every PHP release does.
+ * PHP round(): half away from zero, never -0. Math.round rounds half toward +∞.
+ * Trimmed to 15 significant digits first, as PHP ≤ 8.3 pre-rounds, so 1.005 × 100 = 100.49999999999999 still rounds up.
+ * Past 1e15 the value is returned untouched, as in every PHP release.
  */
 function roundTo(value: number, decimals: number): number {
   const factor = 10 ** decimals;

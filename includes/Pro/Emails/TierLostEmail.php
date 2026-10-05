@@ -3,7 +3,7 @@ namespace YayLoyalty\Pro\Emails;
 
 defined( 'ABSPATH' ) || exit;
 
-/** Tier lost: sent when a customer drops out of their current tier. */
+/** The tier-lost email. Nothing triggers it yet. */
 class TierLostEmail extends ProLoyaltyEmail {
 
     protected $is_enabled_by_default = false;

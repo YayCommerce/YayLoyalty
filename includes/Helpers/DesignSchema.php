@@ -23,11 +23,11 @@ class DesignSchema {
                 'button_style'   => 'both',
                 'brand_color'    => '#1f6fb2',
                 'corner_radius'  => 8,
-                // 'custom' is the only value giving icon_upload_id meaning; every other value ignores the upload.
+                // Only 'custom' uses icon_upload_id. Every other value ignores the upload.
                 'icon'           => 'default',
                 'icon_upload_id' => 0,
             ],
-            // Real, editable defaults — an empty save is literal, never "use the default"; see DesignHelper's docblock.
+            // Real, editable defaults. An empty save is literal, never "use the default".
             'storefront_text' => [
                 'launcher_label'        => __( 'Rewards', 'yayloyalty' ),
                 'balance_heading'       => __( 'Your points', 'yayloyalty' ),
@@ -75,8 +75,8 @@ class DesignSchema {
             'typography'      => [ // Pro
                 'mode'       => 'inherit',
                 'font'       => '',
-                // Stored and sanitised, but rendered nowhere yet — CSS exfiltration is an open risk, deferred to
-                // whoever ships storefront CSS rendering.
+                // Stored and sanitised, but rendered nowhere yet.
+                // TODO(custom-css): close the CSS exfiltration risk before the storefront renders this field.
                 'custom_css' => '',
             ],
         ];

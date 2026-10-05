@@ -24,12 +24,7 @@ const TYPE_LABELS: Record<LedgerFilterType, () => string> = {
   expire: FILTER_TYPE_EXPIRED,
 };
 
-/**
- * Filters → rows → pager over `useDrawerTabQueryState`. The type filter is
- * a segmented control with every per-type count on its segment — "4,190
- * earned, 38 adjusted" tells the admin where to look before they click
- * (3c note 3).
- */
+/** Filters, rows and pager. Each type segment shows its count, so the admin sees where to look before clicking. */
 export function LedgerTab({
   userId,
   customerFirstName,
@@ -37,7 +32,7 @@ export function LedgerTab({
 }: {
   userId: number;
   customerFirstName: string;
-  /** 5a's `cause_ledger_id` — the one row to mark, or `null` whenever there is no negative-balance story. */
+  /** The row that caused a negative balance, to mark, or null. */
   causeLedgerId: number | null;
 }) {
   const state = useDrawerTabQueryState<LedgerFilterType>('all');
@@ -46,7 +41,7 @@ export function LedgerTab({
   const campaignNames = useLedgerCampaignNames();
   const rows = query.data?.data.map((entry) => toLedgerRow(entry, campaignNames, causeLedgerId)) ?? [];
   const totalItems = query.data?.totalItems ?? 0;
-  // Per-type counts describe the UNFILTERED set (see the schema's own docblock).
+  // The counts describe the unfiltered set.
   const typeCounts = query.data?.type_counts;
 
   return (

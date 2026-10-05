@@ -10,8 +10,6 @@ import {
   CampaignUpdateInput,
 } from '@/lib/schema/campaign.schema';
 
-/** Responses are parsed, not cast — see customer.api.ts. */
-
 export async function getCampaigns(params: CampaignListParams = {}) {
   const searchParams: Record<string, string> = {};
 
@@ -41,12 +39,12 @@ export async function updateCampaign(id: number, input: Partial<CampaignUpdateIn
   return campaignSchema.parse(await api.put(`campaigns/${id}`, { json: input }).json());
 }
 
-/** PUT campaigns/{id} with only `status` — update_item() applies whichever fields the body carries, so a single-key body is a real partial write, not a full-body requirement in disguise. */
+/** PUT campaigns/{id} with only `status`. update_item() applies only the fields the body carries, so this is a true partial write. */
 export async function updateCampaignStatus(id: number, status: CampaignStatus): Promise<Campaign> {
   return campaignSchema.parse(await api.put(`campaigns/${id}`, { json: { status } }).json());
 }
 
-/** PUT campaigns/{id} with only `config` — same reasoning as updateCampaignStatus(); BuiltInCampaignList edits config without touching name/priority/conditions/dates. */
+/** PUT campaigns/{id} with only `config`, a partial write like updateCampaignStatus(). */
 export async function updateCampaignConfig(id: number, config: Campaign['config']): Promise<Campaign> {
   return campaignSchema.parse(await api.put(`campaigns/${id}`, { json: { config } }).json());
 }

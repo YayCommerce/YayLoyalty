@@ -1,10 +1,7 @@
 import { ChevronLeft } from 'lucide-react';
 import { __ } from '@wordpress/i18n';
 
-/** 5c's `‹ Customers` back link — visible only below the `sm` breakpoint,
- *  where the Sheet becomes a full-screen view. Shared by the normal header
- *  and the error/not-found branch (see CustomerDrawer.tsx), which both need
- *  it but render otherwise-different content around it. */
+/** The `‹ Customers` back link, shown only below `sm`, where the sheet fills the screen. */
 export function DrawerBackLink({ onClick }: { onClick: () => void }) {
   return (
     <button

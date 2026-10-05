@@ -11,15 +11,12 @@ use YayLoyalty\Utils\Log;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Evaluates a campaign's `conditions` (a flat ANDed list) by comparing each
- * against values already on the Context: the customer, CustomerFacts and the
- * order's own facts. Queries nothing. Attached to Lite through
- * PointsEngine::CONDITIONS_EVALUATOR_FILTER.
+ * Evaluates a campaign's `conditions`, a flat ANDed list, against values already on the Context.
+ * Queries nothing. Attached through PointsEngine::CONDITIONS_EVALUATOR_FILTER.
  *
- * Unknowns FAIL here, while Lite (no evaluator) lets them match: Pro can
- * evaluate, so an unrecognised type is a real error. Do not harmonise them.
- * A condition whose input is missing fails too: `no_customer` for a guest,
- * `needs_order` when the Context has no order (the admin preview).
+ * Unknown conditions fail here, while Lite, with no evaluator, lets them match: Pro can evaluate,
+ * so an unrecognised type is a real error. Do not harmonise them. A condition whose input is missing
+ * fails too: `no_customer` for a guest, `needs_order` when the Context has no order (the admin preview).
  */
 final class ConditionsEvaluator {
 
@@ -158,7 +155,6 @@ final class ConditionsEvaluator {
      * An empty address (shipping on a virtual order) contributes nothing.
      *
      * @param array<string, mixed> $result
-     * @param mixed                $value
      * @return array<string, mixed>
      */
     private function evaluate_country( array $result, Context $ctx, string $operator, $value ): array {
@@ -187,7 +183,6 @@ final class ConditionsEvaluator {
      * Value is { amount, currency }; only spend in that currency counts, no conversion.
      *
      * @param array<string, mixed> $result
-     * @param mixed                $value
      * @return array<string, mixed>
      */
     private function evaluate_lifetime_spend( array $result, CustomerFacts $facts, string $operator, $value ): array {
@@ -265,7 +260,6 @@ final class ConditionsEvaluator {
      * Compares a numeric fact against the condition value: a single number, or an inclusive [low, high] for `between`.
      *
      * @param array<string, mixed> $result
-     * @param mixed                $value
      * @return array<string, mixed>
      */
     private function apply_numeric( array $result, float $actual, string $operator, $value ): array {

@@ -28,11 +28,7 @@ export async function getCustomer(userId: number): Promise<Customer> {
 
 export type CustomerLedgerParams = DrawerPageParams & { type?: LedgerFilterType };
 
-/**
- * `GET /customers/{id}/ledger`. Parsed with `ledgerEnvelopeSchema`, not the
- * generic `parsePaginated()` helper — that helper's envelope shape has no
- * `type_counts` field, so it would silently drop it.
- */
+/** `GET /customers/{id}/ledger`. Parsed with `ledgerEnvelopeSchema`, not `parsePaginated()`, which would drop `type_counts`. */
 export async function getCustomerLedger(userId: number, params: CustomerLedgerParams = {}) {
   const searchParams = toDrawerSearchParams(params);
 
@@ -50,11 +46,9 @@ export async function adjustCustomerPoints(userId: number, input: AdjustPointsIn
 }
 
 /**
- * `POST /customers/adjust/preview`: the bulk adjust dialog's count,
- * liability and rate. This mapping is spelling-only (camelCase →
- * snake_case), same rule as `getCustomers()` below. The tier →
- * balance-bucket substitution (`toServerFilters`) is page-specific domain
- * logic and must happen before `input` reaches here.
+ * `POST /customers/adjust/preview`: the bulk adjust dialog's count, liability and rate.
+ * This only respells camelCase as snake_case. The tier-to-balance-bucket substitution
+ * (`toServerFilters`) must happen before `input` reaches here.
  */
 export async function previewAdjustPoints(
   input: AdjustPointsPreviewInput,

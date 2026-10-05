@@ -9,16 +9,16 @@ defined( 'ABSPATH' ) || exit;
 /**
  * GET /me/activity: the signed-in shopper's latest ledger rows, for the storefront launcher.
  *
- * A shopper route, not an admin one: gated by session identity, so the user
- * is always the current one and there is no id param to enumerate. Fetched after the panel opens,
- * so a shopper who only wants their balance never waits on a ledger query.
+ * A shopper route, not an admin one: it is gated by session identity, so the user is always the current
+ * one and there is no id param to enumerate. The launcher fetches it after the panel opens, so a shopper
+ * who only wants their balance never waits on a ledger query.
  */
 final class StorefrontActivityRestController extends AbstractRestController {
 
-    /** Path under the namespace; the launcher builds its fetch URL from this. */
+    /** Path under the namespace. The launcher builds its fetch URL from this. */
     public const ROUTE = '/me/activity';
 
-    /** The launcher shows three rows; "View all" leads to My Account for the rest. Its skeleton draws as many. */
+    /** The launcher shows three rows, and "View all" leads to My Account for the rest. Its skeleton draws as many. */
     public const ROWS = 3;
 
     /** @var LedgerRepository */

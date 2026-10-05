@@ -1,30 +1,20 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any -- copied from Mantine, whose onChange forwards an untyped payload */
 import { useState } from 'react';
 
 /** State that is either controlled or uncontrolled, for custom inputs. Copied from Mantine hooks. */
 
 export interface UseUncontrolledOptions<T> {
-  /** Value for controlled state */
   value?: T;
-
-  /** Initial value for uncontrolled state */
   defaultValue?: T;
-
-  /** Final value for uncontrolled state when value and defaultValue are not provided */
+  /** Used when neither `value` nor `defaultValue` is given. */
   finalValue?: T;
-
-  /** Controlled state onChange handler */
   onChange?: (value: T, ...payload: any[]) => void;
 }
 
 export type UseUncontrolledReturnValue<T> = [
-  /** Current value */
   T,
-
-  /** Handler to update the state, passes `value` and `payload` to `onChange` */
   (value: T, ...payload: any[]) => void,
-
-  /** True if the state is controlled, false if uncontrolled */
+  /** True when the state is controlled. */
   boolean,
 ];
 

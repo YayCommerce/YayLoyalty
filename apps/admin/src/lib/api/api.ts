@@ -12,11 +12,10 @@ const _ky = ky.create({
     afterResponse: [
       async (request, options, response) => {
         if (response.status === 403) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- an error body of unknown shape, read defensively below
           const body: any = await response.json();
 
           if (body?.code === 'rest_cookie_invalid_nonce') {
-            // if session expired
             location.reload();
           }
 
@@ -140,9 +139,9 @@ export const wordpressApi = createApi('wp/v2');
 export const api = yayLoyaltyApi;
 
 /**
- * One toast-ready string from a WP_Error response or a client-side Error;
- * a network failure or non-JSON body falls back rather than surfacing
- * "[object Object]". A forbidden 403 was already toasted by afterResponse.
+ * One toast-ready string from a WP_Error response or a client-side Error.
+ * A network failure or a non-JSON body returns `fallback`, never "[object Object]".
+ * afterResponse has already toasted a forbidden 403.
  */
 export async function getApiErrorMessage(error: unknown, fallback: string): Promise<string> {
   if (error instanceof HTTPError) {

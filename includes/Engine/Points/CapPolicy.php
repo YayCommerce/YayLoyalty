@@ -6,11 +6,8 @@ use YayLoyalty\Models\Campaign;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Clamp computed points to the campaign's per-order and daily caps.
- *
- * The daily figure comes from the Context — the caller reads the ledger, the
- * engine does not — so in a preview (points_earned_today = 0) the cap shows
- * the best case, which is the honest number to promise on a product page.
+ * Clamps points to the campaign's per-order and daily caps. A preview has 0 earned today,
+ * so it shows the best case, which is the honest number to promise on a product page.
  */
 final class CapPolicy {
 

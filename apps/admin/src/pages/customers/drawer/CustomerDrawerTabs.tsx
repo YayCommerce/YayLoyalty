@@ -9,14 +9,8 @@ import { RedemptionsTab } from './tabs/RedemptionsTab';
 import { ReferralsTab } from './tabs/ReferralsTab';
 
 /**
- * One tab: label with its count beside it, at the smaller, lighter weight
- * every artboard gives the count so it reads as an annotation on the label
- * rather than part of it (3c note 2).
- *
- * The classes undo the shared `TabsTrigger`'s segmented-pill look — the
- * drawer's bar is the underlined kind 1e/1f/3c draw, and this is the only
- * `Tabs` instance in the app, so it is overridden here at the call site
- * instead of adding a variant to the primitive nothing else would use.
+ * One tab, with its count beside the label in a smaller, lighter weight.
+ * The classes replace the shared TabsTrigger's pill look with an underline at the call site.
  */
 function DrawerTab({
   value,
@@ -27,15 +21,14 @@ function DrawerTab({
   value: string;
   label: string;
   count: number;
-  /** Redemptions (3e)/Referrals (3f) — a Pro badge beside the label. */
+  /** A Pro badge in place of the count. */
   proGated?: boolean;
 }) {
   return (
     <TabsTrigger
       value={value}
-      // `-mb-px` pulls the active tab's 2px underline over the list's own 1px
-      // rule instead of stacking a 3px line on top of it. That needs the list
-      // itself to stay `overflow: visible` — see `TabsList`'s own comment.
+      // `-mb-px` pulls the active tab's 2px underline over the list's 1px rule, so they do not stack.
+      // That needs the list to stay `overflow: visible`.
       className="data-[state=active]:border-primary data-[state=active]:text-primary group -mb-px h-auto flex-none rounded-none border-0 border-b-2 border-transparent px-0 py-2.5 font-medium data-[state=active]:bg-transparent data-[state=active]:shadow-none"
     >
       {label}
@@ -52,21 +45,8 @@ function DrawerTab({
 }
 
 /**
- * Points ledger · Activity log · Redemptions · Referrals, each labelled with
- * its own count from `customer.counts` — always present here (this only
- * mounts once `CustomerDrawer.tsx`'s identity query has resolved, so there
- * is no separate "counts still loading" state to render for). All four tabs
- * exist in both builds (locked decision 6) — no `IS_PRO_BUILD` branch.
- *
- * All four tabs have real, working bodies — see `ActivityLogTab.tsx`/
- * `RedemptionsTab.tsx`/`ReferralsTab.tsx`.
- *
- * Redemptions and Referrals are Pro-only content behind the SAME tabs Free
- * sees (locked decision 6 — no `IS_PRO_BUILD` branch on which tabs exist):
- * `ProGate` adds a badge beside the label and swaps the body for the
- * upgrade surface on Lite. `ProGate` is a build-time presentation gate, not
- * access control — there is no data behind it to protect yet, both tabs
- * always answer an empty envelope (no `redemptions`/`referrals` table).
+ * The four tabs, each labelled with its count from `customer.counts`. Both builds show all four.
+ * In Lite, `ProGate` swaps the Redemptions and Referrals bodies for the upgrade surface. It is a presentation gate, not access control.
  */
 export function CustomerDrawerTabs({
   customer,

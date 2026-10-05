@@ -3,7 +3,7 @@ namespace YayLoyalty\Pro\Emails;
 
 defined( 'ABSPATH' ) || exit;
 
-/** Tier reached: sent when a customer reaches a new tier. */
+/** The tier-reached email. Nothing triggers it yet. */
 class TierReachedEmail extends ProLoyaltyEmail {
 
     public function __construct() {

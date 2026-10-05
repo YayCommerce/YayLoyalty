@@ -3,7 +3,7 @@ namespace YayLoyalty\Pro\Emails;
 
 defined( 'ABSPATH' ) || exit;
 
-/** Coupon issued: sent when a reward coupon is issued to a customer. */
+/** The coupon-issued email. Nothing triggers it yet. */
 class CouponIssuedEmail extends ProLoyaltyEmail {
 
     public function __construct() {

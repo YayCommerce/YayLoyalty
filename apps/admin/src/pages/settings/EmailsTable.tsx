@@ -15,8 +15,8 @@ interface EmailsTableProps {
 }
 
 /**
- * One grouped table for every email this build registered with WooCommerce; each row's switch
- * edits WooCommerce's own on/off. Card-wrapped the same way DashboardRecentActivity frames its table.
+ * One grouped table for every email this build registered with WooCommerce. Each row's switch
+ * edits WooCommerce's own on/off.
  */
 export function EmailsTable({ groups }: EmailsTableProps) {
   const { control } = useFormContext<EmailsFormValues>();
@@ -69,8 +69,11 @@ export function EmailsTable({ groups }: EmailsTableProps) {
                               variant="outline"
                               size="icon"
                               disabled
-                              /* translators: %s: email title */
-                              aria-label={sprintf(__('Send a test of %s (coming soon)', 'yayloyalty'), item.title)}
+                              aria-label={sprintf(
+                                /* translators: %s: email title */
+                                __('Send a test of %s (coming soon)', 'yayloyalty'),
+                                item.title,
+                              )}
                             >
                               <SendIcon />
                             </Button>
@@ -83,8 +86,11 @@ export function EmailsTable({ groups }: EmailsTableProps) {
                           href={item.edit_url}
                           target="_blank"
                           rel="noreferrer"
-                          /* translators: %s: email title */
-                          aria-label={sprintf(__('Edit template for %s', 'yayloyalty'), item.title)}
+                          aria-label={sprintf(
+                            /* translators: %s: email title */
+                            __('Edit template for %s', 'yayloyalty'),
+                            item.title,
+                          )}
                         >
                           {__('Edit template', 'yayloyalty')}
                         </a>

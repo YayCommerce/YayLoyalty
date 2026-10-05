@@ -8,20 +8,16 @@ use YayLoyalty\Utils\Json;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * A campaign's `conditions`: a flat ANDed list, at most one entry per type,
- * stored as JSON in the campaigns table (empty = applies to everyone). Owns
- * validation and normalisation on save; evaluation is
- * Pro\Services\ConditionsEvaluator's. Independent of RewardConditionSet
- * except for the value shapes shared through Utils\ConditionValueRules.
+ * A campaign's `conditions`: a flat ANDed list, at most one entry per type, stored as JSON in the campaigns table.
+ * An empty list applies to everyone. This class validates and normalises on save, and
+ * Pro\Services\ConditionsEvaluator evaluates. It shares only Utils\ConditionValueRules with RewardConditionSet.
  */
 final class CampaignConditionSet {
 
     /** @var CampaignCondition[] */
     private $conditions;
 
-    /**
-     * @param CampaignCondition[] $conditions
-     */
+    /** @param CampaignCondition[] $conditions */
     public function __construct( array $conditions = [] ) {
         $this->conditions = array_values(
             array_filter(
@@ -34,7 +30,7 @@ final class CampaignConditionSet {
     }
 
     /**
-     * Builds from { type, operator, value } maps. Lenient; strictness is validate().
+     * Builds from { type, operator, value } maps. Lenient: validate() is the strict check.
      *
      * @param array<int, mixed> $list
      */
@@ -50,14 +46,12 @@ final class CampaignConditionSet {
         return new self( $conditions );
     }
 
-    /** Builds from the stored column value; malformed JSON yields an empty set, never an exception. */
+    /** Builds from the stored column value. Malformed JSON yields an empty set, never an exception. */
     public static function from_json( ?string $raw ): self {
         return self::from_array( Json::decode_list( $raw, [] ) );
     }
 
-    /**
-     * @return array<int, array{type: string, operator: string, value: mixed}>
-     */
+    /** @return array<int, array{type: string, operator: string, value: mixed}> */
     public function to_array(): array {
         return array_map(
             static function ( CampaignCondition $condition ) {
@@ -72,9 +66,7 @@ final class CampaignConditionSet {
         return Json::encode_list( $this->to_array(), Campaign::CONFIG_SCHEMA_VERSION );
     }
 
-    /**
-     * @return CampaignCondition[]
-     */
+    /** @return CampaignCondition[] */
     public function all(): array {
         return $this->conditions;
     }
@@ -90,7 +82,7 @@ final class CampaignConditionSet {
     /**
      * Canonicalises a raw list for storage: scalars widened to lists, ids cast,
      * codes upper-cased, roles lower-cased, lists de-duplicated, entries
-     * ordered cheap-first for evaluation. Non-throwing; unknown types pass
+     * ordered cheap-first for evaluation. Never throws: unknown types pass
      * through for validate() to reject.
      *
      * @param array<int, mixed> $list
@@ -139,8 +131,6 @@ final class CampaignConditionSet {
 
     /**
      * @param array<string, mixed> $spec
-     * @param mixed                $value
-     * @return mixed
      */
     private static function normalize_value( array $spec, $value ) {
         $shape = $spec['value'] ?? '';
@@ -177,7 +167,7 @@ final class CampaignConditionSet {
     }
 
     /**
-     * Non-throwing check for the save boundary; normalises first.
+     * Non-throwing check for the save boundary. It normalises first.
      *
      * @param array<int, mixed> $list
      */
@@ -240,7 +230,6 @@ final class CampaignConditionSet {
 
     /**
      * @param array<string, mixed> $spec
-     * @param mixed                $value
      */
     private static function validate_value( string $type, array $spec, string $operator, $value ): void {
         switch ( $spec['value'] ?? '' ) {
@@ -329,23 +318,14 @@ final class CampaignConditionSet {
         }
     }
 
-    /**
-     * @param mixed $value
-     */
     private static function assert_non_empty_list( string $type, $value ): void {
         ConditionValueRules::assert_non_empty_list( $type, $value );
     }
 
-    /**
-     * @param mixed $value
-     */
     private static function assert_between_pair( string $type, $value, bool $integers ): void {
         ConditionValueRules::assert_between_pair( $type, $value, $integers );
     }
 
-    /**
-     * @param mixed $value
-     */
     private static function is_int_like( $value ): bool {
         return ConditionValueRules::is_int_like( $value );
     }
@@ -363,7 +343,7 @@ final class CampaignConditionSet {
         return true;
     }
 
-    /** ISO 3166-1 alpha-2. Same approach as is_currency_code(). */
+    /** ISO 3166-1 alpha-2 format check, plus membership in WooCommerce's list when it is loaded. */
     private static function is_country_code( string $code ): bool {
         if ( 1 !== preg_match( '/^[A-Z]{2}$/', $code ) ) {
             return false;

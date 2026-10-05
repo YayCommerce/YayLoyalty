@@ -102,17 +102,9 @@ function estimateSentence(estimate: NonNullable<Estimate>): string {
 }
 
 /**
- * A single generic card — callers don't know which of `skipped`/`estimate`
- * will end up populated until the summary loads (and a purchase campaign
- * with real data but a near-zero skipped count can legitimately end up with
- * neither, same as the loaded panel returning `null` in that case).
- *
- * No current caller: both fields ship `null` unconditionally (see
- * CampaignPerformanceRestController's class docblock), so the page's
- * loading skeleton stopped rendering this
- * rather than promise a panel that never resolves. Kept, not deleted — this
- * becomes correct again the day skipped/estimate go real, same as
- * CampaignPerformanceSidePanel itself staying mounted for that day.
+ * One generic card, since which of `skipped`/`estimate` is set is unknown until the summary loads.
+ * No caller today: the server sends both as `null`, so the page skeleton leaves this out. Kept for
+ * when they carry real data.
  */
 export function CampaignPerformanceSidePanelSkeleton() {
   return (

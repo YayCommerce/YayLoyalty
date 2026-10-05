@@ -9,11 +9,10 @@ use YayLoyalty\Utils\Table;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * All SQL for exactly one table. Never opens a transaction or touches a
- * second table (service concerns); every write throws, because
- * Transaction::run() commits unless a Throwable escapes; never memoizes the
- * table name (multisite switches blogs). Not a singleton: get_instance()
- * ignores constructor arguments after the first call.
+ * All SQL for exactly one table. A repository never opens a transaction or
+ * touches a second table: those are service concerns. Every write throws,
+ * because Transaction::run() commits unless a Throwable escapes. Not a
+ * singleton: get_instance() ignores constructor arguments after the first call.
  */
 abstract class AbstractRepository {
 
@@ -23,19 +22,17 @@ abstract class AbstractRepository {
     /** Table slug without prefix, e.g. 'ledger'. */
     abstract protected function table_slug(): string;
 
-    /**
-     * @return class-string<AbstractModel>
-     */
+    /** @return class-string<AbstractModel> */
     abstract protected function model_class(): string;
 
     /**
-     * Columns paginate() accepts in orderby; it is interpolated into SQL, so never caller-supplied.
+     * Columns paginate() accepts in orderby. The column is interpolated into SQL, so this list is never caller-supplied.
      *
      * @return string[]
      */
     abstract protected function sortable_columns(): array;
 
-    /** Primary key column; override for tables keyed otherwise (customers: user_id). */
+    /** Primary key column. Override it for a table keyed otherwise, such as customers by user_id. */
     protected function primary_key(): string {
         return 'id';
     }
@@ -45,13 +42,11 @@ abstract class AbstractRepository {
         return Table::name( $this->table_slug() );
     }
 
-    /**
-     * @return AbstractModel|null
-     */
+    /** @return AbstractModel|null */
     public function find( int $id ) {
         global $wpdb;
 
-        $row = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        $row = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
                 'SELECT * FROM `' . esc_sql( $this->table() ) . '` WHERE `' . esc_sql( $this->primary_key() ) . '` = %d',
                 $id
@@ -76,7 +71,7 @@ abstract class AbstractRepository {
         $data   = $model->to_row();
         $format = $model->get_format();
 
-        $result = $wpdb->insert( $this->table(), $data, $format ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        $result = $wpdb->insert( $this->table(), $data, $format ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
 
         if ( false === $result ) {
             throw new QueryException( 'insert', $wpdb->last_error, $this->table() );
@@ -98,7 +93,7 @@ abstract class AbstractRepository {
     public function update( int $id, array $data, array $format = [] ): bool {
         global $wpdb;
 
-        $result = $wpdb->update( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        $result = $wpdb->update( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $this->table(),
             $data,
             [ $this->primary_key() => $id ],
@@ -114,13 +109,11 @@ abstract class AbstractRepository {
         return true;
     }
 
-    /**
-     * @throws QueryException When the write fails.
-     */
+    /** @throws QueryException When the write fails. */
     public function delete( int $id ): bool {
         global $wpdb;
 
-        $result = $wpdb->delete( $this->table(), [ $this->primary_key() => $id ], [ '%d' ] ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        $result = $wpdb->delete( $this->table(), [ $this->primary_key() => $id ], [ '%d' ] ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
 
         if ( false === $result ) {
             throw new QueryException( 'delete', $wpdb->last_error, $this->table() );
@@ -154,19 +147,16 @@ abstract class AbstractRepository {
 
         $table = esc_sql( $this->table() );
 
-        // A second ORDER BY column, so a page is stable when $orderby ties (equal priority,
-        // equal status, …): without it MySQL may return ties in a different order per page,
-        // repeating or skipping rows across pages. Ties go to the newest, as the repository
-        // docblocks that promise this already say. Skipped when $orderby already is the key.
+        // A second ORDER BY column keeps a page stable when $orderby ties. Without it MySQL may
+        // order ties differently per page, repeating or skipping rows. Ties go to the newest.
+        // The tie-break is skipped when $orderby already is the key.
         $primary_key   = esc_sql( $this->primary_key() );
         $tie_break_sql = $orderby === $this->primary_key() ? '' : ', `' . $primary_key . '` DESC';
 
-        // Interpolated identifiers are each constrained: $table is our own slug esc_sql()'d,
-        // $orderby/$order are whitelisted literals, $where_sql fragments are already prepared.
-        // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared -- identifiers are whitelisted/escaped above; values are bound.
-        $total = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM `' . $table . '`' . $where_sql ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared -- $table is our escaped slug, $orderby and $order are whitelisted, and the $where_sql fragments are already prepared.
+        $total = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM `' . $table . '`' . $where_sql ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
 
-        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
                 'SELECT * FROM `' . $table . '`' . $where_sql
                 . ' ORDER BY `' . esc_sql( $orderby ) . '` ' . $order . $tie_break_sql
@@ -194,7 +184,7 @@ abstract class AbstractRepository {
         ];
     }
 
-    /** Prepared LIKE fragment for a free-text search; esc_like() first or % and _ become wildcards. */
+    /** Prepared LIKE fragment for a free-text search. esc_like() runs first, or % and _ would be wildcards. */
     protected function like_fragment( string $column, string $term ): string {
         global $wpdb;
 
@@ -206,7 +196,7 @@ abstract class AbstractRepository {
 
     /**
      * Prepared `created_at` bounds for an inclusive range of site-calendar
-     * `Y-m-d` days; an empty or invalid day adds no bound.
+     * `Y-m-d` days. An empty or invalid day adds no bound.
      *
      * @return string[]
      */
@@ -228,10 +218,7 @@ abstract class AbstractRepository {
         return $where;
     }
 
-    /**
-     * @param array<string, mixed> $row
-     * @return AbstractModel
-     */
+    /** @param array<string, mixed> $row */
     protected function hydrate( array $row ): AbstractModel {
         $class = $this->model_class();
 

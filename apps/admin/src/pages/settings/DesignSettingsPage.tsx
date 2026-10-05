@@ -56,8 +56,8 @@ export default function DesignSettingsPage() {
   // every edited field over what the server just returned (its sanitised save, or the defaults).
   const replaceAllValues = { keepDirtyValues: false };
 
-  // The Design page stays on its own route after a save, so there is no bypassNext()/navigate()
-  // dance CampaignEditor needs — just reset before confirmLeave() so the guard doesn't re-trip.
+  // Reset before confirmLeave() so the guard does not re-trip. The page stays on its route
+  // after a save, so unlike CampaignEditor it needs no bypassNext().
   const handleSave = form.handleSubmit(async (values) => {
     try {
       const saved = await saveMutation.mutateAsync(values);
@@ -91,9 +91,8 @@ export default function DesignSettingsPage() {
             <DesignStorefrontTextSection />
             <DesignVisibilitySection />
 
-            {/* Ternary INSIDE ProGate's children, not <ProGate><X/></ProGate>: JSX evaluates
-                children eagerly, so the latter drags the Pro subtree — sentinel included —
-                into the Lite bundle. */}
+            {/* IS_PRO_BUILD inside ProGate: ProGate alone would still ship the Pro sections in Lite
+                (see pro/index.ts). */}
             <ProGate>{IS_PRO_BUILD ? <DesignPanelSection /> : null}</ProGate>
             <ProGate>{IS_PRO_BUILD ? <DesignTypographySection /> : null}</ProGate>
             <ProGate>{IS_PRO_BUILD ? <DesignTierSection /> : null}</ProGate>

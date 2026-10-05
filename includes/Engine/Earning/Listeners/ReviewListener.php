@@ -36,10 +36,8 @@ final class ReviewListener {
     }
 
     /**
-     * Attaches comment_post (approved on arrival) and transition_comment_status
-     * (approved later). comment_post runs at 20: WooCommerce writes the
-     * `verified` meta on the same hook at 10, and reading before it would
-     * score every review as unverified.
+     * comment_post runs at 20: WooCommerce writes the `verified` meta on the same hook at 10,
+     * and reading before it would score every review as unverified.
      */
     public function register(): void {
         add_action( 'comment_post', [ $this, 'on_comment_post' ], 20, 2 );
@@ -47,7 +45,7 @@ final class ReviewListener {
     }
 
     /**
-     * `comment_post` adapter — fires when a review is approved on arrival.
+     * Awards a review approved on arrival.
      *
      * @param int|string $approved WordPress passes 1, 0 or 'spam'.
      */
@@ -67,10 +65,8 @@ final class ReviewListener {
     }
 
     /**
-     * `transition_comment_status` adapter: approval awards; leaving approved
-     * for unapproved, spam, trash or a hard delete takes the points back.
-     * Re-approval awards again only in name: the earn key is spent, so it is
-     * a duplicate (no re-award after a reversal).
+     * Approval awards. Leaving approved for unapproved, spam, trash or a hard delete takes the points back.
+     * Re-approval after a reversal is a duplicate, because the earn key is spent.
      */
     public function on_comment_transition( string $new_status, string $old_status, \WP_Comment $comment ): void {
         if ( ! self::is_product_review( $comment ) ) {

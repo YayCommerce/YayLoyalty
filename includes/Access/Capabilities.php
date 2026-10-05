@@ -6,10 +6,9 @@ use YayLoyalty\Helpers\SettingsHelper;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The plugin's capabilities: names, role defaults, install/migrate/uninstall
- * and the SPA bootstrap payload. Checked at the HTTP boundary only: domain
- * services take an actor id and are user-unaware, or every cron and
- * WP-CLI path would break. Primitive caps on existing WP_Roles, nowhere else.
+ * The plugin's capabilities, their role defaults and the SPA's bootstrap payload.
+ * They are checked at the HTTP boundary only. Domain services take an actor id instead,
+ * so cron and WP-CLI paths keep working. They are primitive caps, granted on existing roles only.
  */
 final class Capabilities {
 
@@ -25,9 +24,7 @@ final class Capabilities {
     public const VERSION        = 1;
     public const VERSION_OPTION = 'yayloyalty_caps_version';
 
-    /**
-     * @return string[] In display order.
-     */
+    /** @return string[] In display order. */
     public static function all(): array {
         return [
             self::VIEW,
@@ -59,7 +56,7 @@ final class Capabilities {
         ];
     }
 
-    /** Grants the defaults and stamps the version. Idempotent; called from Installer::install(). */
+    /** Grants the defaults and stamps the version. Idempotent. */
     public static function install(): void {
         foreach ( self::defaults() as $role_slug => $caps ) {
             $role = get_role( $role_slug );
@@ -100,7 +97,7 @@ final class Capabilities {
         self::install();
     }
 
-    /** Removes every capability from every role. Uninstall only; deactivation must not lock out a shop manager. */
+    /** Removes every capability from every role. Uninstall only: deactivation must not lock out a shop manager. */
     public static function uninstall(): void {
         foreach ( wp_roles()->role_objects as $role ) {
             foreach ( self::all() as $cap ) {
@@ -120,7 +117,7 @@ final class Capabilities {
         return current_user_can( 'manage_options' );
     }
 
-    /** Largest absolute adjustment a non-administrator may make in one call; 0 = unlimited. */
+    /** Largest absolute adjustment a non-administrator may make in one call. 0 means unlimited. */
     public static function ceiling(): int {
         $settings = SettingsHelper::get_settings();
 

@@ -4,19 +4,13 @@ namespace YayLoyalty\Engine\Storefront;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The admin kit's class lists for the storefront templates, so the launcher looks like the admin UI.
- *
- * Mirrors the `cva` definitions in apps/admin/src/components/ui/button.tsx, trimmed to the
- * variants the launcher uses (add one back when a template first needs it: every listed class ships)
- * and written with the storefront build's `yl:` prefix. The strings stay literal because Tailwind
- * finds classes by scanning this file (apps/admin/src/storefront.css @source); a class built at
- * runtime would never reach the stylesheet. button.tsx owns these lists; change both together.
- *
- * Deliberate differences for the storefront: `transition-colors` for `transition-default`, which the
- * storefront build doesn't import; no `[&_svg]` rules and none of the size's `gap-1.5` or
- * `has-[>svg]:px-3`, since these buttons hold text only and nothing merges conflicting classes; and
- * `no-underline`, a visible focus ring and a transparent outline background, so a theme's link
- * styles can't restyle the anchors these classes go on.
+ * The admin kit's class lists for the storefront templates, with the storefront build's `yl:` prefix.
+ * The button lists mirror the `cva` definitions in apps/admin/src/components/ui/button.tsx, which owns them:
+ * change both together. Only the variants the launcher uses are listed, because every listed class ships.
+ * The strings stay literal: Tailwind finds classes by scanning this file (the @source in
+ * apps/admin/src/storefront.css), so a class built at runtime never reaches the stylesheet.
+ * The differences from button.tsx are deliberate. The storefront build has no `transition-default`, these
+ * buttons hold text only, and `no-underline` with a visible focus ring keeps a theme's link styles off the anchors.
  */
 final class UiClasses {
 

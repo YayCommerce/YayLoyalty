@@ -15,17 +15,9 @@ import { sampleTierForBalance } from '../customers-page.tier-sample-data';
 import { BalanceCell, CustomerNameCell } from './CustomersTableCells';
 
 /**
- * 5c's mobile card: identity + balance always visible, Pending/Last activity
- * folded into one contextual second line, and Lifetime earned/Expires/
- * Referrals named inside a "Details ▾" popover — callout 5's rule ("keep the
- * identity, the number the screen is about, and one action; nothing is
- * silently dropped, hidden columns are named") applied to the outer
- * Customers list, not just the drawer's own tables.
- *
- * No selection checkbox here, unlike `CustomerTableRow.tsx` — the mockup
- * draws none, and bulk-select alongside a "Details" popover on one card is
- * a second competing action callout 5 argues against. Bulk actions stay a
- * desktop-only affordance below `sm`.
+ * The mobile customer card. Identity and balance always show, Pending and Last activity share one line,
+ * and the other columns sit in a "Details" popover, so no column is silently dropped.
+ * No selection checkbox: bulk actions are desktop-only.
  */
 export function CustomerCardRow({
   customer,
@@ -62,18 +54,26 @@ export function CustomerCardRow({
   );
 }
 
-/** Pending + last activity, the two columns 5c moves into the card body instead of Details. */
+/** Pending points and last activity, shown in the card body rather than in Details. */
 function summaryLine(customer: CustomerListRow, negative: boolean): string {
   if (negative) {
     return __('negative balance', 'yayloyalty');
   }
 
   const activity = customer.last_activity_at
-    ? sprintf(__('active %s', 'yayloyalty'), parseWPRelativeDate(customer.last_activity_at))
+    ? sprintf(
+        /* translators: %s: how long ago the customer was last active, such as "2 days ago". */
+        __('active %s', 'yayloyalty'),
+        parseWPRelativeDate(customer.last_activity_at),
+      )
     : null;
 
   if (customer.pending_points > 0) {
-    const pending = sprintf(__('%s pending', 'yayloyalty'), formatPoints(customer.pending_points));
+    const pending = sprintf(
+      /* translators: %s: pending points, formatted. */
+      __('%s pending', 'yayloyalty'),
+      formatPoints(customer.pending_points),
+    );
 
     return activity ? `${pending} · ${activity}` : pending;
   }
@@ -81,7 +81,7 @@ function summaryLine(customer: CustomerListRow, negative: boolean): string {
   return activity ?? '—';
 }
 
-/** The columns 5c names in the expander rather than dropping: Lifetime earned, Expires, Referrals (Pro). */
+/** The columns the card does not show inline: Lifetime earned, Expires and Referrals (Pro). */
 function CardDetailsPopover({
   customer,
   negative,

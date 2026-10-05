@@ -44,7 +44,7 @@ final class LedgerRestController extends AbstractRestController {
     }
 
     /**
-     * `type_counts` describes the customer's UNFILTERED history, so each
+     * `type_counts` describes the customer's unfiltered history, so each
      * segment keeps its count while another filter is applied.
      */
     public function get_history( \WP_REST_Request $request ) {

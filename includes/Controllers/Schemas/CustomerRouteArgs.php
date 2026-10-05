@@ -3,16 +3,12 @@ namespace YayLoyalty\Controllers\Schemas;
 
 defined( 'ABSPATH' ) || exit;
 
-/**
- * The two small route-arg fragments `CustomerRestController` needs beyond
- * `CustomerListFormatter::filter_params()`, apart from the controller the
- * way `ActivityQueryArgs`/`LedgerQueryArgs` are.
- */
+/** Route args for the Customers list's sort and for the adjust endpoint. */
 final class CustomerRouteArgs {
 
     /**
-     * Overrides `get_collection_params()`'s free-text `orderby` with the six
-     * real sort keys the Customers list understands. See `CustomerRowSort`.
+     * Replaces get_collection_params()'s free-text `orderby` with the sort keys
+     * CustomerRowSort accepts.
      *
      * @return array<string, mixed>
      */
@@ -46,8 +42,8 @@ final class CustomerRouteArgs {
                 'required'          => true,
                 'sanitize_callback' => 'sanitize_text_field',
             ],
-            // On moves lifetime_earned (and so tier progress) by the same signed amount,
-            // in either direction; off writes a balance-only `correction` row.
+            // On moves lifetime_earned, and so tier progress, by the same signed amount in either
+            // direction. Off writes a balance-only `correction` row.
             'adjust_lifetime' => [
                 'description' => __( 'Whether this adjustment also moves lifetime_earned, not the balance only.', 'yayloyalty' ),
                 'type'        => 'boolean',

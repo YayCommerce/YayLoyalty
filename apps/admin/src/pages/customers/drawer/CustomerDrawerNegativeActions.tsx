@@ -6,15 +6,8 @@ import {
 } from './customer-drawer.panels.copy';
 
 /**
- * 5a's two actions — two options, no default, per the artboard's own
- * framing (writing off costs something, leaving it costs nothing but takes
- * longer to resolve itself).
- *
- * NEITHER IS WIRED. "Write off" could be implemented today without a new
- * endpoint — it is `POST /customers/{id}/adjust` with `points: +deficit`
- * and a fixed note, the same endpoint `CustomerDrawerActions.tsx` already
- * calls. Deliberately left disabled until the note string and whether a
- * write-off can be undone are decided.
+ * Write off or leave as is, with no default. Both are disabled.
+ * TODO(negative-balance): wire "Write off" as `POST /customers/{id}/adjust` with `points: +deficit` once its note and undo rule are decided.
  */
 export function CustomerDrawerNegativeActions({ customerFirstName }: { customerFirstName: string }) {
   return (

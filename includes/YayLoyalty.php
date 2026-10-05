@@ -26,13 +26,13 @@ class YayLoyalty {
         \YayLoyalty\Engine\Emails\Emails::get_instance();
         \YayLoyalty\Integrations\YayMail\YayMailIntegration::get_instance();
 
-        // The only reference to Pro in the Lite tree; Lite strips includes/Pro/ wholesale, so add a seam, never a second reference.
-        // Before rest_api_init and any campaign read, so Pro's filters are attached first.
+        // The only reference to Pro in the Lite tree. Lite strips includes/Pro/, so add a seam, never a second reference.
+        // It runs before rest_api_init and any campaign read, so Pro's filters are attached first.
         if ( self::is_pro() ) {
             \YayLoyalty\Pro\YayLoyaltyPro::boot();
         }
 
-        // After Pro's boot: build() applies yayloyalty_earning_gates once, so any gate Pro adds must already be attached (it adds none yet).
+        // After Pro's boot: build() applies yayloyalty_earning_gates once, so any gate Pro adds must already be attached.
         $this->register_earning_listeners();
 
         if ( ! is_admin() ) {
@@ -49,7 +49,7 @@ class YayLoyalty {
         return class_exists( 'YayLoyalty\Pro\YayLoyaltyPro', true );
     }
 
-    /** Builds the earning composition root and attaches its three listeners; runs once, at boot. */
+    /** Builds the earning composition root and attaches its four listeners. Runs once, at boot. */
     private function register_earning_listeners(): void {
         $service = EarningService::build();
 

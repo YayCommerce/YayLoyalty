@@ -2,7 +2,7 @@
 /**
  * Signed-in panel body: balance first, then reference material, each block ruled off.
  *
- * @var array $view      Launcher::build_view().
+ * @var array $view      Launcher::view().
  * @var array $yayloyalty_text   The Design tab's storefront_text.
  * @var array $yayloyalty_member { balance: int, worth: ?float }.
  */

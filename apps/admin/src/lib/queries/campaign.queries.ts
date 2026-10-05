@@ -18,8 +18,6 @@ import type {
   CampaignUpdateInput,
 } from '@/lib/schema/campaign.schema';
 
-/** ─── Query Options ─────────────────────────────────── */
-
 export const CAMPAIGN_QUERIES = {
   list: (params: CampaignListParams) =>
     queryOptions({
@@ -34,8 +32,6 @@ export const CAMPAIGN_QUERIES = {
       enabled: id > 0,
     }),
 };
-
-/** ─── Hooks ─────────────────────────────────────────── */
 
 export function useCampaignsQuery(params: CampaignListParams = {}) {
   return useQuery(CAMPAIGN_QUERIES.list(params));
@@ -97,7 +93,7 @@ export function useUpdateCampaignStatusMutation(id: number) {
   });
 }
 
-/** BuiltInCampaignList's "Save changes"; see updateCampaignConfig(). */
+/** Writes only `config`; see updateCampaignConfig(). */
 export function useUpdateCampaignConfigMutation(id: number) {
   const queryClient = useQueryClient();
 

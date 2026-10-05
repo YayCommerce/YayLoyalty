@@ -11,11 +11,7 @@ import {
 } from '../customers-adjust-points.copy';
 import type { AdjustFormState } from '../customers-adjust-points.form-state';
 
-/**
- * Lifetime toggle · customer-facing description toggle · notify-by-email
- * toggle, for both the single and bulk layouts. Only the lifetime toggle is
- * sent to the server; the other two are not wired yet.
- */
+/** The adjustment's options, for both layouts. Only the lifetime toggle reaches the server. */
 export function AdjustPointsOptions({
   state,
   onChange,
@@ -23,7 +19,7 @@ export function AdjustPointsOptions({
 }: {
   state: Pick<AdjustFormState, 'adjustLifetime' | 'showCustomerNote' | 'customerNote' | 'notifyByEmail'>;
   onChange: (patch: Partial<AdjustFormState>) => void;
-  /** Bulk only — "340 emails" beside the notify checkbox. */
+  /** Bulk only: "340 emails" beside the notify checkbox. */
   notifyCountLabel?: string;
 }) {
   return (
@@ -39,8 +35,7 @@ export function AdjustPointsOptions({
         </span>
       </label>
 
-      {/* TODO: send customerNote with the adjustment and show it on the customer's points history — nothing is
-          sent or stored today. */}
+      {/* TODO(adjust-points): send customerNote with the adjustment and show it in the customer's points history. */}
       <div className="flex flex-col gap-2">
         <label className="flex items-center justify-between gap-2.5">
           <span className="text-sm font-medium">{SHOW_CUSTOMER_NOTE_LABEL()}</span>
@@ -60,7 +55,7 @@ export function AdjustPointsOptions({
         )}
       </div>
 
-      {/* TODO: send notifyByEmail with the adjustment and email the customer(s) — nothing is sent today. */}
+      {/* TODO(adjust-points): send notifyByEmail with the adjustment and email the customers. */}
       <label className="flex items-center justify-between gap-2.5">
         <span className="flex items-center gap-2.5">
           <Checkbox

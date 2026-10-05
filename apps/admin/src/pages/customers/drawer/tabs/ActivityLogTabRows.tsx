@@ -13,10 +13,7 @@ import {
 } from '../customer-drawer.copy';
 import { DRAWER_ROW_CLASS, drawerCell, DrawerTable } from './DrawerTable';
 
-/**
- * Date+time / Event (title + sub-line) / By, with the `STAFF ONLY` badge on
- * the two note-carrying event types and an envelope glyph on email rows (3d).
- */
+/** Activity rows, with a STAFF ONLY badge on rows that quote an admin note and an envelope on email rows. */
 export function ActivityLogTabRows({
   rows,
   isLoading,

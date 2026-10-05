@@ -5,7 +5,7 @@ import { EmailsFormValues } from '@/lib/schema/emails.schema';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
 
-/** Weekly per-customer send cap, enforced at send time by EmailThrottle (PHP); 0 means no limit. */
+/** Weekly per-customer send cap, enforced by EmailThrottle when an email sends. 0 means no cap. */
 export function EmailsThrottleCard() {
   const { control } = useFormContext<EmailsFormValues>();
 

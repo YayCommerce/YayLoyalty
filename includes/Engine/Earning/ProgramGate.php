@@ -7,10 +7,8 @@ use YayLoyalty\Helpers\SettingsHelper;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The Lite gate: is the program on, is there a customer, did they opt
- * out, is their role excluded. First failing rule wins, in that order.
- * Reads settings and user meta — the one place on the earning path that
- * may, because it is neither the calculation nor the write.
+ * Lite's gate, checked in order: program on, a customer, not opted out, role not excluded.
+ * The first failing rule wins. The one place on the earning path that reads settings and user meta.
  */
 final class ProgramGate implements Gate {
 

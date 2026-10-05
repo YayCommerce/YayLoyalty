@@ -12,9 +12,9 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * The dashboard's notice detectors, as structured data only: the SPA owns
- * every word. Runs inside the cached payload; dismissal is applied after,
+ * every word. They run inside the cached payload. Dismissal is applied after,
  * keyed on the fingerprint, which changes exactly when a notice should
- * re-surface. Not final: a test overrides the two WordPress-touching methods.
+ * re-surface.
  */
 class DashboardNotices {
 
@@ -182,7 +182,7 @@ class DashboardNotices {
         return $user instanceof \WP_User ? $user->display_name : '';
     }
 
-    /** The Orders list filtered to a month (YYYYMM); WC filters by month only. */
+    /** The Orders list filtered to a month (YYYYMM). WooCommerce filters by month only. */
     protected function orders_admin_url( string $month ): string {
         return admin_url( ( WooOrders::is_hpos() ? 'admin.php?page=wc-orders' : 'edit.php?post_type=shop_order' ) . '&m=' . $month );
     }

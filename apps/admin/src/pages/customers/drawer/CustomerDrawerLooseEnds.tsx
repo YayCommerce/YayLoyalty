@@ -11,13 +11,10 @@ import {
   voidCouponsValue,
 } from './customer-drawer.panels.copy';
 
-/** 4a's "Loose ends this leaves" — the consequences of a deletion nobody
- *  thinks about at the time: void coupons, still-credited referrals, and
- *  whether the member total still counts them. All three render even when
- *  `null` (no redemptions/referrals/member-count feature exists yet) — the
- *  composers in `customer-drawer.panels.copy.ts` turn that into "Not tracked
- *  yet" rather than a fabricated value. Only `kept_ledger_entries` is always
- *  real. */
+/**
+ * What a deletion leaves behind: void coupons, still-credited referrals, and whether the member total counts them.
+ * Each row renders even when its value is null, as "Not tracked yet".
+ */
 export function CustomerDrawerLooseEnds({ looseEnds, balance }: { looseEnds: LooseEnds; balance: number }) {
   const { void_coupons, credited_referrals, counted_in_members } = looseEnds;
 

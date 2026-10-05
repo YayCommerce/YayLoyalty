@@ -26,12 +26,9 @@ final class OrderReversalListener {
     }
 
     /**
-     * Attaches the refund and trash hooks. Refunds arrive as refund objects,
-     * never as a status. Trash is announced by `woocommerce_trash_order`
-     * because HPOS writes the status directly without
-     * `woocommerce_order_status_changed`; `trashed_post` covers the legacy
-     * posts screen. The cancelled/trash/refunded statuses reach this class
-     * through OrderListener::route().
+     * HPOS trashes an order without `woocommerce_order_status_changed`, so trash has its own hooks:
+     * `woocommerce_trash_order`, plus `trashed_post` for the legacy posts screen.
+     * The cancelled, trash and refunded statuses arrive through OrderListener::route().
      */
     public function register(): void {
         add_action( 'woocommerce_order_refunded', [ $this, 'on_order_refunded' ], 10, 2 );

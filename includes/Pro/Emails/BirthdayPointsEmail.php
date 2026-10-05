@@ -3,7 +3,7 @@ namespace YayLoyalty\Pro\Emails;
 
 defined( 'ABSPATH' ) || exit;
 
-/** Birthday points: sent when birthday points are awarded to a customer. */
+/** The birthday-points email. Nothing triggers it yet. */
 class BirthdayPointsEmail extends ProLoyaltyEmail {
 
     public function __construct() {

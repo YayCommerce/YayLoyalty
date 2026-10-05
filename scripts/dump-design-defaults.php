@@ -1,10 +1,9 @@
 <?php
 /**
- * Dump DesignHelper::get_design() output (defaults plus the derived launcher.icon_upload_url
- * and schema_version a fresh, never-saved install would actually return) to JSON for use as
- * a vitest fixture. This is the shape designSchema.ts validates, not the bare
- * DesignSchema::get_default_design() array, which omits both.
- * Run from repo root: php scripts/dump-design-defaults.php > apps/admin/tests/fixtures/design-defaults.json
+ * Prints DesignHelper::get_design() for a fresh install as JSON, for the SPA's test fixture.
+ * That is the shape design.schema.ts validates: the defaults plus the derived
+ * launcher.icon_upload_url and schema_version, which DesignSchema::get_default_design() omits.
+ * Run from the repo root: php scripts/dump-design-defaults.php > apps/admin/tests/fixtures/design-defaults.json
  */
 
 define( 'ABSPATH', __DIR__ . '/../' );

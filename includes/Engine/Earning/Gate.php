@@ -6,10 +6,8 @@ use YayLoyalty\Engine\Points\Context;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * A yes/no that sits between evaluation and award and applies to both
- * moments: program state, customer state, policy. Not a campaign
- * condition (those are the engine's) and not a calculation. Returns a
- * reason so the outcome can say why nothing was staged or written.
+ * A yes/no on program state, customer state or policy, checked before both preview and award.
+ * Campaign conditions belong to the engine, not here.
  */
 interface Gate {
 

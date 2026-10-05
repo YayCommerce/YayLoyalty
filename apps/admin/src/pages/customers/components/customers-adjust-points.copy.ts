@@ -2,22 +2,28 @@ import { __, sprintf } from '@wordpress/i18n';
 
 import { TYPO_GUARD_MULTIPLIER } from './customers-adjust-points.form-state';
 
-/**
- * The Adjust-points dialog's sentences (bulk-only ones live in
- * `customers-adjust-points.bulk.copy.ts`). Flat exported functions, every
- * entry a function — `__()` must run after the locale loads, so nothing
- * here is a module-scope constant. Follows `customer-drawer.copy.ts`'s style/section convention.
- */
+/** The Adjust-points dialog's strings. Functions, not constants: `__()` must run after the locale loads. */
 
-// ─── Header ──────────────────────────────────────────
+// Header
 
 export const ADJUST_POINTS_TITLE = () => __('Adjust points', 'yayloyalty');
 
 /** "Daniel Okonkwo · 9,850 points ($98.50)" */
 export function singleCustomerHeader(name: string, balancePoints: string, balanceMoney: string | null): string {
   return balanceMoney
-    ? sprintf(__('%1$s · %2$s points (%3$s)', 'yayloyalty'), name, balancePoints, balanceMoney)
-    : sprintf(__('%1$s · %2$s points', 'yayloyalty'), name, balancePoints);
+    ? sprintf(
+        /* translators: 1: the customer's name; 2: their balance in points, formatted; 3: the balance as money, formatted. */
+        __('%1$s · %2$s points (%3$s)', 'yayloyalty'),
+        name,
+        balancePoints,
+        balanceMoney,
+      )
+    : sprintf(
+        /* translators: 1: the customer's name; 2: their balance in points, formatted. */
+        __('%1$s · %2$s points', 'yayloyalty'),
+        name,
+        balancePoints,
+      );
 }
 
 export const COULD_NOT_VERIFY_TITLE = () =>
@@ -25,7 +31,7 @@ export const COULD_NOT_VERIFY_TITLE = () =>
 export const COULD_NOT_VERIFY_BODY = () => __('Retry before submitting.', 'yayloyalty');
 export const RETRY_LABEL = () => __('Retry', 'yayloyalty');
 
-// ─── Direction + amount ──────────────────────────────
+// Direction and amount
 
 export const DIRECTION_ADD_LABEL = () => __('Add', 'yayloyalty');
 export const DIRECTION_REMOVE_LABEL = () => __('Remove', 'yayloyalty');
@@ -36,31 +42,57 @@ export const POINTS_UNIT = () => __('points', 'yayloyalty');
 export function submitLabel(direction: 'add' | 'remove', amount: string, isZero: boolean): string {
   if (isZero) return ADJUST_POINTS_TITLE();
   return direction === 'remove'
-    ? sprintf(__('Remove %s points', 'yayloyalty'), amount)
-    : sprintf(__('Add %s points', 'yayloyalty'), amount);
+    ? sprintf(
+        /* translators: %s: number of points, formatted. */
+        __('Remove %s points', 'yayloyalty'),
+        amount,
+      )
+    : sprintf(
+        /* translators: %s: number of points, formatted. */
+        __('Add %s points', 'yayloyalty'),
+        amount,
+      );
 }
 
-// ─── Result panel ────────────────────────────────────
+// Result panel
 
 export const NEW_BALANCE_EMPTY = () => __('New balance: —', 'yayloyalty');
 
 /** "New balance: 10,350 points ($103.50)" */
 export function newBalanceLine(points: string, money: string | null): string {
   return money
-    ? sprintf(__('New balance: %1$s points (%2$s)', 'yayloyalty'), points, money)
-    : sprintf(__('New balance: %s points', 'yayloyalty'), points);
+    ? sprintf(
+        /* translators: 1: the new balance in points, formatted; 2: the new balance as money, formatted. */
+        __('New balance: %1$s points (%2$s)', 'yayloyalty'),
+        points,
+        money,
+      )
+    : sprintf(
+        /* translators: %s: the new balance in points, formatted. */
+        __('New balance: %s points', 'yayloyalty'),
+        points,
+      );
 }
 
 export function addsToLiability(money: string): string {
-  return sprintf(__('Adds %s to your outstanding liability.', 'yayloyalty'), money);
+  return sprintf(
+    /* translators: %s: an amount of money, formatted. */
+    __('Adds %s to your outstanding liability.', 'yayloyalty'),
+    money,
+  );
 }
 export function reducesLiability(money: string): string {
-  return sprintf(__('Reduces your outstanding liability by %s.', 'yayloyalty'), money);
+  return sprintf(
+    /* translators: %s: an amount of money, formatted. */
+    __('Reduces your outstanding liability by %s.', 'yayloyalty'),
+    money,
+  );
 }
 
 /** Negative-outcome panel (this adjustment would go below zero) — the two sentences are always shown together. */
 export function negativeOutcomeSpendable(name: string, coversAmount: string): string {
   return sprintf(
+    /* translators: 1: the customer's name; 2: points they must earn to clear the deficit, formatted. */
     __(
       '%1$s will see 0 in their account with no mention of a negative balance, and their next %2$s points will cover the difference before they can spend anything.',
       'yayloyalty',
@@ -71,12 +103,13 @@ export function negativeOutcomeSpendable(name: string, coversAmount: string): st
 }
 export function negativeOutcomeLiability(money: string): string {
   return sprintf(
+    /* translators: %s: an amount of money, formatted. */
     __('Reduces your outstanding liability by %s. Balances below zero are not counted as liability.', 'yayloyalty'),
     money,
   );
 }
 
-// ─── Typo guard ──────────────────────────────────────
+// Typo guard
 
 export function typoGuardWarning(amount: string, lifetimeEarned: string): string {
   return sprintf(
@@ -98,15 +131,28 @@ export const TYPO_GUARD_EXPLANATION = () =>
   );
 export const CONFIRM_AMOUNT_LABEL = () => __('Re-enter the amount', 'yayloyalty');
 export function typoGuardPlaceholder(amount: string): string {
-  return sprintf(__('Type %s again', 'yayloyalty'), amount);
+  return sprintf(
+    /* translators: %s: the amount entered, formatted. */
+    __('Type %s again', 'yayloyalty'),
+    amount,
+  );
 }
 export function typoGuardNewBalance(points: string, money: string | null): string {
   return money
-    ? sprintf(__('New balance would be %1$s points (%2$s)', 'yayloyalty'), points, money)
-    : sprintf(__('New balance would be %s points', 'yayloyalty'), points);
+    ? sprintf(
+        /* translators: 1: the new balance in points, formatted; 2: the new balance as money, formatted. */
+        __('New balance would be %1$s points (%2$s)', 'yayloyalty'),
+        points,
+        money,
+      )
+    : sprintf(
+        /* translators: %s: the new balance in points, formatted. */
+        __('New balance would be %s points', 'yayloyalty'),
+        points,
+      );
 }
 
-// ─── Reason + options ────────────────────────────────
+// Reason and options
 
 export const REASON_LABEL = () => __('Reason (internal)', 'yayloyalty');
 export const REASON_HELPER = () =>
@@ -121,10 +167,7 @@ export const ADJUST_LIFETIME_SUBTEXT = () =>
   );
 
 export const SHOW_CUSTOMER_NOTE_LABEL = () => __('Also show a description to the customer', 'yayloyalty');
-/**
- * No store-name field exists on `window.yayLoyaltyMeta` (`types/localize.type.ts`)
- * today, so this always ships a generic fallback rather than inventing one.
- */
+/** Generic: the localized meta carries no store name to show. */
 export const CUSTOMER_NOTE_PREVIEW = () => __('The customer will see: "Adjustment"', 'yayloyalty');
 export const CUSTOMER_NOTE_PLACEHOLDER = () => __('Adjustment', 'yayloyalty');
 
@@ -136,7 +179,7 @@ export const FOOTER_NOTICE = () =>
     'yayloyalty',
   );
 
-// ─── Already negative ────────────────────────────────
+// Already negative
 
 export const NEGATIVE_BALANCE_TITLE = () => __('This balance is below zero', 'yayloyalty');
 export const NEGATIVE_BALANCE_BODY = () =>
@@ -151,6 +194,7 @@ export function stillBelowZeroBadge(): string {
 /** "Tom needs 400 more points before he can use any. To clear it outright, add 1,000." */
 export function needsMoreBeforeSpendable(name: string, needed: string, toClear: string): string {
   return sprintf(
+    /* translators: 1: the customer's name; 2: points still needed after this adjustment, formatted; 3: points that would clear the deficit now, formatted. */
     __('%1$s needs %2$s more points before they can use any. To clear it outright, add %3$s.', 'yayloyalty'),
     name,
     needed,
@@ -160,24 +204,41 @@ export function needsMoreBeforeSpendable(name: string, needed: string, toClear: 
 export const NEVER_SHOWN_NEGATIVE = () =>
   __('Their rewards page shows 0 either way — a customer is never shown a negative balance.', 'yayloyalty');
 
-// ─── Balance changed while open ──────────────────────
+// Balance changed while open
 
 export function staleHeaderSubtitle(openedBalance: string): string {
-  return sprintf(__('was %s points when this opened', 'yayloyalty'), openedBalance);
+  return sprintf(
+    /* translators: %s: the balance in points when the dialog opened, formatted. */
+    __('was %s points when this opened', 'yayloyalty'),
+    openedBalance,
+  );
 }
 export function staleBannerTitle(name: string): string {
-  return sprintf(__("%s's balance changed while this was open", 'yayloyalty'), name);
+  return sprintf(
+    /* translators: %s: the customer's name. */
+    __("%s's balance changed while this was open", 'yayloyalty'),
+    name,
+  );
 }
 export function staleBannerBody(newBalance: string, openedBalance: string): string {
-  return sprintf(__('They now hold %1$s, not the %2$s this dialog opened with.', 'yayloyalty'), newBalance, openedBalance);
+  return sprintf(
+    /* translators: 1: the current balance in points, formatted; 2: the balance when the dialog opened, formatted. */
+    __('They now hold %1$s, not the %2$s this dialog opened with.', 'yayloyalty'),
+    newBalance,
+    openedBalance,
+  );
 }
 export const RELOAD_BALANCE_LABEL = () => __('Reload the balance', 'yayloyalty');
 export const STALE_KEEPS_VALUES = () => __('your amount and reason are kept', 'yayloyalty');
 export const STALE_BLOCKS_SAVING = () =>
   __('Saving is blocked until the balance is reloaded. Nothing has been written yet.', 'yayloyalty');
 
-/** Single-customer submit result toasts; the bulk run words its own in `customers-page.bulk-actions.ts`. */
+/** Single-customer result toasts. The bulk run words its own. */
 export function adjustPointsSuccessToast(name: string): string {
-  return sprintf(__('Adjusted points for %s.', 'yayloyalty'), name);
+  return sprintf(
+    /* translators: %s: the customer's name. */
+    __('Adjusted points for %s.', 'yayloyalty'),
+    name,
+  );
 }
 export const ADJUST_POINTS_ERROR_FALLBACK = () => __('Could not adjust points for this customer.', 'yayloyalty');

@@ -17,10 +17,8 @@ function ordersSubline(totals: Totals, hasData: boolean): string {
   if (!hasData) {
     return __('none yet', 'yayloyalty');
   }
-  // Unreachable today — the PHP contract sets orders_total whenever trigger is
-  // 'purchase' (the only case this tile renders), but the type is `nullable()`
-  // because the field is legitimately null for other triggers. This guards
-  // against that correlation ever drifting, not a real runtime case right now.
+  // Unreachable today: PHP always sets orders_total for purchase, the only trigger this tile
+  // renders. The type is nullable for the other triggers, so this guards against that drifting.
   if (totals.orders_total === null) {
     return '';
   }
@@ -35,8 +33,7 @@ function averagePerOrderSubline(totals: Totals): string {
   if (totals.avg_points_per_order === null) {
     return __('needs at least one order', 'yayloyalty');
   }
-  // avg_order_subtotal isn't computed yet (needs the earning engine's own scored
-  // base amount, not yet persisted) — say nothing rather than "$0.00 average order".
+  // avg_order_subtotal is not computed yet: say nothing rather than "$0.00 average order".
   if (totals.avg_order_subtotal === null) {
     return __('points per order', 'yayloyalty');
   }
@@ -48,11 +45,8 @@ function averagePerOrderSubline(totals: Totals): string {
 }
 
 /**
- * Per-trigger tile set. `hasData` (not the raw counts) picks the empty-state
- * sublines — a real 0 (`orders_affected`/`customers_earned`) still renders as
- * a real count either way; only the sublines and the null-only fields
- * (`avg_points_per_order`) change wording. `'—'` (not a muted wrapper) for a
- * null value matches `DashboardStatsGrid`'s own liability/rate tiles.
+ * Per-trigger tile set. `hasData`, not the raw counts, picks the empty-state sublines; a real 0
+ * still renders as a count. A null value shows '—', as DashboardStatsGrid does.
  */
 export function CampaignPerformanceTiles({
   trigger,

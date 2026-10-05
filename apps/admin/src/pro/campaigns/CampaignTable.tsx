@@ -938,7 +938,7 @@ function campaignCountLabel(count: number): string {
   );
 }
 
-/** Derives every presentation string from the real Campaign fields; generic across all triggers. points_issued/is_deletable ride along via the spread — they're already on Campaign. */
+/** Derives every presentation string from the real Campaign fields, for any trigger. */
 function toDisplayCampaign(campaign: Campaign): DisplayCampaign {
   return {
     ...campaign,

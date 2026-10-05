@@ -13,9 +13,8 @@ final class LedgerQueryArgs {
 
     /**
      * Grouped filter vocabulary, not the raw `LedgerType` enum: `earn` covers
-     * `earn` + `refund_earn`, `redeem` covers `redeem` + `refund_redeem`,
-     * `adjust` covers `adjust` + `correction`. `all` plus the four groups the
-     * artboards show.
+     * `earn` and `refund_earn`, `redeem` covers `redeem` and `refund_redeem`,
+     * and `adjust` covers `adjust` and `correction`. `all` applies no type filter.
      *
      * @return string[]
      */
@@ -41,8 +40,8 @@ final class LedgerQueryArgs {
     }
 
     /**
-     * The raw `LedgerType` values a filter group covers; empty for `all`
-     * (no type filter). Derived from group_of() so the grouping lives once.
+     * The raw `LedgerType` values a filter group covers, or none for `all`.
+     * Derived from group_of() so the grouping lives once.
      *
      * @return string[]
      */
@@ -57,8 +56,8 @@ final class LedgerQueryArgs {
     }
 
     /**
-     * Raw per-`LedgerType` row counts folded into every filter group, `all`
-     * the total — the shape of the endpoint's `type_counts`.
+     * Raw per-`LedgerType` row counts folded into the filter groups, with `all`
+     * as the total: the shape of the endpoint's `type_counts`.
      *
      * @param array<string, int> $by_type
      * @return array<string, int>
@@ -74,9 +73,7 @@ final class LedgerQueryArgs {
         return $counts;
     }
 
-    /**
-     * @return array<string, mixed>
-     */
+    /** @return array<string, mixed> */
     public static function all(): array {
         return [
             'type'   => [
@@ -106,9 +103,6 @@ final class LedgerQueryArgs {
         ];
     }
 
-    /**
-     * @param mixed $value
-     */
     public static function validate_date( $value ): bool {
         if ( ! is_string( $value ) || '' === $value ) {
             return false;

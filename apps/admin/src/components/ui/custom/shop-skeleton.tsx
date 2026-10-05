@@ -24,7 +24,6 @@ function ProductImageSkeleton({ className = '', ...props }) {
         />
         <mask
           id="mask0_8893_39754"
-          // style="mask-type:alpha"
           maskUnits="userSpaceOnUse"
           x="0"
           y="0"
