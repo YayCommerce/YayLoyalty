@@ -13,12 +13,10 @@ import { CampaignFormValues, useCampaignEditorContext } from './campaign-editor.
 import { campaignReadiness, summarizeCampaign } from './campaign-summary.copy';
 
 /**
- * The right rail: "What this means", "Before it can run" and the actions,
- * all derived from live form state via watch(). No cost estimate: no
- * store-wide ledger aggregate exists, and a fake figure on a screen that
- * decides real money is worse than none. Do not add one back without a real
- * aggregate. Both save buttons are type="submit" on the editor's form so the
- * resolver runs for a draft save too; data-intent says which was pressed.
+ * The right rail: "What this means", "Before it can run" and the actions, all derived from live
+ * form state via watch(). No cost estimate until a store-wide ledger aggregate exists: a made-up
+ * figure on a screen that decides real money is worse than none. Both save buttons are
+ * type="submit", so the resolver runs for a draft save too; data-intent says which was pressed.
  */
 export function CampaignEditorSummaryRail({
   mutation,

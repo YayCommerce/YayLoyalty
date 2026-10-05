@@ -5,10 +5,7 @@ import { EmailsFormValues } from '@/lib/schema/emails.schema';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
 
-/**
- * Weekly per-customer send cap. Not enforced yet — nothing sends loyalty emails this release;
- * the value is saved now so sending needs no settings migration.
- */
+/** Weekly per-customer send cap. Saved, but no email checks it yet. */
 export function EmailsThrottleCard() {
   const { control } = useFormContext<EmailsFormValues>();
 

@@ -1,7 +1,7 @@
 /**
- * Dummy referrals and tier distribution until their tables exist. Delete
- * this file once GET /dashboard/pro fills them; consumers already fall
- * back with `??`.
+ * Dummy referrals and tier distribution until their tables exist. Consumers already fall back with `??`.
+ *
+ * TODO(dashboard-pro): delete this file once GET /dashboard/pro fills referrals and tiers.
  */
 
 export const DUMMY_REFERRALS = { completed: 84, prev_delta_pct: 15 } as const;

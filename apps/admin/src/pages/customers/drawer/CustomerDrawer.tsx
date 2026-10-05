@@ -21,16 +21,8 @@ import { CustomerDrawerTabs } from './CustomerDrawerTabs';
 import { DrawerBackLink } from './DrawerBackLink';
 
 /**
- * Sheet shell for the `customers/:userId` child route (see `router.tsx`) —
- * rendered through `CustomersPage`'s `<Outlet/>`, so the list underneath
- * stays mounted, dimmed, and keeps its own filters/page/sort/selection while
- * this is open. Owns route params, the identity query, open/close, the
- * loading skeleton and the error/not-found state; composes the stats,
- * actions, edge-state panels and tabs.
- *
- * Below the `sm` breakpoint `SheetContent` fills the screen (5c) instead of
- * showing as a 600px panel — one component, driven by the CSS breakpoint on
- * its own width classes, not a second component tree.
+ * Sheet shell for the `customers/:userId` route, rendered through CustomersPage's `<Outlet/>` so the list stays mounted.
+ * It owns the route params, the identity query, open and close, and the loading and error states.
  */
 export default function CustomerDrawer() {
   const { userId: userIdParam } = useParams();
@@ -41,13 +33,11 @@ export default function CustomerDrawer() {
   const userId = Number(userIdParam);
   const isValidId = Number.isFinite(userId) && userId >= 1;
 
-  // `enabled: userId > 0` on the query itself (see customer.queries.ts) means
-  // passing 0 here for an invalid id never fires a request.
+  // 0 for an invalid id: the query stays disabled for it.
   const query = useCustomerQuery(isValidId ? userId : 0);
   const listRow = (location.state as { row?: CustomerListRow } | null)?.row;
   const search = searchParams.toString();
-  // Only ever rendered once `query.data` is confirmed below — the fallback
-  // here just keeps this hook-free derivation unconditional.
+  // The '' fallback is never rendered: everything that reads this waits for `query.data`.
   const firstName = query.data ? query.data.name.split(' ')[0] || query.data.name : '';
 
   function close() {
@@ -64,10 +54,8 @@ export default function CustomerDrawer() {
       <SheetContent side="right" className="w-full gap-0 p-0 sm:max-w-150">
         {!isValidId || query.isError ? (
           <div className="flex flex-1 flex-col gap-4 p-5">
-            {/* No identity to show — a plain sr-only title/description (Radix
-                Dialog requires both) plus the 5c back link, not the full
-                `CustomerDrawerHeader` (its skeleton fallback would falsely
-                imply this is still loading). */}
+            {/* Radix Dialog needs a title and a description. Not CustomerDrawerHeader: its skeleton
+                would suggest this is still loading. */}
             <SheetHeader className="gap-2 p-0">
               <DrawerBackLink onClick={close} />
               <SheetTitle className="sr-only">{__('Customer not available', 'yayloyalty')}</SheetTitle>
@@ -95,10 +83,7 @@ export default function CustomerDrawer() {
                   <>
                     <CustomerDrawerStats customer={query.data} />
                     <CustomerDrawerActions customer={query.data} isLoading={query.isFetching} />
-                    {/* 4a's three panels — `deleted_at`/`loose_ends` are one
-                        fact server-side (non-null together); narrowed once
-                        here so the children take typed, non-null props
-                        instead of each re-checking. */}
+                    {/* `deleted_at` and `loose_ends` are non-null together. Checking both gives the children non-null props. */}
                     {query.data.deleted_at && query.data.loose_ends && (
                       <>
                         <CustomerDrawerDeletedBanner
@@ -109,11 +94,6 @@ export default function CustomerDrawer() {
                         <CustomerDrawerLooseEnds looseEnds={query.data.loose_ends} balance={query.data.balance} />
                       </>
                     )}
-                    {/* 4b's three panels — `expiry` is always null today
-                        (needs `lots`, which doesn't exist yet). A deleted
-                        account has expiry stopped, so this and the block
-                        above are mutually exclusive in every real scenario —
-                        never designed as a combined layout. */}
                     {query.data.expiry && (
                       <>
                         <CustomerDrawerExpiryPanel customer={query.data} expiry={query.data.expiry} />
@@ -121,12 +101,6 @@ export default function CustomerDrawer() {
                         <CustomerDrawerLotBatches batches={query.data.expiry.batches} />
                       </>
                     )}
-                    {/* 5a's two panels — `negative_balance` is always
-                        null today (the server would have to walk the
-                        ledger backwards to assemble it). A deleted or
-                        expiring account is never also this case, so this
-                        and the two blocks above are mutually exclusive. Free
-                        AND Pro alike — no `ProGate` anywhere here. */}
                     {query.data.negative_balance && (
                       <>
                         <CustomerDrawerNegativePanel

@@ -17,11 +17,9 @@ import { conditionsLabel, givesLabel, isBuiltinCampaignActive, scheduleLabel, st
 export type CampaignArchiveCase = 'delete' | 'finished' | 'live';
 
 /**
- * `isDeletable` is the server's own delete_item() guard (not built-in, zero
- * ledger rows), restated for the client — never inferred from a points
- * total here, since a campaign earned-then-fully-refunded nets 0 points but
- * still has rows naming it, and offering a permanent delete on that guess
- * is the one mistake this dialog cannot undo.
+ * `isDeletable` is the server's own delete_item() guard (not built-in, zero ledger rows). Never
+ * infer it from a points total: a fully refunded campaign nets 0 points but still has ledger rows,
+ * and a permanent delete is the one mistake this dialog cannot undo.
  */
 export function resolveArchiveCase(displayStatus: CampaignDisplayStatus, isDeletable: boolean): CampaignArchiveCase {
   if (isDeletable) {
@@ -38,12 +36,9 @@ export interface ArchiveFigures {
 }
 
 /**
- * Figures for an ended campaign, from its performance summary. `totals` is
- * lifetime (see CampaignPerformanceRestController's own docblock), so
- * `detail` states liability only — never a date range, which would now be
- * the chart's own narrower 30-day window, not the span these lifetime
- * figures cover. The schedule itself is already in contextLine(), right
- * above this in the dialog.
+ * Figures for an ended campaign, from its performance summary. `totals` is lifetime, so `detail`
+ * states liability only: a date range here would be the chart's 30-day window, not the span these
+ * figures cover.
  */
 export function finishedFigures(trigger: Campaign['trigger'], performance: CampaignPerformance): ArchiveFigures {
   const { totals } = performance;
@@ -71,10 +66,9 @@ export function finishedFigures(trigger: Campaign['trigger'], performance: Campa
 }
 
 /**
- * Figures for a campaign that is earning right now. Today is looked up by
- * site date, not taken as the window's last day: a dated campaign's window
- * can end in the future. `totals` is lifetime, so the sentence says "so
- * far" rather than naming a date range — see finishedFigures()'s own note.
+ * Figures for a campaign that is earning right now. Today is looked up by site date, not taken as
+ * the window's last day: a dated campaign's window can end in the future. `totals` is lifetime, so
+ * the sentence says "so far" rather than naming a date range.
  */
 export function earningFigures(trigger: Campaign['trigger'], performance: CampaignPerformance): ArchiveFigures {
   const { totals } = performance;
@@ -123,13 +117,19 @@ export function lifetimeFigures(lifetimePoints: number): ArchiveFigures {
 }
 
 function ordersPhrase(count: number): string {
-  /* translators: %s: number of orders, formatted. */
-  return sprintf(_n('%s order', '%s orders', count, 'yayloyalty'), formatPoints(count));
+  return sprintf(
+    /* translators: %s: number of orders, formatted. */
+    _n('%s order', '%s orders', count, 'yayloyalty'),
+    formatPoints(count),
+  );
 }
 
 function customersPhrase(count: number): string {
-  /* translators: %s: number of customers, formatted. */
-  return sprintf(_n('%s customer', '%s customers', count, 'yayloyalty'), formatPoints(count));
+  return sprintf(
+    /* translators: %s: number of customers, formatted. */
+    _n('%s customer', '%s customers', count, 'yayloyalty'),
+    formatPoints(count),
+  );
 }
 
 /** The line under the dialog title. */

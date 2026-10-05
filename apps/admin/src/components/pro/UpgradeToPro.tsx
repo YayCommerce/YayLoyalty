@@ -16,12 +16,8 @@ export function UpgradeToProBadge() {
           variant="warning"
           className="text-3 h-4.5 cursor-pointer rounded-sm p-1.5 pr-0.75 leading-6 text-white"
           onClick={(event) => {
-            // `stopPropagation` matters wherever this badge sits inside
-            // another clickable element — e.g. `<ProGate inline />` beside a
-            // drawer tab label, inside `TabsTrigger`'s own `<button>`.
-            // Without it, clicking the badge also fires the tab
-            // switch underneath it. A no-op at every other call site, which
-            // sits in a plain `<div>`/`CardTitle`, not a clickable ancestor.
+            // The badge can sit inside another clickable element, such as `<ProGate inline />`
+            // in a `TabsTrigger`; without this, a click on it also switches the tab.
             event.stopPropagation();
             window.open(yayLoyaltyProUrl);
           }}

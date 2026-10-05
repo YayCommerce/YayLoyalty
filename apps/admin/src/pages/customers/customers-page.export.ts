@@ -17,7 +17,6 @@ function csvField(value: string | number): string {
   return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
-/** Pure — no I/O — so it's cheap to unit test independently of the download step. */
 export function buildCustomersCsv(rows: CustomerListRow[]): string {
   const lines = [CSV_HEADERS.join(',')];
 
@@ -42,7 +41,6 @@ export function buildCustomersCsv(rows: CustomerListRow[]): string {
   return lines.join('\r\n');
 }
 
-/** Real browser download — a `Blob` URL + a throwaway `<a download>`, no server round trip. */
 function downloadCsv(filename: string, content: string): void {
   // UTF-8 BOM so Excel (still the most common opener) detects the encoding
   // instead of mis-rendering non-ASCII names.

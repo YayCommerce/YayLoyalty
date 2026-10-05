@@ -5,10 +5,8 @@ import { CampaignCreator } from '@/pro';
 import NotFoundPage from '../404';
 
 /**
- * Lite-safe entry for campaigns/new/:templateId. `?from=<id>` is
- * CampaignTable's Duplicate action; a missing or non-positive value is
- * treated as absent rather than passed through, and CampaignCreator's own
- * fetch 404s if that id turns out not to exist.
+ * Lite-safe entry for campaigns/new/:templateId. `?from=<id>` is CampaignTable's Duplicate action;
+ * a missing or non-positive id counts as absent, and CampaignCreator's fetch 404s on an unknown one.
  */
 export default function CampaignCreatePage() {
   const { templateId } = useParams();

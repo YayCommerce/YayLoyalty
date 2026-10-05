@@ -5,11 +5,7 @@ import { toRedemptionRow } from '../customer-drawer.redemption-rows';
 import { DRAWER_PAGE_SIZE, DrawerTabPager } from './DrawerTabPager';
 import { RedemptionsTabRows } from './RedemptionsTabRows';
 
-/**
- * 3e — table only (the summary strip and "Rewards X could use now" are cut).
- * Owns paging; composes rows → pager. Simpler than `LedgerTab`/`ActivityLogTab`:
- * no filters, so no filter state to own or reset.
- */
+/** The redemptions table and pager. No filters, so it owns only the page. */
 export function RedemptionsTab({ userId, customerFirstName }: { userId: number; customerFirstName: string }) {
   const [page, setPage] = useState(1);
 

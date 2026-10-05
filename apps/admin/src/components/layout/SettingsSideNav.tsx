@@ -4,7 +4,7 @@ import { __ } from '@wordpress/i18n';
 import { cn } from '@/lib/utils';
 import { SideNavMenuItem, SideNavMenuList } from '@/components/ui/navmenu-side';
 
-/** Single source of truth for the settings tabs — add a tab here and in `router.tsx`. */
+/** The settings tabs. A new tab also needs its route in `router.tsx`. */
 export const SETTINGS_NAV = [
   { to: '/settings/general', label: __('General', 'yayloyalty') },
   { to: '/settings/design', label: __('Design', 'yayloyalty') },

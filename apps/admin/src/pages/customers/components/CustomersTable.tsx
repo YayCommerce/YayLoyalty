@@ -16,16 +16,13 @@ import { CustomerTableRow } from './CustomerTableRow';
 
 /** Column count for the header and the "no results" row's colSpan. */
 export function countColumns(showProColumns: boolean, showSelection: boolean) {
-  // Six base columns; Pro adds Tier + Referrals; selection adds the checkbox column.
+  // Six base columns, two Pro columns (Tier, Referrals) and the checkbox column.
   return 6 + (showProColumns ? 2 : 0) + (showSelection ? 1 : 0);
 }
 
 /**
- * Presentational: rows arrive sorted and paginated server-side; this renders
- * carets and reports clicks. Below `sm`, renders 5c's card list instead
- * (`CustomersCardList`/`CustomerCardRow`) — CSS-only switching, both trees
- * always mount: Tailwind's `sm:` breakpoint decides visibility, not a JS
- * media-query hook this codebase has no pattern for.
+ * Presentational: rows arrive sorted and paginated server-side. Below `sm` it shows the card list instead.
+ * Both trees always mount and CSS picks one, since the codebase has no media-query hook.
  */
 export function CustomersTable({
   rows,
@@ -71,10 +68,7 @@ export function CustomersTable({
 
   return (
     <>
-      {/* 5c's mobile card list — CSS-only switching against the desktop
-          table below. No
-          selection here (see CustomerCardRow.tsx); the sort dropdown is
-          the card list's stand-in for the desktop headers' click-to-sort. */}
+      {/* Mobile: the sort dropdown stands in for the desktop headers' click-to-sort. */}
       <div className="flex flex-col gap-3 sm:hidden">
         <CustomersSortDropdown by={sortBy} dir={sortDir} onChange={onSort} disabled={isEmpty} />
         <CustomersCardList
@@ -115,7 +109,7 @@ export function CustomersTable({
                 disabled={isEmpty}
               />
               {showProColumns && (
-                // Always disabled: no tiers table yet, the cells show a sample derived from balance.
+                // Always disabled: the server cannot sort by tier yet.
                 <SortableHead
                   sortKey="tier"
                   label={__('Tier', 'yayloyalty')}
@@ -171,7 +165,7 @@ export function CustomersTable({
                 disabled={isEmpty}
               />
               {showProColumns && (
-                // Always disabled: no referral-count column exists yet.
+                // Always disabled: the server cannot sort by referrals yet.
                 <SortableHead
                   sortKey="referrals"
                   label={__('Referrals', 'yayloyalty')}

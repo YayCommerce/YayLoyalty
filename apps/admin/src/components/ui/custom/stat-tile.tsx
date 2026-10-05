@@ -4,9 +4,8 @@ import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 
 /**
- * A stat tile with no comparison line: label, value, sub-line only. Kept
- * separate from `DashboardStatTile` (which adds a delta line) so a change
- * here can't affect the Dashboard.
+ * A stat tile with no comparison line. Kept apart from `DashboardStatTile`, which adds a delta
+ * line, so a change here cannot affect the Dashboard.
  */
 export function StatTile({
   label,
@@ -31,7 +30,6 @@ export function StatTile({
   );
 }
 
-/** Same box, same heights, placeholder bars — so data landing never reflows the grid. */
 export function StatTileSkeleton({ label }: { label: string }) {
   return (
     <Card className="gap-1 p-4">

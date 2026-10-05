@@ -6,11 +6,7 @@ import { STAT_BALANCE, STAT_PENDING } from './customer-drawer.copy';
 import { daysUntil } from './customer-drawer.money';
 import { expiringInDaysLabel, safeBeyondLabel } from './customer-drawer.panels.copy';
 
-/**
- * 4b's four stats (Balance, Expiring in N days, Safe beyond {year}, Pending)
- * — reuses `CustomerDrawerStat`, the same cell the header grid uses, rather
- * than forking a second stat component for one more panel.
- */
+/** The expiry panel's four stats: Balance, Expiring in N days, Safe beyond {year} and Pending. */
 export function CustomerDrawerExpiryStats({ customer, expiry }: { customer: Customer; expiry: DrawerExpiry }) {
   const daysRemaining = daysUntil(expiry.expires_at);
   const safeBeyondYear = String(utcToDate(expiry.expires_at).getUTCFullYear());

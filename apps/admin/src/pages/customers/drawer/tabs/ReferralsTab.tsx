@@ -6,11 +6,7 @@ import { DRAWER_PAGE_SIZE, DrawerTabPager } from './DrawerTabPager';
 import { ReferralsTabHeader } from './ReferralsTabHeader';
 import { ReferralsTabRows } from './ReferralsTabRows';
 
-/**
- * 3f — table only (the summary strip and "Revenue referred" are cut).
- * Structurally a clone of `RedemptionsTab.tsx`: owns paging, no filters,
- * plus the link/campaign header 3e doesn't have.
- */
+/** The referral link header, table and pager. No filters, so it owns only the page. */
 export function ReferralsTab({ userId }: { userId: number }) {
   const [page, setPage] = useState(1);
 

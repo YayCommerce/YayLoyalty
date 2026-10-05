@@ -129,7 +129,8 @@ function PurchaseRateInput({ config, patchConfig, disabled }: PurchaseFieldsProp
       <NumberInputInput id="reward-purchase-points-per-unit" />
       <NumberInputUnit
         unit={sprintf(
-          /* translators: %s: the store currency code, e.g. "USD". */ __('pts / %s', 'yayloyalty'),
+          /* translators: %s: the store currency code, e.g. "USD". */
+          __('pts / %s', 'yayloyalty'),
           window.yayLoyaltyMeta.wcMeta.currency_data.currency,
         )}
       />

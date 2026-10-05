@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
 /**
- * Mirrors DesignSchema (DesignHelper's field-set source of truth). The launcher and
- * tier badge icons are separate vocabularies: different UI elements, free to diverge.
+ * Mirrors DesignSchema, the source of truth.
+ * The launcher and tier badge icon lists are separate on purpose and may diverge.
  */
 
 export const designLauncherIconSchema = z.enum(['default', 'circle', 'diamond', 'bar', 'ring', 'line', 'custom']);

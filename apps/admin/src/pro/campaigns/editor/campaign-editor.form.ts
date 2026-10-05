@@ -17,14 +17,10 @@ import {
 import { validateConditionValue } from './CampaignEditorConditions';
 
 /**
- * The form's field shape, identical to CampaignUpdateInput in both create and
- * edit mode. No `trigger`: on edit it is immutable and renders from the
- * loaded Campaign; on create it lives outside RHF, as CampaignEditorContext's
- * own `trigger` + `onTriggerChange`, because changing it also resets `config`
- * and `conditions` — a plain form field can't drive that from the section
- * that owns it. starts_at/ends_at stay raw UTC strings so the schema's
- * string-comparison refinement holds; the Schedule section converts at its
- * inputs only.
+ * The form's fields: CampaignUpdateInput, in both modes. `trigger` lives outside the form, in
+ * CampaignEditorContext, because changing it also resets `config` and `conditions`.
+ * starts_at/ends_at stay raw UTC strings so the schema's string comparison holds; the Schedule
+ * section converts at its inputs only.
  */
 export type CampaignFormValues = CampaignUpdateInput;
 
@@ -64,13 +60,10 @@ export interface CampaignCreateSeed {
 }
 
 /**
- * Duplicate's seed: every field copied from the source except id/slug — name
- * gets " (copy)" and status resets to draft, since nothing is live until
- * Save (matching every template). A source outside the three Lite triggers
- * falls back to purchase with default config, rather than sending a config
- * shape that trigger can't accept — not reachable today (nothing writes a
- * Pro-trigger campaign yet), kept as a safe default rather than an
- * assumption.
+ * Duplicate's seed: every field copied from the source except id and slug. The name gets
+ * " (copy)" and the status resets to draft, as with every template. A source outside the three
+ * Lite triggers falls back to purchase with the default config, rather than sending a config shape
+ * that trigger cannot accept. Nothing writes a Pro-trigger campaign yet, so this is a safe default.
  */
 export function duplicateToFormValues(source: Campaign): CampaignCreateSeed {
   const isLite = (LITE_CAMPAIGN_TRIGGERS as readonly string[]).includes(source.trigger);
@@ -79,8 +72,11 @@ export function duplicateToFormValues(source: Campaign): CampaignCreateSeed {
   return {
     trigger,
     values: {
-      /* translators: %s: the name of the campaign being duplicated. */
-      name: sprintf(__('%s (copy)', 'yayloyalty'), source.name),
+      name: sprintf(
+        /* translators: %s: the name of the campaign being duplicated. */
+        __('%s (copy)', 'yayloyalty'),
+        source.name,
+      ),
       status: 'draft',
       priority: source.priority,
       config: structuredClone(isLite ? source.config : DEFAULT_CAMPAIGN_CONFIG.purchase),
@@ -167,24 +163,22 @@ export function mergeConditionErrors(
   } as ResolverResult<CampaignFormValues>;
 }
 
-/** One resolver for both editor modes: the fields it validates (name/status/priority/config/conditions/dates) are identical either way — only `trigger`, which it never sees, differs. */
+/** One resolver for both editor modes: the fields it validates are the same in each. */
 export const campaignFormResolver: Resolver<CampaignFormValues> = async (values, context, options) => {
   const result = await zodResolver(campaignUpdateInputSchema)(values, context, options);
   return mergeConditionErrors(result, values);
 };
 
-/* ─── editor context: the loaded campaign, outside form state ───────── */
+// Editor context: the loaded campaign, outside form state
 
 /**
- * The loaded Campaign for the fields outside form state: slug and id are
- * immutable after create and render from here, never via watch(). Declared
- * here rather than in CampaignEditor.tsx to avoid a circular import with the
- * sections. Provided only after the fetch boundary (edit) or template pick
- * (create) has resolved, so every consumer gets a fully populated value.
+ * The loaded Campaign, for the fields outside form state such as id and slug. Declared here, not
+ * in CampaignEditor.tsx, to avoid a circular import with the sections. Provided only once the
+ * fetch (edit) or template pick (create) resolves, so every consumer gets a full value.
  */
 interface CampaignEditorContextValue {
   mode: 'create' | 'edit';
-  /** Edit: the loaded row. Create: synthesizeDraftCampaign()'s placeholder — id/slug/is_builtin/status read fine as constants; never read for `trigger`, see below. */
+  /** Edit: the loaded row. Create: synthesizeDraftCampaign()'s placeholder. Read `trigger` below, never this one's. */
   campaign: Campaign;
   /** The trigger driving §3 Reward and §6 Priority. Edit: campaign.trigger, fixed. Create: the merchant's live pick from §2 — read this, never campaign.trigger, so those sections track the radio. */
   trigger: CampaignTrigger;

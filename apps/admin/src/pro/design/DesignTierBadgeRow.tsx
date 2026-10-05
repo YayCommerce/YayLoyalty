@@ -33,10 +33,9 @@ function BadgeIconGlyph({ icon, color }: { icon: DesignBadgeIcon; color: string 
 }
 
 /**
- * Pro. One `tier.badges[index]` row: a colour-bordered `tier_id` chip doubles
- * as a live preview, a colour swatch, an icon-shape trigger, then the
- * customer-facing `label`. No remove control: the badge set is fixed (see
- * DesignTierSection's docblock).
+ * Pro. One `tier.badges[index]` row: a colour-bordered `tier_id` chip that doubles as a live
+ * preview, a colour swatch, an icon-shape picker, then the customer-facing `label`. No remove
+ * control: the badge set is fixed.
  */
 export function DesignTierBadgeRow({ index }: { index: number }) {
   const { control, register } = useFormContext<Design>();
@@ -73,9 +72,8 @@ export function DesignTierBadgeRow({ index }: { index: number }) {
           name={`tier.badges.${index}.icon`}
           render={({ field }) => (
             <Select value={field.value} onValueChange={field.onChange}>
-              {/* [&>svg]:hidden drops the shared trigger's chevron — this picker is a bare
-                  shape swatch, matching the colour swatch beside it; the shared component
-                  itself is untouched so every other select keeps its chevron. */}
+              {/* [&>svg]:hidden drops the shared trigger's chevron here only: this picker is a bare
+                  shape swatch, like the colour swatch beside it. */}
               <SelectTrigger aria-label={TIER_BADGE_ICON_LABEL()} className="w-9 justify-center px-2 [&>svg]:hidden">
                 <span className="flex size-4 items-center justify-center">
                   <BadgeIconGlyph icon={field.value} color={color} />
@@ -84,9 +82,8 @@ export function DesignTierBadgeRow({ index }: { index: number }) {
               <SelectContent>
                 {designBadgeIconSchema.options.map((option) => (
                   <SelectItem key={option} value={option}>
-                    {/* Two top-level children left to ItemText's own flex layout don't reliably
-                        render the glyph — wrap them in one explicit flex span instead, matching
-                        the icon+text pattern DesignVisibilitySection already uses. */}
+                    {/* One explicit flex span: two loose children in ItemText do not reliably
+                        render the glyph. */}
                     <span className="flex items-center gap-2">
                       <BadgeIconGlyph icon={option} color={color} />
                       {badgeIconLabel(option)}

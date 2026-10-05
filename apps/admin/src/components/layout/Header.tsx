@@ -14,7 +14,6 @@ export default function Header() {
         'z-10 md:pr-3',
       )}
     >
-      {/* Logo */}
       <div className="border-border flex h-full bg-[#FFF5DB] px-0.75 pt-0.75">
         <img
           src={`${window.yayLoyaltyMeta.loyaltyMeta.assetsUrl}/images/logo/favicon.svg`}

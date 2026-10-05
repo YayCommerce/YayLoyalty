@@ -2,6 +2,8 @@ import { z } from 'zod';
 
 import { settingsSchema } from '@/lib/schema/settings.schema';
 
+/** Mirrors EmailsHelper::get_emails(), the source of truth. */
+
 /**
  * RHF resolver input; what POST /emails takes. Keyed by a bare string, not a closed enum: the ids
  * are whatever the server registered with WooCommerce.

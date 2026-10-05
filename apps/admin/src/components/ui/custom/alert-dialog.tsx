@@ -5,17 +5,8 @@ import { cn } from '@/lib/utils';
 import { buttonVariants } from '@/components/ui/button';
 
 /**
- * `/*#__PURE__*\/` before every `React.forwardRef(...)` call below is load-bearing,
- * not decorative. This file's only importer is Pro-only
- * (`CustomersSavedSegmentRow.tsx`), so it must fully tree-shake out of the
- * Lite bundle — but `React.forwardRef(fn)` is a CALL, and Rollup can't prove
- * an arbitrary call has no side effects, so without the annotation it keeps
- * the whole component (source, closures, JSX) in the Lite bundle even
- * though nothing there ever renders it. Confirmed empirically: removing the
- * annotations brought back `alert-dialog-content` etc. in Lite's `main.js`;
- * adding them removed it. (`./dialog.tsx` doesn't need this only because
- * it's ALSO imported by Lite-shared code regardless — this was never
- * exercised there.)
+ * Keep the `/*#__PURE__*\/` before each `React.forwardRef(...)`: this file's only importer is
+ * Pro-only, and without the annotation Rollup keeps these components in the Lite bundle.
  */
 
 function AlertDialog({ ...props }: React.ComponentProps<typeof AlertDialogPrimitive.Root>) {
@@ -33,12 +24,8 @@ function AlertDialogPortal({ ...props }: React.ComponentProps<typeof AlertDialog
   return <AlertDialogPrimitive.Portal data-slot="alert-dialog-portal" {...props} />;
 }
 
-// Radix's Portal/Presence internals attach a ref to what they wrap (e.g. to
-// track animation end) — a plain function component can't receive one
-// ("Function components cannot be given refs"), so every piece that renders
-// an actual DOM node here (Overlay, Content, Action, Cancel — same as
-// DialogOverlay/DialogContent/DialogTrigger in ./dialog.tsx) MUST use
-// React.forwardRef, not a bare function.
+// Radix's Portal and Presence attach a ref to what they wrap, so every piece that renders
+// a DOM node here uses React.forwardRef, as ./dialog.tsx does.
 const AlertDialogOverlay = /*#__PURE__*/ React.forwardRef<
   React.ComponentRef<typeof AlertDialogPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Overlay>
@@ -87,12 +74,8 @@ function AlertDialogHeader({ className, ...props }: React.ComponentProps<'div'>)
 }
 
 function AlertDialogFooter({ className, ...props }: React.ComponentProps<'div'>) {
-  // `gap-2`, not `sm:space-x-2`: the latter only kicks in at the `sm:`
-  // breakpoint and only spaces adjacent siblings — `gap` applies
-  // unconditionally and doesn't depend on `flex-col-reverse` vs `flex-row`,
-  // matching DialogFooter in ./dialog.tsx so the two dialog kinds read the
-  // same. This is also the fix for the two Cancel/Remove buttons rendering
-  // visibly cramped together.
+  // `gap-2`, not `sm:space-x-2`: gap spaces the buttons at every breakpoint and in either
+  // flex direction, matching DialogFooter in ./dialog.tsx.
   return (
     <div
       data-slot="alert-dialog-footer"
