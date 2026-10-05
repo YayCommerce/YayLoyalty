@@ -4,15 +4,17 @@
  *
  * Override by copying to yourtheme/woocommerce/emails/yayloyalty-points-earned.php.
  *
+ * Variables mirror PointsEarnedEmail::build_values() and the plain template's list; change them together.
+ *
  * @var string    $email_heading
  * @var string    $additional_content
  * @var \WC_Email $email
  * @var string    $greeting_name The customer's first name, else display name; '' for none. Absent when there is no award to show.
  * @var string    $earned_text   Escaped HTML, e.g. "You earned <strong>50 Points</strong> for order #123."; '' when a filter hides it. Absent when there is no award to show.
  * @var string    $balance_text  The balance after this award, e.g. "120 Points". Absent when there is no award to show.
- * @var string    $balance_value What the balance is worth, as wc_price() HTML; '' when the discount reward is not live. Absent when there is no award to show.
+ * @var string    $balance_value What the balance is worth, as wc_price() HTML; '' while hidden (the yayloyalty_points_earned_show_balance_value filter, off by default) or the discount reward is not live. Absent when there is no award to show.
  * @var string    $balance_value_text Escaped HTML, e.g. "That's worth <strong>$1.50</strong> in rewards."; '' when $balance_value is ''. Absent when there is no award to show.
- * @var string    $cta_url      Where "View your points" links. Absent when there is no award to show.
+ * @var string    $cta_url      Where "View your points" links; '' (the default) hides it. Absent when there is no award to show.
  * @var \YayLoyalty\Models\LedgerEntry $entry The awarded row, for overrides. Absent when there is no award to show.
  */
 
@@ -50,7 +52,7 @@ do_action( 'woocommerce_email_header', $email_heading, $email );
 <p>
         <?php
         // wc_price() markup, unfiltered: kses would strip its <bdi>, which keeps the amount readable in right-to-left stores.
-        echo $balance_value_text; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+        echo $balance_value_text; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped when built; see the comment above.
         ?>
 </p>
     <?php endif; ?>

@@ -40,6 +40,39 @@ class PointsEarnedShortcodes extends BaseShortcode {
     /** @var array<string, mixed>|null */
     private $sample_values = null;
 
+    /** @var PointsEarnedEmail|null The email whose subject is being filtered; YayMail's subject render does not pass it. */
+    private $subject_email = null;
+
+    protected function __construct() {
+        parent::__construct();
+
+        // Around YayMail's own subject filter, at the default 10.
+        add_filter( 'woocommerce_email_subject_' . PointsEarnedEmail::ID, [ $this, 'hold_subject_email' ], 9, 3 );
+        add_filter( 'woocommerce_email_subject_' . PointsEarnedEmail::ID, [ $this, 'release_subject_email' ], 11 );
+    }
+
+    /**
+     * @param string $subject
+     * @param mixed  $award The email's object, unused.
+     * @param mixed  $email
+     * @return string
+     */
+    public function hold_subject_email( $subject, $award = null, $email = null ) {
+        $this->subject_email = $email instanceof PointsEarnedEmail ? $email : null;
+
+        return $subject;
+    }
+
+    /**
+     * @param string $subject
+     * @return string
+     */
+    public function release_subject_email( $subject ) {
+        $this->subject_email = null;
+
+        return $subject;
+    }
+
     /** A shortcode's name: 'customer_name' → 'yaymail_yayloyalty_customer_name'. */
     private static function name( string $key ): string {
         return 'yaymail_yayloyalty_' . $key;
@@ -75,10 +108,10 @@ class PointsEarnedShortcodes extends BaseShortcode {
             'points_label'       => __( 'Points label for the points earned', 'yayloyalty' ),
             'balance'            => __( 'Balance after this award', 'yayloyalty' ),
             'balance_points'     => __( 'Balance with its label, e.g. "150 Points"', 'yayloyalty' ),
-            'balance_value'      => __( 'What the balance is worth; empty while the discount reward is not live', 'yayloyalty' ),
-            'balance_value_text' => __( 'Sentence saying what the balance is worth; empty while the discount reward is not live', 'yayloyalty' ),
+            'balance_value'      => __( 'What the balance is worth; empty until redemption ships, or while the discount reward is not live', 'yayloyalty' ),
+            'balance_value_text' => __( 'Sentence saying what the balance is worth; empty until redemption ships, or while the discount reward is not live', 'yayloyalty' ),
             'order_number'       => __( 'Order number the points were earned for; empty unless earned from an order', 'yayloyalty' ),
-            'points_url'         => __( 'Link to the customer\'s points', 'yayloyalty' ),
+            'points_url'         => __( 'Link to the customer\'s points; empty unless a site sets yayloyalty_points_earned_cta_url', 'yayloyalty' ),
         ];
     }
 
@@ -117,8 +150,8 @@ class PointsEarnedShortcodes extends BaseShortcode {
             return $this->sample_values( $root_email );
         }
 
-        // YayMail's subject filter renders a real send with empty render_data: the root email holds the award trigger() just prepared.
-        $email = $render_data['email'] ?? $root_email;
+        // YayMail's subject filter renders a real send with empty render_data; hold_subject_email() caught the email being sent.
+        $email = $render_data['email'] ?? $this->subject_email;
 
         if ( ! $email instanceof PointsEarnedEmail ) {
             return [];

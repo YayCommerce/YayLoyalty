@@ -51,11 +51,37 @@ abstract class LoyaltyEmail extends \WC_Email {
     }
 
     /**
-     * Restores apostrophes that esc_html() encoded: WooCommerce's plain-text
-     * cleanup knows &rsquo; but not &#039;, and deletes entities it does not know.
+     * Decodes the entities that esc_html() and wptexturize() leave in plain templates
+     * (&#039;, &#8230;, &eacute; …): WooCommerce's plain-text cleanup deletes every
+     * entity it does not list. &lt;, &gt; and &amp; stay encoded, because WooCommerce
+     * decodes them only after it strips tags, so text such as "<3" survives.
      */
     public function get_content_plain() {
-        return str_replace( '&#039;', "'", wc_get_template_html( $this->template_plain, $this->template_args( true ), '', $this->template_base ) );
+        return preg_replace_callback(
+            '/&(?!(?:lt|gt|amp|#0*60|#0*62|#0*38|#x0*3c|#x0*3e|#x0*26);)[^&\s;]+;/i',
+            static function ( array $entity ): string {
+                return html_entity_decode( $entity[0], ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+            },
+            wc_get_template_html( $this->template_plain, $this->template_args( true ), '', $this->template_base )
+        );
+    }
+
+    /**
+     * Sends this email to the customer it is prepared for, under the merchant's weekly
+     * cap on loyalty emails (EmailThrottle); only a send the transport accepts counts.
+     */
+    protected function send_to_customer( int $user_id ): bool {
+        if ( ! EmailThrottle::allows( $user_id ) ) {
+            return false;
+        }
+
+        $sent = $this->send( $this->get_recipient(), $this->get_subject(), $this->get_content(), $this->get_headers(), $this->get_attachments() );
+
+        if ( $sent ) {
+            EmailThrottle::record( $user_id );
+        }
+
+        return $sent;
     }
 
     /** The variables every loyalty template receives, named as WooCommerce's own templates name them. */

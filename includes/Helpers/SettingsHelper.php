@@ -33,7 +33,7 @@ class SettingsHelper {
                 'adjustment_ceiling' => 0,
             ],
             'emails'   => [
-                // Weekly per-customer cap on loyalty emails; not enforced until emails are sent.
+                // Weekly per-customer cap on loyalty emails; 0 = unlimited. Read via Engine\Emails\EmailThrottle.
                 'throttle_per_week' => 3,
             ],
         ];

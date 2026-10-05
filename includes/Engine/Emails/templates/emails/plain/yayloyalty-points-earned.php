@@ -4,14 +4,16 @@
  *
  * Override by copying to yourtheme/woocommerce/emails/plain/yayloyalty-points-earned.php.
  *
+ * Variables mirror PointsEarnedEmail::build_values() and the HTML template's list; change them together.
+ *
  * @var string $email_heading
  * @var string $additional_content
  * @var string $greeting_name The customer's first name, else display name; '' for none. Absent when there is no award to show.
  * @var string $earned_text   Escaped HTML, e.g. "You earned <strong>50 Points</strong> for order #123."; '' when a filter hides it. Absent when there is no award to show.
  * @var string $balance_text  The balance after this award, e.g. "120 Points". Absent when there is no award to show.
- * @var string $balance_value What the balance is worth, as wc_price() HTML; '' when the discount reward is not live. Absent when there is no award to show.
+ * @var string $balance_value What the balance is worth, as wc_price() HTML; '' while hidden (the yayloyalty_points_earned_show_balance_value filter, off by default) or the discount reward is not live. Absent when there is no award to show.
  * @var string $balance_value_text Escaped HTML sentence around $balance_value; '' when that is ''. Absent when there is no award to show.
- * @var string $cta_url      Where "View your points" links. Absent when there is no award to show.
+ * @var string $cta_url      Where "View your points" links; '' (the default) hides it. Absent when there is no award to show.
  * @var \YayLoyalty\Models\LedgerEntry $entry The awarded row, for overrides. Absent when there is no award to show.
  */
 
