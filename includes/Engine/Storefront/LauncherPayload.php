@@ -63,12 +63,8 @@ final class LauncherPayload {
         $now      = Dates::now();
         $reward   = $this->rewards->find_live_cart_discount( $now );
         $redeem   = self::redeem_rule( $reward );
-        $rules    = LauncherEarnRules::advertise( $this->live_campaigns( $now ), $this->campaigns->find_default_purchase() );
         $register = self::register_route();
-
-        if ( null === $register ) {
-            $rules['earn'][ CampaignTrigger::SIGNUP ] = null;
-        }
+        $rules    = LauncherEarnRules::advertise( $this->live_campaigns( $now ), $this->campaigns->find_default_purchase(), null !== $register );
 
         return [
             'launcher'     => $design['launcher'],
@@ -131,16 +127,22 @@ final class LauncherPayload {
 
     /**
      * Where a guest can create an account, if anywhere: the signup campaign only pays a self-registration,
-     * so the panel offers signup points only when the store lets shoppers register.
+     * so the panel offers signup points only when the store lets shoppers register. Checkout covers both
+     * signing up during checkout (`woocommerce_enable_signup_and_login_from_checkout`) and creating the
+     * account right after a block checkout (`woocommerce_enable_delayed_account_creation`).
      *
-     * @return string|null 'account' (My Account page), 'checkout' (only at checkout) or null.
+     * @return string|null 'account' (My Account page), 'checkout' (at or right after checkout) or null.
      */
     private static function register_route(): ?string {
         if ( 'yes' === get_option( 'woocommerce_enable_myaccount_registration' ) ) {
             return 'account';
         }
 
-        return 'yes' === get_option( 'woocommerce_enable_signup_and_login_from_checkout' ) ? 'checkout' : null;
+        if ( 'yes' === get_option( 'woocommerce_enable_signup_and_login_from_checkout' ) || 'yes' === get_option( 'woocommerce_enable_delayed_account_creation' ) ) {
+            return 'checkout';
+        }
+
+        return null;
     }
 
     /**

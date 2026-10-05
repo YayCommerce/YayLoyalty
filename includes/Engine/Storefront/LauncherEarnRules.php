@@ -24,21 +24,28 @@ final class LauncherEarnRules {
     /**
      * @param Campaign[]    $live             Campaigns live now, any trigger, in the engine's selection order.
      * @param Campaign|null $default_purchase The default purchase campaign a multiplier scales.
+     * @param bool          $can_register     Whether a shopper can create an account on this store. The signup
+     *                                        campaign pays only a self-registration, so without one it isn't advertised.
      * @return array{earn: array{purchase: ?float, signup: ?int, review: ?int}, purchase_min: float}
      *         Points per currency unit / per signup / per review (null when not advertised), and the
      *         advertised purchase campaign's minimum order subtotal so the rate line can say it (0 for none).
      */
-    public static function advertise( array $live, ?Campaign $default_purchase ): array {
+    public static function advertise( array $live, ?Campaign $default_purchase, bool $can_register ): array {
         $winners  = self::winners( $live, $default_purchase );
         $purchase = $winners[ CampaignTrigger::PURCHASE ];
+        $earn     = array_map(
+            static function ( ?array $winner ) {
+                return null === $winner ? null : $winner['value'];
+            },
+            $winners
+        );
+
+        if ( ! $can_register ) {
+            $earn[ CampaignTrigger::SIGNUP ] = null;
+        }
 
         return [
-            'earn'         => array_map(
-                static function ( ?array $winner ) {
-                    return null === $winner ? null : $winner['value'];
-                },
-                $winners
-            ),
+            'earn'         => $earn,
             'purchase_min' => null === $purchase ? 0.0 : PurchaseHandler::min_subtotal( $purchase['campaign']->get_config() ),
         ];
     }
