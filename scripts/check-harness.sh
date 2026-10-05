@@ -7,7 +7,7 @@
 # README.md, .claude/, docs/): references to removed files, doc citations and
 # feature IDs in code, missing paths and broken links, missing Purpose and
 # Update when headers, dead rule globs, skill names and description lengths,
-# @imports in CLAUDE.md, and decision-record format. It prints one line per
+# @imports in CLAUDE.md, decision-record format, and backlog-item format. It prints one line per
 # finding and exits 1 if there is any, 0 otherwise. The git grep checks read
 # tracked files only; the checks that loop over harness files also see
 # untracked ones. It changes nothing.
@@ -52,7 +52,8 @@ check_links() {
 
 # Every doc, decision record, rule and skill has Purpose and Update when.
 check_headers() {
-    for f in CLAUDE.md README.md docs/*.md docs/decisions/*.md .claude/rules/*.md .claude/skills/*/SKILL.md; do
+    for f in CLAUDE.md README.md docs/*.md docs/decisions/*.md docs/backlog/*.md .claude/rules/*.md .claude/skills/*/SKILL.md; do
+        [ -e "$f" ] || continue
         grep -q 'Purpose' "$f" && grep -q 'Update when' "$f" || echo "NO HEADER $f"
     done
 }
@@ -100,8 +101,19 @@ check_decisions() {
     done
 }
 
+# Backlog items follow the yaybacklog skill's template: the name, the four
+# headings, and at least one box under Done when.
+check_backlog() {
+    for f in docs/backlog/*.md; do
+        [ -e "$f" ] || continue
+        basename "$f" | grep -qE '^[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z0-9-]+\.md$' || echo "BAD NAME $f"
+        for h in 'Today' 'Why it matters' 'Suggested fix' 'Done when'; do grep -qx "## $h" "$f" || echo "NO $h $f"; done
+        awk '/^## Done when$/ { d = 1; next } /^## / { d = 0 } d && /^- \[[ xX]\] / { n++ } END { exit n == 0 }' "$f" || echo "NO BOXES $f"
+    done
+}
+
 failed=0
-for check in removed_refs section_citations feature_ids cited_docs links headers rule_globs skills imports backticked_paths decisions; do
+for check in removed_refs section_citations feature_ids cited_docs links headers rule_globs skills imports backticked_paths decisions backlog; do
     out=$("check_$check")
     if [ -n "$out" ]; then
         printf '%s\n' "$out" | sed "s/^/[$check] /"

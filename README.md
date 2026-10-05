@@ -72,8 +72,9 @@ The team's skills cover a change from idea to PR. Each one is called by name, an
 | [`/yayplan`](.claude/skills/yayplan/SKILL.md) | you have an accepted design doc, or a request you want planned without one | a plan in `docs/plans/` |
 | [`/yaytidy`](.claude/skills/yaytidy/SKILL.md) | before you open a PR | a report of duplicated facts and code, and the fixes you pick |
 | [`/yayplancheck`](.claude/skills/yayplancheck/SKILL.md) | after each phase of a plan, and before merging | a PASS or FAIL review against the plan, from a fresh subagent |
+| [`/yaybacklog`](.claude/skills/yaybacklog/SKILL.md) | you want to see what reviews left open, check whether an item is done, or record a finding you won't fix in this PR | ticked boxes and new items in `docs/backlog/`, and removes the items that are done |
 
-A typical change runs `/yaybrainstorming`, then `/yayplan`, then you implement it, running `/yayplancheck` after each phase. Before the final review, `/yayplancheck` asks whether to run `/yaytidy` first. A change may also skip the design and go straight to `/yayplan`.
+A typical change runs `/yaybrainstorming`, then `/yayplan`, then you implement it, running `/yayplancheck` after each phase. Before the final review, `/yayplancheck` asks whether to run `/yaytidy` first. A change may also skip the design and go straight to `/yayplan`. A review finding you don't fix in the PR goes to the backlog with `/yaybacklog add`, and the PR that fixes it later ticks its boxes with `/yaybacklog check`.
 
 **Status lifecycle.** Specs and plans stay in the repo as history. An agent acts only on a spec whose Status is `accepted` or a plan whose Status is `active`. The Status words and when each one is set belong to the templates: [the design template](.claude/skills/yaybrainstorming/references/design-template.md) for specs, and [the plan template](.claude/skills/yayplan/references/plan-template.md) for plans.
 
@@ -90,9 +91,11 @@ A typical change runs `/yaybrainstorming`, then `/yayplan`, then you implement i
 | How the pieces fit | [docs/architecture.md](docs/architecture.md) |
 | Conventions the code can't show | [docs/conventions.md](docs/conventions.md) |
 | Gotchas and checks that fail today | [docs/known-issues.md](docs/known-issues.md) |
+| Follow-ups that reviews left open | [docs/backlog/](docs/backlog/) |
 | Why X, not Y | [docs/decisions/](docs/decisions/) |
 | Spec and plan formats and their Status words | the `yaybrainstorming` and `yayplan` skills |
 | Reviewing work against its plan | the `yayplancheck` skill |
+| The backlog item format, and checking items against the code | the `yaybacklog` skill |
 | Duplicated facts before a PR, and the stacked-branch PR base | the `yaytidy` skill |
 | Onboarding, review, promotion and release cadence, agent tooling, harness upkeep | this README |
 
@@ -102,7 +105,7 @@ A typical change runs `/yaybrainstorming`, then `/yayplan`, then you implement i
 - `.claude/settings.local.json`: your own permissions and settings on top of `.claude/settings.json`;
 - `CLAUDE.local.md`: your own instructions on top of `CLAUDE.md`. It may drop the commit and PR trailers that `CLAUDE.md` asks for.
 
-**Shared skills.** The YayCommerce plugins share the four skills, and this repo holds their canonical copy. A change to a skill lands here first, and another repo copies the skill's directory whole, never editing its copy. See [the canonical-copy record](docs/decisions/2026-10-03-shared-skills-canonical-copy.md).
+**Shared skills.** The YayCommerce plugins share the five skills, and this repo holds their canonical copy. A change to a skill lands here first, and another repo copies the skill's directory whole, never editing its copy. See [the canonical-copy record](docs/decisions/2026-10-03-shared-skills-canonical-copy.md).
 
 **Mechanical checks.** Run `./scripts/check-harness.sh` before merging a PR that changes a harness file. It checks paths, links, headers, rule globs, skill names and decision records, prints one line per finding, and exits 1 if there is any.
 

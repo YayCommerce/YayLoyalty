@@ -1,0 +1,29 @@
+{
+  "skill_name": "yaybacklog",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "/yaybacklog",
+      "expected_output": "Runs list mode without asking which mode to use. Reads the backlog directory CLAUDE.md names, and replies with a table of the open items: file name, title, ticked/total boxes, and the first unticked condition. Items whose boxes are all ticked appear separately under 'Done, ready to remove'. Edits no file and does not commit.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "/yaybacklog check all",
+      "expected_output": "Dispatches one fresh general-purpose subagent with the open items' paths and the checker prompt, not a review done inline. Shows its report, which marks each unticked box met, not met or unclear, with path:symbol evidence. Asks with AskUserQuestion (multiSelect) which met boxes to tick, and ticks exactly those, adding the evidence after a dash. Leaves not-met and unclear boxes unticked, and changes no code. Does not commit.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Is the /me/activity follow-up in the backlog done yet? I think I removed the points field.",
+      "expected_output": "Runs check mode on the one matching item, found by its title. When the subagent reports every box of that item met and the user picks them all, ticks them, then asks 'Remove it now (recommended)' or 'Keep it for now', and deletes the file only on the first answer. If any box is not met, says which one and why, and doesn't offer removal. Does not commit.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "Add this to the backlog: the dashboard's liability stat reads the reward rate even when the reward is paused, so it shows a value nobody can redeem.",
+      "expected_output": "Runs add mode. Reads the code the finding concerns before writing, and checks that no open item already covers it. Writes one new file in the backlog directory, named YYYY-MM-DD-<slug>.md with today's date, that follows references/item-template.md: the title, Purpose, Update when and Source lines, then Today, Why it matters, Suggested fix and Done when, each Done when box a checkable condition citing a path and symbol. Asks the user what 'done' means if it can't state a checkable condition. Runs the repo's harness check if one is named, and does not commit.",
+      "files": []
+    }
+  ]
+}
