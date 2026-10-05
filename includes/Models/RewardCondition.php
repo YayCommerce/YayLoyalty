@@ -4,10 +4,9 @@ namespace YayLoyalty\Models;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * One reward eligibility rule: { type, operator, value }. Immutable value
- * object; `value`'s shapes are RewardConditionType::schema()'s, validated
- * by RewardConditionSet. Kept separate from CampaignCondition so each can
- * grow its own accessors.
+ * One reward eligibility rule: { type, operator, value }. An immutable value object.
+ * RewardConditionSet validates `value` against RewardConditionType::schema().
+ * It stays separate from CampaignCondition so each can grow its own accessors.
  */
 final class RewardCondition {
 
@@ -20,9 +19,6 @@ final class RewardCondition {
     /** @var mixed */
     private $value;
 
-    /**
-     * @param mixed $value
-     */
     public function __construct( string $type, string $operator, $value ) {
         $this->type     = $type;
         $this->operator = $operator;
@@ -40,9 +36,7 @@ final class RewardCondition {
         );
     }
 
-    /**
-     * @return array{type: string, operator: string, value: mixed}
-     */
+    /** @return array{type: string, operator: string, value: mixed} */
     public function to_array(): array {
         return [
             'type'     => $this->type,
@@ -59,15 +53,12 @@ final class RewardCondition {
         return $this->operator;
     }
 
-    /**
-     * @return mixed
-     */
     public function get_value() {
         return $this->value;
     }
 
     /**
-     * The value as a list; a scalar is wrapped so callers never branch.
+     * The value as a list. A scalar is wrapped so callers never branch.
      *
      * @return array<int, mixed>
      */

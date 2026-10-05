@@ -4,16 +4,13 @@ namespace YayLoyalty\Database\Schema;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Append-only truth; customers is derived from it. uniq_idempotency_key on
- * the single `idempotency_key` column is the idempotency guarantee: one
- * string composed by Engine\Earning\IdempotencyKey (type, user, reference
- * and trigger — an order may earn once per trigger per user), one guard, no nullable
- * composite. NULL keys (manual adjustments) never collide, so those are
- * deliberately not idempotent. The former composite uniq_ledger_event is
- * dropped by Installer::run_migrations() — dbDelta cannot drop an index.
- * idx_user_history_type is (user_id, id, type): id orders history because
- * created_at can tie within a second, and type lets the drawer's per-type
- * count and type filter read the index instead of the rows.
+ * Append-only truth, from which customers is derived. uniq_idempotency_key on the single
+ * `idempotency_key` column is the idempotency guarantee: one string, not a composite with nullable
+ * parts. Engine\Earning\IdempotencyKey composes it from type, user, reference and trigger, so an order
+ * may earn once per trigger per user. NULL keys, on manual adjustments, never collide, so those rows
+ * are deliberately not idempotent. idx_user_history_type is (user_id, id, type): id orders history
+ * because created_at can tie within a second, and type lets the drawer's per-type count and type filter
+ * read the index instead of the rows.
  */
 final class LedgerTable extends AbstractTableSchema {
 
@@ -73,7 +70,7 @@ final class LedgerTable extends AbstractTableSchema {
     public function expected_indexes(): array {
         return [
             'PRIMARY',
-            // Missing means duplicate awards; Installer::verify() exists for this.
+            // Missing means duplicate awards. Installer::verify() exists for this.
             'uniq_idempotency_key',
             'idx_user_history_type',
             'campaign_id',

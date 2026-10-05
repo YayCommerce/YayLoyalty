@@ -64,7 +64,8 @@ export function triggerLabel(trigger: CampaignTrigger): string {
 export function givesLabel(trigger: CampaignTrigger, config: Record<string, unknown>): string {
   if (trigger === 'purchase' && config.mode === 'multiplier') {
     return sprintf(
-      /* translators: %s: the multiplier, e.g. "2". */ __('×%s points', 'yayloyalty'),
+      /* translators: %s: the multiplier, e.g. "2". */
+      __('×%s points', 'yayloyalty'),
       String(resolvePurchaseMultiplier(config)),
     );
   }
@@ -74,7 +75,11 @@ export function givesLabel(trigger: CampaignTrigger, config: Record<string, unkn
   }
 
   // Every other trigger's config carries a flat `points`.
-  return sprintf(/* translators: %s: points awarded. */ __('%s points', 'yayloyalty'), String(config.points ?? 0));
+  return sprintf(
+    /* translators: %s: points awarded. */
+    __('%s points', 'yayloyalty'),
+    String(config.points ?? 0),
+  );
 }
 
 export function conditionsLabel(conditions: unknown): string {
@@ -138,10 +143,18 @@ export function scheduleLabel(startsAt: string | null, endsAt: string | null): s
   }
 
   if (startsAt) {
-    return sprintf(/* translators: %s: a formatted date. */ __('From %s', 'yayloyalty'), parseWPDate(startsAt));
+    return sprintf(
+      /* translators: %s: a formatted date. */
+      __('From %s', 'yayloyalty'),
+      parseWPDate(startsAt),
+    );
   }
 
-  return sprintf(/* translators: %s: a formatted date. */ __('Until %s', 'yayloyalty'), parseWPDate(endsAt as string));
+  return sprintf(
+    /* translators: %s: a formatted date. */
+    __('Until %s', 'yayloyalty'),
+    parseWPDate(endsAt as string),
+  );
 }
 
 export function statusLabel(status: CampaignDisplayStatus): string {

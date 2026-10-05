@@ -2,18 +2,9 @@ import { z } from 'zod';
 
 import { paginatedSchema } from '@/lib/api/paginated';
 
-/**
- * Mirrors `ActivityRestController::define_item_schema()` and
- * `ActivityQueryArgs`. THAT PHP CODE IS THE SOURCE OF TRUTH — copies
- * `ledger.schema.ts`'s own docblock convention.
- *
- * The real table backs four of the nine kinds today (`account_created`,
- * `points_adjusted`, `earning_limited`, `account_deleted`); the other five have no source
- * feature yet, so a customer whose only history would be one of them
- * legitimately gets zero rows.
- */
+/** Mirrors ActivityRestController::define_item_schema() and ActivityQueryArgs, the source of truth. */
 
-/** The nine event kinds, in artboard order. Matches `ActivityEvent::ALL`. */
+/** The nine event kinds, in display order. Matches `ActivityEvent::ALL`. */
 export const ACTIVITY_EVENT_TYPES = [
   'account_created',
   'points_adjusted',
@@ -29,10 +20,8 @@ export const ACTIVITY_EVENT_TYPES = [
 export const ACTIVITY_ACTOR_KINDS = ['staff', 'automatic', 'customer'] as const;
 
 /**
- * Filter vocabulary for the `Show:` control — a GROUPING over
- * `ACTIVITY_EVENT_TYPES`, not the same list. Matches `ActivityQueryArgs::GROUPS`.
- * Groups overlap on purpose (`expiring_soon_email_sent` is in both `expiry`
- * and `emails`) — it is a lens, not a partition. Do not "fix" the overlap.
+ * The `Show:` filter's groups over `ACTIVITY_EVENT_TYPES`. Matches `ActivityQueryArgs::GROUPS`.
+ * Groups overlap on purpose: `expiring_soon_email_sent` is in both `expiry` and `emails`.
  */
 export const ACTIVITY_GROUPS = ['all', 'admin', 'tier', 'expiry', 'emails'] as const;
 

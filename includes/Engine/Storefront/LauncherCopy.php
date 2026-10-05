@@ -25,10 +25,8 @@ final class LauncherCopy {
     }
 
     /**
-     * A rate like 1, 1.5 or 0.004, with every decimal the merchant entered. The admin's
-     * pointsPerCurrencyLabel() owns the digits (it prints String(rate)). This prints at most 10 decimal places,
-     * which drops float noise, so the two show the same digits for any rate entered with 10 or fewer; it also
-     * localises the separators for shoppers ("1,5" in German).
+     * A rate like 1, 1.5 or 0.004, with every decimal the merchant entered. At most 10 places, which drops float noise.
+     * The digits match the admin's pointsPerCurrencyLabel(), which owns them. The separators are the shopper's ("1,5" in German).
      */
     public static function rate( float $rate ): string {
         $fixed = rtrim( sprintf( '%.10F', $rate ), '0' );
@@ -36,7 +34,7 @@ final class LauncherCopy {
         return number_format_i18n( $rate, strlen( $fixed ) - strpos( $fixed, '.' ) - 1 );
     }
 
-    /** "$98.50"; a whole amount drops its decimals ("$1"), as the design writes it. */
+    /** "$98.50", or "$1" for a whole amount. */
     public static function money( float $amount ): string {
         $args = floor( $amount ) === $amount ? [ 'decimals' => 0 ] : [];
 

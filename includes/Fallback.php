@@ -14,7 +14,7 @@ add_action(
                 </p>
                 </div>
             <?php
-            // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+            // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- only unsets the flag that shows "Plugin activated"; no input is processed.
             if ( isset( $_GET['activate'] ) ) {
                 unset( $_GET['activate'] );
             }

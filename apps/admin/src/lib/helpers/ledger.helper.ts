@@ -21,7 +21,11 @@ export function describeLedgerEntry(entry: LedgerEntry): string {
 
     case 'refund_earn':
       return entry.order_id
-        ? sprintf(__('Points reclaimed after a refund on order #%d', 'yayloyalty'), entry.order_id)
+        ? sprintf(
+            /* translators: %d: the order number. */
+            __('Points reclaimed after a refund on order #%d', 'yayloyalty'),
+            entry.order_id,
+          )
         : __('Points reclaimed after a refund', 'yayloyalty');
 
     case 'refund_redeem':
@@ -39,7 +43,11 @@ function describeEarn(entry: LedgerEntry): string {
   switch (entry.source) {
     case 'order':
       return entry.order_id
-        ? sprintf(__('Earned on order #%d', 'yayloyalty'), entry.order_id)
+        ? sprintf(
+            /* translators: %d: the order number. */
+            __('Earned on order #%d', 'yayloyalty'),
+            entry.order_id,
+          )
         : __('Earned on an order', 'yayloyalty');
 
     case 'signup':

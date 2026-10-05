@@ -30,21 +30,16 @@ function isNotFound(error: unknown): boolean {
 }
 
 /**
- * Composes the campaign performance page — mirrors `CampaignEditor.tsx`'s
- * state-handling shape (invalid id / pending / error / 404, all before the
- * "real" render). One query: the summary carries the campaign itself, so the
- * header never costs a second request.
- *
- * A trigger outside `CAMPAIGN_PERFORMANCE_TRIGGERS` (e.g. `birthday`) 404s
- * server-side; `hasPerformancePage` re-checks the loaded campaign only to
- * narrow the type for the body.
+ * The campaign performance page. One query: the summary carries the campaign itself, so the header
+ * costs no second request. A trigger outside `CAMPAIGN_PERFORMANCE_TRIGGERS` 404s server-side;
+ * `hasPerformancePage` re-checks it only to narrow the type for the body.
  */
 export function CampaignPerformance({ id }: { id: number }) {
   const navigate = useNavigate();
   const summaryQuery = useCampaignPerformanceQuery(id);
 
-  // react-router keeps the current scroll position on navigation (no full page load) — this
-  // page opens scrolled to whatever the previous screen left, so reset it explicitly.
+  // react-router keeps the scroll position across navigations, so the page would open wherever
+  // the previous screen left it.
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [id]);
@@ -83,7 +78,11 @@ export function CampaignPerformance({ id }: { id: number }) {
 
   const metaLine = [
     givesLabel(campaign.trigger, campaign.config),
-    sprintf(/* translators: %d: the campaign's priority number. */ __('priority %d', 'yayloyalty'), campaign.priority),
+    sprintf(
+      /* translators: %d: the campaign's priority number. */
+      __('priority %d', 'yayloyalty'),
+      campaign.priority,
+    ),
     scheduleLabel(campaign.starts_at, campaign.ends_at),
     conditionsLabel(campaign.conditions),
   ].join(' · ');

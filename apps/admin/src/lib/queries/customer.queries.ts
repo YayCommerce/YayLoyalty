@@ -19,11 +19,7 @@ import {
 import { settleInChunks } from '@/lib/helpers/settle-in-chunks.helper';
 import type { AdjustPointsInput, AdjustPointsPreviewInput } from '@/lib/schema/customer.schema';
 
-/**
- * `['customer', kind, userId]` — the one place that owns this shape, so the
- * factory below and `useAdjustPointsMutation`'s invalidations can't drift
- * apart into two different prefixes for the same cache entries.
- */
+/** `['customer', kind, userId]`, built in one place so the query keys and the adjust invalidations cannot drift apart. */
 function customerKeyPrefix(kind: 'detail' | 'ledger' | 'activity' | 'redemptions' | 'referrals', userId: number) {
   return ['customer', kind, userId] as const;
 }
@@ -56,12 +52,6 @@ export const CUSTOMER_QUERIES = {
       retry: 1,
     }),
 
-  /**
-   * Paged, exactly like `ledger` above, not "Load more" (see
-   * `ActivityLogTab.tsx`'s docblock for why). Same `keepPreviousData`
-   * reasoning: paging/filtering must not flash a skeleton over rows already
-   * on screen.
-   */
   activity: (userId: number, params: CustomerActivityParams) =>
     queryOptions({
       queryKey: [...customerKeyPrefix('activity', userId), params],
@@ -100,8 +90,6 @@ export const CUSTOMER_QUERIES = {
       retry: 1,
     }),
 };
-
-/** ─── Hooks ─────────────────────────────────────────── */
 
 export function useCustomerQuery(userId: number) {
   return useQuery(CUSTOMER_QUERIES.detail(userId));

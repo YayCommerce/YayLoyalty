@@ -6,7 +6,7 @@ use YayLoyalty\Helpers\SettingsHelper;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The merchant's weekly per-customer cap on loyalty emails (`emails.throttle_per_week`; 0 = no cap).
+ * The merchant's weekly per-customer cap on loyalty emails (`emails.throttle_per_week`, where 0 means no cap).
  * Counts sends over a rolling 7 days, kept as Unix timestamps in user meta. Not atomic: two sends
  * racing in one moment can both pass at the cap, which costs one extra email, never a lost award.
  */
@@ -35,7 +35,7 @@ final class EmailThrottle {
         return SettingsHelper::get_settings()['emails']['throttle_per_week'];
     }
 
-    /** @return int[] Send times inside the window; older ones are dropped. */
+    /** @return int[] Send times inside the window. Older ones are dropped. */
     private static function recent_sends( int $user_id ): array {
         $sends = get_user_meta( $user_id, self::META_SENDS, true );
         $since = time() - self::WINDOW;

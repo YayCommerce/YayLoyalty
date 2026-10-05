@@ -16,15 +16,13 @@ use YayLoyalty\Utils\Dates;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The only writer of the ledger and the customer aggregates, so the writer
- * behind EarningService's award moment. Enforced by
- * convention: constructed in exactly five places, Engine\RestAPI::controllers(),
- * Database\InitYayLoyaltyCustomer::maybe_create(),
- * Engine\Earning\EarningService::build(), Engine\Earning\Reversal::build()
- * and (once its body lands) Engine\Redemption\RedemptionService::build().
- * Name a sixth here before adding it. Manual rows enter through adjust() and
- * record(); system rows through earn(), refund_earn(), restore_refund() and
- * redeem(), which add the idempotency-key duplicate branch.
+ * The only writer of the ledger and the customer aggregates, EarningService's award included.
+ * Enforced by convention: it is constructed in exactly five places, Engine\RestAPI::controllers(),
+ * Database\InitYayLoyaltyCustomer::maybe_create(), Engine\Earning\EarningService::build(),
+ * Engine\Earning\Reversal::build() and (once its body lands) Engine\Redemption\RedemptionService::build().
+ * Name a sixth here before adding it. Manual rows enter through adjust() and record(). System rows
+ * enter through earn(), refund_earn(), restore_refund() and redeem(), which add the idempotency-key
+ * duplicate branch.
  */
 final class LedgerService {
 
@@ -83,22 +81,20 @@ final class LedgerService {
     }
 
     /**
-     * Commits one evaluated award: ledger row, customer aggregates, in one
-     * transaction under the customer's row lock.
+     * Commits one evaluated award, the ledger row and the customer aggregates,
+     * in one transaction under the customer's row lock.
      *
      * Preconditions: $draft is an EARN row with a non-null idempotency_key
-     * (Engine\Earning\IdempotencyKey::compose()), points > 0, created_at
+     * (Engine\Earning\IdempotencyKey::compose()), points > 0, and created_at
      * set by the caller. Nothing slow or externally fallible may run inside.
      *
-     * Postconditions: exactly one of — Outcome::awarded( persisted row ) with
-     * balance_after = locked balance + points and aggregates moved; or
-     * Outcome::duplicate( existing row ) when the UNIQUE index rejected the
-     * insert (QueryException::is_duplicate_key()), which is a normal outcome,
-     * not an error, and leaves every aggregate untouched; or
-     * Outcome::skipped( $skip_reason ) and nothing written when
-     * $points_under_lock answers 0. Any other failure rethrows and
-     * Transaction::run() has rolled back. The recorded event fires after the
-     * outermost commit (announce()).
+     * Returns Outcome::awarded( persisted row ), with balance_after = locked
+     * balance + points and the aggregates moved. Returns Outcome::duplicate(
+     * existing row ) instead when the UNIQUE index rejected the insert
+     * (QueryException::is_duplicate_key()). That is a normal outcome, not an
+     * error, and it leaves every aggregate untouched. Any other failure
+     * rethrows after Transaction::run() rolls back. The recorded event fires
+     * after the outermost commit (announce()).
      *
      * @param callable|null $points_under_lock Runs under the lock, after the duplicate check; its answer
      *                                         replaces the draft's points, and 0 skips. EarningService
@@ -200,8 +196,8 @@ final class LedgerService {
     }
 
     /**
-     * The idempotent write every system row goes through: under the
-     * customer's lock, a known key is Outcome::duplicate; otherwise the row
+     * The idempotent write every system row goes through. Under the
+     * customer's lock, a known key is Outcome::duplicate. Otherwise the row
      * is appended and Outcome::awarded carries it. Precondition: $draft has
      * an idempotency key and valid vocabulary.
      *

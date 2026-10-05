@@ -6,14 +6,9 @@ import { useDebouncedSearchCommit } from '@/hooks/useDebouncedSearchCommit';
 import { DRAWER_PAGE_SIZE } from './tabs/DrawerTabPager';
 
 /**
- * Filter + page state for a paged, filterable drawer tab (ledger, activity):
- * one segmented filter, a debounced search, a date range and the page. Any
- * filter change resets to page 1 — the matching set changed, so a stale page
- * number could fetch past the new last page — and cancels a search commit
- * still in flight so it can't land after and silently overwrite the change.
- *
- * `pageParams` is the request-ready slice (page, perPage, committed search,
- * `after`/`before` as `Y-m-d`); the caller adds its own filter key.
+ * Filter, search, date range and page state for a paged drawer tab.
+ * Any filter change resets to page 1 and cancels a pending search commit, which would otherwise overwrite it.
+ * `pageParams` is the request-ready slice; the caller adds its own filter key.
  */
 export function useDrawerTabQueryState<F extends string>(initialFilter: F) {
   const [filter, setFilterState] = useState<F>(initialFilter);

@@ -8,11 +8,8 @@ use YayLoyalty\Models\LedgerEntry;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * What a write moment did — earning's award or redemption's commit: wrote
- * a row, wrote nothing for a reason, or found the row already there.
- * Duplicate is a normal outcome, never an exception, so a re-fired hook is
- * silent by design. One shape for both sides so listeners, order notes and
- * tests read one vocabulary.
+ * What an award or a redemption commit did: wrote a row, skipped for a reason, or found the row
+ * already there. Duplicate is a normal outcome, not an exception, so a re-fired hook stays silent.
  */
 final class Outcome {
 
@@ -61,7 +58,7 @@ final class Outcome {
         return new self( self::SKIPPED, null, $evaluation, $reason );
     }
 
-    /** Produced by the writer (LedgerService::earn() / redeem()), which never sees the evaluation — so none is carried. */
+    /** Produced by the writer (LedgerService::earn() or redeem()), which never sees the evaluation, so none is carried. */
     public static function duplicate( LedgerEntry $existing ): self {
         return new self( self::DUPLICATE, $existing, null, '' );
     }

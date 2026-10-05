@@ -11,11 +11,9 @@ use YayLoyalty\Models\Campaign;
 use YayLoyalty\Repositories\CampaignRepository;
 
 /**
- * Fixture builders shared by the engine tests.
- *
- * Defaults match the plan: default campaign points_per_unit 1, base
- * after_discounts, rounding down, no exclusions, no gates; base currency =
- * order currency.
+ * Fixture builders shared by the engine tests. The default purchase campaign earns 1 point per
+ * currency unit after discounts, rounds down, and has no exclusions or gates. The base currency
+ * is the order currency.
  */
 abstract class EngineTestCase extends TestCase {
 

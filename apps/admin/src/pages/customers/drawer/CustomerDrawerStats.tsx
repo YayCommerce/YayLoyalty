@@ -16,25 +16,7 @@ import {
 } from './customer-drawer.copy';
 import { CustomerDrawerStat } from './CustomerDrawerStat';
 
-/**
- * Five stats on the `auto-fit / minmax(150px,1fr)` grid — three columns at the
- * drawer's 600px width, which is what 1e/1f draw, and a graceful reflow at the
- * 782px full-screen size and for six-figure figures (3c's fix). Takes
- * `customer` and nothing else: every figure is derived here.
- *
- * Balance and Pending are the two headline figures (`size="lg"`); Expires and
- * the two lifetime totals are secondary. `Worth` is deliberately NOT shown —
- * 3c drew a sixth Worth stat but 1e, the baseline this drawer follows, does
- * not.
- *
- * 5c's mobile artboard draws FOUR stats in a 2×2 grid (Balance, Pending,
- * Lifetime earned, Expires) — this component keeps all FIVE below `sm` too.
- * `auto-fit`/`minmax(150px,1fr)` already reflows to 2
- * columns at drawer-sheet mobile widths on its own, just with 5 cells
- * instead of 4 (a slightly taller grid, one cell wrapping to its own row).
- * Hiding a real figure to match an artboard's count would break 5c's own
- * rule (callout 5): "nothing is silently dropped."
- */
+/** The drawer's five stats, all derived from `customer`. */
 export function CustomerDrawerStats({ customer }: { customer: Customer }) {
   const isDeleted = !!customer.deleted_at;
   const negative = customer.balance < 0;

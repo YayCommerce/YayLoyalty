@@ -10,7 +10,7 @@ use YayLoyalty\Utils\Sql;
 
 defined( 'ABSPATH' ) || exit;
 
-/** yayloyalty_ledger. Append-only: nothing here calls update() or delete(). Not final: CustomerActivityServiceTest extends it as a repository double. */
+/** yayloyalty_ledger. Append-only: nothing here calls update() or delete(). */
 class LedgerRepository extends AbstractRepository {
 
     protected function table_slug(): string {
@@ -28,24 +28,21 @@ class LedgerRepository extends AbstractRepository {
     /**
      * The row an idempotency key already produced, or null.
      *
-     * Read twice on the award path, for different reasons. Before the insert,
-     * under the row lock, it decides a duplicate before LedgerService runs the
-     * caller's points callback, which EarningService::award() relies on so a
-     * re-fired award is never counted against its own row by an earning
-     * limit; the unique index stays the guarantee against a double insert.
-     * After a collision it is how the writer names the row that won, which
-     * Outcome::duplicate carries.
+     * The award path reads it twice. Before the insert it only saves an
+     * AUTO_INCREMENT value on a duplicate the caller can already see under
+     * its row lock: the unique index is the guarantee. After a collision it
+     * names the row that won, which Outcome::duplicate carries.
      */
     public function find_by_idempotency_key( string $key ): ?LedgerEntry {
         return $this->select_entries( '`idempotency_key` = %s', [ $key ], 1 )[0] ?? null;
     }
 
     /**
-     * The guarded insert: a UNIQUE `idempotency_key` collision is an answer
+     * The guarded insert. A UNIQUE `idempotency_key` collision is an answer
      * here, not a fault, so it comes back as null instead of an exception.
-     * wpdb's error reporting is off for the attempt — the guard firing is
-     * the system working, and it must not leave a line in the log that reads
-     * like a broken write. Every other failure still throws.
+     * wpdb's error reporting is off for the attempt, so the guard firing
+     * leaves no log line that reads like a broken write. Every other failure
+     * still throws.
      *
      * @return int|null Insert id, or null when the key was already present.
      * @throws QueryException When the insert failed for any other reason.
@@ -131,7 +128,7 @@ class LedgerRepository extends AbstractRepository {
     }
 
     /**
-     * Points already clawed back from one earn row; never negative.
+     * Points already clawed back from one earn row. Never negative.
      *
      * An order earn is matched by order and campaign (one earn row per
      * trigger, each with its campaign), and nets out ADJUST rows referencing
@@ -187,11 +184,11 @@ class LedgerRepository extends AbstractRepository {
         return $this->select_entries( 'user_id = %d', [ $user_id ], max( 1, $limit ), true );
     }
 
-    /** COUNT(*) of a user's ledger rows — cheaper than paginate_for_user() when only the total is needed. */
+    /** COUNT(*) of a user's ledger rows, cheaper than paginate_for_user() when only the total is needed. */
     public function count_for_user( int $user_id ): int {
         global $wpdb;
 
-        return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
                 'SELECT COUNT(*) FROM `' . esc_sql( $this->table() ) . '` WHERE user_id = %d',
                 $user_id
@@ -200,7 +197,7 @@ class LedgerRepository extends AbstractRepository {
     }
 
     /**
-     * Row count per raw `LedgerType` over a user's whole history; types with
+     * Row count per raw `LedgerType` over a user's whole history. Types with
      * no rows are absent. Grouping into filter groups is the caller's.
      *
      * @return array<string, int>
@@ -208,7 +205,7 @@ class LedgerRepository extends AbstractRepository {
     public function count_by_type_for_user( int $user_id ): array {
         global $wpdb;
 
-        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
                 'SELECT type, COUNT(*) AS row_count FROM `' . esc_sql( $this->table() ) . '` WHERE user_id = %d GROUP BY type',
                 $user_id
@@ -236,7 +233,7 @@ class LedgerRepository extends AbstractRepository {
      * customers.lifetime_earned, frozen at a moment, so an event is scored
      * without the points it (or anything after it) produced.
      *
-     * @param string $before UTC MySQL datetime; a row at this exact second is excluded.
+     * @param string $before UTC MySQL datetime. A row at this exact second is excluded.
      */
     public function lifetime_earned_before( int $user_id, string $before ): int {
         $types = LedgerType::lifetime_earned_types();
@@ -248,12 +245,11 @@ class LedgerRepository extends AbstractRepository {
     }
 
     /**
-     * The one definition of an "issued" ledger row — a positive row of an earn
-     * type — as a prepared-SQL fragment plus the values it binds. Every SUM or
-     * COUNT of points issued (campaign list, performance page, dashboard tiles
-     * and charts) interpolates this rather than spelling the predicate out, so
-     * they cannot disagree about what counts as issued. `$prefix` qualifies the
-     * columns inside a join (`'l.'`).
+     * The one definition of an "issued" ledger row, a positive row of an earn
+     * type, as a prepared-SQL fragment plus the values it binds. Every SUM or
+     * COUNT of points issued interpolates this, so the campaign list, the
+     * performance page and the dashboard cannot disagree about what counts as
+     * issued. `$prefix` qualifies the columns inside a join (`'l.'`).
      *
      * @return array{0: string, 1: string[]} The fragment and the types it binds, in order.
      */
@@ -265,11 +261,9 @@ class LedgerRepository extends AbstractRepository {
 
     /**
      * Points issued and row count per campaign. `points` sums only issued rows
-     * (issued_row_sql()), the measure the performance page and dashboard use, so
-     * the list and the page cannot disagree. `count` is every row of any type:
-     * the delete guard needs "has any row ever named this campaign", which
-     * `points` cannot answer once a campaign's awards are refunded. Absent
-     * from the result entirely for an id with no rows at all.
+     * (issued_row_sql()). `count` is every row of any type: the delete guard
+     * needs "has any row ever named this campaign", which `points` cannot
+     * answer once a campaign's awards are refunded. An id with no rows is absent.
      *
      * @param int[] $campaign_ids
      * @return array<int, array{points: int, count: int}>
@@ -287,7 +281,7 @@ class LedgerRepository extends AbstractRepository {
         $in  = Sql::in_placeholders( $ids, '%d' );
 
         // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- $in and $issued carry placeholder lists; every value is bound below.
-        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
                 "SELECT campaign_id, COALESCE(SUM(CASE WHEN {$issued} THEN points ELSE 0 END), 0) AS points, COUNT(*) AS row_count
                  FROM `" . esc_sql( $this->table() ) . "`
@@ -350,11 +344,10 @@ class LedgerRepository extends AbstractRepository {
     }
 
     /**
-     * SUM(points) over the rows a prepared WHERE fragment matches; 0 when none.
+     * SUM(points) over the rows a prepared WHERE fragment matches, or 0 when none.
      *
-     * @param string  $where      Placeholders only; every value arrives in $values.
-     * @param mixed[] $values
-     * @param bool    $is_locking Read the latest committed rows and share-lock them (callers inside a transaction).
+     * @param string $where      Placeholders only. Every value arrives in $values.
+     * @param bool   $is_locking Read the latest committed rows and share-lock them, for callers inside a transaction.
      */
     private function sum_points( string $where, array $values, bool $is_locking = false ): int {
         global $wpdb;
@@ -362,7 +355,7 @@ class LedgerRepository extends AbstractRepository {
         $lock_sql = $is_locking ? ' LOCK IN SHARE MODE' : '';
 
         // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $where carries placeholders only; every value is bound here.
-        return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare( 'SELECT COALESCE(SUM(points), 0) FROM `' . esc_sql( $this->table() ) . "` WHERE {$where}{$lock_sql}", $values )
         );
         // phpcs:enable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
@@ -371,9 +364,8 @@ class LedgerRepository extends AbstractRepository {
     /**
      * Rows a prepared WHERE fragment matches, oldest first.
      *
-     * @param string  $where  Placeholders only; every value arrives in $values.
-     * @param mixed[] $values
-     * @param int     $limit  0 for no limit.
+     * @param string $where Placeholders only. Every value arrives in $values.
+     * @param int    $limit 0 for no limit.
      * @return LedgerEntry[]
      */
     private function select_entries( string $where, array $values, int $limit = 0, bool $is_newest_first = false ): array {
@@ -383,7 +375,7 @@ class LedgerRepository extends AbstractRepository {
         $order_sql = $is_newest_first ? 'DESC' : 'ASC';
 
         // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $where carries placeholders only; every value is bound here.
-        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare( 'SELECT * FROM `' . esc_sql( $this->table() ) . "` WHERE {$where} ORDER BY id {$order_sql}{$limit_sql}", $values ),
             ARRAY_A
         );

@@ -46,9 +46,8 @@ export function CustomersSavedSegmentRow({
   return (
     <div className="flex flex-wrap items-center gap-2">
       <span className="text-muted-foreground text-xs">{__('Saved segment', 'yayloyalty')}</span>
-      {/* Locked during a remove: switching segments mid-request would let
-          the pending remove's onSuccess reset `selected` back to "All
-          customers" right over whatever the user just picked instead. */}
+      {/* Locked during a remove: the pending remove's onSuccess resets `selected` to "All
+          customers", over whatever the user picked meanwhile. */}
       <Select value={selected} onValueChange={onSelect} disabled={disabled || isRemoving}>
         <SelectTrigger size="sm">
           <SelectValue />
@@ -85,14 +84,9 @@ export function CustomersSavedSegmentRow({
         </Can>
       )}
 
-      {/* AlertDialog, not the plain Dialog: this is a destructive
-          confirmation, and AlertDialogContent renders with role="alertdialog"
-          for a screen reader — semantically correct for "are you sure",
-          unlike the form dialog above (CustomersSaveSegmentDialog). Action
-          and Cancel both close the dialog on click on their own (built into
-          the Radix primitive, even with a controlled `open`), so `onRemove`
-          only needs to fire the mutation — no manual setConfirmRemoveOpen(false)
-          call needed here. */}
+      {/* AlertDialog, not Dialog: a destructive confirmation gets role="alertdialog". Action and
+          Cancel close it on their own, even with a controlled `open`, so `onRemove` only fires the
+          mutation. */}
       <AlertDialog open={confirmRemoveOpen} onOpenChange={setConfirmRemoveOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

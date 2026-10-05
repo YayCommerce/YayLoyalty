@@ -6,22 +6,17 @@ use YayLoyalty\Models\CustomerMeta;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * `GET /customers/{id}` response assembly, apart from
- * `CustomerRestController` (mirrors `CustomerListFormatter`).
- * Pure array assembly: no `$wpdb`, no
- * `get_userdata()`, no `__()` — the caller resolves identity and the
- * deletion row first, so this stays unit-testable without a WP bootstrap.
+ * Assembles the `GET /customers/{id}` response. Pure array assembly, with no $wpdb,
+ * get_userdata() or __(): the caller resolves identity and the deletion row first.
  *
- * `$deletion` must be `null` unless the caller has ALREADY confirmed BOTH
- * a deletion row exists AND `get_userdata()` currently returns false — a
- * reinstated WP user id must stop rendering as deleted with no reversal
- * event, and that two-condition gate lives in the controller, never
- * duplicated here.
+ * `$deletion` must be null unless the caller has confirmed both that a deletion row exists
+ * and that get_userdata() returns false now. A reinstated user id must stop rendering as
+ * deleted, and that two-condition gate lives in the controller only.
  */
 final class CustomerItemFormatter {
 
     /**
-     * @param array<string, mixed>                     $base Customer::to_array().
+     * @param array<string, mixed>                            $base          Customer::to_array().
      * @param array{display_name: string, email: string}|null $live_identity Null when the WP user is gone.
      * @return array<string, mixed>
      */
@@ -40,22 +35,20 @@ final class CustomerItemFormatter {
             'counts'                   => [
                 'ledger'      => $ledger_count,
                 'activity'    => $activity_count,
-                // No redemptions/referrals table exists — never fabricate.
+                // No redemptions or referrals table exists yet, so never fabricate a count.
                 'redemptions' => 0,
                 'referrals'   => 0,
             ],
             'loose_ends'               => self::loose_ends( $deletion ),
             // Needs the `lots` table: designed, not built yet.
             'expiry'                   => null,
-            // Needs walking the ledger backwards — a separate, later feature.
+            // Needs a backwards walk of the ledger, a separate feature not built yet.
             'negative_balance'         => null,
             'points_per_currency_unit' => $points_per_currency_unit,
         ];
     }
 
-    /**
-     * @param array{display_name: string, email: string}|null $live_identity
-     */
+    /** @param array{display_name: string, email: string}|null $live_identity */
     private static function identity( ?array $live_identity, ?CustomerMeta $deletion, string $key ): string {
         if ( null !== $live_identity && isset( $live_identity[ $key ] ) ) {
             return (string) $live_identity[ $key ];
@@ -72,7 +65,7 @@ final class CustomerItemFormatter {
 
     /**
      * `{display_name, email}` from a live `WP_User`, or `null` when the WP
-     * user is gone — the shape `format()` expects.
+     * user is gone: the shape format() expects.
      *
      * @param \WP_User|false $user
      * @return array{display_name: string, email: string}|null
@@ -89,9 +82,8 @@ final class CustomerItemFormatter {
     }
 
     /**
-     * `kept_ledger_entries` is always real; the other three facts have no
-     * source feature (no redemptions/referrals/member-count) — the SPA
-     * shows "Not tracked yet" when `null`, never a fabricated value.
+     * `kept_ledger_entries` is always real. The other three facts have no
+     * source feature yet, so they are null and the SPA shows "Not tracked yet".
      *
      * @return array<string, mixed>|null
      */

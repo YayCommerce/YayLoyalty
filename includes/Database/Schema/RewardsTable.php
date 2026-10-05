@@ -4,10 +4,8 @@ namespace YayLoyalty\Database\Schema;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * yayloyalty_rewards. `status` is intent only; liveness is derived (see
- * Enums\Status). cost_points is NULL only for flexible_discount, enforced
- * in PHP by Reward::cost_points_is_valid(): a coupon with a null cost would
- * be a free redemption.
+ * yayloyalty_rewards. cost_points is NULL only for flexible_discount, which
+ * Reward::cost_points_is_valid() enforces in PHP.
  */
 final class RewardsTable extends AbstractTableSchema {
 

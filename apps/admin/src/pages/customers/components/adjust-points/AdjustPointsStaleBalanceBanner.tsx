@@ -10,11 +10,7 @@ import {
   STALE_KEEPS_VALUES,
 } from '../customers-adjust-points.copy';
 
-/**
- * The balance moved since this dialog opened. Blocking: the caller gates
- * `canSubmit()` on `isStale` and clears it only once `onReload` succeeds and
- * re-baselines (`useAdjustPreviewBaseline`'s `handleReload`).
- */
+/** The balance moved since the dialog opened. Saving stays blocked until `onReload` succeeds and re-baselines. */
 export function AdjustPointsStaleBalanceBanner({
   customerName,
   openedBalance,

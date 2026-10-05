@@ -2,12 +2,10 @@ import { __, sprintf } from '@wordpress/i18n';
 
 /**
  * Every label, helper and toast string for the Design settings tab.
- * Flat exported functions, not a nested object — matches
- * `customer-drawer.copy.ts`'s convention: `__()` must run after the locale
- * loads, so nothing here may be a module-scope constant.
+ * Functions, not constants: `__()` must run after the locale loads.
  */
 
-// ─── Page actions ────────────────────────────────────
+// Page actions
 
 export const SAVE_BUTTON_LABEL = () => __('Save changes', 'yayloyalty');
 export const SAVE_SUCCESS_TOAST = () => __('Design saved.', 'yayloyalty');
@@ -16,7 +14,7 @@ export const RESET_ERROR_FALLBACK = () => __('Could not reset the design.', 'yay
 export const RESET_CONFIRM_LABEL = () => __('Reset', 'yayloyalty');
 export const CANCEL_LABEL = () => __('Cancel', 'yayloyalty');
 
-/** Whole-tab reset, in the save-action row. Worded apart from the storefront-text reset: two destructive actions on one screen must never read alike. */
+/** Whole-tab reset, in the save-action row. Worded apart from the storefront-text reset, so the two destructive actions never read alike. */
 export const RESET_WHOLE_TAB_BUTTON_LABEL = () => __('Reset all Design settings', 'yayloyalty');
 export const RESET_WHOLE_TAB_CONFIRM_TITLE = () => __('Reset every Design setting?', 'yayloyalty');
 export const RESET_WHOLE_TAB_CONFIRM_DESCRIPTION = () =>
@@ -26,7 +24,7 @@ export const RESET_WHOLE_TAB_CONFIRM_DESCRIPTION = () =>
   );
 export const RESET_WHOLE_TAB_SUCCESS_TOAST = () => __('Design reset to defaults.', 'yayloyalty');
 
-// ─── Launcher section ────────────────────────────────
+// Launcher section
 
 export const LAUNCHER_SECTION_TITLE = () => __('Launcher', 'yayloyalty');
 export const LAUNCHER_SECTION_DESCRIPTION = () =>
@@ -40,7 +38,7 @@ export const LAUNCHER_ICON_LABEL = () => __('Icon', 'yayloyalty');
 export const LAUNCHER_ICON_UPLOAD_LABEL = () => __('Custom icon file', 'yayloyalty');
 export const LAUNCHER_ICON_UPLOAD_DESCRIPTION = () => __('Used only while Icon above is set to Custom.', 'yayloyalty');
 
-// ─── Storefront text section ─────────────────────────
+// Storefront text section
 
 export const STOREFRONT_SECTION_TITLE = () => __('Storefront text', 'yayloyalty');
 export const STOREFRONT_SECTION_DESCRIPTION = () =>
@@ -68,7 +66,7 @@ export const STOREFRONT_REQUIRED_ERROR = () =>
   __('This text is shown on the storefront and can’t be empty.', 'yayloyalty');
 export const STOREFRONT_RESET_SUCCESS_TOAST = () => __('Storefront wording reset to defaults.', 'yayloyalty');
 
-// ─── Visibility section ──────────────────────────────
+// Visibility section
 
 export const VISIBILITY_SECTION_TITLE = () => __('Visibility', 'yayloyalty');
 export const VISIBILITY_SECTION_DESCRIPTION = () =>
@@ -90,7 +88,7 @@ export const VISIBILITY_HIDE_FOR_ROLES_DESCRIPTION = () =>
     'yayloyalty',
   );
 
-// ─── Panel section (Pro) ──────────────────────────────
+// Panel section (Pro)
 
 export const PANEL_SECTION_TITLE = () => __('Panel', 'yayloyalty');
 export const PANEL_SECTION_DESCRIPTION = () => __('Layout and the panel’s optional blocks.', 'yayloyalty');
@@ -105,7 +103,7 @@ export const PANEL_SHOW_REWARD_CATALOG_LABEL = () => __('Show reward catalog', '
 export const PANEL_SHOW_REWARD_CATALOG_DESCRIPTION = () =>
   __('Lists redeemable rewards inside the panel.', 'yayloyalty');
 
-// ─── Typography section (Pro) ─────────────────────────
+// Typography section (Pro)
 
 export const TYPOGRAPHY_SECTION_TITLE = () => __('Typography', 'yayloyalty');
 export const TYPOGRAPHY_SECTION_DESCRIPTION = () => __('The font and CSS applied to the rewards panel.', 'yayloyalty');
@@ -114,7 +112,7 @@ export const TYPOGRAPHY_FONT_LABEL = () => __('Font', 'yayloyalty');
 export const TYPOGRAPHY_CUSTOM_CSS_LABEL = () => __('Custom CSS', 'yayloyalty');
 export const TYPOGRAPHY_CUSTOM_CSS_DESCRIPTION = () => __('Saved, not yet applied to the storefront.', 'yayloyalty');
 
-// ─── Tier badges section (Pro) ────────────────────────
+// Tier badges section (Pro)
 
 export const TIER_SECTION_TITLE = () => __('Tier badges', 'yayloyalty');
 export const TIER_SECTION_DESCRIPTION = () => __('Shown next to a customer’s tier on the storefront.', 'yayloyalty');
@@ -132,7 +130,7 @@ export const TIER_BADGE_LABEL_DESCRIPTION = () => __('Badge label shown to the c
 export const TIER_BADGE_COLOR_LABEL = () => __('Colour', 'yayloyalty');
 export const TIER_BADGE_ICON_LABEL = () => __('Icon', 'yayloyalty');
 
-// ─── Preview ─────────────────────────────────────────
+// Preview
 
 export const PREVIEW_TITLE = () => __('Preview', 'yayloyalty');
 export const PREVIEW_DEVICE_DESKTOP = () => __('Desktop', 'yayloyalty');

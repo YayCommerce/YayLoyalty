@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * yayloyalty_campaigns. The event column is trigger_type, not trigger: a
  * reserved word would need a backtick in every statement, and one missed
- * is a syntax error. `status` is intent only; liveness is derived (see Enums\Status).
+ * is a syntax error.
  */
 final class CampaignsTable extends AbstractTableSchema {
 

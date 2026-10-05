@@ -6,10 +6,10 @@ use YayLoyalty\Models\Redemption;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * yayloyalty_redemptions. Inserted only by Engine\Redemption\CommitWriter
- * under the customer's row lock; read by the commit's duplicate check, the
- * `redemption_count` reward condition and the customer drawer. Scaffold:
- * stubs; the table itself is Schema\RedemptionsTable, registered in
+ * yayloyalty_redemptions. Only Engine\Redemption\CommitWriter inserts rows,
+ * under the customer's row lock. The commit's duplicate check, the
+ * `redemption_count` reward condition and the customer drawer read them.
+ * Scaffold: stubs. The table is Schema\RedemptionsTable, registered in
  * Installer::schemas() when redemption ships.
  */
 final class RedemptionRepository extends AbstractRepository {

@@ -36,6 +36,7 @@ export function DashboardAnomalyPanel({
             <CardDescription>
               {first
                 ? sprintf(
+                    /* translators: 1: the first day shown; 2: yesterday; 3: number of days shown. */
                     __('%1$s – %2$s · %3$d days', 'yayloyalty'),
                     parseWPDay(first),
                     parseWPDay(data.yesterday),
@@ -79,9 +80,16 @@ export function DashboardAnomalyPanel({
             </BarChart>
           </ChartContainer>
           <div className="text-muted-foreground flex flex-wrap gap-x-4 text-xs">
-            <span>{sprintf(__('Typical day — about %s', 'yayloyalty'), formatPoints(data.daily_average))}</span>
+            <span>
+              {sprintf(
+                /* translators: %s: average points issued per day, formatted. */
+                __('Typical day — about %s', 'yayloyalty'),
+                formatPoints(data.daily_average),
+              )}
+            </span>
             <span className="text-foreground font-medium">
               {sprintf(
+                /* translators: 1: yesterday's date; 2: points issued yesterday, formatted. */
                 __('%1$s — %2$s', 'yayloyalty'),
                 parseWPDay(data.yesterday),
                 formatPoints(data.yesterday_points),
@@ -94,7 +102,11 @@ export function DashboardAnomalyPanel({
           <CardHeader className="p-0">
             <CardTitle>
               {edits.length === 1
-                ? sprintf(__('What changed at %s', 'yayloyalty'), parseWPTime(utcToDate(edits[0].updated_at)))
+                ? sprintf(
+                    /* translators: %s: the time the campaign was edited. */
+                    __('What changed at %s', 'yayloyalty'),
+                    parseWPTime(utcToDate(edits[0].updated_at)),
+                  )
                 : __('What changed', 'yayloyalty')}
             </CardTitle>
           </CardHeader>
@@ -109,7 +121,8 @@ export function DashboardAnomalyPanel({
                 <dd>
                   {edits.length > 1
                     ? sprintf(
-                        /* translators: 1: person, 2: time. */ __('%1$s at %2$s', 'yayloyalty'),
+                        /* translators: 1: person, 2: time. */
+                        __('%1$s at %2$s', 'yayloyalty'),
                         edit.updated_by_name || __('Unknown', 'yayloyalty'),
                         parseWPTime(utcToDate(edit.updated_at)),
                       )
@@ -118,8 +131,10 @@ export function DashboardAnomalyPanel({
                 <dt className="text-muted-foreground">{__('Issued that day', 'yayloyalty')}</dt>
                 <dd className="tabular-nums">
                   {sprintf(
-                    /* translators: 1: order count, 2: points. */ __('%1$s · +%2$s pts', 'yayloyalty'),
+                    /* translators: 1: order count, 2: points. */
+                    __('%1$s · +%2$s pts', 'yayloyalty'),
                     sprintf(
+                      /* translators: %s: number of orders, formatted. */
                       _n('%s order', '%s orders', edit.orders_affected, 'yayloyalty'),
                       formatPoints(edit.orders_affected),
                     ),
@@ -138,7 +153,11 @@ export function DashboardAnomalyPanel({
               </Can>
             )}
             <a href={data.orders_admin_url} className="text-primary hover:underline">
-              {sprintf(__('See the orders from %s', 'yayloyalty'), parseWPDay(data.yesterday))}
+              {sprintf(
+                /* translators: %s: yesterday's date. */
+                __('See the orders from %s', 'yayloyalty'),
+                parseWPDay(data.yesterday),
+              )}
             </a>
           </div>
         </div>

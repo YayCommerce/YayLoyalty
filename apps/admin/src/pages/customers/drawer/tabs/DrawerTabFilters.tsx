@@ -43,8 +43,8 @@ export function DrawerTabFilters<F extends string>({
           size="sm"
           aria-label={ariaLabel}
           value={value}
-          // A second click on the active segment reports '' (Radix deselect);
-          // ignore it — "no filter at all" is not a state this control has.
+          // A second click on the active segment reports '' (Radix deselect). Ignore it:
+          // this control has no "no filter" state.
           onValueChange={(next) => next && onChange(next as F)}
           className="w-max"
         >

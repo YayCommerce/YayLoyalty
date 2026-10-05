@@ -65,6 +65,7 @@ export function DashboardNoticeStrip({ notices }: { notices: DashboardNotice[] }
           {!expanded && (
             <span>
               {sprintf(
+                /* translators: 1: number of hidden notices; 2: what they are, joined with " · ". */
                 _n('%1$d more notice — %2$s', '%1$d more notices — %2$s', hidden.length, 'yayloyalty'),
                 hidden.length,
                 hidden.map(({ notice }) => noticeSummary(notice)).join(' · '),

@@ -6,16 +6,10 @@ import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components
 import { DRAWER_PAGE_SIZE } from './DrawerTabPager';
 
 /**
- * The shell every drawer tab table shares: header row, one skeleton row per
- * page slot while loading, a centred empty state, else the caller's rows.
- *
- * Below `sm` each row becomes `flex flex-wrap` and cells stack two per line
- * (see `drawerCell`). A flexed `<tr>` inside a real `<table>`/`<tbody>` does
- * not stretch to the table's width in Chromium, so `Table`/`TableBody` leave
- * table layout too (`block sm:table`) and the header is hidden there — a
- * stacked card doesn't need repeated column labels. `sm:min-w-max` lets the
- * desktop table outgrow its `overflow-x-auto` ancestor instead of squeezing
- * `whitespace-nowrap` cells.
+ * The shell every drawer tab table shares: header, skeleton rows while loading, an empty state, or the caller's rows.
+ * Below `sm` rows wrap their cells two per line. A flexed `<tr>` does not stretch in Chromium,
+ * so the table and body leave table layout there too (`block sm:table`), and the header is hidden.
+ * `sm:min-w-max` lets the desktop table scroll rather than squeeze its cells.
  */
 export function DrawerTable({
   head,
@@ -26,7 +20,6 @@ export function DrawerTable({
   emptyBody,
   children,
 }: {
-  /** The `<TableRow>` of `<TableHead>`s. */
   head: ReactNode;
   columnCount: number;
   isLoading: boolean;
@@ -75,11 +68,7 @@ const CELL_ORDER = {
   6: 'order-6',
 } as const;
 
-/**
- * A data cell that is half a line below `sm` (in `order` position) and a
- * normal table cell above. `extra` merges via `cn`, so a caller can override
- * (`w-full`, `h-auto sm:h-13`) as well as add.
- */
+/** A cell that is half a line below `sm`, in `order` position, and a normal cell above. `extra` can override as well as add. */
 export function drawerCell(order: keyof typeof CELL_ORDER, extra?: string): string {
   return cn(
     CELL_ORDER[order],

@@ -12,10 +12,10 @@ defined( 'ABSPATH' ) || exit;
 /**
  * One-time starter data: five real WooCommerce customers with a ledger
  * history through LedgerService::adjust(), so balance = SUM(ledger.points)
- * holds. Runs exactly once: the option flag is claimed with add_option()
- * BEFORE any write (the opposite of the version stamp), because a retry
- * after a mid-loop crash would create a second batch of users. One of the
- * construction sites LedgerService's docblock lists.
+ * holds. It runs exactly once: the option flag is claimed with add_option()
+ * before any write, unlike the version stamp, because a retry after a
+ * mid-loop crash would create a second batch of users. LedgerService's
+ * docblock lists this class as a construction site.
  */
 final class InitYayLoyaltyCustomer {
 
@@ -50,7 +50,7 @@ final class InitYayLoyaltyCustomer {
         }
 
         if ( ! add_option( self::OPTION_INITIALIZED, Dates::now(), '', 'no' ) ) {
-            return; // Already claimed — by this request or an earlier one.
+            return; // Already claimed, by this request or an earlier one.
         }
 
         $customers      = new CustomerRepository();
@@ -102,7 +102,7 @@ final class InitYayLoyaltyCustomer {
     /**
      * The columns LedgerService::adjust() never touches (it sets only balance and lifetime_earned).
      *
-     * @return array<string, mixed> Keys match ROW_FORMAT, same order.
+     * @return array<string, mixed> Keys match ROW_FORMAT, in the same order.
      */
     private static function build_row( int $user_id, array $data ): array {
         return [
@@ -121,7 +121,7 @@ final class InitYayLoyaltyCustomer {
     /**
      * Five people, one per balance/expiry filter combination. Date offsets
      * are relative so the buckets hold a month after install. `ledger_entries`
-     * are [points, note] pairs; a negative second entry yields a real
+     * are [points, note] pairs. A negative second entry yields a real
      * negative balance with an earn behind it.
      *
      * @return array<int, array<string, mixed>>

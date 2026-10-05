@@ -99,7 +99,7 @@ final class CustomerAdjustPreviewRestController extends AbstractRestController {
     }
 
     /**
-     * No item schema: this returns a report, not a resource, so nothing here is mass-assignable.
+     * An empty item schema: this returns a report, not a resource, so nothing here is mass-assignable.
      *
      * @return array<string, mixed>
      */

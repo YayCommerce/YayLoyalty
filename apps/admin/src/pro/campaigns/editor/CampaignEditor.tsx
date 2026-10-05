@@ -43,11 +43,8 @@ import { CampaignEditorSummaryRail } from './CampaignEditorSummaryRail';
 import { useCampaignEditorSave } from './use-campaign-editor-save';
 
 /**
- * The campaign editor: form provider, layout and every non-content state;
- * the sections render via CampaignEditorSections. First use of
- * react-hook-form + zodResolver in this app, on purpose: a variable-length
- * conditions array, dependent validation and a dirty flag for the leave
- * guard are what the library is for.
+ * The campaign editor: form provider, layout and every non-content state. The sections render
+ * via CampaignEditorSections.
  */
 export function CampaignEditor({ id }: { id: number }) {
   const campaignQuery = useCampaignQuery(id);
@@ -218,9 +215,8 @@ function CampaignEditorBackLink() {
 }
 
 /**
- * Create-mode entry point for `campaigns/new/:templateId`, optionally
- * `?from=<id>` for CampaignTable's Duplicate action. Nothing is written
- * until Save — see the chooser's own subtitle.
+ * Create-mode entry point for `campaigns/new/:templateId`, optionally `?from=<id>` for
+ * CampaignTable's Duplicate action. Nothing is written until Save.
  */
 export function CampaignCreator({ templateId, duplicateFromId }: { templateId: string; duplicateFromId?: number }) {
   // Memoised so CampaignCreatorForm's seed stays stable: findTemplate() builds a fresh object per call.

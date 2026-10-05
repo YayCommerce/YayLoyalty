@@ -15,8 +15,11 @@ export function formatPoints(value: number): string {
 
 /** "1 point", "12,400 points": the count with its plural-aware noun. */
 export function pointsPhrase(count: number): string {
-  /* translators: %s: number of points, formatted. */
-  return sprintf(_n('%s point', '%s points', count, 'yayloyalty'), formatPoints(count));
+  return sprintf(
+    /* translators: %s: number of points, formatted. */
+    _n('%s point', '%s points', count, 'yayloyalty'),
+    formatPoints(count),
+  );
 }
 
 /** "1 pt per $1.00", "2 pts per $1.00": a purchase rate against one unit of the store currency. */

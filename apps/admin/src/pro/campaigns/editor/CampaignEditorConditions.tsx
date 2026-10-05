@@ -96,7 +96,7 @@ export function CampaignEditorConditions() {
   );
 }
 
-/* ─── one condition's row ────────────────────────────────────────────── */
+// One condition's row
 
 /** Merchant-facing labels for every operator CAMPAIGN_CONDITION_SCHEMA recognises. */
 const OPERATOR_LABELS: Record<string, string> = {
@@ -227,7 +227,7 @@ function ConditionValueEditor({
   }
 }
 
-/* ─── list editors ───────────────────────────────────────────────────── */
+// List editors
 
 /** A static vocabulary (roles, gateways, currencies) held as a string list. */
 function OptionListEditor({
@@ -267,7 +267,7 @@ function LookupListEditor({
   );
 }
 
-/* ─── country_list ───────────────────────────────────────────────────── */
+// country_list
 
 const COUNTRY_SOURCE_LABELS: Record<(typeof COUNTRY_SOURCE_VALUES)[number], string> = {
   shipping: __('Shipping address', 'yayloyalty'),
@@ -309,7 +309,7 @@ function CountryListEditor({ index }: { index: number }) {
   );
 }
 
-/* ─── int (lifetime_points / order_count) ───────────────────────────── */
+// int (lifetime_points, order_count)
 
 function IntValueEditor({ index, operator }: { index: number; operator: string }) {
   const { control } = useFormContext<CampaignFormValues>();
@@ -352,7 +352,7 @@ function IntValueEditor({ index, operator }: { index: number; operator: string }
   );
 }
 
-/* ─── money (lifetime_spend) ─────────────────────────────────────────── */
+// money (lifetime_spend)
 
 function MoneyValueEditor({ index, operator }: { index: number; operator: string }) {
   const { control } = useFormContext<CampaignFormValues>();
@@ -412,7 +412,7 @@ function MoneyValueEditor({ index, operator }: { index: number; operator: string
   );
 }
 
-/* ─── shared helpers: defaults, reshaping, minimal validation ───────── */
+// Shared helpers: defaults, reshaping, minimal validation
 
 /** The default operator on add. */
 function firstOperatorFor(type: CampaignConditionKind): string {

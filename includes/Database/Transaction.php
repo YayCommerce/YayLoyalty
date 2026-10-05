@@ -6,13 +6,12 @@ use YayLoyalty\Utils\Log;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Nesting-safe transactions on a $wpdb this plugin does not own; the only
- * place that issues START TRANSACTION, COMMIT, ROLLBACK or SAVEPOINT.
- * Nesting is emulated with savepoints. A foreign transaction (WooCommerce's
- * wc_transaction_query) is probed first, since START TRANSACTION would
- * implicitly commit it; the connection id is re-checked before commit and
- * rollback because wpdb silently reconnects; every statement's result is
- * checked because a deadlock destroys every savepoint.
+ * Nesting-safe transactions on a $wpdb this plugin does not own, and the only place that issues
+ * START TRANSACTION, COMMIT, ROLLBACK or SAVEPOINT. Nesting is emulated with savepoints.
+ * A foreign transaction, such as WooCommerce's wc_transaction_query, is probed first, since
+ * START TRANSACTION would implicitly commit it. The connection id is re-checked before commit
+ * and rollback because wpdb silently reconnects. Every statement's result is checked because
+ * a deadlock destroys every savepoint.
  */
 final class Transaction {
 
@@ -31,7 +30,7 @@ final class Transaction {
     private const PROBE_SAVEPOINT = 'yl_probe';
 
     /**
-     * Runs a callback inside a transaction (a savepoint when nested); commits on success, rolls back and rethrows on any Throwable.
+     * Runs a callback inside a transaction, or a savepoint when nested. Commits on success; rolls back and rethrows on any Throwable.
      *
      * @return mixed The callback's return value.
      * @throws \Throwable Whatever the callback threw, or RuntimeException when the transaction could not be managed.
@@ -51,13 +50,13 @@ final class Transaction {
         return $result;
     }
 
-    /** Current nesting depth; 0 when nothing is open on our behalf. */
+    /** Current nesting depth, 0 when nothing is open on our behalf. */
     public static function depth(): int {
         return self::$depth;
     }
 
     /**
-     * Runs $callback once the outermost transaction commits; now when none is open.
+     * Runs $callback once the outermost transaction commits, or now when none is open.
      *
      * A released savepoint hands its callbacks to its parent and a rolled-back
      * one drops them, so a callback never fires for a write that was undone.
@@ -83,7 +82,7 @@ final class Transaction {
             self::$connection_id = self::current_connection_id();
 
             if ( self::detect_open_transaction() ) {
-                // Someone else's transaction is in flight; START would commit it.
+                // Someone else's transaction is in flight, and START would commit it.
                 self::$owns_outer_transaction = false;
                 self::execute( 'SAVEPOINT ' . self::savepoint_name( 0 ) );
             } else {
@@ -155,7 +154,7 @@ final class Transaction {
     }
 
     /**
-     * Runs a transactional statement; failure is fatal, since a failed ROLLBACK TO SAVEPOINT is the deadlock case.
+     * Runs a transactional statement. Failure is fatal, since a failed ROLLBACK TO SAVEPOINT is the deadlock case.
      *
      * @throws \RuntimeException
      */
@@ -163,7 +162,7 @@ final class Transaction {
         global $wpdb;
 
         $suppress = $wpdb->suppress_errors( true );
-        $result   = $wpdb->query( $sql ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.NotPrepared
+        $result   = $wpdb->query( $sql ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.NotPrepared -- a transaction-control statement built from literals; no WordPress API issues one.
         $wpdb->suppress_errors( $suppress );
 
         if ( false === $result ) {
@@ -202,18 +201,18 @@ final class Transaction {
         global $wpdb;
 
         $suppress = $wpdb->suppress_errors( true );
-        $id       = $wpdb->get_var( 'SELECT CONNECTION_ID()' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        $id       = $wpdb->get_var( 'SELECT CONNECTION_ID()' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- reads the connection id, which no WordPress API exposes.
         $wpdb->suppress_errors( $suppress );
 
         return null === $id ? null : (int) $id;
     }
 
     /**
-     * Whether a transaction we did not start is open. A savepoint round-trip:
-     * outside a transaction the savepoint is released with the auto-committed
-     * statement, so ROLLBACK TO SAVEPOINT fails (error 1305). Discards nothing.
-     * Do not swap for @@in_transaction (MariaDB only) or INNODB_TRX (returns
-     * zero rows on MySQL 8 without PROCESS, silently reporting "none").
+     * Whether a transaction we did not start is open, probed with a savepoint that discards nothing.
+     * Outside a transaction the savepoint is released with the auto-committed statement,
+     * so ROLLBACK TO SAVEPOINT fails (error 1305). Do not swap this for @@in_transaction,
+     * which is MariaDB only, or INNODB_TRX, which returns zero rows on MySQL 8 without PROCESS
+     * and so silently reports "none".
      */
     private static function detect_open_transaction(): bool {
         global $wpdb;
@@ -221,21 +220,21 @@ final class Transaction {
         $suppress = $wpdb->suppress_errors( true );
 
         try {
-            $created = $wpdb->query( 'SAVEPOINT ' . self::PROBE_SAVEPOINT ); // phpcs:ignore WordPress.DB
+            $created = $wpdb->query( 'SAVEPOINT ' . self::PROBE_SAVEPOINT ); // phpcs:ignore WordPress.DB -- a transaction-control statement built from literals; no WordPress API issues one.
 
             if ( false === $created ) {
-                // Savepoints unavailable (non-InnoDB): open our own, nothing else can work.
+                // Savepoints are unavailable (non-InnoDB), so open our own: nothing else can work.
                 return false;
             }
 
-            $rolled_back = $wpdb->query( 'ROLLBACK TO SAVEPOINT ' . self::PROBE_SAVEPOINT ); // phpcs:ignore WordPress.DB
+            $rolled_back = $wpdb->query( 'ROLLBACK TO SAVEPOINT ' . self::PROBE_SAVEPOINT ); // phpcs:ignore WordPress.DB -- a transaction-control statement built from literals; no WordPress API issues one.
 
             if ( false === $rolled_back ) {
                 // Savepoint vanished with the auto-committed statement: nothing was open.
                 return false;
             }
 
-            $wpdb->query( 'RELEASE SAVEPOINT ' . self::PROBE_SAVEPOINT ); // phpcs:ignore WordPress.DB
+            $wpdb->query( 'RELEASE SAVEPOINT ' . self::PROBE_SAVEPOINT ); // phpcs:ignore WordPress.DB -- a transaction-control statement built from literals; no WordPress API issues one.
 
             return true;
         } finally {

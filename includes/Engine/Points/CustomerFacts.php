@@ -4,19 +4,10 @@ namespace YayLoyalty\Engine\Points;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * What a campaign condition may know about the customer, read by
- * CustomerFactsReader the first time a history condition asks the Context
- * (at most once per event), so the evaluator compares values and queries
- * nothing itself. Immutable. Absent (null on the Context) for a guest.
- * Identity and roles are on the Context itself; so are the order's own
- * facts (currency, coupons, lines, payment method, countries).
- *
- * As of the evaluated event. lifetime_points counts ledger rows created
- * before it, so the event's own award never feeds it. Order facts count
- * orders created before it, never its own order, whose status is paid when
- * read: the window is fixed but "paid" is not, so an older order paid
- * between stage and award can change them. Accepted: award re-evaluates and
- * is authoritative.
+ * What a campaign condition may know about the customer, as of the evaluated event. Null on the
+ * Context for a guest. Only ledger rows and orders created before the event count, never its own.
+ * An order's paid status is read at evaluation, so an older order paid between stage and award
+ * can change the facts. That is accepted: award evaluates again and is authoritative.
  */
 final class CustomerFacts {
 

@@ -6,11 +6,9 @@ use YayLoyalty\Helpers\DesignSchema;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Whether the launcher renders on this request, from the Design tab's visibility group.
- *
- * Pure: the caller reads WordPress (conditional tags, the queried page, the user's roles) and passes the
- * answers in, so the rules are unit-tested without a WordPress bootstrap. `hide_on_mobile` is not decided
- * here: it is a CSS media query, so a page cached for one device still behaves on another.
+ * Whether the launcher renders on this request, from the Design tab's visibility group. Pure: the caller
+ * reads WordPress and passes the answers in, so the rules are testable without a WordPress bootstrap.
+ * `hide_on_mobile` is a CSS media query instead, so a page cached for one device still behaves on another.
  */
 final class LauncherVisibility {
 

@@ -3,7 +3,7 @@ namespace YayLoyalty\Pro\Emails;
 
 defined( 'ABSPATH' ) || exit;
 
-/** Tier ending soon: sent shortly before a customer's current tier expires. */
+/** The tier-ending-soon email. Nothing triggers it yet. */
 class TierEndingSoonEmail extends ProLoyaltyEmail {
 
     public function __construct() {

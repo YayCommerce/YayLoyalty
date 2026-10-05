@@ -20,53 +20,20 @@ use YayLoyalty\Utils\PointsMath;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Pro-only: a single campaign's performance —
- * `GET /campaigns/{id}/performance` (totals + daily chart) and
- * `GET /campaigns/{id}/performance/entries` (the paged, searchable row list
- * behind it: orders / signups / reviews depending on trigger). Real data —
- * CampaignPerformanceFixture is gone; every figure below now comes from
- * `ledger` (via CampaignPerformanceRepository / CampaignPointsRepository),
- * `wp_users` and WooCommerce.
+ * Pro-only: one campaign's performance totals, daily chart and paged entries.
  *
- * Supports `purchase`, `signup` and `review` only (self::TRIGGERS) — the
- * other triggers have no page for this build; resolve_row() 404s for them
- * exactly as it does for an unknown id, so a merchant clicking a link this
- * build never renders and one typing a stray URL see the same thing.
+ * Two time bases on purpose. `totals` is lifetime, so it agrees with the campaign list's `points_issued`.
+ * `daily` and its `window` cover at most the last 30 days of the campaign's run, because a lifetime chart
+ * would be unreadable. The chart prints `window` beside its title so the two are not confused.
  *
- * Registered through `yayloyalty_rest_controllers`, so Lite has no route
- * here at all (404, not 403) — same as CampaignPreviewRestController.
- *
- * TWO TIME BASES ON PURPOSE. `totals` is lifetime — no date predicate —
- * so it always agrees with CampaignRestController's own `points_issued`
- * column (LedgerRepository::totals_by_campaign(), also lifetime). `daily`
- * (and the `window` that describes it) is the last 30 days, clamped to the
- * campaign's own run — see chart_window() — because a chart spanning a
- * campaign's entire life would be unreadable. The chart's own card prints
- * `window` next to its title (CampaignPerformanceChart.tsx) specifically so
- * this narrower span is never mistaken for the tiles above it.
- *
- * NOT CACHED. Do not wrap this in DashboardCache the way
- * DashboardProRestController does — that cache's key
- * (DashboardCache::key(), `prefix + variant + range`) carries no campaign
- * id, so every campaign would read whichever one's request warmed the
- * transient first. `ledger.campaign_id` is indexed; revisit only if this
- * specific query is ever shown to be slow.
- *
- * `skipped` and `estimate` ship `null` (their panels self-hide, see
- * CampaignPerformanceSidePanel.tsx): both would need replaying every order
- * through the earning engine, which this endpoint does not do.
- *
- * `totals.avg_order_subtotal` also ships `null`: nothing persists the scored
- * base amount an award was computed from (Engine\Points\Result /
- * Breakdown compute it, then discard it). Storing it on the ledger row
- * would make this and each entry's own `subtotal` a plain query instead
- * of a WooCommerce order lookup.
+ * Not cached: DashboardCache's key has no campaign id, so every campaign would read the first one cached.
+ * `skipped` and `estimate` are null, because they would need every order replayed through the earning engine.
+ * `totals.avg_order_subtotal` is null, because nothing stores the base amount an award was scored on.
  */
 final class CampaignPerformanceRestController extends AbstractRestController {
 
     /**
-     * Triggers this page understands. Mirrors the SPA's
-     * `CAMPAIGN_PERFORMANCE_TRIGGERS` (lib/schema/campaign-performance.schema.ts).
+     * Triggers this page understands.
      *
      * @var string[]
      */
@@ -105,11 +72,7 @@ final class CampaignPerformanceRestController extends AbstractRestController {
         $this->ledger      = $ledger;
     }
 
-    /**
-     * Shares the base of the resource it reports on, like
-     * CampaignPreviewRestController — a sub-route of /campaigns, not a
-     * resource of its own.
-     */
+    /** A sub-route of /campaigns, not a resource of its own. */
     public function get_rest_base(): string {
         return 'campaigns';
     }
@@ -210,9 +173,8 @@ final class CampaignPerformanceRestController extends AbstractRestController {
     }
 
     /**
-     * The real campaign behind the trigger gate. Returns null — a plain 404
-     * — for an unknown id AND for a known id whose trigger this page does
-     * not support, so a client can't tell the two apart by response shape.
+     * Null, so a plain 404, both for an unknown id and for a trigger this page does not support,
+     * so a client cannot tell the two apart.
      */
     private function resolve_campaign( int $id ): ?Campaign {
         $campaign = $this->campaigns->find_campaign( $id );
@@ -225,11 +187,8 @@ final class CampaignPerformanceRestController extends AbstractRestController {
     }
 
     /**
-     * Lifetime `$totals` (see class docblock) into the wire shape — the
-     * derived/nullable fields the repository's own aggregate can't produce
-     * on its own: liability (needs the store's points-to-currency rate) and
-     * "of N completed orders" (a sitewide WooCommerce count, not scoped to
-     * this campaign).
+     * Adds what the repository cannot: the liability, which needs the store's rate, and
+     * `orders_total`, a sitewide order count that is not scoped to this campaign.
      *
      * @param array<string, mixed> $row
      * @param array{points_issued: int, entries_total: int, orders_affected: int, customers_earned: int} $totals
@@ -270,12 +229,8 @@ final class CampaignPerformanceRestController extends AbstractRestController {
     }
 
     /**
-     * The part of `$points_issued` genuinely above what the default rate
-     * would have awarded — only meaningful for a non-built-in multiplier
-     * campaign (a rate-mode or built-in campaign IS the default, so there is
-     * no "above" to report). Unchanged from CampaignPerformanceFixture's own
-     * version of this — the arithmetic never depended on invented data,
-     * only on this campaign's real config and its (now real) points_issued.
+     * The part of `$points_issued` above what the default rate would have awarded. Null unless the
+     * campaign is a multiplier that is not built in: any other campaign is the default rate.
      *
      * @param array<string, mixed> $row
      */
@@ -298,10 +253,8 @@ final class CampaignPerformanceRestController extends AbstractRestController {
     }
 
     /**
-     * The chart's own span: up to 30 site-timezone days trailing "now" (or
-     * the campaign's end, if it already ended), clamped to never start
-     * before the campaign itself did. See the class docblock ("TWO TIME
-     * BASES ON PURPOSE") for why this differs from `totals`.
+     * Up to 30 site-timezone days ending today, or on the campaign's last day if it has ended,
+     * never starting before the campaign did.
      *
      * @param array<string, mixed> $row
      * @return array{from: string, to: string} Y-m-d, site-tz, both ends inclusive.
@@ -310,7 +263,7 @@ final class CampaignPerformanceRestController extends AbstractRestController {
         $now = Dates::site_day_start( Dates::now() );
 
         $starts = Dates::site_day_start( $row['starts_at'] );
-        // ends_at is exclusive, so the last live day is the one holding the second before it — a 10:00 end keeps that morning.
+        // ends_at is exclusive, so the last live day holds the second before it: a 10:00 end keeps that morning.
         $last_day = Dates::site_day_start( Dates::is_valid( $row['ends_at'] ) ? Dates::offset( -1, $row['ends_at'] ) : null );
 
         $to = null !== $last_day && $last_day < $now ? $last_day : $now;
@@ -321,9 +274,7 @@ final class CampaignPerformanceRestController extends AbstractRestController {
             $from = $starts;
         }
 
-        // A campaign scheduled to start after $to (not running yet, or a
-        // same-day flash sale) — floor to a same-day, one-day window rather
-        // than let $from > $to silently produce zero days.
+        // A campaign that starts after $to gets a one-day window, rather than $from > $to and zero days.
         if ( $from > $to ) {
             $to = $from;
         }
@@ -335,10 +286,7 @@ final class CampaignPerformanceRestController extends AbstractRestController {
     }
 
     /**
-     * `$window` (site-tz Y-m-d, inclusive) converted to the UTC bounds
-     * CampaignPointsRepository::daily_by_campaign() needs, zero-filled by
-     * DashboardMath::fill_series() exactly as the dashboard's own daily
-     * series is.
+     * Points per site-timezone day of `$window`, zero-filled like the dashboard's daily series.
      *
      * @param array{from: string, to: string} $window
      * @return array<int, array{date: string, points: int}>
@@ -365,8 +313,7 @@ final class CampaignPerformanceRestController extends AbstractRestController {
     }
 
     /**
-     * No item schema: both routes return a report, not a resource — same
-     * reasoning as CampaignPreviewRestController::define_item_schema().
+     * No item schema: both routes return a report, not a resource.
      *
      * @return array<string, mixed>
      */

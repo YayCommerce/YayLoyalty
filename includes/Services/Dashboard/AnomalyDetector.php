@@ -8,7 +8,7 @@ defined( 'ABSPATH' ) || exit;
  * other active days, backed by MIN_ORDERS orders (not one manual
  * adjustment), with MIN_HISTORY_DAYS of history (not a launch week). Only
  * non-zero days enter the average, or a weekend-only store would flag
- * every Saturday; yesterday is excluded so a spike cannot depress its own multiple.
+ * every Saturday. Yesterday is excluded so a spike cannot depress its own multiple.
  */
 final class AnomalyDetector {
 

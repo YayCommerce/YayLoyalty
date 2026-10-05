@@ -4,9 +4,9 @@ namespace YayLoyalty\Utils;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * JSON columns: LONGTEXT validated in PHP (WooCommerce's minimum MySQL has no
- * native JSON), every blob stamped with schema_version. Decoding never
- * throws: a corrupt blob degrades one row, not the whole admin.
+ * JSON columns, stored as LONGTEXT and validated in PHP: WooCommerce's minimum MySQL has no native JSON.
+ * Every blob is stamped with schema_version. Decoding never throws, so a corrupt blob degrades one row,
+ * not the whole admin.
  */
 final class Json {
 
@@ -19,8 +19,7 @@ final class Json {
      * Encodes a map, stamping the schema version. Lists use encode_list():
      * stamping a string key into a list turns it into an object.
      *
-     * @param array $data    Payload. Any existing schema_version is overwritten.
-     * @param int   $version Schema version to stamp.
+     * @param array $data Payload. Any existing schema_version is overwritten.
      */
     public static function encode( array $data, int $version ): string {
         $data[ self::SCHEMA_VERSION_KEY ] = $version;
@@ -59,7 +58,7 @@ final class Json {
 
     /**
      * Encodes a list in a {"schema_version", "items"} envelope, since a list
-     * cannot carry a version key and stay a list. An empty list round-trips empty.
+     * cannot carry a version key and stay a list. An empty list decodes back to an empty list.
      */
     public static function encode_list( array $items, int $version ): string {
         return self::encode(

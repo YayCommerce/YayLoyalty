@@ -14,13 +14,10 @@ use YayLoyalty\Utils\Dates;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Campaigns CRUD; the template for other definition tables. No service: the
+ * Campaigns CRUD, and the template for other definition tables. No service: the
  * invariants are validation. Built-in protection relies on is_builtin being
- * readonly in the schema, never on reading it from a request.
- *
- * $ledger is a read-only use here (points_issued/is_deletable decoration
- * and the delete guard) — the same instance RestAPI's other controllers
- * hold, not a second construction.
+ * readonly in the schema, never on reading it from a request. $ledger is
+ * read-only here, for the points_issued and is_deletable fields and the delete guard.
  */
 final class CampaignRestController extends AbstractRestController {
 
@@ -127,7 +124,7 @@ final class CampaignRestController extends AbstractRestController {
 
     /**
      * Whether a purchase config in rate mode leaves its rate out. The engine reads a missing rate
-     * as 0, and a 0-point match stops every lower-priority campaign from applying; a multiplier
+     * as 0, and a 0-point match stops every lower-priority campaign from applying. A multiplier
      * needs no key, since a missing factor is ×1.
      *
      * @param array<string, mixed> $config
@@ -271,7 +268,10 @@ final class CampaignRestController extends AbstractRestController {
         return null;
     }
 
-    /** Copies the request's editable fields onto $campaign; slug and trigger are immutable after create, since built-ins are addressed by slug across sites. */
+    /**
+     * Copies the request's editable fields onto $campaign. Slug and trigger are immutable after create,
+     * since built-ins are addressed by slug across sites.
+     */
     private static function apply_update( Campaign $campaign, \WP_REST_Request $request ): void {
         if ( null !== $request['name'] ) {
             $campaign->set_name( trim( (string) $request['name'] ) );
@@ -316,10 +316,9 @@ final class CampaignRestController extends AbstractRestController {
         }
 
         // Unguarded gap: nothing locks between this check and the delete below, and
-        // ledger.campaign_id is a plain KEY, not a FOREIGN KEY, so a row written into that gap
-        // would be orphaned rather than rejected. Not reachable today — the earning listeners
-        // that would write a real campaign_id aren't registered at boot (see Engine/Earning/) —
-        // revisit once they are.
+        // ledger.campaign_id is a plain KEY, not a FOREIGN KEY, so an award written into
+        // that gap would be orphaned rather than rejected.
+        // TODO(campaign-delete-race): close this gap, which the earning listeners can now reach.
         $this->campaigns->delete( $id );
 
         return [
@@ -350,9 +349,9 @@ final class CampaignRestController extends AbstractRestController {
 
     /**
      * Adds the two ledger-derived fields to each campaign's wire shape, in
-     * one batched query rather than one per row. `points_issued` is a
-     * figure; `is_deletable` is delete_item()'s own guard restated for the
-     * client, so the two can never disagree about what a delete would do.
+     * one batched query rather than one per row. `points_issued` is a figure.
+     * `is_deletable` is delete_item()'s own guard, restated for the client so
+     * the two never disagree about what a delete would do.
      *
      * @param Campaign[] $campaigns
      * @return array<int, array<string, mixed>>
@@ -378,16 +377,15 @@ final class CampaignRestController extends AbstractRestController {
     }
 
     /**
-     * Whether $campaign may be deleted: never a built-in (the engine and the Free UI expect them;
-     * is_builtin is readonly, so this cannot be sidestepped), and only with no ledger row naming
-     * it. Rows, never points: a campaign earned-then-fully-refunded nets 0 points but still has
-     * rows, and deleting would orphan them.
+     * Whether $campaign may be deleted: never a built-in, which the engine and the Free UI expect,
+     * and only with no ledger row naming it. Rows, never points: a campaign earned-then-fully-refunded
+     * nets 0 points but still has rows, and deleting would orphan them.
      */
     private static function is_deletable( Campaign $campaign, int $ledger_rows ): bool {
         return ! $campaign->is_builtin() && 0 === $ledger_rows;
     }
 
-    /** Whether an open-ended or unscheduled side passes, and two set dates run forward (ends_at is exclusive, so equal is empty). */
+    /** Whether the dates are in order: an unset side passes, and two set dates must run forward. ends_at is exclusive, so equal dates are empty. */
     private static function dates_in_order( ?string $starts_at, ?string $ends_at ): bool {
         return null === $starts_at || null === $ends_at || Dates::to_timestamp( $starts_at ) < Dates::to_timestamp( $ends_at );
     }
@@ -397,8 +395,6 @@ final class CampaignRestController extends AbstractRestController {
      * full UTC `Y-m-d H:i:s`, the shape the column stores and the SPA sends. Without it a
      * string strtotime() cannot read passes dates_in_order() (it reads as 0) and lands in the
      * DATETIME column as garbage.
-     *
-     * @param mixed $value
      */
     public static function validate_nullable_date( $value ): bool {
         if ( null === $value || '' === $value ) {
@@ -410,9 +406,6 @@ final class CampaignRestController extends AbstractRestController {
         return false !== $date && $date->format( Dates::MYSQL_FORMAT ) === $value;
     }
 
-    /**
-     * @param mixed $value
-     */
     private function nullable_date( $value ): ?string {
         if ( null === $value || '' === $value ) {
             return null;

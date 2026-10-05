@@ -13,7 +13,6 @@ import {
 } from '../customer-drawer.referrals.copy';
 import { DRAWER_ROW_CLASS, drawerCell, DrawerTable } from './DrawerTable';
 
-/** 3f's six columns — Referred / Signed up / First order / To referrer / To friend / Status. */
 export function ReferralsTabRows({ rows, isLoading }: { rows: ReferralRow[]; isLoading: boolean }) {
   return (
     <DrawerTable

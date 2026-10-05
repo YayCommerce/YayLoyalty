@@ -6,9 +6,7 @@ use YayLoyalty\Helpers\LocalizeHelper;
 use YayLoyalty\Engine\Register\ScriptName;
 
 defined( 'ABSPATH' ) || exit;
-/**
- * Settings Page
- */
+/** Loads the admin SPA on the plugin's settings page. */
 class Settings {
     use SingletonTrait;
 

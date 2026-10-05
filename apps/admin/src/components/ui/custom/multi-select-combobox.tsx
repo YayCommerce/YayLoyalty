@@ -11,7 +11,7 @@ export interface MultiSelectComboboxOption {
 }
 
 export interface MultiSelectComboboxProps {
-  /** Comma-separated selected values, e.g. "product,store" */
+  /** Comma-separated selected values, e.g. "product,store". */
   value: string;
   onChange: (value: string) => void;
   options: MultiSelectComboboxOption[];

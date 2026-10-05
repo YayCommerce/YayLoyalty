@@ -16,10 +16,8 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Everything the launcher templates print for this request, read once.
- *
- * The balance is printed into the page (agreed for v1): only for a signed-in shopper, and the common
- * page caches skip signed-in visitors. A store that caches signed-in pages would show one shopper's
- * balance to another — the README's storefront section carries that caveat.
+ * The balance is printed into the page, only for a signed-in shopper, whom the common page caches skip.
+ * A store that caches signed-in pages would show one shopper's balance to another.
  */
 final class LauncherPayload {
 
@@ -126,10 +124,8 @@ final class LauncherPayload {
     }
 
     /**
-     * Where a guest can create an account, if anywhere: the signup campaign only pays a self-registration,
-     * so the panel offers signup points only when the store lets shoppers register. Checkout covers both
-     * signing up during checkout (`woocommerce_enable_signup_and_login_from_checkout`) and creating the
-     * account right after a block checkout (`woocommerce_enable_delayed_account_creation`).
+     * Where a guest can create an account, if anywhere: the signup campaign pays only a self-registration,
+     * so the panel offers signup points only when the store lets shoppers register.
      *
      * @return string|null 'account' (My Account page), 'checkout' (at or right after checkout) or null.
      */

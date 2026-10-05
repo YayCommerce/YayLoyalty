@@ -3,27 +3,14 @@ import { z } from 'zod';
 import { campaignSchema, CampaignTrigger } from './campaign.schema';
 
 /**
- * Mirrors Pro\Controllers\CampaignPerformanceRestController and
- * Pro\Repositories\CampaignPerformanceRepository (`GET /campaigns/{id}/performance`,
- * `GET /campaigns/{id}/performance/entries`). THOSE PHP CLASSES ARE THE
- * SOURCE OF TRUTH.
- *
- * Every `.nullable()` field means "not applicable to this trigger" or "not
- * computable yet" — NEVER 0. A purchase-only total is null on a signup/review
- * campaign; an average is null when there are zero entries to average
- * (division by zero), not 0. Render null as "—", the same rule the dashboard
- * uses for its redemption rate and delta lines.
- *
- * `totals` is lifetime (no date bound); `window`/`daily` is the last 30 days
- * clamped to the campaign's run — see the controller's own class docblock
- * ("TWO TIME BASES ON PURPOSE") for why. `skipped`, `estimate` and
- * `avg_order_subtotal` always ship null; the controller's class docblock says why.
+ * Mirrors YayLoyalty\Pro\Controllers\CampaignPerformanceRestController, the source of truth.
+ * A null field means "not applicable to this trigger" or "not computable yet", never 0. Render it as "—".
+ * `totals` is lifetime. `window` and `daily` cover the last 30 days, clamped to the campaign's run.
  */
 
 /**
- * Triggers this page understands — mirrors `CampaignPerformanceRestController::TRIGGERS`.
- * Same three values as `LITE_CAMPAIGN_TRIGGERS` above by coincidence, not identity: this is
- * what the performance page supports, not what Lite ships, so it stays its own constant.
+ * Triggers the performance page supports. Mirrors `CampaignPerformanceRestController::TRIGGERS`.
+ * It matches `LITE_CAMPAIGN_TRIGGERS` in `campaign.schema.ts` by coincidence, so it stays its own constant.
  * A trigger outside this list 404s on both routes.
  */
 export const CAMPAIGN_PERFORMANCE_TRIGGERS = [
@@ -38,16 +25,12 @@ export function hasPerformancePage(trigger: CampaignTrigger): trigger is Campaig
   return (CAMPAIGN_PERFORMANCE_TRIGGERS as readonly CampaignTrigger[]).includes(trigger);
 }
 
-/**
- * Why an order in the reporting window didn't earn from this campaign.
- * Nothing produces `skipped` rows yet — see `skipped`'s own comment below —
- * so these values are currently unused, kept ready for when it is real.
- */
+/** Why an order in the reporting window didn't earn from this campaign. */
 export const CAMPAIGN_SKIP_REASONS = ['higher_priority', 'guest', 'excluded'] as const;
 
 export type CampaignSkipReason = (typeof CAMPAIGN_SKIP_REASONS)[number];
 
-/** One line of "where the other orders went" — a standalone schema, like `campaignConditionSchema`, so its type is usable on its own (e.g. by `skipReasonLabel()`). */
+/** One line of "where the other orders went", a standalone schema so its type can be used on its own. */
 export const campaignPerformanceSkipSchema = z.object({
   reason: z.enum(CAMPAIGN_SKIP_REASONS),
   count: z.number().int(),
@@ -70,17 +53,17 @@ export const campaignPerformanceSchema = z.object({
   totals: z.object({
     /** All triggers. */
     points_issued: z.number().int(),
-    /** All triggers — unfiltered row count behind the entries table; drives the search-bar and "Export all N" visibility. */
+    /** All triggers. The unfiltered row count behind the entries table. */
     entries_total: z.number().int(),
     /** Purchase only. */
     orders_affected: z.number().int().nullable(),
-    /** Purchase only. Lifetime count of the store's own completed orders — NOT scoped to this campaign; the denominator "orders_affected" is a fraction of. */
+    /** Purchase only. The store's lifetime count of completed orders, not scoped to this campaign: the denominator for `orders_affected`. */
     orders_total: z.number().int().nullable(),
     /** Signup / review only: distinct customers who earned from this campaign. */
     customers_earned: z.number().int().nullable(),
     /** Purchase with real data only. */
     avg_points_per_order: z.number().int().nullable(),
-    /** Always null today — needs the earning engine to persist the scored base amount, see the controller's class docblock. */
+    /** Always null until the earning engine stores the scored base amount. */
     avg_order_subtotal: z.number().nullable(),
     /** Purchase only; null when the store has no configured points-to-currency rate. */
     liability_amount: z.number().nullable(),
@@ -94,9 +77,9 @@ export const campaignPerformanceSchema = z.object({
       points: z.number().int(),
     }),
   ),
-  /** "Where the other orders went" — always null today (panel hidden); needs the earning engine to replay every order, see the controller's class docblock. */
+  /** "Where the other orders went". Null, and its panel hidden, until the earning engine can replay every order. */
   skipped: z.array(campaignPerformanceSkipSchema).nullable(),
-  /** "What it would have done last year" — always null today (panel hidden), same reason as `skipped`. */
+  /** "What it would have done last year". Null for the same reason as `skipped`. */
   estimate: z
     .object({
       from: z.string(),
@@ -111,12 +94,8 @@ export const campaignPerformanceSchema = z.object({
 export type CampaignPerformance = z.infer<typeof campaignPerformanceSchema>;
 
 /**
- * One row of `GET /campaigns/{id}/performance/entries`'s `data` — an order,
- * a signup, or a review depending on the campaign's trigger.
- *
- * `reference` is the order (purchase) or the review (review); always null
- * for signup, which has no secondary record to link to. `subtotal` is
- * purchase-only.
+ * One row of `GET /campaigns/{id}/performance/entries`: an order, a signup or a review, by trigger.
+ * `reference` is the order or the review, and null for a signup. `subtotal` is purchase-only.
  */
 export const campaignPerformanceEntrySchema = z.object({
   id: z.number().int(),
@@ -137,7 +116,7 @@ export const campaignPerformanceEntrySchema = z.object({
 
 export type CampaignPerformanceEntry = z.infer<typeof campaignPerformanceEntrySchema>;
 
-/** App-side (camelCase) params for the entries fetch — `campaign-performance.api.ts` maps them to the wire's `per_page`. */
+/** App-side (camelCase) params for the entries fetch; the api module maps `perPage` to `per_page`. */
 export const campaignPerformanceEntriesParamsSchema = z.object({
   page: z.number().int().min(1),
   perPage: z.number().int().optional(),

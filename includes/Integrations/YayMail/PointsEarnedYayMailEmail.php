@@ -44,13 +44,10 @@ class PointsEarnedYayMailEmail extends BaseEmail {
     }
 
     /**
-     * The merchant-editable starting layout. Its wording copies the Points
-     * earned templates (`yayloyalty-points-earned.php`) and the values
-     * `PointsEarnedEmail::get_template_values()` builds, which own it, with the
-     * same msgids: change them together. Unlike the templates, it prints the
-     * greeting even when the customer's name is ''. It has no "View your points"
-     * button: the link is '' unless a site filters it in, and a static button
-     * cannot hide itself.
+     * The merchant-editable starting layout. Its wording copies the `yayloyalty-points-earned.php` templates
+     * and PointsEarnedEmail::get_template_values(), which own it, with the same msgids: change them together.
+     * Unlike the templates, it prints the greeting even when the customer's name is ''. It has no
+     * "View your points" button: the link is '' unless a site filters it in, and a static button cannot hide itself.
      */
     public function get_default_elements() {
         /* translators: %s: customer's first name. */

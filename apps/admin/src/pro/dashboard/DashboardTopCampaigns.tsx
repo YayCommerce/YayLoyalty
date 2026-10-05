@@ -23,7 +23,13 @@ export function DashboardTopCampaigns({
           {__('Top campaigns', 'yayloyalty')}
           <ProGate inline />
         </CardTitle>
-        <CardDescription>{sprintf(__('points issued, last %s', 'yayloyalty'), RANGE_LABEL(range))}</CardDescription>
+        <CardDescription>
+          {sprintf(
+            /* translators: %s: the range's length, e.g. "30 days". */
+            __('points issued, last %s', 'yayloyalty'),
+            RANGE_LABEL(range),
+          )}
+        </CardDescription>
       </CardHeader>
       <ul className="flex flex-col divide-y">
         {campaigns.length === 0 ? (
@@ -40,7 +46,11 @@ export function DashboardTopCampaigns({
               <span className="text-muted-foreground truncate text-xs">
                 {[
                   givesLabel(c.trigger, c.config),
-                  sprintf(__('priority %d', 'yayloyalty'), c.priority),
+                  sprintf(
+                    /* translators: %d: the campaign's priority number. */
+                    __('priority %d', 'yayloyalty'),
+                    c.priority,
+                  ),
                   conditionsLabel(c.conditions),
                 ].join(' · ')}
               </span>

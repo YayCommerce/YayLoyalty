@@ -4,9 +4,8 @@ namespace YayLoyalty\Utils;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Store-supplied names as plain text. WooCommerce and WordPress keep some
- * names with markup or entities ("Côte d&#039;Ivoire"); the SPA renders
- * text, never HTML, so every name it receives passes through here.
+ * Store-supplied names as plain text. WooCommerce and WordPress keep some names with markup or entities
+ * ("Côte d&#039;Ivoire"). The SPA renders text, never HTML, so every name it receives passes through here.
  */
 final class Text {
 

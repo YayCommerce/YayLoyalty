@@ -108,7 +108,7 @@ if ( ! function_exists( 'YayLoyalty\\plugin_init' ) ) {
         YayLoyalty::initialize();
         I18n::load_plugin_textdomain();
     }
-}//end if
+}
 
 if ( ! wp_installing() ) {
     add_action( 'plugins_loaded', 'YayLoyalty\\plugin_init' );
@@ -121,16 +121,14 @@ if ( ! wp_installing() ) {
     // Blogs created after network activation still need tables.
     add_action( 'wp_initialize_site', [ \YayLoyalty\Engine\ActDeact::class, 'on_new_site' ], 20 );
 
-    // Account-deletion capture: both registered because multisite fires
-    // wpmu_delete_user INSTEAD of delete_user, never both.
+    // Account deletion needs both hooks, because multisite fires wpmu_delete_user instead of delete_user.
     add_action( 'delete_user', [ \YayLoyalty\Engine\CustomerActivityListener::class, 'on_delete_user' ], 10, 3 );
     add_action( 'wpmu_delete_user', [ \YayLoyalty\Engine\CustomerActivityListener::class, 'on_wpmu_delete_user' ], 10, 2 );
 
-    // Materialises the customers row at signup instead of on first ledger
-    // event, so a new WP user shows up in the admin customer list right away.
+    // Creates the customer row at signup, not at the first ledger event, so a new user shows in the admin list right away.
     add_action( 'user_register', [ \YayLoyalty\Engine\CustomerActivityListener::class, 'on_user_register' ], 10, 1 );
 
-    // account_created + points_adjusted capture.
+    // Records account_created and points_adjusted activity.
     add_action( 'yayloyalty_ledger_recorded', [ \YayLoyalty\Engine\CustomerActivityListener::class, 'on_ledger_recorded' ], 10, 1 );
 
     // earning_limited capture: an award an earning limit held points back from.

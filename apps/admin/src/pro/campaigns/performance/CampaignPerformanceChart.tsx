@@ -20,17 +20,14 @@ const CONFIG: ChartConfig = { points: { label: __('Points issued', 'yayloyalty')
 
 type Daily = CampaignPerformance['daily'];
 
-/** All-zero (or literally empty) — the window still draws its axes and date range; only the bars/tooltip/labels are swapped for a dashed placeholder. */
+/** All zero or empty: the chart keeps its axes and date range, and a dashed placeholder replaces the bars. */
 function isEmpty(daily: Daily): boolean {
   return daily.length === 0 || daily.every((d) => d.points === 0);
 }
 
 /**
- * One bar per day of `window`, zero-filled by the server. `window` is the
- * chart's own last-30-days span, not the lifetime totals shown above it —
- * see CampaignPerformanceRestController's class docblock ("TWO TIME BASES
- * ON PURPOSE") — which is exactly why this card prints `windowLabel(window)`
- * next to its own title rather than assuming the reader already knows.
+ * One bar per day of `window`, zero-filled by the server. `window` is the last 30 days, not the
+ * lifetime the totals above it cover, so the card prints `windowLabel(window)` beside its title.
  */
 export function CampaignPerformanceChart({ window, daily }: { window: CampaignPerformance['window']; daily: Daily }) {
   const empty = isEmpty(daily);

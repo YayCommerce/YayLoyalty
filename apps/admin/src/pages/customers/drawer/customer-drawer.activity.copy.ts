@@ -1,15 +1,8 @@
 import { __, sprintf } from '@wordpress/i18n';
 
-/**
- * Copy for the drawer's Activity log tab (3d) — titles, sub-line composers,
- * column/group labels, actor labels and the footer note. Split out of
- * `customer-drawer.copy.ts`, which holds the rest of the drawer's copy.
- * Same rules: flat exported functions, every entry a function (never a
- * module-scope constant — `__()` must run after the locale loads), pure —
- * no React, no fetch.
- */
+/** The Activity log tab's strings. Functions, not constants: `__()` must run after the locale loads. */
 
-/** One static title per `event_type` — 3d draws these as plain labels, no interpolation. */
+/** One static title per `event_type`. */
 export const ACTIVITY_TITLE_ACCOUNT_CREATED = () => __('Account created', 'yayloyalty');
 export const ACTIVITY_TITLE_POINTS_ADJUSTED = () => __('Points adjusted', 'yayloyalty');
 export const ACTIVITY_TITLE_TIER_CHANGED = () => __('Tier changed', 'yayloyalty');
@@ -20,12 +13,20 @@ export const ACTIVITY_TITLE_EXPIRING_SOON_EMAIL_SENT = () => __('Expiring soon e
 export const ACTIVITY_TITLE_EARNING_LIMITED = () => __('Earning limited', 'yayloyalty');
 export const ACTIVITY_TITLE_ACCOUNT_DELETED = () => __('Account deleted', 'yayloyalty');
 
-/** Every sub-line composes from `event_type` + `data` — see `customer-drawer.activity-rows.ts`. */
 export function activityAccountCreatedSubLine(points: string): string {
-  return sprintf(__('%s points', 'yayloyalty'), points);
+  return sprintf(
+    /* translators: %s: number of points, formatted. */
+    __('%s points', 'yayloyalty'),
+    points,
+  );
 }
 export function activityPointsAdjustedSubLine(points: string, note: string): string {
-  return sprintf(__('%1$s · "%2$s"', 'yayloyalty'), points, note);
+  return sprintf(
+    /* translators: 1: the signed points change, such as +500; 2: the admin's note. */
+    __('%1$s · "%2$s"', 'yayloyalty'),
+    points,
+    note,
+  );
 }
 /** "Explorer → Summit · automatic · reached 5,000 lifetime points" */
 export function activityTierChangedSubLine(
@@ -36,6 +37,7 @@ export function activityTierChangedSubLine(
 ): string {
   const mode = automatic ? __('automatic', 'yayloyalty') : __('manual', 'yayloyalty');
   return sprintf(
+    /* translators: 1: previous tier; 2: new tier; 3: "automatic" or "manual"; 4: the lifetime points threshold, formatted. */
     __('%1$s → %2$s · %3$s · reached %4$s lifetime points', 'yayloyalty'),
     fromTier,
     toTier,
@@ -44,10 +46,21 @@ export function activityTierChangedSubLine(
   );
 }
 export function activityExpiryResetSubLine(from: string, to: string, note: string): string {
-  return sprintf(__('%1$s → %2$s · "%3$s"', 'yayloyalty'), from, to, note);
+  return sprintf(
+    /* translators: 1: previous expiry date, formatted; 2: new expiry date, formatted; 3: the admin's note. */
+    __('%1$s → %2$s · "%3$s"', 'yayloyalty'),
+    from,
+    to,
+    note,
+  );
 }
 export function activityRewardRedeemedSubLine(reward: string, orderId: string): string {
-  return sprintf(__('%1$s · order #%2$s', 'yayloyalty'), reward, orderId);
+  return sprintf(
+    /* translators: 1: the reward's name; 2: the order number. */
+    __('%1$s · order #%2$s', 'yayloyalty'),
+    reward,
+    orderId,
+  );
 }
 /** "150 of 200 points held back · order #4098", or "· signup" for an award with no order. */
 export function activityEarningLimitedSubLine(
@@ -61,15 +74,28 @@ export function activityEarningLimitedSubLine(
     : sprintf(__('%1$s of %2$s points held back · %3$s', 'yayloyalty'), heldBack, evaluated, trigger);
 }
 export function activityBalanceEmailSubLine(subject: string): string {
-  return sprintf(__('"%s"', 'yayloyalty'), subject);
+  return sprintf(
+    /* translators: %s: the email's subject line. */
+    __('"%s"', 'yayloyalty'),
+    subject,
+  );
 }
-/** `deadline` is derived client-side from `occurred_at` + `window_days`. */
 export function activityExpiringSoonEmailSubLine(windowDays: string, deadline: string): string {
-  return sprintf(__('%1$s-day reminder · deadline was %2$s', 'yayloyalty'), windowDays, deadline);
+  return sprintf(
+    /* translators: 1: the reminder window in days; 2: the deadline date, formatted. */
+    __('%1$s-day reminder · deadline was %2$s', 'yayloyalty'),
+    windowDays,
+    deadline,
+  );
 }
 /** "member@example.com · 1,200 points frozen" */
 export function activityAccountDeletedSubLine(email: string, balanceAtDeletion: string): string {
-  return sprintf(__('%1$s · %2$s points frozen', 'yayloyalty'), email, balanceAtDeletion);
+  return sprintf(
+    /* translators: 1: the customer's email address; 2: their balance at deletion, formatted. */
+    __('%1$s · %2$s points frozen', 'yayloyalty'),
+    email,
+    balanceAtDeletion,
+  );
 }
 
 export const COLUMN_EVENT = () => __('Event', 'yayloyalty');
@@ -87,12 +113,10 @@ export const STAFF_ONLY_LABEL = () => __('STAFF ONLY', 'yayloyalty');
 export const AUTOMATIC_ACTOR_LABEL = () => __('Automatic', 'yayloyalty');
 export const CUSTOMER_ACTOR_LABEL = () => __('Customer', 'yayloyalty');
 
-/** Search placeholder for the activity tab's own filter row — distinct from
- *  the ledger's `SEARCH_PLACEHOLDER` (no "order number" here; matches the
- *  event text and who did it instead). */
+/** Unlike the ledger's placeholder, no order number: this search matches the event text and who did it. */
 export const ACTIVITY_SEARCH_PLACEHOLDER = () => __('Search event or who did it', 'yayloyalty');
 
-/** 3d's footer note — load-bearing: stops an admin hunting for an adjustment here. */
+/** Stops an admin hunting for an adjustment here. */
 export const ACTIVITY_FOOTER_NOTE = () =>
   __(
     'Points movements are not repeated here — they live in the points ledger with their running balance.',

@@ -4,9 +4,9 @@ namespace YayLoyalty\Enums;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The event that fires a campaign; also the key to the per-trigger config
- * whitelist. Pro triggers are constants so a downgraded site's rows are not
- * rejected as corrupt, but all() returns only what this build can fire.
+ * The event that fires a campaign, and the key to the per-trigger config whitelist.
+ * Pro triggers stay constants so a downgraded site's rows are not rejected as corrupt.
+ * all() returns only what this build can fire.
  */
 final class CampaignTrigger {
 
@@ -82,9 +82,7 @@ final class CampaignTrigger {
         return is_string( $value ) && in_array( $value, self::all_known(), true );
     }
 
-    /**
-     * @throws \InvalidArgumentException When $value is not fireable in this build.
-     */
+    /** @throws \InvalidArgumentException When $value is not fireable in this build. */
     public static function assert( $value ): string {
         if ( ! self::is_valid( $value ) ) {
             throw new \InvalidArgumentException(

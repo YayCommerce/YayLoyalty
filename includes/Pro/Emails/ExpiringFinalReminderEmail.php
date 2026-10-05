@@ -5,7 +5,7 @@ use YayLoyalty\Engine\Emails\Emails;
 
 defined( 'ABSPATH' ) || exit;
 
-/** Expiring final reminder: a last-chance reminder sent just before points expire. */
+/** The last-chance points-expiry email. Nothing triggers it yet. */
 class ExpiringFinalReminderEmail extends ProLoyaltyEmail {
 
     public function __construct() {

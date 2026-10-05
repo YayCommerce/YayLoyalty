@@ -4,15 +4,13 @@ namespace YayLoyalty\Engine\Emails;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Base for loyalty emails: a subclass sets its id, title, description and group;
- * its template names follow the id (yayloyalty_points_earned →
- * emails/yayloyalty-points-earned.php). get_content_html/plain pass
- * `template_base` as WooCommerce's default template path, so a theme copy under
- * woocommerce/emails/ still wins and no template-locating filters are needed.
+ * Base for loyalty emails. Template names follow the id (yayloyalty_points_earned →
+ * emails/yayloyalty-points-earned.php). `template_base` goes in as WooCommerce's default template path,
+ * so a theme copy under woocommerce/emails/ still wins without template-locating filters.
  */
 abstract class LoyaltyEmail extends \WC_Email {
 
-    /** Whether a new store sends this email; after that the merchant's choice in WooCommerce decides. */
+    /** Whether a new store sends this email. After that, the merchant's choice in WooCommerce decides. */
     protected $is_enabled_by_default = true;
 
     public function __construct() {
@@ -25,7 +23,7 @@ abstract class LoyaltyEmail extends \WC_Email {
         parent::__construct();
     }
 
-    /** Folder holding this email's templates; a subclass whose templates live elsewhere overrides it. */
+    /** Folder holding this email's templates. A subclass whose templates live elsewhere overrides it. */
     protected function templates_dir(): string {
         return __DIR__ . '/templates/';
     }
@@ -37,10 +35,9 @@ abstract class LoyaltyEmail extends \WC_Email {
     }
 
     /**
-     * A subject is plain text: decodes the entities that number_format_i18n()
-     * (&nbsp; as a thousands separator) and esc_html()'d placeholders leave,
-     * which WC_Email::send() keeps. Runs after the subject filter, so it covers
-     * what other plugins add there too.
+     * Subjects are plain text, so this decodes the entities that number_format_i18n() (&nbsp; as a
+     * thousands separator) and escaped placeholders leave, which WC_Email::send() keeps. It runs after
+     * the subject filter, so it covers what other plugins add there too.
      */
     public function get_subject() {
         return html_entity_decode( parent::get_subject(), ENT_QUOTES | ENT_HTML5, 'UTF-8' );
@@ -51,10 +48,10 @@ abstract class LoyaltyEmail extends \WC_Email {
     }
 
     /**
-     * Decodes the entities that esc_html() and wptexturize() leave in plain templates
-     * (&#039;, &#8230;, &eacute; …): WooCommerce's plain-text cleanup deletes every
-     * entity it does not list. &lt;, &gt; and &amp; stay encoded, because WooCommerce
-     * decodes them only after it strips tags, so text such as "<3" survives.
+     * Decodes the entities that esc_html() and wptexturize() leave in plain templates, such as &#039;
+     * and &#8230;, because WooCommerce's plain-text cleanup deletes every entity it does not list.
+     * &lt;, &gt; and &amp; stay encoded: WooCommerce decodes them only after it strips tags, so text
+     * such as "<3" survives.
      */
     public function get_content_plain() {
         return preg_replace_callback(
@@ -67,8 +64,8 @@ abstract class LoyaltyEmail extends \WC_Email {
     }
 
     /**
-     * Sends this email to the customer it is prepared for, under the merchant's weekly
-     * cap on loyalty emails (EmailThrottle); only a send the transport accepts counts.
+     * Sends this email to its customer, within the weekly cap (EmailThrottle).
+     * Only a send the transport accepts counts against the cap.
      */
     protected function send_to_customer( int $user_id ): bool {
         if ( ! EmailThrottle::allows( $user_id ) ) {
@@ -99,9 +96,8 @@ abstract class LoyaltyEmail extends \WC_Email {
     }
 
     /**
-     * Variables only this email's templates receive, on top of the shared ones.
-     * An override returns [] while $this->object is not what it sends for
-     * (WooCommerce's preview sets a dummy order); its templates then fall back.
+     * Variables only this email's templates receive. An override returns [] while $this->object is not
+     * what it sends for, such as the preview's dummy order, and its templates then fall back.
      *
      * @return array<string, mixed>
      */
@@ -109,6 +105,6 @@ abstract class LoyaltyEmail extends \WC_Email {
         return [];
     }
 
-    /** Fills this email with sample data for WooCommerce's settings preview; no-op until the email has data of its own. */
+    /** Fills this email with sample data for WooCommerce's settings preview. A no-op until the email has data of its own. */
     public function prepare_preview(): void {}
 }

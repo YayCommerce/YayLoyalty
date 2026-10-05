@@ -8,12 +8,9 @@ use YayLoyalty\Repositories\CampaignRepository;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * How many points an event earns and which campaign paid. One trigger per
- * call (triggers stack across calls, highest priority wins within one);
- * writes nothing. Pure: reads campaigns and the Context only, scored at
- * the Context's occurred_at (the event time, never now()) — there is no
- * separate timestamp argument; the Context is the only way a time gets in.
- * No capability checks: runs from cron.
+ * How many points an event earns and which campaign paid. One trigger per call: triggers stack
+ * across calls, and the highest priority wins within one. Writes nothing. Reads only campaigns and
+ * the Context, and scores at its occurred_at, never now(). No capability checks: it runs from cron.
  */
 final class PointsEngine {
 
@@ -90,10 +87,7 @@ final class PointsEngine {
     }
 
     /**
-     * Whether the campaign's `conditions` match the event. The evaluator
-     * receives the Context — customer facts (loaded on first use through
-     * ContextFactory::customer_facts()) plus the order's own currency,
-     * coupons and lines — so it compares and never queries itself. With no evaluator
+     * The evaluator gets the Context, so it compares and never queries. With no evaluator
      * attached (Lite) this fails open: failing closed would silently disable
      * every conditional campaign the moment a site downgraded from Pro.
      */

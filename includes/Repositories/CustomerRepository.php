@@ -7,10 +7,7 @@ use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
 
-/**
- * yayloyalty_customers. Readers that must not write depend on CustomerReader instead.
- * Not final: CustomerActivityServiceTest extends it as a repository double (mirrors DashboardRepository/CampaignRepository).
- */
+/** yayloyalty_customers. Readers that must not write depend on CustomerReader instead. */
 class CustomerRepository extends AbstractRepository implements CustomerReader {
 
     /**
@@ -72,7 +69,7 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
             $now
         );
 
-        $result = $wpdb->query( $sql ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.NotPrepared
+        $result = $wpdb->query( $sql ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.NotPrepared -- a direct query on the plugin's own table; $sql is prepared above.
 
         if ( false === $result ) {
             throw new QueryException( 'insert', $wpdb->last_error, $this->table() . ' (ensure_row)' );
@@ -87,7 +84,7 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
     public function lock_and_get( int $user_id ): Customer {
         global $wpdb;
 
-        $row = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        $row = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a locking read must reach the database, never a cache.
             $wpdb->prepare(
                 'SELECT * FROM `' . esc_sql( $this->table() ) . '` WHERE user_id = %d FOR UPDATE',
                 $user_id
@@ -163,7 +160,7 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
         );
         // phpcs:enable WordPress.DB.PreparedSQL.NotPrepared
 
-        $result = $wpdb->query( $sql ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.NotPrepared
+        $result = $wpdb->query( $sql ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.NotPrepared -- a direct query on the plugin's own table; $sql is prepared above.
 
         if ( false === $result ) {
             throw new QueryException( 'update', $wpdb->last_error, $this->table() . ' (apply_delta)' );
@@ -172,7 +169,7 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
 
     /**
      * Moves customers.pending_points by a signed delta (stage +N, release or
-     * discard −N). Relative arithmetic like apply_delta(); the caller holds
+     * discard −N). Relative arithmetic like apply_delta(). The caller holds
      * the row lock when it also writes the ledger. Never below zero.
      *
      * @throws QueryException When the write fails.
@@ -181,7 +178,7 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
         global $wpdb;
 
         // The column is unsigned: MySQL rejects or wraps an underflow, so the floor is applied in SQL.
-        $result = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        $result = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
                 'UPDATE `' . esc_sql( $this->table() ) . '` SET pending_points = GREATEST(0, CAST(pending_points AS SIGNED) + %d), updated_at = %s WHERE user_id = %d',
                 $delta,
@@ -196,13 +193,10 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
     }
 
     /**
-     * The admin Customers list: search, filter, sort, paginate, LEFT JOINed
-     * with wp_users for name/email — LEFT, not INNER: a deleted member's
-     * `customers` row must still appear (with `u.*` columns NULL,
-     * `CustomerListFormatter::format_row()` falls back to the
-     * `account_deleted` snapshot for display). A read-side exception to the
-     * one-table rule, which is about write
-     * ownership.
+     * The admin Customers list: search, filter, sort and paginate, LEFT JOINed with wp_users for name
+     * and email. LEFT, not INNER: a deleted member's `customers` row must still appear. Its `u.*` columns
+     * are NULL, and CustomerListFormatter::format_row() falls back to the `account_deleted` snapshot.
+     * This is a read-side exception to the one-table rule, which is about write ownership.
      *
      * @param array<string, mixed>                                      $criteria CustomerRowFilters::to_criteria()'s shape.
      * @param array{column: string, direction: string, nulls_last: bool} $order    CustomerRowSort::to_order()'s shape.
@@ -219,7 +213,7 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
         $users     = esc_sql( $wpdb->users );
 
         // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared -- $where_sql fragments are already prepared (see where_fragments()); identifiers are escaped above; only LIMIT/OFFSET are bound here.
-        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
                 'SELECT c.user_id, u.display_name AS name, u.user_email AS email,
                         c.balance, c.pending_points, c.lifetime_earned,
@@ -254,7 +248,7 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
         $users = esc_sql( $wpdb->users );
 
         // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared -- list_where_sql()'s fragments are already prepared; identifiers are escaped above.
-        return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             'SELECT COUNT(*) FROM `' . $table . '` c LEFT JOIN `' . $users . '` u ON u.ID = c.user_id'
             . $this->list_where_sql( $criteria )
         );
@@ -268,7 +262,7 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
     }
 
     /**
-     * Every fragment is prepared here or a literal; never a raw criteria value.
+     * Every fragment is prepared here or a literal, never a raw criteria value.
      *
      * @param array<string, mixed> $criteria
      * @return string[]
@@ -302,16 +296,14 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
         }
 
         if ( null !== $criteria['tier'] ) {
-            // Matches nothing until tiers ship (every tier_id is NULL). Intentional, see CustomerRowFilters.
+            // Matches nothing until tiers ship, since every tier_id is NULL. That is intended.
             $where[] = 'c.tier_id IS NOT NULL';
         }
 
         return $where;
     }
 
-    /**
-     * @param array{column: string, direction: string, nulls_last: bool} $order
-     */
+    /** @param array{column: string, direction: string, nulls_last: bool} $order */
     private function order_by_sql( array $order ): string {
         $column    = self::LIST_ORDER_COLUMNS[ $order['column'] ] ?? self::LIST_ORDER_COLUMNS['balance'];
         $direction = 'ASC' === $order['direction'] ? 'ASC' : 'DESC';

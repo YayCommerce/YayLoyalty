@@ -20,18 +20,8 @@ function DeletedActionRow({ label, reason }: { label: string; reason: string }) 
 }
 
 /**
- * 4a's "What can still be done" — four actions, each disabled for a
- * genuinely DIFFERENT reason. Deliberately NOT `CustomerDrawerActions.tsx`'s
- * single-shared-reason-line shape: that pattern exists because its three
- * disabled buttons share one cause ("not available yet"); here every button
- * has its own, so a shared line would either repeat itself four times or
- * flatten four distinct facts into one vague sentence. Nothing extracted
- * between the two components — they are different shapes on purpose.
- *
- * Export stays disabled here too, even though 4a's own artboard draws it
- * live — this drawer has no export job anywhere yet (the main actions row's
- * Export is disabled for the same reason), so 4a doesn't get a
- * special live button the rest of the drawer doesn't have.
+ * What can still be done for a deleted customer. Each action is disabled for its own reason, so each row states it.
+ * Export stays disabled, as in the main actions row: the drawer has no export job yet.
  */
 export function CustomerDrawerDeletedActions() {
   return (

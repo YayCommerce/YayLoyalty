@@ -13,7 +13,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * GET /dashboard: the landing page's single payload, cached site-wide on
  * large stores with per-user dismissal applied after the cache. Notices are
- * structured data only; the SPA owns the copy. `scenario` is registered
+ * structured data only, and the SPA owns the copy. `scenario` is registered
  * only under WP_DEBUG.
  */
 final class DashboardRestController extends AbstractRestController {
@@ -86,9 +86,7 @@ final class DashboardRestController extends AbstractRestController {
         );
     }
 
-    /**
-     * @return array<string, mixed>
-     */
+    /** @return array<string, mixed> */
     private function overview_args(): array {
         $args = [
             'range'   => [

@@ -17,12 +17,9 @@ use YayLoyalty\Utils\Log;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The two moments of earning, one public method each. preview() is the
- * evaluation moment: gates, then the pure engine, nothing written.
- * award() is the award moment: the same evaluation again, then one
- * transaction. Both score at the Context's occurred_at — the order's
- * creation date — which is the only timestamp either can see, so a
- * campaign that ended between purchase and fulfilment still pays.
+ * Earns points: preview() evaluates and writes nothing, award() evaluates again and writes.
+ * Both score at the Context's occurred_at (the order's creation date), so a campaign that
+ * ended between purchase and fulfilment still pays.
  */
 final class EarningService {
 
@@ -58,10 +55,8 @@ final class EarningService {
     }
 
     /**
-     * Composition root: the engine with the build's handlers, the writer
-     * (LedgerService's third construction site), the pending store and the
-     * gates — ProgramGate first, then whatever `yayloyalty_earning_gates`
-     * appends (Pro). Listeners are registered by the caller, not here.
+     * Composition root and a listed LedgerService construction site.
+     * The caller registers the listeners.
      */
     public static function build(): self {
         $campaigns = new CampaignRepository();
@@ -114,10 +109,7 @@ final class EarningService {
     }
 
     /**
-     * The evaluation moment. Pure given its inputs: writes nothing, may run
-     * any number of times, and returns the same Result for the same Context.
-     * Not authoritative — the caller may stage its points as pending, and
-     * award() re-evaluates rather than trusting a stored figure.
+     * Evaluates without writing. Not authoritative: award() evaluates again rather than trust a staged figure.
      *
      * @return Result Result::none( gate reason ) when a gate blocks, else the engine's answer.
      */
@@ -132,24 +124,10 @@ final class EarningService {
     }
 
     /**
-     * The award moment. Re-runs preview() at the same occurred_at, then
-     * commits in one transaction: ledger row via LedgerService::earn()
-     * (customer row locked first), pending release, order projections.
-     *
-     * Preconditions: $ctx built by ContextFactory::from_order() /
-     * from_user() / from_comment(), never by hand from "now"; the ledger's
-     * points_earned_today already on it. Staging need not have run.
-     *
-     * Postconditions: Outcome::skipped( reason ) and nothing written when a
-     * gate or the engine says no; Outcome::duplicate when the idempotency key
-     * already existed (nothing written, nothing thrown, the filter not run);
-     * Outcome::skipped( REASON_LIMIT_REACHED, Result ) when
-     * `yayloyalty_award_points` lowered the points to 0; Outcome::awarded
-     * when exactly one row was inserted, its entry holding the points written
-     * and its evaluation the points evaluated (held_back() > 0 when the filter
-     * lowered them). The filter runs under the customer's row lock, inside
-     * LedgerService::earn(), so it sees every earlier award for that customer. `yayloyalty_points_awarded`
-     * ( Outcome, Context ) fires after commit only, and only for awarded.
+     * Evaluates again at the same occurred_at, then writes the ledger row, releases the pending
+     * points and marks the order in one transaction. Build $ctx with ContextFactory, never from "now".
+     * Returns skipped when a gate or the engine says no, and duplicate (nothing written, nothing thrown)
+     * when the idempotency key exists. `yayloyalty_points_awarded` fires after commit, for awarded only.
      *
      * @throws \InvalidArgumentException When no handler owns the trigger.
      * @throws \YayLoyalty\Database\QueryException When a write other than a duplicate fails (rolled back).

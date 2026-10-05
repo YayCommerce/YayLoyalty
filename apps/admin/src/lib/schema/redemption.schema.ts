@@ -3,17 +3,11 @@ import { z } from 'zod';
 import { paginatedSchema } from '@/lib/api/paginated';
 
 /**
- * Mirrors `RedemptionsRestController::define_item_schema()`. THAT PHP METHOD
- * IS THE SOURCE OF TRUTH.
- *
- * The server always answers an empty envelope — no `yayloyalty_redemptions`
- * table exists yet (designed, not built yet).
- * When it ships, only the server handler changes — this schema is already
- * the contract.
+ * Mirrors RedemptionsRestController::define_item_schema(), the source of truth.
+ * The server answers an empty envelope until the redemptions table exists.
  */
 
-/** Matches `RedemptionsRestController`'s `status` enum — a display status,
- *  not the real table's full lifecycle vocabulary (see the PHP docblock). */
+/** Matches `RedemptionsRestController`'s `status` enum: a display status, not the table's full lifecycle. */
 export const REDEMPTION_STATUSES = ['applied', 'returned', 'issued'] as const;
 export const redemptionStatusSchema = z.enum(REDEMPTION_STATUSES);
 export type RedemptionStatus = z.infer<typeof redemptionStatusSchema>;
@@ -21,12 +15,10 @@ export type RedemptionStatus = z.infer<typeof redemptionStatusSchema>;
 export const redemptionEntrySchema = z.object({
   id: z.number().int(),
   reward_id: z.number().int(),
-  /** Display name only — the real table stores `reward_id`; resolving it is
-   *  an open question, the same one the ledger's `campaign_name` has. */
+  /** Display name only. How to resolve it from `reward_id` is still open. */
   reward_name: z.string(),
   order_id: z.number().int().nullable(),
-  /** Signed for display: negative when spent, positive when a refund
-   *  returned the points. */
+  /** Signed for display: negative when spent, positive when a refund returned the points. */
   points: z.number().int(),
   value: z.string(),
   currency: z.string(),

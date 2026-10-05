@@ -6,14 +6,11 @@ use YayLoyalty\Access\Capabilities;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * GET /yayloyalty/v1/customers/{id}/redemptions — paginated redemption rows.
+ * GET /yayloyalty/v1/customers/{id}/redemptions: paginated redemption rows.
  *
- * The `yayloyalty_redemptions` table is designed, not built yet, so the
- * endpoint always answers an EMPTY envelope, matching `counts.redemptions`
- * from `CustomerItemFormatter::format()`. When the real table ships,
- * only `get_history()` below changes.
- *
- * A separate controller, the same shape `ActivityRestController` uses.
+ * The `yayloyalty_redemptions` table is not built yet, so the endpoint always
+ * answers an empty envelope, matching `counts.redemptions` from
+ * CustomerItemFormatter::format(). When the table ships, only get_history() changes.
  */
 final class RedemptionsRestController extends AbstractRestController {
 
@@ -41,7 +38,7 @@ final class RedemptionsRestController extends AbstractRestController {
     }
 
     public function get_history( \WP_REST_Request $request ) {
-        // No table yet — `id` is validated by member_id_param() but nothing looks it up.
+        // No table yet: member_id_param() validates `id`, but nothing looks it up.
         return $this->respond_empty_page( $request );
     }
 

@@ -16,19 +16,11 @@ use YayLoyalty\Utils\Log;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The order event family. Builds a Context from the order — occurred_at
- * is the order's creation date both times — and hands it to the service;
- * no rules of its own beyond which statuses mean what. Every handler is
- * safe to re-fire: staging and release are idempotent and the award is
- * guarded by the ledger's UNIQUE idempotency_key.
- *
- * This class is the only place in the plugin that knows a WooCommerce order
- * status string. The engine, the ledger and every domain service are told
- * what to do, never which status asked for it.
- *
- * Only `completed` awards (OrderStatus::AWARD), a product decision: a store
- * that leaves orders at `processing` must complete them for them to earn.
- * Virtual orders reach it straight from payment_complete().
+ * Routes order statuses to staging, award and reversal. The only class that knows WooCommerce
+ * order status strings. Every handler is safe to re-fire: staging and release are idempotent,
+ * and the ledger's UNIQUE idempotency_key guards the award.
+ * Only `completed` awards, by product decision: a store that leaves orders at `processing`
+ * must complete them for them to earn. Virtual orders get there from payment_complete().
  */
 final class OrderListener {
 
@@ -50,12 +42,8 @@ final class OrderListener {
     }
 
     /**
-     * Attaches the two order hooks; call once at boot, after settings are readable.
-     *
-     * Two hooks because a new order's first status never fires
-     * `woocommerce_order_status_changed`, which needs a previous status;
-     * `woocommerce_new_order` covers that first status. Refund and
-     * trash hooks belong to OrderReversalListener.
+     * Call once at boot, after settings are readable. Two hooks, because a new order's first
+     * status never fires `woocommerce_order_status_changed`. `woocommerce_new_order` covers it.
      */
     public function register(): void {
         add_action( 'woocommerce_order_status_changed', [ $this, 'on_status_changed' ], 10, 4 );
@@ -63,50 +51,24 @@ final class OrderListener {
     }
 
     /**
-     * Order status transition entry point.
-     *
-     * Reads $to, never $order->get_status(): by the time a late-priority
-     * callback runs the order may have moved again, and the transition being
-     * handled is the one that was announced. $from goes only into the debug
-     * line; see route() for why it plays no part in routing.
+     * Routes on $to, never $order->get_status(): by the time a late callback runs,
+     * the order may have moved again. $from is only logged.
      */
     public function on_status_changed( int $order_id, string $from, string $to, \WC_Order $order ): void {
         Log::debug( 'OrderListener', 'order #' . $order_id . ' ' . $from . ' -> ' . $to );
         $this->route( $order_id, $to, $order );
     }
 
-    /** Order creation entry point: the first status, which on_status_changed() never sees (register()). */
+    /** Routes a new order's first status, which on_status_changed() never sees. */
     public function on_order_created( int $order_id, \WC_Order $order ): void {
         Log::debug( 'OrderListener', 'order #' . $order_id . ' created at ' . $order->get_status() );
         $this->route( $order_id, $order->get_status(), $order );
     }
 
     /**
-     * The one routing table, shared by both entry points above.
-     *
-     * $from is not a parameter and nothing dedups here: re-delivery is
-     * harmless, every step is idempotent: staging checks its order meta, and
-     * the ledger's UNIQUE idempotency key turns a repeat award into a duplicate.
-     *
-     *   checkout-draft  nothing — a block-checkout draft is not an order yet
-     *                   and must never reach staging
-     *   pending         stage
-     *   on-hold         stage, never award: the money has not arrived
-     *   processing      nothing: money may have arrived, but only completed awards
-     *   completed       award (OrderStatus::AWARD)
-     *   failed          nothing: no release, no redemption restore. The order
-     *                   is still payable and a retry lands on completed
-     *   cancelled       release pending (once) and claw back everything the
-     *                   order earned
-     *   trash           as cancelled
-     *   refunded        release pending; clawback is driven by refund objects.
-     *                   One exception, handled here because only the status
-     *                   says so: no refund object means an admin reversed the
-     *                   order outside WooCommerce, which is a full reversal
-     *                   referenced to the ORDER, not a refund id
-     *
-     * Any other status — one another plugin registered — is not ours to
-     * interpret: it falls through and nothing happens.
+     * Shared by both entry points. Nothing dedups here, because every step is idempotent.
+     * on-hold stages but never awards: the money has not arrived. A status another plugin
+     * registers falls through, because it is not ours to interpret.
      */
     private function route( int $order_id, string $to, \WC_Order $order ): void {
         if ( OrderStatus::AWARD === $to ) {
@@ -128,18 +90,16 @@ final class OrderListener {
             case 'processing':
             case 'failed':
             case 'checkout-draft':
-                // Paid but not completed, still payable, or not yet an order — none stages or awards.
+                // Paid but not completed, still payable, or not yet an order: none stages or awards.
                 break;
         }
     }
 
     /**
-     * Evaluation moment: preview the purchase at the order's creation date and stage its points.
+     * Previews the purchase and stages its points. Scores the hook's own object, never a re-read:
+     * `woocommerce_new_order` fires before WooCommerce saves the line items, so a fresh read has none.
      *
-     * Scores the hook's own object, never a re-read: woocommerce_new_order
-     * fires before WooCommerce saves the line items, so a fresh read has none.
-     *
-     * @throws \InvalidArgumentException When the order has no creation date (route() catches it).
+     * @throws \InvalidArgumentException When the order has no creation date (ListenerGuard::run() catches it).
      */
     public function on_stageable( \WC_Order $order ): void {
         $order_id = (int) $order->get_id();
@@ -154,9 +114,9 @@ final class OrderListener {
     }
 
     /**
-     * Award moment: one award() per trigger the order satisfies, each noted on the order.
+     * Calls award() once per order trigger and notes each outcome on the order.
      *
-     * @throws \InvalidArgumentException When the order has no creation date (route() catches it).
+     * @throws \InvalidArgumentException When the order has no creation date (ListenerGuard::run() catches it).
      */
     public function on_awardable( \WC_Order $order ): void {
         $order_id = (int) $order->get_id();

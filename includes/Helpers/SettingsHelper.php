@@ -25,24 +25,24 @@ class SettingsHelper {
                 'enabled'               => true,
                 'points_label_singular' => __( 'Point', 'yayloyalty' ),
                 'points_label_plural'   => __( 'Points', 'yayloyalty' ),
-                // Role slugs that never earn; read by Engine\Earning\ProgramGate.
+                // Role slugs that never earn, read by Engine\Earning\ProgramGate.
                 'excluded_roles'        => [],
             ],
             'advanced' => [
-                // 0 = unlimited. Read via Capabilities::ceiling().
+                // 0 means unlimited. Read through Capabilities::ceiling().
                 'adjustment_ceiling' => 0,
                 // 0 = no limit. Enforced by Pro's DailyEarningLimit.
                 'max_points_per_day' => 0,
             ],
             'emails'   => [
-                // Weekly per-customer cap on loyalty emails; 0 = unlimited. Read via Engine\Emails\EmailThrottle.
+                // Weekly per-customer cap on loyalty emails. 0 means no cap. Engine\Emails\EmailThrottle enforces it.
                 'throttle_per_week' => 3,
             ],
         ];
     }
 
     /**
-     * Type map by group then field; anything absent is dropped in both directions.
+     * Type map by group then field. Anything absent is dropped in both directions.
      *
      * @return array<string, array<string, string>>
      */
@@ -122,7 +122,7 @@ class SettingsHelper {
     }
 
     /**
-     * Saves only the fields sent, over what is stored; returns the merged settings.
+     * Saves only the fields sent, over what is stored, and returns the merged settings.
      *
      * Defaults are never written, so translated defaults such as the point labels
      * keep following the site language. Fields are replaced one by one rather than
@@ -156,7 +156,7 @@ class SettingsHelper {
     }
 
     /**
-     * Whitelists and coerces stored settings on the way out. Same rules as validate(); named so the read path is not forgotten.
+     * Whitelists and coerces stored settings on the way out, with validate()'s rules.
      *
      * @param array<string, mixed> $stored
      * @return array<string, mixed>
@@ -189,14 +189,10 @@ class SettingsHelper {
         return $clean;
     }
 
-    /**
-     * @param mixed $value
-     * @return mixed
-     */
     private static function coerce( $value, string $type ) {
         switch ( $type ) {
             case 'bool':
-                return rest_sanitize_boolean( $value ); // a plain cast would store the string "false" as true
+                return rest_sanitize_boolean( $value ); // A plain cast would store the string "false" as true.
 
             case 'int':
                 return (int) $value;

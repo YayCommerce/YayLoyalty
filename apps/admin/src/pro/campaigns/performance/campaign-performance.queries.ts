@@ -3,8 +3,6 @@ import { keepPreviousData, queryOptions, useQuery } from '@tanstack/react-query'
 import type { CampaignPerformanceEntriesParams } from '@/lib/schema/campaign-performance.schema';
 import { getCampaignPerformance, getCampaignPerformanceEntries } from './campaign-performance.api';
 
-/** ─── Query Options ─────────────────────────────────── */
-
 /**
  * Keyed under `['campaign', 'performance', id, ...]`, same prefix as `CAMPAIGN_QUERIES`, so a
  * broad `['campaign']` invalidation covers this too. The summary carries the campaign itself
@@ -27,12 +25,10 @@ export const CAMPAIGN_PERFORMANCE_QUERIES = {
       enabled: id > 0,
       retry: 1,
       staleTime: 60_000,
-      // Same precedent as CUSTOMER_QUERIES.ledger — keeps prior rows visible during a page/search refetch.
+      // Keeps prior rows visible during a page or search refetch.
       placeholderData: keepPreviousData,
     }),
 };
-
-/** ─── Hooks ─────────────────────────────────────────── */
 
 export function useCampaignPerformanceQuery(id: number) {
   return useQuery(CAMPAIGN_PERFORMANCE_QUERIES.summary(id));
