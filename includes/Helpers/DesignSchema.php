@@ -31,7 +31,7 @@ class DesignSchema {
             'storefront_text' => [
                 'launcher_label'        => __( 'Rewards', 'yayloyalty' ),
                 'balance_heading'       => __( 'Your points', 'yayloyalty' ),
-                /* translators: {points}, {points_label} and {amount} are filled in when shown; keep them as they are. */
+                /* translators: keep every {…} placeholder as it is; each is filled in when the line is shown. */
                 'earn_rate_line'        => __( 'Earn {points} {points_label} per {amount} spent', 'yayloyalty' ),
                 'redeem_button'         => __( 'Apply points', 'yayloyalty' ),
                 'signed_out_prompt'     => __( 'Sign in to earn points on this order', 'yayloyalty' ),
