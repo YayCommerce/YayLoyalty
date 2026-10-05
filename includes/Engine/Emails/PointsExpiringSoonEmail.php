@@ -3,7 +3,7 @@ namespace YayLoyalty\Engine\Emails;
 
 defined( 'ABSPATH' ) || exit;
 
-/** Points expiring soon: sent shortly before a customer's points balance expires. */
+/** The points-expiring-soon email. Nothing triggers it yet. */
 class PointsExpiringSoonEmail extends LoyaltyEmail {
 
     public function __construct() {

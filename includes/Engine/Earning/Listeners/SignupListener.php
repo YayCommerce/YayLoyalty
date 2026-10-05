@@ -9,11 +9,8 @@ use YayLoyalty\Utils\Log;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The registration event family: one award per user, keyed
- * "earn:{id}:user:{id}:signup", so a re-fired user_register is a duplicate.
- * No pending: a signup has nothing to stage. Only storefront
- * self-registration earns; an account an admin, an import, WP-CLI or cron
- * creates does not.
+ * Awards the signup campaign once per user, keyed "earn:{id}:user:{id}:signup".
+ * Only storefront self-registration earns, not an account an admin, an import, WP-CLI or cron creates.
  */
 final class SignupListener {
 
@@ -23,12 +20,11 @@ final class SignupListener {
         $this->service = $service;
     }
 
-    /** Attaches user_register. woocommerce_created_customer is not attached: it always fires after user_register for the same signup and would evaluate it twice. */
+    /** Not woocommerce_created_customer: it fires after user_register for the same signup and would evaluate it twice. */
     public function register(): void {
         add_action( 'user_register', [ $this, 'on_user_register' ], 10, 1 );
     }
 
-    /** `user_register` adapter. */
     public function on_user_register( int $user_id ): void {
         Log::debug( 'SignupListener', 'user #' . $user_id . ' registered' );
 

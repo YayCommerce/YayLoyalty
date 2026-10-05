@@ -1,9 +1,7 @@
 <?php
 namespace YayLoyalty\Engine\Register;
 
-/**
- * Script Name Constants
- */
+/** Handles of the plugin's registered scripts and styles. */
 class ScriptName {
 
     public const STYLE_SETTINGS = 'yayloyalty/style/settings';

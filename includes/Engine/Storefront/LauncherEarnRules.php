@@ -9,12 +9,9 @@ use YayLoyalty\Models\Campaign;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The "Ways to earn" rows the launcher lists, from the campaigns live right now.
- *
- * Only a campaign that applies to every shopper is advertised (PointsEngine::applies_to_everyone()):
- * a panel every shopper sees must not promise a rate only some of them get. Within a trigger the first advertisable
- * campaign in engine order wins, the one that would pay. A multiplier is stated as the rate it pays
- * (default rate × multiplier), and skipped when the engine would skip it.
+ * The "Ways to earn" rows the launcher lists, from the campaigns live right now. Only a campaign that
+ * applies to every shopper is advertised. Within a trigger the first in engine order wins, the one that
+ * would pay. A multiplier shows the rate it pays, and is skipped when the engine would skip it.
  */
 final class LauncherEarnRules {
 

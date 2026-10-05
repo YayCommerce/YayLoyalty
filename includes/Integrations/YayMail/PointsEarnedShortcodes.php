@@ -132,7 +132,6 @@ class PointsEarnedShortcodes extends BaseShortcode {
         return $this->values;
     }
 
-    /** @param mixed $root_email */
     private function sample_values( $root_email ): array {
         if ( null === $this->sample_values && $root_email instanceof PointsEarnedEmail ) {
             // A clone: the shared mailer instance may be mid-send.

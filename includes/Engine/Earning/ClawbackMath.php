@@ -9,10 +9,8 @@ defined( 'ABSPATH' ) || exit;
 final class ClawbackMath {
 
     /**
-     * Total points owed back for an earn, recomputed from the cumulative
-     * refunded base each time (never summed per refund, which strands
-     * rounding): floored so a partial refund never over-claws, exact once
-     * the order is fully refunded or its whole base is.
+     * Total points owed back for an earn. Recomputed from the cumulative refunded base,
+     * because summing per refund strands rounding. Floored, so a partial refund never claws back too much.
      *
      * @param float $refunded_base Refunded amount of the lines the earn's campaign counted, across every refund.
      * @param float $original_base Those lines' total when the order was placed.

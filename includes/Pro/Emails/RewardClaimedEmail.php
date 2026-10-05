@@ -3,7 +3,7 @@ namespace YayLoyalty\Pro\Emails;
 
 defined( 'ABSPATH' ) || exit;
 
-/** Reward claimed: sent when a customer claims a reward. */
+/** The reward-claimed email. Nothing triggers it yet. */
 class RewardClaimedEmail extends ProLoyaltyEmail {
 
     public function __construct() {

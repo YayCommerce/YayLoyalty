@@ -14,15 +14,13 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * The Design tab's preview: a whole HTML page with the real launcher markup and stylesheet in a plain store frame.
- *
- * The admin shows it in a sandboxed iframe, so the storefront's own CSS (mobile bottom sheet included)
- * applies at the iframe's width. No script runs there: the expanded state and the activity rows are
- * printed by the templates, so the preview never takes focus from the field being edited.
- * Rates, rewards and copy are the store's real ones; only the shopper is a sample.
+ * The admin shows it in a sandboxed iframe, so the storefront CSS applies at the iframe's width. No script runs
+ * there: the templates print the expanded state and the activity rows, so the preview never takes focus from
+ * the field being edited. Rates, rewards and copy are the store's own. Only the shopper is a sample.
  */
 final class LauncherPreview {
 
-    /** The sample member's balance, the design brief's shopper (9,850 points). */
+    /** The sample member's balance. */
     public const SAMPLE_BALANCE = 9850;
 
     /** The store around the launcher: flat greys, so only the launcher reads at full contrast. */

@@ -6,10 +6,11 @@ use YayLoyalty\Helpers\SettingsHelper;
 
 defined( 'ABSPATH' ) || exit;
 
+/** Activation on a single site or a network, new-site setup and the WooCommerce boot hooks. */
 class ActDeact {
 
     public static function install_woocommerce_admin_notice() {
-        /* translators: %s: Woocommerce link */
+        /* translators: %s: WooCommerce link */
         echo '<div class="error"><p><strong>' . sprintf( esc_html__( 'YayLoyalty is enabled but not effective. It requires %s in order to work', 'yayloyalty' ), '<a href="' . esc_url( admin_url( 'plugin-install.php?s=woocommerce&tab=search&type=term' ) ) . '">WooCommerce</a>' ) . '</strong></p></div>';
         return false;
     }
@@ -36,9 +37,8 @@ class ActDeact {
     }
 
     /**
-     * Activates on every blog. Paginated: get_sites() defaults to 100 and
-     * would silently skip the rest. try/finally so a throw cannot leave the
-     * process on the wrong blog.
+     * Activates on every blog. Paged, because get_sites() defaults to 100 and would skip the rest silently.
+     * try/finally so a throw cannot leave the process on the wrong blog.
      */
     private static function activate_network(): void {
         $paged    = 1;

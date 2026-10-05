@@ -7,21 +7,10 @@ use YayLoyalty\Utils\PointsMath;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The one place the redeemable amount is limited: how many of the points a
- * customer asked to spend may actually be spent on this cart, what discount
- * that buys, and which ceiling bit. Pure arithmetic over primitives — no
- * WordPress, no lookups — so every caller (cart quote, checkout validation,
- * the commit's re-check under the lock) gets the same answer from the same
- * code. No caller re-clamps.
- *
- * Ceilings in check order, the first that binds is reported: balance,
- * reward max (`max_points_per_order`), cart (the subtotal after other
- * coupons, tightened by `max_percent_of_subtotal`). The result is then
- * floored to the reward's `increment` (BOUND_STEP only when nothing else
- * bound) and zeroed below `min_points` (BOUND_REWARD_MIN unless a ceiling
- * bound, so "your balance is too low" wins over "below the minimum").
- * The seed's increment equals `points_per_currency_unit`, so by default a
- * step is one whole currency unit and the money value has no remainder.
+ * The one place the redeemable amount is limited: how many requested points this cart may take,
+ * the discount they buy, and which ceiling bound. Pure arithmetic, so the cart quote, checkout
+ * validation and the commit's re-check all get the same answer. No caller re-clamps.
+ * A ceiling outranks the minimum, so "your balance is too low" wins over "below the minimum".
  */
 final class Clamp {
 
@@ -33,18 +22,9 @@ final class Clamp {
     public const BOUND_STEP       = 'step';
 
     /**
-     * Preconditions: $requested ≥ 0 (a negative is treated as 0); $balance is
-     * the customer's spendable balance at the moment of asking; $cart_subtotal
-     * is in $currency and already net of every other coupon, or null for a
-     * claim with no cart (no cart ceiling then); $decimals is that currency's
-     * (wc_get_price_decimals() at runtime).
-     *
-     * Postconditions: Result::allowed() whose get_points() is a multiple of
-     * `increment`, ≤ every ceiling, and 0 when below `min_points`; get_value()
-     * = points / points_per_currency_unit at $decimals dp; get_bound_by() names the
-     * ceiling that reduced the request, or '' when the request stood. The
-     * only denial is REASON_NO_RATE for a reward whose config has no usable
-     * `points_per_currency_unit`.
+     * $cart_subtotal is in $currency and already net of every other coupon, or null for a claim with no cart.
+     * Ceilings are checked in order (balance, reward max, cart) and the first that binds is reported.
+     * The only denial is REASON_NO_RATE, for a reward with no usable `points_per_currency_unit`.
      */
     public static function apply( Reward $reward, int $requested, int $balance, ?float $cart_subtotal, string $currency, int $decimals ): Result {
         $config = $reward->get_config();

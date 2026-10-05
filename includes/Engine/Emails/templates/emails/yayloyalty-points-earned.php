@@ -49,8 +49,7 @@ do_action( 'woocommerce_email_header', $email_heading, $email );
     <?php if ( ! empty( $balance_value_text ) ) : ?>
 <p>
         <?php
-        // wc_price() markup, unfiltered: kses would strip its <bdi>, which keeps the amount readable in right-to-left stores.
-        echo $balance_value_text; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+        echo $balance_value_text; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped when built; kses would strip wc_price()'s <bdi>, which keeps the amount readable in right-to-left stores.
         ?>
 </p>
     <?php endif; ?>

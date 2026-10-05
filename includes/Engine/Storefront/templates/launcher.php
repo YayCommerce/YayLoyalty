@@ -2,7 +2,7 @@
 /**
  * Launcher shell: the floating button, the overlay and the panel frame (a bottom sheet on mobile).
  *
- * @var array $view Launcher::build_view().
+ * @var array $view Launcher::view().
  */
 
 use YayLoyalty\Engine\Storefront\LauncherCopy;

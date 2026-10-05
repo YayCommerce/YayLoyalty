@@ -11,11 +11,8 @@ use YayLoyalty\Utils\WooOrders;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Real aggregates behind CampaignPerformanceRestController, replacing
- * CampaignPerformanceFixture. Every method scopes to one campaign_id with
- * LedgerRepository::issued_row_sql(), the one definition of an issued row,
- * so a campaign's tiles and entries table can never disagree with each other
- * or with CampaignRestController's own `points_issued` column.
+ * The aggregates behind CampaignPerformanceRestController. Every query uses LedgerRepository::issued_row_sql(),
+ * the one definition of an issued row, so a campaign's tiles, its entries and the campaign list never disagree.
  */
 class CampaignPerformanceRepository {
 
@@ -26,8 +23,7 @@ class CampaignPerformanceRepository {
     }
 
     /**
-     * Lifetime totals — no date bound; see the controller's own docblock
-     * for why totals stay lifetime while the chart does not.
+     * Lifetime totals, with no date bound.
      *
      * @return array{points_issued: int, entries_total: int, orders_affected: int, customers_earned: int}
      */
@@ -37,7 +33,7 @@ class CampaignPerformanceRepository {
         list( $issued, $types ) = LedgerRepository::issued_row_sql();
 
         // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $issued carries a "%s, %s" list; every value is bound.
-        $row = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        $row = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
                 'SELECT COALESCE(SUM(points), 0) AS points_issued,
                         COUNT(*) AS entries_total,
@@ -60,9 +56,7 @@ class CampaignPerformanceRepository {
     }
 
     /**
-     * Paged/searchable rows behind the entries table — orders, signups or
-     * reviews depending on the campaign's trigger, told apart here by each
-     * row's OWN reference_type rather than by re-deriving the campaign's
+     * Paged, searchable entries. Rows are told apart by their own reference_type, not by the campaign's
      * trigger, so each trigger handler's reference_type() stays the one mapping.
      *
      * @return array{items: array<int, array<string, mixed>>, total: int, page: int, per_page: int}
@@ -92,11 +86,11 @@ class CampaignPerformanceRepository {
         $users     = esc_sql( $wpdb->users );
 
         // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared -- $where fragments are each already prepared above; identifiers are escaped above; only LIMIT/OFFSET are bound here.
-        $total = (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        $total = (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             'SELECT COUNT(*) FROM `' . $table . '` l LEFT JOIN `' . $users . '` u ON u.ID = l.user_id' . $where_sql
         );
 
-        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
                 'SELECT l.id, l.user_id, u.display_name AS customer_name, l.points, l.created_at, l.reference_type, l.reference_id
                  FROM `' . $table . '` l LEFT JOIN `' . $users . '` u ON u.ID = l.user_id'
@@ -117,15 +111,8 @@ class CampaignPerformanceRepository {
     }
 
     /**
-     * Two needles, same guard CampaignPerformanceFixture::entries() used
-     * (removed, see its git history): ltrim( $search, '#' ) on a search that
-     * is ALL '#' characters reduces to '', and a LIKE against '%%' matches
-     * every row — so the reference needle is dropped entirely once it goes
-     * empty, rather than being allowed to match everything.
-     *
-     * The name needle reads the joined WP user, so a deleted member (NULL
-     * display_name) is found by reference id only, never by the name their
-     * account_deleted snapshot kept.
+     * A search of only '#' leaves an empty reference needle, which would match every row, so it is dropped.
+     * The name needle reads the joined WordPress user, so a deleted member is found by reference id only.
      */
     private function search_fragment( string $search ): string {
         global $wpdb;
@@ -143,7 +130,7 @@ class CampaignPerformanceRepository {
     }
 
     /**
-     * One ledger row into campaignPerformanceEntrySchema's shape.
+     * One ledger row in the entries' wire shape.
      *
      * @param array<string, mixed> $row
      * @return array<string, mixed>
@@ -167,10 +154,8 @@ class CampaignPerformanceRepository {
     }
 
     /**
-     * A deleted member's name from their account_deleted snapshot, or '' when
-     * none was kept — the same fallback the customer list and drawer use
-     * (CustomerListFormatter::identity(), CustomerItemFormatter::identity()),
-     * so one member is named the same way on every screen.
+     * A deleted member's name from their account_deleted snapshot, or ''. The customer list and drawer use the
+     * same fallback (CustomerListFormatter::identity(), CustomerItemFormatter::identity()), so the name matches everywhere.
      */
     private function deleted_name( int $user_id ): string {
         $deletion = $this->customer_meta->latest( $user_id, ActivityEvent::ACCOUNT_DELETED );
@@ -205,7 +190,7 @@ class CampaignPerformanceRepository {
         }
     }
 
-    /** Null rather than a broken link when WooCommerce no longer has the order (deleted). */
+    /** Null when WooCommerce no longer has the order. */
     private function order_subtotal( int $order_id ): ?float {
         if ( ! function_exists( 'wc_get_order' ) ) {
             return null;

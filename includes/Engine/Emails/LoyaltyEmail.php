@@ -4,11 +4,9 @@ namespace YayLoyalty\Engine\Emails;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Base for loyalty emails: a subclass sets its id, title, description and group;
- * its template names follow the id (yayloyalty_points_earned →
- * emails/yayloyalty-points-earned.php). get_content_html/plain pass
- * `template_base` as WooCommerce's default template path, so a theme copy under
- * woocommerce/emails/ still wins and no template-locating filters are needed.
+ * Base for loyalty emails. Template names follow the id (yayloyalty_points_earned →
+ * emails/yayloyalty-points-earned.php). `template_base` goes in as WooCommerce's default template path,
+ * so a theme copy under woocommerce/emails/ still wins without template-locating filters.
  */
 abstract class LoyaltyEmail extends \WC_Email {
 

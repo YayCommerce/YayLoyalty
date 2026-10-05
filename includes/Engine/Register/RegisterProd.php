@@ -8,11 +8,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 use YayLoyalty\Utils\SingletonTrait;
 use YayLoyalty\Engine\Register\ScriptName;
 
-/** Register in Production Mode */
+/** Registers the built admin app from assets/dist/admin. */
 class RegisterProd {
     use SingletonTrait;
 
-    /** Hooks Initialization */
     protected function __construct() {
         add_action( 'init', [ $this, 'register_all_scripts' ] );
     }

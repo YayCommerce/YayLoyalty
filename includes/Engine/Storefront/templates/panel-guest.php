@@ -5,7 +5,7 @@
  * Rates are stated plainly (they are the argument), at the base rate only: a tier multiplier
  * belongs to members, and promising it before signup would be untrue.
  *
- * @var array $view    Launcher::build_view().
+ * @var array $view    Launcher::view().
  * @var array $yayloyalty_text The Design tab's storefront_text.
  */
 

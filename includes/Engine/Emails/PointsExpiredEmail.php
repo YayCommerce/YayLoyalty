@@ -3,7 +3,7 @@ namespace YayLoyalty\Engine\Emails;
 
 defined( 'ABSPATH' ) || exit;
 
-/** Points expired: sent after a customer's points balance has expired. */
+/** The points-expired email. Nothing triggers it yet. */
 class PointsExpiredEmail extends LoyaltyEmail {
 
     protected $is_enabled_by_default = false;

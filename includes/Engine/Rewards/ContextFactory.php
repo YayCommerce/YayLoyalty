@@ -30,7 +30,7 @@ final class ContextFactory {
      * Points\ContextFactory::customer_facts( user_id, at ).
      */
     public function from_cart( \WC_Cart $cart, ?int $user_id, ?int $points_requested ): Context { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(redemption): balance = customers->find_by_user_id( user_id )?->get_balance() ?? 0; subtotal = cart->get_subtotal() + tax if prices incl. tax − (cart->get_discount_total() − our coupon's amount); currency = get_woocommerce_currency(); return new Context( …, Dates::now(), PointsContextFactory::customer_facts( user_id, at ) ).
+        // TODO(redemption): balance = the balance of customers->find_by_user_id( user_id ), 0 when there is no row; subtotal = cart->get_subtotal() + tax if prices incl. tax − (cart->get_discount_total() − our coupon's amount); currency = get_woocommerce_currency(); return new Context( …, Dates::now(), PointsContextFactory::customer_facts( user_id, at ) ).
         throw new \RuntimeException( 'Not implemented' );
     }
 

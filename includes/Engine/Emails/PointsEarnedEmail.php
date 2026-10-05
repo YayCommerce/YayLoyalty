@@ -12,7 +12,7 @@ use YayLoyalty\Utils\PointsMath;
 
 defined( 'ABSPATH' ) || exit;
 
-/** Points earned: sent when a customer earns points from an order or activity. */
+/** The points-earned email, sent after each award commits. */
 class PointsEarnedEmail extends LoyaltyEmail {
 
     public const ID = 'yayloyalty_points_earned';
