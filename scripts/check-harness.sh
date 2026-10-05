@@ -8,8 +8,9 @@
 # feature IDs in code, missing paths and broken links, missing Purpose and
 # Update when headers, dead rule globs, skill names and description lengths,
 # @imports in CLAUDE.md, and decision-record format. It prints one line per
-# finding and exits 1 if there is any, 0 otherwise. It reads tracked files only
-# and changes nothing.
+# finding and exits 1 if there is any, 0 otherwise. The git grep checks read
+# tracked files only; the checks that loop over harness files also see
+# untracked ones. It changes nothing.
 #
 # Update when: a harness file, a skill or a decision record is added in a place
 # these checks don't cover, or a check's rule changes.
