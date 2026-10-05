@@ -61,8 +61,7 @@ final class RewardRepository extends AbstractRepository {
 
     /**
      * The built-in reward only while it is live at $now: active, and inside its start and end dates.
-     * Live is what customers are shown, not proof they can spend it: until redemption ships, nothing at
-     * checkout redeems the reward.
+     * Live is not proof customers can spend it: RedemptionService::is_available() says whether checkout redeems it.
      */
     public function find_live_cart_discount( string $now ): ?Reward {
         $reward = $this->find_by_slug( self::CART_DISCOUNT_SLUG );

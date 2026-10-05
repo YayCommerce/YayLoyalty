@@ -31,12 +31,6 @@ class PointsEarnedShortcodes extends BaseShortcode {
 
     public $available_email_ids = [ PointsEarnedEmail::ID ];
 
-    /** @var object|null The award $values were built for. One build serves every shortcode in a render. */
-    private $values_entry = null;
-
-    /** @var array<string, mixed> */
-    private $values = [];
-
     /** @var array<string, mixed>|null */
     private $sample_values = null;
 
@@ -155,16 +149,7 @@ class PointsEarnedShortcodes extends BaseShortcode {
         // YayMail's subject filter renders a real send with empty render_data, so read the email hold_subject_email() caught.
         $email = $render_data['email'] ?? $this->subject_email;
 
-        if ( ! $email instanceof PointsEarnedEmail ) {
-            return [];
-        }
-
-        if ( $email->object !== $this->values_entry ) {
-            $this->values_entry = $email->object;
-            $this->values       = $email->get_template_values();
-        }
-
-        return $this->values;
+        return $email instanceof PointsEarnedEmail ? $email->get_template_values() : [];
     }
 
     private function sample_values( $root_email ): array {
