@@ -28,11 +28,11 @@ final class ProgramGate implements Gate {
     }
 
     public function check( string $trigger, Context $ctx ): ?string { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- the rules apply to every trigger.
-        $general = SettingsHelper::get_settings()['general'];
-
-        if ( ! $general['enabled'] ) {
+        if ( ! self::program_enabled() ) {
             return self::REASON_PROGRAM_PAUSED;
         }
+
+        $general = SettingsHelper::get_settings()['general'];
 
         $user_id = $ctx->get_user_id();
 
