@@ -1,12 +1,11 @@
 <?php
 namespace YayLoyalty\Engine\Emails;
 
-use YayLoyalty\Engine\Earning\EarningService;
-use YayLoyalty\Engine\Earning\Outcome;
 use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Models\LedgerEntry;
+use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Repositories\RewardRepository;
 use YayLoyalty\Utils\PointsMath;
 
@@ -15,7 +14,13 @@ defined( 'ABSPATH' ) || exit;
 /** The points-earned email, sent after each award commits. */
 class PointsEarnedEmail extends LoyaltyEmail {
 
-    public const ID = 'yayloyalty_points_earned';
+    public const ID = Emails::POINTS_EARNED_ID;
+
+    /** @var LedgerEntry|null The award $values were built for. */
+    private $values_entry = null;
+
+    /** @var array<string, mixed> */
+    private $values = [];
 
     public function __construct() {
         $this->id          = self::ID;
@@ -29,7 +34,7 @@ class PointsEarnedEmail extends LoyaltyEmail {
             '{balance}'      => '',
         ];
 
-        add_action( EarningService::AWARDED_ACTION . '_notification', [ $this, 'trigger' ] );
+        add_action( Emails::POINTS_EARNED_ACTION . '_notification', [ $this, 'trigger' ] );
 
         parent::__construct();
     }
@@ -42,11 +47,15 @@ class PointsEarnedEmail extends LoyaltyEmail {
         return __( 'You earned points', 'yayloyalty' );
     }
 
-    /** Mails the customer about one award; no-op when disabled, the row is not a gain, or the user has no email. */
-    public function trigger( Outcome $awarded ): void {
-        $entry = $awarded->get_entry();
+    /**
+     * Mails the customer about one award, relayed by Emails::relay_award() as its ledger row id;
+     * no-op when the row is not a gain, the email is disabled, the user has no email, or the
+     * customer has reached the weekly cap.
+     */
+    public function trigger( int $entry_id ): void {
+        $entry = ( new LedgerRepository() )->find( $entry_id );
 
-        if ( ! $entry || ! $this->is_enabled() || $entry->get_points() <= 0 ) {
+        if ( ! $entry instanceof LedgerEntry || $entry->get_points() <= 0 ) {
             return;
         }
 
@@ -60,11 +69,12 @@ class PointsEarnedEmail extends LoyaltyEmail {
         $this->setup_locale();
 
         try {
+            // Before is_enabled(): its filter receives $this->object, which must be this award.
             $this->prepare( $entry );
             $this->recipient = $user->user_email;
 
-            if ( $this->get_recipient() ) {
-                $this->send( $this->get_recipient(), $this->get_subject(), $this->get_content(), $this->get_headers(), $this->get_attachments() );
+            if ( $this->is_enabled() && $this->get_recipient() ) {
+                $this->send_to_customer( $entry->get_user_id() );
             }
         } finally {
             // A throwing mail transport must not leave the rest of the request in the customer's locale.
@@ -76,9 +86,18 @@ class PointsEarnedEmail extends LoyaltyEmail {
     private function prepare( LedgerEntry $entry ): void {
         $this->object = $entry;
 
-        $this->placeholders['{points}']       = number_format_i18n( $entry->get_points() );
-        $this->placeholders['{points_label}'] = SettingsHelper::points_label( $entry->get_points() );
-        $this->placeholders['{balance}']      = number_format_i18n( $entry->get_balance_after() );
+        foreach ( self::amounts( $entry ) as $key => $value ) {
+            $this->placeholders[ '{' . $key . '}' ] = $value;
+        }
+    }
+
+    /** @return array{points: string, points_label: string, balance: string} The subject placeholders' values, which the body shows too. */
+    private static function amounts( LedgerEntry $entry ): array {
+        return [
+            'points'       => number_format_i18n( $entry->get_points() ),
+            'points_label' => SettingsHelper::points_label( $entry->get_points() ),
+            'balance'      => number_format_i18n( $entry->get_balance_after() ),
+        ];
     }
 
     /** Previews have no real award, so they show a made-up one, greeting whoever is looking. */
@@ -91,34 +110,51 @@ class PointsEarnedEmail extends LoyaltyEmail {
         return $this->extra_template_args();
     }
 
+    /** Built once per award: a multipart send and YayMail each render it again. */
     protected function extra_template_args(): array {
         if ( ! $this->object instanceof LedgerEntry ) {
             return [];
         }
 
-        $entry         = $this->object;
-        $order         = $entry->get_order_id() ? wc_get_order( $entry->get_order_id() ) : null;
-        $order_number  = $order ? (string) $order->get_order_number() : '';
-        $balance_value = self::balance_value( $entry->get_balance_after() );
+        if ( $this->values_entry !== $this->object ) {
+            $this->values_entry = $this->object;
+            $this->values       = $this->build_values( $this->object );
+        }
 
-        return [
+        return $this->values;
+    }
+
+    /** @return array<string, mixed> */
+    private function build_values( LedgerEntry $entry ): array {
+        $order        = $entry->get_order_id() ? wc_get_order( $entry->get_order_id() ) : null;
+        $order_number = $order ? (string) $order->get_order_number() : '';
+
+        /**
+         * Filters whether the email says what the balance is worth. Off by default:
+         * customers cannot spend points at checkout until redemption ships.
+         * TODO(redemption): default to true once redemption ships.
+         *
+         * @param bool        $show
+         * @param LedgerEntry $entry The awarded row.
+         */
+        $show_value    = (bool) apply_filters( 'yayloyalty_points_earned_show_balance_value', false, $entry );
+        $balance_value = $show_value ? self::balance_value( $entry->get_balance_after() ) : '';
+
+        return self::amounts( $entry ) + [
             'entry'              => $entry,
             'greeting_name'      => self::greeting_name( $entry->get_user_id() ),
             'earned_text'        => $this->earned_text( $entry, $order_number ),
-            'points'             => $this->placeholders['{points}'],
-            'points_label'       => $this->placeholders['{points_label}'],
-            'balance'            => $this->placeholders['{balance}'],
             'balance_text'       => SettingsHelper::points_text( $entry->get_balance_after() ),
             'balance_value'      => $balance_value,
             'balance_value_text' => self::balance_value_text( $balance_value ),
             'order_number'       => $order_number,
             /**
-             * Filters where the email's "View your points" link goes.
+             * Filters where the email's "View your points" link goes; '' hides the button.
              *
-             * @param string      $url   My Account by default.
+             * @param string      $url   '' by default: the plugin has no customer points page yet.
              * @param LedgerEntry $entry The awarded row.
              */
-            'cta_url'            => (string) apply_filters( 'yayloyalty_points_earned_cta_url', wc_get_page_permalink( 'myaccount' ), $entry ),
+            'cta_url'            => (string) apply_filters( 'yayloyalty_points_earned_cta_url', '', $entry ),
         ];
     }
 

@@ -33,8 +33,8 @@ Citations give a path and a symbol; search for the symbol.
 ## 4. The launcher promises redemption that isn't built
 
 - **Today:** while the built-in cart-discount reward is live (`RewardRepository::find_live_cart_discount()`), the guest panel lists "Spend them at checkout — 100 Points = $1 off" (`templates/panel-guest.php`, from `LauncherPayload::redeem_rule()`). The member panel shows "worth $X" under the balance (`templates/panel-member.php`, from `LauncherPayload::member()`). The installer seeds the reward active.
-- **Why it matters:** redemption is still stubs marked `TODO(redemption)`, and nothing at checkout redeems the reward. So on a fresh install every shopper is promised money off they can't get. The points earned email makes the same promise, recorded as section 2 of `docs/notes/2026-10-04-points-earned-email-review.md`.
-- **Suggested fix:** one "redemption available" check, false until redemption ships, that both the email and `LauncherPayload::for_balance()` consult. When it is false, the redeem step and the worth line are left out, and the email leaves out its value sentence.
+- **Why it matters:** redemption is still stubs marked `TODO(redemption)`, and nothing at checkout redeems the reward. So on a fresh install every shopper is promised money off they can't get. The points earned email no longer does: it leaves out its value sentence unless the `yayloyalty_points_earned_show_balance_value` filter turns it on.
+- **Suggested fix:** one "redemption available" check, false until redemption ships, that `LauncherPayload::for_balance()` consults, and that replaces the email's filter default. When it is false, the redeem step and the worth line are left out.
 
 ## 5. No test guards the shopper-safe activity projection
 
