@@ -86,3 +86,14 @@ export const designSchema = z.object({
 });
 
 export type Design = z.infer<typeof designSchema>;
+
+/**
+ * Two whole HTML pages from the server's own launcher templates: the button alone, and the open panel.
+ * Mirrors the keys `LauncherPreview::documents()` returns, which owns them.
+ */
+export const designPreviewSchema = z.object({
+  collapsed: z.string(),
+  expanded: z.string(),
+});
+
+export type DesignPreview = z.infer<typeof designPreviewSchema>;

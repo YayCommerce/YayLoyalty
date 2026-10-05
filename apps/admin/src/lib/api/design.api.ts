@@ -1,5 +1,5 @@
 import { api, wordpressApi } from '@/lib/api/api';
-import { Design } from '@/lib/schema/design.schema';
+import { Design, DesignPreview, designPreviewSchema } from '@/lib/schema/design.schema';
 
 export function getDesign() {
   return api.get('design').json<Design>();
@@ -17,12 +17,6 @@ export function resetDesign(group?: string) {
 export type DesignPreviewViewer = 'member' | 'guest';
 
 /**
- * Two whole HTML pages from the server's own launcher templates: the button alone, and the open panel.
- * Mirrors the keys `LauncherPreview::documents()` returns, which owns them.
- */
-export type DesignPreview = { collapsed: string; expanded: string };
-
-/**
  * The design fields the storefront launcher draws: a mirror of what `LauncherPayload::for_balance()`
  * (and `Launcher::view()`) read. A field missing here never redraws the preview; change both together.
  */
@@ -34,8 +28,8 @@ export type DesignPreviewInput = Pick<Design, 'launcher' | 'storefront_text'> & 
 };
 
 /** The storefront launcher drawn with an unsaved design; nothing is saved. */
-export function previewDesign(design: DesignPreviewInput, viewer: DesignPreviewViewer) {
-  return api.post('design/preview', { json: { design, viewer } }).json<DesignPreview>();
+export async function previewDesign(design: DesignPreviewInput, viewer: DesignPreviewViewer): Promise<DesignPreview> {
+  return designPreviewSchema.parse(await api.post('design/preview', { json: { design, viewer } }).json());
 }
 
 export type WpPageOption = { id: number; title: { rendered: string } };
