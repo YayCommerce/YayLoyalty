@@ -14,6 +14,8 @@
 
 Pro adds no gate today. Once it does, a shopper that gate blocks from earning will still see a panel about earning.
 
+A related gap that this item's boxes don't cover: the unmerged branch `paul/feat/setting-advanced-fraud-limit-max-points-per-customer-per-day` adds a Pro daily cap, `Pro\Services\DailyEarningLimit`, through the `yayloyalty_award_points` filter (`EarningService::AWARD_POINTS_FILTER`), not through a gate. It lowers or zeroes an award inside `LedgerService::earn()`, and its docblock says storefront figures stay uncapped, so a shopper at the cap still sees the earning panel and full rates. Once that branch merges, record it as its own item.
+
 ## Suggested fix
 
 Expose the filtered chain, for example by making `blocked_reason()` public or adding a static that runs the gates. The launcher then calls it and reads `ProgramGate::REASON_NO_CUSTOMER` as "a guest: show the pitch", and `program_enabled()` can go.
