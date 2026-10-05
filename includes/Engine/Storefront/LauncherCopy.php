@@ -43,7 +43,7 @@ final class LauncherCopy {
     }
 
     /**
-     * The Design tab's `earn_rate_line` with its {points} and {amount} filled: "Earn 1 points per $1 spent".
+     * The Design tab's `earn_rate_line` with its {points}, {points_label} and {amount} filled: "Earn 1 Point per $1 spent".
      * The field is optional; left blank, the rate still needs saying, so the Design default stands in.
      * A campaign minimum is appended, since an order under it earns nothing.
      */
@@ -55,8 +55,9 @@ final class LauncherCopy {
         $line = strtr(
             $template,
             [
-                '{points}' => self::rate( $points_per_unit ),
-                '{amount}' => self::money( 1.0 ),
+                '{points}'       => self::rate( $points_per_unit ),
+                '{points_label}' => self::rate_label( $points_per_unit ),
+                '{amount}'       => self::money( 1.0 ),
             ]
         );
 
@@ -68,11 +69,14 @@ final class LauncherCopy {
         return sprintf( __( '%1$s on orders of %2$s or more', 'yayloyalty' ), $line, self::money( $min_subtotal ) );
     }
 
-    /** "100 points = $1", with the merchant's label: singular only for a rate of exactly 1. */
+    /** "100 points = $1", with the merchant's label. */
     public static function redeem_rate( float $points_per_unit ): string {
-        $label = SettingsHelper::points_label( 1.0 === $points_per_unit ? 1 : 0 );
-
         /* translators: 1: points per unit of currency, 2: the store's points label, 3: money amount. */
-        return sprintf( __( '%1$s %2$s = %3$s', 'yayloyalty' ), self::rate( $points_per_unit ), $label, self::money( 1.0 ) );
+        return sprintf( __( '%1$s %2$s = %3$s', 'yayloyalty' ), self::rate( $points_per_unit ), self::rate_label( $points_per_unit ), self::money( 1.0 ) );
+    }
+
+    /** The merchant's label for a rate: singular only when rate() prints it as 1, so number and label agree. */
+    private static function rate_label( float $rate ): string {
+        return SettingsHelper::points_label( '1' === self::rate( $rate ) ? 1 : 0 );
     }
 }

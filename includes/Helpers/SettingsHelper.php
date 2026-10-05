@@ -87,9 +87,10 @@ class SettingsHelper {
         return 1 === $points ? $general['points_label_singular'] : $general['points_label_plural'];
     }
 
-    /** "50 Points": the amount in the site's number format, then the merchant's label for it. */
+    /** "50 Points": the amount in the site's number format with the merchant's label, in an order translators set. */
     public static function points_text( int $points ): string {
-        return number_format_i18n( $points ) . ' ' . self::points_label( $points );
+        /* translators: 1: number of points, 2: the store's points label, e.g. "Points". */
+        return sprintf( _x( '%1$s %2$s', 'points amount', 'yayloyalty' ), number_format_i18n( $points ), self::points_label( $points ) );
     }
 
     /**

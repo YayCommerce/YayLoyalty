@@ -31,7 +31,8 @@ class DesignSchema {
             'storefront_text' => [
                 'launcher_label'        => __( 'Rewards', 'yayloyalty' ),
                 'balance_heading'       => __( 'Your points', 'yayloyalty' ),
-                'earn_rate_line'        => __( 'Earn {points} points per {amount} spent', 'yayloyalty' ),
+                /* translators: {points}, {points_label} and {amount} are filled in when shown; keep them as they are. */
+                'earn_rate_line'        => __( 'Earn {points} {points_label} per {amount} spent', 'yayloyalty' ),
                 'redeem_button'         => __( 'Apply points', 'yayloyalty' ),
                 'signed_out_prompt'     => __( 'Sign in to earn points on this order', 'yayloyalty' ),
                 'referral_card_heading' => __( 'Invite a friend, get {amount} points', 'yayloyalty' ), // Pro

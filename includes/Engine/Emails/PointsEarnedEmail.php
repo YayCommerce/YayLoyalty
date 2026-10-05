@@ -180,7 +180,7 @@ class PointsEarnedEmail extends LoyaltyEmail {
                 break;
         }
 
-        $points = '<strong>' . esc_html( $this->placeholders['{points}'] . ' ' . $this->placeholders['{points_label}'] ) . '</strong>';
+        $points = '<strong>' . esc_html( SettingsHelper::points_text( $entry->get_points() ) ) . '</strong>';
         $text   = vsprintf( esc_html( $format ), array_merge( [ $points ], array_map( 'esc_html', $extra ) ) );
 
         /**
