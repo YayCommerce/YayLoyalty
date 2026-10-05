@@ -35,6 +35,11 @@ final class PointsEngine {
         $this->caps      = $caps;
     }
 
+    /** The engine with this build's trigger handlers; Pro adds its own through Registry::with_lite_handlers(). */
+    public static function build( CampaignRepository $campaigns ): self {
+        return new self( Registry::with_lite_handlers( $campaigns ), $campaigns, new CapPolicy() );
+    }
+
     /**
      * @param string  $trigger A CampaignTrigger constant.
      * @param Context $ctx     The event; liveness is evaluated at its occurred_at.
@@ -93,12 +98,23 @@ final class PointsEngine {
      * every conditional campaign the moment a site downgraded from Pro.
      */
     private function conditions_match( Campaign $campaign, Context $ctx ): bool {
-        $conditions = $campaign->get_conditions();
-
-        if ( empty( $conditions ) ) {
+        if ( self::applies_to_everyone( $campaign ) ) {
             return true;
         }
 
+        return (bool) self::conditions_evaluator()->evaluate( $campaign->get_conditions(), $ctx );
+    }
+
+    /**
+     * Whether a campaign's conditions let every shopper through: it has none, or none are enforced (Lite).
+     * The storefront launcher advertises only such campaigns, so it never promises a rate some shoppers miss.
+     */
+    public static function applies_to_everyone( Campaign $campaign ): bool {
+        return [] === $campaign->get_conditions() || null === self::conditions_evaluator();
+    }
+
+    /** The attached conditions evaluator, or null when conditions are not enforced. */
+    private static function conditions_evaluator(): ?object {
         /**
          * Evaluator for campaign `conditions`; null in Lite. Internal Pro seam, not a public API.
          *
@@ -106,10 +122,6 @@ final class PointsEngine {
          */
         $evaluator = apply_filters( self::CONDITIONS_EVALUATOR_FILTER, null ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name.
 
-        if ( null === $evaluator || ! method_exists( $evaluator, 'evaluate' ) ) {
-            return true;
-        }
-
-        return (bool) $evaluator->evaluate( $conditions, $ctx );
+        return is_object( $evaluator ) && method_exists( $evaluator, 'evaluate' ) ? $evaluator : null;
     }
 }

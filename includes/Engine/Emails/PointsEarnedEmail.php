@@ -108,7 +108,7 @@ class PointsEarnedEmail extends LoyaltyEmail {
             'points'             => $this->placeholders['{points}'],
             'points_label'       => $this->placeholders['{points_label}'],
             'balance'            => $this->placeholders['{balance}'],
-            'balance_text'       => self::points_text( $entry->get_balance_after() ),
+            'balance_text'       => SettingsHelper::points_text( $entry->get_balance_after() ),
             'balance_value'      => $balance_value,
             'balance_value_text' => self::balance_value_text( $balance_value ),
             'order_number'       => $order_number,
@@ -120,11 +120,6 @@ class PointsEarnedEmail extends LoyaltyEmail {
              */
             'cta_url'            => (string) apply_filters( 'yayloyalty_points_earned_cta_url', wc_get_page_permalink( 'myaccount' ), $entry ),
         ];
-    }
-
-    /** "50 Points", with the merchant's label. */
-    private static function points_text( int $points ): string {
-        return number_format_i18n( $points ) . ' ' . SettingsHelper::points_label( $points );
     }
 
     /** First name, else display name, else '' (the template then drops the greeting). */
@@ -185,7 +180,7 @@ class PointsEarnedEmail extends LoyaltyEmail {
                 break;
         }
 
-        $points = '<strong>' . esc_html( $this->placeholders['{points}'] . ' ' . $this->placeholders['{points_label}'] ) . '</strong>';
+        $points = '<strong>' . esc_html( SettingsHelper::points_text( $entry->get_points() ) ) . '</strong>';
         $text   = vsprintf( esc_html( $format ), array_merge( [ $points ], array_map( 'esc_html', $extra ) ) );
 
         /**

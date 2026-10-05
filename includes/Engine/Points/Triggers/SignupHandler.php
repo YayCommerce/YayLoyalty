@@ -24,7 +24,7 @@ final class SignupHandler implements TriggerHandler {
     }
 
     public function compute_points( Campaign $campaign, Context $ctx ): Breakdown {
-        return Breakdown::flat( (int) ( $campaign->get_config()['points'] ?? 0 ) );
+        return Breakdown::flat( $campaign->flat_points() );
     }
 
     public function reference_type(): string {

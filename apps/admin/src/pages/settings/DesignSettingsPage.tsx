@@ -26,6 +26,7 @@ import {
   SAVE_SUCCESS_TOAST,
 } from './design-settings.copy';
 import { DesignFormValues, designToFormValues } from './design-settings.form';
+import { DesignLauncherPreview } from './DesignLauncherPreview';
 import { DesignLauncherSection } from './DesignLauncherSection';
 import { DesignStorefrontTextSection } from './DesignStorefrontTextSection';
 import { DesignVisibilitySection } from './DesignVisibilitySection';
@@ -84,25 +85,31 @@ export default function DesignSettingsPage() {
   return (
     <>
       <FormProvider {...form}>
-        <form onSubmit={handleSave} className="flex flex-col gap-4">
-          <DesignLauncherSection />
-          <DesignStorefrontTextSection />
-          <DesignVisibilitySection />
+        <form onSubmit={handleSave} className="flex flex-col gap-4 xl:flex-row xl:items-start">
+          <div className="flex min-w-0 flex-1 flex-col gap-4">
+            <DesignLauncherSection />
+            <DesignStorefrontTextSection />
+            <DesignVisibilitySection />
 
-          {/* Ternary INSIDE ProGate's children, not <ProGate><X/></ProGate>: JSX evaluates
-              children eagerly, so the latter drags the Pro subtree — sentinel included —
-              into the Lite bundle. */}
-          <ProGate>{IS_PRO_BUILD ? <DesignPanelSection /> : null}</ProGate>
-          <ProGate>{IS_PRO_BUILD ? <DesignTypographySection /> : null}</ProGate>
-          <ProGate>{IS_PRO_BUILD ? <DesignTierSection /> : null}</ProGate>
+            {/* Ternary INSIDE ProGate's children, not <ProGate><X/></ProGate>: JSX evaluates
+                children eagerly, so the latter drags the Pro subtree — sentinel included —
+                into the Lite bundle. */}
+            <ProGate>{IS_PRO_BUILD ? <DesignPanelSection /> : null}</ProGate>
+            <ProGate>{IS_PRO_BUILD ? <DesignTypographySection /> : null}</ProGate>
+            <ProGate>{IS_PRO_BUILD ? <DesignTierSection /> : null}</ProGate>
 
-          <div className="flex items-center justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => setResetOpen(true)}>
-              {RESET_WHOLE_TAB_BUTTON_LABEL()}
-            </Button>
-            <Button type="submit" disabled={!form.formState.isDirty || saveMutation.isPending}>
-              {SAVE_BUTTON_LABEL()}
-            </Button>
+            <div className="flex items-center justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setResetOpen(true)}>
+                {RESET_WHOLE_TAB_BUTTON_LABEL()}
+              </Button>
+              <Button type="submit" disabled={!form.formState.isDirty || saveMutation.isPending}>
+                {SAVE_BUTTON_LABEL()}
+              </Button>
+            </div>
+          </div>
+
+          <div className="w-full xl:sticky xl:top-6 xl:w-110 xl:shrink-0">
+            <DesignLauncherPreview />
           </div>
         </form>
       </FormProvider>

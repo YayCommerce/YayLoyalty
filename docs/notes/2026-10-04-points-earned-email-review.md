@@ -22,8 +22,7 @@ Citations give a path and a symbol; search for the symbol.
 - **Why it is a bug:**
   - Redemption is scaffolding: the gates, the handler and the write side are stubs marked `TODO(redemption)`, and nothing hooks checkout. So on a fresh install every award email says the balance is worth money the customer cannot spend.
   - The plugin adds no My Account endpoint or points view, so the button lands on the plain dashboard with no points shown.
-  - The docblock of `live_points_per_currency_unit()` says "customers are never shown a reward they cannot spend", which is false today.
-- **Suggested fix:** until redemption ships, leave out the value sentence: return 0 from the live rate, or gate it on a "redemption available" check. Then either add a My Account points view, or drop or retarget the button by default, and correct the docblock.
+- **Suggested fix:** until redemption ships, leave out the value sentence: return 0 from the live rate, or gate it on a "redemption available" check. Then either add a My Account points view, or drop or retarget the button by default.
 
 ### 3. The enabled filter sees the previous award
 
@@ -49,7 +48,7 @@ Citations give a path and a symbol; search for the symbol.
 
 ## Test gap
 
-- **Today:** `f4290fe` deleted the feature's integration tests, `tests/integration/Emails/PointsEarnedEmailTest.php` (21 tests) and `YayMailPointsEarnedTest.php`. It also deleted the shared `tests/integration/WooCommerceEmailsFixture.php`, which already existed on `dev/edd`. `WooCommerceOrdersFixture::require_woocommerce()` turns off every WooCommerce email, this one included.
+- **Today:** `f4290fe` deleted the feature's integration tests, `tests/integration/Emails/PointsEarnedEmailTest.php` (21 tests) and `YayMailPointsEarnedTest.php`. It also deleted the shared `tests/integration/WooCommerceEmailsFixture.php`, which already existed on `dev/edd`. The storefront launcher's branch then deleted `tests/integration/WooCommerceOrdersFixture.php` too, which no test used any more. Its `require_woocommerce()` turned off every WooCommerce email, this one included.
 - **Why it is a bug:** nothing exercises the send path. A regression in what the deleted tests checked ships unseen:
   - one send per award, never a second for a duplicate;
   - the award kept when the mailer throws;
@@ -57,8 +56,8 @@ Citations give a path and a symbol; search for the symbol.
   - the value line hidden while the reward is paused;
   - the preview sample.
   
-  Also, `WooCommerceOrdersFixture::detach_yaymail()` can never matter while the email is off, and it removes every subject filter and YayMail's `wc_get_template` hook without putting them back.
-- **Suggested fix:** restore the fixture and the email tests, turning this one email back on in them. Then either delete `detach_yaymail()`, or make it restore what it removes.
+  Also, the deleted `WooCommerceOrdersFixture::detach_yaymail()` could never matter while the email was off, and it removed every subject filter and YayMail's `wc_get_template` hook without putting them back.
+- **Suggested fix:** restore both fixtures and the email tests from history: `WooCommerceEmailsFixture.php` from `2054e97^`, `WooCommerceOrdersFixture.php` from `957cc74`, turning this one email back on in them. Then either delete `detach_yaymail()`, or make it restore what it removes.
 
 ## Cleanup left open
 

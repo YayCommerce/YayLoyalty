@@ -13,6 +13,9 @@ class SettingsHelper {
     public const OPTION_SETTINGS = 'yayloyalty_settings';
     public const OPTION_REVIEWED = 'yayloyalty_reviewed';
 
+    /** @var array{locale: string, saved: mixed, settings: array}|null The last get_settings() result and what it was built from. */
+    private static $cache = null;
+
     /** Bump when a migration changes the stored shape. */
     public const SCHEMA_VERSION = 1;
 
@@ -58,10 +61,32 @@ class SettingsHelper {
         ];
     }
 
-    /** Stored settings merged over defaults, sanitised for output. */
+    /**
+     * Stored settings merged over defaults, sanitised for output.
+     *
+     * A page asks for settings many times (every points label, every gate), so the result is reused while
+     * the stored option and the locale are unchanged. The locale is part of the key because the defaults
+     * are translated, and WooCommerce switches it while it sends an email in the customer's language.
+     */
     public static function get_settings(): array {
-        $saved = get_option( self::OPTION_SETTINGS, [] );
+        $saved  = get_option( self::OPTION_SETTINGS, [] );
+        $locale = get_locale();
 
+        if ( null !== self::$cache && $locale === self::$cache['locale'] && $saved === self::$cache['saved'] ) {
+            return self::$cache['settings'];
+        }
+
+        self::$cache = [
+            'locale'   => $locale,
+            'saved'    => $saved,
+            'settings' => self::build_settings( $saved ),
+        ];
+
+        return self::$cache['settings'];
+    }
+
+    /** @param mixed $saved The raw stored option. */
+    private static function build_settings( $saved ): array {
         if ( ! is_array( $saved ) ) {
             $saved = [];
         }
@@ -85,6 +110,12 @@ class SettingsHelper {
         $general = self::get_settings()['general'];
 
         return 1 === $points ? $general['points_label_singular'] : $general['points_label_plural'];
+    }
+
+    /** "50 Points": the amount in the site's number format with the merchant's label, in an order translators set. */
+    public static function points_text( int $points ): string {
+        /* translators: 1: number of points, 2: the store's points label, e.g. "Points". */
+        return sprintf( _x( '%1$s %2$s', 'points amount', 'yayloyalty' ), number_format_i18n( $points ), self::points_label( $points ) );
     }
 
     /**

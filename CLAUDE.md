@@ -20,14 +20,14 @@ Run from the repo root on Node 22: `nvm use` reads `.nvmrc`, and pnpm 11 fails o
 - `pnpm --filter @yayloyalty/admin-page test`: Vitest. [Fails today](docs/known-issues.md).
 - `pnpm --filter @yayloyalty/admin-page exec tsc --noEmit`: type-check the SPA. [Fails today](docs/known-issues.md).
 - `./scripts/run.sh dev [pro|lite]`: Vite on :3030, which wp-admin loads while `YAYLOYALTY_IS_DEVELOPMENT` is true (the default). It first runs the admin-shell sync, which can [rewrite `composer.json` and `scoper.inc.php`](docs/known-issues.md): check `git status` before committing.
-- `./scripts/run.sh build [pro|lite]`: type-check, then build the SPA into `assets/dist/admin/`. [Fails today](docs/known-issues.md).
+- `./scripts/run.sh build [pro|lite]`: type-check, then build the SPA into `assets/dist/admin/` and the storefront launcher's CSS into `assets/dist/storefront/`. [Fails today](docs/known-issues.md).
 - `./scripts/run.sh release [pro|lite] [version] [--no-prompt]`: package and validate a zip in `release/`. Run Pro first (it stamps the version), then Lite with `--no-prompt`. [Fails today](docs/known-issues.md). Run `composer install` afterwards, even after a failed run.
 
 Any pnpm command may [run `pnpm install`, and with it `composer install`, first](docs/known-issues.md). `./scripts/run.sh help` lists the rest. Judge a failing check against `dev/edd`. If it fails there too, it was already failing: leave it unless asked, and don't add to it.
 
 ## Hard rules
 
-1. Never hand-edit generated output: `vendor/`, `vendor-prefixed/`, `node_modules/`, `assets/dist/admin/`, `release/`. Change the input and rerun the command that builds it.
+1. Never hand-edit generated output: `vendor/`, `vendor-prefixed/`, `node_modules/`, `assets/dist/`, `release/`. Change the input and rerun the command that builds it.
 2. Lite names Pro in exactly one place: the guarded `YayLoyaltyPro::boot()` call in `includes/YayLoyalty.php`. Pro attaches only through the filters that `boot()` adds in `includes/Pro/YayLoyaltyPro.php`. `scripts/validate-build.php` fails a Lite zip that names Pro anywhere else.
 3. SPA Pro code lives in `apps/admin/src/pro/` and is imported only through `apps/admin/src/pro/index.ts`. It renders only behind `IS_PRO_BUILD` (`apps/admin/src/lib/is-pro-build.ts`), a build-time constant; never use a runtime or localized flag. `<ProGate>` alone still ships the Pro code into Lite, and the validator's sentinel check misses that, so only review catches it.
 4. Product PHP must run on PHP 7.4: no enums, `match`, `readonly`, promoted constructor properties, `?->`, named arguments or union types. phpcs does not detect PHP 8-only syntax and the dev tooling runs on PHP 8, so only review catches it.

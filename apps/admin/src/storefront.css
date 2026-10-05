@@ -1,0 +1,66 @@
+/*
+ * Storefront launcher stylesheet: the admin kit's tokens and Tailwind utilities, scoped so they can
+ * live on any shop theme. Built by vite.storefront.config.ts to assets/dist/storefront/launcher.css.
+ *
+ * - Utilities carry the `yl:` prefix and are nested under .yayloyalty-launcher (as main.css nests them
+ *   under .yay-ui): unlayered and 0,2,0, so a theme's plain `button {}` rules cannot beat them.
+ * - No Tailwind preflight: it would restyle the whole shop. The short reset below is scoped instead.
+ * - theme.css declares its tokens on :root; the build rewrites :root to .yayloyalty-launcher so a
+ *   theme's own --primary/--background stay untouched.
+ * - Only classes found in the PHP templates and launcher.js are generated (source(none) + @source).
+ * - The build turns every rem into px: rem follows the theme's html font-size (62.5% is common).
+ */
+@import 'tailwindcss/theme.css' prefix(yl);
+@import './styles/theme.css';
+@import './styles/storefront-launcher-layout.css';
+
+@source '../../../includes/Engine/Storefront';
+@source '../../../assets/storefront';
+
+.yayloyalty-launcher {
+  @import 'tailwindcss/utilities.css' source(none);
+}
+
+/* Scoped reset: neutralise what themes commonly set on these elements; utilities then style them. */
+.yayloyalty-launcher,
+.yayloyalty-launcher *,
+.yayloyalty-launcher *::before,
+.yayloyalty-launcher *::after {
+  box-sizing: border-box;
+}
+
+.yayloyalty-launcher {
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
+}
+
+.yayloyalty-launcher :is(button, a, h2, h3, p, ul, ol, li, section, span) {
+  margin: 0;
+  text-transform: none;
+  letter-spacing: normal;
+  text-shadow: none;
+  background-image: none;
+  min-height: 0;
+  min-width: 0;
+  font-family: inherit;
+}
+
+.yayloyalty-launcher :is(button, a) {
+  padding: 0;
+  border: 0;
+  background-color: transparent;
+  width: auto;
+  height: auto;
+  font-size: inherit;
+  font-weight: inherit;
+  text-decoration: none;
+  box-shadow: none;
+  line-height: 1.2;
+}
+
+.yayloyalty-launcher [hidden] {
+  display: none !important;
+}

@@ -54,6 +54,14 @@ class DesignHelper {
         return self::get_design();
     }
 
+    /**
+     * The design as it would read once $design is saved, without saving it: the Design tab's live preview.
+     * Same whitelist and coercion as update_design(), over the stored design.
+     */
+    public static function with_unsaved( array $design ): array {
+        return self::merge_over( self::get_design(), self::validate( $design ) );
+    }
+
     /** Restores one group, or the whole blob when $group is null. Logs at warning: destructive, irreversible, must survive production. */
     public static function reset( ?string $group = null ): array {
         $user_id = get_current_user_id();

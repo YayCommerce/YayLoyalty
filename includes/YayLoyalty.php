@@ -34,6 +34,10 @@ class YayLoyalty {
 
         // After Pro's boot: build() applies yayloyalty_earning_gates once, so any gate Pro adds must already be attached (it adds none yet).
         $this->register_earning_listeners();
+
+        if ( ! is_admin() ) {
+            \YayLoyalty\Engine\Storefront\Launcher::register();
+        }
     }
 
     public static function initialize() {

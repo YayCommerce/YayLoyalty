@@ -50,7 +50,7 @@
 
 - **Symptom:** `pnpm --filter @yayloyalty/admin-page exec tsc --noEmit` fails with `TS2307: Cannot find module` for `@emoji-mart/data`, `@emoji-mart/react` and `@radix-ui/react-progress`. `./scripts/run.sh build` and `./scripts/run.sh release` type-check first, so they stop there too, with no bundle and no zip.
 - **Cause:** `apps/admin/src/components/ui/custom/emoji-picker-content.tsx` and `apps/admin/src/components/ui/custom/progress.tsx` import packages that `apps/admin/package.json` doesn't declare. Nothing in the app reaches either file, but `tsc` checks all of `src/`.
-- **Workaround:** there is none for `release`. For a local bundle, run the `vite build` half of the `build` script by hand. For the type-check, compare with `dev/edd`: these must stay the only errors.
+- **Workaround:** there is none for `release`. For a local bundle, run the `vite build` half of the `build` script by hand, then `pnpm build:storefront` in `apps/admin` for the launcher's CSS. For the type-check, compare with `dev/edd`: these must stay the only errors.
 - **Remove when:** the two files are deleted, or the packages are declared.
 
 ## No tests: `composer test` passes empty, admin test fails

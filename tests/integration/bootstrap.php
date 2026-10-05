@@ -179,4 +179,3 @@ foreach ( yayloyalty_test_site_tables() as $yayloyalty_test_site_table => $yaylo
 register_shutdown_function( 'yayloyalty_test_drop_tables' );
 
 require_once __DIR__ . '/IntegrationTestCase.php';
-require_once __DIR__ . '/WooCommerceOrdersFixture.php';

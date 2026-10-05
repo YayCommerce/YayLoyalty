@@ -215,8 +215,12 @@ cmd_dev() {
     install_admin_deps
 
     print_info "Make sure YAYLOYALTY_IS_DEVELOPMENT is true in wp-config.php"
-    print_step "Starting Vite dev server ($build_type: http://localhost:3030)..."
     cd "$ADMIN_DIR"
+    # The dev server only serves the admin SPA; build the launcher's CSS once so a fresh checkout's
+    # storefront does not 404 it. Run 'pnpm dev:storefront' alongside to rebuild it on change.
+    print_step "Building storefront launcher CSS..."
+    $PNPM build:storefront
+    print_step "Starting Vite dev server ($build_type: http://localhost:3030)..."
     # vite.config.ts turns this into import.meta.env.VITE_IS_PRO for the
     # client — see IS_PRO_BUILD in src/lib/is-pro-build.ts. Unlike the build
     # command, this actually matters for `dev`: the old __IS_PRO__ Vite
@@ -242,7 +246,8 @@ cmd_build() {
     # Rollup inlines as a literal so every `if (IS_PRO_BUILD)` collapses and
     # the dead branch — along with everything only it reaches — is dropped.
     # Nothing else distinguishes the two bundles.
-    print_step "Building admin dashboard ($build_type: typecheck + build)..."
+    # The same build then compiles the storefront launcher's CSS (pnpm build:storefront), one file for both editions.
+    print_step "Building admin dashboard ($build_type: typecheck + build) and storefront CSS..."
     cd "$ADMIN_DIR"
     BUILD_TYPE="$build_type" $PNPM build
     print_success "Build complete! Output: $PLUGIN_DIR/assets/dist/admin/"
@@ -463,6 +468,11 @@ cmd_clean() {
     if [ -d "$PLUGIN_DIR/assets/dist/admin" ]; then
         rm -rf "$PLUGIN_DIR/assets/dist/admin"
         print_success "Removed assets/dist/admin"
+    fi
+
+    if [ -d "$PLUGIN_DIR/assets/dist/storefront" ]; then
+        rm -rf "$PLUGIN_DIR/assets/dist/storefront"
+        print_success "Removed assets/dist/storefront"
     fi
 
     read -p "Remove node_modules? (y/N): " -n 1 -r

@@ -1,4 +1,4 @@
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 
 /**
  * Every label, helper and toast string for the Design settings tab.
@@ -84,6 +84,11 @@ export const VISIBILITY_INCLUDE_PAGES_LIMIT_NOTE = () =>
 export const VISIBILITY_HIDE_ON_MOBILE_LABEL = () => __('Hide on mobile', 'yayloyalty');
 export const VISIBILITY_HIDE_FOR_ROLES_LABEL = () => __('Hide for roles', 'yayloyalty');
 export const VISIBILITY_HIDE_FOR_ROLES_PLACEHOLDER = () => __('Select roles…', 'yayloyalty');
+export const VISIBILITY_HIDE_FOR_ROLES_DESCRIPTION = () =>
+  __(
+    'Store staff are hidden by default, so you will not see the launcher while signed in as one. Preview it in a private window.',
+    'yayloyalty',
+  );
 
 // ─── Panel section (Pro) ──────────────────────────────
 
@@ -126,3 +131,25 @@ export const TIER_BADGE_LABEL_LABEL = () => __('Label', 'yayloyalty');
 export const TIER_BADGE_LABEL_DESCRIPTION = () => __('Badge label shown to the customer.', 'yayloyalty');
 export const TIER_BADGE_COLOR_LABEL = () => __('Colour', 'yayloyalty');
 export const TIER_BADGE_ICON_LABEL = () => __('Icon', 'yayloyalty');
+
+// ─── Preview ─────────────────────────────────────────
+
+export const PREVIEW_TITLE = () => __('Preview', 'yayloyalty');
+export const PREVIEW_DEVICE_DESKTOP = () => __('Desktop', 'yayloyalty');
+export const PREVIEW_DEVICE_MOBILE = () => __('Mobile', 'yayloyalty');
+export const PREVIEW_VIEWER_MEMBER = () => __('Signed in', 'yayloyalty');
+export const PREVIEW_VIEWER_GUEST = () => __('Guest', 'yayloyalty');
+export const PREVIEW_COLLAPSED = () => __('Collapsed', 'yayloyalty');
+export const PREVIEW_EXPANDED = () => __('Expanded', 'yayloyalty');
+export const PREVIEW_FOOTNOTE = () =>
+  __(
+    "Preview only — the theme's own fonts and spacing apply on the storefront. Rates and rewards are your store's; the signed-in shopper is a sample.",
+    'yayloyalty',
+  );
+export const PREVIEW_HIDDEN_ON_MOBILE = () =>
+  sprintf(
+    /* translators: %s: the "Hide on mobile" setting's label. */
+    __('Hidden on mobile. Turn off “%s” under Visibility to show it.', 'yayloyalty'),
+    VISIBILITY_HIDE_ON_MOBILE_LABEL(),
+  );
+export const PREVIEW_ERROR = () => __('The preview could not be loaded.', 'yayloyalty');
