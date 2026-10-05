@@ -31,6 +31,8 @@ class SettingsHelper {
             'advanced' => [
                 // 0 = unlimited. Read via Capabilities::ceiling().
                 'adjustment_ceiling' => 0,
+                // 0 = no limit. Enforced by Pro's DailyEarningLimit.
+                'max_points_per_day' => 0,
             ],
             'emails'   => [
                 // Weekly per-customer cap on loyalty emails; 0 = unlimited. Read via Engine\Emails\EmailThrottle.
@@ -54,6 +56,7 @@ class SettingsHelper {
             ],
             'advanced' => [
                 'adjustment_ceiling' => 'int',
+                'max_points_per_day' => 'non_negative_int',
             ],
             'emails'   => [
                 'throttle_per_week' => 'non_negative_int',

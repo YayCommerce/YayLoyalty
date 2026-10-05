@@ -12,6 +12,8 @@ export const settingsSchema = z.object({
   advanced: z.object({
     /** Largest manual adjustment a non-administrator may make; 0 = unlimited. */
     adjustment_ceiling: z.number().int().nonnegative(),
+    /** Most points one customer earns automatically per site day; 0 = no limit. Enforced in Pro. */
+    max_points_per_day: z.number().int().nonnegative(),
   }),
   emails: z.object({
     /** Weekly per-customer cap on loyalty emails. */
@@ -22,3 +24,9 @@ export const settingsSchema = z.object({
 });
 
 export type Settings = z.infer<typeof settingsSchema>;
+
+/**
+ * A save payload: only the groups and fields a tab owns. SettingsHelper writes only what is sent,
+ * so a tab never stores another tab's values, nor translated defaults such as the point labels.
+ */
+export type SettingsUpdate = { [Group in Exclude<keyof Settings, 'schema_version'>]?: Partial<Settings[Group]> };

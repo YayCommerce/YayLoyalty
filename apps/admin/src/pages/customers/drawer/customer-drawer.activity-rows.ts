@@ -6,6 +6,7 @@ import {
   ACTIVITY_TITLE_ACCOUNT_CREATED,
   ACTIVITY_TITLE_ACCOUNT_DELETED,
   ACTIVITY_TITLE_BALANCE_EMAIL_SENT,
+  ACTIVITY_TITLE_EARNING_LIMITED,
   ACTIVITY_TITLE_EXPIRING_SOON_EMAIL_SENT,
   ACTIVITY_TITLE_EXPIRY_RESET,
   ACTIVITY_TITLE_POINTS_ADJUSTED,
@@ -14,6 +15,7 @@ import {
   activityAccountCreatedSubLine,
   activityAccountDeletedSubLine,
   activityBalanceEmailSubLine,
+  activityEarningLimitedSubLine,
   activityExpiringSoonEmailSubLine,
   activityExpiryResetSubLine,
   activityPointsAdjustedSubLine,
@@ -70,6 +72,8 @@ function titleFor(eventType: ActivityEventType): string {
       return ACTIVITY_TITLE_BALANCE_EMAIL_SENT();
     case 'expiring_soon_email_sent':
       return ACTIVITY_TITLE_EXPIRING_SOON_EMAIL_SENT();
+    case 'earning_limited':
+      return ACTIVITY_TITLE_EARNING_LIMITED();
     case 'account_deleted':
       return ACTIVITY_TITLE_ACCOUNT_DELETED();
   }
@@ -128,6 +132,18 @@ function subLineFor(entry: ActivityEntry, occurred: Date): string {
       const deadline = new Date(occurred.getTime() + windowDays * 24 * 60 * 60 * 1000);
 
       return activityExpiringSoonEmailSubLine(formatPoints(windowDays), parseWPDate(deadline));
+    }
+    case 'earning_limited': {
+      // Data keys from CustomerActivityService::record_earning_limited().
+      // An order id is an id, not a points figure: no grouped-thousands formatting (see reward_redeemed).
+      const orderId = num(data, 'order_id');
+
+      return activityEarningLimitedSubLine(
+        formatPoints(num(data, 'held_back')),
+        formatPoints(num(data, 'evaluated')),
+        orderId > 0 ? String(orderId) : '',
+        str(data, 'trigger'),
+      );
     }
     case 'account_deleted':
       return activityAccountDeletedSubLine(str(data, 'email'), formatPoints(num(data, 'balance_at_deletion')));

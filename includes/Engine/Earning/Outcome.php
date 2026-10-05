@@ -66,6 +66,21 @@ final class Outcome {
         return new self( self::DUPLICATE, $existing, null, '' );
     }
 
+    /**
+     * Points an earning limit held back: the evaluated points minus those
+     * written, all of them for a skip. 0 for a duplicate, a redemption, or
+     * a skip before the engine ran or that the engine itself answered.
+     */
+    public function held_back(): int {
+        if ( ! $this->evaluation instanceof EarnResult ) {
+            return 0;
+        }
+
+        $written = null === $this->entry ? 0 : $this->entry->get_points();
+
+        return max( 0, $this->evaluation->get_points() - $written );
+    }
+
     public function get_status(): string {
         return $this->status;
     }

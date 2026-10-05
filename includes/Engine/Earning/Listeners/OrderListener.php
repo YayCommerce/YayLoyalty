@@ -194,6 +194,14 @@ final class OrderListener {
                 $campaign = $outcome->get_evaluation() ? $outcome->get_evaluation()->get_campaign() : null;
                 /* translators: 1: points, 2: campaign name */
                 $order->add_order_note( sprintf( __( 'Earned %1$d points (campaign: %2$s).', 'yayloyalty' ), $entry->get_points(), $campaign ? $campaign->get_name() : '-' ) );
+
+                // EarningService::AWARD_POINTS_FILTER lowered the award below what the campaign evaluated.
+                $held_back = $outcome->held_back();
+
+                if ( $held_back > 0 ) {
+                    /* translators: %d: points */
+                    $order->add_order_note( sprintf( __( '%d points were held back by an earning limit.', 'yayloyalty' ), $held_back ) );
+                }
                 break;
             case Outcome::SKIPPED:
                 if ( ProgramGate::REASON_NO_CUSTOMER !== $outcome->get_reason() ) {

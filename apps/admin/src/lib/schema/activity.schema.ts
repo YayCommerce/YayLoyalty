@@ -7,13 +7,13 @@ import { paginatedSchema } from '@/lib/api/paginated';
  * `ActivityQueryArgs`. THAT PHP CODE IS THE SOURCE OF TRUTH — copies
  * `ledger.schema.ts`'s own docblock convention.
  *
- * The real table backs three of the eight kinds today (`account_created`,
- * `points_adjusted`, `account_deleted`); the other five have no source
+ * The real table backs four of the nine kinds today (`account_created`,
+ * `points_adjusted`, `earning_limited`, `account_deleted`); the other five have no source
  * feature yet, so a customer whose only history would be one of them
  * legitimately gets zero rows.
  */
 
-/** The eight event kinds, in artboard order. Matches `ActivityEvent::ALL`. */
+/** The nine event kinds, in artboard order. Matches `ActivityEvent::ALL`. */
 export const ACTIVITY_EVENT_TYPES = [
   'account_created',
   'points_adjusted',
@@ -22,6 +22,7 @@ export const ACTIVITY_EVENT_TYPES = [
   'reward_redeemed',
   'balance_email_sent',
   'expiring_soon_email_sent',
+  'earning_limited',
   'account_deleted',
 ] as const;
 

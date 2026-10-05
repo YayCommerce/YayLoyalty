@@ -17,6 +17,7 @@ export const ACTIVITY_TITLE_EXPIRY_RESET = () => __('Expiry reset', 'yayloyalty'
 export const ACTIVITY_TITLE_REWARD_REDEEMED = () => __('Reward redeemed', 'yayloyalty');
 export const ACTIVITY_TITLE_BALANCE_EMAIL_SENT = () => __('Points balance email sent', 'yayloyalty');
 export const ACTIVITY_TITLE_EXPIRING_SOON_EMAIL_SENT = () => __('Expiring soon email sent', 'yayloyalty');
+export const ACTIVITY_TITLE_EARNING_LIMITED = () => __('Earning limited', 'yayloyalty');
 export const ACTIVITY_TITLE_ACCOUNT_DELETED = () => __('Account deleted', 'yayloyalty');
 
 /** Every sub-line composes from `event_type` + `data` — see `customer-drawer.activity-rows.ts`. */
@@ -47,6 +48,17 @@ export function activityExpiryResetSubLine(from: string, to: string, note: strin
 }
 export function activityRewardRedeemedSubLine(reward: string, orderId: string): string {
   return sprintf(__('%1$s · order #%2$s', 'yayloyalty'), reward, orderId);
+}
+/** "150 of 200 points held back · order #4098", or "· signup" for an award with no order. */
+export function activityEarningLimitedSubLine(
+  heldBack: string,
+  evaluated: string,
+  orderId: string,
+  trigger: string,
+): string {
+  return orderId
+    ? sprintf(__('%1$s of %2$s points held back · order #%3$s', 'yayloyalty'), heldBack, evaluated, orderId)
+    : sprintf(__('%1$s of %2$s points held back · %3$s', 'yayloyalty'), heldBack, evaluated, trigger);
 }
 export function activityBalanceEmailSubLine(subject: string): string {
   return sprintf(__('"%s"', 'yayloyalty'), subject);

@@ -28,11 +28,12 @@ class LedgerRepository extends AbstractRepository {
     /**
      * The row an idempotency key already produced, or null.
      *
-     * Read twice on the award path, for different reasons. Before the insert
-     * it is only an optimisation — the unique index is the guarantee, and
-     * this SELECT merely avoids burning an AUTO_INCREMENT value on a
-     * duplicate the caller can already see under its row lock. After a
-     * collision it is how the writer names the row that won, which
+     * Read twice on the award path, for different reasons. Before the insert,
+     * under the row lock, it decides a duplicate before LedgerService runs the
+     * caller's points callback, which EarningService::award() relies on so a
+     * re-fired award is never counted against its own row by an earning
+     * limit; the unique index stays the guarantee against a double insert.
+     * After a collision it is how the writer names the row that won, which
      * Outcome::duplicate carries.
      */
     public function find_by_idempotency_key( string $key ): ?LedgerEntry {
@@ -70,22 +71,32 @@ class LedgerRepository extends AbstractRepository {
     /**
      * SUM(points) of one source's earn rows written on the site-timezone
      * calendar day holding $at, for CapPolicy's daily_cap. Per source, so a
-     * purchase never uses up a review cap. Rows count by created_at, their
+     * purchase never uses up a review cap; a null source sums every source,
+     * for the per-customer daily limit. Gross EARN only: adjustments and
+     * refunds neither count nor free up room. Rows count by created_at, their
      * write time, so $at should be the moment being awarded. 0 for a guest.
      *
-     * @param string $at     UTC MySQL datetime.
-     * @param string $source A LedgerSource constant.
+     * @param string      $at     UTC MySQL datetime.
+     * @param string|null $source A LedgerSource constant, or null for all sources.
      */
-    public function points_earned_today( ?int $user_id, string $at, string $source ): int {
+    public function points_earned_today( ?int $user_id, string $at, ?string $source ): int {
         $day_start = Dates::site_day_start( $at );
 
         if ( null === $user_id || $user_id < 1 || null === $day_start ) {
             return 0;
         }
 
+        $where  = 'user_id = %d AND type = %s';
+        $values = [ $user_id, LedgerType::EARN ];
+
+        if ( null !== $source ) {
+            $where   .= ' AND source = %s';
+            $values[] = $source;
+        }
+
         return $this->sum_points(
-            'user_id = %d AND type = %s AND source = %s AND created_at >= %s AND created_at < %s',
-            [ $user_id, LedgerType::EARN, $source, Dates::to_utc( $day_start ), Dates::to_utc( $day_start->modify( '+1 day' ) ) ]
+            $where . ' AND created_at >= %s AND created_at < %s',
+            array_merge( $values, [ Dates::to_utc( $day_start ), Dates::to_utc( $day_start->modify( '+1 day' ) ) ] )
         );
     }
 

@@ -29,6 +29,15 @@ final class EarningService {
     /** Fired after commit, once per awarded row, with ( Outcome $awarded, Context $ctx ). */
     public const AWARDED_ACTION = 'yayloyalty_points_awarded';
 
+    /** Filter applied once per award, between evaluation and write; it may only lower the points. */
+    public const AWARD_POINTS_FILTER = 'yayloyalty_award_points';
+
+    /** Skip reason when the award filter lowered the points to 0. */
+    public const REASON_LIMIT_REACHED = 'earning_limit_reached';
+
+    /** Fired once the award filter's cut is final, with ( Outcome $outcome, string $trigger, Context $ctx ). */
+    public const LIMITED_ACTION = 'yayloyalty_award_limited';
+
     private PointsEngine $engine;
 
     private LedgerService $ledger;
@@ -132,9 +141,14 @@ final class EarningService {
      * points_earned_today already on it. Staging need not have run.
      *
      * Postconditions: Outcome::skipped( reason ) and nothing written when a
-     * gate or the engine says no; Outcome::awarded when exactly one row was
-     * inserted; Outcome::duplicate when the idempotency key already existed
-     * (nothing written, nothing thrown). `yayloyalty_points_awarded`
+     * gate or the engine says no; Outcome::duplicate when the idempotency key
+     * already existed (nothing written, nothing thrown, the filter not run);
+     * Outcome::skipped( REASON_LIMIT_REACHED, Result ) when
+     * `yayloyalty_award_points` lowered the points to 0; Outcome::awarded
+     * when exactly one row was inserted, its entry holding the points written
+     * and its evaluation the points evaluated (held_back() > 0 when the filter
+     * lowered them). The filter runs under the customer's row lock, inside
+     * LedgerService::earn(), so it sees every earlier award for that customer. `yayloyalty_points_awarded`
      * ( Outcome, Context ) fires after commit only, and only for awarded.
      *
      * @throws \InvalidArgumentException When no handler owns the trigger.
@@ -151,7 +165,12 @@ final class EarningService {
 
         $outcome = Transaction::run(
             function () use ( $result, $ctx, $trigger, $order_id ): Outcome {
-                $outcome = $this->ledger->earn( $this->draft_from( $result, $ctx, $trigger ) );
+                // The filter runs under the lock, after the duplicate check: a re-fired award never counts against its own row.
+                $outcome = $this->ledger->earn(
+                    $this->draft_from( $result, $ctx, $trigger ),
+                    fn(): int => $this->filtered_points( $result, $trigger, $ctx ),
+                    self::REASON_LIMIT_REACHED
+                );
 
                 if ( null !== $order_id && Outcome::AWARDED === $outcome->get_status() ) {
                     $this->pending->release( $order_id );
@@ -162,11 +181,22 @@ final class EarningService {
             }
         );
 
+        if ( Outcome::SKIPPED === $outcome->get_status() ) {
+            $skipped = Outcome::skipped( $outcome->get_reason(), $result );
+            self::announce_limited( $skipped, $trigger, $ctx );
+
+            return $skipped;
+        }
+
         if ( Outcome::AWARDED !== $outcome->get_status() ) {
             return $outcome;
         }
 
         $awarded = Outcome::awarded( $outcome->get_entry(), $result );
+
+        if ( $awarded->held_back() > 0 ) {
+            self::announce_limited( $awarded, $trigger, $ctx );
+        }
 
         Transaction::after_commit(
             static function () use ( $awarded, $ctx ): void {
@@ -184,9 +214,53 @@ final class EarningService {
     }
 
     /**
+     * Announces, after commit, an award the filter cut: awarded below its
+     * evaluation, or skipped( REASON_LIMIT_REACHED ). Never for a duplicate,
+     * which LedgerService answers before the filter runs.
+     */
+    private static function announce_limited( Outcome $outcome, string $trigger, Context $ctx ): void {
+        Transaction::after_commit(
+            static function () use ( $outcome, $trigger, $ctx ): void {
+                /**
+                 * Fires once an earning limit's cut is final, for the activity log.
+                 * Internal seam, not a public API.
+                 *
+                 * @param Outcome $outcome awarded (entry below get_evaluation()) or skipped( earning_limit_reached ).
+                 * @param string  $trigger CampaignTrigger value.
+                 * @param Context $ctx
+                 */
+                do_action( self::LIMITED_ACTION, $outcome, $trigger, $ctx ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name; the sniff cannot read it.
+            }
+        );
+    }
+
+    /**
+     * The points to write for an awarded Result: what `yayloyalty_award_points`
+     * answers, clamped to [0, evaluated]. A subscriber may lower the award,
+     * never raise it; a non-numeric or negative answer counts as 0. Called by
+     * LedgerService::earn() under the customer's row lock.
+     */
+    private function filtered_points( Result $result, string $trigger, Context $ctx ): int {
+        $evaluated = $result->get_points();
+
+        /**
+         * The points about to be written for one award. Internal seam, not a public API.
+         * Return fewer to hold some back, 0 to skip the award; more is ignored.
+         * Runs inside the award transaction under the customer's row lock: keep it fast, never write.
+         *
+         * @param int     $points  The evaluated points.
+         * @param string  $trigger CampaignTrigger value being awarded.
+         * @param Context $ctx
+         */
+        $filtered = apply_filters( self::AWARD_POINTS_FILTER, $evaluated, $trigger, $ctx ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name; the sniff cannot read it.
+
+        return max( 0, min( $evaluated, is_numeric( $filtered ) ? (int) $filtered : 0 ) );
+    }
+
+    /**
      * The EARN row an awarded Result becomes. Precondition: $result is
      * awarded and $ctx has a user. Postcondition: type EARN, points and
-     * source/reference/campaign from the Result, order_id from the Context,
+     * source/reference/campaign from the Result (earn() may lower the points), order_id from the Context,
      * balance_after 0 (computed under the lock), actor_id null (a customer
      * is not an actor), created_at = Dates::now() (the write time; the
      * event time lives on the Context and in the key's reference), and

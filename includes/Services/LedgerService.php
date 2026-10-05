@@ -94,14 +94,19 @@ final class LedgerService {
      * balance_after = locked balance + points and aggregates moved; or
      * Outcome::duplicate( existing row ) when the UNIQUE index rejected the
      * insert (QueryException::is_duplicate_key()), which is a normal outcome,
-     * not an error, and leaves every aggregate untouched. Any other failure
-     * rethrows and Transaction::run() has rolled back. The recorded event
-     * fires after the outermost commit (announce()).
+     * not an error, and leaves every aggregate untouched; or
+     * Outcome::skipped( $skip_reason ) and nothing written when
+     * $points_under_lock answers 0. Any other failure rethrows and
+     * Transaction::run() has rolled back. The recorded event fires after the
+     * outermost commit (announce()).
      *
+     * @param callable|null $points_under_lock Runs under the lock, after the duplicate check; its answer
+     *                                         replaces the draft's points, and 0 skips. EarningService
+     *                                         passes the award filter here.
      * @throws \InvalidArgumentException When the draft is not an earn row or lacks a key.
      * @throws \YayLoyalty\Database\QueryException When a write other than a duplicate fails.
      */
-    public function earn( LedgerEntry $draft ): Outcome {
+    public function earn( LedgerEntry $draft, ?callable $points_under_lock = null, string $skip_reason = '' ): Outcome {
         $key = $draft->get_idempotency_key();
 
         if ( LedgerType::EARN !== $draft->get_type() ) {
@@ -119,7 +124,7 @@ final class LedgerService {
         LedgerSource::assert( $draft->get_source() );
         ReferenceType::assert( $draft->get_reference_type() );
 
-        return $this->write_keyed( $draft );
+        return $this->write_keyed( $draft, $points_under_lock, $skip_reason );
     }
 
     /**

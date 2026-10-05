@@ -1,18 +1,21 @@
 <?php
 namespace YayLoyalty\Engine;
 
+use YayLoyalty\Engine\Earning\Outcome;
+use YayLoyalty\Engine\Points\Context;
 use YayLoyalty\Models\LedgerEntry;
 use YayLoyalty\Repositories\CustomerMetaRepository;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Services\CustomerActivityService;
+use YayLoyalty\Utils\Dates;
 use YayLoyalty\Utils\Log;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Member-activity capture on `user_register`, `delete_user`/`wpmu_delete_user`
- * and `yayloyalty_ledger_recorded`; registered directly in `yayloyalty.php`.
+ * Member-activity capture on `user_register`, `delete_user`/`wpmu_delete_user`,
+ * `yayloyalty_ledger_recorded` and `yayloyalty_award_limited`; registered directly in `yayloyalty.php`.
  * Every callback catches `\Throwable` — a failed capture must never block or
  * fatal the WP action it observes.
  */
@@ -91,6 +94,36 @@ final class CustomerActivityListener {
             $service = self::service();
             $service->record_account_created( $entry );
             $service->record_points_adjusted( $entry );
+        } catch ( \Throwable $e ) {
+            Log::error( 'CustomerActivityListener', $e->getMessage() );
+        }
+    }
+
+    /**
+     * An award an earning limit cut (EarningService::LIMITED_ACTION), partly
+     * paid or refused: one `earning_limited` row either way. Guards its
+     * arguments like on_ledger_recorded().
+     *
+     * @param mixed $outcome
+     * @param mixed $trigger
+     * @param mixed $ctx
+     */
+    public static function on_award_limited( $outcome, $trigger, $ctx ): void {
+        if ( ! $outcome instanceof Outcome || ! $ctx instanceof Context || null === $ctx->get_user_id() || $outcome->held_back() < 1 ) {
+            return;
+        }
+
+        try {
+            $entry = $outcome->get_entry();
+
+            self::service()->record_earning_limited(
+                (int) $ctx->get_user_id(),
+                (string) $trigger,
+                $outcome->get_evaluation()->get_points(),
+                $outcome->held_back(),
+                $ctx->get_order_id(),
+                $entry ? $entry->get_created_at() : Dates::now()
+            );
         } catch ( \Throwable $e ) {
             Log::error( 'CustomerActivityListener', $e->getMessage() );
         }

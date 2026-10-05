@@ -15,7 +15,7 @@ use YayLoyalty\Utils\Dates;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Writes `yayloyalty_customer_meta` rows for the three captured activity
+ * Writes `yayloyalty_customer_meta` rows for the four captured activity
  * events. Deliberately a third class holding both
  * `CustomerRepository` and `LedgerRepository` alongside
  * `CustomerMetaRepository` — justified because both are READ-ONLY here
@@ -142,6 +142,27 @@ final class CustomerActivityService {
                 true,
                 $entry->get_created_at()
             )
+        );
+    }
+
+    /**
+     * One `earning_limited` row per award an earning limit cut: partly paid
+     * or refused ($held_back = $evaluated). The held-back points are not
+     * owed later; this row is the record that they were never paid.
+     *
+     * @param string $occurred_at UTC MySQL datetime: the written row's, or now for a refusal.
+     */
+    public function record_earning_limited( int $user_id, string $trigger, int $evaluated, int $held_back, ?int $order_id, string $occurred_at ): void {
+        $data = [
+            'trigger'   => $trigger,
+            'evaluated' => $evaluated,
+            'awarded'   => $evaluated - $held_back,
+            'held_back' => $held_back,
+            'order_id'  => $order_id,
+        ];
+
+        $this->meta->insert(
+            CustomerMeta::event( $user_id, ActivityEvent::EARNING_LIMITED, $data, ActorKind::AUTOMATIC, null, false, $occurred_at )
         );
     }
 
