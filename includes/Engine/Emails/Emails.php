@@ -45,7 +45,7 @@ class Emails {
     public function relay_award( Outcome $awarded ): void {
         $entry = $awarded->get_entry();
 
-        if ( ! $entry || null === $entry->get_id() || $entry->get_points() <= 0 ) {
+        if ( ! $entry || null === $entry->get_id() ) {
             return;
         }
 

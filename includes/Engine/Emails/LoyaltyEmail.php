@@ -74,9 +74,9 @@ abstract class LoyaltyEmail extends \WC_Email {
      * Sends this email to its customer, within the weekly cap (EmailThrottle).
      * Only a send the transport accepts counts against the cap.
      */
-    protected function send_to_customer( int $user_id ): bool {
+    protected function send_to_customer( int $user_id ): void {
         if ( ! EmailThrottle::allows( $user_id ) ) {
-            return false;
+            return;
         }
 
         $sent = $this->send( $this->get_recipient(), $this->get_subject(), $this->get_content(), $this->get_headers(), $this->get_attachments() );
@@ -84,8 +84,6 @@ abstract class LoyaltyEmail extends \WC_Email {
         if ( $sent ) {
             EmailThrottle::record( $user_id );
         }
-
-        return $sent;
     }
 
     /** The variables every loyalty template receives, named as WooCommerce's own templates name them. */

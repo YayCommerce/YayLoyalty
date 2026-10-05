@@ -47,10 +47,7 @@ class PointsEarnedEmail extends LoyaltyEmail {
         return __( 'You earned points', 'yayloyalty' );
     }
 
-    /**
-     * Mails the customer about one award, which Emails::relay_award() passes as its ledger row id.
-     * A no-op when the row is not a gain or was clawed back, the email is off, the user has no email or the weekly cap is reached.
-     */
+    /** Mails the customer about one award, which Emails::relay_award() passes as its ledger row id. */
     public function trigger( int $entry_id ): void {
         $ledger = new LedgerRepository();
         $entry  = $ledger->find( $entry_id );
@@ -59,8 +56,15 @@ class PointsEarnedEmail extends LoyaltyEmail {
             return;
         }
 
+        // is_enabled()'s filter receives $this->object, which must be this award.
+        $this->object = $entry;
+
+        if ( ! $this->is_enabled() ) {
+            return;
+        }
+
         // A deferred send can run after a refund or cancellation took the points back.
-        if ( $ledger->sum_refunded_for( $entry ) >= $entry->get_points() ) {
+        if ( $ledger->sum_refunded_for( $entry, false ) >= $entry->get_points() ) {
             return;
         }
 
@@ -74,11 +78,10 @@ class PointsEarnedEmail extends LoyaltyEmail {
         $this->setup_locale();
 
         try {
-            // Before is_enabled(): its filter receives $this->object, which must be this award.
             $this->prepare( $entry );
             $this->recipient = $user->user_email;
 
-            if ( $this->is_enabled() && $this->get_recipient() ) {
+            if ( $this->get_recipient() ) {
                 $this->send_to_customer( $entry->get_user_id() );
             }
         } finally {

@@ -13,6 +13,10 @@
  * @var string $balance_text  The balance after this award, e.g. "120 Points". Absent when there is no award to show.
  * @var string $balance_value What the balance is worth, as wc_price() HTML; '' while hidden (the yayloyalty_points_earned_show_balance_value filter, off by default) or the discount reward is not live. Absent when there is no award to show.
  * @var string $balance_value_text Escaped HTML sentence around $balance_value; '' when that is ''. Absent when there is no award to show.
+ * @var string $points       The points earned, formatted, e.g. "50". Absent when there is no award to show.
+ * @var string $points_label "Point" or "Points", from the merchant's labels. Absent when there is no award to show.
+ * @var string $balance      The balance after this award, formatted, e.g. "120". Absent when there is no award to show.
+ * @var string $order_number The order the points were earned for; '' unless earned from an order. Absent when there is no award to show.
  * @var string $cta_url      Where "View your points" links; '' (the default) hides it. Absent when there is no award to show.
  * @var \YayLoyalty\Models\LedgerEntry $entry The awarded row, for overrides. Absent when there is no award to show.
  */
