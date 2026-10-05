@@ -112,13 +112,15 @@
   }
 
   /**
-   * Folds the button to its icon when the shopper scrolls down to within COLLAPSE_WITHIN_PX of the
-   * page bottom, and unfolds it on the first scroll up. Only collapsing looks at the distance, so
-   * resting on that line cannot flip the state back and forth. The CSS owns the sizes and the motion.
+   * Folds the button to its icon while the shopper is within COLLAPSE_WITHIN_PX of the page bottom and
+   * not scrolling up; unfolds it on the first scroll up, and when the bottom moves away (a shop that
+   * loads more products). Either change needs SCROLL_DEADBAND_PX of travel, so resting on that line
+   * cannot flip the state back and forth. The CSS owns the sizes and the motion.
    */
   function bindCollapseOnScroll(trigger) {
     var page = document.documentElement;
-    var lastY = window.scrollY;
+    // No position yet, so the first pass reads as a scroll down: a page opened at its bottom starts folded.
+    var lastY = -Infinity;
     var isFramePending = false;
 
     function update() {
@@ -132,16 +134,18 @@
         return;
       }
       lastY = y;
-      if (delta < 0) {
-        trigger.removeAttribute("data-collapsed");
-      } else if (
+      var isNearBottom =
         maxY - y <= COLLAPSE_WITHIN_PX &&
         // A page this short is near its bottom from the first pixel; it would fold on any scroll.
-        maxY >= 2 * COLLAPSE_WITHIN_PX
-      ) {
+        maxY >= 2 * COLLAPSE_WITHIN_PX;
+      if (delta > 0 && isNearBottom) {
         trigger.setAttribute("data-collapsed", "");
+      } else {
+        trigger.removeAttribute("data-collapsed");
       }
     }
+
+    update();
 
     window.addEventListener(
       "scroll",
