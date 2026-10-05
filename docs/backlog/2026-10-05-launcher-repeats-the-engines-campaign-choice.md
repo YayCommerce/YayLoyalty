@@ -11,7 +11,7 @@
 Two loops pick "the campaign that pays" for a trigger.
 
 - The engine's is `PointsEngine::evaluate()`. It takes the live campaigns through the `yayloyalty_campaign_candidates` filter, keeps those that pass the `yayloyalty_campaign_matches` filter and the handler's `is_eligible()`, and stops at the first one.
-- The launcher's is `LauncherEarnRules::advertise()`, which picks what "Ways to earn" shows. It walks `CampaignRepository::live_for_trigger()` directly and keeps the first campaign that `PointsEngine::applies_to_everyone()` passes.
+- The launcher's is `LauncherEarnRules::advertise()`, which picks what "Ways to earn" shows. `LauncherPayload::live_campaigns()` reads `CampaignRepository::live_for_trigger()` for each trigger, through neither filter, and hands the list to `advertise()`. Its private `winners()` keeps, per trigger, the first campaign that `PointsEngine::applies_to_everyone()` passes.
 
 ## Why it matters
 
