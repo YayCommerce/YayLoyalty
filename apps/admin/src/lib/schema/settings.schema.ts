@@ -4,12 +4,12 @@ import { z } from 'zod';
 export const settingsSchema = z.object({
   general: z.object({
     enabled: z.boolean(),
-    points_label_singular: z.string(),
-    points_label_plural: z.string(),
     /** Role slugs that never earn. */
     excluded_roles: z.array(z.string()),
   }),
   advanced: z.object({
+    points_label_singular: z.string(),
+    points_label_plural: z.string(),
     /** Largest manual adjustment a non-administrator may make; 0 = unlimited. */
     adjustment_ceiling: z.number().int().nonnegative(),
     /** Most points one customer earns automatically per site day; 0 = no limit. Enforced in Pro. */

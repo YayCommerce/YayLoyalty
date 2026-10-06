@@ -25,17 +25,17 @@ class SettingsHelper {
     public static function get_default_settings(): array {
         return [
             'general'  => [
-                'enabled'               => true,
-                'points_label_singular' => __( 'Point', 'yayloyalty' ),
-                'points_label_plural'   => __( 'Points', 'yayloyalty' ),
+                'enabled'        => true,
                 // Role slugs that never earn, read by Engine\Earning\ProgramGate.
-                'excluded_roles'        => [],
+                'excluded_roles' => [],
             ],
             'advanced' => [
+                'points_label_singular' => __( 'Point', 'yayloyalty' ),
+                'points_label_plural'   => __( 'Points', 'yayloyalty' ),
                 // 0 means unlimited. Read through Capabilities::ceiling().
-                'adjustment_ceiling' => 0,
+                'adjustment_ceiling'    => 0,
                 // 0 = no limit. Enforced by Pro's DailyEarningLimit.
-                'max_points_per_day' => 0,
+                'max_points_per_day'    => 0,
             ],
             'emails'   => [
                 // Weekly per-customer cap on loyalty emails. 0 means no cap. Engine\Emails\EmailThrottle enforces it.
@@ -52,14 +52,14 @@ class SettingsHelper {
     private static function schema(): array {
         return [
             'general'  => [
-                'enabled'               => 'bool',
-                'points_label_singular' => 'points_label',
-                'points_label_plural'   => 'points_label',
-                'excluded_roles'        => 'slug_list',
+                'enabled'        => 'bool',
+                'excluded_roles' => 'slug_list',
             ],
             'advanced' => [
-                'adjustment_ceiling' => 'int',
-                'max_points_per_day' => 'non_negative_int',
+                'points_label_singular' => 'points_label',
+                'points_label_plural'   => 'points_label',
+                'adjustment_ceiling'    => 'int',
+                'max_points_per_day'    => 'non_negative_int',
             ],
             'emails'   => [
                 'throttle_per_week' => 'non_negative_int',
@@ -113,14 +113,14 @@ class SettingsHelper {
 
     /** The merchant's point label for $points: singular at exactly 1, plural otherwise. */
     public static function points_label( int $points ): string {
-        $general = self::get_settings()['general'];
+        $advanced = self::get_settings()['advanced'];
 
-        return 1 === $points ? $general['points_label_singular'] : $general['points_label_plural'];
+        return 1 === $points ? $advanced['points_label_singular'] : $advanced['points_label_plural'];
     }
 
     /** The merchant's plural label, for a sentence with no count: "View your Points". */
     public static function points_label_plural(): string {
-        return self::get_settings()['general']['points_label_plural'];
+        return self::get_settings()['advanced']['points_label_plural'];
     }
 
     /** "50 Points": the amount in the site's number format with the merchant's label, in an order translators set. */

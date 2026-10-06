@@ -9,11 +9,10 @@ const pointsLabel = z.string().trim().min(1).max(POINTS_LABEL_MAX_LENGTH);
 
 /** The Advanced tab's one form: the free points naming, plus Pro's fraud limit (never dirty in Lite). */
 export const advancedSettingsFormSchema = z.object({
-  general: z.object({
+  advanced: settingsSchema.shape.advanced.pick({ max_points_per_day: true }).extend({
     points_label_singular: pointsLabel,
     points_label_plural: pointsLabel,
   }),
-  advanced: settingsSchema.shape.advanced.pick({ max_points_per_day: true }),
 });
 
 export type AdvancedSettingsFormValues = z.infer<typeof advancedSettingsFormSchema>;
@@ -27,11 +26,11 @@ export type AdvancedSettingsDirtyFields = {
 
 export function advancedSettingsDefaults(settings: Settings): AdvancedSettingsFormValues {
   return {
-    general: {
-      points_label_singular: settings.general.points_label_singular,
-      points_label_plural: settings.general.points_label_plural,
+    advanced: {
+      points_label_singular: settings.advanced.points_label_singular,
+      points_label_plural: settings.advanced.points_label_plural,
+      max_points_per_day: settings.advanced.max_points_per_day,
     },
-    advanced: { max_points_per_day: settings.advanced.max_points_per_day },
   };
 }
 
