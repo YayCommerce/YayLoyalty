@@ -12,7 +12,6 @@ use YayLoyalty\Controllers\EmailsRestController;
 use YayLoyalty\Controllers\LedgerRestController;
 use YayLoyalty\Controllers\LookupRestController;
 use YayLoyalty\Controllers\RedemptionsRestController;
-use YayLoyalty\Controllers\ReferralsRestController;
 use YayLoyalty\Controllers\RewardRestController;
 use YayLoyalty\Controllers\SettingsRestController;
 use YayLoyalty\Controllers\StorefrontActivityRestController;
@@ -75,9 +74,8 @@ class RestAPI {
             new ActivityRestController( $customer_meta ),
             // Shopper route (storefront launcher): session identity, no capability. $ledger is read-only here.
             new StorefrontActivityRestController( $ledger ),
-            // Empty envelopes until their tables exist.
+            // An empty envelope until its table exists.
             new RedemptionsRestController(),
-            new ReferralsRestController(),
             // Picker name lookups; no repository, it reads WooCommerce and WP core directly.
             new LookupRestController(),
             // Definition table: repository only, no service. $ledger is read-only here too.

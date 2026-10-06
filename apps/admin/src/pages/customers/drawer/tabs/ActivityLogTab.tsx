@@ -8,7 +8,6 @@ import {
   ACTIVITY_GROUP_EMAILS,
   ACTIVITY_GROUP_EXPIRY,
   ACTIVITY_GROUP_LABEL,
-  ACTIVITY_GROUP_TIER,
   ACTIVITY_SEARCH_PLACEHOLDER,
 } from '../customer-drawer.activity.copy';
 import { useDrawerTabQueryState } from '../customer-drawer.tab-query-state';
@@ -19,7 +18,6 @@ import { DRAWER_PAGE_SIZE, DrawerTabPager } from './DrawerTabPager';
 const GROUP_LABELS: Record<ActivityGroup, () => string> = {
   all: ACTIVITY_GROUP_ALL,
   admin: ACTIVITY_GROUP_ADMIN,
-  tier: ACTIVITY_GROUP_TIER,
   expiry: ACTIVITY_GROUP_EXPIRY,
   emails: ACTIVITY_GROUP_EMAILS,
 };

@@ -145,9 +145,7 @@ function DashboardBody({
 }) {
   return (
     <>
-      <DashboardStatsGrid stats={data.stats} range={data.range} deltaOverrides={tileOverrides}>
-        {slots.referralsTile}
-      </DashboardStatsGrid>
+      <DashboardStatsGrid stats={data.stats} range={data.range} deltaOverrides={tileOverrides} />
 
       <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
         <DashboardPointsChart

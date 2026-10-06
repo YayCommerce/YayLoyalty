@@ -39,7 +39,7 @@ Commands and hard rules live in [CLAUDE.md](../CLAUDE.md). Citations give a path
 ## Server layers and write ownership
 
 - REST: `includes/Engine/RestAPI.php` is the one place controllers are registered. That happens on `rest_api_init`, under `BaseRestController::REST_NAMESPACE` (yayloyalty/v1). It builds the Lite controllers; Pro builds its own and adds them through the `yayloyalty_rest_controllers` filter on that list.
-  - The redemptions and referrals routes (`RedemptionsRestController`, `ReferralsRestController`) are live in Lite and return empty pages until their tables exist.
+  - The redemptions route (`RedemptionsRestController`) is live in Lite and returns empty pages until its table exists.
   - Its constructor also subscribes `DashboardCache::flush` to `yayloyalty_ledger_recorded` and `yayloyalty_campaigns_changed`. Above a member-count threshold, `includes/Services/Dashboard/DashboardCache.php` serves the dashboard payload from transients.
 - Controllers extend `includes/Controllers/AbstractRestController.php` (schemas, args, permissions, the pagination envelope). That class extends `includes/Controllers/BaseRestController.php` (execution and errors).
   - Every route's permission callback is `requires()` with one capability. Access is checked there and nowhere deeper: services and the engine take an actor id instead (`includes/Access/Capabilities.php`).

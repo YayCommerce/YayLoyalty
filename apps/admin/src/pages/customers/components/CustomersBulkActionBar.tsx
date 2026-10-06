@@ -7,7 +7,7 @@ import { BulkActionsMenu } from '@/components/ui/custom/bulk-actions-menu';
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Separator } from '@/components/ui/separator';
 
-/** "Assign tier" and "Reset expiry" are left out until they have endpoints: a dead control is worse than none. */
+/** "Reset expiry" is left out until it has an endpoint: a dead control is worse than none. */
 export function CustomersBulkActionBar({
   count,
   onClear,

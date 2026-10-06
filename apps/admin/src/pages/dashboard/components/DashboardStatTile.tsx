@@ -8,7 +8,7 @@ import { deltaLine } from '../dashboard-page.copy';
 
 /**
  * One stat tile. The value is a node, so this never formats a number
- * itself. `deltaOverride` replaces the delta line; `badge` sits beside the label.
+ * itself. `deltaOverride` replaces the delta line.
  */
 export function DashboardStatTile({
   label,
@@ -17,7 +17,6 @@ export function DashboardStatTile({
   delta,
   range,
   deltaOverride,
-  badge,
 }: {
   label: string;
   value: ReactNode;
@@ -25,7 +24,6 @@ export function DashboardStatTile({
   delta: number | null;
   range: DashboardRange;
   deltaOverride?: ReactNode;
-  badge?: ReactNode;
 }) {
   const line = deltaLine(delta, range);
   // An override carries its own arrow (or none); it must not inherit the hidden delta's colour.
@@ -35,7 +33,6 @@ export function DashboardStatTile({
     <Card className="gap-1 p-4">
       <div className="text-muted-foreground flex items-center gap-2 text-xs font-medium tracking-wide uppercase">
         {label}
-        {badge}
       </div>
       <div className="text-2xl font-semibold tabular-nums">{value}</div>
       <div className="text-muted-foreground text-xs">{subline}</div>

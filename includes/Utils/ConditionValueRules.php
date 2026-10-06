@@ -60,7 +60,7 @@ final class ConditionValueRules {
         if ( null !== $max && count( $value ) > $max ) {
             throw new \InvalidArgumentException(
                 sprintf(
-                    'YayLoyalty: "%s" accepts at most %d ids. For a larger segment, use a user_role or tier condition instead.',
+                    'YayLoyalty: "%s" accepts at most %d ids. For a larger segment, use a user_role condition instead.',
                     $type,
                     $max
                 )

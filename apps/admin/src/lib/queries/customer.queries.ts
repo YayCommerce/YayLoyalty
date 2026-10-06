@@ -3,7 +3,6 @@ import { keepPreviousData, queryOptions, useMutation, useQuery, useQueryClient }
 import {
   getCustomerActivity,
   getCustomerRedemptions,
-  getCustomerReferrals,
   type CustomerActivityParams,
   type DrawerPageOnlyParams,
 } from '@/lib/api/customer-drawer.api';
@@ -20,7 +19,7 @@ import { settleInChunks } from '@/lib/helpers/settle-in-chunks.helper';
 import type { AdjustPointsInput, AdjustPointsPreviewInput } from '@/lib/schema/customer.schema';
 
 /** `['customer', kind, userId]`, built in one place so the query keys and the adjust invalidations cannot drift apart. */
-function customerKeyPrefix(kind: 'detail' | 'ledger' | 'activity' | 'redemptions' | 'referrals', userId: number) {
+function customerKeyPrefix(kind: 'detail' | 'ledger' | 'activity' | 'redemptions', userId: number) {
   return ['customer', kind, userId] as const;
 }
 
@@ -70,15 +69,6 @@ export const CUSTOMER_QUERIES = {
       retry: 1,
     }),
 
-  referrals: (userId: number, params: DrawerPageOnlyParams) =>
-    queryOptions({
-      queryKey: [...customerKeyPrefix('referrals', userId), params],
-      queryFn: () => getCustomerReferrals(userId, params),
-      enabled: userId > 0,
-      placeholderData: keepPreviousData,
-      retry: 1,
-    }),
-
   /** The bulk adjust dialog's count/liability/rate. staleTime 0: each open reads the store as it is now. */
   adjustPreview: (input: AdjustPointsPreviewInput, enabled: boolean) =>
     queryOptions({
@@ -109,10 +99,6 @@ export function useCustomerActivityQuery(userId: number, params: CustomerActivit
 
 export function useCustomerRedemptionsQuery(userId: number, params: DrawerPageOnlyParams) {
   return useQuery(CUSTOMER_QUERIES.redemptions(userId, params));
-}
-
-export function useCustomerReferralsQuery(userId: number, params: DrawerPageOnlyParams) {
-  return useQuery(CUSTOMER_QUERIES.referrals(userId, params));
 }
 
 export function useAdjustPointsPreviewQuery(input: AdjustPointsPreviewInput, enabled: boolean) {

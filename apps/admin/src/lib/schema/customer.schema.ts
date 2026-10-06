@@ -5,17 +5,16 @@ import { z } from 'zod';
  * Every aggregate is server-owned, so there is no write shape.
  */
 
-/** Row counts behind the drawer's tab labels. `redemptions` and `referrals` are 0 until those tables exist. */
+/** Row counts behind the drawer's tab labels. `redemptions` is 0 until that table exists. */
 export const customerCountsSchema = z.object({
   ledger: z.number().int(),
   activity: z.number().int(),
   redemptions: z.number().int(),
-  referrals: z.number().int(),
 });
 
 /**
  * What a deleted customer leaves behind; non-null exactly when `deleted_at` is.
- * `void_coupons`, `credited_referrals` and `counted_in_members` are null until their features exist.
+ * `void_coupons` and `counted_in_members` are null until their features exist.
  * `void_coupons.example` is one illustrative label ("$5 off"), not a list.
  */
 export const looseEndsSchema = z.object({
@@ -25,7 +24,6 @@ export const looseEndsSchema = z.object({
       example: z.string().nullable(),
     })
     .nullable(),
-  credited_referrals: z.number().int().nullable(),
   counted_in_members: z.boolean().nullable(),
   kept_ledger_entries: z.number().int(),
 });
@@ -127,7 +125,10 @@ export const customerSchema = customerListRowSchema.extend({
 
 export type Customer = z.infer<typeof customerSchema>;
 
-/** A "which filter to drop" suggestion; `key` is the wire param name, mapped in customers-page.filter-suggestions.ts. */
+/**
+ * A "which filter to drop" suggestion: keys of CustomerRowFilters::candidates_for_no_match().
+ * Mapped in customers-page.filter-suggestions.ts.
+ */
 export const noMatchSuggestionSchema = z.object({
   key: z.enum(['search', 'balance_range', 'expiring_soon']),
   count: z.number().int(),
@@ -138,8 +139,7 @@ export type NoMatchSuggestion = z.infer<typeof noMatchSuggestionSchema>;
 /** Filter/sort value unions, here because customer.api.ts needs them and lib/ must not import pages/. */
 export type CustomerBalanceRange = 'any' | 'negative' | '0-1000' | '1000-10000' | '10000-plus';
 export type CustomerExpiringSoon = 'off' | '30' | '90' | 'none';
-/** The server does not sort by `referrals` yet, so it is not offered as a sort control. */
-export type CustomerSortKey = 'name' | 'balance' | 'pending' | 'lifetime' | 'last_activity' | 'expires' | 'referrals';
+export type CustomerSortKey = 'name' | 'balance' | 'pending' | 'lifetime' | 'last_activity' | 'expires';
 export type CustomerSortDirection = 'asc' | 'desc';
 
 /** Request body for POST /customers/{id}/adjust — `adjustLifetime` maps to the wire's `adjust_lifetime` in customer.api.ts. */

@@ -196,10 +196,6 @@ final class RewardConditionSet {
             case 'int':
                 ConditionValueRules::validate_int( $type, $operator, $value, isset( $spec['min'] ) ? (int) $spec['min'] : null );
                 break;
-
-            case 'tier':
-                // Unreachable until tiers enter RewardConditionType::all().
-                break;
         }
     }
 

@@ -1,17 +1,14 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { __ } from '@wordpress/i18n';
 
-import { formatPoints } from '@/lib/helpers/points.helper';
 import type { DashboardRange, DashboardStats } from '@/lib/schema/dashboard.schema';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { ErrorState } from '@/components/ui/custom/error-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ProGate } from '@/components/pro/ProGate';
-import { DashboardStatTile } from '@/pages/dashboard/components/DashboardStatTile';
 import type { DashboardProSlots } from '@/pages/dashboard/dashboard-page.pro-slots';
 import { useDashboardProQuery } from './dashboard-pro.queries';
 import { DashboardCampaignBreakdownToggle } from './DashboardCampaignBreakdownToggle';
-import { DashboardTierDistribution } from './DashboardTierDistribution';
 import { DashboardTopCampaigns } from './DashboardTopCampaigns';
 
 /** Above this many members the breakdown starts off: five series over big values is unreadable at 280px. */
@@ -35,9 +32,6 @@ export function DashboardProPanels({
   const query = useDashboardProQuery(range);
   const data = query.data;
 
-  const referrals = data?.referrals ?? null;
-  const tiers = data?.tier_distribution ?? null;
-
   const extraSeries = useMemo(() => {
     if (!breakdown || !data) return [];
 
@@ -54,16 +48,6 @@ export function DashboardProPanels({
   return (
     <>
       {children({
-        referralsTile: referrals && (
-          <DashboardStatTile
-            label={__('Referrals', 'yayloyalty')}
-            badge={<ProGate inline />}
-            value={formatPoints(referrals.completed)}
-            subline={__('completed, last 90 days', 'yayloyalty')}
-            delta={referrals.prev_delta_pct}
-            range={90}
-          />
-        ),
         chartControls: <DashboardCampaignBreakdownToggle on={breakdown} onChange={setBreakdown} />,
         extraSeries,
         // A failed Pro request must not masquerade as "no campaigns yet".
@@ -72,10 +56,7 @@ export function DashboardProPanels({
         ) : query.isPending ? (
           <ProSidePanelsSkeleton />
         ) : (
-          <>
-            {tiers && <DashboardTierDistribution tiers={tiers} />}
-            <DashboardTopCampaigns campaigns={data?.top_campaigns ?? []} range={range} />
-          </>
+          <DashboardTopCampaigns campaigns={data?.top_campaigns ?? []} range={range} />
         ),
       })}
     </>

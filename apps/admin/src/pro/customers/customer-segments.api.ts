@@ -4,8 +4,7 @@ import { api } from '@/lib/api/api';
 import { BALANCE_RANGE_OPTIONS, EXPIRING_SOON_OPTIONS } from '@/pages/customers/customers-page.filter-rows';
 
 /**
- * Mirrors YayLoyalty\Pro\Helpers\CustomerSegmentsHelper::FILTER_SCHEMA, the source of truth,
- * minus `tier`: the SPA has no tier filter, so it drops the key on read and the server defaults it on write.
+ * Mirrors YayLoyalty\Pro\Helpers\CustomerSegmentsHelper::FILTER_SCHEMA, the source of truth.
  * Client for POST/DELETE /customers/segments. The two converters below are the one place the
  * wire shape meets the app's camelCase RowFilters.
  */

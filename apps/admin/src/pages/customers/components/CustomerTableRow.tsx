@@ -10,17 +10,14 @@ import { BalanceCell, CustomerNameCell } from './CustomersTableCells';
 
 /**
  * One customer row. A negative balance gets a left-accent tint, never red.
- * Referrals always shows "—", the real empty answer.
  */
 export function CustomerTableRow({
   customer,
-  showProColumns,
   showSelection,
   selected,
   onToggle,
 }: {
   customer: CustomerListRow;
-  showProColumns: boolean;
   showSelection: boolean;
   selected: boolean;
   onToggle: (userId: number) => void;
@@ -61,7 +58,6 @@ export function CustomerTableRow({
       <TableCell className="text-muted-foreground text-right">
         {!negative && customer.expires_at ? parseWPDate(customer.expires_at) : '—'}
       </TableCell>
-      {showProColumns && <TableCell className="text-muted-foreground text-right tabular-nums">—</TableCell>}
     </TableRow>
   );
 }

@@ -27,23 +27,6 @@ export function activityPointsAdjustedSubLine(points: string, note: string): str
     note,
   );
 }
-/** "Explorer → Summit · automatic · reached 5,000 lifetime points" */
-export function activityTierChangedSubLine(
-  fromTier: string,
-  toTier: string,
-  automatic: boolean,
-  threshold: string,
-): string {
-  const mode = automatic ? __('automatic', 'yayloyalty') : __('manual', 'yayloyalty');
-  return sprintf(
-    /* translators: 1: previous tier; 2: new tier; 3: "automatic" or "manual"; 4: the lifetime points threshold, formatted. */
-    __('%1$s → %2$s · %3$s · reached %4$s lifetime points', 'yayloyalty'),
-    fromTier,
-    toTier,
-    mode,
-    threshold,
-  );
-}
 export function activityExpiryResetSubLine(from: string, to: string, note: string): string {
   return sprintf(
     /* translators: 1: previous expiry date, formatted; 2: new expiry date, formatted; 3: the admin's note. */
@@ -93,7 +76,6 @@ export const COLUMN_BY = () => __('By', 'yayloyalty');
 export const ACTIVITY_GROUP_LABEL = () => __('Show', 'yayloyalty');
 export const ACTIVITY_GROUP_ALL = () => __('All', 'yayloyalty');
 export const ACTIVITY_GROUP_ADMIN = () => __('Admin actions', 'yayloyalty');
-export const ACTIVITY_GROUP_TIER = () => __('Tier changes', 'yayloyalty');
 export const ACTIVITY_GROUP_EXPIRY = () => __('Expiry', 'yayloyalty');
 export const ACTIVITY_GROUP_EMAILS = () => __('Emails', 'yayloyalty');
 
