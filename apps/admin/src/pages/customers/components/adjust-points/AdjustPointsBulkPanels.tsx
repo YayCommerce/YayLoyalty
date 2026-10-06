@@ -21,7 +21,7 @@ import { addsToLiability, POINTS_UNIT } from '../customers-adjust-points.copy';
 import { bulkLiabilityProjection, bulkTotalPoints, type AdjustFormState } from '../customers-adjust-points.form-state';
 
 /** The active filters as text. */
-function filterSummary(filters: Pick<RowFilters, 'search' | 'balanceRange' | 'expiringSoon'>): string | null {
+function filterSummary(filters: RowFilters): string | null {
   const parts: string[] = [];
 
   if (filters.search.trim()) parts.push(`"${filters.search.trim()}"`);

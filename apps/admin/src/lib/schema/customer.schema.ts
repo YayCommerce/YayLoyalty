@@ -127,7 +127,10 @@ export const customerSchema = customerListRowSchema.extend({
 
 export type Customer = z.infer<typeof customerSchema>;
 
-/** A "which filter to drop" suggestion; `key` is the wire param name, mapped in customers-page.filter-suggestions.ts. */
+/**
+ * A "which filter to drop" suggestion: keys of CustomerRowFilters::candidates_for_no_match(), minus `tier`,
+ * which the SPA never sends, so the server never suggests dropping it. Mapped in customers-page.filter-suggestions.ts.
+ */
 export const noMatchSuggestionSchema = z.object({
   key: z.enum(['search', 'balance_range', 'expiring_soon']),
   count: z.number().int(),

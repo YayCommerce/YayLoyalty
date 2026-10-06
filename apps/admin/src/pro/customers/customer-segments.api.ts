@@ -4,8 +4,7 @@ import { api } from '@/lib/api/api';
 import { BALANCE_RANGE_OPTIONS, EXPIRING_SOON_OPTIONS } from '@/pages/customers/customers-page.filter-rows';
 
 /**
- * Mirrors YayLoyalty\Pro\Helpers\CustomerSegmentsHelper::FILTER_SCHEMA, the source of truth,
- * minus `tier`: the SPA has no tier filter, so it drops the key on read and the server defaults it on write.
+ * Mirrors YayLoyalty\Pro\Helpers\CustomerSegmentsHelper::FILTER_SCHEMA, the source of truth.
  * Client for POST/DELETE /customers/segments. The two converters below are the one place the
  * wire shape meets the app's camelCase RowFilters.
  */
@@ -24,6 +23,8 @@ const savedSegmentWireSchema = z.object({
   filters: z.object({
     balance_range: balanceRangeSchema,
     expiring_soon: expiringSoonSchema,
+    /** One of CustomerFilters::TIER_RANGES. The SPA has no Tier filter: read and dropped, saved as 'all'. */
+    tier: z.string(),
   }),
 });
 
@@ -40,7 +41,7 @@ export const savedSegmentSchema = z.object({
 export type SavedSegment = z.infer<typeof savedSegmentSchema>;
 
 function toWireFilters({ balanceRange, expiringSoon }: SavedSegment['filters']): SavedSegmentWire['filters'] {
-  return { balance_range: balanceRange, expiring_soon: expiringSoon };
+  return { balance_range: balanceRange, expiring_soon: expiringSoon, tier: 'all' };
 }
 
 function fromWire({ name, filters }: SavedSegmentWire): SavedSegment {

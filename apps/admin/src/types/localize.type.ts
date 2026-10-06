@@ -55,6 +55,6 @@ export type AdminData = {
   /** Saved segments, Pro-only hence optional. Read via readSegmentsFromLocalize(), never directly. */
   segments?: {
     name: string;
-    filters: { balance_range: CustomerBalanceRange; expiring_soon: CustomerExpiringSoon };
+    filters: { balance_range: CustomerBalanceRange; expiring_soon: CustomerExpiringSoon; tier: string };
   }[];
 };

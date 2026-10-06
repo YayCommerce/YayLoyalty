@@ -70,10 +70,6 @@ export function CustomersScreen({
 
   const isNoMatch = !isLoading && !isStoreEmpty && rows.length === 0;
 
-  // Not while loading: the toolbar stays live and only the table body shows skeletons.
-  const controlsDisabled = isStoreEmpty;
-  const showSelection = IS_PRO_BUILD;
-
   // Selection survives page navigation; 'all' is a flag, never a fetch of every id.
   const {
     selection,
@@ -120,8 +116,9 @@ export function CustomersScreen({
       <Card>
         <CardContent className="flex flex-col gap-4">
           <CustomersFilterBar
-            disabled={controlsDisabled}
-            exportDisabled={controlsDisabled || isLoading || rows.length === 0}
+            // Not while loading: the toolbar stays live and only the table body shows skeletons.
+            disabled={isStoreEmpty}
+            exportDisabled={isStoreEmpty || isLoading || rows.length === 0}
             filters={filters}
             onFiltersChange={onFiltersChange}
             queryFilters={queryFilters}
@@ -146,7 +143,7 @@ export function CustomersScreen({
             showProColumns={IS_PRO_BUILD}
             sort={{ by: sortBy, dir: sortDir, onChange: onSort }}
             selection={{
-              enabled: showSelection,
+              enabled: IS_PRO_BUILD,
               header: headerSelection,
               selected: selectedOnPage,
               onToggle: toggleRow,
@@ -155,7 +152,7 @@ export function CustomersScreen({
           />
 
           <div className="flex flex-col items-center gap-3 sm:flex-row">
-            {showSelection && (
+            {IS_PRO_BUILD && (
               <CustomersBulkActionBar
                 count={selectedCount}
                 onClear={clearSelection}

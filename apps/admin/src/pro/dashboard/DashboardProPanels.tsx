@@ -35,8 +35,8 @@ export function DashboardProPanels({
   const query = useDashboardProQuery(range);
   const data = query.data;
 
-  const referrals = data?.referrals ?? null;
-  const tiers = data?.tier_distribution ?? null;
+  const referrals = data?.referrals;
+  const tiers = data?.tier_distribution;
 
   const extraSeries = useMemo(() => {
     if (!breakdown || !data) return [];

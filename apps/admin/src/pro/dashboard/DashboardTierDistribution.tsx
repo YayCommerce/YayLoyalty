@@ -10,8 +10,8 @@ import { ProGate } from '@/components/pro/ProGate';
 
 const COLORS = ['var(--chart-1)', 'var(--chart-3)', 'var(--chart-4)'];
 
-/** One stacked bar plus a legend row per tier — "Explorer 1,847 · 76.0%". */
-export function DashboardTierDistribution({ tiers }: { tiers: Readonly<NonNullable<Distribution>> }) {
+/** One stacked bar plus a legend row per tier — "<tier> <members> · <share>%". */
+export function DashboardTierDistribution({ tiers }: { tiers: NonNullable<Distribution> }) {
   const total = tiers.reduce((sum, t) => sum + t.members, 0);
   // pctOf is null on an empty total; the legend keeps reading 0.0% rather than growing a "—" state.
   const pct = (members: number) => pctOf(members, total) ?? 0;
