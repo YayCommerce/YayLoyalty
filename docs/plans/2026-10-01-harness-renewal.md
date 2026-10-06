@@ -1,6 +1,6 @@
 # Harness renewal plan — YayLoyalty
 
-**Status:** active · planned 2026-10-01 against `dev/edd` @ `a8d6fe0`
+**Status:** done 2026-10-06 · planned 2026-10-01 against `dev/edd` @ `a8d6fe0`
 **Purpose:** the one plan for replacing this repo's agent/developer harness. One phase = one focused session = one PR.
 **Update when:** a phase starts or finishes (tick its checklist, link its PR), a decision changes (§6), or the inventory drifts (§2).
 **Location:** `docs/plans/2026-10-01-harness-renewal.md`. The old `plans/` ignore rule hides this path, so P0 committed it with `git add -f`. Once tracked, its edits show in `git status`, but staging them still needs `git add -f` until P2 deletes the rule.
@@ -1035,21 +1035,13 @@ What happened instead is Q19: steps 2 and 3 failed in practice. A squash commit 
   4. Set this plan to `Status: done`.
 - **Checklist:**
   - [x] script
-  - [ ] §8 V1–V10 green
-  - [ ] walkthrough issues closed
-  - [ ] plan status done
-- **What's left (2026-10-03, after #59):** the harness is on `dev/edd` (Q19), and the phase branches are deleted on GitHub. In order:
-  1. **This bookkeeping:** merge the PR from `trace/docs/harness-landed`, which records Q19, P0's merge, the tag push and the freeze notice.
-  2. **Teammate branches:** share the fix lists with Jason and Paul, and say the stack has landed. They merge `dev/edd` into their branches and follow their lists:
-     - live: `jason/feat/rewards-editor`, `paul/improve/ledger-queries`, `paul/feat/email-points-earned`, `paul/feat/frontend-launcher`;
-     - nothing to merge, so close: `jason/feat/reward-screen`, `jason/feat/campaign-editor-archive-ui`, `jason/dev/campaign-editor-performance-ui`.
-
-     Their PRs then update the new docs as their lists say: storefront and email facts in `docs/architecture.md`, the "No tests" entry in `docs/known-issues.md` once tests return, and the "Fails today" marks in `CLAUDE.md`. Each must pass `./scripts/check-harness.sh`.
-  3. **P4:** Trace reviews `docs/architecture.md` as code owner (Q18), then ticks P4's box. Fixes go in their own PR.
-  4. **Done (Q20).** **P9, open since Q12:** name where the canonical copy of the shared skills lives, and copy the skills to the sibling YayCommerce repos if they use them.
-  5. **V10:** the validator is Paul (Q21), who didn't build the harness (Q4). They follow `README.md` from a fresh clone of `dev/edd`: setup, the dev server, lint and tests, then one brainstorm, plan and review cycle. Each blocker becomes an issue.
-  6. **Fix forward** every walkthrough finding, then tick "§8 V1–V10 green" and "walkthrough issues closed".
-  7. **Close the plan:** set this plan's Status to `done YYYY-MM-DD` in the PR that closes the last finding.
+  - [x] §8 V1–V10 green
+  - [x] walkthrough issues closed
+  - [x] plan status done
+- **Closed (2026-10-06):** the owner confirmed the walkthrough and its fixes are finished, so the plan is done. Before that, the bookkeeping PR (#60), the teammate branches (#41–#44, and #30 for `jason/feat/reward-screen`), P4's code-owner review (#61) and P9 (Q20) were done. The steps that were left:
+  1. **V10:** the validator is Paul (Q21), who didn't build the harness (Q4). They follow `README.md` from a fresh clone of `dev/edd`: setup, the dev server, lint and tests, then one brainstorm, plan and review cycle. Each blocker becomes an issue.
+  2. **Fix forward** every walkthrough finding, then tick "§8 V1–V10 green" and "walkthrough issues closed".
+  3. **Close the plan:** set this plan's Status to `done YYYY-MM-DD` in the PR that closes the last finding.
 - **Notes (2026-10-03):**
   - Branch: `trace/docs/harness-p11-readme`, before P12 gets its own branch.
   - **Step 1:** `scripts/check-harness.sh` runs C2–C6, C9, C10, C12, C15, C16 and C17, prints each finding with its check's name, and exits 1 on any. It passes on `/bin/bash` 3.2, and a planted broken link fails it. The README's upkeep section links it.
