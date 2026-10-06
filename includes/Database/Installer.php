@@ -3,6 +3,7 @@ namespace YayLoyalty\Database;
 
 use YayLoyalty\Access\Capabilities;
 use YayLoyalty\Database\Schema\AbstractTableSchema;
+use YayLoyalty\Enums\ActivityEvent;
 use YayLoyalty\Utils\Log;
 use YayLoyalty\Utils\Table;
 
@@ -174,9 +175,25 @@ final class Installer {
         // idx_user_history_type covers both, and dbDelta has already added it by the time this runs.
         self::drop_index_if_exists( 'ledger', 'idx_user_history' );
         self::drop_index_if_exists( 'ledger', 'idx_user_type' );
+        self::rename_customer_meta_key( 'account_created', ActivityEvent::MEMBERSHIP_STARTED );
 
         /** Fires after the tables are created or updated, and before the version stamp. */
         do_action( 'yayloyalty_run_migrations' );
+    }
+
+    /**
+     * Renames an activity `event_type` in rows already written. A no-op once no row has the old key,
+     * so every upgrade may call it.
+     */
+    private static function rename_customer_meta_key( string $old_key, string $new_key ): void {
+        global $wpdb;
+
+        $table = Table::name( 'customer_meta' );
+
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a one-off data migration on our own table; there is nothing to cache.
+        if ( false === $wpdb->update( $table, [ 'meta_key' => $new_key ], [ 'meta_key' => $old_key ], [ '%s' ], [ '%s' ] ) ) {
+            Log::warning( 'Installer', sprintf( 'could not rename meta_key %s to %s on %s: %s', $old_key, $new_key, $table, $wpdb->last_error ) );
+        }
     }
 
     /**

@@ -83,15 +83,15 @@ final class CustomerActivityService {
     }
 
     /**
-     * One `account_created` row on a member's first ledger write: first loyalty
+     * One `membership_started` row on a member's first ledger write: first loyalty
      * activity, not WordPress registration. Written once per user, with the same
      * has()-then-insert() race as account_deleted, where a duplicate is only
      * cosmetic. Existing members get no backfill.
      */
-    public function record_account_created( LedgerEntry $entry ): void {
+    public function record_membership_started( LedgerEntry $entry ): void {
         $user_id = $entry->get_user_id();
 
-        if ( $this->meta->has( $user_id, ActivityEvent::ACCOUNT_CREATED ) ) {
+        if ( $this->meta->has( $user_id, ActivityEvent::MEMBERSHIP_STARTED ) ) {
             return;
         }
 
@@ -103,7 +103,7 @@ final class CustomerActivityService {
         $this->meta->insert(
             // The ledger row's own timestamp, not Dates::now(), so the activity
             // log and the ledger tab agree to the second.
-            CustomerMeta::event( $user_id, ActivityEvent::ACCOUNT_CREATED, $data, ActorKind::AUTOMATIC, null, false, $entry->get_created_at() )
+            CustomerMeta::event( $user_id, ActivityEvent::MEMBERSHIP_STARTED, $data, ActorKind::AUTOMATIC, null, false, $entry->get_created_at() )
         );
     }
 

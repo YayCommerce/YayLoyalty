@@ -12,7 +12,7 @@ defined( 'ABSPATH' ) || exit;
  *
  * `group` is a lens over the eight `event_type`s, not a partition: `expiring_soon_email_sent`
  * belongs to both `expiry` and `emails` on purpose, so do not "fix" the overlap.
- * `account_created` is in no group, and `all` still shows it.
+ * `membership_started` is in no group, and `all` still shows it.
  */
 final class ActivityQueryArgs {
 

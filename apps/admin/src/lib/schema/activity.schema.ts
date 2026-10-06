@@ -6,7 +6,7 @@ import { paginatedSchema } from '@/lib/api/paginated';
 
 /** The eight event kinds, in display order. Matches `ActivityEvent::ALL`. */
 export const ACTIVITY_EVENT_TYPES = [
-  'account_created',
+  'membership_started',
   'points_adjusted',
   'tier_changed',
   'expiry_reset',

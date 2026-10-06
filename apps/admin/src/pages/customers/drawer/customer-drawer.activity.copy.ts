@@ -3,7 +3,7 @@ import { __, sprintf } from '@wordpress/i18n';
 /** The Activity log tab's strings. Functions, not constants: `__()` must run after the locale loads. */
 
 /** One static title per `event_type`. */
-export const ACTIVITY_TITLE_ACCOUNT_CREATED = () => __('Account created', 'yayloyalty');
+export const ACTIVITY_TITLE_MEMBERSHIP_STARTED = () => __('Membership started', 'yayloyalty');
 export const ACTIVITY_TITLE_POINTS_ADJUSTED = () => __('Points adjusted', 'yayloyalty');
 export const ACTIVITY_TITLE_TIER_CHANGED = () => __('Tier changed', 'yayloyalty');
 export const ACTIVITY_TITLE_EXPIRY_RESET = () => __('Expiry reset', 'yayloyalty');
@@ -12,7 +12,7 @@ export const ACTIVITY_TITLE_BALANCE_EMAIL_SENT = () => __('Points balance email 
 export const ACTIVITY_TITLE_EXPIRING_SOON_EMAIL_SENT = () => __('Expiring soon email sent', 'yayloyalty');
 export const ACTIVITY_TITLE_ACCOUNT_DELETED = () => __('Account deleted', 'yayloyalty');
 
-export function activityAccountCreatedSubLine(points: string): string {
+export function activityMembershipStartedSubLine(points: string): string {
   return sprintf(
     /* translators: %s: number of points, formatted. */
     __('%s points', 'yayloyalty'),
