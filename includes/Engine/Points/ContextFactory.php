@@ -231,6 +231,13 @@ final class ContextFactory {
         );
     }
 
+    /** For the storefront launcher's "Ways to earn": any shopper, no event (PointsEngine::advertised()). */
+    public static function for_advert( string $at ): Context {
+        $currency = get_woocommerce_currency();
+
+        return Context::advert( $at, $currency, self::base_rate( $currency, null ) );
+    }
+
     /** For the cart/checkout earn preview. */
     public static function from_cart( \WC_Cart $cart, ?int $user_id = null ): Context {
         $line_items = [];
