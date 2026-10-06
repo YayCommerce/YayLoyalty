@@ -23,7 +23,6 @@ export { CampaignPerformance } from './campaigns/performance/CampaignPerformance
 export { CustomersSavedSegmentRow } from './customers/CustomersSavedSegmentRow';
 export { DashboardProPanels } from './dashboard/DashboardProPanels';
 export { DesignPanelSection } from './design/DesignPanelSection';
-export { DesignTierSection } from './design/DesignTierSection';
 export { DesignTypographySection } from './design/DesignTypographySection';
 export { RewardTemplatePicker } from './rewards/add/RewardTemplatePicker';
 export { RewardCreator, RewardEditor } from './rewards/editor/RewardEditor';

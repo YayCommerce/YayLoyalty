@@ -1,7 +1,6 @@
 import { __ } from '@wordpress/i18n';
 
 import type {
-  DesignBadgeIcon,
   DesignLauncherButtonStyle,
   DesignLauncherIcon,
   DesignLauncherPosition,
@@ -55,17 +54,6 @@ export function launcherIconLabel(icon: DesignLauncherIcon): string {
   }
 }
 
-export function badgeIconLabel(icon: DesignBadgeIcon): string {
-  switch (icon) {
-    case 'ring':
-      return __('Ring', 'yayloyalty');
-    case 'diamond':
-      return __('Diamond', 'yayloyalty');
-    case 'square':
-      return __('Square', 'yayloyalty');
-  }
-}
-
 export function visibilityScopeLabel(scope: DesignVisibilityScope): string {
   switch (scope) {
     case 'all_pages':
@@ -84,7 +72,7 @@ export function panelLayoutLabel(layout: DesignPanelLayout): string {
 export function panelLayoutDescription(layout: DesignPanelLayout): string {
   return layout === 'compact'
     ? __('Balance and redeem only', 'yayloyalty')
-    : __('Tier badge, rewards, referral', 'yayloyalty');
+    : __('Balance, redeem and rewards', 'yayloyalty');
 }
 
 export function typographyModeLabel(mode: DesignTypographyMode): string {

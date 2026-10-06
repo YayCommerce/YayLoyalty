@@ -3,7 +3,6 @@ import { useFormContext } from 'react-hook-form';
 import { toast } from 'sonner';
 
 import { toastApiError } from '@/lib/api/api';
-import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { useResetDesignMutation } from '@/lib/queries/design.queries';
 import type { Design } from '@/lib/schema/design.schema';
 import { Button } from '@/components/ui/button';
@@ -11,7 +10,6 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { ConfirmDialog } from '@/components/ui/custom/confirm-dialog';
 import { Field, FieldContent, FieldError, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { ProGate } from '@/components/pro/ProGate';
 import {
   CANCEL_LABEL,
   RESET_CONFIRM_LABEL,
@@ -20,7 +18,6 @@ import {
   STOREFRONT_EARN_RATE_LINE_LABEL,
   STOREFRONT_LAUNCHER_LABEL_LABEL,
   STOREFRONT_REDEEM_BUTTON_LABEL,
-  STOREFRONT_REFERRAL_CARD_HEADING_LABEL,
   STOREFRONT_REQUIRED_ERROR,
   STOREFRONT_RESET_BUTTON_LABEL,
   STOREFRONT_RESET_CONFIRM_DESCRIPTION,
@@ -29,26 +26,23 @@ import {
   STOREFRONT_SECTION_DESCRIPTION,
   STOREFRONT_SECTION_TITLE,
   STOREFRONT_SIGNED_OUT_PROMPT_LABEL,
-  STOREFRONT_TIER_PROGRESS_LINE_LABEL,
 } from './design-settings.copy';
 
 type StorefrontTextKey = keyof Design['storefront_text'];
 
-/** One storefront-text input with its label and, for the required labels, the blank-field error. A `pro` field shows only its label and the Pro badge in Lite. */
-function StorefrontTextField({ name, label, pro = false }: { name: StorefrontTextKey; label: string; pro?: boolean }) {
+/** One storefront-text input with its label and, for the required labels, the blank-field error. */
+function StorefrontTextField({ name, label }: { name: StorefrontTextKey; label: string }) {
   const { register, formState } = useFormContext<Design>();
   const id = `design-storefront-${name.replaceAll('_', '-')}`;
   const invalid = !!formState.errors.storefront_text?.[name];
-  const gated = pro && !IS_PRO_BUILD;
 
   return (
     <Field data-invalid={invalid}>
       <FieldLabel htmlFor={id} className="items-center">
         {label}
-        {gated && <ProGate inline />}
       </FieldLabel>
       <FieldContent>
-        {!gated && <Input id={id} aria-invalid={invalid} {...register(`storefront_text.${name}`)} />}
+        <Input id={id} aria-invalid={invalid} {...register(`storefront_text.${name}`)} />
         {invalid && <FieldError>{STOREFRONT_REQUIRED_ERROR()}</FieldError>}
       </FieldContent>
     </Field>
@@ -56,9 +50,8 @@ function StorefrontTextField({ name, label, pro = false }: { name: StorefrontTex
 }
 
 /**
- * Five Free text inputs, pre-filled with the stored wording rather than shown
- * as placeholders, so an empty field means empty. The two Pro fields stay in
- * this section, gated in place by StorefrontTextField's `pro` flag.
+ * Five text inputs, pre-filled with the stored wording rather than shown
+ * as placeholders, so an empty field means empty.
  */
 export function DesignStorefrontTextSection() {
   const { setValue } = useFormContext<Design>();
@@ -99,9 +92,6 @@ export function DesignStorefrontTextSection() {
         <StorefrontTextField name="earn_rate_line" label={STOREFRONT_EARN_RATE_LINE_LABEL()} />
         <StorefrontTextField name="redeem_button" label={STOREFRONT_REDEEM_BUTTON_LABEL()} />
         <StorefrontTextField name="signed_out_prompt" label={STOREFRONT_SIGNED_OUT_PROMPT_LABEL()} />
-
-        <StorefrontTextField name="referral_card_heading" label={STOREFRONT_REFERRAL_CARD_HEADING_LABEL()} pro />
-        <StorefrontTextField name="tier_progress_line" label={STOREFRONT_TIER_PROGRESS_LINE_LABEL()} pro />
       </CardContent>
 
       <ConfirmDialog

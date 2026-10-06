@@ -32,8 +32,8 @@ class DesignHelper {
     }
 
     /**
-     * Validates $design and merges it over the stored design, not the bare defaults. A field coerce() dropped,
-     * such as a wholly invalid badge_list, then keeps its last-saved value instead of reverting to the default.
+     * Validates $design and merges it over the stored design, not the bare defaults. A field coerce() dropped
+     * then keeps its last-saved value instead of reverting to the default.
      * Stamps the version, saves, and logs what was dropped.
      */
     public static function update_design( array $design ): array {
