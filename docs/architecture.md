@@ -183,5 +183,4 @@ The suites hold no test cases today ([known issue](known-issues.md#no-tests-comp
   - It doesn't load `vite.config.ts`, so `IS_PRO_BUILD` is false unless the shell exports `VITE_IS_PRO=true`.
   - Tests sit outside `tsconfig.json`, so `tsc` doesn't check them.
 - **Shared fixtures:**
-  - `tests/fixtures/` holds data that both languages test against, with PHP as the source of truth. For example, `tests/fixtures/points-math-vectors.json` is meant to pin `includes/Utils/PointsMath.php` and its twin `apps/admin/src/lib/points-math/points-math.ts`; no test reads it today.
-  - `scripts/dump-design-defaults.php` prints the defaults of `includes/Helpers/DesignHelper.php`; redirect it into `apps/admin/tests/fixtures/design-defaults.json` to regenerate that fixture.
+  - `tests/fixtures/` holds data that both languages test against, with PHP as the source of truth.
