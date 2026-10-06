@@ -163,9 +163,9 @@ const couponExpiryDaysSchema = z.number().int().min(1).nullable();
 const claimLimitSchema = z.number().int().min(1).nullable();
 
 /**
- * Typed config per type, mirroring Reward::config_schema() (flexible_discount)
- * and YayLoyaltyPro::add_reward_config_schema() (the four Pro types). Form
- * feedback only; the PHP specs decide what is stored.
+ * Mirrors Reward::config_schema() (flexible_discount) and
+ * YayLoyaltyPro::add_reward_config_schema() (the four Pro types), the source of truth.
+ * Its bounds give form feedback before the request; the PHP specs decide what is stored.
  */
 export const REWARD_CONFIG_SCHEMAS = {
   flexible_discount: z.object({

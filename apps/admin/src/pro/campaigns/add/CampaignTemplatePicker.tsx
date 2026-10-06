@@ -1,9 +1,8 @@
-import { ChevronLeft } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { __ } from '@wordpress/i18n';
 
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { BackLink } from '@/components/ui/custom/back-link';
 import PageLayout from '@/components/layout/PageLayout';
 import { CampaignTemplate, getCampaignTemplates } from './campaign-templates';
 
@@ -17,12 +16,7 @@ export function CampaignTemplatePicker() {
 
   return (
     <>
-      <div className="mx-auto flex max-w-6xl items-center gap-2 px-6 pt-6 text-sm">
-        <Button type="button" variant="link" className="h-auto gap-1 p-0!" onClick={() => navigate('/campaigns')}>
-          <ChevronLeft className="size-3.5" />
-          {__('Campaigns', 'yayloyalty')}
-        </Button>
-      </div>
+      <BackLink to="/campaigns" label={__('Campaigns', 'yayloyalty')} />
 
       <PageLayout
         className="max-w-6xl"

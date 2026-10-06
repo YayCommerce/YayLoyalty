@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { ReactElement, useMemo, useState } from 'react';
+import { UseQueryResult } from '@tanstack/react-query';
 import { HTTPError } from 'ky';
 import { FormProvider, useForm, UseFormReturn } from 'react-hook-form';
 import { useNavigate } from 'react-router';
@@ -6,6 +7,7 @@ import { toast } from 'sonner';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { toastApiError } from '@/lib/api/api';
+import { storeCurrency } from '@/lib/helpers/format.helper';
 import { useCreateRewardMutation, useRewardQuery, useUpdateRewardMutation } from '@/lib/queries/reward.queries';
 import {
   CatalogRewardType,
@@ -14,8 +16,10 @@ import {
   resolveRewardDisplayStatus,
   Reward,
 } from '@/lib/schema/reward.schema';
+import { useEditorSave } from '@/hooks/useEditorSave';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { BackLink } from '@/components/ui/custom/back-link';
 import { ErrorState } from '@/components/ui/custom/error-state';
 import { UnsavedChangeDialog } from '@/components/ui/custom/unsaved-changed-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -24,7 +28,6 @@ import NotFoundPage from '@/pages/404';
 import { CampaignStatusBadge } from '@/pro/campaigns/CampaignStatusBadge';
 import { RewardArchiveDialog } from '../archive/RewardArchiveDialog';
 import { templateTitle, typeLabel } from '../reward-labels';
-import { RewardsBackLink } from '../RewardsBackLink';
 import {
   duplicateToFormValues,
   formValuesToCreateInput,
@@ -36,11 +39,6 @@ import {
   rewardToFormValues,
 } from './reward-editor.form';
 import { RewardEditorSections } from './RewardEditorSections';
-import { useRewardEditorSave } from './use-reward-editor-save';
-
-function storeCurrency(): string {
-  return window.yayLoyaltyMeta.wcMeta.currency_data.currency;
-}
 
 /** Edit-mode entry for `rewards/:id/edit`: every non-content state, then the form. */
 export function RewardEditor({ id }: { id: number }) {
@@ -51,23 +49,40 @@ export function RewardEditor({ id }: { id: number }) {
     return <NotFoundPage />;
   }
 
-  if (rewardQuery.isPending) {
-    return <RewardEditorSkeleton />;
+  const loaded = resolveRewardLoad(
+    rewardQuery,
+    __('Reward', 'yayloyalty'),
+    __('Could not load this reward.', 'yayloyalty'),
+  );
+
+  return 'screen' in loaded ? loaded.screen : <RewardEditorForm reward={loaded.reward} />;
+}
+
+/** The skeleton, 404 or retryable error a reward query shows until it holds a reward. */
+function resolveRewardLoad(
+  query: UseQueryResult<Reward>,
+  title: string,
+  errorMessage: string,
+): { screen: ReactElement } | { reward: Reward } {
+  if (query.isPending) {
+    return { screen: <RewardEditorSkeleton /> };
   }
 
-  if (rewardQuery.isError) {
-    if (rewardQuery.error instanceof HTTPError && rewardQuery.error.response.status === 404) {
-      return <NotFoundPage />;
+  if (query.isError) {
+    if (query.error instanceof HTTPError && query.error.response.status === 404) {
+      return { screen: <NotFoundPage /> };
     }
 
-    return (
-      <PageLayout title={__('Reward', 'yayloyalty')}>
-        <ErrorState message={__('Could not load this reward.', 'yayloyalty')} onRetry={() => rewardQuery.refetch()} />
-      </PageLayout>
-    );
+    return {
+      screen: (
+        <PageLayout title={title}>
+          <ErrorState message={errorMessage} onRetry={() => query.refetch()} />
+        </PageLayout>
+      ),
+    };
   }
 
-  return <RewardEditorForm reward={rewardQuery.data} />;
+  return { reward: query.data };
 }
 
 function RewardEditorForm({ reward }: { reward: Reward }) {
@@ -81,7 +96,7 @@ function RewardEditorForm({ reward }: { reward: Reward }) {
   // `values`, not defaultValues + reset(): a refetch re-seeds the form, and keepDirtyValues spares a field mid-edit.
   const form = useForm<RewardFormValues>({ resolver, values: formValues, resetOptions: { keepDirtyValues: true } });
 
-  const { handleSave, bypassNext, markDraftIntent, leaveDialogProps } = useRewardEditorSave(
+  const { handleSave, bypassNext, markDraftIntent, leaveDialogProps } = useEditorSave(
     form,
     async (values, intent) => {
       try {
@@ -94,6 +109,7 @@ function RewardEditorForm({ reward }: { reward: Reward }) {
         return false;
       }
     },
+    { listPath: '/rewards', onInvalid: toastInvalidFields },
   );
 
   function leaveAfterArchiveOrDelete() {
@@ -160,31 +176,22 @@ export function RewardCreator({ type, duplicateFromId }: { type: string; duplica
     return <RewardCreatorForm type={type} />;
   }
 
-  if (sourceQuery.isPending) {
-    return <RewardEditorSkeleton />;
-  }
+  const loaded = resolveRewardLoad(
+    sourceQuery,
+    __('New reward', 'yayloyalty'),
+    __('Could not load the reward to duplicate.', 'yayloyalty'),
+  );
 
-  if (sourceQuery.isError) {
-    if (sourceQuery.error instanceof HTTPError && sourceQuery.error.response.status === 404) {
-      return <NotFoundPage />;
-    }
-
-    return (
-      <PageLayout title={__('New reward', 'yayloyalty')}>
-        <ErrorState
-          message={__('Could not load the reward to duplicate.', 'yayloyalty')}
-          onRetry={() => sourceQuery.refetch()}
-        />
-      </PageLayout>
-    );
+  if ('screen' in loaded) {
+    return loaded.screen;
   }
 
   // A hand-edited URL naming another type would seed a form whose fields don't match the copied config.
-  if (sourceQuery.data.type !== type) {
+  if (loaded.reward.type !== type) {
     return <NotFoundPage />;
   }
 
-  return <RewardCreatorForm type={type} duplicateFrom={sourceQuery.data} />;
+  return <RewardCreatorForm type={type} duplicateFrom={loaded.reward} />;
 }
 
 function RewardCreatorForm({ type, duplicateFrom }: { type: CatalogRewardType; duplicateFrom?: Reward }) {
@@ -200,19 +207,23 @@ function RewardCreatorForm({ type, duplicateFrom }: { type: CatalogRewardType; d
   const resolver = useMemo(() => rewardFormResolver(type), [type]);
   const form = useForm<RewardFormValues>({ resolver, values: seed, resetOptions: { keepDirtyValues: true } });
 
-  const { handleSave, markDraftIntent, leaveDialogProps } = useRewardEditorSave(form, async (values, intent) => {
-    try {
-      const sourceConditions = duplicateFrom ? normalizeRewardConditions(duplicateFrom.conditions) : [];
-      await mutation.mutateAsync(formValuesToCreateInput(values, type, intent, sourceConditions));
-      // The created row lives in the list now; this form's baseline must stop counting as unsaved.
-      form.reset(values);
-      toast.success(__('Reward created.', 'yayloyalty'));
-      return true;
-    } catch (error) {
-      await toastApiError(error, __('Could not create the reward.', 'yayloyalty'));
-      return false;
-    }
-  });
+  const { handleSave, markDraftIntent, leaveDialogProps } = useEditorSave(
+    form,
+    async (values, intent) => {
+      try {
+        const sourceConditions = duplicateFrom ? normalizeRewardConditions(duplicateFrom.conditions) : [];
+        await mutation.mutateAsync(formValuesToCreateInput(values, type, intent, sourceConditions));
+        // The created row lives in the list now; this form's baseline must stop counting as unsaved.
+        form.reset(values);
+        toast.success(__('Reward created.', 'yayloyalty'));
+        return true;
+      } catch (error) {
+        await toastApiError(error, __('Could not create the reward.', 'yayloyalty'));
+        return false;
+      }
+    },
+    { listPath: '/rewards', onInvalid: toastInvalidFields },
+  );
 
   return (
     <>
@@ -262,7 +273,7 @@ function RewardEditorLayout({
   return (
     <FormProvider {...form}>
       <form onSubmit={onSubmit}>
-        <RewardsBackLink />
+        <BackLink to="/rewards" label={__('Rewards', 'yayloyalty')} />
 
         <PageLayout
           className="max-w-6xl"
@@ -349,4 +360,9 @@ function RewardEditorSkeleton() {
       </div>
     </PageLayout>
   );
+}
+
+/** The buttons sit in the side area, often far from the field that failed. */
+function toastInvalidFields() {
+  toast.error(__('Please fix the highlighted fields before saving.', 'yayloyalty'));
 }

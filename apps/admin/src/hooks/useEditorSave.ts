@@ -1,21 +1,21 @@
 import { useRef } from 'react';
-import { UseFormReturn } from 'react-hook-form';
+import { FieldErrors, FieldValues, UseFormReturn } from 'react-hook-form';
 import { useNavigate } from 'react-router';
-import { toast } from 'sonner';
-import { __ } from '@wordpress/i18n';
 
 import { useRouteLeaveGuard } from '@/hooks/useRouteLeaveGuard';
-import { RewardFormValues, RewardSaveIntent } from './reward-editor.form';
+
+export type EditorSaveIntent = 'save' | 'draft';
 
 /**
- * One onSubmit for Save, Save draft and the leave dialog's Save, then back
- * to the list. `save` writes the values and says whether it succeeded; it
- * must reset the form's dirty baseline before resolving, or the redirect
- * re-trips the leave guard.
+ * The save flow every definition editor shares: one onSubmit for Save, Save
+ * draft and the leave dialog's Save, then back to `listPath`. `save` writes
+ * the values and says whether it succeeded; it must reset the form's dirty
+ * baseline before resolving, or the redirect re-trips the leave guard.
  */
-export function useRewardEditorSave(
-  form: UseFormReturn<RewardFormValues>,
-  save: (values: RewardFormValues, intent: RewardSaveIntent) => Promise<boolean>,
+export function useEditorSave<T extends FieldValues>(
+  form: UseFormReturn<T>,
+  save: (values: T, intent: EditorSaveIntent) => Promise<boolean>,
+  { listPath, onInvalid }: { listPath: string; onInvalid?: (errors: FieldErrors<T>) => void },
 ) {
   const navigate = useNavigate();
   const { showDialog, confirmLeave, cancelLeave, bypassNext } = useRouteLeaveGuard(form.formState.isDirty);
@@ -44,14 +44,13 @@ export function useRewardEditorSave(
       if (!savingFromDialog) {
         // isDirty:false from reset() may not have re-rendered yet; skip the blocker for this one navigation.
         bypassNext();
-        navigate('/rewards');
+        navigate(listPath);
       }
     },
-    () => {
+    (errors) => {
       isDraftIntentRef.current = false;
       isDialogSaveRef.current = false;
-      // The buttons sit in the side area, often far from the field that failed.
-      toast.error(__('Please fix the highlighted fields before saving.', 'yayloyalty'));
+      onInvalid?.(errors);
     },
   );
   /* eslint-enable react-hooks/refs */

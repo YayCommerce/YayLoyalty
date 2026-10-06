@@ -214,16 +214,13 @@ final class CampaignRestController extends AbstractRestController {
             return $error;
         }
 
-        // Checked against the stored date when the request moves one side only. A body that
-        // touches neither date (pause, archive, rename) must still go through on a row whose
-        // stored dates were never in order, or that row could never be repaired or retired.
-        $moves_dates = $request->has_param( 'starts_at' ) || $request->has_param( 'ends_at' );
-        $starts_at   = $request->has_param( 'starts_at' ) ? self::nullable_date( $request['starts_at'] ) : $campaign->get_starts_at();
-        $ends_at     = $request->has_param( 'ends_at' ) ? self::nullable_date( $request['ends_at'] ) : $campaign->get_ends_at();
+        $window = self::requested_window( $request, $campaign->get_starts_at(), $campaign->get_ends_at() );
 
-        if ( $moves_dates && ! self::dates_in_order( $starts_at, $ends_at ) ) {
+        if ( null === $window ) {
             return $this->error_invalid_arguments( __( 'The campaign must end after it starts.', 'yayloyalty' ) );
         }
+
+        list( $starts_at, $ends_at ) = $window;
 
         self::apply_update( $campaign, $request );
         $campaign->set_starts_at( $starts_at );

@@ -7,7 +7,6 @@ import { __, sprintf } from '@wordpress/i18n';
 import { toastApiError } from '@/lib/api/api';
 import { useDeleteRewardMutation, useUpdateRewardStatusMutation } from '@/lib/queries/reward.queries';
 import type { Reward } from '@/lib/schema/reward.schema';
-import { cn } from '@/lib/utils';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,6 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/custom/dialog';
+import { ListColumns } from '@/components/ui/custom/list-columns';
 import {
   affectedLine,
   contextLine,
@@ -108,8 +108,7 @@ export function RewardArchiveDialog({
                 leftTitle={__('Goes', 'yayloyalty')}
                 leftLines={goesLines()}
                 rightTitle={__('Affected', 'yayloyalty')}
-                rightLines={[affectedLine()]}
-                isRightMuted
+                right={{ lines: [affectedLine()], nothing: true }}
               />
 
               <Alert variant="outline" className="border-l-foreground border-l-4">
@@ -150,7 +149,7 @@ export function RewardArchiveDialog({
                 leftTitle={__('Keeps working', 'yayloyalty')}
                 leftLines={keepsLines(reward.redemption_summary)}
                 rightTitle={__('Stops', 'yayloyalty')}
-                rightLines={stopsLines()}
+                right={{ lines: stopsLines() }}
               />
             </>
           )}
@@ -212,58 +211,5 @@ export function RewardArchiveDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
-}
-
-/**
- * What survives on the left, what ends on the right. A local copy of the
- * campaign dialog's columns, kept separate so the two features can diverge.
- */
-function ListColumns({
-  leftTitle,
-  leftLines,
-  rightTitle,
-  rightLines,
-  isRightMuted = false,
-}: {
-  leftTitle: string;
-  leftLines: string[];
-  rightTitle: string;
-  rightLines: string[];
-  isRightMuted?: boolean;
-}) {
-  return (
-    <div className="grid gap-3 sm:grid-cols-2">
-      <ListColumn title={leftTitle} lines={leftLines} />
-      <ListColumn
-        title={rightTitle}
-        lines={rightLines}
-        className={cn(!isRightMuted && 'bg-muted border-foreground/40')}
-        muted={isRightMuted}
-      />
-    </div>
-  );
-}
-
-function ListColumn({
-  title,
-  lines,
-  className,
-  muted,
-}: {
-  title: string;
-  lines: string[];
-  className?: string;
-  muted?: boolean;
-}) {
-  return (
-    <div className={cn('flex flex-col gap-3 rounded-md border p-4', className)}>
-      <span className="text-xs font-semibold tracking-wide uppercase">{title}</span>
-      <ul className={cn('flex flex-col gap-2 text-sm', muted && 'text-muted-foreground')}>
-        {lines.map((line) => (
-          <li key={line}>{line}</li>
-        ))}
-      </ul>
-    </div>
   );
 }

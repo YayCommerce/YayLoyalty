@@ -39,7 +39,15 @@ export function MoneyInput({
   );
 }
 
-/** A money amount where 0 is written as null ("none"), so a stored 0 never reads as a real limit. */
+/**
+ * 0 in an optional input means "none" and is written as null, so a stored 0
+ * never reads as a real limit (e.g. Clamp blocks every redemption at a 0 cap).
+ */
+function zeroAsNone(next: number): number | null {
+  return next > 0 ? next : null;
+}
+
+/** A money amount where 0 means none; see zeroAsNone(). */
 export function OptionalMoneyInput({
   value,
   currency,
@@ -50,18 +58,11 @@ export function OptionalMoneyInput({
   onValueChange: (value: number | null) => void;
 }) {
   return (
-    <MoneyInput
-      value={value ?? 0}
-      currency={currency}
-      onValueChange={(next) => onValueChange(next > 0 ? next : null)}
-    />
+    <MoneyInput value={value ?? 0} currency={currency} onValueChange={(next) => onValueChange(zeroAsNone(next))} />
   );
 }
 
-/**
- * A whole-number limit where 0 is written as null ("none"), so a stored 0
- * never reads as a real limit (e.g. Clamp blocks every redemption at a 0 cap).
- */
+/** A whole-number limit where 0 means none; see zeroAsNone(). */
 export function OptionalCountInput({
   value,
   unit,
@@ -79,7 +80,7 @@ export function OptionalCountInput({
       className={cn('w-28', className)}
       min={0}
       value={value ?? 0}
-      onValueChange={(next) => onValueChange(next > 0 ? next : null)}
+      onValueChange={(next) => onValueChange(zeroAsNone(next))}
     >
       <NumberInputInput />
       {unit && <NumberInputUnit unit={unit} />}

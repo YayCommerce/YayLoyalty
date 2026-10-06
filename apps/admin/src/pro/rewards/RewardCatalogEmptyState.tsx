@@ -5,7 +5,8 @@ import { __ } from '@wordpress/i18n';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
-import { REWARD_TEMPLATE_ORDER, templateExample, templateTitle, typeLabel } from './reward-labels';
+import { templateExample } from './editor/reward-editor.form';
+import { REWARD_TEMPLATE_ORDER, templateTitle, typeLabel } from './reward-labels';
 
 /**
  * The 2a empty state: a proper Empty panel explaining what a catalog reward

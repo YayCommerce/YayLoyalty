@@ -4,15 +4,10 @@ import { __ } from '@wordpress/i18n';
 import { CatalogRewardType } from '@/lib/schema/reward.schema';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { BackLink } from '@/components/ui/custom/back-link';
 import PageLayout from '@/components/layout/PageLayout';
-import {
-  REWARD_TEMPLATE_ORDER,
-  templateDescription,
-  templateExample,
-  templateTitle,
-  typeLabel,
-} from '../reward-labels';
-import { RewardsBackLink } from '../RewardsBackLink';
+import { templateExample } from '../editor/reward-editor.form';
+import { REWARD_TEMPLATE_ORDER, templateDescription, templateTitle, typeLabel } from '../reward-labels';
 
 /**
  * "Add a reward" chooser: one card per catalog type, each opening the editor
@@ -24,7 +19,7 @@ export function RewardTemplatePicker() {
 
   return (
     <>
-      <RewardsBackLink />
+      <BackLink to="/rewards" label={__('Rewards', 'yayloyalty')} />
 
       <PageLayout
         className="max-w-6xl"

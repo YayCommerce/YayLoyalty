@@ -163,21 +163,16 @@ final class RewardRestController extends AbstractRestController {
             return $this->error_invalid_arguments( __( 'This reward type cannot be created.', 'yayloyalty' ) );
         }
 
-        $name        = trim( (string) $request['name'] );
-        $cost_points = self::nullable_int( $request['cost_points'] );
-        $config      = (array) ( $request['config'] ?? [] );
-        $conditions  = (array) ( $request['conditions'] ?? [] );
-        $starts_at   = self::nullable_date( $request['starts_at'] );
-        $ends_at     = self::nullable_date( $request['ends_at'] );
+        $fields    = [
+            'name'        => trim( (string) $request['name'] ),
+            'cost_points' => self::nullable_int( $request['cost_points'] ),
+            'config'      => (array) ( $request['config'] ?? [] ),
+            'conditions'  => (array) ( $request['conditions'] ?? [] ),
+        ];
+        $starts_at = self::nullable_date( $request['starts_at'] );
+        $ends_at   = self::nullable_date( $request['ends_at'] );
 
-        $error = self::first_error(
-            [
-                $this->name_error( $name ),
-                $this->cost_points_error( $type, $cost_points ),
-                $this->config_error( $type, $config ),
-                $this->conditions_error( $conditions ),
-            ]
-        );
+        $error = $this->fields_error( $type, $fields );
 
         if ( null !== $error ) {
             return $error;
@@ -194,7 +189,7 @@ final class RewardRestController extends AbstractRestController {
         }
 
         $slug = self::unique_slug(
-            $request['slug'] ? (string) $request['slug'] : $name,
+            $request['slug'] ? (string) $request['slug'] : $fields['name'],
             'reward',
             fn( string $candidate ) => null !== $this->rewards->find_by_slug( $candidate )
         );
@@ -202,12 +197,12 @@ final class RewardRestController extends AbstractRestController {
         $now    = Dates::now();
         $reward = new Reward(
             null,
-            $name,
+            $fields['name'],
             $slug,
             $type,
             $status,
             $this->rewards->next_sort_order(),
-            $cost_points,
+            $fields['cost_points'],
             [],
             [],
             $starts_at,
@@ -220,8 +215,8 @@ final class RewardRestController extends AbstractRestController {
         );
 
         // Through the setters so config is whitelisted and conditions normalised.
-        $reward->set_config( $config );
-        $reward->set_conditions( $conditions );
+        $reward->set_config( $fields['config'] );
+        $reward->set_conditions( $fields['conditions'] );
 
         $id      = $this->rewards->insert( $reward );
         $created = $this->rewards->find_reward( $id );
@@ -263,15 +258,13 @@ final class RewardRestController extends AbstractRestController {
             return $error;
         }
 
-        // A body that touches neither date (pause, archive, rename) must still go through on a row
-        // whose stored dates were never in order, or that row could never be repaired or retired.
-        $moves_dates = $request->has_param( 'starts_at' ) || $request->has_param( 'ends_at' );
-        $starts_at   = $request->has_param( 'starts_at' ) ? self::nullable_date( $request['starts_at'] ) : $reward->get_starts_at();
-        $ends_at     = $request->has_param( 'ends_at' ) ? self::nullable_date( $request['ends_at'] ) : $reward->get_ends_at();
+        $window = self::requested_window( $request, $reward->get_starts_at(), $reward->get_ends_at() );
 
-        if ( $moves_dates && ! self::dates_in_order( $starts_at, $ends_at ) ) {
+        if ( null === $window ) {
             return $this->error_invalid_arguments( __( 'The reward must end after it starts.', 'yayloyalty' ) );
         }
+
+        list( $starts_at, $ends_at ) = $window;
 
         self::apply_update( $reward, $changes );
         $reward->set_starts_at( $starts_at );
@@ -354,32 +347,29 @@ final class RewardRestController extends AbstractRestController {
             return $this->error_forbidden( __( 'The default reward cannot be archived.', 'yayloyalty' ) );
         }
 
-        $type   = $reward->get_type();
-        $checks = [];
-
-        if ( isset( $changes['name'] ) ) {
-            $checks[] = $this->name_error( $changes['name'] );
-        }
-
-        if ( array_key_exists( 'cost_points', $changes ) ) {
-            $checks[] = $this->cost_points_error( $type, $changes['cost_points'] );
-        }
-
-        if ( isset( $changes['config'] ) ) {
-            $checks[] = $this->config_error( $type, $changes['config'] );
-        }
-
-        if ( isset( $changes['conditions'] ) ) {
-            $checks[] = $this->conditions_error( $changes['conditions'] );
-        }
-
-        return self::first_error( $checks );
+        return $this->fields_error( $reward->get_type(), $changes );
     }
 
-    /**
-     * @param array<\WP_Error|null> $checks
-     */
-    private static function first_error( array $checks ): ?\WP_Error {
+    /** The first refusal among the editable fields $fields carries, checked against $type; create sends all four. */
+    private function fields_error( string $type, array $fields ): ?\WP_Error {
+        $checks = [];
+
+        if ( isset( $fields['name'] ) ) {
+            $checks[] = $this->name_error( $fields['name'] );
+        }
+
+        if ( array_key_exists( 'cost_points', $fields ) ) {
+            $checks[] = $this->cost_points_error( $type, $fields['cost_points'] );
+        }
+
+        if ( isset( $fields['config'] ) ) {
+            $checks[] = $this->config_error( $type, $fields['config'] );
+        }
+
+        if ( isset( $fields['conditions'] ) ) {
+            $checks[] = $this->conditions_error( $fields['conditions'] );
+        }
+
         foreach ( $checks as $error ) {
             if ( null !== $error ) {
                 return $error;

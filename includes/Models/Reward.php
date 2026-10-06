@@ -160,35 +160,9 @@ class Reward extends AbstractModel {
         return [ '%s', '%s', '%s', '%s', '%d', '%d', '%s', '%s', '%s', '%s', '%d', '%d', '%d', '%s', '%s', '%s' ];
     }
 
-    /**
-     * to_row() minus the columns no update may change, each format kept
-     * paired with its column — $wpdb->update() consumes $format positionally,
-     * so dropping a column without its placeholder shifts every one after it.
-     *
-     * @return array{data: array<string, mixed>, format: string[]}
-     */
-    public function to_update_row(): array {
-        $row    = $this->to_row();
-        $format = $this->get_format();
-
-        $immutable = [ 'slug', 'type', 'created_at', 'created_by', 'is_builtin' ];
-
-        $data        = [];
-        $data_format = [];
-
-        foreach ( array_keys( $row ) as $index => $key ) {
-            if ( in_array( $key, $immutable, true ) ) {
-                continue;
-            }
-
-            $data[ $key ]  = $row[ $key ];
-            $data_format[] = $format[ $index ];
-        }
-
-        return [
-            'data'   => $data,
-            'format' => $data_format,
-        ];
+    /** Columns no update may change. */
+    protected static function immutable_columns(): array {
+        return [ 'slug', 'type', 'created_at', 'created_by', 'is_builtin' ];
     }
 
     public function to_array(): array {

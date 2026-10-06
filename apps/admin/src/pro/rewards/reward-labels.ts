@@ -99,20 +99,6 @@ export function templateDescription(type: CatalogRewardType): string {
   }
 }
 
-/** A worked example of a catalog type's starting point. */
-export function templateExample(type: CatalogRewardType): string {
-  switch (type) {
-    case 'fixed_coupon':
-      return __('Example: $5 off orders over $25, for 500 points', 'yayloyalty');
-    case 'percent_coupon':
-      return __('Example: 15% off, for 1,500 points', 'yayloyalty');
-    case 'free_shipping':
-      return __('Example: free shipping on one order, for 800 points', 'yayloyalty');
-    case 'free_product':
-      return __('Example: a free product, for 3,000 points', 'yayloyalty');
-  }
-}
-
 /** The line under a reward's name: what redeeming it does, derived from type and config — there is no stored description column. */
 export function rewardSubtitle(reward: Reward): string {
   if (reward.type === 'flexible_discount') {

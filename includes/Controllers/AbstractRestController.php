@@ -308,6 +308,22 @@ abstract class AbstractRestController extends BaseRestController {
     }
 
     /**
+     * The window an update leaves: each date the request sends, else the stored one. Null when
+     * a moved date leaves it out of order. A body that touches neither date (pause, archive,
+     * rename) passes as stored, or a row whose dates were never in order could never be
+     * repaired or retired.
+     *
+     * @return array{0: ?string, 1: ?string}|null
+     */
+    protected static function requested_window( \WP_REST_Request $request, ?string $stored_start, ?string $stored_end ): ?array {
+        $starts_at = $request->has_param( 'starts_at' ) ? self::nullable_date( $request['starts_at'] ) : $stored_start;
+        $ends_at   = $request->has_param( 'ends_at' ) ? self::nullable_date( $request['ends_at'] ) : $stored_end;
+        $moves     = $request->has_param( 'starts_at' ) || $request->has_param( 'ends_at' );
+
+        return $moves && ! self::dates_in_order( $starts_at, $ends_at ) ? null : [ $starts_at, $ends_at ];
+    }
+
+    /**
      * A request's date param as stored: empty means no bound.
      *
      * @param mixed $value

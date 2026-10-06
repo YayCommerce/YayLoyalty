@@ -1,9 +1,8 @@
-import { ReactNode } from 'react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import { __ } from '@wordpress/i18n';
 
 import { CampaignTrigger, LITE_CAMPAIGN_TRIGGERS, LiteCampaignTrigger } from '@/lib/schema/campaign.schema';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { EditorSection } from '@/components/ui/custom/editor-section';
 import { ScheduleFields } from '@/components/ui/custom/schedule-fields';
 import { Field, FieldContent, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -19,47 +18,30 @@ import { CampaignEditorReward } from './CampaignEditorReward';
 export function CampaignEditorSections() {
   return (
     <div className="flex flex-col gap-4">
-      <CampaignEditorSection step={1} title={__('Basics', 'yayloyalty')}>
+      <EditorSection step={1} title={__('Basics', 'yayloyalty')}>
         <CampaignEditorBasics />
-      </CampaignEditorSection>
+      </EditorSection>
 
-      <CampaignEditorSection step={2} title={__('Trigger', 'yayloyalty')}>
+      <EditorSection step={2} title={__('Trigger', 'yayloyalty')}>
         <CampaignEditorTrigger />
-      </CampaignEditorSection>
+      </EditorSection>
 
-      <CampaignEditorSection step={3} title={__('Reward', 'yayloyalty')}>
+      <EditorSection step={3} title={__('Reward', 'yayloyalty')}>
         <CampaignEditorReward />
-      </CampaignEditorSection>
+      </EditorSection>
 
-      <CampaignEditorSection step={4} title={__('Conditions', 'yayloyalty')}>
+      <EditorSection step={4} title={__('Conditions', 'yayloyalty')}>
         <CampaignEditorConditions />
-      </CampaignEditorSection>
+      </EditorSection>
 
-      <CampaignEditorSection step={5} title={__('Schedule', 'yayloyalty')}>
+      <EditorSection step={5} title={__('Schedule', 'yayloyalty')}>
         <CampaignEditorSchedule />
-      </CampaignEditorSection>
+      </EditorSection>
 
-      <CampaignEditorSection step={6} title={__('Priority', 'yayloyalty')}>
+      <EditorSection step={6} title={__('Priority', 'yayloyalty')}>
         <CampaignEditorPriority />
-      </CampaignEditorSection>
+      </EditorSection>
     </div>
-  );
-}
-
-/** Numbered card shell for one section. */
-function CampaignEditorSection({ step, title, children }: { step: number; title: string; children?: ReactNode }) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2.5 text-base">
-          <span className="bg-foreground text-background flex size-5.5 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold">
-            {step}
-          </span>
-          {title}
-        </CardTitle>
-      </CardHeader>
-      {children && <CardContent className="flex flex-col gap-4">{children}</CardContent>}
-    </Card>
   );
 }
 

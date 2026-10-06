@@ -1,7 +1,7 @@
 import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { can, CAP } from '@/lib/access';
-import { parseWPCurrency } from '@/lib/helpers/format.helper';
+import { parseWPCurrency, storeCurrency } from '@/lib/helpers/format.helper';
 import { formatPoints, formatPointsAsMoney } from '@/lib/helpers/points.helper';
 import { usePurchaseCampaignsQuery } from '@/lib/queries/campaign.queries';
 import { findBuiltinCampaign } from '@/lib/schema/campaign.schema';
@@ -25,7 +25,7 @@ export function FlexibleDiscountFields({
   value: FlexibleDiscountConfig;
   onChange: (next: Partial<FlexibleDiscountConfig>) => void;
 }) {
-  const currency = window.yayLoyaltyMeta.wcMeta.currency_data.currency;
+  const currency = storeCurrency();
   const earnBack = useEarnBackPercent(value.points_per_currency_unit);
   const incrementMoney = formatPointsAsMoney(value.increment, value.points_per_currency_unit);
 

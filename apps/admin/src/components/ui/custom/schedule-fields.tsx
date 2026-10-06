@@ -1,7 +1,13 @@
 import { getSettings } from '@wordpress/date';
 import { __, sprintf } from '@wordpress/i18n';
 
-import { joinStoredDateTime, parseWPDate, parseWPTime, splitStoredDateTime } from '@/lib/helpers/format.helper';
+import {
+  joinStoredDateTime,
+  parseWPDate,
+  parseWPTime,
+  splitStoredDateTime,
+  utcToDate,
+} from '@/lib/helpers/format.helper';
 import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Field, FieldContent, FieldError, FieldLabel } from '@/components/ui/field';
@@ -189,12 +195,7 @@ function localDateToDateString(date: Date | undefined): string {
 
 /** Formats a stored moment for the sentence. A real UTC instant, so dateI18n's own site-tz conversion is not double-shifted. */
 function formatStoredMoment(stored: string): string {
-  const { date, time } = splitStoredDateTime(stored);
-  const [year, month, day] = date.split('-').map(Number);
-  const [hour, minute] = (time || '00:00').split(':').map(Number);
-  const utcInstant = new Date(Date.UTC(year, (month || 1) - 1, day || 1, hour || 0, minute || 0));
-
-  return `${parseWPDate(utcInstant)} ${parseWPTime(utcInstant)}`;
+  return `${parseWPDate(stored)} ${parseWPTime(stored)}`;
 }
 
 /**
@@ -204,10 +205,7 @@ function formatStoredMoment(stored: string): string {
  * result stays on the right site-local day.
  */
 function formatDayBeforeStoredMoment(stored: string): string {
-  const { date, time } = splitStoredDateTime(stored);
-  const [year, month, day] = date.split('-').map(Number);
-  const [hour, minute] = (time || '00:00').split(':').map(Number);
-  const utcInstant = Date.UTC(year, (month || 1) - 1, day || 1, hour || 0, minute || 0);
+  const utcInstant = utcToDate(stored).getTime();
   const isSiteLocalMidnight = utcStringToSiteLocalParts(stored).time === '00:00';
   const lastDayInstant = isSiteLocalMidnight ? utcInstant - 24 * 60 * 60 * 1000 : utcInstant;
 

@@ -3,12 +3,13 @@ import { Package } from 'lucide-react';
 import { FieldError as HookFieldError, useFormContext, useWatch } from 'react-hook-form';
 import { __, _n, sprintf } from '@wordpress/i18n';
 
+import { numberConfig } from '@/lib/helpers/reward.helper';
 import { useProductSummaryQuery } from '@/lib/queries/lookup.queries';
 import { isCatalogRewardType, RewardType } from '@/lib/schema/reward.schema';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { MoneyInput, OptionalCountInput, OptionalMoneyInput, PointsInput } from '@/components/ui/custom/amount-inputs';
+import { EditorSection } from '@/components/ui/custom/editor-section';
 import { LookupMultiSelect } from '@/components/ui/custom/lookup-multi-select';
 import { ScheduleFields } from '@/components/ui/custom/schedule-fields';
 import { Field, FieldContent, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field';
@@ -25,43 +26,28 @@ export function RewardEditorSections({ type }: { type: RewardType }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <RewardEditorSection step={1} title={__('Basics', 'yayloyalty')}>
+      <EditorSection contentClassName="gap-5" step={1} title={__('Basics', 'yayloyalty')}>
         <RewardEditorBasics />
-      </RewardEditorSection>
+      </EditorSection>
 
-      <RewardEditorSection
+      <EditorSection
+        contentClassName="gap-5"
         step={2}
         title={isCatalog ? __('Cost and value', 'yayloyalty') : __('The rate', 'yayloyalty')}
       >
         {isCatalog ? <RewardEditorValue type={type} /> : <RewardEditorFlexibleDiscount />}
-      </RewardEditorSection>
+      </EditorSection>
 
       {isCatalog && (
-        <RewardEditorSection step={3} title={__('Coupon', 'yayloyalty')}>
+        <EditorSection contentClassName="gap-5" step={3} title={__('Coupon', 'yayloyalty')}>
           <RewardEditorCoupon />
-        </RewardEditorSection>
+        </EditorSection>
       )}
 
-      <RewardEditorSection step={isCatalog ? 4 : 3} title={__('Availability', 'yayloyalty')}>
+      <EditorSection contentClassName="gap-5" step={isCatalog ? 4 : 3} title={__('Availability', 'yayloyalty')}>
         <RewardEditorAvailability isCatalog={isCatalog} />
-      </RewardEditorSection>
+      </EditorSection>
     </div>
-  );
-}
-
-function RewardEditorSection({ step, title, children }: { step: number; title: string; children: ReactNode }) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2.5 text-base">
-          <span className="bg-foreground text-background flex size-5.5 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold">
-            {step}
-          </span>
-          {title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-5">{children}</CardContent>
-    </Card>
   );
 }
 
@@ -137,7 +123,7 @@ function RewardEditorValue({ type }: { type: RewardType }) {
       {type === 'fixed_coupon' && (
         <RewardField label={__('Discount amount', 'yayloyalty')} error={configErrors.amount}>
           <MoneyInput
-            value={Number(config.amount ?? 0)}
+            value={numberConfig(config, 'amount') ?? 0}
             currency={currency}
             onValueChange={(amount) => patchConfig({ amount })}
           />
@@ -156,7 +142,7 @@ function RewardEditorValue({ type }: { type: RewardType }) {
               className="w-28"
               min={0}
               max={100}
-              value={Number(config.percent ?? 0)}
+              value={numberConfig(config, 'percent') ?? 0}
               onValueChange={(percent) => patchConfig({ percent })}
             >
               <NumberInputInput />
@@ -172,7 +158,7 @@ function RewardEditorValue({ type }: { type: RewardType }) {
             )}
           >
             <OptionalMoneyInput
-              value={config.max_discount as number | null}
+              value={numberConfig(config, 'max_discount')}
               currency={currency}
               onValueChange={(max_discount) => patchConfig({ max_discount })}
             />
@@ -187,7 +173,7 @@ function RewardEditorValue({ type }: { type: RewardType }) {
           description={__('The coupon will not apply below this. 0 means no minimum.', 'yayloyalty')}
         >
           <OptionalMoneyInput
-            value={config.min_order as number | null}
+            value={numberConfig(config, 'min_order')}
             currency={currency}
             onValueChange={(min_order) => patchConfig({ min_order })}
           />
@@ -214,7 +200,7 @@ function RewardEditorValue({ type }: { type: RewardType }) {
 function RewardEditorProduct() {
   const { config, patchConfig, configErrors } = useRewardConfig();
   const productId = typeof config.product_id === 'number' ? config.product_id : null;
-  const qty = Number(config.qty ?? 1);
+  const qty = numberConfig(config, 'qty') ?? 1;
   const [isChoosing, setIsChoosing] = useState(false);
   const showPicker = productId === null || isChoosing;
 
@@ -371,7 +357,7 @@ function productStockLabel(status: string, quantity: number | null): { label: st
 
 function RewardEditorCoupon() {
   const { config, patchConfig, configErrors } = useRewardConfig();
-  const days = config.coupon_expiry_days as number | null;
+  const days = numberConfig(config, 'coupon_expiry_days');
 
   return (
     <RewardField
@@ -420,7 +406,7 @@ function RewardEditorAvailability({ isCatalog }: { isCatalog: boolean }) {
             description={__('Across every customer. 0 means unlimited.', 'yayloyalty')}
           >
             <OptionalCountInput
-              value={config.max_total as number | null}
+              value={numberConfig(config, 'max_total')}
               onValueChange={(max_total) => patchConfig({ max_total })}
             />
           </RewardField>
