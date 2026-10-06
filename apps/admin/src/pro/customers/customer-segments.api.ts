@@ -23,8 +23,6 @@ const savedSegmentWireSchema = z.object({
   filters: z.object({
     balance_range: balanceRangeSchema,
     expiring_soon: expiringSoonSchema,
-    /** One of CustomerFilters::TIER_RANGES. The SPA has no Tier filter: read and dropped, saved as 'all'. */
-    tier: z.string(),
   }),
 });
 
@@ -41,7 +39,7 @@ export const savedSegmentSchema = z.object({
 export type SavedSegment = z.infer<typeof savedSegmentSchema>;
 
 function toWireFilters({ balanceRange, expiringSoon }: SavedSegment['filters']): SavedSegmentWire['filters'] {
-  return { balance_range: balanceRange, expiring_soon: expiringSoon, tier: 'all' };
+  return { balance_range: balanceRange, expiring_soon: expiringSoon };
 }
 
 function fromWire({ name, filters }: SavedSegmentWire): SavedSegment {

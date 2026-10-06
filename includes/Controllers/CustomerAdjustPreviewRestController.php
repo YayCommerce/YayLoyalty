@@ -52,7 +52,6 @@ final class CustomerAdjustPreviewRestController extends AbstractRestController {
                     'permission_callback' => $this->requires( Capabilities::MANAGE_POINTS ),
                     'args'                => [
                         'filters' => [
-                            // No tier: the SPA has no Tier filter, and no customer has a tier yet.
                             'description' => __( 'Customers-list filters a "select all matching" selection came from. Omit for a ticked list, which knows its own count.', 'yayloyalty' ),
                             'type'        => 'object',
                             'properties'  => [
