@@ -17,6 +17,7 @@ import { Switch } from '@/components/ui/switch';
 import { givesLabel, isBuiltinCampaignActive } from '../campaign-labels';
 import { CampaignFormValues, useCampaignEditorContext } from './campaign-editor.form';
 import { defaultPurchaseRate, multipliedRate, purchaseAdvancedPhrases } from './campaign-reward.copy';
+import { storeCurrency } from '@/lib/helpers/format.helper';
 
 /** config_schema()['purchase']; mirrors CAMPAIGN_CONFIG_FIELDS.purchase. */
 interface PurchaseConfig {
@@ -131,7 +132,7 @@ function PurchaseRateInput({ config, patchConfig, disabled }: PurchaseFieldsProp
         unit={sprintf(
           /* translators: %s: the store currency code, e.g. "USD". */
           __('pts / %s', 'yayloyalty'),
-          window.yayLoyaltyMeta.wcMeta.currency_data.currency,
+          storeCurrency(),
         )}
       />
     </NumberInputRoot>
@@ -144,7 +145,7 @@ function PurchaseRateDescription() {
       {sprintf(
         /* translators: %s: the store currency code, e.g. "USD". */
         __('Points for every 1 %s of the amount counted below.', 'yayloyalty'),
-        window.yayLoyaltyMeta.wcMeta.currency_data.currency,
+        storeCurrency(),
       )}
     </FieldDescription>
   );
@@ -312,7 +313,7 @@ function PurchaseCountingFields({ config, patchConfig }: PurchaseFieldsProps) {
             onValueChange={(min_subtotal) => patchConfig({ min_subtotal })}
           >
             <NumberInputInput id="reward-purchase-min-subtotal" />
-            <NumberInputUnit unit={window.yayLoyaltyMeta.wcMeta.currency_data.currency} />
+            <NumberInputUnit unit={storeCurrency()} />
           </NumberInputRoot>
           <FieldDescription>
             {__(

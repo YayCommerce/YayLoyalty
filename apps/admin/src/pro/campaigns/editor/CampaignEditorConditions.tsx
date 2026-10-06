@@ -28,6 +28,7 @@ import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { conditionTypeLabel } from '../campaign-labels';
 import { CampaignFormValues } from './campaign-editor.form';
+import { storeCurrency } from '@/lib/helpers/format.helper';
 
 /**
  * Conditions section: a useFieldArray over a flat, ANDed list with at most
@@ -361,7 +362,7 @@ function MoneyValueEditor({ index, operator }: { index: number; operator: string
   const currency =
     typeof value.currency === 'string' && value.currency
       ? value.currency
-      : window.yayLoyaltyMeta.wcMeta.currency_data.currency;
+      : storeCurrency();
 
   if (operator === 'between') {
     const pair = Array.isArray(value.amount) ? (value.amount as number[]) : [0, 0];
@@ -431,7 +432,7 @@ function defaultConditionValue(type: CampaignConditionKind): unknown {
     case 'int':
       return 0;
     case 'money':
-      return { amount: 0, currency: window.yayLoyaltyMeta.wcMeta.currency_data.currency };
+      return { amount: 0, currency: storeCurrency() };
     default:
       return null;
   }
@@ -470,7 +471,7 @@ function reshapeConditionValue(
     const currency =
       typeof object.currency === 'string' && object.currency
         ? object.currency
-        : window.yayLoyaltyMeta.wcMeta.currency_data.currency;
+        : storeCurrency();
 
     if (willBeBetween) {
       const scalar = typeof object.amount === 'number' ? object.amount : 0;
