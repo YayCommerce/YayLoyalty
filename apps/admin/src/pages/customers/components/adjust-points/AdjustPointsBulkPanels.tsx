@@ -13,14 +13,14 @@ import {
   bulkTooLargeSelection,
   bulkTotalPointsLine,
   bulkTotalsLine,
-  noUndoBody,
   NO_UNDO_TITLE,
+  noUndoBody,
   writtenToLedgers,
 } from '../customers-adjust-points.bulk.copy';
 import { addsToLiability, POINTS_UNIT } from '../customers-adjust-points.copy';
 import { bulkLiabilityProjection, bulkTotalPoints, type AdjustFormState } from '../customers-adjust-points.form-state';
 
-/** The active filters as text. Tier is never listed: it is sent as its balance bucket. */
+/** The active filters as text. */
 function filterSummary(filters: Pick<RowFilters, 'search' | 'balanceRange' | 'expiringSoon'>): string | null {
   const parts: string[] = [];
 
@@ -100,7 +100,11 @@ export function AdjustPointsBulkPanels({
           <label className="flex items-start gap-2.5 pt-1">
             <Checkbox checked={acknowledged} onCheckedChange={(checked) => onAcknowledgedChange(checked === true)} />
             <span className="text-foreground">
-              {acknowledgeLiability(state.direction, totalMoney ?? `${formatPoints(total)} ${POINTS_UNIT()}`, effectiveCount)}
+              {acknowledgeLiability(
+                state.direction,
+                totalMoney ?? `${formatPoints(total)} ${POINTS_UNIT()}`,
+                effectiveCount,
+              )}
             </span>
           </label>
         )}

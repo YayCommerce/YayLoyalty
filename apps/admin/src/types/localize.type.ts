@@ -1,4 +1,4 @@
-import type { CustomerBalanceRange, CustomerExpiringSoon, CustomerTier } from '@/lib/schema/customer.schema';
+import type { CustomerBalanceRange, CustomerExpiringSoon } from '@/lib/schema/customer.schema';
 import { Design } from '@/lib/schema/design.schema';
 import { Settings } from '@/lib/schema/settings.schema';
 
@@ -55,6 +55,6 @@ export type AdminData = {
   /** Saved segments, Pro-only hence optional. Read via readSegmentsFromLocalize(), never directly. */
   segments?: {
     name: string;
-    filters: { balance_range: CustomerBalanceRange; expiring_soon: CustomerExpiringSoon; tier: CustomerTier };
+    filters: { balance_range: CustomerBalanceRange; expiring_soon: CustomerExpiringSoon };
   }[];
 };

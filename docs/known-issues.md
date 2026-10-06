@@ -67,7 +67,7 @@
 - **Workaround:**
   1. Start the site.
   2. Export `YAYLOYALTY_TEST_SOCKET` with its socket path. Local shows the path on the site's Database tab; see the header of `tests/integration/bootstrap.php`.
-  3. Activate the plugin on that site. Activation installs its tables and seeds demo customers.
+  3. Activate the plugin on that site. Activation installs its tables.
   4. Read the output: an exit code of 0 alone doesn't mean anything ran.
 - **Remove when:** the bootstrap checks the database connection itself and exits non-zero on failure.
 

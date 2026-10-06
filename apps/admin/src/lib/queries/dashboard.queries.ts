@@ -4,10 +4,10 @@ import { dismissDashboardNotice, getDashboard } from '@/lib/api/dashboard.api';
 import type { DashboardRange, DashboardResponse, DismissDashboardNoticeParams } from '@/lib/schema/dashboard.schema';
 
 export const DASHBOARD_QUERIES = {
-  overview: (range: DashboardRange, scenario?: string) =>
+  overview: (range: DashboardRange) =>
     queryOptions({
-      queryKey: ['dashboard', 'overview', range, scenario ?? null],
-      queryFn: () => getDashboard({ range, scenario }),
+      queryKey: ['dashboard', 'overview', range],
+      queryFn: () => getDashboard({ range }),
       // A range change is a new key; keep the old series on screen, dimmed.
       placeholderData: keepPreviousData,
       retry: 1,
@@ -15,8 +15,8 @@ export const DASHBOARD_QUERIES = {
     }),
 };
 
-export function useDashboardQuery(range: DashboardRange, scenario?: string) {
-  return useQuery(DASHBOARD_QUERIES.overview(range, scenario));
+export function useDashboardQuery(range: DashboardRange) {
+  return useQuery(DASHBOARD_QUERIES.overview(range));
 }
 
 /** Optimistic dismiss; a server refusal rolls back so the notice reappears. */

@@ -14,17 +14,6 @@ export function memberSince(date: string): string {
 
 export const ACCOUNT_DELETED_LABEL = () => __('ACCOUNT DELETED', 'yayloyalty');
 
-/** Tier card: "X points to <next tier>". */
-export function tierProgress(points: string, nextTier: string): string {
-  return sprintf(
-    /* translators: 1: points still needed, formatted; 2: the next tier's name. */
-    __('%1$s points to %2$s', 'yayloyalty'),
-    points,
-    nextTier,
-  );
-}
-export const TOP_TIER_REACHED_LABEL = () => __('Top tier reached', 'yayloyalty');
-
 // Stats
 
 export const STAT_BALANCE = () => __('Balance', 'yayloyalty');

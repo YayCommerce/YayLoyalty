@@ -22,7 +22,6 @@ const SORT_LABELS: Record<SortKey, string> = {
   lifetime: __('Lifetime earned', 'yayloyalty'),
   last_activity: __('Last activity', 'yayloyalty'),
   expires: __('Expires', 'yayloyalty'),
-  tier: __('Tier', 'yayloyalty'),
   referrals: __('Referrals', 'yayloyalty'),
 };
 

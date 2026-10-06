@@ -3,7 +3,6 @@ namespace YayLoyalty\Pro\Controllers;
 
 use YayLoyalty\Access\Capabilities;
 use YayLoyalty\Controllers\AbstractRestController;
-use YayLoyalty\Controllers\DashboardFixture;
 use YayLoyalty\Pro\Repositories\CampaignPointsRepository;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Services\Dashboard\DashboardCache;
@@ -50,15 +49,6 @@ final class DashboardProRestController extends AbstractRestController {
             ],
         ];
 
-        if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-            $args['scenario'] = [
-                'type'              => 'string',
-                'enum'              => DashboardFixture::SCENARIOS,
-                'validate_callback' => 'rest_validate_request_arg',
-                'sanitize_callback' => 'sanitize_key',
-            ];
-        }
-
         register_rest_route(
             self::REST_NAMESPACE,
             '/dashboard/pro',
@@ -76,10 +66,6 @@ final class DashboardProRestController extends AbstractRestController {
 
     public function get_pro_overview( \WP_REST_Request $request ): array {
         $range = (int) $request['range'];
-
-        if ( defined( 'WP_DEBUG' ) && WP_DEBUG && ! empty( $request['scenario'] ) ) {
-            return DashboardFixture::pro_scenario( (string) $request['scenario'], $range );
-        }
 
         $window = PeriodWindow::for_range( $range, new \DateTimeImmutable( 'now', wp_timezone() ) );
 

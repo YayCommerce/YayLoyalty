@@ -16,8 +16,8 @@ import { CustomerTableRow } from './CustomerTableRow';
 
 /** Column count for the header and the "no results" row's colSpan. */
 export function countColumns(showProColumns: boolean, showSelection: boolean) {
-  // Six base columns, two Pro columns (Tier, Referrals) and the checkbox column.
-  return 6 + (showProColumns ? 2 : 0) + (showSelection ? 1 : 0);
+  // Six base columns, one Pro column (Referrals) and the checkbox column.
+  return 6 + (showProColumns ? 1 : 0) + (showSelection ? 1 : 0);
 }
 
 /**
@@ -31,7 +31,6 @@ export function CustomersTable({
   isStoreEmpty,
   noMatchContent,
   showProColumns,
-  staleBalances,
   sort,
   selection,
 }: {
@@ -45,14 +44,12 @@ export function CustomersTable({
   /** Shown when filters narrow a non-empty store to zero rows. */
   noMatchContent?: ReactNode;
   showProColumns: boolean;
-  staleBalances: boolean;
   sort: {
     by: SortKey;
     dir: SortDirection;
     onChange: (key: SortKey) => void;
   };
   selection: {
-    /** Off during the rebuild toggle even in Pro. */
     enabled: boolean;
     header: HeaderSelectionState;
     selected: Set<number>;
@@ -78,7 +75,6 @@ export function CustomersTable({
           isStoreEmpty={isStoreEmpty}
           noMatchContent={noMatchContent}
           showProColumns={showProColumns}
-          staleBalances={staleBalances}
         />
       </div>
       <div
@@ -108,17 +104,6 @@ export function CustomersTable({
                 onSort={onSort}
                 disabled={isEmpty}
               />
-              {showProColumns && (
-                // Always disabled: the server cannot sort by tier yet.
-                <SortableHead
-                  sortKey="tier"
-                  label={__('Tier', 'yayloyalty')}
-                  sortBy={sortBy}
-                  sortDir={sortDir}
-                  onSort={onSort}
-                  disabled
-                />
-              )}
               <SortableHead
                 sortKey="balance"
                 label={__('Balance', 'yayloyalty')}
@@ -204,7 +189,6 @@ export function CustomersTable({
                   showSelection={showSelection}
                   selected={selected.has(row.user_id)}
                   onToggle={onToggleRow}
-                  stale={staleBalances}
                 />
               ))}
           </TableBody>

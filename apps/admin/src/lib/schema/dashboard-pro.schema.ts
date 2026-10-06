@@ -5,7 +5,7 @@ import { dashboardRangeSchema } from './dashboard.schema';
 
 /** Mirrors DashboardProRestController, the source of truth. */
 
-/** null until the referrals table exists; the SPA substitutes its dummy. */
+/** null until the referrals table exists; the SPA hides its panel. */
 export const dashboardReferralsSchema = z
   .object({
     completed: z.number().int(),
@@ -15,7 +15,7 @@ export const dashboardReferralsSchema = z
 
 export type DashboardReferrals = z.infer<typeof dashboardReferralsSchema>;
 
-/** null until the tiers table exists; the SPA substitutes its dummy. */
+/** null until the tiers table exists; the SPA hides its panel. */
 export const dashboardTierDistributionSchema = z
   .array(
     z.object({

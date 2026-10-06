@@ -1,28 +1,21 @@
 import { __ } from '@wordpress/i18n';
 
-import type { CustomerBalanceRange, CustomerExpiringSoon, CustomerTier } from '@/lib/schema/customer.schema';
+import type { CustomerBalanceRange, CustomerExpiringSoon } from '@/lib/schema/customer.schema';
 
 /** Filter option labels for the Customers toolbar; matching runs server-side in CustomerRowFilters.php. */
 export type BalanceRangeValue = CustomerBalanceRange;
 export type ExpiringSoonValue = CustomerExpiringSoon;
-/** Pro-only. */
-export type TierValue = CustomerTier;
-
-/** On/off switch for the Tier filter control, which stands in on balance buckets until VIP Tiers ships. */
-export const TIER_FILTER_ENABLED = true;
 
 export interface RowFilters {
   search: string;
   balanceRange: BalanceRangeValue;
   expiringSoon: ExpiringSoonValue;
-  tier: TierValue;
 }
 
 export const DEFAULT_ROW_FILTERS: RowFilters = {
   search: '',
   balanceRange: 'any',
   expiringSoon: 'off',
-  tier: 'all',
 };
 
 export const BALANCE_RANGE_OPTIONS: { value: BalanceRangeValue; label: string }[] = [
@@ -38,13 +31,6 @@ export const EXPIRING_SOON_OPTIONS: { value: ExpiringSoonValue; label: string }[
   { value: '30', label: __('Within 30 days', 'yayloyalty') },
   { value: '90', label: __('Within 90 days', 'yayloyalty') },
   { value: 'none', label: __('No expiry date', 'yayloyalty') },
-];
-
-export const TIER_OPTIONS: { value: TierValue; label: string }[] = [
-  { value: 'all', label: __('All tiers', 'yayloyalty') },
-  { value: 'Alpine', label: __('Alpine', 'yayloyalty') },
-  { value: 'Summit', label: __('Summit', 'yayloyalty') },
-  { value: 'Explorer', label: __('Explorer', 'yayloyalty') },
 ];
 
 /** Initial filters from the route's search params (the dashboard's deep link); unknown values fall back to defaults. */
