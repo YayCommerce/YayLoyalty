@@ -68,7 +68,7 @@ final class YayLoyaltyPro {
         add_filter( 'yayloyalty_campaign_triggers', [ self::class, 'add_triggers' ] );
         add_filter( 'yayloyalty_campaign_config_whitelist', [ self::class, 'add_config_keys' ] );
         add_filter( 'yayloyalty_reward_types', [ self::class, 'add_reward_types' ] );
-        add_filter( 'yayloyalty_reward_config_whitelist', [ self::class, 'add_reward_config_keys' ] );
+        add_filter( 'yayloyalty_reward_config_schema', [ self::class, 'add_reward_config_schema' ] );
         add_filter( PointsEngine::CONDITIONS_EVALUATOR_FILTER, [ self::class, 'conditions_evaluator' ] );
         add_filter( 'yayloyalty_rest_controllers', [ self::class, 'add_controllers' ] );
         add_filter( 'yayloyalty_rest_item_schema', [ self::class, 'describe_pro_config' ], 10, 2 );
@@ -139,47 +139,86 @@ final class YayLoyaltyPro {
     }
 
     /**
-     * Config keys for the reward types Pro adds.
+     * Typed config specs for the reward types Pro adds; their keys are the
+     * only ones a config may hold. `max_total` is a claim count
+     * here, unlike flexible_discount's money cap.
      *
-     * @param array<string, string[]> $whitelist
-     * @return array<string, string[]>
+     * @param array<string, array<string, array<string, mixed>>> $schema
+     * @return array<string, array<string, array<string, mixed>>>
      */
-    public static function add_reward_config_keys( array $whitelist ): array {
-        $whitelist[ RewardType::FIXED_COUPON ] = [
-            'currency',
-            'amount',
-            'min_order',
-            'coupon_expiry_days',
-            'exclude_sale_items',
-            'max_total',
+    public static function add_reward_config_schema( array $schema ): array {
+        $currency     = [
+            'type'     => 'currency',
+            'required' => true,
+        ];
+        $money        = [
+            'type' => 'nullable_number',
+            'min'  => 0,
+        ];
+        $expiry_days  = [
+            'type' => 'nullable_int',
+            'min'  => 1,
+        ];
+        $claim_limit  = [
+            'type' => 'nullable_int',
+            'min'  => 1,
+        ];
+        $exclude_sale = [ 'type' => 'bool' ];
+
+        $schema[ RewardType::FIXED_COUPON ] = [
+            'currency'           => $currency,
+            'amount'             => [
+                'type'     => 'number',
+                'min'      => 0.01,
+                'required' => true,
+            ],
+            'min_order'          => $money,
+            'coupon_expiry_days' => $expiry_days,
+            'exclude_sale_items' => $exclude_sale,
+            'max_total'          => $claim_limit,
         ];
 
-        $whitelist[ RewardType::PERCENT_COUPON ] = [
-            'percent',
-            'max_discount',
-            'currency',
-            'min_order',
-            'coupon_expiry_days',
-            'exclude_sale_items',
-            'max_total',
+        $schema[ RewardType::PERCENT_COUPON ] = [
+            'percent'            => [
+                'type'     => 'number',
+                'min'      => 1,
+                'max'      => 100,
+                'required' => true,
+            ],
+            'max_discount'       => $money,
+            'currency'           => $currency,
+            'min_order'          => $money,
+            'coupon_expiry_days' => $expiry_days,
+            'exclude_sale_items' => $exclude_sale,
+            'max_total'          => $claim_limit,
         ];
 
-        $whitelist[ RewardType::FREE_SHIPPING ] = [
-            'min_order',
-            'currency',
-            'coupon_expiry_days',
-            'max_total',
+        $schema[ RewardType::FREE_SHIPPING ] = [
+            'min_order'          => $money,
+            'currency'           => $currency,
+            'coupon_expiry_days' => $expiry_days,
+            'max_total'          => $claim_limit,
         ];
 
-        $whitelist[ RewardType::FREE_PRODUCT ] = [
-            'product_id',
-            'variation_id',
-            'qty',
-            'coupon_expiry_days',
-            'max_total',
+        $schema[ RewardType::FREE_PRODUCT ] = [
+            'product_id'         => [
+                'type'     => 'product',
+                'required' => true,
+            ],
+            'variation_id'       => [
+                'type' => 'nullable_int',
+                'min'  => 1,
+            ],
+            'qty'                => [
+                'type'     => 'int',
+                'min'      => 1,
+                'required' => true,
+            ],
+            'coupon_expiry_days' => $expiry_days,
+            'max_total'          => $claim_limit,
         ];
 
-        return $whitelist;
+        return $schema;
     }
 
     /**

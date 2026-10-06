@@ -163,12 +163,16 @@ final class CampaignRestController extends AbstractRestController {
             return $this->error_invalid_arguments( __( 'The campaign conditions are malformed.', 'yayloyalty' ) );
         }
 
-        if ( ! self::dates_in_order( $this->nullable_date( $request['starts_at'] ), $this->nullable_date( $request['ends_at'] ) ) ) {
+        if ( ! self::dates_in_order( self::nullable_date( $request['starts_at'] ), self::nullable_date( $request['ends_at'] ) ) ) {
             return $this->error_invalid_arguments( __( 'The campaign must end after it starts.', 'yayloyalty' ) );
         }
 
         // A client slug is a starting point, never trusted to be unique.
-        $slug = $this->unique_slug( $request['slug'] ? (string) $request['slug'] : $name );
+        $slug = self::unique_slug(
+            $request['slug'] ? (string) $request['slug'] : $name,
+            'campaign',
+            fn( string $slug ) => null !== $this->campaigns->find_by_slug( $slug )
+        );
 
         $now = Dates::now();
 
@@ -181,8 +185,8 @@ final class CampaignRestController extends AbstractRestController {
             null !== $request['priority'] ? (int) $request['priority'] : 0,
             Campaign::validate_config( $trigger, $config ),
             CampaignConditionSet::normalize( $conditions ),
-            $this->nullable_date( $request['starts_at'] ),
-            $this->nullable_date( $request['ends_at'] ),
+            self::nullable_date( $request['starts_at'] ),
+            self::nullable_date( $request['ends_at'] ),
             false, // is_builtin is never settable from a request.
             get_current_user_id(),
             $now,
@@ -210,16 +214,13 @@ final class CampaignRestController extends AbstractRestController {
             return $error;
         }
 
-        // Checked against the stored date when the request moves one side only. A body that
-        // touches neither date (pause, archive, rename) must still go through on a row whose
-        // stored dates were never in order, or that row could never be repaired or retired.
-        $moves_dates = $request->has_param( 'starts_at' ) || $request->has_param( 'ends_at' );
-        $starts_at   = $request->has_param( 'starts_at' ) ? $this->nullable_date( $request['starts_at'] ) : $campaign->get_starts_at();
-        $ends_at     = $request->has_param( 'ends_at' ) ? $this->nullable_date( $request['ends_at'] ) : $campaign->get_ends_at();
+        $window = self::requested_window( $request, $campaign->get_starts_at(), $campaign->get_ends_at() );
 
-        if ( $moves_dates && ! self::dates_in_order( $starts_at, $ends_at ) ) {
+        if ( null === $window ) {
             return $this->error_invalid_arguments( __( 'The campaign must end after it starts.', 'yayloyalty' ) );
         }
+
+        list( $starts_at, $ends_at ) = $window;
 
         self::apply_update( $campaign, $request );
         $campaign->set_starts_at( $starts_at );
@@ -327,26 +328,6 @@ final class CampaignRestController extends AbstractRestController {
         ];
     }
 
-    /** A slug unique in the table, derived from $source. */
-    private function unique_slug( string $source ): string {
-        $base = sanitize_title( $source );
-
-        if ( '' === $base ) {
-            $base = 'campaign';
-        }
-
-        $base = substr( $base, 0, 60 );
-        $slug = $base;
-        $n    = 2;
-
-        while ( null !== $this->campaigns->find_by_slug( $slug ) ) {
-            $slug = substr( $base, 0, 60 - strlen( (string) $n ) - 1 ) . '-' . $n;
-            ++$n;
-        }
-
-        return $slug;
-    }
-
     /**
      * Adds the two ledger-derived fields to each campaign's wire shape, in
      * one batched query rather than one per row. `points_issued` is a figure.
@@ -383,35 +364,6 @@ final class CampaignRestController extends AbstractRestController {
      */
     private static function is_deletable( Campaign $campaign, int $ledger_rows ): bool {
         return ! $campaign->is_builtin() && 0 === $ledger_rows;
-    }
-
-    /** Whether the dates are in order: an unset side passes, and two set dates must run forward. ends_at is exclusive, so equal dates are empty. */
-    private static function dates_in_order( ?string $starts_at, ?string $ends_at ): bool {
-        return null === $starts_at || null === $ends_at || Dates::to_timestamp( $starts_at ) < Dates::to_timestamp( $ends_at );
-    }
-
-    /**
-     * Route-arg check for starts_at/ends_at: empty clears the date, anything else must be a
-     * full UTC `Y-m-d H:i:s`, the shape the column stores and the SPA sends. Without it a
-     * string strtotime() cannot read passes dates_in_order() (it reads as 0) and lands in the
-     * DATETIME column as garbage.
-     */
-    public static function validate_nullable_date( $value ): bool {
-        if ( null === $value || '' === $value ) {
-            return true;
-        }
-
-        $date = is_string( $value ) ? \DateTimeImmutable::createFromFormat( Dates::MYSQL_FORMAT, $value, new \DateTimeZone( 'UTC' ) ) : false;
-
-        return false !== $date && $date->format( Dates::MYSQL_FORMAT ) === $value;
-    }
-
-    private function nullable_date( $value ): ?string {
-        if ( null === $value || '' === $value ) {
-            return null;
-        }
-
-        return (string) $value;
     }
 
     protected function define_item_schema(): array {

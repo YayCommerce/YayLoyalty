@@ -147,36 +147,9 @@ class Campaign extends AbstractModel {
         return [ '%s', '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%d', '%d', '%d', '%s', '%s', '%s' ];
     }
 
-    /**
-     * to_row() without the columns an update must never touch, with get_format() filtered to match.
-     * $wpdb->update() reads $format by position, so dropping a column without its format
-     * would shift every placeholder after it.
-     *
-     * @return array{data: array<string, mixed>, format: string[]}
-     */
-    public function to_update_row(): array {
-        $row    = $this->to_row();
-        $format = $this->get_format();
-        $keys   = array_keys( $row );
-
-        $immutable = [ 'slug', 'trigger_type', 'created_at', 'created_by', 'is_builtin' ];
-
-        $data        = [];
-        $data_format = [];
-
-        foreach ( $keys as $index => $key ) {
-            if ( in_array( $key, $immutable, true ) ) {
-                continue;
-            }
-
-            $data[ $key ]  = $row[ $key ];
-            $data_format[] = $format[ $index ];
-        }
-
-        return [
-            'data'   => $data,
-            'format' => $data_format,
-        ];
+    /** Columns no update may change. */
+    protected static function immutable_columns(): array {
+        return [ 'slug', 'trigger_type', 'created_at', 'created_by', 'is_builtin' ];
     }
 
     public function to_array(): array {

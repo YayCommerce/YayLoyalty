@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { toastApiError } from '@/lib/api/api';
-import { parseWPCurrency } from '@/lib/helpers/format.helper';
+import { parseWPCurrency, storeCurrency } from '@/lib/helpers/format.helper';
 import { pointsPerCurrencyLabel } from '@/lib/helpers/points.helper';
 import { roundPoints } from '@/lib/points-math/points-math';
 import {
@@ -176,7 +176,7 @@ function PurchaseFields({
   onChange: (next: Partial<PurchaseConfig>) => void;
 }) {
   const value = config as unknown as PurchaseConfig;
-  const currency = window.yayLoyaltyMeta.wcMeta.currency_data.currency;
+  const currency = storeCurrency();
   const worked = worksOut(value.points_per_unit, value.rounding);
 
   return (

@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { Reward } from '@/lib/schema/reward.schema';
 import {
   availabilityLabel,
   costLabel,
@@ -9,27 +8,7 @@ import {
   rewardSubtitle,
   typeLabel,
 } from '@/pro/rewards/reward-labels';
-
-function reward(overrides: Partial<Reward>): Reward {
-  return {
-    id: 1,
-    name: 'Test reward',
-    slug: 'test-reward',
-    type: 'fixed_coupon',
-    status: 'active',
-    sort_order: 0,
-    cost_points: 500,
-    config: {},
-    conditions: [],
-    starts_at: null,
-    ends_at: null,
-    is_builtin: false,
-    created_by: null,
-    created_at: '2026-01-01 00:00:00',
-    updated_at: '2026-01-01 00:00:00',
-    ...overrides,
-  };
-}
+import { reward } from './fixtures/reward.fixture';
 
 const USD = { symbol: '$', position: 'left', thousand_sep: ',', decimal_sep: '.', num_decimals: 2 };
 
@@ -104,6 +83,14 @@ describe('availabilityLabel', () => {
     expect(availabilityLabel(withCondition)).toBe('up to 3 per customer');
   });
 
+  it('reads an lte cap the same way the editor does', () => {
+    const withCondition = reward({
+      conditions: [{ type: 'redemption_count', operator: 'lte', value: 2 }],
+    });
+
+    expect(availabilityLabel(withCondition)).toBe('up to 3 per customer');
+  });
+
   it('adds a minimum order and a redemption cap when config has them', () => {
     vi.stubGlobal('window', { yayLoyaltyMeta: { wcMeta: { currency_data: USD } } });
 
@@ -154,21 +141,33 @@ describe('resolveRewardsScreen', () => {
     // An archived reward is not a reason to show the empty state; it once had a catalog.
     expect(screen.isInitCase).toBe(true);
   });
+
+  it('collects archived rewards, in display order, for the Archived view', () => {
+    const live = reward({ id: 1 });
+    const first = reward({ id: 2, status: 'archived' });
+    const second = reward({ id: 3, status: 'archived' });
+
+    expect(resolveRewardsScreen([first, live, second]).archivedRows).toEqual([first, second]);
+  });
 });
 
 describe('headerSubtitle', () => {
   it('is the init-case copy when there is no catalog reward', () => {
     const builtin = reward({ id: 1, is_builtin: true, type: 'flexible_discount', cost_points: null });
 
-    expect(headerSubtitle(resolveRewardsScreen([builtin]))).toBe('One reward. Nothing has been redeemed yet.');
+    expect(headerSubtitle(resolveRewardsScreen([builtin]))).toEqual({
+      count: 'One reward',
+      detail: 'Nothing has been redeemed yet.',
+    });
   });
 
   it('counts every visible row, built-in included, once a catalog exists', () => {
     const builtin = reward({ id: 1, is_builtin: true, type: 'flexible_discount', cost_points: null });
     const catalogReward = reward({ id: 2 });
 
-    expect(headerSubtitle(resolveRewardsScreen([builtin, catalogReward]))).toBe(
-      '2 rewards. Drag to reorder — this is the order customers see.',
-    );
+    expect(headerSubtitle(resolveRewardsScreen([builtin, catalogReward]))).toEqual({
+      count: '2 rewards',
+      detail: 'Drag to reorder — this is the order customers see.',
+    });
   });
 });

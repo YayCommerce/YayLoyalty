@@ -28,6 +28,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/custom/dialog';
+import { ListColumns } from '@/components/ui/custom/list-columns';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { campaignStatusBadgeVariant } from '../campaign-labels';
@@ -35,7 +36,6 @@ import { CAMPAIGN_PERFORMANCE_QUERIES } from '../performance/campaign-performanc
 import {
   affectedLine,
   ArchiveFigures,
-  ArchiveStops,
   contextLine,
   earningFigures,
   finishedFigures,
@@ -276,58 +276,6 @@ function FiguresBlock({ figures, marked }: { figures: ArchiveFigures | undefined
       <AlertTitle className="line-clamp-none font-semibold">{figures.headline}</AlertTitle>
       {figures.detail && <AlertDescription className="text-foreground">{figures.detail}</AlertDescription>}
     </Alert>
-  );
-}
-
-/**
- * The two lists every dialog shares, so the shape is learnable: what
- * survives on the left, what ends on the right. A "nothing" right column
- * stays visible and muted, because the empty column is the reassurance.
- */
-function ListColumns({
-  leftTitle,
-  leftLines,
-  rightTitle,
-  right,
-}: {
-  leftTitle: string;
-  leftLines: string[];
-  rightTitle: string;
-  right: ArchiveStops;
-}) {
-  return (
-    <div className="grid gap-3 sm:grid-cols-2">
-      <ListColumn title={leftTitle} lines={leftLines} />
-      <ListColumn
-        title={rightTitle}
-        lines={right.lines}
-        className={cn(!right.nothing && 'bg-muted border-foreground/40')}
-        muted={right.nothing}
-      />
-    </div>
-  );
-}
-
-function ListColumn({
-  title,
-  lines,
-  className,
-  muted,
-}: {
-  title: string;
-  lines: string[];
-  className?: string;
-  muted?: boolean;
-}) {
-  return (
-    <div className={cn('flex flex-col gap-3 rounded-md border p-4', className)}>
-      <span className="text-xs font-semibold tracking-wide uppercase">{title}</span>
-      <ul className={cn('flex flex-col gap-2 text-sm', muted && 'text-muted-foreground')}>
-        {lines.map((line) => (
-          <li key={line}>{line}</li>
-        ))}
-      </ul>
-    </div>
   );
 }
 

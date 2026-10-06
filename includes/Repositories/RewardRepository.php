@@ -3,6 +3,7 @@ namespace YayLoyalty\Repositories;
 
 use YayLoyalty\Models\Reward;
 use YayLoyalty\Utils\Dates;
+use YayLoyalty\Utils\Sql;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -42,6 +43,64 @@ final class RewardRepository extends AbstractRepository {
         );
 
         return is_array( $row ) ? Reward::from_row( $row ) : null;
+    }
+
+    /** The sort_order that places a new reward after every existing one, archived rows included. */
+    public function next_sort_order(): int {
+        global $wpdb;
+
+        $max = $wpdb->get_var( 'SELECT MAX(sort_order) FROM `' . esc_sql( $this->table() ) . '`' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.NotPrepared
+
+        return null === $max ? 0 : (int) $max + 1;
+    }
+
+    /**
+     * Renumbers every row 0..n-1: $ids first in the given order, the rest
+     * after them in their current order. Renumbering all rows keeps an
+     * unlisted (e.g. archived) row from tying with a listed one. One
+     * statement, so a failure never leaves half a reorder. False, with
+     * nothing written, when $ids names a row that does not exist.
+     *
+     * @param int[] $ids
+     */
+    public function reorder( array $ids ): bool {
+        global $wpdb;
+
+        $table   = esc_sql( $this->table() );
+        $listed  = array_values( array_map( 'intval', $ids ) );
+        $current = array_map( 'intval', (array) $wpdb->get_col( "SELECT id FROM `{$table}` ORDER BY sort_order ASC, id ASC" ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+        if ( [] !== array_diff( $listed, $current ) ) {
+            return false;
+        }
+
+        $order = array_merge( $listed, array_values( array_diff( $current, $listed ) ) );
+
+        if ( [] === $order ) {
+            return true;
+        }
+
+        $cases  = [];
+        $params = [];
+
+        foreach ( $order as $position => $id ) {
+            $cases[]  = 'WHEN %d THEN %d';
+            $params[] = $id;
+            $params[] = $position;
+        }
+
+        $in = Sql::in_placeholders( $order, '%d' );
+
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- $cases and $in carry placeholder lists; every value is bound below.
+        $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+            $wpdb->prepare(
+                "UPDATE `{$table}` SET sort_order = CASE id " . implode( ' ', $cases ) . " END WHERE id IN ({$in})",
+                array_merge( $params, $order )
+            )
+        );
+        // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+
+        return true;
     }
 
     /**

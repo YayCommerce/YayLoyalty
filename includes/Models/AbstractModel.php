@@ -41,6 +41,45 @@ abstract class AbstractModel {
      */
     abstract public function get_format(): array;
 
+    /**
+     * to_row() minus immutable_columns(), each format kept paired with its column:
+     * $wpdb->update() consumes $format positionally, so dropping a column without its
+     * placeholder shifts every one after it.
+     *
+     * @return array{data: array<string, mixed>, format: string[]}
+     */
+    public function to_update_row(): array {
+        $row       = $this->to_row();
+        $format    = $this->get_format();
+        $immutable = static::immutable_columns();
+
+        $data        = [];
+        $data_format = [];
+
+        foreach ( array_keys( $row ) as $index => $key ) {
+            if ( in_array( $key, $immutable, true ) ) {
+                continue;
+            }
+
+            $data[ $key ]  = $row[ $key ];
+            $data_format[] = $format[ $index ];
+        }
+
+        return [
+            'data'   => $data,
+            'format' => $data_format,
+        ];
+    }
+
+    /**
+     * Columns to_update_row() leaves out.
+     *
+     * @return string[]
+     */
+    protected static function immutable_columns(): array {
+        return [];
+    }
+
     /** Null and '' become null. */
     protected static function cast_int( $value ): ?int {
         if ( null === $value || '' === $value ) {

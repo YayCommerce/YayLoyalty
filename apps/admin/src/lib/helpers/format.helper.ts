@@ -42,6 +42,11 @@ export function parseWPTime(date: Date | string) {
   return dateI18n(formats.time, typeof date === 'string' ? utcToDate(date) : date);
 }
 
+/** The store currency code (`get_woocommerce_currency()`), e.g. USD. */
+export function storeCurrency(): string {
+  return window.yayLoyaltyMeta.wcMeta.currency_data.currency;
+}
+
 /** The store currency's decimals (`wc_get_price_decimals()`), the precision every money figure rounds to. */
 export function currencyDecimals(): number {
   return window.yayLoyaltyMeta.wcMeta.currency_data.num_decimals;

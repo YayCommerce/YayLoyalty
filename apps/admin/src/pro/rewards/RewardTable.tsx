@@ -5,9 +5,15 @@ import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } 
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, InfoIcon, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router';
-import { __, sprintf } from '@wordpress/i18n';
+import { toast } from 'sonner';
+import { __, _n, sprintf } from '@wordpress/i18n';
 
-import { useRewardsQuery } from '@/lib/queries/reward.queries';
+import { toastApiError } from '@/lib/api/api';
+import {
+  useReorderRewardsMutation,
+  useRewardsQuery,
+  useUpdateRewardStatusMutation,
+} from '@/lib/queries/reward.queries';
 import { resolveRewardDisplayStatus, Reward } from '@/lib/schema/reward.schema';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -25,11 +31,13 @@ import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import EllipsisIcon from '@/components/icons/EllipsisIcon';
 import { CampaignStatusBadge } from '@/pro/campaigns/CampaignStatusBadge';
+import { RewardArchiveDialog } from './archive/RewardArchiveDialog';
 import {
   availabilityLabel,
   costLabel,
   headerSubtitle,
   resolveRewardsScreen,
+  RewardsScreen,
   rewardSubtitle,
   sliderLiveLabel,
   typeLabel,
@@ -37,9 +45,10 @@ import {
 import { RewardCatalogEmptyState, RewardCatalogTemplateCards } from './RewardCatalogEmptyState';
 
 /**
- * Pro's Rewards screen: the launcher catalog in display order, real data
- * only — create/edit/delete/redeem stay UI-only until the reward editor and
- * redemption engine exist.
+ * Pro's Rewards screen: the launcher catalog in display order, plus an
+ * Archived view reached from the header. Rows open the reward editor, their
+ * switch pauses or resumes, and the ⋯ menu duplicates, archives, restores
+ * or deletes.
  */
 export function RewardTable() {
   const navigate = useNavigate();
@@ -47,11 +56,19 @@ export function RewardTable() {
   const { data, isPending, isError } = useRewardsQuery({ perPage: 100 });
   const ready = !isPending && !isError;
 
-  // Local override once a drag reorders the list; ignored once the query's own data changes,
-  // so a refetch always wins over a display-only reorder that was never persisted.
+  const reorderMutation = useReorderRewardsMutation();
+
+  // Shows a drop at once while its save is in flight. Ignored once the query's own data changes,
+  // so every refetch replaces it with the stored order.
   const [override, setOverride] = useState<{ source: typeof data; rows: Reward[] }>();
 
   const screen = resolveRewardsScreen(override && override.source === data ? override.rows : (data?.data ?? []));
+
+  const [view, setView] = useState<'catalog' | 'archived'>('catalog');
+  // Falls back on its own once the last archived row is restored or deleted.
+  const showArchived = view === 'archived' && screen.archivedRows.length > 0;
+  // The row the dialog acts on; a snapshot, so a refetch while it is open cannot change it.
+  const [archiveTarget, setArchiveTarget] = useState<Reward>();
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
 
@@ -65,12 +82,20 @@ export function RewardTable() {
     const fromIndex = screen.rows.findIndex((row) => row.id === active.id);
     const toIndex = screen.rows.findIndex((row) => row.id === over.id);
 
-    if (fromIndex === -1 || toIndex === -1) {
+    // The built-in is pinned first by resolveRewardsScreen(); nothing may move into its slot.
+    if (fromIndex === -1 || toIndex === -1 || screen.rows[toIndex].is_builtin) {
       return;
     }
 
     // Moved within screen.rows, the list the indexes came from; the raw list still holds archived rows.
-    setOverride({ source: data, rows: arrayMove(screen.rows, fromIndex, toIndex) });
+    const nextRows = arrayMove(screen.rows, fromIndex, toIndex);
+    setOverride({ source: data, rows: nextRows });
+    reorderMutation.mutate(
+      nextRows.map((row) => row.id),
+      {
+        onError: (error) => toastApiError(error, __('Could not save the new order.', 'yayloyalty')),
+      },
+    );
   }
 
   return (
@@ -81,15 +106,15 @@ export function RewardTable() {
             {isPending ? (
               <Skeleton className="h-4 w-64" />
             ) : (
-              <p className="text-foreground flex-1 text-sm">{headerSubtitle(screen)}</p>
+              <RewardTableSubtitle screen={screen} showArchived={showArchived} onViewChange={setView} />
             )}
             <div className="flex items-center gap-3">
               <Button variant="outline">{__('Redemptions log', 'yayloyalty')}</Button>
-              <Button>{__('Add reward', 'yayloyalty')}</Button>
+              <Button onClick={() => navigate('/rewards/new')}>{__('Add reward', 'yayloyalty')}</Button>
             </div>
           </div>
 
-          {ready && (
+          {ready && !showArchived && (
             <Alert variant="outline" className={screen.isInitCase ? 'gap-y-2' : undefined}>
               <InfoIcon />
               <AlertDescription
@@ -124,28 +149,38 @@ export function RewardTable() {
           {ready && (
             <div className="overflow-hidden rounded-lg border">
               <div className="overflow-x-auto">
-                <Table>
-                  <RewardTableHeader />
-                  <TableBody>
-                    <DndContext
-                      sensors={sensors}
-                      collisionDetection={closestCenter}
-                      modifiers={[restrictToVerticalAxis]}
-                      onDragEnd={onDragEnd}
-                    >
-                      <SortableContext items={screen.rows.map((row) => row.id)} strategy={verticalListSortingStrategy}>
-                        {screen.rows.map((row) => (
-                          <RewardRow key={row.id} reward={row} />
-                        ))}
-                      </SortableContext>
-                    </DndContext>
-                  </TableBody>
-                </Table>
+                {/* Outside <Table>: DndContext renders hidden screen-reader <div>s, invalid inside <tbody>. */}
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  modifiers={[restrictToVerticalAxis]}
+                  onDragEnd={onDragEnd}
+                >
+                  <Table>
+                    <RewardTableHeader />
+                    <TableBody>
+                      {showArchived ? (
+                        screen.archivedRows.map((row) => (
+                          <RewardRow key={row.id} reward={row} onArchiveOrDelete={setArchiveTarget} />
+                        ))
+                      ) : (
+                        <SortableContext
+                          items={screen.rows.map((row) => row.id)}
+                          strategy={verticalListSortingStrategy}
+                        >
+                          {screen.rows.map((row) => (
+                            <RewardRow key={row.id} reward={row} onArchiveOrDelete={setArchiveTarget} />
+                          ))}
+                        </SortableContext>
+                      )}
+                    </TableBody>
+                  </Table>
+                </DndContext>
               </div>
             </div>
           )}
 
-          {ready && screen.isInitCase && (
+          {ready && !showArchived && screen.isInitCase && (
             <>
               <RewardCatalogEmptyState />
               <RewardCatalogTemplateCards />
@@ -154,8 +189,65 @@ export function RewardTable() {
         </CardContent>
       </Card>
 
-      {ready && !screen.isInitCase && <RewardInfoCards />}
+      {ready && !showArchived && !screen.isInitCase && <RewardInfoCards />}
+
+      {archiveTarget && (
+        <RewardArchiveDialog
+          reward={archiveTarget}
+          onClose={() => setArchiveTarget(undefined)}
+          onViewArchived={() => setView('archived')}
+        />
+      )}
     </div>
+  );
+}
+
+/** The line above the table: catalog count with an "{n} archived" link, or the Archived view's way back. */
+function RewardTableSubtitle({
+  screen,
+  showArchived,
+  onViewChange,
+}: {
+  screen: RewardsScreen;
+  showArchived: boolean;
+  onViewChange: (view: 'catalog' | 'archived') => void;
+}) {
+  const archivedCount = screen.archivedRows.length;
+
+  if (showArchived) {
+    return (
+      <p className="text-foreground flex-1 text-sm">
+        {sprintf(
+          /* translators: %d: number of archived rewards. */
+          _n('%d archived reward.', '%d archived rewards.', archivedCount, 'yayloyalty'),
+          archivedCount,
+        )}{' '}
+        <button type="button" className="text-foreground underline" onClick={() => onViewChange('catalog')}>
+          {__('Back to rewards', 'yayloyalty')}
+        </button>
+      </p>
+    );
+  }
+
+  const { count, detail } = headerSubtitle(screen);
+
+  return (
+    <p className="text-foreground flex-1 text-sm">
+      {count}
+      {archivedCount > 0 && (
+        <>
+          {' - '}
+          <button type="button" className="text-foreground hover:underline" onClick={() => onViewChange('archived')}>
+            {sprintf(
+              /* translators: %d: number of archived rewards. */
+              __('%d archived', 'yayloyalty'),
+              archivedCount,
+            )}
+          </button>
+        </>
+      )}
+      {`. ${detail}`}
+    </p>
   );
 }
 
@@ -178,15 +270,44 @@ function RewardTableHeader() {
 }
 
 /**
- * One reward row, sortable via dnd-kit — drag reorders the on-screen list
- * only (RewardTable resets it on every refetch); nothing is persisted. Every
- * other control here is UI-only too: the name link, the toggle and the ⋯
- * menu do nothing yet, since create/edit/delete/redeem land with the reward
- * editor and the redemption engine.
+ * One reward row, sortable via dnd-kit; RewardTable saves a drop as the new
+ * display order. The built-in row is locked first; an archived row is never
+ * dragged. The name opens the editor and the switch writes active/paused.
  */
-function RewardRow({ reward }: { reward: Reward }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: reward.id });
+function RewardRow({
+  reward,
+  onArchiveOrDelete,
+}: {
+  reward: Reward;
+  /** Opens RewardArchiveDialog, which picks archive or delete from is_deletable. */
+  onArchiveOrDelete: (reward: Reward) => void;
+}) {
+  const navigate = useNavigate();
+  const statusMutation = useUpdateRewardStatusMutation(reward.id);
+  const isArchived = reward.status === 'archived';
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: reward.id,
+    disabled: reward.is_builtin || isArchived,
+  });
   const displayStatus = resolveRewardDisplayStatus(reward.status, reward.starts_at, reward.ends_at);
+
+  async function toggle(isOn: boolean) {
+    try {
+      await statusMutation.mutateAsync(isOn ? 'active' : 'paused');
+    } catch (error) {
+      await toastApiError(error, __('Could not change the reward’s status.', 'yayloyalty'));
+    }
+  }
+
+  // Back as paused, never active: going live again is the merchant's own switch.
+  async function restore() {
+    try {
+      await statusMutation.mutateAsync('paused');
+      toast.success(__('Reward restored as paused.', 'yayloyalty'));
+    } catch (error) {
+      await toastApiError(error, __('Could not restore the reward.', 'yayloyalty'));
+    }
+  }
 
   return (
     <TableRow
@@ -195,20 +316,17 @@ function RewardRow({ reward }: { reward: Reward }) {
       data-state={isDragging ? 'selected' : undefined}
     >
       <TableCell className="px-1">
-        <button
-          type="button"
-          className="text-muted-foreground flex cursor-grab touch-none items-center active:cursor-grabbing"
-          aria-label={__('Drag to reorder', 'yayloyalty')}
-          {...attributes}
-          {...listeners}
-        >
-          <GripVertical className="size-4" />
-        </button>
+        <DragHandle reward={reward} isArchived={isArchived} attributes={attributes} listeners={listeners} />
       </TableCell>
       <TableCell>
         <div className="flex flex-col gap-0.5">
           <div className="flex items-center gap-1.5">
-            <Button variant="link" size="sm" className="h-auto p-0 font-semibold">
+            <Button
+              variant="link"
+              size="sm"
+              className="h-auto p-0 font-semibold"
+              onClick={() => navigate(`/rewards/${reward.id}/edit`)}
+            >
               {reward.name}
             </Button>
             {reward.is_builtin && (
@@ -233,12 +351,17 @@ function RewardRow({ reward }: { reward: Reward }) {
       </TableCell>
       <TableCell className="text-sm font-semibold tabular-nums">{costLabel(reward)}</TableCell>
       <TableCell className="text-muted-foreground text-xs">{availabilityLabel(reward)}</TableCell>
-      {/* Em dash, not "0": no redemptions table exists yet to count from (docs/data-model/redemptions.md). */}
+      {/* TODO(redemption): em dash until redemption defines "redeemed"; the count then reads reward.redemption_summary, never a second query. */}
       <TableCell className="text-muted-foreground text-right text-xs">—</TableCell>
       <TableCell>
         {displayStatus === 'active' || displayStatus === 'paused' ? (
           <div className="flex items-center gap-2">
-            <Switch size="sm" checked={displayStatus === 'active'} onCheckedChange={() => {}} />
+            <Switch
+              size="sm"
+              checked={displayStatus === 'active'}
+              disabled={statusMutation.isPending}
+              onCheckedChange={toggle}
+            />
             <span className="text-muted-foreground text-xs">
               {displayStatus === 'active' ? __('On', 'yayloyalty') : __('Paused', 'yayloyalty')}
             </span>
@@ -248,31 +371,88 @@ function RewardRow({ reward }: { reward: Reward }) {
         )}
       </TableCell>
       <TableCell className="text-right">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              className="text-muted-foreground mx-auto flex size-6 items-center justify-center"
-              aria-label={sprintf(
-                /* translators: %s: the reward's name. */
-                __('“%s” actions', 'yayloyalty'),
-                reward.name,
+        {/* The built-in can be neither duplicated (its type is never created) nor archived, so it has no menu. */}
+        {!reward.is_builtin && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="text-muted-foreground mx-auto flex size-6 items-center justify-center"
+                aria-label={sprintf(
+                  /* translators: %s: the reward's name. */
+                  __('“%s” actions', 'yayloyalty'),
+                  reward.name,
+                )}
+              >
+                <EllipsisIcon />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {isArchived ? (
+                <>
+                  <DropdownMenuItem disabled={statusMutation.isPending} onSelect={restore}>
+                    {__('Restore', 'yayloyalty')}
+                  </DropdownMenuItem>
+                  {reward.is_deletable && (
+                    <DropdownMenuItem variant="destructive" onSelect={() => onArchiveOrDelete(reward)}>
+                      {__('Delete permanently', 'yayloyalty')}
+                    </DropdownMenuItem>
+                  )}
+                </>
+              ) : (
+                <>
+                  {/* Create mode, seeded from this reward; nothing is written until Save. */}
+                  <DropdownMenuItem onSelect={() => navigate(`/rewards/new/${reward.type}?from=${reward.id}`)}>
+                    {__('Duplicate', 'yayloyalty')}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem variant="destructive" onSelect={() => onArchiveOrDelete(reward)}>
+                    {__('Archive', 'yayloyalty')}
+                  </DropdownMenuItem>
+                </>
               )}
-            >
-              <EllipsisIcon />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onSelect={() => {}}>{__('Duplicate', 'yayloyalty')}</DropdownMenuItem>
-            {!reward.is_builtin && (
-              <DropdownMenuItem variant="destructive" onSelect={() => {}}>
-                {__('Archive', 'yayloyalty')}
-              </DropdownMenuItem>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </TableCell>
     </TableRow>
+  );
+}
+
+/** Nothing for an archived row, a locked grip for the built-in, a live grip otherwise. */
+function DragHandle({
+  reward,
+  isArchived,
+  attributes,
+  listeners,
+}: {
+  reward: Reward;
+  isArchived: boolean;
+  attributes: ReturnType<typeof useSortable>['attributes'];
+  listeners: ReturnType<typeof useSortable>['listeners'];
+}) {
+  if (isArchived) {
+    return null;
+  }
+
+  if (reward.is_builtin) {
+    return (
+      <YayLoyaltyToolTip
+        trigger={<GripVertical className="text-muted-foreground/40 size-4 cursor-not-allowed" />}
+        content={__('The default reward always comes first.', 'yayloyalty')}
+      />
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      className="text-muted-foreground flex cursor-grab touch-none items-center active:cursor-grabbing"
+      aria-label={__('Drag to reorder', 'yayloyalty')}
+      {...attributes}
+      {...listeners}
+    >
+      <GripVertical className="size-4" />
+    </button>
   );
 }
 

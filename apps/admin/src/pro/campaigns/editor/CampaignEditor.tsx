@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import { HTTPError } from 'ky';
-import { ChevronLeft } from 'lucide-react';
-import { FormProvider, useForm } from 'react-hook-form';
+import { FieldErrors, FormProvider, useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import { __, sprintf } from '@wordpress/i18n';
@@ -16,8 +15,10 @@ import {
   LiteCampaignTrigger,
   resolveCampaignDisplayStatus,
 } from '@/lib/schema/campaign.schema';
+import { useEditorSave } from '@/hooks/useEditorSave';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { BackLink } from '@/components/ui/custom/back-link';
 import { ErrorState } from '@/components/ui/custom/error-state';
 import { UnsavedChangeDialog } from '@/components/ui/custom/unsaved-changed-dialog';
 import PageLayout from '@/components/layout/PageLayout';
@@ -40,7 +41,6 @@ import {
 import { CampaignEditorSections } from './CampaignEditorSections';
 import { CampaignEditorSkeleton } from './CampaignEditorSkeleton';
 import { CampaignEditorSummaryRail } from './CampaignEditorSummaryRail';
-import { useCampaignEditorSave } from './use-campaign-editor-save';
 
 /**
  * The campaign editor: form provider, layout and every non-content state. The sections render
@@ -91,13 +91,13 @@ function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }
     resetOptions: { keepDirtyValues: true },
   });
 
-  const { handleSave, bypassNext, markDraftIntent, leaveDialogProps } = useCampaignEditorSave(
+  const { handleSave, bypassNext, markDraftIntent, leaveDialogProps } = useEditorSave(
     form,
-    async (values, isDraft) => {
+    async (values, intent) => {
       const input = formValuesToUpdateInput(values);
 
       try {
-        const saved = await mutation.mutateAsync(isDraft ? { ...input, status: 'draft' } : input);
+        const saved = await mutation.mutateAsync(intent === 'draft' ? { ...input, status: 'draft' } : input);
         form.reset(campaignToFormValues(saved));
         toast.success(__('Campaign saved.', 'yayloyalty'));
         return true;
@@ -106,6 +106,7 @@ function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }
         return false;
       }
     },
+    { listPath: '/campaigns', onInvalid: toastInvalidConditions },
   );
 
   // The header renders from the loaded campaign, never form state; "Unsaved changes" says when the two differ.
@@ -115,7 +116,7 @@ function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }
     <CampaignEditorContext.Provider value={{ mode: 'edit', campaign, trigger: campaign.trigger }}>
       <FormProvider {...form}>
         <form onSubmit={handleSave}>
-          <CampaignEditorBackLink />
+          <BackLink to="/campaigns" label={__('Campaigns', 'yayloyalty')} />
 
           <PageLayout
             className="max-w-6xl"
@@ -200,20 +201,6 @@ function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }
   );
 }
 
-/** The row above both editors' titles: back to the campaign list. */
-function CampaignEditorBackLink() {
-  const navigate = useNavigate();
-
-  return (
-    <div className="mx-auto flex max-w-6xl items-center gap-2 px-6 pt-6 text-sm">
-      <Button type="button" variant="link" className="h-auto gap-1 p-0!" onClick={() => navigate('/campaigns')}>
-        <ChevronLeft className="size-3.5" />
-        {__('Campaigns', 'yayloyalty')}
-      </Button>
-    </div>
-  );
-}
-
 /**
  * Create-mode entry point for `campaigns/new/:templateId`, optionally `?from=<id>` for
  * CampaignTable's Duplicate action. Nothing is written until Save.
@@ -276,18 +263,22 @@ function CampaignCreatorForm({ template, duplicateFrom }: { template: CampaignTe
     resetOptions: { keepDirtyValues: true },
   });
 
-  const { handleSave, markDraftIntent, leaveDialogProps } = useCampaignEditorSave(form, async (values, isDraft) => {
-    const input = formValuesToCreateInput(values, trigger);
+  const { handleSave, markDraftIntent, leaveDialogProps } = useEditorSave(
+    form,
+    async (values, intent) => {
+      const input = formValuesToCreateInput(values, trigger);
 
-    try {
-      await mutation.mutateAsync(isDraft ? { ...input, status: 'draft' } : input);
-      toast.success(__('Campaign created.', 'yayloyalty'));
-      return true;
-    } catch (error) {
-      await toastApiError(error, __('Could not create the campaign.', 'yayloyalty'));
-      return false;
-    }
-  });
+      try {
+        await mutation.mutateAsync(intent === 'draft' ? { ...input, status: 'draft' } : input);
+        toast.success(__('Campaign created.', 'yayloyalty'));
+        return true;
+      } catch (error) {
+        await toastApiError(error, __('Could not create the campaign.', 'yayloyalty'));
+        return false;
+      }
+    },
+    { listPath: '/campaigns', onInvalid: toastInvalidConditions },
+  );
 
   /** A stale key from the old trigger would fail Campaign::config_is_valid() on save. */
   function handleTriggerChange(next: LiteCampaignTrigger) {
@@ -305,7 +296,7 @@ function CampaignCreatorForm({ template, duplicateFrom }: { template: CampaignTe
     >
       <FormProvider {...form}>
         <form onSubmit={handleSave}>
-          <CampaignEditorBackLink />
+          <BackLink to="/campaigns" label={__('Campaigns', 'yayloyalty')} />
 
           <PageLayout
             className="max-w-6xl"
@@ -330,4 +321,11 @@ function CampaignCreatorForm({ template, duplicateFrom }: { template: CampaignTe
       <UnsavedChangeDialog {...leaveDialogProps} />
     </CampaignEditorContext.Provider>
   );
+}
+
+/** ConditionRow shows each error inline; the toast makes a blocked save impossible to miss. */
+function toastInvalidConditions(errors: FieldErrors<CampaignFormValues>) {
+  if (errors.conditions) {
+    toast.error(__('Please fix the highlighted conditions before saving.', 'yayloyalty'));
+  }
 }

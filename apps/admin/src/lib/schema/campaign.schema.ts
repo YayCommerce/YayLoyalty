@@ -254,7 +254,7 @@ export const campaignUpdateInputSchema = z
 export type CampaignUpdateInput = z.infer<typeof campaignUpdateInputSchema>;
 
 /**
- * Mirror of CampaignRestController::dates_in_order(): an open side passes, two
+ * Mirror of AbstractRestController::dates_in_order(): an open side passes, two
  * set dates must run forward (ends_at is exclusive, so equal is an empty run).
  * String comparison is correct: both are fixed-width UTC YYYY-MM-DD HH:mm:ss.
  */

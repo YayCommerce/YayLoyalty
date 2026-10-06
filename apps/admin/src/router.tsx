@@ -14,6 +14,9 @@ import CustomersPage from './pages/customers/CustomersPage';
 import CustomerDrawer from './pages/customers/drawer/CustomerDrawer';
 import DashboardPage from './pages/dashboard/DashboardPage';
 import ReferralPage from './pages/referral/ReferralPage';
+import RewardAddPage from './pages/rewards/RewardAddPage';
+import RewardCreatePage from './pages/rewards/RewardCreatePage';
+import RewardEditorPage from './pages/rewards/RewardEditorPage';
 import RewardsPage from './pages/rewards/RewardsPage';
 import AdvancedSettingsPage from './pages/settings/AdvancedSettingsPage';
 import DesignSettingsPage from './pages/settings/DesignSettingsPage';
@@ -78,6 +81,18 @@ export function getManagerRouter() {
         {
           path: 'rewards',
           element: guarded(CAP.MANAGE_REWARDS, <RewardsPage />),
+        },
+        {
+          path: 'rewards/new',
+          element: guarded(CAP.MANAGE_REWARDS, <RewardAddPage />),
+        },
+        {
+          path: 'rewards/new/:type',
+          element: guarded(CAP.MANAGE_REWARDS, <RewardCreatePage />),
+        },
+        {
+          path: 'rewards/:id/edit',
+          element: guarded(CAP.MANAGE_REWARDS, <RewardEditorPage />),
         },
         {
           path: 'referral',

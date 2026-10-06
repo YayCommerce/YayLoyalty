@@ -25,6 +25,8 @@ export { DashboardProPanels } from './dashboard/DashboardProPanels';
 export { DesignPanelSection } from './design/DesignPanelSection';
 export { DesignTierSection } from './design/DesignTierSection';
 export { DesignTypographySection } from './design/DesignTypographySection';
+export { RewardTemplatePicker } from './rewards/add/RewardTemplatePicker';
+export { RewardCreator, RewardEditor } from './rewards/editor/RewardEditor';
 export { RewardTable } from './rewards/RewardTable';
 
 /** Keeps the sentinel reachable code rather than a literal a minifier may discard. */
