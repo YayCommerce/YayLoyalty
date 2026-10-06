@@ -1,11 +1,13 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { InfoIcon, TriangleAlert, X } from 'lucide-react';
 import { __, _n, sprintf } from '@wordpress/i18n';
 
+import { can, CAP } from '@/lib/access';
 import { parseWPCurrency } from '@/lib/helpers/format.helper';
 import { formatPoints, formatPointsAsMoney } from '@/lib/helpers/points.helper';
-import { rewardSubtitle } from '@/lib/helpers/reward.helper';
-import { useCampaignsQuery } from '@/lib/queries/campaign.queries';
+import { flexibleDiscountSubtitle } from '@/lib/helpers/reward.helper';
+import { CAMPAIGN_QUERIES } from '@/lib/queries/campaign.queries';
 import { useRewardsQuery } from '@/lib/queries/reward.queries';
 import { findBuiltinCampaign } from '@/lib/schema/campaign.schema';
 import type { Reward } from '@/lib/schema/reward.schema';
@@ -43,8 +45,6 @@ interface FlexibleDiscountConfig {
  */
 export default function BuiltInRewardEditor() {
   const { data, isPending, isError } = useRewardsQuery({ perPage: 100 });
-  // Started here, not only in useEarnBackPercent, so it runs alongside the rewards fetch.
-  useCampaignsQuery({ perPage: 100 });
 
   if (isPending) {
     return <Skeleton className="h-32 w-full" />;
@@ -149,7 +149,7 @@ function BuiltInRewardCard({ reward }: { reward: Reward }) {
   return (
     <BuiltInConfigCard
       name={reward.name}
-      subtitle={rewardSubtitle(reward)}
+      subtitle={flexibleDiscountSubtitle()}
       isOn={isOn}
       onToggle={(checked) => setStatus(checked ? 'active' : 'paused')}
       expanded={expanded}
@@ -338,7 +338,8 @@ function PointsInput({
  * either rate is missing — the line is dropped rather than guessed.
  */
 function useEarnBackPercent(pointsPerCurrencyUnit: number): string | null {
-  const { data } = useCampaignsQuery({ perPage: 100 });
+  // Rewards and campaigns are separate capabilities: without campaigns access the line is dropped, not a 403 toast.
+  const { data } = useQuery({ ...CAMPAIGN_QUERIES.list({ perPage: 100 }), enabled: can(CAP.MANAGE_CAMPAIGNS) });
   const purchase = findBuiltinCampaign(data?.data, 'purchase');
   const pointsPerUnit = purchase?.config.points_per_unit;
 

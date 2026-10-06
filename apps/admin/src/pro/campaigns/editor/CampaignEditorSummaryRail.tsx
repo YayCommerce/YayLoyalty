@@ -3,12 +3,11 @@ import { useFormContext } from 'react-hook-form';
 import { __ } from '@wordpress/i18n';
 
 import { usePurchaseCampaignsQuery } from '@/lib/queries/campaign.queries';
-import { resolvePurchaseMode } from '@/lib/schema/campaign.schema';
+import { findBuiltinCampaign, resolvePurchaseMode } from '@/lib/schema/campaign.schema';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { findBuiltinCampaign } from '../campaign-labels';
 import { CampaignFormValues, useCampaignEditorContext } from './campaign-editor.form';
 import { campaignReadiness, summarizeCampaign } from './campaign-summary.copy';
 

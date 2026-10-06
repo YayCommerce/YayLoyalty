@@ -15,8 +15,6 @@ import type { badgeVariants } from '@/components/ui/badge';
 
 /** Campaign presentation strings derived from the real fields; the wire carries none. */
 
-export { findBuiltinCampaign } from '@/lib/schema/campaign.schema';
-
 /** Whether a built-in still earns in place of what sits above it; mirrors the engine skipping any campaign not active (PurchaseHandler::is_eligible for a multiplier's default). */
 export function isBuiltinCampaignActive(campaign: Campaign | undefined): boolean {
   return campaign?.status === 'active';

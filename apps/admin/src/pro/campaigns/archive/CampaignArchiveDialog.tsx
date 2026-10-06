@@ -14,7 +14,7 @@ import {
   useUpdateCampaignStatusMutation,
 } from '@/lib/queries/campaign.queries';
 import { hasPerformancePage } from '@/lib/schema/campaign-performance.schema';
-import { Campaign, resolveCampaignDisplayStatus } from '@/lib/schema/campaign.schema';
+import { Campaign, findBuiltinCampaign, resolveCampaignDisplayStatus } from '@/lib/schema/campaign.schema';
 import { cn } from '@/lib/utils';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -30,7 +30,7 @@ import {
 } from '@/components/ui/custom/dialog';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
-import { campaignStatusBadgeVariant, findBuiltinCampaign } from '../campaign-labels';
+import { campaignStatusBadgeVariant } from '../campaign-labels';
 import { CAMPAIGN_PERFORMANCE_QUERIES } from '../performance/campaign-performance.queries';
 import {
   affectedLine,

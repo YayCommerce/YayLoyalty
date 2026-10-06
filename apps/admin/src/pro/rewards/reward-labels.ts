@@ -1,12 +1,9 @@
 import { __, _n, sprintf } from '@wordpress/i18n';
 
-import { parseWPCurrency } from '@/lib/helpers/format.helper';
-import { formatPoints, shortPoints } from '@/lib/helpers/points.helper';
-import { numberConfig } from '@/lib/helpers/reward.helper';
-import { Reward } from '@/lib/schema/reward.schema';
-import { scheduleLabel } from '../campaigns/campaign-labels';
-
-export { rewardSubtitle, typeLabel } from '@/lib/helpers/reward.helper';
+import { formatStoredDate, parseWPCurrency } from '@/lib/helpers/format.helper';
+import { formatPoints, pointsPhrase, shortPoints } from '@/lib/helpers/points.helper';
+import { flexibleDiscountSubtitle, numberConfig } from '@/lib/helpers/reward.helper';
+import { resolveRewardDisplayStatus, Reward } from '@/lib/schema/reward.schema';
 
 /** Reward presentation strings and derived facts; the wire carries none of this — same split as campaign-labels.ts. */
 
@@ -52,6 +49,46 @@ function findCondition(conditions: Reward['conditions'], type: string) {
   return conditionList(conditions).find((condition) => condition.type === type);
 }
 
+export function typeLabel(type: Reward['type']): string {
+  switch (type) {
+    case 'flexible_discount':
+      return __('Flexible discount', 'yayloyalty');
+    case 'fixed_coupon':
+      return __('Discount', 'yayloyalty');
+    case 'percent_coupon':
+      return __('Percentage', 'yayloyalty');
+    case 'free_shipping':
+      return __('Free shipping', 'yayloyalty');
+    case 'free_product':
+      return __('Free product', 'yayloyalty');
+    default:
+      return type;
+  }
+}
+
+/** The line under a reward's name: what redeeming it does, derived from type and config — there is no stored description column. */
+export function rewardSubtitle(reward: Reward): string {
+  if (reward.type === 'flexible_discount') {
+    return flexibleDiscountSubtitle();
+  }
+
+  if (reward.type === 'free_product') {
+    return __('Free product · claim a coupon, then order the product', 'yayloyalty');
+  }
+
+  const expiryDays = numberConfig(reward.config, 'coupon_expiry_days');
+
+  if (expiryDays === null) {
+    return __('Single-use coupon', 'yayloyalty');
+  }
+
+  return sprintf(
+    /* translators: %d: number of days the coupon stays valid after being claimed. */
+    __('Single-use coupon, valid %d days after claiming', 'yayloyalty'),
+    expiryDays,
+  );
+}
+
 /** "any" for the slider — the customer picks the amount — otherwise the fixed point cost. */
 export function costLabel(reward: Reward): string {
   if (reward.type === 'flexible_discount' || null === reward.cost_points) {
@@ -83,8 +120,13 @@ function flexibleDiscountAvailability(config: Reward['config']): string {
   const minPoints = numberConfig(config, 'min_points');
 
   if (minPoints !== null) {
-    /* translators: %s: minimum points required, formatted. */
-    parts.push(sprintf(__('%s pts minimum', 'yayloyalty'), formatPoints(minPoints)));
+    parts.push(
+      sprintf(
+        /* translators: %s: minimum points required, formatted. */
+        _n('%s pt minimum', '%s pts minimum', minPoints, 'yayloyalty'),
+        formatPoints(minPoints),
+      ),
+    );
   }
 
   const maxPercent = numberConfig(config, 'max_percent_of_subtotal');
@@ -122,10 +164,30 @@ export function availabilityLabel(reward: Reward): string {
   }
 
   if (reward.starts_at || reward.ends_at) {
-    parts.push(scheduleLabel(reward.starts_at, reward.ends_at));
+    parts.push(scheduleWindowLabel(reward.starts_at, reward.ends_at));
   }
 
   return parts.join(' · ');
+}
+
+/**
+ * starts_at/ends_at as a date range; either side may be open. Not campaign-labels' scheduleLabel: this sits
+ * lowercase mid-phrase, and the range stays translatable. ends_at is exclusive, but the day it renders is the
+ * last day the reward is live, so no adjustment is shown.
+ */
+function scheduleWindowLabel(startsAt: string | null, endsAt: string | null): string {
+  if (startsAt && endsAt) {
+    /* translators: 1: start date; 2: end date. */
+    return sprintf(__('%1$s – %2$s', 'yayloyalty'), formatStoredDate(startsAt), formatStoredDate(endsAt));
+  }
+
+  if (startsAt) {
+    /* translators: %s: the date the reward becomes available. */
+    return sprintf(__('from %s', 'yayloyalty'), formatStoredDate(startsAt));
+  }
+
+  /* translators: %s: the date the reward stops being available. */
+  return sprintf(__('until %s', 'yayloyalty'), formatStoredDate(endsAt as string));
 }
 
 /** The line under "Rewards": the row count plus, on the init case, that nothing has been redeemed yet — Redeemed is always "—" until the redemptions table exists. */
@@ -143,5 +205,29 @@ export function headerSubtitle(screen: RewardsScreen): string {
       'yayloyalty',
     ),
     screen.rows.length,
+  );
+}
+
+/** The init-case notice, from the built-in's own status and minimum so it never contradicts the reward. */
+export function sliderLiveLabel(screen: RewardsScreen): string {
+  const builtin = screen.builtin;
+
+  if (!builtin || resolveRewardDisplayStatus(builtin.status, builtin.starts_at, builtin.ends_at) !== 'active') {
+    return __('The slider is off, so customers cannot spend points at checkout yet.', 'yayloyalty');
+  }
+
+  const minPoints = numberConfig(builtin.config, 'min_points');
+
+  if (!minPoints) {
+    return __('The slider is live at checkout, and the first redemption will fill the log.', 'yayloyalty');
+  }
+
+  return sprintf(
+    /* translators: %s: the minimum points needed to use the slider, e.g. "100 points". */
+    __(
+      'The slider is live at checkout. Customers need %s before they can use it, and the first redemption will fill the log.',
+      'yayloyalty',
+    ),
+    pointsPhrase(minPoints),
   );
 }

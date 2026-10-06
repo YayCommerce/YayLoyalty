@@ -102,8 +102,8 @@ function BuiltInCampaignCard({
   const statusMutation = useUpdateCampaignStatusMutation(campaign.id);
   const configMutation = useUpdateCampaignConfigMutation(campaign.id);
 
+  // Status is left alone: the switch has already written it.
   function reset() {
-    setStatus(campaign.status);
     setConfig(campaign.config);
     onToggleExpanded();
   }

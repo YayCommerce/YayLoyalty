@@ -67,7 +67,7 @@ final class RewardRestController extends AbstractRestController {
                 'page'     => (int) $request['page'],
                 'per_page' => (int) $request['per_page'],
                 'orderby'  => $request['orderby'] ? (string) $request['orderby'] : 'sort_order',
-                'order'    => (string) $request['order'],
+                'order'    => $request['order'] ? (string) $request['order'] : 'asc',
                 'type'     => $request['type'] ? (string) $request['type'] : '',
                 'status'   => $request['status'] ? (string) $request['status'] : '',
                 'search'   => $request['search'] ? (string) $request['search'] : '',

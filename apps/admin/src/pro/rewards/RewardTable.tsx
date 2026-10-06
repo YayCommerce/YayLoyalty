@@ -7,8 +7,6 @@ import { GripVertical, InfoIcon, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { __, sprintf } from '@wordpress/i18n';
 
-import { pointsPhrase } from '@/lib/helpers/points.helper';
-import { numberConfig } from '@/lib/helpers/reward.helper';
 import { useRewardsQuery } from '@/lib/queries/reward.queries';
 import { resolveRewardDisplayStatus, Reward } from '@/lib/schema/reward.schema';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -33,6 +31,7 @@ import {
   headerSubtitle,
   resolveRewardsScreen,
   rewardSubtitle,
+  sliderLiveLabel,
   typeLabel,
 } from './reward-labels';
 import { RewardCatalogEmptyState, RewardCatalogTemplateCards } from './RewardCatalogEmptyState';
@@ -98,7 +97,7 @@ export function RewardTable() {
               >
                 {screen.isInitCase ? (
                   <>
-                    <span>{sliderLiveLabel(screen.builtin)}</span>
+                    <span>{sliderLiveLabel(screen)}</span>
                     <Button
                       variant="primary-outline-fill"
                       size="sm"
@@ -349,23 +348,5 @@ function RewardInfoCards() {
         </CardContent>
       </Card>
     </div>
-  );
-}
-
-/** The init-case notice, reading the slider's own minimum so it never contradicts the reward's config. */
-function sliderLiveLabel(builtin: Reward | undefined): string {
-  const minPoints = builtin ? numberConfig(builtin.config, 'min_points') : null;
-
-  if (!minPoints) {
-    return __('The slider is live at checkout, and the first redemption will fill the log.', 'yayloyalty');
-  }
-
-  return sprintf(
-    /* translators: %s: the minimum points needed to use the slider, e.g. "100 points". */
-    __(
-      'The slider is live at checkout. Customers need %s before they can use it, and the first redemption will fill the log.',
-      'yayloyalty',
-    ),
-    pointsPhrase(minPoints),
   );
 }

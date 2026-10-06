@@ -38,7 +38,19 @@ export function BuiltInConfigCard({
 }) {
   return (
     <Card className={expanded ? 'border-primary gap-0 p-0' : 'gap-0 p-0'}>
-      <CardContent className="flex cursor-pointer items-center gap-3.5 p-0 px-4.5 py-4" onClick={onToggleExpanded}>
+      <CardContent
+        role="button"
+        tabIndex={0}
+        aria-expanded={expanded}
+        className="flex cursor-pointer items-center gap-3.5 p-0 px-4.5 py-4"
+        onClick={onToggleExpanded}
+        onKeyDown={(event) => {
+          if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
+            event.preventDefault();
+            onToggleExpanded();
+          }
+        }}
+      >
         <div className="flex flex-1 flex-col gap-0.5">
           <div className="flex items-center gap-2">
             <span className="text-base font-semibold">{name}</span>
@@ -65,7 +77,8 @@ export function BuiltInConfigCard({
           {children}
 
           <div className="flex flex-wrap items-center gap-3 border-t pt-4">
-            <Button size="sm" disabled={saving} onClick={onSave}>
+            {/* Disabled without onSave, so a card with no save route never looks saved. */}
+            <Button size="sm" disabled={saving || !onSave} onClick={onSave}>
               {saving ? __('Saving…', 'yayloyalty') : __('Save changes', 'yayloyalty')}
             </Button>
             <Button variant="link" size="sm" className="h-auto p-0" onClick={onCancel}>
