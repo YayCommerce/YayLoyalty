@@ -19,17 +19,15 @@ export const STAT_LABELS = () => [
 /** auto-fit / minmax(184px, 1fr): six tiles on one row at 1440, wrapping as equals below. */
 const GRID = 'grid gap-4 grid-cols-[repeat(auto-fit,minmax(184px,1fr))]';
 
-/** The five Free tiles. `children` appends Pro tiles; `deltaOverrides` lets the notice strip replace a delta line. */
+/** The five stat tiles. `deltaOverrides` lets the notice strip replace a delta line. */
 export function DashboardStatsGrid({
   stats,
   range,
   deltaOverrides = {},
-  children,
 }: {
   stats: DashboardStats;
   range: DashboardRange;
   deltaOverrides?: Partial<Record<keyof DashboardStats, ReactNode>>;
-  children?: ReactNode;
 }) {
   const [members, issued, redeemed, liability, rate] = STAT_LABELS();
   const { currency_amount, points, points_per_currency_unit } = stats.liability;
@@ -82,18 +80,16 @@ export function DashboardStatsGrid({
         range={range}
         deltaOverride={deltaOverrides.redemption_rate}
       />
-      {children}
     </div>
   );
 }
 
-export function DashboardStatsGridSkeleton({ children }: { children?: ReactNode }) {
+export function DashboardStatsGridSkeleton() {
   return (
     <div className={GRID}>
       {STAT_LABELS().map((label) => (
         <DashboardStatTileSkeleton key={label} label={label} />
       ))}
-      {children}
     </div>
   );
 }
