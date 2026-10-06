@@ -85,8 +85,8 @@ final class CustomerActivityListener {
     }
 
     /**
-     * An award an earning limit cut (EarningService::LIMITED_ACTION), partly
-     * paid or refused: one `earning_limited` row either way. Guards its
+     * An award an earning limit cut but still partly paid
+     * (EarningService::LIMITED_ACTION): one `earning_limited` row. Guards its
      * arguments like on_ledger_recorded().
      *
      * @param mixed $outcome

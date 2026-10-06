@@ -144,7 +144,9 @@ final class OrderListener {
 
     /**
      * Tells the merchant what an award did. Silent for a guest (every guest
-     * order would say so) and for a plain duplicate (a re-fired status).
+     * order would say so), for an earning limit that refused the whole award
+     * (nothing earned, nothing to report) and for a plain duplicate (a
+     * re-fired status).
      */
     private function note( \WC_Order $order, Outcome $outcome ): void {
         $entry = $outcome->get_entry();
@@ -164,7 +166,7 @@ final class OrderListener {
                 }
                 break;
             case Outcome::SKIPPED:
-                if ( ProgramGate::REASON_NO_CUSTOMER !== $outcome->get_reason() ) {
+                if ( ! in_array( $outcome->get_reason(), [ ProgramGate::REASON_NO_CUSTOMER, EarningService::REASON_LIMIT_REACHED ], true ) ) {
                     /* translators: %s: reason code */
                     $order->add_order_note( sprintf( __( 'No points earned: %s.', 'yayloyalty' ), $outcome->get_reason() ) );
                 }

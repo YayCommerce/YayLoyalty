@@ -138,11 +138,11 @@ final class CustomerActivityService {
     }
 
     /**
-     * One `earning_limited` row per award an earning limit cut: partly paid
-     * or refused ($held_back = $evaluated). The held-back points are not
-     * owed later; this row is the record that they were never paid.
+     * One `earning_limited` row per award an earning limit cut but still
+     * partly paid; a full refusal records nothing. The held-back points are
+     * not owed later; this row is the record that they were never paid.
      *
-     * @param string $occurred_at UTC MySQL datetime: the written row's, or now for a refusal.
+     * @param string $occurred_at UTC MySQL datetime: the written row's.
      */
     public function record_earning_limited( int $user_id, string $trigger, int $evaluated, int $held_back, ?int $order_id, string $occurred_at ): void {
         $data = [
