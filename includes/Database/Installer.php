@@ -57,6 +57,8 @@ final class Installer {
 
         InitYayLoyaltyCustomer::maybe_create();
 
+        InitYayLoyaltyReward::maybe_create(); // TEMP-DEMO-SEED: remove once reward CRUD exists.
+
         // Not only on activation: shop_manager does not exist until WooCommerce has been activated once.
         Capabilities::install();
 

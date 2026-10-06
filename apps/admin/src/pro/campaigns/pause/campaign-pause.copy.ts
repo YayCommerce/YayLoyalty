@@ -1,9 +1,14 @@
 import { __, _n, _x, sprintf } from '@wordpress/i18n';
 
 import { parseWPDate } from '@/lib/helpers/format.helper';
-import { Campaign, CampaignDisplayStatus, resolveCampaignDisplayStatus } from '@/lib/schema/campaign.schema';
+import {
+  Campaign,
+  CampaignDisplayStatus,
+  findBuiltinCampaign,
+  resolveCampaignDisplayStatus,
+} from '@/lib/schema/campaign.schema';
 import { activeStops, liveStanding } from '../archive/campaign-archive.copy';
-import { findBuiltinCampaign, givesLabel } from '../campaign-labels';
+import { givesLabel } from '../campaign-labels';
 
 /**
  * Copy for CampaignPauseDialog. Per-trigger sentences are written out whole,

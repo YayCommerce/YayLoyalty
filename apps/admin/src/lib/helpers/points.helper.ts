@@ -22,6 +22,15 @@ export function pointsPhrase(count: number): string {
   );
 }
 
+/** "1 pt", "500 pts": the abbreviated form, for tight UI. */
+export function shortPoints(points: number): string {
+  return sprintf(
+    /* translators: %s: a points amount, formatted. Abbreviated: this reads in tight UI. */
+    _n('%s pt', '%s pts', points, 'yayloyalty'),
+    formatPoints(points),
+  );
+}
+
 /** "1 pt per $1.00", "2 pts per $1.00": a purchase rate against one unit of the store currency. */
 export function pointsPerCurrencyLabel(rate: number): string {
   return sprintf(

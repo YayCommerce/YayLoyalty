@@ -1,7 +1,7 @@
 import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { parseWPCurrency } from '@/lib/helpers/format.helper';
-import { formatPoints } from '@/lib/helpers/points.helper';
+import { shortPoints } from '@/lib/helpers/points.helper';
 import { ROUNDING } from '@/lib/points-math/points-math';
 import { Campaign, resolvePurchaseMode, resolvePurchaseMultiplier } from '@/lib/schema/campaign.schema';
 import { givesLabel, isBuiltinCampaignActive } from '../campaign-labels';
@@ -243,14 +243,6 @@ export function defaultPurchaseRate(campaign: Campaign | undefined): number | un
 /** A multiplier campaign's effective rate. Two 2-decimal inputs give at most 4 decimals; toFixed drops float noise such as 3.3000000000000003. */
 export function multipliedRate(multiplier: number, defaultRate: number): number {
   return Number((multiplier * defaultRate).toFixed(4));
-}
-
-function shortPoints(points: number): string {
-  return sprintf(
-    /* translators: %s: a points amount, formatted. Abbreviated: this reads in tight UI. */
-    _n('%s pt', '%s pts', points, 'yayloyalty'),
-    formatPoints(points),
-  );
 }
 
 function productsCount(count: number): string {
