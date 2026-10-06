@@ -13,6 +13,7 @@ use YayLoyalty\Controllers\LedgerRestController;
 use YayLoyalty\Controllers\LookupRestController;
 use YayLoyalty\Controllers\RedemptionsRestController;
 use YayLoyalty\Controllers\ReferralsRestController;
+use YayLoyalty\Controllers\RewardRestController;
 use YayLoyalty\Controllers\SettingsRestController;
 use YayLoyalty\Controllers\StorefrontActivityRestController;
 use YayLoyalty\Repositories\CampaignRepository;
@@ -80,6 +81,8 @@ class RestAPI {
             new LookupRestController(),
             // Definition table: repository only, no service. $ledger is read-only here too.
             new CampaignRestController( $campaigns, $ledger ),
+            // Read-only for now, same $rewards instance DashboardRepository holds.
+            new RewardRestController( $rewards ),
             new DashboardRestController(
                 new DashboardStats( $dashboard, wc_get_price_decimals() ),
                 new DashboardCache( $dashboard ),

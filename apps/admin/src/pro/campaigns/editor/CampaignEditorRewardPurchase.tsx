@@ -5,7 +5,7 @@ import { __, sprintf } from '@wordpress/i18n';
 
 import { ROUNDING, RoundingMode } from '@/lib/points-math/points-math';
 import { usePurchaseCampaignsQuery } from '@/lib/queries/campaign.queries';
-import { resolvePurchaseMode, resolvePurchaseMultiplier } from '@/lib/schema/campaign.schema';
+import { findBuiltinCampaign, resolvePurchaseMode, resolvePurchaseMultiplier } from '@/lib/schema/campaign.schema';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { LookupMultiSelect } from '@/components/ui/custom/lookup-multi-select';
 import { Field, FieldContent, FieldDescription, FieldLabel, FieldTitle } from '@/components/ui/field';
@@ -14,7 +14,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Segmented, SegmentedItem } from '@/components/ui/segmented';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
-import { findBuiltinCampaign, givesLabel, isBuiltinCampaignActive } from '../campaign-labels';
+import { givesLabel, isBuiltinCampaignActive } from '../campaign-labels';
 import { CampaignFormValues, useCampaignEditorContext } from './campaign-editor.form';
 import { defaultPurchaseRate, multipliedRate, purchaseAdvancedPhrases } from './campaign-reward.copy';
 

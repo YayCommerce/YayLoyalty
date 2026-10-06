@@ -26,6 +26,7 @@ export { DesignPanelSection } from './design/DesignPanelSection';
 export { DesignTierSection } from './design/DesignTierSection';
 export { DesignTypographySection } from './design/DesignTypographySection';
 export { AdvancedFraudLimitsSection } from './settings/AdvancedFraudLimitsSection';
+export { RewardTable } from './rewards/RewardTable';
 
 /** Keeps the sentinel reachable code rather than a literal a minifier may discard. */
 export function proBundleMarker(): string {

@@ -77,7 +77,7 @@ export function DesignPanelSection() {
         <CardDescription>{PANEL_SECTION_DESCRIPTION()}</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <div className="grid gap-6">
           <Field>
             <FieldLabel>{PANEL_LAYOUT_LABEL()}</FieldLabel>
             <FieldContent>

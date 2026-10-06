@@ -31,17 +31,25 @@ $yayloyalty_is_open = ! empty( $view['is_open'] );
 >
     <button
         type="button"
-        class="yl-launcher-trigger yl:inline-flex yl:items-center yl:gap-2.5 yl:whitespace-nowrap yl:h-11 yl:rounded-lg yl:px-[18px] yl:bg-primary yl:text-primary-foreground yl:hover:bg-primary-accent yl:shadow-lg yl:text-sm yl:font-medium yl:cursor-pointer yl:transition-colors yl:outline-none yl:focus-visible:ring-[1.5px] yl:focus-visible:ring-ring yl:focus-visible:ring-offset-2"
+        class="yl-launcher-trigger yl:inline-flex yl:items-center yl:whitespace-nowrap yl:h-11 yl:rounded-lg yl:bg-primary yl:text-primary-foreground yl:hover:bg-primary-accent yl:shadow-lg yl:text-sm yl:font-medium yl:cursor-pointer yl:outline-none yl:focus-visible:ring-[1.5px] yl:focus-visible:ring-ring yl:focus-visible:ring-offset-2"
         aria-expanded="<?php echo $yayloyalty_is_open ? 'true' : 'false'; ?>"
         aria-controls="yayloyalty-launcher-panel"
         data-yl-open
+        <?php
+        // 'icon' is the collapsed look for good; only 'both' has a label to fold away on scroll.
+        if ( 'icon' === $yayloyalty_style ) {
+            echo 'data-collapsed';
+        } elseif ( 'both' === $yayloyalty_style ) {
+            echo 'data-yl-collapsible';
+        }
+        ?>
     >
         <?php if ( 'label' !== $yayloyalty_style ) : ?>
             <?php echo LauncherIcon::html( $yayloyalty_launcher['icon'], (int) $yayloyalty_launcher['icon_upload_id'] ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- built from fixed SVG strings and esc_url(). ?>
         <?php endif; ?>
-        <span class="yl-launcher-label<?php echo 'icon' === $yayloyalty_style ? ' yl:sr-only' : ''; ?>"><?php echo esc_html( $yayloyalty_text['launcher_label'] ); ?></span>
+        <span class="yl-launcher-label-wrap"><span class="yl-launcher-label"><?php echo esc_html( $yayloyalty_text['launcher_label'] ); ?></span></span>
         <?php if ( null !== $yayloyalty_member ) : ?>
-            <span class="yl-launcher-badge yl:inline-flex yl:items-center yl:justify-center yl:rounded-full yl:bg-primary-foreground yl:text-primary yl:h-[22px] yl:min-w-[52px] yl:px-2 yl:text-xs yl:font-semibold yl:tabular-nums">
+            <span class="yl-launcher-badge yl:inline-flex yl:items-center yl:justify-center yl:rounded-full yl:bg-primary-foreground yl:text-primary yl:h-[22px] yl:min-w-[22px] yl:px-1.5 yl:text-xs yl:font-semibold yl:tabular-nums">
                 <?php echo esc_html( LauncherCopy::points( $yayloyalty_member['balance'] ) ); ?>
                 <span class="yl:sr-only"><?php echo esc_html( SettingsHelper::points_label( $yayloyalty_member['balance'] ) ); ?></span>
             </span>

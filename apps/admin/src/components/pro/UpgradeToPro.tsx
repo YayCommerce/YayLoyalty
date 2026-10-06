@@ -1,6 +1,7 @@
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, InfoIcon } from 'lucide-react';
 import { __ } from '@wordpress/i18n';
 
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { YayLoyaltyToolTip } from '@/components/ui/custom/tooltip';
@@ -62,5 +63,20 @@ export function UpgradeToProOverlay() {
         </EmptyContent>
       </EmptyHeader>
     </Empty>
+  );
+}
+
+/** A Lite screen's closing strip: what Pro adds there, in that screen's words, plus an Upgrade link. */
+export function UpgradeToProBanner({ message }: { message: string }) {
+  return (
+    <Alert variant="outline">
+      <InfoIcon />
+      <AlertDescription className="flex-row items-center justify-between gap-3">
+        <span>{message}</span>
+        <Button variant="link" size="sm" className="h-auto shrink-0 p-0" onClick={() => window.open(yayLoyaltyProUrl)}>
+          {__('Upgrade', 'yayloyalty')}
+        </Button>
+      </AlertDescription>
+    </Alert>
   );
 }

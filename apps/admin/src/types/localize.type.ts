@@ -2,6 +2,7 @@ import type { CustomerBalanceRange, CustomerExpiringSoon, CustomerTier } from '@
 import { Design } from '@/lib/schema/design.schema';
 import { Settings } from '@/lib/schema/settings.schema';
 
+/** Mirrors LocalizeHelper::get_meta(), the source of truth. */
 export type Meta = {
   wpMeta: {
     siteUrl: string;
@@ -38,6 +39,8 @@ export type Meta = {
     countries: Record<string, string>;
     /** ISO 4217 code => name. */
     currencies: Record<string, string>;
+    /** WooCommerce → Settings → General → "Enable the use of coupon codes"; points redemption depends on it. */
+    coupons_enabled: boolean;
   };
 };
 

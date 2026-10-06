@@ -15,6 +15,7 @@ import {
   Campaign,
   CAMPAIGN_DISPLAY_STATUSES,
   CampaignDisplayStatus,
+  findBuiltinCampaign,
   LITE_CAMPAIGN_TRIGGERS,
   resolveCampaignDisplayStatus,
 } from '@/lib/schema/campaign.schema';
@@ -43,7 +44,6 @@ import { CampaignArchiveDialog, CampaignBulkArchiveDialog } from './archive/Camp
 import {
   CampaignGroupKey,
   conditionsLabel,
-  findBuiltinCampaign,
   givesLabel,
   scheduleLabel,
   statusLabel,
