@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { __, _n, sprintf } from '@wordpress/i18n';
 
+import { useCsvExport } from '@/hooks/useCsvExport';
 import { getApiErrorMessage, isAbortError } from '@/lib/api/api';
 import { useBulkAdjustPointsMutation } from '@/lib/queries/customer.queries';
 import type { AdjustPointsInput, CustomerListRow } from '@/lib/schema/customer.schema';
@@ -31,42 +32,28 @@ export function useCustomersBulkActions({
   selection: SelectionState;
   setSelection: (selection: SelectionState) => void;
 }) {
-  // Aborts a multi-page fetch if the owner unmounts mid-request.
+  // Aborts Adjust points' multi-page fetch if the owner unmounts mid-request; useCsvExport() covers Export.
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     return () => abortRef.current?.abort();
   }, []);
 
-  async function resolveSelectedRows(): Promise<CustomerListRow[]> {
+  async function resolveSelectedRows(signal: AbortSignal): Promise<CustomerListRow[]> {
     if (isSelectionFullyLoaded(rows, selection)) {
       return resolveSelectedCustomers(rows, selection);
     }
 
-    const controller = new AbortController();
-    abortRef.current = controller;
-    const matching = await fetchAllMatchingCustomers(queryFilters, sort, controller.signal);
+    const matching = await fetchAllMatchingCustomers(queryFilters, sort, signal);
     return resolveSelectedCustomers(matching, selection);
   }
 
-  const [isExporting, setIsExporting] = useState(false);
-
-  async function handleExport() {
-    setIsExporting(true);
-    try {
-      const selected = await resolveSelectedRows();
-      if (selected.length === 0) {
-        toast.error(__('No selected customers to export.', 'yayloyalty'));
-        return;
-      }
-      exportCustomersToCsv(selected);
-    } catch (error) {
-      if (isAbortError(error)) return;
-      toast.error(await getApiErrorMessage(error, __('Could not export the selected customers.', 'yayloyalty')));
-    } finally {
-      setIsExporting(false);
-    }
-  }
+  const { isExporting, start: handleExport } = useCsvExport({
+    fetchRows: resolveSelectedRows,
+    download: exportCustomersToCsv,
+    emptyMessage: () => __('No selected customers to export.', 'yayloyalty'),
+    errorFallback: () => __('Could not export the selected customers.', 'yayloyalty'),
+  });
 
   const [isAdjustDialogOpen, setIsAdjustDialogOpen] = useState(false);
   // Covers the resolve step too: isPending alone left a window where a second click
@@ -90,7 +77,9 @@ export function useCustomersBulkActions({
   async function handleAdjustSubmit(input: AdjustPointsInput, expectedCount?: number) {
     setIsAdjustSubmitting(true);
     try {
-      const selected = await resolveSelectedRows();
+      const controller = new AbortController();
+      abortRef.current = controller;
+      const selected = await resolveSelectedRows(controller.signal);
 
       if (selected.length === 0) {
         toast.error(__('No selected customers to adjust.', 'yayloyalty'));

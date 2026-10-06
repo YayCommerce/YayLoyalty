@@ -12,17 +12,17 @@ import { CustomersAdjustPointsDialog } from '../components/CustomersAdjustPoints
 import {
   ACTION_ADJUST_POINTS,
   ACTION_ASSIGN_TIER,
-  ACTION_EXPORT_LEDGER,
   ACTION_RESET_EXPIRY,
   DELETED_ACCOUNT_ACTION_REASON,
   NOT_AVAILABLE_YET_REASON,
   RESET_EXPIRY_NEEDS_POINTS_REASON,
 } from './customer-drawer.copy';
+import { CustomerDrawerExportLedgerButton } from './CustomerDrawerExportLedgerButton';
 
 /**
- * The drawer's actions. Adjust points is the one live action, and its mutation's invalidations refresh the drawer.
+ * The drawer's actions. Adjust points and Export ledger are live; Adjust points' invalidations refresh the drawer.
  * The others have no endpoint yet. One shared line explains why, since dead buttons with no text read as broken.
- * A deleted account's reason wins, then the non-positive balance one.
+ * A deleted account's reason wins, then the non-positive balance one. Export works for a deleted account too.
  */
 export function CustomerDrawerActions({ customer, isLoading }: { customer: Customer; isLoading: boolean }) {
   const [isAdjustOpen, setIsAdjustOpen] = useState(false);
@@ -49,9 +49,7 @@ export function CustomerDrawerActions({ customer, isLoading }: { customer: Custo
         <Button variant="outline" disabled>
           {ACTION_RESET_EXPIRY()}
         </Button>
-        <Button variant="outline" disabled>
-          {ACTION_EXPORT_LEDGER()}
-        </Button>
+        <CustomerDrawerExportLedgerButton userId={customer.user_id} />
         {IS_PRO_BUILD && (
           <Can cap={CAP.MANAGE_TIERS} disable>
             <Button variant="outline" disabled>

@@ -26,15 +26,16 @@ export async function getCustomer(userId: number): Promise<Customer> {
   return customerSchema.parse(await api.get(`customers/${userId}`).json());
 }
 
-export type CustomerLedgerParams = DrawerPageParams & { type?: LedgerFilterType };
+export type CustomerLedgerParams = DrawerPageParams & { type?: LedgerFilterType; order?: 'asc' | 'desc' };
 
 /** `GET /customers/{id}/ledger`. Parsed with `ledgerEnvelopeSchema`, not `parsePaginated()`, which would drop `type_counts`. */
-export async function getCustomerLedger(userId: number, params: CustomerLedgerParams = {}) {
+export async function getCustomerLedger(userId: number, params: CustomerLedgerParams = {}, signal?: AbortSignal) {
   const searchParams = toDrawerSearchParams(params);
 
   if (params.type && params.type !== 'all') searchParams.type = params.type;
+  if (params.order) searchParams.order = params.order;
 
-  const payload = await api.get(`customers/${userId}/ledger`, { searchParams }).json();
+  const payload = await api.get(`customers/${userId}/ledger`, { searchParams, signal }).json();
 
   return ledgerEnvelopeSchema.parse(payload);
 }

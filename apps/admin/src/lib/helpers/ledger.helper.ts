@@ -1,6 +1,6 @@
 import { __, sprintf } from '@wordpress/i18n';
 
-import type { LedgerEntry } from '@/lib/schema/ledger.schema';
+import type { LedgerEntry, LedgerType } from '@/lib/schema/ledger.schema';
 
 /** A human description for a ledger row. Built here, not stored, so system rows stay translatable. */
 export function describeLedgerEntry(entry: LedgerEntry): string {
@@ -68,6 +68,21 @@ function describeEarn(entry: LedgerEntry): string {
     default:
       return __('Points earned', 'yayloyalty');
   }
+}
+
+const LEDGER_TYPE_LABELS: Record<LedgerType, () => string> = {
+  earn: () => __('Earned', 'yayloyalty'),
+  redeem: () => __('Redeemed', 'yayloyalty'),
+  adjust: () => __('Adjusted', 'yayloyalty'),
+  expire: () => __('Expired', 'yayloyalty'),
+  refund_earn: () => __('Earn refunded', 'yayloyalty'),
+  refund_redeem: () => __('Redemption refunded', 'yayloyalty'),
+  correction: () => __('Correction', 'yayloyalty'),
+};
+
+/** The display name of a ledger type: the Ledger tab's filter and the ledger CSV's Type column. */
+export function ledgerTypeLabel(type: LedgerType): string {
+  return LEDGER_TYPE_LABELS[type]();
 }
 
 /** Signed display, so a clawback reads as -30 rather than 30. */

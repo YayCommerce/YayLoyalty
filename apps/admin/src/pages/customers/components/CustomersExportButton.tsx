@@ -1,11 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
-import { toast } from 'sonner';
 import { __ } from '@wordpress/i18n';
 
+import { useCsvExport } from '@/hooks/useCsvExport';
 import { Can, CAP } from '@/lib/access';
-import { getApiErrorMessage, isAbortError } from '@/lib/api/api';
 import { Button } from '@/components/ui/button';
 import { exportCustomersToCsv } from '../customers-page.export';
+import { EXPORTING_LABEL } from '../customers-page.export.copy';
 import type { RowFilters } from '../customers-page.filter-rows';
 import { fetchAllMatchingCustomers } from '../customers-page.matching-customers';
 import type { SortDirection, SortKey } from '../customers-page.sort-rows';
@@ -20,37 +19,17 @@ export function CustomersExportButton({
   queryFilters: RowFilters;
   sort: { by: SortKey; dir: SortDirection };
 }) {
-  const [isExporting, setIsExporting] = useState(false);
-  // Aborts a multi-page fetch if this unmounts mid-export.
-  const abortRef = useRef<AbortController | null>(null);
-
-  useEffect(() => {
-    return () => abortRef.current?.abort();
-  }, []);
-
-  async function handleExport() {
-    setIsExporting(true);
-    const controller = new AbortController();
-    abortRef.current = controller;
-    try {
-      const rows = await fetchAllMatchingCustomers(queryFilters, sort, controller.signal);
-      if (rows.length === 0) {
-        toast.error(__('No customers to export.', 'yayloyalty'));
-        return;
-      }
-      exportCustomersToCsv(rows);
-    } catch (error) {
-      if (isAbortError(error)) return;
-      toast.error(await getApiErrorMessage(error, __('Could not export customers.', 'yayloyalty')));
-    } finally {
-      setIsExporting(false);
-    }
-  }
+  const { isExporting, start } = useCsvExport({
+    fetchRows: (signal) => fetchAllMatchingCustomers(queryFilters, sort, signal),
+    download: exportCustomersToCsv,
+    emptyMessage: () => __('No customers to export.', 'yayloyalty'),
+    errorFallback: () => __('Could not export customers.', 'yayloyalty'),
+  });
 
   return (
     <Can cap={CAP.VIEW} disable>
-      <Button variant="outline" size="sm" disabled={disabled || isExporting} onClick={handleExport}>
-        {isExporting ? __('Exporting…', 'yayloyalty') : __('Export CSV', 'yayloyalty')}
+      <Button variant="outline" size="sm" disabled={disabled || isExporting} onClick={start}>
+        {isExporting ? EXPORTING_LABEL() : __('Export CSV', 'yayloyalty')}
       </Button>
     </Can>
   );
