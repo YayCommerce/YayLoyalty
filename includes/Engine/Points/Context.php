@@ -7,6 +7,7 @@ defined( 'ABSPATH' ) || exit;
  * Everything the engine may know about the event. Immutable and WordPress-free, so the engine is
  * testable without a bootstrap. No actor_id: who is logged in is a ledger argument, not a scoring input.
  * `extra` holds one-trigger facts. A fact that two triggers need becomes a typed property.
+ * An advertising Context (advert()) stands for "any shopper, no event"; only PointsEngine::advertised() takes one.
  */
 final class Context {
 
@@ -63,6 +64,9 @@ final class Context {
     /** @var CustomerFacts|\Closure|null A Closure is the loader, replaced by its result on first read. */
     private $customer_facts;
 
+    /** @var bool Set only by advert(). */
+    private $advert = false;
+
     /**
      * @param ContextLineItem[]    $line_items
      * @param string[]             $coupon_codes
@@ -108,6 +112,23 @@ final class Context {
         $this->points_earned_today  = max( 0, $points_earned_today );
         $this->extra                = $extra;
         $this->customer_facts       = $customer_facts;
+    }
+
+    /**
+     * A guest with an empty cart and no event, for advertising what a campaign pays.
+     *
+     * @param string $at UTC MySQL datetime the campaigns are live at.
+     */
+    public static function advert( string $at, string $currency, float $base_rate ): self {
+        $ctx         = new self( null, $at, $currency, $base_rate, [], 0.0, 0.0, 0.0, [], [] );
+        $ctx->advert = true;
+
+        return $ctx;
+    }
+
+    /** Whether this stands for no event: the engine then skips the checks that need one. */
+    public function is_advert(): bool {
+        return $this->advert;
     }
 
     public function get_user_id(): ?int {

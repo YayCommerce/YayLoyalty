@@ -79,6 +79,18 @@ final class PurchaseHandler implements TriggerHandler {
         return new Breakdown( $points, $base, $rate, $raw, $rounding );
     }
 
+    /** Points per currency unit; null for a multiplier whose default is_eligible() would refuse. */
+    public function advertised_value( Campaign $campaign ): ?float {
+        $config  = $campaign->get_config();
+        $default = $this->campaigns->find_default_purchase();
+
+        if ( self::is_multiplier( $config ) && null === self::multiplier_default( $default ) ) {
+            return null;
+        }
+
+        return self::rate_of( $config, $default );
+    }
+
     public function reference_type(): string {
         return ReferenceType::ORDER;
     }
