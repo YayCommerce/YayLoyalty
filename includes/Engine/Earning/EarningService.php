@@ -32,7 +32,7 @@ final class EarningService {
     /** Skip reason when the award filter lowered the points to 0. */
     public const REASON_LIMIT_REACHED = 'earning_limit_reached';
 
-    /** Fired once the award filter's cut is final, with ( Outcome $outcome, string $trigger, Context $ctx ). */
+    /** Fired once the award filter's partial cut is final, with ( Outcome $outcome, string $trigger, Context $ctx ). */
     public const LIMITED_ACTION = 'yayloyalty_award_limited';
 
     private PointsEngine $engine;
@@ -159,11 +159,9 @@ final class EarningService {
             }
         );
 
+        // A limit that refused the whole award is not announced: no activity row for an order that earned nothing.
         if ( Outcome::SKIPPED === $outcome->get_status() ) {
-            $skipped = Outcome::skipped( $outcome->get_reason(), $result );
-            self::announce_limited( $skipped, $trigger, $ctx );
-
-            return $skipped;
+            return Outcome::skipped( $outcome->get_reason(), $result );
         }
 
         if ( Outcome::AWARDED !== $outcome->get_status() ) {
@@ -192,9 +190,9 @@ final class EarningService {
     }
 
     /**
-     * Announces, after commit, an award the filter cut: awarded below its
-     * evaluation, or skipped( REASON_LIMIT_REACHED ). Never for a duplicate,
-     * which LedgerService answers before the filter runs.
+     * Announces, after commit, an award the filter cut but still paid:
+     * awarded below its evaluation. Never for skipped( REASON_LIMIT_REACHED )
+     * or a duplicate, which LedgerService answers before the filter runs.
      */
     private static function announce_limited( Outcome $outcome, string $trigger, Context $ctx ): void {
         Transaction::after_commit(
@@ -203,7 +201,7 @@ final class EarningService {
                  * Fires once an earning limit's cut is final, for the activity log.
                  * Internal seam, not a public API.
                  *
-                 * @param Outcome $outcome awarded (entry below get_evaluation()) or skipped( earning_limit_reached ).
+                 * @param Outcome $outcome awarded, entry below get_evaluation().
                  * @param string  $trigger CampaignTrigger value.
                  * @param Context $ctx
                  */
