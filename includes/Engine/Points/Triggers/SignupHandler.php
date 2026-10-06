@@ -10,9 +10,7 @@ use YayLoyalty\Models\Campaign;
 
 defined( 'ABSPATH' ) || exit;
 
-/**
- * Flat points for registering. No base, no gates.
- */
+/** Flat points for registering. No base, no gates. */
 final class SignupHandler implements TriggerHandler {
 
     public function trigger(): string {
@@ -24,7 +22,7 @@ final class SignupHandler implements TriggerHandler {
     }
 
     public function compute_points( Campaign $campaign, Context $ctx ): Breakdown {
-        return Breakdown::flat( (int) ( $campaign->get_config()['points'] ?? 0 ) );
+        return Breakdown::flat( $campaign->flat_points() );
     }
 
     public function reference_type(): string {

@@ -7,11 +7,7 @@ import { BulkActionsMenu } from '@/components/ui/custom/bulk-actions-menu';
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Separator } from '@/components/ui/separator';
 
-/**
- * YayUiKits' BulkActionBox pattern. "Assign tier" and "Reset expiry" are not
- * offered: neither has an endpoint yet, and a dead control is worse than
- * none. "Select all matching" is folded into the same box so selection stays one row.
- */
+/** "Assign tier" and "Reset expiry" are left out until they have endpoints: a dead control is worse than none. */
 export function CustomersBulkActionBar({
   count,
   onClear,
@@ -46,7 +42,11 @@ export function CustomersBulkActionBar({
         <>
           <Separator orientation="vertical" className="h-5!" />
           <Button variant="link" size="sm" className="font-normal" onClick={onSelectAllMatching}>
-            {sprintf(__('Select all %d matching these filters', 'yayloyalty'), selectAllCount)}
+            {sprintf(
+              /* translators: %d: number of customers matching the current filters. */
+              __('Select all %d matching these filters', 'yayloyalty'),
+              selectAllCount,
+            )}
           </Button>
         </>
       )}

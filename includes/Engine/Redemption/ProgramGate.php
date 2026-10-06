@@ -20,7 +20,7 @@ final class ProgramGate implements Gate {
     public const REASON_COUPONS_DISABLED = 'coupons_disabled';
 
     public function check( Reward $reward, Context $ctx ): ?string { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(F08): null user_id → REASON_NO_CUSTOMER; SettingsHelper general.enabled false → REASON_PROGRAM_PAUSED; wc_coupons_enabled() false → REASON_COUPONS_DISABLED; else null.
+        // TODO(redemption): null user_id → REASON_NO_CUSTOMER; SettingsHelper general.enabled false → REASON_PROGRAM_PAUSED; wc_coupons_enabled() false → REASON_COUPONS_DISABLED; else null.
         throw new \RuntimeException( 'Not implemented' );
     }
 }

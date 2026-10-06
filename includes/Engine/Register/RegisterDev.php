@@ -5,17 +5,14 @@ use YayLoyalty\Utils\SingletonTrait;
 use YayLoyalty\Engine\Register\ScriptName;
 
 /**
- * Register in Development Mode — loads the admin app straight from the Vite
- * dev server so saving a file hot-reloads the WP admin screen (React Fast
- * Refresh). Port must match DEV_PORT in apps/admin/vite.config.ts.
- * Will get deleted in production builds.
+ * Loads the admin app from the Vite dev server, so saving a file hot-reloads the admin screen.
+ * The port must match DEV_PORT in apps/admin/vite.config.ts. Release builds delete this file.
  */
 class RegisterDev {
     use SingletonTrait;
 
     public const DEV_SERVER = 'http://localhost:3030';
 
-    /** Hooks Initialization */
     protected function __construct() {
         add_action( 'admin_footer', [ $this, 'render_dev_refresh' ], 5 );
 

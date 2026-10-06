@@ -4,21 +4,32 @@ import { Badge } from '@/components/ui/badge';
 import { TableCell, TableHead, TableRow } from '@/components/ui/table';
 import type { ActivityRow } from '../customer-drawer.activity-rows';
 import { COLUMN_BY, COLUMN_EVENT, STAFF_ONLY_LABEL } from '../customer-drawer.activity.copy';
-import { COLUMN_DATE, EMPTY_ACTIVITY_BODY, EMPTY_ACTIVITY_TITLE } from '../customer-drawer.copy';
+import {
+  COLUMN_DATE,
+  EMPTY_ACTIVITY_BODY,
+  EMPTY_ACTIVITY_TITLE,
+  EMPTY_FILTERED_BODY,
+  EMPTY_FILTERED_TITLE,
+} from '../customer-drawer.copy';
 import { DRAWER_ROW_CLASS, drawerCell, DrawerTable } from './DrawerTable';
 
-/**
- * Date+time / Event (title + sub-line) / By, with the `STAFF ONLY` badge on
- * the two note-carrying event types and an envelope glyph on email rows (3d).
- */
-export function ActivityLogTabRows({ rows, isLoading }: { rows: ActivityRow[]; isLoading: boolean }) {
+/** Activity rows, with a STAFF ONLY badge on rows that quote an admin note and an envelope on email rows. */
+export function ActivityLogTabRows({
+  rows,
+  isLoading,
+  isFiltered,
+}: {
+  rows: ActivityRow[];
+  isLoading: boolean;
+  isFiltered: boolean;
+}) {
   return (
     <DrawerTable
       columnCount={3}
       isLoading={isLoading}
       isEmpty={rows.length === 0}
-      emptyTitle={EMPTY_ACTIVITY_TITLE()}
-      emptyBody={EMPTY_ACTIVITY_BODY()}
+      emptyTitle={isFiltered ? EMPTY_FILTERED_TITLE() : EMPTY_ACTIVITY_TITLE()}
+      emptyBody={isFiltered ? EMPTY_FILTERED_BODY() : EMPTY_ACTIVITY_BODY()}
       head={
         <TableRow>
           <TableHead>{COLUMN_DATE()}</TableHead>

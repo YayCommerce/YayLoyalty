@@ -1,8 +1,15 @@
 import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { formatStoredDate, parseWPCurrency } from '@/lib/helpers/format.helper';
-import { formatPoints } from '@/lib/helpers/points.helper';
-import { CatalogRewardType, claimsPerCustomer, normalizeRewardConditions, Reward } from '@/lib/schema/reward.schema';
+import { formatPoints, pointsPhrase, shortPoints } from '@/lib/helpers/points.helper';
+import { flexibleDiscountSubtitle, numberConfig } from '@/lib/helpers/reward.helper';
+import {
+  CatalogRewardType,
+  claimsPerCustomer,
+  normalizeRewardConditions,
+  resolveRewardDisplayStatus,
+  Reward,
+} from '@/lib/schema/reward.schema';
 
 /** Reward presentation strings and derived facts; the wire carries none of this — same split as campaign-labels.ts. */
 
@@ -30,12 +37,6 @@ export function resolveRewardsScreen(rewards: Reward[]): RewardsScreen {
     archivedRows: rewards.filter((reward) => reward.status === 'archived'),
     isInitCase: catalogRows.length === 0,
   };
-}
-
-function numberConfig(config: Reward['config'], key: string): number | null {
-  const value = config[key];
-
-  return typeof value === 'number' ? value : null;
 }
 
 export function typeLabel(type: Reward['type']): string {
@@ -112,7 +113,7 @@ export function templateExample(type: CatalogRewardType): string {
 /** The line under a reward's name: what redeeming it does, derived from type and config — there is no stored description column. */
 export function rewardSubtitle(reward: Reward): string {
   if (reward.type === 'flexible_discount') {
-    return __('The customer chooses how many points to use at checkout', 'yayloyalty');
+    return flexibleDiscountSubtitle();
   }
 
   if (reward.type === 'free_product') {
@@ -138,8 +139,7 @@ export function costLabel(reward: Reward): string {
     return __('any', 'yayloyalty');
   }
 
-  /* translators: %s: point cost, formatted. */
-  return sprintf(__('%s pts', 'yayloyalty'), formatPoints(reward.cost_points));
+  return shortPoints(reward.cost_points);
 }
 
 /** "once per customer" (redemption_count lt 1), "up to %d per customer" for a higher cap. Only condition this build renders a phrase for; unknown types are silently skipped. */
@@ -164,8 +164,13 @@ function flexibleDiscountAvailability(config: Reward['config']): string {
   const minPoints = numberConfig(config, 'min_points');
 
   if (minPoints !== null) {
-    /* translators: %s: minimum points required, formatted. */
-    parts.push(sprintf(__('%s pts minimum', 'yayloyalty'), formatPoints(minPoints)));
+    parts.push(
+      sprintf(
+        /* translators: %s: minimum points required, formatted. */
+        _n('%s pt minimum', '%s pts minimum', minPoints, 'yayloyalty'),
+        formatPoints(minPoints),
+      ),
+    );
   }
 
   const maxPercent = numberConfig(config, 'max_percent_of_subtotal');
@@ -209,7 +214,11 @@ export function availabilityLabel(reward: Reward): string {
   return parts.join(' · ');
 }
 
-/** starts_at/ends_at as a date range; either side may be open. ends_at is exclusive, but the day it renders is the last day the reward is live, so no adjustment is shown. */
+/**
+ * starts_at/ends_at as a date range; either side may be open. Not campaign-labels' scheduleLabel: this sits
+ * lowercase mid-phrase, and the range stays translatable. ends_at is exclusive, but the day it renders is the
+ * last day the reward is live, so no adjustment is shown.
+ */
 function scheduleWindowLabel(startsAt: string | null, endsAt: string | null): string {
   if (startsAt && endsAt) {
     /* translators: 1: start date; 2: end date. */
@@ -248,4 +257,28 @@ export function headerSubtitle(screen: RewardsScreen): { count: string; detail: 
     ),
     detail: __('Drag to reorder — this is the order customers see.', 'yayloyalty'),
   };
+}
+
+/** The init-case notice, from the built-in's own status and minimum so it never contradicts the reward. */
+export function sliderLiveLabel(screen: RewardsScreen): string {
+  const builtin = screen.builtin;
+
+  if (!builtin || resolveRewardDisplayStatus(builtin.status, builtin.starts_at, builtin.ends_at) !== 'active') {
+    return __('The slider is off, so customers cannot spend points at checkout yet.', 'yayloyalty');
+  }
+
+  const minPoints = numberConfig(builtin.config, 'min_points');
+
+  if (!minPoints) {
+    return __('The slider is live at checkout, and the first redemption will fill the log.', 'yayloyalty');
+  }
+
+  return sprintf(
+    /* translators: %s: the minimum points needed to use the slider, e.g. "100 points". */
+    __(
+      'The slider is live at checkout. Customers need %s before they can use it, and the first redemption will fill the log.',
+      'yayloyalty',
+    ),
+    pointsPhrase(minPoints),
+  );
 }

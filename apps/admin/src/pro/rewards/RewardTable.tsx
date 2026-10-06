@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { closestCenter, DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -39,6 +39,7 @@ import {
   resolveRewardsScreen,
   RewardsScreen,
   rewardSubtitle,
+  sliderLiveLabel,
   typeLabel,
 } from './reward-labels';
 import { RewardCatalogEmptyState, RewardCatalogTemplateCards } from './RewardCatalogEmptyState';
@@ -53,18 +54,15 @@ export function RewardTable() {
   const navigate = useNavigate();
 
   const { data, isPending, isError } = useRewardsQuery({ perPage: 100 });
-  const isReady = !isPending && !isError;
+  const ready = !isPending && !isError;
 
   const reorderMutation = useReorderRewardsMutation();
 
-  // Shows a drop at once while its save is in flight; every refetch replaces it with the stored order.
-  const [orderedRows, setOrderedRows] = useState<Reward[]>([]);
+  // Shows a drop at once while its save is in flight. Ignored once the query's own data changes,
+  // so every refetch replaces it with the stored order.
+  const [override, setOverride] = useState<{ source: typeof data; rows: Reward[] }>();
 
-  useEffect(() => {
-    setOrderedRows(data?.data ?? []);
-  }, [data]);
-
-  const screen = resolveRewardsScreen(orderedRows);
+  const screen = resolveRewardsScreen(override && override.source === data ? override.rows : (data?.data ?? []));
 
   const [view, setView] = useState<'catalog' | 'archived'>('catalog');
   // Falls back on its own once the last archived row is restored or deleted.
@@ -91,7 +89,7 @@ export function RewardTable() {
 
     // Moved within screen.rows, the list the indexes came from; the raw list still holds archived rows.
     const nextRows = arrayMove(screen.rows, fromIndex, toIndex);
-    setOrderedRows(nextRows);
+    setOverride({ source: data, rows: nextRows });
     reorderMutation.mutate(
       nextRows.map((row) => row.id),
       {
@@ -116,7 +114,7 @@ export function RewardTable() {
             </div>
           </div>
 
-          {isReady && !showArchived && (
+          {ready && !showArchived && (
             <Alert variant="outline" className={screen.isInitCase ? 'gap-y-2' : undefined}>
               <InfoIcon />
               <AlertDescription
@@ -124,12 +122,7 @@ export function RewardTable() {
               >
                 {screen.isInitCase ? (
                   <>
-                    <span>
-                      {__(
-                        'The slider is live at checkout. Customers need 100 points before they can use it, and the first redemption will fill the log.',
-                        'yayloyalty',
-                      )}
-                    </span>
+                    <span>{sliderLiveLabel(screen)}</span>
                     <Button
                       variant="primary-outline-fill"
                       size="sm"
@@ -153,7 +146,7 @@ export function RewardTable() {
 
           {isPending && <RewardTableSkeleton />}
 
-          {isReady && (
+          {ready && (
             <div className="overflow-hidden rounded-lg border">
               <div className="overflow-x-auto">
                 {/* Outside <Table>: DndContext renders hidden screen-reader <div>s, invalid inside <tbody>. */}
@@ -187,7 +180,7 @@ export function RewardTable() {
             </div>
           )}
 
-          {isReady && !showArchived && screen.isInitCase && (
+          {ready && !showArchived && screen.isInitCase && (
             <>
               <RewardCatalogEmptyState />
               <RewardCatalogTemplateCards />
@@ -196,7 +189,7 @@ export function RewardTable() {
         </CardContent>
       </Card>
 
-      {isReady && !showArchived && !screen.isInitCase && <RewardInfoCards />}
+      {ready && !showArchived && !screen.isInitCase && <RewardInfoCards />}
 
       {archiveTarget && (
         <RewardArchiveDialog

@@ -66,7 +66,7 @@ export default function Footer({
 
   return (
     <>
-      {/* Invisible container to measure */}
+      {/* Invisible; measured to size the fixed footer below. */}
       <div ref={containerRef} className="pointer-events-none absolute inset-0" />
 
       <footer
@@ -78,7 +78,6 @@ export default function Footer({
           width: `${containerRect.width}px`,
         }}
       >
-        {/* breadcrumb */}
         <Breadcrumb>
           <BreadcrumbList className="text-xs">
             <BreadcrumbItem>
@@ -122,7 +121,6 @@ export default function Footer({
           </BreadcrumbList>
         </Breadcrumb>
 
-        {/* review text */}
         {!hasReviewed ? (
           <p className="text-center text-xs">
             {createInterpolateElement(

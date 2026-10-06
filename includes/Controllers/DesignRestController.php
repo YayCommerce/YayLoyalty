@@ -2,15 +2,16 @@
 namespace YayLoyalty\Controllers;
 
 use YayLoyalty\Access\Capabilities;
+use YayLoyalty\Engine\Storefront\LauncherPreview;
 use YayLoyalty\Helpers\DesignHelper;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
- * GET/POST /design and POST /design/reset.
+ * GET/POST /design, POST /design/reset and POST /design/preview.
  *
- * No get_item_schema(): the whitelist lives in DesignSchema::schema(), following the SettingsRestController
- * sibling rather than §9's per-resource rule — one whitelist for a single-option resource, not two.
+ * No get_item_schema(): the whitelist lives in DesignSchema::schema(), and a single-option resource
+ * needs one whitelist, not two.
  */
 class DesignRestController extends AbstractRestController {
 
@@ -45,6 +46,17 @@ class DesignRestController extends AbstractRestController {
                 'permission_callback' => $this->requires( Capabilities::MANAGE_SETTINGS ),
             ]
         );
+
+        // POST although it saves nothing: the unsaved design is too large for a query string.
+        register_rest_route(
+            self::REST_NAMESPACE,
+            '/design/preview',
+            [
+                'methods'             => \WP_REST_Server::CREATABLE,
+                'callback'            => fn( $request ) => $this->exec_read( [ $this, 'preview_design' ], $request ),
+                'permission_callback' => $this->requires( Capabilities::MANAGE_SETTINGS ),
+            ]
+        );
     }
 
     public function get_design( \WP_REST_Request $request ) {
@@ -59,6 +71,22 @@ class DesignRestController extends AbstractRestController {
         }
 
         return DesignHelper::update_design( $design );
+    }
+
+    /**
+     * The storefront launcher drawn with the unsaved design, as two pages: the button alone and the open panel.
+     * `viewer` is `guest` for the signed-out panel; anything else shows the sample member.
+     *
+     * @return array{collapsed: string, expanded: string}|\WP_Error
+     */
+    public function preview_design( \WP_REST_Request $request ) {
+        $design = $request->get_param( 'design' );
+
+        if ( ! is_array( $design ) ) {
+            return $this->error_invalid_arguments();
+        }
+
+        return LauncherPreview::documents( DesignHelper::with_unsaved( $design ), 'guest' !== $request->get_param( 'viewer' ) );
     }
 
     /** An unknown group is not an error: DesignHelper::reset() changes nothing and returns the stored design. */

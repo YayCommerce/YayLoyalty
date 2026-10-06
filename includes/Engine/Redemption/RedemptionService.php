@@ -50,16 +50,22 @@ final class RedemptionService {
         $this->writer   = $writer;
     }
 
+    /** Whether shoppers can spend points at checkout; the launcher and the points earned email show money values only when it is true. */
+    public static function is_available(): bool {
+        // TODO(redemption): return true once checkout redeems the reward.
+        return false;
+    }
+
     /**
      * Composition root: one Quoter (the engine with the build's handlers;
      * gates ProgramGate, RewardGate, then whatever
      * `yayloyalty_redemption_gates` appends for Pro) shared with the writer,
      * the read-only context factory, and the writer — LedgerService's
-     * fourth construction site. Adapters and the coupon provider are
+     * fifth construction site. Adapters and the coupon provider are
      * registered by the caller (YayLoyalty::__construct()), not here.
      */
     public static function build(): self {
-        // TODO(F08): build the Quoter from the Lite registry's RewardEngine and the gate list (ProgramGate, RewardGate, plus the yayloyalty_redemption_gates filter); the ContextFactory over a CustomerRepository; a CommitWriter over a new LedgerService, the redemption and customer repositories, the same factory and the same Quoter; return the service with the RewardRepository and a SessionIntent.
+        // TODO(redemption): build the Quoter from the Lite registry's RewardEngine and the gate list (ProgramGate, RewardGate, plus the yayloyalty_redemption_gates filter); the ContextFactory over a CustomerRepository; a CommitWriter over a new LedgerService, the redemption and customer repositories, the same factory and the same Quoter; return the service with the RewardRepository and a SessionIntent.
         throw new \RuntimeException( 'Not implemented' );
     }
 
@@ -77,7 +83,7 @@ final class RedemptionService {
      * bit. Nothing in the session changes.
      */
     public function quote( \WC_Cart $cart, ?int $user_id ): Result { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(F08): look up the flexible reward (denied REASON_NO_REWARD when absent), build the Context from the cart, the user and the session intent, and return the Quoter's answer for them.
+        // TODO(redemption): look up the flexible reward (denied REASON_NO_REWARD when absent), build the Context from the cart, the user and the session intent, and return the Quoter's answer for them.
         throw new \RuntimeException( 'Not implemented' );
     }
 
@@ -90,7 +96,7 @@ final class RedemptionService {
      * checkout with it. Writes nothing.
      */
     public function checkout_error( \WC_Cart $cart, ?int $user_id ): ?string { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(F08): intent 0 → null; quote(); denied → reason; points < points_requested → bound_by; else null.
+        // TODO(redemption): intent 0 → null; quote(); denied → reason; points < points_requested → bound_by; else null.
         throw new \RuntimeException( 'Not implemented' );
     }
 
@@ -114,13 +120,13 @@ final class RedemptionService {
      * @throws \YayLoyalty\Database\QueryException When a write other than a duplicate fails (rolled back).
      */
     public function commit( \WC_Order $order ): Outcome { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(F08): no coupon line → skipped( no_intent ); reward = flexible_reward() or skipped( no_reward ); outcome = writer->commit( order, reward ); intent->clear(); redeemed → do_action( yayloyalty_points_redeemed, outcome, order ); return outcome.
+        // TODO(redemption): no coupon line → skipped( no_intent ); reward = flexible_reward() or skipped( no_reward ); outcome = writer->commit( order, reward ); intent->clear(); redeemed → do_action( yayloyalty_points_redeemed, outcome, order ); return outcome.
         throw new \RuntimeException( 'Not implemented' );
     }
 
     /** The seeded flexible reward (`cart-discount`); null when a merchant deleted it. Catalog rewards are the Pro seam, not this. */
     private function flexible_reward(): ?Reward {
-        // TODO(F08): look the reward up by the cart-discount slug through the repository and return it, null when absent.
+        // TODO(redemption): look the reward up by the cart-discount slug through the repository and return it, null when absent.
         throw new \RuntimeException( 'Not implemented' );
     }
 }

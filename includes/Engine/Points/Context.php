@@ -4,10 +4,9 @@ namespace YayLoyalty\Engine\Points;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Everything the engine may know about the event. Immutable, WordPress-free,
- * so the engine is testable without a bootstrap. No actor_id: who is logged
- * in is a ledger argument, not a scoring input. `extra` is for one-trigger
- * facts; anything two triggers need becomes a typed property.
+ * Everything the engine may know about the event. Immutable and WordPress-free, so the engine is
+ * testable without a bootstrap. No actor_id: who is logged in is a ledger argument, not a scoring input.
+ * `extra` holds one-trigger facts. A fact that two triggers need becomes a typed property.
  */
 final class Context {
 
@@ -185,9 +184,6 @@ final class Context {
         return $this->customer_facts;
     }
 
-    /**
-     * @return mixed
-     */
     public function get_extra( string $key, $fallback = null ) {
         return array_key_exists( $key, $this->extra ) ? $this->extra[ $key ] : $fallback;
     }

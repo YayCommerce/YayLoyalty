@@ -2,7 +2,10 @@ import { z } from 'zod';
 
 import { api } from '@/lib/api/api';
 
-/** Client for POST /campaigns/{id}/preview-conditions, mirroring CampaignPreviewRestController::preview(). */
+/**
+ * Mirrors YayLoyalty\Pro\Controllers\CampaignPreviewRestController::preview(), the source of truth.
+ * Client for POST /campaigns/{id}/preview-conditions.
+ */
 
 export const conditionResultSchema = z.object({
   type: z.string(),

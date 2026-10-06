@@ -4,10 +4,9 @@ namespace YayLoyalty\Utils;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Plugin logging, to WooCommerce → Status → Logs when it has loaded, else
- * error_log(). error() and warning() are always written; only debug() is
- * gated on WP_DEBUG, which production has off. $context is the reporting
- * class, used as the line's prefix.
+ * Plugin logging, to WooCommerce → Status → Logs once WooCommerce has loaded, else to error_log().
+ * error() and warning() are always written. Only debug() is gated on WP_DEBUG.
+ * $context is the reporting class, used as the line's prefix.
  */
 final class Log {
 
@@ -24,7 +23,7 @@ final class Log {
         self::write( 'warning', $context, $message );
     }
 
-    /** Diagnostic detail; silent unless WP_DEBUG, so safe on a hot path. */
+    /** Diagnostic detail. Silent unless WP_DEBUG, so safe on a hot path. */
     public static function debug( string $context, string $message ): void {
         if ( ! defined( 'WP_DEBUG' ) || ! WP_DEBUG ) {
             return;
@@ -33,9 +32,7 @@ final class Log {
         self::write( 'debug', $context, $message );
     }
 
-    /**
-     * @param string $level One of error|warning|debug.
-     */
+    /** @param string $level One of error|warning|debug. */
     private static function write( string $level, string $context, string $message ): void {
         $line = $context . ': ' . $message;
 
@@ -46,6 +43,6 @@ final class Log {
             return;
         }
 
-        error_log( '[' . self::SOURCE . '] ' . strtoupper( $level ) . ' ' . $line ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+        error_log( '[' . self::SOURCE . '] ' . strtoupper( $level ) . ' ' . $line ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- the fallback until WooCommerce's logger loads.
     }
 }

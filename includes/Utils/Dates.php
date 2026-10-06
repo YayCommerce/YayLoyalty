@@ -4,15 +4,14 @@ namespace YayLoyalty\Utils;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * UTC date handling. Every stored DATETIME is UTC; convert to the site zone
- * only for display. Never store current_time(): a site-time value surfaces
- * months later as an off-by-hours expiry.
+ * UTC date handling. Every stored DATETIME is UTC, converted to the site zone only for display.
+ * Never store current_time(): a site-time value surfaces months later as an off-by-hours expiry.
  */
 final class Dates {
 
     public const MYSQL_FORMAT = 'Y-m-d H:i:s';
 
-    /** MySQL's zero DATETIME, which WordPress stores for "no date"; strtotime() parses it, so it is checked by name. */
+    /** MySQL's zero DATETIME, which WordPress stores for "no date". strtotime() parses it, so it is checked by name. */
     public const ZERO = '0000-00-00 00:00:00';
 
     /** Now as a UTC MySQL DATETIME. */
@@ -52,21 +51,34 @@ final class Dates {
         return false === $date ? null : $date->setTimezone( wp_timezone() )->setTime( 0, 0 );
     }
 
-    /** For display only. */
+    /**
+     * UTC bound for site-timezone midnight of a `Y-m-d` calendar day, shifted
+     * by $modify (`'+1 day'` for an exclusive end). Wall-clock midnight, as
+     * site_day_start(). Null when $ymd is not a valid `Y-m-d`.
+     */
+    public static function site_day_to_utc( string $ymd, string $modify = '' ): ?string {
+        $start = \DateTimeImmutable::createFromFormat( '!Y-m-d', $ymd, wp_timezone() );
+
+        if ( false === $start ) {
+            return null;
+        }
+
+        return self::to_utc( '' === $modify ? $start : $start->modify( $modify ) );
+    }
+
+    /**
+     * A UTC DATETIME in the site's timezone, for display only. It goes through wp_date() so month and day
+     * names follow the site language. An unreadable value comes back unchanged.
+     */
     public static function to_site_tz( string $utc, ?string $format = null ): string {
         if ( null === $format || '' === $format ) {
             $format = self::MYSQL_FORMAT;
         }
 
-        $date = date_create( $utc, timezone_open( 'UTC' ) );
+        $timestamp = self::to_timestamp( $utc );
+        $formatted = 0 === $timestamp ? false : wp_date( $format, $timestamp );
 
-        if ( false === $date ) {
-            return $utc;
-        }
-
-        $date->setTimezone( wp_timezone() );
-
-        return $date->format( $format );
+        return false === $formatted ? $utc : $formatted;
     }
 
     public static function is_valid( ?string $utc ): bool {

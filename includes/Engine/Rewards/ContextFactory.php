@@ -30,7 +30,7 @@ final class ContextFactory {
      * Points\ContextFactory::customer_facts( user_id, at ).
      */
     public function from_cart( \WC_Cart $cart, ?int $user_id, ?int $points_requested ): Context { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(F08): balance = customers->find_by_user_id( user_id )?->get_balance() ?? 0; subtotal = cart->get_subtotal() + tax if prices incl. tax − (cart->get_discount_total() − our coupon's amount); currency = get_woocommerce_currency(); return new Context( …, Dates::now(), PointsContextFactory::customer_facts( user_id, at ) ).
+        // TODO(redemption): balance = the balance of customers->find_by_user_id( user_id ), 0 when there is no row; subtotal = cart->get_subtotal() + tax if prices incl. tax − (cart->get_discount_total() − our coupon's amount); currency = get_woocommerce_currency(); return new Context( …, Dates::now(), PointsContextFactory::customer_facts( user_id, at ) ).
         throw new \RuntimeException( 'Not implemented' );
     }
 
@@ -44,7 +44,7 @@ final class ContextFactory {
      * request, so the conversion is exact); at = the order's creation date.
      */
     public function from_order( \WC_Order $order, int $balance ): Context { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(F08): user_id from the order; subtotal from get_subtotal() minus every coupon item's discount except Points\Context::REDEEM_COUPON_CODE; points_requested = that coupon item's discount times the reward's points_per_currency_unit, rounded; currency get_currency(); at = get_date_created() UTC; facts as from_cart().
+        // TODO(redemption): user_id from the order; subtotal from get_subtotal() minus every coupon item's discount except Points\Context::REDEEM_COUPON_CODE; points_requested = that coupon item's discount times the reward's points_per_currency_unit, rounded; currency get_currency(); at = get_date_created() UTC; facts as from_cart().
         throw new \RuntimeException( 'Not implemented' );
     }
 }

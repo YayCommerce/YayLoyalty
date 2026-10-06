@@ -15,12 +15,9 @@ use YayLoyalty\Utils\Log;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Takes earned points back: a full clawback when an order is cancelled or a
- * paid review is removed, a proportional one per refund, and a restore when
- * a refund is deleted. Works per earn row, so each trigger an order paid for
- * is reversed against its own campaign. Every write is keyed, so a re-fired
- * hook is a duplicate. There is no re-award after a reversal: the earn key
- * is spent.
+ * Takes earned points back: in full when an order is cancelled or a paid review is removed,
+ * in proportion per refund, and restored when a refund is deleted. Works per earn row, so each
+ * trigger is reversed against its own campaign. There is no re-award after a reversal: the earn key is spent.
  */
 final class Reversal {
 
@@ -36,7 +33,7 @@ final class Reversal {
         $this->campaigns = $campaigns;
     }
 
-    /** Composition root; LedgerService's construction site for reversals. */
+    /** Composition root and a listed LedgerService construction site. */
     public static function build(): self {
         $ledger = new LedgerRepository();
 
@@ -87,9 +84,8 @@ final class Reversal {
     }
 
     /**
-     * The `refunded` status: a full reversal keyed on the order, but only when
-     * no refund object exists — then the order was marked refunded outside
-     * WooCommerce's refunds; otherwise the refund objects already drive it.
+     * The `refunded` status. Reverses in full, keyed on the order, only when no refund object exists:
+     * then the order was marked refunded outside WooCommerce's refunds. Otherwise the refunds drive it.
      *
      * @return Outcome[] One per earn row; none when refund objects exist.
      */

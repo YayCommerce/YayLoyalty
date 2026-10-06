@@ -1,6 +1,8 @@
 <?php
 namespace YayLoyalty\Engine\Emails;
 
+use YayLoyalty\Engine\Earning\EarningService;
+use YayLoyalty\Engine\Earning\Outcome;
 use YayLoyalty\Utils\SingletonTrait;
 
 defined( 'ABSPATH' ) || exit;
@@ -12,9 +14,63 @@ class Emails {
 
     public const GROUP_POINTS = 'yayloyalty_points';
 
+    /** The email action an award is relayed on. Its only argument is the ledger row id. */
+    public const POINTS_EARNED_ACTION = 'yayloyalty_points_earned_email';
+
     protected function __construct() {
         add_filter( 'woocommerce_email_classes', [ $this, 'add_classes' ] );
         add_filter( 'woocommerce_email_groups', [ $this, 'add_groups' ] );
+        add_filter( 'woocommerce_email_actions', [ $this, 'add_email_actions' ] );
+        add_action( EarningService::AWARDED_ACTION, [ $this, 'relay_award' ] );
+        add_filter( 'woocommerce_prepare_email_for_preview', [ $this, 'prepare_preview' ] );
+    }
+
+    /**
+     * WooCommerce builds the mailer before it fires {action}_notification, so each email's listener exists.
+     * No email class is named here: WooCommerce reads this list on init, before WC_Email loads.
+     *
+     * @param string[] $actions
+     * @return string[]
+     */
+    public function add_email_actions( array $actions ): array {
+        $actions[] = self::POINTS_EARNED_ACTION;
+
+        return $actions;
+    }
+
+    /**
+     * Passes an award to the Points earned email as its ledger row id: with deferred emails, WooCommerce
+     * before 10.8 serializes an action's arguments, and the award's Context may hold a Closure.
+     */
+    public function relay_award( Outcome $awarded ): void {
+        $entry = $awarded->get_entry();
+
+        if ( ! $entry || null === $entry->get_id() ) {
+            return;
+        }
+
+        /**
+         * Fires once per award the Points earned email should report. WooCommerce relays it to
+         * {action}_notification, at once or at the end of the request.
+         *
+         * @param int $entry_id The awarded ledger row.
+         */
+        do_action( self::POINTS_EARNED_ACTION, $entry->get_id() ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name; the sniff cannot read it.
+    }
+
+    /**
+     * Gives WooCommerce's settings preview loyalty sample data. Otherwise it renders a loyalty email
+     * around a dummy order, with {points} blank.
+     *
+     * @param \WC_Email $email
+     * @return \WC_Email
+     */
+    public function prepare_preview( $email ) {
+        if ( $email instanceof LoyaltyEmail ) {
+            $email->prepare_preview();
+        }
+
+        return $email;
     }
 
     /**

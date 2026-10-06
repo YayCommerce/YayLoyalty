@@ -9,10 +9,9 @@ use YayLoyalty\Utils\Json;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * A way to spend points. Same shape as Campaign: mutable, no service, its
- * invariants are validation. `conditions` are facts about the customer being
- * evaluated (e.g. redemption_count); `config` holds properties of the reward
- * itself (e.g. the global max_total cap). Only Installer writes rows so far.
+ * A way to spend points. Like Campaign, it is mutable, has no service, and its invariants are validation.
+ * `conditions` are facts about the customer being evaluated, such as redemption_count. `config` holds
+ * properties of the reward itself, such as the global max_total cap. Only Installer writes rows so far.
  */
 class Reward extends AbstractModel {
 
@@ -217,7 +216,7 @@ class Reward extends AbstractModel {
         return Status::is_live_at( $this->status, $this->starts_at, $this->ends_at, $at );
     }
 
-    /** The label to show: the stored status, or `scheduled` / `ended` derived from the date window when it is `active`. */
+    /** The label to show: the stored status, or `scheduled` / `ended` derived from the dates when `active`. */
     public function display_status( ?string $at = null ): string {
         return Status::resolve_display(
             $this->status,
@@ -228,11 +227,10 @@ class Reward extends AbstractModel {
     }
 
     /**
-     * Per-type config schema, key => spec: what `config` may hold and what
-     * config_is_valid() checks against. Lite declares flexible_discount; Pro
-     * adds its types through the filter. Spec types: bool, string,
-     * int|number|nullable_int|nullable_number [min, max], enum|enum_list
-     * [values], currency, product; `required => true` makes the key mandatory.
+     * Per-type config schema, key => spec: what `config` may hold and what config_is_valid() checks.
+     * Lite declares flexible_discount. Pro types add theirs through the filter.
+     * Spec types: bool, string, int|number|nullable_int|nullable_number [min, max], enum|enum_list [values],
+     * currency, product. `required => true` makes a key mandatory.
      *
      * @return array<string, array<string, array<string, mixed>>>
      */
@@ -271,7 +269,7 @@ class Reward extends AbstractModel {
                     'type'   => 'enum',
                     'values' => [ 'proportional', 'full', 'none' ],
                 ],
-                // Global redemption cap, null = unlimited. Stored from 1.0 although unenforced yet.
+                // Global redemption cap, null for unlimited. Stored, but nothing enforces it yet.
                 'max_total'                => [
                     'type' => 'nullable_number',
                     'min'  => 0,
@@ -314,10 +312,7 @@ class Reward extends AbstractModel {
         return true;
     }
 
-    /**
-     * @param mixed                $value
-     * @param array<string, mixed> $spec
-     */
+    /** @param array<string, mixed> $spec */
     private static function value_matches_spec( $value, array $spec ): bool {
         switch ( $spec['type'] ?? '' ) {
             case 'bool':
@@ -417,7 +412,10 @@ class Reward extends AbstractModel {
         return true;
     }
 
-    /** Drops config keys that do not belong to the type. A type with no schema is preserved wholesale: "unknown" must never mean "delete" on a downgrade. */
+    /**
+     * Drops config keys that do not belong to the type. A type with no schema is preserved wholesale:
+     * "unknown" must never mean "delete" on a downgrade.
+     */
     public static function validate_config( string $type, array $config ): array {
         $schema = self::config_schema()[ $type ] ?? null;
 
@@ -457,15 +455,15 @@ class Reward extends AbstractModel {
         }
     }
 
-    /** Whether a conditions list is acceptable to store. See RewardConditionSet. Not yet wired into a controller. */
+    /** Whether a conditions list is acceptable to store. No controller calls it yet. */
     public static function conditions_are_valid( array $conditions ): bool {
         return RewardConditionSet::is_valid( $conditions );
     }
 
     /**
-     * Whether cost_points fits the type: flexible_discount must be null (the
-     * customer picks the amount), every other type >= 1. A null cost on a
-     * coupon type would be a free redemption. Unknown types are accepted unjudged.
+     * Whether cost_points fits the type. flexible_discount must be null because the customer picks the amount.
+     * Every other type needs at least 1, since a null cost on a coupon type would be a free redemption.
+     * Unknown types are accepted as they are.
      */
     public static function cost_points_is_valid( string $type, ?int $cost_points ): bool {
         if ( ! RewardType::is_known( $type ) ) {
@@ -554,7 +552,7 @@ class Reward extends AbstractModel {
 
     /**
      * Sets the stored status and keeps archived_at in step. A built-in cannot
-     * be archived: DashboardRepository finds it by slug.
+     * be archived: RewardRepository finds it by slug.
      *
      * @throws \InvalidArgumentException When $status is unknown, or when archiving a built-in.
      */
@@ -588,7 +586,7 @@ class Reward extends AbstractModel {
         $this->config = self::validate_config( $this->type, $config );
     }
 
-    /** Normalises a conditions list (see RewardConditionSet) and stores it. Rejection is conditions_are_valid()'s job. */
+    /** Normalises a conditions list and stores it. Rejection is conditions_are_valid()'s job. */
     public function set_conditions( array $conditions ): void {
         $this->conditions = RewardConditionSet::normalize( $conditions );
     }

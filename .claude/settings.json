@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(composer lint *)",
+      "Bash(composer test)",
+      "Bash(pnpm --filter @yayloyalty/admin-page lint)",
+      "Bash(pnpm --filter @yayloyalty/admin-page test)",
+      "Bash(pnpm --filter @yayloyalty/admin-page exec tsc --noEmit)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(./scripts/run.sh backlog)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash",
+            "args": [
+              "${CLAUDE_PROJECT_DIR}/.claude/hooks/guard-generated-paths.sh"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "includeGitInstructions": false
+}

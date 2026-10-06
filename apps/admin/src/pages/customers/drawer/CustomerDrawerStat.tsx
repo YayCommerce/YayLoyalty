@@ -3,19 +3,8 @@ import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 /**
- * One stat cell: label above value, optional sub-line beneath. Pure
- * presentation — callers pass already-formatted strings (`formatPoints`,
- * never `formatCompactPoints`; figures are never abbreviated in this drawer).
- *
- * Borderless, exactly as 1e/1f/3c draw it: the stats are a bare grid of
- * label+value pairs, not cards. `size="lg"` is the two headline figures
- * (Balance, Pending); everything else is the smaller secondary size, padded
- * down a little so its baseline sits under the taller row. `muted` dims the
- * value only — Pending's figure is grey in every artboard so it reads as
- * subordinate to Balance sitting next to it.
- *
- * There is no negative-balance tint here: 5a carries that entirely on the
- * warning icon `CustomerDrawerStats` puts beside the figure.
+ * One stat cell: label, value and an optional sub-line. Callers pass formatted figures, never abbreviated ones.
+ * `size="lg"` is for the two headline figures. The smaller size is padded so its baseline sits under the taller row.
  */
 export function CustomerDrawerStat({
   label,

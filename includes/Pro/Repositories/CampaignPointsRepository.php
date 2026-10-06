@@ -8,11 +8,9 @@ use YayLoyalty\Utils\Table;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Per-campaign issuance reads over the ledger's campaign_id. Read-only
- * aggregate, not an AbstractRepository. Ids now line up with GET /campaigns
- * (both read real rows), unlike LedgerRepository::totals_by_campaign() this
- * class does not also need — it counts rows for the delete guard, this
- * ranks dashboard tiles by SUM(points) alone.
+ * Points issued per campaign, read from the ledger for the Pro dashboard and the performance chart.
+ * A read-only aggregate, so not an AbstractRepository. LedgerRepository::totals_by_campaign() counts
+ * rows for the delete guard; this ranks campaigns by SUM(points) alone.
  */
 class CampaignPointsRepository {
 
@@ -27,7 +25,7 @@ class CampaignPointsRepository {
         list( $issued, $types ) = LedgerRepository::issued_row_sql();
 
         // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $issued carries a "%s, %s" list; every value is bound.
-        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
                 'SELECT campaign_id, SUM(points) AS points FROM `' . esc_sql( Table::name( 'ledger' ) ) . "`
                  WHERE {$issued} AND campaign_id IS NOT NULL AND created_at >= %s AND created_at < %s
@@ -64,7 +62,7 @@ class CampaignPointsRepository {
         $ids_in                 = Sql::in_placeholders( $campaign_ids, '%d' );
 
         // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $issued / $ids_in carry placeholder lists; every value is bound.
-        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
                 'SELECT DATE(DATE_ADD(created_at, INTERVAL %d SECOND)) AS date, campaign_id, SUM(points) AS issued
                  FROM `' . esc_sql( Table::name( 'ledger' ) ) . "`

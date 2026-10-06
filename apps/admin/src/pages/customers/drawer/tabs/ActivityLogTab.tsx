@@ -24,13 +24,7 @@ const GROUP_LABELS: Record<ActivityGroup, () => string> = {
   emails: ACTIVITY_GROUP_EMAILS,
 };
 
-/**
- * Filters → rows → pager over `useDrawerTabQueryState`, the same shape as
- * `LedgerTab`. Paged rather than 3d's "Load more": a large store's activity
- * log would be unbrowsable with only a group filter, so this took the
- * ledger's full filter set and pager. Groups carry no counts and nothing
- * ever disables.
- */
+/** Filters, rows and pager, like LedgerTab. Paged with the full filter set: a large activity log is unbrowsable otherwise. */
 export function ActivityLogTab({ userId }: { userId: number }) {
   const state = useDrawerTabQueryState<ActivityGroup>('all');
   const query = useCustomerActivityQuery(userId, { ...state.pageParams, group: state.filter });
@@ -52,7 +46,7 @@ export function ActivityLogTab({ userId }: { userId: number }) {
         searchPlaceholder={ACTIVITY_SEARCH_PLACEHOLDER()}
       />
       <div className="overflow-x-auto rounded-md border">
-        <ActivityLogTabRows rows={rows} isLoading={query.isPending} />
+        <ActivityLogTabRows rows={rows} isLoading={query.isPending} isFiltered={state.isFiltered} />
       </div>
       <DrawerTabPager
         page={state.page}

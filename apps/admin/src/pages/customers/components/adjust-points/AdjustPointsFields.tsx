@@ -22,16 +22,9 @@ import {
 } from '../customers-adjust-points.form-state';
 
 /**
- * Result panel (normal / negative outcome / empty) + the typo guard.
- * Single-customer only — bulk has no per-customer record to compute a
- * result panel against.
- *
- * `showResultPanel` is false while the customer's *starting* balance is
- * already negative and this adjustment keeps it negative — that case has its
- * own panel (`AdjustPointsNegativeBalancePanel`) instead, so the two
- * don't render duplicate "after this adjustment" figures. The typo guard is
- * independent of that flag: a mistyped amount can happen regardless of
- * which starting-balance story is showing.
+ * The result panel and the typo guard, for a single customer only.
+ * `showResultPanel` is false while an already-negative balance stays negative:
+ * AdjustPointsNegativeBalancePanel shows those figures instead. The typo guard ignores that flag.
  */
 export function AdjustPointsFields({
   state,
@@ -59,10 +52,6 @@ export function AdjustPointsFields({
   const balanceAfter = newBalance(state, balance);
   const balanceAfterMoney = formatPointsAsMoney(balanceAfter, pointsPerCurrencyUnit);
   const isNegativeOutcome = balanceAfter < 0;
-  // Only the portion of a balance above 0 ever counts as liability
-  // (`liability_points()` sums `balance > 0`), so this is never the raw
-  // signed amount once either side of the adjustment is negative — see
-  // `liabilityDelta()`'s docblock.
   const delta = liabilityDelta(balance, balanceAfter);
   const deltaMoney = formatPointsAsMoney(Math.abs(delta), pointsPerCurrencyUnit);
 

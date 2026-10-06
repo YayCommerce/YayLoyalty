@@ -15,14 +15,6 @@ import type { badgeVariants } from '@/components/ui/badge';
 
 /** Campaign presentation strings derived from the real fields; the wire carries none. */
 
-/** The built-in (default) campaign for a trigger: what a non-built-in falls back to. undefined while the list loads. */
-export function findBuiltinCampaign<T extends Campaign>(
-  campaigns: T[] | undefined,
-  trigger: CampaignTrigger,
-): T | undefined {
-  return campaigns?.find((candidate) => candidate.is_builtin && candidate.trigger === trigger);
-}
-
 /** Whether a built-in still earns in place of what sits above it; mirrors the engine skipping any campaign not active (PurchaseHandler::is_eligible for a multiplier's default). */
 export function isBuiltinCampaignActive(campaign: Campaign | undefined): boolean {
   return campaign?.status === 'active';
@@ -64,7 +56,8 @@ export function triggerLabel(trigger: CampaignTrigger): string {
 export function givesLabel(trigger: CampaignTrigger, config: Record<string, unknown>): string {
   if (trigger === 'purchase' && config.mode === 'multiplier') {
     return sprintf(
-      /* translators: %s: the multiplier, e.g. "2". */ __('×%s points', 'yayloyalty'),
+      /* translators: %s: the multiplier, e.g. "2". */
+      __('×%s points', 'yayloyalty'),
       String(resolvePurchaseMultiplier(config)),
     );
   }
@@ -74,7 +67,11 @@ export function givesLabel(trigger: CampaignTrigger, config: Record<string, unkn
   }
 
   // Every other trigger's config carries a flat `points`.
-  return sprintf(/* translators: %s: points awarded. */ __('%s points', 'yayloyalty'), String(config.points ?? 0));
+  return sprintf(
+    /* translators: %s: points awarded. */
+    __('%s points', 'yayloyalty'),
+    String(config.points ?? 0),
+  );
 }
 
 export function conditionsLabel(conditions: unknown): string {
@@ -138,10 +135,18 @@ export function scheduleLabel(startsAt: string | null, endsAt: string | null): s
   }
 
   if (startsAt) {
-    return sprintf(/* translators: %s: a formatted date. */ __('From %s', 'yayloyalty'), parseWPDate(startsAt));
+    return sprintf(
+      /* translators: %s: a formatted date. */
+      __('From %s', 'yayloyalty'),
+      parseWPDate(startsAt),
+    );
   }
 
-  return sprintf(/* translators: %s: a formatted date. */ __('Until %s', 'yayloyalty'), parseWPDate(endsAt as string));
+  return sprintf(
+    /* translators: %s: a formatted date. */
+    __('Until %s', 'yayloyalty'),
+    parseWPDate(endsAt as string),
+  );
 }
 
 export function statusLabel(status: CampaignDisplayStatus): string {

@@ -20,19 +20,9 @@ import {
 } from './customer-drawer.copy';
 
 /**
- * Adjust points · Reset expiry · Export ledger · [Assign tier, Pro only].
- * Adjust points is the one live action — it reuses the existing bulk
- * dialog/mutation in its single-customer layout, which already invalidates detail,
- * ledger, activity and list on success (see `useAdjustPointsMutation`), so
- * the drawer's own stats refresh without any extra wiring here.
- *
- * The other three have no endpoint yet and are `disabled` — one shared line
- * beneath the row explains why, rather than four separate tooltips (a wall
- * of identical-looking dead buttons with no text reads as broken). Priority when more
- * than one reason could apply: a deleted account explains everything by
- * itself; otherwise a non-positive balance gets the more specific "needs
- * points to extend" line (it's really about Reset expiry, but doubles as
- * the row's explanation since nothing else needs a more specific one yet).
+ * The drawer's actions. Adjust points is the one live action, and its mutation's invalidations refresh the drawer.
+ * The others have no endpoint yet. One shared line explains why, since dead buttons with no text read as broken.
+ * A deleted account's reason wins, then the non-positive balance one.
  */
 export function CustomerDrawerActions({ customer, isLoading }: { customer: Customer; isLoading: boolean }) {
   const [isAdjustOpen, setIsAdjustOpen] = useState(false);

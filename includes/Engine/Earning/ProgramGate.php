@@ -7,10 +7,8 @@ use YayLoyalty\Helpers\SettingsHelper;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The Lite gate: is the program on, is there a customer, did they opt
- * out, is their role excluded. First failing rule wins, in that order.
- * Reads settings and user meta — the one place on the earning path that
- * may, because it is neither the calculation nor the write.
+ * Lite's gate, checked in order: program on, a customer, not opted out, role not excluded.
+ * The first failing rule wins. The one place on the earning path that reads settings and user meta.
  */
 final class ProgramGate implements Gate {
 
@@ -22,12 +20,17 @@ final class ProgramGate implements Gate {
     public const REASON_OPTED_OUT      = 'opted_out';
     public const REASON_EXCLUDED_ROLE  = 'excluded_role';
 
-    public function check( string $trigger, Context $ctx ): ?string { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- the rules apply to every trigger.
-        $general = SettingsHelper::get_settings()['general'];
+    /** Whether the program is on; the storefront launcher asks this for guests, who have no Context to check. */
+    public static function program_enabled(): bool {
+        return (bool) SettingsHelper::get_settings()['general']['enabled'];
+    }
 
-        if ( ! $general['enabled'] ) {
+    public function check( string $trigger, Context $ctx ): ?string { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- the rules apply to every trigger.
+        if ( ! self::program_enabled() ) {
             return self::REASON_PROGRAM_PAUSED;
         }
+
+        $general = SettingsHelper::get_settings()['general'];
 
         $user_id = $ctx->get_user_id();
 

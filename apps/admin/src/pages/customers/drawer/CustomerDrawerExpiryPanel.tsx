@@ -14,26 +14,11 @@ import {
   expiringReminderSentence,
 } from './customer-drawer.panels.copy';
 
-/**
- * 4b's warning banner + three disabled actions. Rendered only when
- * `customer.expiry` is non-null (always null today — no `lots` table,
- * docs/data-model/future-tables.md).
- *
- * "Reset expiry" reuses the SAME reason `CustomerDrawerActions.tsx` shows for
- * it in the main actions row (`NOT_AVAILABLE_YET_REASON`) — consistent with
- * that component rather than a second reason for one button.
- * Exempt/Send reminder are new actions with no endpoint anywhere yet, so
- * they get the same generic reason.
- */
+/** The expiry warning and three disabled actions, which share the main row's "not available yet" reason. */
 export function CustomerDrawerExpiryPanel({ customer, expiry }: { customer: Customer; expiry: DrawerExpiry }) {
   const expiresAt = utcToDate(expiry.expires_at);
   const daysRemaining = daysUntil(expiry.expires_at);
-  // `customer.balance` guarded against zero/negative — a customer can carry
-  // a negative balance, and this math must never divide by it even though
-  // `expiry` itself is null there today (defensive, not reachable yet). `null`
-  // (not a fabricated "0%") when it can't be honestly computed — printing
-  // zero would read as reassurance for what could be a majority of a
-  // non-positive balance.
+  // Null, not "0%", when the balance is not positive: zero would read as reassurance.
   const sharePercent =
     customer.balance > 0 ? String(Math.round((expiry.expiring_points / customer.balance) * 100)) : null;
   const money = formatPointsAsMoney(expiry.expiring_points, customer.points_per_currency_unit);
@@ -53,11 +38,7 @@ export function CustomerDrawerExpiryPanel({ customer, expiry }: { customer: Cust
           <p className="text-muted-foreground text-xs">
             {expiringBannerBody(daysRemaining, money ?? formatPoints(expiry.expiring_points), sharePercent)}
           </p>
-          {/* Both dates are required to state the schedule honestly — a real
-              `lots`-backed path could one day send `sent_at: null` ("not sent
-              yet"), and falling back to `expires_at` would print "the
-              reminder went out on the day the points expired", which is
-              wrong, not just imprecise. Skip the sentence rather than guess. */}
+          {/* Needs both dates: falling back to `expires_at` for a missing `sent_at` would state a wrong date. */}
           {expiry.reminders.sent_at && expiry.reminders.next_due_at && (
             <p className="text-muted-foreground text-xs">
               {expiringReminderSentence(

@@ -1,0 +1,35 @@
+{
+  "skill_name": "yaybrainstorming",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I want merchants to be able to schedule a discount rule to turn on and off automatically. Let's design it.",
+      "expected_output": "Explores the discount rule code and existing scheduling patterns first. Asks 2–3 related questions per message (purpose/success, then scope, then compatibility), waits between rounds, and does not ask what the codebase already answers. Proposes 2–3 approaches (e.g. WP-Cron vs Action Scheduler vs check-on-read) with trade-offs and a recommendation. Presents the design in sections with a check after each. Writes docs/specs/YYYY-MM-DD-scheduled-discount-rules-design.md following the template, with Status: proposed, exact option/hook names and testable acceptance criteria. Writes no source code. Ends by asking for review and naming /yayplan as the next step.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Add a 'Reset to defaults' button on the settings page.",
+      "expected_output": "Explores the settings page code, then either takes the fast path (a five-line doc with Status: proposed, in one message, with goal, out of scope such as license data, one acceptance criterion, the file and hook or REST route, and a verification step, followed by a request for approval) or, if the codebase leaves a real question open (which settings count as default), asks one short round first. Does not skip the doc because the change is small. Does not implement.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Let's think through customer-facing wishlists with email reminders and a merchant analytics dashboard.",
+      "expected_output": "Recognises three loosely coupled subsystems (wishlist storage/UI, reminder emails, analytics) and proposes splitting into separate design docs, or sequencing them with explicit interfaces, before clarifying. Clarifies the first one in batched rounds, asks about sibling-plugin overlap (email and analytics features that may already exist in the ecosystem) and shared-code impact. Produces at least the first design doc; later ones are listed as follow-ups, not silently dropped.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "Execute Task 1 of docs/plans/2026-10-01-scheduled-discount-rules.md.",
+      "expected_output": "Does not invoke yaybrainstorming. An approved plan already exists; the request is execution, which is out of scope for this skill.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "I want a 'copy to clipboard' button next to every coupon code in the admin coupons list. Write the implementation plan.",
+      "expected_output": "Does not invoke yaybrainstorming. The user asked for a plan, which yayplan writes even without a spec.",
+      "files": []
+    }
+  ]
+}

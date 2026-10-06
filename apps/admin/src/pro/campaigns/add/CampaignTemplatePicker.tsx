@@ -8,12 +8,9 @@ import PageLayout from '@/components/layout/PageLayout';
 import { CampaignTemplate, getCampaignTemplates } from './campaign-templates';
 
 /**
- * "Add a campaign" chooser: pick a template or start from scratch. Each
- * opens the builder in create mode via campaigns/new/:templateId. A static
- * catalog, so there is no loading or error state to render. No "Duplicate a
- * campaign" card — CampaignTable's
- * row menu offers that directly against a specific campaign, which this
- * page has no way to pick one from.
+ * "Add a campaign" chooser: a template, or "Start from scratch", opens the editor in create mode
+ * via campaigns/new/:templateId. No Duplicate card: CampaignTable's row menu duplicates a specific
+ * campaign, which this page cannot pick.
  */
 export function CampaignTemplatePicker() {
   const navigate = useNavigate();

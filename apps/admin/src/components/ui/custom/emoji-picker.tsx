@@ -9,10 +9,10 @@ import {
   DialogTrigger,
 } from '@/components/ui/custom/dialog';
 
-// Lazy load the heavy emoji picker component (~600KB saved from initial bundle)
+// Lazy-loaded: the picker is about 600KB.
 const LazyEmojiPickerContent = lazy(() => import('./emoji-picker-content'));
 
-// Simple error boundary for chunk load failures
+// Error boundary for a failed chunk load.
 interface ErrorBoundaryState {
   hasError: boolean;
 }

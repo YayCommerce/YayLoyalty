@@ -15,17 +15,12 @@ use YayLoyalty\Utils\Dates;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Writes `yayloyalty_customer_meta` rows for the three captured activity
- * events. [REVIEW] (docs/code-standards.md § 8): a third class holding both
- * `CustomerRepository` and `LedgerRepository` alongside
- * `CustomerMetaRepository` — justified because both are READ-ONLY here
- * (membership check, balance, kept-entries count) and the only write
- * target is `customer_meta`.
+ * Writes `yayloyalty_customer_meta` rows for the three captured activity events. It reads
+ * CustomerRepository and LedgerRepository (membership, balance, kept-entries count) but writes
+ * only `customer_meta`.
  *
- * Never opens `Transaction::run()`: every write here is a single-table
- * insert with nothing to make atomic, and the account-deletion path may
- * run alongside a foreign transaction already open on the same connection
- * during `wp_delete_user()`.
+ * It never opens Transaction::run(): each write is a single-table insert with nothing to make atomic,
+ * and the account-deletion path may run inside a foreign transaction during wp_delete_user().
  */
 final class CustomerActivityService {
 
@@ -45,11 +40,10 @@ final class CustomerActivityService {
     }
 
     /**
-     * One `account_deleted` row capturing identity + real deletion facts.
-     * Writes nothing for a non-member. Idempotent via `has()`-then-insert()
-     * — an accepted race, not a hard guarantee: two near-simultaneous fires
-     * can both pass the check before either insert commits; `latest()`
-     * (id DESC) still resolves `deleted_at` deterministically either way.
+     * One `account_deleted` row with the member's identity and deletion facts.
+     * Writes nothing for a non-member. has()-then-insert() is an accepted race,
+     * not a guarantee: two near-simultaneous calls can both pass the check.
+     * latest() (id DESC) still resolves the deletion deterministically.
      */
     public function record_account_deleted( int $user_id, string $email, string $display_name ): void {
         $customer = $this->customers->find_by_user_id( $user_id );
@@ -66,9 +60,8 @@ final class CustomerActivityService {
 
         list( $actor_kind, $actor_name ) = $this->actor( get_current_user_id() );
 
-        // TODO: the email and display name are kept deliberately for now, so staff can identify a deleted
-        // member. No privacy eraser reaches them yet; register one on wp_privacy_personal_data_erasers
-        // (plus an exporter) before relying on this for GDPR erasure requests.
+        // The email and display name are kept on purpose, so staff can identify a deleted member.
+        // TODO(privacy-eraser): register a wp_privacy_personal_data_erasers eraser and an exporter for this snapshot.
         $data = [
             'email'               => $email,
             'display_name'        => $display_name,
@@ -90,10 +83,10 @@ final class CustomerActivityService {
     }
 
     /**
-     * One `account_created` row on a member's first ledger write — "first loyalty
-     * activity", not "WP registered". Writes once per user; accepted race under
-     * concurrency — this table has no unique key to prevent a duplicate, only
-     * `has()` to make it unlikely (cosmetic only, no backfill for existing members).
+     * One `account_created` row on a member's first ledger write: first loyalty
+     * activity, not WordPress registration. Written once per user, with the same
+     * has()-then-insert() race as account_deleted, where a duplicate is only
+     * cosmetic. Existing members get no backfill.
      */
     public function record_account_created( LedgerEntry $entry ): void {
         $user_id = $entry->get_user_id();
@@ -108,17 +101,16 @@ final class CustomerActivityService {
         ];
 
         $this->meta->insert(
-            // The ledger row's own timestamp, not Dates::now(): so the activity
-            // log and the ledger tab agree to the second on when this happened.
+            // The ledger row's own timestamp, not Dates::now(), so the activity
+            // log and the ledger tab agree to the second.
             CustomerMeta::event( $user_id, ActivityEvent::ACCOUNT_CREATED, $data, ActorKind::AUTOMATIC, null, false, $entry->get_created_at() )
         );
     }
 
     /**
-     * Only a manual admin adjustment (`LedgerType::is_manual_adjustment()` +
-     * MANUAL) — every other ledger row is the ledger tab's business, not the
-     * activity log's. `staff_only` is a display flag only (the row quotes an
-     * internal admin note), never access control.
+     * Records only a manual admin adjustment: every other ledger row belongs to
+     * the ledger tab, not the activity log. The row is `staff_only` because it
+     * quotes an internal admin note.
      */
     public function record_points_adjusted( LedgerEntry $entry ): void {
         if ( ! LedgerType::is_manual_adjustment( $entry->get_type() ) || LedgerSource::MANUAL !== $entry->get_source() ) {
@@ -146,9 +138,9 @@ final class CustomerActivityService {
     }
 
     /**
-     * Kind + display name for a write's actor. `> 0` is the one rule for
-     * "was this a person" — `get_current_user_id()` and a ledger row's
-     * `actor_id` both use 0/null for a cron or system context.
+     * Kind and display name for a write's actor. `> 0` is the one rule for
+     * "was this a person": get_current_user_id() and a ledger row's actor_id
+     * both use 0 or null for cron and system writes.
      *
      * @return array{0: string, 1: string|null}
      */
@@ -160,7 +152,7 @@ final class CustomerActivityService {
         return [ ActorKind::STAFF, $this->actor_name( $actor_id ) ];
     }
 
-    /** Snapshotted at write time, never resolved later — a later admin deletion cannot blank the audit trail. */
+    /** Snapshotted at write time, never resolved later, so deleting the admin cannot blank the audit trail. */
     private function actor_name( int $actor_id ): ?string {
         $user = get_userdata( $actor_id );
 

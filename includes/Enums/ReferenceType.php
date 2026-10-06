@@ -12,16 +12,16 @@ final class ReferenceType {
     /** WooCommerce order id. */
     public const ORDER = 'order';
 
-    /** WooCommerce refund id — one row per partial refund. */
+    /** WooCommerce refund id, one row per partial refund. */
     public const REFUND = 'refund';
 
     /** wp_comments id, for review rewards. */
     public const COMMENT = 'comment';
 
-    /** yayloyalty_redemptions id (table not implemented yet; accepted so stored rows round-trip). */
+    /** yayloyalty_redemptions id. Accepted before the table ships, so stored rows still validate. */
     public const REDEMPTION = 'redemption';
 
-    /** yayloyalty_referrals id (table not implemented yet; accepted so stored rows round-trip). */
+    /** yayloyalty_referrals id. Accepted before the table ships, so stored rows still validate. */
     public const REFERRAL = 'referral';
 
     /** wp_users id. */
@@ -33,9 +33,7 @@ final class ReferenceType {
     /** Import batch id. */
     public const IMPORT = 'import';
 
-    /**
-     * @return string[]
-     */
+    /** @return string[] */
     public static function all(): array {
         return [
             self::ORDER,
@@ -58,9 +56,7 @@ final class ReferenceType {
         return is_string( $value ) && in_array( $value, self::all(), true );
     }
 
-    /**
-     * @throws \InvalidArgumentException When $value is neither null nor known.
-     */
+    /** @throws \InvalidArgumentException When $value is neither null nor known. */
     public static function assert( $value ): ?string {
         if ( ! self::is_valid( $value ) ) {
             throw new \InvalidArgumentException(

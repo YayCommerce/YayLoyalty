@@ -2,12 +2,7 @@ import { z } from 'zod';
 
 import { paginatedSchema } from '@/lib/api/paginated';
 
-/**
- * Mirrors LedgerRestController::get_item_schema().
- *
- * THAT PHP METHOD IS THE SOURCE OF TRUTH. The enums below must stay in step
- * with Enums\LedgerType and Enums\LedgerSource.
- */
+/** Mirrors LedgerRestController::define_item_schema(), the source of truth. */
 
 /** Matches Enums\LedgerType. */
 export const LEDGER_TYPES = ['earn', 'redeem', 'refund_earn', 'refund_redeem', 'expire', 'adjust', 'correction'] as const;
@@ -57,9 +52,8 @@ export const ledgerEntrySchema = z.object({
 export type LedgerEntry = z.infer<typeof ledgerEntrySchema>;
 
 /**
- * The drawer ledger tab's filter vocabulary — a GROUPING over `LEDGER_TYPES`,
- * not the same list: `earn` covers `earn` + `refund_earn`, `redeem` covers
- * `redeem` + `refund_redeem`, `adjust` covers `adjust` + `correction`. Mirrors `LedgerQueryArgs::filter_types()`.
+ * The ledger tab's filter groups over `LEDGER_TYPES`. Mirrors `LedgerQueryArgs::filter_types()`.
+ * `earn` adds `refund_earn`, `redeem` adds `refund_redeem` and `adjust` adds `correction`.
  */
 export const LEDGER_FILTER_TYPES = ['all', 'earn', 'redeem', 'adjust', 'expire'] as const;
 export const ledgerFilterTypeSchema = z.enum(LEDGER_FILTER_TYPES);
@@ -75,23 +69,14 @@ const ledgerTypeCountsShape = {
   expire: z.number().int(),
 } satisfies Record<LedgerFilterType, z.ZodTypeAny>;
 
-/**
- * Per-type counts over the UNFILTERED set — what the ledger tab's filter
- * labels ("All 4,812", "Earned 4,190") read from. `null` means the server
- * cannot compute them yet (see `LedgerRestController::get_history()`); the drawer renders the filter row
- * disabled with a stated reason when this is null.
- */
+/** Per-group counts over the unfiltered set, for the filter labels. Built by `LedgerQueryArgs::group_counts()`. */
 export const ledgerTypeCountsSchema = z.object(ledgerTypeCountsShape);
 
 export type LedgerTypeCounts = z.infer<typeof ledgerTypeCountsSchema>;
 
-/**
- * `GET /customers/{id}/ledger`'s full envelope — the paginated envelope plus
- * `type_counts`. Parse with THIS schema, not the generic `parsePaginated()`
- * helper, which would silently drop `type_counts`.
- */
+/** `GET /customers/{id}/ledger`'s envelope: the paginated envelope plus `type_counts`. */
 export const ledgerEnvelopeSchema = paginatedSchema(ledgerEntrySchema).extend({
-  type_counts: ledgerTypeCountsSchema.nullable(),
+  type_counts: ledgerTypeCountsSchema,
 });
 
 export type LedgerEnvelope = z.infer<typeof ledgerEnvelopeSchema>;

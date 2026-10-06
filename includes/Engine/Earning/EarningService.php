@@ -2,11 +2,9 @@
 namespace YayLoyalty\Engine\Earning;
 
 use YayLoyalty\Database\Transaction;
-use YayLoyalty\Engine\Points\CapPolicy;
 use YayLoyalty\Engine\Points\Context;
 use YayLoyalty\Engine\Points\PointsEngine;
 use YayLoyalty\Engine\Points\Result;
-use YayLoyalty\Engine\Points\Triggers\Registry;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Models\LedgerEntry;
 use YayLoyalty\Repositories\CampaignRepository;
@@ -19,14 +17,14 @@ use YayLoyalty\Utils\Log;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The two moments of earning, one public method each. preview() is the
- * evaluation moment: gates, then the pure engine, nothing written.
- * award() is the award moment: the same evaluation again, then one
- * transaction. Both score at the Context's occurred_at — the order's
- * creation date — which is the only timestamp either can see, so a
- * campaign that ended between purchase and fulfilment still pays.
+ * Earns points: preview() evaluates and writes nothing, award() evaluates again and writes.
+ * Both score at the Context's occurred_at (the order's creation date), so a campaign that
+ * ended between purchase and fulfilment still pays.
  */
 final class EarningService {
+
+    /** Fired after commit, once per awarded row, with ( Outcome $awarded, Context $ctx ). */
+    public const AWARDED_ACTION = 'yayloyalty_points_awarded';
 
     private PointsEngine $engine;
 
@@ -48,16 +46,14 @@ final class EarningService {
     }
 
     /**
-     * Composition root: the engine with the build's handlers, the writer
-     * (LedgerService's third construction site), the pending store and the
-     * gates — ProgramGate first, then whatever `yayloyalty_earning_gates`
-     * appends (Pro). Listeners are registered by the caller, not here.
+     * Composition root and a listed LedgerService construction site.
+     * The caller registers the listeners.
      */
     public static function build(): self {
         $campaigns = new CampaignRepository();
         $customers = new CustomerRepository();
 
-        $engine = new PointsEngine( Registry::with_lite_handlers( $campaigns ), $campaigns, new CapPolicy() );
+        $engine = PointsEngine::build( $campaigns );
         $ledger = new LedgerService( new LedgerRepository(), $customers );
 
         return new self( $engine, $ledger, new PendingPoints( $customers ), self::gates() );
@@ -104,10 +100,7 @@ final class EarningService {
     }
 
     /**
-     * The evaluation moment. Pure given its inputs: writes nothing, may run
-     * any number of times, and returns the same Result for the same Context.
-     * Not authoritative — the caller may stage its points as pending, and
-     * award() re-evaluates rather than trusting a stored figure.
+     * Evaluates without writing. Not authoritative: award() evaluates again rather than trust a staged figure.
      *
      * @return Result Result::none( gate reason ) when a gate blocks, else the engine's answer.
      */
@@ -122,19 +115,10 @@ final class EarningService {
     }
 
     /**
-     * The award moment. Re-runs preview() at the same occurred_at, then
-     * commits in one transaction: ledger row via LedgerService::earn()
-     * (customer row locked first), pending release, order projections.
-     *
-     * Preconditions: $ctx built by ContextFactory::from_order() /
-     * from_user() / from_comment(), never by hand from "now"; the ledger's
-     * points_earned_today already on it. Staging need not have run.
-     *
-     * Postconditions: Outcome::skipped( reason ) and nothing written when a
-     * gate or the engine says no; Outcome::awarded when exactly one row was
-     * inserted; Outcome::duplicate when the idempotency key already existed
-     * (nothing written, nothing thrown). `yayloyalty_points_awarded`
-     * ( Outcome, Context ) fires after commit only, and only for awarded.
+     * Evaluates again at the same occurred_at, then writes the ledger row, releases the pending
+     * points and marks the order in one transaction. Build $ctx with ContextFactory, never from "now".
+     * Returns skipped when a gate or the engine says no, and duplicate (nothing written, nothing thrown)
+     * when the idempotency key exists. `yayloyalty_points_awarded` fires after commit, for awarded only.
      *
      * @throws \InvalidArgumentException When no handler owns the trigger.
      * @throws \YayLoyalty\Database\QueryException When a write other than a duplicate fails (rolled back).
@@ -175,7 +159,7 @@ final class EarningService {
                  * @param Outcome $awarded Carries the row and the engine Result.
                  * @param Context $ctx
                  */
-                do_action( 'yayloyalty_points_awarded', $awarded, $ctx );
+                do_action( self::AWARDED_ACTION, $awarded, $ctx ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name; the sniff cannot read it.
             }
         );
 
@@ -183,14 +167,8 @@ final class EarningService {
     }
 
     /**
-     * The EARN row an awarded Result becomes. Precondition: $result is
-     * awarded and $ctx has a user. Postcondition: type EARN, points and
-     * source/reference/campaign from the Result, order_id from the Context,
-     * balance_after 0 (computed under the lock), actor_id null (a customer
-     * is not an actor), created_at = Dates::now() (the write time; the
-     * event time lives on the Context and in the key's reference), and
-     * idempotency_key = IdempotencyKey::compose( EARN, user_id,
-     * reference_type, reference_id, $trigger ).
+     * The EARN row for an awarded Result. balance_after is 0 because LedgerService computes it under the lock.
+     * actor_id is null: a customer is not an actor. created_at is the write time; the event time is on the Context.
      */
     private function draft_from( Result $result, Context $ctx, string $trigger ): LedgerEntry {
         $user_id        = (int) $ctx->get_user_id();

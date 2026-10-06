@@ -9,10 +9,9 @@ use YayLoyalty\Utils\Json;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * An earning rule. Mutable (a definition, unlike LedgerEntry) and without a
- * service: its invariants are validation, which lives here and in the
- * controller schema. The DB column is `trigger_type`; everywhere else the
- * field is `trigger`, mapped only in from_row()/to_row().
+ * An earning rule. Mutable, unlike LedgerEntry, and without a service: its invariants are validation,
+ * which lives here and in the controller schema. The column is `trigger_type`. Everywhere else the
+ * field is `trigger`, mapped only in from_row() and to_row().
  */
 class Campaign extends AbstractModel {
 
@@ -149,13 +148,9 @@ class Campaign extends AbstractModel {
     }
 
     /**
-     * to_row() minus the columns an update must never touch (slug, trigger_type,
-     * created_at, created_by, is_builtin), with get_format() filtered to match
-     * position-for-position. $wpdb->update()'s $format is consumed by
-     * array_shift() — purely positional — so dropping columns from the data
-     * without dropping the same positions from the format silently shifts
-     * every placeholder after the cut. Pairing them here, once, is cheaper
-     * than auditing every caller.
+     * to_row() without the columns an update must never touch, with get_format() filtered to match.
+     * $wpdb->update() reads $format by position, so dropping a column without its format
+     * would shift every placeholder after it.
      *
      * @return array{data: array<string, mixed>, format: string[]}
      */
@@ -211,10 +206,7 @@ class Campaign extends AbstractModel {
         return Status::is_live_at( $this->status, $this->starts_at, $this->ends_at, $at );
     }
 
-    /**
-     * The label to show: the stored status, or `scheduled` / `ended` derived
-     * from the date window when it is `active`.
-     */
+    /** The label to show: the stored status, or `scheduled` / `ended` derived from the dates when `active`. */
     public function display_status( ?string $at = null ): string {
         return Status::resolve_display(
             $this->status,
@@ -225,13 +217,11 @@ class Campaign extends AbstractModel {
     }
 
     /**
-     * Per-trigger config schema, key => spec: what `config` may hold and what
-     * config_is_valid() checks against. Lite triggers only; Pro triggers add
-     * theirs through config_whitelist(). Spec types: bool, string,
-     * int|number [min], enum [values], int_list.
-     *
-     * Pro-recognised keys are listed here on purpose: a downgraded site must
-     * keep its stored values so an upgrade restores the campaign intact.
+     * Per-trigger config schema, key => spec: what `config` may hold and what config_is_valid() checks.
+     * It covers Lite triggers only. Pro triggers add theirs through config_whitelist().
+     * Spec types: bool, string, enum [values], int [min], number [min, exclusive_min], int_list.
+     * Pro keys of Lite triggers are listed on purpose: a downgraded site keeps its stored values,
+     * so an upgrade restores the campaign intact.
      *
      * @return array<string, array<string, array<string, mixed>>>
      */
@@ -305,7 +295,7 @@ class Campaign extends AbstractModel {
 
     /**
      * Keys each trigger's config may contain, keyed by trigger. Derived from
-     * config_schema() so the two never drift; the filter is for Pro to add
+     * config_schema() so the two never drift. The filter lets Pro add
      * whole triggers, not keys to these.
      *
      * @return array<string, string[]>
@@ -326,9 +316,9 @@ class Campaign extends AbstractModel {
     }
 
     /**
-     * Whether a config is acceptable for a trigger; the controller answers 4xx
-     * on false. A trigger this build has no schema or whitelist for came from
-     * another build (Pro campaign on a downgraded site) and is accepted unjudged.
+     * Whether a config is acceptable for a trigger. The controller answers 4xx on false.
+     * A trigger with no schema or whitelist here came from another build, such as a Pro campaign
+     * on a downgraded site, and is accepted as it is.
      */
     public static function config_is_valid( string $trigger, array $config ): bool {
         $schema    = self::config_schema()[ $trigger ] ?? null;
@@ -360,10 +350,7 @@ class Campaign extends AbstractModel {
         return true;
     }
 
-    /**
-     * @param mixed                $value
-     * @param array<string, mixed> $spec
-     */
+    /** @param array<string, mixed> $spec */
     private static function value_matches_spec( $value, array $spec ): bool {
         switch ( $spec['type'] ?? '' ) {
             case 'bool':
@@ -411,7 +398,7 @@ class Campaign extends AbstractModel {
         }
     }
 
-    /** Whether a conditions list is acceptable to store; the controller answers 4xx on false. See CampaignConditionSet. */
+    /** Whether a conditions list is acceptable to store. The controller answers 4xx on false. */
     public static function conditions_are_valid( array $conditions ): bool {
         return CampaignConditionSet::is_valid( $conditions );
     }
@@ -530,6 +517,11 @@ class Campaign extends AbstractModel {
         return $this->is_builtin;
     }
 
+    /** Points a signup or review campaign pays per event, or 0 when its config sets none. */
+    public function flat_points(): int {
+        return (int) ( $this->config['points'] ?? 0 );
+    }
+
     /** Whether this campaign may be archived: never a built-in, since the engine and the Free UI assume they exist. */
     public function can_archive(): bool {
         return ! $this->is_builtin;
@@ -557,10 +549,10 @@ class Campaign extends AbstractModel {
         }
 
         if ( Status::ARCHIVED === $status ) {
-            if ( Status::ARCHIVED !== $this->status ) { // Set archived_at to now when it was not archived before
+            if ( Status::ARCHIVED !== $this->status ) {
                 $this->archived_at = Dates::now();
             }
-        } else { // Every other status means the campaign is not archived
+        } else {
             $this->archived_at = null;
         }
 
@@ -575,7 +567,7 @@ class Campaign extends AbstractModel {
         $this->config = self::validate_config( $this->trigger, $config );
     }
 
-    /** Normalises a conditions list (see CampaignConditionSet) and stores it. Rejection is conditions_are_valid()'s job. */
+    /** Normalises a conditions list and stores it. Rejection is conditions_are_valid()'s job. */
     public function set_conditions( array $conditions ): void {
         $this->conditions = CampaignConditionSet::normalize( $conditions );
     }

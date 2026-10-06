@@ -7,17 +7,7 @@ use YayLoyalty\Utils\Sql;
 
 defined( 'ABSPATH' ) || exit;
 
-/**
- * yayloyalty_customer_meta. Append-only: nothing here calls update() or
- * delete().
- *
- * `paginate_activity()`'s `search` never LIKEs the raw `meta_value` blob —
- * see `CustomerMetaActivitySearch`'s docblock for why and how.
- *
- * Not final: CustomerActivityServiceTest extends it as a repository double
- * (mirrors DashboardRepository/CampaignRepository, the same reason those
- * two aren't final either).
- */
+/** yayloyalty_customer_meta. Append-only: nothing here calls update() or delete(). */
 class CustomerMetaRepository extends AbstractRepository {
 
     protected function table_slug(): string {
@@ -32,11 +22,11 @@ class CustomerMetaRepository extends AbstractRepository {
         return [ 'id', 'created_at', 'meta_key' ];
     }
 
-    /** Most recent row for (user_id, meta_key) — e.g. the account_deleted snapshot. */
+    /** Most recent row for (user_id, meta_key), such as the account_deleted snapshot. */
     public function latest( int $user_id, string $meta_key ): ?CustomerMeta {
         global $wpdb;
 
-        $row = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        $row = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
                 'SELECT * FROM `' . esc_sql( $this->table() ) . '`
                  WHERE user_id = %d AND meta_key = %s ORDER BY id DESC LIMIT 1',
@@ -49,11 +39,11 @@ class CustomerMetaRepository extends AbstractRepository {
         return is_array( $row ) ? CustomerMeta::from_row( $row ) : null;
     }
 
-    /** Whether at least one row exists for (user_id, meta_key) — the once-only write guard. */
+    /** Whether at least one row exists for (user_id, meta_key). It is the once-only write guard. */
     public function has( int $user_id, string $meta_key ): bool {
         global $wpdb;
 
-        $id = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        $id = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
                 'SELECT id FROM `' . esc_sql( $this->table() ) . '`
                  WHERE user_id = %d AND meta_key = %s LIMIT 1',
@@ -70,7 +60,7 @@ class CustomerMetaRepository extends AbstractRepository {
         global $wpdb;
 
         // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared -- Sql::in_placeholders() emits only a fixed-count %s list; values are bound via prepare() below.
-        return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
                 'SELECT COUNT(*) FROM `' . esc_sql( $this->table() ) . '`
                  WHERE user_id = %d AND meta_key IN (' . Sql::in_placeholders( ActivityEvent::ALL ) . ')',
@@ -81,9 +71,8 @@ class CustomerMetaRepository extends AbstractRepository {
     }
 
     /**
-     * One customer's activity log: filtered (group/search/date-range) and
-     * paginated. An empty $event_types short-circuits to an empty page
-     * before building SQL — never reaches `IN ()`.
+     * One customer's activity log, filtered by group, search and date range, and paginated.
+     * An empty $event_types returns an empty page before any SQL is built, so `IN ()` is never reached.
      *
      * @param array{event_types: string[], search?: string, after?: string, before?: string, page?: int, per_page?: int} $args
      * @return array{items: CustomerMeta[], total: int, page: int, per_page: int}
@@ -112,16 +101,10 @@ class CustomerMetaRepository extends AbstractRepository {
         );
         // phpcs:enable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
 
-        $after  = trim( (string) ( $args['after'] ?? '' ) );
-        $before = trim( (string) ( $args['before'] ?? '' ) );
-
-        if ( '' !== $after ) {
-            $where[] = $wpdb->prepare( 'created_at >= %s', $after . ' 00:00:00' );
-        }
-
-        if ( '' !== $before ) {
-            $where[] = $wpdb->prepare( 'created_at <= %s', $before . ' 23:59:59' );
-        }
+        $where = array_merge(
+            $where,
+            $this->site_day_range_where( (string) ( $args['after'] ?? '' ), (string) ( $args['before'] ?? '' ) )
+        );
 
         $search = trim( (string) ( $args['search'] ?? '' ) );
 
@@ -137,6 +120,60 @@ class CustomerMetaRepository extends AbstractRepository {
             );
         }
 
-        return CustomerMetaActivitySearch::paginate( esc_sql( $this->table() ), $where, $search, $page, $per_page );
+        return $this->paginate_searched( $where, $search, $page, $per_page );
+    }
+
+    /**
+     * Activity rows matching $search in their real content, paginated in PHP.
+     *
+     * `search` never LIKEs the raw `meta_value` blob: every row carries the structural keys `data`,
+     * `actor_kind`, `actor_name`, `staff_only` and `schema_version`, so a raw LIKE would match almost
+     * every row. Instead this fetches every row $where selects, with no LIMIT, since one customer's
+     * history is small. It decodes them, filters on content fields only, then applies `per_page`.
+     *
+     * @param string[] $where Already-prepared SQL fragments.
+     * @return array{items: CustomerMeta[], total: int, page: int, per_page: int}
+     */
+    private function paginate_searched( array $where, string $search, int $page, int $per_page ): array {
+        global $wpdb;
+
+        $where_sql = ' WHERE ' . implode( ' AND ', $where );
+
+        // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared -- the fragments in $where are already prepared by paginate_activity().
+        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            'SELECT * FROM `' . esc_sql( $this->table() ) . '`' . $where_sql . ' ORDER BY id DESC',
+            ARRAY_A
+        );
+        // phpcs:enable WordPress.DB.PreparedSQL.NotPrepared
+
+        $matches = [];
+
+        foreach ( is_array( $rows ) ? $rows : [] as $row ) {
+            $item = CustomerMeta::from_row( $row );
+
+            if ( self::activity_matches( $item, $search ) ) {
+                $matches[] = $item;
+            }
+        }
+
+        return [
+            'items'    => array_slice( $matches, ( $page - 1 ) * $per_page, $per_page ),
+            'total'    => count( $matches ),
+            'page'     => $page,
+            'per_page' => $per_page,
+        ];
+    }
+
+    /** Real content fields only: data's string and int values plus actor_name, never the envelope's structural keys. */
+    private static function activity_matches( CustomerMeta $item, string $search ): bool {
+        foreach ( $item->get_data() as $value ) {
+            if ( ( is_string( $value ) || is_int( $value ) ) && false !== mb_stripos( (string) $value, $search ) ) {
+                return true;
+            }
+        }
+
+        $actor_name = $item->to_array()['actor_name'];
+
+        return null !== $actor_name && false !== mb_stripos( (string) $actor_name, $search );
     }
 }

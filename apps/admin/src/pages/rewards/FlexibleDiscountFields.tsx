@@ -1,8 +1,10 @@
 import { __, _n, sprintf } from '@wordpress/i18n';
 
+import { can, CAP } from '@/lib/access';
 import { parseWPCurrency } from '@/lib/helpers/format.helper';
 import { formatPoints, formatPointsAsMoney } from '@/lib/helpers/points.helper';
 import { usePurchaseCampaignsQuery } from '@/lib/queries/campaign.queries';
+import { findBuiltinCampaign } from '@/lib/schema/campaign.schema';
 import type { RewardConfigOf } from '@/lib/schema/reward.schema';
 import { OptionalCountInput, OptionalMoneyInput, PointsInput } from '@/components/ui/custom/amount-inputs';
 import { ConfigField } from '@/components/ui/custom/config-field';
@@ -188,8 +190,9 @@ export function FlexibleDiscountFields({
  * either rate is missing — the line is dropped rather than guessed.
  */
 function useEarnBackPercent(pointsPerCurrencyUnit: number): string | null {
-  const { data } = usePurchaseCampaignsQuery(true);
-  const purchase = data?.data.find((campaign) => campaign.is_builtin);
+  // Rewards and campaigns are separate capabilities: without campaigns access the line is dropped, not a 403 toast.
+  const { data } = usePurchaseCampaignsQuery(can(CAP.MANAGE_CAMPAIGNS));
+  const purchase = findBuiltinCampaign(data?.data, 'purchase');
   const pointsPerUnit = purchase?.config.points_per_unit;
 
   if (typeof pointsPerUnit !== 'number' || pointsPerUnit <= 0 || pointsPerCurrencyUnit <= 0) {

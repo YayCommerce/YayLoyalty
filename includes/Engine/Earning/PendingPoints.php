@@ -8,10 +8,8 @@ use YayLoyalty\Utils\Dates;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The staging store between the two moments: the preview figure an order
- * carries until it is awarded. Truth is order meta (HPOS-safe through
- * WC_Order); customers.pending_points is its cached sum. Every method is
- * idempotent so any hook may call it any number of times, and the award
+ * The points an order holds as pending until it is awarded. Order meta is the truth, and
+ * customers.pending_points is its cached sum. Every method is idempotent, and the award
  * never depends on staging having happened.
  */
 final class PendingPoints {
@@ -33,11 +31,8 @@ final class PendingPoints {
     }
 
     /**
-     * Stages the preview figure once. Keyed on META_PENDING being absent:
-     * a second call from another hook is a no-op, so several hooks may stage.
-     * Postcondition: META_PENDING = $points and customers.pending_points
-     * moved by $points, or nothing changed. Returns whether this call staged.
-     * Guests (null user) get order meta only. $points 0 stages nothing.
+     * Stages the preview figure once: while META_PENDING exists, another call is a no-op.
+     * Returns whether this call staged. A guest gets order meta only.
      */
     public function stage( int $order_id, ?int $user_id, int $points ): bool {
         $order = wc_get_order( $order_id );
@@ -58,13 +53,9 @@ final class PendingPoints {
     }
 
     /**
-     * Releases the staged figure exactly once, guarded by META_RELEASED, not
-     * by the figure's presence. Returns the released amount, 0 when nothing
-     * was staged or it was released already — the award path ignores the
-     * value and must succeed when staging never ran. Called inside the award
-     * transaction so the cache and the ledger move together, and on cancel
-     * or failure, where the same flag stops a later status bounce into the
-     * award status from releasing twice.
+     * Releases the staged figure once. META_RELEASED guards it, not the figure, so a later status
+     * bounce cannot release twice. Returns the amount released, or 0. The award calls it inside
+     * its transaction, so the cache and the ledger move together.
      */
     public function release( int $order_id ): int {
         $order = wc_get_order( $order_id );

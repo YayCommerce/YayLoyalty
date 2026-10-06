@@ -7,12 +7,8 @@ import {
 } from '@/lib/schema/campaign-performance.schema';
 
 /**
- * Clients for the two Pro-only routes behind CampaignPerformanceRestController.
- * Lite has neither route at all (404, not 403) — see that controller's
- * docblock. Real data (CampaignPerformanceRepository) — no client change was
- * needed for that swap, by design.
- *
- * Responses are parsed, not cast — see customer.api.ts.
+ * Clients for the two Pro-only routes behind CampaignPerformanceRestController. Lite has neither
+ * route (404, not 403). Responses are parsed, not cast.
  */
 
 export async function getCampaignPerformance(id: number) {

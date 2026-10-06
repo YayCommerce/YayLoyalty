@@ -8,7 +8,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Design storage: one option, cleaned by DesignSchema's rules on read and on write, like SettingsHelper.
  * A list replaces its default whole rather than merging by index, so a list the merchant cleared or
- * shortened stays that way. A stored '' storefront text is literal; reset() is the only route back to
+ * shortened stays that way. A stored '' storefront text is literal. reset() is the only route back to
  * the default wording.
  */
 class DesignHelper {
@@ -32,10 +32,9 @@ class DesignHelper {
     }
 
     /**
-     * Validates, merges over the *currently stored* design (not the bare defaults) so a field coerce()
-     * dropped — most notably a wholly-invalid badge_list, which validate() leaves out of $clean on purpose
-     * — keeps its last-saved value instead of reverting to the factory default. Stamps the version, saves,
-     * logs what was dropped.
+     * Validates $design and merges it over the stored design, not the bare defaults. A field coerce() dropped,
+     * such as a wholly invalid badge_list, then keeps its last-saved value instead of reverting to the default.
+     * Stamps the version, saves, and logs what was dropped.
      */
     public static function update_design( array $design ): array {
         $base                       = self::merge_over( DesignSchema::get_default_design(), self::sanitize_output( self::load_stored() ) );
@@ -54,7 +53,15 @@ class DesignHelper {
         return self::get_design();
     }
 
-    /** Restores one group, or the whole blob when $group is null. Logs at warning: destructive, irreversible, must survive production. */
+    /**
+     * The design as it would read once $design is saved, without saving it: the Design tab's live preview.
+     * Same whitelist and coercion as update_design(), over the stored design.
+     */
+    public static function with_unsaved( array $design ): array {
+        return self::merge_over( self::get_design(), self::validate( $design ) );
+    }
+
+    /** Restores one group, or the whole blob when $group is null. Logs at warning, which production keeps: a reset is irreversible. */
     public static function reset( ?string $group = null ): array {
         $user_id = get_current_user_id();
 
@@ -82,7 +89,7 @@ class DesignHelper {
         return self::apply_schema( $input );
     }
 
-    /** Whitelists and coerces stored design on the way out. Same rules as validate(); read path is not forgotten. */
+    /** Whitelists and coerces the stored design on the way out, with validate()'s rules. */
     public static function sanitize_output( array $stored ): array {
         return self::apply_schema( $stored );
     }
@@ -102,7 +109,7 @@ class DesignHelper {
 
                 $value = DesignCoercion::coerce( $data[ $group ][ $field ], $rule );
 
-                // null means "invalid" for every type coerce() returns; skip so the default survives the merge.
+                // coerce() returns null only for an invalid value. Skipping it lets the base value survive the merge.
                 if ( null !== $value ) {
                     $clean[ $group ][ $field ] = $value;
                 }
@@ -130,7 +137,7 @@ class DesignHelper {
         return $base;
     }
 
-    /** An array that is not a list, so [] counts as a list; PHP 7.4 has no array_is_list(). */
+    /** An array that is not a list, so [] counts as a list. PHP 7.4 has no array_is_list(). */
     private static function is_map( $value ): bool {
         return is_array( $value ) && array_values( $value ) !== $value;
     }

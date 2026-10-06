@@ -39,7 +39,7 @@ final class PurchaseHandler implements TriggerHandler {
     public function is_eligible( Campaign $campaign, Context $ctx ): bool {
         $config = $campaign->get_config();
 
-        $min = (float) ( $config['min_subtotal'] ?? 0 );
+        $min = self::min_subtotal( $config );
 
         if ( $min > 0 && $ctx->get_order_subtotal() * $ctx->get_base_rate() < $min ) {
             return false;
@@ -49,12 +49,8 @@ final class PurchaseHandler implements TriggerHandler {
             return false;
         }
 
-        if ( $this->is_multiplier( $config ) ) {
-            $default = $this->campaigns->find_default_purchase();
-
-            if ( null === $default || Status::ACTIVE !== $default->get_status() ) {
-                return false;
-            }
+        if ( $this->is_multiplier( $config ) && null === self::multiplier_default( $this->campaigns->find_default_purchase() ) ) {
+            return false;
         }
 
         return true;
@@ -64,13 +60,7 @@ final class PurchaseHandler implements TriggerHandler {
         $config   = $campaign->get_config();
         $base     = $this->base_calculator->compute( $campaign, $ctx );
         $rounding = (string) ( $config['rounding'] ?? PointsMath::ROUND_DOWN );
-
-        if ( self::is_multiplier( $config ) ) {
-            $default = $this->campaigns->find_default_purchase();
-            $rate    = (float) ( $default->get_config()['points_per_unit'] ?? 0 ) * self::multiplier( $config );
-        } else {
-            $rate = (float) ( $config['points_per_unit'] ?? 0 );
-        }
+        $rate     = self::rate_of( $config, $this->campaigns->find_default_purchase() );
 
         $raw    = $base * $rate;
         $points = PointsMath::round_points( $raw, $rounding );
@@ -103,7 +93,7 @@ final class PurchaseHandler implements TriggerHandler {
 
     /**
      * Whether a purchase config multiplies the default rate rather than naming its own; a missing mode means rate.
-     * The one decider (code-standards § 16): the performance page's liability split asks here too.
+     * The one decider: the performance page's liability split asks here too.
      *
      * @param array<string, mixed> $config
      */
@@ -118,5 +108,36 @@ final class PurchaseHandler implements TriggerHandler {
      */
     public static function multiplier( array $config ): float {
         return (float) ( $config['multiplier'] ?? 1 );
+    }
+
+    /**
+     * The order subtotal (base currency) below which this config does not pay; 0 for none.
+     *
+     * @param array<string, mixed> $config
+     */
+    public static function min_subtotal( array $config ): float {
+        return max( 0.0, (float) ( $config['min_subtotal'] ?? 0 ) );
+    }
+
+    /**
+     * The default purchase campaign a multiplier may scale, or null when it cannot (archived or not active).
+     * The storefront launcher asks here too, so it never advertises a multiplier the engine would skip.
+     */
+    public static function multiplier_default( ?Campaign $default_purchase ): ?Campaign {
+        return null !== $default_purchase && Status::ACTIVE === $default_purchase->get_status() ? $default_purchase : null;
+    }
+
+    /**
+     * Points per currency unit a purchase config pays: its own rate, or the default's rate times its multiplier.
+     *
+     * @param array<string, mixed> $config
+     * @param Campaign|null        $default_purchase The default purchase campaign; read only for a multiplier.
+     */
+    public static function rate_of( array $config, ?Campaign $default_purchase ): float {
+        if ( ! self::is_multiplier( $config ) ) {
+            return (float) ( $config['points_per_unit'] ?? 0 );
+        }
+
+        return null === $default_purchase ? 0.0 : (float) ( $default_purchase->get_config()['points_per_unit'] ?? 0 ) * self::multiplier( $config );
     }
 }

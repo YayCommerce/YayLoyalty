@@ -15,8 +15,20 @@ export function formatPoints(value: number): string {
 
 /** "1 point", "12,400 points": the count with its plural-aware noun. */
 export function pointsPhrase(count: number): string {
-  /* translators: %s: number of points, formatted. */
-  return sprintf(_n('%s point', '%s points', count, 'yayloyalty'), formatPoints(count));
+  return sprintf(
+    /* translators: %s: number of points, formatted. */
+    _n('%s point', '%s points', count, 'yayloyalty'),
+    formatPoints(count),
+  );
+}
+
+/** "1 pt", "500 pts": the abbreviated form, for tight UI. */
+export function shortPoints(points: number): string {
+  return sprintf(
+    /* translators: %s: a points amount, formatted. Abbreviated: this reads in tight UI. */
+    _n('%s pt', '%s pts', points, 'yayloyalty'),
+    formatPoints(points),
+  );
 }
 
 /** "1 pt per $1.00", "2 pts per $1.00": a purchase rate against one unit of the store currency. */

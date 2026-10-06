@@ -6,10 +6,10 @@ use YayLoyalty\Enums\LedgerType;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * One balance change; append-only. Immutable by convention (no setters,
+ * One balance change, append-only. Immutable by convention (no setters,
  * with_*() clones): a mutable entry could rewrite the balance_after chain,
- * which must be computed inside the customer row lock. `note` is only set
- * on manual adjustments; system rows compose their text at render time so
+ * which must be computed inside the customer row lock. `note` is set only
+ * on manual adjustments. System rows compose their text at render time so
  * it stays translatable.
  */
 final class LedgerEntry extends AbstractModel {
@@ -53,7 +53,7 @@ final class LedgerEntry extends AbstractModel {
     /** @var int|null */
     private $actor_id;
 
-    /** @var string|null Engine\Earning\IdempotencyKey string for system rows; null for manual adjustments. */
+    /** @var string|null Engine\Earning\IdempotencyKey string for system rows, or null for manual adjustments. */
     private $idempotency_key;
 
     /** @var string */
@@ -113,7 +113,7 @@ final class LedgerEntry extends AbstractModel {
         );
     }
 
-    /** Insert payload; `id` is omitted so AUTO_INCREMENT assigns it. */
+    /** Insert payload. `id` is omitted so AUTO_INCREMENT assigns it. */
     public function to_row(): array {
         return [
             'user_id'         => $this->user_id,

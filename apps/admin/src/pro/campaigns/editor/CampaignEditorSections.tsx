@@ -46,8 +46,6 @@ export function CampaignEditorSections() {
   );
 }
 
-/* ─── the shared numbered-card shell ─────────────────────────────────── */
-
 /** Numbered card shell for one section. */
 function CampaignEditorSection({ step, title, children }: { step: number; title: string; children?: ReactNode }) {
   return (
@@ -65,7 +63,7 @@ function CampaignEditorSection({ step, title, children }: { step: number; title:
   );
 }
 
-/* ─── §1 Basics ──────────────────────────────────────────────────────── */
+// §1 Basics
 
 /** CAMPAIGN_STATUSES minus archived: archiving is its own flow, and Campaign::set_status() throws for a built-in. */
 const EDITABLE_STATUSES = ['active', 'paused', 'draft'] as const;
@@ -111,7 +109,7 @@ function CampaignEditorBasics() {
   );
 }
 
-/* ─── §2 Trigger ─────────────────────────────────────────────────────── */
+// §2 Trigger
 
 /** The purchase copy names no order status on purpose: settings has none to point at. */
 function triggerDescription(trigger: CampaignTrigger): string {
@@ -218,7 +216,7 @@ function CampaignEditorTriggerEditable() {
   );
 }
 
-/* ─── §5 Schedule ────────────────────────────────────────────────────── */
+// §5 Schedule
 
 function CampaignEditorSchedule() {
   const { control, setValue, formState } = useFormContext<CampaignFormValues>();
@@ -236,7 +234,7 @@ function CampaignEditorSchedule() {
   );
 }
 
-/* ─── §6 Priority ────────────────────────────────────────────────────── */
+// §6 Priority
 
 /** The priority number alone; where it lands among its group is the campaigns table's job. */
 function CampaignEditorPriority() {

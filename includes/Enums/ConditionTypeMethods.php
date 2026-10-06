@@ -27,7 +27,7 @@ trait ConditionTypeMethods {
     }
 
     /**
-     * Every type the schema recognises, gated ones included; for reading stored rows, never for offering choices.
+     * Every type the schema recognises, gated ones included. For reading stored rows, never for offering choices.
      *
      * @return string[]
      */
@@ -54,9 +54,7 @@ trait ConditionTypeMethods {
         return is_array( $operators ) ? $operators : [];
     }
 
-    /**
-     * @throws \InvalidArgumentException When $value is not a type a merchant can use.
-     */
+    /** @throws \InvalidArgumentException When $value is not a type a merchant can use. */
     public static function assert( $value ): string {
         if ( ! static::is_valid( $value ) ) {
             throw new \InvalidArgumentException(

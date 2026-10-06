@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { campaignTriggerSchema } from './campaign.schema';
 import { dashboardRangeSchema } from './dashboard.schema';
 
-/** Mirrors DashboardProRestController, the source of truth. referrals and tier_distribution are null until their tables exist. */
+/** Mirrors DashboardProRestController, the source of truth. */
 
 /** null until the referrals table exists; the SPA substitutes its dummy. */
 export const dashboardReferralsSchema = z

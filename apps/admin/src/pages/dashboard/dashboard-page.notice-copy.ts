@@ -31,6 +31,7 @@ function copyFor(n: TypedNotice): NoticeCopy {
     case 'negative_balance':
       return {
         title: sprintf(
+          /* translators: %s: number of customers, formatted. */
           _n(
             '%s customer has a negative balance.',
             '%s customers have a negative balance.',
@@ -50,14 +51,16 @@ function copyFor(n: TypedNotice): NoticeCopy {
       return {
         title: __("Customers aren't earning points on purchases", 'yayloyalty'),
         body: sprintf(
+          /* translators: 1: the date the campaign was paused; 2: the "N orders have completed" phrase. */
           __('The default campaign has been paused since %1$s. %2$s and awarded nothing.', 'yayloyalty'),
           formatStoredDate(n.data.paused_since),
           sprintf(
+            /* translators: %s: number of orders completed since the pause, formatted. */
             _n('%s order has completed', '%s orders have completed', n.data.orders_without_points, 'yayloyalty'),
             formatPoints(n.data.orders_without_points),
           ),
         ),
-        // TODO: reactivation mutation; rendered disabled so the action is discoverable.
+        // TODO(dashboard-notices): wire the reactivation mutation CampaignTable already uses.
         primary: {
           kind: 'disabled',
           label: __('Switch it back on', 'yayloyalty'),
@@ -70,6 +73,7 @@ function copyFor(n: TypedNotice): NoticeCopy {
     case 'points_jump': {
       const edits = n.data.what_changed;
       const base = sprintf(
+        /* translators: 1: points issued yesterday; 2: yesterday's date; 3: the 30-day daily average, in points. */
         __('%1$s points on %2$s against a 30-day average of %3$s.', 'yayloyalty'),
         formatPoints(n.data.yesterday_points),
         parseWPDay(n.data.yesterday),
@@ -79,16 +83,26 @@ function copyFor(n: TypedNotice): NoticeCopy {
         edits.length === 0
           ? __('No campaign was edited that day.', 'yayloyalty')
           : edits.length === 1
-            ? sprintf(__('One campaign was edited at %s.', 'yayloyalty'), parseWPTime(utcToDate(edits[0].updated_at)))
-            : sprintf(__('%d campaigns were edited that day.', 'yayloyalty'), edits.length);
+            ? sprintf(
+                /* translators: %s: the time the campaign was edited. */
+                __('One campaign was edited at %s.', 'yayloyalty'),
+                parseWPTime(utcToDate(edits[0].updated_at)),
+              )
+            : sprintf(
+                /* translators: %d: number of campaigns edited that day. */
+                __('%d campaigns were edited that day.', 'yayloyalty'),
+                edits.length,
+              );
 
       return {
         title: sprintf(
+          /* translators: %s: how many times the daily average, e.g. "3.2". */
           __('Points issued yesterday were %s× your daily average', 'yayloyalty'),
           n.data.multiple.toLocaleString(),
         ),
         body: sprintf(
-          /* translators: 1: the figures sentence, 2: the cause sentence. */ __('%1$s %2$s', 'yayloyalty'),
+          /* translators: 1: the figures sentence, 2: the cause sentence. */
+          __('%1$s %2$s', 'yayloyalty'),
           base,
           cause,
         ),
@@ -108,6 +122,7 @@ function copyFor(n: TypedNotice): NoticeCopy {
     case 'mail_failures':
       return {
         title: sprintf(
+          /* translators: 1: number of failed emails, formatted; 2: the date the failures began. */
           _n(
             '%s loyalty email failed to send since %s',
             '%s loyalty emails failed to send since %s',
@@ -124,6 +139,7 @@ function copyFor(n: TypedNotice): NoticeCopy {
     case 'balance_rebuild':
       return {
         title: sprintf(
+          /* translators: 1: balances checked so far, formatted; 2: all balances to check, formatted. */
           __('Balances are being rebuilt — %1$s of %2$s checked', 'yayloyalty'),
           formatPoints(n.data.processed),
           formatPoints(n.data.total),

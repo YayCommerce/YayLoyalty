@@ -26,7 +26,7 @@ import {
  * checklist, both pure over form values so they test without React.
  */
 
-/* ─── "What this means": pure form values -> prose ───────────────────── */
+// "What this means": form values to prose
 
 /** What summarizeCampaign() needs beyond form values, passed in so it stays pure. */
 export interface CampaignSummaryContext {
@@ -157,7 +157,8 @@ function reviewSentences(values: CampaignFormValues): string[] {
   if (rules.length > 0) {
     sentences.push(
       sprintf(
-        /* translators: %s: comma-separated eligibility rules. */ __('Eligibility: %s.', 'yayloyalty'),
+        /* translators: %s: comma-separated eligibility rules. */
+        __('Eligibility: %s.', 'yayloyalty'),
         rules.join(', '),
       ),
     );
@@ -182,7 +183,8 @@ function dateWindowSentence(startsAt: string | null, endsAt: string | null): str
 
   if (startsAt) {
     return sprintf(
-      /* translators: %s: start date. */ __('Starts %s, with no end date.', 'yayloyalty'),
+      /* translators: %s: start date. */
+      __('Starts %s, with no end date.', 'yayloyalty'),
       parseWPDate(startsAt),
     );
   }
@@ -226,8 +228,12 @@ function conditionClause(condition: CampaignCondition): string | null {
     return null;
   }
 
-  /* translators: 1: condition type label; 2: how many values it matches. */
-  return sprintf(__('%1$s (%2$d)', 'yayloyalty'), label, list.length);
+  return sprintf(
+    /* translators: 1: condition type label; 2: how many values it matches. */
+    __('%1$s (%2$d)', 'yayloyalty'),
+    label,
+    list.length,
+  );
 }
 
 /** The values a list condition matches; undefined for a number rule. Decided by the schema, not the value's shape: a `between` stores a bare [min, max] pair. */
@@ -241,7 +247,7 @@ function conditionList(condition: CampaignCondition): unknown {
   return kind.endsWith('_list') ? condition.value : undefined;
 }
 
-/* ─── "Before it can run": pure form values -> checklist ─────────────── */
+// "Before it can run": form values to checklist
 
 /** What campaignReadiness() needs beyond form values, passed in so it stays pure. */
 export interface CampaignReadinessContext {
@@ -328,7 +334,8 @@ function derivedStatusLine(values: CampaignFormValues): string {
   }
 
   return sprintf(
-    /* translators: %s: status label right after saving, e.g. "Active". */ __('It becomes %s on save.', 'yayloyalty'),
+    /* translators: %s: status label right after saving, e.g. "Active". */
+    __('It becomes %s on save.', 'yayloyalty'),
     savedLabel,
   );
 }

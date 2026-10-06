@@ -4,13 +4,13 @@ namespace YayLoyalty\Database\Schema;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Cached aggregates per member; the ledger is the truth. user_id as the
+ * Cached aggregates per member. The ledger is the truth. user_id as the
  * primary key is load-bearing: it turns the first-touch race into an
  * ON DUPLICATE KEY no-op. balance and lifetime_earned are signed on
- * purpose (refund clawbacks). Later-phase columns are declared ahead so
- * their feature lands as a data migration, not a schema change. Indexed
- * columns must stay in sync with CustomerRowSort::KEYS. See
- * docs/data-model/customers-and-ledger.md.
+ * purpose, for refund clawbacks. Columns for unbuilt features, such as
+ * tiers and referrals, are declared ahead so each feature lands as a data
+ * migration, not a schema change. Indexed columns must stay in sync with
+ * CustomerRowSort::KEYS.
  */
 final class CustomersTable extends AbstractTableSchema {
 

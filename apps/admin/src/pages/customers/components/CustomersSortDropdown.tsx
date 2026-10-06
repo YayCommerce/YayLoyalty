@@ -12,15 +12,8 @@ import {
 import type { SortDirection, SortKey } from '../customers-page.sort-rows';
 
 /**
- * 5c's "Sorted by [Balance ▾]" — the mobile stand-in for the desktop table's
- * clickable column headers, which the card list below `sm` has none of.
- * Reuses `sort.onChange(key)` as-is: clicking the already-active key flips
- * direction, same as a desktop header click (see `CustomersPage.tsx`'s
- * `handleSort`), so there is exactly one sort state machine, not two.
- *
- * Only the six real sort keys — `tier`/`referrals` are `disabled` on the
- * desktop headers too (no tiers/referrals table yet), so they don't belong
- * in a "change the sort" menu.
+ * The mobile stand-in for the desktop table's sortable headers. It calls the same `sort.onChange(key)`,
+ * so picking the active key flips the direction there too. Only the keys the server sorts by are offered.
  */
 const SORT_LABELS: Record<SortKey, string> = {
   name: __('Customer', 'yayloyalty'),
@@ -70,6 +63,7 @@ export function CustomersSortDropdown({
       </DropdownMenu>
       <span className="sr-only">
         {sprintf(
+          /* translators: %s: the sort direction, "ascending" or "descending". */
           __('Currently sorted %s', 'yayloyalty'),
           dir === 'asc' ? __('ascending', 'yayloyalty') : __('descending', 'yayloyalty'),
         )}

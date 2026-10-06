@@ -7,22 +7,14 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * The four extra `GET /customers/{id}/ledger` args the customer drawer's
- * ledger tab needs — split out of LedgerRestController to keep it near the
- * 200-line cap.
- *
- * Registered but with no SQL behind them yet (cheap `WHERE`/`BETWEEN`/`LIKE`
- * filters and an expensive `GROUP BY` for per-type counts are two different
- * costs, not bundled). The handler accepts and ignores them, returning
- * `type_counts: null` as the "server cannot filter yet" signal the SPA
- * renders a disabled filter row from.
+ * ledger tab needs, plus the type-group vocabulary they filter by.
  */
 final class LedgerQueryArgs {
 
     /**
      * Grouped filter vocabulary, not the raw `LedgerType` enum: `earn` covers
-     * `earn` + `refund_earn`, `redeem` covers `redeem` + `refund_redeem`,
-     * `adjust` covers `adjust` + `correction`. `all` plus the four groups the
-     * artboards show.
+     * `earn` and `refund_earn`, `redeem` covers `redeem` and `refund_redeem`,
+     * and `adjust` covers `adjust` and `correction`. `all` applies no type filter.
      *
      * @return string[]
      */
@@ -48,8 +40,40 @@ final class LedgerQueryArgs {
     }
 
     /**
-     * @return array<string, mixed>
+     * The raw `LedgerType` values a filter group covers, or none for `all`.
+     * Derived from group_of() so the grouping lives once.
+     *
+     * @return string[]
      */
+    public static function types_of( string $group ): array {
+        if ( 'all' === $group ) {
+            return [];
+        }
+
+        return array_values(
+            array_filter( LedgerType::all(), fn( string $type ) => self::group_of( $type ) === $group )
+        );
+    }
+
+    /**
+     * Raw per-`LedgerType` row counts folded into the filter groups, with `all`
+     * as the total: the shape of the endpoint's `type_counts`.
+     *
+     * @param array<string, int> $by_type
+     * @return array<string, int>
+     */
+    public static function group_counts( array $by_type ): array {
+        $counts = array_fill_keys( self::filter_types(), 0 );
+
+        foreach ( $by_type as $type => $count ) {
+            $counts[ self::group_of( $type ) ] += $count;
+            $counts['all']                     += $count;
+        }
+
+        return $counts;
+    }
+
+    /** @return array<string, mixed> */
     public static function all(): array {
         return [
             'type'   => [
@@ -79,9 +103,6 @@ final class LedgerQueryArgs {
         ];
     }
 
-    /**
-     * @param mixed $value
-     */
     public static function validate_date( $value ): bool {
         if ( ! is_string( $value ) || '' === $value ) {
             return false;

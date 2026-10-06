@@ -9,20 +9,15 @@ use YayLoyalty\Repositories\CustomerRepository;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * `GET /customers` response shaping — split out of CustomerRestController to
- * keep it near the 200-line cap. Sibling to `CustomerRowFilters`/
- * `CustomerRowSort`, which already own the list's filter/sort semantics;
- * this class owns the route args, the full request→response handling
- * (`respond_list()`), and the wire-row/no-match-suggestion shapes built
- * from their output — moved off the controller for the same 200-line
- * reason.
+ * `GET /customers` handling: the route args, the request-to-response flow in respond_list(), and the
+ * wire rows and no-match suggestions. CustomerRowFilters and CustomerRowSort own the filter and sort rules.
  */
 final class CustomerListFormatter {
 
     /**
-     * Full `GET /customers` handling: filters/sorts/queries, formats rows to
-     * the wire, folds in `suggestions` on a zero-row result. `$controller`
-     * is only used for its inherited `respond_paginated()` envelope shape.
+     * Filters, sorts and queries, formats rows for the wire, and adds
+     * `suggestions` to a zero-row result. `$controller` only supplies the
+     * respond_paginated() envelope.
      *
      * @return array<string, mixed>
      */
@@ -62,10 +57,8 @@ final class CustomerListFormatter {
     }
 
     /**
-     * The Customers-list-only search/filter params — `search` already lives on
-     * `AbstractRestController::get_collection_params()`, so only the
-     * customer-specific ones are added here. Values/enums mirror
-     * `customers-page.filter-rows.ts` exactly.
+     * The Customers list's own filter params. `search` already comes from
+     * AbstractRestController::get_collection_params().
      *
      * @return array<string, mixed>
      */
@@ -96,16 +89,14 @@ final class CustomerListFormatter {
     }
 
     /**
-     * One list row — deliberately not `Models\Customer::to_array()`: this is
-     * a JOIN projection carrying `name`/`email`, which the customer entity
-     * has no place for. `$wpdb` returns every column as a string, so casting
-     * here is mandatory (the admin app parses with zod `z.number().int()`,
-     * which rejects `"640"`).
+     * One list row. Not Models\Customer::to_array(): this is a JOIN projection
+     * carrying `name` and `email`, which the entity has no place for. $wpdb
+     * returns every column as a string, so the casts are required: the admin
+     * app parses with zod `z.number().int()`, which rejects `"640"`.
      *
-     * `name`/`email` fall back to the `account_deleted` snapshot when the
-     * `LEFT JOIN`ed `u.display_name`/`u.user_email` are `NULL` (a deleted
-     * member) — display-only: the raw query's own sort/search still runs
-     * against the (possibly `NULL`) joined columns, not this fallback.
+     * `name` and `email` fall back to the `account_deleted` snapshot when the
+     * joined columns are NULL, for a deleted member. The fallback is for display
+     * only: the query's sort and search still run on the joined columns.
      *
      * @param array<string, mixed> $row
      * @return array<string, mixed>
@@ -147,9 +138,9 @@ final class CustomerListFormatter {
     }
 
     /**
-     * "Which filter should I drop?" — one `count_list()` call per candidate
-     * `CustomerRowFilters::candidates_for_no_match()` builds, kept only when
-     * non-zero and sorted by count descending.
+     * "Which filter should I drop?": one count_list() call per candidate from
+     * CustomerRowFilters::candidates_for_no_match(), kept when non-zero and
+     * sorted by count, highest first.
      *
      * @param array<string, string> $filters
      * @return array<int, array{key: string, count: int}>

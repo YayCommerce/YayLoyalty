@@ -3,10 +3,9 @@ import { z } from 'zod';
 import { ledgerEntrySchema } from './ledger.schema';
 
 /**
- * Mirrors DashboardRestController::define_item_schema(), the source of
- * truth. A zero denominator yields null, never 0: null renders as "—" or
- * "no previous period". Notices carry no copy; dashboard-page.notice-copy.ts
- * composes it from key + data.
+ * Mirrors DashboardRestController::define_item_schema(), the source of truth.
+ * A zero denominator yields null, never 0: null renders as "—" or "no previous period".
+ * Notices carry no copy. dashboard-page.notice-copy.ts composes it from key and data.
  */
 
 export const DASHBOARD_RANGES = [7, 30, 90] as const;

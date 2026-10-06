@@ -5,10 +5,7 @@ import { EmailsFormValues } from '@/lib/schema/emails.schema';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
 
-/**
- * Weekly per-customer send cap. Not enforced yet — nothing sends loyalty emails this release;
- * the value is saved now so sending needs no settings migration.
- */
+/** Weekly per-customer send cap, enforced by EmailThrottle when an email sends. */
 export function EmailsThrottleCard() {
   const { control } = useFormContext<EmailsFormValues>();
 
@@ -36,9 +33,7 @@ export function EmailsThrottleCard() {
         <p className="text-muted-foreground text-xs">
           {__("Order and account emails from WooCommerce aren't counted toward this cap.", 'yayloyalty')}
         </p>
-        <p className="text-muted-foreground text-xs italic">
-          {__('Not enforced yet — this limit will apply once automatic sending ships.', 'yayloyalty')}
-        </p>
+        <p className="text-muted-foreground text-xs">{__('Set 0 for no limit.', 'yayloyalty')}</p>
       </CardContent>
     </Card>
   );

@@ -15,6 +15,7 @@ import {
   Campaign,
   CAMPAIGN_DISPLAY_STATUSES,
   CampaignDisplayStatus,
+  findBuiltinCampaign,
   LITE_CAMPAIGN_TRIGGERS,
   resolveCampaignDisplayStatus,
 } from '@/lib/schema/campaign.schema';
@@ -43,7 +44,6 @@ import { CampaignArchiveDialog, CampaignBulkArchiveDialog } from './archive/Camp
 import {
   CampaignGroupKey,
   conditionsLabel,
-  findBuiltinCampaign,
   givesLabel,
   scheduleLabel,
   statusLabel,
@@ -938,7 +938,7 @@ function campaignCountLabel(count: number): string {
   );
 }
 
-/** Derives every presentation string from the real Campaign fields; generic across all triggers. points_issued/is_deletable ride along via the spread — they're already on Campaign. */
+/** Derives every presentation string from the real Campaign fields, for any trigger. */
 function toDisplayCampaign(campaign: Campaign): DisplayCampaign {
   return {
     ...campaign,

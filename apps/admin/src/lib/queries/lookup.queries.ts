@@ -3,8 +3,6 @@ import { keepPreviousData, queryOptions, useQuery } from '@tanstack/react-query'
 import { getLookup, getProductSummary } from '@/lib/api/lookup.api';
 import type { LookupEntity } from '@/lib/schema/lookup.schema';
 
-/** ─── Query Options ─────────────────────────────────── */
-
 export const LOOKUP_QUERIES = {
   search: (entity: LookupEntity, term: string) =>
     queryOptions({
@@ -34,8 +32,6 @@ export const LOOKUP_QUERIES = {
       retry: false,
     }),
 };
-
-/** ─── Hooks ─────────────────────────────────────────── */
 
 export function useLookupSearchQuery(entity: LookupEntity, term: string) {
   return useQuery(LOOKUP_QUERIES.search(entity, term));

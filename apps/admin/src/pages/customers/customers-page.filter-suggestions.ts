@@ -47,13 +47,21 @@ export function countActiveFilters(filters: RowFilters, includeTier: boolean): n
 function describeFilterValue(key: FilterKey, filters: RowFilters): string {
   switch (key) {
     case 'search':
-      return sprintf(__('Search "%s"', 'yayloyalty'), filters.search.trim());
+      return sprintf(
+        /* translators: %s: the search term. */
+        __('Search "%s"', 'yayloyalty'),
+        filters.search.trim(),
+      );
     case 'balanceRange':
       return BALANCE_RANGE_OPTIONS.find((option) => option.value === filters.balanceRange)?.label ?? '';
     case 'expiringSoon':
       return EXPIRING_SOON_OPTIONS.find((option) => option.value === filters.expiringSoon)?.label ?? '';
     case 'tier':
-      return sprintf(__('Tier: %s', 'yayloyalty'), filters.tier);
+      return sprintf(
+        /* translators: %s: the tier name. */
+        __('Tier: %s', 'yayloyalty'),
+        filters.tier,
+      );
   }
 }
 
@@ -77,7 +85,11 @@ export function toFilterDropSuggestions(raw: NoMatchSuggestion[], filters: RowFi
 }
 
 export function countLabel(count: number): string {
-  return sprintf(_n('%d customer', '%d customers', count, 'yayloyalty'), count);
+  return sprintf(
+    /* translators: %d: number of customers. */
+    _n('%d customer', '%d customers', count, 'yayloyalty'),
+    count,
+  );
 }
 
 /** The filter patch matching the candidate the server counted (CustomerRowFilters::candidates_for_no_match()). */

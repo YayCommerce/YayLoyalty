@@ -15,11 +15,8 @@ use YayLoyalty\Services\LedgerService;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Customers endpoints: the list (search/filter/sort/paginate), one
- * customer's aggregates, and manual adjustment. Filter and sort semantics
- * belong to CustomerRowFilters/CustomerRowSort; this only maps request to
- * their shapes and rows to the wire. No CustomerService: only LedgerService
- * may hold both repositories.
+ * Customers endpoints: the list, one customer's aggregates, and manual adjustment.
+ * No CustomerService: only LedgerService writes customer and ledger rows.
  */
 final class CustomerRestController extends AbstractRestController {
 
@@ -29,13 +26,13 @@ final class CustomerRestController extends AbstractRestController {
     /** @var LedgerService */
     private $ledger_service;
 
-    /** @var LedgerRepository Read-only here — counts.ledger only. All writes stay LedgerService's. */
+    /** @var LedgerRepository Read-only here, for counts.ledger. LedgerService makes every write. */
     private $ledger;
 
-    /** @var RewardRepository Read-only — the drawer's points→money conversion rate. */
+    /** @var RewardRepository Read-only: the drawer's points→money rate. */
     private $rewards;
 
-    /** @var CustomerMetaRepository Read-only — counts.activity, the deletion snapshot, the list's identity fallback. */
+    /** @var CustomerMetaRepository Read-only: counts.activity, the deletion snapshot and the list's identity fallback. */
     private $meta;
 
     public function __construct(
@@ -100,7 +97,6 @@ final class CustomerRestController extends AbstractRestController {
         );
     }
 
-    /** Real list, real DB — CustomerListFormatter owns the full request→response handling. */
     public function get_items( \WP_REST_Request $request ) {
         return CustomerListFormatter::respond_list( $request, $this, $this->customers, $this->meta );
     }
@@ -111,13 +107,13 @@ final class CustomerRestController extends AbstractRestController {
         return $this->format_customer( $user_id, $this->customers->find_by_user_id( $user_id ) );
     }
 
-    /** A user with no activity is a member with nothing yet, not a 404 — the model's own defaults are that empty shape. */
+    /** A user with no activity is a member with nothing yet, not a 404. The model's defaults are that empty shape. */
     private function format_customer( int $user_id, ?Customer $customer ): array {
         $base = ( $customer ?? new Customer( $user_id ) )->to_array();
         $user = get_userdata( $user_id );
 
         $activity_count = $this->meta->count_activity( $user_id );
-        // Gated on the WP user currently being gone too — a reinstated id self-heals, no "undelete" event needed.
+        // Also gated on the WP user being gone now, so a reinstated id self-heals with no "undelete" event.
         $deletion = false === $user ? $this->meta->latest( $user_id, ActivityEvent::ACCOUNT_DELETED ) : null;
 
         return CustomerItemFormatter::format(
@@ -157,13 +153,17 @@ final class CustomerRestController extends AbstractRestController {
         return $entry->to_array();
     }
 
-    /** Non-zero and within the sanity ceiling — adjustments aren't idempotent, so a retry double-grants; this bounds the damage. */
+    /** Non-zero and within the sanity ceiling. Adjustments are not idempotent, so a retry grants twice, and the ceiling bounds the damage. */
     private function validate_adjustment( int $points ): ?\WP_Error {
         if ( 0 === $points ) {
             return $this->error_invalid_arguments( __( 'An adjustment must be a non-zero number of points.', 'yayloyalty' ) );
         }
 
-        /** @param int $max Largest absolute point value a single manual adjustment may carry. */
+        /**
+         * Largest absolute point value a single manual adjustment may carry.
+         *
+         * @param int $max
+         */
         $max = (int) apply_filters( 'yayloyalty_max_manual_adjustment', 1000000 );
 
         if ( abs( $points ) > $max ) {

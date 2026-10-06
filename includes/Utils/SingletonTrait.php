@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Utils;
 
+/** One shared instance per class, for the boot classes only. */
 trait SingletonTrait {
     protected static $instance = null;
 
@@ -14,10 +15,8 @@ trait SingletonTrait {
         return static::$instance;
     }
 
-    /** Singletons should not be cloneable. */
     protected function __clone() { }
 
-    /** Singletons should not be restorable from strings. */
     public function __wakeup() {
         throw new \Exception( 'Cannot unserialize a singleton.' );
     }

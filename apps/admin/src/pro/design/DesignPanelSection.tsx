@@ -18,7 +18,7 @@ import {
 } from '@/pages/settings/design-settings.copy';
 import { panelLayoutDescription, panelLayoutLabel } from '@/pages/settings/design-settings.option-labels';
 
-/** A tiny wireframe of the panel: highlighted top/bottom bars only appear in "full". */
+/** A miniature of the panel: the highlighted top and bottom bars appear only in "full". */
 function PanelLayoutPreview({ layout }: { layout: DesignPanelLayout }) {
   const full = layout === 'full';
   return (
@@ -64,10 +64,8 @@ function PanelToggleRow({
 }
 
 /**
- * Pro. Layout radio cards (with a wireframe preview) on the left, the panel's
- * optional blocks on the right. Same no-props `useFormContext` shape as the
- * Free sections — mounted through `@/pro`, never imported directly
- * (pro/index.ts docblock).
+ * Pro. Layout radio cards, each with a miniature preview, beside the panel's optional blocks.
+ * Mounted through `@/pro`, never imported directly.
  */
 export function DesignPanelSection() {
   const { control } = useFormContext<Design>();
@@ -79,7 +77,7 @@ export function DesignPanelSection() {
         <CardDescription>{PANEL_SECTION_DESCRIPTION()}</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <div className="grid gap-6">
           <Field>
             <FieldLabel>{PANEL_LAYOUT_LABEL()}</FieldLabel>
             <FieldContent>

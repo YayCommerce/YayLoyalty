@@ -1,15 +1,11 @@
 import { z } from 'zod';
 
 /**
- * Mirrors CustomerRestController::define_item_schema(), the source of
- * truth; nothing generates one from the other. Every aggregate is
- * server-owned, so there is no write shape.
+ * Mirrors CustomerRestController::define_item_schema(), the source of truth.
+ * Every aggregate is server-owned, so there is no write shape.
  */
-/**
- * Row counts behind the drawer's tab labels (`CustomerItemSchema::properties()`).
- * `ledger`/`activity` are real; `redemptions`/`referrals` are always 0 —
- * those tables don't exist yet.
- */
+
+/** Row counts behind the drawer's tab labels. `redemptions` and `referrals` are 0 until those tables exist. */
 export const customerCountsSchema = z.object({
   ledger: z.number().int(),
   activity: z.number().int(),
@@ -18,12 +14,9 @@ export const customerCountsSchema = z.object({
 });
 
 /**
- * 4a's "Loose ends this leaves" facts — non-null exactly when
- * `deleted_at` is non-null. `kept_ledger_entries` is always real;
- * `void_coupons`/`credited_referrals`/`counted_in_members` are always
- * `null` — no redemptions/referrals/member-count feature exists — and
- * render as "Not tracked yet" rather than being hidden.
- * `void_coupons.example` is a single illustrative label ("$5 off"), not a list.
+ * What a deleted customer leaves behind; non-null exactly when `deleted_at` is.
+ * `void_coupons`, `credited_referrals` and `counted_in_members` are null until their features exist.
+ * `void_coupons.example` is one illustrative label ("$5 off"), not a list.
  */
 export const looseEndsSchema = z.object({
   void_coupons: z
@@ -40,11 +33,9 @@ export const looseEndsSchema = z.object({
 export type LooseEnds = z.infer<typeof looseEndsSchema>;
 
 /**
- * 4b's expiring-batch summary — always `null` today, since it
- * needs `lots`, which doesn't exist yet (docs/data-model/future-tables.md).
- * `batches` is separately nullable inside: `null` means the Free inactivity model (no
- * batches exist at all, not "zero"). Percentages and money are derived
- * client-side — this carries figures only.
+ * The expiring-batch summary. Always null until the `lots` table exists.
+ * `batches: null` means the inactivity model, which has no batches at all, not zero of them.
+ * It carries figures only: percentages and money are derived client-side.
  */
 export const drawerExpiryBatchSchema = z.object({
   earned_from: z.string(),
@@ -68,14 +59,9 @@ export const drawerExpirySchema = z.object({
 export type DrawerExpiry = z.infer<typeof drawerExpirySchema>;
 
 /**
- * 5a's structured story — always `null` today, since it needs a backwards
- * ledger walk the server doesn't do yet. `shape` is a
- * Zod enum, not a bare string: an unknown
- * discriminator fails loudly at parse time rather than the panel rendering
- * a blank or half-filled narrative. `'other'` means the three-step story
- * cannot be assembled (a manual adjustment or an expiry clawback pushed the
- * balance below zero, not a refund) — the panel falls back to a generic
- * explanation, never guessing at legs that are `null`.
+ * How the balance went negative. Always null until the server walks the ledger backwards.
+ * `shape` is an enum, so an unknown value fails at parse time instead of rendering a half-filled story.
+ * `'other'` means an adjustment or an expiry, not a refund, caused the deficit, so the panel explains it generically.
  */
 export const drawerNegativeBalanceShapeSchema = z.enum(['refund_reversal', 'other']);
 export type DrawerNegativeBalanceShape = z.infer<typeof drawerNegativeBalanceShapeSchema>;
@@ -93,13 +79,12 @@ export const drawerNegativeBalanceSchema = z.object({
     .object({
       order_id: z.number().int(),
       points: z.number().int(),
-      /** Discount value in store currency, e.g. "10.00" — a string, same as
-       *  `Reward`/redemption values elsewhere, never a pre-formatted price. */
+      /** Discount value in store currency, e.g. "10.00": a string like other money values, never a formatted price. */
       value: z.string(),
     })
     .nullable(),
   reversed: drawerNegativeBalanceLegSchema.nullable(),
-  /** The real ledger row this story is about — `LedgerTabRows.tsx` marks it. */
+  /** The ledger row this story is about, which the ledger tab marks. */
   cause_ledger_id: z.number().int().nullable(),
   deficit: z.number().int(),
 });
@@ -122,13 +107,15 @@ export const customerListRowSchema = z.object({
 
 export type CustomerListRow = z.infer<typeof customerListRowSchema>;
 
-/** GET /customers/{id}: the list row (name/email included so a deep link or a
- * refresh has an identity to render) plus the drawer-only aggregates and panels. */
+/**
+ * GET /customers/{id}: the list row plus the drawer-only aggregates and panels.
+ * It carries name and email so a deep link or a refresh has an identity to render.
+ */
 export const customerSchema = customerListRowSchema.extend({
   lifetime_redeemed: z.number().int(),
   joined_at: z.string().nullable(),
   updated_at: z.string().nullable(),
-  /** Derived from the latest account_deleted activity row, gated on the WP user currently being gone — never a column. */
+  /** Derived from the latest account_deleted activity row while the WP user is gone. Never a column. */
   deleted_at: z.string().nullable(),
   counts: customerCountsSchema,
   loose_ends: looseEndsSchema.nullable(),
@@ -153,7 +140,7 @@ export type CustomerBalanceRange = 'any' | 'negative' | '0-1000' | '1000-10000' 
 export type CustomerExpiringSoon = 'off' | '30' | '90' | 'none';
 /** No tiers table yet: any non-'all' value matches zero rows server-side. */
 export type CustomerTier = 'all' | 'Alpine' | 'Summit' | 'Explorer';
-/** tier/referrals have no backing data yet; accepted but not offered as a clickable header. */
+/** The server does not sort by `tier` or `referrals` yet, so neither is offered as a sort control. */
 export type CustomerSortKey =
   'name' | 'tier' | 'balance' | 'pending' | 'lifetime' | 'last_activity' | 'expires' | 'referrals';
 export type CustomerSortDirection = 'asc' | 'desc';

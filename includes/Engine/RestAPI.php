@@ -15,6 +15,7 @@ use YayLoyalty\Controllers\RedemptionsRestController;
 use YayLoyalty\Controllers\ReferralsRestController;
 use YayLoyalty\Controllers\RewardRestController;
 use YayLoyalty\Controllers\SettingsRestController;
+use YayLoyalty\Controllers\StorefrontActivityRestController;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\CustomerMetaRepository;
 use YayLoyalty\Repositories\CustomerRepository;
@@ -48,36 +49,32 @@ class RestAPI {
      * @return AbstractRestController[]
      */
     private function controllers(): array {
-        // An authorised LedgerService construction site; see its docblock.
+        // A listed LedgerService construction site.
         $customers = new CustomerRepository();
         $ledger    = new LedgerRepository();
 
         $ledger_service = new LedgerService( $ledger, $customers );
 
-        // Read-only cross-table aggregates; reads the ledger, never writes it.
+        // Read-only cross-table aggregates: they read the ledger and never write it.
         $rewards   = new RewardRepository();
         $dashboard = new DashboardRepository( $rewards );
         $campaigns = new CampaignRepository();
 
-        // Shared instance: written only by CustomerActivityService (Engine\CustomerActivityListener),
-        // read-only everywhere below.
+        // Read-only everywhere below. Only CustomerActivityService writes it.
         $customer_meta = new CustomerMetaRepository();
 
         $controllers = [
             new SettingsRestController(),
             new DesignRestController(),
             new EmailsRestController(),
-            // $ledger and $rewards here are read-only uses (counts.ledger,
-            // the drawer's conversion rate) — the same instances LedgerService
-            // and DashboardRepository hold, not a second construction.
-            // $customer_meta backs deleted_at/loose_ends/counts.activity and
-            // the list's identity fallback.
+            // $ledger and $rewards are read-only here.
             new CustomerRestController( $customers, $ledger_service, $ledger, $rewards, $customer_meta ),
-            // Same read-only $customers/$rewards instances as above, plus
-            // $dashboard for its liability aggregate — not a second construction.
+            // $customers and $rewards are read-only here too.
             new CustomerAdjustPreviewRestController( $customers, $dashboard, $rewards ),
             new LedgerRestController( $ledger ),
             new ActivityRestController( $customer_meta ),
+            // Shopper route (storefront launcher): session identity, no capability. $ledger is read-only here.
+            new StorefrontActivityRestController( $ledger ),
             // Empty envelopes until their tables exist.
             new RedemptionsRestController(),
             new ReferralsRestController(),

@@ -6,22 +6,15 @@ use YayLoyalty\Access\Capabilities;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * GET /yayloyalty/v1/customers/{id}/referrals — paginated referral rows.
+ * GET /yayloyalty/v1/customers/{id}/referrals: paginated referral rows.
  *
- * No `referrals` table exists yet — `docs/data-model/future-tables.md`'s
- * `yayloyalty_referrals` is designed but not implemented (1.1) — so the
- * endpoint always answers an EMPTY envelope, matching `counts.referrals`
- * from `CustomerItemFormatter::format()`. When the real table ships,
- * only `get_history()` below changes.
+ * The `yayloyalty_referrals` table is not built yet, so the endpoint always
+ * answers an empty envelope, matching `counts.referrals` from
+ * CustomerItemFormatter::format(). When the table ships, only get_history() changes.
  *
- * `referred_name`/`referred_email` are personal data of a THIRD PARTY (the
- * referred customer, not the one this drawer belongs to). The real endpoint
- * must apply the same `CAP::VIEW` gate as everywhere else in this
- * controller and must never expose them to a lower capability.
- *
- * A separate controller, the same shape `RedemptionsRestController` uses for
- * the same reason: keeps both this file and `CustomerRestController` under
- * the 200-line cap.
+ * `referred_name` and `referred_email` are a third party's personal data: the
+ * referred customer's, not the drawer's own. The real endpoint must keep this
+ * route's Capabilities::VIEW gate and never expose them to a lower capability.
  */
 final class ReferralsRestController extends AbstractRestController {
 
@@ -49,7 +42,7 @@ final class ReferralsRestController extends AbstractRestController {
     }
 
     public function get_history( \WP_REST_Request $request ) {
-        // No table yet — `id` is validated by member_id_param() but nothing looks it up.
+        // No table yet: member_id_param() validates `id`, but nothing looks it up.
         return $this->respond_empty_page( $request ) + [
             'referral_link' => '',
             'campaign'      => null,

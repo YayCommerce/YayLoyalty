@@ -42,7 +42,7 @@ class CampaignRepository extends AbstractRepository {
     public function find_by_slug( string $slug ): ?Campaign {
         global $wpdb;
 
-        $row = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        $row = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
                 'SELECT * FROM `' . esc_sql( $this->table() ) . '` WHERE slug = %s LIMIT 1',
                 $slug
@@ -67,7 +67,7 @@ class CampaignRepository extends AbstractRepository {
 
         global $wpdb;
 
-        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query on the plugin's own table; this method caches the result.
             $wpdb->prepare(
                 'SELECT * FROM `' . esc_sql( $this->table() ) . '`
                  WHERE status != %s
@@ -140,7 +140,7 @@ class CampaignRepository extends AbstractRepository {
     }
 
     /**
-     * @param array $args paginate()'s, plus 'trigger' and 'status'.
+     * @param array $args paginate()'s, plus 'trigger', 'status' and 'search'.
      * @return array{items: Campaign[], total: int, page: int, per_page: int}
      */
     public function paginate_filtered( array $args = [] ): array {
@@ -169,7 +169,7 @@ class CampaignRepository extends AbstractRepository {
         return $this->paginate( $args );
     }
 
-    /** Inserts a built-in row unless its slug is present; the unique key on slug is the backstop. */
+    /** Inserts a built-in row unless its slug is present. The unique key on slug is the backstop. */
     public function seed_builtin( Campaign $campaign ): void {
         if ( null !== $this->find_by_slug( $campaign->get_slug() ) ) {
             return;

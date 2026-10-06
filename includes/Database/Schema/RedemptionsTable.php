@@ -4,10 +4,10 @@ namespace YayLoyalty\Database\Schema;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * yayloyalty_redemptions, per docs/data-model/redemptions.md. Not yet in
- * Installer::schemas(): registering it there is the F08 step that creates
+ * yayloyalty_redemptions: designed, not built yet. Not yet in
+ * Installer::schemas(): registering it there is the step that creates
  * the table on the next upgrade. UNIQUE (order_id, reward_id) is the
- * double-debit guard for the flexible discount; (reward_id, user_id)
+ * double-debit guard for the flexible discount, and (reward_id, user_id)
  * serves the `redemption_count` condition. Scaffold: DDL stub.
  */
 final class RedemptionsTable extends AbstractTableSchema {
@@ -17,7 +17,7 @@ final class RedemptionsTable extends AbstractTableSchema {
     }
 
     public function definition(): string {
-        // TODO(F08): CREATE TABLE with the columns below, PK id, UNIQUE uk_order_reward (order_id, reward_id), KEY user_id, KEY order_id, KEY reward_id, KEY idx_status_created (status, created_at), KEY idx_reward_user (reward_id, user_id); InnoDB, charset_collate().
+        // TODO(redemption): CREATE TABLE with the columns below, PK id, UNIQUE uk_order_reward (order_id, reward_id), KEY user_id, KEY order_id, KEY reward_id, KEY idx_status_created (status, created_at), KEY idx_reward_user (reward_id, user_id); InnoDB, charset_collate().
         throw new \RuntimeException( 'Not implemented' );
     }
 

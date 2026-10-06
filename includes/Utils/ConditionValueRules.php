@@ -14,8 +14,6 @@ final class ConditionValueRules {
      * Applies a spec's normalize hints: array (widen a scalar; null → []), int, uppercase, lowercase, dedupe.
      *
      * @param string[] $hints
-     * @param mixed    $value
-     * @return mixed
      */
     public static function normalize_scalar( array $hints, $value ) {
         if ( in_array( 'array', $hints, true ) && ! is_array( $value ) ) {
@@ -45,11 +43,7 @@ final class ConditionValueRules {
         return $value;
     }
 
-    /**
-     * Validates a non-empty list of ids or strings, optionally capped.
-     *
-     * @param mixed $value
-     */
+    /** Validates a non-empty list of ids or strings, optionally capped. */
     public static function validate_list( string $type, $value, string $item_kind, ?int $max = null ): void {
         self::assert_non_empty_list( $type, $value );
 
@@ -74,11 +68,7 @@ final class ConditionValueRules {
         }
     }
 
-    /**
-     * Validates an int value, or a [low, high] pair with `between`; $min rejects either bound below it.
-     *
-     * @param mixed $value
-     */
+    /** Validates an int value, or a [low, high] pair with `between`. $min rejects either bound below it. */
     public static function validate_int( string $type, string $operator, $value, ?int $min = null ): void {
         if ( 'between' === $operator ) {
             self::assert_between_pair( $type, $value, true );
@@ -95,18 +85,12 @@ final class ConditionValueRules {
         }
     }
 
-    /**
-     * @param mixed $value
-     */
     public static function assert_non_empty_list( string $type, $value ): void {
         if ( ! is_array( $value ) || [] === $value ) {
             throw self::bad( $type, 'value must be a non-empty array' );
         }
     }
 
-    /**
-     * @param mixed $value
-     */
     public static function assert_between_pair( string $type, $value, bool $integers ): void {
         if ( ! is_array( $value ) || 2 !== count( $value ) || ! array_key_exists( 0, $value ) || ! array_key_exists( 1, $value ) ) {
             throw self::bad( $type, '`between` takes a two-element [low, high] array' );
@@ -128,9 +112,6 @@ final class ConditionValueRules {
         }
     }
 
-    /**
-     * @param mixed $value
-     */
     public static function is_int_like( $value ): bool {
         return ! is_bool( $value ) && is_numeric( $value ) && floor( (float) $value ) === (float) $value;
     }

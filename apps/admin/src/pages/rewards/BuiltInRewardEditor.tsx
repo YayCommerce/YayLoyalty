@@ -1,19 +1,17 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronUp, InfoIcon, TriangleAlert, X } from 'lucide-react';
+import { InfoIcon, TriangleAlert, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { __, sprintf } from '@wordpress/i18n';
+import { __ } from '@wordpress/i18n';
 
 import { toastApiError } from '@/lib/api/api';
-import { parseWPDate } from '@/lib/helpers/format.helper';
+import { flexibleDiscountSubtitle } from '@/lib/helpers/reward.helper';
 import { useRewardsQuery, useUpdateRewardMutation } from '@/lib/queries/reward.queries';
 import type { Reward } from '@/lib/schema/reward.schema';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { BuiltInConfigCard } from '@/components/ui/custom/built-in-config-card';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Switch } from '@/components/ui/switch';
 import { UpgradeToProBanner } from '@/components/pro/UpgradeToPro';
 import { FlexibleDiscountConfig, FlexibleDiscountFields } from './FlexibleDiscountFields';
 
@@ -136,55 +134,19 @@ function BuiltInRewardCard({ reward }: { reward: Reward }) {
   }
 
   return (
-    <Card className={expanded ? 'border-primary gap-0 p-0' : 'gap-0 p-0'}>
-      <CardContent
-        className="flex cursor-pointer items-center gap-3.5 p-0 px-4.5 py-4"
-        onClick={() => setExpanded((current) => !current)}
-      >
-        <div className="flex flex-1 flex-col gap-0.5">
-          <div className="flex items-center gap-2">
-            <span className="text-base font-semibold">{reward.name}</span>
-            <Badge variant="outline" className="uppercase">
-              {__('Default', 'yayloyalty')}
-            </Badge>
-          </div>
-          <span className="text-muted-foreground text-xs">
-            {__('The customer chooses how many points to use at checkout', 'yayloyalty')}
-          </span>
-        </div>
-
-        {/* Its own click target: toggling on/off isn't "collapse this card". */}
-        <div className="flex items-center gap-2" onClick={(event) => event.stopPropagation()}>
-          <Switch checked={isOn} onCheckedChange={(checked) => setStatus(checked ? 'active' : 'paused')} />
-          <span className="text-sm">{isOn ? __('On', 'yayloyalty') : __('Off', 'yayloyalty')}</span>
-        </div>
-
-        <span className="text-muted-foreground flex size-6 items-center justify-center">
-          {expanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
-        </span>
-      </CardContent>
-
-      {expanded && (
-        <CardContent className="flex flex-col gap-3.5 border-t p-4.5">
-          <FlexibleDiscountFields value={value} onChange={update} />
-
-          <div className="flex flex-wrap items-center gap-3 border-t pt-4">
-            <Button size="sm" disabled={mutation.isPending} onClick={save}>
-              {mutation.isPending ? __('Saving…', 'yayloyalty') : __('Save changes', 'yayloyalty')}
-            </Button>
-            <Button variant="ghost" size="sm" disabled={mutation.isPending} onClick={reset}>
-              {__('Cancel', 'yayloyalty')}
-            </Button>
-            <span className="text-muted-foreground ml-auto text-xs">
-              {sprintf(
-                /* translators: %s: the date the reward was last saved. */
-                __('Last edited %s', 'yayloyalty'),
-                parseWPDate(reward.updated_at),
-              )}
-            </span>
-          </div>
-        </CardContent>
-      )}
-    </Card>
+    <BuiltInConfigCard
+      name={reward.name}
+      subtitle={flexibleDiscountSubtitle()}
+      isOn={isOn}
+      onToggle={(checked) => setStatus(checked ? 'active' : 'paused')}
+      expanded={expanded}
+      onToggleExpanded={() => setExpanded((current) => !current)}
+      onSave={save}
+      onCancel={reset}
+      saving={mutation.isPending}
+      updatedAt={reward.updated_at}
+    >
+      <FlexibleDiscountFields value={value} onChange={update} />
+    </BuiltInConfigCard>
   );
 }

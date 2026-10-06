@@ -16,7 +16,7 @@ defined( 'ABSPATH' ) || exit;
 abstract class AbstractRestController extends BaseRestController {
 
     /**
-     * Server-owned on every resource; always stripped from write args regardless of schema flags.
+     * Server-owned on every resource. Always stripped from write args, whatever the schema flags say.
      *
      * @var string[]
      */
@@ -36,7 +36,7 @@ abstract class AbstractRestController extends BaseRestController {
     abstract public function register_routes(): void;
 
     /**
-     * JSON Schema for one item; properties declare type, context and readonly.
+     * JSON Schema for one item. Properties declare type, context and readonly.
      *
      * @return array<string, mixed>
      */
@@ -93,9 +93,7 @@ abstract class AbstractRestController extends BaseRestController {
         return $args;
     }
 
-    /**
-     * @param array<string, mixed> $property
-     */
+    /** @param array<string, mixed> $property */
     protected function is_readonly_property( string $name, array $property ): bool {
         if ( in_array( $name, static::ALWAYS_READONLY, true ) ) {
             return true;
@@ -104,9 +102,7 @@ abstract class AbstractRestController extends BaseRestController {
         return ! empty( $property['readonly'] );
     }
 
-    /**
-     * @return array<string, mixed>
-     */
+    /** @return array<string, mixed> */
     public function get_collection_params(): array {
         return [
             'page'     => [
@@ -143,7 +139,7 @@ abstract class AbstractRestController extends BaseRestController {
     }
 
     /**
-     * Route param that must name a live WP user; without the validate_callback the route becomes an enumeration oracle.
+     * Route param that must name a live WP user. Without the validate_callback the route becomes an enumeration oracle.
      *
      * @return array<string, mixed>
      */
@@ -153,7 +149,7 @@ abstract class AbstractRestController extends BaseRestController {
 
     /**
      * Route param that must name a loyalty member, live or deleted: the customers row outlives its WP user, and the
-     * drawer exists to show that row. Only for member reads — writes and unrelated user ids take user_id_param().
+     * drawer exists to show that row. Only for member reads: writes and unrelated user ids take user_id_param().
      *
      * @return array<string, mixed>
      */
@@ -194,10 +190,8 @@ abstract class AbstractRestController extends BaseRestController {
     /**
      * Shapes a paginate() result as PaginatedResponse<T>: camelCase envelope, snake_case items.
      *
-     * Public (not protected): `CustomerListFormatter::respond_list()` calls
-     * it against the controller instance it is handed, to keep
-     * `CustomerRestController` under the 200-line cap without duplicating
-     * this envelope shape.
+     * Public because CustomerListFormatter::respond_list() calls it on the
+     * controller it is handed.
      *
      * @param array{items: mixed[], total: int, page: int, per_page: int} $result
      * @return array<string, mixed>
@@ -224,7 +218,7 @@ abstract class AbstractRestController extends BaseRestController {
     }
 
     /**
-     * Empty page envelope at the request's page/per_page — the truthful answer
+     * Empty page envelope at the request's page and per_page: the truthful answer
      * for a collection whose table does not exist yet, not an error.
      *
      * @return array<string, mixed>
@@ -264,7 +258,7 @@ abstract class AbstractRestController extends BaseRestController {
     }
 
     /**
-     * Ceiling guard for manual adjustments; administrators bypass it, 0 means unlimited.
+     * Ceiling guard for manual adjustments. Administrators bypass it, and 0 means unlimited.
      *
      * @param int|float|string $amount
      * @return true|\WP_Error
@@ -308,7 +302,7 @@ abstract class AbstractRestController extends BaseRestController {
         return false !== $date && $date->format( Dates::MYSQL_FORMAT ) === $value;
     }
 
-    /** Whether an open-ended or unscheduled side passes, and two set dates run forward (ends_at is exclusive, so equal is empty). */
+    /** Whether the dates are in order: an unset side passes, and two set dates must run forward. ends_at is exclusive, so equal dates are empty. */
     protected static function dates_in_order( ?string $starts_at, ?string $ends_at ): bool {
         return null === $starts_at || null === $ends_at || Dates::to_timestamp( $starts_at ) < Dates::to_timestamp( $ends_at );
     }

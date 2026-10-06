@@ -10,11 +10,20 @@ import type { DashboardRange, DashboardSeriesPoint } from '@/lib/schema/dashboar
  * ratio with no denominator "—"; no previous period reads as such, never 0%.
  */
 
-export const RANGE_LABEL = (range: DashboardRange) => sprintf(_n('%d day', '%d days', range, 'yayloyalty'), range);
+export const RANGE_LABEL = (range: DashboardRange) =>
+  sprintf(
+    /* translators: %d: number of days in the range. */
+    _n('%d day', '%d days', range, 'yayloyalty'),
+    range,
+  );
 
 /** "last 30 days" */
 export function rangeSubline(range: DashboardRange): string {
-  return sprintf(__('last %s', 'yayloyalty'), RANGE_LABEL(range));
+  return sprintf(
+    /* translators: %s: the range's length, e.g. "30 days". */
+    __('last %s', 'yayloyalty'),
+    RANGE_LABEL(range),
+  );
 }
 
 /** "▲ 3.2% vs prev 30 days" | "▼ 0.9% vs prev 30 days" | "no previous period" */
@@ -26,27 +35,48 @@ export function deltaLine(
     return { text: __('no previous period', 'yayloyalty'), direction: 'none' };
   }
 
-  const vs = sprintf(__('vs prev %s', 'yayloyalty'), RANGE_LABEL(range));
+  const vs = sprintf(
+    /* translators: %s: the range's length, e.g. "30 days". */
+    __('vs prev %s', 'yayloyalty'),
+    RANGE_LABEL(range),
+  );
   const pct = `${Math.abs(delta).toLocaleString(undefined, { maximumFractionDigits: 1 })}%`;
 
   if (delta > 0) return { text: `▲ ${pct} ${vs}`, direction: 'up' };
   if (delta < 0) return { text: `▼ ${pct} ${vs}`, direction: 'down' };
 
-  return { text: sprintf(__('unchanged %s', 'yayloyalty'), vs), direction: 'flat' };
+  return {
+    text: sprintf(
+      /* translators: %s: the period compared against, e.g. "vs prev 30 days". */
+      __('unchanged %s', 'yayloyalty'),
+      vs,
+    ),
+    direction: 'flat',
+  };
 }
 
 /** "212 of 1,190 orders" */
 export function ordersSubline(withPoints: number, total: number): string {
-  return sprintf(__('%1$s of %2$s orders', 'yayloyalty'), formatPoints(withPoints), formatPoints(total));
+  return sprintf(
+    /* translators: 1: orders that earned points, formatted; 2: all orders in the range, formatted. */
+    __('%1$s of %2$s orders', 'yayloyalty'),
+    formatPoints(withPoints),
+    formatPoints(total),
+  );
 }
 
 /** "871,500 pts at 100 pts = $1"; names the rate so the approximation is visible. */
 export function liabilitySubline(points: number, pointsPerCurrencyUnit: number): string {
   if (pointsPerCurrencyUnit <= 0) {
-    return sprintf(__('%s pts outstanding', 'yayloyalty'), formatPoints(points));
+    return sprintf(
+      /* translators: %s: outstanding points, formatted. */
+      __('%s pts outstanding', 'yayloyalty'),
+      formatPoints(points),
+    );
   }
 
   return sprintf(
+    /* translators: 1: outstanding points; 2: points that make one currency unit; 3: that unit, e.g. "$1". */
     __('%1$s pts at %2$s pts = %3$s', 'yayloyalty'),
     formatPoints(points),
     formatPoints(pointsPerCurrencyUnit),
@@ -58,15 +88,30 @@ export function liabilitySubline(points: number, pointsPerCurrencyUnit: number):
 export function activityDenominator(shown: number, totalToday: number): string | null {
   if (totalToday <= shown) return null;
 
-  return sprintf(__('%1$d most recent of %2$s events today', 'yayloyalty'), shown, formatPoints(totalToday));
+  return sprintf(
+    /* translators: 1: number of events shown; 2: all events today, formatted. */
+    __('%1$d most recent of %2$s events today', 'yayloyalty'),
+    shown,
+    formatPoints(totalToday),
+  );
 }
 
 /** "Last updated 14:05 · next 15:05" for the cache strip. Inputs are UTC MySQL strings. */
 export function cacheStripTimes(generatedAt: string, nextRefreshAt: string | null): string {
   const at = (utc: string) => parseWPTime(utcToDate(utc));
-  const updated = sprintf(__('Last updated %s', 'yayloyalty'), at(generatedAt));
+  const updated = sprintf(
+    /* translators: %s: the time the figures were computed. */
+    __('Last updated %s', 'yayloyalty'),
+    at(generatedAt),
+  );
 
-  return nextRefreshAt ? `${updated} · ${sprintf(__('next %s', 'yayloyalty'), at(nextRefreshAt))}` : updated;
+  return nextRefreshAt
+    ? `${updated} · ${sprintf(
+        /* translators: %s: the time of the next refresh. */
+        __('next %s', 'yayloyalty'),
+        at(nextRefreshAt),
+      )}`
+    : updated;
 }
 
 /** Whether every point is zero; the chart then shows its empty overlay but keeps its axes. */
@@ -86,8 +131,20 @@ export function noticeTileOverrides(
     const overnight = formatPointsAsMoney(pointsJump.yesterday_points, pointsPerCurrencyUnit);
 
     return {
-      points_issued: sprintf(__('▲ %s of it yesterday', 'yayloyalty'), formatPoints(pointsJump.yesterday_points)),
-      ...(overnight ? { liability: sprintf(__('▲ %s overnight', 'yayloyalty'), overnight) } : {}),
+      points_issued: sprintf(
+        /* translators: %s: points issued yesterday, formatted. */
+        __('▲ %s of it yesterday', 'yayloyalty'),
+        formatPoints(pointsJump.yesterday_points),
+      ),
+      ...(overnight
+        ? {
+            liability: sprintf(
+              /* translators: %s: yesterday's points as money, formatted. */
+              __('▲ %s overnight', 'yayloyalty'),
+              overnight,
+            ),
+          }
+        : {}),
       // Not "unchanged": the delta may be non-zero; the jump just cannot have moved it.
       redemption_rate: __('not moved by the jump — this rate counts orders, not points', 'yayloyalty'),
     };
@@ -99,6 +156,7 @@ export function noticeTileOverrides(
     if (collapse !== null) {
       return {
         points_issued: sprintf(
+          /* translators: %s: the percentage fall, a whole number. */
           __('▼ %s%% in the last 7 days', 'yayloyalty'),
           collapse.toLocaleString(undefined, { maximumFractionDigits: 0 }),
         ),

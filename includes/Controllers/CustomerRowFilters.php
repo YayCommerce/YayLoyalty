@@ -7,9 +7,9 @@ use YayLoyalty\Utils\Dates;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The Customers list's filter rules (search, balance buckets, expiring-soon
- * window, tier), mirroring customers-page.filter-rows.ts. SQL-free: it
- * owns every threshold and edge, CustomerRepository turns them into WHERE.
+ * The Customers list's filter rules: search, balance buckets, expiring-soon
+ * window and tier. SQL-free: it owns every threshold and edge, and
+ * CustomerRepository turns them into WHERE.
  */
 final class CustomerRowFilters {
 
@@ -101,7 +101,7 @@ final class CustomerRowFilters {
     }
 
     /**
-     * @return array{0: int|null, 1: int|null} [min, max] — null means unbounded.
+     * @return array{0: int|null, 1: int|null} [min, max], where null means unbounded.
      */
     private static function balance_bounds( string $range ): array {
         switch ( $range ) {
@@ -120,7 +120,7 @@ final class CustomerRowFilters {
     }
 
     /**
-     * A day-window option means now..now+N days; already-expired rows match neither.
+     * A day-window option means now to now + N days. Already-expired rows match neither.
      *
      * @return array{0: string|null, 1: string|null, 2: bool} [from, to, is_null].
      */

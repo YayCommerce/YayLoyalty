@@ -1,10 +1,8 @@
 import { z } from 'zod';
 
 /**
- * Mirrors Controllers\LookupRestController (`GET /lookups/{entity}`). THAT
- * PHP CLASS IS THE SOURCE OF TRUTH. One row per match, capped server-side
- * at LOOKUP_PAGE_SIZE; `label` is the name a merchant recognises, already
- * decoded to plain text.
+ * Mirrors LookupRestController, the source of truth.
+ * One row per match, capped at LOOKUP_PAGE_SIZE. `label` is the name a merchant recognises, decoded to plain text.
  */
 
 /** Mirrors `LookupRestController::ENTITIES`. */

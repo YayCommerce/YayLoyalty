@@ -4,8 +4,8 @@ namespace YayLoyalty\Enums;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Kinds of balance movement. assert() runs at the service boundary; the
- * affects_* helpers hold the data model's aggregate rules in one place.
+ * Kinds of balance movement. assert() runs at the service boundary.
+ * The affects_* helpers hold the aggregate rules in one place.
  */
 final class LedgerType {
 
@@ -27,12 +27,10 @@ final class LedgerType {
     /** Manual admin adjustment, positive or negative, that also moves lifetime_earned. */
     public const ADJUST = 'adjust';
 
-    /** Manual adjustment written with "adjust lifetime totals" off — moves balance only. */
+    /** Manual adjustment written with "adjust lifetime totals" off. It moves the balance only. */
     public const CORRECTION = 'correction';
 
-    /**
-     * @return string[]
-     */
+    /** @return string[] */
     public static function all(): array {
         return [
             self::EARN,
@@ -49,9 +47,7 @@ final class LedgerType {
         return is_string( $value ) && in_array( $value, self::all(), true );
     }
 
-    /**
-     * @throws \InvalidArgumentException When $value is not a known type.
-     */
+    /** @throws \InvalidArgumentException When $value is not a known type. */
     public static function assert( $value ): string {
         if ( ! self::is_valid( $value ) ) {
             throw new \InvalidArgumentException(
@@ -67,17 +63,14 @@ final class LedgerType {
     }
 
     /**
-     * lifetime_earned = SUM(earn) + SUM(adjust) - SUM(|refund_earn|). Spending
-     * (redeem, expire) and `correction` never move it, so never demote a
-     * tier; an admin's `adjust` deduction can.
+     * lifetime_earned = SUM(earn) + SUM(adjust) - SUM(|refund_earn|). Spending (redeem, expire)
+     * and `correction` never move it, so they never demote a tier. An admin's `adjust` deduction can.
      */
     public static function affects_lifetime_earned( string $type ): bool {
         return in_array( $type, [ self::EARN, self::REFUND_EARN, self::ADJUST ], true );
     }
 
-    /**
-     * @return string[] Types that feed customers.lifetime_earned.
-     */
+    /** @return string[] Types that feed customers.lifetime_earned. */
     public static function lifetime_earned_types(): array {
         return array_values( array_filter( self::all(), [ self::class, 'affects_lifetime_earned' ] ) );
     }

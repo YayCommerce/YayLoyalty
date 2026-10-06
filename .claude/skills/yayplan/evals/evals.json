@@ -1,0 +1,29 @@
+{
+  "skill_name": "yayplan",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Here's the approved spec: docs/specs/2026-10-01-order-notes-export.md. Plan the implementation before we touch any code.",
+      "expected_output": "Reads the spec, explores the relevant code and tests, writes docs/plans/2026-10-01-order-notes-export.md following the template (header with Status: active and goal/spec/architecture/touches, global constraints, review focus, tasks with Files + Interfaces blocks and checkbox steps each ending in a verification and a commit). Before writing, proposes only the tests CLAUDE.md's test rule warrants, each with its file, suite and what it guards, asks which to include and waits; the header's **Tests:** line records the answer, and tasks without an accepted test get exact verification steps instead of test steps. Edits no source files. Runs the self-review and reports the path, a short summary, assumptions, and an execution recommendation, then stops without implementing.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "I want a 'copy to clipboard' button next to every coupon code in the admin coupons list. Plan it.",
+      "expected_output": "Recognises there is no spec and plans anyway, without sending the user to yaybrainstorming. Asks at most three questions that change the plan (e.g. which list screen, fallback for browsers without the Clipboard API, whether to show a toast) and waits, or, if the codebase answers them, proceeds while stating each assumption. The plan's header reads `**Spec:** none, planned from the request`, and its `## Requirements` section holds the goal, out of scope, acceptance criteria with exact values and the answers. It follows the template and names the exact admin screen file, hook, and verification steps. Proposes no tests for this UI-only change and says so rather than asking; the header reads `**Tests:** none` and every task ends in an exact verification step.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Plan moving our plugin settings from wp_options to a custom table, plus a new REST endpoint for them and a React settings page that uses it.",
+      "expected_output": "Chooses the directory shape with a README and 2 to 4 phases, each a vertical slice ending in runnable software with an exact exit criterion (not storage, then API, then UI as bare layers). README holds Status: active, global constraints, review focus, a phase table, and an interface contract that later phases reference; each phase file points back to it. Phase 1 has full steps; later phases list tasks and interfaces with steps deferred. Identifies shared code (the settings accessor used by other modules) and lists its consumers. Plan length stays proportionate to the request; no full function bodies.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "Points are reversed twice when a refunded order is then cancelled. Plan the fix.",
+      "expected_output": "Explores the reversal path, then proposes one regression test that reproduces the double reversal, naming its file, suite and what it guards, and asks with AskUserQuestion whether to include it before writing the plan. If accepted, the owning task has red/green test steps and the header's **Tests:** line lists the test; if declined, the header reads `**Tests:** none` and the task ends in an exact verification step (command or action plus expected balance). Proposes no other tests.",
+      "files": []
+    }
+  ]
+}

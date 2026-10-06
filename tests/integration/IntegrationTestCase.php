@@ -56,13 +56,11 @@ abstract class IntegrationTestCase extends TestCase {
         );
     }
 
-    /**
-     * @return array<string, mixed> The customer's cached aggregates.
-     */
+    /** @return array<string, mixed> The customer's cached aggregates. */
     protected function customer_row( int $user_id ): array {
         global $wpdb;
 
-        $row = $wpdb->get_row( // phpcs:ignore WordPress.DB
+        $row = $wpdb->get_row( // phpcs:ignore WordPress.DB -- tests read the table directly, past any cache; the table name is escaped.
             $wpdb->prepare(
                 'SELECT * FROM `' . esc_sql( \YayLoyalty\Utils\Table::name( 'customers' ) ) . '` WHERE user_id = %d',
                 $user_id
@@ -86,7 +84,7 @@ abstract class IntegrationTestCase extends TestCase {
     protected function ledger_rows( int $user_id ): array {
         global $wpdb;
 
-        return (array) $wpdb->get_results( // phpcs:ignore WordPress.DB
+        return (array) $wpdb->get_results( // phpcs:ignore WordPress.DB -- tests read the table directly, past any cache; the table name is escaped.
             $wpdb->prepare(
                 'SELECT * FROM `' . esc_sql( \YayLoyalty\Utils\Table::name( 'ledger' ) ) . '` WHERE user_id = %d ORDER BY id ASC',
                 $user_id
@@ -102,8 +100,8 @@ abstract class IntegrationTestCase extends TestCase {
             $name = esc_sql( $table );
 
             // TRUNCATE rebuilds the table even when empty; with every site table mirrored, that dominated the run.
-            if ( null !== $wpdb->get_var( "SELECT 1 FROM `{$name}` LIMIT 1" ) ) { // phpcs:ignore WordPress.DB
-                $wpdb->query( "TRUNCATE TABLE `{$name}`" ); // phpcs:ignore WordPress.DB
+            if ( null !== $wpdb->get_var( "SELECT 1 FROM `{$name}` LIMIT 1" ) ) { // phpcs:ignore WordPress.DB -- a scratch table; the name is escaped.
+                $wpdb->query( "TRUNCATE TABLE `{$name}`" ); // phpcs:ignore WordPress.DB -- a scratch table; the name is escaped.
             }
         }
     }

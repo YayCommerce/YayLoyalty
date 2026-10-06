@@ -102,6 +102,14 @@ export const campaignSchema = z.object({
 
 export type Campaign = z.infer<typeof campaignSchema>;
 
+/** The built-in (default) campaign for a trigger: what a non-built-in falls back to. undefined while the list loads. */
+export function findBuiltinCampaign<T extends Campaign>(
+  campaigns: T[] | undefined,
+  trigger: CampaignTrigger,
+): T | undefined {
+  return campaigns?.find((candidate) => candidate.is_builtin && candidate.trigger === trigger);
+}
+
 /** App-side list params; campaign.api.ts maps them to the wire. */
 export const campaignListParamsSchema = z.object({
   page: z.number().int().optional(),
@@ -113,7 +121,7 @@ export const campaignListParamsSchema = z.object({
 
 export type CampaignListParams = z.infer<typeof campaignListParamsSchema>;
 
-/* ─── Write: campaignUpdateInputSchema ──────────────────────────────── */
+// Write shapes
 
 /**
  * Mirrors CampaignConditionType::schema() minus UNAVAILABLE. `tier` stays
@@ -255,10 +263,8 @@ export function isCampaignScheduleInOrder(startsAt: string | null, endsAt: strin
 }
 
 /**
- * Write body for POST campaigns, mirroring create_item()'s accepted fields.
- * `trigger` is the one field update has no equivalent for — it is chosen
- * once, in the chooser, and immutable afterwards. No `slug`: the server
- * always generates it from `name`.
+ * Write body for POST campaigns, mirroring create_item(). `trigger` is set only here: it is immutable after create.
+ * No `slug`: the server generates it from `name`.
  */
 export type CampaignCreateInput = CampaignUpdateInput & { trigger: LiteCampaignTrigger };
 
@@ -270,7 +276,7 @@ export const campaignDeleteResponseSchema = z.object({
 
 export type CampaignDeleteResponse = z.infer<typeof campaignDeleteResponseSchema>;
 
-/* ─── Write: per-trigger config field maps ──────────────────────────── */
+// Per-trigger config fields
 
 type CampaignConfigFieldType = 'bool' | 'string' | 'int' | 'number' | 'enum' | 'int_list';
 

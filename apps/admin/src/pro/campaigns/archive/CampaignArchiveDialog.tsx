@@ -14,7 +14,7 @@ import {
   useUpdateCampaignStatusMutation,
 } from '@/lib/queries/campaign.queries';
 import { hasPerformancePage } from '@/lib/schema/campaign-performance.schema';
-import { Campaign, resolveCampaignDisplayStatus } from '@/lib/schema/campaign.schema';
+import { Campaign, findBuiltinCampaign, resolveCampaignDisplayStatus } from '@/lib/schema/campaign.schema';
 import { cn } from '@/lib/utils';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -30,7 +30,7 @@ import {
 } from '@/components/ui/custom/dialog';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
-import { campaignStatusBadgeVariant, findBuiltinCampaign } from '../campaign-labels';
+import { campaignStatusBadgeVariant } from '../campaign-labels';
 import { CAMPAIGN_PERFORMANCE_QUERIES } from '../performance/campaign-performance.queries';
 import {
   affectedLine,
@@ -57,10 +57,9 @@ import {
 export type CampaignArchiveAction = 'archived' | 'paused' | 'deleted';
 
 /**
- * Archive-or-delete confirmation for one non-built-in campaign: finished,
- * live and never-awarded (delete) cases. Mount it only while open: each mount is one decision with fresh mutation
- * state. Figures are context, never a gate, so a failed performance fetch
- * still lets the merchant archive.
+ * Archive-or-delete confirmation for one non-built-in campaign: the finished, live and
+ * never-awarded (delete) cases. Mount it only while open, so each decision gets fresh mutation
+ * state. Figures are context, never a gate: a failed performance fetch still lets the merchant archive.
  */
 export function CampaignArchiveDialog({
   campaign,
@@ -133,8 +132,16 @@ export function CampaignArchiveDialog({
 
   const title =
     archiveCase === 'delete'
-      ? /* translators: %s: the campaign's name. */ sprintf(__('Delete “%s”?', 'yayloyalty'), campaign.name)
-      : /* translators: %s: the campaign's name. */ sprintf(__('Archive “%s”?', 'yayloyalty'), campaign.name);
+      ? sprintf(
+          /* translators: %s: the campaign's name. */
+          __('Delete “%s”?', 'yayloyalty'),
+          campaign.name,
+        )
+      : sprintf(
+          /* translators: %s: the campaign's name. */
+          __('Archive “%s”?', 'yayloyalty'),
+          campaign.name,
+        );
 
   return (
     <Dialog open onOpenChange={(open) => !open && !busy && onClose()}>
@@ -409,8 +416,9 @@ function failureMessage(action: CampaignArchiveAction): string {
   }
 }
 
-/** ─── Bulk archive ──────────────────────────────────── */
+// Bulk archive
 
+/** Which button the bulk dialog is running: Archive, or "Pause instead" for the live rows. */
 type BulkArchiveAction = 'archive' | 'pause';
 
 /**

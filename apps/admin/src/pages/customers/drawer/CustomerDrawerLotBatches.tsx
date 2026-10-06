@@ -12,17 +12,9 @@ import {
 } from './customer-drawer.panels.copy';
 
 /**
- * 4b's Pro FIFO lot table — "his points, by the batch they were earned in".
- * Gated on `isProBuild()` directly rather than `<ProGate>`: `ProGate`'s
- * overlay is a generic upsell, but 4b's own note calls for a SPECIFIC
- * explanation ("On the free inactivity model there are no batches"), not a
- * sales pitch — so Lite renders that sentence in the table's place instead
- * of `ProGate`'s `UpgradeToProOverlay`.
- *
- * `batches: null` (the wire contract's OTHER "no batches" case — a store on
- * the inactivity model regardless of build) gets the same explanation:
- * nothing sends it today, but the component still handles
- * it correctly rather than rendering an empty table.
+ * The Pro table of points by the batch they were earned in. Gated on `isProBuild()`, not `<ProGate>`:
+ * Lite shows a specific explanation in its place, not the generic upsell.
+ * `batches: null` (the inactivity model, in either build) gets the same explanation.
  */
 export function CustomerDrawerLotBatches({ batches }: { batches: DrawerExpiry['batches'] }) {
   if (!isProBuild() || !batches) {

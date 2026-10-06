@@ -1,24 +1,11 @@
 <?php
 /**
- * Unit-test bootstrap. NO WordPress.
+ * Unit-test bootstrap, without WordPress.
  *
- * The suite under `tests/unit/` is plain PHP: the points engine, PointsMath's
- * shared vectors and the dashboard services (Dashboard/) all read only values
- * passed to them and a repository interface, never `$wpdb` or WooCommerce
- * globals directly. The only WordPress symbols any of it reaches are
- * `defined( 'ABSPATH' )` guards and the hook functions its documented filters
- * go through, so those are shimmed here — a real WP bootstrap would cost
- * seconds per run and prove nothing extra about arithmetic.
- *
- * `CustomerActivityServiceTest` additionally reaches `wp_json_encode()`
- * (via `Utils\Json`), `get_userdata()` and `get_current_user_id()` — three
- * one-line shims below, backed by test-controlled globals, never a real
- * WP_User or database.
- *
- * `DesignHelperTest` reaches the options API and WordPress's sanitisers: the
- * options live in `$GLOBALS['yayloyalty_test_options']`, and the sanitisers
- * are close-enough approximations of core's (the tests assert the coercion
- * rules, not core's exact character handling).
+ * Unit tests cover code that reads only the values passed to it, never `$wpdb` or WooCommerce.
+ * The few WordPress functions that code reaches are shimmed below, backed by test-controlled
+ * globals. The sanitisers approximate core's: tests assert the plugin's coercion rules, not
+ * core's exact character handling.
  */
 
 declare(strict_types=1);
@@ -46,9 +33,8 @@ spl_autoload_register(
 require_once __DIR__ . '/unit/EngineTestCase.php';
 
 /*
- * Minimal hook shim: enough for a test to attach a callback and assert the
- * engine's filters fire with the documented arguments. Priority and
- * accepted-args semantics are simplified — every callback gets every arg.
+ * Minimal hook shim: a test can attach a callback and assert that a filter fires with its
+ * documented arguments. Callbacks run in the order added, and each gets every argument.
  */
 $GLOBALS['yayloyalty_test_hooks'] = [];
 
@@ -62,11 +48,6 @@ function add_action( string $hook, callable $callback, int $priority = 10, int $
     return add_filter( $hook, $callback, $priority, $accepted_args );
 }
 
-/**
- * @param mixed $value
- * @param mixed ...$args
- * @return mixed
- */
 function apply_filters( string $hook, $value, ...$args ) {
     foreach ( $GLOBALS['yayloyalty_test_hooks'][ $hook ] ?? [] as $callback ) {
         $value = $callback( $value, ...$args );
@@ -75,9 +56,6 @@ function apply_filters( string $hook, $value, ...$args ) {
     return $value;
 }
 
-/**
- * @param mixed ...$args
- */
 function do_action( string $hook, ...$args ): void {
     foreach ( $GLOBALS['yayloyalty_test_hooks'][ $hook ] ?? [] as $callback ) {
         $callback( ...$args );
@@ -85,15 +63,13 @@ function do_action( string $hook, ...$args ): void {
 }
 
 /**
- * WordPress wraps json_encode() with UTF-8 sanitization this suite never
- * exercises with malformed input; the encode path (Utils\Json, reached by
- * Campaign::to_row()) only needs the same return contract.
+ * Core's return contract, without its UTF-8 repair: no test encodes malformed input.
  *
  * @param mixed $data
  * @return string|false
  */
 function wp_json_encode( $data, int $options = 0, int $depth = 512 ) {
-    return json_encode( $data, $options, $depth ); // phpcs:ignore WordPress.WP.AlternativeFunctions.json_encode_json_encode
+    return json_encode( $data, $options, $depth ); // phpcs:ignore WordPress.WP.AlternativeFunctions.json_encode_json_encode -- this is the wp_json_encode() shim itself.
 }
 
 /** Minimal double: only the two properties this codebase ever reads off a WP_User. */

@@ -7,7 +7,7 @@ use YayLoyalty\Utils\Log;
 
 defined( 'ABSPATH' ) || exit;
 
-/** The debug lines every listener writes, for a preview (staging) or an award Outcome, so the three event families read the same in the log. */
+/** The debug lines every listener writes for a preview or an award, so all listeners log alike. */
 final class PreviewLog {
 
     /**

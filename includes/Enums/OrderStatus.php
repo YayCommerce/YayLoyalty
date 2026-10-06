@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 /** The order status that awards points, as woocommerce_order_status_changed reports it (bare slug). */
 final class OrderStatus {
 
-    /** The one status that awards; also what counts as a paid order for customer facts. */
+    /** The one status that awards points. It also marks a paid order for customer facts. */
     public const AWARD = 'completed';
 
     /**

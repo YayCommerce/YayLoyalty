@@ -60,7 +60,7 @@ export function CampaignPointsSummary({
                   style={{ width: `${(row.points_issued / max) * 100}%` }}
                 />
               </div>
-              {/* No dash branch needed here — `rows` above already excludes anything without a real, positive figure. */}
+              {/* No dash case: `rows` already excludes anything without a positive figure. */}
               <span className="text-right font-semibold tabular-nums">
                 <PointsValue value={row.points_issued} />
               </span>

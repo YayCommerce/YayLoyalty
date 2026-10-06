@@ -13,7 +13,7 @@ defined( 'ABSPATH' ) || exit;
  * and wp_users. Not an AbstractRepository (that is one table) and writes
  * nothing. Every ledger predicate carries `type IN (...)` so the
  * type_created index range-scans. Windows are UTC MySQL strings, `from`
- * inclusive, `to` exclusive. Not final: a test stubs it.
+ * inclusive, `to` exclusive.
  */
 class DashboardRepository {
 
@@ -28,7 +28,7 @@ class DashboardRepository {
     public function count_members( string $before_utc ): int {
         global $wpdb;
 
-        return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare( 'SELECT COUNT(*) FROM `' . esc_sql( Table::name( 'customers' ) ) . '` WHERE joined_at < %s', $before_utc )
         );
     }
@@ -43,13 +43,13 @@ class DashboardRepository {
         return abs( $this->sum_points( 'type = %s', [ LedgerType::REDEEM ], $from, $to ) );
     }
 
-    /** Signed movement of every type in the window; rewinds liability approximately. */
+    /** Signed movement of every type in the window. It rewinds liability approximately. */
     public function net_delta( string $from, string $to ): int {
         return $this->sum_points( 'type IN (' . Sql::in_placeholders( LedgerType::all() ) . ')', LedgerType::all(), $from, $to );
     }
 
     /**
-     * Issued/redeemed per site-timezone day; only days with activity, the caller zero-fills.
+     * Issued and redeemed points per site-timezone day. Only days with activity appear: the caller zero-fills.
      *
      * @return array<int, array{date: string, issued: string, redeemed: string}>
      */
@@ -60,7 +60,7 @@ class DashboardRepository {
         $all_in                      = Sql::in_placeholders( LedgerType::all() );
 
         // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $issued/$all_in carry "%s, %s" lists; every value is bound below.
-        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
                 "SELECT DATE(DATE_ADD(created_at, INTERVAL %d SECOND)) AS date,
                         SUM(CASE WHEN {$issued} THEN points ELSE 0 END) AS issued,
@@ -81,23 +81,23 @@ class DashboardRepository {
     public function liability_points(): int {
         global $wpdb;
 
-        return (int) $wpdb->get_var( 'SELECT COALESCE(SUM(balance), 0) FROM `' . esc_sql( Table::name( 'customers' ) ) . '` WHERE balance > 0' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.NotPrepared
+        return (int) $wpdb->get_var( 'SELECT COALESCE(SUM(balance), 0) FROM `' . esc_sql( Table::name( 'customers' ) ) . '` WHERE balance > 0' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.NotPrepared -- a direct query on escaped table names; it takes no values.
     }
 
-    /** Customers below zero; same INNER JOIN as the Customers list so the count matches its deep link. */
+    /** Customers below zero who still have a WordPress user. */
     public function count_negative_balances(): int {
         global $wpdb;
 
-        return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.NotPrepared
+        return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.NotPrepared -- a direct query on escaped table names; it takes no values.
             'SELECT COUNT(*) FROM `' . esc_sql( Table::name( 'customers' ) ) . '` c INNER JOIN `' . esc_sql( $wpdb->users ) . '` u ON u.ID = c.user_id WHERE c.balance < 0'
         );
     }
 
-    /** Signed total of every balance; with net_delta(), the previous period's liability. */
+    /** Signed total of every balance. With net_delta(), it gives the previous period's liability. */
     public function net_balance(): int {
         global $wpdb;
 
-        return (int) $wpdb->get_var( 'SELECT COALESCE(SUM(balance), 0) FROM `' . esc_sql( Table::name( 'customers' ) ) . '`' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.NotPrepared
+        return (int) $wpdb->get_var( 'SELECT COALESCE(SUM(balance), 0) FROM `' . esc_sql( Table::name( 'customers' ) ) . '`' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.NotPrepared -- a direct query on escaped table names; it takes no values.
     }
 
     /** Distinct orders on which points were redeemed. */
@@ -105,7 +105,7 @@ class DashboardRepository {
         return $this->count_distinct_orders( 'type = %s', [ LedgerType::REDEEM ], $from, $to );
     }
 
-    /** Distinct orders that earned points; issued rows only, a clawback is not an award. */
+    /** Distinct orders that earned points. Issued rows only: a clawback is not an award. */
     public function orders_with_earn( string $from, string $to ): int {
         list( $issued, $types ) = LedgerRepository::issued_row_sql();
 
@@ -123,7 +123,7 @@ class DashboardRepository {
         list( $issued, $types ) = LedgerRepository::issued_row_sql();
 
         // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $issued carries a "%s, %s" list; every value is bound.
-        $row = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        $row = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
                 'SELECT COUNT(DISTINCT order_id) AS orders, COALESCE(SUM(points), 0) AS points FROM `' . esc_sql( Table::name( 'ledger' ) ) . "`
                  WHERE campaign_id = %d AND {$issued} AND created_at >= %s AND created_at < %s",
@@ -139,13 +139,11 @@ class DashboardRepository {
         ];
     }
 
-    /**
-     * @return array<int, array{user_id: int, name: string, balance: int}>
-     */
+    /** @return array<int, array{user_id: int, name: string, balance: int}> */
     public function top_earners( int $limit ): array {
         global $wpdb;
 
-        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
                 'SELECT c.user_id, u.display_name AS name, c.balance
                  FROM `' . esc_sql( Table::name( 'customers' ) ) . '` c INNER JOIN `' . esc_sql( $wpdb->users ) . '` u ON u.ID = c.user_id
@@ -173,7 +171,7 @@ class DashboardRepository {
     public function latest_activity( int $limit ): array {
         global $wpdb;
 
-        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
                 'SELECT l.*, u.display_name AS name
                  FROM `' . esc_sql( Table::name( 'ledger' ) ) . '` l INNER JOIN `' . esc_sql( $wpdb->users ) . '` u ON u.ID = l.user_id
@@ -196,7 +194,7 @@ class DashboardRepository {
         $all_in = Sql::in_placeholders( LedgerType::all() );
 
         // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $all_in is a "%s, %s" list; every value is bound.
-        return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
                 'SELECT COUNT(*) FROM `' . esc_sql( Table::name( 'ledger' ) ) . "` WHERE type IN ({$all_in}) AND created_at >= %s",
                 array_merge( LedgerType::all(), [ $from_utc ] )
@@ -205,7 +203,10 @@ class DashboardRepository {
         // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
     }
 
-    /** Completed orders created in [$from_ts, $to_ts). Timestamps, not Y-m-d: that would parse as site-local days and drift from the UTC ledger window. */
+    /**
+     * Completed orders created in [$from_ts, $to_ts). Timestamps, not Y-m-d: a date would parse
+     * as a site-local day and drift from the UTC ledger window.
+     */
     public function count_orders( int $from_ts, int $to_ts ): int {
         if ( ! function_exists( 'wc_get_orders' ) ) {
             return 0;
@@ -224,11 +225,7 @@ class DashboardRepository {
         return is_object( $result ) && isset( $result->total ) ? (int) $result->total : 0;
     }
 
-    /**
-     * The liability valuation rate. Delegates to RewardRepository — the
-     * config read moved there so CustomerRestController's `worth` stat and
-     * this class's liability stat share one implementation.
-     */
+    /** The liability valuation rate, from RewardRepository so every money figure shares one rate. */
     public function points_per_currency_unit(): float {
         return ( $this->rewards ?? new RewardRepository() )->points_per_currency_unit();
     }
@@ -241,7 +238,7 @@ class DashboardRepository {
         global $wpdb;
 
         // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $where is a placeholder fragment built in this plugin; every value is bound.
-        return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
                 'SELECT COALESCE(SUM(points), 0) FROM `' . esc_sql( Table::name( 'ledger' ) ) . "`
                  WHERE {$where} AND created_at >= %s AND created_at < %s",
@@ -259,7 +256,7 @@ class DashboardRepository {
         global $wpdb;
 
         // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $where is a placeholder fragment built in this plugin; every value is bound.
-        return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
                 'SELECT COUNT(DISTINCT order_id) FROM `' . esc_sql( Table::name( 'ledger' ) ) . "`
                  WHERE {$where} AND created_at >= %s AND created_at < %s AND order_id IS NOT NULL",
