@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { closestCenter, DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -7,6 +7,8 @@ import { GripVertical, InfoIcon, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { __, sprintf } from '@wordpress/i18n';
 
+import { pointsPhrase } from '@/lib/helpers/points.helper';
+import { numberConfig } from '@/lib/helpers/reward.helper';
 import { useRewardsQuery } from '@/lib/queries/reward.queries';
 import { resolveRewardDisplayStatus, Reward } from '@/lib/schema/reward.schema';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -44,16 +46,13 @@ export function RewardTable() {
   const navigate = useNavigate();
 
   const { data, isPending, isError } = useRewardsQuery({ perPage: 100 });
+  const ready = !isPending && !isError;
 
-  // Local override once a drag reorders the list; reset whenever the query's own data changes,
+  // Local override once a drag reorders the list; ignored once the query's own data changes,
   // so a refetch always wins over a display-only reorder that was never persisted.
-  const [orderedRows, setOrderedRows] = useState<Reward[]>([]);
+  const [override, setOverride] = useState<{ source: typeof data; rows: Reward[] }>();
 
-  useEffect(() => {
-    setOrderedRows(data?.data ?? []);
-  }, [data]);
-
-  const screen = resolveRewardsScreen(orderedRows);
+  const screen = resolveRewardsScreen(override && override.source === data ? override.rows : (data?.data ?? []));
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
 
@@ -72,7 +71,7 @@ export function RewardTable() {
     }
 
     // Moved within screen.rows, the list the indexes came from; the raw list still holds archived rows.
-    setOrderedRows(arrayMove(screen.rows, fromIndex, toIndex));
+    setOverride({ source: data, rows: arrayMove(screen.rows, fromIndex, toIndex) });
   }
 
   return (
@@ -91,7 +90,7 @@ export function RewardTable() {
             </div>
           </div>
 
-          {!isPending && !isError && (
+          {ready && (
             <Alert variant="outline" className={screen.isInitCase ? 'gap-y-2' : undefined}>
               <InfoIcon />
               <AlertDescription
@@ -99,12 +98,7 @@ export function RewardTable() {
               >
                 {screen.isInitCase ? (
                   <>
-                    <span>
-                      {__(
-                        'The slider is live at checkout. Customers need 100 points before they can use it, and the first redemption will fill the log.',
-                        'yayloyalty',
-                      )}
-                    </span>
+                    <span>{sliderLiveLabel(screen.builtin)}</span>
                     <Button
                       variant="primary-outline-fill"
                       size="sm"
@@ -128,7 +122,7 @@ export function RewardTable() {
 
           {isPending && <RewardTableSkeleton />}
 
-          {!isPending && !isError && (
+          {ready && (
             <div className="overflow-hidden rounded-lg border">
               <div className="overflow-x-auto">
                 <Table>
@@ -152,7 +146,7 @@ export function RewardTable() {
             </div>
           )}
 
-          {!isPending && !isError && screen.isInitCase && (
+          {ready && screen.isInitCase && (
             <>
               <RewardCatalogEmptyState />
               <RewardCatalogTemplateCards />
@@ -161,7 +155,7 @@ export function RewardTable() {
         </CardContent>
       </Card>
 
-      {!isPending && !isError && !screen.isInitCase && <RewardInfoCards />}
+      {ready && !screen.isInitCase && <RewardInfoCards />}
     </div>
   );
 }
@@ -355,5 +349,23 @@ function RewardInfoCards() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+/** The init-case notice, reading the slider's own minimum so it never contradicts the reward's config. */
+function sliderLiveLabel(builtin: Reward | undefined): string {
+  const minPoints = builtin ? numberConfig(builtin.config, 'min_points') : null;
+
+  if (!minPoints) {
+    return __('The slider is live at checkout, and the first redemption will fill the log.', 'yayloyalty');
+  }
+
+  return sprintf(
+    /* translators: %s: the minimum points needed to use the slider, e.g. "100 points". */
+    __(
+      'The slider is live at checkout. Customers need %s before they can use it, and the first redemption will fill the log.',
+      'yayloyalty',
+    ),
+    pointsPhrase(minPoints),
   );
 }

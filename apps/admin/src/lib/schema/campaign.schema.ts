@@ -102,6 +102,14 @@ export const campaignSchema = z.object({
 
 export type Campaign = z.infer<typeof campaignSchema>;
 
+/** The built-in (default) campaign for a trigger: what a non-built-in falls back to. undefined while the list loads. */
+export function findBuiltinCampaign<T extends Campaign>(
+  campaigns: T[] | undefined,
+  trigger: CampaignTrigger,
+): T | undefined {
+  return campaigns?.find((candidate) => candidate.is_builtin && candidate.trigger === trigger);
+}
+
 /** App-side list params; campaign.api.ts maps them to the wire. */
 export const campaignListParamsSchema = z.object({
   page: z.number().int().optional(),

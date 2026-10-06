@@ -2,6 +2,7 @@ import type { CustomerBalanceRange, CustomerExpiringSoon, CustomerTier } from '@
 import { Design } from '@/lib/schema/design.schema';
 import { Settings } from '@/lib/schema/settings.schema';
 
+/** Mirrors LocalizeHelper::get_meta(), the source of truth. */
 export type Meta = {
   wpMeta: {
     siteUrl: string;

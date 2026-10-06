@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { toastApiError } from '@/lib/api/api';
-import { parseWPCurrency, parseWPDate } from '@/lib/helpers/format.helper';
+import { parseWPCurrency } from '@/lib/helpers/format.helper';
 import { pointsPerCurrencyLabel } from '@/lib/helpers/points.helper';
 import { roundPoints } from '@/lib/points-math/points-math';
 import {
@@ -13,9 +12,7 @@ import {
   useUpdateCampaignStatusMutation,
 } from '@/lib/queries/campaign.queries';
 import type { Campaign } from '@/lib/schema/campaign.schema';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { BuiltInConfigCard } from '@/components/ui/custom/built-in-config-card';
 import { ConfigField } from '@/components/ui/custom/config-field';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
@@ -134,61 +131,29 @@ function BuiltInCampaignCard({
   }
 
   return (
-    <Card className={expanded ? 'border-primary gap-0 p-0' : 'gap-0 p-0'}>
-      <CardContent className="flex cursor-pointer items-center gap-3.5 p-0 px-4.5 py-4" onClick={onToggleExpanded}>
-        <div className="flex flex-1 flex-col gap-0.5">
-          <div className="flex items-center gap-2">
-            <span className="text-base font-semibold">{campaign.name}</span>
-            {campaign.is_builtin && (
-              <Badge variant="outline" className="uppercase">
-                {__('Default', 'yayloyalty')}
-              </Badge>
-            )}
-          </div>
-          <span className="text-muted-foreground text-xs">{summarize(campaign.trigger, config)}</span>
-        </div>
-
-        {/* Its own click target: toggling on/off isn't "open this card". */}
-        <div className="flex items-center gap-2" onClick={(event) => event.stopPropagation()}>
-          <Switch checked={isOn} disabled={statusMutation.isPending} onCheckedChange={toggleOn} />
-          <span className="text-sm">{isOn ? __('On', 'yayloyalty') : __('Off', 'yayloyalty')}</span>
-        </div>
-
-        <span className="text-muted-foreground flex size-6 items-center justify-center">
-          {expanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
-        </span>
-      </CardContent>
-
-      {expanded && (
-        <CardContent className="flex flex-col gap-3.5 border-t p-4.5">
-          {campaign.trigger === 'purchase' && (
-            <PurchaseFields config={config} onChange={(next) => setConfig({ ...config, ...next })} />
-          )}
-          {campaign.trigger === 'signup' && (
-            <SignupFields config={config} onChange={(next) => setConfig({ ...config, ...next })} />
-          )}
-          {campaign.trigger === 'review' && (
-            <ReviewFields config={config} onChange={(next) => setConfig({ ...config, ...next })} />
-          )}
-
-          <div className="flex flex-wrap items-center gap-3 border-t pt-4">
-            <Button size="sm" disabled={configMutation.isPending} onClick={saveConfig}>
-              {configMutation.isPending ? __('Saving…', 'yayloyalty') : __('Save changes', 'yayloyalty')}
-            </Button>
-            <Button variant="link" size="sm" className="h-auto p-0" onClick={reset}>
-              {__('Cancel', 'yayloyalty')}
-            </Button>
-            <span className="text-muted-foreground ml-auto text-xs">
-              {sprintf(
-                /* translators: %s: the date the campaign was last saved. */
-                __('Last edited %s', 'yayloyalty'),
-                parseWPDate(campaign.updated_at),
-              )}
-            </span>
-          </div>
-        </CardContent>
+    <BuiltInConfigCard
+      name={campaign.name}
+      subtitle={summarize(campaign.trigger, config)}
+      isOn={isOn}
+      onToggle={toggleOn}
+      toggleDisabled={statusMutation.isPending}
+      expanded={expanded}
+      onToggleExpanded={onToggleExpanded}
+      onSave={saveConfig}
+      onCancel={reset}
+      saving={configMutation.isPending}
+      updatedAt={campaign.updated_at}
+    >
+      {campaign.trigger === 'purchase' && (
+        <PurchaseFields config={config} onChange={(next) => setConfig({ ...config, ...next })} />
       )}
-    </Card>
+      {campaign.trigger === 'signup' && (
+        <SignupFields config={config} onChange={(next) => setConfig({ ...config, ...next })} />
+      )}
+      {campaign.trigger === 'review' && (
+        <ReviewFields config={config} onChange={(next) => setConfig({ ...config, ...next })} />
+      )}
+    </BuiltInConfigCard>
   );
 }
 

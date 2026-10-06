@@ -1,7 +1,6 @@
 import { z } from 'zod';
 
-import { IS_PRO_BUILD } from '@/lib/is-pro-build';
-import { CampaignStatus, campaignStatusSchema, resolveCampaignDisplayStatus } from '@/lib/schema/campaign.schema';
+import { campaignStatusSchema, resolveCampaignDisplayStatus } from '@/lib/schema/campaign.schema';
 
 /** Mirrors RewardRestController::define_item_schema(), the source of truth. */
 
@@ -18,25 +17,19 @@ export const PRO_REWARD_TYPES = ['fixed_coupon', 'percent_coupon', 'free_shippin
  */
 export const ALL_KNOWN_REWARD_TYPES = [...LITE_REWARD_TYPES, ...PRO_REWARD_TYPES] as const;
 
-/** Types this build offers, mirroring RewardType::all(). For UI choices only, never parsing. */
-export const REWARD_TYPES = IS_PRO_BUILD ? ALL_KNOWN_REWARD_TYPES : LITE_REWARD_TYPES;
-
-/** Catalog rewards: every offerable type except the built-in slider, which is looked up by slug, not listed as a template. */
-export const CATALOG_REWARD_TYPES = PRO_REWARD_TYPES;
-
 export const rewardTypeSchema = z.enum(ALL_KNOWN_REWARD_TYPES);
 export type RewardType = z.infer<typeof rewardTypeSchema>;
-export type CatalogRewardType = (typeof CATALOG_REWARD_TYPES)[number];
+/** Catalog rewards: every offerable type except the built-in slider, which is looked up by slug, not listed as a template. */
+export type CatalogRewardType = (typeof PRO_REWARD_TYPES)[number];
 
 /** Reuses the shared Status vocabulary and display-status resolver: rewards.status follows the same rules as campaigns.status (Enums\Status on the PHP side). */
 export const rewardStatusSchema = campaignStatusSchema;
-export type RewardStatus = CampaignStatus;
 export const resolveRewardDisplayStatus = resolveCampaignDisplayStatus;
 
 export const rewardSchema = z.object({
   id: z.number().int(),
   name: z.string(),
-  /** Built-in is "cart-discount". */
+  /** Built-in is RewardRepository::CART_DISCOUNT_SLUG. */
   slug: z.string(),
   type: rewardTypeSchema,
   status: rewardStatusSchema,

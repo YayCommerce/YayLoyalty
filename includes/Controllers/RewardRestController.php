@@ -67,7 +67,7 @@ final class RewardRestController extends AbstractRestController {
                 'page'     => (int) $request['page'],
                 'per_page' => (int) $request['per_page'],
                 'orderby'  => $request['orderby'] ? (string) $request['orderby'] : 'sort_order',
-                'order'    => $request['order'] ? (string) $request['order'] : 'asc',
+                'order'    => (string) $request['order'],
                 'type'     => $request['type'] ? (string) $request['type'] : '',
                 'status'   => $request['status'] ? (string) $request['status'] : '',
                 'search'   => $request['search'] ? (string) $request['search'] : '',
@@ -93,7 +93,11 @@ final class RewardRestController extends AbstractRestController {
                     'context' => [ 'view', 'edit' ],
                 ],
                 'slug'        => [
-                    'description' => __( 'Stable machine key. Built-in is "cart-discount".', 'yayloyalty' ),
+                    'description' => sprintf(
+                        /* translators: %s: the built-in reward's slug. */
+                        __( 'Stable machine key. Built-in is "%s".', 'yayloyalty' ),
+                        RewardRepository::CART_DISCOUNT_SLUG
+                    ),
                     'type'        => 'string',
                     'context'     => [ 'view', 'edit' ],
                 ],

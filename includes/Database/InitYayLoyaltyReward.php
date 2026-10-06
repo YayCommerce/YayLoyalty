@@ -49,9 +49,7 @@ final class InitYayLoyaltyReward {
 
         $rewards = new RewardRepository();
 
-        // array_filter drops the null free-product row on a store with no published product;
-        // passing it to create_one()'s array param would throw a TypeError past its try/catch.
-        foreach ( array_filter( self::reward_data() ) as $data ) {
+        foreach ( self::reward_data() as $data ) {
             self::create_one( $rewards, $data );
         }
     }
@@ -94,12 +92,12 @@ final class InitYayLoyaltyReward {
      * slug so they are easy to find and remove. The free-product row is
      * skipped when the store has no published product to reference.
      *
-     * @return array<int, array<string, mixed>|null>
+     * @return array<int, array<string, mixed>>
      */
     private static function reward_data(): array {
         $currency = function_exists( 'get_woocommerce_currency' ) ? get_woocommerce_currency() : 'USD';
 
-        return [
+        $rows = [
             [
                 'name'        => __( '$5 off', 'yayloyalty' ),
                 'slug'        => 'demo-5-off',
@@ -148,8 +146,7 @@ final class InitYayLoyaltyReward {
                     'exclude_sale_items' => false,
                     'max_total'          => null,
                 ],
-                // Stands in for the wireframe's "Summit tier only": tier is not offered yet (see
-                // docs/data-model/rewards.md, RewardConditionType::UNAVAILABLE).
+                // Stands in for a tier-only reward: tier is not offered yet (RewardConditionType::UNAVAILABLE).
                 'conditions'  => [
                     [
                         'type'     => 'redemption_count',
@@ -163,8 +160,15 @@ final class InitYayLoyaltyReward {
                     ],
                 ],
             ],
-            self::free_product_row(),
         ];
+
+        $free_product = self::free_product_row();
+
+        if ( null !== $free_product ) {
+            $rows[] = $free_product;
+        }
+
+        return $rows;
     }
 
     /**
@@ -194,7 +198,7 @@ final class InitYayLoyaltyReward {
             'name'        => $product ? $product->get_name() : __( 'Free product', 'yayloyalty' ),
             'slug'        => 'demo-free-product',
             'type'        => RewardType::FREE_PRODUCT,
-            // Paused, matching the wireframe row this seeds towards (1b).
+            // Paused, so the demo catalog shows a non-live row.
             'status'      => Status::PAUSED,
             'sort_order'  => 4,
             'cost_points' => 3000,

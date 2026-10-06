@@ -15,13 +15,7 @@ import type { badgeVariants } from '@/components/ui/badge';
 
 /** Campaign presentation strings derived from the real fields; the wire carries none. */
 
-/** The built-in (default) campaign for a trigger: what a non-built-in falls back to. undefined while the list loads. */
-export function findBuiltinCampaign<T extends Campaign>(
-  campaigns: T[] | undefined,
-  trigger: CampaignTrigger,
-): T | undefined {
-  return campaigns?.find((candidate) => candidate.is_builtin && candidate.trigger === trigger);
-}
+export { findBuiltinCampaign } from '@/lib/schema/campaign.schema';
 
 /** Whether a built-in still earns in place of what sits above it; mirrors the engine skipping any campaign not active (PurchaseHandler::is_eligible for a multiplier's default). */
 export function isBuiltinCampaignActive(campaign: Campaign | undefined): boolean {

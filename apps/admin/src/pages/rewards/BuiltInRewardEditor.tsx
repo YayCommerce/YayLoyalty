@@ -1,16 +1,17 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronUp, InfoIcon, TriangleAlert, X } from 'lucide-react';
+import { InfoIcon, TriangleAlert, X } from 'lucide-react';
 import { __, _n, sprintf } from '@wordpress/i18n';
 
-import { parseWPCurrency, parseWPDate } from '@/lib/helpers/format.helper';
+import { parseWPCurrency } from '@/lib/helpers/format.helper';
 import { formatPoints, formatPointsAsMoney } from '@/lib/helpers/points.helper';
+import { rewardSubtitle } from '@/lib/helpers/reward.helper';
 import { useCampaignsQuery } from '@/lib/queries/campaign.queries';
 import { useRewardsQuery } from '@/lib/queries/reward.queries';
+import { findBuiltinCampaign } from '@/lib/schema/campaign.schema';
 import type { Reward } from '@/lib/schema/reward.schema';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { BuiltInConfigCard } from '@/components/ui/custom/built-in-config-card';
 import { ConfigField } from '@/components/ui/custom/config-field';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
@@ -19,11 +20,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { UpgradeToProBanner } from '@/components/pro/UpgradeToPro';
 
-/** Same slug CampaignRepository::DEFAULT_PURCHASE_SLUG seeds; the earn-back line reads its rate. */
-const DEFAULT_PURCHASE_SLUG = 'default-purchase';
-
-/** Config is untyped on the wire; narrowed here. Keys and defaults mirror Reward::default_config(). */
+/** Mirrors Reward::config_schema()'s flexible_discount keys, the source of truth. Config is untyped on the wire; narrowed here. */
 interface FlexibleDiscountConfig {
+  currency: string;
   points_per_currency_unit: number;
   min_points: number;
   /** null = no cap beyond the percentage. */
@@ -33,6 +32,8 @@ interface FlexibleDiscountConfig {
   increment: number;
   show_on: ('cart' | 'checkout')[];
   refund_policy: 'proportional' | 'full' | 'none';
+  /** null = unlimited. */
+  max_total: number | null;
 }
 
 /**
@@ -42,6 +43,8 @@ interface FlexibleDiscountConfig {
  */
 export default function BuiltInRewardEditor() {
   const { data, isPending, isError } = useRewardsQuery({ perPage: 100 });
+  // Started here, not only in useEarnBackPercent, so it runs alongside the rewards fetch.
+  useCampaignsQuery({ perPage: 100 });
 
   if (isPending) {
     return <Skeleton className="h-32 w-full" />;
@@ -142,56 +145,20 @@ function BuiltInRewardCard({ reward }: { reward: Reward }) {
     setConfig(reward.config);
   }
 
+  // No onSave: UI-only until a reward update route exists.
   return (
-    <Card className={expanded ? 'border-primary gap-0 p-0' : 'gap-0 p-0'}>
-      <CardContent
-        className="flex cursor-pointer items-center gap-3.5 p-0 px-4.5 py-4"
-        onClick={() => setExpanded((current) => !current)}
-      >
-        <div className="flex flex-1 flex-col gap-0.5">
-          <div className="flex items-center gap-2">
-            <span className="text-base font-semibold">{reward.name}</span>
-            <Badge variant="outline" className="uppercase">
-              {__('Default', 'yayloyalty')}
-            </Badge>
-          </div>
-          <span className="text-muted-foreground text-xs">
-            {__('The customer chooses how many points to use at checkout', 'yayloyalty')}
-          </span>
-        </div>
-
-        {/* Its own click target: toggling on/off isn't "collapse this card". */}
-        <div className="flex items-center gap-2" onClick={(event) => event.stopPropagation()}>
-          <Switch checked={isOn} onCheckedChange={(checked) => setStatus(checked ? 'active' : 'paused')} />
-          <span className="text-sm">{isOn ? __('On', 'yayloyalty') : __('Off', 'yayloyalty')}</span>
-        </div>
-
-        <span className="text-muted-foreground flex size-6 items-center justify-center">
-          {expanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
-        </span>
-      </CardContent>
-
-      {expanded && (
-        <CardContent className="flex flex-col gap-3.5 border-t p-4.5">
-          <FlexibleDiscountFields value={value} onChange={update} />
-
-          <div className="flex flex-wrap items-center gap-3 border-t pt-4">
-            {/* UI-only: no reward update route yet. */}
-            <Button size="sm">{__('Save changes', 'yayloyalty')}</Button>
-            <Button variant="ghost" size="sm" onClick={reset}>
-              {__('Cancel', 'yayloyalty')}
-            </Button>
-            <span className="text-muted-foreground ml-auto text-xs">
-              {sprintf(
-                /* translators: %s: the date the reward was last saved. */
-                __('Last edited %s', 'yayloyalty'),
-                parseWPDate(reward.updated_at),
-              )}
-            </span>
-          </div>
-        </CardContent>
-      )}
-    </Card>
+    <BuiltInConfigCard
+      name={reward.name}
+      subtitle={rewardSubtitle(reward)}
+      isOn={isOn}
+      onToggle={(checked) => setStatus(checked ? 'active' : 'paused')}
+      expanded={expanded}
+      onToggleExpanded={() => setExpanded((current) => !current)}
+      onCancel={reset}
+      updatedAt={reward.updated_at}
+    >
+      <FlexibleDiscountFields value={value} onChange={update} />
+    </BuiltInConfigCard>
   );
 }
 
@@ -227,16 +194,11 @@ function FlexibleDiscountFields({
         }
       >
         <div className="flex flex-wrap items-center gap-2">
-          <NumberInputRoot
-            size="small"
-            className="w-32"
-            min={1}
+          <PointsInput
             value={value.points_per_currency_unit}
+            min={1}
             onValueChange={(points_per_currency_unit) => onChange({ points_per_currency_unit })}
-          >
-            <NumberInputInput />
-            <NumberInputUnit unit={_n('point', 'points', value.points_per_currency_unit, 'yayloyalty')} />
-          </NumberInputRoot>
+          />
           <span className="text-muted-foreground text-sm">
             {sprintf(
               /* translators: 1: one unit of the store currency, formatted; 2: the site's currency code, e.g. USD. */
@@ -377,7 +339,7 @@ function PointsInput({
  */
 function useEarnBackPercent(pointsPerCurrencyUnit: number): string | null {
   const { data } = useCampaignsQuery({ perPage: 100 });
-  const purchase = data?.data.find((campaign) => campaign.slug === DEFAULT_PURCHASE_SLUG);
+  const purchase = findBuiltinCampaign(data?.data, 'purchase');
   const pointsPerUnit = purchase?.config.points_per_unit;
 
   if (typeof pointsPerUnit !== 'number' || pointsPerUnit <= 0 || pointsPerCurrencyUnit <= 0) {
