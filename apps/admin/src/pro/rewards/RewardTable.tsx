@@ -351,7 +351,7 @@ function RewardRow({
       </TableCell>
       <TableCell className="text-sm font-semibold tabular-nums">{costLabel(reward)}</TableCell>
       <TableCell className="text-muted-foreground text-xs">{availabilityLabel(reward)}</TableCell>
-      {/* Em dash until F08 defines "redeemed"; the count, when shown, reads reward.redemption_summary — never a second query. */}
+      {/* TODO(redemption): em dash until redemption defines "redeemed"; the count then reads reward.redemption_summary, never a second query. */}
       <TableCell className="text-muted-foreground text-right text-xs">—</TableCell>
       <TableCell>
         {displayStatus === 'active' || displayStatus === 'paused' ? (

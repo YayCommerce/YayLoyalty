@@ -129,7 +129,7 @@ final class RedemptionRepository extends AbstractRepository {
         return $summaries;
     }
 
-    /** Asked on every call, never memoised: the table appears mid-life when F08's upgrade runs, and multisite switches blogs. */
+    /** Asked on every call, never memoised: the table appears mid-life when the redemption upgrade runs, and multisite switches blogs. */
     private function table_exists(): bool {
         global $wpdb;
 

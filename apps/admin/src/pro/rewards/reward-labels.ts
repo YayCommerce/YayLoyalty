@@ -241,7 +241,7 @@ function scheduleWindowLabel(startsAt: string | null, endsAt: string | null): st
  * The line under "Rewards", in two parts so the table can put its
  * "{n} archived" link between them: the row count, then the sentence after
  * it. On the init case the sentence says nothing has been redeemed yet —
- * Redeemed stays "—" until F08 defines it; its source is then
+ * Redeemed stays "—" until redemption ships and defines it; its source is then
  * `redemption_summary`, the figure the archive dialog already shows.
  */
 export function headerSubtitle(screen: RewardsScreen): { count: string; detail: string } {

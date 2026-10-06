@@ -84,7 +84,7 @@ function useRewardConfig() {
   return { config, patchConfig, configErrors };
 }
 
-/* ─── §1 Basics ──────────────────────────────────────────────────────── */
+// Basics
 
 function RewardEditorBasics() {
   const { register, formState } = useFormContext<RewardFormValues>();
@@ -103,7 +103,7 @@ function RewardEditorBasics() {
   );
 }
 
-/* ─── §2 Cost and value ──────────────────────────────────────────────── */
+// Cost and value
 
 function RewardEditorFlexibleDiscount() {
   const { config, patchConfig } = useRewardConfig();
@@ -367,7 +367,7 @@ function productStockLabel(status: string, quantity: number | null): { label: st
   return { label: __('In stock', 'yayloyalty'), isAvailable: true };
 }
 
-/* ─── §3 Coupon ──────────────────────────────────────────────────────── */
+// Coupon
 
 function RewardEditorCoupon() {
   const { config, patchConfig, configErrors } = useRewardConfig();
@@ -391,7 +391,7 @@ function RewardEditorCoupon() {
   );
 }
 
-/* ─── §4 Availability ────────────────────────────────────────────────── */
+// Availability
 
 function RewardEditorAvailability({ isCatalog }: { isCatalog: boolean }) {
   const { control, setValue, formState } = useFormContext<RewardFormValues>();

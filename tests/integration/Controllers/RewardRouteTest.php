@@ -567,7 +567,7 @@ final class RewardRouteTest extends IntegrationTestCase {
     }
 
     /**
-     * Stands in for the redemptions table until F08 installs it: RedemptionsTable::definition()
+     * Stands in for the redemptions table until redemption ships: RedemptionsTable::definition()
      * still throws, so only the columns summary_by_rewards() reads are created here.
      */
     private function create_redemptions_table(): void {
