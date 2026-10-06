@@ -14,14 +14,12 @@ export function CustomersCardList({
   isFetching,
   isStoreEmpty,
   noMatchContent,
-  showProColumns,
 }: {
   rows: CustomerListRow[];
   isLoading: boolean;
   isFetching: boolean;
   isStoreEmpty: boolean;
   noMatchContent?: ReactNode;
-  showProColumns: boolean;
 }) {
   const isEmpty = !isLoading && rows.length === 0;
 
@@ -41,8 +39,7 @@ export function CustomersCardList({
           )}
         </div>
       )}
-      {!isLoading &&
-        rows.map((row) => <CustomerCardRow key={row.user_id} customer={row} showProColumns={showProColumns} />)}
+      {!isLoading && rows.map((row) => <CustomerCardRow key={row.user_id} customer={row} />)}
     </div>
   );
 }

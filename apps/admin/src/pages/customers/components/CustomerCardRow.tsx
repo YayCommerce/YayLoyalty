@@ -17,7 +17,7 @@ import { BalanceCell, CustomerNameCell } from './CustomersTableCells';
  * and the other columns sit in a "Details" popover, so no column is silently dropped.
  * No selection checkbox: bulk actions are desktop-only.
  */
-export function CustomerCardRow({ customer, showProColumns }: { customer: CustomerListRow; showProColumns: boolean }) {
+export function CustomerCardRow({ customer }: { customer: CustomerListRow }) {
   const negative = customer.balance < 0;
   const [searchParams] = useSearchParams();
   const search = searchParams.toString();
@@ -36,7 +36,7 @@ export function CustomerCardRow({ customer, showProColumns }: { customer: Custom
         <div className="flex min-w-0 items-center gap-2 text-xs">
           <span className="text-muted-foreground truncate">{summaryLine(customer, negative)}</span>
         </div>
-        <CardDetailsPopover customer={customer} negative={negative} showProColumns={showProColumns} />
+        <CardDetailsPopover customer={customer} negative={negative} />
       </div>
     </div>
   );
@@ -69,16 +69,8 @@ function summaryLine(customer: CustomerListRow, negative: boolean): string {
   return activity ?? '—';
 }
 
-/** The columns the card does not show inline: Lifetime earned, Expires and Referrals (Pro). */
-function CardDetailsPopover({
-  customer,
-  negative,
-  showProColumns,
-}: {
-  customer: CustomerListRow;
-  negative: boolean;
-  showProColumns: boolean;
-}) {
+/** The columns the card does not show inline: Lifetime earned and Expires. */
+function CardDetailsPopover({ customer, negative }: { customer: CustomerListRow; negative: boolean }) {
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -94,7 +86,6 @@ function CardDetailsPopover({
         <DetailRow label={__('Expires', 'yayloyalty')}>
           {!negative && customer.expires_at ? parseWPDate(customer.expires_at) : '—'}
         </DetailRow>
-        {showProColumns && <DetailRow label={__('Referrals', 'yayloyalty')}>—</DetailRow>}
       </PopoverContent>
     </Popover>
   );

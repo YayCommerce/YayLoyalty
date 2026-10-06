@@ -38,7 +38,6 @@ export const DELETED_ANONYMISE_REASON = () => __('Not built yet — a separate f
 
 export const LOOSE_ENDS_TITLE = () => __('Loose ends this leaves', 'yayloyalty');
 export const LOOSE_ENDS_VOID_COUPONS_LABEL = () => __('Unused coupons, now void', 'yayloyalty');
-export const LOOSE_ENDS_CREDITED_REFERRALS_LABEL = () => __('Referrals they were credited for', 'yayloyalty');
 export const LOOSE_ENDS_COUNTED_LABEL = () => __('Counted in the member total?', 'yayloyalty');
 export const YES_LABEL = () => __('yes', 'yayloyalty');
 export const NO_LABEL = () => __('no', 'yayloyalty');
@@ -58,16 +57,6 @@ export function voidCouponsValue(voidCoupons: { count: number; example: string |
         voidCoupons.example,
       )
     : count;
-}
-/** "2 · kept". */
-export function creditedReferralsValue(count: number | null): string {
-  return null === count
-    ? LOOSE_END_NOT_TRACKED_YET()
-    : sprintf(
-        /* translators: %s: number of referrals, formatted. */
-        __('%s · kept', 'yayloyalty'),
-        formatPoints(count),
-      );
 }
 export function countedInMembersValue(counted: boolean | null): string {
   if (null === counted) return LOOSE_END_NOT_TRACKED_YET();

@@ -22,7 +22,6 @@ const SORT_LABELS: Record<SortKey, string> = {
   lifetime: __('Lifetime earned', 'yayloyalty'),
   last_activity: __('Last activity', 'yayloyalty'),
   expires: __('Expires', 'yayloyalty'),
-  referrals: __('Referrals', 'yayloyalty'),
 };
 
 const SORTABLE_KEYS: SortKey[] = ['name', 'balance', 'pending', 'lifetime', 'last_activity', 'expires'];

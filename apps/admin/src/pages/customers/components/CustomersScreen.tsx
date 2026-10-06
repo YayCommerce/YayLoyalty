@@ -140,7 +140,6 @@ export function CustomersScreen({
                 />
               ) : undefined
             }
-            showProColumns={IS_PRO_BUILD}
             sort={{ by: sortBy, dir: sortDir, onChange: onSort }}
             selection={{
               enabled: IS_PRO_BUILD,
