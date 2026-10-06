@@ -2,7 +2,7 @@
 
 > **For agentic workers:** execute tasks in order, one at a time. Steps use `- [ ]` for tracking. There is no spec; the Requirements section below is the source.
 
-**Status:** active
+**Status:** done 2026-10-06
 **Goal:** Delete every piece of made-up data the plugin ships or generates (the demo customer seeder, the dashboard `?scenario=` fixtures, the Simulate-rebuild toggle, the Pro dashboard dummies, the sample tiers, and the unread test fixtures with their dump script), plus the code that exists only to show it.
 **Spec:** none, planned from the request
 **Architecture:** Pure removal, one task per kind of dummy data, each leaving the plugin working. A UI that showed dummy values now shows nothing until real data exists. Real API surface stays: the server's `tier` list param (Pro segments use `CustomerFilters::TIER_RANGES`) and the `referrals` / `tier_distribution` fields of `GET /dashboard/pro`.

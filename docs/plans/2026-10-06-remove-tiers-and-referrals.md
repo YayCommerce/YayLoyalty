@@ -2,7 +2,7 @@
 
 > **For agentic workers:** execute tasks in order, one at a time. Steps use `- [ ]` for tracking. There is no spec; the Requirements section below is the source.
 
-**Status:** active
+**Status:** done 2026-10-06
 **Goal:** v1.0 ships no tier or referral UI or logic. Only the stored data shape stays, so the next phase builds both features from scratch.
 **Spec:** none, planned from the request
 **Architecture:** Pure removal, one task per surface, each leaving the plugin working. The stored shape stays: the `customers` columns and the enum values that stored rows can carry, with their TypeScript mirrors. Two backlog items record what phase 2 must build.
