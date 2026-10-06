@@ -85,7 +85,7 @@ final class LauncherPayload {
      * LauncherEarnRules::advertise() at $now, or no earn rows when it fails: the engine's filters run
      * here on every storefront page, and a broken subscriber must never take the page down with it.
      *
-     * @return array{earn: array{purchase: ?float, signup: ?int, review: ?int}, purchase_min: float}
+     * @return array LauncherEarnRules::advertise()'s shape.
      */
     private static function earn_rules( PointsEngine $engine, string $now, bool $can_register ): array {
         try {
@@ -93,10 +93,7 @@ final class LauncherPayload {
         } catch ( \Throwable $e ) {
             Log::warning( 'LauncherPayload', 'earn rules failed: ' . $e->getMessage() );
 
-            return [
-                'earn'         => array_fill_keys( LauncherEarnRules::TRIGGERS, null ),
-                'purchase_min' => 0.0,
-            ];
+            return LauncherEarnRules::none();
         }
     }
 

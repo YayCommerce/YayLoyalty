@@ -2,7 +2,7 @@
 
 > **For agentic workers:** execute tasks in order, one at a time. Steps use `- [ ]` for tracking. Read the spec linked below before starting; the plan argues from it.
 
-**Status:** active
+**Status:** done 2026-10-06
 **Goal:** `PointsEngine::evaluate()` and the launcher's "Ways to earn" pick a trigger's campaign through one engine loop, so the launcher follows the zero-points stop rule and the candidates and matches filters.
 **Spec:** [docs/specs/2026-10-06-shared-campaign-choice-for-launcher-design.md](../specs/2026-10-06-shared-campaign-choice-for-launcher-design.md)
 **Architecture:** The engine's loop moves into a private `pick()`, which branches on `Context::is_advert()` for eligibility and conditions. `advertised()` reuses it with an advertising Context instead of passing `null` to the filters, so a type-hinted third-party callback can't fatal the storefront. The launcher's own loop is deleted.
@@ -16,7 +16,7 @@
 - Lite names Pro nowhere new; Pro attaches only through existing filters.
 - Filter callbacks always receive a `Context`, never `null`.
 - `advertised()` writes nothing and scores at the given Context's `occurred_at`, never `now()`.
-- Keep each touched file under 200 lines where it already is (`ContextFactory.php` is 311 today; don't grow it beyond the one new method).
+- Keep each touched file under 200 lines where it already is (`ContextFactory.php` is 311 today; don't grow it beyond the one new method). Waived 2026-10-06 for `Context.php` (190 → 207): `advert()` and `is_advert()` belong on the immutable value object, and splitting it would not help.
 - Branch from `dev/edd` as `<name>/<type>/<topic>`; commits follow Conventional Commits and end with the `Co-Authored-By` trailer from CLAUDE.md. Commit only when the user asks.
 - Baseline on `dev/edd` 2026-10-06: `composer test` OK (6 tests, 31 assertions); `vendor/bin/phpcs` on the touched PHP files reports nothing.
 
@@ -55,7 +55,7 @@ The constructor's signature does not change; `advert()` calls `new self( ... )` 
 Run: `for f in includes/Engine/Points/Context.php includes/Engine/Points/Triggers/*.php; do php -l "$f"; done && composer test`
 Expected: `No syntax errors detected` for each file; `OK (6 tests, 31 assertions)`.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 Stage: `includes/Engine/Points/Context.php`, `includes/Engine/Points/Triggers/TriggerHandler.php`, `includes/Engine/Points/Triggers/PurchaseHandler.php`, `includes/Engine/Points/Triggers/SignupHandler.php`, `includes/Engine/Points/Triggers/ReviewHandler.php`
 Message: `feat(engine): add advertising context and handler advertised values`
@@ -171,7 +171,7 @@ Expected: `EarningService.php` calls only `PointsEngine::build()` and `evaluate(
 
 On the Local site, with the default purchase campaign at 1 point per unit and no other purchase campaign: before Step 3, note the "earn" number in the launcher on a simple product's page as a guest. After Step 3, reload. Expected: the same number. Then place a test order with that product and process it. Expected: the order's pending/earned points equal that number.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 Stage: `includes/Engine/Points/PointsEngine.php`, `tests/unit/Engine/Points/PointsEngineAdvertisedTest.php`
 Message: `feat(engine): pick advertised campaigns through the evaluate loop`
@@ -215,7 +215,7 @@ Open: `/wp-admin/admin.php?page=yayloyalty`, Design tab.
 Action: toggle the preview between guest and member.
 Expected: both previews render with the same earn rows as the storefront; no PHP notice in `wp-content/debug.log`.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 Stage: `includes/Engine/Points/ContextFactory.php`, `includes/Engine/Storefront/LauncherEarnRules.php`, `includes/Engine/Storefront/LauncherPayload.php`
 Message: `fix(storefront): advertise earn rows through the points engine`
@@ -234,7 +234,7 @@ Box 1 is Task 3 Step 4.1; box 2 is Task 2's `test_candidates_and_matches_filters
 Run: `composer test && ./scripts/run.sh backlog`
 Expected: `OK (11 tests, ...)`; the backlog listing no longer shows "The launcher repeats the engine's campaign choice". The storefront checks of Task 3 Step 4 still hold.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 Stage: `docs/backlog/2026-10-05-launcher-repeats-the-engines-campaign-choice.md`, `docs/plans/2026-10-06-shared-campaign-choice-for-launcher.md` (Status set to `done YYYY-MM-DD`), `docs/specs/2026-10-06-shared-campaign-choice-for-launcher-design.md`
 Message: `docs(backlog): close the launcher campaign-choice item`

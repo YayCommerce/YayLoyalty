@@ -50,11 +50,13 @@ final class PointsEngine {
             return Result::none( Result::REASON_NO_CAMPAIGNS );
         }
 
-        $campaign = $this->pick( $handler, $candidates, $ctx );
+        $picked = $this->pick( $handler, $candidates, $ctx );
 
-        if ( null === $campaign ) {
+        if ( null === $picked ) {
             return Result::none( Result::REASON_NOT_ELIGIBLE );
         }
+
+        $campaign = $picked['campaign'];
 
         $breakdown = $handler->compute_points( $campaign, $ctx );
         $points    = $this->caps->apply( $breakdown->get_points(), $campaign, $ctx );
@@ -68,9 +70,10 @@ final class PointsEngine {
 
     /**
      * The campaign the storefront may promise for a trigger, through evaluate()'s own loop and stop rule:
-     * null when the campaign the engine would reach pays nothing. Without an event it cannot check caps,
-     * min_subtotal, exclude_coupon_orders, require_verified or one_per_product, nor campaign conditions,
-     * so a campaign with conditions is skipped rather than promised to shoppers it may not pay.
+     * null when the campaign the engine would reach pays nothing. Without an event it cannot apply the
+     * handlers' is_eligible() gates (min_subtotal, exclude_coupon_orders, require_verified, one_per_product),
+     * CapPolicy's caps, nor campaign conditions, so a campaign with conditions is skipped rather than
+     * promised to shoppers it may not pay.
      *
      * @param string  $trigger A CampaignTrigger constant.
      * @param Context $ctx     Context::advert(); liveness is evaluated at its occurred_at.
@@ -82,18 +85,9 @@ final class PointsEngine {
             throw new \InvalidArgumentException( 'YayLoyalty: advertised() takes a Context::advert().' );
         }
 
-        $handler  = $this->registry->get( $trigger );
-        $campaign = $this->pick( $handler, $this->candidates( $trigger, $ctx ), $ctx );
-        $value    = null === $campaign ? null : $handler->advertised_value( $campaign );
+        $picked = $this->pick( $this->registry->get( $trigger ), $this->candidates( $trigger, $ctx ), $ctx );
 
-        if ( null === $value || $value <= 0 ) {
-            return null;
-        }
-
-        return [
-            'campaign' => $campaign,
-            'value'    => $value,
-        ];
+        return null === $picked || $picked['value'] <= 0 ? null : $picked;
     }
 
     /** @return Campaign[] */
@@ -114,8 +108,9 @@ final class PointsEngine {
      * the handler has a value to advertise, since is_eligible() needs an event.
      *
      * @param Campaign[] $candidates
+     * @return array{campaign: Campaign, value: ?float}|null Value is the advertised value, null for an event.
      */
-    private function pick( Triggers\TriggerHandler $handler, array $candidates, Context $ctx ): ?Campaign {
+    private function pick( Triggers\TriggerHandler $handler, array $candidates, Context $ctx ): ?array {
         foreach ( $candidates as $campaign ) {
             /**
              * Whether a campaign's conditions match this event. Also fires on storefront pages with an
@@ -131,10 +126,14 @@ final class PointsEngine {
                 continue;
             }
 
-            $eligible = $ctx->is_advert() ? null !== $handler->advertised_value( $campaign ) : $handler->is_eligible( $campaign, $ctx );
+            $value    = $ctx->is_advert() ? $handler->advertised_value( $campaign ) : null;
+            $eligible = $ctx->is_advert() ? null !== $value : $handler->is_eligible( $campaign, $ctx );
 
             if ( $eligible ) {
-                return $campaign;
+                return [
+                    'campaign' => $campaign,
+                    'value'    => $value,
+                ];
             }
         }
 
@@ -148,8 +147,12 @@ final class PointsEngine {
      * An advertising Context has no event to compare, so only a campaign for everyone matches it.
      */
     private function conditions_match( Campaign $campaign, Context $ctx ): bool {
-        if ( self::applies_to_everyone( $campaign ) || $ctx->is_advert() ) {
-            return self::applies_to_everyone( $campaign );
+        if ( self::applies_to_everyone( $campaign ) ) {
+            return true;
+        }
+
+        if ( $ctx->is_advert() ) {
+            return false;
         }
 
         return (bool) self::conditions_evaluator()->evaluate( $campaign->get_conditions(), $ctx );
@@ -157,9 +160,9 @@ final class PointsEngine {
 
     /**
      * Whether a campaign's conditions let every shopper through: it has none, or none are enforced (Lite).
-     * The storefront launcher advertises only such campaigns, so it never promises a rate some shoppers miss.
+     * Only such a campaign is advertised, so the storefront never promises a rate some shoppers miss.
      */
-    public static function applies_to_everyone( Campaign $campaign ): bool {
+    private static function applies_to_everyone( Campaign $campaign ): bool {
         return [] === $campaign->get_conditions() || null === self::conditions_evaluator();
     }
 

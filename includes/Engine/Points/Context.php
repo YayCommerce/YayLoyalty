@@ -114,11 +114,7 @@ final class Context {
         $this->customer_facts       = $customer_facts;
     }
 
-    /**
-     * A guest with an empty cart and no event, for advertising what a campaign pays.
-     *
-     * @param string $at UTC MySQL datetime the campaigns are live at.
-     */
+    /** A guest with an empty cart and no event, at $at (UTC MySQL), for advertising what a campaign pays. */
     public static function advert( string $at, string $currency, float $base_rate ): self {
         $ctx         = new self( null, $at, $currency, $base_rate, [], 0.0, 0.0, 0.0, [], [] );
         $ctx->advert = true;

@@ -28,8 +28,7 @@ final class LauncherEarnRules {
      * @throws \InvalidArgumentException From PointsEngine::advertised().
      */
     public static function advertise( PointsEngine $engine, Context $ctx, bool $can_register ): array {
-        $earn         = array_fill_keys( self::TRIGGERS, null );
-        $purchase_min = 0.0;
+        $rules = self::none();
 
         foreach ( self::TRIGGERS as $trigger ) {
             if ( CampaignTrigger::SIGNUP === $trigger && ! $can_register ) {
@@ -43,16 +42,25 @@ final class LauncherEarnRules {
             }
 
             if ( CampaignTrigger::PURCHASE === $trigger ) {
-                $earn[ $trigger ] = $advert['value'];
-                $purchase_min     = PurchaseHandler::min_subtotal( $advert['campaign']->get_config() );
+                $rules['earn'][ $trigger ] = $advert['value'];
+                $rules['purchase_min']     = PurchaseHandler::min_subtotal( $advert['campaign']->get_config() );
             } else {
-                $earn[ $trigger ] = (int) $advert['value'];
+                $rules['earn'][ $trigger ] = (int) $advert['value'];
             }
         }
 
+        return $rules;
+    }
+
+    /**
+     * No earn rows: advertise()'s shape with nothing advertised.
+     *
+     * @return array{earn: array{purchase: null, signup: null, review: null}, purchase_min: float}
+     */
+    public static function none(): array {
         return [
-            'earn'         => $earn,
-            'purchase_min' => $purchase_min,
+            'earn'         => array_fill_keys( self::TRIGGERS, null ),
+            'purchase_min' => 0.0,
         ];
     }
 }

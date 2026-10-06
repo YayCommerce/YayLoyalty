@@ -49,11 +49,7 @@ final class PurchaseHandler implements TriggerHandler {
             return false;
         }
 
-        if ( $this->is_multiplier( $config ) && null === self::multiplier_default( $this->campaigns->find_default_purchase() ) ) {
-            return false;
-        }
-
-        return true;
+        return ! self::refuses_multiplier( $config, $this->campaigns->find_default_purchase() );
     }
 
     public function compute_points( Campaign $campaign, Context $ctx ): Breakdown {
@@ -79,16 +75,12 @@ final class PurchaseHandler implements TriggerHandler {
         return new Breakdown( $points, $base, $rate, $raw, $rounding );
     }
 
-    /** Points per currency unit; null for a multiplier whose default is_eligible() would refuse. */
+    /** Points per currency unit; null where is_eligible() refuses whatever the order (a multiplier with no default to scale). */
     public function advertised_value( Campaign $campaign ): ?float {
         $config  = $campaign->get_config();
         $default = $this->campaigns->find_default_purchase();
 
-        if ( self::is_multiplier( $config ) && null === self::multiplier_default( $default ) ) {
-            return null;
-        }
-
-        return self::rate_of( $config, $default );
+        return self::refuses_multiplier( $config, $default ) ? null : self::rate_of( $config, $default );
     }
 
     public function reference_type(): string {
@@ -132,11 +124,13 @@ final class PurchaseHandler implements TriggerHandler {
     }
 
     /**
-     * The default purchase campaign a multiplier may scale, or null when it cannot (archived or not active).
-     * The storefront launcher asks here too, so it never advertises a multiplier the engine would skip.
+     * Whether a config is a multiplier with no default to scale (archived or not active): the order-free gate
+     * that both is_eligible() and advertised_value() apply.
+     *
+     * @param array<string, mixed> $config
      */
-    public static function multiplier_default( ?Campaign $default_purchase ): ?Campaign {
-        return null !== $default_purchase && Status::ACTIVE === $default_purchase->get_status() ? $default_purchase : null;
+    private static function refuses_multiplier( array $config, ?Campaign $default_purchase ): bool {
+        return self::is_multiplier( $config ) && ( null === $default_purchase || Status::ACTIVE !== $default_purchase->get_status() );
     }
 
     /**
@@ -145,7 +139,7 @@ final class PurchaseHandler implements TriggerHandler {
      * @param array<string, mixed> $config
      * @param Campaign|null        $default_purchase The default purchase campaign; read only for a multiplier.
      */
-    public static function rate_of( array $config, ?Campaign $default_purchase ): float {
+    private static function rate_of( array $config, ?Campaign $default_purchase ): float {
         if ( ! self::is_multiplier( $config ) ) {
             return (float) ( $config['points_per_unit'] ?? 0 );
         }
