@@ -5,16 +5,16 @@ import { getDashboardPro } from './dashboard-pro.api';
 
 /** Keyed under `['dashboard']` so the Free page's refresh/dismiss invalidation covers this request too. */
 export const DASHBOARD_PRO_QUERIES = {
-  overview: (range: DashboardRange, scenario?: string) =>
+  overview: (range: DashboardRange) =>
     queryOptions({
-      queryKey: ['dashboard', 'pro', range, scenario ?? null],
-      queryFn: () => getDashboardPro({ range, scenario }),
+      queryKey: ['dashboard', 'pro', range],
+      queryFn: () => getDashboardPro({ range }),
       placeholderData: keepPreviousData,
       retry: 1,
       staleTime: 60_000,
     }),
 };
 
-export function useDashboardProQuery(range: DashboardRange, scenario?: string) {
-  return useQuery(DASHBOARD_PRO_QUERIES.overview(range, scenario));
+export function useDashboardProQuery(range: DashboardRange) {
+  return useQuery(DASHBOARD_PRO_QUERIES.overview(range));
 }

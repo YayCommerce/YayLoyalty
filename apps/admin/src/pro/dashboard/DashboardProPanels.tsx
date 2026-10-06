@@ -26,16 +26,14 @@ const BREAKDOWN_DEFAULT_OFF_ABOVE = 10_000;
 export function DashboardProPanels({
   range,
   stats,
-  scenario,
   children,
 }: {
   range: DashboardRange;
   stats: DashboardStats;
-  scenario?: string;
   children: (slots: DashboardProSlots) => ReactNode;
 }) {
   const [breakdown, setBreakdown] = useState(stats.members.value <= BREAKDOWN_DEFAULT_OFF_ABOVE);
-  const query = useDashboardProQuery(range, scenario);
+  const query = useDashboardProQuery(range);
   const data = query.data;
 
   const referrals = data?.referrals ?? DUMMY_REFERRALS;
