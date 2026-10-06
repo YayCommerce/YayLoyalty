@@ -259,7 +259,7 @@ Message: `chore(customers): remove the Simulate rebuild demo toggle`
 - Modify: `customers-page.sort-rows.ts:9`: `key === 'name' ? 'asc' : 'desc'`.
 - Modify: `components/CustomersSortDropdown.tsx`: drop the `tier` label.
 - Modify: `components/adjust-points/AdjustPointsBulkPanels.tsx:23`: "The active filters as text."
-- Modify (added during implementation): `apps/admin/src/pro/customers/customer-segments.api.ts`, `apps/admin/src/pro/customers/customers-saved-segment-row.state.ts` and `apps/admin/src/types/localize.type.ts`. Saved segments drop `tier` from their schemas and app shape: zod strips it on read, and `CustomerSegmentsHelper::sanitize_filters()` defaults it to `all` on write.
+- Modify (added during implementation): `apps/admin/src/pro/customers/customer-segments.api.ts`, `apps/admin/src/pro/customers/customers-saved-segment-row.state.ts` and `apps/admin/src/types/localize.type.ts`. Saved segments drop `tier` from their app shape (`savedSegmentSchema`, `RowFilters`). The wire schema and `AdminData.segments` keep `tier` (as `string`) to mirror `CustomerSegmentsHelper::FILTER_SCHEMA`: `fromWire` drops it, and `toWireFilters` sends `'all'`.
 - Modify (added during implementation): `includes/Controllers/CustomerAdjustPreviewRestController.php:55-56`: the comment naming `toServerFilters` becomes a one-line reason for the missing `tier`.
 
 **Interfaces:**
