@@ -54,6 +54,7 @@
 - **Dashboard deep link `?balance_range=`:** `initialFiltersFromSearch` must still read it after the Tier options go. Task 5, Step 3.
 - **Pro side column reflow:** with the tier card hidden, the skeleton must match what loads: one card, not two. Task 3, Step 2.
 - **Unknown notice keys:** after the strip's dismiss guard goes, an unknown key must still never render. `noticeCopy()` returns null for it. Task 2, Step 5.
+- **Saved segments with a tier:** a segment saved before this change with a tier other than `all` now loads without it and shows every customer its other filters match. No site had saved segments when this shipped (the `yayloyalty_customer_segments` option was unset on the dev site). Task 5.
 - **Lite leak:** none of the edits may import from `@/pro` outside `apps/admin/src/pro/index.ts`. Task 7, Step 2 greps for it.
 
 ---
@@ -215,7 +216,7 @@ Message: `chore(dashboard): hide Pro referrals and tiers instead of showing dumm
 - [ ] **Step 2: Verify no reference is left**
 
 Run: `git grep -n -i -E 'rebuild|stale' -- apps/admin/src/pages/customers`
-Expected: no output
+Expected: only the Adjust points stale-balance feature (`isStale`, `AdjustPointsStaleBalanceBanner`, `stale*` copy) and the stale-rows comments in `CustomersPage.tsx` and `customers-page.bulk-actions.ts`, which are unrelated to the rebuild toggle
 
 - [ ] **Step 3: Type-check and lint as in Task 2, Step 5**
 
@@ -258,6 +259,8 @@ Message: `chore(customers): remove the Simulate rebuild demo toggle`
 - Modify: `customers-page.sort-rows.ts:9`: `key === 'name' ? 'asc' : 'desc'`.
 - Modify: `components/CustomersSortDropdown.tsx`: drop the `tier` label.
 - Modify: `components/adjust-points/AdjustPointsBulkPanels.tsx:23`: "The active filters as text."
+- Modify (added during implementation): `apps/admin/src/pro/customers/customer-segments.api.ts`, `apps/admin/src/pro/customers/customers-saved-segment-row.state.ts` and `apps/admin/src/types/localize.type.ts`. Saved segments drop `tier` from their schemas and app shape: zod strips it on read, and `CustomerSegmentsHelper::sanitize_filters()` defaults it to `all` on write.
+- Modify (added during implementation): `includes/Controllers/CustomerAdjustPreviewRestController.php:55-56`: the comment naming `toServerFilters` becomes a one-line reason for the missing `tier`.
 
 **Interfaces:**
 - Consumes: `CustomersScreen` without `isRebuilding` (Task 4)
@@ -324,6 +327,8 @@ Run: from `apps/admin`, `node node_modules/typescript/bin/tsc --noEmit`; from th
 Expected: tsc prints only the baseline TS2307 errors. `composer lint` prints only the existing warnings in `CampaignConditionSet.php`, `RewardConditionSet.php` and `CustomerRowFilters.php`.
 
 - [ ] **Step 4: Lite build in the browser**
+
+When implemented, the Pro dev server was in use, so this ran as a scratch `BUILD_TYPE=lite` `vite build` instead. The build succeeded. The bundle held no `dashboard/pro`, `customers/segments`, rebuild or tier-card strings, only Lite's teaser labels. The visual check below is still open.
 
 Run: `./scripts/run.sh dev lite` and wait for the admin-shell sync to finish. Then open `#/` and `#/customers`.
 Expected: the dashboard shows the Lite teasers unchanged (Referrals `—`, Tier distribution and Top campaigns teaser cards). Customers has no Tier or Referrals column. No console errors. Afterwards, `git status` shows no change to `composer.json` or `scoper.inc.php`, or you restore them.
