@@ -34,6 +34,7 @@ export function isCatalogRewardType(type: string): type is CatalogRewardType {
 
 /** Reuses the shared Status vocabulary and display-status resolver: rewards.status follows the same rules as campaigns.status (Enums\Status on the PHP side). */
 export const rewardStatusSchema = campaignStatusSchema;
+export type RewardStatus = CampaignStatus;
 export const resolveRewardDisplayStatus = resolveCampaignDisplayStatus;
 
 /** Claim figures from RedemptionRepository::summary_by_rewards(); zeros and nulls until the redemptions table exists. */

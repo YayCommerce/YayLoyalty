@@ -14,6 +14,8 @@ import {
 /** Reward presentation strings and derived facts; the wire carries none of this — same split as campaign-labels.ts. */
 
 export interface RewardsScreen {
+  /** The seeded flexible-discount row. Present on every real install; absent only were the seed to somehow be missing. */
+  builtin: Reward | undefined;
   /** Every non-archived row, built-in first, in display order. What the table renders. */
   rows: Reward[];
   /** Non-builtin, non-archived rows — what "catalog" means throughout this screen. */
@@ -32,6 +34,7 @@ export function resolveRewardsScreen(rewards: Reward[]): RewardsScreen {
   const rows = builtin ? [builtin, ...catalogRows] : catalogRows;
 
   return {
+    builtin,
     rows,
     catalogRows,
     archivedRows: rewards.filter((reward) => reward.status === 'archived'),
