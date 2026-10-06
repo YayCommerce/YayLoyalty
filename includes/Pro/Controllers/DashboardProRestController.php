@@ -3,7 +3,6 @@ namespace YayLoyalty\Pro\Controllers;
 
 use YayLoyalty\Access\Capabilities;
 use YayLoyalty\Controllers\AbstractRestController;
-use YayLoyalty\Controllers\DashboardFixture;
 use YayLoyalty\Pro\Repositories\CampaignPointsRepository;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Services\Dashboard\DashboardCache;
@@ -14,8 +13,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * GET /dashboard/pro: per-campaign issuance for the breakdown lines and Top
- * campaigns. referrals and tier_distribution are null until their tables
- * exist. Rest base is `dashboard-pro`, not `dashboard`, so a base-only
+ * campaigns. Rest base is `dashboard-pro`, not `dashboard`, so a base-only
  * schema subscriber cannot match both payloads. Cached under the 'pro' variant.
  */
 final class DashboardProRestController extends AbstractRestController {
@@ -50,15 +48,6 @@ final class DashboardProRestController extends AbstractRestController {
             ],
         ];
 
-        if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-            $args['scenario'] = [
-                'type'              => 'string',
-                'enum'              => DashboardFixture::SCENARIOS,
-                'validate_callback' => 'rest_validate_request_arg',
-                'sanitize_callback' => 'sanitize_key',
-            ];
-        }
-
         register_rest_route(
             self::REST_NAMESPACE,
             '/dashboard/pro',
@@ -77,10 +66,6 @@ final class DashboardProRestController extends AbstractRestController {
     public function get_pro_overview( \WP_REST_Request $request ): array {
         $range = (int) $request['range'];
 
-        if ( defined( 'WP_DEBUG' ) && WP_DEBUG && ! empty( $request['scenario'] ) ) {
-            return DashboardFixture::pro_scenario( (string) $request['scenario'], $range );
-        }
-
         $window = PeriodWindow::for_range( $range, new \DateTimeImmutable( 'now', wp_timezone() ) );
 
         $payload = $this->cache->remember( $range, fn(): array => $this->build( $window ), 'pro' );
@@ -92,7 +77,7 @@ final class DashboardProRestController extends AbstractRestController {
     }
 
     /**
-     * @return array{referrals: null, tier_distribution: null, campaign_series: array, top_campaigns: array}
+     * @return array{campaign_series: array, top_campaigns: array}
      */
     private function build( PeriodWindow $window ): array {
         // Over-fetch: a deleted campaign's points must not consume one of the three slots.
@@ -133,10 +118,8 @@ final class DashboardProRestController extends AbstractRestController {
         }
 
         return [
-            'referrals'         => null,
-            'tier_distribution' => null,
-            'campaign_series'   => $series,
-            'top_campaigns'     => $top_campaigns,
+            'campaign_series' => $series,
+            'top_campaigns'   => $top_campaigns,
         ];
     }
 
@@ -146,27 +129,17 @@ final class DashboardProRestController extends AbstractRestController {
             'title'      => 'yayloyalty_dashboard_pro',
             'type'       => 'object',
             'properties' => [
-                'range'             => [
+                'range'           => [
                     'type'     => 'integer',
                     'enum'     => PeriodWindow::RANGES,
                     'readonly' => true,
                 ],
-                'referrals'         => [
-                    'type'        => [ 'object', 'null' ],
-                    'readonly'    => true,
-                    'description' => __( 'Null until referrals ship.', 'yayloyalty' ),
-                ],
-                'tier_distribution' => [
-                    'type'        => [ 'array', 'null' ],
-                    'readonly'    => true,
-                    'description' => __( 'Null until tiers ship.', 'yayloyalty' ),
-                ],
-                'campaign_series'   => [
+                'campaign_series' => [
                     'type'        => 'array',
                     'readonly'    => true,
                     'description' => __( 'One row per day per top campaign: date, campaign_id, issued.', 'yayloyalty' ),
                 ],
-                'top_campaigns'     => [
+                'top_campaigns'   => [
                     'type'        => 'array',
                     'readonly'    => true,
                     'description' => __( 'Up to three campaigns by points issued in the range, with the fields the admin app needs to describe them.', 'yayloyalty' ),

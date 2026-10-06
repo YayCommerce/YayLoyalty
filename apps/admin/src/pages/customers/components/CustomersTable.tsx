@@ -15,9 +15,9 @@ import { CustomersSortDropdown } from './CustomersSortDropdown';
 import { CustomerTableRow } from './CustomerTableRow';
 
 /** Column count for the header and the "no results" row's colSpan. */
-export function countColumns(showProColumns: boolean, showSelection: boolean) {
-  // Six base columns, two Pro columns (Tier, Referrals) and the checkbox column.
-  return 6 + (showProColumns ? 2 : 0) + (showSelection ? 1 : 0);
+export function countColumns(showSelection: boolean) {
+  // Six base columns and the checkbox column.
+  return 6 + (showSelection ? 1 : 0);
 }
 
 /**
@@ -30,8 +30,6 @@ export function CustomersTable({
   isFetching,
   isStoreEmpty,
   noMatchContent,
-  showProColumns,
-  staleBalances,
   sort,
   selection,
 }: {
@@ -44,15 +42,12 @@ export function CustomersTable({
   isStoreEmpty: boolean;
   /** Shown when filters narrow a non-empty store to zero rows. */
   noMatchContent?: ReactNode;
-  showProColumns: boolean;
-  staleBalances: boolean;
   sort: {
     by: SortKey;
     dir: SortDirection;
     onChange: (key: SortKey) => void;
   };
   selection: {
-    /** Off during the rebuild toggle even in Pro. */
     enabled: boolean;
     header: HeaderSelectionState;
     selected: Set<number>;
@@ -63,7 +58,7 @@ export function CustomersTable({
   const { by: sortBy, dir: sortDir, onChange: onSort } = sort;
   const { enabled: showSelection, header: headerSelection, selected, onToggle: onToggleRow, onToggleAll } = selection;
 
-  const columnCount = countColumns(showProColumns, showSelection);
+  const columnCount = countColumns(showSelection);
   const isEmpty = !isLoading && rows.length === 0;
 
   return (
@@ -77,8 +72,6 @@ export function CustomersTable({
           isFetching={isFetching}
           isStoreEmpty={isStoreEmpty}
           noMatchContent={noMatchContent}
-          showProColumns={showProColumns}
-          staleBalances={staleBalances}
         />
       </div>
       <div
@@ -108,17 +101,6 @@ export function CustomersTable({
                 onSort={onSort}
                 disabled={isEmpty}
               />
-              {showProColumns && (
-                // Always disabled: the server cannot sort by tier yet.
-                <SortableHead
-                  sortKey="tier"
-                  label={__('Tier', 'yayloyalty')}
-                  sortBy={sortBy}
-                  sortDir={sortDir}
-                  onSort={onSort}
-                  disabled
-                />
-              )}
               <SortableHead
                 sortKey="balance"
                 label={__('Balance', 'yayloyalty')}
@@ -164,18 +146,6 @@ export function CustomersTable({
                 onSort={onSort}
                 disabled={isEmpty}
               />
-              {showProColumns && (
-                // Always disabled: the server cannot sort by referrals yet.
-                <SortableHead
-                  sortKey="referrals"
-                  label={__('Referrals', 'yayloyalty')}
-                  align="right"
-                  sortBy={sortBy}
-                  sortDir={sortDir}
-                  onSort={onSort}
-                  disabled
-                />
-              )}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -200,11 +170,9 @@ export function CustomersTable({
                 <CustomerTableRow
                   key={row.user_id}
                   customer={row}
-                  showProColumns={showProColumns}
                   showSelection={showSelection}
                   selected={selected.has(row.user_id)}
                   onToggle={onToggleRow}
-                  stale={staleBalances}
                 />
               ))}
           </TableBody>

@@ -6,7 +6,6 @@ import { useDashboardQuery, useRefreshDashboard } from '@/lib/queries/dashboard.
 import { findPointsJump } from '@/lib/schema/dashboard-notice.schema';
 import type { DashboardRange, DashboardResponse, DashboardStats } from '@/lib/schema/dashboard.schema';
 import { cn } from '@/lib/utils';
-import { useDevScenario } from '@/hooks/useDevScenario';
 import { ErrorState } from '@/components/ui/custom/error-state';
 import PageLayout from '@/components/layout/PageLayout';
 import { DashboardProPanels } from '@/pro';
@@ -23,15 +22,11 @@ import { DashboardTopEarners } from './components/DashboardTopEarners';
 import { noticeTileOverrides, rangeSubline } from './dashboard-page.copy';
 import type { DashboardProSlots } from './dashboard-page.pro-slots';
 
-/**
- * The landing page: composition only, with a single Pro/Lite branch.
- * `?scenario=` swaps in a fixture on the dev server only; there is no UI control.
- */
+/** The landing page: composition only, with a single Pro/Lite branch. */
 export default function DashboardPage() {
   const [range, setRange] = useState<DashboardRange>(30);
-  const scenario = useDevScenario();
 
-  const query = useDashboardQuery(range, scenario);
+  const query = useDashboardQuery(range);
   const refresh = useRefreshDashboard(range);
   const data = query.data;
 
@@ -95,7 +90,7 @@ export default function DashboardPage() {
 
           {/* Both sides hand the same slots to the same layout; Lite never imports from @/pro. */}
           {IS_PRO_BUILD ? (
-            <DashboardProPanels range={range} stats={data.stats} scenario={scenario}>
+            <DashboardProPanels range={range} stats={data.stats}>
               {(slots) => (
                 <DashboardBody
                   data={data}
@@ -150,9 +145,7 @@ function DashboardBody({
 }) {
   return (
     <>
-      <DashboardStatsGrid stats={data.stats} range={data.range} deltaOverrides={tileOverrides}>
-        {slots.referralsTile}
-      </DashboardStatsGrid>
+      <DashboardStatsGrid stats={data.stats} range={data.range} deltaOverrides={tileOverrides} />
 
       <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
         <DashboardPointsChart

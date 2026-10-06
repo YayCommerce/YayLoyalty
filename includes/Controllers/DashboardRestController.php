@@ -13,8 +13,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * GET /dashboard: the landing page's single payload, cached site-wide on
  * large stores with per-user dismissal applied after the cache. Notices are
- * structured data only, and the SPA owns the copy. `scenario` is registered
- * only under WP_DEBUG.
+ * structured data only, and the SPA owns the copy.
  */
 final class DashboardRestController extends AbstractRestController {
 
@@ -88,7 +87,7 @@ final class DashboardRestController extends AbstractRestController {
 
     /** @return array<string, mixed> */
     private function overview_args(): array {
-        $args = [
+        return [
             'range'   => [
                 'type'    => 'integer',
                 'enum'    => PeriodWindow::RANGES,
@@ -99,25 +98,10 @@ final class DashboardRestController extends AbstractRestController {
                 'default' => false,
             ],
         ];
-
-        if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-            $args['scenario'] = [
-                'type'              => 'string',
-                'enum'              => DashboardFixture::SCENARIOS,
-                'validate_callback' => 'rest_validate_request_arg',
-                'sanitize_callback' => 'sanitize_key',
-            ];
-        }
-
-        return $args;
     }
 
     public function get_overview( \WP_REST_Request $request ): array {
         $range = (int) $request['range'];
-
-        if ( defined( 'WP_DEBUG' ) && WP_DEBUG && ! empty( $request['scenario'] ) ) {
-            return DashboardFixture::scenario( (string) $request['scenario'], $range );
-        }
 
         if ( $request['refresh'] ) {
             DashboardCache::flush();

@@ -59,7 +59,7 @@ export function CustomersSaveSegmentDialog({
         <DialogHeader>
           <DialogTitle>{__('Save current filters as segment', 'yayloyalty')}</DialogTitle>
           <DialogDescription>
-            {__('Balance range, Expiring soon and Tier are saved. Search is not.', 'yayloyalty')}
+            {__('Balance range and Expiring soon are saved. Search is not.', 'yayloyalty')}
           </DialogDescription>
         </DialogHeader>
 

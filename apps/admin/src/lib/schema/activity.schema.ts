@@ -22,7 +22,7 @@ export const ACTIVITY_ACTOR_KINDS = ['staff', 'automatic', 'customer'] as const;
  * The `Show:` filter's groups over `ACTIVITY_EVENT_TYPES`. Matches `ActivityQueryArgs::GROUPS`.
  * Groups overlap on purpose: `expiring_soon_email_sent` is in both `expiry` and `emails`.
  */
-export const ACTIVITY_GROUPS = ['all', 'admin', 'tier', 'expiry', 'emails'] as const;
+export const ACTIVITY_GROUPS = ['all', 'admin', 'expiry', 'emails'] as const;
 
 export const activityEventTypeSchema = z.enum(ACTIVITY_EVENT_TYPES);
 export const activityActorKindSchema = z.enum(ACTIVITY_ACTOR_KINDS);

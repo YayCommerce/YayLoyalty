@@ -3,9 +3,7 @@ import type { Customer, CustomerListRow } from '@/lib/schema/customer.schema';
 import { Badge } from '@/components/ui/badge';
 import { SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
-import { isProBuild } from '@/components/pro/ProGate';
 import { ACCOUNT_DELETED_LABEL, memberSince } from './customer-drawer.copy';
-import { CustomerDrawerTierCard } from './CustomerDrawerTierCard';
 import { DrawerBackLink } from './DrawerBackLink';
 
 /**
@@ -38,7 +36,6 @@ export function CustomerDrawerHeader({
           {customer?.joined_at ? ` · ${memberSince(formatStoredDate(customer.joined_at))}` : null}
         </div>
       </SheetDescription>
-      {isProBuild() && customer && <CustomerDrawerTierCard customer={customer} />}
     </SheetHeader>
   );
 }

@@ -55,8 +55,6 @@ final class Installer {
 
         self::seed_builtins();
 
-        InitYayLoyaltyCustomer::maybe_create();
-
         // Not only on activation: shop_manager does not exist until WooCommerce has been activated once.
         Capabilities::install();
 

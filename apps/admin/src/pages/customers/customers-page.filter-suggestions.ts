@@ -12,14 +12,13 @@ import {
  * "Which single filter should I drop?" The counts arrive in the list
  * response once filters match nothing; this file only turns them into text.
  */
-export type FilterKey = 'search' | 'balanceRange' | 'expiringSoon' | 'tier';
+export type FilterKey = 'search' | 'balanceRange' | 'expiringSoon';
 
 /** Wire param name → RowFilters key; the one place the two spellings meet. */
 const FILTER_KEY_BY_WIRE_KEY: Record<NoMatchSuggestion['key'], FilterKey> = {
   search: 'search',
   balance_range: 'balanceRange',
   expiring_soon: 'expiringSoon',
-  tier: 'tier',
 };
 
 export interface FilterDropSuggestion {
@@ -30,18 +29,17 @@ export interface FilterDropSuggestion {
   phrasing: 'without' | 'only';
 }
 
-function activeFilterKeys(filters: RowFilters, includeTier: boolean): FilterKey[] {
+function activeFilterKeys(filters: RowFilters): FilterKey[] {
   const keys: FilterKey[] = [];
   if (filters.search.trim() !== '') keys.push('search');
   if (filters.balanceRange !== 'any') keys.push('balanceRange');
   if (filters.expiringSoon !== 'off') keys.push('expiringSoon');
-  if (includeTier && filters.tier !== 'all') keys.push('tier');
   return keys;
 }
 
 /** Filters currently narrowing the list; suggestions show at 2+, mirrored server-side. */
-export function countActiveFilters(filters: RowFilters, includeTier: boolean): number {
-  return activeFilterKeys(filters, includeTier).length;
+export function countActiveFilters(filters: RowFilters): number {
+  return activeFilterKeys(filters).length;
 }
 
 function describeFilterValue(key: FilterKey, filters: RowFilters): string {
@@ -56,24 +54,13 @@ function describeFilterValue(key: FilterKey, filters: RowFilters): string {
       return BALANCE_RANGE_OPTIONS.find((option) => option.value === filters.balanceRange)?.label ?? '';
     case 'expiringSoon':
       return EXPIRING_SOON_OPTIONS.find((option) => option.value === filters.expiringSoon)?.label ?? '';
-    case 'tier':
-      return sprintf(
-        /* translators: %s: the tier name. */
-        __('Tier: %s', 'yayloyalty'),
-        filters.tier,
-      );
   }
 }
 
-/**
- * Turns the server's {key, count} pairs into display-ready suggestions.
- * A balance_range suggestion is relabelled as tier when a tier is what is
- * active: the server only ever sees the tier's equivalent bucket.
- */
+/** Turns the server's {key, count} pairs into display-ready suggestions. */
 export function toFilterDropSuggestions(raw: NoMatchSuggestion[], filters: RowFilters): FilterDropSuggestion[] {
   return raw.map(({ key: wireKey, count }) => {
-    const filterKey = FILTER_KEY_BY_WIRE_KEY[wireKey];
-    const key = filterKey === 'balanceRange' && filters.tier !== 'all' ? 'tier' : filterKey;
+    const key = FILTER_KEY_BY_WIRE_KEY[wireKey];
 
     return {
       key,

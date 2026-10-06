@@ -12,7 +12,7 @@ final class NoticeDismissals {
 
     public const META_KEY = 'yayloyalty_dashboard_dismissed';
 
-    /** The only keys a client may dismiss. Fixture-only keys never persist. */
+    /** The only keys a client may dismiss. */
     public const DISMISSABLE = [ 'negative_balance', 'default_campaign_paused', 'points_jump' ];
 
     /**
