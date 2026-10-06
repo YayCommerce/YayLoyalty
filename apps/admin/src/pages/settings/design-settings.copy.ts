@@ -95,12 +95,10 @@ export const PANEL_SHOW_REWARD_CATALOG_LABEL = () => __('Show reward catalog', '
 export const PANEL_SHOW_REWARD_CATALOG_DESCRIPTION = () =>
   __('Lists redeemable rewards inside the panel.', 'yayloyalty');
 
-// Typography section (Pro)
+// Custom CSS section (Pro)
 
-export const TYPOGRAPHY_SECTION_TITLE = () => __('Typography', 'yayloyalty');
-export const TYPOGRAPHY_SECTION_DESCRIPTION = () => __('The font and CSS applied to the rewards panel.', 'yayloyalty');
-export const TYPOGRAPHY_MODE_LABEL = () => __('Mode', 'yayloyalty');
-export const TYPOGRAPHY_FONT_LABEL = () => __('Font', 'yayloyalty');
+export const TYPOGRAPHY_SECTION_TITLE = () => __('Custom CSS', 'yayloyalty');
+export const TYPOGRAPHY_SECTION_DESCRIPTION = () => __('CSS applied to the rewards launcher.', 'yayloyalty');
 export const TYPOGRAPHY_CUSTOM_CSS_LABEL = () => __('Custom CSS', 'yayloyalty');
 export const TYPOGRAPHY_CUSTOM_CSS_DESCRIPTION = () => __('Saved, not yet applied to the storefront.', 'yayloyalty');
 

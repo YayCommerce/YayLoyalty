@@ -7,7 +7,7 @@ import { z } from 'zod';
 export const designLauncherIconSchema = z.enum(['default', 'circle', 'diamond', 'bar', 'ring', 'line', 'custom']);
 export type DesignLauncherIcon = z.infer<typeof designLauncherIconSchema>;
 
-export const designLauncherPositionSchema = z.enum(['bottom_right', 'bottom_left', 'top_right', 'top_left']);
+export const designLauncherPositionSchema = z.enum(['bottom_right', 'bottom_left']);
 export type DesignLauncherPosition = z.infer<typeof designLauncherPositionSchema>;
 
 export const designLauncherButtonStyleSchema = z.enum(['icon', 'label', 'both']);
@@ -18,9 +18,6 @@ export type DesignVisibilityScope = z.infer<typeof designVisibilityScopeSchema>;
 
 export const designPanelLayoutSchema = z.enum(['compact', 'full']);
 export type DesignPanelLayout = z.infer<typeof designPanelLayoutSchema>;
-
-export const designTypographyModeSchema = z.enum(['inherit', 'custom']);
-export type DesignTypographyMode = z.infer<typeof designTypographyModeSchema>;
 
 export const designSchema = z.object({
   launcher: z.object({
@@ -55,8 +52,6 @@ export const designSchema = z.object({
   }),
   /** Pro. */
   typography: z.object({
-    mode: designTypographyModeSchema,
-    font: z.string(),
     custom_css: z.string(),
   }),
   /** Stamped by DesignHelper on save; a design never saved reports the current version. */

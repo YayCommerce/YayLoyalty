@@ -46,8 +46,6 @@ class DesignSchema {
                 'show_reward_catalog' => false,
             ],
             'typography'      => [ // Pro
-                'mode'       => 'inherit',
-                'font'       => '',
                 // Stored and sanitised, but rendered nowhere yet.
                 // TODO(custom-css): close the CSS exfiltration risk before the storefront renders this field.
                 'custom_css' => '',
@@ -67,7 +65,7 @@ class DesignSchema {
             'launcher'        => [
                 'position'       => [
                     'type'    => 'choice',
-                    'options' => [ 'bottom_right', 'bottom_left', 'top_right', 'top_left' ],
+                    'options' => [ 'bottom_right', 'bottom_left' ],
                 ],
                 'button_style'   => [
                     'type'    => 'choice',
@@ -119,14 +117,6 @@ class DesignSchema {
                 'show_reward_catalog' => [ 'type' => 'bool' ],
             ],
             'typography'      => [ // Pro
-                'mode'       => [
-                    'type'    => 'choice',
-                    'options' => [ 'inherit', 'custom' ],
-                ],
-                'font'       => [
-                    'type' => 'text',
-                    'max'  => 120,
-                ],
                 'custom_css' => [ 'type' => 'textarea' ],
             ],
         ];
