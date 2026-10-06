@@ -35,7 +35,6 @@ export const EXPIRY_STOPPED_SUBLINE = () => __('expiry stopped', 'yayloyalty');
 export const ACTION_ADJUST_POINTS = () => __('Adjust points', 'yayloyalty');
 export const ACTION_RESET_EXPIRY = () => __('Reset expiry', 'yayloyalty');
 export const ACTION_EXPORT_LEDGER = () => __('Export ledger', 'yayloyalty');
-export const ACTION_ASSIGN_TIER = () => __('Assign tier', 'yayloyalty');
 
 export const NOT_AVAILABLE_YET_REASON = () => __('Not available yet — coming in a future release.', 'yayloyalty');
 /** Nothing to extend on a zero balance. */
@@ -93,7 +92,7 @@ export function emptyLedgerBody(firstName: string): string {
 }
 
 export const EMPTY_ACTIVITY_TITLE = () => __('Nothing recorded yet', 'yayloyalty');
-export const EMPTY_ACTIVITY_BODY = () => __('Tier changes, expiry resets and admin actions appear here.', 'yayloyalty');
+export const EMPTY_ACTIVITY_BODY = () => __('Expiry resets and admin actions appear here.', 'yayloyalty');
 
 // The ledger and activity tabs both show these when a filter hides every row.
 export const EMPTY_FILTERED_TITLE = () => __('Nothing matches these filters', 'yayloyalty');

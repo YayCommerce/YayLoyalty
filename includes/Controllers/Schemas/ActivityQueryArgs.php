@@ -16,7 +16,7 @@ defined( 'ABSPATH' ) || exit;
  */
 final class ActivityQueryArgs {
 
-    public const GROUPS = [ 'all', 'admin', 'tier', 'expiry', 'emails' ];
+    public const GROUPS = [ 'all', 'admin', 'expiry', 'emails' ];
 
     public const ACTOR_KINDS = ActorKind::ALL;
 
@@ -59,8 +59,6 @@ final class ActivityQueryArgs {
         switch ( $group ) {
             case 'admin':
                 return [ ActivityEvent::POINTS_ADJUSTED, ActivityEvent::EXPIRY_RESET, ActivityEvent::ACCOUNT_DELETED ];
-            case 'tier':
-                return [ ActivityEvent::TIER_CHANGED ];
             case 'expiry':
                 return [ ActivityEvent::EXPIRY_RESET, ActivityEvent::EXPIRING_SOON_EMAIL_SENT ];
             case 'emails':

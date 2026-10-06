@@ -14,14 +14,13 @@ final class Capabilities {
 
     public const VIEW             = 'yayloyalty_view';
     public const MANAGE_POINTS    = 'yayloyalty_manage_points';
-    public const MANAGE_TIERS     = 'yayloyalty_manage_tiers';
     public const MANAGE_CAMPAIGNS = 'yayloyalty_manage_campaigns';
     public const MANAGE_REWARDS   = 'yayloyalty_manage_rewards';
     public const MANAGE_SETTINGS  = 'yayloyalty_manage_settings';
     public const RUN_TOOLS        = 'yayloyalty_run_tools';
 
-    /** Bump when a capability is added, then teach migrate() who inherits it. */
-    public const VERSION        = 1;
+    /** Bump when a capability is added or removed, then teach migrate() the change. */
+    public const VERSION        = 2;
     public const VERSION_OPTION = 'yayloyalty_caps_version';
 
     /** @return string[] In display order. */
@@ -29,7 +28,6 @@ final class Capabilities {
         return [
             self::VIEW,
             self::MANAGE_POINTS,
-            self::MANAGE_TIERS,
             self::MANAGE_CAMPAIGNS,
             self::MANAGE_REWARDS,
             self::MANAGE_SETTINGS,
@@ -49,7 +47,6 @@ final class Capabilities {
             'shop_manager'  => [
                 self::VIEW,
                 self::MANAGE_POINTS,
-                self::MANAGE_TIERS,
                 self::MANAGE_CAMPAIGNS,
                 self::MANAGE_REWARDS,
             ],
@@ -81,7 +78,7 @@ final class Capabilities {
      *   if ( $stored < 2 ) {
      *       foreach ( wp_roles()->role_objects as $role ) {
      *           if ( $role->has_cap( self::MANAGE_CAMPAIGNS ) ) {
-     *               $role->add_cap( self::MANAGE_REFERRALS );
+     *               $role->add_cap( self::NEW_CAP );
      *           }
      *       }
      *   }
@@ -91,6 +88,13 @@ final class Capabilities {
 
         if ( $stored >= self::VERSION ) {
             return;
+        }
+
+        // 2: tiers were cut from v1.0, and their capability with them.
+        if ( $stored < 2 ) {
+            foreach ( wp_roles()->role_objects as $role ) {
+                $role->remove_cap( 'yayloyalty_manage_tiers' );
+            }
         }
 
         // Later bumps add their inheritance blocks above this line.

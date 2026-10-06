@@ -17,7 +17,6 @@ const CAPS = new Set<string>(boot.capabilities ?? []);
 export const CAP = {
   VIEW: 'yayloyalty_view',
   MANAGE_POINTS: 'yayloyalty_manage_points',
-  MANAGE_TIERS: 'yayloyalty_manage_tiers',
   MANAGE_CAMPAIGNS: 'yayloyalty_manage_campaigns',
   MANAGE_REWARDS: 'yayloyalty_manage_rewards',
   MANAGE_SETTINGS: 'yayloyalty_manage_settings',

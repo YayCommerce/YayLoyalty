@@ -3,7 +3,6 @@ import { toast } from 'sonner';
 
 import { Can, CAP } from '@/lib/access';
 import { getApiErrorMessage } from '@/lib/api/api';
-import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { useAdjustPointsMutation, useCustomerQuery } from '@/lib/queries/customer.queries';
 import type { Customer } from '@/lib/schema/customer.schema';
 import { Button } from '@/components/ui/button';
@@ -11,7 +10,6 @@ import { ADJUST_POINTS_ERROR_FALLBACK, adjustPointsSuccessToast } from '../compo
 import { CustomersAdjustPointsDialog } from '../components/CustomersAdjustPointsDialog';
 import {
   ACTION_ADJUST_POINTS,
-  ACTION_ASSIGN_TIER,
   ACTION_EXPORT_LEDGER,
   ACTION_RESET_EXPIRY,
   DELETED_ACCOUNT_ACTION_REASON,
@@ -52,13 +50,6 @@ export function CustomerDrawerActions({ customer, isLoading }: { customer: Custo
         <Button variant="outline" disabled>
           {ACTION_EXPORT_LEDGER()}
         </Button>
-        {IS_PRO_BUILD && (
-          <Can cap={CAP.MANAGE_TIERS} disable>
-            <Button variant="outline" disabled>
-              {ACTION_ASSIGN_TIER()}
-            </Button>
-          </Can>
-        )}
       </div>
       <p className="text-muted-foreground text-xs">{disabledReason}</p>
 
