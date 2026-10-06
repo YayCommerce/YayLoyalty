@@ -13,7 +13,7 @@ const COLORS = ['var(--chart-1)', 'var(--chart-3)', 'var(--chart-4)'];
 /** One stacked bar plus a legend row per tier — "Explorer 1,847 · 76.0%". */
 export function DashboardTierDistribution({ tiers }: { tiers: Readonly<NonNullable<Distribution>> }) {
   const total = tiers.reduce((sum, t) => sum + t.members, 0);
-  // pctOf is null on an empty total; the legend keeps reading 0.0% rather than growing a "—" state for a dummy card.
+  // pctOf is null on an empty total; the legend keeps reading 0.0% rather than growing a "—" state.
   const pct = (members: number) => pctOf(members, total) ?? 0;
 
   return (
