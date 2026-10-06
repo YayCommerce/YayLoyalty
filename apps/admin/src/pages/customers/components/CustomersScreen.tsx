@@ -19,7 +19,6 @@ import { CustomersBulkActionBar } from './CustomersBulkActionBar';
 import { CustomersFilterBar } from './CustomersFilterBar';
 import { CustomersNoMatchState } from './CustomersNoMatchState';
 import { CustomersPagination } from './CustomersPagination';
-import { CustomersRebuildBanner } from './CustomersRebuildBanner';
 import { CustomersTable } from './CustomersTable';
 
 /**
@@ -34,7 +33,6 @@ export function CustomersScreen({
   queryFilters,
   sort,
   pagination,
-  isRebuilding,
 }: {
   /** What the list query produced for the current page. */
   list: {
@@ -65,8 +63,6 @@ export function CustomersScreen({
     pageCount: number;
     onChange: (page: number) => void;
   };
-  /** Demo "Simulate rebuild" toggle; no real background job. */
-  isRebuilding: boolean;
 }) {
   const { rows, isLoading, isFetching, isStoreEmpty, totalItems, suggestions } = list;
   const { value: filters, onChange: onFiltersChange } = filtersProp;
@@ -76,8 +72,8 @@ export function CustomersScreen({
   const isNoMatch = !isLoading && !isStoreEmpty && rows.length === 0;
 
   // Not while loading: the toolbar stays live and only the table body shows skeletons.
-  const controlsDisabled = isStoreEmpty || isRebuilding;
-  const showSelection = IS_PRO_BUILD && !isRebuilding;
+  const controlsDisabled = isStoreEmpty;
+  const showSelection = IS_PRO_BUILD;
 
   // Selection survives page navigation; 'all' is a flag, never a fetch of every id.
   const {
@@ -124,8 +120,6 @@ export function CustomersScreen({
     <>
       <Card>
         <CardContent className="flex flex-col gap-4">
-          {isRebuilding && <CustomersRebuildBanner />}
-
           <CustomersFilterBar
             disabled={controlsDisabled}
             exportDisabled={controlsDisabled || isLoading || rows.length === 0}
@@ -151,7 +145,6 @@ export function CustomersScreen({
               ) : undefined
             }
             showProColumns={IS_PRO_BUILD}
-            staleBalances={isRebuilding}
             sort={{ by: sortBy, dir: sortDir, onChange: onSort }}
             selection={{
               enabled: showSelection,

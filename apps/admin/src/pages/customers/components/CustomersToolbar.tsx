@@ -25,7 +25,7 @@ import { countActiveFilters } from '../customers-page.filter-suggestions';
 export function CustomersToolbar({
   filters,
   onFiltersChange,
-  /** Empty store or mid-rebuild: controls go inert but stay in place, so the table does not shift. */
+  /** Empty store: controls go inert but stay in place, so the table does not shift. */
   disabled,
   exportSlot,
 }: {

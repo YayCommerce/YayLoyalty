@@ -19,15 +19,7 @@ import { BalanceCell, CustomerNameCell } from './CustomersTableCells';
  * and the other columns sit in a "Details" popover, so no column is silently dropped.
  * No selection checkbox: bulk actions are desktop-only.
  */
-export function CustomerCardRow({
-  customer,
-  showProColumns,
-  stale,
-}: {
-  customer: CustomerListRow;
-  showProColumns: boolean;
-  stale?: boolean;
-}) {
+export function CustomerCardRow({ customer, showProColumns }: { customer: CustomerListRow; showProColumns: boolean }) {
   const negative = customer.balance < 0;
   const sampleTier = sampleTierForBalance(customer.balance);
   const [searchParams] = useSearchParams();
@@ -40,7 +32,7 @@ export function CustomerCardRow({
       <div className="flex items-start justify-between gap-3">
         <CustomerNameCell customer={customer} search={search} />
         <div className="shrink-0">
-          <BalanceCell value={customer.balance} stale={stale} />
+          <BalanceCell value={customer.balance} />
         </div>
       </div>
       <div className="flex items-center justify-between gap-2">

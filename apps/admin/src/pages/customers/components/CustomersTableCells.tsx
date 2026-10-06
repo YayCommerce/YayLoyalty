@@ -2,7 +2,6 @@ import { TriangleAlert } from 'lucide-react';
 import { Link } from 'react-router';
 
 import type { CustomerListRow } from '@/lib/schema/customer.schema';
-import { cn } from '@/lib/utils';
 import { PointsValue } from '@/components/ui/custom/points-value';
 
 /**
@@ -22,20 +21,12 @@ export function CustomerNameCell({ customer, search }: { customer: CustomerListR
   );
 }
 
-/**
- * A negative balance gets a warning glyph, never the `destructive` red.
- * `stale` mutes the value during a balance rebuild, when the figure is real but frozen.
- */
-export function BalanceCell({ value, stale }: { value: number; stale?: boolean }) {
+/** A negative balance gets a warning glyph, never the `destructive` red. */
+export function BalanceCell({ value }: { value: number }) {
   const negative = value < 0;
 
   return (
-    <span
-      className={cn(
-        'flex items-center justify-end gap-1.5 tabular-nums',
-        stale ? 'text-muted-foreground font-normal' : 'font-semibold',
-      )}
-    >
+    <span className="flex items-center justify-end gap-1.5 font-semibold tabular-nums">
       {negative && <TriangleAlert className="text-muted-foreground size-3.5" />}
       <PointsValue value={value} />
     </span>

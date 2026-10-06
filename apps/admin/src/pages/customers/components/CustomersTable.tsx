@@ -31,7 +31,6 @@ export function CustomersTable({
   isStoreEmpty,
   noMatchContent,
   showProColumns,
-  staleBalances,
   sort,
   selection,
 }: {
@@ -45,14 +44,12 @@ export function CustomersTable({
   /** Shown when filters narrow a non-empty store to zero rows. */
   noMatchContent?: ReactNode;
   showProColumns: boolean;
-  staleBalances: boolean;
   sort: {
     by: SortKey;
     dir: SortDirection;
     onChange: (key: SortKey) => void;
   };
   selection: {
-    /** Off during the rebuild toggle even in Pro. */
     enabled: boolean;
     header: HeaderSelectionState;
     selected: Set<number>;
@@ -78,7 +75,6 @@ export function CustomersTable({
           isStoreEmpty={isStoreEmpty}
           noMatchContent={noMatchContent}
           showProColumns={showProColumns}
-          staleBalances={staleBalances}
         />
       </div>
       <div
@@ -204,7 +200,6 @@ export function CustomersTable({
                   showSelection={showSelection}
                   selected={selected.has(row.user_id)}
                   onToggle={onToggleRow}
-                  stale={staleBalances}
                 />
               ))}
           </TableBody>

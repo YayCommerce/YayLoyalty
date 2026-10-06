@@ -21,15 +21,12 @@ export function CustomerTableRow({
   showSelection,
   selected,
   onToggle,
-  stale,
 }: {
   customer: CustomerListRow;
   showProColumns: boolean;
-  /** Off during the rebuild toggle: no picking rows while balances are frozen. */
   showSelection: boolean;
   selected: boolean;
   onToggle: (userId: number) => void;
-  stale?: boolean;
 }) {
   const negative = customer.balance < 0;
   const sampleTier = sampleTierForBalance(customer.balance);
@@ -59,7 +56,7 @@ export function CustomerTableRow({
         </TableCell>
       )}
       <TableCell className="text-right">
-        <BalanceCell value={customer.balance} stale={stale} />
+        <BalanceCell value={customer.balance} />
       </TableCell>
       <TableCell className="text-muted-foreground text-right tabular-nums">
         <PointsValue value={customer.pending_points} />

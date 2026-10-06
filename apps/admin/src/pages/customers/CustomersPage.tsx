@@ -1,12 +1,10 @@
 import { useEffect, useState } from 'react';
-import { RefreshCw } from 'lucide-react';
 import { Outlet, useSearchParams } from 'react-router';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { useCustomersQuery } from '@/lib/queries/customer.queries';
 import { useDebouncedSearchCommit } from '@/hooks/useDebouncedSearchCommit';
-import { Button } from '@/components/ui/button';
 import { ErrorState } from '@/components/ui/custom/error-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import PageLayout from '@/components/layout/PageLayout';
@@ -20,7 +18,7 @@ const PER_PAGE = 10;
 
 /**
  * Customers list screen. Owns the data concerns: the paged list query,
- * server-side filters and sort, and the demo "Simulate rebuild" toggle.
+ * server-side filters and sort.
  * Row selection is the one view concern, left in CustomersScreen. Pro adds
  * columns and bulk actions on top of the same list via IS_PRO_BUILD.
  */
@@ -30,7 +28,6 @@ export default function CustomersPage() {
   const [searchParams] = useSearchParams();
   const [filters, setFilters] = useState<RowFilters>(() => initialFiltersFromSearch(searchParams));
   const [queryFilters, setQueryFilters] = useState<RowFilters>(filters);
-  const [isRebuilding, setIsRebuilding] = useState(false);
   const [page, setPage] = useState(1);
   const [sortBy, setSortBy] = useState<SortKey>('balance');
   const [sortDir, setSortDir] = useState<SortDirection>('desc');
@@ -109,15 +106,6 @@ export default function CustomersPage() {
           )
         )
       }
-      actions={
-        IS_PRO_BUILD && (
-          // Demo-only toggle: there is no real background job.
-          <Button variant="outline" size="sm" onClick={() => setIsRebuilding((current) => !current)}>
-            <RefreshCw className="size-3.5" />
-            {isRebuilding ? __('Stop simulating rebuild', 'yayloyalty') : __('Simulate rebuild', 'yayloyalty')}
-          </Button>
-        )
-      }
     >
       {customersQuery.isError ? (
         // No empty state underneath: that would claim the request both failed and answered.
@@ -137,7 +125,6 @@ export default function CustomersPage() {
           queryFilters={queryFilters}
           sort={{ by: sortBy, dir: sortDir, onChange: handleSort }}
           pagination={{ page, pageCount, onChange: setPage }}
-          isRebuilding={isRebuilding}
         />
       )}
       {/* The drawer route renders here, so the list stays mounted and keeps its state. */}
