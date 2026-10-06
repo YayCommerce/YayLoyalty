@@ -19,7 +19,7 @@ final class Capabilities {
     public const MANAGE_SETTINGS  = 'yayloyalty_manage_settings';
     public const RUN_TOOLS        = 'yayloyalty_run_tools';
 
-    /** Bump when a capability is added or removed, then teach migrate() the change. */
+    /** Bump when a capability is added or removed, then teach upgrade_roles() the change. */
     public const VERSION        = 2;
     public const VERSION_OPTION = 'yayloyalty_caps_version';
 
@@ -53,8 +53,13 @@ final class Capabilities {
         ];
     }
 
-    /** Grants the defaults and stamps the version. Idempotent. */
+    /**
+     * Upgrades roles from the stored version, grants the defaults, then stamps the version. Idempotent.
+     * Every caller passes through here, Installer::install() included, so no path stamps past an upgrade.
+     */
     public static function install(): void {
+        self::upgrade_roles( (int) get_option( self::VERSION_OPTION, 0 ) );
+
         foreach ( self::defaults() as $role_slug => $caps ) {
             $role = get_role( $role_slug );
 
@@ -70,12 +75,21 @@ final class Capabilities {
         update_option( self::VERSION_OPTION, self::VERSION );
     }
 
+    /** Brings roles up to the current capability set when the stored version is behind. Hooked on plugins_loaded. */
+    public static function migrate(): void {
+        if ( (int) get_option( self::VERSION_OPTION, 0 ) >= self::VERSION ) {
+            return;
+        }
+
+        self::install();
+    }
+
     /**
-     * Brings roles up to the current capability set. A new capability must be
-     * granted to every role holding the related one, iterating wp_roles(),
-     * or merchants' custom roles silently lose access. Add a block per VERSION bump:
+     * One block per VERSION bump, for changes beyond the defaults. A new capability must be
+     * granted to every role holding the related one, iterating wp_roles(), or merchants'
+     * custom roles silently lose access:
      *
-     *   if ( $stored < 2 ) {
+     *   if ( $stored < 3 ) {
      *       foreach ( wp_roles()->role_objects as $role ) {
      *           if ( $role->has_cap( self::MANAGE_CAMPAIGNS ) ) {
      *               $role->add_cap( self::NEW_CAP );
@@ -83,22 +97,13 @@ final class Capabilities {
      *       }
      *   }
      */
-    public static function migrate(): void {
-        $stored = (int) get_option( self::VERSION_OPTION, 0 );
-
-        if ( $stored >= self::VERSION ) {
-            return;
-        }
-
+    private static function upgrade_roles( int $stored ): void {
         // 2: tiers were cut from v1.0, and their capability with them.
         if ( $stored < 2 ) {
             foreach ( wp_roles()->role_objects as $role ) {
                 $role->remove_cap( 'yayloyalty_manage_tiers' );
             }
         }
-
-        // Later bumps add their inheritance blocks above this line.
-        self::install();
     }
 
     /** Removes every capability from every role. Uninstall only: deactivation must not lock out a shop manager. */
