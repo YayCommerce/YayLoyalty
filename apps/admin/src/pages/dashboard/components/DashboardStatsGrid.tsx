@@ -16,7 +16,7 @@ export const STAT_LABELS = () => [
   __('Redemption rate', 'yayloyalty'),
 ];
 
-/** auto-fit / minmax(184px, 1fr): six tiles on one row at 1440, wrapping as equals below. */
+/** auto-fit / minmax(184px, 1fr): five tiles on one row at 1440, wrapping as equals below. */
 const GRID = 'grid gap-4 grid-cols-[repeat(auto-fit,minmax(184px,1fr))]';
 
 /** The five stat tiles. `deltaOverrides` lets the notice strip replace a delta line. */
