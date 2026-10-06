@@ -60,7 +60,7 @@ Commands and hard rules live in [CLAUDE.md](../CLAUDE.md). Citations give a path
   - Its docblock lists where it may be constructed.
   - A customer row is created at zero by `CustomerRepository::ensure_row()`, which `LedgerService`, `PendingPoints` and `CustomerActivityListener` call. Creating the row is not a ledger write.
   - [The decision record](decisions/2026-10-01-ledger-service-sole-writer.md) says why there is one writer and a cached total.
-  - Points pending on an open order sit in order meta, and their sum is a separate cached column on the customer. `includes/Engine/Earning/PendingPoints.php` writes both; only the demo seeder (`includes/Database/InitYayLoyaltyCustomer.php`) also sets the column.
+  - Points pending on an open order sit in order meta, and their sum is a separate cached column on the customer. `includes/Engine/Earning/PendingPoints.php` writes both.
 - The domain lives in `includes/Engine/`:
   - Earning listeners (`includes/Engine/Earning/Listeners/`) hook WooCommerce order events and WordPress comment and registration events. They stage pending points through `EarningService::preview()` and award through `EarningService::award()` (`includes/Engine/Earning/EarningService.php`).
   - `award()` runs the gates and asks the Points engine. Then, in one transaction, it calls `LedgerService::earn()`, releases the order's pending points and records the award on the order.
@@ -86,13 +86,12 @@ Commands and hard rules live in [CLAUDE.md](../CLAUDE.md). Citations give a path
 - `Table::name()` (`includes/Utils/Table.php`) reads `$wpdb->prefix` on every call and never caches it, because multisite switches blogs. Integration tests rely on the same behaviour to move every plugin table to a scratch prefix.
 - `Installer::install()` is safe to repeat:
   - It runs `dbDelta` for every schema, then seeds the built-ins.
-  - It seeds demo customers once per site, when WooCommerce is loaded and the `yayloyalty_init_demo_customers` filter allows it.
   - It grants capabilities and runs migrations.
   - It writes `yayloyalty_db_version` last, so a crash mid-install retries.
 - `yayloyalty_db_version` holds the plugin version, not a schema version. `Installer::maybe_upgrade` re-runs the whole `install()` whenever it differs from `YAYLOYALTY_VERSION`, behind an `add_option` lock (`yayloyalty_upgrading`). A schema change therefore reaches existing sites only through a version bump.
 - Capabilities have their own version. `Capabilities::install()` grants the defaults to administrator and shop_manager, then stores `Capabilities::VERSION` in `yayloyalty_caps_version`. `migrate()` re-runs it when the constant is higher than the stored value. `install()` also calls it, so every version bump gives those roles back any default a merchant took away.
 - Settings (`yayloyalty_settings`) and design (`yayloyalty_design`) are options. Each belongs to one helper in `includes/Helpers/`. That helper merges code defaults on read, and whitelists and sanitises on both read and write. The emails' on/off switches live in WooCommerce's own email options.
-- Other stored state: `yayloyalty_reviewed` (`SettingsHelper::OPTION_REVIEWED`, set by `POST /settings/mark-reviewed`), `yayloyalty_demo_customers_initialized` (`InitYayLoyaltyCustomer`), Pro's `yayloyalty_customer_segments` (`includes/Pro/Helpers/CustomerSegmentsHelper.php`), and per-user dashboard notice dismissals in user meta (`includes/Services/Dashboard/NoticeDismissals.php`).
+- Other stored state: `yayloyalty_reviewed` (`SettingsHelper::OPTION_REVIEWED`, set by `POST /settings/mark-reviewed`), Pro's `yayloyalty_customer_segments` (`includes/Pro/Helpers/CustomerSegmentsHelper.php`), and per-user dashboard notice dismissals in user meta (`includes/Services/Dashboard/NoticeDismissals.php`).
 - Orders are read and written only through WooCommerce's CRUD API, never with SQL on order tables, which keeps the plugin HPOS-compatible. Pending and awarded points sit in order meta. `PendingPoints` saves only the meta, so no full order save runs inside an award.
 - There are no cron or Action Scheduler jobs and no custom post types.
 
