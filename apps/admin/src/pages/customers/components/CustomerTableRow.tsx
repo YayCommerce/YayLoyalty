@@ -3,16 +3,13 @@ import { __ } from '@wordpress/i18n';
 
 import { parseWPDate, parseWPRelativeDate } from '@/lib/helpers/format.helper';
 import type { CustomerListRow } from '@/lib/schema/customer.schema';
-import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { PointsValue } from '@/components/ui/custom/points-value';
 import { TableCell, TableRow } from '@/components/ui/table';
-import { sampleTierForBalance } from '../customers-page.tier-sample-data';
 import { BalanceCell, CustomerNameCell } from './CustomersTableCells';
 
 /**
  * One customer row. A negative balance gets a left-accent tint, never red.
- * Tier shows sample data derived from balance until a tiers table exists;
  * Referrals always shows "—", the real empty answer.
  */
 export function CustomerTableRow({
@@ -29,7 +26,6 @@ export function CustomerTableRow({
   onToggle: (userId: number) => void;
 }) {
   const negative = customer.balance < 0;
-  const sampleTier = sampleTierForBalance(customer.balance);
   const [searchParams] = useSearchParams();
   const search = searchParams.toString();
 
@@ -50,11 +46,6 @@ export function CustomerTableRow({
       <TableCell>
         <CustomerNameCell customer={customer} search={search} />
       </TableCell>
-      {showProColumns && (
-        <TableCell>
-          <Badge variant="dimmed-outline">{sampleTier ?? '—'}</Badge>
-        </TableCell>
-      )}
       <TableCell className="text-right">
         <BalanceCell value={customer.balance} />
       </TableCell>

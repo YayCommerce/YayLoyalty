@@ -1,7 +1,6 @@
 import { ReactNode } from 'react';
 import { __ } from '@wordpress/i18n';
 
-import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -9,17 +8,14 @@ import {
   BALANCE_RANGE_OPTIONS,
   DEFAULT_ROW_FILTERS,
   EXPIRING_SOON_OPTIONS,
-  TIER_FILTER_ENABLED,
-  TIER_OPTIONS,
   type BalanceRangeValue,
   type ExpiringSoonValue,
   type RowFilters,
-  type TierValue,
 } from '../customers-page.filter-rows';
 import { countActiveFilters } from '../customers-page.filter-suggestions';
 
 /**
- * Search and filter row. Tier and Balance range are mutually exclusive: both drive the one balance_range param.
+ * Search and filter row.
  * `exportSlot` is Lite-only. In Pro, Export moves to the segment row.
  */
 export function CustomersToolbar({
@@ -46,7 +42,7 @@ export function CustomersToolbar({
       <FilterSelect
         placeholder={__('Balance range', 'yayloyalty')}
         value={filters.balanceRange}
-        onValueChange={(value) => onFiltersChange({ balanceRange: value as BalanceRangeValue, tier: 'all' })}
+        onValueChange={(value) => onFiltersChange({ balanceRange: value as BalanceRangeValue })}
         options={BALANCE_RANGE_OPTIONS}
         disabled={disabled}
       />
@@ -57,16 +53,7 @@ export function CustomersToolbar({
         options={EXPIRING_SOON_OPTIONS}
         disabled={disabled}
       />
-      {IS_PRO_BUILD && TIER_FILTER_ENABLED && (
-        <FilterSelect
-          placeholder={__('Tier', 'yayloyalty')}
-          value={filters.tier}
-          onValueChange={(value) => onFiltersChange({ tier: value as TierValue, balanceRange: 'any' })}
-          options={TIER_OPTIONS}
-          disabled={disabled}
-        />
-      )}
-      {countActiveFilters(filters, IS_PRO_BUILD && TIER_FILTER_ENABLED) > 0 && (
+      {countActiveFilters(filters) > 0 && (
         <Button variant="link" size="sm" disabled={disabled} onClick={() => onFiltersChange(DEFAULT_ROW_FILTERS)}>
           {__('Clear all', 'yayloyalty')}
         </Button>

@@ -129,7 +129,7 @@ export type Customer = z.infer<typeof customerSchema>;
 
 /** A "which filter to drop" suggestion; `key` is the wire param name, mapped in customers-page.filter-suggestions.ts. */
 export const noMatchSuggestionSchema = z.object({
-  key: z.enum(['search', 'balance_range', 'expiring_soon', 'tier']),
+  key: z.enum(['search', 'balance_range', 'expiring_soon']),
   count: z.number().int(),
 });
 
@@ -138,11 +138,8 @@ export type NoMatchSuggestion = z.infer<typeof noMatchSuggestionSchema>;
 /** Filter/sort value unions, here because customer.api.ts needs them and lib/ must not import pages/. */
 export type CustomerBalanceRange = 'any' | 'negative' | '0-1000' | '1000-10000' | '10000-plus';
 export type CustomerExpiringSoon = 'off' | '30' | '90' | 'none';
-/** No tiers table yet: any non-'all' value matches zero rows server-side. */
-export type CustomerTier = 'all' | 'Alpine' | 'Summit' | 'Explorer';
-/** The server does not sort by `tier` or `referrals` yet, so neither is offered as a sort control. */
-export type CustomerSortKey =
-  'name' | 'tier' | 'balance' | 'pending' | 'lifetime' | 'last_activity' | 'expires' | 'referrals';
+/** The server does not sort by `referrals` yet, so it is not offered as a sort control. */
+export type CustomerSortKey = 'name' | 'balance' | 'pending' | 'lifetime' | 'last_activity' | 'expires' | 'referrals';
 export type CustomerSortDirection = 'asc' | 'desc';
 
 /** Request body for POST /customers/{id}/adjust — `adjustLifetime` maps to the wire's `adjust_lifetime` in customer.api.ts. */

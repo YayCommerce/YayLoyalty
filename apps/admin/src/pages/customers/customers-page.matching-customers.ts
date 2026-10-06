@@ -4,7 +4,6 @@ import { bulkTooLargeSelection } from './components/customers-adjust-points.bulk
 import type { RowFilters } from './customers-page.filter-rows';
 import { isRowSelected, type SelectionState } from './customers-page.selection';
 import type { SortDirection, SortKey } from './customers-page.sort-rows';
-import { toServerFilters } from './customers-page.tier-sample-data';
 
 /** The server's per_page cap (AbstractRepository::MAX_PER_PAGE), so the walk takes the fewest requests. */
 const MAX_PER_PAGE = 100;
@@ -26,7 +25,7 @@ export async function fetchAllMatchingCustomers(
   signal?: AbortSignal,
 ): Promise<CustomerListRow[]> {
   const params = {
-    ...toServerFilters(filters),
+    ...filters,
     orderBy: sort.by,
     order: sort.dir,
     perPage: MAX_PER_PAGE,

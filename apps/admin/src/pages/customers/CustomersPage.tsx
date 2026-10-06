@@ -2,17 +2,15 @@ import { useEffect, useState } from 'react';
 import { Outlet, useSearchParams } from 'react-router';
 import { __, sprintf } from '@wordpress/i18n';
 
-import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { useCustomersQuery } from '@/lib/queries/customer.queries';
 import { useDebouncedSearchCommit } from '@/hooks/useDebouncedSearchCommit';
 import { ErrorState } from '@/components/ui/custom/error-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import PageLayout from '@/components/layout/PageLayout';
 import { CustomersScreen } from './components/CustomersScreen';
-import { initialFiltersFromSearch, TIER_FILTER_ENABLED, type RowFilters } from './customers-page.filter-rows';
+import { initialFiltersFromSearch, type RowFilters } from './customers-page.filter-rows';
 import { countActiveFilters, toFilterDropSuggestions } from './customers-page.filter-suggestions';
 import { defaultSortDirection, type SortDirection, type SortKey } from './customers-page.sort-rows';
-import { toServerFilters } from './customers-page.tier-sample-data';
 
 const PER_PAGE = 10;
 
@@ -41,7 +39,7 @@ export default function CustomersPage() {
     perPage: PER_PAGE,
     orderBy: sortBy,
     order: sortDir,
-    ...toServerFilters(queryFilters),
+    ...queryFilters,
   });
   const rows = customersQuery.data?.data ?? [];
   const totalItems = customersQuery.data?.totalItems ?? 0;
@@ -57,7 +55,7 @@ export default function CustomersPage() {
   }, [serverPageCount, page]);
 
   // Empty store vs. filters matching nobody: the server only returns the post-filter count.
-  const activeFilterCount = countActiveFilters(queryFilters, IS_PRO_BUILD && TIER_FILTER_ENABLED);
+  const activeFilterCount = countActiveFilters(queryFilters);
   const isStoreEmpty = !customersQuery.isPending && totalItems === 0 && activeFilterCount === 0;
 
   // Labelled from `queryFilters`, the state that actually produced this response.

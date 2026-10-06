@@ -1,14 +1,11 @@
 import { z } from 'zod';
 
 import { api } from '@/lib/api/api';
-import {
-  BALANCE_RANGE_OPTIONS,
-  EXPIRING_SOON_OPTIONS,
-  TIER_OPTIONS,
-} from '@/pages/customers/customers-page.filter-rows';
+import { BALANCE_RANGE_OPTIONS, EXPIRING_SOON_OPTIONS } from '@/pages/customers/customers-page.filter-rows';
 
 /**
- * Mirrors YayLoyalty\Pro\Helpers\CustomerSegmentsHelper::FILTER_SCHEMA, the source of truth.
+ * Mirrors YayLoyalty\Pro\Helpers\CustomerSegmentsHelper::FILTER_SCHEMA, the source of truth,
+ * minus `tier`: the SPA has no tier filter, so it drops the key on read and the server defaults it on write.
  * Client for POST/DELETE /customers/segments. The two converters below are the one place the
  * wire shape meets the app's camelCase RowFilters.
  */
@@ -20,7 +17,6 @@ function enumOfOptions<T extends string>(options: readonly { value: T }[]) {
 
 const balanceRangeSchema = enumOfOptions(BALANCE_RANGE_OPTIONS);
 const expiringSoonSchema = enumOfOptions(EXPIRING_SOON_OPTIONS);
-const tierSchema = enumOfOptions(TIER_OPTIONS);
 
 /** What the REST route and window.yayLoyaltyAdmin.segments carry. */
 const savedSegmentWireSchema = z.object({
@@ -28,7 +24,6 @@ const savedSegmentWireSchema = z.object({
   filters: z.object({
     balance_range: balanceRangeSchema,
     expiring_soon: expiringSoonSchema,
-    tier: tierSchema,
   }),
 });
 
@@ -39,20 +34,19 @@ export const savedSegmentSchema = z.object({
   filters: z.object({
     balanceRange: balanceRangeSchema,
     expiringSoon: expiringSoonSchema,
-    tier: tierSchema,
   }),
 });
 
 export type SavedSegment = z.infer<typeof savedSegmentSchema>;
 
-function toWireFilters({ balanceRange, expiringSoon, tier }: SavedSegment['filters']): SavedSegmentWire['filters'] {
-  return { balance_range: balanceRange, expiring_soon: expiringSoon, tier };
+function toWireFilters({ balanceRange, expiringSoon }: SavedSegment['filters']): SavedSegmentWire['filters'] {
+  return { balance_range: balanceRange, expiring_soon: expiringSoon };
 }
 
 function fromWire({ name, filters }: SavedSegmentWire): SavedSegment {
   return {
     name,
-    filters: { balanceRange: filters.balance_range, expiringSoon: filters.expiring_soon, tier: filters.tier },
+    filters: { balanceRange: filters.balance_range, expiringSoon: filters.expiring_soon },
   };
 }
 
