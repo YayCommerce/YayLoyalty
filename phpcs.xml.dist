@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <ruleset name="YayLoyalty">
-    <description>Coding standard for YayLoyalty. See docs/code-standards.md.</description>
+    <description>Coding standard for YayLoyalty. Every exclusion below carries a one-line reason.</description>
 
     <!-- What to scan. -->
     <file>includes</file>
@@ -25,10 +25,7 @@
     <arg name="cache" value=".phpcs.cache"/>
     <arg value="sp"/>
 
-    <!--
-        PHP 7.4 floor. Without this config line PHPCompatibility silently
-        no-ops and the floor declared in the plugin header is unenforced.
-    -->
+    <!-- PHP 7.4 floor. Without this line PHPCompatibility silently checks nothing. -->
     <config name="testVersion" value="7.4-"/>
     <rule ref="PHPCompatibilityWP"/>
 
@@ -38,43 +35,36 @@
     <rule ref="WordPress-Extra">
         <!--
             Reason: the autoloader in yayloyalty.php maps
-            YayLoyalty\Models\Customer -> includes/Models/Customer.php, so PHP
-            class files MUST be PascalCase. This sniff demands
-            class-customer.php and would break autoloading.
+            YayLoyalty\Models\Customer to includes/Models/Customer.php, so class
+            files must be PascalCase. This sniff demands class-customer.php.
         -->
         <exclude name="WordPress.Files.FileName"/>
 
         <!--
-            Reason: this codebase indents with 4 spaces and contains zero tabs.
-            WordPress-Core mandates tabs. Space indent is enforced instead via
-            Generic.WhiteSpace.DisallowTabIndent below.
+            Reason: this codebase indents with 4 spaces, which
+            Generic.WhiteSpace.DisallowTabIndent below enforces. WordPress-Core
+            mandates tabs.
         -->
         <exclude name="Generic.WhiteSpace.DisallowSpaceIndent"/>
 
-        <!--
-            Reason: this codebase uses short array syntax [] consistently
-            across all 15 files (48 occurrences). WPCS 3.x mandates array().
-            Rewriting working code to satisfy a ruleset adopted after the fact
-            is the wrong direction; short syntax is the deliberate house style.
-        -->
+        <!-- Reason: short array syntax [] is the house style. WPCS 3.x mandates array(). -->
         <exclude name="Universal.Arrays.DisallowShortArraySyntax"/>
+
+        <!--
+            Reason: this sniff flags any throw whose message interpolates a
+            variable, assuming exception messages reach the browser. They never
+            do here: BaseRestController::error_internal() logs the message and
+            returns a generic string with a correlation id, so SQL, table names
+            and paths stay hidden.
+        -->
+        <exclude name="WordPress.Security.EscapeOutput.ExceptionNotEscaped"/>
 
         <!--
             Reason: Squiz.Commenting is noisy on a codebase that documents
             behaviour rather than restating signatures. Docblocks are required
-            by review where the signature is not self-explanatory
-            (docs/code-standards.md section 2), not by sniff.
+            by review where the signature is not self-explanatory, not by
+            sniff.
         -->
-        <!--
-            Reason: this sniff flags any throw whose message interpolates a
-            variable, on the assumption exception messages reach the browser.
-            They never do here — BaseRestController::error_internal() logs the
-            message and returns a generic string with a correlation id instead,
-            precisely so SQL, table names and paths are not exposed. Keeping the
-            sniff would mean an inline ignore on every diagnostic exception.
-        -->
-        <exclude name="WordPress.Security.EscapeOutput.ExceptionNotEscaped"/>
-
         <exclude name="Squiz.Commenting.FunctionComment"/>
         <exclude name="Squiz.Commenting.ClassComment"/>
         <exclude name="Squiz.Commenting.VariableComment"/>
@@ -93,10 +83,7 @@
     <!-- Aligned => in multi-line arrays. -->
     <rule ref="WordPress.Arrays.MultipleStatementAlignment"/>
 
-    <!--
-        Reason: manage_woocommerce is a real capability registered by
-        WooCommerce, not by this plugin, so the sniff cannot see it.
-    -->
+    <!-- Reason: WooCommerce registers manage_woocommerce, so the sniff can't see it. -->
     <rule ref="WordPress.WP.Capabilities">
         <properties>
             <property name="custom_capabilities" type="array">
@@ -106,10 +93,9 @@
     </rule>
 
     <!--
-        Reason: the Vite dev server handles cache-busting via HMR, so passing
-        null as the version is correct there — a ?ver= query string would be
-        meaningless. Applies to the dev registrar only; RegisterProd.php still
-        must pass YAYLOYALTY_VERSION.
+        Reason: the Vite dev server busts caches through HMR, so the dev
+        registrar passes no version. RegisterProd.php still passes
+        YAYLOYALTY_VERSION.
     -->
     <rule ref="WordPress.WP.EnqueuedResourceParameters.MissingVersion">
         <exclude-pattern>includes/Engine/Register/RegisterDev.php</exclude-pattern>
@@ -132,9 +118,9 @@
             </property>
         </properties>
         <!--
-            Reason: this class is intentionally un-namespaced and excluded from
-            PHP-Scoper so runtime class_exists() checks resolve against real
-            WordPress/WooCommerce symbols. See the file's own docblock.
+            Reason: this class is un-namespaced and excluded from php-scoper on
+            purpose, so its class_exists() checks resolve against the real
+            WordPress and WooCommerce symbols.
         -->
         <exclude-pattern>YayLoyaltyPluginAdapter.php</exclude-pattern>
     </rule>

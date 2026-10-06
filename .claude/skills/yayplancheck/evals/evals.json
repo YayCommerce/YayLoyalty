@@ -1,0 +1,29 @@
+{
+  "skill_name": "yayplancheck",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Phase 1 of docs/plans/2026-10-01-scheduled-discount-rules/ is implemented on this branch. Review it against the plan.",
+      "expected_output": "Identifies the phase file and README, determines the diff range against the branch's PR base rather than assuming main, and dispatches a fresh general-purpose subagent with the self-contained review prompt rather than reviewing inline. Subagent runs the listed verification steps and the phase exit criterion and returns PASS/FAIL with blocking gaps tied to plan lines and evidence. Main session fixes blocking gaps, re-reviews at most once, leaves optional findings alone, and reports verdict, fixes, and next step.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Is the reset-to-defaults feature done? Plan is docs/plans/2026-10-02-reset-to-defaults.md.",
+      "expected_output": "Treats this as a whole-plan review of a single-file plan. Reviewer checks every acceptance criterion, runs the verification steps, and flags files changed outside the plan's scope. If a requirement is missing from the plan rather than the code, the report says so and points to yayplan instead of patching. If the review passes, the report says to set the plan's Status to done.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Can you tidy up the naming in src/Admin/Settings.php? Some methods are camelCase and some are snake_case.",
+      "expected_output": "Does not invoke yayplancheck. This is a style request with no plan to review against.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "/yayplancheck",
+      "expected_output": "In a repo whose only active plan is a roadmap with no '### Task N:' headings, does not review against the roadmap. Says no active yayplan plan was found and asks which plan to review.",
+      "files": []
+    }
+  ]
+}

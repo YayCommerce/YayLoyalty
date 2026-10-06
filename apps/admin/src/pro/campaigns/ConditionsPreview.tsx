@@ -9,10 +9,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { previewConditions, type ConditionResult } from './conditions-preview.api';
 
 /**
- * Per-condition preview of why a customer does or does not match a
- * campaign, from the same evaluation path that runs at award time. A
- * preview, not an editor: the SPA has no campaign editor to save into.
- * Not mounted yet; the call site must guard with IS_PRO_BUILD.
+ * Per-condition preview of why a customer does or does not match a campaign, from the same
+ * evaluation path that runs at award time. Read-only. Not mounted yet; the call site must guard
+ * with IS_PRO_BUILD.
  */
 export function ConditionsPreview({
   campaignId,
@@ -119,9 +118,9 @@ function describeValue(value: unknown): string {
 }
 
 /**
- * The evaluator's reason code as something a merchant can act on. Unknown
- * type/operator are configuration errors, not "does not qualify";
- * unsupported_condition_type is recognised but not yet evaluable.
+ * The evaluator's reason code as something a merchant can act on. An unknown type or operator
+ * is a configuration error, not "does not qualify". unsupported_condition_type is recognised but
+ * not yet evaluable. needs_order is an order-scoped condition this customer-only preview cannot check.
  */
 function describeReason(result: ConditionResult): string {
   switch (result.reason) {
@@ -141,10 +140,16 @@ function describeReason(result: ConditionResult): string {
       return __('Unknown condition type', 'yayloyalty');
     case 'unsupported_condition_type':
       return __('This condition type is known but cannot be evaluated yet.', 'yayloyalty');
+    case 'no_customer':
+      return __('Needs a signed-in customer', 'yayloyalty');
+    case 'needs_order':
+      return __('Checked against an order — not evaluable in a customer preview', 'yayloyalty');
     case 'unsupported_operator':
       return __('Unsupported operator', 'yayloyalty');
     case 'non_numeric_value':
       return __('Value is not a number', 'yayloyalty');
+    case 'malformed_value':
+      return __('Value is malformed — re-save the condition', 'yayloyalty');
     default:
       return result.reason;
   }

@@ -3,16 +3,9 @@ import { z } from 'zod';
 import { paginatedSchema } from '@/lib/api/paginated';
 
 /**
- * Mirrors `ReferralsRestController::define_item_schema()`. THAT PHP METHOD
- * IS THE SOURCE OF TRUTH.
- *
- * The server always answers an empty envelope — no `yayloyalty_referrals`
- * table exists yet (docs/data-model/future-tables.md, 1.1, designed but not implemented).
- * When it ships, only the server handler changes — this schema is already
- * the contract.
- *
- * `referred_name`/`referred_email` are personal data of a THIRD PARTY (the
- * referred customer, not the one the drawer belongs to).
+ * Mirrors ReferralsRestController::define_item_schema(), the source of truth.
+ * The server answers an empty envelope until the referrals table exists.
+ * `referred_name` and `referred_email` are a third party's personal data: the referred customer's, not the drawer's.
  */
 
 /** Matches `ReferralsRestController`'s `status` enum. */
@@ -39,7 +32,7 @@ export const referralEntrySchema = z.object({
 
 export type ReferralEntry = z.infer<typeof referralEntrySchema>;
 
-/** The campaign facts every row shares — structured, composed into a sentence client-side. */
+/** The campaign facts every row shares, composed into a sentence client-side. */
 export const referralCampaignSchema = z.object({
   referrer_points: z.number().int(),
   friend_coupon_label: z.string(),
@@ -48,11 +41,7 @@ export const referralCampaignSchema = z.object({
 
 export type ReferralCampaign = z.infer<typeof referralCampaignSchema>;
 
-/**
- * Envelope carries the referral link + campaign alongside the rows. Parse
- * with THIS schema, not the generic `parsePaginated()` helper, which would
- * silently drop both fields.
- */
+/** The envelope carries the referral link and campaign alongside the rows. */
 export const referralEnvelopeSchema = paginatedSchema(referralEntrySchema).extend({
   referral_link: z.string(),
   campaign: referralCampaignSchema.nullable(),

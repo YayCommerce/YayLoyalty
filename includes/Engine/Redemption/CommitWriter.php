@@ -20,9 +20,9 @@ defined( 'ABSPATH' ) || exit;
  * balance through the same Quoter the cart used, then inserts the
  * redemptions row and the REDEEM ledger row (through LedgerService — the
  * one ledger writer) together, moves the aggregates and freezes the value
- * onto the order. Zone 3 (cancel / refund) is not here: it attaches as
- * `Engine\Redemption\Reversal` from Earning\Listeners\OrderListener::on_cancelled()
- * / on_refunded(), needs LedgerService::refund_redeem() and
+ * onto the order. Cancel and refund are not here: they attach as
+ * `Engine\Redemption\Reversal` from Earning\Listeners\OrderReversalListener::on_cancelled()
+ * / on_order_refunded(), needs LedgerService::refund_redeem() and
  * Redemption::restored_points, and is undesigned. Scaffold: stubs.
  */
 final class CommitWriter {
@@ -75,7 +75,7 @@ final class CommitWriter {
      * @throws \YayLoyalty\Database\QueryException When a write other than a duplicate fails (rolled back).
      */
     public function commit( \WC_Order $order, Reward $reward ): Outcome { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(F08): Transaction::run: ensure_row, customer = lock_and_get; redemptions->find_by_order( order id, reward id ) → duplicate; ctx = contexts->from_order( order, customer balance ); quote = quoter->quote( reward, ctx ), denied or points below the frozen points → order note + skipped; redemption_id = redemptions->insert( redemption_from( quote, order ) ); outcome = ledger->redeem( draft_from( quote, order, redemption_id ) ); redeemed → freeze( order, quote ); return outcome.
+        // TODO(redemption): Transaction::run: ensure_row, customer = lock_and_get; redemptions->find_by_order( order id, reward id ) → duplicate; ctx = contexts->from_order( order, customer balance ); quote = quoter->quote( reward, ctx ), denied or points below the frozen points → order note + skipped; redemption_id = redemptions->insert( redemption_from( quote, order ) ); outcome = ledger->redeem( draft_from( quote, order, redemption_id ) ); redeemed → freeze( order, quote ); return outcome.
         throw new \RuntimeException( 'Not implemented' );
     }
 
@@ -88,7 +88,7 @@ final class CommitWriter {
      * status Redemption::STATUS_APPLIED, restored_points 0.
      */
     private function redemption_from( Result $quote, \WC_Order $order ): Redemption { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(F08): construct the Redemption exactly as the docblock lists its fields, created_at and updated_at = Dates::now().
+        // TODO(redemption): construct the Redemption exactly as the docblock lists its fields, created_at and updated_at = Dates::now().
         throw new \RuntimeException( 'Not implemented' );
     }
 
@@ -102,13 +102,13 @@ final class CommitWriter {
      * REDEEM, user_id, REDEMPTION, $redemption_id, reward type ).
      */
     private function draft_from( Result $quote, \WC_Order $order, int $redemption_id ): LedgerEntry { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(F08): build the LedgerEntry with every field exactly as the docblock above lists them.
+        // TODO(redemption): build the LedgerEntry with every field exactly as the docblock above lists them.
         throw new \RuntimeException( 'Not implemented' );
     }
 
     /** Freezes points and value onto the order (HPOS-safe update_meta_data + save) so the order screen and emails never re-derive them. */
     private function freeze( \WC_Order $order, Result $quote ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(F08): write META_POINTS from the quote's points and META_VALUE from its value formatted as a WooCommerce decimal onto the order, then save its meta.
+        // TODO(redemption): write META_POINTS from the quote's points and META_VALUE from its value formatted as a WooCommerce decimal onto the order, then save its meta.
         throw new \RuntimeException( 'Not implemented' );
     }
 }

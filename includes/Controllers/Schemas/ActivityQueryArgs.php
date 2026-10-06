@@ -7,17 +7,12 @@ use YayLoyalty\Enums\ActorKind;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The args `GET /customers/{id}/activity` takes — split out of
- * `ActivityRestController` the way `LedgerQueryArgs` is split out of
- * `LedgerRestController`. `search`/`after`/`before` mirror `LedgerQueryArgs`'
- * own args field-for-field (same descriptions, same `validate_date`), so the
- * two tabs' filter rows behave identically from the admin's side.
+ * The args `GET /customers/{id}/activity` takes. `search`, `after` and `before` match
+ * LedgerQueryArgs' args field for field, so the two tabs' filter rows behave the same.
  *
- * `group` is a GROUPING over the eight `event_type`s (`ActivityEvent::ALL`), not a
- * partition: `expiring_soon_email_sent` belongs to BOTH `expiry` and `emails`
- * on purpose — it is a lens ("what am I looking for"), not a mutually-exclusive
- * category. Do not "fix" the overlap. `account_created` is in no group;
- * `all` still shows it.
+ * `group` is a lens over the eight `event_type`s, not a partition: `expiring_soon_email_sent`
+ * belongs to both `expiry` and `emails` on purpose, so do not "fix" the overlap.
+ * `account_created` is in no group, and `all` still shows it.
  */
 final class ActivityQueryArgs {
 
@@ -25,9 +20,7 @@ final class ActivityQueryArgs {
 
     public const ACTOR_KINDS = ActorKind::ALL;
 
-    /**
-     * @return array<string, mixed>
-     */
+    /** @return array<string, mixed> */
     public static function all(): array {
         return [
             'group'  => [
@@ -58,7 +51,7 @@ final class ActivityQueryArgs {
     }
 
     /**
-     * Never empty: `all` (and any unrecognised group) returns the full ActivityEvent vocabulary.
+     * Never empty: `all`, like any unrecognised group, returns the full ActivityEvent vocabulary.
      *
      * @return string[]
      */

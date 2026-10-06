@@ -9,8 +9,8 @@ defined( 'ABSPATH' ) || exit;
  * The dashboard's reporting window: N site-timezone days ending today, plus
  * the N before for deltas. Pure: the caller injects "now" in the site zone.
  * Bounds are UTC MySQL strings, `from` inclusive, `to` exclusive. One UTC
- * offset (at `from`) buckets the whole window, so a DST transition inside
- * it shifts daily boundaries by an hour; accepted.
+ * offset, taken at `from`, buckets the whole window, so a DST transition
+ * inside it shifts daily boundaries by an hour. That is accepted.
  */
 final class PeriodWindow {
 
@@ -67,7 +67,7 @@ final class PeriodWindow {
         return Dates::to_utc( $this->from );
     }
 
-    /** Start of the site's current calendar day, UTC — "today" for activity counts. */
+    /** Start of the site's current calendar day in UTC: "today" for activity counts. */
     public function today_from_utc(): string {
         return Dates::to_utc( $this->to->modify( '-1 day' ) );
     }
@@ -86,7 +86,7 @@ final class PeriodWindow {
     }
 
     /**
-     * Site-timezone dates (Y-m-d) covered by the window, ascending; exactly range() entries.
+     * Site-timezone dates (Y-m-d) covered by the window, ascending. Exactly range() entries.
      *
      * @return string[]
      */
@@ -95,9 +95,9 @@ final class PeriodWindow {
     }
 
     /**
-     * Every Y-m-d from `$first_day` to `$last_day`, both inclusive, ascending —
-     * the one day-list builder for zero-filled series (this window and the
-     * campaign performance chart).
+     * Every Y-m-d from `$first_day` to `$last_day`, both inclusive, ascending.
+     * The one day-list builder for zero-filled series, here and in the
+     * campaign performance chart.
      *
      * @return string[]
      */

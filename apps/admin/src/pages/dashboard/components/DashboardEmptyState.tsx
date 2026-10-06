@@ -15,15 +15,14 @@ export function DashboardEmptyState({ pointsPerCurrencyUnit }: { pointsPerCurren
   const one = parseWPCurrency(1);
   const builtIns = [
     sprintf(
-      /* translators: %s: one unit of store currency. */ __('Points for purchases — 1 pt per %s', 'yayloyalty'),
+      /* translators: %s: one unit of store currency. */
+      __('Points for purchases — 1 pt per %s', 'yayloyalty'),
       one,
     ),
     pointsPerCurrencyUnit > 0
       ? sprintf(
-          /* translators: 1: points, 2: one unit of store currency. */ __(
-            'Points for discount — %1$s points = %2$s',
-            'yayloyalty',
-          ),
+          /* translators: 1: points, 2: one unit of store currency. */
+          __('Points for discount — %1$s points = %2$s', 'yayloyalty'),
           formatPoints(pointsPerCurrencyUnit),
           one,
         )

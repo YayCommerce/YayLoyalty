@@ -18,7 +18,11 @@ export function CustomersNoMatchState({
 }) {
   const title =
     activeCount > 1
-      ? sprintf(__('No customers match all %d filters', 'yayloyalty'), activeCount)
+      ? sprintf(
+          /* translators: %d: number of active filters. */
+          __('No customers match all %d filters', 'yayloyalty'),
+          activeCount,
+        )
       : __('No customers match this filter', 'yayloyalty');
 
   return (
@@ -42,7 +46,11 @@ export function CustomersNoMatchState({
                   {__('Without', 'yayloyalty')} <strong>{suggestion.label}</strong>
                 </>
               ) : (
-                sprintf(__('%s on its own', 'yayloyalty'), suggestion.label)
+                sprintf(
+                  /* translators: %s: the search filter's label, such as Search "anna". */
+                  __('%s on its own', 'yayloyalty'),
+                  suggestion.label,
+                )
               )}
             </span>
             <span className="text-muted-foreground ml-auto font-semibold">{countLabel(suggestion.count)}</span>

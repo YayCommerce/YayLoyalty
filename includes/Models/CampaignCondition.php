@@ -6,9 +6,8 @@ use YayLoyalty\Enums\CampaignConditionType;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * One campaign eligibility rule: { type, operator, value }. Immutable value
- * object; `value`'s shapes are CampaignConditionType::schema()'s, validated
- * by CampaignConditionSet.
+ * One campaign eligibility rule: { type, operator, value }. An immutable value object.
+ * CampaignConditionSet validates `value` against CampaignConditionType::schema().
  */
 final class CampaignCondition {
 
@@ -21,9 +20,6 @@ final class CampaignCondition {
     /** @var mixed */
     private $value;
 
-    /**
-     * @param mixed $value
-     */
     public function __construct( string $type, string $operator, $value ) {
         $this->type     = $type;
         $this->operator = $operator;
@@ -41,9 +37,7 @@ final class CampaignCondition {
         );
     }
 
-    /**
-     * @return array{type: string, operator: string, value: mixed}
-     */
+    /** @return array{type: string, operator: string, value: mixed} */
     public function to_array(): array {
         return [
             'type'     => $this->type,
@@ -60,15 +54,12 @@ final class CampaignCondition {
         return $this->operator;
     }
 
-    /**
-     * @return mixed
-     */
     public function get_value() {
         return $this->value;
     }
 
     /**
-     * The value as a list; a scalar is wrapped so callers never branch.
+     * The value as a list. A scalar is wrapped so callers never branch.
      *
      * @return array<int, mixed>
      */

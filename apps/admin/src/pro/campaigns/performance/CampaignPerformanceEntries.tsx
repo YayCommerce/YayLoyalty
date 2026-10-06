@@ -77,10 +77,9 @@ function renderCell(column: ColumnKey, entry: CampaignPerformanceEntry): ReactNo
 }
 
 /**
- * Paged/searchable table — owns its query and its page/search state.
- * `entriesTotal` must stay the UNFILTERED count from the summary: it drives
- * the search-bar/"Export" visibility and the header count, and must not
- * shrink when a search narrows the current page's results.
+ * Paged, searchable entries table that owns its query and page/search state. `entriesTotal` is the
+ * unfiltered count from the summary: it drives the search bar, Export and the header count, so it
+ * must not shrink when a search narrows the results.
  */
 export function CampaignPerformanceEntries({
   campaignId,
@@ -95,9 +94,8 @@ export function CampaignPerformanceEntries({
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
 
-  // rooks' `useDebounceFn` has no `.cancel()` — this generation counter guards
-  // the same race CustomersPage.tsx's search does: clearing the box within the
-  // debounce window would otherwise let a stale commit fire afterward and overwrite the clear.
+  // rooks' `useDebounceFn` has no `.cancel()`, so this generation counter stops a stale commit
+  // from overwriting a clear made inside the debounce window.
   const searchGeneration = useRef(0);
 
   const [commitSearch] = useDebounceFn((value: string, generation: number) => {
@@ -112,7 +110,7 @@ export function CampaignPerformanceEntries({
     const trimmed = value.trim();
 
     if (trimmed === '') {
-      // Clearing back to "show everything" applies immediately — nothing to debounce.
+      // Clearing applies immediately: there is nothing to debounce.
       searchGeneration.current++;
       setSearch('');
       setPage(1);
@@ -157,7 +155,7 @@ export function CampaignPerformanceEntries({
             />
           )}
           {entriesTotal > 0 && (
-            // Inert: no export endpoint yet, same pattern as CampaignTable's inert Delete item.
+            // Inert: no export endpoint yet.
             <Button type="button" onClick={() => {}}>
               {sprintf(
                 /* translators: %s: total number of entries. */

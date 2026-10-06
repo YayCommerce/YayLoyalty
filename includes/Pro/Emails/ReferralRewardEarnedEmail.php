@@ -3,7 +3,7 @@ namespace YayLoyalty\Pro\Emails;
 
 defined( 'ABSPATH' ) || exit;
 
-/** Referral reward earned: sent when a referral earns a reward for either party. */
+/** The referral-reward-earned email. Nothing triggers it yet. */
 class ReferralRewardEarnedEmail extends ProLoyaltyEmail {
 
     public function __construct() {

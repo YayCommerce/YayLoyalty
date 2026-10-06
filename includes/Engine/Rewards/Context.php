@@ -6,12 +6,8 @@ use YayLoyalty\Engine\Points\CustomerFacts;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Everything the engine and the gates may know about a claim. Immutable,
- * WordPress-free, so the engine is testable without a bootstrap. The
- * balance is a caller input, not a lookup: the engine never reads the
- * ledger. Built only by ContextFactory (cart or order) or by hand in a
- * test; holding one grants no way to write anything. No actor_id: who is
- * logged in is a ledger argument, not a scoring input.
+ * Everything the engine and the gates may know about a claim. Immutable and WordPress-free.
+ * The balance is a caller input, because the engine never reads the ledger.
  */
 final class Context {
 

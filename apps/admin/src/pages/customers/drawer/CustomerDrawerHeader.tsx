@@ -9,16 +9,8 @@ import { CustomerDrawerTierCard } from './CustomerDrawerTierCard';
 import { DrawerBackLink } from './DrawerBackLink';
 
 /**
- * Identity block: name, email, member-since, the `ACCOUNT DELETED` badge
- * (4a's header treatment only — the loose-ends panel renders elsewhere),
- * and the `‹ Customers` back link 5c shows below the `sm`
- * breakpoint (the Sheet becomes a full-screen view there, so a back link
- * replaces relying on the overlay click to close it).
- *
- * `listRow` (from the clicked list row's router state) renders name/email
- * instantly; `customer` (the fetched resource) is what a deep link or a
- * refresh has instead — see CustomerDrawer.tsx. `SheetTitle`/`SheetDescription`
- * wrap them for Radix Dialog's a11y requirements.
+ * Identity block: name, email, member-since, the deleted badge and the mobile back link.
+ * `listRow`, from the clicked row's router state, renders identity at once. A deep link or a refresh waits for `customer`.
  */
 export function CustomerDrawerHeader({
   customer,
@@ -39,9 +31,12 @@ export function CustomerDrawerHeader({
         <SheetTitle>{name ?? <Skeleton className="h-5 w-32" />}</SheetTitle>
         {isDeleted && <Badge variant="destructive">{ACCOUNT_DELETED_LABEL()}</Badge>}
       </div>
-      <SheetDescription>
-        {email ?? <Skeleton className="h-4 w-40" />}
-        {customer?.joined_at ? ` · ${memberSince(formatStoredDate(customer.joined_at))}` : null}
+      {/* A div, not Radix's default <p>: the loading Skeleton is a <div>, which a <p> can't hold. */}
+      <SheetDescription asChild>
+        <div>
+          {email ?? <Skeleton className="h-4 w-40" />}
+          {customer?.joined_at ? ` · ${memberSince(formatStoredDate(customer.joined_at))}` : null}
+        </div>
       </SheetDescription>
       {isProBuild() && customer && <CustomerDrawerTierCard customer={customer} />}
     </SheetHeader>

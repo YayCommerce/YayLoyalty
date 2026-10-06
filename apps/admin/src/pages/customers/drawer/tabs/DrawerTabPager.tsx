@@ -7,14 +7,8 @@ import { pagerSummary } from '../customer-drawer.copy';
 export const DRAWER_PAGE_SIZE = 10;
 
 /**
- * "1–10 of 4,812 entries · newest first" + ‹ Newer / Older › — not the shared
- * `components/ui/pagination.tsx` primitive (that one is "Page X of Y" + a
- * "Go to" number input, a different shape entirely for a different context).
- * Reuses the same underlying pieces (`Button` + chevron icons) the way
- * `CustomersPagination.tsx` wraps `Pagination` — paged, never "Load more"
- * (3c note 3). Shared by every drawer tab that pages rather than accumulates —
- * `LedgerTab.tsx` and `ActivityLogTab.tsx` both compose it — hence the
- * drawer-generic name rather than `LedgerTabPager`.
+ * "1–10 of 4,812 entries · newest first" with newer and older buttons.
+ * Not the shared Pagination, which is "Page X of Y" with a page input.
  */
 export function DrawerTabPager({
   page,
@@ -29,12 +23,10 @@ export function DrawerTabPager({
   totalItems: number;
   onPageChange: (page: number) => void;
   disabled: boolean;
-  /** Blank while the first fetch is in flight (3b note 3). */
+  /** Blank while the first fetch is in flight. */
   isPending: boolean;
 }) {
-  // A genuinely empty result (loaded, zero rows) has nothing to page through —
-  // the table's own empty state already says so; showing "0–0 of 0" plus two
-  // disabled chevrons underneath it is noise, not information.
+  // Nothing to page: the table's empty state already says so.
   if (!isPending && totalItems === 0) {
     return null;
   }

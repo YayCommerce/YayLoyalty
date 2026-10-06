@@ -20,7 +20,7 @@ import {
 import { addsToLiability, POINTS_UNIT } from '../customers-adjust-points.copy';
 import { bulkLiabilityProjection, bulkTotalPoints, type AdjustFormState } from '../customers-adjust-points.form-state';
 
-/** Non-default active filters, human-readable — tier is never included: it is sent as its balance bucket. */
+/** The active filters as text. Tier is never listed: it is sent as its balance bucket. */
 function filterSummary(filters: Pick<RowFilters, 'search' | 'balanceRange' | 'expiringSoon'>): string | null {
   const parts: string[] = [];
 
@@ -35,11 +35,7 @@ function filterSummary(filters: Pick<RowFilters, 'search' | 'balanceRange' | 'ex
   return parts.length > 0 ? parts.join(' · ') : null;
 }
 
-/**
- * Bulk-only: selection summary + amount totals + no-undo notice with the
- * required acknowledgement checkbox. One file for three single-use blocks
- * that always render together.
- */
+/** Bulk-only: the selection summary, the totals, and the no-undo notice with its acknowledgement. */
 export function AdjustPointsBulkPanels({
   state,
   effectiveCount,
@@ -59,7 +55,7 @@ export function AdjustPointsBulkPanels({
   isCountLoading: boolean;
   selectionMode: 'partial' | 'all';
   filters: RowFilters;
-  /** Rows the filter matches beyond the current page — 0 when nothing to add. */
+  /** Rows the filter matches beyond the current page; 0 when none. */
   notShownOnPage: number;
   pointsPerCurrencyUnit: number;
   liabilityPoints: number | null;
@@ -91,7 +87,6 @@ export function AdjustPointsBulkPanels({
         <div className="flex flex-col gap-1">
           <p className="text-sm font-medium">{bulkTotalsLine(effectiveCount, formatPoints(state.amount))}</p>
           <p className="text-sm">{bulkTotalPointsLine(formatPoints(total), totalMoney)}</p>
-          {/* liabilityPoints can't be trusted after a failed preview — omit rather than guess. */}
           {!hasPreviewError && liabilityLine(projection, state.direction, pointsPerCurrencyUnit)}
         </div>
       )}

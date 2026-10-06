@@ -14,7 +14,6 @@ import {
 import type { RedemptionRow } from '../customer-drawer.redemption-rows';
 import { DRAWER_ROW_CLASS, drawerCell, DrawerTable } from './DrawerTable';
 
-/** 3e's six columns — Date / Reward / Value / Points / Order / Status. */
 export function RedemptionsTabRows({
   rows,
   isLoading,

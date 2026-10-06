@@ -4,11 +4,7 @@ import { __ } from '@wordpress/i18n';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 
-/**
- * What kind of failure this is — drives which icon shows today, and is the
- * hook for a per-kind layout/copy later (a merchant needs a different next
- * step for "you're offline" than for "you can't access this").
- */
+/** The kind of failure. Today it only picks the icon. */
 export type ErrorStateKind = 'generic' | 'network' | 'not-found' | 'forbidden' | 'server';
 
 const KIND_ICON: Record<ErrorStateKind, typeof AlertTriangle> = {
@@ -20,22 +16,10 @@ const KIND_ICON: Record<ErrorStateKind, typeof AlertTriangle> = {
 };
 
 /**
- * One shared place for "a query/mutation failed" UI across the admin app —
- * Customers and the dashboard use this; the campaign surfaces (CampaignTable,
- * BuiltInCampaignList, ConditionsPreview) still hand-roll their own
- * `<p className="text-destructive ...">` and should migrate. Minimal inline
- * banner, with the extension points already wired in instead of every call
- * site needing a second pass later:
+ * Shared inline banner for a failed query or mutation. No caller passes `kind` yet, since none
+ * reads the underlying error. `onRetry` adds a retry action.
  *
- * - `kind` picks the icon now (`KIND_ICON` above) and is where a genuinely
- *   different layout/copy per failure type (offline vs 403 vs 500) plugs in.
- * - `onRetry` slots a retry action in without changing the call sites that
- *   don't pass one.
- *
- * Callers only have `kind="generic"` to reach for today — nothing yet
- * distinguishes a network failure from a 500 (every call site destructures
- * only `isError`, not the underlying error) — but the prop exists so that
- * mapping is a change in one place, not a hunt through every page.
+ * TODO(error-state): move CampaignTable, BuiltInCampaignList and ConditionsPreview onto this.
  */
 export function ErrorState({
   message,

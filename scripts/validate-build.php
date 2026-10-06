@@ -7,11 +7,11 @@
  *
  * Environment:
  *   YAYLOYALTY_WP_CLI       Command prefix for the headless boot check, e.g.
- *                           "wp" or "wp --path=/srv/site". Unset means the
- *                           boot check is SKIPPED (reported, never silent).
+ *                           "wp" or "wp --path=/srv/site". Unset, the boot
+ *                           check is skipped, and the report says so.
  *   YAYLOYALTY_WP_CLI_ARGS  Extra global args appended to that command, e.g.
  *                           "--skip-plugins=yayloyalty,othersite-plugin".
- *                           The installed copy of this plugin MUST be skipped
+ *                           The installed copy of this plugin must be skipped
  *                           or its classes collide with the extracted one.
  *
  * A stripping build fails silently: the zip installs and looks correct while
@@ -36,7 +36,7 @@ const PRO_REFERENCE_FILE = 'includes/YayLoyalty.php';
 // The guarded class_exists plus the call it guards.
 const PRO_REFERENCE_LIMIT = 2;
 
-// ─── Result collection ──────────────────────────────────────────────────
+// Result collection
 
 $results = [];
 
@@ -86,7 +86,7 @@ function rmdir_recursive(string $dir): void {
     rmdir( $dir );
 }
 
-// ─── Arguments ──────────────────────────────────────────────────────────
+// Arguments
 
 $argv_rest    = array_slice( $argv, 1 );
 $require_boot = false;
@@ -114,7 +114,7 @@ if ( ! is_file( $zip_path ) ) {
 
 $is_lite = 'lite' === $build_type;
 
-// ─── Extract ────────────────────────────────────────────────────────────
+// Extract
 
 $work = sys_get_temp_dir() . '/yayloyalty-validate-' . getmypid();
 rmdir_recursive( $work );
@@ -138,7 +138,7 @@ if ( ! is_dir( $root ) ) {
 
 $files = list_files( $root );
 
-// ─── Manifest ───────────────────────────────────────────────────────────
+// Manifest
 
 $manifest_rel  = 'release-manifest.json';
 $manifest_path = $root . '/' . $manifest_rel;
@@ -197,7 +197,7 @@ if ( is_array( $manifest ) && isset( $manifest['files'] ) ) {
     );
 }
 
-// ─── The strip itself ───────────────────────────────────────────────────
+// The strip itself
 
 $pro_dir_present = is_dir( $root . '/includes/Pro' );
 
@@ -210,7 +210,7 @@ if ( $is_lite ) {
     );
 }
 
-// ─── Bundle ─────────────────────────────────────────────────────────────
+// Bundle
 
 $bundle_rel  = 'assets/dist/admin/js/main.js';
 $bundle_path = $root . '/' . $bundle_rel;
@@ -254,7 +254,7 @@ if ( null !== $bundle ) {
     );
 }
 
-// ─── No runtime Pro flag reaches the browser ────────────────────────────
+// No runtime Pro flag reaches the browser
 
 $php_files = array_values(
     array_filter(
@@ -278,7 +278,7 @@ record(
     implode( ', ', $flag_hits ) . ' — the SPA is gated at build time; a runtime flag would reintroduce the split it replaced'
 );
 
-// ─── Syntax ─────────────────────────────────────────────────────────────
+// Syntax
 
 $lint_failures = [];
 foreach ( $php_files as $rel ) {
@@ -298,7 +298,7 @@ record(
     implode( ', ', array_slice( $lint_failures, 0, 5 ) )
 );
 
-// ─── Lite still names Pro, but only once and only in one file ───────────
+// Lite still names Pro, but only once and only in one file
 
 if ( $is_lite ) {
     $refs = [];
@@ -332,16 +332,14 @@ if ( $is_lite ) {
     );
 }
 
-// ─── Inline Pro-field gates (source, not the zip) ──────────────────────
+// Inline Pro-field gates, read from the source, not the zip
 
-// Those field keys legitimately ship in Lite as schema vocabulary (§13), so
-// their presence in the Lite bundle proves nothing — only the source-level
-// guard around each field distinguishes "gated" from "ungated". Read from
-// the repo, not the extracted zip: __DIR__ is scripts/, so this resolves
-// regardless of what the package under validation contains.
+// Lite ships these field keys, because a downgraded site keeps its Pro data, so only the
+// IS_PRO_BUILD guard in the source tells "gated" from "ungated". __DIR__ is scripts/, so
+// this reads the repo whatever the package holds.
 check_inline_pro_field_gates();
 
-// ─── Dev-only artifacts ─────────────────────────────────────────────────
+// Dev-only artifacts
 
 $dev_leftovers = array_values(
     array_filter(
@@ -360,15 +358,15 @@ record(
     implode( ', ', array_slice( $dev_leftovers, 0, 5 ) )
 );
 
-// ─── Headless boot ──────────────────────────────────────────────────────
+// Headless boot
 
 run_boot_check( $root, $build_type );
 
-// ─── Report ─────────────────────────────────────────────────────────────
+// Report
 
 render_and_exit( $work, $require_boot );
 
-// ─── Functions ──────────────────────────────────────────────────────────
+// Functions
 
 /**
  * Design's inline Pro-field gates (DesignStorefrontTextSection /
@@ -432,7 +430,7 @@ function run_boot_check(string $root, string $build_type): void {
         record(
             'Headless boot with no fatal',
             null,
-            'YAYLOYALTY_WP_CLI is not set — see docs/deployment-guide.md. Pass --require-boot to treat this as a failure.'
+            'YAYLOYALTY_WP_CLI is not set; it is documented at the top of scripts/validate-build.php. Pass --require-boot to treat this as a failure.'
         );
         return;
     }

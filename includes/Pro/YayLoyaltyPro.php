@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Pro;
 
+use YayLoyalty\Engine\Points\PointsEngine;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Enums\RewardType;
 use YayLoyalty\Pro\Controllers\CampaignPerformanceRestController;
@@ -20,17 +21,16 @@ use YayLoyalty\Services\Dashboard\DashboardCache;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Pro entry point: wiring only, features live in their layer directories.
- * includes/Pro/ is deleted for the Lite build; the only reference from
- * outside is the guarded class_exists probe in YayLoyalty. Pro reaches Lite
- * only through the seams in docs/code-standards.md § 13 — add a seam, never a marker.
+ * Pro entry point: wiring only. The Lite build deletes includes/Pro/, and the only reference from outside
+ * is the guarded boot() call in YayLoyalty. Pro reaches Lite only through the filters boot() attaches:
+ * add a seam, never a strip marker.
  */
 final class YayLoyaltyPro {
 
-    /** Guards against initialize() running twice. */
+    /** Guards against boot() running twice. */
     private static $booted = false;
 
-    /** @var ConditionsEvaluator|null One instance so its per-request order memo is reused across campaigns. */
+    /** @var ConditionsEvaluator|null */
     private static $evaluator = null;
 
     /**
@@ -69,7 +69,7 @@ final class YayLoyaltyPro {
         add_filter( 'yayloyalty_campaign_config_whitelist', [ self::class, 'add_config_keys' ] );
         add_filter( 'yayloyalty_reward_types', [ self::class, 'add_reward_types' ] );
         add_filter( 'yayloyalty_reward_config_whitelist', [ self::class, 'add_reward_config_keys' ] );
-        add_filter( 'yayloyalty_campaign_conditions_evaluator', [ self::class, 'conditions_evaluator' ] );
+        add_filter( PointsEngine::CONDITIONS_EVALUATOR_FILTER, [ self::class, 'conditions_evaluator' ] );
         add_filter( 'yayloyalty_rest_controllers', [ self::class, 'add_controllers' ] );
         add_filter( 'yayloyalty_rest_item_schema', [ self::class, 'describe_pro_config' ], 10, 2 );
         add_filter( 'yayloyalty_localize_admin_data', [ self::class, 'add_segments' ] );
@@ -244,7 +244,6 @@ final class YayLoyaltyPro {
      * $rest_base: the preview controller shares the `campaigns` base.
      *
      * @param array<string, mixed> $schema
-     * @param string               $rest_base
      * @return array<string, mixed>
      */
     public static function describe_pro_config( array $schema, string $rest_base ): array {

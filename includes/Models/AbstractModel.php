@@ -1,6 +1,8 @@
 <?php
 namespace YayLoyalty\Models;
 
+use YayLoyalty\Utils\Dates;
+
 defined( 'ABSPATH' ) || exit;
 
 /**
@@ -8,7 +10,7 @@ defined( 'ABSPATH' ) || exit;
  * cross-table invariant. Money (DECIMAL) is carried as a string and bound
  * as %s, never %f: a float loses precision exactly where it is a financial
  * defect. Append-only entities are immutable by convention (getters only,
- * with_*() returns a clone); PHP 7.4 has no readonly to enforce it.
+ * with_*() returns a clone). PHP 7.4 has no readonly to enforce it.
  */
 abstract class AbstractModel {
 
@@ -19,7 +21,7 @@ abstract class AbstractModel {
     abstract public static function from_row( array $row );
 
     /**
-     * Column => value map for $wpdb writes; omits an AUTO_INCREMENT key, keeps a natural one.
+     * Column => value map for $wpdb writes. It omits an AUTO_INCREMENT key and keeps a natural one.
      *
      * @return array<string, mixed>
      */
@@ -33,7 +35,7 @@ abstract class AbstractModel {
     abstract public function to_array(): array;
 
     /**
-     * $wpdb placeholder per to_row() key, same order. '%s' for decimals too; never '%f'.
+     * $wpdb placeholder per to_row() key, in the same order. Decimals take '%s', never '%f'.
      *
      * @return string[]
      */
@@ -68,7 +70,7 @@ abstract class AbstractModel {
 
     /** Empty and zero dates become null. */
     protected static function cast_datetime( $value ): ?string {
-        if ( null === $value || '' === $value || '0000-00-00 00:00:00' === $value ) {
+        if ( null === $value || '' === $value || Dates::ZERO === $value ) {
             return null;
         }
 

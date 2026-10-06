@@ -4,42 +4,27 @@ import { DEFAULT_CAMPAIGN_CONFIG, LiteCampaignTrigger } from '@/lib/schema/campa
 import { CampaignFormValues } from '../editor/campaign-editor.form';
 
 /**
- * One card on the "Add a campaign" chooser. First-order bonus, Birthday
- * points and VIP multiplier are left out: the first two need Pro-only
- * triggers, and VIP multiplier needs a tier condition that
- * CampaignConditionSet rejects today. Welcome bonus and Review reward give
- * signup and review a starting point.
+ * One card on the "Add a campaign" chooser. First-order bonus, Birthday points and VIP multiplier
+ * are left out: the first two need Pro-only triggers, and VIP multiplier needs a tier condition
+ * that CampaignConditionSet rejects today.
  */
 export interface CampaignTemplate {
   /** The URL segment at campaigns/new/:templateId. */
   id: string;
   title: string;
   description: string;
-  /** The card's footer line — a real configuration this seeds, per the wireframe's own callout 2, never an invented benefit. */
+  /** The card's footer line: a real configuration this seeds, never an invented benefit. */
   example: string;
   trigger: LiteCampaignTrigger;
-  /**
-   * A function, not a static object: every call must return values this
-   * template's own picker never shares with another visit, or another
-   * template's seed — see synthesizeDraftCampaign's sibling concern in
-   * campaign-editor.form.ts.
-   */
+  /** A function, not a static object: each call returns fresh values that no other visit or template shares. */
   seed: () => CampaignFormValues;
 }
 
 /**
- * Every template opens as a draft — nothing here can start earning by
- * accident, matching the chooser's own note that a template is only a
- * starting point. No dates are seeded: the merchant picks them, per the
- * same note.
+ * Every template opens as a draft with no dates, so nothing starts earning by accident.
  *
- * A function, not a module-level const: matching campaign-labels.ts's own
- * functions (e.g. conditionTypeLabel()), so the bundler defers every __()
- * call to when this is actually invoked. A const array would still get
- * built at module-init time even in the Lite bundle — Rollup keeps a
- * module-level statement that calls an imported function it can't prove
- * pure, regardless of whether the binding it produces ends up unused —
- * shipping this Pro-only copy as readable text in Lite's JS.
+ * A function, not a module-level const: Rollup keeps a module-level call to __() even when its
+ * result is unused, which would ship this Pro-only copy in the Lite bundle.
  */
 export function getCampaignTemplates(): CampaignTemplate[] {
   return [
@@ -90,8 +75,8 @@ export function getCampaignTemplates(): CampaignTemplate[] {
         status: 'draft',
         priority: 10,
         config: { ...structuredClone(DEFAULT_CAMPAIGN_CONFIG.purchase), points_per_unit: 3 },
-        // Deliberately empty: CampaignEditorConditions blocks saving until a category is picked,
-        // which is the point — a boost with no category is not yet a boost.
+        // Deliberately empty: CampaignEditorConditions blocks saving until a category is picked.
+        // A boost with no category is not yet a boost.
         conditions: [{ type: 'category_in_cart', operator: 'in', value: [] }],
         starts_at: null,
         ends_at: null,

@@ -53,7 +53,13 @@ export default function DashboardPage() {
       className="max-w-7xl"
       title={__('Dashboard', 'yayloyalty')}
       description={
-        query.isPending ? sprintf(__('Loading the %s…', 'yayloyalty'), rangeSubline(range)) : rangeSubline(range)
+        query.isPending
+          ? sprintf(
+              /* translators: %s: the selected range, e.g. "last 30 days". */
+              __('Loading the %s…', 'yayloyalty'),
+              rangeSubline(range),
+            )
+          : rangeSubline(range)
       }
     >
       {/* The thin bar under the header is the only page-level loading indicator. */}

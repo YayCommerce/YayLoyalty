@@ -7,12 +7,8 @@ use YayLoyalty\Utils\Json;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * One `yayloyalty_customer_meta` row: a non-points customer fact, doubling
- * as one activity-log entry. `to_array()` is not the raw row — it is the
- * ACTIVITY WIRE SHAPE `ActivityRestController`'s item schema promises
- * (`id`, `occurred_at`, `event_type`, `data`, `actor_kind`, `actor_name`,
- * `staff_only`), never `schema_version`. Append-only by convention: no
- * caller ever updates or deletes a row.
+ * One `yayloyalty_customer_meta` row: a non-points customer fact that is also one activity-log entry.
+ * Append-only by convention: no caller updates or deletes a row.
  */
 final class CustomerMeta extends AbstractModel {
 
@@ -62,7 +58,7 @@ final class CustomerMeta extends AbstractModel {
         $this->created_at = $created_at;
     }
 
-    /** Named constructor for writers (listeners/services) — keeps call sites readable. */
+    /** A new row, not yet inserted. */
     public static function event(
         int $user_id,
         string $meta_key,
@@ -112,7 +108,7 @@ final class CustomerMeta extends AbstractModel {
         return [ '%d', '%s', '%s', '%s' ];
     }
 
-    /** The activity wire shape — see class docblock. Never leaks schema_version. */
+    /** Not the raw row: the activity shape ActivityRestController's item schema promises, without schema_version. */
     public function to_array(): array {
         return [
             'id'          => $this->id,
@@ -143,8 +139,8 @@ final class CustomerMeta extends AbstractModel {
     }
 
     /**
-     * The deleted-member identity fallback both customer formatters read —
-     * the keys `account_deleted`'s snapshot writes.
+     * The deleted member's identity, from the keys `account_deleted`'s snapshot writes.
+     * Both customer formatters fall back to it.
      *
      * @return array{name: string, email: string}
      */

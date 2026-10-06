@@ -72,12 +72,10 @@ export function useCustomersBulkActions({
   // Covers the resolve step too: isPending alone left a window where a second click
   // fired two overlapping, non-idempotent batches.
   const [isAdjustSubmitting, setIsAdjustSubmitting] = useState(false);
-  // Bumped to tell the dialog to clear its liability acknowledgement after a
-  // selection-changed abort below — a fresh count deserves a fresh consent.
+  // Bumped to make the dialog clear its liability acknowledgement: a new count needs new consent.
   const [acknowledgementResetKey, setAcknowledgementResetKey] = useState(0);
-  // The count a submit just resolved when it disagreed with the dialog's. The
-  // dialog shows this until closed, so the next submit is checked against a
-  // number the admin re-confirmed rather than the stale preview again.
+  // The count a submit resolved when it disagreed with the dialog's. The dialog shows it until closed,
+  // so the next submit is checked against a number the admin re-confirmed, not the stale preview.
   const [recountedCount, setRecountedCount] = useState<number | null>(null);
   const bulkAdjustMutation = useBulkAdjustPointsMutation();
 
@@ -86,11 +84,8 @@ export function useCustomersBulkActions({
   }, [isAdjustDialogOpen]);
 
   /**
-   * `expectedCount` is the figure the dialog showed and the admin
-   * acknowledged. `resolveSelectedRows()` below already re-resolves the
-   * matching set fresh (it has to, to get the ids to fan out over) — for
-   * "select all matching" that is at least as strong as a plain re-COUNT,
-   * so this reuses it rather than firing a second, redundant preview call.
+   * `expectedCount` is the count the admin acknowledged in the dialog.
+   * resolveSelectedRows() re-resolves the matching set anyway, so no second preview call is needed to recheck it.
    */
   async function handleAdjustSubmit(input: AdjustPointsInput, expectedCount?: number) {
     setIsAdjustSubmitting(true);
@@ -117,6 +112,7 @@ export function useCustomersBulkActions({
       if (failed === 0) {
         toast.success(
           sprintf(
+            /* translators: %d: number of customers whose points were adjusted. */
             _n('Adjusted points for %d customer.', 'Adjusted points for %d customers.', succeeded, 'yayloyalty'),
             succeeded,
           ),
@@ -124,13 +120,14 @@ export function useCustomersBulkActions({
         setIsAdjustDialogOpen(false);
         setSelection(EMPTY_SELECTION);
       } else {
-        // Partial failure: keep the dialog open, but on the failed customers only —
-        // adjustments are not idempotent, so a retry must never reach the ones that succeeded.
+        // Keep the dialog open on the failed customers only. Adjustments are not idempotent,
+        // so a retry must never reach the ones that succeeded.
         setSelection({ mode: 'partial', ids: new Set(failedIds) });
         setRecountedCount(null);
         setAcknowledgementResetKey((key) => key + 1);
         toast.error(
           sprintf(
+            /* translators: 1: number of customers adjusted; 2: number of customers whose adjustment failed. */
             __(
               '%1$d succeeded, %2$d failed. Points ceilings or permissions may differ per customer. Only the failed customers are still selected.',
               'yayloyalty',

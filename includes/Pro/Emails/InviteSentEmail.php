@@ -3,7 +3,7 @@ namespace YayLoyalty\Pro\Emails;
 
 defined( 'ABSPATH' ) || exit;
 
-/** Invite sent: sent when a customer invites a friend to join. */
+/** The invite-sent email. Nothing triggers it yet. */
 class InviteSentEmail extends ProLoyaltyEmail {
 
     public function __construct() {

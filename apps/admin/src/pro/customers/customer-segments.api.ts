@@ -8,9 +8,9 @@ import {
 } from '@/pages/customers/customers-page.filter-rows';
 
 /**
- * Client for POST/DELETE /customers/segments. The wire shape mirrors
- * CustomerSegmentsHelper::FILTER_SCHEMA; the two converters below are the
- * one place it meets the app's camelCase RowFilters.
+ * Mirrors YayLoyalty\Pro\Helpers\CustomerSegmentsHelper::FILTER_SCHEMA, the source of truth.
+ * Client for POST/DELETE /customers/segments. The two converters below are the one place the
+ * wire shape meets the app's camelCase RowFilters.
  */
 
 /** Keeps the value union, not `string`, so SavedSegment['filters'] is assignable to RowFilters. */

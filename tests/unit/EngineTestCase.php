@@ -4,17 +4,16 @@ namespace YayLoyalty\Tests\Unit;
 use PHPUnit\Framework\TestCase;
 use YayLoyalty\Engine\Points\Context;
 use YayLoyalty\Engine\Points\ContextLineItem;
+use YayLoyalty\Engine\Points\CustomerFacts;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Enums\Status;
 use YayLoyalty\Models\Campaign;
 use YayLoyalty\Repositories\CampaignRepository;
 
 /**
- * Fixture builders shared by the engine tests.
- *
- * Defaults match the plan: default campaign points_per_unit 1, base
- * after_discounts, rounding down, no exclusions, no gates; base currency =
- * order currency.
+ * Fixture builders shared by the engine tests. The default purchase campaign earns 1 point per
+ * currency unit after discounts, rounds down, and has no exclusions or gates. The base currency
+ * is the order currency.
  */
 abstract class EngineTestCase extends TestCase {
 
@@ -79,7 +78,8 @@ abstract class EngineTestCase extends TestCase {
         int $earned_today = 0,
         ?int $user_id = 7,
         array $extra = [],
-        ?int $comment_id = null
+        ?int $comment_id = null,
+        ?CustomerFacts $facts = null
     ): Context {
         $subtotal = 0.0;
         $total    = 0.0;
@@ -103,7 +103,8 @@ abstract class EngineTestCase extends TestCase {
             555,
             $comment_id,
             $earned_today,
-            $extra
+            $extra,
+            $facts
         );
     }
 

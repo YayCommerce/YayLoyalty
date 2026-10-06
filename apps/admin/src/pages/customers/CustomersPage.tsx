@@ -35,8 +35,6 @@ export default function CustomersPage() {
   const [sortBy, setSortBy] = useState<SortKey>('balance');
   const [sortDir, setSortDir] = useState<SortDirection>('desc');
 
-  // See `useDebouncedSearchCommit`'s own docblock for why a generation
-  // counter guards this and why `cancelPending()` exists alongside `commit()`.
   const { commit: commitSearch, cancelPending: cancelPendingSearch } = useDebouncedSearchCommit((search) =>
     setQueryFilters((current) => ({ ...current, search })),
   );
@@ -72,21 +70,14 @@ export default function CustomersPage() {
     setFilters((current) => ({ ...current, ...patch }));
     setPage(1);
 
-    // Only a raw keystroke from the search input ever sends a patch that is
-    // exactly `{ search }` (see CustomersToolbar.tsx). Every other change —
-    // a select (a single non-search key), a suggestion dropping one filter
-    // (also single-key, see `patchForSuggestion`'s 'without' case), or a
-    // "clear all"/search-suggestion patch (every field at once) — fails that
-    // shape check and is a deliberate one-off action applied immediately,
-    // not debounced. `commitSearch` itself trims and applies immediately
-    // when the trimmed value is empty (see the hook's own docblock).
+    // Only a search keystroke sends a patch of exactly `{ search }`, and only that is debounced.
+    // Every other patch is a deliberate action and applies at once.
     if (Object.keys(patch).length === 1 && patch.search !== undefined) {
       commitSearch(patch.search);
       return;
     }
 
-    // Cancel any debounced keystroke commit still in flight so it can't fire
-    // later and clobber this immediate change (see `cancelPending`'s docblock).
+    // A search commit still in flight would otherwise overwrite this change when it fires.
     cancelPendingSearch();
     setQueryFilters((current) => ({
       ...current,
@@ -111,12 +102,16 @@ export default function CustomersPage() {
         customersQuery.isPending ? (
           <Skeleton tone="page" className="h-4 w-32" />
         ) : customersQuery.isError ? null : (
-          sprintf(__('%d program members', 'yayloyalty'), totalItems)
+          sprintf(
+            /* translators: %d: number of program members. */
+            __('%d program members', 'yayloyalty'),
+            totalItems,
+          )
         )
       }
       actions={
         IS_PRO_BUILD && (
-          // Demo-only toggle; there is no real background job. See CustomersRebuildBanner.
+          // Demo-only toggle: there is no real background job.
           <Button variant="outline" size="sm" onClick={() => setIsRebuilding((current) => !current)}>
             <RefreshCw className="size-3.5" />
             {isRebuilding ? __('Stop simulating rebuild', 'yayloyalty') : __('Simulate rebuild', 'yayloyalty')}
@@ -145,9 +140,7 @@ export default function CustomersPage() {
           isRebuilding={isRebuilding}
         />
       )}
-      {/* The drawer route (`customers/:userId`) renders here — the list above
-          stays mounted and keeps its filters/page/sort/selection regardless
-          of whether the list itself errored. */}
+      {/* The drawer route renders here, so the list stays mounted and keeps its state. */}
       <Outlet />
     </PageLayout>
   );

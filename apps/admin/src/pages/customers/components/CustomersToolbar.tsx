@@ -19,10 +19,8 @@ import {
 import { countActiveFilters } from '../customers-page.filter-suggestions';
 
 /**
- * Search + filter row. Tier and Balance range are mutually exclusive: both
- * drive the one balance_range param (see customers-page.tier-sample-data.ts).
- * `exportSlot` is Free-only: with Pro's fourth filter, Export wraps and
- * moves to the segment row instead.
+ * Search and filter row. Tier and Balance range are mutually exclusive: both drive the one balance_range param.
+ * `exportSlot` is Lite-only. In Pro, Export moves to the segment row.
  */
 export function CustomersToolbar({
   filters,

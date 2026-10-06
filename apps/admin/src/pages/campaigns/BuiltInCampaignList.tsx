@@ -113,7 +113,7 @@ function BuiltInCampaignCard({
 
   async function toggleOn(checked: boolean) {
     const next = checked ? 'active' : 'paused';
-    setStatus(next); // optimistic; reverted below on failure
+    setStatus(next); // Optimistic; reverted below on failure.
 
     try {
       await statusMutation.mutateAsync(next);
@@ -403,8 +403,11 @@ function summarize(trigger: Campaign['trigger'], config: Record<string, unknown>
     case 'purchase': {
       const value = config as unknown as PurchaseConfig;
 
-      /* translators: %s: a purchase rate, e.g. "1 pt per $1.00". */
-      return sprintf(__('%s spent', 'yayloyalty'), pointsPerCurrencyLabel(value.points_per_unit));
+      return sprintf(
+        /* translators: %s: a purchase rate, e.g. "1 pt per $1.00". */
+        __('%s spent', 'yayloyalty'),
+        pointsPerCurrencyLabel(value.points_per_unit),
+      );
     }
 
     case 'signup': {

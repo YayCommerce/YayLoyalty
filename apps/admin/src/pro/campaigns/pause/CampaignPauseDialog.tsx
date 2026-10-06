@@ -68,7 +68,6 @@ export function CampaignPauseDialog({ campaign, onClose }: { campaign: Campaign;
             )}
           </Alert>
 
-          {/* Deliberately omitted: no setting for storefront earning-text exists yet to link to. */}
           {campaign.is_builtin && campaign.trigger === 'purchase' && (
             <div className="flex flex-col gap-1 rounded-md border p-4">
               <span className="text-sm font-semibold">

@@ -2,11 +2,7 @@ import { ReactNode } from 'react';
 
 import { cn } from '@/lib/utils';
 
-/**
- * Shared page shell: header row (title + description + optional actions) above
- * the page's own content. `title`/`description`/`actions` are fully
- * caller-supplied — no copy lives here.
- */
+/** Shared page shell: a header row (title, description, actions) above the page's content. */
 export default function PageLayout({
   title,
   description,
@@ -25,9 +21,8 @@ export default function PageLayout({
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
-          {/* `<div>`, not `<p>`: `description` is any ReactNode (e.g. CustomersPage.tsx
-              renders a `<Skeleton>` here while loading), and a `<div>` inside a `<p>`
-              is invalid HTML — React warns on it (validateDOMNesting). */}
+          {/* `<div>`, not `<p>`: `description` can hold a `<Skeleton>` while loading,
+              and a `<div>` inside a `<p>` is invalid HTML. */}
           {description ? <div className="text-muted-foreground text-sm">{description}</div> : null}
         </div>
         {actions ? <div className="flex items-center gap-2">{actions}</div> : null}

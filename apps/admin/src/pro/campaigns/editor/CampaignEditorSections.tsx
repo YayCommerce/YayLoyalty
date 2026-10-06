@@ -49,8 +49,6 @@ export function CampaignEditorSections() {
   );
 }
 
-/* ─── the shared numbered-card shell ─────────────────────────────────── */
-
 /** Numbered card shell for one section. */
 function CampaignEditorSection({ step, title, children }: { step: number; title: string; children?: ReactNode }) {
   return (
@@ -68,7 +66,7 @@ function CampaignEditorSection({ step, title, children }: { step: number; title:
   );
 }
 
-/* ─── §1 Basics ──────────────────────────────────────────────────────── */
+// §1 Basics
 
 /** CAMPAIGN_STATUSES minus archived: archiving is its own flow, and Campaign::set_status() throws for a built-in. */
 const EDITABLE_STATUSES = ['active', 'paused', 'draft'] as const;
@@ -114,7 +112,7 @@ function CampaignEditorBasics() {
   );
 }
 
-/* ─── §2 Trigger ─────────────────────────────────────────────────────── */
+// §2 Trigger
 
 /** The purchase copy names no order status on purpose: settings has none to point at. */
 function triggerDescription(trigger: CampaignTrigger): string {
@@ -221,7 +219,7 @@ function CampaignEditorTriggerEditable() {
   );
 }
 
-/* ─── §5 Schedule ────────────────────────────────────────────────────── */
+// §5 Schedule
 
 /**
  * starts_at/ends_at are nullable, exclusive-end UTC strings held raw in form
@@ -288,10 +286,8 @@ function ScheduleBoundField({
       <FieldLabel>{label}</FieldLabel>
       <FieldContent>
         <div className="flex flex-wrap items-center gap-2">
-          {/* Keyed by `date`: DatePicker falls back to an internal uncontrolled cache whenever
-              `value` is undefined (empty), so clearing a field that was picked while it started
-              empty would silently redisplay that stale date. A fresh key each time forces a
-              remount instead, so "no date" always renders as no date. */}
+          {/* Keyed by `date`: DatePicker keeps an internal value while `value` is undefined, so a
+              cleared field could redisplay a stale date. A fresh key remounts it. */}
           <DatePicker
             key={date}
             value={dateStringToLocalDate(date)}
@@ -316,7 +312,7 @@ function ScheduleBoundField({
   );
 }
 
-/* ─── UTC <-> site-local, the picker's tz conversion edge ────────────── */
+// UTC <-> site-local, converted at the picker
 
 /**
  * The site's UTC offset in minutes. A fixed offset, not DST-aware: it can
@@ -370,7 +366,7 @@ function utcMsToParts(ms: number): { date: string; time: string } {
   };
 }
 
-/* ─── date <-> Date, for the picker only — never a bare `new Date(str)` ─ */
+// date <-> Date, for the picker only; never a bare `new Date(str)`
 
 /**
  * A day-of-month container for the DatePicker, built from components:
@@ -450,13 +446,18 @@ function siteTimezoneLabel(): string {
   if (timezone?.offsetFormatted && timezone.offsetFormatted !== '0') {
     const signed = timezone.offsetFormatted.startsWith('-') ? timezone.offsetFormatted : `+${timezone.offsetFormatted}`;
 
-    return sprintf(/* translators: %s: a signed UTC offset, e.g. "+5:30" or "-5". */ __('UTC%s', 'yayloyalty'), signed);
+    return sprintf(
+      /* translators: %s: a signed UTC offset, e.g. "+5:30" or "-5". */
+      __('UTC%s', 'yayloyalty'),
+      signed,
+    );
   }
 
   if (typeof timezone?.offset === 'number' && timezone.offset !== 0) {
     const sign = timezone.offset > 0 ? '+' : '-';
     return sprintf(
-      /* translators: 1: +/-, 2: hours offset from UTC. */ __('UTC%1$s%2$s', 'yayloyalty'),
+      /* translators: 1: +/-, 2: hours offset from UTC. */
+      __('UTC%1$s%2$s', 'yayloyalty'),
       sign,
       String(Math.abs(timezone.offset)),
     );
@@ -500,7 +501,7 @@ function describeWindow(startsAt: string | null, endsAt: string | null, zoneLabe
   );
 }
 
-/* ─── §6 Priority ────────────────────────────────────────────────────── */
+// §6 Priority
 
 /** The priority number alone; where it lands among its group is the campaigns table's job. */
 function CampaignEditorPriority() {

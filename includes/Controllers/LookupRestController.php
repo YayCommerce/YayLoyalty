@@ -8,17 +8,16 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Name lookups for the admin's pickers: products, product categories and
- * customers, by search term or by id (to label an already stored
- * selection). Shared by every editor that names one of these — campaign
- * conditions today, reward conditions next — so it is a resource of its
- * own, not a campaign sub-route. Read-only, capped at LIMIT rows, behind
- * VIEW like the customers list that already shows the same emails.
+ * customers, by search term or by id to label a stored selection. Every
+ * editor that names one of these shares it, so it is a resource of its own,
+ * not a campaign sub-route. Read-only, capped at LIMIT rows, and behind VIEW
+ * like the customers list, which already shows the same emails.
  */
 final class LookupRestController extends AbstractRestController {
 
     public const ENTITIES = [ 'products', 'categories', 'customers' ];
 
-    /** Rows per answer; a picker lists, it does not page. */
+    /** Rows per answer. A picker lists, it does not page. */
     private const LIMIT = 20;
 
     public function get_rest_base(): string {
@@ -40,7 +39,7 @@ final class LookupRestController extends AbstractRestController {
                             'default'           => '',
                             'sanitize_callback' => 'sanitize_text_field',
                         ],
-                        // Comma-separated on the wire; WP splits it. Wins over `search` when present.
+                        // Comma-separated on the wire, and WordPress splits it. Wins over `search` when present.
                         'ids'    => [
                             'type'    => 'array',
                             'items'   => [ 'type' => 'integer' ],
@@ -52,9 +51,7 @@ final class LookupRestController extends AbstractRestController {
         );
     }
 
-    /**
-     * @return array{items: array<int, array{id: int, label: string}>}
-     */
+    /** @return array{items: array<int, array{id: int, label: string}>} */
     public function lookup( \WP_REST_Request $request ): array {
         $entity = (string) $request['entity'];
         $search = trim( (string) $request['search'] );
@@ -172,9 +169,7 @@ final class LookupRestController extends AbstractRestController {
         );
     }
 
-    /**
-     * @return array{id: int, label: string}
-     */
+    /** @return array{id: int, label: string} */
     private function item( int $id, string $label ): array {
         return [
             'id'    => $id,
@@ -183,7 +178,7 @@ final class LookupRestController extends AbstractRestController {
     }
 
     /**
-     * No item schema: this returns picker rows, not a resource.
+     * An empty item schema: this returns picker rows, not a resource.
      *
      * @return array<string, mixed>
      */

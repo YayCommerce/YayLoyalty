@@ -27,9 +27,7 @@ final class DashboardStats {
         $this->currency_decimals = $currency_decimals;
     }
 
-    /**
-     * @return array{stats: array, series: array, top_earners: array, recent_activity: array}
-     */
+    /** @return array{stats: array, series: array, top_earners: array, recent_activity: array} */
     public function build( PeriodWindow $window ): array {
         $repo = $this->repository;
         $from = $window->from_utc();

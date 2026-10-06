@@ -16,12 +16,7 @@ export type RedemptionRow = {
   status: string;
 };
 
-/**
- * Row → what the redemptions table renders. Pure — no fetch, no React.
- * `points` is already signed on the wire (negative spent, positive
- * returned) — `formatSignedPoints()` only adds the `+`, the sign itself
- * comes straight from the API.
- */
+/** Maps a redemption entry to its table row. `points` arrives signed, so `formatSignedPoints()` only adds the `+`. */
 export function toRedemptionRow(entry: RedemptionEntry): RedemptionRow {
   return {
     date: formatStoredDate(entry.created_at),

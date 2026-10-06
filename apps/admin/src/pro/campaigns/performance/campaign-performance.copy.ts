@@ -5,13 +5,11 @@ import type { CampaignPerformanceSkip, CampaignPerformanceTrigger } from '@/lib/
 import type { CampaignDisplayStatus } from '@/lib/schema/campaign.schema';
 
 /**
- * Pure, trigger-aware copy for the campaign performance page. Deliberately
- * avoids `parseWPRelativeDate` (needs WP globals) so this stays unit-testable
- * in plain Node.
+ * Pure, trigger-aware copy for the campaign performance page. It avoids `parseWPRelativeDate`,
+ * which needs WP globals, so it runs in plain Node.
  *
- * Every sentence is written out in full per trigger rather than splicing a
- * translated noun ("order"/"signup"/"review") into a template — a translator
- * needs the whole sentence in context to get word order/agreement right.
+ * Each sentence is written out per trigger rather than splicing a noun into a template: a
+ * translator needs the whole sentence to get word order and agreement right.
  */
 
 /** Why the page has nothing to show yet — the reason, not just an absence. */
@@ -36,7 +34,7 @@ export function emptyReason(
   }
 }
 
-/** `null` when `startsAt` is missing (shouldn't happen for a genuinely `scheduled` campaign, but this stays defensive). */
+/** `null` when `startsAt` is missing, which a `scheduled` campaign should never be. */
 function daysUntil(startsAt: string | null, now: Date): number | null {
   if (!startsAt) {
     return null;

@@ -4,10 +4,8 @@ namespace YayLoyalty\Enums;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The vocabulary for a reward's `conditions`. Same shape as
- * CampaignConditionType but its own vocabulary, free to diverge; value
- * shapes are shared through Utils\ConditionValueRules, not this enum.
- * Shared accessors live in ConditionTypeMethods.
+ * The vocabulary for a reward's `conditions`. It has CampaignConditionType's shape but is free to diverge.
+ * Value shapes are shared through Utils\ConditionValueRules, not this enum.
  */
 final class RewardConditionType {
 
@@ -28,18 +26,18 @@ final class RewardConditionType {
     public const USER_ROLE    = 'user_role';
     public const CUSTOMER_IDS = 'customer_ids';
 
-    /** Defined ahead of the tier system; excluded from all() (see UNAVAILABLE). gte/lte are ordinal. */
+    /** Defined ahead of the tier system, so UNAVAILABLE keeps it out of all(). gte/lte are ordinal. */
     public const TIER = 'tier';
 
     // Needs its own read beyond what is already loaded.
 
     public const LIFETIME_POINTS = 'lifetime_points';
 
-    /** Times this customer has redeemed this reward; needs a COUNT over yayloyalty_redemptions. */
+    /** Times this customer has redeemed this reward, a COUNT over yayloyalty_redemptions. */
     public const REDEMPTION_COUNT = 'redemption_count';
 
     /**
-     * Recognised but not yet offered: excluded from all(), kept in all_known() so stored rows round-trip.
+     * Recognised but not offered yet: all() leaves them out, and all_known() keeps them for stored rows.
      *
      * @var string[]
      */
@@ -48,8 +46,8 @@ final class RewardConditionType {
     ];
 
     /**
-     * Per-type rules, in evaluation-cost order; same fields as
-     * CampaignConditionType::schema(), plus `min` (an inclusive floor).
+     * Per-type rules, in evaluation-cost order. The fields are CampaignConditionType::schema()'s,
+     * plus `min`, an inclusive floor.
      *
      * @return array<string, array<string, mixed>>
      */

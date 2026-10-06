@@ -2,7 +2,10 @@ import { z } from 'zod';
 
 import { type DashboardNotice, type DashboardNoticeKey } from './dashboard.schema';
 
-/** Per-key notice.data shapes, mirroring DashboardNotices and the fixture-only keys. Copy is composed client-side. */
+/**
+ * Mirrors DashboardNotices, the source of truth.
+ * These are the per-key `notice.data` shapes, plus the two keys only DashboardFixture sends.
+ */
 
 export const negativeBalanceDataSchema = z.object({
   count: z.number().int(),

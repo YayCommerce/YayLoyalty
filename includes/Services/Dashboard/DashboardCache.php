@@ -31,7 +31,7 @@ final class DashboardCache {
 
     /**
      * @param callable(): array $build   Produces the site-wide payload.
-     * @param string            $variant One of VARIANTS — a second payload under the same policy.
+     * @param string            $variant One of VARIANTS, a second payload under the same policy.
      * @return array The payload plus `cached`, `generated_at`, `next_refresh_at`.
      */
     public function remember( int $range, callable $build, string $variant = '' ): array {

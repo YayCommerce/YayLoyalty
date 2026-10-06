@@ -104,9 +104,8 @@ export function CustomersScreen({
     recountedCount,
   } = useCustomersBulkActions({ rows, queryFilters, sort, selection, setSelection });
 
-  // One ticked row adjusts like the drawer: against that customer's own
-  // record. Keyed on the selection, not on the dialog being open — the
-  // dialog's fresh read on open would otherwise run against the previous key.
+  // One ticked row adjusts like the drawer, against that customer's own record. Keyed on the
+  // selection, not on the dialog opening, or the dialog's read on open would use the previous key.
   const singleId = selection.mode === 'partial' && selection.ids.size === 1 ? [...selection.ids][0] : 0;
   const customerQuery = useCustomerQuery(singleId);
 
@@ -118,8 +117,7 @@ export function CustomersScreen({
   );
   const preview = useAdjustPointsPreviewQuery(previewInput, isAdjustDialogOpen && singleId === 0);
 
-  // 'all' mode can carry deselected rows; the server counts the filter, not
-  // the deselection. Same arithmetic as selectionCount() in customers-page.selection.ts.
+  // 'all' mode can carry deselected rows: the server counts the filter, not the deselection.
   const excludedCount = selection.mode === 'all' ? selection.excludedIds.size : 0;
 
   return (
@@ -164,9 +162,6 @@ export function CustomersScreen({
             }}
           />
 
-          {/* One bordered footer row: bulk actions (left, once selected) + pagination
-            (right) — matches YayUiKits' TablePage.tsx composition of
-            BulkActionBox + Pagination side by side. */}
           <div className="flex flex-col items-center gap-3 sm:flex-row">
             {showSelection && (
               <CustomersBulkActionBar

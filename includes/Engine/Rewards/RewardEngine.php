@@ -7,11 +7,8 @@ use YayLoyalty\Models\Reward;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * What one reward costs and is worth for one customer right now. The
- * customer already chose the reward, so there is no candidate scan and no
- * eligibility here: liveness, balance vs a fixed cost, conditions and
- * program state are Engine\Redemption gates that run before this is
- * called. Writes nothing. Pure: reads the Reward and the Context only.
+ * What one reward costs and is worth for one customer right now. Writes nothing. No eligibility here:
+ * the customer already chose the reward, and the Engine\Redemption gates run first.
  * No capability checks: permissions live at the HTTP boundary.
  */
 final class RewardEngine {
@@ -23,9 +20,7 @@ final class RewardEngine {
     }
 
     /**
-     * Precondition: the gates said yes. Postcondition: the type handler's
-     * quote, unchanged — a Result::allowed() carrying the clamped points,
-     * or a handler-specific denial.
+     * Call only after the gates pass. Returns the type handler's quote unchanged.
      *
      * @throws \InvalidArgumentException When no handler owns the reward's type.
      */

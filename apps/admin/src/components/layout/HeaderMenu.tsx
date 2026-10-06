@@ -59,9 +59,8 @@ export function HeaderMenu() {
 }
 
 /**
- * A screen the user cannot view is simply not in the nav — a smaller nav is
- * not confusing, an empty screen is. router.tsx applies the same cap to the
- * route so a pasted hash lands on the 404 page.
+ * Hidden from users without `cap`. router.tsx applies the same cap to the route,
+ * so a pasted hash lands on the 404 page.
  */
 function CustomMenuItem({ cap, className, ...props }: ComponentProps<typeof HeaderNavMenuItem> & { cap: Capability }) {
   return (

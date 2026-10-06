@@ -5,16 +5,15 @@ import { AdminData } from '@/types/localize.type';
 import { YayLoyaltyToolTip } from '@/components/ui/custom/tooltip';
 
 /**
- * The client-side capability surface, read once from the localised
- * bootstrap. Cosmetics, not security: every route re-checks server-side.
- * Pro lock wins over a cap denial: evaluate IS_PRO_BUILD first, can() second.
+ * Mirrors YayLoyalty\Access\Capabilities, the source of truth.
+ * Cosmetic only, since every route re-checks server-side.
+ * Check IS_PRO_BUILD before can(): a Pro lock wins over a capability denial.
  */
 
 // Partial: a broken localize degrades to "no capabilities", not a crash.
 const boot: Partial<AdminData> = window.yayLoyaltyAdmin ?? {};
 const CAPS = new Set<string>(boot.capabilities ?? []);
 
-/** Mirrors YayLoyalty\Access\Capabilities on the PHP side. */
 export const CAP = {
   VIEW: 'yayloyalty_view',
   MANAGE_POINTS: 'yayloyalty_manage_points',

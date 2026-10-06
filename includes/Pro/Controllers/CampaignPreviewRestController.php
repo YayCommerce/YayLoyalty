@@ -3,15 +3,19 @@ namespace YayLoyalty\Pro\Controllers;
 
 use YayLoyalty\Access\Capabilities;
 use YayLoyalty\Controllers\AbstractRestController;
+use YayLoyalty\Engine\Points\ContextFactory;
 use YayLoyalty\Pro\Services\ConditionsEvaluator;
 use YayLoyalty\Repositories\CampaignRepository;
+use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Explains why a customer does or does not match a campaign's conditions.
- * POST despite being read-only: a question about a specific customer should
- * not sit in a URL or a server log.
+ * Explains why a customer does or does not match a campaign's conditions,
+ * through the same evaluator the award path uses. There is no order here,
+ * so order-scoped conditions report `needs_order`. POST despite being
+ * read-only: a question about a specific customer should not sit in a URL
+ * or a server log.
  */
 final class CampaignPreviewRestController extends AbstractRestController {
 
@@ -71,7 +75,8 @@ final class CampaignPreviewRestController extends AbstractRestController {
             ];
         }
 
-        $results = $this->evaluator->explain( $conditions, $user_id );
+        // Facts as of now: every paid order so far counts.
+        $results = $this->evaluator->explain( $conditions, ContextFactory::from_user( $user_id, Dates::now() ) );
 
         return [
             'campaign_id' => (int) $campaign->get_id(),

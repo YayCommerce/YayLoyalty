@@ -113,7 +113,7 @@ export const campaignListParamsSchema = z.object({
 
 export type CampaignListParams = z.infer<typeof campaignListParamsSchema>;
 
-/* ─── Write: campaignUpdateInputSchema ──────────────────────────────── */
+// Write shapes
 
 /**
  * Mirrors CampaignConditionType::schema() minus UNAVAILABLE. `tier` stays
@@ -153,6 +153,9 @@ interface CampaignConditionSpec {
   sourceValues?: readonly string[];
 }
 
+/** Which address a `country` condition reads; mirrors CampaignConditionType::SOURCE_*. */
+export const COUNTRY_SOURCE_VALUES = ['shipping', 'billing', 'any'] as const;
+
 /**
  * Client mirror of CampaignConditionType::schema(), offerable types only.
  * UI metadata, not a validator: CampaignConditionSet enforces on save, and
@@ -180,7 +183,7 @@ export const CAMPAIGN_CONDITION_SCHEMA: Record<CampaignConditionKind, CampaignCo
     operators: ['in', 'not_in'],
     value: 'country_list',
     requireKeys: ['source'],
-    sourceValues: ['shipping', 'billing', 'any'],
+    sourceValues: COUNTRY_SOURCE_VALUES,
   },
   product_in_cart: {
     operators: ['in', 'not_in'],
@@ -252,10 +255,8 @@ export function isCampaignScheduleInOrder(startsAt: string | null, endsAt: strin
 }
 
 /**
- * Write body for POST campaigns, mirroring create_item()'s accepted fields.
- * `trigger` is the one field update has no equivalent for — it is chosen
- * once, in the chooser, and immutable afterwards. No `slug`: the server
- * always generates it from `name`.
+ * Write body for POST campaigns, mirroring create_item(). `trigger` is set only here: it is immutable after create.
+ * No `slug`: the server generates it from `name`.
  */
 export type CampaignCreateInput = CampaignUpdateInput & { trigger: LiteCampaignTrigger };
 
@@ -267,7 +268,7 @@ export const campaignDeleteResponseSchema = z.object({
 
 export type CampaignDeleteResponse = z.infer<typeof campaignDeleteResponseSchema>;
 
-/* ─── Write: per-trigger config field maps ──────────────────────────── */
+// Per-trigger config fields
 
 type CampaignConfigFieldType = 'bool' | 'string' | 'int' | 'number' | 'enum' | 'int_list';
 

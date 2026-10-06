@@ -1,26 +1,12 @@
 #!/bin/bash
 #
-# YayLoyalty Dev & Release Script
-# Usage: ./scripts/run.sh [command]
-#
-# Commands:
-#   dev [pro|lite]           - Update admin shell + start Vite dev server (HMR on :3030)
-#   build [pro|lite]        - Build admin dashboard for production
-#   release [pro|lite] [ver] [--no-prompt] - Create release ZIP package (prompts for
-#                               version unless --no-prompt, e.g. so a Lite release
-#                               after Pro reuses the same version number)
-#   bump <version>          - Bump version number in plugin files
-#   info                    - Show current version info
-#   clean                   - Remove build artifacts
-#   help                    - Show this help message
-#
-# dev/build/release also accept 'free'/'premium' (yay-reviews' spelling) as
-# aliases for lite/pro.
+# YayLoyalty dev, build and release script.
+# Usage: ./scripts/run.sh <command>. `./scripts/run.sh help` lists the commands.
 #
 
 set -e
 
-# ─── Paths ──────────────────────────────────────────────────────────────
+# Paths
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLUGIN_DIR="$(dirname "$SCRIPT_DIR")"
@@ -34,7 +20,7 @@ if [ -z "$PLUGIN_DIR" ] || [ "$PLUGIN_DIR" = "/" ] || [ ! -f "$MAIN_FILE" ]; the
     exit 1
 fi
 
-# ─── Output helpers ─────────────────────────────────────────────────────
+# Output helpers
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -50,7 +36,7 @@ print_error()   { print_msg "$RED" "✗ $1"; }
 print_warning() { print_msg "$YELLOW" "⚠ $1"; }
 print_info()    { print_msg "$CYAN" "ℹ $1"; }
 
-# Portable in-place sed edit (macOS/Linux compatible)
+# In-place sed edit that works with both GNU and BSD sed.
 sed_inplace() {
     local pattern=$1
     local file=$2
@@ -61,7 +47,7 @@ sed_inplace() {
     fi
 }
 
-# ─── Toolchain helpers ──────────────────────────────────────────────────
+# Toolchain helpers
 
 # Resolve a working pnpm invocation into $PNPM.
 # Some setups ship a broken corepack shim as `pnpm`; fall back to
@@ -100,8 +86,8 @@ install_admin_deps() {
     fi
 }
 
-# Admin Shell — install/update and regenerate vendor-prefixed via php-scoper.
-# Pass "prerelease" to use the release variant of the shell updater when present.
+# Install or update admin-shell and regenerate vendor-prefixed/ through php-scoper.
+# "prerelease" uses the shell's release updater when it has one.
 update_shell() {
     local mode=${1:-dev}
     print_step "Check Admin Shell"
@@ -120,7 +106,7 @@ update_shell() {
     fi
 }
 
-# ─── Version helpers ────────────────────────────────────────────────────
+# Version helpers
 
 get_version() {
     local version
@@ -142,10 +128,8 @@ validate_build_type() {
     esac
 }
 
-# Accept yay-reviews' free/premium spelling as aliases for lite/pro, so
-# `./scripts/run.sh dev free` works the same way across both plugins'
-# scripts without introducing a second internal vocabulary — YayLoyalty's own
-# code, docs and BUILD_TYPE env var stay pro/lite throughout.
+# Accept free/premium, the spelling of the sibling plugins' scripts, as aliases.
+# Everything inside this plugin, BUILD_TYPE included, says lite/pro.
 resolve_edition_alias() {
     case "$1" in
         free)    echo "lite" ;;
@@ -154,17 +138,17 @@ resolve_edition_alias() {
     esac
 }
 
-# Plugin release version: X.Y.Z, X.Y.Z.W or with a -tag suffix
+# A release version: X.Y.Z or X.Y.Z.W, with an optional -tag suffix.
 validate_version() {
     [[ "$1" =~ ^[0-9]+(\.[0-9]+){2,3}(-[a-zA-Z0-9.]+)?$ ]]
 }
 
-# Escape characters that are special on the replacement side of sed
+# Escape the characters that are special on the replacement side of sed.
 sed_escape() {
     echo "$1" | sed 's/[\/&]/\\&/g'
 }
 
-# Update version in main plugin file (header + constant) and readme.txt
+# Write the version into the plugin header, the YAYLOYALTY_VERSION define and readme.txt.
 update_version() {
     local new_version=$1
     local safe_version
@@ -203,7 +187,7 @@ prompt_release_version() {
     fi
 }
 
-# ─── Commands ───────────────────────────────────────────────────────────
+# Commands
 
 cmd_dev() {
     local build_type
@@ -215,15 +199,14 @@ cmd_dev() {
     install_admin_deps
 
     print_info "Make sure YAYLOYALTY_IS_DEVELOPMENT is true in wp-config.php"
-    print_step "Starting Vite dev server ($build_type: http://localhost:3030)..."
     cd "$ADMIN_DIR"
-    # vite.config.ts turns this into import.meta.env.VITE_IS_PRO for the
-    # client — see IS_PRO_BUILD in src/lib/is-pro-build.ts. Unlike the build
-    # command, this actually matters for `dev`: the old __IS_PRO__ Vite
-    # `define` was verified NOT to substitute reliably in the dev server's
-    # per-file transform, so a Lite dev server used to still behave like Pro
-    # in the browser. import.meta.env is Vite's own env pipeline and does not
-    # have that problem.
+    # The dev server only serves the admin SPA; build the launcher's CSS once so a fresh checkout's
+    # storefront does not 404 it. Run 'pnpm dev:storefront' alongside to rebuild it on change.
+    print_step "Building storefront launcher CSS..."
+    $PNPM build:storefront
+    print_step "Starting Vite dev server ($build_type: http://localhost:3030)..."
+    # vite.config.ts hands BUILD_TYPE to the client as import.meta.env.VITE_IS_PRO, read through
+    # IS_PRO_BUILD in src/lib/is-pro-build.ts. A Vite `define` doesn't substitute reliably in the dev server.
     BUILD_TYPE="$build_type" $PNPM dev
 }
 
@@ -235,14 +218,10 @@ cmd_build() {
     resolve_pnpm
     install_admin_deps
 
-    # package.json build script runs `tsc --noEmit` before vite build.
-    #
-    # BUILD_TYPE is the whole SPA side of the split. vite.config.ts turns it
-    # into import.meta.env.VITE_IS_PRO (see src/lib/is-pro-build.ts), which
-    # Rollup inlines as a literal so every `if (IS_PRO_BUILD)` collapses and
-    # the dead branch — along with everything only it reaches — is dropped.
-    # Nothing else distinguishes the two bundles.
-    print_step "Building admin dashboard ($build_type: typecheck + build)..."
+    # The build script type-checks first. BUILD_TYPE is the whole SPA side of the split: Rollup inlines
+    # IS_PRO_BUILD (src/lib/is-pro-build.ts) as a literal and drops the dead branch with everything only it reaches.
+    # The same build then compiles the storefront launcher's CSS, one file for both editions.
+    print_step "Building admin dashboard ($build_type: typecheck + build) and storefront CSS..."
     cd "$ADMIN_DIR"
     BUILD_TYPE="$build_type" $PNPM build
     print_success "Build complete! Output: $PLUGIN_DIR/assets/dist/admin/"
@@ -272,9 +251,8 @@ cmd_release() {
     print_msg "$CYAN" "╚════════════════════════════════════════════╝"
     echo ""
 
-    # Version metadata is written to the tree here, once. Releasing Pro then
-    # Lite with --no-prompt means the second package inherits the first
-    # package's version instead of asking again and getting a different answer.
+    # The version is written to the tree here, once, so a Lite release run with --no-prompt after Pro
+    # gets the same version.
     local version
     if [ "$no_prompt" = true ]; then
         version=${requested_version:-$(get_version)}
@@ -287,12 +265,8 @@ cmd_release() {
     build_package "$build_type" "$version"
 }
 
-# Assemble, package and validate one build type.
-#
-# Pro and Lite share every step here. Lite adds exactly one thing — deleting
-# includes/Pro/ from the staged copy — plus the BUILD_TYPE the SPA build
-# already reads. Keeping this as one function is what stops the two packages
-# from drifting apart.
+# Assemble, package and validate one build type. Pro and Lite share every step, so the two packages
+# can't drift apart; Lite only adds deleting includes/Pro/ from the staged copy.
 build_package() {
     local build_type=$1
     local version=$2
@@ -311,19 +285,14 @@ build_package() {
 
     update_shell prerelease
 
-    # Regenerate autoload without dev deps for a consistent release.
-    # Safe to run before the Pro strip: composer's classmap covers
-    # vendor-prefixed/src and the adapter only. Plugin classes load through the
-    # file_exists-guarded autoloader in yayloyalty.php, so a deleted
-    # includes/Pro/ resolves to "class not found" rather than a missing include.
+    # Autoload without dev packages. Safe before the Pro strip: the classmap covers only vendor-prefixed/src
+    # and the adapter, and plugin classes load through yayloyalty.php's file_exists-guarded autoloader.
     cd "$PLUGIN_DIR"
     composer dump-autoload --no-dev --classmap-authoritative --quiet
 
     cmd_build "$build_type"
 
-    # Assemble package in a temp folder named after the plugin slug.
-    # Both build types use the same folder name so a Lite site upgrading to
-    # Pro replaces its plugin directory in place.
+    # Both build types use the slug as the folder name, so upgrading Lite to Pro replaces the directory in place.
     local temp_dir="$RELEASE_DIR/$PLUGIN_SLUG"
     rm -rf "$temp_dir"
     mkdir -p "$temp_dir"
@@ -339,22 +308,19 @@ build_package() {
     cp -r "$PLUGIN_DIR/languages" "$temp_dir/"
     cp -r "$PLUGIN_DIR/vendor-prefixed" "$temp_dir/"
 
-    # Composer autoload only (no packages needed at runtime)
+    # Only Composer's autoloader ships; no package is needed at runtime.
     mkdir -p "$temp_dir/vendor"
     cp "$PLUGIN_DIR/vendor/autoload.php" "$temp_dir/vendor/"
     cp -r "$PLUGIN_DIR/vendor/composer" "$temp_dir/vendor/"
 
-    # The Lite strip. Note the path: inside $temp_dir, never $PLUGIN_DIR.
-    # SPA sources are already excluded from both packages — only assets/ ships,
-    # not apps/ — so apps/admin/src/pro/ needs no deletion here. Its exclusion
-    # from the Lite bundle rests entirely on BUILD_TYPE=lite, which is what
-    # validate-build.php's sentinel check exists to verify.
+    # The Lite strip, inside $temp_dir, never $PLUGIN_DIR. apps/ never ships, so the SPA's Pro code is
+    # kept out by BUILD_TYPE=lite alone, which validate-build.php's sentinel check verifies.
     if [ "$build_type" = "lite" ]; then
         print_step "Stripping Pro code..."
         rm -rf "$temp_dir/includes/Pro"
     fi
 
-    # Strip dev-only artifacts
+    # Strip dev-only files. validate-build.php's dev-artifact check mirrors this list.
     rm -f "$temp_dir/includes/Engine/Register/RegisterDev.php"
     rm -rf "$temp_dir/assets/dist/admin/.vite" 2>/dev/null || true
     find "$temp_dir" -name ".DS_Store" -delete 2>/dev/null || true
@@ -369,13 +335,11 @@ build_package() {
     zip -r -q "$zip_name" "$PLUGIN_SLUG"
     rm -rf "$temp_dir"
 
-    # Restore dev autoload maps so local development still works
+    # Restore the dev autoload maps for local development.
     cd "$PLUGIN_DIR"
     composer dump-autoload --classmap-authoritative --quiet
 
-    # Validation runs against the zip, and a failure ends the release. A
-    # stripping build fails silently by nature; a warning here would be read
-    # once and ignored forever.
+    # A failed validation ends the release: a strip that misses a file fails silently, so a warning would be ignored.
     print_step "Validating package..."
     if ! php "$SCRIPT_DIR/validate-build.php" "$RELEASE_DIR/$zip_name" "$build_type"; then
         mv "$RELEASE_DIR/$zip_name" "$RELEASE_DIR/$zip_name.invalid"
@@ -393,12 +357,8 @@ build_package() {
     print_info "Size: $size"
 }
 
-# Write release-manifest.json: SHA256 of every packaged file.
-#
-# Gives a release an integrity record and makes two packages diffable without
-# unzipping them. validate-build.php checks both directions — every listed
-# file present and unchanged, and no packaged file missing from the list —
-# which is how a file surviving a strip gets noticed.
+# Write release-manifest.json, the SHA256 of every packaged file. validate-build.php checks it both
+# ways, so a file that survives a strip gets noticed.
 write_manifest() {
     local dir=$1
     local version=$2
@@ -427,9 +387,8 @@ write_manifest() {
                 echo ","
             fi
             printf '    "%s": "%s"' "$rel" "$hash"
-        # The manifest excludes itself: the redirection below truncates it
-        # before find runs, so hashing it would record the hash of an empty
-        # file. validate-build.php skips it on the other side too.
+        # The manifest skips itself: the redirection truncates it before find runs, so its hash would be
+        # an empty file's. validate-build.php skips it too.
         done < <(cd "$dir" && find . -type f ! -name "release-manifest.json" | sort | tr '\n' '\0' | xargs -0 shasum -a 256)
 
         echo ""
@@ -465,6 +424,11 @@ cmd_clean() {
         print_success "Removed assets/dist/admin"
     fi
 
+    if [ -d "$PLUGIN_DIR/assets/dist/storefront" ]; then
+        rm -rf "$PLUGIN_DIR/assets/dist/storefront"
+        print_success "Removed assets/dist/storefront"
+    fi
+
     read -p "Remove node_modules? (y/N): " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]] && [ -d "$ADMIN_DIR/node_modules" ]; then
@@ -473,6 +437,61 @@ cmd_clean() {
     fi
 
     print_success "Clean complete"
+}
+
+# Lists docs/backlog/: open items with their unticked boxes, then items whose boxes are all ticked.
+cmd_backlog() {
+    local dir="$PLUGIN_DIR/docs/backlog"
+    local files=()
+    local f
+
+    for f in "$dir"/*.md; do
+        if [ -e "$f" ]; then
+            files+=("$f")
+        fi
+    done
+
+    if [ ${#files[@]} -eq 0 ]; then
+        print_info "Backlog empty"
+        return 0
+    fi
+
+    local done_list=()
+    local summary title ticked total
+
+    for f in "${files[@]}"; do
+        # One line "ticked<TAB>total<TAB>title", then the unticked boxes under ## Done when.
+        summary=$(awk '
+            /^# / && title == "" { title = substr($0, 3) }
+            /^## / { in_done = ($0 == "## Done when") ; next }
+            in_done && /^- \[[xX]\] / { ticked++; total++ }
+            in_done && /^- \[ \] / { total++; open[total] = substr($0, 7) }
+            END {
+                printf "%d\t%d\t%s\n", ticked, total, title
+                for (i = 1; i <= total; i++) if (i in open) print open[i]
+            }
+        ' "$f")
+        ticked=$(printf '%s\n' "$summary" | head -1 | cut -f1)
+        total=$(printf '%s\n' "$summary" | head -1 | cut -f2)
+        title=$(printf '%s\n' "$summary" | head -1 | cut -f3-)
+
+        if [ "$total" -gt 0 ] && [ "$ticked" -eq "$total" ]; then
+            done_list+=("$(basename "$f")  $title")
+            continue
+        fi
+
+        print_msg "$BLUE" "$(basename "$f")  [$ticked/$total]"
+        echo "  $title"
+        printf '%s\n' "$summary" | tail -n +2 | while IFS= read -r line; do
+            if [ -n "$line" ]; then
+                echo "    - [ ] $line"
+            fi
+        done
+    done
+
+    for f in "${done_list[@]+"${done_list[@]}"}"; do
+        print_success "$f  (done, remove)"
+    done
 }
 
 cmd_help() {
@@ -487,6 +506,7 @@ cmd_help() {
     echo "  bump <version>               Bump version in plugin files"
     echo "  info                         Show current version info"
     echo "  clean                        Remove build artifacts"
+    echo "  backlog                      List docs/backlog/ items and their open boxes"
     echo "  help                         Show this help message"
     echo ""
     echo "'dev'/'build'/'release' also accept 'free' and 'premium' as aliases"
@@ -502,10 +522,10 @@ cmd_help() {
     echo ""
     echo "Releasing both: Pro first (it sets the version), then Lite with"
     echo "--no-prompt so both packages carry the same number."
-    echo "See docs/deployment-guide.md."
+    echo "Release validation and its env vars: see the header of scripts/validate-build.php."
 }
 
-# ─── Main ───────────────────────────────────────────────────────────────
+# Main
 
 main() {
     local cmd=${1:-help}
@@ -518,6 +538,7 @@ main() {
         bump)    cmd_bump "$@" ;;
         info)    cmd_info "$@" ;;
         clean)   cmd_clean "$@" ;;
+        backlog) cmd_backlog "$@" ;;
         help|*)  cmd_help ;;
     esac
 }

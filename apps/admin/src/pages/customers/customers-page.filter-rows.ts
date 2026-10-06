@@ -5,7 +5,7 @@ import type { CustomerBalanceRange, CustomerExpiringSoon, CustomerTier } from '@
 /** Filter option labels for the Customers toolbar; matching runs server-side in CustomerRowFilters.php. */
 export type BalanceRangeValue = CustomerBalanceRange;
 export type ExpiringSoonValue = CustomerExpiringSoon;
-/** No tiers table yet: any non-'all' value matches zero rows server-side. Pro-only. */
+/** Pro-only. */
 export type TierValue = CustomerTier;
 
 /** On/off switch for the Tier filter control, which stands in on balance buckets until VIP Tiers ships. */

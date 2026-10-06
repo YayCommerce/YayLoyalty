@@ -10,12 +10,7 @@ import type {
   DesignVisibilityScope,
 } from '@/lib/schema/design.schema';
 
-/**
- * Enum-value → label mappers for the Design tab's closed-choice fields.
- * Split out of `design-settings.copy.ts` (flat strings) to keep both files
- * under the 200-line budget — same flat-function convention, just grouped by
- * "maps a value" instead of "is a string".
- */
+/** Enum-value → label mappers for the Design tab's closed-choice fields. */
 
 export function launcherPositionLabel(position: DesignLauncherPosition): string {
   switch (position) {
@@ -97,18 +92,14 @@ export function typographyModeLabel(mode: DesignTypographyMode): string {
 }
 
 /**
- * Radix `Select.Item` rejects an empty-string value (reserved for "no
- * selection"), but `typography.font: ''` is a legitimate, meaningful value
- * ("use the theme's font"). This sentinel stands in for it in the UI only —
- * translate at the form boundary, never store the sentinel itself.
+ * Stands in for `typography.font: ''` ("use the theme's font"), which Radix `Select.Item` rejects
+ * as a value. UI only: translate it at the form boundary and never store it.
  */
 export const TYPOGRAPHY_FONT_DEFAULT_VALUE = '__default__';
 
 /**
- * A curated list, not the closed vocabulary `coerce()` enforces server-side —
- * `typography.font` stays a plain capped string (DesignCoercion.php), so this
- * is guidance, not a whitelist; a value saved outside this list still round-trips.
- * Font names are proper nouns and stay untranslated; only "Default" is a real string.
+ * Guidance, not a whitelist: `typography.font` is a plain capped string server-side (DesignSchema),
+ * so a value outside this list still round-trips. Font names stay untranslated.
  */
 export function typographyFontOptions(): { value: string; label: string }[] {
   return [

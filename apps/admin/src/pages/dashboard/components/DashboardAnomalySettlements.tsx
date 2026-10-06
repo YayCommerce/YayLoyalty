@@ -23,12 +23,14 @@ export function DashboardAnomalySettlements({
   const points = edits.reduce((sum, e) => sum + e.points_issued, 0);
   const orderCount = edits.reduce((sum, e) => sum + e.orders_affected, 0);
   const worth = formatPointsAsMoney(points, pointsPerCurrencyUnit) ?? '';
-  const orders = sprintf(_n('%s order', '%s orders', orderCount, 'yayloyalty'), formatPoints(orderCount));
+  const orders = sprintf(
+    /* translators: %s: number of orders, formatted. */
+    _n('%s order', '%s orders', orderCount, 'yayloyalty'),
+    formatPoints(orderCount),
+  );
   const issued = sprintf(
-    /* translators: 1: points, 2: order count phrase, 3: day. */ __(
-      'the %1$s points issued across %2$s on %3$s',
-      'yayloyalty',
-    ),
+    /* translators: 1: points, 2: order count phrase, 3: day. */
+    __('the %1$s points issued across %2$s on %3$s', 'yayloyalty'),
     formatPoints(points),
     orders,
     day,
@@ -39,19 +41,22 @@ export function DashboardAnomalySettlements({
       title: _n('Put the campaign back as it was', 'Put the campaigns back as they were', edits.length, 'yayloyalty'),
       body: worth
         ? sprintf(
-            /* translators: 1: issuance phrase, 2: currency amount. */ __(
-              'and leave %1$s — worth %2$s to those customers.',
-              'yayloyalty',
-            ),
+            /* translators: 1: issuance phrase, 2: currency amount. */
+            __('and leave %1$s — worth %2$s to those customers.', 'yayloyalty'),
             issued,
             worth,
           )
-        : sprintf(/* translators: %s: issuance phrase. */ __('and leave %s.', 'yayloyalty'), issued),
+        : sprintf(
+            /* translators: %s: issuance phrase. */
+            __('and leave %s.', 'yayloyalty'),
+            issued,
+          ),
     },
     {
       title: __('Put it back and reverse the points', 'yayloyalty'),
       body: sprintf(
-        /* translators: %s: issuance phrase. */ __(
+        /* translators: %s: issuance phrase. */
+        __(
           '— a bulk adjustment of −%s, which those customers will notice. Reverse only the share you did not intend.',
           'yayloyalty',
         ),
@@ -77,6 +82,7 @@ export function DashboardAnomalySettlements({
       <p className="text-muted-foreground text-xs">
         <span className="font-medium">{__('What counts as a jump:', 'yayloyalty')}</span>{' '}
         {sprintf(
+          /* translators: 1: the multiple of the daily average; 2: the minimum number of orders that day. */
           __(
             '%1$s× the 30-day daily average, on a day with at least %2$d orders. A sale day will trip it and that is fine — the notice states the cause, and dismissing it takes one click.',
             'yayloyalty',

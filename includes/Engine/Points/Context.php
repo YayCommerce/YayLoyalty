@@ -4,15 +4,19 @@ namespace YayLoyalty\Engine\Points;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Everything the engine may know about the event. Immutable, WordPress-free,
- * so the engine is testable without a bootstrap. No actor_id: who is logged
- * in is a ledger argument, not a scoring input. `extra` is for one-trigger
- * facts; anything two triggers need becomes a typed property.
+ * Everything the engine may know about the event. Immutable and WordPress-free, so the engine is
+ * testable without a bootstrap. No actor_id: who is logged in is a ledger argument, not a scoring input.
+ * `extra` holds one-trigger facts. A fact that two triggers need becomes a typed property.
  */
 final class Context {
 
     /** Our own redemption coupon; must never count as "used a coupon". */
     public const REDEEM_COUPON_CODE = 'yayloyalty-redeem';
+
+    /** Order facts in `extra` for campaign conditions; strings, '' when unknown. */
+    public const EXTRA_PAYMENT_METHOD   = 'payment_method';
+    public const EXTRA_BILLING_COUNTRY  = 'billing_country';
+    public const EXTRA_SHIPPING_COUNTRY = 'shipping_country';
 
     /** @var int|null Null for a guest. */
     private $user_id;
@@ -56,7 +60,7 @@ final class Context {
     /** @var array<string, mixed> */
     private $extra;
 
-    /** @var CustomerFacts|null Null for a guest, or for a preview that did not read them. */
+    /** @var CustomerFacts|\Closure|null A Closure is the loader, replaced by its result on first read. */
     private $customer_facts;
 
     /**
@@ -64,6 +68,9 @@ final class Context {
      * @param string[]             $coupon_codes
      * @param string[]             $user_roles
      * @param array<string, mixed> $extra
+     * @param CustomerFacts|\Closure|null $customer_facts The facts, or a loader returning ?CustomerFacts,
+     *                                                   run on the first get_customer_facts() so an
+     *                                                   event no history condition asks about reads nothing.
      */
     public function __construct(
         ?int $user_id,
@@ -80,8 +87,12 @@ final class Context {
         ?int $comment_id = null,
         int $points_earned_today = 0,
         array $extra = [],
-        ?CustomerFacts $customer_facts = null
+        $customer_facts = null
     ) {
+        if ( null !== $customer_facts && ! $customer_facts instanceof CustomerFacts && ! $customer_facts instanceof \Closure ) {
+            throw new \InvalidArgumentException( 'YayLoyalty: customer_facts must be CustomerFacts, a Closure or null.' );
+        }
+
         $this->user_id              = $user_id;
         $this->occurred_at          = $occurred_at;
         $this->currency             = $currency;
@@ -165,12 +176,14 @@ final class Context {
 
     /** What conditions may compare against; null means "no customer facts", which order-only conditions can still match. */
     public function get_customer_facts(): ?CustomerFacts {
+        if ( $this->customer_facts instanceof \Closure ) {
+            $facts                = ( $this->customer_facts )();
+            $this->customer_facts = $facts instanceof CustomerFacts ? $facts : null;
+        }
+
         return $this->customer_facts;
     }
 
-    /**
-     * @return mixed
-     */
     public function get_extra( string $key, $fallback = null ) {
         return array_key_exists( $key, $this->extra ) ? $this->extra[ $key ] : $fallback;
     }

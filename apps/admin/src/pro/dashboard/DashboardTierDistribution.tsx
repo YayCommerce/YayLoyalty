@@ -24,7 +24,11 @@ export function DashboardTierDistribution({ tiers }: { tiers: Readonly<NonNullab
           <ProGate inline />
         </CardTitle>
         <CardDescription>
-          {sprintf(_n('%s member', '%s members', total, 'yayloyalty'), formatPoints(total))}
+          {sprintf(
+            /* translators: %s: total members, formatted. */
+            _n('%s member', '%s members', total, 'yayloyalty'),
+            formatPoints(total),
+          )}
         </CardDescription>
         <CardAction>
           <Can cap={CAP.MANAGE_TIERS}>
@@ -49,7 +53,12 @@ export function DashboardTierDistribution({ tiers }: { tiers: Readonly<NonNullab
             <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
             <span>{t.name}</span>
             <span className="text-muted-foreground tabular-nums">
-              {sprintf(__('%1$s · %2$s%%', 'yayloyalty'), formatPoints(t.members), pct(t.members).toFixed(1))}
+              {sprintf(
+                /* translators: 1: members in the tier, formatted; 2: their share of all members, e.g. "76.0". */
+                __('%1$s · %2$s%%', 'yayloyalty'),
+                formatPoints(t.members),
+                pct(t.members).toFixed(1),
+              )}
             </span>
           </li>
         ))}

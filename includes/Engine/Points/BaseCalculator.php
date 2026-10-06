@@ -15,18 +15,12 @@ final class BaseCalculator {
     public function compute( Campaign $campaign, Context $ctx ): float {
         $config           = $campaign->get_config();
         $before_discounts = 'before_discounts' === ( $config['base'] ?? 'after_discounts' );
-        $excluded_ids     = array_map( 'intval', (array) ( $config['excluded_product_ids'] ?? [] ) );
-        $excluded_cats    = array_map( 'intval', (array) ( $config['excluded_category_ids'] ?? [] ) );
 
         $included          = 0.0; // What we earn on, order currency.
         $included_subtotal = 0.0; // Pre-discount share of the order, for proportioning.
 
         foreach ( $ctx->get_line_items() as $item ) {
-            if ( in_array( $item->get_product_id(), $excluded_ids, true ) ) {
-                continue;
-            }
-
-            if ( array_intersect( $item->get_category_ids(), $excluded_cats ) ) {
+            if ( ! self::includes_line( $campaign, $item ) ) {
                 continue;
             }
 
@@ -53,5 +47,16 @@ final class BaseCalculator {
          * @param Context  $ctx
          */
         return (float) apply_filters( 'yayloyalty_earning_base_amount', $base, $campaign, $ctx );
+    }
+
+    /** Whether a line counts toward the campaign's base: not an excluded product, not in an excluded category. Also decides a refund's clawback share. */
+    public static function includes_line( Campaign $campaign, ContextLineItem $item ): bool {
+        $config = $campaign->get_config();
+
+        if ( in_array( $item->get_product_id(), array_map( 'intval', (array) ( $config['excluded_product_ids'] ?? [] ) ), true ) ) {
+            return false;
+        }
+
+        return ! array_intersect( $item->get_category_ids(), array_map( 'intval', (array) ( $config['excluded_category_ids'] ?? [] ) ) );
     }
 }

@@ -4,11 +4,9 @@ namespace YayLoyalty\Models;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * One reward claim: what was spent, what it bought, at what rate, on which
- * order — the facts a refund needs later (value and rate at redemption
- * time, never today's). Written once at commit; `status` and
- * `restored_points` are the only columns Zone 3 will move. Money is a
- * decimal string per docs/code-standards.md §5.
+ * One reward claim: what was spent, what it bought, at what rate and on which order.
+ * A refund needs these facts as they were at redemption time, never today's.
+ * Written once at commit. A cancel or refund moves only `status` and `restored_points`.
  */
 final class Redemption extends AbstractModel {
 
@@ -46,15 +44,15 @@ final class Redemption extends AbstractModel {
     /** Points per currency unit at redemption time. */
     private string $rate_snapshot;
 
-    /** `yayloyalty-redeem` for the virtual coupon; the issued code for catalog rewards. */
+    /** `yayloyalty-redeem` for the virtual coupon, or the issued code for catalog rewards. */
     private ?string $coupon_code;
 
-    /** `shop_coupon` post id for catalog rewards; null for the virtual coupon. */
+    /** `shop_coupon` post id for catalog rewards, or null for the virtual coupon. */
     private ?int $coupon_id;
 
     private string $status;
 
-    /** Points already returned through refunds; never exceeds `points`. */
+    /** Points already returned through refunds. Never exceeds `points`. */
     private int $restored_points;
 
     private ?string $expires_at;
@@ -120,7 +118,7 @@ final class Redemption extends AbstractModel {
         );
     }
 
-    /** Insert payload; `id` is omitted so AUTO_INCREMENT assigns it. */
+    /** Insert payload. `id` is omitted so AUTO_INCREMENT assigns it. */
     public function to_row(): array {
         return [
             'user_id'         => $this->user_id,
@@ -149,7 +147,7 @@ final class Redemption extends AbstractModel {
         return array_merge( [ 'id' => $this->id ], $this->to_row() );
     }
 
-    /** Clone carrying the id assigned at insert time; the only mutation this class allows. */
+    /** Clone carrying the id assigned at insert time. The only mutation this class allows. */
     public function with_id( int $id ): self {
         $clone     = clone $this;
         $clone->id = $id;

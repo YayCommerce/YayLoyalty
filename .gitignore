@@ -20,12 +20,10 @@ package-lock.json
 .vscode/
 .idea/
 
-# AI / planning artifacts
-plans/
-**/.claude/*
-!/.claude/skills/
-.opencode/
-.repomixignore
+# Personal Claude Code files (the shared ones in .claude/ are tracked)
+.claude/settings.local.json
+.claude/worktrees/
+CLAUDE.local.md
 
 # phpcs
 .phpcs.cache

@@ -6,10 +6,9 @@ use YayLoyalty\Engine\Emails\LoyaltyEmail;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Reads and saves the Emails settings page. Each email's on/off, subject, heading
- * and template belong to WooCommerce (the LoyaltyEmail's own settings); the weekly
- * throttle lives in plugin settings. Building WooCommerce's mailer constructs
- * every WooCommerce email, so it happens here, on /emails requests only.
+ * Reads and saves the Emails settings page. Each email's on/off, subject, heading and template are
+ * that LoyaltyEmail's own WooCommerce settings. The weekly throttle lives in plugin settings.
+ * Building WooCommerce's mailer constructs every WooCommerce email, so only /emails requests do it.
  */
 class EmailsHelper {
 
@@ -60,8 +59,8 @@ class EmailsHelper {
     }
 
     /**
-     * The loyalty emails this build registered with WooCommerce,
-     * keyed by id; the only ids update_emails() writes.
+     * The loyalty emails this build registered with WooCommerce, keyed by id.
+     * update_emails() writes only these.
      *
      * @return array<string, LoyaltyEmail>
      */
@@ -92,14 +91,14 @@ class EmailsHelper {
 
             $yes_or_no = rest_sanitize_boolean( $enabled_by_id[ $email->id ] ) ? 'yes' : 'no';
             $email->update_option( 'enabled', $yes_or_no );
-            // WC_Email reads `enabled` once, when built; keep this request's instance in step with what was saved.
+            // WC_Email reads `enabled` once, when built, so keep this request's instance in step with what was saved.
             $email->enabled = $yes_or_no;
         }
     }
 
     /**
-     * WooCommerce's own from-name/address plus its Emails settings URL, read live every request —
-     * never stored here. Blank strings (not a fatal) when WooCommerce is inactive.
+     * WooCommerce's own from-name and address plus its Emails settings URL, read live and never stored here.
+     * Blank strings, not a fatal, when WooCommerce is inactive.
      *
      * @return array{from_name: string, from_address: string, wc_emails_url: string}
      */

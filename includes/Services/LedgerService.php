@@ -2,10 +2,12 @@
 namespace YayLoyalty\Services;
 
 use YayLoyalty\Database\Transaction;
+use YayLoyalty\Engine\Earning\IdempotencyKey;
 use YayLoyalty\Engine\Earning\Outcome;
 use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Enums\ReferenceType;
+use YayLoyalty\Models\Customer;
 use YayLoyalty\Models\LedgerEntry;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
@@ -14,25 +16,27 @@ use YayLoyalty\Utils\Dates;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The only writer of the ledger and the customer aggregates — the award
- * writer of the two-moment split (docs/archive/points-engine-scout.md). Enforced by
- * convention: constructed in exactly four places, Engine\RestAPI::controllers(),
- * Database\InitYayLoyaltyCustomer::maybe_create() and (once their bodies
- * land) Engine\Earning\EarningService::build() and
- * Engine\Redemption\RedemptionService::build(). Name a fifth here before
- * adding it. Manual rows enter through adjust() and record(); system rows
- * through earn() and redeem(), which add the idempotency-key duplicate branch.
+ * The only writer of the ledger and the customer aggregates, EarningService's award included.
+ * Enforced by convention: it is constructed in exactly five places, Engine\RestAPI::controllers(),
+ * Database\InitYayLoyaltyCustomer::maybe_create(), Engine\Earning\EarningService::build(),
+ * Engine\Earning\Reversal::build() and (once its body lands) Engine\Redemption\RedemptionService::build().
+ * Name a sixth here before adding it. Manual rows enter through adjust() and record(). System rows
+ * enter through earn(), refund_earn(), restore_refund() and redeem(), which add the idempotency-key
+ * duplicate branch.
  */
 final class LedgerService {
+
+    /** Outcome::skipped reason: the earn row is already clawed back as far as it is owed. */
+    public const REASON_NOTHING_TO_CLAW_BACK = 'nothing_to_claw_back';
+
+    /** Outcome::skipped reason: the order was reversed in full, so a deleted refund gives nothing back. */
+    public const REASON_ORDER_REVERSED = 'order_reversed';
 
     /** @var LedgerRepository */
     private $ledger;
 
     /** @var CustomerRepository */
     private $customers;
-
-    /** @var LedgerEntry[] Events collected in-transaction, dispatched after commit. */
-    private $queued_events = [];
 
     public function __construct( LedgerRepository $ledger, CustomerRepository $customers ) {
         $this->ledger    = $ledger;
@@ -77,20 +81,20 @@ final class LedgerService {
     }
 
     /**
-     * Commits one evaluated award: ledger row, customer aggregates, in one
-     * transaction under the customer's row lock.
+     * Commits one evaluated award, the ledger row and the customer aggregates,
+     * in one transaction under the customer's row lock.
      *
      * Preconditions: $draft is an EARN row with a non-null idempotency_key
-     * (Engine\Earning\IdempotencyKey::compose()), points > 0, created_at
+     * (Engine\Earning\IdempotencyKey::compose()), points > 0, and created_at
      * set by the caller. Nothing slow or externally fallible may run inside.
      *
-     * Postconditions: exactly one of — Outcome::awarded( persisted row ) with
-     * balance_after = locked balance + points and aggregates moved; or
-     * Outcome::duplicate( existing row ) when the UNIQUE index rejected the
-     * insert (QueryException::is_duplicate_key()), which is a normal outcome,
-     * not an error, and leaves every aggregate untouched. Any other failure
-     * rethrows and Transaction::run() has rolled back. Events are queued and
-     * fire after commit through dispatch_events().
+     * Returns Outcome::awarded( persisted row ), with balance_after = locked
+     * balance + points and the aggregates moved. Returns Outcome::duplicate(
+     * existing row ) instead when the UNIQUE index rejected the insert
+     * (QueryException::is_duplicate_key()). That is a normal outcome, not an
+     * error, and it leaves every aggregate untouched. Any other failure
+     * rethrows after Transaction::run() rolls back. The recorded event fires
+     * after the outermost commit (announce()).
      *
      * @throws \InvalidArgumentException When the draft is not an earn row or lacks a key.
      * @throws \YayLoyalty\Database\QueryException When a write other than a duplicate fails.
@@ -113,44 +117,159 @@ final class LedgerService {
         LedgerSource::assert( $draft->get_source() );
         ReferenceType::assert( $draft->get_reference_type() );
 
-        $outcome = Transaction::run(
-            function () use ( $draft, $key ) {
-                $user_id = $draft->get_user_id();
+        return $this->write_keyed( $draft );
+    }
 
-                // Materialise before locking: a missing row gap-locks and two first-touch writers both insert.
-                $this->customers->ensure_row( $user_id );
+    /**
+     * Claws back an earn row up to $owed_total, cumulatively: the row written
+     * is the difference between what is owed now and what earlier reversals of
+     * the same earn already took, computed under the customer lock so two
+     * refunds cannot both take the same slice. Keyed on the reversing
+     * reference and the earn's trigger. The balance may go negative.
+     *
+     * @param int    $owed_total     Total points owed back for $earn so far (capped at its points).
+     * @param string $reference_type ReferenceType::ORDER (cancel), REFUND or COMMENT.
+     * @return Outcome awarded (a REFUND_EARN row), duplicate, or skipped( REASON_NOTHING_TO_CLAW_BACK ).
+     */
+    public function refund_earn( LedgerEntry $earn, int $owed_total, string $reference_type, int $reference_id ): Outcome {
+        $draft = $this->reversal_draft( $earn, LedgerType::REFUND_EARN, 0, $reference_type, $reference_id, null );
 
-                $customer = $this->customers->lock_and_get( $user_id );
+        return $this->write_keyed(
+            $draft,
+            function () use ( $earn, $owed_total ): int {
+                return -max( 0, min( $owed_total, $earn->get_points() ) - $this->ledger->sum_refunded_for( $earn ) );
+            },
+            self::REASON_NOTHING_TO_CLAW_BACK
+        );
+    }
 
-                // Under the lock a concurrent award for this user has finished, so this sees its row.
+    /**
+     * Gives back what one clawback row took, when its refund is deleted: an
+     * ADJUST row referencing the refund, which sum_refunded_for() nets out so
+     * a later refund claws again from the right starting point. Nothing once
+     * the order itself was reversed (cancelled, trashed, refunded outside
+     * WooCommerce): that reversal is final, and restoring would hand back
+     * points on an order that no longer earns.
+     */
+    public function restore_refund( LedgerEntry $refund_row, int $refund_id ): Outcome {
+        $draft          = $this->reversal_draft( $refund_row, LedgerType::ADJUST, abs( $refund_row->get_points() ), ReferenceType::REFUND, $refund_id, sprintf( 'Refund #%d deleted', $refund_id ) );
+        $order_full_key = $this->reversal_key( $refund_row, LedgerType::REFUND_EARN, ReferenceType::ORDER, (int) $refund_row->get_order_id() );
+
+        return $this->write_keyed(
+            $draft,
+            function () use ( $draft, $order_full_key ): int {
+                return null === $this->ledger->find_by_idempotency_key( $order_full_key ) ? $draft->get_points() : 0;
+            },
+            self::REASON_ORDER_REVERSED
+        );
+    }
+
+    /** A system row undoing part of $source: same customer, source, campaign and order, keyed on the new reference and $source's trigger. */
+    private function reversal_draft( LedgerEntry $source, string $type, int $points, string $reference_type, int $reference_id, ?string $note ): LedgerEntry {
+        $user_id = $source->get_user_id();
+
+        return new LedgerEntry(
+            null,
+            $user_id,
+            $points,
+            0,
+            $type,
+            $source->get_source(),
+            $reference_type,
+            $reference_id,
+            $source->get_campaign_id(),
+            null,
+            $source->get_order_id(),
+            $note,
+            null,
+            Dates::now(),
+            $this->reversal_key( $source, $type, $reference_type, $reference_id )
+        );
+    }
+
+    /** The key a reversal row of $type against the given reference carries: $source's customer and trigger. */
+    private function reversal_key( LedgerEntry $source, string $type, string $reference_type, int $reference_id ): string {
+        return IdempotencyKey::compose( $type, $source->get_user_id(), $reference_type, $reference_id, IdempotencyKey::qualifier_of( (string) $source->get_idempotency_key() ) );
+    }
+
+    /**
+     * The idempotent write every system row goes through. Under the
+     * customer's lock, a known key is Outcome::duplicate. Otherwise the row
+     * is appended and Outcome::awarded carries it. Precondition: $draft has
+     * an idempotency key and valid vocabulary.
+     *
+     * @param callable|null $points_under_lock Returns the row's signed points once the lock is held; 0 writes nothing.
+     * @param string        $skip_reason       Outcome::skipped's reason when $points_under_lock returns 0.
+     */
+    private function write_keyed( LedgerEntry $draft, ?callable $points_under_lock = null, string $skip_reason = '' ): Outcome {
+        $key = (string) $draft->get_idempotency_key();
+
+        return $this->under_lock(
+            $draft->get_user_id(),
+            function ( Customer $customer ) use ( $draft, $key, $points_under_lock, $skip_reason ): Outcome {
+                // Under the lock a concurrent write for this user has finished, so this sees its row.
                 $existing = $this->ledger->find_by_idempotency_key( $key );
 
                 if ( null !== $existing ) {
                     return Outcome::duplicate( $existing );
                 }
 
-                $balance_after = $customer->get_balance() + $draft->get_points();
+                if ( null !== $points_under_lock ) {
+                    $points = (int) $points_under_lock();
 
-                $to_insert = $draft->with_persisted( 0, $balance_after );
-                $insert_id = $this->ledger->insert_unless_duplicate( $to_insert );
+                    if ( 0 === $points ) {
+                        return Outcome::skipped( $skip_reason );
+                    }
 
-                if ( null === $insert_id ) {
-                    return Outcome::duplicate( $this->existing_for( $key ) );
+                    $draft = $draft->with_points( $points );
                 }
 
-                $this->apply_aggregates( $draft );
+                $persisted = $this->append( $draft, $customer, true );
 
-                $persisted = $to_insert->with_persisted( $insert_id, $balance_after );
-
-                $this->queued_events[] = $persisted;
-
-                return Outcome::awarded( $persisted );
+                return null === $persisted ? Outcome::duplicate( $this->existing_for( $key ) ) : Outcome::awarded( $persisted );
             }
         );
+    }
 
-        $this->dispatch_events();
+    /**
+     * Runs $write in one transaction holding the customer's row lock.
+     *
+     * @param callable(Customer): mixed $write
+     * @return mixed What $write returned.
+     */
+    private function under_lock( int $user_id, callable $write ) {
+        return Transaction::run(
+            function () use ( $user_id, $write ) {
+                // Materialise before locking: a missing row gap-locks and two first-touch writers both insert.
+                $this->customers->ensure_row( $user_id );
 
-        return $outcome;
+                return $write( $this->customers->lock_and_get( $user_id ) );
+            }
+        );
+    }
+
+    /**
+     * Inserts $draft at the locked balance, moves the aggregates and
+     * announces the row. Must run under_lock(), so balance_after chains.
+     *
+     * @param bool $is_keyed True turns a UNIQUE-key collision into null instead of an exception.
+     */
+    private function append( LedgerEntry $draft, Customer $customer, bool $is_keyed ): ?LedgerEntry {
+        $balance_after = $customer->get_balance() + $draft->get_points();
+        $to_insert     = $draft->with_persisted( 0, $balance_after );
+        $insert_id     = $is_keyed ? $this->ledger->insert_unless_duplicate( $to_insert ) : $this->ledger->insert( $to_insert );
+
+        if ( null === $insert_id ) {
+            return null;
+        }
+
+        $this->apply_aggregates( $draft );
+
+        $persisted = $to_insert->with_persisted( $insert_id, $balance_after );
+
+        $this->announce( $persisted );
+
+        return $persisted;
     }
 
     /**
@@ -193,13 +312,13 @@ final class LedgerService {
      * zero — a redemption hard-refuses, unlike a clawback; or
      * Outcome::duplicate( existing row ) when the UNIQUE index rejected the
      * insert. Any other failure rethrows and the transaction has rolled back.
-     * Events fire after commit through dispatch_events().
+     * The recorded event fires after the outermost commit (announce()).
      *
      * @throws \InvalidArgumentException When the draft is not a negative redeem row or lacks a key.
      * @throws \YayLoyalty\Database\QueryException When a write other than a duplicate fails.
      */
     public function redeem( LedgerEntry $draft ): Outcome { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(F08): mirror earn() — assert REDEEM, points < 0, key; Transaction::run: ensure_row, lock_and_get, if balance + points < 0 → Outcome::skipped( insufficient_balance ), pre-check, insert_unless_duplicate → Outcome::duplicate, apply_aggregates, queue event; then dispatch_events; return Outcome::redeemed.
+        // TODO(redemption): mirror earn() — assert REDEEM, points < 0, key; Transaction::run: ensure_row, lock_and_get, if balance + points < 0 → Outcome::skipped( insufficient_balance ), pre-check, insert_unless_duplicate → Outcome::duplicate, apply_aggregates, announce(); return Outcome::redeemed.
         throw new \RuntimeException( 'Not implemented' );
     }
 
@@ -215,33 +334,12 @@ final class LedgerService {
         LedgerSource::assert( $draft->get_source() );
         ReferenceType::assert( $draft->get_reference_type() );
 
-        $entry = Transaction::run(
-            function () use ( $draft ) {
-                $user_id = $draft->get_user_id();
-
-                // Materialise before locking: a missing row gap-locks and two first-touch writers both insert.
-                $this->customers->ensure_row( $user_id );
-
-                $customer = $this->customers->lock_and_get( $user_id );
-
-                $balance_after = $customer->get_balance() + $draft->get_points();
-
-                $to_insert = $draft->with_persisted( 0, $balance_after );
-                $insert_id = $this->ledger->insert( $to_insert );
-
-                $this->apply_aggregates( $draft );
-
-                $persisted = $to_insert->with_persisted( $insert_id, $balance_after );
-
-                $this->queued_events[] = $persisted;
-
-                return $persisted;
+        return $this->under_lock(
+            $draft->get_user_id(),
+            function ( Customer $customer ) use ( $draft ): LedgerEntry {
+                return $this->append( $draft, $customer, false );
             }
         );
-
-        $this->dispatch_events();
-
-        return $entry;
     }
 
     /**
@@ -272,29 +370,26 @@ final class LedgerService {
             $lifetime_earned_delta,
             $lifetime_redeemed_delta,
             $activity_at,
-            null // Expiry policy is a later Pro task (data-model/future-tables.md `yayloyalty_lots`).
+            null // Expiry needs the lots table: designed, not built yet.
         );
     }
 
     /**
-     * Fires collected events after commit, never inside the transaction: a
-     * subscriber on another connection cannot see uncommitted rows, its
-     * cache/HTTP writes cannot be rolled back, and it would hold the row lock.
-     * Known gap: when nested (exec_write, EarningService::award) this runs
-     * after the savepoint release, before the outer commit — gate on
-     * Transaction::depth() === 0 when the award path lands.
+     * Fires the recorded event after the outermost commit, never inside the
+     * transaction: a subscriber on another connection cannot see uncommitted
+     * rows, its cache/HTTP writes cannot be rolled back, and it would hold
+     * the row lock. Dropped when the write rolls back.
      */
-    private function dispatch_events(): void {
-        $events              = $this->queued_events;
-        $this->queued_events = [];
-
-        foreach ( $events as $entry ) {
-            /**
-             * Fires after a ledger row is committed.
-             *
-             * @param LedgerEntry $entry
-             */
-            do_action( 'yayloyalty_ledger_recorded', $entry );
-        }
+    private function announce( LedgerEntry $entry ): void {
+        Transaction::after_commit(
+            static function () use ( $entry ): void {
+                /**
+                 * Fires after a ledger row is committed.
+                 *
+                 * @param LedgerEntry $entry
+                 */
+                do_action( 'yayloyalty_ledger_recorded', $entry );
+            }
+        );
     }
 }

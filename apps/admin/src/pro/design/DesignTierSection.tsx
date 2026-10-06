@@ -14,15 +14,10 @@ import {
 import { DesignTierBadgeRow } from './DesignTierBadgeRow';
 
 /**
- * Pro. Restyles the badge (label, colour, icon) for each of the tiers the
- * defaults ship with — no add/remove. There is no Tiers entity yet
- * (`customers.tier_id` is always NULL), so the SPA has no real tier list to
- * offer a picker over; letting a merchant invent arbitrary tier slugs here
- * would just be UI for a feature that doesn't exist. The three-badge set
- * comes from `DesignSchema::get_default_design()` and stays fixed until a
- * real Tiers feature ships a migration that maps these badges onto its tiers.
- * `useFieldArray` is used read-only, for its stable `field.id` keys — nothing
- * here calls `append`/`remove`.
+ * Pro. Restyles the badge (label, colour, icon) of each tier the defaults ship with; no add or
+ * remove. There is no Tiers entity yet (`customers.tier_id` is always NULL), so the badge set from
+ * `DesignSchema::get_default_design()` stays fixed until one exists. `useFieldArray` is used
+ * read-only, for its stable `field.id` keys.
  */
 export function DesignTierSection() {
   const { control } = useFormContext<Design>();

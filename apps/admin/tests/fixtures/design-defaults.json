@@ -11,7 +11,7 @@
     "storefront_text": {
         "launcher_label": "Rewards",
         "balance_heading": "Your points",
-        "earn_rate_line": "Earn {points} points per {amount} spent",
+        "earn_rate_line": "Earn {points} {points_label} per {amount} spent",
         "redeem_button": "Apply points",
         "signed_out_prompt": "Sign in to earn points on this order",
         "referral_card_heading": "Invite a friend, get {amount} points",

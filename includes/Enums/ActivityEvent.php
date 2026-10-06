@@ -4,14 +4,9 @@ namespace YayLoyalty\Enums;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The `meta_key` vocabulary of `yayloyalty_customer_meta`, which doubles as
- * the activity log's `event_type`. Only three of the eight have a writer
- * today: `account_created`, `points_adjusted` (on `yayloyalty_ledger_recorded`)
- * and `account_deleted` (on `delete_user`/`wpmu_delete_user`), all written by
- * Services\CustomerActivityService via Engine\CustomerActivityListener. The other five have no source feature yet
- * (tiers, expiry job, redemptions, balance/expiry emails) — a customer
- * whose only history would be one of them legitimately has zero activity
- * rows; that is the true count, not a bug.
+ * The `meta_key` vocabulary of `yayloyalty_customer_meta`, which is also the activity log's `event_type`.
+ * Today CustomerActivityService writes only `account_created`, `points_adjusted` and `account_deleted`.
+ * A customer whose only history is one of the other five has zero activity rows. That count is correct, not a bug.
  */
 final class ActivityEvent {
 
@@ -25,7 +20,7 @@ final class ActivityEvent {
     public const ACCOUNT_DELETED          = 'account_deleted';
 
     /**
-     * Artboard order — `account_deleted` last.
+     * In display order, `account_deleted` last.
      *
      * @var string[]
      */

@@ -11,21 +11,13 @@ export type LedgerRow = {
   subLine: string | null;
   points: string;
   balance: string;
-  /** True for the one row `customer.negative_balance.cause_ledger_id` names
-   *  (5a) — the row the negative-balance panel above is talking
-   *  about. `false` on every other row. */
+  /** True for the row `customer.negative_balance.cause_ledger_id` names. */
   isCause: boolean;
 };
 
 /**
- * Row → what the ledger table renders. Pure — no fetch, no React.
- *
- * `description` reuses `describeLedgerEntry()` rather than reimplementing
- * it (dashboard's recent-activity panel already does this). `subLine` is
- * this drawer's own addition, and is deliberately conservative: it only
- * ever states the campaign name, because `LedgerEntry` carries no reward
- * name, no "originally earned" date, and no actor display name — inventing
- * those for redeem/expire/adjust/correction rows would be fabricated prose.
+ * Maps a ledger entry to its table row. `subLine` only ever names the campaign:
+ * `LedgerEntry` has no reward name, original earn date or actor name, so anything more would be invented.
  */
 export function toLedgerRow(
   entry: LedgerEntry,
@@ -49,5 +41,11 @@ function campaignSubLine(entry: LedgerEntry, campaignNames: Map<number, string>)
 
   const name = campaignNames.get(entry.campaign_id);
 
-  return name ? sprintf(__('Campaign: %s', 'yayloyalty'), name) : null;
+  return name
+    ? sprintf(
+        /* translators: %s: the campaign's name. */
+        __('Campaign: %s', 'yayloyalty'),
+        name,
+      )
+    : null;
 }

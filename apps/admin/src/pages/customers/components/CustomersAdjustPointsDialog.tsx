@@ -24,12 +24,8 @@ import { DEFAULT_ROW_FILTERS, type RowFilters } from '../customers-page.filter-r
 
 /**
  * A live read the dialog renders from and re-checks against.
- *
- * react-query's `refetch()` never rejects and, on a failed fetch, resolves
- * with the *previous* successful `data` plus a set `error` — so `fresh.data`
- * alone cannot tell a fresh read from a failed one that happened to return
- * the cached baseline. Every caller must check `error` explicitly or it
- * fails open (see handleSubmit below).
+ * A failed `refetch()` does not reject: it resolves with the previous `data` and a set `error`,
+ * so a caller must check `error` or it fails open.
  */
 type LiveRead<T> = {
   data?: T;
@@ -40,13 +36,9 @@ type LiveRead<T> = {
 };
 
 /**
- * Adjust points — one customer (the drawer, or one ticked row) or bulk (the
- * Customers list). Plain useState, not react-hook-form: this stays a flat
- * set of fields with one shared blockers gate, no dependent forms.
- *
- * `adjustLifetime` is wired into the submit payload (`{ points, note,
- * adjustLifetime }`). Customer-facing description and notify-by-email stay
- * local component state only, not sent to the server yet.
+ * Adjust points for one customer (the drawer, or one ticked row) or in bulk.
+ * Plain useState, not react-hook-form: a flat set of fields behind one shared gate.
+ * The customer-facing description and notify-by-email stay local state: the server does not take them yet.
  */
 export function CustomersAdjustPointsDialog({
   open,
@@ -67,14 +59,14 @@ export function CustomersAdjustPointsDialog({
   /** How many customers this adjustment applies to. */
   count: number;
   isSubmitting: boolean;
-  /** `expectedCount` (bulk only) is the count acknowledged, for bulk-actions' pre-fan-out re-check. */
+  /** `expectedCount` (bulk only) is the count the admin acknowledged, re-checked before the writes. */
   onSubmit: (input: AdjustPointsInput, expectedCount?: number) => void;
   /**
    * Picks the layout. Single reads the customer's own record
    * (`GET /customers/{id}`); bulk reads `POST /customers/adjust/preview`.
    */
   target: { kind: 'single'; customer: LiveRead<Customer> } | { kind: 'bulk'; preview: LiveRead<AdjustPointsPreview> };
-  /** Rows deselected under "select all matching" — the server's preview count knows only the filter. */
+  /** Rows deselected under "select all matching": the server's preview count knows only the filter. */
   excludedCount?: number;
   /** Bulk only: whether the selection is an explicit tick list or "every row matching the filter". */
   selectionMode?: 'partial' | 'all';
@@ -122,11 +114,8 @@ export function CustomersAdjustPointsDialog({
     setState((current) => ({ ...current, ...patch }));
   }
 
-  // Keyed on `open`, not folded into handleOpenChange below: the caller may
-  // also close this dialog directly (CustomerDrawerActions/bulk-actions set
-  // `open` to false from the submit mutation's onSuccess, bypassing
-  // handleOpenChange entirely). A stale value carrying into the next
-  // adjustment would be a footgun either way.
+  // Keyed on `open`, not done in handleOpenChange: callers also close the dialog by setting
+  // `open` to false after a successful submit, which bypasses handleOpenChange.
   useEffect(() => {
     if (open) return;
     setState(initialAdjustFormState());
@@ -188,29 +177,21 @@ export function CustomersAdjustPointsDialog({
     setValidationError(null);
 
     if (target.kind === 'single') {
-      // One cheap read stands between this write and a stale balance — the
-      // reactive `isStale` above only catches a change once something else
-      // (Reload, a refetch) has already fetched it; this is what actually
-      // catches a change made in the seconds since.
+      // Re-read before writing: `isStale` only notices a change once something has refetched,
+      // so this catches a change made in the last few seconds.
       setIsCheckingBeforeSubmit(true);
       const fresh = await target.customer.refetch().finally(() => setIsCheckingBeforeSubmit(false));
       const latest = fresh.data ?? null;
 
-      // A failed refetch never rejects and resolves with the *previous*
-      // successful data plus a set `error` — checking `error` explicitly is
-      // required, or a failed re-check silently "verifies" against the
-      // stale cache it already had (the exact fail-open this guard exists
-      // to prevent). No record or still stale against the acknowledged
-      // baseline: abort either way. Any of the three becomes `isUnverified`
-      // on the next render, never treated as "not stale".
+      // Check `fresh.error` (see LiveRead). Abort on a failed read, a missing record,
+      // or a balance that moved since the acknowledged baseline.
       if (!openRef.current || fresh.error || !latest || baseline.isStaleAgainst(latest)) return;
 
       onSubmit(result.data);
       return;
     }
 
-    // Bulk's own pre-fan-out re-check lives in customers-page.bulk-actions.ts,
-    // which already re-resolves the matching set fresh before writing.
+    // Bulk re-checks its count in useCustomersBulkActions, which re-resolves the matching set before writing.
     onSubmit(result.data, bulk.effectiveCount);
   }
 
