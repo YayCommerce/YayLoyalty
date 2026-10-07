@@ -5,6 +5,7 @@ import {
   deleteCampaign,
   getCampaign,
   getCampaigns,
+  reorderCampaigns,
   updateCampaign,
   updateCampaignConfig,
   updateCampaignStatus,
@@ -104,6 +105,22 @@ export function useUpdateCampaignConfigMutation(id: number) {
       queryClient.invalidateQueries({ queryKey: ['campaign', 'detail', id] });
       queryClient.invalidateQueries({ queryKey: ['campaign', 'list'] });
       queryClient.invalidateQueries({ queryKey: ['campaign', 'performance', id] });
+    },
+  });
+}
+
+/** Saves a dragged order as priority; see reorderCampaigns(). */
+export function useReorderCampaignsMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationKey: ['campaign', 'reorder'],
+    // One scope runs drags in order, so a slow earlier request can never land after a later one.
+    scope: { id: 'campaign-reorder' },
+    mutationFn: (ids: number[]) => reorderCampaigns(ids),
+    // onSettled: a failed save must still bring the table back to the stored order.
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['campaign'] });
     },
   });
 }

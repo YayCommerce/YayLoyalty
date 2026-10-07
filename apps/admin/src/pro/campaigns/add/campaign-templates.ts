@@ -3,17 +3,13 @@ import { __ } from '@wordpress/i18n';
 import { DEFAULT_CAMPAIGN_CONFIG, LiteCampaignTrigger } from '@/lib/schema/campaign.schema';
 import { CampaignFormValues } from '../editor/campaign-editor.form';
 
-/**
- * One card on the "Add a campaign" chooser. First-order bonus, Birthday points and VIP multiplier
- * are left out: the first two need Pro-only triggers, and VIP multiplier needs a tier condition
- * that CampaignConditionSet rejects today.
- */
+/** One card on the "Add a campaign" chooser: one per Lite trigger, each opening an empty campaign of that kind. */
 export interface CampaignTemplate {
-  /** The URL segment at campaigns/new/:templateId. */
-  id: string;
+  /** The URL segment at campaigns/new/:templateId; the trigger itself. */
+  id: LiteCampaignTrigger;
   title: string;
   description: string;
-  /** The card's footer line: a real configuration this seeds, never an invented benefit. */
+  /** The card's footer line: something this kind can be set up to do, never an invented benefit. */
   example: string;
   trigger: LiteCampaignTrigger;
   /** A function, not a static object: each call returns fresh values that no other visit or template shares. */
@@ -21,7 +17,7 @@ export interface CampaignTemplate {
 }
 
 /**
- * Every template opens as a draft with no dates, so nothing starts earning by accident.
+ * Every kind opens as a draft with no dates, so nothing starts earning by accident.
  *
  * A function, not a module-level const: Rollup keeps a module-level call to __() even when its
  * result is unused, which would ship this Pro-only copy in the Lite bundle.
@@ -29,92 +25,44 @@ export interface CampaignTemplate {
 export function getCampaignTemplates(): CampaignTemplate[] {
   return [
     {
-      id: 'scratch',
-      title: __('Start from scratch', 'yayloyalty'),
-      description: __('Choose the trigger and write every field yourself.', 'yayloyalty'),
-      example: __('Purchase, signup or review · no conditions · priority 0', 'yayloyalty'),
-      // The radio defaults to purchase; §2 in the builder is fully editable from here, unlike edit mode.
-      trigger: 'purchase',
-      seed: () => ({
-        name: '',
-        status: 'draft',
-        priority: 0,
-        config: structuredClone(DEFAULT_CAMPAIGN_CONFIG.purchase),
-        conditions: [],
-        starts_at: null,
-        ends_at: null,
-      }),
-    },
-    {
-      id: 'double-points',
-      title: __('Double points weekend', 'yayloyalty'),
+      id: 'purchase',
+      title: __('Order placed', 'yayloyalty'),
       description: __(
-        'Multiply the default rate for a few days. Ends by itself, so nobody has to remember to switch it off.',
+        'Earn points on completed orders, at a rate per amount spent or as a multiple of the default rate.',
         'yayloyalty',
       ),
-      example: __('Example: ×2 the default rate, priority 20', 'yayloyalty'),
+      example: __('e.g. double points on one category for a weekend', 'yayloyalty'),
       trigger: 'purchase',
-      seed: () => ({
-        name: __('Double points weekend', 'yayloyalty'),
-        status: 'draft',
-        priority: 20,
-        config: { ...structuredClone(DEFAULT_CAMPAIGN_CONFIG.purchase), mode: 'multiplier', multiplier: 2 },
-        conditions: [],
-        starts_at: null,
-        ends_at: null,
-      }),
+      seed: () => emptySeed('purchase'),
     },
     {
-      id: 'category-boost',
-      title: __('Category boost', 'yayloyalty'),
-      description: __('A higher rate on one category, to move stock without discounting it.', 'yayloyalty'),
-      example: __('Example: 3 points per unit on one category, priority 10', 'yayloyalty'),
-      trigger: 'purchase',
-      seed: () => ({
-        name: __('Category boost', 'yayloyalty'),
-        status: 'draft',
-        priority: 10,
-        config: { ...structuredClone(DEFAULT_CAMPAIGN_CONFIG.purchase), points_per_unit: 3 },
-        // Deliberately empty: CampaignEditorConditions blocks saving until a category is picked.
-        // A boost with no category is not yet a boost.
-        conditions: [{ type: 'category_in_cart', operator: 'in', value: [] }],
-        starts_at: null,
-        ends_at: null,
-      }),
-    },
-    {
-      id: 'welcome-bonus',
-      title: __('Welcome bonus', 'yayloyalty'),
-      description: __('A one-off reward the first time a customer creates an account.', 'yayloyalty'),
-      example: __('Example: 100 points, once per customer', 'yayloyalty'),
+      id: 'signup',
+      title: __('Account created', 'yayloyalty'),
+      description: __('A one-off bonus the first time a customer creates an account.', 'yayloyalty'),
+      example: __('e.g. a 100-point welcome bonus', 'yayloyalty'),
       trigger: 'signup',
-      seed: () => ({
-        name: __('Welcome bonus', 'yayloyalty'),
-        status: 'draft',
-        priority: 0,
-        config: structuredClone(DEFAULT_CAMPAIGN_CONFIG.signup),
-        conditions: [],
-        starts_at: null,
-        ends_at: null,
-      }),
+      seed: () => emptySeed('signup'),
     },
     {
-      id: 'review-reward',
-      title: __('Review reward', 'yayloyalty'),
-      description: __('Points for a published product review.', 'yayloyalty'),
-      example: __('Example: 50 points, verified purchases only', 'yayloyalty'),
+      id: 'review',
+      title: __('Review published', 'yayloyalty'),
+      description: __('Points for each approved product review.', 'yayloyalty'),
+      example: __('e.g. 50 points for verified buyers', 'yayloyalty'),
       trigger: 'review',
-      seed: () => ({
-        name: __('Review reward', 'yayloyalty'),
-        status: 'draft',
-        priority: 0,
-        config: structuredClone(DEFAULT_CAMPAIGN_CONFIG.review),
-        conditions: [],
-        starts_at: null,
-        ends_at: null,
-      }),
+      seed: () => emptySeed('review'),
     },
   ];
+}
+
+function emptySeed(trigger: LiteCampaignTrigger): CampaignFormValues {
+  return {
+    name: '',
+    status: 'draft',
+    config: structuredClone(DEFAULT_CAMPAIGN_CONFIG[trigger]),
+    conditions: [],
+    starts_at: null,
+    ends_at: null,
+  };
 }
 
 export function findTemplate(id: string): CampaignTemplate | undefined {

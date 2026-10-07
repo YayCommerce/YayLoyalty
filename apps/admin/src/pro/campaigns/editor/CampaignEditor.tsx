@@ -9,12 +9,7 @@ import { toastApiError } from '@/lib/api/api';
 import { parseWPRelativeDate } from '@/lib/helpers/format.helper';
 import { useCampaignQuery, useCreateCampaignMutation, useUpdateCampaignMutation } from '@/lib/queries/campaign.queries';
 import { hasPerformancePage } from '@/lib/schema/campaign-performance.schema';
-import {
-  Campaign,
-  DEFAULT_CAMPAIGN_CONFIG,
-  LiteCampaignTrigger,
-  resolveCampaignDisplayStatus,
-} from '@/lib/schema/campaign.schema';
+import { Campaign, resolveCampaignDisplayStatus } from '@/lib/schema/campaign.schema';
 import { useEditorSave } from '@/hooks/useEditorSave';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -254,7 +249,7 @@ function CampaignCreatorForm({ template, duplicateFrom }: { template: CampaignTe
   );
   const draftCampaign = useMemo(() => synthesizeDraftCampaign(), []);
 
-  const [trigger, setTrigger] = useState<LiteCampaignTrigger>(seed.trigger);
+  const trigger = seed.trigger;
 
   // `values`, not defaultValues: matches CampaignEditorForm, though nothing here ever refetches.
   const form = useForm<CampaignFormValues>({
@@ -280,20 +275,8 @@ function CampaignCreatorForm({ template, duplicateFrom }: { template: CampaignTe
     { listPath: '/campaigns', onInvalid: toastInvalidConditions },
   );
 
-  /** A stale key from the old trigger would fail Campaign::config_is_valid() on save. */
-  function handleTriggerChange(next: LiteCampaignTrigger) {
-    setTrigger(next);
-    form.setValue('config', structuredClone(DEFAULT_CAMPAIGN_CONFIG[next]), {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
-    form.setValue('conditions', [], { shouldDirty: true, shouldValidate: true });
-  }
-
   return (
-    <CampaignEditorContext.Provider
-      value={{ mode: 'create', campaign: draftCampaign, trigger, onTriggerChange: handleTriggerChange }}
-    >
+    <CampaignEditorContext.Provider value={{ mode: 'create', campaign: draftCampaign, trigger }}>
       <FormProvider {...form}>
         <form onSubmit={handleSave}>
           <BackLink to="/campaigns" label={__('Campaigns', 'yayloyalty')} />

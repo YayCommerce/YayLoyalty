@@ -232,13 +232,13 @@ export type CampaignCondition = z.infer<typeof campaignConditionSchema>;
 
 /**
  * Write body for PUT campaigns/{id}, mirroring update_item()'s mutable
- * fields. No slug or trigger: both are immutable after create.
+ * fields. No slug or trigger: both are immutable after create. No priority:
+ * only the campaigns table's drag writes it, through campaigns/reorder.
  */
 export const campaignUpdateInputSchema = z
   .object({
     name: z.string().trim().min(1, __('A campaign needs a name.', 'yayloyalty')),
     status: campaignStatusSchema,
-    priority: z.number().int(),
     /** Loose on purpose; see campaignSchema.config. */
     config: z.record(z.string(), z.unknown()),
     conditions: z.array(campaignConditionSchema),

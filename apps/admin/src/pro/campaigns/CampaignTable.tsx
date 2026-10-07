@@ -9,7 +9,11 @@ import { toast } from 'sonner';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { toastApiError } from '@/lib/api/api';
-import { useCampaignsQuery, useUpdateCampaignStatusMutation } from '@/lib/queries/campaign.queries';
+import {
+  useCampaignsQuery,
+  useReorderCampaignsMutation,
+  useUpdateCampaignStatusMutation,
+} from '@/lib/queries/campaign.queries';
 import { hasPerformancePage } from '@/lib/schema/campaign-performance.schema';
 import {
   Campaign,
@@ -92,7 +96,7 @@ interface CampaignGroup {
  * Pro's grouped, prioritised campaigns table, reading the same list as
  * BuiltInCampaignList. Presentation strings are derived client-side
  * (toDisplayCampaign); points_issued is the server's own field.
- * Drag-to-reorder changes display order only, never `priority`.
+ * Drag-to-reorder saves the group's order as `priority`, top row highest.
  * `newStore` / `noLiveCampaign` are dev-only preview toggles with no UI
  * control; `newStore` stands in for "has this store ever earned points",
  * which nothing can query yet.
@@ -107,8 +111,10 @@ export function CampaignTable() {
 
   const [statusFilter, setStatusFilter] = useState<CampaignDisplayStatus | undefined>();
   const [searchQuery, setSearchQuery] = useState('');
-  // Local override once a drag reorders a group; seeded lazily in reorderGroup().
-  const [localRows, setLocalRows] = useState<DisplayCampaign[]>();
+  // Shows a drop at once while its save is in flight. Ignored once the query's own data changes,
+  // so every refetch replaces it with the stored order.
+  const [override, setOverride] = useState<{ source: typeof data; rows: DisplayCampaign[] }>();
+  const reorderMutation = useReorderCampaignsMutation();
   const [expandedGroups, setExpandedGroups] = useState<ReadonlySet<CampaignGroupKey>>(() => new Set());
   const [selectedIds, setSelectedIds] = useState<ReadonlySet<number>>(() => new Set());
   // These dialogs open from state, not a Radix Trigger, so Radix has nothing of its own to
@@ -119,7 +125,8 @@ export function CampaignTable() {
   const [bulkArchiveTargets, setBulkArchiveTargets] = useState<DisplayCampaign[]>();
   const [pauseTarget, setPauseTarget] = useState<DisplayCampaign>();
 
-  const baseRows = newStore ? allRows.filter((row) => row.is_builtin) : (localRows ?? allRows);
+  const orderedRows = override && override.source === data ? override.rows : allRows;
+  const baseRows = newStore ? allRows.filter((row) => row.is_builtin) : orderedRows;
   const rows = noLiveCampaign ? baseRows.map(pauseIfActivePurchase) : baseRows;
   const archivedCount = rows.filter((row) => row.displayStatus === 'archived').length;
   const hasActivePurchaseCampaign = rows.some(
@@ -253,16 +260,25 @@ export function CampaignTable() {
       return;
     }
 
-    // Display order only; `priority` is a stored value dragging never touches.
+    // groupRows is the filtered view; moving it inside the full list keeps hidden rows in place.
     const reordered = arrayMove(groupRows, fromIndex, toIndex);
     const groupIds = new Set(groupRows.map((row) => row.id));
+    let next = 0;
+    const nextRows = orderedRows.map((row) => (groupIds.has(row.id) ? reordered[next++] : row));
+    const groupKey = triggerGroup(reordered[0].trigger);
 
-    setLocalRows((current) => {
-      const base = current ?? rows;
-      let next = 0;
+    // The whole group, top first; archived rows no longer compete, so they have no priority to save.
+    const ids = nextRows
+      .filter((row) => triggerGroup(row.trigger) === groupKey && row.status !== 'archived')
+      .map((row) => row.id);
 
-      return base.map((row) => (groupIds.has(row.id) ? reordered[next++] : row));
-    });
+    setOverride({ source: data, rows: nextRows });
+
+    if (ids.length > 0) {
+      reorderMutation.mutate(ids, {
+        onError: (error) => toastApiError(error, __('Could not save the new order.', 'yayloyalty')),
+      });
+    }
   }
 
   return (
@@ -829,7 +845,7 @@ function SortableCampaignRow({
             )}
             {/* Create mode, seeded from this campaign — CampaignCreator's duplicateFrom path.
                 A real POST on Save; this campaign itself is never written to. */}
-            <DropdownMenuItem onSelect={() => navigate(`/campaigns/new/scratch?from=${row.id}`)}>
+            <DropdownMenuItem onSelect={() => navigate(`/campaigns/new/purchase?from=${row.id}`)}>
               {__('Duplicate', 'yayloyalty')}
             </DropdownMenuItem>
             {/* Shown for built-ins too, as their substitute for Archive. Deferred so the dropdown closes first. */}

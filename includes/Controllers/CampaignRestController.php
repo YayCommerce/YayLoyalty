@@ -21,6 +21,9 @@ defined( 'ABSPATH' ) || exit;
  */
 final class CampaignRestController extends AbstractRestController {
 
+    /** Far above any real campaign list; bounds the reorder request body. */
+    private const MAX_REORDER_IDS = 500;
+
     /** @var CampaignRepository */
     private $campaigns;
 
@@ -66,6 +69,28 @@ final class CampaignRestController extends AbstractRestController {
                     'args'                => $this->get_write_args(),
                 ],
                 'schema' => [ $this, 'get_item_schema' ],
+            ]
+        );
+
+        register_rest_route(
+            self::REST_NAMESPACE,
+            '/campaigns/reorder',
+            [
+                [
+                    'methods'             => \WP_REST_Server::CREATABLE,
+                    'callback'            => fn( $request ) => $this->exec_write( [ $this, 'reorder_items' ], $request ),
+                    'permission_callback' => $this->requires( Capabilities::MANAGE_CAMPAIGNS ),
+                    'args'                => [
+                        'ids' => [
+                            'description' => __( 'Campaign ids, highest priority first; see CampaignRepository::reorder().', 'yayloyalty' ),
+                            'type'        => 'array',
+                            'items'       => [ 'type' => 'integer' ],
+                            'required'    => true,
+                            'minItems'    => 1,
+                            'maxItems'    => self::MAX_REORDER_IDS,
+                        ],
+                    ],
+                ],
             ]
         );
 
@@ -135,6 +160,21 @@ final class CampaignRestController extends AbstractRestController {
             && ! isset( $config['points_per_unit'] );
     }
 
+    /** Saves a dragged order as priority. A duplicate or unknown id refuses the whole request. */
+    public function reorder_items( \WP_REST_Request $request ) {
+        $ids = array_map( 'intval', (array) $request['ids'] );
+
+        if ( count( array_unique( $ids ) ) !== count( $ids ) ) {
+            return $this->error_invalid_arguments( __( 'A campaign appears twice in the new order.', 'yayloyalty' ) );
+        }
+
+        if ( ! $this->campaigns->reorder( $ids ) ) {
+            return $this->error_invalid_arguments( __( 'The new order names a campaign that no longer exists.', 'yayloyalty' ) );
+        }
+
+        return [ 'ids' => $ids ];
+    }
+
     public function create_item( \WP_REST_Request $request ) {
         $trigger = (string) $request['trigger'];
 
@@ -182,7 +222,8 @@ final class CampaignRestController extends AbstractRestController {
             $slug,
             $trigger,
             $request['status'] ? Status::assert( (string) $request['status'] ) : Status::ACTIVE,
-            null !== $request['priority'] ? (int) $request['priority'] : 0,
+            // No priority puts it on top of its group, where a drag in the campaigns table can move it.
+            null !== $request['priority'] ? (int) $request['priority'] : $this->campaigns->top_priority( $trigger ),
             Campaign::validate_config( $trigger, $config ),
             CampaignConditionSet::normalize( $conditions ),
             self::nullable_date( $request['starts_at'] ),
