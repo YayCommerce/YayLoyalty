@@ -5,12 +5,12 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * The `meta_key` vocabulary of `yayloyalty_customer_meta`, which is also the activity log's `event_type`.
- * Today CustomerActivityService writes only `account_created`, `points_adjusted` and `account_deleted`.
+ * Today CustomerActivityService writes only `membership_started`, `points_adjusted` and `account_deleted`.
  * A customer whose only history is one of the other five has zero activity rows. That count is correct, not a bug.
  */
 final class ActivityEvent {
 
-    public const ACCOUNT_CREATED          = 'account_created';
+    public const MEMBERSHIP_STARTED       = 'membership_started';
     public const POINTS_ADJUSTED          = 'points_adjusted';
     public const TIER_CHANGED             = 'tier_changed';
     public const EXPIRY_RESET             = 'expiry_reset';
@@ -26,7 +26,7 @@ final class ActivityEvent {
      * @var string[]
      */
     public const ALL = [
-        self::ACCOUNT_CREATED,
+        self::MEMBERSHIP_STARTED,
         self::POINTS_ADJUSTED,
         self::TIER_CHANGED,
         self::EXPIRY_RESET,

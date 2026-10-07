@@ -77,7 +77,7 @@ final class CustomerActivityListener {
 
         try {
             $service = self::service();
-            $service->record_account_created( $entry );
+            $service->record_membership_started( $entry );
             $service->record_points_adjusted( $entry );
         } catch ( \Throwable $e ) {
             Log::error( 'CustomerActivityListener', $e->getMessage() );

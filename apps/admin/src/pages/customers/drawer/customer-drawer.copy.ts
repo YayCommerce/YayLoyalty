@@ -36,6 +36,28 @@ export const ACTION_ADJUST_POINTS = () => __('Adjust points', 'yayloyalty');
 export const ACTION_RESET_EXPIRY = () => __('Reset expiry', 'yayloyalty');
 export const ACTION_EXPORT_LEDGER = () => __('Export ledger', 'yayloyalty');
 
+export const EXPORT_LEDGER_EMPTY = () => __('No ledger entries to export.', 'yayloyalty');
+export const EXPORT_LEDGER_ERROR_FALLBACK = () => __('Could not export the ledger.', 'yayloyalty');
+export function exportLedgerTooLarge(max: number): string {
+  return sprintf(
+    /* translators: %d: the most ledger entries one export can hold. */
+    __('This history has more than %d entries — too many to export.', 'yayloyalty'),
+    max,
+  );
+}
+/** The ledger CSV's header row, in column order. */
+export const LEDGER_CSV_HEADERS = () => [
+  __('Entry ID', 'yayloyalty'),
+  __('Date', 'yayloyalty'),
+  __('Type', 'yayloyalty'),
+  __('Description', 'yayloyalty'),
+  __('Points', 'yayloyalty'),
+  __('Balance after', 'yayloyalty'),
+  __('Order ID', 'yayloyalty'),
+  __('Campaign', 'yayloyalty'),
+  __('Note', 'yayloyalty'),
+];
+
 export const NOT_AVAILABLE_YET_REASON = () => __('Not available yet — coming in a future release.', 'yayloyalty');
 /** Nothing to extend on a zero balance. */
 export const RESET_EXPIRY_NEEDS_POINTS_REASON = () => __('Needs points to extend.', 'yayloyalty');
@@ -58,10 +80,6 @@ export const COLUMN_BALANCE = () => __('Balance', 'yayloyalty');
 
 export const FILTER_TYPE_LABEL = () => __('Type', 'yayloyalty');
 export const FILTER_TYPE_ALL = () => __('All', 'yayloyalty');
-export const FILTER_TYPE_EARNED = () => __('Earned', 'yayloyalty');
-export const FILTER_TYPE_REDEEMED = () => __('Redeemed', 'yayloyalty');
-export const FILTER_TYPE_ADJUSTED = () => __('Adjusted', 'yayloyalty');
-export const FILTER_TYPE_EXPIRED = () => __('Expired', 'yayloyalty');
 
 export const SEARCH_PLACEHOLDER = () => __('Search description or order number', 'yayloyalty');
 export const DATE_RANGE_LABEL = () => __('Date range', 'yayloyalty');

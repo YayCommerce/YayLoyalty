@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { BulkActionsMenu } from '@/components/ui/custom/bulk-actions-menu';
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Separator } from '@/components/ui/separator';
+import { EXPORTING_LABEL } from '../customers-page.export.copy';
 
 /** "Reset expiry" is left out until it has an endpoint: a dead control is worse than none. */
 export function CustomersBulkActionBar({
@@ -34,7 +35,7 @@ export function CustomersBulkActionBar({
         </Can>
         <Can cap={CAP.VIEW} disable>
           <DropdownMenuItem disabled={isExporting} onSelect={onExport}>
-            {isExporting ? __('Exporting…', 'yayloyalty') : __('Export', 'yayloyalty')}
+            {isExporting ? EXPORTING_LABEL() : __('Export', 'yayloyalty')}
           </DropdownMenuItem>
         </Can>
       </BulkActionsMenu>

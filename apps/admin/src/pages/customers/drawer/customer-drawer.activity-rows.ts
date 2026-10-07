@@ -3,7 +3,7 @@ import { formatSignedPoints } from '@/lib/helpers/ledger.helper';
 import { formatPoints } from '@/lib/helpers/points.helper';
 import type { ActivityEntry, ActivityEventType } from '@/lib/schema/activity.schema';
 import {
-  ACTIVITY_TITLE_ACCOUNT_CREATED,
+  ACTIVITY_TITLE_MEMBERSHIP_STARTED,
   ACTIVITY_TITLE_ACCOUNT_DELETED,
   ACTIVITY_TITLE_BALANCE_EMAIL_SENT,
   ACTIVITY_TITLE_EARNING_LIMITED,
@@ -12,7 +12,7 @@ import {
   ACTIVITY_TITLE_POINTS_ADJUSTED,
   ACTIVITY_TITLE_REWARD_REDEEMED,
   ACTIVITY_TITLE_TIER_CHANGED,
-  activityAccountCreatedSubLine,
+  activityMembershipStartedSubLine,
   activityAccountDeletedSubLine,
   activityBalanceEmailSubLine,
   activityEarningLimitedSubLine,
@@ -53,8 +53,8 @@ export function toActivityRow(entry: ActivityEntry): ActivityRow {
 
 function titleFor(eventType: ActivityEventType): string {
   switch (eventType) {
-    case 'account_created':
-      return ACTIVITY_TITLE_ACCOUNT_CREATED();
+    case 'membership_started':
+      return ACTIVITY_TITLE_MEMBERSHIP_STARTED();
     case 'points_adjusted':
       return ACTIVITY_TITLE_POINTS_ADJUSTED();
     case 'tier_changed':
@@ -88,8 +88,8 @@ function subLineFor(entry: ActivityEntry, occurred: Date): string {
   const { data } = entry;
 
   switch (entry.event_type) {
-    case 'account_created':
-      return activityAccountCreatedSubLine(formatPoints(num(data, 'points')));
+    case 'membership_started':
+      return activityMembershipStartedSubLine(formatPoints(num(data, 'points')));
     case 'points_adjusted':
       return activityPointsAdjustedSubLine(formatSignedPoints(num(data, 'points')), str(data, 'note'));
     case 'tier_changed':

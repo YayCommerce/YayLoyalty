@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Per-customer key-value event log of non-points customer facts. `meta_key` is also the activity
  * log's `event_type`, and `created_at` its `occurred_at`. There is no unique key, because several rows
- * per key are normal. A write-side check, CustomerMetaRepository::has(), keeps `account_created` and
+ * per key are normal. A write-side check, CustomerMetaRepository::has(), keeps `membership_started` and
  * `account_deleted` to one row each. idx_user_key serves the group filter (`meta_key IN (...)`) and the
  * latest-`account_deleted` lookup. A standalone `meta_key` index would never be selective without `user_id`.
  */

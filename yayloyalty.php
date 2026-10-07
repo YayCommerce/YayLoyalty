@@ -128,7 +128,7 @@ if ( ! wp_installing() ) {
     // Creates the customer row at signup, not at the first ledger event, so a new user shows in the admin list right away.
     add_action( 'user_register', [ \YayLoyalty\Engine\CustomerActivityListener::class, 'on_user_register' ], 10, 1 );
 
-    // Records account_created and points_adjusted activity.
+    // Records membership_started and points_adjusted activity.
     add_action( 'yayloyalty_ledger_recorded', [ \YayLoyalty\Engine\CustomerActivityListener::class, 'on_ledger_recorded' ], 10, 1 );
 
     // earning_limited capture: an award an earning limit held points back from.
