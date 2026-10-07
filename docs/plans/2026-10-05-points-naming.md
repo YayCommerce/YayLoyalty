@@ -5,7 +5,7 @@
 **Status:** active
 **Goal:** merchants rename the loyalty currency on Settings → Advanced. The new name appears wherever a customer sees a quantity, and everywhere in the three free emails. Admin screens keep "points".
 **Spec:** [docs/specs/2026-10-05-points-naming-design.md](../specs/2026-10-05-points-naming-design.md)
-**Architecture:** reuse the existing `general.points_label_*` settings. The Advanced page owns one form that saves only dirty fields, and the Pro fraud form becomes a section inside it. `LoyaltyEmail` adds a `{points_label}` placeholder (plural unless the email set a count) for subjects and headings, and fixed email sentences use `sprintf` with `SettingsHelper::points_label_plural()`. Storefront quantities already go through `points_text()`, so no storefront code changes.
+**Architecture:** reuse the existing `advanced.points_label_*` settings. The Advanced page owns one form that saves only dirty fields, and the Pro fraud form becomes a section inside it. `LoyaltyEmail` adds a `{points_label}` placeholder (plural unless the email set a count) for subjects and headings, and fixed email sentences use `sprintf` with `SettingsHelper::points_label_plural()`. Storefront quantities already go through `points_text()`, so no storefront code changes.
 **Touches:** `includes/Helpers/SettingsHelper.php` (shared: storefront, emails, YayMail, REST), `includes/Engine/Emails/*` (LoyaltyEmail is shared: Pro emails extend it), `apps/admin/src/pages/settings/*`, `apps/admin/src/pro/settings/*`
 **Tests:**
 - `tests/integration/Settings/SettingsHelperPointsLabelTest.php` (integration): trim, 30-character cap, empty value ignored, a partial save doesn't store labels.
@@ -53,16 +53,16 @@
 3. In `apply_schema()`, skip a field whose type is `'points_label'` when the coerced value is `''`. This applies to both read and write:
    - On read, the translated default stands.
    - On write, the stored value is kept.
-4. Add `public static function points_label_plural(): string`. It returns `self::get_settings()['general']['points_label_plural']`.
+4. Add `public static function points_label_plural(): string`. It returns `self::get_settings()['advanced']['points_label_plural']`.
 5. Add the test `SettingsHelperPointsLabelTest extends IntegrationTestCase`. Each case deletes `yayloyalty_settings` in `setUp`.
    ```php
-   update_settings(['general'=>['points_label_singular'=>'  Star  ','points_label_plural'=>str_repeat('x',40)]]);
-   assertSame('Star', get_settings()['general']['points_label_singular']);
-   assertSame(30, mb_strlen(get_settings()['general']['points_label_plural']));
-   update_settings(['general'=>['points_label_plural'=>'   ']]);   // ignored
-   assertSame(str_repeat('x',30), get_settings()['general']['points_label_plural']);
+   update_settings(['advanced'=>['points_label_singular'=>'  Star  ','points_label_plural'=>str_repeat('x',40)]]);
+   assertSame('Star', get_settings()['advanced']['points_label_singular']);
+   assertSame(30, mb_strlen(get_settings()['advanced']['points_label_plural']));
+   update_settings(['advanced'=>['points_label_plural'=>'   ']]);   // ignored
+   assertSame(str_repeat('x',30), get_settings()['advanced']['points_label_plural']);
    delete_option(...); update_settings(['advanced'=>['max_points_per_day'=>5]]);
-   assertArrayNotHasKey('general', get_option('yayloyalty_settings'));
+   assertArrayNotHasKey('points_label_plural', get_option('yayloyalty_settings')['advanced']);
    assertSame(__('Points','yayloyalty'), SettingsHelper::points_label_plural());
    ```
 6. Verify: `composer test:integration -- --filter SettingsHelperPointsLabelTest`. The output shows `OK (n tests…)` with n ≥ 1.
@@ -82,14 +82,13 @@
 
 1. Write `advanced-settings.form.ts`:
    - `advancedSettingsFormSchema`: a z.object with these fields:
-     - `general: { points_label_singular, points_label_plural }`, each `z.string().trim().min(1).max(30)`;
-     - `advanced: settingsSchema.shape.advanced.pick({ max_points_per_day: true })`.
+     - `advanced`: `settingsSchema.shape.advanced.pick({ max_points_per_day: true })` extended with `points_label_singular` and `points_label_plural`, each `z.string().trim().min(1).max(30)`.
    - `type AdvancedSettingsFormValues`.
    - `advancedSettingsDefaults(settings: Settings): AdvancedSettingsFormValues`.
    - `buildAdvancedSettingsUpdate(values: AdvancedSettingsFormValues, dirty: FieldNamesMarkedBoolean<AdvancedSettingsFormValues>): SettingsUpdate`. It includes only the dirty fields, and omits a group with no dirty fields.
 2. Write the Vitest file `advanced-settings.form.test.ts`:
-   - Only `advanced.max_points_per_day` dirty → `{ advanced: { max_points_per_day: 5 } }`, with no `general` key.
-   - Only the plural dirty → `{ general: { points_label_plural: 'Stars' } }`.
+   - Only `advanced.max_points_per_day` dirty → `{ advanced: { max_points_per_day: 5 } }`, with no label key.
+   - Only the plural dirty → `{ advanced: { points_label_plural: 'Stars' } }`.
    - Nothing dirty → `{}`.
    - The schema rejects `'   '` and a 31-character string.
 3. Write `AdvancedPointsNamingCard({ control }: { control: Control<AdvancedSettingsFormValues> })`:
@@ -109,7 +108,7 @@
    - `useRouteLeaveGuard`, `UnsavedChangeDialog`, and one "Save changes" button that is disabled when the form isn't dirty or a save is pending.
    - On submit, it posts `buildAdvancedSettingsUpdate(values, dirtyFields)`, then calls `form.reset(advancedSettingsDefaults(saved), { keepDirtyValues: false })` and shows the existing toasts.
    - Layout, top to bottom: `AdvancedPointsNamingCard`, then `IS_PRO_BUILD ? <AdvancedFraudLimitsSection control/> : <the existing upsell Card>`, then Save.
-   - Lite submits only `general`. Its `advanced` values stay at their loaded state and are never dirty.
+   - Lite submits only the two label fields. `max_points_per_day` stays at its loaded state and is never dirty.
 6. Verify:
    - `pnpm --filter @yayloyalty/admin-page test`: the new file passes.
    - `node node_modules/typescript/bin/tsc --noEmit` from `apps/admin`: only the baseline TS2307 errors.
@@ -118,7 +117,7 @@
      - the line updates as you type;
      - clearing a field shows an error and disables Save;
      - saving `Star` / `Stars` and reloading keeps them;
-     - changing only the fraud limit and saving adds no `general` key (check with `wp option get yayloyalty_settings --format=json`).
+     - changing only the fraud limit and saving adds no label key under `advanced` (check with `wp option get yayloyalty_settings --format=json`).
    - Repeat with `./scripts/run.sh dev lite`: the naming card and the upsell card show, and Save works.
    - `git status`: revert any `composer.json` or `scoper.inc.php` rewritten by the dev sync.
 7. Commit the files listed above: `feat(settings): add points naming to the Advanced tab`.
@@ -146,7 +145,7 @@
    - `'Some of your loyalty %s have expired and are no longer in your balance.'`
 4. Write the test `PointsLabelPlaceholderTest extends IntegrationTestCase`:
    ```php
-   SettingsHelper::update_settings(['general'=>['points_label_singular'=>'Star','points_label_plural'=>'Stars']]);
+   SettingsHelper::update_settings(['advanced'=>['points_label_singular'=>'Star','points_label_plural'=>'Stars']]);
    WC()->mailer();                                   // load WC_Email first
    $soon = new PointsExpiringSoonEmail();
    assertSame('Your Stars expire soon', $soon->format_string($soon->get_default_heading()));

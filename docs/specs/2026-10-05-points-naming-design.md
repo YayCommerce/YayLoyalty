@@ -9,7 +9,7 @@ A merchant renames the loyalty currency (singular and plural, e.g. "Star" / "Sta
 
 ## Context
 
-- Storage already exists. `general.points_label_singular` and `general.points_label_plural` are in `includes/Helpers/SettingsHelper.php`. Their defaults are the translated `__( 'Point' )` / `__( 'Points' )`, which are never written to the option until a merchant saves them.
+- Storage already exists. `advanced.points_label_singular` and `advanced.points_label_plural` are in `includes/Helpers/SettingsHelper.php`. Their defaults are the translated `__( 'Point' )` / `__( 'Points' )`, which are never written to the option until a merchant saves them.
 - `SettingsHelper::points_label( int )` returns singular at exactly 1 and plural otherwise. `points_text( int )` returns "50 Points".
 - These already use the label: the launcher (`templates/launcher.php`), the amounts in `panel-guest.php` / `panel-member.php`, `LauncherCopy::earn_rate()` / `redeem_rate()` (Design token `{points_label}`), and `PointsEarnedEmail` (the `{points_label}` placeholder and `points_text`).
 - The SPA mirror `apps/admin/src/lib/schema/settings.schema.ts` already has both fields. `useSaveSettingsMutation` posts a partial `SettingsUpdate`, and PHP writes only the fields it receives.
@@ -45,7 +45,7 @@ A merchant renames the loyalty currency (singular and plural, e.g. "Star" / "Sta
 1. Both Lite and Pro builds show the Points naming card on Settings → Advanced, prefilled with the current labels (default `Point` / `Points`).
 2. The "Storefront reads" line updates as the merchant types. It shows `You have 9,850 {plural}` · `Earn 1 {singular} per {currency 1}` · `Redeem 500 {plural} for {currency 5} off`, with money formatted by `parseWPCurrency`.
 3. Save is blocked when a label is empty or only whitespace, or longer than 30 characters, and an inline error shows. A REST post that bypasses this has the label trimmed and cut to 30 characters. An empty value is ignored, so the stored or default label stays.
-4. If only the fraud limit changes in Pro, the saved option gains `advanced.max_points_per_day` only. It does not gain `general.points_label_*` keys, so translated defaults keep following the site language. The reverse also holds.
+4. If only the fraud limit changes in Pro, the saved option gains `advanced.max_points_per_day` only. It does not gain `advanced.points_label_*` keys, so translated defaults keep following the site language. The reverse also holds.
 5. With the labels set to `Star` / `Stars` and saved:
    - Launcher: `Earn 1 Star per $1 spent` and `Create an account and get 50 Stars`.
    - Member panel amounts and the guest product estimate: `50 Stars`. Activity titles and the balance heading keep "points".
@@ -78,7 +78,7 @@ A merchant renames the loyalty currency (singular and plural, e.g. "Star" / "Sta
 **Chosen:** extend the existing settings field and helpers. Do not add new storage.
 
 **Architecture:**
-- The Advanced page owns one react-hook-form form covering `general.points_label_singular`, `general.points_label_plural` and, in Pro, `advanced.max_points_per_day`.
+- The Advanced page owns one react-hook-form form covering `advanced.points_label_singular`, `advanced.points_label_plural` and, in Pro, `advanced.max_points_per_day`.
 - On submit it builds a `SettingsUpdate` from `dirtyFields` only.
 - The Pro fraud form turns into a presentational section that receives the form `control`.
 - On the PHP side, `LoyaltyEmail` supplies a `{points_label}` placeholder (plural unless the email set a count-based one) for subjects and headings. Fixed email sentences take `SettingsHelper::points_label_plural()` through `sprintf`.
@@ -93,7 +93,7 @@ A merchant renames the loyalty currency (singular and plural, e.g. "Star" / "Sta
 - `PointsEarnedEmail`, `PointsExpiredEmail`, `PointsExpiringSoonEmail` and their HTML and plain templates: use the label.
 
 **Data and storage:**
-- Existing option `yayloyalty_settings` → `general.points_label_singular` / `general.points_label_plural`.
+- Existing option `yayloyalty_settings` → `advanced.points_label_singular` / `advanced.points_label_plural`.
 - No migration and no schema version bump.
 - Uninstall is unchanged.
 
