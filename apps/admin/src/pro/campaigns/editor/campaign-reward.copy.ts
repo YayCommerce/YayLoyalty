@@ -36,14 +36,10 @@ function purchaseAdvancedFacts(config: Record<string, unknown>): PurchaseAdvance
   };
 }
 
-/** Short phrases for the closed Advanced toggle, in field order; [] when nothing is set. */
+/** Short phrases for the closed Advanced toggle, in panel order; [] when nothing is set. */
 export function purchaseAdvancedPhrases(config: Record<string, unknown>): string[] {
   const facts = purchaseAdvancedFacts(config);
   const phrases: string[] = [];
-
-  if (facts.includeTax) {
-    phrases.push(__('Tax included', 'yayloyalty'));
-  }
 
   if (facts.minSubtotal > 0) {
     phrases.push(
@@ -57,6 +53,18 @@ export function purchaseAdvancedPhrases(config: Record<string, unknown>): string
 
   if (facts.excludeCouponOrders) {
     phrases.push(__('No coupon orders', 'yayloyalty'));
+  }
+
+  if (facts.includeTax) {
+    phrases.push(__('Tax included', 'yayloyalty'));
+  }
+
+  if (facts.excludedProducts > 0) {
+    phrases.push(productsExcluded(facts.excludedProducts));
+  }
+
+  if (facts.excludedCategories > 0) {
+    phrases.push(categoriesExcluded(facts.excludedCategories));
   }
 
   if (facts.maxPointsPerOrder > 0) {
@@ -77,14 +85,6 @@ export function purchaseAdvancedPhrases(config: Record<string, unknown>): string
         shortPoints(facts.dailyCap),
       ),
     );
-  }
-
-  if (facts.excludedProducts > 0) {
-    phrases.push(productsExcluded(facts.excludedProducts));
-  }
-
-  if (facts.excludedCategories > 0) {
-    phrases.push(categoriesExcluded(facts.excludedCategories));
   }
 
   return phrases;
