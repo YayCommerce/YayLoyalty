@@ -3,6 +3,7 @@ namespace YayLoyalty\Engine\Storefront;
 
 use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
+use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Models\LedgerEntry;
 use YayLoyalty\Utils\Dates;
 use YayLoyalty\Utils\Text;
@@ -25,11 +26,13 @@ final class ShopperActivityRow {
      */
     public static function items( array $entries ): array {
         $store = Text::store_name();
+        // 0 picks the plural label.
+        $label = SettingsHelper::points_label( 0 );
         $items = [];
 
         foreach ( $entries as $entry ) {
             $items[] = [
-                'label'  => self::label( $entry, $store ),
+                'label'  => self::label( $entry, $store, $label ),
                 'meta'   => self::meta_line( $entry->get_created_at(), $entry->get_order_id() ),
                 'points' => $entry->get_points(),
                 'delta'  => LauncherCopy::signed_points( $entry->get_points() ),
@@ -39,23 +42,30 @@ final class ShopperActivityRow {
         return $items;
     }
 
-    /** @param string $store_name Shown on adjustments ("Adjustment by {store}"). */
-    private static function label( LedgerEntry $entry, string $store_name ): string {
+    /**
+     * @param string $store_name   Shown on adjustments ("Adjustment by {store}").
+     * @param string $points_label The merchant's plural points label, as "Points".
+     */
+    private static function label( LedgerEntry $entry, string $store_name, string $points_label ): string {
         switch ( $entry->get_type() ) {
             case LedgerType::EARN:
-                return self::earn_label( $entry->get_source() );
+                return self::earn_label( $entry->get_source(), $points_label );
 
             case LedgerType::REDEEM:
-                return __( 'Points for discount', 'yayloyalty' );
+                /* translators: %s: the store's points label, as "Points". */
+                return sprintf( __( '%s for discount', 'yayloyalty' ), $points_label );
 
             case LedgerType::REFUND_EARN:
-                return __( 'Points removed — order refunded', 'yayloyalty' );
+                /* translators: %s: the store's points label, as "Points". */
+                return sprintf( __( '%s removed — order refunded', 'yayloyalty' ), $points_label );
 
             case LedgerType::REFUND_REDEEM:
-                return __( 'Refund — points restored', 'yayloyalty' );
+                /* translators: %s: the store's points label, as "Points". */
+                return sprintf( __( '%s restored — refund', 'yayloyalty' ), $points_label );
 
             case LedgerType::EXPIRE:
-                return __( 'Points expired', 'yayloyalty' );
+                /* translators: %s: the store's points label, as "Points". */
+                return sprintf( __( '%s expired', 'yayloyalty' ), $points_label );
 
             default:
                 /* translators: %s: store name. */
@@ -63,19 +73,22 @@ final class ShopperActivityRow {
         }
     }
 
-    private static function earn_label( string $source ): string {
+    private static function earn_label( string $source, string $points_label ): string {
         switch ( $source ) {
             case LedgerSource::ORDER:
-                return __( 'Order earned points', 'yayloyalty' );
+                /* translators: %s: the store's points label, as "Points". */
+                return sprintf( __( '%s earned from an order', 'yayloyalty' ), $points_label );
 
             case LedgerSource::SIGNUP:
                 return __( 'Account created', 'yayloyalty' );
 
             case LedgerSource::REVIEW:
-                return __( 'Review earned points', 'yayloyalty' );
+                /* translators: %s: the store's points label, as "Points". */
+                return sprintf( __( '%s earned from a review', 'yayloyalty' ), $points_label );
 
             default:
-                return __( 'Points earned', 'yayloyalty' );
+                /* translators: %s: the store's points label, as "Points". */
+                return sprintf( __( '%s earned', 'yayloyalty' ), $points_label );
         }
     }
 

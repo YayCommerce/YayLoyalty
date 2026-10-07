@@ -81,6 +81,11 @@ $yayloyalty_activity = $view['activity'] ?? null;
         require __DIR__ . '/activity-row.php';
         ?>
     </template>
-    <p class="yl:m-0 yl:text-xs yl:text-muted-foreground" data-yl-activity-empty <?php echo [] === $yayloyalty_activity ? '' : 'hidden'; ?>><?php esc_html_e( 'No points activity yet.', 'yayloyalty' ); ?></p>
+    <p class="yl:m-0 yl:text-xs yl:text-muted-foreground" data-yl-activity-empty <?php echo [] === $yayloyalty_activity ? '' : 'hidden'; ?>>
+        <?php
+        /* translators: %s: the store's points label, as "Points". */
+        echo esc_html( sprintf( __( 'No %s activity yet.', 'yayloyalty' ), SettingsHelper::points_label( 0 ) ) );
+        ?>
+    </p>
     <p class="yl:m-0 yl:text-xs yl:text-muted-foreground" data-yl-activity-error hidden><?php esc_html_e( 'Your recent activity could not be loaded. Try again later.', 'yayloyalty' ); ?></p>
 </section>

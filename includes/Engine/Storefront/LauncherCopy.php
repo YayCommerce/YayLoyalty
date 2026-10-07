@@ -68,6 +68,26 @@ final class LauncherCopy {
         return sprintf( __( '%1$s on orders of %2$s or more', 'yayloyalty' ), $line, self::money( $min_subtotal ) );
     }
 
+    /**
+     * The Design tab's storefront_text with {points_label} filled with the merchant's plural label: "Your {points_label}" → "Your Stars".
+     * earn_rate_line is left for earn_rate(), whose label agrees with the rate it prints.
+     *
+     * @param array<string, string> $text
+     * @return array<string, string>
+     */
+    public static function storefront_text( array $text ): array {
+        // 0 picks the plural label.
+        $label = SettingsHelper::points_label( 0 );
+
+        foreach ( $text as $key => $value ) {
+            if ( 'earn_rate_line' !== $key ) {
+                $text[ $key ] = str_replace( '{points_label}', $label, $value );
+            }
+        }
+
+        return $text;
+    }
+
     /** "100 points = $1", with the merchant's label. */
     public static function redeem_rate( float $points_per_unit ): string {
         /* translators: 1: points per unit of currency, 2: the store's points label, 3: money amount. */

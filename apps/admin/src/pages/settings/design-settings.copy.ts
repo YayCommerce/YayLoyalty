@@ -43,7 +43,7 @@ export const LAUNCHER_ICON_UPLOAD_DESCRIPTION = () => __('Used only while Icon a
 export const STOREFRONT_SECTION_TITLE = () => __('Storefront text', 'yayloyalty');
 export const STOREFRONT_SECTION_DESCRIPTION = () =>
   __(
-    'The wording shown on your storefront panel. The launcher label, balance heading and redeem button can’t be empty; clearing any other field stores it empty. Use Reset to defaults to bring back the original wording.',
+    'The wording shown on your storefront panel. Write {points_label} where your points label should appear; the earn rate line also takes {points} and {amount}. The launcher label, balance heading and redeem button can’t be empty; clearing any other field stores it empty. Use Reset to defaults to bring back the original wording.',
     'yayloyalty',
   );
 export const STOREFRONT_LAUNCHER_LABEL_LABEL = () => __('Launcher label', 'yayloyalty');

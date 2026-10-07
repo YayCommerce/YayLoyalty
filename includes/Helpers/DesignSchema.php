@@ -27,13 +27,17 @@ class DesignSchema {
                 'icon_upload_id' => 0,
             ],
             // Real, editable defaults. An empty save is literal, never "use the default".
+            // {points_label} becomes the merchant's points label (LauncherCopy::storefront_text()), so no default names "points".
             'storefront_text' => [
                 'launcher_label'    => __( 'Rewards', 'yayloyalty' ),
-                'balance_heading'   => __( 'Your points', 'yayloyalty' ),
+                /* translators: keep {points_label} as it is; it becomes the store's points label, as "Points". */
+                'balance_heading'   => __( 'Your {points_label}', 'yayloyalty' ),
                 /* translators: keep every {…} placeholder as it is; each is filled in when the line is shown. */
                 'earn_rate_line'    => __( 'Earn {points} {points_label} per {amount} spent', 'yayloyalty' ),
-                'redeem_button'     => __( 'Apply points', 'yayloyalty' ),
-                'signed_out_prompt' => __( 'Sign in to earn points on this order', 'yayloyalty' ),
+                /* translators: keep {points_label} as it is; it becomes the store's points label, as "Points". */
+                'redeem_button'     => __( 'Apply {points_label}', 'yayloyalty' ),
+                /* translators: keep {points_label} as it is; it becomes the store's points label, as "Points". */
+                'signed_out_prompt' => __( 'Sign in to earn {points_label} on this order', 'yayloyalty' ),
             ],
             'visibility'      => [
                 'scope'            => self::SCOPE_ALL_PAGES,
