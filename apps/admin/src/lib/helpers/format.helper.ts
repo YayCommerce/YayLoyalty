@@ -47,6 +47,11 @@ export function storeCurrency(): string {
   return window.yayLoyaltyMeta.wcMeta.currency_data.currency;
 }
 
+/** The store currency symbol, already HTML-decoded, e.g. ₫. */
+export function storeCurrencySymbol(): string {
+  return window.yayLoyaltyMeta.wcMeta.currency_data.symbol;
+}
+
 /** The store currency's decimals (`wc_get_price_decimals()`), the precision every money figure rounds to. */
 export function currencyDecimals(): number {
   return window.yayLoyaltyMeta.wcMeta.currency_data.num_decimals;

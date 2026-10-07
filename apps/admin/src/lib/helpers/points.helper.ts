@@ -31,14 +31,46 @@ export function shortPoints(points: number): string {
   );
 }
 
-/** "1 pt per $1.00", "2 pts per $1.00": a purchase rate against one unit of the store currency. */
+/** "2 pts per $1.00", "1 pt per $2.00": a purchase rate as the spend pair an admin would enter. */
 export function pointsPerCurrencyLabel(rate: number): string {
+  const { spend, points } = spendPairFromRate(rate);
+
   return sprintf(
-    /* translators: 1: points earned per unit of currency spent; 2: one unit of the store currency, formatted. */
-    _n('%1$s pt per %2$s', '%1$s pts per %2$s', rate, 'yayloyalty'),
-    String(rate),
-    parseWPCurrency(1),
+    /* translators: 1: points earned; 2: the amount spent to earn them, formatted in the store currency. */
+    _n('%1$s pt per %2$s', '%1$s pts per %2$s', points, 'yayloyalty'),
+    String(points),
+    parseWPCurrency(spend),
   );
+}
+
+/** The stored purchase rate (points per 1 currency unit) for "spend X to receive Y"; null when X is not above 0. */
+export function rateFromSpend(spend: number, points: number): number | null {
+  return spend > 0 ? points / spend : null;
+}
+
+/** Tolerance for "rate × spend is a whole number": the rate is a stored float, e.g. 1 ÷ 3. */
+const WHOLE_EPSILON = 1e-6;
+
+/**
+ * The "spend X to receive Y" pair a stored rate reads as: 0.5 → 2 → 1, 0.75 → 4 → 3, 3 → 1 → 3.
+ * Only the rate is stored, so 6 → 3 comes back as 2 → 1, the same rate.
+ */
+export function spendPairFromRate(rate: number): { spend: number; points: number } {
+  if (!(rate > 0)) {
+    return { spend: 1, points: 0 };
+  }
+
+  for (let spend = 1; spend <= 100; spend++) {
+    const points = rate * spend;
+
+    if (Math.abs(points - Math.round(points)) < WHOLE_EPSILON) {
+      return { spend, points: Math.round(points) };
+    }
+  }
+
+  const factor = 10 ** currencyDecimals();
+
+  return { spend: Math.round(factor / rate) / factor, points: 1 };
 }
 
 /**

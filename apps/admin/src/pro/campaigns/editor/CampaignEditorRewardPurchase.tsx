@@ -3,7 +3,8 @@ import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useFormContext } from 'react-hook-form';
 import { __, sprintf } from '@wordpress/i18n';
 
-import { storeCurrency } from '@/lib/helpers/format.helper';
+import { currencyDecimals, parseWPCurrency, storeCurrency, storeCurrencySymbol } from '@/lib/helpers/format.helper';
+import { rateFromSpend, spendPairFromRate } from '@/lib/helpers/points.helper';
 import { ROUNDING, RoundingMode } from '@/lib/points-math/points-math';
 import { OptionalCountInput } from '@/components/ui/custom/amount-inputs';
 import { LookupMultiSelect } from '@/components/ui/custom/lookup-multi-select';
@@ -45,9 +46,6 @@ interface PurchaseFieldsProps {
   patchConfig: PatchPurchaseConfig;
 }
 
-/** The server refuses a rate of 0 or below; the input keeps 2 decimals, so this is its first step above 0. */
-const SMALLEST_PURCHASE_RATE = 0.01;
-
 /** The campaign's rate, then the Advanced block. */
 export function RewardFieldsPurchase() {
   const { watch, setValue } = useFormContext<CampaignFormValues>();
@@ -60,40 +58,69 @@ export function RewardFieldsPurchase() {
 
   return (
     <div className="flex flex-col gap-4">
-      <Field>
-        <FieldLabel htmlFor="reward-purchase-points-per-unit">{__('Rate', 'yayloyalty')}</FieldLabel>
-        <FieldContent>
-          <NumberInputRoot
-            size="small"
-            className="w-36"
-            min={SMALLEST_PURCHASE_RATE}
-            decimalScale={2}
-            value={config.points_per_unit ?? 0}
-            onValueChange={(value) => patchConfig({ points_per_unit: value })}
-          >
-            <NumberInputInput id="reward-purchase-points-per-unit" />
-            <NumberInputUnit
-              unit={sprintf(
-                /* translators: %s: the store currency code, e.g. "USD". */
-                __('pts / %s', 'yayloyalty'),
-                storeCurrency(),
-              )}
-            />
-          </NumberInputRoot>
-          <FieldDescription>
-            {sprintf(
-              /* translators: %s: the store currency code, e.g. "USD". */
-              __('Points for every 1 %s of the order amount. Advanced sets what counts.', 'yayloyalty'),
-              storeCurrency(),
-            )}
-          </FieldDescription>
-        </FieldContent>
-      </Field>
+      <PurchaseRateField config={config} patchConfig={patchConfig} />
 
       <Separator />
 
       <PurchaseAdvanced config={config} patchConfig={patchConfig} />
     </div>
+  );
+}
+
+/** "Spend X to receive Y"; only the rate Y ÷ X is stored, as points_per_unit. */
+function PurchaseRateField({ config, patchConfig }: PurchaseFieldsProps) {
+  // Seeded once: re-deriving from the stored rate while typing would rewrite the other input.
+  const [pair, setPair] = useState(() => spendPairFromRate(config.points_per_unit ?? 1));
+  const smallestSpend = 10 ** -currencyDecimals();
+
+  function change(next: { spend: number; points: number }) {
+    setPair(next);
+    const rate = next.points > 0 ? rateFromSpend(next.spend, next.points) : null;
+
+    if (rate !== null) {
+      patchConfig({ points_per_unit: rate });
+    }
+  }
+
+  return (
+    <Field>
+      <FieldLabel htmlFor="reward-purchase-spend">{__('Rate', 'yayloyalty')}</FieldLabel>
+      <FieldContent>
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span>{__('Spend', 'yayloyalty')}</span>
+          <NumberInputRoot
+            size="small"
+            className="w-36"
+            min={smallestSpend}
+            decimalScale={currencyDecimals()}
+            value={pair.spend}
+            onValueChange={(spend) => change({ ...pair, spend })}
+          >
+            <NumberInputInput id="reward-purchase-spend" />
+            <NumberInputUnit unit={storeCurrencySymbol()} />
+          </NumberInputRoot>
+          <span>{__('to receive', 'yayloyalty')}</span>
+          <NumberInputRoot
+            size="small"
+            className="w-28"
+            min={1}
+            value={pair.points}
+            onValueChange={(points) => change({ ...pair, points })}
+          >
+            <NumberInputInput id="reward-purchase-points" aria-label={__('Points received', 'yayloyalty')} />
+            <NumberInputUnit unit={__('pts', 'yayloyalty')} />
+          </NumberInputRoot>
+        </div>
+        <FieldDescription>
+          {sprintf(
+            /* translators: 1: points per one currency unit, e.g. "0.5"; 2: one unit of the store currency, e.g. "$1.00". */
+            __('= %1$s pts per %2$s. Advanced sets which part of the order counts.', 'yayloyalty'),
+            (config.points_per_unit ?? 0).toLocaleString(undefined, { maximumFractionDigits: 6 }),
+            parseWPCurrency(1),
+          )}
+        </FieldDescription>
+      </FieldContent>
+    </Field>
   );
 }
 
