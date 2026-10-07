@@ -15,12 +15,7 @@ export async function fetchAllMatchingCustomers(
   sort: { by: SortKey; dir: SortDirection },
   signal?: AbortSignal,
 ): Promise<CustomerListRow[]> {
-  const params = {
-    ...filters,
-    orderBy: sort.by,
-    order: sort.dir,
-    perPage: MAX_PER_PAGE,
-  };
+  const params = { ...filters, orderBy: sort.by, order: sort.dir };
 
   return fetchAllPages((page, perPage) => getCustomers({ ...params, page, perPage }, signal), bulkTooLargeSelection);
 }

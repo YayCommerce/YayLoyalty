@@ -10,7 +10,6 @@ import { ADJUST_POINTS_ERROR_FALLBACK, adjustPointsSuccessToast } from '../compo
 import { CustomersAdjustPointsDialog } from '../components/CustomersAdjustPointsDialog';
 import {
   ACTION_ADJUST_POINTS,
-  ACTION_EXPORT_LEDGER,
   ACTION_RESET_EXPIRY,
   DELETED_ACCOUNT_ACTION_REASON,
   NOT_AVAILABLE_YET_REASON,
@@ -48,9 +47,7 @@ export function CustomerDrawerActions({ customer, isLoading }: { customer: Custo
         <Button variant="outline" disabled>
           {ACTION_RESET_EXPIRY()}
         </Button>
-        <Button variant="outline" disabled>
-          {ACTION_EXPORT_LEDGER()}
-        </Button>
+        <CustomerDrawerExportLedgerButton userId={customer.user_id} />
       </div>
       <p className="text-muted-foreground text-xs">{disabledReason}</p>
 
