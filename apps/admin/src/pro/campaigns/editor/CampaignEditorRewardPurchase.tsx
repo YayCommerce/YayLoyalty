@@ -3,9 +3,11 @@ import { ChevronDown, ChevronUp, TriangleAlert } from 'lucide-react';
 import { useFormContext } from 'react-hook-form';
 import { __, sprintf } from '@wordpress/i18n';
 
+import { storeCurrency } from '@/lib/helpers/format.helper';
 import { ROUNDING, RoundingMode } from '@/lib/points-math/points-math';
 import { usePurchaseCampaignsQuery } from '@/lib/queries/campaign.queries';
 import { findBuiltinCampaign, resolvePurchaseMode, resolvePurchaseMultiplier } from '@/lib/schema/campaign.schema';
+import { cn } from '@/lib/utils';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { OptionalCountInput } from '@/components/ui/custom/amount-inputs';
 import { LookupMultiSelect } from '@/components/ui/custom/lookup-multi-select';
@@ -18,7 +20,6 @@ import { Switch } from '@/components/ui/switch';
 import { givesLabel, isBuiltinCampaignActive } from '../campaign-labels';
 import { CampaignFormValues, useCampaignEditorContext } from './campaign-editor.form';
 import { defaultPurchaseRate, multipliedRate, purchaseAdvancedPhrases } from './campaign-reward.copy';
-import { storeCurrency } from '@/lib/helpers/format.helper';
 
 /** config_schema()['purchase']; mirrors CAMPAIGN_CONFIG_FIELDS.purchase. */
 interface PurchaseConfig {
@@ -85,7 +86,7 @@ export function RewardFieldsPurchase() {
         <Field>
           <FieldLabel htmlFor="reward-purchase-points-per-unit">{__('Rate', 'yayloyalty')}</FieldLabel>
           <FieldContent>
-            <PurchaseRateInput config={config} patchConfig={patchConfig} disabled={false} />
+            <PurchaseRateInput config={config} patchConfig={patchConfig} />
             <PurchaseRateDescription />
           </FieldContent>
         </Field>
@@ -117,18 +118,17 @@ export function RewardFieldsPurchase() {
   );
 }
 
-function PurchaseRateInput({ config, patchConfig, disabled }: PurchaseFieldsProps & { disabled: boolean }) {
+function PurchaseRateInput({ config, patchConfig, tabIndex }: PurchaseFieldsProps & { tabIndex?: number }) {
   return (
     <NumberInputRoot
       size="small"
       className="w-36"
       min={SMALLEST_PURCHASE_FACTOR}
       decimalScale={2}
-      disabled={disabled}
       value={config.points_per_unit ?? 0}
       onValueChange={(value) => patchConfig({ points_per_unit: value })}
     >
-      <NumberInputInput id="reward-purchase-points-per-unit" />
+      <NumberInputInput id="reward-purchase-points-per-unit" tabIndex={tabIndex} />
       <NumberInputUnit
         unit={sprintf(
           /* translators: %s: the store currency code, e.g. "USD". */
@@ -145,7 +145,7 @@ function PurchaseRateDescription() {
     <FieldDescription>
       {sprintf(
         /* translators: %s: the store currency code, e.g. "USD". */
-        __('Points for every 1 %s of the amount counted below.', 'yayloyalty'),
+        __('Points for every 1 %s of the order amount. Advanced sets what counts.', 'yayloyalty'),
         storeCurrency(),
       )}
     </FieldDescription>
@@ -155,9 +155,9 @@ function PurchaseRateDescription() {
 /**
  * Multiply the default rate, or set this campaign's own. Both inputs stay
  * mounted and bound to their own key, so switching modes never clears the
- * inactive value; the inactive input is disabled, not hidden. The radio and
- * its label get their own row so no control nests inside another control's
- * label.
+ * inactive value. The inactive input is faded, not disabled: a click on it,
+ * or anywhere on its card, selects that card first. It is out of the Tab
+ * order so a keyboard Tab never switches modes; the radios do that.
  */
 function PurchaseModeChoice({
   config,
@@ -169,54 +169,118 @@ function PurchaseModeChoice({
 }) {
   const mode = resolvePurchaseMode(config as Record<string, unknown>);
   const multiplier = resolvePurchaseMultiplier(config as Record<string, unknown>);
+  const selectMode = (next: PurchaseConfig['mode']) => patchConfig({ mode: next });
 
   return (
     <RadioGroup
       value={mode}
-      onValueChange={(value) => value && patchConfig({ mode: value as PurchaseConfig['mode'] })}
+      onValueChange={(value) => value && selectMode(value as PurchaseConfig['mode'])}
       className="grid gap-3 sm:grid-cols-2"
     >
-      <div className="has-data-[state=checked]:border-primary has-data-[state=checked]:bg-primary/5 dark:has-data-[state=checked]:bg-primary/10 flex flex-col gap-2.5 rounded-md border p-4">
-        <FieldLabel htmlFor="reward-purchase-mode-multiplier" className="items-center">
-          <RadioGroupItem id="reward-purchase-mode-multiplier" value="multiplier" />
-          <FieldTitle>{__('Multiply the default rate', 'yayloyalty')}</FieldTitle>
-        </FieldLabel>
+      <PurchaseModeCard
+        value="multiplier"
+        selected={mode === 'multiplier'}
+        onSelect={() => selectMode('multiplier')}
+        title={__('Multiply the default rate', 'yayloyalty')}
+        description={__(
+          'Earn a multiple of the default purchase campaign’s rate. Follows it if that rate changes.',
+          'yayloyalty',
+        )}
+        // The default's rate is only fetched in multiplier mode; the warning below the choice explains a paused or missing default.
+        result={
+          mode === 'multiplier' && defaultPointsPerUnit !== undefined
+            ? sprintf(
+                /* translators: 1: the resulting rate, e.g. "2 pts per $1.00"; 2: the multiplier, e.g. "2"; 3: the default rate, e.g. "1 pt per $1.00". */
+                __('Earns %1$s (%2$s × %3$s)', 'yayloyalty'),
+                givesLabel('purchase', { points_per_unit: multipliedRate(multiplier, defaultPointsPerUnit) }),
+                String(multiplier),
+                givesLabel('purchase', { points_per_unit: defaultPointsPerUnit }),
+              )
+            : undefined
+        }
+      >
         <NumberInputRoot
           size="small"
           className="w-28"
           min={SMALLEST_PURCHASE_FACTOR}
           decimalScale={2}
-          disabled={mode !== 'multiplier'}
           value={multiplier}
           onValueChange={(value) => patchConfig({ multiplier: value })}
         >
-          <NumberInputInput id="reward-purchase-multiplier" autoComplete="off" />
+          <NumberInputInput
+            id="reward-purchase-multiplier"
+            autoComplete="off"
+            tabIndex={mode === 'multiplier' ? undefined : -1}
+          />
           <NumberInputUnit unit="×" />
         </NumberInputRoot>
-        {/* Without a rate to show, say what the option does instead of guessing at one. The
-            warning below the choice explains a paused or missing default. */}
-        <FieldDescription>
-          {mode === 'multiplier' && defaultPointsPerUnit !== undefined
-            ? sprintf(
-                /* translators: 1: the multiplier, e.g. "2"; 2: the default rate, e.g. "1 pt per $1.00"; 3: the resulting rate, e.g. "2 pts per $1.00". */
-                __('%1$s × %2$s = %3$s.', 'yayloyalty'),
-                String(multiplier),
-                givesLabel('purchase', { points_per_unit: defaultPointsPerUnit }),
-                givesLabel('purchase', { points_per_unit: multipliedRate(multiplier, defaultPointsPerUnit) }),
-              )
-            : __('Multiplies whatever the default purchase campaign awards.', 'yayloyalty')}
-        </FieldDescription>
+      </PurchaseModeCard>
+
+      <PurchaseModeCard
+        value="rate"
+        selected={mode === 'rate'}
+        onSelect={() => selectMode('rate')}
+        title={__('Set its own rate', 'yayloyalty')}
+        description={__('A fixed rate of its own, independent of the default campaign.', 'yayloyalty')}
+        result={sprintf(
+          /* translators: %s: the rate, e.g. "1 pt per $1.00". */
+          __('Earns %s', 'yayloyalty'),
+          // Only the rate: the full config in multiplier mode would label the multiplier instead.
+          givesLabel('purchase', { points_per_unit: config.points_per_unit ?? 0 }),
+        )}
+      >
+        <PurchaseRateInput config={config} patchConfig={patchConfig} tabIndex={mode === 'rate' ? undefined : -1} />
+      </PurchaseModeCard>
+    </RadioGroup>
+  );
+}
+
+/**
+ * One option of PurchaseModeChoice. Selects on pointerdown, which fires before
+ * focus, so one click on the faded input both selects the card and focuses it.
+ * The radio and its label get their own row so no control nests inside
+ * another control's label.
+ */
+function PurchaseModeCard({
+  value,
+  selected,
+  onSelect,
+  title,
+  description,
+  result,
+  children,
+}: {
+  value: NonNullable<PurchaseConfig['mode']>;
+  selected: boolean;
+  onSelect: () => void;
+  title: string;
+  description: string;
+  result?: string;
+  children: React.ReactNode;
+}) {
+  const radioId = `reward-purchase-mode-${value}`;
+
+  return (
+    <div
+      onPointerDown={() => !selected && onSelect()}
+      className={cn(
+        'flex h-full cursor-pointer flex-col gap-3 rounded-lg border p-4 transition-colors',
+        selected ? 'border-primary bg-primary/5 ring-primary dark:bg-primary/10 ring-1' : 'hover:border-foreground/30',
+      )}
+    >
+      <div className="flex flex-col gap-1">
+        <FieldLabel htmlFor={radioId} className="cursor-pointer items-center">
+          <RadioGroupItem id={radioId} value={value} />
+          <FieldTitle>{title}</FieldTitle>
+        </FieldLabel>
+        <FieldDescription className="pl-6">{description}</FieldDescription>
       </div>
 
-      <div className="has-data-[state=checked]:border-primary has-data-[state=checked]:bg-primary/5 dark:has-data-[state=checked]:bg-primary/10 flex flex-col gap-2.5 rounded-md border p-4">
-        <FieldLabel htmlFor="reward-purchase-mode-rate" className="items-center">
-          <RadioGroupItem id="reward-purchase-mode-rate" value="rate" />
-          <FieldTitle>{__('Set its own rate', 'yayloyalty')}</FieldTitle>
-        </FieldLabel>
-        <PurchaseRateInput config={config} patchConfig={patchConfig} disabled={mode !== 'rate'} />
-        <PurchaseRateDescription />
+      <div className={cn('flex flex-col gap-1.5 pl-6 transition-opacity', !selected && 'opacity-60')}>
+        {children}
+        {result && <p className={cn('text-sm', selected ? 'text-foreground' : 'text-muted-foreground')}>{result}</p>}
       </div>
-    </RadioGroup>
+    </div>
   );
 }
 
