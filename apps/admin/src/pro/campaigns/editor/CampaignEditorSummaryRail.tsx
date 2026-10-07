@@ -96,20 +96,23 @@ export function CampaignEditorSummaryRail({
         <Button type="submit" variant="outline" data-intent="draft" disabled={busy} onClick={onDraftIntent}>
           {__('Save as draft', 'yayloyalty')}
         </Button>
-        {/* type="button": archiving is the dialog's decision, never a form save. */}
-        {onArchive && campaign.status !== 'archived' && (
-          <Button type="button" variant="destructive" disabled={busy || campaign.is_builtin} onClick={onArchive}>
-            {__('Archive campaign', 'yayloyalty')}
+        <div className="flex items-center justify-center gap-2">
+          {/* type="button": archiving is the dialog's decision, never a form save. */}
+          {onArchive && !campaign.is_builtin && campaign.status !== 'archived' && (
+            <Button
+              type="button"
+              variant="link"
+              className="text-destructive hover:text-destructive-accent"
+              disabled={busy}
+              onClick={onArchive}
+            >
+              {__('Archive campaign', 'yayloyalty')}
+            </Button>
+          )}
+          <Button type="button" variant="link" disabled={busy} onClick={onCancel}>
+            {__('Cancel', 'yayloyalty')}
           </Button>
-        )}
-        {onArchive && campaign.is_builtin && (
-          <p className="text-muted-foreground text-center text-xs">
-            {__('Default campaigns can’t be archived. You can pause one instead.', 'yayloyalty')}
-          </p>
-        )}
-        <Button type="button" variant="link" disabled={busy} onClick={onCancel}>
-          {__('Cancel', 'yayloyalty')}
-        </Button>
+        </div>
       </div>
     </div>
   );

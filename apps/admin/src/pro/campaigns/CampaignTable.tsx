@@ -61,7 +61,7 @@ const VISIBLE_NON_DEFAULT_ROWS = 4;
 const SEARCH_THRESHOLD = 20;
 
 /** Table columns, for colSpan on rows that span the whole width. */
-const COLUMN_COUNT = 11;
+const COLUMN_COUNT = 10;
 
 const GROUP_ORDER: readonly CampaignGroupKey[] = ['purchase', 'signup', 'review', 'other'];
 
@@ -516,7 +516,6 @@ function CampaignTableHeader({ selectAll }: { selectAll: ReactNode }) {
         <TableHead>{__('Conditions', 'yayloyalty')}</TableHead>
         <TableHead>{__('Schedule', 'yayloyalty')}</TableHead>
         <TableHead className="text-right">{__('Points issued', 'yayloyalty')}</TableHead>
-        <TableHead className="text-center">{__('Priority', 'yayloyalty')}</TableHead>
         <TableHead>{__('Status', 'yayloyalty')}</TableHead>
         <TableHead className="w-1" />
       </TableRow>
@@ -571,9 +570,6 @@ function CampaignTableSkeleton() {
                   </TableCell>
                   <TableCell>
                     <Skeleton className="ml-auto h-3 w-10" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="mx-auto h-4 w-5" />
                   </TableCell>
                   <TableCell>
                     <Skeleton className="h-5 w-14 rounded-full" />
@@ -811,7 +807,6 @@ function SortableCampaignRow({
       <TableCell className="text-muted-foreground text-right text-xs tabular-nums">
         <PointsValue value={row.points_issued} />
       </TableCell>
-      <TableCell className="text-center text-sm font-semibold tabular-nums">{row.priority}</TableCell>
       <TableCell>
         <CampaignStatusBadge status={row.displayStatus} />
       </TableCell>
