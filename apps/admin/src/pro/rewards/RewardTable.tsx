@@ -39,10 +39,9 @@ import {
   resolveRewardsScreen,
   RewardsScreen,
   rewardSubtitle,
-  sliderLiveLabel,
   typeLabel,
 } from './reward-labels';
-import { RewardCatalogEmptyState, RewardCatalogTemplateCards } from './RewardCatalogEmptyState';
+import { RewardCatalogEmptyState } from './RewardCatalogEmptyState';
 
 /**
  * Pro's Rewards screen: the launcher catalog in display order, plus an
@@ -114,29 +113,13 @@ export function RewardTable() {
             </div>
           </div>
 
-          {ready && !showArchived && (
-            <Alert variant="outline" className={screen.isInitCase ? 'gap-y-2' : undefined}>
+          {ready && !showArchived && !screen.isInitCase && (
+            <Alert variant="outline">
               <InfoIcon />
-              <AlertDescription
-                className={screen.isInitCase ? 'flex-row items-center justify-between gap-3' : undefined}
-              >
-                {screen.isInitCase ? (
-                  <>
-                    <span>{sliderLiveLabel(screen)}</span>
-                    <Button
-                      variant="primary-outline-fill"
-                      size="sm"
-                      className="shrink-0"
-                      onClick={() => navigate('/campaigns')}
-                    >
-                      {__('Check the earning rate', 'yayloyalty')}
-                    </Button>
-                  </>
-                ) : (
-                  __(
-                    'The customer picks a reward, so there is no priority here — order is display order, and availability decides who can see each one.',
-                    'yayloyalty',
-                  )
+              <AlertDescription>
+                {__(
+                  'The customer picks a reward, so there is no priority here — order is display order, and availability decides who can see each one.',
+                  'yayloyalty',
                 )}
               </AlertDescription>
             </Alert>
@@ -180,12 +163,7 @@ export function RewardTable() {
             </div>
           )}
 
-          {ready && !showArchived && screen.isInitCase && (
-            <>
-              <RewardCatalogEmptyState />
-              <RewardCatalogTemplateCards />
-            </>
-          )}
+          {ready && !showArchived && screen.isInitCase && <RewardCatalogEmptyState />}
         </CardContent>
       </Card>
 
@@ -330,24 +308,17 @@ function RewardRow({
               {reward.name}
             </Button>
             {reward.is_builtin && (
-              <>
-                <Badge variant="outline" className="uppercase">
-                  {__('Default', 'yayloyalty')}
-                </Badge>
-                <YayLoyaltyToolTip
-                  trigger={<Lock className="text-muted-foreground size-3" />}
-                  content={__('The built-in reward cannot be archived.', 'yayloyalty')}
-                />
-              </>
+              <YayLoyaltyToolTip
+                trigger={<Lock className="text-muted-foreground size-3" />}
+                content={__('The built-in reward cannot be archived.', 'yayloyalty')}
+              />
             )}
           </div>
           <span className="text-muted-foreground text-xs">{rewardSubtitle(reward)}</span>
         </div>
       </TableCell>
       <TableCell>
-        <Badge variant="outline" className="uppercase">
-          {typeLabel(reward.type)}
-        </Badge>
+        <Badge variant="outline">{typeLabel(reward.type)}</Badge>
       </TableCell>
       <TableCell className="text-sm font-semibold tabular-nums">{costLabel(reward)}</TableCell>
       <TableCell className="text-muted-foreground text-xs">{availabilityLabel(reward)}</TableCell>
