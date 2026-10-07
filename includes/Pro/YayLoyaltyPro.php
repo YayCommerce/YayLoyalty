@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Pro;
 
+use YayLoyalty\Engine\Earning\EarningService;
 use YayLoyalty\Engine\Points\PointsEngine;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Enums\RewardType;
@@ -13,6 +14,7 @@ use YayLoyalty\Pro\Helpers\CustomerSegmentsHelper;
 use YayLoyalty\Pro\Repositories\CampaignPerformanceRepository;
 use YayLoyalty\Pro\Repositories\CampaignPointsRepository;
 use YayLoyalty\Pro\Services\ConditionsEvaluator;
+use YayLoyalty\Pro\Services\DailyEarningLimit;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Repositories\DashboardRepository;
@@ -68,13 +70,14 @@ final class YayLoyaltyPro {
         add_filter( 'yayloyalty_campaign_triggers', [ self::class, 'add_triggers' ] );
         add_filter( 'yayloyalty_campaign_config_whitelist', [ self::class, 'add_config_keys' ] );
         add_filter( 'yayloyalty_reward_types', [ self::class, 'add_reward_types' ] );
-        add_filter( 'yayloyalty_reward_config_whitelist', [ self::class, 'add_reward_config_keys' ] );
+        add_filter( 'yayloyalty_reward_config_schema', [ self::class, 'add_reward_config_schema' ] );
         add_filter( PointsEngine::CONDITIONS_EVALUATOR_FILTER, [ self::class, 'conditions_evaluator' ] );
         add_filter( 'yayloyalty_rest_controllers', [ self::class, 'add_controllers' ] );
         add_filter( 'yayloyalty_rest_item_schema', [ self::class, 'describe_pro_config' ], 10, 2 );
         add_filter( 'yayloyalty_localize_admin_data', [ self::class, 'add_segments' ] );
         add_filter( 'woocommerce_email_classes', [ ProEmails::class, 'add_classes' ] );
         add_filter( 'woocommerce_email_groups', [ ProEmails::class, 'add_groups' ] );
+        add_filter( EarningService::AWARD_POINTS_FILTER, [ new DailyEarningLimit( new LedgerRepository() ), 'clamp' ], 10, 3 );
 
         /** Fires once Pro has attached its hooks. Pro-internal; absent from Lite. */
         do_action( 'yayloyalty_pro_booted' );
@@ -139,47 +142,92 @@ final class YayLoyaltyPro {
     }
 
     /**
-     * Config keys for the reward types Pro adds.
+     * Typed config specs for the reward types Pro adds; their keys are the
+     * only ones a config may hold. `max_total` is a claim count
+     * here, unlike flexible_discount's money cap.
      *
-     * @param array<string, string[]> $whitelist
-     * @return array<string, string[]>
+     * @param array<string, array<string, array<string, mixed>>> $schema
+     * @return array<string, array<string, array<string, mixed>>>
      */
-    public static function add_reward_config_keys( array $whitelist ): array {
-        $whitelist[ RewardType::FIXED_COUPON ] = [
-            'currency',
-            'amount',
-            'min_order',
-            'coupon_expiry_days',
-            'exclude_sale_items',
-            'max_total',
+    public static function add_reward_config_schema( array $schema ): array {
+        $currency     = [
+            'type'     => 'currency',
+            'required' => true,
+        ];
+        $money        = [
+            'type' => 'nullable_number',
+            'min'  => 0,
+        ];
+        $expiry_days  = [
+            'type' => 'nullable_int',
+            'min'  => 1,
+        ];
+        $claim_limit  = [
+            'type' => 'nullable_int',
+            'min'  => 1,
+        ];
+        $exclude_sale = [ 'type' => 'bool' ];
+
+        // A cap, not a threshold: null is no cap, and a set cap is above 0.
+        $money_cap = [
+            'type'          => 'nullable_number',
+            'exclusive_min' => 0,
         ];
 
-        $whitelist[ RewardType::PERCENT_COUPON ] = [
-            'percent',
-            'max_discount',
-            'currency',
-            'min_order',
-            'coupon_expiry_days',
-            'exclude_sale_items',
-            'max_total',
+        $schema[ RewardType::FIXED_COUPON ] = [
+            'currency'           => $currency,
+            'amount'             => [
+                'type'     => 'number',
+                'min'      => 0.01,
+                'required' => true,
+            ],
+            'min_order'          => $money,
+            'coupon_expiry_days' => $expiry_days,
+            'exclude_sale_items' => $exclude_sale,
+            'max_total'          => $claim_limit,
         ];
 
-        $whitelist[ RewardType::FREE_SHIPPING ] = [
-            'min_order',
-            'currency',
-            'coupon_expiry_days',
-            'max_total',
+        $schema[ RewardType::PERCENT_COUPON ] = [
+            'percent'            => [
+                'type'     => 'number',
+                'min'      => 1,
+                'max'      => 100,
+                'required' => true,
+            ],
+            'max_discount'       => $money_cap,
+            'currency'           => $currency,
+            'min_order'          => $money,
+            'coupon_expiry_days' => $expiry_days,
+            'exclude_sale_items' => $exclude_sale,
+            'max_total'          => $claim_limit,
         ];
 
-        $whitelist[ RewardType::FREE_PRODUCT ] = [
-            'product_id',
-            'variation_id',
-            'qty',
-            'coupon_expiry_days',
-            'max_total',
+        $schema[ RewardType::FREE_SHIPPING ] = [
+            'min_order'          => $money,
+            'currency'           => $currency,
+            'coupon_expiry_days' => $expiry_days,
+            'max_total'          => $claim_limit,
         ];
 
-        return $whitelist;
+        $schema[ RewardType::FREE_PRODUCT ] = [
+            'product_id'         => [
+                'type'     => 'product',
+                'required' => true,
+            ],
+            'variation_id'       => [
+                'type' => 'nullable_int',
+                'min'  => 1,
+            ],
+            'qty'                => [
+                'type'     => 'int',
+                'min'      => 1,
+                'required' => true,
+            ],
+            'coupon_expiry_days' => $expiry_days,
+            'max_total'          => $claim_limit,
+        ];
+
+        return $schema;
     }
 
     /**
@@ -257,14 +305,14 @@ final class YayLoyaltyPro {
 
         $schema['properties']['config']['properties'] = [
             'max_points_per_order' => [
-                'description' => __( 'Cap on points awarded by a single order. 0 means no cap.', 'yayloyalty' ),
-                'type'        => 'integer',
-                'minimum'     => 0,
+                'description' => __( 'Cap on points awarded by a single order. null means no cap.', 'yayloyalty' ),
+                'type'        => [ 'integer', 'null' ],
+                'minimum'     => 1,
             ],
             'daily_cap'            => [
-                'description' => __( 'Cap on points this campaign may award one customer per day. 0 means no cap.', 'yayloyalty' ),
-                'type'        => 'integer',
-                'minimum'     => 0,
+                'description' => __( 'Cap on points this campaign may award one customer per day. null means no cap.', 'yayloyalty' ),
+                'type'        => [ 'integer', 'null' ],
+                'minimum'     => 1,
             ],
         ];
 

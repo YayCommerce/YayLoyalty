@@ -4,7 +4,7 @@ import { paginatedSchema } from '@/lib/api/paginated';
 
 /** Mirrors ActivityRestController::define_item_schema() and ActivityQueryArgs, the source of truth. */
 
-/** The eight event kinds, in display order. Matches `ActivityEvent::ALL`. */
+/** The nine event kinds, in display order. Matches `ActivityEvent::ALL`. */
 export const ACTIVITY_EVENT_TYPES = [
   'membership_started',
   'points_adjusted',
@@ -13,6 +13,7 @@ export const ACTIVITY_EVENT_TYPES = [
   'reward_redeemed',
   'balance_email_sent',
   'expiring_soon_email_sent',
+  'earning_limited',
   'account_deleted',
 ] as const;
 
@@ -22,7 +23,7 @@ export const ACTIVITY_ACTOR_KINDS = ['staff', 'automatic', 'customer'] as const;
  * The `Show:` filter's groups over `ACTIVITY_EVENT_TYPES`. Matches `ActivityQueryArgs::GROUPS`.
  * Groups overlap on purpose: `expiring_soon_email_sent` is in both `expiry` and `emails`.
  */
-export const ACTIVITY_GROUPS = ['all', 'admin', 'tier', 'expiry', 'emails'] as const;
+export const ACTIVITY_GROUPS = ['all', 'admin', 'expiry', 'emails'] as const;
 
 export const activityEventTypeSchema = z.enum(ACTIVITY_EVENT_TYPES);
 export const activityActorKindSchema = z.enum(ACTIVITY_ACTOR_KINDS);

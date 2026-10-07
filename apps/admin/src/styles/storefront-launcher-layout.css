@@ -5,15 +5,11 @@
  */
 /*
  * Distance from the screen edge (themes override --yayloyalty-launcher-offset, e.g. to clear a sticky
- * bar) and which way the closed panel sits: below its open spot, above it for the top corners.
+ * bar) and which way the closed panel sits: below its open spot.
  */
 .yayloyalty-launcher {
   --yl-offset: var(--yayloyalty-launcher-offset, 32px);
   --yl-closed-shift: 8px;
-}
-
-.yayloyalty-launcher[data-position^='top_'] {
-  --yl-closed-shift: -8px;
 }
 
 /*
@@ -85,12 +81,8 @@
   left: var(--yl-offset);
 }
 
-.yayloyalty-launcher[data-position^='bottom_'] :is(.yl-launcher-trigger, .yl-launcher-panel) {
+.yayloyalty-launcher :is(.yl-launcher-trigger, .yl-launcher-panel) {
   bottom: var(--yl-offset);
-}
-
-.yayloyalty-launcher[data-position^='top_'] :is(.yl-launcher-trigger, .yl-launcher-panel) {
-  top: var(--yl-offset);
 }
 
 .yl-launcher-overlay {

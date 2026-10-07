@@ -7,6 +7,7 @@ import { ROUNDING, RoundingMode } from '@/lib/points-math/points-math';
 import { usePurchaseCampaignsQuery } from '@/lib/queries/campaign.queries';
 import { findBuiltinCampaign, resolvePurchaseMode, resolvePurchaseMultiplier } from '@/lib/schema/campaign.schema';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { OptionalCountInput } from '@/components/ui/custom/amount-inputs';
 import { LookupMultiSelect } from '@/components/ui/custom/lookup-multi-select';
 import { Field, FieldContent, FieldDescription, FieldLabel, FieldTitle } from '@/components/ui/field';
 import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
@@ -17,6 +18,7 @@ import { Switch } from '@/components/ui/switch';
 import { givesLabel, isBuiltinCampaignActive } from '../campaign-labels';
 import { CampaignFormValues, useCampaignEditorContext } from './campaign-editor.form';
 import { defaultPurchaseRate, multipliedRate, purchaseAdvancedPhrases } from './campaign-reward.copy';
+import { storeCurrency } from '@/lib/helpers/format.helper';
 
 /** config_schema()['purchase']; mirrors CAMPAIGN_CONFIG_FIELDS.purchase. */
 interface PurchaseConfig {
@@ -31,8 +33,8 @@ interface PurchaseConfig {
   exclude_coupon_orders?: boolean;
   excluded_product_ids?: number[];
   excluded_category_ids?: number[];
-  max_points_per_order?: number;
-  daily_cap?: number;
+  max_points_per_order?: number | null;
+  daily_cap?: number | null;
 }
 
 type PatchPurchaseConfig = (patch: Partial<PurchaseConfig>) => void;
@@ -131,7 +133,7 @@ function PurchaseRateInput({ config, patchConfig, disabled }: PurchaseFieldsProp
         unit={sprintf(
           /* translators: %s: the store currency code, e.g. "USD". */
           __('pts / %s', 'yayloyalty'),
-          window.yayLoyaltyMeta.wcMeta.currency_data.currency,
+          storeCurrency(),
         )}
       />
     </NumberInputRoot>
@@ -144,7 +146,7 @@ function PurchaseRateDescription() {
       {sprintf(
         /* translators: %s: the store currency code, e.g. "USD". */
         __('Points for every 1 %s of the amount counted below.', 'yayloyalty'),
-        window.yayLoyaltyMeta.wcMeta.currency_data.currency,
+        storeCurrency(),
       )}
     </FieldDescription>
   );
@@ -312,7 +314,7 @@ function PurchaseCountingFields({ config, patchConfig }: PurchaseFieldsProps) {
             onValueChange={(min_subtotal) => patchConfig({ min_subtotal })}
           >
             <NumberInputInput id="reward-purchase-min-subtotal" />
-            <NumberInputUnit unit={window.yayLoyaltyMeta.wcMeta.currency_data.currency} />
+            <NumberInputUnit unit={storeCurrency()} />
           </NumberInputRoot>
           <FieldDescription>
             {__(
@@ -351,35 +353,29 @@ function PurchaseLimitFields({ config, patchConfig }: PurchaseFieldsProps) {
       <Field>
         <FieldLabel htmlFor="reward-purchase-max-points">{__('Maximum points per order', 'yayloyalty')}</FieldLabel>
         <FieldContent>
-          <NumberInputRoot
-            size="small"
+          <OptionalCountInput
+            id="reward-purchase-max-points"
             className="w-32"
-            min={0}
-            value={config.max_points_per_order ?? 0}
+            value={config.max_points_per_order ?? null}
+            unit={__('points', 'yayloyalty')}
             onValueChange={(max_points_per_order) => patchConfig({ max_points_per_order })}
-          >
-            <NumberInputInput id="reward-purchase-max-points" />
-            <NumberInputUnit unit={__('points', 'yayloyalty')} />
-          </NumberInputRoot>
-          <FieldDescription>{__('Applied after rounding. 0 means no cap.', 'yayloyalty')}</FieldDescription>
+          />
+          <FieldDescription>{__('Applied after rounding. Leave empty for no cap.', 'yayloyalty')}</FieldDescription>
         </FieldContent>
       </Field>
 
       <Field>
         <FieldLabel htmlFor="reward-purchase-daily-cap">{__('Daily cap', 'yayloyalty')}</FieldLabel>
         <FieldContent>
-          <NumberInputRoot
-            size="small"
+          <OptionalCountInput
+            id="reward-purchase-daily-cap"
             className="w-32"
-            min={0}
-            value={config.daily_cap ?? 0}
+            value={config.daily_cap ?? null}
+            unit={__('points', 'yayloyalty')}
             onValueChange={(daily_cap) => patchConfig({ daily_cap })}
-          >
-            <NumberInputInput id="reward-purchase-daily-cap" />
-            <NumberInputUnit unit={__('points', 'yayloyalty')} />
-          </NumberInputRoot>
+          />
           <FieldDescription>
-            {__('Most points one customer can earn from this campaign in a day. 0 means no cap.', 'yayloyalty')}
+            {__('Most points one customer can earn from this campaign in a day. Leave empty for no cap.', 'yayloyalty')}
           </FieldDescription>
         </FieldContent>
       </Field>

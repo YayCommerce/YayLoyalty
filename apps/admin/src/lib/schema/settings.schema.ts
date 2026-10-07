@@ -4,21 +4,29 @@ import { z } from 'zod';
 export const settingsSchema = z.object({
   general: z.object({
     enabled: z.boolean(),
-    points_label_singular: z.string(),
-    points_label_plural: z.string(),
     /** Role slugs that never earn. */
     excluded_roles: z.array(z.string()),
   }),
   advanced: z.object({
-    /** Largest manual adjustment a non-administrator may make; 0 = unlimited. */
-    adjustment_ceiling: z.number().int().nonnegative(),
+    points_label_singular: z.string(),
+    points_label_plural: z.string(),
+    /** Largest manual adjustment a non-administrator may make; null = unlimited. */
+    adjustment_ceiling: z.number().int().min(1).nullable(),
+    /** Most points one customer earns automatically per site day; null = no limit. Enforced in Pro. */
+    max_points_per_day: z.number().int().min(1).nullable(),
   }),
   emails: z.object({
-    /** Weekly per-customer cap on loyalty emails. */
-    throttle_per_week: z.number().int().nonnegative(),
+    /** Weekly per-customer cap on loyalty emails; null = no cap. */
+    throttle_per_week: z.number().int().min(1).nullable(),
   }),
   /** Stamped by SettingsHelper on save; PHP reports SCHEMA_VERSION when the stored blob predates versioning. */
   schema_version: z.number().int().optional(),
 });
 
 export type Settings = z.infer<typeof settingsSchema>;
+
+/**
+ * A save payload: only the groups and fields a tab owns. SettingsHelper writes only what is sent,
+ * so a tab never stores another tab's values, nor translated defaults such as the point labels.
+ */
+export type SettingsUpdate = { [Group in Exclude<keyof Settings, 'schema_version'>]?: Partial<Settings[Group]> };

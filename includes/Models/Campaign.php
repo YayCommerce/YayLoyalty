@@ -147,36 +147,9 @@ class Campaign extends AbstractModel {
         return [ '%s', '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%d', '%d', '%d', '%s', '%s', '%s' ];
     }
 
-    /**
-     * to_row() without the columns an update must never touch, with get_format() filtered to match.
-     * $wpdb->update() reads $format by position, so dropping a column without its format
-     * would shift every placeholder after it.
-     *
-     * @return array{data: array<string, mixed>, format: string[]}
-     */
-    public function to_update_row(): array {
-        $row    = $this->to_row();
-        $format = $this->get_format();
-        $keys   = array_keys( $row );
-
-        $immutable = [ 'slug', 'trigger_type', 'created_at', 'created_by', 'is_builtin' ];
-
-        $data        = [];
-        $data_format = [];
-
-        foreach ( $keys as $index => $key ) {
-            if ( in_array( $key, $immutable, true ) ) {
-                continue;
-            }
-
-            $data[ $key ]  = $row[ $key ];
-            $data_format[] = $format[ $index ];
-        }
-
-        return [
-            'data'   => $data,
-            'format' => $data_format,
-        ];
+    /** Columns no update may change. */
+    protected static function immutable_columns(): array {
+        return [ 'slug', 'trigger_type', 'created_at', 'created_by', 'is_builtin' ];
     }
 
     public function to_array(): array {
@@ -219,7 +192,7 @@ class Campaign extends AbstractModel {
     /**
      * Per-trigger config schema, key => spec: what `config` may hold and what config_is_valid() checks.
      * It covers Lite triggers only. Pro triggers add theirs through config_whitelist().
-     * Spec types: bool, string, enum [values], int [min], number [min, exclusive_min], int_list.
+     * Spec types: bool, string, enum [values], int [min], number [min, exclusive_min], int_list, limit (null = no limit).
      * Pro keys of Lite triggers are listed on purpose: a downgraded site keeps its stored values,
      * so an upgrade restores the campaign intact.
      *
@@ -259,14 +232,8 @@ class Campaign extends AbstractModel {
                 'exclude_coupon_orders' => [ 'type' => 'bool' ],
                 'excluded_product_ids'  => [ 'type' => 'int_list' ],
                 'excluded_category_ids' => [ 'type' => 'int_list' ],
-                'max_points_per_order'  => [
-                    'type' => 'int',
-                    'min'  => 0,
-                ],
-                'daily_cap'             => [
-                    'type' => 'int',
-                    'min'  => 0,
-                ],
+                'max_points_per_order'  => [ 'type' => 'limit' ],
+                'daily_cap'             => [ 'type' => 'limit' ],
             ],
             CampaignTrigger::SIGNUP   => [
                 'points' => [
@@ -281,10 +248,7 @@ class Campaign extends AbstractModel {
                 ],
                 'require_verified'   => [ 'type' => 'bool' ],
                 'one_per_product'    => [ 'type' => 'bool' ],
-                'daily_cap'          => [
-                    'type' => 'int',
-                    'min'  => 0,
-                ],
+                'daily_cap'          => [ 'type' => 'limit' ],
                 'media_bonus_points' => [
                     'type' => 'int',
                     'min'  => 0,
@@ -380,6 +344,16 @@ class Campaign extends AbstractModel {
 
                 return ! isset( $spec['min'] ) || (float) $value >= (float) $spec['min'];
 
+            // null is no limit; a set limit is a whole number from 1, since a cap of 0 would block everything.
+            case 'limit':
+                return null === $value || self::value_matches_spec(
+                    $value,
+                    [
+                        'type' => 'int',
+                        'min'  => 1,
+                    ]
+                );
+
             case 'int_list':
                 if ( ! is_array( $value ) ) {
                     return false;
@@ -448,7 +422,7 @@ class Campaign extends AbstractModel {
                     'points'           => 50,
                     'require_verified' => true,
                     'one_per_product'  => true,
-                    'daily_cap'        => 0,
+                    'daily_cap'        => null,
                 ];
 
             default:

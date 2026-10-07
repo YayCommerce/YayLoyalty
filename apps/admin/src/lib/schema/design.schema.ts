@@ -2,16 +2,12 @@ import { z } from 'zod';
 
 /**
  * Mirrors DesignSchema, the source of truth.
- * The launcher and tier badge icon lists are separate on purpose and may diverge.
  */
 
 export const designLauncherIconSchema = z.enum(['default', 'circle', 'diamond', 'bar', 'ring', 'line', 'custom']);
 export type DesignLauncherIcon = z.infer<typeof designLauncherIconSchema>;
 
-export const designBadgeIconSchema = z.enum(['ring', 'diamond', 'square']);
-export type DesignBadgeIcon = z.infer<typeof designBadgeIconSchema>;
-
-export const designLauncherPositionSchema = z.enum(['bottom_right', 'bottom_left', 'top_right', 'top_left']);
+export const designLauncherPositionSchema = z.enum(['bottom_right', 'bottom_left']);
 export type DesignLauncherPosition = z.infer<typeof designLauncherPositionSchema>;
 
 export const designLauncherButtonStyleSchema = z.enum(['icon', 'label', 'both']);
@@ -22,17 +18,6 @@ export type DesignVisibilityScope = z.infer<typeof designVisibilityScopeSchema>;
 
 export const designPanelLayoutSchema = z.enum(['compact', 'full']);
 export type DesignPanelLayout = z.infer<typeof designPanelLayoutSchema>;
-
-export const designTypographyModeSchema = z.enum(['inherit', 'custom']);
-export type DesignTypographyMode = z.infer<typeof designTypographyModeSchema>;
-
-export const designBadgeSchema = z.object({
-  tier_id: z.string(),
-  color: z.string(),
-  icon: designBadgeIconSchema,
-  label: z.string(),
-});
-export type DesignBadge = z.infer<typeof designBadgeSchema>;
 
 export const designSchema = z.object({
   launcher: z.object({
@@ -52,10 +37,6 @@ export const designSchema = z.object({
     earn_rate_line: z.string(),
     redeem_button: z.string().min(1),
     signed_out_prompt: z.string(),
-    /** Pro. */
-    referral_card_heading: z.string(),
-    /** Pro. */
-    tier_progress_line: z.string(),
   }),
   visibility: z.object({
     scope: designVisibilityScopeSchema,
@@ -65,20 +46,12 @@ export const designSchema = z.object({
     hide_for_roles: z.array(z.string()),
   }),
   /** Pro. */
-  tier: z.object({
-    badges: z.array(designBadgeSchema),
-  }),
-  /** Pro. */
   panel: z.object({
     layout: designPanelLayoutSchema,
-    show_referral_card: z.boolean(),
-    show_progress_to_next_tier: z.boolean(),
     show_reward_catalog: z.boolean(),
   }),
   /** Pro. */
   typography: z.object({
-    mode: designTypographyModeSchema,
-    font: z.string(),
     custom_css: z.string(),
   }),
   /** Stamped by DesignHelper on save; a design never saved reports the current version. */

@@ -17,7 +17,6 @@ const CAPS = new Set<string>(boot.capabilities ?? []);
 export const CAP = {
   VIEW: 'yayloyalty_view',
   MANAGE_POINTS: 'yayloyalty_manage_points',
-  MANAGE_TIERS: 'yayloyalty_manage_tiers',
   MANAGE_CAMPAIGNS: 'yayloyalty_manage_campaigns',
   MANAGE_REWARDS: 'yayloyalty_manage_rewards',
   MANAGE_SETTINGS: 'yayloyalty_manage_settings',
@@ -28,8 +27,8 @@ export type Capability = (typeof CAP)[keyof typeof CAP];
 
 export const can = (cap: Capability): boolean => CAPS.has(cap);
 
-/** Per-adjustment limit for non-administrators; 0 = unlimited. Server decides. */
-export const ceiling = (): number => boot.ceiling ?? 0;
+/** Per-adjustment limit for non-administrators; null = unlimited. Server decides. */
+export const ceiling = (): number | null => boot.ceiling ?? null;
 
 export const isAdministrator = (): boolean => !!boot.isAdministrator;
 

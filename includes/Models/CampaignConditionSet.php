@@ -253,7 +253,7 @@ final class CampaignConditionSet {
                 if ( isset( $spec['max'] ) && count( $value ) > (int) $spec['max'] ) {
                     throw new \InvalidArgumentException(
                         sprintf(
-                            'YayLoyalty: "%s" accepts at most %d ids. For a larger segment, use a user_role or tier condition instead.',
+                            'YayLoyalty: "%s" accepts at most %d ids. For a larger segment, use a user_role condition instead.',
                             $type,
                             (int) $spec['max']
                         )
@@ -310,10 +310,6 @@ final class CampaignConditionSet {
                 } elseif ( is_bool( $amount ) || ! is_numeric( $amount ) ) {
                     throw self::bad( $type, 'expects a numeric "amount"' );
                 }
-                break;
-
-            case 'tier':
-                // Unreachable until tiers enter CampaignConditionType::all().
                 break;
         }
     }

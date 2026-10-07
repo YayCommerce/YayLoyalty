@@ -3,6 +3,7 @@ namespace YayLoyalty\Controllers;
 
 use YayLoyalty\Access\Capabilities;
 use YayLoyalty\Repositories\CustomerRepository;
+use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -257,7 +258,7 @@ abstract class AbstractRestController extends BaseRestController {
     }
 
     /**
-     * Ceiling guard for manual adjustments. Administrators bypass it, and 0 means unlimited.
+     * Ceiling guard for manual adjustments. Administrators bypass it, and null means unlimited.
      *
      * @param int|float|string $amount
      * @return true|\WP_Error
@@ -265,7 +266,7 @@ abstract class AbstractRestController extends BaseRestController {
     protected function assert_ceiling( $amount ) {
         $ceiling = Capabilities::ceiling();
 
-        if ( $ceiling > 0 && abs( (int) $amount ) > $ceiling && ! Capabilities::is_administrator() ) {
+        if ( null !== $ceiling && abs( (int) $amount ) > $ceiling && ! Capabilities::is_administrator() ) {
             return new \WP_Error(
                 'yayloyalty_adjustment_ceiling',
                 sprintf(
@@ -281,5 +282,82 @@ abstract class AbstractRestController extends BaseRestController {
         }
 
         return true;
+    }
+
+    /**
+     * Route-arg check for a nullable date: empty clears it, anything else must
+     * be a full UTC `Y-m-d H:i:s`, the shape the column stores and the SPA
+     * sends. Without it a string strtotime() cannot read passes
+     * dates_in_order() (it reads as 0) and lands in the DATETIME column as garbage.
+     *
+     * @param mixed $value
+     */
+    public static function validate_nullable_date( $value ): bool {
+        if ( null === $value || '' === $value ) {
+            return true;
+        }
+
+        $date = is_string( $value ) ? \DateTimeImmutable::createFromFormat( Dates::MYSQL_FORMAT, $value, new \DateTimeZone( 'UTC' ) ) : false;
+
+        return false !== $date && $date->format( Dates::MYSQL_FORMAT ) === $value;
+    }
+
+    /** Whether the dates are in order: an unset side passes, and two set dates must run forward. ends_at is exclusive, so equal dates are empty. */
+    protected static function dates_in_order( ?string $starts_at, ?string $ends_at ): bool {
+        return null === $starts_at || null === $ends_at || Dates::to_timestamp( $starts_at ) < Dates::to_timestamp( $ends_at );
+    }
+
+    /**
+     * The window an update leaves: each date the request sends, else the stored one. Null when
+     * a moved date leaves it out of order. A body that touches neither date (pause, archive,
+     * rename) passes as stored, or a row whose dates were never in order could never be
+     * repaired or retired.
+     *
+     * @return array{0: ?string, 1: ?string}|null
+     */
+    protected static function requested_window( \WP_REST_Request $request, ?string $stored_start, ?string $stored_end ): ?array {
+        $starts_at = $request->has_param( 'starts_at' ) ? self::nullable_date( $request['starts_at'] ) : $stored_start;
+        $ends_at   = $request->has_param( 'ends_at' ) ? self::nullable_date( $request['ends_at'] ) : $stored_end;
+        $moves     = $request->has_param( 'starts_at' ) || $request->has_param( 'ends_at' );
+
+        return $moves && ! self::dates_in_order( $starts_at, $ends_at ) ? null : [ $starts_at, $ends_at ];
+    }
+
+    /**
+     * A request's date param as stored: empty means no bound.
+     *
+     * @param mixed $value
+     */
+    protected static function nullable_date( $value ): ?string {
+        if ( null === $value || '' === $value ) {
+            return null;
+        }
+
+        return (string) $value;
+    }
+
+    /**
+     * A slug derived from $source that $is_taken rejects for no row, numbered
+     * on collision and capped to fit VARCHAR(64) with its suffix.
+     *
+     * @param callable(string): bool $is_taken
+     */
+    protected static function unique_slug( string $source, string $fallback, callable $is_taken ): string {
+        $base = sanitize_title( $source );
+
+        if ( '' === $base ) {
+            $base = $fallback;
+        }
+
+        $base = substr( $base, 0, 60 );
+        $slug = $base;
+        $n    = 2;
+
+        while ( $is_taken( $slug ) ) {
+            $slug = substr( $base, 0, 60 - strlen( (string) $n ) - 1 ) . '-' . $n;
+            ++$n;
+        }
+
+        return $slug;
     }
 }

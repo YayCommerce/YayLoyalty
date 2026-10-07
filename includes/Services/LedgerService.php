@@ -17,12 +17,11 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * The only writer of the ledger and the customer aggregates, EarningService's award included.
- * Enforced by convention: it is constructed in exactly five places, Engine\RestAPI::controllers(),
- * Database\InitYayLoyaltyCustomer::maybe_create(), Engine\Earning\EarningService::build(),
- * Engine\Earning\Reversal::build() and (once its body lands) Engine\Redemption\RedemptionService::build().
- * Name a sixth here before adding it. Manual rows enter through adjust() and record(). System rows
- * enter through earn(), refund_earn(), restore_refund() and redeem(), which add the idempotency-key
- * duplicate branch.
+ * Enforced by convention: it is constructed in exactly four places, Engine\RestAPI::controllers(),
+ * Engine\Earning\EarningService::build(), Engine\Earning\Reversal::build() and (once its body
+ * lands) Engine\Redemption\RedemptionService::build(). Name a fifth here before adding it.
+ * Manual rows enter through adjust() and record(). System rows enter through earn(),
+ * refund_earn(), restore_refund() and redeem(), which add the idempotency-key duplicate branch.
  */
 final class LedgerService {
 
@@ -96,10 +95,13 @@ final class LedgerService {
      * rethrows after Transaction::run() rolls back. The recorded event fires
      * after the outermost commit (announce()).
      *
+     * @param callable|null $points_under_lock Runs under the lock, after the duplicate check; its answer
+     *                                         replaces the draft's points, and 0 skips. EarningService
+     *                                         passes the award filter here.
      * @throws \InvalidArgumentException When the draft is not an earn row or lacks a key.
      * @throws \YayLoyalty\Database\QueryException When a write other than a duplicate fails.
      */
-    public function earn( LedgerEntry $draft ): Outcome {
+    public function earn( LedgerEntry $draft, ?callable $points_under_lock = null, string $skip_reason = '' ): Outcome {
         $key = $draft->get_idempotency_key();
 
         if ( LedgerType::EARN !== $draft->get_type() ) {
@@ -117,7 +119,7 @@ final class LedgerService {
         LedgerSource::assert( $draft->get_source() );
         ReferenceType::assert( $draft->get_reference_type() );
 
-        return $this->write_keyed( $draft );
+        return $this->write_keyed( $draft, $points_under_lock, $skip_reason );
     }
 
     /**

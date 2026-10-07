@@ -5,9 +5,9 @@ import { toDrawerSearchParams, type DrawerPageParams } from '@/lib/api/customer-
 import { paginatedSchema } from '@/lib/api/paginated';
 import {
   AdjustPointsInput,
-  adjustPointsPreviewSchema,
   AdjustPointsPreview,
   AdjustPointsPreviewInput,
+  adjustPointsPreviewSchema,
   Customer,
   CustomerBalanceRange,
   CustomerExpiringSoon,
@@ -15,7 +15,6 @@ import {
   customerSchema,
   CustomerSortDirection,
   CustomerSortKey,
-  CustomerTier,
   noMatchSuggestionSchema,
 } from '@/lib/schema/customer.schema';
 import { LedgerEntry, ledgerEntrySchema, ledgerEnvelopeSchema, LedgerFilterType } from '@/lib/schema/ledger.schema';
@@ -48,8 +47,7 @@ export async function adjustCustomerPoints(userId: number, input: AdjustPointsIn
 
 /**
  * `POST /customers/adjust/preview`: the bulk adjust dialog's count, liability and rate.
- * This only respells camelCase as snake_case. The tier-to-balance-bucket substitution
- * (`toServerFilters`) must happen before `input` reaches here.
+ * This only respells camelCase as snake_case.
  */
 export async function previewAdjustPoints(
   input: AdjustPointsPreviewInput,
@@ -77,7 +75,6 @@ export type CustomerListParams = {
   search?: string;
   balanceRange?: CustomerBalanceRange;
   expiringSoon?: CustomerExpiringSoon;
-  tier?: CustomerTier;
 };
 
 const customerListEnvelopeSchema = paginatedSchema(customerListRowSchema).extend({
@@ -96,7 +93,6 @@ export async function getCustomers(params: CustomerListParams = {}, signal?: Abo
   if (params.search?.trim()) searchParams.search = params.search.trim();
   if (params.balanceRange && params.balanceRange !== 'any') searchParams.balance_range = params.balanceRange;
   if (params.expiringSoon && params.expiringSoon !== 'off') searchParams.expiring_soon = params.expiringSoon;
-  if (params.tier && params.tier !== 'all') searchParams.tier = params.tier;
 
   const payload = await api.get('customers', { searchParams, signal }).json();
 

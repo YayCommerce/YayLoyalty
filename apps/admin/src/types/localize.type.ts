@@ -1,4 +1,4 @@
-import type { CustomerBalanceRange, CustomerExpiringSoon, CustomerTier } from '@/lib/schema/customer.schema';
+import type { CustomerBalanceRange, CustomerExpiringSoon } from '@/lib/schema/customer.schema';
 import { Design } from '@/lib/schema/design.schema';
 import { Settings } from '@/lib/schema/settings.schema';
 
@@ -49,12 +49,12 @@ export type AdminData = {
   design: Design;
   /** From Capabilities::payload(). Cosmetic only; every route re-checks server-side. */
   capabilities: string[];
-  /** Per-adjustment limit for non-administrators; 0 = unlimited. */
-  ceiling: number;
+  /** Per-adjustment limit for non-administrators; null = unlimited. */
+  ceiling: number | null;
   isAdministrator: boolean;
   /** Saved segments, Pro-only hence optional. Read via readSegmentsFromLocalize(), never directly. */
   segments?: {
     name: string;
-    filters: { balance_range: CustomerBalanceRange; expiring_soon: CustomerExpiringSoon; tier: CustomerTier };
+    filters: { balance_range: CustomerBalanceRange; expiring_soon: CustomerExpiringSoon };
   }[];
 };

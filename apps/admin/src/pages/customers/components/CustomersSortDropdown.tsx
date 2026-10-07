@@ -13,7 +13,7 @@ import type { SortDirection, SortKey } from '../customers-page.sort-rows';
 
 /**
  * The mobile stand-in for the desktop table's sortable headers. It calls the same `sort.onChange(key)`,
- * so picking the active key flips the direction there too. Only the keys the server sorts by are offered.
+ * so picking the active key flips the direction there too.
  */
 const SORT_LABELS: Record<SortKey, string> = {
   name: __('Customer', 'yayloyalty'),
@@ -22,11 +22,9 @@ const SORT_LABELS: Record<SortKey, string> = {
   lifetime: __('Lifetime earned', 'yayloyalty'),
   last_activity: __('Last activity', 'yayloyalty'),
   expires: __('Expires', 'yayloyalty'),
-  tier: __('Tier', 'yayloyalty'),
-  referrals: __('Referrals', 'yayloyalty'),
 };
 
-const SORTABLE_KEYS: SortKey[] = ['name', 'balance', 'pending', 'lifetime', 'last_activity', 'expires'];
+const SORTABLE_KEYS = Object.keys(SORT_LABELS) as SortKey[];
 
 export function CustomersSortDropdown({
   by,

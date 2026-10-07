@@ -5,7 +5,6 @@ import { bulkTooLargeSelection } from './components/customers-adjust-points.bulk
 import type { RowFilters } from './customers-page.filter-rows';
 import { isRowSelected, type SelectionState } from './customers-page.selection';
 import type { SortDirection, SortKey } from './customers-page.sort-rows';
-import { toServerFilters } from './customers-page.tier-sample-data';
 
 /** The most rows one bulk action can touch (50,000) — the adjust dialog blocks a larger selection up front. */
 export const MAX_MATCHING_ROWS = MAX_PAGES * MAX_PER_PAGE;
@@ -16,7 +15,12 @@ export async function fetchAllMatchingCustomers(
   sort: { by: SortKey; dir: SortDirection },
   signal?: AbortSignal,
 ): Promise<CustomerListRow[]> {
-  const params = { ...toServerFilters(filters), orderBy: sort.by, order: sort.dir };
+  const params = {
+    ...filters,
+    orderBy: sort.by,
+    order: sort.dir,
+    perPage: MAX_PER_PAGE,
+  };
 
   return fetchAllPages((page, perPage) => getCustomers({ ...params, page, perPage }, signal), bulkTooLargeSelection);
 }

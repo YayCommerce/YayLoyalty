@@ -1,5 +1,5 @@
 import { api } from '@/lib/api/api';
-import { LookupEntity, lookupResponseSchema } from '@/lib/schema/lookup.schema';
+import { LookupEntity, lookupResponseSchema, ProductSummary, productSummarySchema } from '@/lib/schema/lookup.schema';
 
 /** App-side params for getLookup(); `ids` wins over `search` server-side. */
 export type LookupParams = {
@@ -17,4 +17,9 @@ export async function getLookup(entity: LookupEntity, params: LookupParams = {},
   const payload = await api.get(`lookups/${entity}`, { searchParams, signal }).json();
 
   return lookupResponseSchema.parse(payload).items;
+}
+
+/** GET /lookups/products/{id}: name, thumbnail and live stock for one product; 404 once it is deleted. */
+export async function getProductSummary(id: number): Promise<ProductSummary> {
+  return productSummarySchema.parse(await api.get(`lookups/products/${id}`).json());
 }

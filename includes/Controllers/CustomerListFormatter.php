@@ -78,13 +78,6 @@ final class CustomerListFormatter {
                 'default'           => CustomerFilters::EXPIRY_RANGES[0],
                 'sanitize_callback' => 'sanitize_text_field',
             ],
-            'tier'          => [
-                'description'       => __( 'Loyalty tier to filter by (no tiers exist yet — always matches zero rows).', 'yayloyalty' ),
-                'type'              => 'string',
-                'enum'              => CustomerFilters::TIER_RANGES,
-                'default'           => CustomerFilters::TIER_RANGES[0],
-                'sanitize_callback' => 'sanitize_text_field',
-            ],
         ];
     }
 

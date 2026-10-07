@@ -12,8 +12,8 @@ export const ALL_SEGMENTS_VALUE = 'all';
 
 type SaveableFilters = SavedSegment['filters'];
 
-function saveableFiltersOf({ balanceRange, expiringSoon, tier }: RowFilters): SaveableFilters {
-  return { balanceRange, expiringSoon, tier };
+function saveableFiltersOf({ balanceRange, expiringSoon }: RowFilters): SaveableFilters {
+  return { balanceRange, expiringSoon };
 }
 
 /**
@@ -43,12 +43,9 @@ export function useSavedSegmentPicker({
       : (selectedSegment?.filters ?? saveableFiltersOf(DEFAULT_ROW_FILTERS));
   const hasSaveableFilters =
     current.balanceRange !== DEFAULT_ROW_FILTERS.balanceRange ||
-    current.expiringSoon !== DEFAULT_ROW_FILTERS.expiringSoon ||
-    current.tier !== DEFAULT_ROW_FILTERS.tier;
+    current.expiringSoon !== DEFAULT_ROW_FILTERS.expiringSoon;
   const differsFromApplied =
-    current.balanceRange !== appliedFilters.balanceRange ||
-    current.expiringSoon !== appliedFilters.expiringSoon ||
-    current.tier !== appliedFilters.tier;
+    current.balanceRange !== appliedFilters.balanceRange || current.expiringSoon !== appliedFilters.expiringSoon;
   const showSaveButton = hasSaveableFilters && differsFromApplied;
   const showRemoveButton = selected !== ALL_SEGMENTS_VALUE && !showSaveButton;
 

@@ -9,10 +9,6 @@ import {
   PANEL_LAYOUT_LABEL,
   PANEL_SECTION_DESCRIPTION,
   PANEL_SECTION_TITLE,
-  PANEL_SHOW_PROGRESS_TO_NEXT_TIER_DESCRIPTION,
-  PANEL_SHOW_PROGRESS_TO_NEXT_TIER_LABEL,
-  PANEL_SHOW_REFERRAL_CARD_DESCRIPTION,
-  PANEL_SHOW_REFERRAL_CARD_LABEL,
   PANEL_SHOW_REWARD_CATALOG_DESCRIPTION,
   PANEL_SHOW_REWARD_CATALOG_LABEL,
 } from '@/pages/settings/design-settings.copy';
@@ -41,7 +37,7 @@ function PanelToggleRow({
   description,
 }: {
   control: Control<Design>;
-  name: 'panel.show_referral_card' | 'panel.show_progress_to_next_tier' | 'panel.show_reward_catalog';
+  name: 'panel.show_reward_catalog';
   id: string;
   label: string;
   description: string;
@@ -107,20 +103,6 @@ export function DesignPanelSection() {
           </Field>
 
           <div className="flex flex-col gap-4">
-            <PanelToggleRow
-              control={control}
-              name="panel.show_referral_card"
-              id="design-panel-show-referral-card"
-              label={PANEL_SHOW_REFERRAL_CARD_LABEL()}
-              description={PANEL_SHOW_REFERRAL_CARD_DESCRIPTION()}
-            />
-            <PanelToggleRow
-              control={control}
-              name="panel.show_progress_to_next_tier"
-              id="design-panel-show-progress-to-next-tier"
-              label={PANEL_SHOW_PROGRESS_TO_NEXT_TIER_LABEL()}
-              description={PANEL_SHOW_PROGRESS_TO_NEXT_TIER_DESCRIPTION()}
-            />
             <PanelToggleRow
               control={control}
               name="panel.show_reward_catalog"

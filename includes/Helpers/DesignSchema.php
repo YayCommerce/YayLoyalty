@@ -5,12 +5,11 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Design field declaration: defaults and the group/field/rule whitelist DesignHelper::apply_schema() coerces
- * against. The launcher and tier badge icons are separate vocabularies: different UI elements, free to diverge.
+ * against.
  */
 class DesignSchema {
 
     public const LAUNCHER_ICONS = [ 'default', 'circle', 'diamond', 'bar', 'ring', 'line', 'custom' ];
-    public const BADGE_ICONS    = [ 'ring', 'diamond', 'square' ];
 
     public const SCOPE_ALL_PAGES        = 'all_pages';
     public const SCOPE_SHOP_AND_PRODUCT = 'shop_and_product';
@@ -28,15 +27,17 @@ class DesignSchema {
                 'icon_upload_id' => 0,
             ],
             // Real, editable defaults. An empty save is literal, never "use the default".
+            // {points_label} becomes the merchant's points label (LauncherCopy::storefront_text()), so no default names "points".
             'storefront_text' => [
-                'launcher_label'        => __( 'Rewards', 'yayloyalty' ),
-                'balance_heading'       => __( 'Your points', 'yayloyalty' ),
+                'launcher_label'    => __( 'Rewards', 'yayloyalty' ),
+                /* translators: keep {points_label} as it is; it becomes the store's points label, as "Points". */
+                'balance_heading'   => __( 'Your {points_label}', 'yayloyalty' ),
                 /* translators: keep every {…} placeholder as it is; each is filled in when the line is shown. */
-                'earn_rate_line'        => __( 'Earn {points} {points_label} per {amount} spent', 'yayloyalty' ),
-                'redeem_button'         => __( 'Apply points', 'yayloyalty' ),
-                'signed_out_prompt'     => __( 'Sign in to earn points on this order', 'yayloyalty' ),
-                'referral_card_heading' => __( 'Invite a friend, get {amount} points', 'yayloyalty' ), // Pro
-                'tier_progress_line'    => __( '{points} points to {tier}', 'yayloyalty' ), // Pro
+                'earn_rate_line'    => __( 'Earn {points} {points_label} per {amount} spent', 'yayloyalty' ),
+                /* translators: keep {points_label} as it is; it becomes the store's points label, as "Points". */
+                'redeem_button'     => __( 'Apply {points_label}', 'yayloyalty' ),
+                /* translators: keep {points_label} as it is; it becomes the store's points label, as "Points". */
+                'signed_out_prompt' => __( 'Sign in to earn {points_label} on this order', 'yayloyalty' ),
             ],
             'visibility'      => [
                 'scope'            => self::SCOPE_ALL_PAGES,
@@ -44,37 +45,11 @@ class DesignSchema {
                 'hide_on_mobile'   => false,
                 'hide_for_roles'   => [ 'administrator', 'shop_manager' ],
             ],
-            'tier'            => [ // Pro
-                'badges' => [
-                    [
-                        'tier_id' => 'explorer',
-                        'color'   => '#c8c8c8',
-                        'icon'    => 'ring',
-                        'label'   => __( 'Explorer', 'yayloyalty' ),
-                    ],
-                    [
-                        'tier_id' => 'summit',
-                        'color'   => '#8a8a8a',
-                        'icon'    => 'diamond',
-                        'label'   => __( 'Summit', 'yayloyalty' ),
-                    ],
-                    [
-                        'tier_id' => 'alpine',
-                        'color'   => '#2a2a2a',
-                        'icon'    => 'square',
-                        'label'   => __( 'Alpine', 'yayloyalty' ),
-                    ],
-                ],
-            ],
             'panel'           => [ // Pro
-                'layout'                     => 'compact',
-                'show_referral_card'         => true,
-                'show_progress_to_next_tier' => true,
-                'show_reward_catalog'        => false,
+                'layout'              => 'compact',
+                'show_reward_catalog' => false,
             ],
             'typography'      => [ // Pro
-                'mode'       => 'inherit',
-                'font'       => '',
                 // Stored and sanitised, but rendered nowhere yet.
                 // TODO(custom-css): close the CSS exfiltration risk before the storefront renders this field.
                 'custom_css' => '',
@@ -94,7 +69,7 @@ class DesignSchema {
             'launcher'        => [
                 'position'       => [
                     'type'    => 'choice',
-                    'options' => [ 'bottom_right', 'bottom_left', 'top_right', 'top_left' ],
+                    'options' => [ 'bottom_right', 'bottom_left' ],
                 ],
                 'button_style'   => [
                     'type'    => 'choice',
@@ -113,22 +88,20 @@ class DesignSchema {
                 'icon_upload_id' => [ 'type' => 'attachment_id' ],
             ],
             'storefront_text' => [
-                'launcher_label'        => [
+                'launcher_label'    => [
                     'type'     => 'text',
                     'required' => true,
                 ],
-                'balance_heading'       => [
+                'balance_heading'   => [
                     'type'     => 'text',
                     'required' => true,
                 ],
-                'earn_rate_line'        => [ 'type' => 'text' ],
-                'redeem_button'         => [
+                'earn_rate_line'    => [ 'type' => 'text' ],
+                'redeem_button'     => [
                     'type'     => 'text',
                     'required' => true,
                 ],
-                'signed_out_prompt'     => [ 'type' => 'text' ],
-                'referral_card_heading' => [ 'type' => 'text' ], // Pro
-                'tier_progress_line'    => [ 'type' => 'text' ], // Pro
+                'signed_out_prompt' => [ 'type' => 'text' ],
             ],
             'visibility'      => [
                 'scope'            => [
@@ -140,25 +113,14 @@ class DesignSchema {
                 'hide_on_mobile'   => [ 'type' => 'bool' ],
                 'hide_for_roles'   => [ 'type' => 'slug_list' ],
             ],
-            'tier'            => [ 'badges' => [ 'type' => 'badge_list' ] ], // Pro
             'panel'           => [ // Pro
-                'layout'                     => [
+                'layout'              => [
                     'type'    => 'choice',
                     'options' => [ 'compact', 'full' ],
                 ],
-                'show_referral_card'         => [ 'type' => 'bool' ],
-                'show_progress_to_next_tier' => [ 'type' => 'bool' ],
-                'show_reward_catalog'        => [ 'type' => 'bool' ],
+                'show_reward_catalog' => [ 'type' => 'bool' ],
             ],
             'typography'      => [ // Pro
-                'mode'       => [
-                    'type'    => 'choice',
-                    'options' => [ 'inherit', 'custom' ],
-                ],
-                'font'       => [
-                    'type' => 'text',
-                    'max'  => 120,
-                ],
                 'custom_css' => [ 'type' => 'textarea' ],
             ],
         ];

@@ -17,6 +17,7 @@ final class ActivityEvent {
     public const REWARD_REDEEMED          = 'reward_redeemed';
     public const BALANCE_EMAIL_SENT       = 'balance_email_sent';
     public const EXPIRING_SOON_EMAIL_SENT = 'expiring_soon_email_sent';
+    public const EARNING_LIMITED          = 'earning_limited';
     public const ACCOUNT_DELETED          = 'account_deleted';
 
     /**
@@ -32,6 +33,7 @@ final class ActivityEvent {
         self::REWARD_REDEEMED,
         self::BALANCE_EMAIL_SENT,
         self::EXPIRING_SOON_EMAIL_SENT,
+        self::EARNING_LIMITED,
         self::ACCOUNT_DELETED,
     ];
 }

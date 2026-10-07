@@ -13,14 +13,15 @@ import CampaignsPage from './pages/campaigns/CampaignsPage';
 import CustomersPage from './pages/customers/CustomersPage';
 import CustomerDrawer from './pages/customers/drawer/CustomerDrawer';
 import DashboardPage from './pages/dashboard/DashboardPage';
-import ReferralPage from './pages/referral/ReferralPage';
+import RewardAddPage from './pages/rewards/RewardAddPage';
+import RewardCreatePage from './pages/rewards/RewardCreatePage';
+import RewardEditorPage from './pages/rewards/RewardEditorPage';
 import RewardsPage from './pages/rewards/RewardsPage';
 import AdvancedSettingsPage from './pages/settings/AdvancedSettingsPage';
 import DesignSettingsPage from './pages/settings/DesignSettingsPage';
 import EmailsSettingsPage from './pages/settings/EmailsSettingsPage';
 import GeneralSettingsPage from './pages/settings/GeneralSettingsPage';
 import SettingsLayout from './pages/settings/SettingsLayout';
-import VipTiersPage from './pages/vip-tiers/VipTiersPage';
 
 /**
  * A route the user cannot reach 404s inside the SPA rather than rendering an
@@ -80,12 +81,16 @@ export function getManagerRouter() {
           element: guarded(CAP.MANAGE_REWARDS, <RewardsPage />),
         },
         {
-          path: 'referral',
-          element: guarded(CAP.MANAGE_CAMPAIGNS, <ReferralPage />),
+          path: 'rewards/new',
+          element: guarded(CAP.MANAGE_REWARDS, <RewardAddPage />),
         },
         {
-          path: 'vip-tiers',
-          element: guarded(CAP.MANAGE_TIERS, <VipTiersPage />),
+          path: 'rewards/new/:type',
+          element: guarded(CAP.MANAGE_REWARDS, <RewardCreatePage />),
+        },
+        {
+          path: 'rewards/:id/edit',
+          element: guarded(CAP.MANAGE_REWARDS, <RewardEditorPage />),
         },
         {
           path: 'settings',

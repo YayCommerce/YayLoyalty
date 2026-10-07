@@ -43,7 +43,7 @@ export const LAUNCHER_ICON_UPLOAD_DESCRIPTION = () => __('Used only while Icon a
 export const STOREFRONT_SECTION_TITLE = () => __('Storefront text', 'yayloyalty');
 export const STOREFRONT_SECTION_DESCRIPTION = () =>
   __(
-    'The wording shown on your storefront panel. The launcher label, balance heading and redeem button can’t be empty; clearing any other field stores it empty. Use Reset to defaults to bring back the original wording.',
+    'The wording shown on your storefront panel. Write {points_label} where your points label should appear; the earn rate line also takes {points} and {amount}. The launcher label, balance heading and redeem button can’t be empty; clearing any other field stores it empty. Use Reset to defaults to bring back the original wording.',
     'yayloyalty',
   );
 export const STOREFRONT_LAUNCHER_LABEL_LABEL = () => __('Launcher label', 'yayloyalty');
@@ -51,8 +51,6 @@ export const STOREFRONT_BALANCE_HEADING_LABEL = () => __('Balance heading', 'yay
 export const STOREFRONT_EARN_RATE_LINE_LABEL = () => __('Earn rate line', 'yayloyalty');
 export const STOREFRONT_REDEEM_BUTTON_LABEL = () => __('Redeem button', 'yayloyalty');
 export const STOREFRONT_SIGNED_OUT_PROMPT_LABEL = () => __('Signed-out prompt', 'yayloyalty');
-export const STOREFRONT_REFERRAL_CARD_HEADING_LABEL = () => __('Referral card heading', 'yayloyalty');
-export const STOREFRONT_TIER_PROGRESS_LINE_LABEL = () => __('Tier progress line', 'yayloyalty');
 
 /** Storefront-text-only reset, in the section header. Wording distinct from the whole-tab reset above. */
 export const STOREFRONT_RESET_BUTTON_LABEL = () => __('Reset to defaults', 'yayloyalty');
@@ -93,42 +91,16 @@ export const VISIBILITY_HIDE_FOR_ROLES_DESCRIPTION = () =>
 export const PANEL_SECTION_TITLE = () => __('Panel', 'yayloyalty');
 export const PANEL_SECTION_DESCRIPTION = () => __('Layout and the panel’s optional blocks.', 'yayloyalty');
 export const PANEL_LAYOUT_LABEL = () => __('Layout', 'yayloyalty');
-export const PANEL_SHOW_REFERRAL_CARD_LABEL = () => __('Show referral card', 'yayloyalty');
-export const PANEL_SHOW_REFERRAL_CARD_DESCRIPTION = () =>
-  __('Adds the customer’s referral link and completed count.', 'yayloyalty');
-export const PANEL_SHOW_PROGRESS_TO_NEXT_TIER_LABEL = () => __('Show progress to next tier', 'yayloyalty');
-export const PANEL_SHOW_PROGRESS_TO_NEXT_TIER_DESCRIPTION = () =>
-  __('Shows how many points a customer needs for the next tier.', 'yayloyalty');
 export const PANEL_SHOW_REWARD_CATALOG_LABEL = () => __('Show reward catalog', 'yayloyalty');
 export const PANEL_SHOW_REWARD_CATALOG_DESCRIPTION = () =>
   __('Lists redeemable rewards inside the panel.', 'yayloyalty');
 
-// Typography section (Pro)
+// Custom CSS section (Pro)
 
-export const TYPOGRAPHY_SECTION_TITLE = () => __('Typography', 'yayloyalty');
-export const TYPOGRAPHY_SECTION_DESCRIPTION = () => __('The font and CSS applied to the rewards panel.', 'yayloyalty');
-export const TYPOGRAPHY_MODE_LABEL = () => __('Mode', 'yayloyalty');
-export const TYPOGRAPHY_FONT_LABEL = () => __('Font', 'yayloyalty');
+export const TYPOGRAPHY_SECTION_TITLE = () => __('Custom CSS', 'yayloyalty');
+export const TYPOGRAPHY_SECTION_DESCRIPTION = () => __('CSS applied to the rewards launcher.', 'yayloyalty');
 export const TYPOGRAPHY_CUSTOM_CSS_LABEL = () => __('Custom CSS', 'yayloyalty');
 export const TYPOGRAPHY_CUSTOM_CSS_DESCRIPTION = () => __('Saved, not yet applied to the storefront.', 'yayloyalty');
-
-// Tier badges section (Pro)
-
-export const TIER_SECTION_TITLE = () => __('Tier badges', 'yayloyalty');
-export const TIER_SECTION_DESCRIPTION = () => __('Shown next to a customer’s tier on the storefront.', 'yayloyalty');
-export const TIER_EMPTY_TITLE = () => __('No tier badges configured', 'yayloyalty');
-export const TIER_EMPTY_DESCRIPTION = () =>
-  __('Use Reset all Design settings to bring the three tier badges back.', 'yayloyalty');
-export const TIER_BADGE_TIER_ID_LABEL = () => __('Tier ID', 'yayloyalty');
-export const TIER_BADGE_TIER_ID_DESCRIPTION = () =>
-  __(
-    'Free-form slug — no Tiers entity exists yet, so this list isn’t configurable; only the styling below is.',
-    'yayloyalty',
-  );
-export const TIER_BADGE_LABEL_LABEL = () => __('Label', 'yayloyalty');
-export const TIER_BADGE_LABEL_DESCRIPTION = () => __('Badge label shown to the customer.', 'yayloyalty');
-export const TIER_BADGE_COLOR_LABEL = () => __('Colour', 'yayloyalty');
-export const TIER_BADGE_ICON_LABEL = () => __('Icon', 'yayloyalty');
 
 // Preview
 

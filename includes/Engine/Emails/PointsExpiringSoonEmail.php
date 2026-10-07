@@ -16,10 +16,10 @@ class PointsExpiringSoonEmail extends LoyaltyEmail {
     }
 
     public function get_default_subject() {
-        return __( '[{site_title}]: Your points expire soon', 'yayloyalty' );
+        return __( '[{site_title}]: Your {points_label} expire soon', 'yayloyalty' );
     }
 
     public function get_default_heading() {
-        return __( 'Your points expire soon', 'yayloyalty' );
+        return __( 'Your {points_label} expire soon', 'yayloyalty' );
     }
 }

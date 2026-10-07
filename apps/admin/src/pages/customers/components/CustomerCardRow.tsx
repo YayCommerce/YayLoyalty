@@ -7,11 +7,9 @@ import { parseWPDate, parseWPRelativeDate } from '@/lib/helpers/format.helper';
 import { formatPoints } from '@/lib/helpers/points.helper';
 import type { CustomerListRow } from '@/lib/schema/customer.schema';
 import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { PointsValue } from '@/components/ui/custom/points-value';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { sampleTierForBalance } from '../customers-page.tier-sample-data';
 import { BalanceCell, CustomerNameCell } from './CustomersTableCells';
 
 /**
@@ -19,17 +17,8 @@ import { BalanceCell, CustomerNameCell } from './CustomersTableCells';
  * and the other columns sit in a "Details" popover, so no column is silently dropped.
  * No selection checkbox: bulk actions are desktop-only.
  */
-export function CustomerCardRow({
-  customer,
-  showProColumns,
-  stale,
-}: {
-  customer: CustomerListRow;
-  showProColumns: boolean;
-  stale?: boolean;
-}) {
+export function CustomerCardRow({ customer }: { customer: CustomerListRow }) {
   const negative = customer.balance < 0;
-  const sampleTier = sampleTierForBalance(customer.balance);
   const [searchParams] = useSearchParams();
   const search = searchParams.toString();
 
@@ -40,15 +29,14 @@ export function CustomerCardRow({
       <div className="flex items-start justify-between gap-3">
         <CustomerNameCell customer={customer} search={search} />
         <div className="shrink-0">
-          <BalanceCell value={customer.balance} stale={stale} />
+          <BalanceCell value={customer.balance} />
         </div>
       </div>
       <div className="flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2 text-xs">
-          {showProColumns && <Badge variant="dimmed-outline">{sampleTier ?? '—'}</Badge>}
           <span className="text-muted-foreground truncate">{summaryLine(customer, negative)}</span>
         </div>
-        <CardDetailsPopover customer={customer} negative={negative} showProColumns={showProColumns} />
+        <CardDetailsPopover customer={customer} negative={negative} />
       </div>
     </div>
   );
@@ -81,16 +69,8 @@ function summaryLine(customer: CustomerListRow, negative: boolean): string {
   return activity ?? '—';
 }
 
-/** The columns the card does not show inline: Lifetime earned, Expires and Referrals (Pro). */
-function CardDetailsPopover({
-  customer,
-  negative,
-  showProColumns,
-}: {
-  customer: CustomerListRow;
-  negative: boolean;
-  showProColumns: boolean;
-}) {
+/** The columns the card does not show inline: Lifetime earned and Expires. */
+function CardDetailsPopover({ customer, negative }: { customer: CustomerListRow; negative: boolean }) {
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -106,7 +86,6 @@ function CardDetailsPopover({
         <DetailRow label={__('Expires', 'yayloyalty')}>
           {!negative && customer.expires_at ? parseWPDate(customer.expires_at) : '—'}
         </DetailRow>
-        {showProColumns && <DetailRow label={__('Referrals', 'yayloyalty')}>—</DetailRow>}
       </PopoverContent>
     </Popover>
   );

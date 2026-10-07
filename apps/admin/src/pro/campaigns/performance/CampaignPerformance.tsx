@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { HTTPError } from 'ky';
-import { ChevronLeft, InfoIcon } from 'lucide-react';
+import { InfoIcon } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { __, sprintf } from '@wordpress/i18n';
 
@@ -12,6 +12,7 @@ import {
 import { Campaign, CampaignDisplayStatus, resolveCampaignDisplayStatus } from '@/lib/schema/campaign.schema';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { BackLink } from '@/components/ui/custom/back-link';
 import { ErrorState } from '@/components/ui/custom/error-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import PageLayout from '@/components/layout/PageLayout';
@@ -89,13 +90,7 @@ export function CampaignPerformance({ id }: { id: number }) {
 
   return (
     <>
-      {/* Same wrapper CampaignEditor.tsx uses for its own back link, so the two screens line up. */}
-      <div className="mx-auto flex max-w-6xl items-center gap-2 px-6 pt-6 text-sm">
-        <Button type="button" variant="link" className="h-auto gap-1 p-0!" onClick={() => navigate('/campaigns')}>
-          <ChevronLeft className="size-3.5" />
-          {__('Campaigns', 'yayloyalty')}
-        </Button>
-      </div>
+      <BackLink to="/campaigns" label={__('Campaigns', 'yayloyalty')} />
 
       <PageLayout
         className="max-w-6xl"

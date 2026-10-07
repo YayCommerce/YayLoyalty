@@ -10,6 +10,7 @@ export const ACTIVITY_TITLE_EXPIRY_RESET = () => __('Expiry reset', 'yayloyalty'
 export const ACTIVITY_TITLE_REWARD_REDEEMED = () => __('Reward redeemed', 'yayloyalty');
 export const ACTIVITY_TITLE_BALANCE_EMAIL_SENT = () => __('Points balance email sent', 'yayloyalty');
 export const ACTIVITY_TITLE_EXPIRING_SOON_EMAIL_SENT = () => __('Expiring soon email sent', 'yayloyalty');
+export const ACTIVITY_TITLE_EARNING_LIMITED = () => __('Earning limited', 'yayloyalty');
 export const ACTIVITY_TITLE_ACCOUNT_DELETED = () => __('Account deleted', 'yayloyalty');
 
 export function activityMembershipStartedSubLine(points: string): string {
@@ -25,23 +26,6 @@ export function activityPointsAdjustedSubLine(points: string, note: string): str
     __('%1$s · "%2$s"', 'yayloyalty'),
     points,
     note,
-  );
-}
-/** "Explorer → Summit · automatic · reached 5,000 lifetime points" */
-export function activityTierChangedSubLine(
-  fromTier: string,
-  toTier: string,
-  automatic: boolean,
-  threshold: string,
-): string {
-  const mode = automatic ? __('automatic', 'yayloyalty') : __('manual', 'yayloyalty');
-  return sprintf(
-    /* translators: 1: previous tier; 2: new tier; 3: "automatic" or "manual"; 4: the lifetime points threshold, formatted. */
-    __('%1$s → %2$s · %3$s · reached %4$s lifetime points', 'yayloyalty'),
-    fromTier,
-    toTier,
-    mode,
-    threshold,
   );
 }
 export function activityExpiryResetSubLine(from: string, to: string, note: string): string {
@@ -60,6 +44,17 @@ export function activityRewardRedeemedSubLine(reward: string, orderId: string): 
     reward,
     orderId,
   );
+}
+/** "150 of 200 points held back · order #4098", or "· signup" for an award with no order. */
+export function activityEarningLimitedSubLine(
+  heldBack: string,
+  evaluated: string,
+  orderId: string,
+  trigger: string,
+): string {
+  return orderId
+    ? sprintf(__('%1$s of %2$s points held back · order #%3$s', 'yayloyalty'), heldBack, evaluated, orderId)
+    : sprintf(__('%1$s of %2$s points held back · %3$s', 'yayloyalty'), heldBack, evaluated, trigger);
 }
 export function activityBalanceEmailSubLine(subject: string): string {
   return sprintf(
@@ -93,7 +88,6 @@ export const COLUMN_BY = () => __('By', 'yayloyalty');
 export const ACTIVITY_GROUP_LABEL = () => __('Show', 'yayloyalty');
 export const ACTIVITY_GROUP_ALL = () => __('All', 'yayloyalty');
 export const ACTIVITY_GROUP_ADMIN = () => __('Admin actions', 'yayloyalty');
-export const ACTIVITY_GROUP_TIER = () => __('Tier changes', 'yayloyalty');
 export const ACTIVITY_GROUP_EXPIRY = () => __('Expiry', 'yayloyalty');
 export const ACTIVITY_GROUP_EMAILS = () => __('Emails', 'yayloyalty');
 

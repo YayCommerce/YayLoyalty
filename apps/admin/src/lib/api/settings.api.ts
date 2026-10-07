@@ -1,11 +1,11 @@
 import { api } from '@/lib/api/api';
-import { Settings } from '@/lib/schema/settings.schema';
+import { Settings, SettingsUpdate } from '@/lib/schema/settings.schema';
 
 export function getSettings() {
   return api.get('settings').json<Settings>();
 }
 
-export function postSettings(data: Settings) {
+export function postSettings(data: SettingsUpdate) {
   return api.post('settings', { json: data }).json<Settings>();
 }
 

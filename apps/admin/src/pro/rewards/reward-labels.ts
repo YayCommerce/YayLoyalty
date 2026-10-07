@@ -3,7 +3,13 @@ import { __, _n, sprintf } from '@wordpress/i18n';
 import { formatStoredDate, parseWPCurrency } from '@/lib/helpers/format.helper';
 import { formatPoints, pointsPhrase, shortPoints } from '@/lib/helpers/points.helper';
 import { flexibleDiscountSubtitle, numberConfig } from '@/lib/helpers/reward.helper';
-import { resolveRewardDisplayStatus, Reward } from '@/lib/schema/reward.schema';
+import {
+  CatalogRewardType,
+  claimsPerCustomer,
+  normalizeRewardConditions,
+  resolveRewardDisplayStatus,
+  Reward,
+} from '@/lib/schema/reward.schema';
 
 /** Reward presentation strings and derived facts; the wire carries none of this — same split as campaign-labels.ts. */
 
@@ -14,6 +20,8 @@ export interface RewardsScreen {
   rows: Reward[];
   /** Non-builtin, non-archived rows — what "catalog" means throughout this screen. */
   catalogRows: Reward[];
+  /** Archived rows in display order: the Archived view, out of the catalog and never dragged. */
+  archivedRows: Reward[];
   /** No catalog reward exists yet (2a). */
   isInitCase: boolean;
 }
@@ -29,24 +37,9 @@ export function resolveRewardsScreen(rewards: Reward[]): RewardsScreen {
     builtin,
     rows,
     catalogRows,
+    archivedRows: rewards.filter((reward) => reward.status === 'archived'),
     isInitCase: catalogRows.length === 0,
   };
-}
-
-/** One condition entry, normalised defensively: the wire type is a loose union so a malformed row degrades to an empty list rather than a crash. */
-function conditionList(conditions: Reward['conditions']): { type: string; operator: string; value: unknown }[] {
-  if (!Array.isArray(conditions)) {
-    return [];
-  }
-
-  return conditions.filter(
-    (entry): entry is { type: string; operator: string; value: unknown } =>
-      !!entry && typeof entry === 'object' && 'type' in entry,
-  );
-}
-
-function findCondition(conditions: Reward['conditions'], type: string) {
-  return conditionList(conditions).find((condition) => condition.type === type);
 }
 
 export function typeLabel(type: Reward['type']): string {
@@ -61,8 +54,48 @@ export function typeLabel(type: Reward['type']): string {
       return __('Free shipping', 'yayloyalty');
     case 'free_product':
       return __('Free product', 'yayloyalty');
-    default:
-      return type;
+  }
+}
+
+/** A catalog type's starting-point title: the template card heading and a new reward's default name. */
+export function templateTitle(type: CatalogRewardType): string {
+  switch (type) {
+    case 'fixed_coupon':
+      return __('Fixed discount', 'yayloyalty');
+    case 'percent_coupon':
+      return __('Percentage off', 'yayloyalty');
+    case 'free_shipping':
+      return __('Free shipping', 'yayloyalty');
+    case 'free_product':
+      return __('Free product', 'yayloyalty');
+  }
+}
+
+/** Display order of the catalog starting points, on the "Add a reward" page and the empty-state cards. */
+export const REWARD_TEMPLATE_ORDER: CatalogRewardType[] = [
+  'fixed_coupon',
+  'free_shipping',
+  'percent_coupon',
+  'free_product',
+];
+
+/** What a catalog type gives the customer, for the "Add a reward" cards. */
+export function templateDescription(type: CatalogRewardType): string {
+  switch (type) {
+    case 'fixed_coupon':
+      return __(
+        'A set amount off a later order, issued as a single-use coupon when the customer claims it.',
+        'yayloyalty',
+      );
+    case 'percent_coupon':
+      return __('A percentage off a later order, with an optional cap so a large order cannot drain it.', 'yayloyalty');
+    case 'free_shipping':
+      return __(
+        'Free shipping on a later order, issued as a single-use coupon when the customer claims it.',
+        'yayloyalty',
+      );
+    case 'free_product':
+      return __('A product of your choice for free, added to a later order with a single-use coupon.', 'yayloyalty');
   }
 }
 
@@ -100,18 +133,18 @@ export function costLabel(reward: Reward): string {
 
 /** "once per customer" (redemption_count lt 1), "up to %d per customer" for a higher cap. Only condition this build renders a phrase for; unknown types are silently skipped. */
 function redemptionLimitLabel(conditions: Reward['conditions']): string | null {
-  const condition = findCondition(conditions, 'redemption_count');
+  const cap = claimsPerCustomer(normalizeRewardConditions(conditions));
 
-  if (!condition || condition.operator !== 'lt' || typeof condition.value !== 'number') {
+  if (cap === null) {
     return null;
   }
 
-  if (condition.value <= 1) {
+  if (cap <= 1) {
     return __('once per customer', 'yayloyalty');
   }
 
   /* translators: %d: maximum number of claims per customer. */
-  return sprintf(__('up to %d per customer', 'yayloyalty'), condition.value);
+  return sprintf(__('up to %d per customer', 'yayloyalty'), cap);
 }
 
 /** The built-in slider's own availability phrase: its limits live in config, not conditions. */
@@ -190,22 +223,29 @@ function scheduleWindowLabel(startsAt: string | null, endsAt: string | null): st
   return sprintf(__('until %s', 'yayloyalty'), formatStoredDate(endsAt as string));
 }
 
-/** The line under "Rewards": the row count plus, on the init case, that nothing has been redeemed yet — Redeemed is always "—" until the redemptions table exists. */
-export function headerSubtitle(screen: RewardsScreen): string {
+/**
+ * The line under "Rewards", in two parts so the table can put its
+ * "{n} archived" link between them: the row count, then the sentence after
+ * it. On the init case the sentence says nothing has been redeemed yet —
+ * Redeemed stays "—" until redemption ships and defines it; its source is then
+ * `redemption_summary`, the figure the archive dialog already shows.
+ */
+export function headerSubtitle(screen: RewardsScreen): { count: string; detail: string } {
   if (screen.isInitCase) {
-    return __('One reward. Nothing has been redeemed yet.', 'yayloyalty');
+    return {
+      count: __('One reward', 'yayloyalty'),
+      detail: __('Nothing has been redeemed yet.', 'yayloyalty'),
+    };
   }
 
-  return sprintf(
-    /* translators: %d: number of rewards, built-in included. */
-    _n(
-      '%d reward. Drag to reorder — this is the order customers see.',
-      '%d rewards. Drag to reorder — this is the order customers see.',
+  return {
+    count: sprintf(
+      /* translators: %d: number of rewards, built-in included. */
+      _n('%d reward', '%d rewards', screen.rows.length, 'yayloyalty'),
       screen.rows.length,
-      'yayloyalty',
     ),
-    screen.rows.length,
-  );
+    detail: __('Drag to reorder — this is the order customers see.', 'yayloyalty'),
+  };
 }
 
 /** The init-case notice, from the built-in's own status and minimum so it never contradicts the reward. */

@@ -31,6 +31,7 @@ import { launcherButtonStyleLabel, launcherIconLabel, launcherPositionLabel } fr
 export function DesignLauncherSection() {
   const { control, watch, setValue } = useFormContext<Design>();
   const icon = watch('launcher.icon');
+  const buttonStyle = watch('launcher.button_style');
 
   return (
     <Card>
@@ -112,33 +113,35 @@ export function DesignLauncherSection() {
           </FieldContent>
         </Field>
 
-        <Field>
-          <FieldLabel>{LAUNCHER_ICON_LABEL()}</FieldLabel>
-          <FieldContent>
-            <Controller
-              control={control}
-              name="launcher.icon"
-              render={({ field }) => (
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {designLauncherIconSchema.options.map((option) => (
-                      <SelectItem key={option} value={option}>
-                        {launcherIconLabel(option)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            />
-          </FieldContent>
-        </Field>
+        {buttonStyle !== 'label' && (
+          <Field>
+            <FieldLabel>{LAUNCHER_ICON_LABEL()}</FieldLabel>
+            <FieldContent>
+              <Controller
+                control={control}
+                name="launcher.icon"
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {designLauncherIconSchema.options.map((option) => (
+                        <SelectItem key={option} value={option}>
+                          {launcherIconLabel(option)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </FieldContent>
+          </Field>
+        )}
 
         {/* Upload control revealed only for icon === 'custom'; switching away never clears icon_upload_id,
             so switching back restores the merchant's file. */}
-        {icon === 'custom' && (
+        {buttonStyle !== 'label' && icon === 'custom' && (
           <Field>
             <FieldLabel>{LAUNCHER_ICON_UPLOAD_LABEL()}</FieldLabel>
             <FieldContent>

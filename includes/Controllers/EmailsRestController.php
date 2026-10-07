@@ -3,6 +3,7 @@ namespace YayLoyalty\Controllers;
 
 use YayLoyalty\Access\Capabilities;
 use YayLoyalty\Helpers\EmailsHelper;
+use YayLoyalty\Helpers\SettingsHelper;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -49,7 +50,7 @@ class EmailsRestController extends AbstractRestController {
         }
 
         // Checked before any write: a rolled-back transaction does not undo a persistent object cache.
-        if ( isset( $params['throttle_per_week'] ) && ! is_numeric( $params['throttle_per_week'] ) ) {
+        if ( array_key_exists( 'throttle_per_week', $params ) && ! SettingsHelper::is_valid( [ 'emails' => [ 'throttle_per_week' => $params['throttle_per_week'] ] ] ) ) {
             return $this->error_invalid_arguments();
         }
 

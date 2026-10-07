@@ -65,7 +65,12 @@ if ( null === $yayloyalty_signup ) {
         <p class="yl:m-0 yl:text-[17px] yl:font-semibold yl:leading-snug yl:text-foreground"><?php echo esc_html( $yayloyalty_text['signed_out_prompt'] ); ?></p>
     <?php endif; ?>
     <?php if ( null !== $yayloyalty_earn[ CampaignTrigger::PURCHASE ] ) : ?>
-        <p class="yl:m-0 yl:text-xs yl:text-muted-foreground"><?php esc_html_e( 'Collect points on every order and spend them on money off your next one. Free to join.', 'yayloyalty' ); ?></p>
+        <p class="yl:m-0 yl:text-xs yl:text-muted-foreground">
+            <?php
+            /* translators: %s: the store's points label, as "Points". */
+            echo esc_html( sprintf( __( 'Collect %s on every order and spend them on money off your next one. Free to join.', 'yayloyalty' ), SettingsHelper::points_label( 0 ) ) );
+            ?>
+        </p>
     <?php endif; ?>
 </section>
 
