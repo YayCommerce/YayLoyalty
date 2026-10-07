@@ -53,13 +53,6 @@
 - **Workaround:** there is none for `release`. For a local bundle, run the `vite build` half of the `build` script by hand, then `pnpm build:storefront` in `apps/admin` for the launcher's CSS. For the type-check, compare with `dev/edd`: these must stay the only errors.
 - **Remove when:** the two files are deleted, or the packages are declared.
 
-## No tests: `composer test` passes empty, admin test fails
-
-- **Symptom:** `composer test` prints `No tests executed!` and exits 0. `pnpm --filter @yayloyalty/admin-page test` prints `No test files found, exiting with code 1`.
-- **Cause:** commit `a8d6fe0` deleted every test. Vitest fails an empty run because `passWithNoTests` is off.
-- **Workaround:** none needed. New tests go where [architecture.md](architecture.md#tests) says.
-- **Remove when:** each suite has a test.
-
 ## Integration tests can exit 0 without running
 
 - **Symptom:** `composer test:integration` prints WordPress's "Error establishing a database connection" page and exits 0. Once the database is reachable, it stops with "the plugin is not active on this site" and exits 1.
@@ -67,7 +60,7 @@
 - **Workaround:**
   1. Start the site.
   2. Export `YAYLOYALTY_TEST_SOCKET` with its socket path. Local shows the path on the site's Database tab; see the header of `tests/integration/bootstrap.php`.
-  3. Activate the plugin on that site. Activation installs its tables and seeds demo customers.
+  3. Activate the plugin on that site. Activation installs its tables.
   4. Read the output: an exit code of 0 alone doesn't mean anything ran.
 - **Remove when:** the bootstrap checks the database connection itself and exits non-zero on failure.
 

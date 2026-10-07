@@ -17,7 +17,7 @@ Run from the repo root on Node 22: `nvm use` reads `.nvmrc`, and pnpm 11 fails o
 - `composer test`: PHPUnit unit suite, no WordPress.
 - `composer test:integration`: PHPUnit inside the WordPress site this plugin is installed in, with the plugin active. Local sites set `YAYLOYALTY_TEST_SOCKET` (see the header of `tests/integration/bootstrap.php`). [Exit 0 doesn't prove it ran](docs/known-issues.md).
 - `pnpm --filter @yayloyalty/admin-page lint`: eslint, then prettier. [Fails today](docs/known-issues.md).
-- `pnpm --filter @yayloyalty/admin-page test`: Vitest. [Fails today](docs/known-issues.md).
+- `pnpm --filter @yayloyalty/admin-page test`: Vitest.
 - `pnpm --filter @yayloyalty/admin-page exec tsc --noEmit`: type-check the SPA. [Fails today](docs/known-issues.md).
 - `./scripts/run.sh dev [pro|lite]`: Vite on :3030, which wp-admin loads while `YAYLOYALTY_IS_DEVELOPMENT` is true (the default). It first runs the admin-shell sync, which can [rewrite `composer.json` and `scoper.inc.php`](docs/known-issues.md): check `git status` before committing.
 - `./scripts/run.sh build [pro|lite]`: type-check, then build the SPA into `assets/dist/admin/` and the storefront launcher's CSS into `assets/dist/storefront/`. [Fails today](docs/known-issues.md).

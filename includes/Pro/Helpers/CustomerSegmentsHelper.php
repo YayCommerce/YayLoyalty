@@ -35,7 +35,6 @@ final class CustomerSegmentsHelper {
     public const FILTER_SCHEMA = [
         'balance_range' => CustomerFilters::BALANCE_RANGES,
         'expiring_soon' => CustomerFilters::EXPIRY_RANGES,
-        'tier'          => CustomerFilters::TIER_RANGES,
     ];
 
     /**

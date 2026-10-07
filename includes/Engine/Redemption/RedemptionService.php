@@ -61,7 +61,7 @@ final class RedemptionService {
      * gates ProgramGate, RewardGate, then whatever
      * `yayloyalty_redemption_gates` appends for Pro) shared with the writer,
      * the read-only context factory, and the writer — LedgerService's
-     * fifth construction site. Adapters and the coupon provider are
+     * fourth construction site. Adapters and the coupon provider are
      * registered by the caller (YayLoyalty::__construct()), not here.
      */
     public static function build(): self {

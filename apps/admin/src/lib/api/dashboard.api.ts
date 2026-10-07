@@ -7,16 +7,11 @@ import {
   type DismissDashboardNoticeParams,
 } from '@/lib/schema/dashboard.schema';
 
-/** GET /dashboard. `scenario` is the dev-only fixture switch; only `useDevScenario()` ever produces one. */
-export async function getDashboard(params: {
-  range: DashboardRange;
-  refresh?: boolean;
-  scenario?: string;
-}): Promise<DashboardResponse> {
+/** GET /dashboard. */
+export async function getDashboard(params: { range: DashboardRange; refresh?: boolean }): Promise<DashboardResponse> {
   const searchParams: Record<string, string> = { range: String(params.range) };
 
   if (params.refresh) searchParams.refresh = '1';
-  if (params.scenario) searchParams.scenario = params.scenario;
 
   return dashboardResponseSchema.parse(await api.get('dashboard', { searchParams }).json());
 }

@@ -12,7 +12,6 @@ use YayLoyalty\Controllers\EmailsRestController;
 use YayLoyalty\Controllers\LedgerRestController;
 use YayLoyalty\Controllers\LookupRestController;
 use YayLoyalty\Controllers\RedemptionsRestController;
-use YayLoyalty\Controllers\ReferralsRestController;
 use YayLoyalty\Controllers\RewardRestController;
 use YayLoyalty\Controllers\SettingsRestController;
 use YayLoyalty\Controllers\StorefrontActivityRestController;
@@ -21,6 +20,7 @@ use YayLoyalty\Repositories\CustomerMetaRepository;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\DashboardRepository;
 use YayLoyalty\Repositories\LedgerRepository;
+use YayLoyalty\Repositories\RedemptionRepository;
 use YayLoyalty\Repositories\RewardRepository;
 use YayLoyalty\Services\Dashboard\DashboardCache;
 use YayLoyalty\Services\Dashboard\DashboardNotices;
@@ -74,15 +74,14 @@ class RestAPI {
             new ActivityRestController( $customer_meta ),
             // Shopper route (storefront launcher): session identity, no capability. $ledger is read-only here.
             new StorefrontActivityRestController( $ledger ),
-            // Empty envelopes until their tables exist.
+            // An empty envelope until its table exists.
             new RedemptionsRestController(),
-            new ReferralsRestController(),
             // Picker name lookups; no repository, it reads WooCommerce and WP core directly.
             new LookupRestController(),
             // Definition table: repository only, no service. $ledger is read-only here too.
             new CampaignRestController( $campaigns, $ledger ),
-            // Read-only for now, same $rewards instance DashboardRepository holds.
-            new RewardRestController( $rewards ),
+            // Same $rewards instance DashboardRepository holds; redemptions read-only, for is_deletable.
+            new RewardRestController( $rewards, new RedemptionRepository() ),
             new DashboardRestController(
                 new DashboardStats( $dashboard, wc_get_price_decimals() ),
                 new DashboardCache( $dashboard ),

@@ -6,5 +6,5 @@ export type SortDirection = CustomerSortDirection;
 
 /** Text columns start A→Z; numeric and date columns start biggest/most recent first. */
 export function defaultSortDirection(key: SortKey): SortDirection {
-  return key === 'name' || key === 'tier' ? 'asc' : 'desc';
+  return key === 'name' ? 'asc' : 'desc';
 }

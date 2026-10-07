@@ -1,7 +1,6 @@
 /**
  * Mirrors YayLoyalty\Utils\PointsMath, the source of truth.
  * A zero denominator yields null, never 0. Rounding follows PHP round(), so a preview shows what the engine awards.
- * tests/fixtures/points-math-vectors.json holds test vectors for every export.
  */
 
 export const ROUNDING = { DOWN: 'down', NEAREST: 'nearest', UP: 'up' } as const;

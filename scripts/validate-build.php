@@ -369,17 +369,15 @@ render_and_exit( $work, $require_boot );
 // Functions
 
 /**
- * Design's inline Pro-field gates (DesignStorefrontTextSection /
- * DesignVisibilitySection) are not covered by anything else: the bundle
- * sentinel only proves the three whole Pro *sections* were shaken out. Fails
- * when a Pro-only field name appears in a file without IS_PRO_BUILD also
- * appearing there, which is the one thing that can drop silently in a
- * later edit.
+ * Design's inline Pro-field gate (DesignVisibilitySection) is not covered
+ * by anything else: the bundle sentinel only proves the whole Pro *sections*
+ * were shaken out. Fails when a Pro-only field name appears in a file without
+ * IS_PRO_BUILD also appearing there, which is the one thing that can drop
+ * silently in a later edit.
  */
 function check_inline_pro_field_gates(): void {
-    $pro_only_fields = [ 'referral_card_heading', 'tier_progress_line', 'custom_pages' ];
+    $pro_only_fields = [ 'custom_pages' ];
     $files           = [
-        __DIR__ . '/../apps/admin/src/pages/settings/DesignStorefrontTextSection.tsx',
         __DIR__ . '/../apps/admin/src/pages/settings/DesignVisibilitySection.tsx',
     ];
 

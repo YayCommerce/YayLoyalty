@@ -295,11 +295,6 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
             );
         }
 
-        if ( null !== $criteria['tier'] ) {
-            // Matches nothing until tiers ship, since every tier_id is NULL. That is intended.
-            $where[] = 'c.tier_id IS NOT NULL';
-        }
-
         return $where;
     }
 

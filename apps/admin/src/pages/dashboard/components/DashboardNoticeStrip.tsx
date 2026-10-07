@@ -3,11 +3,7 @@ import { toast } from 'sonner';
 import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { useDismissNoticeMutation } from '@/lib/queries/dashboard.queries';
-import {
-  DISMISSABLE_NOTICE_KEYS,
-  type DashboardNotice,
-  type DismissableNoticeKey,
-} from '@/lib/schema/dashboard.schema';
+import { type DashboardNotice, type DismissableNoticeKey } from '@/lib/schema/dashboard.schema';
 import { Button } from '@/components/ui/button';
 import { noticeCopy, noticeSummary } from '../dashboard-page.notice-copy';
 import { DashboardNoticeCard } from './DashboardNoticeCard';
@@ -37,12 +33,6 @@ export function DashboardNoticeStrip({ notices }: { notices: DashboardNotice[] }
   const hidden = items.slice(SHOWN);
 
   const onDismiss = (notice: DashboardNotice) => {
-    if (!(DISMISSABLE_NOTICE_KEYS as readonly string[]).includes(notice.key)) {
-      // Fixture-only keys never persist; explain instead of hiding, so the preview notice stays on screen.
-      toast.info(__('This preview notice cannot be dismissed.', 'yayloyalty'));
-      return;
-    }
-
     dismiss.mutate(
       { key: notice.key as DismissableNoticeKey, fingerprint: notice.fingerprint },
       { onError: () => toast.error(__('Could not dismiss the notice. Please try again.', 'yayloyalty')) },

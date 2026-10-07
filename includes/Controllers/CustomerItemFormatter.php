@@ -35,9 +35,8 @@ final class CustomerItemFormatter {
             'counts'                   => [
                 'ledger'      => $ledger_count,
                 'activity'    => $activity_count,
-                // No redemptions or referrals table exists yet, so never fabricate a count.
+                // No redemptions table exists yet, so never fabricate a count.
                 'redemptions' => 0,
-                'referrals'   => 0,
             ],
             'loose_ends'               => self::loose_ends( $deletion ),
             // Needs the `lots` table: designed, not built yet.
@@ -94,7 +93,6 @@ final class CustomerItemFormatter {
 
         return [
             'void_coupons'        => null,
-            'credited_referrals'  => null,
             'counted_in_members'  => null,
             'kept_ledger_entries' => (int) ( $deletion->get_data()['kept_ledger_entries'] ?? 0 ),
         ];

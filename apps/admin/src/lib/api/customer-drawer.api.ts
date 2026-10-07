@@ -1,7 +1,6 @@
 import { api } from '@/lib/api/api';
 import { activityEnvelopeSchema, ActivityGroup } from '@/lib/schema/activity.schema';
 import { redemptionEnvelopeSchema } from '@/lib/schema/redemption.schema';
-import { referralEnvelopeSchema } from '@/lib/schema/referral.schema';
 
 /** The drawer's tab fetchers, plus the paging params that `getCustomerLedger()` reuses. */
 
@@ -28,7 +27,7 @@ export function toDrawerSearchParams(params: DrawerPageParams): Record<string, s
 
 export type CustomerActivityParams = DrawerPageParams & { group?: ActivityGroup };
 
-/** Redemptions and Referrals take paging only. */
+/** Redemptions take paging only. */
 export type DrawerPageOnlyParams = Pick<DrawerPageParams, 'page' | 'perPage'>;
 
 /** `GET /customers/{id}/activity`. */
@@ -49,14 +48,4 @@ export async function getCustomerRedemptions(userId: number, params: DrawerPageO
     .json();
 
   return redemptionEnvelopeSchema.parse(payload);
-}
-
-/**
- * `GET /customers/{id}/referrals`. Parsed with `referralEnvelopeSchema`, not `parsePaginated()`,
- * which would drop `referral_link` and `campaign`.
- */
-export async function getCustomerReferrals(userId: number, params: DrawerPageOnlyParams = {}) {
-  const payload = await api.get(`customers/${userId}/referrals`, { searchParams: toDrawerSearchParams(params) }).json();
-
-  return referralEnvelopeSchema.parse(payload);
 }

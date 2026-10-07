@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/custom/confirm-dialog';
 import { UnsavedChangeDialog } from '@/components/ui/custom/unsaved-changed-dialog';
 import { ProGate } from '@/components/pro/ProGate';
-import { DesignPanelSection, DesignTierSection, DesignTypographySection } from '@/pro';
+import { DesignPanelSection, DesignTypographySection } from '@/pro';
 import {
   CANCEL_LABEL,
   RESET_CONFIRM_LABEL,
@@ -95,7 +95,6 @@ export default function DesignSettingsPage() {
                 (see pro/index.ts). */}
             <ProGate>{IS_PRO_BUILD ? <DesignPanelSection /> : null}</ProGate>
             <ProGate>{IS_PRO_BUILD ? <DesignTypographySection /> : null}</ProGate>
-            <ProGate>{IS_PRO_BUILD ? <DesignTierSection /> : null}</ProGate>
 
             <div className="flex items-center justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setResetOpen(true)}>

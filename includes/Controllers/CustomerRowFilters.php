@@ -7,8 +7,8 @@ use YayLoyalty\Utils\Dates;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The Customers list's filter rules: search, balance buckets, expiring-soon
- * window and tier. SQL-free: it owns every threshold and edge, and
+ * The Customers list's filter rules: search, balance buckets and the
+ * expiring-soon window. SQL-free: it owns every threshold and edge, and
  * CustomerRepository turns them into WHERE.
  */
 final class CustomerRowFilters {
@@ -18,7 +18,6 @@ final class CustomerRowFilters {
         'search'        => '',
         'balance_range' => CustomerFilters::BALANCE_RANGES[0],
         'expiring_soon' => CustomerFilters::EXPIRY_RANGES[0],
-        'tier'          => CustomerFilters::TIER_RANGES[0],
     ];
 
     /**
@@ -31,14 +30,13 @@ final class CustomerRowFilters {
             'search'        => (string) $request->get_param( 'search' ),
             'balance_range' => (string) $request->get_param( 'balance_range' ),
             'expiring_soon' => (string) $request->get_param( 'expiring_soon' ),
-            'tier'          => (string) $request->get_param( 'tier' ),
         ];
     }
 
     /**
      * Normalises filter params into the logical criteria CustomerRepository turns into SQL.
      *
-     * @param array<string, string> $filters search / balance_range / expiring_soon / tier
+     * @param array<string, string> $filters search / balance_range / expiring_soon
      * @return array{
      *     search: string,
      *     balance_min: int|null,
@@ -46,12 +44,9 @@ final class CustomerRowFilters {
      *     expires_from: string|null,
      *     expires_to: string|null,
      *     expires_is_null: bool,
-     *     tier: string|null,
      * }
      */
     public static function to_criteria( array $filters ): array {
-        $tier = (string) ( $filters['tier'] ?? self::DEFAULTS['tier'] );
-
         [ $balance_min, $balance_max ]                   = self::balance_bounds( (string) ( $filters['balance_range'] ?? self::DEFAULTS['balance_range'] ) );
         [ $expires_from, $expires_to, $expires_is_null ] = self::expiry_window( (string) ( $filters['expiring_soon'] ?? self::DEFAULTS['expiring_soon'] ) );
 
@@ -62,7 +57,6 @@ final class CustomerRowFilters {
             'expires_from'    => $expires_from,
             'expires_to'      => $expires_to,
             'expires_is_null' => $expires_is_null,
-            'tier'            => 'all' === $tier ? null : $tier,
         ];
     }
 

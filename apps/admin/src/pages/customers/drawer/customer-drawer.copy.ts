@@ -14,17 +14,6 @@ export function memberSince(date: string): string {
 
 export const ACCOUNT_DELETED_LABEL = () => __('ACCOUNT DELETED', 'yayloyalty');
 
-/** Tier card: "X points to <next tier>". */
-export function tierProgress(points: string, nextTier: string): string {
-  return sprintf(
-    /* translators: 1: points still needed, formatted; 2: the next tier's name. */
-    __('%1$s points to %2$s', 'yayloyalty'),
-    points,
-    nextTier,
-  );
-}
-export const TOP_TIER_REACHED_LABEL = () => __('Top tier reached', 'yayloyalty');
-
 // Stats
 
 export const STAT_BALANCE = () => __('Balance', 'yayloyalty');
@@ -46,7 +35,6 @@ export const EXPIRY_STOPPED_SUBLINE = () => __('expiry stopped', 'yayloyalty');
 export const ACTION_ADJUST_POINTS = () => __('Adjust points', 'yayloyalty');
 export const ACTION_RESET_EXPIRY = () => __('Reset expiry', 'yayloyalty');
 export const ACTION_EXPORT_LEDGER = () => __('Export ledger', 'yayloyalty');
-export const ACTION_ASSIGN_TIER = () => __('Assign tier', 'yayloyalty');
 
 export const NOT_AVAILABLE_YET_REASON = () => __('Not available yet — coming in a future release.', 'yayloyalty');
 /** Nothing to extend on a zero balance. */
@@ -60,7 +48,6 @@ export const DELETED_ACCOUNT_ACTION_REASON = () =>
 export const TAB_LEDGER = () => __('Points ledger', 'yayloyalty');
 export const TAB_ACTIVITY = () => __('Activity log', 'yayloyalty');
 export const TAB_REDEMPTIONS = () => __('Redemptions', 'yayloyalty');
-export const TAB_REFERRALS = () => __('Referrals', 'yayloyalty');
 
 // Ledger columns, filters and pager
 
@@ -105,7 +92,7 @@ export function emptyLedgerBody(firstName: string): string {
 }
 
 export const EMPTY_ACTIVITY_TITLE = () => __('Nothing recorded yet', 'yayloyalty');
-export const EMPTY_ACTIVITY_BODY = () => __('Tier changes, expiry resets and admin actions appear here.', 'yayloyalty');
+export const EMPTY_ACTIVITY_BODY = () => __('Expiry resets and admin actions appear here.', 'yayloyalty');
 
 // The ledger and activity tabs both show these when a filter hides every row.
 export const EMPTY_FILTERED_TITLE = () => __('Nothing matches these filters', 'yayloyalty');

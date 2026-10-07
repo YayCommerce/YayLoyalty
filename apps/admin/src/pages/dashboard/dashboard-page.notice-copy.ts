@@ -118,38 +118,6 @@ function copyFor(n: TypedNotice): NoticeCopy {
             : undefined,
       };
     }
-
-    case 'mail_failures':
-      return {
-        title: sprintf(
-          /* translators: 1: number of failed emails, formatted; 2: the date the failures began. */
-          _n(
-            '%s loyalty email failed to send since %s',
-            '%s loyalty emails failed to send since %s',
-            n.data.failed,
-            'yayloyalty',
-          ),
-          formatPoints(n.data.failed),
-          formatStoredDate(n.data.since),
-        ),
-        body: __("This is the site's mail, not just ours — order confirmations may be failing too.", 'yayloyalty'),
-        secondary: { kind: 'link', label: __('Check mail settings', 'yayloyalty'), href: '/settings/general' },
-      };
-
-    case 'balance_rebuild':
-      return {
-        title: sprintf(
-          /* translators: 1: balances checked so far, formatted; 2: all balances to check, formatted. */
-          __('Balances are being rebuilt — %1$s of %2$s checked', 'yayloyalty'),
-          formatPoints(n.data.processed),
-          formatPoints(n.data.total),
-        ),
-        body: __(
-          'Figures on this page are as they were when the rebuild started and will not update until it finishes.',
-          'yayloyalty',
-        ),
-        secondary: { kind: 'link', label: __('Watch the log', 'yayloyalty'), href: '/customers' },
-      };
   }
 }
 
@@ -162,10 +130,6 @@ export function noticeSummary(notice: DashboardNotice): string {
       return __('the default campaign is paused', 'yayloyalty');
     case 'points_jump':
       return __('a jump in points issued', 'yayloyalty');
-    case 'mail_failures':
-      return __('mail failures', 'yayloyalty');
-    case 'balance_rebuild':
-      return __('a balance rebuild in progress', 'yayloyalty');
     default:
       // Unknown keys never reach the strip; this satisfies the open wire type.
       return notice.key;

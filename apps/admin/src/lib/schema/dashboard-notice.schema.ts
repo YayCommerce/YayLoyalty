@@ -4,7 +4,7 @@ import { type DashboardNotice, type DashboardNoticeKey } from './dashboard.schem
 
 /**
  * Mirrors DashboardNotices, the source of truth.
- * These are the per-key `notice.data` shapes, plus the two keys only DashboardFixture sends.
+ * These are the per-key `notice.data` shapes.
  */
 
 export const negativeBalanceDataSchema = z.object({
@@ -44,36 +44,20 @@ export const pointsJumpDataSchema = z.object({
   what_changed: z.array(pointsJumpWhatChangedSchema),
 });
 
-export const mailFailuresDataSchema = z.object({
-  failed: z.number().int(),
-  since: z.string(),
-});
-
-export const balanceRebuildDataSchema = z.object({
-  processed: z.number().int(),
-  total: z.number().int(),
-});
-
 export type NegativeBalanceData = z.infer<typeof negativeBalanceDataSchema>;
 export type DefaultCampaignPausedData = z.infer<typeof defaultCampaignPausedDataSchema>;
 export type PointsJumpData = z.infer<typeof pointsJumpDataSchema>;
 export type PointsJumpWhatChanged = z.infer<typeof pointsJumpWhatChangedSchema>;
-export type MailFailuresData = z.infer<typeof mailFailuresDataSchema>;
-export type BalanceRebuildData = z.infer<typeof balanceRebuildDataSchema>;
 
 export type TypedNotice =
   | { key: 'negative_balance'; data: NegativeBalanceData }
   | { key: 'default_campaign_paused'; data: DefaultCampaignPausedData }
-  | { key: 'points_jump'; data: PointsJumpData }
-  | { key: 'mail_failures'; data: MailFailuresData }
-  | { key: 'balance_rebuild'; data: BalanceRebuildData };
+  | { key: 'points_jump'; data: PointsJumpData };
 
 const DATA_SCHEMAS = {
   negative_balance: negativeBalanceDataSchema,
   default_campaign_paused: defaultCampaignPausedDataSchema,
   points_jump: pointsJumpDataSchema,
-  mail_failures: mailFailuresDataSchema,
-  balance_rebuild: balanceRebuildDataSchema,
 } as const;
 
 /** Narrows a wire notice to its per-key data; null on mismatch so the strip skips it rather than white-screening. */
