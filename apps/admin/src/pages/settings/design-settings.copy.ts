@@ -80,8 +80,7 @@ export const VISIBILITY_HIDE_FOR_ROLES_DESCRIPTION = () =>
 // Panel section (Pro)
 
 export const PANEL_SECTION_TITLE = () => __('Panel', 'yayloyalty');
-export const PANEL_SECTION_DESCRIPTION = () => __('Layout and the panel’s optional blocks.', 'yayloyalty');
-export const PANEL_LAYOUT_LABEL = () => __('Layout', 'yayloyalty');
+export const PANEL_SECTION_DESCRIPTION = () => __('The panel’s optional blocks.', 'yayloyalty');
 export const PANEL_SHOW_REWARD_CATALOG_LABEL = () => __('Show reward catalog', 'yayloyalty');
 export const PANEL_SHOW_REWARD_CATALOG_DESCRIPTION = () =>
   __('Lists redeemable rewards inside the panel.', 'yayloyalty');
