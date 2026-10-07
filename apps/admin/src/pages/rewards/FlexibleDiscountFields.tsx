@@ -1,10 +1,6 @@
 import { __, _n, sprintf } from '@wordpress/i18n';
 
-import { can, CAP } from '@/lib/access';
 import { parseWPCurrency, storeCurrency } from '@/lib/helpers/format.helper';
-import { formatPoints, formatPointsAsMoney } from '@/lib/helpers/points.helper';
-import { usePurchaseCampaignsQuery } from '@/lib/queries/campaign.queries';
-import { findBuiltinCampaign } from '@/lib/schema/campaign.schema';
 import type { RewardConfigOf } from '@/lib/schema/reward.schema';
 import { OptionalCountInput, PointsInput } from '@/components/ui/custom/amount-inputs';
 import { ConfigField } from '@/components/ui/custom/config-field';
@@ -25,23 +21,10 @@ export function FlexibleDiscountFields({
   onChange: (next: Partial<FlexibleDiscountConfig>) => void;
 }) {
   const currency = storeCurrency();
-  const earnBack = useEarnBackPercent(value.points_per_currency_unit);
-  const incrementMoney = formatPointsAsMoney(value.increment, value.points_per_currency_unit);
 
   return (
     <>
-      <ConfigField
-        label={__('Conversion rate', 'yayloyalty')}
-        description={
-          earnBack === null
-            ? undefined
-            : sprintf(
-                /* translators: %s: percent of spend returned as redeemable value, e.g. "1". */
-                __('Customers earn back %s%% of what they spend at the default earning rate.', 'yayloyalty'),
-                earnBack,
-              )
-        }
-      >
+      <ConfigField label={__('Conversion rate', 'yayloyalty')}>
         <div className="flex flex-wrap items-center gap-2">
           <PointsInput
             value={value.points_per_currency_unit}
@@ -100,18 +83,7 @@ export function FlexibleDiscountFields({
 
       {/* Total discount cap (config.max_total) stays hidden until redemption enforces it; nothing reads it yet. */}
 
-      <ConfigField
-        label={__('Redemption increment', 'yayloyalty')}
-        description={
-          incrementMoney === null
-            ? __('The slider moves in steps of this size.', 'yayloyalty')
-            : sprintf(
-                /* translators: %s: the money one increment is worth, formatted. */
-                __('The slider moves in steps of this size — %s at a time here.', 'yayloyalty'),
-                incrementMoney,
-              )
-        }
-      >
+      <ConfigField label={__('Slider step', 'yayloyalty')}>
         <PointsInput value={value.increment} min={1} onValueChange={(increment) => onChange({ increment })} />
       </ConfigField>
 
@@ -144,22 +116,4 @@ export function FlexibleDiscountFields({
       </ConfigField>
     </>
   );
-}
-
-/**
- * Percent of spend a customer gets back at the default purchase rate, e.g.
- * 1 point per $1 against 100 points = $1 is "1". Null when the built-in purchase campaign or
- * either rate is missing — the line is dropped rather than guessed.
- */
-function useEarnBackPercent(pointsPerCurrencyUnit: number): string | null {
-  // Rewards and campaigns are separate capabilities: without campaigns access the line is dropped, not a 403 toast.
-  const { data } = usePurchaseCampaignsQuery(can(CAP.MANAGE_CAMPAIGNS));
-  const purchase = findBuiltinCampaign(data?.data, 'purchase');
-  const pointsPerUnit = purchase?.config.points_per_unit;
-
-  if (typeof pointsPerUnit !== 'number' || pointsPerUnit <= 0 || pointsPerCurrencyUnit <= 0) {
-    return null;
-  }
-
-  return formatPoints((pointsPerUnit / pointsPerCurrencyUnit) * 100);
 }
