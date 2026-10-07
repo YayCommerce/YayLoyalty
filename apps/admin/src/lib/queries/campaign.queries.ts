@@ -43,9 +43,9 @@ export function useCampaignQuery(id: number) {
 }
 
 /**
- * Purchase-group campaigns only, for the editor's multiplier mode, which
- * inherits the built-in purchase campaign's rate. Off unless `enabled`, so a
- * rate-mode or non-purchase editor never asks; the full list is the table's.
+ * Purchase-group campaigns only, for the flexible-discount reward's earn-back
+ * line, which reads the built-in purchase campaign's rate. Off unless
+ * `enabled`; the full list is the table's.
  */
 export function usePurchaseCampaignsQuery(enabled: boolean) {
   return useQuery({ ...CAMPAIGN_QUERIES.list({ trigger: 'purchase', perPage: 100 }), enabled });
