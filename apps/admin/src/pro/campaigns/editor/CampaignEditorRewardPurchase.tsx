@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { Calculator, ChevronDown, ChevronUp } from 'lucide-react';
 import { useFormContext } from 'react-hook-form';
 import { __, sprintf } from '@wordpress/i18n';
 
-import { storeCurrency } from '@/lib/helpers/format.helper';
+import { storeCurrency, storeCurrencySymbol } from '@/lib/helpers/format.helper';
+import { pointsPerCurrencyLabel } from '@/lib/helpers/points.helper';
 import { ROUNDING, RoundingMode } from '@/lib/points-math/points-math';
+import { Button } from '@/components/ui/button';
 import { OptionalCountInput } from '@/components/ui/custom/amount-inputs';
 import { LookupMultiSelect } from '@/components/ui/custom/lookup-multi-select';
 import {
@@ -22,6 +24,7 @@ import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { CampaignFormValues } from './campaign-editor.form';
 import { purchaseAdvancedPhrases } from './campaign-reward.copy';
+import { PurchaseRateCalculatorDialog } from './PurchaseRateCalculatorDialog';
 
 /** config_schema()['purchase']; mirrors CAMPAIGN_CONFIG_FIELDS.purchase. */
 interface PurchaseConfig {
@@ -45,9 +48,6 @@ interface PurchaseFieldsProps {
   patchConfig: PatchPurchaseConfig;
 }
 
-/** The server refuses a rate of 0 or below; the input keeps 2 decimals, so this is its first step above 0. */
-const SMALLEST_PURCHASE_RATE = 0.01;
-
 /** The campaign's rate, then the Advanced block. */
 export function RewardFieldsPurchase() {
   const { watch, setValue } = useFormContext<CampaignFormValues>();
@@ -60,40 +60,71 @@ export function RewardFieldsPurchase() {
 
   return (
     <div className="flex flex-col gap-4">
-      <Field>
-        <FieldLabel htmlFor="reward-purchase-points-per-unit">{__('Rate', 'yayloyalty')}</FieldLabel>
-        <FieldContent>
-          <NumberInputRoot
-            size="small"
-            className="w-36"
-            min={SMALLEST_PURCHASE_RATE}
-            decimalScale={2}
-            value={config.points_per_unit ?? 0}
-            onValueChange={(value) => patchConfig({ points_per_unit: value })}
-          >
-            <NumberInputInput id="reward-purchase-points-per-unit" />
-            <NumberInputUnit
-              unit={sprintf(
-                /* translators: %s: the store currency code, e.g. "USD". */
-                __('pts / %s', 'yayloyalty'),
-                storeCurrency(),
-              )}
-            />
-          </NumberInputRoot>
-          <FieldDescription>
-            {sprintf(
-              /* translators: %s: the store currency code, e.g. "USD". */
-              __('Points for every 1 %s of the order amount. Advanced sets what counts.', 'yayloyalty'),
-              storeCurrency(),
-            )}
-          </FieldDescription>
-        </FieldContent>
-      </Field>
+      <PurchaseRateField config={config} patchConfig={patchConfig} />
 
       <Separator />
 
       <PurchaseAdvanced config={config} patchConfig={patchConfig} />
     </div>
+  );
+}
+
+/** Decimals the rate input keeps: enough for 1 pt per 1,000,000 of a 0-decimal currency. */
+const RATE_DECIMALS = 6;
+
+/** Points per 1 currency unit, typed directly or worked out in the calculator dialog. */
+function PurchaseRateField({ config, patchConfig }: PurchaseFieldsProps) {
+  const [calculatorOpen, setCalculatorOpen] = useState(false);
+  const rate = config.points_per_unit ?? 0;
+
+  return (
+    <Field>
+      <FieldLabel htmlFor="reward-purchase-points-per-unit">{__('Rate', 'yayloyalty')}</FieldLabel>
+      <FieldContent>
+        <div className="flex flex-wrap items-center gap-2">
+          <NumberInputRoot
+            size="small"
+            className="w-44"
+            min={10 ** -RATE_DECIMALS}
+            decimalScale={RATE_DECIMALS}
+            value={rate}
+            onValueChange={(points_per_unit) => patchConfig({ points_per_unit })}
+          >
+            <NumberInputInput id="reward-purchase-points-per-unit" />
+            <NumberInputUnit
+              unit={sprintf(
+                /* translators: %s: the store currency symbol, e.g. "₫". */
+                __('pts / %s', 'yayloyalty'),
+                storeCurrencySymbol(),
+              )}
+            />
+          </NumberInputRoot>
+          <Button type="button" variant="link" size="sm" onClick={() => setCalculatorOpen(true)}>
+            <Calculator />
+            {__('Calculate from spend', 'yayloyalty')}
+          </Button>
+        </div>
+        {rate > 0 && (
+          <FieldDescription>
+            {sprintf(
+              /* translators: %s: the rate as a spend pair, e.g. "1 pt per 20 ₫". */
+              __('Customers earn %s.', 'yayloyalty'),
+              pointsPerCurrencyLabel(rate),
+            )}
+          </FieldDescription>
+        )}
+      </FieldContent>
+
+      <PurchaseRateCalculatorDialog
+        open={calculatorOpen}
+        onOpenChange={setCalculatorOpen}
+        rate={rate || 1}
+        onApply={(points_per_unit) => {
+          patchConfig({ points_per_unit });
+          setCalculatorOpen(false);
+        }}
+      />
+    </Field>
   );
 }
 
@@ -106,18 +137,23 @@ function PurchaseAdvanced({ config, patchConfig }: PurchaseFieldsProps) {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setAdvancedOpen((open) => !open)}
-        className="text-muted-foreground flex w-fit items-center gap-1.5 text-sm font-medium"
-        aria-expanded={advancedOpen}
-      >
-        {advancedOpen ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
-        {__('Advanced', 'yayloyalty')}
-        {!advancedOpen && advancedPhrases.length > 0 && (
-          <span className="font-normal">· {advancedPhrases.join(' · ')}</span>
-        )}
-      </button>
+      <div className="flex flex-col gap-1">
+        <button
+          type="button"
+          onClick={() => setAdvancedOpen((open) => !open)}
+          className="text-muted-foreground flex w-fit items-center gap-1.5 text-sm font-medium"
+          aria-expanded={advancedOpen}
+        >
+          {advancedOpen ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+          {__('Advanced', 'yayloyalty')}
+          {!advancedOpen && advancedPhrases.length > 0 && (
+            <span className="font-normal">· {advancedPhrases.join(' · ')}</span>
+          )}
+        </button>
+        <FieldDescription>
+          {__('Which orders and which part of each order count, plus rounding and caps.', 'yayloyalty')}
+        </FieldDescription>
+      </div>
 
       {advancedOpen && (
         <div className="flex flex-col gap-5 rounded-lg border p-4">

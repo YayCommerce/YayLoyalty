@@ -24,16 +24,24 @@ function roundTo(value: number, decimals: number): number {
   return rounded === 0 ? 0 : Math.sign(value) * rounded;
 }
 
-/** Mirrors PointsMath::round_points; an unknown mode rounds down. `mode` is string because PHP accepts any. */
+/** Mirrors PointsMath::SNAP_DECIMALS. */
+const SNAP_DECIMALS = 9;
+
+/**
+ * Mirrors PointsMath::round_points; an unknown mode rounds down. `mode` is string because PHP accepts any.
+ * Snaps first, so float error (0.57 × 100 = 56.999…) never crosses a whole number.
+ */
 export function roundPoints(raw: number, mode: string): number {
+  const snapped = roundTo(raw, SNAP_DECIMALS);
+
   // `+ 0` turns the -0 Math.ceil/Math.floor produce into 0 without hiding NaN.
   switch (mode) {
     case ROUNDING.UP:
-      return Math.ceil(raw) + 0;
+      return Math.ceil(snapped) + 0;
     case ROUNDING.NEAREST:
-      return Math.trunc(roundTo(raw, 0)) + 0;
+      return Math.trunc(roundTo(snapped, 0)) + 0;
     default:
-      return Math.floor(raw) + 0;
+      return Math.floor(snapped) + 0;
   }
 }
 
