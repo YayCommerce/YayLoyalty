@@ -5,7 +5,6 @@ import type {
   DesignLauncherIcon,
   DesignLauncherPosition,
   DesignPanelLayout,
-  DesignTypographyMode,
   DesignVisibilityScope,
 } from '@/lib/schema/design.schema';
 
@@ -17,10 +16,6 @@ export function launcherPositionLabel(position: DesignLauncherPosition): string 
       return __('Bottom right', 'yayloyalty');
     case 'bottom_left':
       return __('Bottom left', 'yayloyalty');
-    case 'top_right':
-      return __('Top right', 'yayloyalty');
-    case 'top_left':
-      return __('Top left', 'yayloyalty');
   }
 }
 
@@ -73,34 +68,4 @@ export function panelLayoutDescription(layout: DesignPanelLayout): string {
   return layout === 'compact'
     ? __('Balance and redeem only', 'yayloyalty')
     : __('Balance, redeem and rewards', 'yayloyalty');
-}
-
-export function typographyModeLabel(mode: DesignTypographyMode): string {
-  return mode === 'custom' ? __('Custom', 'yayloyalty') : __('Inherit from theme', 'yayloyalty');
-}
-
-/**
- * Stands in for `typography.font: ''` ("use the theme's font"), which Radix `Select.Item` rejects
- * as a value. UI only: translate it at the form boundary and never store it.
- */
-export const TYPOGRAPHY_FONT_DEFAULT_VALUE = '__default__';
-
-/**
- * Guidance, not a whitelist: `typography.font` is a plain capped string server-side (DesignSchema),
- * so a value outside this list still round-trips. Font names stay untranslated.
- */
-export function typographyFontOptions(): { value: string; label: string }[] {
-  return [
-    { value: TYPOGRAPHY_FONT_DEFAULT_VALUE, label: __('Default (theme font)', 'yayloyalty') },
-    { value: 'Arial', label: 'Arial' },
-    { value: 'Helvetica', label: 'Helvetica' },
-    { value: 'Georgia', label: 'Georgia' },
-    { value: 'Times New Roman', label: 'Times New Roman' },
-    { value: 'Verdana', label: 'Verdana' },
-    { value: 'Trebuchet MS', label: 'Trebuchet MS' },
-    { value: 'Roboto', label: 'Roboto' },
-    { value: 'Open Sans', label: 'Open Sans' },
-    { value: 'Poppins', label: 'Poppins' },
-    { value: 'Montserrat', label: 'Montserrat' },
-  ];
 }
