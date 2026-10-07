@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { EditorFieldSkeleton, EditorSectionSkeleton } from '@/components/ui/custom/editor-section';
 import { Skeleton } from '@/components/ui/skeleton';
 import PageLayout from '@/components/layout/PageLayout';
 
@@ -37,29 +38,29 @@ export function CampaignEditorSkeleton() {
       >
         <div className="flex flex-col items-start gap-5 lg:flex-row">
           <div className="flex min-w-0 flex-1 flex-col gap-4">
-            <SectionSkeleton>
-              <LabelledSkeleton labelClassName="w-10">
+            <EditorSectionSkeleton>
+              <EditorFieldSkeleton labelClassName="w-10">
                 <Skeleton className="h-9 w-full" />
-              </LabelledSkeleton>
+              </EditorFieldSkeleton>
               <Skeleton className="h-3 w-3/4" />
-            </SectionSkeleton>
+            </EditorSectionSkeleton>
 
-            <SectionSkeleton>
+            <EditorSectionSkeleton>
               <div className="grid gap-3 sm:grid-cols-2">
                 <Skeleton className="h-28 w-full" />
                 <Skeleton className="h-28 w-full" />
               </div>
-              <LabelledSkeleton labelClassName="w-20">
+              <EditorFieldSkeleton labelClassName="w-20">
                 <Skeleton className="h-9 w-40" />
-              </LabelledSkeleton>
+              </EditorFieldSkeleton>
               <Skeleton className="h-8 w-28" />
-            </SectionSkeleton>
+            </EditorSectionSkeleton>
 
-            <SectionSkeleton>
+            <EditorSectionSkeleton>
               <Skeleton className="h-28 w-full" />
               <Skeleton className="h-8 w-36" />
               <Skeleton className="h-3 w-2/3" />
-            </SectionSkeleton>
+            </EditorSectionSkeleton>
           </div>
 
           <div className="flex w-full flex-col gap-4 lg:sticky lg:top-6 lg:w-85 lg:shrink-0">
@@ -70,16 +71,16 @@ export function CampaignEditorSkeleton() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col gap-4">
-                <LabelledSkeleton labelClassName="w-12">
+                <EditorFieldSkeleton labelClassName="w-12">
                   <Skeleton className="h-9 w-56" />
-                </LabelledSkeleton>
+                </EditorFieldSkeleton>
                 {[0, 1].map((index) => (
-                  <LabelledSkeleton key={index} labelClassName="w-10">
+                  <EditorFieldSkeleton key={index} labelClassName="w-10">
                     <div className="flex items-center gap-2">
                       <Skeleton className="h-9 w-40" />
                       <Skeleton className="h-9 w-28" />
                     </div>
-                  </LabelledSkeleton>
+                  </EditorFieldSkeleton>
                 ))}
                 <Skeleton className="h-12 w-full" />
               </CardContent>
@@ -94,30 +95,5 @@ export function CampaignEditorSkeleton() {
         </div>
       </PageLayout>
     </>
-  );
-}
-
-/** CampaignEditorSections' numbered-card shell with the badge and title greyed out. */
-function SectionSkeleton({ children }: { children: React.ReactNode }) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2.5 text-base">
-          <Skeleton className="size-5.5 shrink-0 rounded-full" />
-          <Skeleton className="h-4 w-24" />
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">{children}</CardContent>
-    </Card>
-  );
-}
-
-/** A vertical Field: label line above its control(s). */
-function LabelledSkeleton({ labelClassName, children }: { labelClassName: string; children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <Skeleton className={`h-3.5 ${labelClassName}`} />
-      {children}
-    </div>
   );
 }

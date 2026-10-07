@@ -1,32 +1,14 @@
 import { Control, Controller, useFormContext } from 'react-hook-form';
 
-import { designPanelLayoutSchema, type Design, type DesignPanelLayout } from '@/lib/schema/design.schema';
+import type { Design } from '@/lib/schema/design.schema';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Field, FieldContent, FieldLabel } from '@/components/ui/field';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Switch } from '@/components/ui/switch';
 import {
-  PANEL_LAYOUT_LABEL,
   PANEL_SECTION_DESCRIPTION,
   PANEL_SECTION_TITLE,
   PANEL_SHOW_REWARD_CATALOG_DESCRIPTION,
   PANEL_SHOW_REWARD_CATALOG_LABEL,
 } from '@/pages/settings/design-settings.copy';
-import { panelLayoutDescription, panelLayoutLabel } from '@/pages/settings/design-settings.option-labels';
-
-/** A miniature of the panel: the highlighted top and bottom bars appear only in "full". */
-function PanelLayoutPreview({ layout }: { layout: DesignPanelLayout }) {
-  const full = layout === 'full';
-  return (
-    <svg viewBox="0 0 120 72" className="w-full" aria-hidden="true">
-      <rect x="1" y="1" width="118" height="70" rx="6" className="fill-background stroke-border" />
-      <rect x="10" y="10" width="100" height="10" rx="2" className={full ? 'fill-primary' : 'fill-muted'} />
-      <rect x="10" y="28" width="100" height="6" rx="2" className="fill-muted" />
-      <rect x="10" y="40" width="70" height="6" rx="2" className="fill-muted" />
-      {full && <rect x="10" y="54" width="100" height="10" rx="2" className="fill-primary/60" />}
-    </svg>
-  );
-}
 
 /** One optional-block row: switch on the left, title + one-line description on the right. */
 function PanelToggleRow({
@@ -59,10 +41,7 @@ function PanelToggleRow({
   );
 }
 
-/**
- * Pro. Layout radio cards, each with a miniature preview, beside the panel's optional blocks.
- * Mounted through `@/pro`, never imported directly.
- */
+/** Pro. The panel's optional blocks. Mounted through `@/pro`, never imported directly. */
 export function DesignPanelSection() {
   const { control } = useFormContext<Design>();
 
@@ -72,46 +51,14 @@ export function DesignPanelSection() {
         <CardTitle>{PANEL_SECTION_TITLE()}</CardTitle>
         <CardDescription>{PANEL_SECTION_DESCRIPTION()}</CardDescription>
       </CardHeader>
-      <CardContent>
-        <div className="grid gap-6">
-          <Field>
-            <FieldLabel>{PANEL_LAYOUT_LABEL()}</FieldLabel>
-            <FieldContent>
-              <Controller
-                control={control}
-                name="panel.layout"
-                render={({ field }) => (
-                  <RadioGroup value={field.value} onValueChange={field.onChange} className="grid grid-cols-2 gap-3">
-                    {designPanelLayoutSchema.options.map((option) => (
-                      <FieldLabel key={option} htmlFor={`design-panel-layout-${option}`}>
-                        <Field>
-                          <PanelLayoutPreview layout={option} />
-                          <FieldContent className="flex-row items-center gap-2">
-                            <RadioGroupItem id={`design-panel-layout-${option}`} value={option} />
-                            <div>
-                              <div className="text-sm font-medium">{panelLayoutLabel(option)}</div>
-                              <div className="text-muted-foreground text-xs">{panelLayoutDescription(option)}</div>
-                            </div>
-                          </FieldContent>
-                        </Field>
-                      </FieldLabel>
-                    ))}
-                  </RadioGroup>
-                )}
-              />
-            </FieldContent>
-          </Field>
-
-          <div className="flex flex-col gap-4">
-            <PanelToggleRow
-              control={control}
-              name="panel.show_reward_catalog"
-              id="design-panel-show-reward-catalog"
-              label={PANEL_SHOW_REWARD_CATALOG_LABEL()}
-              description={PANEL_SHOW_REWARD_CATALOG_DESCRIPTION()}
-            />
-          </div>
-        </div>
+      <CardContent className="flex flex-col gap-4">
+        <PanelToggleRow
+          control={control}
+          name="panel.show_reward_catalog"
+          id="design-panel-show-reward-catalog"
+          label={PANEL_SHOW_REWARD_CATALOG_LABEL()}
+          description={PANEL_SHOW_REWARD_CATALOG_DESCRIPTION()}
+        />
       </CardContent>
     </Card>
   );

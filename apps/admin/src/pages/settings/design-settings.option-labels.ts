@@ -1,6 +1,6 @@
 import { __ } from '@wordpress/i18n';
 
-import type { DesignLauncherPosition, DesignPanelLayout, DesignVisibilityScope } from '@/lib/schema/design.schema';
+import type { DesignLauncherPosition, DesignVisibilityScope } from '@/lib/schema/design.schema';
 
 /** Enum-value → label mappers for the Design tab's closed-choice fields. */
 
@@ -22,14 +22,4 @@ export function visibilityScopeLabel(scope: DesignVisibilityScope): string {
     case 'custom_pages':
       return __('Only the pages I choose', 'yayloyalty');
   }
-}
-
-export function panelLayoutLabel(layout: DesignPanelLayout): string {
-  return layout === 'compact' ? __('Compact', 'yayloyalty') : __('Full', 'yayloyalty');
-}
-
-export function panelLayoutDescription(layout: DesignPanelLayout): string {
-  return layout === 'compact'
-    ? __('Balance and redeem only', 'yayloyalty')
-    : __('Balance, redeem and rewards', 'yayloyalty');
 }

@@ -37,7 +37,7 @@ $yayloyalty_is_open = ! empty( $view['is_open'] );
         data-yl-collapsible
     >
         <?php echo LauncherIcon::gift(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- fixed SVG string. ?>
-        <span class="yl-launcher-label-wrap"><span class="yl-launcher-label"><?php echo esc_html( $yayloyalty_text['launcher_label'] ); ?></span></span>
+        <span class="yl-launcher-label-wrap"><span class="yl-launcher-label" data-yl-text="launcher_label"><?php echo esc_html( $yayloyalty_text['launcher_label'] ); ?></span></span>
         <?php if ( null !== $yayloyalty_member ) : ?>
             <span class="yl-launcher-badge yl:inline-flex yl:items-center yl:justify-center yl:rounded-full yl:bg-primary-foreground yl:text-primary yl:h-[22px] yl:min-w-[22px] yl:px-1.5 yl:text-xs yl:font-semibold yl:tabular-nums">
                 <?php echo esc_html( LauncherCopy::points( $yayloyalty_member['balance'] ) ); ?>
@@ -62,7 +62,7 @@ $yayloyalty_is_open = ! empty( $view['is_open'] );
 
         <div class="yl-launcher-header yl:flex yl:items-center yl:gap-2.5 yl:bg-primary yl:text-primary-foreground yl:px-4 yl:py-2.5">
             <span class="yl-launcher-header-icon yl:inline-flex yl:[&>*]:size-4"><?php echo LauncherIcon::gift(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- fixed SVG string. ?></span>
-            <h2 id="yayloyalty-launcher-title" class="yl:m-0 yl:text-sm yl:font-semibold yl:leading-tight yl:text-primary-foreground"><?php echo esc_html( $yayloyalty_text['launcher_label'] ); ?></h2>
+            <h2 id="yayloyalty-launcher-title" data-yl-text="launcher_label" class="yl:m-0 yl:text-sm yl:font-semibold yl:leading-tight yl:text-primary-foreground"><?php echo esc_html( $yayloyalty_text['launcher_label'] ); ?></h2>
             <button type="button" class="yl-launcher-close yl:ml-auto yl:inline-flex yl:size-7 yl:items-center yl:justify-center yl:rounded-md yl:text-primary-foreground yl:hover:bg-primary-foreground/15 yl:cursor-pointer yl:transition-colors yl:outline-none yl:focus-visible:ring-[1.5px] yl:focus-visible:ring-primary-foreground" data-yl-close aria-label="<?php esc_attr_e( 'Close', 'yayloyalty' ); ?>">
                 <?php echo LauncherIcon::close(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- fixed SVG string. ?>
             </button>

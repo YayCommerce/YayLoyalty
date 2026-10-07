@@ -11,10 +11,10 @@ import { useEmailsQuery, useSaveEmailsMutation } from '@/lib/queries/emails.quer
 import { emailsFormSchema, EmailsFormValues, EmailsResponse, toEmailsFormValues } from '@/lib/schema/emails.schema';
 import { useRouteLeaveGuard } from '@/hooks/useRouteLeaveGuard';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { UnsavedChangeDialog } from '@/components/ui/custom/unsaved-changed-dialog';
-import { Skeleton } from '@/components/ui/skeleton';
-import { ProGate } from '@/components/pro/ProGate';
+import { EmailsMoreInProCard } from './EmailsMoreInProCard';
+import { EmailsSettingsSkeleton } from './EmailsSettingsSkeleton';
 import { EmailsTable } from './EmailsTable';
 import { EmailsThrottleCard } from './EmailsThrottleCard';
 
@@ -43,7 +43,7 @@ export default function EmailsSettingsPage() {
     );
   }
 
-  return <Skeleton tone="page" className="h-96 w-full" />;
+  return <EmailsSettingsSkeleton />;
 }
 
 function EmailsSettingsForm({ data }: { data: EmailsResponse }) {
@@ -80,17 +80,7 @@ function EmailsSettingsForm({ data }: { data: EmailsResponse }) {
         <form onSubmit={handleSave} className="flex flex-col gap-4">
           <EmailsTable groups={data.groups} />
 
-          {IS_PRO_BUILD ? null : (
-            <Card>
-              <CardHeader>
-                <CardTitle>{__('More emails in Pro', 'yayloyalty')}</CardTitle>
-                <CardDescription>{__('More loyalty emails come with YayLoyalty Pro.', 'yayloyalty')}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ProGate />
-              </CardContent>
-            </Card>
-          )}
+          {IS_PRO_BUILD ? null : <EmailsMoreInProCard />}
 
           <EmailsThrottleCard />
 

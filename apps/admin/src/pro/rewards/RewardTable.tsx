@@ -41,7 +41,6 @@ import {
   rewardSubtitle,
   typeLabel,
 } from './reward-labels';
-import { RewardCatalogEmptyState } from './RewardCatalogEmptyState';
 
 /**
  * Pro's Rewards screen: the launcher catalog in display order, plus an
@@ -162,8 +161,6 @@ export function RewardTable() {
               </div>
             </div>
           )}
-
-          {ready && !showArchived && screen.isInitCase && <RewardCatalogEmptyState />}
         </CardContent>
       </Card>
 
