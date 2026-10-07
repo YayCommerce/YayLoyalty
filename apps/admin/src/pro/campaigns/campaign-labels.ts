@@ -172,11 +172,11 @@ export function campaignStatusBadgeVariant(
 ): VariantProps<typeof badgeVariants>['variant'] {
   switch (status) {
     case 'active':
-      return 'success-soft';
+      return 'success';
     case 'scheduled':
-      return 'primary-soft';
+      return 'primary';
     case 'paused':
-      return 'warning-soft';
+      return 'warning';
     case 'draft':
       return 'outline';
     case 'archived':

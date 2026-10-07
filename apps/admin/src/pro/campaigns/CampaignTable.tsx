@@ -63,9 +63,6 @@ const SEARCH_THRESHOLD = 20;
 /** Table columns, for colSpan on rows that span the whole width. */
 const COLUMN_COUNT = 11;
 
-/** The note under the table that a built-in row's disabled checkbox points to. */
-const BUILTIN_SELECT_REASON_ID = 'campaign-builtin-select-reason';
-
 const GROUP_ORDER: readonly CampaignGroupKey[] = ['purchase', 'signup', 'review', 'other'];
 
 const GROUP_LABELS: Record<CampaignGroupKey, string> = {
@@ -464,22 +461,6 @@ export function CampaignTable() {
             onClear={() => setSelectedIds(new Set())}
             onArchive={archiveSelected}
           />
-
-          {visibleRows.some((row) => row.is_builtin) && (
-            <p id={BUILTIN_SELECT_REASON_ID} className="text-muted-foreground text-xs">
-              {__('Default campaigns can’t be selected: they can never be archived.', 'yayloyalty')}
-            </p>
-          )}
-
-          {/* Not shown on a fresh install — nothing there is paused or draft to explain yet. */}
-          {!newStore && (
-            <p className="text-muted-foreground max-w-3xl text-xs">
-              {__(
-                'Paused keeps the campaign and its history but stops it matching. Draft has never run and is invisible to the engine.',
-                'yayloyalty',
-              )}
-            </p>
-          )}
         </CardContent>
       </Card>
 
@@ -778,11 +759,13 @@ function SortableCampaignRow({
             disabled={row.is_builtin}
             onCheckedChange={() => onToggleSelected(row.id)}
             aria-label={sprintf(
-              /* translators: %s: the campaign's name. */
-              __('Select “%s”', 'yayloyalty'),
+              row.is_builtin
+                ? /* translators: %s: the campaign's name. */
+                  __('Select “%s” (default campaigns can’t be archived)', 'yayloyalty')
+                : /* translators: %s: the campaign's name. */
+                  __('Select “%s”', 'yayloyalty'),
               row.name,
             )}
-            aria-describedby={row.is_builtin ? BUILTIN_SELECT_REASON_ID : undefined}
           />
         )}
       </TableCell>
@@ -809,24 +792,15 @@ function SortableCampaignRow({
           </Button>
           {isTied && (
             <YayLoyaltyToolTip
-              trigger={
-                <Badge variant="outline" className="uppercase">
-                  {__('Priority tie', 'yayloyalty')}
-                </Badge>
-              }
+              trigger={<Badge variant="outline">{__('Priority tie', 'yayloyalty')}</Badge>}
               content={__('Shares this priority with another campaign in this group', 'yayloyalty')}
             />
           )}
           {row.is_builtin && (
-            <>
-              <Badge variant="outline" className="uppercase">
-                {__('Default', 'yayloyalty')}
-              </Badge>
-              <YayLoyaltyToolTip
-                trigger={<Lock className="text-muted-foreground size-3" />}
-                content={__('Built-in campaigns cannot be archived.', 'yayloyalty')}
-              />
-            </>
+            <YayLoyaltyToolTip
+              trigger={<Lock className="text-muted-foreground size-3" />}
+              content={__('Built-in campaigns cannot be archived.', 'yayloyalty')}
+            />
           )}
         </div>
       </TableCell>
