@@ -154,13 +154,7 @@ function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }
                 </Button>
               )
             }
-            description={
-              <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                <Badge variant="outline">{triggerLabel(campaign.trigger)}</Badge>
-                <span aria-hidden>·</span>
-                <span className="font-mono text-xs">{campaign.slug}</span>
-              </span>
-            }
+            description={<Badge variant="outline">{triggerLabel(campaign.trigger)}</Badge>}
           >
             <div className="flex flex-col items-start gap-5 lg:flex-row">
               <div className="min-w-0 flex-1">
