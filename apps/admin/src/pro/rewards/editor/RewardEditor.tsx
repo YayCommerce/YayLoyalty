@@ -26,7 +26,6 @@ import { ScheduleFields } from '@/components/ui/custom/schedule-fields';
 import { UnsavedChangeDialog } from '@/components/ui/custom/unsaved-changed-dialog';
 import { Field, FieldContent, FieldLabel } from '@/components/ui/field';
 import { Segmented, SegmentedItem } from '@/components/ui/segmented';
-import { Skeleton } from '@/components/ui/skeleton';
 import PageLayout from '@/components/layout/PageLayout';
 import NotFoundPage from '@/pages/404';
 import { statusLabel } from '@/pro/campaigns/campaign-labels';
@@ -45,6 +44,7 @@ import {
   rewardToFormValues,
 } from './reward-editor.form';
 import { RewardEditorSections } from './RewardEditorSections';
+import { RewardEditorSkeleton } from './RewardEditorSkeleton';
 
 /** Edit-mode entry for `rewards/:id/edit`: every non-content state, then the form. */
 export function RewardEditor({ id }: { id: number }) {
@@ -411,21 +411,6 @@ function RewardEditorSchedule() {
       onEndsAtChange={(next) => setValue('ends_at', next, { shouldDirty: true, shouldValidate: true })}
       endsAtError={formState.errors.ends_at}
     />
-  );
-}
-
-function RewardEditorSkeleton() {
-  return (
-    <PageLayout className="max-w-6xl" title={<Skeleton className="h-7 w-48" />}>
-      <div className="flex flex-col gap-5 lg:flex-row">
-        <div className="flex flex-1 flex-col gap-4">
-          <Skeleton className="h-32 w-full" />
-          <Skeleton className="h-64 w-full" />
-          <Skeleton className="h-48 w-full" />
-        </div>
-        <Skeleton className="h-40 w-full lg:w-85" />
-      </div>
-    </PageLayout>
   );
 }
 
