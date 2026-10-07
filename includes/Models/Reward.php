@@ -263,7 +263,8 @@ class Reward extends AbstractModel {
     /**
      * Whether a config is acceptable for a type: unknown keys, wrong types and
      * a missing `required` key fail. A type this build has no schema for
-     * came from another build and is accepted unjudged.
+     * came from another build and is accepted unjudged. The stored
+     * schema_version stamp is skipped: a config read back from the API carries it.
      */
     public static function config_is_valid( string $type, array $config ): bool {
         $schema = self::config_schema()[ $type ] ?? null;
@@ -273,6 +274,10 @@ class Reward extends AbstractModel {
         }
 
         foreach ( $config as $key => $value ) {
+            if ( Json::SCHEMA_VERSION_KEY === $key ) {
+                continue;
+            }
+
             if ( ! isset( $schema[ $key ] ) || ! self::value_matches_spec( $value, $schema[ $key ] ) ) {
                 return false;
             }
