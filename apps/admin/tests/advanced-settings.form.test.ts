@@ -7,8 +7,7 @@ import {
 } from '@/pages/settings/advanced-settings.form';
 
 const values: AdvancedSettingsFormValues = {
-  general: { points_label_singular: 'Star', points_label_plural: 'Stars' },
-  advanced: { max_points_per_day: 5 },
+  advanced: { points_label_singular: 'Star', points_label_plural: 'Stars', max_points_per_day: 5 },
 };
 
 describe('buildAdvancedSettingsUpdate', () => {
@@ -19,8 +18,8 @@ describe('buildAdvancedSettingsUpdate', () => {
   });
 
   it('sends only the edited label', () => {
-    expect(buildAdvancedSettingsUpdate(values, { general: { points_label_plural: true } })).toEqual({
-      general: { points_label_plural: 'Stars' },
+    expect(buildAdvancedSettingsUpdate(values, { advanced: { points_label_plural: true } })).toEqual({
+      advanced: { points_label_plural: 'Stars' },
     });
   });
 
@@ -30,7 +29,7 @@ describe('buildAdvancedSettingsUpdate', () => {
 });
 
 describe('advancedSettingsFormSchema', () => {
-  const withPlural = (plural: string) => ({ ...values, general: { ...values.general, points_label_plural: plural } });
+  const withPlural = (plural: string) => ({ advanced: { ...values.advanced, points_label_plural: plural } });
 
   it('rejects a blank label', () => {
     expect(advancedSettingsFormSchema.safeParse(withPlural('   ')).success).toBe(false);
