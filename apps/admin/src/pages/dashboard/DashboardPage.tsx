@@ -11,7 +11,6 @@ import PageLayout from '@/components/layout/PageLayout';
 import { DashboardProPanels } from '@/pro';
 import { DashboardAnomalyPanel } from './components/DashboardAnomalyPanel';
 import { DashboardCacheStrip } from './components/DashboardCacheStrip';
-import { DashboardEmptyState } from './components/DashboardEmptyState';
 import { DashboardNoticeStrip } from './components/DashboardNoticeStrip';
 import { DashboardPointsChart } from './components/DashboardPointsChart';
 import { DashboardProTeasers } from './components/DashboardProTeasers';
@@ -30,7 +29,6 @@ export default function DashboardPage() {
   const refresh = useRefreshDashboard(range);
   const data = query.data;
 
-  const isEmptyStore = !!data && data.stats.members.value === 0 && data.stats.points_issued.value === 0;
   const pointsJump = data ? findPointsJump(data.notices) : null;
   const tileOverrides = data
     ? noticeTileOverrides(
@@ -82,10 +80,6 @@ export default function DashboardPage() {
               onRefresh={() => refresh.mutate()}
               isRefreshing={refresh.isPending}
             />
-          )}
-
-          {isEmptyStore && (
-            <DashboardEmptyState pointsPerCurrencyUnit={data.stats.liability.points_per_currency_unit} />
           )}
 
           {/* Both sides hand the same slots to the same layout; Lite never imports from @/pro. */}
