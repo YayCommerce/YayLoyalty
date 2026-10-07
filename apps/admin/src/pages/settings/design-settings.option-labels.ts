@@ -1,12 +1,6 @@
 import { __ } from '@wordpress/i18n';
 
-import type {
-  DesignLauncherButtonStyle,
-  DesignLauncherIcon,
-  DesignLauncherPosition,
-  DesignPanelLayout,
-  DesignVisibilityScope,
-} from '@/lib/schema/design.schema';
+import type { DesignLauncherPosition, DesignPanelLayout, DesignVisibilityScope } from '@/lib/schema/design.schema';
 
 /** Enum-value → label mappers for the Design tab's closed-choice fields. */
 
@@ -16,36 +10,6 @@ export function launcherPositionLabel(position: DesignLauncherPosition): string 
       return __('Bottom right', 'yayloyalty');
     case 'bottom_left':
       return __('Bottom left', 'yayloyalty');
-  }
-}
-
-export function launcherButtonStyleLabel(style: DesignLauncherButtonStyle): string {
-  switch (style) {
-    case 'icon':
-      return __('Icon only', 'yayloyalty');
-    case 'label':
-      return __('Label only', 'yayloyalty');
-    case 'both':
-      return __('Icon and label', 'yayloyalty');
-  }
-}
-
-export function launcherIconLabel(icon: DesignLauncherIcon): string {
-  switch (icon) {
-    case 'default':
-      return __('Default', 'yayloyalty');
-    case 'circle':
-      return __('Circle', 'yayloyalty');
-    case 'diamond':
-      return __('Diamond', 'yayloyalty');
-    case 'bar':
-      return __('Bar', 'yayloyalty');
-    case 'ring':
-      return __('Ring', 'yayloyalty');
-    case 'line':
-      return __('Line', 'yayloyalty');
-    case 'custom':
-      return __('Custom upload', 'yayloyalty');
   }
 }
 

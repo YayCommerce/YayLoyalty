@@ -14,7 +14,6 @@ import {
   PREVIEW_DEVICE_MOBILE,
   PREVIEW_ERROR,
   PREVIEW_EXPANDED,
-  PREVIEW_FOOTNOTE,
   PREVIEW_HIDDEN_ON_MOBILE,
   PREVIEW_TITLE,
   PREVIEW_VIEWER_GUEST,
@@ -89,8 +88,6 @@ export function DesignLauncherPreview() {
             )}
           </div>
         ))}
-
-        <p className="text-muted-foreground text-xs">{PREVIEW_FOOTNOTE()}</p>
       </CardContent>
     </Card>
   );

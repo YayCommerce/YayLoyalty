@@ -16,17 +16,12 @@ class DesignHelper {
     public const OPTION_DESIGN  = 'yayloyalty_design';
     public const SCHEMA_VERSION = 1;
 
-    /** Stored design merged over defaults, sanitised for output, plus the derived launcher icon URL. */
+    /** Stored design merged over defaults, sanitised for output. */
     public static function get_design(): array {
         $saved  = self::load_stored();
         $merged = self::merge_over( DesignSchema::get_default_design(), self::sanitize_output( $saved ) );
 
         $merged['schema_version'] = isset( $saved['schema_version'] ) ? (int) $saved['schema_version'] : self::SCHEMA_VERSION;
-
-        $upload_id  = (int) $merged['launcher']['icon_upload_id'];
-        $upload_url = $upload_id > 0 ? wp_get_attachment_url( $upload_id ) : '';
-        // Derived, never stored: an attachment id removes the arbitrary-origin risk a raw URL field would carry.
-        $merged['launcher']['icon_upload_url'] = $upload_url ? (string) $upload_url : '';
 
         return $merged;
     }

@@ -14,9 +14,5 @@ export const POINTS_NAMING_TITLE = () => __('Points naming', 'yayloyalty');
 export const POINTS_NAMING_SINGULAR = () => __('Singular', 'yayloyalty');
 export const POINTS_NAMING_PLURAL = () => __('Plural', 'yayloyalty');
 export const POINTS_NAMING_ERROR = () => __('Enter a name of 1 to 30 characters.', 'yayloyalty');
-export const POINTS_NAMING_PREVIEW_TITLE = () => __('Storefront reads', 'yayloyalty');
-export const POINTS_NAMING_HELP = () =>
-  __(
-    'Used everywhere the customer sees a quantity, including the three emails. Admin screens keep the word “points”.',
-    'yayloyalty',
-  );
+export const POINTS_NAMING_PREVIEW_TITLE = () => __('Example:', 'yayloyalty');
+export const POINTS_NAMING_DESCRIPTION = () => __('What customers see on the storefront and in emails.', 'yayloyalty');
