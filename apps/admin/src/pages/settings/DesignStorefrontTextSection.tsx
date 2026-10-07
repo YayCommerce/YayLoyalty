@@ -26,22 +26,33 @@ import {
   STOREFRONT_SECTION_TITLE,
   STOREFRONT_SIGNED_OUT_PROMPT_LABEL,
 } from './design-settings.copy';
-
-type StorefrontTextKey = keyof Design['storefront_text'];
+import { StorefrontTextKey, usePreviewHighlight } from './design-settings.preview-highlight';
 
 /** One storefront-text input with its label and, for the required labels, the blank-field error. */
 function StorefrontTextField({ name, label }: { name: StorefrontTextKey; label: string }) {
   const { register, formState } = useFormContext<Design>();
   const id = `design-storefront-${name.replaceAll('_', '-')}`;
   const invalid = !!formState.errors.storefront_text?.[name];
+  const { setHovered, setFocused } = usePreviewHighlight();
+  const field = register(`storefront_text.${name}`);
 
   return (
-    <Field data-invalid={invalid}>
+    <Field data-invalid={invalid} onMouseEnter={() => setHovered(name)} onMouseLeave={() => setHovered(null)}>
       <FieldLabel htmlFor={id} className="items-center">
         {label}
       </FieldLabel>
       <FieldContent>
-        <Input id={id} aria-invalid={invalid} {...register(`storefront_text.${name}`)} />
+        <Input
+          id={id}
+          aria-invalid={invalid}
+          {...field}
+          onFocus={() => setFocused(name)}
+          // Chained, not replaced: register's onBlur is what marks the field touched.
+          onBlur={(event) => {
+            void field.onBlur(event);
+            setFocused(null);
+          }}
+        />
         {invalid && <FieldError>{STOREFRONT_REQUIRED_ERROR()}</FieldError>}
       </FieldContent>
     </Field>
