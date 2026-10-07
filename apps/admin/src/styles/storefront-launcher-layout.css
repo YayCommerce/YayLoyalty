@@ -25,7 +25,7 @@
   z-index: 99990;
 }
 
-/* Icon only, 44px square: set by launcher.js near the page bottom, and printed for the icon button style. */
+/* Icon only, 44px square: set by launcher.js near the page bottom. */
 .yl-launcher-trigger[data-collapsed] {
   --yl-trigger-gap: 0px;
   --yl-trigger-pad: 12px;
@@ -142,15 +142,8 @@
     font-size: 13px;
   }
 
-  /* No icon to collapse to: the label stays, as a smaller pill. */
-  .yayloyalty-launcher[data-position] .yl-launcher-trigger:not(:has(svg, img)) {
-    height: auto;
-    gap: 8px;
-    padding: 11px 14px;
-  }
-
   /* Always collapsed: the values .yl-launcher-trigger[data-collapsed] owns, repeated because a media query cannot share its selector. */
-  .yl-launcher-trigger:has(svg, img) {
+  .yl-launcher-trigger:has(svg) {
     --yl-trigger-gap: 0px;
     --yl-trigger-pad: 12px;
     --yl-label-cols: 0fr;

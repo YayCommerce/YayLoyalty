@@ -6,7 +6,7 @@ import { toastApiError } from '@/lib/api/api';
 import { useResetDesignMutation } from '@/lib/queries/design.queries';
 import type { Design } from '@/lib/schema/design.schema';
 import { Button } from '@/components/ui/button';
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ConfirmDialog } from '@/components/ui/custom/confirm-dialog';
 import { Field, FieldContent, FieldError, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -23,7 +23,6 @@ import {
   STOREFRONT_RESET_CONFIRM_DESCRIPTION,
   STOREFRONT_RESET_CONFIRM_TITLE,
   STOREFRONT_RESET_SUCCESS_TOAST,
-  STOREFRONT_SECTION_DESCRIPTION,
   STOREFRONT_SECTION_TITLE,
   STOREFRONT_SIGNED_OUT_PROMPT_LABEL,
 } from './design-settings.copy';
@@ -79,7 +78,6 @@ export function DesignStorefrontTextSection() {
     <Card>
       <CardHeader>
         <CardTitle>{STOREFRONT_SECTION_TITLE()}</CardTitle>
-        <CardDescription>{STOREFRONT_SECTION_DESCRIPTION()}</CardDescription>
         <CardAction>
           <Button type="button" variant="outline" size="sm" onClick={() => setConfirmOpen(true)}>
             {STOREFRONT_RESET_BUTTON_LABEL()}
