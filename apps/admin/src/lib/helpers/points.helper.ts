@@ -38,7 +38,7 @@ export function pointsPerCurrencyLabel(rate: number): string {
   return sprintf(
     /* translators: 1: points earned; 2: the amount spent to earn them, formatted in the store currency. */
     _n('%1$s pt per %2$s', '%1$s pts per %2$s', points, 'yayloyalty'),
-    String(points),
+    points.toLocaleString(undefined, { maximumFractionDigits: 6 }),
     parseWPCurrency(spend),
   );
 }
@@ -48,8 +48,8 @@ export function rateFromSpend(spend: number, points: number): number | null {
   return spend > 0 ? points / spend : null;
 }
 
-/** Tolerance for "rate × spend is a whole number": the rate is a stored float, e.g. 1 ÷ 3. */
-const WHOLE_EPSILON = 1e-6;
+/** Tolerance for "rate × spend is a whole number", as tight as PointsMath's 9-decimal snap: a pair is shown only when the engine pays it exactly. */
+const WHOLE_EPSILON = 1e-9;
 
 /**
  * The "spend X to receive Y" pair a stored rate reads as: 0.5 → 2 → 1, 0.75 → 4 → 3, 3 → 1 → 3.
@@ -68,9 +68,11 @@ export function spendPairFromRate(rate: number): { spend: number; points: number
     }
   }
 
+  // A larger spend that earns exactly 1 point (1 per 10,000 ₫); otherwise the exact rate per 1 unit.
   const factor = 10 ** currencyDecimals();
+  const spend = Math.round(factor / rate) / factor;
 
-  return { spend: Math.round(factor / rate) / factor, points: 1 };
+  return spend > 0 && Math.abs(spend * rate - 1) < WHOLE_EPSILON ? { spend, points: 1 } : { spend: 1, points: rate };
 }
 
 /**
