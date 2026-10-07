@@ -23,7 +23,7 @@ $yayloyalty_review   = $yayloyalty_earn[ CampaignTrigger::REVIEW ];
 $yayloyalty_activity = $view['activity'] ?? null;
 ?>
 <section class="yl:flex yl:flex-col yl:gap-0.5 yl:border-b yl:border-border yl:p-4">
-    <p class="yl:m-0 yl:text-[11px] yl:uppercase yl:tracking-[0.06em] yl:text-muted-foreground"><?php echo esc_html( $yayloyalty_text['balance_heading'] ); ?></p>
+    <p class="yl:m-0 yl:text-[11px] yl:uppercase yl:tracking-[0.06em] yl:text-muted-foreground" data-yl-text="balance_heading"><?php echo esc_html( $yayloyalty_text['balance_heading'] ); ?></p>
     <p class="yl:m-0 yl:text-[30px] yl:font-semibold yl:leading-tight yl:tracking-[-0.01em] yl:tabular-nums yl:text-foreground"><?php echo esc_html( LauncherCopy::points( $yayloyalty_member['balance'] ) ); ?></p>
     <?php if ( null !== $yayloyalty_member['worth'] ) : ?>
         <p class="yl:m-0 yl:text-xs yl:text-muted-foreground">
@@ -42,7 +42,7 @@ $yayloyalty_activity = $view['activity'] ?? null;
             <?php if ( null !== $yayloyalty_purchase ) : ?>
                 <li class="<?php echo esc_attr( UiClasses::PANEL_ROW ); ?>">
                     <span><?php esc_html_e( 'Make a purchase', 'yayloyalty' ); ?></span>
-                    <span class="yl:text-right yl:font-semibold"><?php echo esc_html( LauncherCopy::earn_rate( $yayloyalty_text['earn_rate_line'], $yayloyalty_purchase, $view['purchase_min'] ) ); ?></span>
+                    <span class="yl:text-right yl:font-semibold" data-yl-text="earn_rate_line"><?php echo esc_html( LauncherCopy::earn_rate( $yayloyalty_text['earn_rate_line'], $yayloyalty_purchase, $view['purchase_min'] ) ); ?></span>
                 </li>
             <?php endif; ?>
             <?php if ( null !== $yayloyalty_review ) : ?>
