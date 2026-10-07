@@ -18,6 +18,11 @@ class Campaign extends AbstractModel {
     /** config/conditions blob version. Bump when the shape changes. */
     public const CONFIG_SCHEMA_VERSION = 1;
 
+    /** Keys an earlier build stored, such as the removed purchase multiplier: accepted on input, never stored. */
+    private const LEGACY_CONFIG_KEYS = [
+        CampaignTrigger::PURCHASE => [ 'mode', 'multiplier' ],
+    ];
+
     /** @var int|null */
     private $id;
 
@@ -207,14 +212,6 @@ class Campaign extends AbstractModel {
                     'type'          => 'number',
                     'exclusive_min' => 0,
                 ],
-                'mode'                  => [
-                    'type'   => 'enum',
-                    'values' => [ 'rate', 'multiplier' ],
-                ],
-                'multiplier'            => [
-                    'type'          => 'number',
-                    'exclusive_min' => 0,
-                ],
                 'base'                  => [
                     'type'   => 'enum',
                     'values' => [ 'after_discounts', 'before_discounts' ],
@@ -295,7 +292,7 @@ class Campaign extends AbstractModel {
         $allowed = null !== $whitelist ? $whitelist : array_keys( (array) $schema );
 
         foreach ( $config as $key => $value ) {
-            if ( Json::SCHEMA_VERSION_KEY === $key ) {
+            if ( Json::SCHEMA_VERSION_KEY === $key || in_array( $key, self::LEGACY_CONFIG_KEYS[ $trigger ] ?? [], true ) ) {
                 continue;
             }
 

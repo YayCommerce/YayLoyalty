@@ -6,7 +6,6 @@ use YayLoyalty\Controllers\AbstractRestController;
 use YayLoyalty\Controllers\CampaignRestController;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Models\Campaign;
-use YayLoyalty\Engine\Points\Triggers\PurchaseHandler;
 use YayLoyalty\Pro\Repositories\CampaignPerformanceRepository;
 use YayLoyalty\Pro\Repositories\CampaignPointsRepository;
 use YayLoyalty\Repositories\CampaignRepository;
@@ -196,15 +195,14 @@ final class CampaignPerformanceRestController extends AbstractRestController {
      */
     private function shape_totals( array $row, array $totals ): array {
         $shaped = [
-            'points_issued'           => $totals['points_issued'],
-            'entries_total'           => $totals['entries_total'],
-            'orders_affected'         => null,
-            'orders_total'            => null,
-            'customers_earned'        => null,
-            'avg_points_per_order'    => null,
-            'avg_order_subtotal'      => null,
-            'liability_amount'        => null,
-            'liability_above_default' => null,
+            'points_issued'        => $totals['points_issued'],
+            'entries_total'        => $totals['entries_total'],
+            'orders_affected'      => null,
+            'orders_total'         => null,
+            'customers_earned'     => null,
+            'avg_points_per_order' => null,
+            'avg_order_subtotal'   => null,
+            'liability_amount'     => null,
         ];
 
         if ( CampaignTrigger::PURCHASE !== $row['trigger'] ) {
@@ -223,33 +221,7 @@ final class CampaignPerformanceRestController extends AbstractRestController {
             $shaped['avg_points_per_order'] = intdiv( $totals['points_issued'], $totals['orders_affected'] );
         }
 
-        $shaped['liability_above_default'] = $this->liability_above_default( $row, $totals['points_issued'], $rate );
-
         return $shaped;
-    }
-
-    /**
-     * The part of `$points_issued` above what the default rate would have awarded. Null unless the
-     * campaign is a multiplier that is not built in: any other campaign is the default rate.
-     *
-     * @param array<string, mixed> $row
-     */
-    private function liability_above_default( array $row, int $points_issued, float $rate ): ?float {
-        $config = (array) $row['config'];
-
-        if ( ! PurchaseHandler::is_multiplier( $config ) || $row['is_builtin'] ) {
-            return null;
-        }
-
-        $multiplier = PurchaseHandler::multiplier( $config );
-
-        if ( $multiplier <= 0 ) {
-            return null;
-        }
-
-        $default_equivalent = (int) round( $points_issued / $multiplier );
-
-        return PointsMath::points_to_currency( $points_issued - $default_equivalent, $rate, wc_get_price_decimals() );
     }
 
     /**
