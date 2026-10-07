@@ -17,7 +17,7 @@ export default function PageLayout({
   className?: string;
 }) {
   return (
-    <div className={cn('mx-auto flex max-w-5xl flex-col gap-4 p-6', className)}>
+    <div className={cn('mx-auto flex max-w-7xl flex-col gap-4 p-6', className)}>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-bold tracking-tight">{title}</h1>

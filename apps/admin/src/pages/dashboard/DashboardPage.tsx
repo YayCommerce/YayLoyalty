@@ -44,7 +44,6 @@ export default function DashboardPage() {
 
   return (
     <PageLayout
-      className="max-w-7xl"
       actions={<DashboardRangeControl range={range} onRangeChange={setRange} />}
       title={__('Dashboard', 'yayloyalty')}
       description={
