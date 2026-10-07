@@ -158,6 +158,8 @@ export type RewardUpdateInput = z.infer<typeof rewardFieldsSchema>;
 export type RewardCreateInput = RewardUpdateInput & { type: CatalogRewardType };
 
 const moneySchema = z.number().min(0).nullable();
+/** A cap: null is no cap, and a set cap is above 0 (the PHP spec's `exclusive_min: 0`). */
+const moneyCapSchema = z.number().positive().nullable();
 const couponExpiryDaysSchema = z.number().int().min(1).nullable();
 /** A claim count on catalog types, unlike flexible_discount's money cap. */
 const claimLimitSchema = z.number().int().min(1).nullable();
@@ -172,12 +174,12 @@ export const REWARD_CONFIG_SCHEMAS = {
     currency: z.string(),
     points_per_currency_unit: z.number().min(0),
     min_points: z.number().int().min(0),
-    max_points_per_order: moneySchema,
+    max_points_per_order: moneyCapSchema,
     max_percent_of_subtotal: moneySchema,
     increment: z.number().int().min(1),
     show_on: z.array(z.enum(['cart', 'checkout'])),
     refund_policy: z.enum(['proportional', 'full', 'none']),
-    max_total: moneySchema,
+    max_total: moneyCapSchema,
   }),
   fixed_coupon: z.object({
     currency: z.string(),
@@ -192,7 +194,7 @@ export const REWARD_CONFIG_SCHEMAS = {
       .number()
       .min(1, __('The discount must be between 1% and 100%.', 'yayloyalty'))
       .max(100, __('The discount must be between 1% and 100%.', 'yayloyalty')),
-    max_discount: moneySchema,
+    max_discount: moneyCapSchema,
     currency: z.string(),
     min_order: moneySchema,
     coupon_expiry_days: couponExpiryDaysSchema,

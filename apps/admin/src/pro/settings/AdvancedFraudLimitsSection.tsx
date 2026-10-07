@@ -2,8 +2,8 @@ import { Controller, useFormContext } from 'react-hook-form';
 import { __ } from '@wordpress/i18n';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { OptionalCountInput } from '@/components/ui/custom/amount-inputs';
 import { Label } from '@/components/ui/label';
-import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
 import { FRAUD_LIMITS_DESCRIPTION, FRAUD_LIMITS_TITLE } from '@/pages/settings/advanced-settings.copy';
 import type { AdvancedSettingsFormValues } from '@/pages/settings/advanced-settings.form';
 
@@ -28,15 +28,18 @@ export function AdvancedFraudLimitsSection() {
           control={control}
           name="advanced.max_points_per_day"
           render={({ field }) => (
-            <NumberInputRoot className="w-40" min={0} value={field.value} onValueChange={field.onChange}>
-              <NumberInputInput id={FIELD_ID} />
-              <NumberInputUnit unit={__('points', 'yayloyalty')} />
-            </NumberInputRoot>
+            <OptionalCountInput
+              id={FIELD_ID}
+              className="w-40"
+              value={field.value}
+              unit={__('points', 'yayloyalty')}
+              onValueChange={field.onChange}
+            />
           )}
         />
         <p className="text-muted-foreground text-xs">
           {__(
-            'Earning above this is not awarded and is written to the log. Points already awarded are never removed. Set 0 for no limit.',
+            'Earning above this is not awarded and is written to the log. Points already awarded are never removed. Leave empty for no limit.',
             'yayloyalty',
           )}
         </p>

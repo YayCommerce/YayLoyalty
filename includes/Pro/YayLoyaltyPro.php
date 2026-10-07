@@ -168,6 +168,12 @@ final class YayLoyaltyPro {
         ];
         $exclude_sale = [ 'type' => 'bool' ];
 
+        // A cap, not a threshold: null is no cap, and a set cap is above 0.
+        $money_cap = [
+            'type'          => 'nullable_number',
+            'exclusive_min' => 0,
+        ];
+
         $schema[ RewardType::FIXED_COUPON ] = [
             'currency'           => $currency,
             'amount'             => [
@@ -188,7 +194,7 @@ final class YayLoyaltyPro {
                 'max'      => 100,
                 'required' => true,
             ],
-            'max_discount'       => $money,
+            'max_discount'       => $money_cap,
             'currency'           => $currency,
             'min_order'          => $money,
             'coupon_expiry_days' => $expiry_days,
@@ -299,14 +305,14 @@ final class YayLoyaltyPro {
 
         $schema['properties']['config']['properties'] = [
             'max_points_per_order' => [
-                'description' => __( 'Cap on points awarded by a single order. 0 means no cap.', 'yayloyalty' ),
-                'type'        => 'integer',
-                'minimum'     => 0,
+                'description' => __( 'Cap on points awarded by a single order. null means no cap.', 'yayloyalty' ),
+                'type'        => [ 'integer', 'null' ],
+                'minimum'     => 1,
             ],
             'daily_cap'            => [
-                'description' => __( 'Cap on points this campaign may award one customer per day. 0 means no cap.', 'yayloyalty' ),
-                'type'        => 'integer',
-                'minimum'     => 0,
+                'description' => __( 'Cap on points this campaign may award one customer per day. null means no cap.', 'yayloyalty' ),
+                'type'        => [ 'integer', 'null' ],
+                'minimum'     => 1,
             ],
         ];
 

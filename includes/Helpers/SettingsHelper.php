@@ -20,7 +20,7 @@ class SettingsHelper {
     public const POINTS_LABEL_MAX_LENGTH = 30;
 
     /** Bump when a migration changes the stored shape. */
-    public const SCHEMA_VERSION = 1;
+    public const SCHEMA_VERSION = 2;
 
     public static function get_default_settings(): array {
         return [
@@ -32,13 +32,13 @@ class SettingsHelper {
             'advanced' => [
                 'points_label_singular' => __( 'Point', 'yayloyalty' ),
                 'points_label_plural'   => __( 'Points', 'yayloyalty' ),
-                // 0 means unlimited. Read through Capabilities::ceiling().
-                'adjustment_ceiling'    => 0,
-                // 0 = no limit. Enforced by Pro's DailyEarningLimit.
-                'max_points_per_day'    => 0,
+                // null means unlimited. Read through Capabilities::ceiling().
+                'adjustment_ceiling'    => null,
+                // null means no limit. Enforced by Pro's DailyEarningLimit.
+                'max_points_per_day'    => null,
             ],
             'emails'   => [
-                // Weekly per-customer cap on loyalty emails. 0 means no cap. Engine\Emails\EmailThrottle enforces it.
+                // Weekly per-customer cap on loyalty emails. null means no cap. Engine\Emails\EmailThrottle enforces it.
                 'throttle_per_week' => 3,
             ],
         ];
@@ -58,11 +58,11 @@ class SettingsHelper {
             'advanced' => [
                 'points_label_singular' => 'points_label',
                 'points_label_plural'   => 'points_label',
-                'adjustment_ceiling'    => 'int',
-                'max_points_per_day'    => 'non_negative_int',
+                'adjustment_ceiling'    => 'limit',
+                'max_points_per_day'    => 'limit',
             ],
             'emails'   => [
-                'throttle_per_week' => 'non_negative_int',
+                'throttle_per_week' => 'limit',
             ],
         ];
     }
@@ -154,6 +154,35 @@ class SettingsHelper {
     }
 
     /**
+     * Whether every `limit` field in $input is null or a whole number from 1. The controllers answer
+     * 400 on false; coerce() alone would read a 0 or a fraction as "no limit" without saying so.
+     *
+     * @param array<string, mixed> $input
+     */
+    public static function is_valid( array $input ): bool {
+        foreach ( self::schema() as $group => $fields ) {
+            foreach ( $fields as $field => $type ) {
+                if ( 'limit' !== $type || ! isset( $input[ $group ] ) || ! is_array( $input[ $group ] ) || ! array_key_exists( $field, $input[ $group ] ) ) {
+                    continue;
+                }
+
+                $value = $input[ $group ][ $field ];
+
+                if ( null !== $value && ! self::is_limit( $value ) ) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    /** @param mixed $value */
+    private static function is_limit( $value ): bool {
+        return ! is_bool( $value ) && is_numeric( $value ) && floor( (float) $value ) === (float) $value && (float) $value >= 1;
+    }
+
+    /**
      * Whitelists and coerces incoming settings.
      *
      * @param array<string, mixed> $input
@@ -214,6 +243,10 @@ class SettingsHelper {
 
             case 'non_negative_int':
                 return max( 0, (int) $value );
+
+            // null is no limit. is_valid() refuses anything else that isn't a whole number from 1 on write.
+            case 'limit':
+                return self::is_limit( $value ) ? (int) $value : null;
 
             case 'points_label':
                 return mb_substr( trim( sanitize_text_field( (string) $value ) ), 0, self::POINTS_LABEL_MAX_LENGTH );

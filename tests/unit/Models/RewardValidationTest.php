@@ -120,6 +120,22 @@ final class RewardValidationTest extends TestCase {
         $this->assertSame( $this->fixed_coupon(), Reward::validate_config( RewardType::FIXED_COUPON, $this->fixed_coupon( [ 'percent' => 10 ] ) ) );
     }
 
+    public function test_a_cap_is_null_or_above_zero(): void {
+        $flexible = Reward::default_config( RewardType::FLEXIBLE_DISCOUNT );
+        $percent  = [
+            'percent'  => 10,
+            'currency' => 'USD',
+        ];
+
+        $this->assertFalse( Reward::config_is_valid( RewardType::FLEXIBLE_DISCOUNT, [ 'max_points_per_order' => 0 ] + $flexible ) );
+        $this->assertFalse( Reward::config_is_valid( RewardType::FLEXIBLE_DISCOUNT, [ 'max_total' => 0 ] + $flexible ) );
+        $this->assertTrue( Reward::config_is_valid( RewardType::FLEXIBLE_DISCOUNT, [ 'max_total' => 0.5 ] + $flexible ) );
+        $this->assertFalse( Reward::config_is_valid( RewardType::PERCENT_COUPON, [ 'max_discount' => 0 ] + $percent ) );
+        $this->assertTrue( Reward::config_is_valid( RewardType::PERCENT_COUPON, [ 'max_discount' => null ] + $percent ) );
+        // A minimum, not a cap: 0 still means no minimum.
+        $this->assertTrue( Reward::config_is_valid( RewardType::PERCENT_COUPON, [ 'min_order' => 0 ] + $percent ) );
+    }
+
     public function test_flexible_discount_default_config_still_passes(): void {
         $this->assertTrue(
             Reward::config_is_valid(
