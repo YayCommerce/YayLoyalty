@@ -153,7 +153,7 @@ function RewardEditorValue({ type }: { type: RewardType }) {
             label={__('Cap the discount at', 'yayloyalty')}
             error={configErrors.max_discount}
             description={__(
-              'Without a cap a percentage reward is unbounded on a large order. Leave empty for no cap.',
+              'Without a cap a percentage reward is unbounded on a large order. 0 means no cap.',
               'yayloyalty',
             )}
           >
@@ -170,12 +170,11 @@ function RewardEditorValue({ type }: { type: RewardType }) {
         <RewardField
           label={__('Minimum order', 'yayloyalty')}
           error={configErrors.min_order}
-          description={__('The coupon will not apply below this. Leave empty for no minimum.', 'yayloyalty')}
+          description={__('The coupon will not apply below this. 0 means no minimum.', 'yayloyalty')}
         >
           <OptionalMoneyInput
             value={numberConfig(config, 'min_order')}
             currency={currency}
-            placeholder={__('No minimum', 'yayloyalty')}
             onValueChange={(min_order) => patchConfig({ min_order })}
           />
         </RewardField>
@@ -365,14 +364,13 @@ function RewardEditorCoupon() {
       label={__('Expires', 'yayloyalty')}
       error={configErrors.coupon_expiry_days}
       description={__(
-        'Days after claiming. Points are spent when the coupon is claimed, and an expired coupon does not return them. Leave empty for a coupon that never expires.',
+        'Days after claiming. Points are spent when the coupon is claimed, and an expired coupon does not return them. 0 means it never expires.',
         'yayloyalty',
       )}
     >
       <OptionalCountInput
         value={days}
         unit={_n('day', 'days', days ?? 0, 'yayloyalty')}
-        placeholder={__('Never', 'yayloyalty')}
         onValueChange={(coupon_expiry_days) => patchConfig({ coupon_expiry_days })}
       />
     </RewardField>
@@ -395,7 +393,7 @@ function RewardEditorAvailability({ isCatalog }: { isCatalog: boolean }) {
           <RewardField
             label={__('Claims per customer', 'yayloyalty')}
             error={formState.errors.claims_per_customer}
-            description={__('1 means once per customer. Leave empty for unlimited.', 'yayloyalty')}
+            description={__('1 means once per customer. 0 means unlimited.', 'yayloyalty')}
           >
             <OptionalCountInput
               value={claimsPerCustomer}
@@ -405,7 +403,7 @@ function RewardEditorAvailability({ isCatalog }: { isCatalog: boolean }) {
           <RewardField
             label={__('Total claims', 'yayloyalty')}
             error={configErrors.max_total}
-            description={__('Across every customer. Leave empty for unlimited.', 'yayloyalty')}
+            description={__('Across every customer. 0 means unlimited.', 'yayloyalty')}
           >
             <OptionalCountInput
               value={numberConfig(config, 'max_total')}

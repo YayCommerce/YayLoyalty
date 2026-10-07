@@ -1,4 +1,4 @@
-import { __, _n } from '@wordpress/i18n';
+import { _n } from '@wordpress/i18n';
 
 import { cn } from '@/lib/utils';
 import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
@@ -39,63 +39,50 @@ export function MoneyInput({
   );
 }
 
-/** Placeholder for an empty optional limit. */
-const noLimit = () => __('No limit', 'yayloyalty');
+/**
+ * 0 in an optional input means "none" and is written as null, so a stored 0
+ * never reads as a real limit (e.g. Clamp blocks every redemption at a 0 cap).
+ */
+function zeroAsNone(next: number): number | null {
+  return next > 0 ? next : null;
+}
 
-/** A money limit that may be left empty: empty is null ("no limit"), and an entered amount is above 0. */
+/** A money amount where 0 means none; see zeroAsNone(). */
 export function OptionalMoneyInput({
   value,
   currency,
-  placeholder,
   onValueChange,
 }: {
   value: number | null;
   currency: string;
-  placeholder?: string;
   onValueChange: (value: number | null) => void;
 }) {
   return (
-    <NumberInputRoot
-      size="small"
-      className="w-32"
-      nullable
-      min={0.01}
-      decimalScale={2}
-      value={value}
-      onValueChange={onValueChange}
-    >
-      <NumberInputInput placeholder={placeholder ?? noLimit()} />
-      <NumberInputUnit unit={currency} />
-    </NumberInputRoot>
+    <MoneyInput value={value ?? 0} currency={currency} onValueChange={(next) => onValueChange(zeroAsNone(next))} />
   );
 }
 
-/** A whole-number limit that may be left empty: empty is null ("no limit"), and an entered count is at least 1. */
+/** A whole-number limit where 0 means none; see zeroAsNone(). */
 export function OptionalCountInput({
-  id,
   value,
   unit,
   className,
-  placeholder,
   onValueChange,
 }: {
-  id?: string;
   value: number | null;
   unit?: string;
   className?: string;
-  placeholder?: string;
   onValueChange: (value: number | null) => void;
 }) {
   return (
     <NumberInputRoot
       size="small"
       className={cn('w-28', className)}
-      nullable
-      min={1}
-      value={value}
-      onValueChange={onValueChange}
+      min={0}
+      value={value ?? 0}
+      onValueChange={(next) => onValueChange(zeroAsNone(next))}
     >
-      <NumberInputInput id={id} placeholder={placeholder ?? noLimit()} />
+      <NumberInputInput />
       {unit && <NumberInputUnit unit={unit} />}
     </NumberInputRoot>
   );

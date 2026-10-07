@@ -14,17 +14,16 @@ final class CapPolicy {
     public function apply( int $points, Campaign $campaign, Context $ctx ): int {
         $config = $campaign->get_config();
 
-        // null or missing is no cap; Campaign stores any cap below 1 as null.
-        $per_order = $config['max_points_per_order'] ?? null;
+        $per_order = (int) ( $config['max_points_per_order'] ?? 0 );
 
-        if ( null !== $per_order ) {
-            $points = min( $points, (int) $per_order );
+        if ( $per_order > 0 ) {
+            $points = min( $points, $per_order );
         }
 
-        $daily = $config['daily_cap'] ?? null;
+        $daily = (int) ( $config['daily_cap'] ?? 0 );
 
-        if ( null !== $daily ) {
-            $points = min( $points, max( 0, (int) $daily - $ctx->get_points_earned_today() ) );
+        if ( $daily > 0 ) {
+            $points = min( $points, max( 0, $daily - $ctx->get_points_earned_today() ) );
         }
 
         return max( 0, $points );

@@ -24,15 +24,6 @@ The layering rules live in [architecture.md](architecture.md#server-layers-and-w
 - **Why:** "a site-time value surfaces months later as an off-by-hours expiry". [The decision record](decisions/2026-10-01-store-datetimes-in-utc.md) has the context and the costs.
 - **In code:** `includes/Utils/Dates.php`, `apps/admin/src/lib/helpers/format.helper.ts`.
 
-## No limit is null, not 0
-
-- **Rule:**
-  - A limit that can be off is stored as `null`, never 0. A set limit is at least 1, or above 0 for money.
-  - A 0 that reaches the server, from storage or a request, is read as `null`.
-  - The admin shows `null` as an empty field with a "No limit" placeholder (`OptionalCountInput` / `OptionalMoneyInput`).
-- **Why:** a stored 0 that a reader takes as a real cap blocks everything: `Clamp` stops every redemption at a 0 cap, and `EmailThrottle` would stop every email.
-- **In code:** `SettingsHelper::coerce()` (`limit`), `Campaign::limits_as_null()`, `Reward::limits_as_null()`, `apps/admin/src/components/ui/custom/amount-inputs.tsx`.
-
 ## Pro data survives Lite
 
 - **Rule:** Lite drops Pro behaviour, never Pro data. Concretely:

@@ -34,17 +34,17 @@ final class DailyEarningLimit {
 
     /**
      * The `yayloyalty_award_points` subscriber: $points lowered to the cap
-     * minus today's EARN total, never below 0. Unchanged when the cap is null
+     * minus today's EARN total, never below 0. Unchanged when the cap is 0
      * (no limit), there is no customer, or there is nothing to award.
      *
      * @param int|string $points The evaluated points, as an earlier subscriber left them; non-numeric counts as 0, as in award().
      */
     public function clamp( $points, string $trigger, Context $ctx ): int {
         $points  = is_numeric( $points ) ? (int) $points : 0;
-        $cap     = SettingsHelper::get_settings()['advanced']['max_points_per_day'];
+        $cap     = (int) SettingsHelper::get_settings()['advanced']['max_points_per_day'];
         $user_id = $ctx->get_user_id();
 
-        if ( null === $cap || null === $user_id || $points <= 0 ) {
+        if ( $cap < 1 || null === $user_id || $points <= 0 ) {
             return $points;
         }
 

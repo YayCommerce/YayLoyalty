@@ -16,7 +16,7 @@ class EmailsHelper {
      * The registered loyalty emails grouped as WooCommerce groups them, the
      * sender card, and the weekly throttle.
      *
-     * @return array{groups: array<int, array<string, mixed>>, sending: array<string, string>, throttle_per_week: int|null}
+     * @return array{groups: array<int, array<string, mixed>>, sending: array<string, string>, throttle_per_week: int}
      */
     public static function get_emails(): array {
         $groups = [];
@@ -46,13 +46,12 @@ class EmailsHelper {
      * Saves only what the patch carries: `emails` (id => on/off) and
      * `throttle_per_week` (SettingsHelper coerces it). Returns get_emails().
      *
-     * @param array{emails?: array<string, mixed>, throttle_per_week?: int|string|null} $patch
+     * @param array{emails?: array<string, mixed>, throttle_per_week?: int|string} $patch
      */
     public static function update_emails( array $patch ): array {
         self::set_enabled( $patch['emails'] ?? [] );
 
-        // array_key_exists: a null throttle (no cap) is a value to save, not a missing one.
-        if ( array_key_exists( 'throttle_per_week', $patch ) ) {
+        if ( isset( $patch['throttle_per_week'] ) ) {
             SettingsHelper::update_settings( [ 'emails' => [ 'throttle_per_week' => $patch['throttle_per_week'] ] ] );
         }
 

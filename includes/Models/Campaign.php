@@ -90,7 +90,7 @@ class Campaign extends AbstractModel {
         $this->trigger     = $trigger;
         $this->status      = $status;
         $this->priority    = $priority;
-        $this->config      = self::limits_as_null( $trigger, $config );
+        $this->config      = $config;
         $this->conditions  = $conditions;
         $this->starts_at   = $starts_at;
         $this->ends_at     = $ends_at;
@@ -192,7 +192,7 @@ class Campaign extends AbstractModel {
     /**
      * Per-trigger config schema, key => spec: what `config` may hold and what config_is_valid() checks.
      * It covers Lite triggers only. Pro triggers add theirs through config_whitelist().
-     * Spec types: bool, string, enum [values], int [min], number [min, exclusive_min], int_list, limit (null = no limit).
+     * Spec types: bool, string, enum [values], int [min], number [min, exclusive_min], int_list.
      * Pro keys of Lite triggers are listed on purpose: a downgraded site keeps its stored values,
      * so an upgrade restores the campaign intact.
      *
@@ -232,8 +232,14 @@ class Campaign extends AbstractModel {
                 'exclude_coupon_orders' => [ 'type' => 'bool' ],
                 'excluded_product_ids'  => [ 'type' => 'int_list' ],
                 'excluded_category_ids' => [ 'type' => 'int_list' ],
-                'max_points_per_order'  => [ 'type' => 'limit' ],
-                'daily_cap'             => [ 'type' => 'limit' ],
+                'max_points_per_order'  => [
+                    'type' => 'int',
+                    'min'  => 0,
+                ],
+                'daily_cap'             => [
+                    'type' => 'int',
+                    'min'  => 0,
+                ],
             ],
             CampaignTrigger::SIGNUP   => [
                 'points' => [
@@ -248,7 +254,10 @@ class Campaign extends AbstractModel {
                 ],
                 'require_verified'   => [ 'type' => 'bool' ],
                 'one_per_product'    => [ 'type' => 'bool' ],
-                'daily_cap'          => [ 'type' => 'limit' ],
+                'daily_cap'          => [
+                    'type' => 'int',
+                    'min'  => 0,
+                ],
                 'media_bonus_points' => [
                     'type' => 'int',
                     'min'  => 0,
@@ -344,16 +353,6 @@ class Campaign extends AbstractModel {
 
                 return ! isset( $spec['min'] ) || (float) $value >= (float) $spec['min'];
 
-            // 0 is accepted and stored as null (limits_as_null), for a client that still sends 0 for "no limit".
-            case 'limit':
-                return null === $value || self::value_matches_spec(
-                    $value,
-                    [
-                        'type' => 'int',
-                        'min'  => 0,
-                    ]
-                );
-
             case 'int_list':
                 if ( ! is_array( $value ) ) {
                     return false;
@@ -384,7 +383,7 @@ class Campaign extends AbstractModel {
         // No whitelist means another build's trigger (Pro, on a downgraded site).
         // Filtering against nothing would erase the merchant's config on the next save.
         if ( null === $whitelist ) {
-            return self::limits_as_null( $trigger, $config );
+            return $config;
         }
 
         $clean = [];
@@ -395,23 +394,7 @@ class Campaign extends AbstractModel {
             }
         }
 
-        return self::limits_as_null( $trigger, $clean );
-    }
-
-    /**
-     * Each `limit` key below 1 becomes null, so a 0 stored when 0 meant "no limit" never caps at zero.
-     *
-     * @param array<string, mixed> $config
-     * @return array<string, mixed>
-     */
-    private static function limits_as_null( string $trigger, array $config ): array {
-        foreach ( self::config_schema()[ $trigger ] ?? [] as $key => $spec ) {
-            if ( 'limit' === $spec['type'] && array_key_exists( $key, $config ) && ! ( is_numeric( $config[ $key ] ) && (int) $config[ $key ] >= 1 ) ) {
-                $config[ $key ] = null;
-            }
-        }
-
-        return $config;
+        return $clean;
     }
 
     /** Default config for a built-in campaign. */
@@ -438,7 +421,7 @@ class Campaign extends AbstractModel {
                     'points'           => 50,
                     'require_verified' => true,
                     'one_per_product'  => true,
-                    'daily_cap'        => null,
+                    'daily_cap'        => 0,
                 ];
 
             default:

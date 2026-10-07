@@ -9,10 +9,8 @@ import { InputGroupVariantProps } from './variants/input.variants';
 
 interface NumberInputContextValue extends Omit<NumericFormatProps, 'value' | 'onValueChange' | 'className' | 'step'> {
   defaultValue: number;
-  /** null only when the root is `nullable` and the field is empty. */
-  value: number | null;
-  setValue: (value: number | null) => void;
-  nullable: boolean;
+  value: number;
+  setValue: (value: number) => void;
 
   step: number;
   min: number;
@@ -28,11 +26,13 @@ export const useNumberInputContext = () => {
   return ctx;
 };
 
-interface NumberInputRootBaseProps extends Omit<
+interface NumberInputRootProps extends Omit<
   NumericFormatProps,
   'value' | 'onChange' | 'onValueChange' | 'step' | 'size'
 > {
   defaultValue?: number;
+  value?: number;
+  onValueChange?: (value: number) => void;
 
   step?: number;
   min?: number;
@@ -41,18 +41,10 @@ interface NumberInputRootBaseProps extends Omit<
   size?: InputGroupVariantProps['size'];
 }
 
-/** `nullable`: the field may be left empty, which reads and emits null (e.g. "no limit"). */
-type NumberInputRootProps = NumberInputRootBaseProps &
-  (
-    | { nullable?: false; value?: number; onValueChange?: (value: number) => void }
-    | { nullable: true; value: number | null; onValueChange: (value: number | null) => void }
-  );
-
 function NumberInputRoot({
   value: controlledValue,
   defaultValue,
   onValueChange,
-  nullable = false,
   step = 1,
   min = -Infinity,
   max = Infinity,
@@ -65,22 +57,21 @@ function NumberInputRoot({
   ...restContextProps
 }: NumberInputRootProps & { children?: React.ReactNode }) {
   const _defaultValue = defaultValue ?? (min === -Infinity ? 0 : min);
-  const [value, setValue] = useUncontrolled<number | null>({
-    value: controlledValue === null && !nullable ? undefined : controlledValue,
+  const [value, setValue] = useUncontrolled({
+    value: controlledValue === null ? undefined : controlledValue,
     defaultValue: _defaultValue,
     finalValue: 0,
-    // Never null unless `nullable`, so a number-only handler never receives one.
-    onChange: onValueChange as ((value: number | null) => void) | undefined,
+    onChange: onValueChange,
   });
 
   const handleIncrement = () => {
     if (disabled) return;
-    setValue(value === undefined || value === null ? Math.max(step, min) : Math.min(value + step, max));
+    setValue(value === undefined ? step : Math.min(value + step, max));
   };
 
   const handleDecrement = () => {
     if (disabled) return;
-    setValue(value === undefined || value === null ? Math.max(0 - step, min) : Math.max(value - step, min));
+    setValue(value === undefined ? 0 - step : Math.max(value - step, min));
   };
 
   return (
@@ -89,7 +80,6 @@ function NumberInputRoot({
         defaultValue: defaultValue ?? 0,
         value,
         setValue,
-        nullable,
         disabled,
         step,
         min,
@@ -116,21 +106,11 @@ type NumberInputInputProps = Omit<
 >;
 const NumberInputInput = forwardRef<HTMLInputElement, NumberInputInputProps>(
   ({ className, onBlur, ...inputProps }, ref) => {
-    const {
-      value,
-      setValue,
-      nullable,
-      defaultValue,
-      min,
-      disabled,
-      max,
-      handleIncrement,
-      handleDecrement,
-      ...contextProps
-    } = useNumberInputContext();
+    const { value, setValue, defaultValue, min, disabled, max, handleIncrement, handleDecrement, ...contextProps } =
+      useNumberInputContext();
 
     const handleChange = (values: { value: string; floatValue: number | undefined }) => {
-      setValue(values.floatValue ?? (nullable ? null : defaultValue));
+      setValue(values.floatValue ?? defaultValue);
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -143,12 +123,6 @@ const NumberInputInput = forwardRef<HTMLInputElement, NumberInputInputProps>(
 
     const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
       const inputEl = (ref as React.RefObject<HTMLInputElement> | null)?.current;
-
-      // An empty nullable field stays empty.
-      if (value === null) {
-        onBlur?.(e);
-        return;
-      }
 
       if (value < min) {
         setValue(min);
@@ -173,7 +147,7 @@ const NumberInputInput = forwardRef<HTMLInputElement, NumberInputInputProps>(
         )}
         min={min}
         max={max}
-        value={value ?? ''}
+        value={value}
         onValueChange={handleChange}
         onKeyDown={handleKeyDown}
         onBlur={handleBlur}
@@ -275,9 +249,9 @@ function NumberInputUnit({ className, children, unit, ...props }: NumberInputUni
   );
 }
 
-type NumberInputProps = NumberInputRootProps & {
+interface NumberInputProps extends NumberInputRootProps {
   inputProps?: Omit<NumberInputInputProps, 'size'> & { size: InputGroupVariantProps['size'] };
-};
+}
 const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(({ inputProps, ...rootProps }, ref) => {
   const { size, ..._inputProps } = inputProps ?? {};
 

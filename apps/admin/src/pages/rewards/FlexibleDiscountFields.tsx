@@ -75,8 +75,9 @@ export function FlexibleDiscountFields({
 
       <ConfigField
         label={__('Maximum points per order', 'yayloyalty')}
-        description={__('Leave empty for no cap beyond the percentage below.', 'yayloyalty')}
+        description={__('0 means no cap beyond the percentage below.', 'yayloyalty')}
       >
+        {/* Stored null means uncapped; a stored 0 would block every redemption (Clamp), so 0 is never written. */}
         <OptionalCountInput
           value={value.max_points_per_order}
           unit={_n('point', 'points', value.max_points_per_order ?? 0, 'yayloyalty')}
@@ -107,10 +108,7 @@ export function FlexibleDiscountFields({
 
       <ConfigField
         label={__('Total discount cap', 'yayloyalty')}
-        description={__(
-          'The most this reward can give away across every customer. Leave empty for unlimited.',
-          'yayloyalty',
-        )}
+        description={__('The most this reward can give away across every customer. 0 means unlimited.', 'yayloyalty')}
       >
         {/* Money in the reward's own currency, unlike a catalog reward's claim count. */}
         <OptionalMoneyInput

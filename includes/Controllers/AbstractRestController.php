@@ -258,7 +258,7 @@ abstract class AbstractRestController extends BaseRestController {
     }
 
     /**
-     * Ceiling guard for manual adjustments. Administrators bypass it, and null means unlimited.
+     * Ceiling guard for manual adjustments. Administrators bypass it, and 0 means unlimited.
      *
      * @param int|float|string $amount
      * @return true|\WP_Error
@@ -266,7 +266,7 @@ abstract class AbstractRestController extends BaseRestController {
     protected function assert_ceiling( $amount ) {
         $ceiling = Capabilities::ceiling();
 
-        if ( null !== $ceiling && abs( (int) $amount ) > $ceiling && ! Capabilities::is_administrator() ) {
+        if ( $ceiling > 0 && abs( (int) $amount ) > $ceiling && ! Capabilities::is_administrator() ) {
             return new \WP_Error(
                 'yayloyalty_adjustment_ceiling',
                 sprintf(
