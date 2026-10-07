@@ -49,7 +49,7 @@ class EmailsRestController extends AbstractRestController {
         }
 
         // Checked before any write: a rolled-back transaction does not undo a persistent object cache.
-        if ( isset( $params['throttle_per_week'] ) && ! is_numeric( $params['throttle_per_week'] ) ) {
+        if ( isset( $params['throttle_per_week'] ) && '' !== $params['throttle_per_week'] && ! is_numeric( $params['throttle_per_week'] ) ) {
             return $this->error_invalid_arguments();
         }
 

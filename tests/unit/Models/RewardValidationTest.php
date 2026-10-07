@@ -120,6 +120,21 @@ final class RewardValidationTest extends TestCase {
         $this->assertSame( $this->fixed_coupon(), Reward::validate_config( RewardType::FIXED_COUPON, $this->fixed_coupon( [ 'percent' => 10 ] ) ) );
     }
 
+    public function test_a_zero_limit_is_stored_as_no_limit(): void {
+        $config = Reward::validate_config(
+            RewardType::FLEXIBLE_DISCOUNT,
+            [
+                'max_points_per_order' => 0,
+                'max_total'            => 0,
+            ] + Reward::default_config( RewardType::FLEXIBLE_DISCOUNT )
+        );
+
+        $this->assertNull( $config['max_points_per_order'] );
+        $this->assertNull( $config['max_total'] );
+        $this->assertNull( Reward::validate_config( RewardType::PERCENT_COUPON, [ 'max_discount' => 0 ] )['max_discount'] );
+        $this->assertSame( 0, Reward::validate_config( RewardType::PERCENT_COUPON, [ 'min_order' => 0 ] )['min_order'] );
+    }
+
     public function test_flexible_discount_default_config_still_passes(): void {
         $this->assertTrue(
             Reward::config_is_valid(

@@ -101,7 +101,7 @@ class Reward extends AbstractModel {
         $this->status      = $status;
         $this->sort_order  = $sort_order;
         $this->cost_points = $cost_points;
-        $this->config      = $config;
+        $this->config      = self::limits_as_null( $type, $config );
         $this->conditions  = $conditions;
         $this->starts_at   = $starts_at;
         $this->ends_at     = $ends_at;
@@ -204,7 +204,8 @@ class Reward extends AbstractModel {
      * Per-type config schema, key => spec: what `config` may hold and what config_is_valid() checks.
      * Lite declares flexible_discount. Pro types add theirs through the filter.
      * Spec types: bool, string, int|number|nullable_int|nullable_number [min, max], enum|enum_list [values],
-     * currency, product. `required => true` makes a key mandatory.
+     * currency, product. `required => true` makes a key mandatory. `limit => true` on a nullable type
+     * makes it a limit: null is no limit, and a value of 0 or below is stored as null.
      *
      * @return array<string, array<string, array<string, mixed>>>
      */
@@ -224,8 +225,9 @@ class Reward extends AbstractModel {
                     'min'  => 0,
                 ],
                 'max_points_per_order'     => [
-                    'type' => 'nullable_number',
-                    'min'  => 0,
+                    'type'  => 'nullable_number',
+                    'min'   => 0,
+                    'limit' => true,
                 ],
                 'max_percent_of_subtotal'  => [
                     'type' => 'nullable_number',
@@ -245,8 +247,9 @@ class Reward extends AbstractModel {
                 ],
                 // Global redemption cap, null for unlimited. Stored, but nothing enforces it yet.
                 'max_total'                => [
-                    'type' => 'nullable_number',
-                    'min'  => 0,
+                    'type'  => 'nullable_number',
+                    'min'   => 0,
+                    'limit' => true,
                 ],
             ],
         ];
@@ -405,7 +408,24 @@ class Reward extends AbstractModel {
             }
         }
 
-        return $clean;
+        return self::limits_as_null( $type, $clean );
+    }
+
+    /**
+     * Each `limit` key at 0 or below becomes null, so a stored 0 never caps at zero
+     * (Clamp would block every redemption).
+     *
+     * @param array<string, mixed> $config
+     * @return array<string, mixed>
+     */
+    private static function limits_as_null( string $type, array $config ): array {
+        foreach ( self::config_schema()[ $type ] ?? [] as $key => $spec ) {
+            if ( ! empty( $spec['limit'] ) && isset( $config[ $key ] ) && is_numeric( $config[ $key ] ) && (float) $config[ $key ] <= 0 ) {
+                $config[ $key ] = null;
+            }
+        }
+
+        return $config;
     }
 
     /** Default config for a built-in reward. `currency` is the store's: it is required and has no type-only default. */

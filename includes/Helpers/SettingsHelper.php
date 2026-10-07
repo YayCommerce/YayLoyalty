@@ -20,7 +20,7 @@ class SettingsHelper {
     public const POINTS_LABEL_MAX_LENGTH = 30;
 
     /** Bump when a migration changes the stored shape. */
-    public const SCHEMA_VERSION = 1;
+    public const SCHEMA_VERSION = 2;
 
     public static function get_default_settings(): array {
         return [
@@ -32,13 +32,13 @@ class SettingsHelper {
             'advanced' => [
                 'points_label_singular' => __( 'Point', 'yayloyalty' ),
                 'points_label_plural'   => __( 'Points', 'yayloyalty' ),
-                // 0 means unlimited. Read through Capabilities::ceiling().
-                'adjustment_ceiling'    => 0,
-                // 0 = no limit. Enforced by Pro's DailyEarningLimit.
-                'max_points_per_day'    => 0,
+                // null means unlimited. Read through Capabilities::ceiling().
+                'adjustment_ceiling'    => null,
+                // null means no limit. Enforced by Pro's DailyEarningLimit.
+                'max_points_per_day'    => null,
             ],
             'emails'   => [
-                // Weekly per-customer cap on loyalty emails. 0 means no cap. Engine\Emails\EmailThrottle enforces it.
+                // Weekly per-customer cap on loyalty emails. null means no cap. Engine\Emails\EmailThrottle enforces it.
                 'throttle_per_week' => 3,
             ],
         ];
@@ -58,11 +58,11 @@ class SettingsHelper {
             'advanced' => [
                 'points_label_singular' => 'points_label',
                 'points_label_plural'   => 'points_label',
-                'adjustment_ceiling'    => 'int',
-                'max_points_per_day'    => 'non_negative_int',
+                'adjustment_ceiling'    => 'limit',
+                'max_points_per_day'    => 'limit',
             ],
             'emails'   => [
-                'throttle_per_week' => 'non_negative_int',
+                'throttle_per_week' => 'limit',
             ],
         ];
     }
@@ -214,6 +214,10 @@ class SettingsHelper {
 
             case 'non_negative_int':
                 return max( 0, (int) $value );
+
+            // null is no limit. Below 1 is null too, so a 0 stored when 0 meant "no limit" never caps at zero.
+            case 'limit':
+                return is_numeric( $value ) && (int) $value >= 1 ? (int) $value : null;
 
             case 'points_label':
                 return mb_substr( trim( sanitize_text_field( (string) $value ) ), 0, self::POINTS_LABEL_MAX_LENGTH );

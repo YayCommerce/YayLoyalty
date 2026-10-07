@@ -126,19 +126,15 @@ final class Capabilities {
         return current_user_can( 'manage_options' );
     }
 
-    /** Largest absolute adjustment a non-administrator may make in one call. 0 means unlimited. */
-    public static function ceiling(): int {
-        $settings = SettingsHelper::get_settings();
-
-        return isset( $settings['advanced']['adjustment_ceiling'] )
-            ? max( 0, (int) $settings['advanced']['adjustment_ceiling'] )
-            : 0;
+    /** Largest absolute adjustment a non-administrator may make in one call. null means unlimited. */
+    public static function ceiling(): ?int {
+        return SettingsHelper::get_settings()['advanced']['adjustment_ceiling'];
     }
 
     /**
      * Bootstrap payload for the SPA. Localised, not an endpoint: a round trip would flash the wrong UI.
      *
-     * @return array{capabilities: string[], ceiling: int, isAdministrator: bool}
+     * @return array{capabilities: string[], ceiling: int|null, isAdministrator: bool}
      */
     public static function payload(): array {
         return [

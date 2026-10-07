@@ -10,14 +10,14 @@ export const settingsSchema = z.object({
   advanced: z.object({
     points_label_singular: z.string(),
     points_label_plural: z.string(),
-    /** Largest manual adjustment a non-administrator may make; 0 = unlimited. */
-    adjustment_ceiling: z.number().int().nonnegative(),
-    /** Most points one customer earns automatically per site day; 0 = no limit. Enforced in Pro. */
-    max_points_per_day: z.number().int().nonnegative(),
+    /** Largest manual adjustment a non-administrator may make; null = unlimited. */
+    adjustment_ceiling: z.number().int().min(1).nullable(),
+    /** Most points one customer earns automatically per site day; null = no limit. Enforced in Pro. */
+    max_points_per_day: z.number().int().min(1).nullable(),
   }),
   emails: z.object({
-    /** Weekly per-customer cap on loyalty emails. */
-    throttle_per_week: z.number().int().nonnegative(),
+    /** Weekly per-customer cap on loyalty emails; null = no cap. */
+    throttle_per_week: z.number().int().min(1).nullable(),
   }),
   /** Stamped by SettingsHelper on save; PHP reports SCHEMA_VERSION when the stored blob predates versioning. */
   schema_version: z.number().int().optional(),

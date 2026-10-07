@@ -27,8 +27,8 @@ export type Capability = (typeof CAP)[keyof typeof CAP];
 
 export const can = (cap: Capability): boolean => CAPS.has(cap);
 
-/** Per-adjustment limit for non-administrators; 0 = unlimited. Server decides. */
-export const ceiling = (): number => boot.ceiling ?? 0;
+/** Per-adjustment limit for non-administrators; null = unlimited. Server decides. */
+export const ceiling = (): number | null => boot.ceiling ?? null;
 
 export const isAdministrator = (): boolean => !!boot.isAdministrator;
 
