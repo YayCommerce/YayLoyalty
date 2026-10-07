@@ -204,7 +204,8 @@ class Reward extends AbstractModel {
      * Per-type config schema, key => spec: what `config` may hold and what config_is_valid() checks.
      * Lite declares flexible_discount. Pro types add theirs through the filter.
      * Spec types: bool, string, int|number|nullable_int|nullable_number [min, max], enum|enum_list [values],
-     * currency, product. `required => true` makes a key mandatory.
+     * currency, product. `required => true` makes a key mandatory. `exclusive_min` is a strict lower
+     * bound: a nullable cap uses it at 0, so null is no cap and a set cap is above 0.
      *
      * @return array<string, array<string, array<string, mixed>>>
      */
@@ -224,8 +225,8 @@ class Reward extends AbstractModel {
                     'min'  => 0,
                 ],
                 'max_points_per_order'     => [
-                    'type' => 'nullable_number',
-                    'min'  => 0,
+                    'type'          => 'nullable_number',
+                    'exclusive_min' => 0,
                 ],
                 'max_percent_of_subtotal'  => [
                     'type' => 'nullable_number',
@@ -245,8 +246,8 @@ class Reward extends AbstractModel {
                 ],
                 // Global redemption cap, null for unlimited. Stored, but nothing enforces it yet.
                 'max_total'                => [
-                    'type' => 'nullable_number',
-                    'min'  => 0,
+                    'type'          => 'nullable_number',
+                    'exclusive_min' => 0,
                 ],
             ],
         ];
@@ -351,6 +352,10 @@ class Reward extends AbstractModel {
      * @param array<string, mixed> $spec
      */
     private static function is_within_bounds( float $value, array $spec ): bool {
+        if ( isset( $spec['exclusive_min'] ) && $value <= (float) $spec['exclusive_min'] ) {
+            return false;
+        }
+
         if ( isset( $spec['min'] ) && $value < (float) $spec['min'] ) {
             return false;
         }

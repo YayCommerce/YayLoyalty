@@ -64,7 +64,7 @@ class PointsEarnedYayMailEmail extends BaseEmail {
                 [
                     'type'       => 'Heading',
                     'attributes' => [
-                        'rich_text' => esc_html( $this->root_email->get_default_heading() ),
+                        'rich_text' => self::placeholders_to_shortcodes( esc_html( $this->root_email->get_default_heading() ) ),
                     ],
                 ],
                 [
@@ -76,6 +76,22 @@ class PointsEarnedYayMailEmail extends BaseEmail {
                 [
                     'type' => 'Footer',
                 ],
+            ]
+        );
+    }
+
+    /**
+     * Rewrites WooCommerce placeholders such as {points_label} as this email's YayMail shortcodes:
+     * YayMail renders shortcodes in its elements but never runs WC_Email::format_string() on them.
+     */
+    private static function placeholders_to_shortcodes( string $text ): string {
+        return strtr(
+            $text,
+            [
+                '{points}'       => PointsEarnedShortcodes::tag( 'points' ),
+                '{points_label}' => PointsEarnedShortcodes::tag( 'points_label' ),
+                '{balance}'      => PointsEarnedShortcodes::tag( 'balance' ),
+                '{site_title}'   => '[yaymail_site_name]',
             ]
         );
     }

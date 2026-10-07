@@ -21,6 +21,7 @@
  * @var \YayLoyalty\Models\LedgerEntry $entry The awarded row, for overrides. Absent when there is no award to show.
  */
 
+use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Utils\Text;
 
 defined( 'ABSPATH' ) || exit;
@@ -48,11 +49,13 @@ if ( ! empty( $entry ) ) {
         echo esc_html( Text::plain( $balance_value_text ) ) . "\n\n";
     }
 } else {
-    echo esc_html__( 'Thanks for being part of our loyalty program. New points have been added to your account.', 'yayloyalty' ) . "\n\n";
+    /* translators: %s: the store's plural points label, e.g. "Points". */
+    echo esc_html( sprintf( __( 'Thanks for being part of our loyalty program. New %s have been added to your account.', 'yayloyalty' ), SettingsHelper::points_label_plural() ) ) . "\n\n";
 }
 
 if ( ! empty( $cta_url ) ) {
-    echo esc_html__( 'View your points:', 'yayloyalty' ) . ' ' . esc_url_raw( $cta_url ) . "\n\n";
+    /* translators: %s: the store's plural points label, e.g. "Points". */
+    echo esc_html( sprintf( __( 'View your %s:', 'yayloyalty' ), SettingsHelper::points_label_plural() ) ) . ' ' . esc_url_raw( $cta_url ) . "\n\n";
 }
 
 if ( $additional_content ) {
