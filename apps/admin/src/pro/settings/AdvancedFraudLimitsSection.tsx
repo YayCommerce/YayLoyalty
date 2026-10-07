@@ -23,7 +23,7 @@ export function AdvancedFraudLimitsSection() {
         <CardDescription>{FRAUD_LIMITS_DESCRIPTION()}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-2">
-        <Label htmlFor={FIELD_ID}>{__('Max points per customer per day', 'yayloyalty')}</Label>
+        <Label htmlFor={FIELD_ID}>{__('Daily limit per customer', 'yayloyalty')}</Label>
         <Controller
           control={control}
           name="advanced.max_points_per_day"
@@ -37,12 +37,7 @@ export function AdvancedFraudLimitsSection() {
             />
           )}
         />
-        <p className="text-muted-foreground text-xs">
-          {__(
-            'Earning above this is not awarded and is written to the log. Points already awarded are never removed. Leave empty for no limit.',
-            'yayloyalty',
-          )}
-        </p>
+        <p className="text-muted-foreground text-xs">{__('Leave empty for no limit.', 'yayloyalty')}</p>
       </CardContent>
     </Card>
   );
