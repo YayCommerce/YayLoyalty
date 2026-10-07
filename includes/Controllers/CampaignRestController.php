@@ -171,21 +171,6 @@ final class CampaignRestController extends AbstractRestController {
         return [ 'ids' => $ids ];
     }
 
-    /** Saves a dragged order as priority. A duplicate or unknown id refuses the whole request. */
-    public function reorder_items( \WP_REST_Request $request ) {
-        $ids = array_map( 'intval', (array) $request['ids'] );
-
-        if ( count( array_unique( $ids ) ) !== count( $ids ) ) {
-            return $this->error_invalid_arguments( __( 'A campaign appears twice in the new order.', 'yayloyalty' ) );
-        }
-
-        if ( ! $this->campaigns->reorder( $ids ) ) {
-            return $this->error_invalid_arguments( __( 'The new order names a campaign that no longer exists.', 'yayloyalty' ) );
-        }
-
-        return [ 'ids' => $ids ];
-    }
-
     public function create_item( \WP_REST_Request $request ) {
         $trigger = (string) $request['trigger'];
 
