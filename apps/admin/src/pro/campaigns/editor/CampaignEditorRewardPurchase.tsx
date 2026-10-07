@@ -7,7 +7,15 @@ import { storeCurrency } from '@/lib/helpers/format.helper';
 import { ROUNDING, RoundingMode } from '@/lib/points-math/points-math';
 import { OptionalCountInput } from '@/components/ui/custom/amount-inputs';
 import { LookupMultiSelect } from '@/components/ui/custom/lookup-multi-select';
-import { Field, FieldContent, FieldDescription, FieldLabel } from '@/components/ui/field';
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldLabel,
+  FieldLegend,
+  FieldSeparator,
+  FieldSet,
+} from '@/components/ui/field';
 import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
 import { Segmented, SegmentedItem } from '@/components/ui/segmented';
 import { Separator } from '@/components/ui/separator';
@@ -89,7 +97,7 @@ export function RewardFieldsPurchase() {
   );
 }
 
-/** The collapsible block holding every remaining purchase key, visible in both modes. */
+/** The collapsible panel holding every remaining purchase key, grouped in the order the engine applies them. */
 function PurchaseAdvanced({ config, patchConfig }: PurchaseFieldsProps) {
   const advancedPhrases = purchaseAdvancedPhrases(config as Record<string, unknown>);
   // Opens by itself only on mount: a campaign reopened with caps or exclusions shows them, and
@@ -112,64 +120,32 @@ function PurchaseAdvanced({ config, patchConfig }: PurchaseFieldsProps) {
       </button>
 
       {advancedOpen && (
-        <div className="flex flex-col gap-4">
-          <PurchaseCountingFields config={config} patchConfig={patchConfig} />
-          <PurchaseLimitFields config={config} patchConfig={patchConfig} />
+        <div className="flex flex-col gap-5 rounded-lg border p-4">
+          <PurchaseEligibilityFields config={config} patchConfig={patchConfig} />
+          <FieldSeparator />
+          <PurchaseAmountFields config={config} patchConfig={patchConfig} />
+          <FieldSeparator />
+          <PurchaseRoundingFields config={config} patchConfig={patchConfig} />
         </div>
       )}
     </>
   );
 }
 
-/** What amount the rate applies to, and which orders count at all. */
-function PurchaseCountingFields({ config, patchConfig }: PurchaseFieldsProps) {
+/** One headed group inside the Advanced panel. */
+function PurchaseGroup({ legend, children }: { legend: string; children: React.ReactNode }) {
   return (
-    <>
-      <Field>
-        <FieldLabel>{__('Base amount', 'yayloyalty')}</FieldLabel>
-        <FieldContent>
-          <Segmented
-            value={config.base ?? 'after_discounts'}
-            onValueChange={(value) => value && patchConfig({ base: value as PurchaseConfig['base'] })}
-          >
-            <SegmentedItem value="after_discounts">{__('After discounts', 'yayloyalty')}</SegmentedItem>
-            <SegmentedItem value="before_discounts">{__('Before discounts', 'yayloyalty')}</SegmentedItem>
-          </Segmented>
-          <FieldDescription>
-            {__(
-              'What the points are calculated on. After discounts means a coupon reduces the points too.',
-              'yayloyalty',
-            )}
-          </FieldDescription>
-        </FieldContent>
-      </Field>
+    <FieldSet className="gap-4">
+      <FieldLegend variant="label">{legend}</FieldLegend>
+      {children}
+    </FieldSet>
+  );
+}
 
-      <Field>
-        <FieldLabel>{__('Rounding', 'yayloyalty')}</FieldLabel>
-        <FieldContent>
-          <Segmented
-            value={config.rounding ?? ROUNDING.DOWN}
-            onValueChange={(value) => value && patchConfig({ rounding: value as RoundingMode })}
-          >
-            <SegmentedItem value={ROUNDING.DOWN}>{__('Down', 'yayloyalty')}</SegmentedItem>
-            <SegmentedItem value={ROUNDING.NEAREST}>{__('Nearest', 'yayloyalty')}</SegmentedItem>
-            <SegmentedItem value={ROUNDING.UP}>{__('Up', 'yayloyalty')}</SegmentedItem>
-          </Segmented>
-          <FieldDescription>{__('How a fractional result becomes whole points.', 'yayloyalty')}</FieldDescription>
-        </FieldContent>
-      </Field>
-
-      <Field>
-        <FieldLabel htmlFor="reward-purchase-include-tax">{__('Include tax', 'yayloyalty')}</FieldLabel>
-        <Switch
-          id="reward-purchase-include-tax"
-          className="w-11!"
-          checked={!!config.include_tax}
-          onCheckedChange={(include_tax) => patchConfig({ include_tax })}
-        />
-        <FieldDescription>{__('Adds each line’s tax to the amount counted.', 'yayloyalty')}</FieldDescription>
-      </Field>
-
+/** Which orders the campaign applies to at all. */
+function PurchaseEligibilityFields({ config, patchConfig }: PurchaseFieldsProps) {
+  return (
+    <PurchaseGroup legend={__('Eligible orders', 'yayloyalty')}>
       <Field>
         <FieldLabel htmlFor="reward-purchase-min-subtotal">{__('Minimum order subtotal', 'yayloyalty')}</FieldLabel>
         <FieldContent>
@@ -186,94 +162,131 @@ function PurchaseCountingFields({ config, patchConfig }: PurchaseFieldsProps) {
             <NumberInputUnit unit={storeCurrency()} />
           </NumberInputRoot>
           <FieldDescription>
-            {__(
-              'This campaign does not apply to orders whose subtotal, before discounts, is under this amount. 0 means no minimum.',
-              'yayloyalty',
-            )}
+            {__('Orders below this, before discounts, earn nothing. 0 means no minimum.', 'yayloyalty')}
           </FieldDescription>
         </FieldContent>
       </Field>
 
-      <Field>
-        <FieldLabel htmlFor="reward-purchase-exclude-coupon">
-          {__('Exclude orders that used a coupon', 'yayloyalty')}
-        </FieldLabel>
+      <Field orientation="horizontal">
+        <FieldContent>
+          <FieldLabel htmlFor="reward-purchase-exclude-coupon">
+            {__('Exclude orders that used a coupon', 'yayloyalty')}
+          </FieldLabel>
+          <FieldDescription>
+            {__('Redeeming YayLoyalty points doesn’t count as a coupon.', 'yayloyalty')}
+          </FieldDescription>
+        </FieldContent>
         <Switch
           id="reward-purchase-exclude-coupon"
           className="w-11!"
           checked={!!config.exclude_coupon_orders}
           onCheckedChange={(exclude_coupon_orders) => patchConfig({ exclude_coupon_orders })}
         />
-        <FieldDescription>
-          {__(
-            'This campaign does not apply to orders that used a coupon. Points redeemed through YayLoyalty don’t count as a coupon.',
-            'yayloyalty',
-          )}
-        </FieldDescription>
       </Field>
-    </>
+    </PurchaseGroup>
   );
 }
 
-/** Caps on what one order or one day can earn, and lines left out of the amount. */
-function PurchaseLimitFields({ config, patchConfig }: PurchaseFieldsProps) {
+/** What part of an eligible order the rate applies to. */
+function PurchaseAmountFields({ config, patchConfig }: PurchaseFieldsProps) {
   return (
-    <>
+    <PurchaseGroup legend={__('Amount counted', 'yayloyalty')}>
       <Field>
-        <FieldLabel htmlFor="reward-purchase-max-points">{__('Maximum points per order', 'yayloyalty')}</FieldLabel>
+        <FieldLabel>{__('Base amount', 'yayloyalty')}</FieldLabel>
         <FieldContent>
-          <OptionalCountInput
-            id="reward-purchase-max-points"
-            className="w-32"
-            value={config.max_points_per_order ?? null}
-            unit={__('points', 'yayloyalty')}
-            onValueChange={(max_points_per_order) => patchConfig({ max_points_per_order })}
-          />
-          <FieldDescription>{__('Applied after rounding. Leave empty for no cap.', 'yayloyalty')}</FieldDescription>
-        </FieldContent>
-      </Field>
-
-      <Field>
-        <FieldLabel htmlFor="reward-purchase-daily-cap">{__('Daily cap', 'yayloyalty')}</FieldLabel>
-        <FieldContent>
-          <OptionalCountInput
-            id="reward-purchase-daily-cap"
-            className="w-32"
-            value={config.daily_cap ?? null}
-            unit={__('points', 'yayloyalty')}
-            onValueChange={(daily_cap) => patchConfig({ daily_cap })}
-          />
+          <Segmented
+            value={config.base ?? 'after_discounts'}
+            onValueChange={(value) => value && patchConfig({ base: value as PurchaseConfig['base'] })}
+          >
+            <SegmentedItem value="after_discounts">{__('After discounts', 'yayloyalty')}</SegmentedItem>
+            <SegmentedItem value="before_discounts">{__('Before discounts', 'yayloyalty')}</SegmentedItem>
+          </Segmented>
           <FieldDescription>
-            {__('Most points one customer can earn from this campaign in a day. Leave empty for no cap.', 'yayloyalty')}
+            {__('After discounts means a coupon reduces the points too.', 'yayloyalty')}
           </FieldDescription>
         </FieldContent>
       </Field>
 
+      <Field orientation="horizontal">
+        <FieldLabel htmlFor="reward-purchase-include-tax">{__('Include tax', 'yayloyalty')}</FieldLabel>
+        <Switch
+          id="reward-purchase-include-tax"
+          className="w-11!"
+          checked={!!config.include_tax}
+          onCheckedChange={(include_tax) => patchConfig({ include_tax })}
+        />
+      </Field>
+
       <Field>
         <FieldLabel>{__('Excluded products', 'yayloyalty')}</FieldLabel>
-        <FieldContent>
-          <LookupMultiSelect
-            entity="products"
-            value={config.excluded_product_ids ?? []}
-            onChange={(next) => patchConfig({ excluded_product_ids: next })}
-            placeholder={__('Search products', 'yayloyalty')}
-          />
-          <FieldDescription>{__('These lines don’t count toward the amount.', 'yayloyalty')}</FieldDescription>
-        </FieldContent>
+        <LookupMultiSelect
+          entity="products"
+          value={config.excluded_product_ids ?? []}
+          onChange={(next) => patchConfig({ excluded_product_ids: next })}
+          placeholder={__('Search products', 'yayloyalty')}
+        />
       </Field>
 
       <Field>
         <FieldLabel>{__('Excluded categories', 'yayloyalty')}</FieldLabel>
+        <LookupMultiSelect
+          entity="categories"
+          value={config.excluded_category_ids ?? []}
+          onChange={(next) => patchConfig({ excluded_category_ids: next })}
+          placeholder={__('Search categories', 'yayloyalty')}
+        />
+      </Field>
+    </PurchaseGroup>
+  );
+}
+
+/** How the result becomes whole points, and the caps applied after that. */
+function PurchaseRoundingFields({ config, patchConfig }: PurchaseFieldsProps) {
+  return (
+    <PurchaseGroup legend={__('Rounding and caps', 'yayloyalty')}>
+      <Field>
+        <FieldLabel>{__('Rounding', 'yayloyalty')}</FieldLabel>
         <FieldContent>
-          <LookupMultiSelect
-            entity="categories"
-            value={config.excluded_category_ids ?? []}
-            onChange={(next) => patchConfig({ excluded_category_ids: next })}
-            placeholder={__('Search categories', 'yayloyalty')}
-          />
-          <FieldDescription>{__('These lines don’t count toward the amount.', 'yayloyalty')}</FieldDescription>
+          <Segmented
+            value={config.rounding ?? ROUNDING.DOWN}
+            onValueChange={(value) => value && patchConfig({ rounding: value as RoundingMode })}
+          >
+            <SegmentedItem value={ROUNDING.DOWN}>{__('Down', 'yayloyalty')}</SegmentedItem>
+            <SegmentedItem value={ROUNDING.NEAREST}>{__('Nearest', 'yayloyalty')}</SegmentedItem>
+            <SegmentedItem value={ROUNDING.UP}>{__('Up', 'yayloyalty')}</SegmentedItem>
+          </Segmented>
         </FieldContent>
       </Field>
-    </>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field>
+          <FieldLabel htmlFor="reward-purchase-max-points">{__('Maximum points per order', 'yayloyalty')}</FieldLabel>
+          <FieldContent>
+            <OptionalCountInput
+              id="reward-purchase-max-points"
+              className="w-40"
+              value={config.max_points_per_order ?? null}
+              unit={__('points', 'yayloyalty')}
+              onValueChange={(max_points_per_order) => patchConfig({ max_points_per_order })}
+            />
+            <FieldDescription>{__('Applied after rounding.', 'yayloyalty')}</FieldDescription>
+          </FieldContent>
+        </Field>
+
+        <Field>
+          <FieldLabel htmlFor="reward-purchase-daily-cap">{__('Daily cap', 'yayloyalty')}</FieldLabel>
+          <FieldContent>
+            <OptionalCountInput
+              id="reward-purchase-daily-cap"
+              className="w-40"
+              value={config.daily_cap ?? null}
+              unit={__('points', 'yayloyalty')}
+              onValueChange={(daily_cap) => patchConfig({ daily_cap })}
+            />
+            <FieldDescription>{__('Per customer.', 'yayloyalty')}</FieldDescription>
+          </FieldContent>
+        </Field>
+      </div>
+    </PurchaseGroup>
   );
 }
