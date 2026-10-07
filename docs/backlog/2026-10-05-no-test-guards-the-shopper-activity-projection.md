@@ -12,11 +12,11 @@
 
 ## Why it matters
 
-A change that leaks admin data into the public response ships unseen. The repo has no tests today (`docs/known-issues.md`), so this gap is part of that, but it is the one with a privacy cost.
+A change that leaks admin data into the public response ships unseen, and it has a privacy cost.
 
 ## Suggested fix
 
-When tests come back, add an integration test of `GET /me/activity` that writes an adjustment with an admin note and asserts the item keys are exactly `label`, `meta`, `points` and `delta` (without `points` once `2026-10-05-me-activity-returns-an-unread-field.md` is done), with no note text. Or bring back a WordPress-free seam for the label mapping and unit-test that.
+Add an integration test of `GET /me/activity` that writes an adjustment with an admin note and asserts the item keys are exactly `label`, `meta`, `points` and `delta` (without `points` once `2026-10-05-me-activity-returns-an-unread-field.md` is done), with no note text. Or bring back a WordPress-free seam for the label mapping and unit-test that.
 
 ## Done when
 

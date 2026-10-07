@@ -169,7 +169,7 @@ One tree builds both editions. Lite is Pro without `includes/Pro/` and without t
 
 ## Tests
 
-The suites hold no test cases today ([known issue](known-issues.md#no-tests-composer-test-passes-empty-admin-test-fails)). What follows is the harness new tests run in. When a test is warranted at all is in [CLAUDE.md § Tests](../CLAUDE.md#tests).
+What follows is the harness the tests run in. When a test is warranted at all is in [CLAUDE.md § Tests](../CLAUDE.md#tests).
 
 - **Unit** (`phpunit.xml.dist`, `tests/unit/`): plain PHP with no WordPress.
   - `tests/bootstrap.php` maps the namespace onto `includes/` and shims the WordPress functions the tested code reaches.
@@ -182,5 +182,3 @@ The suites hold no test cases today ([known issue](known-issues.md#no-tests-comp
 - **Vitest** (`apps/admin/vitest.config.ts`) runs `apps/admin/tests/**/*.test.ts` in Node, with the `@` alias.
   - It doesn't load `vite.config.ts`, so `IS_PRO_BUILD` is false unless the shell exports `VITE_IS_PRO=true`.
   - Tests sit outside `tsconfig.json`, so `tsc` doesn't check them.
-- **Shared fixtures:**
-  - `tests/fixtures/` holds data that both languages test against, with PHP as the source of truth.
