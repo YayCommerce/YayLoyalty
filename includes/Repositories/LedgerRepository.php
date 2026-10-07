@@ -68,22 +68,32 @@ class LedgerRepository extends AbstractRepository {
     /**
      * SUM(points) of one source's earn rows written on the site-timezone
      * calendar day holding $at, for CapPolicy's daily_cap. Per source, so a
-     * purchase never uses up a review cap. Rows count by created_at, their
+     * purchase never uses up a review cap; a null source sums every source,
+     * for the per-customer daily limit. Gross EARN only: adjustments and
+     * refunds neither count nor free up room. Rows count by created_at, their
      * write time, so $at should be the moment being awarded. 0 for a guest.
      *
-     * @param string $at     UTC MySQL datetime.
-     * @param string $source A LedgerSource constant.
+     * @param string      $at     UTC MySQL datetime.
+     * @param string|null $source A LedgerSource constant, or null for all sources.
      */
-    public function points_earned_today( ?int $user_id, string $at, string $source ): int {
+    public function points_earned_today( ?int $user_id, string $at, ?string $source ): int {
         $day_start = Dates::site_day_start( $at );
 
         if ( null === $user_id || $user_id < 1 || null === $day_start ) {
             return 0;
         }
 
+        $where  = 'user_id = %d AND type = %s';
+        $values = [ $user_id, LedgerType::EARN ];
+
+        if ( null !== $source ) {
+            $where   .= ' AND source = %s';
+            $values[] = $source;
+        }
+
         return $this->sum_points(
-            'user_id = %d AND type = %s AND source = %s AND created_at >= %s AND created_at < %s',
-            [ $user_id, LedgerType::EARN, $source, Dates::to_utc( $day_start ), Dates::to_utc( $day_start->modify( '+1 day' ) ) ]
+            $where . ' AND created_at >= %s AND created_at < %s',
+            array_merge( $values, [ Dates::to_utc( $day_start ), Dates::to_utc( $day_start->modify( '+1 day' ) ) ] )
         );
     }
 

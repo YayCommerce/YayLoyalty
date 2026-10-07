@@ -130,6 +130,9 @@ if ( ! wp_installing() ) {
 
     // Records account_created and points_adjusted activity.
     add_action( 'yayloyalty_ledger_recorded', [ \YayLoyalty\Engine\CustomerActivityListener::class, 'on_ledger_recorded' ], 10, 1 );
+
+    // earning_limited capture: an award an earning limit held points back from.
+    add_action( \YayLoyalty\Engine\Earning\EarningService::LIMITED_ACTION, [ \YayLoyalty\Engine\CustomerActivityListener::class, 'on_award_limited' ], 10, 3 );
 }
 
 register_activation_hook( YAYLOYALTY_FILE, [ \YayLoyalty\Engine\ActDeact::class, 'activate' ] );

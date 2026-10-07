@@ -1,7 +1,7 @@
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { getSettings, postSettings } from '@/lib/api/settings.api';
-import type { Settings } from '@/lib/schema/settings.schema';
+import type { SettingsUpdate } from '@/lib/schema/settings.schema';
 
 export const SETTINGS_QUERIES = {
   main: queryOptions({
@@ -24,7 +24,7 @@ export function useSaveSettingsMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationKey: ['settings', 'save'],
-    mutationFn: (data: Settings) => postSettings(data),
+    mutationFn: (data: SettingsUpdate) => postSettings(data),
     onSuccess: (settings) => {
       queryClient.setQueryData(SETTINGS_QUERIES.main.queryKey, settings);
     },

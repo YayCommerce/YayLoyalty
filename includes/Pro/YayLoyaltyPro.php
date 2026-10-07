@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Pro;
 
+use YayLoyalty\Engine\Earning\EarningService;
 use YayLoyalty\Engine\Points\PointsEngine;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Enums\RewardType;
@@ -13,6 +14,7 @@ use YayLoyalty\Pro\Helpers\CustomerSegmentsHelper;
 use YayLoyalty\Pro\Repositories\CampaignPerformanceRepository;
 use YayLoyalty\Pro\Repositories\CampaignPointsRepository;
 use YayLoyalty\Pro\Services\ConditionsEvaluator;
+use YayLoyalty\Pro\Services\DailyEarningLimit;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Repositories\DashboardRepository;
@@ -75,6 +77,7 @@ final class YayLoyaltyPro {
         add_filter( 'yayloyalty_localize_admin_data', [ self::class, 'add_segments' ] );
         add_filter( 'woocommerce_email_classes', [ ProEmails::class, 'add_classes' ] );
         add_filter( 'woocommerce_email_groups', [ ProEmails::class, 'add_groups' ] );
+        add_filter( EarningService::AWARD_POINTS_FILTER, [ new DailyEarningLimit( new LedgerRepository() ), 'clamp' ], 10, 3 );
 
         /** Fires once Pro has attached its hooks. Pro-internal; absent from Lite. */
         do_action( 'yayloyalty_pro_booted' );
@@ -165,6 +168,12 @@ final class YayLoyaltyPro {
         ];
         $exclude_sale = [ 'type' => 'bool' ];
 
+        // A cap, not a threshold: null is no cap, and a set cap is above 0.
+        $money_cap = [
+            'type'          => 'nullable_number',
+            'exclusive_min' => 0,
+        ];
+
         $schema[ RewardType::FIXED_COUPON ] = [
             'currency'           => $currency,
             'amount'             => [
@@ -185,7 +194,7 @@ final class YayLoyaltyPro {
                 'max'      => 100,
                 'required' => true,
             ],
-            'max_discount'       => $money,
+            'max_discount'       => $money_cap,
             'currency'           => $currency,
             'min_order'          => $money,
             'coupon_expiry_days' => $expiry_days,
@@ -296,14 +305,14 @@ final class YayLoyaltyPro {
 
         $schema['properties']['config']['properties'] = [
             'max_points_per_order' => [
-                'description' => __( 'Cap on points awarded by a single order. 0 means no cap.', 'yayloyalty' ),
-                'type'        => 'integer',
-                'minimum'     => 0,
+                'description' => __( 'Cap on points awarded by a single order. null means no cap.', 'yayloyalty' ),
+                'type'        => [ 'integer', 'null' ],
+                'minimum'     => 1,
             ],
             'daily_cap'            => [
-                'description' => __( 'Cap on points this campaign may award one customer per day. 0 means no cap.', 'yayloyalty' ),
-                'type'        => 'integer',
-                'minimum'     => 0,
+                'description' => __( 'Cap on points this campaign may award one customer per day. null means no cap.', 'yayloyalty' ),
+                'type'        => [ 'integer', 'null' ],
+                'minimum'     => 1,
             ],
         ];
 

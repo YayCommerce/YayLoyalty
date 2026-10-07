@@ -2,6 +2,7 @@ import { useFormContext } from 'react-hook-form';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { CampaignTrigger } from '@/lib/schema/campaign.schema';
+import { OptionalCountInput } from '@/components/ui/custom/amount-inputs';
 import { Field, FieldContent, FieldDescription, FieldLabel } from '@/components/ui/field';
 import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
 import { Switch } from '@/components/ui/switch';
@@ -65,7 +66,7 @@ interface ReviewConfig {
   points?: number;
   require_verified?: boolean;
   one_per_product?: boolean;
-  daily_cap?: number;
+  daily_cap?: number | null;
   media_bonus_points?: number;
 }
 
@@ -138,17 +139,14 @@ function RewardFieldsReview() {
       <Field>
         <FieldLabel htmlFor="reward-review-daily-cap">{__('Daily cap', 'yayloyalty')}</FieldLabel>
         <FieldContent>
-          <NumberInputRoot
-            size="small"
+          <OptionalCountInput
+            id="reward-review-daily-cap"
             className="w-32"
-            min={0}
-            value={config.daily_cap ?? 0}
+            value={config.daily_cap ?? null}
+            unit={__('points', 'yayloyalty')}
             onValueChange={(daily_cap) => patchConfig({ daily_cap })}
-          >
-            <NumberInputInput id="reward-review-daily-cap" />
-            <NumberInputUnit unit={__('points', 'yayloyalty')} />
-          </NumberInputRoot>
-          <FieldDescription>{__('0 means no daily cap.', 'yayloyalty')}</FieldDescription>
+          />
+          <FieldDescription>{__('Leave empty for no daily cap.', 'yayloyalty')}</FieldDescription>
         </FieldContent>
       </Field>
     </>

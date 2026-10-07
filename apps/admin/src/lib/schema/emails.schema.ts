@@ -32,7 +32,7 @@ export type EmailsSending = { from_name: string; from_address: string; wc_emails
 export type EmailsResponse = {
   groups: EmailGroup[];
   sending: EmailsSending;
-  throttle_per_week: number;
+  throttle_per_week: number | null;
 };
 
 /** Only the toggles + throttle cap are form state; titles, links and sending info are never posted back. */

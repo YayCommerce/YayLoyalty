@@ -138,9 +138,30 @@ final class CustomerActivityService {
     }
 
     /**
-     * Kind and display name for a write's actor. `> 0` is the one rule for
-     * "was this a person": get_current_user_id() and a ledger row's actor_id
-     * both use 0 or null for cron and system writes.
+     * One `earning_limited` row per award an earning limit cut but still
+     * partly paid; a full refusal records nothing. The held-back points are
+     * not owed later; this row is the record that they were never paid.
+     *
+     * @param string $occurred_at UTC MySQL datetime: the written row's.
+     */
+    public function record_earning_limited( int $user_id, string $trigger, int $evaluated, int $held_back, ?int $order_id, string $occurred_at ): void {
+        $data = [
+            'trigger'   => $trigger,
+            'evaluated' => $evaluated,
+            'awarded'   => $evaluated - $held_back,
+            'held_back' => $held_back,
+            'order_id'  => $order_id,
+        ];
+
+        $this->meta->insert(
+            CustomerMeta::event( $user_id, ActivityEvent::EARNING_LIMITED, $data, ActorKind::AUTOMATIC, null, false, $occurred_at )
+        );
+    }
+
+    /**
+     * Kind + display name for a write's actor. `> 0` is the one rule for
+     * "was this a person" — `get_current_user_id()` and a ledger row's
+     * `actor_id` both use 0/null for a cron or system context.
      *
      * @return array{0: string, 1: string|null}
      */

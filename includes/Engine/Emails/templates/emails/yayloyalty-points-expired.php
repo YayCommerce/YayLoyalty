@@ -10,6 +10,7 @@
  */
 
 use Automattic\WooCommerce\Utilities\FeaturesUtil;
+use YayLoyalty\Helpers\SettingsHelper;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -21,7 +22,12 @@ do_action( 'woocommerce_email_header', $email_heading, $email );
 ?>
 
 <?php echo $is_email_improvements_enabled ? '<div class="email-introduction">' : ''; ?>
-<p><?php esc_html_e( 'Some of your loyalty points have expired and are no longer in your balance.', 'yayloyalty' ); ?></p>
+<p>
+    <?php
+    /* translators: %s: the store's plural points label, e.g. "Points". */
+    echo esc_html( sprintf( __( 'Some of your loyalty %s have expired and are no longer in your balance.', 'yayloyalty' ), SettingsHelper::points_label_plural() ) );
+    ?>
+</p>
 <?php echo $is_email_improvements_enabled ? '</div>' : ''; ?>
 
 <?php

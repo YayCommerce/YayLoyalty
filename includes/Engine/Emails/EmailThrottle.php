@@ -18,12 +18,12 @@ final class EmailThrottle {
     public static function allows( int $user_id ): bool {
         $cap = self::cap();
 
-        return 0 === $cap || count( self::recent_sends( $user_id ) ) < $cap;
+        return null === $cap || count( self::recent_sends( $user_id ) ) < $cap;
     }
 
     /** Counts one sent loyalty email against $user_id's week. Nothing is counted while there is no cap. */
     public static function record( int $user_id ): void {
-        if ( 0 === self::cap() ) {
+        if ( null === self::cap() ) {
             return;
         }
 
@@ -33,7 +33,8 @@ final class EmailThrottle {
         update_user_meta( $user_id, self::META_SENDS, $sends );
     }
 
-    private static function cap(): int {
+    /** null means no cap. */
+    private static function cap(): ?int {
         return SettingsHelper::get_settings()['emails']['throttle_per_week'];
     }
 

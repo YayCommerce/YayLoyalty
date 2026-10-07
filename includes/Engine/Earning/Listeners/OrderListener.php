@@ -144,7 +144,9 @@ final class OrderListener {
 
     /**
      * Tells the merchant what an award did. Silent for a guest (every guest
-     * order would say so) and for a plain duplicate (a re-fired status).
+     * order would say so), for an earning limit that refused the whole award
+     * (nothing earned, nothing to report) and for a plain duplicate (a
+     * re-fired status).
      */
     private function note( \WC_Order $order, Outcome $outcome ): void {
         $entry = $outcome->get_entry();
@@ -154,9 +156,17 @@ final class OrderListener {
                 $campaign = $outcome->get_evaluation() ? $outcome->get_evaluation()->get_campaign() : null;
                 /* translators: 1: points, 2: campaign name */
                 $order->add_order_note( sprintf( __( 'Earned %1$d points (campaign: %2$s).', 'yayloyalty' ), $entry->get_points(), $campaign ? $campaign->get_name() : '-' ) );
+
+                // EarningService::AWARD_POINTS_FILTER lowered the award below what the campaign evaluated.
+                $held_back = $outcome->held_back();
+
+                if ( $held_back > 0 ) {
+                    /* translators: %d: points */
+                    $order->add_order_note( sprintf( __( '%d points were held back by an earning limit.', 'yayloyalty' ), $held_back ) );
+                }
                 break;
             case Outcome::SKIPPED:
-                if ( ProgramGate::REASON_NO_CUSTOMER !== $outcome->get_reason() ) {
+                if ( ! in_array( $outcome->get_reason(), [ ProgramGate::REASON_NO_CUSTOMER, EarningService::REASON_LIMIT_REACHED ], true ) ) {
                     /* translators: %s: reason code */
                     $order->add_order_note( sprintf( __( 'No points earned: %s.', 'yayloyalty' ), $outcome->get_reason() ) );
                 }

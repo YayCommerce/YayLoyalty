@@ -278,7 +278,8 @@ export type CampaignDeleteResponse = z.infer<typeof campaignDeleteResponseSchema
 
 // Per-trigger config fields
 
-type CampaignConfigFieldType = 'bool' | 'string' | 'int' | 'number' | 'enum' | 'int_list';
+/** `limit`: a whole number of at least 1, or null for no limit. */
+type CampaignConfigFieldType = 'bool' | 'string' | 'int' | 'number' | 'enum' | 'int_list' | 'limit';
 
 interface CampaignConfigFieldSpec {
   type: CampaignConfigFieldType;
@@ -314,8 +315,8 @@ export const CAMPAIGN_CONFIG_FIELDS: Record<
     exclude_coupon_orders: { type: 'bool' },
     excluded_product_ids: { type: 'int_list' },
     excluded_category_ids: { type: 'int_list' },
-    max_points_per_order: { type: 'int', min: 0 },
-    daily_cap: { type: 'int', min: 0 },
+    max_points_per_order: { type: 'limit' },
+    daily_cap: { type: 'limit' },
   },
   signup: {
     points: { type: 'int', min: 0 },
@@ -324,7 +325,7 @@ export const CAMPAIGN_CONFIG_FIELDS: Record<
     points: { type: 'int', min: 0 },
     require_verified: { type: 'bool' },
     one_per_product: { type: 'bool' },
-    daily_cap: { type: 'int', min: 0 },
+    daily_cap: { type: 'limit' },
     // Absent from default_config(); the form defaults it to 0.
     media_bonus_points: { type: 'int', min: 0 },
   },
@@ -349,7 +350,7 @@ export const DEFAULT_CAMPAIGN_CONFIG: Record<LiteCampaignTrigger, Record<string,
     excluded_category_ids: [],
   },
   signup: { points: 100 },
-  review: { points: 50, require_verified: true, one_per_product: true, daily_cap: 0 },
+  review: { points: 50, require_verified: true, one_per_product: true, daily_cap: null },
 };
 
 /** Absent from default_config('purchase'); missing means 'rate'. */

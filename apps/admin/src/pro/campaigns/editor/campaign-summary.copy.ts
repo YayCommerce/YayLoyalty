@@ -109,7 +109,7 @@ function reviewSentences(values: CampaignFormValues): string[] {
     media_bonus_points?: number;
     require_verified?: boolean;
     one_per_product?: boolean;
-    daily_cap?: number;
+    daily_cap?: number | null;
   };
   const points = typeof config.points === 'number' ? config.points : 0;
   const mediaBonus = typeof config.media_bonus_points === 'number' ? config.media_bonus_points : 0;
