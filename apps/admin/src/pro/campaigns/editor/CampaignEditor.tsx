@@ -101,7 +101,8 @@ function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }
         return false;
       }
     },
-    { listPath: '/campaigns', onInvalid: toastInvalidConditions },
+    // Save keeps the editor open; the reset above makes the saved values the new baseline.
+    { listPath: null, onInvalid: toastInvalidConditions },
   );
 
   // The header renders from the loaded campaign, never form state; "Unsaved changes" says when the two differ.
@@ -142,7 +143,7 @@ function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }
             }
             actions={
               hasPerformancePage(campaign.trigger) && (
-                // type="button": this sits inside the form. Disabled mid-save, whose own redirect would race it.
+                // type="button": this sits inside the form. Disabled mid-save, so it never leaves before the save lands.
                 <Button
                   type="button"
                   variant="outline"
@@ -153,13 +154,7 @@ function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }
                 </Button>
               )
             }
-            description={
-              <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                <Badge variant="outline">{triggerLabel(campaign.trigger)}</Badge>
-                <span aria-hidden>·</span>
-                <span className="font-mono text-xs">{campaign.slug}</span>
-              </span>
-            }
+            description={<Badge variant="outline">{triggerLabel(campaign.trigger)}</Badge>}
           >
             <div className="flex flex-col items-start gap-5 lg:flex-row">
               <div className="min-w-0 flex-1">
@@ -264,9 +259,10 @@ function CampaignCreatorForm({ template, duplicateFrom }: { template: CampaignTe
       const input = formValuesToCreateInput(values, trigger);
 
       try {
-        await mutation.mutateAsync(intent === 'draft' ? { ...input, status: 'draft' } : input);
+        const created = await mutation.mutateAsync(intent === 'draft' ? { ...input, status: 'draft' } : input);
         toast.success(__('Campaign created.', 'yayloyalty'));
-        return true;
+        // Replaces the create URL, so Back never reopens a blank form for a campaign that now exists.
+        return `/campaigns/${created.id}/edit`;
       } catch (error) {
         await toastApiError(error, __('Could not create the campaign.', 'yayloyalty'));
         return false;

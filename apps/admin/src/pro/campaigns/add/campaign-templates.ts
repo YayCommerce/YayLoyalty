@@ -27,10 +27,7 @@ export function getCampaignTemplates(): CampaignTemplate[] {
     {
       id: 'purchase',
       title: __('Order placed', 'yayloyalty'),
-      description: __(
-        'Earn points on completed orders, at a rate per amount spent or as a multiple of the default rate.',
-        'yayloyalty',
-      ),
+      description: __('Earn points on completed orders, at a rate per amount spent.', 'yayloyalty'),
       example: __('e.g. double points on one category for a weekend', 'yayloyalty'),
       trigger: 'purchase',
       seed: () => emptySeed('purchase'),

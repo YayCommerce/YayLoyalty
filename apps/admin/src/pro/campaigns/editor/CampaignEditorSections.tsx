@@ -27,7 +27,7 @@ export function CampaignEditorSections() {
   );
 }
 
-/** The name. slug is shown read-only in the page header, not here. */
+/** The name. The slug is never shown or edited. */
 function CampaignEditorBasics() {
   const { register, formState } = useFormContext<CampaignFormValues>();
 

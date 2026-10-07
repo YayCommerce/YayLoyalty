@@ -101,7 +101,7 @@ class CampaignRepository extends AbstractRepository {
         );
     }
 
-    /** The built-in purchase campaign, whose rate multiplier campaigns multiply. Null if archived. */
+    /** The built-in purchase campaign. Null if archived. */
     public function find_default_purchase(): ?Campaign {
         foreach ( $this->all_non_archived() as $campaign ) {
             if ( self::DEFAULT_PURCHASE_SLUG === $campaign->get_slug() ) {
