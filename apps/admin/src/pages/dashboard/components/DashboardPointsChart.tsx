@@ -4,7 +4,7 @@ import { __ } from '@wordpress/i18n';
 
 import { parseWPDay } from '@/lib/helpers/format.helper';
 import { formatCompactPoints, formatPoints } from '@/lib/helpers/points.helper';
-import type { DashboardRange, DashboardSeriesPoint } from '@/lib/schema/dashboard.schema';
+import type { DashboardSeriesPoint } from '@/lib/schema/dashboard.schema';
 import { cn } from '@/lib/utils';
 import {
   ChartContainer,
@@ -26,20 +26,15 @@ const NO_EXTRA_SERIES: ExtraSeries[] = [];
 const EXTRA_COLORS = ['var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)'];
 
 /**
- * Issued-vs-redeemed line chart with the range control. `children` is the
- * header controls slot; `extraSeries` adds per-campaign lines. An all-zero
+ * Issued-vs-redeemed line chart. `children` is the header controls slot; `extraSeries` adds per-campaign lines. An all-zero
  * series still draws its axes under an overlay.
  */
 export function DashboardPointsChart({
   series,
-  range,
-  onRangeChange,
   extraSeries = NO_EXTRA_SERIES,
   children,
 }: {
   series: DashboardSeriesPoint[];
-  range: DashboardRange;
-  onRangeChange: (range: DashboardRange) => void;
   extraSeries?: ExtraSeries[];
   children?: ReactNode;
 }) {
@@ -71,7 +66,7 @@ export function DashboardPointsChart({
   const empty = isSeriesEmpty(series);
 
   return (
-    <DashboardPointsChartFrame range={range} onRangeChange={onRangeChange} controls={children}>
+    <DashboardPointsChartFrame controls={children}>
       <div className="relative">
         <ChartContainer config={config} className={cn('aspect-auto w-full', CHART_HEIGHT)}>
           <LineChart data={rows} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
