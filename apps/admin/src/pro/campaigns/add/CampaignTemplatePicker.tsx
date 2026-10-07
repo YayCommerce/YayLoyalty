@@ -7,8 +7,8 @@ import PageLayout from '@/components/layout/PageLayout';
 import { CampaignTemplate, getCampaignTemplates } from './campaign-templates';
 
 /**
- * "Add a campaign" chooser: a template, or "Start from scratch", opens the editor in create mode
- * via campaigns/new/:templateId. No Duplicate card: CampaignTable's row menu duplicates a specific
+ * "Add a campaign" chooser: one card per kind opens the editor in create mode via
+ * campaigns/new/:templateId. No Duplicate card: CampaignTable's row menu duplicates a specific
  * campaign, which this page cannot pick.
  */
 export function CampaignTemplatePicker() {
@@ -21,10 +21,7 @@ export function CampaignTemplatePicker() {
       <PageLayout
         className="max-w-6xl"
         title={__('Add a campaign', 'yayloyalty')}
-        description={__(
-          'Start from a template and edit it, or build one from scratch. Nothing is created until you save.',
-          'yayloyalty',
-        )}
+        description={__('Choose what customers earn points for. Nothing is created until you save.', 'yayloyalty')}
       >
         <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
           {getCampaignTemplates().map((template) => (

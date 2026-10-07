@@ -89,15 +89,7 @@ export function CampaignPerformanceTiles({
         <StatTile
           label={__('Cost in liability', 'yayloyalty')}
           value={totals.liability_amount === null ? '—' : parseWPCurrency(totals.liability_amount)}
-          subline={
-            totals.liability_above_default !== null && totals.liability_above_default > 0
-              ? sprintf(
-                  /* translators: %s: the portion of liability above what the default rate would have issued. */
-                  __('%s of it above the default rate', 'yayloyalty'),
-                  parseWPCurrency(totals.liability_above_default),
-                )
-              : __('nothing awarded', 'yayloyalty')
-          }
+          subline={totals.liability_amount ? null : __('nothing awarded', 'yayloyalty')}
         />
       )}
     </div>

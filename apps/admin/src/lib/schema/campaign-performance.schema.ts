@@ -67,8 +67,6 @@ export const campaignPerformanceSchema = z.object({
     avg_order_subtotal: z.number().nullable(),
     /** Purchase only; null when the store has no configured points-to-currency rate. */
     liability_amount: z.number().nullable(),
-    /** Purchase, non-built-in multiplier campaigns only. */
-    liability_above_default: z.number().nullable(),
   }),
   /** One entry per day in `window`, zero-filled. */
   daily: z.array(

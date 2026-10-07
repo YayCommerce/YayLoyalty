@@ -87,17 +87,18 @@ function ScheduleBoundField({
             onValueChange={handleDateChange}
             placeholder={__('No date — always on', 'yayloyalty')}
           />
-          <Input
-            type="time"
-            className="w-28"
-            value={time}
-            disabled={!date}
-            onChange={(event) => handleTimeChange(event.target.value)}
-          />
           {date && (
-            <Button type="button" variant="ghost" size="sm" onClick={() => onChange(null)}>
-              {__('Clear', 'yayloyalty')}
-            </Button>
+            <>
+              <Input
+                type="time"
+                className="w-28"
+                value={time}
+                onChange={(event) => handleTimeChange(event.target.value)}
+              />
+              <Button type="button" variant="ghost" size="sm" onClick={() => onChange(null)}>
+                {__('Clear', 'yayloyalty')}
+              </Button>
+            </>
           )}
         </div>
       </FieldContent>

@@ -11,7 +11,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * The "Ways to earn" rows the launcher lists, from the campaigns live right now. Only a campaign that
  * applies to every shopper is advertised. Within a trigger the first in engine order wins, the one that
- * would pay. A multiplier shows the rate it pays, and is skipped when the engine would skip it.
+ * would pay.
  */
 final class LauncherEarnRules {
 
@@ -19,16 +19,15 @@ final class LauncherEarnRules {
     public const TRIGGERS = [ CampaignTrigger::PURCHASE, CampaignTrigger::SIGNUP, CampaignTrigger::REVIEW ];
 
     /**
-     * @param Campaign[]    $live             Campaigns live now, any trigger, in the engine's selection order.
-     * @param Campaign|null $default_purchase The default purchase campaign a multiplier scales.
-     * @param bool          $can_register     Whether a shopper can create an account on this store. The signup
-     *                                        campaign pays only a self-registration, so without one it isn't advertised.
+     * @param Campaign[] $live         Campaigns live now, any trigger, in the engine's selection order.
+     * @param bool       $can_register Whether a shopper can create an account on this store. The signup
+     *                                 campaign pays only a self-registration, so without one it isn't advertised.
      * @return array{earn: array{purchase: ?float, signup: ?int, review: ?int}, purchase_min: float}
      *         Points per currency unit / per signup / per review (null when not advertised), and the
      *         advertised purchase campaign's minimum order subtotal so the rate line can say it (0 for none).
      */
-    public static function advertise( array $live, ?Campaign $default_purchase, bool $can_register ): array {
-        $winners  = self::winners( $live, $default_purchase );
+    public static function advertise( array $live, bool $can_register ): array {
+        $winners  = self::winners( $live );
         $purchase = $winners[ CampaignTrigger::PURCHASE ];
         $earn     = array_map(
             static function ( ?array $winner ) {
@@ -51,7 +50,7 @@ final class LauncherEarnRules {
      * @param Campaign[] $live
      * @return array<string, array{campaign: Campaign, value: float|int}|null>
      */
-    private static function winners( array $live, ?Campaign $default_purchase ): array {
+    private static function winners( array $live ): array {
         $winners = array_fill_keys( self::TRIGGERS, null );
 
         foreach ( $live as $campaign ) {
@@ -62,7 +61,7 @@ final class LauncherEarnRules {
             }
 
             $value = CampaignTrigger::PURCHASE === $trigger
-                ? self::purchase_rate( $campaign->get_config(), $default_purchase )
+                ? self::purchase_rate( $campaign->get_config() )
                 : self::flat_points( $campaign );
 
             if ( null !== $value ) {
@@ -77,9 +76,8 @@ final class LauncherEarnRules {
     }
 
     /** Points per currency unit the engine would pay; null when it would skip the campaign or pay nothing. */
-    private static function purchase_rate( array $config, ?Campaign $default_purchase ): ?float {
-        // A multiplier whose default the engine would refuse rates 0, and so is skipped like the engine skips it.
-        $rate = PurchaseHandler::rate_of( $config, PurchaseHandler::multiplier_default( $default_purchase ) );
+    private static function purchase_rate( array $config ): ?float {
+        $rate = PurchaseHandler::rate_of( $config );
 
         return $rate > 0 ? $rate : null;
     }

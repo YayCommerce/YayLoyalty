@@ -1,30 +1,23 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronUp, TriangleAlert } from 'lucide-react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useFormContext } from 'react-hook-form';
 import { __, sprintf } from '@wordpress/i18n';
 
+import { storeCurrency } from '@/lib/helpers/format.helper';
 import { ROUNDING, RoundingMode } from '@/lib/points-math/points-math';
-import { usePurchaseCampaignsQuery } from '@/lib/queries/campaign.queries';
-import { findBuiltinCampaign, resolvePurchaseMode, resolvePurchaseMultiplier } from '@/lib/schema/campaign.schema';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { OptionalCountInput } from '@/components/ui/custom/amount-inputs';
 import { LookupMultiSelect } from '@/components/ui/custom/lookup-multi-select';
-import { Field, FieldContent, FieldDescription, FieldLabel, FieldTitle } from '@/components/ui/field';
+import { Field, FieldContent, FieldDescription, FieldLabel } from '@/components/ui/field';
 import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Segmented, SegmentedItem } from '@/components/ui/segmented';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
-import { givesLabel, isBuiltinCampaignActive } from '../campaign-labels';
-import { CampaignFormValues, useCampaignEditorContext } from './campaign-editor.form';
-import { defaultPurchaseRate, multipliedRate, purchaseAdvancedPhrases } from './campaign-reward.copy';
-import { storeCurrency } from '@/lib/helpers/format.helper';
+import { CampaignFormValues } from './campaign-editor.form';
+import { purchaseAdvancedPhrases } from './campaign-reward.copy';
 
 /** config_schema()['purchase']; mirrors CAMPAIGN_CONFIG_FIELDS.purchase. */
 interface PurchaseConfig {
   points_per_unit?: number;
-  mode?: 'rate' | 'multiplier';
-  multiplier?: number;
   base?: 'after_discounts' | 'before_discounts';
   include_shipping?: boolean;
   include_tax?: boolean;
@@ -44,179 +37,55 @@ interface PurchaseFieldsProps {
   patchConfig: PatchPurchaseConfig;
 }
 
-/** The server refuses a rate or multiplier of 0 or below; the inputs keep 2 decimals, so this is their first step above 0. */
-const SMALLEST_PURCHASE_FACTOR = 0.01;
+/** The server refuses a rate of 0 or below; the input keeps 2 decimals, so this is its first step above 0. */
+const SMALLEST_PURCHASE_RATE = 0.01;
 
-/**
- * The default campaign's own rate, or a rate/multiplier choice for any other
- * purchase campaign, plus an Advanced block. Multiplier mode inherits only
- * points_per_unit from the default campaign; rounding, base, minimum and
- * exclusions are always this campaign's own, so Advanced renders in both
- * modes.
- */
+/** The campaign's rate, then the Advanced block. */
 export function RewardFieldsPurchase() {
   const { watch, setValue } = useFormContext<CampaignFormValues>();
-  // Every multiplier multiplies this campaign's rate, so it only ever sets its own.
-  const isDefaultCampaign = useCampaignEditorContext().campaign.is_builtin;
   const config = watch('config') as PurchaseConfig;
-  const mode = resolvePurchaseMode(config as Record<string, unknown>);
-
-  // A multiplier campaign silently stops applying unless the default purchase campaign exists
-  // and is active. Asked for in multiplier mode only; rate mode has no use for it.
-  const { data: purchaseCampaigns, isSuccess: hasLoadedPurchaseCampaigns } = usePurchaseCampaignsQuery(
-    mode === 'multiplier',
-  );
-  const defaultCampaign = findBuiltinCampaign(purchaseCampaigns?.data, 'purchase');
 
   function patchConfig(patch: Partial<PurchaseConfig>) {
     // Spread the stored config: keys with no control here, such as include_shipping, must survive a save.
     setValue('config', { ...config, ...patch }, { shouldDirty: true, shouldValidate: true });
   }
 
-  const isMultiplierStranded =
-    mode === 'multiplier' &&
-    !isDefaultCampaign &&
-    hasLoadedPurchaseCampaigns &&
-    !isBuiltinCampaignActive(defaultCampaign);
-
   return (
     <div className="flex flex-col gap-4">
-      {isDefaultCampaign ? (
-        <Field>
-          <FieldLabel htmlFor="reward-purchase-points-per-unit">{__('Rate', 'yayloyalty')}</FieldLabel>
-          <FieldContent>
-            <PurchaseRateInput config={config} patchConfig={patchConfig} disabled={false} />
-            <PurchaseRateDescription />
-          </FieldContent>
-        </Field>
-      ) : (
-        <PurchaseModeChoice
-          config={config}
-          patchConfig={patchConfig}
-          // The default's rate is only fetched in multiplier mode and only lent when that campaign is active.
-          defaultPointsPerUnit={hasLoadedPurchaseCampaigns ? defaultPurchaseRate(defaultCampaign) : undefined}
-        />
-      )}
-
-      {isMultiplierStranded && (
-        <Alert variant="outline">
-          <TriangleAlert />
-          <AlertDescription>
-            {__(
-              'This campaign will not apply: multiplier mode needs the default purchase campaign to exist and be active.',
-              'yayloyalty',
+      <Field>
+        <FieldLabel htmlFor="reward-purchase-points-per-unit">{__('Rate', 'yayloyalty')}</FieldLabel>
+        <FieldContent>
+          <NumberInputRoot
+            size="small"
+            className="w-36"
+            min={SMALLEST_PURCHASE_RATE}
+            decimalScale={2}
+            value={config.points_per_unit ?? 0}
+            onValueChange={(value) => patchConfig({ points_per_unit: value })}
+          >
+            <NumberInputInput id="reward-purchase-points-per-unit" />
+            <NumberInputUnit
+              unit={sprintf(
+                /* translators: %s: the store currency code, e.g. "USD". */
+                __('pts / %s', 'yayloyalty'),
+                storeCurrency(),
+              )}
+            />
+          </NumberInputRoot>
+          <FieldDescription>
+            {sprintf(
+              /* translators: %s: the store currency code, e.g. "USD". */
+              __('Points for every 1 %s of the order amount. Advanced sets what counts.', 'yayloyalty'),
+              storeCurrency(),
             )}
-          </AlertDescription>
-        </Alert>
-      )}
+          </FieldDescription>
+        </FieldContent>
+      </Field>
 
       <Separator />
 
       <PurchaseAdvanced config={config} patchConfig={patchConfig} />
     </div>
-  );
-}
-
-function PurchaseRateInput({ config, patchConfig, disabled }: PurchaseFieldsProps & { disabled: boolean }) {
-  return (
-    <NumberInputRoot
-      size="small"
-      className="w-36"
-      min={SMALLEST_PURCHASE_FACTOR}
-      decimalScale={2}
-      disabled={disabled}
-      value={config.points_per_unit ?? 0}
-      onValueChange={(value) => patchConfig({ points_per_unit: value })}
-    >
-      <NumberInputInput id="reward-purchase-points-per-unit" />
-      <NumberInputUnit
-        unit={sprintf(
-          /* translators: %s: the store currency code, e.g. "USD". */
-          __('pts / %s', 'yayloyalty'),
-          storeCurrency(),
-        )}
-      />
-    </NumberInputRoot>
-  );
-}
-
-function PurchaseRateDescription() {
-  return (
-    <FieldDescription>
-      {sprintf(
-        /* translators: %s: the store currency code, e.g. "USD". */
-        __('Points for every 1 %s of the amount counted below.', 'yayloyalty'),
-        storeCurrency(),
-      )}
-    </FieldDescription>
-  );
-}
-
-/**
- * Multiply the default rate, or set this campaign's own. Both inputs stay
- * mounted and bound to their own key, so switching modes never clears the
- * inactive value; the inactive input is disabled, not hidden. The radio and
- * its label get their own row so no control nests inside another control's
- * label.
- */
-function PurchaseModeChoice({
-  config,
-  patchConfig,
-  defaultPointsPerUnit,
-}: PurchaseFieldsProps & {
-  /** undefined while loading, or when the default is missing, not active or has no rate. */
-  defaultPointsPerUnit: number | undefined;
-}) {
-  const mode = resolvePurchaseMode(config as Record<string, unknown>);
-  const multiplier = resolvePurchaseMultiplier(config as Record<string, unknown>);
-
-  return (
-    <RadioGroup
-      value={mode}
-      onValueChange={(value) => value && patchConfig({ mode: value as PurchaseConfig['mode'] })}
-      className="grid gap-3 sm:grid-cols-2"
-    >
-      <div className="has-data-[state=checked]:border-primary has-data-[state=checked]:bg-primary/5 dark:has-data-[state=checked]:bg-primary/10 flex flex-col gap-2.5 rounded-md border p-4">
-        <FieldLabel htmlFor="reward-purchase-mode-multiplier" className="items-center">
-          <RadioGroupItem id="reward-purchase-mode-multiplier" value="multiplier" />
-          <FieldTitle>{__('Multiply the default rate', 'yayloyalty')}</FieldTitle>
-        </FieldLabel>
-        <NumberInputRoot
-          size="small"
-          className="w-28"
-          min={SMALLEST_PURCHASE_FACTOR}
-          decimalScale={2}
-          disabled={mode !== 'multiplier'}
-          value={multiplier}
-          onValueChange={(value) => patchConfig({ multiplier: value })}
-        >
-          <NumberInputInput id="reward-purchase-multiplier" autoComplete="off" />
-          <NumberInputUnit unit="×" />
-        </NumberInputRoot>
-        {/* Without a rate to show, say what the option does instead of guessing at one. The
-            warning below the choice explains a paused or missing default. */}
-        <FieldDescription>
-          {mode === 'multiplier' && defaultPointsPerUnit !== undefined
-            ? sprintf(
-                /* translators: 1: the multiplier, e.g. "2"; 2: the default rate, e.g. "1 pt per $1.00"; 3: the resulting rate, e.g. "2 pts per $1.00". */
-                __('%1$s × %2$s = %3$s.', 'yayloyalty'),
-                String(multiplier),
-                givesLabel('purchase', { points_per_unit: defaultPointsPerUnit }),
-                givesLabel('purchase', { points_per_unit: multipliedRate(multiplier, defaultPointsPerUnit) }),
-              )
-            : __('Multiplies whatever the default purchase campaign awards.', 'yayloyalty')}
-        </FieldDescription>
-      </div>
-
-      <div className="has-data-[state=checked]:border-primary has-data-[state=checked]:bg-primary/5 dark:has-data-[state=checked]:bg-primary/10 flex flex-col gap-2.5 rounded-md border p-4">
-        <FieldLabel htmlFor="reward-purchase-mode-rate" className="items-center">
-          <RadioGroupItem id="reward-purchase-mode-rate" value="rate" />
-          <FieldTitle>{__('Set its own rate', 'yayloyalty')}</FieldTitle>
-        </FieldLabel>
-        <PurchaseRateInput config={config} patchConfig={patchConfig} disabled={mode !== 'rate'} />
-        <PurchaseRateDescription />
-      </div>
-    </RadioGroup>
   );
 }
 

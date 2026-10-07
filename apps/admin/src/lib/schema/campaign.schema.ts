@@ -232,13 +232,13 @@ export type CampaignCondition = z.infer<typeof campaignConditionSchema>;
 
 /**
  * Write body for PUT campaigns/{id}, mirroring update_item()'s mutable
- * fields. No slug or trigger: both are immutable after create.
+ * fields. No slug or trigger: both are immutable after create. No priority:
+ * only the campaigns table's drag writes it, through campaigns/reorder.
  */
 export const campaignUpdateInputSchema = z
   .object({
     name: z.string().trim().min(1, __('A campaign needs a name.', 'yayloyalty')),
     status: campaignStatusSchema,
-    priority: z.number().int(),
     /** Loose on purpose; see campaignSchema.config. */
     config: z.record(z.string(), z.unknown()),
     conditions: z.array(campaignConditionSchema),
@@ -303,9 +303,6 @@ export const CAMPAIGN_CONFIG_FIELDS: Record<
 > = {
   purchase: {
     points_per_unit: { type: 'number', exclusiveMin: 0 },
-    // Missing means 'rate'; see resolvePurchaseMode().
-    mode: { type: 'enum', values: ['rate', 'multiplier'] },
-    multiplier: { type: 'number', exclusiveMin: 0 },
     base: { type: 'enum', values: ['after_discounts', 'before_discounts'] },
     // Never read by the calculator; kept so a downgrade/upgrade round trip does not lose it.
     include_shipping: { type: 'bool' },
@@ -353,20 +350,7 @@ export const DEFAULT_CAMPAIGN_CONFIG: Record<LiteCampaignTrigger, Record<string,
   review: { points: 50, require_verified: true, one_per_product: true, daily_cap: null },
 };
 
-/** Absent from default_config('purchase'); missing means 'rate'. */
-export const DEFAULT_PURCHASE_MODE = 'rate' as const;
-
-/** Mirrors PurchaseHandler::is_multiplier(); the one place `mode` is resolved. */
-export function resolvePurchaseMode(config: Record<string, unknown>): 'rate' | 'multiplier' {
-  return config.mode === 'multiplier' ? 'multiplier' : DEFAULT_PURCHASE_MODE;
-}
-
-/** The form's side of CampaignRestController::lacks_purchase_rate(): a rate-mode purchase campaign with no numeric rate could never earn, so saving it is refused. */
+/** The form's side of CampaignRestController::lacks_purchase_rate(): a purchase campaign with no numeric rate could never earn, so saving it is refused. */
 export function lacksPurchaseRate(config: Record<string, unknown>): boolean {
-  return resolvePurchaseMode(config) === 'rate' && typeof config.points_per_unit !== 'number';
-}
-
-/** Mirrors PurchaseHandler::multiplier(); the one place a missing factor becomes ×1. */
-export function resolvePurchaseMultiplier(config: Record<string, unknown>): number {
-  return typeof config.multiplier === 'number' ? config.multiplier : 1;
+  return typeof config.points_per_unit !== 'number';
 }

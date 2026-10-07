@@ -63,7 +63,7 @@ final class LauncherPayload {
         $reward   = RedemptionService::is_available() ? $this->rewards->find_live_cart_discount( $now ) : null;
         $redeem   = self::redeem_rule( $reward );
         $register = self::register_route();
-        $rules    = LauncherEarnRules::advertise( $this->live_campaigns( $now ), $this->campaigns->find_default_purchase(), null !== $register );
+        $rules    = LauncherEarnRules::advertise( $this->live_campaigns( $now ), null !== $register );
 
         return [
             'launcher'     => $design['launcher'],
