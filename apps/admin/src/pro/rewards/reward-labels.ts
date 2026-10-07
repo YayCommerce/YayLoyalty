@@ -1,21 +1,13 @@
 import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { formatStoredDate, parseWPCurrency } from '@/lib/helpers/format.helper';
-import { formatPoints, pointsPhrase, shortPoints } from '@/lib/helpers/points.helper';
+import { formatPoints, shortPoints } from '@/lib/helpers/points.helper';
 import { flexibleDiscountSubtitle, numberConfig } from '@/lib/helpers/reward.helper';
-import {
-  CatalogRewardType,
-  claimsPerCustomer,
-  normalizeRewardConditions,
-  resolveRewardDisplayStatus,
-  Reward,
-} from '@/lib/schema/reward.schema';
+import { CatalogRewardType, claimsPerCustomer, normalizeRewardConditions, Reward } from '@/lib/schema/reward.schema';
 
 /** Reward presentation strings and derived facts; the wire carries none of this — same split as campaign-labels.ts. */
 
 export interface RewardsScreen {
-  /** The seeded flexible-discount row. Present on every real install; absent only were the seed to somehow be missing. */
-  builtin: Reward | undefined;
   /** Every non-archived row, built-in first, in display order. What the table renders. */
   rows: Reward[];
   /** Non-builtin, non-archived rows — what "catalog" means throughout this screen. */
@@ -34,7 +26,6 @@ export function resolveRewardsScreen(rewards: Reward[]): RewardsScreen {
   const rows = builtin ? [builtin, ...catalogRows] : catalogRows;
 
   return {
-    builtin,
     rows,
     catalogRows,
     archivedRows: rewards.filter((reward) => reward.status === 'archived'),
@@ -246,28 +237,4 @@ export function headerSubtitle(screen: RewardsScreen): { count: string; detail: 
     ),
     detail: __('Drag to reorder — this is the order customers see.', 'yayloyalty'),
   };
-}
-
-/** The init-case notice, from the built-in's own status and minimum so it never contradicts the reward. */
-export function sliderLiveLabel(screen: RewardsScreen): string {
-  const builtin = screen.builtin;
-
-  if (!builtin || resolveRewardDisplayStatus(builtin.status, builtin.starts_at, builtin.ends_at) !== 'active') {
-    return __('The slider is off, so customers cannot spend points at checkout yet.', 'yayloyalty');
-  }
-
-  const minPoints = numberConfig(builtin.config, 'min_points');
-
-  if (!minPoints) {
-    return __('The slider is live at checkout, and the first redemption will fill the log.', 'yayloyalty');
-  }
-
-  return sprintf(
-    /* translators: %s: the minimum points needed to use the slider, e.g. "100 points". */
-    __(
-      'The slider is live at checkout. Customers need %s before they can use it, and the first redemption will fill the log.',
-      'yayloyalty',
-    ),
-    pointsPhrase(minPoints),
-  );
 }

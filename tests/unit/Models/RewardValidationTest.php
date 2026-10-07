@@ -6,6 +6,7 @@ use YayLoyalty\Enums\RewardType;
 use YayLoyalty\Enums\Status;
 use YayLoyalty\Models\Reward;
 use YayLoyalty\Pro\YayLoyaltyPro;
+use YayLoyalty\Utils\Json;
 
 /**
  * The checks RewardRestController runs before a row is written: the Pro
@@ -143,6 +144,13 @@ final class RewardValidationTest extends TestCase {
                 Reward::default_config( RewardType::FLEXIBLE_DISCOUNT )
             )
         );
+    }
+
+    /** A config read back from the API carries the stored stamp; saving it unchanged must not be refused. */
+    public function test_a_stored_schema_version_stamp_is_accepted(): void {
+        $config = Reward::default_config( RewardType::FLEXIBLE_DISCOUNT ) + [ Json::SCHEMA_VERSION_KEY => 1 ];
+
+        $this->assertTrue( Reward::config_is_valid( RewardType::FLEXIBLE_DISCOUNT, $config ) );
     }
 
     public function test_to_update_row_drops_immutable_columns_and_keeps_formats_paired(): void {

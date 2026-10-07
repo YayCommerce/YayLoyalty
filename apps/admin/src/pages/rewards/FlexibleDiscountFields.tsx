@@ -6,11 +6,10 @@ import { formatPoints, formatPointsAsMoney } from '@/lib/helpers/points.helper';
 import { usePurchaseCampaignsQuery } from '@/lib/queries/campaign.queries';
 import { findBuiltinCampaign } from '@/lib/schema/campaign.schema';
 import type { RewardConfigOf } from '@/lib/schema/reward.schema';
-import { OptionalCountInput, OptionalMoneyInput, PointsInput } from '@/components/ui/custom/amount-inputs';
+import { OptionalCountInput, PointsInput } from '@/components/ui/custom/amount-inputs';
 import { ConfigField } from '@/components/ui/custom/config-field';
 import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Switch } from '@/components/ui/switch';
 
 export type FlexibleDiscountConfig = RewardConfigOf<'flexible_discount'>;
 
@@ -28,12 +27,6 @@ export function FlexibleDiscountFields({
   const currency = storeCurrency();
   const earnBack = useEarnBackPercent(value.points_per_currency_unit);
   const incrementMoney = formatPointsAsMoney(value.increment, value.points_per_currency_unit);
-
-  function toggleShowOn(place: 'cart' | 'checkout', checked: boolean) {
-    const others = value.show_on.filter((entry) => entry !== place);
-
-    onChange({ show_on: checked ? [...others, place] : others });
-  }
 
   return (
     <>
@@ -105,20 +98,7 @@ export function FlexibleDiscountFields({
         </div>
       </ConfigField>
 
-      <ConfigField
-        label={__('Total discount cap', 'yayloyalty')}
-        description={__(
-          'The most this reward can give away across every customer. Leave empty for unlimited.',
-          'yayloyalty',
-        )}
-      >
-        {/* Money in the reward's own currency, unlike a catalog reward's claim count. */}
-        <OptionalMoneyInput
-          value={value.max_total}
-          currency={value.currency}
-          onValueChange={(max_total) => onChange({ max_total })}
-        />
-      </ConfigField>
+      {/* Total discount cap (config.max_total) stays hidden until redemption enforces it; nothing reads it yet. */}
 
       <ConfigField
         label={__('Redemption increment', 'yayloyalty')}
@@ -135,27 +115,7 @@ export function FlexibleDiscountFields({
         <PointsInput value={value.increment} min={1} onValueChange={(increment) => onChange({ increment })} />
       </ConfigField>
 
-      <ConfigField label={__('Where it appears', 'yayloyalty')}>
-        <div className="flex flex-col gap-2 pt-1.5">
-          <label className="flex items-center gap-2 text-sm">
-            <Switch
-              size="sm"
-              checked={value.show_on.includes('cart')}
-              onCheckedChange={(checked) => toggleShowOn('cart', checked)}
-            />
-            {__('Cart', 'yayloyalty')}
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <Switch
-              size="sm"
-              checked={value.show_on.includes('checkout')}
-              onCheckedChange={(checked) => toggleShowOn('checkout', checked)}
-            />
-            {__('Checkout', 'yayloyalty')}
-          </label>
-        </div>
-      </ConfigField>
-
+      {/* No field for show_on: the reward keeps its default, cart and checkout. */}
       <ConfigField label={__('Return redeemed points when an order is refunded', 'yayloyalty')}>
         <RadioGroup
           className="gap-2.5 pt-1.5"
