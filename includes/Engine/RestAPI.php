@@ -14,6 +14,7 @@ use YayLoyalty\Controllers\LookupRestController;
 use YayLoyalty\Controllers\RedemptionsRestController;
 use YayLoyalty\Controllers\RewardRestController;
 use YayLoyalty\Controllers\SettingsRestController;
+use YayLoyalty\Controllers\SetupRestController;
 use YayLoyalty\Controllers\StorefrontActivityRestController;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\CustomerMetaRepository;
@@ -64,6 +65,8 @@ class RestAPI {
 
         $controllers = [
             new SettingsRestController(),
+            // Built-ins and settings are written only on complete, through SetupApplier.
+            new SetupRestController( $campaigns, $rewards ),
             new DesignRestController(),
             new EmailsRestController(),
             // $ledger is read-only here.
