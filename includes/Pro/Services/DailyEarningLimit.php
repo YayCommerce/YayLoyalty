@@ -10,7 +10,7 @@ use YayLoyalty\Utils\Log;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Settings → Advanced "Max points per customer per day": the award-time cap
+ * Settings → General "Fraud limits", the daily limit per customer: the award-time cap
  * on what one customer earns automatically in a site-calendar day, across
  * every source. Subscribes to EarningService::AWARD_POINTS_FILTER, so it
  * lowers an award to what is left under the cap and never writes itself.
@@ -41,7 +41,7 @@ final class DailyEarningLimit {
      */
     public function clamp( $points, string $trigger, Context $ctx ): int {
         $points  = is_numeric( $points ) ? (int) $points : 0;
-        $cap     = SettingsHelper::get_settings()['advanced']['max_points_per_day'];
+        $cap     = SettingsHelper::get_settings()['max_points_per_day'];
         $user_id = $ctx->get_user_id();
 
         if ( null === $cap || null === $user_id || $points <= 0 ) {

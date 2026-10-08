@@ -17,7 +17,7 @@ export interface CampaignTemplate {
 }
 
 /**
- * Every kind opens as a draft with no dates, so nothing starts earning by accident.
+ * Every kind opens Active with a starter name and no dates; "Save as draft" saves it without going live.
  *
  * A function, not a module-level const: Rollup keeps a module-level call to __() even when its
  * result is unused, which would ship this Pro-only copy in the Lite bundle.
@@ -30,7 +30,7 @@ export function getCampaignTemplates(): CampaignTemplate[] {
       description: __('Earn points on completed orders, at a rate per amount spent.', 'yayloyalty'),
       example: __('e.g. double points on one category for a weekend', 'yayloyalty'),
       trigger: 'purchase',
-      seed: () => emptySeed('purchase'),
+      seed: () => emptySeed('purchase', __('Points for orders', 'yayloyalty')),
     },
     {
       id: 'signup',
@@ -38,7 +38,7 @@ export function getCampaignTemplates(): CampaignTemplate[] {
       description: __('A one-off bonus the first time a customer creates an account.', 'yayloyalty'),
       example: __('e.g. a 100-point welcome bonus', 'yayloyalty'),
       trigger: 'signup',
-      seed: () => emptySeed('signup'),
+      seed: () => emptySeed('signup', __('Signup bonus', 'yayloyalty')),
     },
     {
       id: 'review',
@@ -46,15 +46,15 @@ export function getCampaignTemplates(): CampaignTemplate[] {
       description: __('Points for each approved product review.', 'yayloyalty'),
       example: __('e.g. 50 points for verified buyers', 'yayloyalty'),
       trigger: 'review',
-      seed: () => emptySeed('review'),
+      seed: () => emptySeed('review', __('Review bonus', 'yayloyalty')),
     },
   ];
 }
 
-function emptySeed(trigger: LiteCampaignTrigger): CampaignFormValues {
+function emptySeed(trigger: LiteCampaignTrigger, name: string): CampaignFormValues {
   return {
-    name: '',
-    status: 'draft',
+    name,
+    status: 'active',
     config: structuredClone(DEFAULT_CAMPAIGN_CONFIG[trigger]),
     conditions: [],
     starts_at: null,

@@ -5,7 +5,7 @@
 
 ## Goal
 
-On a store running YayCurrency, earning stops treating a foreign-currency order as if it were in the base currency, in Lite and Pro alike. A Pro merchant also decides on Settings → Advanced how a point's cash value converts into each currency (YayCurrency's live rate, or a fixed rate per currency) and how a converted value rounds (down or nearest).
+On a store running YayCurrency, earning stops treating a foreign-currency order as if it were in the base currency, in Lite and Pro alike. A Pro merchant also decides on Settings → General how a point's cash value converts into each currency (YayCurrency's live rate, or a fixed rate per currency) and how a converted value rounds (down or nearest).
 
 ## Context
 
@@ -18,7 +18,7 @@ On a store running YayCurrency, earning stops treating a foreign-currency order 
   - `YayCurrencyHelper::get_rate_fee( $currency )` is the rate after YayCurrency's fee, the rate products are priced at.
   - On a non-base order it stores `yay_currency_order_rate` (rate after fee) as order meta.
   - It converts every non-percent coupon amount on `woocommerce_coupon_get_amount`, then passes the result through `YayCurrency/GetCouponAmount` (or `YayCurrency/StoreCurrency/GetCouponAmount` when checkout falls back to base). Left alone, it would convert our already-converted discount a second time.
-- Advanced tab: `apps/admin/src/pages/settings/AdvancedSettingsPage.tsx` is one form with one Save. Pro sections follow `apps/admin/src/pro/settings/AdvancedFraudLimitsSection.tsx`; Lite shows `FraudLimitsUpsellCard` with `<ProGate />`.
+- General tab: `apps/admin/src/pages/settings/GeneralSettingsPage.tsx` is one form with one Save. Pro sections follow `apps/admin/src/pro/settings/FraudLimitsSection.tsx`; Lite shows `FraudLimitsUpsellCard` with `<ProGate />`.
 - Settings storage: one option `yayloyalty_settings` through `SettingsHelper` (whitelist + coerce on read and write). Localized admin data: `LocalizeHelper` (`wcMeta`).
 - Integration pattern: `includes/Integrations/YayMail/` holds a `YayMailIntegration` singleton that returns early when its plugin is absent. `includes/YayLoyalty.php` constructs it in both tiers, before Pro boots.
 - Load order: both plugins boot on `plugins_loaded` at priority 10, and `YayLoyalty/` loads before `yaycurrency/`. So at YayLoyalty's boot YayCurrency's `plugin_init` has not run yet, but its `YAY_CURRENCY_VERSION` constant (defined at file load) already exists.
@@ -51,7 +51,7 @@ On a store running YayCurrency, earning stops treating a foreign-currency order 
 2. **Fixed rate, earning.** Mode `fixed` with EUR `yayloyalty_fixed_rate` = `"0.8000"`: the same order earns **125**. With the EUR fixed rate blank, EUR falls back to the live rate (109).
 3. **Inactive.** With YayCurrency inactive, earning is identical to today in both tiers: the rate is `1.0` and €100 earns 100.
 4. **Rounding.** `PointsMath::points_to_currency( 1200, 100 / 0.9149, 2, 'down' )` returns `10.97`, and with `'nearest'` it returns `10.98`. With no mode it returns the nearest value, as today. `'down'` is safe from float error: 1,200 points at 100 points per unit, 2 decimals, `'down'` returns `12.00`, not `11.99`.
-5. **Rounding seam.** `CurrencyRate::rounding( $currency )` returns `advanced.currency_rounding` for a non-base currency and `nearest` for the base currency, in either tier with YayCurrency active. With YayCurrency inactive it returns `nearest`.
+5. **Rounding seam.** `CurrencyRate::rounding( $currency )` returns `currency_rounding` for a non-base currency and `nearest` for the base currency, in either tier with YayCurrency active. With YayCurrency inactive it returns `nearest`.
 6. **Coupon guard.** For coupon code `CouponProvider::CODE`, both `YayCurrency/GetCouponAmount` and `YayCurrency/StoreCurrency/GetCouponAmount` return `$coupon->get_amount( 'edit' )`. Every other coupon's amount is unchanged.
 7. **REST GET.** `GET yayloyalty/v1/currency-rates` returns:
    - `base_currency`;
@@ -59,8 +59,8 @@ On a store running YayCurrency, earning stops treating a foreign-currency order 
    - `rewards`: `[{ id, name, points_per_currency_unit }]` for the active Flexible discount rewards.
 8. **REST POST.** `POST yayloyalty/v1/currency-rates` with `{ "rates": { "EUR": "0.9100" } }` stores meta `yayloyalty_fixed_rate` = `"0.9100"` on the EUR currency post. `"0"`, `"-1"`, `"abc"` or a code that is not a YayCurrency currency returns `400` and writes nothing. `null` deletes the meta. Both routes require the capability the settings routes use.
 9. **Settings.**
-   - `advanced.currency_conversion` is `live` or `fixed`, default `live`.
-   - `advanced.currency_rounding` is `down` or `nearest`, default `down`.
+   - `currency_conversion` is `live` or `fixed`, default `live`.
+   - `currency_rounding` is `down` or `nearest`, default `down`.
    - Any other value coerces to the default.
    - Both keys stay in Lite's whitelist, so a downgrade keeps them.
 10. **UI.**
@@ -81,7 +81,7 @@ On a store running YayCurrency, earning stops treating a foreign-currency order 
     - a zero, negative or non-numeric rate at any step being skipped.
 13. **End-to-end.**
     - Set up: `./scripts/run.sh dev pro` with YayCurrency configured for USD (base), EUR and GBP.
-    - On Settings → Advanced, choose Fixed, set EUR to `0.8000`, choose Down and Save. After a reload, the saved values show.
+    - On Settings → General, choose Fixed, set EUR to `0.8000`, choose Down and Save. After a reload, the saved values show.
     - Place and complete a €100 order on a 1 point per $1 campaign. The customer's ledger shows **+125**.
     - Switch to Live and Save. A new €100 order earns `floor(100 / EUR rate after fee)`.
     - Deactivate YayCurrency. The card is gone, and a new order earns 1:1.
@@ -112,14 +112,14 @@ On a store running YayCurrency, earning stops treating a foreign-currency order 
 3. The live rate after fee.
 4. `1.0`.
 
-It returns `1 / rate` to the seam. Without YayCurrency nothing subscribes, and the rate is `1.0` as today. The integration reads `advanced.currency_conversion` and `advanced.currency_rounding` in both tiers. Lite cannot edit them, so a Lite store runs on the defaults, or on whatever a Pro install stored before a downgrade.
+It returns `1 / rate` to the seam. Without YayCurrency nothing subscribes, and the rate is `1.0` as today. The integration reads `currency_conversion` and `currency_rounding` in both tiers. Lite cannot edit them, so a Lite store runs on the defaults, or on whatever a Pro install stored before a downgrade.
 
 **Components:**
 - `includes/Utils/CurrencyRate.php` (Lite) has two methods. `to_base( string $currency, ?\WC_Order $order ): float` applies `yayloyalty_context_base_rate` and treats a value ≤ 0 as `1.0`. `rounding( string $currency ): string` applies `yayloyalty_points_value_rounding` and returns `PointsMath::ROUND_NEAREST` for anything it doesn't know. `Engine\Points\ContextFactory` calls `to_base()` in place of its private `base_rate()`.
 - `includes/Utils/PointsMath.php`: `points_to_currency( int $points, $points_per_currency_unit, int $decimals, string $mode = self::ROUND_NEAREST )`. `down` floors at `$decimals` after a `round( …, $decimals + 6 )` guard against float error.
 - `apps/admin/src/lib/points-math/`: the matching `mode` argument in the TS mirror.
 - `includes/Helpers/SettingsHelper.php`:
-  - two `advanced` fields, `currency_conversion` and `currency_rounding`;
+  - two root fields, `currency_conversion` and `currency_rounding`;
   - a new coerce type for each (`currency_conversion`, `currency_rounding`) that maps unknown values to the default.
 - `includes/Integrations/YayCurrency/YayCurrencyIntegration.php` is a singleton like `YayMailIntegration`, constructed in `includes/YayLoyalty.php` right after it. It returns early unless `defined( 'YAY_CURRENCY_VERSION' )`. It hooks `yayloyalty_context_base_rate`, `yayloyalty_points_value_rounding`, `YayCurrency/GetCouponAmount` and `YayCurrency/StoreCurrency/GetCouponAmount`.
 - `includes/Integrations/YayCurrency/YayCurrencyRates.php` is the only class that calls YayCurrency. It supplies the base currency, the currency list (code, symbol, decimals, live rate after fee), a currency by code, and an order's `yay_currency_order_rate`.
@@ -128,14 +128,14 @@ It returns `1 / rate` to the seam. Without YayCurrency nothing subscribes, and t
 - `includes/Pro/Controllers/CurrencyRatesRestController.php` serves `yayloyalty/v1/currency-rates` (GET and POST), registered the way the other Pro controllers are. It uses `YayCurrencyRates` and `FixedRateStore`, and it answers `404` when YayCurrency is inactive.
 - `includes/Helpers/LocalizeHelper.php` adds `wcMeta.yaycurrency_active` (bool), from `YayCurrencyIntegration::is_active()`.
 - SPA:
-  - `apps/admin/src/pro/settings/AdvancedCurrencySection.tsx`, exported from `pro/index.ts`;
-  - the Lite `CurrencyUpsellCard`, with its title and upsell copy in `advanced-settings.copy.ts`;
-  - the two fields in `advanced-settings.form.ts` and `lib/schema/settings.schema.ts`;
+  - `apps/admin/src/pro/settings/CurrencySection.tsx`, exported from `pro/index.ts`;
+  - the Lite `CurrencyUpsellCard`, with its title and upsell copy in `general-settings.copy.ts`;
+  - the two fields in `general-settings.form.ts` and `lib/schema/settings.schema.ts`;
   - a currency-rates query and mutation next to `lib/queries/settings.queries.ts`;
   - the preview formatter in `lib/points-math/`.
 
 **Data and storage:**
-- Option `yayloyalty_settings` → `advanced.currency_conversion` (`live`), `advanced.currency_rounding` (`down`). There is no migration: missing keys read as the defaults, and `SettingsHelper::SCHEMA_VERSION` stays `2`.
+- Option `yayloyalty_settings` → `currency_conversion` (`live`), `currency_rounding` (`down`). There is no migration: missing keys read as the defaults, and `SettingsHelper::SCHEMA_VERSION` stays `2`.
 - Post meta `yayloyalty_fixed_rate` on `yay-currency-manage` posts, a 4-decimal string, is never written for the base currency. It goes when YayCurrency deletes the currency post. The plugin has no uninstall routine (`docs/architecture.md`), and none is added.
 
 **Integration points:**
@@ -147,7 +147,7 @@ It returns `1 / rate` to the seam. Without YayCurrency nothing subscribes, and t
 - YayCurrency reads (only in `YayCurrencyRates`): `Helper::default_currency_code()`, `YayCurrencyHelper::converted_currency()`, `YayCurrencyHelper::detect_current_currency()`, `YayCurrencyHelper::get_currency_by_currency_code()`, `YayCurrencyHelper::get_rate_fee()`, order meta `yay_currency_order_rate`.
 
 **UI:**
-- The card sits on Settings → Advanced, after Fraud limits, and is built from the existing shadcn `Card` and the toggle-group style the tab already uses.
+- The card sits on Settings → General, after Fraud limits, and is built from the existing shadcn `Card` and the toggle-group style the tab already uses.
 - The page's one Save sends the settings update first, then the rates POST, but only when a rate changed.
 - If either request fails, the form keeps its edits and an error toast shows (`toastApiError`). If both succeed, both queries refetch and the form resets from the saved values.
 
