@@ -1,6 +1,4 @@
-import { useId, useRef, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { CheckIcon, CircleAlert, TriangleAlert } from 'lucide-react';
+import { ReactElement, useId, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { createInterpolateElement } from '@wordpress/element';
 import { __, _n, _x, sprintf } from '@wordpress/i18n';
@@ -9,15 +7,10 @@ import { getApiErrorMessage, toastApiError } from '@/lib/api/api';
 import {
   CampaignBulkWrites,
   useBulkCampaignWritesMutation,
-  useCampaignsQuery,
   useDeleteCampaignMutation,
   useUpdateCampaignStatusMutation,
 } from '@/lib/queries/campaign.queries';
-import { hasPerformancePage } from '@/lib/schema/campaign-performance.schema';
-import { Campaign, findBuiltinCampaign, resolveCampaignDisplayStatus } from '@/lib/schema/campaign.schema';
-import { cn } from '@/lib/utils';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
+import { Campaign, resolveCampaignDisplayStatus } from '@/lib/schema/campaign.schema';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -28,38 +21,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/custom/dialog';
-import { ListColumns } from '@/components/ui/custom/list-columns';
 import { Label } from '@/components/ui/label';
-import { Skeleton } from '@/components/ui/skeleton';
-import { campaignStatusBadgeVariant } from '../campaign-labels';
-import { CAMPAIGN_PERFORMANCE_QUERIES } from '../performance/campaign-performance.queries';
-import {
-  affectedLine,
-  ArchiveFigures,
-  contextLine,
-  earningFigures,
-  finishedFigures,
-  goesLines,
-  keepsLines,
-  lifetimeFigures,
-  resolveArchiveCase,
-  stopsLines,
-} from './campaign-archive.copy';
-import {
-  BulkArchiveRow,
-  bulkContextLine,
-  bulkRowBadge,
-  bulkRowFigures,
-  bulkSummaryLines,
-  bulkTotalLine,
-} from './campaign-bulk-archive.copy';
+import { archiveBodyLines, resolveArchiveCase } from './campaign-archive.copy';
+import { BulkArchiveRow, bulkBodyLines } from './campaign-bulk-archive.copy';
 
 export type CampaignArchiveAction = 'archived' | 'paused' | 'deleted';
 
 /**
- * Archive-or-delete confirmation for one non-built-in campaign: the finished, live and
- * never-awarded (delete) cases. Mount it only while open, so each decision gets fresh mutation
- * state. Figures are context, never a gate: a failed performance fetch still lets the merchant archive.
+ * Archive-or-delete confirmation for one non-built-in campaign; a never-awarded campaign gets
+ * delete instead. Mount it only while open, so each decision gets fresh mutation state.
  */
 export function CampaignArchiveDialog({
   campaign,
@@ -75,18 +45,8 @@ export function CampaignArchiveDialog({
   onViewArchived?: () => void;
 }) {
   const displayStatus = resolveCampaignDisplayStatus(campaign.status, campaign.starts_at, campaign.ends_at);
-  const lifetimePoints = campaign.points_issued;
   const archiveCase = resolveArchiveCase(displayStatus, campaign.is_deletable);
   const isEarning = archiveCase === 'live' && displayStatus === 'active';
-
-  const wantsPerformance = (archiveCase === 'finished' || isEarning) && hasPerformancePage(campaign.trigger);
-  const performanceQuery = useQuery({
-    ...CAMPAIGN_PERFORMANCE_QUERIES.summary(campaign.id),
-    enabled: wantsPerformance,
-  });
-
-  const campaignsQuery = useCampaignsQuery({ perPage: 100 });
-  const fallback = findBuiltinCampaign(campaignsQuery.data?.data, campaign.trigger);
 
   const statusMutation = useUpdateCampaignStatusMutation(campaign.id);
   const deleteMutation = useDeleteCampaignMutation(campaign.id);
@@ -112,233 +72,82 @@ export function CampaignArchiveDialog({
     }
   }
 
-  let figures: ArchiveFigures | undefined;
-
-  if (wantsPerformance) {
-    if (performanceQuery.data) {
-      figures =
-        archiveCase === 'finished'
-          ? finishedFigures(campaign.trigger, performanceQuery.data)
-          : earningFigures(campaign.trigger, performanceQuery.data);
-    }
-  } else if (archiveCase !== 'delete') {
-    figures = isEarning
-      ? {
-          headline: __('This campaign is live right now', 'yayloyalty'),
-          detail: lifetimeFigures(lifetimePoints).headline,
-        }
-      : lifetimeFigures(lifetimePoints);
-  }
-
-  const title =
-    archiveCase === 'delete'
-      ? sprintf(
-          /* translators: %s: the campaign's name. */
-          __('Delete “%s”?', 'yayloyalty'),
-          campaign.name,
-        )
-      : sprintf(
-          /* translators: %s: the campaign's name. */
-          __('Archive “%s”?', 'yayloyalty'),
-          campaign.name,
-        );
+  const isDelete = archiveCase === 'delete';
+  const lines = isDelete
+    ? [__('This campaign has never awarded points, so it can be deleted. This cannot be undone.', 'yayloyalty')]
+    : archiveBodyLines(campaign, displayStatus);
 
   return (
     <Dialog open onOpenChange={(open) => !open && !busy && onClose()}>
-      <DialogContent className="gap-0 p-0 sm:max-w-2xl" showCloseButton={!busy}>
-        <DialogHeader className="gap-1 border-b p-5 pr-12">
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>{contextLine(campaign, archiveCase, displayStatus)}</DialogDescription>
+      <DialogContent className="gap-0 p-0 sm:max-w-lg" showCloseButton={!busy}>
+        <DialogHeader className="p-5 pr-12 pb-0">
+          <DialogTitle>
+            {isDelete
+              ? sprintf(
+                  /* translators: %s: the campaign's name. */
+                  __('Delete “%s”?', 'yayloyalty'),
+                  campaign.name,
+                )
+              : sprintf(
+                  /* translators: %s: the campaign's name. */
+                  __('Archive “%s”?', 'yayloyalty'),
+                  campaign.name,
+                )}
+          </DialogTitle>
         </DialogHeader>
 
-        <div className="flex flex-col gap-4 p-5">
-          {archiveCase === 'delete' ? (
-            <DeleteBody campaign={campaign} busy={busy} onArchiveInstead={() => run('archived')} />
-          ) : (
-            <>
-              {(figures || (wantsPerformance && !performanceQuery.isError)) && (
-                <FiguresBlock figures={figures} marked={isEarning} />
-              )}
-              {wantsPerformance && performanceQuery.isError && (
-                <p className="text-muted-foreground text-sm">
-                  {__('Figures are unavailable right now. Archiving does not depend on them.', 'yayloyalty')}
-                </p>
-              )}
-
-              <ListColumns
-                leftTitle={__('Keeps working', 'yayloyalty')}
-                leftLines={keepsLines(lifetimePoints)}
-                rightTitle={__('Stops', 'yayloyalty')}
-                right={stopsLines(campaign, displayStatus, fallback)}
-              />
-
-              {isEarning && (
-                <div className="flex flex-col gap-3 rounded-md border p-4 sm:flex-row sm:items-center">
-                  <div className="flex flex-1 flex-col gap-1">
-                    <span className="text-sm font-semibold">{__('Pause instead', 'yayloyalty')}</span>
-                    <span className="text-muted-foreground text-xs">
-                      {__(
-                        'Pausing stops it earning but keeps it in the list, with its priority and conditions, ready to switch back on.',
-                        'yayloyalty',
-                      )}
-                    </span>
-                  </div>
-                  <Button variant="outline" disabled={busy} onClick={() => run('paused')}>
-                    {pendingAction === 'paused' ? __('Pausing…', 'yayloyalty') : __('Pause instead', 'yayloyalty')}
-                  </Button>
-                </div>
-              )}
-
-              {archiveCase === 'finished' && (
-                <div className="flex flex-col gap-1">
-                  <p className="text-sm">
-                    {createInterpolateElement(
-                      __(
-                        'It moves to <b>Archived</b> and leaves the list. You can restore it at any time.',
-                        'yayloyalty',
-                      ),
-                      { b: <strong /> },
-                    )}
-                  </p>
-                  <p className="text-muted-foreground text-xs">
-                    {__(
-                      'Archiving is a tidying action, not a destructive one. Nothing about a customer’s balance or history changes.',
-                      'yayloyalty',
-                    )}
-                  </p>
-                </div>
-              )}
-            </>
-          )}
-        </div>
+        <DialogDescription asChild>
+          <div className="text-foreground flex flex-col gap-2 p-5">
+            {lines.map((line) => (
+              <p key={line}>{createInterpolateElement(line, { link: archivedLink(busy, onClose, onViewArchived) })}</p>
+            ))}
+          </div>
+        </DialogDescription>
 
         <DialogFooter className="bg-muted/40 border-t p-5 sm:items-center sm:justify-between">
-          {archiveCase === 'delete' ? (
-            <>
-              <div></div>
-              <div className="flex flex-col-reverse gap-2 sm:flex-row">
-                {/* Reversed emphasis on purpose: Cancel is the safe default, Delete the plain marked choice. */}
-                <Button variant="outline" disabled={busy} onClick={onClose}>
-                  {__('Cancel', 'yayloyalty')}
-                </Button>
-                <Button disabled={busy} onClick={() => run('archived')}>
-                  {pendingAction === 'archived' ? __('Archiving…', 'yayloyalty') : __('Archive campaign', 'yayloyalty')}
-                </Button>
-                <Button disabled={busy} onClick={() => run('deleted')}>
-                  {pendingAction === 'deleted' ? __('Deleting…', 'yayloyalty') : __('Delete permanently', 'yayloyalty')}
-                </Button>
-              </div>
-            </>
-          ) : (
-            <>
-              <span className="text-muted-foreground text-xs">
-                {createInterpolateElement(__('Restorable from <link>Archived</link>', 'yayloyalty'), {
-                  link: onViewArchived ? (
-                    <Button
-                      variant="link"
-                      className="h-auto p-0 text-xs underline"
-                      disabled={busy}
-                      onClick={() => {
-                        onClose();
-                        onViewArchived();
-                      }}
-                    />
-                  ) : (
-                    <span />
-                  ),
-                })}
-              </span>
-              <div className="flex flex-col-reverse gap-2 sm:flex-row">
-                <Button variant="outline" disabled={busy} onClick={onClose}>
-                  {__('Cancel', 'yayloyalty')}
-                </Button>
-                <Button disabled={busy} onClick={() => run('archived')}>
-                  {pendingAction === 'archived' ? __('Archiving…', 'yayloyalty') : __('Archive campaign', 'yayloyalty')}
-                </Button>
-              </div>
-            </>
-          )}
+          <div>
+            {isEarning && (
+              <Button variant="outline" disabled={busy} onClick={() => run('paused')}>
+                {pendingAction === 'paused' ? __('Pausing…', 'yayloyalty') : __('Pause instead', 'yayloyalty')}
+              </Button>
+            )}
+          </div>
+          <div className="flex flex-col-reverse gap-2 sm:flex-row">
+            <Button variant="outline" disabled={busy} onClick={onClose}>
+              {__('Cancel', 'yayloyalty')}
+            </Button>
+            {isDelete ? (
+              <Button variant="destructive" disabled={busy} onClick={() => run('deleted')}>
+                {pendingAction === 'deleted' ? __('Deleting…', 'yayloyalty') : __('Delete permanently', 'yayloyalty')}
+              </Button>
+            ) : (
+              <Button variant="destructive" disabled={busy} onClick={() => run('archived')}>
+                {pendingAction === 'archived' ? __('Archiving…', 'yayloyalty') : __('Archive campaign', 'yayloyalty')}
+              </Button>
+            )}
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
 
-/** What the campaign did; `marked` is the live banner, which states a fact rather than a warning. */
-function FiguresBlock({ figures, marked }: { figures: ArchiveFigures | undefined; marked: boolean }) {
-  if (!figures) {
-    return <Skeleton className="h-16 w-full" />;
+/** The <link> element in the body copy: jumps to the Archived view, or plain text where there is none. */
+function archivedLink(busy: boolean, onClose: () => void, onViewArchived?: () => void): ReactElement {
+  if (!onViewArchived) {
+    return <span />;
   }
 
   return (
-    <Alert variant="muted" className={cn('text-foreground', marked && 'border-l-foreground border-l-4')}>
-      {marked && <CircleAlert />}
-      <AlertTitle className="line-clamp-none font-semibold">{figures.headline}</AlertTitle>
-      {figures.detail && <AlertDescription className="text-foreground">{figures.detail}</AlertDescription>}
-    </Alert>
-  );
-}
-
-/** The never-awarded campaign: the only one that may be deleted outright. */
-function DeleteBody({
-  campaign,
-  busy,
-  onArchiveInstead,
-}: {
-  campaign: Campaign;
-  busy: boolean;
-  onArchiveInstead: () => void;
-}) {
-  return (
-    <>
-      <Alert variant="muted" className="text-foreground">
-        <AlertTitle className="line-clamp-none text-base font-semibold">
-          {__('This campaign has never awarded any points, so it can be deleted permanently', 'yayloyalty')}
-        </AlertTitle>
-        <AlertDescription className="text-foreground">
-          {__('Nothing in customer history refers to it. No ledger row, no report figure, no order.', 'yayloyalty')}
-        </AlertDescription>
-      </Alert>
-
-      <ListColumns
-        leftTitle={__('Goes', 'yayloyalty')}
-        leftLines={goesLines(campaign)}
-        rightTitle={__('Affected', 'yayloyalty')}
-        right={{ lines: [affectedLine(campaign.trigger)], nothing: true }}
-      />
-
-      <Alert variant="outline" className="border-l-foreground border-l-4">
-        <TriangleAlert />
-        <AlertDescription className="text-foreground block">
-          {createInterpolateElement(
-            __(
-              'Deleting cannot be undone. If you might want it again, <link>archive it</link> instead and restore it then.',
-              'yayloyalty',
-            ),
-            {
-              link: (
-                <Button
-                  variant="link"
-                  className="text-primary h-auto p-0 align-baseline underline"
-                  disabled={busy}
-                  onClick={onArchiveInstead}
-                />
-              ),
-            },
-          )}
-        </AlertDescription>
-      </Alert>
-
-      <div className="bg-muted/40 flex flex-col gap-1 rounded-md border p-4">
-        <span className="text-sm font-semibold">{__('Why this dialog and not the archive one', 'yayloyalty')}</span>
-        <p className="text-muted-foreground text-sm">
-          {__(
-            'A campaign can be deleted only while no ledger row names it. The moment it awards a single point, delete is gone for good and archive takes over — even if that point is later refunded back to zero.',
-            'yayloyalty',
-          )}
-        </p>
-      </div>
-    </>
+    <Button
+      variant="link"
+      className="h-auto p-0 align-baseline underline"
+      disabled={busy}
+      onClick={() => {
+        onClose();
+        onViewArchived();
+      }}
+    />
   );
 }
 
@@ -370,10 +179,9 @@ function failureMessage(action: CampaignArchiveAction): string {
 type BulkArchiveAction = 'archive' | 'pause';
 
 /**
- * Archive confirmation for two or more non-built-in campaigns: one summary,
- * then the rows split by what can happen to them. Never-awarded rows are
- * archived with the rest unless the merchant opts into deleting them: a bulk
- * action must not delete something because it happened to be selected.
+ * Archive confirmation for two or more non-built-in campaigns. Never-awarded
+ * rows are archived with the rest unless the merchant opts into deleting them:
+ * a bulk action must not delete something because it happened to be selected.
  * Mount it only while open. Any failure, full or partial, keeps it open
  * rather than closing on a result the merchant has not seen.
  */
@@ -393,8 +201,7 @@ export function CampaignBulkArchiveDialog({
   const deleteOptInId = useId();
   const cancelRef = useRef<HTMLButtonElement>(null);
   const rows = campaigns.map(toBulkArchiveRow);
-  const archiveRows = rows.filter((row) => row.archiveCase !== 'delete');
-  const deleteRows = rows.filter((row) => row.archiveCase === 'delete');
+  const deleteRowCount = rows.filter((row) => row.archiveCase === 'delete').length;
   const liveCount = rows.filter((row) => row.displayStatus === 'active').length;
 
   const [deleteNeverAwarded, setDeleteNeverAwarded] = useState(false);
@@ -447,18 +254,17 @@ export function CampaignBulkArchiveDialog({
 
   return (
     <Dialog open onOpenChange={(open) => !open && !busy && onClose()}>
-      {/* Header and footer stay put; only the body scrolls once many campaigns are listed. */}
       <DialogContent
-        className="max-h-[calc(100dvh-4rem)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 p-0 sm:max-w-2xl"
+        className="gap-0 p-0 sm:max-w-lg"
         showCloseButton={!busy}
         onOpenAutoFocus={(event) => {
-          // The first focusable control here can be the delete opt-in, "Pause instead" or the
-          // Archived link, any of which a stray Enter would then trigger; Cancel is never that.
+          // The first focusable control here can be the Archived link, the delete opt-in or
+          // "Pause instead", any of which a stray Enter would then trigger; Cancel is never that.
           event.preventDefault();
           cancelRef.current?.focus();
         }}
       >
-        <DialogHeader className="gap-1 border-b p-5 pr-12">
+        <DialogHeader className="p-5 pr-12 pb-0">
           <DialogTitle>
             {sprintf(
               /* translators: %d: number of selected campaigns. */
@@ -466,155 +272,68 @@ export function CampaignBulkArchiveDialog({
               rows.length,
             )}
           </DialogTitle>
-          <DialogDescription>{bulkContextLine(rows)}</DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-col gap-5 overflow-y-auto p-5">
-          <Alert variant="muted" className="text-foreground border-l-foreground border-l-4">
-            <CircleAlert />
-            <AlertTitle className="line-clamp-none font-semibold">
-              {__('What this changes, in total', 'yayloyalty')}
-            </AlertTitle>
-            <AlertDescription className="text-foreground gap-2">
-              {bulkSummaryLines(rows).map((line) => (
-                <p key={line}>{createInterpolateElement(line, { b: <strong /> })}</p>
+        <div className="flex flex-col gap-4 p-5">
+          <DialogDescription asChild>
+            <div className="text-foreground flex flex-col gap-2">
+              {bulkBodyLines(liveCount).map((line) => (
+                <p key={line}>
+                  {createInterpolateElement(line, { link: archivedLink(busy, onClose, onViewArchived) })}
+                </p>
               ))}
-              <p className="border-foreground/20 mt-1 w-full border-t pt-2">{bulkTotalLine(rows)}</p>
-            </AlertDescription>
-          </Alert>
-
-          {archiveRows.length > 0 && (
-            <BulkArchiveGroup
-              heading={sprintf(
-                /* translators: %d: number of selected campaigns that have awarded points. */
-                _n('%d will be archived', '%d will be archived', archiveRows.length, 'yayloyalty'),
-                archiveRows.length,
-              )}
-              caption={_n(
-                'it may have paid out, so its history has to keep resolving',
-                'they may have paid out, so their history has to keep resolving',
-                archiveRows.length,
-                'yayloyalty',
-              )}
-              rows={archiveRows}
-            />
-          )}
-
-          {deleteRows.length > 0 && (
-            <div className="flex flex-col gap-3">
-              <BulkArchiveGroup
-                heading={sprintf(
-                  /* translators: %d: number of selected campaigns that never awarded a point. */
-                  _n('%d can be deleted outright', '%d can be deleted outright', deleteRows.length, 'yayloyalty'),
-                  deleteRows.length,
-                )}
-                caption={_n(
-                  'never awarded a point, so nothing refers to it',
-                  'never awarded a point, so nothing refers to them',
-                  deleteRows.length,
-                  'yayloyalty',
-                )}
-                rows={deleteRows}
-              />
-              <div className="flex items-center gap-3 rounded-md border p-3">
-                <Checkbox
-                  id={deleteOptInId}
-                  checked={deleteNeverAwarded}
-                  disabled={busy}
-                  onCheckedChange={(checked) => setDeleteNeverAwarded(checked === true)}
-                />
-                <Label htmlFor={deleteOptInId} className="leading-normal font-normal">
-                  {_n(
-                    'Delete it instead of archiving — permanent, and it disappears from the archive too',
-                    'Delete them instead of archiving — permanent, and they disappear from the archive too',
-                    deleteRows.length,
-                    'yayloyalty',
-                  )}
-                </Label>
-              </div>
             </div>
-          )}
+          </DialogDescription>
 
-          {liveCount > 0 && (
-            <div className="flex flex-col gap-3 rounded-md border p-4 sm:flex-row sm:items-center">
-              <div className="flex flex-1 flex-col gap-1">
-                <span className="text-sm font-semibold">
-                  {sprintf(
-                    /* translators: %d: number of selected campaigns that are live right now. */
-                    _n('Pause the %d live one instead', 'Pause the %d live ones instead', liveCount, 'yayloyalty'),
-                    liveCount,
-                  )}
-                </span>
-                <span className="text-muted-foreground text-xs">
-                  {pauseInsteadDetail(liveCount, rows.length - liveCount, pauseWrites.deletes.length)}
-                </span>
-              </div>
-              <Button variant="outline" disabled={busy} onClick={() => run('pause')}>
-                {pendingAction === 'pause' ? __('Pausing…', 'yayloyalty') : __('Pause instead', 'yayloyalty')}
-              </Button>
+          {deleteRowCount > 0 && (
+            <div className="flex items-center gap-3">
+              <Checkbox
+                id={deleteOptInId}
+                checked={deleteNeverAwarded}
+                disabled={busy}
+                onCheckedChange={(checked) => setDeleteNeverAwarded(checked === true)}
+              />
+              <Label htmlFor={deleteOptInId} className="leading-normal font-normal">
+                {sprintf(
+                  /* translators: %d: number of selected campaigns that never awarded a point. */
+                  _n(
+                    'Delete the %d that never awarded points instead (permanent)',
+                    'Delete the %d that never awarded points instead (permanent)',
+                    deleteRowCount,
+                    'yayloyalty',
+                  ),
+                  deleteRowCount,
+                )}
+              </Label>
             </div>
           )}
         </div>
 
         <DialogFooter className="bg-muted/40 border-t p-5 sm:items-center sm:justify-between">
-          <span className="text-muted-foreground text-xs">
-            {deleteCount > 0
-              ? __('Deleting cannot be undone', 'yayloyalty')
-              : createInterpolateElement(__('Restorable from <link>Archived</link>', 'yayloyalty'), {
-                  link: onViewArchived ? (
-                    <Button
-                      variant="link"
-                      className="h-auto p-0 text-xs underline"
-                      disabled={busy}
-                      onClick={() => {
-                        onClose();
-                        onViewArchived();
-                      }}
-                    />
-                  ) : (
-                    <span />
-                  ),
-                })}
-          </span>
+          <div>
+            {liveCount > 0 && (
+              <Button variant="outline" disabled={busy} onClick={() => run('pause')}>
+                {pendingAction === 'pause'
+                  ? __('Pausing…', 'yayloyalty')
+                  : sprintf(
+                      /* translators: %d: number of selected campaigns that are live right now. */
+                      _n('Pause %d live instead', 'Pause %d live instead', liveCount, 'yayloyalty'),
+                      liveCount,
+                    )}
+              </Button>
+            )}
+          </div>
           <div className="flex flex-col-reverse gap-2 sm:flex-row">
             <Button ref={cancelRef} variant="outline" disabled={busy} onClick={onClose}>
               {__('Cancel', 'yayloyalty')}
             </Button>
-            <Button disabled={busy} onClick={() => run('archive')}>
+            <Button variant="destructive" disabled={busy} onClick={() => run('archive')}>
               {pendingAction === 'archive' ? pendingLabel(archiveCount) : actionLabel(archiveCount, deleteCount)}
             </Button>
           </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
-}
-
-/** One capability group: rows listed read-only, since the selection is made in the table. */
-function BulkArchiveGroup({ heading, caption, rows }: { heading: string; caption: string; rows: BulkArchiveRow[] }) {
-  return (
-    <section className="flex flex-col">
-      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <h3 className="text-sm font-semibold">{heading}</h3>
-        <span className="text-muted-foreground text-xs">{caption}</span>
-      </div>
-      <ul className="divide-y">
-        {rows.map((row) => (
-          <li key={row.campaign.id} className="flex items-start gap-3 py-3">
-            <CheckIcon className="text-primary mt-0.5 size-4 shrink-0" aria-hidden="true" />
-            <div className="flex min-w-0 flex-1 flex-col gap-1.5 sm:flex-row sm:items-start sm:gap-3">
-              <span className="text-sm font-medium sm:w-44 sm:shrink-0">{row.campaign.name}</span>
-              <span className="sm:w-24 sm:shrink-0">
-                <Badge variant={campaignStatusBadgeVariant(row.displayStatus)} className="uppercase">
-                  {bulkRowBadge(row.displayStatus)}
-                </Badge>
-              </span>
-              <span className="text-muted-foreground text-sm">{bulkRowFigures(row)}</span>
-            </div>
-          </li>
-        ))}
-      </ul>
-    </section>
   );
 }
 
@@ -625,7 +344,6 @@ function toBulkArchiveRow(campaign: Campaign): BulkArchiveRow {
     campaign,
     displayStatus,
     archiveCase: resolveArchiveCase(displayStatus, campaign.is_deletable),
-    lifetimePoints: campaign.points_issued,
   };
 }
 
@@ -647,33 +365,6 @@ function planWrites(rows: BulkArchiveRow[], deleteNeverAwarded: boolean, pauseLi
   }
 
   return writes;
-}
-
-function pauseInsteadDetail(liveCount: number, restCount: number, restDeletes: number): string {
-  if (restCount === 0) {
-    return _n(
-      'Keeps it in the list with its priority and conditions, ready to switch back on.',
-      'Keeps them in the list with their priority and conditions, ready to switch back on.',
-      liveCount,
-      'yayloyalty',
-    );
-  }
-
-  if (restDeletes > 0) {
-    return _n(
-      'Keeps it in the list with its priority and conditions, and archives or deletes the rest as chosen above.',
-      'Keeps them in the list with their priority and conditions, and archives or deletes the rest as chosen above.',
-      liveCount,
-      'yayloyalty',
-    );
-  }
-
-  return _n(
-    'Keeps it in the list with its priority and conditions, and archives only the rest.',
-    'Keeps them in the list with their priority and conditions, and archives only the rest.',
-    liveCount,
-    'yayloyalty',
-  );
 }
 
 function actionLabel(archiveCount: number, deleteCount: number): string {
