@@ -86,12 +86,7 @@ class SettingsHelper {
             $saved = [];
         }
 
-        // Per field, not recursive: a recursive merge would splice a stored list into the default list by index.
-        $merged = self::get_default_settings();
-
-        foreach ( self::sanitize_output( $saved ) as $key => $value ) {
-            $merged[ $key ] = is_array( self::schema()[ $key ] ) ? array_replace( $merged[ $key ], $value ) : $value;
-        }
+        $merged = self::overlay( self::get_default_settings(), self::sanitize_output( $saved ) );
 
         $merged['schema_version'] = isset( $saved['schema_version'] )
             ? (int) $saved['schema_version']
@@ -131,28 +126,37 @@ class SettingsHelper {
      * Saves only the fields sent, over what is stored, and returns the merged settings.
      *
      * Defaults are never written, so translated defaults such as the point labels
-     * keep following the site language. Fields are replaced one by one rather than
-     * merged recursively, so a list can be emptied.
+     * keep following the site language.
      */
     public static function update_settings( array $settings ): array {
         $saved  = get_option( self::OPTION_SETTINGS, [] );
         $stored = self::sanitize_output( is_array( $saved ) ? $saved : [] );
 
-        foreach ( self::validate( $settings ) as $key => $value ) {
-            if ( is_array( self::schema()[ $key ] ) ) {
-                foreach ( $value as $field => $field_value ) {
-                    $stored[ $key ][ $field ] = $field_value;
-                }
-            } else {
-                $stored[ $key ] = $value;
-            }
-        }
+        $stored = self::overlay( $stored, self::validate( $settings ) );
 
         $stored['schema_version'] = self::SCHEMA_VERSION;
 
         update_option( self::OPTION_SETTINGS, $stored );
 
         return self::get_settings();
+    }
+
+    /**
+     * $clean over $base: a group's fields are replaced one by one, and any other value whole. Not recursive,
+     * so a stored list replaces the default list instead of splicing into it by index, and a list can be emptied.
+     *
+     * @param array<string, mixed> $base
+     * @param array<string, mixed> $clean Output of apply_schema().
+     * @return array<string, mixed>
+     */
+    private static function overlay( array $base, array $clean ): array {
+        $schema = self::schema();
+
+        foreach ( $clean as $key => $value ) {
+            $base[ $key ] = is_array( $schema[ $key ] ) ? array_replace( $base[ $key ] ?? [], $value ) : $value;
+        }
+
+        return $base;
     }
 
     /**

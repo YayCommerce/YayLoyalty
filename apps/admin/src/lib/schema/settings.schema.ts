@@ -23,6 +23,10 @@ export type Settings = z.infer<typeof settingsSchema>;
  * A save payload: only the fields a tab owns. SettingsHelper writes only what is sent,
  * so a tab never stores another tab's values, nor translated defaults such as the point labels.
  */
-export type SettingsUpdate = Partial<Omit<Settings, 'schema_version' | 'emails'>> & {
-  emails?: Partial<Settings['emails']>;
+export type SettingsUpdate = {
+  [Key in Exclude<keyof Settings, 'schema_version'>]?: Settings[Key] extends unknown[]
+    ? Settings[Key]
+    : Settings[Key] extends object
+      ? Partial<Settings[Key]>
+      : Settings[Key];
 };

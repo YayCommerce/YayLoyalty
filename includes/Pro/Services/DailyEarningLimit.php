@@ -10,7 +10,7 @@ use YayLoyalty\Utils\Log;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Settings → Advanced "Max points per customer per day": the award-time cap
+ * Settings → General "Fraud limits", the daily limit per customer: the award-time cap
  * on what one customer earns automatically in a site-calendar day, across
  * every source. Subscribes to EarningService::AWARD_POINTS_FILTER, so it
  * lowers an award to what is left under the cap and never writes itself.
