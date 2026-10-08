@@ -4,17 +4,17 @@ import { __ } from '@wordpress/i18n';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { OptionalCountInput } from '@/components/ui/custom/amount-inputs';
 import { Label } from '@/components/ui/label';
-import { FRAUD_LIMITS_DESCRIPTION, FRAUD_LIMITS_TITLE } from '@/pages/settings/advanced-settings.copy';
-import type { AdvancedSettingsFormValues } from '@/pages/settings/advanced-settings.form';
+import { FRAUD_LIMITS_DESCRIPTION, FRAUD_LIMITS_TITLE } from '@/pages/settings/general-settings.copy';
+import type { GeneralSettingsFormValues } from '@/pages/settings/general-settings.form';
 
 const FIELD_ID = 'yayloyalty-max-points-per-day';
 
 /**
- * Settings → Advanced "Fraud limits": the per-customer daily cap that Pro's DailyEarningLimit (PHP)
- * enforces at award time. A section of the tab's one form; AdvancedSettingsPage owns Save.
+ * Settings → General "Fraud limits": the per-customer daily cap that Pro's DailyEarningLimit (PHP)
+ * enforces at award time. A section of the tab's one form; GeneralSettingsPage owns Save.
  */
-export function AdvancedFraudLimitsSection() {
-  const { control } = useFormContext<AdvancedSettingsFormValues>();
+export function FraudLimitsSection() {
+  const { control } = useFormContext<GeneralSettingsFormValues>();
 
   return (
     <Card className="gap-3">
@@ -26,7 +26,7 @@ export function AdvancedFraudLimitsSection() {
         <Label htmlFor={FIELD_ID}>{__('Daily limit per customer', 'yayloyalty')}</Label>
         <Controller
           control={control}
-          name="advanced.max_points_per_day"
+          name="max_points_per_day"
           render={({ field }) => (
             <OptionalCountInput
               id={FIELD_ID}

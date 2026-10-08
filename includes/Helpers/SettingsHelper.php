@@ -16,7 +16,7 @@ class SettingsHelper {
     /** @var array{locale: string, saved: mixed, settings: array}|null The last get_settings() result and what it was built from. */
     private static $cache = null;
 
-    /** Longest points label; the admin form's schema (advanced-settings.form.ts) mirrors it. */
+    /** Longest points label; the admin form's schema (general-settings.form.ts) mirrors it. */
     public const POINTS_LABEL_MAX_LENGTH = 30;
 
     /** Bump when a migration changes the stored shape. */
@@ -24,18 +24,14 @@ class SettingsHelper {
 
     public static function get_default_settings(): array {
         return [
-            'general'  => [
-                'enabled'        => true,
-                // Role slugs that never earn, read by Engine\Earning\ProgramGate.
-                'excluded_roles' => [],
-            ],
-            'advanced' => [
-                'points_label_singular' => __( 'Point', 'yayloyalty' ),
-                'points_label_plural'   => __( 'Points', 'yayloyalty' ),
-                // null means no limit. Enforced by Pro's DailyEarningLimit.
-                'max_points_per_day'    => null,
-            ],
-            'emails'   => [
+            'enabled'               => true,
+            // Role slugs that never earn, read by Engine\Earning\ProgramGate.
+            'excluded_roles'        => [],
+            'points_label_singular' => __( 'Point', 'yayloyalty' ),
+            'points_label_plural'   => __( 'Points', 'yayloyalty' ),
+            // null means no limit. Enforced by Pro's DailyEarningLimit.
+            'max_points_per_day'    => null,
+            'emails'                => [
                 // Weekly per-customer cap on loyalty emails. null means no cap. Engine\Emails\EmailThrottle enforces it.
                 'throttle_per_week' => 3,
             ],
@@ -43,22 +39,18 @@ class SettingsHelper {
     }
 
     /**
-     * Type map by group then field. Anything absent is dropped in both directions.
+     * Type map: a string is a root field's type, an array is a group's fields. Anything absent is dropped in both directions.
      *
-     * @return array<string, array<string, string>>
+     * @return array<string, string|array<string, string>>
      */
     private static function schema(): array {
         return [
-            'general'  => [
-                'enabled'        => 'bool',
-                'excluded_roles' => 'slug_list',
-            ],
-            'advanced' => [
-                'points_label_singular' => 'points_label',
-                'points_label_plural'   => 'points_label',
-                'max_points_per_day'    => 'limit',
-            ],
-            'emails'   => [
+            'enabled'               => 'bool',
+            'excluded_roles'        => 'slug_list',
+            'points_label_singular' => 'points_label',
+            'points_label_plural'   => 'points_label',
+            'max_points_per_day'    => 'limit',
+            'emails'                => [
                 'throttle_per_week' => 'limit',
             ],
         ];
@@ -94,12 +86,7 @@ class SettingsHelper {
             $saved = [];
         }
 
-        // Per field, not recursive: a recursive merge would splice a stored list into the default list by index.
-        $merged = self::get_default_settings();
-
-        foreach ( self::sanitize_output( $saved ) as $group => $fields ) {
-            $merged[ $group ] = array_replace( $merged[ $group ], $fields );
-        }
+        $merged = self::overlay( self::get_default_settings(), self::sanitize_output( $saved ) );
 
         $merged['schema_version'] = isset( $saved['schema_version'] )
             ? (int) $saved['schema_version']
@@ -110,14 +97,14 @@ class SettingsHelper {
 
     /** The merchant's point label for $points: singular at exactly 1, plural otherwise. */
     public static function points_label( int $points ): string {
-        $advanced = self::get_settings()['advanced'];
+        $settings = self::get_settings();
 
-        return 1 === $points ? $advanced['points_label_singular'] : $advanced['points_label_plural'];
+        return 1 === $points ? $settings['points_label_singular'] : $settings['points_label_plural'];
     }
 
     /** The merchant's plural label, for a sentence with no count: "View your Points". */
     public static function points_label_plural(): string {
-        return self::get_settings()['advanced']['points_label_plural'];
+        return self::get_settings()['points_label_plural'];
     }
 
     /** "50 Points": the amount in the store's number format with the merchant's label, in an order translators set. */
@@ -139,18 +126,13 @@ class SettingsHelper {
      * Saves only the fields sent, over what is stored, and returns the merged settings.
      *
      * Defaults are never written, so translated defaults such as the point labels
-     * keep following the site language. Fields are replaced one by one rather than
-     * merged recursively, so a list can be emptied.
+     * keep following the site language.
      */
     public static function update_settings( array $settings ): array {
         $saved  = get_option( self::OPTION_SETTINGS, [] );
         $stored = self::sanitize_output( is_array( $saved ) ? $saved : [] );
 
-        foreach ( self::validate( $settings ) as $group => $fields ) {
-            foreach ( $fields as $field => $value ) {
-                $stored[ $group ][ $field ] = $value;
-            }
-        }
+        $stored = self::overlay( $stored, self::validate( $settings ) );
 
         $stored['schema_version'] = self::SCHEMA_VERSION;
 
@@ -160,23 +142,49 @@ class SettingsHelper {
     }
 
     /**
+     * $clean over $base: a group's fields are replaced one by one, and any other value whole. Not recursive,
+     * so a stored list replaces the default list instead of splicing into it by index, and a list can be emptied.
+     *
+     * @param array<string, mixed> $base
+     * @param array<string, mixed> $clean Output of apply_schema().
+     * @return array<string, mixed>
+     */
+    private static function overlay( array $base, array $clean ): array {
+        $schema = self::schema();
+
+        foreach ( $clean as $key => $value ) {
+            $base[ $key ] = is_array( $schema[ $key ] ) ? array_replace( $base[ $key ] ?? [], $value ) : $value;
+        }
+
+        return $base;
+    }
+
+    /**
      * Whether every `limit` field in $input is null or a whole number from 1. The controllers answer
      * 400 on false; coerce() alone would read a 0 or a fraction as "no limit" without saying so.
      *
      * @param array<string, mixed> $input
      */
     public static function is_valid( array $input ): bool {
-        foreach ( self::schema() as $group => $fields ) {
-            foreach ( $fields as $field => $type ) {
-                if ( 'limit' !== $type || ! isset( $input[ $group ] ) || ! is_array( $input[ $group ] ) || ! array_key_exists( $field, $input[ $group ] ) ) {
-                    continue;
-                }
+        return self::limits_valid( $input, self::schema() );
+    }
 
-                $value = $input[ $group ][ $field ];
+    /**
+     * @param array<string, mixed>                        $input
+     * @param array<string, string|array<string, string>> $schema
+     */
+    private static function limits_valid( array $input, array $schema ): bool {
+        foreach ( $schema as $key => $type ) {
+            if ( ! array_key_exists( $key, $input ) ) {
+                continue;
+            }
 
-                if ( null !== $value && ! self::is_limit( $value ) ) {
+            if ( is_array( $type ) ) {
+                if ( is_array( $input[ $key ] ) && ! self::limits_valid( $input[ $key ], $type ) ) {
                     return false;
                 }
+            } elseif ( 'limit' === $type && null !== $input[ $key ] && ! self::is_limit( $input[ $key ] ) ) {
+                return false;
             }
         }
 
@@ -195,7 +203,7 @@ class SettingsHelper {
      * @return array<string, mixed>
      */
     public static function validate( array $input ): array {
-        return self::apply_schema( $input );
+        return self::apply_schema( $input, self::schema() );
     }
 
     /**
@@ -205,35 +213,37 @@ class SettingsHelper {
      * @return array<string, mixed>
      */
     public static function sanitize_output( array $stored ): array {
-        return self::apply_schema( $stored );
+        return self::apply_schema( $stored, self::schema() );
     }
 
     /**
-     * @param array<string, mixed> $data
+     * @param array<string, mixed>                        $data
+     * @param array<string, string|array<string, string>> $schema
      * @return array<string, mixed>
      */
-    private static function apply_schema( array $data ): array {
+    private static function apply_schema( array $data, array $schema ): array {
         $clean = [];
 
-        foreach ( self::schema() as $group => $fields ) {
-            if ( ! isset( $data[ $group ] ) || ! is_array( $data[ $group ] ) ) {
+        foreach ( $schema as $key => $type ) {
+            if ( ! array_key_exists( $key, $data ) ) {
                 continue;
             }
 
-            foreach ( $fields as $field => $type ) {
-                if ( ! array_key_exists( $field, $data[ $group ] ) ) {
-                    continue;
+            if ( is_array( $type ) ) {
+                if ( is_array( $data[ $key ] ) ) {
+                    $clean[ $key ] = self::apply_schema( $data[ $key ], $type );
                 }
-
-                $value = self::coerce( $data[ $group ][ $field ], $type );
-
-                // An empty label is never kept: on read the translated default stands, on write the stored label does.
-                if ( 'points_label' === $type && '' === $value ) {
-                    continue;
-                }
-
-                $clean[ $group ][ $field ] = $value;
+                continue;
             }
+
+            $value = self::coerce( $data[ $key ], $type );
+
+            // An empty label is never kept: on read the translated default stands, on write the stored label does.
+            if ( 'points_label' === $type && '' === $value ) {
+                continue;
+            }
+
+            $clean[ $key ] = $value;
         }
 
         return $clean;

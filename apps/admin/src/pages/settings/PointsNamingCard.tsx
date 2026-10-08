@@ -13,21 +13,21 @@ import {
   POINTS_NAMING_PREVIEW_TITLE,
   POINTS_NAMING_SINGULAR,
   POINTS_NAMING_TITLE,
-} from './advanced-settings.copy';
-import type { AdvancedSettingsFormValues } from './advanced-settings.form';
+} from './general-settings.copy';
+import type { GeneralSettingsFormValues } from './general-settings.form';
 
 type LabelField = 'points_label_singular' | 'points_label_plural';
 
 function PointsLabelField({ name, label }: { name: LabelField; label: string }) {
-  const { register, formState } = useFormContext<AdvancedSettingsFormValues>();
+  const { register, formState } = useFormContext<GeneralSettingsFormValues>();
   const id = `yayloyalty-${name.replaceAll('_', '-')}`;
-  const invalid = !!formState.errors.advanced?.[name];
+  const invalid = !!formState.errors[name];
 
   return (
     <Field data-invalid={invalid} className="w-40">
       <FieldLabel htmlFor={id}>{label}</FieldLabel>
       <FieldContent>
-        <Input id={id} aria-invalid={invalid} {...register(`advanced.${name}`)} />
+        <Input id={id} aria-invalid={invalid} {...register(name)} />
         {invalid && <FieldError>{POINTS_NAMING_ERROR()}</FieldError>}
       </FieldContent>
     </Field>
@@ -38,11 +38,11 @@ function PointsLabelField({ name, label }: { name: LabelField; label: string }) 
  * The merchant's name for points, with two example sentences that use both forms.
  * PHP's SettingsHelper::points_label() picks singular or plural on the storefront and in the emails.
  */
-export function AdvancedPointsNamingCard() {
-  const { control } = useFormContext<AdvancedSettingsFormValues>();
+export function PointsNamingCard() {
+  const { control } = useFormContext<GeneralSettingsFormValues>();
   const [singular, plural] = useWatch({
     control,
-    name: ['advanced.points_label_singular', 'advanced.points_label_plural'],
+    name: ['points_label_singular', 'points_label_plural'],
   });
 
   const sentences = [
