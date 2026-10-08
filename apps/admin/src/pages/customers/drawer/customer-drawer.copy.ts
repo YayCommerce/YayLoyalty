@@ -1,4 +1,4 @@
-import { __, sprintf } from '@wordpress/i18n';
+import { __, _n, sprintf } from '@wordpress/i18n';
 
 /** The customer drawer's core strings. Functions, not constants: `__()` must run after the locale loads. */
 
@@ -30,10 +30,30 @@ export const BALANCE_AT_DELETION_SUBLINE = () => __('no longer spendable', 'yayl
 /** No deadline once expiry has stopped. */
 export const EXPIRY_STOPPED_SUBLINE = () => __('expiry stopped', 'yayloyalty');
 
+/** The balance's currency value: "≈ $12.50". */
+export function approxMoney(money: string): string {
+  return sprintf(
+    /* translators: %s: a formatted currency amount. */
+    __('≈ %s', 'yayloyalty'),
+    money,
+  );
+}
+
+/** Countdown under the expiry date. */
+export function expiresInDays(days: number): string {
+  if (days === 0) {
+    return __('today', 'yayloyalty');
+  }
+  return sprintf(
+    /* translators: %d: days until the points expire. */
+    _n('in %d day', 'in %d days', days, 'yayloyalty'),
+    days,
+  );
+}
+
 // Actions
 
 export const ACTION_ADJUST_POINTS = () => __('Adjust points', 'yayloyalty');
-export const ACTION_RESET_EXPIRY = () => __('Reset expiry', 'yayloyalty');
 export const ACTION_EXPORT_LEDGER = () => __('Export ledger', 'yayloyalty');
 
 export const EXPORT_LEDGER_EMPTY = () => __('No ledger entries to export.', 'yayloyalty');
@@ -59,8 +79,6 @@ export const LEDGER_CSV_HEADERS = () => [
 ];
 
 export const NOT_AVAILABLE_YET_REASON = () => __('Not available yet — coming in a future release.', 'yayloyalty');
-/** Nothing to extend on a zero balance. */
-export const RESET_EXPIRY_NEEDS_POINTS_REASON = () => __('Needs points to extend.', 'yayloyalty');
 /** The account has no owner left to act on. */
 export const DELETED_ACCOUNT_ACTION_REASON = () =>
   __('This account was deleted — there is nobody to spend the points.', 'yayloyalty');
