@@ -28,7 +28,7 @@
 ## The generated-directory guard doesn't see the shell
 
 - **Symptom:** the guard stops Claude's file tools from editing generated output, but a shell command that writes there, such as `sed -i`, `cp` or a redirect, goes through. The generated directories are gitignored, so `git status` doesn't show the change either. Without `jq`, every edit shows a `PreToolUse` hook error and nothing is blocked.
-- **Cause:** `.claude/hooks/guard-generated-paths.sh` runs only before Claude's Edit, Write and NotebookEdit calls, and it reads each call with `jq`. A hook that can't run lets the edit through.
+- **Cause:** `.claude/hooks/guard-generated-paths.sh` runs only before Claude's Edit, Write, MultiEdit and NotebookEdit calls, and it reads each call with `jq`. A hook that can't run lets the edit through.
 - **Workaround:** hard rule 1 in [CLAUDE.md](../CLAUDE.md) covers the shell too. To undo a stray write, rerun the command that builds the directory. Install `jq` if the hook error appears.
 - **Remove when:** shell writes to generated output are blocked too.
 

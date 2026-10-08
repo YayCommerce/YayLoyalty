@@ -1,6 +1,6 @@
 # Fix float error in points rounding
 
-**Status:** active
+**Status:** done 2026-10-07
 **Branch:** `trace/feat/campaign-spend-rate`. It goes in as a second commit after the spend-rate commit, as the user chose.
 **Tests:** `tests/unit/Utils/PointsMathTest.php` (unit suite, `composer test`) and `apps/admin/tests/points-math.test.ts` (Vitest). Both use the same cases, and the user accepted them.
 
