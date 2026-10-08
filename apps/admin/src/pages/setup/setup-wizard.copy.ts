@@ -103,26 +103,26 @@ export const REVIEW_PROGRAM_TITLE = () => __('Your program', 'yayloyalty');
 export const REVIEW_EDIT = () => __('Edit', 'yayloyalty');
 export const REVIEW_NAMES_LABEL = () => __('Points are called', 'yayloyalty');
 export const REVIEW_EARN_LABEL = () => __('Customers earn', 'yayloyalty');
-export const REVIEW_EARN_VALUE = (points: string, amount: string) =>
-  /* translators: 1: points, 2: an amount of money, as "$1.00". */
-  sprintf(__('%1$s per %2$s spent, when the order is completed', 'yayloyalty'), points, amount);
+export const REVIEW_EARN_VALUE = (points: string, label: string, amount: string) =>
+  /* translators: 1: points, 2: the merchant's points name, 3: an amount of money, as "$1.00". */
+  sprintf(__('%1$s %2$s per %3$s spent, when the order is completed', 'yayloyalty'), points, label, amount);
 export const REVIEW_SIGNUP_LABEL = () => __('Account signup', 'yayloyalty');
-export const REVIEW_SIGNUP_VALUE = (points: string) =>
-  /* translators: %s: points, as "100". */
-  sprintf(__('%s points, once per customer', 'yayloyalty'), points);
+export const REVIEW_SIGNUP_VALUE = (points: string, label: string) =>
+  /* translators: 1: points, as "100", 2: the merchant's points name. */
+  sprintf(__('%1$s %2$s, once per customer', 'yayloyalty'), points, label);
 export const REVIEW_REVIEW_LABEL = () => __('Product review', 'yayloyalty');
-export const REVIEW_REVIEW_VALUE = (points: string) =>
-  /* translators: %s: points, as "50". */
-  sprintf(__('%s points, verified purchases only', 'yayloyalty'), points);
+export const REVIEW_REVIEW_VALUE = (points: string, label: string) =>
+  /* translators: 1: points, as "50", 2: the merchant's points name. */
+  sprintf(__('%1$s %2$s, verified purchases only', 'yayloyalty'), points, label);
 export const REVIEW_OFF = () => __('Off', 'yayloyalty');
 export const REVIEW_WORTH_LABEL = () => __('Points are worth', 'yayloyalty');
-export const REVIEW_WORTH_VALUE = (points: string, amount: string) =>
-  /* translators: 1: points, 2: an amount of money, as "$1.00". */
-  sprintf(__('%1$s points = %2$s off', 'yayloyalty'), points, amount);
+export const REVIEW_WORTH_VALUE = (points: string, label: string, amount: string) =>
+  /* translators: 1: points, 2: the merchant's points name, 3: an amount of money, as "$1.00". */
+  sprintf(__('%1$s %2$s = %3$s off', 'yayloyalty'), points, label, amount);
 export const REVIEW_LIMITS_LABEL = () => __('Redemption limits', 'yayloyalty');
-export const REVIEW_LIMITS_VALUE = (points: string, percent: number) =>
-  /* translators: 1: the smallest redemption in points, 2: a percentage. */
-  sprintf(__('from %1$s points, up to %2$d%% of the subtotal', 'yayloyalty'), points, percent);
+export const REVIEW_LIMITS_VALUE = (points: string, label: string, percent: number) =>
+  /* translators: 1: the smallest redemption in points, 2: the merchant's points name, 3: a percentage. */
+  sprintf(__('from %1$s %2$s, up to %3$d%% of the subtotal', 'yayloyalty'), points, label, percent);
 export const REVIEW_LAUNCHER_LABEL = () => __('Launcher', 'yayloyalty');
 export const REVIEW_CREATES_TITLE = () => __('What this creates', 'yayloyalty');
 export const REVIEW_CAMPAIGNS_LABEL = () => __('Campaigns', 'yayloyalty');
@@ -131,7 +131,6 @@ export const REVIEW_CAMPAIGNS_HELP = () =>
 export const REVIEW_REWARDS_LABEL = () => __('Rewards', 'yayloyalty');
 export const REVIEW_REWARD_NAME = () => __('Points for discount', 'yayloyalty');
 export const REVIEW_REWARDS_HELP = () => __('The one reward every install has.', 'yayloyalty');
-export const REVIEW_OPEN_SCREEN = () => __('Open', 'yayloyalty');
 export const REVIEW_WHEN_ON_TITLE = () => __('When you turn it on', 'yayloyalty');
 export const REVIEW_WHEN_EARN = () =>
   __(

@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { CheckIcon } from 'lucide-react';
 import { useFormContext, useWatch } from 'react-hook-form';
-import { Link } from 'react-router';
 
 import { can, CAP } from '@/lib/access';
 import { parseWPCurrency, storeCurrency } from '@/lib/helpers/format.helper';
@@ -22,6 +21,9 @@ export function SetupStepReview({ onEdit }: { onEdit: (step: number) => void }) 
   const { control } = useFormContext<SetupDraft>();
   const draft = useWatch({ control }) as SetupDraft;
   const money = (amount: string) => parseWPCurrency(Number(amount));
+  // The merchant's own words from step 1, singular at exactly 1, as the storefront reads them.
+  const label = (points: number) => (points === 1 ? draft.points_label_singular : draft.points_label_plural);
+  const counted = (points: number) => [formatPoints(points), label(points)] as const;
   const rows: { label: string; value: string; step: number }[] = [
     {
       label: copy.REVIEW_NAMES_LABEL(),
@@ -30,27 +32,27 @@ export function SetupStepReview({ onEdit }: { onEdit: (step: number) => void }) 
     },
     {
       label: copy.REVIEW_EARN_LABEL(),
-      value: copy.REVIEW_EARN_VALUE(formatPoints(draft.earn.points), money(draft.earn.amount)),
+      value: copy.REVIEW_EARN_VALUE(...counted(draft.earn.points), money(draft.earn.amount)),
       step: 2,
     },
     {
       label: copy.REVIEW_SIGNUP_LABEL(),
-      value: draft.signup.enabled ? copy.REVIEW_SIGNUP_VALUE(formatPoints(draft.signup.points)) : copy.REVIEW_OFF(),
+      value: draft.signup.enabled ? copy.REVIEW_SIGNUP_VALUE(...counted(draft.signup.points)) : copy.REVIEW_OFF(),
       step: 2,
     },
     {
       label: copy.REVIEW_REVIEW_LABEL(),
-      value: draft.review.enabled ? copy.REVIEW_REVIEW_VALUE(formatPoints(draft.review.points)) : copy.REVIEW_OFF(),
+      value: draft.review.enabled ? copy.REVIEW_REVIEW_VALUE(...counted(draft.review.points)) : copy.REVIEW_OFF(),
       step: 2,
     },
     {
       label: copy.REVIEW_WORTH_LABEL(),
-      value: copy.REVIEW_WORTH_VALUE(formatPoints(draft.reward.points), money(draft.reward.amount)),
+      value: copy.REVIEW_WORTH_VALUE(...counted(draft.reward.points), money(draft.reward.amount)),
       step: 3,
     },
     {
       label: copy.REVIEW_LIMITS_LABEL(),
-      value: copy.REVIEW_LIMITS_VALUE(formatPoints(draft.reward.min_points), draft.reward.max_percent),
+      value: copy.REVIEW_LIMITS_VALUE(...counted(draft.reward.min_points), draft.reward.max_percent),
       step: 3,
     },
     {
@@ -100,7 +102,10 @@ export function SetupStepReview({ onEdit }: { onEdit: (step: number) => void }) 
   );
 }
 
-/** The built-ins Turn on writes, by their current names, with links to the screens that own them from now on. */
+/**
+ * The built-ins Turn on writes, by their current names. No links out: leaving from here would drop unsaved
+ * edits before the program is live; the dashboard hands over to those screens afterwards.
+ */
 function WhatThisCreates() {
   // Only users who may open Campaigns ask for it; anyone else sees the seeded names.
   const campaigns = useQuery({ ...CAMPAIGN_QUERIES.list(CAMPAIGN_LIST_PARAMS), enabled: can(CAP.MANAGE_CAMPAIGNS) });
@@ -114,13 +119,11 @@ function WhatThisCreates() {
       <CardContent className="flex flex-col gap-4 text-sm">
         <CreatedRow
           label={copy.REVIEW_CAMPAIGNS_LABEL()}
-          to="/campaigns"
           value={names?.length ? names.join(' · ') : copy.REVIEW_CAMPAIGNS_DEFAULT_NAMES()}
           help={copy.REVIEW_CAMPAIGNS_HELP()}
         />
         <CreatedRow
           label={copy.REVIEW_REWARDS_LABEL()}
-          to="/rewards"
           value={copy.REVIEW_REWARD_NAME()}
           help={copy.REVIEW_REWARDS_HELP()}
         />
@@ -129,15 +132,10 @@ function WhatThisCreates() {
   );
 }
 
-function CreatedRow({ label, to, value, help }: { label: string; to: string; value: string; help: string }) {
+function CreatedRow({ label, value, help }: { label: string; value: string; help: string }) {
   return (
     <div className="flex flex-col gap-1">
-      <div className="flex items-center gap-2">
-        <span className="font-medium">{label}</span>
-        <Link to={to} className="text-primary ml-auto text-sm hover:underline">
-          {copy.REVIEW_OPEN_SCREEN()}
-        </Link>
-      </div>
+      <span className="font-medium">{label}</span>
       <span>{value}</span>
       <span className="text-muted-foreground">{help}</span>
     </div>

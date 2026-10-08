@@ -28,20 +28,24 @@ export function SetupWizardLayout({
   primary: ReactNode;
   children: ReactNode;
 }) {
+  // Plain divs, not <header>/<main>/<footer>: styles/custom-header.css fixes every <header> and pads every
+  // <main> under #wpbody-content for AppLayout. The bars stick instead, below the admin bar (46px narrow,
+  // 32px from md) and at the viewport's foot. The bottom margin keeps WordPress's absolutely positioned
+  // #wpfooter, which this app's CSS leaves no room for, from covering the actions.
   return (
-    <div className="bg-background flex min-h-[calc(100vh-32px)] flex-col">
+    <div className="bg-background mb-16 flex min-h-[calc(100vh-32px)] flex-col">
       <Toaster />
-      <header className="flex items-center gap-4 border-b px-6 py-3">
+      <div className="bg-background sticky top-11.5 z-20 flex items-center gap-4 border-b px-6 py-3 md:top-8">
         <span className="font-semibold">{WIZARD_TITLE()}</span>
         <span className="text-muted-foreground text-sm">{STEP_OF(step, SETUP_LAST_STEP)}</span>
         <Button type="button" variant="ghost" className="ml-auto" disabled={isBusy} onClick={onExit}>
           {EXIT_LABEL()}
         </Button>
-      </header>
+      </div>
 
-      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-6 py-8">{children}</main>
+      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-6 py-8">{children}</div>
 
-      <footer className="flex items-center gap-4 border-t px-6 py-3">
+      <div className="bg-background sticky bottom-0 z-20 flex items-center gap-4 border-t px-6 py-3">
         {onBack ? (
           <Button type="button" variant="ghost" disabled={isBusy} onClick={onBack}>
             {BACK_LABEL()}
@@ -51,7 +55,7 @@ export function SetupWizardLayout({
           {skip}
           {primary}
         </div>
-      </footer>
+      </div>
     </div>
   );
 }
