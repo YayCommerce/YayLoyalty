@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { spendPairFromRate } from '@/lib/helpers/points.helper';
+import { formatPoints, pointsPerCurrencyLabel, spendPairFromRate } from '@/lib/helpers/points.helper';
 
 const VND = { symbol: '₫', position: 'right_space', thousand_sep: '.', decimal_sep: ',', num_decimals: 0 };
 
@@ -23,5 +23,17 @@ describe('spendPairFromRate', () => {
     [0.333333, { spend: 1, points: 0.333333 }],
   ])('reads %s as its pair', (rate, pair) => {
     expect(spendPairFromRate(rate)).toEqual(pair);
+  });
+});
+
+// Points take the store's price separators, not the browser locale's.
+describe('points formatting', () => {
+  it('groups with the store thousands separator', () => {
+    expect(formatPoints(12400)).toBe('12.400');
+  });
+
+  it('writes a rate with the store decimal separator', () => {
+    expect(pointsPerCurrencyLabel(1.5)).toContain('3 pts per 2 ₫');
+    expect(pointsPerCurrencyLabel(2.000001)).toContain('2,000001');
   });
 });

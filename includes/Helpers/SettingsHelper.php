@@ -123,10 +123,19 @@ class SettingsHelper {
         return self::get_settings()['advanced']['points_label_plural'];
     }
 
-    /** "50 Points": the amount in the site's number format with the merchant's label, in an order translators set. */
+    /** "50 Points": the amount in the store's number format with the merchant's label, in an order translators set. */
     public static function points_text( int $points ): string {
         /* translators: 1: number of points, 2: the store's points label, e.g. "Points". */
-        return sprintf( _x( '%1$s %2$s', 'points amount', 'yayloyalty' ), number_format_i18n( $points ), self::points_label( $points ) );
+        return sprintf( _x( '%1$s %2$s', 'points amount', 'yayloyalty' ), self::format_number( $points ), self::points_label( $points ) );
+    }
+
+    /** A number with WooCommerce's price separators, so points read like money: "12.400" in a store priced "12.400 ₫". */
+    public static function format_number( float $value, int $decimals = 0 ): string {
+        if ( ! function_exists( 'wc_get_price_thousand_separator' ) ) {
+            return number_format_i18n( $value, $decimals );
+        }
+
+        return number_format( $value, $decimals, wc_get_price_decimal_separator(), wc_get_price_thousand_separator() );
     }
 
     /**

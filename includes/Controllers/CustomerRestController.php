@@ -5,6 +5,7 @@ use YayLoyalty\Access\Capabilities;
 use YayLoyalty\Controllers\Schemas\CustomerItemSchema;
 use YayLoyalty\Controllers\Schemas\CustomerRouteArgs;
 use YayLoyalty\Enums\ActivityEvent;
+use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Models\Customer;
 use YayLoyalty\Repositories\CustomerMetaRepository;
 use YayLoyalty\Repositories\CustomerRepository;
@@ -171,7 +172,7 @@ final class CustomerRestController extends AbstractRestController {
                 sprintf(
                     /* translators: %s: maximum number of points */
                     __( 'A single adjustment cannot exceed %s points.', 'yayloyalty' ),
-                    number_format_i18n( $max )
+                    SettingsHelper::format_number( $max )
                 )
             );
         }

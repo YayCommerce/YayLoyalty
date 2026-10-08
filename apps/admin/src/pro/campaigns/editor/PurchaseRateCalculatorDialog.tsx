@@ -1,7 +1,12 @@
 import { useState } from 'react';
 import { __, sprintf } from '@wordpress/i18n';
 
-import { currencyDecimals, parseWPCurrency, storeCurrencySymbol } from '@/lib/helpers/format.helper';
+import {
+  currencyDecimals,
+  formatStoreDecimal,
+  parseWPCurrency,
+  storeCurrencySymbol,
+} from '@/lib/helpers/format.helper';
 import { rateFromSpend, spendPairFromRate } from '@/lib/helpers/points.helper';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -90,7 +95,7 @@ function CalculatorBody({
           {sprintf(
             /* translators: 1: points per one currency unit, e.g. "0.05"; 2: one unit of the store currency, e.g. "1 ₫". */
             __('= %1$s pts per %2$s', 'yayloyalty'),
-            result.toLocaleString(undefined, { maximumFractionDigits: 6 }),
+            formatStoreDecimal(result, 6),
             parseWPCurrency(1),
           )}
         </Badge>

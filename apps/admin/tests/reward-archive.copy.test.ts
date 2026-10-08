@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { RewardRedemptionSummary } from '@/lib/schema/reward.schema';
 import {
@@ -8,6 +8,17 @@ import {
   resolveRewardArchiveCase,
 } from '@/pro/rewards/archive/reward-archive.copy';
 import { reward } from './fixtures/reward.fixture';
+
+const USD = { symbol: '$', position: 'left', thousand_sep: ',', decimal_sep: '.', num_decimals: 2 };
+
+// Points take the store's separators.
+beforeEach(() => {
+  vi.stubGlobal('window', { yayLoyaltyMeta: { wcMeta: { currency_data: USD } } });
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 const CLAIMED: RewardRedemptionSummary = {
   claimed: 142,

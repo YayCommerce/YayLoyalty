@@ -16,22 +16,22 @@ defined( 'ABSPATH' ) || exit;
 final class LauncherCopy {
 
     public static function points( int $points ): string {
-        return number_format_i18n( $points );
+        return SettingsHelper::format_number( $points );
     }
 
     /** "+270" / "−120": signed, with a real minus sign. */
     public static function signed_points( int $points ): string {
-        return ( $points < 0 ? '−' : '+' ) . number_format_i18n( abs( $points ) );
+        return ( $points < 0 ? '−' : '+' ) . SettingsHelper::format_number( abs( $points ) );
     }
 
     /**
      * A rate like 1, 1.5 or 0.004, with every decimal the merchant entered. At most 10 places, which drops float noise.
-     * The digits match the admin's pointsPerCurrencyLabel(), which owns them. The separators are the shopper's ("1,5" in German).
+     * The digits match the admin's pointsPerCurrencyLabel(), which owns them. The separators are the store's, as for money ("1,5" with a comma decimal separator).
      */
     public static function rate( float $rate ): string {
         $fixed = rtrim( sprintf( '%.10F', $rate ), '0' );
 
-        return number_format_i18n( $rate, strlen( $fixed ) - strpos( $fixed, '.' ) - 1 );
+        return SettingsHelper::format_number( $rate, strlen( $fixed ) - strpos( $fixed, '.' ) - 1 );
     }
 
     /** "$98.50", or "$1" for a whole amount. */

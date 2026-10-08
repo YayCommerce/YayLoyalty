@@ -56,7 +56,7 @@ abstract class LoyaltyEmail extends \WC_Email {
     }
 
     /**
-     * Subjects are plain text, so this decodes the entities that number_format_i18n() (&nbsp; as a
+     * Subjects are plain text, so this decodes the entities that a number's separators (&nbsp; as a
      * thousands separator) and escaped placeholders leave, which WC_Email::send() keeps. It runs after
      * the subject filter, so it covers what other plugins add there too.
      */

@@ -57,6 +57,27 @@ export function currencyDecimals(): number {
   return window.yayLoyaltyMeta.wcMeta.currency_data.num_decimals;
 }
 
+/** A number with the store's price separators, at exactly `decimals` places: points use the same separators as money. */
+export function formatStoreNumber(value: number, decimals: number): string {
+  const { thousand_sep, decimal_sep } = window.yayLoyaltyMeta.wcMeta.currency_data;
+
+  // Split before grouping so the separator applies at any number of decimals
+  // and grouping never reaches the fraction.
+  const [whole, fraction] = Math.abs(value).toFixed(decimals).split('.');
+  const sign = value < 0 && Number(`${whole}.${fraction ?? 0}`) !== 0 ? '-' : '';
+  const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, thousand_sep);
+
+  return `${sign}${grouped}${fraction === undefined ? '' : `${decimal_sep}${fraction}`}`;
+}
+
+/** A rate like 1, 1.5 or 0.004 with the store's separators: up to `maxDecimals` places, trailing zeros dropped. */
+export function formatStoreDecimal(value: number, maxDecimals: number): string {
+  const fixed = value.toFixed(maxDecimals);
+  const places = fixed.includes('.') ? fixed.replace(/0+$/, '').split('.')[1].length : 0;
+
+  return formatStoreNumber(value, places);
+}
+
 /**
  * A money amount in the store's currency format. Formats only: pass a value
  * already rounded by its owner (e.g. `pointsToCurrency`), since `toFixed`
@@ -67,14 +88,8 @@ export function parseWPCurrency(price: string | number) {
     price = parseFloat(price);
   }
 
-  const { symbol, position, thousand_sep, decimal_sep, num_decimals } = window.yayLoyaltyMeta.wcMeta.currency_data;
-
-  // Split before grouping so the separator applies at any number of decimals
-  // and grouping never reaches the fraction.
-  const [whole, fraction] = Math.abs(price).toFixed(num_decimals).split('.');
-  const sign = price < 0 && Number(`${whole}.${fraction ?? 0}`) !== 0 ? '-' : '';
-  const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, thousand_sep);
-  const formattedPrice = `${sign}${grouped}${fraction === undefined ? '' : `${decimal_sep}${fraction}`}`;
+  const { symbol, position, num_decimals } = window.yayLoyaltyMeta.wcMeta.currency_data;
+  const formattedPrice = formatStoreNumber(price, num_decimals);
 
   switch (position) {
     case 'left':
