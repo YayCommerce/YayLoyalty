@@ -63,8 +63,8 @@ final class LauncherPayload {
         $reward   = RedemptionService::is_available() ? $this->rewards->find_live_cart_discount( $now ) : null;
         $redeem   = self::redeem_rule( $reward );
         $register = self::register_route();
-        $engine   = PointsEngine::build( $this->campaigns );
-        $rules    = self::earn_rules( $engine, $now, null !== $register );
+        $engine   = $this->engine();
+        $rules    = null === $engine ? LauncherEarnRules::none() : LauncherEarnRules::advertise( $engine, ContextFactory::for_advert( $now ), null !== $register );
 
         return [
             'launcher'     => $design['launcher'],
@@ -74,7 +74,7 @@ final class LauncherPayload {
             'purchase_min' => $rules['purchase_min'],
             'redeem'       => $redeem,
             'member'       => null === $balance ? null : self::member( $balance, null === $redeem ? null : $reward ),
-            'estimate'     => null === $balance && null !== $rules['earn'][ CampaignTrigger::PURCHASE ] ? self::product_estimate( $engine ) : null,
+            'estimate'     => null !== $engine && null === $balance && null !== $rules['earn'][ CampaignTrigger::PURCHASE ] ? self::product_estimate( $engine ) : null,
             'register'     => $register,
             'account_url'  => (string) wc_get_page_permalink( 'myaccount' ),
             'checkout_url' => (string) wc_get_checkout_url(),
@@ -82,18 +82,16 @@ final class LauncherPayload {
     }
 
     /**
-     * LauncherEarnRules::advertise() at $now, or no earn rows when it fails: the engine's filters run
-     * here on every storefront page, and a broken subscriber must never take the page down with it.
-     *
-     * @return array LauncherEarnRules::advertise()'s shape.
+     * The points engine, or null when building it fails: its handler seam runs here on every storefront page
+     * and in the Design preview, and a broken subscriber must never take either down with it.
      */
-    private static function earn_rules( PointsEngine $engine, string $now, bool $can_register ): array {
+    private function engine(): ?PointsEngine {
         try {
-            return LauncherEarnRules::advertise( $engine, ContextFactory::for_advert( $now ), $can_register );
+            return PointsEngine::build( $this->campaigns );
         } catch ( \Throwable $e ) {
-            Log::warning( 'LauncherPayload', 'earn rules failed: ' . $e->getMessage() );
+            Log::warning( 'LauncherPayload', 'points engine failed: ' . $e->getMessage() );
 
-            return LauncherEarnRules::none();
+            return null;
         }
     }
 

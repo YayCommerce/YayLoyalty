@@ -55,9 +55,6 @@ final class Context {
     /** @var int|null */
     private $comment_id;
 
-    /** @var int Supplied by the caller from the ledger; 0 in a preview. */
-    private $points_earned_today;
-
     /** @var array<string, mixed> */
     private $extra;
 
@@ -89,7 +86,6 @@ final class Context {
         array $user_roles,
         ?int $order_id = null,
         ?int $comment_id = null,
-        int $points_earned_today = 0,
         array $extra = [],
         $customer_facts = null
     ) {
@@ -109,7 +105,6 @@ final class Context {
         $this->user_roles           = array_values( array_map( 'strval', $user_roles ) );
         $this->order_id             = $order_id;
         $this->comment_id           = $comment_id;
-        $this->points_earned_today  = max( 0, $points_earned_today );
         $this->extra                = $extra;
         $this->customer_facts       = $customer_facts;
     }
@@ -185,10 +180,6 @@ final class Context {
 
     public function get_comment_id(): ?int {
         return $this->comment_id;
-    }
-
-    public function get_points_earned_today(): int {
-        return $this->points_earned_today;
     }
 
     /** What conditions may compare against; null means "no customer facts", which order-only conditions can still match. */

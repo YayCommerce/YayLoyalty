@@ -38,7 +38,6 @@ interface PurchaseConfig {
   excluded_product_ids?: number[];
   excluded_category_ids?: number[];
   max_points_per_order?: number | null;
-  daily_cap?: number | null;
 }
 
 type PatchPurchaseConfig = (patch: Partial<PurchaseConfig>) => void;
@@ -276,7 +275,7 @@ function PurchaseAmountFields({ config, patchConfig }: PurchaseFieldsProps) {
   );
 }
 
-/** How the result becomes whole points, and the caps applied after that. */
+/** How the result becomes whole points, and the cap applied after that. */
 function PurchaseRoundingFields({ config, patchConfig }: PurchaseFieldsProps) {
   return (
     <PurchaseGroup legend={__('Rounding and caps', 'yayloyalty')}>
@@ -294,35 +293,19 @@ function PurchaseRoundingFields({ config, patchConfig }: PurchaseFieldsProps) {
         </FieldContent>
       </Field>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field>
-          <FieldLabel htmlFor="reward-purchase-max-points">{__('Maximum points per order', 'yayloyalty')}</FieldLabel>
-          <FieldContent>
-            <OptionalCountInput
-              id="reward-purchase-max-points"
-              className="w-40"
-              value={config.max_points_per_order ?? null}
-              unit={__('points', 'yayloyalty')}
-              onValueChange={(max_points_per_order) => patchConfig({ max_points_per_order })}
-            />
-            <FieldDescription>{__('Applied after rounding.', 'yayloyalty')}</FieldDescription>
-          </FieldContent>
-        </Field>
-
-        <Field>
-          <FieldLabel htmlFor="reward-purchase-daily-cap">{__('Daily cap', 'yayloyalty')}</FieldLabel>
-          <FieldContent>
-            <OptionalCountInput
-              id="reward-purchase-daily-cap"
-              className="w-40"
-              value={config.daily_cap ?? null}
-              unit={__('points', 'yayloyalty')}
-              onValueChange={(daily_cap) => patchConfig({ daily_cap })}
-            />
-            <FieldDescription>{__('Per customer.', 'yayloyalty')}</FieldDescription>
-          </FieldContent>
-        </Field>
-      </div>
+      <Field>
+        <FieldLabel htmlFor="reward-purchase-max-points">{__('Maximum points per order', 'yayloyalty')}</FieldLabel>
+        <FieldContent>
+          <OptionalCountInput
+            id="reward-purchase-max-points"
+            className="w-40"
+            value={config.max_points_per_order ?? null}
+            unit={__('points', 'yayloyalty')}
+            onValueChange={(max_points_per_order) => patchConfig({ max_points_per_order })}
+          />
+          <FieldDescription>{__('Applied after rounding.', 'yayloyalty')}</FieldDescription>
+        </FieldContent>
+      </Field>
     </PurchaseGroup>
   );
 }

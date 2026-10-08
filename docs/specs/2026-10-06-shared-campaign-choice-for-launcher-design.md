@@ -1,6 +1,6 @@
 # Shared campaign choice for the launcher Design
 
-**Status:** accepted 2026-10-06
+**Status:** superseded 2026-10-08 by [docs/plans/2026-10-08-launcher-advert-review-fixes.md](../plans/2026-10-08-launcher-advert-review-fixes.md)
 **Related:** [backlog: the launcher repeats the engine's campaign choice](../backlog/2026-10-05-launcher-repeats-the-engines-campaign-choice.md)
 
 ## Goal

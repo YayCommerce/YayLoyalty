@@ -278,7 +278,7 @@ final class YayLoyaltyPro {
     }
 
     /**
-     * Documents max_points_per_order and daily_cap in the campaign REST schema
+     * Documents max_points_per_order in the campaign REST schema
      * so the UI can introspect them. Matched on the schema title, not
      * $rest_base: the preview controller shares the `campaigns` base.
      *
@@ -297,11 +297,6 @@ final class YayLoyaltyPro {
         $schema['properties']['config']['properties'] = [
             'max_points_per_order' => [
                 'description' => __( 'Cap on points awarded by a single order. null means no cap.', 'yayloyalty' ),
-                'type'        => [ 'integer', 'null' ],
-                'minimum'     => 1,
-            ],
-            'daily_cap'            => [
-                'description' => __( 'Cap on points this campaign may award one customer per day. null means no cap.', 'yayloyalty' ),
                 'type'        => [ 'integer', 'null' ],
                 'minimum'     => 1,
             ],

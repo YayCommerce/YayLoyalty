@@ -18,11 +18,6 @@ class Campaign extends AbstractModel {
     /** config/conditions blob version. Bump when the shape changes. */
     public const CONFIG_SCHEMA_VERSION = 1;
 
-    /** Keys an earlier build stored, such as the removed purchase multiplier: accepted on input, never stored. */
-    private const LEGACY_CONFIG_KEYS = [
-        CampaignTrigger::PURCHASE => [ 'mode', 'multiplier' ],
-    ];
-
     /** @var int|null */
     private $id;
 
@@ -230,7 +225,6 @@ class Campaign extends AbstractModel {
                 'excluded_product_ids'  => [ 'type' => 'int_list' ],
                 'excluded_category_ids' => [ 'type' => 'int_list' ],
                 'max_points_per_order'  => [ 'type' => 'limit' ],
-                'daily_cap'             => [ 'type' => 'limit' ],
             ],
             CampaignTrigger::SIGNUP   => [
                 'points' => [
@@ -245,7 +239,6 @@ class Campaign extends AbstractModel {
                 ],
                 'require_verified'   => [ 'type' => 'bool' ],
                 'one_per_product'    => [ 'type' => 'bool' ],
-                'daily_cap'          => [ 'type' => 'limit' ],
                 'media_bonus_points' => [
                     'type' => 'int',
                     'min'  => 0,
@@ -292,7 +285,7 @@ class Campaign extends AbstractModel {
         $allowed = null !== $whitelist ? $whitelist : array_keys( (array) $schema );
 
         foreach ( $config as $key => $value ) {
-            if ( Json::SCHEMA_VERSION_KEY === $key || in_array( $key, self::LEGACY_CONFIG_KEYS[ $trigger ] ?? [], true ) ) {
+            if ( Json::SCHEMA_VERSION_KEY === $key ) {
                 continue;
             }
 
@@ -419,7 +412,6 @@ class Campaign extends AbstractModel {
                     'points'           => 50,
                     'require_verified' => true,
                     'one_per_product'  => true,
-                    'daily_cap'        => null,
                 ];
 
             default:

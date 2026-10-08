@@ -17,10 +17,9 @@ final class ContextFactory {
      * occurred_at is the order's creation date, so the order scores the same at creation and at award,
      * whatever campaigns changed in between.
      *
-     * @param int $points_earned_today From the ledger, by the caller; 0 in a preview.
      * @throws \InvalidArgumentException When the order carries no creation date; the caller decides, never now().
      */
-    public static function from_order( \WC_Order $order, int $points_earned_today = 0 ): Context {
+    public static function from_order( \WC_Order $order ): Context {
         $created = $order->get_date_created();
 
         if ( ! $created ) {
@@ -61,7 +60,6 @@ final class ContextFactory {
             self::user_roles( $user_id ),
             $order_id,
             null,
-            $points_earned_today,
             [
                 Context::EXTRA_PAYMENT_METHOD   => (string) $order->get_payment_method(),
                 Context::EXTRA_BILLING_COUNTRY  => (string) $order->get_billing_country(),
@@ -93,7 +91,6 @@ final class ContextFactory {
             self::user_roles( $user_id ),
             null,
             null,
-            0,
             [],
             static fn() => self::customer_facts( $user_id, $registered_at )
         );
@@ -103,10 +100,9 @@ final class ContextFactory {
      * occurred_at is the comment's GMT date. The verified-purchase and already-earned flags are read
      * into `extra` here, so ReviewHandler decides purely. No lines: the reviewed product is not an order line.
      *
-     * @param int $points_earned_today From the ledger, by the caller; 0 in a preview.
      * @throws \InvalidArgumentException When the comment has no GMT date (imported rows); never now().
      */
-    public static function from_comment( \WP_Comment $comment, int $points_earned_today = 0 ): Context {
+    public static function from_comment( \WP_Comment $comment ): Context {
         $user_id     = (int) $comment->user_id;
         $occurred_at = (string) $comment->comment_date_gmt;
 
@@ -131,7 +127,6 @@ final class ContextFactory {
             self::user_roles( $user_id ),
             null,
             (int) $comment->comment_ID,
-            $points_earned_today,
             [
                 Triggers\ReviewHandler::EXTRA_VERIFIED_PURCHASE      => (bool) get_comment_meta( (int) $comment->comment_ID, 'verified', true ),
                 Triggers\ReviewHandler::EXTRA_PRODUCT_ALREADY_EARNED => self::product_already_earned( $comment ),

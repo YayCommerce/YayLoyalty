@@ -5,12 +5,14 @@ use YayLoyalty\Engine\Points\Context;
 use YayLoyalty\Engine\Points\PointsEngine;
 use YayLoyalty\Engine\Points\Triggers\PurchaseHandler;
 use YayLoyalty\Enums\CampaignTrigger;
+use YayLoyalty\Models\Campaign;
+use YayLoyalty\Utils\Log;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The "Ways to earn" rows the launcher lists. PointsEngine::advertised() decides each trigger's campaign
- * and value, through the same loop and stop rule that pays it; this class only shapes the rows.
+ * The "Ways to earn" rows the launcher lists. PointsEngine::advertised() decides each trigger's value,
+ * never more than any shopper is paid; this class only shapes the rows.
  */
 final class LauncherEarnRules {
 
@@ -25,7 +27,6 @@ final class LauncherEarnRules {
      * @return array{earn: array{purchase: ?float, signup: ?int, review: ?int}, purchase_min: float}
      *         Points per currency unit / per signup / per review (null when not advertised), and the
      *         advertised purchase campaign's minimum order subtotal so the rate line can say it (0 for none).
-     * @throws \InvalidArgumentException From PointsEngine::advertised().
      */
     public static function advertise( PointsEngine $engine, Context $ctx, bool $can_register ): array {
         $rules = self::none();
@@ -35,7 +36,7 @@ final class LauncherEarnRules {
                 continue;
             }
 
-            $advert = $engine->advertised( $trigger, $ctx );
+            $advert = self::advertised( $engine, $trigger, $ctx );
 
             if ( null === $advert ) {
                 continue;
@@ -50,6 +51,22 @@ final class LauncherEarnRules {
         }
 
         return $rules;
+    }
+
+    /**
+     * PointsEngine::advertised(), or null when it fails: the engine's filters run here on every storefront
+     * page, and one broken subscriber must cost only its own trigger's row.
+     *
+     * @return array{campaign: Campaign, value: float}|null
+     */
+    private static function advertised( PointsEngine $engine, string $trigger, Context $ctx ): ?array {
+        try {
+            return $engine->advertised( $trigger, $ctx );
+        } catch ( \Throwable $e ) {
+            Log::warning( 'LauncherEarnRules', $trigger . ' earn row failed: ' . $e->getMessage() );
+
+            return null;
+        }
     }
 
     /**

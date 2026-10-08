@@ -52,6 +52,45 @@ final class PointsEngineAdvertisedTest extends EngineTestCase {
         $this->assertSame( 0, $evaluator->calls );
     }
 
+    public function test_lower_paying_conditional_campaign_sets_the_rate(): void {
+        $this->attach_evaluator();
+        $conditional = $this->conditional_purchase( 0.5 );
+        $engine      = $this->engine( [ $conditional, $this->purchase_campaign( [ 'points_per_unit' => 1 ], 0, 3, Status::ACTIVE, null, null, 'everyone' ) ] );
+
+        $advert = $engine->advertised( CampaignTrigger::PURCHASE, $this->advert() );
+
+        $this->assertSame( $conditional, $advert['campaign'] );
+        $this->assertSame( 0.5, $advert['value'] );
+    }
+
+    public function test_higher_paying_conditional_campaign_keeps_the_rate_for_everyone(): void {
+        $this->attach_evaluator();
+        $everyone = $this->purchase_campaign( [ 'points_per_unit' => 1 ], 0, 3, Status::ACTIVE, null, null, 'everyone' );
+        $engine   = $this->engine( [ $this->conditional_purchase( 3 ), $everyone ] );
+
+        $advert = $engine->advertised( CampaignTrigger::PURCHASE, $this->advert() );
+
+        $this->assertSame( $everyone, $advert['campaign'] );
+        $this->assertSame( 1.0, $advert['value'] );
+    }
+
+    public function test_only_conditional_campaigns_advertise_nothing(): void {
+        $this->attach_evaluator();
+
+        $this->assertNull( $this->engine( [ $this->conditional_purchase( 3 ) ] )->advertised( CampaignTrigger::PURCHASE, $this->advert() ) );
+    }
+
+    public function test_gated_review_campaign_paying_zero_advertises_nothing(): void {
+        $engine = $this->engine(
+            [
+                $this->review_campaign( 2, 10, 0, true ),
+                $this->review_campaign( 3, 0, 30, false ),
+            ]
+        );
+
+        $this->assertNull( $engine->advertised( CampaignTrigger::REVIEW, $this->advert() ) );
+    }
+
     public function test_candidates_and_matches_filters_reach_the_advert(): void {
         $second = $this->purchase_campaign( [ 'points_per_unit' => 2 ], 0, 3, Status::ACTIVE, null, null, 'second' );
         $seen   = [];
@@ -92,5 +131,31 @@ final class PointsEngineAdvertisedTest extends EngineTestCase {
 
     private function advert(): Context {
         return Context::advert( self::AT, 'USD', 1.0 );
+    }
+
+    /** Any conditions evaluator, so a campaign with conditions stops applying to everyone. */
+    private function attach_evaluator(): void {
+        add_filter(
+            PointsEngine::CONDITIONS_EVALUATOR_FILTER,
+            static fn() => new class() {
+                public function evaluate( array $conditions, Context $ctx ): bool {
+                    return true;
+                }
+            }
+        );
+    }
+
+    private function conditional_purchase( float $rate ): Campaign {
+        return new Campaign( 2, 'Conditional', 'conditional', CampaignTrigger::PURCHASE, Status::ACTIVE, 10, [ 'points_per_unit' => $rate ], [ [ 'type' => 'country' ] ] );
+    }
+
+    private function review_campaign( int $id, int $priority, int $points, bool $require_verified ): Campaign {
+        $config = [
+            'points'           => $points,
+            'require_verified' => $require_verified,
+            'one_per_product'  => true,
+        ];
+
+        return new Campaign( $id, 'Review ' . $id, 'review-' . $id, CampaignTrigger::REVIEW, Status::ACTIVE, $priority, $config );
     }
 }

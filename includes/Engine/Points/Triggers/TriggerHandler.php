@@ -22,12 +22,10 @@ interface TriggerHandler {
     public function compute_points( Campaign $campaign, Context $ctx ): Breakdown;
 
     /**
-     * What a campaign pays with no event, for the storefront to advertise.
-     *
-     * @return float|null Null when it is skipped whatever the event (the engine falls through); 0 when it
-     *                    pays nothing (the engine stops); above 0, points per currency unit or flat points.
+     * What a campaign pays with no event, for the storefront to advertise: points per currency unit or flat
+     * points; 0 pays nothing. Required: a handler registered without it is a fatal error.
      */
-    public function advertised_value( Campaign $campaign ): ?float;
+    public function advertised_value( Campaign $campaign ): float;
 
     /** A ReferenceType constant. */
     public function reference_type(): string;

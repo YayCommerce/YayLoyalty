@@ -10,7 +10,7 @@ use YayLoyalty\Models\Campaign;
 
 defined( 'ABSPATH' ) || exit;
 
-/** Flat points for an approved review. Decides require_verified and one_per_product from Context facts; daily_cap is CapPolicy's. */
+/** Flat points for an approved review. Decides require_verified and one_per_product from Context facts. */
 final class ReviewHandler implements TriggerHandler {
 
     /** Context extra the caller sets: whether the reviewer bought the product. */
@@ -42,7 +42,7 @@ final class ReviewHandler implements TriggerHandler {
         return Breakdown::flat( $campaign->flat_points() );
     }
 
-    public function advertised_value( Campaign $campaign ): ?float {
+    public function advertised_value( Campaign $campaign ): float {
         return (float) $campaign->flat_points();
     }
 

@@ -313,7 +313,6 @@ export const CAMPAIGN_CONFIG_FIELDS: Record<
     excluded_product_ids: { type: 'int_list' },
     excluded_category_ids: { type: 'int_list' },
     max_points_per_order: { type: 'limit' },
-    daily_cap: { type: 'limit' },
   },
   signup: {
     points: { type: 'int', min: 0 },
@@ -322,7 +321,6 @@ export const CAMPAIGN_CONFIG_FIELDS: Record<
     points: { type: 'int', min: 0 },
     require_verified: { type: 'bool' },
     one_per_product: { type: 'bool' },
-    daily_cap: { type: 'limit' },
     // Absent from default_config(); the form defaults it to 0.
     media_bonus_points: { type: 'int', min: 0 },
   },
@@ -347,7 +345,7 @@ export const DEFAULT_CAMPAIGN_CONFIG: Record<LiteCampaignTrigger, Record<string,
     excluded_category_ids: [],
   },
   signup: { points: 100 },
-  review: { points: 50, require_verified: true, one_per_product: true, daily_cap: null },
+  review: { points: 50, require_verified: true, one_per_product: true },
 };
 
 /** The form's side of CampaignRestController::lacks_purchase_rate(): a purchase campaign with no numeric rate could never earn, so saving it is refused. */

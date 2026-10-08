@@ -5,26 +5,15 @@ use YayLoyalty\Models\Campaign;
 
 defined( 'ABSPATH' ) || exit;
 
-/**
- * Clamps points to the campaign's per-order and daily caps. A preview has 0 earned today,
- * so it shows the best case, which is the honest number to promise on a product page.
- */
+/** Clamps points to the campaign's per-order cap. */
 final class CapPolicy {
 
-    public function apply( int $points, Campaign $campaign, Context $ctx ): int {
-        $config = $campaign->get_config();
-
+    public function apply( int $points, Campaign $campaign ): int {
         // null or missing is no cap; Campaign::config_is_valid() refuses a cap below 1.
-        $per_order = $config['max_points_per_order'] ?? null;
+        $per_order = $campaign->get_config()['max_points_per_order'] ?? null;
 
         if ( null !== $per_order ) {
             $points = min( $points, (int) $per_order );
-        }
-
-        $daily = $config['daily_cap'] ?? null;
-
-        if ( null !== $daily ) {
-            $points = min( $points, max( 0, (int) $daily - $ctx->get_points_earned_today() ) );
         }
 
         return max( 0, $points );

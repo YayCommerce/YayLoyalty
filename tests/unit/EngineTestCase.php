@@ -75,7 +75,6 @@ abstract class EngineTestCase extends TestCase {
         float $loyalty_discount = 0.0,
         array $coupons = [],
         float $base_rate = 1.0,
-        int $earned_today = 0,
         ?int $user_id = 7,
         array $extra = [],
         ?int $comment_id = null,
@@ -102,7 +101,6 @@ abstract class EngineTestCase extends TestCase {
             [ 'customer' ],
             555,
             $comment_id,
-            $earned_today,
             $extra,
             $facts
         );

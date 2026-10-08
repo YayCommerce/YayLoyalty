@@ -7,10 +7,8 @@ use YayLoyalty\Engine\Earning\PendingPoints;
 use YayLoyalty\Engine\Earning\ProgramGate;
 use YayLoyalty\Engine\Points\ContextFactory;
 use YayLoyalty\Enums\CampaignTrigger;
-use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\OrderStatus;
 use YayLoyalty\Repositories\LedgerRepository;
-use YayLoyalty\Utils\Dates;
 use YayLoyalty\Utils\Log;
 
 defined( 'ABSPATH' ) || exit;
@@ -28,7 +26,7 @@ final class OrderListener {
 
     private PendingPoints $pending;
 
-    /** For points_earned_today and the reversed-earlier check on a duplicate. */
+    /** For the reversed-earlier check on a duplicate. */
     private LedgerRepository $ledger;
 
     /** Takes the statuses that reverse (cancelled, trash, refunded). */
@@ -130,9 +128,7 @@ final class OrderListener {
         $triggers = (array) apply_filters( 'yayloyalty_order_award_triggers', [ CampaignTrigger::PURCHASE ], $order );
 
         foreach ( $triggers as $trigger ) {
-            // Rebuilt per trigger: the previous trigger's row counts toward today's cap.
-            $points_earned_today = $this->ledger->points_earned_today( (int) $order->get_customer_id(), Dates::now(), LedgerSource::ORDER );
-            $outcome             = $this->service->award( (string) $trigger, ContextFactory::from_order( $order, $points_earned_today ) );
+            $outcome = $this->service->award( (string) $trigger, ContextFactory::from_order( $order ) );
 
             PreviewLog::write_outcome( 'OrderListener', 'order #' . $order_id . ' ' . $trigger, $outcome );
             $this->note( $order, $outcome );

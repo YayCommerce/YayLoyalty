@@ -70,7 +70,7 @@ final class PurchaseHandler implements TriggerHandler {
     }
 
     /** Points per currency unit. */
-    public function advertised_value( Campaign $campaign ): ?float {
+    public function advertised_value( Campaign $campaign ): float {
         return self::rate_of( $campaign->get_config() );
     }
 
