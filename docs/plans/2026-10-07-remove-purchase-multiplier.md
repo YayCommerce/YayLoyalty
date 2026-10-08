@@ -2,7 +2,7 @@
 
 > **For agentic workers:** execute tasks in order, one at a time. Steps use `- [ ]` for tracking. There is no spec; the Requirements section below is the source.
 
-**Status:** active
+**Status:** done 2026-10-07
 **Goal:** Purchase campaigns earn only at their own rate; the "Multiply the default rate" mode and every piece of code that serves it are gone.
 **Spec:** none, planned from the request
 **Architecture:** The SPA drops the mode first (Task 1), so the editor never sends `mode`/`multiplier` while the server still accepts them. The server then drops the mode (Task 2) and keeps accepting the two legacy keys on input without validating or storing them, so a campaign saved before this change still saves. No migration: `set_config()` already drops keys outside the whitelist, so leftover keys disappear on a campaign's next save, and the engine never reads them.

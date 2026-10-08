@@ -1,6 +1,6 @@
 # Campaign rate as "Spend X to receive Y"
 
-**Status:** active
+**Status:** done 2026-10-07
 **Branch:** rename the current, unpublished `trace/feat/campaign-rate-equation` to `trace/feat/campaign-spend-rate`. It's based on `origin/dev/edd` and holds the uncommitted "1 ₫ (VND) =" draft, which this change replaces.
 **Tests:** none. Storage, server and points calculation stay unchanged. Verify by hand.
 

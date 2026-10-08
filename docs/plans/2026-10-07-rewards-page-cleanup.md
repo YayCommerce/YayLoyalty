@@ -1,6 +1,6 @@
 # Clean up the Rewards page
 
-**Status:** active
+**Status:** done 2026-10-07
 **Branch:** `trace/feat/rewards-page-cleanup`, from `origin/dev/edd`
 **Tests:** none (copy and markup only). Verify by hand.
 

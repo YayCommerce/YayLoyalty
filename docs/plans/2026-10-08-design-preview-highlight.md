@@ -2,7 +2,7 @@
 
 > **For agentic workers:** execute tasks in order, one at a time. Steps use `- [ ]` for tracking. There is no spec; the Requirements below are the source.
 
-**Status:** active
+**Status:** done 2026-10-08
 **Goal:** Remove the Panel section's Layout picker from the Design tab, and outline the matching part of the launcher preview while the merchant hovers or focuses a Storefront text input.
 **Spec:** none, planned from the request
 **Branch:** `trace/feat/editor-skeletons`

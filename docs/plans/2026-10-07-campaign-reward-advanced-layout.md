@@ -1,6 +1,6 @@
 # Group the campaign Reward step's Advanced fields
 
-**Status:** active
+**Status:** done 2026-10-07
 **Branch:** `trace/feat/campaign-reward-advanced-layout`, from `dev/edd`
 **Tests:** none (layout only, no points or money math changes). Verify by hand.
 

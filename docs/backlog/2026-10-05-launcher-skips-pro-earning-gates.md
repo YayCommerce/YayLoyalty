@@ -14,7 +14,7 @@
 
 Pro adds no gate today. Once it does, a shopper that gate blocks from earning will still see a panel about earning.
 
-A related gap that this item's boxes don't cover: the unmerged branch `paul/feat/setting-advanced-fraud-limit-max-points-per-customer-per-day` adds a Pro daily cap, `Pro\Services\DailyEarningLimit`, through the `yayloyalty_award_points` filter (`EarningService::AWARD_POINTS_FILTER`), not through a gate. It lowers or zeroes an award inside `LedgerService::earn()`, and its docblock says storefront figures stay uncapped, so a shopper at the cap still sees the earning panel and full rates. Once that branch merges, record it as its own item.
+A related gap, the Pro daily cap, is its own item: [the launcher advertises earning to a shopper at the daily cap](2026-10-08-launcher-advertises-earning-past-the-daily-cap.md).
 
 ## Suggested fix
 
