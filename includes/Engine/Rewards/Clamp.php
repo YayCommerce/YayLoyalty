@@ -2,7 +2,6 @@
 namespace YayLoyalty\Engine\Rewards;
 
 use YayLoyalty\Models\Reward;
-use YayLoyalty\Utils\PointsMath;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -11,6 +10,8 @@ defined( 'ABSPATH' ) || exit;
  * the discount they buy, and which ceiling bound. Pure arithmetic, so the cart quote, checkout
  * validation and the commit's re-check all get the same answer. No caller re-clamps.
  * A ceiling outranks the minimum, so "your balance is too low" wins over "below the minimum".
+ * Only points that buy whole smallest currency units apply, so the debit always equals the discount
+ * times the rate; points_for() is the inverse the commit uses to turn an order's discount back into points.
  */
 final class Clamp {
 
@@ -63,10 +64,13 @@ final class Clamp {
             }
         }
 
+        // Down to the step, then to the points that buy whole smallest currency units.
         $stepped = $applied - ( $applied % $step );
+        $value   = self::value_of( $stepped, $rate, $decimals );
+        $whole   = min( $stepped, self::points_for( $value, $reward ) );
 
-        if ( $stepped !== $applied ) {
-            $applied = $stepped;
+        if ( $whole !== $applied ) {
+            $applied = $whole;
 
             if ( self::BOUND_NONE === $bound_by ) {
                 $bound_by = self::BOUND_STEP;
@@ -81,9 +85,29 @@ final class Clamp {
             }
         }
 
-        $value = PointsMath::points_to_currency( $applied, $rate, $decimals ) ?? 0.0;
+        return Result::allowed( $reward, max( 0, $requested ), $applied, $applied > 0 ? $value : 0.0, $currency, $rate, $bound_by );
+    }
 
-        return Result::allowed( $reward, max( 0, $requested ), $applied, $value, $currency, $rate, $bound_by );
+    /** The points a money amount costs: the smallest multiple of the step that pays for it. 0 without a rate or an amount. */
+    public static function points_for( float $value, Reward $reward ): int {
+        $config = $reward->get_config();
+        $rate   = (float) ( $config['points_per_currency_unit'] ?? 0 );
+
+        if ( $rate <= 0 || $value <= 0 ) {
+            return 0;
+        }
+
+        $step   = max( 1, (int) ( $config['increment'] ?? 1 ) );
+        $points = (int) ceil( round( $value * $rate, 6 ) );
+
+        return (int) ( ceil( $points / $step ) * $step );
+    }
+
+    /** What points buy, floored to the currency's smallest unit; rounded before flooring, as points_in() is. */
+    private static function value_of( int $points, float $rate, int $decimals ): float {
+        $scale = pow( 10, max( 0, $decimals ) );
+
+        return floor( round( $points / $rate * $scale, 6 ) ) / $scale;
     }
 
     /** Whole points a money amount is worth; rounded before flooring so 0.29 × 100 is 29, not 28. */

@@ -2,6 +2,7 @@
 namespace YayLoyalty\Engine\Redemption;
 
 use YayLoyalty\Engine\Rewards\Context;
+use YayLoyalty\Engine\Rewards\Result;
 use YayLoyalty\Models\Reward;
 
 defined( 'ABSPATH' ) || exit;
@@ -14,12 +15,31 @@ defined( 'ABSPATH' ) || exit;
  * ceiling so the UI can explain — only fixed-cost types fail here.
  * Conditions go through the `yayloyalty_reward_conditions_match` filter
  * (default true; Pro attaches an evaluator over $ctx->get_facts()).
- * Scaffold: stub.
  */
 final class RewardGate implements Gate {
 
-    public function check( Reward $reward, Context $ctx ): ?string { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(redemption): ! reward->is_live_at( ctx->get_at() ) → Result::REASON_NOT_LIVE; cost_points set and > ctx balance → REASON_INSUFFICIENT_BALANCE; apply_filters( yayloyalty_reward_conditions_match, true, reward, ctx ) false → REASON_CONDITIONS_NOT_MET; else null.
-        throw new \RuntimeException( 'Not implemented' );
+    public function check( Reward $reward, Context $ctx ): ?string {
+        if ( ! $reward->is_live_at( $ctx->get_at() ) ) {
+            return Result::REASON_NOT_LIVE;
+        }
+
+        $cost = $reward->get_cost_points();
+
+        if ( null !== $cost && $cost > $ctx->get_balance() ) {
+            return Result::REASON_INSUFFICIENT_BALANCE;
+        }
+
+        /**
+         * Whether the reward's conditions hold for this claim. Internal seam for Pro, not a public API.
+         *
+         * @param bool    $matches
+         * @param Reward  $reward
+         * @param Context $ctx
+         */
+        if ( ! apply_filters( 'yayloyalty_reward_conditions_match', true, $reward, $ctx ) ) {
+            return Result::REASON_CONDITIONS_NOT_MET;
+        }
+
+        return null;
     }
 }

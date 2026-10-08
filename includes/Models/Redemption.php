@@ -10,16 +10,19 @@ defined( 'ABSPATH' ) || exit;
  */
 final class Redemption extends AbstractModel {
 
-    /** Flexible discount lifecycle: applied (order exists, points debited) → completed | cancelled | refunded. */
+    /** Slider lifecycle: applied (order exists, points debited) → cancelled | refunded. */
     public const STATUS_APPLIED   = 'applied';
-    public const STATUS_COMPLETED = 'completed';
     public const STATUS_CANCELLED = 'cancelled';
     public const STATUS_REFUNDED  = 'refunded';
 
-    /** Catalog coupon lifecycle (Pro): issued → used | expired | cancelled. */
-    public const STATUS_ISSUED  = 'issued';
-    public const STATUS_USED    = 'used';
+    /** Catalog coupon lifecycle: issued → used → refunded; used → issued when its order is cancelled; issued reads as expired past `expires_at`. */
+    public const STATUS_ISSUED = 'issued';
+    public const STATUS_USED   = 'used';
+
+    /** Derived by display_status(), never stored. */
     public const STATUS_EXPIRED = 'expired';
+
+    public const STORED_STATUSES = [ self::STATUS_APPLIED, self::STATUS_ISSUED, self::STATUS_USED, self::STATUS_REFUNDED, self::STATUS_CANCELLED ];
 
     private ?int $id;
 
@@ -200,6 +203,15 @@ final class Redemption extends AbstractModel {
     }
 
     public function get_status(): string {
+        return $this->status;
+    }
+
+    /** The status to show at $now (UTC): an issued coupon past `expires_at` reads as expired. */
+    public function display_status( string $now ): string {
+        if ( self::STATUS_ISSUED === $this->status && null !== $this->expires_at && $this->expires_at < $now ) {
+            return self::STATUS_EXPIRED;
+        }
+
         return $this->status;
     }
 

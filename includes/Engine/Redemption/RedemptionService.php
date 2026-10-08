@@ -1,11 +1,19 @@
 <?php
 namespace YayLoyalty\Engine\Redemption;
 
+use YayLoyalty\Database\Transaction;
 use YayLoyalty\Engine\Earning\Outcome;
+use YayLoyalty\Engine\Rewards\Clamp;
 use YayLoyalty\Engine\Rewards\ContextFactory;
+use YayLoyalty\Engine\Rewards\Handlers\Registry;
 use YayLoyalty\Engine\Rewards\Result;
+use YayLoyalty\Engine\Rewards\RewardEngine;
 use YayLoyalty\Models\Reward;
+use YayLoyalty\Repositories\CustomerRepository;
+use YayLoyalty\Repositories\LedgerRepository;
+use YayLoyalty\Repositories\RedemptionRepository;
 use YayLoyalty\Repositories\RewardRepository;
+use YayLoyalty\Services\LedgerService;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -36,6 +44,11 @@ final class RedemptionService {
     /** The only collaborator that can write; quote() and checkout_error() never touch it. */
     private CommitWriter $writer;
 
+    /** quote()'s copy of the flexible reward for this request. commit() reads the row fresh. */
+    private ?Reward $quoted_reward = null;
+
+    private bool $is_reward_read = false;
+
     public function __construct(
         Quoter $quoter,
         ContextFactory $contexts,
@@ -60,13 +73,47 @@ final class RedemptionService {
      * Composition root: one Quoter (the engine with the build's handlers;
      * gates ProgramGate, RewardGate, then whatever
      * `yayloyalty_redemption_gates` appends for Pro) shared with the writer,
-     * the read-only context factory, and the writer — LedgerService's
-     * fourth construction site. Adapters and the coupon provider are
-     * registered by the caller (YayLoyalty::__construct()), not here.
+     * the read-only context factory, and the writer, which holds one of
+     * LedgerService's construction sites. Adapters and the coupon provider are
+     * registered by the caller (YayLoyalty::__construct()), not here, with
+     * the same $intent this is given.
      */
-    public static function build(): self {
-        // TODO(redemption): build the Quoter from the Lite registry's RewardEngine and the gate list (ProgramGate, RewardGate, plus the yayloyalty_redemption_gates filter); the ContextFactory over a CustomerRepository; a CommitWriter over a new LedgerService, the redemption and customer repositories, the same factory and the same Quoter; return the service with the RewardRepository and a SessionIntent.
-        throw new \RuntimeException( 'Not implemented' );
+    public static function build( SessionIntent $intent ): self {
+        $customers = new CustomerRepository();
+
+        /**
+         * The gates a redemption passes before it is quoted and again before it is debited, in check order.
+         * Internal seam for Pro, not a public API.
+         *
+         * @param Gate[] $gates
+         */
+        $gates = (array) apply_filters( 'yayloyalty_redemption_gates', [ new ProgramGate(), new RewardGate() ] );
+
+        $quoter   = new Quoter( new RewardEngine( Registry::with_lite_handlers() ), $gates );
+        $contexts = new ContextFactory( $customers );
+        $writer   = new CommitWriter(
+            new LedgerService( new LedgerRepository(), $customers ),
+            new RedemptionRepository(),
+            $customers,
+            $contexts,
+            $quoter
+        );
+
+        return new self( $quoter, $contexts, new RewardRepository(), $intent, $writer );
+    }
+
+    /** The signed-in shopper's id, null for a guest: the `$user_id` quote() and checkout_error() take. */
+    public static function shopper_id(): ?int {
+        $user_id = get_current_user_id();
+
+        return $user_id > 0 ? $user_id : null;
+    }
+
+    /** The shopper's cart, null on a request that has none (wp-admin, cron, most REST). */
+    public static function cart(): ?\WC_Cart {
+        $cart = function_exists( 'WC' ) ? WC()->cart : null;
+
+        return $cart instanceof \WC_Cart ? $cart : null;
     }
 
     /**
@@ -75,58 +122,115 @@ final class RedemptionService {
      * cart, balance and intent. Called by the coupon provider on every
      * recalculation and by both adapters to render the control.
      *
-     * Preconditions: $cart's totals reflect every coupon but ours.
      * Postconditions: Result::denied( REASON_NO_REWARD ) when no flexible
      * reward is seeded; otherwise the Quoter's answer for
      * SessionIntent::get() — a gate reason, or Clamp's quote with
      * get_points() ≤ every ceiling and get_bound_by() naming the one that
      * bit. Nothing in the session changes.
      */
-    public function quote( \WC_Cart $cart, ?int $user_id ): Result { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(redemption): look up the flexible reward (denied REASON_NO_REWARD when absent), build the Context from the cart, the user and the session intent, and return the Quoter's answer for them.
-        throw new \RuntimeException( 'Not implemented' );
+    public function quote( \WC_Cart $cart, ?int $user_id ): Result {
+        // One request quotes many times (every coupon load and totals run); the reward row is read for the first only.
+        if ( ! $this->is_reward_read ) {
+            $this->quoted_reward  = $this->flexible_reward();
+            $this->is_reward_read = true;
+        }
+
+        $reward = $this->quoted_reward;
+
+        if ( null === $reward ) {
+            return Result::denied( self::REASON_NO_REWARD );
+        }
+
+        return $this->quoter->quote( $reward, $this->contexts->from_cart( $cart, $user_id, $this->intent->get() ) );
     }
 
     /**
      * Checkout-submission affordability, before totals freeze. Precondition:
      * called from the adapter's validation hook with the live cart.
-     * Postconditions: null when the intent is 0 or quote() applies every
-     * requested point; otherwise a customer-facing message key
-     * (the quote's reason or its bound_by) so the adapter can reject the
-     * checkout with it. Writes nothing.
+     * Postconditions: null when the intent is 0, and null when the quote
+     * applies any points, even fewer than asked: the cart already shows the
+     * clamped discount. Otherwise a message key for message_for(): the
+     * quote's reason when it is denied, or its bound_by when it applies
+     * nothing. Writes nothing.
      */
-    public function checkout_error( \WC_Cart $cart, ?int $user_id ): ?string { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(redemption): intent 0 → null; quote(); denied → reason; points < points_requested → bound_by; else null.
-        throw new \RuntimeException( 'Not implemented' );
+    public function checkout_error( \WC_Cart $cart, ?int $user_id ): ?string {
+        if ( 0 === $this->intent->get() ) {
+            return null;
+        }
+
+        $quote = $this->quote( $cart, $user_id );
+
+        if ( ! $quote->is_allowed() ) {
+            return $quote->get_reason();
+        }
+
+        if ( $quote->get_points() > 0 ) {
+            return null;
+        }
+
+        return '' !== $quote->get_bound_by() ? $quote->get_bound_by() : Clamp::BOUND_REWARD_MIN;
+    }
+
+    /** The shopper-facing sentence for a denial reason or a clamp bound. */
+    public static function message_for( string $key ): string { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- one sentence for every key until the checkout card ships.
+        // TODO(redemption): a message per denial and clamp reason, with the checkout card.
+        return __( 'Your points discount could not be applied. Review your order and try again.', 'yayloyalty' );
     }
 
     /**
      * ZONE 2. Once per order, from the order-processed hook of either
-     * adapter. Re-quotes from the order (never from the session), then
-     * commits through CommitWriter in one transaction and clears the
-     * session intent.
+     * adapter. Re-quotes from the order (never from the session) and
+     * commits through CommitWriter in one transaction.
      *
-     * Preconditions: $order was created from a cart carrying our coupon
-     * line, or carrying none (then nothing to do). Totals are frozen.
-     * Postconditions: Outcome::redeemed and the order carries
-     * `_yayloyalty_points_redeemed` / `_yayloyalty_redeem_value`;
-     * Outcome::skipped( reason ) with an order note and NO debit when a gate
-     * or the locked balance says no — the order stands as created, never
-     * half-written, never retried; Outcome::duplicate when this order was
-     * already committed. The session intent is cleared in every case.
-     * `yayloyalty_points_redeemed` ( Outcome, \WC_Order ) fires after
-     * commit, only for redeemed.
+     * Postconditions, exactly one of:
+     * - The order has no coupon line of ours: Outcome::skipped( REASON_NO_INTENT ), nothing else happens.
+     * - Outcome::redeemed: the order carries `_yayloyalty_points_redeemed` /
+     *   `_yayloyalty_redeem_value`, and `yayloyalty_points_redeemed`
+     *   ( Outcome, \WC_Order ) fires after commit.
+     * - Outcome::duplicate: this order was already committed.
+     * - Outcome::skipped( reason ): nothing was debited, so our coupon line
+     *   is taken off the order — it must not stay payable with a discount
+     *   and no debit — and the adapter fails the checkout.
+     * The session intent is cleared in the last three.
      *
      * @throws \YayLoyalty\Database\QueryException When a write other than a duplicate fails (rolled back).
      */
-    public function commit( \WC_Order $order ): Outcome { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(redemption): no coupon line → skipped( no_intent ); reward = flexible_reward() or skipped( no_reward ); outcome = writer->commit( order, reward ); intent->clear(); redeemed → do_action( yayloyalty_points_redeemed, outcome, order ); return outcome.
-        throw new \RuntimeException( 'Not implemented' );
+    public function commit( \WC_Order $order ): Outcome {
+        if ( ! in_array( CouponProvider::CODE, $order->get_coupon_codes(), true ) ) {
+            return Outcome::skipped( self::REASON_NO_INTENT );
+        }
+
+        $reward  = $this->flexible_reward();
+        $outcome = null === $reward ? Outcome::skipped( self::REASON_NO_REWARD ) : $this->writer->commit( $order, $reward );
+
+        $this->intent->clear();
+
+        if ( Outcome::REDEEMED === $outcome->get_status() ) {
+            Transaction::after_commit(
+                static function () use ( $outcome, $order ): void {
+                    /**
+                     * Fires after a redemption commits, once per order.
+                     *
+                     * @param Outcome   $outcome Carries the REDEEM row and the quote it was written from.
+                     * @param \WC_Order $order
+                     */
+                    do_action( 'yayloyalty_points_redeemed', $outcome, $order );
+                }
+            );
+        }
+
+        if ( Outcome::SKIPPED === $outcome->get_status() ) {
+            $order->remove_coupon( CouponProvider::CODE );
+        }
+
+        return $outcome;
     }
 
-    /** The seeded flexible reward (`cart-discount`); null when a merchant deleted it. Catalog rewards are the Pro seam, not this. */
+    /**
+     * The seeded flexible reward (`cart-discount`), live or not: liveness is RewardGate's answer, so the shopper
+     * is told `not_live` rather than `no_reward`. Null when a merchant deleted it. Catalog rewards are the Pro seam, not this.
+     */
     private function flexible_reward(): ?Reward {
-        // TODO(redemption): look the reward up by the cart-discount slug through the repository and return it, null when absent.
-        throw new \RuntimeException( 'Not implemented' );
+        return $this->rewards->find_by_slug( RewardRepository::CART_DISCOUNT_SLUG );
     }
 }

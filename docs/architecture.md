@@ -39,7 +39,7 @@ Commands and hard rules live in [CLAUDE.md](../CLAUDE.md). Citations give a path
 ## Server layers and write ownership
 
 - REST: `includes/Engine/RestAPI.php` is the one place controllers are registered. That happens on `rest_api_init`, under `BaseRestController::REST_NAMESPACE` (yayloyalty/v1). It builds the Lite controllers; Pro builds its own and adds them through the `yayloyalty_rest_controllers` filter on that list.
-  - The redemptions route (`RedemptionsRestController`) is live in Lite. It always returns an empty page, because its table isn't built yet.
+  - The redemptions route (`RedemptionsRestController`) is live in Lite and reads the `redemptions` table. Only the referrals route still returns empty pages.
   - Its constructor also subscribes `DashboardCache::flush` to `yayloyalty_ledger_recorded` and `yayloyalty_campaigns_changed`. Above a member-count threshold, `includes/Services/Dashboard/DashboardCache.php` serves the dashboard payload from transients.
 - Controllers extend `includes/Controllers/AbstractRestController.php` (schemas, args, permissions, the pagination envelope). That class extends `includes/Controllers/BaseRestController.php` (execution and errors).
   - Every route's permission callback is `requires()` with one capability. Access is checked there and nowhere deeper: services and the engine take an actor id instead (`includes/Access/Capabilities.php`).
@@ -75,14 +75,17 @@ Commands and hard rules live in [CLAUDE.md](../CLAUDE.md). Citations give a path
     - On the first open the script fetches `GET /me/activity` and fills the activity rows; a failed load retries on the next open.
     - The balance is printed into the page for a signed-in shopper, so a page cache that serves pages to signed-in visitors can show one shopper's balance to another. Common page caches skip signed-in visitors by default.
   - The Points engine (`includes/Engine/Points/`) scores events and writes nothing. It reads live campaigns and a `Context` that `ContextFactory` builds from WooCommerce data.
-  - Redemption (`includes/Engine/Redemption/`, `includes/Engine/Rewards/`) is scaffolding, and nothing hooks it. `Quoter` and `RewardEngine` pass calls along, and `Rewards\Clamp` holds the clamp arithmetic. The redemption gates, the flexible-discount handler, `Rewards\ContextFactory`, `RedemptionService` apart from `is_available()`, `CouponProvider`, both checkout adapters, `SessionIntent` and the write side (`CommitWriter`, `LedgerService::redeem()`, `RedemptionRepository::find_by_order()`, `RedemptionsTable`) are stubs marked `TODO(redemption)` that throw. `RedemptionRepository::summary_by_rewards()` is live: the rewards routes read it, and it returns nothing until the table exists. `RedemptionService::is_available()` is false until redemption ships, and the launcher and the points earned email show what points are worth only when it is true.
+  - Redemption (`includes/Engine/Redemption/`, `includes/Engine/Rewards/`) is wired for the Store API. `YayLoyalty::__construct()` builds `RedemptionService` once and registers `CouponProvider` and `Adapters\StoreApiAdapter`.
+    - The quote path writes nothing: `SessionIntent` holds the points the shopper asked for, `Rewards\ContextFactory` reads the cart and the balance, `Quoter` runs the gates (`ProgramGate`, `RewardGate`, then `yayloyalty_redemption_gates`) and `Rewards\Clamp` limits the amount. `CouponProvider` turns the quote into the virtual coupon `yayloyalty-redeem`, applied after every other coupon.
+    - `CommitWriter` is the only inserter of redemption rows. On `woocommerce_store_api_checkout_order_processed` it reads the points from the order's own coupon line, re-quotes them under the customer lock, and writes the redemption row, the `redeem` ledger row (`LedgerService::redeem()`) and the order meta in one transaction. The ledger's idempotency key, one per order, is the double-debit guard. A failed re-check writes nothing, takes the coupon line off the order and fails the checkout.
+    - Still to come: `Adapters\ClassicCheckoutAdapter`, which throws, and `LedgerService::refund_redeem()` with the reversal of a cancelled or refunded order. `RedemptionService::is_available()` is false until the checkout UI ships, and the launcher and the points earned email show what points are worth only when it is true.
+    - [The decision record](decisions/2026-10-07-lite-owns-redemption-writes.md) says why Lite owns these writes, and gives the status set and the refund rules.
   - `includes/Engine/CustomerActivityListener.php` (hooked in `yayloyalty.php`) records account and points activity in `customer_meta`, through `includes/Services/CustomerActivityService.php`. On `user_register` it also creates the new member's customer row, skipping staff.
 
 ## Data and upgrades
 
 - `Installer::schemas()` (`includes/Database/Installer.php`) is the list of installed tables, after the `yayloyalty_table_schemas` filter, which nothing hooks today. Each entry is a class in `includes/Database/Schema/` that returns its table's `dbDelta` DDL.
   - A schema class that isn't on the list is only a design.
-  - `includes/Database/Schema/RedemptionsTable.php` throws instead of returning DDL.
 - `Table::name()` (`includes/Utils/Table.php`) reads `$wpdb->prefix` on every call and never caches it, because multisite switches blogs. Integration tests rely on the same behaviour to move every plugin table to a scratch prefix.
 - `Installer::install()` is safe to repeat:
   - It runs `dbDelta` for every schema, then seeds the built-ins.

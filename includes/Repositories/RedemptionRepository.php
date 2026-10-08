@@ -9,10 +9,8 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * yayloyalty_redemptions. Only Engine\Redemption\CommitWriter inserts rows,
- * under the customer's row lock. The commit's duplicate check, the customer
- * drawer and the rewards list's claim summary read them. Scaffold: stubs except summary_by_rewards().
- * The table is Schema\RedemptionsTable, registered in Installer::schemas()
- * when redemption ships.
+ * under the customer's row lock. The commit's duplicate check, the customer drawer and the rewards
+ * list's claim summary read them. The table is Schema\RedemptionsTable.
  */
 final class RedemptionRepository extends AbstractRepository {
 
@@ -35,13 +33,45 @@ final class RedemptionRepository extends AbstractRepository {
     }
 
     /**
-     * The double-debit guard's read: the flexible redemption already
-     * written for this order, if any. Postcondition: at most one row
-     * (UNIQUE (order_id, reward_id) on the table); null when none.
+     * The slider redemption already written for this order, oldest first, or
+     * null. No unique index backs it: the caller holds the customer lock.
      */
-    public function find_by_order( int $order_id, int $reward_id ): ?Redemption { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(redemption): SELECT * WHERE order_id = %d AND reward_id = %d LIMIT 1, hydrated.
-        throw new \RuntimeException( 'Not implemented' );
+    public function find_by_order( int $order_id, int $reward_id ): ?Redemption {
+        global $wpdb;
+
+        $row = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare(
+                'SELECT * FROM `' . esc_sql( $this->table() ) . '` WHERE order_id = %d AND reward_id = %d ORDER BY id ASC LIMIT 1',
+                $order_id,
+                $reward_id
+            ),
+            ARRAY_A
+        );
+
+        return is_array( $row ) ? Redemption::from_row( $row ) : null;
+    }
+
+    /**
+     * One page of a customer's redemptions, for the drawer.
+     *
+     * @param array $args See AbstractRepository::paginate().
+     * @return array{items: Redemption[], total: int, page: int, per_page: int}
+     */
+    public function paginate_for_user( int $user_id, array $args = [] ): array {
+        global $wpdb;
+
+        $args['where'] = [ $wpdb->prepare( 'user_id = %d', $user_id ) ];
+
+        if ( ! isset( $args['orderby'] ) ) {
+            $args['orderby'] = 'id';
+        }
+
+        return $this->paginate( $args );
+    }
+
+    /** COUNT(*) of a customer's redemption rows, in any status. */
+    public function count_for_user( int $user_id ): int {
+        return $this->count_where_user( $user_id );
     }
 
     /**

@@ -1,8 +1,10 @@
 <?php
 namespace YayLoyalty\Engine\Rewards;
 
-use YayLoyalty\Engine\Points\ContextFactory as PointsContextFactory;
+use YayLoyalty\Engine\Points\Context as EarnContext;
+use YayLoyalty\Models\Reward;
 use YayLoyalty\Repositories\CustomerReader;
+use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -11,7 +13,7 @@ defined( 'ABSPATH' ) || exit;
  * class on the quote path allowed to touch either, and it can only read:
  * it depends on CustomerReader, which has no write method. The
  * subtotal it reports is net of every other coupon, so the clamp's cart
- * ceiling is what the customer would actually pay. Scaffold: stubs.
+ * ceiling is what the customer would actually pay.
  */
 final class ContextFactory {
 
@@ -22,29 +24,161 @@ final class ContextFactory {
     }
 
     /**
-     * The cart-time Context. Precondition: totals have been calculated for
-     * every coupon except ours. Postconditions: balance is the customer row's
-     * `balance` (0 for a guest or a missing row); cart_subtotal =
-     * cart contents total after other coupons, excluding our own coupon's
-     * discount; currency = the cart's; at = Dates::now(); facts from
-     * Points\ContextFactory::customer_facts( user_id, at ).
+     * The cart-time Context. Postconditions: balance is the customer row's
+     * `balance` (0 for a guest or a missing row); cart_subtotal = the items'
+     * total minus what every other applied coupon takes, computed here and
+     * never read from the cart's stored totals, which are stale while
+     * WooCommerce is loading coupons; currency = the store's; at = Dates::now().
      */
-    public function from_cart( \WC_Cart $cart, ?int $user_id, ?int $points_requested ): Context { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(redemption): balance = the balance of customers->find_by_user_id( user_id ), 0 when there is no row; subtotal = cart->get_subtotal() + tax if prices incl. tax − (cart->get_discount_total() − our coupon's amount); currency = get_woocommerce_currency(); return new Context( …, Dates::now(), PointsContextFactory::customer_facts( user_id, at ) ).
-        throw new \RuntimeException( 'Not implemented' );
+    public function from_cart( \WC_Cart $cart, ?int $user_id, ?int $points_requested ): Context {
+        $customer = null === $user_id ? null : $this->customers->find_by_user_id( $user_id );
+
+        return new Context(
+            $user_id,
+            null === $customer ? 0 : $customer->get_balance(),
+            $points_requested,
+            $this->cart_subtotal( $cart ),
+            get_woocommerce_currency(),
+            Dates::now(),
+            // TODO(redemption): pass customer facts when the Pro conditions gate lands.
+            null
+        );
     }
 
     /**
      * The commit-time Context, built from the order the cart became.
      * Preconditions: $order was just created from the cart; $balance is the
      * customer row's balance read under the lock (never re-read here).
-     * Postconditions: cart_subtotal = order subtotal after every coupon but
-     * ours; points_requested = our coupon line's discount converted at the
-     * reward's rate (the provider quoted it at that rate in this same
-     * request, so the conversion is exact); at = the order's creation date.
+     * Postconditions: points_requested = our coupon line's amount turned back
+     * into points by Clamp::points_for(), the inverse of the value the cart
+     * quoted; cart_subtotal = the line items' subtotal minus every other
+     * coupon line, on the basis prices were entered (tax included or not);
+     * at = Dates::now().
      */
-    public function from_order( \WC_Order $order, int $balance ): Context { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(redemption): user_id from the order; subtotal from get_subtotal() minus every coupon item's discount except Points\Context::REDEEM_COUPON_CODE; points_requested = that coupon item's discount times the reward's points_per_currency_unit, rounded; currency get_currency(); at = get_date_created() UTC; facts as from_cart().
-        throw new \RuntimeException( 'Not implemented' );
+    public function from_order( \WC_Order $order, Reward $reward, int $balance ): Context {
+        $user_id      = (int) $order->get_customer_id();
+        $includes_tax = (bool) $order->get_prices_include_tax();
+        $subtotal     = 0.0;
+
+        foreach ( $order->get_items( 'line_item' ) as $item ) {
+            if ( $item instanceof \WC_Order_Item_Product ) {
+                $subtotal += (float) $item->get_subtotal() + ( $includes_tax ? (float) $item->get_subtotal_tax() : 0.0 );
+            }
+        }
+
+        $ours = $this->points_discount_of( $order );
+
+        return new Context(
+            $user_id > 0 ? $user_id : null,
+            $balance,
+            Clamp::points_for( $ours, $reward ),
+            max( 0.0, $subtotal - ( $this->coupon_discounts_of( $order ) - $ours ) ),
+            $order->get_currency(),
+            Dates::now(),
+            null
+        );
+    }
+
+    /** What our coupon line takes off the order, on the basis prices were entered: discount tax included when they include tax. 0 without the line. */
+    public function points_discount_of( \WC_Order $order ): float {
+        return $this->coupon_discounts_of( $order, EarnContext::REDEEM_COUPON_CODE );
+    }
+
+    /** The order's coupon lines summed on the basis prices were entered; one code's lines when $code is given. */
+    private function coupon_discounts_of( \WC_Order $order, ?string $code = null ): float {
+        $includes_tax = (bool) $order->get_prices_include_tax();
+        $total        = 0.0;
+
+        foreach ( $order->get_items( 'coupon' ) as $item ) {
+            if ( $item instanceof \WC_Order_Item_Coupon && ( null === $code || $code === $item->get_code() ) ) {
+                $total += (float) $item->get_discount() + ( $includes_tax ? (float) $item->get_discount_tax() : 0.0 );
+            }
+        }
+
+        return $total;
+    }
+
+    /**
+     * What is left of the cart's items after every coupon but ours. Never
+     * calls $cart->get_coupons(): that loads our own coupon, whose amount is
+     * quoted from this method.
+     */
+    private function cart_subtotal( \WC_Cart $cart ): float {
+        $items_total = 0.0;
+
+        // The same basis WC_Discounts::set_items_from_cart() discounts from.
+        foreach ( $cart->get_cart() as $item ) {
+            if ( isset( $item['data'] ) && $item['data'] instanceof \WC_Product ) {
+                $items_total += (float) $item['data']->get_price() * (float) $item['quantity'];
+            }
+        }
+
+        $coupons = [];
+
+        foreach ( $cart->get_applied_coupons() as $code ) {
+            if ( EarnContext::REDEEM_COUPON_CODE !== $code ) {
+                $coupons[] = new \WC_Coupon( $code );
+            }
+        }
+
+        if ( empty( $coupons ) ) {
+            return max( 0.0, $items_total );
+        }
+
+        $discounts = new \WC_Discounts( $cart );
+
+        foreach ( $this->in_cart_order( $coupons ) as $coupon ) {
+            $discounts->apply_coupon( $coupon );
+        }
+
+        return max( 0.0, $items_total - (float) array_sum( $discounts->get_discounts_by_coupon() ) );
+    }
+
+    /**
+     * The order WC_Cart_Totals::get_coupons_from_cart() applies coupons in,
+     * which decides what a percentage coupon is a percentage of.
+     *
+     * @param \WC_Coupon[] $coupons
+     * @return \WC_Coupon[]
+     */
+    private function in_cart_order( array $coupons ): array {
+        $weights = [
+            'fixed_product' => 1,
+            'percent'       => 2,
+            'fixed_cart'    => 3,
+        ];
+        $sorted  = [];
+
+        foreach ( $coupons as $coupon ) {
+            $sorted[] = [
+                // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WooCommerce's own filter, applied as its cart totals apply it.
+                'sort'   => apply_filters( 'woocommerce_coupon_sort', $weights[ $coupon->get_discount_type() ] ?? 0, $coupon ),
+                'coupon' => $coupon,
+            ];
+        }
+
+        usort(
+            $sorted,
+            static function ( array $a, array $b ): int {
+                if ( $a['sort'] !== $b['sort'] ) {
+                    return $a['sort'] < $b['sort'] ? -1 : 1;
+                }
+
+                $limit_a = $a['coupon']->get_limit_usage_to_x_items();
+                $limit_b = $b['coupon']->get_limit_usage_to_x_items();
+
+                if ( $limit_a !== $limit_b ) {
+                    return $limit_a < $limit_b ? -1 : 1;
+                }
+
+                if ( $a['coupon']->get_amount() === $b['coupon']->get_amount() ) {
+                    return $b['coupon']->get_id() - $a['coupon']->get_id();
+                }
+
+                return $a['coupon']->get_amount() < $b['coupon']->get_amount() ? -1 : 1;
+            }
+        );
+
+        return array_column( $sorted, 'coupon' );
     }
 }

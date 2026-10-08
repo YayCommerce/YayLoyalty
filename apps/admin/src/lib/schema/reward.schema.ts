@@ -37,7 +37,7 @@ export const rewardStatusSchema = campaignStatusSchema;
 export type RewardStatus = CampaignStatus;
 export const resolveRewardDisplayStatus = resolveCampaignDisplayStatus;
 
-/** Claim figures from RedemptionRepository::summary_by_rewards(); zeros and nulls until the redemptions table exists. */
+/** Claim figures from RedemptionRepository::summary_by_rewards(); zeros and nulls for a reward with no claims. */
 export const rewardRedemptionSummarySchema = z.object({
   /** Every claim row in any status — what decides `is_deletable`. */
   claimed: z.number().int(),

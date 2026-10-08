@@ -12,7 +12,8 @@ defined( 'ABSPATH' ) || exit;
  * with them (`individual_use` false); no free shipping (that is a Pro
  * reward type, not a property of this discount). The amount is
  * re-derived from RedemptionService::quote() on every totals run, so a
- * cart change is reflected without anything stored. Scaffold: stubs.
+ * cart change is reflected without anything stored. The shopper removing
+ * the coupon clears the intent, so it is not applied again.
  */
 final class CouponProvider {
 
@@ -29,29 +30,49 @@ final class CouponProvider {
     }
 
     /**
-     * Attaches the three hooks: `woocommerce_get_shop_coupon_data` →
-     * virtual_coupon_data(), `woocommerce_coupon_sort` → sort_weight(),
-     * `woocommerce_before_calculate_totals` → sync_cart(). Called once at
-     * boot by the plugin, storefront requests only.
+     * Attaches the four hooks. sync_cart() runs last on
+     * `woocommerce_before_calculate_totals`, after every other plugin's
+     * coupon logic. Called once at boot by the plugin.
      */
     public function register(): void {
-        // TODO(redemption): add_filter for the three hooks named in the docblock, sync_cart at a priority after every other plugin's coupon logic.
-        throw new \RuntimeException( 'Not implemented' );
+        add_filter( 'woocommerce_get_shop_coupon_data', [ $this, 'virtual_coupon_data' ], 10, 2 );
+        add_filter( 'woocommerce_coupon_sort', [ $this, 'sort_weight' ], 10, 2 );
+        add_action( 'woocommerce_before_calculate_totals', [ $this, 'sync_cart' ], PHP_INT_MAX );
+        add_action( 'woocommerce_removed_coupon', [ $this, 'on_removed' ] );
     }
 
     /**
-     * Precondition: $code is any coupon WooCommerce is loading. Postcondition:
-     * $data untouched for every other code; for self::CODE an array with
-     * discount_type `fixed_cart`, amount = quote()->get_value() (0 when the
-     * quote is denied or applies 0 points), individual_use false,
-     * free_shipping false, usage_limit 0, no expiry, no restrictions.
+     * Precondition: $code is any coupon WooCommerce is loading, a code or
+     * an id. Postcondition: $data untouched for every other code and when
+     * there is no cart; for self::CODE an array with discount_type
+     * `fixed_cart`, amount = quote()->get_value() (0 when the quote is
+     * denied), individual_use false, free_shipping false, usage_limit 0,
+     * no expiry, no restrictions.
      *
-     * @param mixed  $data False, or another provider's array.
+     * @param mixed $data False, or another provider's array.
+     * @param mixed $code The code or id WooCommerce is loading.
      * @return mixed
      */
-    public function virtual_coupon_data( $data, string $code ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(redemption): strict compare code to self::CODE; quote via service->quote( WC()->cart, get_current_user_id() ?: null ); return the fixed_cart array with individual_use false.
-        throw new \RuntimeException( 'Not implemented' );
+    public function virtual_coupon_data( $data, $code ) {
+        if ( ! is_string( $code ) || self::CODE !== $code ) {
+            return $data;
+        }
+
+        $cart = RedemptionService::cart();
+
+        if ( null === $cart ) {
+            return $data;
+        }
+
+        $quote = $this->service->quote( $cart, RedemptionService::shopper_id() );
+
+        return [
+            'discount_type'  => 'fixed_cart',
+            'amount'         => $quote->is_allowed() ? $quote->get_value() : 0,
+            'individual_use' => false,
+            'free_shipping'  => false,
+            'usage_limit'    => 0,
+        ];
     }
 
     /**
@@ -61,19 +82,46 @@ final class CouponProvider {
      * other coupon; PHP_INT_MAX for self::CODE, so every real coupon
      * discounts first and our amount is quoted against what is left.
      */
-    public function sort_weight( int $sort, \WC_Coupon $coupon ): int { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(redemption): return PHP_INT_MAX when the coupon's code is self::CODE, else the given sort.
-        throw new \RuntimeException( 'Not implemented' );
+    public function sort_weight( int $sort, \WC_Coupon $coupon ): int {
+        return self::CODE === $coupon->get_code() ? PHP_INT_MAX : $sort;
     }
 
     /**
-     * Keeps the coupon line in step with the intent: applied when
-     * SessionIntent::get() > 0 and not yet applied, removed when the intent
-     * is 0. Never touches any other coupon. Precondition: called before
-     * WooCommerce calculates totals; must not trigger a recalculation itself.
+     * Keeps the coupon line in step with the quote: on the cart when the
+     * quote is allowed with points above 0, off it otherwise, so a guest
+     * never sees a zero-value line. Edits the applied-coupon list directly:
+     * apply_coupon() and remove_coupon() add notices, and the latter fires
+     * `woocommerce_removed_coupon`, which must mean the shopper removed it.
+     * Never touches any other coupon and never triggers a recalculation.
      */
-    public function sync_cart( \WC_Cart $cart ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(redemption): intent > 0 && ! cart->has_discount( self::CODE ) → cart->apply_coupon( self::CODE ) with WC's notice suppressed; intent 0 && has_discount → cart->remove_coupon( self::CODE ).
-        throw new \RuntimeException( 'Not implemented' );
+    public function sync_cart( \WC_Cart $cart ): void {
+        $applied    = $cart->get_applied_coupons();
+        $is_applied = in_array( self::CODE, $applied, true );
+
+        // Nothing asked and nothing to take off: the common case, answered without a quote.
+        if ( ! $is_applied && 0 === $this->intent->get() ) {
+            return;
+        }
+
+        $quote     = $this->service->quote( $cart, RedemptionService::shopper_id() );
+        $has_value = $quote->is_allowed() && $quote->get_points() > 0;
+
+        if ( $has_value && ! $is_applied ) {
+            $applied[] = self::CODE;
+            $cart->set_applied_coupons( $applied );
+        } elseif ( ! $has_value && $is_applied ) {
+            $cart->set_applied_coupons( array_values( array_diff( $applied, [ self::CODE ] ) ) );
+        }
+    }
+
+    /**
+     * The shopper removed a coupon. Ours clears the intent, or the next totals run would apply it again.
+     *
+     * @param mixed $code
+     */
+    public function on_removed( $code ): void {
+        if ( self::CODE === $code ) {
+            $this->intent->clear();
+        }
     }
 }

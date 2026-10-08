@@ -4,6 +4,7 @@ namespace YayLoyalty\Services;
 use YayLoyalty\Database\Transaction;
 use YayLoyalty\Engine\Earning\IdempotencyKey;
 use YayLoyalty\Engine\Earning\Outcome;
+use YayLoyalty\Engine\Rewards\Result as RedeemResult;
 use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Enums\ReferenceType;
@@ -18,8 +19,8 @@ defined( 'ABSPATH' ) || exit;
 /**
  * The only writer of the ledger and the customer aggregates, EarningService's award included.
  * Enforced by convention: it is constructed in exactly four places, Engine\RestAPI::controllers(),
- * Engine\Earning\EarningService::build(), Engine\Earning\Reversal::build() and (once its body
- * lands) Engine\Redemption\RedemptionService::build(). Name a fifth here before adding it.
+ * Engine\Earning\EarningService::build(), Engine\Earning\Reversal::build() and
+ * Engine\Redemption\RedemptionService::build(). Name a fifth here before adding it.
  * Manual rows enter through adjust() and record(). System rows enter through earn(),
  * refund_earn(), restore_refund() and redeem(), which add the idempotency-key duplicate branch.
  */
@@ -199,7 +200,7 @@ final class LedgerService {
      * is appended and Outcome::awarded carries it. Precondition: $draft has
      * an idempotency key and valid vocabulary.
      *
-     * @param callable|null $points_under_lock Returns the row's signed points once the lock is held; 0 writes nothing.
+     * @param callable|null $points_under_lock Receives the locked Customer and returns the row's signed points; 0 writes nothing.
      * @param string        $skip_reason       Outcome::skipped's reason when $points_under_lock returns 0.
      */
     private function write_keyed( LedgerEntry $draft, ?callable $points_under_lock = null, string $skip_reason = '' ): Outcome {
@@ -216,7 +217,7 @@ final class LedgerService {
                 }
 
                 if ( null !== $points_under_lock ) {
-                    $points = (int) $points_under_lock();
+                    $points = (int) $points_under_lock( $customer );
 
                     if ( 0 === $points ) {
                         return Outcome::skipped( $skip_reason );
@@ -294,33 +295,54 @@ final class LedgerService {
     }
 
     /**
-     * Commits one quoted redemption: the REDEEM row and the customer
-     * aggregates, in one transaction under the customer's row lock. The
-     * redemption commit (Engine\Redemption\CommitWriter) wraps this in its
-     * own Transaction::run(), so the row here and the redemptions row commit
-     * or roll back together.
+     * Debits one redemption: the REDEEM row and the customer aggregates, in
+     * one transaction under the customer's row lock. A caller that writes
+     * its own row beside this one (Engine\Redemption\CommitWriter) wraps both
+     * in its own Transaction::run(), so they commit or roll back together.
      *
-     * Preconditions: $draft is a REDEEM row with points < 0, a non-null
-     * idempotency_key (IdempotencyKey::compose( REDEEM, user, REDEMPTION,
-     * redemption id, reward type )), redemption_id and order_id set,
-     * created_at set by the caller. Nothing slow or externally fallible may
-     * run inside.
+     * Preconditions: $draft is a REDEEM row with points < 0 and an
+     * idempotency key composed by the caller
+     * (`redeem:{user}:order:{order_id}:flexible_discount` for the slider).
+     * `order_id` is optional. Nothing slow or externally fallible may run inside.
      *
-     * Postconditions: exactly one of — Outcome::redeemed( persisted row ) with
-     * balance_after = locked balance + points (≥ 0) and lifetime_redeemed
-     * moved; Outcome::skipped( Rewards\Result::REASON_INSUFFICIENT_BALANCE )
-     * and nothing written when the locked balance + points would go below
-     * zero — a redemption hard-refuses, unlike a clawback; or
-     * Outcome::duplicate( existing row ) when the UNIQUE index rejected the
-     * insert. Any other failure rethrows and the transaction has rolled back.
-     * The recorded event fires after the outermost commit (announce()).
+     * Returns exactly one of: Outcome::awarded( persisted row ), with
+     * balance_after = locked balance + points (never below 0) and
+     * lifetime_redeemed moved; the caller re-wraps it as Outcome::redeemed(),
+     * because this service never sees the quote. Outcome::duplicate( existing
+     * row ) when the key is already in the ledger; that check runs before the
+     * balance check, so a re-fired hook stays a duplicate after the balance
+     * moved. Outcome::skipped( Rewards\Result::REASON_INSUFFICIENT_BALANCE )
+     * with nothing written when the locked balance cannot cover the points:
+     * a redemption refuses, unlike a clawback.
      *
      * @throws \InvalidArgumentException When the draft is not a negative redeem row or lacks a key.
      * @throws \YayLoyalty\Database\QueryException When a write other than a duplicate fails.
      */
-    public function redeem( LedgerEntry $draft ): Outcome { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(redemption): mirror earn() — assert REDEEM, points < 0, key; Transaction::run: ensure_row, lock_and_get, if balance + points < 0 → Outcome::skipped( insufficient_balance ), pre-check, insert_unless_duplicate → Outcome::duplicate, apply_aggregates, announce(); return Outcome::redeemed.
-        throw new \RuntimeException( 'Not implemented' );
+    public function redeem( LedgerEntry $draft ): Outcome {
+        $key = $draft->get_idempotency_key();
+
+        if ( LedgerType::REDEEM !== $draft->get_type() ) {
+            throw new \InvalidArgumentException( 'YayLoyalty: redeem() writes REDEEM rows only.' );
+        }
+
+        if ( null === $key || '' === $key ) {
+            throw new \InvalidArgumentException( 'YayLoyalty: a redeem row needs an idempotency key.' );
+        }
+
+        if ( $draft->get_points() >= 0 ) {
+            throw new \InvalidArgumentException( 'YayLoyalty: a redeem row debits a negative number of points.' );
+        }
+
+        LedgerSource::assert( $draft->get_source() );
+        ReferenceType::assert( $draft->get_reference_type() );
+
+        return $this->write_keyed(
+            $draft,
+            static function ( Customer $customer ) use ( $draft ): int {
+                return $customer->get_balance() + $draft->get_points() >= 0 ? $draft->get_points() : 0;
+            },
+            RedeemResult::REASON_INSUFFICIENT_BALANCE
+        );
     }
 
     /**

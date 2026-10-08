@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Tests\Integration\Controllers;
 
+use YayLoyalty\Database\Schema\RedemptionsTable;
 use YayLoyalty\Enums\RewardType;
 use YayLoyalty\Enums\Status;
 use YayLoyalty\Models\Redemption;
@@ -27,7 +28,7 @@ final class RewardRouteTest extends IntegrationTestCase {
 
     protected function tearDown(): void {
         wp_set_current_user( 0 );
-        $this->drop_redemptions_table();
+        $this->restore_redemptions_table();
 
         if ( $this->subscriber_id > 0 ) {
             require_once ABSPATH . 'wp-admin/includes/user.php';
@@ -262,6 +263,7 @@ final class RewardRouteTest extends IntegrationTestCase {
     public function test_without_a_redemptions_table_every_catalog_reward_is_deletable_with_a_zero_summary(): void {
         global $wpdb;
 
+        $this->drop_redemptions_table();
         $this->act_as_admin();
         $id      = $this->insert_reward( 'Catalog', 'reward-route-catalog', RewardType::FIXED_COUPON, 1, 500 );
         $builtin = $this->insert_reward( 'Points for discount', 'cart-discount', RewardType::FLEXIBLE_DISCOUNT, 0, null, true );
@@ -314,7 +316,6 @@ final class RewardRouteTest extends IntegrationTestCase {
     public function test_a_claimed_reward_is_not_deletable_and_delete_answers_409(): void {
         $this->act_as_admin();
         $id = $this->insert_reward( 'Claimed', 'reward-route-claimed', RewardType::FIXED_COUPON, 1, 500 );
-        $this->create_redemptions_table();
         // Used, not outstanding: any claim row at all blocks the delete.
         $this->insert_redemption( $id, 7, 500, Redemption::STATUS_USED, null );
 
@@ -326,7 +327,6 @@ final class RewardRouteTest extends IntegrationTestCase {
     public function test_the_summary_counts_only_unexpired_issued_coupons_as_outstanding(): void {
         $this->act_as_admin();
         $id = $this->insert_reward( 'Counted', 'reward-route-counted', RewardType::FIXED_COUPON, 1, 500 );
-        $this->create_redemptions_table();
 
         $future = gmdate( 'Y-m-d H:i:s', time() + DAY_IN_SECONDS );
         $this->insert_redemption( $id, 7, 500, Redemption::STATUS_ISSUED, $future, '2026-01-02 00:00:00' );
@@ -553,32 +553,6 @@ final class RewardRouteTest extends IntegrationTestCase {
         );
     }
 
-    /**
-     * Stands in for the redemptions table until redemption ships: RedemptionsTable::definition()
-     * still throws, so only the columns summary_by_rewards() reads are created here.
-     */
-    private function create_redemptions_table(): void {
-        global $wpdb;
-
-        $table = ( new RedemptionRepository() )->table();
-        $this->assertStringStartsWith( YAYLOYALTY_TEST_PREFIX, $table );
-
-        $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-            'CREATE TABLE `' . esc_sql( $table ) . '` (
-                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-                user_id BIGINT UNSIGNED NOT NULL,
-                reward_id BIGINT UNSIGNED NOT NULL,
-                points BIGINT UNSIGNED NOT NULL,
-                status VARCHAR(12) NOT NULL,
-                expires_at DATETIME NULL,
-                created_at DATETIME NOT NULL,
-                PRIMARY KEY (id),
-                KEY reward_id (reward_id)
-            )'
-        );
-        $this->assertSame( '', $wpdb->last_error );
-    }
-
     private function drop_redemptions_table(): void {
         global $wpdb;
 
@@ -591,19 +565,20 @@ final class RewardRouteTest extends IntegrationTestCase {
     }
 
     private function insert_redemption( int $reward_id, int $user_id, int $points, string $status, ?string $expires_at, string $created_at = '2026-03-01 00:00:00' ): void {
+        ( new RedemptionRepository() )->insert(
+            new Redemption( null, $user_id, $reward_id, null, $points, '0', 'USD', '0', '0', null, null, $status, 0, $expires_at, $created_at, $created_at )
+        );
+    }
+
+    /** Puts back the table a test dropped, so the next test's truncate finds it. */
+    private function restore_redemptions_table(): void {
         global $wpdb;
 
-        $wpdb->insert( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-            ( new RedemptionRepository() )->table(),
-            [
-                'user_id'    => $user_id,
-                'reward_id'  => $reward_id,
-                'points'     => $points,
-                'status'     => $status,
-                'expires_at' => $expires_at,
-                'created_at' => $created_at,
-            ]
-        );
+        $table = ( new RedemptionRepository() )->table();
+
+        if ( $table !== $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $table ) ) ) ) { // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+            $wpdb->query( ( new RedemptionsTable() )->definition() ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.NotPrepared -- the plugin's own CREATE TABLE statement.
+        }
     }
 
     private function reward_count(): int {

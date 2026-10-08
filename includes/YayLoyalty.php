@@ -8,6 +8,10 @@ use YayLoyalty\Engine\Earning\Listeners\ReviewListener;
 use YayLoyalty\Engine\Earning\Listeners\SignupListener;
 use YayLoyalty\Engine\Earning\PendingPoints;
 use YayLoyalty\Engine\Earning\Reversal;
+use YayLoyalty\Engine\Redemption\Adapters\StoreApiAdapter;
+use YayLoyalty\Engine\Redemption\CouponProvider;
+use YayLoyalty\Engine\Redemption\RedemptionService;
+use YayLoyalty\Engine\Redemption\SessionIntent;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Utils\SingletonTrait;
@@ -34,6 +38,9 @@ class YayLoyalty {
 
         // After Pro's boot: build() applies yayloyalty_earning_gates once, so any gate Pro adds must already be attached.
         $this->register_earning_listeners();
+
+        // Also after Pro's boot: build() applies yayloyalty_redemption_gates and yayloyalty_register_reward_handlers once.
+        $this->register_redemption();
 
         if ( ! is_admin() ) {
             \YayLoyalty\Engine\Storefront\Launcher::register();
@@ -62,5 +69,17 @@ class YayLoyalty {
         $reversals->register();
         ( new ReviewListener( $service, $reversal ) )->register();
         ( new SignupListener( $service ) )->register();
+    }
+
+    /**
+     * Builds the redemption composition root and attaches the virtual coupon and the Store API adapter.
+     * Not behind is_admin(): a Store API request is not an admin request, and the coupon provider answers nothing without a cart.
+     */
+    private function register_redemption(): void {
+        $intent  = new SessionIntent();
+        $service = RedemptionService::build( $intent );
+
+        ( new CouponProvider( $service, $intent ) )->register();
+        ( new StoreApiAdapter( $service, $intent ) )->register();
     }
 }

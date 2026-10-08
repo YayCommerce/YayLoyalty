@@ -217,23 +217,6 @@ abstract class AbstractRestController extends BaseRestController {
     }
 
     /**
-     * Empty page envelope at the request's page and per_page: the truthful answer
-     * for a collection whose table does not exist yet, not an error.
-     *
-     * @return array<string, mixed>
-     */
-    protected function respond_empty_page( \WP_REST_Request $request ): array {
-        return $this->respond_paginated(
-            [
-                'items'    => [],
-                'total'    => 0,
-                'page'     => (int) $request['page'],
-                'per_page' => (int) $request['per_page'],
-            ]
-        );
-    }
-
-    /**
      * Permission callback requiring $cap. Every admin route uses it; never '__return_true'.
      *
      * @return callable(): (true|\WP_Error)

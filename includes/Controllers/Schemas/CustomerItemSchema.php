@@ -74,8 +74,8 @@ final class CustomerItemSchema {
                 'context'     => [ 'view' ],
                 'readonly'    => true,
             ],
-            'counts'            => [
-                'description' => __( 'Row counts behind the drawer tab labels. ledger/activity are real; redemptions is always 0 — that table does not exist yet.', 'yayloyalty' ),
+            'counts'                   => [
+                'description' => __( 'Row counts behind the drawer tab labels.', 'yayloyalty' ),
                 'type'        => 'object',
                 'context'     => [ 'view' ],
                 'readonly'    => true,
