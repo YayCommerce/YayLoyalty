@@ -93,6 +93,31 @@ abstract class IntegrationTestCase extends TestCase {
         );
     }
 
+    /** @param array<string, mixed> $body */
+    protected function send( string $method, string $route, array $body = [] ): \WP_REST_Response {
+        $request = new \WP_REST_Request( $method, $route );
+
+        if ( [] !== $body ) {
+            $request->set_header( 'Content-Type', 'application/json' );
+            $request->set_body( (string) wp_json_encode( $body ) );
+        }
+
+        return rest_do_request( $request );
+    }
+
+    protected function act_as_admin(): void {
+        $admins = get_users(
+            [
+                'role'   => 'administrator',
+                'number' => 1,
+                'fields' => 'ID',
+            ]
+        );
+        $this->assertNotEmpty( $admins, 'The site needs one administrator to act as the caller.' );
+
+        wp_set_current_user( (int) $admins[0] );
+    }
+
     private function truncate_tables(): void {
         global $wpdb;
 
