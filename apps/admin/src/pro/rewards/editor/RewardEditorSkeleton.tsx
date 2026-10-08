@@ -1,3 +1,4 @@
+import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { EditorFieldSkeleton, EditorSectionSkeleton } from '@/components/ui/custom/editor-section';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -6,7 +7,7 @@ import PageLayout from '@/components/layout/PageLayout';
 /**
  * The editor's loading state, for RewardEditor's fetch and RewardCreator's
  * duplicate-source fetch. It copies a catalog reward's page (back link,
- * header, the four numbered sections and the rail), since the type is not
+ * header, the three numbered sections and the rail), since the type is not
  * known until the row arrives.
  */
 export function RewardEditorSkeleton() {
@@ -34,17 +35,12 @@ export function RewardEditorSkeleton() {
 
             <EditorSectionSkeleton contentClassName="gap-5">
               <FieldWithDescription labelClassName="w-32" />
-              <FieldWithDescription labelClassName="w-28" descriptionLines={0} />
-              <FieldWithDescription labelClassName="w-24" />
+              <FieldWithDescription labelClassName="w-28" />
+              <FieldWithDescription labelClassName="w-28" inputClassName="mt-2 h-5 w-9 rounded-full" />
             </EditorSectionSkeleton>
 
             <EditorSectionSkeleton contentClassName="gap-5">
               <FieldWithDescription labelClassName="w-14" descriptionLines={2} />
-            </EditorSectionSkeleton>
-
-            <EditorSectionSkeleton contentClassName="gap-5">
-              <FieldWithDescription labelClassName="w-36" />
-              <FieldWithDescription labelClassName="w-24" />
             </EditorSectionSkeleton>
           </div>
 
@@ -95,7 +91,7 @@ function FieldWithDescription({
 }) {
   return (
     <EditorFieldSkeleton labelClassName={labelClassName}>
-      <Skeleton className={`h-9 ${inputClassName}`} />
+      <Skeleton className={cn('h-9', inputClassName)} />
       {Array.from({ length: descriptionLines }, (_, line) => (
         <Skeleton key={line} className={line === descriptionLines - 1 ? 'h-3 w-2/3' : 'h-3 w-full'} />
       ))}

@@ -3,7 +3,7 @@ import { closestCenter, DndContext, PointerSensor, useSensor, useSensors, type D
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, InfoIcon, Lock } from 'lucide-react';
+import { GripVertical, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import { __, _n, sprintf } from '@wordpress/i18n';
@@ -15,7 +15,6 @@ import {
   useUpdateRewardStatusMutation,
 } from '@/lib/queries/reward.queries';
 import { resolveRewardDisplayStatus, Reward } from '@/lib/schema/reward.schema';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -112,18 +111,6 @@ export function RewardTable() {
             </div>
           </div>
 
-          {ready && !showArchived && !screen.isInitCase && (
-            <Alert variant="outline">
-              <InfoIcon />
-              <AlertDescription>
-                {__(
-                  'The customer picks a reward, so there is no priority here — order is display order, and availability decides who can see each one.',
-                  'yayloyalty',
-                )}
-              </AlertDescription>
-            </Alert>
-          )}
-
           {isError && <p className="text-destructive text-sm">{__('Could not load rewards.', 'yayloyalty')}</p>}
 
           {isPending && <RewardTableSkeleton />}
@@ -163,8 +150,6 @@ export function RewardTable() {
           )}
         </CardContent>
       </Card>
-
-      {ready && !showArchived && !screen.isInitCase && <RewardInfoCards />}
 
       {archiveTarget && (
         <RewardArchiveDialog
@@ -465,36 +450,6 @@ function RewardTableSkeleton() {
           </TableBody>
         </Table>
       </div>
-    </div>
-  );
-}
-
-/** The two footer cards shown once there is a real catalog to explain; the screen carries no equivalent for the empty case. */
-function RewardInfoCards() {
-  return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-      <Card>
-        <CardContent className="flex flex-col gap-1">
-          <p className="text-sm font-medium">{__('Two ways points leave a balance', 'yayloyalty')}</p>
-          <p className="text-muted-foreground text-sm">
-            {__(
-              'The slider spends points at checkout, with no coupon involved. Catalog rewards spend points at claim time and issue a single-use coupon the customer applies to a later order.',
-              'yayloyalty',
-            )}
-          </p>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardContent className="flex flex-col gap-1">
-          <p className="text-sm font-medium">{__('Order is what the customer sees', 'yayloyalty')}</p>
-          <p className="text-muted-foreground text-sm">
-            {__(
-              'The launcher and My Account list rewards in this order, with the ones a customer cannot afford or is not eligible for shown last and marked. Paused rewards are hidden entirely.',
-              'yayloyalty',
-            )}
-          </p>
-        </CardContent>
-      </Card>
     </div>
   );
 }
