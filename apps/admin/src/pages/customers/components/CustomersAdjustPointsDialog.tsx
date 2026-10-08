@@ -105,7 +105,6 @@ export function CustomersAdjustPointsDialog({
   const source = target.kind === 'single' ? target.customer : target.preview;
   const singleCustomer = target.kind === 'single' ? target.customer.data : undefined;
   const previewData = target.kind === 'bulk' ? target.preview.data : undefined;
-  const pointsPerCurrencyUnit = (singleCustomer ?? previewData)?.points_per_currency_unit ?? 0;
 
   const baseline = useAdjustPreviewBaseline(
     open,
@@ -129,9 +128,7 @@ export function CustomersAdjustPointsDialog({
   });
 
   function patchState(patch: Partial<AdjustFormState>) {
-    // A tick confirms one exact amount, so a new amount or direction needs a new tick.
-    const resetsConfirm = 'amount' in patch || 'direction' in patch;
-    setState((current) => ({ ...current, ...(resetsConfirm ? { confirmed: false } : {}), ...patch }));
+    setState((current) => ({ ...current, ...patch }));
   }
 
   // Keyed on `open`, not done in handleOpenChange: callers also close the dialog by setting
@@ -169,10 +166,6 @@ export function CustomersAdjustPointsDialog({
   const balanceAfter = singleCustomer ? newBalance(state, singleCustomer.balance) : 0;
 
   const blockers = submitBlockers(state, {
-    // Bulk has no per-customer lifetime total; Infinity keeps the typo
-    // guard inactive rather than firing on a made-up number.
-    lifetimeEarned: isSingle ? (singleCustomer?.lifetime_earned ?? 0) : Number.POSITIVE_INFINITY,
-    pointsPerCurrencyUnit,
     // No baseline yet (reopen refetch still in flight): nothing acknowledged to compare against.
     isUnverified: isUnverified || (isSingle && !baseline.hasBaseline),
     isStale,
@@ -221,7 +214,6 @@ export function CustomersAdjustPointsDialog({
           isSingle={isSingle}
           isLoading={source.isLoading}
           singleCustomer={singleCustomer}
-          pointsPerCurrencyUnit={pointsPerCurrencyUnit}
           isStale={isStale}
           openedBalance={openedBalance}
           bulkEffectiveCount={bulk.effectiveCount}
@@ -266,11 +258,8 @@ export function CustomersAdjustPointsDialog({
         {isSingle && singleCustomer && (
           <AdjustPointsFields
             state={state}
-            onChange={patchState}
             customerName={singleCustomer.name}
             balance={singleCustomer.balance}
-            lifetimeEarned={singleCustomer.lifetime_earned}
-            pointsPerCurrencyUnit={pointsPerCurrencyUnit}
             showResultPanel={!isNegativeStart || balanceAfter >= 0}
           />
         )}
@@ -283,7 +272,6 @@ export function CustomersAdjustPointsDialog({
             selectionMode={selectionMode}
             filters={filters ?? DEFAULT_ROW_FILTERS}
             notShownOnPage={bulk.notShownOnPage}
-            pointsPerCurrencyUnit={pointsPerCurrencyUnit}
             liabilityPoints={previewData?.liability_points ?? null}
             hasPreviewError={!!source.error}
             isOverLimit={bulk.isOverLimit}

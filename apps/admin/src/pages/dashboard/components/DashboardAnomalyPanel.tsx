@@ -17,13 +17,7 @@ const CONFIG: ChartConfig = { issued: { label: __('Issued', 'yayloyalty'), color
  * Daily totals with yesterday highlighted, beside who edited a campaign
  * that day. Never says what changed: no diff exists.
  */
-export function DashboardAnomalyPanel({
-  data,
-  pointsPerCurrencyUnit,
-}: {
-  data: PointsJumpData;
-  pointsPerCurrencyUnit: number;
-}) {
+export function DashboardAnomalyPanel({ data }: { data: PointsJumpData }) {
   const first = data.daily[0]?.date;
   const edits = data.what_changed;
 
@@ -163,12 +157,7 @@ export function DashboardAnomalyPanel({
         </div>
       </div>
       {edits.length > 0 && (
-        <DashboardAnomalySettlements
-          edits={edits}
-          day={parseWPDay(data.yesterday)}
-          threshold={data.threshold}
-          pointsPerCurrencyUnit={pointsPerCurrencyUnit}
-        />
+        <DashboardAnomalySettlements edits={edits} day={parseWPDay(data.yesterday)} threshold={data.threshold} />
       )}
     </Card>
   );

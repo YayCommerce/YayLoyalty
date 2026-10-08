@@ -12,69 +12,69 @@ final class CustomerItemSchema {
     /** @return array<string, mixed> */
     public static function properties(): array {
         return [
-            'user_id'                  => [
+            'user_id'           => [
                 'type'     => 'integer',
                 'context'  => [ 'view' ],
                 'readonly' => true,
             ],
-            'name'                     => [
+            'name'              => [
                 'description' => __( 'Display name, from wp_users. Carried on this endpoint (not only the list row) so the drawer has an identity to render on a deep link or a refresh.', 'yayloyalty' ),
                 'type'        => 'string',
                 'context'     => [ 'view' ],
                 'readonly'    => true,
             ],
-            'email'                    => [
+            'email'             => [
                 'type'     => 'string',
                 'context'  => [ 'view' ],
                 'readonly' => true,
             ],
-            'balance'                  => [
+            'balance'           => [
                 'type'     => 'integer',
                 'context'  => [ 'view' ],
                 'readonly' => true,
             ],
-            'pending_points'           => [
+            'pending_points'    => [
                 'type'     => 'integer',
                 'context'  => [ 'view' ],
                 'readonly' => true,
             ],
-            'lifetime_earned'          => [
+            'lifetime_earned'   => [
                 'type'     => 'integer',
                 'context'  => [ 'view' ],
                 'readonly' => true,
             ],
-            'lifetime_redeemed'        => [
+            'lifetime_redeemed' => [
                 'type'     => 'integer',
                 'context'  => [ 'view' ],
                 'readonly' => true,
             ],
-            'last_activity_at'         => [
+            'last_activity_at'  => [
                 'type'     => [ 'string', 'null' ],
                 'context'  => [ 'view' ],
                 'readonly' => true,
             ],
-            'expires_at'               => [
+            'expires_at'        => [
                 'type'     => [ 'string', 'null' ],
                 'context'  => [ 'view' ],
                 'readonly' => true,
             ],
-            'joined_at'                => [
+            'joined_at'         => [
                 'type'     => [ 'string', 'null' ],
                 'context'  => [ 'view' ],
                 'readonly' => true,
             ],
-            'updated_at'               => [
+            'updated_at'        => [
                 'type'     => [ 'string', 'null' ],
                 'context'  => [ 'view' ],
                 'readonly' => true,
             ],
-            'deleted_at'               => [
+            'deleted_at'        => [
                 'description' => __( 'Derived from the latest account_deleted row in yayloyalty_customer_meta, gated on the WP user currently being gone (get_userdata() false) — not a column, and never will be. Null while the WP user still resolves, even if a deletion row exists (a reinstated id self-heals).', 'yayloyalty' ),
                 'type'        => [ 'string', 'null' ],
                 'context'     => [ 'view' ],
                 'readonly'    => true,
             ],
-            'counts'                   => [
+            'counts'            => [
                 'description' => __( 'Row counts behind the drawer tab labels. ledger/activity are real; redemptions is always 0 — that table does not exist yet.', 'yayloyalty' ),
                 'type'        => 'object',
                 'context'     => [ 'view' ],
@@ -85,7 +85,7 @@ final class CustomerItemSchema {
                     'redemptions' => [ 'type' => 'integer' ],
                 ],
             ],
-            'loose_ends'               => [
+            'loose_ends'        => [
                 'description' => __( 'What deleting this member left behind. Non-null exactly when deleted_at is non-null. kept_ledger_entries is always real; void_coupons/counted_in_members are always null — no redemptions/member-count feature exists — and render as "Not tracked yet" in the SPA rather than being hidden.', 'yayloyalty' ),
                 'type'        => [ 'object', 'null' ],
                 'context'     => [ 'view' ],
@@ -102,7 +102,7 @@ final class CustomerItemSchema {
                     'kept_ledger_entries' => [ 'type' => 'integer' ],
                 ],
             ],
-            'expiry'                   => [
+            'expiry'            => [
                 'description' => __( 'Points about to expire, the batch breakdown (lots, oldest first), and the reminder schedule. Always null for now — needs lots, which do not exist yet.', 'yayloyalty' ),
                 'type'        => [ 'object', 'null' ],
                 'context'     => [ 'view' ],
@@ -133,7 +133,7 @@ final class CustomerItemSchema {
                     ],
                 ],
             ],
-            'negative_balance'         => [
+            'negative_balance'  => [
                 'description' => __( 'The earned/spent/reversed story behind a negative balance, when one can be assembled. Always null for now — would need walking the ledger backwards.', 'yayloyalty' ),
                 'type'        => [ 'object', 'null' ],
                 'context'     => [ 'view' ],
@@ -170,12 +170,6 @@ final class CustomerItemSchema {
                     'cause_ledger_id' => [ 'type' => [ 'integer', 'null' ] ],
                     'deficit'         => [ 'type' => 'integer' ],
                 ],
-            ],
-            'points_per_currency_unit' => [
-                'description' => __( 'Conversion rate for money-equivalent figures (drawer expiry/negative-balance panels). Restored minimally after the wider worth object was removed.', 'yayloyalty' ),
-                'type'        => 'number',
-                'context'     => [ 'view' ],
-                'readonly'    => true,
             ],
         ];
     }

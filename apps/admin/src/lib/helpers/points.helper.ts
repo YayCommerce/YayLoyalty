@@ -1,9 +1,8 @@
 import { _n, sprintf } from '@wordpress/i18n';
 
-import { pointsToCurrency } from '@/lib/points-math/points-math';
 import { currencyDecimals, formatStoreDecimal, formatStoreNumber, parseWPCurrency } from './format.helper';
 
-/** Points/balance number formatting, and the one points → money label. */
+/** Points/balance number formatting. */
 
 /** Values at or above this magnitude switch to the compact "100k+" form. */
 const COMPACT_THRESHOLD = 100_000;
@@ -97,17 +96,6 @@ export function formatCompactPoints(value: number): string {
   }
 
   return `${sign}${Math.floor(abs / 1_000_000_000)}B+`;
-}
-
-/**
- * Points as store money, e.g. "$98.50" — rounded by the same rule as the
- * server (`PointsMath::points_to_currency`) at the store's decimals, then
- * formatted. `null` when the rate is unconfigured (0).
- */
-export function formatPointsAsMoney(points: number, pointsPerCurrencyUnit: number): string | null {
-  const amount = pointsToCurrency(points, pointsPerCurrencyUnit, currencyDecimals());
-
-  return amount === null ? null : parseWPCurrency(amount);
 }
 
 /** Whether formatCompactPoints would shorten this value. */

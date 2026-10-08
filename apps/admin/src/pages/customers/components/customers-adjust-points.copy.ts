@@ -1,29 +1,19 @@
 import { __, sprintf } from '@wordpress/i18n';
 
-import { TYPO_GUARD_MULTIPLIER } from './customers-adjust-points.form-state';
-
 /** The Adjust-points dialog's strings. Functions, not constants: `__()` must run after the locale loads. */
 
 // Header
 
 export const ADJUST_POINTS_TITLE = () => __('Adjust points', 'yayloyalty');
 
-/** "Daniel Okonkwo · 9,850 points ($98.50)" */
-export function singleCustomerHeader(name: string, balancePoints: string, balanceMoney: string | null): string {
-  return balanceMoney
-    ? sprintf(
-        /* translators: 1: the customer's name; 2: their balance in points, formatted; 3: the balance as money, formatted. */
-        __('%1$s · %2$s points (%3$s)', 'yayloyalty'),
-        name,
-        balancePoints,
-        balanceMoney,
-      )
-    : sprintf(
-        /* translators: 1: the customer's name; 2: their balance in points, formatted. */
-        __('%1$s · %2$s points', 'yayloyalty'),
-        name,
-        balancePoints,
-      );
+/** "Daniel Okonkwo · 9,850 points" */
+export function singleCustomerHeader(name: string, balancePoints: string): string {
+  return sprintf(
+    /* translators: 1: the customer's name; 2: their balance in points, formatted. */
+    __('%1$s · %2$s points', 'yayloyalty'),
+    name,
+    balancePoints,
+  );
 }
 
 export const COULD_NOT_VERIFY_TITLE = () =>
@@ -58,34 +48,27 @@ export function submitLabel(direction: 'add' | 'remove', amount: string, isZero:
 
 export const NEW_BALANCE_EMPTY = () => __('New balance: —', 'yayloyalty');
 
-/** "New balance: 10,350 points ($103.50)" */
-export function newBalanceLine(points: string, money: string | null): string {
-  return money
-    ? sprintf(
-        /* translators: 1: the new balance in points, formatted; 2: the new balance as money, formatted. */
-        __('New balance: %1$s points (%2$s)', 'yayloyalty'),
-        points,
-        money,
-      )
-    : sprintf(
-        /* translators: %s: the new balance in points, formatted. */
-        __('New balance: %s points', 'yayloyalty'),
-        points,
-      );
-}
-
-export function addsToLiability(money: string): string {
+/** "New balance: 10,350 points" */
+export function newBalanceLine(points: string): string {
   return sprintf(
-    /* translators: %s: an amount of money, formatted. */
-    __('Adds %s to your outstanding liability.', 'yayloyalty'),
-    money,
+    /* translators: %s: the new balance in points, formatted. */
+    __('New balance: %s points', 'yayloyalty'),
+    points,
   );
 }
-export function reducesLiability(money: string): string {
+
+export function addsToLiability(points: string): string {
   return sprintf(
-    /* translators: %s: an amount of money, formatted. */
-    __('Reduces your outstanding liability by %s.', 'yayloyalty'),
-    money,
+    /* translators: %s: number of points, formatted. */
+    __('Adds %s points to your outstanding liability.', 'yayloyalty'),
+    points,
+  );
+}
+export function reducesLiability(points: string): string {
+  return sprintf(
+    /* translators: %s: number of points, formatted. */
+    __('Reduces your outstanding liability by %s points.', 'yayloyalty'),
+    points,
   );
 }
 
@@ -101,38 +84,15 @@ export function negativeOutcomeSpendable(name: string, coversAmount: string): st
     coversAmount,
   );
 }
-export function negativeOutcomeLiability(money: string): string {
+export function negativeOutcomeLiability(points: string): string {
   return sprintf(
-    /* translators: %s: an amount of money, formatted. */
-    __('Reduces your outstanding liability by %s. Balances below zero are not counted as liability.', 'yayloyalty'),
-    money,
+    /* translators: %s: number of points, formatted. */
+    __(
+      'Reduces your outstanding liability by %s points. Balances below zero are not counted as liability.',
+      'yayloyalty',
+    ),
+    points,
   );
-}
-
-// Typo guard
-
-export function typoGuardWarning(amount: string, lifetimeEarned: string): string {
-  return sprintf(
-    /* translators: 1: amount entered, 2: the customer's lifetime total, 3: the guard's multiplier */
-    __("%1$s points is more than %3$d times this customer's lifetime total (%2$s).", 'yayloyalty'),
-    amount,
-    lifetimeEarned,
-    TYPO_GUARD_MULTIPLIER,
-  );
-}
-/** "Yes, add 20,000,000 points" — the typo guard's checkbox. */
-export function typoGuardConfirm(direction: 'add' | 'remove', amount: string): string {
-  return direction === 'remove'
-    ? sprintf(
-        /* translators: %s: number of points, formatted. */
-        __('Yes, remove %s points', 'yayloyalty'),
-        amount,
-      )
-    : sprintf(
-        /* translators: %s: number of points, formatted. */
-        __('Yes, add %s points', 'yayloyalty'),
-        amount,
-      );
 }
 
 // Reason and options
@@ -169,7 +129,6 @@ export const NOTIFY_BY_EMAIL_LABEL = () => __('Notify the customer by email', 'y
 // Submit hint
 
 export const SUBMIT_HINT_PREFIX = () => __('To continue:', 'yayloyalty');
-export const SUBMIT_HINT_CONFIRM = () => __('confirm the amount', 'yayloyalty');
 export const SUBMIT_HINT_ACKNOWLEDGE = () => __('acknowledge the total', 'yayloyalty');
 export const SUBMIT_HINT_REASON = () => __('add a reason', 'yayloyalty');
 

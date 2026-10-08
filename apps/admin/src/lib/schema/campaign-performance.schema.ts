@@ -65,8 +65,6 @@ export const campaignPerformanceSchema = z.object({
     avg_points_per_order: z.number().int().nullable(),
     /** Always null until the earning engine stores the scored base amount. */
     avg_order_subtotal: z.number().nullable(),
-    /** Purchase only; null when the store has no configured points-to-currency rate. */
-    liability_amount: z.number().nullable(),
   }),
   /** One entry per day in `window`, zero-filled. */
   daily: z.array(
@@ -84,7 +82,6 @@ export const campaignPerformanceSchema = z.object({
       to: z.string(),
       orders: z.number().int(),
       points: z.number().int(),
-      liability_amount: z.number().nullable(),
     })
     .nullable(),
 });

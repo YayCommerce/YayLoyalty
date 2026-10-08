@@ -30,15 +30,6 @@ export const BALANCE_AT_DELETION_SUBLINE = () => __('no longer spendable', 'yayl
 /** No deadline once expiry has stopped. */
 export const EXPIRY_STOPPED_SUBLINE = () => __('expiry stopped', 'yayloyalty');
 
-/** The balance's currency value: "≈ $12.50". */
-export function approxMoney(money: string): string {
-  return sprintf(
-    /* translators: %s: a formatted currency amount. */
-    __('≈ %s', 'yayloyalty'),
-    money,
-  );
-}
-
 /** Countdown under the expiry date. */
 export function expiresInDays(days: number): string {
   if (days === 0) {

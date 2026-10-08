@@ -171,10 +171,8 @@ final class DashboardRestController extends AbstractRestController {
                         'liability'       => [
                             'type'       => 'object',
                             'properties' => [
-                                'points'                   => [ 'type' => 'integer' ],
-                                'currency_amount'          => [ 'type' => [ 'number', 'null' ] ],
-                                'points_per_currency_unit' => [ 'type' => 'number' ],
-                                'prev_delta_pct'           => [ 'type' => [ 'number', 'null' ] ],
+                                'points'         => [ 'type' => 'integer' ],
+                                'prev_delta_pct' => [ 'type' => [ 'number', 'null' ] ],
                             ],
                         ],
                         'redemption_rate' => [

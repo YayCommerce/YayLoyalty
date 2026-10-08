@@ -9,20 +9,13 @@ use YayLoyalty\Utils\Table;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Read-only dashboard aggregates across ledger, customers, rewards, orders
+ * Read-only dashboard aggregates across ledger, customers, orders
  * and wp_users. Not an AbstractRepository (that is one table) and writes
  * nothing. Every ledger predicate carries `type IN (...)` so the
  * type_created index range-scans. Windows are UTC MySQL strings, `from`
  * inclusive, `to` exclusive.
  */
 class DashboardRepository {
-
-    /** @var RewardRepository|null */
-    private $rewards;
-
-    public function __construct( ?RewardRepository $rewards = null ) {
-        $this->rewards = $rewards;
-    }
 
     /** Customers whose loyalty row existed before $before_utc. */
     public function count_members( string $before_utc ): int {
@@ -223,11 +216,6 @@ class DashboardRepository {
         );
 
         return is_object( $result ) && isset( $result->total ) ? (int) $result->total : 0;
-    }
-
-    /** The liability valuation rate, from RewardRepository so every money figure shares one rate. */
-    public function points_per_currency_unit(): float {
-        return ( $this->rewards ?? new RewardRepository() )->points_per_currency_unit();
     }
 
     /**

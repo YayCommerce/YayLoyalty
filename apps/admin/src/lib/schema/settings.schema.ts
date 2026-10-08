@@ -10,8 +10,6 @@ export const settingsSchema = z.object({
   advanced: z.object({
     points_label_singular: z.string(),
     points_label_plural: z.string(),
-    /** Largest manual adjustment a non-administrator may make; null = unlimited. */
-    adjustment_ceiling: z.number().int().min(1).nullable(),
     /** Most points one customer earns automatically per site day; null = no limit. Enforced in Pro. */
     max_points_per_day: z.number().int().min(1).nullable(),
   }),

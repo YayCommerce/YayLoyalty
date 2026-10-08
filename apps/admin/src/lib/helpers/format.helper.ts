@@ -80,7 +80,7 @@ export function formatStoreDecimal(value: number, maxDecimals: number): string {
 
 /**
  * A money amount in the store's currency format. Formats only: pass a value
- * already rounded by its owner (e.g. `pointsToCurrency`), since `toFixed`
+ * already rounded by its owner, since `toFixed`
  * rounds the binary float and can land a half-cent the wrong way.
  */
 export function parseWPCurrency(price: string | number) {
