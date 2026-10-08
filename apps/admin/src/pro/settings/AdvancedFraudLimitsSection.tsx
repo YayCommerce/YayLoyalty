@@ -26,7 +26,7 @@ export function AdvancedFraudLimitsSection() {
         <Label htmlFor={FIELD_ID}>{__('Daily limit per customer', 'yayloyalty')}</Label>
         <Controller
           control={control}
-          name="advanced.max_points_per_day"
+          name="max_points_per_day"
           render={({ field }) => (
             <OptionalCountInput
               id={FIELD_ID}

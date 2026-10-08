@@ -24,18 +24,14 @@ class SettingsHelper {
 
     public static function get_default_settings(): array {
         return [
-            'general'  => [
-                'enabled'        => true,
-                // Role slugs that never earn, read by Engine\Earning\ProgramGate.
-                'excluded_roles' => [],
-            ],
-            'advanced' => [
-                'points_label_singular' => __( 'Point', 'yayloyalty' ),
-                'points_label_plural'   => __( 'Points', 'yayloyalty' ),
-                // null means no limit. Enforced by Pro's DailyEarningLimit.
-                'max_points_per_day'    => null,
-            ],
-            'emails'   => [
+            'enabled'               => true,
+            // Role slugs that never earn, read by Engine\Earning\ProgramGate.
+            'excluded_roles'        => [],
+            'points_label_singular' => __( 'Point', 'yayloyalty' ),
+            'points_label_plural'   => __( 'Points', 'yayloyalty' ),
+            // null means no limit. Enforced by Pro's DailyEarningLimit.
+            'max_points_per_day'    => null,
+            'emails'                => [
                 // Weekly per-customer cap on loyalty emails. null means no cap. Engine\Emails\EmailThrottle enforces it.
                 'throttle_per_week' => 3,
             ],
@@ -43,22 +39,18 @@ class SettingsHelper {
     }
 
     /**
-     * Type map by group then field. Anything absent is dropped in both directions.
+     * Type map: a string is a root field's type, an array is a group's fields. Anything absent is dropped in both directions.
      *
-     * @return array<string, array<string, string>>
+     * @return array<string, string|array<string, string>>
      */
     private static function schema(): array {
         return [
-            'general'  => [
-                'enabled'        => 'bool',
-                'excluded_roles' => 'slug_list',
-            ],
-            'advanced' => [
-                'points_label_singular' => 'points_label',
-                'points_label_plural'   => 'points_label',
-                'max_points_per_day'    => 'limit',
-            ],
-            'emails'   => [
+            'enabled'               => 'bool',
+            'excluded_roles'        => 'slug_list',
+            'points_label_singular' => 'points_label',
+            'points_label_plural'   => 'points_label',
+            'max_points_per_day'    => 'limit',
+            'emails'                => [
                 'throttle_per_week' => 'limit',
             ],
         ];
@@ -97,8 +89,8 @@ class SettingsHelper {
         // Per field, not recursive: a recursive merge would splice a stored list into the default list by index.
         $merged = self::get_default_settings();
 
-        foreach ( self::sanitize_output( $saved ) as $group => $fields ) {
-            $merged[ $group ] = array_replace( $merged[ $group ], $fields );
+        foreach ( self::sanitize_output( $saved ) as $key => $value ) {
+            $merged[ $key ] = is_array( self::schema()[ $key ] ) ? array_replace( $merged[ $key ], $value ) : $value;
         }
 
         $merged['schema_version'] = isset( $saved['schema_version'] )
@@ -110,14 +102,14 @@ class SettingsHelper {
 
     /** The merchant's point label for $points: singular at exactly 1, plural otherwise. */
     public static function points_label( int $points ): string {
-        $advanced = self::get_settings()['advanced'];
+        $settings = self::get_settings();
 
-        return 1 === $points ? $advanced['points_label_singular'] : $advanced['points_label_plural'];
+        return 1 === $points ? $settings['points_label_singular'] : $settings['points_label_plural'];
     }
 
     /** The merchant's plural label, for a sentence with no count: "View your Points". */
     public static function points_label_plural(): string {
-        return self::get_settings()['advanced']['points_label_plural'];
+        return self::get_settings()['points_label_plural'];
     }
 
     /** "50 Points": the amount in the store's number format with the merchant's label, in an order translators set. */
@@ -146,9 +138,13 @@ class SettingsHelper {
         $saved  = get_option( self::OPTION_SETTINGS, [] );
         $stored = self::sanitize_output( is_array( $saved ) ? $saved : [] );
 
-        foreach ( self::validate( $settings ) as $group => $fields ) {
-            foreach ( $fields as $field => $value ) {
-                $stored[ $group ][ $field ] = $value;
+        foreach ( self::validate( $settings ) as $key => $value ) {
+            if ( is_array( self::schema()[ $key ] ) ) {
+                foreach ( $value as $field => $field_value ) {
+                    $stored[ $key ][ $field ] = $field_value;
+                }
+            } else {
+                $stored[ $key ] = $value;
             }
         }
 
@@ -166,17 +162,25 @@ class SettingsHelper {
      * @param array<string, mixed> $input
      */
     public static function is_valid( array $input ): bool {
-        foreach ( self::schema() as $group => $fields ) {
-            foreach ( $fields as $field => $type ) {
-                if ( 'limit' !== $type || ! isset( $input[ $group ] ) || ! is_array( $input[ $group ] ) || ! array_key_exists( $field, $input[ $group ] ) ) {
-                    continue;
-                }
+        return self::limits_valid( $input, self::schema() );
+    }
 
-                $value = $input[ $group ][ $field ];
+    /**
+     * @param array<string, mixed>                        $input
+     * @param array<string, string|array<string, string>> $schema
+     */
+    private static function limits_valid( array $input, array $schema ): bool {
+        foreach ( $schema as $key => $type ) {
+            if ( ! array_key_exists( $key, $input ) ) {
+                continue;
+            }
 
-                if ( null !== $value && ! self::is_limit( $value ) ) {
+            if ( is_array( $type ) ) {
+                if ( is_array( $input[ $key ] ) && ! self::limits_valid( $input[ $key ], $type ) ) {
                     return false;
                 }
+            } elseif ( 'limit' === $type && null !== $input[ $key ] && ! self::is_limit( $input[ $key ] ) ) {
+                return false;
             }
         }
 
@@ -195,7 +199,7 @@ class SettingsHelper {
      * @return array<string, mixed>
      */
     public static function validate( array $input ): array {
-        return self::apply_schema( $input );
+        return self::apply_schema( $input, self::schema() );
     }
 
     /**
@@ -205,35 +209,37 @@ class SettingsHelper {
      * @return array<string, mixed>
      */
     public static function sanitize_output( array $stored ): array {
-        return self::apply_schema( $stored );
+        return self::apply_schema( $stored, self::schema() );
     }
 
     /**
-     * @param array<string, mixed> $data
+     * @param array<string, mixed>                        $data
+     * @param array<string, string|array<string, string>> $schema
      * @return array<string, mixed>
      */
-    private static function apply_schema( array $data ): array {
+    private static function apply_schema( array $data, array $schema ): array {
         $clean = [];
 
-        foreach ( self::schema() as $group => $fields ) {
-            if ( ! isset( $data[ $group ] ) || ! is_array( $data[ $group ] ) ) {
+        foreach ( $schema as $key => $type ) {
+            if ( ! array_key_exists( $key, $data ) ) {
                 continue;
             }
 
-            foreach ( $fields as $field => $type ) {
-                if ( ! array_key_exists( $field, $data[ $group ] ) ) {
-                    continue;
+            if ( is_array( $type ) ) {
+                if ( is_array( $data[ $key ] ) ) {
+                    $clean[ $key ] = self::apply_schema( $data[ $key ], $type );
                 }
-
-                $value = self::coerce( $data[ $group ][ $field ], $type );
-
-                // An empty label is never kept: on read the translated default stands, on write the stored label does.
-                if ( 'points_label' === $type && '' === $value ) {
-                    continue;
-                }
-
-                $clean[ $group ][ $field ] = $value;
+                continue;
             }
+
+            $value = self::coerce( $data[ $key ], $type );
+
+            // An empty label is never kept: on read the translated default stands, on write the stored label does.
+            if ( 'points_label' === $type && '' === $value ) {
+                continue;
+            }
+
+            $clean[ $key ] = $value;
         }
 
         return $clean;

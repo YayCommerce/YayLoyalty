@@ -41,7 +41,7 @@ final class DailyEarningLimit {
      */
     public function clamp( $points, string $trigger, Context $ctx ): int {
         $points  = is_numeric( $points ) ? (int) $points : 0;
-        $cap     = SettingsHelper::get_settings()['advanced']['max_points_per_day'];
+        $cap     = SettingsHelper::get_settings()['max_points_per_day'];
         $user_id = $ctx->get_user_id();
 
         if ( null === $cap || null === $user_id || $points <= 0 ) {

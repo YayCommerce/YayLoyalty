@@ -21,13 +21,13 @@ type LabelField = 'points_label_singular' | 'points_label_plural';
 function PointsLabelField({ name, label }: { name: LabelField; label: string }) {
   const { register, formState } = useFormContext<AdvancedSettingsFormValues>();
   const id = `yayloyalty-${name.replaceAll('_', '-')}`;
-  const invalid = !!formState.errors.advanced?.[name];
+  const invalid = !!formState.errors[name];
 
   return (
     <Field data-invalid={invalid} className="w-40">
       <FieldLabel htmlFor={id}>{label}</FieldLabel>
       <FieldContent>
-        <Input id={id} aria-invalid={invalid} {...register(`advanced.${name}`)} />
+        <Input id={id} aria-invalid={invalid} {...register(name)} />
         {invalid && <FieldError>{POINTS_NAMING_ERROR()}</FieldError>}
       </FieldContent>
     </Field>
@@ -42,7 +42,7 @@ export function AdvancedPointsNamingCard() {
   const { control } = useFormContext<AdvancedSettingsFormValues>();
   const [singular, plural] = useWatch({
     control,
-    name: ['advanced.points_label_singular', 'advanced.points_label_plural'],
+    name: ['points_label_singular', 'points_label_plural'],
   });
 
   const sentences = [
