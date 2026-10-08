@@ -17,6 +17,7 @@ class LocalizeHelper {
             [
                 'settings' => SettingsHelper::get_settings(),
                 'design'   => DesignHelper::get_design(),
+                'setup'    => SetupHelper::localized_state(),
             ],
             Capabilities::payload()
         );

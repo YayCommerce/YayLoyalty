@@ -4,6 +4,7 @@ namespace YayLoyalty\Database;
 use YayLoyalty\Access\Capabilities;
 use YayLoyalty\Database\Schema\AbstractTableSchema;
 use YayLoyalty\Enums\ActivityEvent;
+use YayLoyalty\Helpers\SetupHelper;
 use YayLoyalty\Utils\Log;
 use YayLoyalty\Utils\Table;
 
@@ -48,6 +49,9 @@ final class Installer {
 
     /** Runs dbDelta for every schema, seeds built-ins, then stamps the version. Idempotent. */
     public static function install(): void {
+        // Read before anything else: only a site that never stamped a version is a fresh install.
+        $is_fresh = false === get_option( self::OPTION_DB_VERSION );
+
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
         foreach ( self::schemas() as $schema ) {
@@ -62,6 +66,8 @@ final class Installer {
         self::run_migrations();
 
         self::verify();
+
+        SetupHelper::on_install( $is_fresh );
 
         // Stamped last so a crash mid-install retries on the next request.
         update_option( self::OPTION_DB_VERSION, YAYLOYALTY_VERSION );
