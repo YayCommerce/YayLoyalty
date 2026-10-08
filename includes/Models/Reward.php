@@ -10,8 +10,8 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * A way to spend points. Like Campaign, it is mutable, has no service, and its invariants are validation.
- * `conditions` are facts about the customer being evaluated, such as redemption_count. `config` holds
- * properties of the reward itself, such as the global max_total cap. Only Installer writes rows so far.
+ * `conditions` are facts about the customer being evaluated, such as user_role. `config` holds
+ * properties of the reward itself, such as min_order. Only Installer writes rows so far.
  */
 class Reward extends AbstractModel {
 
@@ -204,7 +204,8 @@ class Reward extends AbstractModel {
      * Per-type config schema, key => spec: what `config` may hold and what config_is_valid() checks.
      * Lite declares flexible_discount. Pro types add theirs through the filter.
      * Spec types: bool, string, int|number|nullable_int|nullable_number [min, max], enum|enum_list [values],
-     * currency, product. `required => true` makes a key mandatory.
+     * currency, product. `required => true` makes a key mandatory. `exclusive_min` is a strict lower
+     * bound: a nullable cap uses it at 0, so null is no cap and a set cap is above 0.
      *
      * @return array<string, array<string, array<string, mixed>>>
      */
@@ -224,8 +225,8 @@ class Reward extends AbstractModel {
                     'min'  => 0,
                 ],
                 'max_points_per_order'     => [
-                    'type' => 'nullable_number',
-                    'min'  => 0,
+                    'type'          => 'nullable_number',
+                    'exclusive_min' => 0,
                 ],
                 'max_percent_of_subtotal'  => [
                     'type' => 'nullable_number',
@@ -245,8 +246,8 @@ class Reward extends AbstractModel {
                 ],
                 // Global redemption cap, null for unlimited. Stored, but nothing enforces it yet.
                 'max_total'                => [
-                    'type' => 'nullable_number',
-                    'min'  => 0,
+                    'type'          => 'nullable_number',
+                    'exclusive_min' => 0,
                 ],
             ],
         ];
@@ -262,7 +263,8 @@ class Reward extends AbstractModel {
     /**
      * Whether a config is acceptable for a type: unknown keys, wrong types and
      * a missing `required` key fail. A type this build has no schema for
-     * came from another build and is accepted unjudged.
+     * came from another build and is accepted unjudged. The stored
+     * schema_version stamp is skipped: a config read back from the API carries it.
      */
     public static function config_is_valid( string $type, array $config ): bool {
         $schema = self::config_schema()[ $type ] ?? null;
@@ -272,6 +274,10 @@ class Reward extends AbstractModel {
         }
 
         foreach ( $config as $key => $value ) {
+            if ( Json::SCHEMA_VERSION_KEY === $key ) {
+                continue;
+            }
+
             if ( ! isset( $schema[ $key ] ) || ! self::value_matches_spec( $value, $schema[ $key ] ) ) {
                 return false;
             }
@@ -351,6 +357,10 @@ class Reward extends AbstractModel {
      * @param array<string, mixed> $spec
      */
     private static function is_within_bounds( float $value, array $spec ): bool {
+        if ( isset( $spec['exclusive_min'] ) && $value <= (float) $spec['exclusive_min'] ) {
+            return false;
+        }
+
         if ( isset( $spec['min'] ) && $value < (float) $spec['min'] ) {
             return false;
         }

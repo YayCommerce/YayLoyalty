@@ -32,6 +32,7 @@ body{background:#f7f7f7;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sa
 .yl-preview-header span:last-child{margin-left:auto}
 .yl-preview-lines{display:flex;flex-direction:column;gap:10px;padding:24px 20px}
 .yl-preview-lines i{display:block;height:12px;background:#e6e6e6}
+[data-yl-highlighted]{outline:2px solid #f97316;outline-offset:2px;border-radius:4px}
 CSS;
 
     /**

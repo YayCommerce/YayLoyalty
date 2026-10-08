@@ -87,7 +87,7 @@ final class RewardRouteTest extends IntegrationTestCase {
         $this->assertSame( 6, $data['sort_order'] );
         $this->assertSame( 500, $data['cost_points'] );
         $this->assertSame( get_current_user_id(), $data['created_by'] );
-        $this->assertSame( 'redemption_count', $data['conditions'][0]['type'] );
+        $this->assertSame( 'user_role', $data['conditions'][0]['type'] );
     }
 
     public function test_create_numbers_a_colliding_slug_and_honours_a_draft_status(): void {
@@ -161,8 +161,8 @@ final class RewardRouteTest extends IntegrationTestCase {
             'bad conditions' => [
                 'conditions' => [
                     [
-                        'type'     => 'redemption_count',
-                        'operator' => 'gte',
+                        'type'     => 'lifetime_points',
+                        'operator' => 'in',
                         'value'    => 1,
                     ],
                 ],
@@ -534,28 +534,15 @@ final class RewardRouteTest extends IntegrationTestCase {
                 'min_order'          => 25,
                 'coupon_expiry_days' => 60,
                 'exclude_sale_items' => false,
-                'max_total'          => null,
             ],
             'conditions'  => [
                 [
-                    'type'     => 'redemption_count',
-                    'operator' => 'lt',
-                    'value'    => 1,
+                    'type'     => 'user_role',
+                    'operator' => 'in',
+                    'value'    => [ 'customer' ],
                 ],
             ],
         ];
-    }
-
-    /** @param array<string, mixed> $body */
-    private function send( string $method, string $route, array $body = [] ): \WP_REST_Response {
-        $request = new \WP_REST_Request( $method, $route );
-
-        if ( [] !== $body ) {
-            $request->set_header( 'Content-Type', 'application/json' );
-            $request->set_body( (string) wp_json_encode( $body ) );
-        }
-
-        return rest_do_request( $request );
     }
 
     private function insert_reward( string $name, string $slug, string $type, int $sort_order, ?int $cost_points, bool $is_builtin = false ): int {
@@ -623,19 +610,6 @@ final class RewardRouteTest extends IntegrationTestCase {
         global $wpdb;
 
         return (int) $wpdb->get_var( 'SELECT COUNT(*) FROM `' . esc_sql( ( new RewardRepository() )->table() ) . '`' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.NotPrepared
-    }
-
-    private function act_as_admin(): void {
-        $admins = get_users(
-            [
-                'role'   => 'administrator',
-                'number' => 1,
-                'fields' => 'ID',
-            ]
-        );
-        $this->assertNotEmpty( $admins, 'The site needs one administrator to act as the caller.' );
-
-        wp_set_current_user( (int) $admins[0] );
     }
 
     /** @return array<string, mixed> */

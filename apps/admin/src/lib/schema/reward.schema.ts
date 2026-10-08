@@ -120,25 +120,6 @@ export function normalizeRewardConditions(conditions: Reward['conditions']): Rew
   );
 }
 
-/**
- * The per-customer claim cap the `redemption_count` rule expresses, or null
- * when there is none a merchant can be shown. `lte N` is the same cap as
- * `lt N + 1`; `eq` has no cap reading.
- */
-export function claimsPerCustomer(conditions: RewardCondition[]): number | null {
-  const rule = conditions.find((condition) => condition.type === 'redemption_count');
-
-  if (!rule || typeof rule.value !== 'number') {
-    return null;
-  }
-
-  if (rule.operator === 'lt') {
-    return rule.value;
-  }
-
-  return rule.operator === 'lte' ? rule.value + 1 : null;
-}
-
 /** The editable fields, unrefined so the editor form can pick from them. */
 export const rewardFieldsSchema = z.object({
   name: z.string().trim().min(1, __('A reward needs a name.', 'yayloyalty')),
@@ -158,9 +139,9 @@ export type RewardUpdateInput = z.infer<typeof rewardFieldsSchema>;
 export type RewardCreateInput = RewardUpdateInput & { type: CatalogRewardType };
 
 const moneySchema = z.number().min(0).nullable();
+/** A cap: null is no cap, and a set cap is above 0 (the PHP spec's `exclusive_min: 0`). */
+const moneyCapSchema = z.number().positive().nullable();
 const couponExpiryDaysSchema = z.number().int().min(1).nullable();
-/** A claim count on catalog types, unlike flexible_discount's money cap. */
-const claimLimitSchema = z.number().int().min(1).nullable();
 
 /**
  * Mirrors Reward::config_schema() (flexible_discount) and
@@ -172,12 +153,12 @@ export const REWARD_CONFIG_SCHEMAS = {
     currency: z.string(),
     points_per_currency_unit: z.number().min(0),
     min_points: z.number().int().min(0),
-    max_points_per_order: moneySchema,
+    max_points_per_order: moneyCapSchema,
     max_percent_of_subtotal: moneySchema,
     increment: z.number().int().min(1),
     show_on: z.array(z.enum(['cart', 'checkout'])),
     refund_policy: z.enum(['proportional', 'full', 'none']),
-    max_total: moneySchema,
+    max_total: moneyCapSchema,
   }),
   fixed_coupon: z.object({
     currency: z.string(),
@@ -185,25 +166,22 @@ export const REWARD_CONFIG_SCHEMAS = {
     min_order: moneySchema,
     coupon_expiry_days: couponExpiryDaysSchema,
     exclude_sale_items: z.boolean(),
-    max_total: claimLimitSchema,
   }),
   percent_coupon: z.object({
     percent: z
       .number()
       .min(1, __('The discount must be between 1% and 100%.', 'yayloyalty'))
       .max(100, __('The discount must be between 1% and 100%.', 'yayloyalty')),
-    max_discount: moneySchema,
+    max_discount: moneyCapSchema,
     currency: z.string(),
     min_order: moneySchema,
     coupon_expiry_days: couponExpiryDaysSchema,
     exclude_sale_items: z.boolean(),
-    max_total: claimLimitSchema,
   }),
   free_shipping: z.object({
     min_order: moneySchema,
     currency: z.string(),
     coupon_expiry_days: couponExpiryDaysSchema,
-    max_total: claimLimitSchema,
   }),
   free_product: z.object({
     product_id: z
@@ -213,7 +191,6 @@ export const REWARD_CONFIG_SCHEMAS = {
     variation_id: z.number().int().min(1).nullable(),
     qty: z.number().int().min(1),
     coupon_expiry_days: couponExpiryDaysSchema,
-    max_total: claimLimitSchema,
   }),
 } satisfies Record<RewardType, z.ZodType>;
 

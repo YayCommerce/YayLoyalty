@@ -9,7 +9,6 @@ import { numberConfig } from '@/lib/helpers/reward.helper';
 import { isCampaignScheduleInOrder } from '@/lib/schema/campaign.schema';
 import {
   CatalogRewardType,
-  claimsPerCustomer,
   isCatalogRewardType,
   normalizeRewardConditions,
   Reward,
@@ -25,23 +24,26 @@ import type { EditorSaveIntent } from '@/hooks/useEditorSave';
 import { templateTitle } from '../reward-labels';
 
 /**
- * The form's fields. No `status`: the button pressed decides it
- * (resolveSaveStatus). No `conditions`: the editor manages only the
- * per-customer claim cap, merged back into the stored list on save so any
- * other stored rule survives untouched.
+ * The form's fields. No `conditions`: the editor shows none, and a save sends
+ * the stored list back untouched.
  */
 export interface RewardFormValues {
   name: string;
+  /** Never archived: archiving is its own flow; Save draft overrides it (resolveSaveStatus). */
+  status: EditableRewardStatus;
   /** Null only for flexible_discount, whose customer picks the amount. */
   cost_points: number | null;
   config: Record<string, unknown>;
-  /** Written as `redemption_count lt N`; null = unlimited. */
-  claims_per_customer: number | null;
   starts_at: string | null;
   ends_at: string | null;
 }
 
 export type RewardSaveIntent = EditorSaveIntent;
+
+/** RewardStatus minus archived, which only the archive dialog writes. */
+export const EDITABLE_REWARD_STATUSES = ['active', 'paused', 'draft'] as const;
+
+export type EditableRewardStatus = (typeof EDITABLE_REWARD_STATUSES)[number];
 
 /** Config a new reward of each catalog type starts from, filled into rows missing a key too. */
 function seedConfig(type: CatalogRewardType, currency: string): Record<string, unknown> {
@@ -53,7 +55,6 @@ function seedConfig(type: CatalogRewardType, currency: string): Record<string, u
         min_order: 25,
         coupon_expiry_days: 60,
         exclude_sale_items: false,
-        max_total: null,
       };
     case 'percent_coupon':
       return {
@@ -63,12 +64,11 @@ function seedConfig(type: CatalogRewardType, currency: string): Record<string, u
         min_order: null,
         coupon_expiry_days: 30,
         exclude_sale_items: false,
-        max_total: null,
       };
     case 'free_shipping':
-      return { min_order: 25, currency, coupon_expiry_days: 30, max_total: null };
+      return { min_order: 25, currency, coupon_expiry_days: 30 };
     case 'free_product':
-      return { product_id: null, variation_id: null, qty: 1, coupon_expiry_days: 60, max_total: null };
+      return { product_id: null, variation_id: null, qty: 1, coupon_expiry_days: 60 };
   }
 }
 
@@ -113,9 +113,9 @@ export function templateExample(type: CatalogRewardType): string {
 export function rewardCreateSeed(type: CatalogRewardType, currency: string): RewardFormValues {
   return {
     name: templateTitle(type),
+    status: 'active',
     cost_points: SEED_COST_POINTS[type],
     config: seedConfig(type, currency),
-    claims_per_customer: null,
     starts_at: null,
     ends_at: null,
   };
@@ -128,10 +128,11 @@ export function rewardToFormValues(reward: Reward, storeCurrency: string): Rewar
 
   return {
     name: reward.name,
+    // An archived reward is restored by Save, as before the status field existed.
+    status: reward.status === 'archived' ? 'active' : reward.status,
     cost_points: reward.cost_points,
     // Cloned: form state must never share references with the query cache.
     config: structuredClone({ ...base, ...reward.config }),
-    claims_per_customer: claimsPerCustomer(normalizeRewardConditions(reward.conditions)),
     starts_at: reward.starts_at,
     ends_at: reward.ends_at,
   };
@@ -149,44 +150,16 @@ export function duplicateToFormValues(source: Reward, storeCurrency: string): Re
   };
 }
 
-/**
- * Conditions with the claim cap set to `next`. Unchanged input returns the
- * list as stored, so a rule the editor cannot show (e.g. `eq`) is never
- * dropped by a save that did not touch it.
- */
-export function withClaimsPerCustomer(conditions: RewardCondition[], next: number | null): RewardCondition[] {
-  if (next === claimsPerCustomer(conditions)) {
-    return conditions;
-  }
-
-  const others = conditions.filter((condition) => condition.type !== 'redemption_count');
-
-  return next === null ? others : [...others, { type: 'redemption_count', operator: 'lt', value: next }];
+/** Status a save writes: Save draft drafts, Save writes the status field. The built-in is never offered Save draft. */
+export function resolveSaveStatus(values: RewardFormValues, intent: RewardSaveIntent): RewardStatus {
+  return intent === 'draft' ? 'draft' : values.status;
 }
 
-/**
- * Status a save writes: Save draft drafts; Save publishes a new, draft or
- * archived reward and keeps an active or paused one as it is. The built-in
- * always keeps its status — it is paused from its own switch, never drafted.
- */
-export function resolveSaveStatus(reward: Reward | null, intent: RewardSaveIntent): RewardStatus {
-  if (reward?.is_builtin) {
-    return reward.status;
-  }
-
-  if (intent === 'draft') {
-    return 'draft';
-  }
-
-  return reward?.status === 'active' || reward?.status === 'paused' ? reward.status : 'active';
-}
-
-/** Which of the side area's buttons a reward offers; Save and Cancel are always shown. */
+/** Which of the side area's buttons a reward offers; Save and Cancel are always shown. The built-in is never archived. */
 export function rewardEditorActions(reward: Reward | null) {
   return {
     canSaveDraft: reward === null || (reward.status === 'draft' && !reward.is_builtin),
-    showArchive: reward !== null && reward.status !== 'archived',
-    isArchiveDisabled: reward?.is_builtin ?? false,
+    showArchive: reward !== null && !reward.is_builtin && reward.status !== 'archived',
   };
 }
 
@@ -196,7 +169,7 @@ export function formValuesToUpdateInput(
   reward: Reward,
   intent: RewardSaveIntent,
 ): RewardUpdateInput {
-  return formValuesToBody(values, reward, normalizeRewardConditions(reward.conditions), intent);
+  return formValuesToBody(values, normalizeRewardConditions(reward.conditions), intent);
 }
 
 /**
@@ -209,21 +182,20 @@ export function formValuesToCreateInput(
   intent: RewardSaveIntent,
   sourceConditions: RewardCondition[] = [],
 ): RewardCreateInput {
-  return { type, ...formValuesToBody(values, null, sourceConditions, intent) };
+  return { type, ...formValuesToBody(values, sourceConditions, intent) };
 }
 
 function formValuesToBody(
   values: RewardFormValues,
-  reward: Reward | null,
   storedConditions: RewardCondition[],
   intent: RewardSaveIntent,
 ): RewardUpdateInput {
   return {
     name: values.name,
-    status: resolveSaveStatus(reward, intent),
+    status: resolveSaveStatus(values, intent),
     cost_points: values.cost_points,
     config: values.config,
-    conditions: withClaimsPerCustomer(storedConditions, values.claims_per_customer),
+    conditions: storedConditions,
     starts_at: values.starts_at,
     ends_at: values.ends_at,
   };
@@ -245,7 +217,7 @@ export function rewardFormSchema(type: RewardType) {
           ? z.null()
           : z.number({ invalid_type_error: costMessage }).int().min(1, costMessage),
       config: REWARD_CONFIG_SCHEMAS[type],
-      claims_per_customer: z.number().int().min(1).nullable(),
+      status: z.enum(EDITABLE_REWARD_STATUSES),
     })
     .refine((data) => isCampaignScheduleInOrder(data.starts_at, data.ends_at), {
       message: __('The reward must end after it starts.', 'yayloyalty'),

@@ -49,9 +49,6 @@ export type AdminData = {
   design: Design;
   /** From Capabilities::payload(). Cosmetic only; every route re-checks server-side. */
   capabilities: string[];
-  /** Per-adjustment limit for non-administrators; 0 = unlimited. */
-  ceiling: number;
-  isAdministrator: boolean;
   /** Saved segments, Pro-only hence optional. Read via readSegmentsFromLocalize(), never directly. */
   segments?: {
     name: string;

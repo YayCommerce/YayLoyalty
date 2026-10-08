@@ -18,9 +18,9 @@ import { validateConditionValue } from './CampaignEditorConditions';
 
 /**
  * The form's fields: CampaignUpdateInput, in both modes. `trigger` lives outside the form, in
- * CampaignEditorContext, because changing it also resets `config` and `conditions`.
- * starts_at/ends_at stay raw UTC strings so the schema's string comparison holds; the Schedule
- * section converts at its inputs only.
+ * CampaignEditorContext, because it is fixed once the chooser picks it.
+ * starts_at/ends_at stay raw UTC strings so the schema's string comparison holds; the schedule
+ * fields convert at their inputs only.
  */
 export type CampaignFormValues = CampaignUpdateInput;
 
@@ -29,7 +29,6 @@ export function campaignToFormValues(campaign: Campaign): CampaignFormValues {
   return {
     name: campaign.name,
     status: campaign.status,
-    priority: campaign.priority,
     // Cloned: form state must never share references with the query cache, or an in-place
     // edit corrupts what other readers have cached.
     config: structuredClone(campaign.config),
@@ -44,15 +43,14 @@ export function formValuesToUpdateInput(values: CampaignFormValues): CampaignUpd
   return values;
 }
 
-/** POST campaigns' body: form values plus the trigger picked in the chooser/§2, carried outside form state. */
+/** POST campaigns' body: form values plus the trigger picked in the chooser, carried outside form state. The server puts it on top of its group; priority is not writable. */
 export function formValuesToCreateInput(values: CampaignFormValues, trigger: LiteCampaignTrigger): CampaignCreateInput {
   return { ...values, trigger };
 }
 
 /**
  * A template's or a source campaign's fields shaped for the create form.
- * `trigger` is separate because it drives config's reset, not a form field
- * — see CampaignFormValues.
+ * `trigger` is separate because it is not a form field — see CampaignFormValues.
  */
 export interface CampaignCreateSeed {
   trigger: LiteCampaignTrigger;
@@ -78,7 +76,6 @@ export function duplicateToFormValues(source: Campaign): CampaignCreateSeed {
         source.name,
       ),
       status: 'draft',
-      priority: source.priority,
       config: structuredClone(isLite ? source.config : DEFAULT_CAMPAIGN_CONFIG.purchase),
       conditions: structuredClone(isLite ? normalizeConditions(source.conditions) : []),
       starts_at: source.starts_at,
@@ -180,10 +177,8 @@ interface CampaignEditorContextValue {
   mode: 'create' | 'edit';
   /** Edit: the loaded row. Create: synthesizeDraftCampaign()'s placeholder. Read `trigger` below, never this one's. */
   campaign: Campaign;
-  /** The trigger driving §3 Reward and §6 Priority. Edit: campaign.trigger, fixed. Create: the merchant's live pick from §2 — read this, never campaign.trigger, so those sections track the radio. */
+  /** The trigger driving Reward. Edit: campaign.trigger. Create: the chooser's pick — read this, never campaign.trigger. */
   trigger: CampaignTrigger;
-  /** Create only: changing the trigger also resets config/conditions, since a stale key would fail Campaign::config_is_valid() on save. */
-  onTriggerChange?: (trigger: LiteCampaignTrigger) => void;
 }
 
 export const CampaignEditorContext = createContext<CampaignEditorContextValue | null>(null);

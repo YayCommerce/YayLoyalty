@@ -56,7 +56,7 @@ class RestAPI {
 
         // Read-only cross-table aggregates: they read the ledger and never write it.
         $rewards   = new RewardRepository();
-        $dashboard = new DashboardRepository( $rewards );
+        $dashboard = new DashboardRepository();
         $campaigns = new CampaignRepository();
 
         // Read-only everywhere below. Only CustomerActivityService writes it.
@@ -66,10 +66,10 @@ class RestAPI {
             new SettingsRestController(),
             new DesignRestController(),
             new EmailsRestController(),
-            // $ledger and $rewards are read-only here.
-            new CustomerRestController( $customers, $ledger_service, $ledger, $rewards, $customer_meta ),
-            // $customers and $rewards are read-only here too.
-            new CustomerAdjustPreviewRestController( $customers, $dashboard, $rewards ),
+            // $ledger is read-only here.
+            new CustomerRestController( $customers, $ledger_service, $ledger, $customer_meta ),
+            // $customers is read-only here too.
+            new CustomerAdjustPreviewRestController( $customers, $dashboard ),
             new LedgerRestController( $ledger ),
             new ActivityRestController( $customer_meta ),
             // Shopper route (storefront launcher): session identity, no capability. $ledger is read-only here.
@@ -80,10 +80,10 @@ class RestAPI {
             new LookupRestController(),
             // Definition table: repository only, no service. $ledger is read-only here too.
             new CampaignRestController( $campaigns, $ledger ),
-            // Same $rewards instance DashboardRepository holds; redemptions read-only, for is_deletable.
+            // Redemptions read-only, for is_deletable.
             new RewardRestController( $rewards, new RedemptionRepository() ),
             new DashboardRestController(
-                new DashboardStats( $dashboard, wc_get_price_decimals() ),
+                new DashboardStats( $dashboard ),
                 new DashboardCache( $dashboard ),
                 new DashboardNotices( $dashboard, $campaigns ),
                 new NoticeDismissals()

@@ -1,7 +1,7 @@
 import { ReactElement, useMemo, useState } from 'react';
 import { UseQueryResult } from '@tanstack/react-query';
 import { HTTPError } from 'ky';
-import { FormProvider, useForm, UseFormReturn } from 'react-hook-form';
+import { Controller, FormProvider, useForm, useFormContext, UseFormReturn, useWatch } from 'react-hook-form';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import { __, sprintf } from '@wordpress/i18n';
@@ -19,17 +19,22 @@ import {
 import { useEditorSave } from '@/hooks/useEditorSave';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BackLink } from '@/components/ui/custom/back-link';
 import { ErrorState } from '@/components/ui/custom/error-state';
+import { ScheduleFields } from '@/components/ui/custom/schedule-fields';
 import { UnsavedChangeDialog } from '@/components/ui/custom/unsaved-changed-dialog';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Field, FieldContent, FieldLabel } from '@/components/ui/field';
+import { Segmented, SegmentedItem } from '@/components/ui/segmented';
 import PageLayout from '@/components/layout/PageLayout';
 import NotFoundPage from '@/pages/404';
+import { statusLabel } from '@/pro/campaigns/campaign-labels';
 import { CampaignStatusBadge } from '@/pro/campaigns/CampaignStatusBadge';
 import { RewardArchiveDialog } from '../archive/RewardArchiveDialog';
 import { templateTitle, typeLabel } from '../reward-labels';
 import {
   duplicateToFormValues,
+  EDITABLE_REWARD_STATUSES,
   formValuesToCreateInput,
   formValuesToUpdateInput,
   rewardCreateSeed,
@@ -39,6 +44,7 @@ import {
   rewardToFormValues,
 } from './reward-editor.form';
 import { RewardEditorSections } from './RewardEditorSections';
+import { RewardEditorSkeleton } from './RewardEditorSkeleton';
 
 /** Edit-mode entry for `rewards/:id/edit`: every non-content state, then the form. */
 export function RewardEditor({ id }: { id: number }) {
@@ -247,7 +253,7 @@ function RewardCreatorForm({ type, duplicateFrom }: { type: CatalogRewardType; d
   );
 }
 
-/** Shared page frame for both modes: back link, header, sections on the left, the four actions on the right. */
+/** Shared page frame for both modes: back link, header, sections on the left, status, schedule and actions on the right. */
 function RewardEditorLayout({
   form,
   onSubmit,
@@ -300,9 +306,9 @@ function RewardEditorLayout({
 }
 
 /**
- * The side area: Save, Save draft, Archive, Cancel and nothing else. Both
- * saves are type="submit" so the resolver runs for a draft too; data-intent
- * says which was pressed.
+ * The side area: status and schedule in one card, then Save, Save draft,
+ * Archive and Cancel. Both saves are type="submit" so the resolver runs for a
+ * draft too; data-intent says which was pressed.
  */
 function RewardEditorActions({
   reward,
@@ -317,48 +323,94 @@ function RewardEditorActions({
   onArchive?: () => void;
   onCancel: () => void;
 }) {
-  const { canSaveDraft, showArchive, isArchiveDisabled } = rewardEditorActions(reward);
+  const { canSaveDraft, showArchive } = rewardEditorActions(reward);
 
   return (
-    <div className="flex w-full flex-col gap-2 lg:sticky lg:top-6 lg:w-72 lg:shrink-0">
-      <Button type="submit" disabled={busy}>
-        {busy ? __('Saving…', 'yayloyalty') : __('Save reward', 'yayloyalty')}
-      </Button>
-      {canSaveDraft && (
-        <Button type="submit" variant="outline" data-intent="draft" disabled={busy} onClick={onDraftIntent}>
-          {__('Save as draft', 'yayloyalty')}
+    <div className="flex w-full flex-col gap-4 lg:sticky lg:top-6 lg:w-85 lg:shrink-0">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">{__('Status and schedule', 'yayloyalty')}</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <RewardEditorStatus isBuiltin={reward?.is_builtin ?? false} />
+          <RewardEditorSchedule />
+        </CardContent>
+      </Card>
+
+      <div className="flex flex-col gap-2">
+        <Button type="submit" disabled={busy}>
+          {busy ? __('Saving…', 'yayloyalty') : __('Save reward', 'yayloyalty')}
         </Button>
-      )}
-      {showArchive && onArchive && (
-        // type="button": archiving is the dialog's decision, never a form save.
-        <Button type="button" variant="destructive" disabled={busy || isArchiveDisabled} onClick={onArchive}>
-          {__('Archive reward', 'yayloyalty')}
-        </Button>
-      )}
-      {showArchive && isArchiveDisabled && (
-        <p className="text-muted-foreground text-center text-xs">
-          {__('The default reward can be switched off but not archived.', 'yayloyalty')}
-        </p>
-      )}
-      <Button type="button" variant="link" disabled={busy} onClick={onCancel}>
-        {__('Cancel', 'yayloyalty')}
-      </Button>
+        {canSaveDraft && (
+          <Button type="submit" variant="outline" data-intent="draft" disabled={busy} onClick={onDraftIntent}>
+            {__('Save as draft', 'yayloyalty')}
+          </Button>
+        )}
+        <div className="flex items-center justify-center gap-2">
+          {showArchive && onArchive && (
+            // type="button": archiving is the dialog's decision, never a form save.
+            <Button
+              type="button"
+              variant="link"
+              className="text-destructive hover:text-destructive-accent"
+              disabled={busy}
+              onClick={onArchive}
+            >
+              {__('Archive reward', 'yayloyalty')}
+            </Button>
+          )}
+          <Button type="button" variant="link" disabled={busy} onClick={onCancel}>
+            {__('Cancel', 'yayloyalty')}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
 
-function RewardEditorSkeleton() {
+function RewardEditorStatus({ isBuiltin }: { isBuiltin: boolean }) {
+  const { control } = useFormContext<RewardFormValues>();
+  // The built-in is switched off by pausing, never drafted.
+  const statuses = isBuiltin
+    ? EDITABLE_REWARD_STATUSES.filter((status) => status !== 'draft')
+    : EDITABLE_REWARD_STATUSES;
+
   return (
-    <PageLayout className="max-w-6xl" title={<Skeleton className="h-7 w-48" />}>
-      <div className="flex flex-col gap-5 lg:flex-row">
-        <div className="flex flex-1 flex-col gap-4">
-          <Skeleton className="h-32 w-full" />
-          <Skeleton className="h-64 w-full" />
-          <Skeleton className="h-48 w-full" />
-        </div>
-        <Skeleton className="h-40 w-full lg:w-72" />
-      </div>
-    </PageLayout>
+    <Field>
+      <FieldLabel>{__('Status', 'yayloyalty')}</FieldLabel>
+      <FieldContent>
+        <Controller
+          control={control}
+          name="status"
+          render={({ field }) => (
+            // Re-clicking the active item yields an empty string; never write that back.
+            <Segmented value={field.value} onValueChange={(value) => value && field.onChange(value)}>
+              {statuses.map((status) => (
+                <SegmentedItem key={status} value={status}>
+                  {statusLabel(status)}
+                </SegmentedItem>
+              ))}
+            </Segmented>
+          )}
+        />
+      </FieldContent>
+    </Field>
+  );
+}
+
+function RewardEditorSchedule() {
+  const { control, setValue, formState } = useFormContext<RewardFormValues>();
+  const startsAt = useWatch({ control, name: 'starts_at' });
+  const endsAt = useWatch({ control, name: 'ends_at' });
+
+  return (
+    <ScheduleFields
+      startsAt={startsAt}
+      endsAt={endsAt}
+      onStartsAtChange={(next) => setValue('starts_at', next, { shouldDirty: true, shouldValidate: true })}
+      onEndsAtChange={(next) => setValue('ends_at', next, { shouldDirty: true, shouldValidate: true })}
+      endsAtError={formState.errors.ends_at}
+    />
   );
 }
 

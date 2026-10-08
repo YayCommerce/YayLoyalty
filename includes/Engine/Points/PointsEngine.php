@@ -34,7 +34,7 @@ final class PointsEngine {
 
     /** The engine with this build's trigger handlers; Pro adds its own through Registry::with_lite_handlers(). */
     public static function build( CampaignRepository $campaigns ): self {
-        return new self( Registry::with_lite_handlers( $campaigns ), $campaigns, new CapPolicy() );
+        return new self( Registry::with_lite_handlers(), $campaigns, new CapPolicy() );
     }
 
     /**

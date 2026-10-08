@@ -9,7 +9,6 @@ export default function SettingsLayout() {
   return (
     // Dashboard width: the Design tab's live preview sits beside its form.
     <PageLayout
-      className="max-w-7xl"
       title={__('Settings', 'yayloyalty')}
       description={__('Configure how the loyalty program behaves.', 'yayloyalty')}
     >

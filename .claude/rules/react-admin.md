@@ -24,6 +24,6 @@ How the SPA loads and calls WordPress is in [docs/architecture.md § SPA and Wor
 
 ## Couplings no check catches
 
-- `scripts/validate-build.php` looks for the upsell sentence of `apps/admin/src/components/pro/UpgradeToPro.tsx` in the Lite bundle. It also reads `DesignStorefrontTextSection.tsx` and `DesignVisibilitySection.tsx` in `apps/admin/src/pages/settings/` by path, for their `IS_PRO_BUILD` guards. Reword, rename or move any of them only together with the validator.
+- `scripts/validate-build.php` looks for the upsell sentence of `apps/admin/src/components/pro/UpgradeToPro.tsx` in the Lite bundle. It also reads `DesignVisibilitySection.tsx` in `apps/admin/src/pages/settings/` by path, for its `IS_PRO_BUILD` guard. Reword, rename or move any of them only together with the validator.
 - Keep the bundle one chunk: no dynamic `import()` or `React.lazy`. The validator looks for Pro code only in `assets/dist/admin/js/main.js`.
 - A new `@wordpress/*` package goes in `apps/admin/package.json` and in `externalProd` in `apps/admin/vite.config.ts`. It also goes in `externalDev` when WordPress sets up its state, as it does for i18n and hooks. Its script handle goes in `$deps` in both `includes/Engine/Register/RegisterProd.php` and `includes/Engine/Register/RegisterDev.php`.

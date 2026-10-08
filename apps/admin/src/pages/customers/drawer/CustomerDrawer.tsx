@@ -90,14 +90,14 @@ export default function CustomerDrawer() {
                           deletedAt={query.data.deleted_at}
                           keptEntries={query.data.loose_ends.kept_ledger_entries}
                         />
-                        <CustomerDrawerDeletedActions />
+                        <CustomerDrawerDeletedActions userId={query.data.user_id} />
                         <CustomerDrawerLooseEnds looseEnds={query.data.loose_ends} balance={query.data.balance} />
                       </>
                     )}
                     {query.data.expiry && (
                       <>
                         <CustomerDrawerExpiryPanel customer={query.data} expiry={query.data.expiry} />
-                        <CustomerDrawerExpiryStats customer={query.data} expiry={query.data.expiry} />
+                        <CustomerDrawerExpiryStats expiry={query.data.expiry} />
                         <CustomerDrawerLotBatches batches={query.data.expiry.batches} />
                       </>
                     )}

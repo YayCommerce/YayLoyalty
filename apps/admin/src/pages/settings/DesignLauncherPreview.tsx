@@ -14,12 +14,12 @@ import {
   PREVIEW_DEVICE_MOBILE,
   PREVIEW_ERROR,
   PREVIEW_EXPANDED,
-  PREVIEW_FOOTNOTE,
   PREVIEW_HIDDEN_ON_MOBILE,
   PREVIEW_TITLE,
   PREVIEW_VIEWER_GUEST,
   PREVIEW_VIEWER_MEMBER,
 } from './design-settings.copy';
+import { usePreviewHighlight } from './design-settings.preview-highlight';
 import { LauncherPreviewFrame, type PreviewDevice } from './LauncherPreviewFrame';
 
 /** The two frames, top to bottom: the button alone, then the open panel. */
@@ -53,6 +53,7 @@ export function DesignLauncherPreview() {
   const [device, setDevice] = useState<PreviewDevice>('desktop');
   const [viewer, setViewer] = useState<DesignPreviewViewer>('member');
   const preview = useDesignPreviewQuery(debouncedInput, viewer);
+  const { highlighted } = usePreviewHighlight();
 
   return (
     <Card>
@@ -83,14 +84,13 @@ export function DesignLauncherPreview() {
                 title={label()}
                 device={device}
                 viewportHeightPx={FRAME_HEIGHT_PX[device][key]}
+                highlightTextKey={highlighted}
               />
             ) : (
               <Skeleton className={`${skeletonClassName} w-full`} />
             )}
           </div>
         ))}
-
-        <p className="text-muted-foreground text-xs">{PREVIEW_FOOTNOTE()}</p>
       </CardContent>
     </Card>
   );

@@ -1,8 +1,6 @@
 <?php
 namespace YayLoyalty\Access;
 
-use YayLoyalty\Helpers\SettingsHelper;
-
 defined( 'ABSPATH' ) || exit;
 
 /**
@@ -121,30 +119,14 @@ final class Capabilities {
         return current_user_can( $cap );
     }
 
-    /** Administrators bypass the adjustment ceiling and alone may edit the permission matrix. */
-    public static function is_administrator(): bool {
-        return current_user_can( 'manage_options' );
-    }
-
-    /** Largest absolute adjustment a non-administrator may make in one call. 0 means unlimited. */
-    public static function ceiling(): int {
-        $settings = SettingsHelper::get_settings();
-
-        return isset( $settings['advanced']['adjustment_ceiling'] )
-            ? max( 0, (int) $settings['advanced']['adjustment_ceiling'] )
-            : 0;
-    }
-
     /**
      * Bootstrap payload for the SPA. Localised, not an endpoint: a round trip would flash the wrong UI.
      *
-     * @return array{capabilities: string[], ceiling: int, isAdministrator: bool}
+     * @return array{capabilities: string[]}
      */
     public static function payload(): array {
         return [
-            'capabilities'    => array_values( array_filter( self::all(), [ self::class, 'can' ] ) ),
-            'ceiling'         => self::ceiling(),
-            'isAdministrator' => self::is_administrator(),
+            'capabilities' => array_values( array_filter( self::all(), [ self::class, 'can' ] ) ),
         ];
     }
 }

@@ -1,13 +1,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
+import { EditorFieldSkeleton, EditorSectionSkeleton } from '@/components/ui/custom/editor-section';
 import { Skeleton } from '@/components/ui/skeleton';
 import PageLayout from '@/components/layout/PageLayout';
 
 /**
  * The editor's loading state, shared by CampaignEditor's fetch and
  * CampaignCreator's duplicate-source fetch. Each block copies the loaded
- * page's own footprint (breadcrumb, header, the six numbered sections and
- * the summary rail) so nothing jumps when the form mounts.
+ * page's own footprint (breadcrumb, header, the three numbered sections and
+ * the rail) so nothing jumps when the form mounts.
  */
 export function CampaignEditorSkeleton() {
   return (
@@ -38,97 +38,51 @@ export function CampaignEditorSkeleton() {
       >
         <div className="flex flex-col items-start gap-5 lg:flex-row">
           <div className="flex min-w-0 flex-1 flex-col gap-4">
-            <SectionSkeleton>
-              <LabelledSkeleton labelClassName="w-10">
+            <EditorSectionSkeleton>
+              <EditorFieldSkeleton labelClassName="w-10">
                 <Skeleton className="h-9 w-full" />
-              </LabelledSkeleton>
-              <LabelledSkeleton labelClassName="w-12">
-                <Skeleton className="h-9 w-64" />
-              </LabelledSkeleton>
+              </EditorFieldSkeleton>
               <Skeleton className="h-3 w-3/4" />
-            </SectionSkeleton>
+            </EditorSectionSkeleton>
 
-            <SectionSkeleton>
-              {[0, 1, 2].map((index) => (
-                <div key={index} className="flex items-start gap-2.5">
-                  <Skeleton className="mt-0.5 size-4 shrink-0 rounded-full" />
-                  <div className="flex flex-col gap-1.5">
-                    <Skeleton className="h-3.5 w-24" />
-                    <Skeleton className="h-3 w-72" />
-                  </div>
-                </div>
-              ))}
-              <Skeleton className="h-3 w-full" />
-            </SectionSkeleton>
-
-            <SectionSkeleton>
+            <EditorSectionSkeleton>
               <div className="grid gap-3 sm:grid-cols-2">
                 <Skeleton className="h-28 w-full" />
                 <Skeleton className="h-28 w-full" />
               </div>
-              <LabelledSkeleton labelClassName="w-20">
+              <EditorFieldSkeleton labelClassName="w-20">
                 <Skeleton className="h-9 w-40" />
-              </LabelledSkeleton>
+              </EditorFieldSkeleton>
               <Skeleton className="h-8 w-28" />
-            </SectionSkeleton>
+            </EditorSectionSkeleton>
 
-            <SectionSkeleton>
+            <EditorSectionSkeleton>
               <Skeleton className="h-28 w-full" />
               <Skeleton className="h-8 w-36" />
               <Skeleton className="h-3 w-2/3" />
-            </SectionSkeleton>
-
-            <SectionSkeleton>
-              {[0, 1].map((index) => (
-                <LabelledSkeleton key={index} labelClassName="w-10">
-                  <div className="flex items-center gap-2">
-                    <Skeleton className="h-9 w-52" />
-                    <Skeleton className="h-9 w-28" />
-                  </div>
-                </LabelledSkeleton>
-              ))}
-              <Skeleton className="h-12 w-full" />
-            </SectionSkeleton>
-
-            <SectionSkeleton>
-              <LabelledSkeleton labelClassName="w-12">
-                <Skeleton className="h-9 w-28" />
-                <Skeleton className="h-3 w-3/4" />
-              </LabelledSkeleton>
-            </SectionSkeleton>
+            </EditorSectionSkeleton>
           </div>
 
           <div className="flex w-full flex-col gap-4 lg:sticky lg:top-6 lg:w-85 lg:shrink-0">
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">
-                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-4 w-36" />
                 </CardTitle>
               </CardHeader>
-              <CardContent className="flex flex-col gap-3">
-                <Skeleton className="h-3.5 w-full" />
-                <Skeleton className="h-3.5 w-full" />
-                <Skeleton className="h-3.5 w-2/3" />
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">
-                  <Skeleton className="h-4 w-28" />
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="flex flex-col gap-3">
-                <ul className="flex flex-col gap-1.5">
-                  {[0, 1, 2, 3].map((index) => (
-                    <li key={index} className="flex items-center gap-2">
-                      <Skeleton className="size-4 shrink-0 rounded-full" />
-                      <Skeleton className="h-3.5 w-44" />
-                    </li>
-                  ))}
-                </ul>
-                <Separator />
-                <Skeleton className="h-3 w-56" />
+              <CardContent className="flex flex-col gap-4">
+                <EditorFieldSkeleton labelClassName="w-12">
+                  <Skeleton className="h-9 w-56" />
+                </EditorFieldSkeleton>
+                {[0, 1].map((index) => (
+                  <EditorFieldSkeleton key={index} labelClassName="w-10">
+                    <div className="flex items-center gap-2">
+                      <Skeleton className="h-9 w-40" />
+                      <Skeleton className="h-9 w-28" />
+                    </div>
+                  </EditorFieldSkeleton>
+                ))}
+                <Skeleton className="h-12 w-full" />
               </CardContent>
             </Card>
 
@@ -141,30 +95,5 @@ export function CampaignEditorSkeleton() {
         </div>
       </PageLayout>
     </>
-  );
-}
-
-/** CampaignEditorSections' numbered-card shell with the badge and title greyed out. */
-function SectionSkeleton({ children }: { children: React.ReactNode }) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2.5 text-base">
-          <Skeleton className="size-5.5 shrink-0 rounded-full" />
-          <Skeleton className="h-4 w-24" />
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">{children}</CardContent>
-    </Card>
-  );
-}
-
-/** A vertical Field: label line above its control(s). */
-function LabelledSkeleton({ labelClassName, children }: { labelClassName: string; children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <Skeleton className={`h-3.5 ${labelClassName}`} />
-      {children}
-    </div>
   );
 }

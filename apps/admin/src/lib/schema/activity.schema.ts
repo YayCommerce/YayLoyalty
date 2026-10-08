@@ -4,15 +4,16 @@ import { paginatedSchema } from '@/lib/api/paginated';
 
 /** Mirrors ActivityRestController::define_item_schema() and ActivityQueryArgs, the source of truth. */
 
-/** The eight event kinds, in display order. Matches `ActivityEvent::ALL`. */
+/** The nine event kinds, in display order. Matches `ActivityEvent::ALL`. */
 export const ACTIVITY_EVENT_TYPES = [
-  'account_created',
+  'membership_started',
   'points_adjusted',
   'tier_changed',
   'expiry_reset',
   'reward_redeemed',
   'balance_email_sent',
   'expiring_soon_email_sent',
+  'earning_limited',
   'account_deleted',
 ] as const;
 

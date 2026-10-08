@@ -4,6 +4,7 @@ namespace YayLoyalty\Repositories;
 use YayLoyalty\Enums\Status;
 use YayLoyalty\Models\AbstractModel;
 use YayLoyalty\Models\Campaign;
+use YayLoyalty\Utils\Sql;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -100,7 +101,7 @@ class CampaignRepository extends AbstractRepository {
         );
     }
 
-    /** The built-in purchase campaign, whose rate multiplier campaigns multiply. Null if archived. */
+    /** The built-in purchase campaign. Null if archived. */
     public function find_default_purchase(): ?Campaign {
         foreach ( $this->all_non_archived() as $campaign ) {
             if ( self::DEFAULT_PURCHASE_SLUG === $campaign->get_slug() ) {
@@ -109,6 +110,87 @@ class CampaignRepository extends AbstractRepository {
         }
 
         return null;
+    }
+
+    /** The priority that puts a new campaign above every other non-archived one of its trigger. */
+    public function top_priority( string $trigger ): int {
+        // all_non_archived() is highest priority first, so the first match is the top.
+        foreach ( $this->all_non_archived() as $campaign ) {
+            if ( $campaign->get_trigger() === $trigger ) {
+                return $campaign->get_priority() + 1;
+            }
+        }
+
+        return 0;
+    }
+
+    /**
+     * Saves a dragged order as priority. Per trigger, the listed campaigns come first in the given
+     * order and that trigger's others follow in their current order; each then gets
+     * count - 1 - position. False, writing nothing, when an id is not a non-archived campaign.
+     *
+     * @param int[] $ids
+     */
+    public function reorder( array $ids ): bool {
+        global $wpdb;
+
+        $listed     = array_values( array_map( 'intval', $ids ) );
+        $by_trigger = [];
+
+        foreach ( $this->all_non_archived() as $campaign ) {
+            $by_trigger[ $campaign->get_trigger() ][] = (int) $campaign->get_id();
+        }
+
+        if ( [] !== array_diff( $listed, array_merge( ...array_values( $by_trigger ) ) ) ) {
+            return false;
+        }
+
+        $priorities = [];
+
+        foreach ( $by_trigger as $trigger_ids ) {
+            $moved = array_values( array_intersect( $listed, $trigger_ids ) );
+
+            if ( [] === $moved ) {
+                continue;
+            }
+
+            $order = array_merge( $moved, array_values( array_diff( $trigger_ids, $moved ) ) );
+            $count = count( $order );
+
+            foreach ( $order as $position => $id ) {
+                $priorities[ $id ] = $count - 1 - $position;
+            }
+        }
+
+        if ( [] === $priorities ) {
+            return true;
+        }
+
+        $table  = esc_sql( $this->table() );
+        $cases  = [];
+        $params = [];
+
+        foreach ( $priorities as $id => $priority ) {
+            $cases[]  = 'WHEN %d THEN %d';
+            $params[] = $id;
+            $params[] = $priority;
+        }
+
+        $order_ids = array_keys( $priorities );
+        $in        = Sql::in_placeholders( $order_ids, '%d' );
+
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- $cases and $in carry placeholder lists; every value is bound below.
+        $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+            $wpdb->prepare(
+                "UPDATE `{$table}` SET priority = CASE id " . implode( ' ', $cases ) . " END WHERE id IN ({$in})",
+                array_merge( $params, $order_ids )
+            )
+        );
+        // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+
+        $this->flush_cache();
+
+        return true;
     }
 
     public function insert( AbstractModel $model ): int {

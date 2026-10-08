@@ -38,8 +38,8 @@ export function EmailsTable({ groups }: EmailsTableProps) {
         <TableBody>
           {groups.map((group) => (
             <Fragment key={group.group}>
-              <TableRow className="hover:bg-transparent">
-                <TableCell colSpan={4} className="text-muted-foreground text-xs font-semibold uppercase">
+              <TableRow className="bg-muted/50 hover:bg-muted/50">
+                <TableCell colSpan={4} className="text-muted-foreground h-8 py-0 text-xs font-medium">
                   {group.group_label}
                 </TableCell>
               </TableRow>

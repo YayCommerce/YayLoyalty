@@ -16,11 +16,17 @@ final class PointsMath {
     /** Breakdown marker for flat awards, which never round. Not a config value. */
     public const ROUND_NONE = 'none';
 
+    /** Far finer than any money × rate product, far coarser than float error (~1e-14). */
+    private const SNAP_DECIMALS = 9;
+
     /**
      * Raw points to a whole number, once at order level, never per line: the
      * total must not depend on how the cart was split. An unknown mode rounds down.
+     * Snaps first, so float error (0.57 × 100 = 56.999…) never crosses a whole number.
      */
     public static function round_points( float $raw, string $mode ): int {
+        $raw = round( $raw, self::SNAP_DECIMALS );
+
         switch ( $mode ) {
             case self::ROUND_UP:
                 return (int) ceil( $raw );

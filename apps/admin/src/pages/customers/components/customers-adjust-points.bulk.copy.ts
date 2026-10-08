@@ -49,34 +49,27 @@ export function bulkTotalsLine(count: number, amount: string): string {
     amount,
   );
 }
-export function bulkTotalPointsLine(points: string, money: string | null): string {
-  return money
-    ? sprintf(
-        /* translators: 1: total points, formatted; 2: the total as money, formatted. */
-        __('%1$s points (%2$s)', 'yayloyalty'),
-        points,
-        money,
-      )
-    : sprintf(
-        /* translators: %s: total points, formatted. */
-        __('%s points', 'yayloyalty'),
-        points,
-      );
-}
-export function bulkLiabilityRange(fromMoney: string, toMoney: string): string {
+export function bulkTotalPointsLine(points: string): string {
   return sprintf(
-    /* translators: 1: liability before the adjustment, as money; 2: liability after it, as money. */
-    __('Raises your outstanding liability from %1$s to %2$s.', 'yayloyalty'),
-    fromMoney,
-    toMoney,
+    /* translators: %s: total points, formatted. */
+    __('%s points', 'yayloyalty'),
+    points,
+  );
+}
+export function bulkLiabilityRange(fromPoints: string, toPoints: string): string {
+  return sprintf(
+    /* translators: 1: liability before the adjustment, in points; 2: liability after it, in points. */
+    __('Raises your outstanding liability from %1$s to %2$s points.', 'yayloyalty'),
+    fromPoints,
+    toPoints,
   );
 }
 /** Remove is always an upper bound: a balance that crosses zero stops counting as liability. */
-export function bulkLiabilityReducesUpTo(money: string): string {
+export function bulkLiabilityReducesUpTo(points: string): string {
   return sprintf(
-    /* translators: %s: an amount of money, formatted. */
-    __('Reduces your outstanding liability by up to %s.', 'yayloyalty'),
-    money,
+    /* translators: %s: number of points, formatted. */
+    __('Reduces your outstanding liability by up to %s points.', 'yayloyalty'),
+    points,
   );
 }
 
@@ -106,18 +99,18 @@ export function writtenToLedgers(count: number): string {
     count,
   );
 }
-export function acknowledgeLiability(direction: 'add' | 'remove', money: string, count: number): string {
+export function acknowledgeLiability(direction: 'add' | 'remove', points: string, count: number): string {
   return direction === 'remove'
     ? sprintf(
-        /* translators: 1: the total as money, or as points when there is no rate, formatted; 2: number of customers. */
-        __('I understand this removes %1$s of liability across %2$d customers', 'yayloyalty'),
-        money,
+        /* translators: 1: total points, formatted; 2: number of customers. */
+        __('I understand this removes %1$s points of liability across %2$d customers', 'yayloyalty'),
+        points,
         count,
       )
     : sprintf(
-        /* translators: 1: the total as money, or as points when there is no rate, formatted; 2: number of customers. */
-        __('I understand this adds %1$s of liability across %2$d customers', 'yayloyalty'),
-        money,
+        /* translators: 1: total points, formatted; 2: number of customers. */
+        __('I understand this adds %1$s points of liability across %2$d customers', 'yayloyalty'),
+        points,
         count,
       );
 }

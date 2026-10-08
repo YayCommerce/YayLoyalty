@@ -49,6 +49,11 @@ export async function updateCampaignConfig(id: number, config: Campaign['config'
   return campaignSchema.parse(await api.put(`campaigns/${id}`, { json: { config } }).json());
 }
 
+/** POST campaigns/reorder: one group's ids, highest priority first; CampaignRepository::reorder() renumbers that trigger's priorities. */
+export async function reorderCampaigns(ids: number[]) {
+  await api.post('campaigns/reorder', { json: { ids } }).json();
+}
+
 /** DELETE campaigns/{id}. 409s if the campaign has ledger rows; see Campaign.is_deletable. */
 export async function deleteCampaign(id: number) {
   return campaignDeleteResponseSchema.parse(await api.delete(`campaigns/${id}`).json());

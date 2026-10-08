@@ -49,7 +49,7 @@ class SettingsRestController extends AbstractRestController {
     public function save_settings( \WP_REST_Request $request ) {
         $settings = $request->get_json_params();
 
-        if ( ! is_array( $settings ) ) {
+        if ( ! is_array( $settings ) || ! SettingsHelper::is_valid( $settings ) ) {
             return $this->error_invalid_arguments();
         }
 

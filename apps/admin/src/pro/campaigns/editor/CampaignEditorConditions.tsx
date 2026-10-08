@@ -86,12 +86,7 @@ export function CampaignEditorConditions() {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-        <p className="text-muted-foreground text-xs">
-          {__(
-            'Conditions are combined with AND. A campaign that needs OR is two campaigns at the same priority.',
-            'yayloyalty',
-          )}
-        </p>
+        <p className="text-muted-foreground text-xs">{__('Conditions are combined with AND.', 'yayloyalty')}</p>
       </div>
     </div>
   );

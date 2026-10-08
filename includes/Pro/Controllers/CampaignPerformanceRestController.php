@@ -6,7 +6,6 @@ use YayLoyalty\Controllers\AbstractRestController;
 use YayLoyalty\Controllers\CampaignRestController;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Models\Campaign;
-use YayLoyalty\Engine\Points\Triggers\PurchaseHandler;
 use YayLoyalty\Pro\Repositories\CampaignPerformanceRepository;
 use YayLoyalty\Pro\Repositories\CampaignPointsRepository;
 use YayLoyalty\Repositories\CampaignRepository;
@@ -15,7 +14,6 @@ use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Services\Dashboard\DashboardMath;
 use YayLoyalty\Services\Dashboard\PeriodWindow;
 use YayLoyalty\Utils\Dates;
-use YayLoyalty\Utils\PointsMath;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -187,8 +185,8 @@ final class CampaignPerformanceRestController extends AbstractRestController {
     }
 
     /**
-     * Adds what the repository cannot: the liability, which needs the store's rate, and
-     * `orders_total`, a sitewide order count that is not scoped to this campaign.
+     * Adds what the repository cannot: `orders_total`, a sitewide order count that is not
+     * scoped to this campaign.
      *
      * @param array<string, mixed> $row
      * @param array{points_issued: int, entries_total: int, orders_affected: int, customers_earned: int} $totals
@@ -196,15 +194,13 @@ final class CampaignPerformanceRestController extends AbstractRestController {
      */
     private function shape_totals( array $row, array $totals ): array {
         $shaped = [
-            'points_issued'           => $totals['points_issued'],
-            'entries_total'           => $totals['entries_total'],
-            'orders_affected'         => null,
-            'orders_total'            => null,
-            'customers_earned'        => null,
-            'avg_points_per_order'    => null,
-            'avg_order_subtotal'      => null,
-            'liability_amount'        => null,
-            'liability_above_default' => null,
+            'points_issued'        => $totals['points_issued'],
+            'entries_total'        => $totals['entries_total'],
+            'orders_affected'      => null,
+            'orders_total'         => null,
+            'customers_earned'     => null,
+            'avg_points_per_order' => null,
+            'avg_order_subtotal'   => null,
         ];
 
         if ( CampaignTrigger::PURCHASE !== $row['trigger'] ) {
@@ -213,43 +209,14 @@ final class CampaignPerformanceRestController extends AbstractRestController {
             return $shaped;
         }
 
-        $rate = $this->dashboard->points_per_currency_unit();
-
-        $shaped['orders_affected']  = $totals['orders_affected'];
-        $shaped['orders_total']     = $this->dashboard->count_orders( 0, time() + 1 );
-        $shaped['liability_amount'] = PointsMath::points_to_currency( $totals['points_issued'], $rate, wc_get_price_decimals() );
+        $shaped['orders_affected'] = $totals['orders_affected'];
+        $shaped['orders_total']    = $this->dashboard->count_orders( 0, time() + 1 );
 
         if ( $totals['orders_affected'] > 0 ) {
             $shaped['avg_points_per_order'] = intdiv( $totals['points_issued'], $totals['orders_affected'] );
         }
 
-        $shaped['liability_above_default'] = $this->liability_above_default( $row, $totals['points_issued'], $rate );
-
         return $shaped;
-    }
-
-    /**
-     * The part of `$points_issued` above what the default rate would have awarded. Null unless the
-     * campaign is a multiplier that is not built in: any other campaign is the default rate.
-     *
-     * @param array<string, mixed> $row
-     */
-    private function liability_above_default( array $row, int $points_issued, float $rate ): ?float {
-        $config = (array) $row['config'];
-
-        if ( ! PurchaseHandler::is_multiplier( $config ) || $row['is_builtin'] ) {
-            return null;
-        }
-
-        $multiplier = PurchaseHandler::multiplier( $config );
-
-        if ( $multiplier <= 0 ) {
-            return null;
-        }
-
-        $default_equivalent = (int) round( $points_issued / $multiplier );
-
-        return PointsMath::points_to_currency( $points_issued - $default_equivalent, $rate, wc_get_price_decimals() );
     }
 
     /**

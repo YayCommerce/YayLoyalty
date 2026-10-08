@@ -1,7 +1,7 @@
 import { __, _n, sprintf } from '@wordpress/i18n';
 
-import { parseWPCurrency, parseWPTime, utcToDate } from '@/lib/helpers/format.helper';
-import { formatPointsAsMoney, formatPoints } from '@/lib/helpers/points.helper';
+import { parseWPTime, utcToDate } from '@/lib/helpers/format.helper';
+import { formatPoints } from '@/lib/helpers/points.helper';
 import { pctDelta } from '@/lib/points-math/points-math';
 import type { DashboardRange, DashboardSeriesPoint } from '@/lib/schema/dashboard.schema';
 
@@ -65,25 +65,6 @@ export function ordersSubline(withPoints: number, total: number): string {
   );
 }
 
-/** "871,500 pts at 100 pts = $1"; names the rate so the approximation is visible. */
-export function liabilitySubline(points: number, pointsPerCurrencyUnit: number): string {
-  if (pointsPerCurrencyUnit <= 0) {
-    return sprintf(
-      /* translators: %s: outstanding points, formatted. */
-      __('%s pts outstanding', 'yayloyalty'),
-      formatPoints(points),
-    );
-  }
-
-  return sprintf(
-    /* translators: 1: outstanding points; 2: points that make one currency unit; 3: that unit, e.g. "$1". */
-    __('%1$s pts at %2$s pts = %3$s', 'yayloyalty'),
-    formatPoints(points),
-    formatPoints(pointsPerCurrencyUnit),
-    parseWPCurrency(1),
-  );
-}
-
 /** "6 most recent of 41,200 events today", only when the panel is not the whole story. */
 export function activityDenominator(shown: number, totalToday: number): string | null {
   if (totalToday <= shown) return null;
@@ -125,26 +106,19 @@ export function noticeTileOverrides(
   range: DashboardRange,
   pointsJump: { yesterday_points: number } | null,
   defaultCampaignPaused: boolean,
-  pointsPerCurrencyUnit: number,
 ): Partial<Record<'points_issued' | 'liability' | 'redemption_rate', string>> {
   if (pointsJump) {
-    const overnight = formatPointsAsMoney(pointsJump.yesterday_points, pointsPerCurrencyUnit);
-
     return {
       points_issued: sprintf(
         /* translators: %s: points issued yesterday, formatted. */
         __('▲ %s of it yesterday', 'yayloyalty'),
         formatPoints(pointsJump.yesterday_points),
       ),
-      ...(overnight
-        ? {
-            liability: sprintf(
-              /* translators: %s: yesterday's points as money, formatted. */
-              __('▲ %s overnight', 'yayloyalty'),
-              overnight,
-            ),
-          }
-        : {}),
+      liability: sprintf(
+        /* translators: %s: points issued yesterday, formatted. */
+        __('▲ %s pts overnight', 'yayloyalty'),
+        formatPoints(pointsJump.yesterday_points),
+      ),
       // Not "unchanged": the delta may be non-zero; the jump just cannot have moved it.
       redemption_rate: __('not moved by the jump — this rate counts orders, not points', 'yayloyalty'),
     };

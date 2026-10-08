@@ -2,7 +2,6 @@
 namespace YayLoyalty\Controllers;
 
 use YayLoyalty\Access\Capabilities;
-use YayLoyalty\Engine\Points\Triggers\PurchaseHandler;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Enums\Status;
 use YayLoyalty\Models\Campaign;
@@ -20,6 +19,9 @@ defined( 'ABSPATH' ) || exit;
  * read-only here, for the points_issued and is_deletable fields and the delete guard.
  */
 final class CampaignRestController extends AbstractRestController {
+
+    /** Far above any real campaign list; bounds the reorder request body. */
+    private const MAX_REORDER_IDS = 500;
 
     /** @var CampaignRepository */
     private $campaigns;
@@ -66,6 +68,28 @@ final class CampaignRestController extends AbstractRestController {
                     'args'                => $this->get_write_args(),
                 ],
                 'schema' => [ $this, 'get_item_schema' ],
+            ]
+        );
+
+        register_rest_route(
+            self::REST_NAMESPACE,
+            '/campaigns/reorder',
+            [
+                [
+                    'methods'             => \WP_REST_Server::CREATABLE,
+                    'callback'            => fn( $request ) => $this->exec_write( [ $this, 'reorder_items' ], $request ),
+                    'permission_callback' => $this->requires( Capabilities::MANAGE_CAMPAIGNS ),
+                    'args'                => [
+                        'ids' => [
+                            'description' => __( 'Campaign ids, highest priority first; see CampaignRepository::reorder().', 'yayloyalty' ),
+                            'type'        => 'array',
+                            'items'       => [ 'type' => 'integer' ],
+                            'required'    => true,
+                            'minItems'    => 1,
+                            'maxItems'    => self::MAX_REORDER_IDS,
+                        ],
+                    ],
+                ],
             ]
         );
 
@@ -123,16 +147,28 @@ final class CampaignRestController extends AbstractRestController {
     }
 
     /**
-     * Whether a purchase config in rate mode leaves its rate out. The engine reads a missing rate
-     * as 0, and a 0-point match stops every lower-priority campaign from applying. A multiplier
-     * needs no key, since a missing factor is ×1.
+     * Whether a purchase config leaves its rate out. The engine reads a missing rate as 0, and a
+     * 0-point match stops every lower-priority campaign from applying.
      *
      * @param array<string, mixed> $config
      */
     private static function lacks_purchase_rate( string $trigger, array $config ): bool {
-        return CampaignTrigger::PURCHASE === $trigger
-            && ! PurchaseHandler::is_multiplier( $config )
-            && ! isset( $config['points_per_unit'] );
+        return CampaignTrigger::PURCHASE === $trigger && ! isset( $config['points_per_unit'] );
+    }
+
+    /** Saves a dragged order as priority. A duplicate or unknown id refuses the whole request. */
+    public function reorder_items( \WP_REST_Request $request ) {
+        $ids = array_map( 'intval', (array) $request['ids'] );
+
+        if ( count( array_unique( $ids ) ) !== count( $ids ) ) {
+            return $this->error_invalid_arguments( __( 'A campaign appears twice in the new order.', 'yayloyalty' ) );
+        }
+
+        if ( ! $this->campaigns->reorder( $ids ) ) {
+            return $this->error_invalid_arguments( __( 'The new order names a campaign that no longer exists.', 'yayloyalty' ) );
+        }
+
+        return [ 'ids' => $ids ];
     }
 
     public function create_item( \WP_REST_Request $request ) {
@@ -182,7 +218,7 @@ final class CampaignRestController extends AbstractRestController {
             $slug,
             $trigger,
             $request['status'] ? Status::assert( (string) $request['status'] ) : Status::ACTIVE,
-            null !== $request['priority'] ? (int) $request['priority'] : 0,
+            $this->campaigns->top_priority( $trigger ),
             Campaign::validate_config( $trigger, $config ),
             CampaignConditionSet::normalize( $conditions ),
             self::nullable_date( $request['starts_at'] ),
@@ -222,7 +258,15 @@ final class CampaignRestController extends AbstractRestController {
 
         list( $starts_at, $ends_at ) = $window;
 
+        $was_archived = $campaign->is_archived();
+
         self::apply_update( $campaign, $request );
+
+        // An archived row keeps its old number while reorders skip it, so restoring it in place could tie.
+        if ( $was_archived && ! $campaign->is_archived() ) {
+            $campaign->set_priority( $this->campaigns->top_priority( $campaign->get_trigger() ) );
+        }
+
         $campaign->set_starts_at( $starts_at );
         $campaign->set_ends_at( $ends_at );
 
@@ -244,16 +288,6 @@ final class CampaignRestController extends AbstractRestController {
 
         if ( null !== $request['conditions'] && ! Campaign::conditions_are_valid( (array) $request['conditions'] ) ) {
             return $this->error_invalid_arguments( __( 'The campaign conditions are malformed.', 'yayloyalty' ) );
-        }
-
-        // The engine reads the default campaign's rate for every multiplier; the default multiplying
-        // itself would have no rate of its own to start from.
-        if (
-            null !== $request['config']
-            && CampaignRepository::DEFAULT_PURCHASE_SLUG === $campaign->get_slug()
-            && PurchaseHandler::is_multiplier( (array) $request['config'] )
-        ) {
-            return $this->error_invalid_arguments( __( 'The default purchase campaign sets its own rate; it cannot multiply itself.', 'yayloyalty' ) );
         }
 
         // Checked here rather than left to set_status()'s exception: a rejected request must
@@ -280,10 +314,6 @@ final class CampaignRestController extends AbstractRestController {
 
         if ( null !== $request['status'] ) {
             $campaign->set_status( (string) $request['status'] );
-        }
-
-        if ( null !== $request['priority'] ) {
-            $campaign->set_priority( (int) $request['priority'] );
         }
 
         if ( null !== $request['config'] ) {
@@ -398,8 +428,10 @@ final class CampaignRestController extends AbstractRestController {
                     'context'     => [ 'view', 'edit' ],
                 ],
                 'priority'      => [
-                    'type'    => 'integer',
-                    'context' => [ 'view', 'edit' ],
+                    'description' => __( 'Highest wins within a trigger. Assigned by the server; only campaigns/reorder changes it.', 'yayloyalty' ),
+                    'type'        => 'integer',
+                    'context'     => [ 'view', 'edit' ],
+                    'readonly'    => true,
                 ],
                 'config'        => [
                     'type'    => 'object',

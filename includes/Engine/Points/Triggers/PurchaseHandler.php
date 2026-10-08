@@ -7,9 +7,7 @@ use YayLoyalty\Engine\Points\Context;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\ReferenceType;
-use YayLoyalty\Enums\Status;
 use YayLoyalty\Models\Campaign;
-use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Utils\PointsMath;
 
 defined( 'ABSPATH' ) || exit;
@@ -17,18 +15,14 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Points for an order. Config gates are eligibility, not calculation: a
  * failed minimum falls through to the next campaign rather than earning
- * zero. A multiplier campaign with the default paused is likewise ineligible.
+ * zero.
  */
 final class PurchaseHandler implements TriggerHandler {
-
-    /** @var CampaignRepository */
-    private $campaigns;
 
     /** @var BaseCalculator */
     private $base_calculator;
 
-    public function __construct( CampaignRepository $campaigns, BaseCalculator $base_calculator ) {
-        $this->campaigns       = $campaigns;
+    public function __construct( BaseCalculator $base_calculator ) {
         $this->base_calculator = $base_calculator;
     }
 
@@ -49,14 +43,14 @@ final class PurchaseHandler implements TriggerHandler {
             return false;
         }
 
-        return ! self::refuses_multiplier( $config, $this->campaigns->find_default_purchase() );
+        return true;
     }
 
     public function compute_points( Campaign $campaign, Context $ctx ): Breakdown {
         $config   = $campaign->get_config();
         $base     = $this->base_calculator->compute( $campaign, $ctx );
         $rounding = (string) ( $config['rounding'] ?? PointsMath::ROUND_DOWN );
-        $rate     = self::rate_of( $config, $this->campaigns->find_default_purchase() );
+        $rate     = self::rate_of( $config );
 
         $raw    = $base * $rate;
         $points = PointsMath::round_points( $raw, $rounding );
@@ -75,12 +69,9 @@ final class PurchaseHandler implements TriggerHandler {
         return new Breakdown( $points, $base, $rate, $raw, $rounding );
     }
 
-    /** Points per currency unit; null where is_eligible() refuses whatever the order (a multiplier with no default to scale). */
+    /** Points per currency unit. */
     public function advertised_value( Campaign $campaign ): ?float {
-        $config  = $campaign->get_config();
-        $default = $this->campaigns->find_default_purchase();
-
-        return self::refuses_multiplier( $config, $default ) ? null : self::rate_of( $config, $default );
+        return self::rate_of( $campaign->get_config() );
     }
 
     public function reference_type(): string {
@@ -96,25 +87,6 @@ final class PurchaseHandler implements TriggerHandler {
     }
 
     /**
-     * Whether a purchase config multiplies the default rate rather than naming its own; a missing mode means rate.
-     * The one decider: the performance page's liability split asks here too.
-     *
-     * @param array<string, mixed> $config
-     */
-    public static function is_multiplier( array $config ): bool {
-        return 'multiplier' === ( $config['mode'] ?? 'rate' );
-    }
-
-    /**
-     * The factor a multiplier config applies to the default rate; a missing value is ×1.
-     *
-     * @param array<string, mixed> $config
-     */
-    public static function multiplier( array $config ): float {
-        return (float) ( $config['multiplier'] ?? 1 );
-    }
-
-    /**
      * The order subtotal (base currency) below which this config does not pay; 0 for none.
      *
      * @param array<string, mixed> $config
@@ -124,26 +96,11 @@ final class PurchaseHandler implements TriggerHandler {
     }
 
     /**
-     * Whether a config is a multiplier with no default to scale (archived or not active): the order-free gate
-     * that both is_eligible() and advertised_value() apply.
+     * Points per currency unit a purchase config pays.
      *
      * @param array<string, mixed> $config
      */
-    private static function refuses_multiplier( array $config, ?Campaign $default_purchase ): bool {
-        return self::is_multiplier( $config ) && ( null === $default_purchase || Status::ACTIVE !== $default_purchase->get_status() );
-    }
-
-    /**
-     * Points per currency unit a purchase config pays: its own rate, or the default's rate times its multiplier.
-     *
-     * @param array<string, mixed> $config
-     * @param Campaign|null        $default_purchase The default purchase campaign; read only for a multiplier.
-     */
-    private static function rate_of( array $config, ?Campaign $default_purchase ): float {
-        if ( ! self::is_multiplier( $config ) ) {
-            return (float) ( $config['points_per_unit'] ?? 0 );
-        }
-
-        return null === $default_purchase ? 0.0 : (float) ( $default_purchase->get_config()['points_per_unit'] ?? 0 ) * self::multiplier( $config );
+    private static function rate_of( array $config ): float {
+        return (float) ( $config['points_per_unit'] ?? 0 );
     }
 }

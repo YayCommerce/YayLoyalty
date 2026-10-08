@@ -1,12 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 import { __ } from '@wordpress/i18n';
 
-import { adjustPointsSchema, type AdjustPointsInput, type AdjustPointsPreview, type Customer } from '@/lib/schema/customer.schema';
+import {
+  adjustPointsSchema,
+  type AdjustPointsInput,
+  type AdjustPointsPreview,
+  type Customer,
+} from '@/lib/schema/customer.schema';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/custom/dialog';
-import { Field, FieldContent, FieldError, FieldLabel } from '@/components/ui/field';
-import { Textarea } from '@/components/ui/textarea';
+import { FieldError } from '@/components/ui/field';
+import { DEFAULT_ROW_FILTERS, type RowFilters } from '../customers-page.filter-rows';
 import { AdjustPointsAmountField } from './adjust-points/AdjustPointsAmountField';
 import { AdjustPointsBulkPanels } from './adjust-points/AdjustPointsBulkPanels';
 import { AdjustPointsFields } from './adjust-points/AdjustPointsFields';
@@ -14,13 +19,26 @@ import { AdjustPointsFooter } from './adjust-points/AdjustPointsFooter';
 import { AdjustPointsHeader } from './adjust-points/AdjustPointsHeader';
 import { AdjustPointsNegativeBalancePanel } from './adjust-points/AdjustPointsNegativeBalancePanel';
 import { AdjustPointsOptions } from './adjust-points/AdjustPointsOptions';
+import { AdjustPointsReasonField } from './adjust-points/AdjustPointsReasonField';
 import { AdjustPointsStaleBalanceBanner } from './adjust-points/AdjustPointsStaleBalanceBanner';
 import { AMOUNT_EACH_LABEL, bulkNotifyByEmailCount } from './customers-adjust-points.bulk.copy';
-import { AMOUNT_LABEL, COULD_NOT_VERIFY_BODY, COULD_NOT_VERIFY_TITLE, FOOTER_NOTICE, REASON_HELPER, REASON_LABEL, REASON_PLACEHOLDER, RETRY_LABEL } from './customers-adjust-points.copy';
-import { canSubmit, initialAdjustFormState, newBalance, signedPoints, type AdjustFormState } from './customers-adjust-points.form-state';
-import { useAdjustPreviewBaseline } from './customers-adjust-points.use-preview-baseline';
+import {
+  AMOUNT_LABEL,
+  COULD_NOT_VERIFY_BODY,
+  COULD_NOT_VERIFY_TITLE,
+  DEFAULT_REASON,
+  FOOTER_NOTICE,
+  RETRY_LABEL,
+} from './customers-adjust-points.copy';
+import {
+  initialAdjustFormState,
+  newBalance,
+  signedPoints,
+  submitBlockers,
+  type AdjustFormState,
+} from './customers-adjust-points.form-state';
 import { useBulkSelection } from './customers-adjust-points.use-bulk-selection';
-import { DEFAULT_ROW_FILTERS, type RowFilters } from '../customers-page.filter-rows';
+import { useAdjustPreviewBaseline } from './customers-adjust-points.use-preview-baseline';
 
 /**
  * A live read the dialog renders from and re-checks against.
@@ -79,7 +97,7 @@ export function CustomersAdjustPointsDialog({
   /** Bulk only: the fresh count a submit resolved when it disagreed with the one shown; replaces it until close. */
   recountedCount?: number | null;
 }) {
-  const [state, setState] = useState<AdjustFormState>(initialAdjustFormState);
+  const [state, setState] = useState<AdjustFormState>(() => initialAdjustFormState(DEFAULT_REASON()));
   const [validationError, setValidationError] = useState<string | null>(null);
   const [isCheckingBeforeSubmit, setIsCheckingBeforeSubmit] = useState(false);
 
@@ -87,7 +105,6 @@ export function CustomersAdjustPointsDialog({
   const source = target.kind === 'single' ? target.customer : target.preview;
   const singleCustomer = target.kind === 'single' ? target.customer.data : undefined;
   const previewData = target.kind === 'bulk' ? target.preview.data : undefined;
-  const pointsPerCurrencyUnit = (singleCustomer ?? previewData)?.points_per_currency_unit ?? 0;
 
   const baseline = useAdjustPreviewBaseline(
     open,
@@ -118,7 +135,7 @@ export function CustomersAdjustPointsDialog({
   // `open` to false after a successful submit, which bypasses handleOpenChange.
   useEffect(() => {
     if (open) return;
-    setState(initialAdjustFormState());
+    setState(initialAdjustFormState(DEFAULT_REASON()));
     setValidationError(null);
     baseline.reset();
     bulk.resetAcknowledged();
@@ -148,19 +165,14 @@ export function CustomersAdjustPointsDialog({
   const isNegativeStart = isSingle && !!singleCustomer && singleCustomer.balance < 0;
   const balanceAfter = singleCustomer ? newBalance(state, singleCustomer.balance) : 0;
 
-  const submitEnabled =
-    canSubmit(state, {
-      // Bulk has no per-customer lifetime total; Infinity keeps the typo
-      // guard inactive rather than firing on a made-up number.
-      lifetimeEarned: isSingle ? (singleCustomer?.lifetime_earned ?? 0) : Number.POSITIVE_INFINITY,
-      pointsPerCurrencyUnit,
-      // No baseline yet (reopen refetch still in flight): nothing acknowledged to compare against.
-      isUnverified: isUnverified || (isSingle && !baseline.hasBaseline),
-      isStale,
-      needsAcknowledgement: !isSingle,
-      acknowledged: bulk.acknowledged,
-      isOverLimit: bulk.isOverLimit,
-    });
+  const blockers = submitBlockers(state, {
+    // No baseline yet (reopen refetch still in flight): nothing acknowledged to compare against.
+    isUnverified: isUnverified || (isSingle && !baseline.hasBaseline),
+    isStale,
+    needsAcknowledgement: !isSingle,
+    acknowledged: bulk.acknowledged,
+    isOverLimit: bulk.isOverLimit,
+  });
 
   async function handleSubmit() {
     const result = adjustPointsSchema.safeParse({
@@ -202,7 +214,6 @@ export function CustomersAdjustPointsDialog({
           isSingle={isSingle}
           isLoading={source.isLoading}
           singleCustomer={singleCustomer}
-          pointsPerCurrencyUnit={pointsPerCurrencyUnit}
           isStale={isStale}
           openedBalance={openedBalance}
           bulkEffectiveCount={bulk.effectiveCount}
@@ -231,19 +242,24 @@ export function CustomersAdjustPointsDialog({
         )}
 
         {isNegativeStart && singleCustomer && (
-          <AdjustPointsNegativeBalancePanel state={state} customerName={singleCustomer.name} balance={singleCustomer.balance} />
+          <AdjustPointsNegativeBalancePanel
+            state={state}
+            customerName={singleCustomer.name}
+            balance={singleCustomer.balance}
+          />
         )}
 
-        <AdjustPointsAmountField state={state} onChange={patchState} label={isSingle ? AMOUNT_LABEL() : AMOUNT_EACH_LABEL()} />
+        <AdjustPointsAmountField
+          state={state}
+          onChange={patchState}
+          label={isSingle ? AMOUNT_LABEL() : AMOUNT_EACH_LABEL()}
+        />
 
         {isSingle && singleCustomer && (
           <AdjustPointsFields
             state={state}
-            onChange={patchState}
             customerName={singleCustomer.name}
             balance={singleCustomer.balance}
-            lifetimeEarned={singleCustomer.lifetime_earned}
-            pointsPerCurrencyUnit={pointsPerCurrencyUnit}
             showResultPanel={!isNegativeStart || balanceAfter >= 0}
           />
         )}
@@ -256,7 +272,6 @@ export function CustomersAdjustPointsDialog({
             selectionMode={selectionMode}
             filters={filters ?? DEFAULT_ROW_FILTERS}
             notShownOnPage={bulk.notShownOnPage}
-            pointsPerCurrencyUnit={pointsPerCurrencyUnit}
             liabilityPoints={previewData?.liability_points ?? null}
             hasPreviewError={!!source.error}
             isOverLimit={bulk.isOverLimit}
@@ -265,18 +280,7 @@ export function CustomersAdjustPointsDialog({
           />
         )}
 
-        <Field>
-          <FieldLabel htmlFor="adjust-points-reason">{REASON_LABEL()}</FieldLabel>
-          <FieldContent>
-            <Textarea
-              id="adjust-points-reason"
-              value={state.reason}
-              onChange={(event) => patchState({ reason: event.target.value })}
-              placeholder={REASON_PLACEHOLDER()}
-            />
-            <p className="text-muted-foreground text-xs">{REASON_HELPER()}</p>
-          </FieldContent>
-        </Field>
+        <AdjustPointsReasonField reason={state.reason} onChange={(reason) => patchState({ reason })} />
 
         <AdjustPointsOptions
           state={state}
@@ -295,7 +299,7 @@ export function CustomersAdjustPointsDialog({
           isSubmitting={isSubmitting}
           isCheckingBeforeSubmit={isCheckingBeforeSubmit}
           isPreviewLoading={source.isLoading}
-          submitEnabled={submitEnabled}
+          blockers={blockers}
           onCancel={() => handleOpenChange(false)}
           onSubmit={handleSubmit}
         />

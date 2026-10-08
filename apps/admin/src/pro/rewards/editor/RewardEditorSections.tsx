@@ -11,7 +11,6 @@ import { Button } from '@/components/ui/button';
 import { MoneyInput, OptionalCountInput, OptionalMoneyInput, PointsInput } from '@/components/ui/custom/amount-inputs';
 import { EditorSection } from '@/components/ui/custom/editor-section';
 import { LookupMultiSelect } from '@/components/ui/custom/lookup-multi-select';
-import { ScheduleFields } from '@/components/ui/custom/schedule-fields';
 import { Field, FieldContent, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
@@ -20,7 +19,7 @@ import { Switch } from '@/components/ui/switch';
 import { FlexibleDiscountConfig, FlexibleDiscountFields } from '@/pages/rewards/FlexibleDiscountFields';
 import { RewardFormValues } from './reward-editor.form';
 
-/** The editor's sections for one reward type: the built-in's rate settings, or a catalog reward's cost, coupon and availability. */
+/** The editor's sections for one reward type: the built-in's rate settings, or a catalog reward's cost and coupon. Status and schedule live in the side area. */
 export function RewardEditorSections({ type }: { type: RewardType }) {
   const isCatalog = isCatalogRewardType(type);
 
@@ -43,10 +42,6 @@ export function RewardEditorSections({ type }: { type: RewardType }) {
           <RewardEditorCoupon />
         </EditorSection>
       )}
-
-      <EditorSection contentClassName="gap-5" step={isCatalog ? 4 : 3} title={__('Availability', 'yayloyalty')}>
-        <RewardEditorAvailability isCatalog={isCatalog} />
-      </EditorSection>
     </div>
   );
 }
@@ -153,7 +148,7 @@ function RewardEditorValue({ type }: { type: RewardType }) {
             label={__('Cap the discount at', 'yayloyalty')}
             error={configErrors.max_discount}
             description={__(
-              'Without a cap a percentage reward is unbounded on a large order. 0 means no cap.',
+              'Without a cap a percentage reward is unbounded on a large order. Leave empty for no cap.',
               'yayloyalty',
             )}
           >
@@ -170,11 +165,12 @@ function RewardEditorValue({ type }: { type: RewardType }) {
         <RewardField
           label={__('Minimum order', 'yayloyalty')}
           error={configErrors.min_order}
-          description={__('The coupon will not apply below this. 0 means no minimum.', 'yayloyalty')}
+          description={__('The coupon will not apply below this. Leave empty for no minimum.', 'yayloyalty')}
         >
           <OptionalMoneyInput
             value={numberConfig(config, 'min_order')}
             currency={currency}
+            placeholder={__('No minimum', 'yayloyalty')}
             onValueChange={(min_order) => patchConfig({ min_order })}
           />
         </RewardField>
@@ -364,63 +360,17 @@ function RewardEditorCoupon() {
       label={__('Expires', 'yayloyalty')}
       error={configErrors.coupon_expiry_days}
       description={__(
-        'Days after claiming. Points are spent when the coupon is claimed, and an expired coupon does not return them. 0 means it never expires.',
+        'Days after claiming. Points are spent when the coupon is claimed, and an expired coupon does not return them. Leave empty for a coupon that never expires.',
         'yayloyalty',
       )}
     >
       <OptionalCountInput
         value={days}
         unit={_n('day', 'days', days ?? 0, 'yayloyalty')}
+        placeholder={__('Never', 'yayloyalty')}
         onValueChange={(coupon_expiry_days) => patchConfig({ coupon_expiry_days })}
       />
     </RewardField>
-  );
-}
-
-// Availability
-
-function RewardEditorAvailability({ isCatalog }: { isCatalog: boolean }) {
-  const { control, setValue, formState } = useFormContext<RewardFormValues>();
-  const claimsPerCustomer = useWatch({ control, name: 'claims_per_customer' });
-  const startsAt = useWatch({ control, name: 'starts_at' });
-  const endsAt = useWatch({ control, name: 'ends_at' });
-  const { config, patchConfig, configErrors } = useRewardConfig();
-
-  return (
-    <>
-      {isCatalog && (
-        <>
-          <RewardField
-            label={__('Claims per customer', 'yayloyalty')}
-            error={formState.errors.claims_per_customer}
-            description={__('1 means once per customer. 0 means unlimited.', 'yayloyalty')}
-          >
-            <OptionalCountInput
-              value={claimsPerCustomer}
-              onValueChange={(next) => setValue('claims_per_customer', next, EDIT)}
-            />
-          </RewardField>
-          <RewardField
-            label={__('Total claims', 'yayloyalty')}
-            error={configErrors.max_total}
-            description={__('Across every customer. 0 means unlimited.', 'yayloyalty')}
-          >
-            <OptionalCountInput
-              value={numberConfig(config, 'max_total')}
-              onValueChange={(max_total) => patchConfig({ max_total })}
-            />
-          </RewardField>
-        </>
-      )}
-
-      <ScheduleFields
-        startsAt={startsAt}
-        endsAt={endsAt}
-        onStartsAtChange={(next) => setValue('starts_at', next, EDIT)}
-        onEndsAtChange={(next) => setValue('ends_at', next, EDIT)}
-        endsAtError={formState.errors.ends_at}
-      />
-    </>
   );
 }
 

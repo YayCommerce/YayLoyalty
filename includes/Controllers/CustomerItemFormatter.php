@@ -25,25 +25,23 @@ final class CustomerItemFormatter {
         ?array $live_identity,
         int $ledger_count,
         int $activity_count,
-        ?CustomerMeta $deletion,
-        float $points_per_currency_unit
+        ?CustomerMeta $deletion
     ): array {
         return $base + [
-            'name'                     => self::identity( $live_identity, $deletion, 'display_name' ),
-            'email'                    => self::identity( $live_identity, $deletion, 'email' ),
-            'deleted_at'               => null !== $deletion ? $deletion->get_created_at() : null,
-            'counts'                   => [
+            'name'             => self::identity( $live_identity, $deletion, 'display_name' ),
+            'email'            => self::identity( $live_identity, $deletion, 'email' ),
+            'deleted_at'       => null !== $deletion ? $deletion->get_created_at() : null,
+            'counts'           => [
                 'ledger'      => $ledger_count,
                 'activity'    => $activity_count,
                 // No redemptions table exists yet, so never fabricate a count.
                 'redemptions' => 0,
             ],
-            'loose_ends'               => self::loose_ends( $deletion ),
+            'loose_ends'       => self::loose_ends( $deletion ),
             // Needs the `lots` table: designed, not built yet.
-            'expiry'                   => null,
+            'expiry'           => null,
             // Needs a backwards walk of the ledger, a separate feature not built yet.
-            'negative_balance'         => null,
-            'points_per_currency_unit' => $points_per_currency_unit,
+            'negative_balance' => null,
         ];
     }
 

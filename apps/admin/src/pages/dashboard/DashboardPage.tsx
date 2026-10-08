@@ -11,10 +11,10 @@ import PageLayout from '@/components/layout/PageLayout';
 import { DashboardProPanels } from '@/pro';
 import { DashboardAnomalyPanel } from './components/DashboardAnomalyPanel';
 import { DashboardCacheStrip } from './components/DashboardCacheStrip';
-import { DashboardEmptyState } from './components/DashboardEmptyState';
 import { DashboardNoticeStrip } from './components/DashboardNoticeStrip';
 import { DashboardPointsChart } from './components/DashboardPointsChart';
 import { DashboardProTeasers } from './components/DashboardProTeasers';
+import { DashboardRangeControl } from './components/DashboardRangeControl';
 import { DashboardRecentActivity } from './components/DashboardRecentActivity';
 import { DashboardSkeleton } from './components/DashboardSkeleton';
 import { DashboardStatsGrid } from './components/DashboardStatsGrid';
@@ -30,7 +30,6 @@ export default function DashboardPage() {
   const refresh = useRefreshDashboard(range);
   const data = query.data;
 
-  const isEmptyStore = !!data && data.stats.members.value === 0 && data.stats.points_issued.value === 0;
   const pointsJump = data ? findPointsJump(data.notices) : null;
   const tileOverrides = data
     ? noticeTileOverrides(
@@ -38,14 +37,13 @@ export default function DashboardPage() {
         data.range,
         pointsJump?.data ?? null,
         data.notices.some((n) => n.key === 'default_campaign_paused'),
-        data.stats.liability.points_per_currency_unit,
       )
     : {};
   const isDimmed = query.isPlaceholderData || (query.isFetching && !query.isPending);
 
   return (
     <PageLayout
-      className="max-w-7xl"
+      actions={<DashboardRangeControl range={range} onRangeChange={setRange} />}
       title={__('Dashboard', 'yayloyalty')}
       description={
         query.isPending
@@ -71,7 +69,7 @@ export default function DashboardPage() {
         <ErrorState message={__('Could not load the dashboard.', 'yayloyalty')} onRetry={() => query.refetch()} />
       )}
 
-      {query.isPending && !query.isError && <DashboardSkeleton range={range} onRangeChange={setRange} />}
+      {query.isPending && !query.isError && <DashboardSkeleton />}
 
       {data && (
         <div className={cn('flex flex-col gap-4', isDimmed && 'opacity-60 transition-opacity')}>
@@ -84,43 +82,18 @@ export default function DashboardPage() {
             />
           )}
 
-          {isEmptyStore && (
-            <DashboardEmptyState pointsPerCurrencyUnit={data.stats.liability.points_per_currency_unit} />
-          )}
-
           {/* Both sides hand the same slots to the same layout; Lite never imports from @/pro. */}
           {IS_PRO_BUILD ? (
             <DashboardProPanels range={range} stats={data.stats}>
-              {(slots) => (
-                <DashboardBody
-                  data={data}
-                  range={range}
-                  onRangeChange={setRange}
-                  tileOverrides={tileOverrides}
-                  slots={slots}
-                />
-              )}
+              {(slots) => <DashboardBody data={data} tileOverrides={tileOverrides} slots={slots} />}
             </DashboardProPanels>
           ) : (
             <DashboardProTeasers>
-              {(slots) => (
-                <DashboardBody
-                  data={data}
-                  range={range}
-                  onRangeChange={setRange}
-                  tileOverrides={tileOverrides}
-                  slots={slots}
-                />
-              )}
+              {(slots) => <DashboardBody data={data} tileOverrides={tileOverrides} slots={slots} />}
             </DashboardProTeasers>
           )}
 
-          {pointsJump && (
-            <DashboardAnomalyPanel
-              data={pointsJump.data}
-              pointsPerCurrencyUnit={data.stats.liability.points_per_currency_unit}
-            />
-          )}
+          {pointsJump && <DashboardAnomalyPanel data={pointsJump.data} />}
 
           <DashboardRecentActivity activity={data.recent_activity} />
         </div>
@@ -132,14 +105,10 @@ export default function DashboardPage() {
 /** Tiles, chart and side column; where the Pro slots plug in. */
 function DashboardBody({
   data,
-  range,
-  onRangeChange,
   tileOverrides,
   slots,
 }: {
   data: DashboardResponse;
-  range: DashboardRange;
-  onRangeChange: (range: DashboardRange) => void;
   tileOverrides: Partial<Record<keyof DashboardStats, ReactNode>>;
   slots: DashboardProSlots;
 }) {
@@ -148,12 +117,7 @@ function DashboardBody({
       <DashboardStatsGrid stats={data.stats} range={data.range} deltaOverrides={tileOverrides} />
 
       <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
-        <DashboardPointsChart
-          series={data.series}
-          range={range}
-          onRangeChange={onRangeChange}
-          extraSeries={slots.extraSeries}
-        >
+        <DashboardPointsChart series={data.series} extraSeries={slots.extraSeries}>
           {slots.chartControls}
         </DashboardPointsChart>
         <div className="flex flex-col gap-4">

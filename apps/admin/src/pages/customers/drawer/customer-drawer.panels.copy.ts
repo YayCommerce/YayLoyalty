@@ -30,10 +30,8 @@ export function deletedBannerBody(keptEntries: string): string {
 
 export const WHAT_CAN_STILL_BE_DONE_TITLE = () => __('What can still be done', 'yayloyalty');
 export const ACTION_ANONYMISE = () => __('Anonymise the record', 'yayloyalty');
-/** Worded generally: `DELETED_ACCOUNT_ACTION_REASON` is about spending and reads oddly beside Reset expiry. */
-export const DELETED_RESET_EXPIRY_REASON = () => __('There is no owner left to extend anything for.', 'yayloyalty');
-/** Not the main row's "not available yet": "no job exists yet" is a different fact. */
-export const DELETED_EXPORT_REASON = () => __('No export job exists yet.', 'yayloyalty');
+/** Export stays live for a deleted account: the history outlives the owner. */
+export const DELETED_EXPORT_REASON = () => __('Download the full history as a CSV.', 'yayloyalty');
 export const DELETED_ANONYMISE_REASON = () => __('Not built yet — a separate feature from this drawer.', 'yayloyalty');
 
 export const LOOSE_ENDS_TITLE = () => __('Loose ends this leaves', 'yayloyalty');
@@ -83,24 +81,24 @@ export function expiringBannerTitle(expiringPoints: string, balance: string, dat
   );
 }
 /**
- * "In 12 days. That is $63.00 about to be lost, and 64% of the balance."
+ * "In 12 days. That is 6,300 points about to be lost, and 64% of the balance."
  * Without `sharePercent` (a balance at or below 0) the percentage clause is dropped, never shown as "0%".
  */
-export function expiringBannerBody(days: number, money: string, sharePercent: string | null): string {
+export function expiringBannerBody(days: number, points: string, sharePercent: string | null): string {
   if (null === sharePercent) {
     return sprintf(
-      /* translators: %1$d: days until expiry, %2$s: money value */
+      /* translators: %1$d: days until expiry, %2$s: points about to expire, e.g. "500 points" */
       __('In %1$d days. That is %2$s about to be lost.', 'yayloyalty'),
       days,
-      money,
+      points,
     );
   }
 
   return sprintf(
-    /* translators: %1$d: days until expiry, %2$s: money value, %3$s: percentage of balance */
+    /* translators: %1$d: days until expiry, %2$s: points about to expire, e.g. "500 points", %3$s: percentage of balance */
     __('In %1$d days. That is %2$s about to be lost, and %3$s%% of the balance.', 'yayloyalty'),
     days,
-    money,
+    points,
     sharePercent,
   );
 }

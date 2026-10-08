@@ -45,7 +45,7 @@ class PointsEarnedEmail extends LoyaltyEmail {
     }
 
     public function get_default_heading() {
-        return __( 'You earned points', 'yayloyalty' );
+        return __( 'You earned {points_label}', 'yayloyalty' );
     }
 
     /** Mails the customer about one award, which Emails::relay_award() passes as its ledger row id. */
@@ -103,9 +103,9 @@ class PointsEarnedEmail extends LoyaltyEmail {
     /** @return array{points: string, points_label: string, balance: string} The subject placeholders' values, which the body shows too. */
     private static function amounts( LedgerEntry $entry ): array {
         return [
-            'points'       => number_format_i18n( $entry->get_points() ),
+            'points'       => SettingsHelper::format_number( $entry->get_points() ),
             'points_label' => SettingsHelper::points_label( $entry->get_points() ),
-            'balance'      => number_format_i18n( $entry->get_balance_after() ),
+            'balance'      => SettingsHelper::format_number( $entry->get_balance_after() ),
         ];
     }
 

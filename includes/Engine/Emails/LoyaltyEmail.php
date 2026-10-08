@@ -1,6 +1,8 @@
 <?php
 namespace YayLoyalty\Engine\Emails;
 
+use YayLoyalty\Helpers\SettingsHelper;
+
 defined( 'ABSPATH' ) || exit;
 
 /**
@@ -35,7 +37,26 @@ abstract class LoyaltyEmail extends \WC_Email {
     }
 
     /**
-     * Subjects are plain text, so this decodes the entities that number_format_i18n() (&nbsp; as a
+     * Fills {points_label} with the merchant's plural label unless the email set a count-based one, as
+     * PointsEarnedEmail does. Read on every call, so it follows the customer's locale while sending.
+     *
+     * @param mixed $text Subject, heading or additional content.
+     * @return string
+     */
+    public function format_string( $text ) {
+        if ( ! empty( $this->placeholders['{points_label}'] ) ) {
+            return parent::format_string( $text );
+        }
+
+        $this->placeholders['{points_label}'] = SettingsHelper::points_label_plural();
+        $formatted                            = parent::format_string( $text );
+        $this->placeholders['{points_label}'] = '';
+
+        return $formatted;
+    }
+
+    /**
+     * Subjects are plain text, so this decodes the entities that a number's separators (&nbsp; as a
      * thousands separator) and escaped placeholders leave, which WC_Email::send() keeps. It runs after
      * the subject filter, so it covers what other plugins add there too.
      */

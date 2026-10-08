@@ -26,6 +26,7 @@ import {
   SAVE_SUCCESS_TOAST,
 } from './design-settings.copy';
 import { DesignFormValues, designToFormValues } from './design-settings.form';
+import { PreviewHighlightProvider } from './design-settings.preview-highlight';
 import { DesignLauncherPreview } from './DesignLauncherPreview';
 import { DesignLauncherSection } from './DesignLauncherSection';
 import { DesignStorefrontTextSection } from './DesignStorefrontTextSection';
@@ -85,31 +86,33 @@ export default function DesignSettingsPage() {
   return (
     <>
       <FormProvider {...form}>
-        <form onSubmit={handleSave} className="flex flex-col gap-4 xl:flex-row xl:items-start">
-          <div className="flex min-w-0 flex-1 flex-col gap-4">
-            <DesignLauncherSection />
-            <DesignStorefrontTextSection />
-            <DesignVisibilitySection />
+        <PreviewHighlightProvider>
+          <form onSubmit={handleSave} className="flex flex-col gap-4 xl:flex-row xl:items-start">
+            <div className="flex min-w-0 flex-1 flex-col gap-4">
+              <DesignLauncherSection />
+              <DesignStorefrontTextSection />
+              <DesignVisibilitySection />
 
-            {/* IS_PRO_BUILD inside ProGate: ProGate alone would still ship the Pro sections in Lite
+              {/* IS_PRO_BUILD inside ProGate: ProGate alone would still ship the Pro sections in Lite
                 (see pro/index.ts). */}
-            <ProGate>{IS_PRO_BUILD ? <DesignPanelSection /> : null}</ProGate>
-            <ProGate>{IS_PRO_BUILD ? <DesignTypographySection /> : null}</ProGate>
+              <ProGate>{IS_PRO_BUILD ? <DesignPanelSection /> : null}</ProGate>
+              <ProGate>{IS_PRO_BUILD ? <DesignTypographySection /> : null}</ProGate>
 
-            <div className="flex items-center justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setResetOpen(true)}>
-                {RESET_WHOLE_TAB_BUTTON_LABEL()}
-              </Button>
-              <Button type="submit" disabled={!form.formState.isDirty || saveMutation.isPending}>
-                {SAVE_BUTTON_LABEL()}
-              </Button>
+              <div className="flex items-center justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setResetOpen(true)}>
+                  {RESET_WHOLE_TAB_BUTTON_LABEL()}
+                </Button>
+                <Button type="submit" disabled={!form.formState.isDirty || saveMutation.isPending}>
+                  {SAVE_BUTTON_LABEL()}
+                </Button>
+              </div>
             </div>
-          </div>
 
-          <div className="w-full xl:sticky xl:top-6 xl:w-110 xl:shrink-0">
-            <DesignLauncherPreview />
-          </div>
-        </form>
+            <div className="w-full xl:sticky xl:top-6 xl:w-110 xl:shrink-0">
+              <DesignLauncherPreview />
+            </div>
+          </form>
+        </PreviewHighlightProvider>
       </FormProvider>
 
       <UnsavedChangeDialog

@@ -1,11 +1,14 @@
 <?php
 namespace YayLoyalty\Engine;
 
+use YayLoyalty\Engine\Earning\Outcome;
+use YayLoyalty\Engine\Points\Context;
 use YayLoyalty\Models\LedgerEntry;
 use YayLoyalty\Repositories\CustomerMetaRepository;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Services\CustomerActivityService;
+use YayLoyalty\Utils\Dates;
 use YayLoyalty\Utils\Log;
 
 defined( 'ABSPATH' ) || exit;
@@ -74,7 +77,7 @@ final class CustomerActivityListener {
 
         try {
             $service = self::service();
-            $service->record_account_created( $entry );
+            $service->record_membership_started( $entry );
             $service->record_points_adjusted( $entry );
         } catch ( \Throwable $e ) {
             Log::error( 'CustomerActivityListener', $e->getMessage() );
@@ -82,8 +85,40 @@ final class CustomerActivityListener {
     }
 
     /**
-     * Reads the email and name from the hook's `WP_User`: on `delete_user` this is the last moment
-     * they can be read. `get_userdata()` covers a third party that fires the hook without one.
+     * An award an earning limit cut but still partly paid
+     * (EarningService::LIMITED_ACTION): one `earning_limited` row. Guards its
+     * arguments like on_ledger_recorded().
+     *
+     * @param mixed $outcome
+     * @param mixed $trigger
+     * @param mixed $ctx
+     */
+    public static function on_award_limited( $outcome, $trigger, $ctx ): void {
+        if ( ! $outcome instanceof Outcome || ! $ctx instanceof Context || null === $ctx->get_user_id() || $outcome->held_back() < 1 ) {
+            return;
+        }
+
+        try {
+            $entry = $outcome->get_entry();
+
+            self::service()->record_earning_limited(
+                (int) $ctx->get_user_id(),
+                (string) $trigger,
+                $outcome->get_evaluation()->get_points(),
+                $outcome->held_back(),
+                $ctx->get_order_id(),
+                $entry ? $entry->get_created_at() : Dates::now()
+            );
+        } catch ( \Throwable $e ) {
+            Log::error( 'CustomerActivityListener', $e->getMessage() );
+        }
+    }
+
+    /**
+     * Identity comes from the `WP_User` object when the hook supplied one
+     * (the only moment `user_email`/`display_name` are still readable for
+     * `delete_user`); `get_userdata()` is a defensive fallback for a
+     * third-party caller that fires the hook without it.
      *
      * @param \WP_User|null $user
      */

@@ -30,22 +30,13 @@ export const LAUNCHER_SECTION_TITLE = () => __('Launcher', 'yayloyalty');
 export const LAUNCHER_SECTION_DESCRIPTION = () =>
   __('How the floating rewards button looks and where it sits on the storefront.', 'yayloyalty');
 export const LAUNCHER_POSITION_LABEL = () => __('Position', 'yayloyalty');
-export const LAUNCHER_BUTTON_STYLE_LABEL = () => __('Button style', 'yayloyalty');
 export const LAUNCHER_BRAND_COLOR_LABEL = () => __('Brand colour', 'yayloyalty');
 export const LAUNCHER_CORNER_RADIUS_LABEL = () => __('Corner radius', 'yayloyalty');
 export const LAUNCHER_CORNER_RADIUS_DESCRIPTION = () => __('0 is square, 24 is fully rounded.', 'yayloyalty');
-export const LAUNCHER_ICON_LABEL = () => __('Icon', 'yayloyalty');
-export const LAUNCHER_ICON_UPLOAD_LABEL = () => __('Custom icon file', 'yayloyalty');
-export const LAUNCHER_ICON_UPLOAD_DESCRIPTION = () => __('Used only while Icon above is set to Custom.', 'yayloyalty');
 
 // Storefront text section
 
 export const STOREFRONT_SECTION_TITLE = () => __('Storefront text', 'yayloyalty');
-export const STOREFRONT_SECTION_DESCRIPTION = () =>
-  __(
-    'The wording shown on your storefront panel. The launcher label, balance heading and redeem button can’t be empty; clearing any other field stores it empty. Use Reset to defaults to bring back the original wording.',
-    'yayloyalty',
-  );
 export const STOREFRONT_LAUNCHER_LABEL_LABEL = () => __('Launcher label', 'yayloyalty');
 export const STOREFRONT_BALANCE_HEADING_LABEL = () => __('Balance heading', 'yayloyalty');
 export const STOREFRONT_EARN_RATE_LINE_LABEL = () => __('Earn rate line', 'yayloyalty');
@@ -89,18 +80,15 @@ export const VISIBILITY_HIDE_FOR_ROLES_DESCRIPTION = () =>
 // Panel section (Pro)
 
 export const PANEL_SECTION_TITLE = () => __('Panel', 'yayloyalty');
-export const PANEL_SECTION_DESCRIPTION = () => __('Layout and the panel’s optional blocks.', 'yayloyalty');
-export const PANEL_LAYOUT_LABEL = () => __('Layout', 'yayloyalty');
+export const PANEL_SECTION_DESCRIPTION = () => __('The panel’s optional blocks.', 'yayloyalty');
 export const PANEL_SHOW_REWARD_CATALOG_LABEL = () => __('Show reward catalog', 'yayloyalty');
 export const PANEL_SHOW_REWARD_CATALOG_DESCRIPTION = () =>
   __('Lists redeemable rewards inside the panel.', 'yayloyalty');
 
-// Typography section (Pro)
+// Custom CSS section (Pro)
 
-export const TYPOGRAPHY_SECTION_TITLE = () => __('Typography', 'yayloyalty');
-export const TYPOGRAPHY_SECTION_DESCRIPTION = () => __('The font and CSS applied to the rewards panel.', 'yayloyalty');
-export const TYPOGRAPHY_MODE_LABEL = () => __('Mode', 'yayloyalty');
-export const TYPOGRAPHY_FONT_LABEL = () => __('Font', 'yayloyalty');
+export const TYPOGRAPHY_SECTION_TITLE = () => __('Custom CSS', 'yayloyalty');
+export const TYPOGRAPHY_SECTION_DESCRIPTION = () => __('CSS applied to the rewards launcher.', 'yayloyalty');
 export const TYPOGRAPHY_CUSTOM_CSS_LABEL = () => __('Custom CSS', 'yayloyalty');
 export const TYPOGRAPHY_CUSTOM_CSS_DESCRIPTION = () => __('Saved, not yet applied to the storefront.', 'yayloyalty');
 
@@ -113,11 +101,6 @@ export const PREVIEW_VIEWER_MEMBER = () => __('Signed in', 'yayloyalty');
 export const PREVIEW_VIEWER_GUEST = () => __('Guest', 'yayloyalty');
 export const PREVIEW_COLLAPSED = () => __('Collapsed', 'yayloyalty');
 export const PREVIEW_EXPANDED = () => __('Expanded', 'yayloyalty');
-export const PREVIEW_FOOTNOTE = () =>
-  __(
-    "Preview only — the theme's own fonts and spacing apply on the storefront. Rates and rewards are your store's; the signed-in shopper is a sample.",
-    'yayloyalty',
-  );
 export const PREVIEW_HIDDEN_ON_MOBILE = () =>
   sprintf(
     /* translators: %s: the "Hide on mobile" setting's label. */

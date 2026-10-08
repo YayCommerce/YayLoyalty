@@ -6,6 +6,7 @@ use YayLoyalty\Enums\RewardType;
 use YayLoyalty\Enums\Status;
 use YayLoyalty\Models\Reward;
 use YayLoyalty\Pro\YayLoyaltyPro;
+use YayLoyalty\Utils\Json;
 
 /**
  * The checks RewardRestController runs before a row is written: the Pro
@@ -33,7 +34,6 @@ final class RewardValidationTest extends TestCase {
                 'min_order'          => 25,
                 'coupon_expiry_days' => 60,
                 'exclude_sale_items' => false,
-                'max_total'          => null,
             ],
             $overrides
         );
@@ -51,7 +51,6 @@ final class RewardValidationTest extends TestCase {
                     'min_order'          => 0,
                     'coupon_expiry_days' => 30,
                     'exclude_sale_items' => true,
-                    'max_total'          => 100,
                 ]
             )
         );
@@ -82,8 +81,6 @@ final class RewardValidationTest extends TestCase {
         $this->assertFalse( Reward::config_is_valid( RewardType::FIXED_COUPON, $this->fixed_coupon( [ 'min_order' => -1 ] ) ) );
         $this->assertFalse( Reward::config_is_valid( RewardType::FIXED_COUPON, $this->fixed_coupon( [ 'coupon_expiry_days' => 0 ] ) ) );
         $this->assertFalse( Reward::config_is_valid( RewardType::FIXED_COUPON, $this->fixed_coupon( [ 'exclude_sale_items' => 'yes' ] ) ) );
-        $this->assertFalse( Reward::config_is_valid( RewardType::FIXED_COUPON, $this->fixed_coupon( [ 'max_total' => 2.5 ] ) ) );
-        $this->assertFalse( Reward::config_is_valid( RewardType::FIXED_COUPON, $this->fixed_coupon( [ 'max_total' => 0 ] ) ) );
 
         $percent = [
             'percent'  => 150,
@@ -120,6 +117,22 @@ final class RewardValidationTest extends TestCase {
         $this->assertSame( $this->fixed_coupon(), Reward::validate_config( RewardType::FIXED_COUPON, $this->fixed_coupon( [ 'percent' => 10 ] ) ) );
     }
 
+    public function test_a_cap_is_null_or_above_zero(): void {
+        $flexible = Reward::default_config( RewardType::FLEXIBLE_DISCOUNT );
+        $percent  = [
+            'percent'  => 10,
+            'currency' => 'USD',
+        ];
+
+        $this->assertFalse( Reward::config_is_valid( RewardType::FLEXIBLE_DISCOUNT, [ 'max_points_per_order' => 0 ] + $flexible ) );
+        $this->assertFalse( Reward::config_is_valid( RewardType::FLEXIBLE_DISCOUNT, [ 'max_total' => 0 ] + $flexible ) );
+        $this->assertTrue( Reward::config_is_valid( RewardType::FLEXIBLE_DISCOUNT, [ 'max_total' => 0.5 ] + $flexible ) );
+        $this->assertFalse( Reward::config_is_valid( RewardType::PERCENT_COUPON, [ 'max_discount' => 0 ] + $percent ) );
+        $this->assertTrue( Reward::config_is_valid( RewardType::PERCENT_COUPON, [ 'max_discount' => null ] + $percent ) );
+        // A minimum, not a cap: 0 still means no minimum.
+        $this->assertTrue( Reward::config_is_valid( RewardType::PERCENT_COUPON, [ 'min_order' => 0 ] + $percent ) );
+    }
+
     public function test_flexible_discount_default_config_still_passes(): void {
         $this->assertTrue(
             Reward::config_is_valid(
@@ -127,6 +140,13 @@ final class RewardValidationTest extends TestCase {
                 Reward::default_config( RewardType::FLEXIBLE_DISCOUNT )
             )
         );
+    }
+
+    /** A config read back from the API carries the stored stamp; saving it unchanged must not be refused. */
+    public function test_a_stored_schema_version_stamp_is_accepted(): void {
+        $config = Reward::default_config( RewardType::FLEXIBLE_DISCOUNT ) + [ Json::SCHEMA_VERSION_KEY => 1 ];
+
+        $this->assertTrue( Reward::config_is_valid( RewardType::FLEXIBLE_DISCOUNT, $config ) );
     }
 
     public function test_to_update_row_drops_immutable_columns_and_keeps_formats_paired(): void {

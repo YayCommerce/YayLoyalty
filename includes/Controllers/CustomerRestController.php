@@ -9,7 +9,6 @@ use YayLoyalty\Models\Customer;
 use YayLoyalty\Repositories\CustomerMetaRepository;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
-use YayLoyalty\Repositories\RewardRepository;
 use YayLoyalty\Services\LedgerService;
 
 defined( 'ABSPATH' ) || exit;
@@ -29,9 +28,6 @@ final class CustomerRestController extends AbstractRestController {
     /** @var LedgerRepository Read-only here, for counts.ledger. LedgerService makes every write. */
     private $ledger;
 
-    /** @var RewardRepository Read-only: the drawer's points→money rate. */
-    private $rewards;
-
     /** @var CustomerMetaRepository Read-only: counts.activity, the deletion snapshot and the list's identity fallback. */
     private $meta;
 
@@ -39,13 +35,11 @@ final class CustomerRestController extends AbstractRestController {
         CustomerRepository $customers,
         LedgerService $ledger_service,
         LedgerRepository $ledger,
-        RewardRepository $rewards,
         CustomerMetaRepository $meta
     ) {
         $this->customers      = $customers;
         $this->ledger_service = $ledger_service;
         $this->ledger         = $ledger;
-        $this->rewards        = $rewards;
         $this->meta           = $meta;
     }
 
@@ -121,24 +115,15 @@ final class CustomerRestController extends AbstractRestController {
             CustomerItemFormatter::live_identity( $user ),
             $this->ledger->count_for_user( $user_id ),
             $activity_count,
-            $deletion,
-            $this->rewards->points_per_currency_unit()
+            $deletion
         );
     }
 
     public function adjust_points( \WP_REST_Request $request ) {
         $points = (int) $request['points'];
 
-        $invalid = $this->validate_adjustment( $points );
-
-        if ( null !== $invalid ) {
-            return $invalid;
-        }
-
-        $within_ceiling = $this->assert_ceiling( $points );
-
-        if ( is_wp_error( $within_ceiling ) ) {
-            return $within_ceiling;
+        if ( 0 === $points ) {
+            return $this->error_invalid_arguments( __( 'An adjustment must be a non-zero number of points.', 'yayloyalty' ) );
         }
 
         // actor_id comes from the session, never the request body.
@@ -151,32 +136,6 @@ final class CustomerRestController extends AbstractRestController {
         );
 
         return $entry->to_array();
-    }
-
-    /** Non-zero and within the sanity ceiling. Adjustments are not idempotent, so a retry grants twice, and the ceiling bounds the damage. */
-    private function validate_adjustment( int $points ): ?\WP_Error {
-        if ( 0 === $points ) {
-            return $this->error_invalid_arguments( __( 'An adjustment must be a non-zero number of points.', 'yayloyalty' ) );
-        }
-
-        /**
-         * Largest absolute point value a single manual adjustment may carry.
-         *
-         * @param int $max
-         */
-        $max = (int) apply_filters( 'yayloyalty_max_manual_adjustment', 1000000 );
-
-        if ( abs( $points ) > $max ) {
-            return $this->error_invalid_arguments(
-                sprintf(
-                    /* translators: %s: maximum number of points */
-                    __( 'A single adjustment cannot exceed %s points.', 'yayloyalty' ),
-                    number_format_i18n( $max )
-                )
-            );
-        }
-
-        return null;
     }
 
     protected function define_item_schema(): array {

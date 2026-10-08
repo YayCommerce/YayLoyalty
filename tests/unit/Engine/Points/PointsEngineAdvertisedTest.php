@@ -25,33 +25,6 @@ final class PointsEngineAdvertisedTest extends EngineTestCase {
         $this->assertNull( $engine->advertised( CampaignTrigger::PURCHASE, $this->advert() ) );
     }
 
-    public function test_multiplier_with_paused_default_falls_through(): void {
-        $rate   = $this->purchase_campaign( [ 'points_per_unit' => 2 ], 0, 3, Status::ACTIVE, null, null, 'rate' );
-        $engine = $this->engine(
-            [
-                $this->default_purchase_campaign( [], Status::PAUSED ),
-                $this->purchase_campaign(
-                    [
-                        'mode'       => 'multiplier',
-                        'multiplier' => 3,
-                    ],
-                    10,
-                    2,
-                    Status::ACTIVE,
-                    null,
-                    null,
-                    'multi'
-                ),
-                $rate,
-            ]
-        );
-
-        $advert = $engine->advertised( CampaignTrigger::PURCHASE, $this->advert() );
-
-        $this->assertSame( $rate, $advert['campaign'] );
-        $this->assertSame( 2.0, $advert['value'] );
-    }
-
     public function test_conditional_campaign_is_skipped_without_asking_the_evaluator(): void {
         $evaluator = new class() {
             /** @var int */

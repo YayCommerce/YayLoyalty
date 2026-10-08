@@ -5,6 +5,7 @@ import {
   deleteCampaign,
   getCampaign,
   getCampaigns,
+  reorderCampaigns,
   updateCampaign,
   updateCampaignConfig,
   updateCampaignStatus,
@@ -39,15 +40,6 @@ export function useCampaignsQuery(params: CampaignListParams = {}) {
 
 export function useCampaignQuery(id: number) {
   return useQuery(CAMPAIGN_QUERIES.detail(id));
-}
-
-/**
- * Purchase-group campaigns only, for the editor's multiplier mode, which
- * inherits the built-in purchase campaign's rate. Off unless `enabled`, so a
- * rate-mode or non-purchase editor never asks; the full list is the table's.
- */
-export function usePurchaseCampaignsQuery(enabled: boolean) {
-  return useQuery({ ...CAMPAIGN_QUERIES.list({ trigger: 'purchase', perPage: 100 }), enabled });
 }
 
 /** No detail query key: nothing exists to invalidate until the row is created. */
@@ -104,6 +96,22 @@ export function useUpdateCampaignConfigMutation(id: number) {
       queryClient.invalidateQueries({ queryKey: ['campaign', 'detail', id] });
       queryClient.invalidateQueries({ queryKey: ['campaign', 'list'] });
       queryClient.invalidateQueries({ queryKey: ['campaign', 'performance', id] });
+    },
+  });
+}
+
+/** Saves a dragged order as priority; see reorderCampaigns(). */
+export function useReorderCampaignsMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationKey: ['campaign', 'reorder'],
+    // One scope runs drags in order, so a slow earlier request can never land after a later one.
+    scope: { id: 'campaign-reorder' },
+    mutationFn: (ids: number[]) => reorderCampaigns(ids),
+    // onSettled: a failed save must still bring the table back to the stored order.
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['campaign'] });
     },
   });
 }

@@ -9,13 +9,12 @@ import {
   CampaignConditionKind,
   CampaignDisplayStatus,
   CampaignTrigger,
-  resolvePurchaseMultiplier,
 } from '@/lib/schema/campaign.schema';
 import type { badgeVariants } from '@/components/ui/badge';
 
 /** Campaign presentation strings derived from the real fields; the wire carries none. */
 
-/** Whether a built-in still earns in place of what sits above it; mirrors the engine skipping any campaign not active (PurchaseHandler::is_eligible for a multiplier's default). */
+/** Whether a built-in still earns in place of what sits above it; mirrors the engine skipping any campaign that is not active. */
 export function isBuiltinCampaignActive(campaign: Campaign | undefined): boolean {
   return campaign?.status === 'active';
 }
@@ -54,14 +53,6 @@ export function triggerLabel(trigger: CampaignTrigger): string {
 }
 
 export function givesLabel(trigger: CampaignTrigger, config: Record<string, unknown>): string {
-  if (trigger === 'purchase' && config.mode === 'multiplier') {
-    return sprintf(
-      /* translators: %s: the multiplier, e.g. "2". */
-      __('×%s points', 'yayloyalty'),
-      String(resolvePurchaseMultiplier(config)),
-    );
-  }
-
   if (trigger === 'purchase') {
     return pointsPerCurrencyLabel(Number(config.points_per_unit ?? 0));
   }
@@ -172,11 +163,11 @@ export function campaignStatusBadgeVariant(
 ): VariantProps<typeof badgeVariants>['variant'] {
   switch (status) {
     case 'active':
-      return 'success-soft';
+      return 'success';
     case 'scheduled':
-      return 'primary-soft';
+      return 'primary';
     case 'paused':
-      return 'warning-soft';
+      return 'warning';
     case 'draft':
       return 'outline';
     case 'archived':

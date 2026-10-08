@@ -16,22 +16,22 @@ defined( 'ABSPATH' ) || exit;
 final class LauncherCopy {
 
     public static function points( int $points ): string {
-        return number_format_i18n( $points );
+        return SettingsHelper::format_number( $points );
     }
 
     /** "+270" / "−120": signed, with a real minus sign. */
     public static function signed_points( int $points ): string {
-        return ( $points < 0 ? '−' : '+' ) . number_format_i18n( abs( $points ) );
+        return ( $points < 0 ? '−' : '+' ) . SettingsHelper::format_number( abs( $points ) );
     }
 
     /**
      * A rate like 1, 1.5 or 0.004, with every decimal the merchant entered. At most 10 places, which drops float noise.
-     * The digits match the admin's pointsPerCurrencyLabel(), which owns them. The separators are the shopper's ("1,5" in German).
+     * The digits match the admin's pointsPerCurrencyLabel(), which owns them. The separators are the store's, as for money ("1,5" with a comma decimal separator).
      */
     public static function rate( float $rate ): string {
         $fixed = rtrim( sprintf( '%.10F', $rate ), '0' );
 
-        return number_format_i18n( $rate, strlen( $fixed ) - strpos( $fixed, '.' ) - 1 );
+        return SettingsHelper::format_number( $rate, strlen( $fixed ) - strpos( $fixed, '.' ) - 1 );
     }
 
     /** "$98.50", or "$1" for a whole amount. */
@@ -66,6 +66,26 @@ final class LauncherCopy {
 
         /* translators: 1: earn-rate sentence, 2: minimum order amount. */
         return sprintf( __( '%1$s on orders of %2$s or more', 'yayloyalty' ), $line, self::money( $min_subtotal ) );
+    }
+
+    /**
+     * The Design tab's storefront_text with {points_label} filled with the merchant's plural label: "Your {points_label}" → "Your Stars".
+     * earn_rate_line is left for earn_rate(), whose label agrees with the rate it prints.
+     *
+     * @param array<string, string> $text
+     * @return array<string, string>
+     */
+    public static function storefront_text( array $text ): array {
+        // 0 picks the plural label.
+        $label = SettingsHelper::points_label( 0 );
+
+        foreach ( $text as $key => $value ) {
+            if ( 'earn_rate_line' !== $key ) {
+                $text[ $key ] = str_replace( '{points_label}', $label, $value );
+            }
+        }
+
+        return $text;
     }
 
     /** "100 points = $1", with the merchant's label. */

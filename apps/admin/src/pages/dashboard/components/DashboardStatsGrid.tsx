@@ -1,10 +1,9 @@
 import type { ReactNode } from 'react';
 import { __ } from '@wordpress/i18n';
 
-import { parseWPCurrency } from '@/lib/helpers/format.helper';
 import type { DashboardRange, DashboardStats } from '@/lib/schema/dashboard.schema';
 import { PointsValue } from '@/components/ui/custom/points-value';
-import { liabilitySubline, ordersSubline, rangeSubline } from '../dashboard-page.copy';
+import { ordersSubline, rangeSubline } from '../dashboard-page.copy';
 import { DashboardStatTile, DashboardStatTileSkeleton } from './DashboardStatTile';
 
 /** Label order is fixed; the skeleton reuses it so both states share one grid. */
@@ -30,7 +29,6 @@ export function DashboardStatsGrid({
   deltaOverrides?: Partial<Record<keyof DashboardStats, ReactNode>>;
 }) {
   const [members, issued, redeemed, liability, rate] = STAT_LABELS();
-  const { currency_amount, points, points_per_currency_unit } = stats.liability;
 
   return (
     <div className={GRID}>
@@ -62,8 +60,8 @@ export function DashboardStatsGrid({
       />
       <DashboardStatTile
         label={liability}
-        value={currency_amount === null ? '—' : parseWPCurrency(currency_amount)}
-        subline={liabilitySubline(points, points_per_currency_unit)}
+        value={<PointsValue value={stats.liability.points} />}
+        subline={__('points members have not spent', 'yayloyalty')}
         delta={stats.liability.prev_delta_pct}
         range={range}
         deltaOverride={deltaOverrides.liability}

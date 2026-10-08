@@ -8,14 +8,15 @@ export type EditorSaveIntent = 'save' | 'draft';
 
 /**
  * The save flow every definition editor shares: one onSubmit for Save, Save
- * draft and the leave dialog's Save, then back to `listPath`. `save` writes
- * the values and says whether it succeeded; it must reset the form's dirty
- * baseline before resolving, or the redirect re-trips the leave guard.
+ * draft and the leave dialog's Save, then back to `listPath`, or nowhere when
+ * it is null. `save` resolves false on failure, true on success, or a path to
+ * go to instead. It must reset the form's dirty baseline before resolving, or
+ * the redirect re-trips the leave guard.
  */
 export function useEditorSave<T extends FieldValues>(
   form: UseFormReturn<T>,
-  save: (values: T, intent: EditorSaveIntent) => Promise<boolean>,
-  { listPath, onInvalid }: { listPath: string; onInvalid?: (errors: FieldErrors<T>) => void },
+  save: (values: T, intent: EditorSaveIntent) => Promise<boolean | string>,
+  { listPath, onInvalid }: { listPath: string | null; onInvalid?: (errors: FieldErrors<T>) => void },
 ) {
   const navigate = useNavigate();
   const { showDialog, confirmLeave, cancelLeave, bypassNext } = useRouteLeaveGuard(form.formState.isDirty);
@@ -34,17 +35,21 @@ export function useEditorSave<T extends FieldValues>(
       isDraftIntentRef.current = false;
       isDialogSaveRef.current = false;
 
-      if (!(await save(values, isDraft ? 'draft' : 'save'))) {
+      const result = await save(values, isDraft ? 'draft' : 'save');
+
+      if (!result) {
         return;
       }
 
       confirmLeave();
 
+      const nextPath = typeof result === 'string' ? result : listPath;
+
       // A dialog save already proceeds to the blocked destination; navigating here would override it.
-      if (!savingFromDialog) {
+      if (!savingFromDialog && nextPath) {
         // isDirty:false from reset() may not have re-rendered yet; skip the blocker for this one navigation.
         bypassNext();
-        navigate(listPath);
+        navigate(nextPath, { replace: typeof result === 'string' });
       }
     },
     (errors) => {

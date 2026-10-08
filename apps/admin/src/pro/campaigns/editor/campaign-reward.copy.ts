@@ -3,8 +3,6 @@ import { __, _n, sprintf } from '@wordpress/i18n';
 import { parseWPCurrency } from '@/lib/helpers/format.helper';
 import { shortPoints } from '@/lib/helpers/points.helper';
 import { ROUNDING } from '@/lib/points-math/points-math';
-import { Campaign, resolvePurchaseMode, resolvePurchaseMultiplier } from '@/lib/schema/campaign.schema';
-import { givesLabel, isBuiltinCampaignActive } from '../campaign-labels';
 
 /**
  * What a purchase reward is set to, phrased short for the closed Advanced
@@ -38,14 +36,10 @@ function purchaseAdvancedFacts(config: Record<string, unknown>): PurchaseAdvance
   };
 }
 
-/** Short phrases for the closed Advanced toggle, in field order; [] when nothing is set. */
+/** Short phrases for the closed Advanced toggle, in panel order; [] when nothing is set. */
 export function purchaseAdvancedPhrases(config: Record<string, unknown>): string[] {
   const facts = purchaseAdvancedFacts(config);
   const phrases: string[] = [];
-
-  if (facts.includeTax) {
-    phrases.push(__('Tax included', 'yayloyalty'));
-  }
 
   if (facts.minSubtotal > 0) {
     phrases.push(
@@ -59,6 +53,18 @@ export function purchaseAdvancedPhrases(config: Record<string, unknown>): string
 
   if (facts.excludeCouponOrders) {
     phrases.push(__('No coupon orders', 'yayloyalty'));
+  }
+
+  if (facts.includeTax) {
+    phrases.push(__('Tax included', 'yayloyalty'));
+  }
+
+  if (facts.excludedProducts > 0) {
+    phrases.push(productsExcluded(facts.excludedProducts));
+  }
+
+  if (facts.excludedCategories > 0) {
+    phrases.push(categoriesExcluded(facts.excludedCategories));
   }
 
   if (facts.maxPointsPerOrder > 0) {
@@ -79,14 +85,6 @@ export function purchaseAdvancedPhrases(config: Record<string, unknown>): string
         shortPoints(facts.dailyCap),
       ),
     );
-  }
-
-  if (facts.excludedProducts > 0) {
-    phrases.push(productsExcluded(facts.excludedProducts));
-  }
-
-  if (facts.excludedCategories > 0) {
-    phrases.push(categoriesExcluded(facts.excludedCategories));
   }
 
   return phrases;
@@ -195,54 +193,6 @@ export function purchaseLimitSentences(config: Record<string, unknown>): string[
   }
 
   return sentences;
-}
-
-/**
- * The rate an order earns at. A multiplier reads the default campaign's rate,
- * passed in so this stays pure; pass undefined when that campaign is missing
- * or not active, since the engine then skips the multiplier entirely.
- */
-export function effectiveRateSentence(config: Record<string, unknown>, defaultRate: number | undefined): string {
-  if (resolvePurchaseMode(config) !== 'multiplier') {
-    return sprintf(
-      /* translators: %s: the rate, e.g. "1 pt per $1.00". */
-      __('Earns %s.', 'yayloyalty'),
-      givesLabel('purchase', config),
-    );
-  }
-
-  const multiplier = resolvePurchaseMultiplier(config);
-
-  if (defaultRate === undefined) {
-    return sprintf(
-      /* translators: %s: the multiplier, e.g. "2". */
-      __(
-        'Multiplies the default purchase campaign’s rate by ×%s, but earns nothing until that campaign is active.',
-        'yayloyalty',
-      ),
-      String(multiplier),
-    );
-  }
-
-  return sprintf(
-    /* translators: 1: the resulting rate, e.g. "2 pts per $1.00"; 2: the multiplier, e.g. "2"; 3: the default campaign's points per currency unit, e.g. "1". */
-    __('Earns %1$s, ×%2$s the default rate of %3$s.', 'yayloyalty'),
-    givesLabel('purchase', { points_per_unit: multipliedRate(multiplier, defaultRate) }),
-    String(multiplier),
-    String(defaultRate),
-  );
-}
-
-/** The rate a multiplier multiplies; undefined when the default is missing, not active, or has no rate. */
-export function defaultPurchaseRate(campaign: Campaign | undefined): number | undefined {
-  const rate = campaign?.config.points_per_unit;
-
-  return isBuiltinCampaignActive(campaign) && typeof rate === 'number' ? rate : undefined;
-}
-
-/** A multiplier campaign's effective rate. Two 2-decimal inputs give at most 4 decimals; toFixed drops float noise such as 3.3000000000000003. */
-export function multipliedRate(multiplier: number, defaultRate: number): number {
-  return Number((multiplier * defaultRate).toFixed(4));
 }
 
 function productsCount(count: number): string {

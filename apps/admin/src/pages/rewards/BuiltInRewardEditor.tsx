@@ -10,7 +10,6 @@ import type { Reward } from '@/lib/schema/reward.schema';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { BuiltInConfigCard } from '@/components/ui/custom/built-in-config-card';
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { Skeleton } from '@/components/ui/skeleton';
 import { UpgradeToProBanner } from '@/components/pro/UpgradeToPro';
 import { FlexibleDiscountConfig, FlexibleDiscountFields } from './FlexibleDiscountFields';
@@ -49,18 +48,7 @@ export default function BuiltInRewardEditor() {
         </AlertDescription>
       </Alert>
 
-      {builtin ? (
-        <BuiltInRewardCard reward={builtin} />
-      ) : (
-        <Empty>
-          <EmptyHeader>
-            <EmptyTitle>{__('No reward yet', 'yayloyalty')}</EmptyTitle>
-            <EmptyDescription>
-              {__('The built-in points discount should appear here automatically.', 'yayloyalty')}
-            </EmptyDescription>
-          </EmptyHeader>
-        </Empty>
-      )}
+      {builtin && <BuiltInRewardCard reward={builtin} />}
 
       <UpgradeToProBanner
         message={__(

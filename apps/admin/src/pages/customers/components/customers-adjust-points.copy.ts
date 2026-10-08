@@ -1,29 +1,19 @@
 import { __, sprintf } from '@wordpress/i18n';
 
-import { TYPO_GUARD_MULTIPLIER } from './customers-adjust-points.form-state';
-
 /** The Adjust-points dialog's strings. Functions, not constants: `__()` must run after the locale loads. */
 
 // Header
 
 export const ADJUST_POINTS_TITLE = () => __('Adjust points', 'yayloyalty');
 
-/** "Daniel Okonkwo · 9,850 points ($98.50)" */
-export function singleCustomerHeader(name: string, balancePoints: string, balanceMoney: string | null): string {
-  return balanceMoney
-    ? sprintf(
-        /* translators: 1: the customer's name; 2: their balance in points, formatted; 3: the balance as money, formatted. */
-        __('%1$s · %2$s points (%3$s)', 'yayloyalty'),
-        name,
-        balancePoints,
-        balanceMoney,
-      )
-    : sprintf(
-        /* translators: 1: the customer's name; 2: their balance in points, formatted. */
-        __('%1$s · %2$s points', 'yayloyalty'),
-        name,
-        balancePoints,
-      );
+/** "Daniel Okonkwo · 9,850 points" */
+export function singleCustomerHeader(name: string, balancePoints: string): string {
+  return sprintf(
+    /* translators: 1: the customer's name; 2: their balance in points, formatted. */
+    __('%1$s · %2$s points', 'yayloyalty'),
+    name,
+    balancePoints,
+  );
 }
 
 export const COULD_NOT_VERIFY_TITLE = () =>
@@ -58,34 +48,27 @@ export function submitLabel(direction: 'add' | 'remove', amount: string, isZero:
 
 export const NEW_BALANCE_EMPTY = () => __('New balance: —', 'yayloyalty');
 
-/** "New balance: 10,350 points ($103.50)" */
-export function newBalanceLine(points: string, money: string | null): string {
-  return money
-    ? sprintf(
-        /* translators: 1: the new balance in points, formatted; 2: the new balance as money, formatted. */
-        __('New balance: %1$s points (%2$s)', 'yayloyalty'),
-        points,
-        money,
-      )
-    : sprintf(
-        /* translators: %s: the new balance in points, formatted. */
-        __('New balance: %s points', 'yayloyalty'),
-        points,
-      );
-}
-
-export function addsToLiability(money: string): string {
+/** "New balance: 10,350 points" */
+export function newBalanceLine(points: string): string {
   return sprintf(
-    /* translators: %s: an amount of money, formatted. */
-    __('Adds %s to your outstanding liability.', 'yayloyalty'),
-    money,
+    /* translators: %s: the new balance in points, formatted. */
+    __('New balance: %s points', 'yayloyalty'),
+    points,
   );
 }
-export function reducesLiability(money: string): string {
+
+export function addsToLiability(points: string): string {
   return sprintf(
-    /* translators: %s: an amount of money, formatted. */
-    __('Reduces your outstanding liability by %s.', 'yayloyalty'),
-    money,
+    /* translators: %s: number of points, formatted. */
+    __('Adds %s points to your outstanding liability.', 'yayloyalty'),
+    points,
+  );
+}
+export function reducesLiability(points: string): string {
+  return sprintf(
+    /* translators: %s: number of points, formatted. */
+    __('Reduces your outstanding liability by %s points.', 'yayloyalty'),
+    points,
   );
 }
 
@@ -101,83 +84,56 @@ export function negativeOutcomeSpendable(name: string, coversAmount: string): st
     coversAmount,
   );
 }
-export function negativeOutcomeLiability(money: string): string {
+export function negativeOutcomeLiability(points: string): string {
   return sprintf(
-    /* translators: %s: an amount of money, formatted. */
-    __('Reduces your outstanding liability by %s. Balances below zero are not counted as liability.', 'yayloyalty'),
-    money,
-  );
-}
-
-// Typo guard
-
-export function typoGuardWarning(amount: string, lifetimeEarned: string): string {
-  return sprintf(
-    /* translators: 1: amount entered, 2: the customer's lifetime total, 3: the guard's multiplier */
+    /* translators: %s: number of points, formatted. */
     __(
-      "%1$s points is more than %3$d times this customer's lifetime total (%2$s). Re-enter the amount to confirm.",
+      'Reduces your outstanding liability by %s points. Balances below zero are not counted as liability.',
       'yayloyalty',
     ),
-    amount,
-    lifetimeEarned,
-    TYPO_GUARD_MULTIPLIER,
+    points,
   );
-}
-export const TYPO_GUARD_EXPLANATION = () =>
-  sprintf(
-    /* translators: %d: the guard's multiplier */
-    __("We ask twice for anything over %d times a customer's lifetime total.", 'yayloyalty'),
-    TYPO_GUARD_MULTIPLIER,
-  );
-export const CONFIRM_AMOUNT_LABEL = () => __('Re-enter the amount', 'yayloyalty');
-export function typoGuardPlaceholder(amount: string): string {
-  return sprintf(
-    /* translators: %s: the amount entered, formatted. */
-    __('Type %s again', 'yayloyalty'),
-    amount,
-  );
-}
-export function typoGuardNewBalance(points: string, money: string | null): string {
-  return money
-    ? sprintf(
-        /* translators: 1: the new balance in points, formatted; 2: the new balance as money, formatted. */
-        __('New balance would be %1$s points (%2$s)', 'yayloyalty'),
-        points,
-        money,
-      )
-    : sprintf(
-        /* translators: %s: the new balance in points, formatted. */
-        __('New balance would be %s points', 'yayloyalty'),
-        points,
-      );
 }
 
 // Reason and options
 
 export const REASON_LABEL = () => __('Reason (internal)', 'yayloyalty');
-export const REASON_HELPER = () =>
-  __("Only staff can see this. It's recorded against your account in the customer's history.", 'yayloyalty');
 export const REASON_PLACEHOLDER = () => __('Why this adjustment is being made', 'yayloyalty');
+/** Quick picks: a short chip label that fills the reason with fuller text the admin can still edit. */
+export const REASON_PRESETS = () => [
+  {
+    label: __('Correction', 'yayloyalty'),
+    text: __("Correcting an error in this customer's points balance.", 'yayloyalty'),
+  },
+  { label: __('Goodwill', 'yayloyalty'), text: __('Goodwill gesture for this customer.', 'yayloyalty') },
+  {
+    label: __('Compensation', 'yayloyalty'),
+    text: __('Compensation for a problem with an order or our service.', 'yayloyalty'),
+  },
+  { label: __('Promotion', 'yayloyalty'), text: __('Bonus points from a store promotion.', 'yayloyalty') },
+];
+/** Preselected on open: the first quick pick, which fits both adding and removing. */
+export const DEFAULT_REASON = () => REASON_PRESETS()[0].text;
 
 export const ADJUST_LIFETIME_LABEL = () => __('Adjust lifetime totals too', 'yayloyalty');
-export const ADJUST_LIFETIME_SUBTEXT = () =>
-  __(
-    "Leave this on when you're granting or correcting earned points. Turn it off for balance-only changes.",
-    'yayloyalty',
-  );
+export const ADJUST_LIFETIME_SUBTEXT = () => __('Turn off for balance-only changes.', 'yayloyalty');
 
-export const SHOW_CUSTOMER_NOTE_LABEL = () => __('Also show a description to the customer', 'yayloyalty');
+export const SHOW_CUSTOMER_NOTE_LABEL = () => __('Custom description for the customer', 'yayloyalty');
 /** Generic: the localized meta carries no store name to show. */
-export const CUSTOMER_NOTE_PREVIEW = () => __('The customer will see: "Adjustment"', 'yayloyalty');
+export const SHOW_CUSTOMER_NOTE_HELPER = () =>
+  __('Customers see "Adjustment by {your store name}" unless you set one.', 'yayloyalty');
 export const CUSTOMER_NOTE_PLACEHOLDER = () => __('Adjustment', 'yayloyalty');
 
 export const NOTIFY_BY_EMAIL_LABEL = () => __('Notify the customer by email', 'yayloyalty');
 
+// Submit hint
+
+export const SUBMIT_HINT_PREFIX = () => __('To continue:', 'yayloyalty');
+export const SUBMIT_HINT_ACKNOWLEDGE = () => __('acknowledge the total', 'yayloyalty');
+export const SUBMIT_HINT_REASON = () => __('add a reason', 'yayloyalty');
+
 export const FOOTER_NOTICE = () =>
-  __(
-    "Adjustments can't be edited or deleted — only offset by another adjustment. Any adjustment also resets the customer's points expiry date.",
-    'yayloyalty',
-  );
+  __("Adjustments can't be edited or deleted, and they reset the customer's points expiry date.", 'yayloyalty');
 
 // Already negative
 

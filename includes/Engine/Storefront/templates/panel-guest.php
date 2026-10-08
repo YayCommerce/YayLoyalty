@@ -23,6 +23,7 @@ $yayloyalty_signup           = $yayloyalty_earn[ CampaignTrigger::SIGNUP ];
 $yayloyalty_is_checkout_only = 'checkout' === $yayloyalty_route;
 $yayloyalty_review           = $yayloyalty_earn[ CampaignTrigger::REVIEW ];
 $yayloyalty_steps            = [];
+$yayloyalty_earn_rate_step   = null;
 
 if ( null !== $yayloyalty_signup ) {
     $yayloyalty_steps[] = $yayloyalty_is_checkout_only
@@ -33,8 +34,9 @@ if ( null !== $yayloyalty_signup ) {
 }
 
 if ( null !== $yayloyalty_earn[ CampaignTrigger::PURCHASE ] ) {
-    $yayloyalty_rate    = LauncherCopy::earn_rate( $yayloyalty_text['earn_rate_line'], $yayloyalty_earn[ CampaignTrigger::PURCHASE ], $view['purchase_min'] );
-    $yayloyalty_steps[] = null === $yayloyalty_review
+    $yayloyalty_earn_rate_step = count( $yayloyalty_steps );
+    $yayloyalty_rate           = LauncherCopy::earn_rate( $yayloyalty_text['earn_rate_line'], $yayloyalty_earn[ CampaignTrigger::PURCHASE ], $view['purchase_min'] );
+    $yayloyalty_steps[]        = null === $yayloyalty_review
         ? $yayloyalty_rate
         /* translators: 1: earn-rate sentence, 2: points for a review, with the store's label. */
         : sprintf( __( '%1$s, and %2$s for a review', 'yayloyalty' ), $yayloyalty_rate, SettingsHelper::points_text( $yayloyalty_review ) );
@@ -62,10 +64,15 @@ if ( null === $yayloyalty_signup ) {
 ?>
 <section class="yl:flex yl:flex-col yl:gap-2.5 yl:border-b yl:border-border yl:p-4">
     <?php if ( '' !== trim( $yayloyalty_text['signed_out_prompt'] ) ) : ?>
-        <p class="yl:m-0 yl:text-[17px] yl:font-semibold yl:leading-snug yl:text-foreground"><?php echo esc_html( $yayloyalty_text['signed_out_prompt'] ); ?></p>
+        <p class="yl:m-0 yl:text-[17px] yl:font-semibold yl:leading-snug yl:text-foreground" data-yl-text="signed_out_prompt"><?php echo esc_html( $yayloyalty_text['signed_out_prompt'] ); ?></p>
     <?php endif; ?>
     <?php if ( null !== $yayloyalty_earn[ CampaignTrigger::PURCHASE ] ) : ?>
-        <p class="yl:m-0 yl:text-xs yl:text-muted-foreground"><?php esc_html_e( 'Collect points on every order and spend them on money off your next one. Free to join.', 'yayloyalty' ); ?></p>
+        <p class="yl:m-0 yl:text-xs yl:text-muted-foreground">
+            <?php
+            /* translators: %s: the store's points label, as "Points". */
+            echo esc_html( sprintf( __( 'Collect %s on every order and spend them on money off your next one. Free to join.', 'yayloyalty' ), SettingsHelper::points_label( 0 ) ) );
+            ?>
+        </p>
     <?php endif; ?>
 </section>
 
@@ -74,7 +81,7 @@ if ( null === $yayloyalty_signup ) {
         <h3 class="<?php echo esc_attr( UiClasses::SECTION_HEADING ); ?>"><?php esc_html_e( 'How it works', 'yayloyalty' ); ?></h3>
         <ol class="yl:m-0 yl:flex yl:flex-col yl:list-none yl:p-0">
             <?php foreach ( $yayloyalty_steps as $yayloyalty_index => $yayloyalty_step ) : ?>
-                <li class="yl:flex yl:gap-2.5 yl:border-b yl:border-divider yl:py-2.5 yl:text-xs yl:last:border-b-0">
+                <li class="yl:flex yl:gap-2.5 yl:border-b yl:border-divider yl:py-2.5 yl:text-xs yl:last:border-b-0"<?php echo $yayloyalty_index === $yayloyalty_earn_rate_step ? ' data-yl-text="earn_rate_line"' : ''; ?>>
                     <span class="yl:w-4 yl:shrink-0 yl:text-muted-foreground"><?php echo esc_html( number_format_i18n( $yayloyalty_index + 1 ) ); ?></span>
                     <span><?php echo esc_html( $yayloyalty_step ); ?></span>
                 </li>

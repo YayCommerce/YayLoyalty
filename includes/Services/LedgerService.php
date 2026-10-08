@@ -44,8 +44,7 @@ final class LedgerService {
 
     /**
      * Manual admin adjustment, positive or negative. Deliberately not
-     * idempotent (NULL reference): an admin may grant the same bonus twice,
-     * which is why the controller enforces a magnitude ceiling.
+     * idempotent (NULL reference): an admin may grant the same bonus twice.
      *
      * @param bool $adjust_lifetime True writes an ADJUST row: lifetime_earned
      *             moves by the same signed amount as the balance, so a
@@ -95,10 +94,13 @@ final class LedgerService {
      * rethrows after Transaction::run() rolls back. The recorded event fires
      * after the outermost commit (announce()).
      *
+     * @param callable|null $points_under_lock Runs under the lock, after the duplicate check; its answer
+     *                                         replaces the draft's points, and 0 skips. EarningService
+     *                                         passes the award filter here.
      * @throws \InvalidArgumentException When the draft is not an earn row or lacks a key.
      * @throws \YayLoyalty\Database\QueryException When a write other than a duplicate fails.
      */
-    public function earn( LedgerEntry $draft ): Outcome {
+    public function earn( LedgerEntry $draft, ?callable $points_under_lock = null, string $skip_reason = '' ): Outcome {
         $key = $draft->get_idempotency_key();
 
         if ( LedgerType::EARN !== $draft->get_type() ) {
@@ -116,7 +118,7 @@ final class LedgerService {
         LedgerSource::assert( $draft->get_source() );
         ReferenceType::assert( $draft->get_reference_type() );
 
-        return $this->write_keyed( $draft );
+        return $this->write_keyed( $draft, $points_under_lock, $skip_reason );
     }
 
     /**

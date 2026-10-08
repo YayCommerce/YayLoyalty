@@ -83,15 +83,15 @@ final class CustomerActivityService {
     }
 
     /**
-     * One `account_created` row on a member's first ledger write: first loyalty
+     * One `membership_started` row on a member's first ledger write: first loyalty
      * activity, not WordPress registration. Written once per user, with the same
      * has()-then-insert() race as account_deleted, where a duplicate is only
      * cosmetic. Existing members get no backfill.
      */
-    public function record_account_created( LedgerEntry $entry ): void {
+    public function record_membership_started( LedgerEntry $entry ): void {
         $user_id = $entry->get_user_id();
 
-        if ( $this->meta->has( $user_id, ActivityEvent::ACCOUNT_CREATED ) ) {
+        if ( $this->meta->has( $user_id, ActivityEvent::MEMBERSHIP_STARTED ) ) {
             return;
         }
 
@@ -103,7 +103,7 @@ final class CustomerActivityService {
         $this->meta->insert(
             // The ledger row's own timestamp, not Dates::now(), so the activity
             // log and the ledger tab agree to the second.
-            CustomerMeta::event( $user_id, ActivityEvent::ACCOUNT_CREATED, $data, ActorKind::AUTOMATIC, null, false, $entry->get_created_at() )
+            CustomerMeta::event( $user_id, ActivityEvent::MEMBERSHIP_STARTED, $data, ActorKind::AUTOMATIC, null, false, $entry->get_created_at() )
         );
     }
 
@@ -138,9 +138,30 @@ final class CustomerActivityService {
     }
 
     /**
-     * Kind and display name for a write's actor. `> 0` is the one rule for
-     * "was this a person": get_current_user_id() and a ledger row's actor_id
-     * both use 0 or null for cron and system writes.
+     * One `earning_limited` row per award an earning limit cut but still
+     * partly paid; a full refusal records nothing. The held-back points are
+     * not owed later; this row is the record that they were never paid.
+     *
+     * @param string $occurred_at UTC MySQL datetime: the written row's.
+     */
+    public function record_earning_limited( int $user_id, string $trigger, int $evaluated, int $held_back, ?int $order_id, string $occurred_at ): void {
+        $data = [
+            'trigger'   => $trigger,
+            'evaluated' => $evaluated,
+            'awarded'   => $evaluated - $held_back,
+            'held_back' => $held_back,
+            'order_id'  => $order_id,
+        ];
+
+        $this->meta->insert(
+            CustomerMeta::event( $user_id, ActivityEvent::EARNING_LIMITED, $data, ActorKind::AUTOMATIC, null, false, $occurred_at )
+        );
+    }
+
+    /**
+     * Kind + display name for a write's actor. `> 0` is the one rule for
+     * "was this a person" — `get_current_user_id()` and a ledger row's
+     * `actor_id` both use 0/null for a cron or system context.
      *
      * @return array{0: string, 1: string|null}
      */

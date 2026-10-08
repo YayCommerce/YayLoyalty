@@ -68,8 +68,8 @@ final class ConditionValueRules {
         }
     }
 
-    /** Validates an int value, or a [low, high] pair with `between`. $min rejects either bound below it. */
-    public static function validate_int( string $type, string $operator, $value, ?int $min = null ): void {
+    /** Validates an int value, or a [low, high] pair with `between`. */
+    public static function validate_int( string $type, string $operator, $value ): void {
         if ( 'between' === $operator ) {
             self::assert_between_pair( $type, $value, true );
 
@@ -78,10 +78,6 @@ final class ConditionValueRules {
 
         if ( ! self::is_int_like( $value ) ) {
             throw self::bad( $type, 'expects an integer' );
-        }
-
-        if ( null !== $min && (float) $value < $min ) {
-            throw self::bad( $type, sprintf( 'expects an integer of at least %d', $min ) );
         }
     }
 

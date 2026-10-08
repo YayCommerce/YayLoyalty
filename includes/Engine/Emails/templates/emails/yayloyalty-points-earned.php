@@ -23,6 +23,7 @@
  */
 
 use Automattic\WooCommerce\Utilities\FeaturesUtil;
+use YayLoyalty\Helpers\SettingsHelper;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -60,10 +61,15 @@ do_action( 'woocommerce_email_header', $email_heading, $email );
 </p>
     <?php endif; ?>
 <?php else : ?>
-<p><?php esc_html_e( 'Thanks for being part of our loyalty program. New points have been added to your account.', 'yayloyalty' ); ?></p>
+<p>
+    <?php
+    /* translators: %s: the store's plural points label, e.g. "Points". */
+    echo esc_html( sprintf( __( 'Thanks for being part of our loyalty program. New %s have been added to your account.', 'yayloyalty' ), SettingsHelper::points_label_plural() ) );
+    ?>
+</p>
 <?php endif; ?>
 <?php if ( ! empty( $cta_url ) ) : ?>
-<p><a class="button" href="<?php echo esc_url( $cta_url ); ?>" style="display:inline-block;padding:12px 24px;text-decoration:none;font-weight:bold;"><?php esc_html_e( 'View your points', 'yayloyalty' ); ?></a></p>
+<p><a class="button" href="<?php echo esc_url( $cta_url ); ?>" style="display:inline-block;padding:12px 24px;text-decoration:none;font-weight:bold;"><?php echo esc_html( sprintf( /* translators: %s: the store's plural points label, e.g. "Points". */ __( 'View your %s', 'yayloyalty' ), SettingsHelper::points_label_plural() ) ); ?></a></p>
 <?php endif; ?>
 <?php echo $is_email_improvements_enabled ? '</div>' : ''; ?>
 

@@ -6,7 +6,7 @@ import { toastApiError } from '@/lib/api/api';
 import { useResetDesignMutation } from '@/lib/queries/design.queries';
 import type { Design } from '@/lib/schema/design.schema';
 import { Button } from '@/components/ui/button';
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ConfirmDialog } from '@/components/ui/custom/confirm-dialog';
 import { Field, FieldContent, FieldError, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -23,26 +23,36 @@ import {
   STOREFRONT_RESET_CONFIRM_DESCRIPTION,
   STOREFRONT_RESET_CONFIRM_TITLE,
   STOREFRONT_RESET_SUCCESS_TOAST,
-  STOREFRONT_SECTION_DESCRIPTION,
   STOREFRONT_SECTION_TITLE,
   STOREFRONT_SIGNED_OUT_PROMPT_LABEL,
 } from './design-settings.copy';
-
-type StorefrontTextKey = keyof Design['storefront_text'];
+import { StorefrontTextKey, usePreviewHighlight } from './design-settings.preview-highlight';
 
 /** One storefront-text input with its label and, for the required labels, the blank-field error. */
 function StorefrontTextField({ name, label }: { name: StorefrontTextKey; label: string }) {
   const { register, formState } = useFormContext<Design>();
   const id = `design-storefront-${name.replaceAll('_', '-')}`;
   const invalid = !!formState.errors.storefront_text?.[name];
+  const { setHovered, setFocused } = usePreviewHighlight();
+  const field = register(`storefront_text.${name}`);
 
   return (
-    <Field data-invalid={invalid}>
+    <Field data-invalid={invalid} onMouseEnter={() => setHovered(name)} onMouseLeave={() => setHovered(null)}>
       <FieldLabel htmlFor={id} className="items-center">
         {label}
       </FieldLabel>
       <FieldContent>
-        <Input id={id} aria-invalid={invalid} {...register(`storefront_text.${name}`)} />
+        <Input
+          id={id}
+          aria-invalid={invalid}
+          {...field}
+          onFocus={() => setFocused(name)}
+          // Chained, not replaced: register's onBlur is what marks the field touched.
+          onBlur={(event) => {
+            void field.onBlur(event);
+            setFocused(null);
+          }}
+        />
         {invalid && <FieldError>{STOREFRONT_REQUIRED_ERROR()}</FieldError>}
       </FieldContent>
     </Field>
@@ -79,7 +89,6 @@ export function DesignStorefrontTextSection() {
     <Card>
       <CardHeader>
         <CardTitle>{STOREFRONT_SECTION_TITLE()}</CardTitle>
-        <CardDescription>{STOREFRONT_SECTION_DESCRIPTION()}</CardDescription>
         <CardAction>
           <Button type="button" variant="outline" size="sm" onClick={() => setConfirmOpen(true)}>
             {STOREFRONT_RESET_BUTTON_LABEL()}

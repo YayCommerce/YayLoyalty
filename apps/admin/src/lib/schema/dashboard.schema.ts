@@ -27,10 +27,6 @@ export type DashboardStat = z.infer<typeof dashboardStatSchema>;
 export const dashboardLiabilitySchema = z.object({
   /** SUM(balance) over positive balances. */
   points: z.number().int(),
-  /** `points / points_per_currency_unit`, 2 dp; `null` when the rate is <= 0. */
-  currency_amount: z.number().nullable(),
-  /** From the built-in cart-discount reward; named on the tile. */
-  points_per_currency_unit: z.number(),
   prev_delta_pct: prevDeltaPct,
 });
 

@@ -2,7 +2,6 @@
 namespace YayLoyalty\Engine\Points\Triggers;
 
 use YayLoyalty\Engine\Points\BaseCalculator;
-use YayLoyalty\Repositories\CampaignRepository;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -34,10 +33,10 @@ final class Registry {
     }
 
     /** The Lite handlers, then whatever the build adds. */
-    public static function with_lite_handlers( CampaignRepository $campaigns ): self {
+    public static function with_lite_handlers(): self {
         $registry = new self();
 
-        $registry->register( new PurchaseHandler( $campaigns, new BaseCalculator() ) );
+        $registry->register( new PurchaseHandler( new BaseCalculator() ) );
         $registry->register( new SignupHandler() );
         $registry->register( new ReviewHandler() );
 

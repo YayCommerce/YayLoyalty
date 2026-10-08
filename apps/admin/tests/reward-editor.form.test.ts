@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { claimsPerCustomer, normalizeRewardConditions, Reward, RewardCondition } from '@/lib/schema/reward.schema';
+import { normalizeRewardConditions, Reward, RewardCondition } from '@/lib/schema/reward.schema';
 import {
   duplicateToFormValues,
   formValuesToCreateInput,
@@ -10,28 +10,24 @@ import {
   rewardEditorActions,
   rewardFormSchema,
   rewardToFormValues,
-  withClaimsPerCustomer,
 } from '@/pro/rewards/editor/reward-editor.form';
 import { reward } from './fixtures/reward.fixture';
 
 describe('resolveSaveStatus', () => {
   it.each([
-    ['new', null, 'save', 'active'],
-    ['new', null, 'draft', 'draft'],
-    ['draft', 'draft', 'save', 'active'],
-    ['draft', 'draft', 'draft', 'draft'],
-    ['active', 'active', 'save', 'active'],
-    ['paused', 'paused', 'save', 'paused'],
-    ['archived', 'archived', 'save', 'active'],
-  ] as const)('%s + %s → %s', (_label, status, intent, expected) => {
-    expect(resolveSaveStatus(status === null ? null : reward({ status }), intent)).toBe(expected);
+    ['active', 'save', 'active'],
+    ['paused', 'save', 'paused'],
+    ['draft', 'save', 'draft'],
+    ['active', 'draft', 'draft'],
+    ['paused', 'draft', 'draft'],
+  ] as const)('%s + %s → %s', (status, intent, expected) => {
+    expect(resolveSaveStatus({ ...rewardCreateSeed('fixed_coupon', 'USD'), status }, intent)).toBe(expected);
   });
 
-  it('keeps the built-in status whatever was pressed', () => {
-    const builtin = reward({ type: 'flexible_discount', is_builtin: true, status: 'paused' });
-
-    expect(resolveSaveStatus(builtin, 'save')).toBe('paused');
-    expect(resolveSaveStatus(builtin, 'draft')).toBe('paused');
+  it('seeds a new reward as active and loads an archived one as active', () => {
+    expect(rewardCreateSeed('fixed_coupon', 'USD').status).toBe('active');
+    expect(rewardToFormValues(reward({ status: 'archived' }), 'USD').status).toBe('active');
+    expect(rewardToFormValues(reward({ status: 'paused' }), 'USD').status).toBe('paused');
   });
 });
 
@@ -44,40 +40,22 @@ describe('rewardEditorActions', () => {
     expect(rewardEditorActions(reward({ status: 'draft', is_builtin: true })).canSaveDraft).toBe(false);
   });
 
-  it('hides Archive when new or archived and disables it on the built-in', () => {
+  it('hides Archive when new, archived or the built-in', () => {
     expect(rewardEditorActions(null).showArchive).toBe(false);
     expect(rewardEditorActions(reward({ status: 'archived' })).showArchive).toBe(false);
     expect(rewardEditorActions(reward({ status: 'active' })).showArchive).toBe(true);
-    expect(rewardEditorActions(reward({ is_builtin: true })).isArchiveDisabled).toBe(true);
+    expect(rewardEditorActions(reward({ is_builtin: true })).showArchive).toBe(false);
   });
 });
 
-describe('claims per customer', () => {
+describe('normalizeRewardConditions', () => {
   const role: RewardCondition = { type: 'user_role', operator: 'in', value: ['customer'] };
-
-  it('reads lt as-is and lte as one more', () => {
-    expect(claimsPerCustomer([{ type: 'redemption_count', operator: 'lt', value: 1 }])).toBe(1);
-    expect(claimsPerCustomer([{ type: 'redemption_count', operator: 'lte', value: 2 }])).toBe(3);
-    expect(claimsPerCustomer([{ type: 'redemption_count', operator: 'eq', value: 0 }])).toBeNull();
-    expect(claimsPerCustomer([role])).toBeNull();
-  });
 
   it('drops malformed entries and a non-list envelope', () => {
     expect(normalizeRewardConditions({})).toEqual([]);
     expect(normalizeRewardConditions([null, 'x', { operator: 'lt' }, role] as unknown as Reward['conditions'])).toEqual(
       [role],
     );
-  });
-
-  it('sets, replaces and removes only the redemption_count rule', () => {
-    expect(withClaimsPerCustomer([role], 2)).toEqual([role, { type: 'redemption_count', operator: 'lt', value: 2 }]);
-    expect(withClaimsPerCustomer([role, { type: 'redemption_count', operator: 'lt', value: 1 }], null)).toEqual([role]);
-  });
-
-  it('returns a rule it cannot show untouched when the input did not change', () => {
-    const conditions = [role, { type: 'redemption_count', operator: 'eq', value: 0 }];
-
-    expect(withClaimsPerCustomer(conditions, null)).toBe(conditions);
   });
 });
 
@@ -99,28 +77,24 @@ describe('form values', () => {
     ).toBe(true);
   });
 
-  it('fills keys a stored row lacks and keeps its claim cap', () => {
-    const values = rewardToFormValues(
-      reward({ config: { amount: 7 }, conditions: [{ type: 'redemption_count', operator: 'lt', value: 1 }] }),
-      'EUR',
-    );
+  it('fills keys a stored row lacks', () => {
+    const values = rewardToFormValues(reward({ config: { amount: 7 } }), 'EUR');
 
     expect(values.config.amount).toBe(7);
     expect(values.config.currency).toBe('EUR');
     expect(values.config.coupon_expiry_days).toBe(60);
-    expect(values.claims_per_customer).toBe(1);
   });
 
-  it('builds create and update bodies with the resolved status and merged conditions', () => {
-    const seed = { ...rewardCreateSeed('fixed_coupon', 'USD'), claims_per_customer: 1 };
+  it('builds create and update bodies with the resolved status and the stored conditions', () => {
+    const seed = rewardCreateSeed('fixed_coupon', 'USD');
     const create = formValuesToCreateInput(seed, 'fixed_coupon', 'draft');
 
     expect(create.type).toBe('fixed_coupon');
     expect(create.status).toBe('draft');
-    expect(create.conditions).toEqual([{ type: 'redemption_count', operator: 'lt', value: 1 }]);
+    expect(create.conditions).toEqual([]);
 
     const stored = reward({ status: 'paused', conditions: [{ type: 'lifetime_points', operator: 'gte', value: 5 }] });
-    const update = formValuesToUpdateInput({ ...seed, claims_per_customer: null }, stored, 'save');
+    const update = formValuesToUpdateInput({ ...seed, status: 'paused' }, stored, 'save');
 
     expect(update.status).toBe('paused');
     expect(update.conditions).toEqual([{ type: 'lifetime_points', operator: 'gte', value: 5 }]);
@@ -135,7 +109,6 @@ describe('rewardFormSchema bounds mirror the PHP specs', () => {
     ['percent below 1', { config: { ...base.config, percent: 0 } }],
     ['negative minimum order', { config: { ...base.config, min_order: -1 } }],
     ['zero expiry', { config: { ...base.config, coupon_expiry_days: 0 } }],
-    ['fractional claim limit', { config: { ...base.config, max_total: 2.5 } }],
     ['zero cost', { cost_points: 0 }],
     ['missing cost', { cost_points: null }],
     ['blank name', { name: '  ' }],
@@ -156,7 +129,13 @@ describe('rewardFormSchema bounds mirror the PHP specs', () => {
       refund_policy: 'proportional',
       max_total: null,
     };
-    const values = { name: 'Points', config, claims_per_customer: null, starts_at: null, ends_at: null };
+    const values = {
+      name: 'Points',
+      status: 'active',
+      config,
+      starts_at: null,
+      ends_at: null,
+    };
 
     expect(rewardFormSchema('flexible_discount').safeParse({ ...values, cost_points: null }).success).toBe(true);
     expect(rewardFormSchema('flexible_discount').safeParse({ ...values, cost_points: 100 }).success).toBe(false);
