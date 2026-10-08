@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { CircleAlert, TriangleAlert } from 'lucide-react';
+import { ReactElement, useState } from 'react';
 import { toast } from 'sonner';
 import { createInterpolateElement } from '@wordpress/element';
 import { __, sprintf } from '@wordpress/i18n';
@@ -7,7 +6,6 @@ import { __, sprintf } from '@wordpress/i18n';
 import { toastApiError } from '@/lib/api/api';
 import { useDeleteRewardMutation, useUpdateRewardStatusMutation } from '@/lib/queries/reward.queries';
 import type { Reward } from '@/lib/schema/reward.schema';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -17,17 +15,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/custom/dialog';
-import { ListColumns } from '@/components/ui/custom/list-columns';
 import {
-  affectedLine,
-  contextLine,
+  archiveBodyLines,
+  deleteBodyLine,
   failureMessage,
-  goesLines,
-  keepsLines,
-  outstandingWarning,
   resolveRewardArchiveCase,
   RewardArchiveAction,
-  stopsLines,
   successMessage,
 } from './reward-archive.copy';
 
@@ -52,9 +45,8 @@ export function RewardArchiveDialog({
   discardsUnsavedChanges?: boolean;
 }) {
   const archiveCase = resolveRewardArchiveCase(reward);
-  const isDeleteCase = archiveCase !== 'archive';
+  const isDelete = archiveCase !== 'archive';
   const canArchiveInstead = archiveCase === 'delete';
-  const warning = outstandingWarning(reward.redemption_summary);
 
   const statusMutation = useUpdateRewardStatusMutation(reward.id);
   const deleteMutation = useDeleteRewardMutation(reward.id);
@@ -80,136 +72,75 @@ export function RewardArchiveDialog({
     }
   }
 
-  const title = isDeleteCase
-    ? /* translators: %s: the reward's name. */ sprintf(__('Delete “%s”?', 'yayloyalty'), reward.name)
-    : /* translators: %s: the reward's name. */ sprintf(__('Archive “%s”?', 'yayloyalty'), reward.name);
+  const lines = isDelete ? [deleteBodyLine()] : archiveBodyLines(reward.redemption_summary);
 
   return (
     <Dialog open onOpenChange={(open) => !open && !busy && onClose()}>
-      <DialogContent className="gap-0 p-0 sm:max-w-2xl" showCloseButton={!busy}>
-        <DialogHeader className="gap-1 border-b p-5 pr-12">
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>{contextLine(reward, archiveCase)}</DialogDescription>
+      <DialogContent className="gap-0 p-0 sm:max-w-lg" showCloseButton={!busy}>
+        <DialogHeader className="p-5 pr-12 pb-0">
+          <DialogTitle>
+            {isDelete
+              ? /* translators: %s: the reward's name. */ sprintf(__('Delete “%s”?', 'yayloyalty'), reward.name)
+              : /* translators: %s: the reward's name. */ sprintf(__('Archive “%s”?', 'yayloyalty'), reward.name)}
+          </DialogTitle>
         </DialogHeader>
 
-        <div className="flex flex-col gap-4 p-5">
-          {isDeleteCase ? (
-            <>
-              <Alert variant="muted" className="text-foreground">
-                <AlertTitle className="line-clamp-none text-base font-semibold">
-                  {__('No customer has claimed this reward, so it can be deleted permanently', 'yayloyalty')}
-                </AlertTitle>
-                <AlertDescription className="text-foreground">
-                  {__('Nothing in customer history refers to it. No claim, no coupon, no ledger row.', 'yayloyalty')}
-                </AlertDescription>
-              </Alert>
-
-              <ListColumns
-                leftTitle={__('Goes', 'yayloyalty')}
-                leftLines={goesLines()}
-                rightTitle={__('Affected', 'yayloyalty')}
-                right={{ lines: [affectedLine()], nothing: true }}
-              />
-
-              <Alert variant="outline" className="border-l-foreground border-l-4">
-                <TriangleAlert />
-                <AlertDescription className="text-foreground block">
-                  {canArchiveInstead
-                    ? createInterpolateElement(
-                        __(
-                          'Deleting cannot be undone. If you might want it again, <link>archive it</link> instead and restore it then.',
-                          'yayloyalty',
-                        ),
-                        {
-                          link: (
-                            <Button
-                              variant="link"
-                              className="text-primary h-auto p-0 align-baseline underline"
-                              disabled={busy}
-                              onClick={() => run('archived')}
-                            />
-                          ),
-                        },
-                      )
-                    : __('Deleting cannot be undone.', 'yayloyalty')}
-                </AlertDescription>
-              </Alert>
-            </>
-          ) : (
-            <>
-              {warning && (
-                <Alert variant="muted" className="text-foreground border-l-foreground border-l-4">
-                  <CircleAlert />
-                  <AlertTitle className="line-clamp-none font-semibold">{warning.headline}</AlertTitle>
-                  <AlertDescription className="text-foreground">{warning.detail}</AlertDescription>
-                </Alert>
-              )}
-
-              <ListColumns
-                leftTitle={__('Keeps working', 'yayloyalty')}
-                leftLines={keepsLines(reward.redemption_summary)}
-                rightTitle={__('Stops', 'yayloyalty')}
-                right={{ lines: stopsLines() }}
-              />
-            </>
-          )}
-
-          {discardsUnsavedChanges && (
-            <p className="text-muted-foreground text-xs">
-              {__('Unsaved changes on this page are discarded.', 'yayloyalty')}
-            </p>
-          )}
-        </div>
+        <DialogDescription asChild>
+          <div className="text-foreground flex flex-col gap-2 p-5">
+            {lines.map((line) => (
+              <p key={line}>{createInterpolateElement(line, { link: archivedLink(busy, onClose, onViewArchived) })}</p>
+            ))}
+            {discardsUnsavedChanges && (
+              <p className="text-muted-foreground text-xs">
+                {__('Unsaved changes on this page are discarded.', 'yayloyalty')}
+              </p>
+            )}
+          </div>
+        </DialogDescription>
 
         <DialogFooter className="bg-muted/40 border-t p-5 sm:items-center sm:justify-between">
-          {isDeleteCase ? (
-            <>
-              <div></div>
-              <div className="flex flex-col-reverse gap-2 sm:flex-row">
-                <Button variant="outline" disabled={busy} onClick={onClose}>
-                  {__('Cancel', 'yayloyalty')}
-                </Button>
-                {canArchiveInstead && (
-                  <Button disabled={busy} onClick={() => run('archived')}>
-                    {pendingAction === 'archived' ? __('Archiving…', 'yayloyalty') : __('Archive reward', 'yayloyalty')}
-                  </Button>
-                )}
-                <Button variant="destructive" disabled={busy} onClick={() => run('deleted')}>
-                  {pendingAction === 'deleted' ? __('Deleting…', 'yayloyalty') : __('Delete permanently', 'yayloyalty')}
-                </Button>
-              </div>
-            </>
-          ) : (
-            <>
-              <span className="text-muted-foreground text-xs">
-                {createInterpolateElement(__('Restorable from <link>Archived</link>', 'yayloyalty'), {
-                  link: onViewArchived ? (
-                    <Button
-                      variant="link"
-                      className="h-auto p-0 text-xs underline"
-                      disabled={busy}
-                      onClick={() => {
-                        onClose();
-                        onViewArchived();
-                      }}
-                    />
-                  ) : (
-                    <span />
-                  ),
-                })}
-              </span>
-              <div className="flex flex-col-reverse gap-2 sm:flex-row">
-                <Button variant="outline" disabled={busy} onClick={onClose}>
-                  {__('Cancel', 'yayloyalty')}
-                </Button>
-                <Button disabled={busy} onClick={() => run('archived')}>
-                  {pendingAction === 'archived' ? __('Archiving…', 'yayloyalty') : __('Archive', 'yayloyalty')}
-                </Button>
-              </div>
-            </>
-          )}
+          <div>
+            {canArchiveInstead && (
+              <Button variant="outline" disabled={busy} onClick={() => run('archived')}>
+                {pendingAction === 'archived' ? __('Archiving…', 'yayloyalty') : __('Archive instead', 'yayloyalty')}
+              </Button>
+            )}
+          </div>
+          <div className="flex flex-col-reverse gap-2 sm:flex-row">
+            <Button variant="outline" disabled={busy} onClick={onClose}>
+              {__('Cancel', 'yayloyalty')}
+            </Button>
+            {isDelete ? (
+              <Button variant="destructive" disabled={busy} onClick={() => run('deleted')}>
+                {pendingAction === 'deleted' ? __('Deleting…', 'yayloyalty') : __('Delete permanently', 'yayloyalty')}
+              </Button>
+            ) : (
+              <Button variant="destructive" disabled={busy} onClick={() => run('archived')}>
+                {pendingAction === 'archived' ? __('Archiving…', 'yayloyalty') : __('Archive reward', 'yayloyalty')}
+              </Button>
+            )}
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** The <link> element in the body copy: jumps to the Archived view, or plain text where there is none. */
+function archivedLink(busy: boolean, onClose: () => void, onViewArchived?: () => void): ReactElement {
+  if (!onViewArchived) {
+    return <span />;
+  }
+
+  return (
+    <Button
+      variant="link"
+      className="h-auto p-0 align-baseline underline"
+      disabled={busy}
+      onClick={() => {
+        onClose();
+        onViewArchived();
+      }}
+    />
   );
 }
