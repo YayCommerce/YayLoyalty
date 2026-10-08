@@ -88,7 +88,7 @@ export function CampaignEditorConditions() {
         </div>
         <p className="text-muted-foreground text-xs">
           {__(
-            'Conditions are combined with AND. A campaign that needs OR is two campaigns at the same priority.',
+            'Conditions are combined with AND. For OR, make two campaigns that give the same points.',
             'yayloyalty',
           )}
         </p>
