@@ -22,6 +22,7 @@ import DesignSettingsPage from './pages/settings/DesignSettingsPage';
 import EmailsSettingsPage from './pages/settings/EmailsSettingsPage';
 import GeneralSettingsPage from './pages/settings/GeneralSettingsPage';
 import SettingsLayout from './pages/settings/SettingsLayout';
+import SetupWizardPage from './pages/setup/SetupWizardPage';
 
 /**
  * A route the user cannot reach 404s inside the SPA rather than rendering an
@@ -35,8 +36,27 @@ function guarded(cap: Capability, element: ReactElement) {
   );
 }
 
+/**
+ * While setup is pending, every full load of the YayLoyalty page opens the wizard at its saved step.
+ * Only here, once per load: after "Exit setup" the rest of the visit navigates normally.
+ */
+function openPendingSetup() {
+  if (window.yayLoyaltyAdmin.setup.status === 'pending' && !window.location.hash.startsWith('#/setup')) {
+    window.history.replaceState(null, '', '#/setup');
+  }
+}
+
 export function getManagerRouter() {
+  openPendingSetup();
+
   return createHashRouter([
+    {
+      // Full screen, outside AppLayout's header and footer. Closed once setup is complete.
+      path: '/setup',
+      element: guarded(CAP.VIEW, <SetupWizardPage />),
+      errorElement: <ErrorPage />,
+      loader: () => (window.yayLoyaltyAdmin.setup.status === 'completed' ? redirect('/dashboard') : null),
+    },
     {
       path: '/',
       element: <AppLayout />,

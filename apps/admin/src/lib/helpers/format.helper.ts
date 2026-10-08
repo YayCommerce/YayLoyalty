@@ -82,14 +82,15 @@ export function formatStoreDecimal(value: number, maxDecimals: number): string {
  * A money amount in the store's currency format. Formats only: pass a value
  * already rounded by its owner, since `toFixed`
  * rounds the binary float and can land a half-cent the wrong way.
+ * `decimals` overrides the store's places for a round example figure, as "$50".
  */
-export function parseWPCurrency(price: string | number) {
+export function parseWPCurrency(price: string | number, decimals?: number) {
   if (typeof price === 'string') {
     price = parseFloat(price);
   }
 
   const { symbol, position, num_decimals } = window.yayLoyaltyMeta.wcMeta.currency_data;
-  const formattedPrice = formatStoreNumber(price, num_decimals);
+  const formattedPrice = formatStoreNumber(price, decimals ?? num_decimals);
 
   switch (position) {
     case 'left':

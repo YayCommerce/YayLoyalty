@@ -1,6 +1,7 @@
 import type { CustomerBalanceRange, CustomerExpiringSoon } from '@/lib/schema/customer.schema';
 import { Design } from '@/lib/schema/design.schema';
 import { Settings } from '@/lib/schema/settings.schema';
+import type { SetupLocalized } from '@/lib/schema/setup.schema';
 
 /** Mirrors LocalizeHelper::get_meta(), the source of truth. */
 export type Meta = {
@@ -47,6 +48,8 @@ export type Meta = {
 export type AdminData = {
   settings: Settings;
   design: Design;
+  /** From SetupHelper::localized_state(). The SPA updates it in place as setup moves on. */
+  setup: SetupLocalized;
   /** From Capabilities::payload(). Cosmetic only; every route re-checks server-side. */
   capabilities: string[];
   /** Saved segments, Pro-only hence optional. Read via readSegmentsFromLocalize(), never directly. */
