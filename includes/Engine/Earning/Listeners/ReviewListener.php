@@ -5,9 +5,6 @@ use YayLoyalty\Engine\Earning\EarningService;
 use YayLoyalty\Engine\Earning\Reversal;
 use YayLoyalty\Engine\Points\ContextFactory;
 use YayLoyalty\Enums\CampaignTrigger;
-use YayLoyalty\Enums\LedgerSource;
-use YayLoyalty\Repositories\LedgerRepository;
-use YayLoyalty\Utils\Dates;
 use YayLoyalty\Utils\Log;
 
 defined( 'ABSPATH' ) || exit;
@@ -21,17 +18,13 @@ final class ReviewListener {
 
     private EarningService $service;
 
-    /** For points_earned_today, the one ledger read the Context needs. */
-    private LedgerRepository $ledger;
-
     private Reversal $reversal;
 
     /** Statuses that take a paid review's points back; `delete` is what wp_delete_comment() announces. */
     private const REVERSING_STATUSES = [ 'unapproved', 'spam', 'trash', 'delete' ];
 
-    public function __construct( EarningService $service, LedgerRepository $ledger, Reversal $reversal ) {
+    public function __construct( EarningService $service, Reversal $reversal ) {
         $this->service  = $service;
-        $this->ledger   = $ledger;
         $this->reversal = $reversal;
     }
 
@@ -84,10 +77,9 @@ final class ReviewListener {
         }
     }
 
-    /** Awards the review campaign, scored at the comment's date against today's review earnings. */
+    /** Awards the review campaign, scored at the comment's date. */
     public function on_approved( \WP_Comment $comment ): void {
-        $points_earned_today = $this->ledger->points_earned_today( (int) $comment->user_id, Dates::now(), LedgerSource::REVIEW );
-        $outcome             = $this->service->award( CampaignTrigger::REVIEW, ContextFactory::from_comment( $comment, $points_earned_today ) );
+        $outcome = $this->service->award( CampaignTrigger::REVIEW, ContextFactory::from_comment( $comment ) );
 
         PreviewLog::write_outcome( 'ReviewListener', 'review #' . $comment->comment_ID, $outcome );
     }

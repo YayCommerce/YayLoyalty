@@ -1,17 +1,18 @@
 <?php
 namespace YayLoyalty\Engine\Storefront;
 
+use YayLoyalty\Engine\Points\Context;
 use YayLoyalty\Engine\Points\PointsEngine;
 use YayLoyalty\Engine\Points\Triggers\PurchaseHandler;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Models\Campaign;
+use YayLoyalty\Utils\Log;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The "Ways to earn" rows the launcher lists, from the campaigns live right now. Only a campaign that
- * applies to every shopper is advertised. Within a trigger the first in engine order wins, the one that
- * would pay.
+ * The "Ways to earn" rows the launcher lists. PointsEngine::advertised() decides each trigger's value,
+ * never more than any shopper is paid; this class only shapes the rows.
  */
 final class LauncherEarnRules {
 
@@ -19,72 +20,64 @@ final class LauncherEarnRules {
     public const TRIGGERS = [ CampaignTrigger::PURCHASE, CampaignTrigger::SIGNUP, CampaignTrigger::REVIEW ];
 
     /**
-     * @param Campaign[] $live         Campaigns live now, any trigger, in the engine's selection order.
-     * @param bool       $can_register Whether a shopper can create an account on this store. The signup
-     *                                 campaign pays only a self-registration, so without one it isn't advertised.
+     * @param PointsEngine $engine       The engine that pays these triggers.
+     * @param Context      $ctx          ContextFactory::for_advert() at the time the rows are for.
+     * @param bool         $can_register Whether a shopper can create an account on this store. The signup
+     *                                   campaign pays only a self-registration, so without one it isn't advertised.
      * @return array{earn: array{purchase: ?float, signup: ?int, review: ?int}, purchase_min: float}
      *         Points per currency unit / per signup / per review (null when not advertised), and the
      *         advertised purchase campaign's minimum order subtotal so the rate line can say it (0 for none).
      */
-    public static function advertise( array $live, bool $can_register ): array {
-        $winners  = self::winners( $live );
-        $purchase = $winners[ CampaignTrigger::PURCHASE ];
-        $earn     = array_map(
-            static function ( ?array $winner ) {
-                return null === $winner ? null : $winner['value'];
-            },
-            $winners
-        );
+    public static function advertise( PointsEngine $engine, Context $ctx, bool $can_register ): array {
+        $rules = self::none();
 
-        if ( ! $can_register ) {
-            $earn[ CampaignTrigger::SIGNUP ] = null;
-        }
-
-        return [
-            'earn'         => $earn,
-            'purchase_min' => null === $purchase ? 0.0 : PurchaseHandler::min_subtotal( $purchase['campaign']->get_config() ),
-        ];
-    }
-
-    /**
-     * @param Campaign[] $live
-     * @return array<string, array{campaign: Campaign, value: float|int}|null>
-     */
-    private static function winners( array $live ): array {
-        $winners = array_fill_keys( self::TRIGGERS, null );
-
-        foreach ( $live as $campaign ) {
-            $trigger = $campaign->get_trigger();
-
-            if ( ! array_key_exists( $trigger, $winners ) || null !== $winners[ $trigger ] || ! PointsEngine::applies_to_everyone( $campaign ) ) {
+        foreach ( self::TRIGGERS as $trigger ) {
+            if ( CampaignTrigger::SIGNUP === $trigger && ! $can_register ) {
                 continue;
             }
 
-            $value = CampaignTrigger::PURCHASE === $trigger
-                ? self::purchase_rate( $campaign->get_config() )
-                : self::flat_points( $campaign );
+            $advert = self::advertised( $engine, $trigger, $ctx );
 
-            if ( null !== $value ) {
-                $winners[ $trigger ] = [
-                    'campaign' => $campaign,
-                    'value'    => $value,
-                ];
+            if ( null === $advert ) {
+                continue;
+            }
+
+            if ( CampaignTrigger::PURCHASE === $trigger ) {
+                $rules['earn'][ $trigger ] = $advert['value'];
+                $rules['purchase_min']     = PurchaseHandler::min_subtotal( $advert['campaign']->get_config() );
+            } else {
+                $rules['earn'][ $trigger ] = (int) $advert['value'];
             }
         }
 
-        return $winners;
+        return $rules;
     }
 
-    /** Points per currency unit the engine would pay; null when it would skip the campaign or pay nothing. */
-    private static function purchase_rate( array $config ): ?float {
-        $rate = PurchaseHandler::rate_of( $config );
+    /**
+     * PointsEngine::advertised(), or null when it fails: the engine's filters run here on every storefront
+     * page, and one broken subscriber must cost only its own trigger's row.
+     *
+     * @return array{campaign: Campaign, value: float}|null
+     */
+    private static function advertised( PointsEngine $engine, string $trigger, Context $ctx ): ?array {
+        try {
+            return $engine->advertised( $trigger, $ctx );
+        } catch ( \Throwable $e ) {
+            Log::warning( 'LauncherEarnRules', $trigger . ' earn row failed: ' . $e->getMessage() );
 
-        return $rate > 0 ? $rate : null;
+            return null;
+        }
     }
 
-    private static function flat_points( Campaign $campaign ): ?int {
-        $points = $campaign->flat_points();
-
-        return $points > 0 ? $points : null;
+    /**
+     * No earn rows: advertise()'s shape with nothing advertised.
+     *
+     * @return array{earn: array{purchase: null, signup: null, review: null}, purchase_min: float}
+     */
+    public static function none(): array {
+        return [
+            'earn'         => array_fill_keys( self::TRIGGERS, null ),
+            'purchase_min' => 0.0,
+        ];
     }
 }

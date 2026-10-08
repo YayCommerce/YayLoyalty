@@ -69,6 +69,11 @@ final class PurchaseHandler implements TriggerHandler {
         return new Breakdown( $points, $base, $rate, $raw, $rounding );
     }
 
+    /** Points per currency unit. */
+    public function advertised_value( Campaign $campaign ): float {
+        return self::rate_of( $campaign->get_config() );
+    }
+
     public function reference_type(): string {
         return ReferenceType::ORDER;
     }
@@ -91,12 +96,11 @@ final class PurchaseHandler implements TriggerHandler {
     }
 
     /**
-     * Points per currency unit a purchase config pays. The storefront launcher asks here too, so it
-     * never advertises a rate the engine would not pay.
+     * Points per currency unit a purchase config pays.
      *
      * @param array<string, mixed> $config
      */
-    public static function rate_of( array $config ): float {
+    private static function rate_of( array $config ): float {
         return (float) ( $config['points_per_unit'] ?? 0 );
     }
 }

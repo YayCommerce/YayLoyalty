@@ -63,7 +63,8 @@ final class LauncherPayload {
         $reward   = RedemptionService::is_available() ? $this->rewards->find_live_cart_discount( $now ) : null;
         $redeem   = self::redeem_rule( $reward );
         $register = self::register_route();
-        $rules    = LauncherEarnRules::advertise( $this->live_campaigns( $now ), null !== $register );
+        $engine   = $this->engine();
+        $rules    = null === $engine ? LauncherEarnRules::none() : LauncherEarnRules::advertise( $engine, ContextFactory::for_advert( $now ), null !== $register );
 
         return [
             'launcher'     => $design['launcher'],
@@ -73,22 +74,25 @@ final class LauncherPayload {
             'purchase_min' => $rules['purchase_min'],
             'redeem'       => $redeem,
             'member'       => null === $balance ? null : self::member( $balance, null === $redeem ? null : $reward ),
-            'estimate'     => null === $balance && null !== $rules['earn'][ CampaignTrigger::PURCHASE ] ? $this->product_estimate() : null,
+            'estimate'     => null !== $engine && null === $balance && null !== $rules['earn'][ CampaignTrigger::PURCHASE ] ? self::product_estimate( $engine ) : null,
             'register'     => $register,
             'account_url'  => (string) wc_get_page_permalink( 'myaccount' ),
             'checkout_url' => (string) wc_get_checkout_url(),
         ];
     }
 
-    /** @return \YayLoyalty\Models\Campaign[] */
-    private function live_campaigns( string $now ): array {
-        $live = [];
+    /**
+     * The points engine, or null when building it fails: its handler seam runs here on every storefront page
+     * and in the Design preview, and a broken subscriber must never take either down with it.
+     */
+    private function engine(): ?PointsEngine {
+        try {
+            return PointsEngine::build( $this->campaigns );
+        } catch ( \Throwable $e ) {
+            Log::warning( 'LauncherPayload', 'points engine failed: ' . $e->getMessage() );
 
-        foreach ( LauncherEarnRules::TRIGGERS as $trigger ) {
-            $live = array_merge( $live, $this->campaigns->live_for_trigger( $trigger, $now ) );
+            return null;
         }
-
-        return $live;
     }
 
     /**
@@ -147,7 +151,7 @@ final class LauncherPayload {
      * since that belongs to members. Null off a product page, on a variable product (its price is a
      * range) or when the engine finds nothing.
      */
-    private function product_estimate(): ?int {
+    private static function product_estimate( PointsEngine $engine ): ?int {
         if ( ! function_exists( 'is_product' ) || ! is_product() ) {
             return null;
         }
@@ -159,9 +163,7 @@ final class LauncherPayload {
         }
 
         try {
-            $points = PointsEngine::build( $this->campaigns )
-                ->evaluate( CampaignTrigger::PURCHASE, ContextFactory::from_product( $product ) )
-                ->get_points();
+            $points = $engine->evaluate( CampaignTrigger::PURCHASE, ContextFactory::from_product( $product ) )->get_points();
         } catch ( \Throwable $e ) {
             // A broken estimate must never take the product page down with it.
             Log::warning( 'LauncherPayload', 'product estimate failed: ' . $e->getMessage() );

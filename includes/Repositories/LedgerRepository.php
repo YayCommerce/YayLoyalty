@@ -67,9 +67,8 @@ class LedgerRepository extends AbstractRepository {
 
     /**
      * SUM(points) of one source's earn rows written on the site-timezone
-     * calendar day holding $at, for CapPolicy's daily_cap. Per source, so a
-     * purchase never uses up a review cap; a null source sums every source,
-     * for the per-customer daily limit. Gross EARN only: adjustments and
+     * calendar day holding $at; a null source sums every source, for the
+     * per-customer daily limit. Gross EARN only: adjustments and
      * refunds neither count nor free up room. Rows count by created_at, their
      * write time, so $at should be the moment being awarded. 0 for a guest.
      *

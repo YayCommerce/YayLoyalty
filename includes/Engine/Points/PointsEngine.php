@@ -40,50 +40,122 @@ final class PointsEngine {
     /**
      * @param string  $trigger A CampaignTrigger constant.
      * @param Context $ctx     The event; liveness is evaluated at its occurred_at.
-     * @throws \InvalidArgumentException When no handler owns the trigger.
+     * @throws \InvalidArgumentException When $ctx is an advert, or no handler owns the trigger.
      */
     public function evaluate( string $trigger, Context $ctx ): Result {
-        $handler = $this->registry->get( $trigger );
-        $at      = $ctx->get_occurred_at();
+        if ( $ctx->is_advert() ) {
+            throw new \InvalidArgumentException( 'YayLoyalty: evaluate() takes an event Context, not Context::advert().' );
+        }
 
-        /**
-         * Live campaigns for a trigger, highest priority first.
-         *
-         * @param Campaign[] $campaigns
-         * @param string     $trigger
-         * @param Context    $ctx
-         */
-        $candidates = apply_filters( 'yayloyalty_campaign_candidates', $this->campaigns->live_for_trigger( $trigger, $at ), $trigger, $ctx );
+        $handler    = $this->registry->get( $trigger );
+        $candidates = $this->candidates( $trigger, $ctx );
 
         if ( empty( $candidates ) ) {
             return Result::none( Result::REASON_NO_CAMPAIGNS );
         }
 
-        foreach ( $candidates as $campaign ) {
-            /**
-             * Whether a campaign's conditions match this event.
-             *
-             * @param bool     $matches
-             * @param Campaign $campaign
-             * @param Context  $ctx
-             */
-            $matches = apply_filters( 'yayloyalty_campaign_matches', $this->conditions_match( $campaign, $ctx ), $campaign, $ctx );
+        $campaign = $this->pick( $handler, $candidates, $ctx );
 
-            if ( ! $matches || ! $handler->is_eligible( $campaign, $ctx ) ) {
+        if ( null === $campaign ) {
+            return Result::none( Result::REASON_NOT_ELIGIBLE );
+        }
+
+        $breakdown = $handler->compute_points( $campaign, $ctx );
+        $points    = $this->caps->apply( $breakdown->get_points(), $campaign );
+
+        if ( $points <= 0 ) {
+            return Result::none( Result::REASON_ZERO_POINTS );
+        }
+
+        return Result::awarded( $points, $campaign, $breakdown, $handler->reference_type(), $handler->reference_id( $ctx ), $handler->source() );
+    }
+
+    /**
+     * The value the storefront may promise for a trigger: never more than any shopper gets. Walks evaluate()'s
+     * candidates down to the first campaign for everyone; a conditional campaign above it may catch some
+     * shoppers, so its value lowers the promise. Null when that lowest value is 0, or no campaign is for
+     * everyone. The handlers' event gates (min_subtotal, exclude_coupon_orders, require_verified,
+     * one_per_product) are the row's terms, not uncertainty: a gated campaign stops the walk like evaluate()
+     * stops at it. Not applied without an event: caps, and the purchase filters and rounding.
+     *
+     * @param string  $trigger A CampaignTrigger constant.
+     * @param Context $ctx     Context::advert(); liveness is evaluated at its occurred_at.
+     * @return array{campaign: Campaign, value: float}|null The campaign that set the value: points per currency
+     *                                                       unit or flat points.
+     * @throws \InvalidArgumentException When $ctx is an event, or no handler owns the trigger.
+     */
+    public function advertised( string $trigger, Context $ctx ): ?array {
+        if ( ! $ctx->is_advert() ) {
+            throw new \InvalidArgumentException( 'YayLoyalty: advertised() takes a Context::advert().' );
+        }
+
+        $handler = $this->registry->get( $trigger );
+        $lowest  = null;
+
+        foreach ( $this->candidates( $trigger, $ctx ) as $campaign ) {
+            // No shopper to compare conditions with, so a conditional campaign is neither matched nor skipped.
+            $for_everyone = self::applies_to_everyone( $campaign );
+
+            if ( $for_everyone && ! $this->matches( $campaign, $ctx ) ) {
                 continue;
             }
 
-            $breakdown = $handler->compute_points( $campaign, $ctx );
-            $points    = $this->caps->apply( $breakdown->get_points(), $campaign, $ctx );
+            $value = $handler->advertised_value( $campaign );
 
-            if ( $points <= 0 ) {
-                return Result::none( Result::REASON_ZERO_POINTS );
+            if ( null === $lowest || $value < $lowest['value'] ) {
+                $lowest = [
+                    'campaign' => $campaign,
+                    'value'    => $value,
+                ];
             }
 
-            return Result::awarded( $points, $campaign, $breakdown, $handler->reference_type(), $handler->reference_id( $ctx ), $handler->source() );
+            if ( $for_everyone ) {
+                return $lowest['value'] > 0 ? $lowest : null;
+            }
         }
 
-        return Result::none( Result::REASON_NOT_ELIGIBLE );
+        return null;
+    }
+
+    /** @return iterable<Campaign> */
+    private function candidates( string $trigger, Context $ctx ): iterable {
+        /**
+         * Live campaigns for a trigger, highest priority first. Also fires on storefront pages with an
+         * advertising Context (Context::is_advert()), which stands for any shopper and no event.
+         *
+         * @param Campaign[] $campaigns
+         * @param string     $trigger
+         * @param Context    $ctx
+         */
+        return apply_filters( 'yayloyalty_campaign_candidates', $this->campaigns->live_for_trigger( $trigger, $ctx->get_occurred_at() ), $trigger, $ctx );
+    }
+
+    /**
+     * The first candidate that matches the event and passes the handler's is_eligible().
+     *
+     * @param iterable<Campaign> $candidates
+     */
+    private function pick( Triggers\TriggerHandler $handler, iterable $candidates, Context $ctx ): ?Campaign {
+        foreach ( $candidates as $campaign ) {
+            if ( $this->matches( $campaign, $ctx ) && $handler->is_eligible( $campaign, $ctx ) ) {
+                return $campaign;
+            }
+        }
+
+        return null;
+    }
+
+    private function matches( Campaign $campaign, Context $ctx ): bool {
+        /**
+         * Whether a campaign's conditions match this event. Also fires on storefront pages with an
+         * advertising Context (Context::is_advert()), which stands for any shopper and no event; there it
+         * fires only for a campaign for everyone, with true.
+         *
+         * @param bool     $matches
+         * @param Campaign $campaign
+         * @param Context  $ctx
+         */
+        return (bool) apply_filters( 'yayloyalty_campaign_matches', $this->conditions_match( $campaign, $ctx ), $campaign, $ctx );
     }
 
     /**
@@ -99,11 +171,8 @@ final class PointsEngine {
         return (bool) self::conditions_evaluator()->evaluate( $campaign->get_conditions(), $ctx );
     }
 
-    /**
-     * Whether a campaign's conditions let every shopper through: it has none, or none are enforced (Lite).
-     * The storefront launcher advertises only such campaigns, so it never promises a rate some shoppers miss.
-     */
-    public static function applies_to_everyone( Campaign $campaign ): bool {
+    /** Whether a campaign's conditions let every shopper through: it has none, or none are enforced (Lite). */
+    private static function applies_to_everyone( Campaign $campaign ): bool {
         return [] === $campaign->get_conditions() || null === self::conditions_evaluator();
     }
 

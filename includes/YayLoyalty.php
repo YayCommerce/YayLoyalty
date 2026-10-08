@@ -60,7 +60,7 @@ class YayLoyalty {
 
         ( new OrderListener( $service, $pending, $ledger, $reversals ) )->register();
         $reversals->register();
-        ( new ReviewListener( $service, $ledger, $reversal ) )->register();
+        ( new ReviewListener( $service, $reversal ) )->register();
         ( new SignupListener( $service ) )->register();
     }
 }

@@ -25,6 +25,10 @@ final class SignupHandler implements TriggerHandler {
         return Breakdown::flat( $campaign->flat_points() );
     }
 
+    public function advertised_value( Campaign $campaign ): float {
+        return (float) $campaign->flat_points();
+    }
+
     public function reference_type(): string {
         return ReferenceType::USER;
     }

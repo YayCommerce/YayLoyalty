@@ -7,6 +7,7 @@ defined( 'ABSPATH' ) || exit;
  * Everything the engine may know about the event. Immutable and WordPress-free, so the engine is
  * testable without a bootstrap. No actor_id: who is logged in is a ledger argument, not a scoring input.
  * `extra` holds one-trigger facts. A fact that two triggers need becomes a typed property.
+ * An advertising Context (advert()) stands for "any shopper, no event"; only PointsEngine::advertised() takes one.
  */
 final class Context {
 
@@ -54,14 +55,14 @@ final class Context {
     /** @var int|null */
     private $comment_id;
 
-    /** @var int Supplied by the caller from the ledger; 0 in a preview. */
-    private $points_earned_today;
-
     /** @var array<string, mixed> */
     private $extra;
 
     /** @var CustomerFacts|\Closure|null A Closure is the loader, replaced by its result on first read. */
     private $customer_facts;
+
+    /** @var bool Set only by advert(). */
+    private $advert = false;
 
     /**
      * @param ContextLineItem[]    $line_items
@@ -85,7 +86,6 @@ final class Context {
         array $user_roles,
         ?int $order_id = null,
         ?int $comment_id = null,
-        int $points_earned_today = 0,
         array $extra = [],
         $customer_facts = null
     ) {
@@ -105,9 +105,21 @@ final class Context {
         $this->user_roles           = array_values( array_map( 'strval', $user_roles ) );
         $this->order_id             = $order_id;
         $this->comment_id           = $comment_id;
-        $this->points_earned_today  = max( 0, $points_earned_today );
         $this->extra                = $extra;
         $this->customer_facts       = $customer_facts;
+    }
+
+    /** A guest with an empty cart and no event, at $at (UTC MySQL), for advertising what a campaign pays. */
+    public static function advert( string $at, string $currency, float $base_rate ): self {
+        $ctx         = new self( null, $at, $currency, $base_rate, [], 0.0, 0.0, 0.0, [], [] );
+        $ctx->advert = true;
+
+        return $ctx;
+    }
+
+    /** Whether this stands for no event: the engine then skips the checks that need one. */
+    public function is_advert(): bool {
+        return $this->advert;
     }
 
     public function get_user_id(): ?int {
@@ -168,10 +180,6 @@ final class Context {
 
     public function get_comment_id(): ?int {
         return $this->comment_id;
-    }
-
-    public function get_points_earned_today(): int {
-        return $this->points_earned_today;
     }
 
     /** What conditions may compare against; null means "no customer facts", which order-only conditions can still match. */
