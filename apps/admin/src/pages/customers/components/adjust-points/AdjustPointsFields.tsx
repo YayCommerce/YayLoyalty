@@ -1,24 +1,23 @@
+import { TriangleAlert } from 'lucide-react';
+
 import { formatPoints, formatPointsAsMoney } from '@/lib/helpers/points.helper';
-import { NumberInputInput, NumberInputRoot } from '@/components/ui/number-input';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   addsToLiability,
-  CONFIRM_AMOUNT_LABEL,
   negativeOutcomeLiability,
   negativeOutcomeSpendable,
-  newBalanceLine,
   NEW_BALANCE_EMPTY,
+  newBalanceLine,
   reducesLiability,
-  TYPO_GUARD_EXPLANATION,
-  typoGuardNewBalance,
-  typoGuardPlaceholder,
+  typoGuardConfirm,
   typoGuardWarning,
 } from '../customers-adjust-points.copy';
 import {
-  type AdjustFormState,
   isTypoGuardActive,
   liabilityDelta,
   newBalance,
   pointsToClearDeficit,
+  type AdjustFormState,
 } from '../customers-adjust-points.form-state';
 
 /**
@@ -35,7 +34,7 @@ export function AdjustPointsFields({
   pointsPerCurrencyUnit,
   showResultPanel,
 }: {
-  state: Pick<AdjustFormState, 'direction' | 'amount' | 'confirmAmount'>;
+  state: Pick<AdjustFormState, 'direction' | 'amount' | 'confirmed'>;
   onChange: (patch: Partial<AdjustFormState>) => void;
   customerName: string;
   balance: number;
@@ -64,9 +63,7 @@ export function AdjustPointsFields({
             <p className="text-muted-foreground">
               {negativeOutcomeSpendable(customerName, formatPoints(pointsToClearDeficit(balanceAfter)))}
             </p>
-            {delta < 0 && deltaMoney && (
-              <p className="text-muted-foreground">{negativeOutcomeLiability(deltaMoney)}</p>
-            )}
+            {delta < 0 && deltaMoney && <p className="text-muted-foreground">{negativeOutcomeLiability(deltaMoney)}</p>}
           </div>
         ) : (
           <div className="flex flex-col gap-1">
@@ -80,20 +77,18 @@ export function AdjustPointsFields({
         ))}
 
       {guardActive && (
-        <div className="flex flex-col gap-2 rounded-md border border-dashed px-3.5 py-3">
-          <p className="text-sm font-medium">
+        <div className="border-warning bg-warning/6 flex flex-col gap-2.5 rounded-md border px-3.5 py-3">
+          <p className="flex items-start gap-2 text-sm font-medium">
+            <TriangleAlert className="text-warning-accent mt-0.5 size-4 shrink-0" />
             {typoGuardWarning(formatPoints(state.amount), formatPoints(lifetimeEarned))}
           </p>
-          <p className="text-muted-foreground text-xs">{TYPO_GUARD_EXPLANATION()}</p>
-          <NumberInputRoot min={0} value={state.confirmAmount} onValueChange={(confirmAmount) => onChange({ confirmAmount })}>
-            <NumberInputInput
-              aria-label={CONFIRM_AMOUNT_LABEL()}
-              placeholder={typoGuardPlaceholder(formatPoints(state.amount))}
+          <label className="flex items-start gap-2.5 text-sm">
+            <Checkbox
+              checked={state.confirmed}
+              onCheckedChange={(checked) => onChange({ confirmed: checked === true })}
             />
-          </NumberInputRoot>
-          <p className="text-muted-foreground text-xs">
-            {typoGuardNewBalance(formatPoints(balanceAfter), balanceAfterMoney)}
-          </p>
+            <span>{typoGuardConfirm(state.direction, formatPoints(state.amount))}</span>
+          </label>
         </div>
       )}
     </div>

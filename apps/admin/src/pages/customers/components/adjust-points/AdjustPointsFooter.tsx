@@ -4,10 +4,26 @@ import { formatPoints } from '@/lib/helpers/points.helper';
 import { Button } from '@/components/ui/button';
 import { DialogFooter } from '@/components/ui/custom/dialog';
 import { bulkSubmitLabel } from '../customers-adjust-points.bulk.copy';
-import { submitLabel } from '../customers-adjust-points.copy';
-import type { AdjustFormState } from '../customers-adjust-points.form-state';
+import {
+  SUBMIT_HINT_ACKNOWLEDGE,
+  SUBMIT_HINT_CONFIRM,
+  SUBMIT_HINT_PREFIX,
+  SUBMIT_HINT_REASON,
+  submitLabel,
+} from '../customers-adjust-points.copy';
+import type { AdjustFormState, SubmitBlockerKey } from '../customers-adjust-points.form-state';
 
-/** Cancel + the action-restating submit button, single or bulk phrasing. */
+/**
+ * Steps the admin still has to take, in layout order. Stale, unverified and over-limit
+ * have their own banners; a missing amount needs no hint.
+ */
+const HINTS: [SubmitBlockerKey, () => string][] = [
+  ['confirm', SUBMIT_HINT_CONFIRM],
+  ['acknowledge', SUBMIT_HINT_ACKNOWLEDGE],
+  ['reason', SUBMIT_HINT_REASON],
+];
+
+/** Cancel + the action-restating submit button, single or bulk phrasing, with what still blocks it. */
 export function AdjustPointsFooter({
   isSingle,
   state,
@@ -15,7 +31,7 @@ export function AdjustPointsFooter({
   isSubmitting,
   isCheckingBeforeSubmit,
   isPreviewLoading,
-  submitEnabled,
+  blockers,
   onCancel,
   onSubmit,
 }: {
@@ -26,24 +42,32 @@ export function AdjustPointsFooter({
   isSubmitting: boolean;
   isCheckingBeforeSubmit: boolean;
   isPreviewLoading: boolean;
-  submitEnabled: boolean;
+  blockers: SubmitBlockerKey[];
   onCancel: () => void;
   onSubmit: () => void;
 }) {
   const isBusy = isSubmitting || isCheckingBeforeSubmit;
+  const hints = state.amount > 0 ? HINTS.filter(([key]) => blockers.includes(key)).map(([, label]) => label()) : [];
 
   return (
-    <DialogFooter>
-      <Button variant="outline" onClick={onCancel} disabled={isBusy}>
-        {__('Cancel', 'yayloyalty')}
-      </Button>
-      <Button onClick={onSubmit} disabled={isBusy || isPreviewLoading || !submitEnabled}>
-        {isBusy
-          ? __('Applying…', 'yayloyalty')
-          : isSingle
-            ? submitLabel(state.direction, formatPoints(state.amount), state.amount === 0)
-            : bulkSubmitLabel(state.direction, formatPoints(state.amount), effectiveCount)}
-      </Button>
-    </DialogFooter>
+    <div className="flex flex-col gap-2">
+      {hints.length > 0 && (
+        <p className="text-muted-foreground text-xs sm:text-right">
+          {SUBMIT_HINT_PREFIX()} {hints.join(' · ')}
+        </p>
+      )}
+      <DialogFooter>
+        <Button variant="outline" onClick={onCancel} disabled={isBusy}>
+          {__('Cancel', 'yayloyalty')}
+        </Button>
+        <Button onClick={onSubmit} disabled={isBusy || isPreviewLoading || blockers.length > 0}>
+          {isBusy
+            ? __('Applying…', 'yayloyalty')
+            : isSingle
+              ? submitLabel(state.direction, formatPoints(state.amount), state.amount === 0)
+              : bulkSubmitLabel(state.direction, formatPoints(state.amount), effectiveCount)}
+        </Button>
+      </DialogFooter>
+    </div>
   );
 }

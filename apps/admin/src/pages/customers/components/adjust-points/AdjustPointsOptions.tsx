@@ -5,8 +5,8 @@ import {
   ADJUST_LIFETIME_LABEL,
   ADJUST_LIFETIME_SUBTEXT,
   CUSTOMER_NOTE_PLACEHOLDER,
-  CUSTOMER_NOTE_PREVIEW,
   NOTIFY_BY_EMAIL_LABEL,
+  SHOW_CUSTOMER_NOTE_HELPER,
   SHOW_CUSTOMER_NOTE_LABEL,
 } from '../customers-adjust-points.copy';
 import type { AdjustFormState } from '../customers-adjust-points.form-state';
@@ -37,21 +37,22 @@ export function AdjustPointsOptions({
 
       {/* TODO(adjust-points): send customerNote with the adjustment and show it in the customer's points history. */}
       <div className="flex flex-col gap-2">
-        <label className="flex items-center justify-between gap-2.5">
-          <span className="text-sm font-medium">{SHOW_CUSTOMER_NOTE_LABEL()}</span>
+        <label className="flex items-start justify-between gap-2.5">
+          <span className="flex flex-col gap-0.5">
+            <span className="text-sm font-medium">{SHOW_CUSTOMER_NOTE_LABEL()}</span>
+            <span className="text-muted-foreground text-xs">{SHOW_CUSTOMER_NOTE_HELPER()}</span>
+          </span>
           <Switch
             checked={state.showCustomerNote}
             onCheckedChange={(checked) => onChange({ showCustomerNote: checked })}
           />
         </label>
-        {state.showCustomerNote ? (
+        {state.showCustomerNote && (
           <Input
             value={state.customerNote}
             onChange={(event) => onChange({ customerNote: event.target.value })}
             placeholder={CUSTOMER_NOTE_PLACEHOLDER()}
           />
-        ) : (
-          <p className="text-muted-foreground text-xs">{CUSTOMER_NOTE_PREVIEW()}</p>
         )}
       </div>
 

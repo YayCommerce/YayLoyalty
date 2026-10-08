@@ -10,7 +10,8 @@ export type AdjustDirection = 'add' | 'remove';
 export type AdjustFormState = {
   direction: AdjustDirection;
   amount: number; // always a positive magnitude; direction carries the sign
-  confirmAmount: number;
+  /** The typo guard's tick; cleared whenever amount or direction changes. */
+  confirmed: boolean;
   reason: string;
   adjustLifetime: boolean;
   showCustomerNote: boolean;
@@ -18,12 +19,12 @@ export type AdjustFormState = {
   notifyByEmail: boolean;
 };
 
-export function initialAdjustFormState(): AdjustFormState {
+export function initialAdjustFormState(reason = ''): AdjustFormState {
   return {
     direction: 'add',
     amount: 0,
-    confirmAmount: 0,
-    reason: '',
+    confirmed: false,
+    reason,
     adjustLifetime: true,
     showCustomerNote: false,
     customerNote: '',
@@ -61,10 +62,6 @@ export function isTypoGuardActive(
   return state.amount > typoGuardFloor(pointsPerCurrencyUnit) && state.amount > TYPO_GUARD_MULTIPLIER * lifetimeEarned;
 }
 
-export function isConfirmSatisfied(state: Pick<AdjustFormState, 'amount' | 'confirmAmount'>): boolean {
-  return state.confirmAmount === state.amount;
-}
-
 /** Points still needed before a negative balance clears, floored at 0. */
 export function pointsToClearDeficit(balance: number): number {
   return Math.max(0, -balance);
@@ -87,10 +84,7 @@ export function liabilityDelta(balance: number, balanceAfter: number): number {
  * Whether the acknowledged record differs from the latest fetch. `lifetime_earned` is compared too,
  * because the typo guard reads it. `user_id` catches a baseline left over from another customer.
  */
-export function isStaleSnapshot(
-  baseline: AdjustTarget | null,
-  latest: AdjustTarget | null,
-): boolean {
+export function isStaleSnapshot(baseline: AdjustTarget | null, latest: AdjustTarget | null): boolean {
   if (!baseline || !latest) return false;
   return (
     baseline.user_id !== latest.user_id ||
@@ -113,23 +107,25 @@ export type SubmitBlockers = {
   isOverLimit?: boolean;
 };
 
+export type SubmitBlockerKey = 'amount' | 'reason' | 'confirm' | 'acknowledge' | 'stale' | 'unverified' | 'overLimit';
+
 /**
- * Every rule that blocks submit, in one place — a new rule is a new flag on
- * `SubmitBlockers`, not a check beside this call. Only "still loading" stays
- * with the footer: that is a wait, not a rule.
+ * Every rule that blocks submit, in one place; submit is enabled when none apply.
+ * A new rule is a new flag on `SubmitBlockers` and a key here, not a check beside this call.
+ * Only "still loading" stays with the footer: that is a wait, not a rule.
  */
-export function canSubmit(state: AdjustFormState, blockers: SubmitBlockers): boolean {
-  if (state.amount <= 0) return false;
-  if (state.reason.trim() === '') return false;
-  if (blockers.isStale) return false;
-  if (blockers.isUnverified) return false;
-  if (blockers.isOverLimit) return false;
-  if (blockers.needsAcknowledgement && !blockers.acknowledged) return false;
-
-  const guardActive = isTypoGuardActive(state, blockers.lifetimeEarned, blockers.pointsPerCurrencyUnit);
-  if (guardActive && !isConfirmSatisfied(state)) return false;
-
-  return true;
+export function submitBlockers(state: AdjustFormState, blockers: SubmitBlockers): SubmitBlockerKey[] {
+  const keys: SubmitBlockerKey[] = [];
+  if (state.amount <= 0) keys.push('amount');
+  if (state.reason.trim() === '') keys.push('reason');
+  if (blockers.isStale) keys.push('stale');
+  if (blockers.isUnverified) keys.push('unverified');
+  if (blockers.isOverLimit) keys.push('overLimit');
+  if (blockers.needsAcknowledgement && !blockers.acknowledged) keys.push('acknowledge');
+  if (isTypoGuardActive(state, blockers.lifetimeEarned, blockers.pointsPerCurrencyUnit) && !state.confirmed) {
+    keys.push('confirm');
+  }
+  return keys;
 }
 
 /** Bulk total — `amount * effectiveCount`, never the raw preview count, which ignores deselected rows. */
