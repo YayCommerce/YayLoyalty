@@ -32,8 +32,6 @@ class SettingsHelper {
             'advanced' => [
                 'points_label_singular' => __( 'Point', 'yayloyalty' ),
                 'points_label_plural'   => __( 'Points', 'yayloyalty' ),
-                // null means unlimited. Read through Capabilities::ceiling().
-                'adjustment_ceiling'    => null,
                 // null means no limit. Enforced by Pro's DailyEarningLimit.
                 'max_points_per_day'    => null,
             ],
@@ -58,7 +56,6 @@ class SettingsHelper {
             'advanced' => [
                 'points_label_singular' => 'points_label',
                 'points_label_plural'   => 'points_label',
-                'adjustment_ceiling'    => 'limit',
                 'max_points_per_day'    => 'limit',
             ],
             'emails'   => [

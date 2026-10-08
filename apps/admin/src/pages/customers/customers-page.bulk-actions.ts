@@ -2,10 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { __, _n, sprintf } from '@wordpress/i18n';
 
-import { useCsvExport } from '@/hooks/useCsvExport';
 import { getApiErrorMessage, isAbortError } from '@/lib/api/api';
 import { useBulkAdjustPointsMutation } from '@/lib/queries/customer.queries';
 import type { AdjustPointsInput, CustomerListRow } from '@/lib/schema/customer.schema';
+import { useCsvExport } from '@/hooks/useCsvExport';
 import { bulkSelectionChanged } from './components/customers-adjust-points.bulk.copy';
 import { exportCustomersToCsv } from './customers-page.export';
 import type { RowFilters } from './customers-page.filter-rows';
@@ -117,10 +117,7 @@ export function useCustomersBulkActions({
         toast.error(
           sprintf(
             /* translators: 1: number of customers adjusted; 2: number of customers whose adjustment failed. */
-            __(
-              '%1$d succeeded, %2$d failed. Points ceilings or permissions may differ per customer. Only the failed customers are still selected.',
-              'yayloyalty',
-            ),
+            __('%1$d succeeded, %2$d failed. Only the failed customers are still selected.', 'yayloyalty'),
             succeeded,
             failed,
           ),

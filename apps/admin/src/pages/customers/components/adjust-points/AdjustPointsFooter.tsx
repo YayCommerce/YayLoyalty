@@ -6,7 +6,6 @@ import { DialogFooter } from '@/components/ui/custom/dialog';
 import { bulkSubmitLabel } from '../customers-adjust-points.bulk.copy';
 import {
   SUBMIT_HINT_ACKNOWLEDGE,
-  SUBMIT_HINT_CONFIRM,
   SUBMIT_HINT_PREFIX,
   SUBMIT_HINT_REASON,
   submitLabel,
@@ -18,7 +17,6 @@ import type { AdjustFormState, SubmitBlockerKey } from '../customers-adjust-poin
  * have their own banners; a missing amount needs no hint.
  */
 const HINTS: [SubmitBlockerKey, () => string][] = [
-  ['confirm', SUBMIT_HINT_CONFIRM],
   ['acknowledge', SUBMIT_HINT_ACKNOWLEDGE],
   ['reason', SUBMIT_HINT_REASON],
 ];

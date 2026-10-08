@@ -103,17 +103,7 @@ final class RewardRepository extends AbstractRepository {
         return true;
     }
 
-    /**
-     * The one points→money rate: the built-in flexible-discount reward's
-     * `points_per_currency_unit`, or 0 when the reward or key is missing.
-     * Live or not, so the admin never shows it as money; only the adjust
-     * dialog's typo-guard floor reads it. Checkout reads the reward's config in Clamp.
-     */
-    public function points_per_currency_unit(): float {
-        return self::rate_of( $this->find_by_slug( self::CART_DISCOUNT_SLUG ) );
-    }
-
-    /** The same rate, but 0 unless the built-in reward is live. */
+    /** The built-in flexible-discount reward's `points_per_currency_unit`, or 0 unless that reward is live. */
     public function live_points_per_currency_unit(): float {
         return self::rate_of( $this->find_live_cart_discount( Dates::now() ) );
     }

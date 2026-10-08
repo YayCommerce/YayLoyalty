@@ -27,17 +27,12 @@ export type Capability = (typeof CAP)[keyof typeof CAP];
 
 export const can = (cap: Capability): boolean => CAPS.has(cap);
 
-/** Per-adjustment limit for non-administrators; null = unlimited. Server decides. */
-export const ceiling = (): number | null => boot.ceiling ?? null;
-
-export const isAdministrator = (): boolean => !!boot.isAdministrator;
-
 export const useCapability = (cap: Capability): boolean => useMemo(() => can(cap), [cap]);
 
 export const PERMISSION_DENIED_MESSAGE = () => __('You do not have permission to do that.', 'yayloyalty');
 
 /** REST error codes the backbone emits; api.ts turns each into one notice. */
-export const FORBIDDEN_ERROR_CODES = ['yayloyalty_forbidden', 'yayloyalty_adjustment_ceiling'] as const;
+export const FORBIDDEN_ERROR_CODES = ['yayloyalty_forbidden'] as const;
 
 interface CanProps {
   cap: Capability;

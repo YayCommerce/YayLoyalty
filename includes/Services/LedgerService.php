@@ -44,8 +44,7 @@ final class LedgerService {
 
     /**
      * Manual admin adjustment, positive or negative. Deliberately not
-     * idempotent (NULL reference): an admin may grant the same bonus twice,
-     * which is why the controller enforces a magnitude ceiling.
+     * idempotent (NULL reference): an admin may grant the same bonus twice.
      *
      * @param bool $adjust_lifetime True writes an ADJUST row: lifetime_earned
      *             moves by the same signed amount as the balance, so a

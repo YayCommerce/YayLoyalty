@@ -66,8 +66,8 @@ class RestAPI {
             new SettingsRestController(),
             new DesignRestController(),
             new EmailsRestController(),
-            // $ledger and $rewards are read-only here.
-            new CustomerRestController( $customers, $ledger_service, $ledger, $rewards, $customer_meta ),
+            // $ledger is read-only here.
+            new CustomerRestController( $customers, $ledger_service, $ledger, $customer_meta ),
             // $customers is read-only here too.
             new CustomerAdjustPreviewRestController( $customers, $dashboard ),
             new LedgerRestController( $ledger ),

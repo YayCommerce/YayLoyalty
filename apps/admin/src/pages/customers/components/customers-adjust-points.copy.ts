@@ -1,7 +1,5 @@
 import { __, sprintf } from '@wordpress/i18n';
 
-import { TYPO_GUARD_MULTIPLIER } from './customers-adjust-points.form-state';
-
 /** The Adjust-points dialog's strings. Functions, not constants: `__()` must run after the locale loads. */
 
 // Header
@@ -97,32 +95,6 @@ export function negativeOutcomeLiability(points: string): string {
   );
 }
 
-// Typo guard
-
-export function typoGuardWarning(amount: string, lifetimeEarned: string): string {
-  return sprintf(
-    /* translators: 1: amount entered, 2: the customer's lifetime total, 3: the guard's multiplier */
-    __("%1$s points is more than %3$d times this customer's lifetime total (%2$s).", 'yayloyalty'),
-    amount,
-    lifetimeEarned,
-    TYPO_GUARD_MULTIPLIER,
-  );
-}
-/** "Yes, add 20,000,000 points" — the typo guard's checkbox. */
-export function typoGuardConfirm(direction: 'add' | 'remove', amount: string): string {
-  return direction === 'remove'
-    ? sprintf(
-        /* translators: %s: number of points, formatted. */
-        __('Yes, remove %s points', 'yayloyalty'),
-        amount,
-      )
-    : sprintf(
-        /* translators: %s: number of points, formatted. */
-        __('Yes, add %s points', 'yayloyalty'),
-        amount,
-      );
-}
-
 // Reason and options
 
 export const REASON_LABEL = () => __('Reason (internal)', 'yayloyalty');
@@ -157,7 +129,6 @@ export const NOTIFY_BY_EMAIL_LABEL = () => __('Notify the customer by email', 'y
 // Submit hint
 
 export const SUBMIT_HINT_PREFIX = () => __('To continue:', 'yayloyalty');
-export const SUBMIT_HINT_CONFIRM = () => __('confirm the amount', 'yayloyalty');
 export const SUBMIT_HINT_ACKNOWLEDGE = () => __('acknowledge the total', 'yayloyalty');
 export const SUBMIT_HINT_REASON = () => __('add a reason', 'yayloyalty');
 

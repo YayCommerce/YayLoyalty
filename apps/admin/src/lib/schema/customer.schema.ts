@@ -119,8 +119,6 @@ export const customerSchema = customerListRowSchema.extend({
   loose_ends: looseEndsSchema.nullable(),
   expiry: drawerExpirySchema.nullable(),
   negative_balance: drawerNegativeBalanceSchema.nullable(),
-  /** Read only by the adjust dialog's typo-guard floor; the admin shows no points as money. */
-  points_per_currency_unit: z.number(),
 });
 
 export type Customer = z.infer<typeof customerSchema>;

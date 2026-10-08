@@ -1,8 +1,6 @@
 <?php
 namespace YayLoyalty\Controllers;
 
-use YayLoyalty\Access\Capabilities;
-use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Utils\Dates;
 
@@ -256,33 +254,6 @@ abstract class AbstractRestController extends BaseRestController {
                 'capability' => $cap,
             ]
         );
-    }
-
-    /**
-     * Ceiling guard for manual adjustments. Administrators bypass it, and null means unlimited.
-     *
-     * @param int|float|string $amount
-     * @return true|\WP_Error
-     */
-    protected function assert_ceiling( $amount ) {
-        $ceiling = Capabilities::ceiling();
-
-        if ( null !== $ceiling && abs( (int) $amount ) > $ceiling && ! Capabilities::is_administrator() ) {
-            return new \WP_Error(
-                'yayloyalty_adjustment_ceiling',
-                sprintf(
-                    /* translators: %s: maximum number of points */
-                    __( 'Adjustments are limited to %s points.', 'yayloyalty' ),
-                    SettingsHelper::format_number( $ceiling )
-                ),
-                [
-                    'status'  => 403,
-                    'ceiling' => $ceiling,
-                ]
-            );
-        }
-
-        return true;
     }
 
     /**
