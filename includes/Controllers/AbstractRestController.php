@@ -2,6 +2,7 @@
 namespace YayLoyalty\Controllers;
 
 use YayLoyalty\Access\Capabilities;
+use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Utils\Dates;
 
@@ -272,7 +273,7 @@ abstract class AbstractRestController extends BaseRestController {
                 sprintf(
                     /* translators: %s: maximum number of points */
                     __( 'Adjustments are limited to %s points.', 'yayloyalty' ),
-                    number_format_i18n( $ceiling )
+                    SettingsHelper::format_number( $ceiling )
                 ),
                 [
                     'status'  => 403,

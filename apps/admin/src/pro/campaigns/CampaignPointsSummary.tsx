@@ -1,5 +1,6 @@
 import { __, sprintf } from '@wordpress/i18n';
 
+import { formatPoints } from '@/lib/helpers/points.helper';
 import { CampaignDisplayStatus } from '@/lib/schema/campaign.schema';
 import { Card, CardContent } from '@/components/ui/card';
 import { PointsValue } from '@/components/ui/custom/points-value';
@@ -41,7 +42,7 @@ export function CampaignPointsSummary({
             {sprintf(
               /* translators: 1: total points issued, formatted; 2: number of campaigns. */
               __('%1$s points issued across %2$d campaigns', 'yayloyalty'),
-              total.toLocaleString(),
+              formatPoints(total),
               rows.length,
             )}
           </span>

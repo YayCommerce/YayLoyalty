@@ -1,16 +1,16 @@
 import { _n, sprintf } from '@wordpress/i18n';
 
 import { pointsToCurrency } from '@/lib/points-math/points-math';
-import { currencyDecimals, parseWPCurrency } from './format.helper';
+import { currencyDecimals, formatStoreDecimal, formatStoreNumber, parseWPCurrency } from './format.helper';
 
 /** Points/balance number formatting, and the one points → money label. */
 
 /** Values at or above this magnitude switch to the compact "100k+" form. */
 const COMPACT_THRESHOLD = 100_000;
 
-/** Plain grouped integer — "12,400", "-1,000". */
+/** Plain grouped integer with the store's separators — "12,400", "-1,000". */
 export function formatPoints(value: number): string {
-  return value.toLocaleString();
+  return formatStoreNumber(value, 0);
 }
 
 /** "1 point", "12,400 points": the count with its plural-aware noun. */
@@ -38,7 +38,7 @@ export function pointsPerCurrencyLabel(rate: number): string {
   return sprintf(
     /* translators: 1: points earned; 2: the amount spent to earn them, formatted in the store currency. */
     _n('%1$s pt per %2$s', '%1$s pts per %2$s', points, 'yayloyalty'),
-    points.toLocaleString(undefined, { maximumFractionDigits: 6 }),
+    formatStoreDecimal(points, 6),
     parseWPCurrency(spend),
   );
 }

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   availabilityLabel,
@@ -11,6 +11,11 @@ import {
 import { reward } from './fixtures/reward.fixture';
 
 const USD = { symbol: '$', position: 'left', thousand_sep: ',', decimal_sep: '.', num_decimals: 2 };
+
+// Points take the store's separators, so every label reads the currency data.
+beforeEach(() => {
+  vi.stubGlobal('window', { yayLoyaltyMeta: { wcMeta: { currency_data: USD } } });
+});
 
 afterEach(() => {
   vi.unstubAllGlobals();
