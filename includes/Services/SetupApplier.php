@@ -67,11 +67,9 @@ final class SetupApplier {
 
                 SettingsHelper::update_settings(
                     [
-                        'general'  => [ 'enabled' => true ],
-                        'advanced' => [
-                            'points_label_singular' => $draft['points_label_singular'],
-                            'points_label_plural'   => $draft['points_label_plural'],
-                        ],
+                        'enabled'               => true,
+                        'points_label_singular' => $draft['points_label_singular'],
+                        'points_label_plural'   => $draft['points_label_plural'],
                     ]
                 );
 

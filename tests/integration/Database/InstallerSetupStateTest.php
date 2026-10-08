@@ -42,18 +42,18 @@ final class InstallerSetupStateTest extends IntegrationTestCase {
     public function test_an_existing_install_is_marked_completed_and_stays_on(): void {
         update_option( Installer::OPTION_DB_VERSION, '0.9.0' );
         delete_option( SetupHelper::OPTION_SETUP );
-        SettingsHelper::update_settings( [ 'general' => [ 'enabled' => true ] ] );
+        SettingsHelper::update_settings( [ 'enabled' => true ] );
 
         Installer::install();
 
         $this->assertSame( SetupHelper::STATUS_COMPLETED, SetupHelper::get_state()['status'] );
-        $this->assertTrue( SettingsHelper::get_settings()['general']['enabled'] );
+        $this->assertTrue( SettingsHelper::get_settings()['enabled'] );
     }
 
     public function test_a_fresh_install_starts_pending_with_the_program_off(): void {
         delete_option( Installer::OPTION_DB_VERSION );
         delete_option( SetupHelper::OPTION_SETUP );
-        SettingsHelper::update_settings( [ 'general' => [ 'enabled' => true ] ] );
+        SettingsHelper::update_settings( [ 'enabled' => true ] );
 
         Installer::install();
 
@@ -66,7 +66,7 @@ final class InstallerSetupStateTest extends IntegrationTestCase {
             ],
             get_option( SetupHelper::OPTION_SETUP )
         );
-        $this->assertFalse( SettingsHelper::get_settings()['general']['enabled'] );
+        $this->assertFalse( SettingsHelper::get_settings()['enabled'] );
     }
 
     public function test_an_upgrade_keeps_a_pending_setup_where_it_was(): void {

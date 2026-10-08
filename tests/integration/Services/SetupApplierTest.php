@@ -67,9 +67,9 @@ final class SetupApplierTest extends IntegrationTestCase {
         $this->assertSame( Status::ACTIVE, $reward->get_status() );
 
         $settings = SettingsHelper::get_settings();
-        $this->assertSame( 'Star', $settings['advanced']['points_label_singular'] );
-        $this->assertSame( 'Stars', $settings['advanced']['points_label_plural'] );
-        $this->assertTrue( $settings['general']['enabled'] );
+        $this->assertSame( 'Star', $settings['points_label_singular'] );
+        $this->assertSame( 'Stars', $settings['points_label_plural'] );
+        $this->assertTrue( $settings['enabled'] );
         $this->assertSame( 'bottom_left', DesignHelper::get_design()['launcher']['position'] );
         $this->assertSame( '#aa3300', strtolower( DesignHelper::get_design()['launcher']['brand_color'] ) );
     }
@@ -85,7 +85,7 @@ final class SetupApplierTest extends IntegrationTestCase {
     }
 
     public function test_a_missing_builtin_changes_nothing(): void {
-        SettingsHelper::update_settings( [ 'general' => [ 'enabled' => false ] ] );
+        SettingsHelper::update_settings( [ 'enabled' => false ] );
         $settings_before = get_option( SettingsHelper::OPTION_SETTINGS );
         $design_before   = get_option( DesignHelper::OPTION_DESIGN );
         $GLOBALS['wpdb']->delete( Table::name( 'campaigns' ), [ 'slug' => 'review' ] );

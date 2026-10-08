@@ -119,15 +119,15 @@ class SetupRestController extends AbstractRestController {
 
     /** The live values the wizard edits. The SPA turns the rates into point/amount pairs. */
     private function live(): array {
-        $advanced = SettingsHelper::get_settings()['advanced'];
+        $settings = SettingsHelper::get_settings();
         $purchase = $this->campaigns->find_by_slug( CampaignRepository::DEFAULT_PURCHASE_SLUG );
         $reward   = $this->rewards->find_by_slug( RewardRepository::CART_DISCOUNT_SLUG );
         $config   = null === $reward ? [] : $reward->get_config();
         $launcher = DesignHelper::get_design()['launcher'];
 
         return [
-            'points_label_singular' => $advanced['points_label_singular'],
-            'points_label_plural'   => $advanced['points_label_plural'],
+            'points_label_singular' => $settings['points_label_singular'],
+            'points_label_plural'   => $settings['points_label_plural'],
             'purchase_rate'         => null === $purchase ? 1.0 : (float) ( $purchase->get_config()['points_per_unit'] ?? 1 ),
             'signup'                => $this->flat_campaign( 'signup', 100 ),
             'review'                => $this->flat_campaign( 'review', 50 ),

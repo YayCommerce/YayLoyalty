@@ -77,7 +77,7 @@ class SetupHelper {
             return;
         }
 
-        SettingsHelper::update_settings( [ 'general' => [ 'enabled' => false ] ] );
+        SettingsHelper::update_settings( [ 'enabled' => false ] );
         add_option(
             self::OPTION_SETUP,
             [
