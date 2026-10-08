@@ -172,7 +172,7 @@ final class CustomerItemSchema {
                 ],
             ],
             'points_per_currency_unit' => [
-                'description' => __( 'Conversion rate for money-equivalent figures (drawer expiry/negative-balance panels). Restored minimally after the wider worth object was removed.', 'yayloyalty' ),
+                'description' => __( 'Points per currency unit, for the adjust dialog\'s typo-guard floor. Never shown as money.', 'yayloyalty' ),
                 'type'        => 'number',
                 'context'     => [ 'view' ],
                 'readonly'    => true,

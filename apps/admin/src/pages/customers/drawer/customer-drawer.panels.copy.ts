@@ -81,24 +81,24 @@ export function expiringBannerTitle(expiringPoints: string, balance: string, dat
   );
 }
 /**
- * "In 12 days. That is $63.00 about to be lost, and 64% of the balance."
+ * "In 12 days. That is 6,300 points about to be lost, and 64% of the balance."
  * Without `sharePercent` (a balance at or below 0) the percentage clause is dropped, never shown as "0%".
  */
-export function expiringBannerBody(days: number, money: string, sharePercent: string | null): string {
+export function expiringBannerBody(days: number, points: string, sharePercent: string | null): string {
   if (null === sharePercent) {
     return sprintf(
-      /* translators: %1$d: days until expiry, %2$s: money value */
+      /* translators: %1$d: days until expiry, %2$s: points about to expire, e.g. "500 points" */
       __('In %1$d days. That is %2$s about to be lost.', 'yayloyalty'),
       days,
-      money,
+      points,
     );
   }
 
   return sprintf(
-    /* translators: %1$d: days until expiry, %2$s: money value, %3$s: percentage of balance */
+    /* translators: %1$d: days until expiry, %2$s: points about to expire, e.g. "500 points", %3$s: percentage of balance */
     __('In %1$d days. That is %2$s about to be lost, and %3$s%% of the balance.', 'yayloyalty'),
     days,
-    money,
+    points,
     sharePercent,
   );
 }

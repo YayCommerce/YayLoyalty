@@ -5,13 +5,12 @@ use YayLoyalty\Access\Capabilities;
 use YayLoyalty\Enums\CustomerFilters;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\DashboardRepository;
-use YayLoyalty\Repositories\RewardRepository;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
  * The bulk Adjust-points dialog's store-level facts: how many customers a
- * filter matches, the store-wide liability, and the points→money rate. A
+ * filter matches and the store-wide liability. A
  * single customer is read from `GET /customers/{id}` instead, so this never
  * returns anyone's identity.
  *
@@ -27,13 +26,9 @@ final class CustomerAdjustPreviewRestController extends AbstractRestController {
     /** @var DashboardRepository */
     private $dashboard;
 
-    /** @var RewardRepository */
-    private $rewards;
-
-    public function __construct( CustomerRepository $customers, DashboardRepository $dashboard, RewardRepository $rewards ) {
+    public function __construct( CustomerRepository $customers, DashboardRepository $dashboard ) {
         $this->customers = $customers;
         $this->dashboard = $dashboard;
-        $this->rewards   = $rewards;
     }
 
     /** A sub-route of /customers, not a resource of its own. */
@@ -77,9 +72,8 @@ final class CustomerAdjustPreviewRestController extends AbstractRestController {
         $filters = $request->get_param( 'filters' );
 
         return [
-            'count'                    => is_array( $filters ) ? $this->count_matching( $filters ) : null,
-            'liability_points'         => $this->dashboard->liability_points(),
-            'points_per_currency_unit' => $this->rewards->points_per_currency_unit(),
+            'count'            => is_array( $filters ) ? $this->count_matching( $filters ) : null,
+            'liability_points' => $this->dashboard->liability_points(),
         ];
     }
 

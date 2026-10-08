@@ -1,6 +1,6 @@
 import { TriangleAlert } from 'lucide-react';
 
-import { formatPoints, formatPointsAsMoney } from '@/lib/helpers/points.helper';
+import { formatPoints } from '@/lib/helpers/points.helper';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   addsToLiability,
@@ -49,28 +49,27 @@ export function AdjustPointsFields({
   }
 
   const balanceAfter = newBalance(state, balance);
-  const balanceAfterMoney = formatPointsAsMoney(balanceAfter, pointsPerCurrencyUnit);
   const isNegativeOutcome = balanceAfter < 0;
   const delta = liabilityDelta(balance, balanceAfter);
-  const deltaMoney = formatPointsAsMoney(Math.abs(delta), pointsPerCurrencyUnit);
+  const deltaPoints = formatPoints(Math.abs(delta));
 
   return (
     <div className="flex flex-col gap-3">
       {showResultPanel &&
         (isNegativeOutcome ? (
           <div className="bg-muted/50 flex flex-col gap-1.5 rounded-md border px-3.5 py-3 text-xs">
-            <p className="text-sm font-medium">{newBalanceLine(formatPoints(balanceAfter), balanceAfterMoney)}</p>
+            <p className="text-sm font-medium">{newBalanceLine(formatPoints(balanceAfter))}</p>
             <p className="text-muted-foreground">
               {negativeOutcomeSpendable(customerName, formatPoints(pointsToClearDeficit(balanceAfter)))}
             </p>
-            {delta < 0 && deltaMoney && <p className="text-muted-foreground">{negativeOutcomeLiability(deltaMoney)}</p>}
+            {delta < 0 && <p className="text-muted-foreground">{negativeOutcomeLiability(deltaPoints)}</p>}
           </div>
         ) : (
           <div className="flex flex-col gap-1">
-            <p className="text-sm font-medium">{newBalanceLine(formatPoints(balanceAfter), balanceAfterMoney)}</p>
-            {delta !== 0 && deltaMoney && (
+            <p className="text-sm font-medium">{newBalanceLine(formatPoints(balanceAfter))}</p>
+            {delta !== 0 && (
               <p className="text-muted-foreground text-xs">
-                {delta > 0 ? addsToLiability(deltaMoney) : reducesLiability(deltaMoney)}
+                {delta > 0 ? addsToLiability(deltaPoints) : reducesLiability(deltaPoints)}
               </p>
             )}
           </div>

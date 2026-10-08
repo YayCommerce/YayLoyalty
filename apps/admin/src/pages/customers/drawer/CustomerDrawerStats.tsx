@@ -1,10 +1,9 @@
 import { TriangleAlert } from 'lucide-react';
 
 import { formatStoredDate } from '@/lib/helpers/format.helper';
-import { formatPoints, formatPointsAsMoney } from '@/lib/helpers/points.helper';
+import { formatPoints } from '@/lib/helpers/points.helper';
 import type { Customer } from '@/lib/schema/customer.schema';
 import {
-  approxMoney,
   BALANCE_AT_DELETION_LABEL,
   BALANCE_AT_DELETION_SUBLINE,
   EXPIRY_STOPPED_SUBLINE,
@@ -23,7 +22,6 @@ import { CustomerDrawerStat } from './CustomerDrawerStat';
 export function CustomerDrawerStats({ customer }: { customer: Customer }) {
   const isDeleted = !!customer.deleted_at;
   const negative = customer.balance < 0;
-  const money = isDeleted ? null : formatPointsAsMoney(customer.balance, customer.points_per_currency_unit);
   const expiresAt = isDeleted ? null : customer.expires_at;
 
   return (
@@ -42,7 +40,7 @@ export function CustomerDrawerStats({ customer }: { customer: Customer }) {
               formatPoints(customer.balance)
             )
           }
-          subLine={isDeleted ? BALANCE_AT_DELETION_SUBLINE() : money ? approxMoney(money) : undefined}
+          subLine={isDeleted ? BALANCE_AT_DELETION_SUBLINE() : undefined}
         />
         <CustomerDrawerStat
           label={STAT_PENDING()}

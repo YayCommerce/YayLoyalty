@@ -106,8 +106,8 @@ final class RewardRepository extends AbstractRepository {
     /**
      * The one points→money rate: the built-in flexible-discount reward's
      * `points_per_currency_unit`, or 0 when the reward or key is missing.
-     * The dashboard's liability stat, the drawer's money figures and, through
-     * the reward's config in Clamp, the checkout discount all use this rate.
+     * Live or not, so the admin never shows it as money; only the adjust
+     * dialog's typo-guard floor reads it. Checkout reads the reward's config in Clamp.
      */
     public function points_per_currency_unit(): float {
         return self::rate_of( $this->find_by_slug( self::CART_DISCOUNT_SLUG ) );

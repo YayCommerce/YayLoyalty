@@ -1,7 +1,7 @@
 import { date as wpDate } from '@wordpress/date';
 import { __, _n, sprintf } from '@wordpress/i18n';
 
-import { parseWPCurrency, parseWPDate, parseWPRelativeDate } from '@/lib/helpers/format.helper';
+import { parseWPDate, parseWPRelativeDate } from '@/lib/helpers/format.helper';
 import { formatPoints, pointsPhrase } from '@/lib/helpers/points.helper';
 import type { CampaignPerformance } from '@/lib/schema/campaign-performance.schema';
 import type { Campaign, CampaignDisplayStatus } from '@/lib/schema/campaign.schema';
@@ -36,9 +36,8 @@ export interface ArchiveFigures {
 }
 
 /**
- * Figures for an ended campaign, from its performance summary. `totals` is lifetime, so `detail`
- * states liability only: a date range here would be the chart's 30-day window, not the span these
- * figures cover.
+ * Figures for an ended campaign, from its performance summary. `totals` is lifetime, so no `detail`:
+ * a date range here would be the chart's 30-day window, not the span these figures cover.
  */
 export function finishedFigures(trigger: Campaign['trigger'], performance: CampaignPerformance): ArchiveFigures {
   const { totals } = performance;
@@ -51,7 +50,6 @@ export function finishedFigures(trigger: Campaign['trigger'], performance: Campa
         pointsPhrase(totals.points_issued),
         ordersPhrase(totals.orders_affected ?? 0),
       ),
-      detail: liabilityDetail(totals.liability_amount),
     };
   }
 
@@ -316,16 +314,4 @@ export function affectedLine(trigger: Campaign['trigger']): string {
   return trigger === 'purchase'
     ? __('Nothing — 0 points, 0 orders, 0 customers', 'yayloyalty')
     : __('Nothing — 0 points, 0 customers', 'yayloyalty');
-}
-
-function liabilityDetail(liability: number | null): string | undefined {
-  if (liability === null) {
-    return undefined;
-  }
-
-  return sprintf(
-    /* translators: %s: liability, formatted as money. */
-    __('%s of liability, still on the books until those points are spent.', 'yayloyalty'),
-    parseWPCurrency(liability),
-  );
 }

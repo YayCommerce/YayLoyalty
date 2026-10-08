@@ -105,7 +105,7 @@ export function CustomersAdjustPointsDialog({
   const source = target.kind === 'single' ? target.customer : target.preview;
   const singleCustomer = target.kind === 'single' ? target.customer.data : undefined;
   const previewData = target.kind === 'bulk' ? target.preview.data : undefined;
-  const pointsPerCurrencyUnit = (singleCustomer ?? previewData)?.points_per_currency_unit ?? 0;
+  const pointsPerCurrencyUnit = singleCustomer?.points_per_currency_unit ?? 0;
 
   const baseline = useAdjustPreviewBaseline(
     open,
@@ -221,7 +221,6 @@ export function CustomersAdjustPointsDialog({
           isSingle={isSingle}
           isLoading={source.isLoading}
           singleCustomer={singleCustomer}
-          pointsPerCurrencyUnit={pointsPerCurrencyUnit}
           isStale={isStale}
           openedBalance={openedBalance}
           bulkEffectiveCount={bulk.effectiveCount}
@@ -283,7 +282,6 @@ export function CustomersAdjustPointsDialog({
             selectionMode={selectionMode}
             filters={filters ?? DEFAULT_ROW_FILTERS}
             notShownOnPage={bulk.notShownOnPage}
-            pointsPerCurrencyUnit={pointsPerCurrencyUnit}
             liabilityPoints={previewData?.liability_points ?? null}
             hasPreviewError={!!source.error}
             isOverLimit={bulk.isOverLimit}

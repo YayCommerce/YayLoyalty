@@ -14,7 +14,6 @@ use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Services\Dashboard\DashboardMath;
 use YayLoyalty\Services\Dashboard\PeriodWindow;
 use YayLoyalty\Utils\Dates;
-use YayLoyalty\Utils\PointsMath;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -186,8 +185,8 @@ final class CampaignPerformanceRestController extends AbstractRestController {
     }
 
     /**
-     * Adds what the repository cannot: the liability, which needs the store's rate, and
-     * `orders_total`, a sitewide order count that is not scoped to this campaign.
+     * Adds what the repository cannot: `orders_total`, a sitewide order count that is not
+     * scoped to this campaign.
      *
      * @param array<string, mixed> $row
      * @param array{points_issued: int, entries_total: int, orders_affected: int, customers_earned: int} $totals
@@ -202,7 +201,6 @@ final class CampaignPerformanceRestController extends AbstractRestController {
             'customers_earned'     => null,
             'avg_points_per_order' => null,
             'avg_order_subtotal'   => null,
-            'liability_amount'     => null,
         ];
 
         if ( CampaignTrigger::PURCHASE !== $row['trigger'] ) {
@@ -211,11 +209,8 @@ final class CampaignPerformanceRestController extends AbstractRestController {
             return $shaped;
         }
 
-        $rate = $this->dashboard->points_per_currency_unit();
-
-        $shaped['orders_affected']  = $totals['orders_affected'];
-        $shaped['orders_total']     = $this->dashboard->count_orders( 0, time() + 1 );
-        $shaped['liability_amount'] = PointsMath::points_to_currency( $totals['points_issued'], $rate, wc_get_price_decimals() );
+        $shaped['orders_affected'] = $totals['orders_affected'];
+        $shaped['orders_total']    = $this->dashboard->count_orders( 0, time() + 1 );
 
         if ( $totals['orders_affected'] > 0 ) {
             $shaped['avg_points_per_order'] = intdiv( $totals['points_issued'], $totals['orders_affected'] );

@@ -19,12 +19,8 @@ final class DashboardStats {
     /** @var DashboardRepository */
     private $repository;
 
-    /** @var int The store currency's decimals, for the liability's money figure. */
-    private $currency_decimals;
-
-    public function __construct( DashboardRepository $repository, int $currency_decimals ) {
-        $this->repository        = $repository;
-        $this->currency_decimals = $currency_decimals;
+    public function __construct( DashboardRepository $repository ) {
+        $this->repository = $repository;
     }
 
     /** @return array{stats: array, series: array, top_earners: array, recent_activity: array} */
@@ -40,7 +36,6 @@ final class DashboardStats {
         $issued       = $repo->sum_issued( $from, $to );
         $redeemed     = $repo->sum_redeemed( $from, $to );
         $liability    = $repo->liability_points();
-        $ppcu         = $repo->points_per_currency_unit();
 
         $orders_total       = $repo->count_orders( $window->from_ts(), $window->to_ts() );
         $orders_with_points = $repo->orders_with_points( $from, $to );
@@ -65,10 +60,8 @@ final class DashboardStats {
                     'prev_delta_pct' => PointsMath::pct_delta( $redeemed, $repo->sum_redeemed( $pf, $pt ) ),
                 ],
                 'liability'       => [
-                    'points'                   => $liability,
-                    'currency_amount'          => PointsMath::points_to_currency( $liability, $ppcu, $this->currency_decimals ),
-                    'points_per_currency_unit' => $ppcu,
-                    'prev_delta_pct'           => PointsMath::pct_delta( $liability, $repo->net_balance() - $repo->net_delta( $from, $to ) ),
+                    'points'         => $liability,
+                    'prev_delta_pct' => PointsMath::pct_delta( $liability, $repo->net_balance() - $repo->net_delta( $from, $to ) ),
                 ],
                 'redemption_rate' => [
                     'rate'               => $rate,

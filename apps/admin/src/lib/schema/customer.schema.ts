@@ -119,7 +119,7 @@ export const customerSchema = customerListRowSchema.extend({
   loose_ends: looseEndsSchema.nullable(),
   expiry: drawerExpirySchema.nullable(),
   negative_balance: drawerNegativeBalanceSchema.nullable(),
-  /** The expiry/negative-balance panels' only currency rate. */
+  /** Read only by the adjust dialog's typo-guard floor; the admin shows no points as money. */
   points_per_currency_unit: z.number(),
 });
 
@@ -155,7 +155,6 @@ export type AdjustPointsInput = z.infer<typeof adjustPointsSchema>;
 export const adjustPointsPreviewSchema = z.object({
   count: z.number().int().nullable(),
   liability_points: z.number().int(),
-  points_per_currency_unit: z.number(),
 });
 
 export type AdjustPointsPreview = z.infer<typeof adjustPointsPreviewSchema>;

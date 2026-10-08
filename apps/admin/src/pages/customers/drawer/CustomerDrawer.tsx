@@ -97,7 +97,7 @@ export default function CustomerDrawer() {
                     {query.data.expiry && (
                       <>
                         <CustomerDrawerExpiryPanel customer={query.data} expiry={query.data.expiry} />
-                        <CustomerDrawerExpiryStats customer={query.data} expiry={query.data.expiry} />
+                        <CustomerDrawerExpiryStats expiry={query.data.expiry} />
                         <CustomerDrawerLotBatches batches={query.data.expiry.batches} />
                       </>
                     )}

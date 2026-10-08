@@ -8,22 +8,14 @@ import { TYPO_GUARD_MULTIPLIER } from './customers-adjust-points.form-state';
 
 export const ADJUST_POINTS_TITLE = () => __('Adjust points', 'yayloyalty');
 
-/** "Daniel Okonkwo · 9,850 points ($98.50)" */
-export function singleCustomerHeader(name: string, balancePoints: string, balanceMoney: string | null): string {
-  return balanceMoney
-    ? sprintf(
-        /* translators: 1: the customer's name; 2: their balance in points, formatted; 3: the balance as money, formatted. */
-        __('%1$s · %2$s points (%3$s)', 'yayloyalty'),
-        name,
-        balancePoints,
-        balanceMoney,
-      )
-    : sprintf(
-        /* translators: 1: the customer's name; 2: their balance in points, formatted. */
-        __('%1$s · %2$s points', 'yayloyalty'),
-        name,
-        balancePoints,
-      );
+/** "Daniel Okonkwo · 9,850 points" */
+export function singleCustomerHeader(name: string, balancePoints: string): string {
+  return sprintf(
+    /* translators: 1: the customer's name; 2: their balance in points, formatted. */
+    __('%1$s · %2$s points', 'yayloyalty'),
+    name,
+    balancePoints,
+  );
 }
 
 export const COULD_NOT_VERIFY_TITLE = () =>
@@ -58,34 +50,27 @@ export function submitLabel(direction: 'add' | 'remove', amount: string, isZero:
 
 export const NEW_BALANCE_EMPTY = () => __('New balance: —', 'yayloyalty');
 
-/** "New balance: 10,350 points ($103.50)" */
-export function newBalanceLine(points: string, money: string | null): string {
-  return money
-    ? sprintf(
-        /* translators: 1: the new balance in points, formatted; 2: the new balance as money, formatted. */
-        __('New balance: %1$s points (%2$s)', 'yayloyalty'),
-        points,
-        money,
-      )
-    : sprintf(
-        /* translators: %s: the new balance in points, formatted. */
-        __('New balance: %s points', 'yayloyalty'),
-        points,
-      );
-}
-
-export function addsToLiability(money: string): string {
+/** "New balance: 10,350 points" */
+export function newBalanceLine(points: string): string {
   return sprintf(
-    /* translators: %s: an amount of money, formatted. */
-    __('Adds %s to your outstanding liability.', 'yayloyalty'),
-    money,
+    /* translators: %s: the new balance in points, formatted. */
+    __('New balance: %s points', 'yayloyalty'),
+    points,
   );
 }
-export function reducesLiability(money: string): string {
+
+export function addsToLiability(points: string): string {
   return sprintf(
-    /* translators: %s: an amount of money, formatted. */
-    __('Reduces your outstanding liability by %s.', 'yayloyalty'),
-    money,
+    /* translators: %s: number of points, formatted. */
+    __('Adds %s points to your outstanding liability.', 'yayloyalty'),
+    points,
+  );
+}
+export function reducesLiability(points: string): string {
+  return sprintf(
+    /* translators: %s: number of points, formatted. */
+    __('Reduces your outstanding liability by %s points.', 'yayloyalty'),
+    points,
   );
 }
 
@@ -101,11 +86,14 @@ export function negativeOutcomeSpendable(name: string, coversAmount: string): st
     coversAmount,
   );
 }
-export function negativeOutcomeLiability(money: string): string {
+export function negativeOutcomeLiability(points: string): string {
   return sprintf(
-    /* translators: %s: an amount of money, formatted. */
-    __('Reduces your outstanding liability by %s. Balances below zero are not counted as liability.', 'yayloyalty'),
-    money,
+    /* translators: %s: number of points, formatted. */
+    __(
+      'Reduces your outstanding liability by %s points. Balances below zero are not counted as liability.',
+      'yayloyalty',
+    ),
+    points,
   );
 }
 

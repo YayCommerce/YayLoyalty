@@ -1,4 +1,4 @@
-import { formatPoints, formatPointsAsMoney } from '@/lib/helpers/points.helper';
+import { formatPoints } from '@/lib/helpers/points.helper';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BALANCE_RANGE_OPTIONS, EXPIRING_SOON_OPTIONS, type RowFilters } from '../../customers-page.filter-rows';
@@ -17,7 +17,7 @@ import {
   noUndoBody,
   writtenToLedgers,
 } from '../customers-adjust-points.bulk.copy';
-import { addsToLiability, POINTS_UNIT } from '../customers-adjust-points.copy';
+import { addsToLiability } from '../customers-adjust-points.copy';
 import { bulkLiabilityProjection, bulkTotalPoints, type AdjustFormState } from '../customers-adjust-points.form-state';
 
 /** The active filters as text. */
@@ -43,7 +43,6 @@ export function AdjustPointsBulkPanels({
   selectionMode,
   filters,
   notShownOnPage,
-  pointsPerCurrencyUnit,
   liabilityPoints,
   hasPreviewError,
   isOverLimit,
@@ -57,7 +56,6 @@ export function AdjustPointsBulkPanels({
   filters: RowFilters;
   /** Rows the filter matches beyond the current page; 0 when none. */
   notShownOnPage: number;
-  pointsPerCurrencyUnit: number;
   liabilityPoints: number | null;
   /** The preview errored: `liabilityPoints` can't be trusted, so the liability line is hidden rather than guessed at. */
   hasPreviewError: boolean;
@@ -67,7 +65,6 @@ export function AdjustPointsBulkPanels({
 }) {
   const summary = selectionMode === 'all' ? filterSummary(filters) : null;
   const total = bulkTotalPoints(state, effectiveCount);
-  const totalMoney = formatPointsAsMoney(total, pointsPerCurrencyUnit);
   const projection = bulkLiabilityProjection(state.direction, total, liabilityPoints);
 
   return (
@@ -86,8 +83,8 @@ export function AdjustPointsBulkPanels({
       {state.amount > 0 && !isOverLimit && (
         <div className="flex flex-col gap-1">
           <p className="text-sm font-medium">{bulkTotalsLine(effectiveCount, formatPoints(state.amount))}</p>
-          <p className="text-sm">{bulkTotalPointsLine(formatPoints(total), totalMoney)}</p>
-          {!hasPreviewError && liabilityLine(projection, state.direction, pointsPerCurrencyUnit)}
+          <p className="text-sm">{bulkTotalPointsLine(formatPoints(total))}</p>
+          {!hasPreviewError && liabilityLine(projection, state.direction)}
         </div>
       )}
 
@@ -100,11 +97,7 @@ export function AdjustPointsBulkPanels({
           <label className="flex items-start gap-2.5 pt-1">
             <Checkbox checked={acknowledged} onCheckedChange={(checked) => onAcknowledgedChange(checked === true)} />
             <span className="text-foreground">
-              {acknowledgeLiability(
-                state.direction,
-                totalMoney ?? `${formatPoints(total)} ${POINTS_UNIT()}`,
-                effectiveCount,
-              )}
+              {acknowledgeLiability(state.direction, formatPoints(total), effectiveCount)}
             </span>
           </label>
         )}
@@ -116,24 +109,22 @@ export function AdjustPointsBulkPanels({
 function liabilityLine(
   projection: ReturnType<typeof bulkLiabilityProjection>,
   direction: AdjustFormState['direction'],
-  pointsPerCurrencyUnit: number,
 ) {
   if (projection.kind === 'none') return null;
 
   if (projection.kind === 'range') {
-    const fromMoney = formatPointsAsMoney(projection.from, pointsPerCurrencyUnit);
-    const toMoney = formatPointsAsMoney(projection.to, pointsPerCurrencyUnit);
-    return fromMoney && toMoney ? (
-      <p className="text-muted-foreground text-xs">{bulkLiabilityRange(fromMoney, toMoney)}</p>
-    ) : null;
+    return (
+      <p className="text-muted-foreground text-xs">
+        {bulkLiabilityRange(formatPoints(projection.from), formatPoints(projection.to))}
+      </p>
+    );
   }
 
-  const deltaMoney = formatPointsAsMoney(projection.delta, pointsPerCurrencyUnit);
-  if (!deltaMoney) return null;
+  const deltaPoints = formatPoints(projection.delta);
 
   return (
     <p className="text-muted-foreground text-xs">
-      {direction === 'remove' ? bulkLiabilityReducesUpTo(deltaMoney) : addsToLiability(deltaMoney)}
+      {direction === 'remove' ? bulkLiabilityReducesUpTo(deltaPoints) : addsToLiability(deltaPoints)}
     </p>
   );
 }

@@ -1,6 +1,6 @@
 import { __, _n, sprintf } from '@wordpress/i18n';
 
-import { formatPoints, formatPointsAsMoney } from '@/lib/helpers/points.helper';
+import { formatPoints } from '@/lib/helpers/points.helper';
 import type { PointsJumpData, PointsJumpWhatChanged } from '@/lib/schema/dashboard-notice.schema';
 
 /**
@@ -12,17 +12,14 @@ export function DashboardAnomalySettlements({
   edits,
   day,
   threshold,
-  pointsPerCurrencyUnit,
 }: {
   edits: PointsJumpWhatChanged[];
   /** Formatted site-calendar day (`parseWPDay`). */
   day: string;
   threshold: PointsJumpData['threshold'];
-  pointsPerCurrencyUnit: number;
 }) {
   const points = edits.reduce((sum, e) => sum + e.points_issued, 0);
   const orderCount = edits.reduce((sum, e) => sum + e.orders_affected, 0);
-  const worth = formatPointsAsMoney(points, pointsPerCurrencyUnit) ?? '';
   const orders = sprintf(
     /* translators: %s: number of orders, formatted. */
     _n('%s order', '%s orders', orderCount, 'yayloyalty'),
@@ -39,18 +36,11 @@ export function DashboardAnomalySettlements({
   const settlements = [
     {
       title: _n('Put the campaign back as it was', 'Put the campaigns back as they were', edits.length, 'yayloyalty'),
-      body: worth
-        ? sprintf(
-            /* translators: 1: issuance phrase, 2: currency amount. */
-            __('and leave %1$s — worth %2$s to those customers.', 'yayloyalty'),
-            issued,
-            worth,
-          )
-        : sprintf(
-            /* translators: %s: issuance phrase. */
-            __('and leave %s.', 'yayloyalty'),
-            issued,
-          ),
+      body: sprintf(
+        /* translators: %s: issuance phrase. */
+        __('and leave %s.', 'yayloyalty'),
+        issued,
+      ),
     },
     {
       title: __('Put it back and reverse the points', 'yayloyalty'),

@@ -1,6 +1,5 @@
 import { __, sprintf } from '@wordpress/i18n';
 
-import { parseWPCurrency } from '@/lib/helpers/format.helper';
 import { formatPoints } from '@/lib/helpers/points.helper';
 import type { CampaignPerformance } from '@/lib/schema/campaign-performance.schema';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -71,33 +70,16 @@ function EstimateCard({ estimate }: { estimate: NonNullable<Estimate> }) {
   );
 }
 
-/** Two full sentences, not one spliced together — dropping the liability clause mid-sentence would leave a translator half a sentence to work with. */
 function estimateSentence(estimate: NonNullable<Estimate>): string {
-  const year = estimate.from.slice(0, 4);
-
-  if (estimate.liability_amount === null) {
-    return sprintf(
-      /* translators: 1: number of orders in the same week last year, 2: that year, 3: estimated points. */
-      __(
-        'Based on the %1$s orders in the same week of %2$s, this campaign would have issued about %3$s points.',
-        'yayloyalty',
-      ),
-      formatPoints(estimate.orders),
-      year,
-      formatPoints(estimate.points),
-    );
-  }
-
   return sprintf(
-    /* translators: 1: number of orders in the same week last year, 2: that year, 3: estimated points, 4: estimated liability, formatted as money. */
+    /* translators: 1: number of orders in the same week last year, 2: that year, 3: estimated points. */
     __(
-      'Based on the %1$s orders in the same week of %2$s, this campaign would have issued about %3$s points — roughly %4$s of liability.',
+      'Based on the %1$s orders in the same week of %2$s, this campaign would have issued about %3$s points.',
       'yayloyalty',
     ),
     formatPoints(estimate.orders),
-    year,
+    estimate.from.slice(0, 4),
     formatPoints(estimate.points),
-    parseWPCurrency(estimate.liability_amount),
   );
 }
 

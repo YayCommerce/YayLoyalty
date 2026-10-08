@@ -37,7 +37,6 @@ export default function DashboardPage() {
         data.range,
         pointsJump?.data ?? null,
         data.notices.some((n) => n.key === 'default_campaign_paused'),
-        data.stats.liability.points_per_currency_unit,
       )
     : {};
   const isDimmed = query.isPlaceholderData || (query.isFetching && !query.isPending);
@@ -94,12 +93,7 @@ export default function DashboardPage() {
             </DashboardProTeasers>
           )}
 
-          {pointsJump && (
-            <DashboardAnomalyPanel
-              data={pointsJump.data}
-              pointsPerCurrencyUnit={data.stats.liability.points_per_currency_unit}
-            />
-          )}
+          {pointsJump && <DashboardAnomalyPanel data={pointsJump.data} />}
 
           <DashboardRecentActivity activity={data.recent_activity} />
         </div>
