@@ -2,7 +2,7 @@
 
 > **For agentic workers:** execute tasks in order, one at a time. Steps use `- [ ]` for tracking. There is no spec; the Requirements section below is the contract.
 
-**Status:** active
+**Status:** done 2026-10-08
 **Goal:** Store and serve the plugin settings as root fields (no `general` / `advanced` groups, `emails` kept as a group), and merge the admin's Advanced tab into General.
 **Spec:** none, planned from the request
 **Architecture:** The wire shape (option, REST, localized `settings`, zod mirror) changes in one task so PHP and the SPA never disagree; the tab move is a pure SPA rename on top. `SettingsHelper::schema()` keeps one map, where a string value is a root field and an array value is a group, so the whitelist/coerce rules stay in one place.
