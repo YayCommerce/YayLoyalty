@@ -143,8 +143,7 @@ final class YayLoyaltyPro {
 
     /**
      * Typed config specs for the reward types Pro adds; their keys are the
-     * only ones a config may hold. `max_total` is a claim count
-     * here, unlike flexible_discount's money cap.
+     * only ones a config may hold.
      *
      * @param array<string, array<string, array<string, mixed>>> $schema
      * @return array<string, array<string, array<string, mixed>>>
@@ -159,10 +158,6 @@ final class YayLoyaltyPro {
             'min'  => 0,
         ];
         $expiry_days  = [
-            'type' => 'nullable_int',
-            'min'  => 1,
-        ];
-        $claim_limit  = [
             'type' => 'nullable_int',
             'min'  => 1,
         ];
@@ -184,7 +179,6 @@ final class YayLoyaltyPro {
             'min_order'          => $money,
             'coupon_expiry_days' => $expiry_days,
             'exclude_sale_items' => $exclude_sale,
-            'max_total'          => $claim_limit,
         ];
 
         $schema[ RewardType::PERCENT_COUPON ] = [
@@ -199,14 +193,12 @@ final class YayLoyaltyPro {
             'min_order'          => $money,
             'coupon_expiry_days' => $expiry_days,
             'exclude_sale_items' => $exclude_sale,
-            'max_total'          => $claim_limit,
         ];
 
         $schema[ RewardType::FREE_SHIPPING ] = [
             'min_order'          => $money,
             'currency'           => $currency,
             'coupon_expiry_days' => $expiry_days,
-            'max_total'          => $claim_limit,
         ];
 
         $schema[ RewardType::FREE_PRODUCT ] = [
@@ -224,7 +216,6 @@ final class YayLoyaltyPro {
                 'required' => true,
             ],
             'coupon_expiry_days' => $expiry_days,
-            'max_total'          => $claim_limit,
         ];
 
         return $schema;

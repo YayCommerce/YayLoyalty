@@ -10,7 +10,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * A reward's `conditions`: a flat ANDed list, at most one entry per type, stored as JSON on the rewards table.
  * An empty list makes the reward available to everyone. A condition is a fact about the customer.
- * Reward-level properties such as max_total belong in `config`.
+ * Reward-level properties such as min_order belong in `config`.
  */
 final class RewardConditionSet {
 
@@ -194,7 +194,7 @@ final class RewardConditionSet {
                 break;
 
             case 'int':
-                ConditionValueRules::validate_int( $type, $operator, $value, isset( $spec['min'] ) ? (int) $spec['min'] : null );
+                ConditionValueRules::validate_int( $type, $operator, $value );
                 break;
         }
     }

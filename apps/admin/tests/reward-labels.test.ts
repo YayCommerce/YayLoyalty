@@ -67,36 +67,10 @@ describe('availabilityLabel', () => {
     expect(availabilityLabel(reward({ conditions: [] }))).toBe('Everyone');
   });
 
-  it('reads "once per customer" from a redemption_count lt 1 condition', () => {
-    const withCondition = reward({
-      conditions: [{ type: 'redemption_count', operator: 'lt', value: 1 }],
-    });
-
-    expect(availabilityLabel(withCondition)).toBe('once per customer');
-  });
-
-  it('reads a higher cap as "up to N per customer"', () => {
-    const withCondition = reward({
-      conditions: [{ type: 'redemption_count', operator: 'lt', value: 3 }],
-    });
-
-    expect(availabilityLabel(withCondition)).toBe('up to 3 per customer');
-  });
-
-  it('reads an lte cap the same way the editor does', () => {
-    const withCondition = reward({
-      conditions: [{ type: 'redemption_count', operator: 'lte', value: 2 }],
-    });
-
-    expect(availabilityLabel(withCondition)).toBe('up to 3 per customer');
-  });
-
-  it('adds a minimum order and a redemption cap when config has them', () => {
+  it('adds a minimum order when config has one', () => {
     vi.stubGlobal('window', { yayLoyaltyMeta: { wcMeta: { currency_data: USD } } });
 
-    expect(availabilityLabel(reward({ config: { min_order: 25, max_total: 100 } }))).toBe(
-      'Everyone · minimum order $25.00 · 100 available',
-    );
+    expect(availabilityLabel(reward({ config: { min_order: 25 } }))).toBe('Everyone · minimum order $25.00');
   });
 });
 

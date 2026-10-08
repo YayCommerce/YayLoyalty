@@ -10,8 +10,8 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * A way to spend points. Like Campaign, it is mutable, has no service, and its invariants are validation.
- * `conditions` are facts about the customer being evaluated, such as redemption_count. `config` holds
- * properties of the reward itself, such as the global max_total cap. Only Installer writes rows so far.
+ * `conditions` are facts about the customer being evaluated, such as user_role. `config` holds
+ * properties of the reward itself, such as min_order. Only Installer writes rows so far.
  */
 class Reward extends AbstractModel {
 

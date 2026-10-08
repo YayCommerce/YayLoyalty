@@ -87,7 +87,7 @@ final class RewardRouteTest extends IntegrationTestCase {
         $this->assertSame( 6, $data['sort_order'] );
         $this->assertSame( 500, $data['cost_points'] );
         $this->assertSame( get_current_user_id(), $data['created_by'] );
-        $this->assertSame( 'redemption_count', $data['conditions'][0]['type'] );
+        $this->assertSame( 'user_role', $data['conditions'][0]['type'] );
     }
 
     public function test_create_numbers_a_colliding_slug_and_honours_a_draft_status(): void {
@@ -161,8 +161,8 @@ final class RewardRouteTest extends IntegrationTestCase {
             'bad conditions' => [
                 'conditions' => [
                     [
-                        'type'     => 'redemption_count',
-                        'operator' => 'gte',
+                        'type'     => 'lifetime_points',
+                        'operator' => 'in',
                         'value'    => 1,
                     ],
                 ],
@@ -534,13 +534,12 @@ final class RewardRouteTest extends IntegrationTestCase {
                 'min_order'          => 25,
                 'coupon_expiry_days' => 60,
                 'exclude_sale_items' => false,
-                'max_total'          => null,
             ],
             'conditions'  => [
                 [
-                    'type'     => 'redemption_count',
-                    'operator' => 'lt',
-                    'value'    => 1,
+                    'type'     => 'user_role',
+                    'operator' => 'in',
+                    'value'    => [ 'customer' ],
                 ],
             ],
         ];

@@ -3,7 +3,7 @@ import { __, _n, sprintf } from '@wordpress/i18n';
 import { formatStoredDate, parseWPCurrency } from '@/lib/helpers/format.helper';
 import { formatPoints, shortPoints } from '@/lib/helpers/points.helper';
 import { flexibleDiscountSubtitle, numberConfig } from '@/lib/helpers/reward.helper';
-import { CatalogRewardType, claimsPerCustomer, normalizeRewardConditions, Reward } from '@/lib/schema/reward.schema';
+import { CatalogRewardType, Reward } from '@/lib/schema/reward.schema';
 
 /** Reward presentation strings and derived facts; the wire carries none of this — same split as campaign-labels.ts. */
 
@@ -122,22 +122,6 @@ export function costLabel(reward: Reward): string {
   return shortPoints(reward.cost_points);
 }
 
-/** "once per customer" (redemption_count lt 1), "up to %d per customer" for a higher cap. Only condition this build renders a phrase for; unknown types are silently skipped. */
-function redemptionLimitLabel(conditions: Reward['conditions']): string | null {
-  const cap = claimsPerCustomer(normalizeRewardConditions(conditions));
-
-  if (cap === null) {
-    return null;
-  }
-
-  if (cap <= 1) {
-    return __('once per customer', 'yayloyalty');
-  }
-
-  /* translators: %d: maximum number of claims per customer. */
-  return sprintf(__('up to %d per customer', 'yayloyalty'), cap);
-}
-
 /** The built-in slider's own availability phrase: its limits live in config, not conditions. */
 function flexibleDiscountAvailability(config: Reward['config']): string {
   const parts: string[] = [];
@@ -165,26 +149,19 @@ function flexibleDiscountAvailability(config: Reward['config']): string {
   return parts.join(' · ');
 }
 
-/** Every row's Availability cell: audience (Everyone, or a per-customer limit), a minimum order, a redemption cap, and a live window — whichever the reward actually has. */
+/** Every row's Availability cell: Everyone, then a minimum order and a live window, whichever the reward has. */
 export function availabilityLabel(reward: Reward): string {
   if (reward.type === 'flexible_discount') {
     return flexibleDiscountAvailability(reward.config);
   }
 
-  const parts: string[] = [redemptionLimitLabel(reward.conditions) ?? __('Everyone', 'yayloyalty')];
+  const parts: string[] = [__('Everyone', 'yayloyalty')];
 
   const minOrder = numberConfig(reward.config, 'min_order');
 
   if (minOrder !== null && minOrder > 0) {
     /* translators: %s: minimum order amount, formatted as money. */
     parts.push(sprintf(__('minimum order %s', 'yayloyalty'), parseWPCurrency(minOrder)));
-  }
-
-  const maxTotal = numberConfig(reward.config, 'max_total');
-
-  if (maxTotal !== null) {
-    /* translators: %s: how many units of this reward may ever be claimed, formatted. */
-    parts.push(sprintf(__('%s available', 'yayloyalty'), formatPoints(maxTotal)));
   }
 
   if (reward.starts_at || reward.ends_at) {

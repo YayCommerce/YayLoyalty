@@ -8,8 +8,8 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * The reward-level gate: is the reward live at the claim's time, can the
- * customer afford a fixed cost, do the reward's conditions (tier, lifetime
- * points, redemption count) hold. First failing rule wins, in that order.
+ * customer afford a fixed cost, do the reward's conditions (role, tier,
+ * lifetime points) hold. First failing rule wins, in that order.
  * Balance for `flexible_discount` is not a gate — Clamp reports it as a
  * ceiling so the UI can explain — only fixed-cost types fail here.
  * Conditions go through the `yayloyalty_reward_conditions_match` filter
