@@ -4,7 +4,7 @@ import { formatStoredDate, parseWPDate, utcToDate } from '@/lib/helpers/format.h
 import { formatPoints, formatPointsAsMoney } from '@/lib/helpers/points.helper';
 import type { Customer, DrawerExpiry } from '@/lib/schema/customer.schema';
 import { Button } from '@/components/ui/button';
-import { ACTION_RESET_EXPIRY, NOT_AVAILABLE_YET_REASON } from './customer-drawer.copy';
+import { NOT_AVAILABLE_YET_REASON } from './customer-drawer.copy';
 import { daysUntil } from './customer-drawer.money';
 import {
   ACTION_EXEMPT_FROM_EXPIRY,
@@ -14,7 +14,7 @@ import {
   expiringReminderSentence,
 } from './customer-drawer.panels.copy';
 
-/** The expiry warning and three disabled actions, which share the main row's "not available yet" reason. */
+/** The expiry warning and two disabled actions, which share one "not available yet" reason. */
 export function CustomerDrawerExpiryPanel({ customer, expiry }: { customer: Customer; expiry: DrawerExpiry }) {
   const expiresAt = utcToDate(expiry.expires_at);
   const daysRemaining = daysUntil(expiry.expires_at);
@@ -51,9 +51,6 @@ export function CustomerDrawerExpiryPanel({ customer, expiry }: { customer: Cust
         </div>
       </div>
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-        <Button variant="outline" size="sm" disabled>
-          {ACTION_RESET_EXPIRY()}
-        </Button>
         <Button variant="outline" size="sm" disabled>
           {ACTION_EXEMPT_FROM_EXPIRY()}
         </Button>

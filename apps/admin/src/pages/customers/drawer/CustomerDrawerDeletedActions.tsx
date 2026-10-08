@@ -1,12 +1,11 @@
 import type { ReactNode } from 'react';
 
 import { Button } from '@/components/ui/button';
-import { ACTION_ADJUST_POINTS, ACTION_EXPORT_LEDGER, ACTION_RESET_EXPIRY, DELETED_ACCOUNT_ACTION_REASON } from './customer-drawer.copy';
+import { ACTION_ADJUST_POINTS, ACTION_EXPORT_LEDGER, DELETED_ACCOUNT_ACTION_REASON } from './customer-drawer.copy';
 import {
   ACTION_ANONYMISE,
   DELETED_ANONYMISE_REASON,
   DELETED_EXPORT_REASON,
-  DELETED_RESET_EXPIRY_REASON,
   WHAT_CAN_STILL_BE_DONE_TITLE,
 } from './customer-drawer.panels.copy';
 import { CustomerDrawerExportLedgerButton } from './CustomerDrawerExportLedgerButton';
@@ -37,7 +36,6 @@ export function CustomerDrawerDeletedActions({ userId }: { userId: number }) {
       <p className="text-sm font-medium">{WHAT_CAN_STILL_BE_DONE_TITLE()}</p>
       <div className="flex flex-col gap-2.5">
         <DeletedActionRow label={ACTION_ADJUST_POINTS()} reason={DELETED_ACCOUNT_ACTION_REASON()} />
-        <DeletedActionRow label={ACTION_RESET_EXPIRY()} reason={DELETED_RESET_EXPIRY_REASON()} />
         <DeletedActionRow
           label={ACTION_EXPORT_LEDGER()}
           reason={DELETED_EXPORT_REASON()}

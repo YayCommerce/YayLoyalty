@@ -30,8 +30,6 @@ export function deletedBannerBody(keptEntries: string): string {
 
 export const WHAT_CAN_STILL_BE_DONE_TITLE = () => __('What can still be done', 'yayloyalty');
 export const ACTION_ANONYMISE = () => __('Anonymise the record', 'yayloyalty');
-/** Worded generally: `DELETED_ACCOUNT_ACTION_REASON` is about spending and reads oddly beside Reset expiry. */
-export const DELETED_RESET_EXPIRY_REASON = () => __('There is no owner left to extend anything for.', 'yayloyalty');
 /** Export stays live for a deleted account: the history outlives the owner. */
 export const DELETED_EXPORT_REASON = () => __('Download the full history as a CSV.', 'yayloyalty');
 export const DELETED_ANONYMISE_REASON = () => __('Not built yet — a separate feature from this drawer.', 'yayloyalty');
