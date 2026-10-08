@@ -8,7 +8,7 @@
 
 ## Today
 
-Pro's `Pro\Services\DailyEarningLimit` caps automatic earning at `advanced.max_points_per_day` (`SettingsHelper::get_default_settings()`, null means no limit). It subscribes to `EarningService::AWARD_POINTS_FILTER` and lowers an award inside `LedgerService::earn()`, reading today's EARN total from `LedgerRepository::points_earned_today()`. It is not an earning gate, and `EarningService::preview()` doesn't apply it; its docblock says storefront figures stay the uncapped best case. `LauncherPayload::for_balance()` builds the ways to earn from `LauncherEarnRules::advertise()` and never reads the cap.
+Pro's `Pro\Services\DailyEarningLimit` caps automatic earning at `max_points_per_day` (`SettingsHelper::get_default_settings()`, null means no limit). It subscribes to `EarningService::AWARD_POINTS_FILTER` and lowers an award inside `LedgerService::earn()`, reading today's EARN total from `LedgerRepository::points_earned_today()`. It is not an earning gate, and `EarningService::preview()` doesn't apply it; its docblock says storefront figures stay the uncapped best case. `LauncherPayload::for_balance()` builds the ways to earn from `LauncherEarnRules::advertise()` and never reads the cap.
 
 ## Why it matters
 
@@ -20,5 +20,5 @@ Have `LauncherPayload::for_balance()` learn, through a filter that Pro's `DailyE
 
 ## Done when
 
-- [ ] With Pro, `advanced.max_points_per_day` set, and a member whose EARN today has reached it, the launcher panel shows no ways-to-earn rates for that member and says the daily limit is reached. Hand check: set the cap to 10, earn 10 with an order, reload the shop.
+- [ ] With Pro, `max_points_per_day` set, and a member whose EARN today has reached it, the launcher panel shows no ways-to-earn rates for that member and says the daily limit is reached. Hand check: set the cap to 10, earn 10 with an order, reload the shop.
 - [ ] The `DailyEarningLimit` docblock no longer says storefront figures stay uncapped.
