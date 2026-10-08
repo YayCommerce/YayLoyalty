@@ -1,7 +1,7 @@
 import { __ } from '@wordpress/i18n';
 
 /**
- * Advanced tab strings: the points naming card, and those shared by Pro's fraud section (`@/pro` AdvancedFraudLimitsSection) and its Lite upsell card.
+ * General tab strings: the points naming card, and those shared by Pro's fraud section (`@/pro` FraudLimitsSection) and its Lite upsell card.
  * Functions, not constants: `__()` must run after the locale loads.
  */
 

@@ -17,7 +17,6 @@ import RewardAddPage from './pages/rewards/RewardAddPage';
 import RewardCreatePage from './pages/rewards/RewardCreatePage';
 import RewardEditorPage from './pages/rewards/RewardEditorPage';
 import RewardsPage from './pages/rewards/RewardsPage';
-import AdvancedSettingsPage from './pages/settings/AdvancedSettingsPage';
 import DesignSettingsPage from './pages/settings/DesignSettingsPage';
 import EmailsSettingsPage from './pages/settings/EmailsSettingsPage';
 import GeneralSettingsPage from './pages/settings/GeneralSettingsPage';
@@ -111,10 +110,6 @@ export function getManagerRouter() {
             {
               path: 'emails',
               element: <EmailsSettingsPage />,
-            },
-            {
-              path: 'advanced',
-              element: <AdvancedSettingsPage />,
             },
             {
               path: '*',

@@ -16,7 +16,7 @@ class SettingsHelper {
     /** @var array{locale: string, saved: mixed, settings: array}|null The last get_settings() result and what it was built from. */
     private static $cache = null;
 
-    /** Longest points label; the admin form's schema (advanced-settings.form.ts) mirrors it. */
+    /** Longest points label; the admin form's schema (general-settings.form.ts) mirrors it. */
     public const POINTS_LABEL_MAX_LENGTH = 30;
 
     /** Bump when a migration changes the stored shape. */

@@ -7,18 +7,18 @@ export const POINTS_LABEL_MAX_LENGTH = 30;
 
 const pointsLabel = z.string().trim().min(1).max(POINTS_LABEL_MAX_LENGTH);
 
-/** The Advanced tab's one form: the free points naming, plus Pro's fraud limit (never dirty in Lite). */
-export const advancedSettingsFormSchema = settingsSchema.pick({ max_points_per_day: true }).extend({
+/** The General tab's one form: the free points naming, plus Pro's fraud limit (never dirty in Lite). */
+export const generalSettingsFormSchema = settingsSchema.pick({ max_points_per_day: true }).extend({
   points_label_singular: pointsLabel,
   points_label_plural: pointsLabel,
 });
 
-export type AdvancedSettingsFormValues = z.infer<typeof advancedSettingsFormSchema>;
+export type GeneralSettingsFormValues = z.infer<typeof generalSettingsFormSchema>;
 
 /** react-hook-form's dirtyFields for this form: true per edited field. */
-export type AdvancedSettingsDirtyFields = Partial<Record<keyof AdvancedSettingsFormValues, boolean>>;
+export type GeneralSettingsDirtyFields = Partial<Record<keyof GeneralSettingsFormValues, boolean>>;
 
-export function advancedSettingsDefaults(settings: Settings): AdvancedSettingsFormValues {
+export function generalSettingsDefaults(settings: Settings): GeneralSettingsFormValues {
   return {
     points_label_singular: settings.points_label_singular,
     points_label_plural: settings.points_label_plural,
@@ -30,11 +30,11 @@ export function advancedSettingsDefaults(settings: Settings): AdvancedSettingsFo
  * The save payload: only the edited fields. Sending an untouched label would store the translated
  * default, which would then stop following the site language.
  */
-export function buildAdvancedSettingsUpdate(
-  values: AdvancedSettingsFormValues,
-  dirty: AdvancedSettingsDirtyFields,
+export function buildGeneralSettingsUpdate(
+  values: GeneralSettingsFormValues,
+  dirty: GeneralSettingsDirtyFields,
 ): SettingsUpdate {
   return Object.fromEntries(
-    Object.entries(values).filter(([field]) => dirty[field as keyof AdvancedSettingsFormValues]),
+    Object.entries(values).filter(([field]) => dirty[field as keyof GeneralSettingsFormValues]),
   ) as SettingsUpdate;
 }
