@@ -42,15 +42,6 @@ export function useCampaignQuery(id: number) {
   return useQuery(CAMPAIGN_QUERIES.detail(id));
 }
 
-/**
- * Purchase-group campaigns only, for the flexible-discount reward's earn-back
- * line, which reads the built-in purchase campaign's rate. Off unless
- * `enabled`; the full list is the table's.
- */
-export function usePurchaseCampaignsQuery(enabled: boolean) {
-  return useQuery({ ...CAMPAIGN_QUERIES.list({ trigger: 'purchase', perPage: 100 }), enabled });
-}
-
 /** No detail query key: nothing exists to invalidate until the row is created. */
 export function useCreateCampaignMutation() {
   const queryClient = useQueryClient();
