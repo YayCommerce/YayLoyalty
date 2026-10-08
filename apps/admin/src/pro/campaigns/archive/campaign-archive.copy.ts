@@ -1,16 +1,14 @@
-import { date as wpDate } from '@wordpress/date';
-import { __, _n, sprintf } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 
-import { parseWPDate, parseWPRelativeDate } from '@/lib/helpers/format.helper';
-import { formatPoints, pointsPhrase } from '@/lib/helpers/points.helper';
-import type { CampaignPerformance } from '@/lib/schema/campaign-performance.schema';
+import { parseWPDate } from '@/lib/helpers/format.helper';
 import type { Campaign, CampaignDisplayStatus } from '@/lib/schema/campaign.schema';
-import { conditionsLabel, givesLabel, isBuiltinCampaignActive, scheduleLabel, statusLabel } from '../campaign-labels';
+import { givesLabel, isBuiltinCampaignActive, statusLabel } from '../campaign-labels';
 
 /**
- * Case resolution and trigger-aware copy for CampaignArchiveDialog. Sentences
- * are written out per trigger rather than splicing a noun into a template,
- * same reason as campaign-performance.copy.ts.
+ * Case resolution and copy for CampaignArchiveDialog, plus the live-campaign
+ * lines CampaignPauseDialog shares. Sentences are written out per trigger
+ * rather than splicing a noun into a template, same reason as
+ * campaign-performance.copy.ts.
  */
 
 /** Which archive dialog a campaign gets. Points decide first, then status. */
@@ -27,139 +25,6 @@ export function resolveArchiveCase(displayStatus: CampaignDisplayStatus, isDelet
   }
 
   return displayStatus === 'ended' ? 'finished' : 'live';
-}
-
-/** What the figures block says; `detail` is optional because not every trigger has one. */
-export interface ArchiveFigures {
-  headline: string;
-  detail?: string;
-}
-
-/**
- * Figures for an ended campaign, from its performance summary. `totals` is lifetime, so no `detail`:
- * a date range here would be the chart's 30-day window, not the span these figures cover.
- */
-export function finishedFigures(trigger: Campaign['trigger'], performance: CampaignPerformance): ArchiveFigures {
-  const { totals } = performance;
-
-  if (trigger === 'purchase') {
-    return {
-      headline: sprintf(
-        /* translators: 1: points phrase, e.g. "84,200 points"; 2: orders phrase, e.g. "612 orders". */
-        __('Paid out %1$s across %2$s', 'yayloyalty'),
-        pointsPhrase(totals.points_issued),
-        ordersPhrase(totals.orders_affected ?? 0),
-      ),
-    };
-  }
-
-  return {
-    headline: sprintf(
-      /* translators: 1: points phrase, e.g. "9,300 points"; 2: customers phrase, e.g. "186 customers". */
-      __('Paid out %1$s to %2$s', 'yayloyalty'),
-      pointsPhrase(totals.points_issued),
-      customersPhrase(totals.customers_earned ?? 0),
-    ),
-  };
-}
-
-/**
- * Figures for a campaign that is earning right now. Today is looked up by site date, not taken as
- * the window's last day: a dated campaign's window can end in the future. `totals` is lifetime, so
- * the sentence says "so far" rather than naming a date range.
- */
-export function earningFigures(trigger: Campaign['trigger'], performance: CampaignPerformance): ArchiveFigures {
-  const { totals } = performance;
-  const todaySiteDate = wpDate('Y-m-d', undefined, undefined);
-  const today = performance.daily.find((day) => day.date === todaySiteDate)?.points ?? 0;
-
-  const headline =
-    today > 0
-      ? __('This campaign is earning points today', 'yayloyalty')
-      : __('This campaign is live right now', 'yayloyalty');
-
-  if (trigger === 'purchase') {
-    return {
-      headline,
-      detail: sprintf(
-        /* translators: 1: points phrase for today; 2: points phrase issued so far; 3: orders phrase. */
-        __('%1$s today · %2$s across %3$s so far.', 'yayloyalty'),
-        pointsPhrase(today),
-        pointsPhrase(totals.points_issued),
-        ordersPhrase(totals.orders_affected ?? 0),
-      ),
-    };
-  }
-
-  return {
-    headline,
-    detail: sprintf(
-      /* translators: 1: points phrase for today; 2: points phrase issued so far; 3: customers phrase. */
-      __('%1$s today · %2$s to %3$s so far.', 'yayloyalty'),
-      pointsPhrase(today),
-      pointsPhrase(totals.points_issued),
-      customersPhrase(totals.customers_earned ?? 0),
-    ),
-  };
-}
-
-/** Fallback for triggers with no performance summary, and for campaigns not earning right now. */
-export function lifetimeFigures(lifetimePoints: number): ArchiveFigures {
-  return {
-    headline: sprintf(
-      /* translators: %s: points phrase, e.g. "57,800 points". */
-      __('Has paid out %s so far', 'yayloyalty'),
-      pointsPhrase(lifetimePoints),
-    ),
-  };
-}
-
-function ordersPhrase(count: number): string {
-  return sprintf(
-    /* translators: %s: number of orders, formatted. */
-    _n('%s order', '%s orders', count, 'yayloyalty'),
-    formatPoints(count),
-  );
-}
-
-function customersPhrase(count: number): string {
-  return sprintf(
-    /* translators: %s: number of customers, formatted. */
-    _n('%s customer', '%s customers', count, 'yayloyalty'),
-    formatPoints(count),
-  );
-}
-
-/** The line under the dialog title. */
-export function contextLine(
-  campaign: Campaign,
-  archiveCase: CampaignArchiveCase,
-  displayStatus: CampaignDisplayStatus,
-): string {
-  if (archiveCase === 'delete') {
-    return sprintf(
-      /* translators: %s: the date the campaign was created. */
-      __('Created %s · never awarded points', 'yayloyalty'),
-      parseWPDate(campaign.created_at),
-    );
-  }
-
-  if (archiveCase === 'finished') {
-    return sprintf(
-      /* translators: 1: the campaign's schedule, e.g. "1 Jun – 15 Jun"; 2: relative time since it ended, e.g. "3 months ago". */
-      __('Ran %1$s · ended %2$s', 'yayloyalty'),
-      scheduleLabel(campaign.starts_at, campaign.ends_at),
-      campaign.ends_at ? parseWPRelativeDate(campaign.ends_at) : '',
-    );
-  }
-
-  return sprintf(
-    /* translators: 1: where the campaign stands, e.g. "Live right now"; 2: its priority; 3: its conditions summary. */
-    __('%1$s · priority %2$d · %3$s', 'yayloyalty'),
-    liveStanding(campaign, displayStatus),
-    campaign.priority,
-    conditionsLabel(campaign.conditions),
-  );
 }
 
 /** Where a not-yet-finished campaign stands, e.g. "Live right now" or "Starts 27 Nov". */
@@ -182,54 +47,33 @@ export function liveStanding(campaign: Campaign, displayStatus: CampaignDisplayS
   }
 }
 
-/** Left column of every archive dialog: what survives. */
-export function keepsLines(lifetimePoints: number): string[] {
-  return [
-    sprintf(
-      /* translators: %s: points phrase, e.g. "12,400 points". */
-      __('The %s already awarded', 'yayloyalty'),
-      pointsPhrase(lifetimePoints),
-    ),
-    __('Customer history, still naming this campaign', 'yayloyalty'),
-    __('Its performance figures in reports', 'yayloyalty'),
-  ];
-}
+/**
+ * The archive dialog's body, one sentence per line. The last line carries <link> for
+ * createInterpolateElement, pointing at the Archived view.
+ */
+export function archiveBodyLines(campaign: Campaign, displayStatus: CampaignDisplayStatus): string[] {
+  const lines: string[] = [];
 
-/** Right column: what ends. `nothing` renders it muted, the reassurance case. */
-export interface ArchiveStops {
-  lines: string[];
-  nothing: boolean;
-}
-
-/** `fallback` is the built-in campaign sharing this trigger, when one exists. */
-export function stopsLines(
-  campaign: Campaign,
-  displayStatus: CampaignDisplayStatus,
-  fallback: Campaign | undefined,
-): ArchiveStops {
-  switch (displayStatus) {
-    case 'active':
-      return { lines: activeStops(campaign, fallback), nothing: false };
-    case 'ended':
-      return { lines: [__('Nothing — this campaign has already ended', 'yayloyalty')], nothing: true };
-    case 'paused':
-      return { lines: [__('Nothing — it is already paused and not earning', 'yayloyalty')], nothing: true };
-    case 'draft':
-      return { lines: [__('Nothing — a draft never runs', 'yayloyalty')], nothing: true };
-    case 'scheduled':
-      return {
-        lines: [
-          sprintf(
-            /* translators: %s: the date the campaign was due to start. */
-            __('It will not start on %s', 'yayloyalty'),
-            parseWPDate(campaign.starts_at ?? undefined),
-          ),
-        ],
-        nothing: false,
-      };
-    case 'archived':
-      return { lines: [__('Nothing — it is already archived', 'yayloyalty')], nothing: true };
+  if (displayStatus === 'active') {
+    lines.push(__('This campaign is live. Archiving stops it earning immediately.', 'yayloyalty'));
+  } else if (displayStatus === 'scheduled') {
+    lines.push(
+      sprintf(
+        /* translators: %s: the date the campaign starts. */
+        __('It is scheduled to start %s. Archiving stops it from starting.', 'yayloyalty'),
+        parseWPDate(campaign.starts_at ?? undefined),
+      ),
+    );
   }
+
+  lines.push(
+    __(
+      'Points already awarded and customer history are kept. You can restore it from <link>Archived</link>.',
+      'yayloyalty',
+    ),
+  );
+
+  return lines;
 }
 
 /** What ends when an active campaign stops earning; the first line is always the stop-earning one. */
@@ -288,30 +132,4 @@ function stopEarningLine(trigger: Campaign['trigger'], gives: string): string {
         gives,
       );
   }
-}
-
-/** Delete case, left column: what is removed. */
-export function goesLines(campaign: Campaign): string[] {
-  const lines: string[] = [__('The campaign and its settings', 'yayloyalty')];
-
-  if (campaign.starts_at || campaign.ends_at) {
-    lines.push(
-      sprintf(
-        /* translators: %s: the campaign's schedule, e.g. "1 Apr – 14 Apr". */
-        __('Its schedule, %s', 'yayloyalty'),
-        scheduleLabel(campaign.starts_at, campaign.ends_at),
-      ),
-    );
-  }
-
-  lines.push(__('Its row in this list', 'yayloyalty'));
-
-  return lines;
-}
-
-/** Delete case, right column: the zeroes that make deleting safe. */
-export function affectedLine(trigger: Campaign['trigger']): string {
-  return trigger === 'purchase'
-    ? __('Nothing — 0 points, 0 orders, 0 customers', 'yayloyalty')
-    : __('Nothing — 0 points, 0 customers', 'yayloyalty');
 }
