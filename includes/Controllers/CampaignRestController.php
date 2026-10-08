@@ -218,8 +218,7 @@ final class CampaignRestController extends AbstractRestController {
             $slug,
             $trigger,
             $request['status'] ? Status::assert( (string) $request['status'] ) : Status::ACTIVE,
-            // No priority puts it on top of its group, where a drag in the campaigns table can move it.
-            null !== $request['priority'] ? (int) $request['priority'] : $this->campaigns->top_priority( $trigger ),
+            $this->campaigns->top_priority( $trigger ),
             Campaign::validate_config( $trigger, $config ),
             CampaignConditionSet::normalize( $conditions ),
             self::nullable_date( $request['starts_at'] ),
@@ -259,7 +258,15 @@ final class CampaignRestController extends AbstractRestController {
 
         list( $starts_at, $ends_at ) = $window;
 
+        $was_archived = $campaign->is_archived();
+
         self::apply_update( $campaign, $request );
+
+        // An archived row keeps its old number while reorders skip it, so restoring it in place could tie.
+        if ( $was_archived && ! $campaign->is_archived() ) {
+            $campaign->set_priority( $this->campaigns->top_priority( $campaign->get_trigger() ) );
+        }
+
         $campaign->set_starts_at( $starts_at );
         $campaign->set_ends_at( $ends_at );
 
@@ -307,10 +314,6 @@ final class CampaignRestController extends AbstractRestController {
 
         if ( null !== $request['status'] ) {
             $campaign->set_status( (string) $request['status'] );
-        }
-
-        if ( null !== $request['priority'] ) {
-            $campaign->set_priority( (int) $request['priority'] );
         }
 
         if ( null !== $request['config'] ) {
@@ -425,8 +428,10 @@ final class CampaignRestController extends AbstractRestController {
                     'context'     => [ 'view', 'edit' ],
                 ],
                 'priority'      => [
-                    'type'    => 'integer',
-                    'context' => [ 'view', 'edit' ],
+                    'description' => __( 'Highest wins within a trigger. Assigned by the server; only campaigns/reorder changes it.', 'yayloyalty' ),
+                    'type'        => 'integer',
+                    'context'     => [ 'view', 'edit' ],
+                    'readonly'    => true,
                 ],
                 'config'        => [
                     'type'    => 'object',
