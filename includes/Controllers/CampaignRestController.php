@@ -218,7 +218,6 @@ final class CampaignRestController extends AbstractRestController {
             $slug,
             $trigger,
             $request['status'] ? Status::assert( (string) $request['status'] ) : Status::ACTIVE,
-            // On top of its group, where a drag in the campaigns table can move it.
             $this->campaigns->top_priority( $trigger ),
             Campaign::validate_config( $trigger, $config ),
             CampaignConditionSet::normalize( $conditions ),
@@ -429,7 +428,7 @@ final class CampaignRestController extends AbstractRestController {
                     'context'     => [ 'view', 'edit' ],
                 ],
                 'priority'      => [
-                    'description' => __( 'Highest wins within a trigger. Set on create and by campaigns/reorder; ignored on create and update.', 'yayloyalty' ),
+                    'description' => __( 'Highest wins within a trigger. Assigned by the server; only campaigns/reorder changes it.', 'yayloyalty' ),
                     'type'        => 'integer',
                     'context'     => [ 'view', 'edit' ],
                     'readonly'    => true,

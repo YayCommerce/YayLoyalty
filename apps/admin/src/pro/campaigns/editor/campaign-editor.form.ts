@@ -43,7 +43,7 @@ export function formValuesToUpdateInput(values: CampaignFormValues): CampaignUpd
   return values;
 }
 
-/** POST campaigns' body: form values plus the trigger picked in the chooser, carried outside form state. No priority, so the server puts it on top of its group. */
+/** POST campaigns' body: form values plus the trigger picked in the chooser, carried outside form state. The server puts it on top of its group; priority is not writable. */
 export function formValuesToCreateInput(values: CampaignFormValues, trigger: LiteCampaignTrigger): CampaignCreateInput {
   return { ...values, trigger };
 }

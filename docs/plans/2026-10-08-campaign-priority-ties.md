@@ -2,7 +2,7 @@
 
 > **For agentic workers:** execute tasks in order, one at a time. Steps use `- [ ]` for tracking. There is no spec; the Requirements section below is the source.
 
-**Status:** active
+**Status:** done 2026-10-08
 **Goal:** Stop new priority ties between campaigns of the same trigger: REST writes can no longer set `priority`, and a restored campaign goes to the top of its group.
 **Spec:** none, planned from the request
 **Architecture:** Priority gets exactly two writers: create, which puts a campaign on top of its group through `CampaignRepository::top_priority()`, and the drag-to-reorder route, which renumbers a whole group. This plan marks `priority` read-only in the REST schema, removes the two places that copy it from a request, and adds a third placement rule: archived → non-archived goes to top, because an archived row keeps its old number while reorders skip it. We chose this over shifting other campaigns to make room, because the drag already does that job.
@@ -171,7 +171,7 @@ Message: `fix(campaigns): stop REST writes and restores from tying campaign prio
 
 - [ ] **Step 1: Replace the hint string**
 
-The new text is `'Conditions are combined with AND. For OR, make two campaigns that give the same points.'` The text domain stays `'yayloyalty'`. This works because the engine tries the next campaign when one's conditions fail, so two campaigns placed next to each other already act as OR.
+The new text is `'Conditions are combined with AND.'`. The text domain stays `'yayloyalty'`. The OR advice is dropped: the editor no longer suggests a workaround for OR.
 
 - [ ] **Step 2: Verify**
 
