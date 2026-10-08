@@ -4,7 +4,6 @@ import { __, sprintf } from '@wordpress/i18n';
 import { parseWPDate } from '@/lib/helpers/format.helper';
 import { pointsPerCurrencyLabel } from '@/lib/helpers/points.helper';
 import {
-  Campaign,
   CAMPAIGN_CONDITION_TYPES,
   CampaignConditionKind,
   CampaignDisplayStatus,
@@ -13,11 +12,6 @@ import {
 import type { badgeVariants } from '@/components/ui/badge';
 
 /** Campaign presentation strings derived from the real fields; the wire carries none. */
-
-/** Whether a built-in still earns in place of what sits above it; mirrors the engine skipping any campaign that is not active. */
-export function isBuiltinCampaignActive(campaign: Campaign | undefined): boolean {
-  return campaign?.status === 'active';
-}
 
 /** A campaign only competes within its group; see triggerGroup(). */
 export type CampaignGroupKey = 'purchase' | 'signup' | 'review' | 'other';
