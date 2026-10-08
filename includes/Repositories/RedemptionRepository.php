@@ -9,9 +9,8 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * yayloyalty_redemptions. Only Engine\Redemption\CommitWriter inserts rows,
- * under the customer's row lock. The commit's duplicate check, the
- * `redemption_count` reward condition, the customer drawer and the rewards
- * list's claim summary read them. Scaffold: stubs except summary_by_rewards().
+ * under the customer's row lock. The commit's duplicate check, the customer
+ * drawer and the rewards list's claim summary read them. Scaffold: stubs except summary_by_rewards().
  * The table is Schema\RedemptionsTable, registered in Installer::schemas()
  * when redemption ships.
  */
@@ -42,16 +41,6 @@ final class RedemptionRepository extends AbstractRepository {
      */
     public function find_by_order( int $order_id, int $reward_id ): ?Redemption { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
         // TODO(redemption): SELECT * WHERE order_id = %d AND reward_id = %d LIMIT 1, hydrated.
-        throw new \RuntimeException( 'Not implemented' );
-    }
-
-    /**
-     * How many times this customer has redeemed this reward, for the
-     * `redemption_count` condition. Postcondition: COUNT(*) over the
-     * (reward_id, user_id) index, statuses other than cancelled.
-     */
-    public function count_for_customer( int $reward_id, int $user_id ): int { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(redemption): SELECT COUNT(*) WHERE reward_id = %d AND user_id = %d AND status <> 'cancelled'.
         throw new \RuntimeException( 'Not implemented' );
     }
 

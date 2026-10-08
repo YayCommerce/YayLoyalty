@@ -33,9 +33,6 @@ final class RewardConditionType {
 
     public const LIFETIME_POINTS = 'lifetime_points';
 
-    /** Times this customer has redeemed this reward, a COUNT over yayloyalty_redemptions. */
-    public const REDEMPTION_COUNT = 'redemption_count';
-
     /**
      * Recognised but not offered yet: all() leaves them out, and all_known() keeps them for stored rows.
      *
@@ -46,37 +43,31 @@ final class RewardConditionType {
     ];
 
     /**
-     * Per-type rules, in evaluation-cost order. The fields are CampaignConditionType::schema()'s,
-     * plus `min`, an inclusive floor.
+     * Per-type rules, in evaluation-cost order. The fields are CampaignConditionType::schema()'s.
      *
      * @return array<string, array<string, mixed>>
      */
     public static function schema(): array {
         return [
-            self::USER_ROLE        => [
+            self::USER_ROLE       => [
                 'operators' => [ self::OP_IN, self::OP_NOT_IN ],
                 'value'     => 'string_list',
                 'normalize' => [ 'array', 'lowercase', 'dedupe' ],
             ],
-            self::CUSTOMER_IDS     => [
+            self::CUSTOMER_IDS    => [
                 'operators' => [ self::OP_IN, self::OP_NOT_IN ],
                 'value'     => 'int_list',
                 'max'       => 100,
                 'normalize' => [ 'array', 'int', 'dedupe' ],
             ],
-            self::TIER             => [
+            self::TIER            => [
                 'operators' => [ self::OP_IN, self::OP_NOT_IN, self::OP_GTE, self::OP_LTE ],
                 'value'     => 'tier',
                 'normalize' => [ 'dedupe' ],
             ],
-            self::LIFETIME_POINTS  => [
+            self::LIFETIME_POINTS => [
                 'operators' => [ self::OP_GTE, self::OP_LTE, self::OP_GT, self::OP_LT, self::OP_EQ, self::OP_BETWEEN ],
                 'value'     => 'int',
-            ],
-            self::REDEMPTION_COUNT => [
-                'operators' => [ self::OP_LT, self::OP_LTE, self::OP_EQ ],
-                'value'     => 'int',
-                'min'       => 0,
             ],
         ];
     }

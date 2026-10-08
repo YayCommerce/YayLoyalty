@@ -9,7 +9,6 @@ import { numberConfig } from '@/lib/helpers/reward.helper';
 import { isCampaignScheduleInOrder } from '@/lib/schema/campaign.schema';
 import {
   CatalogRewardType,
-  claimsPerCustomer,
   isCatalogRewardType,
   normalizeRewardConditions,
   Reward,
@@ -25,9 +24,8 @@ import type { EditorSaveIntent } from '@/hooks/useEditorSave';
 import { templateTitle } from '../reward-labels';
 
 /**
- * The form's fields. No `conditions`: the editor manages only the
- * per-customer claim cap, merged back into the stored list on save so any
- * other stored rule survives untouched.
+ * The form's fields. No `conditions`: the editor shows none, and a save sends
+ * the stored list back untouched.
  */
 export interface RewardFormValues {
   name: string;
@@ -36,8 +34,6 @@ export interface RewardFormValues {
   /** Null only for flexible_discount, whose customer picks the amount. */
   cost_points: number | null;
   config: Record<string, unknown>;
-  /** Written as `redemption_count lt N`; null = unlimited. */
-  claims_per_customer: number | null;
   starts_at: string | null;
   ends_at: string | null;
 }
@@ -59,7 +55,6 @@ function seedConfig(type: CatalogRewardType, currency: string): Record<string, u
         min_order: 25,
         coupon_expiry_days: 60,
         exclude_sale_items: false,
-        max_total: null,
       };
     case 'percent_coupon':
       return {
@@ -69,12 +64,11 @@ function seedConfig(type: CatalogRewardType, currency: string): Record<string, u
         min_order: null,
         coupon_expiry_days: 30,
         exclude_sale_items: false,
-        max_total: null,
       };
     case 'free_shipping':
-      return { min_order: 25, currency, coupon_expiry_days: 30, max_total: null };
+      return { min_order: 25, currency, coupon_expiry_days: 30 };
     case 'free_product':
-      return { product_id: null, variation_id: null, qty: 1, coupon_expiry_days: 60, max_total: null };
+      return { product_id: null, variation_id: null, qty: 1, coupon_expiry_days: 60 };
   }
 }
 
@@ -122,7 +116,6 @@ export function rewardCreateSeed(type: CatalogRewardType, currency: string): Rew
     status: 'active',
     cost_points: SEED_COST_POINTS[type],
     config: seedConfig(type, currency),
-    claims_per_customer: null,
     starts_at: null,
     ends_at: null,
   };
@@ -140,7 +133,6 @@ export function rewardToFormValues(reward: Reward, storeCurrency: string): Rewar
     cost_points: reward.cost_points,
     // Cloned: form state must never share references with the query cache.
     config: structuredClone({ ...base, ...reward.config }),
-    claims_per_customer: claimsPerCustomer(normalizeRewardConditions(reward.conditions)),
     starts_at: reward.starts_at,
     ends_at: reward.ends_at,
   };
@@ -156,21 +148,6 @@ export function duplicateToFormValues(source: Reward, storeCurrency: string): Re
     /* translators: %s: the name of the reward being duplicated. */
     name: sprintf(__('%s (copy)', 'yayloyalty'), source.name),
   };
-}
-
-/**
- * Conditions with the claim cap set to `next`. Unchanged input returns the
- * list as stored, so a rule the editor cannot show (e.g. `eq`) is never
- * dropped by a save that did not touch it.
- */
-export function withClaimsPerCustomer(conditions: RewardCondition[], next: number | null): RewardCondition[] {
-  if (next === claimsPerCustomer(conditions)) {
-    return conditions;
-  }
-
-  const others = conditions.filter((condition) => condition.type !== 'redemption_count');
-
-  return next === null ? others : [...others, { type: 'redemption_count', operator: 'lt', value: next }];
 }
 
 /** Status a save writes: Save draft drafts, Save writes the status field. The built-in is never offered Save draft. */
@@ -218,7 +195,7 @@ function formValuesToBody(
     status: resolveSaveStatus(values, intent),
     cost_points: values.cost_points,
     config: values.config,
-    conditions: withClaimsPerCustomer(storedConditions, values.claims_per_customer),
+    conditions: storedConditions,
     starts_at: values.starts_at,
     ends_at: values.ends_at,
   };
@@ -241,7 +218,6 @@ export function rewardFormSchema(type: RewardType) {
           : z.number({ invalid_type_error: costMessage }).int().min(1, costMessage),
       config: REWARD_CONFIG_SCHEMAS[type],
       status: z.enum(EDITABLE_REWARD_STATUSES),
-      claims_per_customer: z.number().int().min(1).nullable(),
     })
     .refine((data) => isCampaignScheduleInOrder(data.starts_at, data.ends_at), {
       message: __('The reward must end after it starts.', 'yayloyalty'),
