@@ -5,18 +5,21 @@ import { __ } from '@wordpress/i18n';
 import { cn } from '@/lib/utils';
 import { ColorPicker } from '@/components/ui/color-picker';
 import { Segmented, SegmentedItem } from '@/components/ui/segmented';
-import { LauncherPreview, type PreviewDevice } from './LauncherPreview';
+import type { PreviewDevice } from '@/pages/settings/LauncherPreviewFrame';
+import { LauncherPreview } from './LauncherPreview';
 import type { WizardStepProps } from './setup-wizard.form';
 import { WizardSection, WizardStepHeading } from './WizardStepParts';
 
-/** Swatches offered before the free picker; the first is the design default. */
+/** Swatches offered before the free picker. The first matches DesignSchema's `launcher.brand_color` default. */
 const SWATCHES = ['#1f6fb2', '#2a2a2a', '#6a6a6a', '#c8c8c8'];
 
 /** Step 4 (artboard 1d): one brand colour, with the launcher drawn from the answers so far. */
 export function LauncherLookStep({ form }: WizardStepProps) {
   const [device, setDevice] = useState<PreviewDevice>('desktop');
-  const values = useWatch({ control: form.control });
-  const brandColor = values.brandColor ?? '';
+  const [brandColor, pointsLabelPlural, earnPoints, earnSpend, worthPoints, worthAmount, minPoints] = useWatch({
+    control: form.control,
+    name: ['brandColor', 'pointsLabelPlural', 'earnPoints', 'earnSpend', 'worthPoints', 'worthAmount', 'minPoints'],
+  });
 
   return (
     <>
@@ -85,13 +88,7 @@ export function LauncherLookStep({ form }: WizardStepProps) {
           </div>
           <LauncherPreview
             device={device}
-            color={brandColor}
-            pluralLabel={values.pointsLabelPlural ?? ''}
-            earnPoints={values.earnPoints ?? 0}
-            earnSpend={values.earnSpend ?? 0}
-            worthPoints={values.worthPoints ?? 0}
-            worthAmount={values.worthAmount ?? 0}
-            minPoints={values.minPoints ?? 0}
+            values={{ brandColor, pointsLabelPlural, earnPoints, earnSpend, worthPoints, worthAmount, minPoints }}
           />
           <div className="text-muted-foreground text-xs">
             {__(

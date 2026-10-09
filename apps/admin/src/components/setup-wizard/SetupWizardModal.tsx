@@ -20,11 +20,11 @@ import { SpendPointsStep } from './SpendPointsStep';
  * The five-step setup wizard (F16). Nothing is saved until "Turn on my program" on step 5,
  * which sends every answer in one POST /setup.
  */
-export function SetupWizardModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function SetupWizardModal({ onClose }: { onClose: () => void }) {
   const { data } = useSetupQuery();
 
   return (
-    <Dialog open={open}>
+    <Dialog open>
       <DialogContent
         showCloseButton={false}
         onInteractOutside={(event) => event.preventDefault()}

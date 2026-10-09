@@ -4,7 +4,7 @@ import { __, sprintf } from '@wordpress/i18n';
 import { formatPoints } from '@/lib/helpers/points.helper';
 import { Input } from '@/components/ui/input';
 import { POINTS_LABEL_MAX_LENGTH } from '@/pages/settings/general-settings.form';
-import type { WizardStepProps } from './setup-wizard.form';
+import { SAMPLE_BALANCE, type WizardStepProps } from './setup-wizard.form';
 import { WizardPreview, WizardSection, WizardStepHeading } from './WizardStepParts';
 
 /** Step 1 (artboard 1a): what the points are called, in both forms. */
@@ -39,7 +39,7 @@ export function NamePointsStep({ form }: WizardStepProps) {
         </div>
         <WizardPreview>
           {/* translators: 1: a sample balance, formatted; 2: the plural points label. */}
-          {sprintf(__('You have %1$s %2$s', 'yayloyalty'), formatPoints(850), plural)}
+          {sprintf(__('You have %1$s %2$s', 'yayloyalty'), formatPoints(SAMPLE_BALANCE), plural)}
         </WizardPreview>
       </WizardSection>
     </>

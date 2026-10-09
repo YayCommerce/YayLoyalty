@@ -3,31 +3,22 @@ import { __, sprintf } from '@wordpress/i18n';
 import { parseWPCurrency } from '@/lib/helpers/format.helper';
 import { formatPoints } from '@/lib/helpers/points.helper';
 import { cn } from '@/lib/utils';
-import { valueOfPoints } from './setup-wizard.form';
+import type { PreviewDevice } from '@/pages/settings/LauncherPreviewFrame';
+import { SAMPLE_BALANCE, valueOfPoints, type SetupForm } from './setup-wizard.form';
 
-export type PreviewDevice = 'desktop' | 'mobile';
-
-/** The made-up balance the preview shows; the store has no customers yet. */
-const SAMPLE_BALANCE = 850;
-
-type LauncherPreviewProps = {
-  device: PreviewDevice;
-  color: string;
-  pluralLabel: string;
-  earnPoints: number;
-  earnSpend: number;
-  worthPoints: number;
-  worthAmount: number;
-  minPoints: number;
-};
+/** The answers the preview draws from. */
+export type LauncherPreviewValues = Pick<
+  SetupForm,
+  'brandColor' | 'pointsLabelPlural' | 'earnPoints' | 'earnSpend' | 'worthPoints' | 'worthAmount' | 'minPoints'
+>;
 
 /**
  * A simplified storefront with the launcher closed and open at once, drawn from the wizard's
  * unsaved answers. Static on purpose: Settings → Design has the real rendered preview.
  */
-export function LauncherPreview(props: LauncherPreviewProps) {
-  const { device, color, pluralLabel, earnPoints, earnSpend, minPoints } = props;
-  const worth = valueOfPoints(props, SAMPLE_BALANCE);
+export function LauncherPreview({ device, values }: { device: PreviewDevice; values: LauncherPreviewValues }) {
+  const { brandColor: color, pointsLabelPlural: pluralLabel, earnPoints, earnSpend, minPoints } = values;
+  const worth = valueOfPoints(values, SAMPLE_BALANCE);
   const sliderAt = minPoints < SAMPLE_BALANCE ? 34 : 0;
 
   return (

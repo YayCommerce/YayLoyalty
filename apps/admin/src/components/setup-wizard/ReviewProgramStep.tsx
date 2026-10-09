@@ -1,4 +1,3 @@
-import { useWatch } from 'react-hook-form';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { parseWPCurrency } from '@/lib/helpers/format.helper';
@@ -10,7 +9,8 @@ type ReviewProgramStepProps = WizardStepProps & { onEdit: (step: WizardStep) => 
 
 /** Step 5 (artboard 1e): every answer on one card, each with an Edit link back to the step that set it. */
 export function ReviewProgramStep({ form, onEdit }: ReviewProgramStepProps) {
-  const v = useWatch({ control: form.control });
+  // The step has no inputs, so a snapshot is enough; Edit unmounts it.
+  const v = form.getValues();
   const off = __('Off', 'yayloyalty');
 
   const rows: { label: string; value: string; step: WizardStep }[] = [
@@ -24,8 +24,8 @@ export function ReviewProgramStep({ form, onEdit }: ReviewProgramStepProps) {
       /* translators: 1: points earned; 2: the spend that earns them, formatted. */
       value: sprintf(
         __('%1$s points per %2$s spent', 'yayloyalty'),
-        formatPoints(v.earnPoints ?? 0),
-        parseWPCurrency(v.earnSpend ?? 0),
+        formatPoints(v.earnPoints),
+        parseWPCurrency(v.earnSpend),
       ),
       step: 2,
     },
@@ -33,7 +33,7 @@ export function ReviewProgramStep({ form, onEdit }: ReviewProgramStepProps) {
       label: __('Account signup', 'yayloyalty'),
       /* translators: %s: points awarded, formatted. */
       value: v.signupEnabled
-        ? sprintf(__('%s points, once per customer', 'yayloyalty'), formatPoints(v.signupPoints ?? 0))
+        ? sprintf(__('%s points, once per customer', 'yayloyalty'), formatPoints(v.signupPoints))
         : off,
       step: 2,
     },
@@ -41,7 +41,7 @@ export function ReviewProgramStep({ form, onEdit }: ReviewProgramStepProps) {
       label: __('Product review', 'yayloyalty'),
       value: v.reviewEnabled
         ? /* translators: %s: points awarded, formatted. */
-          sprintf(__('%s points, verified purchases only', 'yayloyalty'), formatPoints(v.reviewPoints ?? 0))
+          sprintf(__('%s points, verified purchases only', 'yayloyalty'), formatPoints(v.reviewPoints))
         : off,
       step: 2,
     },
@@ -50,8 +50,8 @@ export function ReviewProgramStep({ form, onEdit }: ReviewProgramStepProps) {
       /* translators: 1: a points amount; 2: the discount it buys, formatted. */
       value: sprintf(
         __('%1$s points = %2$s off', 'yayloyalty'),
-        formatPoints(v.worthPoints ?? 0),
-        parseWPCurrency(v.worthAmount ?? 0),
+        formatPoints(v.worthPoints),
+        parseWPCurrency(v.worthAmount),
       ),
       step: 3,
     },
@@ -60,15 +60,15 @@ export function ReviewProgramStep({ form, onEdit }: ReviewProgramStepProps) {
       value: sprintf(
         /* translators: 1: the smallest redemption, in points; 2: the most of the subtotal points may cover, a percentage. */
         __('from %1$s points, up to %2$s%% of the subtotal', 'yayloyalty'),
-        formatPoints(v.minPoints ?? 0),
-        String(v.maxPercent ?? 100),
+        formatPoints(v.minPoints),
+        String(v.maxPercent),
       ),
       step: 3,
     },
     {
       label: __('Launcher', 'yayloyalty'),
       /* translators: %s: a hex colour, e.g. #1F6FB2. */
-      value: sprintf(__('brand colour %s', 'yayloyalty'), (v.brandColor ?? '').toUpperCase()),
+      value: sprintf(__('brand colour %s', 'yayloyalty'), v.brandColor.toUpperCase()),
       step: 4,
     },
   ];

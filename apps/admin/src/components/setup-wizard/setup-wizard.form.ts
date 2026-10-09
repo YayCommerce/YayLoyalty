@@ -7,6 +7,9 @@ export type WizardStep = 1 | 2 | 3 | 4 | 5;
 
 export const WIZARD_STEP_COUNT = 5;
 
+/** The made-up balance the previews show; the store has no customers yet. */
+export const SAMPLE_BALANCE = 850;
+
 /**
  * The wizard's values in the shape its fields edit. Rates are stored per 1 currency unit,
  * but the merchant types them as pairs ("3 points for every 2.00", "100 points = 1.00").

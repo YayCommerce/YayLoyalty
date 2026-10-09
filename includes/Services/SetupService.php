@@ -21,15 +21,14 @@ defined( 'ABSPATH' ) || exit;
  */
 final class SetupService {
 
-    private const PURCHASE_SLUG = 'default-purchase';
-    private const SIGNUP_SLUG   = 'signup';
-    private const REVIEW_SLUG   = 'review';
-
     /** @var CampaignRepository */
     private $campaigns;
 
     /** @var RewardRepository */
     private $rewards;
+
+    /** @var array{purchase: ?Campaign, signup: ?Campaign, review: ?Campaign, discount: ?Reward}|null Loaded once per write: validate, save and the response share them. */
+    private $rows = null;
 
     public function __construct( CampaignRepository $campaigns, RewardRepository $rewards ) {
         $this->campaigns = $campaigns;
@@ -42,6 +41,13 @@ final class SetupService {
      * @return array<string, mixed>
      */
     public function current(): array {
+        $this->rows = null;
+
+        return $this->payload();
+    }
+
+    /** @return array<string, mixed> The setup payload from the rows already loaded. */
+    private function payload(): array {
         $settings = SettingsHelper::get_settings();
         $design   = DesignHelper::get_design();
         $rows     = $this->rows();
@@ -66,7 +72,9 @@ final class SetupService {
 
     /** Why $input must be refused before anything is written, or null when it may be saved. */
     public function validation_error( array $input ): ?string {
-        $rows = $this->rows();
+        // Fresh rows for this write; complete() and its response reuse them.
+        $this->rows = null;
+        $rows       = $this->rows();
 
         if ( in_array( null, $rows, true ) ) {
             return __( 'A built-in campaign or reward is missing. Deactivate and reactivate YayLoyalty to restore it.', 'yayloyalty' );
@@ -94,16 +102,18 @@ final class SetupService {
     /**
      * Saves every wizard choice and marks setup done. validation_error() must have returned null.
      *
-     * @return array<string, mixed> current(), re-read after the save.
+     * @return array<string, mixed> current(), built from the rows just saved.
      */
     public function complete( array $input ): array {
         $rows    = $this->rows();
         $configs = $this->merged_configs( $rows, $input );
 
-        $rows['signup']->set_status( ! empty( $input['signup']['enabled'] ) ? Status::ACTIVE : Status::PAUSED );
-        $rows['review']->set_status( ! empty( $input['review']['enabled'] ) ? Status::ACTIVE : Status::PAUSED );
-
         foreach ( [ 'purchase', 'signup', 'review' ] as $key ) {
+            // The purchase rate has no switch in the wizard, so its status is left as it is.
+            if ( 'purchase' !== $key ) {
+                $rows[ $key ]->set_status( ! empty( $input[ $key ]['enabled'] ) ? Status::ACTIVE : Status::PAUSED );
+            }
+
             $this->save_row( $this->campaigns, $rows[ $key ], $configs[ $key ] );
         }
 
@@ -121,17 +131,21 @@ final class SetupService {
 
         update_option( SettingsHelper::OPTION_SETUP_COMPLETED, true );
 
-        return $this->current();
+        return $this->payload();
     }
 
     /** @return array{purchase: ?Campaign, signup: ?Campaign, review: ?Campaign, discount: ?Reward} */
     private function rows(): array {
-        return [
-            'purchase' => $this->campaigns->find_by_slug( self::PURCHASE_SLUG ),
-            'signup'   => $this->campaigns->find_by_slug( self::SIGNUP_SLUG ),
-            'review'   => $this->campaigns->find_by_slug( self::REVIEW_SLUG ),
-            'discount' => $this->rewards->find_by_slug( RewardRepository::CART_DISCOUNT_SLUG ),
-        ];
+        if ( null === $this->rows ) {
+            $this->rows = [
+                'purchase' => $this->campaigns->find_by_slug( CampaignRepository::DEFAULT_PURCHASE_SLUG ),
+                'signup'   => $this->campaigns->find_by_slug( CampaignRepository::SIGNUP_SLUG ),
+                'review'   => $this->campaigns->find_by_slug( CampaignRepository::REVIEW_SLUG ),
+                'discount' => $this->rewards->find_by_slug( RewardRepository::CART_DISCOUNT_SLUG ),
+            ];
+        }
+
+        return $this->rows;
     }
 
     /**

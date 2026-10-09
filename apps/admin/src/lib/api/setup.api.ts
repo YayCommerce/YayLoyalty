@@ -1,10 +1,10 @@
 import { api } from '@/lib/api/api';
-import { Setup } from '@/lib/schema/setup.schema';
+import { Setup, setupSchema } from '@/lib/schema/setup.schema';
 
-export function getSetup() {
-  return api.get('setup').json<Setup>();
+export async function getSetup() {
+  return setupSchema.parse(await api.get('setup').json());
 }
 
-export function completeSetup(data: Setup) {
-  return api.post('setup', { json: data }).json<Setup>();
+export async function completeSetup(data: Setup) {
+  return setupSchema.parse(await api.post('setup', { json: data }).json());
 }

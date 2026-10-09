@@ -21,7 +21,7 @@ export default function AppLayout() {
 
       <main>
         <Toaster />
-        {showSetup && <SetupWizardModal open onClose={() => setShowSetup(false)} />}
+        {showSetup && <SetupWizardModal onClose={() => setShowSetup(false)} />}
         <Outlet />
       </main>
 
