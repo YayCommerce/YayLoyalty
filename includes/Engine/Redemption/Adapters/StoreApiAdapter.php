@@ -4,20 +4,24 @@ namespace YayLoyalty\Engine\Redemption\Adapters;
 use Automattic\WooCommerce\StoreApi\Exceptions\RouteException;
 use Automattic\WooCommerce\StoreApi\Schemas\V1\CartSchema;
 use YayLoyalty\Engine\Earning\Outcome;
+use YayLoyalty\Engine\Redemption\CouponProvider;
 use YayLoyalty\Engine\Redemption\RedemptionService;
 use YayLoyalty\Engine\Redemption\SessionIntent;
+use YayLoyalty\Engine\Register\ScriptName;
+use YayLoyalty\Engine\Storefront\Launcher;
+use YayLoyalty\Engine\Storefront\RedeemCard;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Cart and Checkout blocks. Exposes the quote on the Store API cart
- * response, receives the intent through a Store API update callback,
- * rejects checkout through the cart-errors hook and hands the created
- * order to RedemptionService::commit(). The same service as the classic
- * adapter; nothing about limits, eligibility or amounts lives here. The
- * block UI itself (a checkout inner block reading `extensions.yayloyalty`
- * and posting the update callback) is a separate storefront package and
- * is not built here.
+ * Cart and Checkout blocks. Exposes the quote and the points card's HTML
+ * on the Store API cart response, receives the intent through a Store API
+ * update callback, rejects checkout through the cart-errors hook and hands
+ * the created order to RedemptionService::commit(). The same service as
+ * the classic adapter; nothing about limits, eligibility or amounts lives
+ * here. The block UI is a slot fill (assets/storefront/redeem-blocks.js)
+ * that shows `extensions.yayloyalty.card`, the same server-rendered card
+ * the classic pages print, and posts the update callback.
  */
 final class StoreApiAdapter {
 
@@ -31,9 +35,12 @@ final class StoreApiAdapter {
 
     private SessionIntent $intent;
 
-    public function __construct( RedemptionService $service, SessionIntent $intent ) {
+    private RedeemCard $card;
+
+    public function __construct( RedemptionService $service, SessionIntent $intent, RedeemCard $card ) {
         $this->service = $service;
         $this->intent  = $intent;
+        $this->card    = $card;
     }
 
     /** Attaches to the Store API once its blocks package has loaded. Called once at boot; a no-op without the package. */
@@ -47,7 +54,7 @@ final class StoreApiAdapter {
         add_action( 'woocommerce_blocks_loaded', [ $this, 'attach' ] );
     }
 
-    /** The cart extension data, the update callback, checkout validation and the commit hook. Public for the hook only. */
+    /** The cart extension data, the update callback, checkout validation, the commit hook and the blocks' scripts. Public for the hook only. */
     public function attach(): void {
         if ( ! function_exists( 'woocommerce_store_api_register_endpoint_data' ) ) {
             return;
@@ -72,14 +79,43 @@ final class StoreApiAdapter {
 
         add_action( 'woocommerce_store_api_cart_errors', [ $this, 'validate' ], 10, 2 );
         add_action( 'woocommerce_store_api_checkout_order_processed', [ $this, 'on_order_processed' ] );
+        add_action( 'woocommerce_blocks_enqueue_cart_block_scripts_after', [ $this, 'enqueue' ] );
+        add_action( 'woocommerce_blocks_enqueue_checkout_block_scripts_after', [ $this, 'enqueue' ] );
+    }
+
+    /**
+     * On a page drawing the Cart or Checkout block: the card's assets and the slot fill that shows it, which is
+     * handed the coupon's code and the label its totals row reads on the blocks.
+     */
+    public function enqueue(): void {
+        RedeemCard::enqueue_assets();
+
+        wp_enqueue_script(
+            ScriptName::STOREFRONT_REDEEM_BLOCKS_SCRIPT,
+            YAYLOYALTY_PLUGIN_URL . 'assets/storefront/redeem-blocks.js',
+            [ 'wp-element', 'wp-plugins', 'wc-blocks-checkout' ],
+            Launcher::asset_version( 'assets/storefront/redeem-blocks.js' ),
+            [ 'in_footer' => true ]
+        );
+        wp_add_inline_script(
+            ScriptName::STOREFRONT_REDEEM_BLOCKS_SCRIPT,
+            'window.yayloyaltyRedeemBlocks = ' . wp_json_encode(
+                [
+                    'code'  => CouponProvider::CODE,
+                    'label' => CouponProvider::display_label(),
+                ]
+            ) . ';',
+            'before'
+        );
     }
 
     /**
      * Postcondition: the quote as numbers only — requested, applied, value,
-     * currency, bound_by, reason — never the Reward or the rate snapshot
-     * (merchant strategy stays server-side). Zero and empty values without a cart.
+     * currency, bound_by, reason — never the Reward (merchant strategy stays
+     * server-side), and `card`, the points card's HTML for this cart ('' when
+     * nothing renders). Zero and empty values without a cart.
      *
-     * @return array{requested: int, applied: int, value: string, currency: string, bound_by: string, reason: string}
+     * @return array{requested: int, applied: int, value: string, currency: string, bound_by: string, reason: string, card: string}
      */
     public function cart_data(): array {
         $cart     = RedemptionService::cart();
@@ -93,6 +129,7 @@ final class StoreApiAdapter {
                 'currency'  => get_woocommerce_currency(),
                 'bound_by'  => '',
                 'reason'    => '',
+                'card'      => '',
             ];
         }
 
@@ -106,6 +143,7 @@ final class StoreApiAdapter {
             'currency'  => null !== $quote->get_currency() ? $quote->get_currency() : get_woocommerce_currency(),
             'bound_by'  => $quote->get_bound_by(),
             'reason'    => $quote->get_reason(),
+            'card'      => $this->card->markup(),
         ];
     }
 
@@ -131,6 +169,7 @@ final class StoreApiAdapter {
             'currency'  => $property( 'string', __( 'Currency code of the discount.', 'yayloyalty' ) ),
             'bound_by'  => $property( 'string', __( 'The limit that reduced the request, or empty.', 'yayloyalty' ) ),
             'reason'    => $property( 'string', __( 'Why no points can be spent, or empty.', 'yayloyalty' ) ),
+            'card'      => $property( 'string', __( 'The points card\'s HTML for this cart.', 'yayloyalty' ) ),
         ];
     }
 

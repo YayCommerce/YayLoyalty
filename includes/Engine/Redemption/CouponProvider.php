@@ -2,6 +2,7 @@
 namespace YayLoyalty\Engine\Redemption;
 
 use YayLoyalty\Engine\Points\Context as EarnContext;
+use YayLoyalty\Helpers\SettingsHelper;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -30,7 +31,7 @@ final class CouponProvider {
     }
 
     /**
-     * Attaches the four hooks. sync_cart() runs last on
+     * Attaches the five hooks. sync_cart() runs last on
      * `woocommerce_before_calculate_totals`, after every other plugin's
      * coupon logic. Called once at boot by the plugin.
      */
@@ -39,6 +40,18 @@ final class CouponProvider {
         add_filter( 'woocommerce_coupon_sort', [ $this, 'sort_weight' ], 10, 2 );
         add_action( 'woocommerce_before_calculate_totals', [ $this, 'sync_cart' ], PHP_INT_MAX );
         add_action( 'woocommerce_removed_coupon', [ $this, 'on_removed' ] );
+        add_filter( 'woocommerce_cart_totals_coupon_label', [ $this, 'label' ], 10, 2 );
+    }
+
+    /** "Points discount", with the merchant's label: what the totals row reads instead of the code. */
+    public static function display_label(): string {
+        /* translators: %s: the store's points label, as "Points". */
+        return sprintf( __( '%s discount', 'yayloyalty' ), SettingsHelper::points_label( 0 ) );
+    }
+
+    /** The classic totals row's label. Postcondition: $label unchanged for every other coupon. */
+    public function label( string $label, \WC_Coupon $coupon ): string {
+        return self::CODE === $coupon->get_code() ? self::display_label() : $label;
     }
 
     /**

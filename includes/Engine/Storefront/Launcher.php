@@ -69,7 +69,7 @@ final class Launcher {
      * The plugin version plus the file's mtime: the template and its stylesheet/script change together,
      * so a rebuild must reach the browser and page caches without a version bump.
      */
-    private static function asset_version( string $relative_path ): string {
+    public static function asset_version( string $relative_path ): string {
         $mtime = @filemtime( YAYLOYALTY_PLUGIN_DIR . $relative_path ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- a missing build falls back to the version.
 
         return false === $mtime ? YAYLOYALTY_VERSION : YAYLOYALTY_VERSION . '.' . $mtime;

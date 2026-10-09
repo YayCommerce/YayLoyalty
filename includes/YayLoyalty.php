@@ -8,11 +8,13 @@ use YayLoyalty\Engine\Earning\Listeners\ReviewListener;
 use YayLoyalty\Engine\Earning\Listeners\SignupListener;
 use YayLoyalty\Engine\Earning\PendingPoints;
 use YayLoyalty\Engine\Earning\Reversal;
+use YayLoyalty\Engine\Redemption\Adapters\ClassicCheckoutAdapter;
 use YayLoyalty\Engine\Redemption\Adapters\StoreApiAdapter;
 use YayLoyalty\Engine\Redemption\CouponProvider;
 use YayLoyalty\Engine\Redemption\RedemptionService;
 use YayLoyalty\Engine\Redemption\Reversal as RedemptionReversal;
 use YayLoyalty\Engine\Redemption\SessionIntent;
+use YayLoyalty\Engine\Storefront\RedeemCard;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Utils\SingletonTrait;
@@ -80,11 +82,16 @@ class YayLoyalty {
     }
 
     /**
-     * Attaches the virtual coupon and the Store API adapter to the redemption composition root, with the $intent it was built with.
-     * Not behind is_admin(): a Store API request is not an admin request, and the coupon provider answers nothing without a cart.
+     * Attaches the virtual coupon, the points card and both checkout adapters (classic, Store API) to the redemption composition root, with the $intent it was built with.
+     * Not behind is_admin(): a Store API request is not an admin request, and the coupon provider and the card answer nothing without a cart.
      */
     private function register_redemption( RedemptionService $service, SessionIntent $intent ): void {
         ( new CouponProvider( $service, $intent ) )->register();
-        ( new StoreApiAdapter( $service, $intent ) )->register();
+
+        $card = new RedeemCard( $service, $intent, new CustomerRepository() );
+        $card->register();
+
+        ( new ClassicCheckoutAdapter( $service, $card ) )->register();
+        ( new StoreApiAdapter( $service, $intent, $card ) )->register();
     }
 }

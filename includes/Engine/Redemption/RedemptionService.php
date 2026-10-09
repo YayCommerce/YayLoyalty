@@ -8,6 +8,7 @@ use YayLoyalty\Engine\Rewards\ContextFactory;
 use YayLoyalty\Engine\Rewards\Handlers\Registry;
 use YayLoyalty\Engine\Rewards\Result;
 use YayLoyalty\Engine\Rewards\RewardEngine;
+use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Models\Reward;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
@@ -70,8 +71,7 @@ final class RedemptionService {
 
     /** Whether shoppers can spend points at checkout; the launcher and the points earned email show money values only when it is true. */
     public static function is_available(): bool {
-        // TODO(redemption): return true once checkout redeems the reward.
-        return false;
+        return true;
     }
 
     /**
@@ -136,6 +136,20 @@ final class RedemptionService {
      * bit. Nothing in the session changes.
      */
     public function quote( \WC_Cart $cart, ?int $user_id ): Result {
+        return $this->quote_for( $cart, $user_id, $this->intent->get() );
+    }
+
+    /**
+     * The quote for asking for everything, whatever the session holds: get_points() is the most this shopper can
+     * spend on this cart, get_value() what that buys, get_reason() why nobody can. The same path as quote()
+     * (the request's reward, the gates, the engine), so the two cannot disagree. Writes nothing.
+     */
+    public function ceiling( \WC_Cart $cart, ?int $user_id ): Result {
+        return $this->quote_for( $cart, $user_id, PHP_INT_MAX );
+    }
+
+    /** quote() and ceiling(): the Quoter's answer for $points_requested, or Result::denied( REASON_NO_REWARD ). */
+    private function quote_for( \WC_Cart $cart, ?int $user_id, int $points_requested ): Result {
         // One request quotes many times (every coupon load and totals run); the reward row is read for the first only.
         if ( ! $this->is_reward_read ) {
             $this->quoted_reward  = $this->flexible_reward();
@@ -148,7 +162,7 @@ final class RedemptionService {
             return Result::denied( self::REASON_NO_REWARD );
         }
 
-        return $this->quoter->quote( $reward, $this->contexts->from_cart( $cart, $user_id, $this->intent->get() ) );
+        return $this->quoter->quote( $reward, $this->contexts->from_cart( $cart, $user_id, $points_requested ) );
     }
 
     /**
@@ -178,9 +192,50 @@ final class RedemptionService {
         return '' !== $quote->get_bound_by() ? $quote->get_bound_by() : Clamp::BOUND_REWARD_MIN;
     }
 
-    /** The shopper-facing sentence for a denial reason or a clamp bound. */
-    public static function message_for( string $key ): string { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- one sentence for every key until the checkout card ships.
-        // TODO(redemption): a message per denial and clamp reason, with the checkout card.
+    /** The shopper-facing sentence for a denial reason or a clamp bound, with the merchant's points label. */
+    public static function message_for( string $key ): string {
+        // 0 picks the plural label.
+        $label = SettingsHelper::points_label( 0 );
+
+        switch ( $key ) {
+            case ProgramGate::REASON_NO_CUSTOMER:
+                /* translators: %s: the store's points label, as "Points". */
+                return sprintf( __( 'Sign in to spend your %s.', 'yayloyalty' ), $label );
+
+            case ProgramGate::REASON_PROGRAM_PAUSED:
+            case ProgramGate::REASON_COUPONS_DISABLED:
+            case Result::REASON_NOT_LIVE:
+            case Result::REASON_NO_RATE:
+            case self::REASON_NO_REWARD:
+                /* translators: %s: the store's points label, as "Points". */
+                return sprintf( __( '%s cannot be spent on this store right now.', 'yayloyalty' ), $label );
+
+            case ProgramGate::REASON_OPTED_OUT:
+            case ProgramGate::REASON_EXCLUDED_ROLE:
+            case Result::REASON_CONDITIONS_NOT_MET:
+                /* translators: %s: the store's points label, as "Points". */
+                return sprintf( __( 'Your account cannot spend %s on this order.', 'yayloyalty' ), $label );
+
+            case Result::REASON_INSUFFICIENT_BALANCE:
+            case Clamp::BOUND_BALANCE:
+                /* translators: %s: the store's points label, as "Points". */
+                return sprintf( __( 'You do not have enough %s for this discount. Choose a lower amount and try again.', 'yayloyalty' ), $label );
+
+            case Clamp::BOUND_REWARD_MIN:
+                /* translators: %s: the store's points label, as "Points". */
+                return sprintf( __( 'That is below the minimum number of %s you can spend.', 'yayloyalty' ), $label );
+
+            case Clamp::BOUND_REWARD_MAX:
+                return __( 'That is more than one order can take, so the discount was lowered.', 'yayloyalty' );
+
+            case Clamp::BOUND_CART:
+                return __( 'The discount cannot be more than this order allows, so it was lowered.', 'yayloyalty' );
+
+            case Clamp::BOUND_STEP:
+                /* translators: %s: the store's points label, as "Points". */
+                return sprintf( __( '%s are spent in fixed steps, so the amount was rounded down.', 'yayloyalty' ), $label );
+        }
+
         return __( 'Your points discount could not be applied. Review your order and try again.', 'yayloyalty' );
     }
 

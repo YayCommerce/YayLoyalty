@@ -1,89 +1,92 @@
 <?php
 namespace YayLoyalty\Engine\Redemption\Adapters;
 
+use YayLoyalty\Engine\Earning\Outcome;
 use YayLoyalty\Engine\Redemption\RedemptionService;
-use YayLoyalty\Engine\Redemption\SessionIntent;
+use YayLoyalty\Engine\Storefront\RedeemCard;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Shortcode cart and checkout. Renders the control from a quote, turns a
- * form post into SessionIntent::set(), rejects checkout when
- * RedemptionService::checkout_error() says so, and hands the created order
- * to RedemptionService::commit(). No limit, eligibility rule or amount
- * lives here — everything is the service's answer. Scaffold: stubs.
+ * Shortcode cart and checkout. Prints the points card in the totals
+ * tables, rejects checkout when RedemptionService::checkout_error() says
+ * so, and hands the created order to RedemptionService::commit(). The
+ * chosen points never ride on the cart or checkout form: the card posts
+ * them to its own endpoint (RedeemCard::on_apply()), the one write path.
+ * No limit, eligibility rule or amount lives here — everything is the
+ * service's answer.
  */
 final class ClassicCheckoutAdapter {
 
-    /** Form field carrying the requested points. */
-    public const FIELD = 'yayloyalty_redeem_points';
-
     private RedemptionService $service;
 
-    private SessionIntent $intent;
+    private RedeemCard $card;
 
-    public function __construct( RedemptionService $service, SessionIntent $intent ) {
+    public function __construct( RedemptionService $service, RedeemCard $card ) {
         $this->service = $service;
-        $this->intent  = $intent;
+        $this->card    = $card;
     }
 
     /**
-     * Hooks: `woocommerce_cart_totals_before_order_total` and
-     * `woocommerce_review_order_before_order_total` → render(),
-     * `woocommerce_update_cart_action_cart_updated` and
-     * `woocommerce_checkout_update_order_review` → read_intent(),
-     * `woocommerce_after_checkout_validation` → validate(),
-     * `woocommerce_checkout_order_processed` → on_order_processed().
-     * Called once at boot; classic templates only.
+     * Called once at boot; classic templates only. The card goes before the
+     * order total on both pages: the hook before Shipping fires only for
+     * carts that ship, so a cart of virtual products would get no card.
      */
     public function register(): void {
-        // TODO(redemption): add_action / add_filter for the six hooks named in the docblock.
-        throw new \RuntimeException( 'Not implemented' );
+        add_action( 'woocommerce_cart_totals_before_order_total', [ $this, 'render_row' ] );
+        add_action( 'woocommerce_review_order_before_order_total', [ $this, 'render_row' ] );
+        add_action( 'woocommerce_after_checkout_validation', [ $this, 'validate' ], 10, 2 );
+        add_action( 'woocommerce_checkout_order_processed', [ $this, 'on_order_processed' ], 10, 3 );
     }
 
-    /** Renders the slider/input row from service->quote(): requested, applied, value, and the bound_by explanation; nothing when the quote is denied. Escaped output only. */
-    public function render(): void {
-        // TODO(redemption): quote = service->quote( WC()->cart, current user or null ); denied → return; echo the escaped row template with data-* for requested/applied/bound_by.
-        throw new \RuntimeException( 'Not implemented' );
-    }
+    /** The card as a totals row, since both hooks fire inside a `<table>`; nothing when the card renders nothing. */
+    public function render_row(): void {
+        $markup = $this->card->markup();
 
-    /**
-     * Precondition: a cart-update or order-review post carrying self::FIELD
-     * (nonce-checked by WooCommerce's own form handling). Postcondition:
-     * SessionIntent::set( (int) field ) — unclamped; the clamp runs on the
-     * next quote. Absent field → no change. Returns its first argument
-     * untouched because `woocommerce_update_cart_action_cart_updated` is a
-     * filter (the order-review hook is an action and ignores the return).
-     *
-     * @param mixed $passthrough The cart-updated flag, or the order-review post string.
-     * @return mixed $passthrough, unchanged.
-     */
-    public function read_intent( $passthrough = null ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(redemption): read the field from the posted form (parse_str for the order-review string, the request for cart update), absint it, store it through SessionIntent::set, and return the argument unchanged.
-        throw new \RuntimeException( 'Not implemented' );
+        if ( '' === $markup ) {
+            return;
+        }
+
+        echo '<tr class="yayloyalty-redeem-row"><td colspan="2">' . $markup . '</td></tr>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- the card's template escapes every value.
     }
 
     /**
      * Precondition: checkout submitted, totals not yet frozen. Postcondition:
      * $errors gains one translated message when service->checkout_error()
-     * returns a key, so WooCommerce aborts the submission; untouched otherwise.
+     * returns a key, so WooCommerce aborts the submission; untouched otherwise
+     * and without a cart.
      *
      * @param array $data The posted checkout fields.
      */
-    public function validate( array $data, \WP_Error $errors ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(redemption): key = service->checkout_error( WC()->cart, user ); key → errors->add( 'yayloyalty_redeem', message_for( key ) ).
-        throw new \RuntimeException( 'Not implemented' );
+    public function validate( array $data, \WP_Error $errors ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- the hook's first argument; the cart and the session answer.
+        $cart = RedemptionService::cart();
+
+        if ( null === $cart ) {
+            return;
+        }
+
+        $key = $this->service->checkout_error( $cart, RedemptionService::shopper_id() );
+
+        if ( null !== $key ) {
+            $errors->add( 'yayloyalty_redeem', RedemptionService::message_for( $key ) );
+        }
     }
 
     /**
      * Precondition: the order exists with frozen totals; payment not yet
-     * taken. Postcondition: service->commit( order ) ran once; its Outcome
-     * is not acted on here (the service already noted a skip on the order).
+     * taken. Postcondition: service->commit( order ) ran once; a commit that
+     * debited nothing for a reason other than "no points discount on this
+     * order" stops the checkout, the same rule as StoreApiAdapter::on_order_processed().
      *
      * @param array $posted The posted checkout fields.
+     * @throws \Exception When the points discount could not be debited: WC_Checkout::process_checkout() catches it, shows the sentence and takes no payment.
      */
-    public function on_order_processed( int $order_id, array $posted, \WC_Order $order ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(redemption): service->commit( order ).
-        throw new \RuntimeException( 'Not implemented' );
+    public function on_order_processed( int $order_id, array $posted, \WC_Order $order ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- the hook's first two arguments; the order is the third.
+        $outcome = $this->service->commit( $order );
+
+        if ( Outcome::SKIPPED === $outcome->get_status() && RedemptionService::REASON_NO_INTENT !== $outcome->get_reason() ) {
+            // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- WooCommerce prints the message as an escaped notice.
+            throw new \Exception( RedemptionService::message_for( $outcome->get_reason() ) );
+        }
     }
 }
