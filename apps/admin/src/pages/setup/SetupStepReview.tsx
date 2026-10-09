@@ -6,6 +6,7 @@ import { can, CAP } from '@/lib/access';
 import { parseWPCurrency, storeCurrency } from '@/lib/helpers/format.helper';
 import { formatPoints } from '@/lib/helpers/points.helper';
 import { CAMPAIGN_QUERIES } from '@/lib/queries/campaign.queries';
+import { REWARD_QUERIES } from '@/lib/queries/reward.queries';
 import type { SetupDraft } from '@/lib/schema/setup.schema';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,7 +15,7 @@ import * as copy from './setup-wizard.copy';
 import { SetupStepHeading } from './SetupFields';
 
 /** Enough rows for every built-in campaign, whatever a Pro store has added around them. */
-const CAMPAIGN_LIST_PARAMS = { perPage: 100 };
+const LIST_PARAMS = { perPage: 100 };
 
 /** Step 5: every answer with a link back to its step, what Turn on creates, and what it changes for customers. */
 export function SetupStepReview({ onEdit }: { onEdit: (step: number) => void }) {
@@ -107,9 +108,11 @@ export function SetupStepReview({ onEdit }: { onEdit: (step: number) => void }) 
  * edits before the program is live; the dashboard hands over to those screens afterwards.
  */
 function WhatThisCreates() {
-  // Only users who may open Campaigns ask for it; anyone else sees the seeded names.
-  const campaigns = useQuery({ ...CAMPAIGN_QUERIES.list(CAMPAIGN_LIST_PARAMS), enabled: can(CAP.MANAGE_CAMPAIGNS) });
+  // Only users who may open each list ask for it; anyone else sees the seeded names.
+  const campaigns = useQuery({ ...CAMPAIGN_QUERIES.list(LIST_PARAMS), enabled: can(CAP.MANAGE_CAMPAIGNS) });
+  const rewards = useQuery({ ...REWARD_QUERIES.list(LIST_PARAMS), enabled: can(CAP.MANAGE_REWARDS) });
   const names = campaigns.data?.data.filter((campaign) => campaign.is_builtin).map((campaign) => campaign.name);
+  const rewardName = rewards.data?.data.find((reward) => reward.is_builtin)?.name;
 
   return (
     <Card>
@@ -124,7 +127,7 @@ function WhatThisCreates() {
         />
         <CreatedRow
           label={copy.REVIEW_REWARDS_LABEL()}
-          value={copy.REVIEW_REWARD_NAME()}
+          value={rewardName ?? copy.REVIEW_REWARD_DEFAULT_NAME()}
           help={copy.REVIEW_REWARDS_HELP()}
         />
       </CardContent>

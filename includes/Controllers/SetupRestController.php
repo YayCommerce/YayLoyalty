@@ -2,11 +2,14 @@
 namespace YayLoyalty\Controllers;
 
 use YayLoyalty\Access\Capabilities;
+use YayLoyalty\Enums\CampaignTrigger;
+use YayLoyalty\Enums\RewardType;
 use YayLoyalty\Enums\Status;
 use YayLoyalty\Helpers\DesignHelper;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Helpers\SetupHelper;
 use YayLoyalty\Models\Campaign;
+use YayLoyalty\Models\Reward;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\RewardRepository;
 use YayLoyalty\Services\SetupApplier;
@@ -122,18 +125,20 @@ class SetupRestController extends AbstractRestController {
         $settings = SettingsHelper::get_settings();
         $purchase = $this->campaigns->find_by_slug( CampaignRepository::DEFAULT_PURCHASE_SLUG );
         $reward   = $this->rewards->find_by_slug( RewardRepository::CART_DISCOUNT_SLUG );
-        $config   = null === $reward ? [] : $reward->get_config();
-        $launcher = DesignHelper::get_design()['launcher'];
+        // A missing built-in reads as its seed, so the wizard still opens; SetupApplier refuses to apply then.
+        $config          = null === $reward ? Reward::default_config( RewardType::FLEXIBLE_DISCOUNT ) : $reward->get_config();
+        $purchase_config = null === $purchase ? Campaign::default_config( CampaignTrigger::PURCHASE ) : $purchase->get_config();
+        $launcher        = DesignHelper::get_design()['launcher'];
 
         return [
             'points_label_singular' => $settings['points_label_singular'],
             'points_label_plural'   => $settings['points_label_plural'],
-            'purchase_rate'         => null === $purchase ? 1.0 : (float) ( $purchase->get_config()['points_per_unit'] ?? 1 ),
-            'signup'                => $this->flat_campaign( 'signup', 100 ),
-            'review'                => $this->flat_campaign( 'review', 50 ),
+            'purchase_rate'         => (float) $purchase_config['points_per_unit'],
+            'signup'                => $this->flat_campaign( CampaignRepository::SIGNUP_SLUG, CampaignTrigger::SIGNUP ),
+            'review'                => $this->flat_campaign( CampaignRepository::REVIEW_SLUG, CampaignTrigger::REVIEW ),
             'reward'                => [
-                'points_per_currency_unit' => (float) ( $config['points_per_currency_unit'] ?? 100 ),
-                'min_points'               => (int) ( $config['min_points'] ?? 100 ),
+                'points_per_currency_unit' => (float) $config['points_per_currency_unit'],
+                'min_points'               => (int) $config['min_points'],
                 'max_percent_of_subtotal'  => isset( $config['max_percent_of_subtotal'] ) ? (float) $config['max_percent_of_subtotal'] : null,
             ],
             'launcher'              => [
@@ -143,13 +148,13 @@ class SetupRestController extends AbstractRestController {
         ];
     }
 
-    /** A signup or review built-in as the wizard shows it; $fallback_points stands in if the row is missing. */
-    private function flat_campaign( string $slug, int $fallback_points ): array {
+    /** A signup or review built-in as the wizard shows it; a missing row reads as its seed. */
+    private function flat_campaign( string $slug, string $trigger ): array {
         $campaign = $this->campaigns->find_by_slug( $slug );
 
         return [
             'enabled' => null === $campaign || Status::ACTIVE === $campaign->get_status(),
-            'points'  => $campaign instanceof Campaign ? $campaign->flat_points() : $fallback_points,
+            'points'  => null === $campaign ? (int) Campaign::default_config( $trigger )['points'] : $campaign->flat_points(),
         ];
     }
 }

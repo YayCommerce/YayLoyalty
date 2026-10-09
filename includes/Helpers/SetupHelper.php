@@ -36,31 +36,23 @@ class SetupHelper {
      * @return array{status: string, step: int, draft: array|null, first_run_dismissed: bool}
      */
     public static function get_state(): array {
-        $stored = get_option( self::OPTION_SETUP, null );
+        $state = self::read_state();
+        $draft = $state['draft'];
 
-        if ( ! is_array( $stored ) || ! in_array( $stored['status'] ?? null, [ self::STATUS_PENDING, self::STATUS_COMPLETED ], true ) ) {
-            return self::completed_state();
-        }
+        $state['draft'] = is_array( $draft ) && null === self::draft_error( $draft ) ? $draft : null;
 
-        $draft = $stored['draft'] ?? null;
-
-        return [
-            'status'              => $stored['status'],
-            'step'                => max( 1, min( self::LAST_STEP, (int) ( $stored['step'] ?? 1 ) ) ),
-            'draft'               => is_array( $draft ) && null === self::draft_error( $draft ) ? $draft : null,
-            'first_run_dismissed' => ! empty( $stored['first_run_dismissed'] ),
-        ];
+        return $state;
     }
 
-    /** What the admin SPA needs on first paint, localized as window.yayLoyaltyAdmin.setup. */
+    /**
+     * What the admin SPA needs on first paint, localized as window.yayLoyaltyAdmin.setup.
+     * Runs on every YayLoyalty admin load, so the draft is neither validated nor sent.
+     */
     public static function localized_state(): array {
-        $state = self::get_state();
+        $state = self::read_state();
+        unset( $state['draft'] );
 
-        return [
-            'status'              => $state['status'],
-            'step'                => $state['step'],
-            'first_run_dismissed' => $state['first_run_dismissed'],
-        ];
+        return $state;
     }
 
     /**
@@ -78,15 +70,7 @@ class SetupHelper {
         }
 
         SettingsHelper::update_settings( [ 'enabled' => false ] );
-        add_option(
-            self::OPTION_SETUP,
-            [
-                'status'              => self::STATUS_PENDING,
-                'step'                => 1,
-                'draft'               => null,
-                'first_run_dismissed' => false,
-            ]
-        );
+        add_option( self::OPTION_SETUP, self::pending_state() );
     }
 
     /**
@@ -143,17 +127,17 @@ class SetupHelper {
      * @return array get_state() after the save.
      */
     public static function save_draft( int $step, array $draft ): array {
-        $state          = self::get_state();
+        $state          = self::read_state();
         $state['step']  = max( 1, min( self::LAST_STEP, $step ) );
         $state['draft'] = self::normalize_draft( $draft );
 
         update_option( self::OPTION_SETUP, $state, true );
 
-        return self::get_state();
+        return $state;
     }
 
     public static function mark_completed(): void {
-        $state           = self::get_state();
+        $state           = self::read_state();
         $state['status'] = self::STATUS_COMPLETED;
         $state['step']   = self::LAST_STEP;
         $state['draft']  = null;
@@ -162,10 +146,41 @@ class SetupHelper {
     }
 
     public static function dismiss_first_run(): void {
-        $state                        = self::get_state();
+        $state                        = self::read_state();
         $state['first_run_dismissed'] = true;
 
         update_option( self::OPTION_SETUP, $state, true );
+    }
+
+    /**
+     * The stored state with status, step and the dismissal coerced, and the draft as stored, unvalidated.
+     * A missing option reads as completed, never pending.
+     *
+     * @return array{status: string, step: int, draft: mixed, first_run_dismissed: bool}
+     */
+    private static function read_state(): array {
+        $stored = get_option( self::OPTION_SETUP, null );
+
+        if ( ! is_array( $stored ) || ! in_array( $stored['status'] ?? null, [ self::STATUS_PENDING, self::STATUS_COMPLETED ], true ) ) {
+            return self::completed_state();
+        }
+
+        return [
+            'status'              => $stored['status'],
+            'step'                => max( 1, min( self::LAST_STEP, (int) ( $stored['step'] ?? 1 ) ) ),
+            'draft'               => $stored['draft'] ?? null,
+            'first_run_dismissed' => ! empty( $stored['first_run_dismissed'] ),
+        ];
+    }
+
+    /** A fresh install's state: setup not started. */
+    private static function pending_state(): array {
+        return [
+            'status'              => self::STATUS_PENDING,
+            'step'                => 1,
+            'draft'               => null,
+            'first_run_dismissed' => false,
+        ];
     }
 
     /** A live store's state: done, and with nothing to celebrate on the dashboard. */

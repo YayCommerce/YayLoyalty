@@ -2,11 +2,9 @@ import { z } from 'zod';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { designLauncherPositionSchema } from '@/lib/schema/design.schema';
+import { POINTS_LABEL_MAX_LENGTH } from '@/pages/settings/general-settings.form';
 
 /** Mirrors SetupHelper, the source of truth for the draft's rules and the option's shape. */
-
-/** SettingsHelper::POINTS_LABEL_MAX_LENGTH. */
-export const SETUP_POINTS_LABEL_MAX_LENGTH = 30;
 
 /** SetupHelper::LAST_STEP. */
 export const SETUP_LAST_STEP = 5;
@@ -15,9 +13,9 @@ const pointsLabelSchema = z
   .string()
   .trim()
   .min(1, { message: __('Enter a name.', 'yayloyalty') })
-  .max(SETUP_POINTS_LABEL_MAX_LENGTH, {
+  .max(POINTS_LABEL_MAX_LENGTH, {
     /* translators: %d: the longest points name allowed, 30. */
-    message: sprintf(__('Use %d characters or fewer.', 'yayloyalty'), SETUP_POINTS_LABEL_MAX_LENGTH),
+    message: sprintf(__('Use %d characters or fewer.', 'yayloyalty'), POINTS_LABEL_MAX_LENGTH),
   });
 
 /** Money on the wire: a decimal string above 0, as "1" or "2.50". */
@@ -57,7 +55,7 @@ export const setupDraftSchema = z.object({
 
 export type SetupDraft = z.infer<typeof setupDraftSchema>;
 
-/** The live values GET /setup returns, which pre-fill a missing draft. */
+/** Mirrors SetupRestController::live(): the live values that pre-fill a missing draft. */
 export const setupLiveSchema = z.object({
   points_label_singular: z.string(),
   points_label_plural: z.string(),
@@ -95,7 +93,7 @@ export type SetupLocalized = {
   first_run_dismissed: boolean;
 };
 
-/** POST /setup/draft: SetupHelper::get_state() after the save. */
+/** POST /setup/draft: what SetupHelper::save_draft() returns. */
 export const setupSavedStateSchema = z.object({
   status: setupStatusSchema,
   step: z.number().int().min(1).max(SETUP_LAST_STEP),

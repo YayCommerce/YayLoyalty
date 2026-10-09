@@ -110,11 +110,11 @@ final class Installer {
                 'name'    => __( 'Points for purchases', 'yayloyalty' ),
                 'trigger' => \YayLoyalty\Enums\CampaignTrigger::PURCHASE,
             ],
-            'signup'           => [
+            \YayLoyalty\Repositories\CampaignRepository::SIGNUP_SLUG => [
                 'name'    => __( 'Points for signing up', 'yayloyalty' ),
                 'trigger' => \YayLoyalty\Enums\CampaignTrigger::SIGNUP,
             ],
-            'review'           => [
+            \YayLoyalty\Repositories\CampaignRepository::REVIEW_SLUG => [
                 'name'    => __( 'Points for writing a review', 'yayloyalty' ),
                 'trigger' => \YayLoyalty\Enums\CampaignTrigger::REVIEW,
             ],

@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Field, FieldContent, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { POINTS_LABEL_MAX_LENGTH } from '../settings/general-settings.form';
 import {
   CURRENCY_HELP,
   CURRENCY_LABEL,
@@ -37,12 +38,16 @@ export function SetupStepPointsName() {
           <div className="grid gap-4 sm:grid-cols-2">
             <Field>
               <FieldLabel htmlFor="setup-label-singular">{NAME_SINGULAR_LABEL()}</FieldLabel>
-              <Input id="setup-label-singular" maxLength={30} {...register('points_label_singular')} />
+              <Input
+                id="setup-label-singular"
+                maxLength={POINTS_LABEL_MAX_LENGTH}
+                {...register('points_label_singular')}
+              />
               <FieldError errors={[errors.points_label_singular]} />
             </Field>
             <Field>
               <FieldLabel htmlFor="setup-label-plural">{NAME_PLURAL_LABEL()}</FieldLabel>
-              <Input id="setup-label-plural" maxLength={30} {...register('points_label_plural')} />
+              <Input id="setup-label-plural" maxLength={POINTS_LABEL_MAX_LENGTH} {...register('points_label_plural')} />
               <FieldError errors={[errors.points_label_plural]} />
             </Field>
           </div>

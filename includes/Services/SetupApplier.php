@@ -5,8 +5,10 @@ use YayLoyalty\Database\Transaction;
 use YayLoyalty\Enums\Status;
 use YayLoyalty\Helpers\DesignHelper;
 use YayLoyalty\Helpers\SettingsHelper;
+use YayLoyalty\Models\AbstractModel;
 use YayLoyalty\Models\Campaign;
 use YayLoyalty\Models\Reward;
+use YayLoyalty\Repositories\AbstractRepository;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\RewardRepository;
 use YayLoyalty\Utils\Dates;
@@ -20,10 +22,6 @@ defined( 'ABSPATH' ) || exit;
  * The draft must already have passed SetupHelper::draft_error().
  */
 final class SetupApplier {
-
-    private const SIGNUP_SLUG = 'signup';
-
-    private const REVIEW_SLUG = 'review';
 
     private CampaignRepository $campaigns;
 
@@ -42,8 +40,8 @@ final class SetupApplier {
         Transaction::run(
             function () use ( $draft ) {
                 $purchase = $this->campaign( CampaignRepository::DEFAULT_PURCHASE_SLUG );
-                $signup   = $this->campaign( self::SIGNUP_SLUG );
-                $review   = $this->campaign( self::REVIEW_SLUG );
+                $signup   = $this->campaign( CampaignRepository::SIGNUP_SLUG );
+                $review   = $this->campaign( CampaignRepository::REVIEW_SLUG );
                 $reward   = $this->rewards->find_by_slug( RewardRepository::CART_DISCOUNT_SLUG );
 
                 if ( null === $reward ) {
@@ -52,17 +50,19 @@ final class SetupApplier {
 
                 $max_percent = (int) $draft['reward']['max_percent'];
 
-                $this->write_campaign( $purchase, [ 'points_per_unit' => (int) $draft['earn']['points'] / (float) $draft['earn']['amount'] ], true );
-                $this->write_campaign( $signup, [ 'points' => (int) $draft['signup']['points'] ], (bool) $draft['signup']['enabled'] );
-                $this->write_campaign( $review, [ 'points' => (int) $draft['review']['points'] ], (bool) $draft['review']['enabled'] );
-                $this->write_reward(
+                $this->write( $purchase, $this->campaigns, [ 'points_per_unit' => (int) $draft['earn']['points'] / (float) $draft['earn']['amount'] ], true );
+                $this->write( $signup, $this->campaigns, [ 'points' => (int) $draft['signup']['points'] ], (bool) $draft['signup']['enabled'] );
+                $this->write( $review, $this->campaigns, [ 'points' => (int) $draft['review']['points'] ], (bool) $draft['review']['enabled'] );
+                $this->write(
                     $reward,
+                    $this->rewards,
                     [
                         'points_per_currency_unit' => (int) $draft['reward']['points'] / (float) $draft['reward']['amount'],
                         'min_points'               => (int) $draft['reward']['min_points'],
                         // 100% is no cap, which is stored as null, never 100.
                         'max_percent_of_subtotal'  => $max_percent < 100 ? $max_percent : null,
-                    ]
+                    ],
+                    true
                 );
 
                 SettingsHelper::update_settings(
@@ -96,39 +96,28 @@ final class SetupApplier {
     }
 
     /**
-     * Replaces only $changes in the stored config, so keys the wizard does not ask about keep their values.
-     * A key an older version stored and the schema no longer lists is dropped first, as set_config() would.
+     * Writes one built-in campaign or reward: the stored config with only $changes replaced, so keys the
+     * wizard does not ask about keep their values, and a key an older version stored that the schema no
+     * longer lists dropped first, as set_config() would.
+     *
+     * @param Campaign|Reward $model
+     * @throws \RuntimeException When the merged config is refused.
      */
-    private function write_campaign( Campaign $campaign, array $changes, bool $is_on ): void {
-        $config = Campaign::validate_config( $campaign->get_trigger(), array_replace( $campaign->get_config(), $changes ) );
+    private function write( AbstractModel $model, AbstractRepository $repository, array $changes, bool $is_on ): void {
+        $class  = get_class( $model );
+        $kind   = $model instanceof Campaign ? $model->get_trigger() : $model->get_type();
+        $config = $class::validate_config( $kind, array_replace( $model->get_config(), $changes ) );
 
-        if ( ! Campaign::config_is_valid( $campaign->get_trigger(), $config ) ) {
-            throw new \RuntimeException( 'SetupApplier: the config for campaign ' . $campaign->get_slug() . ' was refused.' );
+        if ( ! $class::config_is_valid( $kind, $config ) ) {
+            throw new \RuntimeException( 'SetupApplier: the config for ' . $model->get_slug() . ' was refused.' );
         }
 
-        $campaign->set_config( $config );
-        $campaign->set_status( $is_on ? Status::ACTIVE : Status::PAUSED );
-        $campaign->set_updated_at( Dates::now() );
-        $campaign->set_updated_by( get_current_user_id() );
+        $model->set_config( $config );
+        $model->set_status( $is_on ? Status::ACTIVE : Status::PAUSED );
+        $model->set_updated_at( Dates::now() );
+        $model->set_updated_by( get_current_user_id() );
 
-        $update = $campaign->to_update_row();
-        $this->campaigns->update( (int) $campaign->get_id(), $update['data'], $update['format'] );
-    }
-
-    /** As write_campaign(): the stored config with $changes, minus keys the schema no longer lists. */
-    private function write_reward( Reward $reward, array $changes ): void {
-        $config = Reward::validate_config( $reward->get_type(), array_replace( $reward->get_config(), $changes ) );
-
-        if ( ! Reward::config_is_valid( $reward->get_type(), $config ) ) {
-            throw new \RuntimeException( 'SetupApplier: the config for reward ' . $reward->get_slug() . ' was refused.' );
-        }
-
-        $reward->set_config( $config );
-        $reward->set_status( Status::ACTIVE );
-        $reward->set_updated_at( Dates::now() );
-        $reward->set_updated_by( get_current_user_id() );
-
-        $update = $reward->to_update_row();
-        $this->rewards->update( (int) $reward->get_id(), $update['data'], $update['format'] );
+        $update = $model->to_update_row();
+        $repository->update( (int) $model->get_id(), $update['data'], $update['format'] );
     }
 }

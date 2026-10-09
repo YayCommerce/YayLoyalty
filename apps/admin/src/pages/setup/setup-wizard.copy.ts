@@ -129,7 +129,8 @@ export const REVIEW_CAMPAIGNS_LABEL = () => __('Campaigns', 'yayloyalty');
 export const REVIEW_CAMPAIGNS_HELP = () =>
   __('The three every install has. Add more, or change these, on the Campaigns screen.', 'yayloyalty');
 export const REVIEW_REWARDS_LABEL = () => __('Rewards', 'yayloyalty');
-export const REVIEW_REWARD_NAME = () => __('Points for discount', 'yayloyalty');
+/** Mirrors the name Installer::seed_builtin_reward() seeds, for a user who cannot open the Rewards list. */
+export const REVIEW_REWARD_DEFAULT_NAME = () => __('Cart discount', 'yayloyalty');
 export const REVIEW_REWARDS_HELP = () => __('The one reward every install has.', 'yayloyalty');
 export const REVIEW_WHEN_ON_TITLE = () => __('When you turn it on', 'yayloyalty');
 export const REVIEW_WHEN_EARN = () =>
@@ -138,6 +139,6 @@ export const REVIEW_WHEN_EARN = () =>
     'yayloyalty',
   );
 export const REVIEW_WHEN_LAUNCHER = () => __('The launcher appears on your storefront.', 'yayloyalty');
-/** The seeded built-in names, for a user who cannot open the Campaigns list. */
+/** Mirrors the names Installer::seed_builtin_campaigns() seeds, joined with " · ", for a user who cannot open the Campaigns list. */
 export const REVIEW_CAMPAIGNS_DEFAULT_NAMES = () =>
   __('Points for purchases · Points for signing up · Points for writing a review', 'yayloyalty');

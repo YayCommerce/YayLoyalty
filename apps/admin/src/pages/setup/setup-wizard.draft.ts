@@ -1,5 +1,5 @@
 import { currencyDecimals } from '@/lib/helpers/format.helper';
-import { spendPairFromRate } from '@/lib/helpers/points.helper';
+import { rateFromSpend, spendPairFromRate } from '@/lib/helpers/points.helper';
 import type { SetupDraft, SetupLive } from '@/lib/schema/setup.schema';
 
 /**
@@ -28,9 +28,7 @@ export function draftFromLive(live: SetupLive): SetupDraft {
 
 /** Points per 1 currency unit; 0 while the amount is not a number above 0 yet. */
 function rate(points: number, amount: string): number {
-  const spend = Number(amount);
-
-  return spend > 0 && Number.isFinite(points) ? points / spend : 0;
+  return Number.isFinite(points) ? (rateFromSpend(Number(amount), points) ?? 0) : 0;
 }
 
 /** Points an order of `subtotal` earns, rounded down as the built-in purchase campaign rounds. */

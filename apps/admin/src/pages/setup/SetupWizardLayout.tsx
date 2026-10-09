@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react';
 
 import { SETUP_LAST_STEP } from '@/lib/schema/setup.schema';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Toaster } from '@/components/ui/sonner';
+import { BELOW_ADMIN_BAR } from '@/components/layout/Header';
 import { BACK_LABEL, EXIT_LABEL, STEP_OF, WIZARD_TITLE } from './setup-wizard.copy';
 
 /**
@@ -29,13 +31,13 @@ export function SetupWizardLayout({
   children: ReactNode;
 }) {
   // Plain divs, not <header>/<main>/<footer>: styles/custom-header.css fixes every <header> and pads every
-  // <main> under #wpbody-content for AppLayout. The bars stick instead, below the admin bar (46px narrow,
-  // 32px from md) and at the viewport's foot. The bottom margin keeps WordPress's absolutely positioned
+  // <main> under #wpbody-content for AppLayout. The bars stick instead, below the admin bar and at the
+  // viewport's foot. The bottom margin keeps WordPress's absolutely positioned
   // #wpfooter, which this app's CSS leaves no room for, from covering the actions.
   return (
     <div className="bg-background mb-16 flex min-h-[calc(100vh-32px)] flex-col">
       <Toaster />
-      <div className="bg-background sticky top-11.5 z-20 flex items-center gap-4 border-b px-6 py-3 md:top-8">
+      <div className={cn('bg-background sticky z-20 flex items-center gap-4 border-b px-6 py-3', BELOW_ADMIN_BAR)}>
         <span className="font-semibold">{WIZARD_TITLE()}</span>
         <span className="text-muted-foreground text-sm">{STEP_OF(step, SETUP_LAST_STEP)}</span>
         <Button type="button" variant="ghost" className="ml-auto" disabled={isBusy} onClick={onExit}>
