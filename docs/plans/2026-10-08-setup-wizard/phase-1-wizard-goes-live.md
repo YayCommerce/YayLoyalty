@@ -86,7 +86,7 @@ Expected: an error, because class `SetupHelper` is not found.
   - a missing or non-array option, or an unknown status, reads as `{completed, 5, null, true}`;
   - `step` is clamped to 1–5;
   - `draft` that fails `draft_error()` reads as `null`.
-- `draft_error()` checks every rule in the README's SetupDraft block and rejects unknown keys. The colour must match `/^#[0-9a-fA-F]{6}$/`, and the position must be in the launcher schema's options.
+- `draft_error()` checks every rule in the README's SetupDraft block and rejects unknown keys. The colour must be one `sanitize_hex_color()` accepts (`#rgb` or `#rrggbb`, through `DesignCoercion` and the design schema's `brand_color` rule), and the position must be in the launcher schema's options.
 - `save_draft()` and `mark_completed()` (status `completed`, step 5, draft `null`) write with `update_option( …, true )`. `dismiss_first_run()` does too.
 - `LocalizeHelper::get_admin_data()` adds `'setup' => SetupHelper::localized_state()` beside `settings` and `design`.
 
@@ -418,7 +418,7 @@ Message: `feat(setup): add the points, earning, spending and look steps`
   - "Points are worth: N = X off";
   - "Redemption limits: from N points, up to M% of the subtotal";
   - "Launcher: {position label}, {colour}".
-- **"What this creates":** the campaign names from the live Campaigns query (Points for purchases · Points for signing up · Points for writing a review), linking to `#/campaigns`, and the reward "Points for discount", linking to `#/rewards`.
+- **"What this creates":** the campaign names from the live Campaigns query (Points for purchases · Points for signing up · Points for writing a review) and the reward's name, with no links out: leaving would drop unsaved edits (spec UI amended 2026-10-09).
 - **"When you turn it on":** exactly two rows. "The three campaigns start earning on the next order that completes; orders already placed are not counted." and "The launcher appears on your storefront."
 - **Footer on step 5:** the button "Turn on my program", which calls `completeSetup(draft)` and then `navigate('/dashboard')`, and the link "Save and finish later", which saves the draft at step 5 and then `navigate('/dashboard')`. On a 409, the mutation's error toast shows and the page goes to `#/dashboard`.
 

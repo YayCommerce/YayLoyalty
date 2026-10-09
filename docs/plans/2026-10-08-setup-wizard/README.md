@@ -81,7 +81,7 @@
   signup:   { enabled: bool, points: int ≥0 },
   review:   { enabled: bool, points: int ≥0 },
   reward:   { points: int ≥1, amount: decimal string >0, min_points: int ≥0, max_percent: int 1–100 },
-  launcher: { position: 'bottom_right'|'bottom_left', brand_color: '#rrggbb' } }
+  launcher: { position: 'bottom_right'|'bottom_left', brand_color: '#rgb'|'#rrggbb' } }
 ```
 A decimal string matches `/^\d+(\.\d+)?$/`.
 

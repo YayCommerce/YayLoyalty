@@ -1,6 +1,6 @@
 # Setup Wizard Design
 
-**Status:** accepted 2026-10-08
+**Status:** accepted 2026-10-08; UI amended 2026-10-09: step 5's "What this creates" has no links, since leaving the wizard there would drop unsaved edits; the dashboard links to those screens after go-live
 **Related:** Wireframes F16 "Setup wizard: five steps, then the first day" (`YayLoyalty Setup Wizard.dc.html`, artboards 1a–1g, with 1f, the Pro step 2 variant, dropped); branch `paul/feat/setup-wizard`
 
 ## Goal
@@ -142,7 +142,7 @@ A merchant who installs YayLoyalty for the first time sets up and turns on their
 - Full-screen `#/setup` with the header "YayLoyalty setup · Step n of 5 · Exit setup" and the footer "‹ Back · Skip · Continue". Each step's content follows the wireframes 1a–1e, minus the skipped controls.
 - Step 5:
   - the program card, with each row's Edit link;
-  - "What this creates": the 3 campaigns and 1 reward, linking to `#/campaigns` and `#/rewards`;
+  - "What this creates": the 3 campaigns and 1 reward, by name, with no links out (leaving would drop unsaved edits);
   - "When you turn it on": two rows only. "The three campaigns start earning on the next order that completes; orders already placed are not counted." and "The launcher appears on your storefront.";
   - the "Turn on my program" button and the "Save and finish later" link.
 - Dashboard:
