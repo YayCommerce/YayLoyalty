@@ -14,7 +14,7 @@ use YayLoyalty\Utils\Dates;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The setup wizard's one read and one write. Both work on rows and options that already exist:
+ * The setup wizard's two writes. Both work on rows and options that already exist:
  * the settings and design options, the three built-in campaigns and the cart discount the installer seeds.
  * The wizard edits a few config keys of each row, so its values are merged over the stored config
  * and every key it never shows survives.
@@ -33,17 +33,6 @@ final class SetupService {
     public function __construct( CampaignRepository $campaigns, RewardRepository $rewards ) {
         $this->campaigns = $campaigns;
         $this->rewards   = $rewards;
-    }
-
-    /**
-     * The wizard's values as stored now, in the setup payload shape.
-     *
-     * @return array<string, mixed>
-     */
-    public function current(): array {
-        $this->rows = null;
-
-        return $this->payload();
     }
 
     /** @return array<string, mixed> The setup payload from the rows already loaded. */
@@ -102,7 +91,7 @@ final class SetupService {
     /**
      * Saves every wizard choice and marks setup done. validation_error() must have returned null.
      *
-     * @return array<string, mixed> current(), built from the rows just saved.
+     * @return array<string, mixed> The saved values, built from the rows just saved.
      */
     public function complete( array $input ): array {
         $rows    = $this->rows();
