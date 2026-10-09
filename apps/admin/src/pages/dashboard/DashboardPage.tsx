@@ -11,11 +11,13 @@ import PageLayout from '@/components/layout/PageLayout';
 import { DashboardProPanels } from '@/pro';
 import { DashboardAnomalyPanel } from './components/DashboardAnomalyPanel';
 import { DashboardCacheStrip } from './components/DashboardCacheStrip';
+import { DashboardFirstRun } from './components/DashboardFirstRun';
 import { DashboardNoticeStrip } from './components/DashboardNoticeStrip';
 import { DashboardPointsChart } from './components/DashboardPointsChart';
 import { DashboardProTeasers } from './components/DashboardProTeasers';
 import { DashboardRangeControl } from './components/DashboardRangeControl';
 import { DashboardRecentActivity } from './components/DashboardRecentActivity';
+import { DashboardSetupPending } from './components/DashboardSetupPending';
 import { DashboardSkeleton } from './components/DashboardSkeleton';
 import { DashboardStatsGrid } from './components/DashboardStatsGrid';
 import { DashboardTopEarners } from './components/DashboardTopEarners';
@@ -40,6 +42,8 @@ export default function DashboardPage() {
       )
     : {};
   const isDimmed = query.isPlaceholderData || (query.isFetching && !query.isPending);
+  // Updated in place by the setup mutations, which navigate here afterwards, so a render reads it fresh.
+  const setup = window.yayLoyaltyAdmin.setup;
 
   return (
     <PageLayout
@@ -62,6 +66,9 @@ export default function DashboardPage() {
       >
         <div className="bg-primary h-full w-1/3 animate-pulse" />
       </div>
+
+      {setup.status === 'pending' && <DashboardSetupPending />}
+      {setup.status === 'completed' && !setup.first_run_dismissed && <DashboardFirstRun />}
 
       {data && <DashboardNoticeStrip notices={data.notices} />}
 

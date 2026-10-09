@@ -5,6 +5,7 @@ use YayLoyalty\Database\Transaction;
 use YayLoyalty\Enums\Status;
 use YayLoyalty\Helpers\DesignHelper;
 use YayLoyalty\Helpers\SettingsHelper;
+use YayLoyalty\Helpers\SetupHelper;
 use YayLoyalty\Models\AbstractModel;
 use YayLoyalty\Models\Campaign;
 use YayLoyalty\Models\Reward;
@@ -50,14 +51,14 @@ final class SetupApplier {
 
                 $max_percent = (int) $draft['reward']['max_percent'];
 
-                $this->write( $purchase, $this->campaigns, [ 'points_per_unit' => (int) $draft['earn']['points'] / (float) $draft['earn']['amount'] ], true );
+                $this->write( $purchase, $this->campaigns, [ 'points_per_unit' => SetupHelper::rate( (int) $draft['earn']['points'], (string) $draft['earn']['amount'] ) ], true );
                 $this->write( $signup, $this->campaigns, [ 'points' => (int) $draft['signup']['points'] ], (bool) $draft['signup']['enabled'] );
                 $this->write( $review, $this->campaigns, [ 'points' => (int) $draft['review']['points'] ], (bool) $draft['review']['enabled'] );
                 $this->write(
                     $reward,
                     $this->rewards,
                     [
-                        'points_per_currency_unit' => (int) $draft['reward']['points'] / (float) $draft['reward']['amount'],
+                        'points_per_currency_unit' => SetupHelper::rate( (int) $draft['reward']['points'], (string) $draft['reward']['amount'] ),
                         'min_points'               => (int) $draft['reward']['min_points'],
                         // 100% is no cap, which is stored as null, never 100.
                         'max_percent_of_subtotal'  => $max_percent < 100 ? $max_percent : null,

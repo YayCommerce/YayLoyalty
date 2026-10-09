@@ -73,6 +73,11 @@ class SetupHelper {
         add_option( self::OPTION_SETUP, self::pending_state() );
     }
 
+    /** Points per 1 currency unit from a draft's "N points per X" pair; the caller has validated the draft, so X is above 0. */
+    public static function rate( int $points, string $amount ): float {
+        return $points / (float) $amount;
+    }
+
     /**
      * Why $draft cannot be saved or applied, or null when it is valid.
      *

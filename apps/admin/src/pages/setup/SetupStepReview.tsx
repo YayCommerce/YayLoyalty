@@ -1,21 +1,15 @@
-import { useQuery } from '@tanstack/react-query';
 import { CheckIcon } from 'lucide-react';
 import { useFormContext, useWatch } from 'react-hook-form';
 
-import { can, CAP } from '@/lib/access';
 import { parseWPCurrency, storeCurrency } from '@/lib/helpers/format.helper';
 import { formatPoints } from '@/lib/helpers/points.helper';
-import { CAMPAIGN_QUERIES } from '@/lib/queries/campaign.queries';
-import { REWARD_QUERIES } from '@/lib/queries/reward.queries';
+import { useSetupBuiltinNames } from '@/lib/queries/setup.queries';
 import type { SetupDraft } from '@/lib/schema/setup.schema';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { launcherPositionLabel } from '../settings/design-settings.option-labels';
 import * as copy from './setup-wizard.copy';
 import { SetupStepHeading } from './SetupFields';
-
-/** Enough rows for every built-in campaign, whatever a Pro store has added around them. */
-const LIST_PARAMS = { perPage: 100 };
 
 /** Step 5: every answer with a link back to its step, what Turn on creates, and what it changes for customers. */
 export function SetupStepReview({ onEdit }: { onEdit: (step: number) => void }) {
@@ -108,11 +102,7 @@ export function SetupStepReview({ onEdit }: { onEdit: (step: number) => void }) 
  * edits before the program is live; the dashboard hands over to those screens afterwards.
  */
 function WhatThisCreates() {
-  // Only users who may open each list ask for it; anyone else sees the seeded names.
-  const campaigns = useQuery({ ...CAMPAIGN_QUERIES.list(LIST_PARAMS), enabled: can(CAP.MANAGE_CAMPAIGNS) });
-  const rewards = useQuery({ ...REWARD_QUERIES.list(LIST_PARAMS), enabled: can(CAP.MANAGE_REWARDS) });
-  const names = campaigns.data?.data.filter((campaign) => campaign.is_builtin).map((campaign) => campaign.name);
-  const rewardName = rewards.data?.data.find((reward) => reward.is_builtin)?.name;
+  const { campaigns: names, reward: rewardName } = useSetupBuiltinNames();
 
   return (
     <Card>

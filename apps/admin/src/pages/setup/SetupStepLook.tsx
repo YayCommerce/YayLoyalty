@@ -16,6 +16,7 @@ import {
   NOTHING_PUBLISHED,
 } from './setup-wizard.copy';
 import { SetupStepHeading } from './SetupFields';
+import { SetupLookPreview } from './SetupLookPreview';
 
 /** Step 4: the two launcher choices that are enough to go live. The rest waits in Settings → Design. */
 export function SetupStepLook() {
@@ -64,6 +65,8 @@ export function SetupStepLook() {
           </Field>
         </CardContent>
       </Card>
+
+      <SetupLookPreview />
 
       <p className="text-muted-foreground text-sm">{LOOK_LATER()}</p>
     </>

@@ -56,6 +56,9 @@
 - **A shop manager runs setup.** Every `/setup` route answers that user, while `/settings` still refuses them. Phase 1 Task 3, step 3.
 - **Complete pressed twice, or in two tabs.** The second call gets 409 and nothing changes. Phase 1 Task 3, step 3.
 - **A currency with 0 decimals.** The minimum's money value rounds to 0 decimals, with no ".00". Phase 1 Task 5, step 3.
+- **The Design tab's preview after `documents()` gains `$earn`.** Its output must not change. Phase 2 Task 1, steps 1 and 3.
+- **The draft's labels leak past the preview.** The `pre_option` filter must be gone once `/setup/preview` returns, even when it throws. Phase 2 Task 1, step 6.
+- **A view-only user on the first-run dashboard.** The card must not call routes that need `manage_*`. Phase 2 Task 2, step 9.
 
 ## Phases
 

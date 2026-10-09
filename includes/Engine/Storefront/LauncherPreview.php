@@ -38,14 +38,21 @@ CSS;
     /**
      * The button alone and the open panel, from one view.
      *
-     * @param array $design    DesignHelper::with_unsaved().
-     * @param bool  $is_member A signed-in sample shopper, or a guest.
+     * @param array                                                   $design    DesignHelper::with_unsaved().
+     * @param bool                                                    $is_member A signed-in sample shopper, or a guest.
+     * @param array{purchase: ?float, signup: ?int, review: ?int}|null $earn      The setup wizard's draft rates; null keeps the store's own.
      * @return array{collapsed: string, expanded: string}
      */
-    public static function documents( array $design, bool $is_member ): array {
+    public static function documents( array $design, bool $is_member, ?array $earn = null ): array {
         $payload = ( new LauncherPayload( new CampaignRepository(), new RewardRepository(), new CustomerRepository() ) )
             ->for_balance( $design, $is_member ? self::SAMPLE_BALANCE : null );
-        $view    = Launcher::view( $design, $payload, false );
+
+        if ( null !== $earn ) {
+            // As LauncherEarnRules::advertise(): no signup row on a store where shoppers can't register.
+            $payload['earn'] = null === $payload['register'] ? array_merge( $earn, [ 'signup' => null ] ) : $earn;
+        }
+
+        $view = Launcher::view( $design, $payload, false );
 
         if ( $is_member ) {
             $view['activity'] = ShopperActivityRow::items( self::sample_entries() );

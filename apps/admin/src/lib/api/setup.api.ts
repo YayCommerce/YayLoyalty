@@ -1,4 +1,6 @@
 import { api } from '@/lib/api/api';
+import type { DesignPreviewViewer } from '@/lib/api/design.api';
+import { DesignPreview, designPreviewSchema } from '@/lib/schema/design.schema';
 import {
   setupCompleteResponseSchema,
   setupDismissResponseSchema,
@@ -26,6 +28,11 @@ export async function saveSetupDraft(step: number, draft: SetupDraft) {
 /** Writes every answer in one transaction and turns the program on; 409 once setup is complete. */
 export async function completeSetup(draft: SetupDraft) {
   return setupCompleteResponseSchema.parse(await api.post('setup/complete', { json: { draft } }).json());
+}
+
+/** The launcher drawn with the draft's look, labels and earn rates; nothing is saved. */
+export async function previewSetup(draft: SetupDraft, viewer: DesignPreviewViewer): Promise<DesignPreview> {
+  return designPreviewSchema.parse(await api.post('setup/preview', { json: { draft, viewer } }).json());
 }
 
 export async function dismissFirstRun() {

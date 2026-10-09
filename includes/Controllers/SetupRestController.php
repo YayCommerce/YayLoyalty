@@ -4,6 +4,7 @@ namespace YayLoyalty\Controllers;
 use YayLoyalty\Access\Capabilities;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Enums\RewardType;
+use YayLoyalty\Engine\Storefront\LauncherPreview;
 use YayLoyalty\Enums\Status;
 use YayLoyalty\Helpers\DesignHelper;
 use YayLoyalty\Helpers\SettingsHelper;
@@ -17,7 +18,7 @@ use YayLoyalty\Services\SetupApplier;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * GET /setup and POST /setup/draft, /setup/complete and /setup/dismiss-first-run.
+ * GET /setup and POST /setup/draft, /setup/complete, /setup/dismiss-first-run and /setup/preview.
  * Every route needs only the view capability, by product decision: any YayLoyalty user may finish
  * setup, including the labels and launcher look the Settings routes reserve for manage_settings.
  */
@@ -43,6 +44,17 @@ class SetupRestController extends AbstractRestController {
             [
                 'methods'             => \WP_REST_Server::READABLE,
                 'callback'            => fn( $request ) => $this->exec_read( [ $this, 'get_setup' ], $request ),
+                'permission_callback' => $this->requires( Capabilities::VIEW ),
+            ]
+        );
+
+        // POST although it saves nothing: the draft is too large for a query string.
+        register_rest_route(
+            self::REST_NAMESPACE,
+            '/setup/preview',
+            [
+                'methods'             => \WP_REST_Server::CREATABLE,
+                'callback'            => fn( $request ) => $this->exec_read( [ $this, 'preview' ], $request ),
                 'permission_callback' => $this->requires( Capabilities::VIEW ),
             ]
         );
@@ -112,6 +124,51 @@ class SetupRestController extends AbstractRestController {
         SetupHelper::mark_completed();
 
         return [ 'status' => SetupHelper::STATUS_COMPLETED ];
+    }
+
+    /**
+     * The storefront launcher drawn with the draft's look, labels and earn rates, as the Design tab's
+     * preview draws it. `viewer` is `guest` for the signed-out panel; anything else shows the sample member.
+     *
+     * @return array{collapsed: string, expanded: string}|\WP_Error
+     */
+    public function preview( \WP_REST_Request $request ) {
+        $draft = $request->get_param( 'draft' );
+        $error = SetupHelper::draft_error( $draft );
+
+        if ( null !== $error ) {
+            return $this->error_invalid_arguments( $error );
+        }
+
+        $earn = [
+            'purchase' => SetupHelper::rate( (int) $draft['earn']['points'], (string) $draft['earn']['amount'] ),
+            'signup'   => $draft['signup']['enabled'] ? (int) $draft['signup']['points'] : null,
+            'review'   => $draft['review']['enabled'] ? (int) $draft['review']['points'] : null,
+        ];
+
+        // The labels are read from the settings option all through the templates, so they are swapped
+        // for this call only. SettingsHelper's cache is keyed on the raw option, so it sees the swap.
+        $saved  = get_option( SettingsHelper::OPTION_SETTINGS, [] );
+        $labels = array_merge(
+            is_array( $saved ) ? $saved : [],
+            [
+                'points_label_singular' => $draft['points_label_singular'],
+                'points_label_plural'   => $draft['points_label_plural'],
+            ]
+        );
+        $filter = fn() => $labels;
+
+        add_filter( 'pre_option_' . SettingsHelper::OPTION_SETTINGS, $filter );
+
+        try {
+            return LauncherPreview::documents(
+                DesignHelper::with_unsaved( [ 'launcher' => $draft['launcher'] ] ),
+                'guest' !== $request->get_param( 'viewer' ),
+                $earn
+            );
+        } finally {
+            remove_filter( 'pre_option_' . SettingsHelper::OPTION_SETTINGS, $filter );
+        }
     }
 
     public function dismiss_first_run( \WP_REST_Request $request ) {

@@ -7,6 +7,8 @@ import type { SetupLocalized } from '@/lib/schema/setup.schema';
 export type Meta = {
   wpMeta: {
     siteUrl: string;
+    /** The storefront's front page. */
+    homeUrl: string;
     adminUrl: string;
     ajaxUrl: string;
 

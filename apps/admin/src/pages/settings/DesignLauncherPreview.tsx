@@ -23,19 +23,19 @@ import { usePreviewHighlight } from './design-settings.preview-highlight';
 import { LauncherPreviewFrame, type PreviewDevice } from './LauncherPreviewFrame';
 
 /** The two frames, top to bottom: the button alone, then the open panel. */
-const STAGES = [
+export const STAGES = [
   { key: 'collapsed', label: PREVIEW_COLLAPSED, skeletonClassName: 'h-36' },
   { key: 'expanded', label: PREVIEW_EXPANDED, skeletonClassName: 'h-96' },
 ] as const;
 
 /** Page heights inside each frame: the button needs a corner of a page, the open panel nearly a screen. */
-const FRAME_HEIGHT_PX: Record<PreviewDevice, Record<(typeof STAGES)[number]['key'], number>> = {
+export const FRAME_HEIGHT_PX: Record<PreviewDevice, Record<(typeof STAGES)[number]['key'], number>> = {
   desktop: { collapsed: 220, expanded: 640 },
   mobile: { collapsed: 280, expanded: 760 },
 };
 
 /** Wait this long after the last keystroke before redrawing, so typing a label sends one request, not one per letter. */
-const REDRAW_DELAY_MS = 300;
+export const REDRAW_DELAY_MS = 300;
 
 /**
  * The launcher as the storefront draws it, redrawn by the server from the

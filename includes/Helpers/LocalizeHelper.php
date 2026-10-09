@@ -36,6 +36,7 @@ class LocalizeHelper {
         $meta = [
             'wpMeta'      => [
                 'siteUrl'      => esc_url_raw( site_url() ),
+                'homeUrl'      => esc_url_raw( home_url() ),
                 'adminUrl'     => esc_url_raw( admin_url() ),
                 'ajaxUrl'      => esc_url_raw( admin_url( 'admin-ajax.php' ) ),
 

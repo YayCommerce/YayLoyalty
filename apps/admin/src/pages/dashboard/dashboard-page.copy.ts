@@ -153,3 +153,27 @@ export function sevenDayCollapse(series: DashboardSeriesPoint[]): number | null 
 
   return delta === null || delta >= 0 ? null : -delta;
 }
+
+/** ─── Setup and first run ───────────────────────────── */
+
+export const SETUP_PENDING_TITLE = () => __('Finish setting up your program', 'yayloyalty');
+export const SETUP_PENDING_ACTION = () => __('Finish setup', 'yayloyalty');
+export const FIRST_RUN_TITLE = () => __('Your program is live', 'yayloyalty');
+export const FIRST_RUN_BODY = () => __('Customers can earn from their next completed order.', 'yayloyalty');
+export const FIRST_RUN_STOREFRONT = () => __('View your storefront', 'yayloyalty');
+export const FIRST_RUN_DISMISS = () => __('Dismiss', 'yayloyalty');
+export const FIRST_RUN_DISMISS_ERROR = () => __('Could not dismiss this.', 'yayloyalty');
+export const PROGRAM_CARD_TITLE = () => __('Your program', 'yayloyalty');
+export const PROGRAM_CARD_CAMPAIGNS = () => __('Campaigns', 'yayloyalty');
+export const PROGRAM_CARD_REWARDS = () => __('Rewards', 'yayloyalty');
+export const PROGRAM_CARD_SETTINGS = () => __('Settings', 'yayloyalty');
+
+/** "Points for discount · 200 Stars = $1.00" */
+export const PROGRAM_CARD_REWARD = (points: string, label: string, money: string) =>
+  sprintf(
+    /* translators: 1: points, formatted; 2: the store's points label; 3: the money they take off, formatted. */
+    __('Points for discount · %1$s %2$s = %3$s', 'yayloyalty'),
+    points,
+    label,
+    money,
+  );
