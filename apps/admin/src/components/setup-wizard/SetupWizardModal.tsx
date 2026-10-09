@@ -58,13 +58,15 @@ function SetupWizard({ setup, onClose }: { setup: Setup; onClose: () => void }) 
     setStep((current) => Math.min(current + 1, WIZARD_STEP_COUNT) as WizardStep);
   };
 
-  const onTurnOn = () => {
+  // Exit finishes setup too: the answers so far, plus the defaults for steps not reached, are saved
+  // and the wizard does not open again.
+  const finish = (successMessage: string) => {
     complete.mutate(toSetupPayload(form.getValues()), {
       onSuccess: () => {
-        toast.success(__('Your loyalty program is on.', 'yayloyalty'));
+        toast.success(successMessage);
         onClose();
       },
-      onError: (error) => toastApiError(error, __('Your program could not be turned on. Try again.', 'yayloyalty')),
+      onError: (error) => toastApiError(error, __('Your setup could not be saved. Try again.', 'yayloyalty')),
     });
   };
 
@@ -79,7 +81,14 @@ function SetupWizard({ setup, onClose }: { setup: Setup; onClose: () => void }) 
           {/* translators: 1: the current step number; 2: the number of steps. */}
           {sprintf(__('Step %1$d of %2$d', 'yayloyalty'), step, WIZARD_STEP_COUNT)}
         </span>
-        <button type="button" className="text-primary cursor-pointer text-xs hover:underline" onClick={onClose}>
+        <button
+          type="button"
+          className="text-primary cursor-pointer text-xs hover:underline disabled:opacity-50"
+          disabled={complete.isPending}
+          onClick={() =>
+            finish(__('Setup saved. You can change everything in Campaigns, Rewards and Settings.', 'yayloyalty'))
+          }
+        >
           {__('Exit setup', 'yayloyalty')}
         </button>
       </div>
@@ -112,7 +121,11 @@ function SetupWizard({ setup, onClose }: { setup: Setup; onClose: () => void }) 
                 <span className="text-muted-foreground text-xs">
                   {__('Under 30 minutes from activation', 'yayloyalty')}
                 </span>
-                <LoadingButton loading={complete.isPending} disabled={complete.isPending} onClick={onTurnOn}>
+                <LoadingButton
+                  loading={complete.isPending}
+                  disabled={complete.isPending}
+                  onClick={() => finish(__('Your loyalty program is on.', 'yayloyalty'))}
+                >
                   {__('Turn on my program', 'yayloyalty')}
                 </LoadingButton>
               </>

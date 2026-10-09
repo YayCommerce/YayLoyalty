@@ -11,7 +11,7 @@ export default function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const pathSegments = location.pathname.split('/').filter(Boolean);
-  // The wizard writes settings, so only a user who may manage them sees it. Exit hides it until the next load.
+  // The wizard writes settings, so only a user who may manage them sees it. Both exits save and finish setup.
   const [showSetup, setShowSetup] = useState(
     () => !window.yayLoyaltyMeta.loyaltyMeta.setupCompleted && can(CAP.MANAGE_SETTINGS),
   );

@@ -49,7 +49,7 @@ A merchant who opens YayLoyalty for the first time sets up the program in five s
 1. Given a fresh install (`yayloyalty_setup_completed` absent), when a user with `yayloyalty_manage_settings` opens the YayLoyalty admin page, the wizard modal opens on step 1, prefilled from `GET /setup`: Point, Points, 1 point per 1.00, signup on at 100, review on at 50, 100 points = 1.00, min 100, max 100%, `#1f6fb2`.
 2. A user without `yayloyalty_manage_settings` never sees the modal.
 3. Each step's preview line updates as fields change. Step 1 shows "You have 850 Points". Step 2 shows "A $50 order earns 50 points". Step 3 shows "500 points = $5 off".
-4. "Exit setup" closes the modal for this page load. Reloading reopens it, because the flag is still unset.
+4. "Exit setup" saves the answers so far (defaults for steps not reached) with the same `POST /setup` as "Turn on my program", closes the modal, and reloading does not reopen it. Changed 2026-10-09 at the user's request; it first closed without saving.
 5. On step 5, each Edit link opens its step: labels → 1; earn, signup, review → 2; worth, limits → 3; launcher → 4. Continue on that step then returns to step 5.
 6. "Turn on my program" sends one `POST /yayloyalty/v1/setup`. Afterwards:
    - `settings.points_label_*` and `enabled = true` are saved.
