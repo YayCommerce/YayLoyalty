@@ -7,11 +7,11 @@ import { ColorPicker } from '@/components/ui/color-picker';
 import { Segmented, SegmentedItem } from '@/components/ui/segmented';
 import type { PreviewDevice } from '@/pages/settings/LauncherPreviewFrame';
 import { LauncherPreview } from './LauncherPreview';
-import type { WizardStepProps } from './setup-wizard.form';
+import { DEFAULT_BRAND_COLOR, type WizardStepProps } from './setup-wizard.form';
 import { WizardSection, WizardStepHeading } from './WizardStepParts';
 
-/** Swatches offered before the free picker. The first matches DesignSchema's `launcher.brand_color` default. */
-const SWATCHES = ['#1f6fb2', '#2a2a2a', '#6a6a6a', '#c8c8c8'];
+/** Swatches offered before the free picker, the default brand colour first. */
+const SWATCHES = [DEFAULT_BRAND_COLOR, '#2a2a2a', '#6a6a6a', '#c8c8c8'];
 
 /** Step 4 (artboard 1d): one brand colour, with the launcher drawn from the answers so far. */
 export function LauncherLookStep({ form }: WizardStepProps) {

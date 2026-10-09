@@ -12,7 +12,6 @@ export function useCompleteSetupMutation() {
     mutationKey: ['setup', 'complete'],
     mutationFn: (data: Setup) => completeSetup(data),
     onSuccess: async () => {
-      window.yayLoyaltyMeta.loyaltyMeta.setupCompleted = true;
       queryClient.invalidateQueries({ queryKey: ['campaign'] });
       queryClient.invalidateQueries({ queryKey: ['reward'] });
       // Settings and design seed from window.yayLoyaltyAdmin and never go stale, so an invalidate is a
@@ -27,11 +26,5 @@ export function useCompleteSetupMutation() {
 
 /** "Exit setup": nothing is saved, the wizard just never opens again. */
 export function useDismissSetupMutation() {
-  return useMutation({
-    mutationKey: ['setup', 'dismiss'],
-    mutationFn: dismissSetup,
-    onSuccess: () => {
-      window.yayLoyaltyMeta.loyaltyMeta.setupCompleted = true;
-    },
-  });
+  return useMutation({ mutationKey: ['setup', 'dismiss'], mutationFn: dismissSetup });
 }

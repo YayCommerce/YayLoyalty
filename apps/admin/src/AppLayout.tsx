@@ -22,7 +22,14 @@ export default function AppLayout() {
 
       <main>
         <Toaster />
-        {showSetup && <SetupWizardModal onClose={() => setShowSetup(false)} />}
+        {showSetup && (
+          <SetupWizardModal
+            onClose={() => {
+              window.yayLoyaltyMeta.loyaltyMeta.setupCompleted = true;
+              setShowSetup(false);
+            }}
+          />
+        )}
         <Outlet />
       </main>
 
