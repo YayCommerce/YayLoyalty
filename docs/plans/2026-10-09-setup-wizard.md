@@ -2,7 +2,7 @@
 
 > **For agentic workers:** execute tasks in order, one at a time. Steps use `- [ ]` for tracking. Read the spec linked below before starting; the plan argues from it.
 
-**Status:** active
+**Status:** done 2026-10-09
 **Branch:** `paul/feat/wizard` (already created from `dev/edd`; PR into `dev/edd`)
 **Goal:** a five-step setup wizard modal over the admin SPA. "Turn on my program" saves every choice in one `POST /yayloyalty/v1/setup`.
 **Spec:** [docs/specs/2026-10-09-setup-wizard-design.md](../specs/2026-10-09-setup-wizard-design.md)
@@ -12,7 +12,7 @@
 - SPA: `apps/admin/src/AppLayout.tsx`, `apps/admin/src/types/localize.type.ts`, new `lib/{schema,api,queries}/setup.*.ts` and `components/setup-wizard/*`.
 - No shared code.
 
-**Tests:** `tests/integration/Controllers/SetupRouteTest.php`, integration suite. Accepted 2026-10-09. It guards the rate conversion and the writes to the built-in rows (Task 1).
+**Tests:** none. `tests/integration/Controllers/SetupRouteTest.php` was accepted, written and passed on 2026-10-09, then dropped by the user; Task 1's test steps are kept as a record. The Review focus items are checked by the Task 5 walkthrough.
 
 ## Global constraints
 
@@ -212,7 +212,7 @@ Message: `feat(setup): add setup completed flag and /setup REST route`
 - Produces:
   - `setupSchema` / `type Setup` (zod, snake_case, mirrors `SetupService::current()`).
   - `getSetup(): Promise<Setup>` and `completeSetup( data: Setup ): Promise<Setup>`.
-  - `useSetupQuery()` (key `['setup', 'main']`) and `useCompleteSetupMutation()`. On success, the mutation invalidates `['settings']`, `['design']`, `['campaign']` and `['reward']`, and sets `window.yayLoyaltyMeta.loyaltyMeta.setupCompleted = true`.
+  - `useSetupQuery()` (key `['setup', 'main']`) and `useCompleteSetupMutation()`. On success, the mutation sets `window.yayLoyaltyMeta.loyaltyMeta.setupCompleted = true`, invalidates `['campaign']` and `['reward']`, and fetches `SETTINGS_QUERIES.main` and `DESIGN_QUERIES.main` with `staleTime: 0`. Those two seed from `window.yayLoyaltyAdmin` with `staleTime: Infinity`, so an invalidate is a no-op before their tab mounts; their queryFns also refresh the window copy.
   - `type SetupForm`, the wizard's form values:
     - `pointsLabelSingular`, `pointsLabelPlural`
     - `earnPoints`, `earnSpend`
@@ -337,7 +337,7 @@ Message: `feat(setup): add earn and spend wizard steps`
 
 **Interfaces:**
 - Consumes: the step component contract and `SetupForm` from Task 2.
-- Produces: `LauncherPreview( { color, pluralLabel, balance: 850, earnPoints, earnSpend, worthPoints, worthAmount, minPoints, device: 'desktop' | 'mobile' } )`, a static simplified storefront.
+- Produces: `LauncherPreview( { device, values }: { device: PreviewDevice; values: LauncherPreviewValues } )`, a static simplified storefront. `LauncherPreviewValues = Pick<SetupForm, 'brandColor' | 'pointsLabelPlural' | 'earnPoints' | 'earnSpend' | 'worthPoints' | 'worthAmount' | 'minPoints'>`; `PreviewDevice` is reused from `pages/settings/LauncherPreviewFrame.tsx`; the balance is `SAMPLE_BALANCE = 850` from `setup-wizard.form.ts`.
 
 - [ ] **Step 1: Implement `LauncherLookStep.tsx`** (artboard 1d).
   - Title "Make it look like your store".

@@ -33,7 +33,7 @@ A merchant who opens YayLoyalty for the first time sets up the program in five s
 - A five-step wizard modal in the SPA, matching the design: header with "Step N of 5" and "Exit setup", a five-segment progress bar, Back and Continue buttons, and the live preview line on each step.
 - Step 4's storefront preview, with the Desktop/Mobile toggle changing the preview width.
 - Step 5's review card with an Edit link per row. Edit opens that step. While editing from review, Continue on that step returns to step 5.
-- "Turn on my program" posts everything, closes the modal and invalidates the settings, design, campaigns and rewards queries.
+- "Turn on my program" posts everything, closes the modal and refreshes the settings, design, campaigns and rewards data.
 
 **Out:**
 - Edge cases (per the request): validation beyond the existing server validators, a failed partial save, concurrent edits, other users.
@@ -89,7 +89,7 @@ A merchant who opens YayLoyalty for the first time sets up the program in five s
 - **SPA** (`apps/admin/src/`)
   - `lib/schema/setup.schema.ts`: zod copy of the payload.
   - `lib/api/setup.api.ts`: `getSetup`, `completeSetup`.
-  - `lib/queries/setup.queries.ts`: `useSetupQuery`, `useCompleteSetupMutation`, which invalidates the settings, design, campaigns and rewards keys.
+  - `lib/queries/setup.queries.ts`: `useSetupQuery`, `useCompleteSetupMutation`, which refreshes the settings, design, campaigns and rewards data.
   - `components/setup-wizard/SetupWizardModal.tsx`: the shell (header, progress, Back/Continue, step switch, the `returnToReview` state).
   - `components/setup-wizard/setup-wizard.form.ts`: the form type, mapping from GET, and building the POST body using `rateFromSpend`.
   - Step components in `components/setup-wizard/`:
