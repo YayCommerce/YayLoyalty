@@ -117,18 +117,13 @@ function SetupWizard({ setup, onClose }: { setup: Setup; onClose: () => void }) 
           </Button>
           <div className="ml-auto flex items-center gap-4">
             {step === 5 ? (
-              <>
-                <span className="text-muted-foreground text-xs">
-                  {__('Under 30 minutes from activation', 'yayloyalty')}
-                </span>
-                <LoadingButton
-                  loading={complete.isPending}
-                  disabled={complete.isPending}
-                  onClick={() => finish(__('Your loyalty program is on.', 'yayloyalty'))}
-                >
-                  {__('Turn on my program', 'yayloyalty')}
-                </LoadingButton>
-              </>
+              <LoadingButton
+                loading={complete.isPending}
+                disabled={complete.isPending}
+                onClick={() => finish(__('Your loyalty program is on.', 'yayloyalty'))}
+              >
+                {__('Turn on my program', 'yayloyalty')}
+              </LoadingButton>
             ) : (
               <Button onClick={onContinue}>{__('Continue', 'yayloyalty')}</Button>
             )}

@@ -6,7 +6,7 @@ import { formatPoints } from '@/lib/helpers/points.helper';
 import { MoneyInput, PointsInput } from '@/components/ui/custom/amount-inputs';
 import { Switch } from '@/components/ui/switch';
 import { pointsForSpend, type SetupForm, type WizardStepProps } from './setup-wizard.form';
-import { WizardNote, WizardPreview, WizardSection, WizardStepHeading } from './WizardStepParts';
+import { WizardPreview, WizardSection, WizardStepHeading } from './WizardStepParts';
 
 /** Step 2 (artboard 1b): the purchase rate plus the signup and review suggestions, the three built-in campaigns. */
 export function EarnPointsStep({ form }: WizardStepProps) {
@@ -71,12 +71,6 @@ export function EarnPointsStep({ form }: WizardStepProps) {
             hint={__('Verified purchases only, so reviews cannot be farmed for points.', 'yayloyalty')}
           />
         </div>
-        <WizardNote>
-          {__(
-            'These three become your campaigns. From tomorrow you edit them on the Campaigns screen, not here.',
-            'yayloyalty',
-          )}
-        </WizardNote>
       </WizardSection>
     </>
   );

@@ -7,7 +7,7 @@ import { POINTS_LABEL_MAX_LENGTH } from '@/pages/settings/general-settings.form'
 import { SAMPLE_BALANCE, type WizardStepProps } from './setup-wizard.form';
 import { WizardPreview, WizardSection, WizardStepHeading } from './WizardStepParts';
 
-/** Step 1 (artboard 1a): what the points are called, in both forms. */
+/** Step 1: what the points are called. */
 export function NamePointsStep({ form }: WizardStepProps) {
   const plural = useWatch({ control: form.control, name: 'pointsLabelPlural' });
 
@@ -32,9 +32,6 @@ export function NamePointsStep({ form }: WizardStepProps) {
               <span className="text-muted-foreground text-xs">{__('More than one', 'yayloyalty')}</span>
               <Input className="w-44" maxLength={POINTS_LABEL_MAX_LENGTH} {...form.register('pointsLabelPlural')} />
             </label>
-            <span className="text-muted-foreground pb-2.5 text-xs">
-              {__('Both forms, so nothing reads “1 points”.', 'yayloyalty')}
-            </span>
           </div>
         </div>
         <WizardPreview>
