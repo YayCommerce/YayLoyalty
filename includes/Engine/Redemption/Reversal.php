@@ -3,20 +3,17 @@ namespace YayLoyalty\Engine\Redemption;
 
 use YayLoyalty\Database\Transaction;
 use YayLoyalty\Engine\Earning\ClawbackMath;
-use YayLoyalty\Engine\Earning\IdempotencyKey;
 use YayLoyalty\Engine\Earning\Outcome;
 use YayLoyalty\Engine\Earning\Reversal as EarnReversal;
-use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Enums\ReferenceType;
-use YayLoyalty\Enums\RewardType;
 use YayLoyalty\Models\LedgerEntry;
 use YayLoyalty\Models\Redemption;
+use YayLoyalty\Models\Reward;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\RedemptionRepository;
 use YayLoyalty\Repositories\RewardRepository;
 use YayLoyalty\Services\LedgerService;
-use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -39,10 +36,6 @@ final class Reversal {
 
     /** Outcome::skipped reason: every key this event may write under is already in the ledger. */
     public const REASON_KEY_SPENT = 'key_spent';
-
-    private const POLICY_PROPORTIONAL = 'proportional';
-    private const POLICY_FULL         = 'full';
-    private const POLICY_NONE         = 'none';
 
     private LedgerService $ledger;
 
@@ -70,11 +63,8 @@ final class Reversal {
 
         return $this->settle_each(
             $order_id,
+            [ Redemption::STATUS_APPLIED ],
             function ( Redemption $row ) use ( $order_id ): Outcome {
-                if ( Redemption::STATUS_APPLIED !== $row->get_status() ) {
-                    return Outcome::skipped( self::REASON_NOTHING_TO_MOVE );
-                }
-
                 return $this->restore( $row, $row->get_points(), Redemption::STATUS_CANCELLED, self::order_then_redemption( $row, $order_id ) );
             }
         );
@@ -88,11 +78,8 @@ final class Reversal {
     public function refunded( \WC_Order $order, int $refund_id ): array {
         return $this->settle_each(
             (int) $order->get_id(),
+            [ Redemption::STATUS_APPLIED ],
             function ( Redemption $row ) use ( $order, $refund_id ): Outcome {
-                if ( Redemption::STATUS_APPLIED !== $row->get_status() ) {
-                    return Outcome::skipped( self::REASON_NOTHING_TO_MOVE );
-                }
-
                 $target = $this->refund_target( $order, $row );
 
                 return $this->restore( $row, $target, self::status_at( $row, $target ), [ [ ReferenceType::REFUND, $refund_id ] ] );
@@ -115,12 +102,9 @@ final class Reversal {
 
         return $this->settle_each(
             $order_id,
+            [ Redemption::STATUS_APPLIED ],
             function ( Redemption $row ) use ( $order_id ): Outcome {
-                if ( Redemption::STATUS_APPLIED !== $row->get_status() ) {
-                    return Outcome::skipped( self::REASON_NOTHING_TO_MOVE );
-                }
-
-                $target = self::POLICY_NONE === $this->policy_of( $row ) ? 0 : $row->get_points();
+                $target = Reward::REFUND_POLICY_NONE === $this->policy_of( $row ) ? 0 : $row->get_points();
 
                 return $this->restore( $row, $target, self::status_at( $row, $target ), self::order_then_redemption( $row, $order_id ) );
             }
@@ -142,11 +126,8 @@ final class Reversal {
 
         return $this->settle_each(
             $order_id,
+            [ Redemption::STATUS_APPLIED, Redemption::STATUS_REFUNDED ],
             function ( Redemption $row ) use ( $order, $refund_id ): Outcome {
-                if ( ! in_array( $row->get_status(), [ Redemption::STATUS_APPLIED, Redemption::STATUS_REFUNDED ], true ) ) {
-                    return Outcome::skipped( self::REASON_NOTHING_TO_MOVE );
-                }
-
                 return $this->debit( $row, $this->refund_target( $order, $row ), ReferenceType::REFUND, $refund_id, true, sprintf( 'Refund #%d deleted', $refund_id ) );
             }
         );
@@ -162,11 +143,8 @@ final class Reversal {
     public function uncancelled( \WC_Order $order ): array {
         return $this->settle_each(
             (int) $order->get_id(),
+            [ Redemption::STATUS_CANCELLED ],
             function ( Redemption $row ) use ( $order ): Outcome {
-                if ( Redemption::STATUS_CANCELLED !== $row->get_status() ) {
-                    return Outcome::skipped( self::REASON_NOTHING_TO_MOVE );
-                }
-
                 return $this->debit( $row, $this->refund_target( $order, $row ), ReferenceType::REDEMPTION, (int) $row->get_id(), false, 'Order restored' );
             }
         );
@@ -175,12 +153,14 @@ final class Reversal {
     /**
      * Runs $event once per slider redemption row of the order, each in its own transaction holding the
      * customer lock and then the row lock. The lock is on the row's user, not the order's customer:
-     * an admin may have reassigned the order.
+     * an admin may have reassigned the order. A row that is gone, or whose locked status the event does not
+     * act on, answers REASON_NOTHING_TO_MOVE.
      *
-     * @param callable(Redemption): Outcome $event Receives the locked row.
+     * @param string[]                      $statuses The Redemption statuses this event acts on.
+     * @param callable(Redemption): Outcome $event    Receives the locked row.
      * @return Outcome[]
      */
-    private function settle_each( int $order_id, callable $event ): array {
+    private function settle_each( int $order_id, array $statuses, callable $event ): array {
         $outcomes = [];
 
         foreach ( $this->redemptions->for_order( $order_id ) as $stale ) {
@@ -189,14 +169,16 @@ final class Reversal {
             }
 
             $outcomes[] = Transaction::run(
-                function () use ( $stale, $event ): Outcome {
-                    // Materialise before locking: a missing row gap-locks and two first-touch writers both insert.
-                    $this->customers->ensure_row( $stale->get_user_id() );
-                    $this->customers->lock_and_get( $stale->get_user_id() );
+                function () use ( $stale, $statuses, $event ): Outcome {
+                    $this->customers->ensure_and_lock( $stale->get_user_id() );
 
                     $row = $this->redemptions->lock( (int) $stale->get_id() );
 
-                    return null === $row ? Outcome::skipped( self::REASON_NOTHING_TO_MOVE ) : $event( $row );
+                    if ( null === $row || ! in_array( $row->get_status(), $statuses, true ) ) {
+                        return Outcome::skipped( self::REASON_NOTHING_TO_MOVE );
+                    }
+
+                    return $event( $row );
                 }
             );
         }
@@ -217,7 +199,7 @@ final class Reversal {
         }
 
         foreach ( $keys as list( $reference_type, $reference_id ) ) {
-            $outcome = $this->ledger->refund_redeem( $this->draft( $row, LedgerType::REFUND_REDEEM, $points, $reference_type, $reference_id, null ) );
+            $outcome = $this->ledger->refund_redeem( self::draft( $row, LedgerType::REFUND_REDEEM, $points, $reference_type, $reference_id, null ) );
 
             if ( Outcome::AWARDED === $outcome->get_status() ) {
                 $this->redemptions->record_restore( (int) $row->get_id(), $target, $status );
@@ -237,7 +219,7 @@ final class Reversal {
             return Outcome::skipped( self::REASON_NOTHING_TO_MOVE );
         }
 
-        $outcome = $this->ledger->redeem( $this->draft( $row, LedgerType::REDEEM, -$points, $reference_type, $reference_id, $note ), $allow_negative );
+        $outcome = $this->ledger->redeem( self::draft( $row, LedgerType::REDEEM, -$points, $reference_type, $reference_id, $note ), $allow_negative );
 
         if ( Outcome::DUPLICATE === $outcome->get_status() ) {
             return Outcome::skipped( self::REASON_KEY_SPENT );
@@ -263,9 +245,9 @@ final class Reversal {
         }
 
         switch ( $this->policy_of( $row ) ) {
-            case self::POLICY_NONE:
+            case Reward::REFUND_POLICY_NONE:
                 return 0;
-            case self::POLICY_FULL:
+            case Reward::REFUND_POLICY_FULL:
                 return $row->get_points();
             default:
                 return ClawbackMath::owed( $row->get_points(), $refunded_total, (float) $order->get_total(), $is_fully_refunded );
@@ -277,7 +259,7 @@ final class Reversal {
         $reward = $this->rewards->find_reward( $row->get_reward_id() );
         $policy = null === $reward ? null : ( $reward->get_config()['refund_policy'] ?? null );
 
-        return in_array( $policy, [ self::POLICY_FULL, self::POLICY_NONE ], true ) ? $policy : self::POLICY_PROPORTIONAL;
+        return in_array( $policy, [ Reward::REFUND_POLICY_FULL, Reward::REFUND_POLICY_NONE ], true ) ? $policy : Reward::REFUND_POLICY_PROPORTIONAL;
     }
 
     /** `refunded` only when every point is restored. */
@@ -294,24 +276,8 @@ final class Reversal {
         return [ [ ReferenceType::ORDER, $order_id ], [ ReferenceType::REDEMPTION, (int) $row->get_id() ] ];
     }
 
-    /** A ledger draft for the row's customer and order, carrying its redemption id and keyed on the given reference. balance_after is computed under the lock. */
-    private function draft( Redemption $row, string $type, int $points, string $reference_type, int $reference_id, ?string $note ): LedgerEntry {
-        return new LedgerEntry(
-            null,
-            $row->get_user_id(),
-            $points,
-            0,
-            $type,
-            LedgerSource::ORDER,
-            $reference_type,
-            $reference_id,
-            null,
-            (int) $row->get_id(),
-            $row->get_order_id(),
-            $note,
-            null,
-            Dates::now(),
-            IdempotencyKey::compose( $type, $row->get_user_id(), $reference_type, $reference_id, RewardType::FLEXIBLE_DISCOUNT )
-        );
+    /** RedemptionDraft::of() for the row's customer, order and id. */
+    private static function draft( Redemption $row, string $type, int $points, string $reference_type, int $reference_id, ?string $note ): LedgerEntry {
+        return RedemptionDraft::of( $row->get_user_id(), $row->get_order_id(), (int) $row->get_id(), $type, $points, $reference_type, $reference_id, $note );
     }
 }

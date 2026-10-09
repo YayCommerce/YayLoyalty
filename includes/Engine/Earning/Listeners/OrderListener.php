@@ -66,7 +66,7 @@ final class OrderListener {
         Log::debug( 'OrderListener', 'order #' . $order_id . ' ' . $from . ' -> ' . $to );
 
         if ( in_array( $from, self::DEAD_STATUSES, true ) && in_array( $to, self::LIVE_STATUSES, true ) ) {
-            ListenerGuard::for_order( 'OrderListener', 'restore', $order_id, fn() => $this->reversals->on_uncancelled( $order ) );
+            $this->restore( $order_id, $order );
         }
 
         $this->route( $order_id, $to, $order );
@@ -81,8 +81,13 @@ final class OrderListener {
         $order = wc_get_order( $order_id );
 
         if ( $order instanceof \WC_Order && in_array( $order->get_status(), self::LIVE_STATUSES, true ) ) {
-            ListenerGuard::for_order( 'OrderListener', 'restore', $order_id, fn() => $this->reversals->on_uncancelled( $order ) );
+            $this->restore( $order_id, $order );
         }
+    }
+
+    /** An order back from cancelled or the trash: hands it to the reversal listener under the guard. */
+    private function restore( int $order_id, \WC_Order $order ): void {
+        ListenerGuard::for_order( 'OrderListener', 'restore', $order_id, fn() => $this->reversals->on_uncancelled( $order ) );
     }
 
     /** Routes a new order's first status, which on_status_changed() never sees. */

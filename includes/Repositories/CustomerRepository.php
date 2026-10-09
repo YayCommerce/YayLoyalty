@@ -77,6 +77,18 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
     }
 
     /**
+     * ensure_row() then lock_and_get(), in the only safe order: materialise before locking, because a missing
+     * row gap-locks and two first-touch writers both insert. Call inside a transaction.
+     *
+     * @throws QueryException When a write or the locking read fails.
+     */
+    public function ensure_and_lock( int $user_id ): Customer {
+        $this->ensure_row( $user_id );
+
+        return $this->lock_and_get( $user_id );
+    }
+
+    /**
      * Reads the row under a row lock. Inside a transaction, after ensure_row(): a missing row would gap-lock instead.
      *
      * @throws QueryException When the row is missing after ensure_row().

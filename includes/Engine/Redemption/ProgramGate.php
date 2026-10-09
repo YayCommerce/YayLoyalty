@@ -3,7 +3,6 @@ namespace YayLoyalty\Engine\Redemption;
 
 use YayLoyalty\Engine\Earning\ProgramGate as EarnProgramGate;
 use YayLoyalty\Engine\Rewards\Context;
-use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Models\Reward;
 
 defined( 'ABSPATH' ) || exit;
@@ -35,21 +34,13 @@ final class ProgramGate implements Gate {
             return self::REASON_PROGRAM_PAUSED;
         }
 
-        if ( get_user_meta( $user_id, EarnProgramGate::META_OPTED_OUT, true ) ) {
-            return self::REASON_OPTED_OUT;
+        $user   = get_userdata( $user_id );
+        $denial = EarnProgramGate::member_denial( $user_id, $user instanceof \WP_User ? (array) $user->roles : [] );
+
+        if ( null !== $denial ) {
+            return $denial;
         }
 
-        $user  = get_userdata( $user_id );
-        $roles = $user instanceof \WP_User ? (array) $user->roles : [];
-
-        if ( array_intersect( $roles, (array) SettingsHelper::get_settings()['excluded_roles'] ) ) {
-            return self::REASON_EXCLUDED_ROLE;
-        }
-
-        if ( ! wc_coupons_enabled() ) {
-            return self::REASON_COUPONS_DISABLED;
-        }
-
-        return null;
+        return wc_coupons_enabled() ? null : self::REASON_COUPONS_DISABLED;
     }
 }

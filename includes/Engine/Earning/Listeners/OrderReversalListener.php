@@ -59,15 +59,13 @@ final class OrderReversalListener {
                     return;
                 }
 
-                list( $restored, $reversed ) = Transaction::run(
-                    fn(): array => [ $this->redemptions->refunded( $order, $refund_id ), $this->reversal->refund( $order, $refund_id ) ]
+                $this->restore_then_reverse(
+                    $order,
+                    fn(): array => $this->redemptions->refunded( $order, $refund_id ),
+                    fn(): array => $this->reversal->refund( $order, $refund_id ),
+                    /* translators: %d: refund id */
+                    sprintf( __( 'refund #%d', 'yayloyalty' ), $refund_id )
                 );
-
-                /* translators: %d: refund id */
-                $reason = sprintf( __( 'refund #%d', 'yayloyalty' ), $refund_id );
-
-                $this->note_restored( $order, $restored, $reason );
-                $this->note_reversed( $order, $reversed, $reason );
             }
         );
     }
@@ -126,14 +124,12 @@ final class OrderReversalListener {
     public function on_cancelled( \WC_Order $order ): void {
         $this->pending->release( (int) $order->get_id() );
 
-        list( $restored, $reversed ) = Transaction::run(
-            fn(): array => [ $this->redemptions->cancelled( $order ), $this->reversal->full_order( $order ) ]
+        $this->restore_then_reverse(
+            $order,
+            fn(): array => $this->redemptions->cancelled( $order ),
+            fn(): array => $this->reversal->full_order( $order ),
+            __( 'order cancelled', 'yayloyalty' )
         );
-
-        $reason = __( 'order cancelled', 'yayloyalty' );
-
-        $this->note_restored( $order, $restored, $reason );
-        $this->note_reversed( $order, $reversed, $reason );
     }
 
     /**
@@ -143,14 +139,12 @@ final class OrderReversalListener {
     public function on_status_refunded( \WC_Order $order ): void {
         $this->pending->release( (int) $order->get_id() );
 
-        list( $restored, $reversed ) = Transaction::run(
-            fn(): array => [ $this->redemptions->refunded_status( $order ), $this->reversal->refunded_status( $order ) ]
+        $this->restore_then_reverse(
+            $order,
+            fn(): array => $this->redemptions->refunded_status( $order ),
+            fn(): array => $this->reversal->refunded_status( $order ),
+            __( 'order refunded', 'yayloyalty' )
         );
-
-        $reason = __( 'order refunded', 'yayloyalty' );
-
-        $this->note_restored( $order, $restored, $reason );
-        $this->note_reversed( $order, $reversed, $reason );
     }
 
     /**
@@ -177,19 +171,27 @@ final class OrderReversalListener {
     }
 
     /**
+     * Returns the redeemed points, then claws back the earned ones, in one transaction and in that order:
+     * the restore row sits before the clawback row, and a failure in either leaves neither. Notes both.
+     *
+     * @param callable(): Outcome[] $restore The Redemption\Reversal call for this event.
+     * @param callable(): Outcome[] $reverse The earn Reversal call for the same event.
+     */
+    private function restore_then_reverse( \WC_Order $order, callable $restore, callable $reverse, string $reason ): void {
+        list( $restored, $reversed ) = Transaction::run( fn(): array => [ $restore(), $reverse() ] );
+
+        $this->note_restored( $order, $restored, $reason );
+        $this->note_reversed( $order, $reversed, $reason );
+    }
+
+    /**
      * Notes how many redeemed points a reversal returned; silent when it returned none.
      *
      * @param Outcome[] $outcomes
      */
     private function note_restored( \WC_Order $order, array $outcomes, string $reason ): void {
-        self::log_outcomes( (int) $order->get_id(), $reason, $outcomes );
-
-        $restored = self::points_moved( $outcomes );
-
-        if ( $restored > 0 ) {
-            /* translators: 1: points, 2: reason, e.g. "refund #12" */
-            $order->add_order_note( sprintf( __( 'Restored %1$d redeemed points (%2$s).', 'yayloyalty' ), $restored, $reason ) );
-        }
+        /* translators: 1: points, 2: reason, e.g. "refund #12" */
+        $this->note_points( $order, $outcomes, $reason, __( 'Restored %1$d redeemed points (%2$s).', 'yayloyalty' ) );
     }
 
     /**
@@ -198,14 +200,8 @@ final class OrderReversalListener {
      * @param Outcome[] $outcomes
      */
     private function note_debited( \WC_Order $order, array $outcomes, string $reason ): void {
-        self::log_outcomes( (int) $order->get_id(), $reason, $outcomes );
-
-        $debited = self::points_moved( $outcomes );
-
-        if ( $debited > 0 ) {
-            /* translators: 1: points, 2: reason, e.g. "order restored" */
-            $order->add_order_note( sprintf( __( 'Debited %1$d redeemed points again (%2$s).', 'yayloyalty' ), $debited, $reason ) );
-        }
+        /* translators: 1: points, 2: reason, e.g. "order restored" */
+        $this->note_points( $order, $outcomes, $reason, __( 'Debited %1$d redeemed points again (%2$s).', 'yayloyalty' ) );
     }
 
     /**
@@ -214,13 +210,23 @@ final class OrderReversalListener {
      * @param Outcome[] $outcomes
      */
     private function note_reversed( \WC_Order $order, array $outcomes, string $reason ): void {
+        /* translators: 1: points, 2: reason, e.g. "refund #12" */
+        $this->note_points( $order, $outcomes, $reason, __( 'Reversed %1$d points (%2$s).', 'yayloyalty' ) );
+    }
+
+    /**
+     * Logs the outcomes and notes the points they moved on the order; silent when they moved none.
+     *
+     * @param Outcome[] $outcomes
+     * @param string    $template A translated sprintf format taking 1: points, 2: reason.
+     */
+    private function note_points( \WC_Order $order, array $outcomes, string $reason, string $template ): void {
         self::log_outcomes( (int) $order->get_id(), $reason, $outcomes );
 
-        $reversed = self::points_moved( $outcomes );
+        $points = self::points_moved( $outcomes );
 
-        if ( $reversed > 0 ) {
-            /* translators: 1: points, 2: reason, e.g. "refund #12" */
-            $order->add_order_note( sprintf( __( 'Reversed %1$d points (%2$s).', 'yayloyalty' ), $reversed, $reason ) );
+        if ( $points > 0 ) {
+            $order->add_order_note( sprintf( $template, $points, $reason ) );
         }
     }
 

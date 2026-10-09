@@ -36,11 +36,21 @@ final class ProgramGate implements Gate {
             return self::REASON_NO_CUSTOMER;
         }
 
+        return self::member_denial( $user_id, $ctx->get_user_roles() );
+    }
+
+    /**
+     * Why this customer is outside the program, opted out before excluded role, or null. Shared with
+     * Engine\Redemption\ProgramGate, so who may earn and who may redeem cannot drift apart.
+     *
+     * @param string[] $roles The customer's roles.
+     */
+    public static function member_denial( int $user_id, array $roles ): ?string {
         if ( get_user_meta( $user_id, self::META_OPTED_OUT, true ) ) {
             return self::REASON_OPTED_OUT;
         }
 
-        if ( array_intersect( $ctx->get_user_roles(), SettingsHelper::get_settings()['excluded_roles'] ) ) {
+        if ( array_intersect( $roles, SettingsHelper::get_settings()['excluded_roles'] ) ) {
             return self::REASON_EXCLUDED_ROLE;
         }
 

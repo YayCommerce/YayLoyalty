@@ -5,30 +5,18 @@ use YayLoyalty\Engine\Earning\Outcome;
 use YayLoyalty\Engine\Redemption\Reversal;
 use YayLoyalty\Engine\Rewards\Result;
 use YayLoyalty\Enums\LedgerType;
-use YayLoyalty\Enums\RewardType;
-use YayLoyalty\Enums\Status;
 use YayLoyalty\Models\Redemption;
 use YayLoyalty\Models\Reward;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\RedemptionRepository;
 use YayLoyalty\Repositories\RewardRepository;
 use YayLoyalty\Tests\Integration\IntegrationTestCase;
-use YayLoyalty\Utils\Dates;
 
 /** Redemption\Reversal: what a cancel, a refund and their undo return and take again, called directly with real orders and refund objects. */
 final class ReversalTest extends IntegrationTestCase {
 
     private function reversal(): Reversal {
         return new Reversal( $this->ledger_service(), new RedemptionRepository(), new CustomerRepository(), new RewardRepository() );
-    }
-
-    /** The slider reward as a stored row, so the reversal can read its refund_policy. */
-    private function seeded_reward( array $config = [] ): Reward {
-        $now     = Dates::now();
-        $rewards = new RewardRepository();
-        $id      = $rewards->insert( new Reward( null, 'Cart discount', 'cart-discount', RewardType::FLEXIBLE_DISCOUNT, Status::ACTIVE, 0, null, array_merge( Reward::default_config( RewardType::FLEXIBLE_DISCOUNT ), $config ), [], null, null, true, null, null, $now, $now ) );
-
-        return $rewards->find_reward( $id );
     }
 
     /** User 7 has 1000 points and spends 500 on an order of 20.00 that totals 15.00. */

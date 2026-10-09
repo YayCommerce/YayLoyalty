@@ -13,11 +13,14 @@ use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Enums\ReferenceType;
 use YayLoyalty\Enums\RewardType;
+use YayLoyalty\Enums\Status;
 use YayLoyalty\Models\LedgerEntry;
+use YayLoyalty\Models\Reward;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Repositories\RedemptionRepository;
+use YayLoyalty\Repositories\RewardRepository;
 use YayLoyalty\Services\LedgerService;
 use YayLoyalty\Utils\Dates;
 
@@ -131,6 +134,15 @@ abstract class IntegrationTestCase extends TestCase {
             new ContextFactory( $customers ),
             new Quoter( new RewardEngine( Registry::with_lite_handlers() ), [] )
         );
+    }
+
+    /** The slider reward as a stored row, so the reversal can read its refund_policy. */
+    protected function seeded_reward( array $config = [] ): Reward {
+        $now     = Dates::now();
+        $rewards = new RewardRepository();
+        $id      = $rewards->insert( new Reward( null, 'Cart discount', 'cart-discount', RewardType::FLEXIBLE_DISCOUNT, Status::ACTIVE, 0, null, array_merge( Reward::default_config( RewardType::FLEXIBLE_DISCOUNT ), $config ), [], null, null, true, null, null, $now, $now ) );
+
+        return $rewards->find_reward( $id );
     }
 
     /** An order with one line and our coupon line, as checkout leaves it. */

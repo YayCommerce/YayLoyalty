@@ -242,10 +242,7 @@ final class LedgerService {
     private function under_lock( int $user_id, callable $write ) {
         return Transaction::run(
             function () use ( $user_id, $write ) {
-                // Materialise before locking: a missing row gap-locks and two first-touch writers both insert.
-                $this->customers->ensure_row( $user_id );
-
-                return $write( $this->customers->lock_and_get( $user_id ) );
+                return $write( $this->customers->ensure_and_lock( $user_id ) );
             }
         );
     }

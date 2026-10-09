@@ -2,16 +2,13 @@
 namespace YayLoyalty\Engine\Redemption;
 
 use YayLoyalty\Database\Transaction;
-use YayLoyalty\Engine\Earning\IdempotencyKey;
 use YayLoyalty\Engine\Earning\Outcome;
 use YayLoyalty\Engine\Points\Context as EarnContext;
 use YayLoyalty\Engine\Rewards\Clamp;
 use YayLoyalty\Engine\Rewards\ContextFactory;
 use YayLoyalty\Engine\Rewards\Result;
-use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Enums\ReferenceType;
-use YayLoyalty\Enums\RewardType;
 use YayLoyalty\Models\LedgerEntry;
 use YayLoyalty\Models\Redemption;
 use YayLoyalty\Models\Reward;
@@ -90,9 +87,7 @@ final class CommitWriter {
                     return Outcome::skipped( ProgramGate::REASON_NO_CUSTOMER );
                 }
 
-                // Materialise before locking: a missing row gap-locks and two first-touch writers both insert.
-                $this->customers->ensure_row( $user_id );
-                $customer = $this->customers->lock_and_get( $user_id );
+                $customer = $this->customers->ensure_and_lock( $user_id );
 
                 $existing = $this->redemptions->find_by_order( $order_id, (int) $reward->get_id() );
 
@@ -166,26 +161,10 @@ final class CommitWriter {
 
     /**
      * The REDEEM row for one order: $points negated, source and reference the order, keyed
-     * `redeem:{user}:order:{order_id}:flexible_discount`. balance_after is computed under the lock.
+     * `redeem:{user}:order:{order_id}:flexible_discount` (RedemptionDraft::of()).
      */
     private function draft_from( int $user_id, int $order_id, int $points, int $redemption_id ): LedgerEntry {
-        return new LedgerEntry(
-            null,
-            $user_id,
-            -$points,
-            0,
-            LedgerType::REDEEM,
-            LedgerSource::ORDER,
-            ReferenceType::ORDER,
-            $order_id,
-            null,
-            $redemption_id,
-            $order_id,
-            null,
-            null,
-            Dates::now(),
-            IdempotencyKey::compose( LedgerType::REDEEM, $user_id, ReferenceType::ORDER, $order_id, RewardType::FLEXIBLE_DISCOUNT )
-        );
+        return RedemptionDraft::of( $user_id, $order_id, $redemption_id, LedgerType::REDEEM, -$points, ReferenceType::ORDER, $order_id );
     }
 
     /** Freezes points and value onto the order (HPOS-safe update_meta_data + save) so the order screen and emails never re-derive them. */

@@ -58,7 +58,7 @@ Commands and hard rules live in [CLAUDE.md](../CLAUDE.md). Citations give a path
   - It fires `yayloyalty_ledger_recorded` after commit.
   - System rows carry an idempotency key that a unique index backs, so a replayed event can't award twice.
   - Its docblock lists where it may be constructed.
-  - A customer row is created at zero by `CustomerRepository::ensure_row()`, which `LedgerService`, `PendingPoints` and `CustomerActivityListener` call. Creating the row is not a ledger write.
+  - A customer row is created at zero by `CustomerRepository::ensure_row()`, which `PendingPoints` and `CustomerActivityListener` call directly, and `LedgerService`, `CommitWriter` and `Redemption\Reversal` call through `ensure_and_lock()` before they lock the row. Creating the row is not a ledger write.
   - [The decision record](decisions/2026-10-01-ledger-service-sole-writer.md) says why there is one writer and a cached total.
   - Points pending on an open order sit in order meta, and their sum is a separate cached column on the customer. `includes/Engine/Earning/PendingPoints.php` writes both.
 - The domain lives in `includes/Engine/`:

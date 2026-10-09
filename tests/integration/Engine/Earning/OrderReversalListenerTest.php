@@ -6,27 +6,16 @@ use YayLoyalty\Engine\Earning\PendingPoints;
 use YayLoyalty\Engine\Earning\Reversal as EarnReversal;
 use YayLoyalty\Engine\Redemption\Reversal as RedemptionReversal;
 use YayLoyalty\Enums\LedgerType;
-use YayLoyalty\Enums\RewardType;
-use YayLoyalty\Enums\Status;
 use YayLoyalty\Models\Redemption;
-use YayLoyalty\Models\Reward;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Repositories\RedemptionRepository;
 use YayLoyalty\Repositories\RewardRepository;
 use YayLoyalty\Tests\Integration\IntegrationTestCase;
-use YayLoyalty\Utils\Dates;
 
 /** OrderReversalListener on an order that both earned and redeemed: the restore lands before the clawback, and the two commit or roll back together. */
 final class OrderReversalListenerTest extends IntegrationTestCase {
-
-    private function reward(): Reward {
-        $now     = Dates::now();
-        $rewards = new RewardRepository();
-
-        return $rewards->find_reward( $rewards->insert( new Reward( null, 'Cart discount', 'cart-discount', RewardType::FLEXIBLE_DISCOUNT, Status::ACTIVE, 0, null, Reward::default_config( RewardType::FLEXIBLE_DISCOUNT ), [], null, null, true, null, null, $now, $now ) ) );
-    }
 
     /** An order that earned 1000 points for user 7 and then spent 500 of them on itself. */
     private function order_that_earned_and_redeemed(): \WC_Order {
@@ -35,7 +24,7 @@ final class OrderReversalListenerTest extends IntegrationTestCase {
         $order->save();
 
         $this->ledger_service()->earn( $this->earn_draft( 7, $order->get_id(), 1000 ) );
-        $this->commit_writer()->commit( $order, $this->reward() );
+        $this->commit_writer()->commit( $order, $this->seeded_reward() );
 
         return $order;
     }
