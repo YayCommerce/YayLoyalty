@@ -2,7 +2,7 @@ import { Controller, useWatch } from 'react-hook-form';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { parseWPCurrency, storeCurrency } from '@/lib/helpers/format.helper';
-import { formatPoints } from '@/lib/helpers/points.helper';
+import { formatPoints, pointsPerCurrencyLabel, rateFromSpend } from '@/lib/helpers/points.helper';
 import { MoneyInput, PointsInput } from '@/components/ui/custom/amount-inputs';
 import { Switch } from '@/components/ui/switch';
 import { pointsForSpend, type SetupForm, type WizardStepProps } from './setup-wizard.form';
@@ -11,6 +11,7 @@ import { WizardPreview, WizardSection, WizardStepHeading } from './WizardStepPar
 /** Step 2 (artboard 1b): the purchase rate plus the signup and review suggestions, the three built-in campaigns. */
 export function EarnPointsStep({ form }: WizardStepProps) {
   const [earnPoints, earnSpend] = useWatch({ control: form.control, name: ['earnPoints', 'earnSpend'] });
+  const rate = rateFromSpend(earnSpend, earnPoints);
 
   return (
     <>
@@ -37,6 +38,12 @@ export function EarnPointsStep({ form }: WizardStepProps) {
             />
             <span className="text-muted-foreground text-sm">{__('spent', 'yayloyalty')}</span>
           </div>
+          {rate !== null && (
+            <div className="text-sm font-medium">
+              {/* translators: %s: the purchase rate, e.g. "2 pts per $1.00". */}
+              {sprintf(__('Rate: %s', 'yayloyalty'), pointsPerCurrencyLabel(rate))}
+            </div>
+          )}
           <div className="text-muted-foreground text-xs">
             {__('Calculated on the order subtotal, before shipping and tax.', 'yayloyalty')}
           </div>
