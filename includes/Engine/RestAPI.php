@@ -14,6 +14,7 @@ use YayLoyalty\Controllers\LookupRestController;
 use YayLoyalty\Controllers\RedemptionsRestController;
 use YayLoyalty\Controllers\RewardRestController;
 use YayLoyalty\Controllers\SettingsRestController;
+use YayLoyalty\Controllers\SetupRestController;
 use YayLoyalty\Controllers\StorefrontActivityRestController;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\CustomerMetaRepository;
@@ -27,6 +28,7 @@ use YayLoyalty\Services\Dashboard\DashboardNotices;
 use YayLoyalty\Services\Dashboard\DashboardStats;
 use YayLoyalty\Services\Dashboard\NoticeDismissals;
 use YayLoyalty\Services\LedgerService;
+use YayLoyalty\Services\SetupService;
 use YayLoyalty\Utils\Log;
 use YayLoyalty\Utils\SingletonTrait;
 
@@ -65,6 +67,8 @@ class RestAPI {
         $controllers = [
             new SettingsRestController(),
             new DesignRestController(),
+            // Writes the built-in campaigns and the cart discount in place, through these repositories.
+            new SetupRestController( new SetupService( $campaigns, $rewards ) ),
             new EmailsRestController(),
             // $ledger is read-only here.
             new CustomerRestController( $customers, $ledger_service, $ledger, $customer_meta ),
