@@ -7,6 +7,7 @@ use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Enums\ReferenceType;
+use YayLoyalty\Enums\RewardType;
 use YayLoyalty\Models\LedgerEntry;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\CustomerRepository;
@@ -53,6 +54,27 @@ abstract class IntegrationTestCase extends TestCase {
             null,
             Dates::now(),
             IdempotencyKey::compose( LedgerType::EARN, $user_id, ReferenceType::ORDER, $order_id, CampaignTrigger::PURCHASE )
+        );
+    }
+
+    /** A slider REDEEM draft for one order, keyed as CommitWriter keys it. */
+    protected function redeem_draft( int $user_id, int $order_id, int $points ): LedgerEntry {
+        return new LedgerEntry(
+            null,
+            $user_id,
+            -$points,
+            0,
+            LedgerType::REDEEM,
+            LedgerSource::ORDER,
+            ReferenceType::ORDER,
+            $order_id,
+            null,
+            null,
+            $order_id,
+            null,
+            null,
+            Dates::now(),
+            IdempotencyKey::compose( LedgerType::REDEEM, $user_id, ReferenceType::ORDER, $order_id, RewardType::FLEXIBLE_DISCOUNT )
         );
     }
 

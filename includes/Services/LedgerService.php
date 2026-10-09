@@ -22,7 +22,7 @@ defined( 'ABSPATH' ) || exit;
  * Engine\Earning\EarningService::build(), Engine\Earning\Reversal::build() and
  * Engine\Redemption\RedemptionService::build(). Name a fifth here before adding it.
  * Manual rows enter through adjust() and record(). System rows enter through earn(),
- * refund_earn(), restore_refund() and redeem(), which add the idempotency-key duplicate branch.
+ * refund_earn(), restore_refund(), redeem() and refund_redeem(), which add the idempotency-key duplicate branch.
  */
 final class LedgerService {
 
@@ -315,10 +315,12 @@ final class LedgerService {
      * with nothing written when the locked balance cannot cover the points:
      * a redemption refuses, unlike a clawback.
      *
+     * @param bool $allow_negative True skips the balance check. For undoing a restore whose refund was
+     *                             deleted, where the debit must stand even if the points were spent since.
      * @throws \InvalidArgumentException When the draft is not a negative redeem row or lacks a key.
      * @throws \YayLoyalty\Database\QueryException When a write other than a duplicate fails.
      */
-    public function redeem( LedgerEntry $draft ): Outcome {
+    public function redeem( LedgerEntry $draft, bool $allow_negative = false ): Outcome {
         $key = $draft->get_idempotency_key();
 
         if ( LedgerType::REDEEM !== $draft->get_type() ) {
@@ -336,6 +338,10 @@ final class LedgerService {
         LedgerSource::assert( $draft->get_source() );
         ReferenceType::assert( $draft->get_reference_type() );
 
+        if ( $allow_negative ) {
+            return $this->write_keyed( $draft );
+        }
+
         return $this->write_keyed(
             $draft,
             static function ( Customer $customer ) use ( $draft ): int {
@@ -343,6 +349,39 @@ final class LedgerService {
             },
             RedeemResult::REASON_INSUFFICIENT_BALANCE
         );
+    }
+
+    /**
+     * Returns redeemed points after a cancel or a refund: a REFUND_REDEEM
+     * row that raises the balance and lowers lifetime_redeemed, keyed by the
+     * caller on the reversing reference. The caller
+     * (Engine\Redemption\Reversal) decides the amount under the customer
+     * lock and moves the redemption row in the same transaction. The balance
+     * is never checked.
+     *
+     * @return Outcome awarded (the persisted row) or duplicate (the existing row).
+     * @throws \InvalidArgumentException When the draft is not a positive refund_redeem row or lacks a key.
+     * @throws \YayLoyalty\Database\QueryException When a write other than a duplicate fails.
+     */
+    public function refund_redeem( LedgerEntry $draft ): Outcome {
+        $key = $draft->get_idempotency_key();
+
+        if ( LedgerType::REFUND_REDEEM !== $draft->get_type() ) {
+            throw new \InvalidArgumentException( 'YayLoyalty: refund_redeem() writes REFUND_REDEEM rows only.' );
+        }
+
+        if ( null === $key || '' === $key ) {
+            throw new \InvalidArgumentException( 'YayLoyalty: a refund_redeem row needs an idempotency key.' );
+        }
+
+        if ( $draft->get_points() < 1 ) {
+            throw new \InvalidArgumentException( 'YayLoyalty: a refund_redeem row returns a positive number of points.' );
+        }
+
+        LedgerSource::assert( $draft->get_source() );
+        ReferenceType::assert( $draft->get_reference_type() );
+
+        return $this->write_keyed( $draft );
     }
 
     /**

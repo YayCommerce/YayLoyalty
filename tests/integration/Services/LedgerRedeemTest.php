@@ -1,16 +1,9 @@
 <?php
 namespace YayLoyalty\Tests\Integration\Services;
 
-use YayLoyalty\Engine\Earning\IdempotencyKey;
 use YayLoyalty\Engine\Earning\Outcome;
 use YayLoyalty\Engine\Rewards\Result;
-use YayLoyalty\Enums\LedgerSource;
-use YayLoyalty\Enums\LedgerType;
-use YayLoyalty\Enums\ReferenceType;
-use YayLoyalty\Enums\RewardType;
-use YayLoyalty\Models\LedgerEntry;
 use YayLoyalty\Tests\Integration\IntegrationTestCase;
-use YayLoyalty\Utils\Dates;
 
 /** LedgerService::redeem(): the debit, its refusal of a negative balance, and its idempotency key. */
 final class LedgerRedeemTest extends IntegrationTestCase {
@@ -50,26 +43,5 @@ final class LedgerRedeemTest extends IntegrationTestCase {
         $this->assertSame( Outcome::DUPLICATE, $second->get_status() );
         $this->assertSame( [ 1000, -500 ], $this->ledger_points( 7 ) );
         $this->assertSame( 500, (int) $this->customer_row( 7 )['balance'] );
-    }
-
-    /** A slider REDEEM draft for one order, keyed as CommitWriter keys it. */
-    private function redeem_draft( int $user_id, int $order_id, int $points ): LedgerEntry {
-        return new LedgerEntry(
-            null,
-            $user_id,
-            -$points,
-            0,
-            LedgerType::REDEEM,
-            LedgerSource::ORDER,
-            ReferenceType::ORDER,
-            $order_id,
-            null,
-            null,
-            $order_id,
-            null,
-            null,
-            Dates::now(),
-            IdempotencyKey::compose( LedgerType::REDEEM, $user_id, ReferenceType::ORDER, $order_id, RewardType::FLEXIBLE_DISCOUNT )
-        );
     }
 }
