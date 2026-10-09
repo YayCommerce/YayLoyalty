@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { launcherPositionLabel } from '../settings/design-settings.option-labels';
 import * as copy from './setup-wizard.copy';
+import { pointsLabelFor } from './setup-wizard.draft';
 import { SetupStepHeading } from './SetupFields';
 
 /** Step 5: every answer with a link back to its step, what Turn on creates, and what it changes for customers. */
@@ -17,7 +18,7 @@ export function SetupStepReview({ onEdit }: { onEdit: (step: number) => void }) 
   const draft = useWatch({ control }) as SetupDraft;
   const money = (amount: string) => parseWPCurrency(Number(amount));
   // The merchant's own words from step 1, singular at exactly 1, as the storefront reads them.
-  const label = (points: number) => (points === 1 ? draft.points_label_singular : draft.points_label_plural);
+  const label = (points: number) => pointsLabelFor(points, draft);
   const counted = (points: number) => [formatPoints(points), label(points)] as const;
   const rows: { label: string; value: string; step: number }[] = [
     {

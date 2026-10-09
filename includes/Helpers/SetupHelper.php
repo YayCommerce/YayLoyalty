@@ -18,8 +18,6 @@ class SetupHelper {
     /** A decimal string, as money travels on the wire: "1", "2.50". */
     private const DECIMAL_PATTERN = '/^\d+(\.\d+)?$/';
 
-    private const COLOR_PATTERN = '/^#[0-9a-fA-F]{6}$/';
-
     /** The draft's groups and their keys. Anything else is refused, so the stored blob keeps one shape. */
     private const DRAFT_KEYS = [
         'earn'     => [ 'points', 'amount' ],
@@ -39,7 +37,7 @@ class SetupHelper {
         $state = self::read_state();
         $draft = $state['draft'];
 
-        $state['draft'] = is_array( $draft ) && null === self::draft_error( $draft ) ? $draft : null;
+        $state['draft'] = null === self::draft_error( $draft ) ? $draft : null;
 
         return $state;
     }
@@ -103,15 +101,17 @@ class SetupHelper {
         }
 
         foreach ( [ 'points_label_singular', 'points_label_plural' ] as $key ) {
-            $label = is_string( $draft[ $key ] ) ? trim( $draft[ $key ] ) : '';
+            $label = is_string( $draft[ $key ] ) ? $draft[ $key ] : '';
 
-            if ( '' === $label || mb_strlen( $label ) > SettingsHelper::POINTS_LABEL_MAX_LENGTH ) {
+            // SettingsHelper's rule, which drops a label that sanitizes to empty and cuts a long one; the wizard refuses both.
+            if ( ! isset( SettingsHelper::validate( [ $key => $label ] )[ $key ] ) || mb_strlen( trim( $label ) ) > SettingsHelper::POINTS_LABEL_MAX_LENGTH ) {
                 /* translators: %d: the longest points label allowed, 30. */
                 return sprintf( __( 'Points names need 1 to %d characters.', 'yayloyalty' ), SettingsHelper::POINTS_LABEL_MAX_LENGTH );
             }
         }
 
-        $positions = DesignSchema::schema()['launcher']['position']['options'];
+        $launcher  = DesignSchema::schema()['launcher'];
+        $positions = $launcher['position']['options'];
         $valid     = self::is_whole( $draft['earn']['points'], 1 )
             && self::is_positive_decimal( $draft['earn']['amount'] )
             && is_bool( $draft['signup']['enabled'] ) && self::is_whole( $draft['signup']['points'], 0 )
@@ -121,7 +121,7 @@ class SetupHelper {
             && self::is_whole( $draft['reward']['min_points'], 0 )
             && self::is_whole( $draft['reward']['max_percent'], 1 ) && $draft['reward']['max_percent'] <= 100
             && in_array( $draft['launcher']['position'], $positions, true )
-            && is_string( $draft['launcher']['brand_color'] ) && 1 === preg_match( self::COLOR_PATTERN, $draft['launcher']['brand_color'] );
+            && null !== DesignCoercion::coerce( $draft['launcher']['brand_color'], $launcher['brand_color'] );
 
         return $valid ? null : $invalid;
     }
@@ -132,29 +132,35 @@ class SetupHelper {
      * @return array get_state() after the save.
      */
     public static function save_draft( int $step, array $draft ): array {
-        $state          = self::read_state();
-        $state['step']  = max( 1, min( self::LAST_STEP, $step ) );
-        $state['draft'] = self::normalize_draft( $draft );
+        return self::write_state(
+            [
+                'step'  => $step,
+                'draft' => self::normalize_draft( $draft ),
+            ]
+        );
+    }
+
+    public static function mark_completed(): void {
+        self::write_state(
+            [
+                'status' => self::STATUS_COMPLETED,
+                'step'   => self::LAST_STEP,
+                'draft'  => null,
+            ]
+        );
+    }
+
+    public static function dismiss_first_run(): void {
+        self::write_state( [ 'first_run_dismissed' => true ] );
+    }
+
+    /** Merges $changes over the stored state and saves it, autoloaded. Returns the saved state. */
+    private static function write_state( array $changes ): array {
+        $state = array_merge( self::read_state(), $changes );
 
         update_option( self::OPTION_SETUP, $state, true );
 
         return $state;
-    }
-
-    public static function mark_completed(): void {
-        $state           = self::read_state();
-        $state['status'] = self::STATUS_COMPLETED;
-        $state['step']   = self::LAST_STEP;
-        $state['draft']  = null;
-
-        update_option( self::OPTION_SETUP, $state, true );
-    }
-
-    public static function dismiss_first_run(): void {
-        $state                        = self::read_state();
-        $state['first_run_dismissed'] = true;
-
-        update_option( self::OPTION_SETUP, $state, true );
     }
 
     /**
@@ -198,10 +204,19 @@ class SetupHelper {
         ];
     }
 
-    /** A valid draft with its labels trimmed and its numbers cast, so the stored blob has one type per key. */
+    /** A valid draft with its labels, colour and numbers coerced as the settings and design will store them, so the blob has one type per key. */
     private static function normalize_draft( array $draft ): array {
-        $draft['points_label_singular'] = sanitize_text_field( trim( $draft['points_label_singular'] ) );
-        $draft['points_label_plural']   = sanitize_text_field( trim( $draft['points_label_plural'] ) );
+        $draft = array_merge(
+            $draft,
+            SettingsHelper::validate(
+                [
+                    'points_label_singular' => $draft['points_label_singular'],
+                    'points_label_plural'   => $draft['points_label_plural'],
+                ]
+            )
+        );
+
+        $draft['launcher']['brand_color'] = DesignCoercion::coerce( $draft['launcher']['brand_color'], DesignSchema::schema()['launcher']['brand_color'] );
 
         foreach ( [ [ 'earn', 'points' ], [ 'signup', 'points' ], [ 'review', 'points' ], [ 'reward', 'points' ], [ 'reward', 'min_points' ], [ 'reward', 'max_percent' ] ] as $path ) {
             $draft[ $path[0] ][ $path[1] ] = (int) $draft[ $path[0] ][ $path[1] ];

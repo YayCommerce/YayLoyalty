@@ -1,16 +1,25 @@
 import { z } from 'zod';
+import { __, sprintf } from '@wordpress/i18n';
 
 import { Settings, settingsSchema, SettingsUpdate } from '@/lib/schema/settings.schema';
 
 /** Mirrors SettingsHelper::POINTS_LABEL_MAX_LENGTH. */
 export const POINTS_LABEL_MAX_LENGTH = 30;
 
-const pointsLabel = z.string().trim().min(1).max(POINTS_LABEL_MAX_LENGTH);
+/** A points label as SettingsHelper keeps it: 1 to POINTS_LABEL_MAX_LENGTH characters once trimmed. */
+export const pointsLabelSchema = z
+  .string()
+  .trim()
+  .min(1, { message: __('Enter a name.', 'yayloyalty') })
+  .max(POINTS_LABEL_MAX_LENGTH, {
+    /* translators: %d: the longest points name allowed, 30. */
+    message: sprintf(__('Use %d characters or fewer.', 'yayloyalty'), POINTS_LABEL_MAX_LENGTH),
+  });
 
 /** The General tab's one form: the free points naming, plus Pro's fraud limit (never dirty in Lite). */
 export const generalSettingsFormSchema = settingsSchema.pick({ max_points_per_day: true }).extend({
-  points_label_singular: pointsLabel,
-  points_label_plural: pointsLabel,
+  points_label_singular: pointsLabelSchema,
+  points_label_plural: pointsLabelSchema,
 });
 
 export type GeneralSettingsFormValues = z.infer<typeof generalSettingsFormSchema>;

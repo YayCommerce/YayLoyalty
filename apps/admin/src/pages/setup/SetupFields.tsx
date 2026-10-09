@@ -2,9 +2,10 @@ import { Controller, useFormContext, type FieldPath } from 'react-hook-form';
 
 import { storeCurrency } from '@/lib/helpers/format.helper';
 import type { SetupDraft } from '@/lib/schema/setup.schema';
+import { PointsInput } from '@/components/ui/custom/amount-inputs';
 import { FieldError } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
+import { NumberInputInput, NumberInputRoot } from '@/components/ui/number-input';
 
 /** Shared pieces of the wizard's steps: the step heading and the two kinds of number field. */
 
@@ -20,20 +21,20 @@ export function SetupStepHeading({ title, description }: { title: string; descri
 type WholeField =
   'earn.points' | 'signup.points' | 'review.points' | 'reward.points' | 'reward.min_points' | 'reward.max_percent';
 
-/** A whole number of points or percent, with its unit and its error under it. */
+/** A whole number of points (with a "point(s)" unit) or a bare whole number, with its error under it. */
 export function SetupWholeInput({
   name,
   id,
   min,
   max,
-  unit,
+  points,
   disabled,
 }: {
   name: WholeField;
   id: string;
   min: number;
   max?: number;
-  unit?: string;
+  points?: boolean;
   disabled?: boolean;
 }) {
   const { control } = useFormContext<SetupDraft>();
@@ -44,18 +45,21 @@ export function SetupWholeInput({
       name={name}
       render={({ field, fieldState }) => (
         <div className="flex flex-col gap-1">
-          <NumberInputRoot
-            size="small"
-            className="w-36"
-            min={min}
-            max={max}
-            disabled={disabled}
-            value={field.value}
-            onValueChange={field.onChange}
-          >
-            <NumberInputInput id={id} />
-            {unit ? <NumberInputUnit unit={unit} /> : null}
-          </NumberInputRoot>
+          {points ? (
+            <PointsInput id={id} min={min} disabled={disabled} value={field.value} onValueChange={field.onChange} />
+          ) : (
+            <NumberInputRoot
+              size="small"
+              className="w-36"
+              min={min}
+              max={max}
+              disabled={disabled}
+              value={field.value}
+              onValueChange={field.onChange}
+            >
+              <NumberInputInput id={id} />
+            </NumberInputRoot>
+          )}
           <FieldError errors={[fieldState.error]} />
         </div>
       )}

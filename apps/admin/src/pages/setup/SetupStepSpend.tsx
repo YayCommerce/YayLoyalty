@@ -5,7 +5,6 @@ import type { SetupDraft } from '@/lib/schema/setup.schema';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   NOTHING_PUBLISHED,
-  POINTS_UNIT,
   SPEND_EARN_BACK,
   SPEND_MAX_HELP,
   SPEND_MAX_SUFFIX,
@@ -35,7 +34,7 @@ export function SetupStepSpend() {
           <CardDescription>{SPEND_EARN_BACK(`${formatStoreDecimal(earnBackPercent(draft), 2)}%`)}</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap items-start gap-2">
-          <SetupWholeInput name="reward.points" id="setup-reward-points" min={1} unit={POINTS_UNIT()} />
+          <SetupWholeInput name="reward.points" id="setup-reward-points" min={1} points />
           <span className="pt-1.5 text-sm">=</span>
           <SetupAmountInput name="reward.amount" id="setup-reward-amount" />
           <span className="pt-1.5 text-sm">{SPEND_OFF()}</span>
@@ -48,7 +47,7 @@ export function SetupStepSpend() {
           <CardDescription>{SPEND_MIN_HELP()}</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap items-start gap-2">
-          <SetupWholeInput name="reward.min_points" id="setup-reward-min" min={0} unit={POINTS_UNIT()} />
+          <SetupWholeInput name="reward.min_points" id="setup-reward-min" min={0} points />
           <span className="pt-1.5 text-sm">= {parseWPCurrency(minWorth)}</span>
         </CardContent>
       </Card>

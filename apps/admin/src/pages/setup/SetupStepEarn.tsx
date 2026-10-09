@@ -16,14 +16,13 @@ import {
   EARN_TITLE,
   EARN_WORKED,
   NOTHING_PUBLISHED,
-  POINTS_UNIT,
   REVIEW_HELP,
   REVIEW_TITLE,
   SIGNUP_HELP,
   SIGNUP_TITLE,
   SUGGESTED_TITLE,
 } from './setup-wizard.copy';
-import { earnedOn } from './setup-wizard.draft';
+import { earnedOn, pointsLabelFor } from './setup-wizard.draft';
 import { SetupAmountInput, SetupStepHeading, SetupWholeInput } from './SetupFields';
 
 /** The order total the worked line prices: a rate is abstract, a 50 order is not. */
@@ -32,9 +31,13 @@ const WORKED_ORDER_TOTAL = 50;
 /** Step 2: the purchase rate with its worked line, then signup and review as switchable suggestions. */
 export function SetupStepEarn() {
   const { control } = useFormContext<SetupDraft>();
-  const draft = useWatch({ control }) as SetupDraft;
-  const earned = earnedOn(draft, WORKED_ORDER_TOTAL);
-  const label = earned === 1 ? draft.points_label_singular : draft.points_label_plural;
+  // Only what the worked line reads, so typing in the signup and review cards doesn't re-render the step.
+  const [earn, singular, plural] = useWatch({
+    control,
+    name: ['earn', 'points_label_singular', 'points_label_plural'],
+  });
+  const earned = earnedOn({ earn }, WORKED_ORDER_TOTAL);
+  const label = pointsLabelFor(earned, { points_label_singular: singular, points_label_plural: plural });
 
   return (
     <>
@@ -48,7 +51,7 @@ export function SetupStepEarn() {
         <CardContent className="flex flex-col gap-3">
           <div className="flex flex-wrap items-start gap-2">
             <SetupWholeInput name="earn.points" id="setup-earn-points" min={1} />
-            <span className="pt-1.5 text-sm">{EARN_POINTS_SUFFIX(draft.earn?.points ?? 0)}</span>
+            <span className="pt-1.5 text-sm">{EARN_POINTS_SUFFIX(earn?.points ?? 0)}</span>
             <span className="pt-1.5 text-sm">{EARN_FOR_EVERY()}</span>
             <SetupAmountInput name="earn.amount" id="setup-earn-amount" />
             <span className="pt-1.5 text-sm">{EARN_SPENT()}</span>
@@ -85,13 +88,7 @@ function SuggestedCampaign({ group, title, help }: { group: 'signup' | 'review';
           <span className="font-medium">{title}</span>
           <span className="text-muted-foreground text-sm">{help}</span>
         </div>
-        <SetupWholeInput
-          name={`${group}.points`}
-          id={`setup-${group}-points`}
-          min={0}
-          unit={POINTS_UNIT()}
-          disabled={!isOn}
-        />
+        <SetupWholeInput name={`${group}.points`} id={`setup-${group}-points`} min={0} points disabled={!isOn} />
       </CardContent>
     </Card>
   );

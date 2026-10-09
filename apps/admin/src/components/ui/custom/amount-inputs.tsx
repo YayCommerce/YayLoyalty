@@ -8,14 +8,25 @@ export function PointsInput({
   value,
   min,
   onValueChange,
+  id,
+  disabled,
 }: {
   value: number;
   min: number;
   onValueChange: (value: number) => void;
+  id?: string;
+  disabled?: boolean;
 }) {
   return (
-    <NumberInputRoot size="small" className="w-32" min={min} value={value} onValueChange={onValueChange}>
-      <NumberInputInput />
+    <NumberInputRoot
+      size="small"
+      className="w-32"
+      min={min}
+      disabled={disabled}
+      value={value}
+      onValueChange={onValueChange}
+    >
+      <NumberInputInput id={id} />
       <NumberInputUnit unit={_n('point', 'points', value, 'yayloyalty')} />
     </NumberInputRoot>
   );

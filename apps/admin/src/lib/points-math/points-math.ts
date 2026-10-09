@@ -45,6 +45,11 @@ export function roundPoints(raw: number, mode: string): number {
   }
 }
 
+/** Mirrors PointsMath::points_to_currency; null when the rate is not above 0. */
+export function pointsToCurrency(points: number, pointsPerCurrencyUnit: number, decimals: number): number | null {
+  return pointsPerCurrencyUnit > 0 ? roundTo(points / pointsPerCurrencyUnit, decimals) : null;
+}
+
 /** Mirrors PointsMath::pct_delta; null with no previous, |previous| as denominator so a negative base keeps the sign. */
 export function pctDelta(current: number, previous: number, decimals = 1): number | null {
   if (previous === 0) {

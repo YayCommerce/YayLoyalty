@@ -56,7 +56,6 @@ export const SIGNUP_TITLE = () => __('Points for creating an account', 'yayloyal
 export const SIGNUP_HELP = () => __('Awarded once, when the account is created.', 'yayloyalty');
 export const REVIEW_TITLE = () => __('Points for writing a product review', 'yayloyalty');
 export const REVIEW_HELP = () => __('Verified purchases only, so reviews cannot be farmed for points.', 'yayloyalty');
-export const POINTS_UNIT = () => __('points', 'yayloyalty');
 export const CAMPAIGNS_NOTE = () =>
   __('These three become your campaigns. Afterwards you edit them on the Campaigns screen, not here.', 'yayloyalty');
 

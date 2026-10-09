@@ -9,6 +9,7 @@ import { useDismissFirstRunMutation, useSetupBuiltinNames, useSetupQuery } from 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { REVIEW_CAMPAIGNS_DEFAULT_NAMES } from '../../setup/setup-wizard.copy';
+import { pointsLabelFor } from '../../setup/setup-wizard.draft';
 import {
   FIRST_RUN_BODY,
   FIRST_RUN_DISMISS,
@@ -75,7 +76,7 @@ export function DashboardFirstRun() {
             <span>
               {PROGRAM_CARD_REWARD(
                 formatPoints(pair.points),
-                pair.points === 1 ? live.points_label_singular : live.points_label_plural,
+                pointsLabelFor(pair.points, live),
                 parseWPCurrency(pair.spend),
               )}
             </span>

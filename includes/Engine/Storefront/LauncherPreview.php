@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Engine\Storefront;
 
+use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Models\LedgerEntry;
@@ -48,8 +49,11 @@ CSS;
             ->for_balance( $design, $is_member ? self::SAMPLE_BALANCE : null );
 
         if ( null !== $earn ) {
-            // As LauncherEarnRules::advertise(): no signup row on a store where shoppers can't register.
-            $payload['earn'] = null === $payload['register'] ? array_merge( $earn, [ 'signup' => null ] ) : $earn;
+            if ( ! LauncherEarnRules::is_advertisable( CampaignTrigger::SIGNUP, null !== $payload['register'] ) ) {
+                $earn[ CampaignTrigger::SIGNUP ] = null;
+            }
+
+            $payload['earn'] = $earn;
         }
 
         $view = Launcher::view( $design, $payload, false );

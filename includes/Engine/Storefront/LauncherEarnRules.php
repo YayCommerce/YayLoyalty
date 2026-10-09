@@ -32,7 +32,7 @@ final class LauncherEarnRules {
         $rules = self::none();
 
         foreach ( self::TRIGGERS as $trigger ) {
-            if ( CampaignTrigger::SIGNUP === $trigger && ! $can_register ) {
+            if ( ! self::is_advertisable( $trigger, $can_register ) ) {
                 continue;
             }
 
@@ -51,6 +51,14 @@ final class LauncherEarnRules {
         }
 
         return $rules;
+    }
+
+    /**
+     * Whether the launcher may list $trigger at all. The signup campaign pays only a self-registration,
+     * so on a store where shoppers can't create an account it is never advertised.
+     */
+    public static function is_advertisable( string $trigger, bool $can_register ): bool {
+        return CampaignTrigger::SIGNUP !== $trigger || $can_register;
     }
 
     /**
