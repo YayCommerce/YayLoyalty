@@ -95,7 +95,14 @@ function SetupWizard({ setup, onClose }: { setup: Setup; onClose: () => void }) 
 
       <div className="bg-background flex gap-1.5 border-b px-8 py-3.5">
         {Array.from({ length: WIZARD_STEP_COUNT }, (_, index) => (
-          <div key={index} className={cn('h-1 flex-1', index < step ? 'bg-primary' : 'bg-border')} />
+          <div key={index} className="bg-border h-1 flex-1 overflow-hidden">
+            <div
+              className={cn(
+                'bg-primary h-full origin-left transition-transform duration-300 ease-out motion-reduce:transition-none',
+                index < step ? 'scale-x-100' : 'scale-x-0',
+              )}
+            />
+          </div>
         ))}
       </div>
 
@@ -117,18 +124,13 @@ function SetupWizard({ setup, onClose }: { setup: Setup; onClose: () => void }) 
           </Button>
           <div className="ml-auto flex items-center gap-4">
             {step === 5 ? (
-              <>
-                <span className="text-muted-foreground text-xs">
-                  {__('Under 30 minutes from activation', 'yayloyalty')}
-                </span>
-                <LoadingButton
-                  loading={complete.isPending}
-                  disabled={complete.isPending}
-                  onClick={() => finish(__('Your loyalty program is on.', 'yayloyalty'))}
-                >
-                  {__('Turn on my program', 'yayloyalty')}
-                </LoadingButton>
-              </>
+              <LoadingButton
+                loading={complete.isPending}
+                disabled={complete.isPending}
+                onClick={() => finish(__('Your loyalty program is on.', 'yayloyalty'))}
+              >
+                {__('Turn on my program', 'yayloyalty')}
+              </LoadingButton>
             ) : (
               <Button onClick={onContinue}>{__('Continue', 'yayloyalty')}</Button>
             )}

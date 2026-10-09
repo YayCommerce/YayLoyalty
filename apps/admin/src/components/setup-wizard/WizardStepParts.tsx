@@ -18,7 +18,3 @@ export function WizardSection({ children }: { children: ReactNode }) {
 export function WizardPreview({ children }: { children: ReactNode }) {
   return <div className="bg-muted rounded-md border px-4 py-3.5 text-base font-semibold">{children}</div>;
 }
-
-export function WizardNote({ children }: { children: ReactNode }) {
-  return <div className="bg-muted/50 text-muted-foreground rounded-md border px-3.5 py-3 text-xs">{children}</div>;
-}

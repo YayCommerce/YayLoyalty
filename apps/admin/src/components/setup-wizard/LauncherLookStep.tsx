@@ -55,12 +55,6 @@ export function LauncherLookStep({ form }: WizardStepProps) {
                 name="brandColor"
                 render={({ field }) => <ColorPicker value={field.value} onValueChange={field.onChange} />}
               />
-              <div className="text-muted-foreground text-xs">
-                {__(
-                  'One colour, used for the button and the panel header. Everything else follows your theme.',
-                  'yayloyalty',
-                )}
-              </div>
             </div>
           </WizardSection>
           <div className="bg-muted/50 flex flex-col gap-1.5 rounded-md border p-3.5">
