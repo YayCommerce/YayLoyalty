@@ -104,8 +104,8 @@ class PointsEarnedShortcodes extends BaseShortcode {
             'points_label'       => __( 'Points label for the points earned', 'yayloyalty' ),
             'balance'            => __( 'Balance after this award', 'yayloyalty' ),
             'balance_points'     => __( 'Balance with its label, e.g. "150 Points"', 'yayloyalty' ),
-            'balance_value'      => __( 'What the balance is worth; empty until redemption ships, or while the discount reward is not live', 'yayloyalty' ),
-            'balance_value_text' => __( 'Sentence saying what the balance is worth; empty until redemption ships, or while the discount reward is not live', 'yayloyalty' ),
+            'balance_value'      => __( 'What the balance is worth; empty while the discount reward is not live', 'yayloyalty' ),
+            'balance_value_text' => __( 'Sentence saying what the balance is worth; empty while the discount reward is not live', 'yayloyalty' ),
             'order_number'       => __( 'Order number the points were earned for; empty unless earned from an order', 'yayloyalty' ),
             'points_url'         => __( 'Link to the customer\'s points; empty unless a site sets yayloyalty_points_earned_cta_url', 'yayloyalty' ),
         ];

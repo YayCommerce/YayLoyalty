@@ -1,7 +1,6 @@
 <?php
 namespace YayLoyalty\Engine\Emails;
 
-use YayLoyalty\Engine\Redemption\RedemptionService;
 use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Helpers\SettingsHelper;
@@ -138,7 +137,7 @@ class PointsEarnedEmail extends LoyaltyEmail {
         $order        = $entry->get_order_id() ? wc_get_order( $entry->get_order_id() ) : null;
         $order_number = $order ? (string) $order->get_order_number() : '';
 
-        $balance_value = RedemptionService::is_available() ? self::balance_value( $entry->get_balance_after() ) : '';
+        $balance_value = self::balance_value( $entry->get_balance_after() );
 
         return self::amounts( $entry ) + [
             'entry'              => $entry,

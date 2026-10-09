@@ -3,12 +3,8 @@ namespace YayLoyalty\Engine\Redemption\Adapters;
 
 use Automattic\WooCommerce\StoreApi\Exceptions\RouteException;
 use Automattic\WooCommerce\StoreApi\Schemas\V1\CartSchema;
-use YayLoyalty\Engine\Earning\Outcome;
-use YayLoyalty\Engine\Redemption\CouponProvider;
 use YayLoyalty\Engine\Redemption\RedemptionService;
 use YayLoyalty\Engine\Redemption\SessionIntent;
-use YayLoyalty\Engine\Register\ScriptName;
-use YayLoyalty\Engine\Storefront\Launcher;
 use YayLoyalty\Engine\Storefront\RedeemCard;
 
 defined( 'ABSPATH' ) || exit;
@@ -83,30 +79,9 @@ final class StoreApiAdapter {
         add_action( 'woocommerce_blocks_enqueue_checkout_block_scripts_after', [ $this, 'enqueue' ] );
     }
 
-    /**
-     * On a page drawing the Cart or Checkout block: the card's assets and the slot fill that shows it, which is
-     * handed the coupon's code and the label its totals row reads on the blocks.
-     */
+    /** On a page drawing the Cart or Checkout block: the card's assets and the slot fill that shows it. */
     public function enqueue(): void {
-        RedeemCard::enqueue_assets();
-
-        wp_enqueue_script(
-            ScriptName::STOREFRONT_REDEEM_BLOCKS_SCRIPT,
-            YAYLOYALTY_PLUGIN_URL . 'assets/storefront/redeem-blocks.js',
-            [ 'wp-element', 'wp-plugins', 'wc-blocks-checkout' ],
-            Launcher::asset_version( 'assets/storefront/redeem-blocks.js' ),
-            [ 'in_footer' => true ]
-        );
-        wp_add_inline_script(
-            ScriptName::STOREFRONT_REDEEM_BLOCKS_SCRIPT,
-            'window.yayloyaltyRedeemBlocks = ' . wp_json_encode(
-                [
-                    'code'  => CouponProvider::CODE,
-                    'label' => CouponProvider::display_label(),
-                ]
-            ) . ';',
-            'before'
-        );
+        RedeemCard::enqueue_block_assets();
     }
 
     /**
@@ -205,11 +180,11 @@ final class StoreApiAdapter {
      * @throws RouteException When the points discount could not be debited.
      */
     public function on_order_processed( \WC_Order $order ): void {
-        $outcome = $this->service->commit( $order );
+        $key = RedemptionService::commit_error( $this->service->commit( $order ) );
 
-        if ( Outcome::SKIPPED === $outcome->get_status() && RedemptionService::REASON_NO_INTENT !== $outcome->get_reason() ) {
+        if ( null !== $key ) {
             // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- the Store API returns the message as JSON; it is never echoed.
-            throw new RouteException( 'yayloyalty_redeem_failed', RedemptionService::message_for( $outcome->get_reason() ), 409 );
+            throw new RouteException( 'yayloyalty_redeem_failed', RedemptionService::message_for( $key ), 409 );
         }
     }
 }

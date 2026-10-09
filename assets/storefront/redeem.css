@@ -115,7 +115,8 @@
   color: var(--yayloyalty-redeem-text);
 }
 
-.yayloyalty-redeem .yayloyalty-redeem__unit {
+.yayloyalty-redeem .yayloyalty-redeem__unit,
+.yayloyalty-redeem .yayloyalty-redeem__help {
   font-size: 12px;
   color: var(--yayloyalty-redeem-muted);
 }
@@ -198,11 +199,6 @@
 
 .yayloyalty-redeem button:disabled {
   pointer-events: none;
-}
-
-.yayloyalty-redeem .yayloyalty-redeem__help {
-  font-size: 12px;
-  color: var(--yayloyalty-redeem-muted);
 }
 
 .yayloyalty-redeem .yayloyalty-redeem__note {

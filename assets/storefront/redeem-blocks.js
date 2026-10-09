@@ -1,10 +1,10 @@
 /**
  * The points card on the Cart and Checkout blocks: a slot fill that shows the card the server rendered
- * (extensions.yayloyalty.card on the Store API cart), so the blocks and the classic pages share one template.
+ * (the `card` field of the plugin's Store API cart extension), so the blocks and the classic pages share one template.
  * Apply and Remove stay in redeem.js; here they are routed through the cart store, which redraws the card.
  *
- * Plain script, no build step and no JSX. Its values come from window.yayloyaltyRedeemBlocks
- * (StoreApiAdapter::enqueue()).
+ * Plain script, no build step and no JSX. Its values, the Store API names included, come from
+ * window.yayloyaltyRedeemBlocks (RedeemCard::enqueue_block_assets()).
  */
 (function () {
   "use strict";
@@ -24,9 +24,14 @@
 
   var config = window.yayloyaltyRedeemBlocks || {};
 
+  // Without the Store API names there is nothing to read the card from or post the points to.
+  if (!config.namespace || !config.callback) {
+    return;
+  }
+
   /** WooCommerce passes every fill the cart's `extensions`. The block editor's sample cart has none of ours. */
   function Card(props) {
-    var data = props.extensions && props.extensions.yayloyalty;
+    var data = props.extensions && props.extensions[config.namespace];
     var html = data && typeof data.card === "string" ? data.card : "";
 
     if (html === "") {
@@ -53,7 +58,7 @@
 
   window.yayloyaltyRedeemTransport = function (points) {
     return checkout.extensionCartUpdate({
-      namespace: "yayloyalty-redeem",
+      namespace: config.callback,
       data: { points: points },
     });
   };

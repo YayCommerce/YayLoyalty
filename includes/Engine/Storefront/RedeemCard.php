@@ -1,6 +1,9 @@
 <?php
 namespace YayLoyalty\Engine\Storefront;
 
+use YayLoyalty\Engine\Redemption\Adapters\StoreApiAdapter;
+use YayLoyalty\Engine\Redemption\CouponProvider;
+use YayLoyalty\Engine\Redemption\ProgramGate;
 use YayLoyalty\Engine\Redemption\RedemptionService;
 use YayLoyalty\Engine\Redemption\SessionIntent;
 use YayLoyalty\Engine\Register\ScriptName;
@@ -26,6 +29,10 @@ final class RedeemCard {
     public const SHORTCODE = 'yayloyalty_redeem';
     public const ACTION    = 'yayloyalty_redeem_card';
 
+    /** The `wc-ajax` endpoint Apply and Remove post to on pages without the blocks, and the nonce action it checks. */
+    private const AJAX_ENDPOINT = 'yayloyalty_redeem';
+    private const NONCE_ACTION  = 'yayloyalty-redeem';
+
     /** The clamp bounds the card explains; `step` stays silent because the slider already moves in steps. */
     private const EXPLAINED_BOUNDS = [ Clamp::BOUND_BALANCE, Clamp::BOUND_REWARD_MAX, Clamp::BOUND_CART, Clamp::BOUND_REWARD_MIN ];
 
@@ -46,7 +53,7 @@ final class RedeemCard {
         add_shortcode( self::SHORTCODE, [ $this, 'markup' ] );
         add_action( self::ACTION, [ $this, 'render' ] );
         add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_on_cart_pages' ] );
-        add_action( 'wc_ajax_yayloyalty_redeem', [ $this, 'on_apply' ] );
+        add_action( 'wc_ajax_' . self::AJAX_ENDPOINT, [ $this, 'on_apply' ] );
     }
 
     /**
@@ -55,7 +62,7 @@ final class RedeemCard {
      * the coupon on or takes it off, and the card's new HTML is answered. Never clamps and never touches a coupon.
      */
     public function on_apply(): void {
-        check_ajax_referer( 'yayloyalty-redeem', 'security' );
+        check_ajax_referer( self::NONCE_ACTION, 'security' );
 
         $cart = RedemptionService::cart();
 
@@ -74,11 +81,47 @@ final class RedeemCard {
         echo $this->markup(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- the template escapes every value.
     }
 
-    /** Cart and checkout always carry the card, so its assets load in the head there rather than late from markup(). */
+    /**
+     * Cart and checkout always carry the card, so its assets load in the head there rather than late from markup().
+     * Not on the checkout's order-pay and order-received endpoints, which never draw it.
+     */
     public function enqueue_on_cart_pages(): void {
-        if ( function_exists( 'is_cart' ) && ( is_cart() || is_checkout() ) ) {
+        if ( ! function_exists( 'is_cart' ) ) {
+            return;
+        }
+
+        if ( is_cart() || ( is_checkout() && ! is_wc_endpoint_url( 'order-pay' ) && ! is_wc_endpoint_url( 'order-received' ) ) ) {
             self::enqueue_assets();
         }
+    }
+
+    /**
+     * For a page drawing the Cart or Checkout block: the card's assets and the slot fill that shows it
+     * (redeem-blocks.js). The script is handed the Store API names it reads and posts to, the coupon's code and
+     * the label its totals row reads on the blocks, so none of them is written a second time in JS.
+     */
+    public static function enqueue_block_assets(): void {
+        self::enqueue_assets();
+
+        wp_enqueue_script(
+            ScriptName::STOREFRONT_REDEEM_BLOCKS_SCRIPT,
+            YAYLOYALTY_PLUGIN_URL . 'assets/storefront/redeem-blocks.js',
+            [ 'wp-element', 'wp-plugins', 'wc-blocks-checkout' ],
+            Launcher::asset_version( 'assets/storefront/redeem-blocks.js' ),
+            [ 'in_footer' => true ]
+        );
+        wp_add_inline_script(
+            ScriptName::STOREFRONT_REDEEM_BLOCKS_SCRIPT,
+            'window.yayloyaltyRedeemBlocks = ' . wp_json_encode(
+                [
+                    'namespace' => StoreApiAdapter::EXT_NAMESPACE,
+                    'callback'  => StoreApiAdapter::CALLBACK,
+                    'code'      => CouponProvider::CODE,
+                    'label'     => CouponProvider::display_label(),
+                ]
+            ) . ';',
+            'before'
+        );
     }
 
     /** The card's stylesheet and script, both plain files with no build step. Safe to call more than once. */
@@ -116,12 +159,22 @@ final class RedeemCard {
             }
 
             $user_id = RedemptionService::shopper_id();
-            $view    = self::view(
-                $this->balance_of( $user_id ),
-                $this->service->quote( $cart, $user_id ),
-                $this->service->ceiling( $cart, $user_id ),
-                wc_get_price_decimals()
-            );
+
+            if ( null === $user_id ) {
+                // A guest gets the sign-in line whatever the cart holds, so nothing is quoted for them.
+                $ceiling = Result::denied( ProgramGate::REASON_NO_CUSTOMER );
+                $quote   = $ceiling;
+            } else {
+                $ceiling = $this->service->ceiling( $cart, $user_id );
+
+                if ( ! $ceiling->is_allowed() ) {
+                    return '';
+                }
+
+                $quote = $this->service->quote( $cart, $user_id );
+            }
+
+            $view = self::view( $this->balance_of( $user_id ), $quote, $ceiling, wc_get_price_decimals() );
 
             if ( 'hidden' === $view['state'] ) {
                 return '';
@@ -179,10 +232,9 @@ final class RedeemCard {
             ];
         }
 
-        $config = $reward->get_config();
-        $step   = max( 1, (int) ( $config['increment'] ?? 1 ) );
+        $step = Clamp::step_of( $reward );
         // The slider moves in steps from 0, so its left end is the first step at or above the reward's minimum.
-        $min  = max( $step, (int) ceil( max( 0, (int) ( $config['min_points'] ?? 0 ) ) / $step ) * $step );
+        $min  = max( $step, (int) ceil( Clamp::min_of( $reward ) / $step ) * $step );
         $max  = $ceiling->get_points();
         $rate = $ceiling->get_rate_snapshot();
 
@@ -217,8 +269,8 @@ final class RedeemCard {
      */
     private static function chrome(): array {
         return [
-            'endpoint'    => \WC_AJAX::get_endpoint( 'yayloyalty_redeem' ),
-            'nonce'       => wp_create_nonce( 'yayloyalty-redeem' ),
+            'endpoint'    => \WC_AJAX::get_endpoint( self::AJAX_ENDPOINT ),
+            'nonce'       => wp_create_nonce( self::NONCE_ACTION ),
             'account_url' => (string) wc_get_page_permalink( 'myaccount' ),
             'money'       => [
                 'decimals'     => wc_get_price_decimals(),

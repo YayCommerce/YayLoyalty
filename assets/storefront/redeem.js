@@ -53,7 +53,7 @@
       );
   }
 
-  /** What the points buy, floored to the currency's smallest unit, as Clamp does. */
+  /** What the points buy, floored to the currency's smallest unit: the arithmetic of Clamp::value_of(). */
   function showOff(root, points) {
     var off = root.querySelector("[data-yl-off]");
     var rate = numberAttr(root, "data-rate");
@@ -157,16 +157,36 @@
       .catch(unlock);
   }
 
-  function apply(root) {
+  /**
+   * The typed number as the slider takes it: moves the slider and the preview, and rewrites the field
+   * when asked. Returns the points, or null on a card without the form.
+   */
+  function sync(root, rewriteField) {
     var range = root.querySelector("[data-yl-range]");
     var field = root.querySelector("[data-yl-points]");
 
-    if (!range || !field || field.disabled) {
-      return;
+    if (!range || !field) {
+      return null;
     }
-    field.value = String(clamp(range, field.value));
-    range.value = field.value;
-    send(root, Number(field.value));
+
+    var points = clamp(range, field.value);
+
+    range.value = String(points);
+    if (rewriteField) {
+      field.value = String(points);
+    }
+    showOff(root, points);
+
+    return points;
+  }
+
+  function apply(root) {
+    var field = root.querySelector("[data-yl-points]");
+    var points = field && !field.disabled ? sync(root, true) : null;
+
+    if (points !== null) {
+      send(root, points);
+    }
   }
 
   document.addEventListener("click", function (event) {
@@ -214,16 +234,12 @@
       return;
     }
 
-    var range = root.querySelector("[data-yl-range]");
-    var field = root.querySelector("[data-yl-points]");
-
-    if (target === range) {
-      field.value = range.value;
-      showOff(root, Number(range.value));
-    } else if (target === field) {
+    if (target.matches("[data-yl-range]")) {
+      root.querySelector("[data-yl-points]").value = target.value;
+      showOff(root, Number(target.value));
+    } else if (target.matches("[data-yl-points]")) {
       // The field keeps what was typed until it is left; the slider and the preview follow the clamped number.
-      range.value = String(clamp(range, field.value));
-      showOff(root, Number(range.value));
+      sync(root, false);
     }
   });
 
@@ -232,11 +248,7 @@
     var root = target instanceof Element ? rootOf(target) : null;
 
     if (root && target.matches("[data-yl-points]")) {
-      var range = root.querySelector("[data-yl-range]");
-
-      target.value = String(clamp(range, target.value));
-      range.value = target.value;
-      showOff(root, Number(target.value));
+      sync(root, true);
     }
   });
 })();

@@ -85,7 +85,7 @@ Commands and hard rules live in [CLAUDE.md](../CLAUDE.md). Citations give a path
       - On the Cart and Checkout blocks the same markup travels as `extensions.yayloyalty.card` on the Store API cart, and `redeem-blocks.js`, a slot fill with no build step, shows it.
       - Apply and Remove only set `SessionIntent`: through the `wc-ajax` endpoint `yayloyalty_redeem` on classic pages and through the Store API update callback on the blocks. The next totals run lets `CouponProvider` put the coupon on or take it off.
       - The card prints the shopper's balance and a nonce, so the launcher's page-cache caveat applies to it. WooCommerce-aware caches never cache cart and checkout; a shortcode placed on another page carries the same risk as the launcher.
-    - `RedemptionService::is_available()` is now true, so the launcher and the points earned email show what points are worth.
+    - With checkout redeeming, the launcher and the points earned email show what points are worth whenever the discount reward is live. The `RedemptionService::is_available()` switch that held this back is gone.
     - [The decision record](decisions/2026-10-07-lite-owns-redemption-writes.md) says why Lite owns these writes, and gives the status set and the refund rules.
   - `includes/Engine/CustomerActivityListener.php` (hooked in `yayloyalty.php`) records account and points activity in `customer_meta`, through `includes/Services/CustomerActivityService.php`. On `user_register` it also creates the new member's customer row, skipping staff.
 

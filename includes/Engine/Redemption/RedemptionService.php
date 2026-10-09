@@ -69,11 +69,6 @@ final class RedemptionService {
         $this->reversal = $reversal;
     }
 
-    /** Whether shoppers can spend points at checkout; the launcher and the points earned email show money values only when it is true. */
-    public static function is_available(): bool {
-        return true;
-    }
-
     /**
      * Composition root: one Quoter (the engine with the build's handlers;
      * gates ProgramGate, RewardGate, then whatever
@@ -194,8 +189,7 @@ final class RedemptionService {
 
     /** The shopper-facing sentence for a denial reason or a clamp bound, with the merchant's points label. */
     public static function message_for( string $key ): string {
-        // 0 picks the plural label.
-        $label = SettingsHelper::points_label( 0 );
+        $label = SettingsHelper::points_label_plural();
 
         switch ( $key ) {
             case ProgramGate::REASON_NO_CUSTOMER:
@@ -286,6 +280,19 @@ final class RedemptionService {
         }
 
         return $outcome;
+    }
+
+    /**
+     * Whether a commit() outcome must stop the checkout: a message key for message_for() when nothing was
+     * debited for a reason other than "no points discount on this order", null otherwise. Both adapters ask
+     * here and only choose how to fail.
+     */
+    public static function commit_error( Outcome $outcome ): ?string {
+        if ( Outcome::SKIPPED !== $outcome->get_status() || self::REASON_NO_INTENT === $outcome->get_reason() ) {
+            return null;
+        }
+
+        return $outcome->get_reason();
     }
 
     /**

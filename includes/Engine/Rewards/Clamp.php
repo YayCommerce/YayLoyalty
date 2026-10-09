@@ -35,8 +35,8 @@ final class Clamp {
             return Result::denied( Result::REASON_NO_RATE );
         }
 
-        $step = max( 1, (int) ( $config['increment'] ?? 1 ) );
-        $min  = max( 0, (int) ( $config['min_points'] ?? 0 ) );
+        $step = self::step_of( $reward );
+        $min  = self::min_of( $reward );
 
         $ceilings = [ self::BOUND_BALANCE => max( 0, $balance ) ];
 
@@ -97,10 +97,20 @@ final class Clamp {
             return 0;
         }
 
-        $step   = max( 1, (int) ( $config['increment'] ?? 1 ) );
+        $step   = self::step_of( $reward );
         $points = (int) ceil( round( $value * $rate, 6 ) );
 
         return (int) ( ceil( $points / $step ) * $step );
+    }
+
+    /** The reward's step: points are spent in multiples of it. At least 1. */
+    public static function step_of( Reward $reward ): int {
+        return max( 1, (int) ( $reward->get_config()['increment'] ?? 1 ) );
+    }
+
+    /** The fewest points one order may take. Not rounded to the step. */
+    public static function min_of( Reward $reward ): int {
+        return max( 0, (int) ( $reward->get_config()['min_points'] ?? 0 ) );
     }
 
     /** What points buy, floored to the currency's smallest unit; rounded before flooring, as points_in() is. */

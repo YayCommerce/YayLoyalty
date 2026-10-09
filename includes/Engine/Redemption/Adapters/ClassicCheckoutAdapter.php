@@ -1,7 +1,6 @@
 <?php
 namespace YayLoyalty\Engine\Redemption\Adapters;
 
-use YayLoyalty\Engine\Earning\Outcome;
 use YayLoyalty\Engine\Redemption\RedemptionService;
 use YayLoyalty\Engine\Storefront\RedeemCard;
 
@@ -74,19 +73,18 @@ final class ClassicCheckoutAdapter {
 
     /**
      * Precondition: the order exists with frozen totals; payment not yet
-     * taken. Postcondition: service->commit( order ) ran once; a commit that
-     * debited nothing for a reason other than "no points discount on this
-     * order" stops the checkout, the same rule as StoreApiAdapter::on_order_processed().
+     * taken. Postcondition: service->commit( order ) ran once; an outcome
+     * RedemptionService::commit_error() names stops the checkout.
      *
      * @param array $posted The posted checkout fields.
      * @throws \Exception When the points discount could not be debited: WC_Checkout::process_checkout() catches it, shows the sentence and takes no payment.
      */
     public function on_order_processed( int $order_id, array $posted, \WC_Order $order ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- the hook's first two arguments; the order is the third.
-        $outcome = $this->service->commit( $order );
+        $key = RedemptionService::commit_error( $this->service->commit( $order ) );
 
-        if ( Outcome::SKIPPED === $outcome->get_status() && RedemptionService::REASON_NO_INTENT !== $outcome->get_reason() ) {
+        if ( null !== $key ) {
             // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- WooCommerce prints the message as an escaped notice.
-            throw new \Exception( RedemptionService::message_for( $outcome->get_reason() ) );
+            throw new \Exception( RedemptionService::message_for( $key ) );
         }
     }
 }

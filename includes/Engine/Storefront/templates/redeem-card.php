@@ -16,8 +16,7 @@ defined( 'ABSPATH' ) || exit;
 
 $yayloyalty_state = $view['state'];
 $yayloyalty_money = $view['money'];
-// 0 picks the plural label.
-$yayloyalty_label = SettingsHelper::points_label( 0 );
+$yayloyalty_label = SettingsHelper::points_label_plural();
 $yayloyalty_note  = '' !== ( $view['bound_by'] ?? '' ) ? RedemptionService::message_for( $view['bound_by'] ) : '';
 /* translators: %s: money amount. */
 $yayloyalty_off_template = __( '= %s off', 'yayloyalty' );

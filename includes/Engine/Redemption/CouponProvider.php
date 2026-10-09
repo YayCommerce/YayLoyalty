@@ -46,7 +46,7 @@ final class CouponProvider {
     /** "Points discount", with the merchant's label: what the totals row reads instead of the code. */
     public static function display_label(): string {
         /* translators: %s: the store's points label, as "Points". */
-        return sprintf( __( '%s discount', 'yayloyalty' ), SettingsHelper::points_label( 0 ) );
+        return sprintf( __( '%s discount', 'yayloyalty' ), SettingsHelper::points_label_plural() );
     }
 
     /** The classic totals row's label. Postcondition: $label unchanged for every other coupon. */

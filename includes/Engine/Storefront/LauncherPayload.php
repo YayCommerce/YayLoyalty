@@ -3,7 +3,6 @@ namespace YayLoyalty\Engine\Storefront;
 
 use YayLoyalty\Engine\Points\ContextFactory;
 use YayLoyalty\Engine\Points\PointsEngine;
-use YayLoyalty\Engine\Redemption\RedemptionService;
 use YayLoyalty\Engine\Rewards\Clamp;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Models\Reward;
@@ -60,7 +59,7 @@ final class LauncherPayload {
      */
     public function for_balance( array $design, ?int $balance ): array {
         $now      = Dates::now();
-        $reward   = RedemptionService::is_available() ? $this->rewards->find_live_cart_discount( $now ) : null;
+        $reward   = $this->rewards->find_live_cart_discount( $now );
         $redeem   = self::redeem_rule( $reward );
         $register = self::register_route();
         $engine   = $this->engine();
