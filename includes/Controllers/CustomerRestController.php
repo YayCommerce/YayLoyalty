@@ -10,7 +10,6 @@ use YayLoyalty\Repositories\CustomerMetaRepository;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Repositories\RedemptionRepository;
-use YayLoyalty\Repositories\RewardRepository;
 use YayLoyalty\Services\LedgerService;
 
 defined( 'ABSPATH' ) || exit;
@@ -40,7 +39,6 @@ final class CustomerRestController extends AbstractRestController {
         CustomerRepository $customers,
         LedgerService $ledger_service,
         LedgerRepository $ledger,
-        RewardRepository $rewards,
         CustomerMetaRepository $meta,
         RedemptionRepository $redemptions
     ) {
@@ -124,8 +122,7 @@ final class CustomerRestController extends AbstractRestController {
             $this->ledger->count_for_user( $user_id ),
             $activity_count,
             $this->redemptions->count_for_user( $user_id ),
-            $deletion,
-            $this->rewards->points_per_currency_unit()
+            $deletion
         );
     }
 

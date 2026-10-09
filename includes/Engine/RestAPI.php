@@ -69,10 +69,10 @@ class RestAPI {
             new SettingsRestController(),
             new DesignRestController(),
             new EmailsRestController(),
-            // $ledger, $rewards and $redemptions are read-only here.
-            new CustomerRestController( $customers, $ledger_service, $ledger, $rewards, $customer_meta, $redemptions ),
-            // $customers and $rewards are read-only here too.
-            new CustomerAdjustPreviewRestController( $customers, $dashboard, $rewards ),
+            // $ledger and $redemptions are read-only here.
+            new CustomerRestController( $customers, $ledger_service, $ledger, $customer_meta, $redemptions ),
+            // $customers is read-only here too.
+            new CustomerAdjustPreviewRestController( $customers, $dashboard ),
             new LedgerRestController( $ledger ),
             new ActivityRestController( $customer_meta ),
             // Shopper route (storefront launcher): session identity, no capability. $ledger is read-only here.

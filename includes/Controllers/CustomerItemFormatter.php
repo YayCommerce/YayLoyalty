@@ -26,8 +26,7 @@ final class CustomerItemFormatter {
         int $ledger_count,
         int $activity_count,
         int $redemption_count,
-        ?CustomerMeta $deletion,
-        float $points_per_currency_unit
+        ?CustomerMeta $deletion
     ): array {
         return $base + [
             'name'             => self::identity( $live_identity, $deletion, 'display_name' ),

@@ -42,7 +42,7 @@ final class ProgramGate implements Gate {
         $user  = get_userdata( $user_id );
         $roles = $user instanceof \WP_User ? (array) $user->roles : [];
 
-        if ( array_intersect( $roles, (array) SettingsHelper::get_settings()['general']['excluded_roles'] ) ) {
+        if ( array_intersect( $roles, (array) SettingsHelper::get_settings()['excluded_roles'] ) ) {
             return self::REASON_EXCLUDED_ROLE;
         }
 
