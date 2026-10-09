@@ -64,14 +64,11 @@ final class Reversal {
      * @return Outcome[] One per earn row.
      */
     public function refund( \WC_Order $order, int $refund_id ): array {
-        $refunds        = $this->refunds( (int) $order->get_id() );
-        $refunded_total = array_sum( array_map( static fn( \WC_Order_Refund $refund ): float => (float) $refund->get_amount(), $refunds ) );
-        $decimals       = wc_get_price_decimals();
-        // Rounded like WooCommerce's own remaining amount: 0.35 + 0.10 is not >= 0.45 in floats.
-        $is_fully_refunded = round( $refunded_total, $decimals ) >= round( (float) $order->get_total(), $decimals );
-        $lines             = self::product_lines( $order );
-        $refunded_lines    = self::refunded_by_line( $refunds );
-        $outcomes          = [];
+        list( $refunds, , $is_fully_refunded ) = self::refund_state( $order );
+
+        $lines          = self::product_lines( $order );
+        $refunded_lines = self::refunded_by_line( $refunds );
+        $outcomes       = [];
 
         foreach ( $this->ledger->earn_rows_for_order( (int) $order->get_id() ) as $earn ) {
             list( $original, $refunded ) = $this->bases( $lines, $refunded_lines, $earn );
@@ -90,7 +87,7 @@ final class Reversal {
      * @return Outcome[] One per earn row; none when refund objects exist.
      */
     public function refunded_status( \WC_Order $order ): array {
-        return [] === $this->refunds( (int) $order->get_id(), 1 ) ? $this->full_order( $order ) : [];
+        return [] === self::refunds( (int) $order->get_id(), 1 ) ? $this->full_order( $order ) : [];
     }
 
     /**
@@ -116,11 +113,12 @@ final class Reversal {
      * The order's refunds as stored now. Not WC_Order::get_refunds() or its
      * refund totals: those are cached, and after a refund is deleted the
      * cache can still count it, which would read as fully refunded.
+     * Shared with Engine\Redemption\Reversal.
      *
      * @param int $limit -1 for all; 1 when only whether any exists matters.
      * @return \WC_Order_Refund[]
      */
-    private function refunds( int $order_id, int $limit = -1 ): array {
+    public static function refunds( int $order_id, int $limit = -1 ): array {
         return (array) wc_get_orders(
             [
                 'type'   => 'shop_order_refund',
@@ -128,6 +126,22 @@ final class Reversal {
                 'limit'  => $limit,
             ]
         );
+    }
+
+    /**
+     * The order's refunds, what they add up to, and whether they leave nothing to refund.
+     * Shared with Engine\Redemption\Reversal, which prorates by the amount.
+     *
+     * @return array{0: \WC_Order_Refund[], 1: float, 2: bool} [ refunds, refunded total, is fully refunded ]
+     */
+    public static function refund_state( \WC_Order $order ): array {
+        $refunds        = self::refunds( (int) $order->get_id() );
+        $refunded_total = array_sum( array_map( static fn( \WC_Order_Refund $refund ): float => (float) $refund->get_amount(), $refunds ) );
+        $decimals       = wc_get_price_decimals();
+        // Rounded like WooCommerce's own remaining amount: 0.35 + 0.10 is not >= 0.45 in floats.
+        $is_fully_refunded = round( $refunded_total, $decimals ) >= round( (float) $order->get_total(), $decimals );
+
+        return [ $refunds, (float) $refunded_total, $is_fully_refunded ];
     }
 
     /**

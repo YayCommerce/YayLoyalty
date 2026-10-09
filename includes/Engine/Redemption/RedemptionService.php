@@ -44,6 +44,9 @@ final class RedemptionService {
     /** The only collaborator that can write; quote() and checkout_error() never touch it. */
     private CommitWriter $writer;
 
+    /** Not used here: built beside the writer so it shares its LedgerService, and handed out by reversal(). */
+    private Reversal $reversal;
+
     /** quote()'s copy of the flexible reward for this request. commit() reads the row fresh. */
     private ?Reward $quoted_reward = null;
 
@@ -54,13 +57,15 @@ final class RedemptionService {
         ContextFactory $contexts,
         RewardRepository $rewards,
         SessionIntent $intent,
-        CommitWriter $writer
+        CommitWriter $writer,
+        Reversal $reversal
     ) {
         $this->quoter   = $quoter;
         $this->contexts = $contexts;
         $this->rewards  = $rewards;
         $this->intent   = $intent;
         $this->writer   = $writer;
+        $this->reversal = $reversal;
     }
 
     /** Whether shoppers can spend points at checkout; the launcher and the points earned email show money values only when it is true. */
@@ -73,8 +78,8 @@ final class RedemptionService {
      * Composition root: one Quoter (the engine with the build's handlers;
      * gates ProgramGate, RewardGate, then whatever
      * `yayloyalty_redemption_gates` appends for Pro) shared with the writer,
-     * the read-only context factory, and the writer, which holds one of
-     * LedgerService's construction sites. Adapters and the coupon provider are
+     * the read-only context factory, and the writer and the reversal, which
+     * share the one LedgerService built here, a listed construction site. Adapters and the coupon provider are
      * registered by the caller (YayLoyalty::__construct()), not here, with
      * the same $intent this is given.
      */
@@ -89,17 +94,19 @@ final class RedemptionService {
          */
         $gates = (array) apply_filters( 'yayloyalty_redemption_gates', [ new ProgramGate(), new RewardGate() ] );
 
-        $quoter   = new Quoter( new RewardEngine( Registry::with_lite_handlers() ), $gates );
-        $contexts = new ContextFactory( $customers );
-        $writer   = new CommitWriter(
-            new LedgerService( new LedgerRepository(), $customers ),
-            new RedemptionRepository(),
-            $customers,
-            $contexts,
-            $quoter
-        );
+        $quoter      = new Quoter( new RewardEngine( Registry::with_lite_handlers() ), $gates );
+        $contexts    = new ContextFactory( $customers );
+        $ledger      = new LedgerService( new LedgerRepository(), $customers );
+        $redemptions = new RedemptionRepository();
+        $rewards     = new RewardRepository();
+        $writer      = new CommitWriter( $ledger, $redemptions, $customers, $contexts, $quoter );
 
-        return new self( $quoter, $contexts, new RewardRepository(), $intent, $writer );
+        return new self( $quoter, $contexts, $rewards, $intent, $writer, new Reversal( $ledger, $redemptions, $customers, $rewards ) );
+    }
+
+    /** Handed to Earning\Listeners\OrderReversalListener, so reversals write through this root's LedgerService and no construction site is added. */
+    public function reversal(): Reversal {
+        return $this->reversal;
     }
 
     /** The signed-in shopper's id, null for a guest: the `$user_id` quote() and checkout_error() take. */

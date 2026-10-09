@@ -31,7 +31,7 @@ defined( 'ABSPATH' ) || exit;
  * row (through LedgerService — the one ledger writer) together and freezes
  * the value onto the order. The double-debit guard is the ledger key, one
  * per order. A failed re-check writes nothing and the caller fails the
- * checkout. Cancel and refund are not here: reversal is spec task 2.
+ * checkout. Cancel and refund are not here: they are Reversal's.
  */
 final class CommitWriter {
 

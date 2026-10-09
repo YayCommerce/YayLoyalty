@@ -9,7 +9,8 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * yayloyalty_redemptions. Only Engine\Redemption\CommitWriter inserts rows,
- * under the customer's row lock. The commit's duplicate check, the customer drawer and the rewards
+ * under the customer's row lock; Engine\Redemption\Reversal moves only `status` and `restored_points`.
+ * The commit's duplicate check, the customer drawer and the rewards
  * list's claim summary read them. The table is Schema\RedemptionsTable.
  */
 final class RedemptionRepository extends AbstractRepository {
@@ -49,6 +50,63 @@ final class RedemptionRepository extends AbstractRepository {
         );
 
         return is_array( $row ) ? Redemption::from_row( $row ) : null;
+    }
+
+    /**
+     * Every redemption on an order, oldest first. A plain read: the caller
+     * takes only ids and user ids from it, then lock()s each row.
+     *
+     * @return Redemption[]
+     */
+    public function for_order( int $order_id ): array {
+        global $wpdb;
+
+        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare(
+                'SELECT * FROM `' . esc_sql( $this->table() ) . '` WHERE order_id = %d ORDER BY id ASC',
+                $order_id
+            ),
+            ARRAY_A
+        );
+
+        return array_map( [ Redemption::class, 'from_row' ], is_array( $rows ) ? $rows : [] );
+    }
+
+    /**
+     * Locks one row and returns it, or null when it is gone. Call inside a
+     * transaction, after the customer lock. A locking read, so it returns
+     * the row as last committed even when the transaction's snapshot is older.
+     */
+    public function lock( int $id ): ?Redemption {
+        global $wpdb;
+
+        $row = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a locking read must reach the database, never a cache.
+            $wpdb->prepare(
+                'SELECT * FROM `' . esc_sql( $this->table() ) . '` WHERE id = %d FOR UPDATE',
+                $id
+            ),
+            ARRAY_A
+        );
+
+        return is_array( $row ) ? Redemption::from_row( $row ) : null;
+    }
+
+    /**
+     * Moves the two columns a reversal owns. Precondition: the caller holds lock() on the row,
+     * $restored_points is within 0 and the row's points, and $status is `refunded` only when they are equal.
+     *
+     * @throws \YayLoyalty\Database\QueryException When the update fails.
+     */
+    public function record_restore( int $id, int $restored_points, string $status ): void {
+        $this->update(
+            $id,
+            [
+                'restored_points' => $restored_points,
+                'status'          => $status,
+                'updated_at'      => Dates::now(),
+            ],
+            [ '%d', '%s', '%s' ]
+        );
     }
 
     /**

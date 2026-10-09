@@ -3,6 +3,11 @@ namespace YayLoyalty\Tests\Integration;
 
 use PHPUnit\Framework\TestCase;
 use YayLoyalty\Engine\Earning\IdempotencyKey;
+use YayLoyalty\Engine\Redemption\CommitWriter;
+use YayLoyalty\Engine\Redemption\Quoter;
+use YayLoyalty\Engine\Rewards\ContextFactory;
+use YayLoyalty\Engine\Rewards\Handlers\Registry;
+use YayLoyalty\Engine\Rewards\RewardEngine;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
@@ -12,6 +17,7 @@ use YayLoyalty\Models\LedgerEntry;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
+use YayLoyalty\Repositories\RedemptionRepository;
 use YayLoyalty\Services\LedgerService;
 use YayLoyalty\Utils\Dates;
 
@@ -111,6 +117,49 @@ abstract class IntegrationTestCase extends TestCase {
                 'SELECT * FROM `' . esc_sql( \YayLoyalty\Utils\Table::name( 'ledger' ) ) . '` WHERE user_id = %d ORDER BY id ASC',
                 $user_id
             ),
+            ARRAY_A
+        );
+    }
+
+    protected function commit_writer(): CommitWriter {
+        $customers = new CustomerRepository();
+
+        return new CommitWriter(
+            $this->ledger_service(),
+            new RedemptionRepository(),
+            $customers,
+            new ContextFactory( $customers ),
+            new Quoter( new RewardEngine( Registry::with_lite_handlers() ), [] )
+        );
+    }
+
+    /** An order with one line and our coupon line, as checkout leaves it. */
+    protected function order_with_points_discount( int $user_id, float $subtotal, float $discount ): \WC_Order {
+        $order = wc_create_order( [ 'customer_id' => $user_id ] );
+
+        $line = new \WC_Order_Item_Product();
+        $line->set_name( 'Thing' );
+        $line->set_quantity( 1 );
+        $line->set_subtotal( $subtotal );
+        $line->set_total( $subtotal - $discount );
+        $order->add_item( $line );
+
+        $coupon = new \WC_Order_Item_Coupon();
+        $coupon->set_code( 'yayloyalty-redeem' );
+        $coupon->set_discount( $discount );
+        $order->add_item( $coupon );
+
+        $order->save();
+
+        return $order;
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    protected function redemption_rows( int $user_id ): array {
+        global $wpdb;
+
+        return (array) $wpdb->get_results( // phpcs:ignore WordPress.DB -- tests read the table directly; the table name is escaped.
+            $wpdb->prepare( 'SELECT * FROM `' . esc_sql( ( new RedemptionRepository() )->table() ) . '` WHERE user_id = %d ORDER BY id ASC', $user_id ),
             ARRAY_A
         );
     }
