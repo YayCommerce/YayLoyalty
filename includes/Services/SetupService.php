@@ -134,6 +134,11 @@ final class SetupService {
         return $this->payload();
     }
 
+    /** "Exit setup": the wizard never opens again and nothing else changes. */
+    public function dismiss(): void {
+        update_option( SettingsHelper::OPTION_SETUP_COMPLETED, true );
+    }
+
     /** @return array{purchase: ?Campaign, signup: ?Campaign, review: ?Campaign, discount: ?Reward} */
     private function rows(): array {
         if ( null === $this->rows ) {

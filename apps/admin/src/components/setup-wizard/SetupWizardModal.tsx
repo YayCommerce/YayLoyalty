@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { toastApiError } from '@/lib/api/api';
-import { useCompleteSetupMutation, useSetupQuery } from '@/lib/queries/setup.queries';
+import { useCompleteSetupMutation, useDismissSetupMutation, useSetupQuery } from '@/lib/queries/setup.queries';
 import type { Setup } from '@/lib/schema/setup.schema';
 import { cn } from '@/lib/utils';
 import { Button, LoadingButton } from '@/components/ui/button';
@@ -43,6 +43,7 @@ function SetupWizard({ setup, onClose }: { setup: Setup; onClose: () => void }) 
   // Set by an Edit link on step 5: Continue then returns to the review instead of walking on.
   const [returnToReview, setReturnToReview] = useState(false);
   const complete = useCompleteSetupMutation();
+  const dismiss = useDismissSetupMutation();
 
   const goToStep = (next: WizardStep) => {
     setReturnToReview(true);
@@ -58,16 +59,20 @@ function SetupWizard({ setup, onClose }: { setup: Setup; onClose: () => void }) 
     setStep((current) => Math.min(current + 1, WIZARD_STEP_COUNT) as WizardStep);
   };
 
-  // Exit finishes setup too: the answers so far, plus the defaults for steps not reached, are saved
-  // and the wizard does not open again.
-  const finish = (successMessage: string) => {
+  const finish = () => {
     complete.mutate(toSetupPayload(form.getValues()), {
       onSuccess: () => {
-        toast.success(successMessage);
+        toast.success(__('Your loyalty program is on.', 'yayloyalty'));
         onClose();
       },
       onError: (error) => toastApiError(error, __('Your setup could not be saved. Try again.', 'yayloyalty')),
     });
+  };
+
+  // Exit discards every answer and closes at once; the request that stops the wizard reopening runs on its own.
+  const exit = () => {
+    dismiss.mutate();
+    onClose();
   };
 
   return (
@@ -85,9 +90,7 @@ function SetupWizard({ setup, onClose }: { setup: Setup; onClose: () => void }) 
           type="button"
           className="text-primary cursor-pointer text-xs hover:underline disabled:opacity-50"
           disabled={complete.isPending}
-          onClick={() =>
-            finish(__('Setup saved. You can change everything in Campaigns, Rewards and Settings.', 'yayloyalty'))
-          }
+          onClick={exit}
         >
           {__('Exit setup', 'yayloyalty')}
         </button>
@@ -127,7 +130,7 @@ function SetupWizard({ setup, onClose }: { setup: Setup; onClose: () => void }) 
               <LoadingButton
                 loading={complete.isPending}
                 disabled={complete.isPending}
-                onClick={() => finish(__('Your loyalty program is on.', 'yayloyalty'))}
+                onClick={finish}
               >
                 {__('Turn on my program', 'yayloyalty')}
               </LoadingButton>

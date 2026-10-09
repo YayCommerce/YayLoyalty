@@ -1,6 +1,6 @@
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { completeSetup, getSetup } from '@/lib/api/setup.api';
+import { completeSetup, dismissSetup, getSetup } from '@/lib/api/setup.api';
 import { DESIGN_QUERIES } from '@/lib/queries/design.queries';
 import { SETTINGS_QUERIES } from '@/lib/queries/settings.queries';
 import type { Setup } from '@/lib/schema/setup.schema';
@@ -33,6 +33,17 @@ export function useCompleteSetupMutation() {
         queryClient.fetchQuery({ ...SETTINGS_QUERIES.main, staleTime: 0 }),
         queryClient.fetchQuery({ ...DESIGN_QUERIES.main, staleTime: 0 }),
       ]);
+    },
+  });
+}
+
+/** "Exit setup": nothing is saved, the wizard just never opens again. */
+export function useDismissSetupMutation() {
+  return useMutation({
+    mutationKey: ['setup', 'dismiss'],
+    mutationFn: dismissSetup,
+    onSuccess: () => {
+      window.yayLoyaltyMeta.loyaltyMeta.setupCompleted = true;
     },
   });
 }

@@ -8,6 +8,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * GET/POST /setup: the setup wizard's prefill and its "Turn on my program".
+ * POST /setup/dismiss: its "Exit setup".
  *
  * No get_item_schema(): SetupService validates the payload against the campaign and reward
  * config schemas it writes into, so a second whitelist here would only drift.
@@ -42,6 +43,16 @@ class SetupRestController extends AbstractRestController {
                 ],
             ]
         );
+
+        register_rest_route(
+            self::REST_NAMESPACE,
+            '/setup/dismiss',
+            [
+                'methods'             => \WP_REST_Server::CREATABLE,
+                'callback'            => fn( $request ) => $this->exec_write( [ $this, 'dismiss_setup' ], $request ),
+                'permission_callback' => $this->requires( Capabilities::MANAGE_SETTINGS ),
+            ]
+        );
     }
 
     public function get_setup( \WP_REST_Request $request ) {
@@ -62,5 +73,11 @@ class SetupRestController extends AbstractRestController {
         }
 
         return $this->setup->complete( $input );
+    }
+
+    public function dismiss_setup( \WP_REST_Request $request ) {
+        $this->setup->dismiss();
+
+        return [ 'setup_completed' => true ];
     }
 }

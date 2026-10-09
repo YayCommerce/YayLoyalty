@@ -29,7 +29,7 @@ A merchant who opens YayLoyalty for the first time sets up the program in five s
 ## Scope
 
 **In:**
-- A new option and REST endpoints `GET` and `POST /yayloyalty/v1/setup`.
+- A new option and REST endpoints `GET` and `POST /yayloyalty/v1/setup`, and `POST /yayloyalty/v1/setup/dismiss`.
 - A five-step wizard modal in the SPA, matching the design: header with "Step N of 5" and "Exit setup", a five-segment progress bar, Back and Continue buttons, and the live preview line on each step.
 - Step 4's storefront preview, with the Desktop/Mobile toggle changing the preview width.
 - Step 5's review card with an Edit link per row. Edit opens that step. While editing from review, Continue on that step returns to step 5.
@@ -49,7 +49,7 @@ A merchant who opens YayLoyalty for the first time sets up the program in five s
 1. Given a fresh install (`yayloyalty_setup_completed` absent), when a user with `yayloyalty_manage_settings` opens the YayLoyalty admin page, the wizard modal opens on step 1, prefilled from `GET /setup`: Point, Points, 1 point per 1.00, signup on at 100, review on at 50, 100 points = 1.00, min 100, max 100%, `#1f6fb2`.
 2. A user without `yayloyalty_manage_settings` never sees the modal.
 3. Each step's preview line updates as fields change. Step 1 shows "You have 850 Points". Step 2 shows "A $50 order earns 50 points". Step 3 shows "500 points = $5 off".
-4. "Exit setup" saves the answers so far (defaults for steps not reached) with the same `POST /setup` as "Turn on my program", closes the modal, and reloading does not reopen it. Changed 2026-10-09 at the user's request; it first closed without saving.
+4. "Exit setup" saves none of the answers. It sends `POST /setup/dismiss`, which only sets `yayloyalty_setup_completed`, then closes the modal, and reloading does not reopen it. Changed 2026-10-09 at the user's request: it first closed without saving or marking setup done, then saved the answers so far.
 5. On step 5, each Edit link opens its step: labels → 1; earn, signup, review → 2; worth, limits → 3; launcher → 4. Continue on that step then returns to step 5.
 6. "Turn on my program" sends one `POST /yayloyalty/v1/setup`. Afterwards:
    - `settings.points_label_*` and `enabled = true` are saved.
@@ -80,7 +80,7 @@ A merchant who opens YayLoyalty for the first time sets up the program in five s
 
 **Components:**
 - **PHP**
-  - `includes/Controllers/SetupRestController.php`: `GET /setup` (`VIEW`) and `POST /setup` (`MANAGE_SETTINGS`). Registered in `RestAPI::controllers()`.
+  - `includes/Controllers/SetupRestController.php`: `GET /setup` (`VIEW`), `POST /setup` and `POST /setup/dismiss` (`MANAGE_SETTINGS`). Registered in `RestAPI::controllers()`.
   - `includes/Services/SetupService.php`:
     - `current(): array` reads settings, design, the three campaigns by slug, and `cart-discount`.
     - `complete( array $input )` validates through `Campaign::validate_config` and `Reward::validate_config`, merges into the existing config, updates the rows, calls `SettingsHelper::update_settings` and `DesignHelper::update_design`, then sets the option.
@@ -88,8 +88,8 @@ A merchant who opens YayLoyalty for the first time sets up the program in five s
   - `LocalizeHelper::get_meta()` adds `loyaltyMeta.setupCompleted`.
 - **SPA** (`apps/admin/src/`)
   - `lib/schema/setup.schema.ts`: zod copy of the payload.
-  - `lib/api/setup.api.ts`: `getSetup`, `completeSetup`.
-  - `lib/queries/setup.queries.ts`: `useSetupQuery`, `useCompleteSetupMutation`, which refreshes the settings, design, campaigns and rewards data.
+  - `lib/api/setup.api.ts`: `getSetup`, `completeSetup`, `dismissSetup`.
+  - `lib/queries/setup.queries.ts`: `useSetupQuery`, `useCompleteSetupMutation`, which refreshes the settings, design, campaigns and rewards data, and `useDismissSetupMutation`.
   - `components/setup-wizard/SetupWizardModal.tsx`: the shell (header, progress, Back/Continue, step switch, the `returnToReview` state).
   - `components/setup-wizard/setup-wizard.form.ts`: the form type, mapping from GET, and building the POST body using `rateFromSpend`.
   - Step components in `components/setup-wizard/`:

@@ -8,3 +8,7 @@ export async function getSetup() {
 export async function completeSetup(data: Setup) {
   return setupSchema.parse(await api.post('setup', { json: data }).json());
 }
+
+export async function dismissSetup() {
+  await api.post('setup/dismiss');
+}
