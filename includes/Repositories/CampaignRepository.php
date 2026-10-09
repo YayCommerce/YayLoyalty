@@ -18,6 +18,10 @@ class CampaignRepository extends AbstractRepository {
     /** The built-in purchase campaign seeded by the installer. */
     public const DEFAULT_PURCHASE_SLUG = 'default-purchase';
 
+    /** The built-in signup and review campaigns seeded by the installer. */
+    public const SIGNUP_SLUG = 'signup';
+    public const REVIEW_SLUG = 'review';
+
     private const CACHE_GROUP = 'yayloyalty';
     private const CACHE_KEY   = 'campaigns_non_archived';
     private const CACHE_TTL   = 3600;
