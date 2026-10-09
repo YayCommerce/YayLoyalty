@@ -1,6 +1,7 @@
 import type { UseFormReturn } from 'react-hook-form';
+import { __ } from '@wordpress/i18n';
 
-import { rateFromSpend, spendPairFromRate } from '@/lib/helpers/points.helper';
+import { rateFromSpend } from '@/lib/helpers/points.helper';
 import type { Setup } from '@/lib/schema/setup.schema';
 
 export type WizardStep = 1 | 2 | 3 | 4 | 5;
@@ -34,23 +35,25 @@ export type SetupForm = {
 /** What every step component receives. */
 export type WizardStepProps = { form: UseFormReturn<SetupForm> };
 
-export function toSetupForm(setup: Setup): SetupForm {
-  const earn = spendPairFromRate(setup.purchase.points_per_unit);
-
+/**
+ * The first-run values, copied from the PHP seeds: Campaign::default_config(), Reward::default_config(),
+ * SettingsHelper's labels and DesignSchema's brand_color.
+ */
+export function setupDefaults(): SetupForm {
   return {
-    pointsLabelSingular: setup.points_label_singular,
-    pointsLabelPlural: setup.points_label_plural,
-    earnPoints: earn.points,
-    earnSpend: earn.spend,
-    signupEnabled: setup.signup.enabled,
-    signupPoints: setup.signup.points,
-    reviewEnabled: setup.review.enabled,
-    reviewPoints: setup.review.points,
-    worthPoints: setup.cart_discount.points_per_currency_unit,
+    pointsLabelSingular: __('Point', 'yayloyalty'),
+    pointsLabelPlural: __('Points', 'yayloyalty'),
+    earnPoints: 1,
+    earnSpend: 1,
+    signupEnabled: true,
+    signupPoints: 100,
+    reviewEnabled: true,
+    reviewPoints: 50,
+    worthPoints: 100,
     worthAmount: 1,
-    minPoints: setup.cart_discount.min_points,
-    maxPercent: setup.cart_discount.max_percent_of_subtotal ?? 100,
-    brandColor: setup.brand_color,
+    minPoints: 100,
+    maxPercent: 100,
+    brandColor: '#1f6fb2',
   };
 }
 

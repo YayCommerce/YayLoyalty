@@ -4,8 +4,7 @@ import { toast } from 'sonner';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { toastApiError } from '@/lib/api/api';
-import { useCompleteSetupMutation, useDismissSetupMutation, useSetupQuery } from '@/lib/queries/setup.queries';
-import type { Setup } from '@/lib/schema/setup.schema';
+import { useCompleteSetupMutation, useDismissSetupMutation } from '@/lib/queries/setup.queries';
 import { cn } from '@/lib/utils';
 import { Button, LoadingButton } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
@@ -13,16 +12,14 @@ import { EarnPointsStep } from './EarnPointsStep';
 import { LauncherLookStep } from './LauncherLookStep';
 import { NamePointsStep } from './NamePointsStep';
 import { ReviewProgramStep } from './ReviewProgramStep';
-import { toSetupForm, toSetupPayload, WIZARD_STEP_COUNT, type SetupForm, type WizardStep } from './setup-wizard.form';
+import { setupDefaults, toSetupPayload, WIZARD_STEP_COUNT, type SetupForm, type WizardStep } from './setup-wizard.form';
 import { SpendPointsStep } from './SpendPointsStep';
 
 /**
- * The five-step setup wizard (F16). Nothing is saved until "Turn on my program" on step 5,
- * which sends every answer in one POST /setup.
+ * The five-step setup wizard (F16). It starts from setupDefaults(), and nothing is saved until
+ * "Turn on my program" on step 5, which sends every answer in one POST /setup.
  */
 export function SetupWizardModal({ onClose }: { onClose: () => void }) {
-  const { data } = useSetupQuery();
-
   return (
     <Dialog open>
       <DialogContent
@@ -31,14 +28,14 @@ export function SetupWizardModal({ onClose }: { onClose: () => void }) {
         onEscapeKeyDown={(event) => event.preventDefault()}
         className="max-h-[calc(100vh-4rem)] gap-0 overflow-y-auto p-0 sm:max-w-225"
       >
-        {data && <SetupWizard setup={data} onClose={onClose} />}
+        <SetupWizard onClose={onClose} />
       </DialogContent>
     </Dialog>
   );
 }
 
-function SetupWizard({ setup, onClose }: { setup: Setup; onClose: () => void }) {
-  const form = useForm<SetupForm>({ defaultValues: toSetupForm(setup) });
+function SetupWizard({ onClose }: { onClose: () => void }) {
+  const form = useForm<SetupForm>({ defaultValues: setupDefaults() });
   const [step, setStep] = useState<WizardStep>(1);
   // Set by an Edit link on step 5: Continue then returns to the review instead of walking on.
   const [returnToReview, setReturnToReview] = useState(false);
