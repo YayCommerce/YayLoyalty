@@ -21,7 +21,7 @@ class DesignSchema {
                 'corner_radius' => 8,
             ],
             // Real, editable defaults. An empty save is literal, never "use the default".
-            // {points_label} becomes the merchant's points label (LauncherCopy::storefront_text()), so no default names "points".
+            // {points_label} becomes the merchant's points label (LauncherCopy::storefront_text(); product_earn_line's through LauncherCopy::product_earn()), so no default names "points".
             'storefront_text' => [
                 'launcher_label'    => __( 'Rewards', 'yayloyalty' ),
                 /* translators: keep {points_label} as it is; it becomes the store's points label, as "Points". */

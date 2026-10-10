@@ -31,14 +31,15 @@ final class ProductEarnMessage {
     /** @var PointsEngine|null */
     private static $engine;
 
-    /** @var bool */
-    private static $printed = false;
+    /** @var array|null DesignHelper::get_design(), read once per request. */
+    private static $design;
 
     /** @var array<int, string> Sentences by product id, for this request. */
     private static $sentences = [];
 
     public static function register(): void {
         add_action( 'woocommerce_single_product_summary', [ self::class, 'render_summary' ], 15 );
+        add_filter( 'woocommerce_blocks_hook_compatibility_additional_data', [ self::class, 'unhook_in_block_templates' ] );
         add_filter( 'render_block_woocommerce/product-price', [ self::class, 'append_to_price_block' ], 10, 3 );
         add_filter( 'woocommerce_available_variation', [ self::class, 'add_variation_sentence' ], 10, 3 );
         add_action( 'wp_enqueue_scripts', [ self::class, 'enqueue' ] );
@@ -51,6 +52,22 @@ final class ProductEarnMessage {
         if ( $product instanceof \WC_Product ) {
             echo self::markup( self::sentence( $product ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- markup() escapes every part.
         }
+    }
+
+    /**
+     * Block templates replay woocommerce_single_product_summary for classic plugins; the price block already carries the line there.
+     *
+     * @param array $hooks Callbacks WooCommerce removes in its blockified templates.
+     */
+    public static function unhook_in_block_templates( $hooks ): array {
+        $hooks   = is_array( $hooks ) ? $hooks : [];
+        $hooks[] = [
+            'hook'     => 'woocommerce_single_product_summary',
+            'function' => [ self::class, 'render_summary' ],
+            'priority' => 15,
+        ];
+
+        return $hooks;
     }
 
     /** Block themes: only the main product's own price, never a related-products or collection card. */
@@ -91,7 +108,11 @@ final class ProductEarnMessage {
      * A variable product speaks for its cheapest variation that earns, until the shopper picks one.
      */
     public static function sentence( \WC_Product $product ): string {
-        $id = (int) $product->get_id();
+        if ( ! ProgramGate::program_enabled() || empty( self::design()['visibility']['product_message'] ) ) {
+            return '';
+        }
+
+        $id = $product->get_id();
 
         if ( ! isset( self::$sentences[ $id ] ) ) {
             self::$sentences[ $id ] = $product->is_type( 'variable' ) ? self::cheapest_variation_sentence( $product ) : self::compute( $product );
@@ -100,23 +121,11 @@ final class ProductEarnMessage {
         return self::$sentences[ $id ];
     }
 
-    private static function cheapest_variation_sentence( \WC_Product $product ): string {
-        $variations = array_filter(
-            $product->get_available_variations( 'objects' ),
-            function ( \WC_Product $variation ): bool {
-                return '' !== $variation->get_price();
-            }
-        );
-
-        usort(
-            $variations,
-            function ( \WC_Product $a, \WC_Product $b ): int {
-                return (float) $a->get_price() <=> (float) $b->get_price();
-            }
-        );
-
-        foreach ( $variations as $variation ) {
-            $sentence = self::sentence( $variation );
+    /** WooCommerce keeps variation prices cached and sorted cheapest first. */
+    private static function cheapest_variation_sentence( \WC_Product_Variable $product ): string {
+        foreach ( array_keys( $product->get_variation_prices( true )['price'] ) as $variation_id ) {
+            $variation = wc_get_product( $variation_id );
+            $sentence  = $variation ? self::sentence( $variation ) : '';
 
             if ( '' !== $sentence ) {
                 return $sentence;
@@ -127,56 +136,60 @@ final class ProductEarnMessage {
     }
 
     private static function compute( \WC_Product $product ): string {
-        if ( ! ProgramGate::program_enabled() || ! self::enabled() || $product->is_type( [ 'grouped', 'external' ] ) || '' === $product->get_price() ) {
+        if ( $product->is_type( [ 'grouped', 'external' ] ) || '' === $product->get_price() ) {
             return '';
         }
 
-        try {
-            $points = self::points( $product );
-        } catch ( \Throwable $e ) {
-            // A broken estimate must never take the product page down with it.
-            Log::warning( 'ProductEarnMessage', 'estimate failed: ' . $e->getMessage() );
-
-            return '';
-        }
+        $points = get_current_user_id() > 0 ? self::member_points( $product ) : self::guest_points( $product );
 
         // The raw design value: storefront_text() would fill {points_label} with the plural before the number is known.
-        return $points > 0 ? LauncherCopy::product_earn( DesignHelper::get_design()['storefront_text']['product_earn_line'], $points ) : '';
+        return $points > 0 ? LauncherCopy::product_earn( self::design()['storefront_text']['product_earn_line'], $points ) : '';
     }
 
-    private static function enabled(): bool {
-        return ! empty( DesignHelper::get_design()['visibility']['product_message'] );
-    }
+    /** What one of this product earns a guest, at the base rate: no tier multiplier, since that belongs to members. 0 on failure. */
+    public static function guest_points( \WC_Product $product ): int {
+        try {
+            return self::engine()->evaluate( CampaignTrigger::PURCHASE, ContextFactory::from_product( $product ) )->get_points();
+        } catch ( \Throwable $e ) {
+            // A broken estimate must never take the product page down with it.
+            Log::warning( 'ProductEarnMessage', 'guest estimate failed: ' . $e->getMessage() );
 
-    private static function points( \WC_Product $product ): int {
-        $user_id = get_current_user_id();
-
-        if ( $user_id > 0 ) {
-            if ( null === self::$service ) {
-                self::$service = EarningService::build();
-            }
-
-            return self::$service->preview( CampaignTrigger::PURCHASE, ContextFactory::from_product( $product, 1, $user_id ) )->get_points();
+            return 0;
         }
+    }
 
-        return self::engine()->evaluate( CampaignTrigger::PURCHASE, ContextFactory::from_product( $product ) )->get_points();
+    private static function member_points( \WC_Product $product ): int {
+        try {
+            return self::service()->preview( CampaignTrigger::PURCHASE, ContextFactory::from_product( $product, 1, get_current_user_id() ) )->get_points();
+        } catch ( \Throwable $e ) {
+            Log::warning( 'ProductEarnMessage', 'member estimate failed: ' . $e->getMessage() );
+
+            return 0;
+        }
+    }
+
+    private static function design(): array {
+        self::$design = self::$design ?? DesignHelper::get_design();
+
+        return self::$design;
+    }
+
+    private static function service(): EarningService {
+        self::$service = self::$service ?? EarningService::build();
+
+        return self::$service;
     }
 
     private static function engine(): PointsEngine {
-        if ( null === self::$engine ) {
-            self::$engine = PointsEngine::build( new CampaignRepository() );
-        }
+        self::$engine = self::$engine ?? PointsEngine::build( new CampaignRepository() );
 
         return self::$engine;
     }
 
     private static function markup( string $sentence ): string {
-        // WooCommerce filters the price block's output more than once per render; the line goes in once.
-        if ( '' === $sentence || self::$printed ) {
+        if ( '' === $sentence ) {
             return '';
         }
-
-        self::$printed = true;
 
         return sprintf(
             '<div class="%1$s" data-default="%2$s" style="margin:0.5em 0 1em"><p class="%1$s__line" style="margin:0">%3$s</p>%4$s</div>',
@@ -189,31 +202,21 @@ final class ProductEarnMessage {
 
     /** "Sign in to start earning — or create an account and get 100 Points", the clause only while signup pays. */
     private static function guest_line(): string {
-        $sign_in = sprintf( '<a href="%s">%s</a>', esc_url( (string) wc_get_page_permalink( 'myaccount' ) ), esc_html__( 'Sign in to start earning', 'yayloyalty' ) );
-        $route   = LauncherPayload::register_route();
-        $signup  = null === $route ? null : self::signup_points();
+        $line   = sprintf( '<a href="%s">%s</a>', esc_url( (string) wc_get_page_permalink( 'myaccount' ) ), esc_html__( 'Sign in to start earning', 'yayloyalty' ) );
+        $route  = LauncherPayload::register_route();
+        $signup = null === $route ? null : LauncherEarnRules::advertise( self::engine(), ContextFactory::for_advert( Dates::now() ), true )['earn'][ CampaignTrigger::SIGNUP ];
 
-        if ( null === $signup ) {
-            return sprintf( '<p class="%s__guest" style="margin:0">%s</p>', esc_attr( self::CSS_CLASS ), $sign_in );
+        if ( null !== $signup ) {
+            $register = 'checkout' === $route
+                /* translators: %s: points with the store's label, as "100 Points". */
+                ? sprintf( '<a href="%s">%s</a>', esc_url( LauncherPayload::register_url( $route ) ), esc_html( sprintf( __( 'create an account at checkout and get %s', 'yayloyalty' ), SettingsHelper::points_text( $signup ) ) ) )
+                /* translators: %s: points with the store's label, as "100 Points". */
+                : sprintf( '<a href="%s">%s</a>', esc_url( LauncherPayload::register_url( $route ) ), esc_html( sprintf( __( 'create an account and get %s', 'yayloyalty' ), SettingsHelper::points_text( $signup ) ) ) );
+
+            /* translators: 1: "Sign in to start earning" link, 2: "create an account and get 100 Points" link. */
+            $line = sprintf( esc_html__( '%1$s — or %2$s', 'yayloyalty' ), $line, $register );
         }
 
-        $register_url = 'checkout' === $route ? wc_get_checkout_url() : wc_get_page_permalink( 'myaccount' );
-        /* translators: %s: points with the store's label, as "100 Points". */
-        $register = sprintf( '<a href="%s">%s</a>', esc_url( (string) $register_url ), esc_html( sprintf( __( 'create an account and get %s', 'yayloyalty' ), SettingsHelper::points_text( $signup ) ) ) );
-
-        /* translators: 1: "Sign in to start earning" link, 2: "create an account and get 100 Points" link. */
-        return sprintf( '<p class="%s__guest" style="margin:0">%s</p>', esc_attr( self::CSS_CLASS ), sprintf( esc_html__( '%1$s — or %2$s', 'yayloyalty' ), $sign_in, $register ) );
-    }
-
-    private static function signup_points(): ?int {
-        try {
-            $advert = self::engine()->advertised( CampaignTrigger::SIGNUP, ContextFactory::for_advert( Dates::now() ) );
-        } catch ( \Throwable $e ) {
-            Log::warning( 'ProductEarnMessage', 'signup row failed: ' . $e->getMessage() );
-
-            return null;
-        }
-
-        return null === $advert ? null : (int) $advert['value'];
+        return sprintf( '<p class="%s__guest" style="margin:0">%s</p>', esc_attr( self::CSS_CLASS ), $line );
     }
 }
