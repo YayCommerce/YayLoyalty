@@ -2,7 +2,7 @@
 
 > **For agentic workers:** execute tasks in order, one at a time. Steps use `- [ ]` for tracking. There is no spec; the Requirements section below is the source, with [the backlog item](../backlog/2026-10-08-adjust-points-customer-note-and-email-not-sent.md) as background.
 
-**Status:** active
+**Status:** done 2026-10-10
 **Branch:** `<name>/feat/points-adjusted-email` from `dev/edd`; PR into `dev/edd`
 **Goal:** make the Adjust points dialog's "Notify the customer by email" checkbox send a new "Points adjusted" loyalty email.
 **Spec:** none, planned from the request.
