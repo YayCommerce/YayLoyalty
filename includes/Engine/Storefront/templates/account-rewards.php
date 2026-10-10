@@ -5,6 +5,7 @@
  * @var array $view AccountRewards::view().
  */
 
+use YayLoyalty\Engine\Storefront\AccountRewards;
 use YayLoyalty\Engine\Storefront\LauncherCopy;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Helpers\SettingsHelper;
@@ -20,6 +21,10 @@ $yayloyalty_worth   = $yayloyalty_payload['member']['worth'];
 $yayloyalty_redeem   = $yayloyalty_payload['redeem'];
 $yayloyalty_purchase = $view['can_earn'] ? $yayloyalty_payload['earn'][ CampaignTrigger::PURCHASE ] : null;
 $yayloyalty_review   = $view['can_earn'] ? $yayloyalty_payload['earn'][ CampaignTrigger::REVIEW ] : null;
+$yayloyalty_history  = $view['history'];
+$yayloyalty_first    = ( $yayloyalty_history['page'] - 1 ) * AccountRewards::PER_PAGE + 1;
+$yayloyalty_last     = $yayloyalty_first + count( $yayloyalty_history['rows'] ) - 1;
+$yayloyalty_date     = (string) get_option( 'date_format' );
 ?>
 <div class="yayloyalty-account">
     <section class="yayloyalty-account__card">
@@ -37,7 +42,7 @@ $yayloyalty_review   = $view['can_earn'] ? $yayloyalty_payload['earn'][ Campaign
             <p>
                 <?php
                 /* translators: 1: the store's points label, as "Points", 2: date. */
-                echo esc_html( sprintf( __( 'Your %1$s expire on %2$s', 'yayloyalty' ), SettingsHelper::points_label( 0 ), Dates::to_site_tz( $view['expires_at'], (string) get_option( 'date_format' ) ) ) );
+                echo esc_html( sprintf( __( 'Your %1$s expire on %2$s', 'yayloyalty' ), SettingsHelper::points_label( 0 ), Dates::to_site_tz( $view['expires_at'], $yayloyalty_date ) ) );
                 ?>
             </p>
         <?php endif; ?>
@@ -94,4 +99,70 @@ $yayloyalty_review   = $view['can_earn'] ? $yayloyalty_payload['earn'][ Campaign
             <?php endif; ?>
         </div>
     <?php endif; ?>
+
+    <section>
+        <h3><?php esc_html_e( 'Points history', 'yayloyalty' ); ?></h3>
+        <p class="yayloyalty-account__filters">
+            <?php foreach ( AccountRewards::filter_labels() as $yayloyalty_filter => $yayloyalty_filter_label ) : ?>
+                <a href="<?php echo esc_url( AccountRewards::url( 1, $yayloyalty_filter ) ); ?>"<?php echo $yayloyalty_filter === $yayloyalty_history['filter'] ? ' aria-current="page"' : ''; ?>><?php echo esc_html( $yayloyalty_filter_label ); ?></a>
+            <?php endforeach; ?>
+        </p>
+
+        <?php if ( [] === $yayloyalty_history['rows'] ) : ?>
+            <p>
+                <?php
+                /* translators: %s: the store's points label, as "Points". */
+                echo esc_html( sprintf( __( 'No %s activity yet.', 'yayloyalty' ), SettingsHelper::points_label( 0 ) ) );
+                ?>
+            </p>
+        <?php else : ?>
+            <table class="woocommerce-orders-table shop_table shop_table_responsive">
+                <thead>
+                    <tr>
+                        <th scope="col"><?php esc_html_e( 'Date', 'yayloyalty' ); ?></th>
+                        <th scope="col"><?php esc_html_e( 'Description', 'yayloyalty' ); ?></th>
+                        <th scope="col"><?php echo esc_html( SettingsHelper::points_label( 0 ) ); ?></th>
+                        <th scope="col"><?php esc_html_e( 'Balance', 'yayloyalty' ); ?></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ( $yayloyalty_history['rows'] as $yayloyalty_row ) : ?>
+                        <tr>
+                            <td data-title="<?php esc_attr_e( 'Date', 'yayloyalty' ); ?>"><?php echo esc_html( Dates::to_site_tz( $yayloyalty_row['created_at'], $yayloyalty_date ) ); ?></td>
+                            <td data-title="<?php esc_attr_e( 'Description', 'yayloyalty' ); ?>">
+                                <?php echo esc_html( $yayloyalty_row['label'] ); ?>
+                                <?php if ( '' !== $yayloyalty_row['order'] ) : ?>
+                                    <br><small>
+                                        <?php
+                                        /* translators: %s: order number. */
+                                        echo esc_html( sprintf( __( 'Order #%s', 'yayloyalty' ), $yayloyalty_row['order'] ) );
+                                        ?>
+                                    </small>
+                                <?php endif; ?>
+                            </td>
+                            <td data-title="<?php echo esc_attr( SettingsHelper::points_label( 0 ) ); ?>"><?php echo esc_html( LauncherCopy::signed_points( $yayloyalty_row['points'] ) ); ?></td>
+                            <td data-title="<?php esc_attr_e( 'Balance', 'yayloyalty' ); ?>"><?php echo esc_html( LauncherCopy::points( $yayloyalty_row['balance'] ) ); ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php endif; ?>
+
+        <?php if ( $yayloyalty_history['total'] > 0 && [] !== $yayloyalty_history['rows'] ) : ?>
+            <div class="yayloyalty-account__pagination">
+                <span>
+                    <?php
+                    /* translators: 1: first row number, 2: last row number, 3: total rows. */
+                    echo esc_html( sprintf( __( '%1$s–%2$s of %3$s', 'yayloyalty' ), LauncherCopy::points( $yayloyalty_first ), LauncherCopy::points( $yayloyalty_last ), LauncherCopy::points( $yayloyalty_history['total'] ) ) );
+                    ?>
+                </span>
+                <?php if ( $yayloyalty_history['page'] > 1 ) : ?>
+                    <a class="woocommerce-button woocommerce-Button button" href="<?php echo esc_url( AccountRewards::url( $yayloyalty_history['page'] - 1, $yayloyalty_history['filter'] ) ); ?>"><?php esc_html_e( '‹ Previous', 'yayloyalty' ); ?></a>
+                <?php endif; ?>
+                <?php if ( $yayloyalty_last < $yayloyalty_history['total'] ) : ?>
+                    <a class="woocommerce-button woocommerce-Button button" href="<?php echo esc_url( AccountRewards::url( $yayloyalty_history['page'] + 1, $yayloyalty_history['filter'] ) ); ?>"><?php esc_html_e( 'Next ›', 'yayloyalty' ); ?></a>
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
+    </section>
 </div>

@@ -43,6 +43,34 @@ final class ShopperActivityRow {
     }
 
     /**
+     * Ledger rows for the My Account history and its CSV, unformatted: each caller formats for its medium.
+     *
+     * @param LedgerEntry[] $entries
+     * @return array<int, array{created_at: string, label: string, order: string, points: int, balance: int}>
+     *         `created_at` in UTC; `order` the order number, or '' when the row has none.
+     */
+    public static function history_rows( array $entries ): array {
+        $store = Text::store_name();
+        // 0 picks the plural label.
+        $label = SettingsHelper::points_label( 0 );
+        $rows  = [];
+
+        foreach ( $entries as $entry ) {
+            $order_id = $entry->get_order_id();
+
+            $rows[] = [
+                'created_at' => $entry->get_created_at(),
+                'label'      => self::label( $entry, $store, $label ),
+                'order'      => null === $order_id ? '' : self::order_number( $order_id ),
+                'points'     => $entry->get_points(),
+                'balance'    => $entry->get_balance_after(),
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
      * @param string $store_name   Shown on adjustments ("Adjustment by {store}").
      * @param string $points_label The merchant's plural points label, as "Points".
      */
@@ -100,10 +128,14 @@ final class ShopperActivityRow {
             return $date;
         }
 
-        $order  = function_exists( 'wc_get_order' ) ? wc_get_order( $order_id ) : null;
-        $number = $order ? $order->get_order_number() : (string) $order_id;
-
         /* translators: 1: date, 2: order number. */
-        return sprintf( __( '%1$s · order #%2$s', 'yayloyalty' ), $date, $number );
+        return sprintf( __( '%1$s · order #%2$s', 'yayloyalty' ), $date, self::order_number( $order_id ) );
+    }
+
+    /** The order's display number, or its id once the order is gone. */
+    private static function order_number( int $order_id ): string {
+        $order = function_exists( 'wc_get_order' ) ? wc_get_order( $order_id ) : null;
+
+        return $order ? (string) $order->get_order_number() : (string) $order_id;
     }
 }

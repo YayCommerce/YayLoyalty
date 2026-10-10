@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Engine\Storefront;
 
+use YayLoyalty\Controllers\Schemas\LedgerQueryArgs;
 use YayLoyalty\Engine\Earning\ProgramGate;
 use YayLoyalty\Engine\Points\ContextFactory;
 use YayLoyalty\Engine\Register\ScriptName;
@@ -8,6 +9,7 @@ use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Helpers\DesignHelper;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\CustomerRepository;
+use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Repositories\RewardRepository;
 use YayLoyalty\Utils\Dates;
 use YayLoyalty\Utils\Log;
@@ -25,6 +27,13 @@ final class AccountRewards {
     public const REWRITE_VERSION = '1';
 
     public const OPTION_REWRITE_VERSION = 'yayloyalty_rewrite_version';
+
+    public const PER_PAGE = 20;
+
+    /** History filters: LedgerQueryArgs groups. Adjustments show under All only. */
+    public const FILTERS = [ 'all', 'earn', 'redeem', 'expire' ];
+
+    public const FILTER_QUERY_ARG = 'points_type';
 
     private const STYLE_PATH = 'assets/storefront/account.css';
 
@@ -96,10 +105,21 @@ final class AccountRewards {
     public static function url( int $page = 1, string $filter = 'all' ): string {
         $url = wc_get_endpoint_url( self::ENDPOINT, $page > 1 ? (string) $page : '', wc_get_page_permalink( 'myaccount' ) );
 
-        return 'all' === $filter ? $url : add_query_arg( 'points_type', $filter, $url );
+        return 'all' === $filter ? $url : add_query_arg( self::FILTER_QUERY_ARG, $filter, $url );
     }
 
-    public static function render(): void {
+    /** @return array<string, string> Filter => its label, in FILTERS order. */
+    public static function filter_labels(): array {
+        return [
+            'all'    => __( 'All', 'yayloyalty' ),
+            'earn'   => __( 'Earned', 'yayloyalty' ),
+            'redeem' => __( 'Spent', 'yayloyalty' ),
+            'expire' => __( 'Expired', 'yayloyalty' ),
+        ];
+    }
+
+    /** @param string $value The endpoint value: the history page number. */
+    public static function render( $value = '' ): void {
         if ( ! ProgramGate::program_enabled() ) {
             self::print_unavailable();
 
@@ -109,7 +129,7 @@ final class AccountRewards {
         $buffer_level = ob_get_level();
 
         try {
-            $view = self::view( get_current_user_id() );
+            $view = self::view( get_current_user_id(), max( 1, absint( $value ) ) );
 
             ob_start();
             include __DIR__ . '/templates/account-rewards.php';
@@ -126,17 +146,39 @@ final class AccountRewards {
     }
 
     /**
-     * @return array{payload: array, expires_at: ?string, can_earn: bool}
+     * @return array{payload: array, expires_at: ?string, can_earn: bool, history: array{rows: array, total: int, page: int, filter: string}}
      */
-    private static function view( int $user_id ): array {
+    private static function view( int $user_id, int $page ): array {
         $customers = new CustomerRepository();
         $customer  = $customers->find_by_user_id( $user_id );
+        $filter    = self::current_filter();
+        $history   = ( new LedgerRepository() )->paginate_for_user(
+            $user_id,
+            [
+                'types'    => LedgerQueryArgs::types_of( $filter ),
+                'page'     => $page,
+                'per_page' => self::PER_PAGE,
+            ]
+        );
 
         return [
             'payload'    => ( new LauncherPayload( new CampaignRepository(), new RewardRepository(), $customers ) )->build( DesignHelper::get_design(), $user_id ),
             'expires_at' => null === $customer ? null : $customer->get_expires_at(),
             'can_earn'   => null === ( new ProgramGate() )->check( CampaignTrigger::PURCHASE, ContextFactory::from_user( $user_id, Dates::now() ) ),
+            'history'    => [
+                'rows'   => ShopperActivityRow::history_rows( $history['items'] ),
+                'total'  => (int) $history['total'],
+                'page'   => $page,
+                'filter' => $filter,
+            ],
         ];
+    }
+
+    /** The requested history filter; an unknown one falls back to all. */
+    private static function current_filter(): string {
+        $filter = isset( $_GET[ self::FILTER_QUERY_ARG ] ) ? sanitize_key( wp_unslash( $_GET[ self::FILTER_QUERY_ARG ] ) ) : 'all'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- a read-only view filter.
+
+        return in_array( $filter, self::FILTERS, true ) ? $filter : 'all';
     }
 
     private static function print_unavailable(): void {

@@ -58,3 +58,25 @@
 .yayloyalty-account__list strong {
   text-align: right;
 }
+
+.yayloyalty-account__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1em;
+}
+
+.yayloyalty-account__filters [aria-current='page'] {
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.yayloyalty-account__pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1em;
+}
+
+.yayloyalty-account__pagination span {
+  margin-right: auto;
+}
