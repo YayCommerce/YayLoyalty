@@ -2,7 +2,7 @@
 
 > **For agentic workers:** execute tasks in order, one at a time. Steps use `- [ ]` for tracking. There is no spec; the Requirements section below is the source of truth.
 
-**Status:** active
+**Status:** done 2026-10-10
 **Goal:** A "Rewards" tab in WooCommerce My Account, where a signed-in customer sees their points balance, expiry, ways to earn and redeem, and their full points history, which they can filter, page through and download as CSV.
 **Spec:** none, planned from the request (wireframe F14, artboard 1d, in `YayLoyalty Storefront.dc.html` of the "YayLoyalty admin interface" wireframe set)
 **Architecture:** A WooCommerce account endpoint (`rewards`), rendered on the server from a PHP template with theme-native WooCommerce markup and no script. The data comes from code the launcher already uses: `LauncherPayload` for balance, worth and earn/redeem rules, `LedgerRepository::paginate_for_user()` with `LedgerQueryArgs` groups for history. This is a separate page rather than a launcher view because history needs paging and a download, which a floating panel can't hold.
@@ -183,7 +183,8 @@
 - Produces:
   - `ShopperActivityRow::history_rows( array $entries ): array<int, array{created_at: string, label: string, order: string, points: int, balance: int}>`. Raw values: `created_at` in UTC, `order` the order number or `''`, `balance` from `get_balance_after()`. The caller formats them.
   - `AccountRewards::PER_PAGE = 20`
-  - `AccountRewards::FILTERS = [ 'all' => 'All', 'earn' => 'Earned', 'redeem' => 'Spent', 'expire' => 'Expired' ]` (labels translated at render)
+  - `AccountRewards::filter_labels(): array<string, string>`: `all`/`earn`/`redeem`/`expire` → All/Earned/Spent/Expired, intersected with `LedgerQueryArgs::filter_types()`
+  - `AccountRewards::column_labels(): array{date, description, points, balance}`, shared with the CSV header
   - Query arg `points_type`; page number as the endpoint value (`/my-account/rewards/2/`)
 
 - [ ] **Step 1: Add `ShopperActivityRow::history_rows()`**
@@ -292,11 +293,11 @@
 
 **Interfaces:**
 - Consumes: `AccountRewards::url()`
-- Produces: `LauncherPayload` key `account_url` is now the Rewards tab URL. The launcher template's "View all rewards activity" link and `LauncherPreview` read it unchanged.
+- Produces: `LauncherPayload` key `rewards_url` (the Rewards tab URL), read by the launcher's "View all rewards activity" link. `account_url` stays the My Account page, because the guest panel's sign-in and register links read it.
 
 - [ ] **Step 1: Change `account_url`**
 
-  In `LauncherPayload::for_balance()`, set `'account_url' => AccountRewards::url()`.
+  In `LauncherPayload::for_balance()`, add `'rewards_url' => AccountRewards::url()` and point `templates/launcher.php`'s footer link at it.
 
 - [ ] **Step 2: Document it**
 
@@ -319,3 +320,9 @@
 
   Stage: `includes/Engine/Storefront/LauncherPayload.php`, `docs/architecture.md`
   Message: `feat(storefront): link the launcher to the account rewards tab`
+
+## Changes during implementation
+
+- Task 2: `view()` calls `LauncherPayload::for_balance()` with the customer row it already read, not `build()`, to avoid a second customer query.
+- Task 4: the CSV reads 100 rows per batch (`AbstractRepository` caps `per_page` at 100) and stops on a short batch, not at `total`.
+- Review fixes shared copy between the launcher and the tab: `LauncherEarnRules::member_rows()`, `LauncherCopy::no_activity()`, `Dates::to_site_date()`. Headings and the CSV points column use the store's points label.
