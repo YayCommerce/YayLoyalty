@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Engine\Emails;
 
+use YayLoyalty\Engine\Redemption\RedemptionService;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Repositories\RewardRepository;
 use YayLoyalty\Utils\PointsMath;
@@ -146,9 +147,13 @@ abstract class LoyaltyEmail extends \WC_Email {
 
     /**
      * What the balance buys at the live discount rate, as wc_price() HTML.
-     * '' when the reward is not live or there is nothing to spend.
+     * '' until redemption ships, while the reward is not live, or when there is nothing to spend.
      */
     protected static function balance_value( int $balance ): string {
+        if ( ! RedemptionService::is_available() ) {
+            return '';
+        }
+
         $amount = PointsMath::points_to_currency( $balance, ( new RewardRepository() )->live_points_per_currency_unit(), wc_get_price_decimals() );
 
         if ( null === $amount || $amount <= 0 ) {

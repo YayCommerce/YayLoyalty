@@ -68,10 +68,6 @@ class Emails {
      * because only that request knows whether its admin asked to notify.
      */
     public static function relay_adjustment( LedgerEntry $entry ): void {
-        if ( null === $entry->get_id() ) {
-            return;
-        }
-
         /**
          * Fires once per manual adjustment whose admin asked to notify the customer. WooCommerce relays it
          * to {action}_notification, at once or at the end of the request.

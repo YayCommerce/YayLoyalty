@@ -42,9 +42,7 @@ do_action( 'woocommerce_email_header', $email_heading, $email );
         ?>
 </p>
     <?php endif; ?>
-    <?php if ( ! empty( $adjusted_text ) ) : ?>
 <p><?php echo wp_kses_post( $adjusted_text ); ?></p>
-    <?php endif; ?>
 <p>
     <?php
     /* translators: %s: points with label, e.g. "120 Points". */

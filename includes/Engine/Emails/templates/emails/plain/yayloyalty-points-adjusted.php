@@ -36,9 +36,7 @@ if ( ! empty( $entry ) ) {
         echo esc_html( sprintf( __( 'Hi %s,', 'yayloyalty' ), $greeting_name ) ) . "\n\n";
     }
 
-    if ( ! empty( $adjusted_text ) ) {
-        echo esc_html( Text::plain( $adjusted_text ) ) . "\n\n";
-    }
+    echo esc_html( Text::plain( $adjusted_text ) ) . "\n\n";
 
     /* translators: %s: points with label, e.g. "120 Points". */
     echo esc_html( sprintf( __( 'Your balance is now %s.', 'yayloyalty' ), $balance_text ) ) . "\n\n";

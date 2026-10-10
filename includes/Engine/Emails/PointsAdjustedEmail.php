@@ -1,25 +1,17 @@
 <?php
 namespace YayLoyalty\Engine\Emails;
 
-use YayLoyalty\Engine\Redemption\RedemptionService;
 use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Models\LedgerEntry;
-use YayLoyalty\Repositories\LedgerRepository;
 
 defined( 'ABSPATH' ) || exit;
 
 /** The points-adjusted email, sent after a manual adjustment whose admin asked to notify the customer, within the weekly cap. */
-class PointsAdjustedEmail extends LoyaltyEmail {
+class PointsAdjustedEmail extends LedgerEntryEmail {
 
     public const ID = 'yayloyalty_points_adjusted';
-
-    /** @var LedgerEntry|null The adjustment $values were built for. */
-    private $values_entry = null;
-
-    /** @var array<string, mixed> */
-    private $values = [];
 
     public function __construct() {
         $this->id          = self::ID;
@@ -46,60 +38,13 @@ class PointsAdjustedEmail extends LoyaltyEmail {
         return __( 'Your {points_label} balance was updated', 'yayloyalty' );
     }
 
-    /** Mails the customer about one manual adjustment, which Emails::relay_adjustment() passes as its ledger row id. */
-    public function trigger( int $entry_id ): void {
-        $entry = ( new LedgerRepository() )->find( $entry_id );
-
-        if ( ! $entry instanceof LedgerEntry || ! self::is_adjustment( $entry ) ) {
-            return;
-        }
-
-        // is_enabled()'s filter receives $this->object, which must be this adjustment.
-        $this->object = $entry;
-
-        if ( ! $this->is_enabled() ) {
-            return;
-        }
-
-        $user = get_userdata( $entry->get_user_id() );
-
-        if ( ! $user ) {
-            return;
-        }
-
-        // Before the placeholders: the default point labels are translated strings.
-        $this->setup_locale();
-
-        try {
-            $this->prepare( $entry );
-            $this->recipient = $user->user_email;
-
-            if ( $this->get_recipient() ) {
-                $this->send_to_customer( $entry->get_user_id() );
-            }
-        } finally {
-            // A throwing mail transport must not leave the rest of the request in the customer's locale.
-            $this->restore_locale();
-        }
+    /** Manual adjustments only. */
+    protected function accepts( LedgerEntry $entry ): bool {
+        return LedgerSource::MANUAL === $entry->get_source() && LedgerType::is_manual_adjustment( $entry->get_type() );
     }
 
-    private static function is_adjustment( LedgerEntry $entry ): bool {
-        return LedgerSource::MANUAL === $entry->get_source()
-            && in_array( $entry->get_type(), [ LedgerType::ADJUST, LedgerType::CORRECTION ], true )
-            && 0 !== $entry->get_points();
-    }
-
-    /** Points the subject placeholders and template variables at $entry. */
-    private function prepare( LedgerEntry $entry ): void {
-        $this->object = $entry;
-
-        foreach ( self::amounts( $entry ) as $key => $value ) {
-            $this->placeholders[ '{' . $key . '}' ] = $value;
-        }
-    }
-
-    /** @return array{points: string, points_label: string, balance: string} The subject placeholders' values, which the body shows too. */
-    private static function amounts( LedgerEntry $entry ): array {
+    /** @return array{points: string, points_label: string, balance: string} */
+    protected function amounts( LedgerEntry $entry ): array {
         $points = abs( $entry->get_points() );
 
         return [
@@ -114,25 +59,11 @@ class PointsAdjustedEmail extends LoyaltyEmail {
         $this->prepare( new LedgerEntry( null, get_current_user_id(), 50, 150, LedgerType::ADJUST, LedgerSource::MANUAL ) );
     }
 
-    /** Built once per adjustment: a multipart send renders it twice. */
-    protected function extra_template_args(): array {
-        if ( ! $this->object instanceof LedgerEntry ) {
-            return [];
-        }
-
-        if ( $this->values_entry !== $this->object ) {
-            $this->values_entry = $this->object;
-            $this->values       = $this->build_values( $this->object );
-        }
-
-        return $this->values;
-    }
-
     /** @return array<string, mixed> */
-    private function build_values( LedgerEntry $entry ): array {
-        $balance_value = RedemptionService::is_available() ? self::balance_value( $entry->get_balance_after() ) : '';
+    protected function build_values( LedgerEntry $entry ): array {
+        $balance_value = self::balance_value( $entry->get_balance_after() );
 
-        return self::amounts( $entry ) + [
+        return $this->amounts( $entry ) + [
             'entry'              => $entry,
             'greeting_name'      => self::greeting_name( $entry->get_user_id() ),
             'adjusted_text'      => self::adjusted_text( $entry ),
