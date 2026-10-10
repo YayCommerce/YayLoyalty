@@ -3,6 +3,7 @@ namespace YayLoyalty\Engine\Emails;
 
 use YayLoyalty\Engine\Earning\EarningService;
 use YayLoyalty\Engine\Earning\Outcome;
+use YayLoyalty\Models\LedgerEntry;
 use YayLoyalty\Utils\SingletonTrait;
 
 defined( 'ABSPATH' ) || exit;
@@ -16,6 +17,9 @@ class Emails {
 
     /** The email action an award is relayed on. Its only argument is the ledger row id. */
     public const POINTS_EARNED_ACTION = 'yayloyalty_points_earned_email';
+
+    /** The email action a manual adjustment is relayed on, when its admin asked to notify. Its only argument is the ledger row id. */
+    public const POINTS_ADJUSTED_ACTION = 'yayloyalty_points_adjusted_email';
 
     protected function __construct() {
         add_filter( 'woocommerce_email_classes', [ $this, 'add_classes' ] );
@@ -34,6 +38,7 @@ class Emails {
      */
     public function add_email_actions( array $actions ): array {
         $actions[] = self::POINTS_EARNED_ACTION;
+        $actions[] = self::POINTS_ADJUSTED_ACTION;
 
         return $actions;
     }
@@ -59,6 +64,20 @@ class Emails {
     }
 
     /**
+     * Passes a manual adjustment to the Points adjusted email. Called by the adjust endpoint, not hooked,
+     * because only that request knows whether its admin asked to notify.
+     */
+    public static function relay_adjustment( LedgerEntry $entry ): void {
+        /**
+         * Fires once per manual adjustment whose admin asked to notify the customer. WooCommerce relays it
+         * to {action}_notification, at once or at the end of the request.
+         *
+         * @param int $entry_id The adjustment's ledger row.
+         */
+        do_action( self::POINTS_ADJUSTED_ACTION, $entry->get_id() ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name; the sniff cannot read it.
+    }
+
+    /**
      * Gives WooCommerce's settings preview loyalty sample data. Otherwise it renders a loyalty email
      * around a dummy order, with {points} blank.
      *
@@ -78,7 +97,7 @@ class Emails {
      * @return array<string, \WC_Email>
      */
     public function add_classes( array $classes ): array {
-        return self::add( $classes, new PointsEarnedEmail(), new PointsExpiringSoonEmail(), new PointsExpiredEmail() );
+        return self::add( $classes, new PointsEarnedEmail(), new PointsAdjustedEmail(), new PointsExpiringSoonEmail(), new PointsExpiredEmail() );
     }
 
     /**

@@ -1,7 +1,10 @@
 <?php
 namespace YayLoyalty\Engine\Emails;
 
+use YayLoyalty\Engine\Redemption\RedemptionService;
 use YayLoyalty\Helpers\SettingsHelper;
+use YayLoyalty\Repositories\RewardRepository;
+use YayLoyalty\Utils\PointsMath;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -129,6 +132,42 @@ abstract class LoyaltyEmail extends \WC_Email {
      */
     protected function extra_template_args(): array {
         return [];
+    }
+
+    /** First name, else display name, else '' (the template then drops the greeting). */
+    protected static function greeting_name( int $user_id ): string {
+        $user = get_userdata( $user_id );
+
+        if ( ! $user ) {
+            return '';
+        }
+
+        return $user->first_name ? $user->first_name : $user->display_name;
+    }
+
+    /**
+     * What the balance buys at the live discount rate, as wc_price() HTML.
+     * '' until redemption ships, while the reward is not live, or when there is nothing to spend.
+     */
+    protected static function balance_value( int $balance ): string {
+        if ( ! RedemptionService::is_available() ) {
+            return '';
+        }
+
+        $amount = PointsMath::points_to_currency( $balance, ( new RewardRepository() )->live_points_per_currency_unit(), wc_get_price_decimals() );
+
+        if ( null === $amount || $amount <= 0 ) {
+            return '';
+        }
+
+        // The rate is in the store's base currency: a currency switcher's session currency would mislabel it.
+        return wc_price( $amount, [ 'currency' => get_option( 'woocommerce_currency' ) ] );
+    }
+
+    /** "That's worth <strong>$1.50</strong> in rewards." around balance_value(), or '' when that is ''. */
+    protected static function balance_value_text( string $balance_value ): string {
+        /* translators: %s: money amount, e.g. "$1.50". */
+        return '' === $balance_value ? '' : sprintf( esc_html__( 'That\'s worth %s in rewards.', 'yayloyalty' ), '<strong>' . $balance_value . '</strong>' );
     }
 
     /** Fills this email with sample data for WooCommerce's settings preview. A no-op until the email has data of its own. */
