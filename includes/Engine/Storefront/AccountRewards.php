@@ -7,6 +7,7 @@ use YayLoyalty\Engine\Points\ContextFactory;
 use YayLoyalty\Engine\Register\ScriptName;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Helpers\DesignHelper;
+use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
@@ -29,9 +30,6 @@ final class AccountRewards {
     public const OPTION_REWRITE_VERSION = 'yayloyalty_rewrite_version';
 
     public const PER_PAGE = 20;
-
-    /** History filters: LedgerQueryArgs groups. Adjustments show under All only. */
-    public const FILTERS = [ 'all', 'earn', 'redeem', 'expire' ];
 
     public const FILTER_QUERY_ARG = 'points_type';
 
@@ -109,13 +107,35 @@ final class AccountRewards {
         return 'all' === $filter ? $url : add_query_arg( self::FILTER_QUERY_ARG, $filter, $url );
     }
 
-    /** @return array<string, string> Filter => its label, in FILTERS order. */
+    /**
+     * The history filters and their labels. LedgerQueryArgs::filter_types() owns the groups, so one it drops
+     * drops here too. Adjustments show under All only.
+     *
+     * @return array<string, string>
+     */
     public static function filter_labels(): array {
-        return [
+        $labels = [
             'all'    => __( 'All', 'yayloyalty' ),
             'earn'   => __( 'Earned', 'yayloyalty' ),
             'redeem' => __( 'Spent', 'yayloyalty' ),
             'expire' => __( 'Expired', 'yayloyalty' ),
+        ];
+
+        return array_intersect_key( $labels, array_flip( LedgerQueryArgs::filter_types() ) );
+    }
+
+    /**
+     * The history's column headings, for the table and the CSV.
+     *
+     * @return array{date: string, description: string, points: string, balance: string}
+     */
+    public static function column_labels(): array {
+        return [
+            'date'        => __( 'Date', 'yayloyalty' ),
+            'description' => __( 'Description', 'yayloyalty' ),
+            // 0 picks the plural label.
+            'points'      => SettingsHelper::points_label( 0 ),
+            'balance'     => __( 'Balance', 'yayloyalty' ),
         ];
     }
 
@@ -163,7 +183,7 @@ final class AccountRewards {
         );
 
         return [
-            'payload'    => ( new LauncherPayload( new CampaignRepository(), new RewardRepository(), $customers ) )->build( DesignHelper::get_design(), $user_id ),
+            'payload'    => ( new LauncherPayload( new CampaignRepository(), new RewardRepository(), $customers ) )->for_balance( DesignHelper::get_design(), null === $customer ? 0 : $customer->get_balance() ),
             'expires_at' => null === $customer ? null : $customer->get_expires_at(),
             'can_earn'   => null === ( new ProgramGate() )->check( CampaignTrigger::PURCHASE, ContextFactory::from_user( $user_id, Dates::now() ) ),
             'history'    => [
@@ -179,7 +199,7 @@ final class AccountRewards {
     private static function current_filter(): string {
         $filter = isset( $_GET[ self::FILTER_QUERY_ARG ] ) ? sanitize_key( wp_unslash( $_GET[ self::FILTER_QUERY_ARG ] ) ) : 'all'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- a read-only view filter.
 
-        return in_array( $filter, self::FILTERS, true ) ? $filter : 'all';
+        return array_key_exists( $filter, self::filter_labels() ) ? $filter : 'all';
     }
 
     private static function print_unavailable(): void {

@@ -1,7 +1,6 @@
 <?php
 namespace YayLoyalty\Engine\Storefront;
 
-use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Utils\Dates;
 
@@ -16,7 +15,8 @@ final class AccountHistoryCsv {
 
     public const NONCE_ACTION = 'yayloyalty_export_history';
 
-    private const BATCH = 500;
+    /** AbstractRepository caps per_page at 100. */
+    private const BATCH = 100;
 
     public static function url(): string {
         return wp_nonce_url( add_query_arg( self::QUERY_ARG, 'csv', AccountRewards::url() ), self::NONCE_ACTION );
@@ -39,7 +39,8 @@ final class AccountHistoryCsv {
 
         $out = fopen( 'php://output', 'w' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- streaming to the response.
         fwrite( $out, "\xEF\xBB\xBF" ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite -- UTF-8 BOM, so spreadsheets read the labels' accents.
-        fputcsv( $out, [ __( 'Date', 'yayloyalty' ), __( 'Description', 'yayloyalty' ), __( 'Order', 'yayloyalty' ), SettingsHelper::points_label( 0 ), __( 'Balance', 'yayloyalty' ) ] );
+        $columns = AccountRewards::column_labels();
+        fputcsv( $out, [ $columns['date'], $columns['description'], __( 'Order', 'yayloyalty' ), $columns['points'], $columns['balance'] ] );
 
         $ledger  = new LedgerRepository();
         $user_id = get_current_user_id();
@@ -53,6 +54,8 @@ final class AccountHistoryCsv {
                     'per_page' => self::BATCH,
                 ]
             );
+
+            $fetched = count( $batch['items'] );
 
             foreach ( ShopperActivityRow::history_rows( $batch['items'] ) as $row ) {
                 fputcsv(
@@ -68,7 +71,7 @@ final class AccountHistoryCsv {
             }
 
             ++$page;
-        } while ( ( $page - 1 ) * self::BATCH < (int) $batch['total'] );
+        } while ( self::BATCH === $fetched );
 
         fclose( $out ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- closes the stream opened above.
         exit;

@@ -52,16 +52,22 @@ final class ShopperActivityRow {
     public static function history_rows( array $entries ): array {
         $store = Text::store_name();
         // 0 picks the plural label.
-        $label = SettingsHelper::points_label( 0 );
-        $rows  = [];
+        $label  = SettingsHelper::points_label( 0 );
+        $orders = [];
+        $rows   = [];
 
         foreach ( $entries as $entry ) {
             $order_id = $entry->get_order_id();
 
+            if ( null !== $order_id && ! isset( $orders[ $order_id ] ) ) {
+                // An earn row and its refund share an order: load it once.
+                $orders[ $order_id ] = self::order_number( $order_id );
+            }
+
             $rows[] = [
                 'created_at' => $entry->get_created_at(),
                 'label'      => self::label( $entry, $store, $label ),
-                'order'      => null === $order_id ? '' : self::order_number( $order_id ),
+                'order'      => null === $order_id ? '' : $orders[ $order_id ],
                 'points'     => $entry->get_points(),
                 'balance'    => $entry->get_balance_after(),
             ];
@@ -122,7 +128,7 @@ final class ShopperActivityRow {
 
     /** "9 Sept 2026 · order #4207": the date in the site's format and timezone, then the order when there is one. */
     private static function meta_line( string $created_at_utc, ?int $order_id ): string {
-        $date = Dates::to_site_tz( $created_at_utc, (string) get_option( 'date_format' ) );
+        $date = Dates::to_site_date( $created_at_utc );
 
         if ( null === $order_id ) {
             return $date;

@@ -76,7 +76,8 @@ final class LauncherPayload {
             'member'       => null === $balance ? null : self::member( $balance, null === $redeem ? null : $reward ),
             'estimate'     => null !== $engine && null === $balance && null !== $rules['earn'][ CampaignTrigger::PURCHASE ] ? self::product_estimate( $engine ) : null,
             'register'     => $register,
-            'account_url'  => AccountRewards::url(),
+            'account_url'  => (string) wc_get_page_permalink( 'myaccount' ),
+            'rewards_url'  => AccountRewards::url(),
             'checkout_url' => (string) wc_get_checkout_url(),
         ];
     }

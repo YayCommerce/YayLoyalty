@@ -8,7 +8,7 @@
 use YayLoyalty\Engine\Storefront\AccountHistoryCsv;
 use YayLoyalty\Engine\Storefront\AccountRewards;
 use YayLoyalty\Engine\Storefront\LauncherCopy;
-use YayLoyalty\Enums\CampaignTrigger;
+use YayLoyalty\Engine\Storefront\LauncherEarnRules;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Utils\Dates;
 
@@ -19,13 +19,14 @@ $yayloyalty_text    = $yayloyalty_payload['text'];
 $yayloyalty_balance = $yayloyalty_payload['member']['balance'];
 $yayloyalty_worth   = $yayloyalty_payload['member']['worth'];
 // Null while redemption is off: worth, the redeem column and the checkout link stay hidden with it.
-$yayloyalty_redeem   = $yayloyalty_payload['redeem'];
-$yayloyalty_purchase = $view['can_earn'] ? $yayloyalty_payload['earn'][ CampaignTrigger::PURCHASE ] : null;
-$yayloyalty_review   = $view['can_earn'] ? $yayloyalty_payload['earn'][ CampaignTrigger::REVIEW ] : null;
-$yayloyalty_history  = $view['history'];
-$yayloyalty_first    = ( $yayloyalty_history['page'] - 1 ) * AccountRewards::PER_PAGE + 1;
-$yayloyalty_last     = $yayloyalty_first + count( $yayloyalty_history['rows'] ) - 1;
-$yayloyalty_date     = (string) get_option( 'date_format' );
+$yayloyalty_redeem    = $yayloyalty_payload['redeem'];
+$yayloyalty_earn_rows = $view['can_earn'] ? LauncherEarnRules::member_rows( $yayloyalty_payload['earn'], $yayloyalty_text['earn_rate_line'], $yayloyalty_payload['purchase_min'] ) : [];
+$yayloyalty_history   = $view['history'];
+$yayloyalty_columns   = AccountRewards::column_labels();
+$yayloyalty_first     = ( $yayloyalty_history['page'] - 1 ) * AccountRewards::PER_PAGE + 1;
+$yayloyalty_last      = $yayloyalty_first + count( $yayloyalty_history['rows'] ) - 1;
+// 0 picks the plural label.
+$yayloyalty_label = SettingsHelper::points_label( 0 );
 ?>
 <div class="yayloyalty-account">
     <section class="yayloyalty-account__card">
@@ -43,33 +44,27 @@ $yayloyalty_date     = (string) get_option( 'date_format' );
             <p>
                 <?php
                 /* translators: 1: the store's points label, as "Points", 2: date. */
-                echo esc_html( sprintf( __( 'Your %1$s expire on %2$s', 'yayloyalty' ), SettingsHelper::points_label( 0 ), Dates::to_site_tz( $view['expires_at'], $yayloyalty_date ) ) );
+                echo esc_html( sprintf( __( 'Your %1$s expire on %2$s', 'yayloyalty' ), $yayloyalty_label, Dates::to_site_date( $view['expires_at'] ) ) );
                 ?>
             </p>
         <?php endif; ?>
-        <?php if ( null !== $yayloyalty_redeem && null !== $yayloyalty_worth ) : ?>
+        <?php if ( null !== $yayloyalty_worth ) : ?>
             <p><a class="woocommerce-Button button" href="<?php echo esc_url( $yayloyalty_payload['checkout_url'] ); ?>"><?php esc_html_e( 'Use points at checkout', 'yayloyalty' ); ?></a></p>
         <?php endif; ?>
     </section>
 
-    <?php if ( null !== $yayloyalty_purchase || null !== $yayloyalty_review || null !== $yayloyalty_redeem ) : ?>
+    <?php if ( [] !== $yayloyalty_earn_rows || null !== $yayloyalty_redeem ) : ?>
         <div class="yayloyalty-account__rules">
-            <?php if ( null !== $yayloyalty_purchase || null !== $yayloyalty_review ) : ?>
+            <?php if ( [] !== $yayloyalty_earn_rows ) : ?>
                 <section>
                     <h3><?php esc_html_e( 'Ways to earn', 'yayloyalty' ); ?></h3>
                     <ul class="yayloyalty-account__list">
-                        <?php if ( null !== $yayloyalty_purchase ) : ?>
+                        <?php foreach ( $yayloyalty_earn_rows as $yayloyalty_earn_row ) : ?>
                             <li>
-                                <span><?php esc_html_e( 'Make a purchase', 'yayloyalty' ); ?></span>
-                                <strong><?php echo esc_html( LauncherCopy::earn_rate( $yayloyalty_text['earn_rate_line'], $yayloyalty_purchase, $yayloyalty_payload['purchase_min'] ) ); ?></strong>
+                                <span><?php echo esc_html( $yayloyalty_earn_row['label'] ); ?></span>
+                                <strong><?php echo esc_html( $yayloyalty_earn_row['value'] ); ?></strong>
                             </li>
-                        <?php endif; ?>
-                        <?php if ( null !== $yayloyalty_review ) : ?>
-                            <li>
-                                <span><?php esc_html_e( 'Write a review', 'yayloyalty' ); ?></span>
-                                <strong><?php echo esc_html( SettingsHelper::points_text( $yayloyalty_review ) ); ?></strong>
-                            </li>
-                        <?php endif; ?>
+                        <?php endforeach; ?>
                     </ul>
                 </section>
             <?php endif; ?>
@@ -82,10 +77,10 @@ $yayloyalty_date     = (string) get_option( 'date_format' );
                             <span>
                                 <?php
                                 /* translators: %s: the store's points label, as "Points". */
-                                echo esc_html( sprintf( __( '%s for discount', 'yayloyalty' ), SettingsHelper::points_label( 0 ) ) );
+                                echo esc_html( sprintf( __( '%s for discount', 'yayloyalty' ), $yayloyalty_label ) );
                                 ?>
                             </span>
-                            <strong><?php echo esc_html( sprintf( '%1$s %2$s = %3$s', LauncherCopy::rate( $yayloyalty_redeem['points_per_unit'] ), SettingsHelper::points_label( 0 ), LauncherCopy::money( 1.0 ) ) ); ?></strong>
+                            <strong><?php echo esc_html( LauncherCopy::redeem_rate( $yayloyalty_redeem['points_per_unit'] ) ); ?></strong>
                         </li>
                     </ul>
                     <?php if ( null !== $yayloyalty_worth ) : ?>
@@ -105,7 +100,7 @@ $yayloyalty_date     = (string) get_option( 'date_format' );
         <h3>
             <?php
             /* translators: %s: the store's points label, as "Points". */
-            echo esc_html( sprintf( __( '%s history', 'yayloyalty' ), SettingsHelper::points_label( 0 ) ) );
+            echo esc_html( sprintf( __( '%s history', 'yayloyalty' ), $yayloyalty_label ) );
             ?>
         </h3>
         <p class="yayloyalty-account__filters">
@@ -118,27 +113,22 @@ $yayloyalty_date     = (string) get_option( 'date_format' );
         </p>
 
         <?php if ( [] === $yayloyalty_history['rows'] ) : ?>
-            <p>
-                <?php
-                /* translators: %s: the store's points label, as "Points". */
-                echo esc_html( sprintf( __( 'No %s activity yet.', 'yayloyalty' ), SettingsHelper::points_label( 0 ) ) );
-                ?>
-            </p>
+            <p><?php echo esc_html( LauncherCopy::no_activity() ); ?></p>
         <?php else : ?>
             <table class="woocommerce-orders-table shop_table shop_table_responsive">
                 <thead>
                     <tr>
-                        <th scope="col"><?php esc_html_e( 'Date', 'yayloyalty' ); ?></th>
-                        <th scope="col"><?php esc_html_e( 'Description', 'yayloyalty' ); ?></th>
-                        <th scope="col"><?php echo esc_html( SettingsHelper::points_label( 0 ) ); ?></th>
-                        <th scope="col"><?php esc_html_e( 'Balance', 'yayloyalty' ); ?></th>
+                        <th scope="col"><?php echo esc_html( $yayloyalty_columns['date'] ); ?></th>
+                        <th scope="col"><?php echo esc_html( $yayloyalty_columns['description'] ); ?></th>
+                        <th scope="col"><?php echo esc_html( $yayloyalty_columns['points'] ); ?></th>
+                        <th scope="col"><?php echo esc_html( $yayloyalty_columns['balance'] ); ?></th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php foreach ( $yayloyalty_history['rows'] as $yayloyalty_row ) : ?>
                         <tr>
-                            <td data-title="<?php esc_attr_e( 'Date', 'yayloyalty' ); ?>"><?php echo esc_html( Dates::to_site_tz( $yayloyalty_row['created_at'], $yayloyalty_date ) ); ?></td>
-                            <td data-title="<?php esc_attr_e( 'Description', 'yayloyalty' ); ?>">
+                            <td data-title="<?php echo esc_attr( $yayloyalty_columns['date'] ); ?>"><?php echo esc_html( Dates::to_site_date( $yayloyalty_row['created_at'] ) ); ?></td>
+                            <td data-title="<?php echo esc_attr( $yayloyalty_columns['description'] ); ?>">
                                 <?php echo esc_html( $yayloyalty_row['label'] ); ?>
                                 <?php if ( '' !== $yayloyalty_row['order'] ) : ?>
                                     <br><small>
@@ -149,15 +139,15 @@ $yayloyalty_date     = (string) get_option( 'date_format' );
                                     </small>
                                 <?php endif; ?>
                             </td>
-                            <td data-title="<?php echo esc_attr( SettingsHelper::points_label( 0 ) ); ?>"><?php echo esc_html( LauncherCopy::signed_points( $yayloyalty_row['points'] ) ); ?></td>
-                            <td data-title="<?php esc_attr_e( 'Balance', 'yayloyalty' ); ?>"><?php echo esc_html( LauncherCopy::points( $yayloyalty_row['balance'] ) ); ?></td>
+                            <td data-title="<?php echo esc_attr( $yayloyalty_columns['points'] ); ?>"><?php echo esc_html( LauncherCopy::signed_points( $yayloyalty_row['points'] ) ); ?></td>
+                            <td data-title="<?php echo esc_attr( $yayloyalty_columns['balance'] ); ?>"><?php echo esc_html( LauncherCopy::points( $yayloyalty_row['balance'] ) ); ?></td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
             </table>
         <?php endif; ?>
 
-        <?php if ( $yayloyalty_history['total'] > 0 && [] !== $yayloyalty_history['rows'] ) : ?>
+        <?php if ( [] !== $yayloyalty_history['rows'] ) : ?>
             <div class="yayloyalty-account__pagination">
                 <span>
                     <?php
