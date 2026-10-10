@@ -13,7 +13,7 @@
 ## Requirements
 
 - **Goal:** when the wizard is due, it is on screen with the first page render, with no loading gap.
-- **Out of scope:** what `POST /setup` validates and saves (the zero discount rate gap is [a backlog item](../backlog/2026-10-09-setup-wizard-saves-a-zero-cart-discount-rate.md)), `POST /setup/dismiss`, the steps' UI, and who sees the wizard (`AppLayout.tsx`).
+- **Out of scope:** what `POST /setup` validates and saves (the zero discount rate gap is fixed: `Reward::config_schema()` refuses a rate of 0), `POST /setup/dismiss`, the steps' UI, and who sees the wizard (`AppLayout.tsx`).
 - **Acceptance criteria:**
   1. With `yayloyalty_setup_completed` absent, opening wp-admin → YayLoyalty shows the wizard on step 1 with no `GET …/yayloyalty/v1/setup` request in the browser's network panel.
   2. The wizard starts from exactly these values, whatever is stored: labels "Point" / "Points" (translated), 1 point for every 1.00, signup on at 100, review on at 50, 100 points = 1.00, minimum 100, max 100%, brand colour `#1f6fb2`.

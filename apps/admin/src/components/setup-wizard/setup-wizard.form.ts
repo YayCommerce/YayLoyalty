@@ -67,7 +67,7 @@ export function toSetupPayload(form: SetupForm): Setup {
   return {
     points_label_singular: form.pointsLabelSingular,
     points_label_plural: form.pointsLabelPlural,
-    // A spend of 0 has no rate; 0 makes the server refuse it rather than store a guess.
+    // An amount of 0 has no rate; both rates below send 0 so the server refuses it rather than store a guess.
     purchase: { points_per_unit: rateFromSpend(form.earnSpend, form.earnPoints) ?? 0 },
     signup: { enabled: form.signupEnabled, points: form.signupPoints },
     review: { enabled: form.reviewEnabled, points: form.reviewPoints },

@@ -69,13 +69,17 @@ class PointsEarnedEmail extends LedgerEntryEmail {
         $order        = $entry->get_order_id() ? wc_get_order( $entry->get_order_id() ) : null;
         $order_number = $order ? (string) $order->get_order_number() : '';
 
+        $greeting_name = self::greeting_name( $entry->get_user_id() );
+        $balance_text  = SettingsHelper::points_text( $entry->get_balance_after() );
         $balance_value = self::balance_value( $entry->get_balance_after() );
 
         return $this->amounts( $entry ) + [
             'entry'              => $entry,
-            'greeting_name'      => self::greeting_name( $entry->get_user_id() ),
+            'greeting_name'      => $greeting_name,
+            'greeting_text'      => self::greeting_text( esc_html( $greeting_name ) ),
             'earned_text'        => $this->earned_text( $entry, $order_number ),
-            'balance_text'       => SettingsHelper::points_text( $entry->get_balance_after() ),
+            'balance_text'       => $balance_text,
+            'balance_sentence'   => self::balance_sentence( esc_html( $balance_text ) ),
             'balance_value'      => $balance_value,
             'balance_value_text' => self::balance_value_text( $balance_value ),
             'order_number'       => $order_number,

@@ -10,8 +10,10 @@
  * @var string    $additional_content
  * @var \WC_Email $email
  * @var string    $greeting_name The customer's first name, else display name; '' for none. Absent when there is no adjustment to show.
+ * @var string    $greeting_text Escaped HTML, e.g. "Hi Anna,"; '' when $greeting_name is ''. Absent when there is no adjustment to show.
  * @var string    $adjusted_text Escaped HTML, e.g. "We added <strong>50 Points</strong> to your account." Absent when there is no adjustment to show.
  * @var string    $balance_text  The balance after this adjustment, e.g. "120 Points". Absent when there is no adjustment to show.
+ * @var string    $balance_sentence Escaped HTML: the new balance as a sentence, $balance_text in bold. Absent when there is no adjustment to show.
  * @var string    $balance_value What the balance is worth, as wc_price() HTML; '' until redemption ships (RedemptionService::is_available()), or while the discount reward is not live. Absent when there is no adjustment to show.
  * @var string    $balance_value_text Escaped HTML, e.g. "That's worth <strong>$1.50</strong> in rewards."; '' when $balance_value is ''. Absent when there is no adjustment to show.
  * @var string    $points       The points added or removed, unsigned and formatted, e.g. "50". Absent when there is no adjustment to show.
@@ -34,21 +36,11 @@ do_action( 'woocommerce_email_header', $email_heading, $email );
 
 <?php echo $is_email_improvements_enabled ? '<div class="email-introduction">' : ''; ?>
 <?php if ( ! empty( $entry ) ) : ?>
-    <?php if ( ! empty( $greeting_name ) ) : ?>
-<p>
-        <?php
-        /* translators: %s: customer's first name. */
-        echo esc_html( sprintf( __( 'Hi %s,', 'yayloyalty' ), $greeting_name ) );
-        ?>
-</p>
+    <?php if ( ! empty( $greeting_text ) ) : ?>
+<p><?php echo wp_kses_post( $greeting_text ); ?></p>
     <?php endif; ?>
 <p><?php echo wp_kses_post( $adjusted_text ); ?></p>
-<p>
-    <?php
-    /* translators: %s: points with label, e.g. "120 Points". */
-    echo wp_kses_post( sprintf( esc_html__( 'Your balance is now %s.', 'yayloyalty' ), '<strong>' . esc_html( $balance_text ) . '</strong>' ) );
-    ?>
-</p>
+<p><?php echo wp_kses_post( $balance_sentence ); ?></p>
     <?php if ( ! empty( $balance_value_text ) ) : ?>
 <p>
         <?php

@@ -40,6 +40,7 @@ final class LedgerTable extends AbstractTableSchema {
             PRIMARY KEY  (id),
             UNIQUE KEY uniq_idempotency_key (idempotency_key),
             KEY idx_user_history_type (user_id,id,type),
+            KEY idx_user_created (user_id,created_at),
             KEY campaign_id (campaign_id),
             KEY redemption_id (redemption_id),
             KEY order_id (order_id),
@@ -73,6 +74,8 @@ final class LedgerTable extends AbstractTableSchema {
             // Missing means duplicate awards. Installer::verify() exists for this.
             'uniq_idempotency_key',
             'idx_user_history_type',
+            // LedgerRepository::points_earned_today() reads one day of a customer's rows under the award lock.
+            'idx_user_created',
             'campaign_id',
             'redemption_id',
             'order_id',

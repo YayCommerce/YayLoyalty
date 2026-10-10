@@ -22,7 +22,7 @@ final class ShopperActivityRow {
      * Ledger rows as the launcher lists them: GET /me/activity's items, and the Design tab's sample rows.
      *
      * @param LedgerEntry[] $entries
-     * @return array<int, array{label: string, meta: string, points: int, delta: string}>
+     * @return array<int, array{label: string, meta: string, delta: string}>
      */
     public static function items( array $entries ): array {
         $store = Text::store_name();
@@ -32,10 +32,9 @@ final class ShopperActivityRow {
 
         foreach ( $entries as $entry ) {
             $items[] = [
-                'label'  => self::label( $entry, $store, $label ),
-                'meta'   => self::meta_line( $entry->get_created_at(), $entry->get_order_id() ),
-                'points' => $entry->get_points(),
-                'delta'  => LauncherCopy::signed_points( $entry->get_points() ),
+                'label' => self::label( $entry, $store, $label ),
+                'meta'  => self::meta_line( $entry->get_created_at(), $entry->get_order_id() ),
+                'delta' => LauncherCopy::signed_points( $entry->get_points() ),
             ];
         }
 

@@ -8,7 +8,9 @@
 
 ## Today
 
-`Launcher::should_render()` builds `ProgramGate` itself. A guest gets `ProgramGate::program_enabled()`, and a member gets `ProgramGate::check()`. Earning runs a gate chain instead: `EarningService::gates()` is `ProgramGate` plus whatever the `yayloyalty_earning_gates` filter adds, and `EarningService::blocked_reason()` runs it.
+`Launcher::should_render()` builds `ProgramGate` itself. A guest gets `ProgramGate::program_enabled()`, and a member gets `ProgramGate::check()`. Earning runs a gate chain instead: `EarningService::gates()` is `ProgramGate` plus whatever the `yayloyalty_earning_gates` filter adds, and `EarningService::blocked_reason()` runs it. Both are private.
+
+Other storefront surfaces also call `ProgramGate::program_enabled()` directly: `AccountRewards` (twice) and `ProductEarnMessage`. The `TODO(redemption)` in `Redemption\ProgramGate` names it too. All of them have to move off it before it can go.
 
 ## Why it matters
 
@@ -18,7 +20,7 @@ A related gap, the Pro daily cap, is its own item: [the launcher advertises earn
 
 ## Suggested fix
 
-Expose the filtered chain, for example by making `blocked_reason()` public or adding a static that runs the gates. The launcher then calls it and reads `ProgramGate::REASON_NO_CUSTOMER` as "a guest: show the pitch", and `program_enabled()` can go.
+Expose the filtered chain, for example by making `blocked_reason()` public or adding a static that runs the gates. The launcher, `AccountRewards` and `ProductEarnMessage` then call it and read `ProgramGate::REASON_NO_CUSTOMER` as "a guest: show the pitch", the redemption TODO names the chain instead, and `program_enabled()` can go.
 
 ## Done when
 

@@ -20,7 +20,7 @@ Nothing exercises the send path. A regression in any of these ships unseen:
 - the value line hidden by default;
 - the preview sample;
 - the weekly cap (`EmailThrottle`): the send at the cap is skipped, a failed send isn't counted, and a send after 7 days passes;
-- the relay (`Emails::relay_award()`) passing only the row id, and `PointsEarnedEmail::trigger()` skipping an award that was clawed back. On WooCommerce 10.8+ with deferred emails, the send runs later from Action Scheduler, which is when a refund can land first. The 2026-10-05 hand-run check covered only immediate sending.
+- the relay (`Emails::relay_award()`) passing only the row id, and `LedgerEntryEmail::trigger()`, which `PointsEarnedEmail` inherits, skipping an award that was clawed back. On WooCommerce 10.8+ with deferred emails, the send runs later from Action Scheduler, which is when a refund can land first. The 2026-10-05 hand-run check covered only immediate sending.
 
 ## Suggested fix
 
@@ -33,5 +33,5 @@ The old `detach_yaymail()` clears the subject hook with `remove_all_filters( 'wo
 - [ ] `tests/integration/WooCommerceEmailsFixture.php` and `tests/integration/WooCommerceOrdersFixture.php` exist, and `WooCommerceOrdersFixture::detach_yaymail()` removes only YayMail's callbacks, leaving `PointsEarnedShortcodes::hold_subject_email()` and `release_subject_email()` hooked, and restores what it removes.
 - [ ] An integration test covers each case listed under Why it matters, up to and including the preview sample.
 - [ ] An integration test covers the weekly cap: the send at the cap is skipped, a failed send isn't counted, and a send after 7 days passes.
-- [ ] An integration test covers the relay: `Emails::relay_award()` passes only the row id, and `PointsEarnedEmail::trigger()` skips an award clawed back before a deferred send runs.
+- [ ] An integration test covers the relay: `Emails::relay_award()` passes only the row id, and `LedgerEntryEmail::trigger()` skips an award clawed back before a deferred send runs.
 - [ ] `composer test:integration` runs those tests and they pass (check the test count, not only the exit code).
