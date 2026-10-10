@@ -135,7 +135,7 @@ final class LauncherPayload {
      *
      * @return string|null 'account' (My Account page), 'checkout' (at or right after checkout) or null.
      */
-    private static function register_route(): ?string {
+    public static function register_route(): ?string {
         if ( 'yes' === get_option( 'woocommerce_enable_myaccount_registration' ) ) {
             return 'account';
         }
