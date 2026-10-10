@@ -11,7 +11,7 @@ import {
 } from '../customers-adjust-points.copy';
 import type { AdjustFormState } from '../customers-adjust-points.form-state';
 
-/** The adjustment's options, for both layouts. Only the lifetime toggle reaches the server. */
+/** The adjustment's options, for both layouts. The customer note does not reach the server yet. */
 export function AdjustPointsOptions({
   state,
   onChange,
@@ -56,7 +56,6 @@ export function AdjustPointsOptions({
         )}
       </div>
 
-      {/* TODO(adjust-points): send notifyByEmail with the adjustment and email the customers. */}
       <label className="flex items-center justify-between gap-2.5">
         <span className="flex items-center gap-2.5">
           <Checkbox

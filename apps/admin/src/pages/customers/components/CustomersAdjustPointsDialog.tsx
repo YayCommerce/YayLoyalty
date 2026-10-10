@@ -179,6 +179,7 @@ export function CustomersAdjustPointsDialog({
       points: signedPoints(state),
       note: state.reason,
       adjustLifetime: state.adjustLifetime,
+      notify: state.notifyByEmail,
     });
 
     if (!result.success) {
