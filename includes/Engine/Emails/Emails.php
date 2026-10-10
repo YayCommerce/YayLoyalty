@@ -17,6 +17,9 @@ class Emails {
     /** The email action an award is relayed on. Its only argument is the ledger row id. */
     public const POINTS_EARNED_ACTION = 'yayloyalty_points_earned_email';
 
+    /** The email action a manual adjustment is relayed on, when its admin asked to notify. Its only argument is the ledger row id. */
+    public const POINTS_ADJUSTED_ACTION = 'yayloyalty_points_adjusted_email';
+
     protected function __construct() {
         add_filter( 'woocommerce_email_classes', [ $this, 'add_classes' ] );
         add_filter( 'woocommerce_email_groups', [ $this, 'add_groups' ] );
@@ -34,6 +37,7 @@ class Emails {
      */
     public function add_email_actions( array $actions ): array {
         $actions[] = self::POINTS_EARNED_ACTION;
+        $actions[] = self::POINTS_ADJUSTED_ACTION;
 
         return $actions;
     }
@@ -78,7 +82,7 @@ class Emails {
      * @return array<string, \WC_Email>
      */
     public function add_classes( array $classes ): array {
-        return self::add( $classes, new PointsEarnedEmail(), new PointsExpiringSoonEmail(), new PointsExpiredEmail() );
+        return self::add( $classes, new PointsEarnedEmail(), new PointsAdjustedEmail(), new PointsExpiringSoonEmail(), new PointsExpiredEmail() );
     }
 
     /**
