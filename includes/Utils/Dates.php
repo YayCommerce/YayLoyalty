@@ -81,6 +81,11 @@ final class Dates {
         return false === $formatted ? $utc : $formatted;
     }
 
+    /** A UTC DATETIME as a date in the site's date format, for display. */
+    public static function to_site_date( string $utc ): string {
+        return self::to_site_tz( $utc, (string) get_option( 'date_format' ) );
+    }
+
     public static function is_valid( ?string $utc ): bool {
         if ( null === $utc || '' === $utc || self::ZERO === $utc ) {
             return false;

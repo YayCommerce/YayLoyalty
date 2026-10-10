@@ -88,6 +88,12 @@ final class LauncherCopy {
         return $text;
     }
 
+    /** The empty points history, in the launcher and on the account tab. */
+    public static function no_activity(): string {
+        /* translators: %s: the store's points label, as "Points". */
+        return sprintf( __( 'No %s activity yet.', 'yayloyalty' ), SettingsHelper::points_label( 0 ) );
+    }
+
     /** "100 points = $1", with the merchant's label. */
     public static function redeem_rate( float $points_per_unit ): string {
         /* translators: 1: points per unit of currency, 2: the store's points label, 3: money amount. */

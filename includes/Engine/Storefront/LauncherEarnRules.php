@@ -5,6 +5,7 @@ use YayLoyalty\Engine\Points\Context;
 use YayLoyalty\Engine\Points\PointsEngine;
 use YayLoyalty\Engine\Points\Triggers\PurchaseHandler;
 use YayLoyalty\Enums\CampaignTrigger;
+use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Models\Campaign;
 use YayLoyalty\Utils\Log;
 
@@ -67,6 +68,36 @@ final class LauncherEarnRules {
 
             return null;
         }
+    }
+
+    /**
+     * A member's "Ways to earn" rows, in display order: no signup row, since a member already has the account it pays for.
+     *
+     * @param array{purchase: ?float, review: ?int} $earn         advertise()'s `earn`.
+     * @param string                                $rate_line    The Design tab's earn_rate_line.
+     * @param float                                 $purchase_min advertise()'s `purchase_min`.
+     * @return array<int, array{trigger: string, label: string, value: string}>
+     */
+    public static function member_rows( array $earn, string $rate_line, float $purchase_min ): array {
+        $rows = [];
+
+        if ( null !== $earn[ CampaignTrigger::PURCHASE ] ) {
+            $rows[] = [
+                'trigger' => CampaignTrigger::PURCHASE,
+                'label'   => __( 'Make a purchase', 'yayloyalty' ),
+                'value'   => LauncherCopy::earn_rate( $rate_line, $earn[ CampaignTrigger::PURCHASE ], $purchase_min ),
+            ];
+        }
+
+        if ( null !== $earn[ CampaignTrigger::REVIEW ] ) {
+            $rows[] = [
+                'trigger' => CampaignTrigger::REVIEW,
+                'label'   => __( 'Write a review', 'yayloyalty' ),
+                'value'   => SettingsHelper::points_text( $earn[ CampaignTrigger::REVIEW ] ),
+            ];
+        }
+
+        return $rows;
     }
 
     /**

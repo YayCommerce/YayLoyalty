@@ -9,16 +9,13 @@
 
 use YayLoyalty\Controllers\StorefrontActivityRestController;
 use YayLoyalty\Engine\Storefront\LauncherCopy;
+use YayLoyalty\Engine\Storefront\LauncherEarnRules;
 use YayLoyalty\Engine\Storefront\UiClasses;
 use YayLoyalty\Enums\CampaignTrigger;
-use YayLoyalty\Helpers\SettingsHelper;
 
 defined( 'ABSPATH' ) || exit;
 
-$yayloyalty_earn = $view['earn'];
-// No signup row: a signed-in shopper already has the account it pays for.
-$yayloyalty_purchase = $yayloyalty_earn[ CampaignTrigger::PURCHASE ];
-$yayloyalty_review   = $yayloyalty_earn[ CampaignTrigger::REVIEW ];
+$yayloyalty_earn_rows = LauncherEarnRules::member_rows( $view['earn'], $yayloyalty_text['earn_rate_line'], $view['purchase_min'] );
 // Rows already in hand are printed; null leaves skeletons for launcher.js to replace.
 $yayloyalty_activity = $view['activity'] ?? null;
 ?>
@@ -35,26 +32,20 @@ $yayloyalty_activity = $view['activity'] ?? null;
     <?php endif; ?>
 </section>
 
-<?php if ( null !== $yayloyalty_purchase || null !== $yayloyalty_review ) : ?>
+<?php if ( [] !== $yayloyalty_earn_rows ) : ?>
     <section class="<?php echo esc_attr( UiClasses::PANEL_SECTION ); ?>">
         <h3 class="<?php echo esc_attr( UiClasses::SECTION_HEADING ); ?>"><?php esc_html_e( 'Ways to earn', 'yayloyalty' ); ?></h3>
         <ul class="yl:m-0 yl:flex yl:flex-col yl:list-none yl:p-0">
-            <?php if ( null !== $yayloyalty_purchase ) : ?>
+            <?php foreach ( $yayloyalty_earn_rows as $yayloyalty_earn_row ) : ?>
                 <li class="<?php echo esc_attr( UiClasses::PANEL_ROW ); ?>">
-                    <span><?php esc_html_e( 'Make a purchase', 'yayloyalty' ); ?></span>
-                    <span class="yl:text-right yl:font-semibold" data-yl-text="earn_rate_line"><?php echo esc_html( LauncherCopy::earn_rate( $yayloyalty_text['earn_rate_line'], $yayloyalty_purchase, $view['purchase_min'] ) ); ?></span>
+                    <span><?php echo esc_html( $yayloyalty_earn_row['label'] ); ?></span>
+                    <?php if ( CampaignTrigger::PURCHASE === $yayloyalty_earn_row['trigger'] ) : ?>
+                        <span class="yl:text-right yl:font-semibold" data-yl-text="earn_rate_line"><?php echo esc_html( $yayloyalty_earn_row['value'] ); ?></span>
+                    <?php else : ?>
+                        <span class="yl:whitespace-nowrap yl:font-semibold"><?php echo esc_html( $yayloyalty_earn_row['value'] ); ?></span>
+                    <?php endif; ?>
                 </li>
-            <?php endif; ?>
-            <?php if ( null !== $yayloyalty_review ) : ?>
-                <li class="<?php echo esc_attr( UiClasses::PANEL_ROW ); ?>">
-                    <span><?php esc_html_e( 'Write a review', 'yayloyalty' ); ?></span>
-                    <span class="yl:whitespace-nowrap yl:font-semibold">
-                        <?php
-                        echo esc_html( SettingsHelper::points_text( $yayloyalty_review ) );
-                        ?>
-                    </span>
-                </li>
-            <?php endif; ?>
+            <?php endforeach; ?>
         </ul>
     </section>
 <?php endif; ?>
@@ -82,10 +73,7 @@ $yayloyalty_activity = $view['activity'] ?? null;
         ?>
     </template>
     <p class="yl:m-0 yl:text-xs yl:text-muted-foreground" data-yl-activity-empty <?php echo [] === $yayloyalty_activity ? '' : 'hidden'; ?>>
-        <?php
-        /* translators: %s: the store's points label, as "Points". */
-        echo esc_html( sprintf( __( 'No %s activity yet.', 'yayloyalty' ), SettingsHelper::points_label( 0 ) ) );
-        ?>
+        <?php echo esc_html( LauncherCopy::no_activity() ); ?>
     </p>
     <p class="yl:m-0 yl:text-xs yl:text-muted-foreground" data-yl-activity-error hidden><?php esc_html_e( 'Your recent activity could not be loaded. Try again later.', 'yayloyalty' ); ?></p>
 </section>
