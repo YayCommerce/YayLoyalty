@@ -2,7 +2,7 @@
 
 > **For agentic workers:** execute tasks in order, one at a time. Steps use `- [ ]` for tracking. Read the spec linked below before starting; the plan argues from it.
 
-**Status:** active
+**Status:** done 2026-10-10
 **Goal:** Show "Earn {N} {label} with this purchase" under the price on single product pages, for members (gated figure) and guests (base rate plus a sign-in/register line), updating live when a variation is picked.
 **Spec:** [docs/specs/2026-10-10-product-page-earning-message-design.md](../specs/2026-10-10-product-page-earning-message-design.md)
 **Architecture:** One new class, `ProductEarnMessage`, computes the sentence on the server and prints it through the classic summary hook or the block price filter. For variable products it adds each variation's sentence to WooCommerce's own variation data, and a plain-JS file swaps it in on WooCommerce's `found_variation` / `reset_data` events. This avoids a new REST route and a request per pick (spec, Alternatives).
@@ -18,8 +18,11 @@
 ## Changes during implementation
 
 - **Switch label and place:** "Show on product pages" read as the launcher's "Show on" scope, so the switch is "Show earning line on product pages", placed last in Design → Visibility, and the section description now names the earning line.
-- **Printed once per request:** WooCommerce filters the main product's price block output twice in Twenty Twenty-Five, which printed two lines. `markup()` now prints at most once per request (`ProductEarnMessage::$printed`).
-- **Default for variable products:** the cheapest variation *that earns*, not the cheapest variation. Otherwise a cheapest variation earning 0 hid the line and the script for the whole product while other variations still earned. Sentences are memoized per product id for the request.
+- **Block templates replay the classic hook:** WooCommerce's block-template compatibility layer runs `woocommerce_single_product_summary` inside blockified templates, so Twenty Twenty-Five printed the line twice (price block + classic hook). `ProductEarnMessage::unhook_in_block_templates( $hooks ): array` on `woocommerce_blocks_hook_compatibility_additional_data` asks WooCommerce to remove `render_summary` (priority 15) there; classic themes are unaffected.
+- **Default for variable products:** the cheapest variation *that earns*, not the cheapest variation. Otherwise a cheapest variation earning 0 hid the line and the script for the whole product while other variations still earned. Variations are walked in `get_variation_prices( true )['price']` order (WooCommerce's cached, cheapest-first list), and sentences are memoized per product id for the request.
+- **Shared guest estimate:** `ProductEarnMessage::guest_points( \WC_Product $product ): int` (public, 0 on failure, logs `ProductEarnMessage`) is the one guest estimate; `LauncherPayload::product_estimate()` now calls it and takes no engine argument.
+- **Shared register URL:** `LauncherPayload::register_url( string $route ): string` (checkout for `'checkout'`, else My Account) is used by `ProductEarnMessage`'s guest line and `templates/panel-guest.php`. The guest line says "create an account at checkout and get %s" on the checkout-only route, matching the launcher.
+- **Signup points** come from `LauncherEarnRules::advertise()` rather than a second wrapper around `PointsEngine::advertised()`.
 - **Inner margins:** each `<p>` inside the container also carries `style="margin:0"`, so theme paragraph margins don't space the two lines apart.
 - **Classic theme check:** done by firing `woocommerce_single_product_summary` for product #29 in `wp eval` (price, then the line, then the excerpt; one line), not by switching the site's theme.
 
