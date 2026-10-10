@@ -72,6 +72,8 @@
   - `public const OPTION_REWRITE_VERSION = 'yayloyalty_rewrite_version'`
   - `public static function register(): void`
   - `public static function url( int $page = 1, string $filter = 'all' ): string`: the endpoint URL, with the page as the endpoint value when above 1 and `points_type` when not `all`
+  - `public static function render( $value = '' ): void`, on `woocommerce_account_rewards_endpoint`
+  - Public hook callbacks: `add_query_var( array $vars ): array` (`woocommerce_get_query_vars`), `maybe_flush_rewrite_rules(): void` (`init`, priority 99), `add_menu_item( array $items ): array` (`woocommerce_account_menu_items`), `title(): string` (`woocommerce_endpoint_rewards_title`)
 
 - [ ] **Step 1: Implement `AccountRewards::register(): void`**
 
@@ -116,11 +118,13 @@
 - Create: `assets/storefront/account.css`
 
 **Interfaces:**
-- Consumes: `LauncherPayload::build( array $design, ?int $user_id ): array` (keys `text`, `earn`, `purchase_min`, `redeem`, `member`, `checkout_url`), `DesignHelper::get_design()`, `ProgramGate`, `ContextFactory::from_user()`, `CustomerRepository::find_by_user_id()`, `Customer::get_expires_at(): ?string`
+- Consumes: `LauncherPayload::for_balance( array $design, ?int $balance ): array` (keys `text`, `earn`, `purchase_min`, `redeem`, `member`, `checkout_url`), fed the balance of the customer row already read, `DesignHelper::get_design()`, `ProgramGate`, `ContextFactory::from_user()`, `CustomerRepository::find_by_user_id()`, `Customer::get_expires_at(): ?string`
 - Produces:
   - `ScriptName::ACCOUNT_STYLE = 'yayloyalty/style/storefront-account'`
   - `Launcher::asset_version( string $relative_path ): string`, now public
-  - Template variables: `$view` with keys `payload` (the `LauncherPayload::build()` array), `expires_at` (`?string`, UTC), `can_earn` (`bool`), `history` (Task 3)
+  - `AccountRewards::enqueue(): void` on `wp_enqueue_scripts`, only on the endpoint
+  - `LauncherEarnRules::member_rows( array $earn, string $rate_line, float $purchase_min ): array<int, array{trigger: string, label: string, value: string}>`: the member "Ways to earn" rows, shared with `panel-member.php`
+  - Template variables: `$view` with keys `payload` (the `LauncherPayload::for_balance()` array), `expires_at` (`?string`, UTC), `can_earn` (`bool`), `history` (Task 3)
 
 - [ ] **Step 1: Build the view in `AccountRewards::render()`**
 
@@ -185,7 +189,9 @@
   - `AccountRewards::PER_PAGE = 20`
   - `AccountRewards::filter_labels(): array<string, string>`: `all`/`earn`/`redeem`/`expire` → All/Earned/Spent/Expired, intersected with `LedgerQueryArgs::filter_types()`
   - `AccountRewards::column_labels(): array{date, description, points, balance}`, shared with the CSV header
-  - Query arg `points_type`; page number as the endpoint value (`/my-account/rewards/2/`)
+  - `AccountRewards::FILTER_QUERY_ARG = 'points_type'`; page number as the endpoint value (`/my-account/rewards/2/`)
+  - `LauncherCopy::no_activity(): string`: the empty-history line, shared with `panel-member.php`
+  - `Dates::to_site_date( string $utc ): string`: a UTC datetime in the site's date format, also used by `ShopperActivityRow::meta_line()`
 
 - [ ] **Step 1: Add `ShopperActivityRow::history_rows()`**
 
@@ -246,7 +252,7 @@
   - `public const QUERY_ARG = 'yayloyalty_export'`
   - `public const NONCE_ACTION = 'yayloyalty_export_history'`
   - `public static function url(): string`: the endpoint URL with `QUERY_ARG=csv` and a fresh nonce
-  - `public static function maybe_send(): void`, hooked on `template_redirect`
+  - `public static function maybe_send(): void`, hooked on `template_redirect`; reads 100 rows per batch until a short one
 
 - [ ] **Step 1: Implement `AccountHistoryCsv::maybe_send(): void`**
 
