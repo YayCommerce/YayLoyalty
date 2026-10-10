@@ -16,4 +16,7 @@ class ScriptName {
 
     /** My Account → Rewards: layout only, the theme styles the rest. */
     public const ACCOUNT_STYLE = 'yayloyalty/style/storefront-account';
+
+    /** Product-page earning line: swaps the sentence when a variation is picked. */
+    public const PRODUCT_EARN_SCRIPT = 'yayloyalty/script/storefront-product-earn';
 }

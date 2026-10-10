@@ -15,6 +15,14 @@
 - **Large variable products:** the spec says WooCommerce fetches variations over `admin-ajax`. It actually uses its own `?wc-ajax=get_variation` endpoint, which is not an admin request. Registering `ProductEarnMessage` outside the `! is_admin()` block (as the spec says) stays correct and harmless; verification uses the `wc-ajax` endpoint.
 - **`{points_label}` filling:** `LauncherCopy::storefront_text()` replaces `{points_label}` with the plural label in every storefront_text value. `ProductEarnMessage` must read the raw `DesignHelper::get_design()['storefront_text']['product_earn_line']`, not the `storefront_text()` output, so "1 Point" stays singular.
 
+## Changes during implementation
+
+- **Switch label and place:** "Show on product pages" read as the launcher's "Show on" scope, so the switch is "Show earning line on product pages", placed last in Design → Visibility, and the section description now names the earning line.
+- **Printed once per request:** WooCommerce filters the main product's price block output twice in Twenty Twenty-Five, which printed two lines. `markup()` now prints at most once per request (`ProductEarnMessage::$printed`).
+- **Default for variable products:** the cheapest variation *that earns*, not the cheapest variation. Otherwise a cheapest variation earning 0 hid the line and the script for the whole product while other variations still earned. Sentences are memoized per product id for the request.
+- **Inner margins:** each `<p>` inside the container also carries `style="margin:0"`, so theme paragraph margins don't space the two lines apart.
+- **Classic theme check:** done by firing `woocommerce_single_product_summary` for product #29 in `wp eval` (price, then the line, then the excerpt; one line), not by switching the site's theme.
+
 ## Global constraints
 
 - Product PHP must run on PHP 7.4: no enums, `match`, `readonly`, promoted constructor properties, `?->`, named arguments or union types; also no `mixed`/`static`/`never` types, `catch` without a variable, `throw` as an expression, trailing comma after the last declared parameter, `new` in a default value, first-class callables, `$object::class`.

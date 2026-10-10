@@ -5,6 +5,7 @@ use YayLoyalty\Engine\Earning\EarningService;
 use YayLoyalty\Engine\Earning\ProgramGate;
 use YayLoyalty\Engine\Points\ContextFactory;
 use YayLoyalty\Engine\Points\PointsEngine;
+use YayLoyalty\Engine\Register\ScriptName;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Helpers\DesignHelper;
 use YayLoyalty\Helpers\SettingsHelper;
@@ -22,6 +23,8 @@ final class ProductEarnMessage {
 
     public const CSS_CLASS = 'yayloyalty-product-earn';
 
+    private const SCRIPT_PATH = 'assets/storefront/product-earn.js';
+
     /** @var EarningService|null */
     private static $service;
 
@@ -31,9 +34,14 @@ final class ProductEarnMessage {
     /** @var bool */
     private static $printed = false;
 
+    /** @var array<int, string> Sentences by product id, for this request. */
+    private static $sentences = [];
+
     public static function register(): void {
         add_action( 'woocommerce_single_product_summary', [ self::class, 'render_summary' ], 15 );
         add_filter( 'render_block_woocommerce/product-price', [ self::class, 'append_to_price_block' ], 10, 3 );
+        add_filter( 'woocommerce_available_variation', [ self::class, 'add_variation_sentence' ], 10, 3 );
+        add_action( 'wp_enqueue_scripts', [ self::class, 'enqueue' ] );
     }
 
     /** Classic themes: between the price (10) and the excerpt (20). */
@@ -56,8 +64,69 @@ final class ProductEarnMessage {
         return $product ? $content . self::markup( self::sentence( $product ) ) : $content;
     }
 
-    /** The filled sentence for one of this product at its current price, or '' when nothing should show. */
+    /** Each variation's sentence in WooCommerce's variation data, which product-earn.js swaps in when it is picked. */
+    public static function add_variation_sentence( array $data, \WC_Product $product, \WC_Product_Variation $variation ): array { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- the filter passes the parent before the variation.
+        $data['yayloyalty_earn'] = self::sentence( $variation );
+
+        return $data;
+    }
+
+    /** Only on a variable product page whose line shows. */
+    public static function enqueue(): void {
+        if ( ! is_product() ) {
+            return;
+        }
+
+        $product = wc_get_product( get_queried_object_id() );
+
+        if ( ! $product || ! $product->is_type( 'variable' ) || '' === self::sentence( $product ) ) {
+            return;
+        }
+
+        wp_enqueue_script( ScriptName::PRODUCT_EARN_SCRIPT, YAYLOYALTY_PLUGIN_URL . self::SCRIPT_PATH, [ 'jquery' ], Launcher::asset_version( self::SCRIPT_PATH ), [ 'in_footer' => true ] );
+    }
+
+    /**
+     * The filled sentence for one of this product at its current price, or '' when nothing should show.
+     * A variable product speaks for its cheapest variation that earns, until the shopper picks one.
+     */
     public static function sentence( \WC_Product $product ): string {
+        $id = (int) $product->get_id();
+
+        if ( ! isset( self::$sentences[ $id ] ) ) {
+            self::$sentences[ $id ] = $product->is_type( 'variable' ) ? self::cheapest_variation_sentence( $product ) : self::compute( $product );
+        }
+
+        return self::$sentences[ $id ];
+    }
+
+    private static function cheapest_variation_sentence( \WC_Product $product ): string {
+        $variations = array_filter(
+            $product->get_available_variations( 'objects' ),
+            function ( \WC_Product $variation ): bool {
+                return '' !== $variation->get_price();
+            }
+        );
+
+        usort(
+            $variations,
+            function ( \WC_Product $a, \WC_Product $b ): int {
+                return (float) $a->get_price() <=> (float) $b->get_price();
+            }
+        );
+
+        foreach ( $variations as $variation ) {
+            $sentence = self::sentence( $variation );
+
+            if ( '' !== $sentence ) {
+                return $sentence;
+            }
+        }
+
+        return '';
+    }
+
+    private static function compute( \WC_Product $product ): string {
         if ( ! ProgramGate::program_enabled() || ! self::enabled() || $product->is_type( [ 'grouped', 'external' ] ) || '' === $product->get_price() ) {
             return '';
         }
