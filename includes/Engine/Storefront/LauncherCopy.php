@@ -68,6 +68,17 @@ final class LauncherCopy {
         return sprintf( __( '%1$s on orders of %2$s or more', 'yayloyalty' ), $line, self::money( $min_subtotal ) );
     }
 
+    /** The Design tab's `product_earn_line` with {points} and {points_label} filled: "Earn 20 Points with this purchase". */
+    public static function product_earn( string $template, int $points ): string {
+        return strtr(
+            $template,
+            [
+                '{points}'       => self::points( $points ),
+                '{points_label}' => SettingsHelper::points_label( $points ),
+            ]
+        );
+    }
+
     /**
      * The Design tab's storefront_text with {points_label} filled with the merchant's plural label: "Your {points_label}" → "Your Stars".
      * earn_rate_line is left for earn_rate(), whose label agrees with the rate it prints.

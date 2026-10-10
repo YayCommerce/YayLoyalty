@@ -24,6 +24,7 @@ import {
   VISIBILITY_INCLUDE_PAGES_LIMIT_NOTE,
   VISIBILITY_INCLUDE_PAGES_PLACEHOLDER,
   VISIBILITY_INCLUDE_PAGES_SEARCH_PLACEHOLDER,
+  VISIBILITY_PRODUCT_MESSAGE_LABEL,
   VISIBILITY_SCOPE_LABEL,
   VISIBILITY_SECTION_DESCRIPTION,
   VISIBILITY_SECTION_TITLE,
@@ -35,7 +36,7 @@ const pageOption = (page: WpPageOption) => ({
   label: new DOMParser().parseFromString(page.title.rendered, 'text/html').body.textContent || `#${page.id}`,
 });
 
-/** Scope, the chosen pages, hide on mobile, hide for roles — the custom_pages scope and its page picker are Pro. */
+/** Scope, the chosen pages, hide on mobile, hide for roles, the product-page line — the custom_pages scope and its page picker are Pro. */
 export function DesignVisibilitySection() {
   const { control } = useFormContext<Design>();
   const scope = useWatch({ control, name: 'visibility.scope' });
@@ -154,6 +155,22 @@ export function DesignVisibilitySection() {
             />
             <FieldDescription>{VISIBILITY_HIDE_FOR_ROLES_DESCRIPTION()}</FieldDescription>
           </FieldContent>
+        </Field>
+
+        <Field>
+          <FieldLabel htmlFor="design-visibility-product-message">{VISIBILITY_PRODUCT_MESSAGE_LABEL()}</FieldLabel>
+          <Controller
+            control={control}
+            name="visibility.product_message"
+            render={({ field }) => (
+              <Switch
+                id="design-visibility-product-message"
+                className="w-11!"
+                checked={field.value}
+                onCheckedChange={field.onChange}
+              />
+            )}
+          />
         </Field>
       </CardContent>
     </Card>

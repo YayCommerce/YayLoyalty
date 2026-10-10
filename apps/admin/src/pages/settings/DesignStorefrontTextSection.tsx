@@ -17,6 +17,7 @@ import {
   STOREFRONT_BALANCE_HEADING_LABEL,
   STOREFRONT_EARN_RATE_LINE_LABEL,
   STOREFRONT_LAUNCHER_LABEL_LABEL,
+  STOREFRONT_PRODUCT_EARN_LINE_LABEL,
   STOREFRONT_REDEEM_BUTTON_LABEL,
   STOREFRONT_REQUIRED_ERROR,
   STOREFRONT_RESET_BUTTON_LABEL,
@@ -60,7 +61,7 @@ function StorefrontTextField({ name, label }: { name: StorefrontTextKey; label: 
 }
 
 /**
- * Five text inputs, pre-filled with the stored wording rather than shown
+ * Six text inputs, pre-filled with the stored wording rather than shown
  * as placeholders, so an empty field means empty.
  */
 export function DesignStorefrontTextSection() {
@@ -101,6 +102,7 @@ export function DesignStorefrontTextSection() {
         <StorefrontTextField name="earn_rate_line" label={STOREFRONT_EARN_RATE_LINE_LABEL()} />
         <StorefrontTextField name="redeem_button" label={STOREFRONT_REDEEM_BUTTON_LABEL()} />
         <StorefrontTextField name="signed_out_prompt" label={STOREFRONT_SIGNED_OUT_PROMPT_LABEL()} />
+        <StorefrontTextField name="product_earn_line" label={STOREFRONT_PRODUCT_EARN_LINE_LABEL()} />
       </CardContent>
 
       <ConfirmDialog

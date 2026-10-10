@@ -10,6 +10,7 @@
  */
 
 use YayLoyalty\Engine\Storefront\LauncherCopy;
+use YayLoyalty\Engine\Storefront\LauncherPayload;
 use YayLoyalty\Engine\Storefront\UiClasses;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Enums\CampaignTrigger;
@@ -50,7 +51,7 @@ if ( null !== $yayloyalty_redeem ) {
     $yayloyalty_steps[] = sprintf( __( 'Spend them at checkout — %s off', 'yayloyalty' ), LauncherCopy::redeem_rate( $yayloyalty_redeem['points_per_unit'] ) );
 }
 
-$yayloyalty_register_url = $yayloyalty_is_checkout_only ? $view['checkout_url'] : $view['account_url'];
+$yayloyalty_register_url = null === $yayloyalty_route ? '' : LauncherPayload::register_url( $yayloyalty_route );
 
 if ( null === $yayloyalty_signup ) {
     $yayloyalty_register_text = $yayloyalty_is_checkout_only ? __( 'Create an account at checkout', 'yayloyalty' ) : __( 'Create an account', 'yayloyalty' );

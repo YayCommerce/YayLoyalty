@@ -74,7 +74,7 @@ final class LauncherPayload {
             'purchase_min' => $rules['purchase_min'],
             'redeem'       => $redeem,
             'member'       => null === $balance ? null : self::member( $balance, null === $redeem ? null : $reward ),
-            'estimate'     => null !== $engine && null === $balance && null !== $rules['earn'][ CampaignTrigger::PURCHASE ] ? self::product_estimate( $engine ) : null,
+            'estimate'     => null !== $engine && null === $balance && null !== $rules['earn'][ CampaignTrigger::PURCHASE ] ? self::product_estimate() : null,
             'register'     => $register,
             'account_url'  => (string) wc_get_page_permalink( 'myaccount' ),
             'rewards_url'  => AccountRewards::url(),
@@ -135,7 +135,7 @@ final class LauncherPayload {
      *
      * @return string|null 'account' (My Account page), 'checkout' (at or right after checkout) or null.
      */
-    private static function register_route(): ?string {
+    public static function register_route(): ?string {
         if ( 'yes' === get_option( 'woocommerce_enable_myaccount_registration' ) ) {
             return 'account';
         }
@@ -147,12 +147,16 @@ final class LauncherPayload {
         return null;
     }
 
+    /** Where register_route() sends a guest: checkout for 'checkout', else My Account. */
+    public static function register_url( string $route ): string {
+        return (string) ( 'checkout' === $route ? wc_get_checkout_url() : wc_get_page_permalink( 'myaccount' ) );
+    }
+
     /**
-     * What this product would earn a guest, at the base rate: no tier multiplier,
-     * since that belongs to members. Null off a product page, on a variable product (its price is a
-     * range) or when the engine finds nothing.
+     * What this product would earn a guest (ProductEarnMessage::guest_points()). Null off a product page,
+     * on a variable product (its price is a range) or when the engine finds nothing.
      */
-    private static function product_estimate( PointsEngine $engine ): ?int {
+    private static function product_estimate(): ?int {
         if ( ! function_exists( 'is_product' ) || ! is_product() ) {
             return null;
         }
@@ -163,14 +167,7 @@ final class LauncherPayload {
             return null;
         }
 
-        try {
-            $points = $engine->evaluate( CampaignTrigger::PURCHASE, ContextFactory::from_product( $product ) )->get_points();
-        } catch ( \Throwable $e ) {
-            // A broken estimate must never take the product page down with it.
-            Log::warning( 'LauncherPayload', 'product estimate failed: ' . $e->getMessage() );
-
-            return null;
-        }
+        $points = ProductEarnMessage::guest_points( $product );
 
         return $points > 0 ? $points : null;
     }

@@ -21,7 +21,7 @@ class DesignSchema {
                 'corner_radius' => 8,
             ],
             // Real, editable defaults. An empty save is literal, never "use the default".
-            // {points_label} becomes the merchant's points label (LauncherCopy::storefront_text()), so no default names "points".
+            // {points_label} becomes the merchant's points label (LauncherCopy::storefront_text(); product_earn_line's through LauncherCopy::product_earn()), so no default names "points".
             'storefront_text' => [
                 'launcher_label'    => __( 'Rewards', 'yayloyalty' ),
                 /* translators: keep {points_label} as it is; it becomes the store's points label, as "Points". */
@@ -32,12 +32,15 @@ class DesignSchema {
                 'redeem_button'     => __( 'Apply {points_label}', 'yayloyalty' ),
                 /* translators: keep {points_label} as it is; it becomes the store's points label, as "Points". */
                 'signed_out_prompt' => __( 'Sign in to earn {points_label} on this order', 'yayloyalty' ),
+                /* translators: keep every {…} placeholder as it is; each is filled in when the line is shown. */
+                'product_earn_line' => __( 'Earn {points} {points_label} with this purchase', 'yayloyalty' ),
             ],
             'visibility'      => [
                 'scope'            => self::SCOPE_ALL_PAGES,
                 'include_page_ids' => [],
                 'hide_on_mobile'   => false,
                 'hide_for_roles'   => [ 'administrator', 'shop_manager' ],
+                'product_message'  => true,
             ],
             'panel'           => [ // Pro
                 'layout'              => 'compact',
@@ -87,6 +90,10 @@ class DesignSchema {
                     'required' => true,
                 ],
                 'signed_out_prompt' => [ 'type' => 'text' ],
+                'product_earn_line' => [
+                    'type'     => 'text',
+                    'required' => true,
+                ],
             ],
             'visibility'      => [
                 'scope'            => [
@@ -97,6 +104,7 @@ class DesignSchema {
                 'include_page_ids' => [ 'type' => 'id_list' ],
                 'hide_on_mobile'   => [ 'type' => 'bool' ],
                 'hide_for_roles'   => [ 'type' => 'slug_list' ],
+                'product_message'  => [ 'type' => 'bool' ],
             ],
             'panel'           => [ // Pro
                 'layout'              => [
