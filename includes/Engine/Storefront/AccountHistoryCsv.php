@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Engine\Storefront;
 
+use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Utils\Dates;
 
@@ -38,7 +39,7 @@ final class AccountHistoryCsv {
 
         $out = fopen( 'php://output', 'w' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- streaming to the response.
         fwrite( $out, "\xEF\xBB\xBF" ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite -- UTF-8 BOM, so spreadsheets read the labels' accents.
-        fputcsv( $out, [ __( 'Date', 'yayloyalty' ), __( 'Description', 'yayloyalty' ), __( 'Order', 'yayloyalty' ), __( 'Points', 'yayloyalty' ), __( 'Balance', 'yayloyalty' ) ] );
+        fputcsv( $out, [ __( 'Date', 'yayloyalty' ), __( 'Description', 'yayloyalty' ), __( 'Order', 'yayloyalty' ), SettingsHelper::points_label( 0 ), __( 'Balance', 'yayloyalty' ) ] );
 
         $ledger  = new LedgerRepository();
         $user_id = get_current_user_id();
