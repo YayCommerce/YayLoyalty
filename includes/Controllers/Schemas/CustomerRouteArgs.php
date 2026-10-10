@@ -49,6 +49,11 @@ final class CustomerRouteArgs {
                 'type'        => 'boolean',
                 'default'     => true,
             ],
+            'notify'          => [
+                'description' => __( 'Whether to email the customer about this adjustment.', 'yayloyalty' ),
+                'type'        => 'boolean',
+                'default'     => false,
+            ],
         ];
     }
 }
