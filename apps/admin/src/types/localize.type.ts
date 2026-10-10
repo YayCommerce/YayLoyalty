@@ -23,7 +23,7 @@ export type Meta = {
     version: string;
     // No pro flag by design: the SPA is gated at build time.
     reviewed: boolean;
-    /** False until the setup wizard's "Turn on my program" has saved. */
+    /** False until the setup wizard is finished or exited. */
     setupCompleted: boolean;
   };
   wcMeta: {

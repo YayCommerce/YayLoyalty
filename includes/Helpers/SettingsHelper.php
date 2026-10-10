@@ -13,7 +13,7 @@ class SettingsHelper {
     public const OPTION_SETTINGS = 'yayloyalty_settings';
     public const OPTION_REVIEWED = 'yayloyalty_reviewed';
 
-    /** Set once the setup wizard's "Turn on my program" has saved; absent means the wizard opens. */
+    /** Set once the setup wizard is finished or exited; absent means the wizard opens. */
     public const OPTION_SETUP_COMPLETED = 'yayloyalty_setup_completed';
 
     /** @var array{locale: string, saved: mixed, settings: array}|null The last get_settings() result and what it was built from. */
