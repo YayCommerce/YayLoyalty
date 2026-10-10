@@ -13,4 +13,7 @@ class ScriptName {
     /** Storefront launcher: plain (non-module) script, deferred, and its stylesheet. */
     public const STOREFRONT_SCRIPT = 'yayloyalty/storefront/launcher';
     public const STOREFRONT_STYLE  = 'yayloyalty/style/storefront-launcher';
+
+    /** My Account → Rewards: layout only, the theme styles the rest. */
+    public const ACCOUNT_STYLE = 'yayloyalty/style/storefront-account';
 }

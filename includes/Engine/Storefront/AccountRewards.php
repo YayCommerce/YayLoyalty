@@ -2,6 +2,14 @@
 namespace YayLoyalty\Engine\Storefront;
 
 use YayLoyalty\Engine\Earning\ProgramGate;
+use YayLoyalty\Engine\Points\ContextFactory;
+use YayLoyalty\Engine\Register\ScriptName;
+use YayLoyalty\Enums\CampaignTrigger;
+use YayLoyalty\Helpers\DesignHelper;
+use YayLoyalty\Repositories\CampaignRepository;
+use YayLoyalty\Repositories\CustomerRepository;
+use YayLoyalty\Repositories\RewardRepository;
+use YayLoyalty\Utils\Dates;
 use YayLoyalty\Utils\Log;
 
 defined( 'ABSPATH' ) || exit;
@@ -18,6 +26,8 @@ final class AccountRewards {
 
     public const OPTION_REWRITE_VERSION = 'yayloyalty_rewrite_version';
 
+    private const STYLE_PATH = 'assets/storefront/account.css';
+
     /** Hooked on every request: a permalink save in wp-admin rebuilds the rules and must still see the endpoint. */
     public static function register(): void {
         add_filter( 'woocommerce_get_query_vars', [ self::class, 'add_query_var' ] );
@@ -25,6 +35,7 @@ final class AccountRewards {
         add_filter( 'woocommerce_account_menu_items', [ self::class, 'add_menu_item' ] );
         add_filter( 'woocommerce_endpoint_' . self::ENDPOINT . '_title', [ self::class, 'title' ] );
         add_action( 'woocommerce_account_' . self::ENDPOINT . '_endpoint', [ self::class, 'render' ] );
+        add_action( 'wp_enqueue_scripts', [ self::class, 'enqueue' ] );
     }
 
     /**
@@ -69,6 +80,14 @@ final class AccountRewards {
         return array_slice( $items, 0, $position, true ) + $item + array_slice( $items, $position, null, true );
     }
 
+    public static function enqueue(): void {
+        if ( ! is_wc_endpoint_url( self::ENDPOINT ) ) {
+            return;
+        }
+
+        wp_enqueue_style( ScriptName::ACCOUNT_STYLE, YAYLOYALTY_PLUGIN_URL . self::STYLE_PATH, [], Launcher::asset_version( self::STYLE_PATH ) );
+    }
+
     public static function title(): string {
         return __( 'Rewards', 'yayloyalty' );
     }
@@ -80,23 +99,44 @@ final class AccountRewards {
         return 'all' === $filter ? $url : add_query_arg( 'points_type', $filter, $url );
     }
 
-    /** @param string $value The endpoint value: the history page number. */
-    public static function render( $value = '' ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- read by the template from Task 3 on.
+    public static function render(): void {
         if ( ! ProgramGate::program_enabled() ) {
             self::print_unavailable();
 
             return;
         }
 
+        $buffer_level = ob_get_level();
+
         try {
+            $view = self::view( get_current_user_id() );
+
             ob_start();
             include __DIR__ . '/templates/account-rewards.php';
             echo ob_get_clean(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- the template escapes every value.
         } catch ( \Throwable $e ) {
-            ob_end_clean();
+            // Drop the half-printed tab, never the theme's own buffers.
+            while ( ob_get_level() > $buffer_level ) {
+                ob_end_clean();
+            }
+
             Log::warning( 'AccountRewards', 'not rendered: ' . $e->getMessage() );
             self::print_unavailable();
         }
+    }
+
+    /**
+     * @return array{payload: array, expires_at: ?string, can_earn: bool}
+     */
+    private static function view( int $user_id ): array {
+        $customers = new CustomerRepository();
+        $customer  = $customers->find_by_user_id( $user_id );
+
+        return [
+            'payload'    => ( new LauncherPayload( new CampaignRepository(), new RewardRepository(), $customers ) )->build( DesignHelper::get_design(), $user_id ),
+            'expires_at' => null === $customer ? null : $customer->get_expires_at(),
+            'can_earn'   => null === ( new ProgramGate() )->check( CampaignTrigger::PURCHASE, ContextFactory::from_user( $user_id, Dates::now() ) ),
+        ];
     }
 
     private static function print_unavailable(): void {
