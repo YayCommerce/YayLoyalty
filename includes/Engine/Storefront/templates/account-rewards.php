@@ -5,6 +5,7 @@
  * @var array $view AccountRewards::view().
  */
 
+use YayLoyalty\Engine\Storefront\AccountHistoryCsv;
 use YayLoyalty\Engine\Storefront\AccountRewards;
 use YayLoyalty\Engine\Storefront\LauncherCopy;
 use YayLoyalty\Enums\CampaignTrigger;
@@ -106,6 +107,9 @@ $yayloyalty_date     = (string) get_option( 'date_format' );
             <?php foreach ( AccountRewards::filter_labels() as $yayloyalty_filter => $yayloyalty_filter_label ) : ?>
                 <a href="<?php echo esc_url( AccountRewards::url( 1, $yayloyalty_filter ) ); ?>"<?php echo $yayloyalty_filter === $yayloyalty_history['filter'] ? ' aria-current="page"' : ''; ?>><?php echo esc_html( $yayloyalty_filter_label ); ?></a>
             <?php endforeach; ?>
+            <?php if ( 'all' !== $yayloyalty_history['filter'] || $yayloyalty_history['total'] > 0 ) : ?>
+                <a class="yayloyalty-account__download" href="<?php echo esc_url( AccountHistoryCsv::url() ); ?>"><?php esc_html_e( 'Download my history (CSV)', 'yayloyalty' ); ?></a>
+            <?php endif; ?>
         </p>
 
         <?php if ( [] === $yayloyalty_history['rows'] ) : ?>

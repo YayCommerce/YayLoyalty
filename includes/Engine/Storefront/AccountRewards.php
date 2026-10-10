@@ -45,6 +45,7 @@ final class AccountRewards {
         add_filter( 'woocommerce_endpoint_' . self::ENDPOINT . '_title', [ self::class, 'title' ] );
         add_action( 'woocommerce_account_' . self::ENDPOINT . '_endpoint', [ self::class, 'render' ] );
         add_action( 'wp_enqueue_scripts', [ self::class, 'enqueue' ] );
+        add_action( 'template_redirect', [ AccountHistoryCsv::class, 'maybe_send' ] );
     }
 
     /**
