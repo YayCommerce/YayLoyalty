@@ -8,11 +8,11 @@
 
 ## Today
 
-When `EarningService` refuses an award outright it returns `Outcome::skipped( EarningService::REASON_LIMIT_REACHED )`. `OrderListener::note()` skips that reason on purpose, so the order gets no note. No activity row is written either: `CustomerActivityService::record_earning_limited()` runs only for a partial cut, where `Outcome::held_back()` is above 0 and `note()` adds "%d points were held back by an earning limit." The only trace of a full refusal is the WooCommerce log line `DailyEarningLimit` writes.
+When `EarningService` refuses an award outright it returns `Outcome::skipped( EarningService::REASON_LIMIT_REACHED )`. `OrderListener::note()` now adds "No points earned: an earning limit held back all %d points." for that reason, and `EarningService::award()` announces the refusal through `EarningService::LIMITED_ACTION`, so `CustomerActivityService::record_earning_limited()` writes an `earning_limited` row with 0 awarded. Only the wp-admin check below is left.
 
 ## Why it matters
 
-A customer at the daily cap completes an order and gets nothing, with no record on the order or in their activity. Support can't tell a cap refusal from an engine miss without reading WooCommerce logs. The Pro help text says refused earnings are written to the log, which a merchant may not check.
+A customer at the daily cap completes an order and gets nothing. Without a record on the order or in their activity, support can't tell a cap refusal from an engine miss without reading WooCommerce logs.
 
 ## Suggested fix
 
@@ -20,6 +20,6 @@ Have `OrderListener::note()` add an order note for `REASON_LIMIT_REACHED` that n
 
 ## Done when
 
-- [ ] `OrderListener::note()` adds an order note when the outcome is skipped with `EarningService::REASON_LIMIT_REACHED`.
+- [x] `OrderListener::note()` adds an order note when the outcome is skipped with `EarningService::REASON_LIMIT_REACHED`. — `OrderListener::note()`, `Outcome::SKIPPED` case
 - [ ] A customer at the daily cap who completes an order has that note on the order, checked by completing such an order in wp-admin.
-- [ ] A decision is recorded on whether a full refusal also writes an `earning_limited` activity row, and the code matches it.
+- [x] A decision is recorded on whether a full refusal also writes an `earning_limited` activity row, and the code matches it. — it does: the comment in `EarningService::award()` and the docblock of `CustomerActivityService::record_earning_limited()`

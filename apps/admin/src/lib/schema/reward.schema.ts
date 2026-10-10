@@ -151,7 +151,7 @@ const couponExpiryDaysSchema = z.number().int().min(1).nullable();
 export const REWARD_CONFIG_SCHEMAS = {
   flexible_discount: z.object({
     currency: z.string(),
-    points_per_currency_unit: z.number().min(0),
+    points_per_currency_unit: z.number().positive(),
     min_points: z.number().int().min(0),
     max_points_per_order: moneyCapSchema,
     max_percent_of_subtotal: moneySchema,

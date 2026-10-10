@@ -54,7 +54,7 @@ final class StorefrontActivityRestController extends AbstractRestController {
             : $this->error_unauthorized( __( 'Sign in to see your points activity.', 'yayloyalty' ) );
     }
 
-    /** @return array{items: array<int, array{label: string, meta: string, points: int, delta: string}>} */
+    /** @return array{items: array<int, array{label: string, meta: string, delta: string}>} */
     public function get_activity( \WP_REST_Request $request ): array { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- the user comes from the session.
         return [ 'items' => ShopperActivityRow::items( $this->ledger->latest_for_user( get_current_user_id(), self::ROWS ) ) ];
     }
@@ -71,10 +71,9 @@ final class StorefrontActivityRestController extends AbstractRestController {
             'title'      => 'yayloyalty_shopper_activity',
             'type'       => 'object',
             'properties' => [
-                'label'  => $text,
-                'meta'   => [ 'description' => __( 'Date in the site format, then the order number when there is one.', 'yayloyalty' ) ] + $text,
-                'points' => [ 'type' => 'integer' ] + $text,
-                'delta'  => [ 'description' => __( 'Signed, formatted points: "+270" or "−120".', 'yayloyalty' ) ] + $text,
+                'label' => $text,
+                'meta'  => [ 'description' => __( 'Date in the site format, then the order number when there is one.', 'yayloyalty' ) ] + $text,
+                'delta' => [ 'description' => __( 'Signed, formatted points: "+270" or "−120".', 'yayloyalty' ) ] + $text,
             ],
         ];
     }

@@ -164,6 +164,18 @@ abstract class LoyaltyEmail extends \WC_Email {
         return wc_price( $amount, [ 'currency' => get_option( 'woocommerce_currency' ) ] );
     }
 
+    /** "Hi Anna," around escaped HTML, or '' when that is ''. Public for YayMail, which passes a shortcode tag. */
+    public static function greeting_text( string $name_html ): string {
+        /* translators: %s: customer's first name. */
+        return '' === $name_html ? '' : sprintf( esc_html__( 'Hi %s,', 'yayloyalty' ), $name_html );
+    }
+
+    /** "Your balance is now <strong>120 Points</strong>." around escaped HTML. Public for YayMail, which passes a shortcode tag. */
+    public static function balance_sentence( string $balance_html ): string {
+        /* translators: %s: points with label, e.g. "120 Points". */
+        return sprintf( esc_html__( 'Your balance is now %s.', 'yayloyalty' ), '<strong>' . $balance_html . '</strong>' );
+    }
+
     /** "That's worth <strong>$1.50</strong> in rewards." around balance_value(), or '' when that is ''. */
     protected static function balance_value_text( string $balance_value ): string {
         /* translators: %s: money amount, e.g. "$1.50". */

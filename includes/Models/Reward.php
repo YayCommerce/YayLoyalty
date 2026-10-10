@@ -217,8 +217,8 @@ class Reward extends AbstractModel {
                     'required' => true,
                 ],
                 'points_per_currency_unit' => [
-                    'type' => 'number',
-                    'min'  => 0,
+                    'type'          => 'number',
+                    'exclusive_min' => 0,
                 ],
                 'min_points'               => [
                     'type' => 'int',
