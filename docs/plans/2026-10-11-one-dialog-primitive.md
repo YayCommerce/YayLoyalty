@@ -50,7 +50,7 @@ Import from `'./dialog'` instead of `'../dialog'`. `DialogContent` gets `classNa
 
 - [x] **Step 2: Repoint `SetupWizardModal`**
 
-Import `Dialog`, `DialogContent`, `DialogDescription` and `DialogTitle` from `@/components/ui/custom/dialog`. Remove `overflow-y-auto` from `DialogContent`'s `className`, since the wrapper applies it. Keep the rest: `showCloseButton={false}`, both `preventDefault` handlers, and `max-h-[calc(100vh-4rem)] gap-0 p-0 sm:max-w-225`.
+Import `Dialog`, `DialogContent`, `DialogDescription` and `DialogTitle` from `@/components/ui/custom/dialog`. Remove `overflow-y-auto` from `DialogContent`'s `className`, since the wrapper applies it, and `gap-0`, which does nothing on a grid with one child. Keep the rest: `showCloseButton={false}`, both `preventDefault` handlers, and `max-h-[calc(100vh-4rem)] p-0 sm:max-w-225`.
 
 - [x] **Step 3: Confirm no importer of the base remains**
 
