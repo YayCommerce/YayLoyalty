@@ -33,6 +33,7 @@ export function buildLedgerCsv(entries: LedgerEntry[], campaignNames: Map<number
       entry.order_id ?? '',
       campaignCell(entry.campaign_id, campaignNames),
       entry.note ?? '',
+      entry.customer_note ?? '',
     ]),
   );
 }

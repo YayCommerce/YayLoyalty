@@ -16,8 +16,9 @@ export type LedgerRow = {
 };
 
 /**
- * Maps a ledger entry to its table row. `subLine` only ever names the campaign:
- * `LedgerEntry` has no reward name, original earn date or actor name, so anything more would be invented.
+ * Maps a ledger entry to its table row. `subLine` names the campaign on an earn row, or quotes the customer
+ * description on a manual adjustment: `LedgerEntry` has no reward name, original earn date or actor name,
+ * so anything more would be invented.
  */
 export function toLedgerRow(
   entry: LedgerEntry,
@@ -27,11 +28,21 @@ export function toLedgerRow(
   return {
     date: formatStoredDate(entry.created_at),
     description: describeLedgerEntry(entry),
-    subLine: campaignSubLine(entry, campaignNames),
+    subLine: customerNoteSubLine(entry) ?? campaignSubLine(entry, campaignNames),
     points: formatSignedPoints(entry.points),
     balance: formatPoints(entry.balance_after),
     isCause: entry.id === causeLedgerId,
   };
+}
+
+function customerNoteSubLine(entry: LedgerEntry): string | null {
+  return entry.customer_note
+    ? sprintf(
+        /* translators: %s: the description the customer sees for this adjustment. */
+        __('Customer sees: %s', 'yayloyalty'),
+        entry.customer_note,
+      )
+    : null;
 }
 
 function campaignSubLine(entry: LedgerEntry, campaignNames: Map<number, string>): string | null {

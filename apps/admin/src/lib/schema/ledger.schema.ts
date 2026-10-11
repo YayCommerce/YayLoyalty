@@ -45,6 +45,8 @@ export const ledgerEntrySchema = z.object({
   order_id: z.number().int().nullable(),
   /** Manual adjustments only; system rows compose their text client-side so it stays translatable. */
   note: z.string().nullable(),
+  /** Shown to the customer in place of "Adjustment by {store}"; manual adjustments only. */
+  customer_note: z.string().nullable(),
   actor_id: z.number().int().nullable(),
   created_at: z.string(),
 });

@@ -5,6 +5,7 @@ use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Models\LedgerEntry;
+use YayLoyalty\Utils\Text;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -63,6 +64,8 @@ class PointsAdjustedEmail extends LedgerEntryEmail {
     protected function build_values( LedgerEntry $entry ): array {
         return $this->balance_values( $entry ) + [
             'adjusted_text' => self::adjusted_text( $entry ),
+            // sanitize_text_field() stores a bare "<" as "&lt;"; the templates escape it once more.
+            'customer_note' => Text::plain( (string) $entry->get_customer_note() ),
         ];
     }
 

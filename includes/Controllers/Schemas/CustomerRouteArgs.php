@@ -44,6 +44,14 @@ final class CustomerRouteArgs {
                 'required'          => true,
                 'sanitize_callback' => 'sanitize_text_field',
             ],
+            // A custom sanitize_callback replaces the default that enforces maxLength, so validate explicitly.
+            'customer_note'   => [
+                'description'       => __( 'Shown to the customer in place of "Adjustment by {store}".', 'yayloyalty' ),
+                'type'              => 'string',
+                'maxLength'         => 120,
+                'validate_callback' => 'rest_validate_request_arg',
+                'sanitize_callback' => 'sanitize_text_field',
+            ],
             // On moves lifetime_earned, and so tier progress, by the same signed amount in either
             // direction. Off writes a balance-only `correction` row.
             'adjust_lifetime' => [

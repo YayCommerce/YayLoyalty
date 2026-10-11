@@ -14,7 +14,8 @@ defined( 'ABSPATH' ) || exit;
  * One ledger row as the shopper sees it in the launcher's "Recent activity".
  *
  * A shopper-safe projection, not the admin ledger shape: no admin note (it can name an internal
- * reason), no actor id, no campaign id. Adjustments read as made by the store, never by a person.
+ * reason), no actor id, no campaign id. Adjustments read as made by the store, never by a person,
+ * unless the admin wrote a customer note for that adjustment.
  */
 final class ShopperActivityRow {
 
@@ -76,7 +77,7 @@ final class ShopperActivityRow {
     }
 
     /**
-     * @param string $store_name   Shown on adjustments ("Adjustment by {store}").
+     * @param string $store_name   Shown on adjustments without a customer note ("Adjustment by {store}").
      * @param string $points_label The merchant's plural points label, as "Points".
      */
     private static function label( LedgerEntry $entry, string $store_name, string $points_label ): string {
@@ -101,6 +102,13 @@ final class ShopperActivityRow {
                 return sprintf( __( '%s expired', 'yayloyalty' ), $points_label );
 
             default:
+                // A system ADJUST, such as LedgerService::restore_refund()'s, keeps the store label.
+                $customer_note = LedgerSource::MANUAL === $entry->get_source() ? Text::plain( (string) $entry->get_customer_note() ) : '';
+
+                if ( '' !== $customer_note ) {
+                    return $customer_note;
+                }
+
                 /* translators: %s: store name. */
                 return sprintf( __( 'Adjustment by %s', 'yayloyalty' ), $store_name );
         }
