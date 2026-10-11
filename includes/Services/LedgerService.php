@@ -50,10 +50,11 @@ final class LedgerService {
      *             moves by the same signed amount as the balance, so a
      *             deduction can undo a mistaken grant's tier progress. False
      *             writes a CORRECTION row: balance only.
+     * @param string|null $customer_note Shown to the customer in place of "Adjustment by {store}"; blank stores NULL.
      *
      * @throws \InvalidArgumentException When points is zero or the type is bad.
      */
-    public function adjust( int $user_id, int $points, string $note, int $actor_id, bool $adjust_lifetime = true ): LedgerEntry {
+    public function adjust( int $user_id, int $points, string $note, int $actor_id, bool $adjust_lifetime = true, ?string $customer_note = null ): LedgerEntry {
         if ( 0 === $points ) {
             throw new \InvalidArgumentException( 'YayLoyalty: an adjustment of zero points is meaningless.' );
         }
@@ -72,7 +73,9 @@ final class LedgerService {
             null,
             $note,
             $actor_id > 0 ? $actor_id : null,
-            Dates::now()
+            Dates::now(),
+            null,
+            null === $customer_note || '' === trim( $customer_note ) ? null : trim( $customer_note )
         );
 
         return $this->record( $draft );

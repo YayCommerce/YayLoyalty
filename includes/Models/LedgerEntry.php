@@ -50,6 +50,9 @@ final class LedgerEntry extends AbstractModel {
     /** @var string|null */
     private $note;
 
+    /** @var string|null Shown to the customer in place of "Adjustment by {store}"; manual adjustments only. */
+    private $customer_note;
+
     /** @var int|null */
     private $actor_id;
 
@@ -74,7 +77,8 @@ final class LedgerEntry extends AbstractModel {
         ?string $note = null,
         ?int $actor_id = null,
         string $created_at = '',
-        ?string $idempotency_key = null
+        ?string $idempotency_key = null,
+        ?string $customer_note = null
     ) {
         $this->id              = $id;
         $this->user_id         = $user_id;
@@ -91,6 +95,7 @@ final class LedgerEntry extends AbstractModel {
         $this->actor_id        = $actor_id;
         $this->created_at      = $created_at;
         $this->idempotency_key = $idempotency_key;
+        $this->customer_note   = $customer_note;
     }
 
     public static function from_row( array $row ): self {
@@ -109,7 +114,8 @@ final class LedgerEntry extends AbstractModel {
             self::cast_string( $row['note'] ?? null ),
             self::cast_int( $row['actor_id'] ?? null ),
             (string) ( $row['created_at'] ?? '' ),
-            self::cast_string( $row['idempotency_key'] ?? null )
+            self::cast_string( $row['idempotency_key'] ?? null ),
+            self::cast_string( $row['customer_note'] ?? null )
         );
     }
 
@@ -127,6 +133,7 @@ final class LedgerEntry extends AbstractModel {
             'redemption_id'   => $this->redemption_id,
             'order_id'        => $this->order_id,
             'note'            => $this->note,
+            'customer_note'   => $this->customer_note,
             'actor_id'        => $this->actor_id,
             'idempotency_key' => $this->idempotency_key,
             'created_at'      => $this->created_at,
@@ -134,7 +141,7 @@ final class LedgerEntry extends AbstractModel {
     }
 
     public function get_format(): array {
-        return [ '%d', '%d', '%d', '%s', '%s', '%s', '%d', '%d', '%d', '%d', '%s', '%d', '%s', '%s' ];
+        return [ '%d', '%d', '%d', '%s', '%s', '%s', '%d', '%d', '%d', '%d', '%s', '%s', '%d', '%s', '%s' ];
     }
 
     public function to_array(): array {
@@ -215,6 +222,10 @@ final class LedgerEntry extends AbstractModel {
 
     public function get_note(): ?string {
         return $this->note;
+    }
+
+    public function get_customer_note(): ?string {
+        return $this->customer_note;
     }
 
     public function get_actor_id(): ?int {
