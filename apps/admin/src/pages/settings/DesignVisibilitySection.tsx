@@ -28,6 +28,7 @@ import {
   VISIBILITY_SCOPE_LABEL,
   VISIBILITY_SECTION_DESCRIPTION,
   VISIBILITY_SECTION_TITLE,
+  VISIBILITY_THANKYOU_MESSAGE_LABEL,
 } from './design-settings.copy';
 import { visibilityScopeLabel } from './design-settings.option-labels';
 
@@ -165,6 +166,22 @@ export function DesignVisibilitySection() {
             render={({ field }) => (
               <Switch
                 id="design-visibility-product-message"
+                className="w-11!"
+                checked={field.value}
+                onCheckedChange={field.onChange}
+              />
+            )}
+          />
+        </Field>
+
+        <Field>
+          <FieldLabel htmlFor="design-visibility-thankyou-message">{VISIBILITY_THANKYOU_MESSAGE_LABEL()}</FieldLabel>
+          <Controller
+            control={control}
+            name="visibility.thankyou_message"
+            render={({ field }) => (
+              <Switch
+                id="design-visibility-thankyou-message"
                 className="w-11!"
                 checked={field.value}
                 onCheckedChange={field.onChange}
