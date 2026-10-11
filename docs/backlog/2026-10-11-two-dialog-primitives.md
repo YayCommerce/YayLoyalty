@@ -4,7 +4,7 @@
 
 **Update when:** a Done when condition is met (tick its box), the code it describes changes, or the suggested fix changes. Once every box is ticked, the item is done: remove the file.
 
-**Source:** the 2026-10-11 duplicate-logic sweep (`docs/plans/2026-10-11-share-duplicated-logic.md`, branch `trace/refactor/share-spa-logic`), which left the dialogs unmerged.
+**Source:** the 2026-10-11 duplicate-logic sweep (branch `trace/refactor/share-spa-logic`), which left the dialogs unmerged.
 
 ## Today
 
