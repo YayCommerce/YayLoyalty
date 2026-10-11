@@ -1,11 +1,10 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { HTTPError } from 'ky';
 import { FormProvider, useForm } from 'react-hook-form';
 import { Link } from 'react-router';
 import { toast } from 'sonner';
 import { __ } from '@wordpress/i18n';
 
-import { getApiErrorMessage } from '@/lib/api/api';
+import { toastApiError } from '@/lib/api/api';
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { useEmailsQuery, useSaveEmailsMutation } from '@/lib/queries/emails.queries';
 import { emailsFormSchema, EmailsFormValues, EmailsResponse, toEmailsFormValues } from '@/lib/schema/emails.schema';
@@ -66,9 +65,7 @@ function EmailsSettingsForm({ data }: { data: EmailsResponse }) {
       confirmLeave();
       toast.success(__('Email settings saved.', 'yayloyalty'));
     } catch (error) {
-      if (!(error instanceof HTTPError && 403 === error.response.status)) {
-        toast.error(await getApiErrorMessage(error, __('Failed to save email settings.', 'yayloyalty')));
-      }
+      await toastApiError(error, __('Failed to save email settings.', 'yayloyalty'));
     }
   });
 

@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import { createInterpolateElement } from '@wordpress/element';
 import { __, _n, _x, sprintf } from '@wordpress/i18n';
 
-import { getApiErrorMessage, toastApiError } from '@/lib/api/api';
+import { toastApiError } from '@/lib/api/api';
 import {
   CampaignBulkWrites,
   useBulkCampaignWritesMutation,
@@ -247,7 +247,7 @@ export function CampaignBulkArchiveDialog({
       onClose();
       onDone?.();
     } catch (error) {
-      toast.error(await getApiErrorMessage(error, __('Could not update the selected campaigns.', 'yayloyalty')));
+      await toastApiError(error, __('Could not update the selected campaigns.', 'yayloyalty'));
       setPendingAction(undefined);
     }
   }

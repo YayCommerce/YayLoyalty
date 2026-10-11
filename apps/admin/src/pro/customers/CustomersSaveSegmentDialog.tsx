@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { toast } from 'sonner';
 import { __ } from '@wordpress/i18n';
 
-import { getApiErrorMessage } from '@/lib/api/api';
+import { toastApiError } from '@/lib/api/api';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -42,7 +41,7 @@ export function CustomersSaveSegmentDialog({
     },
     onError: async (err) => {
       // The dialog stays open with the typed name so the user can edit and retry.
-      toast.error(await getApiErrorMessage(err, __('Could not save the segment.', 'yayloyalty')));
+      await toastApiError(err, __('Could not save the segment.', 'yayloyalty'));
     },
   });
 
