@@ -36,6 +36,7 @@ class YayLoyalty {
         $this->register_earning_listeners();
 
         \YayLoyalty\Engine\Storefront\AccountRewards::register();
+        \YayLoyalty\Engine\Storefront\Placements::register();
         \YayLoyalty\Engine\Storefront\ProductEarnMessage::register();
         \YayLoyalty\Engine\Storefront\ThankYouPoints::register();
 

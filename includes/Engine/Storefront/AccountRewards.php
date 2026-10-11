@@ -86,10 +86,13 @@ final class AccountRewards {
     }
 
     public static function enqueue(): void {
-        if ( ! is_wc_endpoint_url( self::ENDPOINT ) ) {
-            return;
+        if ( is_wc_endpoint_url( self::ENDPOINT ) ) {
+            self::enqueue_style();
         }
+    }
 
+    /** The tab's layout stylesheet, which the placed card and list share. */
+    public static function enqueue_style(): void {
         wp_enqueue_style( ScriptName::ACCOUNT_STYLE, YAYLOYALTY_PLUGIN_URL . self::STYLE_PATH, [], Launcher::asset_version( self::STYLE_PATH ) );
     }
 
