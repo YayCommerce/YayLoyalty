@@ -11,7 +11,7 @@ import {
 } from '../customers-adjust-points.copy';
 import type { AdjustFormState } from '../customers-adjust-points.form-state';
 
-/** The adjustment's options, for both layouts. The customer note does not reach the server yet. */
+/** The adjustment's options, for both layouts. */
 export function AdjustPointsOptions({
   state,
   onChange,
@@ -35,7 +35,6 @@ export function AdjustPointsOptions({
         </span>
       </label>
 
-      {/* TODO(adjust-points): send customerNote with the adjustment and show it in the customer's points history. */}
       <div className="flex flex-col gap-2">
         <label className="flex items-start justify-between gap-2.5">
           <span className="flex flex-col gap-0.5">
@@ -52,6 +51,7 @@ export function AdjustPointsOptions({
             value={state.customerNote}
             onChange={(event) => onChange({ customerNote: event.target.value })}
             placeholder={CUSTOMER_NOTE_PLACEHOLDER()}
+            maxLength={120}
           />
         )}
       </div>
