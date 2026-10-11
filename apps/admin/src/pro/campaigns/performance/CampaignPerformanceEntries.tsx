@@ -1,11 +1,11 @@
-import { useRef, useState, type ReactNode } from 'react';
-import { useDebounceFn } from 'rooks';
+import { useState, type ReactNode } from 'react';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { parseWPCurrency, parseWPDate, parseWPTime, utcToDate } from '@/lib/helpers/format.helper';
 import { formatPoints } from '@/lib/helpers/points.helper';
 import type { CampaignPerformanceEntry, CampaignPerformanceTrigger } from '@/lib/schema/campaign-performance.schema';
 import { cn } from '@/lib/utils';
+import { useDebouncedSearchCommit } from '@/hooks/useDebouncedSearchCommit';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ErrorState } from '@/components/ui/custom/error-state';
@@ -94,30 +94,14 @@ export function CampaignPerformanceEntries({
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
 
-  // rooks' `useDebounceFn` has no `.cancel()`, so this generation counter stops a stale commit
-  // from overwriting a clear made inside the debounce window.
-  const searchGeneration = useRef(0);
-
-  const [commitSearch] = useDebounceFn((value: string, generation: number) => {
-    if (generation !== searchGeneration.current) return;
+  const { commit: commitSearch } = useDebouncedSearchCommit((value) => {
     setSearch(value);
     setPage(1);
-  }, 300);
+  });
 
   function handleSearchChange(value: string) {
     setSearchInput(value);
-
-    const trimmed = value.trim();
-
-    if (trimmed === '') {
-      // Clearing applies immediately: there is nothing to debounce.
-      searchGeneration.current++;
-      setSearch('');
-      setPage(1);
-      return;
-    }
-
-    commitSearch(trimmed, ++searchGeneration.current);
+    commitSearch(value);
   }
 
   const query = useCampaignPerformanceEntriesQuery(campaignId, {
