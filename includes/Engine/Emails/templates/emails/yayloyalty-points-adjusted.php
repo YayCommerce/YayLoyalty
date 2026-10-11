@@ -19,6 +19,7 @@
  * @var string    $points       The points added or removed, unsigned and formatted, e.g. "50". Absent when there is no adjustment to show.
  * @var string    $points_label "Point" or "Points", from the merchant's labels. Absent when there is no adjustment to show.
  * @var string    $balance      The balance after this adjustment, formatted, e.g. "120". Absent when there is no adjustment to show.
+ * @var string    $customer_note The admin's description for the customer, plain text; '' when the adjustment has none. Absent when there is no adjustment to show.
  * @var \YayLoyalty\Models\LedgerEntry $entry The adjustment row, for overrides. Absent when there is no adjustment to show.
  */
 
@@ -40,6 +41,9 @@ do_action( 'woocommerce_email_header', $email_heading, $email );
 <p><?php echo wp_kses_post( $greeting_text ); ?></p>
     <?php endif; ?>
 <p><?php echo wp_kses_post( $adjusted_text ); ?></p>
+    <?php if ( ! empty( $customer_note ) ) : ?>
+<p><?php echo esc_html( $customer_note ); ?></p>
+    <?php endif; ?>
 <p><?php echo wp_kses_post( $balance_sentence ); ?></p>
     <?php if ( ! empty( $balance_value_text ) ) : ?>
 <p>

@@ -18,6 +18,7 @@
  * @var string $points       The points added or removed, unsigned and formatted, e.g. "50". Absent when there is no adjustment to show.
  * @var string $points_label "Point" or "Points", from the merchant's labels. Absent when there is no adjustment to show.
  * @var string $balance      The balance after this adjustment, formatted, e.g. "120". Absent when there is no adjustment to show.
+ * @var string $customer_note The admin's description for the customer, plain text; '' when the adjustment has none. Absent when there is no adjustment to show.
  * @var \YayLoyalty\Models\LedgerEntry $entry The adjustment row, for overrides. Absent when there is no adjustment to show.
  */
 
@@ -38,6 +39,10 @@ if ( ! empty( $entry ) ) {
     }
 
     echo esc_html( Text::plain( $adjusted_text ) ) . "\n\n";
+
+    if ( ! empty( $customer_note ) ) {
+        echo esc_html( $customer_note ) . "\n\n";
+    }
 
     echo esc_html( Text::plain( $balance_sentence ) ) . "\n\n";
 

@@ -3,6 +3,7 @@ namespace YayLoyalty\Models;
 
 use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
+use YayLoyalty\Utils\Text;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -159,7 +160,7 @@ final class LedgerEntry extends AbstractModel {
             'redemption_id'  => $this->redemption_id,
             'order_id'       => $this->order_id,
             'note'           => LedgerType::is_manual_adjustment( $this->type ) ? $this->note : null,
-            'customer_note'  => LedgerSource::MANUAL === $this->source ? $this->customer_note : null,
+            'customer_note'  => LedgerSource::MANUAL === $this->source && null !== $this->customer_note ? Text::plain( $this->customer_note ) : null,
             'actor_id'       => $this->actor_id,
             'created_at'     => $this->created_at,
         ];

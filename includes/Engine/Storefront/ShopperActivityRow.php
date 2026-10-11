@@ -103,7 +103,7 @@ final class ShopperActivityRow {
 
             default:
                 // A system ADJUST, such as LedgerService::restore_refund()'s, keeps the store label.
-                $customer_note = LedgerSource::MANUAL === $entry->get_source() ? (string) $entry->get_customer_note() : '';
+                $customer_note = LedgerSource::MANUAL === $entry->get_source() ? Text::plain( (string) $entry->get_customer_note() ) : '';
 
                 if ( '' !== $customer_note ) {
                     return $customer_note;
