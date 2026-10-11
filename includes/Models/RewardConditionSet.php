@@ -158,11 +158,11 @@ final class RewardConditionSet {
             $type = $condition->get_type();
 
             if ( ! RewardConditionType::is_valid( $type ) ) {
-                throw self::bad( $type, 'is not a known condition type' );
+                throw ConditionValueRules::bad( $type, 'is not a known condition type' );
             }
 
             if ( isset( $seen[ $type ] ) ) {
-                throw self::bad( $type, 'appears more than once. Conditions are ANDed — use a single entry' );
+                throw ConditionValueRules::bad( $type, 'appears more than once. Conditions are ANDed — use a single entry' );
             }
             $seen[ $type ] = true;
 
@@ -170,7 +170,7 @@ final class RewardConditionSet {
             $operator = $condition->get_operator();
 
             if ( ! in_array( $operator, $spec['operators'], true ) ) {
-                throw self::bad(
+                throw ConditionValueRules::bad(
                     $type,
                     sprintf( 'does not allow operator "%s". Allowed: %s', $operator, implode( ', ', $spec['operators'] ) )
                 );
@@ -197,11 +197,5 @@ final class RewardConditionSet {
                 ConditionValueRules::validate_int( $type, $operator, $value );
                 break;
         }
-    }
-
-    private static function bad( string $type, string $why ): \InvalidArgumentException {
-        return new \InvalidArgumentException(
-            sprintf( 'YayLoyalty: condition "%s" %s.', $type, $why )
-        );
     }
 }
