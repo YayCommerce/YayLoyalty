@@ -2,18 +2,14 @@
 namespace YayLoyalty\Engine\Storefront;
 
 use YayLoyalty\Controllers\Schemas\LedgerQueryArgs;
-use YayLoyalty\Engine\Earning\EarningService;
 use YayLoyalty\Engine\Earning\ProgramGate;
-use YayLoyalty\Engine\Points\ContextFactory;
 use YayLoyalty\Engine\Register\ScriptName;
-use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Helpers\DesignHelper;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Repositories\RewardRepository;
-use YayLoyalty\Utils\Dates;
 use YayLoyalty\Utils\Log;
 
 defined( 'ABSPATH' ) || exit;
@@ -168,13 +164,27 @@ final class AccountRewards {
     }
 
     /**
-     * @return array{payload: array, expires_at: ?string, can_earn: bool, history: array{rows: array, total: int, page: int, filter: string}}
+     * The points card's data: the payload for this viewer and their expiry date.
+     *
+     * @param int $user_id The viewer; 0 for a guest.
+     * @return array{payload: array, expires_at: ?string}
+     */
+    public static function card_view( int $user_id ): array {
+        $customers = new CustomerRepository();
+        $customer  = 0 === $user_id ? null : $customers->find_by_user_id( $user_id );
+
+        return [
+            'payload'    => ( new LauncherPayload( new CampaignRepository(), new RewardRepository(), $customers ) )->build( DesignHelper::get_design(), 0 === $user_id ? null : $user_id ),
+            'expires_at' => null === $customer ? null : $customer->get_expires_at(),
+        ];
+    }
+
+    /**
+     * @return array{payload: array, expires_at: ?string, history: array{rows: array, total: int, page: int, filter: string}}
      */
     private static function view( int $user_id, int $page ): array {
-        $customers = new CustomerRepository();
-        $customer  = $customers->find_by_user_id( $user_id );
-        $filter    = self::current_filter();
-        $history   = ( new LedgerRepository() )->paginate_for_user(
+        $filter  = self::current_filter();
+        $history = ( new LedgerRepository() )->paginate_for_user(
             $user_id,
             [
                 'types'    => LedgerQueryArgs::types_of( $filter ),
@@ -183,11 +193,8 @@ final class AccountRewards {
             ]
         );
 
-        return [
-            'payload'    => ( new LauncherPayload( new CampaignRepository(), new RewardRepository(), $customers ) )->build( DesignHelper::get_design(), $user_id ),
-            'expires_at' => null === $customer ? null : $customer->get_expires_at(),
-            'can_earn'   => null === EarningService::gate_reason( CampaignTrigger::PURCHASE, ContextFactory::from_user( $user_id, Dates::now() ) ),
-            'history'    => [
+        return self::card_view( $user_id ) + [
+            'history' => [
                 'rows'   => ShopperActivityRow::history_rows( $history['items'] ),
                 'total'  => (int) $history['total'],
                 'page'   => $page,

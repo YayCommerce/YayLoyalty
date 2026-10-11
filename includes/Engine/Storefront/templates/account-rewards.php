@@ -15,69 +15,24 @@ use YayLoyalty\Utils\Dates;
 defined( 'ABSPATH' ) || exit;
 
 $yayloyalty_payload = $view['payload'];
-$yayloyalty_text    = $yayloyalty_payload['text'];
-$yayloyalty_balance = $yayloyalty_payload['member']['balance'];
 $yayloyalty_worth   = $yayloyalty_payload['member']['worth'];
 // Null while redemption is off: worth, the redeem column and the checkout link stay hidden with it.
-$yayloyalty_redeem = $yayloyalty_payload['redeem'];
-// A shopper who cannot earn gets no rows and no limit line.
-$yayloyalty_earn       = $view['can_earn']
-    ? LauncherEarnRules::with_daily_limit( LauncherEarnRules::member_rows( $yayloyalty_payload['earn'], $yayloyalty_text['earn_rate_line'], $yayloyalty_payload['purchase_min'] ), $yayloyalty_payload['left_today'] )
-    : LauncherEarnRules::with_daily_limit( [], null );
-$yayloyalty_earn_rows  = $yayloyalty_earn['rows'];
-$yayloyalty_limit_line = $yayloyalty_earn['limit_line'];
-$yayloyalty_history    = $view['history'];
-$yayloyalty_columns    = AccountRewards::column_labels();
-$yayloyalty_first      = ( $yayloyalty_history['page'] - 1 ) * AccountRewards::PER_PAGE + 1;
-$yayloyalty_last       = $yayloyalty_first + count( $yayloyalty_history['rows'] ) - 1;
+$yayloyalty_redeem  = $yayloyalty_payload['redeem'];
+$yayloyalty_card    = $view;
+$yayloyalty_earn    = LauncherEarnRules::for_viewer( $yayloyalty_payload, get_current_user_id() );
+$yayloyalty_history = $view['history'];
+$yayloyalty_columns = AccountRewards::column_labels();
+$yayloyalty_first   = ( $yayloyalty_history['page'] - 1 ) * AccountRewards::PER_PAGE + 1;
+$yayloyalty_last    = $yayloyalty_first + count( $yayloyalty_history['rows'] ) - 1;
 // 0 picks the plural label.
 $yayloyalty_label = SettingsHelper::points_label( 0 );
 ?>
 <div class="yayloyalty-account">
-    <section class="yayloyalty-account__card">
-        <h2 class="yayloyalty-account__heading"><?php echo esc_html( $yayloyalty_text['balance_heading'] ); ?></h2>
-        <p class="yayloyalty-account__balance"><?php echo esc_html( LauncherCopy::points( $yayloyalty_balance ) ); ?></p>
-        <?php if ( null !== $yayloyalty_worth ) : ?>
-            <p>
-                <?php
-                /* translators: %s: money amount. */
-                echo esc_html( sprintf( __( 'worth %s off your next order', 'yayloyalty' ), LauncherCopy::money( $yayloyalty_worth ) ) );
-                ?>
-            </p>
-        <?php endif; ?>
-        <?php if ( null !== $view['expires_at'] && $yayloyalty_balance > 0 ) : ?>
-            <p>
-                <?php
-                /* translators: 1: the store's points label, as "Points", 2: date. */
-                echo esc_html( sprintf( __( 'Your %1$s expire on %2$s', 'yayloyalty' ), $yayloyalty_label, Dates::to_site_date( $view['expires_at'] ) ) );
-                ?>
-            </p>
-        <?php endif; ?>
-        <?php if ( null !== $yayloyalty_worth ) : ?>
-            <p><a class="woocommerce-Button button" href="<?php echo esc_url( $yayloyalty_payload['checkout_url'] ); ?>"><?php esc_html_e( 'Use points at checkout', 'yayloyalty' ); ?></a></p>
-        <?php endif; ?>
-    </section>
+    <?php require __DIR__ . '/points-card.php'; ?>
 
-    <?php if ( [] !== $yayloyalty_earn_rows || '' !== $yayloyalty_limit_line || null !== $yayloyalty_redeem ) : ?>
+    <?php if ( [] !== $yayloyalty_earn['rows'] || '' !== $yayloyalty_earn['limit_line'] || null !== $yayloyalty_redeem ) : ?>
         <div class="yayloyalty-account__rules">
-            <?php if ( [] !== $yayloyalty_earn_rows || '' !== $yayloyalty_limit_line ) : ?>
-                <section>
-                    <h3><?php esc_html_e( 'Ways to earn', 'yayloyalty' ); ?></h3>
-                    <?php if ( [] !== $yayloyalty_earn_rows ) : ?>
-                        <ul class="yayloyalty-account__list">
-                            <?php foreach ( $yayloyalty_earn_rows as $yayloyalty_earn_row ) : ?>
-                                <li>
-                                    <span><?php echo esc_html( $yayloyalty_earn_row['label'] ); ?></span>
-                                    <strong><?php echo esc_html( $yayloyalty_earn_row['value'] ); ?></strong>
-                                </li>
-                            <?php endforeach; ?>
-                        </ul>
-                    <?php endif; ?>
-                    <?php if ( '' !== $yayloyalty_limit_line ) : ?>
-                        <p><?php echo esc_html( $yayloyalty_limit_line ); ?></p>
-                    <?php endif; ?>
-                </section>
-            <?php endif; ?>
+            <?php include __DIR__ . '/ways-to-earn.php'; ?>
 
             <?php if ( null !== $yayloyalty_redeem ) : ?>
                 <section>
