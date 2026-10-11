@@ -92,8 +92,13 @@ final class AccountRewards {
     }
 
     /** The tab's layout stylesheet, which the placed card and list share. */
+    public static function register_style(): void {
+        wp_register_style( ScriptName::ACCOUNT_STYLE, YAYLOYALTY_PLUGIN_URL . self::STYLE_PATH, [], Launcher::asset_version( self::STYLE_PATH ) );
+    }
+
     public static function enqueue_style(): void {
-        wp_enqueue_style( ScriptName::ACCOUNT_STYLE, YAYLOYALTY_PLUGIN_URL . self::STYLE_PATH, [], Launcher::asset_version( self::STYLE_PATH ) );
+        self::register_style();
+        wp_enqueue_style( ScriptName::ACCOUNT_STYLE );
     }
 
     public static function title(): string {

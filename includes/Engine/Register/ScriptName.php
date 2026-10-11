@@ -19,4 +19,7 @@ class ScriptName {
 
     /** Product-page earning line: swaps the sentence when a variation is picked. */
     public const PRODUCT_EARN_SCRIPT = 'yayloyalty/script/storefront-product-earn';
+
+    /** The storefront blocks' editor script; block.json files name it as their editorScript. */
+    public const BLOCKS_EDITOR_SCRIPT = 'yayloyalty/script/blocks-editor';
 }

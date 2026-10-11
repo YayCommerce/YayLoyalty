@@ -9,7 +9,8 @@
     },
     "include": [
         "vite.config.ts",
-        "vite.storefront.config.ts"
+        "vite.storefront.config.ts",
+        "vite.blocks.config.ts"
     ],
     "exclude": [
         "node_modules"
