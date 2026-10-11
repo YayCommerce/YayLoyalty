@@ -164,11 +164,15 @@ final class ProductEarnMessage {
     /** What one of this product earns the member, no more than the daily limit leaves today. 0 on failure. */
     private static function member_points( \WC_Product $product ): int {
         try {
-            $points = self::service()->preview( CampaignTrigger::PURCHASE, ContextFactory::from_product( $product, 1, get_current_user_id() ) )->get_points();
-
             if ( false === self::$left_today ) {
                 self::$left_today = EarningService::points_left_today( get_current_user_id() );
             }
+
+            if ( 0 === self::$left_today ) {
+                return 0;
+            }
+
+            $points = self::service()->preview( CampaignTrigger::PURCHASE, ContextFactory::from_product( $product, 1, get_current_user_id() ) )->get_points();
 
             return null === self::$left_today ? $points : min( $points, self::$left_today );
         } catch ( \Throwable $e ) {

@@ -19,12 +19,13 @@ $yayloyalty_text    = $yayloyalty_payload['text'];
 $yayloyalty_balance = $yayloyalty_payload['member']['balance'];
 $yayloyalty_worth   = $yayloyalty_payload['member']['worth'];
 // Null while redemption is off: worth, the redeem column and the checkout link stay hidden with it.
-$yayloyalty_redeem    = $yayloyalty_payload['redeem'];
-$yayloyalty_earn_rows = $view['can_earn'] ? LauncherEarnRules::member_rows( $yayloyalty_payload['earn'], $yayloyalty_text['earn_rate_line'], $yayloyalty_payload['purchase_min'] ) : [];
-$yayloyalty_left      = $yayloyalty_payload['left_today'] ?? null;
-// At the daily limit the line replaces the rates; below it, it only follows rates there are.
-$yayloyalty_limit_line = ! $view['can_earn'] || ( [] === $yayloyalty_earn_rows && 0 !== $yayloyalty_left ) ? '' : LauncherCopy::daily_limit_line( $yayloyalty_left );
-$yayloyalty_earn_rows  = 0 === $yayloyalty_left ? [] : $yayloyalty_earn_rows;
+$yayloyalty_redeem = $yayloyalty_payload['redeem'];
+// A shopper who cannot earn gets no rows and no limit line.
+$yayloyalty_earn       = $view['can_earn']
+    ? LauncherEarnRules::with_daily_limit( LauncherEarnRules::member_rows( $yayloyalty_payload['earn'], $yayloyalty_text['earn_rate_line'], $yayloyalty_payload['purchase_min'] ), $yayloyalty_payload['left_today'] )
+    : LauncherEarnRules::with_daily_limit( [], null );
+$yayloyalty_earn_rows  = $yayloyalty_earn['rows'];
+$yayloyalty_limit_line = $yayloyalty_earn['limit_line'];
 $yayloyalty_history    = $view['history'];
 $yayloyalty_columns    = AccountRewards::column_labels();
 $yayloyalty_first      = ( $yayloyalty_history['page'] - 1 ) * AccountRewards::PER_PAGE + 1;

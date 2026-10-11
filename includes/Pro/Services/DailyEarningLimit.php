@@ -41,20 +41,19 @@ final class DailyEarningLimit {
      */
     public function clamp( $points, string $trigger, Context $ctx ): int {
         $points  = is_numeric( $points ) ? (int) $points : 0;
-        $cap     = SettingsHelper::get_settings()['max_points_per_day'];
         $user_id = $ctx->get_user_id();
+        $left    = null === $user_id || $points <= 0 ? null : $this->left_today( null, $user_id );
 
-        if ( null === $cap || null === $user_id || $points <= 0 ) {
+        if ( null === $left ) {
             return $points;
         }
 
-        $earned  = $this->ledger->points_earned_today( $user_id, Dates::now(), null );
-        $allowed = max( 0, min( $points, $cap - $earned ) );
+        $allowed = min( $points, $left );
 
         if ( $allowed < $points ) {
             Log::warning(
                 'DailyEarningLimit',
-                sprintf( 'user #%d %s: evaluated %d, awarded %d, cap %d, earned today %d', $user_id, $trigger, $points, $allowed, $cap, $earned )
+                sprintf( 'user #%d %s: evaluated %d, awarded %d, left today %d', $user_id, $trigger, $points, $allowed, $left )
             );
         }
 

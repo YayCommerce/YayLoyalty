@@ -15,11 +15,9 @@ use YayLoyalty\Enums\CampaignTrigger;
 
 defined( 'ABSPATH' ) || exit;
 
-$yayloyalty_earn_rows = LauncherEarnRules::member_rows( $view['earn'], $yayloyalty_text['earn_rate_line'], $view['purchase_min'] );
-$yayloyalty_left      = $view['left_today'] ?? null;
-// At the daily limit the line replaces the rates; below it, it only follows rates there are.
-$yayloyalty_limit_line = [] === $yayloyalty_earn_rows && 0 !== $yayloyalty_left ? '' : LauncherCopy::daily_limit_line( $yayloyalty_left );
-$yayloyalty_earn_rows  = 0 === $yayloyalty_left ? [] : $yayloyalty_earn_rows;
+$yayloyalty_earn       = LauncherEarnRules::with_daily_limit( LauncherEarnRules::member_rows( $view['earn'], $yayloyalty_text['earn_rate_line'], $view['purchase_min'] ), $view['left_today'] );
+$yayloyalty_earn_rows  = $yayloyalty_earn['rows'];
+$yayloyalty_limit_line = $yayloyalty_earn['limit_line'];
 // Rows already in hand are printed; null leaves skeletons for launcher.js to replace.
 $yayloyalty_activity = $view['activity'] ?? null;
 ?>

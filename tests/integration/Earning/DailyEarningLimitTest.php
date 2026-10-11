@@ -2,13 +2,7 @@
 namespace YayLoyalty\Tests\Integration\Earning;
 
 use YayLoyalty\Engine\Earning\EarningService;
-use YayLoyalty\Engine\Earning\IdempotencyKey;
-use YayLoyalty\Enums\CampaignTrigger;
-use YayLoyalty\Enums\LedgerSource;
-use YayLoyalty\Enums\LedgerType;
-use YayLoyalty\Enums\ReferenceType;
 use YayLoyalty\Helpers\SettingsHelper;
-use YayLoyalty\Models\LedgerEntry;
 use YayLoyalty\Pro\YayLoyaltyPro;
 use YayLoyalty\Tests\Integration\IntegrationTestCase;
 use YayLoyalty\Utils\Dates;
@@ -60,24 +54,6 @@ final class DailyEarningLimitTest extends IntegrationTestCase {
 
     /** A purchase EARN row for one order, written at $created_at. */
     private function earn( int $user_id, int $order_id, int $points, string $created_at ): void {
-        $this->ledger_service()->earn(
-            new LedgerEntry(
-                null,
-                $user_id,
-                $points,
-                0,
-                LedgerType::EARN,
-                LedgerSource::ORDER,
-                ReferenceType::ORDER,
-                $order_id,
-                null,
-                null,
-                $order_id,
-                null,
-                null,
-                $created_at,
-                IdempotencyKey::compose( LedgerType::EARN, $user_id, ReferenceType::ORDER, $order_id, CampaignTrigger::PURCHASE )
-            )
-        );
+        $this->ledger_service()->earn( $this->earn_draft( $user_id, $order_id, $points, $created_at ) );
     }
 }

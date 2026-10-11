@@ -184,7 +184,7 @@ final class AccountRewards {
         );
 
         return [
-            'payload'    => ( new LauncherPayload( new CampaignRepository(), new RewardRepository(), $customers ) )->for_balance( DesignHelper::get_design(), null === $customer ? 0 : $customer->get_balance(), EarningService::points_left_today( $user_id ) ),
+            'payload'    => ( new LauncherPayload( new CampaignRepository(), new RewardRepository(), $customers ) )->build( DesignHelper::get_design(), $user_id ),
             'expires_at' => null === $customer ? null : $customer->get_expires_at(),
             'can_earn'   => null === EarningService::gate_reason( CampaignTrigger::PURCHASE, ContextFactory::from_user( $user_id, Dates::now() ) ),
             'history'    => [

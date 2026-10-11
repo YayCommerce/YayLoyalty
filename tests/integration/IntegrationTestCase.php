@@ -35,8 +35,8 @@ abstract class IntegrationTestCase extends TestCase {
         return new LedgerService( new LedgerRepository(), new CustomerRepository() );
     }
 
-    /** A purchase EARN draft for one order, keyed as EarningService::award() keys it. */
-    protected function earn_draft( int $user_id, int $order_id, int $points ): LedgerEntry {
+    /** A purchase EARN draft for one order, keyed as EarningService::award() keys it, written at $created_at ('' for now). */
+    protected function earn_draft( int $user_id, int $order_id, int $points, string $created_at = '' ): LedgerEntry {
         return new LedgerEntry(
             null,
             $user_id,
@@ -51,7 +51,7 @@ abstract class IntegrationTestCase extends TestCase {
             $order_id,
             null,
             null,
-            Dates::now(),
+            '' === $created_at ? Dates::now() : $created_at,
             IdempotencyKey::compose( LedgerType::EARN, $user_id, ReferenceType::ORDER, $order_id, CampaignTrigger::PURCHASE )
         );
     }
