@@ -123,13 +123,13 @@ abstract class AbstractRepository {
         return $result > 0;
     }
 
-    /** The first row whose $column equals $value, or null. */
-    protected function find_one_by( string $column, $value, string $placeholder = '%s' ): ?AbstractModel {
+    /** The first row whose string $column equals $value, or null. */
+    protected function find_one_by( string $column, string $value ): ?AbstractModel {
         global $wpdb;
 
         $row = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
-                'SELECT * FROM `' . esc_sql( $this->table() ) . '` WHERE `' . esc_sql( $column ) . '` = ' . $placeholder . ' LIMIT 1', // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- $placeholder is a placeholder, bound here.
+                'SELECT * FROM `' . esc_sql( $this->table() ) . '` WHERE `' . esc_sql( $column ) . '` = %s LIMIT 1', // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- the table and column are escaped identifiers.
                 $value
             ),
             ARRAY_A
