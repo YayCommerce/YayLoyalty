@@ -10,6 +10,7 @@ import type { Reward } from '@/lib/schema/reward.schema';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { BuiltInConfigCard } from '@/components/ui/custom/built-in-config-card';
+import { ErrorState } from '@/components/ui/custom/error-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { UpgradeToProBanner } from '@/components/pro/UpgradeToPro';
 import { FlexibleDiscountConfig, FlexibleDiscountFields } from './FlexibleDiscountFields';
@@ -21,14 +22,14 @@ import { FlexibleDiscountConfig, FlexibleDiscountFields } from './FlexibleDiscou
  */
 export default function BuiltInRewardEditor() {
   // Only the built-in's type: rows a downgraded site keeps from Pro are never fetched.
-  const { data, isPending, isError } = useRewardsQuery({ type: 'flexible_discount' });
+  const { data, isPending, isError, refetch } = useRewardsQuery({ type: 'flexible_discount' });
 
   if (isPending) {
     return <Skeleton className="h-32 w-full" />;
   }
 
   if (isError) {
-    return <p className="text-destructive text-sm">{__('Could not load rewards.', 'yayloyalty')}</p>;
+    return <ErrorState message={__('Could not load rewards.', 'yayloyalty')} onRetry={() => refetch()} />;
   }
 
   const builtin = data.data.find((reward) => reward.is_builtin);

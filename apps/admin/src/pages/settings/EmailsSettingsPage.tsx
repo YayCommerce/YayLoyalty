@@ -11,6 +11,7 @@ import { emailsFormSchema, EmailsFormValues, EmailsResponse, toEmailsFormValues 
 import { useRouteLeaveGuard } from '@/hooks/useRouteLeaveGuard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ErrorState } from '@/components/ui/custom/error-state';
 import { UnsavedChangeDialog } from '@/components/ui/custom/unsaved-changed-dialog';
 import { EmailsMoreInProCard } from './EmailsMoreInProCard';
 import { EmailsSettingsSkeleton } from './EmailsSettingsSkeleton';
@@ -31,14 +32,10 @@ export default function EmailsSettingsPage() {
 
   if (emailsQuery.isError) {
     return (
-      <Card>
-        <CardContent className="flex items-center justify-between gap-3 text-sm">
-          <span className="text-muted-foreground">{__('Email settings could not be loaded.', 'yayloyalty')}</span>
-          <Button type="button" variant="outline" size="sm" onClick={() => void emailsQuery.refetch()}>
-            {__('Retry', 'yayloyalty')}
-          </Button>
-        </CardContent>
-      </Card>
+      <ErrorState
+        message={__('Email settings could not be loaded.', 'yayloyalty')}
+        onRetry={() => emailsQuery.refetch()}
+      />
     );
   }
 

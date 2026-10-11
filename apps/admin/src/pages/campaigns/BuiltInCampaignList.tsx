@@ -14,6 +14,7 @@ import {
 import type { Campaign } from '@/lib/schema/campaign.schema';
 import { BuiltInConfigCard } from '@/components/ui/custom/built-in-config-card';
 import { ConfigField } from '@/components/ui/custom/config-field';
+import { ErrorState } from '@/components/ui/custom/error-state';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
 import { Segmented, SegmentedItem } from '@/components/ui/segmented';
@@ -31,7 +32,7 @@ const BUILTIN_TRIGGER_ORDER: Campaign['trigger'][] = ['purchase', 'signup', 'rev
  * draft); config fields are a draft until "Save changes".
  */
 export default function BuiltInCampaignList() {
-  const { data, isPending, isError } = useCampaignsQuery({ perPage: 100 });
+  const { data, isPending, isError, refetch } = useCampaignsQuery({ perPage: 100 });
   const [expandedId, setExpandedId] = useState<number | undefined>();
 
   if (isPending) {
@@ -39,7 +40,7 @@ export default function BuiltInCampaignList() {
   }
 
   if (isError) {
-    return <p className="text-destructive text-sm">{__('Could not load campaigns.', 'yayloyalty')}</p>;
+    return <ErrorState message={__('Could not load campaigns.', 'yayloyalty')} onRetry={() => refetch()} />;
   }
 
   const campaigns = data.data
