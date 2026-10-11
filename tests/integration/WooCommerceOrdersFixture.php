@@ -65,7 +65,7 @@ trait WooCommerceOrdersFixture {
 
         $subject_hook = 'woocommerce_email_subject_' . PointsEarnedEmail::ID;
 
-        // YayMail's subject filter is a closure; PointsEarnedShortcodes' hold and release callbacks stay.
+        // YayMail's subject filter is a closure.
         if ( isset( $wp_filter[ $subject_hook ] ) ) {
             foreach ( $wp_filter[ $subject_hook ]->callbacks as $priority => $callbacks ) {
                 foreach ( $callbacks as $callback ) {
