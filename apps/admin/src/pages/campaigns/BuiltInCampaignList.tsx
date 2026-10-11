@@ -5,22 +5,22 @@ import { __, _n, sprintf } from '@wordpress/i18n';
 import { toastApiError } from '@/lib/api/api';
 import { parseWPCurrency, storeCurrency } from '@/lib/helpers/format.helper';
 import { pointsPerCurrencyLabel } from '@/lib/helpers/points.helper';
-import { roundPoints } from '@/lib/points-math/points-math';
+import { roundPoints, type RoundingMode } from '@/lib/points-math/points-math';
 import {
   useCampaignsQuery,
   useUpdateCampaignConfigMutation,
   useUpdateCampaignStatusMutation,
 } from '@/lib/queries/campaign.queries';
-import type { Campaign } from '@/lib/schema/campaign.schema';
+import type { Campaign, PurchaseConfig, ReviewConfig, SignupConfig } from '@/lib/schema/campaign.schema';
 import { BuiltInConfigCard } from '@/components/ui/custom/built-in-config-card';
 import { ConfigField } from '@/components/ui/custom/config-field';
 import { ErrorState } from '@/components/ui/custom/error-state';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
-import { Segmented, SegmentedItem } from '@/components/ui/segmented';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { UpgradeToProBanner } from '@/components/pro/UpgradeToPro';
+import { BaseAmountSegmented, RoundingSegmented } from './PurchaseConfigControls';
 
 /** Display order for the three built-ins; same as CampaignTable's group order. */
 const BUILTIN_TRIGGER_ORDER: Campaign['trigger'][] = ['purchase', 'signup', 'review'];
@@ -158,17 +158,6 @@ function BuiltInCampaignCard({
   );
 }
 
-/** Config is untyped on the wire; narrowed per trigger here. */
-interface PurchaseConfig {
-  points_per_unit: number;
-  base: 'after_discounts' | 'before_discounts';
-  include_shipping: boolean;
-  include_tax: boolean;
-  rounding: 'down' | 'nearest' | 'up';
-  min_subtotal: number;
-  exclude_coupon_orders: boolean;
-}
-
 function PurchaseFields({
   config,
   onChange,
@@ -176,7 +165,7 @@ function PurchaseFields({
   config: Record<string, unknown>;
   onChange: (next: Partial<PurchaseConfig>) => void;
 }) {
-  const value = config as unknown as PurchaseConfig;
+  const value = config as unknown as Required<PurchaseConfig>;
   const currency = storeCurrency();
   const worked = worksOut(value.points_per_unit, value.rounding);
 
@@ -216,13 +205,7 @@ function PurchaseFields({
           'yayloyalty',
         )}
       >
-        <Segmented
-          value={value.base}
-          onValueChange={(base) => base && onChange({ base: base as PurchaseConfig['base'] })}
-        >
-          <SegmentedItem value="after_discounts">{__('After discounts', 'yayloyalty')}</SegmentedItem>
-          <SegmentedItem value="before_discounts">{__('Before discounts', 'yayloyalty')}</SegmentedItem>
-        </Segmented>
+        <BaseAmountSegmented value={value.base} onValueChange={(base) => onChange({ base })} />
       </ConfigField>
 
       <ConfigField
@@ -238,14 +221,7 @@ function PurchaseFields({
       </ConfigField>
 
       <ConfigField label={__('Rounding', 'yayloyalty')}>
-        <Segmented
-          value={value.rounding}
-          onValueChange={(rounding) => rounding && onChange({ rounding: rounding as PurchaseConfig['rounding'] })}
-        >
-          <SegmentedItem value="down">{__('Down', 'yayloyalty')}</SegmentedItem>
-          <SegmentedItem value="nearest">{__('Nearest', 'yayloyalty')}</SegmentedItem>
-          <SegmentedItem value="up">{__('Up', 'yayloyalty')}</SegmentedItem>
-        </Segmented>
+        <RoundingSegmented value={value.rounding} onValueChange={(rounding) => onChange({ rounding })} />
       </ConfigField>
 
       <ConfigField
@@ -279,10 +255,6 @@ function PurchaseFields({
   );
 }
 
-interface SignupConfig {
-  points: number;
-}
-
 function SignupFields({
   config,
   onChange,
@@ -290,7 +262,7 @@ function SignupFields({
   config: Record<string, unknown>;
   onChange: (next: Partial<SignupConfig>) => void;
 }) {
-  const value = config as unknown as SignupConfig;
+  const value = config as unknown as Required<SignupConfig>;
 
   return (
     <ConfigField
@@ -311,12 +283,6 @@ function SignupFields({
   );
 }
 
-interface ReviewConfig {
-  points: number;
-  require_verified: boolean;
-  one_per_product: boolean;
-}
-
 function ReviewFields({
   config,
   onChange,
@@ -324,7 +290,7 @@ function ReviewFields({
   config: Record<string, unknown>;
   onChange: (next: Partial<ReviewConfig>) => void;
 }) {
-  const value = config as unknown as ReviewConfig;
+  const value = config as unknown as Required<ReviewConfig>;
 
   return (
     <>
@@ -367,7 +333,7 @@ function ReviewFields({
 function summarize(trigger: Campaign['trigger'], config: Record<string, unknown>): string {
   switch (trigger) {
     case 'purchase': {
-      const value = config as unknown as PurchaseConfig;
+      const value = config as unknown as Required<PurchaseConfig>;
 
       return sprintf(
         /* translators: %s: a purchase rate, e.g. "1 pt per $1.00". */
@@ -377,7 +343,7 @@ function summarize(trigger: Campaign['trigger'], config: Record<string, unknown>
     }
 
     case 'signup': {
-      const value = config as unknown as SignupConfig;
+      const value = config as unknown as Required<SignupConfig>;
 
       return sprintf(
         /* translators: %d: points awarded on signup. */
@@ -387,7 +353,7 @@ function summarize(trigger: Campaign['trigger'], config: Record<string, unknown>
     }
 
     case 'review': {
-      const value = config as unknown as ReviewConfig;
+      const value = config as unknown as Required<ReviewConfig>;
 
       return value.require_verified
         ? sprintf(
@@ -408,7 +374,7 @@ function summarize(trigger: Campaign['trigger'], config: Record<string, unknown>
 }
 
 /** The worked-example banner, live as the config changes. */
-function worksOut(pointsPerUnit: number, rounding: PurchaseConfig['rounding']): string {
+function worksOut(pointsPerUnit: number, rounding: RoundingMode): string {
   const exampleSubtotal = 50;
   const points = roundPoints(exampleSubtotal * pointsPerUnit, rounding);
 

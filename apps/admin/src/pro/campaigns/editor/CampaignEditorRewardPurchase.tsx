@@ -5,7 +5,8 @@ import { __, sprintf } from '@wordpress/i18n';
 
 import { storeCurrency, storeCurrencySymbol } from '@/lib/helpers/format.helper';
 import { pointsPerCurrencyLabel } from '@/lib/helpers/points.helper';
-import { ROUNDING, RoundingMode } from '@/lib/points-math/points-math';
+import { ROUNDING } from '@/lib/points-math/points-math';
+import type { PurchaseConfig } from '@/lib/schema/campaign.schema';
 import { Button } from '@/components/ui/button';
 import { OptionalCountInput } from '@/components/ui/custom/amount-inputs';
 import { LookupMultiSelect } from '@/components/ui/custom/lookup-multi-select';
@@ -19,26 +20,12 @@ import {
   FieldSet,
 } from '@/components/ui/field';
 import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
-import { Segmented, SegmentedItem } from '@/components/ui/segmented';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
+import { BaseAmountSegmented, RoundingSegmented } from '@/pages/campaigns/PurchaseConfigControls';
 import { CampaignFormValues } from './campaign-editor.form';
 import { purchaseAdvancedPhrases } from './campaign-reward.copy';
 import { PurchaseRateCalculatorDialog } from './PurchaseRateCalculatorDialog';
-
-/** config_schema()['purchase']; mirrors CAMPAIGN_CONFIG_FIELDS.purchase. */
-interface PurchaseConfig {
-  points_per_unit?: number;
-  base?: 'after_discounts' | 'before_discounts';
-  include_shipping?: boolean;
-  include_tax?: boolean;
-  rounding?: RoundingMode;
-  min_subtotal?: number;
-  exclude_coupon_orders?: boolean;
-  excluded_product_ids?: number[];
-  excluded_category_ids?: number[];
-  max_points_per_order?: number | null;
-}
 
 type PatchPurchaseConfig = (patch: Partial<PurchaseConfig>) => void;
 
@@ -229,13 +216,10 @@ function PurchaseAmountFields({ config, patchConfig }: PurchaseFieldsProps) {
       <Field>
         <FieldLabel>{__('Base amount', 'yayloyalty')}</FieldLabel>
         <FieldContent>
-          <Segmented
+          <BaseAmountSegmented
             value={config.base ?? 'after_discounts'}
-            onValueChange={(value) => value && patchConfig({ base: value as PurchaseConfig['base'] })}
-          >
-            <SegmentedItem value="after_discounts">{__('After discounts', 'yayloyalty')}</SegmentedItem>
-            <SegmentedItem value="before_discounts">{__('Before discounts', 'yayloyalty')}</SegmentedItem>
-          </Segmented>
+            onValueChange={(base) => patchConfig({ base })}
+          />
           <FieldDescription>
             {__('After discounts means a coupon reduces the points too.', 'yayloyalty')}
           </FieldDescription>
@@ -282,14 +266,10 @@ function PurchaseRoundingFields({ config, patchConfig }: PurchaseFieldsProps) {
       <Field>
         <FieldLabel>{__('Rounding', 'yayloyalty')}</FieldLabel>
         <FieldContent>
-          <Segmented
+          <RoundingSegmented
             value={config.rounding ?? ROUNDING.DOWN}
-            onValueChange={(value) => value && patchConfig({ rounding: value as RoundingMode })}
-          >
-            <SegmentedItem value={ROUNDING.DOWN}>{__('Down', 'yayloyalty')}</SegmentedItem>
-            <SegmentedItem value={ROUNDING.NEAREST}>{__('Nearest', 'yayloyalty')}</SegmentedItem>
-            <SegmentedItem value={ROUNDING.UP}>{__('Up', 'yayloyalty')}</SegmentedItem>
-          </Segmented>
+            onValueChange={(rounding) => patchConfig({ rounding })}
+          />
         </FieldContent>
       </Field>
 
