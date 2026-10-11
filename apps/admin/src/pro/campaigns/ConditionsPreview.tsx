@@ -4,6 +4,7 @@ import { __, sprintf } from '@wordpress/i18n';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { ErrorState } from '@/components/ui/custom/error-state';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { previewConditions, type ConditionResult } from './conditions-preview.api';
@@ -58,9 +59,7 @@ export function ConditionsPreview({
         </Button>
       </div>
 
-      {preview.isError && (
-        <p className="text-destructive text-sm">{__('Could not evaluate conditions for that user.', 'yayloyalty')}</p>
-      )}
+      {preview.isError && <ErrorState message={__('Could not evaluate conditions for that user.', 'yayloyalty')} />}
 
       {preview.data && (
         <div className="flex flex-col gap-2">

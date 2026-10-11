@@ -1,17 +1,17 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { HTTPError } from 'ky';
 import { FormProvider, useForm } from 'react-hook-form';
 import { Link } from 'react-router';
 import { toast } from 'sonner';
 import { __ } from '@wordpress/i18n';
 
-import { getApiErrorMessage } from '@/lib/api/api';
+import { toastApiError } from '@/lib/api/api';
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { useEmailsQuery, useSaveEmailsMutation } from '@/lib/queries/emails.queries';
 import { emailsFormSchema, EmailsFormValues, EmailsResponse, toEmailsFormValues } from '@/lib/schema/emails.schema';
-import { useRouteLeaveGuard } from '@/hooks/useRouteLeaveGuard';
+import { useEditorSave } from '@/hooks/useEditorSave';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ErrorState } from '@/components/ui/custom/error-state';
 import { UnsavedChangeDialog } from '@/components/ui/custom/unsaved-changed-dialog';
 import { EmailsMoreInProCard } from './EmailsMoreInProCard';
 import { EmailsSettingsSkeleton } from './EmailsSettingsSkeleton';
@@ -32,14 +32,10 @@ export default function EmailsSettingsPage() {
 
   if (emailsQuery.isError) {
     return (
-      <Card>
-        <CardContent className="flex items-center justify-between gap-3 text-sm">
-          <span className="text-muted-foreground">{__('Email settings could not be loaded.', 'yayloyalty')}</span>
-          <Button type="button" variant="outline" size="sm" onClick={() => void emailsQuery.refetch()}>
-            {__('Retry', 'yayloyalty')}
-          </Button>
-        </CardContent>
-      </Card>
+      <ErrorState
+        message={__('Email settings could not be loaded.', 'yayloyalty')}
+        onRetry={() => emailsQuery.refetch()}
+      />
     );
   }
 
@@ -57,20 +53,21 @@ function EmailsSettingsForm({ data }: { data: EmailsResponse }) {
     resetOptions: { keepDirtyValues: true },
   });
 
-  const { showDialog, confirmLeave, cancelLeave } = useRouteLeaveGuard(form.formState.isDirty);
-
-  const handleSave = form.handleSubmit(async (values) => {
-    try {
-      const saved = await saveMutation.mutateAsync(values);
-      form.reset(toEmailsFormValues(saved));
-      confirmLeave();
-      toast.success(__('Email settings saved.', 'yayloyalty'));
-    } catch (error) {
-      if (!(error instanceof HTTPError && 403 === error.response.status)) {
-        toast.error(await getApiErrorMessage(error, __('Failed to save email settings.', 'yayloyalty')));
+  const { handleSave, leaveDialogProps } = useEditorSave(
+    form,
+    async (values) => {
+      try {
+        const saved = await saveMutation.mutateAsync(values);
+        form.reset(toEmailsFormValues(saved));
+        toast.success(__('Email settings saved.', 'yayloyalty'));
+        return true;
+      } catch (error) {
+        await toastApiError(error, __('Failed to save email settings.', 'yayloyalty'));
+        return false;
       }
-    }
-  });
+    },
+    { listPath: null },
+  );
 
   const { sending } = data;
 
@@ -116,16 +113,7 @@ function EmailsSettingsForm({ data }: { data: EmailsResponse }) {
         </form>
       </FormProvider>
 
-      <UnsavedChangeDialog
-        open={showDialog}
-        onDiscard={confirmLeave}
-        onSave={handleSave}
-        onOpenChange={(open) => {
-          if (!open) {
-            cancelLeave();
-          }
-        }}
-      />
+      <UnsavedChangeDialog {...leaveDialogProps} />
     </>
   );
 }

@@ -26,6 +26,11 @@ export function utcToDate(utc: string): Date {
   return new Date(utc.replace(' ', 'T') + 'Z');
 }
 
+/** A Date as a stored UTC MySQL datetime; the inverse of utcToDate(). Defaults to now. */
+export function dateToStored(date: Date = new Date()): string {
+  return date.toISOString().slice(0, 19).replace('T', ' ');
+}
+
 /**
  * Formats a site-calendar date without a timezone shift: dateI18n reads a
  * bare date as browser-local midnight, which moves it a day; pinning to
@@ -57,6 +62,11 @@ export function currencyDecimals(): number {
   return window.yayLoyaltyMeta.wcMeta.currency_data.num_decimals;
 }
 
+/** Decimal places for an amount in `currency`: the store's for its own currency, else 2, since the admin knows no other's. */
+export function decimalsFor(currency: string): number {
+  return currency === storeCurrency() ? currencyDecimals() : 2;
+}
+
 /** A number with the store's price separators, at exactly `decimals` places: points use the same separators as money. */
 export function formatStoreNumber(value: number, decimals: number): string {
   const { thousand_sep, decimal_sep } = window.yayLoyaltyMeta.wcMeta.currency_data;
@@ -76,6 +86,11 @@ export function formatStoreDecimal(value: number, maxDecimals: number): string {
   const places = fixed.includes('.') ? fixed.replace(/0+$/, '').split('.')[1].length : 0;
 
   return formatStoreNumber(value, places);
+}
+
+/** A percentage like "12.5%" with the store's separators: up to `maxDecimals` places. */
+export function formatPercent(value: number, maxDecimals: number): string {
+  return `${formatStoreDecimal(value, maxDecimals)}%`;
 }
 
 /**

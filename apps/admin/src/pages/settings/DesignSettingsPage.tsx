@@ -7,7 +7,7 @@ import { toastApiError } from '@/lib/api/api';
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { useDesignQuery, useResetDesignMutation, useSaveDesignMutation } from '@/lib/queries/design.queries';
 import { designSchema } from '@/lib/schema/design.schema';
-import { useRouteLeaveGuard } from '@/hooks/useRouteLeaveGuard';
+import { useEditorSave } from '@/hooks/useEditorSave';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/custom/confirm-dialog';
 import { UnsavedChangeDialog } from '@/components/ui/custom/unsaved-changed-dialog';
@@ -51,24 +51,26 @@ export default function DesignSettingsPage() {
     resetOptions: { keepDirtyValues: true },
   });
 
-  const { showDialog, confirmLeave, cancelLeave } = useRouteLeaveGuard(form.formState.isDirty);
-
   // form.reset() merges resetOptions, so without this override keepDirtyValues would also keep
   // every edited field over what the server just returned (its sanitised save, or the defaults).
   const replaceAllValues = { keepDirtyValues: false };
 
-  // Reset before confirmLeave() so the guard does not re-trip. The page stays on its route
-  // after a save, so unlike CampaignEditor it needs no bypassNext().
-  const handleSave = form.handleSubmit(async (values) => {
-    try {
-      const saved = await saveMutation.mutateAsync(values);
-      form.reset(designToFormValues(saved), replaceAllValues);
-      confirmLeave();
-      toast.success(SAVE_SUCCESS_TOAST());
-    } catch (error) {
-      await toastApiError(error, SAVE_ERROR_FALLBACK());
-    }
-  });
+  // Reset before resolving so the leave guard does not re-trip. listPath null: the page stays on its route.
+  const { handleSave, leaveDialogProps } = useEditorSave(
+    form,
+    async (values) => {
+      try {
+        const saved = await saveMutation.mutateAsync(values);
+        form.reset(designToFormValues(saved), replaceAllValues);
+        toast.success(SAVE_SUCCESS_TOAST());
+        return true;
+      } catch (error) {
+        await toastApiError(error, SAVE_ERROR_FALLBACK());
+        return false;
+      }
+    },
+    { listPath: null },
+  );
 
   // No group, so every group comes back — including Pro ones a Lite build cannot see —
   // which is what makes a whole-form reset correct here; the storefront reset must not do this.
@@ -115,16 +117,7 @@ export default function DesignSettingsPage() {
         </PreviewHighlightProvider>
       </FormProvider>
 
-      <UnsavedChangeDialog
-        open={showDialog}
-        onDiscard={confirmLeave}
-        onSave={handleSave}
-        onOpenChange={(open) => {
-          if (!open) {
-            cancelLeave();
-          }
-        }}
-      />
+      <UnsavedChangeDialog {...leaveDialogProps} />
 
       <ConfirmDialog
         open={resetOpen}

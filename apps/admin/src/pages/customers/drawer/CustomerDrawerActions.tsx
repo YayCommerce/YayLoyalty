@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { Can, CAP } from '@/lib/access';
-import { getApiErrorMessage } from '@/lib/api/api';
+import { toastApiError } from '@/lib/api/api';
 import { useAdjustPointsMutation, useCustomerQuery } from '@/lib/queries/customer.queries';
 import type { Customer } from '@/lib/schema/customer.schema';
 import { Button } from '@/components/ui/button';
@@ -47,7 +47,7 @@ export function CustomerDrawerActions({ customer, isLoading }: { customer: Custo
               toast.success(adjustPointsSuccessToast(customer.name));
             },
             onError: async (error) => {
-              toast.error(await getApiErrorMessage(error, ADJUST_POINTS_ERROR_FALLBACK()));
+              await toastApiError(error, ADJUST_POINTS_ERROR_FALLBACK());
             },
           })
         }

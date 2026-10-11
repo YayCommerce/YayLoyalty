@@ -1,7 +1,9 @@
 import { z } from 'zod';
 import { __ } from '@wordpress/i18n';
 
+import { dateToStored } from '@/lib/helpers/format.helper';
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
+import type { RoundingMode } from '@/lib/points-math/points-math';
 
 /** Mirrors CampaignRestController::define_item_schema(), the source of truth. */
 
@@ -58,7 +60,7 @@ export function resolveCampaignDisplayStatus(
   status: CampaignStatus,
   startsAt: string | null,
   endsAt: string | null,
-  at: string = new Date().toISOString().slice(0, 19).replace('T', ' '),
+  at: string = dateToStored(),
 ): CampaignDisplayStatus {
   if (status !== 'active') {
     return status;
@@ -347,6 +349,36 @@ export const DEFAULT_CAMPAIGN_CONFIG: Record<LiteCampaignTrigger, Record<string,
   signup: { points: 100 },
   review: { points: 50, require_verified: true, one_per_product: true },
 };
+
+/**
+ * Mirrors Campaign::config_schema()['purchase'], the source of truth. Config is untyped on the wire,
+ * so every key is optional: a stored row may predate one.
+ */
+export interface PurchaseConfig {
+  points_per_unit?: number;
+  base?: 'after_discounts' | 'before_discounts';
+  include_shipping?: boolean;
+  include_tax?: boolean;
+  rounding?: RoundingMode;
+  min_subtotal?: number;
+  exclude_coupon_orders?: boolean;
+  excluded_product_ids?: number[];
+  excluded_category_ids?: number[];
+  max_points_per_order?: number | null;
+}
+
+/** Mirrors Campaign::config_schema()['signup'], the source of truth. */
+export interface SignupConfig {
+  points?: number;
+}
+
+/** Mirrors Campaign::config_schema()['review'], the source of truth. */
+export interface ReviewConfig {
+  points?: number;
+  require_verified?: boolean;
+  one_per_product?: boolean;
+  media_bonus_points?: number;
+}
 
 /** The form's side of CampaignRestController::lacks_purchase_rate(): a purchase campaign with no numeric rate could never earn, so saving it is refused. */
 export function lacksPurchaseRate(config: Record<string, unknown>): boolean {

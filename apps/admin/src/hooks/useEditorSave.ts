@@ -7,7 +7,7 @@ import { useRouteLeaveGuard } from '@/hooks/useRouteLeaveGuard';
 export type EditorSaveIntent = 'save' | 'draft';
 
 /**
- * The save flow every definition editor shares: one onSubmit for Save, Save
+ * The save flow every definition editor and settings page shares: one onSubmit for Save, Save
  * draft and the leave dialog's Save, then back to `listPath`, or nowhere when
  * it is null. `save` resolves false on failure, true on success, or a path to
  * go to instead. It must reset the form's dirty baseline before resolving, or

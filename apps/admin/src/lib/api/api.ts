@@ -179,6 +179,11 @@ export async function toastApiError(error: unknown, fallback: string): Promise<v
   toast.error(await getApiErrorMessage(error, fallback));
 }
 
+/** Whether a request failed because the server has no such resource. */
+export function isNotFoundError(error: unknown): boolean {
+  return error instanceof HTTPError && error.response.status === 404;
+}
+
 /** The error fetch() throws when its AbortSignal fires. Check before getApiErrorMessage(): a cancellation is not a failure. */
 export function isAbortError(error: unknown): boolean {
   return error instanceof DOMException && 'AbortError' === error.name;

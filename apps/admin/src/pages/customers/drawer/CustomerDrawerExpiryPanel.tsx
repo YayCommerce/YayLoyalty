@@ -1,6 +1,6 @@
 import { TriangleAlert } from 'lucide-react';
 
-import { formatStoredDate, parseWPDate, utcToDate } from '@/lib/helpers/format.helper';
+import { formatStoredDate, formatStoreDecimal, parseWPDate, utcToDate } from '@/lib/helpers/format.helper';
 import { formatPoints, pointsPhrase } from '@/lib/helpers/points.helper';
 import type { Customer, DrawerExpiry } from '@/lib/schema/customer.schema';
 import { Button } from '@/components/ui/button';
@@ -20,7 +20,7 @@ export function CustomerDrawerExpiryPanel({ customer, expiry }: { customer: Cust
   const daysRemaining = daysUntil(expiry.expires_at);
   // Null, not "0%", when the balance is not positive: zero would read as reassurance.
   const sharePercent =
-    customer.balance > 0 ? String(Math.round((expiry.expiring_points / customer.balance) * 100)) : null;
+    customer.balance > 0 ? formatStoreDecimal((expiry.expiring_points / customer.balance) * 100, 0) : null;
 
   return (
     <div className="bg-muted/50 flex flex-col gap-3 rounded-md border px-3.5 py-3">

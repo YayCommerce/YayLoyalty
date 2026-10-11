@@ -2,6 +2,7 @@ import type { UseFormReturn } from 'react-hook-form';
 import { __ } from '@wordpress/i18n';
 
 import { rateFromSpend, spendPairFromRate } from '@/lib/helpers/points.helper';
+import { ROUNDING, roundPoints } from '@/lib/points-math/points-math';
 import { DEFAULT_CAMPAIGN_CONFIG } from '@/lib/schema/campaign.schema';
 import type { Setup } from '@/lib/schema/setup.schema';
 
@@ -82,7 +83,7 @@ export function toSetupPayload(form: SetupForm): Setup {
 
 /** Points a customer earns on an order of `amount`, as the purchase campaign floors them. */
 export function pointsForSpend(form: Pick<SetupForm, 'earnPoints' | 'earnSpend'>, amount: number): number {
-  return form.earnSpend > 0 ? Math.floor((amount * form.earnPoints) / form.earnSpend) : 0;
+  return form.earnSpend > 0 ? roundPoints((amount * form.earnPoints) / form.earnSpend, ROUNDING.DOWN) : 0;
 }
 
 /** Money `points` are worth at the wizard's redemption rate. */

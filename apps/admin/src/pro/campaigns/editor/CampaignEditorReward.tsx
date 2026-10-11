@@ -1,7 +1,7 @@
 import { useFormContext } from 'react-hook-form';
 import { __, sprintf } from '@wordpress/i18n';
 
-import { CampaignTrigger } from '@/lib/schema/campaign.schema';
+import { CampaignTrigger, ReviewConfig, SignupConfig } from '@/lib/schema/campaign.schema';
 import { Field, FieldContent, FieldDescription, FieldLabel } from '@/components/ui/field';
 import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
 import { Switch } from '@/components/ui/switch';
@@ -25,11 +25,6 @@ export function CampaignEditorReward() {
     default:
       return <RewardFieldsUnknown trigger={trigger} />;
   }
-}
-
-/** config_schema()['signup']. */
-interface SignupConfig {
-  points?: number;
 }
 
 function RewardFieldsSignup() {
@@ -58,14 +53,6 @@ function RewardFieldsSignup() {
       </FieldContent>
     </Field>
   );
-}
-
-/** config_schema()['review']. */
-interface ReviewConfig {
-  points?: number;
-  require_verified?: boolean;
-  one_per_product?: boolean;
-  media_bonus_points?: number;
 }
 
 function RewardFieldsReview() {

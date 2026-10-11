@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { __, _n, sprintf } from '@wordpress/i18n';
 
-import { getApiErrorMessage, isAbortError } from '@/lib/api/api';
+import { isAbortError, toastApiError } from '@/lib/api/api';
 import { useBulkAdjustPointsMutation } from '@/lib/queries/customer.queries';
 import type { AdjustPointsInput, CustomerListRow } from '@/lib/schema/customer.schema';
 import { useCsvExport } from '@/hooks/useCsvExport';
@@ -126,9 +126,7 @@ export function useCustomersBulkActions({
     } catch (error) {
       // An abort can only happen during resolve, so the mutation never fired.
       if (isAbortError(error)) return;
-      toast.error(
-        await getApiErrorMessage(error, __('Could not adjust points for the selected customers.', 'yayloyalty')),
-      );
+      await toastApiError(error, __('Could not adjust points for the selected customers.', 'yayloyalty'));
     } finally {
       setIsAdjustSubmitting(false);
     }
