@@ -7,7 +7,7 @@ import { toastApiError } from '@/lib/api/api';
 import { useCompleteSetupMutation, useDismissSetupMutation } from '@/lib/queries/setup.queries';
 import { cn } from '@/lib/utils';
 import { Button, LoadingButton } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/custom/dialog';
 import { EarnPointsStep } from './EarnPointsStep';
 import { LauncherLookStep } from './LauncherLookStep';
 import { NamePointsStep } from './NamePointsStep';
@@ -63,7 +63,7 @@ export function SetupWizardModal({ onClose }: { onClose: () => void }) {
         showCloseButton={false}
         onInteractOutside={(event) => event.preventDefault()}
         onEscapeKeyDown={(event) => event.preventDefault()}
-        className="max-h-[calc(100vh-4rem)] gap-0 overflow-y-auto p-0 sm:max-w-225"
+        className="max-h-[calc(100vh-4rem)] gap-0 p-0 sm:max-w-225"
       >
         <div className="bg-muted/30 flex flex-col">
           <div className="bg-background flex items-center gap-4 border-b px-8 py-4">
