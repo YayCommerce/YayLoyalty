@@ -34,41 +34,6 @@ class PointsEarnedShortcodes extends BaseShortcode {
     /** @var array<string, mixed>|null */
     private $sample_values = null;
 
-    /** @var PointsEarnedEmail|null The email whose subject is being filtered. YayMail's subject render does not pass it. */
-    private $subject_email = null;
-
-    protected function __construct() {
-        parent::__construct();
-
-        // Around YayMail's own subject filter, at the default 10.
-        add_filter( 'woocommerce_email_subject_' . PointsEarnedEmail::ID, [ $this, 'hold_subject_email' ], 9, 3 );
-        add_filter( 'woocommerce_email_subject_' . PointsEarnedEmail::ID, [ $this, 'release_subject_email' ], 11 );
-    }
-
-    /**
-     * Holds the email whose subject is being filtered, for values().
-     *
-     * @param string $subject
-     * @param mixed  $award The email's object, unused.
-     * @param mixed  $email The email being sent.
-     * @return string
-     */
-    public function hold_subject_email( $subject, $award = null, $email = null ) {
-        $this->subject_email = $email instanceof PointsEarnedEmail ? $email : null;
-
-        return $subject;
-    }
-
-    /**
-     * @param string $subject
-     * @return string
-     */
-    public function release_subject_email( $subject ) {
-        $this->subject_email = null;
-
-        return $subject;
-    }
-
     /** A shortcode's name: 'customer_name' → 'yaymail_yayloyalty_customer_name'. */
     private static function name( string $key ): string {
         return 'yaymail_yayloyalty_' . $key;
@@ -136,7 +101,7 @@ class PointsEarnedShortcodes extends BaseShortcode {
      * The values of the award being sent, or of the sample award for YayMail's
      * editor, preview and test send, which render with `is_sample` or an order.
      *
-     * @param mixed $render_data The body passes the WooCommerce template args, `email` included.
+     * @param mixed $render_data The body passes the WooCommerce template args and the subject passes the email; both include `email`.
      */
     private function values( $render_data ): array {
         $render_data = is_array( $render_data ) ? $render_data : [];
@@ -146,8 +111,7 @@ class PointsEarnedShortcodes extends BaseShortcode {
             return $this->sample_values( $root_email );
         }
 
-        // YayMail's subject filter renders a real send with empty render_data, so read the email hold_subject_email() caught.
-        $email = $render_data['email'] ?? $this->subject_email;
+        $email = $render_data['email'] ?? null;
 
         return $email instanceof PointsEarnedEmail ? $email->get_template_values() : [];
     }
