@@ -37,6 +37,7 @@ class YayLoyalty {
 
         \YayLoyalty\Engine\Storefront\AccountRewards::register();
         \YayLoyalty\Engine\Storefront\ProductEarnMessage::register();
+        \YayLoyalty\Engine\Storefront\ThankYouPoints::register();
 
         if ( ! is_admin() ) {
             \YayLoyalty\Engine\Storefront\Launcher::register();
