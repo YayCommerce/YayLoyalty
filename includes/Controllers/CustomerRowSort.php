@@ -10,9 +10,9 @@ defined( 'ABSPATH' ) || exit;
  */
 final class CustomerRowSort {
 
-    private const KEYS = [ 'name', 'balance', 'pending', 'lifetime', 'last_activity', 'expires' ];
+    public const KEYS = [ 'name', 'balance', 'pending', 'lifetime', 'last_activity', 'expires' ];
 
-    private const DEFAULT_COLUMN    = 'balance';
+    public const DEFAULT_COLUMN     = 'balance';
     private const DEFAULT_DIRECTION = 'DESC';
 
     /** @return array{column: string, direction: string, nulls_last: bool} */
