@@ -68,8 +68,8 @@ final class LauncherCopy {
         return sprintf( __( '%1$s on orders of %2$s or more', 'yayloyalty' ), $line, self::money( $min_subtotal ) );
     }
 
-    /** The Design tab's `product_earn_line` with {points} and {points_label} filled: "Earn 20 Points with this purchase". */
-    public static function product_earn( string $template, int $points ): string {
+    /** A storefront_text line with {points} and a {points_label} that agrees with the count: "Earn 1 Point with this purchase". */
+    public static function points_sentence( string $template, int $points ): string {
         return strtr(
             $template,
             [

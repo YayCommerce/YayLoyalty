@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Helpers;
 
+use YayLoyalty\Engine\Earning\ProgramGate;
 use YayLoyalty\Utils\Log;
 
 defined( 'ABSPATH' ) || exit;
@@ -24,6 +25,11 @@ class DesignHelper {
         $merged['schema_version'] = isset( $saved['schema_version'] ) ? (int) $saved['schema_version'] : self::SCHEMA_VERSION;
 
         return $merged;
+    }
+
+    /** Whether a storefront surface shows: the program is on and its Design → Visibility switch, such as `product_message`, is on. */
+    public static function surface_enabled( array $design, string $flag ): bool {
+        return ProgramGate::program_enabled() && ! empty( $design['visibility'][ $flag ] );
     }
 
     /**

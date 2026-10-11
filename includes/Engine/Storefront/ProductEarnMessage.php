@@ -2,7 +2,6 @@
 namespace YayLoyalty\Engine\Storefront;
 
 use YayLoyalty\Engine\Earning\EarningService;
-use YayLoyalty\Engine\Earning\ProgramGate;
 use YayLoyalty\Engine\Points\ContextFactory;
 use YayLoyalty\Engine\Points\PointsEngine;
 use YayLoyalty\Engine\Register\ScriptName;
@@ -111,7 +110,7 @@ final class ProductEarnMessage {
      * A variable product speaks for its cheapest variation that earns, until the shopper picks one.
      */
     public static function sentence( \WC_Product $product ): string {
-        if ( ! ProgramGate::program_enabled() || empty( self::design()['visibility']['product_message'] ) ) {
+        if ( ! DesignHelper::surface_enabled( self::design(), 'product_message' ) ) {
             return '';
         }
 
@@ -146,7 +145,7 @@ final class ProductEarnMessage {
         $points = get_current_user_id() > 0 ? self::member_points( $product ) : self::guest_points( $product );
 
         // The raw design value: storefront_text() would fill {points_label} with the plural before the number is known.
-        return $points > 0 ? LauncherCopy::product_earn( self::design()['storefront_text']['product_earn_line'], $points ) : '';
+        return $points > 0 ? LauncherCopy::points_sentence( self::design()['storefront_text']['product_earn_line'], $points ) : '';
     }
 
     /** What one of this product earns a guest, at the base rate: no tier multiplier, since that belongs to members. 0 on failure. */

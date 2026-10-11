@@ -2,7 +2,7 @@
 namespace YayLoyalty\Engine\Storefront;
 
 use YayLoyalty\Engine\Earning\PendingPoints;
-use YayLoyalty\Engine\Earning\ProgramGate;
+use YayLoyalty\Enums\OrderStatus;
 use YayLoyalty\Helpers\DesignHelper;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Repositories\CustomerRepository;
@@ -36,21 +36,22 @@ final class ThankYouPoints {
     private static function markup( \WC_Order $order ): string {
         try {
             $user_id = get_current_user_id();
-            $design  = DesignHelper::get_design();
-
-            if ( ! ProgramGate::program_enabled() || empty( $design['visibility']['thankyou_message'] ) ) {
-                return '';
-            }
 
             // The order-received URL opens for anyone holding the order key, so the balance shows to its owner only.
-            if ( 0 === $user_id || (int) $order->get_customer_id() !== $user_id || $order->has_status( [ 'failed', 'cancelled', 'refunded' ] ) ) {
+            if ( 0 === $user_id || (int) $order->get_customer_id() !== $user_id || $order->has_status( OrderStatus::no_points() ) ) {
                 return '';
             }
 
             $earned  = (int) $order->get_meta( PendingPoints::META_EARNED );
-            $pending = '' === (string) $order->get_meta( PendingPoints::META_RELEASED ) ? (int) $order->get_meta( PendingPoints::META_PENDING ) : 0;
+            $pending = PendingPoints::unreleased( $order );
 
             if ( $earned < 1 && $pending < 1 ) {
+                return '';
+            }
+
+            $design = DesignHelper::get_design();
+
+            if ( ! DesignHelper::surface_enabled( $design, 'thankyou_message' ) ) {
                 return '';
             }
 
@@ -60,16 +61,11 @@ final class ThankYouPoints {
                 return '';
             }
 
+            $is_earned = $earned > 0;
             // The raw design value: storefront_text() would fill {points_label} with the plural before the number is known.
-            if ( $earned > 0 ) {
-                $sentence = LauncherCopy::product_earn( $design['storefront_text']['thankyou_earned_line'], $earned );
-                /* translators: %s: points with their label, as "1,240 Points". */
-                $balance = sprintf( __( 'New balance: %s', 'yayloyalty' ), SettingsHelper::points_text( $customer->get_balance() ) );
-            } else {
-                $sentence = LauncherCopy::product_earn( $design['storefront_text']['thankyou_pending_line'], $pending );
-                /* translators: %s: points with their label, as "1,240 Points". */
-                $balance = sprintf( __( 'Balance: %s', 'yayloyalty' ), SettingsHelper::points_text( $customer->get_balance() ) );
-            }
+            $sentence = LauncherCopy::points_sentence( $design['storefront_text'][ $is_earned ? 'thankyou_earned_line' : 'thankyou_pending_line' ], $is_earned ? $earned : $pending );
+            /* translators: %s: points with their label, as "1,240 Points". */
+            $balance = sprintf( $is_earned ? __( 'New balance: %s', 'yayloyalty' ) : __( 'Balance: %s', 'yayloyalty' ), SettingsHelper::points_text( $customer->get_balance() ) );
 
             if ( $customer->get_pending_points() > 0 ) {
                 /* translators: %s: points with their label, as "270 Points". */

@@ -17,4 +17,13 @@ final class OrderStatus {
     public static function paid(): array {
         return [ self::AWARD ];
     }
+
+    /**
+     * Statuses whose order shows no points to the shopper: never paid, or reversed.
+     *
+     * @return string[]
+     */
+    public static function no_points(): array {
+        return [ 'failed', 'cancelled', 'refunded' ];
+    }
 }

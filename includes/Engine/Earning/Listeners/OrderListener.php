@@ -14,8 +14,8 @@ use YayLoyalty\Utils\Log;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Routes order statuses to staging, award and reversal. The only class that knows WooCommerce
- * order status strings. Every handler is safe to re-fire: staging and release are idempotent,
+ * Routes order statuses to staging, award and reversal. The only class that routes on WooCommerce
+ * order status strings; OrderStatus holds the ones read elsewhere. Every handler is safe to re-fire: staging and release are idempotent,
  * and the ledger's UNIQUE idempotency_key guards the award.
  * Only `completed` awards, by product decision: a store that leaves orders at `processing`
  * must complete them for them to earn. Virtual orders get there from payment_complete().
