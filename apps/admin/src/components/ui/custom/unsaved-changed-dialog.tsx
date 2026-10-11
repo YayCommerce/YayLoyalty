@@ -1,7 +1,7 @@
 import { __ } from '@wordpress/i18n';
 
 import { Button } from '../button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './dialog';
 
 interface UnsavedChangeDialogProps {
   open: boolean;
@@ -24,8 +24,8 @@ export function UnsavedChangeDialog({
 }: UnsavedChangeDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bw:max-w-md">
-        <DialogHeader className="bw:border-b-0">
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
           <DialogTitle>{__('Unsaved Changes', 'yayloyalty')}</DialogTitle>
           {children}
         </DialogHeader>
