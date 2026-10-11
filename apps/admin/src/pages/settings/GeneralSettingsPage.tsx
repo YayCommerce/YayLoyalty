@@ -6,7 +6,7 @@ import { __ } from '@wordpress/i18n';
 import { toastApiError } from '@/lib/api/api';
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { useSaveSettingsMutation, useSettingsQuery } from '@/lib/queries/settings.queries';
-import { useRouteLeaveGuard } from '@/hooks/useRouteLeaveGuard';
+import { useEditorSave } from '@/hooks/useEditorSave';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { UnsavedChangeDialog } from '@/components/ui/custom/unsaved-changed-dialog';
@@ -51,19 +51,22 @@ export default function GeneralSettingsPage() {
     resetOptions: { keepDirtyValues: true },
   });
 
-  const { showDialog, confirmLeave, cancelLeave } = useRouteLeaveGuard(form.formState.isDirty);
-
-  const handleSave = form.handleSubmit(async (values) => {
-    try {
-      const saved = await saveMutation.mutateAsync(buildGeneralSettingsUpdate(values, form.formState.dirtyFields));
-      // Overrides resetOptions, or keepDirtyValues would keep the edit over the sanitised save.
-      form.reset(generalSettingsDefaults(saved), { keepDirtyValues: false });
-      confirmLeave();
-      toast.success(__('General settings saved.', 'yayloyalty'));
-    } catch (error) {
-      await toastApiError(error, __('Failed to save general settings.', 'yayloyalty'));
-    }
-  });
+  const { handleSave, leaveDialogProps } = useEditorSave(
+    form,
+    async (values) => {
+      try {
+        const saved = await saveMutation.mutateAsync(buildGeneralSettingsUpdate(values, form.formState.dirtyFields));
+        // Overrides resetOptions, or keepDirtyValues would keep the edit over the sanitised save.
+        form.reset(generalSettingsDefaults(saved), { keepDirtyValues: false });
+        toast.success(__('General settings saved.', 'yayloyalty'));
+        return true;
+      } catch (error) {
+        await toastApiError(error, __('Failed to save general settings.', 'yayloyalty'));
+        return false;
+      }
+    },
+    { listPath: null },
+  );
 
   return (
     <FormProvider {...form}>
@@ -78,16 +81,7 @@ export default function GeneralSettingsPage() {
         </div>
       </form>
 
-      <UnsavedChangeDialog
-        open={showDialog}
-        onDiscard={confirmLeave}
-        onSave={handleSave}
-        onOpenChange={(open) => {
-          if (!open) {
-            cancelLeave();
-          }
-        }}
-      />
+      <UnsavedChangeDialog {...leaveDialogProps} />
     </FormProvider>
   );
 }

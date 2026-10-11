@@ -8,7 +8,7 @@ import { toastApiError } from '@/lib/api/api';
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { useEmailsQuery, useSaveEmailsMutation } from '@/lib/queries/emails.queries';
 import { emailsFormSchema, EmailsFormValues, EmailsResponse, toEmailsFormValues } from '@/lib/schema/emails.schema';
-import { useRouteLeaveGuard } from '@/hooks/useRouteLeaveGuard';
+import { useEditorSave } from '@/hooks/useEditorSave';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ErrorState } from '@/components/ui/custom/error-state';
@@ -53,18 +53,21 @@ function EmailsSettingsForm({ data }: { data: EmailsResponse }) {
     resetOptions: { keepDirtyValues: true },
   });
 
-  const { showDialog, confirmLeave, cancelLeave } = useRouteLeaveGuard(form.formState.isDirty);
-
-  const handleSave = form.handleSubmit(async (values) => {
-    try {
-      const saved = await saveMutation.mutateAsync(values);
-      form.reset(toEmailsFormValues(saved));
-      confirmLeave();
-      toast.success(__('Email settings saved.', 'yayloyalty'));
-    } catch (error) {
-      await toastApiError(error, __('Failed to save email settings.', 'yayloyalty'));
-    }
-  });
+  const { handleSave, leaveDialogProps } = useEditorSave(
+    form,
+    async (values) => {
+      try {
+        const saved = await saveMutation.mutateAsync(values);
+        form.reset(toEmailsFormValues(saved));
+        toast.success(__('Email settings saved.', 'yayloyalty'));
+        return true;
+      } catch (error) {
+        await toastApiError(error, __('Failed to save email settings.', 'yayloyalty'));
+        return false;
+      }
+    },
+    { listPath: null },
+  );
 
   const { sending } = data;
 
@@ -110,16 +113,7 @@ function EmailsSettingsForm({ data }: { data: EmailsResponse }) {
         </form>
       </FormProvider>
 
-      <UnsavedChangeDialog
-        open={showDialog}
-        onDiscard={confirmLeave}
-        onSave={handleSave}
-        onOpenChange={(open) => {
-          if (!open) {
-            cancelLeave();
-          }
-        }}
-      />
+      <UnsavedChangeDialog {...leaveDialogProps} />
     </>
   );
 }
