@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { __ } from '@wordpress/i18n';
 
+import { dateToStored } from '@/lib/helpers/format.helper';
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 
 /** Mirrors CampaignRestController::define_item_schema(), the source of truth. */
@@ -58,7 +59,7 @@ export function resolveCampaignDisplayStatus(
   status: CampaignStatus,
   startsAt: string | null,
   endsAt: string | null,
-  at: string = new Date().toISOString().slice(0, 19).replace('T', ' '),
+  at: string = dateToStored(),
 ): CampaignDisplayStatus {
   if (status !== 'active') {
     return status;

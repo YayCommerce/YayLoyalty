@@ -3,6 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import type { Resolver, ResolverResult } from 'react-hook-form';
 import { __, sprintf } from '@wordpress/i18n';
 
+import { dateToStored } from '@/lib/helpers/format.helper';
 import {
   Campaign,
   CampaignCondition,
@@ -90,7 +91,7 @@ export function duplicateToFormValues(source: Campaign): CampaignCreateSeed {
  * so no comparison against a real campaign's id can ever match it.
  */
 export function synthesizeDraftCampaign(): Campaign {
-  const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
+  const now = dateToStored();
 
   return {
     id: Number.MAX_SAFE_INTEGER,

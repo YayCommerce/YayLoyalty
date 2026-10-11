@@ -26,6 +26,11 @@ export function utcToDate(utc: string): Date {
   return new Date(utc.replace(' ', 'T') + 'Z');
 }
 
+/** A Date as a stored UTC MySQL datetime; the inverse of utcToDate(). Defaults to now. */
+export function dateToStored(date: Date = new Date()): string {
+  return date.toISOString().slice(0, 19).replace('T', ' ');
+}
+
 /**
  * Formats a site-calendar date without a timezone shift: dateI18n reads a
  * bare date as browser-local midnight, which moves it a day; pinning to
