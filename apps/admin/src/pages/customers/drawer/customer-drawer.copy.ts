@@ -67,6 +67,7 @@ export const LEDGER_CSV_HEADERS = () => [
   __('Order ID', 'yayloyalty'),
   __('Campaign', 'yayloyalty'),
   __('Note', 'yayloyalty'),
+  __('Customer description', 'yayloyalty'),
 ];
 
 export const NOT_AVAILABLE_YET_REASON = () => __('Not available yet — coming in a future release.', 'yayloyalty');
