@@ -86,8 +86,8 @@ final class Clamp {
         return Result::allowed( $reward, max( 0, $requested ), $applied, $value, $currency, $rate, $bound_by );
     }
 
-    /** Whole points a money amount is worth; rounded before flooring so 0.29 × 100 is 29, not 28. */
+    /** Whole points a money amount is worth, rounded down. */
     private static function points_in( float $amount, float $rate ): int {
-        return max( 0, (int) floor( round( $amount * $rate, 6 ) ) );
+        return max( 0, PointsMath::round_points( $amount * $rate, PointsMath::ROUND_DOWN ) );
     }
 }
