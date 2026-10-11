@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Engine\Emails;
 
+use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Models\LedgerEntry;
 use YayLoyalty\Repositories\LedgerRepository;
 
@@ -68,6 +69,27 @@ abstract class LedgerEntryEmail extends LoyaltyEmail {
      * @return array<string, mixed>
      */
     abstract protected function build_values( LedgerEntry $entry ): array;
+
+    /**
+     * amounts() plus the template variables every ledger email shares: the row, greeting and balance.
+     *
+     * @return array<string, mixed>
+     */
+    protected function balance_values( LedgerEntry $entry ): array {
+        $greeting_name = self::greeting_name( $entry->get_user_id() );
+        $balance_text  = SettingsHelper::points_text( $entry->get_balance_after() );
+        $balance_value = self::balance_value( $entry->get_balance_after() );
+
+        return $this->amounts( $entry ) + [
+            'entry'              => $entry,
+            'greeting_name'      => $greeting_name,
+            'greeting_text'      => self::greeting_text( esc_html( $greeting_name ) ),
+            'balance_text'       => $balance_text,
+            'balance_sentence'   => self::balance_sentence( esc_html( $balance_text ) ),
+            'balance_value'      => $balance_value,
+            'balance_value_text' => self::balance_value_text( $balance_value ),
+        ];
+    }
 
     /** Points the subject placeholders and template variables at $entry. */
     protected function prepare( LedgerEntry $entry ): void {
