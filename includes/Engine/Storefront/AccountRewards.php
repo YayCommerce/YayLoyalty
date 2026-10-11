@@ -2,6 +2,7 @@
 namespace YayLoyalty\Engine\Storefront;
 
 use YayLoyalty\Controllers\Schemas\LedgerQueryArgs;
+use YayLoyalty\Engine\Earning\EarningService;
 use YayLoyalty\Engine\Earning\ProgramGate;
 use YayLoyalty\Engine\Points\ContextFactory;
 use YayLoyalty\Engine\Register\ScriptName;
@@ -183,9 +184,9 @@ final class AccountRewards {
         );
 
         return [
-            'payload'    => ( new LauncherPayload( new CampaignRepository(), new RewardRepository(), $customers ) )->for_balance( DesignHelper::get_design(), null === $customer ? 0 : $customer->get_balance() ),
+            'payload'    => ( new LauncherPayload( new CampaignRepository(), new RewardRepository(), $customers ) )->for_balance( DesignHelper::get_design(), null === $customer ? 0 : $customer->get_balance(), EarningService::points_left_today( $user_id ) ),
             'expires_at' => null === $customer ? null : $customer->get_expires_at(),
-            'can_earn'   => null === ( new ProgramGate() )->check( CampaignTrigger::PURCHASE, ContextFactory::from_user( $user_id, Dates::now() ) ),
+            'can_earn'   => null === EarningService::gate_reason( CampaignTrigger::PURCHASE, ContextFactory::from_user( $user_id, Dates::now() ) ),
             'history'    => [
                 'rows'   => ShopperActivityRow::history_rows( $history['items'] ),
                 'total'  => (int) $history['total'],

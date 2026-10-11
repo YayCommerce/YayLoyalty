@@ -105,6 +105,21 @@ final class LauncherCopy {
         return sprintf( __( 'No %s activity yet.', 'yayloyalty' ), SettingsHelper::points_label( 0 ) );
     }
 
+    /** The daily earning limit under the ways to earn: '' with no limit, "You can earn 40 Points more today." below it, a reached line at 0. */
+    public static function daily_limit_line( ?int $left_today ): string {
+        if ( null === $left_today ) {
+            return '';
+        }
+
+        if ( 0 === $left_today ) {
+            /* translators: %s: the store's plural points label, e.g. "Points". */
+            return sprintf( __( 'You\'ve reached today\'s earning limit. Earn more %s tomorrow.', 'yayloyalty' ), SettingsHelper::points_label_plural() );
+        }
+
+        /* translators: %s: points with label, e.g. "40 Points". */
+        return sprintf( __( 'You can earn %s more today.', 'yayloyalty' ), SettingsHelper::points_text( $left_today ) );
+    }
+
     /** "100 points = $1", with the merchant's label. */
     public static function redeem_rate( float $points_per_unit ): string {
         /* translators: 1: points per unit of currency, 2: the store's points label, 3: money amount. */

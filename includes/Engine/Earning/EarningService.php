@@ -35,6 +35,9 @@ final class EarningService {
     /** Fired once an earning limit's cut, partial or whole, is final, with ( Outcome $outcome, string $trigger, Context $ctx ). */
     public const LIMITED_ACTION = 'yayloyalty_award_limited';
 
+    /** Filter for the points a customer may still earn today, with ( ?int $left, int $user_id ); null is no limit. */
+    public const POINTS_LEFT_TODAY_FILTER = 'yayloyalty_points_left_today';
+
     private PointsEngine $engine;
 
     private LedgerService $ledger;
@@ -106,6 +109,24 @@ final class EarningService {
         );
 
         return empty( $valid ) ? $default : $valid;
+    }
+
+    /** The first reason the filtered gate chain gives, or null: whether this shopper may earn, without building the engine. */
+    public static function gate_reason( string $trigger, Context $ctx ): ?string {
+        return self::first_reason( self::gates(), $trigger, $ctx );
+    }
+
+    /** The points $user_id may still earn today, or null for no limit. Read by the storefront; award() caps through AWARD_POINTS_FILTER. */
+    public static function points_left_today( int $user_id ): ?int {
+        /**
+         * The points a customer may still earn today; null is no limit. Internal seam, not a public API.
+         *
+         * @param int|null $left    Null until a subscriber sets a limit.
+         * @param int      $user_id The customer.
+         */
+        $left = apply_filters( self::POINTS_LEFT_TODAY_FILTER, null, $user_id ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name; the sniff cannot read it.
+
+        return is_numeric( $left ) ? max( 0, (int) $left ) : null;
     }
 
     /**
@@ -272,7 +293,14 @@ final class EarningService {
 
     /** The gate chain: gates run in order and the first reason stops the rest. */
     private function blocked_reason( string $trigger, Context $ctx ): ?string {
-        foreach ( $this->gates as $gate ) {
+        return self::first_reason( $this->gates, $trigger, $ctx );
+    }
+
+    /**
+     * @param Gate[] $gates
+     */
+    private static function first_reason( array $gates, string $trigger, Context $ctx ): ?string {
+        foreach ( $gates as $gate ) {
             $reason = $gate->check( $trigger, $ctx );
 
             if ( null !== $reason && '' !== $reason ) {

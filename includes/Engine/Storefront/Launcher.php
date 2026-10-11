@@ -2,6 +2,7 @@
 namespace YayLoyalty\Engine\Storefront;
 
 use YayLoyalty\Controllers\StorefrontActivityRestController;
+use YayLoyalty\Engine\Earning\EarningService;
 use YayLoyalty\Engine\Earning\ProgramGate;
 use YayLoyalty\Engine\Points\ContextFactory;
 use YayLoyalty\Engine\Register\ScriptName;
@@ -119,13 +120,13 @@ final class Launcher {
             return false;
         }
 
+        // A guest always reads as "no customer" while the program is on, and that is who the pitch is for.
         if ( $user_id < 1 ) {
-            return ProgramGate::program_enabled();
+            return ProgramGate::REASON_NO_CUSTOMER === EarningService::gate_reason( CampaignTrigger::PURCHASE, ContextFactory::for_advert( Dates::now() ) );
         }
 
-        // Same rules as earning (program on, not opted out, role not excluded): a shopper who cannot
-        // earn is not shown a panel about earning.
-        return null === ( new ProgramGate() )->check( CampaignTrigger::PURCHASE, ContextFactory::from_user( $user_id, Dates::now() ) );
+        // Same gates as earning, Pro's included: a shopper who cannot earn is not shown a panel about earning.
+        return null === EarningService::gate_reason( CampaignTrigger::PURCHASE, ContextFactory::from_user( $user_id, Dates::now() ) );
     }
 
     private function build_view( array $design ): array {

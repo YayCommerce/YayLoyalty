@@ -17,8 +17,8 @@ defined( 'ABSPATH' ) || exit;
  *
  * Today's total is gross EARN (LedgerRepository::points_earned_today with no
  * source): manual adjustments are neither capped nor counted, and a refund
- * does not free up room. preview() is not capped, so pending points and
- * storefront figures stay the uncapped best case.
+ * does not free up room. preview() is not capped, so pending points stay
+ * the uncapped best case; the storefront reads left_today() instead.
  *
  * The filter runs inside LedgerService::earn(), under the customer's row
  * lock, so two awards for one customer at the same moment queue and the
@@ -59,5 +59,20 @@ final class DailyEarningLimit {
         }
 
         return $allowed;
+    }
+
+    /**
+     * The `yayloyalty_points_left_today` subscriber: the cap minus today's EARN total, never below 0, or null with no cap.
+     *
+     * @param int|null $left An earlier subscriber's answer; the cap replaces it.
+     */
+    public function left_today( $left, int $user_id ): ?int { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- the filter's signature.
+        $cap = SettingsHelper::get_settings()['max_points_per_day'];
+
+        if ( null === $cap ) {
+            return null;
+        }
+
+        return max( 0, $cap - $this->ledger->points_earned_today( $user_id, Dates::now(), null ) );
     }
 }

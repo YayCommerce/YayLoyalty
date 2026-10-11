@@ -8,7 +8,7 @@
 
 ## Today
 
-Pro's `Pro\Services\DailyEarningLimit` caps automatic earning at `max_points_per_day` (`SettingsHelper::get_default_settings()`, null means no limit). It subscribes to `EarningService::AWARD_POINTS_FILTER` and lowers an award inside `LedgerService::earn()`, reading today's EARN total from `LedgerRepository::points_earned_today()`. It is not an earning gate, and `EarningService::preview()` doesn't apply it; its docblock says storefront figures stay the uncapped best case. `LauncherPayload::for_balance()` builds the ways to earn from `LauncherEarnRules::advertise()` and never reads the cap.
+Fixed on `trace/fix/launcher-earning-gates`, waiting on the hand check below. Pro's `DailyEarningLimit::left_today()` answers Lite's `EarningService::POINTS_LEFT_TODAY_FILTER`, and `EarningService::points_left_today()` reads it. `LauncherPayload::for_balance()` carries it as `left_today`, and `LauncherCopy::daily_limit_line()` prints "You can earn N more today." below the cap, or the reached line in place of the rates at 0, in the launcher (`panel-member.php`) and on My Account (`account-rewards.php`). `ProductEarnMessage::member_points()` caps the product figure at the same number. A `wp eval` render with a rolled-back earn row showed each state; no real order has run through it yet.
 
 ## Why it matters
 
@@ -21,4 +21,4 @@ Have `LauncherPayload::for_balance()` learn, through a filter that Pro's `DailyE
 ## Done when
 
 - [ ] With Pro, `max_points_per_day` set, and a member whose EARN today has reached it, the launcher panel shows no ways-to-earn rates for that member and says the daily limit is reached. Hand check: set the cap to 10, earn 10 with an order, reload the shop.
-- [ ] The `DailyEarningLimit` docblock no longer says storefront figures stay uncapped.
+- [x] The `DailyEarningLimit` docblock no longer says storefront figures stay uncapped. — `includes/Pro/Services/DailyEarningLimit.php` class docblock: "the storefront reads left_today() instead."

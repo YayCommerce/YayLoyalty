@@ -21,10 +21,14 @@ $yayloyalty_worth   = $yayloyalty_payload['member']['worth'];
 // Null while redemption is off: worth, the redeem column and the checkout link stay hidden with it.
 $yayloyalty_redeem    = $yayloyalty_payload['redeem'];
 $yayloyalty_earn_rows = $view['can_earn'] ? LauncherEarnRules::member_rows( $yayloyalty_payload['earn'], $yayloyalty_text['earn_rate_line'], $yayloyalty_payload['purchase_min'] ) : [];
-$yayloyalty_history   = $view['history'];
-$yayloyalty_columns   = AccountRewards::column_labels();
-$yayloyalty_first     = ( $yayloyalty_history['page'] - 1 ) * AccountRewards::PER_PAGE + 1;
-$yayloyalty_last      = $yayloyalty_first + count( $yayloyalty_history['rows'] ) - 1;
+$yayloyalty_left      = $yayloyalty_payload['left_today'] ?? null;
+// At the daily limit the line replaces the rates; below it, it only follows rates there are.
+$yayloyalty_limit_line = ! $view['can_earn'] || ( [] === $yayloyalty_earn_rows && 0 !== $yayloyalty_left ) ? '' : LauncherCopy::daily_limit_line( $yayloyalty_left );
+$yayloyalty_earn_rows  = 0 === $yayloyalty_left ? [] : $yayloyalty_earn_rows;
+$yayloyalty_history    = $view['history'];
+$yayloyalty_columns    = AccountRewards::column_labels();
+$yayloyalty_first      = ( $yayloyalty_history['page'] - 1 ) * AccountRewards::PER_PAGE + 1;
+$yayloyalty_last       = $yayloyalty_first + count( $yayloyalty_history['rows'] ) - 1;
 // 0 picks the plural label.
 $yayloyalty_label = SettingsHelper::points_label( 0 );
 ?>
@@ -53,19 +57,24 @@ $yayloyalty_label = SettingsHelper::points_label( 0 );
         <?php endif; ?>
     </section>
 
-    <?php if ( [] !== $yayloyalty_earn_rows || null !== $yayloyalty_redeem ) : ?>
+    <?php if ( [] !== $yayloyalty_earn_rows || '' !== $yayloyalty_limit_line || null !== $yayloyalty_redeem ) : ?>
         <div class="yayloyalty-account__rules">
-            <?php if ( [] !== $yayloyalty_earn_rows ) : ?>
+            <?php if ( [] !== $yayloyalty_earn_rows || '' !== $yayloyalty_limit_line ) : ?>
                 <section>
                     <h3><?php esc_html_e( 'Ways to earn', 'yayloyalty' ); ?></h3>
-                    <ul class="yayloyalty-account__list">
-                        <?php foreach ( $yayloyalty_earn_rows as $yayloyalty_earn_row ) : ?>
-                            <li>
-                                <span><?php echo esc_html( $yayloyalty_earn_row['label'] ); ?></span>
-                                <strong><?php echo esc_html( $yayloyalty_earn_row['value'] ); ?></strong>
-                            </li>
-                        <?php endforeach; ?>
-                    </ul>
+                    <?php if ( [] !== $yayloyalty_earn_rows ) : ?>
+                        <ul class="yayloyalty-account__list">
+                            <?php foreach ( $yayloyalty_earn_rows as $yayloyalty_earn_row ) : ?>
+                                <li>
+                                    <span><?php echo esc_html( $yayloyalty_earn_row['label'] ); ?></span>
+                                    <strong><?php echo esc_html( $yayloyalty_earn_row['value'] ); ?></strong>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    <?php endif; ?>
+                    <?php if ( '' !== $yayloyalty_limit_line ) : ?>
+                        <p><?php echo esc_html( $yayloyalty_limit_line ); ?></p>
+                    <?php endif; ?>
                 </section>
             <?php endif; ?>
 
