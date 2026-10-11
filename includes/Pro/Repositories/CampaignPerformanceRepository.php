@@ -1,7 +1,6 @@
 <?php
 namespace YayLoyalty\Pro\Repositories;
 
-use YayLoyalty\Enums\ActivityEvent;
 use YayLoyalty\Enums\ReferenceType;
 use YayLoyalty\Repositories\CustomerMetaRepository;
 use YayLoyalty\Repositories\LedgerRepository;
@@ -143,7 +142,7 @@ class CampaignPerformanceRepository {
             'id'            => (int) $row['id'],
             'customer_id'   => (int) $row['user_id'],
             // LEFT JOIN: a deleted member's rows stay in totals(), so they stay listed too.
-            'customer_name' => null !== $row['customer_name'] ? (string) $row['customer_name'] : $this->deleted_name( (int) $row['user_id'] ),
+            'customer_name' => null !== $row['customer_name'] ? (string) $row['customer_name'] : $this->customer_meta->deleted_identity( (int) $row['user_id'] )['name'],
             'points'        => (int) $row['points'],
             'created_at'    => (string) $row['created_at'],
             'reference'     => $this->reference( $reference_type, $reference_id ),
@@ -151,16 +150,6 @@ class CampaignPerformanceRepository {
                 ? $this->order_subtotal( $reference_id )
                 : null,
         ];
-    }
-
-    /**
-     * A deleted member's name from their account_deleted snapshot, or ''. The customer list and drawer use the
-     * same fallback (CustomerListFormatter::identity(), CustomerItemFormatter::identity()), so the name matches everywhere.
-     */
-    private function deleted_name( int $user_id ): string {
-        $deletion = $this->customer_meta->latest( $user_id, ActivityEvent::ACCOUNT_DELETED );
-
-        return null !== $deletion ? $deletion->snapshot_identity()['name'] : '';
     }
 
     /**

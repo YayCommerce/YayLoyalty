@@ -1,7 +1,6 @@
 <?php
 namespace YayLoyalty\Controllers;
 
-use YayLoyalty\Enums\ActivityEvent;
 use YayLoyalty\Enums\CustomerFilters;
 use YayLoyalty\Repositories\CustomerMetaRepository;
 use YayLoyalty\Repositories\CustomerRepository;
@@ -122,12 +121,7 @@ final class CustomerListFormatter {
             ];
         }
 
-        $deletion = $customer_meta->latest( $user_id, ActivityEvent::ACCOUNT_DELETED );
-
-        return null !== $deletion ? $deletion->snapshot_identity() : [
-            'name'  => '',
-            'email' => '',
-        ];
+        return $customer_meta->deleted_identity( $user_id );
     }
 
     /**

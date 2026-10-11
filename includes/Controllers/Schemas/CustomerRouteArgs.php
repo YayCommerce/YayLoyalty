@@ -1,6 +1,8 @@
 <?php
 namespace YayLoyalty\Controllers\Schemas;
 
+use YayLoyalty\Controllers\CustomerRowSort;
+
 defined( 'ABSPATH' ) || exit;
 
 /** Route args for the Customers list's sort and for the adjust endpoint. */
@@ -17,8 +19,8 @@ final class CustomerRouteArgs {
             'orderby' => [
                 'description'       => __( 'Column to sort the Customers list by.', 'yayloyalty' ),
                 'type'              => 'string',
-                'enum'              => [ 'name', 'balance', 'pending', 'lifetime', 'last_activity', 'expires' ],
-                'default'           => 'balance',
+                'enum'              => CustomerRowSort::KEYS,
+                'default'           => CustomerRowSort::DEFAULT_COLUMN,
                 'sanitize_callback' => 'sanitize_text_field',
             ],
         ];
