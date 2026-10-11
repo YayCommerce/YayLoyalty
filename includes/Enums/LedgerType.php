@@ -9,6 +9,8 @@ defined( 'ABSPATH' ) || exit;
  */
 final class LedgerType {
 
+    use StringEnumMethods;
+
     /** Points granted. */
     public const EARN = 'earn';
 
@@ -43,25 +45,6 @@ final class LedgerType {
         ];
     }
 
-    public static function is_valid( $value ): bool {
-        return is_string( $value ) && in_array( $value, self::all(), true );
-    }
-
-    /** @throws \InvalidArgumentException When $value is not a known type. */
-    public static function assert( $value ): string {
-        if ( ! self::is_valid( $value ) ) {
-            throw new \InvalidArgumentException(
-                sprintf(
-                    'YayLoyalty: unknown ledger type "%s". Expected one of: %s.',
-                    is_scalar( $value ) ? (string) $value : gettype( $value ),
-                    implode( ', ', self::all() )
-                )
-            );
-        }
-
-        return $value;
-    }
-
     /**
      * lifetime_earned = SUM(earn) + SUM(adjust) - SUM(|refund_earn|). Spending (redeem, expire)
      * and `correction` never move it, so they never demote a tier. An admin's `adjust` deduction can.
@@ -88,5 +71,9 @@ final class LedgerType {
     /** Whether the row touches last_activity_at: the last earn or redeem. */
     public static function is_activity( string $type ): bool {
         return in_array( $type, [ self::EARN, self::REDEEM ], true );
+    }
+
+    protected static function noun(): string {
+        return 'ledger type';
     }
 }

@@ -61,19 +61,8 @@ class PointsAdjustedEmail extends LedgerEntryEmail {
 
     /** @return array<string, mixed> */
     protected function build_values( LedgerEntry $entry ): array {
-        $greeting_name = self::greeting_name( $entry->get_user_id() );
-        $balance_text  = SettingsHelper::points_text( $entry->get_balance_after() );
-        $balance_value = self::balance_value( $entry->get_balance_after() );
-
-        return $this->amounts( $entry ) + [
-            'entry'              => $entry,
-            'greeting_name'      => $greeting_name,
-            'greeting_text'      => self::greeting_text( esc_html( $greeting_name ) ),
-            'adjusted_text'      => self::adjusted_text( $entry ),
-            'balance_text'       => $balance_text,
-            'balance_sentence'   => self::balance_sentence( esc_html( $balance_text ) ),
-            'balance_value'      => $balance_value,
-            'balance_value_text' => self::balance_value_text( $balance_value ),
+        return $this->balance_values( $entry ) + [
+            'adjusted_text' => self::adjusted_text( $entry ),
         ];
     }
 

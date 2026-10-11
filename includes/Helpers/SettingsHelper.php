@@ -1,6 +1,8 @@
 <?php
 namespace YayLoyalty\Helpers;
 
+use YayLoyalty\Utils\ConfigSpec;
+
 defined( 'ABSPATH' ) || exit;
 
 /**
@@ -186,17 +188,12 @@ class SettingsHelper {
                 if ( is_array( $input[ $key ] ) && ! self::limits_valid( $input[ $key ], $type ) ) {
                     return false;
                 }
-            } elseif ( 'limit' === $type && null !== $input[ $key ] && ! self::is_limit( $input[ $key ] ) ) {
+            } elseif ( 'limit' === $type && null !== $input[ $key ] && ! ConfigSpec::is_limit( $input[ $key ] ) ) {
                 return false;
             }
         }
 
         return true;
-    }
-
-    /** @param mixed $value */
-    private static function is_limit( $value ): bool {
-        return ! is_bool( $value ) && is_numeric( $value ) && floor( (float) $value ) === (float) $value && (float) $value >= 1;
     }
 
     /**
@@ -265,7 +262,7 @@ class SettingsHelper {
 
             // null is no limit. is_valid() refuses anything else that isn't a whole number from 1 on write.
             case 'limit':
-                return self::is_limit( $value ) ? (int) $value : null;
+                return ConfigSpec::is_limit( $value ) ? (int) $value : null;
 
             case 'points_label':
                 return mb_substr( trim( sanitize_text_field( (string) $value ) ), 0, self::POINTS_LABEL_MAX_LENGTH );

@@ -4,6 +4,7 @@ namespace YayLoyalty\Repositories;
 use YayLoyalty\Database\QueryException;
 use YayLoyalty\Models\AbstractModel;
 use YayLoyalty\Utils\Dates;
+use YayLoyalty\Utils\Sql;
 use YayLoyalty\Utils\Table;
 
 defined( 'ABSPATH' ) || exit;
@@ -120,6 +121,71 @@ abstract class AbstractRepository {
         }
 
         return $result > 0;
+    }
+
+    /** The first row whose string $column equals $value, or null. */
+    protected function find_one_by( string $column, string $value ): ?AbstractModel {
+        global $wpdb;
+
+        $row = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare(
+                'SELECT * FROM `' . esc_sql( $this->table() ) . '` WHERE `' . esc_sql( $column ) . '` = %s LIMIT 1', // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- the table and column are escaped identifiers.
+                $value
+            ),
+            ARRAY_A
+        );
+
+        return is_array( $row ) ? $this->hydrate( $row ) : null;
+    }
+
+    /** Inserts a built-in row unless its slug is present, so a later install never overwrites a merchant's edits. The unique key on slug is the backstop. */
+    protected function seed_builtin_by_slug( AbstractModel $model, string $slug ): void {
+        if ( null !== $this->find_one_by( 'slug', $slug ) ) {
+            return;
+        }
+
+        $this->insert( $model );
+    }
+
+    /**
+     * Sets an int column per row in one statement, so a failure never leaves half the rows changed.
+     *
+     * @param array<int, int> $id_to_value
+     * @throws QueryException When the write fails.
+     */
+    protected function bulk_set_int_column( string $column, array $id_to_value ): void {
+        global $wpdb;
+
+        if ( [] === $id_to_value ) {
+            return;
+        }
+
+        $table  = esc_sql( $this->table() );
+        $column = esc_sql( $column );
+        $cases  = [];
+        $params = [];
+
+        foreach ( $id_to_value as $id => $value ) {
+            $cases[]  = 'WHEN %d THEN %d';
+            $params[] = $id;
+            $params[] = $value;
+        }
+
+        $ids = array_keys( $id_to_value );
+        $in  = Sql::in_placeholders( $ids, '%d' );
+
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- $cases and $in carry placeholder lists; every value is bound below.
+        $result = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+            $wpdb->prepare(
+                "UPDATE `{$table}` SET `{$column}` = CASE id " . implode( ' ', $cases ) . " END WHERE id IN ({$in})",
+                array_merge( $params, $ids )
+            )
+        );
+        // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+
+        if ( false === $result ) {
+            throw new QueryException( 'update', $wpdb->last_error, $this->table() );
+        }
     }
 
     /**

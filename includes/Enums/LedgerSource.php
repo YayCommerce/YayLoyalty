@@ -6,6 +6,8 @@ defined( 'ABSPATH' ) || exit;
 /** Why a balance moved; LedgerType says what kind of movement it was. */
 final class LedgerSource {
 
+    use StringEnumMethods;
+
     public const ORDER     = 'order';
     public const SIGNUP    = 'signup';
     public const REVIEW    = 'review';
@@ -37,22 +39,7 @@ final class LedgerSource {
         ];
     }
 
-    public static function is_valid( $value ): bool {
-        return is_string( $value ) && in_array( $value, self::all(), true );
-    }
-
-    /** @throws \InvalidArgumentException When $value is not a known source. */
-    public static function assert( $value ): string {
-        if ( ! self::is_valid( $value ) ) {
-            throw new \InvalidArgumentException(
-                sprintf(
-                    'YayLoyalty: unknown ledger source "%s". Expected one of: %s.',
-                    is_scalar( $value ) ? (string) $value : gettype( $value ),
-                    implode( ', ', self::all() )
-                )
-            );
-        }
-
-        return $value;
+    protected static function noun(): string {
+        return 'ledger source';
     }
 }

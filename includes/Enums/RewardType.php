@@ -9,6 +9,8 @@ defined( 'ABSPATH' ) || exit;
  */
 final class RewardType {
 
+    use StringEnumMethods;
+
     public const FLEXIBLE_DISCOUNT = 'flexible_discount';
 
     // Pro: recognised when stored, not offered in Free.
@@ -60,26 +62,11 @@ final class RewardType {
         );
     }
 
-    public static function is_valid( $value ): bool {
-        return is_string( $value ) && in_array( $value, self::all(), true );
-    }
-
     public static function is_known( $value ): bool {
         return is_string( $value ) && in_array( $value, self::all_known(), true );
     }
 
-    /** @throws \InvalidArgumentException When $value is not offerable in this build. */
-    public static function assert( $value ): string {
-        if ( ! self::is_valid( $value ) ) {
-            throw new \InvalidArgumentException(
-                sprintf(
-                    'YayLoyalty: unknown reward type "%s". Expected one of: %s.',
-                    is_scalar( $value ) ? (string) $value : gettype( $value ),
-                    implode( ', ', self::all() )
-                )
-            );
-        }
-
-        return $value;
+    protected static function noun(): string {
+        return 'reward type';
     }
 }

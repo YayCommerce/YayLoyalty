@@ -4,7 +4,6 @@ namespace YayLoyalty\Repositories;
 use YayLoyalty\Enums\Status;
 use YayLoyalty\Models\AbstractModel;
 use YayLoyalty\Models\Campaign;
-use YayLoyalty\Utils\Sql;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -45,17 +44,9 @@ class CampaignRepository extends AbstractRepository {
     }
 
     public function find_by_slug( string $slug ): ?Campaign {
-        global $wpdb;
+        $model = $this->find_one_by( 'slug', $slug );
 
-        $row = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
-            $wpdb->prepare(
-                'SELECT * FROM `' . esc_sql( $this->table() ) . '` WHERE slug = %s LIMIT 1',
-                $slug
-            ),
-            ARRAY_A
-        );
-
-        return is_array( $row ) ? Campaign::from_row( $row ) : null;
+        return $model instanceof Campaign ? $model : null;
     }
 
     /**
@@ -166,31 +157,7 @@ class CampaignRepository extends AbstractRepository {
             }
         }
 
-        if ( [] === $priorities ) {
-            return true;
-        }
-
-        $table  = esc_sql( $this->table() );
-        $cases  = [];
-        $params = [];
-
-        foreach ( $priorities as $id => $priority ) {
-            $cases[]  = 'WHEN %d THEN %d';
-            $params[] = $id;
-            $params[] = $priority;
-        }
-
-        $order_ids = array_keys( $priorities );
-        $in        = Sql::in_placeholders( $order_ids, '%d' );
-
-        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- $cases and $in carry placeholder lists; every value is bound below.
-        $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-            $wpdb->prepare(
-                "UPDATE `{$table}` SET priority = CASE id " . implode( ' ', $cases ) . " END WHERE id IN ({$in})",
-                array_merge( $params, $order_ids )
-            )
-        );
-        // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+        $this->bulk_set_int_column( 'priority', $priorities );
 
         $this->flush_cache();
 
@@ -255,12 +222,7 @@ class CampaignRepository extends AbstractRepository {
         return $this->paginate( $args );
     }
 
-    /** Inserts a built-in row unless its slug is present. The unique key on slug is the backstop. */
     public function seed_builtin( Campaign $campaign ): void {
-        if ( null !== $this->find_by_slug( $campaign->get_slug() ) ) {
-            return;
-        }
-
-        $this->insert( $campaign );
+        $this->seed_builtin_by_slug( $campaign, $campaign->get_slug() );
     }
 }

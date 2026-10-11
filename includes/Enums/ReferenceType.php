@@ -9,6 +9,10 @@ defined( 'ABSPATH' ) || exit;
  */
 final class ReferenceType {
 
+    use StringEnumMethods {
+        is_valid as private is_listed;
+    }
+
     /** WooCommerce order id. */
     public const ORDER = 'order';
 
@@ -49,25 +53,19 @@ final class ReferenceType {
 
     /** Null is valid: "no reference", as on a manual adjustment. */
     public static function is_valid( $value ): bool {
-        if ( null === $value ) {
-            return true;
-        }
-
-        return is_string( $value ) && in_array( $value, self::all(), true );
+        return null === $value || self::is_listed( $value );
     }
 
     /** @throws \InvalidArgumentException When $value is neither null nor known. */
     public static function assert( $value ): ?string {
         if ( ! self::is_valid( $value ) ) {
-            throw new \InvalidArgumentException(
-                sprintf(
-                    'YayLoyalty: unknown reference type "%s". Expected null or one of: %s.',
-                    is_scalar( $value ) ? (string) $value : gettype( $value ),
-                    implode( ', ', self::all() )
-                )
-            );
+            throw self::unknown_value( $value, 'null or one of' );
         }
 
         return $value;
+    }
+
+    protected static function noun(): string {
+        return 'reference type';
     }
 }

@@ -3,6 +3,7 @@ namespace YayLoyalty\Models;
 
 use YayLoyalty\Enums\RewardType;
 use YayLoyalty\Enums\Status;
+use YayLoyalty\Utils\ConfigSpec;
 use YayLoyalty\Utils\Dates;
 use YayLoyalty\Utils\Json;
 
@@ -292,80 +293,22 @@ class Reward extends AbstractModel {
         return true;
     }
 
-    /** @param array<string, mixed> $spec */
-    private static function value_matches_spec( $value, array $spec ): bool {
-        switch ( $spec['type'] ?? '' ) {
-            case 'bool':
-                return is_bool( $value );
-
-            case 'string':
-                return is_string( $value );
-
-            case 'enum':
-                return is_string( $value ) && in_array( $value, (array) ( $spec['values'] ?? [] ), true );
-
-            case 'enum_list':
-                if ( ! is_array( $value ) ) {
-                    return false;
-                }
-
-                foreach ( $value as $item ) {
-                    if ( ! is_string( $item ) || ! in_array( $item, (array) ( $spec['values'] ?? [] ), true ) ) {
-                        return false;
-                    }
-                }
-
-                return true;
-
-            case 'currency':
-                return is_string( $value ) && self::is_currency_code( $value );
-
-            case 'product':
-                if ( ! self::value_matches_spec( $value, self::POSITIVE_INT_SPEC ) ) {
-                    return false;
-                }
-
-                // Skipped under plain PHPUnit, where WooCommerce is not loaded.
-                return ! function_exists( 'wc_get_product' ) || self::is_rewardable_product( wc_get_product( (int) $value ) );
-
-            case 'int':
-                if ( is_bool( $value ) || ! is_numeric( $value ) || floor( (float) $value ) !== (float) $value ) {
-                    return false;
-                }
-
-                return self::is_within_bounds( (float) $value, $spec );
-
-            case 'number':
-                if ( is_bool( $value ) || ! is_numeric( $value ) ) {
-                    return false;
-                }
-
-                return self::is_within_bounds( (float) $value, $spec );
-
-            case 'nullable_int':
-                return null === $value || self::value_matches_spec( $value, [ 'type' => 'int' ] + $spec );
-
-            case 'nullable_number':
-                return null === $value || self::value_matches_spec( $value, [ 'type' => 'number' ] + $spec );
-
-            default:
-                return true;
-        }
-    }
-
     /**
+     * The spec check, plus the reward-only `product` type.
+     *
      * @param array<string, mixed> $spec
      */
-    private static function is_within_bounds( float $value, array $spec ): bool {
-        if ( isset( $spec['exclusive_min'] ) && $value <= (float) $spec['exclusive_min'] ) {
+    private static function value_matches_spec( $value, array $spec ): bool {
+        if ( 'product' !== ( $spec['type'] ?? '' ) ) {
+            return ConfigSpec::matches( $value, $spec );
+        }
+
+        if ( ! ConfigSpec::matches( $value, self::POSITIVE_INT_SPEC ) ) {
             return false;
         }
 
-        if ( isset( $spec['min'] ) && $value < (float) $spec['min'] ) {
-            return false;
-        }
-
-        return ! isset( $spec['max'] ) || $value <= (float) $spec['max'];
+        // Skipped under plain PHPUnit, where WooCommerce is not loaded.
+        return ! function_exists( 'wc_get_product' ) || self::is_rewardable_product( wc_get_product( (int) $value ) );
     }
 
     /**
@@ -381,19 +324,6 @@ class Reward extends AbstractModel {
         }
 
         return in_array( $product->get_status(), [ 'publish', 'private' ], true );
-    }
-
-    /** ISO 4217 format check, plus membership in WooCommerce's list when it is loaded (not under plain PHPUnit). */
-    private static function is_currency_code( string $code ): bool {
-        if ( 1 !== preg_match( '/^[A-Z]{3}$/', $code ) ) {
-            return false;
-        }
-
-        if ( function_exists( 'get_woocommerce_currencies' ) ) {
-            return array_key_exists( $code, get_woocommerce_currencies() );
-        }
-
-        return true;
     }
 
     /**
