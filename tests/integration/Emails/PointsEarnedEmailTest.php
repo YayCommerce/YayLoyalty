@@ -5,9 +5,7 @@ use YayLoyalty\Database\Installer;
 use YayLoyalty\Engine\Emails\EmailThrottle;
 use YayLoyalty\Engine\Emails\Emails;
 use YayLoyalty\Engine\Emails\PointsEarnedEmail;
-use YayLoyalty\Enums\Status;
 use YayLoyalty\Helpers\SettingsHelper;
-use YayLoyalty\Repositories\RewardRepository;
 use YayLoyalty\Tests\Integration\IntegrationTestCase;
 use YayLoyalty\Tests\Integration\WooCommerceOrdersFixture;
 
@@ -173,9 +171,9 @@ final class PointsEarnedEmailTest extends IntegrationTestCase {
         $this->assertStringNotContainsString( '<strong>', $plain );
     }
 
-    /** The value line stays off until redemption ships, even with a live discount reward. */
+    /** The value line stays off until redemption ships, even with a live discount reward; it fails on purpose when is_available() flips. */
     public function test_the_value_line_is_hidden_by_default(): void {
-        $this->seed_discount_reward( Status::ACTIVE );
+        $this->seed_discount_reward();
         $email = $this->preview_as( $this->customer_with_email() );
 
         $this->assertStringNotContainsString( 'worth', $email->get_content_html() );
@@ -183,46 +181,32 @@ final class PointsEarnedEmailTest extends IntegrationTestCase {
         $this->assertSame( '', $email->get_template_values()['balance_value'] );
     }
 
-    /** WooCommerce's settings preview hands the email a dummy order; the preview hook swaps in a sample award. */
     public function test_the_preview_shows_a_sample_award(): void {
         $user_id = $this->customer_with_email();
-        $email   = new PointsEarnedEmail();
+        $email   = $this->preview_as( $user_id );
+        $html    = $email->get_content_html();
+
+        $this->assertStringContainsString( 'You earned 50 Points', $email->get_subject() );
+        $this->assertStringContainsString( 'You earned <strong>50 Points</strong>.', $html );
+        $this->assertStringContainsString( 'Your balance is now <strong>150 Points</strong>.', $html );
+        $this->assertSame( get_userdata( $user_id )->display_name, $email->get_template_values()['greeting_name'] );
+    }
+
+    /** WooCommerce's settings preview, as $user_id: it hands the email a dummy order, and the preview hook swaps in a sample award. */
+    private function preview_as( int $user_id ): PointsEarnedEmail {
+        $email = new PointsEarnedEmail();
         $email->set_object( new \WC_Order() );
         wp_set_current_user( $user_id );
 
         try {
-            $email = apply_filters( 'woocommerce_prepare_email_for_preview', $email ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- firing WooCommerce's own hook as its preview does.
+            return apply_filters( 'woocommerce_prepare_email_for_preview', $email ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- firing WooCommerce's own hook as its preview does.
         } finally {
             wp_set_current_user( 0 );
         }
-
-        $this->assertStringContainsString( 'You earned 50 Points', $email->get_subject() );
-        $this->assertStringContainsString( 'You earned <strong>50 Points</strong>.', $email->get_content_html() );
-        $this->assertStringContainsString( 'Your balance is now <strong>150 Points</strong>.', $email->get_content_html() );
-        $this->assertSame( get_userdata( $user_id )->display_name, $email->get_template_values()['greeting_name'] );
     }
 
-    /** The sample award, greeting $user_id. */
-    private function preview_as( int $user_id ): PointsEarnedEmail {
-        $email = new PointsEarnedEmail();
-        wp_set_current_user( $user_id );
-
-        try {
-            $email->prepare_preview();
-        } finally {
-            wp_set_current_user( 0 );
-        }
-
-        return $email;
-    }
-
-    /** The built-in reward exactly as an install seeds it, then set to $status; the scratch tables start empty. */
-    private function seed_discount_reward( string $status ): void {
-        $seed = new \ReflectionMethod( Installer::class, 'seed_builtin_reward' );
-        $seed->setAccessible( true );
-        $seed->invoke( null );
-
-        $rewards = new RewardRepository();
-        $rewards->update( $rewards->find_by_slug( RewardRepository::CART_DISCOUNT_SLUG )->get_id(), [ 'status' => $status ] );
+    /** The built-in reward exactly as an install seeds it: active. The scratch tables start empty. */
+    private function seed_discount_reward(): void {
+        ( new \ReflectionMethod( Installer::class, 'seed_builtin_reward' ) )->invoke( null );
     }
 }

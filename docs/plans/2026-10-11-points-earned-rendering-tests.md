@@ -41,12 +41,12 @@
 - Delete: `docs/backlog/2026-10-04-points-earned-email-has-no-tests.md`
 
 **Interfaces:**
-- Consumes: `customer_with_email()` from `WooCommerceOrdersFixture`, `PointsEarnedEmail::prepare_preview()`, `get_template_values()`, `get_content_html()`, `get_content_plain()`, `get_subject()`, `RewardRepository::find_by_slug()`, `update()`, `CART_DISCOUNT_SLUG`
-- Produces: the private helpers `preview_as( int $user_id ): PointsEarnedEmail` and `seed_discount_reward( string $status ): void`
+- Consumes: `customer_with_email()` from `WooCommerceOrdersFixture`, `PointsEarnedEmail::prepare_preview()`, `get_template_values()`, `get_content_html()`, `get_content_plain()`, `get_subject()`, the `woocommerce_prepare_email_for_preview` filter
+- Produces: the private helpers `preview_as( int $user_id ): PointsEarnedEmail` and `seed_discount_reward(): void`
 
 - [x] **Step 1: Write the tests**
 
-Change the class docblock to "The Points earned email's send path and rendering…". Import `YayLoyalty\Database\Installer`, `YayLoyalty\Enums\Status` and `YayLoyalty\Repositories\RewardRepository`.
+Change the class docblock to "The Points earned email's send path and rendering…". Import `YayLoyalty\Database\Installer`.
 
 ```php
 /** Guards LoyaltyEmail::get_content_plain()'s entity decoding. */
@@ -61,9 +61,9 @@ public function test_plain_text_decodes_entities(): void {
     $this->assertStringNotContainsString( '<strong>', $plain );
 }
 
-/** The value line stays off until redemption ships, even with a live discount reward. */
+/** The value line stays off until redemption ships, even with a live discount reward; it fails on purpose when is_available() flips. */
 public function test_the_value_line_is_hidden_by_default(): void {
-    $this->seed_discount_reward( Status::ACTIVE );
+    $this->seed_discount_reward();
     $email = $this->preview_as( $this->customer_with_email() );
 
     $this->assertStringNotContainsString( 'worth', $email->get_content_html() );
@@ -71,29 +71,21 @@ public function test_the_value_line_is_hidden_by_default(): void {
     $this->assertSame( '', $email->get_template_values()['balance_value'] );
 }
 
-/** WooCommerce's settings preview hands the email a dummy order; the preview hook swaps in a sample award. */
 public function test_the_preview_shows_a_sample_award(): void {
     $user_id = $this->customer_with_email();
-    $email   = new PointsEarnedEmail();
-    $email->set_object( new \WC_Order() );
-    wp_set_current_user( $user_id );
-
-    try {
-        $email = apply_filters( 'woocommerce_prepare_email_for_preview', $email ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- firing WooCommerce's own hook as its preview does.
-    } finally {
-        wp_set_current_user( 0 );
-    }
+    $email   = $this->preview_as( $user_id );
+    $html    = $email->get_content_html();
 
     $this->assertStringContainsString( 'You earned 50 Points', $email->get_subject() );
-    $this->assertStringContainsString( 'You earned <strong>50 Points</strong>.', $email->get_content_html() );
-    $this->assertStringContainsString( 'Your balance is now <strong>150 Points</strong>.', $email->get_content_html() );
+    $this->assertStringContainsString( 'You earned <strong>50 Points</strong>.', $html );
+    $this->assertStringContainsString( 'Your balance is now <strong>150 Points</strong>.', $html );
     $this->assertSame( get_userdata( $user_id )->display_name, $email->get_template_values()['greeting_name'] );
 }
 ```
 
 Helpers:
-- `preview_as()` calls `prepare_preview()` on a new `PointsEarnedEmail` with `$user_id` as the current user, and resets the user to 0 in `finally`.
-- `seed_discount_reward()` runs the private `Installer::seed_builtin_reward()` through `ReflectionMethod` with `setAccessible( true )`. It then sets the reward's status: `RewardRepository::update( find_by_slug( CART_DISCOUNT_SLUG )->get_id(), [ 'status' => $status ] )`.
+- `preview_as()` runs WooCommerce's settings preview as `$user_id`: a new `PointsEarnedEmail` with a dummy `WC_Order`, through the `woocommerce_prepare_email_for_preview` filter, resetting the user to 0 in `finally`.
+- `seed_discount_reward()` runs the private `Installer::seed_builtin_reward()` through `ReflectionMethod`; it seeds the reward active.
 
 The last assertion assumes `greeting_name` is the display name for a user with no first name. Check it against `LoyaltyEmail::greeting_name()` (`includes/Engine/Emails/LoyaltyEmail.php:138`), and fix the test, not the code, if it differs.
 
