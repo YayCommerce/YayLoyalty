@@ -1,14 +1,17 @@
 <?php
 namespace YayLoyalty\Tests\Integration\Emails;
 
+use YayLoyalty\Database\Installer;
 use YayLoyalty\Engine\Emails\EmailThrottle;
 use YayLoyalty\Engine\Emails\Emails;
 use YayLoyalty\Engine\Emails\PointsEarnedEmail;
+use YayLoyalty\Enums\Status;
 use YayLoyalty\Helpers\SettingsHelper;
+use YayLoyalty\Repositories\RewardRepository;
 use YayLoyalty\Tests\Integration\IntegrationTestCase;
 use YayLoyalty\Tests\Integration\WooCommerceOrdersFixture;
 
-/** The Points earned email's send path, through the real earning hooks and WooCommerce's mailer. */
+/** The Points earned email's send path, through the real earning hooks and WooCommerce's mailer, and what it renders. */
 final class PointsEarnedEmailTest extends IntegrationTestCase {
 
     use WooCommerceOrdersFixture;
@@ -156,5 +159,70 @@ final class PointsEarnedEmailTest extends IntegrationTestCase {
         $this->assertCount( 3, $this->sent );
 
         $this->assertSame( [ 10, 10, 10, 10 ], $this->ledger_points( $user_id ), 'A skipped send never costs the award.' );
+    }
+
+    /** Guards LoyaltyEmail::get_content_plain()'s entity decoding. */
+    public function test_plain_text_decodes_entities(): void {
+        $user_id = $this->customer_with_email();
+        update_user_meta( $user_id, 'first_name', "O'Brien" );
+
+        $plain = $this->preview_as( $user_id )->get_content_plain();
+
+        $this->assertStringContainsString( "Hi O'Brien,", $plain );
+        $this->assertStringNotContainsString( '&#039;', $plain );
+        $this->assertStringNotContainsString( '<strong>', $plain );
+    }
+
+    /** The value line stays off until redemption ships, even with a live discount reward. */
+    public function test_the_value_line_is_hidden_by_default(): void {
+        $this->seed_discount_reward( Status::ACTIVE );
+        $email = $this->preview_as( $this->customer_with_email() );
+
+        $this->assertStringNotContainsString( 'worth', $email->get_content_html() );
+        $this->assertStringNotContainsString( 'worth', $email->get_content_plain() );
+        $this->assertSame( '', $email->get_template_values()['balance_value'] );
+    }
+
+    /** WooCommerce's settings preview hands the email a dummy order; the preview hook swaps in a sample award. */
+    public function test_the_preview_shows_a_sample_award(): void {
+        $user_id = $this->customer_with_email();
+        $email   = new PointsEarnedEmail();
+        $email->set_object( new \WC_Order() );
+        wp_set_current_user( $user_id );
+
+        try {
+            $email = apply_filters( 'woocommerce_prepare_email_for_preview', $email ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- firing WooCommerce's own hook as its preview does.
+        } finally {
+            wp_set_current_user( 0 );
+        }
+
+        $this->assertStringContainsString( 'You earned 50 Points', $email->get_subject() );
+        $this->assertStringContainsString( 'You earned <strong>50 Points</strong>.', $email->get_content_html() );
+        $this->assertStringContainsString( 'Your balance is now <strong>150 Points</strong>.', $email->get_content_html() );
+        $this->assertSame( get_userdata( $user_id )->display_name, $email->get_template_values()['greeting_name'] );
+    }
+
+    /** The sample award, greeting $user_id. */
+    private function preview_as( int $user_id ): PointsEarnedEmail {
+        $email = new PointsEarnedEmail();
+        wp_set_current_user( $user_id );
+
+        try {
+            $email->prepare_preview();
+        } finally {
+            wp_set_current_user( 0 );
+        }
+
+        return $email;
+    }
+
+    /** The built-in reward exactly as an install seeds it, then set to $status; the scratch tables start empty. */
+    private function seed_discount_reward( string $status ): void {
+        $seed = new \ReflectionMethod( Installer::class, 'seed_builtin_reward' );
+        $seed->setAccessible( true );
+        $seed->invoke( null );
+
+        $rewards = new RewardRepository();
+        $rewards->update( $rewards->find_by_slug( RewardRepository::CART_DISCOUNT_SLUG )->get_id(), [ 'status' => $status ] );
     }
 }
