@@ -10,6 +10,8 @@ defined( 'ABSPATH' ) || exit;
  */
 final class Status {
 
+    use StringEnumMethods;
+
     /** Live, subject to its date window. */
     public const ACTIVE = 'active';
 
@@ -34,26 +36,6 @@ final class Status {
             self::DRAFT,
             self::ARCHIVED,
         ];
-    }
-
-    public static function is_valid( $value ): bool {
-        return is_string( $value ) && in_array( $value, self::all(), true );
-    }
-
-    /** @throws \InvalidArgumentException When $value is not a known status. */
-    public static function assert( $value ): string {
-        if ( ! self::is_valid( $value ) ) {
-            throw new \InvalidArgumentException(
-                sprintf(
-                    'YayLoyalty: unknown status "%s". Expected one of: %s. '
-                    . 'Note that "scheduled" and "ended" are not statuses — liveness is derived from the dates.',
-                    is_scalar( $value ) ? (string) $value : gettype( $value ),
-                    implode( ', ', self::all() )
-                )
-            );
-        }
-
-        return $value;
     }
 
     /**
@@ -101,5 +83,13 @@ final class Status {
         }
 
         return self::ACTIVE;
+    }
+
+    protected static function noun(): string {
+        return 'status';
+    }
+
+    protected static function assert_note(): string {
+        return ' Note that "scheduled" and "ended" are not statuses — liveness is derived from the dates.';
     }
 }
