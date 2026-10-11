@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Tests\Integration\Emails;
 
+use YayLoyalty\Database\Installer;
 use YayLoyalty\Engine\Emails\EmailThrottle;
 use YayLoyalty\Engine\Emails\Emails;
 use YayLoyalty\Engine\Emails\PointsEarnedEmail;
@@ -8,7 +9,7 @@ use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Tests\Integration\IntegrationTestCase;
 use YayLoyalty\Tests\Integration\WooCommerceOrdersFixture;
 
-/** The Points earned email's send path, through the real earning hooks and WooCommerce's mailer. */
+/** The Points earned email's send path, through the real earning hooks and WooCommerce's mailer, and what it renders. */
 final class PointsEarnedEmailTest extends IntegrationTestCase {
 
     use WooCommerceOrdersFixture;
@@ -156,5 +157,56 @@ final class PointsEarnedEmailTest extends IntegrationTestCase {
         $this->assertCount( 3, $this->sent );
 
         $this->assertSame( [ 10, 10, 10, 10 ], $this->ledger_points( $user_id ), 'A skipped send never costs the award.' );
+    }
+
+    /** Guards LoyaltyEmail::get_content_plain()'s entity decoding. */
+    public function test_plain_text_decodes_entities(): void {
+        $user_id = $this->customer_with_email();
+        update_user_meta( $user_id, 'first_name', "O'Brien" );
+
+        $plain = $this->preview_as( $user_id )->get_content_plain();
+
+        $this->assertStringContainsString( "Hi O'Brien,", $plain );
+        $this->assertStringNotContainsString( '&#039;', $plain );
+        $this->assertStringNotContainsString( '<strong>', $plain );
+    }
+
+    /** The value line stays off until redemption ships, even with a live discount reward; it fails on purpose when is_available() flips. */
+    public function test_the_value_line_is_hidden_by_default(): void {
+        $this->seed_discount_reward();
+        $email = $this->preview_as( $this->customer_with_email() );
+
+        $this->assertStringNotContainsString( 'worth', $email->get_content_html() );
+        $this->assertStringNotContainsString( 'worth', $email->get_content_plain() );
+        $this->assertSame( '', $email->get_template_values()['balance_value'] );
+    }
+
+    public function test_the_preview_shows_a_sample_award(): void {
+        $user_id = $this->customer_with_email();
+        $email   = $this->preview_as( $user_id );
+        $html    = $email->get_content_html();
+
+        $this->assertStringContainsString( 'You earned 50 Points', $email->get_subject() );
+        $this->assertStringContainsString( 'You earned <strong>50 Points</strong>.', $html );
+        $this->assertStringContainsString( 'Your balance is now <strong>150 Points</strong>.', $html );
+        $this->assertSame( get_userdata( $user_id )->display_name, $email->get_template_values()['greeting_name'] );
+    }
+
+    /** WooCommerce's settings preview, as $user_id: it hands the email a dummy order, and the preview hook swaps in a sample award. */
+    private function preview_as( int $user_id ): PointsEarnedEmail {
+        $email = new PointsEarnedEmail();
+        $email->set_object( new \WC_Order() );
+        wp_set_current_user( $user_id );
+
+        try {
+            return apply_filters( 'woocommerce_prepare_email_for_preview', $email ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- firing WooCommerce's own hook as its preview does.
+        } finally {
+            wp_set_current_user( 0 );
+        }
+    }
+
+    /** The built-in reward exactly as an install seeds it: active. The scratch tables start empty. */
+    private function seed_discount_reward(): void {
+        ( new \ReflectionMethod( Installer::class, 'seed_builtin_reward' ) )->invoke( null );
     }
 }
