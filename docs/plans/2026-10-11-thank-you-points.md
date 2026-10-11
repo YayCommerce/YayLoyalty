@@ -2,7 +2,7 @@
 
 > Execute tasks in order; steps use `- [ ]`.
 
-**Status:** active
+**Status:** done 2026-10-11
 **Goal:** On the order-received (thank-you) page, show a signed-in customer what the order earns: "You'll earn 270 Points when your order completes" while pending, "You earned 270 Points on this order" once completed, followed by a balance line with the points still pending.
 **Spec:** none. The request is the thank-you page block, earned/pending version (artboard 1e).
 **Architecture:** One new class, `ThankYouPoints`, reads the order's existing `PendingPoints` meta and the customer row, and prints a small block on `woocommerce_thankyou`. WooCommerce fires that action in the classic `checkout/thankyou.php` template and in the block theme's Order Confirmation → Additional Information block, so one hook covers both. It only reads data; nothing is computed or written at render time.
@@ -25,6 +25,7 @@
 - **Test orders:** made with `wc_create_order()` in `wp eval` (pending, then processing, as a COD order goes), not through checkout; the order-received page was then opened in the browser. Order #534: "You'll earn 40" with pending 445 → 485, then completed: "You earned 40", balance 53,774 → 53,814, pending back to 445.
 - **Theme check:** the site already runs Twenty Twenty-Five, so Step 6 needed no theme switch; the block shows once, in Additional Information. The classic template was checked by firing `woocommerce_thankyou` in `wp eval` rather than by switching themes.
 - **Visibility description:** Design → Visibility's description now names the thank-you page points too.
+- **Tidy pass:** `LauncherCopy::product_earn()` is now `points_sentence()` (same signature), since the thank-you lines use it too. The unreleased-pending rule is `PendingPoints::unreleased( \WC_Order ): int`, shared with `release()`; the failed/cancelled/refunded list is `OrderStatus::no_points()`; and the "program on and switch on" check is `DesignHelper::surface_enabled( array $design, string $flag ): bool`, shared with `ProductEarnMessage`. The Design tab's visibility switches share one `VisibilitySwitchField`.
 
 ## Global constraints
 
