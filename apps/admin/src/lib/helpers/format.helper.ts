@@ -83,6 +83,11 @@ export function formatStoreDecimal(value: number, maxDecimals: number): string {
   return formatStoreNumber(value, places);
 }
 
+/** A percentage like "12.5%" with the store's separators: up to `maxDecimals` places. */
+export function formatPercent(value: number, maxDecimals: number): string {
+  return `${formatStoreDecimal(value, maxDecimals)}%`;
+}
+
 /**
  * A money amount in the store's currency format. Formats only: pass a value
  * already rounded by its owner, since `toFixed`

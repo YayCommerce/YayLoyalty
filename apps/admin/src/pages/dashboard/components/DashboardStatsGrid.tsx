@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { __ } from '@wordpress/i18n';
 
+import { formatPercent } from '@/lib/helpers/format.helper';
 import type { DashboardRange, DashboardStats } from '@/lib/schema/dashboard.schema';
 import { PointsValue } from '@/components/ui/custom/points-value';
 import { ordersSubline, rangeSubline } from '../dashboard-page.copy';
@@ -68,11 +69,7 @@ export function DashboardStatsGrid({
       />
       <DashboardStatTile
         label={rate}
-        value={
-          stats.redemption_rate.rate === null
-            ? '—'
-            : `${stats.redemption_rate.rate.toLocaleString(undefined, { maximumFractionDigits: 1 })}%`
-        }
+        value={stats.redemption_rate.rate === null ? '—' : formatPercent(stats.redemption_rate.rate, 1)}
         subline={ordersSubline(stats.redemption_rate.orders_with_points, stats.redemption_rate.orders_total)}
         delta={stats.redemption_rate.prev_delta_pct}
         range={range}
