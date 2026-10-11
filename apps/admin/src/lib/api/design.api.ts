@@ -19,7 +19,8 @@ export type DesignPreviewViewer = 'member' | 'guest';
 /**
  * The design fields the storefront launcher draws: a mirror of what `LauncherPayload::for_balance()`
  * (and `Launcher::view()`) read. A field missing here never redraws the preview; change both together.
- * `storefront_text.product_earn_line` rides along with its group; the launcher doesn't draw it (`ProductEarnMessage` does).
+ * `storefront_text.product_earn_line` and the `thankyou_*_line`s ride along with their group; the launcher doesn't draw them
+ * (`ProductEarnMessage` and `ThankYouPoints` do).
  */
 export const DESIGN_PREVIEW_FIELDS = ['launcher', 'storefront_text', 'visibility.hide_on_mobile'] as const;
 

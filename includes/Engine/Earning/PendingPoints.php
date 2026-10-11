@@ -60,11 +60,11 @@ final class PendingPoints {
     public function release( int $order_id ): int {
         $order = wc_get_order( $order_id );
 
-        if ( ! $order instanceof \WC_Order || '' !== (string) $order->get_meta( self::META_RELEASED ) ) {
+        if ( ! $order instanceof \WC_Order ) {
             return 0;
         }
 
-        $pending = (int) $order->get_meta( self::META_PENDING );
+        $pending = self::unreleased( $order );
 
         if ( $pending < 1 ) {
             return 0;
@@ -81,6 +81,11 @@ final class PendingPoints {
         }
 
         return $pending;
+    }
+
+    /** The staged figure while the order has not been released, else 0. */
+    public static function unreleased( \WC_Order $order ): int {
+        return '' === (string) $order->get_meta( self::META_RELEASED ) ? (int) $order->get_meta( self::META_PENDING ) : 0;
     }
 
     /**

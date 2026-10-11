@@ -43,6 +43,8 @@ export const STOREFRONT_EARN_RATE_LINE_LABEL = () => __('Earn rate line', 'yaylo
 export const STOREFRONT_REDEEM_BUTTON_LABEL = () => __('Redeem button', 'yayloyalty');
 export const STOREFRONT_SIGNED_OUT_PROMPT_LABEL = () => __('Signed-out prompt', 'yayloyalty');
 export const STOREFRONT_PRODUCT_EARN_LINE_LABEL = () => __('Product page earning line', 'yayloyalty');
+export const STOREFRONT_THANKYOU_PENDING_LINE_LABEL = () => __('Thank-you page, points pending', 'yayloyalty');
+export const STOREFRONT_THANKYOU_EARNED_LINE_LABEL = () => __('Thank-you page, points earned', 'yayloyalty');
 
 /** Storefront-text-only reset, in the section header. Wording distinct from the whole-tab reset above. */
 export const STOREFRONT_RESET_BUTTON_LABEL = () => __('Reset to defaults', 'yayloyalty');
@@ -60,7 +62,10 @@ export const STOREFRONT_RESET_SUCCESS_TOAST = () => __('Storefront wording reset
 
 export const VISIBILITY_SECTION_TITLE = () => __('Visibility', 'yayloyalty');
 export const VISIBILITY_SECTION_DESCRIPTION = () =>
-  __('Where the launcher, its panel and the product-page earning line appear on the storefront.', 'yayloyalty');
+  __(
+    'Where the launcher, its panel, the product-page earning line and the thank-you page points appear on the storefront.',
+    'yayloyalty',
+  );
 export const VISIBILITY_SCOPE_LABEL = () => __('Show on', 'yayloyalty');
 export const VISIBILITY_INCLUDE_PAGES_LABEL = () => __('Show on these pages', 'yayloyalty');
 export const VISIBILITY_INCLUDE_PAGES_PLACEHOLDER = () => __('Select pages…', 'yayloyalty');
@@ -71,6 +76,7 @@ export const VISIBILITY_INCLUDE_PAGES_LIMIT_NOTE = () =>
   __('Showing the first %d pages. Search to find others.', 'yayloyalty');
 export const VISIBILITY_HIDE_ON_MOBILE_LABEL = () => __('Hide on mobile', 'yayloyalty');
 export const VISIBILITY_PRODUCT_MESSAGE_LABEL = () => __('Show earning line on product pages', 'yayloyalty');
+export const VISIBILITY_THANKYOU_MESSAGE_LABEL = () => __('Show points on the thank-you page', 'yayloyalty');
 export const VISIBILITY_HIDE_FOR_ROLES_LABEL = () => __('Hide for roles', 'yayloyalty');
 export const VISIBILITY_HIDE_FOR_ROLES_PLACEHOLDER = () => __('Select roles…', 'yayloyalty');
 export const VISIBILITY_HIDE_FOR_ROLES_DESCRIPTION = () =>

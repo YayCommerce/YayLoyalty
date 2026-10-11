@@ -26,6 +26,8 @@ export const designSchema = z.object({
     redeem_button: z.string().min(1),
     signed_out_prompt: z.string(),
     product_earn_line: z.string().min(1),
+    thankyou_pending_line: z.string().min(1),
+    thankyou_earned_line: z.string().min(1),
   }),
   visibility: z.object({
     scope: designVisibilityScopeSchema,
@@ -34,6 +36,7 @@ export const designSchema = z.object({
     hide_on_mobile: z.boolean(),
     hide_for_roles: z.array(z.string()),
     product_message: z.boolean(),
+    thankyou_message: z.boolean(),
   }),
   /** Pro. */
   panel: z.object({
