@@ -62,6 +62,11 @@ export function currencyDecimals(): number {
   return window.yayLoyaltyMeta.wcMeta.currency_data.num_decimals;
 }
 
+/** Decimal places for an amount in `currency`: the store's for its own currency, else 2, since the admin knows no other's. */
+export function decimalsFor(currency: string): number {
+  return currency === storeCurrency() ? currencyDecimals() : 2;
+}
+
 /** A number with the store's price separators, at exactly `decimals` places: points use the same separators as money. */
 export function formatStoreNumber(value: number, decimals: number): string {
   const { thousand_sep, decimal_sep } = window.yayLoyaltyMeta.wcMeta.currency_data;

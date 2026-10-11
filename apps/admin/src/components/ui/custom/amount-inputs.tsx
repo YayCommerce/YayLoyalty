@@ -1,5 +1,6 @@
 import { __, _n } from '@wordpress/i18n';
 
+import { decimalsFor } from '@/lib/helpers/format.helper';
 import { cn } from '@/lib/utils';
 import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
 
@@ -21,7 +22,7 @@ export function PointsInput({
   );
 }
 
-/** A non-negative money amount to two decimals, with the currency code as its unit. */
+/** A non-negative money amount at the currency's decimals, with the currency code as its unit. */
 export function MoneyInput({
   value,
   currency,
@@ -32,7 +33,14 @@ export function MoneyInput({
   onValueChange: (value: number) => void;
 }) {
   return (
-    <NumberInputRoot size="small" className="w-32" min={0} decimalScale={2} value={value} onValueChange={onValueChange}>
+    <NumberInputRoot
+      size="small"
+      className="w-32"
+      min={0}
+      decimalScale={decimalsFor(currency)}
+      value={value}
+      onValueChange={onValueChange}
+    >
       <NumberInputInput />
       <NumberInputUnit unit={currency} />
     </NumberInputRoot>
@@ -60,7 +68,7 @@ export function OptionalMoneyInput({
       className="w-32"
       nullable
       min={0.01}
-      decimalScale={2}
+      decimalScale={decimalsFor(currency)}
       value={value}
       onValueChange={onValueChange}
     >
