@@ -21,5 +21,5 @@ In YayMail, accept the third `$email` argument and pass `'email' => $email` in t
 ## Done when
 
 - [ ] A YayMail release passes `'email' => $email` in the subject's render data for an email that isn't about an order.
-- [ ] YayLoyalty requires that YayMail version or later before it loads `PointsEarnedShortcodes`.
-- [ ] `PointsEarnedShortcodes` has no constructor, no `hold_subject_email()` or `release_subject_email()`, and no `$subject_email`.
+- [x] YayLoyalty requires that YayMail version or later before it loads `PointsEarnedShortcodes`. — `YayMailIntegration::MIN_YAYMAIL_VERSION` (`'4.4.7'`), checked in `is_yaymail_active()` before `register_shortcodes()` is hooked
+- [x] `PointsEarnedShortcodes` has no constructor, no `hold_subject_email()` or `release_subject_email()`, and no `$subject_email`. — `includes/Integrations/YayMail/PointsEarnedShortcodes.php`; `values()` reads `$render_data['email']` (c517352)
