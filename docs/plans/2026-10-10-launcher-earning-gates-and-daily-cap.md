@@ -2,9 +2,9 @@
 
 > **For agentic workers:** execute tasks in order, one at a time. Steps use `- [ ]` for tracking. There is no spec; the Requirements section below is the source.
 
-**Status:** active
+**Status:** done 2026-10-11
 **Goal:** the storefront asks the same earning rules as the award does, so a shopper a Pro gate or the Pro daily cap stops from earning isn't promised points.
-**Spec:** none, planned from two backlog items: [the launcher skips Pro earning gates](../backlog/2026-10-05-launcher-skips-pro-earning-gates.md) and [the launcher advertises earning past the daily cap](../backlog/2026-10-08-launcher-advertises-earning-past-the-daily-cap.md).
+**Spec:** none, planned from two backlog items: `2026-10-05-launcher-skips-pro-earning-gates` and `2026-10-08-launcher-advertises-earning-past-the-daily-cap`, both removed once this plan landed.
 **Architecture:** `EarningService` gets two public statics: `gate_reason()` runs the filtered gate chain without building the engine, and `points_left_today()` applies a new Lite filter that Pro's `DailyEarningLimit` answers. Lite never names Pro: with no subscriber, the figure is null (no limit). The obvious alternative, making the cap an earning gate, was turned down: a gate refuses outright, while the cap lowers an award, and a partial cut still pays.
 **Touches:** `includes/Engine/Earning/EarningService.php` (shared: the award path and every caller of `preview()`), `includes/Engine/Earning/ProgramGate.php`, `includes/Engine/Storefront/Launcher.php`, `AccountRewards.php`, `LauncherPayload.php`, `LauncherCopy.php`, `ProductEarnMessage.php`, the templates `panel-member.php` and `account-rewards.php`, `includes/Pro/Services/DailyEarningLimit.php`, `includes/Pro/YayLoyaltyPro.php`, the two backlog items.
 **Tests:** `tests/integration/Earning/DailyEarningLimitTest.php::test_points_left_today_counts_todays_earn_rows` (integration): the remaining-today figure that hides the rates.

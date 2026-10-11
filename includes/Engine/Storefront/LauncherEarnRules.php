@@ -71,6 +71,27 @@ final class LauncherEarnRules {
     }
 
     /**
+     * member_rows() under the daily limit: at 0 left the limit line replaces the rows; below it, the line follows rows there are.
+     *
+     * @param array<int, array{trigger: string, label: string, value: string}> $rows       member_rows().
+     * @param int|null                                                         $left_today EarningService::points_left_today(); null for no limit.
+     * @return array{rows: array<int, array{trigger: string, label: string, value: string}>, limit_line: string}
+     */
+    public static function with_daily_limit( array $rows, ?int $left_today ): array {
+        if ( 0 === $left_today ) {
+            return [
+                'rows'       => [],
+                'limit_line' => LauncherCopy::daily_limit_line( 0 ),
+            ];
+        }
+
+        return [
+            'rows'       => $rows,
+            'limit_line' => [] === $rows ? '' : LauncherCopy::daily_limit_line( $left_today ),
+        ];
+    }
+
+    /**
      * A member's "Ways to earn" rows, in display order: no signup row, since a member already has the account it pays for.
      *
      * @param array{purchase: ?float, review: ?int} $earn         advertise()'s `earn`.

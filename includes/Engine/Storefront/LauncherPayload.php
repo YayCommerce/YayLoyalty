@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Engine\Storefront;
 
+use YayLoyalty\Engine\Earning\EarningService;
 use YayLoyalty\Engine\Points\ContextFactory;
 use YayLoyalty\Engine\Points\PointsEngine;
 use YayLoyalty\Engine\Redemption\RedemptionService;
@@ -48,7 +49,7 @@ final class LauncherPayload {
 
         $customer = $this->customers->find_by_user_id( $user_id );
 
-        return $this->for_balance( $design, null === $customer ? 0 : $customer->get_balance() );
+        return $this->for_balance( $design, null === $customer ? 0 : $customer->get_balance(), EarningService::points_left_today( $user_id ) );
     }
 
     /**
@@ -56,9 +57,10 @@ final class LauncherPayload {
      * The design fields read here are mirrored by DESIGN_PREVIEW_FIELDS (apps/admin/src/lib/api/design.api.ts).
      *
      * @param array    $design  DesignHelper::get_design() or DesignHelper::with_unsaved().
-     * @param int|null $balance The member's balance; null for a guest.
+     * @param int|null $balance    The member's balance; null for a guest.
+     * @param int|null $left_today Points the member may still earn today (EarningService::points_left_today()); null for no limit.
      */
-    public function for_balance( array $design, ?int $balance ): array {
+    public function for_balance( array $design, ?int $balance, ?int $left_today = null ): array {
         $now      = Dates::now();
         $reward   = RedemptionService::is_available() ? $this->rewards->find_live_cart_discount( $now ) : null;
         $redeem   = self::redeem_rule( $reward );
@@ -74,6 +76,7 @@ final class LauncherPayload {
             'purchase_min' => $rules['purchase_min'],
             'redeem'       => $redeem,
             'member'       => null === $balance ? null : self::member( $balance, null === $redeem ? null : $reward ),
+            'left_today'   => $left_today,
             'estimate'     => null !== $engine && null === $balance && null !== $rules['earn'][ CampaignTrigger::PURCHASE ] ? self::product_estimate() : null,
             'register'     => $register,
             'account_url'  => (string) wc_get_page_permalink( 'myaccount' ),

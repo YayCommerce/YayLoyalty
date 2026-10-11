@@ -17,8 +17,8 @@ defined( 'ABSPATH' ) || exit;
  *
  * Today's total is gross EARN (LedgerRepository::points_earned_today with no
  * source): manual adjustments are neither capped nor counted, and a refund
- * does not free up room. preview() is not capped, so pending points and
- * storefront figures stay the uncapped best case.
+ * does not free up room. preview() is not capped, so pending points stay
+ * the uncapped best case; the storefront reads left_today() instead.
  *
  * The filter runs inside LedgerService::earn(), under the customer's row
  * lock, so two awards for one customer at the same moment queue and the
@@ -41,23 +41,37 @@ final class DailyEarningLimit {
      */
     public function clamp( $points, string $trigger, Context $ctx ): int {
         $points  = is_numeric( $points ) ? (int) $points : 0;
-        $cap     = SettingsHelper::get_settings()['max_points_per_day'];
         $user_id = $ctx->get_user_id();
+        $left    = null === $user_id || $points <= 0 ? null : $this->left_today( null, $user_id );
 
-        if ( null === $cap || null === $user_id || $points <= 0 ) {
+        if ( null === $left ) {
             return $points;
         }
 
-        $earned  = $this->ledger->points_earned_today( $user_id, Dates::now(), null );
-        $allowed = max( 0, min( $points, $cap - $earned ) );
+        $allowed = min( $points, $left );
 
         if ( $allowed < $points ) {
             Log::warning(
                 'DailyEarningLimit',
-                sprintf( 'user #%d %s: evaluated %d, awarded %d, cap %d, earned today %d', $user_id, $trigger, $points, $allowed, $cap, $earned )
+                sprintf( 'user #%d %s: evaluated %d, awarded %d, left today %d', $user_id, $trigger, $points, $allowed, $left )
             );
         }
 
         return $allowed;
+    }
+
+    /**
+     * The `yayloyalty_points_left_today` subscriber: the cap minus today's EARN total, never below 0, or null with no cap.
+     *
+     * @param int|null $left An earlier subscriber's answer; the cap replaces it.
+     */
+    public function left_today( $left, int $user_id ): ?int { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- the filter's signature.
+        $cap = SettingsHelper::get_settings()['max_points_per_day'];
+
+        if ( null === $cap ) {
+            return null;
+        }
+
+        return max( 0, $cap - $this->ledger->points_earned_today( $user_id, Dates::now(), null ) );
     }
 }

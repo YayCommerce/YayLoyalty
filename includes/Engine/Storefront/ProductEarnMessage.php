@@ -37,6 +37,9 @@ final class ProductEarnMessage {
     /** @var array<int, string> Sentences by product id, for this request. */
     private static $sentences = [];
 
+    /** @var int|null|false EarningService::points_left_today() for the member, read once per request; false until read. */
+    private static $left_today = false;
+
     public static function register(): void {
         add_action( 'woocommerce_single_product_summary', [ self::class, 'render_summary' ], 15 );
         add_filter( 'woocommerce_blocks_hook_compatibility_additional_data', [ self::class, 'unhook_in_block_templates' ] );
@@ -158,9 +161,20 @@ final class ProductEarnMessage {
         }
     }
 
+    /** What one of this product earns the member, no more than the daily limit leaves today. 0 on failure. */
     private static function member_points( \WC_Product $product ): int {
         try {
-            return self::service()->preview( CampaignTrigger::PURCHASE, ContextFactory::from_product( $product, 1, get_current_user_id() ) )->get_points();
+            if ( false === self::$left_today ) {
+                self::$left_today = EarningService::points_left_today( get_current_user_id() );
+            }
+
+            if ( 0 === self::$left_today ) {
+                return 0;
+            }
+
+            $points = self::service()->preview( CampaignTrigger::PURCHASE, ContextFactory::from_product( $product, 1, get_current_user_id() ) )->get_points();
+
+            return null === self::$left_today ? $points : min( $points, self::$left_today );
         } catch ( \Throwable $e ) {
             Log::warning( 'ProductEarnMessage', 'member estimate failed: ' . $e->getMessage() );
 
