@@ -151,6 +151,7 @@ abstract class AbstractRepository {
      * Sets an int column per row in one statement, so a failure never leaves half the rows changed.
      *
      * @param array<int, int> $id_to_value
+     * @throws QueryException When the write fails.
      */
     protected function bulk_set_int_column( string $column, array $id_to_value ): void {
         global $wpdb;
@@ -174,13 +175,17 @@ abstract class AbstractRepository {
         $in  = Sql::in_placeholders( $ids, '%d' );
 
         // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- $cases and $in carry placeholder lists; every value is bound below.
-        $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        $result = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
             $wpdb->prepare(
                 "UPDATE `{$table}` SET `{$column}` = CASE id " . implode( ' ', $cases ) . " END WHERE id IN ({$in})",
                 array_merge( $params, $ids )
             )
         );
         // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+
+        if ( false === $result ) {
+            throw new QueryException( 'update', $wpdb->last_error, $this->table() );
+        }
     }
 
     /**
