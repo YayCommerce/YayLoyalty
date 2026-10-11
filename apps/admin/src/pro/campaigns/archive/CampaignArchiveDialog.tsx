@@ -1,4 +1,4 @@
-import { ReactElement, useId, useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { createInterpolateElement } from '@wordpress/element';
 import { __, _n, _x, sprintf } from '@wordpress/i18n';
@@ -22,6 +22,7 @@ import {
   DialogTitle,
 } from '@/components/ui/custom/dialog';
 import { Label } from '@/components/ui/label';
+import { archivedLink, ArchiveOrDeleteDialog } from '../../shared/ArchiveOrDeleteDialog';
 import { archiveBodyLines, resolveArchiveCase } from './campaign-archive.copy';
 import { BulkArchiveRow, bulkBodyLines } from './campaign-bulk-archive.copy';
 
@@ -50,103 +51,53 @@ export function CampaignArchiveDialog({
 
   const statusMutation = useUpdateCampaignStatusMutation(campaign.id);
   const deleteMutation = useDeleteCampaignMutation(campaign.id);
-  const [pendingAction, setPendingAction] = useState<CampaignArchiveAction>();
-  const busy = pendingAction !== undefined;
-
-  async function run(action: CampaignArchiveAction) {
-    setPendingAction(action);
-
-    try {
-      if (action === 'deleted') {
-        await deleteMutation.mutateAsync();
-      } else {
-        await statusMutation.mutateAsync(action);
-      }
-
-      toast.success(successMessage(action));
-      onClose();
-      onDone?.(action);
-    } catch (error) {
-      await toastApiError(error, failureMessage(action));
-      setPendingAction(undefined);
-    }
-  }
 
   const isDelete = archiveCase === 'delete';
-  const lines = isDelete
-    ? [__('This campaign has never awarded points, so it can be deleted. This cannot be undone.', 'yayloyalty')]
-    : archiveBodyLines(campaign, displayStatus);
 
   return (
-    <Dialog open onOpenChange={(open) => !open && !busy && onClose()}>
-      <DialogContent className="gap-0 p-0 sm:max-w-lg" showCloseButton={!busy}>
-        <DialogHeader className="p-5 pr-12 pb-0">
-          <DialogTitle>
-            {isDelete
-              ? sprintf(
-                  /* translators: %s: the campaign's name. */
-                  __('Delete “%s”?', 'yayloyalty'),
-                  campaign.name,
-                )
-              : sprintf(
-                  /* translators: %s: the campaign's name. */
-                  __('Archive “%s”?', 'yayloyalty'),
-                  campaign.name,
-                )}
-          </DialogTitle>
-        </DialogHeader>
-
-        <DialogDescription asChild>
-          <div className="text-foreground flex flex-col gap-2 p-5">
-            {lines.map((line) => (
-              <p key={line}>{createInterpolateElement(line, { link: archivedLink(busy, onClose, onViewArchived) })}</p>
-            ))}
-          </div>
-        </DialogDescription>
-
-        <DialogFooter className="bg-muted/40 border-t p-5 sm:items-center sm:justify-between">
-          <div>
-            {isEarning && (
-              <Button variant="outline" disabled={busy} onClick={() => run('paused')}>
-                {pendingAction === 'paused' ? __('Pausing…', 'yayloyalty') : __('Pause instead', 'yayloyalty')}
-              </Button>
-            )}
-          </div>
-          <div className="flex flex-col-reverse gap-2 sm:flex-row">
-            <Button variant="outline" disabled={busy} onClick={onClose}>
-              {__('Cancel', 'yayloyalty')}
-            </Button>
-            {isDelete ? (
-              <Button variant="destructive" disabled={busy} onClick={() => run('deleted')}>
-                {pendingAction === 'deleted' ? __('Deleting…', 'yayloyalty') : __('Delete permanently', 'yayloyalty')}
-              </Button>
-            ) : (
-              <Button variant="destructive" disabled={busy} onClick={() => run('archived')}>
-                {pendingAction === 'archived' ? __('Archiving…', 'yayloyalty') : __('Archive campaign', 'yayloyalty')}
-              </Button>
-            )}
-          </div>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-/** The <link> element in the body copy: jumps to the Archived view, or plain text where there is none. */
-function archivedLink(busy: boolean, onClose: () => void, onViewArchived?: () => void): ReactElement {
-  if (!onViewArchived) {
-    return <span />;
-  }
-
-  return (
-    <Button
-      variant="link"
-      className="h-auto p-0 align-baseline underline"
-      disabled={busy}
-      onClick={() => {
-        onClose();
-        onViewArchived();
-      }}
+    <ArchiveOrDeleteDialog<CampaignArchiveAction>
+      title={
+        isDelete
+          ? sprintf(
+              /* translators: %s: the campaign's name. */
+              __('Delete “%s”?', 'yayloyalty'),
+              campaign.name,
+            )
+          : sprintf(
+              /* translators: %s: the campaign's name. */
+              __('Archive “%s”?', 'yayloyalty'),
+              campaign.name,
+            )
+      }
+      lines={
+        isDelete
+          ? [__('This campaign has never awarded points, so it can be deleted. This cannot be undone.', 'yayloyalty')]
+          : archiveBodyLines(campaign, displayStatus)
+      }
+      primary={
+        isDelete
+          ? {
+              action: 'deleted',
+              label: __('Delete permanently', 'yayloyalty'),
+              pendingLabel: __('Deleting…', 'yayloyalty'),
+            }
+          : {
+              action: 'archived',
+              label: __('Archive campaign', 'yayloyalty'),
+              pendingLabel: __('Archiving…', 'yayloyalty'),
+            }
+      }
+      secondary={
+        isEarning
+          ? { action: 'paused', label: __('Pause instead', 'yayloyalty'), pendingLabel: __('Pausing…', 'yayloyalty') }
+          : undefined
+      }
+      perform={(action) => (action === 'deleted' ? deleteMutation.mutateAsync() : statusMutation.mutateAsync(action))}
+      successMessage={successMessage}
+      failureMessage={failureMessage}
+      onClose={onClose}
+      onDone={onDone}
+      onViewArchived={onViewArchived}
     />
   );
 }
