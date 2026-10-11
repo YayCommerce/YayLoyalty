@@ -1,6 +1,6 @@
 # Share Duplicated Logic Plan
 
-**Status:** active
+**Status:** done 2026-10-11
 **Branches:** `trace/refactor/share-core-php-logic`, `trace/refactor/share-rest-logic`, `trace/refactor/share-spa-logic`, each from `dev/edd`; one PR each into `dev/edd`
 **Goal:** where two places implement the same logic, one calls the other or both call one shared function.
 **Spec:** none, planned from the request.
