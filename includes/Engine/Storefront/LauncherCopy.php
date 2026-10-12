@@ -19,6 +19,15 @@ final class LauncherCopy {
         return SettingsHelper::format_number( $points );
     }
 
+    /**
+     * "Create an account", or "… at checkout" where shoppers can only register there.
+     *
+     * @param string|null $route LauncherPayload::register_route().
+     */
+    public static function create_account( ?string $route ): string {
+        return 'checkout' === $route ? __( 'Create an account at checkout', 'yayloyalty' ) : __( 'Create an account', 'yayloyalty' );
+    }
+
     /** "+270" / "−120": signed, with a real minus sign. */
     public static function signed_points( int $points ): string {
         return ( $points < 0 ? '−' : '+' ) . SettingsHelper::format_number( abs( $points ) );

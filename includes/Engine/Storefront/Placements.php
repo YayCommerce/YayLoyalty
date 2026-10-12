@@ -3,7 +3,7 @@ namespace YayLoyalty\Engine\Storefront;
 
 use YayLoyalty\Engine\Earning\ProgramGate;
 use YayLoyalty\Engine\Register\ScriptName;
-use YayLoyalty\Utils\Log;
+use YayLoyalty\Helpers\DesignHelper;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -37,8 +37,6 @@ final class Placements {
             Launcher::asset_version( self::EDITOR_SCRIPT_PATH ),
             true
         );
-        // block.json names it as the blocks' style, so the editor's preview is laid out too.
-        AccountRewards::register_style();
 
         register_block_type( __DIR__ . '/blocks/points-balance', [ 'render_callback' => [ self::class, 'balance_block' ] ] );
         register_block_type( __DIR__ . '/blocks/ways-to-earn', [ 'render_callback' => [ self::class, 'ways_to_earn_block' ] ] );
@@ -67,7 +65,6 @@ final class Placements {
     /** [yayloyalty_balance]: the points card, or a sign-in link for a guest. */
     public static function balance(): string {
         return self::render(
-            'balance',
             static function (): void {
                 $yayloyalty_card = AccountRewards::card_view( get_current_user_id() );
 
@@ -79,10 +76,9 @@ final class Placements {
     /** [yayloyalty_ways_to_earn]: the earning rules this viewer can use. */
     public static function ways_to_earn(): string {
         return self::render(
-            'ways_to_earn',
             static function (): void {
                 $user_id         = get_current_user_id();
-                $yayloyalty_earn = LauncherEarnRules::for_viewer( AccountRewards::card_view( $user_id )['payload'], $user_id );
+                $yayloyalty_earn = LauncherEarnRules::for_viewer( LauncherPayload::for_user( DesignHelper::get_design(), $user_id ), $user_id );
 
                 require __DIR__ . '/templates/ways-to-earn.php';
             }
@@ -107,36 +103,20 @@ final class Placements {
      * A placement's HTML in the tab's wrapper; '' while the program is off, when there is nothing to show,
      * or when it fails, which costs only this placement.
      *
-     * @param string   $name   For the log.
      * @param callable $output Prints the partial.
      */
-    private static function render( string $name, callable $output ): string {
+    private static function render( callable $output ): string {
         if ( ! ProgramGate::program_enabled() ) {
             return '';
         }
 
-        $buffer_level = ob_get_level();
-
-        try {
-            ob_start();
-            $output();
-            $html = trim( (string) ob_get_clean() );
-        } catch ( \Throwable $e ) {
-            // Drop the half-printed placement, never the theme's own buffers.
-            while ( ob_get_level() > $buffer_level ) {
-                ob_end_clean();
-            }
-
-            Log::warning( 'Placements', $name . ' not rendered: ' . $e->getMessage() );
-
-            return '';
-        }
+        $html = trim( (string) OutputCapture::capture( $output, 'Placements' ) );
 
         if ( '' === $html ) {
             return '';
         }
 
-        AccountRewards::enqueue_style();
+        wp_enqueue_style( ScriptName::ACCOUNT_STYLE );
 
         return '<div class="yayloyalty-account yayloyalty-placement">' . $html . '</div>';
     }

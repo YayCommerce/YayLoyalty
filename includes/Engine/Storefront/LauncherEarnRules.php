@@ -1,15 +1,12 @@
 <?php
 namespace YayLoyalty\Engine\Storefront;
 
-use YayLoyalty\Engine\Earning\EarningService;
 use YayLoyalty\Engine\Points\Context;
-use YayLoyalty\Engine\Points\ContextFactory;
 use YayLoyalty\Engine\Points\PointsEngine;
 use YayLoyalty\Engine\Points\Triggers\PurchaseHandler;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Models\Campaign;
-use YayLoyalty\Utils\Dates;
 use YayLoyalty\Utils\Log;
 
 defined( 'ABSPATH' ) || exit;
@@ -125,50 +122,40 @@ final class LauncherEarnRules {
     }
 
     /**
-     * A guest's "Ways to earn" rows: the signup row first, when signup is advertised, then member_rows().
+     * The "Ways to earn" a viewer is shown outside the launcher: a guest's rows, signup first, or a member's
+     * under the daily limit; none for a viewer who cannot earn.
      *
-     * @param array{purchase: ?float, signup: ?int, review: ?int} $earn         advertise()'s `earn`.
-     * @param string                                              $rate_line    The Design tab's earn_rate_line.
-     * @param float                                               $purchase_min advertise()'s `purchase_min`.
-     * @return array<int, array{trigger: string, label: string, value: string}>
-     */
-    public static function guest_rows( array $earn, string $rate_line, float $purchase_min ): array {
-        $rows = [];
-
-        if ( null !== $earn[ CampaignTrigger::SIGNUP ] ) {
-            $rows[] = [
-                'trigger' => CampaignTrigger::SIGNUP,
-                'label'   => __( 'Create an account', 'yayloyalty' ),
-                'value'   => SettingsHelper::points_text( $earn[ CampaignTrigger::SIGNUP ] ),
-            ];
-        }
-
-        return array_merge( $rows, self::member_rows( $earn, $rate_line, $purchase_min ) );
-    }
-
-    /**
-     * The "Ways to earn" a viewer is shown outside the launcher: a guest's rows, or a member's under the
-     * daily limit, or none for a member who cannot earn.
-     *
-     * @param array $payload LauncherPayload::build() for this viewer.
+     * @param array $payload LauncherPayload::for_user() for this viewer.
      * @param int   $user_id The viewer; 0 for a guest.
      * @return array{rows: array<int, array{trigger: string, label: string, value: string}>, limit_line: string}
      */
     public static function for_viewer( array $payload, int $user_id ): array {
-        $rate_line = $payload['text']['earn_rate_line'];
-
-        if ( 0 === $user_id ) {
-            return [
-                'rows'       => self::guest_rows( $payload['earn'], $rate_line, $payload['purchase_min'] ),
-                'limit_line' => '',
-            ];
-        }
-
-        if ( null !== EarningService::gate_reason( CampaignTrigger::PURCHASE, ContextFactory::from_user( $user_id, Dates::now() ) ) ) {
+        if ( ! Launcher::viewer_can_earn( $user_id ) ) {
             return self::with_daily_limit( [], null );
         }
 
-        return self::with_daily_limit( self::member_rows( $payload['earn'], $rate_line, $payload['purchase_min'] ), $payload['left_today'] );
+        $earn = $payload['earn'];
+        $rows = self::member_rows( $earn, $payload['text']['earn_rate_line'], $payload['purchase_min'] );
+
+        if ( $user_id > 0 ) {
+            return self::with_daily_limit( $rows, $payload['left_today'] );
+        }
+
+        if ( null !== $earn[ CampaignTrigger::SIGNUP ] ) {
+            array_unshift(
+                $rows,
+                [
+                    'trigger' => CampaignTrigger::SIGNUP,
+                    'label'   => LauncherCopy::create_account( $payload['register'] ),
+                    'value'   => SettingsHelper::points_text( $earn[ CampaignTrigger::SIGNUP ] ),
+                ]
+            );
+        }
+
+        return [
+            'rows'       => $rows,
+            'limit_line' => '',
+        ];
     }
 
     /**

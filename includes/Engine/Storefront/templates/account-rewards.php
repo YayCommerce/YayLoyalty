@@ -8,7 +8,6 @@
 use YayLoyalty\Engine\Storefront\AccountHistoryCsv;
 use YayLoyalty\Engine\Storefront\AccountRewards;
 use YayLoyalty\Engine\Storefront\LauncherCopy;
-use YayLoyalty\Engine\Storefront\LauncherEarnRules;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Utils\Dates;
 
@@ -19,7 +18,7 @@ $yayloyalty_worth   = $yayloyalty_payload['member']['worth'];
 // Null while redemption is off: worth, the redeem column and the checkout link stay hidden with it.
 $yayloyalty_redeem  = $yayloyalty_payload['redeem'];
 $yayloyalty_card    = $view;
-$yayloyalty_earn    = LauncherEarnRules::for_viewer( $yayloyalty_payload, get_current_user_id() );
+$yayloyalty_earn    = $view['earn'];
 $yayloyalty_history = $view['history'];
 $yayloyalty_columns = AccountRewards::column_labels();
 $yayloyalty_first   = ( $yayloyalty_history['page'] - 1 ) * AccountRewards::PER_PAGE + 1;
