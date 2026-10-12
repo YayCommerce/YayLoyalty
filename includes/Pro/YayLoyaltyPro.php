@@ -9,10 +9,12 @@ use YayLoyalty\Pro\Controllers\CampaignPerformanceRestController;
 use YayLoyalty\Pro\Controllers\CampaignPreviewRestController;
 use YayLoyalty\Pro\Controllers\CustomerSegmentsRestController;
 use YayLoyalty\Pro\Controllers\DashboardProRestController;
+use YayLoyalty\Pro\Controllers\StoreLedgerRestController;
 use YayLoyalty\Pro\Emails\ProEmails;
 use YayLoyalty\Pro\Helpers\CustomerSegmentsHelper;
 use YayLoyalty\Pro\Repositories\CampaignPerformanceRepository;
 use YayLoyalty\Pro\Repositories\CampaignPointsRepository;
+use YayLoyalty\Pro\Repositories\StoreLedgerRepository;
 use YayLoyalty\Pro\Services\ConditionsEvaluator;
 use YayLoyalty\Pro\Services\DailyEarningLimit;
 use YayLoyalty\Repositories\CampaignRepository;
@@ -262,6 +264,10 @@ final class YayLoyaltyPro {
             new CampaignRepository(),
             new CampaignPerformanceRepository(),
             new CampaignPointsRepository(),
+            new LedgerRepository()
+        );
+        $controllers[] = new StoreLedgerRestController(
+            new StoreLedgerRepository( new LedgerRepository() ),
             new LedgerRepository()
         );
 

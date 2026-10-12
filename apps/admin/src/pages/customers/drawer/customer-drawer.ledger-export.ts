@@ -22,20 +22,25 @@ export function fetchFullLedger(userId: number, signal?: AbortSignal): Promise<L
 export function buildLedgerCsv(entries: LedgerEntry[], campaignNames: Map<number, string>): string {
   return toCsv(
     LEDGER_CSV_HEADERS(),
-    entries.map((entry) => [
-      entry.id,
-      // dateI18n converts to the site time zone by default; the fixed format keeps the column sortable.
-      dateI18n('Y-m-d H:i:s', utcToDate(entry.created_at)),
-      ledgerTypeLabel(entry.type),
-      describeLedgerEntry(entry),
-      formatSignedPoints(entry.points),
-      entry.balance_after,
-      entry.order_id ?? '',
-      campaignCell(entry.campaign_id, campaignNames),
-      entry.note ?? '',
-      entry.customer_note ?? '',
-    ]),
+    entries.map((entry) => ledgerCsvRow(entry, campaignNames)),
   );
+}
+
+/** One entry's cells, in `LEDGER_CSV_HEADERS()` order. */
+export function ledgerCsvRow(entry: LedgerEntry, campaignNames: Map<number, string>) {
+  return [
+    entry.id,
+    // dateI18n converts to the site time zone by default; the fixed format keeps the column sortable.
+    dateI18n('Y-m-d H:i:s', utcToDate(entry.created_at)),
+    ledgerTypeLabel(entry.type),
+    describeLedgerEntry(entry),
+    formatSignedPoints(entry.points),
+    entry.balance_after,
+    entry.order_id ?? '',
+    campaignCell(entry.campaign_id, campaignNames),
+    entry.note ?? '',
+    entry.customer_note ?? '',
+  ];
 }
 
 /** The campaign's name, or `#id` when the name is unknown (the map is empty without the campaigns capability). */

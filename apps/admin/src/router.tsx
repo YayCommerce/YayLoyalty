@@ -13,6 +13,7 @@ import CampaignsPage from './pages/campaigns/CampaignsPage';
 import CustomersPage from './pages/customers/CustomersPage';
 import CustomerDrawer from './pages/customers/drawer/CustomerDrawer';
 import DashboardPage from './pages/dashboard/DashboardPage';
+import LedgerPage from './pages/ledger/LedgerPage';
 import RewardAddPage from './pages/rewards/RewardAddPage';
 import RewardCreatePage from './pages/rewards/RewardCreatePage';
 import RewardEditorPage from './pages/rewards/RewardEditorPage';
@@ -53,6 +54,12 @@ export function getManagerRouter() {
           path: 'customers',
           element: guarded(CAP.VIEW, <CustomersPage />),
           // The parent's `guarded()` already checks CAP.VIEW for this child.
+          children: [{ path: ':userId', element: <CustomerDrawer /> }],
+        },
+        {
+          path: 'ledger',
+          element: guarded(CAP.VIEW, <LedgerPage />),
+          // The parent's `guarded()` already checks CAP.VIEW for this child. Lite 404s the parent, so it never renders.
           children: [{ path: ':userId', element: <CustomerDrawer /> }],
         },
         {
