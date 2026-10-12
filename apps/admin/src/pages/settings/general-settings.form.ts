@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { Settings, settingsSchema, SettingsUpdate } from '@/lib/schema/settings.schema';
 
-/** Mirrors SettingsHelper::POINTS_LABEL_MAX_LENGTH. */
+/** Mirrors SettingsHelper::POINTS_LABEL_MAX_LENGTH, the source of truth. */
 export const POINTS_LABEL_MAX_LENGTH = 30;
 
 const pointsLabel = z.string().trim().min(1).max(POINTS_LABEL_MAX_LENGTH);
