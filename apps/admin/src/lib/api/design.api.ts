@@ -13,12 +13,12 @@ export function resetDesign(group?: string) {
   return api.post('design/reset', { json: group ? { group } : {} }).json<Design>();
 }
 
-/** Mirrors the `viewer` that `DesignRestController::preview_design()` reads, which owns it: `guest`, or anything else for the sample member. */
+/** Mirrors the `viewer` that `DesignRestController::preview_design()` reads, the source of truth. It is `guest`, or anything else for the sample member. */
 export type DesignPreviewViewer = 'member' | 'guest';
 
 /**
- * The design fields the storefront launcher draws: a mirror of what `LauncherPayload::for_balance()`
- * (and `Launcher::view()`) read. A field missing here never redraws the preview; change both together.
+ * Mirrors what `LauncherPayload::for_balance()` (and `Launcher::view()`) read, the source of truth.
+ * The design fields the storefront launcher draws. A field missing here never redraws the preview; change both together.
  * `storefront_text.product_earn_line` and the `thankyou_*_line`s ride along with their group; the launcher doesn't draw them
  * (`ProductEarnMessage` and `ThankYouPoints` do).
  */

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-/** Mirrors SetupService::payload(): POST /setup takes it and returns the saved values. */
+/** Mirrors SetupService::payload(), the source of truth. POST /setup takes it and returns the saved values. */
 export const setupSchema = z.object({
   points_label_singular: z.string(),
   points_label_plural: z.string(),

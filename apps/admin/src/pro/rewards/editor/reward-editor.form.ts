@@ -202,9 +202,8 @@ function formValuesToBody(
 }
 
 /**
- * Form validation for one type: its typed config, its cost rule (mirroring
- * Reward::cost_points_is_valid()) and the end-after-start check (mirroring
- * AbstractRestController::dates_in_order()).
+ * Mirrors Reward::cost_points_is_valid() and AbstractRestController::dates_in_order(), the source of truth.
+ * Form validation for one type: its typed config, its cost rule and the end-after-start check.
  */
 export function rewardFormSchema(type: RewardType) {
   const costMessage = __('A reward needs a cost of at least 1 point.', 'yayloyalty');

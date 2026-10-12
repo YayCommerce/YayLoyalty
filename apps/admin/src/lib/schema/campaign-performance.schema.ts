@@ -9,7 +9,7 @@ import { campaignSchema, CampaignTrigger } from './campaign.schema';
  */
 
 /**
- * Triggers the performance page supports. Mirrors `CampaignPerformanceRestController::TRIGGERS`.
+ * Mirrors `CampaignPerformanceRestController::TRIGGERS`, the source of truth. These are the triggers the performance page supports.
  * It matches `LITE_CAMPAIGN_TRIGGERS` in `campaign.schema.ts` by coincidence, so it stays its own constant.
  * A trigger outside this list 404s on both routes.
  */

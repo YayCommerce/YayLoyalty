@@ -10,7 +10,7 @@ export type WizardStep = 1 | 2 | 3 | 4 | 5;
 
 export const WIZARD_STEP_COUNT = 5;
 
-/** Copies DesignSchema's `launcher.brand_color` default. */
+/** Mirrors DesignSchema::get_default_design()'s `launcher.brand_color`, the source of truth. */
 export const DEFAULT_BRAND_COLOR = '#1f6fb2';
 
 /** The made-up balance the previews show; the store has no customers yet. */
@@ -41,8 +41,8 @@ export type SetupForm = {
 export type WizardStepProps = { form: UseFormReturn<SetupForm> };
 
 /**
- * The first-run values. Earning comes from DEFAULT_CAMPAIGN_CONFIG; the rest copies Reward::default_config()
- * and SettingsHelper's labels.
+ * Mirrors Reward::default_config() and SettingsHelper::get_default_settings()'s labels, the source of truth.
+ * The first-run values. Earning comes from DEFAULT_CAMPAIGN_CONFIG.
  */
 export function setupDefaults(): SetupForm {
   const earn = spendPairFromRate(DEFAULT_CAMPAIGN_CONFIG.purchase.points_per_unit as number);

@@ -420,14 +420,9 @@ cmd_info() {
 cmd_clean() {
     print_step "Cleaning build artifacts..."
 
-    if [ -d "$PLUGIN_DIR/assets/dist/admin" ]; then
-        rm -rf "$PLUGIN_DIR/assets/dist/admin"
-        print_success "Removed assets/dist/admin"
-    fi
-
-    if [ -d "$PLUGIN_DIR/assets/dist/storefront" ]; then
-        rm -rf "$PLUGIN_DIR/assets/dist/storefront"
-        print_success "Removed assets/dist/storefront"
+    if [ -d "$PLUGIN_DIR/assets/dist" ]; then
+        rm -rf "$PLUGIN_DIR/assets/dist"
+        print_success "Removed assets/dist"
     fi
 
     read -p "Remove node_modules? (y/N): " -n 1 -r
