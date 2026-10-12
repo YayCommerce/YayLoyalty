@@ -20,7 +20,7 @@ Run from the repo root on Node 22: `nvm use` reads `.nvmrc`, and pnpm 11 fails o
 - `pnpm --filter @yayloyalty/admin-page test`: Vitest.
 - `pnpm --filter @yayloyalty/admin-page exec tsc --noEmit`: type-check the SPA. [Fails today](docs/known-issues.md).
 - `./scripts/run.sh dev [pro|lite]`: Vite on :3030, which wp-admin loads while `YAYLOYALTY_IS_DEVELOPMENT` is true (the default). It first runs the admin-shell sync, which can [rewrite `composer.json` and `scoper.inc.php`](docs/known-issues.md): check `git status` before committing.
-- `./scripts/run.sh build [pro|lite]`: type-check, then build the SPA into `assets/dist/admin/` and the storefront launcher's CSS into `assets/dist/storefront/`. [Fails today](docs/known-issues.md).
+- `./scripts/run.sh build [pro|lite]`: type-check, then build the SPA into `assets/dist/admin/`, the storefront launcher's CSS into `assets/dist/storefront/` and the blocks' editor script into `assets/dist/blocks/`. [Fails today](docs/known-issues.md).
 - `./scripts/run.sh release [pro|lite] [version] [--no-prompt]`: package and validate a zip in `release/`. Run Pro first (it stamps the version), then Lite with `--no-prompt`. [Fails today](docs/known-issues.md). Run `composer install` afterwards, even after a failed run.
 
 Any pnpm command may [run `pnpm install`, and with it `composer install`, first](docs/known-issues.md). `./scripts/run.sh help` lists the rest. Judge a failing check against `dev/edd`. If it fails there too, it was already failing: leave it unless asked, and don't add to it.

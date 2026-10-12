@@ -1,6 +1,6 @@
 # Launcher advert review fixes, and remove the campaign daily cap
 
-**Status:** active
+**Status:** done 2026-10-08
 **Branch:** `paul/fix/launcher-shared-campaign-choice` (PR into `dev/edd`)
 **Tests:** `tests/unit/Engine/Points/PointsEngineEvaluateTest.php` (new) and new cases in `tests/unit/Engine/Points/PointsEngineAdvertisedTest.php`, unit suite (accepted 2026-10-08, see Task 6)
 

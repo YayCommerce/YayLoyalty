@@ -12,7 +12,7 @@ The layering rules live in [architecture.md](architecture.md#server-layers-and-w
   - Stored money is `DECIMAL(19,4)`. PHP carries it as a string and binds it with `%s`, never `%f`. REST sends it as a string, and the SPA parses it with `z.string()`.
   - Computed money, such as a points value or a report total, is rounded once, to the store currency's decimals, never to a fixed 2.
   - Points are integers at every layer.
-  - Points and point rates are shown with WooCommerce's price separators, as money is: `formatStoreNumber`, `formatStoreDecimal` and `formatPoints` in the SPA, `SettingsHelper::format_number()` in PHP. Never `toLocaleString()` or `number_format_i18n()`, which follow the browser or WordPress locale instead.
+  - Points, point rates and percentages are shown with WooCommerce's price separators, as money is: `formatStoreNumber`, `formatStoreDecimal`, `formatPercent` and `formatPoints` in the SPA, `SettingsHelper::format_number()` and `points_text()` in PHP. Never `toLocaleString()` or `number_format_i18n()`, which follow the browser or WordPress locale instead.
 - **Why:** "a float loses precision exactly where it is a financial defect". A fixed 2 "would drop a digit from a 3-decimal currency (KWD) and round a 0-decimal one (VND) twice". [The decision record](decisions/2026-10-01-money-as-decimal-strings.md) has the context and the costs.
 - **In code:** `includes/Models/AbstractModel.php`, `includes/Utils/PointsMath.php`, `includes/Helpers/SettingsHelper.php`, `apps/admin/src/lib/helpers/format.helper.ts`, `apps/admin/src/lib/helpers/points.helper.ts`.
 
@@ -32,7 +32,7 @@ The layering rules live in [architecture.md](architecture.md#server-layers-and-w
   - The server refuses a 0, a negative or, for a whole-number limit, a fraction with a 400. It never reads one as "no limit".
   - The admin shows `null` as an empty field with a "No limit" placeholder (`OptionalCountInput` / `OptionalMoneyInput`).
 - **Why:** a cap of 0 blocks everything (`Clamp` stops every redemption at a 0 cap, and `EmailThrottle` would stop every email), and reading it silently as "no limit" hides a client bug. One value for "no limit" keeps every reader's check a plain `null` test.
-- **In code:** `SettingsHelper::is_valid()`, `Campaign` spec type `limit`, `Reward` specs with `exclusive_min: 0`, `apps/admin/src/components/ui/custom/amount-inputs.tsx`.
+- **In code:** `SettingsHelper::is_valid()`, `ConfigSpec::is_limit()` (spec type `limit`), `Reward` specs with `exclusive_min: 0`, `apps/admin/src/components/ui/custom/amount-inputs.tsx`.
 
 ## Pro data survives Lite
 
@@ -41,7 +41,7 @@ The layering rules live in [architecture.md](architecture.md#server-layers-and-w
   - Config whitelists keep Pro keys.
   - Config for a value this build doesn't know is saved back untouched.
   - A missing Pro evaluator fails open.
-  - Lite names Pro values for the domain (`BIRTHDAY`), never for the edition.
+  - Lite names Pro values for the domain (`BIRTHDAY`), never for the edition. A localized key, design and settings keys included, never has the whole word `pro` or `premium`: the validator's boot check fails it in either edition (`product_message` passes).
 - **Why:** "'unknown' must never mean 'delete' on a downgrade". Failing closed "would silently disable every conditional campaign the moment a site downgraded from Pro".
 - **In code:** `includes/Enums/CampaignTrigger.php`, `includes/Models/Campaign.php`, `includes/Models/Reward.php`, `includes/Engine/Points/PointsEngine.php`, `includes/Helpers/DesignSchema.php`, `apps/admin/src/lib/schema/campaign.schema.ts`.
 

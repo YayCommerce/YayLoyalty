@@ -2,7 +2,7 @@
 
 > **For agentic workers:** execute tasks in order, one at a time. Steps use `- [ ]` for tracking. There is no spec; the Requirements section below is the source.
 
-**Status:** active
+**Status:** done 2026-10-09
 **Branch:** `<name>/feat/wizard-polish` from `dev/edd`; PR into `dev/edd`
 **Goal:** trim the setup wizard's helper copy, show the purchase rate on step 2, and animate the progress bar.
 **Spec:** none, planned from the request. Follows [the setup wizard plan](2026-10-09-setup-wizard.md) (done).
