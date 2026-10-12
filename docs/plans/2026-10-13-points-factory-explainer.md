@@ -201,13 +201,13 @@ Message: `docs(explainers): animate the six points factory scenes`
 - Consumes: the finished page from Task 2.
 - Produces: nothing.
 
-- [ ] **Step 1: Add the link**
+- [x] **Step 1: Add the link**
 
 Add one bullet at the end of that section:
 
-`- [The points factory explainer](explainers/points-factory.html) animates this earning path, from listener to LedgerService, and is accurate as of the commit stamped in its header.`
+A bullet whose link text "The points factory explainer" points to `explainers/points-factory.html`, followed by: "animates this earning path, from listener to LedgerService, and is accurate as of the commit stamped in its header."
 
-- [ ] **Step 2: Run the harness checks**
+- [x] **Step 2: Run the harness checks**
 
 Run: `./scripts/check-harness.sh`
 Expected: `Harness checks passed.` It passes on `dev/edd` today, so any failure is new.
