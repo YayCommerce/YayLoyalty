@@ -330,7 +330,8 @@ class LedgerRepository extends AbstractRepository {
     }
 
     /**
-     * Prepared WHERE fragments for paginate_for_user()'s drawer filters.
+     * Prepared WHERE fragments for the ledger filters: the drawer's, and any store-wide list.
+     * Columns are unqualified, so a caller that joins another table must not join one that shares them.
      *
      * Row descriptions ("Earned on order #6730") are composed client-side, so
      * search can only reach what is stored: a bare or `#`-prefixed number is
@@ -340,7 +341,7 @@ class LedgerRepository extends AbstractRepository {
      *        `after`/`before` are site-calendar `Y-m-d` days, both inclusive.
      * @return string[] Already-prepared fragments, for AbstractRepository::paginate()'s `where`.
      */
-    private function history_where( array $args ): array {
+    public function history_where( array $args ): array {
         global $wpdb;
 
         $where = [];

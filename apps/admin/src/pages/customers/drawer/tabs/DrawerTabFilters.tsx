@@ -1,6 +1,8 @@
+import type { ReactNode } from 'react';
 import type { DateRange } from 'react-day-picker';
 
 import { formatPoints } from '@/lib/helpers/points.helper';
+import { cn } from '@/lib/utils';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { Input } from '@/components/ui/input';
 import { Segmented, SegmentedItem } from '@/components/ui/segmented';
@@ -21,6 +23,7 @@ export function DrawerTabFilters<F extends string>({
   search,
   onSearchChange,
   searchPlaceholder,
+  extra,
 }: {
   options: { value: F; label: string; count?: number }[];
   value: F;
@@ -31,6 +34,8 @@ export function DrawerTabFilters<F extends string>({
   search: string;
   onSearchChange: (value: string) => void;
   searchPlaceholder: string;
+  /** More controls after the date range. */
+  extra?: ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-2">
@@ -58,9 +63,10 @@ export function DrawerTabFilters<F extends string>({
           ))}
         </Segmented>
       </div>
-      <div className="flex items-center gap-2">
+      {/* With extra controls the row wraps, so on a phone the search box keeps a usable width. */}
+      <div className={cn('flex items-center gap-2', extra && 'flex-wrap')}>
         <Input
-          className="min-w-0 flex-1"
+          className={cn('min-w-0 flex-1', extra && 'min-w-48')}
           placeholder={searchPlaceholder}
           value={search}
           onChange={(event) => onSearchChange(event.target.value)}
@@ -71,6 +77,7 @@ export function DrawerTabFilters<F extends string>({
           placeholder={DATE_RANGE_LABEL()}
           className="w-auto min-w-0 shrink-0"
         />
+        {extra}
       </div>
     </div>
   );
