@@ -2,7 +2,7 @@
 
 > **For agentic workers:** execute tasks in order, one at a time. Steps use `- [ ]` for tracking. There is no spec; the Requirements section below is the source.
 
-**Status:** active
+**Status:** done 2026-10-10
 **Branch:** `trace/fix/wizard-exit-setup` (current branch); PR into `dev/edd`
 **Goal:** the setup wizard opens at once from declared base values, with no request before it renders.
 **Spec:** none, planned from the request. Changes [the setup wizard design](../specs/2026-10-09-setup-wizard-design.md) (accepted), whose criterion 1 prefills from `GET /setup`.

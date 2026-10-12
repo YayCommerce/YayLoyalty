@@ -1,6 +1,6 @@
 # Points Adjusted Email Implementation Plan
 
-> **For agentic workers:** execute tasks in order, one at a time. Steps use `- [ ]` for tracking. There is no spec; the Requirements section below is the source, with [the backlog item](../backlog/2026-10-08-adjust-points-customer-note-and-email-not-sent.md) as background.
+> **For agentic workers:** execute tasks in order, one at a time. Steps use `- [ ]` for tracking. There is no spec; the Requirements section below is the source, with the backlog item `docs/backlog/2026-10-08-adjust-points-customer-note-and-email-not-sent.md` (since removed) as background.
 
 **Status:** done 2026-10-10
 **Branch:** `<name>/feat/points-adjusted-email` from `dev/edd`; PR into `dev/edd`

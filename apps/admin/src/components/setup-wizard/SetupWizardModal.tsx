@@ -16,7 +16,7 @@ import { setupDefaults, toSetupPayload, WIZARD_STEP_COUNT, type SetupForm, type 
 import { SpendPointsStep } from './SpendPointsStep';
 
 /**
- * The five-step setup wizard (F16). It starts from setupDefaults(), and nothing is saved until
+ * The five-step setup wizard. It starts from setupDefaults(), and nothing is saved until
  * "Turn on my program" on step 5, which sends every answer in one POST /setup.
  */
 export function SetupWizardModal({ onClose }: { onClose: () => void }) {
