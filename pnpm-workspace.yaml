@@ -1,5 +1,6 @@
 packages:
   - "apps/admin"
+  - "apps/e2e"
 allowBuilds:
   '@parcel/watcher': true
   core-js: true
