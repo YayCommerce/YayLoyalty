@@ -307,6 +307,29 @@ class LedgerRepository extends AbstractRepository {
     }
 
     /**
+     * Rows of any type naming the campaign, as a locking read: inside delete_item()'s transaction a
+     * plain read would see its snapshot and miss a row committed since.
+     *
+     * @throws QueryException When the read fails, e.g. a lock wait timeout.
+     */
+    public function count_for_campaign_locked( int $campaign_id ): int {
+        global $wpdb;
+
+        $count = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a locking read must reach the database, never a cache.
+            $wpdb->prepare(
+                'SELECT COUNT(*) FROM `' . esc_sql( $this->table() ) . '` WHERE campaign_id = %d LOCK IN SHARE MODE',
+                $campaign_id
+            )
+        );
+
+        if ( '' !== $wpdb->last_error ) {
+            throw new QueryException( 'select', $wpdb->last_error, $this->table() . ' (count_for_campaign_locked)' );
+        }
+
+        return (int) $count;
+    }
+
+    /**
      * Prepared WHERE fragments for paginate_for_user()'s drawer filters.
      *
      * Row descriptions ("Earned on order #6730") are composed client-side, so

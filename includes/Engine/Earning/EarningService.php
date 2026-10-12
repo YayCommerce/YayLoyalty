@@ -66,7 +66,7 @@ final class EarningService {
         $customers = new CustomerRepository();
 
         $engine = PointsEngine::build( $campaigns );
-        $ledger = new LedgerService( new LedgerRepository(), $customers );
+        $ledger = new LedgerService( new LedgerRepository(), $customers, $campaigns );
 
         return new self( $engine, $ledger, new PendingPoints( $customers ), self::gates() );
     }

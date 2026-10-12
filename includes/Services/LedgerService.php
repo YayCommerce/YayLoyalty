@@ -9,6 +9,7 @@ use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Enums\ReferenceType;
 use YayLoyalty\Models\Customer;
 use YayLoyalty\Models\LedgerEntry;
+use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Utils\Dates;
@@ -22,6 +23,8 @@ defined( 'ABSPATH' ) || exit;
  * lands) Engine\Redemption\RedemptionService::build(). Name a fifth here before adding it.
  * Manual rows enter through adjust() and record(). System rows enter through earn(),
  * refund_earn(), restore_refund() and redeem(), which add the idempotency-key duplicate branch.
+ * Lock order: the customer row, then, for an earn row, its campaign row shared, which
+ * CampaignRestController::delete_item() locks exclusively before deleting.
  */
 final class LedgerService {
 
@@ -31,15 +34,22 @@ final class LedgerService {
     /** Outcome::skipped reason: the order was reversed in full, so a deleted refund gives nothing back. */
     public const REASON_ORDER_REVERSED = 'order_reversed';
 
+    /** Outcome::skipped reason: the earn row's campaign was deleted before the award took its lock. */
+    public const REASON_CAMPAIGN_DELETED = 'campaign_deleted';
+
     /** @var LedgerRepository */
     private $ledger;
 
     /** @var CustomerRepository */
     private $customers;
 
-    public function __construct( LedgerRepository $ledger, CustomerRepository $customers ) {
+    /** @var CampaignRepository */
+    private $campaigns;
+
+    public function __construct( LedgerRepository $ledger, CustomerRepository $customers, CampaignRepository $campaigns ) {
         $this->ledger    = $ledger;
         $this->customers = $customers;
+        $this->campaigns = $campaigns;
     }
 
     /**
@@ -218,6 +228,10 @@ final class LedgerService {
                     return Outcome::duplicate( $existing );
                 }
 
+                if ( ! $this->campaign_survives( $draft ) ) {
+                    return Outcome::skipped( self::REASON_CAMPAIGN_DELETED );
+                }
+
                 if ( null !== $points_under_lock ) {
                     $points = (int) $points_under_lock();
 
@@ -233,6 +247,20 @@ final class LedgerService {
                 return null === $persisted ? Outcome::duplicate( $this->existing_for( $key ) ) : Outcome::awarded( $persisted );
             }
         );
+    }
+
+    /**
+     * Holds an earn row's campaign under a shared lock until commit, so the row never names a deleted
+     * campaign. Earn rows only: a reversal's campaign has rows, so it cannot be deleted.
+     */
+    private function campaign_survives( LedgerEntry $draft ): bool {
+        $campaign_id = $draft->get_campaign_id();
+
+        if ( LedgerType::EARN !== $draft->get_type() || null === $campaign_id ) {
+            return true;
+        }
+
+        return $this->campaigns->lock_shared( $campaign_id );
     }
 
     /**

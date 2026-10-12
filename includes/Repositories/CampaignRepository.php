@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Repositories;
 
+use YayLoyalty\Database\QueryException;
 use YayLoyalty\Enums\Status;
 use YayLoyalty\Models\AbstractModel;
 use YayLoyalty\Models\Campaign;
@@ -41,6 +42,44 @@ class CampaignRepository extends AbstractRepository {
         $model = $this->find( $id );
 
         return $model instanceof Campaign ? $model : null;
+    }
+
+    /**
+     * Whether the row exists, read under an exclusive row lock. Inside a transaction: delete_item()
+     * holds it so no award can name the campaign between its ledger re-count and the delete.
+     *
+     * @throws QueryException When the read fails, e.g. a lock wait timeout.
+     */
+    public function lock_for_delete( int $id ): bool {
+        return $this->lock_row( $id, 'FOR UPDATE' );
+    }
+
+    /**
+     * Whether the row exists, read under a shared row lock. Inside a transaction: LedgerService
+     * holds it while it appends an earn row naming the campaign, so a delete waits for the commit.
+     *
+     * @throws QueryException When the read fails, e.g. a lock wait timeout.
+     */
+    public function lock_shared( int $id ): bool {
+        return $this->lock_row( $id, 'LOCK IN SHARE MODE' );
+    }
+
+    /** LOCK IN SHARE MODE, not FOR SHARE: MySQL 5.7 and MariaDB lack the latter. */
+    private function lock_row( int $id, string $lock ): bool {
+        global $wpdb;
+
+        $found = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a locking read must reach the database, never a cache.
+            $wpdb->prepare(
+                'SELECT id FROM `' . esc_sql( $this->table() ) . '` WHERE id = %d ' . $lock, // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- $lock is one of two literals above.
+                $id
+            )
+        );
+
+        if ( '' !== $wpdb->last_error ) {
+            throw new QueryException( 'select', $wpdb->last_error, $this->table() . ' (lock)' );
+        }
+
+        return null !== $found;
     }
 
     public function find_by_slug( string $slug ): ?Campaign {

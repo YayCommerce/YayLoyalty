@@ -322,17 +322,18 @@ final class CampaignRestController extends AbstractRestController {
             return $this->error_forbidden( __( 'Built-in campaigns cannot be deleted.', 'yayloyalty' ) );
         }
 
-        $id     = (int) $campaign->get_id();
-        $totals = $this->ledger->totals_by_campaign( [ $id ] );
+        $id = (int) $campaign->get_id();
 
-        if ( ! self::is_deletable( $campaign, $totals[ $id ]['count'] ?? 0 ) ) {
+        // ledger.campaign_id has no foreign key: holding the row until commit makes a racing award,
+        // which takes it shared in LedgerService, either land before the count or skip after the delete.
+        if ( ! $this->campaigns->lock_for_delete( $id ) ) {
+            return $this->error_not_found( __( 'Campaign not found.', 'yayloyalty' ) );
+        }
+
+        if ( ! self::is_deletable( $campaign, $this->ledger->count_for_campaign_locked( $id ) ) ) {
             return $this->error_conflict( __( 'This campaign has awarded points. Archive it instead of deleting it.', 'yayloyalty' ) );
         }
 
-        // Unguarded gap: nothing locks between this check and the delete below, and
-        // ledger.campaign_id is a plain KEY, not a FOREIGN KEY, so an award written into
-        // that gap would be orphaned rather than rejected.
-        // TODO(campaign-delete-race): close this gap, which the earning listeners can now reach.
         $this->campaigns->delete( $id );
 
         return [
