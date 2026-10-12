@@ -54,7 +54,7 @@ class RestAPI {
         $customers = new CustomerRepository();
         $ledger    = new LedgerRepository();
 
-        $ledger_service = new LedgerService( $ledger, $customers );
+        $ledger_service = new LedgerService( $ledger, $customers, new CampaignRepository() );
 
         // Read-only cross-table aggregates: they read the ledger and never write it.
         $rewards   = new RewardRepository();

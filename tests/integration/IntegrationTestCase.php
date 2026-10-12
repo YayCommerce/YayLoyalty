@@ -7,6 +7,7 @@ use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Enums\ReferenceType;
+use YayLoyalty\Models\Campaign;
 use YayLoyalty\Models\LedgerEntry;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\CustomerRepository;
@@ -32,11 +33,11 @@ abstract class IntegrationTestCase extends TestCase {
     }
 
     protected function ledger_service(): LedgerService {
-        return new LedgerService( new LedgerRepository(), new CustomerRepository() );
+        return new LedgerService( new LedgerRepository(), new CustomerRepository(), new CampaignRepository() );
     }
 
     /** A purchase EARN draft for one order, keyed as EarningService::award() keys it, written at $created_at ('' for now). */
-    protected function earn_draft( int $user_id, int $order_id, int $points, string $created_at = '' ): LedgerEntry {
+    protected function earn_draft( int $user_id, int $order_id, int $points, string $created_at = '', ?int $campaign_id = null ): LedgerEntry {
         return new LedgerEntry(
             null,
             $user_id,
@@ -46,13 +47,21 @@ abstract class IntegrationTestCase extends TestCase {
             LedgerSource::ORDER,
             ReferenceType::ORDER,
             $order_id,
-            null,
+            $campaign_id,
             null,
             $order_id,
             null,
             null,
             '' === $created_at ? Dates::now() : $created_at,
             IdempotencyKey::compose( LedgerType::EARN, $user_id, ReferenceType::ORDER, $order_id, CampaignTrigger::PURCHASE )
+        );
+    }
+
+    protected function insert_campaign( string $name, string $trigger, string $status, int $priority ): int {
+        $now = gmdate( 'Y-m-d H:i:s' );
+
+        return ( new CampaignRepository() )->insert(
+            new Campaign( null, $name, sanitize_title( $name ), $trigger, $status, $priority, Campaign::default_config( $trigger ), [], null, null, false, null, $now, $now )
         );
     }
 

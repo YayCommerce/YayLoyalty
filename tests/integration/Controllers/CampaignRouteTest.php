@@ -3,7 +3,6 @@ namespace YayLoyalty\Tests\Integration\Controllers;
 
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Enums\Status;
-use YayLoyalty\Models\Campaign;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Tests\Integration\IntegrationTestCase;
 
@@ -84,12 +83,15 @@ final class CampaignRouteTest extends IntegrationTestCase {
         $this->assertSame( 1, $this->stored_priority( $paused ) );
     }
 
-    private function insert_campaign( string $name, string $trigger, string $status, int $priority ): int {
-        $now = gmdate( 'Y-m-d H:i:s' );
+    public function test_delete_refuses_a_campaign_with_ledger_rows(): void {
+        $this->act_as_admin();
+        $id = $this->insert_campaign( 'Has awarded', CampaignTrigger::PURCHASE, Status::ACTIVE, 1 );
+        $this->ledger_service()->earn( $this->earn_draft( 515151, 1, 10, '', $id ) );
 
-        return ( new CampaignRepository() )->insert(
-            new Campaign( null, $name, sanitize_title( $name ), $trigger, $status, $priority, Campaign::default_config( $trigger ), [], null, null, false, null, $now, $now )
-        );
+        $response = $this->send( 'DELETE', "/yayloyalty/v1/campaigns/{$id}" );
+
+        $this->assertSame( 409, $response->get_status() );
+        $this->assertNotNull( ( new CampaignRepository() )->find_campaign( $id ) );
     }
 
     private function stored_priority( int $id ): int {
