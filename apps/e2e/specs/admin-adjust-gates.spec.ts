@@ -17,6 +17,9 @@ test('the admin adjusts a balance from the customer drawer', async ({ api, custo
 
     await api.expectPoints(customer.id, { balance: 25, lifetime_earned: 25 });
     expect(await api.ledger(customer.id)).toMatchObject([{ points: 25, type: 'adjust' }]);
+
+    await drawer.getByRole('tab', { name: 'Points ledger' }).click();
+    await expect(drawer.getByText('E2E goodwill')).toBeVisible();
   });
 
   await test.step('the shopper sees the description, not the internal reason', async () => {

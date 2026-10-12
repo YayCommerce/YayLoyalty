@@ -6,13 +6,16 @@ test('a visitor who registers earns the signup points', async ({ page, api }) =>
   await page.goto('/my-account/');
   const form = page.locator('form.register');
   await form.getByLabel(/Email address/).fill(email);
-  // Typed, not filled: with fill() the Register click submitted nothing.
-  await form.getByLabel(/Password/).pressSequentially(`pw-${Date.now()}-E2e!`);
+  const password = form.getByLabel(/Password/);
+  // WordPress loads the strength scorer after the page; typed before it, the password is never scored.
+  await page.waitForFunction(() => typeof (window as { zxcvbn?: unknown }).zxcvbn === 'function');
+  await password.pressSequentially(`pw-${Date.now()}-E2e!`);
+  await expect(form.getByText('Strong')).toBeVisible();
   await Promise.all([
     page.waitForResponse(
       (response) => response.request().method() === 'POST' && response.url().includes('/my-account/'),
     ),
-    form.getByRole('button', { name: 'Register' }).click(),
+    password.press('Enter'),
   ]);
 
   const [{ id }] = await api.get<Array<{ id: number }>>(`wc/v3/customers?email=${encodeURIComponent(email)}`);
@@ -22,6 +25,7 @@ test('a visitor who registers earns the signup points', async ({ page, api }) =>
     expect(await api.ledger(id)).toMatchObject([{ points: 100, type: 'earn' }]);
 
     await page.goto('/my-account/rewards/');
+    await expect(page.locator('.yayloyalty-account__balance')).toHaveText('100');
     await expect(page.getByText('Account created')).toBeVisible();
   } finally {
     await api.deleteCustomer(id);

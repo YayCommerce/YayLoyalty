@@ -38,9 +38,11 @@ test('a purchase stages pending points at checkout and awards them when the admi
 
   await test.step('the shopper sees the balance in My Account and the launcher', async () => {
     await shopperPage.goto('/my-account/rewards/');
+    await expect(shopperPage.locator('.yayloyalty-account__balance')).toHaveText('20');
     await expect(shopperPage.getByText(`Order #${orderId}`)).toBeVisible();
 
     await shopperPage.goto('/shop/');
-    await expect(shopperPage.getByRole('button', { name: /20 Points/ })).toBeVisible();
+    await shopperPage.getByRole('button', { name: /20 Points/ }).click();
+    await expect(shopperPage.getByRole('dialog').getByText('20', { exact: true })).toBeVisible();
   });
 });

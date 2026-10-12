@@ -1,4 +1,4 @@
-import { openOrder, setOrderStatusInAdmin } from '../support/admin';
+import { openOrder, setOrderStatusInAdmin, untilReloaded } from '../support/admin';
 import { test, expect } from '../support/fixtures';
 
 test('refunds, refund deletes and cancellations move the points the order earned', async ({
@@ -19,7 +19,7 @@ test('refunds, refund deletes and cancellations move the points the order earned
     const gadget = adminPage.locator('#order_line_items tr.item', { hasText: 'E2E Gadget' });
     await gadget.locator('input.refund_order_item_qty').fill('1');
     await gadget.locator('input.refund_order_item_qty').dispatchEvent('change');
-    await adminPage.getByRole('button', { name: /Refund \$10\.00 manually/ }).click();
+    await untilReloaded(adminPage, () => adminPage.getByRole('button', { name: /Refund \$10\.00 manually/ }).click());
 
     await api.expectPoints(customer.id, { balance: 20 });
     expect(await api.ledger(customer.id)).toMatchObject([{ points: 30 }, { points: -10, type: 'refund_earn' }]);

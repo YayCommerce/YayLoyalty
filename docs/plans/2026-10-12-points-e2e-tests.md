@@ -10,7 +10,7 @@
 
 ## Outcome and deviations
 
-- Integration: 21 tests added (71 in the suite, all passing). Browser: 8 Playwright tests in 4 specs, passing twice in a row on one site. Rounding the clawback up fails `ReversalFlowTest`; unhooking `woocommerce_refund_deleted` fails both it and `reversals.spec.ts`.
+- Integration: 21 tests added (71 in the suite, all passing). Browser: 8 Playwright tests in 4 specs: 40 of 40 passed with `--repeat-each=5` on one site, with registration and reversals also stressed 25 times each. Rounding the clawback up fails `ReversalFlowTest`; unhooking `woocommerce_refund_deleted` fails both it and `reversals.spec.ts`.
 - `test_refunded_status_without_refund_object_reverses_fully` became `test_refunded_status_reverses_fully_once`: WooCommerce answers the `refunded` status with a refund for the remainder, so no refund-less path is reachable through a status change.
 - `test_negative_adjust_may_not_exceed_policy` was dropped: the adjust route has no such rule.
 - The wp-env config lives in `apps/e2e/.wp-env.json` and pins WordPress 7.1.3 and WooCommerce 11.2.1, as on the Local site. It runs PHP 8.2, not 7.4: the dev `vendor/` doesn't load on 7.4 ([known issue](../known-issues.md)).
