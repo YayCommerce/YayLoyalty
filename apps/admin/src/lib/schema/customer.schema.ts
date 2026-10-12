@@ -151,7 +151,7 @@ export const adjustPointsSchema = z.object({
 
 export type AdjustPointsInput = z.infer<typeof adjustPointsSchema>;
 
-/** Mirrors CustomerAdjustPreviewRestController::preview(). `count` is null unless filters were sent. */
+/** Mirrors CustomerAdjustPreviewRestController::preview(), the source of truth. `count` is null unless filters were sent. */
 export const adjustPointsPreviewSchema = z.object({
   count: z.number().int().nullable(),
   liability_points: z.number().int(),

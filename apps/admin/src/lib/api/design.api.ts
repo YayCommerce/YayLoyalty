@@ -13,7 +13,7 @@ export function resetDesign(group?: string) {
   return api.post('design/reset', { json: group ? { group } : {} }).json<Design>();
 }
 
-/** Mirrors the `viewer` that `DesignRestController::preview_design()` reads, which owns it: `guest`, or anything else for the sample member. */
+/** Mirrors the `viewer` that `DesignRestController::preview_design()` reads, the source of truth. It is `guest`, or anything else for the sample member. */
 export type DesignPreviewViewer = 'member' | 'guest';
 
 /**

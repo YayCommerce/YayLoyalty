@@ -24,11 +24,11 @@ function roundTo(value: number, decimals: number): number {
   return rounded === 0 ? 0 : Math.sign(value) * rounded;
 }
 
-/** Mirrors PointsMath::SNAP_DECIMALS. */
+/** Mirrors PointsMath::SNAP_DECIMALS, the source of truth. */
 const SNAP_DECIMALS = 9;
 
 /**
- * Mirrors PointsMath::round_points; an unknown mode rounds down. `mode` is string because PHP accepts any.
+ * Mirrors PointsMath::round_points, the source of truth. An unknown mode rounds down. `mode` is string because PHP accepts any.
  * Snaps first, so float error (0.57 × 100 = 56.999…) never crosses a whole number.
  */
 export function roundPoints(raw: number, mode: string): number {
@@ -45,7 +45,7 @@ export function roundPoints(raw: number, mode: string): number {
   }
 }
 
-/** Mirrors PointsMath::pct_delta; null with no previous, |previous| as denominator so a negative base keeps the sign. */
+/** Mirrors PointsMath::pct_delta, the source of truth. Null with no previous, |previous| as denominator so a negative base keeps the sign. */
 export function pctDelta(current: number, previous: number, decimals = 1): number | null {
   if (previous === 0) {
     return null;
@@ -54,7 +54,7 @@ export function pctDelta(current: number, previous: number, decimals = 1): numbe
   return roundTo(((current - previous) / Math.abs(previous)) * 100, decimals);
 }
 
-/** Mirrors PointsMath::pct_of; null when `whole` is 0. */
+/** Mirrors PointsMath::pct_of, the source of truth. Null when `whole` is 0. */
 export function pctOf(part: number, whole: number): number | null {
   if (whole === 0) {
     return null;

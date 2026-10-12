@@ -6,7 +6,7 @@
 **Goal:** Close four mechanical backlog items from the 2026-10-12 docs-sync audit in one PR into `dev/edd`.
 **Spec:** none, planned from the request. Each task links its backlog item.
 **Architecture:** Each backlog item gets one task and one commit. A task applies the backlog's suggested fix, checks its `## Done when` condition, then deletes the backlog file, since every box is then ticked. No shared code changes: `format.helper.ts` is only consumed.
-**Touches:** `scripts/run.sh`, `apps/admin/src/pages/customers/drawer/customer-drawer.copy.ts`, `apps/admin/src/pages/dashboard/dashboard-page.notice-copy.ts`, `apps/admin/src/pages/dashboard/components/DashboardAnomalySettlements.tsx`, `apps/admin/src/pages/settings/general-settings.form.ts`, `apps/admin/src/lib/schema/setup.schema.ts`, `apps/admin/src/pro/rewards/archive/RewardArchiveDialog.tsx`, `apps/admin/src/pro/campaigns/archive/CampaignArchiveDialog.tsx`, four files in `docs/backlog/`
+**Touches:** `scripts/run.sh`, `apps/admin/src/pages/customers/drawer/customer-drawer.copy.ts`, `apps/admin/src/pages/dashboard/dashboard-page.notice-copy.ts`, `apps/admin/src/pages/dashboard/components/DashboardAnomalySettlements.tsx`, `apps/admin/src/pages/settings/general-settings.form.ts`, `apps/admin/src/lib/schema/setup.schema.ts`, `apps/admin/src/pro/rewards/archive/RewardArchiveDialog.tsx`, `apps/admin/src/pro/campaigns/archive/CampaignArchiveDialog.tsx`, four files in `docs/backlog/`, and the per-symbol mirror comments in `apps/admin/src/lib/` (Task 6)
 **Tests:** none. Under CLAUDE.md's test rule none is warranted: no money or ledger logic changes, and no fixed bug needs a reproducing test.
 
 ## Requirements
@@ -19,7 +19,8 @@
   3. The `POINTS_LABEL_MAX_LENGTH` comment opens with `Mirrors SettingsHelper::POINTS_LABEL_MAX_LENGTH, the source of truth.` and the `setupSchema` comment opens with `Mirrors SetupService::payload(), the source of truth.`
   4. `git grep -n "'\.\./\.\./shared/" -- apps/admin/src/pro` prints nothing.
   5. The type-check exits 0, and `ls docs/backlog` lists only the two 2026-10-06 items.
-- **Decided with the user:** one PR for all four items (from the request).
+  6. Every TypeScript comment that mirrors a PHP symbol opens with `Mirrors <PHP symbol>, the source of truth.`
+- **Decided with the user:** one PR for all four items (from the request). After the yaytidy pass, the user asked to fix the mirror wording everywhere in this phase (Task 6).
 
 ## Global constraints
 
@@ -133,3 +134,19 @@ Backlog: `docs/backlog/2026-10-12-archive-dialog-imported-by-relative-path.md`
 - [x] **Step 2:** Run `ls docs/backlog`. Expected: only `2026-10-06-referrals-not-built.md` and `2026-10-06-tiers-not-built.md`.
 - [x] **Step 3:** Run `git status`. Expected: only `composer.json` is modified and unstaged.
 - [x] **Step 4:** Set this plan's Status to `done 2026-10-12`. Commit with message `docs(plans): mark clear-small-backlog done`. Then hand over the branch name and a PR description ending with `🤖 Generated with [Claude Code](https://claude.com/claude-code)` and the session link.
+
+### Task 6: Every PHP mirror uses the convention's wording
+
+Added after the yaytidy pass. Task 3 fixed the two mirrors the backlog listed. 23 per-symbol mirror comments still put `Mirrors` mid-comment, ended it with `;` or `:`, or said "which owns it" (docs/conventions.md, "TypeScript copies of PHP name their owner").
+
+**Files:**
+- Modify: `apps/admin/src/lib/api/design.api.ts`, `apps/admin/src/lib/points-math/points-math.ts`, and in `apps/admin/src/lib/schema/`: `campaign-performance.schema.ts`, `campaign.schema.ts`, `customer.schema.ts`, `dashboard.schema.ts`, `design.schema.ts`, `ledger.schema.ts`, `lookup.schema.ts`, `reward.schema.ts`
+
+- [x] **Step 1:** Reword each comment to open with `Mirrors <PHP symbol>, the source of truth.`, keeping the rest of its text. `dashboard.schema.ts`'s notice keys name `DashboardNotices`, which holds them as literals. Leave `components/ui/chart.tsx` and `pro/campaigns/CampaignTable.tsx`, which don't mirror PHP.
+- [x] **Step 2: Verify**
+  - Run: `git grep -n -i 'mirrors\|which owns' -- apps/admin/src | grep -v 'the source of truth'`. Expected: only `chart.tsx:15`, `CampaignTable.tsx:546` and `reward.schema.ts:147`, whose wording wraps onto line 148.
+  - Each PHP symbol named still exists under `includes/`.
+  - The type-check and ESLint on the changed files: exit 0. Prettier shows no new warnings. `ledger.schema.ts` is already flagged on `dev/edd`, for its `LEDGER_TYPES` line.
+- [x] **Step 3: Commit**
+  - Stage: the ten files and this plan
+  - Message: `docs(admin): name the source of truth in every PHP mirror`

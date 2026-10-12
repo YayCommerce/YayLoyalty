@@ -54,7 +54,7 @@ export const ledgerEntrySchema = z.object({
 export type LedgerEntry = z.infer<typeof ledgerEntrySchema>;
 
 /**
- * The ledger tab's filter groups over `LEDGER_TYPES`. Mirrors `LedgerQueryArgs::filter_types()`.
+ * Mirrors `LedgerQueryArgs::filter_types()`, the source of truth. The ledger tab's filter groups over `LEDGER_TYPES`.
  * `earn` adds `refund_earn`, `redeem` adds `refund_redeem` and `adjust` adds `correction`.
  */
 export const LEDGER_FILTER_TYPES = ['all', 'earn', 'redeem', 'adjust', 'expire'] as const;

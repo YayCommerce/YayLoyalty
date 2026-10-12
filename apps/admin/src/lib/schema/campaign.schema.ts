@@ -7,13 +7,13 @@ import type { RoundingMode } from '@/lib/points-math/points-math';
 
 /** Mirrors CampaignRestController::define_item_schema(), the source of truth. */
 
-/** Mirrors CampaignTrigger::lite_triggers(). */
+/** Mirrors CampaignTrigger::lite_triggers(), the source of truth. */
 export const LITE_CAMPAIGN_TRIGGERS = ['purchase', 'signup', 'review'] as const;
 
 /** The triggers the create form offers; the Lite build's POST accepts only these, while Pro adds more through the yayloyalty_campaign_triggers filter that CampaignTrigger::is_valid() reads. */
 export type LiteCampaignTrigger = (typeof LITE_CAMPAIGN_TRIGGERS)[number];
 
-/** Mirrors YayLoyaltyPro::ADDED_TRIGGERS. */
+/** Mirrors YayLoyaltyPro::ADDED_TRIGGERS, the source of truth. */
 export const PRO_CAMPAIGN_TRIGGERS = ['birthday', 'first_order', 'order_count', 'spend_milestone'] as const;
 
 /**
@@ -47,13 +47,13 @@ export type CampaignTrigger = z.infer<typeof campaignTriggerSchema>;
 export type OfferableCampaignTrigger = (typeof CAMPAIGN_TRIGGERS)[number];
 export type CampaignStatus = z.infer<typeof campaignStatusSchema>;
 
-/** CampaignStatus plus the two derived, never-stored labels. Mirrors Enums\Status::resolve_display(). */
+/** Mirrors Enums\Status::resolve_display(), the source of truth. CampaignStatus plus the two derived, never-stored labels. */
 export const CAMPAIGN_DISPLAY_STATUSES = [...CAMPAIGN_STATUSES, 'scheduled', 'ended'] as const;
 
 export type CampaignDisplayStatus = (typeof CAMPAIGN_DISPLAY_STATUSES)[number];
 
 /**
- * Mirrors Enums\Status::resolve_display(). `at` is UTC in the stored shape;
+ * Mirrors Enums\Status::resolve_display(), the source of truth. `at` is UTC in the stored shape;
  * pass the campaign's dates through unconverted.
  */
 export function resolveCampaignDisplayStatus(
@@ -126,9 +126,9 @@ export type CampaignListParams = z.infer<typeof campaignListParamsSchema>;
 // Write shapes
 
 /**
- * Mirrors CampaignConditionType::schema() minus UNAVAILABLE. `tier` stays
- * out until the PHP side offers it: CampaignConditionSet rejects a save
- * that carries one.
+ * Mirrors CampaignConditionType::schema(), the source of truth. It leaves out
+ * UNAVAILABLE, and `tier` stays out until the PHP side offers it:
+ * CampaignConditionSet rejects a save that carries one.
  */
 export const CAMPAIGN_CONDITION_TYPES = [
   'user_role',
@@ -163,7 +163,7 @@ interface CampaignConditionSpec {
   sourceValues?: readonly string[];
 }
 
-/** Which address a `country` condition reads; mirrors CampaignConditionType::SOURCE_*. */
+/** Mirrors CampaignConditionType::SOURCE_*, the source of truth. The address a `country` condition reads. */
 export const COUNTRY_SOURCE_VALUES = ['shipping', 'billing', 'any'] as const;
 
 /**
@@ -329,7 +329,7 @@ export const CAMPAIGN_CONFIG_FIELDS: Record<
 };
 
 /**
- * Mirrors Campaign::default_config(). Used only when creating: the chooser's
+ * Mirrors Campaign::default_config(), the source of truth. Used only when creating: the chooser's
  * templates start from these, and switching the trigger in the builder
  * re-seeds config to the new trigger's defaults, since a stale key from the
  * old trigger would fail Campaign::config_is_valid() on save.
