@@ -39,6 +39,16 @@ final class LauncherPayload {
     }
 
     /**
+     * The payload for a viewer, with the default repositories.
+     *
+     * @param array $design  DesignHelper::get_design().
+     * @param int   $user_id The viewer; 0 for a guest.
+     */
+    public static function for_user( array $design, int $user_id ): array {
+        return ( new self( new CampaignRepository(), new RewardRepository(), new CustomerRepository() ) )->build( $design, $user_id > 0 ? $user_id : null );
+    }
+
+    /**
      * @param array    $design  DesignHelper::get_design().
      * @param int|null $user_id The signed-in shopper; null for a guest.
      */

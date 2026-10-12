@@ -1,0 +1,15 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "yayloyalty/points-balance",
+  "title": "Points balance",
+  "description": "The signed-in customer’s balance and what it is worth",
+  "category": "yayloyalty",
+  "icon": "star-filled",
+  "textdomain": "yayloyalty",
+  "editorScript": "yayloyalty/script/blocks-editor",
+  "style": "yayloyalty/style/storefront-account",
+  "supports": {
+    "html": false
+  }
+}

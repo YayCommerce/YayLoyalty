@@ -1,0 +1,15 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "yayloyalty/ways-to-earn",
+  "title": "Ways to earn",
+  "description": "The enabled earning rules as a list",
+  "category": "yayloyalty",
+  "icon": "list-view",
+  "textdomain": "yayloyalty",
+  "editorScript": "yayloyalty/script/blocks-editor",
+  "style": "yayloyalty/style/storefront-account",
+  "supports": {
+    "html": false
+  }
+}

@@ -2,19 +2,12 @@
 namespace YayLoyalty\Engine\Storefront;
 
 use YayLoyalty\Controllers\Schemas\LedgerQueryArgs;
-use YayLoyalty\Engine\Earning\EarningService;
 use YayLoyalty\Engine\Earning\ProgramGate;
-use YayLoyalty\Engine\Points\ContextFactory;
 use YayLoyalty\Engine\Register\ScriptName;
-use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Helpers\DesignHelper;
 use YayLoyalty\Helpers\SettingsHelper;
-use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
-use YayLoyalty\Repositories\RewardRepository;
-use YayLoyalty\Utils\Dates;
-use YayLoyalty\Utils\Log;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -43,6 +36,7 @@ final class AccountRewards {
         add_filter( 'woocommerce_account_menu_items', [ self::class, 'add_menu_item' ] );
         add_filter( 'woocommerce_endpoint_' . self::ENDPOINT . '_title', [ self::class, 'title' ] );
         add_action( 'woocommerce_account_' . self::ENDPOINT . '_endpoint', [ self::class, 'render' ] );
+        add_action( 'init', [ self::class, 'register_style' ] );
         add_action( 'wp_enqueue_scripts', [ self::class, 'enqueue' ] );
         add_action( 'template_redirect', [ AccountHistoryCsv::class, 'maybe_send' ] );
     }
@@ -89,12 +83,15 @@ final class AccountRewards {
         return array_slice( $items, 0, $position, true ) + $item + array_slice( $items, $position, null, true );
     }
 
-    public static function enqueue(): void {
-        if ( ! is_wc_endpoint_url( self::ENDPOINT ) ) {
-            return;
-        }
+    /** The tab's layout stylesheet, which the placements and their blocks share. */
+    public static function register_style(): void {
+        wp_register_style( ScriptName::ACCOUNT_STYLE, YAYLOYALTY_PLUGIN_URL . self::STYLE_PATH, [], Launcher::asset_version( self::STYLE_PATH ) );
+    }
 
-        wp_enqueue_style( ScriptName::ACCOUNT_STYLE, YAYLOYALTY_PLUGIN_URL . self::STYLE_PATH, [], Launcher::asset_version( self::STYLE_PATH ) );
+    public static function enqueue(): void {
+        if ( is_wc_endpoint_url( self::ENDPOINT ) ) {
+            wp_enqueue_style( ScriptName::ACCOUNT_STYLE );
+        }
     }
 
     public static function title(): string {
@@ -148,33 +145,45 @@ final class AccountRewards {
             return;
         }
 
-        $buffer_level = ob_get_level();
+        $html = OutputCapture::capture(
+            static function () use ( $value ): void {
+                $view = self::view( get_current_user_id(), max( 1, absint( $value ) ) );
 
-        try {
-            $view = self::view( get_current_user_id(), max( 1, absint( $value ) ) );
+                include __DIR__ . '/templates/account-rewards.php';
+            },
+            'AccountRewards'
+        );
 
-            ob_start();
-            include __DIR__ . '/templates/account-rewards.php';
-            echo ob_get_clean(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- the template escapes every value.
-        } catch ( \Throwable $e ) {
-            // Drop the half-printed tab, never the theme's own buffers.
-            while ( ob_get_level() > $buffer_level ) {
-                ob_end_clean();
-            }
-
-            Log::warning( 'AccountRewards', 'not rendered: ' . $e->getMessage() );
+        if ( null === $html ) {
             self::print_unavailable();
+
+            return;
         }
+
+        echo $html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- the template escapes every value.
     }
 
     /**
-     * @return array{payload: array, expires_at: ?string, can_earn: bool, history: array{rows: array, total: int, page: int, filter: string}}
+     * The points card's data: the payload for this viewer and their expiry date.
+     *
+     * @param int $user_id The viewer; 0 for a guest.
+     * @return array{payload: array, expires_at: ?string}
+     */
+    public static function card_view( int $user_id ): array {
+        $customer = 0 === $user_id ? null : ( new CustomerRepository() )->find_by_user_id( $user_id );
+
+        return [
+            'payload'    => LauncherPayload::for_user( DesignHelper::get_design(), $user_id ),
+            'expires_at' => null === $customer ? null : $customer->get_expires_at(),
+        ];
+    }
+
+    /**
+     * @return array{payload: array, expires_at: ?string, earn: array, history: array{rows: array, total: int, page: int, filter: string}}
      */
     private static function view( int $user_id, int $page ): array {
-        $customers = new CustomerRepository();
-        $customer  = $customers->find_by_user_id( $user_id );
-        $filter    = self::current_filter();
-        $history   = ( new LedgerRepository() )->paginate_for_user(
+        $filter  = self::current_filter();
+        $history = ( new LedgerRepository() )->paginate_for_user(
             $user_id,
             [
                 'types'    => LedgerQueryArgs::types_of( $filter ),
@@ -183,11 +192,11 @@ final class AccountRewards {
             ]
         );
 
-        return [
-            'payload'    => ( new LauncherPayload( new CampaignRepository(), new RewardRepository(), $customers ) )->build( DesignHelper::get_design(), $user_id ),
-            'expires_at' => null === $customer ? null : $customer->get_expires_at(),
-            'can_earn'   => null === EarningService::gate_reason( CampaignTrigger::PURCHASE, ContextFactory::from_user( $user_id, Dates::now() ) ),
-            'history'    => [
+        $card = self::card_view( $user_id );
+
+        return $card + [
+            'earn'    => LauncherEarnRules::for_viewer( $card['payload'], $user_id ),
+            'history' => [
                 'rows'   => ShopperActivityRow::history_rows( $history['items'] ),
                 'total'  => (int) $history['total'],
                 'page'   => $page,

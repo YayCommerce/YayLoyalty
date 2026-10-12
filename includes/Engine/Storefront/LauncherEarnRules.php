@@ -122,6 +122,43 @@ final class LauncherEarnRules {
     }
 
     /**
+     * The "Ways to earn" a viewer is shown outside the launcher: a guest's rows, signup first, or a member's
+     * under the daily limit; none for a viewer who cannot earn.
+     *
+     * @param array $payload LauncherPayload::for_user() for this viewer.
+     * @param int   $user_id The viewer; 0 for a guest.
+     * @return array{rows: array<int, array{trigger: string, label: string, value: string}>, limit_line: string}
+     */
+    public static function for_viewer( array $payload, int $user_id ): array {
+        if ( ! Launcher::viewer_can_earn( $user_id ) ) {
+            return self::with_daily_limit( [], null );
+        }
+
+        $earn = $payload['earn'];
+        $rows = self::member_rows( $earn, $payload['text']['earn_rate_line'], $payload['purchase_min'] );
+
+        if ( $user_id > 0 ) {
+            return self::with_daily_limit( $rows, $payload['left_today'] );
+        }
+
+        if ( null !== $earn[ CampaignTrigger::SIGNUP ] ) {
+            array_unshift(
+                $rows,
+                [
+                    'trigger' => CampaignTrigger::SIGNUP,
+                    'label'   => LauncherCopy::create_account( $payload['register'] ),
+                    'value'   => SettingsHelper::points_text( $earn[ CampaignTrigger::SIGNUP ] ),
+                ]
+            );
+        }
+
+        return [
+            'rows'       => $rows,
+            'limit_line' => '',
+        ];
+    }
+
+    /**
      * No earn rows: advertise()'s shape with nothing advertised.
      *
      * @return array{earn: array{purchase: null, signup: null, review: null}, purchase_min: float}
