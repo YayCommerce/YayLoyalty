@@ -71,6 +71,13 @@
 - **Workaround:** run `composer install` after every release run.
 - **Remove when:** `release` restores the dev packages itself.
 
+## wp-env can't run the plugin on PHP 7.4
+
+- **Symptom:** with `phpVersion` 7.4 in `apps/e2e/.wp-env.json`, every request dies with `Parse error: syntax error, unexpected '|'` in `vendor/thecodingmachine/safe/lib/special_cases.php`.
+- **Cause:** wp-env mounts the working tree, whose `vendor/` holds the dev packages. php-scoper pulls in Safe, which needs PHP 8, and Composer's autoloader loads its files on every request.
+- **Workaround:** the browser tests run on PHP 8.2. Check the PHP 7.4 floor by review (hard rule 4) or on a release zip.
+- **Remove when:** wp-env mounts a `--no-dev` build of the plugin.
+
 ## Builds outside `run.sh` are Pro
 
 - **Symptom:** the root `pnpm dev:admin` and `pnpm build:admin`, and any `vite` run without `BUILD_TYPE`, produce the Pro build: its bundle carries the Pro sentinel and no upsell.

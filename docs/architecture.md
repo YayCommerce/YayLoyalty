@@ -194,3 +194,7 @@ What follows is the harness the tests run in. When a test is warranted at all is
 - **Vitest** (`apps/admin/vitest.config.ts`) runs `apps/admin/tests/**/*.test.ts` in Node, with the `@` alias.
   - It doesn't load `vite.config.ts`, so `IS_PRO_BUILD` is false unless the shell exports `VITE_IS_PRO=true`.
   - Tests sit outside `tsconfig.json`, so `tsc` doesn't check them.
+- **Browser** (`apps/e2e/`, the `@yayloyalty/e2e` package): Playwright drives the Pro build in wp-env's tests site on :8889. Why this shape is in [the decision record](decisions/2026-10-12-browser-tests-with-playwright-on-wp-env.md).
+  - `apps/e2e/.wp-env.json` pins WordPress and WooCommerce and mounts this repo as the plugin, with `YAYLOYALTY_IS_DEVELOPMENT` false, so the site loads `assets/dist/`.
+  - `apps/e2e/bin/setup.sh` seeds the store: WooCommerce pages and options, Check payments, held reviews, the setup wizard's campaigns, two products, an excluded role and an application password in `apps/e2e/.auth/`.
+  - Specs set up and assert through REST (`apps/e2e/support/api.ts`), and act through the UI. Each test makes its own customer; specs run one at a time because they share settings and campaigns.

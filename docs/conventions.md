@@ -69,7 +69,7 @@ The layering rules live in [architecture.md](architecture.md#server-layers-and-w
   - Other TypeScript modules are kebab-case `<owner>.<role>.ts`, as in `campaign.api.ts`, `campaign.queries.ts`, `campaign.schema.ts` and `design-settings.copy.ts`. A page-local module starts with its page or feature, as in `customer-drawer.ledger-rows.ts`.
   - Shared hooks are named `useThing` and live in `apps/admin/src/hooks/`.
   - The vendored UI primitives in `apps/admin/src/components/ui/` keep their upstream kebab-case names.
-  - Tests are `<Subject>Test.php` in `tests/unit/` or `tests/integration/`, and `<module>.test.ts` in `apps/admin/tests/`.
+  - Tests are `<Subject>Test.php` in `tests/unit/` or `tests/integration/`, `<module>.test.ts` in `apps/admin/tests/`, and `<flow>.spec.ts` in `apps/e2e/specs/`.
 - **Why:** the autoloader maps `YayLoyalty\Models\Customer` to `includes/Models/Customer.php`, so PHP names must match exactly (`phpcs.xml.dist`). The role suffixes and the TypeScript patterns are team convention, with no further reason written down.
 - **In code:** the loader in `yayloyalty.php`, `apps/admin/vitest.config.ts`.
 
