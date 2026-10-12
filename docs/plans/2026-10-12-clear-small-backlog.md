@@ -2,7 +2,7 @@
 
 > **For agentic workers:** execute tasks in order, one at a time. Steps use `- [ ]` for tracking. Each task's backlog file is the spec for that task; read it before starting.
 
-**Status:** active
+**Status:** done 2026-10-12
 **Goal:** Close four mechanical backlog items from the 2026-10-12 docs-sync audit in one PR into `dev/edd`.
 **Spec:** none, planned from the request. Each task links its backlog item.
 **Architecture:** Each backlog item gets one task and one commit. A task applies the backlog's suggested fix, checks its `## Done when` condition, then deletes the backlog file, since every box is then ticked. No shared code changes: `format.helper.ts` is only consumed.
@@ -38,9 +38,9 @@
 
 ### Task 0: Branch and save the plan
 
-- [ ] **Step 1:** Run `git switch -c trace/chore/clear-small-backlog dev/edd` and then `git branch --unset-upstream`.
-- [ ] **Step 2:** Copy this plan to `docs/plans/2026-10-12-clear-small-backlog.md`.
-- [ ] **Step 3: Commit**
+- [x] **Step 1:** Run `git switch -c trace/chore/clear-small-backlog dev/edd` and then `git branch --unset-upstream`.
+- [x] **Step 2:** Copy this plan to `docs/plans/2026-10-12-clear-small-backlog.md`.
+- [x] **Step 3: Commit**
   - Stage: `docs/plans/2026-10-12-clear-small-backlog.md`
   - Message: `docs(plans): plan clearing four small backlog items`
 
@@ -52,13 +52,13 @@ Backlog: `docs/backlog/2026-10-12-clean-leaves-the-blocks-build.md`
 - Modify: `scripts/run.sh:420-432` (`cmd_clean`)
 - Delete: `docs/backlog/2026-10-12-clean-leaves-the-blocks-build.md`
 
-- [ ] **Step 1:** In `cmd_clean`, add a third `if [ -d "$PLUGIN_DIR/assets/dist/blocks" ]` branch after the storefront branch. Copy the storefront branch's form: `rm -rf` the directory, then `print_success "Removed assets/dist/blocks"`.
-- [ ] **Step 2: Verify**
+- [x] **Step 1:** In `cmd_clean`, add a third `if [ -d "$PLUGIN_DIR/assets/dist/blocks" ]` branch after the storefront branch. Copy the storefront branch's form: `rm -rf` the directory, then `print_success "Removed assets/dist/blocks"`.
+- [x] **Step 2: Verify**
   - Run: `mkdir -p assets/dist/blocks && touch assets/dist/blocks/editor.js && ./scripts/run.sh clean`
   - Expected: the output includes `Removed assets/dist/blocks`, and `ls assets/dist/blocks` fails with "No such file".
   - Afterwards, run `./scripts/run.sh build` to restore the dist for the local site, if the site needs it.
-- [ ] **Step 3:** Delete the backlog file.
-- [ ] **Step 4: Commit**
+- [x] **Step 3:** Delete the backlog file.
+- [x] **Step 4: Commit**
   - Stage: `scripts/run.sh`, `docs/backlog/2026-10-12-clean-leaves-the-blocks-build.md`
   - Message: `fix(scripts): remove the blocks build in run.sh clean`
 
@@ -75,17 +75,17 @@ Backlog: `docs/backlog/2026-10-12-multiples-and-pager-counts-use-tolocalestring.
 **Interfaces:**
 - Consumes `formatStoreNumber(value: number, decimals: number): string` and `formatStoreDecimal(value: number, maxDecimals: number): string` from `@/lib/helpers/format.helper`. Both are unchanged.
 
-- [ ] **Step 1:** In `pagerSummary`, use `formatStoreNumber(from, 0)`, `formatStoreNumber(to, 0)` and `formatStoreNumber(total, 0)`. Add the `@/lib/helpers/format.helper` import.
-- [ ] **Step 2:** In the anomaly title, use `formatStoreDecimal(n.data.multiple, 1)`. Add `formatStoreDecimal` to the existing `format.helper` import. One decimal matches `round( $yesterday_points / $average, 1 )` in `includes/Services/Dashboard/AnomalyDetector.php:50`.
-- [ ] **Step 3:** In `DashboardAnomalySettlements`, use `formatStoreDecimal(threshold.multiple, 1)`. Add the import.
-- [ ] **Step 4: Verify**
+- [x] **Step 1:** In `pagerSummary`, use `formatStoreNumber(from, 0)`, `formatStoreNumber(to, 0)` and `formatStoreNumber(total, 0)`. Add the `@/lib/helpers/format.helper` import.
+- [x] **Step 2:** In the anomaly title, use `formatStoreDecimal(n.data.multiple, 1)`. Add `formatStoreDecimal` to the existing `format.helper` import. One decimal matches `round( $yesterday_points / $average, 1 )` in `includes/Services/Dashboard/AnomalyDetector.php:50`.
+- [x] **Step 3:** In `DashboardAnomalySettlements`, use `formatStoreDecimal(threshold.multiple, 1)`. Add the import.
+- [x] **Step 4: Verify**
   - Run: `git grep -n toLocaleString -- apps/admin/src/pages`. Expected: no output.
   - Run the type-check and ESLint on the three files, as Global constraints describes. Expected: tsc exits 0, and ESLint shows no new errors or warnings.
   - In the browser, set WooCommerce → Settings → General to thousand separator `.` and decimal separator `,`. Open a customer drawer with more than 10 ledger rows (user 1 has about 30). Expected: the pager reads `1–10 of 30 entries · newest first`.
   - If the dashboard shows a points-jump notice, its title shows a comma decimal, and the threshold line reads `3×`. If no notice shows, check `formatStoreDecimal(3, 1)` in the browser console on the admin page. Expected: `"3"`.
   - Restore the separators afterwards.
-- [ ] **Step 5:** Delete the backlog file.
-- [ ] **Step 6: Commit**
+- [x] **Step 5:** Delete the backlog file.
+- [x] **Step 6: Commit**
   - Stage: the three source files and the backlog file
   - Message: `fix(admin): format pager counts and multiples with store separators`
 
@@ -98,13 +98,13 @@ Backlog: `docs/backlog/2026-10-12-two-mirrors-miss-the-source-of-truth-wording.m
 - Modify: `apps/admin/src/lib/schema/setup.schema.ts:3`
 - Delete: `docs/backlog/2026-10-12-two-mirrors-miss-the-source-of-truth-wording.md`
 
-- [ ] **Step 1:** Change line 5 of `general-settings.form.ts` to `/** Mirrors SettingsHelper::POINTS_LABEL_MAX_LENGTH, the source of truth. */`.
-- [ ] **Step 2:** Change line 3 of `setup.schema.ts` to `/** Mirrors SetupService::payload(), the source of truth. POST /setup takes it and returns the saved values. */`.
-- [ ] **Step 3: Verify**
+- [x] **Step 1:** Change line 5 of `general-settings.form.ts` to `/** Mirrors SettingsHelper::POINTS_LABEL_MAX_LENGTH, the source of truth. */`.
+- [x] **Step 2:** Change line 3 of `setup.schema.ts` to `/** Mirrors SetupService::payload(), the source of truth. POST /setup takes it and returns the saved values. */`.
+- [x] **Step 3: Verify**
   - Run: `git grep -n 'the source of truth' -- apps/admin/src/pages/settings/general-settings.form.ts apps/admin/src/lib/schema/setup.schema.ts`
   - Expected: two lines that match the wording in Steps 1 and 2.
-- [ ] **Step 4:** Delete the backlog file.
-- [ ] **Step 5: Commit**
+- [x] **Step 4:** Delete the backlog file.
+- [x] **Step 5: Commit**
   - Stage: both source files and the backlog file
   - Message: `docs(admin): name the source of truth in two PHP mirrors`
 
@@ -117,18 +117,18 @@ Backlog: `docs/backlog/2026-10-12-archive-dialog-imported-by-relative-path.md`
 - Modify: `apps/admin/src/pro/campaigns/archive/CampaignArchiveDialog.tsx:25`
 - Delete: `docs/backlog/2026-10-12-archive-dialog-imported-by-relative-path.md`
 
-- [ ] **Step 1:** In both files, change `'../../shared/ArchiveOrDeleteDialog'` to `'@/pro/shared/ArchiveOrDeleteDialog'`. If the import-order rule asks for it, move the import into the `@/` group.
-- [ ] **Step 2: Verify**
+- [x] **Step 1:** In both files, change `'../../shared/ArchiveOrDeleteDialog'` to `'@/pro/shared/ArchiveOrDeleteDialog'`. If the import-order rule asks for it, move the import into the `@/` group.
+- [x] **Step 2: Verify**
   - Run: `git grep -n "'\.\./\.\./shared/" -- apps/admin/src/pro`. Expected: no output.
   - Run the type-check and ESLint on both files. Expected: tsc exits 0, and ESLint shows no new errors or warnings.
-- [ ] **Step 3:** Delete the backlog file.
-- [ ] **Step 4: Commit**
+- [x] **Step 3:** Delete the backlog file.
+- [x] **Step 4: Commit**
   - Stage: both source files and the backlog file
   - Message: `refactor(admin): import the shared archive dialog through @/pro`
 
 ### Task 5: Final check and close the plan
 
-- [ ] **Step 1:** Run the whole-SPA type-check from `apps/admin`: `node node_modules/typescript/bin/tsc --noEmit`. Expected: exit 0.
-- [ ] **Step 2:** Run `ls docs/backlog`. Expected: only `2026-10-06-referrals-not-built.md` and `2026-10-06-tiers-not-built.md`.
-- [ ] **Step 3:** Run `git status`. Expected: only `composer.json` is modified and unstaged.
-- [ ] **Step 4:** Set this plan's Status to `done 2026-10-12`. Commit with message `docs(plans): mark clear-small-backlog done`. Then hand over the branch name and a PR description ending with `🤖 Generated with [Claude Code](https://claude.com/claude-code)` and the session link.
+- [x] **Step 1:** Run the whole-SPA type-check from `apps/admin`: `node node_modules/typescript/bin/tsc --noEmit`. Expected: exit 0.
+- [x] **Step 2:** Run `ls docs/backlog`. Expected: only `2026-10-06-referrals-not-built.md` and `2026-10-06-tiers-not-built.md`.
+- [x] **Step 3:** Run `git status`. Expected: only `composer.json` is modified and unstaged.
+- [x] **Step 4:** Set this plan's Status to `done 2026-10-12`. Commit with message `docs(plans): mark clear-small-backlog done`. Then hand over the branch name and a PR description ending with `🤖 Generated with [Claude Code](https://claude.com/claude-code)` and the session link.
