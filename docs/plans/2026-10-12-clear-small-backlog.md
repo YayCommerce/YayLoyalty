@@ -145,6 +145,7 @@ Added after the yaytidy pass. Task 3 fixed the two mirrors the backlog listed. 2
 - [x] **Step 1:** Reword each comment to open with `Mirrors <PHP symbol>, the source of truth.`, keeping the rest of its text. `dashboard.schema.ts`'s notice keys name `DashboardNotices`, which holds them as literals. A comment that names two owners names both in that sentence. `customers-page.filter-suggestions.ts:40` copies a rule, not a shape, so it names `CustomerRowFilters::candidates_for_no_match()` in place of its vague "mirrored server-side". Leave `components/ui/chart.tsx` and `pro/campaigns/CampaignTable.tsx`, which don't mirror PHP.
 - [x] **Step 2: Verify**
   - Run: `git grep -n -i -E 'mirror|matches [A-Z`]|which owns|copies [A-Z`]' -- apps/admin/src | grep -v 'the source of truth'`. Expected: no comment that copies a PHP symbol. What's left is UI text, `chart.tsx:15`, `CampaignTable.tsx:546`, `api.type.ts:1` (casing, not a copy), `campaign-performance.schema.ts:13` (a TS-to-TS match), skeleton and editor notes, and `reward.schema.ts:147`, whose wording wraps onto line 148.
+  - Run: `git grep -n -E 'the source of truth[^.]' -- apps/admin/src`. Expected: no output, because `Mirrors <PHP symbol>, the source of truth.` is the whole first sentence, never followed by `:` or `,`.
   - Each PHP symbol named still exists under `includes/`.
   - The type-check and ESLint on the changed files: exit 0. Prettier shows no new warnings. `ledger.schema.ts` is already flagged on `dev/edd`, for its `LEDGER_TYPES` line.
 - [x] **Step 3: Commit**

@@ -17,7 +17,7 @@ export type LiteCampaignTrigger = (typeof LITE_CAMPAIGN_TRIGGERS)[number];
 export const PRO_CAMPAIGN_TRIGGERS = ['birthday', 'first_order', 'order_count', 'spend_milestone'] as const;
 
 /**
- * Mirrors CampaignTrigger::all_known(), the source of truth: every trigger the API may hand back.
+ * Mirrors CampaignTrigger::all_known(), the source of truth. Every trigger the API may hand back.
  * Parsing must accept Pro values in both builds, or a downgraded site's
  * campaigns list throws instead of rendering.
  */
@@ -29,12 +29,12 @@ export const ALL_KNOWN_CAMPAIGN_TRIGGERS = [
   'renewal',
 ] as const;
 
-/** Mirrors CampaignTrigger::all(), the source of truth: the triggers this build offers. For UI choices only, never parsing. */
+/** Mirrors CampaignTrigger::all(), the source of truth. The triggers this build offers. For UI choices only, never parsing. */
 export const CAMPAIGN_TRIGGERS = IS_PRO_BUILD
   ? ([...LITE_CAMPAIGN_TRIGGERS, ...PRO_CAMPAIGN_TRIGGERS] as const)
   : LITE_CAMPAIGN_TRIGGERS;
 
-/** Mirrors Enums\Status::all(), the source of truth: the stored statuses. No scheduled/ended: liveness is derived. */
+/** Mirrors Enums\Status::all(), the source of truth. The stored statuses. No scheduled/ended: liveness is derived. */
 export const CAMPAIGN_STATUSES = ['active', 'paused', 'draft', 'archived'] as const;
 
 /** Parses the full known vocabulary, in both builds. */
@@ -167,7 +167,7 @@ interface CampaignConditionSpec {
 export const COUNTRY_SOURCE_VALUES = ['shipping', 'billing', 'any'] as const;
 
 /**
- * Mirrors CampaignConditionType::schema(), the source of truth, for offerable types only.
+ * Mirrors CampaignConditionType::schema(), the source of truth. Offerable types only.
  * UI metadata, not a validator: CampaignConditionSet enforces on save, and
  * a duplicate here would only drift from it.
  */
@@ -233,8 +233,8 @@ export const campaignConditionSchema = z.object({
 export type CampaignCondition = z.infer<typeof campaignConditionSchema>;
 
 /**
- * Mirrors CampaignRestController::update_item()'s mutable fields, the source of truth:
- * the write body for PUT campaigns/{id}. No slug or trigger: both are immutable after create. No priority:
+ * Mirrors CampaignRestController::update_item()'s mutable fields, the source of truth.
+ * The write body for PUT campaigns/{id}. No slug or trigger: both are immutable after create. No priority:
  * only the campaigns table's drag writes it, through campaigns/reorder.
  */
 export const campaignUpdateInputSchema = z
@@ -265,12 +265,12 @@ export function isCampaignScheduleInOrder(startsAt: string | null, endsAt: strin
 }
 
 /**
- * Mirrors CampaignRestController::create_item(), the source of truth: the write body for POST campaigns. `trigger` is set only here: it is immutable after create.
+ * Mirrors CampaignRestController::create_item(), the source of truth. The write body for POST campaigns. `trigger` is set only here: it is immutable after create.
  * No `slug`: the server generates it from `name`.
  */
 export type CampaignCreateInput = CampaignUpdateInput & { trigger: LiteCampaignTrigger };
 
-/** Mirrors CampaignRestController::delete_item(), the source of truth: the response of DELETE campaigns/{id}. */
+/** Mirrors CampaignRestController::delete_item(), the source of truth. The response of DELETE campaigns/{id}. */
 export const campaignDeleteResponseSchema = z.object({
   deleted: z.boolean(),
   id: z.number().int(),
@@ -294,7 +294,7 @@ interface CampaignConfigFieldSpec {
 }
 
 /**
- * Mirrors Campaign::config_schema(), the source of truth: a per-trigger config
+ * Mirrors Campaign::config_schema(), the source of truth. A per-trigger config
  * field map for the three Lite triggers. UI metadata, not validation: `config` stays z.record
  * so this can never become a second whitelist. Pro triggers have no Lite
  * schema and so no entry here.

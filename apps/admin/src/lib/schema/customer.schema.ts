@@ -89,7 +89,7 @@ export const drawerNegativeBalanceSchema = z.object({
 
 export type DrawerNegativeBalance = z.infer<typeof drawerNegativeBalanceSchema>;
 
-/** Mirrors CustomerListFormatter::format_row(), the source of truth: one row of GET /customers, a JOIN projection with name/email. */
+/** Mirrors CustomerListFormatter::format_row(), the source of truth. One row of GET /customers, a JOIN projection with name/email. */
 export const customerListRowSchema = z.object({
   user_id: z.number().int(),
   name: z.string(),

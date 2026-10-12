@@ -17,7 +17,7 @@ export const LITE_REWARD_TYPES = ['flexible_discount'] as const;
 export const PRO_REWARD_TYPES = ['fixed_coupon', 'percent_coupon', 'free_shipping', 'free_product'] as const;
 
 /**
- * Mirrors RewardType::all_known(), the source of truth: every type the schema recognises.
+ * Mirrors RewardType::all_known(), the source of truth. Every type the schema recognises.
  * Parsing must accept Pro values in both builds, or a downgraded site's
  * rewards list throws instead of rendering.
  */
@@ -132,7 +132,7 @@ export const rewardFieldsSchema = z.object({
   ends_at: z.string().nullable(),
 });
 
-/** Mirrors RewardRestController::update_item()'s accepted fields, the source of truth: the write body for PUT rewards/{id}. Every key is optional on the wire. */
+/** Mirrors RewardRestController::update_item()'s accepted fields, the source of truth. The write body for PUT rewards/{id}. Every key is optional on the wire. */
 export type RewardUpdateInput = z.infer<typeof rewardFieldsSchema>;
 
 /** Write body for POST rewards: update's fields plus the type, which is immutable afterwards. No slug: the server derives it from `name`. */
