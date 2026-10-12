@@ -4,7 +4,7 @@ import { paginatedSchema } from '@/lib/api/paginated';
 
 /** Mirrors ActivityRestController::define_item_schema() and ActivityQueryArgs, the source of truth. */
 
-/** The nine event kinds, in display order. Matches `ActivityEvent::ALL`. */
+/** Mirrors `ActivityEvent::ALL`, the source of truth: the nine event kinds, in display order. */
 export const ACTIVITY_EVENT_TYPES = [
   'membership_started',
   'points_adjusted',
@@ -20,7 +20,7 @@ export const ACTIVITY_EVENT_TYPES = [
 export const ACTIVITY_ACTOR_KINDS = ['staff', 'automatic', 'customer'] as const;
 
 /**
- * The `Show:` filter's groups over `ACTIVITY_EVENT_TYPES`. Matches `ActivityQueryArgs::GROUPS`.
+ * Mirrors `ActivityQueryArgs::GROUPS`, the source of truth: the `Show:` filter's groups over `ACTIVITY_EVENT_TYPES`.
  * Groups overlap on purpose: `expiring_soon_email_sent` is in both `expiry` and `emails`.
  */
 export const ACTIVITY_GROUPS = ['all', 'admin', 'expiry', 'emails'] as const;

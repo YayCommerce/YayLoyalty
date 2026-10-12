@@ -89,7 +89,7 @@ export const drawerNegativeBalanceSchema = z.object({
 
 export type DrawerNegativeBalance = z.infer<typeof drawerNegativeBalanceSchema>;
 
-/** One row of GET /customers: a JOIN projection with name/email, mirroring CustomerListFormatter::format_row(). */
+/** Mirrors CustomerListFormatter::format_row(), the source of truth: one row of GET /customers, a JOIN projection with name/email. */
 export const customerListRowSchema = z.object({
   user_id: z.number().int(),
   name: z.string(),
@@ -124,8 +124,8 @@ export const customerSchema = customerListRowSchema.extend({
 export type Customer = z.infer<typeof customerSchema>;
 
 /**
- * A "which filter to drop" suggestion: keys of CustomerRowFilters::candidates_for_no_match().
- * Mapped in customers-page.filter-suggestions.ts.
+ * Mirrors the keys of CustomerRowFilters::candidates_for_no_match(), the source of truth.
+ * A "which filter to drop" suggestion, mapped in customers-page.filter-suggestions.ts.
  */
 export const noMatchSuggestionSchema = z.object({
   key: z.enum(['search', 'balance_range', 'expiring_soon']),

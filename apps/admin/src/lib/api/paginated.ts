@@ -18,7 +18,7 @@ export function parsePaginated<T extends z.ZodTypeAny>(item: T, payload: unknown
   return paginatedSchema(item).parse(payload);
 }
 
-/** The server's per_page cap (AbstractRepository::MAX_PER_PAGE), so a full walk takes the fewest requests. */
+/** Mirrors AbstractRepository::MAX_PER_PAGE, the source of truth: the server's per_page cap, so a full walk takes the fewest requests. */
 export const MAX_PER_PAGE = 100;
 
 /** Ceiling on pages one walk fetches; beyond that, fail fast rather than hang the tab. */

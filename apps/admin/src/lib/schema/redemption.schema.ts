@@ -7,7 +7,7 @@ import { paginatedSchema } from '@/lib/api/paginated';
  * The server answers an empty envelope until the redemptions table exists.
  */
 
-/** Matches `RedemptionsRestController`'s `status` enum: a display status, not the table's full lifecycle. */
+/** Mirrors `RedemptionsRestController`'s `status` enum, the source of truth. A display status, not the table's full lifecycle. */
 export const REDEMPTION_STATUSES = ['applied', 'returned', 'issued'] as const;
 export const redemptionStatusSchema = z.enum(REDEMPTION_STATUSES);
 export type RedemptionStatus = z.infer<typeof redemptionStatusSchema>;

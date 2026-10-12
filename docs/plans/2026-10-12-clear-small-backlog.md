@@ -137,16 +137,16 @@ Backlog: `docs/backlog/2026-10-12-archive-dialog-imported-by-relative-path.md`
 
 ### Task 6: Every PHP mirror uses the convention's wording
 
-Added after the yaytidy pass. Task 3 fixed the two mirrors the backlog listed. 23 per-symbol mirror comments still put `Mirrors` mid-comment, ended it with `;` or `:`, or said "which owns it" (docs/conventions.md, "TypeScript copies of PHP name their owner").
+Added after the yaytidy pass. Task 3 fixed the two mirrors the backlog listed. 23 per-symbol mirror comments still put `Mirrors` mid-comment, ended it with `;` or `:`, or said "which owns it" (docs/conventions.md, "TypeScript copies of PHP name their owner"). The first `/yayplancheck` found 26 more copies worded "mirroring", "a mirror of", "Matches", "Copies" or "mirrored server-side", or a PHP symbol named in parentheses.
 
 **Files:**
-- Modify: `apps/admin/src/lib/api/design.api.ts`, `apps/admin/src/lib/points-math/points-math.ts`, and in `apps/admin/src/lib/schema/`: `campaign-performance.schema.ts`, `campaign.schema.ts`, `customer.schema.ts`, `dashboard.schema.ts`, `design.schema.ts`, `ledger.schema.ts`, `lookup.schema.ts`, `reward.schema.ts`
+- Modify: `apps/admin/src/lib/api/design.api.ts`, `apps/admin/src/lib/api/paginated.ts`, `apps/admin/src/lib/points-math/points-math.ts`, `apps/admin/src/components/setup-wizard/setup-wizard.form.ts`, `apps/admin/src/pages/customers/customers-page.filter-suggestions.ts`, `apps/admin/src/pro/rewards/editor/reward-editor.form.ts`, and in `apps/admin/src/lib/schema/`: `activity.schema.ts`, `campaign-performance.schema.ts`, `campaign.schema.ts`, `customer.schema.ts`, `dashboard.schema.ts`, `design.schema.ts`, `ledger.schema.ts`, `lookup.schema.ts`, `redemption.schema.ts`, `reward.schema.ts`
 
-- [x] **Step 1:** Reword each comment to open with `Mirrors <PHP symbol>, the source of truth.`, keeping the rest of its text. `dashboard.schema.ts`'s notice keys name `DashboardNotices`, which holds them as literals. Leave `components/ui/chart.tsx` and `pro/campaigns/CampaignTable.tsx`, which don't mirror PHP.
+- [x] **Step 1:** Reword each comment to open with `Mirrors <PHP symbol>, the source of truth.`, keeping the rest of its text. `dashboard.schema.ts`'s notice keys name `DashboardNotices`, which holds them as literals. A comment that names two owners names both in that sentence. `customers-page.filter-suggestions.ts:40` copies a rule, not a shape, so it names `CustomerRowFilters::candidates_for_no_match()` in place of its vague "mirrored server-side". Leave `components/ui/chart.tsx` and `pro/campaigns/CampaignTable.tsx`, which don't mirror PHP.
 - [x] **Step 2: Verify**
-  - Run: `git grep -n -i 'mirrors\|which owns' -- apps/admin/src | grep -v 'the source of truth'`. Expected: only `chart.tsx:15`, `CampaignTable.tsx:546` and `reward.schema.ts:147`, whose wording wraps onto line 148.
+  - Run: `git grep -n -i -E 'mirror|matches [A-Z`]|which owns|copies [A-Z`]' -- apps/admin/src | grep -v 'the source of truth'`. Expected: no comment that copies a PHP symbol. What's left is UI text, `chart.tsx:15`, `CampaignTable.tsx:546`, `api.type.ts:1` (casing, not a copy), `campaign-performance.schema.ts:13` (a TS-to-TS match), skeleton and editor notes, and `reward.schema.ts:147`, whose wording wraps onto line 148.
   - Each PHP symbol named still exists under `includes/`.
   - The type-check and ESLint on the changed files: exit 0. Prettier shows no new warnings. `ledger.schema.ts` is already flagged on `dev/edd`, for its `LEDGER_TYPES` line.
 - [x] **Step 3: Commit**
-  - Stage: the ten files and this plan
+  - Stage: the changed files and this plan
   - Message: `docs(admin): name the source of truth in every PHP mirror`

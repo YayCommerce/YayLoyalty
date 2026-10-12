@@ -4,10 +4,10 @@ import { paginatedSchema } from '@/lib/api/paginated';
 
 /** Mirrors LedgerRestController::define_item_schema(), the source of truth. */
 
-/** Matches Enums\LedgerType. */
+/** Mirrors Enums\LedgerType, the source of truth. */
 export const LEDGER_TYPES = ['earn', 'redeem', 'refund_earn', 'refund_redeem', 'expire', 'adjust', 'correction'] as const;
 
-/** Matches Enums\LedgerSource. */
+/** Mirrors Enums\LedgerSource, the source of truth. */
 export const LEDGER_SOURCES = [
   'order',
   'signup',

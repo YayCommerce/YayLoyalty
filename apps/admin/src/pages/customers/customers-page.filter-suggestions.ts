@@ -37,7 +37,7 @@ function activeFilterKeys(filters: RowFilters): FilterKey[] {
   return keys;
 }
 
-/** Filters currently narrowing the list; suggestions show at 2+, mirrored server-side. */
+/** Filters currently narrowing the list. Suggestions show at 2+, as CustomerRowFilters::candidates_for_no_match() decides. */
 export function countActiveFilters(filters: RowFilters): number {
   return activeFilterKeys(filters).length;
 }
