@@ -46,13 +46,6 @@
 - **Workaround:** compare with `dev/edd`: add no ESLint error or warning, and run Prettier on the files you change.
 - **Remove when:** the error is fixed, the files are formatted and the dead options are deleted.
 
-## Type-check, build and release stop at missing modules
-
-- **Symptom:** `pnpm --filter @yayloyalty/admin-page exec tsc --noEmit` fails with `TS2307: Cannot find module` for `@emoji-mart/data`, `@emoji-mart/react` and `@radix-ui/react-progress`. `./scripts/run.sh build` and `./scripts/run.sh release` type-check first, so they stop there too, with no bundle and no zip.
-- **Cause:** `apps/admin/src/components/ui/custom/emoji-picker-content.tsx` and `apps/admin/src/components/ui/custom/progress.tsx` import packages that `apps/admin/package.json` doesn't declare. Nothing in the app reaches either file, but `tsc` checks all of `src/`.
-- **Workaround:** there is none for `release`. For a local bundle, run the `vite build` part of the `build` script by hand, then `pnpm build:storefront` and `pnpm build:blocks` in `apps/admin`, for the launcher's CSS and the blocks' editor script. For the type-check, compare with `dev/edd`: these must stay the only errors.
-- **Remove when:** the two files are deleted, or the packages are declared.
-
 ## Integration tests can exit 0 without running
 
 - **Symptom:** `composer test:integration` prints WordPress's "Error establishing a database connection" page and exits 0. Once the database is reachable, it stops with "the plugin is not active on this site" and exits 1.
@@ -89,7 +82,7 @@
 
 - **Symptom:** without `assets/dist/admin/`, `pnpm makepot` succeeds, but the POT holds only the PHP strings. With a build, it dies with `Allowed memory size of 134217728 bytes exhausted` under PHP's default 128M limit.
 - **Cause:** the script excludes `apps/`, so JS strings come only from the built bundle, and parsing that bundle needs more than 128M.
-- **Workaround:** build first (see the missing-modules entry above), then run the same command with more memory: `php -d memory_limit=1G "$(command -v wp)" i18n make-pot . languages/yayloyalty.pot --exclude=node_modules,apps,tests --domain=yayloyalty`. The POT follows whichever edition was built last.
+- **Workaround:** run `./scripts/run.sh build` first, then run the same command with more memory: `php -d memory_limit=1G "$(command -v wp)" i18n make-pot . languages/yayloyalty.pot --exclude=node_modules,apps,tests --domain=yayloyalty`. The POT follows whichever edition was built last.
 - **Remove when:** the script raises the memory limit and always runs on a fresh build.
 
 ## Untracked lockfiles let installs drift
