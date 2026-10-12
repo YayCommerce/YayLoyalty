@@ -2,7 +2,7 @@
 
 > **For agentic workers:** execute tasks in order, one at a time. Steps use `- [ ]` for tracking. There is no spec; the Requirements section below is the source of truth.
 
-**Status:** active
+**Status:** done 2026-10-12
 **Goal:** A merchant can place the shopper's points balance card and the "Ways to earn" list on any page, with the `[yayloyalty_balance]` / `[yayloyalty_ways_to_earn]` shortcodes or the "Points balance" / "Ways to earn" blocks in a "YayLoyalty" inserter category.
 **Spec:** none, planned from the request (artboard 1f "Mini-cart and small placements", callouts 2 and 3, in `YayLoyalty Shopping Flow.dc.html` of the "YayLoyalty admin interface" wireframe set)
 **Architecture:** Server-rendered only. The Rewards tab's card and Ways to earn section move into two partial templates, which the tab, the shortcodes and the blocks all include. The blocks are dynamic (`block.json` + PHP `render_callback` that calls the shortcode renderer), and their editor script is a small TSX entry built by a new Vite config into `assets/dist/blocks/`, previewing through `ServerSideRender`. Theme-native markup and `assets/storefront/account.css`, as on the Rewards tab.
@@ -29,6 +29,20 @@
   - Guests get rates plus the signup row; members get `member_rows()`.
   - Blocks are dynamic with a Vite-built editor script.
 - **Assumed (confirm in review):** `[yayloyalty_ways_to_earn]` ships too, as the wireframe says "the four blocks and their shortcode equivalents".
+
+## Changes during implementation
+
+- **Tab HTML (Task 1, Step 3):** identical after collapsing whitespace, not byte for byte: the moved sections are indented differently in the partials. Checked for user 1, user 1 opted out, and with worth, expiry and the redeem line forced on.
+- **Template variables:** the partials read `$yayloyalty_card` and `$yayloyalty_earn`, not `$card` and `$earn`, because phpcs requires the plugin prefix on template globals.
+- **`guest_rows()`:** folded into `LauncherEarnRules::for_viewer()`, which uses the new `Launcher::viewer_can_earn( int $user_id ): bool` (shared with `Launcher::should_render()`) for both guests and members. The signup row's label is `LauncherCopy::create_account( ?string $route )`, shared with `panel-guest.php`: "Create an account at checkout" where checkout is the only way to register.
+- **`view()`:** returns `earn` (the `for_viewer()` result) instead of `can_earn`; `account-rewards.php` no longer calls `LauncherEarnRules`.
+- **Payload:** `card_view()` and the ways-to-earn placement build it with the new `LauncherPayload::for_user( array $design, int $user_id ): array`, which `Launcher::build_view()` uses too.
+- **Stylesheet:** no `AccountRewards::enqueue_style()`. `AccountRewards::register_style()` registers `ScriptName::ACCOUNT_STYLE` on `init`, and the tab and `Placements` call `wp_enqueue_style( ScriptName::ACCOUNT_STYLE )`. Both `block.json` files also declare it as `style`, so the editor preview is styled.
+- **Failure isolation:** `AccountRewards::render()` and `Placements` share `OutputCapture::capture( callable $output, string $context ): ?string`.
+- **`Placements` extras:** public `register_blocks()`, `add_block_category()`, `balance_block()` and `ways_to_earn_block()` for the hooks, and `BLOCK_CATEGORY = 'yayloyalty'`.
+- **Block descriptions:** use a curly apostrophe ("customer’s").
+- **Build:** `vite.blocks.config.ts` has a few extra options beyond the plan's; `apps/admin/tsconfig.node.json` includes it so it is type-checked.
+- **Not verified:** a Text widget placement, `./scripts/run.sh dev`, a real Lite build (only the `git grep` check), and `php -l` under PHP 7.4 (the local binary is broken; the code was read for PHP 8-only syntax instead).
 
 ## Global constraints
 
