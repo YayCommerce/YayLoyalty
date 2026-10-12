@@ -22,7 +22,7 @@ import {
   DialogTitle,
 } from '@/components/ui/custom/dialog';
 import { Label } from '@/components/ui/label';
-import { archivedLink, ArchiveOrDeleteDialog } from '../../shared/ArchiveOrDeleteDialog';
+import { archivedLink, ArchiveOrDeleteDialog } from '@/pro/shared/ArchiveOrDeleteDialog';
 import { archiveBodyLines, resolveArchiveCase } from './campaign-archive.copy';
 import { BulkArchiveRow, bulkBodyLines } from './campaign-bulk-archive.copy';
 

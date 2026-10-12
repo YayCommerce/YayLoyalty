@@ -2,7 +2,7 @@ import { __, sprintf } from '@wordpress/i18n';
 
 import { useDeleteRewardMutation, useUpdateRewardStatusMutation } from '@/lib/queries/reward.queries';
 import type { Reward } from '@/lib/schema/reward.schema';
-import { ArchiveOrDeleteDialog } from '../../shared/ArchiveOrDeleteDialog';
+import { ArchiveOrDeleteDialog } from '@/pro/shared/ArchiveOrDeleteDialog';
 import {
   archiveBodyLines,
   deleteBodyLine,
