@@ -21,12 +21,13 @@ export function fetchFilteredLedger(
 }
 
 /** The drawer's ledger CSV columns, with who each entry belongs to in front. */
-export function exportStoreLedgerToCsv(entries: StoreLedgerEntry[], campaignNames: Map<number, string>): void {
-  downloadCsv(
-    'ledger',
-    toCsv(
-      [...CSV_CUSTOMER_HEADERS(), ...LEDGER_CSV_HEADERS()],
-      entries.map((entry) => [entry.customer_name, entry.customer_email, ...ledgerCsvRow(entry, campaignNames)]),
-    ),
+export function buildStoreLedgerCsv(entries: StoreLedgerEntry[], campaignNames: Map<number, string>): string {
+  return toCsv(
+    [...CSV_CUSTOMER_HEADERS(), ...LEDGER_CSV_HEADERS()],
+    entries.map((entry) => [entry.customer_name, entry.customer_email, ...ledgerCsvRow(entry, campaignNames)]),
   );
+}
+
+export function exportStoreLedgerToCsv(entries: StoreLedgerEntry[], campaignNames: Map<number, string>): void {
+  downloadCsv('ledger', buildStoreLedgerCsv(entries, campaignNames));
 }
