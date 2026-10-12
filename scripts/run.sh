@@ -430,6 +430,11 @@ cmd_clean() {
         print_success "Removed assets/dist/storefront"
     fi
 
+    if [ -d "$PLUGIN_DIR/assets/dist/blocks" ]; then
+        rm -rf "$PLUGIN_DIR/assets/dist/blocks"
+        print_success "Removed assets/dist/blocks"
+    fi
+
     read -p "Remove node_modules? (y/N): " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]] && [ -d "$ADMIN_DIR/node_modules" ]; then
