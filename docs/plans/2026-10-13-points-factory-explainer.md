@@ -125,7 +125,7 @@ Message: `docs(explainers): add points factory floor and station panels`
   - **`SCENES`:** an array of `{ id: 'scene-1'…'scene-6', caption, steps: { belt, label }[] }`. `label` is the hook or `Class::method()` the caption bar shows during that hop.
   - **`master`:** a `gsap.timeline({ repeat: -1 })` with one label per scene id.
 
-- [ ] **Step 1: Write `SCENES` and the package elements**
+- [x] **Step 1: Write `SCENES` and the package elements**
 
 **Scenes:** add the six scenes exactly as the spec's acceptance criterion 1 lists them, in that order, with its hops and step labels.
 
@@ -137,7 +137,7 @@ Message: `docs(explainers): add points factory floor and station panels`
   - Alice's package is green until scene 6, when it turns red.
   - Cara's package turns grey at `program-gate`, and its caption reads "opted out".
 
-- [ ] **Step 2: Build `master` from `SCENES`**
+- [x] **Step 2: Build `master` from `SCENES`**
 
 - Register the plugin with `gsap.registerPlugin(MotionPathPlugin)`.
 - Build `master` so that `master.addLabel(scene.id)` precedes each scene.
@@ -145,7 +145,7 @@ Message: `docs(explainers): add points factory floor and station panels`
 - The first tween at time 0 uses `gsap.set` to put every package back at its dock, with its starting colour and visibility. Every scene is then built from that state, which is what makes the loop wrap and scene jumps correct.
 - Hold the end of each scene for 1.5 s, so the full loop runs about 60 s.
 
-- [ ] **Step 3: Wire the controls**
+- [x] **Step 3: Wire the controls**
 
 **Buttons:**
 - **Play/Pause** toggles `master.paused()`, and the button text follows the state.
@@ -160,7 +160,7 @@ Message: `docs(explainers): add points factory floor and station panels`
 
 **Reduced motion:** when `matchMedia('(prefers-reduced-motion: reduce)').matches`, call `master.seek(master.duration()).pause()` on load.
 
-- [ ] **Step 4: Verify playback in Chrome**
+- [x] **Step 4: Verify playback in Chrome**
 
 Open the page at 1440×900. Read the console with the `pattern` filter left empty.
 
@@ -177,7 +177,7 @@ Open the page at 1440×900. Read the console with the `pattern` filter left empt
 6. Click Restart.
    Expected: the loop restarts at scene 1.
 
-- [ ] **Step 5: Verify reduced motion**
+- [x] **Step 5: Verify reduced motion**
 
 Use DevTools Rendering, "Emulate CSS prefers-reduced-motion: reduce". In claude-in-chrome you can instead check the media query from `javascript_tool` after reloading with the emulation on.
 Expected:
@@ -185,7 +185,7 @@ Expected:
 - Bob's and the admin's packages are in the vault, and Cara's is in the reject bin.
 - Alice's package is red and at the end of the return conveyor.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 Stage: `docs/explainers/points-factory.html`
 Message: `docs(explainers): animate the six points factory scenes`

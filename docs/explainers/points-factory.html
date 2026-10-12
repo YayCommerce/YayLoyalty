@@ -165,7 +165,7 @@
             file: 'includes/Services/LedgerService.php',
             methods: [ 'earn( LedgerEntry ): Outcome  → EARN', 'adjust( ... ): LedgerEntry  → ADJUST', 'refund_earn( ... ): Outcome  → REFUND_EARN', 'restore_refund( ... ): Outcome', 'action yayloyalty_ledger_recorded' ],
             summary: 'The only writer of ledger rows and balances. In one transaction it locks the customer row, appends the row with its running balance_after, and updates the customer\'s totals. System rows carry an idempotency key, so a replayed event cannot award twice.' },
-        { id: 'vault', role: 'Vault', label: 'customers', sub: 'balance · lifetime_earned', x: 1080, y: 250, w: 200, h: 120, built: true,
+        { id: 'vault', role: 'Vault', label: 'customers', sub: 'balance · lifetime_earned', x: 1080, y: 250, w: 200, h: 160, built: true,
             file: 'includes/Database/Schema/CustomersTable.php',
             methods: [ 'balance', 'lifetime_earned', 'lifetime_redeemed', 'pending_points' ],
             summary: 'The customer\'s cached totals. Only LedgerService writes them, in the same transaction as the ledger row.' },
@@ -311,7 +311,175 @@
         return;
     }
 
-    // Animation: added in Task 2.
+    gsap.registerPlugin( MotionPathPlugin );
+
+    var COLORS = { earn: '#16a34a', adjust: '#2563eb', refund: '#dc2626', rejected: '#9ca3af' };
+    var HOP = 1.6, PULSE = 1.6, INTRO = 1, HOLD = 2;
+    var VAULT_Y = 250;
+
+    var PACKAGES = {
+        alice: { spot: 'dock-alice', text: '120 · ORDER', color: COLORS.earn },
+        bob: { spot: 'dock-bob', text: '50 · SIGNUP', color: COLORS.earn },
+        cara: { spot: 'dock-cara', text: '20 · REVIEW', color: COLORS.earn },
+        admin: { spot: 'desk-admin', text: '+50 · MANUAL', color: COLORS.adjust }
+    };
+
+    // A step either moves a package along a belt (belt) or lights a station while the caption reads (pulse).
+    var SCENES = [
+        { id: 'scene-1', title: '1 · Alice places an order', show: 'alice', steps: [
+            { pkg: 'alice', belt: 'belt-dock-alice-order-listener', at: 'order-listener', label: 'woocommerce_new_order → OrderListener::on_stageable()' },
+            { pkg: 'alice', belt: 'belt-order-listener-earning-service', at: 'earning-service', label: 'EarningService::preview( PURCHASE ) → PointsEngine::evaluate()' },
+            { pkg: 'alice', belt: 'belt-earning-service-program-gate', at: 'program-gate', label: 'ProgramGate::check() passes' },
+            { pkg: 'alice', belt: 'belt-program-gate-pending-points', at: 'pending-points', label: 'PendingPoints::stage() writes _yayloyalty_points_pending: the order is pending' }
+        ] },
+        { id: 'scene-2', title: '2 · Bob signs up', show: 'bob', steps: [
+            { pkg: 'bob', belt: 'belt-dock-bob-signup-listener', at: 'signup-listener', label: 'user_register → SignupListener::on_user_register()' },
+            { pkg: 'bob', belt: 'belt-signup-listener-earning-service', at: 'earning-service', label: 'EarningService::award( SIGNUP ) → PointsEngine::evaluate()' },
+            { pkg: 'bob', belt: 'belt-earning-service-program-gate', at: 'program-gate', label: 'ProgramGate::check() passes' },
+            { pkg: 'bob', belt: 'belt-program-gate-ledger-service', at: 'ledger-service', label: 'LedgerService::earn() writes EARN · SIGNUP' },
+            { pkg: 'bob', belt: 'belt-ledger-service-vault', at: 'vault', settle: 32, label: 'customers.balance += 50' }
+        ] },
+        { id: 'scene-3', title: '3 · Alice\'s order is completed', steps: [
+            { pulse: 'order-listener', label: 'woocommerce_order_status_changed → completed → OrderListener::on_awardable()' },
+            { pulse: 'earning-service', label: 'EarningService::award( PURCHASE ) → ProgramGate → PointsEngine::evaluate()' },
+            { pkg: 'alice', belt: 'belt-pending-points-ledger-service', at: 'ledger-service', label: 'LedgerService::earn() writes EARN · ORDER' },
+            { pkg: 'alice', belt: 'belt-ledger-service-vault', at: 'vault', settle: 0, label: 'customers.balance += 120' },
+            { pulse: 'pending-points', label: 'PendingPoints::release() marks _yayloyalty_points_released' }
+        ] },
+        { id: 'scene-4', title: '4 · Cara reviews, but has opted out', show: 'cara', steps: [
+            { pkg: 'cara', belt: 'belt-dock-cara-review-listener', at: 'review-listener', label: 'comment_post → ReviewListener::on_comment_post()' },
+            { pkg: 'cara', belt: 'belt-review-listener-earning-service', at: 'earning-service', label: 'EarningService::award( REVIEW )' },
+            { pkg: 'cara', belt: 'belt-earning-service-program-gate', at: 'program-gate', label: 'ProgramGate::check()' },
+            { pkg: 'cara', belt: 'belt-program-gate-reject-bin', at: 'program-gate', fill: COLORS.rejected, label: 'ProgramGate::check() fails: opted out. Nothing is written.' }
+        ] },
+        { id: 'scene-5', title: '5 · The admin adjusts +50', show: 'admin', steps: [
+            { pkg: 'admin', belt: 'belt-desk-admin-ledger-service', at: 'ledger-service', label: 'LedgerService::adjust() writes ADJUST · MANUAL' },
+            { pkg: 'admin', belt: 'belt-ledger-service-vault', at: 'vault', settle: 64, label: 'customers.balance += 50' }
+        ] },
+        { id: 'scene-6', title: '6 · Alice\'s order is refunded', steps: [
+            { pulse: 'reversal-listener', label: 'woocommerce_order_status_changed → refunded → OrderReversalListener::on_status_refunded()' },
+            { pulse: 'ledger-service', label: 'Reversal::refunded_status() → LedgerService::refund_earn() writes REFUND_EARN' },
+            { pkg: 'alice', belt: 'belt-vault-reversal-listener', at: 'reversal-listener', fill: COLORS.refund, label: 'customers.balance −= 120: the points leave the vault' }
+        ] }
+    ];
+
+    var pkgLayer = document.getElementById( 'layer-packages' );
+    var pkgEls = {};
+    Object.keys( PACKAGES ).forEach( function ( id ) {
+        var g = el( 'g', { id: 'pkg-' + id, 'class': 'pkg' }, pkgLayer );
+        el( 'rect', { x: -46, y: -13, width: 92, height: 26, rx: 6 }, g );
+        text( g, 0, 4, '', PACKAGES[ id ].text );
+        pkgEls[ id ] = g;
+    } );
+
+    // One master timeline. Time 0 puts every package back at its dock, so the loop wrap and scene jumps start clean.
+    var master = gsap.timeline( { repeat: -1, onUpdate: render } );
+    var timeline = [];
+
+    Object.keys( PACKAGES ).forEach( function ( id ) {
+        var spot = SPOTS[ PACKAGES[ id ].spot ];
+        // Set outside the timeline too, so a seek back to 0 that reverts these lands on the same state.
+        gsap.set( pkgEls[ id ], { x: spot.x, y: spot.y, autoAlpha: 0 } );
+        gsap.set( pkgEls[ id ].firstChild, { fill: PACKAGES[ id ].color } );
+        master.set( pkgEls[ id ], { x: spot.x, y: spot.y, autoAlpha: 0 }, 0 );
+        master.set( pkgEls[ id ].firstChild, { fill: PACKAGES[ id ].color }, 0 );
+    } );
+
+    // Scenes start just after the reset: a set that shares time 0 with it can lose to it on a backward seek.
+    var cursor = 0.1;
+    SCENES.forEach( function ( scene ) {
+        master.addLabel( scene.id, cursor );
+        if ( scene.show ) { master.set( pkgEls[ scene.show ], { autoAlpha: 1 }, cursor ); }
+        timeline.push( { start: cursor, end: cursor + INTRO, scene: scene, label: '', at: null } );
+        cursor += INTRO;
+
+        scene.steps.forEach( function ( step ) {
+            var entry = { start: cursor, scene: scene, label: step.label, at: step.pulse || step.at };
+            if ( step.pulse ) {
+                cursor += PULSE;
+            } else {
+                var pkg = pkgEls[ step.pkg ];
+                if ( step.fill ) { master.set( pkg.firstChild, { fill: step.fill }, cursor ); }
+                master.to( pkg, { duration: HOP, ease: 'power1.inOut', motionPath: { path: '#' + step.belt } }, cursor );
+                cursor += HOP;
+                if ( typeof step.settle === 'number' ) {
+                    master.to( pkg, { duration: 0.3, y: VAULT_Y + step.settle }, cursor );
+                    cursor += 0.3;
+                }
+            }
+            entry.end = cursor;
+            timeline.push( entry );
+        } );
+
+        timeline[ timeline.length - 1 ].end += HOLD;
+        cursor += HOLD;
+    } );
+    master.to( {}, { duration: 0 }, cursor );
+
+    // Caption, scene list and station highlight follow the playhead, so a seek renders the same as playback.
+    var captionEl = document.getElementById( 'caption' );
+    var scenesNav = document.getElementById( 'scenes' );
+    var sceneButtons = {};
+    var lastEntry = null;
+
+    SCENES.forEach( function ( scene ) {
+        var b = document.createElement( 'button' );
+        b.type = 'button';
+        b.textContent = scene.title;
+        b.addEventListener( 'click', function () { master.seek( scene.id ); render(); } );
+        scenesNav.appendChild( b );
+        sceneButtons[ scene.id ] = b;
+    } );
+
+    function render() {
+        var t = master.time();
+        var entry = timeline[ timeline.length - 1 ];
+        for ( var i = 0; i < timeline.length; i++ ) {
+            if ( t < timeline[ i ].end ) { entry = timeline[ i ]; break; }
+        }
+        if ( entry === lastEntry ) { return; }
+        lastEntry = entry;
+
+        captionEl.innerHTML = '';
+        var title = document.createElement( 'span' );
+        title.className = 'scene-title';
+        title.textContent = entry.scene.title;
+        captionEl.appendChild( title );
+        if ( entry.label ) {
+            var code = document.createElement( 'code' );
+            code.textContent = entry.label;
+            captionEl.appendChild( code );
+        }
+        Object.keys( sceneButtons ).forEach( function ( id ) {
+            if ( id === entry.scene.id ) { sceneButtons[ id ].setAttribute( 'aria-current', 'step' ); } else { sceneButtons[ id ].removeAttribute( 'aria-current' ); }
+        } );
+        Object.keys( stationEls ).forEach( function ( id ) { stationEls[ id ].classList.toggle( 'is-active', id === entry.at ); } );
+    }
+
+    // Controls.
+    var playBtn = document.getElementById( 'play' );
+    function syncPlay() { playBtn.textContent = master.paused() ? 'Play' : 'Pause'; }
+    function togglePlay() { master.paused( ! master.paused() ); syncPlay(); }
+
+    playBtn.addEventListener( 'click', togglePlay );
+    document.getElementById( 'restart' ).addEventListener( 'click', function () { master.restart(); render(); syncPlay(); } );
+    document.addEventListener( 'keydown', function ( e ) {
+        if ( e.key !== ' ' || ( e.target && e.target.tagName === 'BUTTON' ) ) { return; }
+        e.preventDefault();
+        togglePlay();
+    } );
+
+    // A panel pauses the loop; closing it resumes only if the loop was playing when it opened.
+    var resumeAfterPanel = false;
+    hooks.onPanelOpen = function () { resumeAfterPanel = ! master.paused(); master.pause(); syncPlay(); };
+    hooks.onPanelClose = function () { if ( resumeAfterPanel ) { master.play(); } resumeAfterPanel = false; syncPlay(); };
+
+    if ( window.matchMedia( '(prefers-reduced-motion: reduce)' ).matches ) {
+        master.pause();
+        master.seek( master.duration() - 0.001 );
+    }
+    render();
+    syncPlay();
 })();
 </script>
 </body>
