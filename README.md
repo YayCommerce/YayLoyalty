@@ -44,7 +44,7 @@ A loyalty plugin for WooCommerce: points, rewards, referrals and VIP tiers. One 
 
    On a fresh clone, `pnpm install` fails until the dev script has created `vendor-prefixed/` ([known issue](docs/known-issues.md#a-fresh-clones-first-install-fails-on-vendor-prefixedsrc)). The dev script ends by starting Vite on port 3030, which keeps running. Run `git status` once it has started: the dev script can rewrite `composer.json` and `scoper.inc.php`.
 
-4. Activate the plugin in wp-admin. Activation installs the tables. `YAYLOYALTY_IS_DEVELOPMENT` defaults to `true`, so wp-admin loads the SPA from the dev server: keep `./scripts/run.sh dev` running while you work in the admin. To load a built bundle instead, define the constant as `false` in `wp-config.php`; the build fails today ([known issue](docs/known-issues.md#type-check-build-and-release-stop-at-missing-modules)).
+4. Activate the plugin in wp-admin. Activation installs the tables. `YAYLOYALTY_IS_DEVELOPMENT` defaults to `true`, so wp-admin loads the SPA from the dev server: keep `./scripts/run.sh dev` running while you work in the admin. To load a built bundle instead, define the constant as `false` in `wp-config.php`, then run `./scripts/run.sh build`.
 
 5. Run the lint and test commands in [CLAUDE.md § Commands](CLAUDE.md#commands). Several fail today on `dev/edd`; [docs/known-issues.md](docs/known-issues.md) lists each failure with the output to expect. Your result should match it exactly.
 
