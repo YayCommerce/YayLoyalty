@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Points Factory</title>
+<!-- Internal explainer for the team; never ships. Spec: docs/specs/2026-10-13-points-factory-explainer-design.md -->
+<style>
+    :root {
+        --bg: #f8fafc;
+        --surface: #ffffff;
+        --ink: #0f172a;
+        --muted: #64748b;
+        --line: #cbd5e1;
+        --belt: #e2e8f0;
+        --accent: #7c3aed;
+        --earn: #16a34a;
+        --adjust: #2563eb;
+        --refund: #dc2626;
+        --rejected: #9ca3af;
+        --unbuilt: #f59e0b;
+        --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--sans); overflow-x: hidden; }
+    header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; padding: 20px 16px 8px; max-width: 1440px; margin: 0 auto; }
+    h1 { margin: 0; font-size: 22px; }
+    .stamp { color: var(--muted); font-size: 13px; }
+    .stamp code, .caption code { font-family: var(--mono); }
+    main { max-width: 1440px; margin: 0 auto; padding: 0 16px 32px; }
+    .notice { display: none; margin: 8px 0; padding: 10px 14px; border: 1px solid var(--unbuilt); background: #fffbeb; border-radius: 8px; }
+    .no-anim .notice { display: block; }
+    .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 8px 0 12px; }
+    button { font: inherit; cursor: pointer; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 8px; padding: 6px 12px; }
+    button:hover { border-color: var(--accent); }
+    button:focus-visible, .station:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .no-anim .controls { display: none; }
+    .scenes { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
+    .scenes button { font-size: 13px; padding: 4px 10px; }
+    .scenes button[aria-current="step"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .caption { min-height: 48px; padding: 10px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; margin-bottom: 12px; }
+    .caption .scene-title { font-weight: 600; margin-right: 8px; }
+    .floor { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+    .floor svg { display: block; width: 100%; min-width: 960px; height: auto; }
+    .belt { fill: none; stroke: var(--belt); stroke-width: 12; stroke-linecap: round; stroke-linejoin: round; }
+    .belt-flow { fill: none; stroke: var(--line); stroke-width: 2; stroke-dasharray: 6 10; animation: flow 1.2s linear infinite; }
+    .belt-return { stroke: #fee2e2; }
+    .stub { fill: none; stroke: var(--unbuilt); stroke-width: 3; stroke-dasharray: 4 6; }
+    @keyframes flow { to { stroke-dashoffset: -16; } }
+    @media (prefers-reduced-motion: reduce) { .belt-flow { animation: none; } }
+    .station { cursor: pointer; }
+    .station > rect { fill: var(--surface); stroke: var(--line); stroke-width: 2; transition: stroke .2s, fill .2s; }
+    .station:hover > rect { stroke: var(--accent); }
+    .station.is-active > rect { stroke: var(--accent); stroke-width: 3; fill: #f5f3ff; }
+    .station.is-selected > rect { stroke: var(--accent); stroke-width: 3; }
+    .station.unbuilt > rect { fill: url(#hatch); stroke: var(--unbuilt); stroke-dasharray: 6 4; }
+    .role { font: 600 10px var(--sans); letter-spacing: .06em; text-transform: uppercase; fill: var(--muted); }
+    .label { font: 700 12px var(--mono); fill: var(--ink); }
+    .sub { font: 11px var(--mono); fill: var(--muted); }
+    .tag rect { fill: var(--unbuilt); stroke: none; }
+    .tag text { font: 700 10px var(--sans); fill: #fff; text-transform: uppercase; letter-spacing: .05em; }
+    .spot circle { stroke: var(--line); stroke-width: 2; }
+    .spot text { font: 600 12px var(--sans); fill: var(--ink); }
+    .bin path { fill: #f1f5f9; stroke: var(--rejected); stroke-width: 2; }
+    .bin text { font: 11px var(--sans); fill: var(--muted); }
+    .pkg rect { stroke: rgba(0, 0, 0, .15); stroke-width: 1; }
+    .pkg text { font: 700 11px var(--mono); fill: #fff; }
+    .legend { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 10px; color: var(--muted); font-size: 13px; }
+    .legend span::before { content: ""; display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; background: var(--c); }
+    .panel { position: fixed; top: 16px; right: 16px; width: min(380px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 12px 32px rgba(15, 23, 42, .18); padding: 18px; z-index: 10; }
+    .panel[hidden] { display: none; }
+    .panel h2 { margin: 0 0 2px; font: 700 17px var(--mono); }
+    .panel .panel-role { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+    .panel .panel-tag { display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 4px; background: var(--unbuilt); color: #fff; font-size: 11px; }
+    .panel code { font-family: var(--mono); font-size: 13px; background: #f1f5f9; padding: 1px 4px; border-radius: 4px; word-break: break-all; }
+    .panel ul { padding-left: 18px; margin: 4px 0 0; }
+    .panel li code { background: none; padding: 0; }
+    .panel .close { position: absolute; top: 12px; right: 12px; padding: 2px 9px; }
+    .panel h3 { margin: 14px 0 2px; font-size: 13px; color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+    <h1>Points Factory</h1>
+    <span class="stamp">How points move through YayLoyalty. Accurate as of <code>f92b317</code> (2026-10-13). Illustrative data; click any station for its code.</span>
+</header>
+<main>
+    <p class="notice" role="status">Animation needs network access. The floor plan and station details still work.</p>
+    <div class="controls">
+        <button type="button" id="play">Pause</button>
+        <button type="button" id="restart">Restart</button>
+        <nav class="scenes" id="scenes" aria-label="Scenes"></nav>
+    </div>
+    <div class="caption" id="caption" aria-live="polite"><span class="scene-title">Static view.</span> Click a station to see what it does.</div>
+    <div class="floor">
+        <svg id="floor" viewBox="0 0 1400 590" role="img" aria-label="Points factory floor">
+            <defs>
+                <pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                    <rect width="10" height="10" fill="#fffbeb"></rect>
+                    <line x1="0" y1="0" x2="0" y2="10" stroke="#fde68a" stroke-width="5"></line>
+                </pattern>
+            </defs>
+            <g id="layer-belts"></g>
+            <g id="layer-stations"></g>
+            <g id="layer-packages"></g>
+        </svg>
+    </div>
+    <div class="legend">
+        <span style="--c: var(--earn)">Earn</span>
+        <span style="--c: var(--adjust)">Admin adjust</span>
+        <span style="--c: var(--refund)">Refund</span>
+        <span style="--c: var(--rejected)">Rejected</span>
+        <span style="--c: var(--unbuilt)">Not built yet</span>
+    </div>
+</main>
+<aside class="panel" id="panel" hidden aria-labelledby="panel-title">
+    <button type="button" class="close" id="panel-close" aria-label="Close">×</button>
+    <div class="panel-role" id="panel-role"></div>
+    <h2 id="panel-title"></h2>
+    <p id="panel-summary"></p>
+    <h3>File</h3>
+    <code id="panel-file"></code>
+    <h3>Key methods and data</h3>
+    <ul id="panel-methods"></ul>
+</aside>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/MotionPathPlugin.min.js"></script>
+<script>
+(function () {
+    'use strict';
+
+    // Stations, as the code stood at the stamped commit. x/y is the centre on the 1400×590 floor.
+    var STATIONS = [
+        { id: 'order-listener', role: 'Intake', label: 'OrderListener', x: 270, y: 120, built: true,
+            file: 'includes/Engine/Earning/Listeners/OrderListener.php',
+            methods: [ 'on_order_created()  ← woocommerce_new_order', 'on_status_changed()  ← woocommerce_order_status_changed', 'on_stageable()  (pending, on-hold)', 'on_awardable()  (OrderStatus::AWARD = completed)' ],
+            summary: 'Routes WooCommerce order statuses. pending and on-hold preview the purchase and stage its points; completed awards them, once per trigger in yayloyalty_order_award_triggers, then releases the staged figure. cancelled, trash and refunded go to OrderReversalListener.' },
+        { id: 'signup-listener', role: 'Intake', label: 'SignupListener', x: 270, y: 250, built: true,
+            file: 'includes/Engine/Earning/Listeners/SignupListener.php',
+            methods: [ 'on_user_register()  ← user_register' ],
+            summary: 'Awards the SIGNUP trigger when a new account is registered. No pending stage: the points land at once.' },
+        { id: 'review-listener', role: 'Intake', label: 'ReviewListener', x: 270, y: 380, built: true,
+            file: 'includes/Engine/Earning/Listeners/ReviewListener.php',
+            methods: [ 'on_comment_post()  ← comment_post', 'on_comment_transition()  ← transition_comment_status' ],
+            summary: 'Awards the REVIEW trigger for a product review, either when it is posted approved or on a later approval. Both paths build the same Context.' },
+        { id: 'reversal-listener', role: 'Return', label: 'OrderReversalListener', x: 880, y: 520, built: true,
+            file: 'includes/Engine/Earning/Listeners/OrderReversalListener.php',
+            methods: [ 'on_cancelled()', 'on_status_refunded()', 'on_order_refunded()  ← woocommerce_order_refunded', 'on_refund_deleted()  ← woocommerce_refund_deleted', 'on_order_trashed()  ← woocommerce_trash_order, trashed_post', 'Reversal::full_order(), refund(), refunded_status()' ],
+            summary: 'Takes points back when an order is cancelled, trashed or refunded. It clears any pending figure, then Reversal asks LedgerService::refund_earn() to write a REFUND_EARN row against the original earn.' },
+        { id: 'earning-service', role: 'Scoring', label: 'EarningService', sub: '+ PointsEngine', x: 480, y: 250, built: true,
+            file: 'includes/Engine/Earning/EarningService.php',
+            methods: [ 'preview( $trigger, Context ): Result  (writes nothing)', 'award( $trigger, Context ): Outcome', 'PointsEngine::evaluate( $trigger, Context )', 'filter yayloyalty_award_points', 'action yayloyalty_points_awarded' ],
+            summary: 'Runs the earning gates, then PointsEngine::evaluate() scores the trigger (PURCHASE, SIGNUP, REVIEW) against the active campaigns. preview() stops there; award() hands the result to LedgerService::earn().' },
+        { id: 'program-gate', role: 'Gate', label: 'ProgramGate', x: 680, y: 250, built: true,
+            file: 'includes/Engine/Earning/ProgramGate.php',
+            methods: [ 'check( $trigger, Context ): ?string', 'program_enabled(): bool' ],
+            summary: 'Lite\'s gate, checked in order: program on, a customer, not opted out, role not excluded. The first failing rule wins and the package is rejected with that reason.' },
+        { id: 'pending-points', role: 'Warehouse', label: 'PendingPoints', x: 880, y: 110, built: true,
+            file: 'includes/Engine/Earning/PendingPoints.php',
+            methods: [ 'stage( $order_id, $user_id, $points )', 'release( $order_id )', 'mark_awarded( $order_id, LedgerEntry )', 'order meta _yayloyalty_points_pending, _yayloyalty_points_released, _yayloyalty_points_earned', 'customers.pending_points' ],
+            summary: 'Holds an order\'s points while it is pending or on-hold: the money has not arrived. Pending is not a ledger state; it lives in order meta, with the total cached in customers.pending_points.' },
+        { id: 'ledger-service', role: 'Ledger press', label: 'LedgerService', x: 880, y: 250, built: true,
+            file: 'includes/Services/LedgerService.php',
+            methods: [ 'earn( LedgerEntry ): Outcome  → EARN', 'adjust( ... ): LedgerEntry  → ADJUST', 'refund_earn( ... ): Outcome  → REFUND_EARN', 'restore_refund( ... ): Outcome', 'action yayloyalty_ledger_recorded' ],
+            summary: 'The only writer of ledger rows and balances. In one transaction it locks the customer row, appends the row with its running balance_after, and updates the customer\'s totals. System rows carry an idempotency key, so a replayed event cannot award twice.' },
+        { id: 'vault', role: 'Vault', label: 'customers', sub: 'balance · lifetime_earned', x: 1080, y: 250, w: 200, h: 120, built: true,
+            file: 'includes/Database/Schema/CustomersTable.php',
+            methods: [ 'balance', 'lifetime_earned', 'lifetime_redeemed', 'pending_points' ],
+            summary: 'The customer\'s cached totals. Only LedgerService writes them, in the same transaction as the ledger row.' },
+        { id: 'redemption', role: 'Spend', label: 'Redemption', x: 1290, y: 110, built: false,
+            file: 'includes/Engine/Redemption/RedemptionService.php',
+            methods: [ 'RedemptionService::is_available()  returns false', 'LedgerService::redeem()  throws "Not implemented"', 'LedgerType::REDEEM, REFUND_REDEEM' ],
+            summary: 'Not built yet. The redemption engine is scaffolding marked TODO(redemption): is_available() returns false and LedgerService::redeem() throws, so no package can be spent.' },
+        { id: 'expiry', role: 'Expire', label: 'Expiry', x: 1290, y: 250, built: false,
+            file: 'includes/Services/LedgerService.php',
+            methods: [ 'LedgerType::EXPIRE  (no writer)', 'customers.expires_at' ],
+            summary: 'Not built yet. Nothing writes EXPIRE rows: LedgerService notes that expiry needs the lots table, which is designed but not built.' },
+        { id: 'tiers', role: 'Tiers', label: 'VIP tiers', x: 1290, y: 390, built: false,
+            file: 'includes/Database/Schema/CustomersTable.php',
+            methods: [ 'customers.tier_id', 'customers.tier_evaluated_at', 'customers.tier_progress_value' ],
+            summary: 'Not built yet. Only the columns exist, declared ahead so the feature lands without a migration; CampaignConditionType::TIER is unavailable.' }
+    ];
+
+    var SPOTS = {
+        'dock-alice': { x: 80, y: 120, name: 'Alice', color: '#fde68a' },
+        'dock-bob': { x: 80, y: 250, name: 'Bob', color: '#bfdbfe' },
+        'dock-cara': { x: 80, y: 380, name: 'Cara', color: '#fbcfe8' },
+        'desk-admin': { x: 80, y: 520, name: 'Admin', color: '#ddd6fe' }
+    };
+
+    // Conveyors, centre to centre. Packages ride these by id.
+    var BELTS = {
+        'belt-dock-alice-order-listener': 'M80 120 H270',
+        'belt-order-listener-earning-service': 'M270 120 H375 V250 H480',
+        'belt-dock-bob-signup-listener': 'M80 250 H270',
+        'belt-signup-listener-earning-service': 'M270 250 H480',
+        'belt-dock-cara-review-listener': 'M80 380 H270',
+        'belt-review-listener-earning-service': 'M270 380 H375 V250 H480',
+        'belt-earning-service-program-gate': 'M480 250 H680',
+        'belt-program-gate-pending-points': 'M680 250 H780 V110 H880',
+        'belt-program-gate-ledger-service': 'M680 250 H880',
+        'belt-program-gate-reject-bin': 'M680 250 V420',
+        'belt-pending-points-ledger-service': 'M880 110 V250',
+        'belt-ledger-service-vault': 'M880 250 H1080',
+        'belt-desk-admin-ledger-service': 'M80 520 H780 V250 H880',
+        'belt-vault-reversal-listener': 'M1080 250 V520 H880'
+    };
+
+    var STUBS = [ 'M1180 250 H1205', 'M1180 230 H1193 V110 H1205', 'M1180 270 H1193 V390 H1205' ];
+
+    var SVG_NS = 'http://www.w3.org/2000/svg';
+    var W = 170, H = 64;
+
+    function el( name, attrs, parent ) {
+        var node = document.createElementNS( SVG_NS, name );
+        Object.keys( attrs || {} ).forEach( function ( k ) { node.setAttribute( k, attrs[ k ] ); } );
+        if ( parent ) { parent.appendChild( node ); }
+        return node;
+    }
+
+    function text( parent, x, y, cls, value ) {
+        var t = el( 'text', { x: x, y: y, 'class': cls, 'text-anchor': 'middle' }, parent );
+        t.textContent = value;
+        return t;
+    }
+
+    var belts = document.getElementById( 'layer-belts' );
+    var stationsLayer = document.getElementById( 'layer-stations' );
+
+    Object.keys( BELTS ).forEach( function ( id ) {
+        var ret = id === 'belt-vault-reversal-listener' ? ' belt-return' : '';
+        el( 'path', { d: BELTS[ id ], 'class': 'belt' + ret }, belts );
+        el( 'path', { id: id, d: BELTS[ id ], 'class': 'belt-flow' }, belts );
+    } );
+    STUBS.forEach( function ( d ) { el( 'path', { d: d, 'class': 'stub' }, belts ); } );
+
+    Object.keys( SPOTS ).forEach( function ( id ) {
+        var s = SPOTS[ id ];
+        var g = el( 'g', { id: id, 'class': 'spot' }, stationsLayer );
+        el( 'circle', { cx: s.x, cy: s.y, r: 26, fill: s.color }, g );
+        text( g, s.x, s.y + 4, '', s.name.charAt( 0 ) );
+        text( g, s.x, s.y + 44, '', s.name );
+    } );
+
+    var bin = el( 'g', { id: 'reject-bin', 'class': 'bin' }, stationsLayer );
+    el( 'path', { d: 'M640 405 H720 L710 450 H650 Z' }, bin );
+    text( bin, 680, 466, '', 'reject bin' );
+
+    var stationEls = {};
+    STATIONS.forEach( function ( s ) {
+        var h = s.h || H, w = s.w || W;
+        var g = el( 'g', { id: 'station-' + s.id, 'class': 'station' + ( s.built ? '' : ' unbuilt' ), tabindex: '0', role: 'button', 'aria-label': s.label + ', ' + s.role }, stationsLayer );
+        el( 'rect', { x: s.x - w / 2, y: s.y - h / 2, width: w, height: h, rx: 10 }, g );
+        text( g, s.x, s.y - h / 2 + 18, 'role', s.role );
+        text( g, s.x, s.y - h / 2 + 36, 'label', s.label );
+        if ( s.sub ) { text( g, s.x, s.y - h / 2 + 52, 'sub', s.sub ); }
+        if ( ! s.built ) {
+            var tag = el( 'g', { 'class': 'tag' }, g );
+            el( 'rect', { x: s.x - 46, y: s.y + h / 2 + 6, width: 92, height: 18, rx: 4 }, tag );
+            text( tag, s.x, s.y + h / 2 + 19, '', 'not built yet' );
+        }
+        g.addEventListener( 'click', function () { openPanel( s.id ); } );
+        g.addEventListener( 'keydown', function ( e ) {
+            if ( e.key === 'Enter' || e.key === ' ' ) { e.preventDefault(); e.stopPropagation(); openPanel( s.id ); }
+        } );
+        stationEls[ s.id ] = g;
+    } );
+
+    // Station panel.
+    var panel = document.getElementById( 'panel' );
+    var selected = null;
+    var hooks = { onPanelOpen: function () {}, onPanelClose: function () {} };
+
+    function openPanel( id ) {
+        var s = STATIONS.filter( function ( x ) { return x.id === id; } )[ 0 ];
+        var wasOpen = ! panel.hidden;
+        document.getElementById( 'panel-role' ).innerHTML = s.role + ( s.built ? '' : '<span class="panel-tag">not built yet</span>' );
+        document.getElementById( 'panel-title' ).textContent = s.label;
+        document.getElementById( 'panel-summary' ).textContent = s.summary;
+        document.getElementById( 'panel-file' ).textContent = s.file;
+        var list = document.getElementById( 'panel-methods' );
+        list.innerHTML = '';
+        s.methods.forEach( function ( m ) {
+            var li = document.createElement( 'li' );
+            var c = document.createElement( 'code' );
+            c.textContent = m;
+            li.appendChild( c );
+            list.appendChild( li );
+        } );
+        if ( selected ) { stationEls[ selected ].classList.remove( 'is-selected' ); }
+        selected = id;
+        stationEls[ id ].classList.add( 'is-selected' );
+        panel.hidden = false;
+        if ( ! wasOpen ) { hooks.onPanelOpen(); }
+    }
+
+    function closePanel() {
+        if ( panel.hidden ) { return; }
+        panel.hidden = true;
+        if ( selected ) { stationEls[ selected ].classList.remove( 'is-selected' ); selected = null; }
+        hooks.onPanelClose();
+    }
+
+    document.getElementById( 'panel-close' ).addEventListener( 'click', closePanel );
+    document.addEventListener( 'keydown', function ( e ) { if ( e.key === 'Escape' ) { closePanel(); } } );
+
+    if ( typeof window.gsap === 'undefined' || typeof window.MotionPathPlugin === 'undefined' ) {
+        document.body.classList.add( 'no-anim' );
+        return;
+    }
+
+    // Animation: added in Task 2.
+})();
+</script>
+</body>
+</html>
