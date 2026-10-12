@@ -1,8 +1,8 @@
 import { __, _n, sprintf } from '@wordpress/i18n';
 
-import { formatStoreDecimal } from '@/lib/helpers/format.helper';
 import { formatPoints } from '@/lib/helpers/points.helper';
 import type { PointsJumpData, PointsJumpWhatChanged } from '@/lib/schema/dashboard-notice.schema';
+import { formatMultiple } from '../dashboard-page.notice-copy';
 
 /**
  * Three ways to settle a jump, doing nothing included; the dashboard does
@@ -78,7 +78,7 @@ export function DashboardAnomalySettlements({
             '%1$s× the 30-day daily average, on a day with at least %2$d orders. A sale day will trip it and that is fine — the notice states the cause, and dismissing it takes one click.',
             'yayloyalty',
           ),
-          formatStoreDecimal(threshold.multiple, 1),
+          formatMultiple(threshold.multiple),
           threshold.min_orders,
         )}
       </p>

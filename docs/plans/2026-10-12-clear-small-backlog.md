@@ -14,7 +14,7 @@
 - **Goal:** the four backlog items below are fixed and their files are removed.
 - **Out of scope:** `components/ui/chart.tsx` and `components/ui/calendar.tsx`, which are vendored and still call `toLocaleString()`. Also out: the two 2026-10-06 backlog items (referrals, tiers) and the unrelated local edit to `composer.json`.
 - **Acceptance criteria:**
-  1. `cmd_clean` in `scripts/run.sh` removes `assets/dist/blocks`.
+  1. `cmd_clean` in `scripts/run.sh` removes `assets/dist/blocks`, by removing all of `assets/dist`.
   2. `git grep -n toLocaleString -- apps/admin/src/pages` prints nothing.
   3. The `POINTS_LABEL_MAX_LENGTH` comment opens with `Mirrors SettingsHelper::POINTS_LABEL_MAX_LENGTH, the source of truth.` and the `setupSchema` comment opens with `Mirrors SetupService::payload(), the source of truth.`
   4. `git grep -n "'\.\./\.\./shared/" -- apps/admin/src/pro` prints nothing.
@@ -52,10 +52,10 @@ Backlog: `docs/backlog/2026-10-12-clean-leaves-the-blocks-build.md`
 - Modify: `scripts/run.sh:420-432` (`cmd_clean`)
 - Delete: `docs/backlog/2026-10-12-clean-leaves-the-blocks-build.md`
 
-- [x] **Step 1:** In `cmd_clean`, add a third `if [ -d "$PLUGIN_DIR/assets/dist/blocks" ]` branch after the storefront branch. Copy the storefront branch's form: `rm -rf` the directory, then `print_success "Removed assets/dist/blocks"`.
+- [x] **Step 1:** In `cmd_clean`, replace the per-folder `admin` and `storefront` branches with one `if [ -d "$PLUGIN_DIR/assets/dist" ]` branch that runs `rm -rf` on it, then `print_success "Removed assets/dist"`. Nothing in `assets/dist` is tracked (`.gitignore` ignores `/assets/dist/*`), and only the three builds write there, so a future build output can't be missed again.
 - [x] **Step 2: Verify**
   - Run: `mkdir -p assets/dist/blocks && touch assets/dist/blocks/editor.js && ./scripts/run.sh clean`
-  - Expected: the output includes `Removed assets/dist/blocks`, and `ls assets/dist/blocks` fails with "No such file".
+  - Expected: the output includes `Removed assets/dist`, and `ls assets/dist` fails with "No such file". Run it on a scratch copy holding `scripts/run.sh` and a stub `yayloyalty.php`, because a real run deletes the local site's built assets.
   - Afterwards, run `./scripts/run.sh build` to restore the dist for the local site, if the site needs it.
 - [x] **Step 3:** Delete the backlog file.
 - [x] **Step 4: Commit**
@@ -74,10 +74,11 @@ Backlog: `docs/backlog/2026-10-12-multiples-and-pager-counts-use-tolocalestring.
 
 **Interfaces:**
 - Consumes `formatStoreNumber(value: number, decimals: number): string` and `formatStoreDecimal(value: number, maxDecimals: number): string` from `@/lib/helpers/format.helper`. Both are unchanged.
+- Produces `formatMultiple(value: number): string` in `apps/admin/src/pages/dashboard/dashboard-page.notice-copy.ts`, which returns `formatStoreDecimal(value, 1)`. Its comment reads `Mirrors AnomalyDetector::evaluate()'s one-decimal rounding, the source of truth.`
 
 - [x] **Step 1:** In `pagerSummary`, use `formatStoreNumber(from, 0)`, `formatStoreNumber(to, 0)` and `formatStoreNumber(total, 0)`. Add the `@/lib/helpers/format.helper` import.
-- [x] **Step 2:** In the anomaly title, use `formatStoreDecimal(n.data.multiple, 1)`. Add `formatStoreDecimal` to the existing `format.helper` import. One decimal matches `round( $yesterday_points / $average, 1 )` in `includes/Services/Dashboard/AnomalyDetector.php:50`.
-- [x] **Step 3:** In `DashboardAnomalySettlements`, use `formatStoreDecimal(threshold.multiple, 1)`. Add the import.
+- [x] **Step 2:** Add `formatMultiple`, and use `formatMultiple(n.data.multiple)` in the anomaly title. Add `formatStoreDecimal` to the existing `format.helper` import. One decimal matches `round( $yesterday_points / $average, 1 )` in `includes/Services/Dashboard/AnomalyDetector.php:50`.
+- [x] **Step 3:** In `DashboardAnomalySettlements`, use `formatMultiple(threshold.multiple)`, imported from `'../dashboard-page.notice-copy'`.
 - [x] **Step 4: Verify**
   - Run: `git grep -n toLocaleString -- apps/admin/src/pages`. Expected: no output.
   - Run the type-check and ESLint on the three files, as Global constraints describes. Expected: tsc exits 0, and ESLint shows no new errors or warnings.

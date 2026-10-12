@@ -20,6 +20,11 @@ export type NoticeCopy = {
   secondary?: NoticeAction;
 };
 
+/** Mirrors AnomalyDetector::evaluate()'s one-decimal rounding, the source of truth. */
+export function formatMultiple(value: number): string {
+  return formatStoreDecimal(value, 1);
+}
+
 export function noticeCopy(notice: DashboardNotice): NoticeCopy | null {
   const typed = parseNoticeData(notice);
 
@@ -98,7 +103,7 @@ function copyFor(n: TypedNotice): NoticeCopy {
         title: sprintf(
           /* translators: %s: how many times the daily average, e.g. "3.2". */
           __('Points issued yesterday were %s× your daily average', 'yayloyalty'),
-          formatStoreDecimal(n.data.multiple, 1),
+          formatMultiple(n.data.multiple),
         ),
         body: sprintf(
           /* translators: 1: the figures sentence, 2: the cause sentence. */
