@@ -2,7 +2,7 @@
 
 > **For agentic workers:** execute tasks in order, one at a time. Steps use `- [ ]` for tracking. Read the spec linked below before starting; the plan argues from it.
 
-**Status:** active
+**Status:** done 2026-10-13
 **Goal:** Build `docs/explainers/points-factory.html`, a self-playing animated isometric factory scene that shows the team how points move through the earning path today.
 **Spec:** [docs/specs/2026-10-13-points-factory-explainer-design.md](../specs/2026-10-13-points-factory-explainer-design.md)
 **Architecture:** One HTML file with inline SVG, CSS and JS, animated by GSAP 3.12.5 and MotionPathPlugin from cdnjs. The static floor and the station panels are built first and work without GSAP. The scene timelines are then layered on top, so the offline fallback is the base state rather than a special case.
@@ -338,7 +338,7 @@ Expected: the same results.
 - Modify: `docs/explainers/points-factory.html`, the header stamp only
 - Modify: `docs/plans/2026-10-13-points-factory-explainer.md`, the Status line
 
-- [ ] **Step 1: Stamp and run the end-to-end check**
+- [x] **Step 1: Stamp and run the end-to-end check**
 
 1. Set the header stamp to the output of `git rev-parse --short HEAD` and today's date.
 2. Run the spec's acceptance criterion 11. The user watches this live, because the Chrome window is hidden from the extension.
@@ -348,7 +348,7 @@ Expected: the same results.
    - Expected: `git ls-files` prints every path.
 3. Set this plan's Status to `done YYYY-MM-DD`.
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 Stage: `docs/explainers/points-factory.html`, `docs/plans/2026-10-13-points-factory-explainer.md`
 Message: `docs(explainers): close out the points factory plan`
