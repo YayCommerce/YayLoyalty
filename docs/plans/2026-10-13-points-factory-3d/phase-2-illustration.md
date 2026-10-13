@@ -26,7 +26,15 @@ Pick the models from these sources:
 
 Download into a fresh scratch directory, not the repo, and copy only the models the scene uses. List each file's name and size to the user before committing. The total must be 8 MB or less.
 
-Steps: expand after Phase 1 lands.
+- [x] **Step 1: Kenney models.** From the kit's `Models/GLB format/`, copy into `public/models/`:
+  - stations: `scanner-high`, `hopper-square` (intake); `machine`, `cog-a` (scoring); `warning-traffic` (gate); `piston-square` (ledger); `structure-medium` (warehouse racks); `machine-fortified` (vault); `machine-window`, `conveyor-stripe` (return);
+  - belts and props: `conveyor`, `conveyor-bars`, `cone`, `box-small`, and `screen-small` for the admin's console.
+
+  The models load `Textures/colormap.png` by relative URL, so copy it to `public/models/Textures/`. Copy `License.txt` to `LICENSE-kenney-factory-kit.txt`.
+- [x] **Step 2: Worker.** The free tier of the Quaternius Universal Animation Library, `Universal Animation Library[Standard].zip`, downloads only through itch.io's browser dialog. Its `UAL1_Standard.glb` is 7.6 MB with 43 clips. Trim it with `@gltf-transform` in scratch to `Idle_Loop` and `Walk_Loop`, disposing each dropped clip's channels and samplers before `prune()`, and save it as `public/models/worker.glb` (about 0.85 MB). Copy `License.txt` to `LICENSE-quaternius.txt`. Both licenses are CC0.
+- [x] **Step 3: `src/models.ts`.** `MODELS` maps each `ModelKey` to `${BASE_URL}models/<key>.glb`. `loadModel(key)` caches one `GLTFLoader` promise per key, and a failed load resolves to `null` with a `console.warn`. `useModel(key)` is React 19's `use(loadModel(key))`: it suspends while loading, then returns the model or `null`. Callers clone the scene, using `SkeletonUtils.clone` for the worker.
+- [x] **Step 4: Verify.** `pnpm --filter @yayloyalty/factory-explainer exec tsc --noEmit` exits 0. In the dev page, a one-off Playwright script calls `loadModel` for every key: each returns a scene, with no 404 for the texture, `worker` has the clips `Idle_Loop+Walk_Loop`, and a key pointing at a missing file returns `null`.
+- [x] **Step 5: Commit.** List each file's name and size to the user, then stage `public/models/` and `src/models.ts` by name: `feat(factory-explainer): add the kit models and worker`.
 
 ### Task 2: Station silhouettes
 
