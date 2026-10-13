@@ -196,6 +196,45 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
     }
 
     /**
+     * Clears every expiry date, for when expiry is turned off.
+     *
+     * @throws QueryException When the write fails.
+     */
+    public function clear_expiry(): void {
+        global $wpdb;
+
+        $result = $wpdb->query( 'UPDATE `' . esc_sql( $this->table() ) . '` SET expires_at = NULL WHERE expires_at IS NOT NULL' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.NotPrepared -- no values; the table name is escaped.
+
+        if ( false === $result ) {
+            throw new QueryException( 'update', $wpdb->last_error, $this->table() . ' (clear_expiry)' );
+        }
+    }
+
+    /**
+     * Recomputes every inactivity expiry after a settings change: last activity (or joining) + $days,
+     * never sooner than $floor, for customers with a balance; NULL for the rest.
+     *
+     * @param string $floor UTC MySQL datetime, now + the grace period.
+     * @throws QueryException When the write fails.
+     */
+    public function restamp_inactivity_expiry( int $days, string $floor ): void {
+        global $wpdb;
+
+        $result = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare(
+                'UPDATE `' . esc_sql( $this->table() ) . '`
+                 SET expires_at = IF(balance > 0, GREATEST(DATE_ADD(COALESCE(last_activity_at, joined_at), INTERVAL %d DAY), CAST(%s AS DATETIME)), NULL)',
+                $days,
+                $floor
+            )
+        );
+
+        if ( false === $result ) {
+            throw new QueryException( 'update', $wpdb->last_error, $this->table() . ' (restamp_inactivity_expiry)' );
+        }
+    }
+
+    /**
      * Moves customers.pending_points by a signed delta (stage +N, release or
      * discard −N). Relative arithmetic like apply_delta(). The caller holds
      * the row lock when it also writes the ledger. Never below zero.

@@ -1,19 +1,23 @@
 <?php
 namespace YayLoyalty\Engine\Expiry;
 
+use YayLoyalty\Engine\Earning\Outcome;
+use YayLoyalty\Enums\ExpiryMode;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Repositories\LotRepository;
 use YayLoyalty\Services\LedgerService;
+use YayLoyalty\Utils\Dates;
 use YayLoyalty\Utils\Log;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The daily Action Scheduler job: backfills lots for balances that predate them. Each run handles one
- * batch and queues an async continuation while batches come back full. Does nothing without Action
- * Scheduler (WooCommerce inactive).
+ * The daily Action Scheduler job. Each run, in order: re-applies changed expiry settings to every
+ * customer's date, backfills lots for balances that predate them, then expires due customers through
+ * LedgerService::expire(). Each step handles one batch, and the run queues an async continuation while
+ * a step made progress on a full batch. Does nothing without Action Scheduler (WooCommerce inactive).
  */
 final class ExpiryRunner {
 
@@ -22,6 +26,9 @@ final class ExpiryRunner {
     public const GROUP = 'yayloyalty';
 
     public const BATCH_SIZE = 100;
+
+    /** ExpiryPolicy::signature() the stored dates were last computed from. */
+    public const OPTION_APPLIED = 'yayloyalty_expiry_applied';
 
     public function register(): void {
         if ( ! function_exists( 'as_has_scheduled_action' ) ) {
@@ -44,7 +51,50 @@ final class ExpiryRunner {
     }
 
     public function run(): void {
-        $ledger   = new LedgerService( new LedgerRepository(), new CustomerRepository(), new CampaignRepository() );
+        $now       = Dates::now();
+        $policy    = ExpiryPolicy::current();
+        $customers = new CustomerRepository();
+        $ledger    = new LedgerService( new LedgerRepository(), $customers, new CampaignRepository() );
+
+        $this->apply_settings( $policy, $customers, $now );
+
+        $has_more = $this->backfill( $ledger );
+
+        if ( $policy->is_enabled() && $this->expire_due( $ledger, $customers, $now ) ) {
+            $has_more = true;
+        }
+
+        if ( $has_more ) {
+            as_enqueue_async_action( self::RUN_ACTION, [], self::GROUP );
+        }
+    }
+
+    /** Queues a run now, after a settings save changed expiry. */
+    public static function queue_now(): void {
+        if ( function_exists( 'as_enqueue_async_action' ) ) {
+            as_enqueue_async_action( self::RUN_ACTION, [], self::GROUP );
+        }
+    }
+
+    /** Recomputes customers.expires_at when the settings changed since the last run, never sooner than the grace floor. */
+    private function apply_settings( ExpiryPolicy $policy, CustomerRepository $customers, string $now ): void {
+        $signature = $policy->signature();
+
+        if ( get_option( self::OPTION_APPLIED ) === $signature ) {
+            return;
+        }
+
+        if ( ! $policy->is_enabled() ) {
+            $customers->clear_expiry();
+        } elseif ( ExpiryMode::INACTIVITY === $policy->mode() ) {
+            $customers->restamp_inactivity_expiry( $policy->inactivity_days(), ExpiryDates::grace_floor( $now ) );
+        }
+
+        update_option( self::OPTION_APPLIED, $signature, false );
+    }
+
+    /** @return bool Whether a full batch made progress, so more may remain. */
+    private function backfill( LedgerService $ledger ): bool {
         $user_ids = ( new LotRepository() )->user_ids_needing_backfill( self::BATCH_SIZE );
         $opened   = 0;
 
@@ -57,9 +107,25 @@ final class ExpiryRunner {
         }
 
         // A batch that opened nothing would come back unchanged: balances with no ledger history to rebuild from.
-        if ( count( $user_ids ) === self::BATCH_SIZE && $opened > 0 ) {
-            as_enqueue_async_action( self::RUN_ACTION, [], self::GROUP );
+        return count( $user_ids ) === self::BATCH_SIZE && $opened > 0;
+    }
+
+    /** @return bool Whether a full batch made progress, so more may remain. */
+    private function expire_due( LedgerService $ledger, CustomerRepository $customers, string $now ): bool {
+        $user_ids = $customers->due_user_ids( $now, self::BATCH_SIZE );
+        $expired  = 0;
+
+        foreach ( $user_ids as $user_id ) {
+            try {
+                if ( Outcome::AWARDED === $ledger->expire( $user_id, $now )->get_status() ) {
+                    ++$expired;
+                }
+            } catch ( \Throwable $e ) {
+                Log::error( 'ExpiryRunner', sprintf( 'expiry for user %d failed: %s', $user_id, $e->getMessage() ) );
+            }
         }
+
+        return count( $user_ids ) === self::BATCH_SIZE && $expired > 0;
     }
 
     /** Removes every pending run. Called on deactivation. */
