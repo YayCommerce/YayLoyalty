@@ -32,7 +32,8 @@ export function Worker( { actor, gltf }: { actor: Actor; gltf: GLTF } ) {
   const group = useRef<THREE.Group>( null );
   const { root, mixer, walk, idle } = useMemo( () => {
     const r = clone( gltf.scene );
-    const body = material( 'accent', actor.color );
+    // The 2D page's actor colours are 80–92 % saturated; mixing toward the machine grey keeps the palette calm.
+    const body = material( 'accent', `#${ new THREE.Color( actor.color ).lerp( new THREE.Color( '#a9afb8' ), 0.35 ).getHexString() }` );
     body.roughness = 0.7;
     const joints = material( 'graphite' );
     r.traverse( ( o ) => {

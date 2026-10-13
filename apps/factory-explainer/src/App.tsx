@@ -49,7 +49,7 @@ export function App() {
   return (
     <div className="app">
       <Stage>
-        { PERF && <StatsGl /> }
+        { PERF && <StatsGl className="perf-stats" clearStatsGlStyle /> }
         <Clock />
         <Floor />
         <RejectBin />

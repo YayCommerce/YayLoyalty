@@ -22,6 +22,7 @@ export interface Station {
   position: Vec2;
   size: [ w: number, d: number, h: number ];
   labelHeight: number; // label anchor above the top face's back corner; enough to clear parts taller than `size`
+  labelPlace?: 'start' | 'below'; // 'start': the label runs rightwards from its anchor; 'below': it hangs under the machine's front corner. Both clear neighbouring machines
   built: boolean;
 }
 
@@ -106,7 +107,7 @@ export const STATIONS: Station[] = [
     inputs: [ 'a trigger (PURCHASE, SIGNUP, REVIEW) and its Context' ],
     outputs: [ 'preview(): a Result', 'award(): an Outcome, after LedgerService::earn()' ],
     summary: 'Runs the earning gates, then PointsEngine::evaluate() scores the trigger (PURCHASE, SIGNUP, REVIEW) against the active campaigns. preview() stops there; award() hands the result to LedgerService::earn().',
-    position: [ 10.5, 5.75 ], size: [ 3.25, 2.75, 1.6 ], labelHeight: 0.25,
+    position: [ 10.5, 5.75 ], size: [ 3.25, 2.75, 1.6 ], labelHeight: 0.25, labelPlace: 'start',
   },
   {
     id: 'program-gate', type: 'gate', role: 'Gate', label: 'ProgramGate', built: true,
@@ -150,7 +151,7 @@ export const STATIONS: Station[] = [
     inputs: [ 'LedgerService writes, inside its transaction' ],
     outputs: [ 'balance, lifetime_earned, lifetime_redeemed, pending_points' ],
     summary: 'The customer\'s cached totals. Only LedgerService writes them, in the same transaction as the ledger row.',
-    position: [ 24.25, 5.75 ], size: [ 3.75, 3.75, 2.1 ], labelHeight: 0.25,
+    position: [ 24.25, 5.75 ], size: [ 3.75, 3.75, 2.1 ], labelHeight: 0.25, labelPlace: 'start',
   },
   {
     id: 'redemption', type: 'unbuilt', role: 'Spend', label: 'Redemption', built: false,
@@ -161,7 +162,7 @@ export const STATIONS: Station[] = [
     inputs: [],
     outputs: [],
     summary: 'Not built yet. The redemption engine is scaffolding marked TODO(redemption): is_available() returns false and LedgerService::redeem() throws, so no package can be spent.',
-    position: [ 29, 2.5 ], size: [ 2.75, 2.25, 1.4 ], labelHeight: 0.25,
+    position: [ 29, 2.5 ], size: [ 2.75, 2.25, 1.4 ], labelHeight: 0.25, labelPlace: 'below',
   },
   {
     id: 'expiry', type: 'unbuilt', role: 'Expire', label: 'Expiry', built: false,
@@ -172,7 +173,7 @@ export const STATIONS: Station[] = [
     inputs: [],
     outputs: [],
     summary: 'Not built yet. Nothing writes EXPIRE rows: LedgerService notes that expiry needs the lots table, which is designed but not built.',
-    position: [ 29, 5.75 ], size: [ 2.75, 2.25, 1.4 ], labelHeight: 0.25,
+    position: [ 29, 5.75 ], size: [ 2.75, 2.25, 1.4 ], labelHeight: 0.25, labelPlace: 'below',
   },
   {
     id: 'tiers', type: 'unbuilt', role: 'Tiers', label: 'VIP tiers', built: false,
@@ -183,7 +184,7 @@ export const STATIONS: Station[] = [
     inputs: [],
     outputs: [],
     summary: 'Not built yet. Only the columns exist, declared ahead so the feature lands without a migration; CampaignConditionType::TIER is unavailable.',
-    position: [ 29, 9 ], size: [ 2.75, 2.25, 1.4 ], labelHeight: 0.25,
+    position: [ 29, 9 ], size: [ 2.75, 2.25, 1.4 ], labelHeight: 0.25, labelPlace: 'below',
   },
 ];
 

@@ -6,6 +6,7 @@ import { useLateMount } from './useLateMount';
 
 /**
  * The station's name above its machine, anchored over the top face's back corner: the highest point on screen in the iso view, so the label never covers its own machine.
+ * With `labelPlace: 'below'` it hangs under the footprint's front corner, the lowest point, for the same reason.
  * Hovering it adds the type, the class file and a one-line description, and highlights the station.
  */
 export function StationLabel( { s }: { s: Station } ) {
@@ -14,9 +15,9 @@ export function StationLabel( { s }: { s: Station } ) {
     return null;
   }
   return (
-    <Html position={ [ -s.size[ 0 ] / 2, PLINTH + s.size[ 2 ] + s.labelHeight, -s.size[ 1 ] / 2 ] } occlude zIndexRange={ [ 4, 0 ] } style={ { pointerEvents: 'none' } }>
+    <Html position={ 'below' === s.labelPlace ? [ s.size[ 0 ] / 2, 0, s.size[ 1 ] / 2 ] : [ -s.size[ 0 ] / 2, PLINTH + s.size[ 2 ] + s.labelHeight, -s.size[ 1 ] / 2 ] } occlude zIndexRange={ [ 4, 0 ] } style={ { pointerEvents: 'none' } }>
       <div
-        className={ `station-label${ hovered ? ' is-hover' : '' }${ s.built ? '' : ' is-unbuilt' }` }
+        className={ `station-label${ hovered ? ' is-hover' : '' }${ s.built ? '' : ' is-unbuilt' }${ s.labelPlace ? ` is-${ s.labelPlace }` : '' }` }
         data-station={ s.id }
         onPointerEnter={ () => useFactory.getState().setHovered( s.id ) }
         onPointerLeave={ () => useFactory.getState().setHovered( null ) }

@@ -42,7 +42,11 @@ function IsoRig() {
     camera.position.copy( TARGET ).add( new THREE.Vector3( DISTANCE, DISTANCE, DISTANCE ) );
     camera.lookAt( TARGET );
     camera.updateMatrixWorld();
-    const zoom = fitZoom( camera, size.width, size.height );
+    // Fit the floor into the space below the toolbar, and centre it there with a view offset.
+    const toolbar = document.querySelector( '[data-testid="toolbar"]' );
+    const top = toolbar ? Math.max( 0, toolbar.getBoundingClientRect().bottom - canvas.getBoundingClientRect().top + 8 ) : 0;
+    camera.setViewOffset( size.width, size.height, 0, -top / 2, size.width, size.height );
+    const zoom = fitZoom( camera, size.width, size.height - top );
     camera.zoom = zoom;
     camera.near = 0.1;
     camera.far = 200;
@@ -79,7 +83,7 @@ function IsoRig() {
 
 export function Stage( { children }: { children?: ReactNode } ) {
   return (
-    <Canvas shadows={ { type: THREE.PCFShadowMap } } orthographic dpr={ [ 1, 2 ] } camera={ { position: [ 55, 40, 47 ] } }>
+    <Canvas shadows={ { type: THREE.PCFShadowMap } } orthographic dpr={ [ 1, 1.5 ] } camera={ { position: [ 55, 40, 47 ] } }>
       <color attach="background" args={ [ '#f4f1ec' ] } />
       <IsoRig />
       <Lighting />

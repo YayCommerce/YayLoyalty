@@ -88,8 +88,45 @@ Verify each one:
 2. Critique the 3 screenshots against the checklist, then fix and re-shoot, for up to 3 rounds.
 3. Measure frames per second over 5 s at 1440×900 in a headed run with `?perf`. Expected: 55 or more on average.
 
-Steps: expand after Phase 2 lands.
+- [x] **Step 1: Round 2 fixes.**
+  - `Stage.tsx` measures the toolbar's bottom edge, fits the zoom to the space below it, and centres the floor there with `camera.setViewOffset`. `project()`, drei's `Html` and raycasting all read the projection matrix, so labels, `machineRects()` and hover follow.
+  - `dpr` is capped at `[ 1, 1.5 ]`.
+  - `Worker.tsx` mixes each actor's colour 35 % toward the machine grey.
+  - A new optional config field, `labelPlace: 'start'`, runs the label rightwards from its anchor. It is set on EarningService and the vault.
+- [x] **Step 2: Round 3 fixes.** `labelPlace: 'below'` anchors the label at the footprint's front corner, the lowest point of the machine's screen box, and hangs it under the machine on its leader. It is set on the three unbuilt stations. The vault keeps `start`: below its front corner is the VIP tiers zone. `<StatsGl>` moves bottom-right (`.perf-stats`), because the toolbar covered it at the top-left.
+- [x] **Step 3: Verify.** `tsc --noEmit` exits 0, `shoot` passes with 3 shots and no console errors, and `./scripts/check-harness.sh` passes. Frame rate is in the critique log.
+- [x] **Step 4: Commit.** Stage `src/App.tsx`, `src/factory.config.ts`, `src/scene/Stage.tsx`, `src/scene/Worker.tsx`, `src/ui/StationLabel.tsx`, `src/ui/ui.css`, the README and this file: `feat(factory-explainer): frame the floor below the toolbar and place the labels clear`.
 
 ## Critique log
 
-Filled in during Task 3.
+Round 1 is in [Phase 2's critique log](phase-2-illustration.md#critique-log). All rounds use the three 1440×900 `shoot` shots. The 390×844 shots were dropped with the mobile view.
+
+### Round 2, 2026-10-13
+
+Changes: the floor is framed below the toolbar, DPR is capped at 1.5, the workers' colours are mixed toward grey, and EarningService and the vault labels use `labelPlace: 'start'`.
+
+| Checklist item | Result | Notes |
+|---|---|---|
+| Distinct silhouettes | pass | Unchanged. |
+| Soft shadows and AO | pass | Unchanged. |
+| No labels overlap and no label covers a machine | fail | Alice and OrderListener's label are no longer under the toolbar, and EarningService's label is off the intake's scanner arch. Still wrong: `customers` sits on the PendingPoints racks, and Expiry and VIP tiers sit over the vault (VIP tiers' rectangle overlaps the vault's machine rectangle by 99 %). |
+| One accent per object, calm palette | pass | The workers no longer outshout the machines. |
+| No plain unbevelled box | pass | Unchanged. |
+| 60 fps at 1440×900 | not measured | Measured after round 3. |
+
+### Round 3, 2026-10-13
+
+Changes: the unbuilt labels use `labelPlace: 'below'`, and the `?perf` meter moves bottom-right.
+
+| Checklist item | Result | Notes |
+|---|---|---|
+| Distinct silhouettes | pass | |
+| Soft shadows and AO | pass | |
+| No labels overlap and no label covers a machine | fail, one label | `shoot`'s assertions pass: no two labels meet, and none covers its own machine. Visually, every label but one sits clear of other machines:<br>• the unbuilt labels hang under their own blue boxes;<br>• `customers` still sits on the PendingPoints racks. Its rectangle overlaps that machine's rectangle by 55 %.<br><br>Measured against every other machine's conservative footprint box at t = 70: the intakes overlap their neighbours by 23–24 %, EarningService overlaps OrderListener by 34 %, LedgerService overlaps PendingPoints by 16 %, and the unbuilt labels overlap the next blue zone by 28–33 %. In this iso layout the footprint boxes of neighbours overlap one another, so this is not a pixel test. |
+| One accent per object, calm palette | pass | |
+| No plain unbevelled box | pass | |
+| 60 fps at 1440×900 | pass at DPR 1, fail at DPR 2 | Headed Chromium with `?perf`, counting `requestAnimationFrame` calls over 5 s of playback: 60.1 fps (worst frame 17.8 ms) at DPR 1. At DPR 2, which renders at the 1.5 cap (2160×1350), it was 49.1 fps (worst frame 67.5 ms), up from 23.9 fps in round 1. That is below Task 3's 55. |
+
+After 3 rounds, two items are open, for the user to decide:
+- **`customers` on the racks.** One fix is to move the vault or the warehouse in `factory.config.ts`, which changes the layout. Another is to accept it.
+- **Frame rate at DPR 2.** Options: cap DPR at 1.25, drop N8AO under load with drei's `PerformanceMonitor`, or accept 49 fps on Retina.
