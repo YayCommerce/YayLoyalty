@@ -6,11 +6,13 @@ use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Models\Customer;
 use YayLoyalty\Models\LedgerEntry;
+use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The effective expiry rules, read from the `expiry` settings group. A stored mode this build cannot
+ * The effective expiry rules, read from the `expiry` settings group, and the date maths behind them
+ * (static and pure, on UTC `Y-m-d H:i:s` strings). A stored mode this build cannot
  * run (batch without Pro) falls back to inactivity, and only batch honours the spend order.
  */
 final class ExpiryPolicy {
@@ -18,6 +20,32 @@ final class ExpiryPolicy {
     public const SPEND_OLDEST = 'oldest';
 
     public const SPEND_NEWEST = 'newest';
+
+    /** Turning expiry on or shortening it never sets a date sooner than this many days from now. */
+    public const GRACE_DAYS = 30;
+
+    public static function inactivity_expires_at( string $base_utc, int $days ): string {
+        return Dates::offset( $days * 86400, $base_utc );
+    }
+
+    /** $months after the earned date, on the same day of the month or the month's last day: 31 Jan + 1 = 28/29 Feb. */
+    public static function batch_expires_at( string $earned_utc, int $months ): string {
+        $earned = new \DateTimeImmutable( $earned_utc, new \DateTimeZone( 'UTC' ) );
+        $first  = $earned->modify( 'first day of this month' )->modify( '+' . $months . ' months' );
+        $day    = min( (int) $earned->format( 'j' ), (int) $first->format( 't' ) );
+
+        return $first->setDate( (int) $first->format( 'Y' ), (int) $first->format( 'n' ), $day )->format( Dates::MYSQL_FORMAT );
+    }
+
+    /** The later of the two. Same-format UTC strings compare in date order. */
+    public static function floor_at( string $expires_at, string $floor ): string {
+        return strcmp( $expires_at, $floor ) >= 0 ? $expires_at : $floor;
+    }
+
+    /** Now + GRACE_DAYS, the earliest date a settings change may give anyone. */
+    public static function grace_floor( string $now ): string {
+        return self::inactivity_expires_at( $now, self::GRACE_DAYS );
+    }
 
     /** @var array<string, mixed> */
     private $settings;
@@ -36,17 +64,17 @@ final class ExpiryPolicy {
     }
 
     public function mode(): string {
-        $mode = (string) ( $this->settings['mode'] ?? '' );
+        $mode = $this->settings['mode'] ?? '';
 
-        return in_array( $mode, ExpiryMode::all(), true ) ? $mode : ExpiryMode::INACTIVITY;
+        return ExpiryMode::is_valid( $mode ) ? $mode : ExpiryMode::INACTIVITY;
     }
 
     public function inactivity_days(): int {
-        return max( 1, (int) ( $this->settings['inactivity_days'] ?? 365 ) );
+        return max( 1, (int) $this->settings['inactivity_days'] );
     }
 
     public function batch_months(): int {
-        return max( 1, (int) ( $this->settings['batch_months'] ?? 12 ) );
+        return max( 1, (int) $this->settings['batch_months'] );
     }
 
     public function spend_order(): string {
@@ -83,7 +111,7 @@ final class ExpiryPolicy {
 
     /** A new lot's expiry: set only while batch expiry is on. */
     public function lot_expires_at( string $created_at ): ?string {
-        return $this->is_batch() ? ExpiryDates::batch_expires_at( $created_at, $this->batch_months() ) : null;
+        return $this->is_batch() ? self::batch_expires_at( $created_at, $this->batch_months() ) : null;
     }
 
     /**
@@ -108,11 +136,11 @@ final class ExpiryPolicy {
         }
 
         if ( LedgerType::is_activity( $row->get_type() ) ) {
-            return ExpiryDates::inactivity_expires_at( $row->get_created_at(), $this->inactivity_days() );
+            return self::inactivity_expires_at( $row->get_created_at(), $this->inactivity_days() );
         }
 
         $base = $before->get_last_activity_at() ?? $before->get_joined_at();
 
-        return ExpiryDates::floor_at( ExpiryDates::inactivity_expires_at( $base, $this->inactivity_days() ), ExpiryDates::grace_floor( $now ) );
+        return self::floor_at( self::inactivity_expires_at( $base, $this->inactivity_days() ), self::grace_floor( $now ) );
     }
 }

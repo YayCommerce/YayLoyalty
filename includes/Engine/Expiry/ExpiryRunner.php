@@ -36,8 +36,8 @@ final class ExpiryRunner {
             return;
         }
 
-        // Only admin and cron requests check, so a storefront page view pays no Action Scheduler query.
-        if ( is_admin() || wp_doing_cron() ) {
+        // Only admin page loads and cron check, so storefront views and admin-ajax (Heartbeat) pay no Action Scheduler query.
+        if ( ( is_admin() && ! wp_doing_ajax() ) || wp_doing_cron() ) {
             add_action( 'init', [ $this, 'schedule' ] );
         }
 
@@ -58,7 +58,7 @@ final class ExpiryRunner {
         $lots      = new LotRepository();
         $ledger    = new LedgerService( new LedgerRepository(), $customers, new CampaignRepository() );
 
-        $has_more = $this->backfill( $ledger );
+        $has_more = $this->backfill( $ledger, $lots );
 
         try {
             $this->apply_settings( $policy, $customers, $lots, $has_more, $now );
@@ -76,7 +76,7 @@ final class ExpiryRunner {
         }
 
         if ( $has_more ) {
-            as_enqueue_async_action( self::RUN_ACTION, [], self::GROUP );
+            self::queue_now();
         }
     }
 
@@ -101,7 +101,7 @@ final class ExpiryRunner {
             return;
         }
 
-        $floor = ExpiryDates::grace_floor( $now );
+        $floor = ExpiryPolicy::grace_floor( $now );
 
         if ( ! $policy->is_enabled() ) {
             $customers->clear_expiry();
@@ -118,8 +118,8 @@ final class ExpiryRunner {
     }
 
     /** @return bool Whether a full batch made progress, so more may remain. */
-    private function backfill( LedgerService $ledger ): bool {
-        $user_ids = ( new LotRepository() )->user_ids_needing_backfill( self::BATCH_SIZE );
+    private function backfill( LedgerService $ledger, LotRepository $lots ): bool {
+        $user_ids = $lots->user_ids_needing_backfill( self::BATCH_SIZE );
         $opened   = 0;
 
         foreach ( $user_ids as $user_id ) {

@@ -168,13 +168,7 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
      * @throws QueryException When the write fails.
      */
     public function set_expires_at( int $user_id, ?string $expires_at ): void {
-        global $wpdb;
-
-        $result = $wpdb->update( $this->table(), [ 'expires_at' => $expires_at ], [ 'user_id' => $user_id ], [ '%s' ], [ '%d' ] ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
-
-        if ( false === $result ) {
-            throw new QueryException( 'update', $wpdb->last_error, $this->table() . ' (set_expires_at)' );
-        }
+        $this->update( $user_id, [ 'expires_at' => $expires_at ], [ '%s' ] );
     }
 
     /**
@@ -214,7 +208,8 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
 
     /**
      * Recomputes every inactivity expiry after a settings change: last activity (or joining) + $days,
-     * never sooner than $floor, for customers with a balance; NULL for the rest.
+     * never sooner than $floor, for customers with a balance; NULL for the rest. Mirrors
+     * Engine\Expiry\ExpiryPolicy::customer_expires_at() for a non-activity row.
      *
      * @param string $floor UTC MySQL datetime, now + the grace period.
      * @throws QueryException When the write fails.

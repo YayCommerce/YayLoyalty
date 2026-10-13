@@ -225,7 +225,7 @@ class LedgerRepository extends AbstractRepository {
 
     /**
      * A user's positive rows, newest first, read in pages until their points cover $cover: what
-     * Engine\Expiry\LotRebuild needs to rebuild that balance's lots. Ordered by id, which orders history.
+     * Services\LotBook needs to rebuild that balance's lots. Ordered by id, which orders history.
      *
      * @return array<int, array{id: int, points: int, created_at: string}>
      */

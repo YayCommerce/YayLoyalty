@@ -9,17 +9,11 @@ import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { useSaveSettingsMutation, useSettingsQuery } from '@/lib/queries/settings.queries';
 import { useEditorSave } from '@/hooks/useEditorSave';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ConfirmDialog } from '@/components/ui/custom/confirm-dialog';
 import { UnsavedChangeDialog } from '@/components/ui/custom/unsaved-changed-dialog';
+import { ProGate } from '@/components/pro/ProGate';
 import { BatchExpirySection, ExpiryModeSection } from '@/pro';
-import {
-  CONFIRM_BATCH_BODY,
-  CONFIRM_BATCH_TITLE,
-  CONFIRM_CANCEL,
-  CONFIRM_SAVE,
-  CONFIRM_SHORTEN_BODY,
-  CONFIRM_SHORTEN_TITLE,
-} from './expiry-settings.copy';
 import {
   buildExpirySettingsUpdate,
   expirySettingsDefaults,
@@ -28,9 +22,41 @@ import {
   needsConfirmation,
 } from './expiry-settings.form';
 import { ExpiryInactivityCard } from './ExpiryInactivityCard';
-import { ExpiryMoreInProCard } from './ExpiryMoreInProCard';
 
 type Confirmation = NonNullable<ReturnType<typeof needsConfirmation>>;
+
+/** Title and body per confirmation. Functions, not constants: `__()` must run after the locale loads. */
+const CONFIRM_COPY: Record<Confirmation, () => { title: string; description: string }> = {
+  shorten: () => ({
+    title: __('Shorten points expiry?', 'yayloyalty'),
+    // 30 mirrors ExpiryPolicy::GRACE_DAYS.
+    description: __(
+      'Nobody loses points today. Customers whose new expiry date falls within 30 days get 30 days from today.',
+      'yayloyalty',
+    ),
+  }),
+  batch: () => ({
+    title: __('Switch to batch expiry?', 'yayloyalty'),
+    description: __("Each earning will expire on its own date. This can't be switched back.", 'yayloyalty'),
+  }),
+};
+
+/** Lite's upsell below the inactivity card. */
+function ExpiryMoreInProCard() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{__('Points expire in batches', 'yayloyalty')}</CardTitle>
+        <CardDescription>
+          {__('Expire each earning a set time after it was earned. Available in YayLoyalty Pro.', 'yayloyalty')}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <ProGate />
+      </CardContent>
+    </Card>
+  );
+}
 
 /**
  * Settings → Expiry: one form and one Save. A save that can bring dates sooner, or switches to batch,
@@ -49,6 +75,7 @@ export default function ExpirySettingsPage() {
     resetOptions: { keepDirtyValues: true },
   });
   const mode = useWatch({ control: form.control, name: 'expiry.mode' });
+  const copy = confirmation ? CONFIRM_COPY[confirmation]() : { title: '', description: '' };
 
   const confirm = (kind: Confirmation) =>
     new Promise<boolean>((resolve) => {
@@ -101,10 +128,10 @@ export default function ExpirySettingsPage() {
       <ConfirmDialog
         open={confirmation !== null}
         onOpenChange={(open) => !open && settle(false)}
-        title={confirmation === 'batch' ? CONFIRM_BATCH_TITLE() : CONFIRM_SHORTEN_TITLE()}
-        description={confirmation === 'batch' ? CONFIRM_BATCH_BODY() : CONFIRM_SHORTEN_BODY()}
-        confirmLabel={CONFIRM_SAVE()}
-        cancelLabel={CONFIRM_CANCEL()}
+        title={copy.title}
+        description={copy.description}
+        confirmLabel={__('Save', 'yayloyalty')}
+        cancelLabel={__('Cancel', 'yayloyalty')}
         onConfirm={() => settle(true)}
       />
       <UnsavedChangeDialog {...leaveDialogProps} />

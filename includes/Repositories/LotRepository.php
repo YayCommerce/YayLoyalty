@@ -201,7 +201,7 @@ class LotRepository {
 
     /**
      * Recomputes every open lot's expiry after batch settings change: earned + $months (MySQL clamps to
-     * the month's end, as ExpiryDates::batch_expires_at() does), never sooner than $floor.
+     * the month's end, as Engine\Expiry\ExpiryPolicy::batch_expires_at() does), never sooner than $floor.
      *
      * @throws QueryException When the write fails.
      */

@@ -74,8 +74,8 @@ class SettingsHelper {
             'expiry'                => [
                 'enabled'         => 'bool',
                 'mode'            => 'expiry_mode',
-                'inactivity_days' => 'whole_number',
-                'batch_months'    => 'whole_number',
+                'inactivity_days' => 'expiry_window',
+                'batch_months'    => 'expiry_window',
                 'spend_order'     => 'spend_order',
             ],
         ];
@@ -185,8 +185,8 @@ class SettingsHelper {
     }
 
     /**
-     * Whether every `limit` field in $input is null or a whole number from 1, every `whole_number` is a
-     * whole number from 1, and every mode and spend order is known. The controllers answer 400 on
+     * Whether every `limit` field in $input is null or a whole number from 1, every `expiry_window` is a
+     * whole number from 1 to EXPIRY_WINDOW_MAX, and every mode and spend order is known. The controllers answer 400 on
      * false; coerce() alone would read a 0 or a fraction as "no limit" without saying so. Batch expiry
      * is one-way: once batch is stored, switching back to inactivity is refused.
      *
@@ -232,11 +232,11 @@ class SettingsHelper {
             case 'limit':
                 return null === $value || ConfigSpec::is_limit( $value );
 
-            case 'whole_number':
+            case 'expiry_window':
                 return ConfigSpec::is_limit( $value ) && (float) $value <= self::EXPIRY_WINDOW_MAX;
 
             case 'expiry_mode':
-                return in_array( $value, ExpiryMode::all_known(), true );
+                return ExpiryMode::is_known( $value );
 
             case 'spend_order':
                 return in_array( $value, [ ExpiryPolicy::SPEND_OLDEST, ExpiryPolicy::SPEND_NEWEST ], true );
@@ -288,8 +288,9 @@ class SettingsHelper {
 
             $value = self::coerce( $data[ $key ], $type );
 
-            // An empty label or an unreadable required value is never kept: on read the default stands, on write the stored value does.
-            if ( ( 'points_label' === $type && '' === $value ) || ( null === $value && in_array( $type, [ 'whole_number', 'expiry_mode', 'spend_order' ], true ) ) ) {
+            // An empty label, or an unreadable value of any type but `limit` (where null is "no limit"), is never kept:
+            // on read the default stands, on write the stored value does.
+            if ( ( 'points_label' === $type && '' === $value ) || ( null === $value && 'limit' !== $type ) ) {
                 continue;
             }
 
@@ -314,7 +315,7 @@ class SettingsHelper {
             case 'limit':
                 return ConfigSpec::is_limit( $value ) ? (int) $value : null;
 
-            case 'whole_number':
+            case 'expiry_window':
                 return self::is_valid_value( $value, $type ) ? (int) $value : null;
 
             case 'expiry_mode':

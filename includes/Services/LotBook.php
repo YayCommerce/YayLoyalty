@@ -1,9 +1,7 @@
 <?php
 namespace YayLoyalty\Services;
 
-use YayLoyalty\Engine\Expiry\ExpiryDates;
 use YayLoyalty\Engine\Expiry\ExpiryPolicy;
-use YayLoyalty\Engine\Expiry\LotRebuild;
 use YayLoyalty\Enums\LotStatus;
 use YayLoyalty\Models\LedgerEntry;
 use YayLoyalty\Repositories\LedgerRepository;
@@ -118,7 +116,7 @@ final class LotBook {
      * @return int Lots opened.
      */
     public function rebuild( int $user_id, int $balance ): int {
-        $lots      = LotRebuild::from_ledger( $this->ledger->positive_rows_newest_first( $user_id, $balance ), $balance );
+        $lots      = self::from_ledger( $this->ledger->positive_rows_newest_first( $user_id, $balance ), $balance );
         $shortfall = $balance - array_sum( array_column( $lots, 'remaining' ) );
         $oldest    = count( $lots ) - 1;
 
@@ -132,16 +130,47 @@ final class LotBook {
         }
 
         $policy = ExpiryPolicy::current();
-        $floor  = ExpiryDates::grace_floor( Dates::now() );
+        $floor  = ExpiryPolicy::grace_floor( Dates::now() );
 
         foreach ( $lots as $lot ) {
             $expires_at = $policy->lot_expires_at( $lot['created_at'] );
-            $expires_at = null === $expires_at ? null : ExpiryDates::floor_at( $expires_at, $floor );
+            $expires_at = null === $expires_at ? null : ExpiryPolicy::floor_at( $expires_at, $floor );
 
             $this->lots->open( $lot['ledger_id'], $user_id, $lot['points'], $lot['remaining'], $lot['created_at'], $expires_at );
         }
 
         return count( $lots );
+    }
+
+    /**
+     * What a balance is still made of, FIFO: positive rows newest first until they cover it, the
+     * oldest covering row only in part. When the history sums to less than the balance, the lots end at the oldest row and cover less
+     * than the balance; the caller reports the shortfall.
+     *
+     * @param array<int, array{id: int, points: int, created_at: string}> $rows_newest_first Positive ledger rows.
+     * @return array<int, array{ledger_id: int, points: int, remaining: int, created_at: string}> Newest first.
+     */
+    private static function from_ledger( array $rows_newest_first, int $balance ): array {
+        $lots  = [];
+        $cover = $balance;
+
+        foreach ( $rows_newest_first as $row ) {
+            if ( $cover <= 0 ) {
+                break;
+            }
+
+            $remaining = min( (int) $row['points'], $cover );
+            $cover    -= $remaining;
+
+            $lots[] = [
+                'ledger_id'  => (int) $row['id'],
+                'points'     => (int) $row['points'],
+                'remaining'  => $remaining,
+                'created_at' => (string) $row['created_at'],
+            ];
+        }
+
+        return $lots;
     }
 
     /**

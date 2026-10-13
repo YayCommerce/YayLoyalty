@@ -29,6 +29,11 @@ final class ExpiryMode {
         return [ self::INACTIVITY, self::BATCH ];
     }
 
+    /** Whether $value is a mode of any build, for settings that must survive a downgrade. */
+    public static function is_known( $value ): bool {
+        return is_string( $value ) && in_array( $value, self::all_known(), true );
+    }
+
     protected static function noun(): string {
         return 'expiry mode';
     }
