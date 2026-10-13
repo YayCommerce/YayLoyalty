@@ -1,11 +1,14 @@
 <?php
 namespace YayLoyalty\Services;
 
+use YayLoyalty\Engine\Expiry\ExpiryDates;
+use YayLoyalty\Engine\Expiry\ExpiryPolicy;
 use YayLoyalty\Engine\Expiry\LotRebuild;
 use YayLoyalty\Enums\LotStatus;
 use YayLoyalty\Models\LedgerEntry;
 use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Repositories\LotRepository;
+use YayLoyalty\Utils\Dates;
 use YayLoyalty\Utils\Log;
 
 defined( 'ABSPATH' ) || exit;
@@ -29,21 +32,23 @@ final class LotBook {
     }
 
     /**
-     * Applies one persisted ledger row. A positive row opens a lot for the part of it above zero. A
-     * negative row takes the part of it the balance covered, from $source_ledger_id's lot first (a
-     * clawback reverses its own earning), then oldest first.
+     * Applies one persisted ledger row. A positive row opens a lot for the part of it above zero, dated
+     * in batch expiry. A negative row takes the part of it the balance covered, from $source_ledger_id's
+     * lot first (a clawback reverses its own earning), then in the spend order (oldest first unless
+     * batch expiry says newest).
      *
      * @param int $balance_before The locked balance before the row.
      */
     public function record( LedgerEntry $row, int $balance_before, ?int $source_ledger_id ): void {
         $points  = $row->get_points();
         $user_id = $row->get_user_id();
+        $policy  = ExpiryPolicy::current();
 
         if ( $points > 0 ) {
             $size = min( $points, max( 0, $balance_before + $points ) );
 
             if ( $size > 0 ) {
-                $this->lots->open( (int) $row->get_id(), $user_id, $size, $size, $row->get_created_at(), null );
+                $this->lots->open( (int) $row->get_id(), $user_id, $size, $size, $row->get_created_at(), $policy->lot_expires_at( $row->get_created_at() ) );
             }
 
             return;
@@ -51,8 +56,9 @@ final class LotBook {
 
         $source = [];
         $rest   = [];
+        $order  = ExpiryPolicy::SPEND_NEWEST === $policy->spend_order() ? 'DESC' : 'ASC';
 
-        foreach ( $this->lots->open_lots( $user_id, 'ASC' ) as $lot ) {
+        foreach ( $this->lots->open_lots( $user_id, $order ) as $lot ) {
             if ( $lot['ledger_id'] === $source_ledger_id ) {
                 $source[] = $lot;
             } else {
@@ -66,6 +72,28 @@ final class LotBook {
     /** Empties every open lot for an EXPIRE row, oldest first, each becoming `expired`. */
     public function take_all( LedgerEntry $expire_row ): void {
         $this->take( $expire_row, -$expire_row->get_points(), $this->lots->open_lots( $expire_row->get_user_id(), 'ASC' ), LotStatus::EXPIRED );
+    }
+
+    /**
+     * Takes an EXPIRE row's points from the given due lots, oldest first, each emptied lot becoming `expired`.
+     *
+     * @param array<int, array{id: int, remaining: int}> $due_lots From due_lots().
+     */
+    public function take_due( LedgerEntry $expire_row, array $due_lots ): void {
+        $this->take( $expire_row, -$expire_row->get_points(), $due_lots, LotStatus::EXPIRED );
+    }
+
+    /**
+     * A user's open lots past their expiry at $now, oldest first.
+     *
+     * @return array<int, array{id: int, ledger_id: int, remaining: int, expires_at: ?string}>
+     */
+    public function due_lots( int $user_id, string $now ): array {
+        return $this->lots->due_lots( $user_id, $now );
+    }
+
+    public function earliest_open_expiry( int $user_id ): ?string {
+        return $this->lots->earliest_open_expiry( $user_id );
     }
 
     /**
@@ -84,7 +112,8 @@ final class LotBook {
 
     /**
      * History short of the balance means the balance and the ledger disagree. The oldest lot then
-     * absorbs the gap, so the invariant holds and the gap expires first.
+     * absorbs the gap, so the invariant holds and the gap expires first. In batch expiry a rebuilt lot
+     * never expires sooner than the grace floor: the customer never saw its date.
      *
      * @return int Lots opened.
      */
@@ -102,8 +131,14 @@ final class LotBook {
             }
         }
 
+        $policy = ExpiryPolicy::current();
+        $floor  = ExpiryDates::grace_floor( Dates::now() );
+
         foreach ( $lots as $lot ) {
-            $this->lots->open( $lot['ledger_id'], $user_id, $lot['points'], $lot['remaining'], $lot['created_at'], null );
+            $expires_at = $policy->lot_expires_at( $lot['created_at'] );
+            $expires_at = null === $expires_at ? null : ExpiryDates::floor_at( $expires_at, $floor );
+
+            $this->lots->open( $lot['ledger_id'], $user_id, $lot['points'], $lot['remaining'], $lot['created_at'], $expires_at );
         }
 
         return count( $lots );

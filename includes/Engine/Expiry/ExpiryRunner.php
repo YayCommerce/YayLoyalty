@@ -55,10 +55,11 @@ final class ExpiryRunner {
         $now       = Dates::now();
         $policy    = ExpiryPolicy::current();
         $customers = new CustomerRepository();
+        $lots      = new LotRepository();
         $ledger    = new LedgerService( new LedgerRepository(), $customers, new CampaignRepository() );
 
         try {
-            $this->apply_settings( $policy, $customers, $now );
+            $this->apply_settings( $policy, $customers, $lots, $ledger, $now );
         } catch ( \Throwable $e ) {
             // Unapplied, so the next run retries; backfill and expiry still run on the stored dates.
             Log::error( 'ExpiryRunner', 'applying expiry settings failed: ' . $e->getMessage() );
@@ -66,7 +67,9 @@ final class ExpiryRunner {
 
         $has_more = $this->backfill( $ledger );
 
-        if ( $policy->is_enabled() && $this->expire_due( $ledger, $customers, $now ) ) {
+        $due_ids = $policy->is_batch() ? $lots->due_user_ids( $now, self::BATCH_SIZE ) : $customers->due_user_ids( $now, self::BATCH_SIZE );
+
+        if ( $policy->is_enabled() && $this->expire_due( $ledger, $due_ids, $now ) ) {
             $has_more = true;
         }
 
@@ -83,17 +86,27 @@ final class ExpiryRunner {
     }
 
     /** Recomputes customers.expires_at when the settings changed since the last run, never sooner than the grace floor. */
-    private function apply_settings( ExpiryPolicy $policy, CustomerRepository $customers, string $now ): void {
+    private function apply_settings( ExpiryPolicy $policy, CustomerRepository $customers, LotRepository $lots, LedgerService $ledger, string $now ): void {
         $signature = $policy->signature();
 
         if ( get_option( self::OPTION_APPLIED ) === $signature ) {
             return;
         }
 
+        $floor = ExpiryDates::grace_floor( $now );
+
         if ( ! $policy->is_enabled() ) {
             $customers->clear_expiry();
         } elseif ( ExpiryMode::INACTIVITY === $policy->mode() ) {
-            $customers->restamp_inactivity_expiry( $policy->inactivity_days(), ExpiryDates::grace_floor( $now ) );
+            $customers->restamp_inactivity_expiry( $policy->inactivity_days(), $floor );
+        } else {
+            // Batch dates live on lots, so every balance needs its lots before they are dated.
+            while ( $this->backfill( $ledger ) ) {
+                continue;
+            }
+
+            $lots->restamp_open_expiry( $policy->batch_months(), $floor );
+            $customers->restamp_expiry_from_lots();
         }
 
         update_option( self::OPTION_APPLIED, $signature, false );
@@ -117,9 +130,9 @@ final class ExpiryRunner {
     }
 
     /** @return bool Whether a full batch made progress, so more may remain. */
-    private function expire_due( LedgerService $ledger, CustomerRepository $customers, string $now ): bool {
-        $user_ids = $customers->due_user_ids( $now, self::BATCH_SIZE );
-        $expired  = 0;
+    /** @param int[] $user_ids Customers due at $now, at most BATCH_SIZE. */
+    private function expire_due( LedgerService $ledger, array $user_ids, string $now ): bool {
+        $expired = 0;
 
         foreach ( $user_ids as $user_id ) {
             try {

@@ -4,14 +4,16 @@ namespace YayLoyalty\Tests\Integration\Services;
 use YayLoyalty\Engine\Earning\Outcome;
 use YayLoyalty\Engine\Expiry\ExpiryPolicy;
 use YayLoyalty\Engine\Expiry\ExpiryRunner;
+use YayLoyalty\Enums\ExpiryMode;
 use YayLoyalty\Helpers\SettingsHelper;
+use YayLoyalty\Pro\YayLoyaltyPro;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Services\LedgerService;
 use YayLoyalty\Tests\Integration\IntegrationTestCase;
 use YayLoyalty\Utils\Dates;
 use YayLoyalty\Utils\Table;
 
-/** Expiry through LedgerService::expire(): one EXPIRE row per due customer, re-checked under the lock. */
+/** Expiry through LedgerService::expire(): one EXPIRE row per due customer, re-checked under the lock, in both modes. */
 final class ExpiryRunnerTest extends IntegrationTestCase {
 
     private const USER_ID = 717171;
@@ -88,6 +90,91 @@ final class ExpiryRunnerTest extends IntegrationTestCase {
 
         $this->assertSame( '2026-09-01 10:00:00', $earn->get_created_at() );
         $this->assertSame( '2027-09-01 10:00:00', $this->customer_row( self::USER_ID )['expires_at'] );
+    }
+
+    public function test_batch_expires_only_due_lots_and_moves_expiry_to_the_next_lot(): void {
+        global $wpdb;
+
+        $this->use_batch();
+        $this->earn_dated(
+            [
+                400 => '2026-01-01 00:00:00',
+                300 => '2026-02-01 00:00:00',
+                200 => '2026-03-01 00:00:00',
+            ]
+        );
+        $dates = [ Dates::offset( -DAY_IN_SECONDS ), Dates::offset( 30 * DAY_IN_SECONDS ), Dates::offset( 60 * DAY_IN_SECONDS ) ];
+
+        foreach ( $this->lot_ids() as $i => $lot_id ) {
+            $wpdb->update( Table::name( 'lots' ), [ 'expires_at' => $dates[ $i ] ], [ 'id' => $lot_id ] ); // phpcs:ignore WordPress.DB -- a test back-dates the rows directly.
+        }
+
+        $outcome = $this->ledger_service()->expire( self::USER_ID, Dates::now() );
+
+        $this->assertSame( Outcome::AWARDED, $outcome->get_status() );
+        $this->assertSame( -400, $outcome->get_entry()->get_points() );
+        $this->assertSame( [ 'expired', 'open', 'open' ], $this->lot_statuses() );
+        $this->assertSame( $dates[1], $this->customer_row( self::USER_ID )['expires_at'] );
+    }
+
+    public function test_batch_newest_spend_order_takes_the_newest_lot_first(): void {
+        $this->use_batch( 'newest' );
+        $this->earn_dated(
+            [
+                400 => '2026-01-01 00:00:00',
+                300 => '2026-02-01 00:00:00',
+                200 => '2026-03-01 00:00:00',
+            ]
+        );
+
+        $deduct = $this->ledger_service()->adjust( self::USER_ID, -250, 'test', 1 );
+
+        global $wpdb;
+        $allocated = $wpdb->get_col( // phpcs:ignore WordPress.DB -- tests read the table directly; the table name is escaped.
+            $wpdb->prepare( 'SELECT points FROM `' . esc_sql( Table::name( 'lot_allocations' ) ) . '` WHERE ledger_id = %d ORDER BY id', $deduct->get_id() )
+        );
+        $this->assertSame( [ 200, 50 ], array_map( 'intval', $allocated ) );
+    }
+
+    public function test_without_pro_a_stored_batch_mode_runs_as_inactivity(): void {
+        $this->use_batch();
+        remove_filter( 'yayloyalty_expiry_modes', [ YayLoyaltyPro::class, 'add_expiry_modes' ] );
+
+        try {
+            $this->assertSame( ExpiryMode::INACTIVITY, ExpiryPolicy::current()->mode() );
+        } finally {
+            add_filter( 'yayloyalty_expiry_modes', [ YayLoyaltyPro::class, 'add_expiry_modes' ] );
+        }
+    }
+
+    private function use_batch( string $spend_order = 'oldest' ): void {
+        $this->expiry = [
+            'enabled'      => true,
+            'mode'         => 'batch',
+            'batch_months' => 12,
+            'spend_order'  => $spend_order,
+        ];
+    }
+
+    /** @param array<int, string> $points_to_date Earns each amount at its date, oldest first. */
+    private function earn_dated( array $points_to_date ): void {
+        $order = 9001;
+
+        foreach ( $points_to_date as $points => $created_at ) {
+            $this->ledger_service()->earn( $this->earn_draft( self::USER_ID, $order++, $points, $created_at ) );
+        }
+    }
+
+    /** @return int[] */
+    private function lot_ids(): array {
+        global $wpdb;
+
+        return array_map(
+            'intval',
+            (array) $wpdb->get_col( // phpcs:ignore WordPress.DB -- tests read the table directly; the table name is escaped.
+                $wpdb->prepare( 'SELECT id FROM `' . esc_sql( Table::name( 'lots' ) ) . '` WHERE user_id = %d ORDER BY id', self::USER_ID )
+            )
+        );
     }
 
     /** Earns each amount as its own order, then moves the customer's expiry to yesterday. */

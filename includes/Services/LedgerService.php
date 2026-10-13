@@ -186,9 +186,10 @@ final class LedgerService {
     }
 
     /**
-     * Expires a customer's whole balance in inactivity mode: one EXPIRE row of minus the balance, every
-     * open lot `expired`. Re-checked under the lock, because the customer may have earned since the job
-     * queued them. Keyed per customer per UTC run day, so a second run that day is a duplicate.
+     * Writes one EXPIRE row for what is due: in inactivity mode the whole balance, every open lot
+     * `expired`; in batch mode the lots past their date, never more than the balance. Re-checked under
+     * the lock, because the customer may have earned since the job queued them. Keyed per customer per
+     * UTC run day, so a second run that day is a duplicate.
      *
      * @param string $now UTC MySQL datetime of the run; also the row's created_at.
      * @return Outcome awarded (the EXPIRE row), duplicate, or skipped( REASON_NOT_DUE ).
@@ -214,8 +215,19 @@ final class LedgerService {
 
         return $this->write_keyed(
             $draft,
-            static function ( Customer $customer ) use ( $now ): int {
-                return ExpiryPolicy::current()->is_due( $customer, $now ) ? -max( 0, $customer->get_balance() ) : 0;
+            function ( Customer $customer ) use ( $now ): int {
+                $policy  = ExpiryPolicy::current();
+                $balance = max( 0, $customer->get_balance() );
+
+                if ( ! $policy->is_due( $customer, $now ) ) {
+                    return 0;
+                }
+
+                if ( ! $policy->is_batch() ) {
+                    return -$balance;
+                }
+
+                return -min( array_sum( array_column( $this->lots->due_lots( $customer->get_user_id(), $now ), 'remaining' ) ), $balance );
             },
             self::REASON_NOT_DUE
         );
@@ -368,13 +380,20 @@ final class LedgerService {
 
         $persisted = $to_insert->with_persisted( $insert_id, $balance_after );
 
-        if ( LedgerType::EXPIRE === $persisted->get_type() ) {
-            $this->lots->take_all( $persisted );
-        } else {
+        $policy  = ExpiryPolicy::current();
+        $user_id = $customer->get_user_id();
+
+        if ( LedgerType::EXPIRE !== $persisted->get_type() ) {
             $this->lots->record( $persisted, $customer->get_balance(), $source_ledger_id );
+        } elseif ( $policy->is_batch() ) {
+            // expire() sized the row from these lots, under this lock and at this created_at.
+            $this->lots->take_due( $persisted, $this->lots->due_lots( $user_id, $persisted->get_created_at() ) );
+        } else {
+            $this->lots->take_all( $persisted );
         }
 
-        $expires_at = ExpiryPolicy::current()->customer_expires_at( $persisted, $customer, null, Dates::now() );
+        $earliest   = $policy->is_batch() ? $this->lots->earliest_open_expiry( $user_id ) : null;
+        $expires_at = $policy->customer_expires_at( $persisted, $customer, $earliest, Dates::now() );
 
         if ( $expires_at !== $customer->get_expires_at() ) {
             $this->customers->set_expires_at( $customer->get_user_id(), $expires_at );

@@ -149,6 +149,81 @@ class LotRepository {
     }
 
     /**
+     * A user's open lots whose expiry has passed at $now, oldest first.
+     *
+     * @return array<int, array{id: int, ledger_id: int, remaining: int, expires_at: ?string}>
+     */
+    public function due_lots( int $user_id, string $now ): array {
+        return array_values(
+            array_filter(
+                $this->open_lots( $user_id, 'ASC' ),
+                static function ( array $lot ) use ( $now ): bool {
+                    return null !== $lot['expires_at'] && strcmp( $lot['expires_at'], $now ) <= 0;
+                }
+            )
+        );
+    }
+
+    /**
+     * Customers with an open lot past its expiry at $now, for the batch expiry run.
+     *
+     * @return int[]
+     */
+    public function due_user_ids( string $now, int $limit ): array {
+        global $wpdb;
+
+        $ids = $wpdb->get_col( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare(
+                'SELECT DISTINCT user_id FROM `' . esc_sql( $this->table() ) . '` WHERE status = %s AND expires_at <= %s LIMIT %d',
+                LotStatus::OPEN,
+                $now,
+                $limit
+            )
+        );
+
+        return array_map( 'intval', is_array( $ids ) ? $ids : [] );
+    }
+
+    /** The soonest expiry among a user's open lots, or null. */
+    public function earliest_open_expiry( int $user_id ): ?string {
+        global $wpdb;
+
+        $earliest = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare(
+                'SELECT MIN(expires_at) FROM `' . esc_sql( $this->table() ) . '` WHERE user_id = %d AND status = %s',
+                $user_id,
+                LotStatus::OPEN
+            )
+        );
+
+        return null === $earliest ? null : (string) $earliest;
+    }
+
+    /**
+     * Recomputes every open lot's expiry after batch settings change: earned + $months (MySQL clamps to
+     * the month's end, as ExpiryDates::batch_expires_at() does), never sooner than $floor.
+     *
+     * @throws QueryException When the write fails.
+     */
+    public function restamp_open_expiry( int $months, string $floor ): void {
+        global $wpdb;
+
+        $result = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare(
+                'UPDATE `' . esc_sql( $this->table() ) . '`
+                 SET expires_at = GREATEST(DATE_ADD(created_at, INTERVAL %d MONTH), CAST(%s AS DATETIME)) WHERE status = %s',
+                $months,
+                $floor,
+                LotStatus::OPEN
+            )
+        );
+
+        if ( false === $result ) {
+            throw new QueryException( 'update', $wpdb->last_error, $this->table() . ' (restamp_open_expiry)' );
+        }
+    }
+
+    /**
      * Customers with a positive balance and no lot yet, for the backfill.
      *
      * @return int[]

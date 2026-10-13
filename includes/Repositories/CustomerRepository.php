@@ -2,8 +2,10 @@
 namespace YayLoyalty\Repositories;
 
 use YayLoyalty\Database\QueryException;
+use YayLoyalty\Enums\LotStatus;
 use YayLoyalty\Models\Customer;
 use YayLoyalty\Utils\Dates;
+use YayLoyalty\Utils\Table;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -231,6 +233,27 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
 
         if ( false === $result ) {
             throw new QueryException( 'update', $wpdb->last_error, $this->table() . ' (restamp_inactivity_expiry)' );
+        }
+    }
+
+    /**
+     * Sets every customer's expiry to their soonest open lot's, for batch expiry; NULL with no open lot.
+     *
+     * @throws QueryException When the write fails.
+     */
+    public function restamp_expiry_from_lots(): void {
+        global $wpdb;
+
+        $result = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare(
+                'UPDATE `' . esc_sql( $this->table() ) . '` c
+                 SET c.expires_at = (SELECT MIN(l.expires_at) FROM `' . esc_sql( Table::name( 'lots' ) ) . '` l WHERE l.user_id = c.user_id AND l.status = %s)',
+                LotStatus::OPEN
+            )
+        );
+
+        if ( false === $result ) {
+            throw new QueryException( 'update', $wpdb->last_error, $this->table() . ' (restamp_expiry_from_lots)' );
         }
     }
 

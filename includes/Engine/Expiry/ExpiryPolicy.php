@@ -63,22 +63,27 @@ final class ExpiryPolicy {
     }
 
     /**
-     * Whether an inactivity expiry is due for the locked customer: its stored date has passed, and the
-     * stored dates were computed from these settings. After a save they wait for the job's restamp.
+     * Whether an expiry may run for the locked customer. The stored dates must have been computed from
+     * these settings: after a save they wait for the job's restamp. In inactivity mode the customer's
+     * date must have passed; in batch mode the caller asks which lots are due.
      */
     public function is_due( Customer $customer, string $now ): bool {
+        if ( ! $this->is_enabled() || get_option( ExpiryRunner::OPTION_APPLIED ) !== $this->signature() ) {
+            return false;
+        }
+
         $expires_at = $customer->get_expires_at();
 
-        return $this->is_enabled() && ExpiryMode::INACTIVITY === $this->mode()
-            && null !== $expires_at && strcmp( $expires_at, $now ) <= 0
-            && get_option( ExpiryRunner::OPTION_APPLIED ) === $this->signature();
+        return ExpiryMode::BATCH === $this->mode() || ( null !== $expires_at && strcmp( $expires_at, $now ) <= 0 );
+    }
+
+    public function is_batch(): bool {
+        return $this->is_enabled() && ExpiryMode::BATCH === $this->mode();
     }
 
     /** A new lot's expiry: set only while batch expiry is on. */
     public function lot_expires_at( string $created_at ): ?string {
-        return $this->is_enabled() && ExpiryMode::BATCH === $this->mode()
-            ? ExpiryDates::batch_expires_at( $created_at, $this->batch_months() )
-            : null;
+        return $this->is_batch() ? ExpiryDates::batch_expires_at( $created_at, $this->batch_months() ) : null;
     }
 
     /**
