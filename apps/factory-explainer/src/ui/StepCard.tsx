@@ -4,7 +4,7 @@ import { COMPILED, entryAt } from '../timeline';
 /** The current call, what it checks or writes, and what comes out; shown while a station works. Hovering it holds the loop. */
 export function StepCard() {
   const entry = useFactory( ( s ) => entryAt( COMPILED.entries, s.time ) );
-  const card = entry.step && ( 'work' === entry.phase || 'hold' === entry.phase ) ? entry.step.card : null;
+  const card = entry.step && 'work' === entry.phase ? entry.step.card : null;
   const hold = useFactory( ( s ) => s.hoverHold );
 
   return (

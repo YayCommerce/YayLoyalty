@@ -21,7 +21,7 @@ export const ACCENTS: Record<StationType, string> = {
 const PLINTH = 0.2;
 const BODY = '#a9afb8';
 const GRAPHITE = '#4b5260';
-const DENY = new THREE.Color( '#c0392b' );
+const DENY = new THREE.Color( '#b84a3d' );
 
 /** The gate: two posts and an arm across the belt that lifts on a pass and flashes red on a deny. */
 function GateParts( { s }: { s: StationData } ) {
