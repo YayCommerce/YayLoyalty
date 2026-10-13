@@ -25,6 +25,15 @@ final class ExpiryRules {
 
     public const MODEL_FILTER = 'yayloyalty_expiry_model';
 
+    /** Filters the reminder stages, stage => window in days. Pro adds `final`. */
+    public const STAGES_FILTER = 'yayloyalty_expiry_reminder_stages';
+
+    /** Filters the stage one customer gets; '' skips them. Pro applies its reminder floor here. */
+    public const REMINDER_FILTER = 'yayloyalty_expiry_reminder';
+
+    /** The free reminder stage, sent `reminder_days` before the date. */
+    public const STAGE_SOON = 'soon';
+
     public static function enabled(): bool {
         return (bool) self::settings()['enabled'];
     }
@@ -35,6 +44,26 @@ final class ExpiryRules {
 
     public static function reminder_days(): int {
         return (int) self::settings()['reminder_days'];
+    }
+
+    /**
+     * Reminder stages in force, narrowest window first, each window above 0 days.
+     *
+     * @return array<string, int> Stage => days before expiry.
+     */
+    public static function reminder_stages(): array {
+        /**
+         * Reminder stages, stage => days before the expiry date. A stage's email listens on
+         * Emails::reminder_action( stage ). A window of 0 or less is dropped.
+         *
+         * @param array<string, int> $stages `soon` => the reminder_days setting.
+         */
+        $stages = (array) apply_filters( self::STAGES_FILTER, [ self::STAGE_SOON => self::reminder_days() ] ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name; the sniff cannot read it.
+        $stages = array_filter( array_map( 'intval', $stages ), static fn( int $days ): bool => $days > 0 );
+
+        asort( $stages );
+
+        return $stages;
     }
 
     /** The model in force. Lite always answers inactivity: the stored model acts only through Pro's filter. */

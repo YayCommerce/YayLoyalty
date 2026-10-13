@@ -159,6 +159,18 @@ final class CustomerActivityService {
     }
 
     /**
+     * One `expiring_soon_email_sent` row per reminder the expiry job sent. The drawer derives the deadline
+     * from occurred_at plus window_days, the days that were left.
+     *
+     * @param string $occurred_at UTC MySQL datetime.
+     */
+    public function record_expiring_soon_email_sent( int $user_id, int $window_days, string $occurred_at ): void {
+        $this->meta->insert(
+            CustomerMeta::event( $user_id, ActivityEvent::EXPIRING_SOON_EMAIL_SENT, [ 'window_days' => $window_days ], ActorKind::AUTOMATIC, null, false, $occurred_at )
+        );
+    }
+
+    /**
      * Kind + display name for a write's actor. `> 0` is the one rule for
      * "was this a person" — `get_current_user_id()` and a ledger row's
      * `actor_id` both use 0/null for a cron or system context.

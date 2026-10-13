@@ -3,7 +3,7 @@ namespace YayLoyalty\Engine\Emails;
 
 defined( 'ABSPATH' ) || exit;
 
-/** The points-expiring-soon email. Nothing triggers it yet. */
+/** The points-expiring-soon email, which the expiry job relays for the `soon` reminder stage. */
 class PointsExpiringSoonEmail extends LoyaltyEmail {
 
     public function __construct() {
@@ -12,7 +12,13 @@ class PointsExpiringSoonEmail extends LoyaltyEmail {
         $this->description = __( 'Sent shortly before a customer\'s points balance expires.', 'yayloyalty' );
         $this->email_group = Emails::GROUP_POINTS;
 
+        add_action( Emails::reminder_action( 'soon' ) . '_notification', [ $this, 'trigger' ] );
+
         parent::__construct();
+    }
+
+    public function trigger( int $user_id ): void {
+        $this->trigger_for_user( $user_id );
     }
 
     public function get_default_subject() {

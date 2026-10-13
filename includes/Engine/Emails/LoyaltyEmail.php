@@ -95,6 +95,39 @@ abstract class LoyaltyEmail extends \WC_Email {
     }
 
     /**
+     * Mails the customer an email about them rather than one ledger row (the expiry reminders), when it
+     * is enabled, within the weekly cap, in the customer's locale.
+     */
+    protected function trigger_for_user( int $user_id ): void {
+        $user = get_userdata( $user_id );
+
+        if ( ! $user ) {
+            return;
+        }
+
+        // is_enabled()'s filter receives $this->object.
+        $this->object = $user;
+
+        if ( ! $this->is_enabled() ) {
+            return;
+        }
+
+        // Before the placeholders: the default point labels are translated strings.
+        $this->setup_locale();
+
+        try {
+            $this->recipient = $user->user_email;
+
+            if ( $this->get_recipient() ) {
+                $this->send_to_customer( $user_id );
+            }
+        } finally {
+            // A throwing mail transport must not leave the rest of the request in the customer's locale.
+            $this->restore_locale();
+        }
+    }
+
+    /**
      * Sends this email to its customer, within the weekly cap (EmailThrottle).
      * Only a send the transport accepts counts against the cap.
      */

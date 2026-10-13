@@ -25,6 +25,9 @@ class Emails {
     /** The email action an expire row is relayed on. Its only argument is the ledger row id. */
     public const POINTS_EXPIRED_ACTION = 'yayloyalty_points_expired_email';
 
+    /** Reminder stages with an email, `soon` here and Pro's `final`. Their actions are listed for WooCommerce on init, so the names live here. */
+    private const REMINDER_STAGES = [ 'soon', 'final' ];
+
     protected function __construct() {
         add_filter( 'woocommerce_email_classes', [ $this, 'add_classes' ] );
         add_filter( 'woocommerce_email_groups', [ $this, 'add_groups' ] );
@@ -45,6 +48,10 @@ class Emails {
         $actions[] = self::POINTS_EARNED_ACTION;
         $actions[] = self::POINTS_ADJUSTED_ACTION;
         $actions[] = self::POINTS_EXPIRED_ACTION;
+
+        foreach ( self::REMINDER_STAGES as $stage ) {
+            $actions[] = self::reminder_action( $stage );
+        }
 
         return $actions;
     }
@@ -67,6 +74,11 @@ class Emails {
          * @param int $entry_id The awarded ledger row.
          */
         do_action( self::POINTS_EARNED_ACTION, $entry->get_id() ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name; the sniff cannot read it.
+    }
+
+    /** The email action a reminder stage is relayed on. Its only argument is the customer's user id. */
+    public static function reminder_action( string $stage ): string {
+        return 'yayloyalty_points_expiring_' . $stage . '_email';
     }
 
     /** Passes an expire row, once committed, to the Points expired email. Every other row is ignored. */

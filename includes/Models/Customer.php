@@ -142,6 +142,11 @@ class Customer extends AbstractModel {
         return $this->expires_at;
     }
 
+    /** When the expiry job last handled a reminder for this customer, sent or skipped. Activity clears it. */
+    public function get_reminder_sent_at(): ?string {
+        return $this->reminder_sent_at;
+    }
+
     public function get_joined_at(): string {
         return $this->joined_at;
     }

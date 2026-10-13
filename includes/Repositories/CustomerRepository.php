@@ -149,6 +149,61 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
     }
 
     /**
+     * Customers a reminder is due for, earliest expiry first: a positive balance expiring in the future, and
+     * for some window d, within d days and not yet handled for that window (reminder_sent_at before
+     * expires_at - d, or never).
+     *
+     * @param int[] $windows Window lengths in days, each above 0.
+     * @return Customer[]
+     */
+    public function due_for_reminder( string $now, array $windows, int $limit ): array {
+        global $wpdb;
+
+        if ( empty( $windows ) ) {
+            return [];
+        }
+
+        $clauses = [];
+        $values  = [ $now ];
+
+        foreach ( $windows as $days ) {
+            $clauses[] = '( expires_at <= DATE_ADD( %s, INTERVAL %d DAY ) AND ( reminder_sent_at IS NULL OR reminder_sent_at < DATE_SUB( expires_at, INTERVAL %d DAY ) ) )';
+            array_push( $values, $now, (int) $days, (int) $days );
+        }
+
+        $values[] = $limit;
+
+        // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $clauses are literal fragments built above; every value is bound.
+        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare(
+                'SELECT * FROM `' . esc_sql( $this->table() ) . '`
+                 WHERE balance > 0 AND expires_at > %s AND ( ' . implode( ' OR ', $clauses ) . ' )
+                 ORDER BY expires_at, user_id LIMIT %d',
+                $values
+            ),
+            ARRAY_A
+        );
+        // phpcs:enable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
+
+        return array_map( [ Customer::class, 'from_row' ], is_array( $rows ) ? $rows : [] );
+    }
+
+    /**
+     * Stamps that the expiry job handled a reminder for the customer at $at, whether it sent one or skipped.
+     *
+     * @throws QueryException When the write fails.
+     */
+    public function mark_reminded( int $user_id, string $at ): void {
+        global $wpdb;
+
+        $result = $wpdb->update( $this->table(), [ 'reminder_sent_at' => $at ], [ 'user_id' => $user_id ], [ '%s' ], [ '%d' ] ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+
+        if ( false === $result ) {
+            throw new QueryException( 'update', $wpdb->last_error, $this->table() . ' (mark_reminded)' );
+        }
+    }
+
+    /**
      * Re-dates every customer under the inactivity model, as ExpiryRules::customer_expires_at() would one
      * by one: $days after the last earn or redeem (or joining), for a positive balance only. Null clears
      * every date, for expiry turned off. One statement, so it runs without the customer locks.

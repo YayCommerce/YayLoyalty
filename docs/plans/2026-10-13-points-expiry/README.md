@@ -98,7 +98,7 @@ branch from `dev/edd` after the previous PR merges (`paul/feat/expiry-reminders`
 - `recompute_inactivity_expiry( ?int $days ): void`: one `UPDATE` (Phase 1 Task 3)
 - `recompute_expiry_from_lots(): void`: `expires_at` = MIN open lot `expires_at` (Phase 3)
 - `due_for_expiry( string $now, int $limit ): array` returns `array<int, array{user_id: int, expires_at: string}>`, with `expires_at <= $now AND balance > 0` (Phase 1 Task 4)
-- `due_for_reminder( string $now, int $max_days, int $limit ): Customer[]` (Phase 2)
+- `due_for_reminder( string $now, int[] $windows, int $limit ): Customer[]` (Phase 2)
 - `mark_reminded( int $user_id, string $at ): void` (Phase 2)
 - `Customer::get_reminder_sent_at(): ?string` (Phase 2)
 
@@ -121,10 +121,11 @@ The zod copy is `settingsSchema.shape.expiry` in `apps/admin/src/lib/schema/sett
 
 **Hooks:**
 - `yayloyalty_expiry_model` (filter, string): Phase 1 Task 3 applies it, Phase 3 Pro hooks it.
-- `yayloyalty_expiry_reminder` (filter: `string $stage, Customer $customer, int $days_left, int $expiring_points`; returns `'soon'`, `'final'` or `''`): Phase 2.
+- `yayloyalty_expiry_reminder_stages` (filter: `array<string, int> $stages`, stage => window days; core gives `soon`, and Pro adds `final`): Phase 2. See the phase-2 design refinement.
+- `yayloyalty_expiry_reminder` (filter: `string $stage, Customer $customer, int $days_left, int $expiring_points`; returns the stage or `''` to skip): Phase 2.
 - `Emails::POINTS_EXPIRED_ACTION = 'yayloyalty_points_expired_email'` (arg: ledger row id): Phase 1 Task 4.
 - `LoyaltyEmail::trigger_for_user( int $user_id ): void` (protected): the shared send path for emails about a customer rather than a ledger row. Phase 2.
-- `Emails::POINTS_EXPIRING_SOON_ACTION = 'yayloyalty_points_expiring_soon_email'` and `Emails::POINTS_EXPIRING_FINAL_ACTION = 'yayloyalty_points_expiring_final_email'` (arg: user id): Phase 2.
+- `Emails::reminder_action( string $stage ): string`, which gives `yayloyalty_points_expiring_{stage}_email` (arg: user id): Phase 2.
 
 **SPA:**
 - Route `/settings/expiry` (`ExpirySettingsPage`). The index and `*` redirects go to `/settings/expiry`, and it's the first `SETTINGS_NAV` entry (Phase 1 Task 5).
