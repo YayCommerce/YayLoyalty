@@ -6,7 +6,7 @@
 
 ## Status
 
-Proposed, 2026-10-09.
+Superseded by [Both builds keep points lots](2026-10-13-lots-in-core.md), 2026-10-13. It was never accepted.
 
 ## Context
 

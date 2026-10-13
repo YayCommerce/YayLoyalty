@@ -10,8 +10,7 @@ use YayLoyalty\Utils\Table;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Creates and upgrades the plugin's tables, on a version change or when a registered table was never
- * installed. maybe_upgrade() runs on
+ * Creates and upgrades the plugin's tables. maybe_upgrade() runs on
  * plugins_loaded (admin_init misses REST, cron and WP-CLI) outside the
  * WooCommerce guard, under a mutex so two requests cannot both seed
  * built-ins. verify() checks indexes because dbDelta fails silently on them.
@@ -19,9 +18,6 @@ defined( 'ABSPATH' ) || exit;
 final class Installer {
 
     public const OPTION_DB_VERSION = 'yayloyalty_db_version';
-
-    /** Slugs the last install() created. Pro's tables are not registered during activation, so the version alone cannot tell. */
-    public const OPTION_DB_TABLES = 'yayloyalty_db_tables';
 
     private const LOCK_KEY = 'yayloyalty_upgrading';
 
@@ -40,6 +36,8 @@ final class Installer {
             new \YayLoyalty\Database\Schema\CampaignsTable(),
             new \YayLoyalty\Database\Schema\RewardsTable(),
             new \YayLoyalty\Database\Schema\CustomerMetaTable(),
+            new \YayLoyalty\Database\Schema\LotsTable(),
+            new \YayLoyalty\Database\Schema\LotAllocationsTable(),
         ];
 
         /**
@@ -67,15 +65,13 @@ final class Installer {
 
         self::verify();
 
-        update_option( self::OPTION_DB_TABLES, self::registered_slugs(), true );
-
         // Stamped last so a crash mid-install retries on the next request.
         update_option( self::OPTION_DB_VERSION, YAYLOYALTY_VERSION );
     }
 
     /** Installs or upgrades when the stored version differs from the plugin's. Hooked on plugins_loaded. */
     public static function maybe_upgrade(): void {
-        if ( ! self::needs_install() ) {
+        if ( get_option( self::OPTION_DB_VERSION ) === YAYLOYALTY_VERSION ) {
             return;
         }
 
@@ -86,37 +82,12 @@ final class Installer {
 
         try {
             // Re-check inside the lock: the previous holder may have just finished.
-            if ( self::needs_install() ) {
+            if ( get_option( self::OPTION_DB_VERSION ) !== YAYLOYALTY_VERSION ) {
                 self::install();
             }
         } finally {
             self::release_lock();
         }
-    }
-
-    /** A version change, or a registered table missing from the installed list, such as Pro's after a Lite to Pro swap. */
-    private static function needs_install(): bool {
-        return get_option( self::OPTION_DB_VERSION ) !== YAYLOYALTY_VERSION || [] !== self::missing_slugs();
-    }
-
-    /**
-     * Registered slugs absent from the installed list. Only that direction counts, so a Pro site whose Pro
-     * code did not boot (WooCommerce inactive) registers fewer slugs and never re-installs.
-     *
-     * @return string[]
-     */
-    private static function missing_slugs(): array {
-        return array_values( array_diff( self::registered_slugs(), (array) get_option( self::OPTION_DB_TABLES, [] ) ) );
-    }
-
-    /** @return string[] */
-    private static function registered_slugs(): array {
-        return array_map(
-            static function ( AbstractTableSchema $schema ): string {
-                return $schema->slug();
-            },
-            self::schemas()
-        );
     }
 
     /** Seeds every built-in row. Idempotent by slug, with the unique key on slug as the backstop. */

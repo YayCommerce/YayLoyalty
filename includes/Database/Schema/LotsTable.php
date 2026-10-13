@@ -1,17 +1,15 @@
 <?php
-namespace YayLoyalty\Pro\Database\Schema;
-
-use YayLoyalty\Database\Schema\AbstractTableSchema;
+namespace YayLoyalty\Database\Schema;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
  * Per-earning expiry batches, kept off the ledger so the ledger stays append-only. One lot per positive
- * ledger row while Pro lot expiry is on; ledger_id NULL is an opening lot, a balance held before lots
- * existed (NULLs never collide on uniq_ledger_id). remaining = points - SUM(lot_allocations.points), the
- * only mutable counter beside the customer aggregates. expires_at NULL never expires, so FIFO order is
+ * ledger row, in both builds. The schema allows ledger_id NULL (NULLs never collide on uniq_ledger_id),
+ * but nothing writes one. remaining = points - SUM(lot_allocations.points), the only mutable counter
+ * beside the customer aggregates. expires_at NULL never expires, so FIFO order is
  * `expires_at IS NULL, expires_at, id`. status (open, consumed, expired) flips only with a write, never
- * by a clock. Nothing writes this table yet: docs/specs/2026-10-09-points-lots-schema-design.md.
+ * by a clock. Spec: docs/specs/2026-10-13-points-expiry-design.md.
  */
 final class LotsTable extends AbstractTableSchema {
 

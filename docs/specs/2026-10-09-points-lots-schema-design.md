@@ -1,6 +1,6 @@
 # Points Lots Schema Design
 
-**Status:** accepted 2026-10-09
+**Status:** superseded by [2026-10-13-points-expiry-design.md](2026-10-13-points-expiry-design.md)
 **Related:** deleted design `docs/data-model/future-tables.md` (in `d23ff178^`); `docs/decisions/2026-10-01-ledger-service-sole-writer.md`
 
 ## Goal

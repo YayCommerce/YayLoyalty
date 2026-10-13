@@ -1,7 +1,6 @@
 <?php
 namespace YayLoyalty\Pro;
 
-use YayLoyalty\Database\Schema\AbstractTableSchema;
 use YayLoyalty\Engine\Earning\EarningService;
 use YayLoyalty\Engine\Points\PointsEngine;
 use YayLoyalty\Enums\CampaignTrigger;
@@ -11,8 +10,6 @@ use YayLoyalty\Pro\Controllers\CampaignPreviewRestController;
 use YayLoyalty\Pro\Controllers\CustomerSegmentsRestController;
 use YayLoyalty\Pro\Controllers\DashboardProRestController;
 use YayLoyalty\Pro\Controllers\StoreLedgerRestController;
-use YayLoyalty\Pro\Database\Schema\LotAllocationsTable;
-use YayLoyalty\Pro\Database\Schema\LotsTable;
 use YayLoyalty\Pro\Emails\ProEmails;
 use YayLoyalty\Pro\Helpers\CustomerSegmentsHelper;
 use YayLoyalty\Pro\Repositories\CampaignPerformanceRepository;
@@ -94,19 +91,6 @@ final class YayLoyaltyPro {
     /** Whether boot() has run; YayLoyalty::is_pro() only asks whether the code is present. */
     public static function is_booted(): bool {
         return self::$booted;
-    }
-
-    /**
-     * The tables only Pro installs. Lite sites never get them; a downgrade leaves them in place.
-     *
-     * @param AbstractTableSchema[] $schemas
-     * @return AbstractTableSchema[]
-     */
-    public static function add_table_schemas( array $schemas ): array {
-        $schemas[] = new LotsTable();
-        $schemas[] = new LotAllocationsTable();
-
-        return $schemas;
     }
 
     /**

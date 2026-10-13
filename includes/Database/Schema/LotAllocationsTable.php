@@ -1,14 +1,12 @@
 <?php
-namespace YayLoyalty\Pro\Database\Schema;
-
-use YayLoyalty\Database\Schema\AbstractTableSchema;
+namespace YayLoyalty\Database\Schema;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
  * How ledger rows moved points out of or back into lots. Append-only: never updated or deleted. points is
  * signed and never 0: positive was taken from the lot (redeem, expire, refund_earn, a negative
- * adjustment, or the earlier negative row a new lot's deficit payoff settles), negative was returned to
+ * adjustment, or the lot's own positive row paying off a negative balance), negative was returned to
  * it (refund_redeem). uniq_lot_ledger is the backstop against allocating one row twice from one lot.
  */
 final class LotAllocationsTable extends AbstractTableSchema {
