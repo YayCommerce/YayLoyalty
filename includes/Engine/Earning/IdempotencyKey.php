@@ -28,6 +28,7 @@ final class IdempotencyKey {
      * @param string $reference_type A ReferenceType constant.
      * @param int    $reference_id   The id in that namespace (order id, comment id, user id, year, redemption id).
      * @param string $qualifier      A CampaignTrigger for earn/refund_earn rows, a RewardType for redeem/refund_redeem rows. Any build's, so a Pro value still composes after a downgrade.
+     *                               For an expire row, the due date as UTC `YmdHis`: one expiry per customer per date.
      * @throws \InvalidArgumentException When any part is outside its vocabulary or an id is not positive.
      */
     public static function compose( string $type, int $user_id, string $reference_type, int $reference_id, string $qualifier ): string {
@@ -47,7 +48,11 @@ final class IdempotencyKey {
 
         $is_redeem = in_array( $type, [ LedgerType::REDEEM, LedgerType::REFUND_REDEEM ], true );
 
-        if ( $is_redeem ? ! RewardType::is_known( $qualifier ) : ! CampaignTrigger::is_known( $qualifier ) ) {
+        if ( LedgerType::EXPIRE === $type ) {
+            if ( 1 !== preg_match( '/^\d{14}$/', $qualifier ) ) {
+                throw new \InvalidArgumentException( sprintf( 'YayLoyalty: an expire key needs a YmdHis due date, not "%s".', $qualifier ) );
+            }
+        } elseif ( $is_redeem ? ! RewardType::is_known( $qualifier ) : ! CampaignTrigger::is_known( $qualifier ) ) {
             throw new \InvalidArgumentException( sprintf( 'YayLoyalty: unknown %s "%s".', $is_redeem ? 'reward type' : 'campaign trigger', $qualifier ) );
         }
 

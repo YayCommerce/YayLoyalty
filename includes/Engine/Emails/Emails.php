@@ -3,6 +3,7 @@ namespace YayLoyalty\Engine\Emails;
 
 use YayLoyalty\Engine\Earning\EarningService;
 use YayLoyalty\Engine\Earning\Outcome;
+use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Models\LedgerEntry;
 use YayLoyalty\Utils\SingletonTrait;
 
@@ -21,11 +22,15 @@ class Emails {
     /** The email action a manual adjustment is relayed on, when its admin asked to notify. Its only argument is the ledger row id. */
     public const POINTS_ADJUSTED_ACTION = 'yayloyalty_points_adjusted_email';
 
+    /** The email action an expire row is relayed on. Its only argument is the ledger row id. */
+    public const POINTS_EXPIRED_ACTION = 'yayloyalty_points_expired_email';
+
     protected function __construct() {
         add_filter( 'woocommerce_email_classes', [ $this, 'add_classes' ] );
         add_filter( 'woocommerce_email_groups', [ $this, 'add_groups' ] );
         add_filter( 'woocommerce_email_actions', [ $this, 'add_email_actions' ] );
         add_action( EarningService::AWARDED_ACTION, [ $this, 'relay_award' ] );
+        add_action( 'yayloyalty_ledger_recorded', [ $this, 'relay_expiry' ] );
         add_filter( 'woocommerce_prepare_email_for_preview', [ $this, 'prepare_preview' ] );
     }
 
@@ -39,6 +44,7 @@ class Emails {
     public function add_email_actions( array $actions ): array {
         $actions[] = self::POINTS_EARNED_ACTION;
         $actions[] = self::POINTS_ADJUSTED_ACTION;
+        $actions[] = self::POINTS_EXPIRED_ACTION;
 
         return $actions;
     }
@@ -61,6 +67,20 @@ class Emails {
          * @param int $entry_id The awarded ledger row.
          */
         do_action( self::POINTS_EARNED_ACTION, $entry->get_id() ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name; the sniff cannot read it.
+    }
+
+    /** Passes an expire row, once committed, to the Points expired email. Every other row is ignored. */
+    public function relay_expiry( LedgerEntry $entry ): void {
+        if ( LedgerType::EXPIRE !== $entry->get_type() || null === $entry->get_id() ) {
+            return;
+        }
+
+        /**
+         * Fires once per expire row. WooCommerce relays it to {action}_notification, at once or at the end of the request.
+         *
+         * @param int $entry_id The expire ledger row.
+         */
+        do_action( self::POINTS_EXPIRED_ACTION, $entry->get_id() ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name; the sniff cannot read it.
     }
 
     /**

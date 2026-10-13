@@ -1,8 +1,14 @@
 <?php
 namespace YayLoyalty\Tests\Integration\Services;
 
+use YayLoyalty\Engine\Earning\Outcome;
+use YayLoyalty\Enums\LedgerSource;
+use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Enums\ReferenceType;
+use YayLoyalty\Helpers\SettingsHelper;
+use YayLoyalty\Services\LedgerService;
 use YayLoyalty\Tests\Integration\IntegrationTestCase;
+use YayLoyalty\Utils\Dates;
 use YayLoyalty\Utils\Table;
 
 /**
@@ -13,6 +19,25 @@ use YayLoyalty\Utils\Table;
 final class LotWriterTest extends IntegrationTestCase {
 
     private const USER_ID = 616161;
+
+    /** @var mixed The site's settings before the test; options are not moved by the scratch prefix. */
+    private $saved_settings = null;
+
+    protected function setUp(): void {
+        parent::setUp();
+
+        $this->saved_settings = get_option( SettingsHelper::OPTION_SETTINGS, null );
+    }
+
+    protected function tearDown(): void {
+        if ( null === $this->saved_settings ) {
+            delete_option( SettingsHelper::OPTION_SETTINGS );
+        } else {
+            update_option( SettingsHelper::OPTION_SETTINGS, $this->saved_settings );
+        }
+
+        parent::tearDown();
+    }
 
     public function test_earn_opens_a_lot(): void {
         $this->ledger_service()->earn( $this->earn_draft( self::USER_ID, 1, 100, '2026-03-14 09:00:00' ) );
@@ -72,6 +97,59 @@ final class LotWriterTest extends IntegrationTestCase {
 
         $this->assertSame( 80, (int) $this->customer_row( self::USER_ID )['balance'] );
         $this->assert_invariant( self::USER_ID );
+    }
+
+    public function test_expire_empties_every_lot_once(): void {
+        SettingsHelper::update_settings(
+            [
+                'expiry' => [
+                    'enabled'         => true,
+                    'inactivity_days' => 1,
+                ],
+            ]
+        );
+        $service = $this->ledger_service();
+        $service->earn( $this->earn_draft( self::USER_ID, 1, 300, Dates::offset( -3 * DAY_IN_SECONDS ) ) );
+        $service->earn( $this->earn_draft( self::USER_ID, 2, 200, Dates::offset( -3 * DAY_IN_SECONDS ) ) );
+        $due = (string) $this->customer_row( self::USER_ID )['expires_at'];
+
+        $first  = $service->expire( self::USER_ID, $due );
+        $second = $service->expire( self::USER_ID, $due );
+
+        $this->assertSame( Outcome::AWARDED, $first->get_status() );
+        $this->assertSame(
+            [ LedgerType::EXPIRE, LedgerSource::EXPIRY, -500 ],
+            [ $first->get_entry()->get_type(), $first->get_entry()->get_source(), $first->get_entry()->get_points() ]
+        );
+        $this->assertSame( Outcome::DUPLICATE, $second->get_status() );
+        $this->assertSame(
+            [ [ '0', 'expired' ], [ '0', 'expired' ] ],
+            array_map(
+                static fn( array $lot ): array => [ $lot['remaining'], $lot['status'] ],
+                $this->lots( self::USER_ID )
+            )
+        );
+        $this->assertSame( 0, (int) $this->customer_row( self::USER_ID )['balance'] );
+        $this->assertNull( $this->customer_row( self::USER_ID )['expires_at'] );
+        $this->assert_invariant( self::USER_ID );
+    }
+
+    public function test_expire_skips_a_customer_no_longer_due(): void {
+        SettingsHelper::update_settings(
+            [
+                'expiry' => [
+                    'enabled'         => true,
+                    'inactivity_days' => 365,
+                ],
+            ]
+        );
+        $this->ledger_service()->earn( $this->earn_draft( self::USER_ID, 1, 100 ) );
+
+        $outcome = $this->ledger_service()->expire( self::USER_ID, (string) $this->customer_row( self::USER_ID )['expires_at'] );
+
+        $this->assertSame( Outcome::SKIPPED, $outcome->get_status() );
+        $this->assertSame( LedgerService::REASON_NOT_DUE, $outcome->get_reason() );
+        $this->assertSame( [ 100 ], $this->ledger_points( self::USER_ID ) );
     }
 
     /** Both halves of the lot invariant, read straight from the tables. */

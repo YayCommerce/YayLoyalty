@@ -2,6 +2,8 @@
 namespace YayLoyalty\Services;
 
 use YayLoyalty\Helpers\SettingsHelper;
+use YayLoyalty\Models\Customer;
+use YayLoyalty\Repositories\LotRepository;
 use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
@@ -70,6 +72,15 @@ final class ExpiryRules {
         }
 
         return Dates::add_days( $last_activity_at ?? $joined_at, self::inactivity_days() );
+    }
+
+    /** What would expire by $at: the whole positive balance under inactivity, the due lots under batches. */
+    public static function expiring_points( Customer $customer, string $at ): int {
+        if ( self::MODEL_BATCHES === self::model() ) {
+            return ( new LotRepository() )->sum_due( $customer->get_user_id(), $at );
+        }
+
+        return max( $customer->get_balance(), 0 );
     }
 
     /** @return array<string, mixed> */

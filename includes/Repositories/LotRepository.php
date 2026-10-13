@@ -49,6 +49,21 @@ class LotRepository {
         );
     }
 
+    /** What the customer's open lots due by $at still hold: what the batch model expires at $at. */
+    public function sum_due( int $user_id, string $at ): int {
+        global $wpdb;
+
+        return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare(
+                'SELECT COALESCE( SUM( remaining ), 0 ) FROM `' . esc_sql( $this->table() ) . '`
+                 WHERE user_id = %d AND status = %s AND expires_at IS NOT NULL AND expires_at <= %s',
+                $user_id,
+                self::STATUS_OPEN,
+                $at
+            )
+        );
+    }
+
     /**
      * @return int The new lot's id.
      * @throws QueryException When the write fails.

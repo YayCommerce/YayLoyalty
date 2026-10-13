@@ -20,11 +20,12 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * The only writer of the ledger and the customer aggregates, EarningService's award included.
- * Enforced by convention: it is constructed in exactly four places, Engine\RestAPI::controllers(),
- * Engine\Earning\EarningService::build(), Engine\Earning\Reversal::build() and (once its body
- * lands) Engine\Redemption\RedemptionService::build(). Name a fifth here before adding it.
+ * Enforced by convention: it is constructed in exactly five places, Engine\RestAPI::controllers(),
+ * Engine\Earning\EarningService::build(), Engine\Earning\Reversal::build(),
+ * Engine\Expiry\ExpiryJob::build() and (once its body lands)
+ * Engine\Redemption\RedemptionService::build(). Name a sixth here before adding it.
  * Manual rows enter through adjust() and record(). System rows enter through earn(),
- * refund_earn(), restore_refund() and redeem(), which add the idempotency-key duplicate branch.
+ * refund_earn(), restore_refund(), expire() and redeem(), which add the idempotency-key duplicate branch.
  * Lock order: the customer row, then, for an earn row, its campaign row shared, which
  * CampaignRestController::delete_item() locks exclusively before deleting.
  * Lots and allocations are written only here, through LotWriter, which nothing else constructs.
@@ -39,6 +40,9 @@ final class LedgerService {
 
     /** Outcome::skipped reason: the earn row's campaign was deleted before the award took its lock. */
     public const REASON_CAMPAIGN_DELETED = 'campaign_deleted';
+
+    /** Outcome::skipped reason: under the lock the customer is not due at that date, or has nothing to expire. */
+    public const REASON_NOT_DUE = 'not_due';
 
     /** @var LedgerRepository */
     private $ledger;
@@ -185,6 +189,46 @@ final class LedgerService {
         );
     }
 
+    /**
+     * Expires what the customer held at $due_at, their customers.expires_at when the expiry job read it:
+     * an EXPIRE row keyed on the customer and that date, so a rerun for the same date is Outcome::duplicate.
+     * The amount is decided under the lock (ExpiryRules::expiring_points()), and a customer whose date
+     * moved or who holds nothing to expire is Outcome::skipped( REASON_NOT_DUE ).
+     */
+    public function expire( int $user_id, string $due_at ): Outcome {
+        $draft = new LedgerEntry(
+            null,
+            $user_id,
+            0,
+            0,
+            LedgerType::EXPIRE,
+            LedgerSource::EXPIRY,
+            ReferenceType::USER,
+            $user_id,
+            null,
+            null,
+            null,
+            null,
+            null,
+            Dates::now(),
+            IdempotencyKey::compose( LedgerType::EXPIRE, $user_id, ReferenceType::USER, $user_id, gmdate( 'YmdHis', Dates::to_timestamp( $due_at ) ) )
+        );
+
+        return $this->write_keyed(
+            $draft,
+            static function ( Customer $customer ) use ( $due_at ): int {
+                $now = Dates::now();
+
+                if ( $due_at !== $customer->get_expires_at() || $due_at > $now ) {
+                    return 0;
+                }
+
+                return -ExpiryRules::expiring_points( $customer, $now );
+            },
+            self::REASON_NOT_DUE
+        );
+    }
+
     /** A system row undoing part of $source: same customer, source, campaign and order, keyed on the new reference and $source's trigger. */
     private function reversal_draft( LedgerEntry $source, string $type, int $points, string $reference_type, int $reference_id, ?string $note ): LedgerEntry {
         $user_id = $source->get_user_id();
@@ -219,7 +263,7 @@ final class LedgerService {
      * is appended and Outcome::awarded carries it. Precondition: $draft has
      * an idempotency key and valid vocabulary.
      *
-     * @param callable|null $points_under_lock Returns the row's signed points once the lock is held; 0 writes nothing.
+     * @param callable|null $points_under_lock Gets the locked Customer and returns the row's signed points; 0 writes nothing.
      * @param string        $skip_reason       Outcome::skipped's reason when $points_under_lock returns 0.
      */
     private function write_keyed( LedgerEntry $draft, ?callable $points_under_lock = null, string $skip_reason = '' ): Outcome {
@@ -240,7 +284,7 @@ final class LedgerService {
                 }
 
                 if ( null !== $points_under_lock ) {
-                    $points = (int) $points_under_lock();
+                    $points = (int) $points_under_lock( $customer );
 
                     if ( 0 === $points ) {
                         return Outcome::skipped( $skip_reason );

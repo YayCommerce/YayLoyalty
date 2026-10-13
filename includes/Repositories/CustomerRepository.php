@@ -120,6 +120,35 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
     }
 
     /**
+     * Customers whose points are due to expire by $now, earliest first, with the date the job passes to
+     * LedgerService::expire().
+     *
+     * @return array<int, array{user_id: int, expires_at: string}>
+     */
+    public function due_for_expiry( string $now, int $limit ): array {
+        global $wpdb;
+
+        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare(
+                'SELECT user_id, expires_at FROM `' . esc_sql( $this->table() ) . '`
+                 WHERE expires_at IS NOT NULL AND expires_at <= %s AND balance > 0
+                 ORDER BY expires_at, user_id LIMIT %d',
+                $now,
+                $limit
+            ),
+            ARRAY_A
+        );
+
+        return array_map(
+            static fn( array $row ): array => [
+                'user_id'    => (int) $row['user_id'],
+                'expires_at' => (string) $row['expires_at'],
+            ],
+            is_array( $rows ) ? $rows : []
+        );
+    }
+
+    /**
      * Re-dates every customer under the inactivity model, as ExpiryRules::customer_expires_at() would one
      * by one: $days after the last earn or redeem (or joining), for a positive balance only. Null clears
      * every date, for expiry turned off. One statement, so it runs without the customer locks.

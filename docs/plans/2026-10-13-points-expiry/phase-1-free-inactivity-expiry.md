@@ -293,13 +293,16 @@ Message: `feat(expiry): add expiry settings and keep customers' expiry dates`
 - Modify: `includes/YayLoyalty.php` (`plugin_init()`: `( new ExpiryJob( … ) )->register()`)
 - Modify: `includes/Engine/Emails/Emails.php` (`POINTS_EXPIRED_ACTION`, `add_email_actions()`, relay on `yayloyalty_ledger_recorded`)
 - Modify: `includes/Engine/Emails/PointsExpiredEmail.php` (extends `LedgerEntryEmail`)
+- Modify: `includes/Engine/Earning/IdempotencyKey.php` (shared: every keyed ledger write). An `EXPIRE` key's qualifier is the due date as UTC `YmdHis`, because `compose()` only accepted campaign triggers and reward types.
+- Modify: `includes/Repositories/LotRepository.php` (`sum_due`, pulled forward from Phase 3 so `ExpiryRules::expiring_points()` is complete)
+- Modify: `docs/architecture.md` (the job replaces "no cron or Action Scheduler jobs")
 - Test: `tests/integration/Services/LotWriterTest.php`
 
 **Interfaces:**
 - Consumes: Task 3 `ExpiryRules`, `customers.expires_at`.
 - Produces: README contract `LedgerService::expire`, `ExpiryRules::expiring_points`, `due_for_expiry`, `ExpiryJob` and `POINTS_EXPIRED_ACTION`.
 
-- [ ] **Step 1: Write the failing tests** in `LotWriterTest`
+- [x] **Step 1: Write the failing tests** in `LotWriterTest`
 
 `setUp` saves `get_option( SettingsHelper::OPTION_SETTINGS, null )`, and `tearDown` restores it (options are not moved by the scratch prefix).
 
@@ -337,24 +340,24 @@ public function test_expire_skips_a_customer_no_longer_due(): void {
 }
 ```
 
-- [ ] **Step 2: Run them**
+- [x] **Step 2: Run them**
 
 Run: `composer test:integration -- --filter 'LotWriterTest::test_expire'`
 Expected: FAIL, `expire()` is undefined.
 
-- [ ] **Step 3: Implement `ExpiryRules::expiring_points()` and `LedgerService::expire()`** (README contract)
+- [x] **Step 3: Implement `ExpiryRules::expiring_points()` and `LedgerService::expire()`** (README contract)
 
 `expire()` builds an `EXPIRE` / `LedgerSource::EXPIRY` / `ReferenceType::USER` draft and goes through `write_keyed()`. The
 `$points_under_lock` callback returns 0 (which skips with `REASON_NOT_DUE`) when the locked customer's `expires_at` ≠ `$due_at` or > now.
 Otherwise it returns `-ExpiryRules::expiring_points( $customer, Dates::now() )`. `write_keyed()` now calls `$points_under_lock( $customer )` with the locked `Customer`.
 The existing closures take no parameter and ignore it. Add `Engine\Expiry\ExpiryJob::__construct()` to the docblock's list of construction sites.
 
-- [ ] **Step 4: Run them**
+- [x] **Step 4: Run them**
 
 Run: `composer test:integration -- --filter LotWriterTest`
 Expected: PASS (6 tests).
 
-- [ ] **Step 5: Implement `CustomerRepository::due_for_expiry()` and `ExpiryJob`**
+- [x] **Step 5: Implement `CustomerRepository::due_for_expiry()` and `ExpiryJob`**
 
 `register()` does the following:
 - On `init`, when `function_exists( 'as_has_scheduled_action' )` and `! as_has_scheduled_action( HOOK, [], GROUP )`, it calls
@@ -365,7 +368,7 @@ Expected: PASS (6 tests).
 `expire( user_id, expires_at )`. A `\Throwable` goes to `Log::error( 'ExpiryJob', … )`, and the loop continues. When a full page comes back,
 it calls `as_enqueue_async_action( HOOK, [], GROUP )`. Its docblock names the hook.
 
-- [ ] **Step 6: Relay the expired email**
+- [x] **Step 6: Relay the expired email**
 
 `Emails` adds `POINTS_EXPIRED_ACTION`, lists it in `add_email_actions()`, and in its constructor hooks `yayloyalty_ledger_recorded`
 with `relay_expiry( LedgerEntry $entry )`, which fires the action for `LedgerType::EXPIRE` rows only.
@@ -378,7 +381,15 @@ with `relay_expiry( LedgerEntry $entry )`, which fires the action for `LedgerTyp
 
 The templates stay as they are.
 
-- [ ] **Step 7: Verify the job**
+- [x] **Step 7: Verify the job**
+
+Done 2026-10-13 without WP-CLI. `schedule()` runs on `admin_init`, not `init`, because the scheduled-action check is a query. A wp-load script showed exactly one pending action after repeated `schedule()` calls. A throwaway harness run on scratch tables passed 7 assertions:
+- off does nothing;
+- a due customer gets one `expire −500` row, and a customer active today is untouched;
+- a rerun adds nothing;
+- the expired-email action fires once.
+
+`run()` queues the follow-up only when the page made progress (non-skipped outcomes), so a page that keeps failing can't requeue forever.
 
 Run: `wp action-scheduler list --hook=yayloyalty_expire_points --status=pending --format=count` after loading any page.
 Expected: `1`.
