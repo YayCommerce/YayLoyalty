@@ -109,7 +109,7 @@ Rebuild the points factory explainer as a real-time 3D scene that looks like a p
    - The refund box travels the red belt.
    - Every change of position or rotation is eased: nothing teleports.
 10. **Labels:**
-    - Each station has a drei `<Html occlude>` label: 12 px text on a frosted background (`backdrop-filter: blur`), with a thin border and a short leader line, placed above its machine.
+    - Each station has a drei `<Html occlude>` label: 12 px text on a frosted background (`backdrop-filter: blur`), with a thin border and a short leader line, placed above its machine. *(The user approved one exception on 2026-10-13: the three unbuilt stations' labels hang below their zones, because above them they landed on the vault.)*
     - By default a label shows the service name only. Hovering it adds the type, the class name and a one-line description.
     - At both viewports and at each sampled time, no two label rectangles intersect, and no label rectangle covers the screen-space bounding box of its own machine.
 11. **Station interaction:**

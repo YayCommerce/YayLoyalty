@@ -135,4 +135,6 @@ After 3 rounds, two items were open. The user decided both on 2026-10-13:
 
   Both pass Task 3's 55. `shoot` still passes.
 
+- **Unbuilt labels below their zones:** spec criterion 10 places labels above their machines. The final review flagged the round 3 `labelPlace: 'below'` on Redemption, Expiry and VIP tiers, and the user chose to keep it on 2026-10-13. Criterion 10 now notes the exception.
+
 With those decisions, every checklist item passes or is accepted.
