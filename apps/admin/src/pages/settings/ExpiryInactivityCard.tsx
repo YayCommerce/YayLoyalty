@@ -4,6 +4,7 @@ import { Link } from 'react-router';
 import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { parseWPDate } from '@/lib/helpers/format.helper';
+import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { useCustomersQuery } from '@/lib/queries/customer.queries';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FormNumberField } from '@/components/ui/custom/form-number-field';
@@ -81,8 +82,9 @@ function ExpiringSoonCount() {
 export function ExpiryInactivityCard() {
   const { control } = useFormContext<ExpirySettingsFormValues>();
   const [enabled, days, model] = useWatch({ control, name: ['enabled', 'inactivity_days', 'model'] });
-  // Only Pro can store batches; its section then owns the window, so this card keeps the switch and reminder.
-  const isBatches = model === 'batches';
+  // Batches acts only in Pro, whose section then owns the window. Lite keeps a stored `batches` but expires by
+  // inactivity (ExpiryRules::model()), so it shows the inactivity fields whatever is stored.
+  const isBatches = IS_PRO_BUILD && model === 'batches';
 
   return (
     <Card className="gap-3">

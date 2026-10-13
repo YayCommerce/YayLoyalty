@@ -11,10 +11,12 @@ skips customers whose expiring points are below the floor.
 Expected:
 - the soon action fires once, for the 500-point customer only (Pro). In Lite, both get it, because there is no floor;
 - both get `reminder_sent_at`;
-- one `expiring_soon_email_sent` activity row is recorded, with `window_days` 30.
+- one `expiring_soon_email_sent` activity row is recorded, with `window_days` 20: the days that were left, which the drawer adds to occurred_at to show the deadline.
 
-Then move the 500-point customer's `expires_at` to 5 days ahead and run again.
+Then simulate 15 days passing: move the 500-point customer's `expires_at` to 5 days ahead **and** backdate its `reminder_sent_at` 15 days, then run again. Moving `expires_at` alone would leave the soon stamp inside the 7-day final window, which time never does.
 Expected (Pro): the final action fires once.
+
+(Corrected 2026-10-13 after `/yayplancheck`. The first recipe expected `window_days` 30 and moved only `expires_at`. The code follows the spec's one-column rule, `reminder_sent_at < expires_at − d`.)
 
 ## Design refinement (2026-10-13)
 
@@ -44,7 +46,7 @@ Each would stay in `due_for_reminder()`'s result forever and could starve the pa
 - Modify: `includes/Services/ExpiryRules.php` (`reminder_stages()`, `STAGES_FILTER`, `REMINDER_FILTER`)
 - Modify: `includes/Services/CustomerActivityService.php` (`record_expiring_soon_email_sent`)
 - Modify: `includes/Engine/Expiry/ExpiryJob.php` (a reminder pass after the expire pass, sharing `PAGE` and the follow-up run)
-- Modify: `includes/Engine/Emails/LoyaltyEmail.php` (`protected function trigger_for_user( int $user_id ): void`)
+- Modify: `includes/Engine/Emails/LoyaltyEmail.php` (`trigger_for_user( int $user_id ): void`, protected here, made public with `deliver()` in the tidy commit `8953086`, as the README contract records)
 - Modify: `includes/Engine/Emails/Emails.php` (`reminder_action()`, the two names in `add_email_actions()`)
 - Modify: `includes/Engine/Emails/PointsExpiringSoonEmail.php` (`trigger( int $user_id )` on the soon action's `_notification`)
 

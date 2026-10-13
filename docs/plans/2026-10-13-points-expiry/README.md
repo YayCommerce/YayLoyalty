@@ -61,7 +61,7 @@ branch from `dev/edd` after the previous PR merges (`paul/feat/expiry-reminders`
 `lot_allocations`), listed in `Installer::schemas()`. Columns and indexes are unchanged from `64c230d`. Lot `status` is one of `open`, `consumed`, `expired`.
 
 **`YayLoyalty\Utils\Dates` (Phase 1 Task 3):**
-- `add_days( string $utc, int $days ): string`
+- ~~`add_days( string $utc, int $days ): string`~~: removed by the tidy commit `8953086`, because it duplicated `Dates::offset( $days * DAY_IN_SECONDS, $utc )`, which callers now use.
 - `add_months( string $utc, int $months ): string`: clamps to month end, same as MySQL.
 
 **`YayLoyalty\Repositories\LotRepository` (Phase 1 Task 2, extended in Phase 3).** A plain class over row arrays, like `CampaignPointsRepository`, with no model. Statuses are `STATUS_OPEN`, `STATUS_CONSUMED` and `STATUS_EXPIRED`.
@@ -124,7 +124,7 @@ The zod copy is `settingsSchema.shape.expiry` in `apps/admin/src/lib/schema/sett
 - `yayloyalty_expiry_reminder_stages` (filter: `array<string, int> $stages`, stage => window days; core gives `soon`, and Pro adds `final`): Phase 2. See the phase-2 design refinement.
 - `yayloyalty_expiry_reminder` (filter: `string $stage, Customer $customer, int $days_left, int $expiring_points`; returns the stage or `''` to skip): Phase 2.
 - `Emails::POINTS_EXPIRED_ACTION = 'yayloyalty_points_expired_email'` (arg: ledger row id): Phase 1 Task 4.
-- `LoyaltyEmail::trigger_for_user( int $user_id ): void` (protected): the shared send path for emails about a customer rather than a ledger row. Phase 2.
+- `LoyaltyEmail::trigger_for_user( int $user_id ): void`: **public** since the tidy commit `8953086`, so the reminder emails hook it directly. It delegates to a new `protected deliver( \WP_User $user, $email_object, ?callable $prepare = null )`, the one send path `LedgerEntryEmail::trigger()` also uses. Phase 2, changed in `8953086`.
 - `Emails::reminder_action( string $stage ): string`, which gives `yayloyalty_points_expiring_{stage}_email` (arg: user id): Phase 2.
 
 **SPA:**
