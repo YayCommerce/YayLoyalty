@@ -172,6 +172,7 @@ Message: `feat(factory-explainer): add the factory config, timeline and store`
 **Files:**
 - Create: `apps/factory-explainer/src/scene/Floor.tsx`, `Station.tsx`, `Conveyor.tsx`, `BoxItem.tsx`, `Actor.tsx`, `Clock.tsx`
 - Modify: `src/scene/Stage.tsx` (mount them, and drop the temporary plane)
+- Also creates: `src/scene/Floor.tsx` `RejectBin`, and `src/debug.ts` with `seekScene`, `seekTime`, `pause`, `state` and `entries`, pulled forward from Task 5 so seeks can be checked while the browser tab is hidden
 
 **Interfaces:**
 - Consumes: README contract, `factory.config.ts` and `timeline.ts`.
@@ -179,7 +180,7 @@ Message: `feat(factory-explainer): add the factory config, timeline and store`
   - `<Station station={Station} />`, which renders a body per `type`. Phase 2 Task 2 swaps the body; the props stay.
   - `<Clock />`, which calls `useFactory.getState().tick(delta)` in `useFrame`.
 
-- [ ] **Step 1: Implement the components**
+- [x] **Step 1: Implement the components**
 
 Every solid is a drei `RoundedBox`, `radius` 0.06–0.12, with `castShadow` and `receiveShadow`. Use no plain `boxGeometry`.
 - **Stations:** one rounded body per station, `size` × `position`. Rough silhouettes for now:
@@ -192,7 +193,7 @@ Every solid is a drei `RoundedBox`, `radius` 0.06–0.12, with `castShadow` and 
 - **Actors:** a capsule figure in the actor's colour, placed from `actorPose`.
 - **Lights:** temporary, an `ambientLight` plus one `directionalLight`. Phase 2 replaces them.
 
-- [ ] **Step 2: Verify the motion**
+- [x] **Step 2: Verify the motion**
 
 Run `dev`, open `http://localhost:3050`, and watch scenes 1–2.
 
@@ -202,7 +203,7 @@ Expected:
 - No box jumps.
 - The console shows no errors.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 Stage: the files above.
 Message: `feat(factory-explainer): draw the factory floor in beveled primitives`

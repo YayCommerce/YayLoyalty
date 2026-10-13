@@ -75,15 +75,11 @@ export function Stage( { children }: { children?: ReactNode } ) {
     <Canvas shadows={ { type: THREE.PCFSoftShadowMap } } orthographic dpr={ [ 1, 2 ] } camera={ { position: [ 55, 40, 47 ] } }>
       <color attach="background" args={ [ '#f4f1ec' ] } />
       <IsoRig />
-      { children ?? (
-        <>
-          <ambientLight intensity={ 0.8 } />
-          <mesh rotation-x={ -Math.PI / 2 } position={ [ TARGET.x, 0, TARGET.z ] }>
-            <planeGeometry args={ [ FLOOR.x1 - FLOOR.x0, FLOOR.z1 - FLOOR.z0 ] } />
-            <meshStandardMaterial color="#ece6dc" roughness={ 0.8 } />
-          </mesh>
-        </>
-      ) }
+      <ambientLight intensity={ 0.55 } />
+      <directionalLight position={ [ 30, 40, 20 ] } intensity={ 1.6 } castShadow shadow-mapSize={ [ 2048, 2048 ] } shadow-camera-left={ -24 } shadow-camera-right={ 24 } shadow-camera-top={ 24 } shadow-camera-bottom={ -24 } shadow-camera-far={ 120 } shadow-bias={ -0.0004 }>
+        <object3D attach="target" position={ [ TARGET.x, 0, TARGET.z ] } />
+      </directionalLight>
+      { children }
     </Canvas>
   );
 }
