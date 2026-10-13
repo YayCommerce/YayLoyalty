@@ -30,9 +30,14 @@ const WEBGL = ( () => {
 const PERF = new URLSearchParams( window.location.search ).has( 'perf' );
 
 export function App() {
-  // Space toggles play, except on a focused button, which Space already presses.
+  // Space toggles play, except on a focused button, which Space already presses; C switches the bubble between steps and code.
   useEffect( () => {
     const onKey = ( e: KeyboardEvent ) => {
+      if ( 'c' === e.key.toLowerCase() && ! e.metaKey && ! e.ctrlKey && ! e.altKey && ! ( e.target instanceof HTMLInputElement ) ) {
+        const s = useFactory.getState();
+        s.setView( 'code' === s.view ? 'steps' : 'code' );
+        return;
+      }
       if ( ' ' !== e.key || ( e.target instanceof HTMLElement && 'BUTTON' === e.target.tagName ) ) {
         return;
       }

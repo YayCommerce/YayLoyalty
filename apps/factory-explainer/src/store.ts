@@ -10,6 +10,7 @@ interface FactoryState {
   resumeAfterPanel: boolean;
   selected: StationId | null;
   hovered: StationId | null;
+  view: View;
   tick( dt: number ): void;
   toggle(): void;
   restart(): void;
@@ -19,6 +20,21 @@ interface FactoryState {
   openPanel( id: StationId ): void;
   closePanel(): void;
   setHovered( id: StationId | null ): void;
+  setView( view: View ): void;
+}
+
+/** What the step bubble shows: the card's steps in words, or the PHP behind them. */
+export type View = 'steps' | 'code';
+
+const VIEW_KEY = 'factory-view';
+
+/** The viewer's last choice of view, if the browser kept it. */
+function savedView(): View {
+  try {
+    return 'code' === window.localStorage.getItem( VIEW_KEY ) ? 'code' : 'steps';
+  } catch {
+    return 'steps';
+  }
 }
 
 /** True under prefers-reduced-motion: the app loads paused on the final state, and the belts and rollers never move. */
@@ -33,6 +49,7 @@ export const useFactory = create<FactoryState>()( ( set, get ) => ( {
   resumeAfterPanel: false,
   selected: null,
   hovered: null,
+  view: typeof window !== 'undefined' ? savedView() : 'steps',
 
   // A long frame, such as a tab coming back, advances at most 0.1 s, so nothing jumps.
   tick: ( dt ) => {
@@ -63,4 +80,12 @@ export const useFactory = create<FactoryState>()( ( set, get ) => ( {
     set( { selected: null, paused: s.resumeAfterPanel ? false : s.paused, resumeAfterPanel: false } );
   },
   setHovered: ( id ) => set( { hovered: id } ),
+  setView: ( view ) => {
+    set( { view } );
+    try {
+      window.localStorage.setItem( VIEW_KEY, view );
+    } catch {
+      // A blocked store only forgets the choice on reload.
+    }
+  },
 } ) );

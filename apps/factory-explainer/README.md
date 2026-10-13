@@ -16,6 +16,7 @@ pnpm --filter @yayloyalty/factory-explainer dev     # http://localhost:3050
 
 - `http://localhost:3050/?perf` adds drei's `StatsGl` frame-rate meter.
 - Space plays and pauses, and hovering over the factory floor or anything on it holds the loop until the pointer leaves it (the empty space around it does not); the scene buttons jump to a scene; clicking a station opens its panel.
+- The toolbar's Steps | Code switch, or the C key, shows the PHP behind each step in the bubble, lighting the line that runs as the steps reveal. The choice is remembered.
 - Each worker's tag shows its name and what it is doing; each box's tag shows its event, its money value and, once scored, its points.
 
 ## Check it
@@ -32,6 +33,7 @@ pnpm --filter @yayloyalty/factory-explainer shoot
 
 - `src/factory.config.ts`: the layout and the story. Moving a station there moves its machine, label and belt ends.
 - `src/timeline.ts`: every pose is a pure function of the playhead, so a seek renders the same frame as playback.
+- `src/code.ts`: the PHP excerpts for the Code view, trimmed by hand from `includes/`. Each card's `code.at` names the line for each of its steps, checked at load. Update them when the PHP they quote changes.
 - `src/scene/`: the 3D scene; `src/ui/`: the toolbar and step tracker, the step bubble, the station panel and the labels.
 
 ## Asset credits

@@ -1,6 +1,8 @@
 // The factory's layout and story. World units are the 2D page's floor units ÷ 40: x is floor x, z is floor y, y is up.
 // Code names are copied from the 2D explainer, which was checked against the PHP; keep them exact.
 
+import * as C from './code';
+
 export type StationId = 'order-listener' | 'signup-listener' | 'review-listener' | 'reversal-listener' | 'earning-service' | 'program-gate' | 'pending-points' | 'ledger-service' | 'vault' | 'redemption' | 'expiry' | 'tiers';
 export type StationType = 'intake' | 'scoring' | 'gate' | 'ledger' | 'warehouse' | 'vault' | 'return' | 'unbuilt';
 export type PackageId = 'alice' | 'bob' | 'cara' | 'admin';
@@ -28,7 +30,8 @@ export interface Station {
 
 export interface Conveyor { id: string; from: Endpoint; to: Endpoint; via: Vec2[]; kind: 'main' | 'reject' | 'return'; }
 export interface Actor { id: PackageId; name: string; color: string; home: Vec2; dock: Vec2; console?: boolean; }
-export interface Card { fn: string; lines: string[]; out: string; }
+/** code: a PHP excerpt for the bubble's Code view; at[i] is the src line that runs at reveal step i, over [...lines, out]. */
+export interface Card { fn: string; lines: string[]; out: string; code?: { src: string[]; at: number[] }; }
 
 /** settle parks a box in a row on the front of the vault's plinth, so the three deposits stay visible. */
 export interface Step {
@@ -258,61 +261,61 @@ export function conveyorPoints( c: Conveyor, stations: Station[] = STATIONS ): V
 export const SCENES: Scene[] = [
   { id: 'scene-1', caption: '1 · Alice places an order', show: 'alice', steps: [
     { pkg: 'alice', conveyor: 'belt-dock-alice-order-listener', at: 'order-listener', label: 'woocommerce_new_order → OrderListener::on_stageable()',
-      card: { fn: 'OrderListener::on_stageable()', lines: [ 'order #1042 · status pending', 'customer: Alice (user 12) · $120.00' ], out: 'stage the purchase, don\'t award it yet' } },
+      card: { fn: 'OrderListener::on_stageable()', lines: [ 'order #1042 · status pending', 'customer: Alice (user 12) · $120.00' ], out: 'stage the purchase, don\'t award it yet', code: { src: C.ON_STAGEABLE, at: [ 1, 6, 9 ] } } },
     { pkg: 'alice', conveyor: 'belt-order-listener-earning-service', at: 'earning-service', label: 'EarningService::preview( PURCHASE ) → PointsEngine::evaluate()',
-      card: { fn: 'EarningService::preview( PURCHASE, $ctx )', lines: [ 'PointsEngine::evaluate() scores the order', 'campaign: 1 point per $1 × $120.00' ], out: 'Result: 120 points · writes nothing' } },
+      card: { fn: 'EarningService::preview( PURCHASE, $ctx )', lines: [ 'PointsEngine::evaluate() scores the order', 'campaign: 1 point per $1 × $120.00' ], out: 'Result: 120 points · writes nothing', code: { src: C.PREVIEW_EVALUATE, at: [ 2, 6, 9 ] } } },
     { pkg: 'alice', conveyor: 'belt-earning-service-program-gate', at: 'program-gate', gate: 'lift', label: 'ProgramGate::check() passes',
-      card: { fn: 'ProgramGate::check( PURCHASE, $ctx )', lines: [ '✓ program on', '✓ a customer: user 12', '✓ not opted out', '✓ role not excluded' ], out: 'null: no reason, the gate opens' } },
+      card: { fn: 'ProgramGate::check( PURCHASE, $ctx )', lines: [ '✓ program on', '✓ a customer: user 12', '✓ not opted out', '✓ role not excluded' ], out: 'null: no reason, the gate opens', code: { src: C.GATE_CHECK, at: [ 1, 5, 8, 11, 14 ] } } },
     { pkg: 'alice', conveyor: 'belt-program-gate-pending-points', at: 'pending-points', label: 'PendingPoints::stage() writes _yayloyalty_points_pending: the order is pending',
-      card: { fn: 'PendingPoints::stage( 1042, 12, 120 )', lines: [ 'order meta _yayloyalty_points_pending = 120', 'customers.pending_points += 120' ], out: 'no ledger row: waits for completed' } }
+      card: { fn: 'PendingPoints::stage( 1042, 12, 120 )', lines: [ 'order meta _yayloyalty_points_pending = 120', 'customers.pending_points += 120' ], out: 'no ledger row: waits for completed', code: { src: C.STAGE, at: [ 3, 7, 9 ] } } }
   ] },
   { id: 'scene-2', caption: '2 · Bob signs up', show: 'bob', steps: [
     { pkg: 'bob', conveyor: 'belt-dock-bob-signup-listener', at: 'signup-listener', label: 'user_register → SignupListener::on_user_register()',
-      card: { fn: 'SignupListener::on_user_register( 13 )', lines: [ 'new account: Bob (user 13)' ], out: 'award the SIGNUP trigger now' } },
+      card: { fn: 'SignupListener::on_user_register( 13 )', lines: [ 'new account: Bob (user 13)' ], out: 'award the SIGNUP trigger now', code: { src: C.ON_REGISTERED, at: [ 0, 11 ] } } },
     { pkg: 'bob', conveyor: 'belt-signup-listener-earning-service', at: 'earning-service', label: 'EarningService::award( SIGNUP ) → PointsEngine::evaluate()',
-      card: { fn: 'EarningService::award( SIGNUP, $ctx )', lines: [ 'preview(): gates, then PointsEngine::evaluate()', 'signup campaign: 50 points' ], out: 'Result: 50 points → LedgerService::earn()' } },
+      card: { fn: 'EarningService::award( SIGNUP, $ctx )', lines: [ 'preview(): gates, then PointsEngine::evaluate()', 'signup campaign: 50 points' ], out: 'Result: 50 points → LedgerService::earn()', code: { src: C.AWARD, at: [ 1, 2, 6 ] } } },
     { pkg: 'bob', conveyor: 'belt-earning-service-program-gate', at: 'program-gate', gate: 'lift', label: 'ProgramGate::check() passes',
-      card: { fn: 'ProgramGate::check( SIGNUP, $ctx )', lines: [ '✓ program on', '✓ a customer: user 13', '✓ not opted out', '✓ role not excluded' ], out: 'null: no reason, the gate opens' } },
+      card: { fn: 'ProgramGate::check( SIGNUP, $ctx )', lines: [ '✓ program on', '✓ a customer: user 13', '✓ not opted out', '✓ role not excluded' ], out: 'null: no reason, the gate opens', code: { src: C.GATE_CHECK, at: [ 1, 5, 8, 11, 14 ] } } },
     { pkg: 'bob', conveyor: 'belt-program-gate-ledger-service', at: 'ledger-service', press: true, label: 'LedgerService::earn() writes EARN · SIGNUP',
-      card: { fn: 'LedgerService::earn( $draft )', lines: [ 'one transaction, customer row 13 locked', '✓ idempotency key not used before', 'append EARN · SIGNUP · +50' ], out: 'Outcome: awarded' } },
+      card: { fn: 'LedgerService::earn( $draft )', lines: [ 'one transaction, customer row 13 locked', '✓ idempotency key not used before', 'append EARN · SIGNUP · +50' ], out: 'Outcome: awarded', code: { src: C.EARN, at: [ 1, 2, 7, 8 ] } } },
     { pkg: 'bob', conveyor: 'belt-ledger-service-vault', at: 'vault', settle: [ 23, BELT_Y, 7.1 ], label: 'customers.balance += 50',
-      card: { fn: 'customers · user 13', lines: [ 'balance 0 → 50', 'lifetime_earned 0 → 50' ], out: 'committed with the ledger row' } }
+      card: { fn: 'customers · user 13', lines: [ 'balance 0 → 50', 'lifetime_earned 0 → 50' ], out: 'committed with the ledger row', code: { src: C.APPLY_DELTA, at: [ 7, 8, 11 ] } } }
   ] },
   { id: 'scene-3', caption: '3 · Alice\'s order is completed', steps: [
     { pulse: 'order-listener', label: 'woocommerce_order_status_changed → completed → OrderListener::on_awardable()',
-      card: { fn: 'OrderListener::on_awardable()', lines: [ 'order #1042 · pending → completed', 'each trigger in yayloyalty_order_award_triggers' ], out: 'award( PURCHASE )' } },
+      card: { fn: 'OrderListener::on_awardable()', lines: [ 'order #1042 · pending → completed', 'each trigger in yayloyalty_order_award_triggers' ], out: 'award( PURCHASE )', code: { src: C.ON_AWARDABLE, at: [ 1, 7, 8 ] } } },
     { pulse: 'earning-service', label: 'EarningService::award( PURCHASE ) → ProgramGate → PointsEngine::evaluate()',
-      card: { fn: 'EarningService::award( PURCHASE, $ctx )', lines: [ 'evaluates again at the same occurred_at', '✓ ProgramGate passes', 'PointsEngine::evaluate(): 120 points' ], out: 'Result: 120 points → LedgerService::earn()' } },
+      card: { fn: 'EarningService::award( PURCHASE, $ctx )', lines: [ 'evaluates again at the same occurred_at', '✓ ProgramGate passes', 'PointsEngine::evaluate(): 120 points' ], out: 'Result: 120 points → LedgerService::earn()', code: { src: C.AWARD, at: [ 1, 1, 2, 6 ] } } },
     { pkg: 'alice', conveyor: 'belt-pending-points-ledger-service', at: 'ledger-service', press: true, label: 'LedgerService::earn() writes EARN · ORDER',
-      card: { fn: 'LedgerService::earn( $draft )', lines: [ 'one transaction, customer row 12 locked', '✓ idempotency key not used before', 'append EARN · ORDER · +120' ], out: 'Outcome: awarded' } },
+      card: { fn: 'LedgerService::earn( $draft )', lines: [ 'one transaction, customer row 12 locked', '✓ idempotency key not used before', 'append EARN · ORDER · +120' ], out: 'Outcome: awarded', code: { src: C.EARN, at: [ 1, 2, 7, 8 ] } } },
     { pkg: 'alice', conveyor: 'belt-ledger-service-vault', at: 'vault', settle: [ 24.25, BELT_Y, 7.1 ], label: 'customers.balance += 120',
-      card: { fn: 'customers · user 12', lines: [ 'balance 0 → 120', 'lifetime_earned 0 → 120' ], out: 'committed with the ledger row' } },
+      card: { fn: 'customers · user 12', lines: [ 'balance 0 → 120', 'lifetime_earned 0 → 120' ], out: 'committed with the ledger row', code: { src: C.APPLY_DELTA, at: [ 7, 8, 11 ] } } },
     { pulse: 'pending-points', label: 'PendingPoints::release() marks _yayloyalty_points_released',
-      card: { fn: 'PendingPoints::release( 1042 )', lines: [ '_yayloyalty_points_released = now', 'customers.pending_points −= 120', 'mark_awarded(): _yayloyalty_points_earned = 120' ], out: 'inside the same transaction as the earn' } }
+      card: { fn: 'PendingPoints::release( 1042 )', lines: [ '_yayloyalty_points_released = now', 'customers.pending_points −= 120', 'mark_awarded(): _yayloyalty_points_earned = 120' ], out: 'inside the same transaction as the earn', code: { src: C.RELEASE, at: [ 7, 8, 11, 0 ] } } }
   ] },
   { id: 'scene-4', caption: '4 · Cara reviews, but has opted out', show: 'cara', steps: [
     { pkg: 'cara', conveyor: 'belt-dock-cara-review-listener', at: 'review-listener', label: 'comment_post → ReviewListener::on_comment_post()',
-      card: { fn: 'ReviewListener::on_comment_post()', lines: [ 'approved product review', 'customer: Cara (user 14)' ], out: 'award the REVIEW trigger' } },
+      card: { fn: 'ReviewListener::on_comment_post()', lines: [ 'approved product review', 'customer: Cara (user 14)' ], out: 'award the REVIEW trigger', code: { src: C.ON_COMMENT_POST, at: [ 5, 12, 13 ] } } },
     { pkg: 'cara', conveyor: 'belt-review-listener-earning-service', at: 'earning-service', label: 'EarningService::award( REVIEW )',
-      card: { fn: 'EarningService::award( REVIEW, $ctx )', lines: [ 'preview() runs the gates first' ], out: 'ProgramGate::check()' } },
+      card: { fn: 'EarningService::award( REVIEW, $ctx )', lines: [ 'preview() runs the gates first' ], out: 'ProgramGate::check()', code: { src: C.PREVIEW, at: [ 1, 10 ] } } },
     { pkg: 'cara', conveyor: 'belt-earning-service-program-gate', at: 'program-gate', gate: 'deny', label: 'ProgramGate::check()',
-      card: { fn: 'ProgramGate::check( REVIEW, $ctx )', lines: [ '✓ program on', '✓ a customer: user 14', '✗ user meta _yayloyalty_opted_out' ], out: '\'opted_out\': the first failing rule wins' } },
+      card: { fn: 'ProgramGate::check( REVIEW, $ctx )', lines: [ '✓ program on', '✓ a customer: user 14', '✗ user meta _yayloyalty_opted_out' ], out: '\'opted_out\': the first failing rule wins', code: { src: C.GATE_CHECK, at: [ 1, 5, 8, 9 ] } } },
     { pkg: 'cara', conveyor: 'belt-program-gate-reject-bin', at: 'program-gate', tint: 'rejected', label: 'ProgramGate::check() fails: opted out. Nothing is written.',
-      card: { fn: 'Outcome::skipped( \'opted_out\' )', lines: [ 'no ledger row', 'no balance change' ], out: 'the package goes to the bin' } }
+      card: { fn: 'Outcome::skipped( \'opted_out\' )', lines: [ 'no ledger row', 'no balance change' ], out: 'the package goes to the bin', code: { src: C.SKIPPED, at: [ 3, 5, 3 ] } } }
   ] },
   { id: 'scene-5', caption: '5 · The admin adjusts +50', show: 'admin', steps: [
     { pkg: 'admin', conveyor: 'belt-desk-admin-ledger-service', at: 'ledger-service', press: true, label: 'LedgerService::adjust() writes ADJUST · MANUAL',
-      card: { fn: 'LedgerService::adjust( 12, 50, $note, 1 )', lines: [ 'admin (user 1) is the actor', '$adjust_lifetime = true → ADJUST', 'append ADJUST · MANUAL · +50' ], out: 'returns the LedgerEntry' } },
+      card: { fn: 'LedgerService::adjust( 12, 50, $note, 1 )', lines: [ 'admin (user 1) is the actor', '$adjust_lifetime = true → ADJUST', 'append ADJUST · MANUAL · +50' ], out: 'returns the LedgerEntry', code: { src: C.ADJUST, at: [ 7, 3, 10, 10 ] } } },
     { pkg: 'admin', conveyor: 'belt-ledger-service-vault', at: 'vault', settle: [ 25.5, BELT_Y, 7.1 ], label: 'customers.balance += 50',
-      card: { fn: 'customers · user 12', lines: [ 'balance 120 → 170', 'lifetime_earned 120 → 170' ], out: 'committed with the ledger row' } }
+      card: { fn: 'customers · user 12', lines: [ 'balance 120 → 170', 'lifetime_earned 120 → 170' ], out: 'committed with the ledger row', code: { src: C.APPLY_DELTA, at: [ 7, 8, 11 ] } } }
   ] },
   { id: 'scene-6', caption: '6 · Alice\'s order is refunded', steps: [
     { pulse: 'reversal-listener', label: 'woocommerce_order_status_changed → refunded → OrderReversalListener::on_status_refunded()',
-      card: { fn: 'OrderReversalListener::on_status_refunded()', lines: [ 'order #1042 · completed → refunded', 'clears any pending figure' ], out: 'Reversal::refunded_status()' } },
+      card: { fn: 'OrderReversalListener::on_status_refunded()', lines: [ 'order #1042 · completed → refunded', 'clears any pending figure' ], out: 'Reversal::refunded_status()', code: { src: C.ON_STATUS_REFUNDED, at: [ 1, 5, 6 ] } } },
     { pulse: 'ledger-service', press: true, label: 'Reversal::refunded_status() → LedgerService::refund_earn() writes REFUND_EARN',
-      card: { fn: 'LedgerService::refund_earn( $earn, … )', lines: [ 'finds order #1042\'s EARN row', '✓ idempotency key not used before', 'append REFUND_EARN · −120' ], out: 'a keyed row: a replay writes nothing' } },
+      card: { fn: 'LedgerService::refund_earn( $earn, … )', lines: [ 'finds order #1042\'s EARN row', '✓ idempotency key not used before', 'append REFUND_EARN · −120' ], out: 'a keyed row: a replay writes nothing', code: { src: C.REFUND_EARN, at: [ 0, 8, 12, 10 ] } } },
     { pkg: 'alice', conveyor: 'belt-vault-reversal-listener', at: 'reversal-listener', tint: 'refund', label: 'customers.balance −= 120: the points leave the vault',
-      card: { fn: 'customers · user 12', lines: [ 'balance 170 → 50', 'lifetime_earned 170 → 50' ], out: 'the 120 points leave the vault' } }
+      card: { fn: 'customers · user 12', lines: [ 'balance 170 → 50', 'lifetime_earned 170 → 50' ], out: 'the 120 points leave the vault', code: { src: C.APPLY_DELTA, at: [ 7, 8, 11 ] } } }
   ] }
 ];
 

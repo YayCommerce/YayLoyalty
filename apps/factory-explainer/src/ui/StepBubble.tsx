@@ -6,6 +6,7 @@ import { rig } from '../scene/rig';
 import { PLINTH } from '../scene/stations/Kit';
 import { reduced, useFactory } from '../store';
 import { activeStation, cardSteps, COMPILED, entryAt, revealCount } from '../timeline';
+import type { Card } from '../factory.config';
 
 const GAP = 16; // px between the bubble and its anchor, where the arrow sits
 const EDGE = 12; // px the bubble keeps from the viewport's sides
@@ -27,6 +28,47 @@ function toScreen( p: THREE.Vector3 ): { x: number; y: number } | null {
   return { x: box.left + ( v.x + 1 ) / 2 * box.width, y: box.top + ( 1 - v.y ) / 2 * box.height };
 }
 
+/** The class for a card step's line: ✓ passes, ✗ fails. */
+function kindOf( line: string ): string {
+  return line.startsWith( '✓' ) ? ' pass' : line.startsWith( '✗' ) ? ' fail' : '';
+}
+
+/** The card's steps revealed so far, numbered; the newest is highlighted. */
+function StepList( { steps, shown }: { steps: string[]; shown: number } ) {
+  return (
+    <ol>
+      { steps.slice( 0, shown ).map( ( line, i ) => {
+        const result = i === steps.length - 1;
+        return (
+          <li key={ line } className={ `${ i === shown - 1 ? 'is-new' : 'is-done' }${ result ? ' result' : '' }${ kindOf( line ) }` }>
+            <span className="badge">{ result ? '→' : i + 1 }</span>
+            <span className="text">{ line }</span>
+          </li>
+        );
+      } ) }
+    </ol>
+  );
+}
+
+/** The card's PHP excerpt: the line running at the newest step is lit, lines already run are tinted, and the steps so far are listed below. */
+function CodeView( { code, steps, shown }: { code: NonNullable<Card[ 'code' ]>; steps: string[]; shown: number } ) {
+  const current = code.at[ shown - 1 ];
+  const ran = new Set( code.at.slice( 0, shown - 1 ) );
+  return (
+    <>
+      <pre className="code">
+        { code.src.map( ( src, i ) => (
+          <span key={ i } className={ `line${ i === current ? ' is-current' : ran.has( i ) ? ' is-ran' : '' }` }>
+            <span className="gutter">{ i === current ? '▶' : i + 1 }</span>
+            <span className="src">{ src }</span>
+          </span>
+        ) ) }
+      </pre>
+      <StepList steps={ steps } shown={ shown } />
+    </>
+  );
+}
+
 /** The bubble's anchors: over the top face's back corner, or beside its right corner. */
 function anchors( s: Station ) {
   const [ w, d, h ] = s.size;
@@ -45,6 +87,7 @@ export function StepBubble() {
     const e = working( s.time );
     return e ? COMPILED.entries.indexOf( e ) : -1;
   } );
+  const view = useFactory( ( s ) => s.view );
   const shown = useFactory( ( s ) => {
     const e = working( s.time );
     return e?.step ? ( reduced ? cardSteps( e.step ).length : revealCount( e.step, ( s.time - e.start ) / ( e.end - e.start ) ) ) : 0;
@@ -93,11 +136,12 @@ export function StepBubble() {
   const steps = step ? cardSteps( step ) : [];
   const sceneSteps = entry?.scene.steps ?? [];
   const hold = useFactory.getState().hoverHold;
+  const code = 'code' === view ? step?.card.code : undefined;
 
   return (
     <aside
       ref={ bubble }
-      className={ `step-bubble${ step ? ' is-on' : '' }` }
+      className={ `step-bubble${ step ? ' is-on' : '' }${ code ? ' is-code' : '' }` }
       data-testid="step-card"
       aria-hidden={ ! step }
       style={ { '--accent': station ? ACCENTS[ station.type ] : undefined } as CSSProperties }
@@ -112,18 +156,7 @@ export function StepBubble() {
             <span className="count">Step { sceneSteps.indexOf( step ) + 1 } of { sceneSteps.length }</span>
           </header>
           <code className="fn">{ step.card.fn }</code>
-          <ol>
-            { steps.slice( 0, shown ).map( ( line, i ) => {
-              const result = i === steps.length - 1;
-              const kind = line.startsWith( '✓' ) ? ' pass' : line.startsWith( '✗' ) ? ' fail' : '';
-              return (
-                <li key={ line } className={ `${ i === shown - 1 ? 'is-new' : 'is-done' }${ result ? ' result' : '' }${ kind }` }>
-                  <span className="badge">{ result ? '→' : i + 1 }</span>
-                  <span className="text">{ line }</span>
-                </li>
-              );
-            } ) }
-          </ol>
+          { code ? <CodeView code={ code } steps={ steps } shown={ shown } /> : <StepList steps={ steps } shown={ shown } /> }
         </div>
       ) }
     </aside>

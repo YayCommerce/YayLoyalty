@@ -75,6 +75,13 @@ interface Compiled {
 }
 
 export function compileTimeline( scenes: Scene[] = SCENES ): Compiled {
+  // A snippet must name one src line per card step, or the Code view would highlight nothing.
+  for ( const step of scenes.flatMap( ( s ) => s.steps ) ) {
+    const code = step.card.code;
+    if ( code && ( code.at.length !== cardSteps( step ).length || code.at.some( ( i ) => ! ( i >= 0 && i < code.src.length ) ) ) ) {
+      throw new Error( `Card ${ step.card.fn }: code.at needs one src line per step` );
+    }
+  }
   const { INTRO, WALK, HOP, SPEED, HOLD } = TIMING;
   const entries: Entry[] = [];
   const sceneStart = {} as Compiled[ 'sceneStart' ];
