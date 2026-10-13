@@ -15,8 +15,8 @@ use YayLoyalty\Utils\Log;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Routes order statuses to staging, award and reversal. The only class that knows WooCommerce
- * order status strings. Every handler is safe to re-fire: staging and release are idempotent,
+ * Routes order statuses to staging, award and reversal. The only class that routes on WooCommerce
+ * order status strings; OrderStatus holds the ones read elsewhere. Every handler is safe to re-fire: staging and release are idempotent,
  * and the ledger's UNIQUE idempotency_key guards the award.
  * Only `completed` awards, by product decision: a store that leaves orders at `processing`
  * must complete them for them to earn. Virtual orders get there from payment_complete().
@@ -173,9 +173,7 @@ final class OrderListener {
 
     /**
      * Tells the merchant what an award did. Silent for a guest (every guest
-     * order would say so), for an earning limit that refused the whole award
-     * (nothing earned, nothing to report) and for a plain duplicate (a
-     * re-fired status).
+     * order would say so) and for a plain duplicate (a re-fired status).
      */
     private function note( \WC_Order $order, Outcome $outcome ): void {
         $entry = $outcome->get_entry();
@@ -195,7 +193,10 @@ final class OrderListener {
                 }
                 break;
             case Outcome::SKIPPED:
-                if ( ! in_array( $outcome->get_reason(), [ ProgramGate::REASON_NO_CUSTOMER, EarningService::REASON_LIMIT_REACHED ], true ) ) {
+                if ( EarningService::REASON_LIMIT_REACHED === $outcome->get_reason() ) {
+                    /* translators: %d: points */
+                    $order->add_order_note( sprintf( __( 'No points earned: an earning limit held back all %d points.', 'yayloyalty' ), $outcome->held_back() ) );
+                } elseif ( ProgramGate::REASON_NO_CUSTOMER !== $outcome->get_reason() ) {
                     /* translators: %s: reason code */
                     $order->add_order_note( sprintf( __( 'No points earned: %s.', 'yayloyalty' ), $outcome->get_reason() ) );
                 }

@@ -89,7 +89,7 @@ export const drawerNegativeBalanceSchema = z.object({
 
 export type DrawerNegativeBalance = z.infer<typeof drawerNegativeBalanceSchema>;
 
-/** One row of GET /customers: a JOIN projection with name/email, mirroring CustomerListFormatter::format_row(). */
+/** Mirrors CustomerListFormatter::format_row(), the source of truth. One row of GET /customers, a JOIN projection with name/email. */
 export const customerListRowSchema = z.object({
   user_id: z.number().int(),
   name: z.string(),
@@ -124,8 +124,8 @@ export const customerSchema = customerListRowSchema.extend({
 export type Customer = z.infer<typeof customerSchema>;
 
 /**
- * A "which filter to drop" suggestion: keys of CustomerRowFilters::candidates_for_no_match().
- * Mapped in customers-page.filter-suggestions.ts.
+ * Mirrors the keys of CustomerRowFilters::candidates_for_no_match(), the source of truth.
+ * A "which filter to drop" suggestion, mapped in customers-page.filter-suggestions.ts.
  */
 export const noMatchSuggestionSchema = z.object({
   key: z.enum(['search', 'balance_range', 'expiring_soon']),
@@ -140,16 +140,18 @@ export type CustomerExpiringSoon = 'off' | '30' | '90' | 'none';
 export type CustomerSortKey = 'name' | 'balance' | 'pending' | 'lifetime' | 'last_activity' | 'expires';
 export type CustomerSortDirection = 'asc' | 'desc';
 
-/** Request body for POST /customers/{id}/adjust — `adjustLifetime` maps to the wire's `adjust_lifetime` in customer.api.ts. */
+/** Request body for POST /customers/{id}/adjust — `adjustLifetime` and `customerNote` map to the wire's `adjust_lifetime` and `customer_note` in customer.api.ts; `notify` goes as is. */
 export const adjustPointsSchema = z.object({
   points: z.number().int(),
   note: z.string().min(1),
   adjustLifetime: z.boolean(),
+  notify: z.boolean(),
+  customerNote: z.string().optional(),
 });
 
 export type AdjustPointsInput = z.infer<typeof adjustPointsSchema>;
 
-/** Mirrors CustomerAdjustPreviewRestController::preview(). `count` is null unless filters were sent. */
+/** Mirrors CustomerAdjustPreviewRestController::preview(), the source of truth. `count` is null unless filters were sent. */
 export const adjustPointsPreviewSchema = z.object({
   count: z.number().int().nullable(),
   liability_points: z.number().int(),

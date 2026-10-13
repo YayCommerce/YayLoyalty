@@ -1,7 +1,7 @@
 import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { CAP } from '@/lib/access';
-import { formatStoredDate, parseWPDay, parseWPTime, utcToDate } from '@/lib/helpers/format.helper';
+import { formatStoredDate, formatStoreDecimal, parseWPDay, parseWPTime, utcToDate } from '@/lib/helpers/format.helper';
 import { formatPoints } from '@/lib/helpers/points.helper';
 import { parseNoticeData, type TypedNotice } from '@/lib/schema/dashboard-notice.schema';
 import type { DashboardNotice } from '@/lib/schema/dashboard.schema';
@@ -19,6 +19,11 @@ export type NoticeCopy = {
   primary?: NoticeAction;
   secondary?: NoticeAction;
 };
+
+/** Mirrors AnomalyDetector::evaluate()'s one-decimal rounding, the source of truth. */
+export function formatMultiple(value: number): string {
+  return formatStoreDecimal(value, 1);
+}
 
 export function noticeCopy(notice: DashboardNotice): NoticeCopy | null {
   const typed = parseNoticeData(notice);
@@ -98,7 +103,7 @@ function copyFor(n: TypedNotice): NoticeCopy {
         title: sprintf(
           /* translators: %s: how many times the daily average, e.g. "3.2". */
           __('Points issued yesterday were %s× your daily average', 'yayloyalty'),
-          n.data.multiple.toLocaleString(),
+          formatMultiple(n.data.multiple),
         ),
         body: sprintf(
           /* translators: 1: the figures sentence, 2: the cause sentence. */

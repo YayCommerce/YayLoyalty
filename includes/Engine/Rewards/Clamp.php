@@ -2,6 +2,7 @@
 namespace YayLoyalty\Engine\Rewards;
 
 use YayLoyalty\Models\Reward;
+use YayLoyalty\Utils\PointsMath;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -113,15 +114,15 @@ final class Clamp {
         return max( 0, (int) ( $reward->get_config()['min_points'] ?? 0 ) );
     }
 
-    /** What points buy, floored to the currency's smallest unit; rounded before flooring, as points_in() is. */
+    /** What points buy, floored to the currency's smallest unit; snapped before flooring, as points_in() is. */
     private static function value_of( int $points, float $rate, int $decimals ): float {
         $scale = pow( 10, max( 0, $decimals ) );
 
         return floor( round( $points / $rate * $scale, 6 ) ) / $scale;
     }
 
-    /** Whole points a money amount is worth; rounded before flooring so 0.29 × 100 is 29, not 28. */
+    /** Whole points a money amount is worth, rounded down. */
     private static function points_in( float $amount, float $rate ): int {
-        return max( 0, (int) floor( round( $amount * $rate, 6 ) ) );
+        return max( 0, PointsMath::round_points( $amount * $rate, PointsMath::ROUND_DOWN ) );
     }
 }

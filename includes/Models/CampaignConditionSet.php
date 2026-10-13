@@ -3,6 +3,7 @@ namespace YayLoyalty\Models;
 
 use YayLoyalty\Enums\CampaignConditionType;
 use YayLoyalty\Utils\ConditionValueRules;
+use YayLoyalty\Utils\IsoCodes;
 use YayLoyalty\Utils\Json;
 
 defined( 'ABSPATH' ) || exit;
@@ -242,42 +243,36 @@ final class CampaignConditionSet {
                 break;
 
             case 'currency_list':
-                self::assert_non_empty_list( $type, $value );
+                ConditionValueRules::assert_non_empty_list( $type, $value );
 
                 foreach ( $value as $item ) {
-                    if ( ! self::is_currency_code( (string) $item ) ) {
-                        throw self::bad( $type, sprintf( '"%s" is not an ISO 4217 currency code', (string) $item ) );
+                    if ( ! IsoCodes::is_currency( (string) $item ) ) {
+                        throw ConditionValueRules::bad( $type, sprintf( '"%s" is not an ISO 4217 currency code', (string) $item ) );
                     }
                 }
 
                 if ( isset( $spec['max'] ) && count( $value ) > (int) $spec['max'] ) {
-                    throw new \InvalidArgumentException(
-                        sprintf(
-                            'YayLoyalty: "%s" accepts at most %d ids. For a larger segment, use a user_role condition instead.',
-                            $type,
-                            (int) $spec['max']
-                        )
-                    );
+                    throw ConditionValueRules::bad( $type, sprintf( 'accepts at most %d currencies', (int) $spec['max'] ) );
                 }
                 break;
 
             case 'country_list':
                 if ( ! is_array( $value ) ) {
-                    throw self::bad( $type, 'expects { countries: [...], source: shipping|billing|any }' );
+                    throw ConditionValueRules::bad( $type, 'expects { countries: [...], source: shipping|billing|any }' );
                 }
 
-                self::assert_non_empty_list( $type, $value['countries'] ?? null );
+                ConditionValueRules::assert_non_empty_list( $type, $value['countries'] ?? null );
 
                 foreach ( $value['countries'] as $code ) {
-                    if ( ! self::is_country_code( (string) $code ) ) {
-                        throw self::bad( $type, sprintf( '"%s" is not an ISO 3166-1 alpha-2 country code', (string) $code ) );
+                    if ( ! IsoCodes::is_country( (string) $code ) ) {
+                        throw ConditionValueRules::bad( $type, sprintf( '"%s" is not an ISO 3166-1 alpha-2 country code', (string) $code ) );
                     }
                 }
 
                 $sources = $spec['source_values'] ?? [];
 
                 if ( ! isset( $value['source'] ) || ! in_array( $value['source'], $sources, true ) ) {
-                    throw self::bad(
+                    throw ConditionValueRules::bad(
                         $type,
                         sprintf(
                             'requires a "source" of %s — no default, because the shipping address is absent on virtual and downloadable orders',
@@ -293,11 +288,11 @@ final class CampaignConditionSet {
 
             case 'money':
                 if ( ! is_array( $value ) ) {
-                    throw self::bad( $type, 'expects { amount, currency } — never a bare number' );
+                    throw ConditionValueRules::bad( $type, 'expects { amount, currency } — never a bare number' );
                 }
 
-                if ( ! isset( $value['currency'] ) || ! self::is_currency_code( (string) $value['currency'] ) ) {
-                    throw self::bad(
+                if ( ! isset( $value['currency'] ) || ! IsoCodes::is_currency( (string) $value['currency'] ) ) {
+                    throw ConditionValueRules::bad(
                         $type,
                         'requires a "currency" that is an ISO 4217 code — only orders in that currency count toward the total, with no exchange-rate conversion'
                     );
@@ -306,53 +301,11 @@ final class CampaignConditionSet {
                 $amount = $value['amount'] ?? null;
 
                 if ( CampaignConditionType::OP_BETWEEN === $operator ) {
-                    self::assert_between_pair( $type, $amount, false );
+                    ConditionValueRules::assert_between_pair( $type, $amount, false );
                 } elseif ( is_bool( $amount ) || ! is_numeric( $amount ) ) {
-                    throw self::bad( $type, 'expects a numeric "amount"' );
+                    throw ConditionValueRules::bad( $type, 'expects a numeric "amount"' );
                 }
                 break;
         }
-    }
-
-    private static function assert_non_empty_list( string $type, $value ): void {
-        ConditionValueRules::assert_non_empty_list( $type, $value );
-    }
-
-    private static function assert_between_pair( string $type, $value, bool $integers ): void {
-        ConditionValueRules::assert_between_pair( $type, $value, $integers );
-    }
-
-    private static function is_int_like( $value ): bool {
-        return ConditionValueRules::is_int_like( $value );
-    }
-
-    /** ISO 4217 format check, plus membership in WooCommerce's list when it is loaded. */
-    private static function is_currency_code( string $code ): bool {
-        if ( 1 !== preg_match( '/^[A-Z]{3}$/', $code ) ) {
-            return false;
-        }
-
-        if ( function_exists( 'get_woocommerce_currencies' ) ) {
-            return array_key_exists( $code, get_woocommerce_currencies() );
-        }
-
-        return true;
-    }
-
-    /** ISO 3166-1 alpha-2 format check, plus membership in WooCommerce's list when it is loaded. */
-    private static function is_country_code( string $code ): bool {
-        if ( 1 !== preg_match( '/^[A-Z]{2}$/', $code ) ) {
-            return false;
-        }
-
-        if ( function_exists( 'WC' ) && WC() && isset( WC()->countries ) && is_callable( [ WC()->countries, 'get_countries' ] ) ) {
-            return array_key_exists( $code, WC()->countries->get_countries() );
-        }
-
-        return true;
-    }
-
-    private static function bad( string $type, string $why ): \InvalidArgumentException {
-        return ConditionValueRules::bad( $type, $why );
     }
 }

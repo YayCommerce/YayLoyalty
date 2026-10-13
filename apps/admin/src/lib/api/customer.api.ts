@@ -40,7 +40,13 @@ export async function getCustomerLedger(userId: number, params: CustomerLedgerPa
 }
 
 export async function adjustCustomerPoints(userId: number, input: AdjustPointsInput): Promise<LedgerEntry> {
-  const json = { points: input.points, note: input.note, adjust_lifetime: input.adjustLifetime };
+  const json = {
+    points: input.points,
+    note: input.note,
+    adjust_lifetime: input.adjustLifetime,
+    notify: input.notify,
+    ...(input.customerNote === undefined ? {} : { customer_note: input.customerNote }),
+  };
 
   return ledgerEntrySchema.parse(await api.post(`customers/${userId}/adjust`, { json }).json());
 }

@@ -21,9 +21,6 @@ defined( 'ABSPATH' ) || exit;
  */
 final class RewardRestController extends AbstractRestController {
 
-    /** Far above any real catalog; bounds the reorder request body. */
-    private const MAX_REORDER_IDS = 500;
-
     /** @var RewardRepository */
     private $rewards;
 
@@ -87,16 +84,7 @@ final class RewardRestController extends AbstractRestController {
                     'methods'             => \WP_REST_Server::CREATABLE,
                     'callback'            => fn( $request ) => $this->exec_write( [ $this, 'reorder_items' ], $request ),
                     'permission_callback' => $this->requires( Capabilities::MANAGE_REWARDS ),
-                    'args'                => [
-                        'ids' => [
-                            'description' => __( 'Reward ids in display order; each gets its position as sort_order.', 'yayloyalty' ),
-                            'type'        => 'array',
-                            'items'       => [ 'type' => 'integer' ],
-                            'required'    => true,
-                            'minItems'    => 1,
-                            'maxItems'    => self::MAX_REORDER_IDS,
-                        ],
-                    ],
+                    'args'                => $this->reorder_args( __( 'Reward ids in display order; each gets its position as sort_order.', 'yayloyalty' ) ),
                 ],
             ]
         );
@@ -230,17 +218,12 @@ final class RewardRestController extends AbstractRestController {
      * unknown id refuses the whole request.
      */
     public function reorder_items( \WP_REST_Request $request ) {
-        $ids = array_map( 'intval', (array) $request['ids'] );
-
-        if ( count( array_unique( $ids ) ) !== count( $ids ) ) {
-            return $this->error_invalid_arguments( __( 'A reward appears twice in the new order.', 'yayloyalty' ) );
-        }
-
-        if ( ! $this->rewards->reorder( $ids ) ) {
-            return $this->error_invalid_arguments( __( 'The new order names a reward that no longer exists.', 'yayloyalty' ) );
-        }
-
-        return [ 'ids' => $ids ];
+        return $this->handle_reorder(
+            $request,
+            [ $this->rewards, 'reorder' ],
+            __( 'A reward appears twice in the new order.', 'yayloyalty' ),
+            __( 'The new order names a reward that no longer exists.', 'yayloyalty' )
+        );
     }
 
     /** Applies only the fields the body carries; type and slug are immutable after create. */

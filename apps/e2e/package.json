@@ -1,0 +1,19 @@
+{
+  "name": "@yayloyalty/e2e",
+  "description": "YayLoyalty browser tests: Playwright against WordPress and WooCommerce in wp-env",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "env:start": "wp-env start && ./bin/setup.sh",
+    "env:stop": "wp-env stop",
+    "env:destroy": "wp-env destroy",
+    "test": "playwright test",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@types/node": "22.20.1",
+    "@wordpress/env": "11.16.0",
+    "typescript": "5.9.3"
+  }
+}

@@ -35,9 +35,10 @@ final class Reversal {
 
     /** Composition root and a listed LedgerService construction site. */
     public static function build(): self {
-        $ledger = new LedgerRepository();
+        $ledger    = new LedgerRepository();
+        $campaigns = new CampaignRepository();
 
-        return new self( new LedgerService( $ledger, new CustomerRepository() ), $ledger, new CampaignRepository() );
+        return new self( new LedgerService( $ledger, new CustomerRepository(), $campaigns ), $ledger, $campaigns );
     }
 
     /**

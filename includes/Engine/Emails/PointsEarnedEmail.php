@@ -6,21 +6,13 @@ use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Models\LedgerEntry;
 use YayLoyalty\Repositories\LedgerRepository;
-use YayLoyalty\Repositories\RewardRepository;
-use YayLoyalty\Utils\PointsMath;
 
 defined( 'ABSPATH' ) || exit;
 
 /** The points-earned email, sent after each award commits, within the weekly cap. */
-class PointsEarnedEmail extends LoyaltyEmail {
+class PointsEarnedEmail extends LedgerEntryEmail {
 
     public const ID = 'yayloyalty_points_earned';
-
-    /** @var LedgerEntry|null The award $values were built for. */
-    private $values_entry = null;
-
-    /** @var array<string, mixed> */
-    private $values = [];
 
     public function __construct() {
         $this->id          = self::ID;
@@ -47,60 +39,14 @@ class PointsEarnedEmail extends LoyaltyEmail {
         return __( 'You earned {points_label}', 'yayloyalty' );
     }
 
-    /** Mails the customer about one award, which Emails::relay_award() passes as its ledger row id. */
-    public function trigger( int $entry_id ): void {
-        $ledger = new LedgerRepository();
-        $entry  = $ledger->find( $entry_id );
-
-        if ( ! $entry instanceof LedgerEntry || $entry->get_points() <= 0 ) {
-            return;
-        }
-
-        // is_enabled()'s filter receives $this->object, which must be this award.
-        $this->object = $entry;
-
-        if ( ! $this->is_enabled() ) {
-            return;
-        }
-
-        // A deferred send can run after a refund or cancellation took the points back.
-        if ( $ledger->sum_refunded_for( $entry, false ) >= $entry->get_points() ) {
-            return;
-        }
-
-        $user = get_userdata( $entry->get_user_id() );
-
-        if ( ! $user ) {
-            return;
-        }
-
-        // Before the placeholders: the default point labels are translated strings.
-        $this->setup_locale();
-
-        try {
-            $this->prepare( $entry );
-            $this->recipient = $user->user_email;
-
-            if ( $this->get_recipient() ) {
-                $this->send_to_customer( $entry->get_user_id() );
-            }
-        } finally {
-            // A throwing mail transport must not leave the rest of the request in the customer's locale.
-            $this->restore_locale();
-        }
+    /** Awards with points left: a deferred send can run after a refund or cancellation took them back. */
+    protected function accepts( LedgerEntry $entry ): bool {
+        return $entry->get_points() > 0
+            && ( new LedgerRepository() )->sum_refunded_for( $entry, false ) < $entry->get_points();
     }
 
-    /** Points the subject placeholders and template variables at $entry. */
-    private function prepare( LedgerEntry $entry ): void {
-        $this->object = $entry;
-
-        foreach ( self::amounts( $entry ) as $key => $value ) {
-            $this->placeholders[ '{' . $key . '}' ] = $value;
-        }
-    }
-
-    /** @return array{points: string, points_label: string, balance: string} The subject placeholders' values, which the body shows too. */
-    private static function amounts( LedgerEntry $entry ): array {
+    /** @return array{points: string, points_label: string, balance: string} */
+    protected function amounts( LedgerEntry $entry ): array {
         return [
             'points'       => SettingsHelper::format_number( $entry->get_points() ),
             'points_label' => SettingsHelper::points_label( $entry->get_points() ),
@@ -118,75 +64,22 @@ class PointsEarnedEmail extends LoyaltyEmail {
         return $this->extra_template_args();
     }
 
-    /** Built once per award: a multipart send and YayMail each render it again. */
-    protected function extra_template_args(): array {
-        if ( ! $this->object instanceof LedgerEntry ) {
-            return [];
-        }
-
-        if ( $this->values_entry !== $this->object ) {
-            $this->values_entry = $this->object;
-            $this->values       = $this->build_values( $this->object );
-        }
-
-        return $this->values;
-    }
-
     /** @return array<string, mixed> */
-    private function build_values( LedgerEntry $entry ): array {
+    protected function build_values( LedgerEntry $entry ): array {
         $order        = $entry->get_order_id() ? wc_get_order( $entry->get_order_id() ) : null;
         $order_number = $order ? (string) $order->get_order_number() : '';
 
-        $balance_value = self::balance_value( $entry->get_balance_after() );
-
-        return self::amounts( $entry ) + [
-            'entry'              => $entry,
-            'greeting_name'      => self::greeting_name( $entry->get_user_id() ),
-            'earned_text'        => $this->earned_text( $entry, $order_number ),
-            'balance_text'       => SettingsHelper::points_text( $entry->get_balance_after() ),
-            'balance_value'      => $balance_value,
-            'balance_value_text' => self::balance_value_text( $balance_value ),
-            'order_number'       => $order_number,
+        return $this->balance_values( $entry ) + [
+            'earned_text'  => $this->earned_text( $entry, $order_number ),
+            'order_number' => $order_number,
             /**
              * Filters where the email's "View your points" link goes. '' hides the button.
              *
              * @param string      $url   '' by default: the plugin has no customer points page yet.
              * @param LedgerEntry $entry The awarded row.
              */
-            'cta_url'            => (string) apply_filters( 'yayloyalty_points_earned_cta_url', '', $entry ),
+            'cta_url'      => (string) apply_filters( 'yayloyalty_points_earned_cta_url', '', $entry ),
         ];
-    }
-
-    /** First name, else display name, else '' (the template then drops the greeting). */
-    private static function greeting_name( int $user_id ): string {
-        $user = get_userdata( $user_id );
-
-        if ( ! $user ) {
-            return '';
-        }
-
-        return $user->first_name ? $user->first_name : $user->display_name;
-    }
-
-    /**
-     * What the balance buys at the live discount rate, as wc_price() HTML.
-     * '' when the reward is not live or there is nothing to spend.
-     */
-    private static function balance_value( int $balance ): string {
-        $amount = PointsMath::points_to_currency( $balance, ( new RewardRepository() )->live_points_per_currency_unit(), wc_get_price_decimals() );
-
-        if ( null === $amount || $amount <= 0 ) {
-            return '';
-        }
-
-        // The rate is in the store's base currency: a currency switcher's session currency would mislabel it.
-        return wc_price( $amount, [ 'currency' => get_option( 'woocommerce_currency' ) ] );
-    }
-
-    /** "That's worth <strong>$1.50</strong> in rewards." around balance_value(), or '' when that is ''. */
-    private static function balance_value_text( string $balance_value ): string {
-        /* translators: %s: money amount, e.g. "$1.50". */
-        return '' === $balance_value ? '' : sprintf( esc_html__( 'That\'s worth %s in rewards.', 'yayloyalty' ), '<strong>' . $balance_value . '</strong>' );
     }
 
     /** Escaped HTML with the points in bold. One whole sentence per source, so translators never assemble fragments. */

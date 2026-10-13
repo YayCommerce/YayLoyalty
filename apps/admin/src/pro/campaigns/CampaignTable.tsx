@@ -30,6 +30,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { BulkActionsMenu } from '@/components/ui/custom/bulk-actions-menu';
+import { ErrorState } from '@/components/ui/custom/error-state';
 import { PointsValue } from '@/components/ui/custom/points-value';
 import { YayLoyaltyToolTip } from '@/components/ui/custom/tooltip';
 import {
@@ -106,7 +107,7 @@ export function CampaignTable() {
   const [newStore] = useState(false);
   const [noLiveCampaign] = useState(false);
 
-  const { data, isPending, isError } = useCampaignsQuery({ perPage: 100 });
+  const { data, isPending, isError, refetch } = useCampaignsQuery({ perPage: 100 });
   const allRows = useMemo(() => (data?.data ?? []).map(toDisplayCampaign), [data]);
 
   const [statusFilter, setStatusFilter] = useState<CampaignDisplayStatus | undefined>();
@@ -428,7 +429,7 @@ export function CampaignTable() {
 
           {isPending && <CampaignTableSkeleton />}
 
-          {isError && <p className="text-destructive text-sm">{__('Could not load campaigns.', 'yayloyalty')}</p>}
+          {isError && <ErrorState message={__('Could not load campaigns.', 'yayloyalty')} onRetry={() => refetch()} />}
 
           {!isPending && !isError && groups.length === 0 && (
             <Empty>

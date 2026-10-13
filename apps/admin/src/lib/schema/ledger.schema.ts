@@ -4,10 +4,10 @@ import { paginatedSchema } from '@/lib/api/paginated';
 
 /** Mirrors LedgerRestController::define_item_schema(), the source of truth. */
 
-/** Matches Enums\LedgerType. */
+/** Mirrors Enums\LedgerType, the source of truth. */
 export const LEDGER_TYPES = ['earn', 'redeem', 'refund_earn', 'refund_redeem', 'expire', 'adjust', 'correction'] as const;
 
-/** Matches Enums\LedgerSource. */
+/** Mirrors Enums\LedgerSource, the source of truth. */
 export const LEDGER_SOURCES = [
   'order',
   'signup',
@@ -45,6 +45,8 @@ export const ledgerEntrySchema = z.object({
   order_id: z.number().int().nullable(),
   /** Manual adjustments only; system rows compose their text client-side so it stays translatable. */
   note: z.string().nullable(),
+  /** Shown to the customer in place of "Adjustment by {store}"; manual adjustments only. */
+  customer_note: z.string().nullable(),
   actor_id: z.number().int().nullable(),
   created_at: z.string(),
 });
@@ -52,7 +54,7 @@ export const ledgerEntrySchema = z.object({
 export type LedgerEntry = z.infer<typeof ledgerEntrySchema>;
 
 /**
- * The ledger tab's filter groups over `LEDGER_TYPES`. Mirrors `LedgerQueryArgs::filter_types()`.
+ * Mirrors `LedgerQueryArgs::filter_types()`, the source of truth. The ledger tab's filter groups over `LEDGER_TYPES`.
  * `earn` adds `refund_earn`, `redeem` adds `refund_redeem` and `adjust` adds `correction`.
  */
 export const LEDGER_FILTER_TYPES = ['all', 'earn', 'redeem', 'adjust', 'expire'] as const;

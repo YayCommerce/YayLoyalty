@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Engine;
 
+use YayLoyalty\Engine\Earning\Listeners\ListenerGuard;
 use YayLoyalty\Engine\Earning\Outcome;
 use YayLoyalty\Engine\Points\Context;
 use YayLoyalty\Models\LedgerEntry;
@@ -9,15 +10,16 @@ use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Services\CustomerActivityService;
 use YayLoyalty\Utils\Dates;
-use YayLoyalty\Utils\Log;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
  * Records member activity from the user hooks and `yayloyalty_ledger_recorded`, registered in `yayloyalty.php`.
- * Every callback catches `\Throwable`: a failed capture must never block the WordPress action it observes.
+ * Every callback runs through ListenerGuard: a failed capture must never block the WordPress action it observes.
  */
 final class CustomerActivityListener {
+
+    private const SOURCE = 'CustomerActivityListener';
 
     /**
      * Creates the customer's row at balance 0. Staff are skipped: an admin or shop manager
@@ -31,11 +33,13 @@ final class CustomerActivityListener {
             return;
         }
 
-        try {
-            ( new CustomerRepository() )->ensure_row( (int) $user_id );
-        } catch ( \Throwable $e ) {
-            Log::error( 'CustomerActivityListener', $e->getMessage() );
-        }
+        ListenerGuard::run(
+            self::SOURCE,
+            'member row failed for user #' . (int) $user_id,
+            static function () use ( $user_id ) {
+                ( new CustomerRepository() )->ensure_row( (int) $user_id );
+            }
+        );
     }
 
     /**
@@ -75,17 +79,19 @@ final class CustomerActivityListener {
             return;
         }
 
-        try {
-            $service = self::service();
-            $service->record_membership_started( $entry );
-            $service->record_points_adjusted( $entry );
-        } catch ( \Throwable $e ) {
-            Log::error( 'CustomerActivityListener', $e->getMessage() );
-        }
+        ListenerGuard::run(
+            self::SOURCE,
+            'activity capture failed for ledger entry #' . (int) $entry->get_id(),
+            static function () use ( $entry ) {
+                $service = self::service();
+                $service->record_membership_started( $entry );
+                $service->record_points_adjusted( $entry );
+            }
+        );
     }
 
     /**
-     * An award an earning limit cut but still partly paid
+     * An award an earning limit cut, in part or whole
      * (EarningService::LIMITED_ACTION): one `earning_limited` row. Guards its
      * arguments like on_ledger_recorded().
      *
@@ -98,20 +104,22 @@ final class CustomerActivityListener {
             return;
         }
 
-        try {
-            $entry = $outcome->get_entry();
+        ListenerGuard::run(
+            self::SOURCE,
+            'earning_limited row failed for user #' . (int) $ctx->get_user_id(),
+            static function () use ( $outcome, $trigger, $ctx ) {
+                $entry = $outcome->get_entry();
 
-            self::service()->record_earning_limited(
-                (int) $ctx->get_user_id(),
-                (string) $trigger,
-                $outcome->get_evaluation()->get_points(),
-                $outcome->held_back(),
-                $ctx->get_order_id(),
-                $entry ? $entry->get_created_at() : Dates::now()
-            );
-        } catch ( \Throwable $e ) {
-            Log::error( 'CustomerActivityListener', $e->getMessage() );
-        }
+                self::service()->record_earning_limited(
+                    (int) $ctx->get_user_id(),
+                    (string) $trigger,
+                    $outcome->get_evaluation()->get_points(),
+                    $outcome->held_back(),
+                    $ctx->get_order_id(),
+                    $entry ? $entry->get_created_at() : Dates::now()
+                );
+            }
+        );
     }
 
     /**
@@ -123,20 +131,22 @@ final class CustomerActivityListener {
      * @param \WP_User|null $user
      */
     private static function capture_deletion( int $user_id, $user ): void {
-        try {
-            if ( $user instanceof \WP_User ) {
-                $email        = $user->user_email;
-                $display_name = $user->display_name;
-            } else {
-                $fallback     = get_userdata( $user_id );
-                $email        = $fallback instanceof \WP_User ? $fallback->user_email : '';
-                $display_name = $fallback instanceof \WP_User ? $fallback->display_name : '';
-            }
+        ListenerGuard::run(
+            self::SOURCE,
+            'deletion capture failed for user #' . $user_id,
+            static function () use ( $user_id, $user ) {
+                if ( $user instanceof \WP_User ) {
+                    $email        = $user->user_email;
+                    $display_name = $user->display_name;
+                } else {
+                    $fallback     = get_userdata( $user_id );
+                    $email        = $fallback instanceof \WP_User ? $fallback->user_email : '';
+                    $display_name = $fallback instanceof \WP_User ? $fallback->display_name : '';
+                }
 
-            self::service()->record_account_deleted( $user_id, $email, $display_name );
-        } catch ( \Throwable $e ) {
-            Log::error( 'CustomerActivityListener', $e->getMessage() );
-        }
+                self::service()->record_account_deleted( $user_id, $email, $display_name );
+            }
+        );
     }
 
     private static function service(): CustomerActivityService {

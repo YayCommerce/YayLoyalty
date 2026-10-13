@@ -11,9 +11,10 @@
   "scripts": {
     "preinstall": "npx only-allow pnpm",
     "dev": "vite",
-    "build": "tsc --noEmit && vite build --mode production --outDir ../../../assets/dist/admin && pnpm build:storefront",
+    "build": "tsc --noEmit && vite build --mode production --outDir ../../../assets/dist/admin && pnpm build:storefront && pnpm build:blocks",
     "build:storefront": "vite build --config vite.storefront.config.ts",
     "dev:storefront": "vite build --watch --config vite.storefront.config.ts",
+    "build:blocks": "vite build --config vite.blocks.config.ts",
     "lint": "eslint . && prettier --check .",
     "test": "vitest run",
     "lint:fix": "eslint . --fix && prettier --write ."

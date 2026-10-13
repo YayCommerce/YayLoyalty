@@ -20,9 +20,6 @@ defined( 'ABSPATH' ) || exit;
  */
 final class CampaignRestController extends AbstractRestController {
 
-    /** Far above any real campaign list; bounds the reorder request body. */
-    private const MAX_REORDER_IDS = 500;
-
     /** @var CampaignRepository */
     private $campaigns;
 
@@ -79,16 +76,7 @@ final class CampaignRestController extends AbstractRestController {
                     'methods'             => \WP_REST_Server::CREATABLE,
                     'callback'            => fn( $request ) => $this->exec_write( [ $this, 'reorder_items' ], $request ),
                     'permission_callback' => $this->requires( Capabilities::MANAGE_CAMPAIGNS ),
-                    'args'                => [
-                        'ids' => [
-                            'description' => __( 'Campaign ids, highest priority first; see CampaignRepository::reorder().', 'yayloyalty' ),
-                            'type'        => 'array',
-                            'items'       => [ 'type' => 'integer' ],
-                            'required'    => true,
-                            'minItems'    => 1,
-                            'maxItems'    => self::MAX_REORDER_IDS,
-                        ],
-                    ],
+                    'args'                => $this->reorder_args( __( 'Campaign ids, highest priority first; see CampaignRepository::reorder().', 'yayloyalty' ) ),
                 ],
             ]
         );
@@ -158,17 +146,12 @@ final class CampaignRestController extends AbstractRestController {
 
     /** Saves a dragged order as priority. A duplicate or unknown id refuses the whole request. */
     public function reorder_items( \WP_REST_Request $request ) {
-        $ids = array_map( 'intval', (array) $request['ids'] );
-
-        if ( count( array_unique( $ids ) ) !== count( $ids ) ) {
-            return $this->error_invalid_arguments( __( 'A campaign appears twice in the new order.', 'yayloyalty' ) );
-        }
-
-        if ( ! $this->campaigns->reorder( $ids ) ) {
-            return $this->error_invalid_arguments( __( 'The new order names a campaign that no longer exists.', 'yayloyalty' ) );
-        }
-
-        return [ 'ids' => $ids ];
+        return $this->handle_reorder(
+            $request,
+            [ $this->campaigns, 'reorder' ],
+            __( 'A campaign appears twice in the new order.', 'yayloyalty' ),
+            __( 'The new order names a campaign that no longer exists.', 'yayloyalty' )
+        );
     }
 
     public function create_item( \WP_REST_Request $request ) {
@@ -339,17 +322,18 @@ final class CampaignRestController extends AbstractRestController {
             return $this->error_forbidden( __( 'Built-in campaigns cannot be deleted.', 'yayloyalty' ) );
         }
 
-        $id     = (int) $campaign->get_id();
-        $totals = $this->ledger->totals_by_campaign( [ $id ] );
+        $id = (int) $campaign->get_id();
 
-        if ( ! self::is_deletable( $campaign, $totals[ $id ]['count'] ?? 0 ) ) {
+        // ledger.campaign_id has no foreign key: holding the row until commit makes a racing award,
+        // which takes it shared in LedgerService, either land before the count or skip after the delete.
+        if ( ! $this->campaigns->lock_for_delete( $id ) ) {
+            return $this->error_not_found( __( 'Campaign not found.', 'yayloyalty' ) );
+        }
+
+        if ( ! self::is_deletable( $campaign, $this->ledger->count_for_campaign_locked( $id ) ) ) {
             return $this->error_conflict( __( 'This campaign has awarded points. Archive it instead of deleting it.', 'yayloyalty' ) );
         }
 
-        // Unguarded gap: nothing locks between this check and the delete below, and
-        // ledger.campaign_id is a plain KEY, not a FOREIGN KEY, so an award written into
-        // that gap would be orphaned rather than rejected.
-        // TODO(campaign-delete-race): close this gap, which the earning listeners can now reach.
         $this->campaigns->delete( $id );
 
         return [

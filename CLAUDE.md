@@ -18,10 +18,12 @@ Run from the repo root on Node 22: `nvm use` reads `.nvmrc`, and pnpm 11 fails o
 - `composer test:integration`: PHPUnit inside the WordPress site this plugin is installed in, with the plugin active. Local sites set `YAYLOYALTY_TEST_SOCKET` (see the header of `tests/integration/bootstrap.php`). [Exit 0 doesn't prove it ran](docs/known-issues.md).
 - `pnpm --filter @yayloyalty/admin-page lint`: eslint, then prettier. [Fails today](docs/known-issues.md).
 - `pnpm --filter @yayloyalty/admin-page test`: Vitest.
-- `pnpm --filter @yayloyalty/admin-page exec tsc --noEmit`: type-check the SPA. [Fails today](docs/known-issues.md).
+- `pnpm --filter @yayloyalty/e2e env:start`: start wp-env (Docker) on :8889 and seed it; build the `pro` SPA first. `env:stop` stops it.
+- `pnpm --filter @yayloyalty/e2e test`: Playwright browser tests against that site. First run `pnpm --filter @yayloyalty/e2e exec playwright install chromium`.
+- `pnpm --filter @yayloyalty/admin-page exec tsc --noEmit`: type-check the SPA.
 - `./scripts/run.sh dev [pro|lite]`: Vite on :3030, which wp-admin loads while `YAYLOYALTY_IS_DEVELOPMENT` is true (the default). It first runs the admin-shell sync, which can [rewrite `composer.json` and `scoper.inc.php`](docs/known-issues.md): check `git status` before committing.
-- `./scripts/run.sh build [pro|lite]`: type-check, then build the SPA into `assets/dist/admin/` and the storefront launcher's CSS into `assets/dist/storefront/`. [Fails today](docs/known-issues.md).
-- `./scripts/run.sh release [pro|lite] [version] [--no-prompt]`: package and validate a zip in `release/`. Run Pro first (it stamps the version), then Lite with `--no-prompt`. [Fails today](docs/known-issues.md). Run `composer install` afterwards, even after a failed run.
+- `./scripts/run.sh build [pro|lite]`: type-check, then build the SPA into `assets/dist/admin/`, the storefront launcher's CSS into `assets/dist/storefront/` and the blocks' editor script into `assets/dist/blocks/`.
+- `./scripts/run.sh release [pro|lite] [version] [--no-prompt]`: package and validate a zip in `release/`. Run Pro first (it stamps the version), then Lite with `--no-prompt`. Run `composer install` afterwards, even after a failed run.
 
 Any pnpm command may [run `pnpm install`, and with it `composer install`, first](docs/known-issues.md). `./scripts/run.sh help` lists the rest. Judge a failing check against `dev/edd`. If it fails there too, it was already failing: leave it unless asked, and don't add to it.
 

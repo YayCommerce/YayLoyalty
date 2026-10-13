@@ -18,4 +18,12 @@ class ScriptName {
     public const STOREFRONT_REDEEM_STYLE         = 'yayloyalty/style/storefront-redeem';
     public const STOREFRONT_REDEEM_SCRIPT        = 'yayloyalty/storefront/redeem';
     public const STOREFRONT_REDEEM_BLOCKS_SCRIPT = 'yayloyalty/storefront/redeem-blocks';
+    /** My Account → Rewards: layout only, the theme styles the rest. */
+    public const ACCOUNT_STYLE = 'yayloyalty/style/storefront-account';
+
+    /** Product-page earning line: swaps the sentence when a variation is picked. */
+    public const PRODUCT_EARN_SCRIPT = 'yayloyalty/script/storefront-product-earn';
+
+    /** The storefront blocks' editor script; block.json files name it as their editorScript. */
+    public const BLOCKS_EDITOR_SCRIPT = 'yayloyalty/script/blocks-editor';
 }

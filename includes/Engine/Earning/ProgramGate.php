@@ -20,7 +20,7 @@ final class ProgramGate implements Gate {
     public const REASON_OPTED_OUT      = 'opted_out';
     public const REASON_EXCLUDED_ROLE  = 'excluded_role';
 
-    /** Whether the program is on; the storefront launcher asks this for guests, who have no Context to check. */
+    /** Whether the program is on. Asks nothing about the shopper: a "may this shopper earn" check runs EarningService::gate_reason(). */
     public static function program_enabled(): bool {
         return (bool) SettingsHelper::get_settings()['enabled'];
     }

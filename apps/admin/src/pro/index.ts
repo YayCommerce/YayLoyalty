@@ -25,6 +25,7 @@ export { DashboardProPanels } from './dashboard/DashboardProPanels';
 export { DesignPanelSection } from './design/DesignPanelSection';
 export { DesignTypographySection } from './design/DesignTypographySection';
 export { FraudLimitsSection } from './settings/FraudLimitsSection';
+export { StoreLedger } from './ledger/StoreLedger';
 export { RewardTemplatePicker } from './rewards/add/RewardTemplatePicker';
 export { RewardCreator, RewardEditor } from './rewards/editor/RewardEditor';
 export { RewardTable } from './rewards/RewardTable';

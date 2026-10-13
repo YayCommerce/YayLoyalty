@@ -200,10 +200,11 @@ cmd_dev() {
 
     print_info "Make sure YAYLOYALTY_IS_DEVELOPMENT is true in wp-config.php"
     cd "$ADMIN_DIR"
-    # The dev server only serves the admin SPA; build the launcher's CSS once so a fresh checkout's
-    # storefront does not 404 it. Run 'pnpm dev:storefront' alongside to rebuild it on change.
-    print_step "Building storefront launcher CSS..."
+    # The dev server only serves the admin SPA; build the launcher's CSS and the blocks' editor script
+    # once so a fresh checkout does not 404 them. Run 'pnpm dev:storefront' alongside to rebuild the CSS on change.
+    print_step "Building storefront launcher CSS and block editor script..."
     $PNPM build:storefront
+    $PNPM build:blocks
     print_step "Starting Vite dev server ($build_type: http://localhost:3030)..."
     # vite.config.ts hands BUILD_TYPE to the client as import.meta.env.VITE_IS_PRO, read through
     # IS_PRO_BUILD in src/lib/is-pro-build.ts. A Vite `define` doesn't substitute reliably in the dev server.
@@ -419,14 +420,9 @@ cmd_info() {
 cmd_clean() {
     print_step "Cleaning build artifacts..."
 
-    if [ -d "$PLUGIN_DIR/assets/dist/admin" ]; then
-        rm -rf "$PLUGIN_DIR/assets/dist/admin"
-        print_success "Removed assets/dist/admin"
-    fi
-
-    if [ -d "$PLUGIN_DIR/assets/dist/storefront" ]; then
-        rm -rf "$PLUGIN_DIR/assets/dist/storefront"
-        print_success "Removed assets/dist/storefront"
+    if [ -d "$PLUGIN_DIR/assets/dist" ]; then
+        rm -rf "$PLUGIN_DIR/assets/dist"
+        print_success "Removed assets/dist"
     fi
 
     read -p "Remove node_modules? (y/N): " -n 1 -r

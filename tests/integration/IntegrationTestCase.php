@@ -14,6 +14,7 @@ use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Enums\ReferenceType;
 use YayLoyalty\Enums\RewardType;
 use YayLoyalty\Enums\Status;
+use YayLoyalty\Models\Campaign;
 use YayLoyalty\Models\LedgerEntry;
 use YayLoyalty\Models\Reward;
 use YayLoyalty\Repositories\CampaignRepository;
@@ -42,11 +43,11 @@ abstract class IntegrationTestCase extends TestCase {
     }
 
     protected function ledger_service(): LedgerService {
-        return new LedgerService( new LedgerRepository(), new CustomerRepository() );
+        return new LedgerService( new LedgerRepository(), new CustomerRepository(), new CampaignRepository() );
     }
 
-    /** A purchase EARN draft for one order, keyed as EarningService::award() keys it. */
-    protected function earn_draft( int $user_id, int $order_id, int $points ): LedgerEntry {
+    /** A purchase EARN draft for one order, keyed as EarningService::award() keys it, written at $created_at ('' for now). */
+    protected function earn_draft( int $user_id, int $order_id, int $points, string $created_at = '', ?int $campaign_id = null ): LedgerEntry {
         return new LedgerEntry(
             null,
             $user_id,
@@ -56,12 +57,12 @@ abstract class IntegrationTestCase extends TestCase {
             LedgerSource::ORDER,
             ReferenceType::ORDER,
             $order_id,
-            null,
+            $campaign_id,
             null,
             $order_id,
             null,
             null,
-            Dates::now(),
+            '' === $created_at ? Dates::now() : $created_at,
             IdempotencyKey::compose( LedgerType::EARN, $user_id, ReferenceType::ORDER, $order_id, CampaignTrigger::PURCHASE )
         );
     }
@@ -84,6 +85,14 @@ abstract class IntegrationTestCase extends TestCase {
             null,
             Dates::now(),
             IdempotencyKey::compose( LedgerType::REDEEM, $user_id, ReferenceType::ORDER, $order_id, RewardType::FLEXIBLE_DISCOUNT )
+        );
+    }
+
+    protected function insert_campaign( string $name, string $trigger, string $status, int $priority ): int {
+        $now = gmdate( 'Y-m-d H:i:s' );
+
+        return ( new CampaignRepository() )->insert(
+            new Campaign( null, $name, sanitize_title( $name ), $trigger, $status, $priority, Campaign::default_config( $trigger ), [], null, null, false, null, $now, $now )
         );
     }
 

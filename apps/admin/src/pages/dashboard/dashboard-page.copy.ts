@@ -1,6 +1,6 @@
 import { __, _n, sprintf } from '@wordpress/i18n';
 
-import { parseWPTime, utcToDate } from '@/lib/helpers/format.helper';
+import { formatPercent, formatStoreDecimal, parseWPTime, utcToDate } from '@/lib/helpers/format.helper';
 import { formatPoints } from '@/lib/helpers/points.helper';
 import { pctDelta } from '@/lib/points-math/points-math';
 import type { DashboardRange, DashboardSeriesPoint } from '@/lib/schema/dashboard.schema';
@@ -40,7 +40,7 @@ export function deltaLine(
     __('vs prev %s', 'yayloyalty'),
     RANGE_LABEL(range),
   );
-  const pct = `${Math.abs(delta).toLocaleString(undefined, { maximumFractionDigits: 1 })}%`;
+  const pct = formatPercent(Math.abs(delta), 1);
 
   if (delta > 0) return { text: `▲ ${pct} ${vs}`, direction: 'up' };
   if (delta < 0) return { text: `▼ ${pct} ${vs}`, direction: 'down' };
@@ -132,7 +132,7 @@ export function noticeTileOverrides(
         points_issued: sprintf(
           /* translators: %s: the percentage fall, a whole number. */
           __('▼ %s%% in the last 7 days', 'yayloyalty'),
-          collapse.toLocaleString(undefined, { maximumFractionDigits: 0 }),
+          formatStoreDecimal(collapse, 0),
         ),
       };
     }

@@ -503,7 +503,11 @@ $scan     = static function ( $value, string $path ) use ( &$scan, &$pro_keys ):
     }
     foreach ( $value as $key => $child ) {
         $here = '' === $path ? (string) $key : $path . '.' . $key;
-        if ( is_string( $key ) && preg_match( '/pro|premium/i', $key ) ) {
+        // Whole words of a snake_case or camelCase key, so "prompt" and "product" don't match.
+        $words = is_string( $key )
+            ? preg_split( '/[^a-z0-9]+/', strtolower( preg_replace( '/([a-z0-9])([A-Z])/', '$1_$2', $key ) ) )
+            : [];
+        if ( array_intersect( [ 'pro', 'premium' ], $words ) ) {
             $pro_keys[] = $here;
         }
         $scan( $child, $here );

@@ -10,6 +10,8 @@ defined( 'ABSPATH' ) || exit;
  */
 final class CampaignTrigger {
 
+    use StringEnumMethods;
+
     public const PURCHASE = 'purchase';
     public const SIGNUP   = 'signup';
     public const REVIEW   = 'review';
@@ -74,26 +76,11 @@ final class CampaignTrigger {
         );
     }
 
-    public static function is_valid( $value ): bool {
-        return is_string( $value ) && in_array( $value, self::all(), true );
-    }
-
     public static function is_known( $value ): bool {
         return is_string( $value ) && in_array( $value, self::all_known(), true );
     }
 
-    /** @throws \InvalidArgumentException When $value is not fireable in this build. */
-    public static function assert( $value ): string {
-        if ( ! self::is_valid( $value ) ) {
-            throw new \InvalidArgumentException(
-                sprintf(
-                    'YayLoyalty: unknown campaign trigger "%s". Expected one of: %s.',
-                    is_scalar( $value ) ? (string) $value : gettype( $value ),
-                    implode( ', ', self::all() )
-                )
-            );
-        }
-
-        return $value;
+    protected static function noun(): string {
+        return 'campaign trigger';
     }
 }

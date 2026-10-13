@@ -33,6 +33,19 @@ final class ClampTest extends TestCase {
         );
     }
 
+    /** The same reward spent a point at a time, so only the ceilings limit it. */
+    private function unstepped_reward( array $config = [] ): Reward {
+        return $this->reward(
+            array_merge(
+                [
+                    'min_points' => 1,
+                    'increment'  => 1,
+                ],
+                $config
+            )
+        );
+    }
+
     public function test_a_request_within_every_limit_stands(): void {
         $result = Clamp::apply( $this->reward(), 500, 1000, 50.0, 'USD', 2 );
 
@@ -69,6 +82,28 @@ final class ClampTest extends TestCase {
 
         $this->assertSame( 500, $result->get_points() );
         $this->assertSame( Clamp::BOUND_CART, $result->get_bound_by() );
+    }
+
+    /** @dataProvider float_edge_subtotals */
+    public function test_cart_ceiling_never_loses_a_point_to_float_error( float $subtotal, int $points ): void {
+        $result = Clamp::apply( $this->unstepped_reward(), 1000, 1000, $subtotal, 'USD', 2 );
+
+        $this->assertSame( $points, $result->get_points() );
+        $this->assertSame( Clamp::BOUND_CART, $result->get_bound_by() );
+    }
+
+    public function float_edge_subtotals(): array {
+        return [
+            '0.29 x 100' => [ 0.29, 29 ],
+            '0.57 x 100' => [ 0.57, 57 ],
+            '1.15 x 100' => [ 1.15, 115 ],
+        ];
+    }
+
+    public function test_cart_ceiling_rounds_a_fraction_down(): void {
+        $result = Clamp::apply( $this->unstepped_reward( [ 'points_per_currency_unit' => 3 ] ), 1000, 1000, 10.5, 'USD', 2 );
+
+        $this->assertSame( 31, $result->get_points() );
     }
 
     public function test_a_request_off_the_step_rounds_down(): void {

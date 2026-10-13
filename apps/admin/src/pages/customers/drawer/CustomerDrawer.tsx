@@ -41,7 +41,8 @@ export default function CustomerDrawer() {
   const firstName = query.data ? query.data.name.split(' ')[0] || query.data.name : '';
 
   function close() {
-    navigate({ pathname: '/customers', search: search ? `?${search}` : '' });
+    // Route-relative: back to whichever list opened the drawer, Customers or the Ledger.
+    navigate({ pathname: '..', search: search ? `?${search}` : '' });
   }
 
   return (

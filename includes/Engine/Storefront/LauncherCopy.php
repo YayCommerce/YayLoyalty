@@ -19,6 +19,15 @@ final class LauncherCopy {
         return SettingsHelper::format_number( $points );
     }
 
+    /**
+     * "Create an account", or "… at checkout" where shoppers can only register there.
+     *
+     * @param string|null $route LauncherPayload::register_route().
+     */
+    public static function create_account( ?string $route ): string {
+        return 'checkout' === $route ? __( 'Create an account at checkout', 'yayloyalty' ) : __( 'Create an account', 'yayloyalty' );
+    }
+
     /** "+270" / "−120": signed, with a real minus sign. */
     public static function signed_points( int $points ): string {
         return ( $points < 0 ? '−' : '+' ) . SettingsHelper::format_number( abs( $points ) );
@@ -68,6 +77,17 @@ final class LauncherCopy {
         return sprintf( __( '%1$s on orders of %2$s or more', 'yayloyalty' ), $line, self::money( $min_subtotal ) );
     }
 
+    /** A storefront_text line with {points} and a {points_label} that agrees with the count: "Earn 1 Point with this purchase". */
+    public static function points_sentence( string $template, int $points ): string {
+        return strtr(
+            $template,
+            [
+                '{points}'       => self::points( $points ),
+                '{points_label}' => SettingsHelper::points_label( $points ),
+            ]
+        );
+    }
+
     /**
      * The Design tab's storefront_text with {points_label} filled with the merchant's plural label: "Your {points_label}" → "Your Stars".
      * earn_rate_line is left for earn_rate(), whose label agrees with the rate it prints.
@@ -86,6 +106,27 @@ final class LauncherCopy {
         }
 
         return $text;
+    }
+
+    /** The empty points history, in the launcher and on the account tab. */
+    public static function no_activity(): string {
+        /* translators: %s: the store's points label, as "Points". */
+        return sprintf( __( 'No %s activity yet.', 'yayloyalty' ), SettingsHelper::points_label( 0 ) );
+    }
+
+    /** The daily earning limit under the ways to earn: '' with no limit, "You can earn 40 Points more today." below it, a reached line at 0. */
+    public static function daily_limit_line( ?int $left_today ): string {
+        if ( null === $left_today ) {
+            return '';
+        }
+
+        if ( 0 === $left_today ) {
+            /* translators: %s: the store's plural points label, e.g. "Points". */
+            return sprintf( __( 'You\'ve reached today\'s earning limit. Earn more %s tomorrow.', 'yayloyalty' ), SettingsHelper::points_label_plural() );
+        }
+
+        /* translators: %s: points with label, e.g. "40 Points". */
+        return sprintf( __( 'You can earn %s more today.', 'yayloyalty' ), SettingsHelper::points_text( $left_today ) );
     }
 
     /** "100 points = $1", with the merchant's label. */

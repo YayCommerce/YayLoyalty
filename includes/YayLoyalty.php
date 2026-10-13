@@ -49,6 +49,11 @@ class YayLoyalty {
 
         $this->register_redemption( $redemption, $intent );
 
+        \YayLoyalty\Engine\Storefront\AccountRewards::register();
+        \YayLoyalty\Engine\Storefront\Placements::register();
+        \YayLoyalty\Engine\Storefront\ProductEarnMessage::register();
+        \YayLoyalty\Engine\Storefront\ThankYouPoints::register();
+
         if ( ! is_admin() ) {
             \YayLoyalty\Engine\Storefront\Launcher::register();
         }

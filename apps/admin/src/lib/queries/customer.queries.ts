@@ -118,6 +118,8 @@ export function useAdjustPointsMutation(userId: number) {
       // An adjustment writes a `points_adjusted` activity row.
       queryClient.invalidateQueries({ queryKey: customerKeyPrefix('activity', userId) });
       queryClient.invalidateQueries({ queryKey: ['customer', 'list'] });
+      // The store-wide ledger, when the drawer is open over it.
+      queryClient.invalidateQueries({ queryKey: ['customer', 'store-ledger'] });
     },
   });
 }

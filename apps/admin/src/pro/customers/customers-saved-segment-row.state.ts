@@ -1,9 +1,8 @@
 import { useLayoutEffect, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { toast } from 'sonner';
 import { __ } from '@wordpress/i18n';
 
-import { getApiErrorMessage } from '@/lib/api/api';
+import { toastApiError } from '@/lib/api/api';
 import { DEFAULT_ROW_FILTERS, type RowFilters } from '@/pages/customers/customers-page.filter-rows';
 import { readSegmentsFromLocalize, removeSegment, type SavedSegment } from './customer-segments.api';
 
@@ -87,7 +86,7 @@ export function useSavedSegmentPicker({
       setSelected(ALL_SEGMENTS_VALUE);
     },
     onError: async (err) => {
-      toast.error(await getApiErrorMessage(err, __('Could not remove the segment.', 'yayloyalty')));
+      await toastApiError(err, __('Could not remove the segment.', 'yayloyalty'));
     },
   });
 

@@ -300,7 +300,31 @@ class LedgerRepository extends AbstractRepository {
     }
 
     /**
-     * Prepared WHERE fragments for paginate_for_user()'s drawer filters.
+     * Rows of any type naming the campaign, as a locking read: inside delete_item()'s transaction a
+     * plain read would see its snapshot and miss a row committed since.
+     *
+     * @throws QueryException When the read fails, e.g. a lock wait timeout.
+     */
+    public function count_for_campaign_locked( int $campaign_id ): int {
+        global $wpdb;
+
+        $count = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a locking read must reach the database, never a cache.
+            $wpdb->prepare(
+                'SELECT COUNT(*) FROM `' . esc_sql( $this->table() ) . '` WHERE campaign_id = %d LOCK IN SHARE MODE',
+                $campaign_id
+            )
+        );
+
+        if ( '' !== $wpdb->last_error ) {
+            throw new QueryException( 'select', $wpdb->last_error, $this->table() . ' (count_for_campaign_locked)' );
+        }
+
+        return (int) $count;
+    }
+
+    /**
+     * Prepared WHERE fragments for the ledger filters: the drawer's, and any store-wide list.
+     * Columns are unqualified, so a caller that joins another table must not join one that shares them.
      *
      * Row descriptions ("Earned on order #6730") are composed client-side, so
      * search can only reach what is stored: a bare or `#`-prefixed number is
@@ -310,7 +334,7 @@ class LedgerRepository extends AbstractRepository {
      *        `after`/`before` are site-calendar `Y-m-d` days, both inclusive.
      * @return string[] Already-prepared fragments, for AbstractRepository::paginate()'s `where`.
      */
-    private function history_where( array $args ): array {
+    public function history_where( array $args ): array {
         global $wpdb;
 
         $where = [];

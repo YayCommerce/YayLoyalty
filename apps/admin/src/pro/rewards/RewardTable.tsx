@@ -18,6 +18,7 @@ import { resolveRewardDisplayStatus, Reward } from '@/lib/schema/reward.schema';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { ErrorState } from '@/components/ui/custom/error-state';
 import { YayLoyaltyToolTip } from '@/components/ui/custom/tooltip';
 import {
   DropdownMenu,
@@ -50,7 +51,7 @@ import {
 export function RewardTable() {
   const navigate = useNavigate();
 
-  const { data, isPending, isError } = useRewardsQuery({ perPage: 100 });
+  const { data, isPending, isError, refetch } = useRewardsQuery({ perPage: 100 });
   const ready = !isPending && !isError;
 
   const reorderMutation = useReorderRewardsMutation();
@@ -111,7 +112,7 @@ export function RewardTable() {
             </div>
           </div>
 
-          {isError && <p className="text-destructive text-sm">{__('Could not load rewards.', 'yayloyalty')}</p>}
+          {isError && <ErrorState message={__('Could not load rewards.', 'yayloyalty')} onRetry={() => refetch()} />}
 
           {isPending && <RewardTableSkeleton />}
 

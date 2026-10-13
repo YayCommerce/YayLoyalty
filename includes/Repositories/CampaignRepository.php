@@ -1,10 +1,10 @@
 <?php
 namespace YayLoyalty\Repositories;
 
+use YayLoyalty\Database\QueryException;
 use YayLoyalty\Enums\Status;
 use YayLoyalty\Models\AbstractModel;
 use YayLoyalty\Models\Campaign;
-use YayLoyalty\Utils\Sql;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -44,18 +44,48 @@ class CampaignRepository extends AbstractRepository {
         return $model instanceof Campaign ? $model : null;
     }
 
-    public function find_by_slug( string $slug ): ?Campaign {
+    /**
+     * Whether the row exists, read under an exclusive row lock. Inside a transaction: delete_item()
+     * holds it so no award can name the campaign between its ledger re-count and the delete.
+     *
+     * @throws QueryException When the read fails, e.g. a lock wait timeout.
+     */
+    public function lock_for_delete( int $id ): bool {
+        return $this->lock_row( $id, 'FOR UPDATE' );
+    }
+
+    /**
+     * Whether the row exists, read under a shared row lock. Inside a transaction: LedgerService
+     * holds it while it appends an earn row naming the campaign, so a delete waits for the commit.
+     *
+     * @throws QueryException When the read fails, e.g. a lock wait timeout.
+     */
+    public function lock_shared( int $id ): bool {
+        return $this->lock_row( $id, 'LOCK IN SHARE MODE' );
+    }
+
+    /** LOCK IN SHARE MODE, not FOR SHARE: MySQL 5.7 and MariaDB lack the latter. */
+    private function lock_row( int $id, string $lock ): bool {
         global $wpdb;
 
-        $row = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+        $found = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a locking read must reach the database, never a cache.
             $wpdb->prepare(
-                'SELECT * FROM `' . esc_sql( $this->table() ) . '` WHERE slug = %s LIMIT 1',
-                $slug
-            ),
-            ARRAY_A
+                'SELECT id FROM `' . esc_sql( $this->table() ) . '` WHERE id = %d ' . $lock, // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- $lock is one of two literals above.
+                $id
+            )
         );
 
-        return is_array( $row ) ? Campaign::from_row( $row ) : null;
+        if ( '' !== $wpdb->last_error ) {
+            throw new QueryException( 'select', $wpdb->last_error, $this->table() . ' (lock)' );
+        }
+
+        return null !== $found;
+    }
+
+    public function find_by_slug( string $slug ): ?Campaign {
+        $model = $this->find_one_by( 'slug', $slug );
+
+        return $model instanceof Campaign ? $model : null;
     }
 
     /**
@@ -166,31 +196,7 @@ class CampaignRepository extends AbstractRepository {
             }
         }
 
-        if ( [] === $priorities ) {
-            return true;
-        }
-
-        $table  = esc_sql( $this->table() );
-        $cases  = [];
-        $params = [];
-
-        foreach ( $priorities as $id => $priority ) {
-            $cases[]  = 'WHEN %d THEN %d';
-            $params[] = $id;
-            $params[] = $priority;
-        }
-
-        $order_ids = array_keys( $priorities );
-        $in        = Sql::in_placeholders( $order_ids, '%d' );
-
-        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- $cases and $in carry placeholder lists; every value is bound below.
-        $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-            $wpdb->prepare(
-                "UPDATE `{$table}` SET priority = CASE id " . implode( ' ', $cases ) . " END WHERE id IN ({$in})",
-                array_merge( $params, $order_ids )
-            )
-        );
-        // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+        $this->bulk_set_int_column( 'priority', $priorities );
 
         $this->flush_cache();
 
@@ -255,12 +261,7 @@ class CampaignRepository extends AbstractRepository {
         return $this->paginate( $args );
     }
 
-    /** Inserts a built-in row unless its slug is present. The unique key on slug is the backstop. */
     public function seed_builtin( Campaign $campaign ): void {
-        if ( null !== $this->find_by_slug( $campaign->get_slug() ) ) {
-            return;
-        }
-
-        $this->insert( $campaign );
+        $this->seed_builtin_by_slug( $campaign, $campaign->get_slug() );
     }
 }

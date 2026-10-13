@@ -5,6 +5,7 @@ use YayLoyalty\Engine\Points\Context;
 use YayLoyalty\Engine\Points\PointsEngine;
 use YayLoyalty\Engine\Points\Triggers\PurchaseHandler;
 use YayLoyalty\Enums\CampaignTrigger;
+use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Models\Campaign;
 use YayLoyalty\Utils\Log;
 
@@ -67,6 +68,94 @@ final class LauncherEarnRules {
 
             return null;
         }
+    }
+
+    /**
+     * member_rows() under the daily limit: at 0 left the limit line replaces the rows; below it, the line follows rows there are.
+     *
+     * @param array<int, array{trigger: string, label: string, value: string}> $rows       member_rows().
+     * @param int|null                                                         $left_today EarningService::points_left_today(); null for no limit.
+     * @return array{rows: array<int, array{trigger: string, label: string, value: string}>, limit_line: string}
+     */
+    public static function with_daily_limit( array $rows, ?int $left_today ): array {
+        if ( 0 === $left_today ) {
+            return [
+                'rows'       => [],
+                'limit_line' => LauncherCopy::daily_limit_line( 0 ),
+            ];
+        }
+
+        return [
+            'rows'       => $rows,
+            'limit_line' => [] === $rows ? '' : LauncherCopy::daily_limit_line( $left_today ),
+        ];
+    }
+
+    /**
+     * A member's "Ways to earn" rows, in display order: no signup row, since a member already has the account it pays for.
+     *
+     * @param array{purchase: ?float, review: ?int} $earn         advertise()'s `earn`.
+     * @param string                                $rate_line    The Design tab's earn_rate_line.
+     * @param float                                 $purchase_min advertise()'s `purchase_min`.
+     * @return array<int, array{trigger: string, label: string, value: string}>
+     */
+    public static function member_rows( array $earn, string $rate_line, float $purchase_min ): array {
+        $rows = [];
+
+        if ( null !== $earn[ CampaignTrigger::PURCHASE ] ) {
+            $rows[] = [
+                'trigger' => CampaignTrigger::PURCHASE,
+                'label'   => __( 'Make a purchase', 'yayloyalty' ),
+                'value'   => LauncherCopy::earn_rate( $rate_line, $earn[ CampaignTrigger::PURCHASE ], $purchase_min ),
+            ];
+        }
+
+        if ( null !== $earn[ CampaignTrigger::REVIEW ] ) {
+            $rows[] = [
+                'trigger' => CampaignTrigger::REVIEW,
+                'label'   => __( 'Write a review', 'yayloyalty' ),
+                'value'   => SettingsHelper::points_text( $earn[ CampaignTrigger::REVIEW ] ),
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * The "Ways to earn" a viewer is shown outside the launcher: a guest's rows, signup first, or a member's
+     * under the daily limit; none for a viewer who cannot earn.
+     *
+     * @param array $payload LauncherPayload::for_user() for this viewer.
+     * @param int   $user_id The viewer; 0 for a guest.
+     * @return array{rows: array<int, array{trigger: string, label: string, value: string}>, limit_line: string}
+     */
+    public static function for_viewer( array $payload, int $user_id ): array {
+        if ( ! Launcher::viewer_can_earn( $user_id ) ) {
+            return self::with_daily_limit( [], null );
+        }
+
+        $earn = $payload['earn'];
+        $rows = self::member_rows( $earn, $payload['text']['earn_rate_line'], $payload['purchase_min'] );
+
+        if ( $user_id > 0 ) {
+            return self::with_daily_limit( $rows, $payload['left_today'] );
+        }
+
+        if ( null !== $earn[ CampaignTrigger::SIGNUP ] ) {
+            array_unshift(
+                $rows,
+                [
+                    'trigger' => CampaignTrigger::SIGNUP,
+                    'label'   => LauncherCopy::create_account( $payload['register'] ),
+                    'value'   => SettingsHelper::points_text( $earn[ CampaignTrigger::SIGNUP ] ),
+                ]
+            );
+        }
+
+        return [
+            'rows'       => $rows,
+            'limit_line' => '',
+        ];
     }
 
     /**

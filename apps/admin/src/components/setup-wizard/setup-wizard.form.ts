@@ -1,11 +1,17 @@
 import type { UseFormReturn } from 'react-hook-form';
+import { __ } from '@wordpress/i18n';
 
 import { rateFromSpend, spendPairFromRate } from '@/lib/helpers/points.helper';
+import { ROUNDING, roundPoints } from '@/lib/points-math/points-math';
+import { DEFAULT_CAMPAIGN_CONFIG } from '@/lib/schema/campaign.schema';
 import type { Setup } from '@/lib/schema/setup.schema';
 
 export type WizardStep = 1 | 2 | 3 | 4 | 5;
 
 export const WIZARD_STEP_COUNT = 5;
+
+/** Mirrors DesignSchema::get_default_design()'s `launcher.brand_color`, the source of truth. */
+export const DEFAULT_BRAND_COLOR = '#1f6fb2';
 
 /** The made-up balance the previews show; the store has no customers yet. */
 export const SAMPLE_BALANCE = 850;
@@ -34,23 +40,27 @@ export type SetupForm = {
 /** What every step component receives. */
 export type WizardStepProps = { form: UseFormReturn<SetupForm> };
 
-export function toSetupForm(setup: Setup): SetupForm {
-  const earn = spendPairFromRate(setup.purchase.points_per_unit);
+/**
+ * Mirrors Reward::default_config() and SettingsHelper::get_default_settings()'s labels, the source of truth.
+ * The first-run values. Earning comes from DEFAULT_CAMPAIGN_CONFIG.
+ */
+export function setupDefaults(): SetupForm {
+  const earn = spendPairFromRate(DEFAULT_CAMPAIGN_CONFIG.purchase.points_per_unit as number);
 
   return {
-    pointsLabelSingular: setup.points_label_singular,
-    pointsLabelPlural: setup.points_label_plural,
+    pointsLabelSingular: __('Point', 'yayloyalty'),
+    pointsLabelPlural: __('Points', 'yayloyalty'),
     earnPoints: earn.points,
     earnSpend: earn.spend,
-    signupEnabled: setup.signup.enabled,
-    signupPoints: setup.signup.points,
-    reviewEnabled: setup.review.enabled,
-    reviewPoints: setup.review.points,
-    worthPoints: setup.cart_discount.points_per_currency_unit,
+    signupEnabled: true,
+    signupPoints: DEFAULT_CAMPAIGN_CONFIG.signup.points as number,
+    reviewEnabled: true,
+    reviewPoints: DEFAULT_CAMPAIGN_CONFIG.review.points as number,
+    worthPoints: 100,
     worthAmount: 1,
-    minPoints: setup.cart_discount.min_points,
-    maxPercent: setup.cart_discount.max_percent_of_subtotal ?? 100,
-    brandColor: setup.brand_color,
+    minPoints: 100,
+    maxPercent: 100,
+    brandColor: DEFAULT_BRAND_COLOR,
   };
 }
 
@@ -58,7 +68,7 @@ export function toSetupPayload(form: SetupForm): Setup {
   return {
     points_label_singular: form.pointsLabelSingular,
     points_label_plural: form.pointsLabelPlural,
-    // A spend of 0 has no rate; 0 makes the server refuse it rather than store a guess.
+    // An amount of 0 has no rate; both rates below send 0 so the server refuses it rather than store a guess.
     purchase: { points_per_unit: rateFromSpend(form.earnSpend, form.earnPoints) ?? 0 },
     signup: { enabled: form.signupEnabled, points: form.signupPoints },
     review: { enabled: form.reviewEnabled, points: form.reviewPoints },
@@ -73,7 +83,7 @@ export function toSetupPayload(form: SetupForm): Setup {
 
 /** Points a customer earns on an order of `amount`, as the purchase campaign floors them. */
 export function pointsForSpend(form: Pick<SetupForm, 'earnPoints' | 'earnSpend'>, amount: number): number {
-  return form.earnSpend > 0 ? Math.floor((amount * form.earnPoints) / form.earnSpend) : 0;
+  return form.earnSpend > 0 ? roundPoints((amount * form.earnPoints) / form.earnSpend, ROUNDING.DOWN) : 0;
 }
 
 /** Money `points` are worth at the wizard's redemption rate. */

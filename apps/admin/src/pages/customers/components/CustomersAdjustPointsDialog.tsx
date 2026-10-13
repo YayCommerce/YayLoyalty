@@ -56,7 +56,7 @@ type LiveRead<T> = {
 /**
  * Adjust points for one customer (the drawer, or one ticked row) or in bulk.
  * Plain useState, not react-hook-form: a flat set of fields behind one shared gate.
- * The customer-facing description and notify-by-email stay local state: the server does not take them yet.
+ * The customer description is sent only when its switch is on and it isn't blank; otherwise customers see "Adjustment by {store}".
  */
 export function CustomersAdjustPointsDialog({
   open,
@@ -179,6 +179,8 @@ export function CustomersAdjustPointsDialog({
       points: signedPoints(state),
       note: state.reason,
       adjustLifetime: state.adjustLifetime,
+      notify: state.notifyByEmail,
+      customerNote: state.showCustomerNote && state.customerNote.trim() ? state.customerNote.trim() : undefined,
     });
 
     if (!result.success) {

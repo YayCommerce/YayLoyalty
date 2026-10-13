@@ -39,6 +39,21 @@ class CustomerMetaRepository extends AbstractRepository {
         return is_array( $row ) ? CustomerMeta::from_row( $row ) : null;
     }
 
+    /**
+     * A deleted member's name and email from their account_deleted snapshot, or '' for each.
+     * Every screen that lists a deleted member uses it, so the name matches everywhere.
+     *
+     * @return array{name: string, email: string}
+     */
+    public function deleted_identity( int $user_id ): array {
+        $deletion = $this->latest( $user_id, ActivityEvent::ACCOUNT_DELETED );
+
+        return null !== $deletion ? $deletion->snapshot_identity() : [
+            'name'  => '',
+            'email' => '',
+        ];
+    }
+
     /** Whether at least one row exists for (user_id, meta_key). It is the once-only write guard. */
     public function has( int $user_id, string $meta_key ): bool {
         global $wpdb;

@@ -18,8 +18,6 @@ const KIND_ICON: Record<ErrorStateKind, typeof AlertTriangle> = {
 /**
  * Shared inline banner for a failed query or mutation. No caller passes `kind` yet, since none
  * reads the underlying error. `onRetry` adds a retry action.
- *
- * TODO(error-state): move CampaignTable, BuiltInCampaignList and ConditionsPreview onto this.
  */
 export function ErrorState({
   message,

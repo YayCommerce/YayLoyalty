@@ -2,14 +2,12 @@
 namespace YayLoyalty\Engine\Storefront;
 
 use YayLoyalty\Controllers\StorefrontActivityRestController;
+use YayLoyalty\Engine\Earning\EarningService;
 use YayLoyalty\Engine\Earning\ProgramGate;
 use YayLoyalty\Engine\Points\ContextFactory;
 use YayLoyalty\Engine\Register\ScriptName;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Helpers\DesignHelper;
-use YayLoyalty\Repositories\CampaignRepository;
-use YayLoyalty\Repositories\CustomerRepository;
-use YayLoyalty\Repositories\RewardRepository;
 use YayLoyalty\Utils\Dates;
 use YayLoyalty\Utils\Log;
 
@@ -119,21 +117,25 @@ final class Launcher {
             return false;
         }
 
+        return self::viewer_can_earn( $user_id );
+    }
+
+    /**
+     * Whether a viewer is shown anything about earning. Same gates as earning, Pro's included.
+     *
+     * @param int $user_id The viewer; 0 for a guest.
+     */
+    public static function viewer_can_earn( int $user_id ): bool {
+        // A guest always reads as "no customer" while the program is on, and that is who the pitch is for.
         if ( $user_id < 1 ) {
-            return ProgramGate::program_enabled();
+            return ProgramGate::REASON_NO_CUSTOMER === EarningService::gate_reason( CampaignTrigger::PURCHASE, ContextFactory::for_advert( Dates::now() ) );
         }
 
-        // Same rules as earning (program on, not opted out, role not excluded): a shopper who cannot
-        // earn is not shown a panel about earning.
-        return null === ( new ProgramGate() )->check( CampaignTrigger::PURCHASE, ContextFactory::from_user( $user_id, Dates::now() ) );
+        return null === EarningService::gate_reason( CampaignTrigger::PURCHASE, ContextFactory::from_user( $user_id, Dates::now() ) );
     }
 
     private function build_view( array $design ): array {
-        $user_id = get_current_user_id();
-        $payload = ( new LauncherPayload( new CampaignRepository(), new RewardRepository(), new CustomerRepository() ) )
-            ->build( $design, $user_id > 0 ? $user_id : null );
-
-        return self::view( $design, $payload, true );
+        return self::view( $design, LauncherPayload::for_user( $design, get_current_user_id() ), true );
     }
 
     /**

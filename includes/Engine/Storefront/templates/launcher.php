@@ -80,7 +80,7 @@ $yayloyalty_is_open = ! empty( $view['is_open'] );
 
         <?php if ( null !== $yayloyalty_member ) : ?>
             <div class="yl:flex yl:items-center yl:gap-2.5 yl:border-t yl:border-border yl:bg-muted/50 yl:px-4 yl:py-3">
-                <a class="yl:text-xs yl:text-primary yl:hover:underline yl:underline-offset-4" href="<?php echo esc_url( $view['account_url'] ); ?>">
+                <a class="yl:text-xs yl:text-primary yl:hover:underline yl:underline-offset-4" href="<?php echo esc_url( $view['rewards_url'] ); ?>">
                     <?php esc_html_e( 'View all rewards activity', 'yayloyalty' ); ?>
                 </a>
             </div>

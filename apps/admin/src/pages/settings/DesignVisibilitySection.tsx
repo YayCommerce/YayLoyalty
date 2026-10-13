@@ -24,9 +24,11 @@ import {
   VISIBILITY_INCLUDE_PAGES_LIMIT_NOTE,
   VISIBILITY_INCLUDE_PAGES_PLACEHOLDER,
   VISIBILITY_INCLUDE_PAGES_SEARCH_PLACEHOLDER,
+  VISIBILITY_PRODUCT_MESSAGE_LABEL,
   VISIBILITY_SCOPE_LABEL,
   VISIBILITY_SECTION_DESCRIPTION,
   VISIBILITY_SECTION_TITLE,
+  VISIBILITY_THANKYOU_MESSAGE_LABEL,
 } from './design-settings.copy';
 import { visibilityScopeLabel } from './design-settings.option-labels';
 
@@ -35,7 +37,29 @@ const pageOption = (page: WpPageOption) => ({
   label: new DOMParser().parseFromString(page.title.rendered, 'text/html').body.textContent || `#${page.id}`,
 });
 
-/** Scope, the chosen pages, hide on mobile, hide for roles — the custom_pages scope and its page picker are Pro. */
+type Visibility = Design['visibility'];
+type VisibilityToggle = { [K in keyof Visibility]: Visibility[K] extends boolean ? K : never }[keyof Visibility];
+
+/** One on/off visibility setting with its label. */
+function VisibilitySwitchField({ name, label }: { name: VisibilityToggle; label: string }) {
+  const { control } = useFormContext<Design>();
+  const id = `design-visibility-${name.replaceAll('_', '-')}`;
+
+  return (
+    <Field>
+      <FieldLabel htmlFor={id}>{label}</FieldLabel>
+      <Controller
+        control={control}
+        name={`visibility.${name}`}
+        render={({ field }) => (
+          <Switch id={id} className="w-11!" checked={field.value} onCheckedChange={field.onChange} />
+        )}
+      />
+    </Field>
+  );
+}
+
+/** Scope, the chosen pages, hide on mobile, hide for roles, the product-page line, the thank-you points — the custom_pages scope and its page picker are Pro. */
 export function DesignVisibilitySection() {
   const { control } = useFormContext<Design>();
   const scope = useWatch({ control, name: 'visibility.scope' });
@@ -121,21 +145,7 @@ export function DesignVisibilitySection() {
           </Field>
         )}
 
-        <Field>
-          <FieldLabel htmlFor="design-visibility-hide-on-mobile">{VISIBILITY_HIDE_ON_MOBILE_LABEL()}</FieldLabel>
-          <Controller
-            control={control}
-            name="visibility.hide_on_mobile"
-            render={({ field }) => (
-              <Switch
-                id="design-visibility-hide-on-mobile"
-                className="w-11!"
-                checked={field.value}
-                onCheckedChange={field.onChange}
-              />
-            )}
-          />
-        </Field>
+        <VisibilitySwitchField name="hide_on_mobile" label={VISIBILITY_HIDE_ON_MOBILE_LABEL()} />
 
         <Field>
           <FieldLabel>{VISIBILITY_HIDE_FOR_ROLES_LABEL()}</FieldLabel>
@@ -155,6 +165,10 @@ export function DesignVisibilitySection() {
             <FieldDescription>{VISIBILITY_HIDE_FOR_ROLES_DESCRIPTION()}</FieldDescription>
           </FieldContent>
         </Field>
+
+        <VisibilitySwitchField name="product_message" label={VISIBILITY_PRODUCT_MESSAGE_LABEL()} />
+
+        <VisibilitySwitchField name="thankyou_message" label={VISIBILITY_THANKYOU_MESSAGE_LABEL()} />
       </CardContent>
     </Card>
   );

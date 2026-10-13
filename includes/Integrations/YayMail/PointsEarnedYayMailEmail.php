@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Integrations\YayMail;
 
+use YayLoyalty\Engine\Emails\LoyaltyEmail;
 use YayLoyalty\Engine\Emails\PointsEarnedEmail;
 use YayLoyalty\Helpers\EmailsHelper;
 use YayMail\Abstracts\BaseEmail;
@@ -44,17 +45,15 @@ class PointsEarnedYayMailEmail extends BaseEmail {
     }
 
     /**
-     * The merchant-editable starting layout. Its wording copies the `yayloyalty-points-earned.php` templates
-     * and PointsEarnedEmail::get_template_values(), which own it, with the same msgids: change them together.
+     * The merchant-editable starting layout. Its sentences come from LoyaltyEmail, as the `yayloyalty-points-earned.php`
+     * templates' do, and from PointsEarnedEmail::get_template_values().
      * Unlike the templates, it prints the greeting even when the customer's name is ''. It has no
      * "View your points" button: the link is '' unless a site filters it in, and a static button cannot hide itself.
      */
     public function get_default_elements() {
-        /* translators: %s: customer's first name. */
-        $greeting = sprintf( esc_html__( 'Hi %s,', 'yayloyalty' ), PointsEarnedShortcodes::tag( 'customer_name' ) );
-        /* translators: %s: points with label, e.g. "120 Points". */
-        $balance = sprintf( esc_html__( 'Your balance is now %s.', 'yayloyalty' ), '<strong>' . PointsEarnedShortcodes::tag( 'balance_points' ) . '</strong>' );
-        $text    = '<p>' . $greeting . '</p><p>' . PointsEarnedShortcodes::tag( 'earned_points' ) . '</p><p>' . $balance . '</p><p>' . PointsEarnedShortcodes::tag( 'balance_value_text' ) . '</p>';
+        $greeting = LoyaltyEmail::greeting_text( PointsEarnedShortcodes::tag( 'customer_name' ) );
+        $balance  = LoyaltyEmail::balance_sentence( PointsEarnedShortcodes::tag( 'balance_points' ) );
+        $text     = '<p>' . $greeting . '</p><p>' . PointsEarnedShortcodes::tag( 'earned_points' ) . '</p><p>' . $balance . '</p><p>' . PointsEarnedShortcodes::tag( 'balance_value_text' ) . '</p>';
 
         return ElementsLoader::load_elements(
             [

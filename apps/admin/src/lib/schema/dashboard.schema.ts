@@ -85,10 +85,10 @@ export const dashboardRecentActivitySchema = z.object({
 
 export type DashboardRecentActivity = z.infer<typeof dashboardRecentActivitySchema>;
 
-/** The keys DashboardNotices emits; mirrors its three detectors. */
+/** Mirrors the keys DashboardNotices emits, the source of truth. There is one per detector. */
 export const DASHBOARD_NOTICE_KEYS = ['negative_balance', 'default_campaign_paused', 'points_jump'] as const;
 
-/** Mirrors NoticeDismissals::DISMISSABLE; only these reach `POST /dashboard/notices/dismiss`. */
+/** Mirrors NoticeDismissals::DISMISSABLE, the source of truth. Only these reach `POST /dashboard/notices/dismiss`. */
 export const DISMISSABLE_NOTICE_KEYS = [
   'negative_balance',
   'default_campaign_paused',

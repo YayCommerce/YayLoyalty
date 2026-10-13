@@ -14,6 +14,9 @@ class YayMailIntegration {
 
     use SingletonTrait;
 
+    /** The first YayMail that passes the email to its subject's shortcodes. */
+    private const MIN_YAYMAIL_VERSION = '4.4.7';
+
     protected function __construct() {
         if ( ! self::is_yaymail_active() ) {
             return;
@@ -23,8 +26,12 @@ class YayMailIntegration {
         add_action( 'yaymail_register_shortcodes', [ $this, 'register_shortcodes' ] );
     }
 
-    /** Whether YayMail is loaded and, for a build that checks licences, licensed. */
+    /** Whether YayMail is loaded, at least MIN_YAYMAIL_VERSION and, for a build that checks licences, licensed. */
     private static function is_yaymail_active(): bool {
+        if ( ! defined( 'YAYMAIL_VERSION' ) || version_compare( YAYMAIL_VERSION, self::MIN_YAYMAIL_VERSION, '<' ) ) {
+            return false;
+        }
+
         if ( ! class_exists( 'YaymailPluginAdapter', false ) ) {
             return false;
         }

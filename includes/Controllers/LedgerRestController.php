@@ -139,6 +139,12 @@ final class LedgerRestController extends AbstractRestController {
                     'context'     => [ 'view' ],
                     'readonly'    => true,
                 ],
+                'customer_note'  => [
+                    'description' => __( 'Customer-facing description. Present on manual adjustments only.', 'yayloyalty' ),
+                    'type'        => [ 'string', 'null' ],
+                    'context'     => [ 'view' ],
+                    'readonly'    => true,
+                ],
                 'actor_id'       => [
                     'type'     => [ 'integer', 'null' ],
                     'context'  => [ 'view' ],

@@ -21,23 +21,31 @@ class DesignSchema {
                 'corner_radius' => 8,
             ],
             // Real, editable defaults. An empty save is literal, never "use the default".
-            // {points_label} becomes the merchant's points label (LauncherCopy::storefront_text()), so no default names "points".
+            // {points_label} becomes the merchant's points label (LauncherCopy::storefront_text(); the lines with a {points} count through LauncherCopy::points_sentence()), so no default names "points".
             'storefront_text' => [
-                'launcher_label'    => __( 'Rewards', 'yayloyalty' ),
+                'launcher_label'        => __( 'Rewards', 'yayloyalty' ),
                 /* translators: keep {points_label} as it is; it becomes the store's points label, as "Points". */
-                'balance_heading'   => __( 'Your {points_label}', 'yayloyalty' ),
+                'balance_heading'       => __( 'Your {points_label}', 'yayloyalty' ),
                 /* translators: keep every {…} placeholder as it is; each is filled in when the line is shown. */
-                'earn_rate_line'    => __( 'Earn {points} {points_label} per {amount} spent', 'yayloyalty' ),
+                'earn_rate_line'        => __( 'Earn {points} {points_label} per {amount} spent', 'yayloyalty' ),
                 /* translators: keep {points_label} as it is; it becomes the store's points label, as "Points". */
-                'redeem_button'     => __( 'Apply {points_label}', 'yayloyalty' ),
+                'redeem_button'         => __( 'Apply {points_label}', 'yayloyalty' ),
                 /* translators: keep {points_label} as it is; it becomes the store's points label, as "Points". */
-                'signed_out_prompt' => __( 'Sign in to earn {points_label} on this order', 'yayloyalty' ),
+                'signed_out_prompt'     => __( 'Sign in to earn {points_label} on this order', 'yayloyalty' ),
+                /* translators: keep every {…} placeholder as it is; each is filled in when the line is shown. */
+                'product_earn_line'     => __( 'Earn {points} {points_label} with this purchase', 'yayloyalty' ),
+                /* translators: keep every {…} placeholder as it is; each is filled in when the line is shown. */
+                'thankyou_pending_line' => __( "You'll earn {points} {points_label} when your order completes", 'yayloyalty' ),
+                /* translators: keep every {…} placeholder as it is; each is filled in when the line is shown. */
+                'thankyou_earned_line'  => __( 'You earned {points} {points_label} on this order', 'yayloyalty' ),
             ],
             'visibility'      => [
                 'scope'            => self::SCOPE_ALL_PAGES,
                 'include_page_ids' => [],
                 'hide_on_mobile'   => false,
                 'hide_for_roles'   => [ 'administrator', 'shop_manager' ],
+                'product_message'  => true,
+                'thankyou_message' => true,
             ],
             'panel'           => [ // Pro
                 'layout'              => 'compact',
@@ -73,20 +81,32 @@ class DesignSchema {
                 ],
             ],
             'storefront_text' => [
-                'launcher_label'    => [
+                'launcher_label'        => [
                     'type'     => 'text',
                     'required' => true,
                 ],
-                'balance_heading'   => [
+                'balance_heading'       => [
                     'type'     => 'text',
                     'required' => true,
                 ],
-                'earn_rate_line'    => [ 'type' => 'text' ],
-                'redeem_button'     => [
+                'earn_rate_line'        => [ 'type' => 'text' ],
+                'redeem_button'         => [
                     'type'     => 'text',
                     'required' => true,
                 ],
-                'signed_out_prompt' => [ 'type' => 'text' ],
+                'signed_out_prompt'     => [ 'type' => 'text' ],
+                'product_earn_line'     => [
+                    'type'     => 'text',
+                    'required' => true,
+                ],
+                'thankyou_pending_line' => [
+                    'type'     => 'text',
+                    'required' => true,
+                ],
+                'thankyou_earned_line'  => [
+                    'type'     => 'text',
+                    'required' => true,
+                ],
             ],
             'visibility'      => [
                 'scope'            => [
@@ -97,6 +117,8 @@ class DesignSchema {
                 'include_page_ids' => [ 'type' => 'id_list' ],
                 'hide_on_mobile'   => [ 'type' => 'bool' ],
                 'hide_for_roles'   => [ 'type' => 'slug_list' ],
+                'product_message'  => [ 'type' => 'bool' ],
+                'thankyou_message' => [ 'type' => 'bool' ],
             ],
             'panel'           => [ // Pro
                 'layout'              => [

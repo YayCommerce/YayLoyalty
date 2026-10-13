@@ -10,14 +10,14 @@ import {
 
 /** Mirrors RewardRestController::define_item_schema(), the source of truth. */
 
-/** Mirrors RewardType::lite_types(): the built-in slider, offered in every build. */
+/** Mirrors RewardType::lite_types(), the source of truth. The built-in slider, offered in every build. */
 export const LITE_REWARD_TYPES = ['flexible_discount'] as const;
 
-/** Mirrors YayLoyaltyPro::add_reward_types(): the catalog types Pro adds. */
+/** Mirrors YayLoyaltyPro::add_reward_types(), the source of truth. The catalog types Pro adds. */
 export const PRO_REWARD_TYPES = ['fixed_coupon', 'percent_coupon', 'free_shipping', 'free_product'] as const;
 
 /**
- * Every type the schema recognises, mirroring RewardType::all_known().
+ * Mirrors RewardType::all_known(), the source of truth. Every type the schema recognises.
  * Parsing must accept Pro values in both builds, or a downgraded site's
  * rewards list throws instead of rendering.
  */
@@ -132,7 +132,7 @@ export const rewardFieldsSchema = z.object({
   ends_at: z.string().nullable(),
 });
 
-/** Write body for PUT rewards/{id}, mirroring update_item()'s accepted fields; every key is optional on the wire. */
+/** Mirrors RewardRestController::update_item()'s accepted fields, the source of truth. The write body for PUT rewards/{id}. Every key is optional on the wire. */
 export type RewardUpdateInput = z.infer<typeof rewardFieldsSchema>;
 
 /** Write body for POST rewards: update's fields plus the type, which is immutable afterwards. No slug: the server derives it from `name`. */
@@ -151,7 +151,7 @@ const couponExpiryDaysSchema = z.number().int().min(1).nullable();
 export const REWARD_CONFIG_SCHEMAS = {
   flexible_discount: z.object({
     currency: z.string(),
-    points_per_currency_unit: z.number().min(0),
+    points_per_currency_unit: z.number().positive(),
     min_points: z.number().int().min(0),
     max_points_per_order: moneyCapSchema,
     max_percent_of_subtotal: moneySchema,

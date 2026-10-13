@@ -1,6 +1,8 @@
 <?php
 namespace YayLoyalty\Controllers\Schemas;
 
+use YayLoyalty\Controllers\CustomerRowSort;
+
 defined( 'ABSPATH' ) || exit;
 
 /** Route args for the Customers list's sort and for the adjust endpoint. */
@@ -17,8 +19,8 @@ final class CustomerRouteArgs {
             'orderby' => [
                 'description'       => __( 'Column to sort the Customers list by.', 'yayloyalty' ),
                 'type'              => 'string',
-                'enum'              => [ 'name', 'balance', 'pending', 'lifetime', 'last_activity', 'expires' ],
-                'default'           => 'balance',
+                'enum'              => CustomerRowSort::KEYS,
+                'default'           => CustomerRowSort::DEFAULT_COLUMN,
                 'sanitize_callback' => 'sanitize_text_field',
             ],
         ];
@@ -42,12 +44,25 @@ final class CustomerRouteArgs {
                 'required'          => true,
                 'sanitize_callback' => 'sanitize_text_field',
             ],
+            // A custom sanitize_callback replaces the default that enforces maxLength, so validate explicitly.
+            'customer_note'   => [
+                'description'       => __( 'Shown to the customer in place of "Adjustment by {store}".', 'yayloyalty' ),
+                'type'              => 'string',
+                'maxLength'         => 120,
+                'validate_callback' => 'rest_validate_request_arg',
+                'sanitize_callback' => 'sanitize_text_field',
+            ],
             // On moves lifetime_earned, and so tier progress, by the same signed amount in either
             // direction. Off writes a balance-only `correction` row.
             'adjust_lifetime' => [
                 'description' => __( 'Whether this adjustment also moves lifetime_earned, not the balance only.', 'yayloyalty' ),
                 'type'        => 'boolean',
                 'default'     => true,
+            ],
+            'notify'          => [
+                'description' => __( 'Whether to email the customer about this adjustment.', 'yayloyalty' ),
+                'type'        => 'boolean',
+                'default'     => false,
             ],
         ];
     }

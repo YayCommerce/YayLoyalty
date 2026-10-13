@@ -32,8 +32,11 @@ final class EarningService {
     /** Skip reason when the award filter lowered the points to 0. */
     public const REASON_LIMIT_REACHED = 'earning_limit_reached';
 
-    /** Fired once the award filter's partial cut is final, with ( Outcome $outcome, string $trigger, Context $ctx ). */
+    /** Fired once an earning limit's cut, partial or whole, is final, with ( Outcome $outcome, string $trigger, Context $ctx ). */
     public const LIMITED_ACTION = 'yayloyalty_award_limited';
+
+    /** Filter for the points a customer may still earn today, with ( ?int $left, int $user_id ); null is no limit. */
+    public const POINTS_LEFT_TODAY_FILTER = 'yayloyalty_points_left_today';
 
     private PointsEngine $engine;
 
@@ -63,7 +66,7 @@ final class EarningService {
         $customers = new CustomerRepository();
 
         $engine = PointsEngine::build( $campaigns );
-        $ledger = new LedgerService( new LedgerRepository(), $customers );
+        $ledger = new LedgerService( new LedgerRepository(), $customers, $campaigns );
 
         return new self( $engine, $ledger, new PendingPoints( $customers ), self::gates() );
     }
@@ -106,6 +109,24 @@ final class EarningService {
         );
 
         return empty( $valid ) ? $default : $valid;
+    }
+
+    /** The first reason the filtered gate chain gives, or null: whether this shopper may earn, without building the engine. */
+    public static function gate_reason( string $trigger, Context $ctx ): ?string {
+        return self::first_reason( self::gates(), $trigger, $ctx );
+    }
+
+    /** The points $user_id may still earn today, or null for no limit. Read by the storefront; award() caps through AWARD_POINTS_FILTER. */
+    public static function points_left_today( int $user_id ): ?int {
+        /**
+         * The points a customer may still earn today; null is no limit. Internal seam, not a public API.
+         *
+         * @param int|null $left    Null until a subscriber sets a limit.
+         * @param int      $user_id The customer.
+         */
+        $left = apply_filters( self::POINTS_LEFT_TODAY_FILTER, null, $user_id ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name; the sniff cannot read it.
+
+        return is_numeric( $left ) ? max( 0, (int) $left ) : null;
     }
 
     /**
@@ -159,9 +180,15 @@ final class EarningService {
             }
         );
 
-        // A limit that refused the whole award is not announced: no activity row for an order that earned nothing.
+        // A limit that refused the whole award is announced too, so support sees the refusal in the activity log.
         if ( Outcome::SKIPPED === $outcome->get_status() ) {
-            return Outcome::skipped( $outcome->get_reason(), $result );
+            $skipped = Outcome::skipped( $outcome->get_reason(), $result );
+
+            if ( self::REASON_LIMIT_REACHED === $skipped->get_reason() && $skipped->held_back() > 0 ) {
+                self::announce_limited( $skipped, $trigger, $ctx );
+            }
+
+            return $skipped;
         }
 
         if ( Outcome::AWARDED !== $outcome->get_status() ) {
@@ -189,11 +216,7 @@ final class EarningService {
         return $awarded;
     }
 
-    /**
-     * Announces, after commit, an award the filter cut but still paid:
-     * awarded below its evaluation. Never for skipped( REASON_LIMIT_REACHED )
-     * or a duplicate, which LedgerService answers before the filter runs.
-     */
+    /** Announces, after commit, an award an earning limit cut: awarded below its evaluation, or skipped( REASON_LIMIT_REACHED ). */
     private static function announce_limited( Outcome $outcome, string $trigger, Context $ctx ): void {
         Transaction::after_commit(
             static function () use ( $outcome, $trigger, $ctx ): void {
@@ -201,7 +224,7 @@ final class EarningService {
                  * Fires once an earning limit's cut is final, for the activity log.
                  * Internal seam, not a public API.
                  *
-                 * @param Outcome $outcome awarded, entry below get_evaluation().
+                 * @param Outcome $outcome awarded with its entry below get_evaluation(), or skipped( REASON_LIMIT_REACHED ).
                  * @param string  $trigger CampaignTrigger value.
                  * @param Context $ctx
                  */
@@ -270,7 +293,14 @@ final class EarningService {
 
     /** The gate chain: gates run in order and the first reason stops the rest. */
     private function blocked_reason( string $trigger, Context $ctx ): ?string {
-        foreach ( $this->gates as $gate ) {
+        return self::first_reason( $this->gates, $trigger, $ctx );
+    }
+
+    /**
+     * @param Gate[] $gates
+     */
+    private static function first_reason( array $gates, string $trigger, Context $ctx ): ?string {
+        foreach ( $gates as $gate ) {
             $reason = $gate->check( $trigger, $ctx );
 
             if ( null !== $reason && '' !== $reason ) {

@@ -2,6 +2,7 @@
 namespace YayLoyalty\Engine;
 
 use YayLoyalty\Database\Installer;
+use YayLoyalty\Engine\Storefront\AccountRewards;
 use YayLoyalty\Helpers\SettingsHelper;
 
 defined( 'ABSPATH' ) || exit;
@@ -95,6 +96,8 @@ class ActDeact {
     }
 
     public static function deactivate() {
+        // The next activation flushes the rewrite rules again.
+        delete_option( AccountRewards::OPTION_REWRITE_VERSION );
     }
 
     protected static function single_activate() {

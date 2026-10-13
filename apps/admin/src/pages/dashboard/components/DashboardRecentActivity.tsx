@@ -3,11 +3,13 @@ import { __ } from '@wordpress/i18n';
 
 import { parseWPRelativeDate } from '@/lib/helpers/format.helper';
 import { describeLedgerEntry, formatSignedPoints } from '@/lib/helpers/ledger.helper';
+import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import type { DashboardRecentActivity as Activity } from '@/lib/schema/dashboard.schema';
 import { cn } from '@/lib/utils';
 import { Card, CardAction, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { UpgradeToProBadge } from '@/components/pro/UpgradeToPro';
 import { activityDenominator } from '../dashboard-page.copy';
 
 const ROWS = 6;
@@ -19,9 +21,16 @@ function Frame({ description, children }: { description?: string | null; childre
         <CardTitle>{__('Recent activity', 'yayloyalty')}</CardTitle>
         {description ? <CardDescription>{description}</CardDescription> : null}
         <CardAction>
-          <Link to="/customers" className="text-primary text-sm hover:underline">
-            {__('Open full ledger', 'yayloyalty')}
-          </Link>
+          {IS_PRO_BUILD ? (
+            <Link to="/ledger" className="text-primary text-sm hover:underline">
+              {__('Open full ledger', 'yayloyalty')}
+            </Link>
+          ) : (
+            <span className="text-muted-foreground flex items-center gap-1.5 text-sm">
+              {__('Open full ledger', 'yayloyalty')}
+              <UpgradeToProBadge />
+            </span>
+          )}
         </CardAction>
       </CardHeader>
       <Table>

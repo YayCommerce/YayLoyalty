@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Services;
 
+use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Enums\RewardType;
 use YayLoyalty\Enums\Status;
 use YayLoyalty\Helpers\DesignHelper;
@@ -14,10 +15,10 @@ use YayLoyalty\Utils\Dates;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The setup wizard's one read and one write. Both work on rows and options that already exist:
+ * The setup wizard's writes. complete() works on rows and options that already exist:
  * the settings and design options, the three built-in campaigns and the cart discount the installer seeds.
  * The wizard edits a few config keys of each row, so its values are merged over the stored config
- * and every key it never shows survives.
+ * and every key it never shows survives. dismiss() only marks setup done.
  */
 final class SetupService {
 
@@ -35,35 +36,24 @@ final class SetupService {
         $this->rewards   = $rewards;
     }
 
-    /**
-     * The wizard's values as stored now, in the setup payload shape.
-     *
-     * @return array<string, mixed>
-     */
-    public function current(): array {
-        $this->rows = null;
-
-        return $this->payload();
-    }
-
     /** @return array<string, mixed> The setup payload from the rows already loaded. */
     private function payload(): array {
         $settings = SettingsHelper::get_settings();
         $design   = DesignHelper::get_design();
         $rows     = $this->rows();
 
-        $purchase = $rows['purchase'] ? $rows['purchase']->get_config() : [];
-        $discount = $rows['discount'] ? $rows['discount']->get_config() : [];
+        $purchase = ( $rows['purchase'] ? $rows['purchase']->get_config() : [] ) + Campaign::default_config( CampaignTrigger::PURCHASE );
+        $discount = ( $rows['discount'] ? $rows['discount']->get_config() : [] ) + Reward::default_config( RewardType::FLEXIBLE_DISCOUNT );
 
         return [
             'points_label_singular' => $settings['points_label_singular'],
             'points_label_plural'   => $settings['points_label_plural'],
-            'purchase'              => [ 'points_per_unit' => $purchase['points_per_unit'] ?? 1 ],
+            'purchase'              => [ 'points_per_unit' => $purchase['points_per_unit'] ],
             'signup'                => self::toggle_of( $rows['signup'] ),
             'review'                => self::toggle_of( $rows['review'] ),
             'cart_discount'         => [
-                'points_per_currency_unit' => $discount['points_per_currency_unit'] ?? 100,
-                'min_points'               => $discount['min_points'] ?? 100,
+                'points_per_currency_unit' => $discount['points_per_currency_unit'],
+                'min_points'               => $discount['min_points'],
                 'max_percent_of_subtotal'  => $discount['max_percent_of_subtotal'] ?? null,
             ],
             'brand_color'           => $design['launcher']['brand_color'] ?? '',
@@ -102,7 +92,7 @@ final class SetupService {
     /**
      * Saves every wizard choice and marks setup done. validation_error() must have returned null.
      *
-     * @return array<string, mixed> current(), built from the rows just saved.
+     * @return array<string, mixed> The saved values, built from the rows just saved.
      */
     public function complete( array $input ): array {
         $rows    = $this->rows();
@@ -129,9 +119,14 @@ final class SetupService {
 
         DesignHelper::update_design( [ 'launcher' => [ 'brand_color' => (string) $input['brand_color'] ] ] );
 
-        update_option( SettingsHelper::OPTION_SETUP_COMPLETED, true );
+        $this->dismiss();
 
         return $this->payload();
+    }
+
+    /** Marks setup done, so the wizard never opens again. Alone, it is "Exit setup": nothing else changes. */
+    public function dismiss(): void {
+        update_option( SettingsHelper::OPTION_SETUP_COMPLETED, true );
     }
 
     /** @return array{purchase: ?Campaign, signup: ?Campaign, review: ?Campaign, discount: ?Reward} */

@@ -28,3 +28,8 @@ CLAUDE.local.md
 # phpcs
 .phpcs.cache
 .phpunit.result.cache
+
+# Browser tests
+apps/e2e/.auth/
+apps/e2e/test-results/
+apps/e2e/playwright-report/

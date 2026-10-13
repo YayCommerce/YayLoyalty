@@ -28,6 +28,9 @@ abstract class AbstractRestController extends BaseRestController {
         'actor_id',
     ];
 
+    /** Far above any real list; bounds a reorder request body. */
+    protected const MAX_REORDER_IDS = 500;
+
     /** URL segment, e.g. 'campaigns'. */
     abstract public function get_rest_base(): string;
 
@@ -214,6 +217,62 @@ abstract class AbstractRestController extends BaseRestController {
             'perPage'     => $per_page,
             'data'        => $data,
         ];
+    }
+
+    /**
+     * Empty page envelope at the request's page and per_page: the truthful answer
+     * for a collection whose table does not exist yet, not an error.
+     *
+     * @return array<string, mixed>
+     */
+    protected function respond_empty_page( \WP_REST_Request $request ): array {
+        return $this->respond_paginated(
+            [
+                'items'    => [],
+                'total'    => 0,
+                'page'     => (int) $request['page'],
+                'per_page' => (int) $request['per_page'],
+            ]
+        );
+    }
+
+    /**
+     * The `ids` arg of a reorder route.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    protected function reorder_args( string $description ): array {
+        return [
+            'ids' => [
+                'description' => $description,
+                'type'        => 'array',
+                'items'       => [ 'type' => 'integer' ],
+                'required'    => true,
+                'minItems'    => 1,
+                'maxItems'    => self::MAX_REORDER_IDS,
+            ],
+        ];
+    }
+
+    /**
+     * Saves a dragged order through $reorder, which returns false when an id names no row.
+     * A duplicate or unknown id refuses the whole request.
+     *
+     * @param callable(int[]): bool $reorder
+     * @return array{ids: int[]}|\WP_Error
+     */
+    protected function handle_reorder( \WP_REST_Request $request, callable $reorder, string $duplicate_message, string $unknown_message ) {
+        $ids = array_map( 'intval', (array) $request['ids'] );
+
+        if ( count( array_unique( $ids ) ) !== count( $ids ) ) {
+            return $this->error_invalid_arguments( $duplicate_message );
+        }
+
+        if ( ! $reorder( $ids ) ) {
+            return $this->error_invalid_arguments( $unknown_message );
+        }
+
+        return [ 'ids' => $ids ];
     }
 
     /**

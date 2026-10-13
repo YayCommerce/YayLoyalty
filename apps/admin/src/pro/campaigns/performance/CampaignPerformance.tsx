@@ -1,5 +1,4 @@
 import { useEffect } from 'react';
-import { HTTPError } from 'ky';
 import { InfoIcon } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { __, sprintf } from '@wordpress/i18n';
@@ -13,9 +12,9 @@ import { Campaign, CampaignDisplayStatus, resolveCampaignDisplayStatus } from '@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { BackLink } from '@/components/ui/custom/back-link';
-import { ErrorState } from '@/components/ui/custom/error-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import PageLayout from '@/components/layout/PageLayout';
+import { resolveQueryLoad } from '@/components/layout/resolve-query-load';
 import NotFoundPage from '@/pages/404';
 import { conditionsLabel, givesLabel, scheduleLabel } from '../campaign-labels';
 import { CampaignStatusBadge } from '../CampaignStatusBadge';
@@ -25,10 +24,6 @@ import { CampaignPerformanceChart, CampaignPerformanceChartSkeleton } from './Ca
 import { CampaignPerformanceEntries } from './CampaignPerformanceEntries';
 import { CampaignPerformanceSidePanel } from './CampaignPerformanceSidePanel';
 import { CampaignPerformanceTiles } from './CampaignPerformanceTiles';
-
-function isNotFound(error: unknown): boolean {
-  return error instanceof HTTPError && error.response.status === 404;
-}
 
 /**
  * The campaign performance page. One query: the summary carries the campaign itself, so the header
@@ -49,26 +44,18 @@ export function CampaignPerformance({ id }: { id: number }) {
     return <NotFoundPage />;
   }
 
-  if (summaryQuery.isPending) {
-    return <CampaignPerformanceSkeleton />;
+  const loaded = resolveQueryLoad(summaryQuery, {
+    skeleton: <CampaignPerformanceSkeleton />,
+    title: __('Campaign', 'yayloyalty'),
+    errorMessage: __("Could not load this campaign's performance.", 'yayloyalty'),
+    className: 'max-w-6xl',
+  });
+
+  if ('screen' in loaded) {
+    return loaded.screen;
   }
 
-  if (summaryQuery.isError) {
-    if (isNotFound(summaryQuery.error)) {
-      return <NotFoundPage />;
-    }
-
-    return (
-      <PageLayout className="max-w-6xl" title={__('Campaign', 'yayloyalty')}>
-        <ErrorState
-          message={__("Could not load this campaign's performance.", 'yayloyalty')}
-          onRetry={() => summaryQuery.refetch()}
-        />
-      </PageLayout>
-    );
-  }
-
-  const campaign = summaryQuery.data.campaign;
+  const campaign = loaded.data.campaign;
 
   if (!hasPerformancePage(campaign.trigger)) {
     return <NotFoundPage />;
@@ -111,7 +98,7 @@ export function CampaignPerformance({ id }: { id: number }) {
           campaign={campaign}
           trigger={trigger}
           displayStatus={displayStatus}
-          data={summaryQuery.data}
+          data={loaded.data}
         />
       </PageLayout>
     </>

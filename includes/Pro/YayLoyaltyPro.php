@@ -9,10 +9,12 @@ use YayLoyalty\Pro\Controllers\CampaignPerformanceRestController;
 use YayLoyalty\Pro\Controllers\CampaignPreviewRestController;
 use YayLoyalty\Pro\Controllers\CustomerSegmentsRestController;
 use YayLoyalty\Pro\Controllers\DashboardProRestController;
+use YayLoyalty\Pro\Controllers\StoreLedgerRestController;
 use YayLoyalty\Pro\Emails\ProEmails;
 use YayLoyalty\Pro\Helpers\CustomerSegmentsHelper;
 use YayLoyalty\Pro\Repositories\CampaignPerformanceRepository;
 use YayLoyalty\Pro\Repositories\CampaignPointsRepository;
+use YayLoyalty\Pro\Repositories\StoreLedgerRepository;
 use YayLoyalty\Pro\Services\ConditionsEvaluator;
 use YayLoyalty\Pro\Services\DailyEarningLimit;
 use YayLoyalty\Repositories\CampaignRepository;
@@ -77,7 +79,10 @@ final class YayLoyaltyPro {
         add_filter( 'yayloyalty_localize_admin_data', [ self::class, 'add_segments' ] );
         add_filter( 'woocommerce_email_classes', [ ProEmails::class, 'add_classes' ] );
         add_filter( 'woocommerce_email_groups', [ ProEmails::class, 'add_groups' ] );
-        add_filter( EarningService::AWARD_POINTS_FILTER, [ new DailyEarningLimit( new LedgerRepository() ), 'clamp' ], 10, 3 );
+
+        $daily_limit = new DailyEarningLimit( new LedgerRepository() );
+        add_filter( EarningService::AWARD_POINTS_FILTER, [ $daily_limit, 'clamp' ], 10, 3 );
+        add_filter( EarningService::POINTS_LEFT_TODAY_FILTER, [ $daily_limit, 'left_today' ], 10, 2 );
 
         /** Fires once Pro has attached its hooks. Pro-internal; absent from Lite. */
         do_action( 'yayloyalty_pro_booted' );
@@ -259,6 +264,10 @@ final class YayLoyaltyPro {
             new CampaignRepository(),
             new CampaignPerformanceRepository(),
             new CampaignPointsRepository(),
+            new LedgerRepository()
+        );
+        $controllers[] = new StoreLedgerRestController(
+            new StoreLedgerRepository( new LedgerRepository() ),
             new LedgerRepository()
         );
 

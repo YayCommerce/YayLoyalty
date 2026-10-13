@@ -1,5 +1,7 @@
 import { __, _n, sprintf } from '@wordpress/i18n';
 
+import { formatStoreNumber } from '@/lib/helpers/format.helper';
+
 /** The customer drawer's core strings. Functions, not constants: `__()` must run after the locale loads. */
 
 // Header
@@ -67,6 +69,7 @@ export const LEDGER_CSV_HEADERS = () => [
   __('Order ID', 'yayloyalty'),
   __('Campaign', 'yayloyalty'),
   __('Note', 'yayloyalty'),
+  __('Customer description', 'yayloyalty'),
 ];
 
 export const NOT_AVAILABLE_YET_REASON = () => __('Not available yet — coming in a future release.', 'yayloyalty');
@@ -98,9 +101,9 @@ export function pagerSummary(from: number, to: number, total: number): string {
   return sprintf(
     /* translators: 1: number of the first entry shown; 2: number of the last entry shown; 3: total entries. */
     __('%1$s–%2$s of %3$s entries · newest first', 'yayloyalty'),
-    from.toLocaleString(),
-    to.toLocaleString(),
-    total.toLocaleString(),
+    formatStoreNumber(from, 0),
+    formatStoreNumber(to, 0),
+    formatStoreNumber(total, 0),
   );
 }
 

@@ -4,6 +4,7 @@ namespace YayLoyalty\Controllers;
 use YayLoyalty\Access\Capabilities;
 use YayLoyalty\Controllers\Schemas\CustomerItemSchema;
 use YayLoyalty\Controllers\Schemas\CustomerRouteArgs;
+use YayLoyalty\Engine\Emails\Emails;
 use YayLoyalty\Enums\ActivityEvent;
 use YayLoyalty\Models\Customer;
 use YayLoyalty\Repositories\CustomerMetaRepository;
@@ -139,8 +140,13 @@ final class CustomerRestController extends AbstractRestController {
             $points,
             (string) $request['note'],
             get_current_user_id(),
-            (bool) $request['adjust_lifetime']
+            (bool) $request['adjust_lifetime'],
+            isset( $request['customer_note'] ) ? (string) $request['customer_note'] : null
         );
+
+        if ( (bool) $request['notify'] ) {
+            Emails::relay_adjustment( $entry );
+        }
 
         return $entry->to_array();
     }

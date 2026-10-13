@@ -3,6 +3,7 @@ namespace YayLoyalty\Models;
 
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Enums\Status;
+use YayLoyalty\Utils\ConfigSpec;
 use YayLoyalty\Utils\Dates;
 use YayLoyalty\Utils\Json;
 
@@ -296,70 +297,12 @@ class Campaign extends AbstractModel {
             // Whitelisted but not in config_schema(): a Pro trigger's own key, accepted untyped.
             $spec = is_array( $schema ) ? ( $schema[ $key ] ?? null ) : null;
 
-            if ( null !== $spec && ! self::value_matches_spec( $value, $spec ) ) {
+            if ( null !== $spec && ! ConfigSpec::matches( $value, $spec ) ) {
                 return false;
             }
         }
 
         return true;
-    }
-
-    /** @param array<string, mixed> $spec */
-    private static function value_matches_spec( $value, array $spec ): bool {
-        switch ( $spec['type'] ?? '' ) {
-            case 'bool':
-                return is_bool( $value );
-
-            case 'string':
-                return is_string( $value );
-
-            case 'enum':
-                return is_string( $value ) && in_array( $value, (array) ( $spec['values'] ?? [] ), true );
-
-            case 'int':
-                if ( is_bool( $value ) || ! is_numeric( $value ) || floor( (float) $value ) !== (float) $value ) {
-                    return false;
-                }
-
-                return ! isset( $spec['min'] ) || (float) $value >= (float) $spec['min'];
-
-            case 'number':
-                if ( is_bool( $value ) || ! is_numeric( $value ) ) {
-                    return false;
-                }
-
-                if ( isset( $spec['exclusive_min'] ) && (float) $value <= (float) $spec['exclusive_min'] ) {
-                    return false;
-                }
-
-                return ! isset( $spec['min'] ) || (float) $value >= (float) $spec['min'];
-
-            // null is no limit; a set limit is a whole number from 1, since a cap of 0 would block everything.
-            case 'limit':
-                return null === $value || self::value_matches_spec(
-                    $value,
-                    [
-                        'type' => 'int',
-                        'min'  => 1,
-                    ]
-                );
-
-            case 'int_list':
-                if ( ! is_array( $value ) ) {
-                    return false;
-                }
-
-                foreach ( $value as $item ) {
-                    if ( is_bool( $item ) || ! is_numeric( $item ) || floor( (float) $item ) !== (float) $item ) {
-                        return false;
-                    }
-                }
-
-                return true;
-
-            default:
-                return true;
-        }
     }
 
     /** Whether a conditions list is acceptable to store. The controller answers 4xx on false. */

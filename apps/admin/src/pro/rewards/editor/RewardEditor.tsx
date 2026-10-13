@@ -1,6 +1,4 @@
-import { ReactElement, useMemo, useState } from 'react';
-import { UseQueryResult } from '@tanstack/react-query';
-import { HTTPError } from 'ky';
+import { useMemo, useState } from 'react';
 import { Controller, FormProvider, useForm, useFormContext, UseFormReturn, useWatch } from 'react-hook-form';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
@@ -21,12 +19,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BackLink } from '@/components/ui/custom/back-link';
-import { ErrorState } from '@/components/ui/custom/error-state';
 import { ScheduleFields } from '@/components/ui/custom/schedule-fields';
 import { UnsavedChangeDialog } from '@/components/ui/custom/unsaved-changed-dialog';
 import { Field, FieldContent, FieldLabel } from '@/components/ui/field';
 import { Segmented, SegmentedItem } from '@/components/ui/segmented';
 import PageLayout from '@/components/layout/PageLayout';
+import { resolveQueryLoad } from '@/components/layout/resolve-query-load';
 import NotFoundPage from '@/pages/404';
 import { statusLabel } from '@/pro/campaigns/campaign-labels';
 import { CampaignStatusBadge } from '@/pro/campaigns/CampaignStatusBadge';
@@ -55,40 +53,13 @@ export function RewardEditor({ id }: { id: number }) {
     return <NotFoundPage />;
   }
 
-  const loaded = resolveRewardLoad(
-    rewardQuery,
-    __('Reward', 'yayloyalty'),
-    __('Could not load this reward.', 'yayloyalty'),
-  );
+  const loaded = resolveQueryLoad(rewardQuery, {
+    skeleton: <RewardEditorSkeleton />,
+    title: __('Reward', 'yayloyalty'),
+    errorMessage: __('Could not load this reward.', 'yayloyalty'),
+  });
 
-  return 'screen' in loaded ? loaded.screen : <RewardEditorForm reward={loaded.reward} />;
-}
-
-/** The skeleton, 404 or retryable error a reward query shows until it holds a reward. */
-function resolveRewardLoad(
-  query: UseQueryResult<Reward>,
-  title: string,
-  errorMessage: string,
-): { screen: ReactElement } | { reward: Reward } {
-  if (query.isPending) {
-    return { screen: <RewardEditorSkeleton /> };
-  }
-
-  if (query.isError) {
-    if (query.error instanceof HTTPError && query.error.response.status === 404) {
-      return { screen: <NotFoundPage /> };
-    }
-
-    return {
-      screen: (
-        <PageLayout title={title}>
-          <ErrorState message={errorMessage} onRetry={() => query.refetch()} />
-        </PageLayout>
-      ),
-    };
-  }
-
-  return { reward: query.data };
+  return 'screen' in loaded ? loaded.screen : <RewardEditorForm reward={loaded.data} />;
 }
 
 function RewardEditorForm({ reward }: { reward: Reward }) {
@@ -182,22 +153,22 @@ export function RewardCreator({ type, duplicateFromId }: { type: string; duplica
     return <RewardCreatorForm type={type} />;
   }
 
-  const loaded = resolveRewardLoad(
-    sourceQuery,
-    __('New reward', 'yayloyalty'),
-    __('Could not load the reward to duplicate.', 'yayloyalty'),
-  );
+  const loaded = resolveQueryLoad(sourceQuery, {
+    skeleton: <RewardEditorSkeleton />,
+    title: __('New reward', 'yayloyalty'),
+    errorMessage: __('Could not load the reward to duplicate.', 'yayloyalty'),
+  });
 
   if ('screen' in loaded) {
     return loaded.screen;
   }
 
   // A hand-edited URL naming another type would seed a form whose fields don't match the copied config.
-  if (loaded.reward.type !== type) {
+  if (loaded.data.type !== type) {
     return <NotFoundPage />;
   }
 
-  return <RewardCreatorForm type={type} duplicateFrom={loaded.reward} />;
+  return <RewardCreatorForm type={type} duplicateFrom={loaded.data} />;
 }
 
 function RewardCreatorForm({ type, duplicateFrom }: { type: CatalogRewardType; duplicateFrom?: Reward }) {

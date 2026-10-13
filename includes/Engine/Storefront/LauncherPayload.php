@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Engine\Storefront;
 
+use YayLoyalty\Engine\Earning\EarningService;
 use YayLoyalty\Engine\Points\ContextFactory;
 use YayLoyalty\Engine\Points\PointsEngine;
 use YayLoyalty\Engine\Rewards\Clamp;
@@ -37,6 +38,16 @@ final class LauncherPayload {
     }
 
     /**
+     * The payload for a viewer, with the default repositories.
+     *
+     * @param array $design  DesignHelper::get_design().
+     * @param int   $user_id The viewer; 0 for a guest.
+     */
+    public static function for_user( array $design, int $user_id ): array {
+        return ( new self( new CampaignRepository(), new RewardRepository(), new CustomerRepository() ) )->build( $design, $user_id > 0 ? $user_id : null );
+    }
+
+    /**
      * @param array    $design  DesignHelper::get_design().
      * @param int|null $user_id The signed-in shopper; null for a guest.
      */
@@ -47,7 +58,7 @@ final class LauncherPayload {
 
         $customer = $this->customers->find_by_user_id( $user_id );
 
-        return $this->for_balance( $design, null === $customer ? 0 : $customer->get_balance() );
+        return $this->for_balance( $design, null === $customer ? 0 : $customer->get_balance(), EarningService::points_left_today( $user_id ) );
     }
 
     /**
@@ -55,9 +66,10 @@ final class LauncherPayload {
      * The design fields read here are mirrored by DESIGN_PREVIEW_FIELDS (apps/admin/src/lib/api/design.api.ts).
      *
      * @param array    $design  DesignHelper::get_design() or DesignHelper::with_unsaved().
-     * @param int|null $balance The member's balance; null for a guest.
+     * @param int|null $balance    The member's balance; null for a guest.
+     * @param int|null $left_today Points the member may still earn today (EarningService::points_left_today()); null for no limit.
      */
-    public function for_balance( array $design, ?int $balance ): array {
+    public function for_balance( array $design, ?int $balance, ?int $left_today = null ): array {
         $now      = Dates::now();
         $reward   = $this->rewards->find_live_cart_discount( $now );
         $redeem   = self::redeem_rule( $reward );
@@ -73,9 +85,11 @@ final class LauncherPayload {
             'purchase_min' => $rules['purchase_min'],
             'redeem'       => $redeem,
             'member'       => null === $balance ? null : self::member( $balance, null === $redeem ? null : $reward ),
-            'estimate'     => null !== $engine && null === $balance && null !== $rules['earn'][ CampaignTrigger::PURCHASE ] ? self::product_estimate( $engine ) : null,
+            'left_today'   => $left_today,
+            'estimate'     => null !== $engine && null === $balance && null !== $rules['earn'][ CampaignTrigger::PURCHASE ] ? self::product_estimate() : null,
             'register'     => $register,
             'account_url'  => (string) wc_get_page_permalink( 'myaccount' ),
+            'rewards_url'  => AccountRewards::url(),
             'checkout_url' => (string) wc_get_checkout_url(),
         ];
     }
@@ -133,7 +147,7 @@ final class LauncherPayload {
      *
      * @return string|null 'account' (My Account page), 'checkout' (at or right after checkout) or null.
      */
-    private static function register_route(): ?string {
+    public static function register_route(): ?string {
         if ( 'yes' === get_option( 'woocommerce_enable_myaccount_registration' ) ) {
             return 'account';
         }
@@ -145,12 +159,16 @@ final class LauncherPayload {
         return null;
     }
 
+    /** Where register_route() sends a guest: checkout for 'checkout', else My Account. */
+    public static function register_url( string $route ): string {
+        return (string) ( 'checkout' === $route ? wc_get_checkout_url() : wc_get_page_permalink( 'myaccount' ) );
+    }
+
     /**
-     * What this product would earn a guest, at the base rate: no tier multiplier,
-     * since that belongs to members. Null off a product page, on a variable product (its price is a
-     * range) or when the engine finds nothing.
+     * What this product would earn a guest (ProductEarnMessage::guest_points()). Null off a product page,
+     * on a variable product (its price is a range) or when the engine finds nothing.
      */
-    private static function product_estimate( PointsEngine $engine ): ?int {
+    private static function product_estimate(): ?int {
         if ( ! function_exists( 'is_product' ) || ! is_product() ) {
             return null;
         }
@@ -161,14 +179,7 @@ final class LauncherPayload {
             return null;
         }
 
-        try {
-            $points = $engine->evaluate( CampaignTrigger::PURCHASE, ContextFactory::from_product( $product ) )->get_points();
-        } catch ( \Throwable $e ) {
-            // A broken estimate must never take the product page down with it.
-            Log::warning( 'LauncherPayload', 'product estimate failed: ' . $e->getMessage() );
-
-            return null;
-        }
+        $points = ProductEarnMessage::guest_points( $product );
 
         return $points > 0 ? $points : null;
     }

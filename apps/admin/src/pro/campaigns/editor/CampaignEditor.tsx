@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import { HTTPError } from 'ky';
 import { FieldErrors, FormProvider, useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
@@ -14,9 +13,9 @@ import { useEditorSave } from '@/hooks/useEditorSave';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { BackLink } from '@/components/ui/custom/back-link';
-import { ErrorState } from '@/components/ui/custom/error-state';
 import { UnsavedChangeDialog } from '@/components/ui/custom/unsaved-changed-dialog';
 import PageLayout from '@/components/layout/PageLayout';
+import { resolveQueryLoad } from '@/components/layout/resolve-query-load';
 import NotFoundPage from '@/pages/404';
 import { CampaignTemplate, findTemplate } from '../add/campaign-templates';
 import { CampaignArchiveDialog } from '../archive/CampaignArchiveDialog';
@@ -49,26 +48,13 @@ export function CampaignEditor({ id }: { id: number }) {
     return <NotFoundPage />;
   }
 
-  if (campaignQuery.isPending) {
-    return <CampaignEditorSkeleton />;
-  }
+  const loaded = resolveQueryLoad(campaignQuery, {
+    skeleton: <CampaignEditorSkeleton />,
+    title: __('Campaign', 'yayloyalty'),
+    errorMessage: __('Could not load this campaign.', 'yayloyalty'),
+  });
 
-  if (campaignQuery.isError) {
-    if (campaignQuery.error instanceof HTTPError && campaignQuery.error.response.status === 404) {
-      return <NotFoundPage />;
-    }
-
-    return (
-      <PageLayout title={__('Campaign', 'yayloyalty')}>
-        <ErrorState
-          message={__('Could not load this campaign.', 'yayloyalty')}
-          onRetry={() => campaignQuery.refetch()}
-        />
-      </PageLayout>
-    );
-  }
-
-  return <CampaignEditorForm id={id} campaign={campaignQuery.data} />;
+  return 'screen' in loaded ? loaded.screen : <CampaignEditorForm id={id} campaign={loaded.data} />;
 }
 
 function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }) {
@@ -209,26 +195,13 @@ export function CampaignCreator({ templateId, duplicateFromId }: { templateId: s
     return <CampaignCreatorForm template={template} />;
   }
 
-  if (sourceQuery.isPending) {
-    return <CampaignEditorSkeleton />;
-  }
+  const loaded = resolveQueryLoad(sourceQuery, {
+    skeleton: <CampaignEditorSkeleton />,
+    title: __('New campaign', 'yayloyalty'),
+    errorMessage: __('Could not load the campaign to duplicate.', 'yayloyalty'),
+  });
 
-  if (sourceQuery.isError) {
-    if (sourceQuery.error instanceof HTTPError && sourceQuery.error.response.status === 404) {
-      return <NotFoundPage />;
-    }
-
-    return (
-      <PageLayout title={__('New campaign', 'yayloyalty')}>
-        <ErrorState
-          message={__('Could not load the campaign to duplicate.', 'yayloyalty')}
-          onRetry={() => sourceQuery.refetch()}
-        />
-      </PageLayout>
-    );
-  }
-
-  return <CampaignCreatorForm template={template} duplicateFrom={sourceQuery.data} />;
+  return 'screen' in loaded ? loaded.screen : <CampaignCreatorForm template={template} duplicateFrom={loaded.data} />;
 }
 
 function CampaignCreatorForm({ template, duplicateFrom }: { template: CampaignTemplate; duplicateFrom?: Campaign }) {
