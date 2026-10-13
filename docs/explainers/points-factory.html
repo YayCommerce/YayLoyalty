@@ -23,9 +23,10 @@
         --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
     * { box-sizing: border-box; }
-    body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--sans); overflow-x: hidden; }
-    header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; padding: 20px 16px 8px; max-width: 1440px; margin: 0 auto; }
-    h1 { margin: 0; font-size: 22px; }
+    body { margin: 0; background: radial-gradient(1200px 600px at 70% -10%, #ede9fe 0%, rgba(237, 233, 254, 0) 60%), var(--bg); color: var(--ink); font: 15px/1.5 var(--sans); overflow-x: hidden; }
+    header { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 22px 16px 10px; max-width: 1440px; margin: 0 auto; }
+    h1 { margin: 0; font-size: 24px; letter-spacing: -.02em; }
+    .chip { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); background: #ede9fe; border-radius: 999px; padding: 3px 10px; }
     .stamp { color: var(--muted); font-size: 13px; }
     .stamp code, .caption code { font-family: var(--mono); }
     main { max-width: 1440px; margin: 0 auto; padding: 0 16px 32px; }
@@ -39,49 +40,67 @@
     .scenes { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
     .scenes button { font-size: 13px; padding: 4px 10px; }
     .scenes button[aria-current="step"] { background: var(--accent); border-color: var(--accent); color: #fff; }
-    .caption { min-height: 48px; padding: 10px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; margin-bottom: 12px; }
-    .caption .scene-title { font-weight: 600; margin-right: 8px; }
+    .caption { position: relative; overflow: hidden; min-height: 48px; padding: 11px 14px 13px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; margin-bottom: 12px; box-shadow: 0 4px 14px rgba(15, 23, 42, .06); }
+    .caption .scene-title { font-weight: 700; margin-right: 10px; }
+    .caption code { color: #4c1d95; background: #f5f3ff; padding: 2px 8px; border-radius: 6px; }
+    .progress { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: #f1f5f9; }
+    .progress span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #a78bfa, var(--accent)); }
+    .no-anim .progress { display: none; }
     .toolbar { position: sticky; top: 0; z-index: 5; background: var(--bg); padding-top: 4px; }
-    .floor { overflow-x: auto; background: linear-gradient(180deg, #f1f5f9, #ffffff); border: 1px solid var(--line); border-radius: 12px; }
+    .floor { overflow-x: auto; background: radial-gradient(900px 500px at 50% 30%, #ffffff 0%, #eef2f7 70%, #e2e8f0 100%); border: 1px solid var(--line); border-radius: 16px; box-shadow: inset 0 1px 0 #fff, 0 10px 30px rgba(15, 23, 42, .06); }
     .floor svg { display: block; width: 100%; min-width: 960px; height: auto; }
-    .platform-top { fill: #f8fafc; stroke: #cbd5e1; }
-    .platform-left { fill: #cbd5e1; }
-    .platform-right { fill: #94a3b8; }
-    .grid { stroke: #e2e8f0; stroke-width: 1; }
+    .platform-top { fill: url(#platform-top); }
+    .platform-left { fill: #d5dde8; }
+    .platform-right { fill: #aebbcc; }
+    .platform-edge { stroke: #fff; stroke-width: 1.5; }
+    .grid { stroke: #e3e9f1; stroke-width: 1; }
     .belt-route { fill: none; stroke: none; }
     .belt-side, .belt-top { fill: none; stroke-linecap: round; }
-    .belt-side { stroke: #94a3b8; stroke-width: 18; }
+    .belt-side { stroke: #64748b; stroke-width: 18; }
     .belt-top { stroke: #e2e8f0; stroke-width: 14; }
-    .belt-return .belt-side { stroke: #fb7185; }
+    .belt-return .belt-side { stroke: #e11d48; }
     .belt-return .belt-top { stroke: #ffe4e6; }
-    .belt-flow { fill: none; stroke: #94a3b8; stroke-width: 2; stroke-dasharray: 6 10; animation: flow 1.2s linear infinite; }
+    .belt-flow { fill: none; stroke: #b6c2d2; stroke-width: 12; stroke-dasharray: 2 6; animation: flow 1s linear infinite; }
+    .belt-return .belt-flow { stroke: #fda4af; }
     .stub { fill: none; stroke: var(--unbuilt); stroke-width: 3; stroke-dasharray: 4 6; }
-    .gear { fill: none; stroke: #6d28d9; stroke-width: 7; stroke-dasharray: 5 5; animation: flow 1.5s linear infinite; }
+    .gear { fill: none; stroke: #5b21b6; stroke-width: 7; stroke-dasharray: 5 4; animation: flow 1.5s linear infinite; }
     @keyframes flow { to { stroke-dashoffset: -16; } }
     @media (prefers-reduced-motion: reduce) { .belt-flow, .gear { animation: none; } }
     .face { stroke: rgba(15, 23, 42, .28); stroke-width: 1; stroke-linejoin: round; transition: fill .2s, stroke .2s; }
     .station { cursor: pointer; outline: none; }
+    .station, .spot, .bin { filter: url(#soft); }
+    .sheen, .bevel { pointer-events: none; }
+    .bevel { stroke: rgba(255, 255, 255, .8); stroke-width: 1.2; stroke-linecap: round; }
+    .bevel-soft { stroke: rgba(255, 255, 255, .35); }
+    .window { fill: rgba(255, 255, 255, .34); stroke: rgba(15, 23, 42, .16); stroke-width: 1; }
+    .vent { stroke: rgba(15, 23, 42, .3); stroke-width: 2; stroke-linecap: round; }
+    .led { fill: #4ade80; filter: url(#glow); }
+    .beacon { fill: #fbbf24; filter: url(#glow); }
+    .scaffold { stroke: #d97706; stroke-width: 2; stroke-linecap: round; opacity: .75; }
+    .door { fill: #e0f2fe; stroke: rgba(15, 23, 42, .2); }
+    .door-line { stroke: rgba(2, 132, 199, .45); stroke-width: 1; }
     .station:hover .face-top, .station:focus-visible .face-top { stroke: var(--accent); stroke-width: 2.5; }
     .station.is-active .face-top, .station.is-selected .face-top { fill: #ede9fe; stroke: var(--accent); stroke-width: 2.5; }
     .station.unbuilt .face { fill: url(#hatch); stroke: var(--unbuilt); stroke-dasharray: 5 4; }
     .wire { fill: none; stroke: var(--unbuilt); stroke-width: 1; stroke-dasharray: 3 4; }
     .pole { stroke: #94a3b8; stroke-width: 1.5; }
-    .sign rect { fill: var(--surface); stroke: var(--line); }
+    .sign rect { fill: var(--surface); stroke: #dbe2ea; }
     .station:hover .sign rect, .station.is-selected .sign rect { stroke: var(--accent); }
     .role { font: 600 10px var(--sans); letter-spacing: .06em; text-transform: uppercase; fill: var(--muted); }
     .label { font: 700 12px var(--mono); fill: var(--ink); }
     .sub { font: 10px var(--mono); fill: var(--muted); }
     .sign-tag rect { fill: var(--unbuilt); stroke: none; }
     .sign-tag text { font: 700 9px var(--sans); fill: #fff; text-transform: uppercase; letter-spacing: .05em; }
-    .name rect { fill: rgba(255, 255, 255, .9); stroke: var(--line); }
+    .name rect { fill: #fff; stroke: #dbe2ea; }
     .name text { font: 600 11px var(--sans); fill: var(--ink); }
     .arm-bar { stroke: #475569; stroke-width: 6; stroke-linecap: round; }
     .arm-stripe { stroke: #fff; stroke-width: 6; stroke-dasharray: 7 7; }
     .pkg-face { stroke: rgba(0, 0, 0, .25); stroke-width: 1; stroke-linejoin: round; }
-    .pkg-tag rect { fill: #0f172a; }
+    .pkg-tag rect { fill: #0f172a; stroke: rgba(255, 255, 255, .6); }
     .pkg-tag text { font: 700 10px var(--mono); fill: #fff; }
     .legend { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 10px; color: var(--muted); font-size: 13px; }
-    .legend span::before { content: ""; display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; background: var(--c); }
+    .legend span { display: inline-flex; align-items: center; padding: 3px 10px 3px 6px; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; }
+    .legend span::before { content: ""; display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; background: var(--c); box-shadow: inset -3px -3px 0 rgba(0, 0, 0, .18), inset 2px 2px 0 rgba(255, 255, 255, .35); }
     .panel { position: fixed; top: 16px; right: 16px; width: min(380px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 12px 32px rgba(15, 23, 42, .18); padding: 18px; z-index: 10; }
     .panel[hidden] { display: none; }
     .panel h2 { margin: 0 0 2px; font: 700 17px var(--mono); }
@@ -96,6 +115,7 @@
 </head>
 <body>
 <header>
+    <span class="chip">Internal explainer</span>
     <h1>Points Factory</h1>
     <span class="stamp">How points move through YayLoyalty. Accurate as of <code>54cb9ca</code> (2026-10-13). Illustrative data; click any station for its code.</span>
 </header>
@@ -107,7 +127,7 @@
         <button type="button" id="restart">Restart</button>
         <nav class="scenes" id="scenes" aria-label="Scenes"></nav>
     </div>
-    <div class="caption" id="caption" aria-live="polite"><span class="scene-title">Static view.</span> Click a station to see what it does.</div>
+    <div class="caption" id="caption" aria-live="polite"><span class="scene-title">Static view.</span> Click a station to see what it does.<div class="progress" aria-hidden="true"><span id="progress"></span></div></div>
     </div>
     <div class="floor">
         <svg id="floor" viewBox="-480 -40 1600 1000" role="img" aria-label="Points factory floor">
@@ -116,6 +136,12 @@
                     <rect width="10" height="10" fill="#fffbeb"></rect>
                     <line x1="0" y1="0" x2="0" y2="10" stroke="#fde68a" stroke-width="5"></line>
                 </pattern>
+                <filter id="soft" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="9" stdDeviation="7" flood-color="#0f172a" flood-opacity=".16"></feDropShadow></filter>
+                <filter id="glow" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="2" result="b"></feGaussianBlur><feMerge><feMergeNode in="b"></feMergeNode><feMergeNode in="SourceGraphic"></feMergeNode></feMerge></filter>
+                <filter id="blur" x="-20%" y="-50%" width="140%" height="200%"><feGaussianBlur stdDeviation="24"></feGaussianBlur></filter>
+                <linearGradient id="sheen-side" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".24"></stop><stop offset=".55" stop-color="#fff" stop-opacity="0"></stop><stop offset="1" stop-color="#0f172a" stop-opacity=".14"></stop></linearGradient>
+                <linearGradient id="sheen-top" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".5"></stop><stop offset=".7" stop-color="#fff" stop-opacity="0"></stop></linearGradient>
+                <linearGradient id="platform-top" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"></stop><stop offset="1" stop-color="#eaf0f6"></stop></linearGradient>
             </defs>
             <g id="scene">
                 <g id="layer-belts"></g>
@@ -297,12 +323,35 @@
         } ).join( ' ' );
     }
 
-    // The three faces a viewer at +x +y sees; the top one carries the highlight.
-    function box( parent, cx, cy, w, d, h, shades, z0 ) {
+    // The three faces a viewer at +x +y sees, with a sheen and bevel; the top one carries the highlight.
+    // opts.panel adds a window and vents, opts.led a status light.
+    function box( parent, cx, cy, w, d, h, shades, z0, opts ) {
         var x0 = cx - w / 2, x1 = cx + w / 2, y0 = cy - d / 2, y1 = cy + d / 2, za = z0 || 0, zb = za + h;
-        poly( parent, [ [ x0, y1, za ], [ x1, y1, za ], [ x1, y1, zb ], [ x0, y1, zb ] ], { 'class': 'face face-left', fill: shades[ 1 ] } );
-        poly( parent, [ [ x1, y0, za ], [ x1, y1, za ], [ x1, y1, zb ], [ x1, y0, zb ] ], { 'class': 'face face-right', fill: shades[ 2 ] } );
-        return poly( parent, [ [ x0, y0, zb ], [ x1, y0, zb ], [ x1, y1, zb ], [ x0, y1, zb ] ], { 'class': 'face face-top', fill: shades[ 0 ] } );
+        var left = [ [ x0, y1, za ], [ x1, y1, za ], [ x1, y1, zb ], [ x0, y1, zb ] ];
+        var right = [ [ x1, y0, za ], [ x1, y1, za ], [ x1, y1, zb ], [ x1, y0, zb ] ];
+        var cap = [ [ x0, y0, zb ], [ x1, y0, zb ], [ x1, y1, zb ], [ x0, y1, zb ] ];
+        poly( parent, left, { 'class': 'face face-left', fill: shades[ 1 ] } );
+        poly( parent, left, { 'class': 'sheen', fill: 'url(#sheen-side)' } );
+        poly( parent, right, { 'class': 'face face-right', fill: shades[ 2 ] } );
+        poly( parent, right, { 'class': 'sheen', fill: 'url(#sheen-side)' } );
+        var top = poly( parent, cap, { 'class': 'face face-top', fill: shades[ 0 ] } );
+        poly( parent, cap, { 'class': 'sheen', fill: 'url(#sheen-top)' } );
+        line( parent, [ x0, y1, zb ], [ x1, y1, zb ], 'bevel' );
+        line( parent, [ x1, y0, zb ], [ x1, y1, zb ], 'bevel' );
+        line( parent, [ x1, y1, za ], [ x1, y1, zb ], 'bevel bevel-soft' );
+        opts = opts || {};
+        if ( opts.panel ) {
+            var px0 = x0 + w * 0.16, px1 = x1 - w * 0.16;
+            poly( parent, [ [ px0, y1, za + h * 0.38 ], [ px1, y1, za + h * 0.38 ], [ px1, y1, za + h * 0.72 ], [ px0, y1, za + h * 0.72 ] ], { 'class': 'window' } );
+        }
+        if ( opts.panel || opts.vents ) {
+            [ 0.3, 0.45, 0.6 ].forEach( function ( f ) { line( parent, [ x1, y0 + d * 0.28, za + h * f ], [ x1, y1 - d * 0.28, za + h * f ], 'vent' ); } );
+        }
+        if ( opts.led ) {
+            var q = iso( x1, y0 + d * 0.14, za + h * 0.84 );
+            el( 'circle', { cx: q.x, cy: q.y, r: 3.2, 'class': 'led' }, parent );
+        }
+        return top;
     }
 
     // Role details sit on the block and return how far they rise above it.
@@ -313,16 +362,22 @@
             poly( g, [ [ x - n, y - n, z ], [ x - n, y + n, z ], [ x - r, y + r, rim ], [ x - r, y - r, rim ] ], { 'class': 'face', fill: c[ 2 ] } );
             poly( g, [ [ x - n, y + n, z ], [ x + n, y + n, z ], [ x + r, y + r, rim ], [ x - r, y + r, rim ] ], { 'class': 'face', fill: c[ 1 ] } );
             poly( g, [ [ x + n, y - n, z ], [ x + n, y + n, z ], [ x + r, y + r, rim ], [ x + r, y - r, rim ] ], { 'class': 'face', fill: c[ 0 ] } );
+            line( g, [ x - r, y + r, rim ], [ x + r, y + r, rim ], 'bevel' );
+            line( g, [ x + r, y - r, rim ], [ x + r, y + r, rim ], 'bevel' );
             return 20;
         },
         gear: function ( g, s ) {
             var q = iso( s.x, s.y, s.hgt );
-            el( 'ellipse', { cx: q.x, cy: q.y, rx: 34, ry: 19.6, 'class': 'gear' }, g );
-            el( 'ellipse', { cx: q.x, cy: q.y, rx: 14, ry: 8, fill: '#7c3aed' }, g );
+            el( 'ellipse', { cx: q.x, cy: q.y, rx: 42, ry: 24, fill: 'rgba(91, 33, 182, .14)' }, g );
+            el( 'ellipse', { cx: q.x, cy: q.y, rx: 33, ry: 19, 'class': 'gear' }, g );
+            el( 'ellipse', { cx: q.x, cy: q.y, rx: 23, ry: 13.3, fill: '#8b5cf6', stroke: '#5b21b6' }, g );
+            el( 'ellipse', { cx: q.x, cy: q.y - 1.5, rx: 8, ry: 4.6, fill: '#ede9fe', stroke: '#5b21b6' }, g );
             return 0;
         },
         gate: function ( g, s, c ) {
-            box( g, s.x, s.y + 40, 10, 10, 46, c, s.hgt );
+            box( g, s.x, s.y + 40, 12, 12, 46, c, s.hgt );
+            var beacon = iso( s.x, s.y + 40, s.hgt + 52 );
+            el( 'circle', { cx: beacon.x, cy: beacon.y, r: 4, 'class': 'beacon' }, g );
             var pivot = iso( s.x, s.y + 40, s.hgt + 42 ), tip = iso( s.x, s.y - 48, s.hgt + 42 );
             var arm = el( 'g', { id: 'gate-arm' }, g );
             el( 'line', { x1: pivot.x, y1: pivot.y, x2: tip.x, y2: tip.y, 'class': 'arm-bar', id: 'gate-arm-bar' }, arm );
@@ -335,15 +390,20 @@
             poly( g, [ [ x0, y0, z ], [ x1, y0, z ], [ x1, s.y, ridge ], [ x0, s.y, ridge ] ], { 'class': 'face face-top', fill: c[ 0 ] } );
             poly( g, [ [ x0, y1, z ], [ x1, y1, z ], [ x1, s.y, ridge ], [ x0, s.y, ridge ] ], { 'class': 'face face-top', fill: c[ 0 ] } );
             poly( g, [ [ x1, y0, z ], [ x1, y1, z ], [ x1, s.y, ridge ] ], { 'class': 'face', fill: c[ 2 ] } );
+            line( g, [ x0, s.y, ridge ], [ x1, s.y, ridge ], 'bevel' );
+            var dx0 = s.x - s.w * 0.24, dx1 = s.x + s.w * 0.24, dz = s.hgt * 0.72;
+            poly( g, [ [ dx0, y1, 0 ], [ dx1, y1, 0 ], [ dx1, y1, dz ], [ dx0, y1, dz ] ], { 'class': 'door' } );
+            for ( var k = 1; k < 7; k++ ) { line( g, [ dx0, y1, dz * k / 7 ], [ dx1, y1, dz * k / 7 ], 'door-line' ); }
             return 28;
         },
         piston: function ( g, s, c ) {
-            box( g, s.x - 40, s.y - 40, 10, 10, 60, SHADES.Vault, s.hgt );
+            box( g, s.x - 46, s.y, 10, 12, 64, SHADES.Vault, s.hgt );
             var head = el( 'g', { id: 'press-piston' }, g );
-            line( head, [ s.x, s.y, s.hgt + 20 ], [ s.x, s.y, s.hgt + 52 ], 'pole' );
-            box( head, s.x, s.y, 44, 44, 14, c, s.hgt + 14 );
-            box( g, s.x - 6, s.y - 6, 60, 60, 8, SHADES.Vault, s.hgt + 60 );
-            return 68;
+            line( head, [ s.x, s.y, s.hgt + 30 ], [ s.x, s.y, s.hgt + 64 ], 'pole' );
+            box( head, s.x, s.y, 46, 46, 14, c, s.hgt + 16 );
+            box( g, s.x + 46, s.y, 10, 12, 64, SHADES.Vault, s.hgt );
+            box( g, s.x, s.y, 104, 22, 8, SHADES.Vault, s.hgt + 64 );
+            return 72;
         },
         safe: function ( g, s ) {
             var y1 = s.y + s.d / 2, cz = s.hgt / 2, ring = [], hub = [];
@@ -353,6 +413,10 @@
                 hub.push( [ s.x + 9 * Math.cos( t ), y1, cz + 9 * Math.sin( t ) ] );
             }
             poly( g, ring, { 'class': 'face', fill: '#64748b' } );
+            for ( var b = 0; b < 8; b++ ) {
+                var u = b / 8 * Math.PI * 2, bq = iso( s.x + 23 * Math.cos( u ), y1, cz + 23 * Math.sin( u ) );
+                el( 'circle', { cx: bq.x, cy: bq.y, r: 2, fill: '#cbd5e1' }, g );
+            }
             poly( g, hub, { 'class': 'face', fill: '#e2e8f0' } );
             line( g, [ s.x - 20, y1, cz ], [ s.x + 20, y1, cz ], 'pole' );
             line( g, [ s.x, y1, cz - 20 ], [ s.x, y1, cz + 20 ], 'pole' );
@@ -361,13 +425,14 @@
         }
     };
 
-    function sign( g, x, y, z, lines, unbuilt ) {
-        var w = 24 + Math.max.apply( null, lines.map( function ( l ) { return l.text.length * ( 'label' === l.cls ? 7.4 : 6.4 ); } ) );
+    function sign( g, x, y, z, lines, unbuilt, dot ) {
+        var w = 30 + Math.max.apply( null, lines.map( function ( l ) { return l.text.length * ( 'label' === l.cls ? 7.4 : 7.2 ); } ) );
         var h = 10 + lines.length * 14 + ( unbuilt ? 18 : 0 );
         var a = iso( x, y, z );
         var sg = el( 'g', { 'class': 'sign' }, g );
         el( 'rect', { x: a.x - w / 2, y: a.y - h, width: w, height: h, rx: 7 }, sg );
-        lines.forEach( function ( l, i ) { text( sg, a.x, a.y - h + 18 + i * 14, l.cls, l.text ); } );
+        lines.forEach( function ( l, i ) { text( sg, a.x + ( dot && 0 === i ? 6 : 0 ), a.y - h + 18 + i * 14, l.cls, l.text ); } );
+        if ( dot ) { el( 'circle', { cx: a.x + 6 - lines[ 0 ].text.length * 3.6 - 9, cy: a.y - h + 14.5, r: 3.5, fill: dot }, sg ); }
         if ( unbuilt ) {
             var tag = el( 'g', { 'class': 'sign-tag' }, sg );
             el( 'rect', { x: a.x - 40, y: a.y - 20, width: 80, height: 14, rx: 4 }, tag );
@@ -375,14 +440,23 @@
         }
     }
 
-    function figure( g, x, y, color, name ) {
+    function figure( g, x, y, color, name, pad ) {
         var q = iso( x, y, 0 );
-        el( 'ellipse', { cx: q.x, cy: q.y, rx: 14, ry: 7, fill: 'rgba(15, 23, 42, .15)' }, g );
-        el( 'rect', { x: q.x - 9, y: q.y - 34, width: 18, height: 30, rx: 9, fill: color, stroke: 'rgba(15, 23, 42, .3)' }, g );
-        el( 'circle', { cx: q.x, cy: q.y - 42, r: 9, fill: '#fde3c8', stroke: 'rgba(15, 23, 42, .3)' }, g );
+        if ( pad ) {
+            var ring = [];
+            for ( var i = 0; i < 28; i++ ) { var t = i / 28 * Math.PI * 2; ring.push( [ x + 30 * Math.cos( t ), y + 30 * Math.sin( t ), 0 ] ); }
+            poly( g, ring, { fill: color, 'fill-opacity': '.16', stroke: color, 'stroke-opacity': '.5', 'stroke-width': 1.5 } );
+        }
+        el( 'ellipse', { cx: q.x, cy: q.y, rx: 12, ry: 6, fill: 'rgba(15, 23, 42, .2)' }, g );
+        el( 'rect', { x: q.x - 7, y: q.y - 18, width: 5.5, height: 17, rx: 2.5, fill: '#334155' }, g );
+        el( 'rect', { x: q.x + 1.5, y: q.y - 18, width: 5.5, height: 17, rx: 2.5, fill: '#1e293b' }, g );
+        el( 'path', { d: 'M' + ( q.x - 11 ) + ' ' + ( q.y - 15 ) + ' v-12 a11 9 0 0 1 22 0 v12 z', fill: color, stroke: 'rgba(15, 23, 42, .25)' }, g );
+        el( 'circle', { cx: q.x, cy: q.y - 45, r: 8.5, fill: '#fcd9bd', stroke: 'rgba(15, 23, 42, .2)' }, g );
+        el( 'path', { d: 'M' + ( q.x - 8.8 ) + ' ' + ( q.y - 46 ) + ' a8.8 8.8 0 0 1 17.6 0 q-8.8 -3.5 -17.6 0 z', fill: '#3f3f46' }, g );
         var n = el( 'g', { 'class': 'name' }, g );
-        el( 'rect', { x: q.x - 24, y: q.y - 72, width: 48, height: 18, rx: 9 }, n );
-        text( n, q.x, q.y - 59, '', name );
+        el( 'rect', { x: q.x - 27, y: q.y - 78, width: 54, height: 18, rx: 9 }, n );
+        el( 'circle', { cx: q.x - 16, cy: q.y - 69, r: 3.5, fill: color }, n );
+        text( n, q.x + 4, q.y - 65, '', name );
     }
 
     // Belts are drawn in chunks, clipped to what lies between blocks, so each chunk sorts by its own depth.
@@ -422,13 +496,16 @@
     var beltsLayer = document.getElementById( 'layer-belts' );
     var stationsLayer = document.getElementById( 'layer-stations' );
 
-    // The platform: the floor rectangle as a diamond on a 16-unit slab, with a tile grid.
-    var P = PLATFORM;
-    poly( beltsLayer, [ [ P.x0, P.y1, -16 ], [ P.x1, P.y1, -16 ], [ P.x1, P.y1, 0 ], [ P.x0, P.y1, 0 ] ], { 'class': 'platform-left' } );
-    poly( beltsLayer, [ [ P.x1, P.y0, -16 ], [ P.x1, P.y1, -16 ], [ P.x1, P.y1, 0 ], [ P.x1, P.y0, 0 ] ], { 'class': 'platform-right' } );
+    // The platform: the floor rectangle as a diamond on a slab, with a soft ground shadow and a tile grid.
+    var P = PLATFORM, SLAB = 24;
+    poly( beltsLayer, [ [ P.x0 + 20, P.y0 + 20, -SLAB - 26 ], [ P.x1 + 20, P.y0 + 20, -SLAB - 26 ], [ P.x1 + 20, P.y1 + 20, -SLAB - 26 ], [ P.x0 + 20, P.y1 + 20, -SLAB - 26 ] ], { fill: 'rgba(15, 23, 42, .16)', filter: 'url(#blur)' } );
+    poly( beltsLayer, [ [ P.x0, P.y1, -SLAB ], [ P.x1, P.y1, -SLAB ], [ P.x1, P.y1, 0 ], [ P.x0, P.y1, 0 ] ], { 'class': 'platform-left' } );
+    poly( beltsLayer, [ [ P.x1, P.y0, -SLAB ], [ P.x1, P.y1, -SLAB ], [ P.x1, P.y1, 0 ], [ P.x1, P.y0, 0 ] ], { 'class': 'platform-right' } );
     poly( beltsLayer, [ [ P.x0, P.y0, 0 ], [ P.x1, P.y0, 0 ], [ P.x1, P.y1, 0 ], [ P.x0, P.y1, 0 ] ], { 'class': 'platform-top' } );
     for ( var gx = P.x0 + 80; gx < P.x1; gx += 80 ) { line( beltsLayer, [ gx, P.y0, 0 ], [ gx, P.y1, 0 ], 'grid' ); }
     for ( var gy = P.y0 + 80; gy < P.y1; gy += 80 ) { line( beltsLayer, [ P.x0, gy, 0 ], [ P.x1, gy, 0 ], 'grid' ); }
+    line( beltsLayer, [ P.x0, P.y1, 0 ], [ P.x1, P.y1, 0 ], 'platform-edge' );
+    line( beltsLayer, [ P.x1, P.y0, 0 ], [ P.x1, P.y1, 0 ], 'platform-edge' );
 
     Object.keys( BELTS ).forEach( function ( id ) {
         el( 'path', { id: id, d: projectPath( BELTS[ id ], BELT_Z ), 'class': 'belt-route' }, beltsLayer );
@@ -462,10 +539,11 @@
         items.push( { key: s.x + s.y, draw: function ( layer ) {
             var g = el( 'g', { id: id, 'class': 'spot' }, layer );
             if ( 'desk-admin' === id ) {
-                figure( g, s.x, s.y - 36, s.color, s.name );
-                box( g, DESK.x, DESK.y, DESK.w, DESK.d, DESK.hgt, SHADES.Desk );
+                figure( g, s.x, s.y - 36, s.color, s.name, false );
+                box( g, DESK.x, DESK.y, DESK.w, DESK.d, DESK.hgt, SHADES.Desk, 0, { vents: true } );
+                box( g, DESK.x - 12, DESK.y - 10, 24, 4, 16, [ '#475569', '#334155', '#1e293b' ], DESK.hgt );
             } else {
-                figure( g, s.x, s.y, s.color, s.name );
+                figure( g, s.x, s.y, s.color, s.name, true );
             }
         } } );
     } );
@@ -478,6 +556,8 @@
         poly( g, [ [ x0, y0, 0 ], [ x0, y1, 0 ], [ x0, y1, h ], [ x0, y0, h ] ], { 'class': 'face', fill: '#64748b' } );
         poly( g, [ [ x0, y1, 0 ], [ x1, y1, 0 ], [ x1, y1, h ], [ x0, y1, h ] ], { 'class': 'face', fill: SHADES.Bin[ 1 ] } );
         poly( g, [ [ x1, y0, 0 ], [ x1, y1, 0 ], [ x1, y1, h ], [ x1, y0, h ] ], { 'class': 'face', fill: SHADES.Bin[ 2 ] } );
+        line( g, [ x0, y1, h ], [ x1, y1, h ], 'bevel' );
+        line( g, [ x1, y0, h ], [ x1, y1, h ], 'bevel' );
         var q = iso( BIN.x, y1 + 26, 0 ), n = el( 'g', { 'class': 'name' }, g );
         el( 'rect', { x: q.x - 34, y: q.y - 9, width: 68, height: 18, rx: 9 }, n );
         text( n, q.x, q.y + 4, '', 'reject bin' );
@@ -495,7 +575,15 @@
                 line( g, [ x0, y0, 0 ], [ x0, y1, 0 ], 'wire' );
                 line( g, [ x0, y0, 0 ], [ x0, y0, s.hgt ], 'wire' );
             }
-            box( g, s.x, s.y, s.w, s.d, s.hgt, c );
+            var plain = 'safe' === s.detail || 'roof' === s.detail;
+            box( g, s.x, s.y, s.w, s.d, s.hgt, c, 0, { panel: s.built && s.hgt >= 40 && ! plain, vents: s.built && plain, led: s.built && s.hgt >= 40 } );
+            if ( ! s.built ) {
+                var sx0 = s.x - s.w / 2, sx1 = s.x + s.w / 2, sy1 = s.y + s.d / 2, sy0 = s.y - s.d / 2, sh = s.hgt + 12;
+                [ [ sx0, sy1 ], [ sx1, sy1 ], [ sx1, sy0 ] ].forEach( function ( k ) { line( g, [ k[ 0 ], k[ 1 ], 0 ], [ k[ 0 ], k[ 1 ], sh ], 'scaffold' ); } );
+                line( g, [ sx0, sy1, s.hgt * 0.5 ], [ sx1, sy1, s.hgt * 0.5 ], 'scaffold' );
+                line( g, [ sx0, sy1, 0 ], [ sx1, sy1, s.hgt ], 'scaffold' );
+                line( g, [ sx1, sy0, s.hgt * 0.5 ], [ sx1, sy1, s.hgt * 0.5 ], 'scaffold' );
+            }
             var rise = s.detail ? DETAILS[ s.detail ]( g, s, c ) : 0;
             if ( 'gate' === s.detail ) { props.arm = g.querySelector( '#gate-arm' ); }
             if ( 'piston' === s.detail ) { props.piston = g.querySelector( '#press-piston' ); }
@@ -503,7 +591,7 @@
             line( g, [ s.x, s.y, s.hgt + rise ], [ s.x, s.y, top ], 'pole' );
             var lines = [ { cls: 'role', text: s.role }, { cls: 'label', text: s.label } ];
             if ( s.sub ) { lines.push( { cls: 'sub', text: s.sub } ); }
-            sign( g, s.x, s.y, top, lines, ! s.built );
+            sign( g, s.x, s.y, top, lines, ! s.built, s.built ? c[ 2 ] : SHADES.Gate[ 2 ] );
             g.addEventListener( 'click', function () { openPanel( s.id ); } );
             g.addEventListener( 'keydown', function ( e ) {
                 if ( 'Enter' === e.key || ' ' === e.key ) { e.preventDefault(); e.stopPropagation(); openPanel( s.id ); }
@@ -620,6 +708,7 @@
     var C = 13;
     Object.keys( PACKAGES ).forEach( function ( id ) {
         var g = el( 'g', { id: 'pkg-' + id, 'class': 'pkg' }, pkgLayer );
+        el( 'ellipse', { cx: 0, cy: 2, rx: 20, ry: 10, fill: 'rgba(15, 23, 42, .2)' }, g );
         var body = el( 'g', { 'class': 'pkg-body' }, g );
         var left = [ [ -C, C, 0 ], [ C, C, 0 ], [ C, C, 2 * C ], [ -C, C, 2 * C ] ];
         var right = [ [ C, -C, 0 ], [ C, C, 0 ], [ C, C, 2 * C ], [ C, -C, 2 * C ] ];
@@ -629,6 +718,11 @@
         poly( body, right, { fill: 'rgba(0, 0, 0, .22)' } );
         poly( body, top, { 'class': 'pkg-face' } );
         poly( body, top, { fill: 'rgba(255, 255, 255, .3)' } );
+        poly( body, left, { 'class': 'sheen', fill: 'url(#sheen-side)' } );
+        poly( body, [ [ -C, -3, 2 * C ], [ C, -3, 2 * C ], [ C, 3, 2 * C ], [ -C, 3, 2 * C ] ], { fill: 'rgba(255, 255, 255, .55)' } );
+        poly( body, [ [ C, -3, 2 * C ], [ C, 3, 2 * C ], [ C, 3, 2 * C - 9 ], [ C, -3, 2 * C - 9 ] ], { fill: 'rgba(255, 255, 255, .4)' } );
+        line( body, [ -C, C, 2 * C ], [ C, C, 2 * C ], 'bevel' );
+        line( body, [ C, -C, 2 * C ], [ C, C, 2 * C ], 'bevel' );
         var tag = el( 'g', { 'class': 'pkg-tag' }, g );
         el( 'rect', { x: -42, y: -54, width: 84, height: 18, rx: 9 }, tag );
         text( tag, 0, -41, '', PACKAGES[ id ].text );
@@ -637,7 +731,7 @@
         PACKAGES[ id ].home = iso( spot.x, spot.y, 'desk-admin' === PACKAGES[ id ].spot ? DESK.hgt : BELT_Z );
     } );
 
-    function body( id ) { return pkgEls[ id ].firstChild; }
+    function body( id ) { return pkgEls[ id ].querySelector( '.pkg-body' ); }
 
     // A belt's two ends on screen, and how long a ride takes: HOP, or longer on a long belt so speed stays even.
     function endsOf( beltId ) {
@@ -732,8 +826,11 @@
         sceneButtons[ scene.id ] = b;
     } );
 
+    var progressEl = document.getElementById( 'progress' );
+
     function render() {
         var t = master.time();
+        progressEl.style.width = ( t / master.duration() * 100 ).toFixed( 2 ) + '%';
         var entry = timeline[ timeline.length - 1 ];
         for ( var i = 0; i < timeline.length; i++ ) {
             if ( t < timeline[ i ].end ) { entry = timeline[ i ]; break; }
@@ -746,11 +843,16 @@
         title.className = 'scene-title';
         title.textContent = entry.scene.caption;
         captionEl.appendChild( title );
+        var bar = document.createElement( 'div' );
+        bar.className = 'progress';
+        bar.setAttribute( 'aria-hidden', 'true' );
+        bar.appendChild( progressEl );
         if ( entry.label ) {
             var code = document.createElement( 'code' );
             code.textContent = entry.label;
             captionEl.appendChild( code );
         }
+        captionEl.appendChild( bar );
         Object.keys( sceneButtons ).forEach( function ( id ) {
             if ( id === entry.scene.id ) { sceneButtons[ id ].setAttribute( 'aria-current', 'step' ); } else { sceneButtons[ id ].removeAttribute( 'aria-current' ); }
         } );

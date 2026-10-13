@@ -318,6 +318,20 @@ Serve the folder: `python3 -m http.server 8765 --bind 127.0.0.1` in `docs/explai
 Stage: `docs/explainers/points-factory.html`, `docs/specs/2026-10-13-points-factory-explainer-design.md`, `docs/plans/2026-10-13-points-factory-explainer.md`
 Message: `docs(explainers): redraw the points factory as an isometric scene`
 
+- [x] **Step 7: Visual polish (requested 2026-10-13, visuals only)**
+
+This step changes no behaviour, ids or scenes. It adds:
+- **Blocks:** face sheens, bevelled edges and soft drop shadows; windows, vents and status lights on the built blocks; scaffolding poles on the unbuilt ones.
+- **Belts:** roller conveyors.
+- **People:** better figures on coloured dock pads, and a monitor on the admin's desk.
+- **Packages:** taped cubes with floor shadows.
+- **Machine details:** a refined gear, a piston frame, a gate beacon, vault bolts and a shed door.
+- **Signs:** a dot in each role's colour.
+- **Platform and toolbar:** a thicker platform with a ground shadow, and a loop progress bar in the caption.
+
+Re-run Step 5's checks.
+Expected: the same results.
+
 ### Task 5: Close-out
 
 **Files:**
