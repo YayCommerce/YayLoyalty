@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
 import { Html } from '@react-three/drei';
 import type { Station } from '../factory.config';
 import { PLINTH } from '../scene/stations/Kit';
 import { useFactory } from '../store';
+import { useLateMount } from './useLateMount';
 
 /**
  * The station's name above its machine, anchored over the top face's back corner: the highest point on screen in the iso view, so the label never covers its own machine.
@@ -10,13 +10,7 @@ import { useFactory } from '../store';
  */
 export function StationLabel( { s }: { s: Station } ) {
   const hovered = useFactory( ( st ) => st.hovered === s.id );
-  // Mount a frame late: on the first mount, StrictMode's effect replay makes drei's Html unmount its root mid-render, which React logs as an error.
-  const [ ready, setReady ] = useState( false );
-  useEffect( () => {
-    const id = requestAnimationFrame( () => setReady( true ) );
-    return () => cancelAnimationFrame( id );
-  }, [] );
-  if ( ! ready ) {
+  if ( ! useLateMount() ) {
     return null;
   }
   return (

@@ -126,7 +126,7 @@ Rebuild the points factory explainer as a real-time 3D scene that looks like a p
     - The user's own Play/Pause takes over from the hover.
     - A panel opened during a hover resumes the loop when it closes.
 13. With `prefers-reduced-motion: reduce`, the app loads paused on the final state, and the rollers, belt scroll and dial stand still.
-14. **At 390×844:**
+14. **At 390×844:** *(dropped by the user on 2026-10-13: the explainer targets desktop only. Criteria 10 and 17 apply at 1440×900 only.)*
     - the toolbar wraps;
     - the HUD card becomes a bottom sheet;
     - the side panel goes full width;

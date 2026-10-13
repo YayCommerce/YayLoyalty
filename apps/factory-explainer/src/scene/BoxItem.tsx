@@ -5,6 +5,7 @@ import { Html, RoundedBox } from '@react-three/drei';
 import type { PackageId } from '../factory.config';
 import { boxPose, type Tint } from '../timeline';
 import { useFactory } from '../store';
+import { useLateMount } from '../ui/useLateMount';
 
 const SIZE = 0.5;
 const TINTS: Record<Tint, string> = { earn: '#c8a27a', adjust: '#9fb0c8', rejected: '#9ca3af', refund: '#c97a6e' };
@@ -16,6 +17,7 @@ export function BoxItem( { id }: { id: PackageId } ) {
   const tag = useFactory( ( s ) => boxPose( id, s.time ).tag );
   const visible = useFactory( ( s ) => boxPose( id, s.time ).visible );
   const tint = useFactory( ( s ) => boxPose( id, s.time ).tint );
+  const tagReady = useLateMount();
 
   useFrame( () => {
     const p = boxPose( id, useFactory.getState().time );
@@ -43,8 +45,9 @@ export function BoxItem( { id }: { id: PackageId } ) {
       <RoundedBox args={ [ SIZE + 0.01, 0.06, 0.12 ] } radius={ 0.02 } position={ [ 0, SIZE / 2 - 0.02, 0 ] }>
         <meshStandardMaterial color="#e8dcc8" roughness={ 0.6 } />
       </RoundedBox>
-      { visible && (
-        <Html center position={ [ 0, SIZE / 2 + 0.35, 0 ] } style={ { pointerEvents: 'none' } }>
+      { /* Kept mounted and hidden by CSS: unmounting drei's Html mid-render, on a seek or a loop wrap, logs React errors. */ }
+      { tagReady && (
+        <Html center position={ [ 0, SIZE / 2 + 0.35, 0 ] } style={ { pointerEvents: 'none', display: visible ? undefined : 'none' } }>
           <span className="box-tag">{ tag }</span>
         </Html>
       ) }

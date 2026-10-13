@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import type { Station } from '../../factory.config';
 import { propPose } from '../../timeline';
-import { useFactory } from '../../store';
+import { reduced, useFactory } from '../../store';
 import { ACCENTS } from '../materials';
 import { Kit, Part, Plinth, PLINTH } from './Kit';
 
@@ -14,7 +14,8 @@ export function Scoring( { s }: { s: Station } ) {
   const depth = d * 0.45;
   useFrame( () => {
     if ( dial.current ) {
-      dial.current.rotation.z = -propPose( useFactory.getState().time ).dial;
+      // Under reduced motion the dial stands still, even if the user presses Play.
+      dial.current.rotation.z = reduced ? 0 : -propPose( useFactory.getState().time ).dial;
     }
   } );
   return (

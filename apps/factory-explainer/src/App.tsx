@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { StatsGl } from '@react-three/drei';
 import { ACTORS, BOXES, CONVEYORS, STATIONS } from './factory.config';
 import { Actor } from './scene/Actor';
 import { BoxItem } from './scene/BoxItem';
@@ -14,6 +15,19 @@ import { StepCard } from './ui/StepCard';
 import { Toolbar } from './ui/Toolbar';
 import './ui/ui.css';
 
+/** True when the browser can create a WebGL context; checked once, before the canvas mounts. */
+const WEBGL = ( () => {
+  try {
+    const gl = document.createElement( 'canvas' ).getContext( 'webgl2' ) ?? document.createElement( 'canvas' ).getContext( 'webgl' );
+    gl?.getExtension( 'WEBGL_lose_context' )?.loseContext();
+    return Boolean( gl );
+  } catch {
+    return false;
+  }
+} )();
+
+const PERF = new URLSearchParams( window.location.search ).has( 'perf' );
+
 export function App() {
   // Space toggles play, except on a focused button, which Space already presses.
   useEffect( () => {
@@ -28,9 +42,14 @@ export function App() {
     return () => document.removeEventListener( 'keydown', onKey );
   }, [] );
 
+  if ( ! WEBGL ) {
+    return <p className="no-webgl" role="alert">This explainer needs WebGL.</p>;
+  }
+
   return (
     <div className="app">
       <Stage>
+        { PERF && <StatsGl /> }
         <Clock />
         <Floor />
         <RejectBin />
