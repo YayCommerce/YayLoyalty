@@ -98,7 +98,7 @@ function EmailsSettingsForm({ data }: { data: EmailsResponse }) {
                 <a href={sending.wc_emails_url} target="_blank" rel="noreferrer" className="text-primary underline">
                   {__('Manage in WooCommerce', 'yayloyalty')}
                 </a>
-                <Link to="/settings/general" className="text-primary underline">
+                <Link to="/settings/expiry" className="text-primary underline">
                   {__('Expiry reminder timing', 'yayloyalty')}
                 </Link>
               </div>

@@ -415,13 +415,13 @@ Message: `feat(expiry): expire inactive balances daily`
 - Consumes: the `expiry` settings group (Task 3), `useCustomersQuery( { perPage: 1, expiringSoon: '90' } )`.
 - Produces: route `/settings/expiry`.
 
-- [ ] **Step 1: Form module** `expiry-settings.form.ts`
+- [x] **Step 1: Form module** `expiry-settings.form.ts`
 
 `expirySettingsFormSchema = settingsSchema.shape.expiry.pick( { enabled, inactivity_days, reminder_days } )`, plus
 `expirySettingsDefaults( settings )` and `buildExpirySettingsUpdate( values, dirty ): SettingsUpdate`. The latter returns
 `{ expiry: { …edited fields } }`, as `general-settings.form.ts` does.
 
-- [ ] **Step 2: Page and cards**
+- [x] **Step 2: Page and cards**
 
 `ExpirySettingsPage` copies the `GeneralSettingsPage` pattern (`useForm` + `values` + `keepDirtyValues`, `useEditorSave`, `UnsavedChangeDialog`).
 It renders `ExpiryInactivityCard`, then `IS_PRO_BUILD ? null : <ExpiryProUpsellCard />` (Phase 2 and 3 add Pro sections behind the same flag), then Save.
@@ -437,12 +437,21 @@ It renders `ExpiryInactivityCard`, then `IS_PRO_BUILD ? null : <ExpiryProUpsellC
 `ExpiryProUpsellCard` shows the design's "What Pro adds to expiry" list without the spend-order line, plus `<ProGate />`. All strings
 go in `expiry-settings.copy.ts`.
 
-- [ ] **Step 3: Route and nav**
+- [x] **Step 3: Route and nav**
 
 Add `{ path: 'expiry', element: <ExpirySettingsPage /> }` and point the index and `*` redirects at `/settings/expiry`.
 Add `{ to: '/settings/expiry', label: __('Expiry', 'yayloyalty') }` as the first entry of `SETTINGS_NAV`. In `EmailsSettingsPage.tsx`, change the link to `/settings/expiry`.
 
-- [ ] **Step 4: Type-check and lint**
+- [x] **Step 4: Type-check and lint**
+
+Done 2026-10-13 under Node 23.11.1, calling the binaries in `apps/admin/node_modules/.bin` directly: Node 22 isn't installed, so pnpm 11 can't run here.
+- `tsc --noEmit`, eslint and prettier are clean on the changed files.
+- `vitest run` passes 73/73.
+- `vite build` with `BUILD_TYPE=lite`: `main.js` has 0 Pro sentinels and contains the upsell card. With `BUILD_TYPE=pro`: 1 sentinel, and the upsell card is tree-shaken out.
+
+Other decisions in this step:
+- The Lite upsell card lists batches, second reminder and reminder floor only. Bulk amnesty isn't built (backlog), and spend order was removed.
+- The page invalidates every `['customer', …]` query after a save, because the server re-dates every customer.
 
 Run: `pnpm --filter @yayloyalty/admin-page exec tsc --noEmit`
 Expected: no errors.

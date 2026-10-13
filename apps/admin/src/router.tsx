@@ -20,6 +20,7 @@ import RewardEditorPage from './pages/rewards/RewardEditorPage';
 import RewardsPage from './pages/rewards/RewardsPage';
 import DesignSettingsPage from './pages/settings/DesignSettingsPage';
 import EmailsSettingsPage from './pages/settings/EmailsSettingsPage';
+import ExpirySettingsPage from './pages/settings/ExpirySettingsPage';
 import GeneralSettingsPage from './pages/settings/GeneralSettingsPage';
 import SettingsLayout from './pages/settings/SettingsLayout';
 
@@ -104,7 +105,11 @@ export function getManagerRouter() {
           children: [
             {
               index: true,
-              loader: () => redirect('/settings/general'),
+              loader: () => redirect('/settings/expiry'),
+            },
+            {
+              path: 'expiry',
+              element: <ExpirySettingsPage />,
             },
             {
               path: 'general',
@@ -120,7 +125,7 @@ export function getManagerRouter() {
             },
             {
               path: '*',
-              loader: () => redirect('/settings/general'),
+              loader: () => redirect('/settings/expiry'),
             },
           ],
         },
