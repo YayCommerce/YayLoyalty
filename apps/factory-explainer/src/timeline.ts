@@ -19,6 +19,7 @@ const easeOutBack = ( u: number ) => 1 + 2.7 * Math.pow( u - 1, 3 ) + 1.7 * Math
 const HOP = 0.35; // height of a box's hop on a slide, world units
 const SQUASH = 0.22; // how far a box squashes when it lands
 const SQUASH_TIME = 0.35;
+const REVEAL = 1.15; // a card's last step shows a little before the work ends, so it can be read
 const clamp01 = ( u: number ) => Math.min( 1, Math.max( 0, u ) );
 
 /** Belt rides: ramp up and down over 0.4 s at most a quarter of the ride, constant speed between. */
@@ -74,7 +75,7 @@ interface Compiled {
 }
 
 export function compileTimeline( scenes: Scene[] = SCENES ): Compiled {
-  const { INTRO, WALK, HOP, SPEED, WORK, HOLD } = TIMING;
+  const { INTRO, WALK, HOP, SPEED, HOLD } = TIMING;
   const entries: Entry[] = [];
   const sceneStart = {} as Compiled[ 'sceneStart' ];
   const boxes = {} as Compiled[ 'boxes' ];
@@ -145,21 +146,23 @@ export function compileTimeline( scenes: Scene[] = SCENES ): Compiled {
         entries.push( { start: rideStart, end: t, scene, step, phase: 'ride' } );
       }
 
-      // The work: the card reads while the station acts; the gate opens only once its check is shown.
+      // The work: the card's steps reveal one by one while the station acts; the gate opens only once its check is shown,
+      // the deny flashes as the failing line appears, and the press drops as the result appears.
+      const work = workTime( step );
       if ( 'lift' === step.gate ) {
-        lifts.push( t + WORK );
+        lifts.push( t + work );
       }
       if ( 'deny' === step.gate ) {
-        denies.push( t + 1.2 );
+        denies.push( t + revealTime( step, Math.max( 0, step.card.lines.findIndex( ( l ) => l.startsWith( '✗' ) ) ), work ) );
       }
       if ( step.press ) {
-        presses.push( t + 1.4 );
+        presses.push( t + revealTime( step, step.card.lines.length, work ) );
       }
       if ( 'earning-service' === ( step.pulse ?? step.at ) ) {
-        dialRuns.push( [ t, t + WORK ] );
+        dialRuns.push( [ t, t + work ] );
       }
-      entries.push( { start: t, end: t + WORK, scene, step, phase: 'work' } );
-      t += WORK;
+      entries.push( { start: t, end: t + work, scene, step, phase: 'work' } );
+      t += work;
     }
 
     // An actor still walking home when the scene ends finishes before the hold does.
@@ -276,6 +279,27 @@ export function propPose( time: number, c: Compiled = COMPILED ): { gateArm: num
     dial += Math.max( 0, Math.min( time, b ) - a );
   }
   return { gateArm: arm * THREE.MathUtils.degToRad( 70 ), gateDeny: deny, pressHead: press, dial };
+}
+
+/** A step's card as the bubble lists it: its lines, then the result. */
+export function cardSteps( step: Step ): string[] {
+  return [ ...step.card.lines, step.card.out ];
+}
+
+/** Seconds a station works on a step: a base, plus time to read each of its card's steps. */
+export function workTime( step: Step ): number {
+  return TIMING.WORK + TIMING.WORK_PER_STEP * cardSteps( step ).length;
+}
+
+/** How many of a step's card steps are showing at `progress` (0..1) through its work. */
+export function revealCount( step: Step, progress: number ): number {
+  const n = cardSteps( step ).length;
+  return Math.min( n, 1 + Math.floor( clamp01( progress ) * n * REVEAL ) );
+}
+
+/** Seconds after the work starts when card step `i` appears. */
+function revealTime( step: Step, i: number, work: number ): number {
+  return ( work * i ) / ( cardSteps( step ).length * REVEAL );
 }
 
 /** Which station the playhead is at, for highlighting. */

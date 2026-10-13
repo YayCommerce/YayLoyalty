@@ -27,13 +27,6 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .progress { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: rgba(31, 36, 48, .06); }
 .progress span { display: block; height: 100%; width: 0; background: var(--accent); }
 
-.step-card { position: absolute; left: 16px; bottom: 16px; z-index: 5; max-width: min(460px, calc(100vw - 32px)); padding: 12px 16px; color: #e5e7eb; background: var(--glass-dark); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, .14); border-radius: 12px; font: 13px/1.55 var(--mono); opacity: 0; transform: translateY(6px); transition: opacity .3s, transform .3s; pointer-events: none; }
-.step-card.is-on { opacity: 1; transform: none; pointer-events: auto; }
-.step-card .fn { display: block; font-weight: 700; color: #c4b5fd; margin-bottom: 4px; }
-.step-card ul { list-style: none; margin: 0; padding: 0; }
-.step-card .pass { color: #86efac; }
-.step-card .fail { color: #fca5a5; font-weight: 700; }
-.step-card .out { margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255, 255, 255, .14); color: #fde68a; font-weight: 700; }
 
 .panel { position: absolute; top: 12px; right: 12px; bottom: 12px; z-index: 10; width: min(380px, calc(100vw - 24px)); overflow: auto; padding: 18px; background: rgba(255, 255, 255, .92); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 16px 40px rgba(31, 36, 48, .18); }
 .panel h2 { margin: 0 0 4px; font: 700 17px var(--mono); }
@@ -47,9 +40,6 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 .box-tag { display: inline-block; white-space: nowrap; padding: 2px 7px; border-radius: 999px; font: 700 10px var(--mono); color: #fff; background: rgba(24, 28, 38, .82); }
 
-@media (prefers-reduced-motion: reduce) {
-  .step-card { transition: none; transform: none; }
-}
 
 /* Station labels: drei Html puts the anchor at the wrapper's top-left; the label sits above it on a short leader line. */
 .station-label { position: absolute; left: 0; bottom: 10px; transform: translateX(-50%); pointer-events: auto; cursor: pointer; white-space: nowrap; padding: 3px 8px; font: 600 12px/1.35 var(--sans); color: var(--ink); background: var(--glass); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid var(--line); border-radius: 7px; box-shadow: 0 2px 8px rgba(31, 36, 48, .08); }
@@ -67,3 +57,52 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 .no-webgl { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 16px; font: 600 16px var(--sans); color: var(--ink); background: #f4f1ec; }
 .perf-stats { position: fixed; right: 12px; bottom: 12px; z-index: 20; }
+
+/* The step bubble: StepBubble sets left (its centre) and top each frame; the arrow sits on the station's anchor. */
+.step-bubble { --ink: #1d2230; position: fixed; z-index: 6; display: none; transform: translateX(-50%); width: max-content; max-width: 360px; }
+.step-bubble.is-on { display: block; }
+.bubble-body { position: relative; overflow: hidden; background: #fff; border: 3px solid var(--ink); border-radius: 16px; box-shadow: 0 6px 0 rgba(29, 34, 48, .85); font: 14px/1.45 var(--sans); color: var(--ink); transform-origin: 50% 100%; animation: bubble-pop .28s cubic-bezier(.34, 1.56, .64, 1) both; }
+.step-bubble.is-side .bubble-body { transform-origin: 0 50%; }
+.step-bubble::after { content: ""; position: absolute; left: calc(50% - var(--shift, 0px)); top: calc(100% - 3px); width: 18px; height: 18px; background: #fff; border: 3px solid var(--ink); border-top: 0; border-left: 0; transform: translateX(-50%) rotate(45deg) translate(-6px, -6px); }
+.step-bubble.is-side::after { left: -10px; top: var(--arrow-y, 50%); transform: translateY(-50%) rotate(135deg); }
+.bubble-body header { display: flex; align-items: baseline; gap: 8px; padding: 7px 12px; background: var(--accent); color: #fff; border-bottom: 3px solid var(--ink); }
+.bubble-body .role { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; opacity: .9; }
+.bubble-body .station { font-weight: 800; font-size: 15px; }
+.bubble-body .count { margin-left: auto; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: rgba(0, 0, 0, .22); }
+.bubble-body .fn { display: block; margin: 8px 12px 4px; font: 700 12.5px var(--mono); color: #3b3f7a; }
+.bubble-body ol { list-style: none; margin: 0; padding: 4px 12px 12px; display: grid; gap: 5px; }
+.bubble-body li { display: grid; grid-template-columns: 24px 1fr; align-items: start; gap: 8px; }
+.bubble-body li .badge { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--ink); font: 800 11px var(--sans); background: #fff; }
+.bubble-body li .text { font: 12.5px/1.5 var(--mono); padding-top: 1px; }
+.bubble-body li.is-done { opacity: .72; }
+.bubble-body li.is-done .badge { background: var(--accent); color: #fff; }
+.bubble-body li.is-new .text { font-weight: 700; }
+.bubble-body li.is-new { animation: step-in .25s ease-out both; }
+.bubble-body li.pass .badge { background: #2fbf71; color: #fff; }
+.bubble-body li.fail .badge { background: #ef4b4b; color: #fff; }
+.bubble-body li.fail .text { color: #c62828; font-weight: 700; }
+.bubble-body li.result .badge { background: #ffc233; color: var(--ink); }
+.bubble-body li.result .text { font-weight: 800; background: #fff4d1; border-radius: 6px; padding: 2px 6px; }
+@keyframes bubble-pop { from { opacity: 0; transform: scale(.6); } 70% { opacity: 1; transform: scale(1.06); } to { transform: scale(1); } }
+@keyframes step-in { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: none; } }
+
+/* Labels step back while a station's bubble names it. */
+.station-label.is-hidden { display: none; }
+.station-label.is-muted { opacity: .5; }
+
+/* The scene's steps, under the caption. */
+.tracker { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 7px; }
+.tracker button { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; padding: 2px 9px 2px 3px; border-radius: 999px; border: 2px solid #1d2230; background: #fff; color: #1d2230; }
+.tracker .num { display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; font-size: 10px; font-weight: 800; background: #e8ecf2; }
+.tracker .is-done { background: #eef9f1; }
+.tracker .is-done .num { background: #2fbf71; color: #fff; }
+.tracker .is-current { background: var(--accent); color: #fff; font-weight: 700; animation: chip-pulse 1.4s ease-in-out infinite; }
+.tracker .is-current .num { background: #fff; color: #1d2230; }
+.tracker .is-next { opacity: .6; }
+.tracker .arrow { color: var(--muted); font-size: 12px; }
+@keyframes chip-pulse { 50% { box-shadow: 0 0 0 4px rgba(29, 34, 48, .12); } }
+
+/* Last, so it wins over the animations above. */
+@media (prefers-reduced-motion: reduce) {
+  .bubble-body, .step-bubble li.is-new, .tracker .is-current { animation: none; }
+}

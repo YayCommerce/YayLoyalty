@@ -51,7 +51,8 @@ export interface Prop { kind: 'pallet' | 'cone' | 'forklift' | 'cable-tray'; pos
 export const BELT_Y = 0.25;
 
 /** Seconds, and world units a second for SPEED. */
-export const TIMING = { INTRO: 1.6, WALK: 2.0, HOP: 2.4, SPEED: 5.5, WORK: 3.4, HOLD: 2.4 } as const;
+// WORK is the base of a station's work; each step on its card adds WORK_PER_STEP, so the steps can be read one by one.
+export const TIMING = { INTRO: 1.6, WALK: 2.0, HOP: 2.4, SPEED: 5.5, WORK: 1.2, WORK_PER_STEP: 0.9, HOLD: 2.4 } as const;
 
 export const STATIONS: Station[] = [
   {
