@@ -5,6 +5,7 @@ import { __ } from '@wordpress/i18n';
  */
 
 export const EXPIRY_TITLE = () => __('Expire points after inactivity', 'yayloyalty');
+export const EXPIRY_TITLE_BATCHES = () => __('Expire points after they are earned', 'yayloyalty');
 export const EXPIRY_DESCRIPTION = () => __('When off, balances are kept until they are spent.', 'yayloyalty');
 export const EXPIRY_AFTER_LABEL = () => __('Expire after', 'yayloyalty');
 export const EXPIRY_AFTER_HINT = () => __('since the customer last earned or redeemed', 'yayloyalty');

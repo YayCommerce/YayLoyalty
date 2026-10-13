@@ -3,13 +3,15 @@ import { z } from 'zod';
 import { Settings, settingsSchema, SettingsUpdate } from '@/lib/schema/settings.schema';
 
 /**
- * The Expiry tab's form over the `expiry` settings group: the free inactivity fields, plus Pro's
- * reminder fields, which only Pro's section edits (never dirty in Lite, so never sent).
+ * The Expiry tab's form over the `expiry` settings group: the free inactivity fields, plus Pro's model
+ * and reminder fields, which only Pro's sections edit (never dirty in Lite, so never sent).
  */
 export const expirySettingsFormSchema = settingsSchema.shape.expiry.pick({
   enabled: true,
   inactivity_days: true,
   reminder_days: true,
+  model: true,
+  batch_months: true,
   final_reminder_days: true,
   reminder_min_points: true,
 });
@@ -24,6 +26,8 @@ export function expirySettingsDefaults(settings: Settings): ExpirySettingsFormVa
     enabled: settings.expiry.enabled,
     inactivity_days: settings.expiry.inactivity_days,
     reminder_days: settings.expiry.reminder_days,
+    model: settings.expiry.model,
+    batch_months: settings.expiry.batch_months,
     final_reminder_days: settings.expiry.final_reminder_days,
     reminder_min_points: settings.expiry.reminder_min_points,
   };

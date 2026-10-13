@@ -61,4 +61,11 @@ Expected:
   endpoint, so it uses a sample.
 - No "Spend order" control.
 
-Steps: expand after Task 1 lands.
+- [x] **Step 1: Implement the files above.** Other changes:
+  - Under batches, `ExpiryInactivityCard` retitles itself "Expire points after they are earned" and hides the inactivity window and its sentence.
+  - The page's confirm uses `ConfirmDialog`. Its strings come through `pro/index.ts`, so Lite tree-shakes them.
+- [x] **Step 2: Verify.** Done 2026-10-13:
+  - tsc, eslint and prettier are clean, and Vitest passes 73/73; every new file is under 200 lines;
+  - the Lite `main.js` has 0 hits each for the model cards, the switch confirm and the reminders, and keeps the upsell; Pro has 1 of each and no upsell;
+  - the changed core PHP adds no code-level `Pro` word, and `includes/YayLoyalty.php` stays at 2, the validator's limit.
+- [x] **Step 3: Commit** `feat(settings): add Pro's expiry model section`

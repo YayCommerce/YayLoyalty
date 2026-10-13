@@ -17,6 +17,7 @@ import {
   EXPIRY_REMIND_HINT,
   EXPIRY_REMIND_LABEL,
   EXPIRY_TITLE,
+  EXPIRY_TITLE_BATCHES,
   EXPIRY_VIEW_THEM,
 } from './expiry-settings.copy';
 import type { ExpirySettingsFormValues } from './expiry-settings.form';
@@ -117,7 +118,9 @@ function ExpiringSoonCount() {
  */
 export function ExpiryInactivityCard() {
   const { control } = useFormContext<ExpirySettingsFormValues>();
-  const [enabled, days] = useWatch({ control, name: ['enabled', 'inactivity_days'] });
+  const [enabled, days, model] = useWatch({ control, name: ['enabled', 'inactivity_days', 'model'] });
+  // Only Pro can store batches; its section then owns the window, so this card keeps the switch and reminder.
+  const isBatches = model === 'batches';
 
   return (
     <Card className="gap-3">
@@ -135,13 +138,13 @@ export function ExpiryInactivityCard() {
           )}
         />
         <label htmlFor="yayloyalty-expiry-enabled" className="flex cursor-pointer flex-col gap-1">
-          <CardTitle>{EXPIRY_TITLE()}</CardTitle>
+          <CardTitle>{isBatches ? EXPIRY_TITLE_BATCHES() : EXPIRY_TITLE()}</CardTitle>
           <CardDescription>{EXPIRY_DESCRIPTION()}</CardDescription>
         </label>
       </CardHeader>
       {enabled && (
         <CardContent className="flex flex-col gap-4">
-          <DaysField name="inactivity_days" label={EXPIRY_AFTER_LABEL()} hint={EXPIRY_AFTER_HINT()} />
+          {!isBatches && <DaysField name="inactivity_days" label={EXPIRY_AFTER_LABEL()} hint={EXPIRY_AFTER_HINT()} />}
           <DaysField
             name="reminder_days"
             label={EXPIRY_REMIND_LABEL()}
@@ -154,7 +157,7 @@ export function ExpiryInactivityCard() {
               </>
             }
           />
-          <ExpiryExample days={days} />
+          {!isBatches && <ExpiryExample days={days} />}
           <ExpiringSoonCount />
         </CardContent>
       )}
