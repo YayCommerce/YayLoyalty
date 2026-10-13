@@ -72,7 +72,7 @@ Rebuild the points factory explainer as a real-time 3D scene that looks like a p
    - `pnpm --filter @yayloyalty/factory-explainer exec tsc --noEmit` passes.
 2. **Story:**
    - The loop plays on load and repeats the 6 scenes in the order and with the steps of the 2D page.
-   - The caption shows each step's label, and the HUD card shows its `fn`, `lines` (✓ in green, ✗ in red) and `out`, with the text identical to the 2D page's `SCENES`.
+   - The caption shows each step's label, and the HUD card shows its `fn`, `lines` (✓ in green, ✗ in red) and `out`, with the text identical to the 2D page's `SCENES`. *(Restyled by the user on 2026-10-13: the HUD card is a speech bubble at the working station, its lines reveal one by one as numbered steps from the playhead, each station works for 1.2 s plus 0.9 s per card step, and a tracker under the caption shows the scene's steps.)*
 3. **Layout and story live in `src/factory.config.ts`.** Moving a station there moves its machine, label and conveyor ends with no other code change.
 4. **Station silhouettes:**
 
@@ -89,11 +89,11 @@ Rebuild the points factory explainer as a real-time 3D scene that looks like a p
 
    No box ever enters an unbuilt zone.
 5. **Geometry:** machines come from Kenney Factory Kit GLTF models where one fits. Anything else is built from drei `RoundedBox` with a bevel on every edge. No unbevelled box geometry appears in the scene.
-6. **Colour and materials:**
+6. **Colour and materials:** *(Superseded by the user's cartoon restyle on 2026-10-13: toon materials with three light bands, a bright palette with one bright accent per machine, and dark ink outlines on every solid replace the calm palette and `MeshStandardMaterial`.)*
    - Each machine has at most one accent colour, at HSL saturation 60 % or less.
    - Machines are neutral grey or graphite, and the floor is a warm off-white.
    - Materials are `MeshStandardMaterial` with roughness 0.5–0.8. Metalness is above 0 only on the press, the vault and the rollers.
-7. **Rendering:**
+7. **Rendering:** *(Superseded by the user's cartoon restyle on 2026-10-13: N8AO is dropped, since AO muddies the flat toon bands; the rest still holds.)*
    - The camera is orthographic at the isometric angle (35.264° pitch, 45° yaw).
    - Pan and zoom work within limits, and rotation is disabled.
    - Lights: a hemisphere light plus one directional key light with soft shadows (shadow map 2048, `PCFSoftShadowMap`), `ContactShadows` and `Environment preset="city"` at an intensity of 0.4 or less.
@@ -101,7 +101,7 @@ Rebuild the points factory explainer as a real-time 3D scene that looks like a p
 8. **Floor:**
    - The floor has a tile grid, painted lane lines and zone-name decals.
    - Low-contrast props: pallets, cones, a forklift parked by the warehouse, and cable trays.
-9. **Motion:**
+9. **Motion:** *(Superseded by the user's cartoon restyle on 2026-10-13: the workers are chunky yellow cartoon characters built from primitives, with a bounce, a waddle and swinging limbs from the playhead, in place of the walk animation; boxes hop and squash, the gate arm overshoots and the press head squashes.)*
    - Rollers rotate and the belt textures scroll.
    - Boxes follow `CatmullRomCurve3` paths at constant speed.
    - Boxes are cardboard with an `ORDER`, `SIGNUP`, `REVIEW` or `MANUAL` tag, and the tag adds the points value once the box leaves scoring.

@@ -2,6 +2,8 @@
 
 An internal, animated 3D explainer of how points move through YayLoyalty's earning path: six scenes in which customers' events ride belts through the listeners, `EarningService`, `ProgramGate`, `PendingPoints` and `LedgerService` into the `customers` vault. It never ships: `apps/` is outside the release zip. It targets desktop browsers with WebGL; there is no mobile layout.
 
+The look is cartoon: toon shading, ink outlines and chunky yellow workers. When a station works, a speech bubble at the station lists its steps one by one, and the tracker under the caption shows where the scene is.
+
 ## Run it
 
 From the repo root, on Node 22:
@@ -29,13 +31,13 @@ pnpm --filter @yayloyalty/factory-explainer shoot
 
 - `src/factory.config.ts`: the layout and the story. Moving a station there moves its machine, label and belt ends.
 - `src/timeline.ts`: every pose is a pure function of the playhead, so a seek renders the same frame as playback.
-- `src/scene/`: the 3D scene; `src/ui/`: the toolbar, step card, station panel and labels.
+- `src/scene/`: the 3D scene; `src/ui/`: the toolbar and step tracker, the step bubble, the station panel and the labels.
 
 ## Asset credits
 
 All CC0, with each license beside its files:
 
-- `public/models/`: [Kenney Factory Kit 3.0](https://kenney.nl/assets/factory-kit), and the [Quaternius Universal Animation Library](https://quaternius.com/packs/universalanimationlibrary.html) (Standard) mannequin, trimmed to its walk and idle clips as `worker.glb`.
+- `public/models/`: [Kenney Factory Kit 3.0](https://kenney.nl/assets/factory-kit). The workers are built from primitives.
 - `public/env/`: [Potsdamer Platz](https://polyhaven.com/a/potsdamer_platz) by Greg Zaal, Poly Haven, the image behind drei's `city` environment preset.
 
 Spec: [docs/specs/2026-10-13-points-factory-3d-design.md](../../docs/specs/2026-10-13-points-factory-3d-design.md)
