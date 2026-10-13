@@ -100,6 +100,11 @@ abstract class LedgerEntryEmail extends LoyaltyEmail {
         }
     }
 
+    /** Every value the email shows for its current row, for other renderers such as YayMail. [] until one is prepared. */
+    public function get_template_values(): array {
+        return $this->extra_template_args();
+    }
+
     /** Built once per row: a multipart send and YayMail each render it again. */
     protected function extra_template_args(): array {
         if ( ! $this->object instanceof LedgerEntry ) {

@@ -11,10 +11,12 @@ defined( 'ABSPATH' ) || exit;
 /** The points-expired email, sent once per EXPIRE row the expiry job writes, within the weekly cap. Off by default. */
 class PointsExpiredEmail extends LedgerEntryEmail {
 
+    public const ID = 'yayloyalty_points_expired';
+
     protected $is_enabled_by_default = false;
 
     public function __construct() {
-        $this->id          = 'yayloyalty_points_expired';
+        $this->id          = self::ID;
         $this->title       = __( 'Points expired', 'yayloyalty' );
         $this->description = __( 'Sent after a customer\'s points balance has expired.', 'yayloyalty' );
         $this->email_group = Emails::GROUP_POINTS;

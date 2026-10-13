@@ -59,11 +59,6 @@ class PointsEarnedEmail extends LedgerEntryEmail {
         $this->prepare( new LedgerEntry( null, get_current_user_id(), 50, 150, LedgerType::EARN, LedgerSource::ORDER ) );
     }
 
-    /** Every value the email shows for its current award, for other renderers such as YayMail. [] until one is prepared. */
-    public function get_template_values(): array {
-        return $this->extra_template_args();
-    }
-
     /** @return array<string, mixed> */
     protected function build_values( LedgerEntry $entry ): array {
         $order        = $entry->get_order_id() ? wc_get_order( $entry->get_order_id() ) : null;
