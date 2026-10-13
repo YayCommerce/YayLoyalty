@@ -118,7 +118,25 @@ Lighting and effects follow spec criterion 7:
 - Rollers spin and the belt texture scrolls in proportion to `time`, so they stand still while paused.
 - Under reduced motion, they never move.
 
-Steps: expand after Phase 1 lands.
+- [x] **Step 1: Floor.** `Floor.tsx` paints one `CanvasTexture`, 64 px per world unit, over the whole slab. It carries:
+  - a 1-unit tile grid;
+  - a dashed lane around the customers' walkway and a solid line around the machine floor;
+  - yellow and black stripes in a 0.4-unit band around the gate's footprint;
+  - each station's `role` in capitals, painted in front of the station.
+
+  Every colour is low contrast against `#efe9df`. The texture lies on a plane inset by the slab's 0.12 bevel and is cropped to match. Canvas text uses the system font, so no font is fetched.
+- [x] **Step 2: Props.** Add `Prop` and `PROPS` to the config: three pallets, a forklift beside the warehouse with its forks facing the camera, three cones by the reject bin and the red belt, and two cable trays along the floor edges. `Props.tsx` builds each kind from `Part`s and the kit's `box-small` and `cone`. `App.tsx` mounts `<Props />`.
+- [x] **Step 3: Conveyors.**
+  - The belt profile gets 0.04 bevels on its top edges, and UVs whose `v` counts treads along the belt.
+  - One greyscale tread `CanvasTexture`, shared by every belt and tinted by each belt's colour, scrolls by `time × 0.8 / 0.18`.
+  - A metal roller at each belt end spins by the same distance.
+  - `store.ts` exports `reduced`, and under it the distance is always 0.
+  - Each belt has its own `polygonOffset`, so the belts that overlap at a station no longer z-fight.
+- [x] **Step 4: `shoot` waits for the loaded scene.** Kit models show their fallback boxes for about 3 s after load in headless Chromium, so a shot could catch them. `Kit` now counts its loading fallbacks in `kitLoading`, and the debug handle exposes it as `loading()`. `shoot` opens the page with `waitUntil: 'networkidle'`, which covers the HDR, and then waits for `loading() === 0`.
+- [x] **Step 5: Verify.** `tsc --noEmit` exits 0, and `shoot` passes. A one-off Playwright script loads the page the way `shoot` does, pauses, and crops an empty stretch of belt. It counts pixels that differ by more than 3:
+  - with normal motion: the first frame and a repeat are identical (0), the frame at `t = 10.5` differs from `t = 10` (1015), and seeking back to 10 is identical again (0);
+  - under `reducedMotion: 'reduce'`: all three counts are 0.
+- [x] **Step 6: Commit.** Stage `src/scene/Floor.tsx`, `Conveyor.tsx`, `Props.tsx`, `stations/Kit.tsx`, `src/factory.config.ts`, `src/store.ts`, `src/App.tsx`, `src/debug.ts`, `scripts/shoot.spec.ts` and this file: `feat(factory-explainer): paint the floor, add props and move the belts`.
 
 ### Task 5: Walking workers
 

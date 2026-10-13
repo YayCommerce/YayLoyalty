@@ -30,8 +30,11 @@ for ( const [ width, height ] of VIEWPORTS ) {
     page.on( 'pageerror', ( e ) => errors.push( e.message ) );
 
     await page.setViewportSize( { width, height } );
-    await page.goto( '/' );
+    // networkidle covers the environment HDR, which loadModel does not track.
+    await page.goto( '/', { waitUntil: 'networkidle' } );
     await page.waitForFunction( () => Boolean( ( window as unknown as { __factory?: FactoryDebug } ).__factory?.machineRects()[ 'vault' ] ) );
+    // Kit models stand in as boxes until they load; shoot only the loaded scene.
+    await page.waitForFunction( () => 0 === ( window as unknown as { __factory: FactoryDebug } ).__factory.loading(), undefined, { timeout: 60_000 } );
 
     for ( const shot of SHOTS ) {
       await page.evaluate( ( source ) => {

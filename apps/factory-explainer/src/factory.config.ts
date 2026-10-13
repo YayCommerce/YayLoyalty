@@ -45,6 +45,7 @@ export interface Step {
 
 export interface Scene { id: `scene-${ 1 | 2 | 3 | 4 | 5 | 6 }`; caption: string; show?: PackageId; steps: Step[]; }
 export interface Box { id: PackageId; event: 'ORDER' | 'SIGNUP' | 'REVIEW' | 'MANUAL'; points: string; color: 'earn' | 'adjust'; }
+export interface Prop { kind: 'pallet' | 'cone' | 'forklift' | 'cable-tray'; position: Vec2; rotation: number; }
 
 export const BELT_Y = 0.25;
 
@@ -197,6 +198,19 @@ export const ACTORS: Actor[] = [
 export const CONSOLE_Y = 0.7;
 
 export const REJECT_BIN: Vec2 = [ 15, 9 ];
+
+/** Set dressing on empty floor, clear of every station, belt and walk path. */
+export const PROPS: Prop[] = [
+  { kind: 'pallet', position: [ 12.9, 2.3 ], rotation: 0 },
+  { kind: 'pallet', position: [ 14.3, 2.3 ], rotation: 0.08 },
+  { kind: 'pallet', position: [ 27, 11.9 ], rotation: -0.1 },
+  { kind: 'forklift', position: [ 22.6, 1.5 ], rotation: -Math.PI / 2 },
+  { kind: 'cone', position: [ 13.8, 10.2 ], rotation: 0 },
+  { kind: 'cone', position: [ 16.2, 10.2 ], rotation: 0 },
+  { kind: 'cone', position: [ 22.2, 12.6 ], rotation: 0 },
+  { kind: 'cable-tray', position: [ 6.25, 1.1 ], rotation: 0 },
+  { kind: 'cable-tray', position: [ 31.2, 6.5 ], rotation: Math.PI / 2 },
+];
 
 /** Belts between endpoints; via holds the inner corners, so moving a station moves its belt ends. */
 export const CONVEYORS: Conveyor[] = [

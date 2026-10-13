@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { BOXES, STATIONS, type PackageId, type Scene, type StationId } from './factory.config';
 import { rig } from './scene/rig';
+import { kitLoading } from './scene/stations/Kit';
 import { useFactory } from './store';
 import { COMPILED, boxPose, entryAt } from './timeline';
 
@@ -16,6 +17,7 @@ export interface FactoryDebug {
   labelRects(): Record<string, Rect>;
   machineRects(): Record<string, Rect>;
   boxPoint( id: PackageId ): { x: number; y: number } | null;
+  loading(): number;
 }
 
 /** Projects world points to CSS pixels relative to the page. */
@@ -82,6 +84,7 @@ const handle: FactoryDebug = {
     const r = project( [ new THREE.Vector3( p[ 0 ], p[ 1 ] + 0.25, p[ 2 ] ) ] );
     return r ? { x: r.x, y: r.y } : null;
   },
+  loading: () => kitLoading.count,
 };
 
 ( window as unknown as { __factory: FactoryDebug } ).__factory = handle;

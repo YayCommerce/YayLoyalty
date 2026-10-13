@@ -21,7 +21,8 @@ interface FactoryState {
   setHovered( id: StationId | null ): void;
 }
 
-const reduced = typeof window !== 'undefined' && window.matchMedia( '(prefers-reduced-motion: reduce)' ).matches;
+/** True under prefers-reduced-motion: the app loads paused on the final state, and the belts and rollers never move. */
+export const reduced = typeof window !== 'undefined' && window.matchMedia( '(prefers-reduced-motion: reduce)' ).matches;
 
 /** The scripted clock and the pause rules: the user's own Play/Pause wins over a hover, and a panel resumes what it paused. */
 export const useFactory = create<FactoryState>()( ( set, get ) => ( {

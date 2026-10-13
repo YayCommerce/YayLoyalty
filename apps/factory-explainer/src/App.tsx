@@ -5,6 +5,7 @@ import { BoxItem } from './scene/BoxItem';
 import { Clock } from './scene/Clock';
 import { Conveyor } from './scene/Conveyor';
 import { Floor, RejectBin } from './scene/Floor';
+import { Props } from './scene/Props';
 import { Stage } from './scene/Stage';
 import { Station } from './scene/Station';
 import { useFactory } from './store';
@@ -33,6 +34,7 @@ export function App() {
         <Clock />
         <Floor />
         <RejectBin />
+        <Props />
         { CONVEYORS.map( ( c ) => <Conveyor key={ c.id } conveyor={ c } /> ) }
         { STATIONS.map( ( s ) => <Station key={ s.id } station={ s } /> ) }
         { ACTORS.map( ( a ) => <Actor key={ a.id } actor={ a } /> ) }
