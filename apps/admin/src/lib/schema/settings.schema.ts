@@ -13,6 +13,18 @@ export const settingsSchema = z.object({
     /** Weekly per-customer cap on loyalty emails; null = no cap. */
     throttle_per_week: z.number().int().min(1).nullable(),
   }),
+  /** Mirrors the `expiry` group and RANGES in SettingsHelper. model, batch_months and the final reminder act only in Pro. */
+  expiry: z.object({
+    enabled: z.boolean(),
+    inactivity_days: z.number().int().min(1).max(3650),
+    /** 0 sends no reminder. */
+    reminder_days: z.number().int().min(0).max(365),
+    model: z.enum(['inactivity', 'batches']),
+    batch_months: z.number().int().min(1).max(120),
+    final_reminder_days: z.number().int().min(0).max(365),
+    /** null reminds whatever the expiring points. */
+    reminder_min_points: z.number().int().min(1).nullable(),
+  }),
   /** Stamped by SettingsHelper on save; PHP reports SCHEMA_VERSION when the stored blob predates versioning. */
   schema_version: z.number().int().optional(),
 });

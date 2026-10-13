@@ -1,7 +1,9 @@
 <?php
 namespace YayLoyalty\Helpers;
 
+use YayLoyalty\Services\ExpiryRules;
 use YayLoyalty\Utils\ConfigSpec;
+use YayLoyalty\Utils\ConditionValueRules;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -24,6 +26,13 @@ class SettingsHelper {
     /** Longest points label; the admin form's schema (general-settings.form.ts) mirrors it. */
     public const POINTS_LABEL_MAX_LENGTH = 30;
 
+    /** Inclusive bounds of the whole-number schema types. coerce() clamps to them; is_valid() refuses values outside. */
+    private const RANGES = [
+        'expiry_days'   => [ 1, 3650 ],
+        'reminder_days' => [ 0, 365 ],
+        'expiry_months' => [ 1, 120 ],
+    ];
+
     /** Bump when a migration changes the stored shape. */
     public const SCHEMA_VERSION = 2;
 
@@ -39,6 +48,18 @@ class SettingsHelper {
             'emails'                => [
                 // Weekly per-customer cap on loyalty emails. null means no cap. Engine\Emails\EmailThrottle enforces it.
                 'throttle_per_week' => 3,
+            ],
+            // Read through Services\ExpiryRules. model, batch_months, final_reminder_days and reminder_min_points act only in Pro.
+            'expiry'                => [
+                'enabled'             => false,
+                'inactivity_days'     => 365,
+                // 0 sends no reminder.
+                'reminder_days'       => 30,
+                'model'               => ExpiryRules::MODEL_INACTIVITY,
+                'batch_months'        => 12,
+                'final_reminder_days' => 7,
+                // null reminds whatever the expiring points.
+                'reminder_min_points' => null,
             ],
         ];
     }
@@ -57,6 +78,15 @@ class SettingsHelper {
             'max_points_per_day'    => 'limit',
             'emails'                => [
                 'throttle_per_week' => 'limit',
+            ],
+            'expiry'                => [
+                'enabled'             => 'bool',
+                'inactivity_days'     => 'expiry_days',
+                'reminder_days'       => 'reminder_days',
+                'model'               => 'expiry_model',
+                'batch_months'        => 'expiry_months',
+                'final_reminder_days' => 'reminder_days',
+                'reminder_min_points' => 'limit',
             ],
         ];
     }
@@ -165,8 +195,9 @@ class SettingsHelper {
     }
 
     /**
-     * Whether every `limit` field in $input is null or a whole number from 1. The controllers answer
-     * 400 on false; coerce() alone would read a 0 or a fraction as "no limit" without saying so.
+     * Whether every `limit` field in $input is null or a whole number from 1, every ranged field a whole
+     * number within RANGES, and every expiry model known. The controllers answer 400 on false; coerce()
+     * alone would read a 0 or a fraction as "no limit", or clamp an out-of-range value, without saying so.
      *
      * @param array<string, mixed> $input
      */
@@ -190,10 +221,21 @@ class SettingsHelper {
                 }
             } elseif ( 'limit' === $type && null !== $input[ $key ] && ! ConfigSpec::is_limit( $input[ $key ] ) ) {
                 return false;
+            } elseif ( isset( self::RANGES[ $type ] ) && ! self::in_range( $input[ $key ], $type ) ) {
+                return false;
+            } elseif ( 'expiry_model' === $type && ! in_array( $input[ $key ], ExpiryRules::MODELS, true ) ) {
+                return false;
             }
         }
 
         return true;
+    }
+
+    /** @param mixed $value */
+    private static function in_range( $value, string $type ): bool {
+        return ConditionValueRules::is_int_like( $value )
+            && (int) $value >= self::RANGES[ $type ][0]
+            && (int) $value <= self::RANGES[ $type ][1];
     }
 
     /**
@@ -259,6 +301,14 @@ class SettingsHelper {
 
             case 'non_negative_int':
                 return max( 0, (int) $value );
+
+            case 'expiry_days':
+            case 'reminder_days':
+            case 'expiry_months':
+                return min( max( (int) $value, self::RANGES[ $type ][0] ), self::RANGES[ $type ][1] );
+
+            case 'expiry_model':
+                return ExpiryRules::MODEL_BATCHES === $value ? ExpiryRules::MODEL_BATCHES : ExpiryRules::MODEL_INACTIVITY;
 
             // null is no limit. is_valid() refuses anything else that isn't a whole number from 1 on write.
             case 'limit':

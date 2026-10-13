@@ -26,6 +26,26 @@ final class Dates {
         return gmdate( self::MYSQL_FORMAT, $base + $seconds );
     }
 
+    /** A UTC MySQL DATETIME plus whole days, as MySQL's DATE_ADD( …, INTERVAL n DAY ) computes it. */
+    public static function add_days( string $utc, int $days ): string {
+        return gmdate( self::MYSQL_FORMAT, self::to_timestamp( $utc ) + $days * DAY_IN_SECONDS );
+    }
+
+    /**
+     * A UTC MySQL DATETIME plus whole months, clamped to the target month's last day as MySQL's
+     * DATE_ADD( …, INTERVAL n MONTH ) does: 2026-01-31 + 1 month is 2026-02-28, not 2026-03-03.
+     */
+    public static function add_months( string $utc, int $months ): string {
+        $timestamp = self::to_timestamp( $utc );
+        $month     = (int) gmdate( 'n', $timestamp ) - 1 + $months;
+        $year      = (int) gmdate( 'Y', $timestamp ) + intdiv( $month, 12 );
+        $month     = $month % 12 + 1;
+        $last_day  = (int) gmdate( 't', gmmktime( 0, 0, 0, $month, 1, $year ) );
+        $day       = min( (int) gmdate( 'j', $timestamp ), $last_day );
+
+        return gmdate( self::MYSQL_FORMAT, gmmktime( (int) gmdate( 'G', $timestamp ), (int) gmdate( 'i', $timestamp ), (int) gmdate( 's', $timestamp ), $month, $day, $year ) );
+    }
+
     /** A moment in any zone as a UTC MySQL DATETIME, the form every stored and queried bound takes. */
     public static function to_utc( \DateTimeImmutable $at ): string {
         return $at->setTimezone( new \DateTimeZone( 'UTC' ) )->format( self::MYSQL_FORMAT );

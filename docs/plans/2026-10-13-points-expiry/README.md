@@ -82,7 +82,7 @@ branch from `dev/edd` after the previous PR merges (`paul/feat/expiry-reminders`
 - `MODEL_INACTIVITY = 'inactivity'`, `MODEL_BATCHES = 'batches'`, `MODEL_FILTER = 'yayloyalty_expiry_model'`
 - `enabled(): bool`, `inactivity_days(): int`, `reminder_days(): int`
 - `model(): string`: `apply_filters( 'yayloyalty_expiry_model', 'inactivity' )`, and anything other than `batches` reads as `inactivity`
-- `lot_expires_at( string $created_at ): ?string`: NULL unless enabled and the model is batches (batch branch in Phase 3)
+- `lot_expires_at( string $created_at ): ?string`: NULL unless enabled and the model is batches. The batch branches of this and `customer_expires_at()` landed in Phase 1 Task 3, because the rule lives in one place. They stay inert until Phase 3 hooks the model filter and passes the earliest lot expiry.
 - `customer_expires_at( int $balance, ?string $last_activity_at, string $joined_at, ?string $earliest_lot_expiry ): ?string`
 - `expiring_points( Customer $customer, string $at ): int`: what would expire by `$at`. Inactivity returns `max(balance, 0)`, batches returns `( new LotRepository() )->sum_due( user, $at )` (Phase 1 Task 4, batch branch in Phase 3)
 

@@ -209,7 +209,7 @@ Message: `feat(ledger): write lots and allocations with every ledger row`
 - Modify: `apps/admin/src/lib/schema/settings.schema.ts`
 - Modify: `includes/Utils/Dates.php`
 - Create: `includes/Services/ExpiryRules.php`
-- Modify: `includes/Services/LotWriter.php` (expiry sync at the end of `record()`, `lot_expires_at()` for new lots)
+- Modify: `includes/Services/LotWriter.php` (expiry sync at the end of `record()`, `lot_expires_at()` for new lots; third constructor parameter `CustomerRepository`)
 - Modify: `includes/Repositories/CustomerRepository.php` (`set_expires_at`, `recompute_inactivity_expiry`)
 - Create: `includes/Engine/Expiry/ExpiryRecompute.php`
 - Modify: `includes/Controllers/SettingsRestController.php` (`save_settings()`)
@@ -218,7 +218,7 @@ Message: `feat(ledger): write lots and allocations with every ledger row`
 - Consumes: `LotWriter::record` (Task 2).
 - Produces: README contract `Dates`, `ExpiryRules`, the settings table, `set_expires_at`, `recompute_inactivity_expiry` and `ExpiryRecompute::run`.
 
-- [ ] **Step 1: Add the `expiry` group to `SettingsHelper`**
+- [x] **Step 1: Add the `expiry` group to `SettingsHelper`**
 
 Add the defaults and schema types from the README settings table. Add `coerce()` cases:
 - `expiry_days`: clamp to 1–3650.
@@ -230,11 +230,11 @@ Add the defaults and schema types from the README settings table. Add `coerce()`
 Mirror the group in `settings.schema.ts`. Its comment says it mirrors `SettingsHelper`, and `model` is
 `z.enum(['inactivity', 'batches'])`.
 
-- [ ] **Step 2: Add `Dates::add_days()` and `Dates::add_months()`**
+- [x] **Step 2: Add `Dates::add_days()` and `Dates::add_months()`**
 
 `add_months` clamps the day to the target month's last day. `add_months( '2026-01-31 09:00:00', 1 )` returns `2026-02-28 09:00:00`.
 
-- [ ] **Step 3: Implement `ExpiryRules`**, as in the README contract
+- [x] **Step 3: Implement `ExpiryRules`**, as in the README contract
 
 `customer_expires_at()` returns NULL when expiry is off or `$balance <= 0`. Otherwise:
 - under inactivity, `add_days( $last_activity_at ?? $joined_at, inactivity_days() )`;
@@ -242,7 +242,7 @@ Mirror the group in `settings.schema.ts`. Its comment says it mirrors `SettingsH
 
 The `joined_at` fallback is a plan decision: a balance from admin grants alone would otherwise never expire.
 
-- [ ] **Step 4: Sync `customers.expires_at` at the end of `LotWriter::record()`**
+- [x] **Step 4: Sync `customers.expires_at` at the end of `LotWriter::record()`**
 
 Compute `ExpiryRules::customer_expires_at()` with:
 - the row's `balance_after`;
@@ -252,7 +252,7 @@ Compute `ExpiryRules::customer_expires_at()` with:
 
 Call `CustomerRepository::set_expires_at()` only when the value differs from `$before->get_expires_at()`. New lots take `ExpiryRules::lot_expires_at( created_at )`.
 
-- [ ] **Step 5: Recompute everyone on save**
+- [x] **Step 5: Recompute everyone on save**
 
 `CustomerRepository::recompute_inactivity_expiry( ?int $days )` runs one `UPDATE`. It sets `expires_at = DATE_ADD( COALESCE( last_activity_at, joined_at ), INTERVAL %d DAY )`
 where `balance > 0`, and `expires_at = NULL` everywhere else (all rows when `$days` is null).
@@ -262,7 +262,9 @@ Phase 3 adds the batch branch.
 
 In `SettingsRestController::save_settings()`, call `ExpiryRecompute::run()` after `update_settings()` when the payload has the `expiry` key.
 
-- [ ] **Step 6: Verify on the local site**
+- [x] **Step 6: Verify on the local site**
+
+Done 2026-10-13 without WP-CLI, which isn't installed. A scratchpad script loaded `wp-load.php` and compared `Dates::add_months()` with MySQL `DATE_ADD` (5/5 equal, leap year included). The local site has no customers, so the sync and recompute were checked with a throwaway, uncommitted test run through the integration harness on scratch tables (17 assertions: criterion 6, the `joined_at` fallback, zero balance, recompute on/shorter/off, range validation, REST save + 400).
 
 Run: `wp eval 'YayLoyalty\Helpers\SettingsHelper::update_settings(["expiry"=>["enabled"=>true,"inactivity_days"=>365]]); YayLoyalty\Engine\Expiry\ExpiryRecompute::run();'`
 Then: `wp db query "SELECT user_id, last_activity_at, joined_at, balance, expires_at FROM wp_yayloyalty_customers LIMIT 5"`

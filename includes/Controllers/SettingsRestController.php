@@ -2,6 +2,7 @@
 namespace YayLoyalty\Controllers;
 
 use YayLoyalty\Access\Capabilities;
+use YayLoyalty\Engine\Expiry\ExpiryRecompute;
 use YayLoyalty\Helpers\SettingsHelper;
 
 defined( 'ABSPATH' ) || exit;
@@ -53,7 +54,14 @@ class SettingsRestController extends AbstractRestController {
             return $this->error_invalid_arguments();
         }
 
-        return SettingsHelper::update_settings( $settings );
+        $saved = SettingsHelper::update_settings( $settings );
+
+        // After the save, so the recompute reads the new rules, as every ledger write from now on does.
+        if ( array_key_exists( 'expiry', $settings ) ) {
+            ExpiryRecompute::run();
+        }
+
+        return $saved;
     }
 
     public function mark_reviewed( \WP_REST_Request $request ) {

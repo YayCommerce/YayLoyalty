@@ -56,7 +56,7 @@ final class LedgerService {
         $this->ledger    = $ledger;
         $this->customers = $customers;
         $this->campaigns = $campaigns;
-        $this->lots      = new LotWriter( new LotRepository(), new LotAllocationRepository() );
+        $this->lots      = new LotWriter( new LotRepository(), new LotAllocationRepository(), $customers );
     }
 
     /**
@@ -411,7 +411,7 @@ final class LedgerService {
             $lifetime_earned_delta,
             $lifetime_redeemed_delta,
             $activity_at,
-            null // Expiry needs the lots table: designed, not built yet.
+            null // LotWriter keeps expires_at, after the lots move.
         );
     }
 

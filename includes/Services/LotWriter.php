@@ -4,14 +4,16 @@ namespace YayLoyalty\Services;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Models\Customer;
 use YayLoyalty\Models\LedgerEntry;
+use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LotAllocationRepository;
 use YayLoyalty\Repositories\LotRepository;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Keeps one customer's lots in step with each ledger row. Constructed and called only by LedgerService,
- * inside the row's transaction under the customer lock, so its writes commit or roll back with the row.
+ * Keeps one customer's lots, and customers.expires_at, in step with each ledger row. Constructed and
+ * called only by LedgerService, inside the row's transaction under the customer lock, so its writes
+ * commit or roll back with the row.
  * Invariants: per lot, remaining = points - SUM(allocations.points); per customer,
  * SUM(remaining of open lots) = max(balance, 0).
  */
@@ -23,9 +25,13 @@ final class LotWriter {
     /** @var LotAllocationRepository */
     private $allocations;
 
-    public function __construct( LotRepository $lots, LotAllocationRepository $allocations ) {
+    /** @var CustomerRepository */
+    private $customers;
+
+    public function __construct( LotRepository $lots, LotAllocationRepository $allocations, CustomerRepository $customers ) {
         $this->lots        = $lots;
         $this->allocations = $allocations;
+        $this->customers   = $customers;
     }
 
     /**
@@ -38,6 +44,18 @@ final class LotWriter {
         } elseif ( $row->get_points() < 0 ) {
             $this->take_from_lots( $row, $before->get_balance() );
         }
+
+        $this->sync_expires_at( $row, $before );
+    }
+
+    /** Re-dates customers.expires_at after $row, writing only when the date moved. */
+    private function sync_expires_at( LedgerEntry $row, Customer $before ): void {
+        $last_activity_at = LedgerType::is_activity( $row->get_type() ) ? $row->get_created_at() : $before->get_last_activity_at();
+        $expires_at       = ExpiryRules::customer_expires_at( $row->get_balance_after(), $last_activity_at, $before->get_joined_at(), null );
+
+        if ( $expires_at !== $before->get_expires_at() ) {
+            $this->customers->set_expires_at( $row->get_user_id(), $expires_at );
+        }
     }
 
     /**
@@ -47,7 +65,7 @@ final class LotWriter {
     private function open_lot( LedgerEntry $row, int $balance_before ): void {
         $points = $row->get_points();
         $paid   = $balance_before < 0 ? min( -$balance_before, $points ) : 0;
-        $lot_id = $this->lots->insert_lot( $row->get_user_id(), (int) $row->get_id(), $points, $points - $paid, null, $row->get_created_at() );
+        $lot_id = $this->lots->insert_lot( $row->get_user_id(), (int) $row->get_id(), $points, $points - $paid, ExpiryRules::lot_expires_at( $row->get_created_at() ), $row->get_created_at() );
 
         if ( $paid > 0 ) {
             $this->allocations->insert( $lot_id, (int) $row->get_id(), $paid, $row->get_created_at() );

@@ -104,6 +104,52 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
     }
 
     /**
+     * Sets when the customer's next points expire, null for never. Services\LotWriter calls it under the
+     * customer lock, with the date Services\ExpiryRules gives.
+     *
+     * @throws QueryException When the write fails.
+     */
+    public function set_expires_at( int $user_id, ?string $expires_at ): void {
+        global $wpdb;
+
+        $result = $wpdb->update( $this->table(), [ 'expires_at' => $expires_at ], [ 'user_id' => $user_id ], [ '%s' ], [ '%d' ] ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+
+        if ( false === $result ) {
+            throw new QueryException( 'update', $wpdb->last_error, $this->table() . ' (set_expires_at)' );
+        }
+    }
+
+    /**
+     * Re-dates every customer under the inactivity model, as ExpiryRules::customer_expires_at() would one
+     * by one: $days after the last earn or redeem (or joining), for a positive balance only. Null clears
+     * every date, for expiry turned off. One statement, so it runs without the customer locks.
+     *
+     * @throws QueryException When the write fails.
+     */
+    public function recompute_inactivity_expiry( ?int $days ): void {
+        global $wpdb;
+
+        $table = esc_sql( $this->table() );
+
+        // phpcs:disable WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- a set-wide update on the plugin's own escaped table; the day count is bound.
+        $result = null === $days
+            ? $wpdb->query( "UPDATE `{$table}` SET expires_at = NULL WHERE expires_at IS NOT NULL" )
+            : $wpdb->query(
+                $wpdb->prepare(
+                    "UPDATE `{$table}` SET expires_at = CASE
+                        WHEN balance > 0 THEN DATE_ADD( COALESCE( last_activity_at, joined_at ), INTERVAL %d DAY )
+                        ELSE NULL END",
+                    $days
+                )
+            );
+        // phpcs:enable WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+        if ( false === $result ) {
+            throw new QueryException( 'update', $wpdb->last_error, $this->table() . ' (recompute_inactivity_expiry)' );
+        }
+    }
+
+    /**
      * Applies a ledger row's effects to the cached aggregates. Relative
      * arithmetic (balance = balance + ?), so it is correct even without the
      * row lock. Which deltas a row counts toward is decided by the caller.
