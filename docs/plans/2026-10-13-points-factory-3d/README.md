@@ -2,7 +2,7 @@
 
 > **For agentic workers:** execute phases in order. Read this file, then the current phase file. Do not start a phase until the previous phase's exit criterion has been verified and `/yayplancheck` has passed on it.
 
-**Status:** active
+**Status:** done 2026-10-13
 **Goal:** Rebuild the points factory explainer as a real-time 3D react-three-fiber app in `apps/factory-explainer/`, replacing the 2D page.
 **Spec:** [docs/specs/2026-10-13-points-factory-3d-design.md](../../specs/2026-10-13-points-factory-3d-design.md)
 **Architecture:** One config file holds the layout and the story. One store owns a scripted playhead, and every moving thing derives its pose from that playhead, so a seek renders the same frame as playback does. The first phase draws everything from beveled primitives so the story and controls work end to end. The second phase swaps in kit models and the lighting, and the third makes it responsive and retires the 2D page.
@@ -55,7 +55,7 @@
 |---|---|---|---|
 | 1 | The full story plays in 3D with beveled primitives: belts, boxes, toolbar, HUD card, side panel and every control | `pnpm --filter @yayloyalty/factory-explainer exec tsc --noEmit` exits 0. `pnpm --filter @yayloyalty/factory-explainer shoot` passes, writing 3 screenshots at 1440×900 with no console errors | done 2026-10-13 |
 | 2 | The product-illustration look: kit models, distinct silhouettes, lighting and post-processing, floor and props, walking workers, labels with hover outline and dimming | `shoot` passes at 1440×900, including the label overlap assertions, and one critique round against the spec's checklist is recorded | done 2026-10-13 |
-| 3 | Reduced motion, fallbacks, the `?perf` meter, docs, and the 2D page removed. The 390×844 layout was dropped by the user on 2026-10-13 | Spec criterion 17 at 1440×900 only: `shoot` passes, the checklist passes within 3 rounds, and `./scripts/check-harness.sh` passes | implemented 2026-10-13, awaiting `/yayplancheck`. `shoot` and the harness pass. The checklist passes, with one label (`customers`) on the racks accepted by the user |
+| 3 | Reduced motion, fallbacks, the `?perf` meter, docs, and the 2D page removed. The 390×844 layout was dropped by the user on 2026-10-13 | Spec criterion 17 at 1440×900 only: `shoot` passes, the checklist passes within 3 rounds, and `./scripts/check-harness.sh` passes | done 2026-10-13 |
 
 ## Interface contract
 
