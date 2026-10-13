@@ -6,6 +6,7 @@ import { Selection } from '@react-three/postprocessing';
 import { Effects } from './Effects';
 import { Lighting } from './Lighting';
 import { rig } from './rig';
+import { useFactory } from '../store';
 
 /** Floor bounds in world units (the 2D floor, 0–1240 × 30–530, divided by 40). */
 export const FLOOR = { x0: 0, x1: 31, z0: 0.75, z1: 13.25 };
@@ -83,6 +84,8 @@ function IsoRig() {
 
 export function Stage( { children }: { children?: ReactNode } ) {
   return (
+    // Hovering anywhere over the factory holds the loop, so the scene can be read; leaving resumes it.
+    <div className="stage" onPointerEnter={ () => useFactory.getState().hoverHold( true ) } onPointerLeave={ () => useFactory.getState().hoverHold( false ) }>
     <Canvas shadows={ { type: THREE.PCFShadowMap } } orthographic dpr={ [ 1, 1.25 ] } camera={ { position: [ 55, 40, 47 ] } }>
       <color attach="background" args={ [ '#f4f1ec' ] } />
       <IsoRig />
@@ -93,5 +96,6 @@ export function Stage( { children }: { children?: ReactNode } ) {
         { children }
       </Selection>
     </Canvas>
+    </div>
   );
 }

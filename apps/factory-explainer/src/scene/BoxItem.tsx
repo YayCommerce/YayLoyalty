@@ -1,25 +1,22 @@
 import { useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
-import { Html, RoundedBox } from '@react-three/drei';
+import { RoundedBox } from '@react-three/drei';
 import type { PackageId } from '../factory.config';
 import { boxPose, type Tint } from '../timeline';
 import { useFactory } from '../store';
 import { Ink } from './Ink';
 import { toon } from './materials';
-import { useLateMount } from '../ui/useLateMount';
 
 const SIZE = 0.5;
 const TINTS: Record<Tint, string> = { earn: '#f0b46a', adjust: '#7fb2ff', rejected: '#a3abb8', refund: '#ff7a6b' };
 
-/** A cardboard box with its event tag; it follows boxPose, so a seek shows the same frame as playback. */
+/** A cardboard box; it follows boxPose, so a seek shows the same frame as playback. Its tag is drawn by WorldTags. */
 export function BoxItem( { id }: { id: PackageId } ) {
   const group = useRef<THREE.Group>( null );
   const material = useRef<THREE.MeshToonMaterial>( null );
-  const tag = useFactory( ( s ) => boxPose( id, s.time ).tag );
   const visible = useFactory( ( s ) => boxPose( id, s.time ).visible );
   const tint = useFactory( ( s ) => boxPose( id, s.time ).tint );
-  const tagReady = useLateMount();
 
   useFrame( () => {
     const p = boxPose( id, useFactory.getState().time );
@@ -35,13 +32,6 @@ export function BoxItem( { id }: { id: PackageId } ) {
         smoothness={ 3 }
         castShadow
         receiveShadow
-        onPointerOver={ ( e ) => {
-          e.stopPropagation();
-          if ( visible ) {
-            useFactory.getState().hoverHold( true );
-          }
-        } }
-        onPointerOut={ () => useFactory.getState().hoverHold( false ) }
       >
         <meshToonMaterial ref={ material } { ...toon } color={ TINTS[ tint ] } />
         <Ink />
@@ -49,12 +39,6 @@ export function BoxItem( { id }: { id: PackageId } ) {
       <RoundedBox args={ [ SIZE + 0.01, 0.06, 0.12 ] } radius={ 0.02 } position={ [ 0, SIZE / 2 - 0.02, 0 ] }>
         <meshToonMaterial { ...toon } color="#f4e6c8" />
       </RoundedBox>
-      { /* Kept mounted and hidden by CSS: unmounting drei's Html mid-render, on a seek or a loop wrap, logs React errors. */ }
-      { tagReady && (
-        <Html center position={ [ 0, SIZE / 2 + 0.35, 0 ] } style={ { pointerEvents: 'none', display: visible ? undefined : 'none' } }>
-          <span className="box-tag">{ tag }</span>
-        </Html>
-      ) }
     </group>
   );
 }

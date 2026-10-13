@@ -38,7 +38,21 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .panel-tag { margin-left: 6px; padding: 1px 6px; border-radius: 4px; background: #6f9fd8; color: #fff; text-transform: none; letter-spacing: 0; }
 .panel .close { position: absolute; top: 10px; right: 10px; padding: 1px 9px; }
 
-.box-tag { display: inline-block; white-space: nowrap; padding: 2px 7px; border-radius: 999px; font: 700 10px var(--mono); color: #fff; background: rgba(24, 28, 38, .82); }
+.stage { height: 100%; }
+
+/* Tags over the canvas, placed by WorldTags each frame at the point above a worker or a box. */
+.world-tags { position: fixed; inset: 0; z-index: 4; pointer-events: none; }
+.world-tags > * { position: absolute; left: 0; top: 0; white-space: nowrap; }
+.world-tags [hidden] { display: none; }
+.box-tag { display: inline-flex; align-items: center; gap: 4px; padding: 3px; border-radius: 999px; background: #1d2230; box-shadow: 0 3px 0 rgba(29, 34, 48, .35); font: 800 11px var(--sans); }
+.box-tag > span { padding: 2px 7px; border-radius: 999px; }
+.box-tag .event { color: #fff; letter-spacing: .04em; font-size: 10px; }
+.box-tag .money { background: #2fbf71; color: #fff; }
+.box-tag .pts { background: #ffc233; color: #1d2230; font-size: 12px; }
+.box-tag .pts.is-none { background: #a3abb8; color: #fff; }
+.box-tag .pts.is-minus { background: #ef4b4b; color: #fff; }
+.worker-tag { padding: 3px 9px 3px 7px; border-radius: 999px; border: 2px solid #1d2230; border-left: 6px solid var(--who); background: #fff; font: 600 11px var(--sans); color: #4a5368; box-shadow: 0 2px 0 rgba(29, 34, 48, .25); }
+.worker-tag b { color: #1d2230; font-weight: 800; }
 
 
 /* Station labels: drei Html puts the anchor at the wrapper's top-left; the label sits above it on a short leader line. */

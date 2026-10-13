@@ -45,7 +45,7 @@ export interface Step {
 }
 
 export interface Scene { id: `scene-${ 1 | 2 | 3 | 4 | 5 | 6 }`; caption: string; show?: PackageId; steps: Step[]; }
-export interface Box { id: PackageId; event: 'ORDER' | 'SIGNUP' | 'REVIEW' | 'MANUAL'; points: string; color: 'earn' | 'adjust'; }
+export interface Box { id: PackageId; event: 'ORDER' | 'SIGNUP' | 'REVIEW' | 'MANUAL'; points: string; color: 'earn' | 'adjust'; money?: string; } // money: what the event is worth in the store
 export interface Prop { kind: 'pallet' | 'cone' | 'forklift' | 'cable-tray'; position: Vec2; rotation: number; }
 
 export const BELT_Y = 0.25;
@@ -233,7 +233,7 @@ export const CONVEYORS: Conveyor[] = [
 ];
 
 export const BOXES: Box[] = [
-  { id: 'alice', event: 'ORDER', points: '120', color: 'earn' },
+  { id: 'alice', event: 'ORDER', points: '120', color: 'earn', money: '$120.00' },
   { id: 'bob', event: 'SIGNUP', points: '50', color: 'earn' },
   { id: 'cara', event: 'REVIEW', points: '20', color: 'earn' },
   { id: 'admin', event: 'MANUAL', points: '+50', color: 'adjust' },

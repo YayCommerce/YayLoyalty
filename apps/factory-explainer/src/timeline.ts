@@ -66,7 +66,7 @@ interface Compiled {
   entries: Entry[];
   duration: number;
   sceneStart: Record<Scene[ 'id' ], number>;
-  boxes: Record<PackageId, { appear: number; segments: Segment[]; tints: [ number, Tint ][]; tags: [ number, string ][] }>;
+  boxes: Record<PackageId, { appear: number; segments: Segment[]; tints: [ number, Tint ][]; scored: [ number, boolean ][] }>;
   actors: Record<PackageId, Segment[]>;
   lifts: number[];
   denies: number[];
@@ -83,7 +83,8 @@ export function compileTimeline( scenes: Scene[] = SCENES ): Compiled {
   const at = {} as Record<PackageId, V3>;
   for ( const b of BOXES ) {
     at[ b.id ] = boxHome( b.id );
-    boxes[ b.id ] = { appear: Infinity, segments: [], tints: [ [ 0, b.color ] ], tags: [ [ 0, 'adjust' === b.color ? `${ b.points } · ${ b.event }` : b.event ] ] };
+    // A manual adjustment carries its points from the start; earned points show once scoring has run.
+    boxes[ b.id ] = { appear: Infinity, segments: [], tints: [ [ 0, b.color ] ], scored: [ [ 0, 'adjust' === b.color ] ] };
     actors[ b.id ] = [];
   }
   const lifts: number[] = [], denies: number[] = [], presses: number[] = [], dialRuns: [ number, number ][] = [];
@@ -134,7 +135,7 @@ export function compileTimeline( scenes: Scene[] = SCENES ): Compiled {
         const rejected = scene.steps.some( ( x ) => x.pkg === id && 'deny' === x.gate );
         if ( 'earning-service' === leaving && ! rejected ) {
           const b = BOXES.find( ( x ) => x.id === id )!;
-          boxes[ id ].tags.push( [ t + 0.2, `${ b.points } · ${ b.event }` ] );
+          boxes[ id ].scored.push( [ t + 0.2, true ] );
         }
         t += seconds;
         at[ id ] = v3( curve.getPointAt( 1 ) );
@@ -229,7 +230,7 @@ function lastBefore<T>( list: [ number, T ][], time: number ): T {
   return value;
 }
 
-export function boxPose( id: PackageId, time: number, c: Compiled = COMPILED ): { position: V3; visible: boolean; tint: Tint; tag: string; squash: number } {
+export function boxPose( id: PackageId, time: number, c: Compiled = COMPILED ): { position: V3; visible: boolean; tint: Tint; scored: boolean; squash: number } {
   const b = c.boxes[ id ];
   const s = current( b.segments, time );
   const p = s ? along( s, time ) : boxHome( id );
@@ -238,7 +239,7 @@ export function boxPose( id: PackageId, time: number, c: Compiled = COMPILED ): 
     squash: s ? landing( s, time ) : 0,
     visible: time >= b.appear,
     tint: lastBefore( b.tints, time ),
-    tag: lastBefore( b.tags, time ),
+    scored: lastBefore( b.scored, time ),
   };
 }
 

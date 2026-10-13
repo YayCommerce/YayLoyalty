@@ -12,6 +12,7 @@ import { Station } from './scene/Station';
 import { useFactory } from './store';
 import { StationPanel } from './ui/StationPanel';
 import { StepBubble } from './ui/StepBubble';
+import { WorldTags } from './ui/WorldTags';
 import { Toolbar } from './ui/Toolbar';
 import './ui/ui.css';
 
@@ -59,6 +60,7 @@ export function App() {
         { ACTORS.map( ( a ) => <Actor key={ a.id } actor={ a } /> ) }
         { BOXES.map( ( b ) => <BoxItem key={ b.id } id={ b.id } /> ) }
       </Stage>
+      <WorldTags />
       <Toolbar />
       <StepBubble />
       <StationPanel />
