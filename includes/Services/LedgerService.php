@@ -19,9 +19,10 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * The only writer of the ledger and the customer aggregates, EarningService's award included.
- * Enforced by convention: it is constructed in exactly four places, Engine\RestAPI::controllers(),
- * Engine\Earning\EarningService::build(), Engine\Earning\Reversal::build() and (once its body
- * lands) Engine\Redemption\RedemptionService::build(). Name a fifth here before adding it.
+ * Enforced by convention: it is constructed in exactly five places, Engine\RestAPI::controllers(),
+ * Engine\Earning\EarningService::build(), Engine\Earning\Reversal::build(),
+ * Engine\Expiry\ExpiryRunner::__construct() and (once its body lands)
+ * Engine\Redemption\RedemptionService::build(). Name a sixth here before adding it.
  * Manual rows enter through adjust() and record(). System rows enter through earn(),
  * refund_earn(), restore_refund() and redeem(), which add the idempotency-key duplicate branch.
  * Lock order: the customer row, then, for an earn row, its campaign row shared, which
@@ -139,6 +140,21 @@ final class LedgerService {
         ReferenceType::assert( $draft->get_reference_type() );
 
         return $this->write_keyed( $draft, $points_under_lock, $skip_reason );
+    }
+
+    /**
+     * Opens lots for a balance that predates them, under the customer lock. No ledger row and no
+     * aggregate moves. A no-op when the user already has lots or no positive balance.
+     *
+     * @return int Lots opened.
+     */
+    public function backfill_lots( int $user_id ): int {
+        return (int) $this->under_lock(
+            $user_id,
+            function ( Customer $customer ): int {
+                return $this->lots->backfill( $customer->get_user_id(), $customer->get_balance() );
+            }
+        );
     }
 
     /**
