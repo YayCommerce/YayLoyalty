@@ -6,12 +6,9 @@ use YayLoyalty\Utils\Table;
 
 /**
  * The lot tables are core: install() creates them with nothing hooked on yayloyalty_table_schemas, as on a
- * Lite site. Options are not moved by the scratch prefix, so the real site's version stamp is restored.
+ * Lite site. The real site's version stamp is restored (snapshot_option()).
  */
 final class InstallerLotTablesTest extends IntegrationTestCase {
-
-    /** @var mixed The version stamp before the test; null means absent. */
-    private $saved_version = null;
 
     /** @var \WP_Hook|null What was hooked on yayloyalty_table_schemas before the test. */
     private $saved_schema_hook = null;
@@ -19,17 +16,11 @@ final class InstallerLotTablesTest extends IntegrationTestCase {
     protected function setUp(): void {
         parent::setUp();
 
-        $this->saved_version     = get_option( Installer::OPTION_DB_VERSION, null );
+        $this->snapshot_option( Installer::OPTION_DB_VERSION );
         $this->saved_schema_hook = $GLOBALS['wp_filter']['yayloyalty_table_schemas'] ?? null;
     }
 
     protected function tearDown(): void {
-        if ( null === $this->saved_version ) {
-            delete_option( Installer::OPTION_DB_VERSION );
-        } else {
-            update_option( Installer::OPTION_DB_VERSION, $this->saved_version );
-        }
-
         if ( null !== $this->saved_schema_hook ) {
             $GLOBALS['wp_filter']['yayloyalty_table_schemas'] = $this->saved_schema_hook; // phpcs:ignore WordPress.WP.GlobalVariablesOverride -- restoring the hook this test detached.
         }

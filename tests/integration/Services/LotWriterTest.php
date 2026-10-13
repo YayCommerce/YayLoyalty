@@ -20,23 +20,10 @@ final class LotWriterTest extends IntegrationTestCase {
 
     private const USER_ID = 616161;
 
-    /** @var mixed The site's settings before the test; options are not moved by the scratch prefix. */
-    private $saved_settings = null;
-
     protected function setUp(): void {
         parent::setUp();
 
-        $this->saved_settings = get_option( SettingsHelper::OPTION_SETTINGS, null );
-    }
-
-    protected function tearDown(): void {
-        if ( null === $this->saved_settings ) {
-            delete_option( SettingsHelper::OPTION_SETTINGS );
-        } else {
-            update_option( SettingsHelper::OPTION_SETTINGS, $this->saved_settings );
-        }
-
-        parent::tearDown();
+        $this->snapshot_option( SettingsHelper::OPTION_SETTINGS );
     }
 
     public function test_earn_opens_a_lot(): void {

@@ -5,6 +5,7 @@ use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Enums\ReferenceType;
 use YayLoyalty\Enums\RewardType;
+use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -22,13 +23,18 @@ final class IdempotencyKey {
 
     private const SEPARATOR = ':';
 
+    /** The qualifier of an expire row's key: its due date, a UTC DATETIME, as `YmdHis`. compose() checks this shape. */
+    public static function due_date_qualifier( string $due_at_utc ): string {
+        return gmdate( 'YmdHis', Dates::to_timestamp( $due_at_utc ) );
+    }
+
     /**
      * @param string $type           A LedgerType constant.
      * @param int    $user_id        Whose balance moves.
      * @param string $reference_type A ReferenceType constant.
      * @param int    $reference_id   The id in that namespace (order id, comment id, user id, year, redemption id).
      * @param string $qualifier      A CampaignTrigger for earn/refund_earn rows, a RewardType for redeem/refund_redeem rows. Any build's, so a Pro value still composes after a downgrade.
-     *                               For an expire row, the due date as UTC `YmdHis`: one expiry per customer per date.
+     *                               For an expire row, due_date_qualifier(): one expiry per customer per date.
      * @throws \InvalidArgumentException When any part is outside its vocabulary or an id is not positive.
      */
     public static function compose( string $type, int $user_id, string $reference_type, int $reference_id, string $qualifier ): string {

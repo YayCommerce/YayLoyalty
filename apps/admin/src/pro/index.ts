@@ -26,7 +26,6 @@ export { DesignPanelSection } from './design/DesignPanelSection';
 export { DesignTypographySection } from './design/DesignTypographySection';
 export { ExpiryModelSection } from './settings/ExpiryModelSection';
 export { ExpiryRemindersSection } from './settings/ExpiryRemindersSection';
-export { SWITCH_CONFIRM_ACTION, SWITCH_CONFIRM_BODY, SWITCH_CONFIRM_TITLE } from './settings/expiry-model.copy';
 export { FraudLimitsSection } from './settings/FraudLimitsSection';
 export { StoreLedger } from './ledger/StoreLedger';
 export { RewardTemplatePicker } from './rewards/add/RewardTemplatePicker';

@@ -65,7 +65,8 @@ final class ExpiryJob {
 
     /** Schedules the daily run once. Action Scheduler ships with WooCommerce, which the plugin requires. */
     public function schedule(): void {
-        if ( ! function_exists( 'as_has_scheduled_action' ) || as_has_scheduled_action( self::HOOK, [], self::GROUP ) ) {
+        // admin_init also fires for admin-ajax.php, the heartbeat included: no query there.
+        if ( wp_doing_ajax() || ! function_exists( 'as_has_scheduled_action' ) || as_has_scheduled_action( self::HOOK, [], self::GROUP ) ) {
             return;
         }
 
@@ -137,7 +138,7 @@ final class ExpiryJob {
         $stage      = '';
 
         foreach ( $stages as $name => $days ) {
-            if ( $days_left <= $days && ( null === $sent_at || $sent_at < Dates::add_days( $expires_at, -$days ) ) ) {
+            if ( $days_left <= $days && ( null === $sent_at || $sent_at < Dates::offset( -$days * DAY_IN_SECONDS, $expires_at ) ) ) {
                 $stage = $name;
                 break;
             }

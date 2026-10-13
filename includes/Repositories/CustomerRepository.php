@@ -110,13 +110,7 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
      * @throws QueryException When the write fails.
      */
     public function set_expires_at( int $user_id, ?string $expires_at ): void {
-        global $wpdb;
-
-        $result = $wpdb->update( $this->table(), [ 'expires_at' => $expires_at ], [ 'user_id' => $user_id ], [ '%s' ], [ '%d' ] ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
-
-        if ( false === $result ) {
-            throw new QueryException( 'update', $wpdb->last_error, $this->table() . ' (set_expires_at)' );
-        }
+        $this->update( $user_id, [ 'expires_at' => $expires_at ], [ '%s' ] );
     }
 
     /**
@@ -194,13 +188,7 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
      * @throws QueryException When the write fails.
      */
     public function mark_reminded( int $user_id, string $at ): void {
-        global $wpdb;
-
-        $result = $wpdb->update( $this->table(), [ 'reminder_sent_at' => $at ], [ 'user_id' => $user_id ], [ '%s' ], [ '%d' ] ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
-
-        if ( false === $result ) {
-            throw new QueryException( 'update', $wpdb->last_error, $this->table() . ' (mark_reminded)' );
-        }
+        $this->update( $user_id, [ 'reminder_sent_at' => $at ], [ '%s' ] );
     }
 
     /**
@@ -214,7 +202,7 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
         global $wpdb;
 
         $table = esc_sql( $this->table() );
-        $lots  = esc_sql( \YayLoyalty\Utils\Table::name( 'lots' ) );
+        $lots  = esc_sql( ( new LotRepository() )->table() );
 
         // phpcs:disable WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- a set-wide update on the plugin's own escaped tables; the status is bound.
         $result = $wpdb->query(
@@ -223,7 +211,7 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
                  LEFT JOIN ( SELECT user_id, MIN( expires_at ) AS earliest FROM `{$lots}` WHERE status = %s GROUP BY user_id ) l
                    ON l.user_id = c.user_id
                  SET c.expires_at = CASE WHEN c.balance > 0 THEN l.earliest ELSE NULL END",
-                'open'
+                LotRepository::STATUS_OPEN
             )
         );
         // phpcs:enable WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared

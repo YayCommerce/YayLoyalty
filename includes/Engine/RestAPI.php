@@ -40,7 +40,7 @@ class RestAPI {
 
     protected function __construct() {
         add_action( 'rest_api_init', [ $this, 'loyalty_endpoints' ] );
-        add_action( 'yayloyalty_ledger_recorded', [ DashboardCache::class, 'flush' ] );
+        add_action( LedgerService::RECORDED_ACTION, [ DashboardCache::class, 'flush' ] );
         add_action( 'yayloyalty_campaigns_changed', [ DashboardCache::class, 'flush' ] );
     }
 

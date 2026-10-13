@@ -27,7 +27,7 @@ export const BATCH_MONTHS_HINT = () => __('after the day they were earned', 'yay
 export const SWITCH_CONFIRM_TITLE = () => __('Switch to batch expiry?', 'yayloyalty');
 export const SWITCH_CONFIRM_BODY = () =>
   __(
-    'Every customer’s points get expiry dates from when they were earned, and the oldest points may expire on the next daily run. This cannot be undone.',
+    'Once saved, every customer’s points get expiry dates from when they were earned, and the oldest points may expire on the next daily run. This cannot be undone.',
     'yayloyalty',
   );
 export const SWITCH_CONFIRM_ACTION = () => __('Switch to batches', 'yayloyalty');

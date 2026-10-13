@@ -95,18 +95,25 @@ abstract class LoyaltyEmail extends \WC_Email {
     }
 
     /**
-     * Mails the customer an email about them rather than one ledger row (the expiry reminders), when it
-     * is enabled, within the weekly cap, in the customer's locale.
+     * Mails the customer an email about them rather than one ledger row (the expiry reminders). Hooked
+     * straight onto the email's action.
      */
-    protected function trigger_for_user( int $user_id ): void {
+    public function trigger_for_user( int $user_id ): void {
         $user = get_userdata( $user_id );
 
-        if ( ! $user ) {
-            return;
+        if ( $user ) {
+            $this->deliver( $user, $user );
         }
+    }
 
-        // is_enabled()'s filter receives $this->object.
-        $this->object = $user;
+    /**
+     * The one send path: when this email is enabled for $object, mails $user within the weekly cap, in the
+     * customer's locale. $prepare sets the placeholders, after the locale switch.
+     *
+     * @param mixed $email_object What is_enabled()'s filter receives as $this->object.
+     */
+    protected function deliver( \WP_User $user, $email_object, ?callable $prepare = null ): void {
+        $this->object = $email_object;
 
         if ( ! $this->is_enabled() ) {
             return;
@@ -116,10 +123,14 @@ abstract class LoyaltyEmail extends \WC_Email {
         $this->setup_locale();
 
         try {
+            if ( null !== $prepare ) {
+                $prepare();
+            }
+
             $this->recipient = $user->user_email;
 
             if ( $this->get_recipient() ) {
-                $this->send_to_customer( $user_id );
+                $this->send_to_customer( $user->ID );
             }
         } finally {
             // A throwing mail transport must not leave the rest of the request in the customer's locale.

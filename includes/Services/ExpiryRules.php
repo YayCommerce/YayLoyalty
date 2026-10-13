@@ -34,6 +34,9 @@ final class ExpiryRules {
     /** The free reminder stage, sent `reminder_days` before the date. */
     public const STAGE_SOON = 'soon';
 
+    /** The last-chance stage, sent `final_reminder_days` before the date. Only Pro adds it to the stages. */
+    public const STAGE_FINAL = 'final';
+
     public static function enabled(): bool {
         return (bool) self::settings()['enabled'];
     }
@@ -104,7 +107,7 @@ final class ExpiryRules {
             return $earliest_lot_expiry;
         }
 
-        return Dates::add_days( $last_activity_at ?? $joined_at, self::inactivity_days() );
+        return Dates::offset( self::inactivity_days() * DAY_IN_SECONDS, $last_activity_at ?? $joined_at );
     }
 
     /** What would expire by $at: the whole positive balance under inactivity, the due lots under batches. */

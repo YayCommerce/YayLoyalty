@@ -1,3 +1,4 @@
+import { addDays } from 'date-fns';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import { Link } from 'react-router';
 import { __, _n, sprintf } from '@wordpress/i18n';
@@ -5,8 +6,7 @@ import { __, _n, sprintf } from '@wordpress/i18n';
 import { parseWPDate } from '@/lib/helpers/format.helper';
 import { useCustomersQuery } from '@/lib/queries/customer.queries';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
+import { FormNumberField } from '@/components/ui/custom/form-number-field';
 import { Switch } from '@/components/ui/switch';
 import {
   EXPIRY_AFTER_HINT,
@@ -20,54 +20,15 @@ import {
   EXPIRY_TITLE_BATCHES,
   EXPIRY_VIEW_THEM,
 } from './expiry-settings.copy';
-import type { ExpirySettingsFormValues } from './expiry-settings.form';
-
-type DaysFieldName = 'inactivity_days' | 'reminder_days';
-
-/** Mirrors SettingsHelper::RANGES, the source of truth, for the two day fields. */
-const DAY_RANGES: Record<DaysFieldName, { min: number; max: number }> = {
-  inactivity_days: { min: 1, max: 3650 },
-  reminder_days: { min: 0, max: 365 },
-};
+import { expiryFieldRange, type ExpirySettingsFormValues } from './expiry-settings.form';
 
 /** The customers list filter the count and its link share: points expiring within 90 days. */
 const EXPIRING_SOON = '90';
 
-function DaysField({ name, label, hint }: { name: DaysFieldName; label: string; hint: React.ReactNode }) {
-  const { control } = useFormContext<ExpirySettingsFormValues>();
-  const id = `yayloyalty-expiry-${name.replaceAll('_', '-')}`;
-
-  return (
-    <div className="flex flex-col gap-1.5">
-      <Label htmlFor={id}>{label}</Label>
-      <div className="flex flex-wrap items-center gap-3">
-        <Controller
-          control={control}
-          name={name}
-          render={({ field }) => (
-            <NumberInputRoot
-              size="small"
-              className="w-32"
-              min={DAY_RANGES[name].min}
-              max={DAY_RANGES[name].max}
-              value={field.value}
-              onValueChange={(value) => field.onChange(value ?? DAY_RANGES[name].min)}
-            >
-              <NumberInputInput id={id} />
-              <NumberInputUnit unit={EXPIRY_DAYS_UNIT()} />
-            </NumberInputRoot>
-          )}
-        />
-        <span className="text-muted-foreground text-sm">{hint}</span>
-      </div>
-    </div>
-  );
-}
-
 /** The rule as a dated sentence, from today, so the two numbers read as what a customer would see. */
 function ExpiryExample({ days }: { days: number }) {
   const today = new Date();
-  const expires = new Date(today.getTime() + days * 86_400_000);
+  const expires = addDays(today, days);
 
   return (
     <p className="text-muted-foreground text-sm">
@@ -96,14 +57,15 @@ function ExpiringSoonCount() {
   return (
     <p className="text-sm">
       {sprintf(
-        /* translators: %s: number of customers. */
+        /* translators: 1: number of customers, 2: number of days. */
         _n(
-          '%s customer has points expiring in the next 90 days.',
-          '%s customers have points expiring in the next 90 days.',
+          '%1$s customer has points expiring in the next %2$s days.',
+          '%1$s customers have points expiring in the next %2$s days.',
           total,
           'yayloyalty',
         ),
         total.toLocaleString(),
+        EXPIRING_SOON,
       )}{' '}
       <Link to={`/customers?expiring_soon=${EXPIRING_SOON}`} className="text-primary underline">
         {EXPIRY_VIEW_THEM()}
@@ -144,10 +106,20 @@ export function ExpiryInactivityCard() {
       </CardHeader>
       {enabled && (
         <CardContent className="flex flex-col gap-4">
-          {!isBatches && <DaysField name="inactivity_days" label={EXPIRY_AFTER_LABEL()} hint={EXPIRY_AFTER_HINT()} />}
-          <DaysField
+          {!isBatches && (
+            <FormNumberField<ExpirySettingsFormValues>
+              name="inactivity_days"
+              label={EXPIRY_AFTER_LABEL()}
+              unit={EXPIRY_DAYS_UNIT()}
+              hint={EXPIRY_AFTER_HINT()}
+              {...expiryFieldRange('inactivity_days')}
+            />
+          )}
+          <FormNumberField<ExpirySettingsFormValues>
             name="reminder_days"
             label={EXPIRY_REMIND_LABEL()}
+            unit={EXPIRY_DAYS_UNIT()}
+            {...expiryFieldRange('reminder_days')}
             hint={
               <>
                 {EXPIRY_REMIND_HINT()} ·{' '}

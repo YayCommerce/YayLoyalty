@@ -26,11 +26,6 @@ final class Dates {
         return gmdate( self::MYSQL_FORMAT, $base + $seconds );
     }
 
-    /** A UTC MySQL DATETIME plus whole days, as MySQL's DATE_ADD( …, INTERVAL n DAY ) computes it. */
-    public static function add_days( string $utc, int $days ): string {
-        return gmdate( self::MYSQL_FORMAT, self::to_timestamp( $utc ) + $days * DAY_IN_SECONDS );
-    }
-
     /**
      * A UTC MySQL DATETIME plus whole months, clamped to the target month's last day as MySQL's
      * DATE_ADD( …, INTERVAL n MONTH ) does: 2026-01-31 + 1 month is 2026-02-28, not 2026-03-03.

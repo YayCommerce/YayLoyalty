@@ -1,4 +1,3 @@
-import { useRef, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
 import { FormProvider, useForm } from 'react-hook-form';
@@ -10,15 +9,8 @@ import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { useSaveSettingsMutation, useSettingsQuery } from '@/lib/queries/settings.queries';
 import { useEditorSave } from '@/hooks/useEditorSave';
 import { Button } from '@/components/ui/button';
-import { ConfirmDialog } from '@/components/ui/custom/confirm-dialog';
 import { UnsavedChangeDialog } from '@/components/ui/custom/unsaved-changed-dialog';
-import {
-  ExpiryModelSection,
-  ExpiryRemindersSection,
-  SWITCH_CONFIRM_ACTION,
-  SWITCH_CONFIRM_BODY,
-  SWITCH_CONFIRM_TITLE,
-} from '@/pro';
+import { ExpiryModelSection, ExpiryRemindersSection } from '@/pro';
 import {
   buildExpirySettingsUpdate,
   expirySettingsDefaults,
@@ -37,9 +29,6 @@ export default function ExpirySettingsPage() {
   const saveMutation = useSaveSettingsMutation();
   const queryClient = useQueryClient();
   const savedModel = settingsQuery.data.expiry.model;
-  const [isConfirmOpen, setConfirmOpen] = useState(false);
-  // Set by the dialog's confirm, so the re-run save goes through; reset by every save.
-  const switchConfirmed = useRef(false);
 
   // `values` + keepDirtyValues: a refetch re-seeds the form without clobbering a field mid-edit.
   const form = useForm<ExpirySettingsFormValues>({
@@ -51,14 +40,6 @@ export default function ExpirySettingsPage() {
   const { handleSave, leaveDialogProps } = useEditorSave(
     form,
     async (values) => {
-      // The one-way switch to batches confirms first; Lite never offers it.
-      if (IS_PRO_BUILD && values.model === 'batches' && savedModel !== 'batches' && !switchConfirmed.current) {
-        setConfirmOpen(true);
-        return false;
-      }
-
-      switchConfirmed.current = false;
-
       try {
         const saved = await saveMutation.mutateAsync(buildExpirySettingsUpdate(values, form.formState.dirtyFields));
         // Overrides resetOptions, or keepDirtyValues would keep the edit over the sanitised save.
@@ -90,21 +71,6 @@ export default function ExpirySettingsPage() {
       </form>
 
       <UnsavedChangeDialog {...leaveDialogProps} />
-      {IS_PRO_BUILD ? (
-        <ConfirmDialog
-          open={isConfirmOpen}
-          onOpenChange={setConfirmOpen}
-          title={SWITCH_CONFIRM_TITLE()}
-          description={SWITCH_CONFIRM_BODY()}
-          confirmLabel={SWITCH_CONFIRM_ACTION()}
-          cancelLabel={__('Cancel', 'yayloyalty')}
-          onConfirm={() => {
-            switchConfirmed.current = true;
-            setConfirmOpen(false);
-            void handleSave();
-          }}
-        />
-      ) : null}
     </FormProvider>
   );
 }

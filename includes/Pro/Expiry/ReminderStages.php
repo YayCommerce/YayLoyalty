@@ -3,6 +3,7 @@ namespace YayLoyalty\Pro\Expiry;
 
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Models\Customer;
+use YayLoyalty\Services\ExpiryRules;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -12,8 +13,6 @@ defined( 'ABSPATH' ) || exit;
  */
 final class ReminderStages {
 
-    public const STAGE_FINAL = 'final';
-
     /**
      * Adds the final stage at `expiry.final_reminder_days`. ExpiryRules drops a window of 0 (off).
      *
@@ -21,7 +20,7 @@ final class ReminderStages {
      * @return array<string, int>
      */
     public static function add_final( array $stages ): array {
-        $stages[ self::STAGE_FINAL ] = (int) SettingsHelper::get_settings()['expiry']['final_reminder_days'];
+        $stages[ ExpiryRules::STAGE_FINAL ] = (int) SettingsHelper::get_settings()['expiry']['final_reminder_days'];
 
         return $stages;
     }

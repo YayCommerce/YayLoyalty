@@ -1,3 +1,4 @@
+import { addMonths } from 'date-fns';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { parseWPDate } from '@/lib/helpers/format.helper';
@@ -12,14 +13,6 @@ const SAMPLE_BATCHES = [
 
 /** Points the example redeems: more than the oldest batch, so the sentence shows a second batch being touched. */
 const REDEEM_EXAMPLE = 5000;
-
-/** Adds whole months, clamped to month end as the server's Dates::add_months() and MySQL do. */
-function addMonths(date: Date, months: number): Date {
-  const target = new Date(date.getFullYear(), date.getMonth() + months, 1);
-  const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
-  target.setDate(Math.min(date.getDate(), lastDay));
-  return target;
-}
 
 /**
  * The batch model on one sample balance: each batch with its earned and expiry dates, and what a

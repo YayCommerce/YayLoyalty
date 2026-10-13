@@ -24,33 +24,20 @@ abstract class LedgerEntryEmail extends LoyaltyEmail {
             return;
         }
 
-        // is_enabled()'s filter receives $this->object, which must be this row.
-        $this->object = $entry;
-
-        if ( ! $this->is_enabled() ) {
-            return;
-        }
-
         $user = get_userdata( $entry->get_user_id() );
 
         if ( ! $user ) {
             return;
         }
 
-        // Before the placeholders: the default point labels are translated strings.
-        $this->setup_locale();
-
-        try {
-            $this->prepare( $entry );
-            $this->recipient = $user->user_email;
-
-            if ( $this->get_recipient() ) {
-                $this->send_to_customer( $entry->get_user_id() );
+        // is_enabled()'s filter receives $this->object, which must be this row.
+        $this->deliver(
+            $user,
+            $entry,
+            function () use ( $entry ): void {
+                $this->prepare( $entry );
             }
-        } finally {
-            // A throwing mail transport must not leave the rest of the request in the customer's locale.
-            $this->restore_locale();
-        }
+        );
     }
 
     /** Whether this email reports $entry. The action takes any row id, so each email checks its own kind. */

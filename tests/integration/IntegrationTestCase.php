@@ -23,6 +23,9 @@ use YayLoyalty\Utils\Dates;
  */
 abstract class IntegrationTestCase extends TestCase {
 
+    /** @var array<string, mixed> Options snapshot_option() saved, restored in tearDown(); null means absent. */
+    private $option_snapshots = [];
+
     protected function setUp(): void {
         parent::setUp();
 
@@ -30,6 +33,27 @@ abstract class IntegrationTestCase extends TestCase {
 
         // The campaign list is object-cached; a truncated table would still be served from the previous test.
         ( new CampaignRepository() )->flush_cache();
+    }
+
+    protected function tearDown(): void {
+        foreach ( $this->option_snapshots as $name => $value ) {
+            if ( null === $value ) {
+                delete_option( $name );
+            } else {
+                update_option( $name, $value );
+            }
+        }
+
+        $this->option_snapshots = [];
+
+        parent::tearDown();
+    }
+
+    /** Restores $name after the test. Options are not moved by the scratch prefix, so a test that writes one must. */
+    protected function snapshot_option( string $name ): void {
+        if ( ! array_key_exists( $name, $this->option_snapshots ) ) {
+            $this->option_snapshots[ $name ] = get_option( $name, null );
+        }
     }
 
     protected function ledger_service(): LedgerService {

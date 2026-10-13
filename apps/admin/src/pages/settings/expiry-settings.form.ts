@@ -3,37 +3,29 @@ import { z } from 'zod';
 import { Settings, settingsSchema, SettingsUpdate } from '@/lib/schema/settings.schema';
 
 /**
- * The Expiry tab's form over the `expiry` settings group: the free inactivity fields, plus Pro's model
- * and reminder fields, which only Pro's sections edit (never dirty in Lite, so never sent).
+ * The Expiry tab's form: the whole `expiry` settings group. Pro's model and reminder fields are edited
+ * only by Pro's sections, so in Lite they are never dirty and never sent.
  */
-export const expirySettingsFormSchema = settingsSchema.shape.expiry.pick({
-  enabled: true,
-  inactivity_days: true,
-  reminder_days: true,
-  model: true,
-  batch_months: true,
-  final_reminder_days: true,
-  reminder_min_points: true,
-});
+export const expirySettingsFormSchema = settingsSchema.shape.expiry;
 
 export type ExpirySettingsFormValues = z.infer<typeof expirySettingsFormSchema>;
 
 /** react-hook-form's dirtyFields for this form: true per edited field. */
 export type ExpirySettingsDirtyFields = Partial<Record<keyof ExpirySettingsFormValues, boolean>>;
 
-export function expirySettingsDefaults(settings: Settings): ExpirySettingsFormValues {
-  return {
-    enabled: settings.expiry.enabled,
-    inactivity_days: settings.expiry.inactivity_days,
-    reminder_days: settings.expiry.reminder_days,
-    model: settings.expiry.model,
-    batch_months: settings.expiry.batch_months,
-    final_reminder_days: settings.expiry.final_reminder_days,
-    reminder_min_points: settings.expiry.reminder_min_points,
-  };
+type RangedField = 'inactivity_days' | 'reminder_days' | 'batch_months' | 'final_reminder_days';
+
+/** A field's bounds, read from the zod schema (which mirrors SettingsHelper::RANGES), so no input keeps its own copy. */
+export function expiryFieldRange(field: RangedField): { min: number; max: number } {
+  const number = expirySettingsFormSchema.shape[field];
+  return { min: number.minValue ?? 0, max: number.maxValue ?? Number.MAX_SAFE_INTEGER };
 }
 
-/** The save payload: only the edited fields, inside the `expiry` group, so the Pro keys stay as stored. */
+export function expirySettingsDefaults(settings: Settings): ExpirySettingsFormValues {
+  return { ...settings.expiry };
+}
+
+/** The save payload: only the edited fields, inside the `expiry` group, so untouched keys stay as stored. */
 export function buildExpirySettingsUpdate(
   values: ExpirySettingsFormValues,
   dirty: ExpirySettingsDirtyFields,

@@ -1,11 +1,13 @@
-import { Controller, useFormContext, useWatch } from 'react-hook-form';
+import { useState } from 'react';
+import { useController, useFormContext, useWatch } from 'react-hook-form';
+import { __ } from '@wordpress/i18n';
 
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
-import type { ExpirySettingsFormValues } from '@/pages/settings/expiry-settings.form';
+import { ConfirmDialog } from '@/components/ui/custom/confirm-dialog';
+import { FormNumberField } from '@/components/ui/custom/form-number-field';
+import { expiryFieldRange, type ExpirySettingsFormValues } from '@/pages/settings/expiry-settings.form';
 import {
   BATCH_MONTHS_HINT,
   BATCH_MONTHS_LABEL,
@@ -17,15 +19,13 @@ import {
   MODEL_INACTIVITY_TITLE,
   MODEL_ONE_WAY,
   MODEL_TITLE,
+  SWITCH_CONFIRM_ACTION,
+  SWITCH_CONFIRM_BODY,
+  SWITCH_CONFIRM_TITLE,
 } from './expiry-model.copy';
 import { ExpiryBatchExample } from './ExpiryBatchExample';
 
 type Model = ExpirySettingsFormValues['model'];
-
-const MONTHS_ID = 'yayloyalty-expiry-batch-months';
-
-/** Mirrors SettingsHelper::RANGES['expiry_months'], the source of truth. */
-const MONTHS_RANGE = { min: 1, max: 120 };
 
 function ModelCard({
   title,
@@ -60,17 +60,27 @@ function ModelCard({
 }
 
 /**
- * Settings → Expiry, Pro: the expiry model and, under batches, how long each batch lives. Once batches is
- * saved the inactivity card is disabled: the server refuses the switch back (yayloyalty_expiry_model_one_way).
- * ExpirySettingsPage owns Save, and confirms the switch to batches before sending it.
+ * Settings → Expiry, Pro: the expiry model and, under batches, how long each batch lives. Picking batches
+ * confirms first, since the server refuses the switch back (yayloyalty_expiry_model_one_way); once batches
+ * is saved the inactivity card is disabled. ExpirySettingsPage owns Save.
  */
 export function ExpiryModelSection({ savedModel }: { savedModel: Model }) {
   const { control } = useFormContext<ExpirySettingsFormValues>();
-  const [enabled, model, months] = useWatch({ control, name: ['enabled', 'model', 'batch_months'] });
+  const [enabled, months] = useWatch({ control, name: ['enabled', 'batch_months'] });
+  const { field: model } = useController({ control, name: 'model' });
+  const [isConfirmOpen, setConfirmOpen] = useState(false);
 
   if (!enabled) {
     return null;
   }
+
+  const pickBatches = () => {
+    if (savedModel === 'batches') {
+      model.onChange('batches');
+    } else {
+      setConfirmOpen(true);
+    }
+  };
 
   return (
     <Card className="gap-3">
@@ -82,58 +92,49 @@ export function ExpiryModelSection({ savedModel }: { savedModel: Model }) {
         <CardDescription>{MODEL_EXPLAINER()}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        <Controller
-          control={control}
-          name="model"
-          render={({ field }) => (
-            <div role="radiogroup" aria-label={MODEL_TITLE()} className="flex flex-col gap-3 sm:flex-row">
-              <ModelCard
-                title={MODEL_INACTIVITY_TITLE()}
-                body={MODEL_INACTIVITY_BODY()}
-                selected={field.value === 'inactivity'}
-                disabled={savedModel === 'batches'}
-                onSelect={() => field.onChange('inactivity')}
-              />
-              <ModelCard
-                title={MODEL_BATCHES_TITLE()}
-                body={MODEL_BATCHES_BODY()}
-                selected={field.value === 'batches'}
-                disabled={false}
-                onSelect={() => field.onChange('batches')}
-              />
-            </div>
-          )}
-        />
+        <div role="radiogroup" aria-label={MODEL_TITLE()} className="flex flex-col gap-3 sm:flex-row">
+          <ModelCard
+            title={MODEL_INACTIVITY_TITLE()}
+            body={MODEL_INACTIVITY_BODY()}
+            selected={model.value === 'inactivity'}
+            disabled={savedModel === 'batches'}
+            onSelect={() => model.onChange('inactivity')}
+          />
+          <ModelCard
+            title={MODEL_BATCHES_TITLE()}
+            body={MODEL_BATCHES_BODY()}
+            selected={model.value === 'batches'}
+            disabled={false}
+            onSelect={pickBatches}
+          />
+        </div>
 
-        {model === 'batches' && (
+        {model.value === 'batches' && (
           <>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor={MONTHS_ID}>{BATCH_MONTHS_LABEL()}</Label>
-              <div className="flex flex-wrap items-center gap-3">
-                <Controller
-                  control={control}
-                  name="batch_months"
-                  render={({ field }) => (
-                    <NumberInputRoot
-                      size="small"
-                      className="w-32"
-                      min={MONTHS_RANGE.min}
-                      max={MONTHS_RANGE.max}
-                      value={field.value}
-                      onValueChange={(value) => field.onChange(value ?? MONTHS_RANGE.min)}
-                    >
-                      <NumberInputInput id={MONTHS_ID} />
-                      <NumberInputUnit unit={BATCH_MONTHS_UNIT()} />
-                    </NumberInputRoot>
-                  )}
-                />
-                <span className="text-muted-foreground text-sm">{BATCH_MONTHS_HINT()}</span>
-              </div>
-            </div>
+            <FormNumberField<ExpirySettingsFormValues>
+              name="batch_months"
+              label={BATCH_MONTHS_LABEL()}
+              unit={BATCH_MONTHS_UNIT()}
+              hint={BATCH_MONTHS_HINT()}
+              {...expiryFieldRange('batch_months')}
+            />
             <ExpiryBatchExample months={months} />
           </>
         )}
       </CardContent>
+
+      <ConfirmDialog
+        open={isConfirmOpen}
+        onOpenChange={setConfirmOpen}
+        title={SWITCH_CONFIRM_TITLE()}
+        description={SWITCH_CONFIRM_BODY()}
+        confirmLabel={SWITCH_CONFIRM_ACTION()}
+        cancelLabel={__('Cancel', 'yayloyalty')}
+        onConfirm={() => {
+          model.onChange('batches');
+          setConfirmOpen(false);
+        }}
+      />
     </Card>
   );
 }

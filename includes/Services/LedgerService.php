@@ -41,6 +41,9 @@ final class LedgerService {
     /** Outcome::skipped reason: the earn row's campaign was deleted before the award took its lock. */
     public const REASON_CAMPAIGN_DELETED = 'campaign_deleted';
 
+    /** Fired after a ledger row commits, with the persisted LedgerEntry. */
+    public const RECORDED_ACTION = 'yayloyalty_ledger_recorded';
+
     /** Outcome::skipped reason: under the lock the customer is not due at that date, or has nothing to expire. */
     public const REASON_NOT_DUE = 'not_due';
 
@@ -118,7 +121,7 @@ final class LedgerService {
      * rethrows after Transaction::run() rolls back. The recorded event fires
      * after the outermost commit (announce()).
      *
-     * @param callable|null $points_under_lock Runs under the lock, after the duplicate check; its answer
+     * @param callable|null $points_under_lock Runs under the lock, after the duplicate check, with the locked Customer; its answer
      *                                         replaces the draft's points, and 0 skips. EarningService
      *                                         passes the award filter here.
      * @throws \InvalidArgumentException When the draft is not an earn row or lacks a key.
@@ -211,7 +214,7 @@ final class LedgerService {
             null,
             null,
             Dates::now(),
-            IdempotencyKey::compose( LedgerType::EXPIRE, $user_id, ReferenceType::USER, $user_id, gmdate( 'YmdHis', Dates::to_timestamp( $due_at ) ) )
+            IdempotencyKey::compose( LedgerType::EXPIRE, $user_id, ReferenceType::USER, $user_id, IdempotencyKey::due_date_qualifier( $due_at ) )
         );
 
         return $this->write_keyed(
@@ -473,7 +476,7 @@ final class LedgerService {
                  *
                  * @param LedgerEntry $entry
                  */
-                do_action( 'yayloyalty_ledger_recorded', $entry );
+                do_action( self::RECORDED_ACTION, $entry ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name; the sniff cannot read it.
             }
         );
     }

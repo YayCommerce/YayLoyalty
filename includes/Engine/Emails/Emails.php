@@ -5,6 +5,8 @@ use YayLoyalty\Engine\Earning\EarningService;
 use YayLoyalty\Engine\Earning\Outcome;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Models\LedgerEntry;
+use YayLoyalty\Services\ExpiryRules;
+use YayLoyalty\Services\LedgerService;
 use YayLoyalty\Utils\SingletonTrait;
 
 defined( 'ABSPATH' ) || exit;
@@ -26,14 +28,14 @@ class Emails {
     public const POINTS_EXPIRED_ACTION = 'yayloyalty_points_expired_email';
 
     /** Reminder stages with an email, `soon` here and Pro's `final`. Their actions are listed for WooCommerce on init, so the names live here. */
-    private const REMINDER_STAGES = [ 'soon', 'final' ];
+    private const REMINDER_STAGES = [ ExpiryRules::STAGE_SOON, ExpiryRules::STAGE_FINAL ];
 
     protected function __construct() {
         add_filter( 'woocommerce_email_classes', [ $this, 'add_classes' ] );
         add_filter( 'woocommerce_email_groups', [ $this, 'add_groups' ] );
         add_filter( 'woocommerce_email_actions', [ $this, 'add_email_actions' ] );
         add_action( EarningService::AWARDED_ACTION, [ $this, 'relay_award' ] );
-        add_action( 'yayloyalty_ledger_recorded', [ $this, 'relay_expiry' ] );
+        add_action( LedgerService::RECORDED_ACTION, [ $this, 'relay_expiry' ] );
         add_filter( 'woocommerce_prepare_email_for_preview', [ $this, 'prepare_preview' ] );
     }
 
