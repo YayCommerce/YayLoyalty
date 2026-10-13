@@ -63,6 +63,11 @@ final class LotBook {
         $this->take( $row, min( -$points, max( 0, $balance_before ) ), array_merge( $source, $rest ), LotStatus::CONSUMED );
     }
 
+    /** Empties every open lot for an EXPIRE row, oldest first, each becoming `expired`. */
+    public function take_all( LedgerEntry $expire_row ): void {
+        $this->take( $expire_row, -$expire_row->get_points(), $this->lots->open_lots( $expire_row->get_user_id(), 'ASC' ), LotStatus::EXPIRED );
+    }
+
     /**
      * Opens lots for a balance that predates them, rebuilt from the user's ledger history, unless the
      * user already has lots or nothing to cover. Runs before the next row is inserted, or from the job.

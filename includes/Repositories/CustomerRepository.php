@@ -112,7 +112,6 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
      * @param int         $lifetime_earned_delta   Signed.
      * @param int         $lifetime_redeemed_delta Signed.
      * @param string|null $activity_at             Set to touch last_activity_at.
-     * @param string|null $expires_at              New expiry, or null to leave it.
      * @throws QueryException When the write fails.
      */
     public function apply_delta(
@@ -120,8 +119,7 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
         int $balance_delta,
         int $lifetime_earned_delta,
         int $lifetime_redeemed_delta,
-        ?string $activity_at = null,
-        ?string $expires_at = null
+        ?string $activity_at = null
     ): void {
         global $wpdb;
 
@@ -146,11 +144,6 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
             $sets[] = 'reminder_sent_at = NULL';
         }
 
-        if ( null !== $expires_at ) {
-            $sets[]   = 'expires_at = %s';
-            $values[] = $expires_at;
-        }
-
         $values[] = $user_id;
 
         // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared -- $sets contains only literal fragments defined in this method; all values are bound.
@@ -165,6 +158,41 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
         if ( false === $result ) {
             throw new QueryException( 'update', $wpdb->last_error, $this->table() . ' (apply_delta)' );
         }
+    }
+
+    /**
+     * Sets customers.expires_at, null for none. LedgerService calls it under the row lock.
+     *
+     * @throws QueryException When the write fails.
+     */
+    public function set_expires_at( int $user_id, ?string $expires_at ): void {
+        global $wpdb;
+
+        $result = $wpdb->update( $this->table(), [ 'expires_at' => $expires_at ], [ 'user_id' => $user_id ], [ '%s' ], [ '%d' ] ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+
+        if ( false === $result ) {
+            throw new QueryException( 'update', $wpdb->last_error, $this->table() . ' (set_expires_at)' );
+        }
+    }
+
+    /**
+     * Customers with a balance whose expiry is due at $now, soonest first.
+     *
+     * @return int[]
+     */
+    public function due_user_ids( string $now, int $limit ): array {
+        global $wpdb;
+
+        $ids = $wpdb->get_col( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare(
+                'SELECT user_id FROM `' . esc_sql( $this->table() ) . '`
+                 WHERE expires_at IS NOT NULL AND expires_at <= %s AND balance > 0 ORDER BY expires_at LIMIT %d',
+                $now,
+                $limit
+            )
+        );
+
+        return array_map( 'intval', is_array( $ids ) ? $ids : [] );
     }
 
     /**

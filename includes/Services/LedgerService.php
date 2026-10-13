@@ -4,6 +4,8 @@ namespace YayLoyalty\Services;
 use YayLoyalty\Database\Transaction;
 use YayLoyalty\Engine\Earning\IdempotencyKey;
 use YayLoyalty\Engine\Earning\Outcome;
+use YayLoyalty\Engine\Expiry\ExpiryPolicy;
+use YayLoyalty\Enums\ExpiryMode;
 use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Enums\ReferenceType;
@@ -24,7 +26,7 @@ defined( 'ABSPATH' ) || exit;
  * Engine\Expiry\ExpiryRunner::run() and (once its body lands)
  * Engine\Redemption\RedemptionService::build(). Name a sixth here before adding it.
  * Manual rows enter through adjust() and record(). System rows enter through earn(),
- * refund_earn(), restore_refund() and redeem(), which add the idempotency-key duplicate branch.
+ * refund_earn(), restore_refund(), expire() and redeem(), which add the idempotency-key duplicate branch.
  * Lock order: the customer row, then, for an earn row, its campaign row shared, which
  * CampaignRestController::delete_item() locks exclusively before deleting.
  * It also keeps `lots` and `lot_allocations` in step with every row, through LotBook, which
@@ -40,6 +42,9 @@ final class LedgerService {
 
     /** Outcome::skipped reason: the earn row's campaign was deleted before the award took its lock. */
     public const REASON_CAMPAIGN_DELETED = 'campaign_deleted';
+
+    /** Outcome::skipped reason: under the lock the customer is no longer due to expire (expiry off, or activity moved the date). */
+    public const REASON_NOT_DUE = 'not_due';
 
     /** @var LedgerRepository */
     private $ledger;
@@ -182,6 +187,47 @@ final class LedgerService {
     }
 
     /**
+     * Expires a customer's whole balance in inactivity mode: one EXPIRE row of minus the balance, every
+     * open lot `expired`. Re-checked under the lock, because the customer may have earned since the job
+     * queued them. Keyed per customer per UTC run day, so a second run that day is a duplicate.
+     *
+     * @param string $now UTC MySQL datetime of the run; also the row's created_at.
+     * @return Outcome awarded (the EXPIRE row), duplicate, or skipped( REASON_NOT_DUE ).
+     */
+    public function expire( int $user_id, string $now ): Outcome {
+        $draft = new LedgerEntry(
+            null,
+            $user_id,
+            0,
+            0,
+            LedgerType::EXPIRE,
+            LedgerSource::EXPIRY,
+            ReferenceType::USER,
+            $user_id,
+            null,
+            null,
+            null,
+            null,
+            null,
+            $now,
+            IdempotencyKey::compose( LedgerType::EXPIRE, $user_id, ReferenceType::USER, $user_id, gmdate( 'Ymd', Dates::to_timestamp( $now ) ) )
+        );
+
+        return $this->write_keyed(
+            $draft,
+            static function ( Customer $customer ) use ( $now ): int {
+                $policy     = ExpiryPolicy::current();
+                $expires_at = $customer->get_expires_at();
+                $is_due     = $policy->is_enabled() && ExpiryMode::INACTIVITY === $policy->mode()
+                    && null !== $expires_at && strcmp( $expires_at, $now ) <= 0;
+
+                return $is_due ? -max( 0, $customer->get_balance() ) : 0;
+            },
+            self::REASON_NOT_DUE
+        );
+    }
+
+    /**
      * Gives back what one clawback row took, when its refund is deleted: an
      * ADJUST row referencing the refund, which sum_refunded_for() nets out so
      * a later refund claws again from the right starting point. Nothing once
@@ -236,7 +282,7 @@ final class LedgerService {
      * is appended and Outcome::awarded carries it. Precondition: $draft has
      * an idempotency key and valid vocabulary.
      *
-     * @param callable|null $points_under_lock Returns the row's signed points once the lock is held; 0 writes nothing.
+     * @param callable|null $points_under_lock Given the locked Customer, returns the row's signed points; 0 writes nothing.
      * @param string        $skip_reason       Outcome::skipped's reason when $points_under_lock returns 0.
      * @param int|null      $source_ledger_id  The row a negative row reverses, whose lot it takes from first.
      */
@@ -258,7 +304,7 @@ final class LedgerService {
                 }
 
                 if ( null !== $points_under_lock ) {
-                    $points = (int) $points_under_lock();
+                    $points = (int) $points_under_lock( $customer );
 
                     if ( 0 === $points ) {
                         return Outcome::skipped( $skip_reason );
@@ -328,7 +374,17 @@ final class LedgerService {
 
         $persisted = $to_insert->with_persisted( $insert_id, $balance_after );
 
-        $this->lots->record( $persisted, $customer->get_balance(), $source_ledger_id );
+        if ( LedgerType::EXPIRE === $persisted->get_type() ) {
+            $this->lots->take_all( $persisted );
+        } else {
+            $this->lots->record( $persisted, $customer->get_balance(), $source_ledger_id );
+        }
+
+        $expires_at = ExpiryPolicy::current()->customer_expires_at( $persisted, $customer, null, Dates::now() );
+
+        if ( $expires_at !== $customer->get_expires_at() ) {
+            $this->customers->set_expires_at( $customer->get_user_id(), $expires_at );
+        }
 
         $this->announce( $persisted );
 
@@ -381,7 +437,7 @@ final class LedgerService {
      * @throws \YayLoyalty\Database\QueryException When a write other than a duplicate fails.
      */
     public function redeem( LedgerEntry $draft ): Outcome { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(redemption): mirror earn() — assert REDEEM, points < 0, key; Transaction::run: ensure_row, lock_and_get, if balance + points < 0 → Outcome::skipped( insufficient_balance ), pre-check, insert_unless_duplicate → Outcome::duplicate, apply_aggregates, announce(); return Outcome::redeemed.
+        // TODO(redemption): write through write_keyed()/append() so LotBook takes the lots — assert REDEEM, points < 0, key; Transaction::run: ensure_row, lock_and_get, if balance + points < 0 → Outcome::skipped( insufficient_balance ), pre-check, insert_unless_duplicate → Outcome::duplicate, apply_aggregates, announce(); return Outcome::redeemed.
         throw new \RuntimeException( 'Not implemented' );
     }
 
@@ -432,8 +488,7 @@ final class LedgerService {
             $points,
             $lifetime_earned_delta,
             $lifetime_redeemed_delta,
-            $activity_at,
-            null // Expiry needs the lots table: designed, not built yet.
+            $activity_at
         );
     }
 
