@@ -18,8 +18,9 @@ export const settingsSchema = z.object({
     enabled: z.boolean(),
     /** One-way: the server refuses batch → inactivity. */
     mode: z.enum(['inactivity', 'batch']),
-    inactivity_days: z.number().int().min(1),
-    batch_months: z.number().int().min(1),
+    /** Max mirrors SettingsHelper::EXPIRY_WINDOW_MAX. */
+    inactivity_days: z.number().int().min(1).max(36500),
+    batch_months: z.number().int().min(1).max(36500),
     spend_order: z.enum(['oldest', 'newest']),
   }),
   /** Stamped by SettingsHelper on save; PHP reports SCHEMA_VERSION when the stored blob predates versioning. */

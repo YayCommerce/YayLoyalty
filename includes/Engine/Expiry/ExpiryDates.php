@@ -12,7 +12,7 @@ final class ExpiryDates {
     public const GRACE_DAYS = 30;
 
     public static function inactivity_expires_at( string $base_utc, int $days ): string {
-        return gmdate( Dates::MYSQL_FORMAT, Dates::to_timestamp( $base_utc ) + $days * 86400 );
+        return Dates::offset( $days * 86400, $base_utc );
     }
 
     /** $months after the earned date, on the same day of the month or the month's last day: 31 Jan + 1 = 28/29 Feb. */

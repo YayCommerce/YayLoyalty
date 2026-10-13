@@ -2,6 +2,8 @@
 namespace YayLoyalty\Tests\Integration\Services;
 
 use YayLoyalty\Engine\Earning\Outcome;
+use YayLoyalty\Engine\Expiry\ExpiryPolicy;
+use YayLoyalty\Engine\Expiry\ExpiryRunner;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Services\LedgerService;
@@ -24,16 +26,23 @@ final class ExpiryRunnerTest extends IntegrationTestCase {
     protected function setUp(): void {
         parent::setUp();
         add_filter( 'pre_option_' . SettingsHelper::OPTION_SETTINGS, [ $this, 'pinned_settings' ] );
+        add_filter( 'pre_option_' . ExpiryRunner::OPTION_APPLIED, [ $this, 'applied_signature' ] );
     }
 
     protected function tearDown(): void {
         remove_filter( 'pre_option_' . SettingsHelper::OPTION_SETTINGS, [ $this, 'pinned_settings' ] );
+        remove_filter( 'pre_option_' . ExpiryRunner::OPTION_APPLIED, [ $this, 'applied_signature' ] );
         parent::tearDown();
     }
 
     /** @return array<string, mixed> */
     public function pinned_settings(): array {
         return [ 'expiry' => $this->expiry ];
+    }
+
+    /** The stored dates count as computed from the pinned settings. */
+    public function applied_signature(): string {
+        return ExpiryPolicy::current()->signature();
     }
 
     public function test_inactivity_expires_the_whole_balance_and_every_lot(): void {

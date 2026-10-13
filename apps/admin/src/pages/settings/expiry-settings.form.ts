@@ -27,8 +27,10 @@ export function needsConfirmation(saved: Expiry, next: Expiry): 'shorten' | 'bat
     return 'batch';
   }
 
+  // Only the window the next mode runs on counts.
   const isSooner =
-    !saved.enabled || next.inactivity_days < saved.inactivity_days || next.batch_months < saved.batch_months;
+    !saved.enabled ||
+    (next.mode === 'batch' ? next.batch_months < saved.batch_months : next.inactivity_days < saved.inactivity_days);
 
   return next.enabled && isSooner ? 'shorten' : null;
 }

@@ -57,7 +57,12 @@ final class ExpiryRunner {
         $customers = new CustomerRepository();
         $ledger    = new LedgerService( new LedgerRepository(), $customers, new CampaignRepository() );
 
-        $this->apply_settings( $policy, $customers, $now );
+        try {
+            $this->apply_settings( $policy, $customers, $now );
+        } catch ( \Throwable $e ) {
+            // Unapplied, so the next run retries; backfill and expiry still run on the stored dates.
+            Log::error( 'ExpiryRunner', 'applying expiry settings failed: ' . $e->getMessage() );
+        }
 
         $has_more = $this->backfill( $ledger );
 

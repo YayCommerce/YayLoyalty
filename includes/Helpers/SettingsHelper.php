@@ -26,6 +26,9 @@ class SettingsHelper {
     /** Longest points label; the admin form's schema (general-settings.form.ts) mirrors it. */
     public const POINTS_LABEL_MAX_LENGTH = 30;
 
+    /** Longest expiry window, in days or months, so no date passes year 9999. The zod schema mirrors it. */
+    public const EXPIRY_WINDOW_MAX = 36500;
+
     /** Bump when a migration changes the stored shape. */
     public const SCHEMA_VERSION = 2;
 
@@ -230,7 +233,7 @@ class SettingsHelper {
                 return null === $value || ConfigSpec::is_limit( $value );
 
             case 'whole_number':
-                return ConfigSpec::is_limit( $value );
+                return ConfigSpec::is_limit( $value ) && (float) $value <= self::EXPIRY_WINDOW_MAX;
 
             case 'expiry_mode':
                 return in_array( $value, ExpiryMode::all_known(), true );
@@ -312,7 +315,7 @@ class SettingsHelper {
                 return ConfigSpec::is_limit( $value ) ? (int) $value : null;
 
             case 'whole_number':
-                return ConfigSpec::is_limit( $value ) ? (int) $value : null;
+                return self::is_valid_value( $value, $type ) ? (int) $value : null;
 
             case 'expiry_mode':
             case 'spend_order':

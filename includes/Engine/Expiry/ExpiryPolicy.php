@@ -57,7 +57,21 @@ final class ExpiryPolicy {
 
     /** What the stored customer and lot dates were computed from: a change means they must be recomputed. */
     public function signature(): string {
-        return implode( '|', [ (int) $this->is_enabled(), $this->mode(), $this->inactivity_days(), $this->batch_months() ] );
+        $window = ExpiryMode::BATCH === $this->mode() ? $this->batch_months() : $this->inactivity_days();
+
+        return implode( '|', [ (int) $this->is_enabled(), $this->mode(), $window ] );
+    }
+
+    /**
+     * Whether an inactivity expiry is due for the locked customer: its stored date has passed, and the
+     * stored dates were computed from these settings. After a save they wait for the job's restamp.
+     */
+    public function is_due( Customer $customer, string $now ): bool {
+        $expires_at = $customer->get_expires_at();
+
+        return $this->is_enabled() && ExpiryMode::INACTIVITY === $this->mode()
+            && null !== $expires_at && strcmp( $expires_at, $now ) <= 0
+            && get_option( ExpiryRunner::OPTION_APPLIED ) === $this->signature();
     }
 
     /** A new lot's expiry: set only while batch expiry is on. */

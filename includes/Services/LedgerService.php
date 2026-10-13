@@ -5,7 +5,6 @@ use YayLoyalty\Database\Transaction;
 use YayLoyalty\Engine\Earning\IdempotencyKey;
 use YayLoyalty\Engine\Earning\Outcome;
 use YayLoyalty\Engine\Expiry\ExpiryPolicy;
-use YayLoyalty\Enums\ExpiryMode;
 use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Enums\ReferenceType;
@@ -216,12 +215,7 @@ final class LedgerService {
         return $this->write_keyed(
             $draft,
             static function ( Customer $customer ) use ( $now ): int {
-                $policy     = ExpiryPolicy::current();
-                $expires_at = $customer->get_expires_at();
-                $is_due     = $policy->is_enabled() && ExpiryMode::INACTIVITY === $policy->mode()
-                    && null !== $expires_at && strcmp( $expires_at, $now ) <= 0;
-
-                return $is_due ? -max( 0, $customer->get_balance() ) : 0;
+                return ExpiryPolicy::current()->is_due( $customer, $now ) ? -max( 0, $customer->get_balance() ) : 0;
             },
             self::REASON_NOT_DUE
         );
