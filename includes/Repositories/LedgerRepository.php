@@ -223,6 +223,54 @@ class LedgerRepository extends AbstractRepository {
         return $counts;
     }
 
+    /**
+     * A user's positive rows, newest first, read in pages until their points cover $cover: what
+     * Engine\Expiry\LotRebuild needs to rebuild that balance's lots. Ordered by id, which orders history.
+     *
+     * @return array<int, array{id: int, points: int, created_at: string}>
+     */
+    public function positive_rows_newest_first( int $user_id, int $cover ): array {
+        global $wpdb;
+
+        $rows    = [];
+        $sum     = 0;
+        $before  = PHP_INT_MAX;
+        $page_sz = 500;
+
+        while ( $sum < $cover ) {
+            $page = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+                $wpdb->prepare(
+                    'SELECT id, points, created_at FROM `' . esc_sql( $this->table() ) . '`
+                     WHERE user_id = %d AND points > 0 AND id < %d ORDER BY id DESC LIMIT %d',
+                    $user_id,
+                    $before,
+                    $page_sz
+                ),
+                ARRAY_A
+            );
+
+            foreach ( is_array( $page ) ? $page : [] as $row ) {
+                $rows[] = [
+                    'id'         => (int) $row['id'],
+                    'points'     => (int) $row['points'],
+                    'created_at' => (string) $row['created_at'],
+                ];
+                $sum   += (int) $row['points'];
+                $before = (int) $row['id'];
+
+                if ( $sum >= $cover ) {
+                    break;
+                }
+            }
+
+            if ( ! is_array( $page ) || count( $page ) < $page_sz ) {
+                break;
+            }
+        }
+
+        return $rows;
+    }
+
     /** SUM(points) for a user, the ledger-side half of the balance invariant. Reserved for a rebuild tool. */
     public function sum_points_for_user( int $user_id ): int {
         return $this->sum_points( 'user_id = %d', [ $user_id ] );
