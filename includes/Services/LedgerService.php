@@ -12,6 +12,7 @@ use YayLoyalty\Models\LedgerEntry;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
+use YayLoyalty\Repositories\LotRepository;
 use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
@@ -25,6 +26,8 @@ defined( 'ABSPATH' ) || exit;
  * refund_earn(), restore_refund() and redeem(), which add the idempotency-key duplicate branch.
  * Lock order: the customer row, then, for an earn row, its campaign row shared, which
  * CampaignRestController::delete_item() locks exclusively before deleting.
+ * It also keeps `lots` and `lot_allocations` in step with every row, through LotBook, which
+ * nothing else constructs.
  */
 final class LedgerService {
 
@@ -46,10 +49,14 @@ final class LedgerService {
     /** @var CampaignRepository */
     private $campaigns;
 
-    public function __construct( LedgerRepository $ledger, CustomerRepository $customers, CampaignRepository $campaigns ) {
+    /** @var LotBook */
+    private $lots;
+
+    public function __construct( LedgerRepository $ledger, CustomerRepository $customers, CampaignRepository $campaigns, ?LotBook $lots = null ) {
         $this->ledger    = $ledger;
         $this->customers = $customers;
         $this->campaigns = $campaigns;
+        $this->lots      = $lots ?? new LotBook( new LotRepository(), $ledger );
     }
 
     /**
@@ -153,7 +160,8 @@ final class LedgerService {
             function () use ( $earn, $owed_total ): int {
                 return -max( 0, min( $owed_total, $earn->get_points() ) - $this->ledger->sum_refunded_for( $earn ) );
             },
-            self::REASON_NOTHING_TO_CLAW_BACK
+            self::REASON_NOTHING_TO_CLAW_BACK,
+            $earn->get_id()
         );
     }
 
@@ -214,13 +222,14 @@ final class LedgerService {
      *
      * @param callable|null $points_under_lock Returns the row's signed points once the lock is held; 0 writes nothing.
      * @param string        $skip_reason       Outcome::skipped's reason when $points_under_lock returns 0.
+     * @param int|null      $source_ledger_id  The row a negative row reverses, whose lot it takes from first.
      */
-    private function write_keyed( LedgerEntry $draft, ?callable $points_under_lock = null, string $skip_reason = '' ): Outcome {
+    private function write_keyed( LedgerEntry $draft, ?callable $points_under_lock = null, string $skip_reason = '', ?int $source_ledger_id = null ): Outcome {
         $key = (string) $draft->get_idempotency_key();
 
         return $this->under_lock(
             $draft->get_user_id(),
-            function ( Customer $customer ) use ( $draft, $key, $points_under_lock, $skip_reason ): Outcome {
+            function ( Customer $customer ) use ( $draft, $key, $points_under_lock, $skip_reason, $source_ledger_id ): Outcome {
                 // Under the lock a concurrent write for this user has finished, so this sees its row.
                 $existing = $this->ledger->find_by_idempotency_key( $key );
 
@@ -242,7 +251,7 @@ final class LedgerService {
                     $draft = $draft->with_points( $points );
                 }
 
-                $persisted = $this->append( $draft, $customer, true );
+                $persisted = $this->append( $draft, $customer, true, $source_ledger_id );
 
                 return null === $persisted ? Outcome::duplicate( $this->existing_for( $key ) ) : Outcome::awarded( $persisted );
             }
@@ -281,12 +290,16 @@ final class LedgerService {
     }
 
     /**
-     * Inserts $draft at the locked balance, moves the aggregates and
-     * announces the row. Must run under_lock(), so balance_after chains.
+     * Inserts $draft at the locked balance, moves the aggregates and the
+     * lots, and announces the row. Must run under_lock(), so balance_after chains.
      *
-     * @param bool $is_keyed True turns a UNIQUE-key collision into null instead of an exception.
+     * @param bool     $is_keyed         True turns a UNIQUE-key collision into null instead of an exception.
+     * @param int|null $source_ledger_id See write_keyed().
      */
-    private function append( LedgerEntry $draft, Customer $customer, bool $is_keyed ): ?LedgerEntry {
+    private function append( LedgerEntry $draft, Customer $customer, bool $is_keyed, ?int $source_ledger_id = null ): ?LedgerEntry {
+        // A balance from before lots existed gets them first, from history that excludes this row.
+        $this->lots->backfill( $customer->get_user_id(), $customer->get_balance() );
+
         $balance_after = $customer->get_balance() + $draft->get_points();
         $to_insert     = $draft->with_persisted( 0, $balance_after );
         $insert_id     = $is_keyed ? $this->ledger->insert_unless_duplicate( $to_insert ) : $this->ledger->insert( $to_insert );
@@ -298,6 +311,8 @@ final class LedgerService {
         $this->apply_aggregates( $draft );
 
         $persisted = $to_insert->with_persisted( $insert_id, $balance_after );
+
+        $this->lots->record( $persisted, $customer->get_balance(), $source_ledger_id );
 
         $this->announce( $persisted );
 
