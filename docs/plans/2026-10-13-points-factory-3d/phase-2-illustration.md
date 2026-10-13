@@ -28,7 +28,9 @@ Download into a fresh scratch directory, not the repo, and copy only the models 
 
 - [x] **Step 1: Kenney models.** From the kit's `Models/GLB format/`, copy into `public/models/`:
   - stations: `scanner-high`, `hopper-square` (intake); `machine`, `cog-a` (scoring); `warning-traffic` (gate); `piston-square` (ledger); `structure-medium` (warehouse racks); `machine-fortified` (vault); `machine-window`, `conveyor-stripe` (return);
-  - belts and props: `conveyor`, `conveyor-bars`, `cone`, `box-small`, and `screen-small` for the admin's console.
+  - props: `cone`, `box-small`, and `screen-small` for the admin's console.
+
+  `conveyor` and `conveyor-bars` were copied at first, then removed in the Phase 2 review: Task 4 builds the belts and rollers as custom geometry, so nothing loads them.
 
   The models load `Textures/colormap.png` by relative URL, so copy it to `public/models/Textures/`. Copy `License.txt` to `LICENSE-kenney-factory-kit.txt`.
 - [x] **Step 2: Worker.** The free tier of the Quaternius Universal Animation Library, `Universal Animation Library[Standard].zip`, downloads only through itch.io's browser dialog. Its `UAL1_Standard.glb` is 7.6 MB with 43 clips. Trim it with `@gltf-transform` in scratch to `Idle_Loop` and `Walk_Loop`, disposing each dropped clip's channels and samplers before `prune()`, and save it as `public/models/worker.glb` (about 0.85 MB). Copy `License.txt` to `LICENSE-quaternius.txt`. Both licenses are CC0.

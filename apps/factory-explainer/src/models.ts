@@ -3,7 +3,7 @@ import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
 const KEYS = [
   'scanner-high', 'hopper-square', 'machine', 'cog-a', 'warning-traffic', 'piston-square', 'structure-medium',
-  'machine-fortified', 'machine-window', 'conveyor-stripe', 'conveyor', 'conveyor-bars', 'cone', 'box-small', 'screen-small',
+  'machine-fortified', 'machine-window', 'conveyor-stripe', 'cone', 'box-small', 'screen-small',
   'worker',
 ] as const;
 
