@@ -24,15 +24,15 @@ check_removed_refs() {
     git grep -nE 'code-standards|codebase-summary|system-architecture|deployment-guide|project-roadmap|project-changelog|data-model(\.md|/)|points-engine-scout|redemption-scout|check-docs|code-corrector|source-of-truth-check|claudekit|repomix|opencode|README invariants?' -- . ':!docs/plans/' ':!scripts/check-harness.sh'
 }
 
-# Doc-section citations in code. The campaign editor's own numbered sections are allowed.
+# Doc-section citations in code. The campaign editor's own numbered sections are allowed. -I skips binary assets, whose bytes can match by chance.
 check_section_citations() {
-    git grep -n '§' -- includes apps tests scripts phpcs.xml.dist yayloyalty.php ':!scripts/check-harness.sh' \
+    git grep -nI '§' -- includes apps tests scripts phpcs.xml.dist yayloyalty.php ':!scripts/check-harness.sh' \
         | grep -vE '^apps/admin/src/pro/campaigns/(editor/(CampaignEditorSections\.tsx|campaign-editor\.form\.ts)|add/campaign-templates\.ts):'
 }
 
 # Feature IDs (an F, two digits and an optional -N suffix) in code.
 check_feature_ids() {
-    git grep -nwE 'F[0-9]{2}(-[0-9]+)?' -- includes apps tests scripts
+    git grep -nIwE 'F[0-9]{2}(-[0-9]+)?' -- includes apps tests scripts
 }
 
 # Every docs/*.md path cited outside plans, specs and skill evals exists. Those

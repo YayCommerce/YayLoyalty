@@ -66,7 +66,18 @@ Verify each one:
 - `./scripts/check-harness.sh` passes.
 - `git grep -n "explainers/points-factory.html"` finds only history: specs and plans.
 
-Steps: expand after Phase 2 lands.
+- [x] **Step 1: App README.** `apps/factory-explainer/README.md` now covers:
+  - what the app is, and that it is desktop-only;
+  - `nvm use`, `pnpm install` and `dev`;
+  - `?perf` and the controls;
+  - the Playwright install, `tsc` and `shoot`, and what `shoot` fails on;
+  - where the config, timeline, scene and UI live;
+  - the CC0 credits for Kenney, Quaternius and Poly Haven.
+- [x] **Step 2: Links and status.** In `docs/architecture.md`, the explainer bullet now links `../apps/factory-explainer/README.md`. The 2D plan's Status becomes `superseded by` this plan. The 2D spec was already `superseded` in Phase 1.
+- [x] **Step 3: Delete the 2D page.** `git rm docs/explainers/points-factory.html`. That leaves `docs/explainers/` empty, so git drops it.
+- [x] **Step 4: Harness fix.** `./scripts/check-harness.sh` failed with `[section_citations] Binary file … matches` for `worker.glb` and `potsdamer_platz_1k.hdr`: their bytes contain `C2 A7`, the UTF-8 encoding of `§`. `check_section_citations` and `check_feature_ids` now call `git grep -I`, which skips binary files. `scripts/check-harness.sh` is outside this plan's file list; the binary assets Phase 2 added are the reason it changes.
+- [x] **Step 5: Verify.** `./scripts/check-harness.sh` prints "Harness checks passed." and exits 0. `git grep -n "explainers/points-factory.html"` finds the path only in `docs/plans/` and `docs/specs/`.
+- [x] **Step 6: Commit.** Stage the app README, `docs/architecture.md`, the 2D plan, the deleted page, `scripts/check-harness.sh` and this file: `docs(factory-explainer): document the 3D app and retire the 2D page`.
 
 ### Task 3: Final shoot, critique and close-out
 

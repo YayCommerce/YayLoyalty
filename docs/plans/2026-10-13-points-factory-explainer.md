@@ -2,7 +2,7 @@
 
 > **For agentic workers:** execute tasks in order, one at a time. Steps use `- [ ]` for tracking. Read the spec linked below before starting; the plan argues from it.
 
-**Status:** done 2026-10-13
+**Status:** superseded by [the points factory 3D plan](2026-10-13-points-factory-3d/README.md)
 **Goal:** Build `docs/explainers/points-factory.html`, a self-playing animated isometric factory scene that shows the team how points move through the earning path today.
 **Spec:** [docs/specs/2026-10-13-points-factory-explainer-design.md](../specs/2026-10-13-points-factory-explainer-design.md)
 **Architecture:** One HTML file with inline SVG, CSS and JS, animated by GSAP 3.12.5 and MotionPathPlugin from cdnjs. The static floor and the station panels are built first and work without GSAP. The scene timelines are then layered on top, so the offline fallback is the base state rather than a special case.
