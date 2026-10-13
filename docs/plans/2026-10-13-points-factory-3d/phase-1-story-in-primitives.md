@@ -218,7 +218,7 @@ Message: `feat(factory-explainer): draw the factory floor in beveled primitives`
 - Consumes: `useFactory` and `entryAt`.
 - Produces: the README's DOM hooks.
 
-- [ ] **Step 1: Implement the overlays**
+- [x] **Step 1: Implement the overlays**
 
 - **Toolbar** (`data-testid="toolbar"`, top, sticky):
   - Play/Pause and Restart;
@@ -233,9 +233,9 @@ Message: `feat(factory-explainer): draw the factory floor in beveled primitives`
 - **StationPanel** (`data-testid="panel"`): a right-hand drawer with the role, label, summary, file, hooks, methods, inputs and outputs. It has a close button (`panel-close`) and closes on Escape.
 - **Space** toggles play, except when focus is on a button.
 
-- [ ] **Step 2: Verify the controls**
+- [x] **Step 2: Verify the controls**
 
-Open `dev`, then use the mouse and keyboard to:
+Open `dev`, or drive a one-off Playwright script with real mouse and keyboard input; the browser extension's hidden tab stalls frames. Then:
 1. click Play/Pause and Restart;
 2. hover a box, then press Space, then leave;
 3. hover a box, then click a station, then close the panel;
@@ -253,7 +253,7 @@ Expected:
 | Pause, open a panel, close it | Stays paused |
 | Click scene 4 | The caption reads "4 · Cara reviews, but has opted out", and no box from scenes 1–3 is in mid-ride |
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 Stage: the files above.
 Message: `feat(factory-explainer): add the toolbar, step card and station panel`
@@ -269,7 +269,7 @@ Message: `feat(factory-explainer): add the toolbar, step card and station panel`
   - the README's debug handle;
   - `SHOOT_VIEWPORTS`, a comma list read by the spec, defaulting to `1440x900`. Phase 3 sets `1440x900,390x844`.
 
-- [ ] **Step 1: Implement the harness**
+- [x] **Step 1: Implement the harness**
 
 - **`playwright.config.ts`:**
   - `testDir: './scripts'`;
@@ -285,7 +285,7 @@ Message: `feat(factory-explainer): add the toolbar, step card and station panel`
 
 Browsers come from the shared Playwright cache: `pnpm --filter @yayloyalty/e2e exec playwright install chromium`.
 
-- [ ] **Step 2: Verify the harness**
+- [x] **Step 2: Verify the harness**
 
 Run: `pnpm --filter @yayloyalty/factory-explainer shoot`
 
@@ -296,7 +296,7 @@ Expected:
 
 Open the three images. Each shows the step card with that scene's first card.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 Stage: the files above.
 Message: `test(factory-explainer): add the screenshot harness`

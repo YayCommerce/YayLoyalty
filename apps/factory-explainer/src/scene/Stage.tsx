@@ -2,6 +2,7 @@ import { useEffect, type ComponentRef, type ReactNode } from 'react';
 import * as THREE from 'three';
 import { Canvas, useThree } from '@react-three/fiber';
 import { MapControls } from '@react-three/drei';
+import { rig } from './rig';
 
 /** Floor bounds in world units (the 2D floor, 0–1240 × 30–530, divided by 40). */
 export const FLOOR = { x0: 0, x1: 31, z0: 0.75, z1: 13.25 };
@@ -30,6 +31,7 @@ function fitZoom( camera: THREE.Camera, width: number, height: number ): number 
 function IsoRig() {
   const camera = useThree( ( s ) => s.camera ) as THREE.OrthographicCamera;
   const size = useThree( ( s ) => s.size );
+  const canvas = useThree( ( s ) => s.gl.domElement );
   // makeDefault registers the controls on the store, so the effect re-runs once they exist.
   const controls = useThree( ( s ) => s.controls ) as ComponentRef<typeof MapControls> | null;
 
@@ -42,6 +44,8 @@ function IsoRig() {
     camera.near = 0.1;
     camera.far = 200;
     camera.updateProjectionMatrix();
+    rig.camera = camera;
+    rig.canvas = canvas;
     const c = controls;
     if ( c ) {
       c.target.copy( TARGET );
@@ -49,7 +53,7 @@ function IsoRig() {
       c.maxZoom = zoom * 2.5;
       c.update();
     }
-  }, [ camera, controls, size.width, size.height ] );
+  }, [ camera, canvas, controls, size.width, size.height ] );
 
   // Pans move target and camera together; clamping the target clamps both.
   const clamp = () => {
