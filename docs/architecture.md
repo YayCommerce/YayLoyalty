@@ -56,6 +56,7 @@ Commands and hard rules live in [CLAUDE.md](../CLAUDE.md). Citations give a path
 - `includes/Services/LedgerService.php` is the only writer of ledger rows and of the customer's cached totals (balance, lifetime earned and redeemed):
   - In one transaction, it locks the customer row (`SELECT … FOR UPDATE`), appends the ledger row with its running `balance_after`, and updates the totals.
   - An earn row that names a campaign also takes that campaign row's shared lock (`LOCK IN SHARE MODE`), after the customer row. If the campaign is gone, the earn is skipped (`REASON_CAMPAIGN_DELETED`). The campaign delete route locks the row exclusively, then re-counts its ledger rows with a locking read, so a racing award either lands first and the delete answers 409, or finds the campaign gone. `ledger.campaign_id` has no foreign key, so nothing else stops an orphan.
+  - In the same transaction, `LotWriter` (`includes/Services/LotWriter.php`), which only `LedgerService` constructs, keeps the customer's points lots: a positive row opens a lot, paying any negative balance first, and a negative row takes from open lots oldest first. Only `LedgerService` writes `lots` and `lot_allocations` ([decision record](decisions/2026-10-13-lots-in-core.md)).
   - It fires `yayloyalty_ledger_recorded` after commit.
   - System rows carry an idempotency key that a unique index backs, so a replayed event can't award twice.
   - Its docblock lists where it may be constructed.

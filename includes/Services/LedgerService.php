@@ -12,6 +12,8 @@ use YayLoyalty\Models\LedgerEntry;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
+use YayLoyalty\Repositories\LotAllocationRepository;
+use YayLoyalty\Repositories\LotRepository;
 use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
@@ -25,6 +27,7 @@ defined( 'ABSPATH' ) || exit;
  * refund_earn(), restore_refund() and redeem(), which add the idempotency-key duplicate branch.
  * Lock order: the customer row, then, for an earn row, its campaign row shared, which
  * CampaignRestController::delete_item() locks exclusively before deleting.
+ * Lots and allocations are written only here, through LotWriter, which nothing else constructs.
  */
 final class LedgerService {
 
@@ -46,10 +49,14 @@ final class LedgerService {
     /** @var CampaignRepository */
     private $campaigns;
 
+    /** @var LotWriter */
+    private $lots;
+
     public function __construct( LedgerRepository $ledger, CustomerRepository $customers, CampaignRepository $campaigns ) {
         $this->ledger    = $ledger;
         $this->customers = $customers;
         $this->campaigns = $campaigns;
+        $this->lots      = new LotWriter( new LotRepository(), new LotAllocationRepository() );
     }
 
     /**
@@ -298,6 +305,8 @@ final class LedgerService {
         $this->apply_aggregates( $draft );
 
         $persisted = $to_insert->with_persisted( $insert_id, $balance_after );
+
+        $this->lots->record( $persisted, $customer );
 
         $this->announce( $persisted );
 

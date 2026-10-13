@@ -96,6 +96,8 @@ Message: `refactor(db): install the lot tables in both builds`
 
 **Files:**
 - Create: `includes/Repositories/LotRepository.php`
+- Create: `includes/Repositories/LotAllocationRepository.php` (split out: a repository touches one table)
+- Modify: `docs/architecture.md` (writers section)
 - Create: `includes/Services/LotWriter.php`
 - Modify: `includes/Services/LedgerService.php` (`__construct`, `append()`, class docblock)
 - Test: `tests/integration/Services/LotWriterTest.php`
@@ -104,7 +106,7 @@ Message: `refactor(db): install the lot tables in both builds`
 - Consumes: Task 1 tables.
 - Produces: README contract `LotRepository` (the first four methods), `LotWriter::__construct`, and `LotWriter::record`.
 
-- [ ] **Step 1: Write the failing tests** in `tests/integration/Services/LotWriterTest.php` (extends `IntegrationTestCase`, `USER_ID = 616161`)
+- [x] **Step 1: Write the failing tests** in `tests/integration/Services/LotWriterTest.php` (extends `IntegrationTestCase`, `USER_ID = 616161`)
 
 Add private helpers. `lots( int $user_id ): array` returns the `lots` rows ordered by id. `allocations_for( int $ledger_id ): array`
 returns the `lot_allocations` rows ordered by id. `assert_invariant( int $user_id )` asserts both halves of spec criterion 5.
@@ -160,16 +162,16 @@ public function test_invariant_holds_after_a_mixed_sequence(): void {
 }
 ```
 
-- [ ] **Step 2: Run them**
+- [x] **Step 2: Run them**
 
 Run: `composer test:integration -- --filter LotWriterTest`
 Expected: FAIL, because no lots are written.
 
-- [ ] **Step 3: Implement `LotRepository`**: `open_lots_fifo`, `insert_lot`, `insert_allocation` and `set_remaining` from the README contract
+- [x] **Step 3: Implement `LotRepository`**: `open_lots_fifo`, `insert_lot`, `insert_allocation` and `set_remaining` from the README contract
 
 It extends `AbstractRepository` (table slug `lots`). Reads take no `FOR UPDATE`, because the customer lock serialises writers.
 
-- [ ] **Step 4: Implement `LotWriter::record( LedgerEntry $row, Customer $before ): void`**
+- [x] **Step 4: Implement `LotWriter::record( LedgerEntry $row, Customer $before ): void`**
 
 The signature doesn't fix the rule:
 - **Positive row:** `paid = $before->get_balance() < 0 ? min( -balance, points ) : 0`. Insert the lot with `remaining = points − paid`,
@@ -179,14 +181,14 @@ The signature doesn't fix the rule:
   `min( take_left, remaining )` per lot and calling `set_remaining()`. A lot that reaches 0 gets `expired` when the row is
   `LedgerType::EXPIRE`, else `consumed`. The shortfall beyond `take` is the deficit, and nothing records it.
 
-- [ ] **Step 5: Wire it into `LedgerService`**
+- [x] **Step 5: Wire it into `LedgerService`**
 
 In `__construct`, `$this->lots = new LotWriter( new LotRepository(), $customers );` (no constructor parameter, so the four call
 sites don't change). In `append()`, call `$this->lots->record( $persisted, $customer )` after `apply_aggregates()` and before
 `announce()`. Add to the class docblock: "Lots and allocations are written only here, through LotWriter, which nothing else constructs."
 In `docs/architecture.md` § Server layers and write ownership, add `lots` and `lot_allocations` to `LedgerService`'s writes (via `LotWriter`).
 
-- [ ] **Step 6: Run the tests**
+- [x] **Step 6: Run the tests**
 
 Run: `composer test:integration -- --filter LotWriterTest`
 Expected: PASS (4 tests).

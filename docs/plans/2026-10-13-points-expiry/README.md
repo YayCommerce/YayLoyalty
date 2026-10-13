@@ -64,17 +64,18 @@ branch from `dev/edd` after the previous PR merges (`paul/feat/expiry-reminders`
 - `add_days( string $utc, int $days ): string`
 - `add_months( string $utc, int $months ): string`: clamps to month end, same as MySQL.
 
-**`YayLoyalty\Repositories\LotRepository` (Phase 1 Task 2, extended in Task 4 and Phase 3):**
+**`YayLoyalty\Repositories\LotRepository` (Phase 1 Task 2, extended in Phase 3).** A plain class over row arrays, like `CampaignPointsRepository`, with no model. Statuses are `STATUS_OPEN`, `STATUS_CONSUMED` and `STATUS_EXPIRED`.
 - `open_lots_fifo( int $user_id ): array` returns `array<int, array{id: int, remaining: int}>`, ordered `expires_at IS NULL, expires_at, id`
 - `insert_lot( int $user_id, int $ledger_id, int $points, int $remaining, ?string $expires_at, string $created_at ): int`
-- `insert_allocation( int $lot_id, int $ledger_id, int $points, string $created_at ): void`
 - `set_remaining( int $lot_id, int $remaining, string $status ): void`
 - `sum_due( int $user_id, string $now ): int`: SUM(remaining) of open lots with `expires_at <= $now` (Phase 3)
 - `earliest_open_expiry( int $user_id ): ?string` (Phase 3)
 - `recompute_expiry( ?int $months ): void`: sets every open lot's `expires_at` (NULL when `$months` is null) (Phase 3)
 
+**`YayLoyalty\Repositories\LotAllocationRepository` (Phase 1 Task 2):** `insert( int $lot_id, int $ledger_id, int $points, string $created_at ): void`. It's a separate class because a repository touches one table (`AbstractRepository`'s rule).
+
 **`YayLoyalty\Services\LotWriter` (Phase 1 Task 2):**
-- `__construct( LotRepository $lots, CustomerRepository $customers )`
+- `__construct( LotRepository $lots, LotAllocationRepository $allocations )`. Phase 1 Task 3 adds a third parameter, `CustomerRepository $customers`, for the expiry sync.
 - `record( LedgerEntry $row, Customer $before ): void`: `$row` is persisted (has id and balance_after), `$before` is the locked customer before the row
 
 **`YayLoyalty\Services\ExpiryRules` (Phase 1 Task 3), static:**
