@@ -85,7 +85,18 @@ Lighting and effects follow spec criterion 7:
 - N8AO, SMAA and ACES tone mapping;
 - bloom at `luminanceThreshold` 1, where only the LED materials reach it (`toneMapped={false}`, emissive intensity 3 or more).
 
-Steps: expand after Phase 1 lands.
+- [x] **Step 1: Environment image.** drei's `preset="city"` fetches `potsdamer_platz_1k.hdr` from raw.githack.com on every load. Download the same file from Poly Haven: it is byte-identical to drei's copy, by SHA-1, and CC0. Commit it as `public/env/potsdamer_platz_1k.hdr` (1.5 MB) with `LICENSE-polyhaven.txt`, and load it with `<Environment files=…>`, so neither the page nor `shoot` needs the network.
+- [x] **Step 2: `<Lighting />`.** It holds:
+  - a hemisphere light, `#fbf8f3` over `#b9b2a6` at 0.8;
+  - a directional key at 2.5, with a 2048 shadow map, bias −0.0004 and normal bias 0.05. The normal bias clears shadow acne on the belts;
+  - `ContactShadows` over the floor;
+  - the environment at `environmentIntensity` 0.35, inside its own `Suspense`, so the HDR load never blanks the scene.
+
+  `Stage` drops its ambient and directional lights and mounts `<Lighting />` and `<Effects />`. It also asks for `PCFShadowMap`: three r186 removed `PCFSoftShadowMap` and swaps it for `PCFShadowMap` with a console warning.
+- [x] **Step 3: `<Effects />`.** In order: N8AO (radius 0.9, `halfRes`), bloom (threshold 1, `mipmapBlur`), ACES tone mapping, then SMAA. Full-resolution N8AO at 2× DPR timed out a headless screenshot, so it stays `halfRes`.
+- [x] **Step 4: Status LEDs.** `StatusLed` in `stations/Kit.tsx` puts a small sphere on a stalk at each built station's front-left plinth corner, in that station's accent, with `toneMapped={false}`. Its emissive intensity is 3 while `activeStation()` names the station, and 0.35 otherwise. The intensity is a function of `time` alone, so a seek shows the right LEDs. `Station.tsx` mounts it for every built station.
+- [x] **Step 5: Verify.** `tsc --noEmit` exits 0. `shoot` passes, taking about 20 s instead of 6 s now that post-processing runs. In a 2× shot, only the working station's LED blooms, graphite still reads darker than grey, and the belts show no acne pattern. `grep -rn "githack\|preset=" src` finds nothing.
+- [x] **Step 6: Commit.** Stage `public/env/*`, `src/scene/Lighting.tsx`, `Effects.tsx`, `Stage.tsx`, `Station.tsx`, `stations/Kit.tsx` and this file: `feat(factory-explainer): add studio lighting and post-processing`.
 
 ### Task 4: Floor, props and conveyor motion
 

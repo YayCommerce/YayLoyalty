@@ -2,11 +2,13 @@ import { useEffect, type ComponentRef, type ReactNode } from 'react';
 import * as THREE from 'three';
 import { Canvas, useThree } from '@react-three/fiber';
 import { MapControls } from '@react-three/drei';
+import { Effects } from './Effects';
+import { Lighting } from './Lighting';
 import { rig } from './rig';
 
 /** Floor bounds in world units (the 2D floor, 0–1240 × 30–530, divided by 40). */
 export const FLOOR = { x0: 0, x1: 31, z0: 0.75, z1: 13.25 };
-const TARGET = new THREE.Vector3( ( FLOOR.x0 + FLOOR.x1 ) / 2, 0, ( FLOOR.z0 + FLOOR.z1 ) / 2 );
+export const TARGET = new THREE.Vector3( ( FLOOR.x0 + FLOOR.x1 ) / 2, 0, ( FLOOR.z0 + FLOOR.z1 ) / 2 );
 const DISTANCE = 40;
 const PAN_MARGIN = 4;
 
@@ -76,13 +78,11 @@ function IsoRig() {
 
 export function Stage( { children }: { children?: ReactNode } ) {
   return (
-    <Canvas shadows={ { type: THREE.PCFSoftShadowMap } } orthographic dpr={ [ 1, 2 ] } camera={ { position: [ 55, 40, 47 ] } }>
+    <Canvas shadows={ { type: THREE.PCFShadowMap } } orthographic dpr={ [ 1, 2 ] } camera={ { position: [ 55, 40, 47 ] } }>
       <color attach="background" args={ [ '#f4f1ec' ] } />
       <IsoRig />
-      <ambientLight intensity={ 0.55 } />
-      <directionalLight position={ [ 30, 40, 20 ] } intensity={ 1.6 } castShadow shadow-mapSize={ [ 2048, 2048 ] } shadow-camera-left={ -24 } shadow-camera-right={ 24 } shadow-camera-top={ 24 } shadow-camera-bottom={ -24 } shadow-camera-far={ 120 } shadow-bias={ -0.0004 }>
-        <object3D attach="target" position={ [ TARGET.x, 0, TARGET.z ] } />
-      </directionalLight>
+      <Lighting />
+      <Effects />
       { children }
     </Canvas>
   );

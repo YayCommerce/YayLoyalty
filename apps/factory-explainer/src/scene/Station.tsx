@@ -5,6 +5,7 @@ import { useFactory } from '../store';
 import { Blueprint } from './stations/Blueprint';
 import { Gate } from './stations/Gate';
 import { Intake } from './stations/Intake';
+import { StatusLed } from './stations/Kit';
 import { Ledger } from './stations/Ledger';
 import { Return } from './stations/Return';
 import { Scoring } from './stations/Scoring';
@@ -46,6 +47,7 @@ export function Station( { station: s }: { station: StationData } ) {
   return (
     <group position={ [ s.position[ 0 ], 0, s.position[ 1 ] ] } { ...handlers }>
       <Silhouette s={ s } />
+      { s.built && <StatusLed s={ s } /> }
     </group>
   );
 }

@@ -1,9 +1,12 @@
-import { Suspense, useMemo } from 'react';
+import { Suspense, useMemo, useRef } from 'react';
 import * as THREE from 'three';
+import { useFrame } from '@react-three/fiber';
 import { RoundedBox } from '@react-three/drei';
 import type { Station } from '../../factory.config';
 import { useModel, type ModelKey } from '../../models';
-import { material, type MaterialKind } from '../materials';
+import { useFactory } from '../../store';
+import { activeStation, COMPILED, entryAt } from '../../timeline';
+import { ACCENTS, material, type MaterialKind } from '../materials';
 
 export const PLINTH = 0.2;
 
@@ -73,5 +76,29 @@ export function Kit( props: KitProps ) {
     <Suspense fallback={ <Fallback { ...props } /> }>
       <KitModel { ...props } />
     </Suspense>
+  );
+}
+
+const LED_ON = 3;
+const LED_IDLE = 0.35;
+
+/** A status light on a short stalk at the plinth's front-left corner, in the station's accent; it glows past the bloom threshold while the station works. */
+export function StatusLed( { s }: { s: Station } ) {
+  const led = useRef<THREE.MeshStandardMaterial>( null );
+  const [ w, d ] = s.size;
+  useFrame( () => {
+    if ( led.current ) {
+      const active = activeStation( entryAt( COMPILED.entries, useFactory.getState().time ) ) === s.id;
+      led.current.emissiveIntensity = active ? LED_ON : LED_IDLE;
+    }
+  } );
+  return (
+    <group position={ [ -w / 2 + 0.22, PLINTH, d / 2 - 0.22 ] }>
+      <Part args={ [ 0.08, 0.3, 0.08 ] } position={ [ 0, 0.15, 0 ] } kind="graphite" radius={ 0.03 } />
+      <mesh position={ [ 0, 0.36, 0 ] }>
+        <sphereGeometry args={ [ 0.08, 20, 12 ] } />
+        <meshStandardMaterial ref={ led } color={ ACCENTS[ s.type ] } emissive={ ACCENTS[ s.type ] } emissiveIntensity={ LED_IDLE } roughness={ 0.5 } toneMapped={ false } />
+      </mesh>
+    </group>
   );
 }

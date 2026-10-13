@@ -1,0 +1,10 @@
+potsdamer_platz_1k.hdr
+
+"Potsdamer Platz" by Greg Zaal, Poly Haven
+https://polyhaven.com/a/potsdamer_platz
+
+License: Creative Commons Zero (CC0 1.0 Universal)
+https://creativecommons.org/publicdomain/zero/1.0/
+https://polyhaven.com/license
+
+The same file drei's Environment preset "city" loads from pmndrs/drei-assets.
