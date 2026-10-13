@@ -124,7 +124,9 @@ export function compileTimeline( scenes: Scene[] = SCENES ): Compiled {
         const seconds = Math.max( HOP, curve.getLength() / SPEED );
         boxes[ id ].segments.push( { t0: t, t1: t + seconds, from: start, to: v3( curve.getPointAt( 1 ) ), curve } );
         const leaving = CONVEYORS.find( ( c ) => c.id === step.conveyor )!.from;
-        if ( 'earning-service' === leaving ) {
+        // A box the gate will reject was never scored: the gates run before PointsEngine.
+        const rejected = scene.steps.some( ( x ) => x.pkg === id && 'deny' === x.gate );
+        if ( 'earning-service' === leaving && ! rejected ) {
           const b = BOXES.find( ( x ) => x.id === id )!;
           boxes[ id ].tags.push( [ t + 0.2, `${ b.points } · ${ b.event }` ] );
         }

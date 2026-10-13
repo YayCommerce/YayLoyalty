@@ -24,7 +24,20 @@ export function BoxItem( { id }: { id: PackageId } ) {
 
   return (
     <group ref={ group } visible={ visible }>
-      <RoundedBox args={ [ SIZE, SIZE, SIZE ] } radius={ 0.05 } smoothness={ 3 } castShadow receiveShadow>
+      <RoundedBox
+        args={ [ SIZE, SIZE, SIZE ] }
+        radius={ 0.05 }
+        smoothness={ 3 }
+        castShadow
+        receiveShadow
+        onPointerOver={ ( e ) => {
+          e.stopPropagation();
+          if ( visible ) {
+            useFactory.getState().hoverHold( true );
+          }
+        } }
+        onPointerOut={ () => useFactory.getState().hoverHold( false ) }
+      >
         <meshStandardMaterial ref={ material } color={ TINTS[ tint ] } roughness={ 0.8 } />
       </RoundedBox>
       <RoundedBox args={ [ SIZE + 0.01, 0.06, 0.12 ] } radius={ 0.02 } position={ [ 0, SIZE / 2 - 0.02, 0 ] }>

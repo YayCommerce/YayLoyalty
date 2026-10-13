@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import * as THREE from 'three';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import { Edges, RoundedBox } from '@react-three/drei';
 import type { Station as StationData, StationType } from '../factory.config';
 import { propPose } from '../timeline';
@@ -102,12 +102,30 @@ function PressHead( { s }: { s: StationData } ) {
  */
 export function Station( { station: s }: { station: StationData } ) {
   const [ w, d, h ] = s.size;
+  // Hover and click target the whole station; the topmost hit wins.
+  const handlers = {
+    onPointerOver: ( e: ThreeEvent<PointerEvent> ) => {
+      e.stopPropagation();
+      useFactory.getState().setHovered( s.id );
+      document.body.style.cursor = 'pointer';
+    },
+    onPointerOut: () => {
+      if ( useFactory.getState().hovered === s.id ) {
+        useFactory.getState().setHovered( null );
+      }
+      document.body.style.cursor = '';
+    },
+    onClick: ( e: ThreeEvent<MouseEvent> ) => {
+      e.stopPropagation();
+      useFactory.getState().openPanel( s.id );
+    },
+  };
   const unbuilt = 'unbuilt' === s.type;
   const housingDepth = d * 0.45;
 
   if ( unbuilt ) {
     return (
-      <group position={ [ s.position[ 0 ], 0, s.position[ 1 ] ] }>
+      <group position={ [ s.position[ 0 ], 0, s.position[ 1 ] ] } { ...handlers }>
         <RoundedBox args={ [ w, h, d ] } radius={ 0.1 } position={ [ 0, h / 2, 0 ] }>
           <meshStandardMaterial color={ ACCENTS.unbuilt } transparent opacity={ 0.18 } roughness={ 0.6 } depthWrite={ false } />
           <Edges color={ ACCENTS.unbuilt } />
@@ -117,7 +135,7 @@ export function Station( { station: s }: { station: StationData } ) {
   }
 
   return (
-    <group position={ [ s.position[ 0 ], 0, s.position[ 1 ] ] }>
+    <group position={ [ s.position[ 0 ], 0, s.position[ 1 ] ] } { ...handlers }>
       <RoundedBox args={ [ w, PLINTH, d ] } radius={ 0.06 } position={ [ 0, PLINTH / 2, 0 ] } receiveShadow castShadow>
         <meshStandardMaterial color={ GRAPHITE } roughness={ 0.7 } />
       </RoundedBox>
