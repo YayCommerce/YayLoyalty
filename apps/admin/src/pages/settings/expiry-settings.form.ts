@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { Settings, settingsSchema, SettingsUpdate } from '@/lib/schema/settings.schema';
 
 /** The Expiry tab's one form: the whole `expiry` group, Pro's mode and batch fields included. */
@@ -27,10 +28,10 @@ export function needsConfirmation(saved: Expiry, next: Expiry): 'shorten' | 'bat
     return 'batch';
   }
 
-  // Only the window the next mode runs on counts.
+  // Only the window the next mode runs on counts; Lite runs a stored batch mode as inactivity.
+  const isBatch = IS_PRO_BUILD && next.mode === 'batch';
   const isSooner =
-    !saved.enabled ||
-    (next.mode === 'batch' ? next.batch_months < saved.batch_months : next.inactivity_days < saved.inactivity_days);
+    !saved.enabled || (isBatch ? next.batch_months < saved.batch_months : next.inactivity_days < saved.inactivity_days);
 
   return next.enabled && isSooner ? 'shorten' : null;
 }

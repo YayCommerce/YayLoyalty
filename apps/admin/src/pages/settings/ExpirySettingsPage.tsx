@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { FormProvider, useForm } from 'react-hook-form';
+import { FormProvider, useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
 import { __ } from '@wordpress/i18n';
 
@@ -11,6 +11,7 @@ import { useEditorSave } from '@/hooks/useEditorSave';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/custom/confirm-dialog';
 import { UnsavedChangeDialog } from '@/components/ui/custom/unsaved-changed-dialog';
+import { BatchExpirySection, ExpiryModeSection } from '@/pro';
 import {
   CONFIRM_BATCH_BODY,
   CONFIRM_BATCH_TITLE,
@@ -47,6 +48,7 @@ export default function ExpirySettingsPage() {
     values: expirySettingsDefaults(settingsQuery.data),
     resetOptions: { keepDirtyValues: true },
   });
+  const mode = useWatch({ control: form.control, name: 'expiry.mode' });
 
   const confirm = (kind: Confirmation) =>
     new Promise<boolean>((resolve) => {
@@ -85,7 +87,8 @@ export default function ExpirySettingsPage() {
   return (
     <FormProvider {...form}>
       <form onSubmit={handleSave} className="flex flex-col gap-4">
-        <ExpiryInactivityCard />
+        {IS_PRO_BUILD && <ExpiryModeSection />}
+        {IS_PRO_BUILD && mode === 'batch' ? <BatchExpirySection /> : <ExpiryInactivityCard />}
         {!IS_PRO_BUILD && <ExpiryMoreInProCard />}
 
         <div className="flex items-center justify-end gap-2">
