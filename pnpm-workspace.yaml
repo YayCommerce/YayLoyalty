@@ -1,6 +1,7 @@
 packages:
   - "apps/admin"
   - "apps/e2e"
+  - "apps/factory-explainer"
 allowBuilds:
   '@parcel/watcher': true
   core-js: true

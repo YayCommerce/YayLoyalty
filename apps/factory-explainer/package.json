@@ -1,0 +1,32 @@
+{
+  "name": "@yayloyalty/factory-explainer",
+  "description": "Internal 3D explainer: how points move through YayLoyalty. Never ships.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 3050 --strictPort",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --port 3050",
+    "shoot": "playwright test"
+  },
+  "dependencies": {
+    "@react-three/drei": "10.7.9",
+    "@react-three/fiber": "9.8.1",
+    "@react-three/postprocessing": "3.2.0",
+    "postprocessing": "6.39.5",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "three": "0.186.1",
+    "zustand": "5.0.15"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@types/three": "0.186.0",
+    "@vitejs/plugin-react": "5.2.0",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3",
+    "vite": "6.4.4"
+  }
+}

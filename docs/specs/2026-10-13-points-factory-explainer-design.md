@@ -1,8 +1,9 @@
 # Points Factory Explainer Design
 
-**Status:** accepted 2026-10-13
+**Status:** superseded by [the 3D explainer design](2026-10-13-points-factory-3d-design.md)
 **Related:** None
 **Amended:** 2026-10-13, isometric scene (accepted 2026-10-13): the floor is drawn as an isometric illustration instead of a flat diagram. Criteria 4 and 10 (new), Approach and Alternatives changed.
+**Amended:** 2026-10-13, process cards (requested 2026-10-13): the loop plays slower, and each station shows a card with the work it does. Criterion 2 changed.
 
 ## Goal
 
@@ -61,7 +62,7 @@ An animated "points factory" page for the internal team (developers and support)
    4. Cara posts a review but has opted out: her package goes `ReviewListener` → `EarningService::award()` and is dropped into the reject bin at `ProgramGate`, captioned "opted out".
    5. The admin adjusts +50: the package goes `LedgerService::adjust()` (`ADJUST`, `MANUAL`) → vault.
    6. Alice's order is refunded: `OrderReversalListener` → `Reversal` → `LedgerService::refund_earn()` (`REFUND_EARN`) takes the package out of the vault and back along the return conveyor.
-2. The caption bar shows, for the step that is playing, the hook or `Class::method()` named in criterion 1.
+2. The caption bar shows, for the step that is playing, the hook or `Class::method()` named in criterion 1. When a package reaches a station, or a station acts on its own, the station holds it for 3.4 s under a process card. The card names the call with illustrative arguments, lists what the call checks or writes (✓ for a passed check, ✗ for a failed one) and gives what it returns or leaves behind.
 3. The 12 stations are:
    - `OrderListener`, `SignupListener`, `ReviewListener`, `OrderReversalListener`
    - `EarningService` + `PointsEngine`, `ProgramGate`, `PendingPoints`, `LedgerService`

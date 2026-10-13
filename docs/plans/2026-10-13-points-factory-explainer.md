@@ -332,6 +332,16 @@ This step changes no behaviour, ids or scenes. It adds:
 Re-run Step 5's checks.
 Expected: the same results.
 
+- [x] **Step 8: Slower loop with process cards (requested 2026-10-13, spec criterion 2 amended)**
+
+- Timing: `HOP = 2.4`, `SPEED = 220` floor units a second, `INTRO = 1.6`, `HOLD = 2.4`. Each step ends with a `WORK = 3.4` s dwell, so the loop runs about 149 s.
+- Each step carries `card: { fn, lines[], out }`. During the dwell, `render()` draws it as an SVG callout, `#callout`, above the package or the station, clamped to the viewBox.
+- The gate lifts after its check is shown. The piston stamps and the deny flash play during the dwell.
+- Hovering a package or its card, `#callout` (`pointerenter`), pauses a playing loop, and `pointerleave` resumes it. Space, the Play button or a station panel takes over from the hover; a panel opened during a hover resumes the loop when it closes.
+
+Re-run Step 5's checks, with one more: seek every step and confirm that each card's text fits its box and its box fits the viewBox.
+Expected: the same results, with all 23 cards fitting.
+
 ### Task 5: Close-out
 
 **Files:**

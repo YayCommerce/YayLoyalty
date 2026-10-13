@@ -95,9 +95,23 @@
     .name text { font: 600 11px var(--sans); fill: var(--ink); }
     .arm-bar { stroke: #475569; stroke-width: 6; stroke-linecap: round; }
     .arm-stripe { stroke: #fff; stroke-width: 6; stroke-dasharray: 7 7; }
+    .pkg { cursor: pointer; }
+    .pkg:hover .pkg-tag rect { fill: var(--accent); }
     .pkg-face { stroke: rgba(0, 0, 0, .25); stroke-width: 1; stroke-linejoin: round; }
     .pkg-tag rect { fill: #0f172a; stroke: rgba(255, 255, 255, .6); }
     .pkg-tag text { font: 700 10px var(--mono); fill: #fff; }
+    .callout { opacity: 0; pointer-events: none; transform: translateY(6px); transition: opacity .3s, transform .3s; }
+    .callout.is-on { opacity: 1; transform: none; pointer-events: auto; cursor: default; }
+    @media (prefers-reduced-motion: reduce) { .callout { transition: none; transform: none; } }
+    .card-box { fill: #0f172a; stroke: #7c3aed; stroke-width: 1.5; filter: url(#soft); }
+    .card-leader { stroke: #7c3aed; stroke-width: 1.5; stroke-dasharray: 3 3; }
+    .card-dot { fill: #a78bfa; stroke: #fff; stroke-width: 1.5; }
+    .card-rule { stroke: rgba(255, 255, 255, .14); }
+    .card-fn { font: 700 15px var(--mono); fill: #c4b5fd; }
+    .card-line { font: 13.5px var(--mono); fill: #e2e8f0; }
+    .card-pass { font: 13.5px var(--mono); fill: #86efac; }
+    .card-fail { font: 700 13.5px var(--mono); fill: #fca5a5; }
+    .card-out { font: 700 13.5px var(--mono); fill: #fde68a; }
     .legend { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 10px; color: var(--muted); font-size: 13px; }
     .legend span { display: inline-flex; align-items: center; padding: 3px 10px 3px 6px; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; }
     .legend span::before { content: ""; display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; background: var(--c); box-shadow: inset -3px -3px 0 rgba(0, 0, 0, .18), inset 2px 2px 0 rgba(255, 255, 255, .35); }
@@ -117,7 +131,7 @@
 <header>
     <span class="chip">Internal explainer</span>
     <h1>Points Factory</h1>
-    <span class="stamp">How points move through YayLoyalty. Accurate as of <code>34f5d03</code> (2026-10-13). Illustrative data; click any station for its code.</span>
+    <span class="stamp">How points move through YayLoyalty. Accurate as of <code>34f5d03</code> (2026-10-13). Illustrative data; click any station for its code, hover a package or its card to pause.</span>
 </header>
 <main>
     <p class="notice" role="status">Animation needs network access. The floor plan and station details still work.</p>
@@ -612,8 +626,10 @@
     var selected = null;
     var hooks = { onPanelOpen: function () {}, onPanelClose: function () {} };
 
+    function stationById( id ) { return STATIONS.filter( function ( x ) { return x.id === id; } )[ 0 ]; }
+
     function openPanel( id ) {
-        var s = STATIONS.filter( function ( x ) { return x.id === id; } )[ 0 ];
+        var s = stationById( id );
         var wasOpen = ! panel.hidden;
         document.getElementById( 'panel-role' ).innerHTML = s.role + ( s.built ? '' : '<span class="panel-tag">not built yet</span>' );
         document.getElementById( 'panel-title' ).textContent = s.label;
@@ -653,7 +669,7 @@
     gsap.registerPlugin( MotionPathPlugin );
 
     var COLORS = { earn: '#16a34a', adjust: '#2563eb', refund: '#dc2626', rejected: '#9ca3af' };
-    var HOP = 1.6, PULSE = 1.6, INTRO = 1, HOLD = 2;
+    var HOP = 2.4, SPEED = 220, WORK = 3.4, INTRO = 1.6, HOLD = 2.4;
 
     var PACKAGES = {
         alice: { spot: 'dock-alice', text: '120 · ORDER', color: COLORS.earn },
@@ -662,43 +678,67 @@
         admin: { spot: 'desk-admin', text: '+50 · MANUAL', color: COLORS.adjust }
     };
 
-    // A step either moves a package along a belt (belt) or lights a station while the caption reads (pulse).
-    // gate lifts or denies the barrier as the package arrives; press stamps the piston; settle moves the package to a floor point.
+    // A step either moves a package along a belt (belt) or lights a station (pulse); then its card shows the work done there for WORK seconds.
+    // gate lifts or denies the barrier once the check is shown; press stamps the piston; settle moves the package to a floor point.
+    // A card line starting ✓ or ✗ is a passed or failed check; out is what the call returns or leaves behind.
     var SCENES = [
         { id: 'scene-1', caption: '1 · Alice places an order', show: 'alice', steps: [
-            { pkg: 'alice', belt: 'belt-dock-alice-order-listener', at: 'order-listener', label: 'woocommerce_new_order → OrderListener::on_stageable()' },
-            { pkg: 'alice', belt: 'belt-order-listener-earning-service', at: 'earning-service', label: 'EarningService::preview( PURCHASE ) → PointsEngine::evaluate()' },
-            { pkg: 'alice', belt: 'belt-earning-service-program-gate', at: 'program-gate', gate: 'lift', label: 'ProgramGate::check() passes' },
-            { pkg: 'alice', belt: 'belt-program-gate-pending-points', at: 'pending-points', label: 'PendingPoints::stage() writes _yayloyalty_points_pending: the order is pending' }
+            { pkg: 'alice', belt: 'belt-dock-alice-order-listener', at: 'order-listener', label: 'woocommerce_new_order → OrderListener::on_stageable()',
+                card: { fn: 'OrderListener::on_stageable()', lines: [ 'order #1042 · status pending', 'customer: Alice (user 12) · $120.00' ], out: 'stage the purchase, don\'t award it yet' } },
+            { pkg: 'alice', belt: 'belt-order-listener-earning-service', at: 'earning-service', label: 'EarningService::preview( PURCHASE ) → PointsEngine::evaluate()',
+                card: { fn: 'EarningService::preview( PURCHASE, $ctx )', lines: [ 'PointsEngine::evaluate() scores the order', 'campaign: 1 point per $1 × $120.00' ], out: 'Result: 120 points · writes nothing' } },
+            { pkg: 'alice', belt: 'belt-earning-service-program-gate', at: 'program-gate', gate: 'lift', label: 'ProgramGate::check() passes',
+                card: { fn: 'ProgramGate::check( PURCHASE, $ctx )', lines: [ '✓ program on', '✓ a customer: user 12', '✓ not opted out', '✓ role not excluded' ], out: 'null: no reason, the gate opens' } },
+            { pkg: 'alice', belt: 'belt-program-gate-pending-points', at: 'pending-points', label: 'PendingPoints::stage() writes _yayloyalty_points_pending: the order is pending',
+                card: { fn: 'PendingPoints::stage( 1042, 12, 120 )', lines: [ 'order meta _yayloyalty_points_pending = 120', 'customers.pending_points += 120' ], out: 'no ledger row: waits for completed' } }
         ] },
         { id: 'scene-2', caption: '2 · Bob signs up', show: 'bob', steps: [
-            { pkg: 'bob', belt: 'belt-dock-bob-signup-listener', at: 'signup-listener', label: 'user_register → SignupListener::on_user_register()' },
-            { pkg: 'bob', belt: 'belt-signup-listener-earning-service', at: 'earning-service', label: 'EarningService::award( SIGNUP ) → PointsEngine::evaluate()' },
-            { pkg: 'bob', belt: 'belt-earning-service-program-gate', at: 'program-gate', gate: 'lift', label: 'ProgramGate::check() passes' },
-            { pkg: 'bob', belt: 'belt-program-gate-ledger-service', at: 'ledger-service', press: true, label: 'LedgerService::earn() writes EARN · SIGNUP' },
-            { pkg: 'bob', belt: 'belt-ledger-service-vault', at: 'vault', settle: [ 920, 280, 84 ], label: 'customers.balance += 50' }
+            { pkg: 'bob', belt: 'belt-dock-bob-signup-listener', at: 'signup-listener', label: 'user_register → SignupListener::on_user_register()',
+                card: { fn: 'SignupListener::on_user_register( 13 )', lines: [ 'new account: Bob (user 13)' ], out: 'award the SIGNUP trigger now' } },
+            { pkg: 'bob', belt: 'belt-signup-listener-earning-service', at: 'earning-service', label: 'EarningService::award( SIGNUP ) → PointsEngine::evaluate()',
+                card: { fn: 'EarningService::award( SIGNUP, $ctx )', lines: [ 'preview(): gates, then PointsEngine::evaluate()', 'signup campaign: 50 points' ], out: 'Result: 50 points → LedgerService::earn()' } },
+            { pkg: 'bob', belt: 'belt-earning-service-program-gate', at: 'program-gate', gate: 'lift', label: 'ProgramGate::check() passes',
+                card: { fn: 'ProgramGate::check( SIGNUP, $ctx )', lines: [ '✓ program on', '✓ a customer: user 13', '✓ not opted out', '✓ role not excluded' ], out: 'null: no reason, the gate opens' } },
+            { pkg: 'bob', belt: 'belt-program-gate-ledger-service', at: 'ledger-service', press: true, label: 'LedgerService::earn() writes EARN · SIGNUP',
+                card: { fn: 'LedgerService::earn( $draft )', lines: [ 'one transaction, customer row 13 locked', '✓ idempotency key not used before', 'append EARN · SIGNUP · +50' ], out: 'Outcome: awarded' } },
+            { pkg: 'bob', belt: 'belt-ledger-service-vault', at: 'vault', settle: [ 920, 280, 84 ], label: 'customers.balance += 50',
+                card: { fn: 'customers · user 13', lines: [ 'balance 0 → 50', 'lifetime_earned 0 → 50' ], out: 'committed with the ledger row' } }
         ] },
         { id: 'scene-3', caption: '3 · Alice\'s order is completed', steps: [
-            { pulse: 'order-listener', label: 'woocommerce_order_status_changed → completed → OrderListener::on_awardable()' },
-            { pulse: 'earning-service', label: 'EarningService::award( PURCHASE ) → ProgramGate → PointsEngine::evaluate()' },
-            { pkg: 'alice', belt: 'belt-pending-points-ledger-service', at: 'ledger-service', press: true, label: 'LedgerService::earn() writes EARN · ORDER' },
-            { pkg: 'alice', belt: 'belt-ledger-service-vault', at: 'vault', settle: [ 970, 230, 84 ], label: 'customers.balance += 120' },
-            { pulse: 'pending-points', label: 'PendingPoints::release() marks _yayloyalty_points_released' }
+            { pulse: 'order-listener', label: 'woocommerce_order_status_changed → completed → OrderListener::on_awardable()',
+                card: { fn: 'OrderListener::on_awardable()', lines: [ 'order #1042 · pending → completed', 'each trigger in yayloyalty_order_award_triggers' ], out: 'award( PURCHASE )' } },
+            { pulse: 'earning-service', label: 'EarningService::award( PURCHASE ) → ProgramGate → PointsEngine::evaluate()',
+                card: { fn: 'EarningService::award( PURCHASE, $ctx )', lines: [ 'evaluates again at the same occurred_at', '✓ ProgramGate passes', 'PointsEngine::evaluate(): 120 points' ], out: 'Result: 120 points → LedgerService::earn()' } },
+            { pkg: 'alice', belt: 'belt-pending-points-ledger-service', at: 'ledger-service', press: true, label: 'LedgerService::earn() writes EARN · ORDER',
+                card: { fn: 'LedgerService::earn( $draft )', lines: [ 'one transaction, customer row 12 locked', '✓ idempotency key not used before', 'append EARN · ORDER · +120' ], out: 'Outcome: awarded' } },
+            { pkg: 'alice', belt: 'belt-ledger-service-vault', at: 'vault', settle: [ 970, 230, 84 ], label: 'customers.balance += 120',
+                card: { fn: 'customers · user 12', lines: [ 'balance 0 → 120', 'lifetime_earned 0 → 120' ], out: 'committed with the ledger row' } },
+            { pulse: 'pending-points', label: 'PendingPoints::release() marks _yayloyalty_points_released',
+                card: { fn: 'PendingPoints::release( 1042 )', lines: [ '_yayloyalty_points_released = now', 'customers.pending_points −= 120', 'mark_awarded(): _yayloyalty_points_earned = 120' ], out: 'inside the same transaction as the earn' } }
         ] },
         { id: 'scene-4', caption: '4 · Cara reviews, but has opted out', show: 'cara', steps: [
-            { pkg: 'cara', belt: 'belt-dock-cara-review-listener', at: 'review-listener', label: 'comment_post → ReviewListener::on_comment_post()' },
-            { pkg: 'cara', belt: 'belt-review-listener-earning-service', at: 'earning-service', label: 'EarningService::award( REVIEW )' },
-            { pkg: 'cara', belt: 'belt-earning-service-program-gate', at: 'program-gate', gate: 'deny', label: 'ProgramGate::check()' },
-            { pkg: 'cara', belt: 'belt-program-gate-reject-bin', at: 'program-gate', fill: COLORS.rejected, label: 'ProgramGate::check() fails: opted out. Nothing is written.' }
+            { pkg: 'cara', belt: 'belt-dock-cara-review-listener', at: 'review-listener', label: 'comment_post → ReviewListener::on_comment_post()',
+                card: { fn: 'ReviewListener::on_comment_post()', lines: [ 'approved product review', 'customer: Cara (user 14)' ], out: 'award the REVIEW trigger' } },
+            { pkg: 'cara', belt: 'belt-review-listener-earning-service', at: 'earning-service', label: 'EarningService::award( REVIEW )',
+                card: { fn: 'EarningService::award( REVIEW, $ctx )', lines: [ 'preview() runs the gates first' ], out: 'ProgramGate::check()' } },
+            { pkg: 'cara', belt: 'belt-earning-service-program-gate', at: 'program-gate', gate: 'deny', label: 'ProgramGate::check()',
+                card: { fn: 'ProgramGate::check( REVIEW, $ctx )', lines: [ '✓ program on', '✓ a customer: user 14', '✗ user meta _yayloyalty_opted_out' ], out: '\'opted_out\': the first failing rule wins' } },
+            { pkg: 'cara', belt: 'belt-program-gate-reject-bin', at: 'program-gate', fill: COLORS.rejected, label: 'ProgramGate::check() fails: opted out. Nothing is written.',
+                card: { fn: 'Outcome::skipped( \'opted_out\' )', lines: [ 'no ledger row', 'no balance change' ], out: 'the package goes to the bin' } }
         ] },
         { id: 'scene-5', caption: '5 · The admin adjusts +50', show: 'admin', steps: [
-            { pkg: 'admin', belt: 'belt-desk-admin-ledger-service', at: 'ledger-service', press: true, label: 'LedgerService::adjust() writes ADJUST · MANUAL' },
-            { pkg: 'admin', belt: 'belt-ledger-service-vault', at: 'vault', settle: [ 1020, 180, 84 ], label: 'customers.balance += 50' }
+            { pkg: 'admin', belt: 'belt-desk-admin-ledger-service', at: 'ledger-service', press: true, label: 'LedgerService::adjust() writes ADJUST · MANUAL',
+                card: { fn: 'LedgerService::adjust( 12, 50, $note, 1 )', lines: [ 'admin (user 1) is the actor', '$adjust_lifetime = true → ADJUST', 'append ADJUST · MANUAL · +50' ], out: 'returns the LedgerEntry' } },
+            { pkg: 'admin', belt: 'belt-ledger-service-vault', at: 'vault', settle: [ 1020, 180, 84 ], label: 'customers.balance += 50',
+                card: { fn: 'customers · user 12', lines: [ 'balance 120 → 170', 'lifetime_earned 120 → 170' ], out: 'committed with the ledger row' } }
         ] },
         { id: 'scene-6', caption: '6 · Alice\'s order is refunded', steps: [
-            { pulse: 'reversal-listener', label: 'woocommerce_order_status_changed → refunded → OrderReversalListener::on_status_refunded()' },
-            { pulse: 'ledger-service', press: true, label: 'Reversal::refunded_status() → LedgerService::refund_earn() writes REFUND_EARN' },
-            { pkg: 'alice', belt: 'belt-vault-reversal-listener', at: 'reversal-listener', fill: COLORS.refund, label: 'customers.balance −= 120: the points leave the vault' }
+            { pulse: 'reversal-listener', label: 'woocommerce_order_status_changed → refunded → OrderReversalListener::on_status_refunded()',
+                card: { fn: 'OrderReversalListener::on_status_refunded()', lines: [ 'order #1042 · completed → refunded', 'clears any pending figure' ], out: 'Reversal::refunded_status()' } },
+            { pulse: 'ledger-service', press: true, label: 'Reversal::refunded_status() → LedgerService::refund_earn() writes REFUND_EARN',
+                card: { fn: 'LedgerService::refund_earn( $earn, … )', lines: [ 'finds order #1042\'s EARN row', '✓ idempotency key not used before', 'append REFUND_EARN · −120' ], out: 'a keyed row: a replay writes nothing' } },
+            { pkg: 'alice', belt: 'belt-vault-reversal-listener', at: 'reversal-listener', fill: COLORS.refund, label: 'customers.balance −= 120: the points leave the vault',
+                card: { fn: 'customers · user 12', lines: [ 'balance 170 → 50', 'lifetime_earned 170 → 50' ], out: 'the 120 points leave the vault' } }
         ] }
     ];
 
@@ -737,7 +777,7 @@
     function endsOf( beltId ) {
         var p = planPoints( BELTS[ beltId ] ), len = 0;
         for ( var i = 1; i < p.length; i++ ) { len += Math.abs( p[ i ][ 0 ] - p[ i - 1 ][ 0 ] ) + Math.abs( p[ i ][ 1 ] - p[ i - 1 ][ 1 ] ); }
-        return { start: iso( p[ 0 ][ 0 ], p[ 0 ][ 1 ], BELT_Z ), end: iso( p[ p.length - 1 ][ 0 ], p[ p.length - 1 ][ 1 ], BELT_Z ), ride: Math.max( HOP, len / 360 ) };
+        return { start: iso( p[ 0 ][ 0 ], p[ 0 ][ 1 ], BELT_Z ), end: iso( p[ p.length - 1 ][ 0 ], p[ p.length - 1 ][ 1 ], BELT_Z ), ride: Math.max( HOP, len / SPEED ) };
     }
 
     // One master timeline. Time 0 puts every package and prop back, so the loop wrap and scene jumps start clean.
@@ -777,11 +817,13 @@
         cursor += INTRO;
 
         scene.steps.forEach( function ( step ) {
-            var entry = { start: cursor, scene: scene, label: step.label, at: step.pulse || step.at };
+            var station = step.pulse || step.at;
+            var anchor;
             if ( step.pulse ) {
-                if ( step.press ) { master.to( props.piston, { y: 12, duration: 0.12, ease: 'power2.in', yoyo: true, repeat: 1 }, cursor + 0.35 ); }
-                cursor += PULSE;
+                var s = stationById( step.pulse );
+                anchor = iso( s.x, s.y, s.hgt );
             } else {
+                var ride = { start: cursor, scene: scene, label: step.label, at: station };
                 var ends = endsOf( step.belt );
                 if ( Math.abs( at[ step.pkg ].x - ends.start.x ) + Math.abs( at[ step.pkg ].y - ends.start.y ) > 1 ) {
                     moveTo( step.pkg, ends.start, cursor );
@@ -790,20 +832,25 @@
                 if ( step.fill ) { master.set( body( step.pkg ), { fill: step.fill }, cursor ); }
                 master.to( pkgEls[ step.pkg ], { duration: ends.ride, ease: 'power1.inOut', motionPath: { path: '#' + step.belt } }, cursor );
                 at[ step.pkg ] = ends.end;
-                if ( 'lift' === step.gate ) {
-                    master.to( props.arm, { rotation: -70, svgOrigin: pivot, duration: 0.35, ease: 'power2.out' }, cursor + ends.ride - 0.55 );
-                    master.to( props.arm, { rotation: 0, svgOrigin: pivot, duration: 0.35, ease: 'power2.in' }, cursor + ends.ride + 0.45 );
-                }
-                if ( 'deny' === step.gate ) { master.to( armBar, { stroke: '#dc2626', duration: 0.18, yoyo: true, repeat: 3 }, cursor + ends.ride - 0.2 ); }
-                if ( step.press ) { master.to( props.piston, { y: 12, duration: 0.12, ease: 'power2.in', yoyo: true, repeat: 1 }, cursor + ends.ride - 0.25 ); }
                 cursor += ends.ride;
                 if ( step.settle ) {
                     moveTo( step.pkg, iso( step.settle[ 0 ], step.settle[ 1 ], step.settle[ 2 ] ), cursor );
                     cursor += 0.3;
                 }
+                ride.end = cursor;
+                timeline.push( ride );
+                anchor = { x: at[ step.pkg ].x, y: at[ step.pkg ].y - 2 * C };
             }
-            entry.end = cursor;
-            timeline.push( entry );
+
+            // The work: the card reads while the station acts, and the gate opens only once its check is shown.
+            if ( 'lift' === step.gate ) {
+                master.to( props.arm, { rotation: -70, svgOrigin: pivot, duration: 0.4, ease: 'power2.out' }, cursor + WORK - 0.5 );
+                master.to( props.arm, { rotation: 0, svgOrigin: pivot, duration: 0.4, ease: 'power2.in' }, cursor + WORK + 0.9 );
+            }
+            if ( 'deny' === step.gate ) { master.to( armBar, { stroke: '#dc2626', duration: 0.22, yoyo: true, repeat: 5 }, cursor + 1.2 ); }
+            if ( step.press ) { master.to( props.piston, { y: 12, duration: 0.14, ease: 'power2.in', yoyo: true, repeat: 1 }, cursor + 1.4 ); }
+            timeline.push( { start: cursor, end: cursor + WORK, scene: scene, label: step.label, at: station, card: step.card, anchor: anchor } );
+            cursor += WORK;
         } );
 
         timeline[ timeline.length - 1 ].end += HOLD;
@@ -857,12 +904,42 @@
             if ( id === entry.scene.id ) { sceneButtons[ id ].setAttribute( 'aria-current', 'step' ); } else { sceneButtons[ id ].removeAttribute( 'aria-current' ); }
         } );
         Object.keys( stationEls ).forEach( function ( id ) { stationEls[ id ].classList.toggle( 'is-active', id === entry.at ); } );
+        showCard( entry );
+    }
+
+    // The process card: a dark callout above the station that names the call, what it checks or writes, and what comes out.
+    var cardEl = el( 'g', { id: 'callout', 'class': 'callout', 'aria-hidden': 'true' }, document.getElementById( 'scene' ) );
+    var view = floorSvg.viewBox.baseVal;
+
+    function showCard( entry ) {
+        cardEl.classList.remove( 'is-on' );
+        while ( cardEl.firstChild ) { cardEl.removeChild( cardEl.firstChild ); }
+        if ( ! entry.card ) { return; }
+        var c = entry.card;
+        var rows = [ { cls: 'card-fn', value: c.fn } ].concat( c.lines.map( function ( l ) {
+            return { cls: 0 === l.indexOf( '✓' ) ? 'card-pass' : ( 0 === l.indexOf( '✗' ) ? 'card-fail' : 'card-line' ), value: l };
+        } ) ).concat( [ { cls: 'card-out', value: '→ ' + c.out } ] );
+        var w = 28 + Math.max.apply( null, rows.map( function ( r ) { return r.value.length * ( 'card-fn' === r.cls ? 9.1 : 8.1 ); } ) );
+        var h = 32 + rows.length * 20;
+        var a = entry.anchor;
+        var x = Math.min( Math.max( a.x - w / 2, view.x + 8 ), view.x + view.width - w - 8 );
+        var y = Math.max( a.y - 64 - h, view.y + 8 );
+        el( 'line', { x1: a.x, y1: a.y - 8, x2: Math.min( Math.max( a.x, x + 16 ), x + w - 16 ), y2: y + h, 'class': 'card-leader' }, cardEl );
+        el( 'circle', { cx: a.x, cy: a.y - 8, r: 4, 'class': 'card-dot' }, cardEl );
+        el( 'rect', { x: x, y: y, width: w, height: h, rx: 10, 'class': 'card-box' }, cardEl );
+        rows.forEach( function ( r, i ) {
+            var t = text( cardEl, x + 14, y + 28 + i * 20 + ( i === rows.length - 1 ? 8 : 0 ), r.cls, r.value );
+            t.setAttribute( 'text-anchor', 'start' );
+        } );
+        el( 'line', { x1: x + 14, y1: y + h - 30, x2: x + w - 14, y2: y + h - 30, 'class': 'card-rule' }, cardEl );
+        void cardEl.getBBox();
+        cardEl.classList.add( 'is-on' );
     }
 
     // Controls.
     var playBtn = document.getElementById( 'play' );
     function syncPlay() { playBtn.textContent = master.paused() ? 'Play' : 'Pause'; }
-    function togglePlay() { master.paused( ! master.paused() ); syncPlay(); }
+    function togglePlay() { hoverHeld = false; master.paused( ! master.paused() ); syncPlay(); }
 
     playBtn.addEventListener( 'click', togglePlay );
     document.getElementById( 'restart' ).addEventListener( 'click', function () { master.restart(); render(); syncPlay(); } );
@@ -874,8 +951,27 @@
 
     // A panel pauses the loop; closing it resumes only if the loop was playing when it opened.
     var resumeAfterPanel = false;
-    hooks.onPanelOpen = function () { resumeAfterPanel = ! master.paused(); master.pause(); syncPlay(); };
+    hooks.onPanelOpen = function () { resumeAfterPanel = ! master.paused() || hoverHeld; hoverHeld = false; master.pause(); syncPlay(); };
     hooks.onPanelClose = function () { if ( resumeAfterPanel ) { master.play(); } resumeAfterPanel = false; syncPlay(); };
+
+    // Hovering a package or its card holds the loop so the card can be read; leaving resumes only a loop the hover paused.
+    var hoverHeld = false;
+    function holdOnHover( node ) {
+        node.addEventListener( 'pointerenter', function () {
+            if ( master.paused() ) { return; }
+            hoverHeld = true;
+            master.pause();
+            syncPlay();
+        } );
+        node.addEventListener( 'pointerleave', function () {
+            if ( ! hoverHeld ) { return; }
+            hoverHeld = false;
+            master.play();
+            syncPlay();
+        } );
+    }
+    Object.keys( pkgEls ).forEach( function ( id ) { holdOnHover( pkgEls[ id ] ); } );
+    holdOnHover( cardEl );
 
     if ( window.matchMedia( '(prefers-reduced-motion: reduce)' ).matches ) {
         master.pause();
