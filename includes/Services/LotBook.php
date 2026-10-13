@@ -77,18 +77,28 @@ final class LotBook {
         return $this->rebuild( $user_id, $balance );
     }
 
-    /** @return int Lots opened. */
+    /**
+     * History short of the balance means the balance and the ledger disagree. The oldest lot then
+     * absorbs the gap, so the invariant holds and the gap expires first.
+     *
+     * @return int Lots opened.
+     */
     public function rebuild( int $user_id, int $balance ): int {
-        $lots    = LotRebuild::from_ledger( $this->ledger->positive_rows_newest_first( $user_id, $balance ), $balance );
-        $covered = 0;
+        $lots      = LotRebuild::from_ledger( $this->ledger->positive_rows_newest_first( $user_id, $balance ), $balance );
+        $shortfall = $balance - array_sum( array_column( $lots, 'remaining' ) );
+        $oldest    = count( $lots ) - 1;
+
+        if ( $shortfall > 0 ) {
+            Log::warning( 'LotBook', sprintf( 'user %d: ledger history is %d short of a %d balance.', $user_id, $shortfall, $balance ) );
+
+            if ( $oldest >= 0 ) {
+                $lots[ $oldest ]['remaining'] += $shortfall;
+                $lots[ $oldest ]['points']     = max( $lots[ $oldest ]['points'], $lots[ $oldest ]['remaining'] );
+            }
+        }
 
         foreach ( $lots as $lot ) {
             $this->lots->open( $lot['ledger_id'], $user_id, $lot['points'], $lot['remaining'], $lot['created_at'], null );
-            $covered += $lot['remaining'];
-        }
-
-        if ( $covered < $balance ) {
-            Log::warning( 'LotBook', sprintf( 'user %d: ledger history covers %d of a %d balance; lots are short.', $user_id, $covered, $balance ) );
         }
 
         return count( $lots );

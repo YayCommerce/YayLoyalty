@@ -10,7 +10,9 @@ defined( 'ABSPATH' ) || exit;
 /**
  * yayloyalty_lots and its allocations. A take decrements a lot and writes the allocation that explains
  * it, so the two tables share one repository. Rows are plain arrays: nothing outside LotBook reads them.
- * Callers hold the customer's row lock (LedgerService), so reads that feed a write lock what they read.
+ * Callers hold the customer's row lock (LedgerService), which serialises each user's lots, so reads
+ * here do not lock: a locking read over a user with no lots gap-locks, and two customers' first lots
+ * would deadlock. take()'s guarded UPDATE still refuses a lot that changed under a stale read.
  */
 class LotRepository {
 
@@ -51,7 +53,7 @@ class LotRepository {
     }
 
     /**
-     * A user's open lots, locked, in spend order.
+     * A user's open lots in spend order.
      *
      * @param string $order 'ASC' for oldest first, 'DESC' for newest first, by created_at then id.
      * @return array<int, array{id: int, ledger_id: int, remaining: int, expires_at: ?string}>
@@ -62,10 +64,10 @@ class LotRepository {
         $direction = 'DESC' === $order ? 'DESC' : 'ASC';
 
         // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $direction is one of two literals.
-        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a locking read must reach the database, never a cache.
+        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
                 'SELECT id, ledger_id, remaining, expires_at FROM `' . esc_sql( $this->table() ) . "`
-                 WHERE user_id = %d AND status = %s ORDER BY created_at {$direction}, id {$direction} FOR UPDATE",
+                 WHERE user_id = %d AND status = %s ORDER BY created_at {$direction}, id {$direction}",
                 $user_id,
                 LotStatus::OPEN
             ),
@@ -138,9 +140,9 @@ class LotRepository {
     public function has_any( int $user_id ): bool {
         global $wpdb;
 
-        return null !== $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a locking read must reach the database, never a cache.
+        return null !== $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
-                'SELECT 1 FROM `' . esc_sql( $this->table() ) . '` WHERE user_id = %d LIMIT 1 LOCK IN SHARE MODE',
+                'SELECT 1 FROM `' . esc_sql( $this->table() ) . '` WHERE user_id = %d LIMIT 1',
                 $user_id
             )
         );

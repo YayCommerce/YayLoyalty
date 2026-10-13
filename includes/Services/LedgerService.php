@@ -21,7 +21,7 @@ defined( 'ABSPATH' ) || exit;
  * The only writer of the ledger and the customer aggregates, EarningService's award included.
  * Enforced by convention: it is constructed in exactly five places, Engine\RestAPI::controllers(),
  * Engine\Earning\EarningService::build(), Engine\Earning\Reversal::build(),
- * Engine\Expiry\ExpiryRunner::__construct() and (once its body lands)
+ * Engine\Expiry\ExpiryRunner::run() and (once its body lands)
  * Engine\Redemption\RedemptionService::build(). Name a sixth here before adding it.
  * Manual rows enter through adjust() and record(). System rows enter through earn(),
  * refund_earn(), restore_refund() and redeem(), which add the idempotency-key duplicate branch.

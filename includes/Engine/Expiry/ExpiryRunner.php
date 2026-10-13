@@ -23,23 +23,16 @@ final class ExpiryRunner {
 
     public const BATCH_SIZE = 100;
 
-    /** @var LedgerService */
-    private $ledger;
-
-    /** @var LotRepository */
-    private $lots;
-
-    public function __construct() {
-        $this->ledger = new LedgerService( new LedgerRepository(), new CustomerRepository(), new CampaignRepository() );
-        $this->lots   = new LotRepository();
-    }
-
     public function register(): void {
         if ( ! function_exists( 'as_has_scheduled_action' ) ) {
             return;
         }
 
-        add_action( 'init', [ $this, 'schedule' ] );
+        // Only admin and cron requests check, so a storefront page view pays no Action Scheduler query.
+        if ( is_admin() || wp_doing_cron() ) {
+            add_action( 'init', [ $this, 'schedule' ] );
+        }
+
         add_action( self::RUN_ACTION, [ $this, 'run' ] );
     }
 
@@ -51,12 +44,13 @@ final class ExpiryRunner {
     }
 
     public function run(): void {
-        $user_ids = $this->lots->user_ids_needing_backfill( self::BATCH_SIZE );
+        $ledger   = new LedgerService( new LedgerRepository(), new CustomerRepository(), new CampaignRepository() );
+        $user_ids = ( new LotRepository() )->user_ids_needing_backfill( self::BATCH_SIZE );
         $opened   = 0;
 
         foreach ( $user_ids as $user_id ) {
             try {
-                $opened += $this->ledger->backfill_lots( $user_id );
+                $opened += $ledger->backfill_lots( $user_id );
             } catch ( \Throwable $e ) {
                 Log::error( 'ExpiryRunner', sprintf( 'backfill for user %d failed: %s', $user_id, $e->getMessage() ) );
             }
