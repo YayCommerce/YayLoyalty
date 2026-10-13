@@ -52,7 +52,23 @@ Download into a fresh scratch directory, not the repo, and copy only the models 
 
 Each component draws the silhouette in spec criterion 4. Unbuilt stations are blue wireframes over a dashed floor zone.
 
-Steps: expand after Phase 1 lands.
+- [x] **Step 1: Shared parts.** `materials.ts` holds `ACCENTS`, moved from `Station.tsx`, and `material(kind, color?)`, which returns a fresh material on each call, so Task 6 can dim one station without dimming the others. `metal` is the only kind with metalness. `stations/Kit.tsx`, a file this task adds, holds:
+  - `Part`, a `RoundedBox` in one of those kinds;
+  - `Plinth`, the graphite base under every built station;
+  - `Kit`, which fits a kit model inside a `fit` box, uniformly or with `stretch`, and replaces its materials. It sits in a `Suspense` whose fallback is a `Part` of the `fit` size, and it draws the same `Part` when `useModel` returns `null`.
+- [x] **Step 2: Silhouettes.** Each type draws its machine on the back (−z) half, so the box lane through the centre stays clear:
+  - intake: `hopper-square`, plus a `scanner-high` arch over the belt with a teal cap;
+  - scoring: a stretched `machine`, with a violet `cog-a` dial on its front face that turns by `propPose().dial`;
+  - gate: a `warning-traffic` post, and an amber arm that lifts by `gateArm` and flashes `#b84a3d` by `gateDeny`;
+  - ledger: two graphite columns and a beam with an indigo cap, and a metal `piston-square` head on a rod that drops by `pressHead`;
+  - warehouse: `structure-medium` uprights, three shelves and `box-small` cartons;
+  - vault: a metal `machine-fortified`, with a round metal door and a spoked handle;
+  - return: a `machine-window` with a red `conveyor-stripe` chute;
+  - unbuilt: a dashed drei `Line` zone and a translucent `RoundedBox` with `Edges`.
+
+  `Station.tsx` keeps the hover and click handlers and picks the component from a `Record<StationType, …>`.
+- [x] **Step 3: Verify.** `tsc --noEmit` exits 0, and `shoot` passes with no console errors. A 2× shot of the floor shows each silhouette, with no machine across the belt lane except the scanner arch and the press beam, which span it. Grep the station files for `boxGeometry`: there are no matches. Every hex colour in `stations/` and `materials.ts` is at HSL saturation 60 % or less; the highest is the unbuilt blue, at 57 %.
+- [x] **Step 4: Commit.** Stage `src/scene/materials.ts`, `src/scene/Station.tsx`, `src/scene/stations/*.tsx` and this file: `feat(factory-explainer): give each station its own silhouette`.
 
 ### Task 3: Lighting and post-processing
 
