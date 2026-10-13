@@ -15,7 +15,7 @@ pnpm --filter @yayloyalty/factory-explainer dev     # http://localhost:3050
 ```
 
 - `http://localhost:3050/?perf` adds drei's `StatsGl` frame-rate meter.
-- Space plays and pauses, and hovering over the factory holds the loop until the pointer leaves; the scene buttons jump to a scene; clicking a station opens its panel.
+- Space plays and pauses, and hovering over the factory floor or anything on it holds the loop until the pointer leaves it (the empty space around it does not); the scene buttons jump to a scene; clicking a station opens its panel.
 - Each worker's tag shows its name and what it is doing; each box's tag shows its event, its money value and, once scored, its points.
 
 ## Check it

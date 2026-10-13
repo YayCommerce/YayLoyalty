@@ -1,6 +1,6 @@
-import { useEffect, type ComponentRef, type ReactNode } from 'react';
+import { useEffect, useRef, type ComponentRef, type ReactNode, type RefObject } from 'react';
 import * as THREE from 'three';
-import { Canvas, useThree } from '@react-three/fiber';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { MapControls } from '@react-three/drei';
 import { Selection } from '@react-three/postprocessing';
 import { Effects } from './Effects';
@@ -82,20 +82,54 @@ function IsoRig() {
   return <MapControls makeDefault enableRotate={ false } screenSpacePanning onChange={ clamp } />;
 }
 
+/**
+ * Holds the loop while the pointer is over the factory itself (the floor or anything on it), not the empty space around it.
+ * A raycast against the factory group runs only when the pointer moves, and only a change of state calls hoverHold,
+ * so Space while hovering still wins.
+ */
+function HoverHold( { factory, inside }: { factory: RefObject<THREE.Group | null>; inside: RefObject<boolean> } ) {
+  const last = useRef( { x: NaN, y: NaN, over: false } );
+  useFrame( ( { raycaster, pointer, camera } ) => {
+    const l = last.current;
+    if ( ! inside.current ) {
+      if ( l.over ) {
+        l.over = false;
+        useFactory.getState().hoverHold( false );
+      }
+      l.x = NaN;
+      return;
+    }
+    if ( ! factory.current || ( pointer.x === l.x && pointer.y === l.y ) ) {
+      return;
+    }
+    l.x = pointer.x;
+    l.y = pointer.y;
+    raycaster.setFromCamera( pointer, camera );
+    const over = raycaster.intersectObject( factory.current, true ).length > 0;
+    if ( over !== l.over ) {
+      l.over = over;
+      useFactory.getState().hoverHold( over );
+    }
+  } );
+  return null;
+}
+
 export function Stage( { children }: { children?: ReactNode } ) {
+  const factory = useRef<THREE.Group>( null );
+  const inside = useRef( false );
   return (
-    // Hovering anywhere over the factory holds the loop, so the scene can be read; leaving resumes it.
-    <div className="stage" onPointerEnter={ () => useFactory.getState().hoverHold( true ) } onPointerLeave={ () => useFactory.getState().hoverHold( false ) }>
-    <Canvas shadows={ { type: THREE.PCFShadowMap } } orthographic dpr={ [ 1, 1.25 ] } camera={ { position: [ 55, 40, 47 ] } }>
-      <color attach="background" args={ [ '#f4f1ec' ] } />
-      <IsoRig />
-      <Lighting />
-      { /* Selection wraps the stations' Selects and the composer's Outline. */ }
-      <Selection>
-        <Effects />
-        { children }
-      </Selection>
-    </Canvas>
+    <div className="stage" onPointerEnter={ () => { inside.current = true; } } onPointerLeave={ () => { inside.current = false; } }>
+      <Canvas shadows={ { type: THREE.PCFShadowMap } } orthographic dpr={ [ 1, 1.25 ] } camera={ { position: [ 55, 40, 47 ] } }>
+        <color attach="background" args={ [ '#f4f1ec' ] } />
+        <IsoRig />
+        <Lighting />
+        <HoverHold factory={ factory } inside={ inside } />
+        { /* Selection wraps the stations' Selects and the composer's Outline. */ }
+        <Selection>
+          <Effects />
+          <group ref={ factory }>{ children }</group>
+        </Selection>
+      </Canvas>
     </div>
   );
 }
