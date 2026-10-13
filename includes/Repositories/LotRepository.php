@@ -64,6 +64,43 @@ class LotRepository {
         );
     }
 
+    /** The earliest date any of the customer's open lots expires, or null when none does. */
+    public function earliest_open_expiry( int $user_id ): ?string {
+        global $wpdb;
+
+        $earliest = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare(
+                'SELECT MIN( expires_at ) FROM `' . esc_sql( $this->table() ) . '` WHERE user_id = %d AND status = %s',
+                $user_id,
+                self::STATUS_OPEN
+            )
+        );
+
+        return null === $earliest ? null : (string) $earliest;
+    }
+
+    /**
+     * Re-dates every open lot, as ExpiryRules::lot_expires_at() would one by one: $months after it was
+     * earned, clamped to month end by DATE_ADD itself, or never when $months is null.
+     *
+     * @throws QueryException When the write fails.
+     */
+    public function recompute_expiry( ?int $months ): void {
+        global $wpdb;
+
+        $table = esc_sql( $this->table() );
+
+        // phpcs:disable WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- a set-wide update on the plugin's own escaped table; every value is bound.
+        $result = null === $months
+            ? $wpdb->query( $wpdb->prepare( "UPDATE `{$table}` SET expires_at = NULL WHERE status = %s AND expires_at IS NOT NULL", self::STATUS_OPEN ) )
+            : $wpdb->query( $wpdb->prepare( "UPDATE `{$table}` SET expires_at = DATE_ADD( created_at, INTERVAL %d MONTH ) WHERE status = %s", $months, self::STATUS_OPEN ) );
+        // phpcs:enable WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+        if ( false === $result ) {
+            throw new QueryException( 'update', $wpdb->last_error, $this->table() . ' (recompute_expiry)' );
+        }
+    }
+
     /**
      * @return int The new lot's id.
      * @throws QueryException When the write fails.

@@ -204,6 +204,36 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
     }
 
     /**
+     * Re-dates every customer under the batch model, as ExpiryRules::customer_expires_at() would one by
+     * one: their earliest open lot's expiry when the balance is positive, else null. Reads `lots` in a
+     * join, as the admin list joins users; it writes only this table.
+     *
+     * @throws QueryException When the write fails.
+     */
+    public function recompute_expiry_from_lots(): void {
+        global $wpdb;
+
+        $table = esc_sql( $this->table() );
+        $lots  = esc_sql( \YayLoyalty\Utils\Table::name( 'lots' ) );
+
+        // phpcs:disable WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- a set-wide update on the plugin's own escaped tables; the status is bound.
+        $result = $wpdb->query(
+            $wpdb->prepare(
+                "UPDATE `{$table}` c
+                 LEFT JOIN ( SELECT user_id, MIN( expires_at ) AS earliest FROM `{$lots}` WHERE status = %s GROUP BY user_id ) l
+                   ON l.user_id = c.user_id
+                 SET c.expires_at = CASE WHEN c.balance > 0 THEN l.earliest ELSE NULL END",
+                'open'
+            )
+        );
+        // phpcs:enable WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+        if ( false === $result ) {
+            throw new QueryException( 'update', $wpdb->last_error, $this->table() . ' (recompute_expiry_from_lots)' );
+        }
+    }
+
+    /**
      * Re-dates every customer under the inactivity model, as ExpiryRules::customer_expires_at() would one
      * by one: $days after the last earn or redeem (or joining), for a positive balance only. Null clears
      * every date, for expiry turned off. One statement, so it runs without the customer locks.

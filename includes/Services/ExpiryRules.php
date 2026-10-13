@@ -42,6 +42,10 @@ final class ExpiryRules {
         return (int) self::settings()['inactivity_days'];
     }
 
+    public static function batch_months(): int {
+        return (int) self::settings()['batch_months'];
+    }
+
     public static function reminder_days(): int {
         return (int) self::settings()['reminder_days'];
     }
@@ -84,7 +88,7 @@ final class ExpiryRules {
             return null;
         }
 
-        return Dates::add_months( $created_at, (int) self::settings()['batch_months'] );
+        return Dates::add_months( $created_at, self::batch_months() );
     }
 
     /**

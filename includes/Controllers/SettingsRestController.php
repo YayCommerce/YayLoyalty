@@ -4,6 +4,7 @@ namespace YayLoyalty\Controllers;
 use YayLoyalty\Access\Capabilities;
 use YayLoyalty\Engine\Expiry\ExpiryRecompute;
 use YayLoyalty\Helpers\SettingsHelper;
+use YayLoyalty\Services\ExpiryRules;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -52,6 +53,13 @@ class SettingsRestController extends AbstractRestController {
 
         if ( ! is_array( $settings ) || ! SettingsHelper::is_valid( $settings ) ) {
             return $this->error_invalid_arguments();
+        }
+
+        // Batches assigned every balance dated lots; going back would have to invent one date, so it isn't offered.
+        $requested_model = $settings['expiry']['model'] ?? null;
+
+        if ( ExpiryRules::MODEL_INACTIVITY === $requested_model && ExpiryRules::MODEL_BATCHES === SettingsHelper::get_settings()['expiry']['model'] ) {
+            return new \WP_Error( 'yayloyalty_expiry_model_one_way', __( 'Batch expiry cannot be switched back to inactivity expiry.', 'yayloyalty' ), [ 'status' => 400 ] );
         }
 
         $saved = SettingsHelper::update_settings( $settings );

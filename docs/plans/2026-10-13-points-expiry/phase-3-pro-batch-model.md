@@ -1,7 +1,7 @@
 # Phase 3: Pro batch model
 
 **Plan:** `README.md` in this directory: the Status, constraints and interface contract
-**Depends on:** Phase 2 merged into `dev/edd`. Branch `paul/feat/expiry-batches` from `dev/edd`.
+**Depends on:** Phase 2. Branch `paul/feat/expiry-batches`, stacked on `paul/feat/expiry-reminders` while the earlier phases await their PRs.
 **Delivers:** in Pro, a merchant switches once from inactivity to batches. Each lot then expires `batch_months` after the day it was
 earned, the job expires only due lots, and the switch can't be undone.
 **Exit criterion:** spec criteria 7 and 11, then criterion 14 repeated with `model = batches`:
@@ -35,7 +35,14 @@ Expected:
   - `Dates::add_months()` (Phase 1) must equal MySQL's `DATE_ADD` for `2026-01-31 + 1` and `2024-01-31 + 1` (leap year: `2024-02-29`).
     Verify with `wp eval` against `wp db query "SELECT DATE_ADD('2024-01-31 09:00:00', INTERVAL 1 MONTH)"`.
 
-Steps: expand after Phase 2 lands.
+- [x] **Step 1: Implement the files above.** `ExpiryRules::batch_months()` was added. `LotWriter` reads `earliest_open_expiry()` only under batches, which saves a query per ledger row under inactivity. `recompute_expiry_from_lots()` reads `lots` in a join, as the admin list joins `users`, and writes only `customers`.
+- [x] **Step 2: Verify.** Done 2026-10-13 with a throwaway harness check (12 assertions):
+  - criterion 7: 12 months gives `2027-03-14` and `2027-01-31`; the customer's date is the earliest lot; the recompute to 1 month gives `2026-02-28`, the same as PHP;
+  - the exit end-to-end over REST: `expire −300`, the old lot `expired`, the new lot `open` 200, and `expires_at` is the new lot + 1 month;
+  - inactivity after batches gets 400 `yayloyalty_expiry_model_one_way`, and batches → batches still saves.
+
+  Both suites pass (33 unit, 78 integration). Lint is clean.
+- [x] **Step 3: Commit** `feat(expiry): add Pro's batch expiry model`
 
 ### Task 2: Pro model section in the Expiry tab
 

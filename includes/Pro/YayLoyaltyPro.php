@@ -5,6 +5,7 @@ use YayLoyalty\Engine\Earning\EarningService;
 use YayLoyalty\Engine\Points\PointsEngine;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Enums\RewardType;
+use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Pro\Controllers\CampaignPerformanceRestController;
 use YayLoyalty\Pro\Controllers\CampaignPreviewRestController;
 use YayLoyalty\Pro\Controllers\CustomerSegmentsRestController;
@@ -81,6 +82,7 @@ final class YayLoyaltyPro {
         add_filter( 'yayloyalty_localize_admin_data', [ self::class, 'add_segments' ] );
         add_filter( 'woocommerce_email_classes', [ ProEmails::class, 'add_classes' ] );
         add_filter( 'woocommerce_email_groups', [ ProEmails::class, 'add_groups' ] );
+        add_filter( ExpiryRules::MODEL_FILTER, [ self::class, 'expiry_model' ] );
         add_filter( ExpiryRules::STAGES_FILTER, [ ReminderStages::class, 'add_final' ] );
         add_filter( ExpiryRules::REMINDER_FILTER, [ ReminderStages::class, 'apply_floor' ], 10, 4 );
 
@@ -95,6 +97,11 @@ final class YayLoyaltyPro {
     /** Whether boot() has run; YayLoyalty::is_pro() only asks whether the code is present. */
     public static function is_booted(): bool {
         return self::$booted;
+    }
+
+    /** The stored `expiry.model`: Pro acts on batches, which Lite stores but reads as inactivity. */
+    public static function expiry_model(): string {
+        return (string) SettingsHelper::get_settings()['expiry']['model'];
     }
 
     /**

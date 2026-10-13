@@ -51,7 +51,8 @@ final class LotWriter {
     /** Re-dates customers.expires_at after $row, writing only when the date moved. */
     private function sync_expires_at( LedgerEntry $row, Customer $before ): void {
         $last_activity_at = LedgerType::is_activity( $row->get_type() ) ? $row->get_created_at() : $before->get_last_activity_at();
-        $expires_at       = ExpiryRules::customer_expires_at( $row->get_balance_after(), $last_activity_at, $before->get_joined_at(), null );
+        $earliest_lot     = ExpiryRules::MODEL_BATCHES === ExpiryRules::model() ? $this->lots->earliest_open_expiry( $row->get_user_id() ) : null;
+        $expires_at       = ExpiryRules::customer_expires_at( $row->get_balance_after(), $last_activity_at, $before->get_joined_at(), $earliest_lot );
 
         if ( $expires_at !== $before->get_expires_at() ) {
             $this->customers->set_expires_at( $row->get_user_id(), $expires_at );
