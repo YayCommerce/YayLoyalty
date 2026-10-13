@@ -6,18 +6,26 @@ import type { Station } from '../../factory.config';
 import { useModel, type ModelKey } from '../../models';
 import { useFactory } from '../../store';
 import { activeStation, COMPILED, entryAt } from '../../timeline';
-import { ACCENTS, material, type MaterialKind } from '../materials';
+import { Ink } from '../Ink';
+import { ACCENTS, material, toon, type MaterialKind } from '../materials';
 
 export const PLINTH = 0.2;
 
 type Vec3 = [ number, number, number ];
 
-/** A beveled box in one of the shared materials. */
+/** Parts thinner than this skip the ink outline: it would swamp them, and it saves draw calls. */
+const INK_MIN = 0.05;
+
+/** A beveled box in one of the shared materials, inked. */
 export function Part( { args, position, rotation, kind, color, radius = 0.06, shadow = true }: {
   args: Vec3; position?: Vec3; rotation?: Vec3; kind: MaterialKind; color?: string; radius?: number; shadow?: boolean;
 } ) {
   const m = useMemo( () => material( kind, color ), [ kind, color ] );
-  return <RoundedBox args={ args } radius={ Math.min( radius, ...args.map( ( a ) => a / 2 - 0.001 ) ) } smoothness={ 3 } position={ position } rotation={ rotation } material={ m } castShadow={ shadow } receiveShadow />;
+  return (
+    <RoundedBox args={ args } radius={ Math.min( radius, ...args.map( ( a ) => a / 2 - 0.001 ) ) } smoothness={ 3 } position={ position } rotation={ rotation } material={ m } castShadow={ shadow } receiveShadow>
+      { Math.min( ...args ) >= INK_MIN && <Ink /> }
+    </RoundedBox>
+  );
 }
 
 /** The low graphite plinth every built station stands on; the belt runs onto it. */
@@ -35,20 +43,12 @@ function Fallback( { fit, kind, color, position = [ 0, 0, 0 ], rotation = 0 }: K
 
 function KitModel( { name, fit, kind, color, position, rotation = 0, stretch = false }: KitProps ) {
   const gltf = useModel( name );
-  const object = useMemo( () => {
+  const parts = useMemo( () => {
     if ( ! gltf ) {
       return null;
     }
-    const root = gltf.scene.clone( true );
-    const m = material( kind, color );
-    root.traverse( ( o ) => {
-      if ( o instanceof THREE.Mesh ) {
-        o.material = m;
-        o.castShadow = true;
-        o.receiveShadow = true;
-      }
-    } );
     // Fit inside the target box, standing on y = 0 and centred on x and z.
+    const root = gltf.scene.clone( true );
     const box = new THREE.Box3().setFromObject( root );
     const size = box.getSize( new THREE.Vector3() );
     const ratio = new THREE.Vector3( fit[ 0 ] / size.x, fit[ 1 ] / size.y, fit[ 2 ] / size.z );
@@ -56,15 +56,30 @@ function KitModel( { name, fit, kind, color, position, rotation = 0, stretch = f
     const centre = box.getCenter( new THREE.Vector3() );
     root.position.set( -centre.x * scale.x, -box.min.y * scale.y, -centre.z * scale.z );
     root.scale.copy( scale );
-    const holder = new THREE.Group();
-    holder.add( root );
-    return holder;
+    root.updateMatrixWorld( true );
+    // Each mesh becomes JSX with its baked transform, so it can carry an ink outline.
+    const m = material( kind, color );
+    const out: { geometry: THREE.BufferGeometry; matrix: THREE.Matrix4 }[] = [];
+    root.traverse( ( o ) => {
+      if ( o instanceof THREE.Mesh ) {
+        out.push( { geometry: o.geometry, matrix: o.matrixWorld.clone() } );
+      }
+    } );
+    return { material: m, meshes: out };
   }, [ gltf, fit[ 0 ], fit[ 1 ], fit[ 2 ], kind, color, stretch ] );
 
-  if ( ! object ) {
+  if ( ! parts ) {
     return <Fallback name={ name } fit={ fit } kind={ kind } color={ color } position={ position } rotation={ rotation } />;
   }
-  return <primitive object={ object } position={ position } rotation-y={ rotation } />;
+  return (
+    <group position={ position } rotation-y={ rotation }>
+      { parts.meshes.map( ( p, i ) => (
+        <mesh key={ i } geometry={ p.geometry } material={ parts.material } matrix={ p.matrix } matrixAutoUpdate={ false } castShadow receiveShadow>
+          <Ink />
+        </mesh>
+      ) ) }
+    </group>
+  );
 }
 
 /** How many models are still loading; the screenshot harness waits for zero. */
@@ -98,7 +113,7 @@ const LED_IDLE = 0.35;
 
 /** A status light on a short stalk at the plinth's front-left corner, in the station's accent; it glows past the bloom threshold while the station works. */
 export function StatusLed( { s }: { s: Station } ) {
-  const led = useRef<THREE.MeshStandardMaterial>( null );
+  const led = useRef<THREE.MeshToonMaterial>( null );
   const [ w, d ] = s.size;
   useFrame( () => {
     if ( led.current ) {
@@ -111,7 +126,7 @@ export function StatusLed( { s }: { s: Station } ) {
       <Part args={ [ 0.08, 0.3, 0.08 ] } position={ [ 0, 0.15, 0 ] } kind="graphite" radius={ 0.03 } />
       <mesh position={ [ 0, 0.36, 0 ] }>
         <sphereGeometry args={ [ 0.08, 20, 12 ] } />
-        <meshStandardMaterial ref={ led } color={ ACCENTS[ s.type ] } emissive={ ACCENTS[ s.type ] } emissiveIntensity={ LED_IDLE } roughness={ 0.5 } toneMapped={ false } />
+        <meshToonMaterial ref={ led } { ...toon } color={ ACCENTS[ s.type ] } emissive={ ACCENTS[ s.type ] } emissiveIntensity={ LED_IDLE } toneMapped={ false } />
       </mesh>
     </group>
   );

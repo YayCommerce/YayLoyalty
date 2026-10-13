@@ -14,6 +14,11 @@ const SLIDE = 0.8;
 /** How far before and after a belt corner the curve starts turning. */
 const CORNER = 0.45;
 const ease = ( u: number ) => ( u < 0.5 ? 4 * u * u * u : 1 - Math.pow( -2 * u + 2, 3 ) / 2 );
+/** Ease out with a little overshoot past 1, for a cartoon snap. */
+const easeOutBack = ( u: number ) => 1 + 2.7 * Math.pow( u - 1, 3 ) + 1.7 * Math.pow( u - 1, 2 );
+const HOP = 0.35; // height of a box's hop on a slide, world units
+const SQUASH = 0.22; // how far a box squashes when it lands
+const SQUASH_TIME = 0.35;
 const clamp01 = ( u: number ) => Math.min( 1, Math.max( 0, u ) );
 
 /** Belt rides: ramp up and down over 0.4 s at most a quarter of the ride, constant speed between. */
@@ -189,6 +194,17 @@ function along( s: Segment, time: number ): V3 {
   return [ 0, 1, 2 ].map( ( k ) => s.from[ k ] + ( s.to[ k ] - s.from[ k ] ) * u ) as V3;
 }
 
+/** A slide's hop above the straight line, so boxes jump on and off belts; rides and carries stay level. */
+function hop( s: Segment, time: number ): number {
+  return s.curve || s.t1 - s.t0 > SLIDE ? 0 : Math.sin( Math.PI * clamp01( ( time - s.t0 ) / ( s.t1 - s.t0 ) ) ) * HOP;
+}
+
+/** 0..SQUASH just after a segment lands, decaying to 0. */
+function landing( s: Segment, time: number ): number {
+  const k = ( time - s.t1 ) / SQUASH_TIME;
+  return k >= 0 && k < 1 ? SQUASH * Math.sin( Math.PI * k ) * ( 1 - k ) : 0;
+}
+
 /** The last segment that has started by `time`, or null before the first. */
 function current( segments: Segment[], time: number ): Segment | null {
   let found: Segment | null = null;
@@ -210,11 +226,13 @@ function lastBefore<T>( list: [ number, T ][], time: number ): T {
   return value;
 }
 
-export function boxPose( id: PackageId, time: number, c: Compiled = COMPILED ): { position: V3; visible: boolean; tint: Tint; tag: string } {
+export function boxPose( id: PackageId, time: number, c: Compiled = COMPILED ): { position: V3; visible: boolean; tint: Tint; tag: string; squash: number } {
   const b = c.boxes[ id ];
   const s = current( b.segments, time );
+  const p = s ? along( s, time ) : boxHome( id );
   return {
-    position: s ? along( s, time ) : boxHome( id ),
+    position: s ? [ p[ 0 ], p[ 1 ] + hop( s, time ), p[ 2 ] ] : p,
+    squash: s ? landing( s, time ) : 0,
     visible: time >= b.appear,
     tint: lastBefore( b.tints, time ),
     tag: lastBefore( b.tags, time ),
@@ -239,7 +257,7 @@ const pulse = ( time: number, start: number, length: number ) => ( time >= start
 export function propPose( time: number, c: Compiled = COMPILED ): { gateArm: number; gateDeny: number; pressHead: number; dial: number } {
   let arm = 0;
   for ( const end of c.lifts ) {
-    const up = ease( clamp01( ( time - ( end - 0.5 ) ) / 0.4 ) );
+    const up = easeOutBack( clamp01( ( time - ( end - 0.5 ) ) / 0.4 ) );
     const down = ease( clamp01( ( time - ( end + 0.9 ) ) / 0.4 ) );
     arm = Math.max( arm, up * ( 1 - down ) );
   }

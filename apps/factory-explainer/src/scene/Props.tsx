@@ -1,10 +1,11 @@
 import { useMemo, type ComponentType } from 'react';
 import { PROPS, type Prop } from '../factory.config';
+import { Ink } from './Ink';
 import { material } from './materials';
 import { Kit, Part } from './stations/Kit';
 
-const WOOD = '#bba98f';
-const CONE = '#c98a5a';
+const WOOD = '#d9a66b';
+const CONE = '#ff8a3d';
 const TRAY = 6;
 
 /** A wooden pallet with two cartons on it. */
@@ -35,6 +36,7 @@ function Forklift() {
       { [ [ -0.4, -0.42 ], [ -0.4, 0.42 ], [ 0.25, -0.42 ], [ 0.25, 0.42 ] ].map( ( [ x, z ] ) => (
         <mesh key={ `${ x }${ z }` } position={ [ x, 0.17, z ] } rotation-x={ Math.PI / 2 } material={ tyre } castShadow>
           <cylinderGeometry args={ [ 0.17, 0.17, 0.12, 20 ] } />
+          <Ink />
         </mesh>
       ) ) }
     </group>

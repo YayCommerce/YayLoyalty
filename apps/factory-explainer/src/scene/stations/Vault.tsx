@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import type { Station } from '../../factory.config';
+import { Ink } from '../Ink';
 import { material } from '../materials';
 import { Kit, Part, Plinth, PLINTH } from './Kit';
 
@@ -17,9 +18,11 @@ export function Vault( { s }: { s: Station } ) {
       <group position={ [ 0, PLINTH + h * 0.5, face + 0.06 ] } rotation-x={ Math.PI / 2 }>
         <mesh material={ ring } castShadow>
           <cylinderGeometry args={ [ 0.78, 0.78, 0.08, 48 ] } />
+          <Ink />
         </mesh>
         <mesh material={ door } position={ [ 0, 0.06, 0 ] } castShadow>
           <cylinderGeometry args={ [ 0.66, 0.66, 0.1, 48 ] } />
+          <Ink />
         </mesh>
         <mesh material={ ring } position={ [ 0, 0.14, 0 ] }>
           <cylinderGeometry args={ [ 0.12, 0.12, 0.1, 24 ] } />

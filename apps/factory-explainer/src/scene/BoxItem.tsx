@@ -5,15 +5,17 @@ import { Html, RoundedBox } from '@react-three/drei';
 import type { PackageId } from '../factory.config';
 import { boxPose, type Tint } from '../timeline';
 import { useFactory } from '../store';
+import { Ink } from './Ink';
+import { toon } from './materials';
 import { useLateMount } from '../ui/useLateMount';
 
 const SIZE = 0.5;
-const TINTS: Record<Tint, string> = { earn: '#c8a27a', adjust: '#9fb0c8', rejected: '#9ca3af', refund: '#c97a6e' };
+const TINTS: Record<Tint, string> = { earn: '#f0b46a', adjust: '#7fb2ff', rejected: '#a3abb8', refund: '#ff7a6b' };
 
 /** A cardboard box with its event tag; it follows boxPose, so a seek shows the same frame as playback. */
 export function BoxItem( { id }: { id: PackageId } ) {
   const group = useRef<THREE.Group>( null );
-  const material = useRef<THREE.MeshStandardMaterial>( null );
+  const material = useRef<THREE.MeshToonMaterial>( null );
   const tag = useFactory( ( s ) => boxPose( id, s.time ).tag );
   const visible = useFactory( ( s ) => boxPose( id, s.time ).visible );
   const tint = useFactory( ( s ) => boxPose( id, s.time ).tint );
@@ -21,7 +23,8 @@ export function BoxItem( { id }: { id: PackageId } ) {
 
   useFrame( () => {
     const p = boxPose( id, useFactory.getState().time );
-    group.current?.position.set( p.position[ 0 ], p.position[ 1 ] + SIZE / 2, p.position[ 2 ] );
+    group.current?.position.set( p.position[ 0 ], p.position[ 1 ] + SIZE / 2 * ( 1 - p.squash ), p.position[ 2 ] );
+    group.current?.scale.set( 1 + p.squash / 2, 1 - p.squash, 1 + p.squash / 2 );
   } );
 
   return (
@@ -40,10 +43,11 @@ export function BoxItem( { id }: { id: PackageId } ) {
         } }
         onPointerOut={ () => useFactory.getState().hoverHold( false ) }
       >
-        <meshStandardMaterial ref={ material } color={ TINTS[ tint ] } roughness={ 0.8 } />
+        <meshToonMaterial ref={ material } { ...toon } color={ TINTS[ tint ] } />
+        <Ink />
       </RoundedBox>
       <RoundedBox args={ [ SIZE + 0.01, 0.06, 0.12 ] } radius={ 0.02 } position={ [ 0, SIZE / 2 - 0.02, 0 ] }>
-        <meshStandardMaterial color="#e8dcc8" roughness={ 0.6 } />
+        <meshToonMaterial { ...toon } color="#f4e6c8" />
       </RoundedBox>
       { /* Kept mounted and hidden by CSS: unmounting drei's Html mid-render, on a seek or a loop wrap, logs React errors. */ }
       { tagReady && (

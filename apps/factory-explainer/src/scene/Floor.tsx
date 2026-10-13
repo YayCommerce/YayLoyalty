@@ -2,7 +2,8 @@ import { useMemo } from 'react';
 import * as THREE from 'three';
 import { RoundedBox } from '@react-three/drei';
 import { REJECT_BIN, STATIONS } from '../factory.config';
-import { material } from './materials';
+import { Ink } from './Ink';
+import { material, toon } from './materials';
 import { FLOOR } from './Stage';
 
 const MARGIN = 1.2;
@@ -31,10 +32,10 @@ function floorTexture(): THREE.CanvasTexture {
   const X = ( x: number ) => ( x - SLAB.x0 ) * PX;
   const Z = ( z: number ) => ( z - SLAB.z0 ) * PX;
 
-  ctx.fillStyle = '#efe9df';
+  ctx.fillStyle = '#fff3df';
   ctx.fillRect( 0, 0, canvas.width, canvas.height );
 
-  ctx.strokeStyle = '#e4ddd1';
+  ctx.strokeStyle = '#f2e2c6';
   ctx.lineWidth = 1.5;
   for ( let x = Math.ceil( SLAB.x0 ); x <= SLAB.x1; x++ ) {
     ctx.beginPath();
@@ -50,7 +51,7 @@ function floorTexture(): THREE.CanvasTexture {
   }
 
   // Lane lines: the customers' walkway, and the machine floor.
-  ctx.strokeStyle = '#d6ccbb';
+  ctx.strokeStyle = '#e6cfa8';
   ctx.lineWidth = 0.07 * PX;
   ctx.setLineDash( [ 0.5 * PX, 0.3 * PX ] );
   ctx.strokeRect( X( -0.7 ), Z( 1.6 ), 2.9 * PX, 11.3 * PX );
@@ -70,9 +71,9 @@ function floorTexture(): THREE.CanvasTexture {
     ctx.beginPath();
     ctx.rect( x0, z0, bw, bd );
     ctx.clip();
-    ctx.fillStyle = '#caa24a';
+    ctx.fillStyle = '#ffc233';
     ctx.fillRect( x0, z0, bw, bd );
-    ctx.strokeStyle = '#3b3f47';
+    ctx.strokeStyle = '#2a2e38';
     ctx.lineWidth = 0.14 * PX;
     for ( let k = -bd; k < bw + bd; k += 0.4 * PX ) {
       ctx.beginPath();
@@ -84,7 +85,7 @@ function floorTexture(): THREE.CanvasTexture {
   }
 
   // Zone names, painted in front of each station.
-  ctx.fillStyle = '#cbc1b0';
+  ctx.fillStyle = '#dcc39b';
   ctx.font = `700 ${ Math.round( 0.3 * PX ) }px system-ui, -apple-system, sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
@@ -112,7 +113,9 @@ export function Floor() {
   }, [] );
   return (
     <group position={ [ ( SLAB.x0 + SLAB.x1 ) / 2, 0, ( SLAB.z0 + SLAB.z1 ) / 2 ] }>
-      <RoundedBox args={ [ w, 0.4, d ] } radius={ INSET } smoothness={ 3 } position={ [ 0, -0.2, 0 ] } material={ slab } receiveShadow />
+      <RoundedBox args={ [ w, 0.4, d ] } radius={ INSET } smoothness={ 3 } position={ [ 0, -0.2, 0 ] } material={ slab } receiveShadow>
+        <Ink />
+      </RoundedBox>
       { /* Inset by the bevel so the paint lies on the slab's flat top. */ }
       <mesh rotation-x={ -Math.PI / 2 } position={ [ 0, 0.001, 0 ] } material={ paint } receiveShadow>
         <planeGeometry args={ [ w - 2 * INSET, d - 2 * INSET ] } />
@@ -127,11 +130,13 @@ export function RejectBin() {
   return (
     <group position={ [ x, 0, z ] }>
       <RoundedBox args={ [ 1.5, 0.12, 1.5 ] } radius={ 0.04 } position={ [ 0, 0.06, 0 ] } receiveShadow>
-        <meshStandardMaterial color="#5b6270" roughness={ 0.7 } />
+        <meshToonMaterial { ...toon } color="#5b6270" />
+        <Ink />
       </RoundedBox>
       { [ [ 0, -0.7, 1.5, 0.1 ], [ 0, 0.7, 1.5, 0.1 ], [ -0.7, 0, 0.1, 1.5 ], [ 0.7, 0, 0.1, 1.5 ] ].map( ( [ dx, dz, w, d ], i ) => (
         <RoundedBox key={ i } args={ [ w, 0.55, d ] } radius={ 0.03 } position={ [ dx, 0.3, dz ] } castShadow receiveShadow>
-          <meshStandardMaterial color="#7a7f88" roughness={ 0.7 } />
+          <meshToonMaterial { ...toon } color="#7a8496" />
+          <Ink />
         </RoundedBox>
       ) ) }
     </group>

@@ -18,7 +18,10 @@ export function Ledger( { s }: { s: Station } ) {
   const highest = beam - HEAD - 0.05;
   useFrame( () => {
     if ( head.current ) {
-      head.current.position.y = highest - propPose( useFactory.getState().time ).pressHead * ( highest - LOWEST );
+      const press = propPose( useFactory.getState().time ).pressHead;
+      head.current.position.y = highest - press * ( highest - LOWEST );
+      // Squash at the bottom of the stroke.
+      head.current.scale.set( 1 + 0.12 * press ** 4, 1 - 0.18 * press ** 4, 1 + 0.12 * press ** 4 );
     }
   } );
   return (

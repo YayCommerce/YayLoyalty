@@ -1,31 +1,45 @@
 import * as THREE from 'three';
 import type { StationType } from '../factory.config';
 
-/** One accent per machine, HSL saturation ≤ 60 %. */
+/** One bright accent per machine, for the cartoon look. */
 export const ACCENTS: Record<StationType, string> = {
-  intake: '#3f9e96',
-  scoring: '#7f6bb8',
-  gate: '#c99b45',
-  ledger: '#5b63b0',
-  warehouse: '#8a8f98',
-  vault: '#8a8f98',
-  return: '#b65050',
-  unbuilt: '#6f9fd8',
+  intake: '#1fb5a5',
+  scoring: '#8e5cf0',
+  gate: '#ffb52e',
+  ledger: '#4c6ef5',
+  warehouse: '#c3ccd8',
+  vault: '#c3ccd8',
+  return: '#ef4b4b',
+  unbuilt: '#4aa3ff',
 };
+
+/** The outline colour drawn around every solid. */
+export const INK = '#1d2230';
 
 export type MaterialKind = 'graphite' | 'grey' | 'metal' | 'accent' | 'cardboard' | 'floor';
 
-const KINDS: Record<MaterialKind, { color: string; roughness: number; metalness: number }> = {
-  graphite: { color: '#4b5260', roughness: 0.6, metalness: 0 },
-  grey: { color: '#a9afb8', roughness: 0.65, metalness: 0 },
-  metal: { color: '#9aa1ab', roughness: 0.5, metalness: 0.6 },
-  accent: { color: '#8a8f98', roughness: 0.55, metalness: 0 },
-  cardboard: { color: '#c8a27a', roughness: 0.8, metalness: 0 },
-  floor: { color: '#ece7df', roughness: 0.8, metalness: 0 },
+const KINDS: Record<MaterialKind, string> = {
+  graphite: '#4b5670',
+  grey: '#cfd6e0',
+  metal: '#b8c4d4',
+  accent: '#c3ccd8',
+  cardboard: '#e0a96d',
+  floor: '#fff3df',
 };
 
-/** A fresh material per call, so dimming one station never dims another. Metalness only on `metal`: the press, the vault and the rollers. */
-export function material( kind: MaterialKind, color?: string ): THREE.MeshStandardMaterial {
-  const k = KINDS[ kind ];
-  return new THREE.MeshStandardMaterial( { color: color ?? k.color, roughness: k.roughness, metalness: k.metalness } );
+/** Three flat light bands for every toon material. */
+const BANDS = ( () => {
+  const t = new THREE.DataTexture( new Uint8Array( [ 110, 190, 255 ] ), 3, 1, THREE.RedFormat );
+  t.minFilter = THREE.NearestFilter;
+  t.magFilter = THREE.NearestFilter;
+  t.needsUpdate = true;
+  return t;
+} )();
+
+/** A fresh toon material per call, so dimming one station never dims another. */
+export function material( kind: MaterialKind, color?: string ): THREE.MeshToonMaterial {
+  return new THREE.MeshToonMaterial( { color: color ?? KINDS[ kind ], gradientMap: BANDS } );
 }
+
+/** Props for an inline JSX toon material, sharing the same bands. */
+export const toon = { gradientMap: BANDS } as const;

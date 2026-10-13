@@ -4,12 +4,11 @@ import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
 const KEYS = [
   'scanner-high', 'hopper-square', 'machine', 'cog-a', 'warning-traffic', 'piston-square', 'structure-medium',
   'machine-fortified', 'machine-window', 'conveyor-stripe', 'cone', 'box-small', 'screen-small',
-  'worker',
 ] as const;
 
 export type ModelKey = typeof KEYS[ number ];
 
-/** Kenney Factory Kit models, plus the Quaternius worker trimmed to its walk and idle clips. */
+/** Kenney Factory Kit models. */
 export const MODELS = Object.fromEntries(
   KEYS.map( ( key ) => [ key, `${ import.meta.env.BASE_URL }models/${ key }.glb` ] )
 ) as Record<ModelKey, string>;

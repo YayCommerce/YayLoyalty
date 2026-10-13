@@ -28,7 +28,8 @@ function dimTowards( group: THREE.Group, factor: number, k: number ) {
       return;
     }
     for ( const m of Array.isArray( o.material ) ? o.material : [ o.material ] ) {
-      if ( ! ( m instanceof THREE.MeshStandardMaterial ) ) {
+      // Toon solids only: the ink outlines are shader materials and stay dark.
+      if ( ! ( m instanceof THREE.MeshToonMaterial ) ) {
         continue;
       }
       const dim = THREE.MathUtils.lerp( m.userData.dim ?? 1, factor, k );

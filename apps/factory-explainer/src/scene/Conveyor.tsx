@@ -4,6 +4,7 @@ import { useFrame } from '@react-three/fiber';
 import { BELT_Y, CONVEYORS, type Conveyor as ConveyorData } from '../factory.config';
 import { beltCurve } from '../timeline';
 import { reduced, useFactory } from '../store';
+import { Ink } from './Ink';
 import { material } from './materials';
 
 const WIDTH = 0.7;
@@ -87,13 +88,14 @@ function Roller( { at, tangent }: { at: THREE.Vector3; tangent: THREE.Vector3 } 
       <group ref={ spin }>
         <mesh rotation-x={ Math.PI / 2 } material={ metal } castShadow>
           <cylinderGeometry args={ [ ROLLER, ROLLER, WIDTH + 0.04, 20 ] } />
+          <Ink />
         </mesh>
       </group>
     </group>
   );
 }
 
-const COLORS = { main: '#5b6270', reject: '#7a7f88', return: '#b04a4a' };
+const COLORS = { main: '#5a6683', reject: '#8a94a6', return: '#ef4b4b' };
 
 export function Conveyor( { conveyor }: { conveyor: ConveyorData } ) {
   const curve = useMemo( () => beltCurve( conveyor ), [ conveyor ] );
@@ -102,7 +104,6 @@ export function Conveyor( { conveyor }: { conveyor: ConveyorData } ) {
   const layer = CONVEYORS.indexOf( conveyor ) + 1;
   const belt = useMemo( () => {
     const m = material( 'graphite', COLORS[ conveyor.kind ] );
-    m.roughness = 0.7;
     m.map = tread;
     m.side = THREE.DoubleSide;
     m.polygonOffset = true;
@@ -115,7 +116,9 @@ export function Conveyor( { conveyor }: { conveyor: ConveyorData } ) {
   } );
   return (
     <>
-      <mesh geometry={ geometry } material={ belt } castShadow receiveShadow />
+      <mesh geometry={ geometry } material={ belt } castShadow receiveShadow>
+        <Ink />
+      </mesh>
       <Roller at={ curve.getPointAt( 0 ) } tangent={ curve.getTangentAt( 0 ) } />
       <Roller at={ curve.getPointAt( 1 ) } tangent={ curve.getTangentAt( 1 ) } />
     </>
