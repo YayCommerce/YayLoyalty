@@ -85,7 +85,7 @@ Message: `feat(factory-explainer): scaffold the 3D points factory app`
 **Interfaces:**
 - Produces: everything under `factory.config.ts`, `timeline.ts` and `store.ts` in the README contract.
 
-- [ ] **Step 1: Write `factory.config.ts`**
+- [x] **Step 1: Write `factory.config.ts`**
 
 **Stations and conveyors**
 - Copy the 12 stations' `role`, `label`, `file`, `methods` and `summary` from the `STATIONS` in `docs/explainers/points-factory.html`.
@@ -112,7 +112,7 @@ Message: `feat(factory-explainer): scaffold the 3D points factory app`
 - Copy the 6 `SCENES` and their 23 steps word for word: `caption`, `label`, `card.fn`, `card.lines`, `card.out`, `gate`, `press` and `at`.
 - Rename `belt` to `conveyor`, `fill` to `tint`, and `settle` to the world `[x / 40, y / 40 → y-up height, z]`.
 
-- [ ] **Step 2: Verify that the card text matches**
+- [x] **Step 2: Verify that the card text matches**
 
 Run a one-off script with `pnpm --filter @yayloyalty/factory-explainer exec tsx`. It loads both files and compares:
 - the `SCENES` array parsed out of `git show HEAD:docs/explainers/points-factory.html`;
@@ -120,7 +120,7 @@ Run a one-off script with `pnpm --filter @yayloyalty/factory-explainer exec tsx`
 
 Expected: all 23 `label`, `fn`, `lines` and `out` values are identical. Print `23/23 match`.
 
-- [ ] **Step 3: Implement `timeline.ts` and `store.ts`**
+- [x] **Step 3: Implement `timeline.ts` and `store.ts`**
 
 **`compileTimeline`** follows the 2D page's step loop, with the README's `TIMING` and these phases:
 
@@ -128,13 +128,13 @@ Expected: all 23 `label`, `fn`, `lines` and `out` values are identical. Print `2
 |---|---|---|
 | `intro` | At each scene's start | `INTRO` |
 | `walk` | When `scene.show` is set: the actor walks `home` → `dock`, and the box appears in the actor's hands | `WALK` |
-| `ride` | Per belt step: arc length on a `CatmullRomCurve3` (`centripetal`, tension 0.5) through the waypoints at `BELT_Y` | `max(HOP, length / SPEED)`, plus 0.3 s to `settle` |
+| `ride` | Per belt step: arc length on a `CatmullRomCurve3` (`centripetal`, tension 0.5) through the waypoints at `BELT_Y` | `max(HOP, length / SPEED)`, plus 0.8 s (`SLIDE`) to slide onto the belt start or off to `settle` |
 | `work` | After every step | `WORK` |
 | `hold` | At each scene's end | `HOLD` |
 
 - The actor walks back during the first `ride`.
 
-**`boxPose`, `actorPose` and `propPose`** are pure functions of time. Each phase eases with `easeInOutCubic`:
+**`boxPose`, `actorPose` and `propPose`** are pure functions of time. Belt rides ramp up and down over 0.4 s and hold a constant speed between them. Every other movement eases with `easeInOutCubic`:
 - `gateArm` lifts to 70° over 0.4 s from `work.end − 0.5`, and closes 0.9 s after `work.end`.
 - `gateDeny` flashes 3 times from `work.start + 1.2`.
 - `pressHead` drops and returns over 0.28 s at `work.start + 1.4`.
@@ -150,7 +150,7 @@ Expected: all 23 `label`, `fn`, `lines` and `out` values are identical. Print `2
 
 With `matchMedia('(prefers-reduced-motion: reduce)')`, the initial state is `paused: true` and `time: duration − 0.001`.
 
-- [ ] **Step 4: Verify the timeline**
+- [x] **Step 4: Verify the timeline**
 
 Run `tsc --noEmit`, then a one-off script with `pnpm --filter @yayloyalty/factory-explainer exec tsx` that asserts:
 - `duration` is between 150 and 175 s;
@@ -162,7 +162,7 @@ Run `tsc --noEmit`, then a one-off script with `pnpm --filter @yayloyalty/factor
 
 Expected: every assertion passes.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 Stage: `apps/factory-explainer/src/factory.config.ts`, `src/timeline.ts`, `src/store.ts`
 Message: `feat(factory-explainer): add the factory config, timeline and store`

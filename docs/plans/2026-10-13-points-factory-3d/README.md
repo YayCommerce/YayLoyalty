@@ -88,11 +88,11 @@ export function conveyorPoints(c: Conveyor): Vec2[]; // [from position, ...via, 
 export interface Actor { id: PackageId; name: string; color: string; home: Vec2; dock: Vec2; console?: boolean; }
 export interface Card { fn: string; lines: string[]; out: string; }
 export interface Step {
-  label: string; card: Card; at: StationId;
+  label: string; card: Card; at?: StationId; // ride and work steps; pulse steps name their station in pulse
   pkg?: PackageId; conveyor?: string;   // a ride; otherwise...
   pulse?: StationId;                    // ...a station acts on its own
   gate?: 'lift' | 'deny'; press?: boolean;
-  settle?: [x: number, y: number, z: number];
+  settle?: [x: number, y: number, z: number]; // a row on the front of the vault plinth
   tint?: 'rejected' | 'refund';
 }
 export interface Scene { id: `scene-${1|2|3|4|5|6}`; caption: string; show?: PackageId; steps: Step[]; }
@@ -107,7 +107,9 @@ export const TIMING: { INTRO: 1.6; WALK: 2.0; HOP: 2.4; SPEED: 5.5; WORK: 3.4; H
 
 ```ts
 export interface Entry { start: number; end: number; scene: Scene; step: Step | null; phase: 'intro' | 'walk' | 'ride' | 'work' | 'hold'; }
-export function compileTimeline(scenes: Scene[], conveyors: Conveyor[]): { entries: Entry[]; duration: number; sceneStart: Record<Scene['id'], number> };
+export function compileTimeline(scenes?: Scene[]): Compiled; // { entries, duration, sceneStart, plus the box, actor and prop tracks }
+export const COMPILED: Compiled;
+export function activeStation(e: Entry): StationId | null;
 export function entryAt(entries: Entry[], time: number): Entry;
 export function boxPose(id: PackageId, time: number): { position: [number, number, number]; visible: boolean; tint: 'earn' | 'adjust' | 'rejected' | 'refund'; tag: string };
 export function actorPose(id: PackageId, time: number): { position: Vec2; heading: number; walking: boolean };
