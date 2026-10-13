@@ -21,7 +21,7 @@ export interface Station {
   outputs: string[];
   position: Vec2;
   size: [ w: number, d: number, h: number ];
-  labelHeight: number;
+  labelHeight: number; // label anchor above the top face's back corner; enough to clear parts taller than `size`
   built: boolean;
 }
 
@@ -62,7 +62,7 @@ export const STATIONS: Station[] = [
     inputs: [ 'a WooCommerce order and its new status' ],
     outputs: [ 'EarningService::preview() → PendingPoints::stage() on pending or on-hold', 'EarningService::award() per trigger in yayloyalty_order_award_triggers on completed', 'OrderReversalListener on cancelled, trash or refunded' ],
     summary: 'Routes WooCommerce order statuses. pending and on-hold preview the purchase and stage its points; completed awards them, once per trigger in yayloyalty_order_award_triggers, then releases the staged figure. cancelled, trash and refunded go to OrderReversalListener.',
-    position: [ 5.75, 2.75 ], size: [ 2.75, 2, 1.15 ], labelHeight: 0.9,
+    position: [ 5.75, 2.75 ], size: [ 2.75, 2, 1.15 ], labelHeight: 0.45,
   },
   {
     id: 'signup-listener', type: 'intake', role: 'Intake', label: 'SignupListener', built: true,
@@ -73,7 +73,7 @@ export const STATIONS: Station[] = [
     inputs: [ 'the new user id' ],
     outputs: [ 'EarningService::award( SIGNUP )' ],
     summary: 'Awards the SIGNUP trigger when a new account is registered. No pending stage: the points land at once.',
-    position: [ 5.75, 5.75 ], size: [ 2.75, 2, 1.15 ], labelHeight: 0.9,
+    position: [ 5.75, 5.75 ], size: [ 2.75, 2, 1.15 ], labelHeight: 0.45,
   },
   {
     id: 'review-listener', type: 'intake', role: 'Intake', label: 'ReviewListener', built: true,
@@ -84,7 +84,7 @@ export const STATIONS: Station[] = [
     inputs: [ 'a product review, posted approved or approved later' ],
     outputs: [ 'EarningService::award( REVIEW )' ],
     summary: 'Awards the REVIEW trigger for a product review, either when it is posted approved or on a later approval. Both paths build the same Context.',
-    position: [ 5.75, 8.75 ], size: [ 2.75, 2, 1.15 ], labelHeight: 0.9,
+    position: [ 5.75, 8.75 ], size: [ 2.75, 2, 1.15 ], labelHeight: 0.45,
   },
   {
     id: 'reversal-listener', type: 'return', role: 'Return', label: 'OrderReversalListener', built: true,
@@ -95,7 +95,7 @@ export const STATIONS: Station[] = [
     inputs: [ 'a cancelled, trashed or refunded order' ],
     outputs: [ 'Reversal → LedgerService::refund_earn() (REFUND_EARN)' ],
     summary: 'Takes points back when an order is cancelled, trashed or refunded. It clears any pending figure, then Reversal asks LedgerService::refund_earn() to write a REFUND_EARN row against the original earn.',
-    position: [ 19.5, 11.75 ], size: [ 3.5, 2, 1 ], labelHeight: 0.9,
+    position: [ 19.5, 11.75 ], size: [ 3.5, 2, 1 ], labelHeight: 0.25,
   },
   {
     id: 'earning-service', type: 'scoring', role: 'Scoring', label: 'EarningService', built: true,
@@ -106,7 +106,7 @@ export const STATIONS: Station[] = [
     inputs: [ 'a trigger (PURCHASE, SIGNUP, REVIEW) and its Context' ],
     outputs: [ 'preview(): a Result', 'award(): an Outcome, after LedgerService::earn()' ],
     summary: 'Runs the earning gates, then PointsEngine::evaluate() scores the trigger (PURCHASE, SIGNUP, REVIEW) against the active campaigns. preview() stops there; award() hands the result to LedgerService::earn().',
-    position: [ 10.5, 5.75 ], size: [ 3.25, 2.75, 1.6 ], labelHeight: 0.9,
+    position: [ 10.5, 5.75 ], size: [ 3.25, 2.75, 1.6 ], labelHeight: 0.25,
   },
   {
     id: 'program-gate', type: 'gate', role: 'Gate', label: 'ProgramGate', built: true,
@@ -117,7 +117,7 @@ export const STATIONS: Station[] = [
     inputs: [ 'a trigger and its Context' ],
     outputs: [ 'null to pass, or the first failing reason: program_paused, no_customer, opted_out, excluded_role' ],
     summary: 'Lite\'s gate, checked in order: program on, a customer, not opted out, role not excluded. The first failing rule wins and the package is rejected with that reason.',
-    position: [ 15, 5.75 ], size: [ 2, 2.25, 0.35 ], labelHeight: 1.6,
+    position: [ 15, 5.75 ], size: [ 2, 2.25, 0.35 ], labelHeight: 1.2,
   },
   {
     id: 'pending-points', type: 'warehouse', role: 'Warehouse', label: 'PendingPoints', built: true,
@@ -128,7 +128,7 @@ export const STATIONS: Station[] = [
     inputs: [ 'an order id, its customer and the previewed points' ],
     outputs: [ 'order meta _yayloyalty_points_pending', 'customers.pending_points' ],
     summary: 'Holds an order\'s points while it is pending or on-hold: the money has not arrived. Pending is not a ledger state; it lives in order meta, with the total cached in customers.pending_points.',
-    position: [ 19.5, 2.5 ], size: [ 3, 2.25, 1.4 ], labelHeight: 0.9,
+    position: [ 19.5, 2.5 ], size: [ 3, 2.25, 1.4 ], labelHeight: 0.25,
   },
   {
     id: 'ledger-service', type: 'ledger', role: 'Ledger press', label: 'LedgerService', built: true,
@@ -139,7 +139,7 @@ export const STATIONS: Station[] = [
     inputs: [ 'a draft LedgerEntry, an admin adjustment, or the EARN row to reverse' ],
     outputs: [ 'one ledger row with its balance_after', 'the customer\'s totals, in the same transaction' ],
     summary: 'The only writer of ledger rows and balances. In one transaction it locks the customer row, appends the row with its running balance_after, and updates the customer\'s totals. System rows carry an idempotency key, so a replayed event cannot award twice.',
-    position: [ 19.5, 5.75 ], size: [ 3, 2.5, 1.6 ], labelHeight: 1.1,
+    position: [ 19.5, 5.75 ], size: [ 3, 2.5, 1.6 ], labelHeight: 0.6,
   },
   {
     id: 'vault', type: 'vault', role: 'Vault', label: 'customers', built: true,
@@ -150,7 +150,7 @@ export const STATIONS: Station[] = [
     inputs: [ 'LedgerService writes, inside its transaction' ],
     outputs: [ 'balance, lifetime_earned, lifetime_redeemed, pending_points' ],
     summary: 'The customer\'s cached totals. Only LedgerService writes them, in the same transaction as the ledger row.',
-    position: [ 24.25, 5.75 ], size: [ 3.75, 3.75, 2.1 ], labelHeight: 1.2,
+    position: [ 24.25, 5.75 ], size: [ 3.75, 3.75, 2.1 ], labelHeight: 0.25,
   },
   {
     id: 'redemption', type: 'unbuilt', role: 'Spend', label: 'Redemption', built: false,
@@ -161,7 +161,7 @@ export const STATIONS: Station[] = [
     inputs: [],
     outputs: [],
     summary: 'Not built yet. The redemption engine is scaffolding marked TODO(redemption): is_available() returns false and LedgerService::redeem() throws, so no package can be spent.',
-    position: [ 29, 2.5 ], size: [ 2.75, 2.25, 1.4 ], labelHeight: 0.9,
+    position: [ 29, 2.5 ], size: [ 2.75, 2.25, 1.4 ], labelHeight: 0.25,
   },
   {
     id: 'expiry', type: 'unbuilt', role: 'Expire', label: 'Expiry', built: false,
@@ -172,7 +172,7 @@ export const STATIONS: Station[] = [
     inputs: [],
     outputs: [],
     summary: 'Not built yet. Nothing writes EXPIRE rows: LedgerService notes that expiry needs the lots table, which is designed but not built.',
-    position: [ 29, 5.75 ], size: [ 2.75, 2.25, 1.4 ], labelHeight: 0.9,
+    position: [ 29, 5.75 ], size: [ 2.75, 2.25, 1.4 ], labelHeight: 0.25,
   },
   {
     id: 'tiers', type: 'unbuilt', role: 'Tiers', label: 'VIP tiers', built: false,
@@ -183,7 +183,7 @@ export const STATIONS: Station[] = [
     inputs: [],
     outputs: [],
     summary: 'Not built yet. Only the columns exist, declared ahead so the feature lands without a migration; CampaignConditionType::TIER is unavailable.',
-    position: [ 29, 9 ], size: [ 2.75, 2.25, 1.4 ], labelHeight: 0.9,
+    position: [ 29, 9 ], size: [ 2.75, 2.25, 1.4 ], labelHeight: 0.25,
   },
 ];
 

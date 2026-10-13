@@ -53,7 +53,10 @@ const handle: FactoryDebug = {
     const out: Record<string, Rect> = {};
     document.querySelectorAll<HTMLElement>( '.station-label[data-station]' ).forEach( ( el ) => {
       const r = el.getBoundingClientRect();
-      out[ el.dataset.station! ] = { x: r.x, y: r.y, width: r.width, height: r.height };
+      // An occluded label is hidden and measures zero; it covers nothing.
+      if ( r.width > 0 && r.height > 0 ) {
+        out[ el.dataset.station! ] = { x: r.x, y: r.y, width: r.width, height: r.height };
+      }
     } );
     return out;
   },

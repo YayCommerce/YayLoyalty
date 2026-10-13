@@ -184,8 +184,41 @@ The worker cross-fades between walk and idle on `actorPose().walking`, turns to 
 - the label rectangles don't intersect;
 - no label rectangle intersects its own `machineRects()` entry.
 
-Steps: expand after Phase 1 lands.
+- [x] **Step 1: `StationLabel.tsx`.** A drei `<Html occlude>` anchored over the back corner of the top face, at `[-w/2, PLINTH + h + labelHeight, -d/2]`. In the iso view that corner is the highest point of the machine's screen box, so a label sitting above it on its 10 px leader never covers its own machine, whatever the zoom. The anchor is still on the top face, as the README contract says. `labelHeight` therefore only clears parts taller than `size`: 0.25 by default, 0.45 for the intakes' scanner arch, 0.6 for the press beam and 1.2 for the gate's post.
+
+  The label shows `label`, plus a "not built yet" tag on unbuilt stations. Hovering it, or its machine, adds `role`, `file` and `description`. It mounts one animation frame late: on the first mount, StrictMode's effect replay made drei's `Html` unmount its root mid-render, and React logged that as 12 console errors, which failed `shoot`. The styles are in `ui.css`.
+- [x] **Step 2: Outline and dimming.**
+  - `Station.tsx` wraps the machine and its LED in `<Select enabled={hovered}>`, and mounts the label beside them.
+  - `<Selection>` lives in `Stage.tsx`, not `Effects.tsx`, because it must wrap both the stations' `Select`s and the composer.
+  - `Effects.tsx` adds `<Outline>` in `#5b63b0`. It needs `<EffectComposer autoClear={false}>`; without that it logged a warning and drew nothing.
+  - Every frame, each station eases `userData.dim` toward 0.55 while another station is hovered, and toward 1 otherwise, and sets each material's colour to that share of its base.
+  - The gate's arm marks its material `animated` and applies `dim` to its own flash colour, so the dimming never fights the flash.
+  - Only stations dim, as this task says. Spec criterion 11 says "the rest of the scene", which would include the belts, floor and props.
+- [x] **Step 3: `labelRects()` and `shoot`.** `labelRects()` skips labels with zero size, which are the ones occlusion has hidden. At each shot, `shoot` asserts that at least one label is visible, that no two label rectangles intersect, and that no label intersects its own `machineRects()` entry.
+- [x] **Step 4: Verify.** `tsc --noEmit` exits 0, and `shoot` passes with the overlap assertions and no console errors. All 12 labels are visible at t = 5, 70, 100 and 140. In a headed check:
+  - hovering the LedgerService machine, or its label, expands the label, outlines the press and dims the other machines. The scoring machine's mean brightness drops by 14;
+  - moving away clears the hover.
+- [x] **Step 5: Commit.** Stage `src/ui/StationLabel.tsx`, `src/ui/ui.css`, `src/scene/Station.tsx`, `Stage.tsx`, `Effects.tsx`, `stations/Gate.tsx`, `src/factory.config.ts`, `src/debug.ts`, `scripts/shoot.spec.ts` and this file: `feat(factory-explainer): label the stations and outline the hovered one`.
 
 ## Critique log
 
-Filled in at the Phase 2 exit.
+### Round 1, 2026-10-13
+
+These are the three 1440×900 `shoot` shots: scene 1, scene 3, and scene 4 at the gate deny. The 390×844 shots come in Phase 3.
+
+| Checklist item | Result | Notes |
+|---|---|---|
+| Every machine has a distinct, recognisable silhouette | pass | Hopper and scanner arch, cog-dial housing, signal post and barrier, press frame, racks, round-door safe, red chute, blueprint wireframes. |
+| Soft shadows and AO are visible around every object | pass | The key light's shadows, contact shadows and N8AO show under machines, props, workers and boxes. |
+| No labels overlap and no label covers a machine | fail | `shoot`'s assertions pass: no two labels meet, and none covers its own machine. But some labels sit on other machines or the HUD:<br>• OrderListener's label is under the toolbar, with only its leader showing;<br>• EarningService's label sits on the OrderListener intake;<br>• `customers` sits on the PendingPoints racks and crowds the box tag parked there;<br>• Expiry and VIP tiers sit over the vault. |
+| At most one accent per object, and the palette is calm | pass | Every machine accent is at 57 % HSL saturation or less. One note: the workers keep the 2D page's actor colours, 80–92 % saturated, and they are the loudest thing on screen. |
+| Nothing looks like a plain unbevelled box | pass | Every box is a `RoundedBox` or a kit model, and the belts have beveled edges and end rollers. |
+| Motion holds 60 fps at 1440×900 | fail | Measured in a headed Chromium by counting `requestAnimationFrame` calls over 5 s of playback: 60.1 fps (worst frame 17.8 ms) at DPR 1, but 23.9 fps (worst frame 100 ms) at DPR 2, which a Retina Mac uses. `<StatsGl>` behind `?perf` is not mounted: no task in Phase 1 or 2 adds it. |
+
+Also seen: the fitted floor puts Alice's home spot and OrderListener's label under the toolbar (Phase 1 framing).
+
+Ideas for round 2, in Phase 3:
+- frame the floor below the toolbar;
+- cap the DPR, at 1.5 for example, or drop N8AO's quality under load;
+- check labels against every machine's rectangle, not just their own, and move the ones that collide;
+- mount `<StatsGl>` behind `?perf`.

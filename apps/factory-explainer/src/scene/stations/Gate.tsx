@@ -13,7 +13,11 @@ const DENY = new THREE.Color( '#b84a3d' );
 /** ProgramGate: a signal post and a barrier arm across the belt that lifts on a pass and flashes red on a deny. */
 export function Gate( { s }: { s: Station } ) {
   const arm = useRef<THREE.Group>( null );
-  const armMaterial = useMemo( () => material( 'accent', ACCENTS.gate ), [] );
+  const armMaterial = useMemo( () => {
+    const m = material( 'accent', ACCENTS.gate );
+    m.userData.animated = true;
+    return m;
+  }, [] );
   const base = useMemo( () => new THREE.Color( ACCENTS.gate ), [] );
   const d = s.size[ 1 ];
   const reach = d - 0.3;
@@ -22,7 +26,7 @@ export function Gate( { s }: { s: Station } ) {
     if ( arm.current ) {
       arm.current.rotation.x = p.gateArm;
     }
-    armMaterial.color.copy( base ).lerp( DENY, p.gateDeny );
+    armMaterial.color.copy( base ).lerp( DENY, p.gateDeny ).multiplyScalar( armMaterial.userData.dim ?? 1 );
   } );
   return (
     <group>

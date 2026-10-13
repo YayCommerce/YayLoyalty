@@ -11,6 +11,9 @@ const SHOTS: { scene: string; pick: ( e: ReturnType<FactoryDebug[ 'entries' ]>[ 
   { scene: 'scene-4', pick: ( e ) => 'scene-4' === e.scene && 'work' === e.phase && 'deny' === e.gate },
 ];
 
+type Rect = { x: number; y: number; width: number; height: number };
+const intersects = ( a: Rect, b: Rect ) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+
 async function frames( page: Page, n: number ) {
   await page.evaluate( ( count ) => new Promise<void>( ( done ) => {
     let left = count;
@@ -48,6 +51,20 @@ for ( const [ width, height ] of VIEWPORTS ) {
       await page.waitForTimeout( 400 );
       await page.screenshot( { path: `shots/${ width }-${ shot.scene }.png` } );
       await expect( page.getByTestId( 'step-card' ) ).toHaveClass( /is-on/ );
+
+      // Labels never overlap each other, and none covers its own machine.
+      const { labels, machines } = await page.evaluate( () => {
+        const f = ( window as unknown as { __factory: FactoryDebug } ).__factory;
+        return { labels: f.labelRects(), machines: f.machineRects() };
+      } );
+      const ids = Object.keys( labels );
+      expect( ids.length, `${ shot.scene }: visible labels` ).toBeGreaterThan( 0 );
+      for ( let i = 0; i < ids.length; i++ ) {
+        for ( let j = i + 1; j < ids.length; j++ ) {
+          expect( intersects( labels[ ids[ i ] ], labels[ ids[ j ] ] ), `${ shot.scene }: ${ ids[ i ] } label overlaps ${ ids[ j ] } label` ).toBe( false );
+        }
+        expect( intersects( labels[ ids[ i ] ], machines[ ids[ i ] ] ), `${ shot.scene }: ${ ids[ i ] } label covers its machine` ).toBe( false );
+      }
     }
 
     expect( errors ).toEqual( [] );

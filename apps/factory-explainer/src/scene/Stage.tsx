@@ -2,6 +2,7 @@ import { useEffect, type ComponentRef, type ReactNode } from 'react';
 import * as THREE from 'three';
 import { Canvas, useThree } from '@react-three/fiber';
 import { MapControls } from '@react-three/drei';
+import { Selection } from '@react-three/postprocessing';
 import { Effects } from './Effects';
 import { Lighting } from './Lighting';
 import { rig } from './rig';
@@ -82,8 +83,11 @@ export function Stage( { children }: { children?: ReactNode } ) {
       <color attach="background" args={ [ '#f4f1ec' ] } />
       <IsoRig />
       <Lighting />
-      <Effects />
-      { children }
+      { /* Selection wraps the stations' Selects and the composer's Outline. */ }
+      <Selection>
+        <Effects />
+        { children }
+      </Selection>
     </Canvas>
   );
 }
