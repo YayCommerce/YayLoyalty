@@ -149,7 +149,19 @@ Lighting and effects follow spec criterion 7:
 
 The worker cross-fades between walk and idle on `actorPose().walking`, turns to `heading`, and plays the clips from `time` rather than wall-clock time, so a seek shows the right frame. The admin idles at a console prop.
 
-Steps: expand after Phase 1 lands.
+- [x] **Step 1: `Worker.tsx`.** Clone the worker with `SkeletonUtils.clone` and scale it to 1.45 units tall. The body takes the actor's colour and the joints graphite; a mesh may hold an array of materials. Each frame:
+  - sets each clip's `time` from story time: walk at `time × 0.7`, which matches the 0.75 units/s walk, and idle at `time`;
+  - calls `mixer.update(0)`, so no wall clock is involved;
+  - sets the walk weight to the share of six `actorPose` samples over the last 0.3 s that are walking, and the idle weight to the rest;
+  - sets the heading to the circular mean of the same samples.
+
+  The fade and the turns are therefore eased, and still pure functions of `time`.
+- [x] **Step 2: `Actor.tsx`.** `Figure` calls `useModel('worker')` and draws `<Worker>`, or the Phase 1 capsule, now `Capsule`, when the model is `null`. The capsule is also the `Suspense` fallback. `Kit.tsx`'s loading counter becomes a general `Pending` wrapper, so the loading capsule counts toward `loading()` too. The admin's console gets a `screen-small` monitor.
+- [x] **Step 3: Verify.** `tsc --noEmit` exits 0, and `shoot` passes with no console errors. Paused 2× crops show:
+  - all four workers idling and facing the belts before scene 1's walk;
+  - Bob 0.6 s and 0.8 s into scene 2's walk, in two different stride poses, facing the way he walks and carrying the box;
+  - the admin at the console with its monitor.
+- [x] **Step 4: Commit.** Stage `src/scene/Worker.tsx`, `Actor.tsx`, `stations/Kit.tsx` and this file: `feat(factory-explainer): walk the workers`.
 
 ### Task 6: Labels, hover and overlap assertions
 

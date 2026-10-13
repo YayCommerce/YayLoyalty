@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useMemo, useRef } from 'react';
+import { Suspense, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { RoundedBox } from '@react-three/drei';
@@ -67,18 +67,18 @@ function KitModel( { name, fit, kind, color, position, rotation = 0, stretch = f
   return <primitive object={ object } position={ position } rotation-y={ rotation } />;
 }
 
-/** How many kit models are still loading; the screenshot harness waits for zero. */
+/** How many models are still loading; the screenshot harness waits for zero. */
 export const kitLoading = { count: 0 };
 
-/** The fallback while a model loads, counted in kitLoading. */
-function Loading( props: KitProps ) {
+/** Renders a loading fallback and counts it in kitLoading while it is mounted. */
+export function Pending( { children }: { children: ReactNode } ) {
   useEffect( () => {
     kitLoading.count++;
     return () => {
       kitLoading.count--;
     };
   }, [] );
-  return <Fallback { ...props } />;
+  return children;
 }
 
 /**
@@ -87,7 +87,7 @@ function Loading( props: KitProps ) {
  */
 export function Kit( props: KitProps ) {
   return (
-    <Suspense fallback={ <Loading { ...props } /> }>
+    <Suspense fallback={ <Pending><Fallback { ...props } /></Pending> }>
       <KitModel { ...props } />
     </Suspense>
   );
