@@ -11,6 +11,7 @@ use YayLoyalty\Pro\Controllers\CustomerSegmentsRestController;
 use YayLoyalty\Pro\Controllers\DashboardProRestController;
 use YayLoyalty\Pro\Controllers\StoreLedgerRestController;
 use YayLoyalty\Pro\Emails\ProEmails;
+use YayLoyalty\Pro\Expiry\ReminderStages;
 use YayLoyalty\Pro\Helpers\CustomerSegmentsHelper;
 use YayLoyalty\Pro\Repositories\CampaignPerformanceRepository;
 use YayLoyalty\Pro\Repositories\CampaignPointsRepository;
@@ -21,6 +22,7 @@ use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Repositories\DashboardRepository;
 use YayLoyalty\Services\Dashboard\DashboardCache;
+use YayLoyalty\Services\ExpiryRules;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -79,6 +81,8 @@ final class YayLoyaltyPro {
         add_filter( 'yayloyalty_localize_admin_data', [ self::class, 'add_segments' ] );
         add_filter( 'woocommerce_email_classes', [ ProEmails::class, 'add_classes' ] );
         add_filter( 'woocommerce_email_groups', [ ProEmails::class, 'add_groups' ] );
+        add_filter( ExpiryRules::STAGES_FILTER, [ ReminderStages::class, 'add_final' ] );
+        add_filter( ExpiryRules::REMINDER_FILTER, [ ReminderStages::class, 'apply_floor' ], 10, 4 );
 
         $daily_limit = new DailyEarningLimit( new LedgerRepository() );
         add_filter( EarningService::AWARD_POINTS_FILTER, [ $daily_limit, 'clamp' ], 10, 3 );

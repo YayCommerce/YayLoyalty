@@ -70,8 +70,13 @@ Both suites pass (33 unit, 78 integration). `wp-load.php` + `WC()->mailer()` loa
 - Create: `apps/admin/src/pro/settings/ExpiryRemindersSection.tsx` (second reminder days, "Minimum balance to remind" with the design's reasoning line)
 - Modify: `apps/admin/src/pro/index.ts`, `apps/admin/src/pages/settings/ExpirySettingsPage.tsx`, `apps/admin/src/pages/settings/expiry-settings.form.ts` (adds `final_reminder_days`, `reminder_min_points`)
 
-- [ ] **Step 1: Implement `ReminderStages` and the email trigger, and hook them in `boot()`.**
-- [ ] **Step 2: Add the Pro reminders section, exported through `pro/index.ts` and rendered behind `IS_PRO_BUILD`.**
-- [ ] **Step 3: Verify.** Run the exit criterion's Pro half in the harness. Then tsc, eslint and prettier on the changed SPA files, and check that the Lite bundle doesn't
+- [x] **Step 1: Implement `ReminderStages` and the email trigger, and hook them in `boot()`.**
+- [x] **Step 2: Add the Pro reminders section, exported through `pro/index.ts` and rendered behind `IS_PRO_BUILD`.**
+- [x] **Step 3: Verify.** Run the exit criterion's Pro half in the harness. Then tsc, eslint and prettier on the changed SPA files, and check that the Lite bundle doesn't
   contain `ExpiryRemindersSection`'s strings.
-- [ ] **Step 4: Commit** `feat(expiry): add Pro's final reminder and reminder floor`
+Verified 2026-10-13:
+- A throwaway harness check with Pro's real filters (5 assertions): the floor of 100 skips the 50-point customer and still stamps them; final is sent once; `final_reminder_days` 0 leaves only `soon`.
+- tsc, eslint and prettier are clean, and Vitest passes 73/73.
+- Lite `main.js` has 0 hits for "Minimum balance to remind"; Pro has 1.
+
+- [x] **Step 4: Commit** `feat(expiry): add Pro's final reminder and reminder floor`

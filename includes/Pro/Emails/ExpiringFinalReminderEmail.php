@@ -2,10 +2,11 @@
 namespace YayLoyalty\Pro\Emails;
 
 use YayLoyalty\Engine\Emails\Emails;
+use YayLoyalty\Pro\Expiry\ReminderStages;
 
 defined( 'ABSPATH' ) || exit;
 
-/** The last-chance points-expiry email. Nothing triggers it yet. */
+/** The last-chance points-expiry email, which the expiry job relays for Pro's `final` reminder stage. */
 class ExpiringFinalReminderEmail extends ProLoyaltyEmail {
 
     public function __construct() {
@@ -14,7 +15,13 @@ class ExpiringFinalReminderEmail extends ProLoyaltyEmail {
         $this->description = __( 'A last-chance reminder sent just before points expire.', 'yayloyalty' );
         $this->email_group = Emails::GROUP_POINTS;
 
+        add_action( Emails::reminder_action( ReminderStages::STAGE_FINAL ) . '_notification', [ $this, 'trigger' ] );
+
         parent::__construct();
+    }
+
+    public function trigger( int $user_id ): void {
+        $this->trigger_for_user( $user_id );
     }
 
     public function get_default_subject() {

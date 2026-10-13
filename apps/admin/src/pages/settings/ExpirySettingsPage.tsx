@@ -10,6 +10,7 @@ import { useSaveSettingsMutation, useSettingsQuery } from '@/lib/queries/setting
 import { useEditorSave } from '@/hooks/useEditorSave';
 import { Button } from '@/components/ui/button';
 import { UnsavedChangeDialog } from '@/components/ui/custom/unsaved-changed-dialog';
+import { ExpiryRemindersSection } from '@/pro';
 import {
   buildExpirySettingsUpdate,
   expirySettingsDefaults,
@@ -58,7 +59,7 @@ export default function ExpirySettingsPage() {
     <FormProvider {...form}>
       <form onSubmit={handleSave} className="flex flex-col gap-4">
         <ExpiryInactivityCard />
-        {IS_PRO_BUILD ? null : <ExpiryProUpsellCard />}
+        {IS_PRO_BUILD ? <ExpiryRemindersSection /> : <ExpiryProUpsellCard />}
 
         <div className="flex items-center justify-end gap-2">
           <Button type="submit" disabled={!form.formState.isDirty || saveMutation.isPending}>

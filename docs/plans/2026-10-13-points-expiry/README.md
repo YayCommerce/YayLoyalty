@@ -48,8 +48,8 @@ admin list, drawer, storefront), `includes/Helpers/SettingsHelper.php` (shared: 
 
 | Phase | Delivers (user-visible) | Exit criterion (exact check) | Status |
 |---|---|---|---|
-| 1 | Free inactivity expiry works end to end: the Expiry tab, lots, the daily job, `expire` rows, the "Points expired" email | Spec criterion 14 under the inactivity model; `composer test:integration -- --filter 'LotWriterTest\|InstallerLotTablesTest'` passes | pending |
-| 2 | Reminder emails: "Points expiring soon" (both builds), plus Pro's "Final reminder" and minimum-balance floor | Spec criterion 9 via `wp action-scheduler run` | pending |
+| 1 | Free inactivity expiry works end to end: the Expiry tab, lots, the daily job, `expire` rows, the "Points expired" email | Spec criterion 14 under the inactivity model; `composer test:integration -- --filter 'LotWriterTest\|InstallerLotTablesTest'` passes | implemented on `paul/feat/expires-point`; browser check and real-site e2e open |
+| 2 | Reminder emails: "Points expiring soon" (both builds), plus Pro's "Final reminder" and minimum-balance floor | Spec criterion 9 via `wp action-scheduler run` | implemented on `paul/feat/expiry-reminders` (stacked); verified in the harness |
 | 3 | Pro batch model: the model cards, months after earning, the worked example, the one-way switch | Spec criteria 7 and 11, then criterion 14 repeated with `model = batches` | pending |
 
 Branching: Phase 1 lands from `paul/feat/expires-point` (which already carries `64c230d`) as one PR into `dev/edd`. Phases 2 and 3 each
