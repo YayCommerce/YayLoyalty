@@ -83,7 +83,7 @@ function IsoRig() {
 
 export function Stage( { children }: { children?: ReactNode } ) {
   return (
-    <Canvas shadows={ { type: THREE.PCFShadowMap } } orthographic dpr={ [ 1, 1.5 ] } camera={ { position: [ 55, 40, 47 ] } }>
+    <Canvas shadows={ { type: THREE.PCFShadowMap } } orthographic dpr={ [ 1, 1.25 ] } camera={ { position: [ 55, 40, 47 ] } }>
       <color attach="background" args={ [ '#f4f1ec' ] } />
       <IsoRig />
       <Lighting />

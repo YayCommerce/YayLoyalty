@@ -90,7 +90,7 @@ Verify each one:
 
 - [x] **Step 1: Round 2 fixes.**
   - `Stage.tsx` measures the toolbar's bottom edge, fits the zoom to the space below it, and centres the floor there with `camera.setViewOffset`. `project()`, drei's `Html` and raycasting all read the projection matrix, so labels, `machineRects()` and hover follow.
-  - `dpr` is capped at `[ 1, 1.5 ]`.
+  - `dpr` is capped at `[ 1, 1.5 ]`. After round 3, the user chose `[ 1, 1.25 ]`; see the critique log.
   - `Worker.tsx` mixes each actor's colour 35 % toward the machine grey.
   - A new optional config field, `labelPlace: 'start'`, runs the label rightwards from its anchor. It is set on EarningService and the vault.
 - [x] **Step 2: Round 3 fixes.** `labelPlace: 'below'` anchors the label at the footprint's front corner, the lowest point of the machine's screen box, and hangs it under the machine on its leader. It is set on the three unbuilt stations. The vault keeps `start`: below its front corner is the VIP tiers zone. `<StatsGl>` moves bottom-right (`.perf-stats`), because the toolbar covered it at the top-left.
@@ -127,6 +127,12 @@ Changes: the unbuilt labels use `labelPlace: 'below'`, and the `?perf` meter mov
 | No plain unbevelled box | pass | |
 | 60 fps at 1440×900 | pass at DPR 1, fail at DPR 2 | Headed Chromium with `?perf`, counting `requestAnimationFrame` calls over 5 s of playback: 60.1 fps (worst frame 17.8 ms) at DPR 1. At DPR 2, which renders at the 1.5 cap (2160×1350), it was 49.1 fps (worst frame 67.5 ms), up from 23.9 fps in round 1. That is below Task 3's 55. |
 
-After 3 rounds, two items are open, for the user to decide:
-- **`customers` on the racks.** One fix is to move the vault or the warehouse in `factory.config.ts`, which changes the layout. Another is to accept it.
-- **Frame rate at DPR 2.** Options: cap DPR at 1.25, drop N8AO under load with drei's `PerformanceMonitor`, or accept 49 fps on Retina.
+After 3 rounds, two items were open. The user decided both on 2026-10-13:
+- **`customers` on the racks:** accepted as it is. `shoot`'s own-machine and label-to-label checks pass.
+- **Frame rate at DPR 2:** cap DPR at 1.25. Re-measured the same way at 1440×900:
+  - DPR 2: 60.2 fps, worst frame 17.8 ms, canvas 1800×1125;
+  - DPR 1: 60.1 fps, worst frame 17.7 ms.
+
+  Both pass Task 3's 55. `shoot` still passes.
+
+With those decisions, every checklist item passes or is accepted.

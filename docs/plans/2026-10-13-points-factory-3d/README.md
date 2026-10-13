@@ -55,7 +55,7 @@
 |---|---|---|---|
 | 1 | The full story plays in 3D with beveled primitives: belts, boxes, toolbar, HUD card, side panel and every control | `pnpm --filter @yayloyalty/factory-explainer exec tsc --noEmit` exits 0. `pnpm --filter @yayloyalty/factory-explainer shoot` passes, writing 3 screenshots at 1440×900 with no console errors | done 2026-10-13 |
 | 2 | The product-illustration look: kit models, distinct silhouettes, lighting and post-processing, floor and props, walking workers, labels with hover outline and dimming | `shoot` passes at 1440×900, including the label overlap assertions, and one critique round against the spec's checklist is recorded | done 2026-10-13 |
-| 3 | Reduced motion, fallbacks, the `?perf` meter, docs, and the 2D page removed. The 390×844 layout was dropped by the user on 2026-10-13 | Spec criterion 17 at 1440×900 only: `shoot` passes, the checklist passes within 3 rounds, and `./scripts/check-harness.sh` passes | implemented 2026-10-13. `shoot` and the harness pass. After 3 rounds, two checklist items are open: one label (`customers`) sits on the racks, and DPR 2 runs at 49 fps |
+| 3 | Reduced motion, fallbacks, the `?perf` meter, docs, and the 2D page removed. The 390×844 layout was dropped by the user on 2026-10-13 | Spec criterion 17 at 1440×900 only: `shoot` passes, the checklist passes within 3 rounds, and `./scripts/check-harness.sh` passes | implemented 2026-10-13, awaiting `/yayplancheck`. `shoot` and the harness pass. The checklist passes, with one label (`customers`) on the racks accepted by the user |
 
 ## Interface contract
 
