@@ -2,6 +2,7 @@
 namespace YayLoyalty\Engine\Expiry;
 
 use YayLoyalty\Engine\Earning\Outcome;
+use YayLoyalty\Engine\Emails\Emails;
 use YayLoyalty\Enums\ExpiryMode;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\CustomerRepository;
@@ -117,7 +118,10 @@ final class ExpiryRunner {
 
         foreach ( $user_ids as $user_id ) {
             try {
-                if ( Outcome::AWARDED === $ledger->expire( $user_id, $now )->get_status() ) {
+                $outcome = $ledger->expire( $user_id, $now );
+
+                if ( Outcome::AWARDED === $outcome->get_status() ) {
+                    Emails::relay_expiry( $outcome->get_entry() );
                     ++$expired;
                 }
             } catch ( \Throwable $e ) {

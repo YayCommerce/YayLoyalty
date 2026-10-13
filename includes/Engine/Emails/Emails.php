@@ -21,6 +21,9 @@ class Emails {
     /** The email action a manual adjustment is relayed on, when its admin asked to notify. Its only argument is the ledger row id. */
     public const POINTS_ADJUSTED_ACTION = 'yayloyalty_points_adjusted_email';
 
+    /** The email action an expiry is relayed on. Its only argument is the ledger row id. */
+    public const POINTS_EXPIRED_ACTION = 'yayloyalty_points_expired_email';
+
     protected function __construct() {
         add_filter( 'woocommerce_email_classes', [ $this, 'add_classes' ] );
         add_filter( 'woocommerce_email_groups', [ $this, 'add_groups' ] );
@@ -39,6 +42,7 @@ class Emails {
     public function add_email_actions( array $actions ): array {
         $actions[] = self::POINTS_EARNED_ACTION;
         $actions[] = self::POINTS_ADJUSTED_ACTION;
+        $actions[] = self::POINTS_EXPIRED_ACTION;
 
         return $actions;
     }
@@ -75,6 +79,17 @@ class Emails {
          * @param int $entry_id The adjustment's ledger row.
          */
         do_action( self::POINTS_ADJUSTED_ACTION, $entry->get_id() ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name; the sniff cannot read it.
+    }
+
+    /** Passes an EXPIRE row to the Points expired email. Called by the expiry job for each row it wrote. */
+    public static function relay_expiry( LedgerEntry $entry ): void {
+        /**
+         * Fires once per EXPIRE row the expiry job wrote. WooCommerce relays it to
+         * {action}_notification, at once or at the end of the request.
+         *
+         * @param int $entry_id The expire ledger row.
+         */
+        do_action( self::POINTS_EXPIRED_ACTION, $entry->get_id() ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name; the sniff cannot read it.
     }
 
     /**
