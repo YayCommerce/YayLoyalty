@@ -50,7 +50,7 @@ final class ExpiryPolicy {
     }
 
     public function spend_order(): string {
-        $is_newest = ExpiryMode::BATCH === $this->mode() && self::SPEND_NEWEST === ( $this->settings['spend_order'] ?? '' );
+        $is_newest = $this->is_batch() && self::SPEND_NEWEST === ( $this->settings['spend_order'] ?? '' );
 
         return $is_newest ? self::SPEND_NEWEST : self::SPEND_OLDEST;
     }

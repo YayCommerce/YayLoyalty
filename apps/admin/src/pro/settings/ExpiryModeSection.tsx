@@ -21,8 +21,8 @@ const MODES = [
 ] as const;
 
 /**
- * Settings → Expiry "Expiry model". Batch is one-way: once saved, the inactivity card is disabled and
- * the server refuses the switch back. A section of the tab's one form; ExpirySettingsPage owns Save.
+ * Settings → Expiry "Expiry model". Batch is one-way: once saved, the inactivity option is disabled
+ * and the server refuses the switch back. A section of the tab's one form; ExpirySettingsPage owns Save.
  */
 export function ExpiryModeSection() {
   const { control } = useFormContext<ExpirySettingsFormValues>();

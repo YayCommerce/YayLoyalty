@@ -15,8 +15,8 @@ use YayLoyalty\Utils\Log;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The daily Action Scheduler job. Each run, in order: re-applies changed expiry settings to every
- * customer's date, backfills lots for balances that predate them, then expires due customers through
+ * The daily Action Scheduler job. Each run, in order: backfills lots for balances that predate them,
+ * re-applies changed expiry settings to every customer's date, then expires due customers through
  * LedgerService::expire(). Each step handles one batch, and the run queues an async continuation while
  * a step made progress on a full batch. Does nothing without Action Scheduler (WooCommerce inactive).
  */
@@ -58,19 +58,21 @@ final class ExpiryRunner {
         $lots      = new LotRepository();
         $ledger    = new LedgerService( new LedgerRepository(), $customers, new CampaignRepository() );
 
+        $has_more = $this->backfill( $ledger );
+
         try {
-            $this->apply_settings( $policy, $customers, $lots, $ledger, $now );
+            $this->apply_settings( $policy, $customers, $lots, $has_more, $now );
         } catch ( \Throwable $e ) {
-            // Unapplied, so the next run retries; backfill and expiry still run on the stored dates.
+            // Unapplied, so the next run retries; expiry waits, since is_due() wants applied dates.
             Log::error( 'ExpiryRunner', 'applying expiry settings failed: ' . $e->getMessage() );
         }
 
-        $has_more = $this->backfill( $ledger );
+        if ( $policy->is_enabled() ) {
+            $due_ids = $policy->is_batch() ? $lots->due_user_ids( $now, self::BATCH_SIZE ) : $customers->due_user_ids( $now, self::BATCH_SIZE );
 
-        $due_ids = $policy->is_batch() ? $lots->due_user_ids( $now, self::BATCH_SIZE ) : $customers->due_user_ids( $now, self::BATCH_SIZE );
-
-        if ( $policy->is_enabled() && $this->expire_due( $ledger, $due_ids, $now ) ) {
-            $has_more = true;
+            if ( $this->expire_due( $ledger, $due_ids, $now ) ) {
+                $has_more = true;
+            }
         }
 
         if ( $has_more ) {
@@ -85,8 +87,14 @@ final class ExpiryRunner {
         }
     }
 
-    /** Recomputes customers.expires_at when the settings changed since the last run, never sooner than the grace floor. */
-    private function apply_settings( ExpiryPolicy $policy, CustomerRepository $customers, LotRepository $lots, LedgerService $ledger, string $now ): void {
+    /**
+     * Recomputes customers.expires_at, and in batch mode lot dates, when the settings changed since the
+     * last run, never sooner than the grace floor. Batch dates live on lots, so they wait until every
+     * balance has its lots: until then the settings stay unapplied and nothing expires.
+     *
+     * @param bool $is_backfill_pending Whether this run's backfill left balances without lots.
+     */
+    private function apply_settings( ExpiryPolicy $policy, CustomerRepository $customers, LotRepository $lots, bool $is_backfill_pending, string $now ): void {
         $signature = $policy->signature();
 
         if ( get_option( self::OPTION_APPLIED ) === $signature ) {
@@ -99,12 +107,9 @@ final class ExpiryRunner {
             $customers->clear_expiry();
         } elseif ( ExpiryMode::INACTIVITY === $policy->mode() ) {
             $customers->restamp_inactivity_expiry( $policy->inactivity_days(), $floor );
+        } elseif ( $is_backfill_pending ) {
+            return;
         } else {
-            // Batch dates live on lots, so every balance needs its lots before they are dated.
-            while ( $this->backfill( $ledger ) ) {
-                continue;
-            }
-
             $lots->restamp_open_expiry( $policy->batch_months(), $floor );
             $customers->restamp_expiry_from_lots();
         }
@@ -129,8 +134,10 @@ final class ExpiryRunner {
         return count( $user_ids ) === self::BATCH_SIZE && $opened > 0;
     }
 
-    /** @return bool Whether a full batch made progress, so more may remain. */
-    /** @param int[] $user_ids Customers due at $now, at most BATCH_SIZE. */
+    /**
+     * @param int[] $user_ids Customers due at $now, at most BATCH_SIZE.
+     * @return bool Whether a full batch made progress, so more may remain.
+     */
     private function expire_due( LedgerService $ledger, array $user_ids, string $now ): bool {
         $expired = 0;
 
