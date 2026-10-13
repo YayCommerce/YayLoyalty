@@ -3,7 +3,7 @@
 > **For agentic workers:** execute tasks in order, one at a time. Steps use `- [ ]` for tracking. Read the spec linked below before starting; the plan argues from it.
 
 **Status:** active
-**Goal:** Build `docs/explainers/points-factory.html`, a self-playing animated factory floor that shows the team how points move through the earning path today.
+**Goal:** Build `docs/explainers/points-factory.html`, a self-playing animated isometric factory scene that shows the team how points move through the earning path today.
 **Spec:** [docs/specs/2026-10-13-points-factory-explainer-design.md](../specs/2026-10-13-points-factory-explainer-design.md)
 **Architecture:** One HTML file with inline SVG, CSS and JS, animated by GSAP 3.12.5 and MotionPathPlugin from cdnjs. The static floor and the station panels are built first and work without GSAP. The scene timelines are then layered on top, so the offline fallback is the base state rather than a special case.
 **Touches:** `docs/explainers/points-factory.html` (new), `docs/architecture.md`, and this spec and plan. No shared code; nothing under `includes/` or `apps/` changes.
@@ -212,17 +212,129 @@ A bullet whose link text "The points factory explainer" points to `explainers/po
 Run: `./scripts/check-harness.sh`
 Expected: `Harness checks passed.` It passes on `dev/edd` today, so any failure is new.
 
-- [ ] **Step 3: Stamp and run the end-to-end check**
+- [x] **Step 3: Stamp the page**
+
+Set the header stamp to the output of `git rev-parse --short HEAD` and today's date. The end-to-end check and the plan close-out moved to Task 5, after the spec amendment of 2026-10-13.
+
+- [x] **Step 4: Commit**
+
+Stage: `docs/architecture.md`, `docs/explainers/points-factory.html`, `docs/plans/2026-10-13-points-factory-explainer.md`
+Message: `docs(architecture): link the points factory explainer`
+
+### Task 4: Isometric scene
+
+The spec's amendment of 2026-10-13 (criteria 4 and 10, Approach § Architecture and UI) redraws the floor as an isometric illustration. Behaviour stays as it is: the same 12 stations and panels, 6 scenes, captions, controls, reduced motion and offline fallback.
+
+**Files:**
+- Modify: `docs/explainers/points-factory.html`
+- Stage as well: the review fixes already in the working tree (the `title`→`caption` rename and the spec's criterion 1.3 order), plus the amended spec
+
+**Interfaces:**
+- Consumes: Task 1's ids and functions and Task 2's `SCENES` and `master`. Every one keeps its name: `STATIONS`, `station-<id>`, `dock-*`, `desk-admin`, `reject-bin`, `belt-<from>-<to>`, `openPanel` / `closePanel`, `onPanelOpen` / `onPanelClose`, `SCENES { id, caption, steps }`, and `master` with labels `scene-1`…`scene-6`.
+- Produces:
+  - **`iso( x, y, z ): { x: number, y: number }`**, with `sx = ( x − y ) · 0.866`, `sy = ( x + y ) · 0.5 − z`.
+  - **`STATIONS` gains** `d` (footprint depth, in floor units) and `hgt` (block height). Its existing `x` and `y` become the footprint centre in floor coordinates.
+  - **`BELTS` values stay plan-space** `M/H/V` strings in floor coordinates. A `projectPath( d, z ): string` turns each into the screen-space `d` of `<path id="belt-…">`.
+
+- [x] **Step 1: Re-lay the floor in floor coordinates**
+
+**Coordinates:**
+- Keep the same left-to-right order: docks, intake, scoring, gate, warehouse, press, vault, wing.
+- Floor x runs along the belts, and floor y is depth.
+- Pick spacing so the projected scene fits a 16:9-ish `viewBox`, fitted to `iso()` of the platform's four corners plus 60 units of padding.
+- Belts keep their ids and the same hops, so every scene step still names a belt that exists.
+
+**The platform** is the floor rectangle projected into a diamond, with a light tile grid drawn every 80 floor units.
+
+- [x] **Step 2: Draw stations as isometric blocks**
+
+**Faces and shading:**
+- Each station is a `<g id="station-<id>">` holding:
+  - the top, left and right face polygons from `iso()` of its footprint corners at `z = 0` and `z = hgt`;
+  - its role detail (spec criterion 10);
+  - an upright sign: a rounded rect above the block with the role and the label, plus the "not built yet" sign for unbuilt stations.
+- Faces use one hue per role:
+
+| Role | Hue |
+|---|---|
+| Intake | teal |
+| Scoring | violet |
+| Gate | amber |
+| Warehouse | sky |
+| Ledger press | indigo |
+| Vault | slate |
+| Return | rose |
+
+- The top face is the lightest shade, the left face mid, and the right face dark.
+
+**Unbuilt stations:** faces filled with `url(#hatch)` and edges dashed in `--unbuilt`.
+
+**Selection highlight:** `.is-active` and `.is-selected` now restyle the top face (accent fill and stroke), because the station `<rect>` is gone.
+
+**Depth and hit area:** sort the station and spot groups by ascending `x + y` before appending. The whole group stays the click target, so any face opens the panel.
+
+- [x] **Step 3: Customers, desk, bin and belts**
+
+- **Figures:** each `dock-*` is a small figure (a body ellipse plus a head circle) with an upright name sign.
+- **Desk:** `desk-admin` is a small block with a figure behind it.
+- **Reject bin:** `reject-bin` is an open isometric box.
+- **Belts:** each belt draws a side band (`z` 0 → 10) under a top band at `z = 10`. The flowing dashed path is the projected `belt-…` path at `z = 10`, which is the path packages ride.
+- **Return conveyor:** keeps its rose tint.
+- **Stub conveyors:** the dashed stubs to the wing stay, and are projected.
+
+- [x] **Step 4: Cube packages and the scene props**
+
+**Packages:**
+- Each package `<g id="pkg-<id>">` is a cube 26 units on a side, with its three faces drawn around its own origin at the cube's bottom centre.
+- Its tag (points · `LedgerSource`) floats above the cube as upright text on a small pill.
+- The flow colour changes through a single `fill` on a `<g class="pkg-body">`. The three faces apply the light, mid and dark shades as overlays of `rgba(255,255,255,.25)`, no overlay, and `rgba(0,0,0,.2)`.
+- Task 2's colour `set`s therefore target `.pkg-body`, not `firstChild`.
+
+**Gate barrier:**
+- `ProgramGate` has a barrier arm `<g id="gate-arm">`.
+- At the start of each hop into `program-gate`, a tween rotates the arm up 70° and back down. Cara's reject hop instead keeps it down and flashes its stroke red twice.
+
+**Piston:** `LedgerService`'s piston `<g id="press-piston">` drops 12 units and returns at each `LedgerService::earn()`, `adjust()` and `refund_earn()` step.
+
+**Reset:** both props are tweens inside `master`, and the time-0 reset puts them back. They need no extra seek handling.
+
+- [x] **Step 5: Verify in Chrome**
+
+Serve the folder: `python3 -m http.server 8765 --bind 127.0.0.1` in `docs/explainers/`. Then open `http://127.0.0.1:8765/points-factory.html` at 1440×900.
+
+1. **Screenshot.**
+   Expected: the platform diamond, 12 blocks with readable upright signs, the figures and desk, the bin, and the raised belts. Nearer blocks overlap farther ones with no z-fighting.
+2. **Stations.** Click the top, left and right face of 3 different stations.
+   Expected: each opens that station's panel.
+3. **Scenes.** Step the timeline through `gsap.globalTimeline.getChildren(false, false, true)[0]`, as in Task 2.
+   Expected: scenes 1–6 keep their order, captions and end positions, with every package on its belt at each step. The gate arm lifts in scenes 1, 2 and 4, and stays down and red at Cara's reject. The piston stamps in scenes 2, 3, 5 and 6.
+4. **Repeat Task 2's checks:** the loop wrap, the scene-3 jump, the panel pause rules, Space, Restart and reduced motion.
+   Expected: the same results as in Task 2.
+5. **Offline copy and widths:** repeat Task 1 Step 3's offline copy and its 1024 px and 800 px checks.
+   Expected: the same results as in Task 1.
+
+- [x] **Step 6: Commit**
+
+Stage: `docs/explainers/points-factory.html`, `docs/specs/2026-10-13-points-factory-explainer-design.md`, `docs/plans/2026-10-13-points-factory-explainer.md`
+Message: `docs(explainers): redraw the points factory as an isometric scene`
+
+### Task 5: Close-out
+
+**Files:**
+- Modify: `docs/explainers/points-factory.html`, the header stamp only
+- Modify: `docs/plans/2026-10-13-points-factory-explainer.md`, the Status line
+
+- [ ] **Step 1: Stamp and run the end-to-end check**
 
 1. Set the header stamp to the output of `git rev-parse --short HEAD` and today's date.
-2. Run the spec's acceptance criterion 10:
+2. Run the spec's acceptance criterion 11. The user watches this live, because the Chrome window is hidden from the extension.
    - Open `docs/explainers/points-factory.html` in Chrome at 1440×900 and watch a full loop.
    - Expected: all 6 scenes play as in criterion 1, with no console errors.
    - Click all 12 stations, and run `git ls-files <path>` for each file shown.
    - Expected: `git ls-files` prints every path.
 3. Set this plan's Status to `done YYYY-MM-DD`.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 2: Commit**
 
-Stage: `docs/architecture.md`, `docs/explainers/points-factory.html`, `docs/plans/2026-10-13-points-factory-explainer.md`
-Message: `docs(architecture): link the points factory explainer`
+Stage: `docs/explainers/points-factory.html`, `docs/plans/2026-10-13-points-factory-explainer.md`
+Message: `docs(explainers): close out the points factory plan`

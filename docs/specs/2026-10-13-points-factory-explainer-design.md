@@ -2,6 +2,7 @@
 
 **Status:** accepted 2026-10-13
 **Related:** None
+**Amended:** 2026-10-13, isometric scene (accepted 2026-10-13): the floor is drawn as an isometric illustration instead of a flat diagram. Criteria 4 and 10 (new), Approach and Alternatives changed.
 
 ## Goal
 
@@ -56,7 +57,7 @@ An animated "points factory" page for the internal team (developers and support)
 1. Opened from `file://` in Chrome with network access, the page starts playing on its own. The 6 scenes play in this order, and after scene 6 it loops to scene 1:
    1. Alice places an order: her package goes `OrderListener` → `EarningService::preview()` → `ProgramGate` → `PendingPoints::stage()` and waits in the warehouse.
    2. Bob signs up: his package goes `SignupListener` → `EarningService::award()` → `ProgramGate` → `LedgerService::earn()` (`EARN`, `SIGNUP`) → vault.
-   3. Alice's order is completed: `PendingPoints::release()`, then `EarningService::award()` → `LedgerService::earn()` (`EARN`, `ORDER`) → vault.
+   3. Alice's order is completed: `EarningService::award()` → `LedgerService::earn()` (`EARN`, `ORDER`) → vault, then `PendingPoints::release()`, the order `OrderListener::on_awardable()` runs them in.
    4. Cara posts a review but has opted out: her package goes `ReviewListener` → `EarningService::award()` and is dropped into the reject bin at `ProgramGate`, captioned "opted out".
    5. The admin adjusts +50: the package goes `LedgerService::adjust()` (`ADJUST`, `MANUAL`) → vault.
    6. Alice's order is refunded: `OrderReversalListener` → `Reversal` → `LedgerService::refund_earn()` (`REFUND_EARN`) takes the package out of the vault and back along the return conveyor.
@@ -68,13 +69,21 @@ An animated "points factory" page for the internal team (developers and support)
    - Redemption, Expiry, VIP tiers
 
    Clicking any station pauses the loop and opens a side panel with its summary, repo-relative file path and key methods. Closing the panel resumes the loop.
-4. Redemption, Expiry and VIP tiers are drawn hatched, with a "not built yet" tag. Their panels say what is missing, using the facts in Context. No package ever enters them.
+4. Redemption, Expiry and VIP tiers are drawn as scaffolding: dashed wireframe edges over hatched faces, with a "not built yet" sign. Their panels say what is missing, using the facts in Context. No package ever enters them.
 5. Play/Pause works, and so does the Space key. Restart returns to scene 1. Clicking a scene in the caption list jumps to the start of that scene.
 6. With `prefers-reduced-motion: reduce`, the page loads paused, with every package at its end position.
 7. If the GSAP scripts fail to load (offline), the static floor plan and the station panels still work, and a notice says "Animation needs network access".
 8. The header reads "Accurate as of `f92b317` (2026-10-13)". The implementer updates both values to the commit the page was verified against.
 9. `docs/architecture.md` links to the page from "Server layers and write ownership", and `./scripts/check-harness.sh` passes.
-10. End-to-end verification: open `docs/explainers/points-factory.html` in Chrome at 1440×900 and watch a full loop. All 6 scenes play as in criterion 1 with no console errors. Then click all 12 stations: each file path shown exists (`ls` it from the repo root).
+10. The floor is an isometric illustration:
+    - It sits on a diamond platform projected at 30°.
+    - Each station is a 3D block with top, left and right faces, shaded from one light direction, and a role-specific detail: hopper funnels on the listeners, a gear on `EarningService`, a barrier arm on `ProgramGate` that lifts for a package that passes and stays down (flashing red) for Cara, a shed roof on `PendingPoints`, a piston on `LedgerService` that stamps once per write, and a safe door on the vault.
+    - Belts are raised conveyors, and packages are labelled cubes.
+    - Customers are small figures, and the admin stands at a desk.
+    - Every label is upright text on a sign above its block, readable at 1440×900 without zooming.
+    - Blocks nearer the viewer overlap the ones behind them correctly.
+    - Clicking anywhere on a block opens its panel.
+11. End-to-end verification: open `docs/explainers/points-factory.html` in Chrome at 1440×900 and watch a full loop. All 6 scenes play as in criterion 1 with no console errors. Then click all 12 stations: each file path shown exists (`ls` it from the repo root).
 
 ## Constraints
 
@@ -90,12 +99,19 @@ An animated "points factory" page for the internal team (developers and support)
 
 **Chosen:** a single HTML file with GSAP and MotionPathPlugin from cdnjs.
 
-**Architecture:** A hand-drawn inline SVG lays out the floor from left to right:
+**Architecture:** An inline SVG draws the floor as an isometric scene. The logical layout is unchanged, on a flat plan in floor coordinates:
 - the customer dock and admin desk;
 - the intake hoppers, then scoring, then the gate;
 - the warehouse, the ledger press and the vault;
-- the hatched under-construction wing;
-- a return conveyor underneath.
+- the scaffolded under-construction wing;
+- a return conveyor at the front.
+
+A single `iso( x, y, z ): { x, y }` function projects floor coordinates to the screen at 30°: `sx = ( x − y ) · cos 30°`, `sy = ( x + y ) · sin 30° − z`. Everything is drawn through it:
+- **Blocks:** each station is three face polygons, the top, left and right faces.
+- **Belts:** each belt's plan polyline is projected point by point into the screen-space `<path>` that packages ride, at a belt height `z`.
+- **Packages:** upright isometric cubes, placed at projected points.
+
+Blocks are appended in depth order (ascending `x + y` of their footprint centre), so nearer blocks paint over farther ones. Packages sit in a layer above the blocks, and belts sit in a layer below them. The `viewBox` is fitted to the projected bounds. Labels stay unprojected: upright text on a sign above each block.
 
 Conveyors are SVG `<path>` elements with ids. Two data arrays at the top of the script drive everything:
 - `STATIONS`: `{ id, label, file, methods[], summary, built }`. It feeds the SVG labels and the details panel.
@@ -117,7 +133,9 @@ A master timeline chains the scenes and repeats with `repeat: -1`. Pause, Restar
 - Caption bar with the scene list.
 - Controls: Play/Pause and Restart.
 - Right-hand details panel.
-- A package is a rounded box showing its points and `LedgerSource`, coloured by flow: earn green, adjust blue, refund red, rejected grey.
+- A package is an isometric cube, with a tag showing its points and `LedgerSource`.
+- Packages are coloured by flow: earn green, adjust blue, refund red, rejected grey. The three faces are shaded light, mid and dark.
+- Station faces use one hue per role, shaded the same way. The active station's top face glows in the accent colour.
 
 **Edge cases and failure modes:**
 - CDN fails: criterion 7.
@@ -138,6 +156,10 @@ A master timeline chains the scenes and repeats with `repeat: -1`. Pause, Restar
 | Live or store-config data | The audience is internal and it must work on an empty store. Live data needs REST access and WordPress. |
 | Animating redemption, expiry and tiers as if built | Would mislead developers about what works today. |
 | Automated drift check (paths in check-harness) | The user chose a date stamp only. |
+| Flat diagram (the first version) | Replaced by the isometric scene at the user's request. It reads as a schematic, not a factory. |
+| 2.5D extruded tiles on the flat layout | Less rework, but the user wanted a full isometric scene. |
+| CSS 3D transform of a flat SVG | Text blurs, labels skew, and motion paths are computed in untransformed coordinates. |
+| Separate follow-up spec and PR | The user chose to amend this spec and ship the isometric version in the same PR. |
 
 ## Rollout
 
