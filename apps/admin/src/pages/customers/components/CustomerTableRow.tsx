@@ -1,15 +1,18 @@
-import { useSearchParams } from 'react-router';
+import type { MouseEvent } from 'react';
+import { useNavigate, useSearchParams } from 'react-router';
 import { __ } from '@wordpress/i18n';
 
 import { parseWPDate, parseWPRelativeDate } from '@/lib/helpers/format.helper';
 import type { CustomerListRow } from '@/lib/schema/customer.schema';
+import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { PointsValue } from '@/components/ui/custom/points-value';
 import { TableCell, TableRow } from '@/components/ui/table';
-import { BalanceCell, CustomerNameCell } from './CustomersTableCells';
+import { BalanceCell, customerDrawerPath, CustomerNameCell } from './CustomersTableCells';
 
 /**
  * One customer row. A negative balance gets a left-accent tint, never red.
+ * A click anywhere on the row opens the drawer, except on the checkbox or the name link, which handle their own clicks.
  */
 export function CustomerTableRow({
   customer,
@@ -25,11 +28,20 @@ export function CustomerTableRow({
   const negative = customer.balance < 0;
   const [searchParams] = useSearchParams();
   const search = searchParams.toString();
+  const navigate = useNavigate();
+
+  const openDrawer = (event: MouseEvent<HTMLTableRowElement>) => {
+    if ((event.target as HTMLElement).closest('a, button, input, label, [role="checkbox"]')) {
+      return;
+    }
+    navigate(customerDrawerPath(customer, search), { state: { row: customer } });
+  };
 
   return (
     <TableRow
       data-state={selected ? 'selected' : undefined}
-      className={negative ? 'bg-muted/40 border-l-muted-foreground/40 border-l-[3px]' : undefined}
+      onClick={openDrawer}
+      className={cn('cursor-pointer', negative && 'bg-muted/40 border-l-muted-foreground/40 border-l-[3px]')}
     >
       {showSelection && (
         <TableCell>
