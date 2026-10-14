@@ -49,6 +49,22 @@ foreach ( [ 'e2e-widget' => [ 'E2E Widget', '20' ], 'e2e-gadget' => [ 'E2E Gadge
     $product->save();
 }
 
+// Shortcode cart and checkout beside WooCommerce's block pages, for the redemption spec's classic path.
+foreach ( [ 'e2e-classic-cart' => 'woocommerce_cart', 'e2e-classic-checkout' => 'woocommerce_checkout' ] as $slug => $shortcode ) {
+    $existing = get_page_by_path( $slug );
+
+    wp_insert_post(
+        [
+            'ID'           => $existing instanceof WP_Post ? $existing->ID : 0,
+            'post_type'    => 'page',
+            'post_status'  => 'publish',
+            'post_name'    => $slug,
+            'post_title'   => 'E2E ' . $shortcode,
+            'post_content' => '<!-- wp:shortcode -->[' . $shortcode . ']<!-- /wp:shortcode -->',
+        ]
+    );
+}
+
 // A role the gate spec excludes from earning.
 if ( null === get_role( 'e2e_excluded' ) ) {
     add_role( 'e2e_excluded', 'E2E excluded', [ 'read' => true ] );
