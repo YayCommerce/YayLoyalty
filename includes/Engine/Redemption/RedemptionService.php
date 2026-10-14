@@ -10,6 +10,7 @@ use YayLoyalty\Engine\Rewards\Result;
 use YayLoyalty\Engine\Rewards\RewardEngine;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Models\Reward;
+use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Repositories\RedemptionRepository;
@@ -91,7 +92,7 @@ final class RedemptionService {
 
         $quoter      = new Quoter( new RewardEngine( Registry::with_lite_handlers() ), $gates );
         $contexts    = new ContextFactory( $customers );
-        $ledger      = new LedgerService( new LedgerRepository(), $customers );
+        $ledger      = new LedgerService( new LedgerRepository(), $customers, new CampaignRepository() );
         $redemptions = new RedemptionRepository();
         $rewards     = new RewardRepository();
         $writer      = new CommitWriter( $ledger, $redemptions, $customers, $contexts, $quoter );
