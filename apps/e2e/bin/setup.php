@@ -27,7 +27,7 @@ $input = [
         'points_per_currency_unit' => 100,
         'min_points'               => 100,
     ],
-    'brand_color'           => '#1f6fb2',
+    'brand_color'           => '#3858e9',
 ];
 $error = $setup->validation_error( $input );
 

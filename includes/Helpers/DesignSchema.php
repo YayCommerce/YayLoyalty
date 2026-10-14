@@ -17,7 +17,7 @@ class DesignSchema {
         return [
             'launcher'        => [
                 'position'      => 'bottom_right',
-                'brand_color'   => '#1f6fb2',
+                'brand_color'   => '#3858e9',
                 'corner_radius' => 8,
             ],
             // Real, editable defaults. An empty save is literal, never "use the default".

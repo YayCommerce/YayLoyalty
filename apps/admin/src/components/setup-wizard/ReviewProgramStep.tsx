@@ -67,7 +67,7 @@ export function ReviewProgramStep({ form, onEdit }: ReviewProgramStepProps) {
     },
     {
       label: __('Launcher', 'yayloyalty'),
-      /* translators: %s: a hex colour, e.g. #1F6FB2. */
+      /* translators: %s: a hex colour, e.g. #3858E9. */
       value: sprintf(__('brand colour %s', 'yayloyalty'), v.brandColor.toUpperCase()),
       step: 4,
     },
