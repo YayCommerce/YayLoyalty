@@ -24,8 +24,9 @@ defined( 'ABSPATH' ) || exit;
  * `restored_points` under the customer lock, so a repeated event finds
  * nothing to move and part refunds add up without summing the ledger.
  * Cancel restores twice and un-cancel debits once, because the key has no
- * cycle part: a second un-cancel answers REASON_KEY_SPENT. Catalog coupon
- * rows (a `coupon_id`) are not touched: spec task 4 gives them their rules.
+ * cycle part: a second un-cancel answers REASON_KEY_SPENT. Rows with a
+ * `coupon_id` are not touched; reward rows (`yayloyalty-reward-*`, no
+ * `coupon_id`) follow the same rules as the slider, keyed per reward.
  * Never writes an ADJUST row: LedgerRepository::sum_refunded_for() reads
  * one that references a refund as an earn give-back.
  */
@@ -278,6 +279,6 @@ final class Reversal {
 
     /** RedemptionDraft::of() for the row's customer, order and id. */
     private static function draft( Redemption $row, string $type, int $points, string $reference_type, int $reference_id, ?string $note ): LedgerEntry {
-        return RedemptionDraft::of( $row->get_user_id(), $row->get_order_id(), (int) $row->get_id(), $type, $points, $reference_type, $reference_id, $note );
+        return RedemptionDraft::of( $row->get_user_id(), $row->get_order_id(), (int) $row->get_id(), $type, $points, $reference_type, $reference_id, $note, RedemptionDraft::qualifier_for( $row ) );
     }
 }
