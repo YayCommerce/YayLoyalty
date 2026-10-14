@@ -7,7 +7,7 @@ defined( 'ABSPATH' ) || exit;
  * Which earnings make up each balance, FIFO: one lot per positive ledger row (uniq_ledger_id), sized
  * to the part of the row above zero. `remaining` is the only mutable counter. Invariant: after every
  * committed LedgerService write, a user's SUM(remaining) over `open` lots equals max(0, balance).
- * Only Services\LotBook writes it, and only LedgerService calls LotBook, inside its transaction.
+ * Only Services\LotService writes it, and only LedgerService calls LotService, inside its transaction.
  * `expires_at` is set only in batch expiry. `created_at` is the ledger row's, the earned date.
  */
 final class LotsTable extends AbstractTableSchema {

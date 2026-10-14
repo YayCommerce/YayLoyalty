@@ -9,7 +9,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * yayloyalty_lots and its allocations. A take decrements a lot and writes the allocation that explains
- * it, so the two tables share one repository. Rows are plain arrays: nothing outside LotBook reads them.
+ * it, so the two tables share one repository. Rows are plain arrays: nothing outside LotService reads them.
  * Callers hold the customer's row lock (LedgerService), which serialises each user's lots, so reads
  * here do not lock: a locking read over a user with no lots gap-locks, and two customers' first lots
  * would deadlock. take()'s guarded UPDATE still refuses a lot that changed under a stale read.

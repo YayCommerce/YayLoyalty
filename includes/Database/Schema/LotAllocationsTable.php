@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * One row per slice a negative ledger row (redeem, expire, adjust, correction, refund_earn) took from
  * a lot, so every lot's consumption traces back to the rows that spent it. Append-only, written with
- * the lot's decrement by Services\LotBook under LedgerService.
+ * the lot's decrement by Services\LotService under LedgerService.
  */
 final class LotAllocationsTable extends AbstractTableSchema {
 

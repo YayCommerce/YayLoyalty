@@ -16,7 +16,7 @@ defined( 'ABSPATH' ) || exit;
  * Constructed only by LedgerService, and called only inside its transaction under the customer's
  * row lock: lots are a second view of the balance and must commit or roll back with it.
  */
-final class LotBook {
+final class LotService {
 
     /** @var LotRepository */
     private $lots;
@@ -121,7 +121,7 @@ final class LotBook {
         $oldest    = count( $lots ) - 1;
 
         if ( $shortfall > 0 ) {
-            Log::warning( 'LotBook', sprintf( 'user %d: ledger history is %d short of a %d balance.', $user_id, $shortfall, $balance ) );
+            Log::warning( 'LotService', sprintf( 'user %d: ledger history is %d short of a %d balance.', $user_id, $shortfall, $balance ) );
 
             if ( $oldest >= 0 ) {
                 $lots[ $oldest ]['remaining'] += $shortfall;
@@ -191,7 +191,7 @@ final class LotBook {
         }
 
         if ( $need > 0 ) {
-            Log::warning( 'LotBook', sprintf( 'user %d: ledger row %d left %d points with no open lot to take from.', $row->get_user_id(), (int) $row->get_id(), $need ) );
+            Log::warning( 'LotService', sprintf( 'user %d: ledger row %d left %d points with no open lot to take from.', $row->get_user_id(), (int) $row->get_id(), $need ) );
         }
     }
 }

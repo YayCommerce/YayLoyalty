@@ -28,7 +28,7 @@ defined( 'ABSPATH' ) || exit;
  * refund_earn(), restore_refund(), expire() and redeem(), which add the idempotency-key duplicate branch.
  * Lock order: the customer row, then, for an earn row, its campaign row shared, which
  * CampaignRestController::delete_item() locks exclusively before deleting.
- * It also keeps `lots` and `lot_allocations` in step with every row, through LotBook, which
+ * It also keeps `lots` and `lot_allocations` in step with every row, through LotService, which
  * nothing else constructs.
  */
 final class LedgerService {
@@ -54,14 +54,14 @@ final class LedgerService {
     /** @var CampaignRepository */
     private $campaigns;
 
-    /** @var LotBook */
+    /** @var LotService */
     private $lots;
 
-    public function __construct( LedgerRepository $ledger, CustomerRepository $customers, CampaignRepository $campaigns, ?LotBook $lots = null ) {
+    public function __construct( LedgerRepository $ledger, CustomerRepository $customers, CampaignRepository $campaigns, ?LotService $lots = null ) {
         $this->ledger    = $ledger;
         $this->customers = $customers;
         $this->campaigns = $campaigns;
-        $this->lots      = $lots ?? new LotBook( new LotRepository(), $ledger );
+        $this->lots      = $lots ?? new LotService( new LotRepository(), $ledger );
     }
 
     /**
@@ -450,7 +450,7 @@ final class LedgerService {
      * @throws \YayLoyalty\Database\QueryException When a write other than a duplicate fails.
      */
     public function redeem( LedgerEntry $draft ): Outcome { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(redemption): write through write_keyed()/append() so LotBook takes the lots — assert REDEEM, points < 0, key; Transaction::run: ensure_row, lock_and_get, if balance + points < 0 → Outcome::skipped( insufficient_balance ), pre-check, insert_unless_duplicate → Outcome::duplicate, apply_aggregates, announce(); return Outcome::redeemed.
+        // TODO(redemption): write through write_keyed()/append() so LotService takes the lots — assert REDEEM, points < 0, key; Transaction::run: ensure_row, lock_and_get, if balance + points < 0 → Outcome::skipped( insufficient_balance ), pre-check, insert_unless_duplicate → Outcome::duplicate, apply_aggregates, announce(); return Outcome::redeemed.
         throw new \RuntimeException( 'Not implemented' );
     }
 
