@@ -165,8 +165,10 @@ final class LedgerService {
      * Claws back an earn row up to $owed_total, cumulatively: the row written
      * is the difference between what is owed now and what earlier reversals of
      * the same earn already took, computed under the customer lock so two
-     * refunds cannot both take the same slice. Keyed on the reversing
-     * reference and the earn's trigger. The balance may go negative.
+     * refunds cannot both take the same slice. Points that already expired
+     * out of the earn's lot count as taken, so a refund never charges for
+     * them twice. Keyed on the reversing reference and the earn's trigger.
+     * The balance may go negative.
      *
      * @param int    $owed_total     Total points owed back for $earn so far (capped at its points).
      * @param string $reference_type ReferenceType::ORDER (cancel), REFUND or COMMENT.
@@ -178,7 +180,9 @@ final class LedgerService {
         return $this->write_keyed(
             $draft,
             function () use ( $earn, $owed_total ): int {
-                return -max( 0, min( $owed_total, $earn->get_points() ) - $this->ledger->sum_refunded_for( $earn ) );
+                $taken = $this->ledger->sum_refunded_for( $earn ) + $this->lots->expired_from( (int) $earn->get_id() );
+
+                return -max( 0, min( $owed_total, $earn->get_points() ) - $taken );
             },
             self::REASON_NOTHING_TO_CLAW_BACK,
             $earn->get_id()
@@ -250,7 +254,8 @@ final class LedgerService {
             function () use ( $draft, $order_full_key ): int {
                 return null === $this->ledger->find_by_idempotency_key( $order_full_key ) ? $draft->get_points() : 0;
             },
-            self::REASON_ORDER_REVERSED
+            self::REASON_ORDER_REVERSED,
+            $refund_row->get_id()
         );
     }
 
@@ -290,7 +295,8 @@ final class LedgerService {
      *
      * @param callable|null $points_under_lock Given the locked Customer, returns the row's signed points; 0 writes nothing.
      * @param string        $skip_reason       Outcome::skipped's reason when $points_under_lock returns 0.
-     * @param int|null      $source_ledger_id  The row a negative row reverses, whose lot it takes from first.
+     * @param int|null      $source_ledger_id  The row this one reverses: a negative row takes from its lot first, and a
+     *                                         positive row (a restore) is dated like the lot it took from.
      */
     private function write_keyed( LedgerEntry $draft, ?callable $points_under_lock = null, string $skip_reason = '', ?int $source_ledger_id = null ): Outcome {
         $key = (string) $draft->get_idempotency_key();

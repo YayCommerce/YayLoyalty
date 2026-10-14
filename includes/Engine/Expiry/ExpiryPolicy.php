@@ -126,10 +126,11 @@ final class ExpiryPolicy {
     }
 
     /**
-     * customers.expires_at after $row. Only earn and redeem reset the inactivity clock. Any other row
-     * keeps the clock but never lands sooner than the grace floor, or a positive adjust for a dormant
-     * customer would be due at once. In inactivity mode no row moves a stored date sooner: a date kept
-     * when the window was shortened stands until activity passes it.
+     * customers.expires_at after $row. Only earn and redeem reset the inactivity clock, and never move a
+     * stored date sooner: a date kept when the window was shortened stands until activity passes it. Any
+     * other row (a refund, an adjust) keeps a stored date that is still ahead, so it neither shortens nor
+     * extends the customer's time. Without one, or with one already past, it lands on last activity + the
+     * window, never sooner than the grace floor, or a positive adjust for a dormant customer would be due at once.
      *
      * @param Customer    $before            The locked row before $row.
      * @param string|null $earliest_open_lot The soonest open lot expiry after $row, for batch mode.
@@ -147,15 +148,20 @@ final class ExpiryPolicy {
             return $earliest_open_lot;
         }
 
-        if ( LedgerType::is_activity( $row->get_type() ) ) {
-            $expires_at = self::inactivity_expires_at( $row->get_created_at(), $this->inactivity_days() );
-        } else {
-            $base       = $before->get_last_activity_at() ?? $before->get_joined_at();
-            $expires_at = self::floor_at( self::inactivity_expires_at( $base, $this->inactivity_days() ), self::grace_floor( $now ) );
-        }
-
         $kept = $before->get_expires_at();
 
-        return null === $kept ? $expires_at : self::floor_at( $expires_at, $kept );
+        if ( LedgerType::is_activity( $row->get_type() ) ) {
+            $expires_at = self::inactivity_expires_at( $row->get_created_at(), $this->inactivity_days() );
+
+            return null === $kept ? $expires_at : self::floor_at( $expires_at, $kept );
+        }
+
+        if ( null !== $kept && strcmp( $kept, $now ) > 0 ) {
+            return $kept;
+        }
+
+        $base = $before->get_last_activity_at() ?? $before->get_joined_at();
+
+        return self::floor_at( self::inactivity_expires_at( $base, $this->inactivity_days() ), self::grace_floor( $now ) );
     }
 }

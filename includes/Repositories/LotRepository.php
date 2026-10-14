@@ -2,6 +2,7 @@
 namespace YayLoyalty\Repositories;
 
 use YayLoyalty\Database\QueryException;
+use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Enums\LotStatus;
 use YayLoyalty\Utils\Table;
 
@@ -134,6 +135,52 @@ class LotRepository {
         if ( false === $result ) {
             throw new QueryException( 'insert', $wpdb->last_error, $this->allocations_table() );
         }
+    }
+
+    /** Points that expired out of $ledger_id's lot: the slices EXPIRE rows took from it. */
+    public function expired_from( int $ledger_id ): int {
+        global $wpdb;
+
+        return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare(
+                'SELECT COALESCE(SUM(a.points), 0)
+                 FROM `' . esc_sql( $this->allocations_table() ) . '` a
+                 JOIN `' . esc_sql( $this->table() ) . '` l ON l.id = a.lot_id
+                 JOIN `' . esc_sql( Table::name( 'ledger' ) ) . '` g ON g.id = a.ledger_id
+                 WHERE l.ledger_id = %d AND g.type = %s',
+                $ledger_id,
+                LedgerType::EXPIRE
+            )
+        );
+    }
+
+    /**
+     * The dates of the first lot $ledger_id took a slice from, or null when it took none.
+     *
+     * @return array{created_at: string, expires_at: ?string}|null
+     */
+    public function first_lot_taken_by( int $ledger_id ): ?array {
+        global $wpdb;
+
+        $row = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare(
+                'SELECT l.created_at, l.expires_at
+                 FROM `' . esc_sql( $this->allocations_table() ) . '` a
+                 JOIN `' . esc_sql( $this->table() ) . '` l ON l.id = a.lot_id
+                 WHERE a.ledger_id = %d ORDER BY a.id LIMIT 1',
+                $ledger_id
+            ),
+            ARRAY_A
+        );
+
+        if ( ! is_array( $row ) ) {
+            return null;
+        }
+
+        return [
+            'created_at' => (string) $row['created_at'],
+            'expires_at' => null === $row['expires_at'] ? null : (string) $row['expires_at'],
+        ];
     }
 
     /** Whether the user has any lot, open or not: one that does has been backfilled. */

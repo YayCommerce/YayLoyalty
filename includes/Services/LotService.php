@@ -31,7 +31,8 @@ final class LotService {
 
     /**
      * Applies one persisted ledger row. A positive row opens a lot for the part of it above zero, dated
-     * in batch expiry. A negative row takes the part of it the balance covered, from $source_ledger_id's
+     * in batch expiry; one that gives back $source_ledger_id's take (a deleted refund) keeps the dates
+     * of the lot that take came from, so restored points expire as they would have. A negative row takes the part of it the balance covered, from $source_ledger_id's
      * lot first (a clawback reverses its own earning), then in the spend order (oldest first unless
      * batch expiry says newest).
      *
@@ -43,10 +44,12 @@ final class LotService {
         $policy  = ExpiryPolicy::current();
 
         if ( $points > 0 ) {
-            $size = min( $points, max( 0, $balance_before + $points ) );
+            $size  = min( $points, max( 0, $balance_before + $points ) );
+            $taken = null === $source_ledger_id ? null : $this->lots->first_lot_taken_by( $source_ledger_id );
+            $since = null === $taken ? $row->get_created_at() : $taken['created_at'];
 
             if ( $size > 0 ) {
-                $this->lots->open( (int) $row->get_id(), $user_id, $size, $size, $row->get_created_at(), $policy->lot_expires_at( $row->get_created_at() ) );
+                $this->lots->open( (int) $row->get_id(), $user_id, $size, $size, $since, $taken['expires_at'] ?? $policy->lot_expires_at( $since ) );
             }
 
             return;
@@ -92,6 +95,11 @@ final class LotService {
 
     public function earliest_open_expiry( int $user_id ): ?string {
         return $this->lots->earliest_open_expiry( $user_id );
+    }
+
+    /** Points that expired out of $ledger_id's lot, which a clawback of that row must not take again. */
+    public function expired_from( int $ledger_id ): int {
+        return $this->lots->expired_from( $ledger_id );
     }
 
     /**
