@@ -2,12 +2,11 @@ import { useNavigate } from 'react-router';
 import { __ } from '@wordpress/i18n';
 
 import { CatalogRewardType } from '@/lib/schema/reward.schema';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BackLink } from '@/components/ui/custom/back-link';
 import PageLayout from '@/components/layout/PageLayout';
 import { templateExample } from '../editor/reward-editor.form';
-import { REWARD_TEMPLATE_ORDER, templateDescription, templateTitle, typeLabel } from '../reward-labels';
+import { REWARD_TEMPLATE_ORDER, templateDescription, templateTitle } from '../reward-labels';
 
 /**
  * "Add a reward" chooser: one card per catalog type, each opening the editor
@@ -44,12 +43,7 @@ function RewardTemplateCard({ type, onSelect }: { type: CatalogRewardType; onSel
     <button type="button" onClick={onSelect} className="flex h-full text-left outline-none">
       <Card className="hover:border-primary focus-visible:border-primary size-full transition-colors">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            {templateTitle(type)}
-            <Badge variant="outline" className="uppercase">
-              {typeLabel(type)}
-            </Badge>
-          </CardTitle>
+          <CardTitle className="text-base">{templateTitle(type)}</CardTitle>
         </CardHeader>
         <CardContent className="flex h-full flex-col gap-3">
           <p className="text-muted-foreground flex-1 text-sm">{templateDescription(type)}</p>
