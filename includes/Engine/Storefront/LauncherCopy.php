@@ -135,6 +135,38 @@ final class LauncherCopy {
         return sprintf( __( '%1$s %2$s = %3$s', 'yayloyalty' ), self::rate( $points_per_unit ), self::rate_label( $points_per_unit ), self::money( 1.0 ) );
     }
 
+    /**
+     * The limits under the redeem rate, as Clamp applies them: "From 100 Points, up to the full order value."
+     * Both caps named when both are set, since the lower one binds.
+     *
+     * @param array{min_points: int, max_points: ?int, max_percent: ?float} $redeem LauncherPayload's `redeem`.
+     */
+    public static function redeem_limits( array $redeem ): string {
+        $max_points  = $redeem['max_points'];
+        $max_percent = null === $redeem['max_percent'] ? null : self::rate( $redeem['max_percent'] );
+
+        if ( null !== $max_points && null !== $max_percent ) {
+            /* translators: 1: points amount with the store's label, as "5,000 Points", 2: a percentage number, as "50". */
+            $cap = sprintf( __( '%1$s or %2$s%% of the order subtotal', 'yayloyalty' ), SettingsHelper::points_text( $max_points ), $max_percent );
+        } elseif ( null !== $max_points ) {
+            /* translators: %s: points amount with the store's label, as "5,000 Points". */
+            $cap = sprintf( __( '%s per order', 'yayloyalty' ), SettingsHelper::points_text( $max_points ) );
+        } elseif ( null !== $max_percent ) {
+            /* translators: %s: a percentage number, as "50". */
+            $cap = sprintf( __( '%s%% of the order subtotal', 'yayloyalty' ), $max_percent );
+        } else {
+            $cap = __( 'the full order value', 'yayloyalty' );
+        }
+
+        if ( $redeem['min_points'] <= 0 ) {
+            /* translators: %s: the most one order can take, as "the full order value" or "5,000 Points per order". */
+            return sprintf( __( 'Up to %s.', 'yayloyalty' ), $cap );
+        }
+
+        /* translators: 1: points amount with the store's label, as "100 Points", 2: the most one order can take, as "the full order value". */
+        return sprintf( __( 'From %1$s, up to %2$s.', 'yayloyalty' ), SettingsHelper::points_text( $redeem['min_points'] ), $cap );
+    }
+
     /** The merchant's label for a rate: singular only when rate() prints it as 1, so number and label agree. */
     private static function rate_label( float $rate ): string {
         return SettingsHelper::points_label( '1' === self::rate( $rate ) ? 1 : 0 );

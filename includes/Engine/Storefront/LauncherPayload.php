@@ -130,15 +130,27 @@ final class LauncherPayload {
     }
 
     /**
-     * The built-in cart-discount reward's rate, for the guest panel's "spend them at checkout" step.
+     * The built-in cart-discount reward's rate and limits, for the guest panel's "spend them at checkout" step
+     * and the member panel's "Ways to redeem". A limit the merchant left off is null.
      *
      * @param Reward|null $reward The reward when it is live (RewardRepository::find_live_cart_discount()).
-     * @return array{points_per_unit: float}|null
+     * @return array{points_per_unit: float, min_points: int, max_points: ?int, max_percent: ?float}|null
      */
     private static function redeem_rule( ?Reward $reward ): ?array {
         $rate = RewardRepository::rate_of( $reward );
 
-        return $rate > 0 ? [ 'points_per_unit' => $rate ] : null;
+        if ( null === $reward || $rate <= 0 ) {
+            return null;
+        }
+
+        $config = $reward->get_config();
+
+        return [
+            'points_per_unit' => $rate,
+            'min_points'      => Clamp::min_of( $reward ),
+            'max_points'      => isset( $config['max_points_per_order'] ) ? (int) $config['max_points_per_order'] : null,
+            'max_percent'     => isset( $config['max_percent_of_subtotal'] ) ? (float) $config['max_percent_of_subtotal'] : null,
+        ];
     }
 
     /**
