@@ -40,11 +40,11 @@ final class RedeemCardViewTest extends TestCase {
         $ceiling = Clamp::apply( $reward, PHP_INT_MAX, 9850, 300.0, 'USD', 2 );
         $quote   = Clamp::apply( $reward, 0, 9850, 300.0, 'USD', 2 );
 
-        $view = RedeemCard::view( 9850, $quote, $ceiling, 2 );
+        $view = RedeemCard::view( 9850, $quote, $ceiling );
 
         $this->assertSame( 'form', $view['state'] );
         $this->assertSame( 9850, $view['balance'] );
-        $this->assertSame( 98.5, $view['worth'] );
+        $this->assertArrayNotHasKey( 'worth', $view );
         $this->assertSame( 100, $view['min'] );
         $this->assertSame( 100, $view['step'] );
         $this->assertSame( 9800, $view['max'] );
@@ -59,7 +59,7 @@ final class RedeemCardViewTest extends TestCase {
         $ceiling = Clamp::apply( $reward, PHP_INT_MAX, 50, 300.0, 'USD', 2 );
         $quote   = Clamp::apply( $reward, 0, 50, 300.0, 'USD', 2 );
 
-        $view = RedeemCard::view( 50, $quote, $ceiling, 2 );
+        $view = RedeemCard::view( 50, $quote, $ceiling );
 
         $this->assertSame( 'form', $view['state'] );
         $this->assertSame( 0, $view['max'] );
@@ -71,7 +71,7 @@ final class RedeemCardViewTest extends TestCase {
         $ceiling = Clamp::apply( $reward, PHP_INT_MAX, 9850, 300.0, 'USD', 2 );
         $quote   = Clamp::apply( $reward, 0, 9850, 300.0, 'USD', 2 );
 
-        $this->assertSame( 200, RedeemCard::view( 9850, $quote, $ceiling, 2 )['min'] );
+        $this->assertSame( 200, RedeemCard::view( 9850, $quote, $ceiling )['min'] );
     }
 
     public function test_applied_points_leave_the_rest_of_the_balance(): void {
@@ -79,7 +79,7 @@ final class RedeemCardViewTest extends TestCase {
         $ceiling = Clamp::apply( $reward, PHP_INT_MAX, 9850, 300.0, 'USD', 2 );
         $quote   = Clamp::apply( $reward, 5000, 9850, 300.0, 'USD', 2 );
 
-        $view = RedeemCard::view( 9850, $quote, $ceiling, 2 );
+        $view = RedeemCard::view( 9850, $quote, $ceiling );
 
         $this->assertSame( 'applied', $view['state'] );
         $this->assertSame( 5000, $view['points'] );
@@ -93,7 +93,7 @@ final class RedeemCardViewTest extends TestCase {
         $ceiling = Clamp::apply( $reward, PHP_INT_MAX, 9850, 20.0, 'USD', 2 );
         $quote   = Clamp::apply( $reward, 5000, 9850, 20.0, 'USD', 2 );
 
-        $view = RedeemCard::view( 9850, $quote, $ceiling, 2 );
+        $view = RedeemCard::view( 9850, $quote, $ceiling );
 
         $this->assertSame( 2000, $view['points'] );
         $this->assertSame( Clamp::BOUND_CART, $view['bound_by'] );
@@ -102,7 +102,7 @@ final class RedeemCardViewTest extends TestCase {
     public function test_a_guest_gets_the_sign_in_line_and_a_refused_customer_nothing(): void {
         $denied = Result::denied( Result::REASON_NOT_LIVE );
 
-        $this->assertSame( [ 'state' => 'guest' ], RedeemCard::view( null, $denied, $denied, 2 ) );
-        $this->assertSame( [ 'state' => 'hidden' ], RedeemCard::view( 500, $denied, $denied, 2 ) );
+        $this->assertSame( [ 'state' => 'guest' ], RedeemCard::view( null, $denied, $denied ) );
+        $this->assertSame( [ 'state' => 'hidden' ], RedeemCard::view( 500, $denied, $denied ) );
     }
 }

@@ -46,7 +46,8 @@ test('a shopper spends points on the block checkout and a cancellation gives the
 
   await test.step('the cart card applies the points and takes them off again', async () => {
     await shopperPage.goto('/cart/');
-    await expect(card(shopperPage)).toContainText('You have 1,000 Points ($10)');
+    await expect(card(shopperPage)).toContainText('Your rewards');
+    await expect(card(shopperPage)).toContainText('1,000 Points');
 
     await applyPoints(shopperPage, 500);
     await expect(card(shopperPage)).toContainText('500 Points applied — $5 off');
@@ -172,7 +173,7 @@ test('the card offers no more than the balance and the cart allow', async ({ pag
     await api.adjustPoints(customer.id, 50);
     await shopperPage.goto('/cart/');
 
-    await expect(card(shopperPage)).toContainText('You have 50 Points');
+    await expect(card(shopperPage)).toContainText('50 Points');
     await expect(card(shopperPage).getByRole('button', { name: 'Apply' })).toBeDisabled();
     await expect(card(shopperPage).getByRole('slider')).toBeDisabled();
   });

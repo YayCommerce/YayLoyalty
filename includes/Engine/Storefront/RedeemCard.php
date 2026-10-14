@@ -9,9 +9,9 @@ use YayLoyalty\Engine\Redemption\SessionIntent;
 use YayLoyalty\Engine\Register\ScriptName;
 use YayLoyalty\Engine\Rewards\Clamp;
 use YayLoyalty\Engine\Rewards\Result;
+use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Repositories\CustomerReader;
 use YayLoyalty\Utils\Log;
-use YayLoyalty\Utils\PointsMath;
 use YayLoyalty\Utils\Text;
 
 defined( 'ABSPATH' ) || exit;
@@ -174,7 +174,7 @@ final class RedeemCard {
                 $quote = $this->service->quote( $cart, $user_id );
             }
 
-            $view = self::view( $this->balance_of( $user_id ), $quote, $ceiling, wc_get_price_decimals() );
+            $view = self::view( $this->balance_of( $user_id ), $quote, $ceiling );
 
             if ( 'hidden' === $view['state'] ) {
                 return '';
@@ -198,15 +198,14 @@ final class RedeemCard {
     /**
      * What the template prints, from the two quotes. Pure: no WordPress or WooCommerce call.
      *
-     * @param int|null $balance  The shopper's balance; null for a guest.
-     * @param Result   $quote    RedemptionService::quote(): what the session's request gets.
-     * @param Result   $ceiling  RedemptionService::ceiling(): what asking for everything gets.
-     * @param int      $decimals The currency's decimals.
+     * @param int|null $balance The shopper's balance; null for a guest.
+     * @param Result   $quote   RedemptionService::quote(): what the session's request gets.
+     * @param Result   $ceiling RedemptionService::ceiling(): what asking for everything gets.
      * @return array{state: string} `guest` and `hidden` carry nothing else. `applied` adds points, value,
-     *                              remaining and bound_by. `form` adds balance, worth, min, step, max,
+     *                              remaining and bound_by. `form` adds balance, min, step, max,
      *                              max_value, rate, is_disabled and bound_by.
      */
-    public static function view( ?int $balance, Result $quote, Result $ceiling, int $decimals ): array {
+    public static function view( ?int $balance, Result $quote, Result $ceiling ): array {
         if ( null === $balance ) {
             return [ 'state' => 'guest' ];
         }
@@ -241,7 +240,6 @@ final class RedeemCard {
         return [
             'state'       => 'form',
             'balance'     => $balance,
-            'worth'       => PointsMath::points_to_currency( $balance, $rate, $decimals ),
             'min'         => $min,
             'step'        => $step,
             'max'         => $max,
@@ -250,6 +248,20 @@ final class RedeemCard {
             'is_disabled' => $max < $min,
             'bound_by'    => $bound_by,
         ];
+    }
+
+    /**
+     * The heading's inner HTML, escaped: "Your rewards", then the balance as "9,850 Points" for a customer.
+     * Never a money amount. A guest (null) gets the title alone.
+     */
+    public static function heading( ?int $balance ): string {
+        $html = '<span>' . esc_html__( 'Your rewards', 'yayloyalty' ) . '</span>';
+
+        if ( null !== $balance ) {
+            $html .= '<span class="yayloyalty-redeem__balance">' . esc_html( SettingsHelper::points_text( $balance ) ) . '</span>';
+        }
+
+        return $html;
     }
 
     /** 0 for a customer with no row yet, null for a guest. */

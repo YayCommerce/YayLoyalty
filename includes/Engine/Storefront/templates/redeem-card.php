@@ -10,6 +10,7 @@
 use YayLoyalty\Engine\Redemption\ProgramGate;
 use YayLoyalty\Engine\Redemption\RedemptionService;
 use YayLoyalty\Engine\Storefront\LauncherCopy;
+use YayLoyalty\Engine\Storefront\RedeemCard;
 use YayLoyalty\Helpers\SettingsHelper;
 
 defined( 'ABSPATH' ) || exit;
@@ -23,6 +24,14 @@ $yayloyalty_off_template = __( '= %s off', 'yayloyalty' );
 $yayloyalty_is_disabled  = ! empty( $view['is_disabled'] );
 /* translators: %s: the store's points label, as "Points". */
 $yayloyalty_aria = sprintf( __( '%s to spend', 'yayloyalty' ), $yayloyalty_label );
+// The header carries the balance; the applied state holds it as what is spent plus what remains.
+if ( 'form' === $yayloyalty_state ) {
+    $yayloyalty_balance = $view['balance'];
+} elseif ( 'applied' === $yayloyalty_state ) {
+    $yayloyalty_balance = $view['points'] + $view['remaining'];
+} else {
+    $yayloyalty_balance = null;
+}
 ?>
 <div
     class="yayloyalty-redeem"
@@ -40,12 +49,7 @@ $yayloyalty_aria = sprintf( __( '%s to spend', 'yayloyalty' ), $yayloyalty_label
         data-off-template="<?php echo esc_attr( $yayloyalty_off_template ); ?>"
     <?php endif; ?>
 >
-    <h3 class="yayloyalty-redeem__heading">
-        <?php
-        /* translators: %s: the store's points label, as "Points". */
-        echo esc_html( sprintf( __( 'Your %s', 'yayloyalty' ), $yayloyalty_label ) );
-        ?>
-    </h3>
+    <h3 class="yayloyalty-redeem__heading"><?php echo RedeemCard::heading( $yayloyalty_balance ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- heading() escapes every value. ?></h3>
 
     <?php if ( 'guest' === $yayloyalty_state ) : ?>
         <p class="yayloyalty-redeem__text">
@@ -53,17 +57,6 @@ $yayloyalty_aria = sprintf( __( '%s to spend', 'yayloyalty' ), $yayloyalty_label
         </p>
     <?php elseif ( 'form' === $yayloyalty_state ) : ?>
         <div class="yayloyalty-redeem__box">
-            <p class="yayloyalty-redeem__title">
-                <?php
-                if ( null === $view['worth'] ) {
-                    /* translators: %s: points amount with the store's label, as "9,850 Points". */
-                    echo esc_html( sprintf( __( 'You have %s', 'yayloyalty' ), SettingsHelper::points_text( $view['balance'] ) ) );
-                } else {
-                    /* translators: 1: points amount with the store's label, as "9,850 Points", 2: money amount. */
-                    echo esc_html( sprintf( __( 'You have %1$s (%2$s)', 'yayloyalty' ), SettingsHelper::points_text( $view['balance'] ), LauncherCopy::money( $view['worth'] ) ) );
-                }
-                ?>
-            </p>
             <?php // A range whose max is below its min is invalid, so a disabled slider sits at the minimum. ?>
             <input
                 type="range"

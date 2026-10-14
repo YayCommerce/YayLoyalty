@@ -45,12 +45,20 @@
 }
 
 .yayloyalty-redeem .yayloyalty-redeem__heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
   padding: 0;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 600;
   line-height: 1.45;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  color: var(--yayloyalty-redeem-text);
+}
+
+.yayloyalty-redeem .yayloyalty-redeem__balance {
+  font-size: 12px;
+  font-weight: 400;
   color: var(--yayloyalty-redeem-muted);
 }
 
