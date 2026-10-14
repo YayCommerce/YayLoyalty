@@ -89,8 +89,9 @@ final class ExpiryRunner {
 
     /**
      * Recomputes customers.expires_at, and in batch mode lot dates, when the settings changed since the
-     * last run, never sooner than the grace floor. Batch dates live on lots, so they wait until every
-     * balance has its lots: until then the settings stay unapplied and nothing expires.
+     * last run. Kept dates never move sooner than the grace floor or the stored date; applied ones move to
+     * the new window, and only a date set for the first time gets the floor. Batch dates live on lots, so
+     * they wait until every balance has its lots: until then the settings stay unapplied and nothing expires.
      *
      * @param bool $is_backfill_pending Whether this run's backfill left balances without lots.
      */
@@ -106,11 +107,11 @@ final class ExpiryRunner {
         if ( ! $policy->is_enabled() ) {
             $customers->clear_expiry();
         } elseif ( ExpiryMode::INACTIVITY === $policy->mode() ) {
-            $customers->restamp_inactivity_expiry( $policy->inactivity_days(), $floor );
+            $customers->restamp_inactivity_expiry( $policy->inactivity_days(), $floor, $policy->keeps_dates() );
         } elseif ( $is_backfill_pending ) {
             return;
         } else {
-            $lots->restamp_open_expiry( $policy->batch_months(), $floor );
+            $lots->restamp_open_expiry( $policy->batch_months(), $floor, $policy->keeps_dates() );
             $customers->restamp_expiry_from_lots();
         }
 

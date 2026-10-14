@@ -207,22 +207,35 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
     }
 
     /**
-     * Recomputes every inactivity expiry after a settings change: last activity (or joining) + $days,
-     * never sooner than $floor, for customers with a balance; NULL for the rest. Mirrors
-     * Engine\Expiry\ExpiryPolicy::customer_expires_at() for a non-activity row.
+     * Recomputes every inactivity expiry after a settings change: last activity (or joining) + $days for
+     * customers with a balance; NULL for the rest. With $keep, never sooner than $floor or the stored date.
+     * Without it, only a customer with no stored date (expiry just turned on) gets the $floor; a stored
+     * date moves to the new one even when that is already past.
      *
      * @param string $floor UTC MySQL datetime, now + the grace period.
+     * @param bool   $keep  Whether the admin kept stored dates on shortening.
      * @throws QueryException When the write fails.
      */
-    public function restamp_inactivity_expiry( int $days, string $floor ): void {
+    public function restamp_inactivity_expiry( int $days, string $floor, bool $keep ): void {
         global $wpdb;
 
         $result = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
                 'UPDATE `' . esc_sql( $this->table() ) . '`
-                 SET expires_at = IF(balance > 0, GREATEST(DATE_ADD(COALESCE(last_activity_at, joined_at), INTERVAL %d DAY), CAST(%s AS DATETIME)), NULL)',
+                 SET expires_at = IF(
+                     balance > 0,
+                     IF(
+                         %d = 1 OR expires_at IS NULL,
+                         GREATEST(DATE_ADD(COALESCE(last_activity_at, joined_at), INTERVAL %d DAY), CAST(%s AS DATETIME), COALESCE(expires_at, CAST(%s AS DATETIME))),
+                         DATE_ADD(COALESCE(last_activity_at, joined_at), INTERVAL %d DAY)
+                     ),
+                     NULL
+                 )',
+                (int) $keep,
                 $days,
-                $floor
+                $floor,
+                $floor,
+                $days
             )
         );
 

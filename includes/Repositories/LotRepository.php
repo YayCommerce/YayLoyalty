@@ -201,19 +201,30 @@ class LotRepository {
 
     /**
      * Recomputes every open lot's expiry after batch settings change: earned + $months (MySQL clamps to
-     * the month's end, as Engine\Expiry\ExpiryPolicy::batch_expires_at() does), never sooner than $floor.
+     * the month's end, as Engine\Expiry\ExpiryPolicy::batch_expires_at() does). With $keep, never sooner
+     * than $floor or the lot's stored date. Without it, only a lot with no stored date (batch just turned
+     * on) gets the $floor; a stored date moves to the new one even when that is already past.
      *
+     * @param bool $keep Whether the admin kept stored dates on shortening.
      * @throws QueryException When the write fails.
      */
-    public function restamp_open_expiry( int $months, string $floor ): void {
+    public function restamp_open_expiry( int $months, string $floor, bool $keep ): void {
         global $wpdb;
 
         $result = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
                 'UPDATE `' . esc_sql( $this->table() ) . '`
-                 SET expires_at = GREATEST(DATE_ADD(created_at, INTERVAL %d MONTH), CAST(%s AS DATETIME)) WHERE status = %s',
+                 SET expires_at = IF(
+                     %d = 1 OR expires_at IS NULL,
+                     GREATEST(DATE_ADD(created_at, INTERVAL %d MONTH), CAST(%s AS DATETIME), COALESCE(expires_at, CAST(%s AS DATETIME))),
+                     DATE_ADD(created_at, INTERVAL %d MONTH)
+                 )
+                 WHERE status = %s',
+                (int) $keep,
                 $months,
                 $floor,
+                $floor,
+                $months,
                 LotStatus::OPEN
             )
         );

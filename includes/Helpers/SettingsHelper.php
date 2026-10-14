@@ -52,6 +52,7 @@ class SettingsHelper {
                 'inactivity_days' => 365,
                 'batch_months'    => 12,
                 'spend_order'     => ExpiryPolicy::SPEND_OLDEST,
+                'on_shorten'      => ExpiryPolicy::ON_SHORTEN_KEEP,
             ],
         ];
     }
@@ -77,6 +78,7 @@ class SettingsHelper {
                 'inactivity_days' => 'expiry_window',
                 'batch_months'    => 'expiry_window',
                 'spend_order'     => 'spend_order',
+                'on_shorten'      => 'on_shorten',
             ],
         ];
     }
@@ -186,7 +188,7 @@ class SettingsHelper {
 
     /**
      * Whether every `limit` field in $input is null or a whole number from 1, every `expiry_window` is a
-     * whole number from 1 to EXPIRY_WINDOW_MAX, and every mode and spend order is known. The controllers answer 400 on
+     * whole number from 1 to EXPIRY_WINDOW_MAX, and every mode, spend order and on_shorten choice is known. The controllers answer 400 on
      * false; coerce() alone would read a 0 or a fraction as "no limit" without saying so. Batch expiry
      * is one-way: once batch is stored, switching back to inactivity is refused.
      *
@@ -240,6 +242,9 @@ class SettingsHelper {
 
             case 'spend_order':
                 return in_array( $value, [ ExpiryPolicy::SPEND_OLDEST, ExpiryPolicy::SPEND_NEWEST ], true );
+
+            case 'on_shorten':
+                return in_array( $value, [ ExpiryPolicy::ON_SHORTEN_KEEP, ExpiryPolicy::ON_SHORTEN_APPLY ], true );
 
             default:
                 return true;
@@ -320,6 +325,7 @@ class SettingsHelper {
 
             case 'expiry_mode':
             case 'spend_order':
+            case 'on_shorten':
                 return self::is_valid_value( $value, $type ) ? $value : null;
 
             case 'points_label':

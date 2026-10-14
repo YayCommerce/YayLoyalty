@@ -22,6 +22,8 @@ export const settingsSchema = z.object({
     inactivity_days: z.number().int().min(1).max(36500),
     batch_months: z.number().int().min(1).max(36500),
     spend_order: z.enum(['oldest', 'newest']),
+    /** What shortening the window does to stored dates; picked in the save's confirmation. */
+    on_shorten: z.enum(['keep', 'apply']),
   }),
   /** Stamped by SettingsHelper on save; PHP reports SCHEMA_VERSION when the stored blob predates versioning. */
   schema_version: z.number().int().optional(),

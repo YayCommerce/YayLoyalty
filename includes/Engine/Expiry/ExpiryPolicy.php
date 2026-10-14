@@ -21,7 +21,13 @@ final class ExpiryPolicy {
 
     public const SPEND_NEWEST = 'newest';
 
-    /** Turning expiry on or shortening it never sets a date sooner than this many days from now. */
+    /** Shortening the window keeps every stored date; the shorter window applies from each customer's next activity. */
+    public const ON_SHORTEN_KEEP = 'keep';
+
+    /** Shortening the window moves stored dates to the new window, with no grace: a date already past expires on the next run. */
+    public const ON_SHORTEN_APPLY = 'apply';
+
+    /** Turning expiry on, or shortening it while keeping dates, never sets a date sooner than this many days from now. */
     public const GRACE_DAYS = 30;
 
     public static function inactivity_expires_at( string $base_utc, int $days ): string {
@@ -77,6 +83,11 @@ final class ExpiryPolicy {
         return max( 1, (int) $this->settings['batch_months'] );
     }
 
+    /** Whether shortening the window keeps the dates already stored, as the admin chose when saving it. */
+    public function keeps_dates(): bool {
+        return self::ON_SHORTEN_APPLY !== ( $this->settings['on_shorten'] ?? '' );
+    }
+
     public function spend_order(): string {
         $is_newest = $this->is_batch() && self::SPEND_NEWEST === ( $this->settings['spend_order'] ?? '' );
 
@@ -117,7 +128,8 @@ final class ExpiryPolicy {
     /**
      * customers.expires_at after $row. Only earn and redeem reset the inactivity clock. Any other row
      * keeps the clock but never lands sooner than the grace floor, or a positive adjust for a dormant
-     * customer would be due at once.
+     * customer would be due at once. In inactivity mode no row moves a stored date sooner: a date kept
+     * when the window was shortened stands until activity passes it.
      *
      * @param Customer    $before            The locked row before $row.
      * @param string|null $earliest_open_lot The soonest open lot expiry after $row, for batch mode.
@@ -136,11 +148,14 @@ final class ExpiryPolicy {
         }
 
         if ( LedgerType::is_activity( $row->get_type() ) ) {
-            return self::inactivity_expires_at( $row->get_created_at(), $this->inactivity_days() );
+            $expires_at = self::inactivity_expires_at( $row->get_created_at(), $this->inactivity_days() );
+        } else {
+            $base       = $before->get_last_activity_at() ?? $before->get_joined_at();
+            $expires_at = self::floor_at( self::inactivity_expires_at( $base, $this->inactivity_days() ), self::grace_floor( $now ) );
         }
 
-        $base = $before->get_last_activity_at() ?? $before->get_joined_at();
+        $kept = $before->get_expires_at();
 
-        return self::floor_at( self::inactivity_expires_at( $base, $this->inactivity_days() ), self::grace_floor( $now ) );
+        return null === $kept ? $expires_at : self::floor_at( $expires_at, $kept );
     }
 }

@@ -1,5 +1,7 @@
 import { z } from 'zod';
+import { _n, sprintf } from '@wordpress/i18n';
 
+import { parseWPDate } from '@/lib/helpers/format.helper';
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { Settings, settingsSchema, SettingsUpdate } from '@/lib/schema/settings.schema';
 
@@ -19,19 +21,35 @@ export function buildExpirySettingsUpdate(values: ExpirySettingsFormValues): Set
   return { expiry: values.expiry };
 }
 
+/** "Month D, YYYY, N days from today": the earliest expiry date a settings change may give anyone. */
+export function graceFloorText(): string {
+  const days = window.yayLoyaltyMeta.loyaltyMeta.expiryGraceDays;
+  const floor = parseWPDate(new Date(Date.now() + days * 86_400_000));
+
+  /* translators: 1: a date, 2: number of days */
+  return sprintf(_n('%1$s, %2$d day from today', '%1$s, %2$d days from today', days, 'yayloyalty'), floor, days);
+}
+
 /**
- * Which confirmation a save needs before it goes out: the one-way switch to batch, or a change that
- * can bring expiry dates sooner (turning expiry on, or a shorter window). Null when none.
+ * Which confirmation a save needs before it goes out: the one-way switch to batch, turning expiry on,
+ * or a shorter window, where the admin also picks what happens to stored dates. Null when none.
  */
-export function needsConfirmation(saved: Expiry, next: Expiry): 'shorten' | 'batch' | null {
+export function needsConfirmation(saved: Expiry, next: Expiry): 'enable' | 'shorten' | 'batch' | null {
   if (next.mode === 'batch' && saved.mode !== 'batch') {
     return 'batch';
   }
 
+  if (!next.enabled) {
+    return null;
+  }
+
+  if (!saved.enabled) {
+    return 'enable';
+  }
+
   // Only the window the next mode runs on counts; Lite runs a stored batch mode as inactivity.
   const isBatch = IS_PRO_BUILD && next.mode === 'batch';
-  const isSooner =
-    !saved.enabled || (isBatch ? next.batch_months < saved.batch_months : next.inactivity_days < saved.inactivity_days);
+  const isSooner = isBatch ? next.batch_months < saved.batch_months : next.inactivity_days < saved.inactivity_days;
 
-  return next.enabled && isSooner ? 'shorten' : null;
+  return isSooner ? 'shorten' : null;
 }

@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { FormProvider, useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 
 import { toastApiError } from '@/lib/api/api';
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
@@ -19,21 +19,27 @@ import {
   expirySettingsDefaults,
   expirySettingsFormSchema,
   ExpirySettingsFormValues,
+  graceFloorText,
   needsConfirmation,
 } from './expiry-settings.form';
 import { ExpiryInactivityCard } from './ExpiryInactivityCard';
+import { ExpiryShortenChoice } from './ExpiryShortenChoice';
 
 type Confirmation = NonNullable<ReturnType<typeof needsConfirmation>>;
 
 /** Title and body per confirmation. Functions, not constants: `__()` must run after the locale loads. */
 const CONFIRM_COPY: Record<Confirmation, () => { title: string; description: string }> = {
+  enable: () => ({
+    title: __('Turn on points expiry?', 'yayloyalty'),
+    description: sprintf(
+      /* translators: %s: a date and how many days from today it is */
+      __('Nobody loses points today. No expiry date is set before %s.', 'yayloyalty'),
+      graceFloorText(),
+    ),
+  }),
   shorten: () => ({
     title: __('Shorten points expiry?', 'yayloyalty'),
-    // 30 mirrors ExpiryPolicy::GRACE_DAYS.
-    description: __(
-      'Nobody loses points today. Customers whose new expiry date falls within 30 days get 30 days from today.',
-      'yayloyalty',
-    ),
+    description: __('Choose what happens to points customers already hold.', 'yayloyalty'),
   }),
   batch: () => ({
     title: __('Switch to batch expiry?', 'yayloyalty'),
@@ -66,6 +72,13 @@ export default function ExpirySettingsPage() {
   const settingsQuery = useSettingsQuery();
   const saveMutation = useSaveSettingsMutation();
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
+  const [onShorten, setOnShorten] = useState<ExpirySettingsFormValues['expiry']['on_shorten']>('keep');
+  // The pending save awaits the dialog, so it reads the latest choice through a ref, not its stale closure.
+  const onShortenRef = useRef(onShorten);
+  const chooseOnShorten = (value: typeof onShorten) => {
+    onShortenRef.current = value;
+    setOnShorten(value);
+  };
   // Settles the pending save: true when confirmed, false when cancelled.
   const settleRef = useRef<((confirmed: boolean) => void) | null>(null);
 
@@ -94,12 +107,20 @@ export default function ExpirySettingsPage() {
     async (values) => {
       const kind = needsConfirmation(settingsQuery.data.expiry, values.expiry);
 
+      if (kind === 'shorten') {
+        chooseOnShorten(settingsQuery.data.expiry.on_shorten);
+      }
+
       if (kind && !(await confirm(kind))) {
         return false;
       }
 
+      // The shorten choice is made in the dialog, so it overrides the form's value.
+      const next =
+        kind === 'shorten' ? { ...values, expiry: { ...values.expiry, on_shorten: onShortenRef.current } } : values;
+
       try {
-        const saved = await saveMutation.mutateAsync(buildExpirySettingsUpdate(values));
+        const saved = await saveMutation.mutateAsync(buildExpirySettingsUpdate(next));
         form.reset(expirySettingsDefaults(saved), { keepDirtyValues: false });
         toast.success(__('Expiry settings saved.', 'yayloyalty'));
         return true;
@@ -133,7 +154,9 @@ export default function ExpirySettingsPage() {
         confirmLabel={__('Save', 'yayloyalty')}
         cancelLabel={__('Cancel', 'yayloyalty')}
         onConfirm={() => settle(true)}
-      />
+      >
+        {confirmation === 'shorten' && <ExpiryShortenChoice value={onShorten} onChange={chooseOnShorten} />}
+      </ConfirmDialog>
       <UnsavedChangeDialog {...leaveDialogProps} />
     </FormProvider>
   );
