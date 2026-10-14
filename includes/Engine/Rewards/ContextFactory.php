@@ -99,9 +99,9 @@ final class ContextFactory {
     }
 
     /**
-     * What is left of the cart's items after every coupon but ours. Never
-     * calls $cart->get_coupons(): that loads our own coupon, whose amount is
-     * quoted from this method.
+     * What is left of the cart's items after every coupon but the loyalty
+     * ones. Never calls $cart->get_coupons(): that loads our own coupons,
+     * whose amounts are quoted from this method.
      */
     private function cart_subtotal( \WC_Cart $cart ): float {
         $items_total = 0.0;
@@ -116,7 +116,7 @@ final class ContextFactory {
         $coupons = [];
 
         foreach ( $cart->get_applied_coupons() as $code ) {
-            if ( EarnContext::REDEEM_COUPON_CODE !== $code ) {
+            if ( ! EarnContext::is_loyalty_code( (string) $code ) ) {
                 $coupons[] = new \WC_Coupon( $code );
             }
         }

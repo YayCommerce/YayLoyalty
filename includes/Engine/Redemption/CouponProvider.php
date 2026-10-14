@@ -21,6 +21,9 @@ final class CouponProvider {
     /** The earning engine already knows this code, so our own discount never counts as "used a coupon". */
     public const CODE = EarnContext::REDEEM_COUPON_CODE;
 
+    /** A reward's virtual coupon is this prefix plus its id. */
+    public const REWARD_PREFIX = EarnContext::REWARD_COUPON_PREFIX;
+
     private RedemptionService $service;
 
     private SessionIntent $intent;
@@ -41,6 +44,22 @@ final class CouponProvider {
         add_action( 'woocommerce_before_calculate_totals', [ $this, 'sync_cart' ], PHP_INT_MAX );
         add_action( 'woocommerce_removed_coupon', [ $this, 'on_removed' ] );
         add_filter( 'woocommerce_cart_totals_coupon_label', [ $this, 'label' ], 10, 2 );
+    }
+
+    /** `yayloyalty-reward-{id}`: the code of a reward's virtual coupon. */
+    public static function reward_code( int $reward_id ): string {
+        return self::REWARD_PREFIX . $reward_id;
+    }
+
+    /** The reward id a reward code carries; null for any other code, or an id below 1. */
+    public static function reward_id_of( string $code ): ?int {
+        if ( ! preg_match( '/^' . preg_quote( self::REWARD_PREFIX, '/' ) . '(\d+)$/D', $code, $matches ) ) {
+            return null;
+        }
+
+        $reward_id = (int) $matches[1];
+
+        return $reward_id > 0 ? $reward_id : null;
     }
 
     /** "Points discount", with the merchant's label: what the totals row reads instead of the code. */

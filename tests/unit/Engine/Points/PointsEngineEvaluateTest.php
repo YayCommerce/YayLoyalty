@@ -69,6 +69,27 @@ final class PointsEngineEvaluateTest extends EngineTestCase {
         $this->assertSame( Result::REASON_NOT_ELIGIBLE, $result->get_reason() );
     }
 
+    public function test_reward_coupons_do_not_count_as_coupons_for_exclude_coupon_orders(): void {
+        $campaign = $this->purchase_campaign(
+            [
+                'points_per_unit'       => 1,
+                'exclude_coupon_orders' => true,
+            ]
+        );
+        $ctx      = $this->context( [ $this->line( 100.0 ) ], 15.0, [ 'yayloyalty-reward-5', 'yayloyalty-reward-6' ] );
+
+        $result = $this->engine( [ $campaign ] )->evaluate( CampaignTrigger::PURCHASE, $ctx );
+
+        $this->assertTrue( $result->is_awarded() );
+        $this->assertSame( [], $ctx->get_real_coupon_codes() );
+    }
+
+    public function test_a_merchant_coupon_still_counts_beside_a_reward_coupon(): void {
+        $ctx = $this->context( [ $this->line( 100.0 ) ], 5.0, [ 'yayloyalty-reward-5', 'summer10' ] );
+
+        $this->assertSame( [ 'summer10' ], $ctx->get_real_coupon_codes() );
+    }
+
     public function test_advert_context_is_refused(): void {
         $this->expectException( \InvalidArgumentException::class );
 
