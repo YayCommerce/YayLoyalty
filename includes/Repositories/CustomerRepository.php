@@ -193,10 +193,10 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
      *
      * @return int[]
      */
-    public function reminder_due_user_ids( string $now, int $days, int $limit ): array {
+    public function reminder_due_user_ids( string $now, string $horizon, int $limit ): array {
         global $wpdb;
 
-        list( $due_sql, $due_values ) = self::reminder_due_sql( $now, $days );
+        list( $due_sql, $due_values ) = self::reminder_due_sql( $now, $horizon );
 
         // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $due_sql holds only placeholders; its values are bound.
         $ids = $wpdb->get_col( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
@@ -216,10 +216,10 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
      * racing runs only one gets the row, and a write landing in between leaves it unclaimed for the next
      * run. Returns what to remind about, or null when not claimed.
      *
-     * @return array{points: int, expires_at: string}|null
+     * @return array{points: int, expires_at: string, is_single_date: bool}|null The whole balance, on one date.
      * @throws QueryException When the write fails.
      */
-    public function claim_reminder( int $user_id, string $now, int $days ): ?array {
+    public function claim_reminder( int $user_id, string $now, string $horizon ): ?array {
         global $wpdb;
 
         $customer   = $this->find_by_user_id( $user_id );
@@ -229,7 +229,7 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
             return null;
         }
 
-        list( $due_sql, $due_values ) = self::reminder_due_sql( $now, $days );
+        list( $due_sql, $due_values ) = self::reminder_due_sql( $now, $horizon );
 
         // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $due_sql holds only placeholders, and $due_values binds them: the sniff cannot count through it.
         $result = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
@@ -250,8 +250,9 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
         }
 
         return [
-            'points'     => $customer->get_balance(),
-            'expires_at' => $expires_at,
+            'points'         => $customer->get_balance(),
+            'expires_at'     => $expires_at,
+            'is_single_date' => true,
         ];
     }
 
@@ -266,15 +267,15 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
 
     /**
      * The one inactivity reminder rule, for the selector and the claim alike: a balance whose date falls
-     * within the next $days, and that date not yet announced (reminder_for). Changing the timing never
+     * after $now and by $horizon, and that date not yet announced (reminder_for). Changing the timing never
      * re-announces a date; a date that moves is announced again once.
      *
      * @return array{0: string, 1: array<int, string|int>} SQL with placeholders, and their values.
      */
-    private static function reminder_due_sql( string $now, int $days ): array {
+    private static function reminder_due_sql( string $now, string $horizon ): array {
         return [
             'balance > 0 AND expires_at > %s AND expires_at <= %s AND ( reminder_for IS NULL OR reminder_for <> expires_at )',
-            [ $now, Dates::offset( $days * DAY_IN_SECONDS, $now ) ],
+            [ $now, $horizon ],
         ];
     }
 

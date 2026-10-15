@@ -4,7 +4,7 @@
  *
  * Override by copying to yourtheme/woocommerce/emails/plain/yayloyalty-points-expiring-soon.php.
  *
- * Variables mirror PointsExpiringSoonEmail::extra_template_args() and the HTML template's list; change them together.
+ * Variables mirror PointsExpiringSoonEmail::prepare() and the HTML template's list; change them together.
  * Every variable below is absent when there is no reminder to show.
  *
  * @var string $email_heading

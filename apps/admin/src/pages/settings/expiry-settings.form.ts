@@ -5,16 +5,25 @@ import { parseWPDate } from '@/lib/helpers/format.helper';
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { Settings, settingsSchema, SettingsUpdate } from '@/lib/schema/settings.schema';
 
+type Expiry = Settings['expiry'];
+
+/** Whether these settings run batch expiry. Mirrors ExpiryPolicy::mode(): Lite runs a stored batch mode as inactivity. */
+function isBatchMode(expiry: Expiry): boolean {
+  return IS_PRO_BUILD && expiry.mode === 'batch';
+}
+
+/** The window the settings run on, in days. Mirrors ExpiryPolicy::window_days(): a month counts as 28 days. */
+function windowDays(expiry: Expiry): number {
+  return isBatchMode(expiry) ? expiry.batch_months * 28 : expiry.inactivity_days;
+}
+
 /**
  * The Expiry tab's one form: the whole `expiry` group, Pro's mode and batch fields included. The reminder
  * must go out fewer days ahead than the window while expiry is on, as SettingsHelper::is_valid() rules.
  */
 export const expirySettingsFormSchema = settingsSchema.pick({ expiry: true }).superRefine(({ expiry }, ctx) => {
-  // Lite runs a stored batch mode as inactivity; a month counts as 28 days.
-  const windowDays = IS_PRO_BUILD && expiry.mode === 'batch' ? expiry.batch_months * 28 : expiry.inactivity_days;
-
   // Only while expiry is on: the fields are disabled while it is off, so a stored pair must not block turning it off.
-  if (expiry.enabled && expiry.reminder_days >= windowDays) {
+  if (expiry.enabled && expiry.reminder_days >= windowDays(expiry)) {
     ctx.addIssue({
       code: 'custom',
       path: ['expiry', 'reminder_days'],
@@ -24,8 +33,6 @@ export const expirySettingsFormSchema = settingsSchema.pick({ expiry: true }).su
 });
 
 export type ExpirySettingsFormValues = z.infer<typeof expirySettingsFormSchema>;
-
-type Expiry = Settings['expiry'];
 
 export function expirySettingsDefaults(settings: Settings): ExpirySettingsFormValues {
   return { expiry: settings.expiry };
@@ -62,9 +69,10 @@ export function needsConfirmation(saved: Expiry, next: Expiry): 'enable' | 'shor
     return 'enable';
   }
 
-  // Only the window the next mode runs on counts; Lite runs a stored batch mode as inactivity.
-  const isBatch = IS_PRO_BUILD && next.mode === 'batch';
-  const isSooner = isBatch ? next.batch_months < saved.batch_months : next.inactivity_days < saved.inactivity_days;
+  // Only the window the next mode runs on counts.
+  const isSooner = isBatchMode(next)
+    ? next.batch_months < saved.batch_months
+    : next.inactivity_days < saved.inactivity_days;
 
   return isSooner ? 'shorten' : null;
 }

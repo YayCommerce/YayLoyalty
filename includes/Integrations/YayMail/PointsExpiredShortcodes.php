@@ -16,7 +16,6 @@ class PointsExpiredShortcodes extends LoyaltyEmailShortcodes {
     use SingletonTrait;
 
     protected const VALUE_KEYS = [
-        'customer_name'  => 'greeting_name',
         'expired_points' => 'expired_text',
         'balance_points' => 'balance_text',
     ];
@@ -31,7 +30,6 @@ class PointsExpiredShortcodes extends LoyaltyEmailShortcodes {
 
     protected function descriptions(): array {
         return [
-            'customer_name'      => __( 'Customer first name, else display name', 'yayloyalty' ),
             'expired_points'     => __( 'Sentence saying how many points expired', 'yayloyalty' ),
             'points'             => __( 'Points expired', 'yayloyalty' ),
             'points_label'       => __( 'Points label for the points expired', 'yayloyalty' ),

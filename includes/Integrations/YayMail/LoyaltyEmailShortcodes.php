@@ -14,10 +14,9 @@ defined( 'ABSPATH' ) || exit;
  */
 abstract class LoyaltyEmailShortcodes extends BaseShortcode {
 
-    /** Shortcodes whose template value has another name. */
+    /** Shortcodes whose template value has another name, shared by every loyalty email. A subclass adds its own. */
     protected const VALUE_KEYS = [
-        'customer_name'  => 'greeting_name',
-        'balance_points' => 'balance_text',
+        'customer_name' => 'greeting_name',
     ];
 
     /** Values that are already escaped HTML. */
@@ -29,8 +28,13 @@ abstract class LoyaltyEmailShortcodes extends BaseShortcode {
     /** The YayMail email these shortcodes belong to. */
     abstract protected function yaymail_email(): LoyaltyYayMailEmail;
 
-    /** @return array<string, string> Shortcode key (after the prefix) => editor description. */
+    /** @return array<string, string> Shortcode key (after the prefix) => editor description, besides customer_name. */
     abstract protected function descriptions(): array;
+
+    /** @return array<string, string> Every shortcode's editor description: the shared customer_name, then the email's own. */
+    private function all_descriptions(): array {
+        return [ 'customer_name' => __( 'Customer first name, else display name', 'yayloyalty' ) ] + $this->descriptions();
+    }
 
     /** A shortcode's name: 'customer_name' → 'yaymail_yayloyalty_customer_name'. */
     private static function name( string $key ): string {
@@ -45,7 +49,7 @@ abstract class LoyaltyEmailShortcodes extends BaseShortcode {
     public function get_shortcodes() {
         $shortcodes = [];
 
-        foreach ( $this->descriptions() as $key => $description ) {
+        foreach ( $this->all_descriptions() as $key => $description ) {
             $shortcodes[] = [
                 'name'          => self::name( $key ),
                 'description'   => $description,
@@ -65,7 +69,7 @@ abstract class LoyaltyEmailShortcodes extends BaseShortcode {
      */
     public function render( array $data ): string {
         $key       = (string) ( $data['yayloyalty_key'] ?? '' );
-        $value_key = static::VALUE_KEYS[ $key ] ?? $key;
+        $value_key = ( static::VALUE_KEYS + self::VALUE_KEYS )[ $key ] ?? $key;
         $values    = $this->values( $data['render_data'] ?? [] );
 
         if ( ! isset( $values[ $value_key ] ) || ! is_string( $values[ $value_key ] ) ) {

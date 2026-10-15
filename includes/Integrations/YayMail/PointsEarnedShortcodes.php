@@ -16,7 +16,6 @@ class PointsEarnedShortcodes extends LoyaltyEmailShortcodes {
     use SingletonTrait;
 
     protected const VALUE_KEYS = [
-        'customer_name'  => 'greeting_name',
         'earned_points'  => 'earned_text',
         'balance_points' => 'balance_text',
         'points_url'     => 'cta_url',
@@ -32,7 +31,6 @@ class PointsEarnedShortcodes extends LoyaltyEmailShortcodes {
 
     protected function descriptions(): array {
         return [
-            'customer_name'      => __( 'Customer first name, else display name', 'yayloyalty' ),
             'earned_points'      => __( 'Sentence saying what was earned and why', 'yayloyalty' ),
             'points'             => __( 'Points earned', 'yayloyalty' ),
             'points_label'       => __( 'Points label for the points earned', 'yayloyalty' ),

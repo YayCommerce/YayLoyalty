@@ -133,6 +133,9 @@ if ( ! wp_installing() ) {
 
     // earning_limited capture: an award an earning limit held points back from.
     add_action( \YayLoyalty\Engine\Earning\EarningService::LIMITED_ACTION, [ \YayLoyalty\Engine\CustomerActivityListener::class, 'on_award_limited' ], 10, 3 );
+
+    // expiring_soon_email_sent capture: an expiry reminder the transport accepted.
+    add_action( \YayLoyalty\Engine\Emails\Emails::POINTS_EXPIRING_SOON_SENT_ACTION, [ \YayLoyalty\Engine\CustomerActivityListener::class, 'on_expiring_soon_email_sent' ], 10, 4 );
 }
 
 register_activation_hook( YAYLOYALTY_FILE, [ \YayLoyalty\Engine\ActDeact::class, 'activate' ] );

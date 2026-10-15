@@ -37,12 +37,11 @@ final class ExpiryReminders {
             return false;
         }
 
-        $days     = $policy->reminder_days();
-        $horizon  = Dates::offset( $days * DAY_IN_SECONDS, $now );
+        $horizon  = Dates::offset( $policy->reminder_days() * DAY_IN_SECONDS, $now );
         $is_batch = $policy->is_batch();
         $user_ids = $is_batch
             ? $this->lots->reminder_due_user_ids( $now, $horizon, ExpiryRunner::BATCH_SIZE )
-            : $this->customers->reminder_due_user_ids( $now, $days, ExpiryRunner::BATCH_SIZE );
+            : $this->customers->reminder_due_user_ids( $now, $horizon, ExpiryRunner::BATCH_SIZE );
 
         // Checked only when someone is due: it builds WooCommerce's mailer, which constructs every email.
         if ( empty( $user_ids ) || ! self::is_email_enabled() ) {
@@ -53,7 +52,7 @@ final class ExpiryReminders {
 
         foreach ( $user_ids as $user_id ) {
             try {
-                $claim = $is_batch ? $this->claim_lots( $user_id, $now, $horizon ) : $this->claim_balance( $user_id, $now, $days );
+                $claim = $is_batch ? $this->claim_lots( $user_id, $now, $horizon ) : $this->customers->claim_reminder( $user_id, $now, $horizon );
 
                 if ( null !== $claim ) {
                     Emails::relay_expiring_soon( $user_id, $claim['points'], $claim['expires_at'], $claim['is_single_date'] );
@@ -65,17 +64,6 @@ final class ExpiryReminders {
         }
 
         return count( $user_ids ) === ExpiryRunner::BATCH_SIZE && $sent > 0;
-    }
-
-    /**
-     * Inactivity: the whole balance, on the customer's one date.
-     *
-     * @return array{points: int, expires_at: string, is_single_date: bool}|null
-     */
-    private function claim_balance( int $user_id, string $now, int $days ): ?array {
-        $claim = $this->customers->claim_reminder( $user_id, $now, $days );
-
-        return null === $claim ? null : $claim + [ 'is_single_date' => true ];
     }
 
     /**

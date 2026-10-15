@@ -88,14 +88,12 @@ final class ExpiryPolicy {
      * stored pair that SettingsHelper::is_valid() would refuse, or every activity would trigger a reminder.
      */
     public function reminder_days(): int {
-        $days = (int) ( $this->settings['reminder_days'] ?? 30 );
-
-        return max( 1, min( $days, $this->window_days() - 1 ) );
+        return max( 1, min( $this->stored_reminder_days(), $this->window_days() - 1 ) );
     }
 
     /** The stored reminder timing, unclamped, for validating a save. */
     public function stored_reminder_days(): int {
-        return (int) ( $this->settings['reminder_days'] ?? 30 );
+        return (int) $this->settings['reminder_days'];
     }
 
     /** The window the effective mode runs on, in days: a month counts as its shortest, 28 days. */

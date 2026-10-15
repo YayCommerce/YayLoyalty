@@ -4,6 +4,7 @@ namespace YayLoyalty\Repositories;
 use YayLoyalty\Database\QueryException;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Enums\LotStatus;
+use YayLoyalty\Utils\Dates;
 use YayLoyalty\Utils\Sql;
 use YayLoyalty\Utils\Table;
 
@@ -15,6 +16,9 @@ defined( 'ABSPATH' ) || exit;
  * Callers hold the customer's row lock (LedgerService), which serialises each user's lots, so reads
  * here do not lock: a locking read over a user with no lots gap-locks, and two customers' first lots
  * would deadlock. take()'s guarded UPDATE still refuses a lot that changed under a stale read.
+ * The exceptions are the expiry job's (Engine\Expiry): restamp_open_expiry() and the reminder queries
+ * run without the lock, write only expires_at and reminded_at through guarded UPDATEs, and return sums
+ * or ids, never rows.
  */
 class LotRepository {
 
@@ -352,10 +356,11 @@ class LotRepository {
         }
 
         $dates = array_column( $lots, 'expires_at' );
-        $days  = array_unique(
+        // Days as the customer reads them: the email shows each date in the site's time zone.
+        $days = array_unique(
             array_map(
                 static function ( string $at ): string {
-                    return substr( $at, 0, 10 );
+                    return Dates::to_site_tz( $at, 'Y-m-d' );
                 },
                 $dates
             )

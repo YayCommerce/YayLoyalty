@@ -3,10 +3,6 @@ namespace YayLoyalty\Engine\Emails;
 
 use YayLoyalty\Engine\Expiry\ExpiryPolicy;
 use YayLoyalty\Helpers\SettingsHelper;
-use YayLoyalty\Repositories\CustomerMetaRepository;
-use YayLoyalty\Repositories\CustomerRepository;
-use YayLoyalty\Repositories\LedgerRepository;
-use YayLoyalty\Services\CustomerActivityService;
 use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
@@ -21,11 +17,8 @@ class PointsExpiringSoonEmail extends LoyaltyEmail {
 
     protected $is_capped = false;
 
-    /** @var array{user_id: int, points: int, expires_at: string, is_single_date: bool}|null The reminder being sent or previewed. */
-    private $reminder = null;
-
-    /** @var array<string, mixed>|null extra_template_args() for $reminder, built once: a multipart send renders twice. */
-    private $values = null;
+    /** @var array<string, mixed> The template values of the reminder being sent or previewed; [] until one is prepared. */
+    private $values = [];
 
     public function __construct() {
         $this->id          = self::ID;
@@ -52,35 +45,29 @@ class PointsExpiringSoonEmail extends LoyaltyEmail {
         return __( 'Your {points_label} expire soon', 'yayloyalty' );
     }
 
-    /** Mails the reminder the expiry job claimed, and logs it in the customer's activity once the transport accepts it. */
+    /** Mails the reminder the expiry job claimed, and announces an accepted send for the activity log. */
     public function trigger( int $user_id, int $points, string $expires_at, bool $is_single_date ): void {
         $user = get_userdata( $user_id );
 
-        if ( ! $user ) {
-            return;
-        }
-
-        // is_enabled()'s filter receives $this->object.
-        $this->object = $user;
-
-        if ( ! $this->is_enabled() ) {
-            return;
-        }
-
-        // Before the placeholders: the default point labels are translated strings.
-        $this->setup_locale();
-
-        try {
-            $this->prepare( $user_id, $points, $expires_at, $is_single_date );
-            $this->recipient = $user->user_email;
-
-            if ( $this->get_recipient() && $this->send_to_customer( $user_id ) ) {
-                ( new CustomerActivityService( new CustomerMetaRepository(), new CustomerRepository(), new LedgerRepository() ) )
-                    ->record_expiring_soon_email_sent( $user_id, $points, $expires_at, ExpiryPolicy::current()->reminder_days() );
+        // is_enabled()'s filter receives the customer.
+        $sent = $user && $this->send_prepared(
+            $user_id,
+            $user,
+            function () use ( $user_id, $points, $expires_at, $is_single_date ): void {
+                $this->prepare( $user_id, $points, $expires_at, $is_single_date );
             }
-        } finally {
-            // A throwing mail transport must not leave the rest of the request in the customer's locale.
-            $this->restore_locale();
+        );
+
+        if ( $sent ) {
+            /**
+             * Fires once the transport accepted an expiry reminder. CustomerActivityListener logs it.
+             *
+             * @param int    $user_id     The customer reminded.
+             * @param int    $points      Points that expire.
+             * @param string $expires_at  The soonest of their expiry dates, UTC.
+             * @param int    $window_days The reminder timing it went out under.
+             */
+            do_action( Emails::POINTS_EXPIRING_SOON_SENT_ACTION, $user_id, $points, $expires_at, ExpiryPolicy::current()->reminder_days() ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name; the sniff cannot read it.
         }
     }
 
@@ -89,51 +76,24 @@ class PointsExpiringSoonEmail extends LoyaltyEmail {
         $this->prepare( get_current_user_id(), 120, Dates::offset( 30 * DAY_IN_SECONDS ), true );
     }
 
-    /** Points the placeholders and template values at one reminder. */
+    /**
+     * Builds the template values for one reminder, once: a multipart send and YayMail each render again.
+     * The subject placeholders come from the same values.
+     */
     private function prepare( int $user_id, int $points, string $expires_at, bool $is_single_date ): void {
-        $this->values   = null;
-        $this->reminder = [
-            'user_id'        => $user_id,
-            'points'         => $points,
-            'expires_at'     => $expires_at,
-            'is_single_date' => $is_single_date,
-        ];
-
-        $this->placeholders['{points}']       = SettingsHelper::format_number( $points );
-        $this->placeholders['{points_label}'] = SettingsHelper::points_label( $points );
-        $this->placeholders['{expiry_date}']  = Dates::to_site_date( $expires_at );
-    }
-
-    /** @return array<string, mixed> [] until a reminder is prepared, so the templates fall back. */
-    protected function extra_template_args(): array {
-        if ( null === $this->reminder ) {
-            return [];
-        }
-
-        if ( null === $this->values ) {
-            $this->values = $this->build_values();
-        }
-
-        return $this->values;
-    }
-
-    /** @return array<string, mixed> */
-    private function build_values(): array {
-        $user_id       = $this->reminder['user_id'];
-        $points        = $this->reminder['points'];
-        $expiry_date   = Dates::to_site_date( $this->reminder['expires_at'] );
+        $expiry_date   = Dates::to_site_date( $expires_at );
         $greeting_name = self::greeting_name( $user_id );
         $points_value  = self::balance_value( $points );
-        $is_batch      = ExpiryPolicy::current()->is_batch();
 
-        return [
+        $this->values = [
             'greeting_name'     => $greeting_name,
             'greeting_text'     => self::greeting_text( esc_html( $greeting_name ) ),
             'points'            => SettingsHelper::format_number( $points ),
             'points_label'      => SettingsHelper::points_label( $points ),
             'expiry_date'       => $expiry_date,
-            'expiring_text'     => self::expiring_text( $points, $expiry_date, $is_batch && ! $this->reminder['is_single_date'] ),
-            'keep_text'         => $is_batch ? '' : esc_html__( 'Earn or redeem before then to keep them.', 'yayloyalty' ),
+            // Only a batch claim spans several dates.
+            'expiring_text'     => self::expiring_text( $points, $expiry_date, ! $is_single_date ),
+            'keep_text'         => ExpiryPolicy::current()->is_batch() ? '' : esc_html__( 'Earn or redeem before then to keep them.', 'yayloyalty' ),
             'points_value'      => $points_value,
             'points_value_text' => self::balance_value_text( $points_value ),
             /**
@@ -144,6 +104,15 @@ class PointsExpiringSoonEmail extends LoyaltyEmail {
              */
             'cta_url'           => (string) apply_filters( 'yayloyalty_points_expiring_soon_cta_url', '', $user_id ),
         ];
+
+        foreach ( [ 'points', 'points_label', 'expiry_date' ] as $key ) {
+            $this->placeholders[ '{' . $key . '}' ] = $this->values[ $key ];
+        }
+    }
+
+    /** @return array<string, mixed> [] until a reminder is prepared, so the templates fall back. */
+    protected function extra_template_args(): array {
+        return $this->values;
     }
 
     /** Escaped HTML with the points in bold. One whole sentence per case, so translators never assemble fragments. */

@@ -74,20 +74,22 @@
 - Its template values are `greeting_name`, `greeting_text`, `points`, `points_label`, `expiry_date`, `expiring_text` (escaped HTML), `keep_text` (inactivity only, else ''), `points_value` (`balance_value( $points )`), `points_value_text` and `cta_url`. Phase 1 task 2; YayMail reads them in phase 2.
 - Filter `yayloyalty_points_expiring_soon_cta_url` `( string $url, int $user_id ): string`, default ''. Phase 1 task 2.
 - `LoyaltyEmail`: `protected $is_capped = true;`. `send_to_customer( int $user_id ): bool` returns whether the transport accepted the send, and skips `EmailThrottle::allows()` when `! $this->is_capped`. Phase 1 task 2.
+- `LoyaltyEmail::send_prepared( int $user_id, $subject, callable $prepare ): bool`, the send both `LedgerEntryEmail::trigger()` and `PointsExpiringSoonEmail::trigger()` use. Added by yaytidy.
 - `LoyaltyEmail::get_template_values(): array` (moved up from `LedgerEntryEmail`, returns `extra_template_args()`). Phase 2 task 2.
 
 ### Activity
 
+- Action `yayloyalty_points_expiring_soon_email_sent` (`Emails::POINTS_EXPIRING_SOON_SENT_ACTION`), args `( int $user_id, int $points, string $expires_at, int $window_days )`, fired by the email after an accepted send. `CustomerActivityListener::on_expiring_soon_email_sent()` records it under `ListenerGuard`. Added by yaytidy: the email no longer builds the activity service itself.
 - `CustomerActivityService::record_expiring_soon_email_sent( int $user_id, int $points, string $expires_at, int $window_days ): void` writes `ActivityEvent::EXPIRING_SOON_EMAIL_SENT` with data `{ points, expires_at, window_days }`, `ActorKind::AUTOMATIC`, `staff_only` false, `created_at` `Dates::now()`. Phase 1 task 2. The spec says actor "system", but the codebase's kind for that is `ActorKind::AUTOMATIC`.
 
 ### Repositories
 
-- `CustomerRepository::reminder_due_user_ids( string $now, int $days, int $limit ): int[]` and `claim_reminder( int $user_id, string $now, int $days ): ?array` returning `array{points:int, expires_at:string}`. Both apply the due rule, from one shared fragment (`reminder_due_sql()`):
+- `CustomerRepository::reminder_due_user_ids( string $now, string $horizon, int $limit ): int[]` and `claim_reminder( int $user_id, string $now, string $horizon ): ?array` returning `array{points:int, expires_at:string, is_single_date:bool}` (`is_single_date` always true). They take `$horizon` like `LotRepository`'s pair, changed by yaytidy from `int $days`. Both apply the due rule, from one shared fragment (`reminder_due_sql()`):
 
   ```
   balance > 0
   AND expires_at > now
-  AND expires_at <= now + days
+  AND expires_at <= horizon
   AND ( reminder_for IS NULL OR reminder_for <> expires_at )
   ```
 

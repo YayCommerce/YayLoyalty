@@ -2,7 +2,9 @@ import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import { Link } from 'react-router';
 import { __ } from '@wordpress/i18n';
 
+import { REMINDER_DAYS_MAX } from '@/lib/schema/settings.schema';
 import { Card, CardContent } from '@/components/ui/card';
+import { FieldError } from '@/components/ui/field';
 import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
 import { ExpirySettingsFormValues } from './expiry-settings.form';
 
@@ -27,7 +29,7 @@ export function ExpiryReminderRow() {
                   size="small"
                   className="w-32"
                   min={1}
-                  max={365}
+                  max={REMINDER_DAYS_MAX}
                   disabled={!isEnabled}
                   value={field.value}
                   onValueChange={field.onChange}
@@ -42,7 +44,7 @@ export function ExpiryReminderRow() {
                   </Link>
                 </span>
               </div>
-              {fieldState.error?.message && <p className="text-destructive text-sm">{fieldState.error.message}</p>}
+              <FieldError errors={[fieldState.error]} />
             </div>
           )}
         />

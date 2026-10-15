@@ -98,6 +98,42 @@ abstract class LoyaltyEmail extends \WC_Email {
     }
 
     /**
+     * The send every trigger shares: checks the email is on for $subject (what is_enabled()'s filter
+     * receives), switches to the customer's locale, runs $prepare to fill the placeholders and values,
+     * then mails the customer through send_to_customer().
+     *
+     * @param mixed    $subject What this email is about, set as $this->object.
+     * @param callable $prepare Fills placeholders and template values; runs in the customer's locale.
+     * @return bool Whether the transport accepted the send.
+     */
+    protected function send_prepared( int $user_id, $subject, callable $prepare ): bool {
+        $this->object = $subject;
+
+        if ( ! $this->is_enabled() ) {
+            return false;
+        }
+
+        $user = get_userdata( $user_id );
+
+        if ( ! $user ) {
+            return false;
+        }
+
+        // Before the placeholders: the default point labels are translated strings.
+        $this->setup_locale();
+
+        try {
+            $prepare();
+            $this->recipient = $user->user_email;
+
+            return $this->get_recipient() ? $this->send_to_customer( $user_id ) : false;
+        } finally {
+            // A throwing mail transport must not leave the rest of the request in the customer's locale.
+            $this->restore_locale();
+        }
+    }
+
+    /**
      * Sends this email to its customer, within the weekly cap (EmailThrottle) unless the email is uncapped.
      * Only a send the transport accepts counts against the cap.
      *
