@@ -56,7 +56,7 @@
 | Phase | Delivers (user-visible) | Exit criterion (exact check) | Status |
 |---|---|---|---|
 | 1 | [Inactivity reminder](phase-1-inactivity-reminder.md): Expiry tab "Remind before expiry", the email sent N days before an inactivity expiry, logged in activity | Spec AC 12, Lite part: one reminder email, none on rerun; `composer test:integration --filter ExpiryRemindersTest` passes | done (yayplancheck PASS 2026-10-15) |
-| 2 | [Batch reminder and YayMail](phase-2-batch-and-yaymail.md): per-lot reminders in Pro batch mode, the email in YayMail | Spec AC 12, Pro part, and the YayMail editor showing the email; whole `ExpiryRemindersTest` passes | pending |
+| 2 | [Batch reminder and YayMail](phase-2-batch-and-yaymail.md): per-lot reminders in Pro batch mode, the email in YayMail | Spec AC 12, Pro part, and the YayMail editor showing the email; whole `ExpiryRemindersTest` passes | implemented, awaiting yayplancheck |
 
 ## Interface contract
 
