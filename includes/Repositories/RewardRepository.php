@@ -1,8 +1,10 @@
 <?php
 namespace YayLoyalty\Repositories;
 
+use YayLoyalty\Enums\Status;
 use YayLoyalty\Models\Reward;
 use YayLoyalty\Utils\Dates;
+use YayLoyalty\Utils\Sql;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -34,6 +36,42 @@ final class RewardRepository extends AbstractRepository {
         $model = $this->find_one_by( 'slug', $slug );
 
         return $model instanceof Reward ? $model : null;
+    }
+
+    /**
+     * Active rewards of these types that are live at $now, in `sort_order ASC, id ASC`.
+     *
+     * @param string[] $types RewardType constants.
+     * @param string   $now   UTC MySQL datetime.
+     * @return Reward[]
+     */
+    public function live_of_types( array $types, string $now ): array {
+        global $wpdb;
+
+        if ( [] === $types ) {
+            return [];
+        }
+
+        // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared -- Sql::in_placeholders() emits only a fixed-count %s list; values are bound via prepare() below.
+        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare(
+                'SELECT * FROM `' . esc_sql( $this->table() ) . '` WHERE status = %s AND type IN (' . Sql::in_placeholders( $types ) . ') ORDER BY sort_order ASC, id ASC',
+                array_merge( [ Status::ACTIVE ], array_values( $types ) )
+            ),
+            ARRAY_A
+        );
+        // phpcs:enable WordPress.DB.PreparedSQL.NotPrepared
+        $live = [];
+
+        foreach ( (array) $rows as $row ) {
+            $reward = $this->hydrate( $row );
+
+            if ( $reward instanceof Reward && $reward->is_live_at( $now ) ) {
+                $live[] = $reward;
+            }
+        }
+
+        return $live;
     }
 
     /** The sort_order that places a new reward after every existing one, archived rows included. */

@@ -3,11 +3,13 @@ namespace YayLoyalty\Engine\Redemption;
 
 use YayLoyalty\Database\Transaction;
 use YayLoyalty\Engine\Earning\Outcome;
+use YayLoyalty\Engine\Points\Context as EarnContext;
 use YayLoyalty\Engine\Rewards\Clamp;
 use YayLoyalty\Engine\Rewards\ContextFactory;
 use YayLoyalty\Engine\Rewards\Handlers\Registry;
 use YayLoyalty\Engine\Rewards\Result;
 use YayLoyalty\Engine\Rewards\RewardEngine;
+use YayLoyalty\Enums\RewardType;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Models\Reward;
 use YayLoyalty\Repositories\CampaignRepository;
@@ -16,6 +18,7 @@ use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Repositories\RedemptionRepository;
 use YayLoyalty\Repositories\RewardRepository;
 use YayLoyalty\Services\LedgerService;
+use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -32,13 +35,21 @@ final class RedemptionService {
     public const REASON_NO_REWARD = 'no_reward';
     public const REASON_NO_INTENT = 'no_intent';
 
+    /** Rewards: the selection costs more than the balance, or one of it can no longer be used. */
+    public const REASON_REWARDS_BALANCE    = 'rewards_balance';
+    public const REASON_REWARD_UNAVAILABLE = 'reward_unavailable';
+
+    /** The card's exclusivity notices: rewards block the slider, the slider blocks rewards. */
+    public const NOTICE_EXCLUSIVE_SLIDER  = 'exclusive_slider';
+    public const NOTICE_EXCLUSIVE_REWARDS = 'exclusive_rewards';
+
     /** The pure half; the same instance CommitWriter re-quotes with. */
     private Quoter $quoter;
 
     /** Reads WooCommerce and the customer row; never writes. */
     private ContextFactory $contexts;
 
-    /** Read-only use: the built-in `cart-discount` reward. */
+    /** Read-only use: the built-in `cart-discount` reward and the rewards picked or offered. */
     private RewardRepository $rewards;
 
     private SessionIntent $intent;
@@ -54,13 +65,20 @@ final class RedemptionService {
 
     private bool $is_reward_read = false;
 
+    /** The Quoter's handlers: which reward types this build can spend, and how a coupon reward is described. */
+    private Registry $registry;
+
+    /** @var array<int, Reward|null> Rewards read by id this request; null for an id with no row. */
+    private array $reward_cache = [];
+
     public function __construct(
         Quoter $quoter,
         ContextFactory $contexts,
         RewardRepository $rewards,
         SessionIntent $intent,
         CommitWriter $writer,
-        Reversal $reversal
+        Reversal $reversal,
+        Registry $registry
     ) {
         $this->quoter   = $quoter;
         $this->contexts = $contexts;
@@ -68,6 +86,7 @@ final class RedemptionService {
         $this->intent   = $intent;
         $this->writer   = $writer;
         $this->reversal = $reversal;
+        $this->registry = $registry;
     }
 
     /**
@@ -90,14 +109,15 @@ final class RedemptionService {
          */
         $gates = (array) apply_filters( 'yayloyalty_redemption_gates', [ new ProgramGate(), new RewardGate() ] );
 
-        $quoter      = new Quoter( new RewardEngine( Registry::with_lite_handlers() ), $gates );
+        $registry    = Registry::with_lite_handlers();
+        $quoter      = new Quoter( new RewardEngine( $registry ), $gates );
         $contexts    = new ContextFactory( $customers );
         $ledger      = new LedgerService( new LedgerRepository(), $customers, new CampaignRepository() );
         $redemptions = new RedemptionRepository();
         $rewards     = new RewardRepository();
         $writer      = new CommitWriter( $ledger, $redemptions, $customers, $contexts, $quoter );
 
-        return new self( $quoter, $contexts, $rewards, $intent, $writer, new Reversal( $ledger, $redemptions, $customers, $rewards ) );
+        return new self( $quoter, $contexts, $rewards, $intent, $writer, new Reversal( $ledger, $redemptions, $customers, $rewards ), $registry );
     }
 
     /** Handed to Earning\Listeners\OrderReversalListener, so reversals write through this root's LedgerService and no construction site is added. */
@@ -162,17 +182,119 @@ final class RedemptionService {
     }
 
     /**
+     * The picked rewards' quotes, keyed by reward id in the order they were picked. Each quotes against the
+     * balance left once the rewards allowed before it are paid for, so a selection never costs more than the
+     * balance. A missing reward, or one this build does not offer, is denied `not_live` without reaching the
+     * Quoter, so a type with no handler (Lite after a downgrade) never throws. Writes nothing.
+     *
+     * @return array<int, array{reward: ?Reward, quote: Result}>
+     */
+    public function quote_rewards( \WC_Cart $cart, ?int $user_id ): array {
+        $reward_ids = $this->intent->rewards();
+
+        if ( [] === $reward_ids ) {
+            return [];
+        }
+
+        $ctx    = $this->contexts->from_cart( $cart, $user_id, null );
+        $spent  = 0;
+        $quotes = [];
+
+        foreach ( $reward_ids as $reward_id ) {
+            $reward = $this->find_reward( $reward_id );
+
+            if ( null === $reward || ! $this->is_reward_offered( $reward ) ) {
+                $quotes[ $reward_id ] = [
+                    'reward' => $reward,
+                    'quote'  => Result::denied( Result::REASON_NOT_LIVE ),
+                ];
+
+                continue;
+            }
+
+            $quote = $this->quoter->quote( $reward, $ctx->with_balance( $ctx->get_balance() - $spent ) );
+
+            if ( $quote->is_allowed() ) {
+                $spent += $quote->get_points();
+            }
+
+            $quotes[ $reward_id ] = [
+                'reward' => $reward,
+                'quote'  => $quote,
+            ];
+        }
+
+        return $quotes;
+    }
+
+    /**
+     * Every coupon reward this build offers now, keyed by reward id in `sort_order`, each quoted alone against
+     * the full balance: what the Rewards panel lists. Writes nothing.
+     *
+     * @return array<int, array{reward: Reward, quote: Result}>
+     */
+    public function reward_options( \WC_Cart $cart, ?int $user_id ): array {
+        $options = [];
+        $ctx     = null;
+
+        foreach ( $this->rewards->live_of_types( [ RewardType::FIXED_COUPON, RewardType::PERCENT_COUPON ], Dates::now() ) as $reward ) {
+            if ( ! $this->is_reward_offered( $reward ) ) {
+                continue;
+            }
+
+            $ctx = $ctx ?? $this->contexts->from_cart( $cart, $user_id, null );
+
+            $options[ (int) $reward->get_id() ] = [
+                'reward' => $reward,
+                'quote'  => $this->quoter->quote( $reward, $ctx ),
+            ];
+        }
+
+        return $options;
+    }
+
+    /** The reward a `yayloyalty-reward-{id}` code names, read once per request; null for any other code or a missing row. */
+    public function reward_for_code( string $code ): ?Reward {
+        $reward_id = CouponProvider::reward_id_of( $code );
+
+        return null === $reward_id ? null : $this->find_reward( $reward_id );
+    }
+
+    /**
+     * The `woocommerce_get_shop_coupon_data` array for the reward's virtual coupon, capped against $cart when
+     * given. Null when no handler spends its type as a coupon.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function coupon_data_for( Reward $reward, ?\WC_Cart $cart ): ?array {
+        $props = $this->coupon_props_of( $reward );
+
+        if ( null === $props ) {
+            return null;
+        }
+
+        return RewardCoupons::data( null === $cart ? $props : RewardCoupons::capped( (int) $reward->get_id(), $props, $cart ) );
+    }
+
+    /** Whether the card may offer the reward: live now, not the slider's, and spent as a coupon by a registered handler. */
+    public function is_reward_offered( Reward $reward ): bool {
+        return RewardType::FLEXIBLE_DISCOUNT !== $reward->get_type()
+            && $reward->is_live_at( Dates::now() )
+            && null !== $this->coupon_props_of( $reward );
+    }
+
+    /**
      * Checkout-submission affordability, before totals freeze. Precondition:
      * called from the adapter's validation hook with the live cart.
-     * Postconditions: null when the intent is 0, and null when the quote
+     * Postconditions: null when nothing is asked, and null when the quote
      * applies any points, even fewer than asked: the cart already shows the
      * clamped discount. Otherwise a message key for message_for(): the
      * quote's reason when it is denied, or its bound_by when it applies
-     * nothing. Writes nothing.
+     * nothing. For picked rewards, rewards_error(). Writes nothing.
      */
     public function checkout_error( \WC_Cart $cart, ?int $user_id ): ?string {
         if ( 0 === $this->intent->get() ) {
-            return null;
+            return [] === $this->intent->rewards() ? null : $this->rewards_error( $cart, $user_id );
         }
 
         $quote = $this->quote( $cart, $user_id );
@@ -186,6 +308,26 @@ final class RedemptionService {
         }
 
         return '' !== $quote->get_bound_by() ? $quote->get_bound_by() : Clamp::BOUND_REWARD_MIN;
+    }
+
+    /**
+     * Picked rewards at checkout: REASON_REWARD_UNAVAILABLE when one is missing, denied for anything but the
+     * balance, or worth nothing here; else REASON_REWARDS_BALANCE when the balance cannot cover one; else null.
+     */
+    private function rewards_error( \WC_Cart $cart, ?int $user_id ): ?string {
+        $is_short = false;
+
+        foreach ( $this->quote_rewards( $cart, $user_id ) as $row ) {
+            $quote = $row['quote'];
+
+            if ( Result::REASON_INSUFFICIENT_BALANCE === $quote->get_reason() ) {
+                $is_short = true;
+            } elseif ( null === $row['reward'] || ! $quote->is_allowed() || $quote->get_value() <= 0 ) {
+                return self::REASON_REWARD_UNAVAILABLE;
+            }
+        }
+
+        return $is_short ? self::REASON_REWARDS_BALANCE : null;
     }
 
     /** The shopper-facing sentence for a denial reason or a clamp bound, with the merchant's points label. */
@@ -229,6 +371,32 @@ final class RedemptionService {
             case Clamp::BOUND_STEP:
                 /* translators: %s: the store's points label, as "Points". */
                 return sprintf( __( '%s are spent in fixed steps, so the amount was rounded down.', 'yayloyalty' ), $label );
+
+            case self::REASON_REWARDS_BALANCE:
+                /* translators: %s: the store's points label, as "Points". */
+                return sprintf( __( 'You do not have enough %s for these rewards. Remove one and try again.', 'yayloyalty' ), $label );
+
+            case self::REASON_REWARD_UNAVAILABLE:
+                return __( 'One of your rewards can no longer be used on this order. Review your rewards and try again.', 'yayloyalty' );
+
+            case self::NOTICE_EXCLUSIVE_SLIDER:
+                /* translators: %s: the store's points label, as "Points". */
+                return sprintf( __( 'Remove your rewards to use a %s discount.', 'yayloyalty' ), $label );
+
+            case self::NOTICE_EXCLUSIVE_REWARDS:
+                /* translators: %s: the store's points label, as "Points". */
+                return sprintf( __( 'Remove your %s discount to use rewards.', 'yayloyalty' ), $label );
+
+            case RewardCoupons::REASON_MIN_ORDER:
+                // The caller fills in the amount still missing.
+                /* translators: %s: money amount, as "$5". */
+                return __( 'Add %s more to use this', 'yayloyalty' );
+
+            case RewardCoupons::REASON_SALE_ITEMS:
+                return __( 'Items on sale don\'t qualify', 'yayloyalty' );
+
+            case RewardCoupons::REASON_NO_VALUE:
+                return __( 'Nothing in your cart qualifies', 'yayloyalty' );
         }
 
         return __( 'Your points discount could not be applied. Review your order and try again.', 'yayloyalty' );
@@ -237,7 +405,9 @@ final class RedemptionService {
     /**
      * ZONE 2. Once per order, from the order-processed hook of either
      * adapter. Re-quotes from the order (never from the session) and
-     * commits through CommitWriter in one transaction.
+     * commits through CommitWriter in one transaction: the slider's line
+     * through commit(), reward lines through commit_rewards(). An order
+     * carrying both kinds is skipped with REASON_REWARD_UNAVAILABLE.
      *
      * Postconditions, exactly one of:
      * - The order has no coupon line of ours: Outcome::skipped( REASON_NO_INTENT ), nothing else happens.
@@ -245,20 +415,37 @@ final class RedemptionService {
      *   `_yayloyalty_redeem_value`, and `yayloyalty_points_redeemed`
      *   ( Outcome, \WC_Order ) fires after commit.
      * - Outcome::duplicate: this order was already committed.
-     * - Outcome::skipped( reason ): nothing was debited, so our coupon line
-     *   is taken off the order — it must not stay payable with a discount
-     *   and no debit — and the adapter fails the checkout.
+     * - Outcome::skipped( reason ): nothing was debited, so every loyalty
+     *   coupon line is taken off the order — it must not stay payable with
+     *   a discount and no debit — and the adapter fails the checkout.
      * The session intent is cleared in the last three.
      *
      * @throws \YayLoyalty\Database\QueryException When a write other than a duplicate fails (rolled back).
      */
     public function commit( \WC_Order $order ): Outcome {
-        if ( ! in_array( CouponProvider::CODE, $order->get_coupon_codes(), true ) ) {
+        $codes        = array_map( 'strval', $order->get_coupon_codes() );
+        $has_slider   = in_array( CouponProvider::CODE, $codes, true );
+        $reward_codes = array_values(
+            array_filter(
+                $codes,
+                static function ( string $code ): bool {
+                    return null !== CouponProvider::reward_id_of( $code );
+                }
+            )
+        );
+
+        if ( ! $has_slider && [] === $reward_codes ) {
             return Outcome::skipped( self::REASON_NO_INTENT );
         }
 
-        $reward  = $this->flexible_reward();
-        $outcome = null === $reward ? Outcome::skipped( self::REASON_NO_REWARD ) : $this->writer->commit( $order, $reward );
+        if ( $has_slider && [] !== $reward_codes ) {
+            $outcome = Outcome::skipped( self::REASON_REWARD_UNAVAILABLE );
+        } elseif ( $has_slider ) {
+            $reward  = $this->flexible_reward();
+            $outcome = null === $reward ? Outcome::skipped( self::REASON_NO_REWARD ) : $this->writer->commit( $order, $reward );
+        } else {
+            $outcome = $this->writer->commit_rewards( $order, $this->offered_rewards_of( $reward_codes ) );
+        }
 
         $this->intent->clear();
 
@@ -277,10 +464,31 @@ final class RedemptionService {
         }
 
         if ( Outcome::SKIPPED === $outcome->get_status() ) {
-            $order->remove_coupon( CouponProvider::CODE );
+            foreach ( $codes as $code ) {
+                if ( EarnContext::is_loyalty_code( $code ) ) {
+                    $order->remove_coupon( $code );
+                }
+            }
         }
 
         return $outcome;
+    }
+
+    /**
+     * Each reward code mapped to its reward, or to null when the reward is missing or no longer offered.
+     *
+     * @param string[] $codes
+     * @return array<string, Reward|null>
+     */
+    private function offered_rewards_of( array $codes ): array {
+        $rewards = [];
+
+        foreach ( $codes as $code ) {
+            $reward           = $this->reward_for_code( $code );
+            $rewards[ $code ] = null !== $reward && $this->is_reward_offered( $reward ) ? $reward : null;
+        }
+
+        return $rewards;
     }
 
     /**
@@ -302,5 +510,19 @@ final class RedemptionService {
      */
     private function flexible_reward(): ?Reward {
         return $this->rewards->find_by_slug( RewardRepository::CART_DISCOUNT_SLUG );
+    }
+
+    /** The reward by id, read once per request. */
+    private function find_reward( int $reward_id ): ?Reward {
+        if ( ! array_key_exists( $reward_id, $this->reward_cache ) ) {
+            $this->reward_cache[ $reward_id ] = $this->rewards->find_reward( $reward_id );
+        }
+
+        return $this->reward_cache[ $reward_id ];
+    }
+
+    /** The coupon the reward's handler describes; null for the slider's type, or a type with no handler (Lite). */
+    private function coupon_props_of( Reward $reward ): ?array {
+        return $this->registry->has( $reward->get_type() ) ? $this->registry->get( $reward->get_type() )->coupon_props( $reward ) : null;
     }
 }
