@@ -1,0 +1,52 @@
+import { Controller, useFormContext, useWatch } from 'react-hook-form';
+import { Link } from 'react-router';
+import { __ } from '@wordpress/i18n';
+
+import { Card, CardContent } from '@/components/ui/card';
+import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
+import { ExpirySettingsFormValues } from './expiry-settings.form';
+
+/** "Remind before expiry": how many days ahead the Points expiring soon email goes out, in both expiry modes. */
+export function ExpiryReminderRow() {
+  const { control } = useFormContext<ExpirySettingsFormValues>();
+  const isEnabled = useWatch({ control, name: 'expiry.enabled' });
+
+  return (
+    <Card className="gap-3">
+      <CardContent>
+        <Controller
+          control={control}
+          name="expiry.reminder_days"
+          render={({ field, fieldState }) => (
+            <div className="flex flex-col gap-2">
+              <div className="flex flex-wrap items-center gap-3">
+                <label htmlFor="expiry-reminder-days" className="text-sm font-medium">
+                  {__('Remind before expiry', 'yayloyalty')}
+                </label>
+                <NumberInputRoot
+                  size="small"
+                  className="w-32"
+                  min={1}
+                  max={365}
+                  disabled={!isEnabled}
+                  value={field.value}
+                  onValueChange={field.onChange}
+                >
+                  <NumberInputInput id="expiry-reminder-days" aria-invalid={!!fieldState.error} />
+                  <NumberInputUnit unit={__('days', 'yayloyalty')} />
+                </NumberInputRoot>
+                <span className="text-muted-foreground text-sm">
+                  {__('sends the “Points expiring soon” email ·', 'yayloyalty')}{' '}
+                  <Link to="/settings/emails" className="text-primary underline">
+                    {__('Emails', 'yayloyalty')}
+                  </Link>
+                </span>
+              </div>
+              {fieldState.error?.message && <p className="text-destructive text-sm">{fieldState.error.message}</p>}
+            </div>
+          )}
+        />
+      </CardContent>
+    </Card>
+  );
+}

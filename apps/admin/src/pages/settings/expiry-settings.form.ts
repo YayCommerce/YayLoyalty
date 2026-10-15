@@ -1,12 +1,26 @@
 import { z } from 'zod';
-import { _n, sprintf } from '@wordpress/i18n';
+import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { parseWPDate } from '@/lib/helpers/format.helper';
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { Settings, settingsSchema, SettingsUpdate } from '@/lib/schema/settings.schema';
 
-/** The Expiry tab's one form: the whole `expiry` group, Pro's mode and batch fields included. */
-export const expirySettingsFormSchema = settingsSchema.pick({ expiry: true });
+/**
+ * The Expiry tab's one form: the whole `expiry` group, Pro's mode and batch fields included. The reminder
+ * must go out fewer days ahead than the window, as SettingsHelper::is_valid() and ExpiryPolicy::window_days() rule.
+ */
+export const expirySettingsFormSchema = settingsSchema.pick({ expiry: true }).superRefine(({ expiry }, ctx) => {
+  // Lite runs a stored batch mode as inactivity; a month counts as 28 days.
+  const windowDays = IS_PRO_BUILD && expiry.mode === 'batch' ? expiry.batch_months * 28 : expiry.inactivity_days;
+
+  if (expiry.reminder_days >= windowDays) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['expiry', 'reminder_days'],
+      message: __('Send the reminder fewer days ahead than the expiry window.', 'yayloyalty'),
+    });
+  }
+});
 
 export type ExpirySettingsFormValues = z.infer<typeof expirySettingsFormSchema>;
 

@@ -24,6 +24,8 @@ export const settingsSchema = z.object({
     spend_order: z.enum(['oldest', 'newest']),
     /** What shortening the window does to stored dates; picked in the save's confirmation. */
     on_shorten: z.enum(['keep', 'apply']),
+    /** Days before expiry the Points expiring soon email goes out. Max mirrors SettingsHelper::REMINDER_DAYS_MAX. */
+    reminder_days: z.number().int().min(1).max(365),
   }),
   /** Stamped by SettingsHelper on save; PHP reports SCHEMA_VERSION when the stored blob predates versioning. */
   schema_version: z.number().int().optional(),

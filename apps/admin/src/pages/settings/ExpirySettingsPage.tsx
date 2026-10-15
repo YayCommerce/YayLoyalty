@@ -23,6 +23,7 @@ import {
   needsConfirmation,
 } from './expiry-settings.form';
 import { ExpiryInactivityCard } from './ExpiryInactivityCard';
+import { ExpiryReminderRow } from './ExpiryReminderRow';
 import { ExpiryShortenChoice } from './ExpiryShortenChoice';
 
 type Confirmation = NonNullable<ReturnType<typeof needsConfirmation>>;
@@ -137,6 +138,7 @@ export default function ExpirySettingsPage() {
       <form onSubmit={handleSave} className="flex flex-col gap-4">
         {IS_PRO_BUILD && <ExpiryModeSection />}
         {IS_PRO_BUILD && mode === 'batch' ? <BatchExpirySection /> : <ExpiryInactivityCard />}
+        <ExpiryReminderRow />
         {!IS_PRO_BUILD && <ExpiryMoreInProCard />}
 
         <div className="flex items-center justify-end gap-2">

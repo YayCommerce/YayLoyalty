@@ -83,6 +83,21 @@ final class ExpiryPolicy {
         return max( 1, (int) $this->settings['batch_months'] );
     }
 
+    /** Days before expiry the Points expiring soon email goes out. */
+    public function reminder_days(): int {
+        return max( 1, (int) ( $this->settings['reminder_days'] ?? 30 ) );
+    }
+
+    /** The window the effective mode runs on, in days: a month counts as its shortest, 28 days. */
+    public function window_days(): int {
+        return ExpiryMode::BATCH === $this->mode() ? $this->batch_months() * 28 : $this->inactivity_days();
+    }
+
+    /** Whether the stored customer and lot dates were computed from these settings. */
+    public function is_applied(): bool {
+        return get_option( ExpiryRunner::OPTION_APPLIED ) === $this->signature();
+    }
+
     /** Whether shortening the window keeps the dates already stored, as the admin chose when saving it. */
     public function keeps_dates(): bool {
         return self::ON_SHORTEN_APPLY !== ( $this->settings['on_shorten'] ?? '' );
@@ -107,7 +122,7 @@ final class ExpiryPolicy {
      * date must have passed; in batch mode the caller asks which lots are due.
      */
     public function is_due( Customer $customer, string $now ): bool {
-        if ( ! $this->is_enabled() || get_option( ExpiryRunner::OPTION_APPLIED ) !== $this->signature() ) {
+        if ( ! $this->is_enabled() || ! $this->is_applied() ) {
             return false;
         }
 

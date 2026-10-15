@@ -29,6 +29,9 @@ class SettingsHelper {
     /** Longest expiry window, in days or months, so no date passes year 9999. The zod schema mirrors it. */
     public const EXPIRY_WINDOW_MAX = 36500;
 
+    /** Most days ahead an expiry reminder may go out. The zod schema mirrors it. */
+    public const REMINDER_DAYS_MAX = 365;
+
     /** Bump when a migration changes the stored shape. */
     public const SCHEMA_VERSION = 2;
 
@@ -53,6 +56,8 @@ class SettingsHelper {
                 'batch_months'    => 12,
                 'spend_order'     => ExpiryPolicy::SPEND_OLDEST,
                 'on_shorten'      => ExpiryPolicy::ON_SHORTEN_KEEP,
+                // Days before expiry the Points expiring soon email goes out. Engine\Expiry\ExpiryReminders sends it.
+                'reminder_days'   => 30,
             ],
         ];
     }
@@ -79,6 +84,7 @@ class SettingsHelper {
                 'batch_months'    => 'expiry_window',
                 'spend_order'     => 'spend_order',
                 'on_shorten'      => 'on_shorten',
+                'reminder_days'   => 'reminder_days',
             ],
         ];
     }
@@ -188,9 +194,11 @@ class SettingsHelper {
 
     /**
      * Whether every `limit` field in $input is null or a whole number from 1, every `expiry_window` is a
-     * whole number from 1 to EXPIRY_WINDOW_MAX, and every mode, spend order and on_shorten choice is known. The controllers answer 400 on
+     * whole number from 1 to EXPIRY_WINDOW_MAX, every `reminder_days` a whole number from 1 to REMINDER_DAYS_MAX,
+     * and every mode, spend order and on_shorten choice is known. The controllers answer 400 on
      * false; coerce() alone would read a 0 or a fraction as "no limit" without saying so. Batch expiry
-     * is one-way: once batch is stored, switching back to inactivity is refused.
+     * is one-way: once batch is stored, switching back to inactivity is refused. The reminder must go
+     * out fewer days ahead than the window the saved expiry settings run on.
      *
      * @param array<string, mixed> $input
      */
@@ -203,7 +211,17 @@ class SettingsHelper {
             return false;
         }
 
-        return self::fields_valid( $input, self::schema() );
+        if ( ! self::fields_valid( $input, self::schema() ) ) {
+            return false;
+        }
+
+        if ( ! is_array( $input['expiry'] ?? null ) ) {
+            return true;
+        }
+
+        $policy = new ExpiryPolicy( array_merge( self::get_settings()['expiry'], $input['expiry'] ) );
+
+        return $policy->reminder_days() < $policy->window_days();
     }
 
     /**
@@ -236,6 +254,9 @@ class SettingsHelper {
 
             case 'expiry_window':
                 return ConfigSpec::is_limit( $value ) && (float) $value <= self::EXPIRY_WINDOW_MAX;
+
+            case 'reminder_days':
+                return ConfigSpec::is_limit( $value ) && (float) $value <= self::REMINDER_DAYS_MAX;
 
             case 'expiry_mode':
                 return ExpiryMode::is_known( $value );
@@ -321,6 +342,7 @@ class SettingsHelper {
                 return ConfigSpec::is_limit( $value ) ? (int) $value : null;
 
             case 'expiry_window':
+            case 'reminder_days':
                 return self::is_valid_value( $value, $type ) ? (int) $value : null;
 
             case 'expiry_mode':
