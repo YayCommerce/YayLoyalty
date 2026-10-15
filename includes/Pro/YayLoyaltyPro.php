@@ -3,6 +3,7 @@ namespace YayLoyalty\Pro;
 
 use YayLoyalty\Engine\Earning\EarningService;
 use YayLoyalty\Engine\Points\PointsEngine;
+use YayLoyalty\Engine\Rewards\Handlers\Registry;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Enums\RewardType;
 use YayLoyalty\Pro\Controllers\CampaignPerformanceRestController;
@@ -17,6 +18,7 @@ use YayLoyalty\Pro\Repositories\CampaignPointsRepository;
 use YayLoyalty\Pro\Repositories\StoreLedgerRepository;
 use YayLoyalty\Pro\Services\ConditionsEvaluator;
 use YayLoyalty\Pro\Services\DailyEarningLimit;
+use YayLoyalty\Pro\Services\DiscountRewardHandler;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Repositories\DashboardRepository;
@@ -73,6 +75,7 @@ final class YayLoyaltyPro {
         add_filter( 'yayloyalty_campaign_config_whitelist', [ self::class, 'add_config_keys' ] );
         add_filter( 'yayloyalty_reward_types', [ self::class, 'add_reward_types' ] );
         add_filter( 'yayloyalty_reward_config_schema', [ self::class, 'add_reward_config_schema' ] );
+        add_action( 'yayloyalty_register_reward_handlers', [ self::class, 'register_reward_handlers' ] );
         add_filter( PointsEngine::CONDITIONS_EVALUATOR_FILTER, [ self::class, 'conditions_evaluator' ] );
         add_filter( 'yayloyalty_rest_controllers', [ self::class, 'add_controllers' ] );
         add_filter( 'yayloyalty_rest_item_schema', [ self::class, 'describe_pro_config' ], 10, 2 );
@@ -144,6 +147,12 @@ final class YayLoyaltyPro {
      */
     public static function add_reward_types( array $types ): array {
         return array_values( array_unique( array_merge( $types, self::ADDED_REWARD_TYPES ) ) );
+    }
+
+    /** The handlers that spend `fixed_coupon` and `percent_coupon` rewards as virtual coupons on the cart. */
+    public static function register_reward_handlers( Registry $registry ): void {
+        $registry->register( new DiscountRewardHandler( RewardType::FIXED_COUPON ) );
+        $registry->register( new DiscountRewardHandler( RewardType::PERCENT_COUPON ) );
     }
 
     /**

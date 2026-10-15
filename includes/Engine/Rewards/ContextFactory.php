@@ -28,7 +28,8 @@ final class ContextFactory {
      * `balance` (0 for a guest or a missing row); cart_subtotal = the items'
      * total minus what every other applied coupon takes, computed here and
      * never read from the cart's stored totals, which are stale while
-     * WooCommerce is loading coupons; currency = the store's; at = Dates::now().
+     * WooCommerce is loading coupons; currency = the store's; at = Dates::now();
+     * the cart itself, for a handler that dry-runs a coupon on it.
      */
     public function from_cart( \WC_Cart $cart, ?int $user_id, ?int $points_requested ): Context {
         $customer = null === $user_id ? null : $this->customers->find_by_user_id( $user_id );
@@ -41,7 +42,8 @@ final class ContextFactory {
             get_woocommerce_currency(),
             Dates::now(),
             // TODO(redemption): pass customer facts when the Pro conditions gate lands.
-            null
+            null,
+            $cart
         );
     }
 
@@ -56,7 +58,60 @@ final class ContextFactory {
      * at = Dates::now().
      */
     public function from_order( \WC_Order $order, Reward $reward, int $balance ): Context {
-        $user_id      = (int) $order->get_customer_id();
+        $user_id = (int) $order->get_customer_id();
+        $ours    = $this->points_discount_of( $order );
+
+        return new Context(
+            $user_id > 0 ? $user_id : null,
+            $balance,
+            Clamp::points_for( $ours, $reward ),
+            max( 0.0, $this->items_subtotal( $order ) - ( $this->coupon_discounts_of( $order ) - $ours ) ),
+            $order->get_currency(),
+            Dates::now(),
+            null
+        );
+    }
+
+    /**
+     * The commit-time Context for one reward coupon line of the order.
+     * Preconditions as for from_order(). Postconditions: points_requested
+     * null (the cost is fixed); cart_subtotal = the line items' subtotal minus
+     * every coupon line that is not a loyalty one; no cart, so the handler
+     * answers the cost and the commit checks the line's own discount.
+     */
+    public function from_order_line( \WC_Order $order, Reward $reward, int $balance ): Context {
+        $user_id = (int) $order->get_customer_id();
+        $loyalty = 0.0;
+
+        foreach ( $order->get_coupon_codes() as $code ) {
+            if ( EarnContext::is_loyalty_code( (string) $code ) ) {
+                $loyalty += $this->line_discount_of( $order, (string) $code );
+            }
+        }
+
+        return new Context(
+            $user_id > 0 ? $user_id : null,
+            $balance,
+            null,
+            max( 0.0, $this->items_subtotal( $order ) - ( $this->coupon_discounts_of( $order ) - $loyalty ) ),
+            $order->get_currency(),
+            Dates::now(),
+            null
+        );
+    }
+
+    /** What our slider coupon line takes off the order: line_discount_of() its code. 0 without the line. */
+    public function points_discount_of( \WC_Order $order ): float {
+        return $this->line_discount_of( $order, EarnContext::REDEEM_COUPON_CODE );
+    }
+
+    /** What one coupon code's lines take off the order, on the basis prices were entered: discount tax included when they include tax. 0 without the line. */
+    public function line_discount_of( \WC_Order $order, string $code ): float {
+        return $this->coupon_discounts_of( $order, $code );
+    }
+
+    /** The line items' subtotal before any coupon, on the basis prices were entered. */
+    private function items_subtotal( \WC_Order $order ): float {
         $includes_tax = (bool) $order->get_prices_include_tax();
         $subtotal     = 0.0;
 
@@ -66,22 +121,7 @@ final class ContextFactory {
             }
         }
 
-        $ours = $this->points_discount_of( $order );
-
-        return new Context(
-            $user_id > 0 ? $user_id : null,
-            $balance,
-            Clamp::points_for( $ours, $reward ),
-            max( 0.0, $subtotal - ( $this->coupon_discounts_of( $order ) - $ours ) ),
-            $order->get_currency(),
-            Dates::now(),
-            null
-        );
-    }
-
-    /** What our coupon line takes off the order, on the basis prices were entered: discount tax included when they include tax. 0 without the line. */
-    public function points_discount_of( \WC_Order $order ): float {
-        return $this->coupon_discounts_of( $order, EarnContext::REDEEM_COUPON_CODE );
+        return $subtotal;
     }
 
     /** The order's coupon lines summed on the basis prices were entered; one code's lines when $code is given. */
@@ -127,7 +167,7 @@ final class ContextFactory {
 
         $discounts = new \WC_Discounts( $cart );
 
-        foreach ( $this->in_cart_order( $coupons ) as $coupon ) {
+        foreach ( self::in_cart_order( $coupons ) as $coupon ) {
             $discounts->apply_coupon( $coupon );
         }
 
@@ -136,12 +176,13 @@ final class ContextFactory {
 
     /**
      * The order WC_Cart_Totals::get_coupons_from_cart() applies coupons in,
-     * which decides what a percentage coupon is a percentage of.
+     * which decides what a percentage coupon is a percentage of. Also
+     * RewardCoupons::probe()'s order for the merchant coupons.
      *
      * @param \WC_Coupon[] $coupons
      * @return \WC_Coupon[]
      */
-    private function in_cart_order( array $coupons ): array {
+    public static function in_cart_order( array $coupons ): array {
         $weights = [
             'fixed_product' => 1,
             'percent'       => 2,

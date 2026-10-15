@@ -29,4 +29,9 @@ final class FlexibleDiscountHandler implements RewardHandler {
     public function quote( Reward $reward, Context $ctx ): Result {
         return Clamp::apply( $reward, (int) $ctx->get_points_requested(), $ctx->get_balance(), $ctx->get_cart_subtotal(), $ctx->get_currency(), wc_get_price_decimals() );
     }
+
+    /** The slider's discount is the `yayloyalty-redeem` coupon CouponProvider builds from the quote, not a reward coupon. */
+    public function coupon_props( Reward $reward ): ?array {
+        return null;
+    }
 }
