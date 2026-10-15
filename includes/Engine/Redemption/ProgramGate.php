@@ -23,6 +23,15 @@ final class ProgramGate implements Gate {
     public const REASON_EXCLUDED_ROLE    = EarnProgramGate::REASON_EXCLUDED_ROLE;
     public const REASON_COUPONS_DISABLED = 'coupons_disabled';
 
+    /** Every reason above: a denial that refuses the shopper, whatever the reward. */
+    public const REASONS = [
+        self::REASON_NO_CUSTOMER,
+        self::REASON_PROGRAM_PAUSED,
+        self::REASON_OPTED_OUT,
+        self::REASON_EXCLUDED_ROLE,
+        self::REASON_COUPONS_DISABLED,
+    ];
+
     public function check( Reward $reward, Context $ctx ): ?string { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- the rules apply to every reward.
         $user_id = $ctx->get_user_id();
 

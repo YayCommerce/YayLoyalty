@@ -2,6 +2,7 @@
 namespace YayLoyalty\Pro\Services;
 
 use YayLoyalty\Engine\Redemption\RewardCoupons;
+use YayLoyalty\Engine\Rewards\Clamp;
 use YayLoyalty\Engine\Rewards\Context;
 use YayLoyalty\Engine\Rewards\Handlers\RewardHandler;
 use YayLoyalty\Engine\Rewards\Result;
@@ -49,9 +50,11 @@ final class DiscountRewardHandler implements RewardHandler {
             return Result::denied( $probe['reason'] );
         }
 
-        $value = null === $props['max_discount'] ? $probe['value'] : min( $probe['value'], $props['max_discount'] );
+        // The cap lowers the dry run's value, and says so, so the card can tell the shopper.
+        $is_capped = null !== $props['max_discount'] && $probe['value'] > $props['max_discount'];
+        $value     = $is_capped ? (float) $props['max_discount'] : $probe['value'];
 
-        return Result::allowed( $reward, $cost, $cost, $value, $ctx->get_currency(), 0.0 );
+        return Result::allowed( $reward, $cost, $cost, $value, $ctx->get_currency(), 0.0, $is_capped ? Clamp::BOUND_REWARD_MAX : Clamp::BOUND_NONE );
     }
 
     /**

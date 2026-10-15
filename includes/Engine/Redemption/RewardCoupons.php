@@ -138,7 +138,7 @@ final class RewardCoupons {
      * The subtotal WooCommerce checks a minimum spend against (WC_Cart::get_displayed_subtotal()), rebuilt from
      * the items, since the stored one is reset while totals are calculated.
      */
-    private static function displayed_subtotal( \WC_Cart $cart ): float {
+    public static function displayed_subtotal( \WC_Cart $cart ): float {
         $including_tax = $cart->display_prices_including_tax();
         $subtotal      = 0.0;
 
