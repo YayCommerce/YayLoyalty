@@ -18,6 +18,9 @@ abstract class LoyaltyEmail extends \WC_Email {
     /** Whether a new store sends this email. After that, the merchant's choice in WooCommerce decides. */
     protected $is_enabled_by_default = true;
 
+    /** Whether the weekly cap (EmailThrottle) can stop this email. An uncapped send still counts toward the week. */
+    protected $is_capped = true;
+
     public function __construct() {
         $template_file        = str_replace( '_', '-', $this->id ) . '.php';
         $this->template_html  = 'emails/' . $template_file;
@@ -95,19 +98,23 @@ abstract class LoyaltyEmail extends \WC_Email {
     }
 
     /**
-     * Sends this email to its customer, within the weekly cap (EmailThrottle).
+     * Sends this email to its customer, within the weekly cap (EmailThrottle) unless the email is uncapped.
      * Only a send the transport accepts counts against the cap.
+     *
+     * @return bool Whether the transport accepted the send.
      */
-    protected function send_to_customer( int $user_id ): void {
-        if ( ! EmailThrottle::allows( $user_id ) ) {
-            return;
+    protected function send_to_customer( int $user_id ): bool {
+        if ( $this->is_capped && ! EmailThrottle::allows( $user_id ) ) {
+            return false;
         }
 
-        $sent = $this->send( $this->get_recipient(), $this->get_subject(), $this->get_content(), $this->get_headers(), $this->get_attachments() );
+        $sent = (bool) $this->send( $this->get_recipient(), $this->get_subject(), $this->get_content(), $this->get_headers(), $this->get_attachments() );
 
         if ( $sent ) {
             EmailThrottle::record( $user_id );
         }
+
+        return $sent;
     }
 
     /** The variables every loyalty template receives, named as WooCommerce's own templates name them. */

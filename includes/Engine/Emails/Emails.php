@@ -24,6 +24,9 @@ class Emails {
     /** The email action an expiry is relayed on. Its only argument is the ledger row id. */
     public const POINTS_EXPIRED_ACTION = 'yayloyalty_points_expired_email';
 
+    /** The email action an expiry reminder is relayed on, with the claimed points, date and whether it is one date. */
+    public const POINTS_EXPIRING_SOON_ACTION = 'yayloyalty_points_expiring_soon_email';
+
     protected function __construct() {
         add_filter( 'woocommerce_email_classes', [ $this, 'add_classes' ] );
         add_filter( 'woocommerce_email_groups', [ $this, 'add_groups' ] );
@@ -43,6 +46,7 @@ class Emails {
         $actions[] = self::POINTS_EARNED_ACTION;
         $actions[] = self::POINTS_ADJUSTED_ACTION;
         $actions[] = self::POINTS_EXPIRED_ACTION;
+        $actions[] = self::POINTS_EXPIRING_SOON_ACTION;
 
         return $actions;
     }
@@ -90,6 +94,24 @@ class Emails {
          * @param int $entry_id The expire ledger row.
          */
         do_action( self::POINTS_EXPIRED_ACTION, $entry->get_id() ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name; the sniff cannot read it.
+    }
+
+    /**
+     * Passes a claimed reminder to the Points expiring soon email. Called by the expiry job for each
+     * reminder it claimed. The figures travel as scalars: the claim already marked the lots, so a
+     * deferred send could not recompute them.
+     */
+    public static function relay_expiring_soon( int $user_id, int $points, string $expires_at, bool $is_single_date ): void {
+        /**
+         * Fires once per expiry reminder the expiry job claimed. WooCommerce relays it to
+         * {action}_notification, at once or at the end of the request.
+         *
+         * @param int    $user_id        The customer to remind.
+         * @param int    $points         Points that expire.
+         * @param string $expires_at     The soonest of their expiry dates, UTC.
+         * @param bool   $is_single_date Whether all of them expire on that date.
+         */
+        do_action( self::POINTS_EXPIRING_SOON_ACTION, $user_id, $points, $expires_at, $is_single_date ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name; the sniff cannot read it.
     }
 
     /**
