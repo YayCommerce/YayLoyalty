@@ -10,15 +10,16 @@ import { PointsValue } from '@/components/ui/custom/points-value';
  */
 export function CustomerNameCell({ customer, search }: { customer: CustomerListRow; search: string }) {
   return (
-    <Link
-      to={`/customers/${customer.user_id}${search ? `?${search}` : ''}`}
-      state={{ row: customer }}
-      className="flex min-w-0 flex-col gap-0.5"
-    >
+    <Link to={customerDrawerPath(customer, search)} state={{ row: customer }} className="flex min-w-0 flex-col gap-0.5">
       <span className="truncate text-sm">{customer.name}</span>
       <span className="text-muted-foreground truncate text-xs">{customer.email}</span>
     </Link>
   );
+}
+
+/** The drawer URL for a customer, keeping the list's query string. */
+export function customerDrawerPath(customer: CustomerListRow, search: string): string {
+  return `/customers/${customer.user_id}${search ? `?${search}` : ''}`;
 }
 
 /** A negative balance gets a warning glyph, never the `destructive` red. */

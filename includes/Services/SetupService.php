@@ -83,7 +83,7 @@ final class SetupService {
         }
 
         if ( ! sanitize_hex_color( (string) ( $input['brand_color'] ?? '' ) ) ) {
-            return __( 'The brand colour must be a hex colour such as #1f6fb2.', 'yayloyalty' );
+            return __( 'The brand colour must be a hex colour such as #3858e9.', 'yayloyalty' );
         }
 
         return null;

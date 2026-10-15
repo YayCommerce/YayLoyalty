@@ -11,7 +11,7 @@ export type WizardStep = 1 | 2 | 3 | 4 | 5;
 export const WIZARD_STEP_COUNT = 5;
 
 /** Mirrors DesignSchema::get_default_design()'s `launcher.brand_color`, the source of truth. */
-export const DEFAULT_BRAND_COLOR = '#1f6fb2';
+export const DEFAULT_BRAND_COLOR = '#3858e9';
 
 /** The made-up balance the previews show; the store has no customers yet. */
 export const SAMPLE_BALANCE = 850;
