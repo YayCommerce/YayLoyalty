@@ -6,7 +6,7 @@
 **Exit criterion:** on a Lite build (`./scripts/run.sh dev lite`):
 1. Turn inactivity expiry on (365 days) and enable Points expiring soon in WooCommerce → Settings → Emails.
 2. Run `wp action-scheduler run --hooks=yayloyalty_expiry_run` once so the dates get stamped.
-3. Run `wp db query "UPDATE wp_yayloyalty_customers SET expires_at = DATE_ADD(UTC_TIMESTAMP(), INTERVAL 10 DAY), reminder_sent_at = NULL WHERE user_id = <id>"`.
+3. Run `wp db query "UPDATE wp_yayloyalty_customers SET expires_at = DATE_ADD(UTC_TIMESTAMP(), INTERVAL 10 DAY), reminder_for = NULL WHERE user_id = <id>"`.
 4. Run the job again.
 
 WP Mail Logging should show exactly one "Your Points expire soon" email to that customer, naming their balance and that date. A third run sends nothing. Their drawer activity shows the reminder. `composer test`, `composer test:integration` (including `ExpiryRemindersTest`) and `pnpm --filter @yayloyalty/admin-page exec tsc --noEmit` should all pass.
@@ -51,8 +51,8 @@ It runs after `fields_valid()` passes, and only when `$input['expiry']` is an ar
 
 - [ ] **Step 4: Verify the server rule**
 
-Run (as an admin, with the REST nonce or `wp eval`): `wp eval 'var_dump( YayLoyalty\Helpers\SettingsHelper::is_valid( [ "expiry" => [ "inactivity_days" => 30, "reminder_days" => 30 ] ] ), YayLoyalty\Helpers\SettingsHelper::is_valid( [ "expiry" => [ "reminder_days" => 400 ] ] ), YayLoyalty\Helpers\SettingsHelper::is_valid( [ "expiry" => [ "inactivity_days" => 365, "reminder_days" => 30 ] ] ) );'`
-Expected: `bool(false) bool(false) bool(true)`
+Run (as an admin, with the REST nonce or `wp eval`): `wp eval 'var_dump( YayLoyalty\Helpers\SettingsHelper::is_valid( [ "expiry" => [ "enabled" => true, "inactivity_days" => 30, "reminder_days" => 30 ] ] ), YayLoyalty\Helpers\SettingsHelper::is_valid( [ "expiry" => [ "reminder_days" => 400 ] ] ), YayLoyalty\Helpers\SettingsHelper::is_valid( [ "expiry" => [ "inactivity_days" => 365, "reminder_days" => 30 ] ] ) );'`
+Expected: `bool(false) bool(false) bool(true)`. The cross-check runs only while expiry is on, so the first case sets `enabled`.
 
 - [ ] **Step 5: Add `reminder_days` to `settingsSchema.expiry`, and add the `superRefine` to `expirySettingsFormSchema`**
 
@@ -171,13 +171,13 @@ Message: `feat(emails): build the points expiring soon email`
 - Consumes: `ExpiryPolicy::is_applied()` and `reminder_days()` (task 1); `Emails::relay_expiring_soon()` and `PointsExpiringSoonEmail::ID` (task 2); `EmailsHelper::registered_emails()`
 - Produces: see the README contract under Job and Repositories.
 
-`ExpiryReminders::run()` gate: it returns false unless `$policy->is_enabled()`, `$policy->is_applied()`, and the `PointsExpiringSoonEmail::ID` entry of `EmailsHelper::registered_emails()` exists and `is_enabled()`. Phase 1 handles the non-batch branch only; `is_batch()` returns false until phase 2. Each user gets its own try/catch → `Log::error( 'ExpiryReminders', … )`, as `ExpiryRunner::expire_due()` does. `claim_reminder()` is one `UPDATE … SET reminder_sent_at = %s WHERE user_id = %d AND <window rule>`; on `1 === $result` it reads `balance` and `expires_at`, otherwise it returns null.
+`ExpiryReminders::run()` gate: it returns false unless `$policy->is_enabled()`, `$policy->is_applied()`, and the `PointsExpiringSoonEmail::ID` entry of `EmailsHelper::registered_emails()` exists and `is_enabled()`. Phase 1 handles the non-batch branch only; `is_batch()` returns false until phase 2. Each user gets its own try/catch → `Log::error( 'ExpiryReminders', … )`, as `ExpiryRunner::expire_due()` does. It also returns false in batch mode until phase 2 task 1. `claim_reminder()` first reads `balance` and `expires_at`, then runs `UPDATE … SET reminder_sent_at = %s, reminder_for = expires_at WHERE user_id = %d AND balance = %d AND expires_at = %s AND <due rule>`, and returns the read values on `1 === $result`, otherwise null.
 
 - [ ] **Step 1: Write the failing test**
 
 The class extends `IntegrationTestCase`, uses `WooCommerceOrdersFixture`, and follows the setup and teardown of `PointsEarnedEmailTest` for the mail capture (`$this->sent`), with `PointsExpiringSoonEmail::ID` in place of `PointsEarnedEmail::ID`. Its settings are pinned to `expiry` `enabled` true, `mode` inactivity, `inactivity_days` 365, `reminder_days` 30. Helpers:
 - `customer_due_in( int $days ): int`: `create_customer( 'r@example.test' )`, earn 300, set `OPTION_APPLIED` to `ExpiryPolicy::current()->signature()`, then `set_expires_at( $user_id, Dates::offset( $days * DAY_IN_SECONDS ) )`;
-- `set_reminder_sent_at( int $user_id, ?string $at )`: a direct SQL update.
+- `set_reminder_for( int $user_id, string $expires_at )`: a direct SQL update.
 
 ```php
 public function test_inactivity_reminds_once_inside_the_window(): void {
@@ -186,9 +186,12 @@ public function test_inactivity_reminds_once_inside_the_window(): void {
     ( new ExpiryRunner() )->run();
     ( new ExpiryRunner() )->run();
 
+    $row = $this->customer_row( $user_id );
+
     $this->assertCount( 1, $this->sent );
     $this->assertStringContainsString( '300 Points', $this->sent[0]['message'] );
-    $this->assertNotNull( $this->customer_row( $user_id )['reminder_sent_at'] );
+    $this->assertNotNull( $row['reminder_sent_at'] );
+    $this->assertSame( $row['expires_at'], $row['reminder_for'], 'The claim records which date it announced.' );
 }
 
 public function test_a_date_outside_the_window_is_not_reminded(): void {
@@ -201,18 +204,18 @@ public function test_a_date_outside_the_window_is_not_reminded(): void {
 
 public function test_a_reminder_for_an_earlier_date_allows_one_more(): void {
     $user_id = $this->customer_due_in( 10 );
-    // Sent 40 days ago: before this date's window opened (now + 10 − 30 = 20 days ago).
-    $this->set_reminder_sent_at( $user_id, Dates::offset( -40 * DAY_IN_SECONDS ) );
+    // The last reminder announced a date that activity has since moved.
+    $this->set_reminder_for( $user_id, Dates::offset( -355 * DAY_IN_SECONDS ) );
 
     ( new ExpiryRunner() )->run();
 
     $this->assertCount( 1, $this->sent );
 }
 
-public function test_a_reminder_inside_this_window_blocks_another(): void {
+public function test_a_date_already_announced_is_not_announced_again(): void {
     $user_id = $this->customer_due_in( 10 );
-    // Sent 15 days ago: inside this date's window, which opened 20 days ago.
-    $this->set_reminder_sent_at( $user_id, Dates::offset( -15 * DAY_IN_SECONDS ) );
+    // Announced already, however far ahead: lowering reminder_days must not re-announce it.
+    $this->set_reminder_for( $user_id, (string) $this->customer_row( $user_id )['expires_at'] );
 
     ( new ExpiryRunner() )->run();
 
@@ -255,8 +258,8 @@ Expected: both pass. `ExpiryShortenTest` and `ExpiryEdgeCasesTest`, if present, 
 
 - [ ] **Step 7: Verify a kept date isn't reminded twice**
 
-Action: on a dev site, take a customer who was reminded (`reminder_sent_at` set) and whose `expires_at` was kept by a shorten-with-keep. Earn points for them, then run the job.
-Expected: `reminder_sent_at` is unchanged after the earn, and no second email arrives.
+Action: on a dev site, take a customer who was reminded (`reminder_for` set) and whose `expires_at` was kept by a shorten-with-keep. Earn points for them, then run the job.
+Expected: `reminder_sent_at` and `reminder_for` are unchanged after the earn, and no second email arrives.
 
 - [ ] **Step 8: Verify the phase exit criterion** (top of this file)
 
