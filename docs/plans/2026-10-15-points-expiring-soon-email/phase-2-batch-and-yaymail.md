@@ -31,7 +31,7 @@
 - Consumes: the `ExpiryReminders` step (phase 1 task 3)
 - Produces: see the README contract under Schema and Repositories.
 
-`claim_reminder_lots()` runs `UPDATE … SET reminded_at = %s WHERE user_id = %d AND <lot due rule>`, where the lot due rule is `status = 'open' AND reminded_at IS NULL AND expires_at > %s AND expires_at <= %s` and comes from one shared fragment, as `CustomerRepository::reminder_due_sql()` does. On more than 0 affected rows it reads `SUM(remaining)`, `MIN(expires_at)` and `COUNT(DISTINCT DATE(expires_at))` of the user's open lots with `reminded_at = $now`. Otherwise it returns null: a racing run that got 0 rows sends nothing.
+`claim_reminder_lots()` runs `UPDATE … SET reminded_at = %s WHERE user_id = %d AND <lot due rule>`, where the lot due rule is `status = 'open' AND reminded_at IS NULL AND expires_at > %s AND expires_at <= %s` and comes from one shared fragment, as `CustomerRepository::reminder_due_sql()` does. Changed in implementation: it first reads the due lots (`id`, `remaining`, `expires_at`), then stamps exactly those ids `WHERE reminded_at IS NULL`, and sums what it read. Reading back by `reminded_at = $now` also caught lots another claim had stamped in the same second. When it stamps fewer rows than it read, a racing run got there first, and it returns null.
 
 `restamp_open_expiry()` builds its new-date expression once and uses it twice: `SET reminded_at = IF( <expr> <=> expires_at, reminded_at, NULL ), expires_at = <expr>`. `reminded_at` comes first, because MySQL assigns left to right.
 

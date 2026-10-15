@@ -22,6 +22,9 @@ final class ExpiryRemindersTest extends IntegrationTestCase {
     /** @var array<int, array<string, mixed>> wp_mail() arguments, in send order. */
     private $sent = [];
 
+    /** @var string The pinned `expiry.mode`. */
+    private $mode = ExpiryMode::INACTIVITY;
+
     protected function setUp(): void {
         parent::setUp();
 
@@ -38,6 +41,7 @@ final class ExpiryRemindersTest extends IntegrationTestCase {
         remove_filter( 'pre_wp_mail', [ $this, 'capture_mail' ], 10 );
         remove_filter( 'pre_option_' . SettingsHelper::OPTION_SETTINGS, [ $this, 'pinned_settings' ] );
         remove_filter( 'woocommerce_email_enabled_' . PointsExpiringSoonEmail::ID, '__return_false' );
+        remove_filter( 'yayloyalty_expiry_modes', [ $this, 'add_batch_mode' ] );
         delete_option( ExpiryRunner::OPTION_APPLIED );
 
         // cleanup_orders() removes the fixture's short-circuit, which setUp() already took off.
@@ -68,8 +72,9 @@ final class ExpiryRemindersTest extends IntegrationTestCase {
             'emails'                => [ 'throttle_per_week' => null ],
             'expiry'                => [
                 'enabled'         => true,
-                'mode'            => ExpiryMode::INACTIVITY,
+                'mode'            => $this->mode,
                 'inactivity_days' => 365,
+                'batch_months'    => 12,
                 'reminder_days'   => 30,
             ],
         ];
@@ -129,6 +134,92 @@ final class ExpiryRemindersTest extends IntegrationTestCase {
         ( new ExpiryReminders( new CustomerRepository(), new LotRepository() ) )->run( ExpiryPolicy::current(), Dates::now() );
         $this->assertNull( $this->customer_row( $user_id )['reminder_sent_at'] );
         $this->assertCount( 0, $this->sent );
+    }
+
+    /**
+     * Lets this build run batch expiry, as Pro does.
+     *
+     * @param string[] $modes
+     * @return string[]
+     */
+    public function add_batch_mode( array $modes ): array {
+        return array_merge( $modes, [ ExpiryMode::BATCH ] );
+    }
+
+    public function test_batch_reminds_due_lots_once_with_their_sum_and_first_date(): void {
+        $lots = $this->customer_with_lots( [ 5, 20, 200 ] );
+
+        ( new ExpiryRunner() )->run();
+        ( new ExpiryRunner() )->run();
+
+        $this->assertCount( 1, $this->sent );
+        $this->assertStringContainsString( '200 Points', (string) $this->sent[0]['message'] );
+        $this->assertStringContainsString( 'will expire, starting', (string) $this->sent[0]['message'] );
+        $this->assertNotNull( $this->lot_row( $lots[0] )['reminded_at'] );
+        $this->assertNotNull( $this->lot_row( $lots[1] )['reminded_at'] );
+        $this->assertNull( $this->lot_row( $lots[2] )['reminded_at'] );
+    }
+
+    public function test_a_lot_entering_the_window_later_gets_its_own_reminder(): void {
+        $lots = $this->customer_with_lots( [ 5, 200 ] );
+        ( new ExpiryRunner() )->run();
+
+        $this->set_lot_expires_at( $lots[1], Dates::offset( 25 * DAY_IN_SECONDS ) );
+        ( new ExpiryRunner() )->run();
+
+        $this->assertCount( 2, $this->sent );
+        $this->assertStringContainsString( '100 Points', (string) $this->sent[1]['message'] );
+        $this->assertStringContainsString( 'will expire on', (string) $this->sent[1]['message'] );
+    }
+
+    public function test_a_restamp_that_moves_a_lot_clears_its_reminder(): void {
+        $lots = $this->customer_with_lots( [ 5 ] );
+        ( new ExpiryRunner() )->run();
+        $this->assertNotNull( $this->lot_row( $lots[0] )['reminded_at'] );
+
+        ( new LotRepository() )->restamp_open_expiry( 12, ExpiryPolicy::grace_floor( Dates::now() ), false );
+
+        $this->assertNull( $this->lot_row( $lots[0] )['reminded_at'] );
+    }
+
+    /**
+     * A batch-mode customer with one 100-point lot per entry, each lot expiring that many days from now.
+     *
+     * @param int[] $days_ahead
+     * @return int[] The lot ids, in the same order.
+     */
+    private function customer_with_lots( array $days_ahead ): array {
+        global $wpdb;
+
+        $this->mode = ExpiryMode::BATCH;
+        add_filter( 'yayloyalty_expiry_modes', [ $this, 'add_batch_mode' ] );
+
+        $user_id = $this->create_customer( 'yl_it_' . wp_generate_password( 8, false ) . '@example.com' );
+        $lot_ids = [];
+
+        foreach ( array_values( $days_ahead ) as $index => $days ) {
+            $this->ledger_service()->earn( $this->earn_draft( $user_id, $index + 1, 100 ) );
+
+            $lot_ids[] = (int) $wpdb->get_var( 'SELECT MAX(id) FROM `' . esc_sql( Table::name( 'lots' ) ) . '`' ); // phpcs:ignore WordPress.DB -- the test reads its own scratch table.
+            $this->set_lot_expires_at( end( $lot_ids ), Dates::offset( $days * DAY_IN_SECONDS ) );
+        }
+
+        update_option( ExpiryRunner::OPTION_APPLIED, ExpiryPolicy::current()->signature(), false );
+
+        return $lot_ids;
+    }
+
+    private function set_lot_expires_at( int $lot_id, string $expires_at ): void {
+        global $wpdb;
+
+        $wpdb->update( Table::name( 'lots' ), [ 'expires_at' => $expires_at ], [ 'id' => $lot_id ] ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- the test sets the column directly.
+    }
+
+    /** @return array<string, mixed> */
+    private function lot_row( int $lot_id ): array {
+        global $wpdb;
+
+        return (array) $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM `' . esc_sql( Table::name( 'lots' ) ) . '` WHERE id = %d', $lot_id ), ARRAY_A ); // phpcs:ignore WordPress.DB -- the test reads its own scratch table.
     }
 
     /** A customer with 300 points whose stamped expiry is $days from now, under the pinned settings. */

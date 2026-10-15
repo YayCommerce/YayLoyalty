@@ -256,6 +256,15 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
     }
 
     /**
+     * Records that a batch reminder went out at $now. Batch claims live on lots; this only dates the last one.
+     *
+     * @throws QueryException When the write fails.
+     */
+    public function mark_reminded( int $user_id, string $now ): void {
+        $this->update( $user_id, [ 'reminder_sent_at' => $now ], [ '%s' ] );
+    }
+
+    /**
      * The one inactivity reminder rule, for the selector and the claim alike: a balance whose date falls
      * within the next $days, and that date not yet announced (reminder_for). Changing the timing never
      * re-announces a date; a date that moves is announced again once.

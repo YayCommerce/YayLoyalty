@@ -4,6 +4,7 @@ namespace YayLoyalty\Repositories;
 use YayLoyalty\Database\QueryException;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Enums\LotStatus;
+use YayLoyalty\Utils\Sql;
 use YayLoyalty\Utils\Table;
 
 defined( 'ABSPATH' ) || exit;
@@ -258,27 +259,126 @@ class LotRepository {
     public function restamp_open_expiry( int $months, string $floor, bool $keep ): void {
         global $wpdb;
 
+        $new_date        = 'IF(
+                %d = 1 OR expires_at IS NULL,
+                GREATEST(DATE_ADD(created_at, INTERVAL %d MONTH), CAST(%s AS DATETIME), COALESCE(expires_at, CAST(%s AS DATETIME))),
+                DATE_ADD(created_at, INTERVAL %d MONTH)
+            )';
+        $new_date_values = [ (int) $keep, $months, $floor, $floor, $months ];
+
+        // reminded_at first: MySQL assigns left to right, so it still compares the old expires_at.
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $new_date holds only placeholders, bound twice by $new_date_values: the sniff cannot count through it.
         $result = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
-                'UPDATE `' . esc_sql( $this->table() ) . '`
-                 SET expires_at = IF(
-                     %d = 1 OR expires_at IS NULL,
-                     GREATEST(DATE_ADD(created_at, INTERVAL %d MONTH), CAST(%s AS DATETIME), COALESCE(expires_at, CAST(%s AS DATETIME))),
-                     DATE_ADD(created_at, INTERVAL %d MONTH)
-                 )
-                 WHERE status = %s',
-                (int) $keep,
-                $months,
-                $floor,
-                $floor,
-                $months,
-                LotStatus::OPEN
+                'UPDATE `' . esc_sql( $this->table() ) . "`
+                 SET reminded_at = IF( {$new_date} <=> expires_at, reminded_at, NULL ),
+                     expires_at = {$new_date}
+                 WHERE status = %s",
+                array_merge( $new_date_values, $new_date_values, [ LotStatus::OPEN ] )
             )
         );
+        // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
 
         if ( false === $result ) {
             throw new QueryException( 'update', $wpdb->last_error, $this->table() . ' (restamp_open_expiry)' );
         }
+    }
+
+    /**
+     * Customers with an open lot due an expiry reminder (reminder_due_sql()), for the batch reminder step.
+     *
+     * @return int[]
+     */
+    public function reminder_due_user_ids( string $now, string $horizon, int $limit ): array {
+        global $wpdb;
+
+        list( $due_sql, $due_values ) = self::reminder_due_sql( $now, $horizon );
+
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $due_sql holds only placeholders, and $due_values binds them: the sniff cannot count through it.
+        $ids = $wpdb->get_col( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare(
+                'SELECT DISTINCT user_id FROM `' . esc_sql( $this->table() ) . "` WHERE {$due_sql} LIMIT %d",
+                array_merge( $due_values, [ $limit ] )
+            )
+        );
+        // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
+
+        return array_map( 'intval', is_array( $ids ) ? $ids : [] );
+    }
+
+    /**
+     * Claims every due lot of $user_id: reads them, then stamps reminded_at = $now on exactly those ids while
+     * still unannounced, and sums what it read. A racing run that took any of them first leaves this claim
+     * short, and it returns null, so a lot is never announced twice; the lots it did stamp are dropped.
+     *
+     * @return array{points: int, expires_at: string, is_single_date: bool}|null
+     * @throws QueryException When the write fails.
+     */
+    public function claim_reminder_lots( int $user_id, string $now, string $horizon ): ?array {
+        global $wpdb;
+
+        list( $due_sql, $due_values ) = self::reminder_due_sql( $now, $horizon );
+        $table                        = esc_sql( $this->table() );
+
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $due_sql and $in hold only placeholders, bound by the arrays beside them: the sniff cannot count through them.
+        $lots = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare(
+                "SELECT id, remaining, expires_at FROM `{$table}` WHERE user_id = %d AND {$due_sql}",
+                array_merge( [ $user_id ], $due_values )
+            ),
+            ARRAY_A
+        );
+
+        if ( empty( $lots ) ) {
+            return null;
+        }
+
+        $ids    = array_map( 'intval', array_column( $lots, 'id' ) );
+        $in     = Sql::in_placeholders( $ids, '%d' );
+        $result = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare(
+                "UPDATE `{$table}` SET reminded_at = %s WHERE reminded_at IS NULL AND id IN ({$in})",
+                array_merge( [ $now ], $ids )
+            )
+        );
+        // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
+
+        if ( false === $result ) {
+            throw new QueryException( 'update', $wpdb->last_error, $this->table() . ' (claim_reminder_lots)' );
+        }
+
+        if ( count( $ids ) !== $result ) {
+            return null;
+        }
+
+        $dates = array_column( $lots, 'expires_at' );
+        $days  = array_unique(
+            array_map(
+                static function ( string $at ): string {
+                    return substr( $at, 0, 10 );
+                },
+                $dates
+            )
+        );
+
+        return [
+            'points'         => (int) array_sum( array_column( $lots, 'remaining' ) ),
+            'expires_at'     => (string) min( $dates ),
+            'is_single_date' => 1 === count( $days ),
+        ];
+    }
+
+    /**
+     * The one batch reminder rule, for the selector and the claim alike: an open lot expiring after $now
+     * and by $horizon that no reminder has announced yet.
+     *
+     * @return array{0: string, 1: array<int, string>} SQL with placeholders, and their values.
+     */
+    private static function reminder_due_sql( string $now, string $horizon ): array {
+        return [
+            'status = %s AND reminded_at IS NULL AND expires_at > %s AND expires_at <= %s',
+            [ LotStatus::OPEN, $now, $horizon ],
+        ];
     }
 
     /**
