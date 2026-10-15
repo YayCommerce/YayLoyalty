@@ -31,15 +31,15 @@ class PointsEarnedShortcodes extends LoyaltyEmailShortcodes {
 
     protected function descriptions(): array {
         return [
-            'earned_points'      => __( 'Sentence saying what was earned and why', 'yayloyalty' ),
-            'points'             => __( 'Points earned', 'yayloyalty' ),
-            'points_label'       => __( 'Points label for the points earned', 'yayloyalty' ),
-            'balance'            => __( 'Balance after this award', 'yayloyalty' ),
-            'balance_points'     => __( 'Balance with its label, e.g. "150 Points"', 'yayloyalty' ),
-            'balance_value'      => __( 'What the balance is worth; empty until redemption ships, or while the discount reward is not live', 'yayloyalty' ),
-            'balance_value_text' => __( 'Sentence saying what the balance is worth; empty until redemption ships, or while the discount reward is not live', 'yayloyalty' ),
-            'order_number'       => __( 'Order number the points were earned for; empty unless earned from an order', 'yayloyalty' ),
-            'points_url'         => __( 'Link to the customer\'s points; empty unless a site sets yayloyalty_points_earned_cta_url', 'yayloyalty' ),
+            'earned_points'      => __( 'Points Earned Message', 'yayloyalty' ),
+            'points'             => __( 'Points Earned', 'yayloyalty' ),
+            'points_label'       => __( 'Points Label', 'yayloyalty' ),
+            'balance'            => __( 'Balance', 'yayloyalty' ),
+            'balance_points'     => __( 'Balance With Label', 'yayloyalty' ),
+            'balance_value'      => __( 'Balance Value', 'yayloyalty' ),
+            'balance_value_text' => __( 'Balance Value Message', 'yayloyalty' ),
+            'order_number'       => __( 'Order Number', 'yayloyalty' ),
+            'points_url'         => __( 'Points Page URL', 'yayloyalty' ),
         ];
     }
 }

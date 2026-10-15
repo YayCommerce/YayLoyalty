@@ -30,13 +30,13 @@ class PointsExpiredShortcodes extends LoyaltyEmailShortcodes {
 
     protected function descriptions(): array {
         return [
-            'expired_points'     => __( 'Sentence saying how many points expired', 'yayloyalty' ),
-            'points'             => __( 'Points expired', 'yayloyalty' ),
-            'points_label'       => __( 'Points label for the points expired', 'yayloyalty' ),
-            'balance'            => __( 'Balance after the expiry', 'yayloyalty' ),
-            'balance_points'     => __( 'Balance with its label, e.g. "150 Points"', 'yayloyalty' ),
-            'balance_value'      => __( 'What the balance is worth; empty until redemption ships, or while the discount reward is not live', 'yayloyalty' ),
-            'balance_value_text' => __( 'Sentence saying what the balance is worth; empty until redemption ships, or while the discount reward is not live', 'yayloyalty' ),
+            'expired_points'     => __( 'Points Expired Message', 'yayloyalty' ),
+            'points'             => __( 'Points Expired', 'yayloyalty' ),
+            'points_label'       => __( 'Points Label', 'yayloyalty' ),
+            'balance'            => __( 'Balance', 'yayloyalty' ),
+            'balance_points'     => __( 'Balance With Label', 'yayloyalty' ),
+            'balance_value'      => __( 'Balance Value', 'yayloyalty' ),
+            'balance_value_text' => __( 'Balance Value Message', 'yayloyalty' ),
         ];
     }
 }

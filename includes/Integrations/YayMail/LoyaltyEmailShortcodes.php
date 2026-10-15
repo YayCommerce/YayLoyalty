@@ -28,12 +28,18 @@ abstract class LoyaltyEmailShortcodes extends BaseShortcode {
     /** The YayMail email these shortcodes belong to. */
     abstract protected function yaymail_email(): LoyaltyYayMailEmail;
 
-    /** @return array<string, string> Shortcode key (after the prefix) => editor description, besides customer_name. */
+    /**
+     * Short Title Case labels, as YayMail's own shortcodes read in its editor menu. The value shortcodes render
+     * '' until redemption ships or while the discount reward is not live, and Points Page URL renders '' unless
+     * a site filters its email's CTA URL in.
+     *
+     * @return array<string, string> Shortcode key (after the prefix) => editor label, besides customer_name.
+     */
     abstract protected function descriptions(): array;
 
     /** @return array<string, string> Every shortcode's editor description: the shared customer_name, then the email's own. */
     private function all_descriptions(): array {
-        return [ 'customer_name' => __( 'Customer first name, else display name', 'yayloyalty' ) ] + $this->descriptions();
+        return [ 'customer_name' => __( 'Customer Name', 'yayloyalty' ) ] + $this->descriptions();
     }
 
     /** A shortcode's name: 'customer_name' → 'yaymail_yayloyalty_customer_name'. */
