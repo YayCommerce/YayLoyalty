@@ -132,6 +132,34 @@ export class Api {
     return data;
   }
 
+  /** A live Pro reward the card offers, created as the merchant would in the reward editor. */
+  async createReward(reward: {
+    name: string;
+    type: 'fixed_coupon' | 'percent_coupon';
+    cost_points: number;
+    config: object;
+  }): Promise<number> {
+    const { id } = await this.post<{ id: number }>('yayloyalty/v1/rewards', {
+      ...reward,
+      status: 'active',
+      config: { currency: 'USD', ...reward.config },
+    });
+
+    return id;
+  }
+
+  /** Deletes the reward, or archives it once claimed, since a reward with redemptions cannot be deleted. */
+  async deleteReward(id: number): Promise<void> {
+    const response = await this.context.fetch(`yayloyalty/v1/rewards/${id}`, { method: 'DELETE' });
+
+    if (response.status() === 409) {
+      await this.put(`yayloyalty/v1/rewards/${id}`, { status: 'archived' });
+      return;
+    }
+
+    expect(response.ok(), `DELETE rewards/${id}: ${response.status()} ${await response.text()}`).toBeTruthy();
+  }
+
   async settings<T extends object>(): Promise<T> {
     return this.get<T>('yayloyalty/v1/settings');
   }

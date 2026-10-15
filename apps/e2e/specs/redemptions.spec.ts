@@ -1,13 +1,8 @@
-import type { Locator, Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
 
 import { openOrder, setOrderStatusInAdmin, untilReloaded } from '../support/admin';
-import type { Api } from '../support/api';
 import { test, expect } from '../support/fixtures';
-
-/** The points card, wherever the page draws it. */
-function card(page: Page): Locator {
-  return page.locator('[data-yl-redeem]');
-}
+import { card, placedOrderId, redeemRows } from '../support/storefront';
 
 async function addWidgetToCart(page: Page): Promise<void> {
   await page.goto('/product/e2e-widget/');
@@ -24,15 +19,8 @@ async function applyPoints(page: Page, points: number): Promise<void> {
 async function placeOrder(page: Page): Promise<number> {
   await page.getByLabel('Check payments').check();
   await page.getByRole('button', { name: 'Place Order' }).click();
-  await page.waitForURL(/order-received\/(\d+)/);
 
-  return Number(/order-received\/(\d+)/.exec(page.url())![1]);
-}
-
-async function redeemRows(api: Api, customerId: number): Promise<number[]> {
-  const rows = await api.ledger(customerId);
-
-  return rows.filter((row) => row.type === 'redeem' || row.type === 'refund_redeem').map((row) => row.points);
+  return placedOrderId(page);
 }
 
 test('a shopper spends points on the block checkout and a cancellation gives them back', async ({
@@ -134,8 +122,7 @@ test('a shopper spends points on the classic cart and checkout and a full refund
 
     await shopperPage.locator('#payment_method_cheque').check({ force: true });
     await shopperPage.getByRole('button', { name: 'Place order' }).click();
-    await shopperPage.waitForURL(/order-received\/(\d+)/);
-    orderId = Number(/order-received\/(\d+)/.exec(shopperPage.url())![1]);
+    orderId = await placedOrderId(shopperPage);
 
     await api.expectPoints(customer.id, { balance: 500 });
     expect(await redeemRows(api, customer.id)).toEqual([-500]);
