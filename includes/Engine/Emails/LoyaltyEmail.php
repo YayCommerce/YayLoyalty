@@ -131,6 +131,11 @@ abstract class LoyaltyEmail extends \WC_Email {
         );
     }
 
+    /** Every value the email shows for what it is sending now, for other renderers such as YayMail. [] until one is prepared. */
+    public function get_template_values(): array {
+        return $this->extra_template_args();
+    }
+
     /**
      * Variables only this email's templates receive. An override returns [] while $this->object is not
      * what it sends for, such as the preview's dummy order, and its templates then fall back.

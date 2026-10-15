@@ -1,18 +1,18 @@
 <?php
 namespace YayLoyalty\Integrations\YayMail;
 
-use YayLoyalty\Engine\Emails\LedgerEntryEmail;
+use YayLoyalty\Engine\Emails\LoyaltyEmail;
 use YayMail\Abstracts\BaseShortcode;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
- * A ledger email's YayMail shortcodes. Every value comes from the email's own template values
- * (LedgerEntryEmail::get_template_values()), so the YayMail design and the WooCommerce template never
- * word or format a row differently. YayMail keeps shortcodes per email, so emails share the names.
+ * A loyalty email's YayMail shortcodes. Every value comes from the email's own template values
+ * (LoyaltyEmail::get_template_values()), so the YayMail design and the WooCommerce template never
+ * word or format a value differently. YayMail keeps shortcodes per email, so emails share the names.
  * Each subclass lists its shortcodes and uses YayMail's SingletonTrait itself.
  */
-abstract class LedgerEntryShortcodes extends BaseShortcode {
+abstract class LoyaltyEmailShortcodes extends BaseShortcode {
 
     /** Shortcodes whose template value has another name. */
     protected const VALUE_KEYS = [
@@ -27,7 +27,7 @@ abstract class LedgerEntryShortcodes extends BaseShortcode {
     private $sample_values = null;
 
     /** The YayMail email these shortcodes belong to. */
-    abstract protected function yaymail_email(): LedgerEntryYayMailEmail;
+    abstract protected function yaymail_email(): LoyaltyYayMailEmail;
 
     /** @return array<string, string> Shortcode key (after the prefix) => editor description. */
     abstract protected function descriptions(): array;
@@ -80,7 +80,7 @@ abstract class LedgerEntryShortcodes extends BaseShortcode {
     }
 
     /**
-     * The values of the row being sent, or of the sample row for YayMail's editor, preview and
+     * The values of what is being sent, or of the sample for YayMail's editor, preview and
      * test send, which render with `is_sample` or an order.
      *
      * @param mixed $render_data The body passes the WooCommerce template args and the subject passes the email; both include `email`.
@@ -89,7 +89,7 @@ abstract class LedgerEntryShortcodes extends BaseShortcode {
         $render_data = is_array( $render_data ) ? $render_data : [];
         $root_email  = $this->yaymail_email()->get_root_email();
 
-        if ( ! $root_email instanceof LedgerEntryEmail ) {
+        if ( ! $root_email instanceof LoyaltyEmail ) {
             return [];
         }
 
@@ -99,10 +99,10 @@ abstract class LedgerEntryShortcodes extends BaseShortcode {
 
         $email = $render_data['email'] ?? null;
 
-        return $email instanceof LedgerEntryEmail && $email->id === $root_email->id ? $email->get_template_values() : [];
+        return $email instanceof LoyaltyEmail && $email->id === $root_email->id ? $email->get_template_values() : [];
     }
 
-    private function sample_values( LedgerEntryEmail $root_email ): array {
+    private function sample_values( LoyaltyEmail $root_email ): array {
         if ( null === $this->sample_values ) {
             // A clone: the shared mailer instance may be mid-send.
             $sample = clone $root_email;

@@ -11,7 +11,7 @@ defined( 'ABSPATH' ) || exit;
  *
  * @method static PointsExpiredShortcodes get_instance()
  */
-class PointsExpiredShortcodes extends LedgerEntryShortcodes {
+class PointsExpiredShortcodes extends LoyaltyEmailShortcodes {
 
     use SingletonTrait;
 
@@ -25,7 +25,7 @@ class PointsExpiredShortcodes extends LedgerEntryShortcodes {
 
     public $available_email_ids = [ PointsExpiredEmail::ID ];
 
-    protected function yaymail_email(): LedgerEntryYayMailEmail {
+    protected function yaymail_email(): LoyaltyYayMailEmail {
         return PointsExpiredYayMailEmail::get_instance();
     }
 

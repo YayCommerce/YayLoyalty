@@ -12,7 +12,7 @@ defined( 'ABSPATH' ) || exit;
  *
  * @method static PointsExpiredYayMailEmail get_instance()
  */
-class PointsExpiredYayMailEmail extends LedgerEntryYayMailEmail {
+class PointsExpiredYayMailEmail extends LoyaltyYayMailEmail {
 
     use SingletonTrait;
 
@@ -22,9 +22,9 @@ class PointsExpiredYayMailEmail extends LedgerEntryYayMailEmail {
 
     /** The `yayloyalty-points-expired.php` templates' sentences, from LoyaltyEmail and PointsExpiredEmail's template values. */
     protected function default_body(): string {
-        $greeting = LoyaltyEmail::greeting_text( LedgerEntryShortcodes::tag( 'customer_name' ) );
-        $balance  = LoyaltyEmail::balance_sentence( LedgerEntryShortcodes::tag( 'balance_points' ) );
+        $greeting = LoyaltyEmail::greeting_text( LoyaltyEmailShortcodes::tag( 'customer_name' ) );
+        $balance  = LoyaltyEmail::balance_sentence( LoyaltyEmailShortcodes::tag( 'balance_points' ) );
 
-        return '<p>' . $greeting . '</p><p>' . LedgerEntryShortcodes::tag( 'expired_points' ) . '</p><p>' . $balance . '</p>';
+        return '<p>' . $greeting . '</p><p>' . LoyaltyEmailShortcodes::tag( 'expired_points' ) . '</p><p>' . $balance . '</p>';
     }
 }

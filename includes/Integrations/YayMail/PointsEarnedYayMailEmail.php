@@ -12,7 +12,7 @@ defined( 'ABSPATH' ) || exit;
  *
  * @method static PointsEarnedYayMailEmail get_instance()
  */
-class PointsEarnedYayMailEmail extends LedgerEntryYayMailEmail {
+class PointsEarnedYayMailEmail extends LoyaltyYayMailEmail {
 
     use SingletonTrait;
 
@@ -27,9 +27,9 @@ class PointsEarnedYayMailEmail extends LedgerEntryYayMailEmail {
      * it in, and a static button cannot hide itself.
      */
     protected function default_body(): string {
-        $greeting = LoyaltyEmail::greeting_text( LedgerEntryShortcodes::tag( 'customer_name' ) );
-        $balance  = LoyaltyEmail::balance_sentence( LedgerEntryShortcodes::tag( 'balance_points' ) );
+        $greeting = LoyaltyEmail::greeting_text( LoyaltyEmailShortcodes::tag( 'customer_name' ) );
+        $balance  = LoyaltyEmail::balance_sentence( LoyaltyEmailShortcodes::tag( 'balance_points' ) );
 
-        return '<p>' . $greeting . '</p><p>' . LedgerEntryShortcodes::tag( 'earned_points' ) . '</p><p>' . $balance . '</p><p>' . LedgerEntryShortcodes::tag( 'balance_value_text' ) . '</p>';
+        return '<p>' . $greeting . '</p><p>' . LoyaltyEmailShortcodes::tag( 'earned_points' ) . '</p><p>' . $balance . '</p><p>' . LoyaltyEmailShortcodes::tag( 'balance_value_text' ) . '</p>';
     }
 }

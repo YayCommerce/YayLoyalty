@@ -1,7 +1,7 @@
 <?php
 namespace YayLoyalty\Integrations\YayMail;
 
-use YayLoyalty\Engine\Emails\LedgerEntryEmail;
+use YayLoyalty\Engine\Emails\LoyaltyEmail;
 use YayLoyalty\Helpers\EmailsHelper;
 use YayMail\Abstracts\BaseEmail;
 use YayMail\Elements\ElementsLoader;
@@ -9,11 +9,11 @@ use YayMail\Elements\ElementsLoader;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * A ledger email as YayMail lists it: while its YayMail template is enabled, BaseEmail swaps
+ * A loyalty email as YayMail lists it: while its YayMail template is enabled, BaseEmail swaps
  * WooCommerce's template for the YayMail design. Each subclass names its email and its starting body,
  * and uses YayMail's SingletonTrait itself, so each keeps its own instance.
  */
-abstract class LedgerEntryYayMailEmail extends BaseEmail {
+abstract class LoyaltyYayMailEmail extends BaseEmail {
 
     public $email_types = [ YAYMAIL_NON_ORDER_EMAILS ];
 
@@ -22,19 +22,19 @@ abstract class LedgerEntryYayMailEmail extends BaseEmail {
         'plugin_name' => 'YayLoyalty',
     ];
 
-    /** @var array<string, LedgerEntryYayMailEmail> Each constructed instance by its email id, for the shared template. */
+    /** @var array<string, LoyaltyYayMailEmail> Each constructed instance by its email id, for the shared template. */
     private static $by_email_id = [];
 
     /** The WooCommerce email's id, e.g. PointsEarnedEmail::ID. */
     abstract protected function email_id(): string;
 
-    /** The starting body's HTML, written with LedgerEntryShortcodes::tag(). */
+    /** The starting body's HTML, written with LoyaltyEmailShortcodes::tag(). */
     abstract protected function default_body(): string;
 
     protected function __construct() {
         $email = EmailsHelper::registered_emails()[ $this->email_id() ] ?? null;
 
-        if ( ! $email instanceof LedgerEntryEmail ) {
+        if ( ! $email instanceof LoyaltyEmail ) {
             return;
         }
 
@@ -89,15 +89,16 @@ abstract class LedgerEntryYayMailEmail extends BaseEmail {
         return strtr(
             $text,
             [
-                '{points}'       => LedgerEntryShortcodes::tag( 'points' ),
-                '{points_label}' => LedgerEntryShortcodes::tag( 'points_label' ),
-                '{balance}'      => LedgerEntryShortcodes::tag( 'balance' ),
+                '{points}'       => LoyaltyEmailShortcodes::tag( 'points' ),
+                '{points_label}' => LoyaltyEmailShortcodes::tag( 'points_label' ),
+                '{balance}'      => LoyaltyEmailShortcodes::tag( 'balance' ),
+                '{expiry_date}'  => LoyaltyEmailShortcodes::tag( 'expiry_date' ),
                 '{site_title}'   => '[yaymail_site_name]',
             ]
         );
     }
 
     public function get_template_path() {
-        return __DIR__ . '/templates/yaymail-ledger-entry.php';
+        return __DIR__ . '/templates/yaymail-loyalty-email.php';
     }
 }
