@@ -16,8 +16,8 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * The daily Action Scheduler job. Each run, in order: backfills lots for balances that predate them,
- * re-applies changed expiry settings to every customer's date, then expires due customers through
- * LedgerService::expire(). Each step handles one batch, and the run queues an async continuation while
+ * re-applies changed expiry settings to every customer's date, expires due customers through
+ * LedgerService::expire(), then sends due expiry reminders (ExpiryReminders). Each step handles one batch, and the run queues an async continuation while
  * a step made progress on a full batch. Does nothing without Action Scheduler (WooCommerce inactive).
  */
 final class ExpiryRunner {
@@ -73,6 +73,10 @@ final class ExpiryRunner {
             if ( $this->expire_due( $ledger, $due_ids, $now ) ) {
                 $has_more = true;
             }
+        }
+
+        if ( ( new ExpiryReminders( $customers, $lots ) )->run( $policy, $now ) ) {
+            $has_more = true;
         }
 
         if ( $has_more ) {

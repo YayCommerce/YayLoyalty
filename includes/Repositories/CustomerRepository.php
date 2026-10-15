@@ -141,9 +141,6 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
         if ( null !== $activity_at ) {
             $sets[]   = 'last_activity_at = %s';
             $values[] = $activity_at;
-
-            // Activity clears the reminder so the next expiry window sends one, never two.
-            $sets[] = 'reminder_sent_at = NULL';
         }
 
         $values[] = $user_id;
@@ -189,6 +186,70 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
         );
 
         return array_map( 'intval', is_array( $ids ) ? $ids : [] );
+    }
+
+    /**
+     * Customers due an inactivity expiry reminder at $now: a balance whose date falls within the next
+     * $days and who were not reminded since that date's window opened. Soonest first.
+     *
+     * @return int[]
+     */
+    public function reminder_due_user_ids( string $now, int $days, int $limit ): array {
+        global $wpdb;
+
+        $ids = $wpdb->get_col( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare(
+                'SELECT user_id FROM `' . esc_sql( $this->table() ) . '`
+                 WHERE balance > 0 AND expires_at > %s AND expires_at <= %s
+                   AND ( reminder_sent_at IS NULL OR reminder_sent_at < DATE_SUB( expires_at, INTERVAL %d DAY ) )
+                 ORDER BY expires_at LIMIT %d',
+                $now,
+                Dates::offset( $days * DAY_IN_SECONDS, $now ),
+                $days,
+                $limit
+            )
+        );
+
+        return array_map( 'intval', is_array( $ids ) ? $ids : [] );
+    }
+
+    /**
+     * Claims $user_id's inactivity reminder: stamps reminder_sent_at = $now only while the reminder is still
+     * due, so of two runs racing only one gets the row. Returns what to remind about, or null when not claimed.
+     *
+     * @return array{points: int, expires_at: string}|null
+     * @throws QueryException When the write fails.
+     */
+    public function claim_reminder( int $user_id, string $now, int $days ): ?array {
+        global $wpdb;
+
+        $result = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare(
+                'UPDATE `' . esc_sql( $this->table() ) . '` SET reminder_sent_at = %s
+                 WHERE user_id = %d AND balance > 0 AND expires_at > %s AND expires_at <= %s
+                   AND ( reminder_sent_at IS NULL OR reminder_sent_at < DATE_SUB( expires_at, INTERVAL %d DAY ) )',
+                $now,
+                $user_id,
+                $now,
+                Dates::offset( $days * DAY_IN_SECONDS, $now ),
+                $days
+            )
+        );
+
+        if ( false === $result ) {
+            throw new QueryException( 'update', $wpdb->last_error, $this->table() . ' (claim_reminder)' );
+        }
+
+        $customer = 1 === $result ? $this->find_by_user_id( $user_id ) : null;
+
+        if ( null === $customer || null === $customer->get_expires_at() ) {
+            return null;
+        }
+
+        return [
+            'points'     => $customer->get_balance(),
+            'expires_at' => $customer->get_expires_at(),
+        ];
     }
 
     /**
