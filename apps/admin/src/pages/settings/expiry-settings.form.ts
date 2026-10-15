@@ -7,13 +7,14 @@ import { Settings, settingsSchema, SettingsUpdate } from '@/lib/schema/settings.
 
 /**
  * The Expiry tab's one form: the whole `expiry` group, Pro's mode and batch fields included. The reminder
- * must go out fewer days ahead than the window, as SettingsHelper::is_valid() and ExpiryPolicy::window_days() rule.
+ * must go out fewer days ahead than the window while expiry is on, as SettingsHelper::is_valid() rules.
  */
 export const expirySettingsFormSchema = settingsSchema.pick({ expiry: true }).superRefine(({ expiry }, ctx) => {
   // Lite runs a stored batch mode as inactivity; a month counts as 28 days.
   const windowDays = IS_PRO_BUILD && expiry.mode === 'batch' ? expiry.batch_months * 28 : expiry.inactivity_days;
 
-  if (expiry.reminder_days >= windowDays) {
+  // Only while expiry is on: the fields are disabled while it is off, so a stored pair must not block turning it off.
+  if (expiry.enabled && expiry.reminder_days >= windowDays) {
     ctx.addIssue({
       code: 'custom',
       path: ['expiry', 'reminder_days'],

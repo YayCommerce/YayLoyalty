@@ -31,7 +31,9 @@ final class ExpiryReminders {
 
     /** @return bool Whether a full batch made progress, so more may remain. */
     public function run( ExpiryPolicy $policy, string $now ): bool {
-        if ( ! $policy->is_enabled() || ! $policy->is_applied() ) {
+        // Batch reminders are per lot, which this step does not handle yet: customers.expires_at is only
+        // the soonest lot there, and the balance is not what expires.
+        if ( ! $policy->is_enabled() || ! $policy->is_applied() || $policy->is_batch() ) {
             return false;
         }
 

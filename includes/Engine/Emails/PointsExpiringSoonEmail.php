@@ -24,6 +24,9 @@ class PointsExpiringSoonEmail extends LoyaltyEmail {
     /** @var array{user_id: int, points: int, expires_at: string, is_single_date: bool}|null The reminder being sent or previewed. */
     private $reminder = null;
 
+    /** @var array<string, mixed>|null extra_template_args() for $reminder, built once: a multipart send renders twice. */
+    private $values = null;
+
     public function __construct() {
         $this->id          = self::ID;
         $this->title       = __( 'Points expiring soon', 'yayloyalty' );
@@ -88,6 +91,7 @@ class PointsExpiringSoonEmail extends LoyaltyEmail {
 
     /** Points the placeholders and template values at one reminder. */
     private function prepare( int $user_id, int $points, string $expires_at, bool $is_single_date ): void {
+        $this->values   = null;
         $this->reminder = [
             'user_id'        => $user_id,
             'points'         => $points,
@@ -106,6 +110,15 @@ class PointsExpiringSoonEmail extends LoyaltyEmail {
             return [];
         }
 
+        if ( null === $this->values ) {
+            $this->values = $this->build_values();
+        }
+
+        return $this->values;
+    }
+
+    /** @return array<string, mixed> */
+    private function build_values(): array {
         $user_id       = $this->reminder['user_id'];
         $points        = $this->reminder['points'];
         $expiry_date   = Dates::to_site_date( $this->reminder['expires_at'] );

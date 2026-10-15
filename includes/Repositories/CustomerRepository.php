@@ -189,33 +189,32 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
     }
 
     /**
-     * Customers due an inactivity expiry reminder at $now: a balance whose date falls within the next
-     * $days and who were not reminded since that date's window opened. Soonest first.
+     * Customers due an inactivity expiry reminder at $now (reminder_due_sql()), soonest first.
      *
      * @return int[]
      */
     public function reminder_due_user_ids( string $now, int $days, int $limit ): array {
         global $wpdb;
 
+        list( $due_sql, $due_values ) = self::reminder_due_sql( $now, $days );
+
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $due_sql holds only placeholders; its values are bound.
         $ids = $wpdb->get_col( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
-                'SELECT user_id FROM `' . esc_sql( $this->table() ) . '`
-                 WHERE balance > 0 AND expires_at > %s AND expires_at <= %s
-                   AND ( reminder_sent_at IS NULL OR reminder_sent_at < DATE_SUB( expires_at, INTERVAL %d DAY ) )
-                 ORDER BY expires_at LIMIT %d',
-                $now,
-                Dates::offset( $days * DAY_IN_SECONDS, $now ),
-                $days,
-                $limit
+                'SELECT user_id FROM `' . esc_sql( $this->table() ) . "` WHERE {$due_sql} ORDER BY expires_at LIMIT %d",
+                array_merge( $due_values, [ $limit ] )
             )
         );
+        // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 
         return array_map( 'intval', is_array( $ids ) ? $ids : [] );
     }
 
     /**
-     * Claims $user_id's inactivity reminder: stamps reminder_sent_at = $now only while the reminder is still
-     * due, so of two runs racing only one gets the row. Returns what to remind about, or null when not claimed.
+     * Claims $user_id's inactivity reminder: reads the balance and date, then stamps reminder_sent_at = $now
+     * and reminder_for = that date only while the row still holds those values and is still due. Of two
+     * racing runs only one gets the row, and a write landing in between leaves it unclaimed for the next
+     * run. Returns what to remind about, or null when not claimed.
      *
      * @return array{points: int, expires_at: string}|null
      * @throws QueryException When the write fails.
@@ -223,32 +222,50 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
     public function claim_reminder( int $user_id, string $now, int $days ): ?array {
         global $wpdb;
 
+        $customer   = $this->find_by_user_id( $user_id );
+        $expires_at = null !== $customer ? $customer->get_expires_at() : null;
+
+        if ( null === $expires_at ) {
+            return null;
+        }
+
+        list( $due_sql, $due_values ) = self::reminder_due_sql( $now, $days );
+
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $due_sql holds only placeholders, and $due_values binds them: the sniff cannot count through it.
         $result = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
-                'UPDATE `' . esc_sql( $this->table() ) . '` SET reminder_sent_at = %s
-                 WHERE user_id = %d AND balance > 0 AND expires_at > %s AND expires_at <= %s
-                   AND ( reminder_sent_at IS NULL OR reminder_sent_at < DATE_SUB( expires_at, INTERVAL %d DAY ) )',
-                $now,
-                $user_id,
-                $now,
-                Dates::offset( $days * DAY_IN_SECONDS, $now ),
-                $days
+                'UPDATE `' . esc_sql( $this->table() ) . "` SET reminder_sent_at = %s, reminder_for = expires_at
+                 WHERE user_id = %d AND balance = %d AND expires_at = %s AND {$due_sql}",
+                array_merge( [ $now, $user_id, $customer->get_balance(), $expires_at ], $due_values )
             )
         );
+        // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
 
         if ( false === $result ) {
             throw new QueryException( 'update', $wpdb->last_error, $this->table() . ' (claim_reminder)' );
         }
 
-        $customer = 1 === $result ? $this->find_by_user_id( $user_id ) : null;
-
-        if ( null === $customer || null === $customer->get_expires_at() ) {
+        if ( 1 !== $result ) {
             return null;
         }
 
         return [
             'points'     => $customer->get_balance(),
-            'expires_at' => $customer->get_expires_at(),
+            'expires_at' => $expires_at,
+        ];
+    }
+
+    /**
+     * The one inactivity reminder rule, for the selector and the claim alike: a balance whose date falls
+     * within the next $days, and that date not yet announced (reminder_for). Changing the timing never
+     * re-announces a date; a date that moves is announced again once.
+     *
+     * @return array{0: string, 1: array<int, string|int>} SQL with placeholders, and their values.
+     */
+    private static function reminder_due_sql( string $now, int $days ): array {
+        return [
+            'balance > 0 AND expires_at > %s AND expires_at <= %s AND ( reminder_for IS NULL OR reminder_for <> expires_at )',
+            [ $now, Dates::offset( $days * DAY_IN_SECONDS, $now ) ],
         ];
     }
 

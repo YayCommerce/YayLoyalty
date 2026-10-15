@@ -197,8 +197,8 @@ class SettingsHelper {
      * whole number from 1 to EXPIRY_WINDOW_MAX, every `reminder_days` a whole number from 1 to REMINDER_DAYS_MAX,
      * and every mode, spend order and on_shorten choice is known. The controllers answer 400 on
      * false; coerce() alone would read a 0 or a fraction as "no limit" without saying so. Batch expiry
-     * is one-way: once batch is stored, switching back to inactivity is refused. The reminder must go
-     * out fewer days ahead than the window the saved expiry settings run on.
+     * is one-way: once batch is stored, switching back to inactivity is refused. While expiry is on, the
+     * reminder must go out fewer days ahead than the window the saved expiry settings run on.
      *
      * @param array<string, mixed> $input
      */
@@ -221,7 +221,8 @@ class SettingsHelper {
 
         $policy = new ExpiryPolicy( array_merge( self::get_settings()['expiry'], $input['expiry'] ) );
 
-        return $policy->reminder_days() < $policy->window_days();
+        // Only while expiry is on: the fields are disabled while it is off, so a stored pair must not block turning it off.
+        return ! $policy->is_enabled() || $policy->stored_reminder_days() < $policy->window_days();
     }
 
     /**

@@ -83,9 +83,19 @@ final class ExpiryPolicy {
         return max( 1, (int) $this->settings['batch_months'] );
     }
 
-    /** Days before expiry the Points expiring soon email goes out. */
+    /**
+     * Days before expiry the Points expiring soon email goes out: always fewer than the window, even for a
+     * stored pair that SettingsHelper::is_valid() would refuse, or every activity would trigger a reminder.
+     */
     public function reminder_days(): int {
-        return max( 1, (int) ( $this->settings['reminder_days'] ?? 30 ) );
+        $days = (int) ( $this->settings['reminder_days'] ?? 30 );
+
+        return max( 1, min( $days, $this->window_days() - 1 ) );
+    }
+
+    /** The stored reminder timing, unclamped, for validating a save. */
+    public function stored_reminder_days(): int {
+        return (int) ( $this->settings['reminder_days'] ?? 30 );
     }
 
     /** The window the effective mode runs on, in days: a month counts as its shortest, 28 days. */

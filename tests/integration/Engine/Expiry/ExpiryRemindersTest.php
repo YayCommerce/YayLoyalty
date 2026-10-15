@@ -81,9 +81,12 @@ final class ExpiryRemindersTest extends IntegrationTestCase {
         ( new ExpiryRunner() )->run();
         ( new ExpiryRunner() )->run();
 
+        $row = $this->customer_row( $user_id );
+
         $this->assertCount( 1, $this->sent );
         $this->assertStringContainsString( '300 Points', (string) $this->sent[0]['message'] );
-        $this->assertNotNull( $this->customer_row( $user_id )['reminder_sent_at'] );
+        $this->assertNotNull( $row['reminder_sent_at'] );
+        $this->assertSame( $row['expires_at'], $row['reminder_for'], 'The claim records which date it announced.' );
     }
 
     public function test_a_date_outside_the_window_is_not_reminded(): void {
@@ -96,18 +99,18 @@ final class ExpiryRemindersTest extends IntegrationTestCase {
 
     public function test_a_reminder_for_an_earlier_date_allows_one_more(): void {
         $user_id = $this->customer_due_in( 10 );
-        // Sent 40 days ago: before this date's window opened (now + 10 − 30 = 20 days ago).
-        $this->set_reminder_sent_at( $user_id, Dates::offset( -40 * DAY_IN_SECONDS ) );
+        // The last reminder announced a date that activity has since moved.
+        $this->set_reminder_for( $user_id, Dates::offset( -355 * DAY_IN_SECONDS ) );
 
         ( new ExpiryRunner() )->run();
 
         $this->assertCount( 1, $this->sent );
     }
 
-    public function test_a_reminder_inside_this_window_blocks_another(): void {
+    public function test_a_date_already_announced_is_not_announced_again(): void {
         $user_id = $this->customer_due_in( 10 );
-        // Sent 15 days ago: inside this date's window, which opened 20 days ago.
-        $this->set_reminder_sent_at( $user_id, Dates::offset( -15 * DAY_IN_SECONDS ) );
+        // Announced already, however far ahead: lowering reminder_days must not re-announce it.
+        $this->set_reminder_for( $user_id, (string) $this->customer_row( $user_id )['expires_at'] );
 
         ( new ExpiryRunner() )->run();
 
@@ -139,9 +142,9 @@ final class ExpiryRemindersTest extends IntegrationTestCase {
         return $user_id;
     }
 
-    private function set_reminder_sent_at( int $user_id, ?string $at ): void {
+    private function set_reminder_for( int $user_id, string $expires_at ): void {
         global $wpdb;
 
-        $wpdb->update( Table::name( 'customers' ), [ 'reminder_sent_at' => $at ], [ 'user_id' => $user_id ] ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- the test sets the column directly.
+        $wpdb->update( Table::name( 'customers' ), [ 'reminder_for' => $expires_at ], [ 'user_id' => $user_id ] ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- the test sets the column directly.
     }
 }

@@ -55,7 +55,7 @@
 
 | Phase | Delivers (user-visible) | Exit criterion (exact check) | Status |
 |---|---|---|---|
-| 1 | [Inactivity reminder](phase-1-inactivity-reminder.md): Expiry tab "Remind before expiry", the email sent N days before an inactivity expiry, logged in activity | Spec AC 12, Lite part: one reminder email, none on rerun; `composer test:integration --filter ExpiryRemindersTest` passes | pending |
+| 1 | [Inactivity reminder](phase-1-inactivity-reminder.md): Expiry tab "Remind before expiry", the email sent N days before an inactivity expiry, logged in activity | Spec AC 12, Lite part: one reminder email, none on rerun; `composer test:integration --filter ExpiryRemindersTest` passes | implemented, awaiting yayplancheck |
 | 2 | [Batch reminder and YayMail](phase-2-batch-and-yaymail.md): per-lot reminders in Pro batch mode, the email in YayMail | Spec AC 12, Pro part, and the YayMail editor showing the email; whole `ExpiryRemindersTest` passes | pending |
 
 ## Interface contract
@@ -88,14 +88,18 @@
   balance > 0
   AND expires_at > now
   AND expires_at <= now + days
-  AND ( reminder_sent_at IS NULL OR reminder_sent_at < DATE_SUB( expires_at, INTERVAL days DAY ) )
+  AND ( reminder_for IS NULL OR reminder_for <> expires_at )
   ```
+
+  `claim_reminder()` reads the row first and claims with `AND balance = %d AND expires_at = %s`, stamping `reminder_sent_at = now, reminder_for = expires_at`. Changed after code review: comparing `reminder_sent_at` with `expires_at − days` re-announced a date when `reminder_days` was lowered.
 
   Phase 1 task 3.
 - `CustomerRepository::mark_reminded( int $user_id, string $now ): void`. Phase 2 task 1.
 - `LotRepository::reminder_due_user_ids( string $now, string $horizon, int $limit ): int[]` and `claim_reminder_lots( int $user_id, string $now, string $horizon ): ?array` returning `array{points:int, expires_at:string, is_single_date:bool}`. Phase 2 task 1.
 
 ### Schema
+
+- `{prefix}yayloyalty_customers.reminder_for datetime DEFAULT NULL`, the `expires_at` the last reminder announced. Phase 1, added after code review.
 
 - `{prefix}yayloyalty_lots.reminded_at datetime DEFAULT NULL`, added to `LotsTable::definition()` after `expires_at` and to `expected_columns()`. Phase 2 task 1.
 

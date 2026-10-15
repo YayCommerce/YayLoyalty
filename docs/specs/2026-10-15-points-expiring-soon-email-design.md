@@ -49,9 +49,9 @@ While points expiry is on, each customer gets the "Points expiring soon" email N
    - the email is enabled in WooCommerce;
    - `balance > 0`;
    - `now < expires_at <= now + reminder_days`;
-   - `reminder_sent_at IS NULL OR reminder_sent_at < expires_at − reminder_days`.
+   - `reminder_for IS NULL OR reminder_for <> expires_at` (`customers.reminder_for`, the date the last reminder announced).
 
-   The send claims `reminder_sent_at = now` first. Points = balance, date = `expires_at`. A second run the same day sends nothing. Activity that moves `expires_at` later lets exactly one more reminder go out when the new date enters the window.
+   The send claims `reminder_sent_at = now` and `reminder_for = expires_at` first, only while the row still holds the balance and date it read. Points = balance, date = `expires_at`. A second run the same day sends nothing. Activity that moves `expires_at` later lets exactly one more reminder go out when the new date enters the window.
 4. **Batch (Pro):** a customer is reminded when they have at least one open lot with `reminded_at IS NULL` and `now < expires_at <= now + reminder_days`. One email covers all such lots: points = the sum of their `remaining`, date = the earliest `expires_at`. The send sets those lots' `reminded_at = now` and the customer's `reminder_sent_at = now`. A lot that enters the window later gets its own reminder. No lot is reminded twice.
 5. `LotRepository::restamp_open_expiry()` sets `reminded_at = NULL` on every lot whose `expires_at` it changes.
 6. The email sends even when the customer has reached `throttle_per_week`, and the send counts toward the week.
@@ -87,7 +87,7 @@ While points expiry is on, each customer gets the "Points expiring soon" email N
 
 ## Approach
 
-**Chosen:** per-lot `reminded_at` for batch mode, plus a window rule on `customers.reminder_sent_at` for inactivity mode, run as a new step of the daily expiry job.
+**Chosen:** per-lot `reminded_at` for batch mode, plus `customers.reminder_for` (the date last announced) for inactivity mode, run as a new step of the daily expiry job.
 
 **Architecture:** `ExpiryRunner::run()` gets a fourth step after `expire_due`: `ExpiryReminders::run( $policy, $now )`. It does nothing unless expiry is enabled, the dates are applied (`OPTION_APPLIED === signature()`) and the email is enabled. It picks up to `BATCH_SIZE` due customers, using the inactivity or batch query that `$policy->mode()` selects. For each one it claims with a conditional UPDATE. Only when that UPDATE affects rows does it fire `Emails::POINTS_EXPIRING_SOON_ACTION` with `( user_id, points, expires_at )`. A full batch with progress queues the continuation, as the other steps do. Claim-then-send makes the reminder at-most-once: a transport failure loses that reminder ("dropped, not queued", as the design says) and never doubles it.
 
@@ -99,7 +99,7 @@ While points expiry is on, each customer gets the "Points expiring soon" email N
   - `reminder_due_user_ids( string $now, int $days, int $limit ): int[]`;
   - `claim_reminder( int $user_id, string $now, int $days ): ?array{points:int, expires_at:string}`, a conditional UPDATE then a read of the balance and `expires_at`;
   - `mark_reminded( int $user_id, string $now ): void`, for batch;
-  - `apply_delta()` loses the `reminder_sent_at = NULL` line. The window rule replaces it, and clearing would re-remind a kept date that activity didn't move.
+  - `apply_delta()` loses the `reminder_sent_at = NULL` line. `reminder_for` replaces it, and clearing would re-remind a kept date that activity didn't move.
 - `LotRepository`:
   - `reminder_due_user_ids( string $now, string $horizon, int $limit ): int[]`;
   - `claim_reminder_lots( int $user_id, string $now, string $horizon ): ?array{points:int, expires_at:string, is_single_date:bool}`. It runs `UPDATE … SET reminded_at = %s WHERE user_id AND status='open' AND reminded_at IS NULL AND expires_at > now AND expires_at <= horizon`, and on more than 0 affected rows it reads SUM, MIN and COUNT(DISTINCT DATE) of the rows with `reminded_at = now`;
@@ -152,7 +152,7 @@ While points expiry is on, each customer gets the "Points expiring soon" email N
 - **Concurrent runs:** the conditional UPDATE lets only one claim succeed (0 affected rows → skip).
 - **Customer deleted, or no email address:** `trigger()` returns without a send or an activity row. The claim stays, so there are no retries.
 - **Balance spent between claim and a deferred send:** the email still reports the claimed figures (same request, negligible window).
-- **Raising `reminder_days`:** an inactivity customer already reminded isn't re-reminded, because the window rule compares against `expires_at − days`. Batch lots already reminded stay reminded.
+- **Changing `reminder_days`:** a date already announced is never announced again, because the claim compares `reminder_for` with `expires_at` (a code-review fix: comparing `reminder_sent_at` with `expires_at − days` re-announced dates when the timing was lowered). A stored timing at or above the window is clamped to window − 1 at runtime. Batch lots already reminded stay reminded.
 - **Restore of a deleted refund** opens a lot with `reminded_at NULL`. It may be reminded again, which is acceptable.
 
 **Decision record:** None. This follows the existing job, email and ledger-ownership decisions.
