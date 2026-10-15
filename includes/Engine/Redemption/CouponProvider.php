@@ -79,6 +79,25 @@ final class CouponProvider {
         return $reward_id > 0 ? $reward_id : null;
     }
 
+    /**
+     * The ids of the reward coupons on the cart, in the order the cart holds them.
+     *
+     * @return int[]
+     */
+    public static function applied_reward_ids( \WC_Cart $cart ): array {
+        $reward_ids = [];
+
+        foreach ( $cart->get_applied_coupons() as $code ) {
+            $reward_id = self::reward_id_of( (string) $code );
+
+            if ( null !== $reward_id ) {
+                $reward_ids[] = $reward_id;
+            }
+        }
+
+        return $reward_ids;
+    }
+
     /** "Points discount", with the merchant's label: what the totals row reads instead of the code. */
     public static function display_label(): string {
         /* translators: %s: the store's points label, as "Points". */

@@ -135,8 +135,9 @@ final class StoreApiAdapter {
     private function applied_rewards( \WC_Cart $cart, int $decimals ): array {
         $rewards = [];
 
-        foreach ( $cart->get_applied_coupons() as $code ) {
-            $reward = null === CouponProvider::reward_id_of( (string) $code ) ? null : $this->service->reward_for_code( (string) $code );
+        foreach ( CouponProvider::applied_reward_ids( $cart ) as $reward_id ) {
+            $code   = CouponProvider::reward_code( $reward_id );
+            $reward = $this->service->reward_for_code( $code );
 
             if ( null === $reward ) {
                 continue;

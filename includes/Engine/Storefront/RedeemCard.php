@@ -17,8 +17,8 @@ use YayLoyalty\Utils\Text;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The points slider card: one template for every place it shows. The shortcode and the action print it
- * anywhere; the classic adapter prints it in the totals tables and the Store API adapter carries the same
+ * The points card: the slider, plus any panel another build adds as a tab (Pro's rewards), in one template for
+ * every place it shows. The shortcode and the action print it anywhere; the classic adapter prints it in the totals tables and the Store API adapter carries the same
  * markup to the Cart and Checkout blocks. It decides nothing: every number is RedemptionService's answer,
  * and its `wc-ajax` endpoint only sets SessionIntent. It has its own plain stylesheet and reads nothing from
  * the Design tab, which styles the launcher only.
@@ -28,6 +28,12 @@ final class RedeemCard {
 
     public const SHORTCODE = 'yayloyalty_redeem';
     public const ACTION    = 'yayloyalty_redeem_card';
+
+    /** Filters the panels drawn as tabs beside the slider: `( array $panels, array $context ): array`. */
+    public const PANELS_FILTER = 'yayloyalty_redeem_card_panels';
+
+    /** The slider's own tab key; an added panel cannot take it. */
+    public const SLIDER_PANEL = 'points';
 
     /** The `wc-ajax` endpoint Apply and Remove post to on pages without the blocks, and the nonce action it checks. */
     private const AJAX_ENDPOINT = 'yayloyalty_redeem';
@@ -112,7 +118,7 @@ final class RedeemCard {
         wp_enqueue_script(
             ScriptName::STOREFRONT_REDEEM_BLOCKS_SCRIPT,
             YAYLOYALTY_PLUGIN_URL . 'assets/storefront/redeem-blocks.js',
-            [ 'wp-element', 'wp-plugins', 'wc-blocks-checkout' ],
+            [ 'wp-element', 'wp-plugins', 'wp-data', 'wc-blocks-checkout' ],
             Launcher::asset_version( 'assets/storefront/redeem-blocks.js' ),
             [ 'in_footer' => true ]
         );
@@ -151,8 +157,10 @@ final class RedeemCard {
     }
 
     /**
-     * The card's HTML for the current shopper and cart, with its assets enqueued. '' when nothing renders:
-     * no cart, an empty cart, a customer the gates refuse, a missing reward, or a failure.
+     * The card's HTML for the current shopper and cart, with its assets enqueued. A guest gets the sign-in line
+     * alone. A customer gets the slider's view and the panels PANELS_FILTER adds, as tabs when there are two or more.
+     * '' when nothing renders: no cart, an empty cart, neither a slider nor a panel to show (a customer the
+     * gates refuse, a missing reward), or a failure.
      */
     public function markup(): string {
         $level = ob_get_level();
@@ -167,28 +175,26 @@ final class RedeemCard {
             $user_id = RedemptionService::shopper_id();
 
             if ( null === $user_id ) {
-                // A guest gets the sign-in line whatever the cart holds, so nothing is quoted for them.
-                $ceiling = Result::denied( ProgramGate::REASON_NO_CUSTOMER );
-                $quote   = $ceiling;
-            } else {
-                $ceiling = $this->service->ceiling( $cart, $user_id );
+                // A guest gets the sign-in line whatever the cart holds, so nothing is quoted and no panel is asked for.
+                $guest = Result::denied( ProgramGate::REASON_NO_CUSTOMER );
 
-                if ( ! $ceiling->is_allowed() ) {
-                    return '';
-                }
+                self::enqueue_assets();
 
-                $quote = $this->service->quote( $cart, $user_id );
+                return self::template( self::view( null, $guest, $guest ) + self::chrome() + self::tabs( [], false ) );
             }
 
-            $view = self::view( $this->balance_of( $user_id ), $quote, $ceiling );
+            $balance    = (int) $this->balance_of( $user_id );
+            $slider     = $this->slider_view( $cart, $user_id, $balance );
+            $is_applied = null !== $slider && 'applied' === $slider['state'];
+            $panels     = $this->panels( $cart, $user_id, $balance, $is_applied );
 
-            if ( 'hidden' === $view['state'] ) {
+            if ( null === $slider && [] === $panels ) {
                 return '';
             }
 
             self::enqueue_assets();
 
-            return self::template( $view + self::chrome() );
+            return self::template( ( null === $slider ? [ 'state' => 'none' ] : $slider ) + [ 'heading_balance' => $balance ] + self::chrome() + self::tabs( $panels, $is_applied ) );
         } catch ( \Throwable $e ) {
             // The cart outranks the card: a failure here hides it, never the page.
             Log::warning( 'RedeemCard', 'not rendered: ' . $e->getMessage() );
@@ -268,6 +274,98 @@ final class RedeemCard {
         }
 
         return $html;
+    }
+
+    /**
+     * The slider's view for a customer: RedeemCard::view(), or state `exclusive` while picked rewards are on the
+     * cart, since the slider and rewards never apply together. Null when the slider cannot be offered at all.
+     */
+    private function slider_view( \WC_Cart $cart, int $user_id, int $balance ): ?array {
+        $ceiling = $this->service->ceiling( $cart, $user_id );
+
+        if ( ! $ceiling->is_allowed() ) {
+            return null;
+        }
+
+        $view = self::view( $balance, $this->service->quote( $cart, $user_id ), $ceiling );
+
+        if ( 'hidden' === $view['state'] ) {
+            return null;
+        }
+
+        return $this->has_applied_rewards( $cart ) ? [ 'state' => 'exclusive' ] : $view;
+    }
+
+    /** Whether rewards are picked and at least one of their coupons is on the cart. */
+    private function has_applied_rewards( \WC_Cart $cart ): bool {
+        return [] !== $this->intent->rewards() && [] !== CouponProvider::applied_reward_ids( $cart );
+    }
+
+    /**
+     * The panels other code adds beside the slider, in the order added; a malformed one is dropped.
+     *
+     * @return array<string, array{label: string, html: string, is_active: bool}>
+     */
+    private function panels( \WC_Cart $cart, int $user_id, int $balance, bool $is_slider_applied ): array {
+        /**
+         * Panels the card shows as tabs beside the points slider, keyed by a slug; Pro adds `rewards`.
+         * Internal seam for Pro, not a public API. Each panel's `html` is printed as given, so it must be escaped.
+         *
+         * @param array<string, array{label: string, html: string, is_active: bool}> $panels
+         * @param array{service: RedemptionService, cart: \WC_Cart, user_id: int, balance: int, is_slider_applied: bool} $context
+         */
+        $panels = apply_filters(
+            self::PANELS_FILTER, // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name; the sniff cannot read it.
+            [],
+            [
+                'service'           => $this->service,
+                'cart'              => $cart,
+                'user_id'           => $user_id,
+                'balance'           => $balance,
+                'is_slider_applied' => $is_slider_applied,
+            ]
+        );
+        $valid  = [];
+
+        foreach ( is_array( $panels ) ? $panels : [] as $key => $panel ) {
+            if ( self::SLIDER_PANEL !== $key && is_array( $panel ) && is_string( $panel['label'] ?? null ) && is_string( $panel['html'] ?? null ) ) {
+                $valid[ (string) $key ] = [
+                    'label'     => $panel['label'],
+                    'html'      => $panel['html'],
+                    'is_active' => ! empty( $panel['is_active'] ),
+                ];
+            }
+        }
+
+        return $valid;
+    }
+
+    /**
+     * The tab bar's data: `panels` as given, and `active`, the key of the open one. The added panels come first,
+     * then the slider's (self::SLIDER_PANEL). The open tab is the first panel marked active, else the slider while
+     * its discount is applied, else the first tab. With no added panel there is no tab bar and `active` is ''.
+     *
+     * @param array<string, array{label: string, html: string, is_active: bool}> $panels
+     * @return array{panels: array, active: string}
+     */
+    private static function tabs( array $panels, bool $is_slider_applied ): array {
+        $active = '';
+
+        foreach ( $panels as $key => $panel ) {
+            if ( $panel['is_active'] ) {
+                $active = $key;
+                break;
+            }
+        }
+
+        if ( '' === $active ) {
+            $active = $is_slider_applied && [] !== $panels ? self::SLIDER_PANEL : (string) array_key_first( $panels );
+        }
+
+        return [
+            'panels' => $panels,
+            'active' => $active,
+        ];
     }
 
     /** 0 for a customer with no row yet, null for a guest. */
