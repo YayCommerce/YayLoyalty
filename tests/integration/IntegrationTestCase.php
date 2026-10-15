@@ -175,6 +175,42 @@ abstract class IntegrationTestCase extends TestCase {
         return $order;
     }
 
+    /** A live Pro reward of $type as a stored row, so commit and reversal read it by id. */
+    protected function pro_reward( string $type, int $cost, array $config ): Reward {
+        $now     = Dates::now();
+        $rewards = new RewardRepository();
+        $id      = $rewards->insert( new Reward( null, $type . ' ' . $cost, $type . '-' . $cost, $type, Status::ACTIVE, 0, $cost, array_merge( [ 'currency' => 'USD' ], $config ), [], null, null, false, null, null, $now, $now ) );
+
+        return $rewards->find_reward( $id );
+    }
+
+    /**
+     * An order with one line and a coupon line per reward code, as checkout leaves it.
+     *
+     * @param array<string, float> $lines Coupon code => its discount.
+     */
+    protected function order_with_reward_lines( int $user_id, float $subtotal, array $lines ): \WC_Order {
+        $order = wc_create_order( [ 'customer_id' => $user_id ] );
+
+        $line = new \WC_Order_Item_Product();
+        $line->set_name( 'Thing' );
+        $line->set_quantity( 1 );
+        $line->set_subtotal( $subtotal );
+        $line->set_total( $subtotal - array_sum( $lines ) );
+        $order->add_item( $line );
+
+        foreach ( $lines as $code => $discount ) {
+            $coupon = new \WC_Order_Item_Coupon();
+            $coupon->set_code( $code );
+            $coupon->set_discount( $discount );
+            $order->add_item( $coupon );
+        }
+
+        $order->save();
+
+        return $order;
+    }
+
     /** @return array<int, array<string, mixed>> */
     protected function redemption_rows( int $user_id ): array {
         global $wpdb;

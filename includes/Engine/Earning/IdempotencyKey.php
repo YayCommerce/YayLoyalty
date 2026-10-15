@@ -12,12 +12,13 @@ defined( 'ABSPATH' ) || exit;
  * The string behind the ledger's UNIQUE guard, shared by earning and redemption, e.g.
  * "earn:7:order:1234:purchase" or "redeem:7:redemption:88:flexible_discount".
  * It holds the user, because a referral order pays two people. It holds a qualifier, because one
- * reference may move points once per trigger (earn) or per reward type (redeem). Nothing else goes in,
+ * reference may move points once per trigger (earn), or once per reward type or per reward (redeem:
+ * "redeem:7:order:1234:reward_5"). Nothing else goes in,
  * so a second hook, a status bounce or a retry composes the same key and collides on the index.
  */
 final class IdempotencyKey {
 
-    /** Matches ledger.idempotency_key varchar(96): the longest vocabulary with two BIGINT ids is 82. */
+    /** Matches ledger.idempotency_key varchar(96): the longest, a reward qualifier with three BIGINT ids, is 94. */
     public const MAX_LENGTH = 96;
 
     private const SEPARATOR = ':';
@@ -27,7 +28,7 @@ final class IdempotencyKey {
      * @param int    $user_id        Whose balance moves.
      * @param string $reference_type A ReferenceType constant.
      * @param int    $reference_id   The id in that namespace (order id, comment id, user id, year, redemption id).
-     * @param string $qualifier      A CampaignTrigger for earn/refund_earn rows, a RewardType for redeem/refund_redeem rows. Any build's, so a Pro value still composes after a downgrade.
+     * @param string $qualifier      A CampaignTrigger for earn/refund_earn rows; a RewardType, or `reward_{id}` for one reward's row, for redeem/refund_redeem rows. Any build's, so a Pro value still composes after a downgrade.
      * @throws \InvalidArgumentException When any part is outside its vocabulary or an id is not positive.
      */
     public static function compose( string $type, int $user_id, string $reference_type, int $reference_id, string $qualifier ): string {
@@ -47,7 +48,7 @@ final class IdempotencyKey {
 
         $is_redeem = in_array( $type, [ LedgerType::REDEEM, LedgerType::REFUND_REDEEM ], true );
 
-        if ( $is_redeem ? ! RewardType::is_known( $qualifier ) : ! CampaignTrigger::is_known( $qualifier ) ) {
+        if ( $is_redeem ? ! self::is_redeem_qualifier( $qualifier ) : ! CampaignTrigger::is_known( $qualifier ) ) {
             throw new \InvalidArgumentException( sprintf( 'YayLoyalty: unknown %s "%s".', $is_redeem ? 'reward type' : 'campaign trigger', $qualifier ) );
         }
 
@@ -58,6 +59,11 @@ final class IdempotencyKey {
         }
 
         return $key;
+    }
+
+    /** A RewardType, or `reward_` followed by a positive reward id. */
+    private static function is_redeem_qualifier( string $qualifier ): bool {
+        return RewardType::is_known( $qualifier ) || 1 === preg_match( '/^reward_[1-9][0-9]*$/D', $qualifier );
     }
 
     /**

@@ -4,6 +4,7 @@ namespace YayLoyalty\Tests\Integration\Engine\Redemption;
 use YayLoyalty\Engine\Earning\Outcome;
 use YayLoyalty\Engine\Redemption\Reversal;
 use YayLoyalty\Engine\Rewards\Result;
+use YayLoyalty\Enums\RewardType;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Models\Redemption;
 use YayLoyalty\Models\Reward;
@@ -224,5 +225,51 @@ final class ReversalTest extends IntegrationTestCase {
         $this->reversal()->cancelled( $order );
         $this->assertSame( [ 1000, -500, 250, 250 ], $this->ledger_points( 7 ) );
         $this->assertSame( 500, (int) $this->row()['restored_points'] );
+    }
+
+    /** User 7 has 9850 points and commits A (500, 5.00) and B (1500, 10.00) on an order of 100.00 that totals 85.00. */
+    private function order_with_two_rewards(): \WC_Order {
+        $this->ledger_service()->earn( $this->earn_draft( 7, 100, 9850 ) );
+        $a     = $this->pro_reward( RewardType::FIXED_COUPON, 500, [ 'amount' => 5 ] );
+        $b     = $this->pro_reward(
+            RewardType::PERCENT_COUPON,
+            1500,
+            [
+                'percent'      => 15,
+                'max_discount' => 10,
+            ]
+        );
+        $codes = [
+            'yayloyalty-reward-' . $a->get_id() => 5.0,
+            'yayloyalty-reward-' . $b->get_id() => 10.0,
+        ];
+        $order = $this->order_with_reward_lines( 7, 100.0, $codes );
+        $order->set_total( 85.0 );
+        $order->save();
+
+        $outcome = $this->commit_writer()->commit_rewards( $order, array_combine( array_keys( $codes ), [ $a, $b ] ) );
+        $this->assertSame( Outcome::REDEEMED, $outcome->get_status() );
+
+        return $order;
+    }
+
+    public function test_one_refund_restores_each_reward_row_under_its_own_key(): void {
+        $order = $this->order_with_two_rewards();
+
+        $this->reversal()->refunded( $order, $this->refund_of( $order, 42.5 ) );
+
+        $this->assertSame( [ 9850, -500, -1500, 250, 750 ], $this->ledger_points( 7 ) );
+        $this->assertSame( [ 250, 750 ], array_map( 'intval', array_column( $this->redemption_rows( 7 ), 'restored_points' ) ) );
+        $this->assertSame( [ 'applied', 'applied' ], array_column( $this->redemption_rows( 7 ), 'status' ) );
+    }
+
+    public function test_a_cancel_restores_every_reward_row(): void {
+        $order = $this->order_with_two_rewards();
+
+        $this->reversal()->cancelled( $order );
+
+        $this->assertSame( [ 9850, -500, -1500, 500, 1500 ], $this->ledger_points( 7 ) );
+        $this->assertSame( [ Redemption::STATUS_CANCELLED, Redemption::STATUS_CANCELLED ], array_column( $this->redemption_rows( 7 ), 'status' ) );
+        $this->assertSame( 9850, (int) $this->customer_row( 7 )['balance'] );
     }
 }
