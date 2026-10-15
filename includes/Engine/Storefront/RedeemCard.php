@@ -57,9 +57,10 @@ final class RedeemCard {
     }
 
     /**
-     * The card's Apply and Remove on pages without the blocks: POST `points` (0 removes) and `security`.
-     * Postcondition: SessionIntent::set( points ), unclamped, then one totals run, so the coupon provider puts
-     * the coupon on or takes it off, and the card's new HTML is answered. Never clamps and never touches a coupon.
+     * The card's Apply and Remove on pages without the blocks: POST `security` and either `points` (0 removes)
+     * or `rewards`, comma-separated reward ids (present and empty clears them). Postcondition:
+     * SessionIntent::set_rewards() or set( points ), unclamped, then one totals run, so the coupon provider puts
+     * the coupons on or takes them off, and the card's new HTML is answered. Never clamps and never touches a coupon.
      */
     public function on_apply(): void {
         check_ajax_referer( self::NONCE_ACTION, 'security' );
@@ -70,7 +71,12 @@ final class RedeemCard {
             wp_send_json_error();
         }
 
-        $this->intent->set( isset( $_POST['points'] ) ? absint( wp_unslash( $_POST['points'] ) ) : 0 );
+        if ( isset( $_POST['rewards'] ) ) {
+            $this->intent->set_rewards( array_filter( array_map( 'absint', explode( ',', sanitize_text_field( wp_unslash( $_POST['rewards'] ) ) ) ) ) );
+        } else {
+            $this->intent->set( isset( $_POST['points'] ) ? absint( wp_unslash( $_POST['points'] ) ) : 0 );
+        }
+
         $cart->calculate_totals();
 
         wp_send_json_success( [ 'html' => $this->markup() ] );

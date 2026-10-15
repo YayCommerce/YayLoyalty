@@ -3,6 +3,7 @@ namespace YayLoyalty\Engine\Redemption\Adapters;
 
 use Automattic\WooCommerce\StoreApi\Exceptions\RouteException;
 use Automattic\WooCommerce\StoreApi\Schemas\V1\CartSchema;
+use YayLoyalty\Engine\Redemption\CouponProvider;
 use YayLoyalty\Engine\Redemption\RedemptionService;
 use YayLoyalty\Engine\Redemption\SessionIntent;
 use YayLoyalty\Engine\Storefront\RedeemCard;
@@ -24,7 +25,7 @@ final class StoreApiAdapter {
     /** Store API namespace: `extensions.yayloyalty` on the cart response. */
     public const EXT_NAMESPACE = 'yayloyalty';
 
-    /** Update-callback key the block posts with `{ points: int }`. */
+    /** Update-callback key the block posts with `{ points: int }` or `{ rewards: int[] }`. */
     public const CALLBACK = 'yayloyalty-redeem';
 
     private RedemptionService $service;
@@ -87,10 +88,11 @@ final class StoreApiAdapter {
     /**
      * Postcondition: the quote as numbers only — requested, applied, value,
      * currency, bound_by, reason — never the Reward (merchant strategy stays
-     * server-side), and `card`, the points card's HTML for this cart ('' when
-     * nothing renders). Zero and empty values without a cart.
+     * server-side), `rewards`, the reward coupons on the cart, and `card`, the
+     * points card's HTML for this cart ('' when nothing renders). Zero and
+     * empty values without a cart.
      *
-     * @return array{requested: int, applied: int, value: string, currency: string, bound_by: string, reason: string, card: string}
+     * @return array{requested: int, applied: int, value: string, currency: string, bound_by: string, reason: string, rewards: array, card: string}
      */
     public function cart_data(): array {
         $cart     = RedemptionService::cart();
@@ -104,6 +106,7 @@ final class StoreApiAdapter {
                 'currency'  => get_woocommerce_currency(),
                 'bound_by'  => '',
                 'reason'    => '',
+                'rewards'   => [],
                 'card'      => '',
             ];
         }
@@ -118,8 +121,37 @@ final class StoreApiAdapter {
             'currency'  => null !== $quote->get_currency() ? $quote->get_currency() : get_woocommerce_currency(),
             'bound_by'  => $quote->get_bound_by(),
             'reason'    => $quote->get_reason(),
+            'rewards'   => $this->applied_rewards( $cart, $decimals ),
             'card'      => $this->card->markup(),
         ];
+    }
+
+    /**
+     * One entry per reward coupon on the cart: the reward's id, its code, its name as the totals row's label,
+     * its cost, and the line's discount on the basis prices were entered.
+     *
+     * @return array<int, array{id: int, code: string, label: string, points: int, value: string}>
+     */
+    private function applied_rewards( \WC_Cart $cart, int $decimals ): array {
+        $rewards = [];
+
+        foreach ( $cart->get_applied_coupons() as $code ) {
+            $reward = null === CouponProvider::reward_id_of( (string) $code ) ? null : $this->service->reward_for_code( (string) $code );
+
+            if ( null === $reward ) {
+                continue;
+            }
+
+            $rewards[] = [
+                'id'     => (int) $reward->get_id(),
+                'code'   => (string) $code,
+                'label'  => $reward->get_name(),
+                'points' => (int) $reward->get_cost_points(),
+                'value'  => wc_format_decimal( $cart->get_coupon_discount_amount( $code, ! wc_prices_include_tax() ), $decimals ),
+            ];
+        }
+
+        return $rewards;
     }
 
     /**
@@ -144,20 +176,40 @@ final class StoreApiAdapter {
             'currency'  => $property( 'string', __( 'Currency code of the discount.', 'yayloyalty' ) ),
             'bound_by'  => $property( 'string', __( 'The limit that reduced the request, or empty.', 'yayloyalty' ) ),
             'reason'    => $property( 'string', __( 'Why no points can be spent, or empty.', 'yayloyalty' ) ),
+            'rewards'   => $property( 'array', __( 'The rewards applied to the cart, one discount line each.', 'yayloyalty' ) ) + [
+                'items' => [
+                    'type'       => 'object',
+                    'properties' => [
+                        'id'     => [ 'type' => 'integer' ],
+                        'code'   => [ 'type' => 'string' ],
+                        'label'  => [ 'type' => 'string' ],
+                        'points' => [ 'type' => 'integer' ],
+                        'value'  => [ 'type' => 'string' ],
+                    ],
+                ],
+            ],
             'card'      => $property( 'string', __( 'The points card\'s HTML for this cart.', 'yayloyalty' ) ),
         ];
     }
 
     /**
-     * Precondition: the block posted `{ points }` through the update
-     * callback. Postcondition: SessionIntent::set( absint( points ) ),
-     * unclamped; the Store API then recalculates and cart_data() carries the
-     * clamped answer.
+     * Precondition: the block posted `{ points }` or `{ rewards }` through the
+     * update callback; a `rewards` key wins. Postcondition:
+     * SessionIntent::set_rewards( ids ) or set( absint( points ) ), unclamped;
+     * the Store API then recalculates and cart_data() carries the answer.
      *
      * @param array<string, mixed> $data
      */
     public function on_update( $data ): void {
-        $this->intent->set( absint( is_array( $data ) ? ( $data['points'] ?? 0 ) : 0 ) );
+        $data = is_array( $data ) ? $data : [];
+
+        if ( array_key_exists( 'rewards', $data ) ) {
+            $this->intent->set_rewards( array_map( 'absint', (array) $data['rewards'] ) );
+
+            return;
+        }
+
+        $this->intent->set( absint( $data['points'] ?? 0 ) );
     }
 
     /**
