@@ -1,7 +1,8 @@
 /**
  * The points card on the Cart and Checkout blocks: a slot fill that shows the card the server rendered
  * (the `card` field of the plugin's Store API cart extension), so the blocks and the classic pages share one template.
- * Apply and Remove stay in redeem.js; here they are routed through the cart store, which redraws the card.
+ * Apply, Remove and the rewards' Apply/Update stay in redeem.js; here they are routed through the cart store,
+ * which redraws the card. The totals rows of reward coupons are relabelled with the reward's name.
  *
  * Plain script, no build step and no JSX. Its values, the Store API names included, come from
  * window.yayloyaltyRedeemBlocks (RedeemCard::enqueue_block_assets()).
@@ -56,26 +57,45 @@
     },
   });
 
-  window.yayloyaltyRedeemTransport = function (points) {
+  /** Sends the card's `{ points }` or `{ rewards }` through the cart store, which answers with the new cart. */
+  window.yayloyaltyRedeemTransport = function (payload) {
     return checkout.extensionCartUpdate({
       namespace: config.callback,
-      data: { points: points },
+      data: payload,
     });
   };
 
-  if (config.code && config.label) {
-    checkout.registerCheckoutFilters("yayloyalty", {
-      coupons: function (coupons) {
-        if (!Array.isArray(coupons)) {
-          return coupons;
-        }
+  /** The applied rewards from the cart store: WooCommerce runs the `coupons` filter without the cart's extensions. */
+  function appliedRewards() {
+    var store = window.wp.data && window.wp.data.select("wc/store/cart");
+    var cart = store && store.getCartData ? store.getCartData() : null;
+    var data = cart && cart.extensions && cart.extensions[config.namespace];
 
-        return coupons.map(function (coupon) {
-          return coupon && coupon.code === config.code
-            ? Object.assign({}, coupon, { label: config.label })
-            : coupon;
-        });
-      },
-    });
+    return data && Array.isArray(data.rewards) ? data.rewards : [];
   }
+
+  /** A totals row reads the reward's name, or the slider's label, never the virtual coupon's code. */
+  checkout.registerCheckoutFilters("yayloyalty", {
+    coupons: function (coupons) {
+      if (!Array.isArray(coupons)) {
+        return coupons;
+      }
+
+      var rewards = appliedRewards();
+
+      return coupons.map(function (coupon) {
+        var reward =
+          coupon &&
+          rewards.find(function (entry) {
+            return entry && entry.code === coupon.code;
+          });
+        var label =
+          coupon && config.code && coupon.code === config.code
+            ? config.label
+            : reward && reward.label;
+
+        return label ? Object.assign({}, coupon, { label: label }) : coupon;
+      });
+    },
+  });
 })();
