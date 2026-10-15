@@ -6,7 +6,7 @@ use YayLoyalty\Utils\SingletonTrait;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Lets merchants design the Points earned and Points expired emails in a licensed YayMail.
+ * Lets merchants design the Points earned, Points expired and Points expiring soon emails in a licensed YayMail.
  * The adapter classes extend YayMail's own, so they are first named inside
  * YayMail's register hooks: autoloading them earlier, or without YayMail, is a fatal.
  */
@@ -43,10 +43,12 @@ class YayMailIntegration {
     public function register_emails( $yaymail_emails ): void {
         $yaymail_emails->register( PointsEarnedYayMailEmail::get_instance() );
         $yaymail_emails->register( PointsExpiredYayMailEmail::get_instance() );
+        $yaymail_emails->register( PointsExpiringSoonYayMailEmail::get_instance() );
     }
 
     public function register_shortcodes(): void {
         PointsEarnedShortcodes::get_instance();
         PointsExpiredShortcodes::get_instance();
+        PointsExpiringSoonShortcodes::get_instance();
     }
 }
