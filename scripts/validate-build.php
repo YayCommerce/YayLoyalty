@@ -5,6 +5,9 @@
  * Usage:
  *   php scripts/validate-build.php <zip-path> <pro|lite> [--require-boot]
  *
+ * The manifest that run.sh writes beside the zip, <zip-path minus .zip>.manifest.json,
+ * must be present.
+ *
  * Environment:
  *   YAYLOYALTY_WP_CLI       Command prefix for the headless boot check, e.g.
  *                           "wp" or "wp --path=/srv/site". Unset, the boot
@@ -140,15 +143,14 @@ $files = list_files( $root );
 
 // Manifest
 
-$manifest_rel  = 'release-manifest.json';
-$manifest_path = $root . '/' . $manifest_rel;
+$manifest_path = preg_replace( '/\.zip$/', '', $zip_path ) . '.manifest.json';
 $manifest      = null;
 
 if ( is_file( $manifest_path ) ) {
     $manifest = json_decode( (string) file_get_contents( $manifest_path ), true );
 }
 
-record( 'release-manifest.json present and parseable', is_array( $manifest ) && isset( $manifest['files'] ) );
+record( basename( $manifest_path ) . ' present beside the zip and parseable', is_array( $manifest ) && isset( $manifest['files'] ) );
 
 if ( is_array( $manifest ) && isset( $manifest['files'] ) ) {
     record(
@@ -189,7 +191,7 @@ if ( is_array( $manifest ) && isset( $manifest['files'] ) ) {
         implode( ', ', array_slice( $mismatched, 0, 5 ) )
     );
 
-    $unlisted = array_diff( $files, array_keys( $manifest['files'] ), [ $manifest_rel ] );
+    $unlisted = array_diff( $files, array_keys( $manifest['files'] ) );
     record(
         'No packaged file is missing from the manifest',
         [] === $unlisted,

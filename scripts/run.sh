@@ -332,12 +332,13 @@ build_package() {
     find "$temp_dir" -name "*.map" -delete 2>/dev/null || true
     find "$temp_dir" -name ".gitkeep" -delete 2>/dev/null || true
 
-    write_manifest "$temp_dir" "$version" "$build_type"
+    write_manifest "$temp_dir" "$version" "$build_type" "$RELEASE_DIR/${zip_name%.zip}.manifest.json"
 
     print_step "Creating ZIP archive..."
     cd "$RELEASE_DIR"
     rm -f "$zip_name"
-    zip -r -q "$zip_name" "$PLUGIN_SLUG"
+    # -D: no directory entries. WordPress recreates folders from the file paths, and each entry costs bytes.
+    zip -r -q -D "$zip_name" "$PLUGIN_SLUG"
     rm -rf "$temp_dir"
 
     # Restore the dev autoload maps for local development.
@@ -362,13 +363,14 @@ build_package() {
     print_info "Size: $size"
 }
 
-# Write release-manifest.json, the SHA256 of every packaged file. validate-build.php checks it both
-# ways, so a file that survives a strip gets noticed.
+# Write the release manifest, the SHA256 of every packaged file, beside the zip as <zip>.manifest.json.
+# Only validate-build.php reads it, so it stays out of the zip. It checks it both ways, so a file
+# that survives a strip gets noticed.
 write_manifest() {
     local dir=$1
     local version=$2
     local build_type=$3
-    local manifest="$dir/release-manifest.json"
+    local manifest=$4
 
     print_step "Writing release manifest..."
     rm -f "$manifest"
@@ -392,9 +394,7 @@ write_manifest() {
                 echo ","
             fi
             printf '    "%s": "%s"' "$rel" "$hash"
-        # The manifest skips itself: the redirection truncates it before find runs, so its hash would be
-        # an empty file's. validate-build.php skips it too.
-        done < <(cd "$dir" && find . -type f ! -name "release-manifest.json" | sort | tr '\n' '\0' | xargs -0 shasum -a 256)
+        done < <(cd "$dir" && find . -type f | sort | tr '\n' '\0' | xargs -0 shasum -a 256)
 
         echo ""
         echo "  }"

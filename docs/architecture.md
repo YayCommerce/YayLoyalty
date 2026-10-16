@@ -169,7 +169,7 @@ One tree builds both editions. Lite is Pro without `includes/Pro/` and without t
   3. stages `release/yayloyalty/` from an explicit include list: the root plugin files, `includes/`, `assets/`, `languages/`, `vendor-prefixed/` and Composer's autoloader only;
   4. Lite only: deletes `includes/Pro/`;
   5. both editions: set `YAYLOYALTY_IS_DEVELOPMENT` to `false` and delete `RegisterDev.php` and dev artifacts;
-  6. writes `release-manifest.json`, with a SHA-256 for each file, and zips;
+  6. zips without directory entries, and writes `<zip>.manifest.json` beside the zip, with a SHA-256 for each file;
   7. runs `scripts/validate-build.php` and renames a failing zip to `.invalid`.
 - Both editions unpack to the same `yayloyalty/` folder, so Pro installs over Lite in place.
 - Pro runs first because that run stamps the version, which Lite's `--no-prompt` run then reads back, so both zips carry the same version. The two runs share `assets/dist/` and the staging folder, so they must run one after the other.
