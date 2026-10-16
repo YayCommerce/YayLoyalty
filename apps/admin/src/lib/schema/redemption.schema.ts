@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as v from 'valibot';
 
 import { paginatedSchema } from '@/lib/api/paginated';
 
@@ -9,25 +9,25 @@ import { paginatedSchema } from '@/lib/api/paginated';
 
 /** Mirrors `RedemptionsRestController`'s `status` enum, the source of truth. A display status, not the table's full lifecycle. */
 export const REDEMPTION_STATUSES = ['applied', 'returned', 'issued'] as const;
-export const redemptionStatusSchema = z.enum(REDEMPTION_STATUSES);
-export type RedemptionStatus = z.infer<typeof redemptionStatusSchema>;
+export const redemptionStatusSchema = v.picklist(REDEMPTION_STATUSES);
+export type RedemptionStatus = v.InferOutput<typeof redemptionStatusSchema>;
 
-export const redemptionEntrySchema = z.object({
-  id: z.number().int(),
-  reward_id: z.number().int(),
+export const redemptionEntrySchema = v.object({
+  id: v.pipe(v.number(), v.integer()),
+  reward_id: v.pipe(v.number(), v.integer()),
   /** Display name only. How to resolve it from `reward_id` is still open. */
-  reward_name: z.string(),
-  order_id: z.number().int().nullable(),
+  reward_name: v.string(),
+  order_id: v.nullable(v.pipe(v.number(), v.integer())),
   /** Signed for display: negative when spent, positive when a refund returned the points. */
-  points: z.number().int(),
-  value: z.string(),
-  currency: z.string(),
+  points: v.pipe(v.number(), v.integer()),
+  value: v.string(),
+  currency: v.string(),
   status: redemptionStatusSchema,
-  created_at: z.string(),
+  created_at: v.string(),
 });
 
-export type RedemptionEntry = z.infer<typeof redemptionEntrySchema>;
+export type RedemptionEntry = v.InferOutput<typeof redemptionEntrySchema>;
 
 export const redemptionEnvelopeSchema = paginatedSchema(redemptionEntrySchema);
 
-export type RedemptionEnvelope = z.infer<typeof redemptionEnvelopeSchema>;
+export type RedemptionEnvelope = v.InferOutput<typeof redemptionEnvelopeSchema>;

@@ -1,3 +1,5 @@
+import * as v from 'valibot';
+
 import { api } from '@/lib/api/api';
 import { LookupEntity, lookupResponseSchema, ProductSummary, productSummarySchema } from '@/lib/schema/lookup.schema';
 
@@ -16,10 +18,10 @@ export async function getLookup(entity: LookupEntity, params: LookupParams = {},
 
   const payload = await api.get(`lookups/${entity}`, { searchParams, signal }).json();
 
-  return lookupResponseSchema.parse(payload).items;
+  return v.parse(lookupResponseSchema, payload).items;
 }
 
 /** GET /lookups/products/{id}: name, thumbnail and live stock for one product; 404 once it is deleted. */
 export async function getProductSummary(id: number): Promise<ProductSummary> {
-  return productSummarySchema.parse(await api.get(`lookups/products/${id}`).json());
+  return v.parse(productSummarySchema, await api.get(`lookups/products/${id}`).json());
 }

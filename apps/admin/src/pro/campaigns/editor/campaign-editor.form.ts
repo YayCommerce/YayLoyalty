@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { valibotResolver } from '@hookform/resolvers/valibot';
 import type { Resolver, ResolverResult } from 'react-hook-form';
 import { __, sprintf } from '@wordpress/i18n';
 
@@ -119,8 +119,8 @@ function normalizeConditions(conditions: Campaign['conditions']): CampaignCondit
 }
 
 /**
- * Adds per-condition value errors to the zodResolver result. `value` is
- * z.unknown(), so zod never checks it; running validateConditionValue in the
+ * Adds per-condition value errors to the valibotResolver result. `value` is
+ * v.unknown(), so valibot never checks it; running validateConditionValue in the
  * resolver keeps it on RHF's normal lifecycle for every save path, unlike
  * setError (wiped by the next resolver run) or a native submit listener
  * (never fired by a dialog button). Builds the array through a plain Record
@@ -163,7 +163,8 @@ export function mergeConditionErrors(
 
 /** One resolver for both editor modes: the fields it validates are the same in each. */
 export const campaignFormResolver: Resolver<CampaignFormValues> = async (values, context, options) => {
-  const result = await zodResolver(campaignUpdateInputSchema)(values, context, options);
+  const resolve = valibotResolver(campaignUpdateInputSchema) as unknown as Resolver<CampaignFormValues>;
+  const result = await resolve(values, context, options);
   return mergeConditionErrors(result, values);
 };
 

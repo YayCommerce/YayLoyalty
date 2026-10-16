@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as v from 'valibot';
 import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { parseWPDate } from '@/lib/helpers/format.helper';
@@ -21,18 +21,19 @@ function windowDays(expiry: Expiry): number {
  * The Expiry tab's one form: the whole `expiry` group, Pro's mode and batch fields included. The reminder
  * must go out fewer days ahead than the window while expiry is on, as SettingsHelper::is_valid() rules.
  */
-export const expirySettingsFormSchema = settingsSchema.pick({ expiry: true }).superRefine(({ expiry }, ctx) => {
+export const expirySettingsFormSchema = v.pipe(
+  v.object({ expiry: settingsSchema.entries.expiry }),
   // Only while expiry is on: the fields are disabled while it is off, so a stored pair must not block turning it off.
-  if (expiry.enabled && expiry.reminder_days >= windowDays(expiry)) {
-    ctx.addIssue({
-      code: 'custom',
-      path: ['expiry', 'reminder_days'],
-      message: __('Send the reminder fewer days ahead than the expiry window.', 'yayloyalty'),
-    });
-  }
-});
+  v.forward(
+    v.check(
+      ({ expiry }) => !(expiry.enabled && expiry.reminder_days >= windowDays(expiry)),
+      __('Send the reminder fewer days ahead than the expiry window.', 'yayloyalty'),
+    ),
+    ['expiry', 'reminder_days'],
+  ),
+);
 
-export type ExpirySettingsFormValues = z.infer<typeof expirySettingsFormSchema>;
+export type ExpirySettingsFormValues = v.InferOutput<typeof expirySettingsFormSchema>;
 
 export function expirySettingsDefaults(settings: Settings): ExpirySettingsFormValues {
   return { expiry: settings.expiry };

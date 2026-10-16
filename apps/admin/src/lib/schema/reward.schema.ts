@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as v from 'valibot';
 import { __ } from '@wordpress/i18n';
 
 import {
@@ -23,8 +23,8 @@ export const PRO_REWARD_TYPES = ['fixed_coupon', 'percent_coupon', 'free_shippin
  */
 export const ALL_KNOWN_REWARD_TYPES = [...LITE_REWARD_TYPES, ...PRO_REWARD_TYPES] as const;
 
-export const rewardTypeSchema = z.enum(ALL_KNOWN_REWARD_TYPES);
-export type RewardType = z.infer<typeof rewardTypeSchema>;
+export const rewardTypeSchema = v.picklist(ALL_KNOWN_REWARD_TYPES);
+export type RewardType = v.InferOutput<typeof rewardTypeSchema>;
 /** Catalog rewards: every offerable type except the built-in slider, which is looked up by slug, not listed as a template. */
 export type CatalogRewardType = (typeof PRO_REWARD_TYPES)[number];
 
@@ -38,71 +38,71 @@ export type RewardStatus = CampaignStatus;
 export const resolveRewardDisplayStatus = resolveCampaignDisplayStatus;
 
 /** Claim figures from RedemptionRepository::summary_by_rewards(); zeros and nulls until the redemptions table exists. */
-export const rewardRedemptionSummarySchema = z.object({
+export const rewardRedemptionSummarySchema = v.object({
   /** Every claim row in any status — what decides `is_deletable`. */
-  claimed: z.number().int(),
+  claimed: v.pipe(v.number(), v.integer()),
   /** Issued coupons not yet expired. */
-  outstanding: z.number().int(),
-  outstanding_customers: z.number().int(),
-  outstanding_points: z.number().int(),
-  first_claimed_at: z.string().nullable(),
-  last_expires_at: z.string().nullable(),
+  outstanding: v.pipe(v.number(), v.integer()),
+  outstanding_customers: v.pipe(v.number(), v.integer()),
+  outstanding_points: v.pipe(v.number(), v.integer()),
+  first_claimed_at: v.nullable(v.string()),
+  last_expires_at: v.nullable(v.string()),
 });
 
-export type RewardRedemptionSummary = z.infer<typeof rewardRedemptionSummarySchema>;
+export type RewardRedemptionSummary = v.InferOutput<typeof rewardRedemptionSummarySchema>;
 
-export const rewardSchema = z.object({
-  id: z.number().int(),
-  name: z.string(),
+export const rewardSchema = v.object({
+  id: v.pipe(v.number(), v.integer()),
+  name: v.string(),
   /** Built-in is RewardRepository::CART_DISCOUNT_SLUG. */
-  slug: z.string(),
+  slug: v.string(),
   type: rewardTypeSchema,
   status: rewardStatusSchema,
-  sort_order: z.number().int(),
+  sort_order: v.pipe(v.number(), v.integer()),
   /** Null for flexible_discount — the customer picks the amount; required for every other type. */
-  cost_points: z.number().int().nullable(),
+  cost_points: v.nullable(v.pipe(v.number(), v.integer())),
   /** Loose on purpose: the per-type whitelist lives in PHP and would drift if duplicated. */
-  config: z.record(z.string(), z.unknown()),
-  conditions: z.union([z.record(z.string(), z.unknown()), z.array(z.unknown())]),
-  starts_at: z.string().nullable(),
+  config: v.record(v.string(), v.unknown()),
+  conditions: v.union([v.record(v.string(), v.unknown()), v.array(v.unknown())]),
+  starts_at: v.nullable(v.string()),
   /** Exclusive: a reward is not live at exactly this instant. */
-  ends_at: z.string().nullable(),
+  ends_at: v.nullable(v.string()),
   /** The seeded flexible-discount row: cannot be archived, addressed by slug across sites. */
-  is_builtin: z.boolean(),
-  created_by: z.number().int().nullable(),
-  created_at: z.string(),
-  updated_at: z.string(),
+  is_builtin: v.boolean(),
+  created_by: v.nullable(v.pipe(v.number(), v.integer())),
+  created_at: v.string(),
+  updated_at: v.string(),
   /** RewardRestController::is_deletable(): not built-in and never claimed. Read it; never re-derive it. */
-  is_deletable: z.boolean(),
+  is_deletable: v.boolean(),
   redemption_summary: rewardRedemptionSummarySchema,
 });
 
-export type Reward = z.infer<typeof rewardSchema>;
+export type Reward = v.InferOutput<typeof rewardSchema>;
 
 /** Same `{ deleted, id }` body the campaigns DELETE answers. */
 export const rewardDeleteResponseSchema = campaignDeleteResponseSchema;
 
 /** App-side list params; reward.api.ts maps them to the wire. */
-export const rewardListParamsSchema = z.object({
-  page: z.number().int().optional(),
-  perPage: z.number().int().optional(),
-  type: rewardTypeSchema.optional(),
-  status: rewardStatusSchema.optional(),
-  search: z.string().optional(),
+export const rewardListParamsSchema = v.object({
+  page: v.optional(v.pipe(v.number(), v.integer())),
+  perPage: v.optional(v.pipe(v.number(), v.integer())),
+  type: v.optional(rewardTypeSchema),
+  status: v.optional(rewardStatusSchema),
+  search: v.optional(v.string()),
 });
 
-export type RewardListParams = z.infer<typeof rewardListParamsSchema>;
+export type RewardListParams = v.InferOutput<typeof rewardListParamsSchema>;
 
 /* ─── Write ─────────────────────────────────────────────────────────── */
 
 /** One availability rule; loose here because RewardConditionSet validates it on save. */
-export const rewardConditionSchema = z.object({
-  type: z.string(),
-  operator: z.string(),
-  value: z.unknown(),
+export const rewardConditionSchema = v.object({
+  type: v.string(),
+  operator: v.string(),
+  value: v.unknown(),
 });
 
-export type RewardCondition = z.infer<typeof rewardConditionSchema>;
+export type RewardCondition = v.InferOutput<typeof rewardConditionSchema>;
 
 /**
  * The stored conditions as a list, defensively: the wire type is a loose
@@ -121,27 +121,27 @@ export function normalizeRewardConditions(conditions: Reward['conditions']): Rew
 }
 
 /** The editable fields, unrefined so the editor form can pick from them. */
-export const rewardFieldsSchema = z.object({
-  name: z.string().trim().min(1, __('A reward needs a name.', 'yayloyalty')),
+export const rewardFieldsSchema = v.object({
+  name: v.pipe(v.string(), v.trim(), v.minLength(1, __('A reward needs a name.', 'yayloyalty'))),
   status: rewardStatusSchema,
-  cost_points: z.number().int().nullable(),
-  config: z.record(z.string(), z.unknown()),
-  conditions: z.array(rewardConditionSchema),
-  starts_at: z.string().nullable(),
+  cost_points: v.nullable(v.pipe(v.number(), v.integer())),
+  config: v.record(v.string(), v.unknown()),
+  conditions: v.array(rewardConditionSchema),
+  starts_at: v.nullable(v.string()),
   /** Exclusive; see rewardSchema.ends_at. */
-  ends_at: z.string().nullable(),
+  ends_at: v.nullable(v.string()),
 });
 
 /** Mirrors RewardRestController::update_item()'s accepted fields, the source of truth. The write body for PUT rewards/{id}. Every key is optional on the wire. */
-export type RewardUpdateInput = z.infer<typeof rewardFieldsSchema>;
+export type RewardUpdateInput = v.InferOutput<typeof rewardFieldsSchema>;
 
 /** Write body for POST rewards: update's fields plus the type, which is immutable afterwards. No slug: the server derives it from `name`. */
 export type RewardCreateInput = RewardUpdateInput & { type: CatalogRewardType };
 
-const moneySchema = z.number().min(0).nullable();
+const moneySchema = v.nullable(v.pipe(v.number(), v.minValue(0)));
 /** A cap: null is no cap, and a set cap is above 0 (the PHP spec's `exclusive_min: 0`). */
-const moneyCapSchema = z.number().positive().nullable();
-const couponExpiryDaysSchema = z.number().int().min(1).nullable();
+const moneyCapSchema = v.nullable(v.pipe(v.number(), v.gtValue(0)));
+const couponExpiryDaysSchema = v.nullable(v.pipe(v.number(), v.integer(), v.minValue(1)));
 
 /**
  * Mirrors Reward::config_schema() (flexible_discount) and
@@ -149,49 +149,51 @@ const couponExpiryDaysSchema = z.number().int().min(1).nullable();
  * Its bounds give form feedback before the request; the PHP specs decide what is stored.
  */
 export const REWARD_CONFIG_SCHEMAS = {
-  flexible_discount: z.object({
-    currency: z.string(),
-    points_per_currency_unit: z.number().positive(),
-    min_points: z.number().int().min(0),
+  flexible_discount: v.object({
+    currency: v.string(),
+    points_per_currency_unit: v.pipe(v.number(), v.gtValue(0)),
+    min_points: v.pipe(v.number(), v.integer(), v.minValue(0)),
     max_points_per_order: moneyCapSchema,
     max_percent_of_subtotal: moneySchema,
-    increment: z.number().int().min(1),
-    show_on: z.array(z.enum(['cart', 'checkout'])),
-    refund_policy: z.enum(['proportional', 'full', 'none']),
+    increment: v.pipe(v.number(), v.integer(), v.minValue(1)),
+    show_on: v.array(v.picklist(['cart', 'checkout'])),
+    refund_policy: v.picklist(['proportional', 'full', 'none']),
     max_total: moneyCapSchema,
   }),
-  fixed_coupon: z.object({
-    currency: z.string(),
-    amount: z.number().min(0.01, __('The discount must be more than zero.', 'yayloyalty')),
+  fixed_coupon: v.object({
+    currency: v.string(),
+    amount: v.pipe(v.number(), v.minValue(0.01, __('The discount must be more than zero.', 'yayloyalty'))),
     min_order: moneySchema,
     coupon_expiry_days: couponExpiryDaysSchema,
-    exclude_sale_items: z.boolean(),
+    exclude_sale_items: v.boolean(),
   }),
-  percent_coupon: z.object({
-    percent: z
-      .number()
-      .min(1, __('The discount must be between 1% and 100%.', 'yayloyalty'))
-      .max(100, __('The discount must be between 1% and 100%.', 'yayloyalty')),
+  percent_coupon: v.object({
+    percent: v.pipe(
+      v.number(),
+      v.minValue(1, __('The discount must be between 1% and 100%.', 'yayloyalty')),
+      v.maxValue(100, __('The discount must be between 1% and 100%.', 'yayloyalty')),
+    ),
     max_discount: moneyCapSchema,
-    currency: z.string(),
+    currency: v.string(),
     min_order: moneySchema,
     coupon_expiry_days: couponExpiryDaysSchema,
-    exclude_sale_items: z.boolean(),
+    exclude_sale_items: v.boolean(),
   }),
-  free_shipping: z.object({
+  free_shipping: v.object({
     min_order: moneySchema,
-    currency: z.string(),
+    currency: v.string(),
     coupon_expiry_days: couponExpiryDaysSchema,
   }),
-  free_product: z.object({
-    product_id: z
-      .number({ invalid_type_error: __('Choose a product.', 'yayloyalty') })
-      .int()
-      .min(1, __('Choose a product.', 'yayloyalty')),
-    variation_id: z.number().int().min(1).nullable(),
-    qty: z.number().int().min(1),
+  free_product: v.object({
+    product_id: v.pipe(
+      v.number(__('Choose a product.', 'yayloyalty')),
+      v.integer(),
+      v.minValue(1, __('Choose a product.', 'yayloyalty')),
+    ),
+    variation_id: v.nullable(v.pipe(v.number(), v.integer(), v.minValue(1))),
+    qty: v.pipe(v.number(), v.integer(), v.minValue(1)),
     coupon_expiry_days: couponExpiryDaysSchema,
   }),
-} satisfies Record<RewardType, z.ZodType>;
+} satisfies Record<RewardType, v.GenericSchema>;
 
-export type RewardConfigOf<T extends RewardType> = z.infer<(typeof REWARD_CONFIG_SCHEMAS)[T]>;
+export type RewardConfigOf<T extends RewardType> = v.InferOutput<(typeof REWARD_CONFIG_SCHEMAS)[T]>;

@@ -1,3 +1,4 @@
+import * as v from 'valibot';
 import { describe, expect, it } from 'vitest';
 
 import { normalizeRewardConditions, Reward, RewardCondition } from '@/lib/schema/reward.schema';
@@ -64,16 +65,16 @@ describe('form values', () => {
     for (const type of ['fixed_coupon', 'percent_coupon', 'free_shipping'] as const) {
       const seed = rewardCreateSeed(type, 'USD');
 
-      expect(rewardFormSchema(type).safeParse(seed).success, type).toBe(true);
+      expect(v.safeParse(rewardFormSchema(type), seed).success, type).toBe(true);
     }
   });
 
   it('requires a product before a free-product seed can save', () => {
     const seed = rewardCreateSeed('free_product', 'USD');
 
-    expect(rewardFormSchema('free_product').safeParse(seed).success).toBe(false);
+    expect(v.safeParse(rewardFormSchema('free_product'), seed).success).toBe(false);
     expect(
-      rewardFormSchema('free_product').safeParse({ ...seed, config: { ...seed.config, product_id: 12 } }).success,
+      v.safeParse(rewardFormSchema('free_product'), { ...seed, config: { ...seed.config, product_id: 12 } }).success,
     ).toBe(true);
   });
 
@@ -114,7 +115,7 @@ describe('rewardFormSchema bounds mirror the PHP specs', () => {
     ['blank name', { name: '  ' }],
     ['end before start', { starts_at: '2026-12-01 00:00:00', ends_at: '2026-11-01 00:00:00' }],
   ])('rejects %s', (_label, patch) => {
-    expect(rewardFormSchema('percent_coupon').safeParse({ ...base, ...patch }).success).toBe(false);
+    expect(v.safeParse(rewardFormSchema('percent_coupon'), { ...base, ...patch }).success).toBe(false);
   });
 
   it('requires a null cost on flexible_discount', () => {
@@ -137,8 +138,8 @@ describe('rewardFormSchema bounds mirror the PHP specs', () => {
       ends_at: null,
     };
 
-    expect(rewardFormSchema('flexible_discount').safeParse({ ...values, cost_points: null }).success).toBe(true);
-    expect(rewardFormSchema('flexible_discount').safeParse({ ...values, cost_points: 100 }).success).toBe(false);
+    expect(v.safeParse(rewardFormSchema('flexible_discount'), { ...values, cost_points: null }).success).toBe(true);
+    expect(v.safeParse(rewardFormSchema('flexible_discount'), { ...values, cost_points: 100 }).success).toBe(false);
   });
 });
 

@@ -1,3 +1,4 @@
+import * as v from 'valibot';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -32,11 +33,11 @@ describe('generalSettingsFormSchema', () => {
   const withPlural = (plural: string) => ({ ...values, points_label_plural: plural });
 
   it('rejects a blank label', () => {
-    expect(generalSettingsFormSchema.safeParse(withPlural('   ')).success).toBe(false);
+    expect(v.safeParse(generalSettingsFormSchema, withPlural('   ')).success).toBe(false);
   });
 
   it('rejects a label over 30 characters and accepts one at 30', () => {
-    expect(generalSettingsFormSchema.safeParse(withPlural('x'.repeat(31))).success).toBe(false);
-    expect(generalSettingsFormSchema.safeParse(withPlural('x'.repeat(30))).success).toBe(true);
+    expect(v.safeParse(generalSettingsFormSchema, withPlural('x'.repeat(31))).success).toBe(false);
+    expect(v.safeParse(generalSettingsFormSchema, withPlural('x'.repeat(30))).success).toBe(true);
   });
 });

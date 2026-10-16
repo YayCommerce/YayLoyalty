@@ -1,4 +1,4 @@
-import { zodResolver } from '@hookform/resolvers/zod';
+import { valibotResolver } from '@hookform/resolvers/valibot';
 import { FormProvider, useForm } from 'react-hook-form';
 import { __ } from '@wordpress/i18n';
 
@@ -46,7 +46,7 @@ export default function GeneralSettingsPage() {
 
   // `values` + keepDirtyValues: a refetch re-seeds the form without clobbering a field mid-edit.
   const form = useForm<GeneralSettingsFormValues>({
-    resolver: zodResolver(generalSettingsFormSchema),
+    resolver: valibotResolver(generalSettingsFormSchema),
     values: generalSettingsDefaults(settingsQuery.data),
     resetOptions: { keepDirtyValues: true },
   });

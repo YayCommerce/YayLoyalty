@@ -1,6 +1,6 @@
-import { zodResolver } from '@hookform/resolvers/zod';
+import { valibotResolver } from '@hookform/resolvers/valibot';
 import type { Resolver } from 'react-hook-form';
-import { z } from 'zod';
+import * as v from 'valibot';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { parseWPCurrency, storeCurrency } from '@/lib/helpers/format.helper';
@@ -208,23 +208,29 @@ function formValuesToBody(
 export function rewardFormSchema(type: RewardType) {
   const costMessage = __('A reward needs a cost of at least 1 point.', 'yayloyalty');
 
-  return rewardFieldsSchema
-    .pick({ name: true, starts_at: true, ends_at: true })
-    .extend({
+  return v.pipe(
+    v.object({
+      name: rewardFieldsSchema.entries.name,
+      starts_at: rewardFieldsSchema.entries.starts_at,
+      ends_at: rewardFieldsSchema.entries.ends_at,
       cost_points:
         type === 'flexible_discount'
-          ? z.null()
-          : z.number({ invalid_type_error: costMessage }).int().min(1, costMessage),
+          ? v.null()
+          : v.pipe(v.number(costMessage), v.integer(), v.minValue(1, costMessage)),
       config: REWARD_CONFIG_SCHEMAS[type],
-      status: z.enum(EDITABLE_REWARD_STATUSES),
-    })
-    .refine((data) => isCampaignScheduleInOrder(data.starts_at, data.ends_at), {
-      message: __('The reward must end after it starts.', 'yayloyalty'),
-      path: ['ends_at'],
-    });
+      status: v.picklist(EDITABLE_REWARD_STATUSES),
+    }),
+    v.forward(
+      v.check(
+        (data) => isCampaignScheduleInOrder(data.starts_at, data.ends_at),
+        __('The reward must end after it starts.', 'yayloyalty'),
+      ),
+      ['ends_at'],
+    ),
+  );
 }
 
 export function rewardFormResolver(type: RewardType): Resolver<RewardFormValues> {
   // Form state keeps config as a loose record shared by every type; the per-type schema is what types it.
-  return zodResolver(rewardFormSchema(type)) as unknown as Resolver<RewardFormValues>;
+  return valibotResolver(rewardFormSchema(type)) as unknown as Resolver<RewardFormValues>;
 }

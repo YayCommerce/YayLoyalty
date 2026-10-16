@@ -1,3 +1,5 @@
+import * as v from 'valibot';
+
 import { api, wordpressApi } from '@/lib/api/api';
 import { Design, DesignPreview, designPreviewSchema } from '@/lib/schema/design.schema';
 
@@ -31,7 +33,7 @@ export type DesignPreviewInput = Pick<Design, 'launcher' | 'storefront_text'> & 
 
 /** The storefront launcher drawn with an unsaved design; nothing is saved. */
 export async function previewDesign(design: DesignPreviewInput, viewer: DesignPreviewViewer): Promise<DesignPreview> {
-  return designPreviewSchema.parse(await api.post('design/preview', { json: { design, viewer } }).json());
+  return v.parse(designPreviewSchema, await api.post('design/preview', { json: { design, viewer } }).json());
 }
 
 export type WpPageOption = { id: number; title: { rendered: string } };

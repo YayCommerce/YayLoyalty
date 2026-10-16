@@ -1,4 +1,4 @@
-import { zodResolver } from '@hookform/resolvers/zod';
+import { valibotResolver } from '@hookform/resolvers/valibot';
 import { FormProvider, useForm } from 'react-hook-form';
 import { __ } from '@wordpress/i18n';
 
@@ -48,7 +48,7 @@ function EmailsSettingsForm({ data }: { data: EmailsResponse }) {
   // `values` (not defaultValues) + keepDirtyValues: a refetch re-seeds the form without
   // clobbering a field mid-edit, same reasoning as DesignSettingsPage.
   const form = useForm<EmailsFormValues>({
-    resolver: zodResolver(emailsFormSchema),
+    resolver: valibotResolver(emailsFormSchema),
     values: toEmailsFormValues(data),
     resetOptions: { keepDirtyValues: true },
   });

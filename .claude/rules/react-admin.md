@@ -15,10 +15,10 @@ How the SPA loads and calls WordPress is in [docs/architecture.md § SPA and Wor
 ## Patterns for new code
 
 - **Imports:** relative inside a page or Pro feature folder, and `@/` (for `apps/admin/src/`) for anything outside it. Prettier sorts them.
-- **REST responses** are parsed with their zod schema from `apps/admin/src/lib/schema/` in the resource's `*.api.ts` module, never cast with `.json<T>()`. A cast is unchecked, and a bad shape white-screens a component.
+- **REST responses** are parsed with their valibot schema (`v.parse`) from `apps/admin/src/lib/schema/` in the resource's `*.api.ts` module, never cast with `.json<T>()`. A cast is unchecked, and a bad shape white-screens a component.
 - **Queries** are `queryOptions` in a `<RESOURCE>_QUERIES` map, beside their `useXQuery` and `useXMutation` hooks. They live in `apps/admin/src/lib/queries/`, or in a Pro feature's own folder under `apps/admin/src/pro/`. A mutation invalidates by key prefix.
 - **Failed requests** are shown with `toastApiError()` from `apps/admin/src/lib/api/api.ts`. `toast.error(await getApiErrorMessage(…))` toasts a capability refusal twice, because the client has already toasted it.
-- **Forms** use react-hook-form with `zodResolver` over the resource's zod schema, `values` with `resetOptions: { keepDirtyValues: true }`, and `useEditorSave()` (`apps/admin/src/hooks/useEditorSave.ts`), which wraps `useRouteLeaveGuard(isDirty)`. `apps/admin/src/pages/settings/DesignSettingsPage.tsx` is the model.
+- **Forms** use react-hook-form with `valibotResolver` over the resource's valibot schema, `values` with `resetOptions: { keepDirtyValues: true }`, and `useEditorSave()` (`apps/admin/src/hooks/useEditorSave.ts`), which wraps `useRouteLeaveGuard(isDirty)`. `apps/admin/src/pages/settings/DesignSettingsPage.tsx` is the model.
 - **A new page** gets a route in `apps/admin/src/router.tsx` wrapped in `guarded(CAP.…)`. A top-level page also gets a menu item with the same capability in `apps/admin/src/components/layout/HeaderMenu.tsx`, and a settings tab an entry in `SETTINGS_NAV`.
 - **UI** is built from `apps/admin/src/components/ui/`, using the wrapper in `apps/admin/src/components/ui/custom/` where one exists. Icons come from lucide-react, and class names are merged with `cn()`.
 

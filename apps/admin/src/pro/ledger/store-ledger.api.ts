@@ -1,3 +1,5 @@
+import * as v from 'valibot';
+
 import { api } from '@/lib/api/api';
 import { toDrawerSearchParams, type DrawerPageParams } from '@/lib/api/customer-drawer.api';
 import type { LedgerFilterType } from '@/lib/schema/ledger.schema';
@@ -20,5 +22,5 @@ export async function getStoreLedger(params: StoreLedgerParams = {}, signal?: Ab
 
   const payload = await api.get('ledger', { searchParams, signal }).json();
 
-  return storeLedgerEnvelopeSchema.parse(payload);
+  return v.parse(storeLedgerEnvelopeSchema, payload);
 }

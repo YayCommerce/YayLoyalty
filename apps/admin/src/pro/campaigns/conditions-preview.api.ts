@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as v from 'valibot';
 
 import { api } from '@/lib/api/api';
 
@@ -7,29 +7,29 @@ import { api } from '@/lib/api/api';
  * Client for POST /campaigns/{id}/preview-conditions.
  */
 
-export const conditionResultSchema = z.object({
-  type: z.string(),
-  operator: z.string(),
-  value: z.unknown(),
-  matched: z.boolean(),
+export const conditionResultSchema = v.object({
+  type: v.string(),
+  operator: v.string(),
+  value: v.unknown(),
+  matched: v.boolean(),
   /** Why it matched or did not: ConditionsEvaluator's reason codes (matched | no_overlap | out_of_range | no_customer | needs_order | malformed_value | …), labelled by describeReason(). */
-  reason: z.string(),
+  reason: v.string(),
   /** Present for numeric conditions: the customer's actual figure. */
-  actual: z.number().optional(),
+  actual: v.optional(v.number()),
 });
 
-export const conditionsPreviewSchema = z.object({
-  campaign_id: z.number().int(),
-  user_id: z.number().int(),
-  matches: z.boolean(),
-  conditions: z.array(conditionResultSchema),
+export const conditionsPreviewSchema = v.object({
+  campaign_id: v.pipe(v.number(), v.integer()),
+  user_id: v.pipe(v.number(), v.integer()),
+  matches: v.boolean(),
+  conditions: v.array(conditionResultSchema),
 });
 
-export type ConditionResult = z.infer<typeof conditionResultSchema>;
-export type ConditionsPreview = z.infer<typeof conditionsPreviewSchema>;
+export type ConditionResult = v.InferOutput<typeof conditionResultSchema>;
+export type ConditionsPreview = v.InferOutput<typeof conditionsPreviewSchema>;
 
 export async function previewConditions(campaignId: number, userId: number): Promise<ConditionsPreview> {
   const payload = await api.post(`campaigns/${campaignId}/preview-conditions`, { json: { user_id: userId } }).json();
 
-  return conditionsPreviewSchema.parse(payload);
+  return v.parse(conditionsPreviewSchema, payload);
 }

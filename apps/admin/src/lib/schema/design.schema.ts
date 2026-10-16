@@ -1,65 +1,65 @@
-import { z } from 'zod';
+import * as v from 'valibot';
 
 /**
  * Mirrors DesignSchema, the source of truth.
  */
 
-export const designLauncherPositionSchema = z.enum(['bottom_right', 'bottom_left']);
-export type DesignLauncherPosition = z.infer<typeof designLauncherPositionSchema>;
+export const designLauncherPositionSchema = v.picklist(['bottom_right', 'bottom_left']);
+export type DesignLauncherPosition = v.InferOutput<typeof designLauncherPositionSchema>;
 
-export const designVisibilityScopeSchema = z.enum(['all_pages', 'shop_and_product', 'custom_pages']);
-export type DesignVisibilityScope = z.infer<typeof designVisibilityScopeSchema>;
+export const designVisibilityScopeSchema = v.picklist(['all_pages', 'shop_and_product', 'custom_pages']);
+export type DesignVisibilityScope = v.InferOutput<typeof designVisibilityScopeSchema>;
 
-export const designPanelLayoutSchema = z.enum(['compact', 'full']);
-export type DesignPanelLayout = z.infer<typeof designPanelLayoutSchema>;
+export const designPanelLayoutSchema = v.picklist(['compact', 'full']);
+export type DesignPanelLayout = v.InferOutput<typeof designPanelLayoutSchema>;
 
-export const designSchema = z.object({
-  launcher: z.object({
+export const designSchema = v.object({
+  launcher: v.object({
     position: designLauncherPositionSchema,
-    brand_color: z.string(),
-    corner_radius: z.number().int().min(0).max(24),
+    brand_color: v.string(),
+    corner_radius: v.pipe(v.number(), v.integer(), v.minValue(0), v.maxValue(24)),
   }),
-  storefront_text: z.object({
-    launcher_label: z.string().min(1),
-    balance_heading: z.string().min(1),
-    earn_rate_line: z.string(),
-    redeem_button: z.string().min(1),
-    signed_out_prompt: z.string(),
-    product_earn_line: z.string().min(1),
-    thankyou_pending_line: z.string().min(1),
-    thankyou_earned_line: z.string().min(1),
+  storefront_text: v.object({
+    launcher_label: v.pipe(v.string(), v.minLength(1)),
+    balance_heading: v.pipe(v.string(), v.minLength(1)),
+    earn_rate_line: v.string(),
+    redeem_button: v.pipe(v.string(), v.minLength(1)),
+    signed_out_prompt: v.string(),
+    product_earn_line: v.pipe(v.string(), v.minLength(1)),
+    thankyou_pending_line: v.pipe(v.string(), v.minLength(1)),
+    thankyou_earned_line: v.pipe(v.string(), v.minLength(1)),
   }),
-  visibility: z.object({
+  visibility: v.object({
     scope: designVisibilityScopeSchema,
     /** Read only when `scope === 'custom_pages'`. */
-    include_page_ids: z.array(z.number().int().positive()),
-    hide_on_mobile: z.boolean(),
-    hide_for_roles: z.array(z.string()),
-    product_message: z.boolean(),
-    thankyou_message: z.boolean(),
+    include_page_ids: v.array(v.pipe(v.number(), v.integer(), v.gtValue(0))),
+    hide_on_mobile: v.boolean(),
+    hide_for_roles: v.array(v.string()),
+    product_message: v.boolean(),
+    thankyou_message: v.boolean(),
   }),
   /** Pro. */
-  panel: z.object({
+  panel: v.object({
     layout: designPanelLayoutSchema,
-    show_reward_catalog: z.boolean(),
+    show_reward_catalog: v.boolean(),
   }),
   /** Pro. */
-  typography: z.object({
-    custom_css: z.string(),
+  typography: v.object({
+    custom_css: v.string(),
   }),
   /** Stamped by DesignHelper on save; a design never saved reports the current version. */
-  schema_version: z.number().int().optional(),
+  schema_version: v.optional(v.pipe(v.number(), v.integer())),
 });
 
-export type Design = z.infer<typeof designSchema>;
+export type Design = v.InferOutput<typeof designSchema>;
 
 /**
  * Mirrors the keys `LauncherPreview::documents()` returns, the source of truth.
  * Two whole HTML pages from the server's own launcher templates: the button alone, and the open panel.
  */
-export const designPreviewSchema = z.object({
-  collapsed: z.string(),
-  expanded: z.string(),
+export const designPreviewSchema = v.object({
+  collapsed: v.string(),
+  expanded: v.string(),
 });
 
-export type DesignPreview = z.infer<typeof designPreviewSchema>;
+export type DesignPreview = v.InferOutput<typeof designPreviewSchema>;

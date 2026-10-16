@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import * as v from 'valibot';
 import { __ } from '@wordpress/i18n';
 
 import {
@@ -175,7 +176,7 @@ export function CustomersAdjustPointsDialog({
   });
 
   async function handleSubmit() {
-    const result = adjustPointsSchema.safeParse({
+    const result = v.safeParse(adjustPointsSchema, {
       points: signedPoints(state),
       note: state.reason,
       adjustLifetime: state.adjustLifetime,
@@ -184,7 +185,7 @@ export function CustomersAdjustPointsDialog({
     });
 
     if (!result.success) {
-      setValidationError(result.error.issues[0]?.message ?? __('Invalid input.', 'yayloyalty'));
+      setValidationError(result.issues[0]?.message ?? __('Invalid input.', 'yayloyalty'));
       return;
     }
 
@@ -201,12 +202,12 @@ export function CustomersAdjustPointsDialog({
       // or a balance that moved since the acknowledged baseline.
       if (!openRef.current || fresh.error || !latest || baseline.isStaleAgainst(latest)) return;
 
-      onSubmit(result.data);
+      onSubmit(result.output);
       return;
     }
 
     // Bulk re-checks its count in useCustomersBulkActions, which re-resolves the matching set before writing.
-    onSubmit(result.data, bulk.effectiveCount);
+    onSubmit(result.output, bulk.effectiveCount);
   }
 
   return (

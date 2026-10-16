@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as v from 'valibot';
 
 import { api } from '@/lib/api/api';
 import { BALANCE_RANGE_OPTIONS, EXPIRING_SOON_OPTIONS } from '@/pages/customers/customers-page.filter-rows';
@@ -11,32 +11,32 @@ import { BALANCE_RANGE_OPTIONS, EXPIRING_SOON_OPTIONS } from '@/pages/customers/
 
 /** Keeps the value union, not `string`, so SavedSegment['filters'] is assignable to RowFilters. */
 function enumOfOptions<T extends string>(options: readonly { value: T }[]) {
-  return z.enum(options.map((option) => option.value) as [T, ...T[]]);
+  return v.picklist(options.map((option) => option.value) as [T, ...T[]]);
 }
 
 const balanceRangeSchema = enumOfOptions(BALANCE_RANGE_OPTIONS);
 const expiringSoonSchema = enumOfOptions(EXPIRING_SOON_OPTIONS);
 
 /** What the REST route and window.yayLoyaltyAdmin.segments carry. */
-const savedSegmentWireSchema = z.object({
-  name: z.string(),
-  filters: z.object({
+const savedSegmentWireSchema = v.object({
+  name: v.string(),
+  filters: v.object({
     balance_range: balanceRangeSchema,
     expiring_soon: expiringSoonSchema,
   }),
 });
 
-type SavedSegmentWire = z.infer<typeof savedSegmentWireSchema>;
+type SavedSegmentWire = v.InferOutput<typeof savedSegmentWireSchema>;
 
-export const savedSegmentSchema = z.object({
-  name: z.string(),
-  filters: z.object({
+export const savedSegmentSchema = v.object({
+  name: v.string(),
+  filters: v.object({
     balanceRange: balanceRangeSchema,
     expiringSoon: expiringSoonSchema,
   }),
 });
 
-export type SavedSegment = z.infer<typeof savedSegmentSchema>;
+export type SavedSegment = v.InferOutput<typeof savedSegmentSchema>;
 
 function toWireFilters({ balanceRange, expiringSoon }: SavedSegment['filters']): SavedSegmentWire['filters'] {
   return { balance_range: balanceRange, expiring_soon: expiringSoon };
@@ -51,7 +51,7 @@ function fromWire({ name, filters }: SavedSegmentWire): SavedSegment {
 
 /** Parses the wire list and converts it to the app shape. */
 function parseSegments(payload: unknown): SavedSegment[] {
-  return z.array(savedSegmentWireSchema).parse(payload).map(fromWire);
+  return v.parse(v.array(savedSegmentWireSchema), payload).map(fromWire);
 }
 
 export async function saveSegment(name: string, filters: SavedSegment['filters']): Promise<SavedSegment[]> {
@@ -69,7 +69,7 @@ export async function removeSegment(name: string): Promise<SavedSegment[]> {
 
 /** The segments PHP localised at render; a broken payload degrades to an empty list. */
 export function readSegmentsFromLocalize(): SavedSegment[] {
-  const result = z.array(savedSegmentWireSchema).safeParse(window.yayLoyaltyAdmin?.segments ?? []);
+  const result = v.safeParse(v.array(savedSegmentWireSchema), window.yayLoyaltyAdmin?.segments ?? []);
 
-  return result.success ? result.data.map(fromWire) : [];
+  return result.success ? result.output.map(fromWire) : [];
 }

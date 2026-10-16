@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as v from 'valibot';
 import { __ } from '@wordpress/i18n';
 
 import { dateToStored } from '@/lib/helpers/format.helper';
@@ -38,14 +38,14 @@ export const CAMPAIGN_TRIGGERS = IS_PRO_BUILD
 export const CAMPAIGN_STATUSES = ['active', 'paused', 'draft', 'archived'] as const;
 
 /** Parses the full known vocabulary, in both builds. */
-export const campaignTriggerSchema = z.enum(ALL_KNOWN_CAMPAIGN_TRIGGERS);
-export const campaignStatusSchema = z.enum(CAMPAIGN_STATUSES);
+export const campaignTriggerSchema = v.picklist(ALL_KNOWN_CAMPAIGN_TRIGGERS);
+export const campaignStatusSchema = v.picklist(CAMPAIGN_STATUSES);
 
-export type CampaignTrigger = z.infer<typeof campaignTriggerSchema>;
+export type CampaignTrigger = v.InferOutput<typeof campaignTriggerSchema>;
 
 /** A trigger this build can offer, as opposed to one it merely recognises. */
 export type OfferableCampaignTrigger = (typeof CAMPAIGN_TRIGGERS)[number];
-export type CampaignStatus = z.infer<typeof campaignStatusSchema>;
+export type CampaignStatus = v.InferOutput<typeof campaignStatusSchema>;
 
 /** Mirrors Enums\Status::resolve_display(), the source of truth. CampaignStatus plus the two derived, never-stored labels. */
 export const CAMPAIGN_DISPLAY_STATUSES = [...CAMPAIGN_STATUSES, 'scheduled', 'ended'] as const;
@@ -77,32 +77,32 @@ export function resolveCampaignDisplayStatus(
   return 'active';
 }
 
-export const campaignSchema = z.object({
-  id: z.number().int(),
-  name: z.string(),
+export const campaignSchema = v.object({
+  id: v.pipe(v.number(), v.integer()),
+  name: v.string(),
   /** Generated server-side and immutable after create. */
-  slug: z.string(),
+  slug: v.string(),
   trigger: campaignTriggerSchema,
   status: campaignStatusSchema,
-  priority: z.number().int(),
+  priority: v.pipe(v.number(), v.integer()),
   /** Loose on purpose: the per-trigger whitelist lives in PHP and would drift if duplicated. */
-  config: z.record(z.string(), z.unknown()),
-  conditions: z.union([z.record(z.string(), z.unknown()), z.array(z.unknown())]),
-  starts_at: z.string().nullable(),
+  config: v.record(v.string(), v.unknown()),
+  conditions: v.union([v.record(v.string(), v.unknown()), v.array(v.unknown())]),
+  starts_at: v.nullable(v.string()),
   /** Exclusive: a campaign is not live at exactly this instant. */
-  ends_at: z.string().nullable(),
+  ends_at: v.nullable(v.string()),
   /** Built-ins cannot be deleted and are addressed by slug across sites. */
-  is_builtin: z.boolean(),
-  created_by: z.number().int().nullable(),
-  created_at: z.string(),
-  updated_at: z.string(),
+  is_builtin: v.boolean(),
+  created_by: v.nullable(v.pipe(v.number(), v.integer())),
+  created_at: v.string(),
+  updated_at: v.string(),
   /** Net points awarded, lifetime. Derived from the ledger at read time, never stored. */
-  points_issued: z.number().int(),
+  points_issued: v.pipe(v.number(), v.integer()),
   /** Whether DELETE would succeed: not built-in, and no ledger row names it. */
-  is_deletable: z.boolean(),
+  is_deletable: v.boolean(),
 });
 
-export type Campaign = z.infer<typeof campaignSchema>;
+export type Campaign = v.InferOutput<typeof campaignSchema>;
 
 /** The built-in (default) campaign for a trigger: what a non-built-in falls back to. undefined while the list loads. */
 export function findBuiltinCampaign<T extends Campaign>(
@@ -113,15 +113,15 @@ export function findBuiltinCampaign<T extends Campaign>(
 }
 
 /** App-side list params; campaign.api.ts maps them to the wire. */
-export const campaignListParamsSchema = z.object({
-  page: z.number().int().optional(),
-  perPage: z.number().int().optional(),
-  trigger: campaignTriggerSchema.optional(),
-  status: campaignStatusSchema.optional(),
-  search: z.string().optional(),
+export const campaignListParamsSchema = v.object({
+  page: v.optional(v.pipe(v.number(), v.integer())),
+  perPage: v.optional(v.pipe(v.number(), v.integer())),
+  trigger: v.optional(campaignTriggerSchema),
+  status: v.optional(campaignStatusSchema),
+  search: v.optional(v.string()),
 });
 
-export type CampaignListParams = z.infer<typeof campaignListParamsSchema>;
+export type CampaignListParams = v.InferOutput<typeof campaignListParamsSchema>;
 
 // Write shapes
 
@@ -224,36 +224,40 @@ export const CAMPAIGN_CONDITION_SCHEMA: Record<CampaignConditionKind, CampaignCo
  * extra keys on submit, which is fine here: a condition has a fixed shape
  * per type, unlike `config`.
  */
-export const campaignConditionSchema = z.object({
-  type: z.enum(CAMPAIGN_CONDITION_TYPES),
-  operator: z.string(),
-  value: z.unknown(),
+export const campaignConditionSchema = v.object({
+  type: v.picklist(CAMPAIGN_CONDITION_TYPES),
+  operator: v.string(),
+  value: v.unknown(),
 });
 
-export type CampaignCondition = z.infer<typeof campaignConditionSchema>;
+export type CampaignCondition = v.InferOutput<typeof campaignConditionSchema>;
 
 /**
  * Mirrors CampaignRestController::update_item()'s mutable fields, the source of truth.
  * The write body for PUT campaigns/{id}. No slug or trigger: both are immutable after create. No priority:
  * only the campaigns table's drag writes it, through campaigns/reorder.
  */
-export const campaignUpdateInputSchema = z
-  .object({
-    name: z.string().trim().min(1, __('A campaign needs a name.', 'yayloyalty')),
+export const campaignUpdateInputSchema = v.pipe(
+  v.object({
+    name: v.pipe(v.string(), v.trim(), v.minLength(1, __('A campaign needs a name.', 'yayloyalty'))),
     status: campaignStatusSchema,
     /** Loose on purpose; see campaignSchema.config. */
-    config: z.record(z.string(), z.unknown()),
-    conditions: z.array(campaignConditionSchema),
-    starts_at: z.string().nullable(),
+    config: v.record(v.string(), v.unknown()),
+    conditions: v.array(campaignConditionSchema),
+    starts_at: v.nullable(v.string()),
     /** Exclusive; see campaignSchema.ends_at. */
-    ends_at: z.string().nullable(),
-  })
-  .refine((data) => isCampaignScheduleInOrder(data.starts_at, data.ends_at), {
-    message: __('The campaign must end after it starts.', 'yayloyalty'),
-    path: ['ends_at'],
-  });
+    ends_at: v.nullable(v.string()),
+  }),
+  v.forward(
+    v.check(
+      (data) => isCampaignScheduleInOrder(data.starts_at, data.ends_at),
+      __('The campaign must end after it starts.', 'yayloyalty'),
+    ),
+    ['ends_at'],
+  ),
+);
 
-export type CampaignUpdateInput = z.infer<typeof campaignUpdateInputSchema>;
+export type CampaignUpdateInput = v.InferOutput<typeof campaignUpdateInputSchema>;
 
 /**
  * Mirrors AbstractRestController::dates_in_order(), the source of truth. An open side passes, two
@@ -271,12 +275,12 @@ export function isCampaignScheduleInOrder(startsAt: string | null, endsAt: strin
 export type CampaignCreateInput = CampaignUpdateInput & { trigger: LiteCampaignTrigger };
 
 /** Mirrors CampaignRestController::delete_item(), the source of truth. The response of DELETE campaigns/{id}. */
-export const campaignDeleteResponseSchema = z.object({
-  deleted: z.boolean(),
-  id: z.number().int(),
+export const campaignDeleteResponseSchema = v.object({
+  deleted: v.boolean(),
+  id: v.pipe(v.number(), v.integer()),
 });
 
-export type CampaignDeleteResponse = z.infer<typeof campaignDeleteResponseSchema>;
+export type CampaignDeleteResponse = v.InferOutput<typeof campaignDeleteResponseSchema>;
 
 // Per-trigger config fields
 

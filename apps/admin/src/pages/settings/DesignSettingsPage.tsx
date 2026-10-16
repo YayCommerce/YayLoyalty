@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { valibotResolver } from '@hookform/resolvers/valibot';
 import { FormProvider, useForm } from 'react-hook-form';
 
 import { toastApiError } from '@/lib/api/api';
@@ -46,7 +46,7 @@ export default function DesignSettingsPage() {
   // `values` (not defaultValues) + keepDirtyValues: a refetch re-seeds the form without
   // clobbering a field mid-edit, same reasoning as CampaignEditor.
   const form = useForm<DesignFormValues>({
-    resolver: zodResolver(designSchema),
+    resolver: valibotResolver(designSchema),
     values: designToFormValues(designQuery.data),
     resetOptions: { keepDirtyValues: true },
   });

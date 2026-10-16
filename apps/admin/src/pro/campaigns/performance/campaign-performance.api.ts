@@ -1,3 +1,5 @@
+import * as v from 'valibot';
+
 import { api } from '@/lib/api/api';
 import { parsePaginated } from '@/lib/api/paginated';
 import {
@@ -12,7 +14,7 @@ import {
  */
 
 export async function getCampaignPerformance(id: number) {
-  return campaignPerformanceSchema.parse(await api.get(`campaigns/${id}/performance`).json());
+  return v.parse(campaignPerformanceSchema, await api.get(`campaigns/${id}/performance`).json());
 }
 
 export async function getCampaignPerformanceEntries(id: number, params: CampaignPerformanceEntriesParams) {

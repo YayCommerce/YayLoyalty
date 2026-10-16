@@ -1,3 +1,5 @@
+import * as v from 'valibot';
+
 import { api } from '@/lib/api/api';
 import { parsePaginated } from '@/lib/api/paginated';
 import {
@@ -26,27 +28,27 @@ export async function getCampaigns(params: CampaignListParams = {}) {
 }
 
 export async function getCampaign(id: number): Promise<Campaign> {
-  return campaignSchema.parse(await api.get(`campaigns/${id}`).json());
+  return v.parse(campaignSchema, await api.get(`campaigns/${id}`).json());
 }
 
 /** POST campaigns. The server generates `slug` from `name`; nothing is created until this is called. */
 export async function createCampaign(input: CampaignCreateInput): Promise<Campaign> {
-  return campaignSchema.parse(await api.post('campaigns', { json: input }).json());
+  return v.parse(campaignSchema, await api.post('campaigns', { json: input }).json());
 }
 
 /** PUT campaigns/{id}. Every field is optional server-side except this type's own required ones; see updateCampaignStatus() for a narrower partial write. */
 export async function updateCampaign(id: number, input: Partial<CampaignUpdateInput>): Promise<Campaign> {
-  return campaignSchema.parse(await api.put(`campaigns/${id}`, { json: input }).json());
+  return v.parse(campaignSchema, await api.put(`campaigns/${id}`, { json: input }).json());
 }
 
 /** PUT campaigns/{id} with only `status`. update_item() applies only the fields the body carries, so this is a true partial write. */
 export async function updateCampaignStatus(id: number, status: CampaignStatus): Promise<Campaign> {
-  return campaignSchema.parse(await api.put(`campaigns/${id}`, { json: { status } }).json());
+  return v.parse(campaignSchema, await api.put(`campaigns/${id}`, { json: { status } }).json());
 }
 
 /** PUT campaigns/{id} with only `config`, a partial write like updateCampaignStatus(). */
 export async function updateCampaignConfig(id: number, config: Campaign['config']): Promise<Campaign> {
-  return campaignSchema.parse(await api.put(`campaigns/${id}`, { json: { config } }).json());
+  return v.parse(campaignSchema, await api.put(`campaigns/${id}`, { json: { config } }).json());
 }
 
 /** POST campaigns/reorder: one group's ids, highest priority first; CampaignRepository::reorder() renumbers that trigger's priorities. */
@@ -56,5 +58,5 @@ export async function reorderCampaigns(ids: number[]) {
 
 /** DELETE campaigns/{id}. 409s if the campaign has ledger rows; see Campaign.is_deletable. */
 export async function deleteCampaign(id: number) {
-  return campaignDeleteResponseSchema.parse(await api.delete(`campaigns/${id}`).json());
+  return v.parse(campaignDeleteResponseSchema, await api.delete(`campaigns/${id}`).json());
 }

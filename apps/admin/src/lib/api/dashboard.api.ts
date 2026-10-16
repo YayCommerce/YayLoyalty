@@ -1,3 +1,5 @@
+import * as v from 'valibot';
+
 import { api } from '@/lib/api/api';
 import {
   dashboardResponseSchema,
@@ -13,12 +15,15 @@ export async function getDashboard(params: { range: DashboardRange; refresh?: bo
 
   if (params.refresh) searchParams.refresh = '1';
 
-  return dashboardResponseSchema.parse(await api.get('dashboard', { searchParams }).json());
+  return v.parse(dashboardResponseSchema, await api.get('dashboard', { searchParams }).json());
 }
 
 /** POST /dashboard/notices/dismiss; the server takes the user from the session. */
 export async function dismissDashboardNotice(
   params: DismissDashboardNoticeParams,
 ): Promise<DismissDashboardNoticeParams> {
-  return dismissDashboardNoticeParamsSchema.parse(await api.post('dashboard/notices/dismiss', { json: params }).json());
+  return v.parse(
+    dismissDashboardNoticeParamsSchema,
+    await api.post('dashboard/notices/dismiss', { json: params }).json(),
+  );
 }

@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as v from 'valibot';
 
 import { api } from '@/lib/api/api';
 import { toDrawerSearchParams, type DrawerPageParams } from '@/lib/api/customer-drawer.api';
@@ -22,7 +22,7 @@ import { LedgerEntry, ledgerEntrySchema, ledgerEnvelopeSchema, LedgerFilterType 
 /** Every response is parsed, not cast: `.json<T>()` is unchecked, and a bad shape would white-screen a component. */
 
 export async function getCustomer(userId: number): Promise<Customer> {
-  return customerSchema.parse(await api.get(`customers/${userId}`).json());
+  return v.parse(customerSchema, await api.get(`customers/${userId}`).json());
 }
 
 export type CustomerLedgerParams = DrawerPageParams & { type?: LedgerFilterType; order?: 'asc' | 'desc' };
@@ -36,7 +36,7 @@ export async function getCustomerLedger(userId: number, params: CustomerLedgerPa
 
   const payload = await api.get(`customers/${userId}/ledger`, { searchParams, signal }).json();
 
-  return ledgerEnvelopeSchema.parse(payload);
+  return v.parse(ledgerEnvelopeSchema, payload);
 }
 
 export async function adjustCustomerPoints(userId: number, input: AdjustPointsInput): Promise<LedgerEntry> {
@@ -48,7 +48,7 @@ export async function adjustCustomerPoints(userId: number, input: AdjustPointsIn
     ...(input.customerNote === undefined ? {} : { customer_note: input.customerNote }),
   };
 
-  return ledgerEntrySchema.parse(await api.post(`customers/${userId}/adjust`, { json }).json());
+  return v.parse(ledgerEntrySchema, await api.post(`customers/${userId}/adjust`, { json }).json());
 }
 
 /**
@@ -69,7 +69,7 @@ export async function previewAdjustPoints(
       }
     : {};
 
-  return adjustPointsPreviewSchema.parse(await api.post('customers/adjust/preview', { json, signal }).json());
+  return v.parse(adjustPointsPreviewSchema, await api.post('customers/adjust/preview', { json, signal }).json());
 }
 
 /** App-side params for getCustomers(); the wire spelling exists only in the request builder. */
@@ -83,9 +83,10 @@ export type CustomerListParams = {
   expiringSoon?: CustomerExpiringSoon;
 };
 
-const customerListEnvelopeSchema = paginatedSchema(customerListRowSchema).extend({
+const customerListEnvelopeSchema = v.object({
+  ...paginatedSchema(customerListRowSchema).entries,
   // Absent whenever the result is not empty.
-  suggestions: z.array(noMatchSuggestionSchema).optional(),
+  suggestions: v.optional(v.array(noMatchSuggestionSchema)),
 });
 
 /** GET /customers: search, filter, sort and paginate server-side. `signal` lets a multi-page walk cancel. */
@@ -102,5 +103,5 @@ export async function getCustomers(params: CustomerListParams = {}, signal?: Abo
 
   const payload = await api.get('customers', { searchParams, signal }).json();
 
-  return customerListEnvelopeSchema.parse(payload);
+  return v.parse(customerListEnvelopeSchema, payload);
 }

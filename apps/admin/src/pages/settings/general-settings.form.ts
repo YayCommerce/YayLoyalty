@@ -1,19 +1,20 @@
-import { z } from 'zod';
+import * as v from 'valibot';
 
 import { Settings, settingsSchema, SettingsUpdate } from '@/lib/schema/settings.schema';
 
 /** Mirrors SettingsHelper::POINTS_LABEL_MAX_LENGTH, the source of truth. */
 export const POINTS_LABEL_MAX_LENGTH = 30;
 
-const pointsLabel = z.string().trim().min(1).max(POINTS_LABEL_MAX_LENGTH);
+const pointsLabel = v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(POINTS_LABEL_MAX_LENGTH));
 
 /** The General tab's one form: the free points naming, plus Pro's fraud limit (never dirty in Lite). */
-export const generalSettingsFormSchema = settingsSchema.pick({ max_points_per_day: true }).extend({
+export const generalSettingsFormSchema = v.object({
+  max_points_per_day: settingsSchema.entries.max_points_per_day,
   points_label_singular: pointsLabel,
   points_label_plural: pointsLabel,
 });
 
-export type GeneralSettingsFormValues = z.infer<typeof generalSettingsFormSchema>;
+export type GeneralSettingsFormValues = v.InferOutput<typeof generalSettingsFormSchema>;
 
 /** react-hook-form's dirtyFields for this form: true per edited field. */
 export type GeneralSettingsDirtyFields = Partial<Record<keyof GeneralSettingsFormValues, boolean>>;

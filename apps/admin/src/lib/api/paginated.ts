@@ -1,21 +1,24 @@
-import { z } from 'zod';
+import * as v from 'valibot';
 
 import { PaginatedResponse } from '@/lib/api/api.type';
 
 /** The paginated envelope around an item schema, so no module redefines the shape locally. */
-export function paginatedSchema<T extends z.ZodTypeAny>(item: T) {
-  return z.object({
-    currentPage: z.number().int(),
-    totalPage: z.number().int(),
-    totalItems: z.number().int(),
-    perPage: z.number().int(),
-    data: z.array(item),
+export function paginatedSchema<T extends v.GenericSchema>(item: T) {
+  return v.object({
+    currentPage: v.pipe(v.number(), v.integer()),
+    totalPage: v.pipe(v.number(), v.integer()),
+    totalItems: v.pipe(v.number(), v.integer()),
+    perPage: v.pipe(v.number(), v.integer()),
+    data: v.array(item),
   });
 }
 
 /** Parses a paginated response as PaginatedResponse<T>. */
-export function parsePaginated<T extends z.ZodTypeAny>(item: T, payload: unknown): PaginatedResponse<z.infer<T>> {
-  return paginatedSchema(item).parse(payload);
+export function parsePaginated<T extends v.GenericSchema>(
+  item: T,
+  payload: unknown,
+): PaginatedResponse<v.InferOutput<T>> {
+  return v.parse(paginatedSchema(item), payload);
 }
 
 /** Mirrors AbstractRepository::MAX_PER_PAGE, the source of truth. The server's per_page cap, so a full walk takes the fewest requests. */

@@ -48,7 +48,7 @@ The layering rules live in [architecture.md](architecture.md#server-layers-and-w
 ## TypeScript copies of PHP name their owner
 
 - **Rule:**
-  - A TypeScript copy of a PHP shape or constant, such as a zod schema, the capability names or the points maths, opens with a comment whose first sentence is `Mirrors <PHP symbol>, the source of truth.`
+  - A TypeScript copy of a PHP shape or constant, such as a valibot schema, the capability names or the points maths, opens with a comment whose first sentence is `Mirrors <PHP symbol>, the source of truth.`
   - A copy describes data for the UI. It never repeats PHP's validation.
 - **Why:** a rule kept in two places drifts. The per-trigger whitelist "lives in PHP and would drift if duplicated".
 - **In code:** `apps/admin/src/lib/schema/`, `apps/admin/src/lib/access.tsx`, `apps/admin/src/lib/points-math/points-math.ts`.

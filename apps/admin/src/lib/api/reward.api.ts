@@ -1,3 +1,5 @@
+import * as v from 'valibot';
+
 import { api } from '@/lib/api/api';
 import { parsePaginated } from '@/lib/api/paginated';
 import {
@@ -27,17 +29,17 @@ export async function getRewards(params: RewardListParams = {}) {
 }
 
 export async function getReward(id: number): Promise<Reward> {
-  return rewardSchema.parse(await api.get(`rewards/${id}`).json());
+  return v.parse(rewardSchema, await api.get(`rewards/${id}`).json());
 }
 
 /** POST rewards. Catalog types only; the server generates `slug` from `name` and appends the row last. */
 export async function createReward(input: RewardCreateInput): Promise<Reward> {
-  return rewardSchema.parse(await api.post('rewards', { json: input }).json());
+  return v.parse(rewardSchema, await api.post('rewards', { json: input }).json());
 }
 
 /** PUT rewards/{id}. update_item() applies only the keys the body carries. */
 export async function updateReward(id: number, input: Partial<RewardUpdateInput>): Promise<Reward> {
-  return rewardSchema.parse(await api.put(`rewards/${id}`, { json: input }).json());
+  return v.parse(rewardSchema, await api.put(`rewards/${id}`, { json: input }).json());
 }
 
 /** PUT rewards/{id} with only `status`: pause, resume, archive and restore leave every other field as stored. */
@@ -47,7 +49,7 @@ export async function updateRewardStatus(id: number, status: RewardStatus): Prom
 
 /** DELETE rewards/{id}. 409s once the reward has been claimed; see Reward.is_deletable. */
 export async function deleteReward(id: number) {
-  return rewardDeleteResponseSchema.parse(await api.delete(`rewards/${id}`).json());
+  return v.parse(rewardDeleteResponseSchema, await api.delete(`rewards/${id}`).json());
 }
 
 /** POST rewards/reorder: the listed ids first, in order; RewardRepository::reorder() renumbers every other row after them. */

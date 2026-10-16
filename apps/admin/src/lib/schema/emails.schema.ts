@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as v from 'valibot';
 
 import { settingsSchema } from '@/lib/schema/settings.schema';
 
@@ -8,14 +8,14 @@ import { settingsSchema } from '@/lib/schema/settings.schema';
  * RHF resolver input; what POST /emails takes. Keyed by a bare string, not a closed enum: the ids
  * are whatever the server registered with WooCommerce.
  */
-export const emailsFormSchema = z.object({
-  emails: z.record(z.string(), z.boolean()),
-  throttle_per_week: settingsSchema.shape.emails.shape.throttle_per_week,
+export const emailsFormSchema = v.object({
+  emails: v.record(v.string(), v.boolean()),
+  throttle_per_week: settingsSchema.entries.emails.entries.throttle_per_week,
 });
-export type EmailsFormValues = z.infer<typeof emailsFormSchema>;
+export type EmailsFormValues = v.InferOutput<typeof emailsFormSchema>;
 
 /**
- * One registered loyalty email, as EmailsHelper::to_row() builds it. Plain types rather than Zod:
+ * One registered loyalty email, as EmailsHelper::to_row() builds it. Plain types rather than a schema:
  * server-authored, nothing to validate. `edit_url` opens the email's own WooCommerce settings screen.
  */
 export type EmailItem = {

@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as v from 'valibot';
 
 import { campaignSchema, CampaignTrigger } from './campaign.schema';
 
@@ -31,91 +31,91 @@ export const CAMPAIGN_SKIP_REASONS = ['higher_priority', 'guest', 'excluded'] as
 export type CampaignSkipReason = (typeof CAMPAIGN_SKIP_REASONS)[number];
 
 /** One line of "where the other orders went", a standalone schema so its type can be used on its own. */
-export const campaignPerformanceSkipSchema = z.object({
-  reason: z.enum(CAMPAIGN_SKIP_REASONS),
-  count: z.number().int(),
-  campaign_id: z.number().int().nullable(),
-  campaign_name: z.string().nullable(),
+export const campaignPerformanceSkipSchema = v.object({
+  reason: v.picklist(CAMPAIGN_SKIP_REASONS),
+  count: v.pipe(v.number(), v.integer()),
+  campaign_id: v.nullable(v.pipe(v.number(), v.integer())),
+  campaign_name: v.nullable(v.string()),
 });
 
-export type CampaignPerformanceSkip = z.infer<typeof campaignPerformanceSkipSchema>;
+export type CampaignPerformanceSkip = v.InferOutput<typeof campaignPerformanceSkipSchema>;
 
 /** `GET /campaigns/{id}/performance` response. */
-export const campaignPerformanceSchema = z.object({
-  campaign_id: z.number().int(),
+export const campaignPerformanceSchema = v.object({
+  campaign_id: v.pipe(v.number(), v.integer()),
   /** The campaign itself, verbatim the `GET /campaigns/{id}` shape, so the page's header needs no second request. */
   campaign: campaignSchema,
   /** Site-timezone dates, both ends inclusive. */
-  window: z.object({
-    from: z.string(),
-    to: z.string(),
+  window: v.object({
+    from: v.string(),
+    to: v.string(),
   }),
-  totals: z.object({
+  totals: v.object({
     /** All triggers. */
-    points_issued: z.number().int(),
+    points_issued: v.pipe(v.number(), v.integer()),
     /** All triggers. The unfiltered row count behind the entries table. */
-    entries_total: z.number().int(),
+    entries_total: v.pipe(v.number(), v.integer()),
     /** Purchase only. */
-    orders_affected: z.number().int().nullable(),
+    orders_affected: v.nullable(v.pipe(v.number(), v.integer())),
     /** Purchase only. The store's lifetime count of completed orders, not scoped to this campaign: the denominator for `orders_affected`. */
-    orders_total: z.number().int().nullable(),
+    orders_total: v.nullable(v.pipe(v.number(), v.integer())),
     /** Signup / review only: distinct customers who earned from this campaign. */
-    customers_earned: z.number().int().nullable(),
+    customers_earned: v.nullable(v.pipe(v.number(), v.integer())),
     /** Purchase with real data only. */
-    avg_points_per_order: z.number().int().nullable(),
+    avg_points_per_order: v.nullable(v.pipe(v.number(), v.integer())),
     /** Always null until the earning engine stores the scored base amount. */
-    avg_order_subtotal: z.number().nullable(),
+    avg_order_subtotal: v.nullable(v.number()),
   }),
   /** One entry per day in `window`, zero-filled. */
-  daily: z.array(
-    z.object({
-      date: z.string(),
-      points: z.number().int(),
+  daily: v.array(
+    v.object({
+      date: v.string(),
+      points: v.pipe(v.number(), v.integer()),
     }),
   ),
   /** "Where the other orders went". Null, and its panel hidden, until the earning engine can replay every order. */
-  skipped: z.array(campaignPerformanceSkipSchema).nullable(),
+  skipped: v.nullable(v.array(campaignPerformanceSkipSchema)),
   /** "What it would have done last year". Null for the same reason as `skipped`. */
-  estimate: z
-    .object({
-      from: z.string(),
-      to: z.string(),
-      orders: z.number().int(),
-      points: z.number().int(),
-    })
-    .nullable(),
+  estimate: v.nullable(
+    v.object({
+      from: v.string(),
+      to: v.string(),
+      orders: v.pipe(v.number(), v.integer()),
+      points: v.pipe(v.number(), v.integer()),
+    }),
+  ),
 });
 
-export type CampaignPerformance = z.infer<typeof campaignPerformanceSchema>;
+export type CampaignPerformance = v.InferOutput<typeof campaignPerformanceSchema>;
 
 /**
  * One row of `GET /campaigns/{id}/performance/entries`: an order, a signup or a review, by trigger.
  * `reference` is the order or the review, and null for a signup. `subtotal` is purchase-only.
  */
-export const campaignPerformanceEntrySchema = z.object({
-  id: z.number().int(),
-  customer_id: z.number().int(),
-  customer_name: z.string(),
-  points: z.number().int(),
+export const campaignPerformanceEntrySchema = v.object({
+  id: v.pipe(v.number(), v.integer()),
+  customer_id: v.pipe(v.number(), v.integer()),
+  customer_name: v.string(),
+  points: v.pipe(v.number(), v.integer()),
   /** UTC, `Y-m-d H:i:s`. */
-  created_at: z.string(),
-  reference: z
-    .object({
-      id: z.number().int(),
-      label: z.string(),
-      url: z.string(),
-    })
-    .nullable(),
-  subtotal: z.number().nullable(),
+  created_at: v.string(),
+  reference: v.nullable(
+    v.object({
+      id: v.pipe(v.number(), v.integer()),
+      label: v.string(),
+      url: v.string(),
+    }),
+  ),
+  subtotal: v.nullable(v.number()),
 });
 
-export type CampaignPerformanceEntry = z.infer<typeof campaignPerformanceEntrySchema>;
+export type CampaignPerformanceEntry = v.InferOutput<typeof campaignPerformanceEntrySchema>;
 
 /** App-side (camelCase) params for the entries fetch; the api module maps `perPage` to `per_page`. */
-export const campaignPerformanceEntriesParamsSchema = z.object({
-  page: z.number().int().min(1),
-  perPage: z.number().int().optional(),
-  search: z.string().optional(),
+export const campaignPerformanceEntriesParamsSchema = v.object({
+  page: v.pipe(v.number(), v.integer(), v.minValue(1)),
+  perPage: v.optional(v.pipe(v.number(), v.integer())),
+  search: v.optional(v.string()),
 });
 
-export type CampaignPerformanceEntriesParams = z.infer<typeof campaignPerformanceEntriesParamsSchema>;
+export type CampaignPerformanceEntriesParams = v.InferOutput<typeof campaignPerformanceEntriesParamsSchema>;

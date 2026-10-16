@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as v from 'valibot';
 
 import { ledgerEntrySchema } from './ledger.schema';
 
@@ -10,40 +10,40 @@ import { ledgerEntrySchema } from './ledger.schema';
 
 export const DASHBOARD_RANGES = [7, 30, 90] as const;
 
-export const dashboardRangeSchema = z.union([z.literal(7), z.literal(30), z.literal(90)]);
+export const dashboardRangeSchema = v.union([v.literal(7), v.literal(30), v.literal(90)]);
 
-export type DashboardRange = z.infer<typeof dashboardRangeSchema>;
+export type DashboardRange = v.InferOutput<typeof dashboardRangeSchema>;
 
 /** Percentage change vs the previous window; null = nothing to compare against. */
-const prevDeltaPct = z.number().nullable();
+const prevDeltaPct = v.nullable(v.number());
 
-export const dashboardStatSchema = z.object({
-  value: z.number().int(),
+export const dashboardStatSchema = v.object({
+  value: v.pipe(v.number(), v.integer()),
   prev_delta_pct: prevDeltaPct,
 });
 
-export type DashboardStat = z.infer<typeof dashboardStatSchema>;
+export type DashboardStat = v.InferOutput<typeof dashboardStatSchema>;
 
-export const dashboardLiabilitySchema = z.object({
+export const dashboardLiabilitySchema = v.object({
   /** SUM(balance) over positive balances. */
-  points: z.number().int(),
+  points: v.pipe(v.number(), v.integer()),
   prev_delta_pct: prevDeltaPct,
 });
 
-export type DashboardLiability = z.infer<typeof dashboardLiabilitySchema>;
+export type DashboardLiability = v.InferOutput<typeof dashboardLiabilitySchema>;
 
-export const dashboardRateSchema = z.object({
+export const dashboardRateSchema = v.object({
   /** `orders_with_points / orders_total` as a percentage, 1 dp; `null` when no orders. */
-  rate: z.number().nullable(),
-  orders_with_points: z.number().int(),
+  rate: v.nullable(v.number()),
+  orders_with_points: v.pipe(v.number(), v.integer()),
   /** Completed orders only. */
-  orders_total: z.number().int(),
+  orders_total: v.pipe(v.number(), v.integer()),
   prev_delta_pct: prevDeltaPct,
 });
 
-export type DashboardRate = z.infer<typeof dashboardRateSchema>;
+export type DashboardRate = v.InferOutput<typeof dashboardRateSchema>;
 
-export const dashboardStatsSchema = z.object({
+export const dashboardStatsSchema = v.object({
   members: dashboardStatSchema,
   points_issued: dashboardStatSchema,
   points_redeemed: dashboardStatSchema,
@@ -51,39 +51,40 @@ export const dashboardStatsSchema = z.object({
   redemption_rate: dashboardRateSchema,
 });
 
-export type DashboardStats = z.infer<typeof dashboardStatsSchema>;
+export type DashboardStats = v.InferOutput<typeof dashboardStatsSchema>;
 
 /** One site-timezone day; the series always has exactly `range` rows. */
-export const dashboardSeriesPointSchema = z.object({
-  date: z.string(),
-  issued: z.number().int(),
-  redeemed: z.number().int(),
+export const dashboardSeriesPointSchema = v.object({
+  date: v.string(),
+  issued: v.pipe(v.number(), v.integer()),
+  redeemed: v.pipe(v.number(), v.integer()),
 });
 
-export type DashboardSeriesPoint = z.infer<typeof dashboardSeriesPointSchema>;
+export type DashboardSeriesPoint = v.InferOutput<typeof dashboardSeriesPointSchema>;
 
-export const dashboardTopEarnerSchema = z.object({
-  user_id: z.number().int(),
-  name: z.string(),
-  balance: z.number().int(),
+export const dashboardTopEarnerSchema = v.object({
+  user_id: v.pipe(v.number(), v.integer()),
+  name: v.string(),
+  balance: v.pipe(v.number(), v.integer()),
 });
 
-export type DashboardTopEarner = z.infer<typeof dashboardTopEarnerSchema>;
+export type DashboardTopEarner = v.InferOutput<typeof dashboardTopEarnerSchema>;
 
 /** A ledger row joined to the user's display name. */
-export const dashboardActivityRowSchema = ledgerEntrySchema.extend({
-  name: z.string(),
+export const dashboardActivityRowSchema = v.object({
+  ...ledgerEntrySchema.entries,
+  name: v.string(),
 });
 
-export type DashboardActivityRow = z.infer<typeof dashboardActivityRowSchema>;
+export type DashboardActivityRow = v.InferOutput<typeof dashboardActivityRowSchema>;
 
-export const dashboardRecentActivitySchema = z.object({
+export const dashboardRecentActivitySchema = v.object({
   /** Ledger rows written since site-tz midnight; may exceed `rows.length`. */
-  total_today: z.number().int(),
-  rows: z.array(dashboardActivityRowSchema),
+  total_today: v.pipe(v.number(), v.integer()),
+  rows: v.array(dashboardActivityRowSchema),
 });
 
-export type DashboardRecentActivity = z.infer<typeof dashboardRecentActivitySchema>;
+export type DashboardRecentActivity = v.InferOutput<typeof dashboardRecentActivitySchema>;
 
 /** Mirrors the keys DashboardNotices emits, the source of truth. There is one per detector. */
 export const DASHBOARD_NOTICE_KEYS = ['negative_balance', 'default_campaign_paused', 'points_jump'] as const;
@@ -98,47 +99,47 @@ export const DISMISSABLE_NOTICE_KEYS = [
 /** Server sort order: affected → waiting → progress. */
 export const DASHBOARD_NOTICE_SEVERITIES = ['affected', 'waiting', 'progress'] as const;
 
-export const dashboardNoticeKeySchema = z.enum(DASHBOARD_NOTICE_KEYS);
-export const dismissableNoticeKeySchema = z.enum(DISMISSABLE_NOTICE_KEYS);
-export const dashboardNoticeSeveritySchema = z.enum(DASHBOARD_NOTICE_SEVERITIES);
+export const dashboardNoticeKeySchema = v.picklist(DASHBOARD_NOTICE_KEYS);
+export const dismissableNoticeKeySchema = v.picklist(DISMISSABLE_NOTICE_KEYS);
+export const dashboardNoticeSeveritySchema = v.picklist(DASHBOARD_NOTICE_SEVERITIES);
 
-export type DashboardNoticeKey = z.infer<typeof dashboardNoticeKeySchema>;
-export type DismissableNoticeKey = z.infer<typeof dismissableNoticeKeySchema>;
-export type DashboardNoticeSeverity = z.infer<typeof dashboardNoticeSeveritySchema>;
+export type DashboardNoticeKey = v.InferOutput<typeof dashboardNoticeKeySchema>;
+export type DismissableNoticeKey = v.InferOutput<typeof dismissableNoticeKeySchema>;
+export type DashboardNoticeSeverity = v.InferOutput<typeof dashboardNoticeSeveritySchema>;
 
-export const dashboardNoticeSchema = z.object({
+export const dashboardNoticeSchema = v.object({
   /** Open on purpose: an unknown key must drop that one notice, not fail the page. */
-  key: z.string(),
+  key: v.string(),
   severity: dashboardNoticeSeveritySchema,
   /** Dismissal identity; a dismissed notice re-surfaces when this changes. */
-  fingerprint: z.string(),
+  fingerprint: v.string(),
   /** Per-key shape; narrowed by parseNoticeData() in dashboard-notice.schema.ts. */
-  data: z.record(z.string(), z.unknown()),
+  data: v.record(v.string(), v.unknown()),
 });
 
-export type DashboardNotice = z.infer<typeof dashboardNoticeSchema>;
+export type DashboardNotice = v.InferOutput<typeof dashboardNoticeSchema>;
 
-export const dashboardResponseSchema = z.object({
+export const dashboardResponseSchema = v.object({
   range: dashboardRangeSchema,
   /** UTC, Dates::now() format. */
-  generated_at: z.string(),
+  generated_at: v.string(),
   /** Only above the member threshold where the transient cache is active. */
-  cached: z.boolean(),
+  cached: v.boolean(),
   /** UTC; present only when `cached`. */
-  next_refresh_at: z.string().nullable(),
+  next_refresh_at: v.nullable(v.string()),
   stats: dashboardStatsSchema,
-  series: z.array(dashboardSeriesPointSchema),
+  series: v.array(dashboardSeriesPointSchema),
   /** Max 3, balance desc. */
-  top_earners: z.array(dashboardTopEarnerSchema),
+  top_earners: v.array(dashboardTopEarnerSchema),
   recent_activity: dashboardRecentActivitySchema,
-  notices: z.array(dashboardNoticeSchema),
+  notices: v.array(dashboardNoticeSchema),
 });
 
-export type DashboardResponse = z.infer<typeof dashboardResponseSchema>;
+export type DashboardResponse = v.InferOutput<typeof dashboardResponseSchema>;
 
-export const dismissDashboardNoticeParamsSchema = z.object({
+export const dismissDashboardNoticeParamsSchema = v.object({
   key: dismissableNoticeKeySchema,
-  fingerprint: z.string().max(64),
+  fingerprint: v.pipe(v.string(), v.maxLength(64)),
 });
 
-export type DismissDashboardNoticeParams = z.infer<typeof dismissDashboardNoticeParamsSchema>;
+export type DismissDashboardNoticeParams = v.InferOutput<typeof dismissDashboardNoticeParamsSchema>;

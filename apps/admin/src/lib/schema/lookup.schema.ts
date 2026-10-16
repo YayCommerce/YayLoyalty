@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as v from 'valibot';
 
 /**
  * Mirrors LookupRestController, the source of truth.
@@ -13,32 +13,32 @@ export type LookupEntity = (typeof LOOKUP_ENTITIES)[number];
 /** Mirrors `LookupRestController::LIMIT`, the source of truth. A picker that gets this many should say the list is cut. */
 export const LOOKUP_PAGE_SIZE = 20;
 
-export const lookupItemSchema = z.object({
-  id: z.number().int(),
-  label: z.string(),
+export const lookupItemSchema = v.object({
+  id: v.pipe(v.number(), v.integer()),
+  label: v.string(),
 });
 
-export type LookupItem = z.infer<typeof lookupItemSchema>;
+export type LookupItem = v.InferOutput<typeof lookupItemSchema>;
 
-export const lookupResponseSchema = z.object({
-  items: z.array(lookupItemSchema),
+export const lookupResponseSchema = v.object({
+  items: v.array(lookupItemSchema),
 });
 
 /** Mirrors `LookupRestController::product_summary()` (`GET /lookups/products/{id}`), the source of truth. */
-export const productSummarySchema = z.object({
-  id: z.number().int(),
-  name: z.string(),
+export const productSummarySchema = v.object({
+  id: v.pipe(v.number(), v.integer()),
+  name: v.string(),
   /** '' when the product has none. */
-  sku: z.string(),
+  sku: v.string(),
   /** Formatted in the store currency; '' when the product has no price. */
-  price: z.string(),
+  price: v.string(),
   /** Comma-separated category names; '' when uncategorised. */
-  categories: z.string(),
-  image_url: z.string().nullable(),
+  categories: v.string(),
+  image_url: v.nullable(v.string()),
   /** WooCommerce's own vocabulary: instock, outofstock, onbackorder. */
-  stock_status: z.string(),
+  stock_status: v.string(),
   /** Null when WooCommerce does not track a count for this product. */
-  stock_quantity: z.number().int().nullable(),
+  stock_quantity: v.nullable(v.pipe(v.number(), v.integer())),
 });
 
-export type ProductSummary = z.infer<typeof productSummarySchema>;
+export type ProductSummary = v.InferOutput<typeof productSummarySchema>;

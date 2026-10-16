@@ -1,3 +1,5 @@
+import * as v from 'valibot';
+
 import { api } from '@/lib/api/api';
 import { activityEnvelopeSchema, ActivityGroup } from '@/lib/schema/activity.schema';
 import { redemptionEnvelopeSchema } from '@/lib/schema/redemption.schema';
@@ -38,7 +40,7 @@ export async function getCustomerActivity(userId: number, params: CustomerActivi
 
   const payload = await api.get(`customers/${userId}/activity`, { searchParams }).json();
 
-  return activityEnvelopeSchema.parse(payload);
+  return v.parse(activityEnvelopeSchema, payload);
 }
 
 /** `GET /customers/{id}/redemptions`. */
@@ -47,5 +49,5 @@ export async function getCustomerRedemptions(userId: number, params: DrawerPageO
     .get(`customers/${userId}/redemptions`, { searchParams: toDrawerSearchParams(params) })
     .json();
 
-  return redemptionEnvelopeSchema.parse(payload);
+  return v.parse(redemptionEnvelopeSchema, payload);
 }

@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { valibotResolver } from '@hookform/resolvers/valibot';
 import { FormProvider, useForm, useWatch } from 'react-hook-form';
 import { __, sprintf } from '@wordpress/i18n';
 
@@ -84,7 +84,7 @@ export default function ExpirySettingsPage() {
   const settleRef = useRef<((confirmed: boolean) => void) | null>(null);
 
   const form = useForm<ExpirySettingsFormValues>({
-    resolver: zodResolver(expirySettingsFormSchema),
+    resolver: valibotResolver(expirySettingsFormSchema),
     values: expirySettingsDefaults(settingsQuery.data),
     resetOptions: { keepDirtyValues: true },
   });

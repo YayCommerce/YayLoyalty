@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as v from 'valibot';
 
 import { paginatedSchema } from '@/lib/api/paginated';
 
@@ -25,25 +25,25 @@ export const ACTIVITY_ACTOR_KINDS = ['staff', 'automatic', 'customer'] as const;
  */
 export const ACTIVITY_GROUPS = ['all', 'admin', 'expiry', 'emails'] as const;
 
-export const activityEventTypeSchema = z.enum(ACTIVITY_EVENT_TYPES);
-export const activityActorKindSchema = z.enum(ACTIVITY_ACTOR_KINDS);
-export const activityGroupSchema = z.enum(ACTIVITY_GROUPS);
+export const activityEventTypeSchema = v.picklist(ACTIVITY_EVENT_TYPES);
+export const activityActorKindSchema = v.picklist(ACTIVITY_ACTOR_KINDS);
+export const activityGroupSchema = v.picklist(ACTIVITY_GROUPS);
 
-export type ActivityEventType = z.infer<typeof activityEventTypeSchema>;
-export type ActivityGroup = z.infer<typeof activityGroupSchema>;
+export type ActivityEventType = v.InferOutput<typeof activityEventTypeSchema>;
+export type ActivityGroup = v.InferOutput<typeof activityGroupSchema>;
 
-export const activityEntrySchema = z.object({
-  id: z.number().int(),
-  occurred_at: z.string(),
+export const activityEntrySchema = v.object({
+  id: v.pipe(v.number(), v.integer()),
+  occurred_at: v.string(),
   event_type: activityEventTypeSchema,
   /** Structured fields the copy module composes a sentence from. Never prose. */
-  data: z.record(z.string(), z.unknown()),
+  data: v.record(v.string(), v.unknown()),
   actor_kind: activityActorKindSchema,
-  actor_name: z.string().nullable(),
+  actor_name: v.nullable(v.string()),
   /** Display flag: this row quotes an internal admin note. Not access control. */
-  staff_only: z.boolean(),
+  staff_only: v.boolean(),
 });
 
-export type ActivityEntry = z.infer<typeof activityEntrySchema>;
+export type ActivityEntry = v.InferOutput<typeof activityEntrySchema>;
 
 export const activityEnvelopeSchema = paginatedSchema(activityEntrySchema);
