@@ -1,7 +1,7 @@
 import ky, { HTTPError, Options, ResponsePromise } from 'ky';
-import { toast } from 'sonner';
 
 import { FORBIDDEN_ERROR_CODES } from '@/lib/access';
+import { toast } from '@/components/ui/toast';
 
 const _ky = ky.create({
   prefixUrl: window.yayLoyaltyMeta.wpMeta.restRoot,

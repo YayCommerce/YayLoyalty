@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react';
-import { toast } from 'sonner';
 import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { useDismissNoticeMutation } from '@/lib/queries/dashboard.queries';
 import { type DashboardNotice, type DismissableNoticeKey } from '@/lib/schema/dashboard.schema';
 import { Button } from '@/components/ui/button';
+import { toast } from '@/components/ui/toast';
 import { noticeCopy, noticeSummary } from '../dashboard-page.notice-copy';
 import { DashboardNoticeCard } from './DashboardNoticeCard';
 

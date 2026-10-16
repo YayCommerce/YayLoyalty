@@ -1,7 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { FormProvider, useForm } from 'react-hook-form';
 import { Link } from 'react-router';
-import { toast } from 'sonner';
 import { __ } from '@wordpress/i18n';
 
 import { toastApiError } from '@/lib/api/api';
@@ -13,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ErrorState } from '@/components/ui/custom/error-state';
 import { UnsavedChangeDialog } from '@/components/ui/custom/unsaved-changed-dialog';
+import { toast } from '@/components/ui/toast';
 import { EmailsMoreInProCard } from './EmailsMoreInProCard';
 import { EmailsSettingsSkeleton } from './EmailsSettingsSkeleton';
 import { EmailsTable } from './EmailsTable';

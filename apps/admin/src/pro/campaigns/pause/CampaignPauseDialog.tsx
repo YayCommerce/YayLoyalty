@@ -1,4 +1,3 @@
-import { toast } from 'sonner';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { toastApiError } from '@/lib/api/api';
@@ -13,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/custom/dialog';
+import { toast } from '@/components/ui/toast';
 import { pauseBody } from './campaign-pause.copy';
 
 /** Pause confirmation for one active or scheduled campaign; mount it only while open. */

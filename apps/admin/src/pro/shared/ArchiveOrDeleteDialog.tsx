@@ -1,5 +1,4 @@
 import { ReactElement, ReactNode, useState } from 'react';
-import { toast } from 'sonner';
 import { createInterpolateElement } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 
@@ -13,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/custom/dialog';
+import { toast } from '@/components/ui/toast';
 
 export type ArchiveDialogButton<A extends string> = { action: A; label: string; pendingLabel: string };
 

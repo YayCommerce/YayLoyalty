@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { FormProvider, useForm } from 'react-hook-form';
-import { toast } from 'sonner';
 
 import { toastApiError } from '@/lib/api/api';
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
@@ -11,6 +10,7 @@ import { useEditorSave } from '@/hooks/useEditorSave';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/custom/confirm-dialog';
 import { UnsavedChangeDialog } from '@/components/ui/custom/unsaved-changed-dialog';
+import { toast } from '@/components/ui/toast';
 import { ProGate } from '@/components/pro/ProGate';
 import { DesignPanelSection, DesignTypographySection } from '@/pro';
 import {

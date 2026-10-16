@@ -1,5 +1,4 @@
 import { useId, useRef, useState } from 'react';
-import { toast } from 'sonner';
 import { createInterpolateElement } from '@wordpress/element';
 import { __, _n, _x, sprintf } from '@wordpress/i18n';
 
@@ -22,6 +21,7 @@ import {
   DialogTitle,
 } from '@/components/ui/custom/dialog';
 import { Label } from '@/components/ui/label';
+import { toast } from '@/components/ui/toast';
 import { archivedLink, ArchiveOrDeleteDialog } from '@/pro/shared/ArchiveOrDeleteDialog';
 import { archiveBodyLines, resolveArchiveCase } from './campaign-archive.copy';
 import { BulkArchiveRow, bulkBodyLines } from './campaign-bulk-archive.copy';

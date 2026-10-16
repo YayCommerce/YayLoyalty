@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { toast } from 'sonner';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { toastApiError } from '@/lib/api/api';
@@ -8,6 +7,7 @@ import { useCompleteSetupMutation, useDismissSetupMutation } from '@/lib/queries
 import { cn } from '@/lib/utils';
 import { Button, LoadingButton } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/custom/dialog';
+import { toast } from '@/components/ui/toast';
 import { EarnPointsStep } from './EarnPointsStep';
 import { LauncherLookStep } from './LauncherLookStep';
 import { NamePointsStep } from './NamePointsStep';

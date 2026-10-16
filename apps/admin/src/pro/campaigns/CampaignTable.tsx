@@ -5,7 +5,6 @@ import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } 
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, InfoIcon, Lock, Search } from 'lucide-react';
 import { useNavigate } from 'react-router';
-import { toast } from 'sonner';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { toastApiError } from '@/lib/api/api';
@@ -44,6 +43,7 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/in
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { toast } from '@/components/ui/toast';
 import EllipsisIcon from '@/components/icons/EllipsisIcon';
 import { CampaignArchiveDialog, CampaignBulkArchiveDialog } from './archive/CampaignArchiveDialog';
 import {

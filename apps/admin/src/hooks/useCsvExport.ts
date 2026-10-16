@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { toast } from 'sonner';
 
 import { isAbortError, toastApiError } from '@/lib/api/api';
+import { toast } from '@/components/ui/toast';
 
 /**
  * A click-started CSV export: fetches the rows, then hands them to `download`.

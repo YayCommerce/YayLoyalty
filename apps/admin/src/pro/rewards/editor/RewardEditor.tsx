@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Controller, FormProvider, useForm, useFormContext, UseFormReturn, useWatch } from 'react-hook-form';
 import { useNavigate } from 'react-router';
-import { toast } from 'sonner';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { toastApiError } from '@/lib/api/api';
@@ -23,6 +22,7 @@ import { ScheduleFields } from '@/components/ui/custom/schedule-fields';
 import { UnsavedChangeDialog } from '@/components/ui/custom/unsaved-changed-dialog';
 import { Field, FieldContent, FieldLabel } from '@/components/ui/field';
 import { Segmented, SegmentedItem } from '@/components/ui/segmented';
+import { toast } from '@/components/ui/toast';
 import PageLayout from '@/components/layout/PageLayout';
 import { resolveQueryLoad } from '@/components/layout/resolve-query-load';
 import NotFoundPage from '@/pages/404';

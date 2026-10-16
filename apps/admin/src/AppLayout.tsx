@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router';
 
 import { can, CAP } from '@/lib/access';
-import { Toaster } from '@/components/ui/sonner';
+import { Toaster } from '@/components/ui/toast';
 import Footer from '@/components/layout/Footer';
 import Header from '@/components/layout/Header';
 import { SetupWizardModal } from '@/components/setup-wizard/SetupWizardModal';

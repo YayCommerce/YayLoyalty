@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { toast } from 'sonner';
 import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { toastApiError } from '@/lib/api/api';
@@ -19,6 +18,7 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/u
 import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
+import { toast } from '@/components/ui/toast';
 import { UpgradeToProBanner } from '@/components/pro/UpgradeToPro';
 import { BaseAmountSegmented, RoundingSegmented } from './PurchaseConfigControls';
 

@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { toast } from 'sonner';
 
 import { Can, CAP } from '@/lib/access';
 import { toastApiError } from '@/lib/api/api';
 import { useAdjustPointsMutation, useCustomerQuery } from '@/lib/queries/customer.queries';
 import type { Customer } from '@/lib/schema/customer.schema';
 import { Button } from '@/components/ui/button';
+import { toast } from '@/components/ui/toast';
 import { ADJUST_POINTS_ERROR_FALLBACK, adjustPointsSuccessToast } from '../components/customers-adjust-points.copy';
 import { CustomersAdjustPointsDialog } from '../components/CustomersAdjustPointsDialog';
 import { ACTION_ADJUST_POINTS, DELETED_ACCOUNT_ACTION_REASON } from './customer-drawer.copy';

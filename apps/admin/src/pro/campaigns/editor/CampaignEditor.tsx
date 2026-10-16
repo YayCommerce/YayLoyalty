@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import { FieldErrors, FormProvider, useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router';
-import { toast } from 'sonner';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { toastApiError } from '@/lib/api/api';
@@ -14,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { BackLink } from '@/components/ui/custom/back-link';
 import { UnsavedChangeDialog } from '@/components/ui/custom/unsaved-changed-dialog';
+import { toast } from '@/components/ui/toast';
 import PageLayout from '@/components/layout/PageLayout';
 import { resolveQueryLoad } from '@/components/layout/resolve-query-load';
 import NotFoundPage from '@/pages/404';

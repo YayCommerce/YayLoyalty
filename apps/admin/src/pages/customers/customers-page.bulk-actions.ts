@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { toast } from 'sonner';
 import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { isAbortError, toastApiError } from '@/lib/api/api';
 import { useBulkAdjustPointsMutation } from '@/lib/queries/customer.queries';
 import type { AdjustPointsInput, CustomerListRow } from '@/lib/schema/customer.schema';
 import { useCsvExport } from '@/hooks/useCsvExport';
+import { toast } from '@/components/ui/toast';
 import { bulkSelectionChanged } from './components/customers-adjust-points.bulk.copy';
 import { exportCustomersToCsv } from './customers-page.export';
 import type { RowFilters } from './customers-page.filter-rows';

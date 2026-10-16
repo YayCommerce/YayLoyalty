@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useFormContext } from 'react-hook-form';
-import { toast } from 'sonner';
 
 import { toastApiError } from '@/lib/api/api';
 import { useResetDesignMutation } from '@/lib/queries/design.queries';
@@ -10,6 +9,7 @@ import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/componen
 import { ConfirmDialog } from '@/components/ui/custom/confirm-dialog';
 import { Field, FieldContent, FieldError, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { toast } from '@/components/ui/toast';
 import {
   CANCEL_LABEL,
   RESET_CONFIRM_LABEL,

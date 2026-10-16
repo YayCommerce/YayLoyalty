@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { InfoIcon, TriangleAlert, X } from 'lucide-react';
-import { toast } from 'sonner';
 import { __ } from '@wordpress/i18n';
 
 import { toastApiError } from '@/lib/api/api';
@@ -12,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { BuiltInConfigCard } from '@/components/ui/custom/built-in-config-card';
 import { ErrorState } from '@/components/ui/custom/error-state';
 import { Skeleton } from '@/components/ui/skeleton';
+import { toast } from '@/components/ui/toast';
 import { UpgradeToProBanner } from '@/components/pro/UpgradeToPro';
 import { FlexibleDiscountConfig, FlexibleDiscountFields } from './FlexibleDiscountFields';
 

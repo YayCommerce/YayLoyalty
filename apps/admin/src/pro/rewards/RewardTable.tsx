@@ -5,7 +5,6 @@ import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } 
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router';
-import { toast } from 'sonner';
 import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { toastApiError } from '@/lib/api/api';
@@ -29,6 +28,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { toast } from '@/components/ui/toast';
 import EllipsisIcon from '@/components/icons/EllipsisIcon';
 import { CampaignStatusBadge } from '@/pro/campaigns/CampaignStatusBadge';
 import { RewardArchiveDialog } from './archive/RewardArchiveDialog';
