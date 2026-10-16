@@ -27,12 +27,16 @@ final class CouponProvider {
     /** A reward's virtual coupon is this prefix plus its id. */
     public const REWARD_PREFIX = EarnContext::REWARD_COUPON_PREFIX;
 
-    /** Denial reasons that take a picked reward out of the session; any other leaves it there, unapplied. */
+    /**
+     * Denial reasons that take a picked reward out of the session; any other leaves it there, unapplied. A program
+     * gate's reasons hide the Rewards panel, so nothing else could take the reward out before checkout refuses it.
+     */
     private const DROPPING_REASONS = [
         RewardCoupons::REASON_MIN_ORDER,
         RewardCoupons::REASON_SALE_ITEMS,
         RewardCoupons::REASON_NO_VALUE,
         Result::REASON_NOT_LIVE,
+        ...ProgramGate::REASONS,
     ];
 
     private RedemptionService $service;
@@ -121,14 +125,21 @@ final class CouponProvider {
     public function notice_removed( Reward $reward ): void {
         $reward_id = (int) $reward->get_id();
 
-        if ( isset( $this->notified[ $reward_id ] ) || ! function_exists( 'wc_add_notice' ) ) {
+        if ( isset( $this->notified[ $reward_id ] ) ) {
             return;
         }
 
         $this->notified[ $reward_id ] = true;
 
-        /* translators: %s: the reward's name, as "$5 off". */
-        wc_add_notice( sprintf( __( '%s was removed: this order no longer qualifies.', 'yayloyalty' ), $reward->get_name() ), 'notice' );
+        self::notice_dropped( $reward->get_name() );
+    }
+
+    /** "{name} was removed: this order no longer qualifies.", for a picked reward or the points discount. */
+    private static function notice_dropped( string $name ): void {
+        if ( function_exists( 'wc_add_notice' ) ) {
+            /* translators: %s: the reward's name, as "$5 off". */
+            wc_add_notice( sprintf( __( '%s was removed: this order no longer qualifies.', 'yayloyalty' ), $name ), 'notice' );
+        }
     }
 
     /**
@@ -290,14 +301,26 @@ final class CouponProvider {
     }
 
     /**
-     * The slider's code while its quote applies points, else nothing.
+     * The slider's code while its quote applies points, else nothing. When asking for everything is refused too,
+     * the card shows no slider to change the amount and checkout would refuse it on every try, so the amount
+     * leaves the session with the "was removed" notice.
      *
      * @return string[]
      */
     private function wanted_slider( \WC_Cart $cart ): array {
-        $quote = $this->service->quote( $cart, RedemptionService::shopper_id() );
+        $user_id = RedemptionService::shopper_id();
+        $quote   = $this->service->quote( $cart, $user_id );
 
-        return $quote->is_allowed() && $quote->get_points() > 0 ? [ self::CODE ] : [];
+        if ( $quote->is_allowed() && $quote->get_points() > 0 ) {
+            return [ self::CODE ];
+        }
+
+        if ( ! $this->service->ceiling( $cart, $user_id )->is_allowed() ) {
+            $this->intent->clear();
+            self::notice_dropped( self::display_label() );
+        }
+
+        return [];
     }
 
     /**
