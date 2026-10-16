@@ -358,6 +358,22 @@ record(
     implode( ', ', array_slice( $dev_leftovers, 0, 5 ) )
 );
 
+// run.sh flips the default, because the package has no RegisterDev.php to serve the dev mode.
+$main_source = (string) file_get_contents( $root . '/yayloyalty.php' );
+record(
+    'YAYLOYALTY_IS_DEVELOPMENT defaults to false',
+    false !== strpos( $main_source, "define( 'YAYLOYALTY_IS_DEVELOPMENT', false );" )
+);
+
+// Only what the build writes: a stale folder such as admin-lite/ would ship unnoticed.
+$dist_dirs = array_map( 'basename', glob( $root . '/assets/dist/*', GLOB_ONLYDIR ) ?: [] );
+$extra_dist = array_diff( $dist_dirs, [ 'admin', 'blocks', 'storefront' ] );
+record(
+    'assets/dist holds only admin, blocks and storefront',
+    [] === $extra_dist,
+    implode( ', ', $extra_dist )
+);
+
 // Headless boot
 
 run_boot_check( $root, $build_type );

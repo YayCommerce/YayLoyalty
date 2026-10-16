@@ -134,7 +134,7 @@ One tree builds both editions. Lite is Pro without `includes/Pro/` and without t
   - `includes/Engine/Admin/Settings.php` enqueues the app only on that page's hook suffix, `yaycommerce_page_yayloyalty`.
   - It adds the `yay-ui` body class on every admin screen. That class scopes the SPA's Tailwind utilities (`apps/admin/src/main.css`).
 - Loading: `includes/Engine/Register/RegisterFacade.php` chooses a registrar by `YAYLOYALTY_IS_DEVELOPMENT`, which defaults to `true`:
-  - `true`: `RegisterDev` loads `/main.tsx` from the Vite dev server on port 3030, plus React's refresh preamble. Release zips have no `RegisterDev.php`, so a site running one must define the constant `false`, or the admin page stays blank;
+  - `true`: `RegisterDev` loads `/main.tsx` from the Vite dev server on port 3030, plus React's refresh preamble. Release zips have no `RegisterDev.php`, so the release rewrites the default to `false` in the packaged `yayloyalty.php`;
   - anything else: `RegisterProd` loads the fixed file `assets/dist/admin/js/main.js`. There is no manifest.
   - The facade registers the built `assets/dist/admin/style.css` in both modes.
   - Either way the app is one ES module (the facade adds `type="module"`) that depends on WordPress's React and `@wordpress/*` scripts. The production build maps those imports to WordPress globals; the dev server maps only `@wordpress/hooks` and `@wordpress/i18n` and serves its own React (`apps/admin/vite.config.ts`).
@@ -165,10 +165,10 @@ One tree builds both editions. Lite is Pro without `includes/Pro/` and without t
 - It ends with `build:blocks`, which builds the blocks' editor script from `apps/admin/src/blocks/` through `apps/admin/vite.blocks.config.ts` into `assets/dist/blocks/editor.js`, one file for both editions, with React and `@wordpress/*` as WordPress globals.
 - `./scripts/run.sh release` first stamps a new version, when one is given or entered, into the plugin header, `YAYLOYALTY_VERSION` and the `readme.txt` stable tag; `yayloyalty.php` is the version source. Then `build_package` in `scripts/run.sh`:
   1. runs the prerelease sync, which leaves only `--no-dev` Composer packages, and dumps the production classmap;
-  2. builds the SPA;
+  2. empties `assets/dist/` and builds the SPA, so no stale output ships;
   3. stages `release/yayloyalty/` from an explicit include list: the root plugin files, `includes/`, `assets/`, `languages/`, `vendor-prefixed/` and Composer's autoloader only;
   4. Lite only: deletes `includes/Pro/`;
-  5. both editions: delete `RegisterDev.php` and dev artifacts;
+  5. both editions: set `YAYLOYALTY_IS_DEVELOPMENT` to `false` and delete `RegisterDev.php` and dev artifacts;
   6. writes `release-manifest.json`, with a SHA-256 for each file, and zips;
   7. runs `scripts/validate-build.php` and renames a failing zip to `.invalid`.
 - Both editions unpack to the same `yayloyalty/` folder, so Pro installs over Lite in place.
@@ -176,7 +176,7 @@ One tree builds both editions. Lite is Pro without `includes/Pro/` and without t
 - Besides the Pro/Lite checks above, the validator checks:
   - the manifest: build type, hashes, no unlisted files, and a version that matches the header and the constant;
   - `php -l` on every PHP file;
-  - that no dev artifacts remain;
+  - that no dev artifacts remain, `YAYLOYALTY_IS_DEVELOPMENT` defaults to `false` and `assets/dist/` holds only `admin/`, `blocks/` and `storefront/`;
   - a headless WP-CLI boot of the zip, when `YAYLOYALTY_WP_CLI` is set. The boot also checks `is_pro()` against the edition and fails if either localized payload has a key with the whole word `pro` or `premium`. Otherwise it reports SKIP, or fails under `--require-boot`, which `run.sh` doesn't pass.
 - `readme.txt` is the WordPress.org readme and carries the release notes.
 

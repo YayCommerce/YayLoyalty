@@ -291,6 +291,8 @@ build_package() {
     cd "$PLUGIN_DIR"
     composer dump-autoload --no-dev --classmap-authoritative --quiet
 
+    # Start from an empty assets/dist/, so only this build's output ships, never a stale folder from an older layout.
+    rm -rf "$PLUGIN_DIR/assets/dist"
     cmd_build "$build_type"
 
     # Both build types use the slug as the folder name, so upgrading Lite to Pro replaces the directory in place.
@@ -322,6 +324,8 @@ build_package() {
     fi
 
     # Strip dev-only files. validate-build.php's dev-artifact check mirrors this list.
+    # With RegisterDev.php gone, the packaged default must be false, or the admin page loads nothing.
+    sed_inplace "s/define( 'YAYLOYALTY_IS_DEVELOPMENT', true );/define( 'YAYLOYALTY_IS_DEVELOPMENT', false );/" "$temp_dir/yayloyalty.php"
     rm -f "$temp_dir/includes/Engine/Register/RegisterDev.php"
     rm -rf "$temp_dir/assets/dist/admin/.vite" 2>/dev/null || true
     find "$temp_dir" -name ".DS_Store" -delete 2>/dev/null || true
