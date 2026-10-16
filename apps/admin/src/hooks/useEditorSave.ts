@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { FieldErrors, FieldValues, UseFormReturn } from 'react-hook-form';
-import { useNavigate } from 'react-router';
 
+import { useNavigate } from '@/lib/router';
 import { useRouteLeaveGuard } from '@/hooks/useRouteLeaveGuard';
 
 export type EditorSaveIntent = 'save' | 'draft';

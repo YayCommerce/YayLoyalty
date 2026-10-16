@@ -1,11 +1,11 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { FormProvider, useForm } from 'react-hook-form';
-import { Link } from 'react-router';
 import { __ } from '@wordpress/i18n';
 
 import { toastApiError } from '@/lib/api/api';
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { useEmailsQuery, useSaveEmailsMutation } from '@/lib/queries/emails.queries';
+import { Link } from '@/lib/router';
 import { emailsFormSchema, EmailsFormValues, EmailsResponse, toEmailsFormValues } from '@/lib/schema/emails.schema';
 import { useEditorSave } from '@/hooks/useEditorSave';
 import { Button } from '@/components/ui/button';

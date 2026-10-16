@@ -1,9 +1,9 @@
-import { Link } from 'react-router';
 import { __ } from '@wordpress/i18n';
 
 import { parseWPRelativeDate } from '@/lib/helpers/format.helper';
 import { describeLedgerEntry, formatSignedPoints } from '@/lib/helpers/ledger.helper';
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
+import { Link } from '@/lib/router';
 import type { DashboardRecentActivity as Activity } from '@/lib/schema/dashboard.schema';
 import { cn } from '@/lib/utils';
 import { Card, CardAction, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';

@@ -1,7 +1,7 @@
-import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
 import { __ } from '@wordpress/i18n';
 
 import { useCustomerQuery } from '@/lib/queries/customer.queries';
+import { useLocation, useNavigate, useParams, useSearchParams } from '@/lib/router';
 import type { CustomerListRow } from '@/lib/schema/customer.schema';
 import { ErrorState } from '@/components/ui/custom/error-state';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';

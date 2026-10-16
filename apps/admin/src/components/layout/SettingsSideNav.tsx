@@ -1,6 +1,6 @@
-import { NavLink } from 'react-router';
 import { __ } from '@wordpress/i18n';
 
+import { NavLink } from '@/lib/router';
 import { cn } from '@/lib/utils';
 import { SideNavMenuItem, SideNavMenuList } from '@/components/ui/navmenu-side';
 

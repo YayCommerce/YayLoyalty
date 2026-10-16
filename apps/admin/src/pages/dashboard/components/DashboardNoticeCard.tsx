@@ -1,8 +1,8 @@
 import { XIcon } from '@phosphor-icons/react';
-import { Link } from 'react-router';
 import { __ } from '@wordpress/i18n';
 
 import { Can } from '@/lib/access';
+import { Link } from '@/lib/router';
 import type { DashboardNotice } from '@/lib/schema/dashboard.schema';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';

@@ -1,6 +1,6 @@
-import { Link } from 'react-router';
 import { __ } from '@wordpress/i18n';
 
+import { Link } from '@/lib/router';
 import type { DashboardTopEarner } from '@/lib/schema/dashboard.schema';
 import { Card, CardAction, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { PointsValue } from '@/components/ui/custom/points-value';

@@ -4,7 +4,6 @@ import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, InfoIcon, Lock, Search } from 'lucide-react';
-import { useNavigate } from 'react-router';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { toastApiError } from '@/lib/api/api';
@@ -13,6 +12,7 @@ import {
   useReorderCampaignsMutation,
   useUpdateCampaignStatusMutation,
 } from '@/lib/queries/campaign.queries';
+import { useNavigate } from '@/lib/router';
 import { hasPerformancePage } from '@/lib/schema/campaign-performance.schema';
 import {
   Campaign,

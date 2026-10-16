@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react';
 import { ChevronDown } from 'lucide-react';
-import { useSearchParams } from 'react-router';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { parseWPDate, parseWPRelativeDate } from '@/lib/helpers/format.helper';
 import { formatPoints } from '@/lib/helpers/points.helper';
+import { useSearchParams } from '@/lib/router';
 import type { CustomerListRow } from '@/lib/schema/customer.schema';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';

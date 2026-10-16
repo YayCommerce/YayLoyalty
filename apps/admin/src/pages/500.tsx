@@ -1,6 +1,6 @@
-import { useNavigate, useRouteError } from 'react-router';
 import { __ } from '@wordpress/i18n';
 
+import { useNavigate, useRouteError } from '@/lib/router';
 import { Button } from '@/components/ui/button';
 
 export default function ErrorPage() {

@@ -1,6 +1,6 @@
 import { TriangleAlert } from 'lucide-react';
-import { Link } from 'react-router';
 
+import { Link } from '@/lib/router';
 import type { CustomerListRow } from '@/lib/schema/customer.schema';
 import { PointsValue } from '@/components/ui/custom/points-value';
 

@@ -1,6 +1,6 @@
 import { ChevronLeft } from 'lucide-react';
-import { useNavigate } from 'react-router';
 
+import { useNavigate } from '@/lib/router';
 import { Button } from '@/components/ui/button';
 
 /** The row above a sub-screen's title: back to its list. type="button" so it never submits a form it sits in. */

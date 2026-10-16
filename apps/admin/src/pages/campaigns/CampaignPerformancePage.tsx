@@ -1,6 +1,5 @@
-import { useParams } from 'react-router';
-
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
+import { useParams } from '@/lib/router';
 import { CampaignPerformance } from '@/pro';
 import NotFoundPage from '../404';
 

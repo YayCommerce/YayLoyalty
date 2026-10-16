@@ -1,6 +1,6 @@
-import { Outlet } from 'react-router';
 import { __ } from '@wordpress/i18n';
 
+import { Outlet } from '@/lib/router';
 import PageLayout from '@/components/layout/PageLayout';
 import SettingsSideNav from '@/components/layout/SettingsSideNav';
 

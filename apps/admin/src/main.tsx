@@ -3,8 +3,8 @@ import './main.css';
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createRoot } from 'react-dom/client';
-import { RouterProvider } from 'react-router';
 
+import { RouterProvider } from '@/lib/router';
 import { registerPro } from '@/pro';
 import { getManagerRouter } from '@/router';
 

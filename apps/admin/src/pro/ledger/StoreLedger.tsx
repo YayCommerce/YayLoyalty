@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Outlet } from 'react-router';
 
 import { can, CAP } from '@/lib/access';
 import { ledgerTypeLabel } from '@/lib/helpers/ledger.helper';
+import { Outlet } from '@/lib/router';
 import { LEDGER_FILTER_TYPES, type LedgerFilterType } from '@/lib/schema/ledger.schema';
 import { cn } from '@/lib/utils';
 import { useCsvExport } from '@/hooks/useCsvExport';
@@ -77,7 +77,7 @@ export function StoreLedger() {
   const totalPage = Math.max(1, query.data?.totalPage ?? 1);
   const { setPage } = state;
 
-  // react-router keeps the scroll position across navigations, so the page would open wherever the Dashboard left it.
+  // The router keeps the scroll position across navigations, so the page would open wherever the Dashboard left it.
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);

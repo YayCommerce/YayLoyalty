@@ -4,7 +4,6 @@ import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, Lock } from 'lucide-react';
-import { useNavigate } from 'react-router';
 import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { toastApiError } from '@/lib/api/api';
@@ -13,6 +12,7 @@ import {
   useRewardsQuery,
   useUpdateRewardStatusMutation,
 } from '@/lib/queries/reward.queries';
+import { useNavigate } from '@/lib/router';
 import { resolveRewardDisplayStatus, Reward } from '@/lib/schema/reward.schema';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

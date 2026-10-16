@@ -1,8 +1,8 @@
 import type { MouseEvent } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
 import { __ } from '@wordpress/i18n';
 
 import { parseWPDate, parseWPRelativeDate } from '@/lib/helpers/format.helper';
+import { useNavigate, useSearchParams } from '@/lib/router';
 import type { CustomerListRow } from '@/lib/schema/customer.schema';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';

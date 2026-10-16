@@ -1,9 +1,9 @@
-import { Link } from 'react-router';
 import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { Can, CAP } from '@/lib/access';
 import { parseWPDay, parseWPTime, utcToDate } from '@/lib/helpers/format.helper';
 import { DAILY_POINTS_CHART_FORMAT, formatPoints } from '@/lib/helpers/points.helper';
+import { Link } from '@/lib/router';
 import type { PointsJumpData } from '@/lib/schema/dashboard-notice.schema';
 import { BarChart } from '@/components/ui/bar-chart';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';

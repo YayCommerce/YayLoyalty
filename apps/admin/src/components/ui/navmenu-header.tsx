@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Slot } from '@radix-ui/react-slot';
-import { useLocation } from 'react-router';
 
+import { useLocation } from '@/lib/router';
 import { cn } from '@/lib/utils';
 import { useCombinedRefs } from '@/hooks/useCombinedRefs';
 

@@ -1,6 +1,6 @@
-import { Link } from 'react-router';
 import { __ } from '@wordpress/i18n';
 
+import { Link } from '@/lib/router';
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 
 /** "No members yet": a genuinely empty store, not filters matching nobody. */

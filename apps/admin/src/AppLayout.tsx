@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Outlet, useLocation, useNavigate } from 'react-router';
 
 import { can, CAP } from '@/lib/access';
+import { Outlet, useLocation, useNavigate } from '@/lib/router';
 import { Toaster } from '@/components/ui/toast';
 import Footer from '@/components/layout/Footer';
 import Header from '@/components/layout/Header';

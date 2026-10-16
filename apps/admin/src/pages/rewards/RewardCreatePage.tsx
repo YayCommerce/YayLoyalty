@@ -1,6 +1,5 @@
-import { useParams, useSearchParams } from 'react-router';
-
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
+import { useParams, useSearchParams } from '@/lib/router';
 import { RewardCreator } from '@/pro';
 import NotFoundPage from '../404';
 

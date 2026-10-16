@@ -1,20 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
-import { matchPath, useBlocker } from 'react-router';
+
+import { useBlocker } from '@/lib/router';
 
 /** Blocks in-app navigation while a form has unsaved changes and hands the blocked transition to the caller. */
-export function useRouteLeaveGuard(shouldBlock: boolean, excludedRoutes: string[] = []) {
+export function useRouteLeaveGuard(shouldBlock: boolean) {
   const [showDialog, setShowDialog] = useState(false);
   // Set right before the navigate() that follows a successful save. `shouldBlock` may not yet
   // reflect the form.reset(), so it would block that navigation.
   const bypassNextRef = useRef(false);
 
-  const blocker = useBlocker(({ nextLocation }) => {
+  const blocker = useBlocker(() => {
     if (bypassNextRef.current) {
       bypassNextRef.current = false;
       return false;
     }
 
-    return shouldBlock && !excludedRoutes.some((route) => matchPath(route, nextLocation.pathname));
+    return shouldBlock;
   });
   useEffect(() => {
     if (blocker.state === 'blocked') {

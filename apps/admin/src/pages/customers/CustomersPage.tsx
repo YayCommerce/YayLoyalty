@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Outlet, useSearchParams } from 'react-router';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { useCustomersQuery } from '@/lib/queries/customer.queries';
+import { Outlet, useSearchParams } from '@/lib/router';
 import { useDebouncedSearchCommit } from '@/hooks/useDebouncedSearchCommit';
 import { ErrorState } from '@/components/ui/custom/error-state';
 import { Skeleton } from '@/components/ui/skeleton';

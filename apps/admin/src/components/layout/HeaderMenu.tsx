@@ -1,9 +1,9 @@
 import { ComponentProps } from 'react';
 import { Coins, Gift, Megaphone } from 'lucide-react';
-import { NavLink } from 'react-router';
 import { __ } from '@wordpress/i18n';
 
 import { Can, CAP, Capability } from '@/lib/access';
+import { NavLink } from '@/lib/router';
 import { cn } from '@/lib/utils';
 import { HeaderNavMenuItem, HeaderNavMenuList } from '@/components/ui/navmenu-header';
 import DashboardIcon from '@/components/icons/DashboardIcon';

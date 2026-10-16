@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
 import { Controller, FormProvider, useForm, useFormContext, UseFormReturn, useWatch } from 'react-hook-form';
-import { useNavigate } from 'react-router';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { toastApiError } from '@/lib/api/api';
 import { storeCurrency } from '@/lib/helpers/format.helper';
 import { useCreateRewardMutation, useRewardQuery, useUpdateRewardMutation } from '@/lib/queries/reward.queries';
+import { useNavigate } from '@/lib/router';
 import {
   CatalogRewardType,
   isCatalogRewardType,

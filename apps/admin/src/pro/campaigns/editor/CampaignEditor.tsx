@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
 import { FieldErrors, FormProvider, useForm } from 'react-hook-form';
-import { useNavigate } from 'react-router';
 import { __, sprintf } from '@wordpress/i18n';
 
 import { toastApiError } from '@/lib/api/api';
 import { parseWPRelativeDate } from '@/lib/helpers/format.helper';
 import { useCampaignQuery, useCreateCampaignMutation, useUpdateCampaignMutation } from '@/lib/queries/campaign.queries';
+import { useNavigate } from '@/lib/router';
 import { hasPerformancePage } from '@/lib/schema/campaign-performance.schema';
 import { Campaign, resolveCampaignDisplayStatus } from '@/lib/schema/campaign.schema';
 import { useEditorSave } from '@/hooks/useEditorSave';

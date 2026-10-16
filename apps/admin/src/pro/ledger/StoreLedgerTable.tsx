@@ -1,5 +1,4 @@
-import { Link } from 'react-router';
-
+import { Link } from '@/lib/router';
 import type { StoreLedgerEntry } from '@/lib/schema/store-ledger.schema';
 import { cn } from '@/lib/utils';
 import { YayLoyaltyToolTip } from '@/components/ui/custom/tooltip';

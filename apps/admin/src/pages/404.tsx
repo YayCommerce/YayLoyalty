@@ -1,6 +1,6 @@
-import { useNavigate } from 'react-router';
 import { __ } from '@wordpress/i18n';
 
+import { useNavigate } from '@/lib/router';
 import { Button } from '@/components/ui/button';
 
 export default function NotFoundPage() {

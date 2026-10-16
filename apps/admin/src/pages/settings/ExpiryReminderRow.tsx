@@ -1,7 +1,7 @@
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
-import { Link } from 'react-router';
 import { __ } from '@wordpress/i18n';
 
+import { Link } from '@/lib/router';
 import { REMINDER_DAYS_MAX } from '@/lib/schema/settings.schema';
 import { Card, CardContent } from '@/components/ui/card';
 import { FieldError } from '@/components/ui/field';

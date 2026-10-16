@@ -1,7 +1,7 @@
 import { ReactElement } from 'react';
-import { createHashRouter, redirect } from 'react-router';
 
 import { Can, CAP, Capability } from '@/lib/access';
+import { createHashRouter } from '@/lib/router';
 import AppLayout from './AppLayout';
 import NotFoundPage from './pages/404';
 import ErrorPage from './pages/500';
@@ -45,7 +45,7 @@ export function getManagerRouter() {
       children: [
         {
           index: true,
-          loader: () => redirect('/dashboard'),
+          redirect: '/dashboard',
         },
         {
           path: 'dashboard',
@@ -105,7 +105,7 @@ export function getManagerRouter() {
           children: [
             {
               index: true,
-              loader: () => redirect('/settings/general'),
+              redirect: '/settings/general',
             },
             {
               path: 'general',
@@ -125,7 +125,7 @@ export function getManagerRouter() {
             },
             {
               path: '*',
-              loader: () => redirect('/settings/general'),
+              redirect: '/settings/general',
             },
           ],
         },

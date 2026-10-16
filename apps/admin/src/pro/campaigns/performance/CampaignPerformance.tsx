@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
 import { InfoIcon } from 'lucide-react';
-import { useNavigate } from 'react-router';
 import { __, sprintf } from '@wordpress/i18n';
 
+import { useNavigate } from '@/lib/router';
 import {
   CampaignPerformance as CampaignPerformanceData,
   CampaignPerformanceTrigger,
@@ -34,7 +34,7 @@ export function CampaignPerformance({ id }: { id: number }) {
   const navigate = useNavigate();
   const summaryQuery = useCampaignPerformanceQuery(id);
 
-  // react-router keeps the scroll position across navigations, so the page would open wherever
+  // The router keeps the scroll position across navigations, so the page would open wherever
   // the previous screen left it.
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -149,7 +149,7 @@ function CampaignPerformanceBody({
         {trigger === 'purchase' && <CampaignPerformanceSidePanel skipped={data.skipped} estimate={data.estimate} />}
       </div>
 
-      {/* `key` forces a remount on an in-place campaign-id change — react-router doesn't remount a
+      {/* `key` forces a remount on an in-place campaign-id change — the router doesn't remount a
           matched element on a param-only change, so without this the table's own page/search
           state would leak into the new campaign's query. */}
       <CampaignPerformanceEntries

@@ -1,6 +1,6 @@
-import { useNavigate } from 'react-router';
 import { __ } from '@wordpress/i18n';
 
+import { useNavigate } from '@/lib/router';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BackLink } from '@/components/ui/custom/back-link';
 import PageLayout from '@/components/layout/PageLayout';
