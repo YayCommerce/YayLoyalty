@@ -1,17 +1,15 @@
 'use client';
 
-import { useCallback, type MouseEvent } from 'react';
+import { useCallback, type ComponentProps, type MouseEvent } from 'react';
 import { type VariantProps } from 'class-variance-authority';
 import { CheckIcon, CopyIcon } from 'lucide-react';
-import { AnimatePresence, HTMLMotionProps } from 'motion/react';
-import * as m from 'motion/react-m';
 import { useClipboard, usePreviousDifferent } from 'rooks';
 
 import { cn } from '@/lib/utils';
 import { useUncontrolled } from '@/hooks/useUncontrolled';
 import { buttonVariants } from './button';
 
-type CopyButtonProps = Omit<HTMLMotionProps<'button'>, 'children' | 'onCopy'> &
+type CopyButtonProps = Omit<ComponentProps<'button'>, 'children' | 'onCopy'> &
   VariantProps<typeof buttonVariants> & {
     content?: string;
     delay?: number;
@@ -63,27 +61,25 @@ function CopyButton({
   );
 
   return (
-    <m.button
+    <button
       data-slot="copy-button"
-      whileHover={{ scale: 1.05 }}
-      whileTap={{ scale: 0.95 }}
-      className={cn(buttonVariants({ variant, size }), className)}
+      className={cn(
+        buttonVariants({ variant, size }),
+        'transition-transform hover:scale-105 active:scale-95',
+        className,
+      )}
       onClick={handleCopy}
       {...props}
     >
-      <AnimatePresence mode="wait">
-        <m.span
-          key={isCopied ? 'check' : 'copy'}
-          data-slot="copy-button-icon"
-          initial={{ scale: isDirty ? 0 : 1 }} // start scale animation when isDirty
-          animate={{ scale: 1 }}
-          exit={{ scale: 0 }}
-          transition={{ duration: 0.15 }}
-        >
-          {isCopied ? <CheckIcon /> : <CopyIcon />}
-        </m.span>
-      </AnimatePresence>
-    </m.button>
+      <span
+        key={isCopied ? 'check' : 'copy'}
+        data-slot="copy-button-icon"
+        // Pops the new icon in once the state has changed, not on first render.
+        className={cn(isDirty && 'animate-in zoom-in-0 duration-150')}
+      >
+        {isCopied ? <CheckIcon /> : <CopyIcon />}
+      </span>
+    </button>
   );
 }
 

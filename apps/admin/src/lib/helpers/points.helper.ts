@@ -1,6 +1,6 @@
 import { _n, sprintf } from '@wordpress/i18n';
 
-import { currencyDecimals, formatStoreDecimal, formatStoreNumber, parseWPCurrency } from './format.helper';
+import { currencyDecimals, formatStoreDecimal, formatStoreNumber, parseWPCurrency, parseWPDay } from './format.helper';
 
 /** Points/balance number formatting. */
 
@@ -102,3 +102,11 @@ export function formatCompactPoints(value: number): string {
 export function isCompactedPoints(value: number): boolean {
   return Math.abs(value) >= COMPACT_THRESHOLD;
 }
+
+/** How the daily points charts print a day and a points value: the `format` of a chart in `components/ui/chart.tsx`. */
+export const DAILY_POINTS_CHART_FORMAT = {
+  x: (day: string) => parseWPDay(day, 'j M'),
+  tooltipX: (day: string) => parseWPDay(day, 'j M Y'),
+  y: formatCompactPoints,
+  value: formatPoints,
+};

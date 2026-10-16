@@ -1,13 +1,13 @@
 import { Link } from 'react-router';
-import { Bar, BarChart, Cell, ReferenceLine, XAxis, YAxis } from 'recharts';
 import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { Can, CAP } from '@/lib/access';
 import { parseWPDay, parseWPTime, utcToDate } from '@/lib/helpers/format.helper';
-import { formatCompactPoints, formatPoints } from '@/lib/helpers/points.helper';
+import { DAILY_POINTS_CHART_FORMAT, formatPoints } from '@/lib/helpers/points.helper';
 import type { PointsJumpData } from '@/lib/schema/dashboard-notice.schema';
+import { BarChart } from '@/components/ui/bar-chart';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
+import { type ChartConfig } from '@/components/ui/chart';
 import { ANOMALY_PANEL_ID } from '../dashboard-page.notice-actions';
 import { DashboardAnomalySettlements } from './DashboardAnomalySettlements';
 
@@ -39,40 +39,16 @@ export function DashboardAnomalyPanel({ data }: { data: PointsJumpData }) {
                 : parseWPDay(data.yesterday)}
             </CardDescription>
           </CardHeader>
-          <ChartContainer config={CONFIG} className="aspect-auto h-55 w-full">
-            <BarChart data={data.daily} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-              <XAxis
-                dataKey="date"
-                tickLine={false}
-                axisLine={false}
-                minTickGap={24}
-                tickFormatter={(v: string) => parseWPDay(v, 'j M')}
-              />
-              <YAxis
-                tickLine={false}
-                axisLine={false}
-                width={56}
-                allowDecimals={false}
-                tickFormatter={(v: number) => formatCompactPoints(v)}
-              />
-              <ChartTooltip
-                content={
-                  <ChartTooltipContent
-                    labelFormatter={(v: string) => parseWPDay(v, 'j M Y')}
-                    formatter={(value) => (
-                      <span className="font-mono font-medium tabular-nums">{formatPoints(Number(value))}</span>
-                    )}
-                  />
-                }
-              />
-              <ReferenceLine y={data.daily_average} stroke="var(--muted-foreground)" strokeDasharray="4 4" />
-              <Bar dataKey="issued" fill="var(--color-issued)" radius={[3, 3, 0, 0]} isAnimationActive={false}>
-                {data.daily.map((d) => (
-                  <Cell key={d.date} fillOpacity={d.date === data.yesterday ? 1 : 0.35} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ChartContainer>
+          <BarChart
+            config={CONFIG}
+            data={data.daily}
+            xKey="date"
+            format={DAILY_POINTS_CHART_FORMAT}
+            className="h-55"
+            referenceY={data.daily_average}
+            radius={3}
+            opacity={(d) => (d.date === data.yesterday ? 1 : 0.35)}
+          />
           <div className="text-muted-foreground flex flex-wrap gap-x-4 text-xs">
             <span>
               {sprintf(
