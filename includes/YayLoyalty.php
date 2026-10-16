@@ -35,6 +35,8 @@ class YayLoyalty {
         // After Pro's boot: build() applies yayloyalty_earning_gates once, so any gate Pro adds must already be attached.
         $this->register_earning_listeners();
 
+        ( new \YayLoyalty\Engine\Expiry\ExpiryRunner() )->register();
+
         \YayLoyalty\Engine\Storefront\AccountRewards::register();
         \YayLoyalty\Engine\Storefront\Placements::register();
         \YayLoyalty\Engine\Storefront\ProductEarnMessage::register();

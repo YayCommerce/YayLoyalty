@@ -132,8 +132,7 @@ export const SUBMIT_HINT_PREFIX = () => __('To continue:', 'yayloyalty');
 export const SUBMIT_HINT_ACKNOWLEDGE = () => __('acknowledge the total', 'yayloyalty');
 export const SUBMIT_HINT_REASON = () => __('add a reason', 'yayloyalty');
 
-export const FOOTER_NOTICE = () =>
-  __("Adjustments can't be edited or deleted, and they reset the customer's points expiry date.", 'yayloyalty');
+export const FOOTER_NOTICE = () => __("Adjustments can't be edited or deleted.", 'yayloyalty');
 
 // Already negative
 

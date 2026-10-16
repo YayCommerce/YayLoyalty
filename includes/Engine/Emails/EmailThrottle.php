@@ -9,6 +9,7 @@ defined( 'ABSPATH' ) || exit;
  * The merchant's weekly per-customer cap on loyalty emails (`emails.throttle_per_week`).
  * Counts sends over a rolling 7 days, kept as Unix timestamps in user meta. Not atomic: two sends
  * racing in one moment can both pass at the cap, which costs one extra email, never a lost award.
+ * An uncapped email (LoyaltyEmail::$is_capped, the expiry reminder) skips allows() but is still recorded.
  */
 final class EmailThrottle {
 

@@ -2,8 +2,10 @@
 namespace YayLoyalty\Repositories;
 
 use YayLoyalty\Database\QueryException;
+use YayLoyalty\Enums\LotStatus;
 use YayLoyalty\Models\Customer;
 use YayLoyalty\Utils\Dates;
+use YayLoyalty\Utils\Table;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -112,7 +114,6 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
      * @param int         $lifetime_earned_delta   Signed.
      * @param int         $lifetime_redeemed_delta Signed.
      * @param string|null $activity_at             Set to touch last_activity_at.
-     * @param string|null $expires_at              New expiry, or null to leave it.
      * @throws QueryException When the write fails.
      */
     public function apply_delta(
@@ -120,8 +121,7 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
         int $balance_delta,
         int $lifetime_earned_delta,
         int $lifetime_redeemed_delta,
-        ?string $activity_at = null,
-        ?string $expires_at = null
+        ?string $activity_at = null
     ): void {
         global $wpdb;
 
@@ -141,14 +141,6 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
         if ( null !== $activity_at ) {
             $sets[]   = 'last_activity_at = %s';
             $values[] = $activity_at;
-
-            // Activity clears the reminder so the next expiry window sends one, never two.
-            $sets[] = 'reminder_sent_at = NULL';
-        }
-
-        if ( null !== $expires_at ) {
-            $sets[]   = 'expires_at = %s';
-            $values[] = $expires_at;
         }
 
         $values[] = $user_id;
@@ -164,6 +156,200 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
 
         if ( false === $result ) {
             throw new QueryException( 'update', $wpdb->last_error, $this->table() . ' (apply_delta)' );
+        }
+    }
+
+    /**
+     * Sets customers.expires_at, null for none. LedgerService calls it under the row lock.
+     *
+     * @throws QueryException When the write fails.
+     */
+    public function set_expires_at( int $user_id, ?string $expires_at ): void {
+        $this->update( $user_id, [ 'expires_at' => $expires_at ], [ '%s' ] );
+    }
+
+    /**
+     * Customers with a balance whose expiry is due at $now, soonest first.
+     *
+     * @return int[]
+     */
+    public function due_user_ids( string $now, int $limit ): array {
+        global $wpdb;
+
+        $ids = $wpdb->get_col( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare(
+                'SELECT user_id FROM `' . esc_sql( $this->table() ) . '`
+                 WHERE expires_at IS NOT NULL AND expires_at <= %s AND balance > 0 ORDER BY expires_at LIMIT %d',
+                $now,
+                $limit
+            )
+        );
+
+        return array_map( 'intval', is_array( $ids ) ? $ids : [] );
+    }
+
+    /**
+     * Customers due an inactivity expiry reminder at $now (reminder_due_sql()), soonest first.
+     *
+     * @return int[]
+     */
+    public function reminder_due_user_ids( string $now, string $horizon, int $limit ): array {
+        global $wpdb;
+
+        list( $due_sql, $due_values ) = self::reminder_due_sql( $now, $horizon );
+
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $due_sql holds only placeholders; its values are bound.
+        $ids = $wpdb->get_col( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare(
+                'SELECT user_id FROM `' . esc_sql( $this->table() ) . "` WHERE {$due_sql} ORDER BY expires_at LIMIT %d",
+                array_merge( $due_values, [ $limit ] )
+            )
+        );
+        // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+        return array_map( 'intval', is_array( $ids ) ? $ids : [] );
+    }
+
+    /**
+     * Claims $user_id's inactivity reminder: reads the balance and date, then stamps reminder_sent_at = $now
+     * and reminder_for = that date only while the row still holds those values and is still due. Of two
+     * racing runs only one gets the row, and a write landing in between leaves it unclaimed for the next
+     * run. Returns what to remind about, or null when not claimed.
+     *
+     * @return array{points: int, expires_at: string, is_single_date: bool}|null The whole balance, on one date.
+     * @throws QueryException When the write fails.
+     */
+    public function claim_reminder( int $user_id, string $now, string $horizon ): ?array {
+        global $wpdb;
+
+        $customer   = $this->find_by_user_id( $user_id );
+        $expires_at = null !== $customer ? $customer->get_expires_at() : null;
+
+        if ( null === $expires_at ) {
+            return null;
+        }
+
+        list( $due_sql, $due_values ) = self::reminder_due_sql( $now, $horizon );
+
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $due_sql holds only placeholders, and $due_values binds them: the sniff cannot count through it.
+        $result = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare(
+                'UPDATE `' . esc_sql( $this->table() ) . "` SET reminder_sent_at = %s, reminder_for = expires_at
+                 WHERE user_id = %d AND balance = %d AND expires_at = %s AND {$due_sql}",
+                array_merge( [ $now, $user_id, $customer->get_balance(), $expires_at ], $due_values )
+            )
+        );
+        // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
+
+        if ( false === $result ) {
+            throw new QueryException( 'update', $wpdb->last_error, $this->table() . ' (claim_reminder)' );
+        }
+
+        if ( 1 !== $result ) {
+            return null;
+        }
+
+        return [
+            'points'         => $customer->get_balance(),
+            'expires_at'     => $expires_at,
+            'is_single_date' => true,
+        ];
+    }
+
+    /**
+     * Records that a batch reminder went out at $now. Batch claims live on lots; this only dates the last one.
+     *
+     * @throws QueryException When the write fails.
+     */
+    public function mark_reminded( int $user_id, string $now ): void {
+        $this->update( $user_id, [ 'reminder_sent_at' => $now ], [ '%s' ] );
+    }
+
+    /**
+     * The one inactivity reminder rule, for the selector and the claim alike: a balance whose date falls
+     * after $now and by $horizon, and that date not yet announced (reminder_for). Changing the timing never
+     * re-announces a date; a date that moves is announced again once.
+     *
+     * @return array{0: string, 1: array<int, string|int>} SQL with placeholders, and their values.
+     */
+    private static function reminder_due_sql( string $now, string $horizon ): array {
+        return [
+            'balance > 0 AND expires_at > %s AND expires_at <= %s AND ( reminder_for IS NULL OR reminder_for <> expires_at )',
+            [ $now, $horizon ],
+        ];
+    }
+
+    /**
+     * Clears every expiry date, for when expiry is turned off.
+     *
+     * @throws QueryException When the write fails.
+     */
+    public function clear_expiry(): void {
+        global $wpdb;
+
+        $result = $wpdb->query( 'UPDATE `' . esc_sql( $this->table() ) . '` SET expires_at = NULL WHERE expires_at IS NOT NULL' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.NotPrepared -- no values; the table name is escaped.
+
+        if ( false === $result ) {
+            throw new QueryException( 'update', $wpdb->last_error, $this->table() . ' (clear_expiry)' );
+        }
+    }
+
+    /**
+     * Recomputes every inactivity expiry after a settings change: last activity (or joining) + $days for
+     * customers with a balance; NULL for the rest. With $keep, never sooner than $floor or the stored date.
+     * Without it, only a customer with no stored date (expiry just turned on) gets the $floor; a stored
+     * date moves to the new one even when that is already past.
+     *
+     * @param string $floor UTC MySQL datetime, now + the grace period.
+     * @param bool   $keep  Whether the admin kept stored dates on shortening.
+     * @throws QueryException When the write fails.
+     */
+    public function restamp_inactivity_expiry( int $days, string $floor, bool $keep ): void {
+        global $wpdb;
+
+        $result = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare(
+                'UPDATE `' . esc_sql( $this->table() ) . '`
+                 SET expires_at = IF(
+                     balance > 0,
+                     IF(
+                         %d = 1 OR expires_at IS NULL,
+                         GREATEST(DATE_ADD(COALESCE(last_activity_at, joined_at), INTERVAL %d DAY), CAST(%s AS DATETIME), COALESCE(expires_at, CAST(%s AS DATETIME))),
+                         DATE_ADD(COALESCE(last_activity_at, joined_at), INTERVAL %d DAY)
+                     ),
+                     NULL
+                 )',
+                (int) $keep,
+                $days,
+                $floor,
+                $floor,
+                $days
+            )
+        );
+
+        if ( false === $result ) {
+            throw new QueryException( 'update', $wpdb->last_error, $this->table() . ' (restamp_inactivity_expiry)' );
+        }
+    }
+
+    /**
+     * Sets every customer's expiry to their soonest open lot's, for batch expiry; NULL with no open lot.
+     *
+     * @throws QueryException When the write fails.
+     */
+    public function restamp_expiry_from_lots(): void {
+        global $wpdb;
+
+        $result = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare(
+                'UPDATE `' . esc_sql( $this->table() ) . '` c
+                 SET c.expires_at = (SELECT MIN(l.expires_at) FROM `' . esc_sql( Table::name( 'lots' ) ) . '` l WHERE l.user_id = c.user_id AND l.status = %s)',
+                LotStatus::OPEN
+            )
+        );
+
+        if ( false === $result ) {
+            throw new QueryException( 'update', $wpdb->last_error, $this->table() . ' (restamp_expiry_from_lots)' );
         }
     }
 

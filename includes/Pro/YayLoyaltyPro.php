@@ -72,6 +72,7 @@ final class YayLoyaltyPro {
         add_filter( 'yayloyalty_campaign_triggers', [ self::class, 'add_triggers' ] );
         add_filter( 'yayloyalty_campaign_config_whitelist', [ self::class, 'add_config_keys' ] );
         add_filter( 'yayloyalty_reward_types', [ self::class, 'add_reward_types' ] );
+        add_filter( 'yayloyalty_expiry_modes', [ self::class, 'add_expiry_modes' ] );
         add_filter( 'yayloyalty_reward_config_schema', [ self::class, 'add_reward_config_schema' ] );
         add_filter( PointsEngine::CONDITIONS_EVALUATOR_FILTER, [ self::class, 'conditions_evaluator' ] );
         add_filter( 'yayloyalty_rest_controllers', [ self::class, 'add_controllers' ] );
@@ -91,6 +92,16 @@ final class YayLoyaltyPro {
     /** Whether boot() has run; YayLoyalty::is_pro() only asks whether the code is present. */
     public static function is_booted(): bool {
         return self::$booted;
+    }
+
+    /**
+     * Adds batch expiry to the modes this build runs. A downgraded site keeps the stored mode and runs inactivity.
+     *
+     * @param string[] $modes
+     * @return string[]
+     */
+    public static function add_expiry_modes( array $modes ): array {
+        return array_values( array_unique( array_merge( $modes, [ \YayLoyalty\Enums\ExpiryMode::BATCH ] ) ) );
     }
 
     /**

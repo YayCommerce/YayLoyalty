@@ -18,6 +18,9 @@ abstract class LoyaltyEmail extends \WC_Email {
     /** Whether a new store sends this email. After that, the merchant's choice in WooCommerce decides. */
     protected $is_enabled_by_default = true;
 
+    /** Whether the weekly cap (EmailThrottle) can stop this email. An uncapped send still counts toward the week. */
+    protected $is_capped = true;
+
     public function __construct() {
         $template_file        = str_replace( '_', '-', $this->id ) . '.php';
         $this->template_html  = 'emails/' . $template_file;
@@ -95,19 +98,59 @@ abstract class LoyaltyEmail extends \WC_Email {
     }
 
     /**
-     * Sends this email to its customer, within the weekly cap (EmailThrottle).
-     * Only a send the transport accepts counts against the cap.
+     * The send every trigger shares: checks the email is on for $subject (what is_enabled()'s filter
+     * receives), switches to the customer's locale, runs $prepare to fill the placeholders and values,
+     * then mails the customer through send_to_customer().
+     *
+     * @param mixed    $subject What this email is about, set as $this->object.
+     * @param callable $prepare Fills placeholders and template values; runs in the customer's locale.
+     * @return bool Whether the transport accepted the send.
      */
-    protected function send_to_customer( int $user_id ): void {
-        if ( ! EmailThrottle::allows( $user_id ) ) {
-            return;
+    protected function send_prepared( int $user_id, $subject, callable $prepare ): bool {
+        $this->object = $subject;
+
+        if ( ! $this->is_enabled() ) {
+            return false;
         }
 
-        $sent = $this->send( $this->get_recipient(), $this->get_subject(), $this->get_content(), $this->get_headers(), $this->get_attachments() );
+        $user = get_userdata( $user_id );
+
+        if ( ! $user ) {
+            return false;
+        }
+
+        // Before the placeholders: the default point labels are translated strings.
+        $this->setup_locale();
+
+        try {
+            $prepare();
+            $this->recipient = $user->user_email;
+
+            return $this->get_recipient() ? $this->send_to_customer( $user_id ) : false;
+        } finally {
+            // A throwing mail transport must not leave the rest of the request in the customer's locale.
+            $this->restore_locale();
+        }
+    }
+
+    /**
+     * Sends this email to its customer, within the weekly cap (EmailThrottle) unless the email is uncapped.
+     * Only a send the transport accepts counts against the cap.
+     *
+     * @return bool Whether the transport accepted the send.
+     */
+    protected function send_to_customer( int $user_id ): bool {
+        if ( $this->is_capped && ! EmailThrottle::allows( $user_id ) ) {
+            return false;
+        }
+
+        $sent = (bool) $this->send( $this->get_recipient(), $this->get_subject(), $this->get_content(), $this->get_headers(), $this->get_attachments() );
 
         if ( $sent ) {
             EmailThrottle::record( $user_id );
         }
+
+        return $sent;
     }
 
     /** The variables every loyalty template receives, named as WooCommerce's own templates name them. */
@@ -122,6 +165,11 @@ abstract class LoyaltyEmail extends \WC_Email {
             ],
             $this->extra_template_args()
         );
+    }
+
+    /** Every value the email shows for what it is sending now, for other renderers such as YayMail. [] until one is prepared. */
+    public function get_template_values(): array {
+        return $this->extra_template_args();
     }
 
     /**

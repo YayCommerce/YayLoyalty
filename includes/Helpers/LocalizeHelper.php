@@ -3,6 +3,7 @@ namespace YayLoyalty\Helpers;
 
 use YayLoyalty\Access\Capabilities;
 use YayLoyalty\Controllers\BaseRestController;
+use YayLoyalty\Engine\Expiry\ExpiryPolicy;
 use YayLoyalty\Utils\Text;
 
 defined( 'ABSPATH' ) || exit;
@@ -47,11 +48,13 @@ class LocalizeHelper {
             ],
             // No Pro flag: the SPA is gated at build time by IS_PRO_BUILD, never at runtime.
             'loyaltyMeta' => [
-                'pluginUrl'      => YAYLOYALTY_PLUGIN_URL,
-                'assetsUrl'      => YAYLOYALTY_PLUGIN_URL . 'assets',
-                'version'        => YAYLOYALTY_VERSION,
-                'reviewed'       => (bool) get_option( SettingsHelper::OPTION_REVIEWED, false ),
-                'setupCompleted' => (bool) get_option( SettingsHelper::OPTION_SETUP_COMPLETED, false ),
+                'pluginUrl'       => YAYLOYALTY_PLUGIN_URL,
+                'assetsUrl'       => YAYLOYALTY_PLUGIN_URL . 'assets',
+                'version'         => YAYLOYALTY_VERSION,
+                'reviewed'        => (bool) get_option( SettingsHelper::OPTION_REVIEWED, false ),
+                'setupCompleted'  => (bool) get_option( SettingsHelper::OPTION_SETUP_COMPLETED, false ),
+                // The expiry settings' confirmations name the grace floor.
+                'expiryGraceDays' => ExpiryPolicy::GRACE_DAYS,
             ],
             'wcMeta'      => [
                 'currency_data'    => [

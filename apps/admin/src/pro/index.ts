@@ -24,6 +24,7 @@ export { CustomersSavedSegmentRow } from './customers/CustomersSavedSegmentRow';
 export { DashboardProPanels } from './dashboard/DashboardProPanels';
 export { DesignPanelSection } from './design/DesignPanelSection';
 export { DesignTypographySection } from './design/DesignTypographySection';
+export { BatchExpirySection, ExpiryModeSection } from './settings/ExpirySections';
 export { FraudLimitsSection } from './settings/FraudLimitsSection';
 export { StoreLedger } from './ledger/StoreLedger';
 export { RewardTemplatePicker } from './rewards/add/RewardTemplatePicker';
