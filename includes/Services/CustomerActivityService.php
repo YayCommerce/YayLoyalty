@@ -15,7 +15,7 @@ use YayLoyalty\Utils\Dates;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Writes `yayloyalty_customer_meta` rows for the three captured activity events. It reads
+ * Writes `yayloyalty_customer_meta` rows for the captured activity events. It reads
  * CustomerRepository and LedgerRepository (membership, balance, kept-entries count) but writes
  * only `customer_meta`.
  *
@@ -155,6 +155,22 @@ final class CustomerActivityService {
 
         $this->meta->insert(
             CustomerMeta::event( $user_id, ActivityEvent::EARNING_LIMITED, $data, ActorKind::AUTOMATIC, null, false, $occurred_at )
+        );
+    }
+
+    /**
+     * One `expiring_soon_email_sent` row per expiry reminder the transport accepted, so support can see
+     * the customer was warned. `window_days` is the reminder timing it went out under.
+     */
+    public function record_expiring_soon_email_sent( int $user_id, int $points, string $expires_at, int $window_days ): void {
+        $data = [
+            'points'      => $points,
+            'expires_at'  => $expires_at,
+            'window_days' => $window_days,
+        ];
+
+        $this->meta->insert(
+            CustomerMeta::event( $user_id, ActivityEvent::EXPIRING_SOON_EMAIL_SENT, $data, ActorKind::AUTOMATIC, null, false, Dates::now() )
         );
     }
 

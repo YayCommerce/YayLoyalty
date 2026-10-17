@@ -14,7 +14,8 @@ use YayLoyalty\Utils\Dates;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Records member activity from the user hooks and `yayloyalty_ledger_recorded`, registered in `yayloyalty.php`.
+ * Records member activity from the user hooks, `yayloyalty_ledger_recorded`, the earning-limit hook and the
+ * expiry reminder's sent hook, registered in `yayloyalty.php`.
  * Every callback runs through ListenerGuard: a failed capture must never block the WordPress action it observes.
  */
 final class CustomerActivityListener {
@@ -118,6 +119,25 @@ final class CustomerActivityListener {
                     $ctx->get_order_id(),
                     $entry ? $entry->get_created_at() : Dates::now()
                 );
+            }
+        );
+    }
+
+    /**
+     * One `expiring_soon_email_sent` row per expiry reminder the transport accepted, from
+     * `yayloyalty_points_expiring_soon_email_sent` (Emails::POINTS_EXPIRING_SOON_SENT_ACTION).
+     *
+     * @param mixed $user_id
+     * @param mixed $points
+     * @param mixed $expires_at
+     * @param mixed $window_days
+     */
+    public static function on_expiring_soon_email_sent( $user_id, $points, $expires_at, $window_days ): void {
+        ListenerGuard::run(
+            self::SOURCE,
+            'expiring_soon_email_sent row failed for user #' . (int) $user_id,
+            static function () use ( $user_id, $points, $expires_at, $window_days ) {
+                self::service()->record_expiring_soon_email_sent( (int) $user_id, (int) $points, (string) $expires_at, (int) $window_days );
             }
         );
     }

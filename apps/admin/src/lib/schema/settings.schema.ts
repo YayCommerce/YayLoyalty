@@ -1,5 +1,8 @@
 import { z } from 'zod';
 
+/** Most days ahead an expiry reminder may go out. Mirrors SettingsHelper::REMINDER_DAYS_MAX. */
+export const REMINDER_DAYS_MAX = 365;
+
 /** Mirrors SettingsHelper, the source of truth. */
 export const settingsSchema = z.object({
   enabled: z.boolean(),
@@ -12,6 +15,20 @@ export const settingsSchema = z.object({
   emails: z.object({
     /** Weekly per-customer cap on loyalty emails; null = no cap. */
     throttle_per_week: z.number().int().min(1).nullable(),
+  }),
+  /** Points expiry, read through ExpiryPolicy. Lite keeps mode and spend_order but runs inactivity only. */
+  expiry: z.object({
+    enabled: z.boolean(),
+    /** One-way: the server refuses batch → inactivity. */
+    mode: z.enum(['inactivity', 'batch']),
+    /** Max mirrors SettingsHelper::EXPIRY_WINDOW_MAX. */
+    inactivity_days: z.number().int().min(1).max(36500),
+    batch_months: z.number().int().min(1).max(36500),
+    spend_order: z.enum(['oldest', 'newest']),
+    /** What shortening the window does to stored dates; picked in the save's confirmation. */
+    on_shorten: z.enum(['keep', 'apply']),
+    /** Days before expiry the Points expiring soon email goes out. */
+    reminder_days: z.number().int().min(1).max(REMINDER_DAYS_MAX),
   }),
   /** Stamped by SettingsHelper on save; PHP reports SCHEMA_VERSION when the stored blob predates versioning. */
   schema_version: z.number().int().optional(),

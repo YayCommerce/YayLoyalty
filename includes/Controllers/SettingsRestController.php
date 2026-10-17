@@ -2,6 +2,7 @@
 namespace YayLoyalty\Controllers;
 
 use YayLoyalty\Access\Capabilities;
+use YayLoyalty\Engine\Expiry\ExpiryRunner;
 use YayLoyalty\Helpers\SettingsHelper;
 
 defined( 'ABSPATH' ) || exit;
@@ -53,7 +54,15 @@ class SettingsRestController extends AbstractRestController {
             return $this->error_invalid_arguments();
         }
 
-        return SettingsHelper::update_settings( $settings );
+        $expiry_before = SettingsHelper::get_settings()['expiry'];
+        $saved         = SettingsHelper::update_settings( $settings );
+
+        // Re-apply the new rules to every customer's date now, not at the next daily run.
+        if ( $saved['expiry'] !== $expiry_before ) {
+            ExpiryRunner::queue_now();
+        }
+
+        return $saved;
     }
 
     public function mark_reviewed( \WP_REST_Request $request ) {

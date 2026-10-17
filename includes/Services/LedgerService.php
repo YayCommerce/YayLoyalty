@@ -4,6 +4,7 @@ namespace YayLoyalty\Services;
 use YayLoyalty\Database\Transaction;
 use YayLoyalty\Engine\Earning\IdempotencyKey;
 use YayLoyalty\Engine\Earning\Outcome;
+use YayLoyalty\Engine\Expiry\ExpiryPolicy;
 use YayLoyalty\Engine\Rewards\Result as RedeemResult;
 use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
@@ -13,19 +14,23 @@ use YayLoyalty\Models\LedgerEntry;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
+use YayLoyalty\Repositories\LotRepository;
 use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
  * The only writer of the ledger and the customer aggregates, EarningService's award included.
- * Enforced by convention: it is constructed in exactly four places, Engine\RestAPI::controllers(),
- * Engine\Earning\EarningService::build(), Engine\Earning\Reversal::build() and
- * Engine\Redemption\RedemptionService::build(). Name a fifth here before adding it.
+ * Enforced by convention: it is constructed in exactly five places, Engine\RestAPI::controllers(),
+ * Engine\Earning\EarningService::build(), Engine\Earning\Reversal::build(),
+ * Engine\Expiry\ExpiryRunner::run() and Engine\Redemption\RedemptionService::build().
+ * Name a sixth here before adding it.
  * Manual rows enter through adjust() and record(). System rows enter through earn(),
- * refund_earn(), restore_refund() and redeem(), which add the idempotency-key duplicate branch.
+ * refund_earn(), restore_refund(), expire() and redeem(), which add the idempotency-key duplicate branch.
  * Lock order: the customer row, then, for an earn row, its campaign row shared, which
  * CampaignRestController::delete_item() locks exclusively before deleting.
+ * It also keeps `lots` and `lot_allocations` in step with every row, through LotService, which
+ * nothing else constructs.
  */
 final class LedgerService {
 
@@ -38,6 +43,9 @@ final class LedgerService {
     /** Outcome::skipped reason: the earn row's campaign was deleted before the award took its lock. */
     public const REASON_CAMPAIGN_DELETED = 'campaign_deleted';
 
+    /** Outcome::skipped reason: under the lock the customer is no longer due to expire (expiry off, or activity moved the date). */
+    public const REASON_NOT_DUE = 'not_due';
+
     /** @var LedgerRepository */
     private $ledger;
 
@@ -47,10 +55,14 @@ final class LedgerService {
     /** @var CampaignRepository */
     private $campaigns;
 
-    public function __construct( LedgerRepository $ledger, CustomerRepository $customers, CampaignRepository $campaigns ) {
+    /** @var LotService */
+    private $lots;
+
+    public function __construct( LedgerRepository $ledger, CustomerRepository $customers, CampaignRepository $campaigns, ?LotService $lots = null ) {
         $this->ledger    = $ledger;
         $this->customers = $customers;
         $this->campaigns = $campaigns;
+        $this->lots      = $lots ?? new LotService( new LotRepository(), $ledger );
     }
 
     /**
@@ -136,11 +148,28 @@ final class LedgerService {
     }
 
     /**
+     * Opens lots for a balance that predates them, under the customer lock. No ledger row and no
+     * aggregate moves. A no-op when the user already has lots or no positive balance.
+     *
+     * @return int Lots opened.
+     */
+    public function backfill_lots( int $user_id ): int {
+        return (int) $this->under_lock(
+            $user_id,
+            function ( Customer $customer ): int {
+                return $this->lots->backfill( $customer->get_user_id(), $customer->get_balance() );
+            }
+        );
+    }
+
+    /**
      * Claws back an earn row up to $owed_total, cumulatively: the row written
      * is the difference between what is owed now and what earlier reversals of
      * the same earn already took, computed under the customer lock so two
-     * refunds cannot both take the same slice. Keyed on the reversing
-     * reference and the earn's trigger. The balance may go negative.
+     * refunds cannot both take the same slice. Points that already expired
+     * out of the earn's lot count as taken, so a refund never charges for
+     * them twice. Keyed on the reversing reference and the earn's trigger.
+     * The balance may go negative.
      *
      * @param int    $owed_total     Total points owed back for $earn so far (capped at its points).
      * @param string $reference_type ReferenceType::ORDER (cancel), REFUND or COMMENT.
@@ -152,9 +181,60 @@ final class LedgerService {
         return $this->write_keyed(
             $draft,
             function () use ( $earn, $owed_total ): int {
-                return -max( 0, min( $owed_total, $earn->get_points() ) - $this->ledger->sum_refunded_for( $earn ) );
+                $taken = $this->ledger->sum_refunded_for( $earn ) + $this->lots->expired_from( (int) $earn->get_id() );
+
+                return -max( 0, min( $owed_total, $earn->get_points() ) - $taken );
             },
-            self::REASON_NOTHING_TO_CLAW_BACK
+            self::REASON_NOTHING_TO_CLAW_BACK,
+            $earn->get_id()
+        );
+    }
+
+    /**
+     * Writes one EXPIRE row for what is due: in inactivity mode the whole balance, every open lot
+     * `expired`; in batch mode the lots past their date, never more than the balance. Re-checked under
+     * the lock, because the customer may have earned since the job queued them. Keyed per customer per
+     * UTC run day, so a second run that day is a duplicate.
+     *
+     * @param string $now UTC MySQL datetime of the run; also the row's created_at.
+     * @return Outcome awarded (the EXPIRE row), duplicate, or skipped( REASON_NOT_DUE ).
+     */
+    public function expire( int $user_id, string $now ): Outcome {
+        $draft = new LedgerEntry(
+            null,
+            $user_id,
+            0,
+            0,
+            LedgerType::EXPIRE,
+            LedgerSource::EXPIRY,
+            ReferenceType::USER,
+            $user_id,
+            null,
+            null,
+            null,
+            null,
+            null,
+            $now,
+            IdempotencyKey::compose( LedgerType::EXPIRE, $user_id, ReferenceType::USER, $user_id, gmdate( 'Ymd', Dates::to_timestamp( $now ) ) )
+        );
+
+        return $this->write_keyed(
+            $draft,
+            function ( Customer $customer ) use ( $now ): int {
+                $policy  = ExpiryPolicy::current();
+                $balance = max( 0, $customer->get_balance() );
+
+                if ( ! $policy->is_due( $customer, $now ) ) {
+                    return 0;
+                }
+
+                if ( ! $policy->is_batch() ) {
+                    return -$balance;
+                }
+
+                return -min( array_sum( array_column( $this->lots->due_lots( $customer->get_user_id(), $now ), 'remaining' ) ), $balance );
+            },
+            self::REASON_NOT_DUE
         );
     }
 
@@ -175,7 +255,8 @@ final class LedgerService {
             function () use ( $draft, $order_full_key ): int {
                 return null === $this->ledger->find_by_idempotency_key( $order_full_key ) ? $draft->get_points() : 0;
             },
-            self::REASON_ORDER_REVERSED
+            self::REASON_ORDER_REVERSED,
+            $refund_row->get_id()
         );
     }
 
@@ -213,15 +294,17 @@ final class LedgerService {
      * is appended and Outcome::awarded carries it. Precondition: $draft has
      * an idempotency key and valid vocabulary.
      *
-     * @param callable|null $points_under_lock Receives the locked Customer and returns the row's signed points; 0 writes nothing.
+     * @param callable|null $points_under_lock Given the locked Customer, returns the row's signed points; 0 writes nothing.
      * @param string        $skip_reason       Outcome::skipped's reason when $points_under_lock returns 0.
+     * @param int|null      $source_ledger_id  The row this one reverses: a negative row takes from its lot first, and a
+     *                                         positive row (a restore) is dated like the lot it took from.
      */
-    private function write_keyed( LedgerEntry $draft, ?callable $points_under_lock = null, string $skip_reason = '' ): Outcome {
+    private function write_keyed( LedgerEntry $draft, ?callable $points_under_lock = null, string $skip_reason = '', ?int $source_ledger_id = null ): Outcome {
         $key = (string) $draft->get_idempotency_key();
 
         return $this->under_lock(
             $draft->get_user_id(),
-            function ( Customer $customer ) use ( $draft, $key, $points_under_lock, $skip_reason ): Outcome {
+            function ( Customer $customer ) use ( $draft, $key, $points_under_lock, $skip_reason, $source_ledger_id ): Outcome {
                 // Under the lock a concurrent write for this user has finished, so this sees its row.
                 $existing = $this->ledger->find_by_idempotency_key( $key );
 
@@ -243,7 +326,7 @@ final class LedgerService {
                     $draft = $draft->with_points( $points );
                 }
 
-                $persisted = $this->append( $draft, $customer, true );
+                $persisted = $this->append( $draft, $customer, true, $source_ledger_id );
 
                 return null === $persisted ? Outcome::duplicate( $this->existing_for( $key ) ) : Outcome::awarded( $persisted );
             }
@@ -279,12 +362,16 @@ final class LedgerService {
     }
 
     /**
-     * Inserts $draft at the locked balance, moves the aggregates and
-     * announces the row. Must run under_lock(), so balance_after chains.
+     * Inserts $draft at the locked balance, moves the aggregates and the
+     * lots, and announces the row. Must run under_lock(), so balance_after chains.
      *
-     * @param bool $is_keyed True turns a UNIQUE-key collision into null instead of an exception.
+     * @param bool     $is_keyed         True turns a UNIQUE-key collision into null instead of an exception.
+     * @param int|null $source_ledger_id See write_keyed().
      */
-    private function append( LedgerEntry $draft, Customer $customer, bool $is_keyed ): ?LedgerEntry {
+    private function append( LedgerEntry $draft, Customer $customer, bool $is_keyed, ?int $source_ledger_id = null ): ?LedgerEntry {
+        // A balance from before lots existed gets them first, from history that excludes this row.
+        $this->lots->backfill( $customer->get_user_id(), $customer->get_balance() );
+
         $balance_after = $customer->get_balance() + $draft->get_points();
         $to_insert     = $draft->with_persisted( 0, $balance_after );
         $insert_id     = $is_keyed ? $this->ledger->insert_unless_duplicate( $to_insert ) : $this->ledger->insert( $to_insert );
@@ -296,6 +383,25 @@ final class LedgerService {
         $this->apply_aggregates( $draft );
 
         $persisted = $to_insert->with_persisted( $insert_id, $balance_after );
+
+        $policy  = ExpiryPolicy::current();
+        $user_id = $customer->get_user_id();
+
+        if ( LedgerType::EXPIRE !== $persisted->get_type() ) {
+            $this->lots->record( $persisted, $customer->get_balance(), $source_ledger_id );
+        } elseif ( $policy->is_batch() ) {
+            // expire() sized the row from these lots, under this lock and at this created_at.
+            $this->lots->take_due( $persisted, $this->lots->due_lots( $user_id, $persisted->get_created_at() ) );
+        } else {
+            $this->lots->take_all( $persisted );
+        }
+
+        $earliest   = $policy->is_batch() ? $this->lots->earliest_open_expiry( $user_id ) : null;
+        $expires_at = $policy->customer_expires_at( $persisted, $customer, $earliest, Dates::now() );
+
+        if ( $expires_at !== $customer->get_expires_at() ) {
+            $this->customers->set_expires_at( $customer->get_user_id(), $expires_at );
+        }
 
         $this->announce( $persisted );
 
@@ -459,8 +565,7 @@ final class LedgerService {
             $points,
             $lifetime_earned_delta,
             $lifetime_redeemed_delta,
-            $activity_at,
-            null // Expiry needs the lots table: designed, not built yet.
+            $activity_at
         );
     }
 

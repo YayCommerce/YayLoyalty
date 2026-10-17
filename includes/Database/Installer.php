@@ -33,6 +33,8 @@ final class Installer {
         $schemas = [
             new \YayLoyalty\Database\Schema\CustomersTable(),
             new \YayLoyalty\Database\Schema\LedgerTable(),
+            new \YayLoyalty\Database\Schema\LotsTable(),
+            new \YayLoyalty\Database\Schema\LotAllocationsTable(),
             new \YayLoyalty\Database\Schema\CampaignsTable(),
             new \YayLoyalty\Database\Schema\RewardsTable(),
             new \YayLoyalty\Database\Schema\CustomerMetaTable(),

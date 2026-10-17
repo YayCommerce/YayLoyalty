@@ -49,6 +49,8 @@ class YayLoyalty {
 
         $this->register_redemption( $redemption, $intent );
 
+        ( new \YayLoyalty\Engine\Expiry\ExpiryRunner() )->register();
+
         \YayLoyalty\Engine\Storefront\AccountRewards::register();
         \YayLoyalty\Engine\Storefront\Placements::register();
         \YayLoyalty\Engine\Storefront\ProductEarnMessage::register();

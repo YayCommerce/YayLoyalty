@@ -2,6 +2,7 @@
 namespace YayLoyalty\Engine;
 
 use YayLoyalty\Database\Installer;
+use YayLoyalty\Engine\Expiry\ExpiryRunner;
 use YayLoyalty\Engine\Storefront\AccountRewards;
 use YayLoyalty\Helpers\SettingsHelper;
 
@@ -98,6 +99,9 @@ class ActDeact {
     public static function deactivate() {
         // The next activation flushes the rewrite rules again.
         delete_option( AccountRewards::OPTION_REWRITE_VERSION );
+
+        // The next request after reactivation schedules it again.
+        ExpiryRunner::unschedule();
     }
 
     protected static function single_activate() {

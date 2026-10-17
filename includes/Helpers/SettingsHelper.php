@@ -1,6 +1,8 @@
 <?php
 namespace YayLoyalty\Helpers;
 
+use YayLoyalty\Engine\Expiry\ExpiryPolicy;
+use YayLoyalty\Enums\ExpiryMode;
 use YayLoyalty\Utils\ConfigSpec;
 
 defined( 'ABSPATH' ) || exit;
@@ -24,6 +26,12 @@ class SettingsHelper {
     /** Longest points label; the admin form's schema (general-settings.form.ts) mirrors it. */
     public const POINTS_LABEL_MAX_LENGTH = 30;
 
+    /** Longest expiry window, in days or months, so no date passes year 9999. The zod schema mirrors it. */
+    public const EXPIRY_WINDOW_MAX = 36500;
+
+    /** Most days ahead an expiry reminder may go out. The zod schema mirrors it. */
+    public const REMINDER_DAYS_MAX = 365;
+
     /** Bump when a migration changes the stored shape. */
     public const SCHEMA_VERSION = 2;
 
@@ -39,6 +47,17 @@ class SettingsHelper {
             'emails'                => [
                 // Weekly per-customer cap on loyalty emails. null means no cap. Engine\Emails\EmailThrottle enforces it.
                 'throttle_per_week' => 3,
+            ],
+            // Read through Engine\Expiry\ExpiryPolicy. mode and spend_order are kept in Lite, which runs inactivity only.
+            'expiry'                => [
+                'enabled'         => false,
+                'mode'            => ExpiryMode::INACTIVITY,
+                'inactivity_days' => 365,
+                'batch_months'    => 12,
+                'spend_order'     => ExpiryPolicy::SPEND_OLDEST,
+                'on_shorten'      => ExpiryPolicy::ON_SHORTEN_KEEP,
+                // Days before expiry the Points expiring soon email goes out. Engine\Expiry\ExpiryReminders sends it.
+                'reminder_days'   => 30,
             ],
         ];
     }
@@ -57,6 +76,15 @@ class SettingsHelper {
             'max_points_per_day'    => 'limit',
             'emails'                => [
                 'throttle_per_week' => 'limit',
+            ],
+            'expiry'                => [
+                'enabled'         => 'bool',
+                'mode'            => 'expiry_mode',
+                'inactivity_days' => 'expiry_window',
+                'batch_months'    => 'expiry_window',
+                'spend_order'     => 'spend_order',
+                'on_shorten'      => 'on_shorten',
+                'reminder_days'   => 'reminder_days',
             ],
         ];
     }
@@ -165,35 +193,84 @@ class SettingsHelper {
     }
 
     /**
-     * Whether every `limit` field in $input is null or a whole number from 1. The controllers answer
-     * 400 on false; coerce() alone would read a 0 or a fraction as "no limit" without saying so.
+     * Whether every `limit` field in $input is null or a whole number from 1, every `expiry_window` is a
+     * whole number from 1 to EXPIRY_WINDOW_MAX, every `reminder_days` a whole number from 1 to REMINDER_DAYS_MAX,
+     * and every mode, spend order and on_shorten choice is known. The controllers answer 400 on
+     * false; coerce() alone would read a 0 or a fraction as "no limit" without saying so. Batch expiry
+     * is one-way: once batch is stored, switching back to inactivity is refused. While expiry is on, the
+     * reminder must go out fewer days ahead than the window the saved expiry settings run on.
      *
      * @param array<string, mixed> $input
      */
     public static function is_valid( array $input ): bool {
-        return self::limits_valid( $input, self::schema() );
+        $saved       = get_option( self::OPTION_SETTINGS, [] );
+        $stored_mode = is_array( $saved ) ? ( $saved['expiry']['mode'] ?? null ) : null;
+        $next_mode   = is_array( $input['expiry'] ?? null ) ? ( $input['expiry']['mode'] ?? null ) : null;
+
+        if ( ExpiryMode::BATCH === $stored_mode && null !== $next_mode && ExpiryMode::BATCH !== $next_mode ) {
+            return false;
+        }
+
+        if ( ! self::fields_valid( $input, self::schema() ) ) {
+            return false;
+        }
+
+        if ( ! is_array( $input['expiry'] ?? null ) ) {
+            return true;
+        }
+
+        $policy = new ExpiryPolicy( array_merge( self::get_settings()['expiry'], $input['expiry'] ) );
+
+        // Only while expiry is on: the fields are disabled while it is off, so a stored pair must not block turning it off.
+        return ! $policy->is_enabled() || $policy->stored_reminder_days() < $policy->window_days();
     }
 
     /**
      * @param array<string, mixed>                        $input
      * @param array<string, string|array<string, string>> $schema
      */
-    private static function limits_valid( array $input, array $schema ): bool {
+    private static function fields_valid( array $input, array $schema ): bool {
         foreach ( $schema as $key => $type ) {
             if ( ! array_key_exists( $key, $input ) ) {
                 continue;
             }
 
             if ( is_array( $type ) ) {
-                if ( is_array( $input[ $key ] ) && ! self::limits_valid( $input[ $key ], $type ) ) {
+                if ( is_array( $input[ $key ] ) && ! self::fields_valid( $input[ $key ], $type ) ) {
                     return false;
                 }
-            } elseif ( 'limit' === $type && null !== $input[ $key ] && ! ConfigSpec::is_limit( $input[ $key ] ) ) {
+            } elseif ( ! self::is_valid_value( $input[ $key ], $type ) ) {
                 return false;
             }
         }
 
         return true;
+    }
+
+    /** @param mixed $value */
+    private static function is_valid_value( $value, string $type ): bool {
+        switch ( $type ) {
+            case 'limit':
+                return null === $value || ConfigSpec::is_limit( $value );
+
+            case 'expiry_window':
+                return ConfigSpec::is_limit( $value ) && (float) $value <= self::EXPIRY_WINDOW_MAX;
+
+            case 'reminder_days':
+                return ConfigSpec::is_limit( $value ) && (float) $value <= self::REMINDER_DAYS_MAX;
+
+            case 'expiry_mode':
+                return ExpiryMode::is_known( $value );
+
+            case 'spend_order':
+                return in_array( $value, [ ExpiryPolicy::SPEND_OLDEST, ExpiryPolicy::SPEND_NEWEST ], true );
+
+            case 'on_shorten':
+                return in_array( $value, [ ExpiryPolicy::ON_SHORTEN_KEEP, ExpiryPolicy::ON_SHORTEN_APPLY ], true );
+
+            default:
+                return true;
+        }
     }
 
     /**
@@ -238,8 +315,9 @@ class SettingsHelper {
 
             $value = self::coerce( $data[ $key ], $type );
 
-            // An empty label is never kept: on read the translated default stands, on write the stored label does.
-            if ( 'points_label' === $type && '' === $value ) {
+            // An empty label, or an unreadable value of any type but `limit` (where null is "no limit"), is never kept:
+            // on read the default stands, on write the stored value does.
+            if ( ( 'points_label' === $type && '' === $value ) || ( null === $value && 'limit' !== $type ) ) {
                 continue;
             }
 
@@ -263,6 +341,15 @@ class SettingsHelper {
             // null is no limit. is_valid() refuses anything else that isn't a whole number from 1 on write.
             case 'limit':
                 return ConfigSpec::is_limit( $value ) ? (int) $value : null;
+
+            case 'expiry_window':
+            case 'reminder_days':
+                return self::is_valid_value( $value, $type ) ? (int) $value : null;
+
+            case 'expiry_mode':
+            case 'spend_order':
+            case 'on_shorten':
+                return self::is_valid_value( $value, $type ) ? $value : null;
 
             case 'points_label':
                 return mb_substr( trim( sanitize_text_field( (string) $value ) ), 0, self::POINTS_LABEL_MAX_LENGTH );

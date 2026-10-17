@@ -10,7 +10,8 @@ defined( 'ABSPATH' ) || exit;
  * purpose, for refund clawbacks. Columns for unbuilt features, such as
  * tiers and referrals, are declared ahead so each feature lands as a data
  * migration, not a schema change. Indexed columns must stay in sync with
- * CustomerRowSort::KEYS.
+ * CustomerRowSort::KEYS. reminder_for is the expires_at the last expiry reminder
+ * announced, so each date is reminded once whatever the reminder timing.
  */
 final class CustomersTable extends AbstractTableSchema {
 
@@ -31,6 +32,7 @@ final class CustomersTable extends AbstractTableSchema {
             last_activity_at datetime DEFAULT NULL,
             expires_at datetime DEFAULT NULL,
             reminder_sent_at datetime DEFAULT NULL,
+            reminder_for datetime DEFAULT NULL,
             tier_id bigint unsigned DEFAULT NULL,
             tier_evaluated_at datetime DEFAULT NULL,
             tier_progress_value decimal(19,4) DEFAULT NULL,
@@ -62,6 +64,7 @@ final class CustomersTable extends AbstractTableSchema {
             'last_activity_at',
             'expires_at',
             'reminder_sent_at',
+            'reminder_for',
             'tier_id',
             'tier_evaluated_at',
             'tier_progress_value',
