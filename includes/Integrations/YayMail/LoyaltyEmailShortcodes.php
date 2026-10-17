@@ -30,8 +30,8 @@ abstract class LoyaltyEmailShortcodes extends BaseShortcode {
 
     /**
      * Short Title Case labels, as YayMail's own shortcodes read in its editor menu. The value shortcodes render
-     * '' until redemption ships or while the discount reward is not live, and Points Page URL renders '' unless
-     * a site filters its email's CTA URL in.
+     * '' while the discount reward is not live, and Points Page URL renders '' unless a site filters its email's
+     * CTA URL in.
      *
      * @return array<string, string> Shortcode key (after the prefix) => editor label, besides customer_name.
      */

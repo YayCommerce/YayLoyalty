@@ -4,21 +4,21 @@ import { paginatedSchema } from '@/lib/api/paginated';
 
 /**
  * Mirrors RedemptionsRestController::define_item_schema(), the source of truth.
- * The server answers an empty envelope until the redemptions table exists.
+ * The server reads the redemptions table, newest first.
  */
 
-/** Mirrors `RedemptionsRestController`'s `status` enum, the source of truth. A display status, not the table's full lifecycle. */
-export const REDEMPTION_STATUSES = ['applied', 'returned', 'issued'] as const;
+/** Matches `RedemptionsRestController`'s `status` enum: the five stored statuses, plus `expired`, which the server derives. */
+export const REDEMPTION_STATUSES = ['applied', 'issued', 'used', 'refunded', 'cancelled', 'expired'] as const;
 export const redemptionStatusSchema = z.enum(REDEMPTION_STATUSES);
 export type RedemptionStatus = z.infer<typeof redemptionStatusSchema>;
 
 export const redemptionEntrySchema = z.object({
   id: z.number().int(),
   reward_id: z.number().int(),
-  /** Display name only. How to resolve it from `reward_id` is still open. */
+  /** Resolved from `reward_id` by the server. Empty when the reward was deleted. */
   reward_name: z.string(),
   order_id: z.number().int().nullable(),
-  /** Signed for display: negative when spent, positive when a refund returned the points. */
+  /** Negative: the points spent. */
   points: z.number().int(),
   value: z.string(),
   currency: z.string(),

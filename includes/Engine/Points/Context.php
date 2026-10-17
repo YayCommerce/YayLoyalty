@@ -14,6 +14,9 @@ final class Context {
     /** Our own redemption coupon; must never count as "used a coupon". */
     public const REDEEM_COUPON_CODE = 'yayloyalty-redeem';
 
+    /** Each applied reward's virtual coupon is this prefix plus the reward id; never counts as "used a coupon" either. */
+    public const REWARD_COUPON_PREFIX = 'yayloyalty-reward-';
+
     /** Order facts in `extra` for campaign conditions; strings, '' when unknown. */
     public const EXTRA_PAYMENT_METHOD   = 'payment_method';
     public const EXTRA_BILLING_COUNTRY  = 'billing_country';
@@ -161,12 +164,25 @@ final class Context {
     }
 
     /**
-     * Excludes our redemption coupon, or exclude_coupon_orders would stop earning for anyone who redeems.
+     * Excludes our redemption coupon and every reward coupon, or exclude_coupon_orders would stop earning
+     * for anyone who redeems.
      *
      * @return string[]
      */
     public function get_real_coupon_codes(): array {
-        return array_values( array_diff( $this->coupon_codes, [ self::REDEEM_COUPON_CODE ] ) );
+        return array_values(
+            array_filter(
+                $this->coupon_codes,
+                static function ( $code ): bool {
+                    return ! self::is_loyalty_code( (string) $code );
+                }
+            )
+        );
+    }
+
+    /** True for `yayloyalty-redeem` and any `yayloyalty-reward-*` code. */
+    public static function is_loyalty_code( string $code ): bool {
+        return self::REDEEM_COUPON_CODE === $code || 0 === strpos( $code, self::REWARD_COUPON_PREFIX );
     }
 
     /** @return string[] */

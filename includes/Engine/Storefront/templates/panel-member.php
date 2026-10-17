@@ -12,6 +12,7 @@ use YayLoyalty\Engine\Storefront\LauncherCopy;
 use YayLoyalty\Engine\Storefront\LauncherEarnRules;
 use YayLoyalty\Engine\Storefront\UiClasses;
 use YayLoyalty\Enums\CampaignTrigger;
+use YayLoyalty\Helpers\SettingsHelper;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -54,6 +55,24 @@ $yayloyalty_activity = $view['activity'] ?? null;
         <?php if ( '' !== $yayloyalty_limit_line ) : ?>
             <p class="yl:m-0 yl:text-xs yl:text-muted-foreground"><?php echo esc_html( $yayloyalty_limit_line ); ?></p>
         <?php endif; ?>
+    </section>
+<?php endif; ?>
+
+<?php if ( null !== $view['redeem'] ) : ?>
+    <section class="<?php echo esc_attr( UiClasses::PANEL_SECTION ); ?>">
+        <h3 class="<?php echo esc_attr( UiClasses::SECTION_HEADING ); ?>"><?php esc_html_e( 'Ways to redeem', 'yayloyalty' ); ?></h3>
+        <ul class="yl:m-0 yl:flex yl:flex-col yl:list-none yl:p-0">
+            <li class="<?php echo esc_attr( UiClasses::PANEL_ROW ); ?>">
+                <span>
+                    <?php
+                    /* translators: %s: the store's points label, as "Points". */
+                    echo esc_html( sprintf( __( '%s for discount', 'yayloyalty' ), SettingsHelper::points_label( 0 ) ) );
+                    ?>
+                </span>
+                <span class="yl:whitespace-nowrap yl:font-semibold"><?php echo esc_html( LauncherCopy::redeem_rate( $view['redeem']['points_per_unit'] ) ); ?></span>
+            </li>
+        </ul>
+        <p class="yl:m-0 yl:text-xs yl:text-muted-foreground"><?php echo esc_html( LauncherCopy::redeem_limits( $view['redeem'] ) ); ?></p>
     </section>
 <?php endif; ?>
 

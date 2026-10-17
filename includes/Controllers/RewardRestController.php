@@ -279,8 +279,8 @@ final class RewardRestController extends AbstractRestController {
 
         // Unguarded gap: nothing locks between this check and the delete below, and
         // redemptions.reward_id is a plain KEY, not a FOREIGN KEY, so a claim written into that
-        // gap would be orphaned rather than rejected. Not reachable today — nothing writes
-        // redemptions yet (see Engine/Redemption/) — revisit once the claim path is registered.
+        // gap would be orphaned rather than rejected. Not reachable today: the only writer
+        // (Engine\Redemption\CommitWriter) claims the built-in reward, which this route never deletes. Revisit once catalog claims are registered.
         $this->rewards->delete( $id );
 
         return [
@@ -543,7 +543,7 @@ final class RewardRestController extends AbstractRestController {
                     'readonly'    => true,
                 ],
                 'redemption_summary' => [
-                    'description' => __( 'Claim figures from the redemptions table; zeros and nulls until it exists. Outstanding means an issued coupon that has not expired.', 'yayloyalty' ),
+                    'description' => __( 'Claim figures from the redemptions table; zeros and nulls for a reward with no claims. Outstanding means an issued coupon that has not expired.', 'yayloyalty' ),
                     'type'        => 'object',
                     'context'     => [ 'view' ],
                     'readonly'    => true,

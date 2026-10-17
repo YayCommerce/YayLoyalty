@@ -14,7 +14,7 @@
  * @var string    $adjusted_text Escaped HTML, e.g. "We added <strong>50 Points</strong> to your account." Absent when there is no adjustment to show.
  * @var string    $balance_text  The balance after this adjustment, e.g. "120 Points". Absent when there is no adjustment to show.
  * @var string    $balance_sentence Escaped HTML: the new balance as a sentence, $balance_text in bold. Absent when there is no adjustment to show.
- * @var string    $balance_value What the balance is worth, as wc_price() HTML; '' until redemption ships (RedemptionService::is_available()), or while the discount reward is not live. Absent when there is no adjustment to show.
+ * @var string    $balance_value What the balance is worth, as wc_price() HTML; '' while the discount reward is not live. Absent when there is no adjustment to show.
  * @var string    $balance_value_text Escaped HTML, e.g. "That's worth <strong>$1.50</strong> in rewards."; '' when $balance_value is ''. Absent when there is no adjustment to show.
  * @var string    $points       The points added or removed, unsigned and formatted, e.g. "50". Absent when there is no adjustment to show.
  * @var string    $points_label "Point" or "Points", from the merchant's labels. Absent when there is no adjustment to show.

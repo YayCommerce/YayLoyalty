@@ -19,6 +19,11 @@ class Reward extends AbstractModel {
     /** config/conditions blob version. Bump when the shape changes. */
     public const CONFIG_SCHEMA_VERSION = 1;
 
+    /** What a refund returns of the points a flexible discount spent: `config.refund_policy`. Engine\Redemption\Reversal applies it. */
+    public const REFUND_POLICY_PROPORTIONAL = 'proportional';
+    public const REFUND_POLICY_FULL         = 'full';
+    public const REFUND_POLICY_NONE         = 'none';
+
     /** A `product` value is first an id: a whole number of at least 1. */
     private const POSITIVE_INT_SPEC = [
         'type' => 'int',
@@ -243,7 +248,7 @@ class Reward extends AbstractModel {
                 ],
                 'refund_policy'            => [
                     'type'   => 'enum',
-                    'values' => [ 'proportional', 'full', 'none' ],
+                    'values' => [ self::REFUND_POLICY_PROPORTIONAL, self::REFUND_POLICY_FULL, self::REFUND_POLICY_NONE ],
                 ],
                 // Global redemption cap, null for unlimited. Stored, but nothing enforces it yet.
                 'max_total'                => [
@@ -360,7 +365,7 @@ class Reward extends AbstractModel {
                     'max_percent_of_subtotal'  => null,
                     'increment'                => 100,
                     'show_on'                  => [ 'cart', 'checkout' ],
-                    'refund_policy'            => 'proportional',
+                    'refund_policy'            => self::REFUND_POLICY_PROPORTIONAL,
                     'max_total'                => null,
                 ];
 

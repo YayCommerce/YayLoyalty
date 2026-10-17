@@ -42,7 +42,7 @@ final class ContextFactory {
         $loyalty_discount = 0.0;
 
         foreach ( $order->get_items( 'coupon' ) as $coupon ) {
-            if ( $coupon instanceof \WC_Order_Item_Coupon && Context::REDEEM_COUPON_CODE === $coupon->get_code() ) {
+            if ( $coupon instanceof \WC_Order_Item_Coupon && Context::is_loyalty_code( (string) $coupon->get_code() ) ) {
                 $loyalty_discount += (float) $coupon->get_discount();
             }
         }
@@ -255,8 +255,15 @@ final class ContextFactory {
             );
         }
 
-        $coupon_codes = (array) $cart->get_applied_coupons();
-        $currency     = get_woocommerce_currency();
+        $coupon_codes     = (array) $cart->get_applied_coupons();
+        $currency         = get_woocommerce_currency();
+        $loyalty_discount = 0.0;
+
+        foreach ( $coupon_codes as $code ) {
+            if ( Context::is_loyalty_code( (string) $code ) ) {
+                $loyalty_discount += (float) $cart->get_coupon_discount_amount( $code );
+            }
+        }
 
         return new Context(
             $user_id,
@@ -266,9 +273,7 @@ final class ContextFactory {
             $line_items,
             (float) $cart->get_subtotal(),
             (float) $cart->get_discount_total(),
-            in_array( Context::REDEEM_COUPON_CODE, $coupon_codes, true )
-                ? (float) $cart->get_coupon_discount_amount( Context::REDEEM_COUPON_CODE )
-                : 0.0,
+            $loyalty_discount,
             $coupon_codes,
             self::user_roles( (int) $user_id )
         );

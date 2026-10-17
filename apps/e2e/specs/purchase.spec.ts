@@ -1,5 +1,6 @@
 import { setOrderStatusInAdmin } from '../support/admin';
 import { test, expect } from '../support/fixtures';
+import { placedOrderId } from '../support/storefront';
 
 test('a purchase stages pending points at checkout and awards them when the admin completes the order', async ({
   page,
@@ -21,8 +22,7 @@ test('a purchase stages pending points at checkout and awards them when the admi
     await shopperPage.goto('/checkout/');
     await shopperPage.getByLabel('Check payments').check();
     await shopperPage.getByRole('button', { name: 'Place Order' }).click();
-    await shopperPage.waitForURL(/order-received\/(\d+)/);
-    orderId = Number(/order-received\/(\d+)/.exec(shopperPage.url())![1]);
+    orderId = await placedOrderId(shopperPage);
 
     await expect(shopperPage.getByText("You'll earn 20 Points when your order completes")).toBeVisible();
     await api.expectPoints(customer.id, { balance: 0, pending_points: 20 });

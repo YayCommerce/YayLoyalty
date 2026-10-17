@@ -10,6 +10,7 @@ use YayLoyalty\Models\Customer;
 use YayLoyalty\Repositories\CustomerMetaRepository;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
+use YayLoyalty\Repositories\RedemptionRepository;
 use YayLoyalty\Services\LedgerService;
 
 defined( 'ABSPATH' ) || exit;
@@ -32,16 +33,21 @@ final class CustomerRestController extends AbstractRestController {
     /** @var CustomerMetaRepository Read-only: counts.activity, the deletion snapshot and the list's identity fallback. */
     private $meta;
 
+    /** @var RedemptionRepository Read-only: counts.redemptions. */
+    private $redemptions;
+
     public function __construct(
         CustomerRepository $customers,
         LedgerService $ledger_service,
         LedgerRepository $ledger,
-        CustomerMetaRepository $meta
+        CustomerMetaRepository $meta,
+        RedemptionRepository $redemptions
     ) {
         $this->customers      = $customers;
         $this->ledger_service = $ledger_service;
         $this->ledger         = $ledger;
         $this->meta           = $meta;
+        $this->redemptions    = $redemptions;
     }
 
     public function get_rest_base(): string {
@@ -116,6 +122,7 @@ final class CustomerRestController extends AbstractRestController {
             CustomerItemFormatter::live_identity( $user ),
             $this->ledger->count_for_user( $user_id ),
             $activity_count,
+            $this->redemptions->count_for_user( $user_id ),
             $deletion
         );
     }

@@ -5,7 +5,7 @@ import { z } from 'zod';
  * Every aggregate is server-owned, so there is no write shape.
  */
 
-/** Row counts behind the drawer's tab labels. `redemptions` is 0 until that table exists. */
+/** Row counts behind the drawer's tab labels. */
 export const customerCountsSchema = z.object({
   ledger: z.number().int(),
   activity: z.number().int(),

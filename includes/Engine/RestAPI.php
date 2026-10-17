@@ -64,28 +64,30 @@ class RestAPI {
         // Read-only everywhere below. Only CustomerActivityService writes it.
         $customer_meta = new CustomerMetaRepository();
 
+        // Read-only everywhere below. Only Engine\Redemption\CommitWriter inserts.
+        $redemptions = new RedemptionRepository();
+
         $controllers = [
             new SettingsRestController(),
             new DesignRestController(),
             // Writes the built-in campaigns and the cart discount in place, through these repositories.
             new SetupRestController( new SetupService( $campaigns, $rewards ) ),
             new EmailsRestController(),
-            // $ledger is read-only here.
-            new CustomerRestController( $customers, $ledger_service, $ledger, $customer_meta ),
+            // $ledger and $redemptions are read-only here.
+            new CustomerRestController( $customers, $ledger_service, $ledger, $customer_meta, $redemptions ),
             // $customers is read-only here too.
             new CustomerAdjustPreviewRestController( $customers, $dashboard ),
             new LedgerRestController( $ledger ),
             new ActivityRestController( $customer_meta ),
             // Shopper route (storefront launcher): session identity, no capability. $ledger is read-only here.
             new StorefrontActivityRestController( $ledger ),
-            // An empty envelope until its table exists.
-            new RedemptionsRestController(),
+            new RedemptionsRestController( $redemptions, $rewards ),
             // Picker name lookups; no repository, it reads WooCommerce and WP core directly.
             new LookupRestController(),
             // Definition table: repository only, no service. $ledger is read-only here too.
             new CampaignRestController( $campaigns, $ledger ),
-            // Redemptions read-only, for is_deletable.
-            new RewardRestController( $rewards, new RedemptionRepository() ),
+            // Same $rewards instance DashboardRepository holds; redemptions read-only, for is_deletable.
+            new RewardRestController( $rewards, $redemptions ),
             new DashboardRestController(
                 new DashboardStats( $dashboard ),
                 new DashboardCache( $dashboard ),

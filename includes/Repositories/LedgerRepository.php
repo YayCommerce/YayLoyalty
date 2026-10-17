@@ -187,14 +187,7 @@ class LedgerRepository extends AbstractRepository {
 
     /** COUNT(*) of a user's ledger rows, cheaper than paginate_for_user() when only the total is needed. */
     public function count_for_user( int $user_id ): int {
-        global $wpdb;
-
-        return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
-            $wpdb->prepare(
-                'SELECT COUNT(*) FROM `' . esc_sql( $this->table() ) . '` WHERE user_id = %d',
-                $user_id
-            )
-        );
+        return $this->count_where_user( $user_id );
     }
 
     /**

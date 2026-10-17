@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Engine\Earning\Listeners;
 
+use Automattic\WooCommerce\Utilities\OrderUtil;
 use YayLoyalty\Engine\Earning\EarningService;
 use YayLoyalty\Engine\Earning\Outcome;
 use YayLoyalty\Engine\Earning\PendingPoints;
@@ -22,6 +23,11 @@ defined( 'ABSPATH' ) || exit;
  */
 final class OrderListener {
 
+    /** Where an order that left cancelled or the trash must land to count as restored. Not failed, refunded or another plugin's status. */
+    private const LIVE_STATUSES = [ 'pending', 'on-hold', 'processing', 'completed' ];
+
+    private const DEAD_STATUSES = [ 'cancelled', 'trash' ];
+
     private EarningService $service;
 
     private PendingPoints $pending;
@@ -42,19 +48,46 @@ final class OrderListener {
     /**
      * Call once at boot, after settings are readable. Two hooks, because a new order's first
      * status never fires `woocommerce_order_status_changed`. `woocommerce_new_order` covers it.
+     * `untrashed_post` is for an order restored from the trash: under HPOS that is a status change
+     * from `trash`; under legacy post storage it fires only this hook, after WordPress restored the status.
      */
     public function register(): void {
         add_action( 'woocommerce_order_status_changed', [ $this, 'on_status_changed' ], 10, 4 );
         add_action( 'woocommerce_new_order', [ $this, 'on_order_created' ], 10, 2 );
+        add_action( 'untrashed_post', [ $this, 'on_order_untrashed' ], 10, 1 );
     }
 
     /**
      * Routes on $to, never $order->get_status(): by the time a late callback runs,
-     * the order may have moved again. $from is only logged.
+     * the order may have moved again. $from also decides whether the order came back
+     * from cancelled or the trash, which is handled before the route.
      */
     public function on_status_changed( int $order_id, string $from, string $to, \WC_Order $order ): void {
         Log::debug( 'OrderListener', 'order #' . $order_id . ' ' . $from . ' -> ' . $to );
+
+        if ( in_array( $from, self::DEAD_STATUSES, true ) && in_array( $to, self::LIVE_STATUSES, true ) ) {
+            $this->restore( $order_id, $order );
+        }
+
         $this->route( $order_id, $to, $order );
+    }
+
+    /** `untrashed_post` adapter; anything that is not an order, or an order restored to a status that is not live, is ignored. */
+    public function on_order_untrashed( int $order_id ): void {
+        if ( ! OrderUtil::is_order( $order_id, wc_get_order_types() ) ) {
+            return;
+        }
+
+        $order = wc_get_order( $order_id );
+
+        if ( $order instanceof \WC_Order && in_array( $order->get_status(), self::LIVE_STATUSES, true ) ) {
+            $this->restore( $order_id, $order );
+        }
+    }
+
+    /** An order back from cancelled or the trash: hands it to the reversal listener under the guard. */
+    private function restore( int $order_id, \WC_Order $order ): void {
+        ListenerGuard::for_order( 'OrderListener', 'restore', $order_id, fn() => $this->reversals->on_uncancelled( $order ) );
     }
 
     /** Routes a new order's first status, which on_status_changed() never sees. */

@@ -171,14 +171,14 @@ final class PointsEarnedEmailTest extends IntegrationTestCase {
         $this->assertStringNotContainsString( '<strong>', $plain );
     }
 
-    /** The value line stays off until redemption ships, even with a live discount reward; it fails on purpose when is_available() flips. */
-    public function test_the_value_line_is_hidden_by_default(): void {
+    /** The value line shows while the discount reward is live: the sample balance of 150 at 100 points per currency unit. */
+    public function test_the_value_line_shows_while_the_discount_reward_is_live(): void {
         $this->seed_discount_reward();
         $email = $this->preview_as( $this->customer_with_email() );
 
-        $this->assertStringNotContainsString( 'worth', $email->get_content_html() );
-        $this->assertStringNotContainsString( 'worth', $email->get_content_plain() );
-        $this->assertSame( '', $email->get_template_values()['balance_value'] );
+        $this->assertStringContainsString( 'worth', $email->get_content_html() );
+        $this->assertStringContainsString( 'worth', $email->get_content_plain() );
+        $this->assertStringContainsString( '1.50', $email->get_template_values()['balance_value'] );
     }
 
     public function test_the_preview_shows_a_sample_award(): void {

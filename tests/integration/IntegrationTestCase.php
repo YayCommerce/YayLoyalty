@@ -3,15 +3,25 @@ namespace YayLoyalty\Tests\Integration;
 
 use PHPUnit\Framework\TestCase;
 use YayLoyalty\Engine\Earning\IdempotencyKey;
+use YayLoyalty\Engine\Redemption\CommitWriter;
+use YayLoyalty\Engine\Redemption\Quoter;
+use YayLoyalty\Engine\Rewards\ContextFactory;
+use YayLoyalty\Engine\Rewards\Handlers\Registry;
+use YayLoyalty\Engine\Rewards\RewardEngine;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Enums\ReferenceType;
+use YayLoyalty\Enums\RewardType;
+use YayLoyalty\Enums\Status;
 use YayLoyalty\Models\Campaign;
 use YayLoyalty\Models\LedgerEntry;
+use YayLoyalty\Models\Reward;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
+use YayLoyalty\Repositories\RedemptionRepository;
+use YayLoyalty\Repositories\RewardRepository;
 use YayLoyalty\Services\LedgerService;
 use YayLoyalty\Utils\Dates;
 
@@ -57,6 +67,27 @@ abstract class IntegrationTestCase extends TestCase {
         );
     }
 
+    /** A slider REDEEM draft for one order, keyed as CommitWriter keys it. */
+    protected function redeem_draft( int $user_id, int $order_id, int $points ): LedgerEntry {
+        return new LedgerEntry(
+            null,
+            $user_id,
+            -$points,
+            0,
+            LedgerType::REDEEM,
+            LedgerSource::ORDER,
+            ReferenceType::ORDER,
+            $order_id,
+            null,
+            null,
+            $order_id,
+            null,
+            null,
+            Dates::now(),
+            IdempotencyKey::compose( LedgerType::REDEEM, $user_id, ReferenceType::ORDER, $order_id, RewardType::FLEXIBLE_DISCOUNT )
+        );
+    }
+
     protected function insert_campaign( string $name, string $trigger, string $status, int $priority ): int {
         $now = gmdate( 'Y-m-d H:i:s' );
 
@@ -98,6 +129,94 @@ abstract class IntegrationTestCase extends TestCase {
                 'SELECT * FROM `' . esc_sql( \YayLoyalty\Utils\Table::name( 'ledger' ) ) . '` WHERE user_id = %d ORDER BY id ASC',
                 $user_id
             ),
+            ARRAY_A
+        );
+    }
+
+    protected function commit_writer(): CommitWriter {
+        $customers = new CustomerRepository();
+
+        return new CommitWriter(
+            $this->ledger_service(),
+            new RedemptionRepository(),
+            $customers,
+            new ContextFactory( $customers ),
+            new Quoter( new RewardEngine( Registry::with_lite_handlers() ), [] )
+        );
+    }
+
+    /** The slider reward as a stored row, so the reversal can read its refund_policy. */
+    protected function seeded_reward( array $config = [] ): Reward {
+        $now     = Dates::now();
+        $rewards = new RewardRepository();
+        $id      = $rewards->insert( new Reward( null, 'Cart discount', 'cart-discount', RewardType::FLEXIBLE_DISCOUNT, Status::ACTIVE, 0, null, array_merge( Reward::default_config( RewardType::FLEXIBLE_DISCOUNT ), $config ), [], null, null, true, null, null, $now, $now ) );
+
+        return $rewards->find_reward( $id );
+    }
+
+    /** An order with one line and our coupon line, as checkout leaves it. */
+    protected function order_with_points_discount( int $user_id, float $subtotal, float $discount ): \WC_Order {
+        $order = wc_create_order( [ 'customer_id' => $user_id ] );
+
+        $line = new \WC_Order_Item_Product();
+        $line->set_name( 'Thing' );
+        $line->set_quantity( 1 );
+        $line->set_subtotal( $subtotal );
+        $line->set_total( $subtotal - $discount );
+        $order->add_item( $line );
+
+        $coupon = new \WC_Order_Item_Coupon();
+        $coupon->set_code( 'yayloyalty-redeem' );
+        $coupon->set_discount( $discount );
+        $order->add_item( $coupon );
+
+        $order->save();
+
+        return $order;
+    }
+
+    /** A live Pro reward of $type as a stored row, so commit and reversal read it by id. */
+    protected function pro_reward( string $type, int $cost, array $config ): Reward {
+        $now     = Dates::now();
+        $rewards = new RewardRepository();
+        $id      = $rewards->insert( new Reward( null, $type . ' ' . $cost, $type . '-' . $cost, $type, Status::ACTIVE, 0, $cost, array_merge( [ 'currency' => 'USD' ], $config ), [], null, null, false, null, null, $now, $now ) );
+
+        return $rewards->find_reward( $id );
+    }
+
+    /**
+     * An order with one line and a coupon line per reward code, as checkout leaves it.
+     *
+     * @param array<string, float> $lines Coupon code => its discount.
+     */
+    protected function order_with_reward_lines( int $user_id, float $subtotal, array $lines ): \WC_Order {
+        $order = wc_create_order( [ 'customer_id' => $user_id ] );
+
+        $line = new \WC_Order_Item_Product();
+        $line->set_name( 'Thing' );
+        $line->set_quantity( 1 );
+        $line->set_subtotal( $subtotal );
+        $line->set_total( $subtotal - array_sum( $lines ) );
+        $order->add_item( $line );
+
+        foreach ( $lines as $code => $discount ) {
+            $coupon = new \WC_Order_Item_Coupon();
+            $coupon->set_code( $code );
+            $coupon->set_discount( $discount );
+            $order->add_item( $coupon );
+        }
+
+        $order->save();
+
+        return $order;
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    protected function redemption_rows( int $user_id ): array {
+        global $wpdb;
+
+        return (array) $wpdb->get_results( // phpcs:ignore WordPress.DB -- tests read the table directly; the table name is escaped.
+            $wpdb->prepare( 'SELECT * FROM `' . esc_sql( ( new RedemptionRepository() )->table() ) . '` WHERE user_id = %d ORDER BY id ASC', $user_id ),
             ARRAY_A
         );
     }

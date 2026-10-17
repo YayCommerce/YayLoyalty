@@ -25,6 +25,7 @@ final class CustomerItemFormatter {
         ?array $live_identity,
         int $ledger_count,
         int $activity_count,
+        int $redemption_count,
         ?CustomerMeta $deletion
     ): array {
         return $base + [
@@ -34,8 +35,7 @@ final class CustomerItemFormatter {
             'counts'           => [
                 'ledger'      => $ledger_count,
                 'activity'    => $activity_count,
-                // No redemptions table exists yet, so never fabricate a count.
-                'redemptions' => 0,
+                'redemptions' => $redemption_count,
             ],
             'loose_ends'       => self::loose_ends( $deletion ),
             // Needs the `lots` table: designed, not built yet.

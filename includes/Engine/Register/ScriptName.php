@@ -14,6 +14,10 @@ class ScriptName {
     public const STOREFRONT_SCRIPT = 'yayloyalty/storefront/launcher';
     public const STOREFRONT_STYLE  = 'yayloyalty/style/storefront-launcher';
 
+    /** The points card: plain files with no build step. The second script fills the Cart and Checkout blocks' slot. */
+    public const STOREFRONT_REDEEM_STYLE         = 'yayloyalty/style/storefront-redeem';
+    public const STOREFRONT_REDEEM_SCRIPT        = 'yayloyalty/storefront/redeem';
+    public const STOREFRONT_REDEEM_BLOCKS_SCRIPT = 'yayloyalty/storefront/redeem-blocks';
     /** My Account → Rewards: layout only, the theme styles the rest. */
     public const ACCOUNT_STYLE = 'yayloyalty/style/storefront-account';
 

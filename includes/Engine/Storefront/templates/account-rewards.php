@@ -15,7 +15,7 @@ defined( 'ABSPATH' ) || exit;
 
 $yayloyalty_payload = $view['payload'];
 $yayloyalty_worth   = $yayloyalty_payload['member']['worth'];
-// Null while redemption is off: worth, the redeem column and the checkout link stay hidden with it.
+// Null while the discount reward is not live: worth, the redeem column and the checkout link stay hidden with it.
 $yayloyalty_redeem  = $yayloyalty_payload['redeem'];
 $yayloyalty_card    = $view;
 $yayloyalty_earn    = $view['earn'];

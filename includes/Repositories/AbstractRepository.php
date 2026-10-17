@@ -250,6 +250,18 @@ abstract class AbstractRepository {
         ];
     }
 
+    /** COUNT(*) of one user's rows, for a table with a `user_id` column. */
+    protected function count_where_user( int $user_id ): int {
+        global $wpdb;
+
+        return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare(
+                'SELECT COUNT(*) FROM `' . esc_sql( $this->table() ) . '` WHERE user_id = %d',
+                $user_id
+            )
+        );
+    }
+
     /** Prepared LIKE fragment for a free-text search. esc_like() runs first, or % and _ would be wildcards. */
     protected function like_fragment( string $column, string $term ): string {
         global $wpdb;

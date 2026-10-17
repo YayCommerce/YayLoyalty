@@ -4,35 +4,122 @@ namespace YayLoyalty\Engine\Redemption;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The only mutable state on the quote path: one integer in the WooCommerce
- * session, the points the customer asked to spend. Never the discount
- * value — that is derived from the current cart on every recalculation —
- * and never a Quote. Scaffold: stubs.
+ * The only mutable state on the quote path, in the WooCommerce session: either the points the customer asked
+ * to spend on the slider or the reward ids they picked, never both. Never a discount value — that is derived
+ * from the current cart on every recalculation — and never a Quote. Every method returns quietly when
+ * WooCommerce has no session.
  */
 final class SessionIntent {
 
     /** WC session key; the integer lives nowhere else until the order exists. */
     public const KEY = 'yayloyalty_redeem_points';
 
+    /** WC session key of the picked reward ids, unique, in the order they were picked. */
+    public const REWARDS_KEY = 'yayloyalty_redeem_rewards';
+
     /** Postcondition: the stored integer, 0 when nothing was asked or there is no session. Never negative. */
     public function get(): int {
-        // TODO(redemption): read KEY from the WC session as an int, floored at 0; return 0 when there is no session.
-        throw new \RuntimeException( 'Not implemented' );
+        $session = $this->session();
+
+        return null === $session ? 0 : max( 0, (int) $session->get( self::KEY, 0 ) );
     }
 
     /**
      * Precondition: $points ≥ 0, unclamped — the clamp runs on read, not on
      * write, so a later cart change can never leave a stale ceiling here.
-     * Postcondition: get() returns $points; 0 removes the key.
+     * Postcondition: get() returns $points; 0 removes the key. Points above 0
+     * clear the rewards, since the two never apply together.
      */
-    public function set( int $points ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- scaffold stub.
-        // TODO(redemption): floor the points at 0 and store them under KEY in the WC session; a zero delegates to clear.
-        throw new \RuntimeException( 'Not implemented' );
+    public function set( int $points ): void {
+        $session = $this->session();
+
+        if ( null === $session ) {
+            return;
+        }
+
+        if ( $points <= 0 ) {
+            $session->__unset( self::KEY );
+
+            return;
+        }
+
+        $session->set( self::KEY, $points );
+        $session->__unset( self::REWARDS_KEY );
     }
 
-    /** Postcondition: get() returns 0. Called by the commit after the order carries the frozen value. */
+    /**
+     * The picked reward ids, positive and unique, in the order they were picked. [] when none or no session.
+     *
+     * @return int[]
+     */
+    public function rewards(): array {
+        $session = $this->session();
+
+        return null === $session ? [] : self::normalise( (array) $session->get( self::REWARDS_KEY, [] ) );
+    }
+
+    /**
+     * Postcondition: rewards() returns the positive ids of $reward_ids, unique, in their order; [] removes the
+     * key. Any id clears the points.
+     *
+     * @param array $reward_ids
+     */
+    public function set_rewards( array $reward_ids ): void {
+        $session = $this->session();
+
+        if ( null === $session ) {
+            return;
+        }
+
+        $reward_ids = self::normalise( $reward_ids );
+
+        if ( [] === $reward_ids ) {
+            $session->__unset( self::REWARDS_KEY );
+
+            return;
+        }
+
+        $session->set( self::REWARDS_KEY, $reward_ids );
+        $session->__unset( self::KEY );
+    }
+
+    /** Postcondition: rewards() no longer holds $reward_id; the rest keep their order. */
+    public function remove_reward( int $reward_id ): void {
+        $this->set_rewards( array_diff( $this->rewards(), [ $reward_id ] ) );
+    }
+
+    /** Postcondition: get() returns 0 and rewards() []. Called by the commit, and when the shopper removes the slider's coupon. */
     public function clear(): void {
-        // TODO(redemption): WC()->session->__unset( self::KEY ) when a session exists.
-        throw new \RuntimeException( 'Not implemented' );
+        $session = $this->session();
+
+        if ( null !== $session ) {
+            $session->__unset( self::KEY );
+            $session->__unset( self::REWARDS_KEY );
+        }
+    }
+
+    /**
+     * @param array $ids
+     * @return int[]
+     */
+    private static function normalise( array $ids ): array {
+        $ids = array_filter(
+            array_map( 'intval', $ids ),
+            static function ( int $id ): bool {
+                return $id > 0;
+            }
+        );
+
+        return array_values( array_unique( $ids ) );
+    }
+
+    private function session(): ?\WC_Session {
+        if ( ! function_exists( 'WC' ) ) {
+            return null;
+        }
+
+        $session = WC()->session;
+
+        return $session instanceof \WC_Session ? $session : null;
     }
 }

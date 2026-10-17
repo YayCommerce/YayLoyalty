@@ -38,6 +38,7 @@ final class Installer {
             new \YayLoyalty\Database\Schema\CampaignsTable(),
             new \YayLoyalty\Database\Schema\RewardsTable(),
             new \YayLoyalty\Database\Schema\CustomerMetaTable(),
+            new \YayLoyalty\Database\Schema\RedemptionsTable(),
         ];
 
         /**

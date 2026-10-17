@@ -3,8 +3,11 @@ import { formatSignedPoints } from '@/lib/helpers/ledger.helper';
 import type { RedemptionEntry } from '@/lib/schema/redemption.schema';
 import {
   REDEMPTION_STATUS_APPLIED,
+  REDEMPTION_STATUS_CANCELLED,
+  REDEMPTION_STATUS_EXPIRED,
   REDEMPTION_STATUS_ISSUED,
   REDEMPTION_STATUS_RETURNED,
+  REDEMPTION_STATUS_USED,
 } from './customer-drawer.copy';
 
 export type RedemptionRow = {
@@ -16,7 +19,7 @@ export type RedemptionRow = {
   status: string;
 };
 
-/** Maps a redemption entry to its table row. `points` arrives signed, so `formatSignedPoints()` only adds the `+`. */
+/** Maps a redemption entry to its table row. `points` arrives negative (points spent), so `formatSignedPoints()` shows it as is. */
 export function toRedemptionRow(entry: RedemptionEntry): RedemptionRow {
   return {
     date: formatStoredDate(entry.created_at),
@@ -32,9 +35,15 @@ function statusLabel(status: RedemptionEntry['status']): string {
   switch (status) {
     case 'applied':
       return REDEMPTION_STATUS_APPLIED();
-    case 'returned':
-      return REDEMPTION_STATUS_RETURNED();
     case 'issued':
       return REDEMPTION_STATUS_ISSUED();
+    case 'used':
+      return REDEMPTION_STATUS_USED();
+    case 'refunded':
+      return REDEMPTION_STATUS_RETURNED();
+    case 'cancelled':
+      return REDEMPTION_STATUS_CANCELLED();
+    case 'expired':
+      return REDEMPTION_STATUS_EXPIRED();
   }
 }

@@ -9,6 +9,7 @@ const AUTH_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../
 
 export type LoyaltyCustomer = { balance: number; pending_points: number; lifetime_earned: number };
 export type LedgerRow = { id: number; points: number; type: string };
+export type RedemptionRow = { order_id: number | null; points: number; value: string; status: string };
 export type OrderLine = { sku: 'e2e-widget' | 'e2e-gadget'; quantity?: number };
 
 /** The admin's REST client, authenticated with the application password setup.sh wrote. */
@@ -117,6 +118,46 @@ export class Api {
   /** Signed points of the customer's ledger rows, oldest first. */
   async ledgerPoints(userId: number): Promise<number[]> {
     return (await this.ledger(userId)).map((row) => row.points);
+  }
+
+  /** Moves the customer's balance as an admin adjustment, the way specs give a customer points to spend. */
+  async adjustPoints(userId: number, points: number): Promise<void> {
+    await this.post(`yayloyalty/v1/customers/${userId}/adjust`, { points, note: 'E2E balance' });
+  }
+
+  /** The customer's redemption rows, newest first. */
+  async redemptions(userId: number): Promise<RedemptionRow[]> {
+    const { data } = await this.get<{ data: RedemptionRow[] }>(`yayloyalty/v1/customers/${userId}/redemptions`);
+
+    return data;
+  }
+
+  /** A live Pro reward the card offers, created as the merchant would in the reward editor. */
+  async createReward(reward: {
+    name: string;
+    type: 'fixed_coupon' | 'percent_coupon';
+    cost_points: number;
+    config: object;
+  }): Promise<number> {
+    const { id } = await this.post<{ id: number }>('yayloyalty/v1/rewards', {
+      ...reward,
+      status: 'active',
+      config: { currency: 'USD', ...reward.config },
+    });
+
+    return id;
+  }
+
+  /** Deletes the reward, or archives it once claimed, since a reward with redemptions cannot be deleted. */
+  async deleteReward(id: number): Promise<void> {
+    const response = await this.context.fetch(`yayloyalty/v1/rewards/${id}`, { method: 'DELETE' });
+
+    if (response.status() === 409) {
+      await this.put(`yayloyalty/v1/rewards/${id}`, { status: 'archived' });
+      return;
+    }
+
+    expect(response.ok(), `DELETE rewards/${id}: ${response.status()} ${await response.text()}`).toBeTruthy();
   }
 
   async settings<T extends object>(): Promise<T> {
