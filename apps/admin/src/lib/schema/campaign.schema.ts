@@ -13,6 +13,9 @@ export const LITE_CAMPAIGN_TRIGGERS = ['purchase', 'signup', 'review'] as const;
 /** The triggers the create form offers; the Lite build's POST accepts only these, while Pro adds more through the yayloyalty_campaign_triggers filter that CampaignTrigger::is_valid() reads. */
 export type LiteCampaignTrigger = (typeof LITE_CAMPAIGN_TRIGGERS)[number];
 
+/** The triggers the create form has an editor for: Lite's three, plus birthday in the Pro build. */
+export type CreatableCampaignTrigger = LiteCampaignTrigger | 'birthday';
+
 /** Mirrors YayLoyaltyPro::ADDED_TRIGGERS, the source of truth. */
 export const PRO_CAMPAIGN_TRIGGERS = ['birthday', 'first_order', 'order_count', 'spend_milestone'] as const;
 
@@ -268,7 +271,7 @@ export function isCampaignScheduleInOrder(startsAt: string | null, endsAt: strin
  * Mirrors CampaignRestController::create_item(), the source of truth. The write body for POST campaigns. `trigger` is set only here: it is immutable after create.
  * No `slug`: the server generates it from `name`.
  */
-export type CampaignCreateInput = CampaignUpdateInput & { trigger: LiteCampaignTrigger };
+export type CampaignCreateInput = CampaignUpdateInput & { trigger: CreatableCampaignTrigger };
 
 /** Mirrors CampaignRestController::delete_item(), the source of truth. The response of DELETE campaigns/{id}. */
 export const campaignDeleteResponseSchema = z.object({
@@ -378,6 +381,13 @@ export interface ReviewConfig {
   require_verified?: boolean;
   one_per_product?: boolean;
   media_bonus_points?: number;
+}
+
+/** Mirrors YayLoyaltyPro::add_campaign_config_schema()['birthday'], the source of truth. */
+export interface BirthdayConfig {
+  points?: number;
+  /** 0 to 30: how many days before the birthday it may be paid. */
+  days_before?: number;
 }
 
 /** The form's side of CampaignRestController::lacks_purchase_rate(): a purchase campaign with no numeric rate could never earn, so saving it is refused. */

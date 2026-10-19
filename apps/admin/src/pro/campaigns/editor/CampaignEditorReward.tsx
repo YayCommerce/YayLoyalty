@@ -1,7 +1,7 @@
 import { useFormContext } from 'react-hook-form';
 import { __, sprintf } from '@wordpress/i18n';
 
-import { CampaignTrigger, ReviewConfig, SignupConfig } from '@/lib/schema/campaign.schema';
+import { BirthdayConfig, CampaignTrigger, ReviewConfig, SignupConfig } from '@/lib/schema/campaign.schema';
 import { Field, FieldContent, FieldDescription, FieldLabel } from '@/components/ui/field';
 import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
 import { Switch } from '@/components/ui/switch';
@@ -22,6 +22,8 @@ export function CampaignEditorReward() {
       return <RewardFieldsSignup />;
     case 'review':
       return <RewardFieldsReview />;
+    case 'birthday':
+      return <RewardFieldsBirthday />;
     default:
       return <RewardFieldsUnknown trigger={trigger} />;
   }
@@ -124,8 +126,58 @@ function RewardFieldsReview() {
   );
 }
 
+function RewardFieldsBirthday() {
+  const { watch, setValue } = useFormContext<CampaignFormValues>();
+  const config = watch('config') as BirthdayConfig;
+
+  function patchConfig(patch: Partial<BirthdayConfig>) {
+    setValue('config', { ...config, ...patch }, { shouldDirty: true, shouldValidate: true });
+  }
+
+  return (
+    <>
+      <Field>
+        <FieldLabel htmlFor="reward-birthday-points">{__('Award', 'yayloyalty')}</FieldLabel>
+        <FieldContent>
+          <NumberInputRoot
+            size="small"
+            className="w-28"
+            min={0}
+            value={config.points ?? 0}
+            onValueChange={(points) => patchConfig({ points })}
+          >
+            <NumberInputInput id="reward-birthday-points" />
+            <NumberInputUnit unit={__('points', 'yayloyalty')} />
+          </NumberInputRoot>
+          <FieldDescription>
+            {__('Once a year, to customers who added their birthday in My Account.', 'yayloyalty')}
+          </FieldDescription>
+        </FieldContent>
+      </Field>
+
+      <Field>
+        <FieldLabel htmlFor="reward-birthday-days-before">{__('Award early', 'yayloyalty')}</FieldLabel>
+        <FieldContent>
+          <NumberInputRoot
+            size="small"
+            className="w-36"
+            min={0}
+            max={30}
+            value={config.days_before ?? 0}
+            onValueChange={(days_before) => patchConfig({ days_before })}
+          >
+            <NumberInputInput id="reward-birthday-days-before" />
+            <NumberInputUnit unit={__('days before', 'yayloyalty')} />
+          </NumberInputRoot>
+          <FieldDescription>{__('0 awards on the birthday itself.', 'yayloyalty')}</FieldDescription>
+        </FieldContent>
+      </Field>
+    </>
+  );
+}
+
 /**
- * Fallback for a trigger with no field map (every Pro trigger). Binds
+ * Fallback for a trigger with no field map (the Pro triggers other than birthday). Binds
  * nothing back to config: the seeded clone must round-trip untouched, or
  * this would erase on the client what the server preserves for a downgrade.
  */

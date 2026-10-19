@@ -11,9 +11,9 @@ import {
   CampaignTrigger,
   CampaignUpdateInput,
   campaignUpdateInputSchema,
+  CreatableCampaignTrigger,
   DEFAULT_CAMPAIGN_CONFIG,
   LITE_CAMPAIGN_TRIGGERS,
-  LiteCampaignTrigger,
 } from '@/lib/schema/campaign.schema';
 import { validateConditionValue } from './CampaignEditorConditions';
 
@@ -45,7 +45,10 @@ export function formValuesToUpdateInput(values: CampaignFormValues): CampaignUpd
 }
 
 /** POST campaigns' body: form values plus the trigger picked in the chooser, carried outside form state. The server puts it on top of its group; priority is not writable. */
-export function formValuesToCreateInput(values: CampaignFormValues, trigger: LiteCampaignTrigger): CampaignCreateInput {
+export function formValuesToCreateInput(
+  values: CampaignFormValues,
+  trigger: CreatableCampaignTrigger,
+): CampaignCreateInput {
   return { ...values, trigger };
 }
 
@@ -54,19 +57,20 @@ export function formValuesToCreateInput(values: CampaignFormValues, trigger: Lit
  * `trigger` is separate because it is not a form field — see CampaignFormValues.
  */
 export interface CampaignCreateSeed {
-  trigger: LiteCampaignTrigger;
+  trigger: CreatableCampaignTrigger;
   values: CampaignFormValues;
 }
 
 /**
  * Duplicate's seed: every field copied from the source except id and slug. The name gets
- * " (copy)" and the status resets to draft, as with every template. A source outside the three
- * Lite triggers falls back to purchase with the default config, rather than sending a config shape
- * that trigger cannot accept. Nothing writes a Pro-trigger campaign yet, so this is a safe default.
+ * " (copy)" and the status resets to draft, as with every template. A source whose trigger has no
+ * create form falls back to purchase with the default config, rather than sending a config shape
+ * that trigger cannot accept.
  */
 export function duplicateToFormValues(source: Campaign): CampaignCreateSeed {
-  const isLite = (LITE_CAMPAIGN_TRIGGERS as readonly string[]).includes(source.trigger);
-  const trigger: LiteCampaignTrigger = isLite ? (source.trigger as LiteCampaignTrigger) : 'purchase';
+  const creatable: readonly string[] = [...LITE_CAMPAIGN_TRIGGERS, 'birthday'];
+  const isCreatable = creatable.includes(source.trigger);
+  const trigger = isCreatable ? (source.trigger as CreatableCampaignTrigger) : 'purchase';
 
   return {
     trigger,
@@ -77,8 +81,8 @@ export function duplicateToFormValues(source: Campaign): CampaignCreateSeed {
         source.name,
       ),
       status: 'draft',
-      config: structuredClone(isLite ? source.config : DEFAULT_CAMPAIGN_CONFIG.purchase),
-      conditions: structuredClone(isLite ? normalizeConditions(source.conditions) : []),
+      config: structuredClone(isCreatable ? source.config : DEFAULT_CAMPAIGN_CONFIG.purchase),
+      conditions: structuredClone(isCreatable ? normalizeConditions(source.conditions) : []),
       starts_at: source.starts_at,
       ends_at: source.ends_at,
     },
