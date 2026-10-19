@@ -2,7 +2,6 @@ import './main.css';
 
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { domAnimation, LazyMotion } from 'motion/react';
 import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router';
 
@@ -31,9 +30,7 @@ const queryClient = new QueryClient({
 createRoot(document.getElementById('yayloyalty') as HTMLElement).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <LazyMotion features={domAnimation}>
-        <RouterProvider router={getManagerRouter()} />
-      </LazyMotion>
+      <RouterProvider router={getManagerRouter()} />
     </QueryClientProvider>
   </React.StrictMode>,
 );
