@@ -118,6 +118,11 @@
   overscroll-behavior: contain;
 }
 
+/* The reset's min-height: 0 lets sections shrink and overlap; keep their height so a long panel scrolls the body. */
+.yl-launcher-body > * {
+  flex-shrink: 0;
+}
+
 .yl-launcher-handle {
   display: none;
 }

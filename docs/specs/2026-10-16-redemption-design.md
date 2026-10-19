@@ -22,7 +22,7 @@ The points are debited once, when the order is placed. Cancelling or refunding t
 - Commit at order placement and reversal on cancel, trash, refund, deleted refund, the `refunded` status and un-cancel.
 - Real rows on the customer drawer's `GET /yayloyalty/v1/customers/{id}/redemptions` and its Redemptions tab.
 - The earning side treating loyalty coupons as the shopper's own points, not as merchant coupons.
-- The launcher's "Ways to redeem" line for the points discount.
+- The "Ways to redeem" lines in the launcher and My Account → Rewards: the points discount, then on Pro every live `fixed_coupon` and `percent_coupon` reward.
 
 **Out:**
 - `free_shipping` and `free_product` rewards: never shown in the card and never spent. Their config, editor and handlers are unchanged.
@@ -186,13 +186,13 @@ No schema change and no version bump: the plugin is unreleased at 1.0.0. A devel
 
 **Styles and copy:** the card has its own `assets/storefront/redeem.css` (`yayloyalty-redeem__*` classes) and reads nothing from the Design tab, which styles the launcher only. Money goes through `LauncherCopy::money()` (a whole amount prints without decimals), points through `SettingsHelper::points_text()`. No sentence hard-codes "points". The inputs have no `name`, so nothing rides on the cart or checkout form.
 
-**Launcher:** the member panel's "Ways to redeem" and the balance's worth come from the `cart-discount` reward while it is live (`LauncherPayload::redeem_rule()`, `worth()`). Pro rewards are not listed there.
+**Launcher:** the balance's worth and the points discount's "Ways to redeem" row come from the `cart-discount` reward while it is live (`LauncherPayload::redeem_rule()`, `worth()`). After that row, "Ways to redeem" in the member panel and in My Account → Rewards lists what `yayloyalty_launcher_redeem_offers` returns. Pro's `RewardsPanel::redeem_offers()` adds every live `fixed_coupon` / `percent_coupon` reward in `sort_order`, with its name, cost and the card's one-line description, whatever the member's conditions or balance. The section shows while any row exists; worth and the checkout link still follow `cart-discount` alone. Changed 2026-10-19 ([plan](../plans/2026-10-19-pro-rewards-in-ways-to-redeem.md)).
 
 **Admin:** the customer drawer's Redemptions tab and count read `GET /yayloyalty/v1/customers/{id}/redemptions`, newest first; Lite shows the upgrade surface on that tab, and both builds show the `redeem` and `refund_redeem` rows on the Ledger tab.
 
 ## Integration points
 
-- **Internal Pro seams** (not public API): `yayloyalty_register_reward_handlers`, `yayloyalty_reward_conditions_match`, `yayloyalty_redemption_gates`, `yayloyalty_redeem_card_panels` (`( array $panels, array $context )` → `array<string, array{ label, html, is_active }>`, context `{ service, cart, user_id, balance, is_slider_applied }`).
+- **Internal Pro seams** (not public API): `yayloyalty_register_reward_handlers`, `yayloyalty_reward_conditions_match`, `yayloyalty_redemption_gates`, `yayloyalty_redeem_card_panels` (`( array $panels, array $context )` → `array<string, array{ label, html, is_active }>`, context `{ service, cart, user_id, balance, is_slider_applied }`), `yayloyalty_launcher_redeem_offers` (`( array $offers, string $now )` → `array<{ name, cost, text }>`).
 - **Public action:** `yayloyalty_points_redeemed( Outcome $outcome, \WC_Order $order )`.
 - **WooCommerce hooks:** those named under Cart sync, Checkout and commit, and Reversals, plus `woocommerce_blocks_loaded`, `woocommerce_blocks_enqueue_cart_block_scripts_after` and `woocommerce_blocks_enqueue_checkout_block_scripts_after`.
 

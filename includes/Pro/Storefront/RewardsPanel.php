@@ -8,16 +8,20 @@ use YayLoyalty\Engine\Redemption\RewardCoupons;
 use YayLoyalty\Engine\Rewards\Clamp;
 use YayLoyalty\Engine\Rewards\Result;
 use YayLoyalty\Engine\Storefront\LauncherCopy;
+use YayLoyalty\Engine\Storefront\LauncherPayload;
 use YayLoyalty\Engine\Storefront\RedeemCard;
 use YayLoyalty\Enums\RewardType;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Models\Reward;
+use YayLoyalty\Repositories\RewardRepository;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
  * The card's Rewards tab: one checkbox row per reward RedemptionService::reward_options() offers, the selection
  * line and one Apply/Update button. Draws only; redeem.js posts the ticked ids and the server answers a new card.
+ * It also lists the same rewards, with the same one-line description, under "Ways to redeem" in the launcher and
+ * My Account.
  */
 final class RewardsPanel {
 
@@ -26,6 +30,27 @@ final class RewardsPanel {
     /** Called once by YayLoyaltyPro::boot(). */
     public function register(): void {
         add_filter( RedeemCard::PANELS_FILTER, [ $this, 'panel' ], 10, 2 );
+        add_filter( LauncherPayload::REDEEM_OFFERS_FILTER, [ $this, 'redeem_offers' ], 10, 2 );
+    }
+
+    /**
+     * Appends every live `fixed_coupon` / `percent_coupon` reward, in `sort_order`, whatever the member's
+     * conditions or balance: no cart, so the Design preview can run it too.
+     *
+     * @param array<int, array{name: string, cost: int, text: string}> $offers
+     * @param string                                                   $now    UTC MySQL datetime.
+     * @return array<int, array{name: string, cost: int, text: string}>
+     */
+    public function redeem_offers( array $offers, string $now ): array {
+        foreach ( ( new RewardRepository() )->live_of_types( [ RewardType::FIXED_COUPON, RewardType::PERCENT_COUPON ], $now ) as $reward ) {
+            $offers[] = [
+                'name' => $reward->get_name(),
+                'cost' => (int) $reward->get_cost_points(),
+                'text' => self::description( $reward ),
+            ];
+        }
+
+        return $offers;
     }
 
     /**
