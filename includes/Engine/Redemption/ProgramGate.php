@@ -35,10 +35,14 @@ final class ProgramGate implements Gate {
     public function check( Reward $reward, Context $ctx ): ?string { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- the rules apply to every reward.
         $user_id = $ctx->get_user_id();
 
-        if ( null === $user_id ) {
-            return self::REASON_NO_CUSTOMER;
-        }
+        return null === $user_id ? self::REASON_NO_CUSTOMER : self::shopper_denial( $user_id );
+    }
 
+    /**
+     * Why this signed-in customer may not redeem any reward, or null. Also read by LauncherPayload, so the
+     * storefront never promises a discount checkout would refuse.
+     */
+    public static function shopper_denial( int $user_id ): ?string {
         if ( ! EarnProgramGate::program_enabled() ) {
             return self::REASON_PROGRAM_PAUSED;
         }
