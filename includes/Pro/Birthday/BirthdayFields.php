@@ -15,15 +15,23 @@ defined( 'ABSPATH' ) || exit;
  */
 final class BirthdayFields {
 
+    /** @var bool Whether the Account details field was printed, so the fallback hook doesn't print it twice. */
+    private $is_edit_account_rendered = false;
+
     public const FIELD_MONTH = 'yayloyalty_birthday_month';
 
     public const FIELD_DAY = 'yayloyalty_birthday_day';
+
+    /** input-text gives the selects the theme's text-field look; some themes then drop the dropdown arrow, which this brings back. */
+    private const SELECT_STYLE = 'appearance: menulist-button; width: 100%;';
 
     public function register(): void {
         add_action( 'woocommerce_register_form', [ $this, 'render_register' ] );
         add_filter( 'woocommerce_registration_errors', [ $this, 'validate' ] );
         add_action( 'woocommerce_created_customer', [ $this, 'save' ] );
 
+        // Beside the email address; a theme's older copy of the template may lack that hook, so it falls back to the form's end.
+        add_action( 'woocommerce_edit_account_form_fields', [ $this, 'render_edit_account' ] );
         add_action( 'woocommerce_edit_account_form', [ $this, 'render_edit_account' ] );
         add_action( 'woocommerce_save_account_details_errors', [ $this, 'validate' ] );
         add_action( 'woocommerce_save_account_details', [ $this, 'save' ] );
@@ -41,9 +49,11 @@ final class BirthdayFields {
     }
 
     public function render_edit_account(): void {
-        if ( ! self::is_offered() ) {
+        if ( $this->is_edit_account_rendered || ! self::is_offered() ) {
             return;
         }
+
+        $this->is_edit_account_rendered = true;
 
         $customer = ( new CustomerRepository() )->find_by_user_id( get_current_user_id() );
 
@@ -152,13 +162,13 @@ final class BirthdayFields {
                 <?php esc_html_e( 'Birthday', 'yayloyalty' ); ?>&nbsp;<span class="optional"><?php esc_html_e( '(optional)', 'yayloyalty' ); ?></span>
             </label>
             <span style="display: flex; gap: 8px;">
-            <select name="<?php echo esc_attr( self::FIELD_MONTH ); ?>" id="<?php echo esc_attr( self::FIELD_MONTH ); ?>" aria-label="<?php esc_attr_e( 'Birthday month', 'yayloyalty' ); ?>">
+            <select class="woocommerce-Input input-text" style="<?php echo esc_attr( self::SELECT_STYLE ); ?>" name="<?php echo esc_attr( self::FIELD_MONTH ); ?>" id="<?php echo esc_attr( self::FIELD_MONTH ); ?>" aria-label="<?php esc_attr_e( 'Birthday month', 'yayloyalty' ); ?>">
                 <option value=""><?php esc_html_e( 'Month', 'yayloyalty' ); ?></option>
                 <?php for ( $option = 1; $option <= 12; $option++ ) : ?>
                     <option value="<?php echo esc_attr( (string) $option ); ?>" <?php selected( $month, $option ); ?>><?php echo esc_html( $wp_locale->get_month( $option ) ); ?></option>
                 <?php endfor; ?>
             </select>
-            <select name="<?php echo esc_attr( self::FIELD_DAY ); ?>" id="<?php echo esc_attr( self::FIELD_DAY ); ?>" aria-label="<?php esc_attr_e( 'Birthday day', 'yayloyalty' ); ?>">
+            <select class="woocommerce-Input input-text" style="<?php echo esc_attr( self::SELECT_STYLE ); ?>" name="<?php echo esc_attr( self::FIELD_DAY ); ?>" id="<?php echo esc_attr( self::FIELD_DAY ); ?>" aria-label="<?php esc_attr_e( 'Birthday day', 'yayloyalty' ); ?>">
                 <option value=""><?php esc_html_e( 'Day', 'yayloyalty' ); ?></option>
                 <?php for ( $option = 1; $option <= 31; $option++ ) : ?>
                     <option value="<?php echo esc_attr( (string) $option ); ?>" <?php selected( $day, $option ); ?>><?php echo esc_html( (string) $option ); ?></option>
