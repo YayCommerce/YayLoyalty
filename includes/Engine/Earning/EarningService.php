@@ -263,7 +263,7 @@ final class EarningService {
      * balance_after 0 (computed under the lock), actor_id null (a customer
      * is not an actor), created_at = Dates::now() (the write time; the
      * event time lives on the Context and in the key's reference), and
-     * idempotency_key = IdempotencyKey::compose( EARN, user_id,
+     * idempotency_key = IdempotencyKey::for_earn( user_id,
      * reference_type, reference_id, $trigger ).
      */
     private function draft_from( Result $result, Context $ctx, string $trigger ): LedgerEntry {
@@ -287,7 +287,7 @@ final class EarningService {
             null,
             null,
             Dates::now(),
-            IdempotencyKey::compose( LedgerType::EARN, $user_id, $reference_type, $reference_id, $trigger )
+            IdempotencyKey::for_earn( $user_id, $reference_type, $reference_id, $trigger )
         );
     }
 

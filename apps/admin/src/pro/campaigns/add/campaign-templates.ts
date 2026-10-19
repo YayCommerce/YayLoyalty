@@ -60,21 +60,16 @@ export function getCampaignTemplates(): CampaignTemplate[] {
 }
 
 /** Config a new campaign starts from. Birthday has no built-in campaign, so no Campaign::default_config() entry. */
-function seedConfig(trigger: CreatableCampaignTrigger): Record<string, unknown> {
-  if (trigger === 'birthday') {
-    const config: BirthdayConfig = { points: 100, days_before: 0 };
-
-    return { ...config };
-  }
-
-  return structuredClone(DEFAULT_CAMPAIGN_CONFIG[trigger]);
-}
+const SEED_CONFIG: Record<CreatableCampaignTrigger, Record<string, unknown>> = {
+  ...DEFAULT_CAMPAIGN_CONFIG,
+  birthday: { points: 100, days_before: 0 } satisfies BirthdayConfig,
+};
 
 function emptySeed(trigger: CreatableCampaignTrigger, name: string): CampaignFormValues {
   return {
     name,
     status: 'active',
-    config: seedConfig(trigger),
+    config: structuredClone(SEED_CONFIG[trigger]),
     conditions: [],
     starts_at: null,
     ends_at: null,

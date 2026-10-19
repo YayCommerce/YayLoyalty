@@ -55,13 +55,13 @@ public function test_due_days_adds_feb_29_in_a_non_leap_year(): void {
 - Modify: `includes/Repositories/CustomerRepository.php`
 - Modify: `includes/Database/Schema/CustomersTable.php` (docblock only: birthday columns are now in use)
 
-**Interfaces:** Produces `get_birthday_month/day()`, `set_birthday()`, `birthday_user_ids()` (README contract). No DDL change: the columns already exist.
+**Interfaces:** Produces `get_birthday_month/day()`, `set_birthday()`, `birthdays_on()` (README contract). No DDL change: the columns already exist.
 
 - [ ] **Step 1: Map `birthday_month` / `birthday_day` (`%d`, nullable) on `Customer`.**
 - [ ] **Step 2: Add `set_birthday()`** — `ensure_row()`, then `update()` both columns (null binds as SQL NULL).
-- [ ] **Step 3: Add `birthday_user_ids()`** — `WHERE user_id > %d AND ( (birthday_month = %d AND birthday_day = %d) OR … ) ORDER BY user_id LIMIT %d`; empty `$days` returns `[]` without a query.
+- [ ] **Step 3: Add `birthdays_on()`** — `WHERE user_id > %d AND ( (birthday_month = %d AND birthday_day = %d) OR … ) ORDER BY user_id LIMIT %d`; empty `$days` returns `[]` without a query.
 - [ ] **Step 4: Verify** with `wp eval` (see memory note on the Local socket):
-  `$r = new YayLoyalty\Repositories\CustomerRepository(); $r->set_birthday( 2, 10, 19 ); var_dump( $r->find_by_user_id( 2 )->get_birthday_day(), $r->birthday_user_ids( [ [ 'month' => 10, 'day' => 19 ] ], 0, 100 ) ); $r->set_birthday( 2, null, null ); var_dump( $r->find_by_user_id( 2 )->get_birthday_day() );`
+  `$r = new YayLoyalty\Repositories\CustomerRepository(); $r->set_birthday( 2, 10, 19 ); var_dump( $r->find_by_user_id( 2 )->get_birthday_day(), $r->birthdays_on( [ [ 'month' => 10, 'day' => 19 ] ], 0, 100 ) ); $r->set_birthday( 2, null, null ); var_dump( $r->find_by_user_id( 2 )->get_birthday_day() );`
   Expected: `int(19)`, an array containing `2`, then `NULL`.
 - [ ] **Step 5: Commit** — the three files; `feat(customers): store and select customer birthdays`.
 
@@ -90,11 +90,11 @@ public function test_due_days_adds_feb_29_in_a_non_leap_year(): void {
 - Modify: `includes/Engine/ActDeact.php` and `includes/Engine/Expiry/ExpiryRunner.php` (`deactivate()` cancels the whole `ExpiryRunner::GROUP`, so Pro's job stops too without Lite naming it: `ExpiryRunner::unschedule()`, whose only caller is `deactivate()`, becomes `unschedule_group()` and calls `as_unschedule_all_actions( '', [], self::GROUP )`)
 - Test: `tests/integration/Earning/BirthdayAwardTest.php`
 
-**Interfaces:** Consumes `BirthdayWindow`, `birthday_user_ids()`, `from_user( …, $extra )`, `BirthdayHandler`, `EarningService::build()->award()`, `LedgerRepository::find_by_idempotency_key()`, `IdempotencyKey::compose()`, `CampaignRepository::live_for_trigger()`. Produces `BirthdayRunner` (README contract).
+**Interfaces:** Consumes `BirthdayWindow`, `birthdays_on()`, `from_user( …, $extra )`, `BirthdayHandler`, `EarningService::build()->award()`, `LedgerRepository::find_by_idempotency_key()`, `IdempotencyKey::compose()`, `CampaignRepository::live_for_trigger()`. Produces `BirthdayRunner` (README contract).
 
 `register()`/`schedule()` copy `ExpiryRunner`'s (admin non-ajax or cron only; `as_schedule_recurring_action( time(), DAY_IN_SECONDS, RUN_ACTION, [], GROUP )`). `run( $after_user_id = 0 )`:
 1. Live birthday campaigns at `Dates::now()`; none → return. `$days_before` = max of their `days_before`.
-2. `$site_today` from the constructor, else today in `wp_timezone()`; `$ids = birthday_user_ids( BirthdayWindow::due_days( $site_today, $days_before ), $after_user_id, BATCH_SIZE )`.
+2. `$site_today` from the constructor, else today in `wp_timezone()`; `$birthdays = birthdays_on( BirthdayWindow::due_days( $site_today, $days_before ), $after_user_id, BATCH_SIZE )`.
 3. Per id, inside a try/catch that logs via `Log::warning( 'BirthdayRunner', … )`: `next()` from the stored month/day; skip if `find_by_idempotency_key( IdempotencyKey::compose( LedgerType::EARN, $id, ReferenceType::BIRTHDAY, $year, CampaignTrigger::BIRTHDAY ) )` exists; else `award( CampaignTrigger::BIRTHDAY, ContextFactory::from_user( $id, Dates::now(), [ 'birthday_year' => …, 'birthday_days_until' => … ] ) )`.
 4. Full batch → `as_enqueue_async_action( RUN_ACTION, [ end( $ids ) ], GROUP )`.
 

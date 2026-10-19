@@ -70,7 +70,7 @@
 - `BirthdayWindow::due_days( \DateTimeImmutable $site_today, int $days_before ): array<int, array{month: int, day: int}>` — every (month, day) whose next occurrence is 0..`$days_before` days away, adding (2, 29) when Feb 28 is in range in a non-leap year; P1T1 → P1T4.
 - `Customer::get_birthday_month(): ?int`, `Customer::get_birthday_day(): ?int` — P1T2 → P1T4, P1T5, P3T1.
 - `CustomerRepository::set_birthday( int $user_id, ?int $month, ?int $day ): void` — calls `ensure_row()` first; P1T2 → P1T5.
-- `CustomerRepository::birthday_user_ids( array $days, int $after_user_id, int $limit ): int[]` — `$days` from `due_days()`, ascending `user_id > $after_user_id`; P1T2 → P1T4.
+- `CustomerRepository::birthdays_on( array $days, int $after_user_id, int $limit ): array<int, array{user_id: int, month: int, day: int}>` — `$days` from `due_days()`, ascending `user_id > $after_user_id`, each row with the birthday it matched so the run need not reload it; P1T2 → P1T4. (Was `birthday_user_ids(): int[]`; changed by the pre-PR tidy.)
 - Filter `yayloyalty_campaign_config_schema` ( array $schema ): array — applied in `Campaign::config_schema()`; P1T3. Pro adds `birthday => [ points: int min 0, days_before: int min 0 max 30 ]` and drops `birthday` from `add_config_keys()`.
 - `ContextFactory::from_user( int $user_id, string $occurred_at, array $extra = [] ): Context` — P1T3 → P1T4.
 - Context extras `birthday_year` (int) and `birthday_days_until` (int) — set by P1T4, read by `BirthdayHandler`.

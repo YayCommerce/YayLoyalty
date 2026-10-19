@@ -13,7 +13,7 @@ import {
   campaignUpdateInputSchema,
   CreatableCampaignTrigger,
   DEFAULT_CAMPAIGN_CONFIG,
-  LITE_CAMPAIGN_TRIGGERS,
+  isCreatableCampaignTrigger,
 } from '@/lib/schema/campaign.schema';
 import { validateConditionValue } from './CampaignEditorConditions';
 
@@ -68,9 +68,8 @@ export interface CampaignCreateSeed {
  * that trigger cannot accept.
  */
 export function duplicateToFormValues(source: Campaign): CampaignCreateSeed {
-  const creatable: readonly string[] = [...LITE_CAMPAIGN_TRIGGERS, 'birthday'];
-  const isCreatable = creatable.includes(source.trigger);
-  const trigger = isCreatable ? (source.trigger as CreatableCampaignTrigger) : 'purchase';
+  const trigger: CreatableCampaignTrigger = isCreatableCampaignTrigger(source.trigger) ? source.trigger : 'purchase';
+  const isCreatable = trigger === source.trigger;
 
   return {
     trigger,

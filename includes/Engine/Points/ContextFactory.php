@@ -70,10 +70,10 @@ final class ContextFactory {
     }
 
     /**
-     * occurred_at is the registration time, so a signup campaign that has since ended still applies
-     * to a late-processed registration.
+     * A user event with no order or comment: a signup passes the registration time, so a signup campaign that
+     * has since ended still applies to a late-processed registration; the birthday run passes now.
      *
-     * @param string               $registered_at UTC MySQL datetime (wp_users.user_registered is already UTC).
+     * @param string               $registered_at The event's UTC MySQL datetime (wp_users.user_registered is already UTC).
      * @param array<string, mixed> $extra         Facts the trigger's handler reads, such as the birthday's year.
      */
     public static function from_user( int $user_id, string $registered_at, array $extra = [] ): Context {

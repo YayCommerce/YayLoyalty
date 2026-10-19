@@ -60,7 +60,7 @@ final class LauncherEarnRules {
      *
      * @return array{campaign: Campaign, value: float}|null
      */
-    private static function advertised( PointsEngine $engine, string $trigger, Context $ctx ): ?array {
+    public static function advertised( PointsEngine $engine, string $trigger, Context $ctx ): ?array {
         try {
             return $engine->advertised( $trigger, $ctx );
         } catch ( \Throwable $e ) {

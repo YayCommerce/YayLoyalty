@@ -1,7 +1,13 @@
 import { useFormContext } from 'react-hook-form';
 import { __, sprintf } from '@wordpress/i18n';
 
-import { BirthdayConfig, CampaignTrigger, ReviewConfig, SignupConfig } from '@/lib/schema/campaign.schema';
+import {
+  BIRTHDAY_DAYS_BEFORE_MAX,
+  BirthdayConfig,
+  CampaignTrigger,
+  ReviewConfig,
+  SignupConfig,
+} from '@/lib/schema/campaign.schema';
 import { Field, FieldContent, FieldDescription, FieldLabel } from '@/components/ui/field';
 import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
 import { Switch } from '@/components/ui/switch';
@@ -162,7 +168,7 @@ function RewardFieldsBirthday() {
             size="small"
             className="w-36"
             min={0}
-            max={30}
+            max={BIRTHDAY_DAYS_BEFORE_MAX}
             value={config.days_before ?? 0}
             onValueChange={(days_before) => patchConfig({ days_before })}
           >

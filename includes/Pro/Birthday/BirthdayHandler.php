@@ -31,7 +31,12 @@ final class BirthdayHandler implements TriggerHandler {
     public function is_eligible( Campaign $campaign, Context $ctx ): bool {
         $days_until = $ctx->get_extra( self::EXTRA_DAYS_UNTIL );
 
-        return null !== $days_until && (int) $days_until <= (int) ( $campaign->get_config()['days_before'] ?? 0 );
+        return null !== $days_until && (int) $days_until <= self::days_before( $campaign );
+    }
+
+    /** How many days before the birthday $campaign pays; 0 pays on the day. */
+    public static function days_before( Campaign $campaign ): int {
+        return (int) ( $campaign->get_config()['days_before'] ?? 0 );
     }
 
     public function compute_points( Campaign $campaign, Context $ctx ): Breakdown {

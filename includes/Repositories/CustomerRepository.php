@@ -199,12 +199,13 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
     }
 
     /**
-     * Customers whose birthday is one of $days, by ascending user id after $after_user_id, so a batched run can resume.
+     * Customers whose birthday is one of $days, with that birthday, by ascending user id after $after_user_id,
+     * so a batched run can resume.
      *
      * @param array<int, array{month: int, day: int}> $days BirthdayWindow::due_days().
-     * @return int[]
+     * @return array<int, array{user_id: int, month: int, day: int}>
      */
-    public function birthday_user_ids( array $days, int $after_user_id, int $limit ): array {
+    public function birthdays_on( array $days, int $after_user_id, int $limit ): array {
         global $wpdb;
 
         if ( [] === $days ) {
@@ -224,15 +225,25 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
         $match_sql = implode( ' OR ', $matches );
 
         // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $match_sql holds only placeholders, and $values binds them: the sniff cannot count through it.
-        $ids = $wpdb->get_col( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
-                'SELECT user_id FROM `' . esc_sql( $this->table() ) . "` WHERE user_id > %d AND ( {$match_sql} ) ORDER BY user_id LIMIT %d",
+                'SELECT user_id, birthday_month, birthday_day FROM `' . esc_sql( $this->table() ) . "` WHERE user_id > %d AND ( {$match_sql} ) ORDER BY user_id LIMIT %d",
                 $values
-            )
+            ),
+            ARRAY_A
         );
         // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
 
-        return array_map( 'intval', is_array( $ids ) ? $ids : [] );
+        return array_map(
+            static function ( array $row ): array {
+                return [
+                    'user_id' => (int) $row['user_id'],
+                    'month'   => (int) $row['birthday_month'],
+                    'day'     => (int) $row['birthday_day'],
+                ];
+            },
+            is_array( $rows ) ? $rows : []
+        );
     }
 
     /**

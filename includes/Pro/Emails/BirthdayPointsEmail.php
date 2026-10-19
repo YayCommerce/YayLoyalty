@@ -7,7 +7,6 @@ use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Models\LedgerEntry;
-use YayLoyalty\Repositories\LedgerRepository;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -51,18 +50,12 @@ class BirthdayPointsEmail extends LedgerEntryEmail {
 
     /** Birthday awards with points left, so a later clawback never sends a stale email. */
     protected function accepts( LedgerEntry $entry ): bool {
-        return LedgerSource::BIRTHDAY === $entry->get_source()
-            && $entry->get_points() > 0
-            && ( new LedgerRepository() )->sum_refunded_for( $entry, false ) < $entry->get_points();
+        return LedgerSource::BIRTHDAY === $entry->get_source() && self::has_points_left( $entry );
     }
 
     /** @return array{points: string, points_label: string, balance: string} */
     protected function amounts( LedgerEntry $entry ): array {
-        return [
-            'points'       => SettingsHelper::format_number( $entry->get_points() ),
-            'points_label' => SettingsHelper::points_label( $entry->get_points() ),
-            'balance'      => SettingsHelper::format_number( $entry->get_balance_after() ),
-        ];
+        return self::earned_amounts( $entry );
     }
 
     /** Previews have no real award, so they show a made-up one, greeting whoever is looking. */

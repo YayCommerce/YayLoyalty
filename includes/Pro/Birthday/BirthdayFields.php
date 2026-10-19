@@ -21,11 +21,11 @@ final class BirthdayFields {
 
     public function register(): void {
         add_action( 'woocommerce_register_form', [ $this, 'render_register' ] );
-        add_filter( 'woocommerce_registration_errors', [ $this, 'validate_register' ] );
+        add_filter( 'woocommerce_registration_errors', [ $this, 'validate' ] );
         add_action( 'woocommerce_created_customer', [ $this, 'save' ] );
 
         add_action( 'woocommerce_edit_account_form', [ $this, 'render_edit_account' ] );
-        add_action( 'woocommerce_save_account_details_errors', [ $this, 'validate_edit_account' ] );
+        add_action( 'woocommerce_save_account_details_errors', [ $this, 'validate' ] );
         add_action( 'woocommerce_save_account_details', [ $this, 'save' ] );
     }
 
@@ -54,22 +54,17 @@ final class BirthdayFields {
     }
 
     /**
+     * Adds the invalid-birthday error. A filter on registration and an action on Account details, which ignores the return.
+     *
      * @param \WP_Error $errors
      * @return \WP_Error
      */
-    public function validate_register( $errors ) {
+    public function validate( $errors ) {
         if ( $errors instanceof \WP_Error && self::is_rejected() ) {
-            $errors->add( 'yayloyalty_birthday', self::invalid_message() );
+            $errors->add( 'yayloyalty_birthday', __( 'Please enter a valid birthday.', 'yayloyalty' ) );
         }
 
         return $errors;
-    }
-
-    /** @param \WP_Error $errors */
-    public function validate_edit_account( $errors ): void {
-        if ( $errors instanceof \WP_Error && self::is_rejected() ) {
-            $errors->add( 'yayloyalty_birthday', self::invalid_message() );
-        }
     }
 
     /**
@@ -111,10 +106,7 @@ final class BirthdayFields {
      * @return array{month: ?int, day: ?int}|null
      */
     private static function posted(): ?array {
-        // phpcs:disable WordPress.Security.NonceVerification.Missing -- WooCommerce verified its form nonce before this hook.
-        $month = isset( $_POST[ self::FIELD_MONTH ] ) ? absint( wp_unslash( $_POST[ self::FIELD_MONTH ] ) ) : 0;
-        $day   = isset( $_POST[ self::FIELD_DAY ] ) ? absint( wp_unslash( $_POST[ self::FIELD_DAY ] ) ) : 0;
-        // phpcs:enable WordPress.Security.NonceVerification.Missing
+        list( $month, $day ) = self::raw_posted();
 
         if ( 0 === $month && 0 === $day ) {
             return [
@@ -133,20 +125,27 @@ final class BirthdayFields {
         ];
     }
 
-    private static function invalid_message(): string {
-        return __( 'Please enter a valid birthday.', 'yayloyalty' );
+    /**
+     * The posted month and day as integers, 0 for a part left blank or absent.
+     *
+     * @return array{0: int, 1: int}
+     */
+    private static function raw_posted(): array {
+        // phpcs:disable WordPress.Security.NonceVerification.Missing -- WooCommerce verified its form nonce before this hook; a render only redisplays the visitor's own input.
+        return [
+            isset( $_POST[ self::FIELD_MONTH ] ) ? absint( wp_unslash( $_POST[ self::FIELD_MONTH ] ) ) : 0,
+            isset( $_POST[ self::FIELD_DAY ] ) ? absint( wp_unslash( $_POST[ self::FIELD_DAY ] ) ) : 0,
+        ];
+        // phpcs:enable WordPress.Security.NonceVerification.Missing
     }
 
     /** The field, preselecting what was just posted, else $month and $day. */
     private static function render( ?int $month, ?int $day ): void {
         global $wp_locale;
 
-        // phpcs:disable WordPress.Security.NonceVerification.Missing -- only redisplays the visitor's own input.
         if ( self::is_posted() ) {
-            $month = isset( $_POST[ self::FIELD_MONTH ] ) ? absint( wp_unslash( $_POST[ self::FIELD_MONTH ] ) ) : 0;
-            $day   = isset( $_POST[ self::FIELD_DAY ] ) ? absint( wp_unslash( $_POST[ self::FIELD_DAY ] ) ) : 0;
+            list( $month, $day ) = self::raw_posted();
         }
-        // phpcs:enable WordPress.Security.NonceVerification.Missing
         ?>
         <p class="woocommerce-form-row woocommerce-form-row--wide form-row form-row-wide yayloyalty-birthday-field">
             <label for="<?php echo esc_attr( self::FIELD_MONTH ); ?>">
