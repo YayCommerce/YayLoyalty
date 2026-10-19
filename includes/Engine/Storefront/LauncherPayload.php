@@ -4,6 +4,7 @@ namespace YayLoyalty\Engine\Storefront;
 use YayLoyalty\Engine\Earning\EarningService;
 use YayLoyalty\Engine\Points\ContextFactory;
 use YayLoyalty\Engine\Points\PointsEngine;
+use YayLoyalty\Engine\Redemption\ProgramGate as RedemptionProgramGate;
 use YayLoyalty\Engine\Rewards\Clamp;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Models\Reward;
@@ -60,8 +61,15 @@ final class LauncherPayload {
         }
 
         $customer = $this->customers->find_by_user_id( $user_id );
+        $payload  = $this->for_balance( $design, null === $customer ? 0 : $customer->get_balance(), EarningService::points_left_today( $user_id ) );
 
-        return $this->for_balance( $design, null === $customer ? 0 : $customer->get_balance(), EarningService::points_left_today( $user_id ) );
+        // A shopper checkout refuses (excluded role, opted out, program paused, coupons off) is promised no discount.
+        if ( null !== RedemptionProgramGate::shopper_denial( $user_id ) ) {
+            $payload['redeem']          = null;
+            $payload['member']['worth'] = null;
+        }
+
+        return $payload;
     }
 
     /**
