@@ -8,6 +8,7 @@ use YayLoyalty\Engine\Rewards\Handlers\Registry;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Enums\RewardType;
 use YayLoyalty\Pro\Birthday\BirthdayHandler;
+use YayLoyalty\Pro\Birthday\BirthdayRunner;
 use YayLoyalty\Pro\Controllers\CampaignPerformanceRestController;
 use YayLoyalty\Pro\Controllers\CampaignPreviewRestController;
 use YayLoyalty\Pro\Controllers\CustomerSegmentsRestController;
@@ -94,6 +95,7 @@ final class YayLoyaltyPro {
         add_filter( EarningService::POINTS_LEFT_TODAY_FILTER, [ $daily_limit, 'left_today' ], 10, 2 );
 
         ( new RewardsPanel() )->register();
+        ( new BirthdayRunner() )->register();
 
         /** Fires once Pro has attached its hooks. Pro-internal; absent from Lite. */
         do_action( 'yayloyalty_pro_booted' );

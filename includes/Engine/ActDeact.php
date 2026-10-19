@@ -100,8 +100,8 @@ class ActDeact {
         // The next activation flushes the rewrite rules again.
         delete_option( AccountRewards::OPTION_REWRITE_VERSION );
 
-        // The next request after reactivation schedules it again.
-        ExpiryRunner::unschedule();
+        // Every job in the group, so a build's own jobs stop too; the next request after reactivation schedules them again.
+        ExpiryRunner::unschedule_group();
     }
 
     protected static function single_activate() {

@@ -162,10 +162,10 @@ final class ExpiryRunner {
         return count( $user_ids ) === self::BATCH_SIZE && $expired > 0;
     }
 
-    /** Removes every pending run. Called on deactivation. */
-    public static function unschedule(): void {
+    /** Removes every pending action in GROUP, this job's and any other the build schedules there. Called on deactivation. */
+    public static function unschedule_group(): void {
         if ( function_exists( 'as_unschedule_all_actions' ) ) {
-            as_unschedule_all_actions( self::RUN_ACTION );
+            as_unschedule_all_actions( '', [], self::GROUP );
         }
     }
 }
