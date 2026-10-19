@@ -9,7 +9,6 @@ import { storeCurrency } from '@/lib/helpers/format.helper';
 import { useCreateRewardMutation, useRewardQuery, useUpdateRewardMutation } from '@/lib/queries/reward.queries';
 import {
   CatalogRewardType,
-  isCatalogRewardType,
   normalizeRewardConditions,
   resolveRewardDisplayStatus,
   Reward,
@@ -29,7 +28,7 @@ import NotFoundPage from '@/pages/404';
 import { statusLabel } from '@/pro/campaigns/campaign-labels';
 import { CampaignStatusBadge } from '@/pro/campaigns/CampaignStatusBadge';
 import { RewardArchiveDialog } from '../archive/RewardArchiveDialog';
-import { templateTitle, typeLabel } from '../reward-labels';
+import { isCreatableRewardType, templateTitle, typeLabel } from '../reward-labels';
 import {
   duplicateToFormValues,
   EDITABLE_REWARD_STATUSES,
@@ -145,7 +144,7 @@ export function RewardCreator({ type, duplicateFromId }: { type: string; duplica
   // enabled: id > 0 inside the hook means an absent duplicateFromId never fetches.
   const sourceQuery = useRewardQuery(duplicateFromId ?? 0);
 
-  if (!isCatalogRewardType(type)) {
+  if (!isCreatableRewardType(type)) {
     return <NotFoundPage />;
   }
 

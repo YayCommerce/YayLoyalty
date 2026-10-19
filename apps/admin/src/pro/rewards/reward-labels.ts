@@ -62,13 +62,16 @@ export function templateTitle(type: CatalogRewardType): string {
   }
 }
 
-/** Display order of the catalog starting points, on the "Add a reward" page and the empty-state cards. */
-export const REWARD_TEMPLATE_ORDER: CatalogRewardType[] = [
-  'fixed_coupon',
-  'free_shipping',
-  'percent_coupon',
-  'free_product',
-];
+/**
+ * Display order of the catalog starting points, on the "Add a reward" page and the empty-state cards; the types
+ * a merchant can create. Free shipping and free product are left out of this release: their existing rewards
+ * still list and edit, but no new one can be created or duplicated.
+ */
+export const REWARD_TEMPLATE_ORDER: CatalogRewardType[] = ['fixed_coupon', 'percent_coupon'];
+
+export function isCreatableRewardType(type: string): type is CatalogRewardType {
+  return (REWARD_TEMPLATE_ORDER as readonly string[]).includes(type);
+}
 
 /** What a catalog type gives the customer, for the "Add a reward" cards. */
 export function templateDescription(type: CatalogRewardType): string {

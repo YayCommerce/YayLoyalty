@@ -36,6 +36,7 @@ import {
   availabilityLabel,
   costLabel,
   headerSubtitle,
+  isCreatableRewardType,
   resolveRewardsScreen,
   RewardsScreen,
   rewardSubtitle,
@@ -356,9 +357,11 @@ function RewardRow({
               ) : (
                 <>
                   {/* Create mode, seeded from this reward; nothing is written until Save. */}
-                  <DropdownMenuItem onSelect={() => navigate(`/rewards/new/${reward.type}?from=${reward.id}`)}>
-                    {__('Duplicate', 'yayloyalty')}
-                  </DropdownMenuItem>
+                  {isCreatableRewardType(reward.type) && (
+                    <DropdownMenuItem onSelect={() => navigate(`/rewards/new/${reward.type}?from=${reward.id}`)}>
+                      {__('Duplicate', 'yayloyalty')}
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem variant="destructive" onSelect={() => onArchiveOrDelete(reward)}>
                     {__('Archive', 'yayloyalty')}
                   </DropdownMenuItem>
