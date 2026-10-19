@@ -1,4 +1,4 @@
-import { Trash } from '@phosphor-icons/react';
+import { Trash2Icon } from 'lucide-react';
 
 import { Button } from '../button';
 
@@ -42,7 +42,7 @@ function ImagePicker({
 
       {coverSrc && (
         <Button variant="outline" onClick={handleRemoveCover}>
-          <Trash className="text-red-600" />
+          <Trash2Icon className="text-red-600" />
         </Button>
       )}
     </div>

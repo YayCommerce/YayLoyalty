@@ -333,7 +333,7 @@ build_package() {
     print_step "Creating ZIP archive..."
     cd "$RELEASE_DIR"
     rm -f "$zip_name"
-    zip -r -q "$zip_name" "$PLUGIN_SLUG"
+    zip -r -q -9 "$zip_name" "$PLUGIN_SLUG"
     rm -rf "$temp_dir"
 
     # Restore the dev autoload maps for local development.

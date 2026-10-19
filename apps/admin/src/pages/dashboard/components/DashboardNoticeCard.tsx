@@ -1,4 +1,4 @@
-import { XIcon } from '@phosphor-icons/react';
+import { XIcon } from 'lucide-react';
 import { Link } from 'react-router';
 import { __ } from '@wordpress/i18n';
 
