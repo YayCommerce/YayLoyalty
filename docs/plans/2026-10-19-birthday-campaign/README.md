@@ -2,7 +2,7 @@
 
 > **For agentic workers:** execute phases in order. Read this README, then the current phase file. Do not start a phase until the previous phase's exit criterion has been verified and `/yayplancheck` has passed on it.
 
-**Status:** active
+**Status:** done 2026-10-19
 **Goal:** Pro merchants run a Birthday campaign that pays each customer a set number of points once per birthday, emails them, and is advertised in "Ways to earn".
 **Spec:** none, planned from the request
 **Architecture:** A Pro `BirthdayHandler` plugs into the existing engine through `yayloyalty_register_trigger_handlers`, and a Pro Action Scheduler job (`BirthdayRunner`) calls the existing `EarningService::award()` for each customer whose birthday window contains the site's today. Idempotency comes from the ledger's UNIQUE key `earn:{user}:birthday:{year}:birthday` (where `ReferenceType::BIRTHDAY` = the birthday's year), not a new claim column, so no schema change is needed and `LedgerService` gets no sixth constructor. Customers enter month + day in WooCommerce's own registration and Edit-account forms; the dormant `customers.birthday_month/day` columns hold it.
@@ -61,8 +61,8 @@
 | Phase | Delivers (user-visible) | Exit criterion (exact check) | Status |
 |---|---|---|---|
 | 1 | Merchant creates a Birthday campaign; customers enter a birthday; the daily run pays it | Acceptance 7 minus the email; `composer test -- --filter BirthdayWindowTest` and `composer test:integration -- --filter BirthdayAwardTest` print `OK` | done 2026-10-19 |
-| 2 | Birthday points email replaces Points earned for birthday awards | `composer test:integration -- --filter BirthdayPointsEmailTest` prints `OK`; Acceptance 7 email part | pending |
-| 3 | "Ways to earn" shows birthday | Acceptance 6 on the storefront; Lite zip validates | pending |
+| 2 | Birthday points email replaces Points earned for birthday awards | `composer test:integration -- --filter BirthdayPointsEmailTest` prints `OK`; Acceptance 7 email part | done 2026-10-19 |
+| 3 | "Ways to earn" shows birthday | Acceptance 6 on the storefront; Lite zip validates | done 2026-10-19 |
 
 ## Interface contract
 
