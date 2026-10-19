@@ -20,6 +20,7 @@ import {
   CAMPAIGN_DISPLAY_STATUSES,
   CampaignDisplayStatus,
   findBuiltinCampaign,
+  isCreatableCampaignTrigger,
   LITE_CAMPAIGN_TRIGGERS,
   resolveCampaignDisplayStatus,
 } from '@/lib/schema/campaign.schema';
@@ -68,12 +69,13 @@ const SEARCH_THRESHOLD = 20;
 /** Table columns, for colSpan on rows that span the whole width. */
 const COLUMN_COUNT = 10;
 
-const GROUP_ORDER: readonly CampaignGroupKey[] = ['purchase', 'signup', 'review', 'other'];
+const GROUP_ORDER: readonly CampaignGroupKey[] = ['purchase', 'signup', 'review', 'birthday', 'other'];
 
 const GROUP_LABELS: Record<CampaignGroupKey, string> = {
   purchase: __('Purchase', 'yayloyalty'),
   signup: __('Signup', 'yayloyalty'),
   review: __('Review', 'yayloyalty'),
+  birthday: __('Birthday', 'yayloyalty'),
   other: __('Other', 'yayloyalty'),
 };
 
@@ -733,7 +735,7 @@ function showMoreLabel(group: CampaignGroupKey): string {
   }
 
   return sprintf(
-    /* translators: %s: the group's label (Purchase, Signup, Review), lowercased. */
+    /* translators: %s: the group's label (Purchase, Signup, Review, Birthday), lowercased. */
     __('Show the other %s campaigns', 'yayloyalty'),
     GROUP_LABELS[group].toLowerCase(),
   );
@@ -845,8 +847,15 @@ function SortableCampaignRow({
               </DropdownMenuItem>
             )}
             {/* Create mode, seeded from this campaign — CampaignCreator's duplicateFrom path.
-                A real POST on Save; this campaign itself is never written to. */}
-            <DropdownMenuItem onSelect={() => navigate(`/campaigns/new/purchase?from=${row.id}`)}>
+                A real POST on Save; this campaign itself is never written to. A trigger with no
+                template falls back to purchase, as duplicateToFormValues() does. */}
+            <DropdownMenuItem
+              onSelect={() =>
+                navigate(
+                  `/campaigns/new/${isCreatableCampaignTrigger(row.trigger) ? row.trigger : 'purchase'}?from=${row.id}`,
+                )
+              }
+            >
               {__('Duplicate', 'yayloyalty')}
             </DropdownMenuItem>
             {/* Shown for built-ins too, as their substitute for Archive. Deferred so the dropdown closes first. */}

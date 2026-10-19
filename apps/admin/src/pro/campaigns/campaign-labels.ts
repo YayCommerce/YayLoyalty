@@ -14,11 +14,11 @@ import type { badgeVariants } from '@/components/ui/badge';
 /** Campaign presentation strings derived from the real fields; the wire carries none. */
 
 /** A campaign only competes within its group; see triggerGroup(). */
-export type CampaignGroupKey = 'purchase' | 'signup' | 'review' | 'other';
+export type CampaignGroupKey = 'purchase' | 'signup' | 'review' | 'birthday' | 'other';
 
-/** purchase/signup/review each get a group; the rarer Pro triggers share a catch-all. */
+/** purchase/signup/review/birthday each get a group; the rarer Pro triggers share a catch-all. */
 export function triggerGroup(trigger: CampaignTrigger): CampaignGroupKey {
-  if (trigger === 'purchase' || trigger === 'signup' || trigger === 'review') {
+  if (trigger === 'purchase' || trigger === 'signup' || trigger === 'review' || trigger === 'birthday') {
     return trigger;
   }
 
