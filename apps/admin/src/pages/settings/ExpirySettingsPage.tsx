@@ -137,7 +137,11 @@ export default function ExpirySettingsPage() {
     <FormProvider {...form}>
       <form onSubmit={handleSave} className="flex flex-col gap-4">
         {IS_PRO_BUILD && <ExpiryModeSection />}
-        {IS_PRO_BUILD && mode === 'batch' ? <BatchExpirySection /> : <ExpiryInactivityCard />}
+        {IS_PRO_BUILD && mode === 'batch' ? (
+          <BatchExpirySection />
+        ) : (
+          <ExpiryInactivityCard showSwitch={!IS_PRO_BUILD} />
+        )}
         <ExpiryReminderRow />
         {!IS_PRO_BUILD && <ExpiryMoreInProCard />}
 

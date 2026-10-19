@@ -6,10 +6,24 @@ import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components
 import { Switch } from '@/components/ui/switch';
 import { ExpirySettingsFormValues } from './expiry-settings.form';
 
-/** Inactivity expiry: the on/off switch and the window in days, disabled while off. */
-export function ExpiryInactivityCard() {
+/**
+ * Inactivity expiry: the window in days, disabled while off. Shows its own on/off switch unless
+ * `showSwitch` is false, where the card above it holds the switch.
+ */
+export function ExpiryInactivityCard({ showSwitch = true }: { showSwitch?: boolean }) {
   const { control } = useFormContext<ExpirySettingsFormValues>();
   const isEnabled = useWatch({ control, name: 'expiry.enabled' });
+
+  if (!showSwitch) {
+    return (
+      <Card className="gap-3">
+        <CardHeader>
+          <CardTitle>{__('Inactivity expiry', 'yayloyalty')}</CardTitle>
+        </CardHeader>
+        <InactivityDaysRow isEnabled={isEnabled} />
+      </Card>
+    );
+  }
 
   return (
     <Card className="gap-3">
@@ -33,31 +47,39 @@ export function ExpiryInactivityCard() {
           )}
         />
       </CardHeader>
-      <CardContent className="flex flex-wrap items-center gap-3">
-        <label htmlFor="expiry-inactivity-days" className="text-sm">
-          {__('Expire after', 'yayloyalty')}
-        </label>
-        <Controller
-          control={control}
-          name="expiry.inactivity_days"
-          render={({ field }) => (
-            <NumberInputRoot
-              size="small"
-              className="w-32"
-              min={1}
-              disabled={!isEnabled}
-              value={field.value}
-              onValueChange={field.onChange}
-            >
-              <NumberInputInput id="expiry-inactivity-days" />
-              <NumberInputUnit unit={__('days', 'yayloyalty')} />
-            </NumberInputRoot>
-          )}
-        />
-        <span className="text-muted-foreground text-sm">
-          {__('since the customer last earned or redeemed', 'yayloyalty')}
-        </span>
-      </CardContent>
+      <InactivityDaysRow isEnabled={isEnabled} />
     </Card>
+  );
+}
+
+function InactivityDaysRow({ isEnabled }: { isEnabled: boolean }) {
+  const { control } = useFormContext<ExpirySettingsFormValues>();
+
+  return (
+    <CardContent className="flex flex-wrap items-center gap-3">
+      <label htmlFor="expiry-inactivity-days" className="text-sm">
+        {__('Expire after', 'yayloyalty')}
+      </label>
+      <Controller
+        control={control}
+        name="expiry.inactivity_days"
+        render={({ field }) => (
+          <NumberInputRoot
+            size="small"
+            className="w-32"
+            min={1}
+            disabled={!isEnabled}
+            value={field.value}
+            onValueChange={field.onChange}
+          >
+            <NumberInputInput id="expiry-inactivity-days" />
+            <NumberInputUnit unit={__('days', 'yayloyalty')} />
+          </NumberInputRoot>
+        )}
+      />
+      <span className="text-muted-foreground text-sm">
+        {__('since the customer last earned or redeemed', 'yayloyalty')}
+      </span>
+    </CardContent>
   );
 }
