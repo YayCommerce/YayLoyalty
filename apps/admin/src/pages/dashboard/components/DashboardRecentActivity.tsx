@@ -70,7 +70,11 @@ export function DashboardRecentActivity({ activity }: { activity: Activity }) {
 
           return (
             <TableRow key={row.id}>
-              <TableCell className="max-w-40 truncate">{row.name}</TableCell>
+              <TableCell className="max-w-40 truncate">
+                <Link to={`/customers/${row.user_id}`} className="hover:underline">
+                  {row.name}
+                </Link>
+              </TableCell>
               <TableCell className="text-muted-foreground max-w-64 truncate text-xs" title={event}>
                 {event}
               </TableCell>
