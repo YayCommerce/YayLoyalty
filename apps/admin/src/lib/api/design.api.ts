@@ -22,11 +22,17 @@ export type DesignPreviewViewer = 'member' | 'guest';
  * `storefront_text.product_earn_line` and the `thankyou_*_line`s ride along with their group; the launcher doesn't draw them
  * (`ProductEarnMessage` and `ThankYouPoints` do).
  */
-export const DESIGN_PREVIEW_FIELDS = ['launcher', 'storefront_text', 'visibility.hide_on_mobile'] as const;
+export const DESIGN_PREVIEW_FIELDS = [
+  'launcher',
+  'storefront_text',
+  'visibility.hide_on_mobile',
+  'panel.show_reward_catalog',
+] as const;
 
 /** DESIGN_PREVIEW_FIELDS as the request body; the server fills the rest from the stored design. */
 export type DesignPreviewInput = Pick<Design, 'launcher' | 'storefront_text'> & {
   visibility: Pick<Design['visibility'], 'hide_on_mobile'>;
+  panel: Pick<Design['panel'], 'show_reward_catalog'>;
 };
 
 /** The storefront launcher drawn with an unsaved design; nothing is saved. */

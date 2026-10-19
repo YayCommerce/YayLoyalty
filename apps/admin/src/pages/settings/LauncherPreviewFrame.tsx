@@ -26,6 +26,7 @@ type LauncherPreviewFrameProps = {
  * storefront's media queries (the mobile bottom sheet) apply exactly as on a phone or a desktop.
  * The sandbox runs no script: the page is markup and CSS only. `allow-same-origin` only lets the admin reach in
  * to mark the highlighted text; never add `allow-scripts` beside it, since together they let a page lift its sandbox.
+ * It takes the pointer so a long panel scrolls; the page's own CSS keeps its links and buttons from taking a click.
  */
 export function LauncherPreviewFrame({
   html,
@@ -56,7 +57,7 @@ export function LauncherPreviewFrame({
           // A redraw loads a new document after the effect ran, so the mark is re-applied here.
           onLoad={() => markHighlight(frameRef.current, highlightTextKey)}
           tabIndex={-1}
-          className="pointer-events-none block origin-top-left border-0"
+          className="block origin-top-left border-0"
           style={{ width: widthPx, height: viewportHeightPx, transform: `scale(${scale})` }}
         />
       </div>

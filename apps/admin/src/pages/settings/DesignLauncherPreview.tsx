@@ -43,11 +43,19 @@ const REDRAW_DELAY_MS = 300;
  */
 export function DesignLauncherPreview() {
   const { control } = useFormContext<Design>();
-  // Only what the launcher draws: editing the pages it shows on (or Pro groups it does not render) needs no redraw.
-  const [launcher, storefrontText, isHiddenOnMobile] = useWatch({ control, name: DESIGN_PREVIEW_FIELDS });
+  // Only what the launcher draws: editing the pages it shows on (or fields it does not render) needs no redraw.
+  const [launcher, storefrontText, isHiddenOnMobile, isRewardCatalogShown] = useWatch({
+    control,
+    name: DESIGN_PREVIEW_FIELDS,
+  });
   const input = useMemo<DesignPreviewInput>(
-    () => ({ launcher, storefront_text: storefrontText, visibility: { hide_on_mobile: isHiddenOnMobile } }),
-    [launcher, storefrontText, isHiddenOnMobile],
+    () => ({
+      launcher,
+      storefront_text: storefrontText,
+      visibility: { hide_on_mobile: isHiddenOnMobile },
+      panel: { show_reward_catalog: isRewardCatalogShown },
+    }),
+    [launcher, storefrontText, isHiddenOnMobile, isRewardCatalogShown],
   );
   const [debouncedInput] = useDebouncedValue(input, REDRAW_DELAY_MS);
   const [device, setDevice] = useState<PreviewDevice>('desktop');

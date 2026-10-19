@@ -203,6 +203,19 @@ final class LauncherPayload {
     }
 
     /**
+     * One "Ways to redeem" row for a `fixed_coupon` / `percent_coupon` reward: its name, cost and one line.
+     *
+     * @return array{name: string, cost: int, text: string}
+     */
+    public static function offer( Reward $reward ): array {
+        return [
+            'name' => $reward->get_name(),
+            'cost' => (int) $reward->get_cost_points(),
+            'text' => LauncherCopy::coupon_reward_line( $reward ),
+        ];
+    }
+
+    /**
      * Where a guest can create an account, if anywhere: the signup campaign pays only a self-registration,
      * so the panel offers signup points only when the store lets shoppers register.
      *
