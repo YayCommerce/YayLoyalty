@@ -1,5 +1,5 @@
-import { QuestionIcon } from '@phosphor-icons/react';
 import clsx from 'clsx';
+import { CircleHelpIcon } from 'lucide-react';
 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -11,7 +11,7 @@ interface YayLoyaltyToolTipProps {
 }
 
 export function YayLoyaltyToolTip({
-  trigger = <QuestionIcon fill="#A0A0A7" className="text-background size-4" />,
+  trigger = <CircleHelpIcon color="#A0A0A7" strokeWidth={1.5} className="size-4" />,
   content,
   className,
   side = 'top',
