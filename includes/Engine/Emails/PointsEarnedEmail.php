@@ -39,9 +39,13 @@ class PointsEarnedEmail extends LedgerEntryEmail {
         return __( 'You earned {points_label}', 'yayloyalty' );
     }
 
-    /** Awards with points left: a deferred send can run after a refund or cancellation took them back. */
+    /**
+     * Awards with points left: a deferred send can run after a refund or cancellation took them back.
+     * Birthday awards have their own email, which takes them whether or not it is enabled.
+     */
     protected function accepts( LedgerEntry $entry ): bool {
-        return $entry->get_points() > 0
+        return LedgerSource::BIRTHDAY !== $entry->get_source()
+            && $entry->get_points() > 0
             && ( new LedgerRepository() )->sum_refunded_for( $entry, false ) < $entry->get_points();
     }
 
