@@ -58,7 +58,7 @@ final class BirthdayFields {
      * @return \WP_Error
      */
     public function validate_register( $errors ) {
-        if ( $errors instanceof \WP_Error && null === self::posted() ) {
+        if ( $errors instanceof \WP_Error && self::is_rejected() ) {
             $errors->add( 'yayloyalty_birthday', self::invalid_message() );
         }
 
@@ -67,14 +67,17 @@ final class BirthdayFields {
 
     /** @param \WP_Error $errors */
     public function validate_edit_account( $errors ): void {
-        if ( $errors instanceof \WP_Error && null === self::posted() ) {
+        if ( $errors instanceof \WP_Error && self::is_rejected() ) {
             $errors->add( 'yayloyalty_birthday', self::invalid_message() );
         }
     }
 
-    /** Stores the posted birthday. Nothing when the form had no birthday field, as checkout's account creation has not. */
+    /**
+     * Stores the posted birthday. Nothing when the form had no birthday field, as checkout's account creation
+     * has not, or when no birthday campaign is live any more, as when one was paused while the form was open.
+     */
     public function save( $user_id ): void {
-        if ( ! self::is_posted() ) {
+        if ( ! self::is_posted() || ! self::is_offered() ) {
             return;
         }
 
@@ -89,6 +92,11 @@ final class BirthdayFields {
         } catch ( \Throwable $e ) {
             Log::error( 'BirthdayFields', sprintf( 'saving the birthday of user %d failed: %s', (int) $user_id, $e->getMessage() ) );
         }
+    }
+
+    /** Whether a posted birthday field holds no real date while the field is offered. */
+    private static function is_rejected(): bool {
+        return self::is_posted() && self::is_offered() && null === self::posted();
     }
 
     private static function is_posted(): bool {
