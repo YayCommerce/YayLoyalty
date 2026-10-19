@@ -34,7 +34,9 @@ export function DashboardTopEarners({ earners }: { earners: DashboardTopEarner[]
       ) : (
         earners.slice(0, ROWS).map((row) => (
           <li key={row.user_id} className="flex items-center justify-between gap-3 py-2 text-sm">
-            <span className="truncate">{row.name}</span>
+            <Link to={`/customers/${row.user_id}`} className="truncate hover:underline">
+              {row.name}
+            </Link>
             <PointsValue value={row.balance} className="font-medium tabular-nums" />
           </li>
         ))

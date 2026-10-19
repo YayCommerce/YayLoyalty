@@ -24,27 +24,40 @@ const MODES = [
 ] as const;
 
 /**
- * Settings → Expiry "Expiry model". Batch is one-way: once saved, the inactivity option is disabled
- * and the server refuses the switch back. A section of the tab's one form; ExpirySettingsPage owns Save.
+ * Settings → Expiry "Points expiry": the on/off switch, then the model, which is picked only while on.
+ * Batch is one-way: once saved, the inactivity option is disabled and the server refuses the switch back.
+ * A section of the tab's one form; ExpirySettingsPage owns Save.
  */
 export function ExpiryModeSection() {
   const { control } = useFormContext<ExpirySettingsFormValues>();
+  const isEnabled = useWatch({ control, name: 'expiry.enabled' });
   const isBatchSaved = useSettingsQuery().data.expiry.mode === 'batch';
 
   return (
     <Card className="gap-3">
-      <CardHeader>
-        <CardTitle>{__('Expiry model', 'yayloyalty')}</CardTitle>
-        <CardDescription>{__('Switching models is a one-way migration.', 'yayloyalty')}</CardDescription>
+      <CardHeader className="flex flex-row items-start justify-between gap-4">
+        <div className="flex flex-col gap-1.5">
+          <CardTitle>
+            <label htmlFor="expiry-enabled">{__('Points expiry', 'yayloyalty')}</label>
+          </CardTitle>
+          <CardDescription>{__('When off, balances are kept until they are spent.', 'yayloyalty')}</CardDescription>
+        </div>
+        <Controller
+          control={control}
+          name="expiry.enabled"
+          render={({ field }) => (
+            <Switch id="expiry-enabled" className="w-11!" checked={field.value} onCheckedChange={field.onChange} />
+          )}
+        />
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex flex-col gap-2">
         <Controller
           control={control}
           name="expiry.mode"
           render={({ field }) => (
             <RadioGroup className="grid gap-3 sm:grid-cols-2" value={field.value} onValueChange={field.onChange}>
               {MODES.map((mode) => {
-                const isDisabled = mode.value === 'inactivity' && isBatchSaved;
+                const isDisabled = !isEnabled || (mode.value === 'inactivity' && isBatchSaved);
 
                 return (
                   <label
@@ -66,34 +79,21 @@ export function ExpiryModeSection() {
             </RadioGroup>
           )}
         />
+        <p className="text-muted-foreground text-xs">{__('Switching models is a one-way migration.', 'yayloyalty')}</p>
       </CardContent>
     </Card>
   );
 }
 
-/** Settings → Expiry in batch mode: the switch, the months each lot lasts, and the spend order. */
+/** Settings → Expiry in batch mode: the months each lot lasts and the spend order, disabled while expiry is off. */
 export function BatchExpirySection() {
   const { control } = useFormContext<ExpirySettingsFormValues>();
   const isEnabled = useWatch({ control, name: 'expiry.enabled' });
 
   return (
     <Card className="gap-3">
-      <CardHeader className="flex flex-row items-center justify-between gap-4">
-        <CardTitle>
-          <label htmlFor="expiry-batch-enabled">{__('Expire points after they are earned', 'yayloyalty')}</label>
-        </CardTitle>
-        <Controller
-          control={control}
-          name="expiry.enabled"
-          render={({ field }) => (
-            <Switch
-              id="expiry-batch-enabled"
-              className="w-11!"
-              checked={field.value}
-              onCheckedChange={field.onChange}
-            />
-          )}
-        />
+      <CardHeader>
+        <CardTitle>{__('Batch expiry', 'yayloyalty')}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center gap-3 text-sm">

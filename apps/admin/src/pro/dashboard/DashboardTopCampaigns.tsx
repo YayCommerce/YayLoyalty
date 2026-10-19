@@ -1,5 +1,7 @@
+import { Link } from 'react-router';
 import { __, sprintf } from '@wordpress/i18n';
 
+import { Can, CAP } from '@/lib/access';
 import type { DashboardTopCampaign } from '@/lib/schema/dashboard-pro.schema';
 import type { DashboardRange } from '@/lib/schema/dashboard.schema';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -40,7 +42,11 @@ export function DashboardTopCampaigns({
           campaigns.map((c) => (
             <li key={c.campaign_id} className="flex flex-col gap-0.5 py-2 text-sm">
               <div className="flex items-center justify-between gap-3">
-                <span className="truncate font-medium">{c.name}</span>
+                <Can cap={CAP.MANAGE_CAMPAIGNS} fallback={<span className="truncate font-medium">{c.name}</span>}>
+                  <Link to={`/campaigns/${c.campaign_id}/edit`} className="truncate font-medium hover:underline">
+                    {c.name}
+                  </Link>
+                </Can>
                 <PointsValue value={c.points} className="tabular-nums" />
               </div>
               <span className="text-muted-foreground truncate text-xs">
