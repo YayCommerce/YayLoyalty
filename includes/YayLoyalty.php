@@ -58,6 +58,8 @@ class YayLoyalty {
 
         if ( ! is_admin() ) {
             \YayLoyalty\Engine\Storefront\Launcher::register();
+        } else {
+            \YayLoyalty\Engine\Admin\ReviewPointsNote::register();
         }
     }
 

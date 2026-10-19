@@ -85,7 +85,7 @@ final class ReviewListener {
     }
 
     /** A product review, not a blog comment and not a reply in a review thread. */
-    private static function is_product_review( \WP_Comment $comment ): bool {
+    public static function is_product_review( \WP_Comment $comment ): bool {
         return 0 === (int) $comment->comment_parent && 'product' === get_post_type( (int) $comment->comment_post_ID );
     }
 

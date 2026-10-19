@@ -3,6 +3,7 @@ namespace YayLoyalty\Engine\Storefront;
 
 use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
+use YayLoyalty\Enums\ReferenceType;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Models\LedgerEntry;
 use YayLoyalty\Utils\Dates;
@@ -90,6 +91,12 @@ final class ShopperActivityRow {
                 return sprintf( __( '%s for discount', 'yayloyalty' ), $points_label );
 
             case LedgerType::REFUND_EARN:
+                if ( ReferenceType::COMMENT === $entry->get_reference_type() ) {
+                    /* translators: %s: the store's points label, as "Points". */
+                    return sprintf( __( '%s removed — review unpublished', 'yayloyalty' ), $points_label );
+                }
+
+                // An order reference is a cancel, a trash or the refunded status: all read as refunded to the shopper.
                 /* translators: %s: the store's points label, as "Points". */
                 return sprintf( __( '%s removed — order refunded', 'yayloyalty' ), $points_label );
 
