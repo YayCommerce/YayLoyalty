@@ -7,6 +7,7 @@ use YayLoyalty\Engine\Points\Triggers\Registry as TriggerRegistry;
 use YayLoyalty\Engine\Rewards\Handlers\Registry;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Enums\RewardType;
+use YayLoyalty\Pro\Birthday\BirthdayEarnRow;
 use YayLoyalty\Pro\Birthday\BirthdayFields;
 use YayLoyalty\Pro\Birthday\BirthdayHandler;
 use YayLoyalty\Pro\Birthday\BirthdayRunner;
@@ -98,6 +99,7 @@ final class YayLoyaltyPro {
         ( new RewardsPanel() )->register();
         ( new BirthdayRunner() )->register();
         ( new BirthdayFields() )->register();
+        ( new BirthdayEarnRow() )->register();
 
         /** Fires once Pro has attached its hooks. Pro-internal; absent from Lite. */
         do_action( 'yayloyalty_pro_booted' );
