@@ -192,7 +192,7 @@ class Campaign extends AbstractModel {
 
     /**
      * Per-trigger config schema, key => spec: what `config` may hold and what config_is_valid() checks.
-     * It covers Lite triggers only. Pro triggers add theirs through config_whitelist().
+     * It covers Lite triggers. Pro adds typed triggers through the filter, and untyped keys through config_whitelist().
      * Spec types: bool, string, enum [values], int [min], number [min, exclusive_min], int_list, limit (null = no limit).
      * Pro keys of Lite triggers are listed on purpose: a downgraded site keeps its stored values,
      * so an upgrade restores the campaign intact.
@@ -200,7 +200,7 @@ class Campaign extends AbstractModel {
      * @return array<string, array<string, array<string, mixed>>>
      */
     public static function config_schema(): array {
-        return [
+        $schema = [
             CampaignTrigger::PURCHASE => [
                 // Above 0, not from 0: a campaign that matches an order and earns 0 still stops the
                 // lower-priority campaigns below it from applying (PointsEngine takes the first match).
@@ -246,6 +246,13 @@ class Campaign extends AbstractModel {
                 ],
             ],
         ];
+
+        /**
+         * Typed config specs per campaign trigger. Internal Pro seam, not a public API.
+         *
+         * @param array<string, array<string, array<string, mixed>>> $schema
+         */
+        return apply_filters( 'yayloyalty_campaign_config_schema', $schema );
     }
 
     /**

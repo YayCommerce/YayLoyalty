@@ -3,9 +3,14 @@ namespace YayLoyalty\Pro;
 
 use YayLoyalty\Engine\Earning\EarningService;
 use YayLoyalty\Engine\Points\PointsEngine;
+use YayLoyalty\Engine\Points\Triggers\Registry as TriggerRegistry;
 use YayLoyalty\Engine\Rewards\Handlers\Registry;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Enums\RewardType;
+use YayLoyalty\Pro\Birthday\BirthdayEarnRow;
+use YayLoyalty\Pro\Birthday\BirthdayFields;
+use YayLoyalty\Pro\Birthday\BirthdayHandler;
+use YayLoyalty\Pro\Birthday\BirthdayRunner;
 use YayLoyalty\Pro\Controllers\CampaignPerformanceRestController;
 use YayLoyalty\Pro\Controllers\CampaignPreviewRestController;
 use YayLoyalty\Pro\Controllers\CustomerSegmentsRestController;
@@ -74,6 +79,8 @@ final class YayLoyaltyPro {
 
         add_filter( 'yayloyalty_campaign_triggers', [ self::class, 'add_triggers' ] );
         add_filter( 'yayloyalty_campaign_config_whitelist', [ self::class, 'add_config_keys' ] );
+        add_filter( 'yayloyalty_campaign_config_schema', [ self::class, 'add_campaign_config_schema' ] );
+        add_action( 'yayloyalty_register_trigger_handlers', [ self::class, 'register_trigger_handlers' ] );
         add_filter( 'yayloyalty_reward_types', [ self::class, 'add_reward_types' ] );
         add_filter( 'yayloyalty_expiry_modes', [ self::class, 'add_expiry_modes' ] );
         add_filter( 'yayloyalty_reward_config_schema', [ self::class, 'add_reward_config_schema' ] );
@@ -90,6 +97,9 @@ final class YayLoyaltyPro {
         add_filter( EarningService::POINTS_LEFT_TODAY_FILTER, [ $daily_limit, 'left_today' ], 10, 2 );
 
         ( new RewardsPanel() )->register();
+        ( new BirthdayRunner() )->register();
+        ( new BirthdayFields() )->register();
+        ( new BirthdayEarnRow() )->register();
 
         /** Fires once Pro has attached its hooks. Pro-internal; absent from Lite. */
         do_action( 'yayloyalty_pro_booted' );
@@ -128,11 +138,6 @@ final class YayLoyaltyPro {
      * @return array<string, string[]>
      */
     public static function add_config_keys( array $whitelist ): array {
-        $whitelist[ CampaignTrigger::BIRTHDAY ] = [
-            'points',
-            'days_before',
-        ];
-
         $whitelist[ CampaignTrigger::FIRST_ORDER ] = [
             'points',
             'min_subtotal',
@@ -161,6 +166,33 @@ final class YayLoyaltyPro {
      */
     public static function add_reward_types( array $types ): array {
         return array_values( array_unique( array_merge( $types, self::ADDED_REWARD_TYPES ) ) );
+    }
+
+    /**
+     * Typed config specs for the campaign triggers Pro can fire; their keys are the only ones a config may hold.
+     *
+     * @param array<string, array<string, array<string, mixed>>> $schema
+     * @return array<string, array<string, array<string, mixed>>>
+     */
+    public static function add_campaign_config_schema( array $schema ): array {
+        $schema[ CampaignTrigger::BIRTHDAY ] = [
+            'points'      => [
+                'type' => 'int',
+                'min'  => 0,
+            ],
+            'days_before' => [
+                'type' => 'int',
+                'min'  => 0,
+                'max'  => 30,
+            ],
+        ];
+
+        return $schema;
+    }
+
+    /** The handlers for the campaign triggers Pro can fire. */
+    public static function register_trigger_handlers( TriggerRegistry $registry ): void {
+        $registry->register( new BirthdayHandler() );
     }
 
     /** The handlers that spend `fixed_coupon` and `percent_coupon` rewards as virtual coupons on the cart. */

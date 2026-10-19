@@ -34,6 +34,12 @@ class Customer extends AbstractModel {
     /** @var string|null */
     private $reminder_sent_at;
 
+    /** @var int|null 1-12, or null when no birthday is on file. */
+    private $birthday_month;
+
+    /** @var int|null */
+    private $birthday_day;
+
     /** @var string */
     private $joined_at;
 
@@ -50,7 +56,9 @@ class Customer extends AbstractModel {
         ?string $expires_at = null,
         ?string $reminder_sent_at = null,
         string $joined_at = '',
-        string $updated_at = ''
+        string $updated_at = '',
+        ?int $birthday_month = null,
+        ?int $birthday_day = null
     ) {
         $this->user_id           = $user_id;
         $this->balance           = $balance;
@@ -62,6 +70,8 @@ class Customer extends AbstractModel {
         $this->reminder_sent_at  = $reminder_sent_at;
         $this->joined_at         = $joined_at;
         $this->updated_at        = $updated_at;
+        $this->birthday_month    = $birthday_month;
+        $this->birthday_day      = $birthday_day;
     }
 
     public static function from_row( array $row ): self {
@@ -75,7 +85,9 @@ class Customer extends AbstractModel {
             self::cast_datetime( $row['expires_at'] ?? null ),
             self::cast_datetime( $row['reminder_sent_at'] ?? null ),
             (string) ( $row['joined_at'] ?? '' ),
-            (string) ( $row['updated_at'] ?? '' )
+            (string) ( $row['updated_at'] ?? '' ),
+            self::cast_int( $row['birthday_month'] ?? null ),
+            self::cast_int( $row['birthday_day'] ?? null )
         );
     }
 
@@ -91,12 +103,14 @@ class Customer extends AbstractModel {
             'reminder_sent_at'  => $this->reminder_sent_at,
             'joined_at'         => $this->joined_at,
             'updated_at'        => $this->updated_at,
+            'birthday_month'    => $this->birthday_month,
+            'birthday_day'      => $this->birthday_day,
         ];
     }
 
     public function get_format(): array {
         // Decimal columns (lifetime_spend, tier_progress_value), when mapped, must be '%s'.
-        return [ '%d', '%d', '%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s' ];
+        return [ '%d', '%d', '%d', '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%d', '%d' ];
     }
 
     public function to_array(): array {
@@ -144,5 +158,13 @@ class Customer extends AbstractModel {
 
     public function get_joined_at(): string {
         return $this->joined_at;
+    }
+
+    public function get_birthday_month(): ?int {
+        return $this->birthday_month;
+    }
+
+    public function get_birthday_day(): ?int {
+        return $this->birthday_day;
     }
 }

@@ -38,6 +38,25 @@ abstract class LedgerEntryEmail extends LoyaltyEmail {
     abstract protected function accepts( LedgerEntry $entry ): bool;
 
     /**
+     * The amounts of an award: the points earned and the balance after them.
+     *
+     * @return array{points: string, points_label: string, balance: string}
+     */
+    protected static function earned_amounts( LedgerEntry $entry ): array {
+        return [
+            'points'       => SettingsHelper::format_number( $entry->get_points() ),
+            'points_label' => SettingsHelper::points_label( $entry->get_points() ),
+            'balance'      => SettingsHelper::format_number( $entry->get_balance_after() ),
+        ];
+    }
+
+    /** An award with points left: a deferred send can run after a refund or cancellation took them back. */
+    protected static function has_points_left( LedgerEntry $entry ): bool {
+        return $entry->get_points() > 0
+            && ( new LedgerRepository() )->sum_refunded_for( $entry, false ) < $entry->get_points();
+    }
+
+    /**
      * The subject placeholders' values, which the body shows too.
      *
      * @return array<string, string>

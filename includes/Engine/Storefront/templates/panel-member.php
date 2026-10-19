@@ -42,7 +42,11 @@ $yayloyalty_activity = $view['activity'] ?? null;
             <ul class="yl:m-0 yl:flex yl:flex-col yl:list-none yl:p-0">
                 <?php foreach ( $yayloyalty_earn_rows as $yayloyalty_earn_row ) : ?>
                     <li class="<?php echo esc_attr( UiClasses::PANEL_ROW ); ?>">
-                        <span><?php echo esc_html( $yayloyalty_earn_row['label'] ); ?></span>
+                        <?php if ( ! empty( $yayloyalty_earn_row['url'] ) ) : ?>
+                            <a class="yl:text-primary yl:hover:underline yl:underline-offset-4" href="<?php echo esc_url( $yayloyalty_earn_row['url'] ); ?>"><?php echo esc_html( $yayloyalty_earn_row['label'] ); ?></a>
+                        <?php else : ?>
+                            <span><?php echo esc_html( $yayloyalty_earn_row['label'] ); ?></span>
+                        <?php endif; ?>
                         <?php if ( CampaignTrigger::PURCHASE === $yayloyalty_earn_row['trigger'] ) : ?>
                             <span class="yl:text-right yl:font-semibold" data-yl-text="earn_rate_line"><?php echo esc_html( $yayloyalty_earn_row['value'] ); ?></span>
                         <?php else : ?>

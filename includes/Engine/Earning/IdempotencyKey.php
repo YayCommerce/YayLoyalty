@@ -71,6 +71,15 @@ final class IdempotencyKey {
     }
 
     /**
+     * An award's key: one per user, reference and trigger.
+     *
+     * @throws \InvalidArgumentException As compose().
+     */
+    public static function for_earn( int $user_id, string $reference_type, int $reference_id, string $trigger ): string {
+        return self::compose( LedgerType::EARN, $user_id, $reference_type, $reference_id, $trigger );
+    }
+
+    /**
      * The qualifier compose() put last: the trigger of an earn key, so a
      * reversal of that earn composes its own key with the same qualifier.
      *

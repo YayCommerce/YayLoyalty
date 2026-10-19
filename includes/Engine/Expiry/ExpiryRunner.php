@@ -32,22 +32,35 @@ final class ExpiryRunner {
     public const OPTION_APPLIED = 'yayloyalty_expiry_applied';
 
     public function register(): void {
+        self::register_daily( self::RUN_ACTION, [ $this, 'schedule' ], [ $this, 'run' ] );
+    }
+
+    /** Keeps the daily action scheduled. Hooked on init. */
+    public function schedule(): void {
+        self::keep_daily( self::RUN_ACTION );
+    }
+
+    /**
+     * Wires a daily job in GROUP: $run on $action, and $schedule on init to keep it scheduled. Does nothing
+     * without Action Scheduler (WooCommerce inactive).
+     */
+    public static function register_daily( string $action, callable $schedule, callable $run ): void {
         if ( ! function_exists( 'as_has_scheduled_action' ) ) {
             return;
         }
 
         // Only admin page loads and cron check, so storefront views and admin-ajax (Heartbeat) pay no Action Scheduler query.
         if ( ( is_admin() && ! wp_doing_ajax() ) || wp_doing_cron() ) {
-            add_action( 'init', [ $this, 'schedule' ] );
+            add_action( 'init', $schedule );
         }
 
-        add_action( self::RUN_ACTION, [ $this, 'run' ] );
+        add_action( $action, $run );
     }
 
-    /** Keeps the daily action scheduled. Hooked on init. */
-    public function schedule(): void {
-        if ( ! as_has_scheduled_action( self::RUN_ACTION ) ) {
-            as_schedule_recurring_action( time(), DAY_IN_SECONDS, self::RUN_ACTION, [], self::GROUP );
+    /** Schedules $action to recur daily in GROUP unless it already is. */
+    public static function keep_daily( string $action ): void {
+        if ( ! as_has_scheduled_action( $action ) ) {
+            as_schedule_recurring_action( time(), DAY_IN_SECONDS, $action, [], self::GROUP );
         }
     }
 
@@ -162,10 +175,10 @@ final class ExpiryRunner {
         return count( $user_ids ) === self::BATCH_SIZE && $expired > 0;
     }
 
-    /** Removes every pending run. Called on deactivation. */
-    public static function unschedule(): void {
+    /** Removes every pending action in GROUP, this job's and any other the build schedules there. Called on deactivation. */
+    public static function unschedule_group(): void {
         if ( function_exists( 'as_unschedule_all_actions' ) ) {
-            as_unschedule_all_actions( self::RUN_ACTION );
+            as_unschedule_all_actions( '', [], self::GROUP );
         }
     }
 }

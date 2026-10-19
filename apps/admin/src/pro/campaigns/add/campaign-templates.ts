@@ -1,17 +1,17 @@
 import { __ } from '@wordpress/i18n';
 
-import { DEFAULT_CAMPAIGN_CONFIG, LiteCampaignTrigger } from '@/lib/schema/campaign.schema';
+import { BirthdayConfig, CreatableCampaignTrigger, DEFAULT_CAMPAIGN_CONFIG } from '@/lib/schema/campaign.schema';
 import { CampaignFormValues } from '../editor/campaign-editor.form';
 
-/** One card on the "Add a campaign" chooser: one per Lite trigger, each opening an empty campaign of that kind. */
+/** One card on the "Add a campaign" chooser: one per creatable trigger, each opening an empty campaign of that kind. */
 export interface CampaignTemplate {
   /** The URL segment at campaigns/new/:templateId; the trigger itself. */
-  id: LiteCampaignTrigger;
+  id: CreatableCampaignTrigger;
   title: string;
   description: string;
   /** The card's footer line: something this kind can be set up to do, never an invented benefit. */
   example: string;
-  trigger: LiteCampaignTrigger;
+  trigger: CreatableCampaignTrigger;
   /** A function, not a static object: each call returns fresh values that no other visit or template shares. */
   seed: () => CampaignFormValues;
 }
@@ -48,14 +48,28 @@ export function getCampaignTemplates(): CampaignTemplate[] {
       trigger: 'review',
       seed: () => emptySeed('review', __('Review bonus', 'yayloyalty')),
     },
+    {
+      id: 'birthday',
+      title: __('Birthday', 'yayloyalty'),
+      description: __("Bonus points once a year on each customer's birthday.", 'yayloyalty'),
+      example: __('e.g. 200 points, a week early', 'yayloyalty'),
+      trigger: 'birthday',
+      seed: () => emptySeed('birthday', __('Birthday bonus', 'yayloyalty')),
+    },
   ];
 }
 
-function emptySeed(trigger: LiteCampaignTrigger, name: string): CampaignFormValues {
+/** Config a new campaign starts from. Birthday has no built-in campaign, so no Campaign::default_config() entry. */
+const SEED_CONFIG: Record<CreatableCampaignTrigger, Record<string, unknown>> = {
+  ...DEFAULT_CAMPAIGN_CONFIG,
+  birthday: { points: 100, days_before: 0 } satisfies BirthdayConfig,
+};
+
+function emptySeed(trigger: CreatableCampaignTrigger, name: string): CampaignFormValues {
   return {
     name,
     status: 'active',
-    config: structuredClone(DEFAULT_CAMPAIGN_CONFIG[trigger]),
+    config: structuredClone(SEED_CONFIG[trigger]),
     conditions: [],
     starts_at: null,
     ends_at: null,
