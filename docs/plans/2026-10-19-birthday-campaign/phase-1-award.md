@@ -87,7 +87,7 @@ public function test_due_days_adds_feb_29_in_a_non_leap_year(): void {
 **Files:**
 - Create: `includes/Pro/Birthday/BirthdayRunner.php`
 - Modify: `includes/Pro/YayLoyaltyPro.php` (`( new BirthdayRunner() )->register();` in `boot()`)
-- Modify: `includes/Engine/ActDeact.php` (`deactivate()` cancels the whole `ExpiryRunner::GROUP` with `as_unschedule_all_actions( '', [], ExpiryRunner::GROUP )` instead of only the expiry hook, so Pro's job stops too without Lite naming it)
+- Modify: `includes/Engine/ActDeact.php` and `includes/Engine/Expiry/ExpiryRunner.php` (`deactivate()` cancels the whole `ExpiryRunner::GROUP`, so Pro's job stops too without Lite naming it: `ExpiryRunner::unschedule()`, whose only caller is `deactivate()`, becomes `unschedule_group()` and calls `as_unschedule_all_actions( '', [], self::GROUP )`)
 - Test: `tests/integration/Earning/BirthdayAwardTest.php`
 
 **Interfaces:** Consumes `BirthdayWindow`, `birthday_user_ids()`, `from_user( …, $extra )`, `BirthdayHandler`, `EarningService::build()->award()`, `LedgerRepository::find_by_idempotency_key()`, `IdempotencyKey::compose()`, `CampaignRepository::live_for_trigger()`. Produces `BirthdayRunner` (README contract).
