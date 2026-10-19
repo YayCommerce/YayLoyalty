@@ -181,6 +181,61 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
     }
 
     /**
+     * Stores a birthday, creating the row for a customer who has none yet. Null for both clears it.
+     *
+     * @throws QueryException When a write fails.
+     */
+    public function set_birthday( int $user_id, ?int $month, ?int $day ): void {
+        $this->ensure_row( $user_id );
+        $this->update(
+            $user_id,
+            [
+                'birthday_month' => $month,
+                'birthday_day'   => $day,
+                'updated_at'     => Dates::now(),
+            ],
+            [ '%d', '%d', '%s' ]
+        );
+    }
+
+    /**
+     * Customers whose birthday is one of $days, by ascending user id after $after_user_id, so a batched run can resume.
+     *
+     * @param array<int, array{month: int, day: int}> $days BirthdayWindow::due_days().
+     * @return int[]
+     */
+    public function birthday_user_ids( array $days, int $after_user_id, int $limit ): array {
+        global $wpdb;
+
+        if ( [] === $days ) {
+            return [];
+        }
+
+        $matches = [];
+        $values  = [ $after_user_id ];
+
+        foreach ( $days as $date ) {
+            $matches[] = '( birthday_month = %d AND birthday_day = %d )';
+            $values[]  = $date['month'];
+            $values[]  = $date['day'];
+        }
+
+        $values[]  = $limit;
+        $match_sql = implode( ' OR ', $matches );
+
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $match_sql holds only placeholders, and $values binds them: the sniff cannot count through it.
+        $ids = $wpdb->get_col( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+            $wpdb->prepare(
+                'SELECT user_id FROM `' . esc_sql( $this->table() ) . "` WHERE user_id > %d AND ( {$match_sql} ) ORDER BY user_id LIMIT %d",
+                $values
+            )
+        );
+        // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
+
+        return array_map( 'intval', is_array( $ids ) ? $ids : [] );
+    }
+
+    /**
      * Customers with a balance whose expiry is due at $now, soonest first.
      *
      * @return int[]

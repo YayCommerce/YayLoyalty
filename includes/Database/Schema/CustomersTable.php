@@ -12,6 +12,7 @@ defined( 'ABSPATH' ) || exit;
  * migration, not a schema change. Indexed columns must stay in sync with
  * CustomerRowSort::KEYS. reminder_for is the expires_at the last expiry reminder
  * announced, so each date is reminded once whatever the reminder timing.
+ * birthday_month and birthday_day are a site-calendar date with no year.
  */
 final class CustomersTable extends AbstractTableSchema {
 
