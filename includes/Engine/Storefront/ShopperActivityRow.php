@@ -134,6 +134,9 @@ final class ShopperActivityRow {
                 /* translators: %s: the store's points label, as "Points". */
                 return sprintf( __( '%s earned from a review', 'yayloyalty' ), $points_label );
 
+            case LedgerSource::BIRTHDAY:
+                return __( 'Birthday bonus', 'yayloyalty' );
+
             default:
                 /* translators: %s: the store's points label, as "Points". */
                 return sprintf( __( '%s earned', 'yayloyalty' ), $points_label );

@@ -54,6 +54,13 @@ final class ShopperActivityRowTest extends IntegrationTestCase {
         $this->assertSame( sprintf( 'Adjustment by %s', Text::store_name() ), $items[0]['label'] );
     }
 
+    public function test_birthday_award_is_labelled_birthday_bonus(): void {
+        $row = new LedgerEntry( 1, 424242, 150, 150, LedgerType::EARN, LedgerSource::BIRTHDAY, null, null, null, null, null, null, null, Dates::now() );
+
+        $this->assertSame( 'Birthday bonus', ShopperActivityRow::items( [ $row ] )[0]['label'] );
+        $this->assertSame( 'Birthday bonus', ShopperActivityRow::history_rows( [ $row ] )[0]['label'] );
+    }
+
     private function latest_label( int $user_id ): string {
         return ShopperActivityRow::items( ( new LedgerRepository() )->latest_for_user( $user_id, 1 ) )[0]['label'];
     }
