@@ -152,7 +152,7 @@ Helpers are private to the test; reuse `IntegrationTestCase` fixtures where they
 - [ ] **Step 4: Run** `composer test:integration -- --filter BirthdayAwardTest` — expected `OK (5 tests, …)`.
 - [ ] **Step 5: Verify continuation by hand:** temporarily set 101 customers' birthday to today (`wp eval` loop over `set_birthday`), run `do_action( 'yayloyalty_birthday_run' )`; expected 100 awards and one pending `yayloyalty_birthday_run` async action with args `[<100th user id>]` in Tools → Scheduled Actions; run it; expected the 101st paid and no further action queued. Clear the birthdays afterwards.
 - [ ] **Step 6: Verify deactivation:** deactivate/reactivate the plugin; expected no `yayloyalty_birthday_run` or `yayloyalty_expiry_run` pending right after deactivation, both back after the next wp-admin load.
-- [ ] **Step 7: Commit** — the four files; `feat(birthday): award birthday points from a daily run`.
+- [ ] **Step 7: Commit** — the five files; `feat(birthday): award birthday points from a daily run`.
 
 ### Task 5: Birthday field in My Account
 

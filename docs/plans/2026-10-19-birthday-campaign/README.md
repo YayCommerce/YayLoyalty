@@ -60,7 +60,7 @@
 
 | Phase | Delivers (user-visible) | Exit criterion (exact check) | Status |
 |---|---|---|---|
-| 1 | Merchant creates a Birthday campaign; customers enter a birthday; the daily run pays it | Acceptance 7 minus the email; `composer test -- --filter BirthdayWindowTest` and `composer test:integration -- --filter BirthdayAwardTest` print `OK` | pending |
+| 1 | Merchant creates a Birthday campaign; customers enter a birthday; the daily run pays it | Acceptance 7 minus the email; `composer test -- --filter BirthdayWindowTest` and `composer test:integration -- --filter BirthdayAwardTest` print `OK` | done 2026-10-19 |
 | 2 | Birthday points email replaces Points earned for birthday awards | `composer test:integration -- --filter BirthdayPointsEmailTest` prints `OK`; Acceptance 7 email part | pending |
 | 3 | "Ways to earn" shows birthday | Acceptance 6 on the storefront; Lite zip validates | pending |
 
