@@ -2,7 +2,7 @@
 /**
  * Signed-in panel body: balance first, then reference material, each block ruled off.
  *
- * @var array $view      Launcher::view().
+ * @var array $view      Launcher::view(); `offers` are the extra Ways to redeem rows.
  * @var array $yayloyalty_text   The Design tab's storefront_text.
  * @var array $yayloyalty_member { balance: int, worth: ?float }.
  */
@@ -58,21 +58,38 @@ $yayloyalty_activity = $view['activity'] ?? null;
     </section>
 <?php endif; ?>
 
-<?php if ( null !== $view['redeem'] ) : ?>
+<?php if ( null !== $view['redeem'] || [] !== $view['offers'] ) : ?>
     <section class="<?php echo esc_attr( UiClasses::PANEL_SECTION ); ?>">
         <h3 class="<?php echo esc_attr( UiClasses::SECTION_HEADING ); ?>"><?php esc_html_e( 'Ways to redeem', 'yayloyalty' ); ?></h3>
-        <ul class="yl:m-0 yl:flex yl:flex-col yl:list-none yl:p-0">
-            <li class="<?php echo esc_attr( UiClasses::PANEL_ROW ); ?>">
-                <span>
-                    <?php
-                    /* translators: %s: the store's points label, as "Points". */
-                    echo esc_html( sprintf( __( '%s for discount', 'yayloyalty' ), SettingsHelper::points_label( 0 ) ) );
-                    ?>
-                </span>
-                <span class="yl:whitespace-nowrap yl:font-semibold"><?php echo esc_html( LauncherCopy::redeem_rate( $view['redeem']['points_per_unit'] ) ); ?></span>
-            </li>
-        </ul>
-        <p class="yl:m-0 yl:text-xs yl:text-muted-foreground"><?php echo esc_html( LauncherCopy::redeem_limits( $view['redeem'] ) ); ?></p>
+        <?php if ( null !== $view['redeem'] ) : ?>
+            <ul class="yl:m-0 yl:flex yl:flex-col yl:list-none yl:p-0">
+                <li class="<?php echo esc_attr( UiClasses::PANEL_ROW ); ?>">
+                    <span>
+                        <?php
+                        /* translators: %s: the store's points label, as "Points". */
+                        echo esc_html( sprintf( __( '%s for discount', 'yayloyalty' ), SettingsHelper::points_label( 0 ) ) );
+                        ?>
+                    </span>
+                    <span class="yl:whitespace-nowrap yl:font-semibold"><?php echo esc_html( LauncherCopy::redeem_rate( $view['redeem']['points_per_unit'] ) ); ?></span>
+                </li>
+            </ul>
+            <p class="yl:m-0 yl:text-xs yl:text-muted-foreground"><?php echo esc_html( LauncherCopy::redeem_limits( $view['redeem'] ) ); ?></p>
+        <?php endif; ?>
+        <?php if ( [] !== $view['offers'] ) : ?>
+            <ul class="yl:m-0 yl:flex yl:flex-col yl:list-none yl:p-0">
+                <?php foreach ( $view['offers'] as $yayloyalty_offer ) : ?>
+                    <li class="<?php echo esc_attr( UiClasses::PANEL_ROW ); ?>">
+                        <span class="yl:flex yl:flex-col">
+                            <span><?php echo esc_html( $yayloyalty_offer['name'] ); ?></span>
+                            <?php if ( '' !== $yayloyalty_offer['text'] ) : ?>
+                                <span class="yl:text-xs yl:text-muted-foreground"><?php echo esc_html( $yayloyalty_offer['text'] ); ?></span>
+                            <?php endif; ?>
+                        </span>
+                        <span class="yl:whitespace-nowrap yl:font-semibold"><?php echo esc_html( SettingsHelper::points_text( $yayloyalty_offer['cost'] ) ); ?></span>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        <?php endif; ?>
     </section>
 <?php endif; ?>
 

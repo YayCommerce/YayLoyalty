@@ -15,8 +15,9 @@ defined( 'ABSPATH' ) || exit;
 
 $yayloyalty_payload = $view['payload'];
 $yayloyalty_worth   = $yayloyalty_payload['member']['worth'];
-// Null while the discount reward is not live: worth, the redeem column and the checkout link stay hidden with it.
+// Null while the discount reward is not live: worth, its redeem row and the checkout link stay hidden with it.
 $yayloyalty_redeem  = $yayloyalty_payload['redeem'];
+$yayloyalty_offers  = $yayloyalty_payload['offers'];
 $yayloyalty_card    = $view;
 $yayloyalty_earn    = $view['earn'];
 $yayloyalty_history = $view['history'];
@@ -29,31 +30,48 @@ $yayloyalty_label = SettingsHelper::points_label( 0 );
 <div class="yayloyalty-account">
     <?php require __DIR__ . '/points-card.php'; ?>
 
-    <?php if ( [] !== $yayloyalty_earn['rows'] || '' !== $yayloyalty_earn['limit_line'] || null !== $yayloyalty_redeem ) : ?>
+    <?php if ( [] !== $yayloyalty_earn['rows'] || '' !== $yayloyalty_earn['limit_line'] || null !== $yayloyalty_redeem || [] !== $yayloyalty_offers ) : ?>
         <div class="yayloyalty-account__rules">
             <?php include __DIR__ . '/ways-to-earn.php'; ?>
 
-            <?php if ( null !== $yayloyalty_redeem ) : ?>
+            <?php if ( null !== $yayloyalty_redeem || [] !== $yayloyalty_offers ) : ?>
                 <section>
                     <h3><?php esc_html_e( 'Ways to redeem', 'yayloyalty' ); ?></h3>
-                    <ul class="yayloyalty-account__list">
-                        <li>
-                            <span>
+                    <?php if ( null !== $yayloyalty_redeem ) : ?>
+                        <ul class="yayloyalty-account__list">
+                            <li>
+                                <span>
+                                    <?php
+                                    /* translators: %s: the store's points label, as "Points". */
+                                    echo esc_html( sprintf( __( '%s for discount', 'yayloyalty' ), $yayloyalty_label ) );
+                                    ?>
+                                </span>
+                                <strong><?php echo esc_html( LauncherCopy::redeem_rate( $yayloyalty_redeem['points_per_unit'] ) ); ?></strong>
+                            </li>
+                        </ul>
+                        <?php if ( null !== $yayloyalty_worth ) : ?>
+                            <p>
                                 <?php
-                                /* translators: %s: the store's points label, as "Points". */
-                                echo esc_html( sprintf( __( '%s for discount', 'yayloyalty' ), $yayloyalty_label ) );
+                                /* translators: %s: money amount. */
+                                echo esc_html( sprintf( __( 'You could take %s off today.', 'yayloyalty' ), LauncherCopy::money( $yayloyalty_worth ) ) );
                                 ?>
-                            </span>
-                            <strong><?php echo esc_html( LauncherCopy::redeem_rate( $yayloyalty_redeem['points_per_unit'] ) ); ?></strong>
-                        </li>
-                    </ul>
-                    <?php if ( null !== $yayloyalty_worth ) : ?>
-                        <p>
-                            <?php
-                            /* translators: %s: money amount. */
-                            echo esc_html( sprintf( __( 'You could take %s off today.', 'yayloyalty' ), LauncherCopy::money( $yayloyalty_worth ) ) );
-                            ?>
-                        </p>
+                            </p>
+                        <?php endif; ?>
+                    <?php endif; ?>
+                    <?php if ( [] !== $yayloyalty_offers ) : ?>
+                        <ul class="yayloyalty-account__list">
+                            <?php foreach ( $yayloyalty_offers as $yayloyalty_offer ) : ?>
+                                <li>
+                                    <span>
+                                        <?php echo esc_html( $yayloyalty_offer['name'] ); ?>
+                                        <?php if ( '' !== $yayloyalty_offer['text'] ) : ?>
+                                            <br><small><?php echo esc_html( $yayloyalty_offer['text'] ); ?></small>
+                                        <?php endif; ?>
+                                    </span>
+                                    <strong><?php echo esc_html( SettingsHelper::points_text( $yayloyalty_offer['cost'] ) ); ?></strong>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
                     <?php endif; ?>
                 </section>
             <?php endif; ?>

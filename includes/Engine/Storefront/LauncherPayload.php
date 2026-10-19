@@ -22,6 +22,9 @@ defined( 'ABSPATH' ) || exit;
  */
 final class LauncherPayload {
 
+    /** Extra rows for "Ways to redeem", after the points discount. */
+    public const REDEEM_OFFERS_FILTER = 'yayloyalty_launcher_redeem_offers';
+
     /** @var CampaignRepository */
     private $campaigns;
 
@@ -84,6 +87,7 @@ final class LauncherPayload {
             'earn'         => $rules['earn'],
             'purchase_min' => $rules['purchase_min'],
             'redeem'       => $redeem,
+            'offers'       => self::redeem_offers( $now ),
             'member'       => null === $balance ? null : self::member( $balance, null === $redeem ? null : $reward ),
             'left_today'   => $left_today,
             'estimate'     => null !== $engine && null === $balance && null !== $rules['earn'][ CampaignTrigger::PURCHASE ] ? self::product_estimate() : null,
@@ -151,6 +155,43 @@ final class LauncherPayload {
             'max_points'      => isset( $config['max_points_per_order'] ) ? (int) $config['max_points_per_order'] : null,
             'max_percent'     => isset( $config['max_percent_of_subtotal'] ) ? (float) $config['max_percent_of_subtotal'] : null,
         ];
+    }
+
+    /**
+     * The rows "Ways to redeem" lists after the points discount, in display order; [] when nothing subscribes.
+     * A subscriber that throws gives [] and a malformed row is dropped, so neither takes the launcher down.
+     *
+     * @param string $now UTC MySQL datetime.
+     * @return array<int, array{name: string, cost: int, text: string}>
+     */
+    private static function redeem_offers( string $now ): array {
+        try {
+            /**
+             * Rows for "Ways to redeem" in the launcher and My Account, after the points discount.
+             * Internal seam for Pro, not a public API.
+             *
+             * @param array<int, array{name: string, cost: int, text: string}> $offers Name, cost in points, and one line under the name ('' for none).
+             * @param string                                                   $now    UTC MySQL datetime.
+             */
+            $offers = (array) apply_filters( self::REDEEM_OFFERS_FILTER, [], $now ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name; the sniff cannot read it.
+        } catch ( \Throwable $e ) {
+            Log::warning( 'LauncherPayload', 'redeem offers failed: ' . $e->getMessage() );
+
+            return [];
+        }
+
+        return array_values(
+            array_filter(
+                $offers,
+                static function ( $offer ): bool {
+                    return is_array( $offer )
+                        && isset( $offer['name'], $offer['cost'], $offer['text'] )
+                        && is_string( $offer['name'] ) && '' !== $offer['name']
+                        && is_int( $offer['cost'] ) && $offer['cost'] >= 1
+                        && is_string( $offer['text'] );
+                }
+            )
+        );
     }
 
     /**
