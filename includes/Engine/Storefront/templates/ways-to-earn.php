@@ -17,7 +17,11 @@ if ( [] === $yayloyalty_earn['rows'] && '' === $yayloyalty_earn['limit_line'] ) 
         <ul class="yayloyalty-account__list">
             <?php foreach ( $yayloyalty_earn['rows'] as $yayloyalty_earn_row ) : ?>
                 <li>
-                    <span><?php echo esc_html( $yayloyalty_earn_row['label'] ); ?></span>
+                    <?php if ( ! empty( $yayloyalty_earn_row['url'] ) ) : ?>
+                        <a href="<?php echo esc_url( $yayloyalty_earn_row['url'] ); ?>"><?php echo esc_html( $yayloyalty_earn_row['label'] ); ?></a>
+                    <?php else : ?>
+                        <span><?php echo esc_html( $yayloyalty_earn_row['label'] ); ?></span>
+                    <?php endif; ?>
                     <strong><?php echo esc_html( $yayloyalty_earn_row['value'] ); ?></strong>
                 </li>
             <?php endforeach; ?>
