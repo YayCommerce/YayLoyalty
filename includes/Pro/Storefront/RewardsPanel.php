@@ -35,7 +35,7 @@ final class RewardsPanel {
 
     /**
      * Appends every live `fixed_coupon` / `percent_coupon` reward, in `sort_order`, whatever the member's
-     * conditions or balance: no cart, so the Design preview can run it too.
+     * conditions or balance: there is no cart to check them against.
      *
      * @param array<int, array{name: string, cost: int, text: string}> $offers
      * @param string                                                   $now    UTC MySQL datetime.
@@ -43,11 +43,7 @@ final class RewardsPanel {
      */
     public function redeem_offers( array $offers, string $now ): array {
         foreach ( ( new RewardRepository() )->live_of_types( [ RewardType::FIXED_COUPON, RewardType::PERCENT_COUPON ], $now ) as $reward ) {
-            $offers[] = [
-                'name' => $reward->get_name(),
-                'cost' => (int) $reward->get_cost_points(),
-                'text' => self::description( $reward ),
-            ];
+            $offers[] = LauncherPayload::offer( $reward );
         }
 
         return $offers;
@@ -153,7 +149,7 @@ final class RewardsPanel {
                 'id'         => (int) $reward_id,
                 'name'       => $reward->get_name(),
                 'cost'       => $cost,
-                'text'       => $is_denied ? self::denial( $quote->get_reason(), $reward, $cart ) : self::description( $reward ),
+                'text'       => $is_denied ? self::denial( $quote->get_reason(), $reward, $cart ) : LauncherCopy::coupon_reward_line( $reward ),
                 'here'       => $is_denied ? '' : self::value_here( $reward, $quote ),
                 'is_applied' => $is_applied,
                 'is_denied'  => $is_denied,
@@ -162,29 +158,6 @@ final class RewardsPanel {
         }
 
         return $rows;
-    }
-
-    /** The row's one line: what the reward takes off, or the minimum it needs. */
-    private static function description( Reward $reward ): string {
-        $config = $reward->get_config();
-
-        if ( RewardType::PERCENT_COUPON === $reward->get_type() ) {
-            if ( isset( $config['max_discount'] ) ) {
-                /* translators: %s: money amount, as "$10". */
-                return sprintf( __( 'Up to %s off your order', 'yayloyalty' ), LauncherCopy::money( (float) $config['max_discount'] ) );
-            }
-
-            /* translators: %s: a percentage number, as "15". */
-            return sprintf( __( '%s%% off your order', 'yayloyalty' ), LauncherCopy::rate( (float) ( $config['percent'] ?? 0 ) ) );
-        }
-
-        if ( isset( $config['min_order'] ) ) {
-            /* translators: %s: money amount, as "$25". */
-            return sprintf( __( 'On orders over %s', 'yayloyalty' ), LauncherCopy::money( (float) $config['min_order'] ) );
-        }
-
-        /* translators: %s: money amount, as "$5". */
-        return sprintf( __( '%s off your order', 'yayloyalty' ), LauncherCopy::money( (float) ( $config['amount'] ?? 0 ) ) );
     }
 
     /** A refused row's line in place of its description. */

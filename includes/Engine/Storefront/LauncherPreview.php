@@ -3,7 +3,10 @@ namespace YayLoyalty\Engine\Storefront;
 
 use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
+use YayLoyalty\Enums\RewardType;
+use YayLoyalty\Enums\Status;
 use YayLoyalty\Models\LedgerEntry;
+use YayLoyalty\Models\Reward;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\RewardRepository;
@@ -16,7 +19,9 @@ defined( 'ABSPATH' ) || exit;
  * The Design tab's preview: a whole HTML page with the real launcher markup and stylesheet in a plain store frame.
  * The admin shows it in a sandboxed iframe, so the storefront CSS applies at the iframe's width. No script runs
  * there: the templates print the expanded state and the activity rows, so the preview never takes focus from
- * the field being edited. Rates, rewards and copy are the store's own. Only the shopper is a sample.
+ * the field being edited. The panel body scrolls as on the storefront, but no control takes a click, so a link
+ * never loads a page into the frame. Rates, the discount reward and copy are the store's own. The shopper, their
+ * history and the reward catalog are samples.
  */
 final class LauncherPreview {
 
@@ -26,6 +31,7 @@ final class LauncherPreview {
     /** The store around the launcher: flat greys, so only the launcher reads at full contrast. */
     private const FRAME_CSS = <<<'CSS'
 html,body{margin:0;height:100%;overflow:hidden}
+a,button,input,select,textarea,label{pointer-events:none}
 body{background:#f7f7f7;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 .yl-preview-header{display:flex;align-items:center;gap:18px;height:44px;padding:0 20px;background:#ededed;border-bottom:1px solid #e0e0e0;font-size:13px;color:#a8a8a8}
 .yl-preview-header strong{color:#8a8a8a;letter-spacing:.06em;text-transform:uppercase}
@@ -45,7 +51,10 @@ CSS;
     public static function documents( array $design, bool $is_member ): array {
         $payload = ( new LauncherPayload( new CampaignRepository(), new RewardRepository(), new CustomerRepository() ) )
             ->for_balance( $design, $is_member ? self::SAMPLE_BALANCE : null );
-        $view    = Launcher::view( $design, $payload, false );
+
+        // Sample rewards, so the reward catalog previews before any exists; the panel switch still hides them.
+        $payload['offers'] = array_map( [ LauncherPayload::class, 'offer' ], self::sample_rewards() );
+        $view              = Launcher::view( $design, $payload, false );
 
         if ( $is_member ) {
             $view['activity'] = ShopperActivityRow::items( self::sample_entries() );
@@ -83,6 +92,50 @@ CSS;
             self::sample_entry( -120, LedgerType::REDEEM, LedgerSource::ORDER, 4180, 9 ),
             self::sample_entry( 50, LedgerType::EARN, LedgerSource::REVIEW, null, 16 ),
         ];
+    }
+
+    /**
+     * The reward catalog's samples, one per coupon type this build offers: none in a build that offers neither.
+     *
+     * @return Reward[]
+     */
+    private static function sample_rewards(): array {
+        $offered = RewardType::all();
+        $rewards = [];
+
+        if ( in_array( RewardType::FIXED_COUPON, $offered, true ) ) {
+            /* translators: %s: money amount, as "$5". */
+            $name      = sprintf( __( '%s off', 'yayloyalty' ), LauncherCopy::money( 5.0 ) );
+            $rewards[] = self::sample_reward(
+                $name,
+                RewardType::FIXED_COUPON,
+                500,
+                [
+                    'amount'    => 5,
+                    'min_order' => 25,
+                ]
+            );
+        }
+
+        if ( in_array( RewardType::PERCENT_COUPON, $offered, true ) ) {
+            /* translators: %s: a percentage number, as "15". */
+            $name      = sprintf( __( '%s%% off', 'yayloyalty' ), LauncherCopy::rate( 15.0 ) );
+            $rewards[] = self::sample_reward(
+                $name,
+                RewardType::PERCENT_COUPON,
+                1000,
+                [
+                    'percent'      => 15,
+                    'max_discount' => 10,
+                ]
+            );
+        }
+
+        return $rewards;
+    }
+
+    private static function sample_reward( string $name, string $type, int $cost, array $config ): Reward {
+        return new Reward( null, $name, '', $type, Status::ACTIVE, 0, $cost, $config );
     }
 
     private static function sample_entry( int $points, string $type, string $source, ?int $order_id, int $days_ago ): LedgerEntry {

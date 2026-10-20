@@ -1,8 +1,10 @@
 <?php
 namespace YayLoyalty\Engine\Storefront;
 
+use YayLoyalty\Enums\RewardType;
 use YayLoyalty\Helpers\DesignSchema;
 use YayLoyalty\Helpers\SettingsHelper;
+use YayLoyalty\Models\Reward;
 use YayLoyalty\Utils\Text;
 
 defined( 'ABSPATH' ) || exit;
@@ -41,6 +43,29 @@ final class LauncherCopy {
         $fixed = rtrim( sprintf( '%.10F', $rate ), '0' );
 
         return SettingsHelper::format_number( $rate, strlen( $fixed ) - strpos( $fixed, '.' ) - 1 );
+    }
+
+    /** A `fixed_coupon` / `percent_coupon` reward's one line: what it takes off, or the minimum it needs. */
+    public static function coupon_reward_line( Reward $reward ): string {
+        $config = $reward->get_config();
+
+        if ( RewardType::PERCENT_COUPON === $reward->get_type() ) {
+            if ( isset( $config['max_discount'] ) ) {
+                /* translators: %s: money amount, as "$10". */
+                return sprintf( __( 'Up to %s off your order', 'yayloyalty' ), self::money( (float) $config['max_discount'] ) );
+            }
+
+            /* translators: %s: a percentage number, as "15". */
+            return sprintf( __( '%s%% off your order', 'yayloyalty' ), self::rate( (float) ( $config['percent'] ?? 0 ) ) );
+        }
+
+        if ( isset( $config['min_order'] ) ) {
+            /* translators: %s: money amount, as "$25". */
+            return sprintf( __( 'On orders over %s', 'yayloyalty' ), self::money( (float) $config['min_order'] ) );
+        }
+
+        /* translators: %s: money amount, as "$5". */
+        return sprintf( __( '%s off your order', 'yayloyalty' ), self::money( (float) ( $config['amount'] ?? 0 ) ) );
     }
 
     /** "$98.50", or "$1" for a whole amount. */

@@ -141,9 +141,14 @@ final class Launcher {
     /**
      * The templates' view from a payload: the Design tab's theme variables and, for a live member, the
      * activity route launcher.js fetches. The Design tab's preview passes $is_live false and prints rows instead.
+     * Design → Panel's `show_reward_catalog` switch hides the offers here only; My Account lists them regardless.
      */
     public static function view( array $design, array $payload, bool $is_live ): array {
         $payload['style'] = self::theme_vars( $design['launcher'] );
+
+        if ( empty( $design['panel']['show_reward_catalog'] ) ) {
+            $payload['offers'] = [];
+        }
 
         if ( $is_live && null !== $payload['member'] ) {
             $payload['activity_url'] = rest_url( StorefrontActivityRestController::REST_NAMESPACE . StorefrontActivityRestController::ROUTE );
