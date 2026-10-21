@@ -84,7 +84,7 @@ export function useResetDesignMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationKey: ['design', 'reset'],
-    mutationFn: (group?: string) => resetDesign(group),
+    mutationFn: () => resetDesign(),
     onSuccess: (design) => {
       queryClient.setQueryData(DESIGN_QUERIES.main.queryKey, design);
     },

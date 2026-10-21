@@ -5,7 +5,6 @@
  * file, and launcher.css fits them to the panel.
  *
  * @var array $view              Launcher::view(); `offers` are the extra Ways to redeem rows.
- * @var array $yayloyalty_text   The Design tab's storefront_text.
  * @var array $yayloyalty_member LauncherPayload's `member`.
  */
 
@@ -16,7 +15,7 @@ defined( 'ABSPATH' ) || exit;
 // The names the shared partials read.
 $yayloyalty_payload = $view;
 $yayloyalty_card    = [ 'payload' => $view ];
-$yayloyalty_earn    = LauncherEarnRules::with_daily_limit( LauncherEarnRules::member_rows( $view['earn'], $yayloyalty_text['earn_rate_line'], $view['purchase_min'] ), $view['left_today'] );
+$yayloyalty_earn    = LauncherEarnRules::with_daily_limit( LauncherEarnRules::member_rows( $view['earn'], $view['purchase_min'] ), $view['left_today'] );
 
 require __DIR__ . '/points-card.php';
 require __DIR__ . '/new-points-notice.php';

@@ -3,7 +3,7 @@
  * The points card: a sign-in line for a guest, or for a customer the slider (its form, its applied statement, or
  * the notice that rewards are applied) beside the panels RedeemCard::PANELS_FILTER adds, as tabs when there are two.
  * No input has a `name`, so nothing here rides on the cart or checkout form it may sit in; redeem.js posts the request.
- * Styled by assets/storefront/redeem.css alone: the Design tab's text and colours belong to the launcher.
+ * Styled by assets/storefront/redeem.css alone: the Design tab's colours belong to the launcher.
  *
  * @var array $view RedeemCard::view() (or state `exclusive` / `none`), heading_balance, panels, active, plus
  *                  endpoint, nonce, account_url and money.

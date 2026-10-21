@@ -14,7 +14,6 @@ use YayLoyalty\Helpers\SettingsHelper;
 defined( 'ABSPATH' ) || exit;
 
 $yayloyalty_launcher = $view['launcher'];
-$yayloyalty_text     = $view['text'];
 $yayloyalty_member   = $view['member'];
 // Drawn open when the page runs no script to open it (the Design tab's preview).
 $yayloyalty_is_open = ! empty( $view['is_open'] );
@@ -39,7 +38,7 @@ $yayloyalty_is_open = ! empty( $view['is_open'] );
     >
         <span class="yl-launcher-icon" aria-hidden="true"><?php echo LauncherIcon::gift(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- fixed SVG string. ?></span>
         <?php // The label is not drawn, only read: it stays the button's accessible name. ?>
-        <span class="yl:sr-only" data-yl-text="launcher_label"><?php echo esc_html( $yayloyalty_text['launcher_label'] ); ?></span>
+        <span class="yl:sr-only"><?php echo esc_html( LauncherCopy::launcher_label() ); ?></span>
         <?php if ( null !== $yayloyalty_member ) : ?>
             <?php // The dot says points expire within LauncherPayload::EXPIRING_SOON_DAYS; the Rewards tab spells it out. ?>
             <?php if ( null !== $yayloyalty_member['expires_at'] ) : ?>
@@ -68,7 +67,7 @@ $yayloyalty_is_open = ! empty( $view['is_open'] );
 
         <div class="yl-launcher-header yl:flex yl:items-center yl:gap-2.5 yl:bg-foreground yl:text-background yl:px-5 yl:py-3.5">
             <span class="yl-launcher-header-icon yl:inline-flex yl:[&>*]:size-4"><?php echo LauncherIcon::gift(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- fixed SVG string. ?></span>
-            <h2 id="yayloyalty-launcher-title" data-yl-text="launcher_label" class="yl:m-0 yl:text-[15px] yl:font-semibold yl:leading-tight yl:text-background"><?php echo esc_html( $yayloyalty_text['launcher_label'] ); ?></h2>
+            <h2 id="yayloyalty-launcher-title" class="yl:m-0 yl:text-[15px] yl:font-semibold yl:leading-tight yl:text-background"><?php echo esc_html( LauncherCopy::launcher_label() ); ?></h2>
             <button type="button" class="yl-launcher-close yl:ml-auto yl:inline-flex yl:size-7 yl:items-center yl:justify-center yl:rounded-md yl:text-background yl:hover:bg-background/15 yl:cursor-pointer yl:transition-colors yl:outline-none yl:focus-visible:ring-[1.5px] yl:focus-visible:ring-background" data-yl-close aria-label="<?php esc_attr_e( 'Close', 'yayloyalty' ); ?>">
                 <?php echo LauncherIcon::close(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- fixed SVG string. ?>
             </button>
