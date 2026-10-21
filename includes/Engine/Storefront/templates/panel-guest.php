@@ -7,7 +7,6 @@
  * belongs to members, and promising it before signup would be untrue.
  *
  * @var array $view            Launcher::view().
- * @var array $yayloyalty_text The Design tab's storefront_text.
  */
 
 use YayLoyalty\Engine\Storefront\AccountRewardsIcon;

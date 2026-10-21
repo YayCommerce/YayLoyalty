@@ -98,7 +98,6 @@ final class LauncherPayload {
 
         return [
             'launcher'     => $design['launcher'],
-            'text'         => LauncherCopy::storefront_text( $design['storefront_text'] ),
             'hide_mobile'  => ! empty( $design['visibility']['hide_on_mobile'] ),
             'earn'         => $rules['earn'],
             'purchase_min' => $rules['purchase_min'],

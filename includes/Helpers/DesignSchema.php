@@ -15,31 +15,12 @@ class DesignSchema {
 
     public static function get_default_design(): array {
         return [
-            'launcher'        => [
+            'launcher'   => [
                 'position'      => 'bottom_right',
                 'brand_color'   => '#3858e9',
                 'corner_radius' => 8,
             ],
-            // Real, editable defaults. An empty save is literal, never "use the default".
-            // {points_label} becomes the merchant's points label (LauncherCopy::storefront_text(); the lines with a {points} count through LauncherCopy::points_sentence_html()), so no default names "points".
-            'storefront_text' => [
-                'launcher_label'        => __( 'Rewards', 'yayloyalty' ),
-                /* translators: keep {points_label} as it is; it becomes the store's points label, as "Points". */
-                'balance_heading'       => __( 'Your {points_label}', 'yayloyalty' ),
-                /* translators: keep every {…} placeholder as it is; each is filled in when the line is shown. */
-                'earn_rate_line'        => __( '{points} {points_label} / {amount}', 'yayloyalty' ),
-                /* translators: keep {points_label} as it is; it becomes the store's points label, as "Points". */
-                'redeem_button'         => __( 'Apply {points_label}', 'yayloyalty' ),
-                /* translators: keep {points_label} as it is; it becomes the store's points label, as "Points". */
-                'signed_out_prompt'     => __( 'Sign in to earn {points_label} on this order', 'yayloyalty' ),
-                /* translators: keep every {…} placeholder as it is; each is filled in when the line is shown. */
-                'product_earn_line'     => __( 'Earn {points} {points_label} with this purchase', 'yayloyalty' ),
-                /* translators: keep every {…} placeholder as it is; each is filled in when the line is shown. */
-                'thankyou_pending_line' => __( '+{points} {points_label} from this order', 'yayloyalty' ),
-                /* translators: keep every {…} placeholder as it is; each is filled in when the line is shown. */
-                'thankyou_earned_line'  => __( '+{points} {points_label} from this order', 'yayloyalty' ),
-            ],
-            'visibility'      => [
+            'visibility' => [
                 'scope'            => self::SCOPE_ALL_PAGES,
                 'include_page_ids' => [],
                 'hide_on_mobile'   => false,
@@ -47,11 +28,11 @@ class DesignSchema {
                 'product_message'  => true,
                 'thankyou_message' => true,
             ],
-            'panel'           => [ // Pro
+            'panel'      => [ // Pro
                 'layout'              => 'compact',
                 'show_reward_catalog' => false,
             ],
-            'typography'      => [ // Pro
+            'typography' => [ // Pro
                 // Stored and sanitised, but rendered nowhere yet.
                 // TODO(custom-css): close the CSS exfiltration risk before the storefront renders this field.
                 'custom_css' => '',
@@ -68,7 +49,7 @@ class DesignSchema {
      */
     public static function schema(): array {
         return [
-            'launcher'        => [
+            'launcher'   => [
                 'position'      => [
                     'type'    => 'choice',
                     'options' => [ 'bottom_right', 'bottom_left' ],
@@ -80,35 +61,7 @@ class DesignSchema {
                     'max'  => 24,
                 ],
             ],
-            'storefront_text' => [
-                'launcher_label'        => [
-                    'type'     => 'text',
-                    'required' => true,
-                ],
-                'balance_heading'       => [
-                    'type'     => 'text',
-                    'required' => true,
-                ],
-                'earn_rate_line'        => [ 'type' => 'text' ],
-                'redeem_button'         => [
-                    'type'     => 'text',
-                    'required' => true,
-                ],
-                'signed_out_prompt'     => [ 'type' => 'text' ],
-                'product_earn_line'     => [
-                    'type'     => 'text',
-                    'required' => true,
-                ],
-                'thankyou_pending_line' => [
-                    'type'     => 'text',
-                    'required' => true,
-                ],
-                'thankyou_earned_line'  => [
-                    'type'     => 'text',
-                    'required' => true,
-                ],
-            ],
-            'visibility'      => [
+            'visibility' => [
                 'scope'            => [
                     'type'    => 'choice',
                     'options' => [ self::SCOPE_ALL_PAGES, self::SCOPE_SHOP_AND_PRODUCT, self::SCOPE_CUSTOM_PAGES ],
@@ -120,14 +73,14 @@ class DesignSchema {
                 'product_message'  => [ 'type' => 'bool' ],
                 'thankyou_message' => [ 'type' => 'bool' ],
             ],
-            'panel'           => [ // Pro
+            'panel'      => [ // Pro
                 'layout'              => [
                     'type'    => 'choice',
                     'options' => [ 'compact', 'full' ],
                 ],
                 'show_reward_catalog' => [ 'type' => 'bool' ],
             ],
-            'typography'      => [ // Pro
+            'typography' => [ // Pro
                 'custom_css' => [ 'type' => 'textarea' ],
             ],
         ];

@@ -152,8 +152,8 @@ final class ProductEarnMessage {
 
         $points = get_current_user_id() > 0 ? self::member_points( $product ) : self::guest_points( $product );
 
-        // The raw design value: storefront_text() would fill {points_label} with the plural before the number is known.
-        return $points > 0 ? LauncherCopy::points_sentence_html( self::design()['storefront_text']['product_earn_line'], $points ) : '';
+        /* translators: keep every {…} placeholder as it is; each is filled in when the line is shown. */
+        return $points > 0 ? LauncherCopy::points_sentence_html( __( 'Earn {points} {points_label} with this purchase', 'yayloyalty' ), $points ) : '';
     }
 
     /** What one of this product earns a guest, at the base rate: no tier multiplier, since that belongs to members. 0 on failure. */

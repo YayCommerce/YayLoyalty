@@ -9,8 +9,8 @@ export function postDesign(data: Design) {
   return api.post('design', { json: data }).json<Design>();
 }
 
-export function resetDesign(group?: string) {
-  return api.post('design/reset', { json: group ? { group } : {} }).json<Design>();
+export function resetDesign() {
+  return api.post('design/reset').json<Design>();
 }
 
 /** Mirrors the `viewer` that `DesignRestController::preview_design()` reads, the source of truth. It is `guest`, or anything else for the sample member. */
@@ -19,18 +19,11 @@ export type DesignPreviewViewer = 'member' | 'guest';
 /**
  * Mirrors what `LauncherPayload::for_balance()` (and `Launcher::view()`) read, the source of truth.
  * The design fields the storefront launcher draws. A field missing here never redraws the preview; change both together.
- * `storefront_text.product_earn_line` and the `thankyou_*_line`s ride along with their group; the launcher doesn't draw them
- * (`ProductEarnMessage` and `ThankYouPoints` do).
  */
-export const DESIGN_PREVIEW_FIELDS = [
-  'launcher',
-  'storefront_text',
-  'visibility.hide_on_mobile',
-  'panel.show_reward_catalog',
-] as const;
+export const DESIGN_PREVIEW_FIELDS = ['launcher', 'visibility.hide_on_mobile', 'panel.show_reward_catalog'] as const;
 
 /** DESIGN_PREVIEW_FIELDS as the request body; the server fills the rest from the stored design. */
-export type DesignPreviewInput = Pick<Design, 'launcher' | 'storefront_text'> & {
+export type DesignPreviewInput = Pick<Design, 'launcher'> & {
   visibility: Pick<Design['visibility'], 'hide_on_mobile'>;
   panel: Pick<Design['panel'], 'show_reward_catalog'>;
 };

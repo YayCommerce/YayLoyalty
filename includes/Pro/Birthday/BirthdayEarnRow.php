@@ -3,6 +3,7 @@ namespace YayLoyalty\Pro\Birthday;
 
 use YayLoyalty\Engine\Points\ContextFactory;
 use YayLoyalty\Engine\Points\PointsEngine;
+use YayLoyalty\Engine\Storefront\LauncherCopy;
 use YayLoyalty\Engine\Storefront\LauncherEarnRules;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Helpers\SettingsHelper;
@@ -44,7 +45,7 @@ final class BirthdayEarnRow {
         $rows[] = [
             'trigger'     => CampaignTrigger::BIRTHDAY,
             'label'       => __( 'Celebrate your birthday', 'yayloyalty' ),
-            'value'       => SettingsHelper::points_text( $points ),
+            'value'       => LauncherCopy::points_gain( $points ),
             'description' => $missing
                 ? __( 'Tell us your birthday to get a birthday bonus.', 'yayloyalty' )
                 /* translators: %s: points with the store's label, as "100 Points". */
