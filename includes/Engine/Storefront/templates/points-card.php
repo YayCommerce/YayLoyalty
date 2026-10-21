@@ -2,7 +2,7 @@
 /**
  * The points card: the Rewards tab's balance block, also placed by [yayloyalty_balance] and its block.
  * A guest gets a sign-in link where the number would be. A member whose points expire within
- * AccountRewards::EXPIRY_NOTICE_DAYS gets a notice under it.
+ * LauncherPayload::EXPIRING_SOON_DAYS gets a notice under it.
  * Styled by assets/storefront/account/points-card.css.
  *
  * @var array $yayloyalty_card AccountRewards::card_view().

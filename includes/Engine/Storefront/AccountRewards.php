@@ -6,9 +6,7 @@ use YayLoyalty\Engine\Earning\ProgramGate;
 use YayLoyalty\Engine\Register\ScriptName;
 use YayLoyalty\Helpers\DesignHelper;
 use YayLoyalty\Helpers\SettingsHelper;
-use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
-use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -27,9 +25,6 @@ final class AccountRewards {
     public const PER_PAGE = 20;
 
     public const FILTER_QUERY_ARG = 'points_type';
-
-    /** The expiry notice shows only once the points expire within this many days. */
-    public const EXPIRY_NOTICE_DAYS = 30;
 
     /** The one file enqueued: it holds the tokens and @imports each section's file beside it. */
     private const STYLE_PATH = 'assets/storefront/account/rewards-tokens.css';
@@ -176,30 +171,19 @@ final class AccountRewards {
     }
 
     /**
-     * The points card's data: the payload for this viewer and their expiry date.
+     * The points card's data: the payload for this viewer and when their points expire.
      *
      * @param int $user_id The viewer; 0 for a guest.
-     * @return array{payload: array, expires_at: ?string} `expires_at` in UTC, and only while it falls
-     *         within EXPIRY_NOTICE_DAYS from now; null otherwise, which hides the notice.
+     * @return array{payload: array, expires_at: ?string} `expires_at` the payload member's: in UTC, and only
+     *         within LauncherPayload::EXPIRING_SOON_DAYS; null otherwise, which hides the notice.
      */
     public static function card_view( int $user_id ): array {
-        $customer = 0 === $user_id ? null : ( new CustomerRepository() )->find_by_user_id( $user_id );
+        $payload = LauncherPayload::for_user( DesignHelper::get_design(), $user_id );
 
         return [
-            'payload'    => LauncherPayload::for_user( DesignHelper::get_design(), $user_id ),
-            'expires_at' => null === $customer ? null : self::expiring_soon( $customer->get_expires_at() ),
+            'payload'    => $payload,
+            'expires_at' => null === $payload['member'] ? null : $payload['member']['expires_at'],
         ];
-    }
-
-    /** $expires_at when it is still ahead and no more than EXPIRY_NOTICE_DAYS away, else null. */
-    private static function expiring_soon( ?string $expires_at ): ?string {
-        if ( null === $expires_at || ! Dates::is_valid( $expires_at ) ) {
-            return null;
-        }
-
-        $left = Dates::to_timestamp( $expires_at ) - Dates::to_timestamp( Dates::now() );
-
-        return $left > 0 && $left <= self::EXPIRY_NOTICE_DAYS * DAY_IN_SECONDS ? $expires_at : null;
     }
 
     /**

@@ -26,6 +26,9 @@ final class LauncherPayload {
     /** Extra rows for "Ways to redeem", after the points discount. */
     public const REDEEM_OFFERS_FILTER = 'yayloyalty_launcher_redeem_offers';
 
+    /** A member's points count as expiring soon, for the launcher's dot and the Rewards tab's notice, this many days ahead. */
+    public const EXPIRING_SOON_DAYS = 30;
+
     /** @var CampaignRepository */
     private $campaigns;
 
@@ -62,6 +65,10 @@ final class LauncherPayload {
 
         $customer = $this->customers->find_by_user_id( $user_id );
         $payload  = $this->for_balance( $design, null === $customer ? 0 : $customer->get_balance(), EarningService::points_left_today( $user_id ) );
+
+        if ( null !== $customer && $customer->get_balance() > 0 ) {
+            $payload['member']['expires_at'] = self::expiring_soon( $customer->get_expires_at() );
+        }
 
         // A shopper checkout refuses (excluded role, opted out, program paused, coupons off) is promised no discount.
         if ( null !== RedemptionProgramGate::shopper_denial( $user_id ) ) {
@@ -122,13 +129,26 @@ final class LauncherPayload {
 
     /**
      * @param Reward|null $reward The cart-discount reward when it is live; null hides the worth.
-     * @return array{balance: int, worth: ?float}
+     * @return array{balance: int, worth: ?float, expires_at: ?string} `expires_at` stays null here; build() sets it
+     *         for a live member whose points expire within EXPIRING_SOON_DAYS.
      */
     private static function member( int $balance, ?Reward $reward ): array {
         return [
-            'balance' => $balance,
-            'worth'   => null === $reward || $balance <= 0 ? null : self::worth( $reward, $balance ),
+            'balance'    => $balance,
+            'worth'      => null === $reward || $balance <= 0 ? null : self::worth( $reward, $balance ),
+            'expires_at' => null,
         ];
+    }
+
+    /** $expires_at (UTC) when it is still ahead and no more than EXPIRING_SOON_DAYS away, else null. */
+    private static function expiring_soon( ?string $expires_at ): ?string {
+        if ( null === $expires_at || ! Dates::is_valid( $expires_at ) ) {
+            return null;
+        }
+
+        $left = Dates::to_timestamp( $expires_at ) - Dates::to_timestamp( Dates::now() );
+
+        return $left > 0 && $left <= self::EXPIRING_SOON_DAYS * DAY_IN_SECONDS ? $expires_at : null;
     }
 
     /**

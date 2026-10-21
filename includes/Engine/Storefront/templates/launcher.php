@@ -1,6 +1,8 @@
 <?php
 /**
  * Launcher shell: the floating button, the overlay and the panel frame (a bottom sheet on mobile).
+ * The button is a round gift icon with the member's balance in a pill under it, and a dot while their
+ * points expire within LauncherPayload::EXPIRING_SOON_DAYS. Its geometry is in apps/admin/src/styles/storefront-launcher-layout.css.
  *
  * @var array $view Launcher::view().
  */
@@ -30,16 +32,20 @@ $yayloyalty_is_open = ! empty( $view['is_open'] );
 >
     <button
         type="button"
-        class="yl-launcher-trigger yl:inline-flex yl:items-center yl:whitespace-nowrap yl:h-11 yl:rounded-lg yl:bg-primary yl:text-primary-foreground yl:hover:bg-primary-accent yl:shadow-lg yl:text-sm yl:font-medium yl:cursor-pointer yl:outline-none yl:focus-visible:ring-[1.5px] yl:focus-visible:ring-ring yl:focus-visible:ring-offset-2"
+        class="yl-launcher-trigger yl:inline-flex yl:items-center yl:justify-center yl:rounded-full yl:bg-primary yl:text-primary-foreground yl:hover:bg-primary-accent yl:shadow-lg yl:cursor-pointer yl:outline-none yl:focus-visible:ring-[1.5px] yl:focus-visible:ring-ring yl:focus-visible:ring-offset-2"
         aria-expanded="<?php echo $yayloyalty_is_open ? 'true' : 'false'; ?>"
         aria-controls="yayloyalty-launcher-panel"
         data-yl-open
-        data-yl-collapsible
     >
-        <?php echo LauncherIcon::gift(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- fixed SVG string. ?>
-        <span class="yl-launcher-label-wrap"><span class="yl-launcher-label" data-yl-text="launcher_label"><?php echo esc_html( $yayloyalty_text['launcher_label'] ); ?></span></span>
+        <span class="yl-launcher-icon" aria-hidden="true"><?php echo LauncherIcon::gift(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- fixed SVG string. ?></span>
+        <?php // The label is not drawn, only read: it stays the button's accessible name. ?>
+        <span class="yl:sr-only" data-yl-text="launcher_label"><?php echo esc_html( $yayloyalty_text['launcher_label'] ); ?></span>
         <?php if ( null !== $yayloyalty_member ) : ?>
-            <span class="yl-launcher-badge yl:inline-flex yl:items-center yl:justify-center yl:rounded-full yl:bg-primary-foreground yl:text-primary yl:h-[22px] yl:min-w-[22px] yl:px-1.5 yl:text-xs yl:font-semibold yl:tabular-nums">
+            <?php // The dot says points expire within LauncherPayload::EXPIRING_SOON_DAYS; the Rewards tab spells it out. ?>
+            <?php if ( null !== $yayloyalty_member['expires_at'] ) : ?>
+                <span class="yl-launcher-dot" aria-hidden="true"></span>
+            <?php endif; ?>
+            <span class="yl-launcher-balance yl:bg-background yl:text-primary yl:font-semibold yl:tabular-nums">
                 <?php echo esc_html( LauncherCopy::points( $yayloyalty_member['balance'] ) ); ?>
                 <span class="yl:sr-only"><?php echo esc_html( SettingsHelper::points_label( $yayloyalty_member['balance'] ) ); ?></span>
             </span>
