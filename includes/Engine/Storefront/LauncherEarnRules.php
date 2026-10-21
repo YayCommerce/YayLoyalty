@@ -115,7 +115,7 @@ final class LauncherEarnRules {
             $rows[] = [
                 'trigger'     => CampaignTrigger::REVIEW,
                 'label'       => __( 'Write a review', 'yayloyalty' ),
-                'value'       => SettingsHelper::points_text( $earn[ CampaignTrigger::REVIEW ] ),
+                'value'       => LauncherCopy::points_gain( $earn[ CampaignTrigger::REVIEW ] ),
                 'description' => __( 'Share your experience after a purchase.', 'yayloyalty' ),
             ];
         }
@@ -171,7 +171,7 @@ final class LauncherEarnRules {
                 [
                     'trigger'     => CampaignTrigger::SIGNUP,
                     'label'       => LauncherCopy::create_account( $payload['register'] ),
-                    'value'       => SettingsHelper::points_text( $earn[ CampaignTrigger::SIGNUP ] ),
+                    'value'       => LauncherCopy::points_gain( $earn[ CampaignTrigger::SIGNUP ] ),
                     'description' => __( 'Join free and get a welcome bonus.', 'yayloyalty' ),
                 ]
             );

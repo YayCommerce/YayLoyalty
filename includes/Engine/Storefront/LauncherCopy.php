@@ -34,6 +34,12 @@ final class LauncherCopy {
         return ( $points < 0 ? '−' : '+' ) . SettingsHelper::format_number( abs( $points ) );
     }
 
+    /** A way to earn's fixed award with its label: "+50 Points". */
+    public static function points_gain( int $points ): string {
+        /* translators: 1: number of points with a plus sign, as "+50", 2: the store's points label, as "Points". */
+        return sprintf( _x( '%1$s %2$s', 'points amount', 'yayloyalty' ), self::signed_points( $points ), SettingsHelper::points_label( $points ) );
+    }
+
     /**
      * A rate like 1, 1.5 or 0.004, with every decimal the merchant entered. At most 10 places, which drops float noise.
      * The digits match the admin's pointsPerCurrencyLabel(), which owns them. The separators are the store's, as for money ("1,5" with a comma decimal separator).

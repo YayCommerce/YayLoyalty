@@ -2,8 +2,10 @@
  * templates/rule-list-item.php: one "Ways to earn" or "Ways to redeem" row, and the bordered list that holds them.
  * Imported by rewards-tokens.css, which holds the tokens.
  */
+/* The side padding sits on the list, not the rows, so the dividers between rows stop short of the border. */
 .yayloyalty-account .yayloyalty-account__list {
   overflow: hidden;
+  padding: 0 16px;
   border: 1px solid var(--yayloyalty-account-border);
   border-radius: var(--yayloyalty-account-radius);
   background: var(--yayloyalty-account-surface);
@@ -15,7 +17,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 14px 16px;
+  padding: 16px 0;
 }
 
 .yayloyalty-account .yayloyalty-account__item + .yayloyalty-account__item {
@@ -46,7 +48,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--yayloyalty-account-text);
   text-decoration: none;
@@ -70,8 +72,8 @@
 
 .yayloyalty-account .yayloyalty-account__item-value {
   flex-shrink: 0;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 500;
   text-align: right;
   white-space: nowrap;
   color: var(--yayloyalty-account-text);

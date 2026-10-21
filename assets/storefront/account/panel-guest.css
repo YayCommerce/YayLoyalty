@@ -4,6 +4,7 @@
  * Imported by rewards-tokens.css, which holds the tokens.
  */
 .yayloyalty-account .yayloyalty-account__steps .yayloyalty-account__list {
+  padding: 0;
   border: 0;
   border-radius: 0;
   background: transparent;
