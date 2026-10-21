@@ -29,6 +29,17 @@ final class LauncherCopy {
         return 'checkout' === $route ? __( 'Create an account at checkout', 'yayloyalty' ) : __( 'Create an account', 'yayloyalty' );
     }
 
+    /** The guest panel's signup step, by register route (LauncherPayload::register_route()). */
+    public static function join_free( ?string $route ): string {
+        return 'checkout' === $route ? __( 'Join for free at checkout', 'yayloyalty' ) : __( 'Join for free', 'yayloyalty' );
+    }
+
+    /** The guest panel's purchase step: "Earn Points", with the store's label. */
+    public static function earn_points(): string {
+        /* translators: %s: the store's plural points label, as "Points". */
+        return sprintf( __( 'Earn %s', 'yayloyalty' ), SettingsHelper::points_label_plural() );
+    }
+
     /** "+270" / "−120": signed, with a real minus sign. */
     public static function signed_points( int $points ): string {
         return ( $points < 0 ? '−' : '+' ) . SettingsHelper::format_number( abs( $points ) );

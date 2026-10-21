@@ -23,11 +23,13 @@
   width: 20px;
   height: 20px;
   background: transparent;
+  color: var(--yayloyalty-account-step-icon);
 }
 
+/* 20px tall so the birthday icon's 18x20 viewBox keeps its size; the 18x18 icons center in it. */
 .yayloyalty-account .yayloyalty-account__steps .yayloyalty-account__item-icon svg {
   width: 18px;
-  height: 18px;
+  height: 20px;
 }
 
 .yayloyalty-account .yayloyalty-account__steps .yayloyalty-account__item-name {

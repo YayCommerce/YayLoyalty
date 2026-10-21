@@ -22,11 +22,24 @@ $yayloyalty_earn             = $view['earn'];
 $yayloyalty_route            = $view['register'];
 $yayloyalty_signup           = $yayloyalty_earn[ CampaignTrigger::SIGNUP ];
 $yayloyalty_is_checkout_only = 'checkout' === $yayloyalty_route;
-$yayloyalty_steps            = array_map( [ LauncherEarnRules::class, 'list_item' ], LauncherEarnRules::guest_rows( $view ) );
+$yayloyalty_steps            = [];
+
+foreach ( LauncherEarnRules::guest_rows( $view ) as $yayloyalty_row ) {
+    $yayloyalty_step         = LauncherEarnRules::list_item( $yayloyalty_row );
+    $yayloyalty_step['icon'] = AccountRewardsIcon::for_step( $yayloyalty_row['trigger'] );
+
+    if ( CampaignTrigger::SIGNUP === $yayloyalty_row['trigger'] ) {
+        $yayloyalty_step['name'] = LauncherCopy::join_free( $yayloyalty_route );
+    } elseif ( CampaignTrigger::PURCHASE === $yayloyalty_row['trigger'] ) {
+        $yayloyalty_step['name'] = LauncherCopy::earn_points();
+    }
+
+    $yayloyalty_steps[] = $yayloyalty_step;
+}
 
 if ( null !== $view['redeem'] ) {
     $yayloyalty_steps[] = [
-        'icon'  => AccountRewardsIcon::get( 'ticket' ),
+        'icon'  => AccountRewardsIcon::for_step( 'redeem' ),
         'name'  => __( 'Redeem & save', 'yayloyalty' ),
         'value' => LauncherCopy::redeem_rate( $view['redeem']['points_per_unit'] ),
     ];
