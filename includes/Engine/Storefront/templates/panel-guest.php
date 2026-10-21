@@ -12,6 +12,7 @@
 
 use YayLoyalty\Engine\Storefront\AccountRewardsIcon;
 use YayLoyalty\Engine\Storefront\LauncherCopy;
+use YayLoyalty\Engine\Storefront\LauncherEarnRules;
 use YayLoyalty\Engine\Storefront\LauncherPayload;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Helpers\SettingsHelper;
@@ -22,35 +23,7 @@ $yayloyalty_earn             = $view['earn'];
 $yayloyalty_route            = $view['register'];
 $yayloyalty_signup           = $yayloyalty_earn[ CampaignTrigger::SIGNUP ];
 $yayloyalty_is_checkout_only = 'checkout' === $yayloyalty_route;
-$yayloyalty_steps            = [];
-
-if ( null !== $yayloyalty_signup ) {
-    $yayloyalty_steps[] = [
-        'icon'  => AccountRewardsIcon::get( 'user' ),
-        'name'  => $yayloyalty_is_checkout_only ? __( 'Join for free at checkout', 'yayloyalty' ) : __( 'Join for free', 'yayloyalty' ),
-        /* translators: %s: points with the store's label, as "100 Points". */
-        'value' => sprintf( __( '+%s welcome bonus', 'yayloyalty' ), SettingsHelper::points_text( $yayloyalty_signup ) ),
-        'tone'  => 'positive',
-    ];
-}
-
-if ( null !== $yayloyalty_earn[ CampaignTrigger::PURCHASE ] ) {
-    $yayloyalty_steps[] = [
-        'icon'      => AccountRewardsIcon::get( 'dollar' ),
-        /* translators: %s: the store's points label, as "Points". */
-        'name'      => sprintf( __( 'Earn %s', 'yayloyalty' ), SettingsHelper::points_label( 0 ) ),
-        'value'     => LauncherCopy::earn_rate( $yayloyalty_text['earn_rate_line'], $yayloyalty_earn[ CampaignTrigger::PURCHASE ], $view['purchase_min'] ),
-        'value_key' => 'earn_rate_line',
-    ];
-}
-
-if ( null !== $yayloyalty_earn[ CampaignTrigger::REVIEW ] ) {
-    $yayloyalty_steps[] = [
-        'icon'  => AccountRewardsIcon::get( 'message' ),
-        'name'  => __( 'Write a review', 'yayloyalty' ),
-        'value' => SettingsHelper::points_text( $yayloyalty_earn[ CampaignTrigger::REVIEW ] ),
-    ];
-}
+$yayloyalty_steps            = array_map( [ LauncherEarnRules::class, 'list_item' ], LauncherEarnRules::guest_rows( $view ) );
 
 if ( null !== $view['redeem'] ) {
     $yayloyalty_steps[] = [
@@ -78,11 +51,6 @@ require __DIR__ . '/guest-card.php';
         <ul class="yayloyalty-account__list">
             <?php
             foreach ( $yayloyalty_steps as $yayloyalty_item ) {
-                $yayloyalty_item += [
-                    'url'  => '',
-                    'text' => '',
-                ];
-
                 require __DIR__ . '/rule-list-item.php';
             }
             ?>

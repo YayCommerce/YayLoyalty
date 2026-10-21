@@ -3,8 +3,7 @@
  * "Points history" on the Rewards tab: the CSV link, the filters, the table or its empty state, and the pages.
  * Styled by assets/storefront/account/points-history.css.
  *
- * @var array  $yayloyalty_history AccountRewards::view()'s `history`.
- * @var string $yayloyalty_label   The store's plural points label.
+ * @var array $yayloyalty_history AccountRewards::view()'s `history`.
  */
 
 use YayLoyalty\Engine\Storefront\AccountHistoryCsv;
@@ -12,10 +11,12 @@ use YayLoyalty\Engine\Storefront\AccountRewards;
 use YayLoyalty\Engine\Storefront\AccountRewardsIcon;
 use YayLoyalty\Engine\Storefront\LauncherCopy;
 use YayLoyalty\Enums\LedgerType;
+use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
 
+$yayloyalty_label     = SettingsHelper::points_label_plural();
 $yayloyalty_columns   = AccountRewards::column_labels();
 $yayloyalty_page      = $yayloyalty_history['page'];
 $yayloyalty_filter_on = $yayloyalty_history['filter'];

@@ -73,9 +73,9 @@ final class LauncherEarnRules {
     /**
      * member_rows() under the daily limit: at 0 left the limit line replaces the rows; below it, the line follows rows there are.
      *
-     * @param array<int, array{trigger: string, label: string, value: string, description?: string, url?: string}> $rows       member_rows().
-     * @param int|null                                                         $left_today EarningService::points_left_today(); null for no limit.
-     * @return array{rows: array<int, array{trigger: string, label: string, value: string, description?: string, url?: string}>, limit_line: string}
+     * @param array[]  $rows       member_rows(), each as the yayloyalty_launcher_earn_rows filter documents it.
+     * @param int|null $left_today EarningService::points_left_today(); null for no limit.
+     * @return array{rows: array[], limit_line: string}
      */
     public static function with_daily_limit( array $rows, ?int $left_today ): array {
         if ( 0 === $left_today ) {
@@ -97,7 +97,7 @@ final class LauncherEarnRules {
      * @param array{purchase: ?float, review: ?int} $earn         advertise()'s `earn`.
      * @param string                                $rate_line    The Design tab's earn_rate_line.
      * @param float                                 $purchase_min advertise()'s `purchase_min`.
-     * @return array<int, array{trigger: string, label: string, value: string, description?: string, url?: string}>
+     * @return array[] Each row as the yayloyalty_launcher_earn_rows filter documents it.
      */
     public static function member_rows( array $earn, string $rate_line, float $purchase_min ): array {
         $rows = [];
@@ -108,7 +108,7 @@ final class LauncherEarnRules {
                 'label'       => __( 'Make a purchase', 'yayloyalty' ),
                 'value'       => LauncherCopy::earn_rate( $rate_line, $earn[ CampaignTrigger::PURCHASE ], $purchase_min ),
                 /* translators: %s: the store's points label, as "Points". */
-                'description' => sprintf( __( 'Earn %s on every order.', 'yayloyalty' ), SettingsHelper::points_label( 0 ) ),
+                'description' => sprintf( __( 'Earn %s on every order.', 'yayloyalty' ), SettingsHelper::points_label_plural() ),
             ];
         }
 
@@ -138,19 +138,33 @@ final class LauncherEarnRules {
      *
      * @param array $payload LauncherPayload::for_user() for this viewer.
      * @param int   $user_id The viewer; 0 for a guest.
-     * @return array{rows: array<int, array{trigger: string, label: string, value: string, description?: string, url?: string}>, limit_line: string}
+     * @return array{rows: array[], limit_line: string} Each row as the yayloyalty_launcher_earn_rows filter documents it.
      */
     public static function for_viewer( array $payload, int $user_id ): array {
         if ( ! Launcher::viewer_can_earn( $user_id ) ) {
             return self::with_daily_limit( [], null );
         }
 
+        if ( $user_id > 0 ) {
+            return self::with_daily_limit( self::member_rows( $payload['earn'], $payload['text']['earn_rate_line'], $payload['purchase_min'] ), $payload['left_today'] );
+        }
+
+        return [
+            'rows'       => self::guest_rows( $payload ),
+            'limit_line' => '',
+        ];
+    }
+
+    /**
+     * A guest's "Ways to earn" rows, signup first, with no earn gate: the guest panel, whose launcher already
+     * checked it and whose Design tab preview shows the rows regardless.
+     *
+     * @param array $payload LauncherPayload::for_user() or for_balance() for a guest.
+     * @return array[] Each row as the yayloyalty_launcher_earn_rows filter documents it.
+     */
+    public static function guest_rows( array $payload ): array {
         $earn = $payload['earn'];
         $rows = self::member_rows( $earn, $payload['text']['earn_rate_line'], $payload['purchase_min'] );
-
-        if ( $user_id > 0 ) {
-            return self::with_daily_limit( $rows, $payload['left_today'] );
-        }
 
         if ( null !== $earn[ CampaignTrigger::SIGNUP ] ) {
             array_unshift(
@@ -164,9 +178,23 @@ final class LauncherEarnRules {
             );
         }
 
+        return $rows;
+    }
+
+    /**
+     * An earn row as rule-list-item.php prints it.
+     *
+     * @param array $row A row as the yayloyalty_launcher_earn_rows filter documents it.
+     * @return array{icon: string, name: string, url: string, text: string, value: string, value_key: string}
+     */
+    public static function list_item( array $row ): array {
         return [
-            'rows'       => $rows,
-            'limit_line' => '',
+            'icon'      => AccountRewardsIcon::for_trigger( $row['trigger'] ),
+            'name'      => $row['label'],
+            'url'       => (string) ( $row['url'] ?? '' ),
+            'text'      => (string) ( $row['description'] ?? '' ),
+            'value'     => $row['value'],
+            'value_key' => CampaignTrigger::PURCHASE === $row['trigger'] ? 'earn_rate_line' : '',
         ];
     }
 

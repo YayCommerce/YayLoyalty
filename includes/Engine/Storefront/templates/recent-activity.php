@@ -4,18 +4,19 @@
  * else skeletons launcher.js replaces from GET /me/activity. Styled by assets/storefront/account/recent-activity.css.
  * The data-yl-* hooks are launcher.js's; keep them.
  *
- * @var array  $view             Launcher::view(); `activity` the rows when already in hand.
- * @var string $yayloyalty_label The store's plural points label.
+ * @var array $view Launcher::view(); `activity` the rows when already in hand.
  */
 
 use YayLoyalty\Controllers\StorefrontActivityRestController;
 use YayLoyalty\Engine\Storefront\AccountRewardsIcon;
 use YayLoyalty\Engine\Storefront\LauncherCopy;
 use YayLoyalty\Engine\Storefront\UiClasses;
+use YayLoyalty\Helpers\SettingsHelper;
 
 defined( 'ABSPATH' ) || exit;
 
 $yayloyalty_activity = $view['activity'] ?? null;
+$yayloyalty_label    = SettingsHelper::points_label_plural();
 ?>
 <section class="yayloyalty-account__section yayloyalty-account__activity" data-yl-activity aria-live="polite">
     <div class="yayloyalty-account__section-head">

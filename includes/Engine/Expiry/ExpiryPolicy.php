@@ -27,7 +27,10 @@ final class ExpiryPolicy {
     /** Shortening the window moves stored dates to the new window, with no grace: a date already past expires on the next run. */
     public const ON_SHORTEN_APPLY = 'apply';
 
-    /** Turning expiry on, or shortening it while keeping dates, never sets a date sooner than this many days from now. */
+    /**
+     * Turning expiry on, or shortening it while keeping dates, never sets a date sooner than this many days from now,
+     * or than the window itself when it is shorter (grace_days()).
+     */
     public const GRACE_DAYS = 30;
 
     public static function inactivity_expires_at( string $base_utc, int $days ): string {
@@ -47,7 +50,6 @@ final class ExpiryPolicy {
     public static function floor_at( string $expires_at, string $floor ): string {
         return strcmp( $expires_at, $floor ) >= 0 ? $expires_at : $floor;
     }
-
 
     /** @var array<string, mixed> */
     private $settings;

@@ -4,7 +4,8 @@
  * worth, elsewhere the Design tab's signed-out prompt. Styled by assets/storefront/account/guest-card.css
  * on top of points-card.css.
  *
- * @var array $view            Launcher::view(); `estimate` the product's points, null off a product page.
+ * @var array $view            Launcher::view(); `estimate` the product's points, null off a product page, and
+ *                             `estimate_off` what they take off an order, null when the discount wouldn't take them.
  * @var array $yayloyalty_text The Design tab's storefront_text.
  */
 
@@ -15,13 +16,6 @@ defined( 'ABSPATH' ) || exit;
 
 $yayloyalty_estimate = $view['estimate'];
 $yayloyalty_prompt   = trim( $yayloyalty_text['signed_out_prompt'] );
-$yayloyalty_off      = 0.0;
-
-if ( null !== $yayloyalty_estimate && null !== $view['redeem'] ) {
-    // Rounded down to the store's decimals: 180 points at 300 a unit is 0, never "1 off".
-    $yayloyalty_scale = 10 ** wc_get_price_decimals();
-    $yayloyalty_off   = floor( $yayloyalty_estimate / $view['redeem']['points_per_unit'] * $yayloyalty_scale ) / $yayloyalty_scale;
-}
 ?>
 <section class="yayloyalty-account__card yayloyalty-account__guest-card">
     <div class="yayloyalty-account__card-body">
@@ -31,12 +25,12 @@ if ( null !== $yayloyalty_estimate && null !== $view['redeem'] ) {
                 <span class="yayloyalty-account__balance"><?php echo esc_html( LauncherCopy::points( $yayloyalty_estimate ) ); ?></span>
                 <span class="yayloyalty-account__unit"><?php echo esc_html( SettingsHelper::points_label( $yayloyalty_estimate ) ); ?></span>
             </p>
-            <?php if ( $yayloyalty_off > 0 ) : ?>
+            <?php if ( null !== $view['estimate_off'] ) : ?>
                 <p class="yayloyalty-account__caption">
                     <strong>
                         <?php
                         /* translators: %s: money amount. */
-                        echo esc_html( sprintf( __( '%s off', 'yayloyalty' ), LauncherCopy::money( $yayloyalty_off ) ) );
+                        echo esc_html( sprintf( __( '%s off', 'yayloyalty' ), LauncherCopy::money( $view['estimate_off'] ) ) );
                         ?>
                     </strong>
                     <?php esc_html_e( 'your next order', 'yayloyalty' ); ?>
@@ -49,10 +43,10 @@ if ( null !== $yayloyalty_estimate && null !== $view['redeem'] ) {
             <p class="yayloyalty-account__caption">
                 <?php
                 /* translators: %s: the store's points label, as "Points". */
-                echo esc_html( sprintf( __( 'Collect %s on every order and spend them on money off your next one. Free to join.', 'yayloyalty' ), SettingsHelper::points_label( 0 ) ) );
+                echo esc_html( sprintf( __( 'Collect %s on every order and spend them on money off your next one. Free to join.', 'yayloyalty' ), SettingsHelper::points_label_plural() ) );
                 ?>
             </p>
         <?php endif; ?>
     </div>
-    <img class="yayloyalty-account__art" src="<?php echo esc_url( YAYLOYALTY_PLUGIN_URL . 'assets/storefront/account/points-illustration.svg' ); ?>" alt="" width="160" height="128" loading="lazy" decoding="async">
+    <?php require __DIR__ . '/card-art.php'; ?>
 </section>

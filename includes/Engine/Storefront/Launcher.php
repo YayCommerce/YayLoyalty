@@ -97,7 +97,12 @@ final class Launcher {
 
     /** The stylesheet's URL, versioned like the enqueue, for a page that links it itself (the Design tab's preview). */
     public static function style_url(): string {
-        return add_query_arg( 'ver', self::asset_version( self::STYLE_PATH ), YAYLOYALTY_PLUGIN_URL . self::STYLE_PATH );
+        return self::versioned_url( self::STYLE_PATH );
+    }
+
+    /** A plugin asset's URL with the ?ver= an enqueue would add, for a page that links it itself. */
+    public static function versioned_url( string $relative_path ): string {
+        return add_query_arg( 'ver', self::asset_version( $relative_path ), YAYLOYALTY_PLUGIN_URL . $relative_path );
     }
 
     private function should_render( array $design ): bool {

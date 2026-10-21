@@ -102,20 +102,10 @@ final class LauncherCopy {
         return sprintf( __( '%1$s on orders of %2$s or more', 'yayloyalty' ), $line, self::money( $min_subtotal ) );
     }
 
-    /** A storefront_text line with {points} and a {points_label} that agrees with the count: "Earn 1 Point with this purchase". */
-    public static function points_sentence( string $template, int $points ): string {
-        return strtr(
-            $template,
-            [
-                '{points}'       => self::points( $points ),
-                '{points_label}' => SettingsHelper::points_label( $points ),
-            ]
-        );
-    }
-
     /**
-     * points_sentence() as escaped HTML, the figure in <strong>: with its label when they sit together, and with a
-     * leading "+" too ("+{points} {points_label}"). For the product-page line and the thank-you card.
+     * A storefront_text line with {points} and a {points_label} that agrees with the count, as escaped HTML: the
+     * figure in <strong>, with its label when they sit together, and with a leading "+" too ("+{points} {points_label}").
+     * For the product-page line and the thank-you card.
      */
     public static function points_sentence_html( string $template, int $points ): string {
         $number = esc_html( self::points( $points ) );
@@ -141,8 +131,7 @@ final class LauncherCopy {
      * @return array<string, string>
      */
     public static function storefront_text( array $text ): array {
-        // 0 picks the plural label.
-        $label = SettingsHelper::points_label( 0 );
+        $label = SettingsHelper::points_label_plural();
 
         foreach ( $text as $key => $value ) {
             if ( 'earn_rate_line' !== $key ) {
@@ -156,7 +145,7 @@ final class LauncherCopy {
     /** The empty points history, in the launcher and on the account tab. */
     public static function no_activity(): string {
         /* translators: %s: the store's points label, as "Points". */
-        return sprintf( __( 'No %s activity yet.', 'yayloyalty' ), SettingsHelper::points_label( 0 ) );
+        return sprintf( __( 'No %s activity yet.', 'yayloyalty' ), SettingsHelper::points_label_plural() );
     }
 
     /** The daily earning limit under the ways to earn: '' with no limit, "You can earn 40 Points more today." below it, a reached line at 0. */

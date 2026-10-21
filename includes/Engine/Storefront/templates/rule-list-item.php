@@ -3,8 +3,8 @@
  * One row of "Ways to earn" or "Ways to redeem": icon, name (linked when it has a url), the line under it, and the value.
  * Styled by assets/storefront/account/rule-list-item.css.
  *
- * @var array{icon: string, name: string, url: string, text: string, value: string, value_key?: string, tone?: string} $yayloyalty_item
- *      `icon` an AccountRewardsIcon SVG; `url` and `text` '' for none. `value_key` the storefront_text key the
+ * @var array{icon: string, name: string, url?: string, text?: string, value: string, value_key?: string, tone?: string} $yayloyalty_item
+ *      `icon` an AccountRewardsIcon SVG; `url` and `text` missing or '' for none. `value_key` the storefront_text key the
  *      value prints, so the Design tab's preview can outline it; `tone` 'positive' to colour the value.
  */
 
@@ -12,6 +12,10 @@ use YayLoyalty\Engine\Storefront\AccountRewardsIcon;
 
 defined( 'ABSPATH' ) || exit;
 
+$yayloyalty_item     += [
+    'url'  => '',
+    'text' => '',
+];
 $yayloyalty_item_tone = 'positive' === ( $yayloyalty_item['tone'] ?? '' ) ? ' yayloyalty-account__item-value--positive' : '';
 ?>
 <li class="yayloyalty-account__item">

@@ -6,8 +6,7 @@
  * @var array $yayloyalty_earn LauncherEarnRules::for_viewer().
  */
 
-use YayLoyalty\Engine\Storefront\AccountRewardsIcon;
-use YayLoyalty\Enums\CampaignTrigger;
+use YayLoyalty\Engine\Storefront\LauncherEarnRules;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -21,14 +20,7 @@ if ( [] === $yayloyalty_earn['rows'] && '' === $yayloyalty_earn['limit_line'] ) 
         <ul class="yayloyalty-account__list">
             <?php
             foreach ( $yayloyalty_earn['rows'] as $yayloyalty_earn_row ) {
-                $yayloyalty_item = [
-                    'icon'      => AccountRewardsIcon::for_trigger( $yayloyalty_earn_row['trigger'] ),
-                    'name'      => $yayloyalty_earn_row['label'],
-                    'url'       => (string) ( $yayloyalty_earn_row['url'] ?? '' ),
-                    'text'      => (string) ( $yayloyalty_earn_row['description'] ?? '' ),
-                    'value'     => $yayloyalty_earn_row['value'],
-                    'value_key' => CampaignTrigger::PURCHASE === $yayloyalty_earn_row['trigger'] ? 'earn_rate_line' : '',
-                ];
+                $yayloyalty_item = LauncherEarnRules::list_item( $yayloyalty_earn_row );
 
                 require __DIR__ . '/rule-list-item.php';
             }

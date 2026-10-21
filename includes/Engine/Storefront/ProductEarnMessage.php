@@ -219,7 +219,7 @@ final class ProductEarnMessage {
             '<div class="%1$s" data-default="%2$s"><p class="%1$s__line"><span class="%1$s__icon">%3$s</span><span class="%1$s__text">%4$s</span></p>%5$s</div>',
             esc_attr( self::CSS_CLASS ),
             esc_attr( $sentence ),
-            LauncherIcon::gift(),
+            AccountRewardsIcon::get( 'gift' ),
             $sentence,
             $guest
         );
@@ -228,7 +228,7 @@ final class ProductEarnMessage {
     /** "Sign in to earn Points, or join free & get 100 Points.", the clause only while signup pays. */
     private static function guest_line(): string {
         $sign_in = sprintf( '<a href="%s">%s</a>', esc_url( (string) wc_get_page_permalink( 'myaccount' ) ), esc_html__( 'Sign in', 'yayloyalty' ) );
-        $label   = esc_html( SettingsHelper::points_label( 0 ) );
+        $label   = esc_html( SettingsHelper::points_label_plural() );
         $route   = LauncherPayload::register_route();
         $signup  = null === $route ? null : LauncherEarnRules::advertise( self::engine(), ContextFactory::for_advert( Dates::now() ), true )['earn'][ CampaignTrigger::SIGNUP ];
 

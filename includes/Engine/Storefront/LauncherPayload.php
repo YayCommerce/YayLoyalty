@@ -94,6 +94,7 @@ final class LauncherPayload {
         $register = self::register_route();
         $engine   = $this->engine();
         $rules    = null === $engine ? LauncherEarnRules::none() : LauncherEarnRules::advertise( $engine, ContextFactory::for_advert( $now ), null !== $register );
+        $estimate = null !== $engine && null === $balance && null !== $rules['earn'][ CampaignTrigger::PURCHASE ] ? self::product_estimate() : null;
 
         return [
             'launcher'     => $design['launcher'],
@@ -105,7 +106,9 @@ final class LauncherPayload {
             'offers'       => self::redeem_offers( $now ),
             'member'       => null === $balance ? null : self::member( $balance, null === $redeem ? null : $reward ),
             'left_today'   => $left_today,
-            'estimate'     => null !== $engine && null === $balance && null !== $rules['earn'][ CampaignTrigger::PURCHASE ] ? self::product_estimate() : null,
+            'estimate'     => $estimate,
+            // What the estimate takes off an order, as checkout would grant it: null below the minimum.
+            'estimate_off' => null === $estimate || null === $redeem ? null : self::worth( $reward, $estimate ),
             'register'     => $register,
             'account_url'  => (string) wc_get_page_permalink( 'myaccount' ),
             'rewards_url'  => AccountRewards::url(),
@@ -166,7 +169,8 @@ final class LauncherPayload {
      * and the member panel's "Ways to redeem". A limit the merchant left off is null.
      *
      * @param Reward|null $reward The reward when it is live (RewardRepository::find_live_cart_discount()).
-     * @return array{points_per_unit: float, min_points: int, max_points: ?int, max_percent: ?float}|null
+     * @return array{points_per_unit: float, min_points: int, max_points: ?int, max_percent: ?float, unlock_points: int, unlock_off: ?float}|null
+     *         `unlock_points` the smallest balance the discount takes, and `unlock_off` what it takes off: the points card's "Earn N more".
      */
     private static function redeem_rule( ?Reward $reward ): ?array {
         $rate = RewardRepository::rate_of( $reward );
@@ -176,12 +180,17 @@ final class LauncherPayload {
         }
 
         $config = $reward->get_config();
+        $step   = Clamp::step_of( $reward );
+        // Its minimum on the step, and never less than one currency unit's worth.
+        $unlock = max( (int) ( ceil( Clamp::min_of( $reward ) / $step ) * $step ), Clamp::points_for( 1.0, $reward ) );
 
         return [
             'points_per_unit' => $rate,
             'min_points'      => Clamp::min_of( $reward ),
             'max_points'      => isset( $config['max_points_per_order'] ) ? (int) $config['max_points_per_order'] : null,
             'max_percent'     => isset( $config['max_percent_of_subtotal'] ) ? (float) $config['max_percent_of_subtotal'] : null,
+            'unlock_points'   => $unlock,
+            'unlock_off'      => self::worth( $reward, $unlock ),
         ];
     }
 

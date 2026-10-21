@@ -28,8 +28,7 @@ final class ShopperActivityRow {
      */
     public static function items( array $entries ): array {
         $store = Text::store_name();
-        // 0 picks the plural label.
-        $label = SettingsHelper::points_label( 0 );
+        $label = SettingsHelper::points_label_plural();
         $items = [];
 
         foreach ( $entries as $entry ) {
@@ -52,9 +51,8 @@ final class ShopperActivityRow {
      *         page, or '' when the order is gone.
      */
     public static function history_rows( array $entries ): array {
-        $store = Text::store_name();
-        // 0 picks the plural label.
-        $label  = SettingsHelper::points_label( 0 );
+        $store  = Text::store_name();
+        $label  = SettingsHelper::points_label_plural();
         $orders = [];
         $rows   = [];
 
@@ -63,11 +61,7 @@ final class ShopperActivityRow {
 
             if ( null !== $order_id && ! isset( $orders[ $order_id ] ) ) {
                 // An earn row and its refund share an order: load it once.
-                $order               = function_exists( 'wc_get_order' ) ? wc_get_order( $order_id ) : null;
-                $orders[ $order_id ] = [
-                    'number' => $order ? (string) $order->get_order_number() : (string) $order_id,
-                    'url'    => $order ? $order->get_view_order_url() : '',
-                ];
+                $orders[ $order_id ] = self::order_ref( $order_id );
             }
 
             $rows[] = [
@@ -159,13 +153,20 @@ final class ShopperActivityRow {
         }
 
         /* translators: 1: date, 2: order number. */
-        return sprintf( __( '%1$s · order #%2$s', 'yayloyalty' ), $date, self::order_number( $order_id ) );
+        return sprintf( __( '%1$s · order #%2$s', 'yayloyalty' ), $date, self::order_ref( $order_id )['number'] );
     }
 
-    /** The order's display number, or its id once the order is gone. */
-    private static function order_number( int $order_id ): string {
+    /**
+     * The order's display number and My Account link; once the order is gone, its id and no link.
+     *
+     * @return array{number: string, url: string}
+     */
+    private static function order_ref( int $order_id ): array {
         $order = function_exists( 'wc_get_order' ) ? wc_get_order( $order_id ) : null;
 
-        return $order ? (string) $order->get_order_number() : (string) $order_id;
+        return [
+            'number' => $order ? (string) $order->get_order_number() : (string) $order_id,
+            'url'    => $order ? $order->get_view_order_url() : '',
+        ];
     }
 }

@@ -29,8 +29,8 @@ final class BirthdayEarnRow {
     }
 
     /**
-     * @param array<int, array{trigger: string, label: string, value: string, description?: string, url?: string}> $rows
-     * @return array<int, array{trigger: string, label: string, value: string, description?: string, url?: string}>
+     * @param array[] $rows Each row as the yayloyalty_launcher_earn_rows filter documents it (LauncherEarnRules::member_rows()).
+     * @return array[]
      */
     public function add_row( array $rows ): array {
         $points = self::advertised_points();

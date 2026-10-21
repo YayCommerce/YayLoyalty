@@ -1,0 +1,19 @@
+/*
+ * The reset the storefront's hand-written cards share: the Rewards tab and its partials (account/rewards-tokens.css)
+ * and the order-received card (thankyou-points.css), each of which imports this file first.
+ * Nested under each root, so it is 0,1,1 and a theme's plain `h2 {}` or `p {}` margins cannot beat it.
+ */
+:is(.yayloyalty-account, .yayloyalty-thankyou-points) *,
+:is(.yayloyalty-account, .yayloyalty-thankyou-points) *::before,
+:is(.yayloyalty-account, .yayloyalty-thankyou-points) *::after {
+  box-sizing: border-box;
+}
+
+:is(.yayloyalty-account, .yayloyalty-thankyou-points) :is(h2, h3, p, ul, li, table, th, td, a, span, strong, nav) {
+  margin: 0;
+  padding: 0;
+  font-family: inherit;
+  letter-spacing: normal;
+  text-transform: none;
+  text-shadow: none;
+}

@@ -159,17 +159,26 @@
   text-align: center;
 }
 
+/* The empty-state mark, here and in recent-activity.css, which sizes its own. */
+.yayloyalty-account .yayloyalty-account__empty-icon,
+.yayloyalty-account .yayloyalty-account__activity-empty-icon {
+  opacity: 0.6;
+}
+
+.yayloyalty-account .yayloyalty-account__empty-icon svg,
+.yayloyalty-account .yayloyalty-account__activity-empty-icon svg {
+  /* A lighter line than the 2px row icons, as the design draws this mark. */
+  stroke-width: 1.5;
+}
+
 .yayloyalty-account .yayloyalty-account__empty-icon {
   margin-bottom: 6px;
   color: var(--yayloyalty-account-muted);
-  opacity: 0.6;
 }
 
 .yayloyalty-account .yayloyalty-account__empty-icon svg {
   width: 32px;
   height: 32px;
-  /* A lighter line than the 2px row icons, as the design draws this mark. */
-  stroke-width: 1.5;
 }
 
 .yayloyalty-account .yayloyalty-account__empty-title {

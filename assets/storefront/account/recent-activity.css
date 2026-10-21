@@ -82,14 +82,12 @@
   color: var(--yayloyalty-account-muted);
 }
 
+/* Its opacity and line weight are points-history.css's empty-state mark. */
 .yayloyalty-account .yayloyalty-account__activity-empty-icon {
   flex-shrink: 0;
-  opacity: 0.6;
 }
 
 .yayloyalty-account .yayloyalty-account__activity-empty-icon svg {
   width: 28px;
   height: 28px;
-  /* A lighter line than the 2px row icons, as the design draws this mark. */
-  stroke-width: 1.5;
 }

@@ -10,20 +10,13 @@
  */
 
 use YayLoyalty\Engine\Storefront\LauncherEarnRules;
-use YayLoyalty\Helpers\SettingsHelper;
 
 defined( 'ABSPATH' ) || exit;
 
 // The names the shared partials read.
-$yayloyalty_card   = [
-    'payload'    => $view,
-    'expires_at' => $yayloyalty_member['expires_at'],
-];
-$yayloyalty_earn   = LauncherEarnRules::with_daily_limit( LauncherEarnRules::member_rows( $view['earn'], $yayloyalty_text['earn_rate_line'], $view['purchase_min'] ), $view['left_today'] );
-$yayloyalty_redeem = $view['redeem'];
-$yayloyalty_offers = $view['offers'];
-// 0 picks the plural label.
-$yayloyalty_label = SettingsHelper::points_label( 0 );
+$yayloyalty_payload = $view;
+$yayloyalty_card    = [ 'payload' => $view ];
+$yayloyalty_earn    = LauncherEarnRules::with_daily_limit( LauncherEarnRules::member_rows( $view['earn'], $yayloyalty_text['earn_rate_line'], $view['purchase_min'] ), $view['left_today'] );
 
 require __DIR__ . '/points-card.php';
 require __DIR__ . '/new-points-notice.php';

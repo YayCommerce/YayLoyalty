@@ -26,19 +26,24 @@ final class AccountRewardsIcon {
         'external'  => '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
         'prev'      => '<path d="m15 18-6-6 6-6"/>',
         'next'      => '<path d="m9 18 6-6-6-6"/>',
-        'dollar'    => '<circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 18V6"/>',
         'ticket'    => '<path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2"/><path d="M13 17v2"/><path d="M13 11v2"/>',
         // Not lucide: the empty-history mark from the design, a page with "!" and a star badge on its corner.
         'empty'     => '<path d="M12 18H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v7"/><path d="M10.5 6v4.5"/><path d="M10.5 13.5h.01"/><circle cx="17" cy="17" r="4.5"/><path d="M17 14.5l.62 1.65 1.76.08-1.38 1.09.47 1.7L17 18.05l-1.47.97.47-1.7-1.38-1.09 1.76-.08Z"/>',
     ];
 
-    /** One icon by name; '' for an unknown name. */
-    public static function get( string $name ): string {
+    /**
+     * One icon by name; '' for an unknown name.
+     *
+     * @param string $css_class Classes for the <svg>, as the launcher's literal `yl:` list (LauncherIcon); '' for none.
+     */
+    public static function get( string $name, string $css_class = '' ): string {
         if ( ! isset( self::PATHS[ $name ] ) ) {
             return '';
         }
 
-        return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' . self::PATHS[ $name ] . '</svg>';
+        $class_attr = '' === $css_class ? '' : ' class="' . esc_attr( $css_class ) . '"';
+
+        return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"' . $class_attr . '>' . self::PATHS[ $name ] . '</svg>';
     }
 
     /** A "Ways to earn" row's icon by its trigger; a gift for one Lite doesn't know. */

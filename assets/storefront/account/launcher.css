@@ -47,6 +47,7 @@
 }
 
 /* The panel names each way to earn and its value; the Rewards tab has room for the line under it. */
-.yayloyalty-launcher .yayloyalty-account .yayloyalty-account__earn .yayloyalty-account__item-text {
+.yayloyalty-launcher .yayloyalty-account .yayloyalty-account__earn .yayloyalty-account__item-text,
+.yayloyalty-launcher .yayloyalty-account .yayloyalty-account__steps .yayloyalty-account__item-text {
   display: none;
 }

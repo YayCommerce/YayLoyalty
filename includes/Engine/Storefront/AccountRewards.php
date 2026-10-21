@@ -90,7 +90,7 @@ final class AccountRewards {
 
     /** The stylesheet's URL, versioned like the enqueue, for the Design tab's preview, which links it itself. */
     public static function style_url(): string {
-        return add_query_arg( 'ver', Launcher::asset_version( self::STYLE_PATH ), YAYLOYALTY_PLUGIN_URL . self::STYLE_PATH );
+        return Launcher::versioned_url( self::STYLE_PATH );
     }
 
     public static function enqueue(): void {
@@ -136,8 +136,7 @@ final class AccountRewards {
         return [
             'date'        => __( 'Date', 'yayloyalty' ),
             'description' => __( 'Description', 'yayloyalty' ),
-            // 0 picks the plural label.
-            'points'      => SettingsHelper::points_label( 0 ),
+            'points'      => SettingsHelper::points_label_plural(),
             'balance'     => __( 'Balance', 'yayloyalty' ),
         ];
     }
@@ -176,23 +175,17 @@ final class AccountRewards {
     }
 
     /**
-     * The points card's data: the payload for this viewer and when their points expire.
+     * The points card's data: the payload for this viewer.
      *
      * @param int $user_id The viewer; 0 for a guest.
-     * @return array{payload: array, expires_at: ?string} `expires_at` the payload member's: in UTC, and only
-     *         within LauncherPayload::EXPIRING_SOON_DAYS; null otherwise, which hides the notice.
+     * @return array{payload: array}
      */
     public static function card_view( int $user_id ): array {
-        $payload = LauncherPayload::for_user( DesignHelper::get_design(), $user_id );
-
-        return [
-            'payload'    => $payload,
-            'expires_at' => null === $payload['member'] ? null : $payload['member']['expires_at'],
-        ];
+        return [ 'payload' => LauncherPayload::for_user( DesignHelper::get_design(), $user_id ) ];
     }
 
     /**
-     * @return array{payload: array, expires_at: ?string, earn: array, history: array{rows: array, total: int, page: int, filter: string}}
+     * @return array{payload: array, earn: array, history: array{rows: array, total: int, page: int, filter: string}}
      */
     private static function view( int $user_id, int $page ): array {
         $filter  = self::current_filter();

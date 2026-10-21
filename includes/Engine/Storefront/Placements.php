@@ -4,7 +4,6 @@ namespace YayLoyalty\Engine\Storefront;
 use YayLoyalty\Engine\Earning\ProgramGate;
 use YayLoyalty\Engine\Register\ScriptName;
 use YayLoyalty\Helpers\DesignHelper;
-use YayLoyalty\Helpers\SettingsHelper;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -97,11 +96,7 @@ final class Placements {
     public static function ways_to_redeem(): string {
         return self::render(
             static function (): void {
-                $payload           = LauncherPayload::for_user( DesignHelper::get_design(), get_current_user_id() );
-                $yayloyalty_redeem = $payload['redeem'];
-                $yayloyalty_offers = $payload['offers'];
-                // 0 picks the plural label.
-                $yayloyalty_label = SettingsHelper::points_label( 0 );
+                $yayloyalty_payload = LauncherPayload::for_user( DesignHelper::get_design(), get_current_user_id() );
 
                 require __DIR__ . '/templates/ways-to-redeem.php';
             }

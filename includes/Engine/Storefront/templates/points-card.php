@@ -2,7 +2,7 @@
 /**
  * The points card: the Rewards tab's balance block, also the launcher panel's and placed by [yayloyalty_balance] and its block.
  * A guest gets a sign-in link where the number would be. A member whose points expire within
- * LauncherPayload::EXPIRING_SOON_DAYS gets a notice under it.
+ * LauncherPayload::EXPIRING_SOON_DAYS (the member's `expires_at`, set only for a balance above 0) gets a notice under it.
  * Styled by assets/storefront/account/points-card.css.
  *
  * @var array $yayloyalty_card AccountRewards::card_view().
@@ -18,20 +18,18 @@ defined( 'ABSPATH' ) || exit;
 $yayloyalty_card_payload = $yayloyalty_card['payload'];
 $yayloyalty_card_member  = $yayloyalty_card_payload['member'];
 $yayloyalty_card_redeem  = $yayloyalty_card_payload['redeem'];
-// 0 picks the plural label.
-$yayloyalty_card_label   = SettingsHelper::points_label( 0 );
+$yayloyalty_card_label   = SettingsHelper::points_label_plural();
 $yayloyalty_card_caption = '';
 
 if ( null !== $yayloyalty_card_member && null !== $yayloyalty_card_member['worth'] ) {
     /* translators: %s: money amount. */
     $yayloyalty_card_caption = sprintf( __( 'Worth %s off your next order', 'yayloyalty' ), LauncherCopy::money( $yayloyalty_card_member['worth'] ) );
 } elseif ( null !== $yayloyalty_card_member && null !== $yayloyalty_card_redeem ) {
-    // The smallest balance the discount takes: its minimum, and never less than one currency unit's worth.
-    $yayloyalty_card_threshold = max( $yayloyalty_card_redeem['min_points'], (int) ceil( $yayloyalty_card_redeem['points_per_unit'] ) );
+    $yayloyalty_card_threshold = $yayloyalty_card_redeem['unlock_points'];
     $yayloyalty_card_need      = $yayloyalty_card_threshold - $yayloyalty_card_member['balance'];
-    $yayloyalty_card_unlock    = LauncherCopy::money( $yayloyalty_card_threshold / $yayloyalty_card_redeem['points_per_unit'] );
+    $yayloyalty_card_unlock    = LauncherCopy::money( (float) $yayloyalty_card_redeem['unlock_off'] );
 
-    if ( $yayloyalty_card_need > 0 ) {
+    if ( $yayloyalty_card_need > 0 && null !== $yayloyalty_card_redeem['unlock_off'] ) {
         $yayloyalty_card_caption = 0 === $yayloyalty_card_member['balance']
             /* translators: 1: points with the store's label, as "100 Points", 2: money amount. */
             ? sprintf( __( 'Earn your first %1$s to unlock %2$s off.', 'yayloyalty' ), SettingsHelper::points_text( $yayloyalty_card_threshold ), $yayloyalty_card_unlock )
@@ -74,16 +72,16 @@ if ( null !== $yayloyalty_card_member && null !== $yayloyalty_card_member['worth
             <?php endif; ?>
         <?php endif; ?>
     </div>
-    <img class="yayloyalty-account__art" src="<?php echo esc_url( YAYLOYALTY_PLUGIN_URL . 'assets/storefront/account/points-illustration.svg' ); ?>" alt="" width="160" height="128" loading="lazy" decoding="async">
+    <?php require __DIR__ . '/card-art.php'; ?>
 </section>
-<?php if ( null !== $yayloyalty_card_member && null !== $yayloyalty_card['expires_at'] && $yayloyalty_card_member['balance'] > 0 ) : ?>
+<?php if ( null !== $yayloyalty_card_member && null !== $yayloyalty_card_member['expires_at'] ) : ?>
     <p class="yayloyalty-account__notice">
         <?php echo AccountRewardsIcon::get( 'clock' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- a fixed SVG. ?>
         <span class="yayloyalty-account__notice-text">
             <strong>
                 <?php
                 /* translators: 1: points with the store's label, as "200 Points", 2: date. */
-                echo esc_html( sprintf( __( '%1$s expire on %2$s.', 'yayloyalty' ), SettingsHelper::points_text( $yayloyalty_card_member['balance'] ), Dates::to_site_date( $yayloyalty_card['expires_at'] ) ) );
+                echo esc_html( sprintf( __( '%1$s expire on %2$s.', 'yayloyalty' ), SettingsHelper::points_text( $yayloyalty_card_member['balance'] ), Dates::to_site_date( $yayloyalty_card_member['expires_at'] ) ) );
                 ?>
             </strong>
             <?php esc_html_e( 'Use them before they expire.', 'yayloyalty' ); ?>

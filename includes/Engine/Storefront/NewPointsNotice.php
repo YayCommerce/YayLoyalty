@@ -29,7 +29,7 @@ final class NewPointsNotice {
             return 0;
         }
 
-        return max( 0, ( new LedgerRepository() )->issued_since( $user_id, $seen_at ) );
+        return ( new LedgerRepository() )->issued_since( $user_id, $seen_at );
     }
 
     public static function mark_seen( int $user_id ): void {

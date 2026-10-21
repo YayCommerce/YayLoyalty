@@ -6,7 +6,10 @@
  *   card reads on light and dark themes alike. The rgba() lines are for browsers without color-mix().
  * - Every rule is nested under the root, so it is at least 0,2,0 and a theme's plain `h2 {}` cannot beat it.
  * - Sizes are px: rem follows the theme's html font-size (62.5% is common).
+ * - The reset is storefront-reset.css, shared with the Rewards tab.
  */
+@import url("storefront-reset.css");
+
 .yayloyalty-thankyou-points {
   --yayloyalty-thankyou-border: rgba(0, 0, 0, 0.1);
   --yayloyalty-thankyou-border: color-mix(in srgb, currentColor 12%, transparent);
@@ -26,20 +29,6 @@
   font-size: 14px;
   line-height: 1.45;
   text-align: left;
-}
-
-.yayloyalty-thankyou-points *,
-.yayloyalty-thankyou-points *::before,
-.yayloyalty-thankyou-points *::after {
-  box-sizing: border-box;
-}
-
-.yayloyalty-thankyou-points :is(h2, p, span, strong) {
-  margin: 0;
-  padding: 0;
-  font-family: inherit;
-  letter-spacing: normal;
-  text-transform: none;
 }
 
 .yayloyalty-thankyou-points .yayloyalty-thankyou-points__head {

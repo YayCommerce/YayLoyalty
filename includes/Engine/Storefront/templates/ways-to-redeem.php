@@ -4,9 +4,8 @@
  * The points discount, then the offers Pro adds.
  * No stylesheet of its own: the list and its rows are rule-list-item.php and rule-list-item.css.
  *
- * @var array|null $yayloyalty_redeem LauncherPayload's `redeem`; null while the discount reward is not live.
- * @var array      $yayloyalty_offers LauncherPayload's `offers`.
- * @var string     $yayloyalty_label  The store's plural points label.
+ * @var array $yayloyalty_payload LauncherPayload::for_user(), or Launcher::view() in the panel: its `redeem` (null
+ *                                 while the discount reward is not live) and `offers`.
  */
 
 use YayLoyalty\Engine\Storefront\AccountRewardsIcon;
@@ -14,6 +13,10 @@ use YayLoyalty\Engine\Storefront\LauncherCopy;
 use YayLoyalty\Helpers\SettingsHelper;
 
 defined( 'ABSPATH' ) || exit;
+
+$yayloyalty_redeem = $yayloyalty_payload['redeem'];
+$yayloyalty_offers = $yayloyalty_payload['offers'];
+$yayloyalty_label  = SettingsHelper::points_label_plural();
 
 if ( null === $yayloyalty_redeem && [] === $yayloyalty_offers ) {
     return;
@@ -26,7 +29,6 @@ if ( null !== $yayloyalty_redeem ) {
         'icon'  => AccountRewardsIcon::get( 'coins' ),
         /* translators: %s: the store's points label, as "Points". */
         'name'  => sprintf( __( '%s discount', 'yayloyalty' ), $yayloyalty_label ),
-        'url'   => '',
         'text'  => LauncherCopy::redeem_limits( $yayloyalty_redeem ),
         'value' => LauncherCopy::redeem_rate( $yayloyalty_redeem['points_per_unit'] ),
     ];
@@ -36,7 +38,6 @@ foreach ( $yayloyalty_offers as $yayloyalty_offer ) {
     $yayloyalty_items[] = [
         'icon'  => AccountRewardsIcon::get( 'percent' ),
         'name'  => $yayloyalty_offer['name'],
-        'url'   => '',
         'text'  => $yayloyalty_offer['text'],
         'value' => SettingsHelper::points_text( $yayloyalty_offer['cost'] ),
     ];
