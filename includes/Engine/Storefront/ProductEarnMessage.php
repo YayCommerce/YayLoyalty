@@ -153,23 +153,7 @@ final class ProductEarnMessage {
         $points = get_current_user_id() > 0 ? self::member_points( $product ) : self::guest_points( $product );
 
         // The raw design value: storefront_text() would fill {points_label} with the plural before the number is known.
-        return $points > 0 ? self::highlight( self::design()['storefront_text']['product_earn_line'], $points ) : '';
-    }
-
-    /** LauncherCopy::points_sentence() as escaped HTML, the figure (with its label when they sit together) in <strong>. */
-    private static function highlight( string $template, int $points ): string {
-        $number = esc_html( LauncherCopy::points( $points ) );
-        $label  = esc_html( SettingsHelper::points_label( $points ) );
-
-        // strtr() tries the longest key first, so "{points} {points_label}" is bolded as one.
-        return strtr(
-            esc_html( $template ),
-            [
-                '{points} {points_label}' => '<strong>' . $number . ' ' . $label . '</strong>',
-                '{points}'                => '<strong>' . $number . '</strong>',
-                '{points_label}'          => $label,
-            ]
-        );
+        return $points > 0 ? LauncherCopy::points_sentence_html( self::design()['storefront_text']['product_earn_line'], $points ) : '';
     }
 
     /** What one of this product earns a guest, at the base rate: no tier multiplier, since that belongs to members. 0 on failure. */

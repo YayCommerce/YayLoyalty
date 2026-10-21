@@ -114,6 +114,26 @@ final class LauncherCopy {
     }
 
     /**
+     * points_sentence() as escaped HTML, the figure in <strong>: with its label when they sit together, and with a
+     * leading "+" too ("+{points} {points_label}"). For the product-page line and the thank-you card.
+     */
+    public static function points_sentence_html( string $template, int $points ): string {
+        $number = esc_html( self::points( $points ) );
+        $label  = esc_html( SettingsHelper::points_label( $points ) );
+
+        // strtr() tries the longest key first, so the widest phrase is bolded as one.
+        return strtr(
+            esc_html( $template ),
+            [
+                '+{points} {points_label}' => '<strong>+' . $number . ' ' . $label . '</strong>',
+                '{points} {points_label}'  => '<strong>' . $number . ' ' . $label . '</strong>',
+                '{points}'                 => '<strong>' . $number . '</strong>',
+                '{points_label}'           => $label,
+            ]
+        );
+    }
+
+    /**
      * The Design tab's storefront_text with {points_label} filled with the merchant's plural label: "Your {points_label}" → "Your Stars".
      * earn_rate_line is left for earn_rate(), whose label agrees with the rate it prints.
      *

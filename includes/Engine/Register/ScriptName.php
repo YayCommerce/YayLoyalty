@@ -23,6 +23,8 @@ class ScriptName {
 
     /** Product-page earning line: swaps the sentence when a variation is picked. */
     public const PRODUCT_EARN_SCRIPT = 'yayloyalty/script/storefront-product-earn';
+    /** The order-received page's "Points & rewards" card. */
+    public const THANKYOU_STYLE = 'yayloyalty/style/storefront-thankyou';
     /** Product-page earning line: the card around it. */
     public const PRODUCT_EARN_STYLE = 'yayloyalty/style/storefront-product-earn';
 

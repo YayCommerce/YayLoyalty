@@ -35,9 +35,9 @@ class DesignSchema {
                 /* translators: keep every {…} placeholder as it is; each is filled in when the line is shown. */
                 'product_earn_line'     => __( 'Earn {points} {points_label} with this purchase', 'yayloyalty' ),
                 /* translators: keep every {…} placeholder as it is; each is filled in when the line is shown. */
-                'thankyou_pending_line' => __( "You'll earn {points} {points_label} when your order completes", 'yayloyalty' ),
+                'thankyou_pending_line' => __( '+{points} {points_label} from this order', 'yayloyalty' ),
                 /* translators: keep every {…} placeholder as it is; each is filled in when the line is shown. */
-                'thankyou_earned_line'  => __( 'You earned {points} {points_label} on this order', 'yayloyalty' ),
+                'thankyou_earned_line'  => __( '+{points} {points_label} from this order', 'yayloyalty' ),
             ],
             'visibility'      => [
                 'scope'            => self::SCOPE_ALL_PAGES,

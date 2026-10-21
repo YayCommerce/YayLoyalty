@@ -24,7 +24,7 @@ test('a purchase stages pending points at checkout and awards them when the admi
     await shopperPage.getByRole('button', { name: 'Place Order' }).click();
     orderId = await placedOrderId(shopperPage);
 
-    await expect(shopperPage.getByText("You'll earn 20 Points when your order completes")).toBeVisible();
+    await expect(shopperPage.getByText('+20 Points from this order')).toBeVisible();
     await api.expectPoints(customer.id, { balance: 0, pending_points: 20 });
   });
 
