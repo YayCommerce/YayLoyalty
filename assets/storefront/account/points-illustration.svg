@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 128" fill="none" stroke="#c9cad0" stroke-width="1.5" stroke-linejoin="round">
+  <ellipse cx="78" cy="118" rx="62" ry="6" fill="#f1f1f3" stroke="none"/>
+  <!-- Coin stack -->
+  <path d="M30 96v12c0 5 13 9 29 9s29-4 29-9V96" fill="#f6f6f8"/>
+  <path d="M30 84v12c0 5 13 9 29 9s29-4 29-9V84" fill="#f6f6f8"/>
+  <path d="M30 72v12c0 5 13 9 29 9s29-4 29-9V72" fill="#f6f6f8"/>
+  <ellipse cx="59" cy="72" rx="29" ry="9" fill="#fbfbfc"/>
+  <!-- Standing coin with a star -->
+  <circle cx="94" cy="44" r="34" fill="#f6f6f8"/>
+  <circle cx="94" cy="44" r="26" fill="#fbfbfc"/>
+  <path d="m94 29 4.4 9 9.9 1.4-7.2 7 1.7 9.8L94 51.6l-8.8 4.6 1.7-9.8-7.2-7 9.9-1.4Z" fill="#f1f1f3"/>
+  <!-- Tag -->
+  <path d="M116 72l14 4 8 18-14 12-14-6-2-16Z" fill="#fbfbfc" transform="rotate(-8 124 88)"/>
+  <circle cx="117" cy="79" r="2.5" fill="#fff"/>
+  <path d="M117 79c-6-6-10-12-8-18"/>
+</svg>

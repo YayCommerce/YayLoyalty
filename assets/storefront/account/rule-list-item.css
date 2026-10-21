@@ -1,0 +1,86 @@
+/*
+ * templates/rule-list-item.php: one "Ways to earn" or "Ways to redeem" row, and the bordered list that holds them.
+ * Imported by rewards-tokens.css, which holds the tokens.
+ */
+.yayloyalty-account .yayloyalty-account__list {
+  overflow: hidden;
+  border: 1px solid var(--yayloyalty-account-border);
+  border-radius: var(--yayloyalty-account-radius);
+  background: var(--yayloyalty-account-surface);
+  color: var(--yayloyalty-account-text);
+  list-style: none;
+}
+
+.yayloyalty-account .yayloyalty-account__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+}
+
+.yayloyalty-account .yayloyalty-account__item + .yayloyalty-account__item {
+  border-top: 1px solid var(--yayloyalty-account-divider);
+}
+
+.yayloyalty-account .yayloyalty-account__item-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--yayloyalty-account-radius-sm);
+  background: var(--yayloyalty-account-icon-bg);
+  color: var(--yayloyalty-account-muted);
+}
+
+.yayloyalty-account .yayloyalty-account__item-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.yayloyalty-account .yayloyalty-account__item-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--yayloyalty-account-text);
+  text-decoration: none;
+}
+
+.yayloyalty-account a.yayloyalty-account__item-name:hover,
+.yayloyalty-account a.yayloyalty-account__item-name:focus-visible {
+  color: var(--yayloyalty-account-accent);
+}
+
+.yayloyalty-account .yayloyalty-account__item-name svg {
+  width: 12px;
+  height: 12px;
+  color: var(--yayloyalty-account-muted);
+}
+
+.yayloyalty-account .yayloyalty-account__item-text {
+  font-size: 12px;
+  color: var(--yayloyalty-account-muted);
+}
+
+.yayloyalty-account .yayloyalty-account__item-value {
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: right;
+  white-space: nowrap;
+  color: var(--yayloyalty-account-text);
+}
+
+/* Narrow screens: a long value such as "Earn 10 Points per $1 spent" wraps instead of squeezing the name. */
+@media (max-width: 600px) {
+  .yayloyalty-account .yayloyalty-account__item-value {
+    max-width: 45%;
+    white-space: normal;
+  }
+}

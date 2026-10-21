@@ -47,8 +47,9 @@ final class ShopperActivityRow {
      * Ledger rows for the My Account history and its CSV, unformatted: each caller formats for its medium.
      *
      * @param LedgerEntry[] $entries
-     * @return array<int, array{created_at: string, label: string, order: string, points: int, balance: int}>
-     *         `created_at` in UTC; `order` the order number, or '' when the row has none.
+     * @return array<int, array{created_at: string, type: string, label: string, order: string, order_url: string, points: int, balance: int}>
+     *         `created_at` in UTC; `order` the order number, or '' when the row has none; `order_url` its My Account
+     *         page, or '' when the order is gone.
      */
     public static function history_rows( array $entries ): array {
         $store = Text::store_name();
@@ -62,13 +63,19 @@ final class ShopperActivityRow {
 
             if ( null !== $order_id && ! isset( $orders[ $order_id ] ) ) {
                 // An earn row and its refund share an order: load it once.
-                $orders[ $order_id ] = self::order_number( $order_id );
+                $order               = function_exists( 'wc_get_order' ) ? wc_get_order( $order_id ) : null;
+                $orders[ $order_id ] = [
+                    'number' => $order ? (string) $order->get_order_number() : (string) $order_id,
+                    'url'    => $order ? $order->get_view_order_url() : '',
+                ];
             }
 
             $rows[] = [
                 'created_at' => $entry->get_created_at(),
+                'type'       => $entry->get_type(),
                 'label'      => self::label( $entry, $store, $label ),
-                'order'      => null === $order_id ? '' : $orders[ $order_id ],
+                'order'      => null === $order_id ? '' : $orders[ $order_id ]['number'],
+                'order_url'  => null === $order_id ? '' : $orders[ $order_id ]['url'],
                 'points'     => $entry->get_points(),
                 'balance'    => $entry->get_balance_after(),
             ];

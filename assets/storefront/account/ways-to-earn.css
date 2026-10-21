@@ -1,0 +1,8 @@
+/*
+ * templates/ways-to-earn.php: the daily-limit line under the list. The rows are rule-list-item.css.
+ * Imported by rewards-tokens.css, which holds the tokens.
+ */
+.yayloyalty-account .yayloyalty-account__earn .yayloyalty-account__hint {
+  font-size: 13px;
+  color: var(--yayloyalty-account-muted);
+}

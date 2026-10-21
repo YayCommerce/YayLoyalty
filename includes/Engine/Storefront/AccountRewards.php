@@ -8,6 +8,7 @@ use YayLoyalty\Helpers\DesignHelper;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\LedgerRepository;
+use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -27,7 +28,11 @@ final class AccountRewards {
 
     public const FILTER_QUERY_ARG = 'points_type';
 
-    private const STYLE_PATH = 'assets/storefront/account.css';
+    /** The expiry notice shows only once the points expire within this many days. */
+    public const EXPIRY_NOTICE_DAYS = 30;
+
+    /** The one file enqueued: it holds the tokens and @imports each section's file beside it. */
+    private const STYLE_PATH = 'assets/storefront/account/rewards-tokens.css';
 
     /** Hooked on every request: a permalink save in wp-admin rebuilds the rules and must still see the endpoint. */
     public static function register(): void {
@@ -83,7 +88,7 @@ final class AccountRewards {
         return array_slice( $items, 0, $position, true ) + $item + array_slice( $items, $position, null, true );
     }
 
-    /** The tab's layout stylesheet, which the placements and their blocks share. */
+    /** The tab's stylesheet, which the placements and their blocks share. */
     public static function register_style(): void {
         wp_register_style( ScriptName::ACCOUNT_STYLE, YAYLOYALTY_PLUGIN_URL . self::STYLE_PATH, [], Launcher::asset_version( self::STYLE_PATH ) );
     }
@@ -140,7 +145,14 @@ final class AccountRewards {
     /** @param string $value The endpoint value: the history page number. */
     public static function render( $value = '' ): void {
         if ( ! ProgramGate::program_enabled() ) {
-            self::print_unavailable();
+            self::print_state( __( 'Rewards are currently unavailable', 'yayloyalty' ), __( 'The rewards program is currently paused. Please check back later.', 'yayloyalty' ) );
+
+            return;
+        }
+
+        // Opted out or an excluded role: this shopper neither earns nor redeems.
+        if ( ! Launcher::viewer_can_earn( get_current_user_id() ) ) {
+            self::print_state( __( 'Rewards aren’t available for this account', 'yayloyalty' ), __( 'This account isn’t eligible for the rewards program. Contact the store if you need help.', 'yayloyalty' ) );
 
             return;
         }
@@ -167,15 +179,27 @@ final class AccountRewards {
      * The points card's data: the payload for this viewer and their expiry date.
      *
      * @param int $user_id The viewer; 0 for a guest.
-     * @return array{payload: array, expires_at: ?string}
+     * @return array{payload: array, expires_at: ?string} `expires_at` in UTC, and only while it falls
+     *         within EXPIRY_NOTICE_DAYS from now; null otherwise, which hides the notice.
      */
     public static function card_view( int $user_id ): array {
         $customer = 0 === $user_id ? null : ( new CustomerRepository() )->find_by_user_id( $user_id );
 
         return [
             'payload'    => LauncherPayload::for_user( DesignHelper::get_design(), $user_id ),
-            'expires_at' => null === $customer ? null : $customer->get_expires_at(),
+            'expires_at' => null === $customer ? null : self::expiring_soon( $customer->get_expires_at() ),
         ];
+    }
+
+    /** $expires_at when it is still ahead and no more than EXPIRY_NOTICE_DAYS away, else null. */
+    private static function expiring_soon( ?string $expires_at ): ?string {
+        if ( null === $expires_at || ! Dates::is_valid( $expires_at ) ) {
+            return null;
+        }
+
+        $left = Dates::to_timestamp( $expires_at ) - Dates::to_timestamp( Dates::now() );
+
+        return $left > 0 && $left <= self::EXPIRY_NOTICE_DAYS * DAY_IN_SECONDS ? $expires_at : null;
     }
 
     /**
@@ -214,5 +238,15 @@ final class AccountRewards {
 
     private static function print_unavailable(): void {
         wc_print_notice( __( 'Rewards are not available right now.', 'yayloyalty' ), 'notice' );
+    }
+
+    /** The tab's whole body when the shopper cannot take part: a heading and one line in a card. */
+    private static function print_state( string $title, string $text ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- the template reads both.
+        include __DIR__ . '/templates/account-rewards-state.php';
+    }
+
+    /** The tab's intro line, on every state. */
+    public static function intro(): string {
+        return __( 'Your points, perks, and activity in one place.', 'yayloyalty' );
     }
 }

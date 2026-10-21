@@ -1,0 +1,66 @@
+/*
+ * templates/account-rewards.php: the wrapper every Rewards section sits in (placements too), the resets the
+ * sections rely on, the intro line and the section headings they share.
+ * Imported by rewards-tokens.css, which holds the tokens.
+ */
+.yayloyalty-account {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  font-size: 14px;
+  line-height: 1.45;
+  text-align: left;
+}
+
+.yayloyalty-account *,
+.yayloyalty-account *::before,
+.yayloyalty-account *::after {
+  box-sizing: border-box;
+}
+
+.yayloyalty-account :is(h2, h3, p, ul, li, table, th, td, a, span, strong, nav) {
+  margin: 0;
+  padding: 0;
+  font-family: inherit;
+  letter-spacing: normal;
+  text-transform: none;
+  text-shadow: none;
+}
+
+.yayloyalty-account svg {
+  display: block;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+}
+
+.yayloyalty-account .yayloyalty-account__intro {
+  font-size: 13px;
+  color: var(--yayloyalty-account-muted);
+}
+
+.yayloyalty-account .yayloyalty-account__section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.yayloyalty-account .yayloyalty-account__section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.yayloyalty-account .yayloyalty-account__title {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: inherit;
+}
+
+/* A placement prints one partial in the wrapper, so it drops the tab's intro spacing. */
+.yayloyalty-account.yayloyalty-placement {
+  gap: 12px;
+}

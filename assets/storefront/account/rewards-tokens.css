@@ -1,0 +1,42 @@
+/*
+ * My Account → Rewards, and the placements that reuse its partials ([yayloyalty_balance], [yayloyalty_ways_to_earn]).
+ * Hand-written and shipped as-is: no build step, and nothing from the launcher's stylesheet or the Design tab.
+ *
+ * This is the one file WordPress enqueues (AccountRewards::STYLE_PATH). It imports one file per template in
+ * includes/Engine/Storefront/templates/, named after it, and holds the tokens they all read. A new template's
+ * file goes in the list below; never enqueue it on its own. ways-to-redeem.php has none: its rows and list
+ * are rule-list-item.css, and it adds nothing of its own.
+ *
+ * - Every rule is nested under .yayloyalty-account, so it is at least 0,2,0 and a theme's plain
+ *   `a {}`, `table {}` or `h3 {}` rules cannot beat it.
+ * - Sizes are px: rem follows the theme's html font-size (62.5% is common).
+ * - The colours are the tokens below, so a theme or custom CSS can re-point them in one place.
+ */
+@import url("account-rewards.css");
+@import url("account-rewards-state.css");
+@import url("points-card.css");
+@import url("rule-list-item.css");
+@import url("ways-to-earn.css");
+@import url("points-history.css");
+@import url("points-history-pages.css");
+
+.yayloyalty-account {
+  --yayloyalty-account-accent: #3858e9;
+  --yayloyalty-account-accent-hover: #2f4ac4;
+  --yayloyalty-account-accent-text: #ffffff;
+  --yayloyalty-account-text: #171719;
+  --yayloyalty-account-muted: #7b7c80;
+  --yayloyalty-account-border: #e4e4e7;
+  --yayloyalty-account-divider: #f0f0f2;
+  --yayloyalty-account-surface: #ffffff;
+  --yayloyalty-account-subtle: #fafafa;
+  --yayloyalty-account-icon-bg: #f4f4f5;
+  --yayloyalty-account-positive: #16a34a;
+  --yayloyalty-account-positive-bg: #ecfdf3;
+  --yayloyalty-account-warning: #a16207;
+  --yayloyalty-account-warning-bg: #fef9e7;
+  --yayloyalty-account-warning-border: #f5d77a;
+  --yayloyalty-account-radius: 8px;
+  --yayloyalty-account-radius-sm: 6px;
+  --yayloyalty-account-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
+}
