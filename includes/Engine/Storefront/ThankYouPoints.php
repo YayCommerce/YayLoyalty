@@ -75,10 +75,10 @@ final class ThankYouPoints {
                 return '';
             }
 
-            $is_earned = $earned > 0;
-            // The raw design value: storefront_text() would fill {points_label} with the plural before the number is known.
+            $is_earned           = $earned > 0;
             $yayloyalty_thankyou = [
-                'line'    => LauncherCopy::points_sentence_html( $design['storefront_text'][ $is_earned ? 'thankyou_earned_line' : 'thankyou_pending_line' ], $is_earned ? $earned : $pending ),
+                /* translators: keep every {…} placeholder as it is; each is filled in when the line is shown. */
+                'line'    => LauncherCopy::points_sentence_html( __( '+{points} {points_label} from this order', 'yayloyalty' ), $is_earned ? $earned : $pending ),
                 'hint'    => $is_earned ? __( 'Added to your balance.', 'yayloyalty' ) : __( 'Added when your order completes.', 'yayloyalty' ),
                 'balance' => $customer->get_balance(),
             ];

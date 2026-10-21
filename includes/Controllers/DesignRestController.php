@@ -89,10 +89,7 @@ class DesignRestController extends AbstractRestController {
         return LauncherPreview::documents( DesignHelper::with_unsaved( $design ), 'guest' !== $request->get_param( 'viewer' ) );
     }
 
-    /** An unknown group is not an error: DesignHelper::reset() changes nothing and returns the stored design. */
     public function reset_design( \WP_REST_Request $request ) {
-        $group = $request->get_param( 'group' );
-
-        return DesignHelper::reset( is_string( $group ) && '' !== $group ? $group : null );
+        return DesignHelper::reset();
     }
 }

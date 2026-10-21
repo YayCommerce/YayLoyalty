@@ -2,7 +2,6 @@
 namespace YayLoyalty\Engine\Storefront;
 
 use YayLoyalty\Enums\RewardType;
-use YayLoyalty\Helpers\DesignSchema;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Models\Reward;
 use YayLoyalty\Utils\Text;
@@ -76,17 +75,13 @@ final class LauncherCopy {
     }
 
     /**
-     * The Design tab's `earn_rate_line` with its {points}, {points_label} and {amount} filled: "1 Point / $1" by default.
-     * The field is optional; left blank, the rate still needs saying, so the Design default stands in.
+     * The purchase earn rate: "1 Point / $1", with the label agreeing with the rate.
      * A campaign minimum is appended, since an order under it earns nothing.
      */
-    public static function earn_rate( string $template, float $points_per_unit, float $min_subtotal ): string {
-        if ( '' === trim( $template ) ) {
-            $template = DesignSchema::get_default_design()['storefront_text']['earn_rate_line'];
-        }
-
+    public static function earn_rate( float $points_per_unit, float $min_subtotal ): string {
         $line = strtr(
-            $template,
+            /* translators: keep every {…} placeholder as it is; each is filled in when the line is shown. */
+            __( '{points} {points_label} / {amount}', 'yayloyalty' ),
             [
                 '{points}'       => self::rate( $points_per_unit ),
                 '{points_label}' => self::rate_label( $points_per_unit ),
@@ -103,7 +98,7 @@ final class LauncherCopy {
     }
 
     /**
-     * A storefront_text line with {points} and a {points_label} that agrees with the count, as escaped HTML: the
+     * A line with {points} and a {points_label} that agrees with the count, as escaped HTML: the
      * figure in <strong>, with its label when they sit together, and with a leading "+" too ("+{points} {points_label}").
      * For the product-page line and the thank-you card.
      */
@@ -123,23 +118,21 @@ final class LauncherCopy {
         );
     }
 
-    /**
-     * The Design tab's storefront_text with {points_label} filled with the merchant's plural label: "Your {points_label}" → "Your Stars".
-     * earn_rate_line is left for earn_rate(), whose label agrees with the rate it prints.
-     *
-     * @param array<string, string> $text
-     * @return array<string, string>
-     */
-    public static function storefront_text( array $text ): array {
-        $label = SettingsHelper::points_label_plural();
+    /** The launcher button's accessible name and the panel's title. */
+    public static function launcher_label(): string {
+        return __( 'Rewards', 'yayloyalty' );
+    }
 
-        foreach ( $text as $key => $value ) {
-            if ( 'earn_rate_line' !== $key ) {
-                $text[ $key ] = str_replace( '{points_label}', $label, $value );
-            }
-        }
+    /** The points card's heading: "Your Points". */
+    public static function balance_heading(): string {
+        /* translators: %s: the store's points label, as "Points". */
+        return sprintf( __( 'Your %s', 'yayloyalty' ), SettingsHelper::points_label_plural() );
+    }
 
-        return $text;
+    /** The guest card's heading off a product page. */
+    public static function signed_out_prompt(): string {
+        /* translators: %s: the store's points label, as "Points". */
+        return sprintf( __( 'Sign in to earn %s on this order', 'yayloyalty' ), SettingsHelper::points_label_plural() );
     }
 
     /** The empty points history, in the launcher and on the account tab. */

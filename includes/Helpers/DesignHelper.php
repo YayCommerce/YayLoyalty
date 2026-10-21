@@ -9,8 +9,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Design storage: one option, cleaned by DesignSchema's rules on read and on write, like SettingsHelper.
  * A list replaces its default whole rather than merging by index, so a list the merchant cleared or
- * shortened stays that way. A stored '' storefront text is literal. reset() is the only route back to
- * the default wording.
+ * shortened stays that way. reset() is the only route back to the defaults.
  */
 class DesignHelper {
 
@@ -62,25 +61,10 @@ class DesignHelper {
         return self::merge_over( self::get_design(), self::validate( $design ) );
     }
 
-    /** Restores one group, or the whole blob when $group is null. Logs at warning, which production keeps: a reset is irreversible. */
-    public static function reset( ?string $group = null ): array {
-        $user_id = get_current_user_id();
-
-        if ( null === $group ) {
-            delete_option( self::OPTION_DESIGN );
-            Log::warning( 'DesignHelper', "design reset (all groups) by user #{$user_id}" );
-            return self::get_design();
-        }
-
-        if ( ! array_key_exists( $group, DesignSchema::schema() ) ) {
-            return self::get_design();
-        }
-
-        $stored           = self::load_stored();
-        $stored[ $group ] = DesignSchema::get_default_design()[ $group ];
-
-        update_option( self::OPTION_DESIGN, $stored, false );
-        Log::warning( 'DesignHelper', "design group \"{$group}\" reset by user #{$user_id}" );
+    /** Restores the whole design to its defaults. Logs at warning, which production keeps: a reset is irreversible. */
+    public static function reset(): array {
+        delete_option( self::OPTION_DESIGN );
+        Log::warning( 'DesignHelper', 'design reset by user #' . get_current_user_id() );
 
         return self::get_design();
     }

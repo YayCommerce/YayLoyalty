@@ -19,16 +19,6 @@ export const designSchema = z.object({
     brand_color: z.string(),
     corner_radius: z.number().int().min(0).max(24),
   }),
-  storefront_text: z.object({
-    launcher_label: z.string().min(1),
-    balance_heading: z.string().min(1),
-    earn_rate_line: z.string(),
-    redeem_button: z.string().min(1),
-    signed_out_prompt: z.string(),
-    product_earn_line: z.string().min(1),
-    thankyou_pending_line: z.string().min(1),
-    thankyou_earned_line: z.string().min(1),
-  }),
   visibility: z.object({
     scope: designVisibilityScopeSchema,
     /** Read only when `scope === 'custom_pages'`. */

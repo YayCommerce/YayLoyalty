@@ -19,7 +19,6 @@ import {
   PREVIEW_VIEWER_GUEST,
   PREVIEW_VIEWER_MEMBER,
 } from './design-settings.copy';
-import { usePreviewHighlight } from './design-settings.preview-highlight';
 import { LauncherPreviewFrame, type PreviewDevice } from './LauncherPreviewFrame';
 
 /** The two frames, top to bottom: the button alone, then the open panel. */
@@ -44,24 +43,22 @@ const REDRAW_DELAY_MS = 300;
 export function DesignLauncherPreview() {
   const { control } = useFormContext<Design>();
   // Only what the launcher draws: editing the pages it shows on (or fields it does not render) needs no redraw.
-  const [launcher, storefrontText, isHiddenOnMobile, isRewardCatalogShown] = useWatch({
+  const [launcher, isHiddenOnMobile, isRewardCatalogShown] = useWatch({
     control,
     name: DESIGN_PREVIEW_FIELDS,
   });
   const input = useMemo<DesignPreviewInput>(
     () => ({
       launcher,
-      storefront_text: storefrontText,
       visibility: { hide_on_mobile: isHiddenOnMobile },
       panel: { show_reward_catalog: isRewardCatalogShown },
     }),
-    [launcher, storefrontText, isHiddenOnMobile, isRewardCatalogShown],
+    [launcher, isHiddenOnMobile, isRewardCatalogShown],
   );
   const [debouncedInput] = useDebouncedValue(input, REDRAW_DELAY_MS);
   const [device, setDevice] = useState<PreviewDevice>('desktop');
   const [viewer, setViewer] = useState<DesignPreviewViewer>('member');
   const preview = useDesignPreviewQuery(debouncedInput, viewer);
-  const { highlighted } = usePreviewHighlight();
 
   return (
     <Card>
@@ -92,7 +89,6 @@ export function DesignLauncherPreview() {
                 title={label()}
                 device={device}
                 viewportHeightPx={FRAME_HEIGHT_PX[device][key]}
-                highlightTextKey={highlighted}
               />
             ) : (
               <Skeleton className={`${skeletonClassName} w-full`} />

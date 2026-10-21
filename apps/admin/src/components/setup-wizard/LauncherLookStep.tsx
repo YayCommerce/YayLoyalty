@@ -60,10 +60,7 @@ export function LauncherLookStep({ form }: WizardStepProps) {
           <div className="bg-muted/50 flex flex-col gap-1.5 rounded-md border p-3.5">
             <div className="text-xs font-semibold">{__('Later, in Settings → Design', 'yayloyalty')}</div>
             <div className="text-muted-foreground text-xs">
-              {__(
-                'Icons, storefront wording, page rules, custom CSS. One choice here is enough to go live.',
-                'yayloyalty',
-              )}
+              {__('Icons, page rules, custom CSS. One choice here is enough to go live.', 'yayloyalty')}
             </div>
           </div>
         </div>

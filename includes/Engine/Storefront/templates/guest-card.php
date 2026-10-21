@@ -1,12 +1,11 @@
 <?php
 /**
  * The guest panel's top card, in the points card's frame: on a product page what buying it earns and is
- * worth, elsewhere the Design tab's signed-out prompt. Styled by assets/storefront/account/guest-card.css
+ * worth, elsewhere the signed-out prompt. Styled by assets/storefront/account/guest-card.css
  * on top of points-card.css.
  *
  * @var array $view            Launcher::view(); `estimate` the product's points, null off a product page, and
  *                             `estimate_off` what they take off an order, null when the discount wouldn't take them.
- * @var array $yayloyalty_text The Design tab's storefront_text.
  */
 
 use YayLoyalty\Engine\Storefront\LauncherCopy;
@@ -15,7 +14,6 @@ use YayLoyalty\Helpers\SettingsHelper;
 defined( 'ABSPATH' ) || exit;
 
 $yayloyalty_estimate = $view['estimate'];
-$yayloyalty_prompt   = trim( $yayloyalty_text['signed_out_prompt'] );
 ?>
 <section class="yayloyalty-account__card yayloyalty-account__guest-card">
     <div class="yayloyalty-account__card-body">
@@ -37,9 +35,7 @@ $yayloyalty_prompt   = trim( $yayloyalty_text['signed_out_prompt'] );
                 </p>
             <?php endif; ?>
         <?php else : ?>
-            <?php if ( '' !== $yayloyalty_prompt ) : ?>
-                <h2 class="yayloyalty-account__guest-prompt" data-yl-text="signed_out_prompt"><?php echo esc_html( $yayloyalty_prompt ); ?></h2>
-            <?php endif; ?>
+            <h2 class="yayloyalty-account__guest-prompt"><?php echo esc_html( LauncherCopy::signed_out_prompt() ); ?></h2>
             <p class="yayloyalty-account__caption">
                 <?php
                 /* translators: %s: the store's points label, as "Points". */

@@ -3,9 +3,8 @@
  * One row of "Ways to earn" or "Ways to redeem": icon, name (linked when it has a url), the line under it, and the value.
  * Styled by assets/storefront/account/rule-list-item.css.
  *
- * @var array{icon: string, name: string, url?: string, text?: string, value: string, value_key?: string, tone?: string} $yayloyalty_item
- *      `icon` an AccountRewardsIcon SVG; `url` and `text` missing or '' for none. `value_key` the storefront_text key the
- *      value prints, so the Design tab's preview can outline it; `tone` 'positive' to colour the value.
+ * @var array{icon: string, name: string, url?: string, text?: string, value: string, tone?: string} $yayloyalty_item
+ *      `icon` an AccountRewardsIcon SVG; `url` and `text` missing or '' for none; `tone` 'positive' to colour the value.
  */
 
 use YayLoyalty\Engine\Storefront\AccountRewardsIcon;
@@ -30,5 +29,5 @@ $yayloyalty_item_tone = 'positive' === ( $yayloyalty_item['tone'] ?? '' ) ? ' ya
             <span class="yayloyalty-account__item-text"><?php echo esc_html( $yayloyalty_item['text'] ); ?></span>
         <?php endif; ?>
     </span>
-    <strong class="yayloyalty-account__item-value<?php echo esc_attr( $yayloyalty_item_tone ); ?>"<?php echo empty( $yayloyalty_item['value_key'] ) ? '' : ' data-yl-text="' . esc_attr( $yayloyalty_item['value_key'] ) . '"'; ?>><?php echo esc_html( $yayloyalty_item['value'] ); ?></strong>
+    <strong class="yayloyalty-account__item-value<?php echo esc_attr( $yayloyalty_item_tone ); ?>"><?php echo esc_html( $yayloyalty_item['value'] ); ?></strong>
 </li>

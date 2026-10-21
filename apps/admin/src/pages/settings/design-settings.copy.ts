@@ -14,12 +14,12 @@ export const RESET_ERROR_FALLBACK = () => __('Could not reset the design.', 'yay
 export const RESET_CONFIRM_LABEL = () => __('Reset', 'yayloyalty');
 export const CANCEL_LABEL = () => __('Cancel', 'yayloyalty');
 
-/** Whole-tab reset, in the save-action row. Worded apart from the storefront-text reset, so the two destructive actions never read alike. */
+/** Whole-tab reset, in the save-action row. */
 export const RESET_WHOLE_TAB_BUTTON_LABEL = () => __('Reset all Design settings', 'yayloyalty');
 export const RESET_WHOLE_TAB_CONFIRM_TITLE = () => __('Reset every Design setting?', 'yayloyalty');
 export const RESET_WHOLE_TAB_CONFIRM_DESCRIPTION = () =>
   __(
-    'This replaces every Design setting — launcher, storefront wording, visibility and the Pro sections — with the defaults. This cannot be undone.',
+    'This replaces every Design setting — launcher, visibility and the Pro sections — with the defaults. This cannot be undone.',
     'yayloyalty',
   );
 export const RESET_WHOLE_TAB_SUCCESS_TOAST = () => __('Design reset to defaults.', 'yayloyalty');
@@ -33,30 +33,6 @@ export const LAUNCHER_POSITION_LABEL = () => __('Position', 'yayloyalty');
 export const LAUNCHER_BRAND_COLOR_LABEL = () => __('Brand colour', 'yayloyalty');
 export const LAUNCHER_CORNER_RADIUS_LABEL = () => __('Corner radius', 'yayloyalty');
 export const LAUNCHER_CORNER_RADIUS_DESCRIPTION = () => __('0 is square, 24 is fully rounded.', 'yayloyalty');
-
-// Storefront text section
-
-export const STOREFRONT_SECTION_TITLE = () => __('Storefront text', 'yayloyalty');
-export const STOREFRONT_LAUNCHER_LABEL_LABEL = () => __('Launcher label', 'yayloyalty');
-export const STOREFRONT_BALANCE_HEADING_LABEL = () => __('Balance heading', 'yayloyalty');
-export const STOREFRONT_EARN_RATE_LINE_LABEL = () => __('Earn rate line', 'yayloyalty');
-export const STOREFRONT_REDEEM_BUTTON_LABEL = () => __('Redeem button', 'yayloyalty');
-export const STOREFRONT_SIGNED_OUT_PROMPT_LABEL = () => __('Signed-out prompt', 'yayloyalty');
-export const STOREFRONT_PRODUCT_EARN_LINE_LABEL = () => __('Product page earning line', 'yayloyalty');
-export const STOREFRONT_THANKYOU_PENDING_LINE_LABEL = () => __('Thank-you page, points pending', 'yayloyalty');
-export const STOREFRONT_THANKYOU_EARNED_LINE_LABEL = () => __('Thank-you page, points earned', 'yayloyalty');
-
-/** Storefront-text-only reset, in the section header. Wording distinct from the whole-tab reset above. */
-export const STOREFRONT_RESET_BUTTON_LABEL = () => __('Reset to defaults', 'yayloyalty');
-export const STOREFRONT_RESET_CONFIRM_TITLE = () => __('Reset the storefront wording?', 'yayloyalty');
-export const STOREFRONT_RESET_CONFIRM_DESCRIPTION = () =>
-  __(
-    'This replaces the storefront text fields below with the default wording. Other Design settings, including any unsaved changes, are left alone.',
-    'yayloyalty',
-  );
-export const STOREFRONT_REQUIRED_ERROR = () =>
-  __('This text is shown on the storefront and can’t be empty.', 'yayloyalty');
-export const STOREFRONT_RESET_SUCCESS_TOAST = () => __('Storefront wording reset to defaults.', 'yayloyalty');
 
 // Visibility section
 
