@@ -1,7 +1,8 @@
 <?php
 /**
- * "Ways to redeem" on the Rewards tab: the points discount, then the offers Pro adds.
- * Styled by assets/storefront/account/ways-to-redeem.css; each row by rule-list-item.php.
+ * "Ways to redeem": the Rewards tab's list, also in the launcher panel and placed by [yayloyalty_ways_to_redeem] and its block.
+ * The points discount, then the offers Pro adds.
+ * No stylesheet of its own: the list and its rows are rule-list-item.php and rule-list-item.css.
  *
  * @var array|null $yayloyalty_redeem LauncherPayload's `redeem`; null while the discount reward is not live.
  * @var array      $yayloyalty_offers LauncherPayload's `offers`.
