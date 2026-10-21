@@ -70,6 +70,7 @@ CSS;
         return '<!doctype html><html><head><meta charset="utf-8">'
             . '<meta name="viewport" content="width=device-width, initial-scale=1">'
             . '<link rel="stylesheet" href="' . esc_url( Launcher::style_url() ) . '">' // phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedStylesheet -- a standalone page for an iframe; there is no WordPress head to enqueue into.
+            . '<link rel="stylesheet" href="' . esc_url( AccountRewards::style_url() ) . '">' // phpcs:ignore WordPress.WP.EnqueuedResources.NonEnqueuedStylesheet -- as above: the panel prints the Rewards tab's partials.
             . '<style>' . self::FRAME_CSS . '</style></head><body>'
             . self::store_frame()
             . Launcher::markup( $view )

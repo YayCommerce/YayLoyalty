@@ -1,0 +1,52 @@
+/*
+ * templates/launcher.php: the launcher panel's body, which prints the Rewards tab's partials inside
+ * .yayloyalty-account. This file only fits them to a 400px panel; the shell (header, footer, motion) is the
+ * launcher's own stylesheet. .yayloyalty-launcher lifts every rule here to 0,3,0, above the partials' 0,2,0.
+ * Imported by rewards-tokens.css, which holds the tokens.
+ */
+
+/* The Design tab's brand colour, which the launcher sets as --primary, drives the panel's buttons and links. */
+.yayloyalty-launcher .yayloyalty-account {
+  --yayloyalty-account-accent: var(--primary);
+  --yayloyalty-account-accent-hover: var(--primary-accent);
+  --yayloyalty-account-accent-text: var(--primary-foreground);
+  gap: 20px;
+  padding: 20px;
+  font-size: 14px;
+}
+
+.yayloyalty-launcher .yayloyalty-account .yayloyalty-account__card {
+  padding: 20px;
+}
+
+/* The art is out of flow, so the body takes the card's width and the button can span it. */
+.yayloyalty-launcher .yayloyalty-account .yayloyalty-account__card-body {
+  flex: 1;
+}
+
+.yayloyalty-launcher .yayloyalty-account .yayloyalty-account__card .yayloyalty-account__button {
+  align-self: stretch;
+  justify-content: center;
+  margin-top: 14px;
+  padding: 10px 14px;
+}
+
+.yayloyalty-launcher .yayloyalty-account .yayloyalty-account__art {
+  top: 28px;
+  right: -20px;
+  width: 140px;
+  transform: none;
+}
+
+.yayloyalty-launcher .yayloyalty-account .yayloyalty-account__notice {
+  margin-top: -8px;
+}
+
+.yayloyalty-launcher .yayloyalty-account .yayloyalty-account__title {
+  font-size: 14px;
+}
+
+/* The panel names each way to earn and its value; the Rewards tab has room for the line under it. */
+.yayloyalty-launcher .yayloyalty-account .yayloyalty-account__earn .yayloyalty-account__item-text {
+  display: none;
+}

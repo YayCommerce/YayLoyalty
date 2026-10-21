@@ -51,6 +51,8 @@ final class Launcher {
         }
 
         wp_enqueue_style( ScriptName::STOREFRONT_STYLE, YAYLOYALTY_PLUGIN_URL . self::STYLE_PATH, [], self::asset_version( self::STYLE_PATH ) );
+        // The panel prints the Rewards tab's partials (AccountRewards::register_style() registers it on init).
+        wp_enqueue_style( ScriptName::ACCOUNT_STYLE );
         wp_enqueue_script(
             ScriptName::STOREFRONT_SCRIPT,
             YAYLOYALTY_PLUGIN_URL . 'assets/storefront/launcher.js',
@@ -145,6 +147,9 @@ final class Launcher {
      */
     public static function view( array $design, array $payload, bool $is_live ): array {
         $payload['style'] = self::theme_vars( $design['launcher'] );
+        // The footer's "Program terms": WooCommerce's Terms and conditions page, '' while none is set.
+        $terms_id             = function_exists( 'wc_terms_and_conditions_page_id' ) ? (int) wc_terms_and_conditions_page_id() : 0;
+        $payload['terms_url'] = $terms_id > 0 ? (string) get_permalink( $terms_id ) : '';
 
         if ( empty( $design['panel']['show_reward_catalog'] ) ) {
             $payload['offers'] = [];
@@ -152,7 +157,10 @@ final class Launcher {
 
         if ( $is_live && null !== $payload['member'] ) {
             $payload['activity_url'] = rest_url( StorefrontActivityRestController::REST_NAMESPACE . StorefrontActivityRestController::ROUTE );
+            $payload['seen_url']     = rest_url( StorefrontActivityRestController::REST_NAMESPACE . StorefrontActivityRestController::SEEN_ROUTE );
             $payload['nonce']        = wp_create_nonce( 'wp_rest' );
+
+            $payload['member']['new_points'] = NewPointsNotice::points_since_seen( get_current_user_id() );
         }
 
         return $payload;

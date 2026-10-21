@@ -76,7 +76,7 @@ final class LauncherCopy {
     }
 
     /**
-     * The Design tab's `earn_rate_line` with its {points}, {points_label} and {amount} filled: "Earn 1 Point per $1 spent".
+     * The Design tab's `earn_rate_line` with its {points}, {points_label} and {amount} filled: "1 Point / $1" by default.
      * The field is optional; left blank, the rate still needs saying, so the Design default stands in.
      * A campaign minimum is appended, since an order under it earns nothing.
      */

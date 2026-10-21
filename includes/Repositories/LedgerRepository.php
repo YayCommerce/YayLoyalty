@@ -287,6 +287,18 @@ class LedgerRepository extends AbstractRepository {
     }
 
     /**
+     * Points issued to a user (issued_row_sql()) in rows created strictly after $after: the launcher's
+     * "You earned 40 new points." since the shopper last opened it (NewPointsNotice).
+     *
+     * @param string $after UTC MySQL datetime. A row at this exact second is excluded.
+     */
+    public function issued_since( int $user_id, string $after ): int {
+        [ $issued, $types ] = self::issued_row_sql();
+
+        return $this->sum_points( 'user_id = %d AND created_at > %s AND ' . $issued, array_merge( [ $user_id, $after ], $types ) );
+    }
+
+    /**
      * The one definition of an "issued" ledger row, a positive row of an earn
      * type, as a prepared-SQL fragment plus the values it binds. Every SUM or
      * COUNT of points issued interpolates this, so the campaign list, the

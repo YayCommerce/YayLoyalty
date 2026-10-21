@@ -1,11 +1,11 @@
 /*
- * My Account → Rewards, and the placements that reuse its partials ([yayloyalty_balance], [yayloyalty_ways_to_earn]).
+ * My Account → Rewards, and what reuses its partials: the launcher panel and the placements ([yayloyalty_balance], [yayloyalty_ways_to_earn]).
  * Hand-written and shipped as-is: no build step, and nothing from the launcher's stylesheet or the Design tab.
  *
  * This is the one file WordPress enqueues (AccountRewards::STYLE_PATH). It imports one file per template in
  * includes/Engine/Storefront/templates/, named after it, and holds the tokens they all read. A new template's
- * file goes in the list below; never enqueue it on its own. ways-to-redeem.php has none: its rows and list
- * are rule-list-item.css, and it adds nothing of its own.
+ * file goes in the list below; never enqueue it on its own. ways-to-redeem.php and panel-member.php have none:
+ * they only arrange other partials, and add nothing of their own.
  *
  * - Every rule is nested under .yayloyalty-account, so it is at least 0,2,0 and a theme's plain
  *   `a {}`, `table {}` or `h3 {}` rules cannot beat it.
@@ -19,6 +19,11 @@
 @import url("ways-to-earn.css");
 @import url("points-history.css");
 @import url("points-history-pages.css");
+@import url("launcher.css");
+@import url("guest-card.css");
+@import url("panel-guest.css");
+@import url("recent-activity.css");
+@import url("new-points-notice.css");
 
 .yayloyalty-account {
   --yayloyalty-account-accent: #3858e9;
@@ -33,6 +38,7 @@
   --yayloyalty-account-icon-bg: #f4f4f5;
   --yayloyalty-account-positive: #16a34a;
   --yayloyalty-account-positive-bg: #ecfdf3;
+  --yayloyalty-account-positive-border: #bbe5c8;
   --yayloyalty-account-warning: #a16207;
   --yayloyalty-account-warning-bg: #fef9e7;
   --yayloyalty-account-warning-border: #f5d77a;

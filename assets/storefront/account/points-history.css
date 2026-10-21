@@ -168,6 +168,8 @@
 .yayloyalty-account .yayloyalty-account__empty-icon svg {
   width: 32px;
   height: 32px;
+  /* A lighter line than the 2px row icons, as the design draws this mark. */
+  stroke-width: 1.5;
 }
 
 .yayloyalty-account .yayloyalty-account__empty-title {

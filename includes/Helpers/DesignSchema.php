@@ -27,7 +27,7 @@ class DesignSchema {
                 /* translators: keep {points_label} as it is; it becomes the store's points label, as "Points". */
                 'balance_heading'       => __( 'Your {points_label}', 'yayloyalty' ),
                 /* translators: keep every {…} placeholder as it is; each is filled in when the line is shown. */
-                'earn_rate_line'        => __( 'Earn {points} {points_label} per {amount} spent', 'yayloyalty' ),
+                'earn_rate_line'        => __( '{points} {points_label} / {amount}', 'yayloyalty' ),
                 /* translators: keep {points_label} as it is; it becomes the store's points label, as "Points". */
                 'redeem_button'         => __( 'Apply {points_label}', 'yayloyalty' ),
                 /* translators: keep {points_label} as it is; it becomes the store's points label, as "Points". */

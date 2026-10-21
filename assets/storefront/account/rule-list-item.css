@@ -77,7 +77,12 @@
   color: var(--yayloyalty-account-text);
 }
 
-/* Narrow screens: a long value such as "Earn 10 Points per $1 spent" wraps instead of squeezing the name. */
+/* A value that is a gain, such as the guest panel's welcome bonus; 0,4,0 so a list's own value colour cannot beat it. */
+.yayloyalty-account .yayloyalty-account__list .yayloyalty-account__item .yayloyalty-account__item-value--positive {
+  color: var(--yayloyalty-account-positive);
+}
+
+/* Narrow screens: a long value such as "10 Points / $1 on orders of $50 or more" wraps instead of squeezing the name. */
 @media (max-width: 600px) {
   .yayloyalty-account .yayloyalty-account__item-value {
     max-width: 45%;

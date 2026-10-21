@@ -83,9 +83,14 @@ final class AccountRewards {
         return array_slice( $items, 0, $position, true ) + $item + array_slice( $items, $position, null, true );
     }
 
-    /** The tab's stylesheet, which the placements and their blocks share. */
+    /** The tab's stylesheet, which the placements, their blocks and the launcher panel share. */
     public static function register_style(): void {
         wp_register_style( ScriptName::ACCOUNT_STYLE, YAYLOYALTY_PLUGIN_URL . self::STYLE_PATH, [], Launcher::asset_version( self::STYLE_PATH ) );
+    }
+
+    /** The stylesheet's URL, versioned like the enqueue, for the Design tab's preview, which links it itself. */
+    public static function style_url(): string {
+        return add_query_arg( 'ver', Launcher::asset_version( self::STYLE_PATH ), YAYLOYALTY_PLUGIN_URL . self::STYLE_PATH );
     }
 
     public static function enqueue(): void {

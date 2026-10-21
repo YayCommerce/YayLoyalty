@@ -48,7 +48,7 @@ $yayloyalty_download  = AccountRewardsIcon::get( 'download' ) . esc_html__( 'Exp
 
     <?php if ( [] === $yayloyalty_history['rows'] ) : ?>
         <div class="yayloyalty-account__empty">
-            <span class="yayloyalty-account__empty-icon"><?php echo AccountRewardsIcon::get( 'receipt' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- a fixed SVG. ?></span>
+            <span class="yayloyalty-account__empty-icon"><?php echo AccountRewardsIcon::get( 'empty' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- a fixed SVG. ?></span>
             <p class="yayloyalty-account__empty-title">
                 <?php
                 /* translators: %s: the store's points label, as "Points". */

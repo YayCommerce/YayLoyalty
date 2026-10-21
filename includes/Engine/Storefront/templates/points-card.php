@@ -1,6 +1,6 @@
 <?php
 /**
- * The points card: the Rewards tab's balance block, also placed by [yayloyalty_balance] and its block.
+ * The points card: the Rewards tab's balance block, also the launcher panel's and placed by [yayloyalty_balance] and its block.
  * A guest gets a sign-in link where the number would be. A member whose points expire within
  * LauncherPayload::EXPIRING_SOON_DAYS gets a notice under it.
  * Styled by assets/storefront/account/points-card.css.
@@ -42,7 +42,7 @@ if ( null !== $yayloyalty_card_member && null !== $yayloyalty_card_member['worth
 ?>
 <section class="yayloyalty-account__card">
     <div class="yayloyalty-account__card-body">
-        <h2 class="yayloyalty-account__heading"><?php echo esc_html( $yayloyalty_card_payload['text']['balance_heading'] ); ?></h2>
+        <h2 class="yayloyalty-account__heading" data-yl-text="balance_heading"><?php echo esc_html( $yayloyalty_card_payload['text']['balance_heading'] ); ?></h2>
         <?php if ( null === $yayloyalty_card_member ) : ?>
             <p class="yayloyalty-account__signin">
                 <a href="<?php echo esc_url( $yayloyalty_card_payload['account_url'] ); ?>">

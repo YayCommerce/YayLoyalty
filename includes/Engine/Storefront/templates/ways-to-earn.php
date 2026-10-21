@@ -1,12 +1,13 @@
 <?php
 /**
- * "Ways to earn": the Rewards tab's list, also placed by [yayloyalty_ways_to_earn] and its block.
+ * "Ways to earn": the Rewards tab's list, also in the launcher panel and placed by [yayloyalty_ways_to_earn] and its block.
  * Styled by assets/storefront/account/ways-to-earn.css; each row by rule-list-item.php.
  *
  * @var array $yayloyalty_earn LauncherEarnRules::for_viewer().
  */
 
 use YayLoyalty\Engine\Storefront\AccountRewardsIcon;
+use YayLoyalty\Enums\CampaignTrigger;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -21,11 +22,12 @@ if ( [] === $yayloyalty_earn['rows'] && '' === $yayloyalty_earn['limit_line'] ) 
             <?php
             foreach ( $yayloyalty_earn['rows'] as $yayloyalty_earn_row ) {
                 $yayloyalty_item = [
-                    'icon'  => AccountRewardsIcon::for_trigger( $yayloyalty_earn_row['trigger'] ),
-                    'name'  => $yayloyalty_earn_row['label'],
-                    'url'   => (string) ( $yayloyalty_earn_row['url'] ?? '' ),
-                    'text'  => (string) ( $yayloyalty_earn_row['description'] ?? '' ),
-                    'value' => $yayloyalty_earn_row['value'],
+                    'icon'      => AccountRewardsIcon::for_trigger( $yayloyalty_earn_row['trigger'] ),
+                    'name'      => $yayloyalty_earn_row['label'],
+                    'url'       => (string) ( $yayloyalty_earn_row['url'] ?? '' ),
+                    'text'      => (string) ( $yayloyalty_earn_row['description'] ?? '' ),
+                    'value'     => $yayloyalty_earn_row['value'],
+                    'value_key' => CampaignTrigger::PURCHASE === $yayloyalty_earn_row['trigger'] ? 'earn_rate_line' : '',
                 ];
 
                 require __DIR__ . '/rule-list-item.php';

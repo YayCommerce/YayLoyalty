@@ -9,7 +9,6 @@
 
 use YayLoyalty\Engine\Storefront\LauncherCopy;
 use YayLoyalty\Engine\Storefront\LauncherIcon;
-use YayLoyalty\Engine\Storefront\UiClasses;
 use YayLoyalty\Helpers\SettingsHelper;
 
 defined( 'ABSPATH' ) || exit;
@@ -26,6 +25,7 @@ $yayloyalty_is_open = ! empty( $view['is_open'] );
     data-hide-mobile="<?php echo $view['hide_mobile'] ? '1' : '0'; ?>"
     <?php if ( null !== $yayloyalty_member ) : ?>
         data-activity-url="<?php echo esc_url( $view['activity_url'] ?? '' ); ?>"
+        data-seen-url="<?php echo esc_url( $view['seen_url'] ?? '' ); ?>"
         data-nonce="<?php echo esc_attr( $view['nonce'] ?? '' ); ?>"
     <?php endif; ?>
     style="<?php echo esc_attr( $view['style'] ); ?>"
@@ -66,15 +66,16 @@ $yayloyalty_is_open = ! empty( $view['is_open'] );
     >
         <div class="yl-launcher-handle" data-yl-handle aria-hidden="true"><span class="yl:block yl:h-1 yl:w-11 yl:rounded-full yl:bg-border"></span></div>
 
-        <div class="yl-launcher-header yl:flex yl:items-center yl:gap-2.5 yl:bg-primary yl:text-primary-foreground yl:px-4 yl:py-2.5">
+        <div class="yl-launcher-header yl:flex yl:items-center yl:gap-2.5 yl:bg-foreground yl:text-background yl:px-5 yl:py-3.5">
             <span class="yl-launcher-header-icon yl:inline-flex yl:[&>*]:size-4"><?php echo LauncherIcon::gift(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- fixed SVG string. ?></span>
-            <h2 id="yayloyalty-launcher-title" data-yl-text="launcher_label" class="yl:m-0 yl:text-sm yl:font-semibold yl:leading-tight yl:text-primary-foreground"><?php echo esc_html( $yayloyalty_text['launcher_label'] ); ?></h2>
-            <button type="button" class="yl-launcher-close yl:ml-auto yl:inline-flex yl:size-7 yl:items-center yl:justify-center yl:rounded-md yl:text-primary-foreground yl:hover:bg-primary-foreground/15 yl:cursor-pointer yl:transition-colors yl:outline-none yl:focus-visible:ring-[1.5px] yl:focus-visible:ring-primary-foreground" data-yl-close aria-label="<?php esc_attr_e( 'Close', 'yayloyalty' ); ?>">
+            <h2 id="yayloyalty-launcher-title" data-yl-text="launcher_label" class="yl:m-0 yl:text-[15px] yl:font-semibold yl:leading-tight yl:text-background"><?php echo esc_html( $yayloyalty_text['launcher_label'] ); ?></h2>
+            <button type="button" class="yl-launcher-close yl:ml-auto yl:inline-flex yl:size-7 yl:items-center yl:justify-center yl:rounded-md yl:text-background yl:hover:bg-background/15 yl:cursor-pointer yl:transition-colors yl:outline-none yl:focus-visible:ring-[1.5px] yl:focus-visible:ring-background" data-yl-close aria-label="<?php esc_attr_e( 'Close', 'yayloyalty' ); ?>">
                 <?php echo LauncherIcon::close(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- fixed SVG string. ?>
             </button>
         </div>
 
-        <div class="yl-launcher-body yl:flex yl:flex-col yl:overflow-y-auto">
+        <?php // .yayloyalty-account: the body prints the Rewards tab's partials, styled by assets/storefront/account/. ?>
+        <div class="yl-launcher-body yayloyalty-account yl:flex yl:flex-col yl:overflow-y-auto">
             <?php
             if ( null !== $yayloyalty_member ) {
                 include __DIR__ . '/panel-member.php';
@@ -84,12 +85,11 @@ $yayloyalty_is_open = ! empty( $view['is_open'] );
             ?>
         </div>
 
-        <?php if ( null !== $yayloyalty_member ) : ?>
-            <div class="yl:flex yl:items-center yl:gap-2.5 yl:border-t yl:border-border yl:bg-muted/50 yl:px-4 yl:py-3">
-                <a class="yl:text-xs yl:text-primary yl:hover:underline yl:underline-offset-4" href="<?php echo esc_url( $view['rewards_url'] ); ?>">
-                    <?php esc_html_e( 'View all rewards activity', 'yayloyalty' ); ?>
-                </a>
-            </div>
-        <?php endif; ?>
+        <div class="yl-launcher-footer yl:flex yl:items-center yl:justify-between yl:gap-2.5 yl:border-t yl:border-border yl:bg-muted/50 yl:px-5 yl:py-3 yl:text-xs yl:text-muted-foreground">
+            <span>YayLoyalty</span>
+            <?php if ( '' !== $view['terms_url'] ) : ?>
+                <a class="yl:text-muted-foreground yl:underline yl:underline-offset-4 yl:hover:text-foreground" href="<?php echo esc_url( $view['terms_url'] ); ?>"><?php esc_html_e( 'Program terms', 'yayloyalty' ); ?></a>
+            <?php endif; ?>
+        </div>
     </div>
 </div>

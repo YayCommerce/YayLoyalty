@@ -103,7 +103,7 @@
 .yl-launcher-panel {
   position: fixed;
   z-index: 99992;
-  width: 360px;
+  width: 400px;
   max-height: min(700px, calc(100vh - 2 * var(--yl-offset)));
   border-radius: var(--radius);
   overflow: hidden;

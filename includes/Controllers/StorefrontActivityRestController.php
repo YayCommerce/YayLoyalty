@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Controllers;
 
+use YayLoyalty\Engine\Storefront\NewPointsNotice;
 use YayLoyalty\Engine\Storefront\ShopperActivityRow;
 use YayLoyalty\Repositories\LedgerRepository;
 
@@ -8,6 +9,7 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * GET /me/activity: the signed-in shopper's latest ledger rows, for the storefront launcher.
+ * POST /me/activity/seen: the panel was opened, so its "new points" notice is spent (NewPointsNotice).
  *
  * A shopper route, not an admin one: it is gated by session identity, so the user is always the current
  * one and there is no id param to enumerate. The launcher fetches it after the panel opens, so a shopper
@@ -17,6 +19,9 @@ final class StorefrontActivityRestController extends AbstractRestController {
 
     /** Path under the namespace. The launcher builds its fetch URL from this. */
     public const ROUTE = '/me/activity';
+
+    /** Path under the namespace for marking the panel seen. The launcher builds its URL from this. */
+    public const SEEN_ROUTE = '/me/activity/seen';
 
     /** The launcher shows three rows, and "View all" leads to My Account for the rest. Its skeleton draws as many. */
     public const ROWS = 3;
@@ -45,6 +50,23 @@ final class StorefrontActivityRestController extends AbstractRestController {
                 'schema' => [ $this, 'get_item_schema' ],
             ]
         );
+
+        register_rest_route(
+            self::REST_NAMESPACE,
+            self::SEEN_ROUTE,
+            [
+                'methods'             => \WP_REST_Server::CREATABLE,
+                'callback'            => fn( $request ) => $this->exec_write( [ $this, 'mark_seen' ], $request ),
+                'permission_callback' => [ $this, 'is_signed_in' ],
+            ]
+        );
+    }
+
+    /** @return array{seen: true} */
+    public function mark_seen( \WP_REST_Request $request ): array { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- the user comes from the session.
+        NewPointsNotice::mark_seen( get_current_user_id() );
+
+        return [ 'seen' => true ];
     }
 
     /** @return true|\WP_Error */

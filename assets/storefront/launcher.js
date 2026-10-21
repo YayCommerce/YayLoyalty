@@ -18,6 +18,7 @@
     var panel = root.querySelector(".yl-launcher-panel");
     var overlay = root.querySelector(".yl-launcher-overlay");
     var isActivityLoaded = false;
+    var isSeenSent = false;
     var closeTimer = null;
 
     function isOpen() {
@@ -38,6 +39,10 @@
           first.focus();
         }
       });
+      if (!isSeenSent) {
+        isSeenSent = true;
+        markSeen(root);
+      }
       if (!isActivityLoaded) {
         isActivityLoaded = true;
         // A failed load is retried on the next open rather than left broken for the page's lifetime.
@@ -161,6 +166,24 @@
     });
   }
 
+  /**
+   * Tells the server the panel was opened, so its "You earned 40 new points." is spent from the next page on
+   * (NewPointsNotice). Fire and forget: a failed call only leaves the notice up one page longer.
+   */
+  function markSeen(root) {
+    var url = root.getAttribute("data-seen-url");
+    if (!url) {
+      return;
+    }
+    window
+      .fetch(url, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "X-WP-Nonce": root.getAttribute("data-nonce") || "" },
+      })
+      .catch(function () {});
+  }
+
   function loadActivity(root, onFail) {
     var url = root.getAttribute("data-activity-url");
     var section = root.querySelector("[data-yl-activity]");
@@ -186,6 +209,8 @@
       .then(function (data) {
         var items = (data && data.items) || [];
         list.textContent = "";
+        // The empty state is its own box, so the bordered list steps aside for it.
+        list.hidden = !items.length;
         if (!items.length) {
           section.querySelector("[data-yl-activity-empty]").hidden = false;
           return;
@@ -200,6 +225,7 @@
       })
       .catch(function () {
         list.textContent = "";
+        list.hidden = true;
         error.hidden = false;
         onFail();
       });
