@@ -158,9 +158,6 @@ final class Launcher {
      */
     public static function view( array $design, array $payload, bool $is_live ): array {
         $payload['style'] = self::theme_vars( $design['launcher'] );
-        // The footer's "Program terms": WooCommerce's Terms and conditions page, '' while none is set.
-        $terms_id             = function_exists( 'wc_terms_and_conditions_page_id' ) ? (int) wc_terms_and_conditions_page_id() : 0;
-        $payload['terms_url'] = $terms_id > 0 ? (string) get_permalink( $terms_id ) : '';
 
         if ( empty( $design['panel']['show_reward_catalog'] ) ) {
             $payload['offers'] = [];
