@@ -138,7 +138,7 @@ final class LotService {
         }
 
         $policy = ExpiryPolicy::current();
-        $floor  = ExpiryPolicy::grace_floor( Dates::now() );
+        $floor  = $policy->grace_floor( Dates::now() );
 
         foreach ( $lots as $lot ) {
             $expires_at = $policy->lot_expires_at( $lot['created_at'] );

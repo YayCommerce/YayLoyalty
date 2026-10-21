@@ -60,7 +60,8 @@ if ( null !== $yayloyalty_card_member && null !== $yayloyalty_card_member['worth
             <?php if ( '' !== $yayloyalty_card_caption ) : ?>
                 <p class="yayloyalty-account__caption"><?php echo esc_html( $yayloyalty_card_caption ); ?></p>
             <?php endif; ?>
-            <?php if ( null !== $yayloyalty_card_member['worth'] ) : ?>
+            <?php // Any balance can be taken to checkout, which says what it is worth there; an empty one is sent to earn. ?>
+            <?php if ( $yayloyalty_card_member['balance'] > 0 ) : ?>
                 <a class="yayloyalty-account__button" href="<?php echo esc_url( $yayloyalty_card_payload['checkout_url'] ); ?>"><?php esc_html_e( 'Use points at checkout', 'yayloyalty' ); ?><?php echo AccountRewardsIcon::get( 'arrow' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- a fixed SVG. ?></a>
             <?php else : ?>
                 <a class="yayloyalty-account__button" href="<?php echo esc_url( (string) wc_get_page_permalink( 'shop' ) ); ?>">
@@ -87,8 +88,7 @@ if ( null !== $yayloyalty_card_member && null !== $yayloyalty_card_member['worth
             </strong>
             <?php esc_html_e( 'Use them before they expire.', 'yayloyalty' ); ?>
         </span>
-        <?php if ( null !== $yayloyalty_card_member['worth'] ) : ?>
-            <a class="yayloyalty-account__notice-link" href="<?php echo esc_url( $yayloyalty_card_payload['checkout_url'] ); ?>"><?php esc_html_e( 'Use points', 'yayloyalty' ); ?></a>
-        <?php endif; ?>
+        <?php // The notice shows only for a balance above 0, so the link always follows the card's checkout button. ?>
+        <a class="yayloyalty-account__notice-link" href="<?php echo esc_url( $yayloyalty_card_payload['checkout_url'] ); ?>"><?php esc_html_e( 'Use points', 'yayloyalty' ); ?></a>
     </p>
 <?php endif; ?>
