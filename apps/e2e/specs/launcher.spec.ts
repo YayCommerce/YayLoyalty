@@ -145,7 +145,7 @@ test.describe('storefront launcher', () => {
     await expect(panel.getByText('20', { exact: true })).toBeVisible();
 
     const steps = section(panel, 'How it works');
-    await expect(row(steps, 'Join for free')).toContainText('+100 Points');
+    await expect(row(steps, 'Join for free')).toContainText('+100 welcome Points');
     await expect(row(steps, 'Earn Points')).toContainText('1 Point / $1');
     await expect(row(steps, 'Write a review')).toContainText('+50 Points');
     await expect(row(steps, 'Redeem & save')).toContainText('100 Points = $1');

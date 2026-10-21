@@ -26,7 +26,7 @@ $yayloyalty_items = [];
 
 if ( null !== $yayloyalty_redeem ) {
     $yayloyalty_items[] = [
-        'icon'  => AccountRewardsIcon::get( 'coins' ),
+        'icon'  => AccountRewardsIcon::design( 'discount' ),
         /* translators: %s: the store's points label, as "Points". */
         'name'  => sprintf( __( '%s discount', 'yayloyalty' ), $yayloyalty_label ),
         'text'  => LauncherCopy::redeem_limits( $yayloyalty_redeem ),
@@ -36,7 +36,7 @@ if ( null !== $yayloyalty_redeem ) {
 
 foreach ( $yayloyalty_offers as $yayloyalty_offer ) {
     $yayloyalty_items[] = [
-        'icon'  => AccountRewardsIcon::get( 'percent' ),
+        'icon'  => AccountRewardsIcon::design( 'offer' ),
         'name'  => $yayloyalty_offer['name'],
         'text'  => $yayloyalty_offer['text'],
         'value' => SettingsHelper::points_text( $yayloyalty_offer['cost'] ),

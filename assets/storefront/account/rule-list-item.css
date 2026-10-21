@@ -33,7 +33,13 @@
   height: 32px;
   border-radius: var(--yayloyalty-account-radius-sm);
   background: var(--yayloyalty-account-icon-bg);
-  color: var(--yayloyalty-account-muted);
+  color: var(--yayloyalty-account-icon);
+}
+
+/* 20px tall so the birthday icon's 18x20 viewBox keeps its size; the 18x18 icons center in it. */
+.yayloyalty-account .yayloyalty-account__item-icon svg {
+  width: 18px;
+  height: 20px;
 }
 
 .yayloyalty-account .yayloyalty-account__item-body {

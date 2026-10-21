@@ -76,7 +76,7 @@ if ( null !== $yayloyalty_card_member && null !== $yayloyalty_card_member['worth
 </section>
 <?php if ( null !== $yayloyalty_card_member && null !== $yayloyalty_card_member['expires_at'] ) : ?>
     <p class="yayloyalty-account__notice">
-        <?php echo AccountRewardsIcon::get( 'clock' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- a fixed SVG. ?>
+        <?php echo AccountRewardsIcon::design( 'expiring' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- a fixed SVG. ?>
         <span class="yayloyalty-account__notice-text">
             <strong>
                 <?php
@@ -84,7 +84,6 @@ if ( null !== $yayloyalty_card_member && null !== $yayloyalty_card_member['worth
                 echo esc_html( sprintf( __( '%1$s expire on %2$s.', 'yayloyalty' ), SettingsHelper::points_text( $yayloyalty_card_member['balance'] ), Dates::to_site_date( $yayloyalty_card_member['expires_at'] ) ) );
                 ?>
             </strong>
-            <?php esc_html_e( 'Use them before they expire.', 'yayloyalty' ); ?>
         </span>
         <?php // The notice shows only for a balance above 0, so the link always follows the card's checkout button. ?>
         <a class="yayloyalty-account__notice-link" href="<?php echo esc_url( $yayloyalty_card_payload['checkout_url'] ); ?>"><?php esc_html_e( 'Use points', 'yayloyalty' ); ?></a>

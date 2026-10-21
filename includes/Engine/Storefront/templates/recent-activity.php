@@ -44,7 +44,7 @@ $yayloyalty_label    = SettingsHelper::points_label_plural();
         ?>
     </template>
     <div class="yayloyalty-account__activity-empty" data-yl-activity-empty<?php echo [] === $yayloyalty_activity ? '' : ' hidden'; ?>>
-        <span class="yayloyalty-account__activity-empty-icon"><?php echo AccountRewardsIcon::get( 'empty' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- a fixed SVG. ?></span>
+        <span class="yayloyalty-account__activity-empty-icon"><?php echo AccountRewardsIcon::empty_activity(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- a fixed SVG. ?></span>
         <p>
             <?php echo esc_html( LauncherCopy::no_activity() ); ?>
             <?php

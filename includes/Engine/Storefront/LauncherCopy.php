@@ -34,6 +34,12 @@ final class LauncherCopy {
         return 'checkout' === $route ? __( 'Join for free at checkout', 'yayloyalty' ) : __( 'Join for free', 'yayloyalty' );
     }
 
+    /** The guest panel's signup step value: "+100 welcome Points". */
+    public static function welcome_points( int $points ): string {
+        /* translators: 1: number of points with a plus sign, as "+100", 2: the store's points label, as "Points". */
+        return sprintf( __( '%1$s welcome %2$s', 'yayloyalty' ), self::signed_points( $points ), SettingsHelper::points_label( $points ) );
+    }
+
     /** The guest panel's purchase step: "Earn Points", with the store's label. */
     public static function earn_points(): string {
         /* translators: %s: the store's plural points label, as "Points". */

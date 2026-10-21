@@ -3,8 +3,6 @@
  * frame (points-card.css) in green. Imported by rewards-tokens.css, which holds the tokens.
  */
 .yayloyalty-account .yayloyalty-account__notice.yayloyalty-account__notice--new {
-  border-color: var(--yayloyalty-account-positive-border);
-  background: var(--yayloyalty-account-positive-bg);
-  color: var(--yayloyalty-account-positive);
-  font-weight: 500;
+  background: var(--yayloyalty-account-notice-positive-bg);
+  color: var(--yayloyalty-account-notice-positive);
 }
