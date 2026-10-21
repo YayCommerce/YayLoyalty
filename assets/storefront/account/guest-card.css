@@ -1,0 +1,26 @@
+/*
+ * templates/guest-card.php: the guest panel's top card. It reuses the points card's frame (points-card.css)
+ * and only colours the estimate and sets the signed-out prompt.
+ * Imported by rewards-tokens.css, which holds the tokens.
+ */
+.yayloyalty-account .yayloyalty-account__guest-card .yayloyalty-account__balance,
+.yayloyalty-account .yayloyalty-account__guest-card .yayloyalty-account__unit {
+  color: var(--yayloyalty-account-accent);
+}
+
+.yayloyalty-account .yayloyalty-account__guest-card .yayloyalty-account__unit {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.yayloyalty-account .yayloyalty-account__guest-card .yayloyalty-account__caption strong {
+  color: var(--yayloyalty-account-text);
+  font-weight: 600;
+}
+
+.yayloyalty-account .yayloyalty-account__guest-prompt {
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--yayloyalty-account-text);
+}

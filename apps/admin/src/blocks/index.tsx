@@ -7,7 +7,7 @@ import { useBlockProps } from '@wordpress/block-editor';
 import { registerBlockType } from '@wordpress/blocks';
 import ServerSideRender from '@wordpress/server-side-render';
 
-const BLOCKS = ['yayloyalty/points-balance', 'yayloyalty/ways-to-earn'];
+const BLOCKS = ['yayloyalty/points-balance', 'yayloyalty/ways-to-earn', 'yayloyalty/ways-to-redeem'];
 
 function preview(name: string) {
   return function Edit() {

@@ -1,0 +1,51 @@
+/*
+ * templates/points-history-pages.php: previous, the page numbers and the gaps between them, next.
+ * Imported by rewards-tokens.css, which holds the tokens.
+ */
+.yayloyalty-account .yayloyalty-account__pages {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.yayloyalty-account .yayloyalty-account__page {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 6px;
+  border: 1px solid var(--yayloyalty-account-border);
+  border-radius: var(--yayloyalty-account-radius-sm);
+  background: var(--yayloyalty-account-surface);
+  color: var(--yayloyalty-account-text);
+  font-size: 12px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.yayloyalty-account a.yayloyalty-account__page:hover,
+.yayloyalty-account a.yayloyalty-account__page:focus-visible {
+  background: var(--yayloyalty-account-subtle);
+}
+
+.yayloyalty-account .yayloyalty-account__page[aria-current="page"] {
+  border-color: var(--yayloyalty-account-text);
+  background: var(--yayloyalty-account-text);
+  color: var(--yayloyalty-account-surface);
+}
+
+.yayloyalty-account .yayloyalty-account__page[aria-disabled="true"] {
+  color: var(--yayloyalty-account-muted);
+  opacity: 0.5;
+}
+
+.yayloyalty-account .yayloyalty-account__page svg {
+  width: 14px;
+  height: 14px;
+}
+
+.yayloyalty-account .yayloyalty-account__page-gap {
+  padding: 0 2px;
+  color: var(--yayloyalty-account-muted);
+}

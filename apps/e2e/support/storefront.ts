@@ -7,6 +7,15 @@ export function card(page: Page): Locator {
   return page.locator('[data-yl-redeem]');
 }
 
+/** Opens the storefront launcher on the current page and returns its panel. */
+export async function openLauncher(page: Page): Promise<Locator> {
+  await page.locator('[data-yl-open]').click();
+  const panel = page.getByRole('dialog', { name: 'Rewards' });
+  await panel.waitFor();
+
+  return panel;
+}
+
 /** Waits for the order-received page a placed order lands on, and returns the order's id. */
 export async function placedOrderId(page: Page): Promise<number> {
   await page.waitForURL(/order-received\/(\d+)/);

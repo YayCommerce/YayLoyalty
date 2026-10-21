@@ -1,0 +1,162 @@
+/*
+ * templates/points-card.php: the points card and the expiry notice under it.
+ * Imported by rewards-tokens.css, which holds the tokens.
+ */
+.yayloyalty-account .yayloyalty-account__card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  overflow: hidden;
+  padding: 24px;
+  border: 1px solid var(--yayloyalty-account-border);
+  border-radius: var(--yayloyalty-account-radius);
+  background: linear-gradient(100deg, var(--yayloyalty-account-surface) 35%, var(--yayloyalty-account-subtle) 100%);
+  color: var(--yayloyalty-account-text);
+}
+
+.yayloyalty-account .yayloyalty-account__card-body {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+}
+
+.yayloyalty-account .yayloyalty-account__heading {
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--yayloyalty-account-muted);
+}
+
+.yayloyalty-account .yayloyalty-account__amount {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.yayloyalty-account .yayloyalty-account__balance {
+  font-size: 36px;
+  font-weight: 600;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: var(--yayloyalty-account-text);
+}
+
+.yayloyalty-account .yayloyalty-account__unit,
+.yayloyalty-account .yayloyalty-account__caption {
+  font-size: 13px;
+  color: var(--yayloyalty-account-muted);
+}
+
+.yayloyalty-account .yayloyalty-account__signin a {
+  color: var(--yayloyalty-account-accent);
+  font-weight: 500;
+}
+
+.yayloyalty-account .yayloyalty-account__button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: var(--yayloyalty-account-radius-sm);
+  background: var(--yayloyalty-account-accent);
+  box-shadow: var(--yayloyalty-account-shadow);
+  color: var(--yayloyalty-account-accent-text);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  text-decoration: none;
+}
+
+.yayloyalty-account .yayloyalty-account__button:hover,
+.yayloyalty-account .yayloyalty-account__button:focus-visible {
+  background: var(--yayloyalty-account-accent-hover);
+  color: var(--yayloyalty-account-accent-text);
+}
+
+.yayloyalty-account .yayloyalty-account__button svg {
+  width: 14px;
+  height: 14px;
+}
+
+/*
+ * A faint backdrop, not an icon: larger than the card is tall, off its right edge, and faded out towards
+ * the text and the bottom by two masks that intersect.
+ */
+.yayloyalty-account .yayloyalty-account__art {
+  position: absolute;
+  top: 50%;
+  right: -16px;
+  display: block;
+  width: 220px;
+  max-width: none;
+  height: auto;
+  opacity: 0.55;
+  transform: translateY(-46%);
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 55%), linear-gradient(to bottom, #000 55%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(to right, transparent 0%, #000 55%), linear-gradient(to bottom, #000 55%, transparent 100%);
+  mask-composite: intersect;
+}
+
+.yayloyalty-account .yayloyalty-account__notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: -12px;
+  padding: 12px 14px;
+  /* Left edge only: the radius curves it into the corners. */
+  border: 0;
+  border-left: 1.5px solid currentColor;
+  border-radius: var(--yayloyalty-account-radius);
+  background: var(--yayloyalty-account-notice-warning-bg);
+  color: var(--yayloyalty-account-notice-warning);
+  font-size: 13px;
+}
+
+.yayloyalty-account .yayloyalty-account__notice svg {
+  width: 18px;
+  height: 18px;
+}
+
+.yayloyalty-account .yayloyalty-account__notice-text {
+  flex: 1;
+  min-width: 0;
+  font-weight: 700;
+}
+
+.yayloyalty-account .yayloyalty-account__notice-text strong {
+  font-weight: inherit;
+}
+
+.yayloyalty-account .yayloyalty-account__notice-link {
+  flex-shrink: 0;
+  color: inherit;
+  font-weight: 400;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+@media (max-width: 600px) {
+  .yayloyalty-account .yayloyalty-account__card {
+    padding: 20px;
+  }
+
+  .yayloyalty-account .yayloyalty-account__art {
+    right: -40px;
+    width: 160px;
+    opacity: 0.4;
+  }
+
+  .yayloyalty-account .yayloyalty-account__notice {
+    flex-wrap: wrap;
+  }
+}

@@ -1,0 +1,98 @@
+/*
+ * The order-received page's "Points & rewards" card (ThankYouPoints, templates/thankyou-points.php).
+ * Hand-written and shipped as-is: no build step, and nothing from the launcher's stylesheet or the Design tab.
+ *
+ * - The text keeps the theme's font and colour; the borders and surfaces are tints of that colour, so the
+ *   card reads on light and dark themes alike. The rgba() lines are for browsers without color-mix().
+ * - Every rule is nested under the root, so it is at least 0,2,0 and a theme's plain `h2 {}` cannot beat it.
+ * - Sizes are px: rem follows the theme's html font-size (62.5% is common).
+ * - The reset is storefront-reset.css, shared with the Rewards tab.
+ */
+@import url("storefront-reset.css");
+
+.yayloyalty-thankyou-points {
+  --yayloyalty-thankyou-border: rgba(0, 0, 0, 0.1);
+  --yayloyalty-thankyou-border: color-mix(in srgb, currentColor 12%, transparent);
+  --yayloyalty-thankyou-surface: rgba(0, 0, 0, 0.02);
+  --yayloyalty-thankyou-surface: color-mix(in srgb, currentColor 2.5%, transparent);
+  --yayloyalty-thankyou-muted: rgba(0, 0, 0, 0.55);
+  --yayloyalty-thankyou-muted: color-mix(in srgb, currentColor 55%, transparent);
+
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 24px 0;
+  padding: 20px 24px;
+  border: 1px solid var(--yayloyalty-thankyou-border);
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.45;
+  text-align: left;
+}
+
+.yayloyalty-thankyou-points .yayloyalty-thankyou-points__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.yayloyalty-thankyou-points .yayloyalty-thankyou-points__icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--yayloyalty-thankyou-border);
+  border-radius: 8px;
+}
+
+.yayloyalty-thankyou-points .yayloyalty-thankyou-points__icon svg {
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+
+/* Never shrinks, so on a narrow screen the balance wraps to its own line instead of the title breaking. */
+.yayloyalty-thankyou-points .yayloyalty-thankyou-points__title {
+  flex: 1 0 auto;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.yayloyalty-thankyou-points .yayloyalty-thankyou-points__balance {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.yayloyalty-thankyou-points .yayloyalty-thankyou-points__balance strong {
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.yayloyalty-thankyou-points .yayloyalty-thankyou-points__balance-label,
+.yayloyalty-thankyou-points .yayloyalty-thankyou-points__hint {
+  font-size: 12px;
+  color: var(--yayloyalty-thankyou-muted);
+}
+
+.yayloyalty-thankyou-points .yayloyalty-thankyou-points__line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  padding: 12px 16px;
+  border: 1px solid var(--yayloyalty-thankyou-border);
+  border-radius: 8px;
+  background: var(--yayloyalty-thankyou-surface);
+}
+
+.yayloyalty-thankyou-points .yayloyalty-thankyou-points__line strong {
+  font-weight: 600;
+}

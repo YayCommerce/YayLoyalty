@@ -1,0 +1,26 @@
+/*
+ * templates/account-rewards-state.php: the card that replaces the tab when the program is paused or the
+ * account is outside it. Imported by rewards-tokens.css, which holds the tokens.
+ */
+.yayloyalty-account .yayloyalty-account__state {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 20px 24px;
+  border: 1px solid var(--yayloyalty-account-border);
+  border-radius: var(--yayloyalty-account-radius);
+  background: var(--yayloyalty-account-subtle);
+  color: var(--yayloyalty-account-text);
+}
+
+.yayloyalty-account .yayloyalty-account__state-title {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--yayloyalty-account-text);
+}
+
+.yayloyalty-account .yayloyalty-account__state-text {
+  font-size: 13px;
+  color: var(--yayloyalty-account-muted);
+}

@@ -43,9 +43,12 @@ export function buildExpirySettingsUpdate(values: ExpirySettingsFormValues): Set
   return { expiry: values.expiry };
 }
 
-/** "Month D, YYYY, N days from today": the earliest expiry date a settings change may give anyone. */
-export function graceFloorText(): string {
-  const days = window.yayLoyaltyMeta.loyaltyMeta.expiryGraceDays;
+/**
+ * "Month D, YYYY, N days from today": the earliest expiry date a settings change may give anyone. The grace,
+ * capped at the window as ExpiryPolicy::grace_days() caps it.
+ */
+export function graceFloorText(expiry: Expiry): string {
+  const days = Math.min(window.yayLoyaltyMeta.loyaltyMeta.expiryGraceDays, windowDays(expiry));
   const floor = parseWPDate(new Date(Date.now() + days * 86_400_000));
 
   /* translators: 1: a date, 2: number of days */

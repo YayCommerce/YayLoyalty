@@ -29,13 +29,16 @@ import { ExpiryShortenChoice } from './ExpiryShortenChoice';
 type Confirmation = NonNullable<ReturnType<typeof needsConfirmation>>;
 
 /** Title and body per confirmation. Functions, not constants: `__()` must run after the locale loads. */
-const CONFIRM_COPY: Record<Confirmation, () => { title: string; description: string }> = {
-  enable: () => ({
+const CONFIRM_COPY: Record<
+  Confirmation,
+  (expiry: ExpirySettingsFormValues['expiry']) => { title: string; description: string }
+> = {
+  enable: (expiry) => ({
     title: __('Turn on points expiry?', 'yayloyalty'),
     description: sprintf(
       /* translators: %s: a date and how many days from today it is */
       __('Nobody loses points today. No expiry date is set before %s.', 'yayloyalty'),
-      graceFloorText(),
+      graceFloorText(expiry),
     ),
   }),
   shorten: () => ({
@@ -89,7 +92,7 @@ export default function ExpirySettingsPage() {
     resetOptions: { keepDirtyValues: true },
   });
   const mode = useWatch({ control: form.control, name: 'expiry.mode' });
-  const copy = confirmation ? CONFIRM_COPY[confirmation]() : { title: '', description: '' };
+  const copy = confirmation ? CONFIRM_COPY[confirmation](form.getValues('expiry')) : { title: '', description: '' };
 
   const confirm = (kind: Confirmation) =>
     new Promise<boolean>((resolve) => {

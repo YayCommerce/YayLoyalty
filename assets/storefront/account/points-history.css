@@ -1,0 +1,239 @@
+/*
+ * templates/points-history.php: the CSV link, the filter tabs, the table and its badges, the empty state,
+ * and the row count beside the page links (points-history-pages.css).
+ * Imported by rewards-tokens.css, which holds the tokens.
+ */
+.yayloyalty-account .yayloyalty-account__download {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--yayloyalty-account-border);
+  border-radius: var(--yayloyalty-account-radius-sm);
+  background: var(--yayloyalty-account-surface);
+  box-shadow: var(--yayloyalty-account-shadow);
+  color: var(--yayloyalty-account-text);
+  font-size: 12px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.yayloyalty-account a.yayloyalty-account__download:hover,
+.yayloyalty-account a.yayloyalty-account__download:focus-visible {
+  background: var(--yayloyalty-account-subtle);
+}
+
+.yayloyalty-account .yayloyalty-account__download[aria-disabled="true"] {
+  box-shadow: none;
+  color: var(--yayloyalty-account-muted);
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.yayloyalty-account .yayloyalty-account__download svg {
+  width: 14px;
+  height: 14px;
+}
+
+.yayloyalty-account .yayloyalty-account__tabs {
+  display: inline-flex;
+  align-self: flex-start;
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--yayloyalty-account-radius);
+  background: var(--yayloyalty-account-icon-bg);
+}
+
+.yayloyalty-account .yayloyalty-account__tab {
+  padding: 5px 12px;
+  border-radius: var(--yayloyalty-account-radius-sm);
+  color: var(--yayloyalty-account-muted);
+  font-size: 12px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.yayloyalty-account .yayloyalty-account__tab:hover {
+  color: var(--yayloyalty-account-text);
+}
+
+.yayloyalty-account .yayloyalty-account__tab[aria-current="page"] {
+  background: var(--yayloyalty-account-surface);
+  box-shadow: var(--yayloyalty-account-shadow);
+  color: var(--yayloyalty-account-text);
+}
+
+.yayloyalty-account .yayloyalty-account__table-wrap,
+.yayloyalty-account .yayloyalty-account__empty {
+  overflow: hidden;
+  border: 1px solid var(--yayloyalty-account-border);
+  border-radius: var(--yayloyalty-account-radius);
+  background: var(--yayloyalty-account-surface);
+  color: var(--yayloyalty-account-text);
+}
+
+.yayloyalty-account .yayloyalty-account__table {
+  width: 100%;
+  margin: 0;
+  border: 0;
+  border-collapse: collapse;
+  background: transparent;
+  font-size: 13px;
+}
+
+.yayloyalty-account .yayloyalty-account__table :is(th, td) {
+  padding: 12px 16px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.yayloyalty-account .yayloyalty-account__table th {
+  background: var(--yayloyalty-account-subtle);
+  color: var(--yayloyalty-account-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.yayloyalty-account .yayloyalty-account__table tbody tr {
+  border-top: 1px solid var(--yayloyalty-account-divider);
+}
+
+.yayloyalty-account .yayloyalty-account__table .yayloyalty-account__num {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.yayloyalty-account .yayloyalty-account__date {
+  color: var(--yayloyalty-account-muted);
+  white-space: nowrap;
+}
+
+.yayloyalty-account .yayloyalty-account__order {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--yayloyalty-account-muted);
+}
+
+.yayloyalty-account a.yayloyalty-account__order {
+  color: var(--yayloyalty-account-accent);
+  text-decoration: none;
+}
+
+.yayloyalty-account a.yayloyalty-account__order:hover {
+  text-decoration: underline;
+}
+
+.yayloyalty-account .yayloyalty-account__badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: var(--yayloyalty-account-radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.yayloyalty-account .yayloyalty-account__badge--plus {
+  background: var(--yayloyalty-account-positive-bg);
+  color: var(--yayloyalty-account-positive);
+}
+
+.yayloyalty-account .yayloyalty-account__badge--minus {
+  background: var(--yayloyalty-account-icon-bg);
+  color: var(--yayloyalty-account-text);
+}
+
+.yayloyalty-account .yayloyalty-account__badge--expire {
+  background: var(--yayloyalty-account-warning-bg);
+  color: var(--yayloyalty-account-warning);
+}
+
+.yayloyalty-account .yayloyalty-account__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 40px 24px;
+  text-align: center;
+}
+
+/* The empty-state mark, here and in recent-activity.css, which sizes its own. */
+.yayloyalty-account .yayloyalty-account__empty-icon,
+.yayloyalty-account .yayloyalty-account__activity-empty-icon {
+  opacity: 0.6;
+}
+
+.yayloyalty-account .yayloyalty-account__empty-icon svg,
+.yayloyalty-account .yayloyalty-account__activity-empty-icon svg {
+  /* A lighter line than the 2px row icons, as the design draws this mark. */
+  stroke-width: 1.5;
+}
+
+.yayloyalty-account .yayloyalty-account__empty-icon {
+  margin-bottom: 6px;
+  color: var(--yayloyalty-account-muted);
+}
+
+.yayloyalty-account .yayloyalty-account__empty-icon svg {
+  width: 32px;
+  height: 32px;
+}
+
+.yayloyalty-account .yayloyalty-account__empty-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.yayloyalty-account .yayloyalty-account__empty-text {
+  font-size: 12px;
+  color: var(--yayloyalty-account-muted);
+}
+
+.yayloyalty-account .yayloyalty-account__pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.yayloyalty-account .yayloyalty-account__range {
+  font-size: 12px;
+  color: var(--yayloyalty-account-muted);
+}
+
+/* Narrow screens: each history row stacks, labelled by its column heading. */
+@media (max-width: 600px) {
+  .yayloyalty-account .yayloyalty-account__table thead {
+    display: none;
+  }
+
+  .yayloyalty-account .yayloyalty-account__table :is(tbody, tr, td) {
+    display: block;
+  }
+
+  .yayloyalty-account .yayloyalty-account__table tbody tr {
+    padding: 8px 0;
+  }
+
+  .yayloyalty-account .yayloyalty-account__table tbody tr:first-child {
+    border-top: 0;
+  }
+
+  .yayloyalty-account .yayloyalty-account__table td {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 4px 16px;
+    text-align: right;
+  }
+
+  .yayloyalty-account .yayloyalty-account__table td::before {
+    content: attr(data-title);
+    color: var(--yayloyalty-account-muted);
+    font-size: 12px;
+    text-align: left;
+  }
+}

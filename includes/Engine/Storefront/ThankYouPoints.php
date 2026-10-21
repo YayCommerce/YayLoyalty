@@ -2,25 +2,39 @@
 namespace YayLoyalty\Engine\Storefront;
 
 use YayLoyalty\Engine\Earning\PendingPoints;
+use YayLoyalty\Engine\Register\ScriptName;
 use YayLoyalty\Enums\OrderStatus;
 use YayLoyalty\Helpers\DesignHelper;
-use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Utils\Log;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
- * "You'll earn 270 Points when your order completes" on the order-received page, with the balance.
+ * The "Points & rewards" card on the order-received page: "+270 Points from this order" and the balance.
  * Reads the order meta PendingPoints wrote and the customer row; computes and writes nothing.
+ * Markup in templates/thankyou-points.php, styles in assets/storefront/thankyou-points.css.
  */
 final class ThankYouPoints {
 
     public const CSS_CLASS = 'yayloyalty-thankyou-points';
 
-    /** WooCommerce fires this in the classic template and in the Order Confirmation block; 5 puts it above the order details. */
+    private const STYLE_PATH = 'assets/storefront/thankyou-points.css';
+
+    /**
+     * WooCommerce fires this in the classic template and in the Order Confirmation block; 20 puts the card
+     * after the order details and the addresses (WooCommerce prints those at 10).
+     */
     public static function register(): void {
-        add_action( 'woocommerce_thankyou', [ self::class, 'render' ], 5 );
+        add_action( 'woocommerce_thankyou', [ self::class, 'render' ], 20 );
+        add_action( 'wp_enqueue_scripts', [ self::class, 'enqueue' ] );
+    }
+
+    /** On the order-received page only; the file is small, so it loads whether or not the card shows. */
+    public static function enqueue(): void {
+        if ( function_exists( 'is_order_received_page' ) && is_order_received_page() ) {
+            wp_enqueue_style( ScriptName::THANKYOU_STYLE, YAYLOYALTY_PLUGIN_URL . self::STYLE_PATH, [], Launcher::asset_version( self::STYLE_PATH ) );
+        }
     }
 
     /** @param int|string $order_id */
@@ -61,21 +75,20 @@ final class ThankYouPoints {
                 return '';
             }
 
-            $is_earned = $earned > 0;
-            // The raw design value: storefront_text() would fill {points_label} with the plural before the number is known.
-            $sentence = LauncherCopy::points_sentence( $design['storefront_text'][ $is_earned ? 'thankyou_earned_line' : 'thankyou_pending_line' ], $is_earned ? $earned : $pending );
-            /* translators: %s: points with their label, as "1,240 Points". */
-            $balance = sprintf( $is_earned ? __( 'New balance: %s', 'yayloyalty' ) : __( 'Balance: %s', 'yayloyalty' ), SettingsHelper::points_text( $customer->get_balance() ) );
+            $is_earned           = $earned > 0;
+            $yayloyalty_thankyou = [
+                /* translators: keep every {…} placeholder as it is; each is filled in when the line is shown. */
+                'line'    => LauncherCopy::points_sentence_html( __( '+{points} {points_label} from this order', 'yayloyalty' ), $is_earned ? $earned : $pending ),
+                'hint'    => $is_earned ? __( 'Added to your balance.', 'yayloyalty' ) : __( 'Added when your order completes.', 'yayloyalty' ),
+                'balance' => $customer->get_balance(),
+            ];
 
-            if ( $customer->get_pending_points() > 0 ) {
-                /* translators: %s: points with their label, as "270 Points". */
-                $balance .= ' · ' . sprintf( __( '%s pending until your orders complete', 'yayloyalty' ), SettingsHelper::points_text( $customer->get_pending_points() ) );
-            }
-
-            return '<section class="' . esc_attr( self::CSS_CLASS ) . '" style="margin:1.5em 0">'
-                . '<p class="' . esc_attr( self::CSS_CLASS ) . '__line" style="margin:0"><strong>' . esc_html( $sentence ) . '</strong></p>'
-                . '<p class="' . esc_attr( self::CSS_CLASS ) . '__balance" style="margin:0">' . esc_html( $balance ) . '</p>'
-                . '</section>';
+            return (string) OutputCapture::capture(
+                static function () use ( $yayloyalty_thankyou ): void {
+                    include __DIR__ . '/templates/thankyou-points.php';
+                },
+                'ThankYouPoints'
+            );
         } catch ( \Throwable $e ) {
             // A broken block must never take the order page down with it.
             Log::warning( 'ThankYouPoints', 'order #' . $order->get_id() . ': ' . $e->getMessage() );

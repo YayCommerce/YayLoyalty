@@ -2,7 +2,6 @@
 namespace YayLoyalty\Engine\Storefront;
 
 use YayLoyalty\Enums\RewardType;
-use YayLoyalty\Helpers\DesignSchema;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Models\Reward;
 use YayLoyalty\Utils\Text;
@@ -30,9 +29,32 @@ final class LauncherCopy {
         return 'checkout' === $route ? __( 'Create an account at checkout', 'yayloyalty' ) : __( 'Create an account', 'yayloyalty' );
     }
 
+    /** The guest panel's signup step, by register route (LauncherPayload::register_route()). */
+    public static function join_free( ?string $route ): string {
+        return 'checkout' === $route ? __( 'Join for free at checkout', 'yayloyalty' ) : __( 'Join for free', 'yayloyalty' );
+    }
+
+    /** The guest panel's signup step value: "+100 welcome Points". */
+    public static function welcome_points( int $points ): string {
+        /* translators: 1: number of points with a plus sign, as "+100", 2: the store's points label, as "Points". */
+        return sprintf( __( '%1$s welcome %2$s', 'yayloyalty' ), self::signed_points( $points ), SettingsHelper::points_label( $points ) );
+    }
+
+    /** The guest panel's purchase step: "Earn Points", with the store's label. */
+    public static function earn_points(): string {
+        /* translators: %s: the store's plural points label, as "Points". */
+        return sprintf( __( 'Earn %s', 'yayloyalty' ), SettingsHelper::points_label_plural() );
+    }
+
     /** "+270" / "−120": signed, with a real minus sign. */
     public static function signed_points( int $points ): string {
         return ( $points < 0 ? '−' : '+' ) . SettingsHelper::format_number( abs( $points ) );
+    }
+
+    /** A way to earn's fixed award with its label: "+50 Points". */
+    public static function points_gain( int $points ): string {
+        /* translators: 1: number of points with a plus sign, as "+50", 2: the store's points label, as "Points". */
+        return sprintf( _x( '%1$s %2$s', 'points amount', 'yayloyalty' ), self::signed_points( $points ), SettingsHelper::points_label( $points ) );
     }
 
     /**
@@ -76,17 +98,13 @@ final class LauncherCopy {
     }
 
     /**
-     * The Design tab's `earn_rate_line` with its {points}, {points_label} and {amount} filled: "Earn 1 Point per $1 spent".
-     * The field is optional; left blank, the rate still needs saying, so the Design default stands in.
+     * The purchase earn rate: "1 Point / $1", with the label agreeing with the rate.
      * A campaign minimum is appended, since an order under it earns nothing.
      */
-    public static function earn_rate( string $template, float $points_per_unit, float $min_subtotal ): string {
-        if ( '' === trim( $template ) ) {
-            $template = DesignSchema::get_default_design()['storefront_text']['earn_rate_line'];
-        }
-
+    public static function earn_rate( float $points_per_unit, float $min_subtotal ): string {
         $line = strtr(
-            $template,
+            /* translators: keep every {…} placeholder as it is; each is filled in when the line is shown. */
+            __( '{points} {points_label} / {amount}', 'yayloyalty' ),
             [
                 '{points}'       => self::rate( $points_per_unit ),
                 '{points_label}' => self::rate_label( $points_per_unit ),
@@ -102,41 +120,48 @@ final class LauncherCopy {
         return sprintf( __( '%1$s on orders of %2$s or more', 'yayloyalty' ), $line, self::money( $min_subtotal ) );
     }
 
-    /** A storefront_text line with {points} and a {points_label} that agrees with the count: "Earn 1 Point with this purchase". */
-    public static function points_sentence( string $template, int $points ): string {
+    /**
+     * A line with {points} and a {points_label} that agrees with the count, as escaped HTML: the
+     * figure in <strong>, with its label when they sit together, and with a leading "+" too ("+{points} {points_label}").
+     * For the product-page line and the thank-you card.
+     */
+    public static function points_sentence_html( string $template, int $points ): string {
+        $number = esc_html( self::points( $points ) );
+        $label  = esc_html( SettingsHelper::points_label( $points ) );
+
+        // strtr() tries the longest key first, so the widest phrase is bolded as one.
         return strtr(
-            $template,
+            esc_html( $template ),
             [
-                '{points}'       => self::points( $points ),
-                '{points_label}' => SettingsHelper::points_label( $points ),
+                '+{points} {points_label}' => '<strong>+' . $number . ' ' . $label . '</strong>',
+                '{points} {points_label}'  => '<strong>' . $number . ' ' . $label . '</strong>',
+                '{points}'                 => '<strong>' . $number . '</strong>',
+                '{points_label}'           => $label,
             ]
         );
     }
 
-    /**
-     * The Design tab's storefront_text with {points_label} filled with the merchant's plural label: "Your {points_label}" → "Your Stars".
-     * earn_rate_line is left for earn_rate(), whose label agrees with the rate it prints.
-     *
-     * @param array<string, string> $text
-     * @return array<string, string>
-     */
-    public static function storefront_text( array $text ): array {
-        // 0 picks the plural label.
-        $label = SettingsHelper::points_label( 0 );
+    /** The launcher button's accessible name and the panel's title. */
+    public static function launcher_label(): string {
+        return __( 'Rewards', 'yayloyalty' );
+    }
 
-        foreach ( $text as $key => $value ) {
-            if ( 'earn_rate_line' !== $key ) {
-                $text[ $key ] = str_replace( '{points_label}', $label, $value );
-            }
-        }
+    /** The points card's heading: "Your Points". */
+    public static function balance_heading(): string {
+        /* translators: %s: the store's points label, as "Points". */
+        return sprintf( __( 'Your %s', 'yayloyalty' ), SettingsHelper::points_label_plural() );
+    }
 
-        return $text;
+    /** The guest card's heading off a product page. */
+    public static function signed_out_prompt(): string {
+        /* translators: %s: the store's points label, as "Points". */
+        return sprintf( __( 'Sign in to earn %s on this order', 'yayloyalty' ), SettingsHelper::points_label_plural() );
     }
 
     /** The empty points history, in the launcher and on the account tab. */
     public static function no_activity(): string {
         /* translators: %s: the store's points label, as "Points". */
-        return sprintf( __( 'No %s activity yet.', 'yayloyalty' ), SettingsHelper::points_label( 0 ) );
+        return sprintf( __( 'No %s activity yet.', 'yayloyalty' ), SettingsHelper::points_label_plural() );
     }
 
     /** The daily earning limit under the ways to earn: '' with no limit, "You can earn 40 Points more today." below it, a reached line at 0. */
