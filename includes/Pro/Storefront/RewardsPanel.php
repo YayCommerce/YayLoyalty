@@ -43,8 +43,8 @@ final class RewardsPanel {
     }
 
     /**
-     * Appends the reward rows' HTML to the card's rows. Unchanged when there is no option, or when every option is
-     * refused by a program gate.
+     * Appends one row's HTML per reward to the card's rows, each its own list item. Unchanged when there is no
+     * option, or when every option is refused by a program gate.
      *
      * @param string[] $rows
      * @param array    $context RedeemCard::ROWS_FILTER's context.
@@ -66,12 +66,9 @@ final class RewardsPanel {
             return $rows;
         }
 
-        $rows[] = self::template(
-            [
-                'rows'    => self::row_views( $options, $service->applied_reward_costs( $cart, $user_id ), $balance ),
-                'balance' => $balance,
-            ]
-        );
+        foreach ( self::row_views( $options, $service->applied_reward_costs( $cart, $user_id ), $balance ) as $row ) {
+            $rows[] = self::template( $row );
+        }
 
         return $rows;
     }

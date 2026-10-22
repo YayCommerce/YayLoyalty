@@ -79,7 +79,7 @@ $yayloyalty_icon       = '<svg class="yayloyalty-redeem__icon" width="20" height
             <button type="button" class="yayloyalty-redeem__update" data-yl-update aria-controls="<?php echo esc_attr( $yayloyalty_list_id ); ?>" <?php disabled( ! $yayloyalty_is_applied ); ?>><?php esc_html_e( 'Update', 'yayloyalty' ); ?></button>
         </div>
 
-        <div class="yayloyalty-redeem__list" data-yl-list id="<?php echo esc_attr( $yayloyalty_list_id ); ?>">
+        <div class="yayloyalty-redeem__list" data-yl-list id="<?php echo esc_attr( $yayloyalty_list_id ); ?>" data-balance="<?php echo esc_attr( (string) $view['heading_balance'] ); ?>">
             <?php if ( $yayloyalty_is_slider ) : ?>
                 <?php
                 $yayloyalty_is_ticked = $view['requested'] > 0;

@@ -16,8 +16,8 @@
   --yayloyalty-redeem-muted: #7b7c80;
   --yayloyalty-redeem-border: #e4e4e7;
   --yayloyalty-redeem-surface: #fafafa;
-  --yayloyalty-redeem-selected: #f5f5f7;
-  --yayloyalty-redeem-chip: #f1f1f3;
+  --yayloyalty-redeem-selected: #fafafa;
+  --yayloyalty-redeem-chip: #f4f4f5;
   --yayloyalty-redeem-track: #e4e4e7;
   --yayloyalty-redeem-check-border: #d4d4d8;
   --yayloyalty-redeem-success: #2e7d32;
@@ -192,17 +192,13 @@
   color: var(--yayloyalty-redeem-text);
 }
 
-/* The list: rows with no dividers; a ticked row gets a rounded grey highlight. */
-
-.yayloyalty-redeem .yayloyalty-redeem__list,
-.yayloyalty-redeem .yayloyalty-redeem__rewards {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
+/* The list: rows with no dividers, 8px apart; a ticked row gets a rounded grey highlight. */
 
 .yayloyalty-redeem .yayloyalty-redeem__list {
-  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
 }
 
 .yayloyalty-redeem .yayloyalty-redeem__option {
@@ -210,7 +206,7 @@
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
-  padding: 10px;
+  padding: 10px 12px;
   border-radius: var(--yayloyalty-redeem-radius);
   font-size: 13px;
   font-weight: 400;
@@ -221,8 +217,15 @@
   border-radius: var(--yayloyalty-redeem-radius);
 }
 
-.yayloyalty-redeem .yayloyalty-redeem__item:has([data-yl-slider-toggle]:checked),
-.yayloyalty-redeem .yayloyalty-redeem__rewards > .yayloyalty-redeem__option:has(:checked) {
+/*
+ * The list's gap is its only spacing. Checkout themes give `label` a margin-bottom through selectors stronger
+ * than any nesting here (`.wc-block-checkout … label`), so this one reset is !important, and only on the rows.
+ */
+.yayloyalty-redeem .yayloyalty-redeem__list :is(.yayloyalty-redeem__item, .yayloyalty-redeem__option) {
+  margin: 0 !important;
+}
+
+.yayloyalty-redeem .yayloyalty-redeem__item:has(.yayloyalty-redeem__check:checked) {
   background: var(--yayloyalty-redeem-selected);
 }
 
@@ -231,15 +234,21 @@
   cursor: not-allowed;
 }
 
-/* Drawn, not the browser's: a rounded square, filled with the accent and a white tick when checked. */
-.yayloyalty-redeem .yayloyalty-redeem__check {
+/*
+ * Drawn, not the browser's: a rounded square, filled with the accent and a white tick when checked. Themes style
+ * every checkbox too (Brandy: `input[type=checkbox]:not(…)` at 0,2,1 with a tick in `:checked:after` at 0,3,2), so
+ * these selectors name the element and its type to outrank them: 0,3,1 for the box, 0,4,2 for its pseudo-elements.
+ */
+.yayloyalty-redeem input.yayloyalty-redeem__check[type="checkbox"] {
   -webkit-appearance: none;
   appearance: none;
   display: inline-block;
   flex-shrink: 0;
+  position: relative;
   width: 16px;
+  min-width: 16px;
   height: 16px;
-  min-height: 0;
+  min-height: 16px;
   margin: 0;
   padding: 0;
   border: 1px solid var(--yayloyalty-redeem-check-border);
@@ -251,15 +260,16 @@
   transition: background-color 0.15s, border-color 0.15s;
 }
 
-.yayloyalty-redeem .yayloyalty-redeem__check:checked {
+.yayloyalty-redeem input.yayloyalty-redeem__check[type="checkbox"]:checked {
   border-color: var(--yayloyalty-redeem-accent);
   background-color: var(--yayloyalty-redeem-accent);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 6.2l2.3 2.3 4.7-4.9'/%3E%3C/svg%3E");
 }
 
-.yayloyalty-redeem .yayloyalty-redeem__check::before,
-.yayloyalty-redeem .yayloyalty-redeem__check::after {
+.yayloyalty-redeem input.yayloyalty-redeem__check[type="checkbox"]:is(:checked, :not(:checked))::before,
+.yayloyalty-redeem input.yayloyalty-redeem__check[type="checkbox"]:is(:checked, :not(:checked))::after {
   content: none;
+  display: none;
 }
 
 .yayloyalty-redeem .yayloyalty-redeem__option-body {
@@ -297,7 +307,7 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 0 10px 12px;
+  padding: 0 12px 12px;
 }
 
 .yayloyalty-redeem .yayloyalty-redeem__body[hidden] {

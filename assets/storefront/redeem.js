@@ -20,7 +20,7 @@
   "use strict";
 
   /** How long the slider waits after the last change before it applies. */
-  var DEBOUNCE_MS = 500;
+  var DEBOUNCE_MS = 200;
 
   /** Where the card holds a draft instead of applying at once: the classic checkout form and the Checkout block. */
   var CHECKOUT_SELECTOR = "form.checkout, .wp-block-woocommerce-checkout";
@@ -75,7 +75,8 @@
   function paintRange(range) {
     var min = numberAttr(range, "min");
     var max = numberAttr(range, "max");
-    var fill = max > min ? ((Number(range.value) - min) / (max - min)) * 100 : 100;
+    var fill =
+      max > min ? ((Number(range.value) - min) / (max - min)) * 100 : 100;
 
     range.style.setProperty("--yayloyalty-redeem-fill", fill + "%");
   }
@@ -281,8 +282,8 @@
 
   /**
    * The reward rows after a tick: a row whose cost would take the ticked rewards past the balance is disabled
-   * until other ticks drop. Mirrors the reward rows' server-side `is_short`, the source of truth, over the
-   * `data-balance` and `data-cost` it prints; this file ships in Lite, so it names no Pro class.
+   * until other ticks drop. Mirrors the reward rows' server-side `is_short`, the source of truth, over the list's
+   * `data-balance` and each row's `data-cost`; this file ships in Lite, so it names no Pro class.
    */
   function refreshShort(list) {
     var sum = tickedBoxes(list).reduce(function (total, box) {
@@ -299,13 +300,9 @@
 
   /** The ids of the card's ticked rewards; none on a card without reward rows. */
   function tickedIds(root) {
-    var list = root.querySelector("[data-yl-rewards]");
-
-    return list
-      ? tickedBoxes(list).map(function (box) {
-          return Number(box.value);
-        })
-      : [];
+    return tickedBoxes(root).map(function (box) {
+      return Number(box.value);
+    });
   }
 
   /** The typed points as the slider takes them; null on a card without the field, or while it is disabled. */
@@ -464,7 +461,7 @@
         schedulePoints(root);
       }
     } else if (target.matches("[data-yl-reward]")) {
-      refreshShort(target.closest("[data-yl-rewards]"));
+      refreshShort(target.closest("[data-yl-list]"));
       if (isDraft) {
         refreshUpdate(root);
       } else {
@@ -476,8 +473,7 @@
   // Change opens the checkout list; Update sends the draft, or only collapses the card when nothing changed.
   document.addEventListener("click", function (event) {
     var target = event.target instanceof Element ? event.target : null;
-    var button =
-      target && target.closest("[data-yl-change], [data-yl-update]");
+    var button = target && target.closest("[data-yl-change], [data-yl-update]");
     var root = button ? rootOf(button) : null;
 
     if (!root) {
