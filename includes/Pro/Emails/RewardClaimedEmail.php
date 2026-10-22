@@ -6,6 +6,8 @@ defined( 'ABSPATH' ) || exit;
 /** The reward-claimed email. Nothing triggers it yet. */
 class RewardClaimedEmail extends ProLoyaltyEmail {
 
+    protected $is_enabled_by_default = false;
+
     public function __construct() {
         $this->id          = 'yayloyalty_reward_claimed';
         $this->title       = __( 'Reward claimed', 'yayloyalty' );
