@@ -3,14 +3,18 @@
  * Imported by rewards-tokens.css, which holds the tokens.
  */
 .yayloyalty-account .yayloyalty-account__card {
-  display: flex;
+  display: grid;
+  /* Rows 2-4 stay empty until the narrow layout below places the text and the button in them. */
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto 1fr auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+  column-gap: 16px;
   padding: 24px;
+  /* Its own width picks the narrow layout, wherever it is placed: My Account, the launcher or a shortcode. */
+  container-type: inline-size;
   border: 1px solid var(--yayloyalty-account-border);
   border-radius: var(--yayloyalty-account-radius);
-  background: linear-gradient(100deg, var(--yayloyalty-account-surface) 35%, var(--yayloyalty-account-subtle) 100%);
+  background: linear-gradient(100deg, var(--yayloyalty-account-surface) -100%, var(--yayloyalty-account-subtle) 100%);
   color: var(--yayloyalty-account-text);
 }
 
@@ -139,5 +143,53 @@
 
   .yayloyalty-account .yayloyalty-account__notice {
     flex-wrap: wrap;
+  }
+}
+
+/*
+ * Too narrow for the art beside the button: the body's children join the card's grid, the art beside the text only
+ * and the button in the row under both, so the art never reaches it. The caption's row is the flexible one, so a
+ * tall art pads under the text instead of between the heading and the number.
+ */
+@container (max-width: 480px) {
+  .yayloyalty-account .yayloyalty-account__card-body {
+    display: contents;
+  }
+
+  /* Above the art, which a very long balance can still run into. */
+  .yayloyalty-account .yayloyalty-account__card-body > * {
+    position: relative;
+    z-index: 1;
+    grid-column: 1;
+    align-self: start;
+    margin: 6px 0 0;
+  }
+
+  .yayloyalty-account .yayloyalty-account__card .yayloyalty-account__amount {
+    flex-wrap: wrap;
+    row-gap: 0;
+  }
+
+  .yayloyalty-account .yayloyalty-account__card .yayloyalty-account__heading {
+    margin-top: 0;
+  }
+
+  .yayloyalty-account .yayloyalty-account__card .yayloyalty-account__caption {
+    grid-row: 3;
+  }
+
+  .yayloyalty-account .yayloyalty-account__art {
+    grid-column: 2;
+    grid-row: 1 / 4;
+    align-self: start;
+    width: 96px;
+  }
+
+  .yayloyalty-account .yayloyalty-account__card .yayloyalty-account__button {
+    grid-column: 1 / -1;
+    grid-row: 4;
+    justify-content: center;
+    margin-top: 16px;
+    padding: 10px 14px;
   }
 }
