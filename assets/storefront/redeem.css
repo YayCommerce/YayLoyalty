@@ -39,11 +39,6 @@
   color: var(--yayloyalty-redeem-text);
 }
 
-/* The Cart and Checkout blocks' slot has no side padding of its own: inset the card as the totals rows are. */
-[data-yl-redeem-blocks] > .yayloyalty-redeem {
-  margin: 0 16px;
-}
-
 .yayloyalty-redeem *,
 .yayloyalty-redeem *::before,
 .yayloyalty-redeem *::after {
