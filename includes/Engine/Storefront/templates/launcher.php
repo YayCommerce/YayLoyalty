@@ -44,10 +44,13 @@ $yayloyalty_is_open = ! empty( $view['is_open'] );
             <?php if ( null !== $yayloyalty_member['expires_at'] ) : ?>
                 <span class="yl-launcher-dot" aria-hidden="true"></span>
             <?php endif; ?>
-            <span class="yl-launcher-balance yl:bg-background yl:text-primary yl:font-semibold yl:tabular-nums">
-                <?php echo esc_html( LauncherCopy::points( $yayloyalty_member['balance'] ) ); ?>
-                <span class="yl:sr-only"><?php echo esc_html( SettingsHelper::points_label( $yayloyalty_member['balance'] ) ); ?></span>
-            </span>
+            <?php // No pill at 0: the button is then drawn as a guest's. ?>
+            <?php if ( $yayloyalty_member['balance'] > 0 ) : ?>
+                <span class="yl-launcher-balance yl:bg-background yl:text-primary yl:font-semibold yl:tabular-nums">
+                    <?php echo esc_html( LauncherCopy::points( $yayloyalty_member['balance'] ) ); ?>
+                    <span class="yl:sr-only"><?php echo esc_html( SettingsHelper::points_label( $yayloyalty_member['balance'] ) ); ?></span>
+                </span>
+            <?php endif; ?>
         <?php endif; ?>
     </button>
 
