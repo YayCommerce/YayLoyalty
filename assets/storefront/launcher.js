@@ -128,14 +128,25 @@
     return longestMs;
   }
 
-  /** The bottom sheet's handle: drag down past DRAG_CLOSE_PX to dismiss, otherwise snap back. */
+  /**
+   * The bottom sheet's grab bar and header: drag down past DRAG_CLOSE_PX to dismiss, otherwise snap back.
+   * Only while the bar is drawn (mobile), and never from the ✕, whose click the capture would swallow.
+   */
   function bindDragToClose(panel, handle, close) {
     if (!handle) {
       return;
     }
+    var bar = handle.querySelector(".yl-launcher-handle");
     var startY = null;
 
     handle.addEventListener("pointerdown", function (event) {
+      if (
+        !bar ||
+        !bar.getClientRects().length ||
+        event.target.closest("[data-yl-close]")
+      ) {
+        return;
+      }
       startY = event.clientY;
       handle.setPointerCapture(event.pointerId);
     });
