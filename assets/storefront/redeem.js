@@ -234,10 +234,6 @@
    * while the ticks differ from what is applied (the boxes' `checked` attribute).
    */
   function refreshRewards(panel) {
-    if (panel.hasAttribute("data-locked")) {
-      return;
-    }
-
     var boxes = Array.prototype.slice.call(
       panel.querySelectorAll("[data-yl-reward]"),
     );
@@ -290,7 +286,7 @@
   function applyRewards(root, button) {
     var panel = button.closest("[data-yl-rewards]");
 
-    if (!panel || panel.hasAttribute("data-locked")) {
+    if (!panel) {
       return;
     }
 
