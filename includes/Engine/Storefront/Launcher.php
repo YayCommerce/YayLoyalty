@@ -22,6 +22,9 @@ final class Launcher {
     /** The built stylesheet, relative to the plugin root. */
     private const STYLE_PATH = 'assets/dist/storefront/launcher.css';
 
+    /** Places a button the shopper dragged; printed inline, relative to the plugin root. */
+    private const SPOT_SCRIPT_PATH = 'assets/storefront/launcher-spot.js';
+
     /** The button's foreground on a brand colour too light for white. */
     private const DARK_FOREGROUND = '#171719';
 
@@ -87,6 +90,10 @@ final class Launcher {
         }
 
         echo self::markup( $this->view ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- the templates escape every value.
+
+        // Inline and right after the markup, so a dragged button is placed before the first paint.
+        $spot_script = (string) file_get_contents( YAYLOYALTY_PLUGIN_DIR . self::SPOT_SCRIPT_PATH ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- a local plugin file.
+        wp_print_inline_script_tag( $spot_script, [ 'id' => 'yayloyalty-launcher-spot' ] );
     }
 
     /**
