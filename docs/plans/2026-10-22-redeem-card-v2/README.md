@@ -52,7 +52,7 @@
 
 | Phase | Delivers (user-visible) | Exit criterion (exact check) | Status |
 |---|---|---|---|
-| 1 | [Stacking engine](phase-1-stacking-engine.md): rewards and the points discount on one cart and one order, through today's card with its exclusivity notices removed | `composer test:integration -- --filter 'StackedQuoteTest\|CommitWriterTest'` passes with the new tests counted; spec AC 9 by hand on the classic checkout | pending |
+| 1 | [Stacking engine](phase-1-stacking-engine.md): rewards and the points discount on one cart and one order, through today's card with its exclusivity notices removed | `composer test:integration -- --filter 'StackedQuoteTest\|CommitWriterTest'` passes with the new tests counted; spec AC 9 by hand on the classic checkout | implemented, awaiting yayplancheck |
 | 2 | [List card on the cart](phase-2-list-card.md): header with worth, guest card, Points discount row, reward rows, instant apply, everywhere the card shows | Spec AC 1–8, 12, 13 by hand on the classic cart and the Cart block; `composer test -- --filter RedeemCardViewTest` passes | pending |
 | 3 | [Checkout mode, e2e and docs](phase-3-checkout-mode.md): collapsed summary, draft + Update at checkout, rewritten e2e, decision record and doc amendments | Spec AC 15–17: `pnpm --filter @yayloyalty/e2e test -- reward-redemptions redemptions` passes | pending |
 
