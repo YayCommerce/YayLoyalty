@@ -6,6 +6,7 @@
  * @var array $yayloyalty_history AccountRewards::view()'s `history`.
  */
 
+use YayLoyalty\Engine\Storefront\AccountHistoryAjax;
 use YayLoyalty\Engine\Storefront\AccountHistoryCsv;
 use YayLoyalty\Engine\Storefront\AccountRewards;
 use YayLoyalty\Engine\Storefront\AccountRewardsIcon;
@@ -26,7 +27,7 @@ $yayloyalty_last      = $yayloyalty_first + count( $yayloyalty_history['rows'] )
 $yayloyalty_has_rows  = 'all' !== $yayloyalty_filter_on || $yayloyalty_history['total'] > 0;
 $yayloyalty_download  = AccountRewardsIcon::get( 'download' ) . esc_html__( 'Export CSV', 'yayloyalty' );
 ?>
-<section class="yayloyalty-account__section" id="<?php echo esc_attr( AccountRewards::HISTORY_ANCHOR ); ?>">
+<section class="yayloyalty-account__section" id="<?php echo esc_attr( AccountRewards::HISTORY_ANCHOR ); ?>" data-endpoint="<?php echo esc_url( AccountHistoryAjax::url() ); ?>" data-page="<?php echo esc_attr( $yayloyalty_page ); ?>" data-filter="<?php echo esc_attr( $yayloyalty_filter_on ); ?>">
     <div class="yayloyalty-account__section-head">
         <h3 class="yayloyalty-account__title">
             <?php
@@ -43,7 +44,7 @@ $yayloyalty_download  = AccountRewardsIcon::get( 'download' ) . esc_html__( 'Exp
 
     <nav class="yayloyalty-account__tabs" aria-label="<?php esc_attr_e( 'Filter history', 'yayloyalty' ); ?>">
         <?php foreach ( AccountRewards::filter_labels() as $yayloyalty_filter => $yayloyalty_filter_label ) : ?>
-            <a class="yayloyalty-account__tab" href="<?php echo esc_url( AccountRewards::url( 1, $yayloyalty_filter ) ); ?>"<?php echo $yayloyalty_filter === $yayloyalty_filter_on ? ' aria-current="page"' : ''; ?>><?php echo esc_html( $yayloyalty_filter_label ); ?></a>
+            <a class="yayloyalty-account__tab" href="<?php echo esc_url( AccountRewards::url( 1, $yayloyalty_filter ) ); ?>" data-page="1" data-filter="<?php echo esc_attr( $yayloyalty_filter ); ?>"<?php echo $yayloyalty_filter === $yayloyalty_filter_on ? ' aria-current="page"' : ''; ?>><?php echo esc_html( $yayloyalty_filter_label ); ?></a>
         <?php endforeach; ?>
     </nav>
 
