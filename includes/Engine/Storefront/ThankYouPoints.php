@@ -5,13 +5,14 @@ use YayLoyalty\Engine\Earning\PendingPoints;
 use YayLoyalty\Engine\Register\ScriptName;
 use YayLoyalty\Enums\OrderStatus;
 use YayLoyalty\Helpers\DesignHelper;
+use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Utils\Log;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The "Points & rewards" card on the order-received page: "+270 Points from this order" and the balance.
+ * The "Rewards" card on the order-received page: the balance and "+270 Points from this order", pending until the order releases them, then earned.
  * Reads the order meta PendingPoints wrote and the customer row; computes and writes nothing.
  * Markup in templates/thankyou-points.php, styles in assets/storefront/thankyou-points.css.
  */
@@ -75,11 +76,25 @@ final class ThankYouPoints {
                 return '';
             }
 
-            $is_earned           = $earned > 0;
-            $yayloyalty_thankyou = [
+            $is_earned = $earned > 0;
+            $points    = $is_earned ? $earned : $pending;
+            $hint      = $is_earned
                 /* translators: keep every {…} placeholder as it is; each is filled in when the line is shown. */
-                'line'    => LauncherCopy::points_sentence_html( __( '+{points} {points_label} from this order', 'yayloyalty' ), $is_earned ? $earned : $pending ),
-                'hint'    => $is_earned ? __( 'Added to your balance.', 'yayloyalty' ) : __( 'Added when your order completes.', 'yayloyalty' ),
+                ? _n( '{points} {points_label} was added to your balance.', '{points} {points_label} were added to your balance.', $points, 'yayloyalty' )
+                /* translators: keep every {…} placeholder as it is; each is filled in when the line is shown. */
+                : __( '{points} {points_label} will be added when your order is completed.', 'yayloyalty' );
+
+            $yayloyalty_thankyou = [
+                'state'   => $is_earned ? 'earned' : 'pending',
+                /* translators: keep every {…} placeholder as it is; each is filled in when the line is shown. */
+                'line'    => LauncherCopy::points_sentence_html( __( '+{points} {points_label} from this order', 'yayloyalty' ), $points ),
+                'hint'    => strtr(
+                    $hint,
+                    [
+                        '{points}'       => LauncherCopy::points( $points ),
+                        '{points_label}' => SettingsHelper::points_label( $points ),
+                    ]
+                ),
                 'balance' => $customer->get_balance(),
             ];
 
