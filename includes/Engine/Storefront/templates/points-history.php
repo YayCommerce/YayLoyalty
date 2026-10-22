@@ -26,7 +26,7 @@ $yayloyalty_last      = $yayloyalty_first + count( $yayloyalty_history['rows'] )
 $yayloyalty_has_rows  = 'all' !== $yayloyalty_filter_on || $yayloyalty_history['total'] > 0;
 $yayloyalty_download  = AccountRewardsIcon::get( 'download' ) . esc_html__( 'Export CSV', 'yayloyalty' );
 ?>
-<section class="yayloyalty-account__section">
+<section class="yayloyalty-account__section" id="<?php echo esc_attr( AccountRewards::HISTORY_ANCHOR ); ?>">
     <div class="yayloyalty-account__section-head">
         <h3 class="yayloyalty-account__title">
             <?php

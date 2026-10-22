@@ -26,6 +26,9 @@ final class AccountRewards {
 
     public const FILTER_QUERY_ARG = 'points_type';
 
+    /** The id of the tab's "Points history" section, so a link can land on it. */
+    public const HISTORY_ANCHOR = 'yayloyalty-points-history';
+
     /** The one file enqueued: it holds the tokens and @imports each section's file beside it. */
     private const STYLE_PATH = 'assets/storefront/account/rewards-tokens.css';
 
@@ -108,6 +111,11 @@ final class AccountRewards {
         $url = wc_get_endpoint_url( self::ENDPOINT, $page > 1 ? (string) $page : '', wc_get_page_permalink( 'myaccount' ) );
 
         return 'all' === $filter ? $url : add_query_arg( self::FILTER_QUERY_ARG, $filter, $url );
+    }
+
+    /** The tab's URL scrolled to its "Points history" section. */
+    public static function history_url(): string {
+        return self::url() . '#' . self::HISTORY_ANCHOR;
     }
 
     /**
