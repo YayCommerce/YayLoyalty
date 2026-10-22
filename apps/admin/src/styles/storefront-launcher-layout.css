@@ -29,11 +29,19 @@
   height: var(--yl-trigger-size);
   padding: 0;
   transition: background-color 0.15s ease;
+  /* launcher.js moves the button on drag; without this a touch drag scrolls the page instead. */
+  touch-action: none;
+}
+
+.yayloyalty-launcher.yl-launcher-moving .yl-launcher-trigger {
+  cursor: grabbing;
+  user-select: none;
 }
 
 /* A member's button leaves room under it for the half of the pill that hangs below the circle. */
 .yayloyalty-launcher[data-position] .yl-launcher-trigger:has(.yl-launcher-balance) {
-  margin-bottom: 12px;
+  --yl-pill-room: 12px;
+  margin-bottom: var(--yl-pill-room);
 }
 
 .yayloyalty-launcher[data-position] .yl-launcher-icon {
@@ -90,6 +98,20 @@
 
 .yayloyalty-launcher :is(.yl-launcher-trigger, .yl-launcher-panel) {
   bottom: var(--yl-offset);
+}
+
+/*
+ * Where the shopper dragged the button (assets/storefront/launcher-spot.js): --yl-x and --yl-y run 0–1
+ * across the viewport inset by the offset, less the button and its pill, so 1/1 is the default corner.
+ * launcher.js's moveArea() measures the same box.
+ */
+.yayloyalty-launcher[data-spot] .yl-launcher-trigger {
+  top: calc(
+    var(--yl-offset) + (100% - 2 * var(--yl-offset) - var(--yl-trigger-size) - var(--yl-pill-room, 0px)) * var(--yl-y)
+  );
+  right: auto;
+  bottom: auto;
+  left: calc(var(--yl-offset) + (100% - 2 * var(--yl-offset) - var(--yl-trigger-size)) * var(--yl-x));
 }
 
 .yl-launcher-overlay {
