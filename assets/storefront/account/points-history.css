@@ -100,6 +100,11 @@
   border-top: 1px solid var(--yayloyalty-account-divider);
 }
 
+/* No zebra rows: beats a theme's `table:not(.x) tbody tr:nth-child(2n) td` stripe (Storefront's is 0,2,4). */
+.yayloyalty-account .yayloyalty-account__table-wrap .yayloyalty-account__table tbody td {
+  background: transparent;
+}
+
 .yayloyalty-account .yayloyalty-account__table .yayloyalty-account__num {
   text-align: right;
   white-space: nowrap;
@@ -130,7 +135,7 @@
 .yayloyalty-account .yayloyalty-account__badge {
   display: inline-block;
   padding: 1px 6px;
-  border-radius: var(--yayloyalty-account-radius-sm);
+  border-radius: 100px;
   font-size: 12px;
   font-weight: 600;
 }
@@ -159,26 +164,13 @@
   text-align: center;
 }
 
-/* The empty-state mark, here and in recent-activity.css, which sizes its own. */
-.yayloyalty-account .yayloyalty-account__empty-icon,
-.yayloyalty-account .yayloyalty-account__activity-empty-icon {
-  opacity: 0.6;
-}
-
-.yayloyalty-account .yayloyalty-account__empty-icon svg,
-.yayloyalty-account .yayloyalty-account__activity-empty-icon svg {
-  /* A lighter line than the 2px row icons, as the design draws this mark. */
-  stroke-width: 1.5;
-}
-
 .yayloyalty-account .yayloyalty-account__empty-icon {
   margin-bottom: 6px;
-  color: var(--yayloyalty-account-muted);
 }
 
 .yayloyalty-account .yayloyalty-account__empty-icon svg {
-  width: 32px;
-  height: 32px;
+  width: 54px;
+  height: 53px;
 }
 
 .yayloyalty-account .yayloyalty-account__empty-title {

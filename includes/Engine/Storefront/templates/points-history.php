@@ -48,22 +48,27 @@ $yayloyalty_download  = AccountRewardsIcon::get( 'download' ) . esc_html__( 'Exp
     </nav>
 
     <?php if ( [] === $yayloyalty_history['rows'] ) : ?>
+        <?php
+        $yayloyalty_empty = [
+            /* translators: %s: the store's points label, as "Points". */
+            'all'    => [ __( 'No %s activity yet', 'yayloyalty' ), __( 'Your rewards activity will appear here.', 'yayloyalty' ), __( 'Make a purchase to start earning %s.', 'yayloyalty' ) ],
+            /* translators: %s: the store's points label, as "Points". */
+            'earn'   => [ __( 'No earned %s yet', 'yayloyalty' ), __( '%s you earn from orders, reviews and other rewards will appear here.', 'yayloyalty' ), '' ],
+            /* translators: %s: the store's points label, as "Points". */
+            'redeem' => [ __( 'No spent %s yet', 'yayloyalty' ), __( '%s you redeem for discounts will appear here.', 'yayloyalty' ), '' ],
+            /* translators: %s: the store's points label, as "Points". */
+            'expire' => [ __( 'No expired %s', 'yayloyalty' ), __( 'None of your %s have expired.', 'yayloyalty' ), '' ],
+        ];
+        $yayloyalty_empty = $yayloyalty_empty[ $yayloyalty_filter_on ] ?? $yayloyalty_empty['all'];
+        ?>
         <div class="yayloyalty-account__empty">
-            <span class="yayloyalty-account__empty-icon"><?php echo AccountRewardsIcon::get( 'empty' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- a fixed SVG. ?></span>
-            <p class="yayloyalty-account__empty-title">
-                <?php
-                /* translators: %s: the store's points label, as "Points". */
-                echo esc_html( sprintf( __( 'No %s activity yet', 'yayloyalty' ), $yayloyalty_label ) );
-                ?>
-            </p>
+            <span class="yayloyalty-account__empty-icon"><?php echo AccountRewardsIcon::empty_history(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- a fixed SVG. ?></span>
+            <p class="yayloyalty-account__empty-title"><?php echo esc_html( sprintf( $yayloyalty_empty[0], $yayloyalty_label ) ); ?></p>
             <p class="yayloyalty-account__empty-text">
-                <?php esc_html_e( 'Your rewards activity will appear here.', 'yayloyalty' ); ?>
-                <?php if ( 'all' === $yayloyalty_filter_on ) : ?>
+                <?php echo esc_html( sprintf( $yayloyalty_empty[1], $yayloyalty_label ) ); ?>
+                <?php if ( '' !== $yayloyalty_empty[2] ) : ?>
                     <br>
-                    <?php
-                    /* translators: %s: the store's points label, as "Points". */
-                    echo esc_html( sprintf( __( 'Make a purchase to start earning %s.', 'yayloyalty' ), $yayloyalty_label ) );
-                    ?>
+                    <?php echo esc_html( sprintf( $yayloyalty_empty[2], $yayloyalty_label ) ); ?>
                 <?php endif; ?>
             </p>
         </div>

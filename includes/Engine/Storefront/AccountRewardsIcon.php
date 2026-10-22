@@ -18,8 +18,6 @@ final class AccountRewardsIcon {
         'external' => '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
         'prev'     => '<path d="m15 18-6-6 6-6"/>',
         'next'     => '<path d="m9 18 6-6-6-6"/>',
-        // Not lucide: the empty-history mark from the design, a page with "!" and a star badge on its corner.
-        'empty'    => '<path d="M12 18H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v7"/><path d="M10.5 6v4.5"/><path d="M10.5 13.5h.01"/><circle cx="17" cy="17" r="4.5"/><path d="M17 14.5l.62 1.65 1.76.08-1.38 1.09.47 1.7L17 18.05l-1.47.97.47-1.7-1.38-1.09 1.76-.08Z"/>',
     ];
 
     /** Not lucide: the design's own icons, drawn thinner than lucide, as [viewBox, paths]. */
@@ -51,6 +49,23 @@ final class AccountRewardsIcon {
         . '<linearGradient id="{id}-2" x1="17.4409" y1="8.61199" x2="18.8589" y2="19.3264" gradientUnits="userSpaceOnUse"><stop stop-color="#D5D5D8"/><stop offset="1" stop-color="#DCDCDF"/></linearGradient>'
         . '<linearGradient id="{id}-3" x1="17.4408" y1="8.61208" x2="18.8588" y2="19.3265" gradientUnits="userSpaceOnUse"><stop stop-color="#D5D5D8"/><stop offset="1" stop-color="#DCDCDF"/></linearGradient>'
         . '<linearGradient id="{id}-4" x1="22.4716" y1="18.2176" x2="31.6943" y2="33.2266" gradientUnits="userSpaceOnUse"><stop stop-color="white"/><stop offset="1" stop-color="#F4F4F5"/></linearGradient>'
+        . '</defs></svg>';
+
+    private const EMPTY_HISTORY = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 54 53" fill="none" aria-hidden="true" focusable="false">'
+        . '<path d="M27 53.0002C41.9117 53.0002 54 51.5031 54 49.6563C54 47.8096 41.9117 46.3125 27 46.3125C12.0883 46.3125 0 47.8096 0 49.6563C0 51.5031 12.0883 53.0002 27 53.0002Z" fill="#F5F5F7"/>'
+        . '<path d="M11.2357 3.17654C11.5711 1.39316 12.5214 0.501465 14.0866 0.501465H31.1922C32.981 0.501465 34.0431 1.44889 34.3785 3.34374L39.5773 45.4762C39.8009 47.2596 39.0183 48.1513 37.2295 48.1513H9.39095C7.60213 48.1513 6.81952 47.2039 7.04313 45.309L11.2357 3.17654Z" fill="url(#{id}-0)" stroke-width="1.2" stroke-linejoin="round" stroke="#D6D6D9"/>'
+        . '<path d="M14.9251 0.334473H35.3848C37.509 0.334473 38.627 1.39336 38.7388 3.51113L40.9189 45.978C41.0307 47.8729 40.1363 48.876 38.2357 48.9875L17.273 50.1578C15.1487 50.2693 14.0307 49.2661 13.9189 47.1484L11.5711 3.84551C11.4593 1.50482 12.5773 0.334473 14.9251 0.334473Z" fill="url(#{id}-1)" stroke-width="1.2" stroke-linejoin="round" stroke="#D6D6D9"/>'
+        . '<path d="M26.329 12.5396C25.1551 12.5396 24.3166 13.3755 24.4843 14.7131L24.9874 23.9086C24.9874 25.4134 27.5029 25.4134 27.6706 23.9086L28.3414 14.7131C28.5091 13.3755 27.5029 12.5396 26.329 12.5396Z" fill="url(#{id}-2)"/>'
+        . '<path d="M26.3288 30.2621C27.4403 30.2621 28.3413 29.3639 28.3413 28.2558C28.3413 27.1478 27.4403 26.2495 26.3288 26.2495C25.2174 26.2495 24.3164 27.1478 24.3164 28.2558C24.3164 29.3639 25.2174 30.2621 26.3288 30.2621Z" fill="url(#{id}-3)"/>'
+        . '<path d="M40.2479 51.8299C46.7313 51.8299 51.9871 46.6649 51.9871 40.2936C51.9871 33.9223 46.7313 28.7573 40.2479 28.7573C33.7646 28.7573 28.5088 33.9223 28.5088 40.2936C28.5088 46.6649 33.7646 51.8299 40.2479 51.8299Z" fill="#EEEEF0" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" stroke="#D2D2D5"/>'
+        . '<path d="M39.0744 51.8299C45.4651 51.8299 50.6458 46.6649 50.6458 40.2936C50.6458 33.9223 45.4651 28.7573 39.0744 28.7573C32.6836 28.7573 27.5029 33.9223 27.5029 40.2936C27.5029 46.6649 32.6836 51.8299 39.0744 51.8299Z" fill="url(#{id}-4)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" stroke="#D2D2D5"/>'
+        . '<path d="M39.0744 34.2745C39.1862 34.0516 39.3539 34.1631 39.5775 34.6089L41.0869 37.9528L44.7763 38.4544C45.2235 38.4544 45.2794 38.6773 44.944 39.1231L42.0931 41.7982L42.7639 45.4764C42.8757 45.9223 42.708 46.0337 42.2608 45.8108L39.0744 43.9717L35.8881 45.8108C35.4409 46.0337 35.2732 45.9223 35.385 45.4764L36.0558 41.7982L33.2049 39.1231C32.8695 38.6773 32.9254 38.4544 33.3726 38.4544L37.062 37.9528L38.5713 34.6089C38.6831 34.386 38.8508 34.2745 39.0744 34.2745Z" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" stroke="#D2D2D5"/>'
+        . '<defs>'
+        . '<linearGradient id="{id}-0" x1="4.863" y1="9.52986" x2="16.2033" y2="47.1673" gradientUnits="userSpaceOnUse"><stop stop-color="#FAFAFA"/><stop offset="1" stop-color="#EEEEEF"/></linearGradient>'
+        . '<linearGradient id="{id}-1" x1="10.0618" y1="-0.167105" x2="39.4472" y2="47.7297" gradientUnits="userSpaceOnUse"><stop stop-color="white"/><stop offset="1" stop-color="#F7F7F8"/></linearGradient>'
+        . '<linearGradient id="{id}-2" x1="26.1613" y1="13.0411" x2="28.3284" y2="29.2605" gradientUnits="userSpaceOnUse"><stop stop-color="#D5D5D8"/><stop offset="1" stop-color="#DCDCDF"/></linearGradient>'
+        . '<linearGradient id="{id}-3" x1="26.1611" y1="13.0413" x2="28.3283" y2="29.2607" gradientUnits="userSpaceOnUse"><stop stop-color="#D5D5D8"/><stop offset="1" stop-color="#DCDCDF"/></linearGradient>'
+        . '<linearGradient id="{id}-4" x1="33.7079" y1="27.587" x2="47.7331" y2="50.1962" gradientUnits="userSpaceOnUse"><stop stop-color="white"/><stop offset="1" stop-color="#F4F4F5"/></linearGradient>'
         . '</defs></svg>';
 
     /**
@@ -98,12 +113,21 @@ final class AccountRewardsIcon {
 
     /**
      * The empty-activity illustration from the design: a page with "!" and a star badge, in its own greys.
-     * Its gradient ids take a per-call suffix, since the launcher and the Rewards tab can both draw it on one page.
      */
     public static function empty_activity(): string {
+        return self::with_ids( self::EMPTY_ACTIVITY );
+    }
+
+    /** The points history's empty state: empty_activity()'s drawing at 54x53, with lines kept at 1.2px. */
+    public static function empty_history(): string {
+        return self::with_ids( self::EMPTY_HISTORY );
+    }
+
+    /** Gradient ids take a per-call suffix, since the launcher and the Rewards tab can both draw one on a page. */
+    private static function with_ids( string $svg ): string {
         static $count = 0;
         ++$count;
 
-        return str_replace( '{id}', 'yl-empty-' . $count, self::EMPTY_ACTIVITY );
+        return str_replace( '{id}', 'yl-empty-' . $count, $svg );
     }
 }

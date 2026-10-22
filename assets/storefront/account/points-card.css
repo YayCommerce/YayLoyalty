@@ -3,12 +3,10 @@
  * Imported by rewards-tokens.css, which holds the tokens.
  */
 .yayloyalty-account .yayloyalty-account__card {
-  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  overflow: hidden;
   padding: 24px;
   border: 1px solid var(--yayloyalty-account-border);
   border-radius: var(--yayloyalty-account-radius);
@@ -17,8 +15,6 @@
 }
 
 .yayloyalty-account .yayloyalty-account__card-body {
-  position: relative;
-  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -86,25 +82,12 @@
   height: 14px;
 }
 
-/*
- * A faint backdrop, not an icon: larger than the card is tall, off its right edge, and faded out towards
- * the text and the bottom by two masks that intersect.
- */
 .yayloyalty-account .yayloyalty-account__art {
-  position: absolute;
-  top: 50%;
-  right: -16px;
   display: block;
-  width: 220px;
+  flex-shrink: 0;
+  width: 150px;
   max-width: none;
   height: auto;
-  opacity: 0.55;
-  transform: translateY(-46%);
-  pointer-events: none;
-  -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 55%), linear-gradient(to bottom, #000 55%, transparent 100%);
-  -webkit-mask-composite: source-in;
-  mask-image: linear-gradient(to right, transparent 0%, #000 55%), linear-gradient(to bottom, #000 55%, transparent 100%);
-  mask-composite: intersect;
 }
 
 .yayloyalty-account .yayloyalty-account__notice {
@@ -151,9 +134,7 @@
   }
 
   .yayloyalty-account .yayloyalty-account__art {
-    right: -40px;
-    width: 160px;
-    opacity: 0.4;
+    width: 100px;
   }
 
   .yayloyalty-account .yayloyalty-account__notice {

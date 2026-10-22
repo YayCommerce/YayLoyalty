@@ -19,7 +19,7 @@
   padding: 20px;
 }
 
-/* The art is out of flow, so the body takes the card's width and the button can span it. */
+/* The body takes the width the art leaves, so the button can span it. */
 .yayloyalty-launcher .yayloyalty-account .yayloyalty-account__card-body {
   flex: 1;
 }
@@ -32,10 +32,7 @@
 }
 
 .yayloyalty-launcher .yayloyalty-account .yayloyalty-account__art {
-  top: 28px;
-  right: -20px;
-  width: 140px;
-  transform: none;
+  width: 110px;
 }
 
 .yayloyalty-launcher .yayloyalty-account .yayloyalty-account__notice {
