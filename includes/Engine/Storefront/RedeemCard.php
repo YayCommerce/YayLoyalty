@@ -63,9 +63,9 @@ final class RedeemCard {
     }
 
     /**
-     * The card's Apply and Remove on pages without the blocks: POST `security` and either `points` (0 removes)
-     * or `rewards`, comma-separated reward ids (present and empty clears them). Postcondition:
-     * SessionIntent::set_rewards() or set( points ), unclamped, then one totals run, so the coupon provider puts
+     * The card's changes on pages without the blocks: POST `security` and `rewards`, comma-separated reward ids
+     * (present and empty clears them), `points` (0 removes), or both. Postcondition: SessionIntent::set_rewards()
+     * and set( points ) for whichever is present, unclamped (set( 0 ) when neither is), then one totals run, so the coupon provider puts
      * the coupons on or takes them off, and the card's new HTML is answered. Never clamps and never touches a coupon.
      */
     public function on_apply(): void {
@@ -77,9 +77,13 @@ final class RedeemCard {
             wp_send_json_error();
         }
 
-        if ( isset( $_POST['rewards'] ) ) {
+        $has_rewards = isset( $_POST['rewards'] );
+
+        if ( $has_rewards ) {
             $this->intent->set_rewards( array_filter( array_map( 'absint', explode( ',', sanitize_text_field( wp_unslash( $_POST['rewards'] ) ) ) ) ) );
-        } else {
+        }
+
+        if ( isset( $_POST['points'] ) || ! $has_rewards ) {
             $this->intent->set( isset( $_POST['points'] ) ? absint( wp_unslash( $_POST['points'] ) ) : 0 );
         }
 
@@ -277,8 +281,7 @@ final class RedeemCard {
     }
 
     /**
-     * The slider's view for a customer: RedeemCard::view(), or state `exclusive` while picked rewards are on the
-     * cart, since the slider and rewards never apply together. Null when the slider cannot be offered at all.
+     * The slider's view for a customer: RedeemCard::view(). Null when the slider cannot be offered at all.
      */
     private function slider_view( \WC_Cart $cart, int $user_id, int $balance ): ?array {
         $ceiling = $this->service->ceiling( $cart, $user_id );
@@ -289,16 +292,7 @@ final class RedeemCard {
 
         $view = self::view( $balance, $this->service->quote( $cart, $user_id ), $ceiling );
 
-        if ( 'hidden' === $view['state'] ) {
-            return null;
-        }
-
-        return $this->has_applied_rewards( $cart ) ? [ 'state' => 'exclusive' ] : $view;
-    }
-
-    /** Whether rewards are picked and at least one of their coupons is on the cart. */
-    private function has_applied_rewards( \WC_Cart $cart ): bool {
-        return [] !== $this->intent->rewards() && [] !== CouponProvider::applied_reward_ids( $cart );
+        return 'hidden' === $view['state'] ? null : $view;
     }
 
     /**

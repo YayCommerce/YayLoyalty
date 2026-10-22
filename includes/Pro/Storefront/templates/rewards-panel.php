@@ -4,16 +4,14 @@
  * No input has a `name`, so nothing here rides on the cart or checkout form it may sit in; redeem.js posts the ticked ids.
  * The data- attributes carry every sentence redeem.js rewrites, so the script prints no English.
  *
- * @var array $view rows, is_applied, spent, balance and is_slider_applied, from RewardsPanel::panel().
+ * @var array $view rows, is_applied, spent and balance, from RewardsPanel::panel().
  */
 
-use YayLoyalty\Engine\Redemption\RedemptionService;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Pro\Storefront\RewardsPanel;
 
 defined( 'ABSPATH' ) || exit;
 
-$yayloyalty_locked  = $view['is_slider_applied'];
 $yayloyalty_spent   = $view['spent'];
 $yayloyalty_applied = $view['is_applied'];
 /* translators: %s: number of rewards ticked. */
@@ -39,16 +37,11 @@ if ( $yayloyalty_applied ) {
     data-label-one="<?php echo esc_attr( SettingsHelper::points_label( 1 ) ); ?>"
     data-label-many="<?php echo esc_attr( SettingsHelper::points_label_plural() ); ?>"
     data-thousand-sep="<?php echo esc_attr( wc_get_price_thousand_separator() ); ?>"
-    <?php echo $yayloyalty_locked ? 'data-locked' : ''; ?>
 >
-    <?php if ( $yayloyalty_locked ) : ?>
-        <p class="yayloyalty-redeem__note" role="status"><?php echo esc_html( RedemptionService::message_for( RedemptionService::NOTICE_EXCLUSIVE_REWARDS ) ); ?></p>
-    <?php endif; ?>
-
     <div class="yayloyalty-redeem__options">
         <?php foreach ( $view['rows'] as $yayloyalty_row ) : ?>
             <?php
-            $yayloyalty_is_off   = $yayloyalty_row['is_denied'] || $yayloyalty_row['is_short'] || $yayloyalty_locked;
+            $yayloyalty_is_off   = $yayloyalty_row['is_denied'] || $yayloyalty_row['is_short'];
             $yayloyalty_row_text = $yayloyalty_row['is_short'] ? RewardsPanel::short_text() : $yayloyalty_row['text'];
             ?>
             <label class="yayloyalty-redeem__option">

@@ -1,11 +1,11 @@
 <?php
 /**
- * The points card: a sign-in line for a guest, or for a customer the slider (its form, its applied statement, or
- * the notice that rewards are applied) beside the panels RedeemCard::PANELS_FILTER adds, as tabs when there are two.
+ * The points card: a sign-in line for a guest, or for a customer the slider (its form or its applied statement)
+ * beside the panels RedeemCard::PANELS_FILTER adds, as tabs when there are two.
  * No input has a `name`, so nothing here rides on the cart or checkout form it may sit in; redeem.js posts the request.
  * Styled by assets/storefront/redeem.css alone: the Design tab's colours belong to the launcher.
  *
- * @var array $view RedeemCard::view() (or state `exclusive` / `none`), heading_balance, panels, active, plus
+ * @var array $view RedeemCard::view() (or state `none`), heading_balance, panels, active, plus
  *                  endpoint, nonce, account_url and money.
  */
 
@@ -157,10 +157,6 @@ $yayloyalty_open_panel = static function ( string $key ) use ( $yayloyalty_uid, 
             <?php if ( '' !== $yayloyalty_note ) : ?>
                 <p class="yayloyalty-redeem__note" role="status"><?php echo esc_html( $yayloyalty_note ); ?></p>
             <?php endif; ?>
-        </div>
-    <?php elseif ( 'exclusive' === $yayloyalty_state ) : ?>
-        <div class="yayloyalty-redeem__box">
-            <p class="yayloyalty-redeem__note" role="status"><?php echo esc_html( RedemptionService::message_for( RedemptionService::NOTICE_EXCLUSIVE_SLIDER ) ); ?></p>
         </div>
     <?php elseif ( 'applied' === $yayloyalty_state ) : ?>
         <div class="yayloyalty-redeem__box">

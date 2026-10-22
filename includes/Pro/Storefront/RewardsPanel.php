@@ -80,11 +80,10 @@ final class RewardsPanel {
             'label'     => __( 'Rewards', 'yayloyalty' ),
             'html'      => self::template(
                 [
-                    'rows'              => self::rows( $options, $applied, $spent, $cart, $balance ),
-                    'is_applied'        => [] !== $applied,
-                    'spent'             => $spent,
-                    'balance'           => $balance,
-                    'is_slider_applied' => ! empty( $context['is_slider_applied'] ),
+                    'rows'       => self::rows( $options, $applied, $spent, $cart, $balance ),
+                    'is_applied' => [] !== $applied,
+                    'spent'      => $spent,
+                    'balance'    => $balance,
                 ]
             ),
             'is_active' => [] !== $applied,

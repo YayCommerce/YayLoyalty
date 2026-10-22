@@ -4,8 +4,8 @@ namespace YayLoyalty\Engine\Redemption;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The only mutable state on the quote path, in the WooCommerce session: either the points the customer asked
- * to spend on the slider or the reward ids they picked, never both. Never a discount value — that is derived
+ * The only mutable state on the quote path, in the WooCommerce session: the points the customer asked to
+ * spend on the slider and the reward ids they picked, each set on its own. Never a discount value — that is derived
  * from the current cart on every recalculation — and never a Quote. Every method returns quietly when
  * WooCommerce has no session.
  */
@@ -27,8 +27,7 @@ final class SessionIntent {
     /**
      * Precondition: $points ≥ 0, unclamped — the clamp runs on read, not on
      * write, so a later cart change can never leave a stale ceiling here.
-     * Postcondition: get() returns $points; 0 removes the key. Points above 0
-     * clear the rewards, since the two never apply together.
+     * Postcondition: get() returns $points; 0 removes the key. The rewards are untouched.
      */
     public function set( int $points ): void {
         $session = $this->session();
@@ -44,7 +43,6 @@ final class SessionIntent {
         }
 
         $session->set( self::KEY, $points );
-        $session->__unset( self::REWARDS_KEY );
     }
 
     /**
@@ -60,7 +58,7 @@ final class SessionIntent {
 
     /**
      * Postcondition: rewards() returns the positive ids of $reward_ids, unique, in their order; [] removes the
-     * key. Any id clears the points.
+     * key. The points are untouched.
      *
      * @param array $reward_ids
      */
@@ -80,7 +78,6 @@ final class SessionIntent {
         }
 
         $session->set( self::REWARDS_KEY, $reward_ids );
-        $session->__unset( self::KEY );
     }
 
     /** Postcondition: rewards() no longer holds $reward_id; the rest keep their order. */

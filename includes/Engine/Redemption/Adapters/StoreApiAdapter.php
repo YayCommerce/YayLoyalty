@@ -194,9 +194,10 @@ final class StoreApiAdapter {
     }
 
     /**
-     * Precondition: the block posted `{ points }` or `{ rewards }` through the
-     * update callback; a `rewards` key wins. Postcondition:
-     * SessionIntent::set_rewards( ids ) or set( absint( points ) ), unclamped;
+     * Precondition: the block posted `{ points }`, `{ rewards }` or both
+     * through the update callback. Postcondition: SessionIntent::set_rewards( ids )
+     * and set( absint( points ) ) for whichever key is present, unclamped
+     * (set( 0 ) when neither is);
      * the Store API then recalculates and cart_data() carries the answer.
      *
      * @param array<string, mixed> $data
@@ -204,13 +205,15 @@ final class StoreApiAdapter {
     public function on_update( $data ): void {
         $data = is_array( $data ) ? $data : [];
 
-        if ( array_key_exists( 'rewards', $data ) ) {
-            $this->intent->set_rewards( array_map( 'absint', (array) $data['rewards'] ) );
+        $has_rewards = array_key_exists( 'rewards', $data );
 
-            return;
+        if ( $has_rewards ) {
+            $this->intent->set_rewards( array_map( 'absint', (array) $data['rewards'] ) );
         }
 
-        $this->intent->set( absint( $data['points'] ?? 0 ) );
+        if ( array_key_exists( 'points', $data ) || ! $has_rewards ) {
+            $this->intent->set( absint( $data['points'] ?? 0 ) );
+        }
     }
 
     /**

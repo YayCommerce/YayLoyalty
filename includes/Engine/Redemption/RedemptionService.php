@@ -39,10 +39,6 @@ final class RedemptionService {
     public const REASON_REWARDS_BALANCE    = 'rewards_balance';
     public const REASON_REWARD_UNAVAILABLE = 'reward_unavailable';
 
-    /** The card's exclusivity notices: rewards block the slider, the slider blocks rewards. */
-    public const NOTICE_EXCLUSIVE_SLIDER  = 'exclusive_slider';
-    public const NOTICE_EXCLUSIVE_REWARDS = 'exclusive_rewards';
-
     /** The pure half; the same instance CommitWriter re-quotes with. */
     private Quoter $quoter;
 
@@ -378,14 +374,6 @@ final class RedemptionService {
 
             case self::REASON_REWARD_UNAVAILABLE:
                 return __( 'One of your rewards can no longer be used on this order. Review your rewards and try again.', 'yayloyalty' );
-
-            case self::NOTICE_EXCLUSIVE_SLIDER:
-                /* translators: %s: the store's points label, as "Points". */
-                return sprintf( __( 'Remove your rewards to use a %s discount.', 'yayloyalty' ), $label );
-
-            case self::NOTICE_EXCLUSIVE_REWARDS:
-                /* translators: %s: the store's points label, as "Points". */
-                return sprintf( __( 'Remove your %s discount to use rewards.', 'yayloyalty' ), $label );
 
             case RewardCoupons::REASON_MIN_ORDER:
                 // The caller fills in the amount still missing.
