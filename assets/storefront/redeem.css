@@ -8,20 +8,22 @@
  * - The colours are variables on the root, so a theme or custom CSS can re-point them in one place.
  */
 .yayloyalty-redeem {
-  --yayloyalty-redeem-accent: #3858e9;
-  --yayloyalty-redeem-accent-hover: #2f4ac4;
+  --yayloyalty-redeem-accent: #4353ff;
+  --yayloyalty-redeem-accent-hover: #3442d6;
+  --yayloyalty-redeem-accent-soft: #f0f1ff;
   --yayloyalty-redeem-accent-text: #ffffff;
   --yayloyalty-redeem-text: #171719;
   --yayloyalty-redeem-muted: #7b7c80;
   --yayloyalty-redeem-border: #e4e4e7;
   --yayloyalty-redeem-surface: #fafafa;
   --yayloyalty-redeem-field: #ffffff;
+  --yayloyalty-redeem-badge: #000000;
   --yayloyalty-redeem-radius: 8px;
 
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
   padding: 4px 0;
   font-size: 14px;
   font-weight: 400;
@@ -36,7 +38,7 @@
   box-sizing: border-box;
 }
 
-.yayloyalty-redeem :is(h3, p, span, a, button, input) {
+.yayloyalty-redeem :is(h3, p, span, a, button, input, label) {
   margin: 0;
   font-family: inherit;
   letter-spacing: normal;
@@ -44,11 +46,32 @@
   text-shadow: none;
 }
 
+.yayloyalty-redeem[data-busy] {
+  opacity: 0.6;
+}
+
+/* Header: icon, title, then the balance and its worth pushed right. */
+
+.yayloyalty-redeem .yayloyalty-redeem__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.yayloyalty-redeem .yayloyalty-redeem__icon {
+  display: block;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+}
+
 .yayloyalty-redeem .yayloyalty-redeem__heading {
   display: flex;
+  flex: 1;
+  flex-wrap: wrap;
   align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
+  gap: 4px 8px;
+  min-width: 0;
   padding: 0;
   font-size: 14px;
   font-weight: 600;
@@ -57,65 +80,209 @@
 }
 
 .yayloyalty-redeem .yayloyalty-redeem__balance {
+  margin-left: auto;
   font-size: 13px;
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
   color: var(--yayloyalty-redeem-text);
 }
 
-.yayloyalty-redeem .yayloyalty-redeem__tabs {
-  display: flex;
-  gap: 4px;
-  border-bottom: 1px solid var(--yayloyalty-redeem-border);
+.yayloyalty-redeem .yayloyalty-redeem__worth {
+  font-size: 13px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--yayloyalty-redeem-muted);
 }
 
-.yayloyalty-redeem .yayloyalty-redeem__tab {
-  width: auto;
+@media (max-width: 360px) {
+  .yayloyalty-redeem .yayloyalty-redeem__heading > span:first-child {
+    flex-basis: 100%;
+  }
+
+  .yayloyalty-redeem .yayloyalty-redeem__balance {
+    margin-left: 0;
+  }
+}
+
+/* Guest: a black badge, the title, the sign-in line and a full-width button. */
+
+.yayloyalty-redeem .yayloyalty-redeem__guest {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid var(--yayloyalty-redeem-border);
+  border-radius: var(--yayloyalty-redeem-radius);
+  text-align: center;
+}
+
+.yayloyalty-redeem .yayloyalty-redeem__guest .yayloyalty-redeem__heading {
+  flex: none;
+  justify-content: center;
+}
+
+.yayloyalty-redeem .yayloyalty-redeem__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--yayloyalty-redeem-badge);
+  color: #ffffff;
+}
+
+.yayloyalty-redeem .yayloyalty-redeem__text {
+  font-size: 13px;
+  color: var(--yayloyalty-redeem-muted);
+}
+
+.yayloyalty-redeem .yayloyalty-redeem__signin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
   min-width: 0;
-  height: auto;
+  height: 40px;
   min-height: 0;
-  margin-bottom: -1px;
-  padding: 6px 12px;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  border-radius: 0;
-  background: transparent none;
+  padding: 0 16px;
+  border: 1px solid transparent;
+  border-radius: calc(var(--yayloyalty-redeem-radius) - 2px);
+  background: var(--yayloyalty-redeem-accent) none;
   box-shadow: none;
   font-size: 14px;
   font-weight: 500;
-  line-height: 1.45;
+  line-height: 1.2;
   text-decoration: none;
-  color: var(--yayloyalty-redeem-muted);
+  color: var(--yayloyalty-redeem-accent-text);
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.yayloyalty-redeem .yayloyalty-redeem__signin:hover {
+  background: var(--yayloyalty-redeem-accent-hover) none;
+  color: var(--yayloyalty-redeem-accent-text);
+}
+
+/* The list: one bordered box, rows divided by a line. */
+
+.yayloyalty-redeem .yayloyalty-redeem__list {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--yayloyalty-redeem-border);
+  border-radius: var(--yayloyalty-redeem-radius);
+  background: var(--yayloyalty-redeem-field);
+}
+
+.yayloyalty-redeem .yayloyalty-redeem__rewards {
+  display: flex;
+  flex-direction: column;
+}
+
+.yayloyalty-redeem .yayloyalty-redeem__list > * + *,
+.yayloyalty-redeem .yayloyalty-redeem__rewards > * + * {
+  border-top: 1px solid var(--yayloyalty-redeem-border);
+}
+
+.yayloyalty-redeem .yayloyalty-redeem__option {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 400;
   cursor: pointer;
 }
 
-.yayloyalty-redeem .yayloyalty-redeem__tab:hover {
-  background: transparent none;
+.yayloyalty-redeem .yayloyalty-redeem__item:has([data-yl-slider-toggle]:checked),
+.yayloyalty-redeem .yayloyalty-redeem__rewards > .yayloyalty-redeem__option:has(:checked) {
+  background: var(--yayloyalty-redeem-accent-soft);
+}
+
+.yayloyalty-redeem .yayloyalty-redeem__option:has(.yayloyalty-redeem__check:disabled) {
+  cursor: not-allowed;
+}
+
+.yayloyalty-redeem
+  .yayloyalty-redeem__option:has(.yayloyalty-redeem__check:disabled)
+  .yayloyalty-redeem__option-body {
+  opacity: 0.6;
+}
+
+.yayloyalty-redeem .yayloyalty-redeem__check {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  margin: 1px 0 0;
+  accent-color: var(--yayloyalty-redeem-accent);
+  cursor: inherit;
+}
+
+.yayloyalty-redeem .yayloyalty-redeem__option-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  min-width: 0;
+}
+
+.yayloyalty-redeem .yayloyalty-redeem__name {
+  font-weight: 600;
   color: var(--yayloyalty-redeem-text);
 }
 
-.yayloyalty-redeem .yayloyalty-redeem__tab[aria-selected="true"] {
-  border-bottom-color: var(--yayloyalty-redeem-accent);
+.yayloyalty-redeem .yayloyalty-redeem__option:has([data-denied]) .yayloyalty-redeem__name {
+  text-decoration: line-through;
+}
+
+.yayloyalty-redeem .yayloyalty-redeem__chip {
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--yayloyalty-redeem-surface);
+  border: 1px solid var(--yayloyalty-redeem-border);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 18px;
+  white-space: nowrap;
+  color: var(--yayloyalty-redeem-muted);
+}
+
+.yayloyalty-redeem .yayloyalty-redeem__desc,
+.yayloyalty-redeem .yayloyalty-redeem__here {
+  flex-basis: 100%;
+  font-size: 12px;
+  color: var(--yayloyalty-redeem-muted);
+}
+
+.yayloyalty-redeem .yayloyalty-redeem__here {
   color: var(--yayloyalty-redeem-text);
 }
 
-.yayloyalty-redeem .yayloyalty-redeem__panel[hidden] {
-  display: none;
-}
+/* The Points discount row's body: limits at both ends, the range full width, then field, unit and preview. */
 
-.yayloyalty-redeem .yayloyalty-redeem__box {
+.yayloyalty-redeem .yayloyalty-redeem__body {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 12px;
-  border: 1px solid var(--yayloyalty-redeem-border);
-  border-radius: var(--yayloyalty-redeem-radius);
-  background: var(--yayloyalty-redeem-surface);
+  padding: 0 12px 12px;
 }
 
-.yayloyalty-redeem .yayloyalty-redeem__title {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--yayloyalty-redeem-text);
+.yayloyalty-redeem .yayloyalty-redeem__body[hidden] {
+  display: none;
+}
+
+.yayloyalty-redeem .yayloyalty-redeem__limits {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--yayloyalty-redeem-muted);
 }
 
 .yayloyalty-redeem .yayloyalty-redeem__range {
@@ -128,16 +295,6 @@
   box-shadow: none;
   accent-color: var(--yayloyalty-redeem-accent);
   cursor: pointer;
-}
-
-.yayloyalty-redeem .yayloyalty-redeem__limits,
-.yayloyalty-redeem .yayloyalty-redeem__row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: 12px;
-  color: var(--yayloyalty-redeem-muted);
 }
 
 .yayloyalty-redeem .yayloyalty-redeem__controls {
@@ -163,79 +320,32 @@
   color: var(--yayloyalty-redeem-text);
 }
 
-.yayloyalty-redeem .yayloyalty-redeem__unit,
-.yayloyalty-redeem .yayloyalty-redeem__help {
+.yayloyalty-redeem .yayloyalty-redeem__unit {
   font-size: 12px;
   color: var(--yayloyalty-redeem-muted);
 }
 
 .yayloyalty-redeem .yayloyalty-redeem__off {
+  margin-left: auto;
   font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
   color: var(--yayloyalty-redeem-text);
 }
 
-.yayloyalty-redeem .yayloyalty-redeem__apply {
-  display: inline-flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  width: auto;
-  min-width: 0;
-  height: 36px;
-  min-height: 0;
-  margin-left: auto;
-  padding: 0 16px;
-  border: 1px solid transparent;
-  border-radius: calc(var(--yayloyalty-redeem-radius) - 2px);
-  background: var(--yayloyalty-redeem-accent) none;
-  box-shadow: none;
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 1.2;
-  white-space: nowrap;
-  text-decoration: none;
-  color: var(--yayloyalty-redeem-accent-text);
-  cursor: pointer;
-  transition: background-color 0.15s;
+.yayloyalty-redeem .yayloyalty-redeem__note {
+  font-size: 12px;
+  color: var(--yayloyalty-redeem-text);
 }
 
-.yayloyalty-redeem .yayloyalty-redeem__apply:hover {
-  background: var(--yayloyalty-redeem-accent-hover) none;
-  color: var(--yayloyalty-redeem-accent-text);
-}
-
-.yayloyalty-redeem .yayloyalty-redeem__remove,
-.yayloyalty-redeem .yayloyalty-redeem__signin {
-  width: auto;
-  min-width: 0;
-  height: auto;
-  min-height: 0;
-  padding: 0;
-  border: 0;
-  background: transparent none;
-  box-shadow: none;
-  font-size: inherit;
-  font-weight: inherit;
-  line-height: inherit;
-  text-decoration: underline;
-  text-underline-offset: 4px;
-  color: var(--yayloyalty-redeem-accent);
-  cursor: pointer;
-}
-
-.yayloyalty-redeem
-  :is(.yayloyalty-redeem__remove, .yayloyalty-redeem__signin):hover {
-  background: transparent none;
-  color: var(--yayloyalty-redeem-accent-hover);
-}
+/* Focus and disabled states. */
 
 .yayloyalty-redeem
   :is(
     .yayloyalty-redeem__points,
-    .yayloyalty-redeem__apply,
-    .yayloyalty-redeem__remove,
-    .yayloyalty-redeem__signin,
-    .yayloyalty-redeem__tab
+    .yayloyalty-redeem__check,
+    .yayloyalty-redeem__range,
+    .yayloyalty-redeem__signin
   ):focus-visible {
   outline: 2px solid var(--yayloyalty-redeem-accent);
   outline-offset: 2px;
@@ -248,105 +358,4 @@
 
 .yayloyalty-redeem button:disabled {
   pointer-events: none;
-}
-
-.yayloyalty-redeem .yayloyalty-redeem__rewards,
-.yayloyalty-redeem .yayloyalty-redeem__options {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.yayloyalty-redeem .yayloyalty-redeem__option {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  margin: 0;
-  padding: 10px 12px;
-  border: 1px solid var(--yayloyalty-redeem-border);
-  border-radius: var(--yayloyalty-redeem-radius);
-  background: var(--yayloyalty-redeem-surface);
-  font-size: 14px;
-  font-weight: 400;
-  cursor: pointer;
-}
-
-.yayloyalty-redeem .yayloyalty-redeem__option:has(:disabled) {
-  cursor: not-allowed;
-}
-
-.yayloyalty-redeem .yayloyalty-redeem__check {
-  flex-shrink: 0;
-  width: 16px;
-  height: 16px;
-  margin: 2px 0 0;
-  accent-color: var(--yayloyalty-redeem-accent);
-}
-
-.yayloyalty-redeem .yayloyalty-redeem__option-body {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.yayloyalty-redeem .yayloyalty-redeem__option-head {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-}
-
-.yayloyalty-redeem .yayloyalty-redeem__name {
-  font-weight: 600;
-  color: var(--yayloyalty-redeem-text);
-}
-
-.yayloyalty-redeem .yayloyalty-redeem__cost {
-  margin-left: auto;
-  font-size: 12px;
-  white-space: nowrap;
-  color: var(--yayloyalty-redeem-muted);
-}
-
-.yayloyalty-redeem .yayloyalty-redeem__tag {
-  padding: 0 6px;
-  border-radius: 4px;
-  background: var(--yayloyalty-redeem-accent);
-  font-size: 11px;
-  font-weight: 500;
-  line-height: 18px;
-  color: var(--yayloyalty-redeem-accent-text);
-}
-
-.yayloyalty-redeem .yayloyalty-redeem__desc,
-.yayloyalty-redeem .yayloyalty-redeem__here {
-  font-size: 12px;
-  color: var(--yayloyalty-redeem-muted);
-}
-
-.yayloyalty-redeem .yayloyalty-redeem__here {
-  color: var(--yayloyalty-redeem-text);
-}
-
-.yayloyalty-redeem
-  .yayloyalty-redeem__option:has(:disabled)
-  .yayloyalty-redeem__option-body {
-  opacity: 0.6;
-}
-
-.yayloyalty-redeem .yayloyalty-redeem__footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.yayloyalty-redeem .yayloyalty-redeem__selection {
-  font-size: 12px;
-  color: var(--yayloyalty-redeem-muted);
-}
-
-.yayloyalty-redeem .yayloyalty-redeem__note {
-  font-size: 12px;
-  color: var(--yayloyalty-redeem-text);
 }
