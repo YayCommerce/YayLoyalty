@@ -236,7 +236,8 @@
   color: var(--yayloyalty-redeem-text);
 }
 
-.yayloyalty-redeem .yayloyalty-redeem__option:has([data-denied]) .yayloyalty-redeem__name {
+.yayloyalty-redeem .yayloyalty-redeem__option:has([data-denied]) .yayloyalty-redeem__name,
+.yayloyalty-redeem .yayloyalty-redeem__option:has([data-yl-slider-toggle]:disabled) .yayloyalty-redeem__name {
   text-decoration: line-through;
 }
 
