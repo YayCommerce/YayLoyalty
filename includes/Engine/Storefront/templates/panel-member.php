@@ -9,6 +9,7 @@
  */
 
 use YayLoyalty\Engine\Storefront\LauncherEarnRules;
+use YayLoyalty\Engine\Storefront\LauncherPayload;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -19,6 +20,13 @@ $yayloyalty_earn    = LauncherEarnRules::with_daily_limit( LauncherEarnRules::me
 
 require __DIR__ . '/points-card.php';
 require __DIR__ . '/new-points-notice.php';
-require __DIR__ . '/ways-to-earn.php';
-require __DIR__ . '/ways-to-redeem.php';
+
+// Both lists print nothing when empty, so one card stands in for the pair.
+if ( LauncherEarnRules::is_empty( $yayloyalty_earn ) && LauncherPayload::redeem_is_empty( $yayloyalty_payload ) ) {
+    $yayloyalty_no_ways = 'both';
+    require __DIR__ . '/no-ways-card.php';
+} else {
+    require __DIR__ . '/ways-to-earn.php';
+    require __DIR__ . '/ways-to-redeem.php';
+}
 require __DIR__ . '/recent-activity.php';

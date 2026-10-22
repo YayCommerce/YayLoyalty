@@ -44,6 +44,11 @@ final class LauncherPayload {
         $this->customers = $customers;
     }
 
+    /** Whether "Ways to redeem" has nothing to print: no live points discount and no offers. */
+    public static function redeem_is_empty( array $payload ): bool {
+        return null === $payload['redeem'] && [] === $payload['offers'];
+    }
+
     /**
      * The payload for a viewer, with the default repositories.
      *

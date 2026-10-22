@@ -5,7 +5,8 @@
  * This is the one file WordPress enqueues (AccountRewards::STYLE_PATH). It imports one file per template in
  * includes/Engine/Storefront/templates/, named after it, and holds the tokens they all read. A new template's
  * file goes in the list below; never enqueue it on its own. ways-to-redeem.php and panel-member.php have none:
- * they only arrange other partials, and add nothing of their own. Nor does card-art.php: points-card.css styles it.
+ * they only arrange other partials, and add nothing of their own. Nor do card-art.php (points-card.css styles it)
+ * and no-ways-card.php (it borrows account-rewards-state.css's card).
  *
  * - Every rule is nested under .yayloyalty-account, so it is at least 0,2,0 and a theme's plain
  *   `a {}`, `table {}` or `h3 {}` rules cannot beat it.

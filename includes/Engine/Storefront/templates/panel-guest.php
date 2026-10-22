@@ -59,7 +59,12 @@ if ( null === $yayloyalty_signup ) {
 
 require __DIR__ . '/guest-card.php';
 ?>
-<?php if ( [] !== $yayloyalty_steps ) : ?>
+<?php if ( [] === $yayloyalty_steps ) : ?>
+    <?php
+    $yayloyalty_no_ways = 'both';
+    require __DIR__ . '/no-ways-card.php';
+    ?>
+<?php else : ?>
     <section class="yayloyalty-account__section yayloyalty-account__steps">
         <h3 class="yayloyalty-account__title"><?php esc_html_e( 'How it works', 'yayloyalty' ); ?></h3>
         <ul class="yayloyalty-account__list">

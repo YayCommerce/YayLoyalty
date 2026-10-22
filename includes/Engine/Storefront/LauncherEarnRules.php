@@ -71,6 +71,15 @@ final class LauncherEarnRules {
     }
 
     /**
+     * Whether "Ways to earn" has nothing to print: no rows and no daily-limit line.
+     *
+     * @param array{rows: array[], limit_line: string} $earn for_viewer() or with_daily_limit().
+     */
+    public static function is_empty( array $earn ): bool {
+        return [] === $earn['rows'] && '' === $earn['limit_line'];
+    }
+
+    /**
      * member_rows() under the daily limit: at 0 left the limit line replaces the rows; below it, the line follows rows there are.
      *
      * @param array[]  $rows       member_rows(), each as the yayloyalty_launcher_earn_rows filter documents it.

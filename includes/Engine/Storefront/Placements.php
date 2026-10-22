@@ -84,6 +84,16 @@ final class Placements {
                 $user_id         = get_current_user_id();
                 $yayloyalty_earn = LauncherEarnRules::for_viewer( LauncherPayload::for_user( DesignHelper::get_design(), $user_id ), $user_id );
 
+                // An account outside the program gets nothing, not a card that blames the store.
+                if ( LauncherEarnRules::is_empty( $yayloyalty_earn ) ) {
+                    if ( Launcher::viewer_can_earn( $user_id ) ) {
+                        $yayloyalty_no_ways = 'earn';
+                        require __DIR__ . '/templates/no-ways-card.php';
+                    }
+
+                    return;
+                }
+
                 require __DIR__ . '/templates/ways-to-earn.php';
             }
         );
@@ -96,7 +106,18 @@ final class Placements {
     public static function ways_to_redeem(): string {
         return self::render(
             static function (): void {
-                $yayloyalty_payload = LauncherPayload::for_user( DesignHelper::get_design(), get_current_user_id() );
+                $user_id            = get_current_user_id();
+                $yayloyalty_payload = LauncherPayload::for_user( DesignHelper::get_design(), $user_id );
+
+                // As in ways_to_earn(): an account outside the program gets nothing.
+                if ( LauncherPayload::redeem_is_empty( $yayloyalty_payload ) ) {
+                    if ( Launcher::viewer_can_earn( $user_id ) ) {
+                        $yayloyalty_no_ways = 'redeem';
+                        require __DIR__ . '/templates/no-ways-card.php';
+                    }
+
+                    return;
+                }
 
                 require __DIR__ . '/templates/ways-to-redeem.php';
             }
