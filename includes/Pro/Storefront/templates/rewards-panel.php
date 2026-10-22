@@ -1,7 +1,7 @@
 <?php
 /**
- * One reward row of the card: its name, its cost and a checkbox, a list item beside the Points discount row, ticked
- * to apply. A row that can't be ticked is disabled; a refused one also has its name struck through.
+ * The card's reward rows: one line per reward, its name, its cost and a checkbox, listed after the Points discount
+ * row and ticked to apply. A row that can't be ticked, refused or unaffordable, is disabled and struck through.
  * No input has a `name`, so nothing here rides on the cart or checkout form it may sit in; redeem.js posts the ticked ids.
  *
  * @var array $view One row of RewardsPanel::row_views(): id, name, cost, is_applied, is_denied, is_short.

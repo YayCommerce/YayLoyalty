@@ -285,9 +285,10 @@
   color: var(--yayloyalty-redeem-text);
 }
 
-.yayloyalty-redeem .yayloyalty-redeem__option:has([data-denied]) .yayloyalty-redeem__name,
-.yayloyalty-redeem .yayloyalty-redeem__option:has([data-yl-slider-toggle]:disabled) .yayloyalty-redeem__name {
+/* Every row that can't be ticked, refused or unaffordable; not while a request has every control disabled. */
+.yayloyalty-redeem:not([data-busy]) .yayloyalty-redeem__option:has(.yayloyalty-redeem__check:disabled) .yayloyalty-redeem__name {
   text-decoration: line-through;
+  text-decoration-thickness: 0.5px;
 }
 
 .yayloyalty-redeem .yayloyalty-redeem__chip {
