@@ -170,35 +170,6 @@
     --yl-trigger-size: 56px;
   }
 
-  /*
-   * On mobile the sheet differs from the desktop panel: a light header (brand-coloured icon, outlined
-   * round ✕). [data-position] lifts these to 0,3,0 so they beat the 0,2,0 utilities on the same elements.
-   */
-
-  .yayloyalty-launcher[data-position] .yl-launcher-header {
-    padding: 12px 16px;
-    background: var(--background);
-    color: var(--foreground);
-    border-bottom: 1px solid var(--border);
-  }
-
-  .yayloyalty-launcher[data-position] .yl-launcher-header h2 {
-    color: var(--foreground);
-    font-size: 15px;
-  }
-
-  .yayloyalty-launcher[data-position] .yl-launcher-header-icon {
-    color: var(--primary);
-  }
-
-  .yayloyalty-launcher[data-position] .yl-launcher-close {
-    width: 30px;
-    height: 30px;
-    border: 1px solid var(--border);
-    border-radius: 9999px;
-    color: var(--muted-foreground);
-  }
-
   .yl-launcher-overlay {
     background: rgb(20 20 20 / 0.4);
     opacity: 0;
@@ -230,6 +201,10 @@
     display: flex;
     justify-content: center;
     padding: 10px 0 0;
+  }
+
+  /* The bar and the header together are the drag-to-close area, so a thumb need not find the 4px bar. */
+  .yl-launcher-grip {
     touch-action: none;
     cursor: grab;
   }
