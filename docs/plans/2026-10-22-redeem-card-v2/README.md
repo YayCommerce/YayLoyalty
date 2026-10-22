@@ -21,7 +21,7 @@
 **Tests** (accepted in the spec):
 - `tests/integration/Engine/Redemption/CommitWriterTest.php` (integration): `commit_all()` writes reward and slider rows, their `redeem` rows and summed meta in one transaction; a re-fire answers `duplicate`; a summed cost above the locked balance writes nothing.
 - `tests/integration/Engine/Redemption/StackedQuoteTest.php` (integration, new): with rewards picked, the slider's `quote()` and `ceiling()` use balance − Σ cost and cart − Σ value; `checkout_error()` is null when the slider applies 0 beside an applied reward, and `rewards_balance` when the rewards are not covered.
-- `tests/unit/Engine/Storefront/RedeemCardViewTest.php` (unit): updated for the `slider` state.
+- `tests/unit/Engine/Storefront/RedeemCardViewTest.php` (unit): updated for the `slider` state, plus `test_a_ticked_slider_the_rewards_leave_nothing_for_stays_ticked_with_the_balance_note` (spec AC 5; accepted 2026-10-22 while expanding phase 2).
 - `apps/e2e/specs/reward-redemptions.spec.ts` and `redemptions.spec.ts` (Playwright): rewritten for the list UI and the spec's AC 17.
 
 ## Global constraints
