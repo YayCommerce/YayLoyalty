@@ -5,9 +5,12 @@ import { CampaignStatus } from '@/lib/schema/campaign.schema';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScheduleFields } from '@/components/ui/custom/schedule-fields';
-import { Field, FieldContent, FieldDescription, FieldLabel } from '@/components/ui/field';
-import { Switch } from '@/components/ui/switch';
+import { Field, FieldContent, FieldLabel } from '@/components/ui/field';
+import { Segmented, SegmentedItem } from '@/components/ui/segmented';
+import { statusLabel } from '../campaign-labels';
 import { CampaignFormValues, useCampaignEditorContext } from './campaign-editor.form';
+
+const EDITABLE_CAMPAIGN_STATUSES = ['active', 'paused', 'draft'] as const;
 
 /**
  * The right rail: status and schedule in one card, then the actions. Both save buttons are
@@ -76,41 +79,31 @@ export function CampaignEditorSummaryRail({
 function CampaignEditorStatus() {
   const { control } = useFormContext<CampaignFormValues>();
   const { campaign } = useCampaignEditorContext();
-  // Off goes back to the saved status, so switching a draft on and off again never makes it "paused".
-  const offStatus: CampaignStatus = campaign.status === 'active' ? 'paused' : campaign.status;
+  // Archived shows only while it is the saved status, so picking another restores the campaign.
+  const statuses: CampaignStatus[] =
+    campaign.status === 'archived' ? [...EDITABLE_CAMPAIGN_STATUSES, 'archived'] : [...EDITABLE_CAMPAIGN_STATUSES];
 
   return (
-    <Controller
-      control={control}
-      name="status"
-      render={({ field }) => (
-        <Field orientation="horizontal">
-          <FieldContent>
-            <FieldLabel htmlFor="campaign-enabled">{__('Enabled', 'yayloyalty')}</FieldLabel>
-            <FieldDescription>{statusHint(field.value)}</FieldDescription>
-          </FieldContent>
-          <Switch
-            id="campaign-enabled"
-            checked={field.value === 'active'}
-            onCheckedChange={(isOn) => field.onChange(isOn ? 'active' : offStatus)}
-          />
-        </Field>
-      )}
-    />
+    <Field>
+      <FieldLabel>{__('Status', 'yayloyalty')}</FieldLabel>
+      <FieldContent>
+        <Controller
+          control={control}
+          name="status"
+          render={({ field }) => (
+            // Re-clicking the active item yields an empty string; never write that back.
+            <Segmented value={field.value} onValueChange={(value) => value && field.onChange(value)}>
+              {statuses.map((status) => (
+                <SegmentedItem key={status} value={status}>
+                  {statusLabel(status)}
+                </SegmentedItem>
+              ))}
+            </Segmented>
+          )}
+        />
+      </FieldContent>
+    </Field>
   );
-}
-
-function statusHint(status: CampaignStatus): string {
-  switch (status) {
-    case 'active':
-      return __('Customers earn from this campaign while its schedule allows.', 'yayloyalty');
-    case 'paused':
-      return __('Paused: customers don’t earn from it until you switch it back on.', 'yayloyalty');
-    case 'draft':
-      return __('Draft: not live until you switch it on.', 'yayloyalty');
-    case 'archived':
-      return __('Archived: switch it on to restore it.', 'yayloyalty');
-  }
 }
 
 function CampaignEditorSchedule() {
