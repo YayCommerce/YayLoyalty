@@ -2,13 +2,13 @@
 
 **Status:** accepted 2026-10-16
 **Replaces:** the redemptions design of 2026-10-07 and the reward redemption design of 2026-10-14, which were never committed. This document describes the component as built on `jason/feat/redemptions`, with every decision those specs and their plans made.
-**Amended by:** [redeem card v2](2026-10-22-redeem-card-v2-design.md), 2026-10-22: the points discount and rewards stack, and the card is one checkbox list. The sections below say what changed and point to it for the detail.
+**Amended:** 2026-10-22: the points discount and rewards stack, and the card is one checkbox list ([the points discount and rewards stack](../decisions/2026-10-22-stack-points-discount-and-rewards.md)). The sections marked "amended 2026-10-22" describe the change.
 **Decision records:** [Lite owns every redemption write](../decisions/2026-10-07-lite-owns-redemption-writes.md), [the points discount and rewards stack](../decisions/2026-10-22-stack-points-discount-and-rewards.md) (superseding [loyalty discounts are virtual coupons](../decisions/2026-10-14-loyalty-discounts-as-virtual-coupons.md)), [the ledger's single writer](../decisions/2026-10-01-ledger-service-sole-writer.md)
 **Plan:** [docs/plans/2026-10-16-redemption.md](../plans/2026-10-16-redemption.md)
 
 ## Goal
 
-A signed-in customer spends points at the cart and checkout, on classic pages and on the Cart and Checkout blocks, in two ways, which can be used together on one order (amended by [redeem card v2](2026-10-22-redeem-card-v2-design.md)):
+A signed-in customer spends points at the cart and checkout, on classic pages and on the Cart and Checkout blocks, in two ways, which can be used together on one order (amended 2026-10-22):
 - **Points discount (Lite and Pro):** a slider that turns any number of points into a cart discount at the store's rate.
 - **Rewards (Pro):** fixed-amount and percentage rewards, ticked and applied together.
 
@@ -80,7 +80,7 @@ Lite owns the session, the coupons, the commit and the reversal. Pro supplies tw
 
 **Order meta** (`CommitWriter::META_POINTS`, `META_VALUE`): `_yayloyalty_points_redeemed` and `_yayloyalty_redeem_value`, the order's loyalty total, the sum of every loyalty line, slider and rewards. Projections only; no balance is computed from them.
 
-**Session** (`SessionIntent`): `yayloyalty_redeem_points` (int, the request, unclamped) and `yayloyalty_redeem_rewards` (int[], unique, in the order picked), which may coexist. `set()` and `set_rewards()` each write their own key and leave the other, `remove_reward()` drops one id, `clear()` drops both (commit only). Amended by [redeem card v2](2026-10-22-redeem-card-v2-design.md).
+**Session** (`SessionIntent`): `yayloyalty_redeem_points` (int, the request, unclamped) and `yayloyalty_redeem_rewards` (int[], unique, in the order picked), which may coexist. `set()` and `set_rewards()` each write their own key and leave the other, `remove_reward()` drops one id, `clear()` drops both (commit only). Amended 2026-10-22.
 
 No schema change and no version bump: the plugin is unreleased at 1.0.0. A development site whose tables predate a column gets it by deactivating and reactivating the plugin, which re-runs `Installer::install()`.
 
@@ -112,7 +112,7 @@ No schema change and no version bump: the plugin is unreleased at 1.0.0. A devel
 `CouponProvider` makes WooCommerce do the discount math natively (percent and fixed, minimum spend, sale exclusion, the tax split, one totals row per line):
 - `woocommerce_get_shop_coupon_data`: `yayloyalty-redeem` is `fixed_cart` at the quote's value (0 when denied). A reward code gets `RewardCoupons::data()`, capped against the cart. A missing reward, or one with no handler, gets a `fixed_cart` coupon at 0, so WooCommerce never removes it with a notice naming the code before `sync_cart()` drops it. Every loyalty coupon has `individual_use` false, `free_shipping` false, `usage_limit` 0 and no expiry.
 - `woocommerce_coupon_sort`: merchant coupons keep WooCommerce's weights. Percent rewards get `PHP_INT_MAX - 2`, fixed rewards `PHP_INT_MAX - 1`, the slider `PHP_INT_MAX`. The weight follows the reward type, not the emitted discount type, so a capped percent reward keeps its place.
-- `woocommerce_before_calculate_totals` at `PHP_INT_MAX`, `sync_cart()`: the applied-coupon list becomes the merchant coupons, then one code per picked reward whose quote is allowed with a value (percent rewards first, then fixed, each in the order picked), then the slider code while its quote applies points. The slider is quoted against what the allowed rewards leave: the balance minus their cost and the cart minus their value (amended by [redeem card v2](2026-10-22-redeem-card-v2-design.md)). It edits the list directly, so no notice shows and `woocommerce_removed_coupon` means only that the shopper removed a coupon. It never touches a merchant coupon and never triggers a recalculation.
+- `woocommerce_before_calculate_totals` at `PHP_INT_MAX`, `sync_cart()`: the applied-coupon list becomes the merchant coupons, then one code per picked reward whose quote is allowed with a value (percent rewards first, then fixed, each in the order picked), then the slider code while its quote applies points. The slider is quoted against what the allowed rewards leave: the balance minus their cost and the cart minus their value (amended 2026-10-22). It edits the list directly, so no notice shows and `woocommerce_removed_coupon` means only that the shopper removed a coupon. It never touches a merchant coupon and never triggers a recalculation.
 - **Dropping a choice the card can no longer show.** A picked reward denied for `min_order`, `sale_items`, `no_value`, `not_live` or any `ProgramGate::REASONS` leaves the session with the notice "{name} was removed: this order no longer qualifies.", once per reward and request. When the slider applies nothing and `ceiling()` is refused too, the amount leaves the session with "Points discount was removed: this order no longer qualifies.". In both cases the card hides the control that could clear the choice, so without this checkout would refuse every attempt. Added 2026-10-16 (commit `8e24efa`).
 - A picked reward denied `insufficient_balance` or `conditions_not_met` stays picked and unapplied.
 - `woocommerce_check_cart_items` at priority 0, `sync_before_check()`: on classic pages WooCommerce checks cart coupons before totals run, so one totals pass first lets `sync_cart()` drop a reward that stopped qualifying, with its notice, instead of WooCommerce removing it with a notice naming the code.
@@ -124,11 +124,11 @@ No schema change and no version bump: the plugin is unreleased at 1.0.0. A devel
 **Validation before totals freeze** (`checkout_error()`, from `woocommerce_after_checkout_validation` and `woocommerce_store_api_cart_errors`):
 - Slider: null when nothing is asked or the quote applies any points, even fewer than asked (the cart already shows the clamped discount). Otherwise the quote's reason, or its `bound_by` when it applies 0 (`reward_min` when empty).
 - Rewards: `reward_unavailable` when a picked reward is missing, denied for anything but the balance, or worth nothing; else `rewards_balance` when the balance cannot cover one; else null.
-- With both picked, the rewards' answer comes first; then the slider's, except that a slider applying 0 beside an applied reward passes (amended by [redeem card v2](2026-10-22-redeem-card-v2-design.md)).
+- With both picked, the rewards' answer comes first; then the slider's, except that a slider applying 0 beside an applied reward passes (amended 2026-10-22).
 
 **Commit** (`commit()`, from `woocommerce_checkout_order_processed` and `woocommerce_store_api_checkout_order_processed`): it re-quotes from the order's own coupon lines, never from the session, under the customer lock in one transaction.
 - No loyalty line: `skipped( no_intent )`, nothing happens.
-- Both a slider line and a reward line: `CommitWriter::commit_all()` writes every line in one transaction under one lock, rewards first, the slider re-quoted against the locked balance minus their cost; any failure writes nothing (amended by [redeem card v2](2026-10-22-redeem-card-v2-design.md)).
+- Both a slider line and a reward line: `CommitWriter::commit_all()` writes every line in one transaction under one lock, rewards first, the slider re-quoted against the locked balance minus their cost; any failure writes nothing (amended 2026-10-22).
 - Slider: one row, the `redeem` row and the meta, for exactly the points the line costs. Skipped when a gate denies, the locked balance or a limit covers fewer points than the line costs, or the re-quoted value is not the line's amount.
 - Rewards: per line a row and its `redeem` row, then the summed meta, or nothing. Skipped `reward_unavailable` for a missing or unoffered reward, a denied re-quote or a line worth nothing; `rewards_balance` when the summed cost exceeds the locked balance.
 - A re-fired hook answers `duplicate` and writes nothing; the per-row ledger key is the guard.
@@ -170,14 +170,14 @@ No schema change and no version bump: the plugin is unreleased at 1.0.0. A devel
 - Blocks: `extensions.yayloyalty.card` carries the server's markup to a plain-script slot fill in the blocks' discounts area (`ExperimentalDiscountsMeta`). No inner block is built and its position is fixed.
 - Anywhere else: shortcode `[yayloyalty_redeem]` and action `yayloyalty_redeem_card`, for themes and page builders (an Elementor Shortcode widget, for example).
 
-**Header:** "Your rewards" plus the balance as "9,850 Points" (`SettingsHelper::points_text()`) and, while `cart-discount` is live, its worth "⇄ $98.50". A guest gets a sign-in card instead. Amended by [redeem card v2](2026-10-22-redeem-card-v2-design.md).
+**Header:** "Your rewards" plus the balance as "9,850 Points" (`SettingsHelper::points_text()`) and, while `cart-discount` is live, its worth "⇄ $98.50". A guest gets a sign-in card instead. Amended 2026-10-22.
 
 **Who sees what:**
 - A guest: "Sign in to spend your Points." linking to the account page, no tabs.
 - A shopper any `ProgramGate` refuses, an empty cart, or no live offer: no card.
-- **Lite:** the header and the Points discount row. **Pro:** `RewardsPanel` adds one row per offered reward through `RedeemCard::ROWS_FILTER`, after the Points discount row, in one checkbox list. No tabs. Amended by [redeem card v2](2026-10-22-redeem-card-v2-design.md).
+- **Lite:** the header and the Points discount row. **Pro:** `RewardsPanel` adds one row per offered reward through `RedeemCard::ROWS_FILTER`, after the Points discount row, in one checkbox list. No tabs. Amended 2026-10-22.
 
-**The list** (amended by [redeem card v2](2026-10-22-redeem-card-v2-design.md), which holds the detail in its UI section): the Points discount row (`RedeemCard::view()` state `slider`, absent when `hidden`) opens into the slider; each reward row has a checkbox, its name, its cost, its description and "{value} off here"; refused and unaffordable rows are disabled with their reason. On the cart every tick and slider change applies at once. At checkout the card collapses to "✓ −$X · N Points used" + Change while something is applied, and edits are a draft applied by one Update. A clamp shows `message_for( bound_by )` for `balance`, `reward_max`, `cart` and `reward_min`; `step` stays silent.
+**The list** (amended 2026-10-22): one bordered card, the header inside it. The Points discount row (`RedeemCard::view()` state `slider`, absent when `hidden`) opens into Min/Max, the range, the number field and "{label} = {money}". Each reward row is one line: name, "{cost} Points" chip, checkbox; a refused or unaffordable row is disabled and faded, a refused one struck through, with no reason text. On the cart every tick and slider change applies at once. At checkout the card shows "{label} & rewards" and, while something is applied, collapses to "✓ N rewards selected" + Change; edits are a draft applied by one Update. A clamp shows `message_for( bound_by )` for `balance`, `reward_max`, `cart` and `reward_min`; `step` stays silent.
 
 **Wire format:**
 - Classic: `wc-ajax=yayloyalty_redeem` POST with `security` and `points` (0 removes), `rewards` (comma-separated ids; present and empty clears), or both, each applied to its own key. It sets the intent, runs one totals pass and answers the card's new HTML. It never clamps and never touches a coupon.
@@ -192,7 +192,7 @@ No schema change and no version bump: the plugin is unreleased at 1.0.0. A devel
 
 ## Integration points
 
-- **Internal Pro seams** (not public API): `yayloyalty_register_reward_handlers`, `yayloyalty_reward_conditions_match`, `yayloyalty_redemption_gates`, `yayloyalty_redeem_card_rows` (`( string[] $rows, array $context )` → `string[]`, context `{ service, cart, user_id, balance }`; replaced `yayloyalty_redeem_card_panels`, amended by [redeem card v2](2026-10-22-redeem-card-v2-design.md)), `yayloyalty_launcher_redeem_offers` (`( array $offers, string $now )` → `array<{ name, cost, text }>`).
+- **Internal Pro seams** (not public API): `yayloyalty_register_reward_handlers`, `yayloyalty_reward_conditions_match`, `yayloyalty_redemption_gates`, `yayloyalty_redeem_card_rows` (`( string[] $rows, array $context )` → `string[]`, context `{ service, cart, user_id, balance }`; replaced `yayloyalty_redeem_card_panels`, amended 2026-10-22), `yayloyalty_launcher_redeem_offers` (`( array $offers, string $now )` → `array<{ name, cost, text }>`).
 - **Public action:** `yayloyalty_points_redeemed( Outcome $outcome, \WC_Order $order )`.
 - **WooCommerce hooks:** those named under Cart sync, Checkout and commit, and Reversals, plus `woocommerce_blocks_loaded`, `woocommerce_blocks_enqueue_cart_block_scripts_after` and `woocommerce_blocks_enqueue_checkout_block_scripts_after`.
 
@@ -202,7 +202,7 @@ No schema change and no version bump: the plugin is unreleased at 1.0.0. A devel
 |---|---|
 | Slider request above a limit | Clamped to a positive amount, which passes checkout; the card names the limit |
 | Slider request below the minimum, or nothing affordable at submit | Checkout stops with the bound's message; nothing written |
-| Balance drops before submit | Rewards no longer covered: checkout stops with `rewards_balance`, nothing written. Otherwise the slider applies what the rewards leave, and `commit_all()` checks the locked balance (amended by [redeem card v2](2026-10-22-redeem-card-v2-design.md)) |
+| Balance drops before submit | Rewards no longer covered: checkout stops with `rewards_balance`, nothing written. Otherwise the slider applies what the rewards leave, and `commit_all()` checks the locked balance (amended 2026-10-22) |
 | Program paused, coupons disabled, opted out or excluded role after Apply | The choice is dropped on the next totals run with the "was removed" notice; checkout then passes without a discount |
 | `cart-discount` reward ended after Apply | Same: the slider amount is dropped with the notice |
 | Reward ended, paused or deleted after Apply | Dropped with the notice; an order that still carries its line fails at commit with `reward_unavailable` |
@@ -211,7 +211,7 @@ No schema change and no version bump: the plugin is unreleased at 1.0.0. A devel
 | `max_discount` reached | The line is `fixed_cart` at the cap; the row stores the cap |
 | Crafted `{ rewards: [A, B] }` above the balance | Only what the balance covers is applied, in the order sent |
 | Same reward sent twice | Stored once; one line |
-| Slider and rewards sent one after the other, or together | Both kept: rewards in order against the balance, the slider clamped to the rest (amended by [redeem card v2](2026-10-22-redeem-card-v2-design.md)) |
+| Slider and rewards sent one after the other, or together | Both kept: rewards in order against the balance, the slider clamped to the rest (amended 2026-10-22) |
 | Merchant applies an individual-use coupon | The loyalty lines are re-added on the next totals run |
 | Downgrade to Lite with rewards in the session | Denied `not_live`, dropped by `sync_cart()`; past orders still reverse |
 | Two rows of one order refunded by one refund | Each restores under its own `reward_{id}` key |
@@ -232,12 +232,12 @@ No schema change and no version bump: the plugin is unreleased at 1.0.0. A devel
 Fixtures: a Pro build; a signed-in customer with 9,850 Points; `cart-discount` live at 100 Points = $1; reward A `fixed_coupon` "$5 off", 500 Points, `amount` 5, `min_order` 25; reward B `percent_coupon` "15% off", 1,500 Points, `percent` 15, `max_discount` 10; a $100 cart, no merchant coupon, prices excluding tax.
 
 1. **Slider.** Applying 500 Points on the cart shows "Points discount −$5" and "500 Points applied — $5 off"; asking for more than the balance, the cap or the subtotal applies the clamped amount and names the limit. Placing the order writes one `applied` row, one `redeem` row of −500 keyed `…:flexible_discount`, lowers the balance and sets the order meta. Re-firing the hook writes nothing.
-2. **Card.** Amended: see [redeem card v2](2026-10-22-redeem-card-v2-design.md) AC 1.
-3. **Rewards applied.** Amended: see [redeem card v2](2026-10-22-redeem-card-v2-design.md) AC 2 and 4.
+2. **Card.** The Pro cart card shows "Your rewards", "9,850 Points" and "⇄ $98.50", an unticked "Points discount" row with a "Flexible amount" chip, then rows A and B, each one line with name, cost chip and checkbox. No tabs, no Apply. Lite shows the header and the Points discount row. Amended 2026-10-22.
+3. **Rewards applied.** Ticking A and B applies them at once: "15% off −$10.00" then "$5 off −$5.00", total $85.00; the balance is still 9,850. Ticking Points discount beside them at 500 adds "Points discount −$5" and its Max reads 7,850 Points. Amended 2026-10-22.
 4. **Rewards committed.** Classic and block checkout both write two `applied` rows (A: 500, `5.0000`; B: 1,500, `10.0000`), `redeem` rows −500 and −1,500 keyed `…:reward_{A}` and `…:reward_{B}`, balance 7,850, `_yayloyalty_points_redeemed` 2000 and `_yayloyalty_redeem_value` `15.00`.
-5. **Changing the selection.** Amended: see [redeem card v2](2026-10-22-redeem-card-v2-design.md) AC 2 and 8.
-6. **Exclusivity.** Reversed: the two stack; see [redeem card v2](2026-10-22-redeem-card-v2-design.md) AC 4 and 9.
-7. **Balance.** Amended: see [redeem card v2](2026-10-22-redeem-card-v2-design.md) AC 6 and 10.
+5. **Changing the selection.** Unticking B leaves only "$5 off". The classic "[Remove]" or the blocks' chip removes one line only; removing the Points discount line keeps the rewards and unticks its row. Amended 2026-10-22.
+6. **Stacking.** The points discount and rewards apply together on one cart, and one order with both writes every line's row and `redeem` row in one transaction. Reversed 2026-10-22.
+7. **Balance.** At 1,800 Points ticking B disables A. Dropping the balance below the rewards' cost after applying stops checkout with "You do not have enough Points for these rewards. Remove one and try again." and writes nothing; while the rewards are covered, the slider applies what is left. Amended 2026-10-22.
 8. **Eligibility.** On a $20 cart A reads "Add $5 more to use this"; a cart that falls to $20 after Apply drops A with "$5 off was removed: this order no longer qualifies." and debits nothing for it.
 9. **Partial value.** With a $97 merchant coupon and `min_order` cleared, A reads "$3 off here" and its row stores `3.0000` and 500 Points.
 10. **Paused after Apply.** With the slider or a reward applied, pausing the program drops the choice with the "was removed" notice, and the next checkout passes.

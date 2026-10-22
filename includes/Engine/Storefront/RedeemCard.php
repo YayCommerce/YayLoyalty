@@ -257,7 +257,7 @@ final class RedeemCard {
             'max'         => $max,
             'max_value'   => $ceiling->get_value(),
             'rate'        => $ceiling->get_rate_snapshot(),
-            // A ticked row stays tickable when the rewards leave it nothing (spec AC 5); only an unticked one is shut.
+            // A ticked row stays tickable when the rewards leave it nothing, so it can be unticked; only an unticked one is shut.
             'is_disabled' => $max < $min && $requested <= 0,
             'bound_by'    => $is_lowered ? $quote->get_bound_by() : '',
         ];
