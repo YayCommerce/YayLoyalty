@@ -174,7 +174,7 @@ final class AccountRewards {
         );
 
         if ( null === $html ) {
-            self::print_unavailable();
+            self::print_state( __( 'Rewards are currently unavailable', 'yayloyalty' ), __( 'We couldn’t load your rewards. Please try again later.', 'yayloyalty' ) );
 
             return;
         }
@@ -226,16 +226,12 @@ final class AccountRewards {
         return array_key_exists( $filter, self::filter_labels() ) ? $filter : 'all';
     }
 
-    private static function print_unavailable(): void {
-        wc_print_notice( __( 'Rewards are not available right now.', 'yayloyalty' ), 'notice' );
-    }
-
-    /** The tab's whole body when the shopper cannot take part: a heading and one line in a card. */
+    /** The tab's whole body when it has nothing to show: a heading and one line in a card. */
     private static function print_state( string $title, string $text ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- the template reads both.
         include __DIR__ . '/templates/account-rewards-state.php';
     }
 
-    /** The tab's intro line, on every state. */
+    /** The tab's intro line, above its content; the unavailable card goes without it. */
     public static function intro(): string {
         return __( 'Your points, perks, and activity in one place.', 'yayloyalty' );
     }
