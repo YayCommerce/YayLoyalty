@@ -67,6 +67,11 @@ final class RedemptionService {
     /** @var array<int, Reward|null> Rewards read by id this request; null for an id with no row. */
     private array $reward_cache = [];
 
+    /** quote_rewards()'s last answer, and the picked ids, cart and merchant coupons it was computed for. */
+    private array $rewards_quoted = [];
+
+    private string $rewards_quoted_for = '';
+
     public function __construct(
         Quoter $quoter,
         ContextFactory $contexts,
@@ -160,7 +165,11 @@ final class RedemptionService {
         return $this->quote_for( $cart, $user_id, PHP_INT_MAX );
     }
 
-    /** quote() and ceiling(): the Quoter's answer for $points_requested, or Result::denied( REASON_NO_REWARD ). */
+    /**
+     * quote() and ceiling(): the Quoter's answer for $points_requested, or Result::denied( REASON_NO_REWARD ).
+     * Picked rewards are paid for first, so the slider quotes against the balance less their cost and the cart
+     * less their value; with none picked, or none allowed, it quotes against the whole of both.
+     */
     private function quote_for( \WC_Cart $cart, ?int $user_id, int $points_requested ): Result {
         // One request quotes many times (every coupon load and totals run); the reward row is read for the first only.
         if ( ! $this->is_reward_read ) {
@@ -174,14 +183,31 @@ final class RedemptionService {
             return Result::denied( self::REASON_NO_REWARD );
         }
 
-        return $this->quoter->quote( $reward, $this->contexts->from_cart( $cart, $user_id, $points_requested ) );
+        $ctx    = $this->contexts->from_cart( $cart, $user_id, $points_requested );
+        $cost   = 0;
+        $amount = 0.0;
+
+        foreach ( $this->quote_rewards( $cart, $user_id ) as $row ) {
+            if ( $row['quote']->is_allowed() && $row['quote']->get_value() > 0 ) {
+                $cost   += $row['quote']->get_points();
+                $amount += $row['quote']->get_value();
+            }
+        }
+
+        if ( $cost > 0 ) {
+            $ctx = $ctx->with_balance( $ctx->get_balance() - $cost )->with_cart_subtotal( max( 0.0, (float) $ctx->get_cart_subtotal() - $amount ) );
+        }
+
+        return $this->quoter->quote( $reward, $ctx );
     }
 
     /**
      * The picked rewards' quotes, keyed by reward id in the order they were picked. Each quotes against the
      * balance left once the rewards allowed before it are paid for, so a selection never costs more than the
      * balance. A missing reward, or one this build does not offer, is denied `not_live` without reaching the
-     * Quoter, so a type with no handler (Lite after a downgrade) never throws. Writes nothing.
+     * Quoter, so a type with no handler (Lite after a downgrade) never throws. Writes nothing. Every slider
+     * quote asks for this, many times a request, so the answer is kept while the picked ids, the shopper and
+     * cart_key() stay the same.
      *
      * @return array<int, array{reward: ?Reward, quote: Result}>
      */
@@ -192,6 +218,44 @@ final class RedemptionService {
             return [];
         }
 
+        $key = implode( ',', $reward_ids ) . '|' . (int) $user_id . '|' . self::cart_key( $cart );
+
+        if ( $key !== $this->rewards_quoted_for ) {
+            $this->rewards_quoted     = $this->quote_picked( $cart, $user_id, $reward_ids );
+            $this->rewards_quoted_for = $key;
+        }
+
+        return $this->rewards_quoted;
+    }
+
+    /**
+     * What a reward's quote reads from the cart: each item's key, quantity and price, and the merchant coupons.
+     * Not WC_Cart::get_cart_hash(), which folds in the total and so changes while the totals run.
+     */
+    private static function cart_key( \WC_Cart $cart ): string {
+        $parts = [];
+
+        foreach ( $cart->get_cart() as $item_key => $item ) {
+            $price   = isset( $item['data'] ) && $item['data'] instanceof \WC_Product ? $item['data']->get_price() : '';
+            $parts[] = $item_key . ':' . ( $item['quantity'] ?? 0 ) . ':' . $price;
+        }
+
+        foreach ( $cart->get_applied_coupons() as $code ) {
+            if ( ! EarnContext::is_loyalty_code( (string) $code ) ) {
+                $parts[] = (string) $code;
+            }
+        }
+
+        return implode( ',', $parts );
+    }
+
+    /**
+     * quote_rewards() without the memo.
+     *
+     * @param int[] $reward_ids
+     * @return array<int, array{reward: ?Reward, quote: Result}>
+     */
+    private function quote_picked( \WC_Cart $cart, ?int $user_id, array $reward_ids ): array {
         $ctx    = $this->contexts->from_cart( $cart, $user_id, null );
         $spent  = 0;
         $quotes = [];
@@ -282,15 +346,20 @@ final class RedemptionService {
     /**
      * Checkout-submission affordability, before totals freeze. Precondition:
      * called from the adapter's validation hook with the live cart.
-     * Postconditions: null when nothing is asked, and null when the quote
-     * applies any points, even fewer than asked: the cart already shows the
-     * clamped discount. Otherwise a message key for message_for(): the
-     * quote's reason when it is denied, or its bound_by when it applies
-     * nothing. For picked rewards, rewards_error(). Writes nothing.
+     * Postconditions: picked rewards first, rewards_error() when it has a
+     * key. Then the slider: null when nothing is asked, when the quote
+     * applies any points, even fewer than asked (the cart already shows the
+     * clamped discount), or when it applies none beside a reward that
+     * applies (the rewards took what it could have had, and it comes back if
+     * they go). Otherwise a message key for message_for(): the quote's reason
+     * when it is denied, or its bound_by when it applies nothing. Writes nothing.
      */
     public function checkout_error( \WC_Cart $cart, ?int $user_id ): ?string {
-        if ( 0 === $this->intent->get() ) {
-            return [] === $this->intent->rewards() ? null : $this->rewards_error( $cart, $user_id );
+        $has_rewards = [] !== $this->intent->rewards();
+        $error       = $has_rewards ? $this->rewards_error( $cart, $user_id ) : null;
+
+        if ( null !== $error || 0 === $this->intent->get() ) {
+            return $error;
         }
 
         $quote = $this->quote( $cart, $user_id );
@@ -299,11 +368,22 @@ final class RedemptionService {
             return $quote->get_reason();
         }
 
-        if ( $quote->get_points() > 0 ) {
+        if ( $quote->get_points() > 0 || ( $has_rewards && $this->has_applying_reward( $cart, $user_id ) ) ) {
             return null;
         }
 
         return '' !== $quote->get_bound_by() ? $quote->get_bound_by() : Clamp::BOUND_REWARD_MIN;
+    }
+
+    /** Whether a picked reward's quote is allowed with a value: one that puts a line on the cart. */
+    private function has_applying_reward( \WC_Cart $cart, ?int $user_id ): bool {
+        foreach ( $this->quote_rewards( $cart, $user_id ) as $row ) {
+            if ( $row['quote']->is_allowed() && $row['quote']->get_value() > 0 ) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

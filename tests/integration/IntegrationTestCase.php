@@ -211,6 +211,38 @@ abstract class IntegrationTestCase extends TestCase {
         return $order;
     }
 
+    /**
+     * WooCommerce's cart holding one untaxed product at $price, and nothing else: what the cart-time quotes read.
+     * The product is never saved, since the scratch tables do not mirror core's postmeta; the quotes read only
+     * each item's price and quantity.
+     */
+    protected function cart_for( float $price ): \WC_Cart {
+        wc_load_cart();
+
+        $product = new \WC_Product_Simple();
+        $product->set_name( 'Thing' );
+        $product->set_regular_price( (string) $price );
+        $product->set_price( (string) $price );
+        $product->set_tax_status( 'none' );
+
+        WC()->cart->set_applied_coupons( [] );
+        WC()->cart->set_cart_contents(
+            [
+                'thing' => [
+                    'key'          => 'thing',
+                    'product_id'   => 0,
+                    'variation_id' => 0,
+                    'variation'    => [],
+                    'quantity'     => 1,
+                    'data'         => $product,
+                    'data_hash'    => '',
+                ],
+            ]
+        );
+
+        return WC()->cart;
+    }
+
     /** @return array<int, array<string, mixed>> */
     protected function redemption_rows( int $user_id ): array {
         global $wpdb;
