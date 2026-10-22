@@ -501,15 +501,18 @@
   border-bottom: 0;
 }
 
-.yayloyalty-redeem[data-mode="checkout"][data-applied]:not([data-expanded])
-  :is(.yayloyalty-redeem__list, .yayloyalty-redeem__update) {
+.yayloyalty-redeem[data-mode="checkout"][data-applied]:not([data-expanded]) .yayloyalty-redeem__list {
   display: none;
 }
 
-/* Open: Update in Change's place. */
+/*
+ * Open: Update in Change's place. Both share one grid cell and the hidden one keeps its box, so the column
+ * stays as wide as the wider label and the header does not shift when they swap.
+ */
 
+.yayloyalty-redeem[data-mode="checkout"][data-applied]:not([data-expanded]) .yayloyalty-redeem__update,
 .yayloyalty-redeem[data-mode="checkout"]:is(:not([data-applied]), [data-expanded]) .yayloyalty-redeem__change {
-  display: none;
+  visibility: hidden;
 }
 
 .yayloyalty-redeem :is(.yayloyalty-redeem__change, .yayloyalty-redeem__update) {
