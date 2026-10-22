@@ -5,7 +5,6 @@
   "title": "Ways to earn",
   "description": "The enabled earning rules as a list",
   "category": "yayloyalty",
-  "icon": "list-view",
   "textdomain": "yayloyalty",
   "editorScript": "yayloyalty/script/blocks-editor",
   "style": "yayloyalty/style/storefront-account",

@@ -5,7 +5,6 @@
   "title": "Points balance",
   "description": "The signed-in customer’s balance and what it is worth",
   "category": "yayloyalty",
-  "icon": "star-filled",
   "textdomain": "yayloyalty",
   "editorScript": "yayloyalty/script/blocks-editor",
   "style": "yayloyalty/style/storefront-account",

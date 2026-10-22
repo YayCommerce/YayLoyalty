@@ -5,7 +5,6 @@
   "title": "Ways to redeem",
   "description": "The points discount and the rewards points can buy, as a list",
   "category": "yayloyalty",
-  "icon": "tickets-alt",
   "textdomain": "yayloyalty",
   "editorScript": "yayloyalty/script/blocks-editor",
   "style": "yayloyalty/style/storefront-account",
