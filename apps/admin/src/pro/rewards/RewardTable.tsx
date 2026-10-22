@@ -318,7 +318,7 @@ function RewardRow({
               onCheckedChange={toggle}
             />
             <span className="text-muted-foreground text-xs">
-              {displayStatus === 'active' ? __('On', 'yayloyalty') : __('Paused', 'yayloyalty')}
+              {displayStatus === 'active' ? __('Active', 'yayloyalty') : __('Paused', 'yayloyalty')}
             </span>
           </div>
         ) : (

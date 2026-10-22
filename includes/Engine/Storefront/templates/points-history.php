@@ -6,11 +6,12 @@
  * @var array $yayloyalty_history AccountRewards::view()'s `history`.
  */
 
+use YayLoyalty\Engine\Storefront\AccountHistoryAjax;
 use YayLoyalty\Engine\Storefront\AccountHistoryCsv;
 use YayLoyalty\Engine\Storefront\AccountRewards;
 use YayLoyalty\Engine\Storefront\AccountRewardsIcon;
 use YayLoyalty\Engine\Storefront\LauncherCopy;
-use YayLoyalty\Enums\LedgerType;
+use YayLoyalty\Engine\Storefront\ShopperActivityRow;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Utils\Dates;
 
@@ -26,7 +27,7 @@ $yayloyalty_last      = $yayloyalty_first + count( $yayloyalty_history['rows'] )
 $yayloyalty_has_rows  = 'all' !== $yayloyalty_filter_on || $yayloyalty_history['total'] > 0;
 $yayloyalty_download  = AccountRewardsIcon::get( 'download' ) . esc_html__( 'Export CSV', 'yayloyalty' );
 ?>
-<section class="yayloyalty-account__section" id="<?php echo esc_attr( AccountRewards::HISTORY_ANCHOR ); ?>">
+<section class="yayloyalty-account__section" id="<?php echo esc_attr( AccountRewards::HISTORY_ANCHOR ); ?>" data-endpoint="<?php echo esc_url( AccountHistoryAjax::url() ); ?>" data-page="<?php echo esc_attr( $yayloyalty_page ); ?>" data-filter="<?php echo esc_attr( $yayloyalty_filter_on ); ?>">
     <div class="yayloyalty-account__section-head">
         <h3 class="yayloyalty-account__title">
             <?php
@@ -43,7 +44,7 @@ $yayloyalty_download  = AccountRewardsIcon::get( 'download' ) . esc_html__( 'Exp
 
     <nav class="yayloyalty-account__tabs" aria-label="<?php esc_attr_e( 'Filter history', 'yayloyalty' ); ?>">
         <?php foreach ( AccountRewards::filter_labels() as $yayloyalty_filter => $yayloyalty_filter_label ) : ?>
-            <a class="yayloyalty-account__tab" href="<?php echo esc_url( AccountRewards::url( 1, $yayloyalty_filter ) ); ?>"<?php echo $yayloyalty_filter === $yayloyalty_filter_on ? ' aria-current="page"' : ''; ?>><?php echo esc_html( $yayloyalty_filter_label ); ?></a>
+            <a class="yayloyalty-account__tab" href="<?php echo esc_url( AccountRewards::url( 1, $yayloyalty_filter ) ); ?>" data-page="1" data-filter="<?php echo esc_attr( $yayloyalty_filter ); ?>"<?php echo $yayloyalty_filter === $yayloyalty_filter_on ? ' aria-current="page"' : ''; ?>><?php echo esc_html( $yayloyalty_filter_label ); ?></a>
         <?php endforeach; ?>
     </nav>
 
@@ -85,7 +86,7 @@ $yayloyalty_download  = AccountRewardsIcon::get( 'download' ) . esc_html__( 'Exp
                 </thead>
                 <tbody>
                     <?php foreach ( $yayloyalty_history['rows'] as $yayloyalty_row ) : ?>
-                        <?php $yayloyalty_tone = LedgerType::EXPIRE === $yayloyalty_row['type'] ? 'expire' : ( $yayloyalty_row['points'] > 0 ? 'plus' : 'minus' ); ?>
+                        <?php $yayloyalty_tone = ShopperActivityRow::tone( $yayloyalty_row['type'], $yayloyalty_row['points'] ); ?>
                         <tr>
                             <td class="yayloyalty-account__date" data-title="<?php echo esc_attr( $yayloyalty_columns['date'] ); ?>"><?php echo esc_html( Dates::to_site_date( $yayloyalty_row['created_at'] ) ); ?></td>
                             <td data-title="<?php echo esc_attr( $yayloyalty_columns['description'] ); ?>">

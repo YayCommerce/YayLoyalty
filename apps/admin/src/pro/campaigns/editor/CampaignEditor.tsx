@@ -27,7 +27,6 @@ import {
   campaignFormResolver,
   CampaignFormValues,
   campaignToFormValues,
-  duplicateToFormValues,
   formValuesToCreateInput,
   formValuesToUpdateInput,
   synthesizeDraftCampaign,
@@ -177,44 +176,24 @@ function CampaignEditorForm({ id, campaign }: { id: number; campaign: Campaign }
   );
 }
 
-/**
- * Create-mode entry point for `campaigns/new/:templateId`, optionally `?from=<id>` for
- * CampaignTable's Duplicate action. Nothing is written until Save.
- */
-export function CampaignCreator({ templateId, duplicateFromId }: { templateId: string; duplicateFromId?: number }) {
+/** Create-mode entry point for `campaigns/new/:templateId`. Nothing is written until Save. */
+export function CampaignCreator({ templateId }: { templateId: string }) {
   // Memoised so CampaignCreatorForm's seed stays stable: findTemplate() builds a fresh object per call.
   const template = useMemo(() => findTemplate(templateId), [templateId]);
-  // enabled: id > 0 inside the hook means an absent duplicateFromId never fetches.
-  const sourceQuery = useCampaignQuery(duplicateFromId ?? 0);
 
   if (!template) {
     return <NotFoundPage />;
   }
 
-  if (!duplicateFromId) {
-    return <CampaignCreatorForm template={template} />;
-  }
-
-  const loaded = resolveQueryLoad(sourceQuery, {
-    skeleton: <CampaignEditorSkeleton />,
-    title: __('New campaign', 'yayloyalty'),
-    errorMessage: __('Could not load the campaign to duplicate.', 'yayloyalty'),
-  });
-
-  return 'screen' in loaded ? loaded.screen : <CampaignCreatorForm template={template} duplicateFrom={loaded.data} />;
+  return <CampaignCreatorForm template={template} />;
 }
 
-function CampaignCreatorForm({ template, duplicateFrom }: { template: CampaignTemplate; duplicateFrom?: Campaign }) {
+function CampaignCreatorForm({ template }: { template: CampaignTemplate }) {
   const navigate = useNavigate();
   const mutation = useCreateCampaignMutation();
 
-  // Stable across this component's life: template and duplicateFrom are each fixed for one visit
-  // to this route (a duplicate source is fetched once, not refetched mid-edit).
-  const seed = useMemo<CampaignCreateSeed>(
-    () =>
-      duplicateFrom ? duplicateToFormValues(duplicateFrom) : { trigger: template.trigger, values: template.seed() },
-    [template, duplicateFrom],
-  );
+  // Stable across this component's life: the template is fixed for one visit to this route.
+  const seed = useMemo<CampaignCreateSeed>(() => ({ trigger: template.trigger, values: template.seed() }), [template]);
   const draftCampaign = useMemo(() => synthesizeDraftCampaign(), []);
 
   const trigger = seed.trigger;

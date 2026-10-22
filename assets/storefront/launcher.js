@@ -1,7 +1,8 @@
 /**
- * Storefront launcher behaviour: open/close the panel, keep focus inside it, and load "Recent activity"
- * once, after the first open (the balance is already in the page; history is a second request so a
- * shopper checking their points never waits on it).
+ * Storefront launcher behaviour: open/close the panel, keep focus inside it, let the shopper drag the
+ * button to another spot (kept for later pages), and load "Recent activity" once, after the first open
+ * (the balance is already in the page; history is a second request so a shopper checking their points
+ * never waits on it).
  *
  * Plain script, no build step. Markup and data come from includes/Engine/Storefront/templates/.
  * Class names here are scanned by the storefront Tailwind build, so they must stay literal.
@@ -10,6 +11,8 @@
   "use strict";
 
   var DRAG_CLOSE_PX = 80;
+  // Below this a press on the button is a click, not a move.
+  var MOVE_THRESHOLD_PX = 6;
   var FOCUSABLE =
     'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -84,7 +87,12 @@
       }
     }
 
+    var wasMoved = bindMove(root, trigger);
+
     trigger.addEventListener("click", function () {
+      if (wasMoved()) {
+        return;
+      }
       if (isOpen()) {
         close();
       } else {
@@ -128,14 +136,25 @@
     return longestMs;
   }
 
-  /** The bottom sheet's handle: drag down past DRAG_CLOSE_PX to dismiss, otherwise snap back. */
+  /**
+   * The bottom sheet's grab bar and header: drag down past DRAG_CLOSE_PX to dismiss, otherwise snap back.
+   * Only while the bar is drawn (mobile), and never from the ✕, whose click the capture would swallow.
+   */
   function bindDragToClose(panel, handle, close) {
     if (!handle) {
       return;
     }
+    var bar = handle.querySelector(".yl-launcher-handle");
     var startY = null;
 
     handle.addEventListener("pointerdown", function (event) {
+      if (
+        !bar ||
+        !bar.getClientRects().length ||
+        event.target.closest("[data-yl-close]")
+      ) {
+        return;
+      }
       startY = event.clientY;
       handle.setPointerCapture(event.pointerId);
     });
@@ -164,6 +183,128 @@
     handle.addEventListener("pointercancel", function (event) {
       release(event, false);
     });
+  }
+
+  /**
+   * The shopper can drag the button anywhere inside the launcher's offset; launcher-spot.js keeps the spot
+   * for later pages and opens the panel on the button's side.
+   * Returns a check the click handler asks, so the click that ends a drag does not open the panel.
+   */
+  function bindMove(root, trigger) {
+    var spot = window.yayloyaltyLauncherSpot;
+    var start = null;
+    var isMoving = false;
+    var wasMoved = false;
+
+    if (!spot) {
+      return function () {
+        return false;
+      };
+    }
+
+    trigger.addEventListener("pointerdown", function (event) {
+      if (event.button !== 0) {
+        return;
+      }
+      start = {
+        x: event.clientX,
+        y: event.clientY,
+        rect: trigger.getBoundingClientRect(),
+        area: moveArea(root, trigger),
+      };
+      isMoving = false;
+      wasMoved = false;
+    });
+    trigger.addEventListener("pointermove", function (event) {
+      if (start === null) {
+        return;
+      }
+      var dx = event.clientX - start.x;
+      var dy = event.clientY - start.y;
+      if (!isMoving) {
+        if (
+          Math.abs(dx) < MOVE_THRESHOLD_PX &&
+          Math.abs(dy) < MOVE_THRESHOLD_PX
+        ) {
+          return;
+        }
+        isMoving = true;
+        trigger.setPointerCapture(event.pointerId);
+        root.classList.add("yl-launcher-moving");
+      }
+      dx = clamp(
+        dx,
+        start.area.left - start.rect.left,
+        start.area.left + start.area.width - start.rect.left,
+      );
+      dy = clamp(
+        dy,
+        start.area.top - start.rect.top,
+        start.area.top + start.area.height - start.rect.top,
+      );
+      trigger.style.transform = "translate(" + dx + "px, " + dy + "px)";
+    });
+    function release() {
+      if (start === null) {
+        return;
+      }
+      var area = start.area;
+      start = null;
+      if (!isMoving) {
+        return;
+      }
+      isMoving = false;
+      wasMoved = true;
+      root.classList.remove("yl-launcher-moving");
+      var rect = trigger.getBoundingClientRect();
+      var position = {
+        x:
+          area.width > 0
+            ? clamp((rect.left - area.left) / area.width, 0, 1)
+            : 0,
+        y:
+          area.height > 0
+            ? clamp((rect.top - area.top) / area.height, 0, 1)
+            : 0,
+      };
+      trigger.style.transform = "";
+      spot.apply(root, position);
+      spot.save(position);
+    }
+    trigger.addEventListener("pointerup", release);
+    trigger.addEventListener("pointercancel", release);
+
+    return function () {
+      var moved = wasMoved;
+      wasMoved = false;
+      return moved;
+    };
+  }
+
+  /**
+   * Where the button's top-left corner may go: the viewport inset by --yl-offset, less the button and the
+   * pill under it. The same box the CSS spreads --yl-x and --yl-y across.
+   */
+  function moveArea(root, trigger) {
+    var offsetPx =
+      parseFloat(
+        window.getComputedStyle(root).getPropertyValue("--yl-offset"),
+      ) || 0;
+    var pillPx = parseFloat(
+      window.getComputedStyle(trigger).marginBottom || "0",
+    );
+    var viewport = document.documentElement;
+    return {
+      left: offsetPx,
+      top: offsetPx,
+      width: viewport.clientWidth - 2 * offsetPx - trigger.offsetWidth,
+      height:
+        viewport.clientHeight - 2 * offsetPx - trigger.offsetHeight - pillPx,
+    };
+  }
+
+  function clamp(value, min, max) {
+    return Math.max(min, Math.min(value, max));
   }
 
   /**
@@ -219,7 +360,9 @@
           var row = rowTemplate.content.firstElementChild.cloneNode(true);
           row.querySelector("[data-yl-label]").textContent = item.label;
           row.querySelector("[data-yl-meta]").textContent = item.meta;
-          row.querySelector("[data-yl-delta]").textContent = item.delta;
+          var delta = row.querySelector("[data-yl-delta]");
+          delta.textContent = item.delta;
+          delta.classList.add("yayloyalty-account__badge--" + item.tone);
           list.appendChild(row);
         });
       })

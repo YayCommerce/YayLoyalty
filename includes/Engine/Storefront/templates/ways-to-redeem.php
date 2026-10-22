@@ -10,6 +10,7 @@
 
 use YayLoyalty\Engine\Storefront\AccountRewardsIcon;
 use YayLoyalty\Engine\Storefront\LauncherCopy;
+use YayLoyalty\Engine\Storefront\LauncherPayload;
 use YayLoyalty\Helpers\SettingsHelper;
 
 defined( 'ABSPATH' ) || exit;
@@ -18,7 +19,7 @@ $yayloyalty_redeem = $yayloyalty_payload['redeem'];
 $yayloyalty_offers = $yayloyalty_payload['offers'];
 $yayloyalty_label  = SettingsHelper::points_label_plural();
 
-if ( null === $yayloyalty_redeem && [] === $yayloyalty_offers ) {
+if ( LauncherPayload::redeem_is_empty( $yayloyalty_payload ) ) {
     return;
 }
 

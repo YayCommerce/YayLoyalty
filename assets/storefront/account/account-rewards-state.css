@@ -1,6 +1,7 @@
 /*
  * templates/account-rewards-state.php: the card that replaces the tab when the program is paused or the
- * account is outside it. Imported by rewards-tokens.css, which holds the tokens.
+ * account is outside it. no-ways-card.php reuses it in place of empty Ways to earn and Ways to redeem.
+ * Imported by rewards-tokens.css, which holds the tokens.
  */
 .yayloyalty-account .yayloyalty-account__state {
   display: flex;

@@ -9,6 +9,7 @@ import {
   updateReward,
   updateRewardStatus,
 } from '@/lib/api/reward.api';
+import { setPaginatedRow } from '@/lib/helpers/paginated-row.helper';
 import type { RewardCreateInput, RewardListParams, RewardStatus, RewardUpdateInput } from '@/lib/schema/reward.schema';
 
 /** ─── Query Options ─────────────────────────────────── */
@@ -72,10 +73,10 @@ export function useUpdateRewardStatusMutation(id: number) {
   return useMutation({
     mutationKey: ['reward', 'status', id],
     mutationFn: (status: RewardStatus) => updateRewardStatus(id, status),
-    // The response is the stored row, so the detail is written, not refetched.
+    // The response is the decorated row, the list's own shape, so both are written, not refetched.
     onSuccess: (saved) => {
       queryClient.setQueryData(REWARD_QUERIES.detail(id).queryKey, saved);
-      queryClient.invalidateQueries({ queryKey: ['reward', 'list'] });
+      setPaginatedRow(queryClient, ['reward', 'list'], saved);
     },
   });
 }

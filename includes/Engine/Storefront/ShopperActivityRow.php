@@ -24,7 +24,7 @@ final class ShopperActivityRow {
      * Ledger rows as the launcher lists them: GET /me/activity's items, and the Design tab's sample rows.
      *
      * @param LedgerEntry[] $entries
-     * @return array<int, array{label: string, meta: string, delta: string}>
+     * @return array<int, array{label: string, meta: string, delta: string, tone: string}> `tone` as tone() returns it.
      */
     public static function items( array $entries ): array {
         $store = Text::store_name();
@@ -36,10 +36,20 @@ final class ShopperActivityRow {
                 'label' => self::label( $entry, $store, $label ),
                 'meta'  => self::meta_line( $entry->get_created_at(), $entry->get_order_id() ),
                 'delta' => LauncherCopy::signed_points( $entry->get_points() ),
+                'tone'  => self::tone( $entry->get_type(), $entry->get_points() ),
             ];
         }
 
         return $items;
+    }
+
+    /** A row's points badge colour, the same in the history table and the launcher: 'expire', 'plus' or 'minus'. */
+    public static function tone( string $type, int $points ): string {
+        if ( LedgerType::EXPIRE === $type ) {
+            return 'expire';
+        }
+
+        return $points > 0 ? 'plus' : 'minus';
     }
 
     /**

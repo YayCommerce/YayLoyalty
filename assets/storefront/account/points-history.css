@@ -35,6 +35,11 @@
   height: 14px;
 }
 
+.yayloyalty-account .yayloyalty-account__section[aria-busy="true"] {
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+
 .yayloyalty-account .yayloyalty-account__tabs {
   display: inline-flex;
   align-self: flex-start;

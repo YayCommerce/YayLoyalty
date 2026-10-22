@@ -96,6 +96,10 @@ final class StorefrontActivityRestController extends AbstractRestController {
                 'label' => $text,
                 'meta'  => [ 'description' => __( 'Date in the site format, then the order number when there is one.', 'yayloyalty' ) ] + $text,
                 'delta' => [ 'description' => __( 'Signed, formatted points: "+270" or "−120".', 'yayloyalty' ) ] + $text,
+                'tone'  => [
+                    'description' => __( 'The points badge colour.', 'yayloyalty' ),
+                    'enum'        => [ 'plus', 'minus', 'expire' ],
+                ] + $text,
             ],
         ];
     }

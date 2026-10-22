@@ -10,6 +10,7 @@
 
 use YayLoyalty\Engine\Storefront\AccountRewardsIcon;
 use YayLoyalty\Engine\Storefront\LauncherCopy;
+use YayLoyalty\Engine\Storefront\LauncherEarnRules;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Utils\Dates;
 
@@ -58,10 +59,10 @@ if ( null !== $yayloyalty_card_member && null !== $yayloyalty_card_member['worth
             <?php if ( '' !== $yayloyalty_card_caption ) : ?>
                 <p class="yayloyalty-account__caption"><?php echo esc_html( $yayloyalty_card_caption ); ?></p>
             <?php endif; ?>
-            <?php // Any balance can be taken to checkout, which says what it is worth there; an empty one is sent to earn. ?>
+            <?php // Any balance can be taken to checkout, which says what it is worth there; an empty one is sent to earn, if there is a way to. ?>
             <?php if ( $yayloyalty_card_member['balance'] > 0 ) : ?>
                 <a class="yayloyalty-account__button" href="<?php echo esc_url( $yayloyalty_card_payload['checkout_url'] ); ?>"><?php esc_html_e( 'Use points at checkout', 'yayloyalty' ); ?><?php echo AccountRewardsIcon::get( 'arrow' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- a fixed SVG. ?></a>
-            <?php else : ?>
+            <?php elseif ( [] !== LauncherEarnRules::member_rows( $yayloyalty_card_payload['earn'], $yayloyalty_card_payload['purchase_min'] ) ) : ?>
                 <a class="yayloyalty-account__button" href="<?php echo esc_url( (string) wc_get_page_permalink( 'shop' ) ); ?>">
                     <?php
                     /* translators: %s: the store's points label, as "Points". */

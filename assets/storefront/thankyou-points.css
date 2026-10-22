@@ -1,9 +1,10 @@
 /*
- * The order-received page's "Points & rewards" card (ThankYouPoints, templates/thankyou-points.php).
+ * The order-received page's "Rewards" card (ThankYouPoints, templates/thankyou-points.php).
  * Hand-written and shipped as-is: no build step, and nothing from the launcher's stylesheet or the Design tab.
  *
- * - The text keeps the theme's font and colour; the borders and surfaces are tints of that colour, so the
- *   card reads on light and dark themes alike. The rgba() lines are for browsers without color-mix().
+ * - The colours are the tokens below, the same values as the Rewards tab's (account/rewards-tokens.css), so a
+ *   theme or custom CSS can re-point them in one place. The pending and earned states are fixed amber and green,
+ *   so the card is a fixed white surface rather than tints of the theme's colour.
  * - Every rule is nested under the root, so it is at least 0,2,0 and a theme's plain `h2 {}` cannot beat it.
  * - Sizes are px: rem follows the theme's html font-size (62.5% is common).
  * - The reset is storefront-reset.css, shared with the Rewards tab.
@@ -11,31 +12,46 @@
 @import url("storefront-reset.css");
 
 .yayloyalty-thankyou-points {
-  --yayloyalty-thankyou-border: rgba(0, 0, 0, 0.1);
-  --yayloyalty-thankyou-border: color-mix(in srgb, currentColor 12%, transparent);
-  --yayloyalty-thankyou-surface: rgba(0, 0, 0, 0.02);
-  --yayloyalty-thankyou-surface: color-mix(in srgb, currentColor 2.5%, transparent);
-  --yayloyalty-thankyou-muted: rgba(0, 0, 0, 0.55);
-  --yayloyalty-thankyou-muted: color-mix(in srgb, currentColor 55%, transparent);
+  --yayloyalty-thankyou-text: #171719;
+  --yayloyalty-thankyou-muted: #7b7c80;
+  --yayloyalty-thankyou-border: #e4e4e7;
+  --yayloyalty-thankyou-divider: #f0f0f2;
+  --yayloyalty-thankyou-surface: #ffffff;
+  --yayloyalty-thankyou-icon-bg: #f4f4f5;
+  --yayloyalty-thankyou-positive: #15803d;
+  --yayloyalty-thankyou-positive-bg: #f2f7f3;
+  --yayloyalty-thankyou-warning: #8a5a00;
+  --yayloyalty-thankyou-warning-bg: #fdf6e8;
+  --yayloyalty-thankyou-accent: var(--yayloyalty-thankyou-warning);
+  --yayloyalty-thankyou-accent-bg: var(--yayloyalty-thankyou-warning-bg);
 
+  /* The art and the stacked layout follow the card's width, not the window's: the order page's column can be narrow. */
+  container-type: inline-size;
+  position: relative;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 24px;
   margin: 24px 0;
-  padding: 20px 24px;
+  padding: 28px 30px;
   border: 1px solid var(--yayloyalty-thankyou-border);
   border-radius: 12px;
+  background: var(--yayloyalty-thankyou-surface);
+  color: var(--yayloyalty-thankyou-text);
   font-size: 14px;
   line-height: 1.45;
   text-align: left;
 }
 
+.yayloyalty-thankyou-points.yayloyalty-thankyou-points--earned {
+  --yayloyalty-thankyou-accent: var(--yayloyalty-thankyou-positive);
+  --yayloyalty-thankyou-accent-bg: var(--yayloyalty-thankyou-positive-bg);
+}
+
 .yayloyalty-thankyou-points .yayloyalty-thankyou-points__head {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 .yayloyalty-thankyou-points .yayloyalty-thankyou-points__icon {
@@ -43,10 +59,11 @@
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  border: 1px solid var(--yayloyalty-thankyou-border);
+  width: 40px;
+  height: 40px;
   border-radius: 8px;
+  background: var(--yayloyalty-thankyou-icon-bg);
+  color: var(--yayloyalty-thankyou-muted);
 }
 
 .yayloyalty-thankyou-points .yayloyalty-thankyou-points__icon svg {
@@ -55,44 +72,118 @@
   height: 18px;
 }
 
-/* Never shrinks, so on a narrow screen the balance wraps to its own line instead of the title breaking. */
 .yayloyalty-thankyou-points .yayloyalty-thankyou-points__title {
-  flex: 1 0 auto;
-  font-size: 15px;
+  color: inherit;
+  font-size: 18px;
   font-weight: 600;
   line-height: 1.4;
 }
 
+/* The right padding keeps the text clear of the art. */
+.yayloyalty-thankyou-points .yayloyalty-thankyou-points__body {
+  display: flex;
+  align-items: stretch;
+  padding-right: 200px;
+}
+
 .yayloyalty-thankyou-points .yayloyalty-thankyou-points__balance {
   display: flex;
-  align-items: baseline;
+  flex-shrink: 0;
+  flex-direction: column;
   gap: 6px;
+  min-width: 210px;
+  padding-right: 36px;
+}
+
+.yayloyalty-thankyou-points .yayloyalty-thankyou-points__balance-label {
+  color: var(--yayloyalty-thankyou-muted);
+  font-size: 14px;
+}
+
+.yayloyalty-thankyou-points .yayloyalty-thankyou-points__balance-figure {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
   white-space: nowrap;
 }
 
-.yayloyalty-thankyou-points .yayloyalty-thankyou-points__balance strong {
-  font-size: 15px;
+.yayloyalty-thankyou-points .yayloyalty-thankyou-points__balance-figure strong {
+  font-size: 48px;
   font-weight: 600;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
 }
 
-.yayloyalty-thankyou-points .yayloyalty-thankyou-points__balance-label,
-.yayloyalty-thankyou-points .yayloyalty-thankyou-points__hint {
-  font-size: 12px;
+.yayloyalty-thankyou-points .yayloyalty-thankyou-points__balance-unit {
   color: var(--yayloyalty-thankyou-muted);
+  font-size: 18px;
+}
+
+.yayloyalty-thankyou-points .yayloyalty-thankyou-points__earned {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 10px;
+  min-width: 0;
+  padding-left: 36px;
+  border-left: 1px solid var(--yayloyalty-thankyou-divider);
 }
 
 .yayloyalty-thankyou-points .yayloyalty-thankyou-points__line {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px 12px;
-  padding: 12px 16px;
-  border: 1px solid var(--yayloyalty-thankyou-border);
-  border-radius: 8px;
-  background: var(--yayloyalty-thankyou-surface);
+  color: var(--yayloyalty-thankyou-muted);
+  font-size: 14px;
 }
 
 .yayloyalty-thankyou-points .yayloyalty-thankyou-points__line strong {
+  margin-right: 4px;
+  color: var(--yayloyalty-thankyou-accent);
+  font-size: 20px;
   font-weight: 600;
+}
+
+.yayloyalty-thankyou-points .yayloyalty-thankyou-points__hint {
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: var(--yayloyalty-thankyou-accent-bg);
+  color: var(--yayloyalty-thankyou-accent);
+  font-size: 14px;
+}
+
+.yayloyalty-thankyou-points .yayloyalty-thankyou-points__art {
+  position: absolute;
+  top: 50%;
+  right: 40px;
+  display: block;
+  width: 176px;
+  max-width: none;
+  height: 156px;
+  margin: 0;
+  border: 0;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+@container (max-width: 640px) {
+  .yayloyalty-thankyou-points .yayloyalty-thankyou-points__art {
+    display: none;
+  }
+
+  .yayloyalty-thankyou-points .yayloyalty-thankyou-points__body {
+    flex-direction: column;
+    gap: 20px;
+    padding-right: 0;
+  }
+
+  .yayloyalty-thankyou-points .yayloyalty-thankyou-points__balance {
+    min-width: 0;
+    padding-right: 0;
+  }
+
+  .yayloyalty-thankyou-points .yayloyalty-thankyou-points__earned {
+    padding-top: 20px;
+    padding-left: 0;
+    border-top: 1px solid var(--yayloyalty-thankyou-divider);
+    border-left: 0;
+  }
 }

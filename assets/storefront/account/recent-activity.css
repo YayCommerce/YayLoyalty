@@ -69,8 +69,6 @@
 
 .yayloyalty-account .yayloyalty-account__activity-delta {
   flex-shrink: 0;
-  font-size: 13px;
-  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 

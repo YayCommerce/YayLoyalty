@@ -29,11 +29,19 @@
   height: var(--yl-trigger-size);
   padding: 0;
   transition: background-color 0.15s ease;
+  /* launcher.js moves the button on drag; without this a touch drag scrolls the page instead. */
+  touch-action: none;
+}
+
+.yayloyalty-launcher.yl-launcher-moving .yl-launcher-trigger {
+  cursor: grabbing;
+  user-select: none;
 }
 
 /* A member's button leaves room under it for the half of the pill that hangs below the circle. */
 .yayloyalty-launcher[data-position] .yl-launcher-trigger:has(.yl-launcher-balance) {
-  margin-bottom: 12px;
+  --yl-pill-room: 12px;
+  margin-bottom: var(--yl-pill-room);
 }
 
 .yayloyalty-launcher[data-position] .yl-launcher-icon {
@@ -92,6 +100,20 @@
   bottom: var(--yl-offset);
 }
 
+/*
+ * Where the shopper dragged the button (assets/storefront/launcher-spot.js): --yl-x and --yl-y run 0–1
+ * across the viewport inset by the offset, less the button and its pill, so 1/1 is the default corner.
+ * launcher.js's moveArea() measures the same box.
+ */
+.yayloyalty-launcher[data-spot] .yl-launcher-trigger {
+  top: calc(
+    var(--yl-offset) + (100% - 2 * var(--yl-offset) - var(--yl-trigger-size) - var(--yl-pill-room, 0px)) * var(--yl-y)
+  );
+  right: auto;
+  bottom: auto;
+  left: calc(var(--yl-offset) + (100% - 2 * var(--yl-offset) - var(--yl-trigger-size)) * var(--yl-x));
+}
+
 .yl-launcher-overlay {
   position: fixed;
   inset: 0;
@@ -148,35 +170,6 @@
     --yl-trigger-size: 56px;
   }
 
-  /*
-   * On mobile the sheet differs from the desktop panel: a light header (brand-coloured icon, outlined
-   * round ✕). [data-position] lifts these to 0,3,0 so they beat the 0,2,0 utilities on the same elements.
-   */
-
-  .yayloyalty-launcher[data-position] .yl-launcher-header {
-    padding: 12px 16px;
-    background: var(--background);
-    color: var(--foreground);
-    border-bottom: 1px solid var(--border);
-  }
-
-  .yayloyalty-launcher[data-position] .yl-launcher-header h2 {
-    color: var(--foreground);
-    font-size: 15px;
-  }
-
-  .yayloyalty-launcher[data-position] .yl-launcher-header-icon {
-    color: var(--primary);
-  }
-
-  .yayloyalty-launcher[data-position] .yl-launcher-close {
-    width: 30px;
-    height: 30px;
-    border: 1px solid var(--border);
-    border-radius: 9999px;
-    color: var(--muted-foreground);
-  }
-
   .yl-launcher-overlay {
     background: rgb(20 20 20 / 0.4);
     opacity: 0;
@@ -208,6 +201,10 @@
     display: flex;
     justify-content: center;
     padding: 10px 0 0;
+  }
+
+  /* The bar and the header together are the drag-to-close area, so a thumb need not find the 4px bar. */
+  .yl-launcher-grip {
     touch-action: none;
     cursor: grab;
   }

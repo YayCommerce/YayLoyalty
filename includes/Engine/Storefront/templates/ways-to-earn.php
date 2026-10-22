@@ -10,7 +10,7 @@ use YayLoyalty\Engine\Storefront\LauncherEarnRules;
 
 defined( 'ABSPATH' ) || exit;
 
-if ( [] === $yayloyalty_earn['rows'] && '' === $yayloyalty_earn['limit_line'] ) {
+if ( LauncherEarnRules::is_empty( $yayloyalty_earn ) ) {
     return;
 }
 ?>

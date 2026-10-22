@@ -22,7 +22,7 @@ final class ShopperActivityRowTest extends IntegrationTestCase {
         $items = ShopperActivityRow::items( ( new LedgerRepository() )->latest_for_user( $user_id, 10 ) );
 
         $this->assertCount( 1, $items );
-        $this->assertSame( [ 'label', 'meta', 'delta' ], array_keys( $items[0] ) );
+        $this->assertSame( [ 'label', 'meta', 'delta', 'tone' ], array_keys( $items[0] ) );
         $this->assertStringNotContainsString( $note, (string) wp_json_encode( $items ) );
     }
 
