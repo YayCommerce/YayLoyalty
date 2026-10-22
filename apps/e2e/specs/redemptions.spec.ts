@@ -2,7 +2,7 @@ import type { Page } from '@playwright/test';
 
 import { openOrder, setOrderStatusInAdmin, untilReloaded } from '../support/admin';
 import { test, expect } from '../support/fixtures';
-import { card, placedOrderId, redeemRows } from '../support/storefront';
+import { blockDiscounts, blockTotal, card, placedOrderId, pointsDiscountBox, pointsField, redeemRows, setPoints } from '../support/storefront';
 
 async function addWidgetToCart(page: Page): Promise<void> {
   await page.goto('/product/e2e-widget/');
@@ -10,9 +10,11 @@ async function addWidgetToCart(page: Page): Promise<void> {
   await expect(page.getByText('has been added to your cart')).toBeVisible();
 }
 
-async function applyPoints(page: Page, points: number): Promise<void> {
-  await card(page).getByRole('spinbutton', { name: 'Points to spend' }).fill(String(points));
-  await card(page).getByRole('button', { name: 'Apply' }).click();
+/** At checkout a tick is a draft: tick the Points discount, type the points, then Update applies them. */
+async function applyPointsAtCheckout(page: Page, points: number): Promise<void> {
+  await pointsDiscountBox(page).check();
+  await pointsField(page).fill(String(points));
+  await card(page).getByRole('button', { name: 'Update' }).click();
 }
 
 /** Places the order with Check payments and returns its id. */
@@ -37,14 +39,15 @@ test('a shopper spends points on the block checkout and a cancellation gives the
     await expect(card(shopperPage)).toContainText('Your rewards');
     await expect(card(shopperPage)).toContainText('1,000 Points');
 
-    await applyPoints(shopperPage, 500);
-    await expect(card(shopperPage)).toContainText('500 Points applied — $5 off');
-    await expect(card(shopperPage)).toContainText('500 Points remaining');
-    await expect(shopperPage.getByText('Points discount', { exact: true })).toBeVisible();
+    await pointsDiscountBox(shopperPage).check();
+    await expect(blockDiscounts(shopperPage)).toContainText('Points discount');
+    await setPoints(shopperPage, 500);
+    await expect(blockTotal(shopperPage)).toContainText('$15.00');
+    await expect(card(shopperPage)).toContainText('Points = $5');
 
-    await card(shopperPage).getByRole('button', { name: 'Remove' }).click();
-    await expect(card(shopperPage).getByRole('button', { name: 'Apply' })).toBeVisible();
-    await expect(shopperPage.getByText('Points discount', { exact: true })).toHaveCount(0);
+    await pointsDiscountBox(shopperPage).uncheck();
+    await expect(blockDiscounts(shopperPage)).toHaveCount(0);
+    await expect(pointsDiscountBox(shopperPage)).not.toBeChecked();
     await api.expectPoints(customer.id, { balance: 1000 });
   });
 
@@ -52,8 +55,8 @@ test('a shopper spends points on the block checkout and a cancellation gives the
 
   await test.step('the checkout card applies 500 points and the order debits them', async () => {
     await shopperPage.goto('/checkout/');
-    await applyPoints(shopperPage, 500);
-    await expect(card(shopperPage)).toContainText('500 Points applied — $5 off');
+    await applyPointsAtCheckout(shopperPage, 500);
+    await expect(card(shopperPage)).toContainText('1 reward selected');
     orderId = await placeOrder(shopperPage);
 
     await api.expectPoints(customer.id, { balance: 500 });
@@ -97,15 +100,17 @@ test('a shopper spends points on the classic cart and checkout and a full refund
 
   await test.step("WooCommerce's own Remove on the cart's discount row clears the points", async () => {
     await shopperPage.goto('/e2e-classic-cart/');
-    await applyPoints(shopperPage, 500);
-    await expect(card(shopperPage)).toContainText('500 Points applied — $5 off');
-
     const discount = shopperPage.locator('.cart_totals tr.cart-discount');
+
+    await pointsDiscountBox(shopperPage).check();
     await expect(discount).toContainText('Points discount');
+    await setPoints(shopperPage, 500);
+    await expect(discount).toContainText('$5.00');
+
     await discount.getByRole('button', { name: /Remove/ }).click();
 
-    await expect(card(shopperPage).getByRole('button', { name: 'Apply' })).toBeVisible();
     await expect(discount).toHaveCount(0);
+    await expect(pointsDiscountBox(shopperPage)).not.toBeChecked();
   });
 
   let orderId = 0;
@@ -116,9 +121,10 @@ test('a shopper spends points on the classic cart and checkout and a full refund
     await shopperPage.goto('/e2e-classic-checkout/');
     await reviewed;
     await expect(shopperPage.locator('.blockUI')).toHaveCount(0);
-    await applyPoints(shopperPage, 500);
-    await expect(card(shopperPage)).toContainText('500 Points applied — $5 off');
+    await applyPointsAtCheckout(shopperPage, 500);
+    await expect(card(shopperPage)).toContainText('1 reward selected');
     await expect(shopperPage.locator('#order_review tr.cart-discount')).toContainText('Points discount');
+    await expect(shopperPage.locator('.blockUI')).toHaveCount(0);
 
     await shopperPage.locator('#payment_method_cheque').check({ force: true });
     await shopperPage.getByRole('button', { name: 'Place order' }).click();
@@ -151,7 +157,8 @@ test('the card offers no more than the balance and the cart allow', async ({ pag
     await page.goto('/cart/');
 
     await expect(card(page)).toContainText('Sign in to spend your Points.');
-    await expect(card(page).getByRole('button', { name: 'Apply' })).toHaveCount(0);
+    await expect(card(page).getByRole('link', { name: 'Sign in' })).toBeVisible();
+    await expect(card(page).getByRole('checkbox')).toHaveCount(0);
   });
 
   await addWidgetToCart(shopperPage);
@@ -161,19 +168,17 @@ test('the card offers no more than the balance and the cart allow', async ({ pag
     await shopperPage.goto('/cart/');
 
     await expect(card(shopperPage)).toContainText('50 Points');
-    await expect(card(shopperPage).getByRole('button', { name: 'Apply' })).toBeDisabled();
-    await expect(card(shopperPage).getByRole('slider')).toBeDisabled();
+    await expect(pointsDiscountBox(shopperPage)).toBeDisabled();
   });
 
   await test.step('a balance above the cart total is capped at the cart', async () => {
     await api.adjustPoints(customer.id, 4950);
     await shopperPage.reload();
-    await expect(card(shopperPage)).toContainText('up to $20 here');
+    await pointsDiscountBox(shopperPage).check();
 
-    await applyPoints(shopperPage, 3000);
-
-    await expect(card(shopperPage)).toContainText('2,000 Points applied — $20 off');
-    await expect(card(shopperPage)).toContainText('3,000 Points remaining');
+    await expect(blockDiscounts(shopperPage)).toContainText('Points discount');
+    await expect(card(shopperPage)).toContainText('Max 2,000 Points');
+    await expect(pointsField(shopperPage)).toHaveValue('2000');
   });
 });
 
@@ -181,8 +186,8 @@ test('checkout stops when the balance no longer covers the applied points', asyn
   await api.adjustPoints(customer.id, 1000);
   await addWidgetToCart(shopperPage);
   await shopperPage.goto('/checkout/');
-  await applyPoints(shopperPage, 500);
-  await expect(card(shopperPage)).toContainText('500 Points applied — $5 off');
+  await applyPointsAtCheckout(shopperPage, 500);
+  await expect(card(shopperPage)).toContainText('1 reward selected');
 
   // Leaves 50, below the minimum, while the checkout page stays open.
   await api.adjustPoints(customer.id, -950);
@@ -205,7 +210,7 @@ test.describe('redemption gates', () => {
     await api.adjustPoints(customer.id, 1000);
     await addWidgetToCart(shopperPage);
     await shopperPage.goto('/cart/');
-    await expect(card(shopperPage).getByRole('button', { name: 'Apply' })).toBeVisible();
+    await expect(pointsDiscountBox(shopperPage)).toBeVisible();
   });
 
   test.afterEach(async ({ api }) => {

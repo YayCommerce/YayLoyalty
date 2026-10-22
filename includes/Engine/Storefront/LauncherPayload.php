@@ -159,10 +159,11 @@ final class LauncherPayload {
     }
 
     /**
-     * What the whole balance takes off one order, as checkout would grant it: Clamp owns the steps,
-     * minimum and per-order cap, so the launcher never promises more than the discount pays.
+     * The money a balance buys at the reward's rate with no cart limit, as checkout would grant it: Clamp owns the
+     * steps, minimum and per-order cap, so neither promises more than the discount pays. Null when it buys nothing.
+     * Shared by the launcher and the redeem card's header.
      */
-    private static function worth( Reward $reward, int $balance ): ?float {
+    public static function worth( Reward $reward, int $balance ): ?float {
         $result = Clamp::apply( $reward, $balance, $balance, null, get_woocommerce_currency(), wc_get_price_decimals() );
 
         return $result->is_allowed() && $result->get_points() > 0 ? $result->get_value() : null;
