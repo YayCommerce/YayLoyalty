@@ -110,7 +110,7 @@ final class LauncherPayload {
             'estimate_off' => null === $estimate || null === $redeem ? null : self::worth( $reward, $estimate ),
             'register'     => $register,
             'account_url'  => (string) wc_get_page_permalink( 'myaccount' ),
-            'rewards_url'  => AccountRewards::url(),
+            'history_url'  => AccountRewards::history_url(),
             'checkout_url' => (string) wc_get_checkout_url(),
         ];
     }

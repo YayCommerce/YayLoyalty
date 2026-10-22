@@ -21,7 +21,7 @@ $yayloyalty_label    = SettingsHelper::points_label_plural();
 <section class="yayloyalty-account__section yayloyalty-account__activity" data-yl-activity aria-live="polite">
     <div class="yayloyalty-account__section-head">
         <h3 class="yayloyalty-account__title"><?php esc_html_e( 'Recent activity', 'yayloyalty' ); ?></h3>
-        <a class="yayloyalty-account__activity-all" href="<?php echo esc_url( $view['rewards_url'] ); ?>"><?php esc_html_e( 'View all', 'yayloyalty' ); ?></a>
+        <a class="yayloyalty-account__activity-all" href="<?php echo esc_url( $view['history_url'] ); ?>"><?php esc_html_e( 'View all', 'yayloyalty' ); ?></a>
     </div>
     <ul class="yayloyalty-account__activity-list" data-yl-activity-list<?php echo [] === $yayloyalty_activity ? ' hidden' : ''; ?>>
         <?php if ( null !== $yayloyalty_activity ) : ?>
