@@ -6,7 +6,7 @@
 
 ## Status
 
-Accepted, 2026-10-14, by Jason, with the reward redemption design.
+Superseded by [the points discount and rewards stack](2026-10-22-stack-points-discount-and-rewards.md), 2026-10-22. Accepted 2026-10-14 by Jason, with the reward redemption design.
 
 ## Context
 
