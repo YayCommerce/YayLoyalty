@@ -11,14 +11,14 @@ use YayLoyalty\Repositories\LedgerRepository;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The My Account "Rewards" tab: the shopper's balance, the programme's rules and their points history.
+ * The My Account "My Points" tab: the shopper's balance, the programme's rules and their points history.
  */
 final class AccountRewards {
 
-    public const ENDPOINT = 'rewards';
+    public const ENDPOINT = 'my-points';
 
     /** Bump when the endpoint's rewrite rules change, so every site flushes once. */
-    public const REWRITE_VERSION = '1';
+    public const REWRITE_VERSION = '2';
 
     public const OPTION_REWRITE_VERSION = 'yayloyalty_rewrite_version';
 
@@ -32,6 +32,9 @@ final class AccountRewards {
     /** The one file enqueued: it holds the tokens and @imports each section's file beside it. */
     private const STYLE_PATH = 'assets/storefront/account/rewards-tokens.css';
 
+    /** Swaps the history in place when a filter tab or page link is picked. */
+    private const HISTORY_SCRIPT_PATH = 'assets/storefront/points-history.js';
+
     /** Hooked on every request: a permalink save in wp-admin rebuilds the rules and must still see the endpoint. */
     public static function register(): void {
         add_filter( 'woocommerce_get_query_vars', [ self::class, 'add_query_var' ] );
@@ -42,6 +45,7 @@ final class AccountRewards {
         add_action( 'init', [ self::class, 'register_style' ] );
         add_action( 'wp_enqueue_scripts', [ self::class, 'enqueue' ] );
         add_action( 'template_redirect', [ AccountHistoryCsv::class, 'maybe_send' ] );
+        add_action( 'wc_ajax_' . AccountHistoryAjax::ACTION, [ AccountHistoryAjax::class, 'respond' ] );
     }
 
     /**
@@ -99,11 +103,21 @@ final class AccountRewards {
     public static function enqueue(): void {
         if ( is_wc_endpoint_url( self::ENDPOINT ) ) {
             wp_enqueue_style( ScriptName::ACCOUNT_STYLE );
+            wp_enqueue_script(
+                ScriptName::ACCOUNT_HISTORY_SCRIPT,
+                YAYLOYALTY_PLUGIN_URL . self::HISTORY_SCRIPT_PATH,
+                [],
+                Launcher::asset_version( self::HISTORY_SCRIPT_PATH ),
+                [
+                    'in_footer' => true,
+                    'strategy'  => 'defer',
+                ]
+            );
         }
     }
 
     public static function title(): string {
-        return __( 'Rewards', 'yayloyalty' );
+        return __( 'My Points', 'yayloyalty' );
     }
 
     /** The tab's URL: the page as the endpoint value, the history filter as `points_type`. */
@@ -196,6 +210,20 @@ final class AccountRewards {
      * @return array{payload: array, earn: array, history: array{rows: array, total: int, page: int, filter: string}}
      */
     private static function view( int $user_id, int $page ): array {
+        $card = self::card_view( $user_id );
+
+        return $card + [
+            'earn'    => LauncherEarnRules::for_viewer( $card['payload'], $user_id ),
+            'history' => self::history_view( $user_id, $page ),
+        ];
+    }
+
+    /**
+     * The history partial's data, for the tab and AccountHistoryAjax. The filter comes from `points_type`.
+     *
+     * @return array{rows: array, total: int, page: int, filter: string}
+     */
+    public static function history_view( int $user_id, int $page ): array {
         $filter  = self::current_filter();
         $history = ( new LedgerRepository() )->paginate_for_user(
             $user_id,
@@ -206,16 +234,11 @@ final class AccountRewards {
             ]
         );
 
-        $card = self::card_view( $user_id );
-
-        return $card + [
-            'earn'    => LauncherEarnRules::for_viewer( $card['payload'], $user_id ),
-            'history' => [
-                'rows'   => ShopperActivityRow::history_rows( $history['items'] ),
-                'total'  => (int) $history['total'],
-                'page'   => $page,
-                'filter' => $filter,
-            ],
+        return [
+            'rows'   => ShopperActivityRow::history_rows( $history['items'] ),
+            'total'  => (int) $history['total'],
+            'page'   => $page,
+            'filter' => $filter,
         ];
     }
 

@@ -20,6 +20,8 @@ class ScriptName {
     public const STOREFRONT_REDEEM_BLOCKS_SCRIPT = 'yayloyalty/storefront/redeem-blocks';
     /** My Account → Rewards: layout only, the theme styles the rest. */
     public const ACCOUNT_STYLE = 'yayloyalty/style/storefront-account';
+    /** My Account → Rewards: the history's tabs and pages load in place. */
+    public const ACCOUNT_HISTORY_SCRIPT = 'yayloyalty/script/storefront-account-history';
 
     /** Product-page earning line: swaps the sentence when a variation is picked. */
     public const PRODUCT_EARN_SCRIPT = 'yayloyalty/script/storefront-product-earn';
