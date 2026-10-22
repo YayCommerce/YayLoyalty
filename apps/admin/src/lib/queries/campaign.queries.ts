@@ -10,6 +10,7 @@ import {
   updateCampaignConfig,
   updateCampaignStatus,
 } from '@/lib/api/campaign.api';
+import { setPaginatedRow } from '@/lib/helpers/paginated-row.helper';
 import { settleInChunks } from '@/lib/helpers/settle-in-chunks.helper';
 import type {
   Campaign,
@@ -77,9 +78,10 @@ export function useUpdateCampaignStatusMutation(id: number) {
   return useMutation({
     mutationKey: ['campaign', 'status', id],
     mutationFn: (status: CampaignStatus) => updateCampaignStatus(id, status),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['campaign', 'detail', id] });
-      queryClient.invalidateQueries({ queryKey: ['campaign', 'list'] });
+    // The response is the decorated row, the list's own shape, and a restore's new top priority moves no other row.
+    onSuccess: (saved) => {
+      queryClient.setQueryData(CAMPAIGN_QUERIES.detail(id).queryKey, saved);
+      setPaginatedRow(queryClient, ['campaign', 'list'], saved);
       queryClient.invalidateQueries({ queryKey: ['campaign', 'performance', id] });
     },
   });
