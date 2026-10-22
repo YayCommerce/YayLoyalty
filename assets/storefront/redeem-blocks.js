@@ -57,7 +57,7 @@
     },
   });
 
-  /** Sends the card's `{ points }` or `{ rewards }` through the cart store, which answers with the new cart. */
+  /** Sends the card's `{ points }`, `{ rewards }` or both through the cart store, which answers with the new cart. */
   window.yayloyaltyRedeemTransport = function (payload) {
     return checkout.extensionCartUpdate({
       namespace: config.callback,

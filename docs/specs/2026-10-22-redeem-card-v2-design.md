@@ -1,6 +1,6 @@
 # Redeem Card v2 Design
 
-**Status:** accepted 2026-10-22
+**Status:** accepted 2026-10-22; amended 2026-10-22 to follow the Figma rows exactly (AC 1, 6, 7 and the UI section): reward rows carry no description or reason line; amended again 2026-10-22 so the checkout follows the "checkout_applied" and "Points selected _ edit" frames exactly (Scope, AC 15, 16, the UI section and the alternatives)
 **Related:** Figma "Redeem card (cart and checkout) v2" and its checkout frames "02 / checkout_applied" and "02 / Points selected _ edit"; amends [the redemption design](2026-10-16-redemption-design.md) (Goal, Session, Cart sync, Checkout and commit, Storefront, AC 2, 3, 5, 6 and 7); reverses the exclusivity in [loyalty discounts are virtual coupons](../decisions/2026-10-14-loyalty-discounts-as-virtual-coupons.md)
 
 ## Goal
@@ -21,7 +21,7 @@ A signed-in customer at the cart and checkout sees one list: a "Points discount"
 **In:**
 - Slider and rewards applied together on one cart and one order (Lite has only the slider, so nothing to stack).
 - The single-list card, instant apply on the cart, the header worth, the restyled guest card.
-- On classic and block checkout: the collapsed summary ("✓ −$X · N Points used" + Change) while something is applied, and the draft edit mode with Update.
+- On classic and block checkout: the collapsed summary ("✓ N rewards selected" + Change) while something is applied, and the draft edit mode with Update.
 - A combined commit in one transaction.
 - Classic cart/checkout, Cart and Checkout blocks, shortcode and action (all share the template).
 
@@ -29,7 +29,6 @@ A signed-in customer at the cart and checkout sees one list: a "Points discount"
 - Earn line for guests ("Earn 180 points with this order").
 - Relabelling totals rows: they stay "Points discount" (merchant label) and the reward's name.
 - A collapsed summary on the cart, or a "Use points" summary at checkout when nothing is applied (the checkout then opens expanded).
-- The mock's "Points & rewards" title at checkout: the card keeps "Your rewards" everywhere.
 - Keeping an unsaved checkout draft across a page reload.
 - Any Design-tab styling of the card.
 - The redemption spec's open questions 1–4 (reused order after a failed payment, etc.) — unchanged.
@@ -39,22 +38,22 @@ A signed-in customer at the cart and checkout sees one list: a "Points discount"
 
 Fixtures: the redemption spec's — Pro build; customer with 9,850 Points; `cart-discount` live at 100 Points = $1; reward A `fixed_coupon` "$5 off", 500 Points, `amount` 5, `min_order` 25; reward B `percent_coupon` "15% off", 1,500 Points, `percent` 15, `max_discount` 10; $100 cart, no merchant coupon, prices excluding tax.
 
-1. **Card.** The Pro cart card shows "Your rewards", "9,850 Points" and "⇄ $98.50"; then an unticked "Points discount" row with a "Flexible amount" chip; then rows A and B, each with name, "{cost} Points" chip, description and an unticked checkbox. No tab, no Apply button, no "selected" line. Lite shows the header and the Points discount row alone.
+1. **Card.** The Pro cart card shows "Your rewards", "9,850 Points" and "⇄ $98.50"; then an unticked "Points discount" row with a "Flexible amount" chip; then rows A and B, each one line with name, "{cost} Points" chip and an unticked checkbox, and no description. No tab, no Apply button, no "selected" line. Lite shows the header and the Points discount row alone.
 2. **Instant reward.** Ticking A, with no other click, shows the "$5 off −$5" totals row and total $95; A's row is ticked with a soft background. Unticking it removes the row; total $100.
 3. **Instant slider.** Ticking Points discount applies the maximum, `ceiling()`: 9,850 Points, $98.50 (the cart allows 10,000, the balance binds), and expands the row with "Min {min}", "Max {max}", range, number field and "Points = ${value}". Typing 500 and pressing Enter shows "Points discount −$5". Dragging the range updates "= $X" live and applies once on release (one request per release, ≥ 500 ms apart). Unticking removes the discount.
 4. **Stacking.** Ticking A and B, then Points discount with 500, shows "15% off −$10.00", "$5 off −$5.00", "Points discount −$5", total $80.00. The slider's Max reads the ceiling after rewards: "Max 7,850 Points" (the balance left, 9,850 − 2,000, binds before the cart left, $85 = 8,500 Points).
 5. **Slider shrinks.** Balance 2,500; slider applied at 2,500 ($25). Ticking B (1,500) leaves B applied and the slider re-clamped to 1,000 ($10) with the `balance` note "You do not have enough Points for this discount. Choose a lower amount and try again." (`message_for( 'balance' )`). With balance exactly 2,000 and A+B ticked, the slider row stays ticked, applies nothing, shows the `balance` note, and checkout passes.
-6. **Short rows.** Balance 1,800: ticking B (1,500) disables A with "Not enough Points" (cost 500 > 1,800 − 1,500).
-7. **Denied rows.** On a $20 cart A is disabled, its name struck through, reason "Add $5 more to use this" in place of its description.
+6. **Short rows.** Balance 1,800: ticking B (1,500) disables A, faded, with no text (cost 500 > 1,800 − 1,500).
+7. **Denied rows.** On a $20 cart A is disabled and faded, its name struck through, with no reason text.
 8. **Remove one line.** With A, B and the slider applied, the classic "[Remove]" (or blocks chip) on "Points discount" leaves A and B applied and the slider row unticked; removing A's line leaves B and the slider (which re-clamps up).
 9. **Combined commit.** Placing the order of AC 4 (classic and block checkout) writes three `applied` redemption rows (A: 500, `5.0000`; B: 1,500, `10.0000`; slider: 500, `5.0000`), `redeem` ledger rows −500 `…:reward_{A}`, −1,500 `…:reward_{B}`, −500 `…:flexible_discount`, balance 7,350, `_yayloyalty_points_redeemed` 2500 and `_yayloyalty_redeem_value` `20.00`. Re-firing the hook writes nothing (`duplicate`).
 10. **Commit balance.** Dropping the balance to 2,200 between Apply and submit for AC 4's cart does not stop checkout: the rewards (2,000) are covered, so the slider applies 200 ($2) at the next totals run, and the order debits 2,200. Dropping it to 1,900 stops checkout with "You do not have enough Points for these rewards. Remove one and try again." and writes nothing.
 11. **Reversal.** Cancelling the order of AC 9 restores 500, 1,500 and 500 and sets all three rows `cancelled`; a $40 refund (half of $80) on an un-cancelled copy restores 250, 750 and 250.
-12. **Guest.** A guest sees a black circle with the gift icon, "Your rewards", "Sign in to spend your Points." and a "Sign in" button linking to My Account; no balance, no worth.
+12. **Guest.** A guest sees a black circle with the gift icon, "Your rewards", "Sign in to spend your Points." and a small "Sign in" button on the right of the same row, linking to My Account; no balance, no worth.
 13. **Worth hidden.** With `cart-discount` paused on Pro, the header shows "9,850 Points" without "⇄", and the Points discount row is absent; reward rows still show.
 14. **Console.** No console errors on classic or block cart and checkout.
-15. **Checkout collapsed.** With A and the slider at 500 applied, the classic and block checkout card shows the gift icon, "Your rewards", "✓ −$10 · 1,000 Points used" and a "Change" button with `aria-expanded="false"`, and no list. With nothing applied it opens expanded with no Change button.
-16. **Checkout draft.** Change expands the list (`aria-expanded="true"`) with a secondary "Update" button in the header row and the balance line "9,850 Points ⇄ $98.50" under the title. Ticking B and moving the slider sends no request and leaves the totals unchanged; Update sends one request with `{ points, rewards }`, the totals show the new lines, and the card collapses to the new summary. Update with no change collapses without a request. With nothing applied and no change, Update is disabled.
+15. **Checkout collapsed.** With A and the slider at 500 applied, the classic and block checkout card shows a grey header with the gift icon in a black circle, "Points & rewards", "✓ 2 rewards selected" in green and a white "Change" button with `aria-expanded="false"`, and no list. With nothing applied it opens expanded with no Change button.
+16. **Checkout draft.** Change expands the list (`aria-expanded="true"`) with a filled "Update" button in Change's place and "✓ 2 rewards selected" still under the title; with nothing applied the balance line "9,850 Points ⇄ $98.50" sits there instead. Ticking B and moving the slider sends no request and leaves the totals unchanged; Update sends one request with `{ points, rewards }`, the totals show the new lines, and the card collapses to the new summary. Update with no change collapses without a request. With nothing applied and no change, Update is disabled.
 17. **End to end:** on the block cart tick A, tick Points discount and set 500, see total $90.00, place the order, see −500 and −500 in the drawer's Ledger tab and a balance of 8,850, cancel it and see 9,850; repeat on `/e2e-classic-cart/` and `/e2e-classic-checkout/` with a full refund instead, editing the selection at checkout once through Change → tick B → Update. This is `apps/e2e/specs/reward-redemptions.spec.ts`; the Lite slider walk-through stays `apps/e2e/specs/redemptions.spec.ts`.
 
 ## Constraints
@@ -107,14 +106,15 @@ Fixtures: the redemption spec's — Pro build; customer with 9,850 Points; `cart
 - WooCommerce hooks unchanged.
 
 **UI:**
-- Header: gift icon (inline SVG, `aria-hidden`), "Your rewards", right-aligned `points_text( balance )` and "⇄ {money}" (worth; only while `cart-discount` is live).
-- Guest: black circle with the gift icon, "Your rewards", the existing `message_for( no_customer )` line, and a "Sign in" button (new string) linking to `account_url`.
-- Points discount row: `CouponProvider::display_label()`, chip "Flexible amount" (new string), checkbox right. Ticked when `requested > 0`; expanded body: "Min {points_text(min)}" / "Max {points_text(max)}" (new strings with translators comments), range, number field, "{label} = {money}" (new string), `bound_by` note. Disabled and struck through with "{min} minimum" when `is_disabled`. Not rendered for `hidden`.
-- Reward rows: checkbox, name, "{points_text(cost)}" chip, description, "{value} off here"; ticked → soft background; denied → disabled, struck through, reason replaces description; short → disabled, "Not enough Points".
+- Card: one bordered box; the header row sits inside it above a divider, then the list, whose rows have no dividers. A ticked row gets a rounded grey highlight.
+- Header: gift icon (inline SVG, `aria-hidden`), "Your rewards", right-aligned balance (the number bold, the label smaller and muted, in `points_text()`'s translated order) and "⇄ {money}" (worth; only while `cart-discount` is live).
+- Guest: one row: black circle with the gift icon, "Your rewards" over the existing `message_for( no_customer )` line, and a small "Sign in" button (new string) on the right linking to `account_url`.
+- Points discount row: `CouponProvider::display_label()`, chip "Flexible amount" (new string), checkbox right. Ticked when `requested > 0`; expanded body: "Min {points_text(min)}" / "Max {points_text(max)}" (new strings with translators comments), range, then the number field with "{label} = {money}" (new string) small and muted beside it, `bound_by` note. Disabled, faded and struck through when `is_disabled`. Not rendered for `hidden`.
+- Reward rows: one line: name, "{points_text(cost)}" chip, checkbox right; no description, no "{value} off here"; ticked → grey highlight; denied → disabled, faded, struck through; short → disabled, faded.
 - `redeem.js`, cart mode: tick Points discount → `{ points: max }` (the field's `max`); untick → `{ points: 0 }`; range `change` and number `change`/Enter → `{ points }`, debounced 500 ms, while `input` only updates the "= $X" preview; reward tick/untick → `{ rewards: [ticked ids] }`; `lock()` during each request, then the card is replaced as today. Short-row recomputation on tick stays client-side.
 - Checkout mode: the card is in checkout mode when it sits inside `.woocommerce-checkout` (classic checkout body/form) or `.wp-block-woocommerce-checkout` (Checkout block); the script sets `data-mode="checkout"` on the root at init and after each replacement. The server prints one markup for both modes — the Store API's `card` cannot tell the Cart block from the Checkout block — and `redeem.css` shows the summary or the list from `data-mode` and `data-expanded`.
-  - Collapsed (checkout, `summary.points > 0`, not expanded): gift icon, "Your rewards", "✓ {money(summary.value)} off · {points_text(summary.points)} used" (new string, translators comment; rendered as "✓ −$10 · 1,000 Points used"), and a "Change" button (new string) with `aria-expanded="false"` and `aria-controls` the list.
-  - Edit (checkout, expanded or nothing applied): gift icon, "Your rewards", the balance line `points_text( balance ) ⇄ worth` under the title, and an "Update" button (new string, secondary style so it does not compete with the checkout CTA); then the list. Ticks and slider changes are a draft: no request, no debounce; the "= $X" preview and short rows update locally. Update sends `{ points: draft or 0, rewards: [ticked ids] }` in one request, then the replaced card collapses (it is applied) or stays open (nothing applied). Update with no change collapses without a request; disabled while nothing is applied and nothing changed.
+  - Collapsed (checkout, `summary.points > 0`, not expanded): the grey header is the whole card: gift icon in a black circle, "{label} & rewards" (new string, rendered "Points & rewards"), "✓ {summary.count} rewards selected" in green (new `_n()` string; the points discount counts as one), and a white bordered "Change" button (new string) with `aria-expanded="false"` and `aria-controls` the list.
+  - Edit (checkout, expanded or nothing applied): the same grey header with a filled accent "Update" button (new string) in Change's place, and under the title the "rewards selected" line while something is applied, else the balance line `points_text( balance ) ⇄ worth`; then the list. Ticks and slider changes are a draft: no request, no debounce; the "= $X" preview and short rows update locally. Update sends `{ points: draft or 0, rewards: [ticked ids] }` in one request, then the replaced card collapses (it is applied) or stays open (nothing applied). Update with no change collapses without a request; disabled while nothing is applied and nothing changed.
   - The draft slider's Max is the server's last ceiling; if the drafted rewards leave less, the server clamps on Update and the row shows the limit note.
 - Styles: card-local `--yl-redeem-accent: #4353ff`, `accent-color` for checkbox and range; layout per the mock; works at 320 px width.
 - Totals rows unchanged.
@@ -155,7 +155,6 @@ Fixtures: the redemption spec's — Pro build; customer with 9,850 Points; `cart
 | Keep exclusive (visual-only redesign) | User chose stacking, as the mock shows |
 | One Apply button for a draft selection on the cart | User chose instant apply on the cart, as the mock shows |
 | Instant apply at checkout with a "Done" button | User chose a draft with one Update at checkout, as the checkout mock shows |
-| Summary "✓ 2 rewards selected" (mock) | Counts the points discount as a reward; value and points tell the shopper more |
 | Collapsed summary on the cart too, or always collapsed at checkout | User chose checkout only, collapsed only while something is applied |
 | Server-side checkout detection | The Store API's card HTML is shared by the Cart and Checkout blocks, so only the client knows which page it is on |
 | Mock's "Rewards discount (…)" totals labels | User kept today's labels |

@@ -1,7 +1,6 @@
 <?php
 namespace YayLoyalty\Engine\Storefront;
 
-use YayLoyalty\Engine\Points\Context as EarnContext;
 use YayLoyalty\Engine\Redemption\Adapters\StoreApiAdapter;
 use YayLoyalty\Engine\Redemption\CouponProvider;
 use YayLoyalty\Engine\Redemption\ProgramGate;
@@ -12,8 +11,6 @@ use YayLoyalty\Engine\Rewards\Clamp;
 use YayLoyalty\Engine\Rewards\Result;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Repositories\CustomerReader;
-use YayLoyalty\Repositories\RewardRepository;
-use YayLoyalty\Utils\Dates;
 use YayLoyalty\Utils\Log;
 use YayLoyalty\Utils\Text;
 
@@ -65,9 +62,9 @@ final class RedeemCard {
 
     /**
      * The card's changes on pages without the blocks: POST `security` and `rewards`, comma-separated reward ids
-     * (present and empty clears them), `points` (0 removes), or both. Postcondition: SessionIntent::set_rewards()
-     * and set( points ) for whichever is present, unclamped (set( 0 ) when neither is), then one totals run, so the coupon provider puts
-     * the coupons on or takes them off, and the card's new HTML is answered. Never clamps and never touches a coupon.
+     * (present and empty clears them), `points` (0 removes), or both. Postcondition: SessionIntent::apply() with
+     * whichever is present, then one totals run, so the coupon provider puts the coupons on or takes them off,
+     * and the card's new HTML is answered. Never clamps and never touches a coupon.
      */
     public function on_apply(): void {
         check_ajax_referer( self::NONCE_ACTION, 'security' );
@@ -78,15 +75,10 @@ final class RedeemCard {
             wp_send_json_error();
         }
 
-        $has_rewards = isset( $_POST['rewards'] );
-
-        if ( $has_rewards ) {
-            $this->intent->set_rewards( array_filter( array_map( 'absint', explode( ',', sanitize_text_field( wp_unslash( $_POST['rewards'] ) ) ) ) ) );
-        }
-
-        if ( isset( $_POST['points'] ) || ! $has_rewards ) {
-            $this->intent->set( isset( $_POST['points'] ) ? absint( wp_unslash( $_POST['points'] ) ) : 0 );
-        }
+        $this->intent->apply(
+            isset( $_POST['rewards'] ) ? array_map( 'absint', explode( ',', sanitize_text_field( wp_unslash( $_POST['rewards'] ) ) ) ) : null,
+            isset( $_POST['points'] ) ? absint( wp_unslash( $_POST['points'] ) ) : null
+        );
 
         $cart->calculate_totals();
 
@@ -185,17 +177,7 @@ final class RedeemCard {
 
                 self::enqueue_assets();
 
-                return self::template(
-                    self::view( null, $guest, $guest, 0 ) + [
-                        'heading_balance' => null,
-                        'worth'           => null,
-                        'rows'            => [],
-                        'summary'         => [
-                            'points' => 0,
-                            'value'  => 0.0,
-                        ],
-                    ] + self::chrome()
-                );
+                return self::template( self::view( null, $guest, $guest, 0 ) + self::chrome() );
             }
 
             $balance = (int) $this->balance_of( $user_id );
@@ -209,7 +191,7 @@ final class RedeemCard {
 
             self::enqueue_assets();
 
-            $reward = ( new RewardRepository() )->find_live_cart_discount( Dates::now() );
+            $reward = $this->service->live_flexible_reward();
             $worth  = null === $reward || $balance <= 0 ? null : LauncherPayload::worth( $reward, $balance );
 
             return self::template(
@@ -282,15 +264,28 @@ final class RedeemCard {
     }
 
     /**
-     * The heading's inner HTML, escaped: "Your rewards", then for a customer the balance as "9,850 Points" and,
-     * when $worth is non-null, "⇄ $98.50". The worth is the only money the heading prints, and only while
-     * `cart-discount` is live. A guest (null) gets the title alone.
+     * The heading's inner HTML, escaped: "Your rewards", then for a customer the checkout's title "Points &
+     * rewards" (redeem.css shows one of the two by mode), the balance as "9,850 Points" and, when $worth is
+     * non-null, "⇄ $98.50". The worth is the only money the heading prints, and only while `cart-discount` is
+     * live. A guest (null) gets "Your rewards" alone.
      */
     public static function heading( ?int $balance, ?float $worth ): string {
-        $html = '<span>' . esc_html__( 'Your rewards', 'yayloyalty' ) . '</span>';
+        $html = '<span class="yayloyalty-redeem__title">' . esc_html__( 'Your rewards', 'yayloyalty' ) . '</span>';
 
         if ( null !== $balance ) {
-            $html .= '<span class="yayloyalty-redeem__balance">' . esc_html( SettingsHelper::points_text( $balance ) ) . '</span>';
+            // Both titles are printed because the blocks' card is shared by Cart and Checkout.
+            $html .= '<span class="yayloyalty-redeem__title-checkout">' . esc_html(
+                /* translators: %s: the store's points label, as "Points". */
+                sprintf( __( '%s & rewards', 'yayloyalty' ), SettingsHelper::points_label_plural() )
+            ) . '</span>';
+
+            // points_text()'s format, with the number and the label wrapped apart so the label can sit smaller.
+            $html .= '<span class="yayloyalty-redeem__balance">' . sprintf(
+                /* translators: 1: number of points, 2: the store's points label, e.g. "Points". */
+                esc_html( _x( '%1$s %2$s', 'points amount', 'yayloyalty' ) ),
+                esc_html( SettingsHelper::format_number( $balance ) ),
+                '<span class="yayloyalty-redeem__unit">' . esc_html( SettingsHelper::points_label( $balance ) ) . '</span>'
+            ) . '</span>';
 
             if ( null !== $worth ) {
                 $html .= '<span class="yayloyalty-redeem__worth"><span aria-hidden="true">⇄</span> ' . esc_html( LauncherCopy::money( $worth ) ) . '</span>';
@@ -329,33 +324,18 @@ final class RedeemCard {
     }
 
     /**
-     * What the card has applied, for the checkout's collapsed line: `value` the cart's discount on every loyalty
-     * coupon, `points` the slider's applied points plus each applied reward's cost. Both 0 when nothing is applied.
+     * What the card has applied, for the checkout's summary line: `points` the slider's applied points plus each
+     * applied reward's cost, `count` how many are applied, the slider counting as one. Both 0 when nothing is.
      *
-     * @return array{points: int, value: float}
+     * @return array{points: int, count: int}
      */
     private function summary( \WC_Cart $cart, int $user_id, Result $quote ): array {
-        $ex_tax = ! $cart->display_prices_including_tax();
-        $value  = 0.0;
-
-        foreach ( $cart->get_applied_coupons() as $code ) {
-            if ( EarnContext::is_loyalty_code( (string) $code ) ) {
-                $value += (float) $cart->get_coupon_discount_amount( (string) $code, $ex_tax );
-            }
-        }
-
-        $points  = $quote->is_allowed() ? $quote->get_points() : 0;
-        $on_cart = CouponProvider::applied_reward_ids( $cart );
-
-        foreach ( $this->service->quote_rewards( $cart, $user_id ) as $reward_id => $row ) {
-            if ( null !== $row['reward'] && in_array( (int) $reward_id, $on_cart, true ) ) {
-                $points += (int) $row['reward']->get_cost_points();
-            }
-        }
+        $slider  = $quote->is_allowed() ? $quote->get_points() : 0;
+        $rewards = $this->service->applied_reward_costs( $cart, $user_id );
 
         return [
-            'points' => $points,
-            'value'  => round( $value, wc_get_price_decimals() ),
+            'points' => $slider + array_sum( $rewards ),
+            'count'  => ( $slider > 0 ? 1 : 0 ) + count( $rewards ),
         ];
     }
 

@@ -85,7 +85,23 @@ final class SessionIntent {
         $this->set_rewards( array_diff( $this->rewards(), [ $reward_id ] ) );
     }
 
-    /** Postcondition: get() returns 0 and rewards() []. Called by the commit, and when the shopper removes the slider's coupon. */
+    /**
+     * The card's request, from either endpoint: set_rewards( $reward_ids ) when given, then set( $points ) when
+     * given, each leaving the other key alone; set( 0 ) when neither is. Unclamped, as both setters are.
+     *
+     * @param int[]|null $reward_ids
+     */
+    public function apply( ?array $reward_ids, ?int $points ): void {
+        if ( null !== $reward_ids ) {
+            $this->set_rewards( $reward_ids );
+        }
+
+        if ( null !== $points || null === $reward_ids ) {
+            $this->set( (int) $points );
+        }
+    }
+
+    /** Postcondition: get() returns 0 and rewards() []. Called by the commit. */
     public function clear(): void {
         $session = $this->session();
 

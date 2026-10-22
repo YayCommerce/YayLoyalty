@@ -3,15 +3,15 @@
  * The points card, in one of its shapes: a sign-in card for a guest (`guest`), or for a customer the header and
  * one list (`slider` or `hidden`): the Points discount row, which opens into the slider, then the rows
  * RedeemCard::ROWS_FILTER adds.
- * A customer's card also carries the checkout summary ("✓ −$10 · 1,000 Points used"), Change and Update. The server
+ * A customer's card also carries the checkout title, summary ("✓ 2 rewards selected"), Change and Update. The server
  * draws one markup for every page, because the blocks' card is shared by Cart and Checkout: redeem.js sets
  * `data-mode` from the page, and redeem.css shows those three only in checkout mode. `data-applied` marks a card
  * with something applied, which checkout shows collapsed.
  * No input has a `name`, so nothing here rides on the cart or checkout form it may sit in; redeem.js posts the request.
  * Styled by assets/storefront/redeem.css alone: the Design tab's colours belong to the launcher.
  *
- * @var array $view RedeemCard::view(), heading_balance, worth, rows and summary (points, value), plus
- *                  endpoint, nonce, account_url and money.
+ * @var array $view RedeemCard::view() plus endpoint, nonce, account_url and money; a customer's view also
+ *                  carries heading_balance, worth, rows and summary (points, count).
  */
 
 use YayLoyalty\Engine\Redemption\CouponProvider;
@@ -56,8 +56,10 @@ $yayloyalty_icon       = '<svg class="yayloyalty-redeem__icon" width="20" height
     <?php if ( 'guest' === $yayloyalty_state ) : ?>
         <div class="yayloyalty-redeem__guest">
             <span class="yayloyalty-redeem__badge"><?php echo $yayloyalty_icon; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- a fixed SVG literal. ?></span>
-            <h3 class="yayloyalty-redeem__heading"><?php echo RedeemCard::heading( null, null ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- heading() escapes every value. ?></h3>
-            <p class="yayloyalty-redeem__text"><?php echo esc_html( RedemptionService::message_for( ProgramGate::REASON_NO_CUSTOMER ) ); ?></p>
+            <div class="yayloyalty-redeem__guest-text">
+                <h3 class="yayloyalty-redeem__heading"><?php echo RedeemCard::heading( null, null ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- heading() escapes every value. ?></h3>
+                <p class="yayloyalty-redeem__text"><?php echo esc_html( RedemptionService::message_for( ProgramGate::REASON_NO_CUSTOMER ) ); ?></p>
+            </div>
             <a class="yayloyalty-redeem__signin" href="<?php echo esc_url( $view['account_url'] ); ?>"><?php esc_html_e( 'Sign in', 'yayloyalty' ); ?></a>
         </div>
     <?php else : ?>
@@ -68,8 +70,8 @@ $yayloyalty_icon       = '<svg class="yayloyalty-redeem__icon" width="20" height
                 <p class="yayloyalty-redeem__summary" data-yl-summary>
                     <span class="yayloyalty-redeem__tick" aria-hidden="true">✓</span>
                     <?php
-                    /* translators: 1: money amount, as "$10", 2: points amount with the store's label, as "1,000 Points". */
-                    echo esc_html( sprintf( __( '−%1$s · %2$s used', 'yayloyalty' ), LauncherCopy::money( $view['summary']['value'] ), SettingsHelper::points_text( $view['summary']['points'] ) ) );
+                    /* translators: %s: how many rewards are applied, the points discount counting as one. */
+                    echo esc_html( sprintf( _n( '%s reward selected', '%s rewards selected', $view['summary']['count'], 'yayloyalty' ), number_format_i18n( $view['summary']['count'] ) ) );
                     ?>
                 </p>
                 <button type="button" class="yayloyalty-redeem__change" data-yl-change aria-expanded="false" aria-controls="<?php echo esc_attr( $yayloyalty_list_id ); ?>"><?php esc_html_e( 'Change', 'yayloyalty' ); ?></button>
@@ -85,20 +87,15 @@ $yayloyalty_icon       = '<svg class="yayloyalty-redeem__icon" width="20" height
                 $yayloyalty_top        = max( $view['min'], $view['max'] );
                 $yayloyalty_is_stuck   = $view['max'] < $view['min'];
                 $yayloyalty_preview_at = $view['points'] > 0 ? $view['value'] : $view['max_value'];
+                $yayloyalty_value      = $view['points'] > 0 ? $view['points'] : $yayloyalty_top;
+                // How far the track is filled: WebKit draws no fill of its own (redeem.css, redeem.js paintRange()).
+                $yayloyalty_fill = $yayloyalty_top > $view['min'] ? ( $yayloyalty_value - $view['min'] ) / ( $yayloyalty_top - $view['min'] ) * 100 : 100;
                 ?>
                 <div class="yayloyalty-redeem__item" data-yl-slider>
                     <label class="yayloyalty-redeem__option">
                         <span class="yayloyalty-redeem__option-body">
                             <span class="yayloyalty-redeem__name"><?php echo esc_html( CouponProvider::display_label() ); ?></span>
                             <span class="yayloyalty-redeem__chip"><?php esc_html_e( 'Flexible amount', 'yayloyalty' ); ?></span>
-                            <?php if ( $view['is_disabled'] ) : ?>
-                                <span class="yayloyalty-redeem__desc">
-                                    <?php
-                                    /* translators: %s: points amount with the store's label, as "100 Points". */
-                                    echo esc_html( sprintf( __( '%s minimum', 'yayloyalty' ), SettingsHelper::points_text( $view['min'] ) ) );
-                                    ?>
-                                </span>
-                            <?php endif; ?>
                         </span>
                         <input
                             type="checkbox"
@@ -128,10 +125,11 @@ $yayloyalty_icon       = '<svg class="yayloyalty-redeem__icon" width="20" height
                             type="range"
                             class="yayloyalty-redeem__range"
                             data-yl-range
+                            style="--yayloyalty-redeem-fill: <?php echo esc_attr( (string) round( $yayloyalty_fill, 2 ) ); ?>%"
                             min="<?php echo esc_attr( (string) $view['min'] ); ?>"
                             max="<?php echo esc_attr( (string) $yayloyalty_top ); ?>"
                             step="<?php echo esc_attr( (string) $view['step'] ); ?>"
-                            value="<?php echo esc_attr( (string) ( $view['points'] > 0 ? $view['points'] : $yayloyalty_top ) ); ?>"
+                            value="<?php echo esc_attr( (string) $yayloyalty_value ); ?>"
                             aria-label="<?php echo esc_attr( $yayloyalty_aria ); ?>"
                             <?php disabled( $yayloyalty_is_stuck ); ?>
                         >
@@ -144,11 +142,10 @@ $yayloyalty_icon       = '<svg class="yayloyalty-redeem__icon" width="20" height
                                 min="<?php echo esc_attr( (string) $view['min'] ); ?>"
                                 max="<?php echo esc_attr( (string) $view['max'] ); ?>"
                                 step="<?php echo esc_attr( (string) $view['step'] ); ?>"
-                                value="<?php echo esc_attr( (string) ( $view['points'] > 0 ? $view['points'] : $yayloyalty_top ) ); ?>"
+                                value="<?php echo esc_attr( (string) $yayloyalty_value ); ?>"
                                 aria-label="<?php echo esc_attr( $yayloyalty_aria ); ?>"
                                 <?php disabled( $yayloyalty_is_stuck ); ?>
                             >
-                            <span class="yayloyalty-redeem__unit"><?php echo esc_html( $yayloyalty_label ); ?></span>
                             <span class="yayloyalty-redeem__off" data-yl-off><?php echo esc_html( sprintf( $yayloyalty_off_template, LauncherCopy::money( $yayloyalty_preview_at ) ) ); ?></span>
                         </div>
                         <?php if ( '' !== $yayloyalty_note ) : ?>

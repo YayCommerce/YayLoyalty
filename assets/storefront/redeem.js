@@ -2,7 +2,7 @@
  * The points card's behaviour: one checkbox list, in one of two modes the page decides (`data-mode`).
  *
  * - Cart mode applies as it changes. Ticking the Points discount row opens its slider and applies the most it
- *   can take; unticking sends 0. A release, a changed field or Enter applies the points once, 500 ms after the
+ *   can take; unticking sends 0. A release, a changed field or Enter applies the points once, DEBOUNCE_MS after the
  *   last of them. Ticking a reward row sends every ticked reward id.
  * - Checkout mode (inside the classic checkout form or the Checkout block) holds every change as a draft: the
  *   card opens collapsed to its summary while something is applied, Change opens the list, and Update sends the
@@ -69,6 +69,15 @@
     points -= points % step;
 
     return Math.max(min, points);
+  }
+
+  /** Fills the range's track up to its thumb: WebKit has no fill of its own, so redeem.css reads this variable. */
+  function paintRange(range) {
+    var min = numberAttr(range, "min");
+    var max = numberAttr(range, "max");
+    var fill = max > min ? ((Number(range.value) - min) / (max - min)) * 100 : 100;
+
+    range.style.setProperty("--yayloyalty-redeem-fill", fill + "%");
   }
 
   /** Whole digits grouped in threes with the store's thousand separator, read from `data-thousand-sep`. */
@@ -226,6 +235,7 @@
     var points = clamp(range, field.value);
 
     range.value = String(points);
+    paintRange(range);
     if (rewriteField) {
       field.value = String(points);
     }
@@ -271,28 +281,18 @@
 
   /**
    * The reward rows after a tick: a row whose cost would take the ticked rewards past the balance is disabled
-   * with "Not enough …" until other ticks drop.
+   * until other ticks drop. Mirrors the reward rows' server-side `is_short`, the source of truth, over the
+   * `data-balance` and `data-cost` it prints; this file ships in Lite, so it names no Pro class.
    */
   function refreshShort(list) {
-    var ticked = tickedBoxes(list);
-    var sum = ticked.reduce(function (total, box) {
+    var sum = tickedBoxes(list).reduce(function (total, box) {
       return total + numberAttr(box, "data-cost");
     }, 0);
     var balance = numberAttr(list, "data-balance");
 
     list.querySelectorAll("[data-yl-reward]").forEach(function (box) {
-      if (box.checked || box.hasAttribute("data-denied")) {
-        return;
-      }
-
-      var isShort = sum + numberAttr(box, "data-cost") > balance;
-      var desc = box.parentNode.querySelector("[data-yl-desc]");
-
-      box.disabled = isShort;
-      if (desc) {
-        desc.textContent = isShort
-          ? list.getAttribute("data-short-text") || ""
-          : desc.getAttribute("data-text") || "";
+      if (!box.checked && !box.hasAttribute("data-denied")) {
+        box.disabled = sum + numberAttr(box, "data-cost") > balance;
       }
     });
   }
@@ -308,21 +308,25 @@
       : [];
   }
 
+  /** The typed points as the slider takes them; null on a card without the field, or while it is disabled. */
+  function typedPoints(root) {
+    var range = root.querySelector("[data-yl-range]");
+    var field = root.querySelector("[data-yl-points]");
+
+    return range && field && !field.disabled ? clamp(range, field.value) : null;
+  }
+
   /**
    * What Update sends. A ticked row whose field is disabled (the rewards leave it nothing) keeps the shopper's
    * request, so an untouched row is not lowered to its minimum.
    */
   function draftOf(root) {
     var toggle = root.querySelector("[data-yl-slider-toggle]");
-    var range = root.querySelector("[data-yl-range]");
-    var field = root.querySelector("[data-yl-points]");
+    var typed = typedPoints(root);
     var points = 0;
 
     if (toggle && toggle.checked) {
-      points =
-        field && range && !field.disabled
-          ? clamp(range, field.value)
-          : numberAttr(toggle, "data-requested");
+      points = typed !== null ? typed : numberAttr(toggle, "data-requested");
     }
 
     return { points: points, rewards: tickedIds(root) };
@@ -331,8 +335,7 @@
   /** Whether the draft differs from what the server drew: the markup's own checked and value attributes. */
   function isChanged(root) {
     var toggle = root.querySelector("[data-yl-slider-toggle]");
-    var range = root.querySelector("[data-yl-range]");
-    var field = root.querySelector("[data-yl-points]");
+    var typed = typedPoints(root);
 
     if (toggle && toggle.checked !== toggle.defaultChecked) {
       return true;
@@ -340,10 +343,8 @@
     if (
       toggle &&
       toggle.checked &&
-      field &&
-      range &&
-      !field.disabled &&
-      clamp(range, field.value) !== Number(field.defaultValue)
+      typed !== null &&
+      typed !== Number(root.querySelector("[data-yl-points]").defaultValue)
     ) {
       return true;
     }
@@ -414,6 +415,7 @@
 
     if (target.matches("[data-yl-range]")) {
       root.querySelector("[data-yl-points]").value = target.value;
+      paintRange(target);
       showOff(root, Number(target.value));
     } else if (target.matches("[data-yl-points]")) {
       // The field keeps what was typed until it is left; the slider and the preview follow the clamped number.

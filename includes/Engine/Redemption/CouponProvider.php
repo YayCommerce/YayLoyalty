@@ -339,7 +339,7 @@ final class CouponProvider {
         foreach ( $this->service->quote_rewards( $cart, RedemptionService::shopper_id() ) as $reward_id => $row ) {
             $quote = $row['quote'];
 
-            if ( $quote->is_allowed() && $quote->get_value() > 0 ) {
+            if ( RedemptionService::applies( $quote ) ) {
                 if ( RewardType::PERCENT_COUPON === $row['reward']->get_type() ) {
                     $percent[] = self::reward_code( $reward_id );
                 } else {

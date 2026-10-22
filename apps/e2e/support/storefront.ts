@@ -7,6 +7,32 @@ export function card(page: Page): Locator {
   return page.locator('[data-yl-redeem]');
 }
 
+/** The block totals' discount rows. The card itself also reads "Points discount", as its row's name. */
+export function blockDiscounts(page: Page): Locator {
+  return page.locator('.wc-block-components-totals-discount');
+}
+
+/** The block totals' order total. */
+export function blockTotal(page: Page): Locator {
+  return page.locator('.wc-block-components-totals-footer-item');
+}
+
+/** The card's "Points to spend" number field. */
+export function pointsField(page: Page): Locator {
+  return card(page).getByRole('spinbutton', { name: 'Points to spend' });
+}
+
+/** The card's Points discount checkbox, named by its row: "Points discount Flexible amount". */
+export function pointsDiscountBox(page: Page): Locator {
+  return card(page).getByRole('checkbox', { name: /^Points discount/ });
+}
+
+/** Types the points into the card's field and presses Enter; on the cart that applies them after the debounce. */
+export async function setPoints(page: Page, points: number): Promise<void> {
+  await pointsField(page).fill(String(points));
+  await pointsField(page).press('Enter');
+}
+
 /** Opens the storefront launcher on the current page and returns its panel. */
 export async function openLauncher(page: Page): Promise<Locator> {
   await page.locator('[data-yl-open]').click();

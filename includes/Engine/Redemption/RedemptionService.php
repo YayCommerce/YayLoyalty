@@ -67,7 +67,7 @@ final class RedemptionService {
     /** @var array<int, Reward|null> Rewards read by id this request; null for an id with no row. */
     private array $reward_cache = [];
 
-    /** quote_rewards()'s last answer, and the picked ids, cart and merchant coupons it was computed for. */
+    /** quote_rewards()'s last answer, and the picked ids, shopper, cart and merchant coupons it was computed for. */
     private array $rewards_quoted = [];
 
     private string $rewards_quoted_for = '';
@@ -171,13 +171,7 @@ final class RedemptionService {
      * less their value; with none picked, or none allowed, it quotes against the whole of both.
      */
     private function quote_for( \WC_Cart $cart, ?int $user_id, int $points_requested ): Result {
-        // One request quotes many times (every coupon load and totals run); the reward row is read for the first only.
-        if ( ! $this->is_reward_read ) {
-            $this->quoted_reward  = $this->flexible_reward();
-            $this->is_reward_read = true;
-        }
-
-        $reward = $this->quoted_reward;
+        $reward = $this->quoted_reward();
 
         if ( null === $reward ) {
             return Result::denied( self::REASON_NO_REWARD );
@@ -188,7 +182,7 @@ final class RedemptionService {
         $amount = 0.0;
 
         foreach ( $this->quote_rewards( $cart, $user_id ) as $row ) {
-            if ( $row['quote']->is_allowed() && $row['quote']->get_value() > 0 ) {
+            if ( self::applies( $row['quote'] ) ) {
                 $cost   += $row['quote']->get_points();
                 $amount += $row['quote']->get_value();
             }
@@ -199,6 +193,50 @@ final class RedemptionService {
         }
 
         return $this->quoter->quote( $reward, $ctx );
+    }
+
+    /**
+     * The flexible reward while it is live now, null otherwise: the row quote() prices, so the card's header
+     * worth reads nothing of its own.
+     */
+    public function live_flexible_reward(): ?Reward {
+        $reward = $this->quoted_reward();
+
+        return null !== $reward && $reward->is_live_at( Dates::now() ) ? $reward : null;
+    }
+
+    /** The flexible reward for this request, live or not. One request quotes many times; the row is read once. */
+    private function quoted_reward(): ?Reward {
+        if ( ! $this->is_reward_read ) {
+            $this->quoted_reward  = $this->flexible_reward();
+            $this->is_reward_read = true;
+        }
+
+        return $this->quoted_reward;
+    }
+
+    /** Whether a reward's quote puts a line on the cart: allowed, with a value. */
+    public static function applies( Result $quote ): bool {
+        return $quote->is_allowed() && $quote->get_value() > 0;
+    }
+
+    /**
+     * The applied rewards' costs, keyed by reward id: picked ones whose coupon is on the cart. The card's
+     * summary and Pro's reward rows both read it.
+     *
+     * @return array<int, int>
+     */
+    public function applied_reward_costs( \WC_Cart $cart, ?int $user_id ): array {
+        $on_cart = CouponProvider::applied_reward_ids( $cart );
+        $costs   = [];
+
+        foreach ( $this->quote_rewards( $cart, $user_id ) as $reward_id => $row ) {
+            if ( null !== $row['reward'] && in_array( (int) $reward_id, $on_cart, true ) ) {
+                $costs[ $reward_id ] = (int) $row['reward']->get_cost_points();
+            }
+        }
+
+        return $costs;
     }
 
     /**
@@ -355,8 +393,7 @@ final class RedemptionService {
      * when it is denied, or its bound_by when it applies nothing. Writes nothing.
      */
     public function checkout_error( \WC_Cart $cart, ?int $user_id ): ?string {
-        $has_rewards = [] !== $this->intent->rewards();
-        $error       = $has_rewards ? $this->rewards_error( $cart, $user_id ) : null;
+        $error = $this->rewards_error( $cart, $user_id );
 
         if ( null !== $error || 0 === $this->intent->get() ) {
             return $error;
@@ -368,7 +405,7 @@ final class RedemptionService {
             return $quote->get_reason();
         }
 
-        if ( $quote->get_points() > 0 || ( $has_rewards && $this->has_applying_reward( $cart, $user_id ) ) ) {
+        if ( $quote->get_points() > 0 || $this->has_applying_reward( $cart, $user_id ) ) {
             return null;
         }
 
@@ -378,7 +415,7 @@ final class RedemptionService {
     /** Whether a picked reward's quote is allowed with a value: one that puts a line on the cart. */
     private function has_applying_reward( \WC_Cart $cart, ?int $user_id ): bool {
         foreach ( $this->quote_rewards( $cart, $user_id ) as $row ) {
-            if ( $row['quote']->is_allowed() && $row['quote']->get_value() > 0 ) {
+            if ( self::applies( $row['quote'] ) ) {
                 return true;
             }
         }
@@ -398,7 +435,7 @@ final class RedemptionService {
 
             if ( Result::REASON_INSUFFICIENT_BALANCE === $quote->get_reason() ) {
                 $is_short = true;
-            } elseif ( null === $row['reward'] || ! $quote->is_allowed() || $quote->get_value() <= 0 ) {
+            } elseif ( null === $row['reward'] || ! self::applies( $quote ) ) {
                 return self::REASON_REWARD_UNAVAILABLE;
             }
         }
