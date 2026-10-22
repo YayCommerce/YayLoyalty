@@ -18,18 +18,16 @@ use YayLoyalty\Repositories\RewardRepository;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The card's Rewards tab: one checkbox row per reward RedemptionService::reward_options() offers, the selection
- * line and one Apply/Update button. Draws only; redeem.js posts the ticked ids and the server answers a new card.
+ * The card's reward rows: one checkbox row per reward RedemptionService::reward_options() offers, listed after the
+ * Points discount row and ticked to apply. Draws only; redeem.js posts the ticked ids and the server answers a new card.
  * It also lists the same rewards, with the same one-line description, under "Ways to redeem" in the launcher and
  * My Account.
  */
 final class RewardsPanel {
 
-    public const KEY = 'rewards';
-
     /** Called once by YayLoyaltyPro::boot(). */
     public function register(): void {
-        add_filter( RedeemCard::PANELS_FILTER, [ $this, 'panel' ], 10, 2 );
+        add_filter( RedeemCard::ROWS_FILTER, [ $this, 'rows' ], 10, 2 );
         add_filter( LauncherPayload::REDEEM_OFFERS_FILTER, [ $this, 'redeem_offers' ], 10, 2 );
     }
 
@@ -50,19 +48,19 @@ final class RewardsPanel {
     }
 
     /**
-     * Adds `rewards` to the card's panels: active while rewards are applied. Unchanged when there is no option, or
-     * when every option is refused by a program gate.
+     * Appends the reward rows' HTML to the card's rows. Unchanged when there is no option, or when every option is
+     * refused by a program gate.
      *
-     * @param array<string, array> $panels
-     * @param array                $context RedeemCard::PANELS_FILTER's context.
-     * @return array<string, array>
+     * @param string[] $rows
+     * @param array    $context RedeemCard::ROWS_FILTER's context.
+     * @return string[]
      */
-    public function panel( array $panels, array $context ): array {
+    public function rows( array $rows, array $context ): array {
         $service = $context['service'] ?? null;
         $cart    = $context['cart'] ?? null;
 
         if ( ! $service instanceof RedemptionService || ! $cart instanceof \WC_Cart ) {
-            return $panels;
+            return $rows;
         }
 
         $user_id = (int) $context['user_id'];
@@ -70,26 +68,19 @@ final class RewardsPanel {
         $options = $service->reward_options( $cart, $user_id );
 
         if ( [] === $options || self::is_refused( $options ) ) {
-            return $panels;
+            return $rows;
         }
 
         $applied = self::applied_points( $service->quote_rewards( $cart, $user_id ), $cart );
-        $spent   = array_sum( $applied );
 
-        $panels[ self::KEY ] = [
-            'label'     => __( 'Rewards', 'yayloyalty' ),
-            'html'      => self::template(
-                [
-                    'rows'       => self::rows( $options, $applied, $spent, $cart, $balance ),
-                    'is_applied' => [] !== $applied,
-                    'spent'      => $spent,
-                    'balance'    => $balance,
-                ]
-            ),
-            'is_active' => [] !== $applied,
-        ];
+        $rows[] = self::template(
+            [
+                'rows'    => self::row_views( $options, $applied, array_sum( $applied ), $cart, $balance ),
+                'balance' => $balance,
+            ]
+        );
 
-        return $panels;
+        return $rows;
     }
 
     /** @param array<int, array{reward: Reward, quote: Result}> $options */
@@ -106,7 +97,7 @@ final class RewardsPanel {
 
     /**
      * The applied rewards' costs, keyed by reward id: picked ones whose coupon is on the cart, the same test
-     * RedeemCard uses for the slider's exclusivity notice.
+     * RedeemCard uses for its summary.
      *
      * @param array<int, array{reward: ?Reward, quote: Result}> $picked RedemptionService::quote_rewards().
      * @return array<int, int>
@@ -126,15 +117,15 @@ final class RewardsPanel {
 
     /**
      * What each row prints. A row the server refuses is `denied`, with its reason as `text`. A row that is not
-     * applied and would take the applied rewards past the balance is `is_short`, re-enabled by redeem.js as the
-     * selection drops.
+     * applied and would take the applied rewards past the balance is `is_short`, re-enabled by redeem.js as other
+     * ticks drop.
      *
      * @param array<int, array{reward: Reward, quote: Result}> $options
      * @param array<int, int>                                  $applied
      * @param int                                              $spent   The applied rewards' summed cost.
      * @return array<int, array{id: int, name: string, cost: int, text: string, here: string, is_applied: bool, is_denied: bool, is_short: bool}>
      */
-    private static function rows( array $options, array $applied, int $spent, \WC_Cart $cart, int $balance ): array {
+    private static function row_views( array $options, array $applied, int $spent, \WC_Cart $cart, int $balance ): array {
         $rows = [];
 
         foreach ( $options as $reward_id => $option ) {
