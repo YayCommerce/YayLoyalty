@@ -29,8 +29,9 @@ defined( 'ABSPATH' ) || exit;
  * the value onto the order. The double-debit guard is the ledger key, one
  * per order and reward. A failed re-check writes nothing and the caller
  * fails the checkout. commit_rewards() does the same for an order's reward
- * coupon lines, all of them or none. Cancel and refund are not here: they
- * are Reversal's.
+ * coupon lines, all of them or none, and commit_all() for an order carrying
+ * both kinds, the rewards first. Cancel and refund are not here: they are
+ * Reversal's.
  */
 final class CommitWriter {
 
@@ -98,26 +99,10 @@ final class CommitWriter {
                     return $this->ledger->redeem( $this->draft_from( $user_id, $order_id, $existing->get_points(), (int) $existing->get_id() ) );
                 }
 
-                $ctx    = $this->contexts->from_order( $order, $reward, $customer->get_balance() );
-                $frozen = (int) $ctx->get_points_requested();
+                $quote = $this->requote_slider( $order, $reward, $customer->get_balance() );
 
-                if ( $frozen <= 0 ) {
-                    return Outcome::skipped( RedemptionService::REASON_NO_INTENT );
-                }
-
-                $quote = $this->quoter->quote( $reward, $ctx );
-
-                if ( ! $quote->is_allowed() ) {
-                    return Outcome::skipped( $quote->get_reason(), $quote );
-                }
-
-                if ( $quote->get_points() < $frozen ) {
-                    return Outcome::skipped( '' !== $quote->get_bound_by() ? $quote->get_bound_by() : Result::REASON_INSUFFICIENT_BALANCE, $quote );
-                }
-
-                // The order carries a discount these points do not buy: debit nothing.
-                if ( abs( $quote->get_value() - $this->contexts->points_discount_of( $order ) ) >= 0.5 / pow( 10, wc_get_price_decimals() ) ) {
-                    return Outcome::skipped( Clamp::BOUND_CART, $quote );
+                if ( $quote instanceof Outcome ) {
+                    return $quote;
                 }
 
                 $redemption_id = $this->redemptions->insert( $this->redemption_from( $quote, $order ) );
@@ -180,45 +165,15 @@ final class CommitWriter {
                         return $this->ledger->redeem( $this->reward_draft( $user_id, $order_id, $last->get_reward_id(), $last->get_points(), (int) $last->get_id() ) );
                     }
 
-                    $lines = [];
-                    $cost  = 0;
+                    $lines   = [];
+                    $cost    = 0;
+                    $skipped = $this->requote_reward_lines( $order, $rewards, $customer->get_balance(), $lines, $cost );
 
-                    foreach ( $rewards as $code => $reward ) {
-                        if ( null === $reward ) {
-                            return Outcome::skipped( RedemptionService::REASON_REWARD_UNAVAILABLE );
-                        }
-
-                        $quote = $this->quoter->quote( $reward, $this->contexts->from_order_line( $order, $reward, $customer->get_balance() ) );
-                        $value = $this->contexts->line_discount_of( $order, (string) $code );
-
-                        if ( ! $quote->is_allowed() || $value <= 0 ) {
-                            return Outcome::skipped( RedemptionService::REASON_REWARD_UNAVAILABLE, $quote );
-                        }
-
-                        $lines[] = [ (string) $code, $reward, $quote, $value ];
-                        $cost   += $quote->get_points();
+                    if ( null !== $skipped ) {
+                        return $skipped;
                     }
 
-                    if ( $cost > $customer->get_balance() ) {
-                        return Outcome::skipped( RedemptionService::REASON_REWARDS_BALANCE );
-                    }
-
-                    $debit = null;
-                    $total = 0.0;
-
-                    foreach ( $lines as list( $code, $reward, $quote, $value ) ) {
-                        $redemption_id = $this->redemptions->insert( $this->reward_row( $order, $reward, $quote->get_points(), $value, $code ) );
-                        $debit         = $this->ledger->redeem( $this->reward_draft( $user_id, $order_id, (int) $reward->get_id(), $quote->get_points(), $redemption_id ) );
-
-                        if ( Outcome::AWARDED !== $debit->get_status() ) {
-                            $failed = $debit;
-
-                            // Thrown so Transaction::run() rolls back every row this commit wrote.
-                            throw new \RuntimeException( 'YayLoyalty: a reward debit was not written.' );
-                        }
-
-                        $total += (float) $this->money( $value );
-                    }
+                    list( $debit, $quote, $total ) = $this->write_reward_lines( $order, $lines, $failed );
 
                     $order->update_meta_data( self::META_POINTS, $cost );
                     $order->update_meta_data( self::META_VALUE, $this->money( $total ) );
@@ -234,6 +189,178 @@ final class CommitWriter {
 
             throw $e;
         }
+    }
+
+    /**
+     * Preconditions: $order is saved, its totals frozen, and it carries reward
+     * coupon lines and our slider's line; $rewards as commit_rewards() takes
+     * it; $flexible is the flexible reward. Any number of firings.
+     *
+     * One Transaction::run() under the customer lock, exactly one of:
+     * - Outcome::redeemed (the slider's debit): commit_rewards()'s rows for
+     *   the reward lines, then commit()'s for the slider's, quoted against
+     *   the locked balance less the rewards' cost, then the summed meta.
+     * - Outcome::duplicate: every line already has its row; nothing written.
+     * - Outcome::skipped( reason ), nothing written: what commit_rewards()
+     *   skips for, then what commit() skips the slider's line for.
+     * - A debit that is not AWARDED: the whole commit is rolled back and that
+     *   debit's Outcome answered.
+     *
+     * @param array<string, Reward|null> $rewards Keyed by coupon code.
+     * @throws \YayLoyalty\Database\QueryException When a write fails (rolled back).
+     */
+    public function commit_all( \WC_Order $order, array $rewards, Reward $flexible ): Outcome {
+        $failed = null;
+
+        try {
+            return Transaction::run(
+                function () use ( $order, $rewards, $flexible, &$failed ): Outcome {
+                    $user_id  = (int) $order->get_customer_id();
+                    $order_id = (int) $order->get_id();
+
+                    if ( $user_id <= 0 ) {
+                        return Outcome::skipped( ProgramGate::REASON_NO_CUSTOMER );
+                    }
+
+                    $customer = $this->customers->ensure_and_lock( $user_id );
+                    $slider   = $this->redemptions->find_by_order( $order_id, (int) $flexible->get_id() );
+
+                    if ( null !== $slider && count( $this->existing_rows( $order_id, array_keys( $rewards ) ) ) === count( $rewards ) ) {
+                        // Every key is already in the ledger, so this answers duplicate with the slider's row and writes nothing.
+                        return $this->ledger->redeem( $this->draft_from( $user_id, $order_id, $slider->get_points(), (int) $slider->get_id() ) );
+                    }
+
+                    $lines   = [];
+                    $cost    = 0;
+                    $skipped = $this->requote_reward_lines( $order, $rewards, $customer->get_balance(), $lines, $cost );
+
+                    if ( null !== $skipped ) {
+                        return $skipped;
+                    }
+
+                    $quote = $this->requote_slider( $order, $flexible, $customer->get_balance() - $cost );
+
+                    if ( $quote instanceof Outcome ) {
+                        return $quote;
+                    }
+
+                    list( , , $total ) = $this->write_reward_lines( $order, $lines, $failed );
+
+                    $redemption_id = $this->redemptions->insert( $this->redemption_from( $quote, $order ) );
+                    $debit         = $this->ledger->redeem( $this->draft_from( $user_id, $order_id, $quote->get_points(), $redemption_id ) );
+
+                    if ( Outcome::AWARDED !== $debit->get_status() ) {
+                        $failed = $debit;
+
+                        // Thrown so Transaction::run() rolls back the reward rows written above too.
+                        throw new \RuntimeException( 'YayLoyalty: a points discount debit was not written.' );
+                    }
+
+                    $order->update_meta_data( self::META_POINTS, $cost + $quote->get_points() );
+                    $order->update_meta_data( self::META_VALUE, $this->money( $total + (float) $this->decimal( $quote ) ) );
+                    $order->save();
+
+                    return Outcome::redeemed( $debit->get_entry(), $quote );
+                }
+            );
+        } catch ( \RuntimeException $e ) {
+            if ( null !== $failed ) {
+                return $failed;
+            }
+
+            throw $e;
+        }
+    }
+
+    /**
+     * The slider's line re-quoted against $balance: the quote when it buys exactly the line, otherwise why not.
+     * Skipped when the line costs nothing (REASON_NO_INTENT), a gate denies, the balance or a limit covers fewer
+     * points than the line costs (the bound that bit), or the value is not the line's amount (BOUND_CART).
+     *
+     * @return Result|Outcome
+     */
+    private function requote_slider( \WC_Order $order, Reward $reward, int $balance ) {
+        $ctx    = $this->contexts->from_order( $order, $reward, $balance );
+        $frozen = (int) $ctx->get_points_requested();
+
+        if ( $frozen <= 0 ) {
+            return Outcome::skipped( RedemptionService::REASON_NO_INTENT );
+        }
+
+        $quote = $this->quoter->quote( $reward, $ctx );
+
+        if ( ! $quote->is_allowed() ) {
+            return Outcome::skipped( $quote->get_reason(), $quote );
+        }
+
+        if ( $quote->get_points() < $frozen ) {
+            return Outcome::skipped( '' !== $quote->get_bound_by() ? $quote->get_bound_by() : Result::REASON_INSUFFICIENT_BALANCE, $quote );
+        }
+
+        // The order carries a discount these points do not buy: debit nothing.
+        if ( abs( $quote->get_value() - $this->contexts->points_discount_of( $order ) ) >= 0.5 / pow( 10, wc_get_price_decimals() ) ) {
+            return Outcome::skipped( Clamp::BOUND_CART, $quote );
+        }
+
+        return $quote;
+    }
+
+    /**
+     * Re-quotes each reward line against $balance into $lines (`[ code, reward, quote, value ]`) and sums their
+     * cost into $cost. Null when every line holds; else skipped REASON_REWARD_UNAVAILABLE for a null reward, a
+     * denied re-quote or a line worth nothing, or REASON_REWARDS_BALANCE when the summed cost exceeds $balance.
+     *
+     * @param array<string, Reward|null> $rewards
+     */
+    private function requote_reward_lines( \WC_Order $order, array $rewards, int $balance, array &$lines, int &$cost ): ?Outcome {
+        foreach ( $rewards as $code => $reward ) {
+            if ( null === $reward ) {
+                return Outcome::skipped( RedemptionService::REASON_REWARD_UNAVAILABLE );
+            }
+
+            $quote = $this->quoter->quote( $reward, $this->contexts->from_order_line( $order, $reward, $balance ) );
+            $value = $this->contexts->line_discount_of( $order, (string) $code );
+
+            if ( ! $quote->is_allowed() || $value <= 0 ) {
+                return Outcome::skipped( RedemptionService::REASON_REWARD_UNAVAILABLE, $quote );
+            }
+
+            $lines[] = [ (string) $code, $reward, $quote, $value ];
+            $cost   += $quote->get_points();
+        }
+
+        return $cost > $balance ? Outcome::skipped( RedemptionService::REASON_REWARDS_BALANCE ) : null;
+    }
+
+    /**
+     * Writes each line's redemptions row and its REDEEM row. A debit that is not AWARDED is put in $failed and a
+     * RuntimeException thrown, so the caller's Transaction::run() rolls back every row written.
+     *
+     * @param array<int, array{0: string, 1: Reward, 2: Result, 3: float}> $lines requote_reward_lines()'s.
+     * @return array{0: Outcome, 1: Result, 2: float} The last debit, the last quote, and the lines' summed value.
+     */
+    private function write_reward_lines( \WC_Order $order, array $lines, ?Outcome &$failed ): array {
+        $user_id  = (int) $order->get_customer_id();
+        $order_id = (int) $order->get_id();
+        $debit    = null;
+        $quote    = null;
+        $total    = 0.0;
+
+        foreach ( $lines as list( $code, $reward, $quote, $value ) ) {
+            $redemption_id = $this->redemptions->insert( $this->reward_row( $order, $reward, $quote->get_points(), $value, $code ) );
+            $debit         = $this->ledger->redeem( $this->reward_draft( $user_id, $order_id, (int) $reward->get_id(), $quote->get_points(), $redemption_id ) );
+
+            if ( Outcome::AWARDED !== $debit->get_status() ) {
+                $failed = $debit;
+
+                // Thrown so Transaction::run() rolls back every row this commit wrote.
+                throw new \RuntimeException( 'YayLoyalty: a reward debit was not written.' );
+            }
+
+            $total += (float) $this->money( $value );
+        }
+
+        return [ $debit, $quote, $total ];
     }
 
     /**

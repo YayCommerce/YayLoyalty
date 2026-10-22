@@ -474,8 +474,8 @@ final class RedemptionService {
      * ZONE 2. Once per order, from the order-processed hook of either
      * adapter. Re-quotes from the order (never from the session) and
      * commits through CommitWriter in one transaction: the slider's line
-     * through commit(), reward lines through commit_rewards(). An order
-     * carrying both kinds is skipped with REASON_REWARD_UNAVAILABLE.
+     * through commit(), reward lines through commit_rewards(), and an order
+     * carrying both kinds through commit_all().
      *
      * Postconditions, exactly one of:
      * - The order has no coupon line of ours: Outcome::skipped( REASON_NO_INTENT ), nothing else happens.
@@ -506,11 +506,16 @@ final class RedemptionService {
             return Outcome::skipped( self::REASON_NO_INTENT );
         }
 
-        if ( $has_slider && [] !== $reward_codes ) {
-            $outcome = Outcome::skipped( self::REASON_REWARD_UNAVAILABLE );
-        } elseif ( $has_slider ) {
-            $reward  = $this->flexible_reward();
-            $outcome = null === $reward ? Outcome::skipped( self::REASON_NO_REWARD ) : $this->writer->commit( $order, $reward );
+        if ( $has_slider ) {
+            $reward = $this->flexible_reward();
+
+            if ( null === $reward ) {
+                $outcome = Outcome::skipped( self::REASON_NO_REWARD );
+            } elseif ( [] === $reward_codes ) {
+                $outcome = $this->writer->commit( $order, $reward );
+            } else {
+                $outcome = $this->writer->commit_all( $order, $this->offered_rewards_of( $reward_codes ), $reward );
+            }
         } else {
             $outcome = $this->writer->commit_rewards( $order, $this->offered_rewards_of( $reward_codes ) );
         }
