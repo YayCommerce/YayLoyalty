@@ -1,7 +1,6 @@
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import { __ } from '@wordpress/i18n';
 
-import { CampaignStatus } from '@/lib/schema/campaign.schema';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScheduleFields } from '@/components/ui/custom/schedule-fields';
@@ -10,7 +9,8 @@ import { Segmented, SegmentedItem } from '@/components/ui/segmented';
 import { statusLabel } from '../campaign-labels';
 import { CampaignFormValues, useCampaignEditorContext } from './campaign-editor.form';
 
-const EDITABLE_CAMPAIGN_STATUSES = ['active', 'paused', 'draft'] as const;
+// A draft or archived campaign selects neither; saving keeps its status until one is picked.
+const CAMPAIGN_STATUS_OPTIONS = ['active', 'paused'] as const;
 
 /**
  * The right rail: status and schedule in one card, then the actions. Both save buttons are
@@ -78,10 +78,6 @@ export function CampaignEditorSummaryRail({
 
 function CampaignEditorStatus() {
   const { control } = useFormContext<CampaignFormValues>();
-  const { campaign } = useCampaignEditorContext();
-  // Archived shows only while it is the saved status, so picking another restores the campaign.
-  const statuses: CampaignStatus[] =
-    campaign.status === 'archived' ? [...EDITABLE_CAMPAIGN_STATUSES, 'archived'] : [...EDITABLE_CAMPAIGN_STATUSES];
 
   return (
     <Field>
@@ -93,7 +89,7 @@ function CampaignEditorStatus() {
           render={({ field }) => (
             // Re-clicking the active item yields an empty string; never write that back.
             <Segmented value={field.value} onValueChange={(value) => value && field.onChange(value)}>
-              {statuses.map((status) => (
+              {CAMPAIGN_STATUS_OPTIONS.map((status) => (
                 <SegmentedItem key={status} value={status}>
                   {statusLabel(status)}
                 </SegmentedItem>
