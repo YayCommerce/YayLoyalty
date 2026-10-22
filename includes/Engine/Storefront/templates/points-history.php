@@ -10,7 +10,7 @@ use YayLoyalty\Engine\Storefront\AccountHistoryCsv;
 use YayLoyalty\Engine\Storefront\AccountRewards;
 use YayLoyalty\Engine\Storefront\AccountRewardsIcon;
 use YayLoyalty\Engine\Storefront\LauncherCopy;
-use YayLoyalty\Enums\LedgerType;
+use YayLoyalty\Engine\Storefront\ShopperActivityRow;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Utils\Dates;
 
@@ -85,7 +85,7 @@ $yayloyalty_download  = AccountRewardsIcon::get( 'download' ) . esc_html__( 'Exp
                 </thead>
                 <tbody>
                     <?php foreach ( $yayloyalty_history['rows'] as $yayloyalty_row ) : ?>
-                        <?php $yayloyalty_tone = LedgerType::EXPIRE === $yayloyalty_row['type'] ? 'expire' : ( $yayloyalty_row['points'] > 0 ? 'plus' : 'minus' ); ?>
+                        <?php $yayloyalty_tone = ShopperActivityRow::tone( $yayloyalty_row['type'], $yayloyalty_row['points'] ); ?>
                         <tr>
                             <td class="yayloyalty-account__date" data-title="<?php echo esc_attr( $yayloyalty_columns['date'] ); ?>"><?php echo esc_html( Dates::to_site_date( $yayloyalty_row['created_at'] ) ); ?></td>
                             <td data-title="<?php echo esc_attr( $yayloyalty_columns['description'] ); ?>">

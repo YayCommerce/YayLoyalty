@@ -219,7 +219,9 @@
           var row = rowTemplate.content.firstElementChild.cloneNode(true);
           row.querySelector("[data-yl-label]").textContent = item.label;
           row.querySelector("[data-yl-meta]").textContent = item.meta;
-          row.querySelector("[data-yl-delta]").textContent = item.delta;
+          var delta = row.querySelector("[data-yl-delta]");
+          delta.textContent = item.delta;
+          delta.classList.add("yayloyalty-account__badge--" + item.tone);
           list.appendChild(row);
         });
       })
