@@ -1,7 +1,6 @@
 import { createContext, useContext } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { Resolver, ResolverResult } from 'react-hook-form';
-import { __, sprintf } from '@wordpress/i18n';
 
 import { dateToStored } from '@/lib/helpers/format.helper';
 import {
@@ -12,8 +11,6 @@ import {
   CampaignUpdateInput,
   campaignUpdateInputSchema,
   CreatableCampaignTrigger,
-  DEFAULT_CAMPAIGN_CONFIG,
-  isCreatableCampaignTrigger,
 } from '@/lib/schema/campaign.schema';
 import { validateConditionValue } from './CampaignEditorConditions';
 
@@ -53,39 +50,12 @@ export function formValuesToCreateInput(
 }
 
 /**
- * A template's or a source campaign's fields shaped for the create form.
+ * A template's fields shaped for the create form.
  * `trigger` is separate because it is not a form field — see CampaignFormValues.
  */
 export interface CampaignCreateSeed {
   trigger: CreatableCampaignTrigger;
   values: CampaignFormValues;
-}
-
-/**
- * Duplicate's seed: every field copied from the source except id and slug. The name gets
- * " (copy)" and the status resets to draft, as with every template. A source whose trigger has no
- * create form falls back to purchase with the default config, rather than sending a config shape
- * that trigger cannot accept.
- */
-export function duplicateToFormValues(source: Campaign): CampaignCreateSeed {
-  const trigger: CreatableCampaignTrigger = isCreatableCampaignTrigger(source.trigger) ? source.trigger : 'purchase';
-  const isCreatable = trigger === source.trigger;
-
-  return {
-    trigger,
-    values: {
-      name: sprintf(
-        /* translators: %s: the name of the campaign being duplicated. */
-        __('%s (copy)', 'yayloyalty'),
-        source.name,
-      ),
-      status: 'draft',
-      config: structuredClone(isCreatable ? source.config : DEFAULT_CAMPAIGN_CONFIG.purchase),
-      conditions: structuredClone(isCreatable ? normalizeConditions(source.conditions) : []),
-      starts_at: source.starts_at,
-      ends_at: source.ends_at,
-    },
-  };
 }
 
 /**

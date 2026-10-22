@@ -20,7 +20,6 @@ import {
   CAMPAIGN_DISPLAY_STATUSES,
   CampaignDisplayStatus,
   findBuiltinCampaign,
-  isCreatableCampaignTrigger,
   LITE_CAMPAIGN_TRIGGERS,
   resolveCampaignDisplayStatus,
 } from '@/lib/schema/campaign.schema';
@@ -44,6 +43,7 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/u
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import EllipsisIcon from '@/components/icons/EllipsisIcon';
 import { CampaignArchiveDialog, CampaignBulkArchiveDialog } from './archive/CampaignArchiveDialog';
@@ -58,7 +58,6 @@ import {
 } from './campaign-labels';
 import { CampaignPointsSummary, CampaignPointsSummarySkeleton } from './CampaignPointsSummary';
 import { CampaignStatusBadge } from './CampaignStatusBadge';
-import { CampaignPauseDialog } from './pause/CampaignPauseDialog';
 
 /** Groups larger than this collapse to the default plus this many, highest-priority first. */
 const VISIBLE_NON_DEFAULT_ROWS = 4;
@@ -126,7 +125,6 @@ export function CampaignTable() {
   const [archiveTarget, setArchiveTarget] = useState<DisplayCampaign>();
   // A snapshot, so a refetch while the dialog is open cannot change what it acts on.
   const [bulkArchiveTargets, setBulkArchiveTargets] = useState<DisplayCampaign[]>();
-  const [pauseTarget, setPauseTarget] = useState<DisplayCampaign>();
 
   const orderedRows = override && override.source === data ? override.rows : allRows;
   const baseRows = newStore ? allRows.filter((row) => row.is_builtin) : orderedRows;
@@ -226,11 +224,6 @@ export function CampaignTable() {
     if (target) {
       setTimeout(() => document.contains(target) && target.focus(), 0);
     }
-  }
-
-  function openPause(row: DisplayCampaign) {
-    captureFocus();
-    setPauseTarget(row);
   }
 
   function openArchive(row: DisplayCampaign) {
@@ -465,7 +458,6 @@ export function CampaignTable() {
                         onToggleSelected={toggleSelected}
                         onExpand={() => setExpandedGroups((current) => new Set(current).add(group.key))}
                         onReorder={reorderGroup}
-                        onPause={openPause}
                         onArchive={openArchive}
                       />
                     ))}
@@ -506,16 +498,6 @@ export function CampaignTable() {
           }}
           onDone={() => deselectMany(bulkArchiveTargets.map((row) => row.id))}
           onViewArchived={() => changeStatusFilter('archived')}
-        />
-      )}
-
-      {pauseTarget && (
-        <CampaignPauseDialog
-          campaign={pauseTarget}
-          onClose={() => {
-            setPauseTarget(undefined);
-            restoreFocus();
-          }}
         />
       )}
     </>
@@ -638,7 +620,6 @@ function CampaignGroupSection({
   onToggleSelected,
   onExpand,
   onReorder,
-  onPause,
   onArchive,
 }: {
   group: CampaignGroup;
@@ -646,7 +627,6 @@ function CampaignGroupSection({
   onToggleSelected: (id: number) => void;
   onExpand: () => void;
   onReorder: (groupRows: DisplayCampaign[], event: DragEndEvent) => void;
-  onPause: (row: DisplayCampaign) => void;
   onArchive: (row: DisplayCampaign) => void;
 }) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
@@ -698,7 +678,6 @@ function CampaignGroupSection({
               isTied={(priorityCounts.get(row.priority) ?? 0) > 1}
               selected={selectedIds.has(row.id)}
               onToggleSelected={onToggleSelected}
-              onPause={onPause}
               onArchive={onArchive}
             />
           ))}
@@ -728,6 +707,43 @@ function CampaignGroupSection({
   );
 }
 
+/** On/off for a campaign that can run; ended and archived keep their badge, as switching them on would do nothing. */
+function CampaignStatusControl({ row }: { row: DisplayCampaign }) {
+  const statusMutation = useUpdateCampaignStatusMutation(row.id);
+  const { displayStatus } = row;
+
+  if (displayStatus === 'ended' || displayStatus === 'archived') {
+    return <CampaignStatusBadge status={displayStatus} />;
+  }
+
+  async function toggle(isOn: boolean) {
+    try {
+      await statusMutation.mutateAsync(isOn ? 'active' : 'paused');
+      toast.success(isOn ? __('Campaign enabled.', 'yayloyalty') : __('Campaign paused.', 'yayloyalty'));
+    } catch (error) {
+      await toastApiError(error, __('Could not change the campaign’s status.', 'yayloyalty'));
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <Switch
+        size="sm"
+        // Scheduled is stored as active: on, just not started yet.
+        checked={displayStatus === 'active' || displayStatus === 'scheduled'}
+        disabled={statusMutation.isPending}
+        onCheckedChange={toggle}
+        aria-label={sprintf(
+          /* translators: %s: the campaign's name. */
+          __('Enable “%s”', 'yayloyalty'),
+          row.name,
+        )}
+      />
+      <span className="text-muted-foreground text-xs">{statusLabel(displayStatus)}</span>
+    </div>
+  );
+}
+
 /** "Show the other purchase campaigns"; bare "other" for the catch-all group, to avoid "other Other". */
 function showMoreLabel(group: CampaignGroupKey): string {
   if (group === 'other') {
@@ -747,14 +763,12 @@ function SortableCampaignRow({
   isTied,
   selected,
   onToggleSelected,
-  onPause,
   onArchive,
 }: {
   row: DisplayCampaign;
   isTied: boolean;
   selected: boolean;
   onToggleSelected: (id: number) => void;
-  onPause: (row: DisplayCampaign) => void;
   onArchive: (row: DisplayCampaign) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: row.id });
@@ -827,7 +841,7 @@ function SortableCampaignRow({
         <PointsValue value={row.points_issued} />
       </TableCell>
       <TableCell>
-        <CampaignStatusBadge status={row.displayStatus} />
+        <CampaignStatusControl row={row} />
       </TableCell>
       <TableCell className="text-right">
         <DropdownMenu>
@@ -844,24 +858,6 @@ function SortableCampaignRow({
             {hasPerformancePage(row.trigger) && (
               <DropdownMenuItem onSelect={() => navigate(`/campaigns/${row.id}/performance`)}>
                 {__('View performance', 'yayloyalty')}
-              </DropdownMenuItem>
-            )}
-            {/* Create mode, seeded from this campaign — CampaignCreator's duplicateFrom path.
-                A real POST on Save; this campaign itself is never written to. A trigger with no
-                template falls back to purchase, as duplicateToFormValues() does. */}
-            <DropdownMenuItem
-              onSelect={() =>
-                navigate(
-                  `/campaigns/new/${isCreatableCampaignTrigger(row.trigger) ? row.trigger : 'purchase'}?from=${row.id}`,
-                )
-              }
-            >
-              {__('Duplicate', 'yayloyalty')}
-            </DropdownMenuItem>
-            {/* Shown for built-ins too, as their substitute for Archive. Deferred so the dropdown closes first. */}
-            {(row.displayStatus === 'active' || row.displayStatus === 'scheduled') && (
-              <DropdownMenuItem onSelect={() => setTimeout(() => onPause(row), 0)}>
-                {__('Pause', 'yayloyalty')}
               </DropdownMenuItem>
             )}
             {/* Nothing to archive on an archived row. The dialog itself decides archive vs delete. */}
@@ -885,7 +881,7 @@ function SortableCampaignRow({
                   id={`campaign-archive-reason-${row.id}`}
                   className="text-muted-foreground max-w-60 px-2 pb-1.5 text-xs"
                 >
-                  {__('Default campaigns can’t be archived. You can pause one instead.', 'yayloyalty')}
+                  {__('Default campaigns can’t be archived. Use the status switch to pause one instead.', 'yayloyalty')}
                 </p>
               </>
             )}

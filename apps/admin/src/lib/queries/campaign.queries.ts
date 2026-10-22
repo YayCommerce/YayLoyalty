@@ -70,7 +70,7 @@ export function useUpdateCampaignMutation(id: number) {
   });
 }
 
-/** Archive and pause; see updateCampaignStatus(). */
+/** Archive, pause and enable; see updateCampaignStatus(). */
 export function useUpdateCampaignStatusMutation(id: number) {
   const queryClient = useQueryClient();
 
