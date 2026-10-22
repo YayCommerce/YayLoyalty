@@ -108,7 +108,6 @@ export function RewardTable() {
               <RewardTableSubtitle screen={screen} showArchived={showArchived} onViewChange={setView} />
             )}
             <div className="flex items-center gap-3">
-              <Button variant="outline">{__('Redemptions log', 'yayloyalty')}</Button>
               <Button onClick={() => navigate('/rewards/new')}>{__('Add reward', 'yayloyalty')}</Button>
             </div>
           </div>
