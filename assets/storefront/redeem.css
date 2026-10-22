@@ -339,6 +339,133 @@
   color: var(--yayloyalty-redeem-text);
 }
 
+/*
+ * Checkout mode (data-mode, set by redeem.js): collapsed to the summary and Change while something is applied
+ * (data-applied) and the list is closed; otherwise the list, with the balance under the title and Update on the
+ * header row. Outside checkout the three are never shown.
+ */
+
+.yayloyalty-redeem:not([data-mode="checkout"])
+  :is(.yayloyalty-redeem__summary, .yayloyalty-redeem__change, .yayloyalty-redeem__update) {
+  display: none;
+}
+
+.yayloyalty-redeem[data-mode="checkout"] .yayloyalty-redeem__header {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 2px 8px;
+}
+
+.yayloyalty-redeem[data-mode="checkout"] .yayloyalty-redeem__icon {
+  grid-row: 1;
+}
+
+.yayloyalty-redeem[data-mode="checkout"] .yayloyalty-redeem__heading {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.yayloyalty-redeem[data-mode="checkout"] .yayloyalty-redeem__summary {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.yayloyalty-redeem[data-mode="checkout"] :is(.yayloyalty-redeem__change, .yayloyalty-redeem__update) {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+}
+
+/* Collapsed. */
+
+.yayloyalty-redeem[data-mode="checkout"][data-applied]:not([data-expanded])
+  :is(
+    .yayloyalty-redeem__list,
+    .yayloyalty-redeem__update,
+    .yayloyalty-redeem__balance,
+    .yayloyalty-redeem__worth
+  ) {
+  display: none;
+}
+
+/* Editing: the balance and its worth wrap under the title. */
+
+.yayloyalty-redeem[data-mode="checkout"]:is(:not([data-applied]), [data-expanded])
+  :is(.yayloyalty-redeem__summary, .yayloyalty-redeem__change) {
+  display: none;
+}
+
+.yayloyalty-redeem[data-mode="checkout"]:is(:not([data-applied]), [data-expanded])
+  .yayloyalty-redeem__heading
+  > span:first-child {
+  flex-basis: 100%;
+}
+
+.yayloyalty-redeem[data-mode="checkout"]:is(:not([data-applied]), [data-expanded])
+  .yayloyalty-redeem__balance {
+  margin-left: 0;
+}
+
+.yayloyalty-redeem .yayloyalty-redeem__summary {
+  font-size: 13px;
+  color: var(--yayloyalty-redeem-muted);
+}
+
+.yayloyalty-redeem .yayloyalty-redeem__tick {
+  font-weight: 600;
+  color: var(--yayloyalty-redeem-accent);
+}
+
+.yayloyalty-redeem :is(.yayloyalty-redeem__change, .yayloyalty-redeem__update) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  min-width: 0;
+  height: 32px;
+  min-height: 0;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: calc(var(--yayloyalty-redeem-radius) - 2px);
+  background: transparent none;
+  box-shadow: none;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+  color: var(--yayloyalty-redeem-accent);
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.yayloyalty-redeem .yayloyalty-redeem__change {
+  padding: 0 4px;
+}
+
+.yayloyalty-redeem .yayloyalty-redeem__change:hover {
+  background: transparent none;
+  color: var(--yayloyalty-redeem-accent-hover);
+  text-decoration: underline;
+}
+
+/* Secondary, so it does not compete with the checkout's own Place order button. */
+.yayloyalty-redeem .yayloyalty-redeem__update {
+  border-color: var(--yayloyalty-redeem-accent);
+}
+
+.yayloyalty-redeem .yayloyalty-redeem__update:hover {
+  background: var(--yayloyalty-redeem-accent-soft) none;
+  color: var(--yayloyalty-redeem-accent);
+}
+
+@media (max-width: 360px) {
+  .yayloyalty-redeem[data-mode="checkout"] :is(.yayloyalty-redeem__change, .yayloyalty-redeem__update) {
+    grid-column: 2;
+    grid-row: 3;
+    justify-self: start;
+  }
+}
+
 /* Focus and disabled states. */
 
 .yayloyalty-redeem
@@ -346,7 +473,9 @@
     .yayloyalty-redeem__points,
     .yayloyalty-redeem__check,
     .yayloyalty-redeem__range,
-    .yayloyalty-redeem__signin
+    .yayloyalty-redeem__signin,
+    .yayloyalty-redeem__change,
+    .yayloyalty-redeem__update
   ):focus-visible {
   outline: 2px solid var(--yayloyalty-redeem-accent);
   outline-offset: 2px;

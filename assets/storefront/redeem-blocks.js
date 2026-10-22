@@ -1,8 +1,8 @@
 /**
  * The points card on the Cart and Checkout blocks: a slot fill that shows the card the server rendered
  * (the `card` field of the plugin's Store API cart extension), so the blocks and the classic pages share one template.
- * Apply, Remove and the rewards' Apply/Update stay in redeem.js; here they are routed through the cart store,
- * which redraws the card. The totals rows of reward coupons are relabelled with the reward's name.
+ * The card's ticks, slider and checkout Update stay in redeem.js; here their requests are routed through the
+ * cart store, which redraws the card. The totals rows of reward coupons are relabelled with the reward's name.
  *
  * Plain script, no build step and no JSX. Its values, the Store API names included, come from
  * window.yayloyaltyRedeemBlocks (RedeemCard::enqueue_block_assets()).

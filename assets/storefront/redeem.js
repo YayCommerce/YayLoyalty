@@ -1,9 +1,15 @@
 /**
- * The points card's behaviour: one checkbox list, applied as it changes. Ticking the Points discount row opens
- * its slider and applies the most it can take; unticking sends 0. The slider and the number field are one
- * control, and the discount beside them is previewed as either moves; a release, a changed field or Enter
- * applies the points once, 500 ms after the last of them. Ticking a reward row sends every ticked reward id and
- * keeps the unaffordable rows in step with the balance. The preview is arithmetic only; the server's answer
+ * The points card's behaviour: one checkbox list, in one of two modes the page decides (`data-mode`).
+ *
+ * - Cart mode applies as it changes. Ticking the Points discount row opens its slider and applies the most it
+ *   can take; unticking sends 0. A release, a changed field or Enter applies the points once, 500 ms after the
+ *   last of them. Ticking a reward row sends every ticked reward id.
+ * - Checkout mode (inside the classic checkout form or the Checkout block) holds every change as a draft: the
+ *   card opens collapsed to its summary while something is applied, Change opens the list, and Update sends the
+ *   points and the reward ids in one request, or just collapses when nothing changed.
+ *
+ * In both, the slider and the number field are one control, the discount beside them is previewed as either
+ * moves, and the unaffordable reward rows follow the ticks. The preview is arithmetic only; the server's answer
  * replaces the card.
  *
  * Plain script, no build step. Markup and data come from includes/Engine/Storefront/templates/redeem-card.php.
@@ -16,11 +22,33 @@
   /** How long the slider waits after the last change before it applies. */
   var DEBOUNCE_MS = 500;
 
+  /** Where the card holds a draft instead of applying at once: the classic checkout form and the Checkout block. */
+  var CHECKOUT_SELECTOR = "form.checkout, .wp-block-woocommerce-checkout";
+
   /** Each card's pending slider request, so a release that fires both `change` and Enter sends once. */
   var pending = new WeakMap();
 
   function rootOf(element) {
     return element.closest("[data-yl-redeem]");
+  }
+
+  /**
+   * Gives every card not yet marked its mode. The server prints one markup for every page (the blocks' card is
+   * shared by Cart and Checkout), so only the page can tell.
+   */
+  function markModes() {
+    document
+      .querySelectorAll("[data-yl-redeem]:not([data-mode])")
+      .forEach(function (root) {
+        root.setAttribute(
+          "data-mode",
+          root.closest(CHECKOUT_SELECTOR) ? "checkout" : "cart",
+        );
+      });
+  }
+
+  function isCheckout(root) {
+    return root.getAttribute("data-mode") === "checkout";
   }
 
   function numberAttr(element, name) {
@@ -269,6 +297,87 @@
     });
   }
 
+  /** The ids of the card's ticked rewards; none on a card without reward rows. */
+  function tickedIds(root) {
+    var list = root.querySelector("[data-yl-rewards]");
+
+    return list
+      ? tickedBoxes(list).map(function (box) {
+          return Number(box.value);
+        })
+      : [];
+  }
+
+  /**
+   * What Update sends. A ticked row whose field is disabled (the rewards leave it nothing) keeps the shopper's
+   * request, so an untouched row is not lowered to its minimum.
+   */
+  function draftOf(root) {
+    var toggle = root.querySelector("[data-yl-slider-toggle]");
+    var range = root.querySelector("[data-yl-range]");
+    var field = root.querySelector("[data-yl-points]");
+    var points = 0;
+
+    if (toggle && toggle.checked) {
+      points =
+        field && range && !field.disabled
+          ? clamp(range, field.value)
+          : numberAttr(toggle, "data-requested");
+    }
+
+    return { points: points, rewards: tickedIds(root) };
+  }
+
+  /** Whether the draft differs from what the server drew: the markup's own checked and value attributes. */
+  function isChanged(root) {
+    var toggle = root.querySelector("[data-yl-slider-toggle]");
+    var range = root.querySelector("[data-yl-range]");
+    var field = root.querySelector("[data-yl-points]");
+
+    if (toggle && toggle.checked !== toggle.defaultChecked) {
+      return true;
+    }
+    if (
+      toggle &&
+      toggle.checked &&
+      field &&
+      range &&
+      !field.disabled &&
+      clamp(range, field.value) !== Number(field.defaultValue)
+    ) {
+      return true;
+    }
+
+    return Array.prototype.some.call(
+      root.querySelectorAll("[data-yl-reward]"),
+      function (box) {
+        return box.checked !== box.defaultChecked;
+      },
+    );
+  }
+
+  /** Update stays off while nothing is applied and nothing changed: there is nothing to send or collapse. */
+  function refreshUpdate(root) {
+    var update = root.querySelector("[data-yl-update]");
+
+    if (update) {
+      update.disabled = !root.hasAttribute("data-applied") && !isChanged(root);
+    }
+  }
+
+  function setExpanded(root, isExpanded) {
+    var change = root.querySelector("[data-yl-change]");
+
+    if (isExpanded) {
+      root.setAttribute("data-expanded", "");
+    } else {
+      root.removeAttribute("data-expanded");
+    }
+    if (change) {
+      change.setAttribute("aria-expanded", isExpanded ? "true" : "false");
+    }
+  }
+
   // The card can sit inside the checkout form: Enter applies the points and must never place the order.
   document.addEventListener("keydown", function (event) {
     var target = event.target;
@@ -284,7 +393,13 @@
 
     var root = rootOf(target);
 
-    if (root) {
+    if (!root) {
+      return;
+    }
+    if (isCheckout(root)) {
+      sync(root, true);
+      refreshUpdate(root);
+    } else {
       schedulePoints(root);
     }
   });
@@ -303,6 +418,11 @@
     } else if (target.matches("[data-yl-points]")) {
       // The field keeps what was typed until it is left; the slider and the preview follow the clamped number.
       sync(root, false);
+    } else {
+      return;
+    }
+    if (isCheckout(root)) {
+      refreshUpdate(root);
     }
   });
 
@@ -314,6 +434,8 @@
       return;
     }
 
+    var isDraft = isCheckout(root);
+
     if (target.matches("[data-yl-slider-toggle]")) {
       var body = root.querySelector("[data-yl-slider-body]");
       var field = root.querySelector("[data-yl-points]");
@@ -321,21 +443,59 @@
       if (body) {
         body.hidden = !target.checked;
       }
+      if (isDraft) {
+        if (target.checked) {
+          sync(root, true);
+        }
+        refreshUpdate(root);
+        return;
+      }
       window.clearTimeout(pending.get(root));
       send(root, { points: target.checked && field ? Number(field.max) : 0 });
-    } else if (target.matches("[data-yl-range]")) {
-      schedule(root, Number(target.value));
-    } else if (target.matches("[data-yl-points]")) {
-      schedulePoints(root);
+    } else if (target.matches("[data-yl-range], [data-yl-points]")) {
+      if (isDraft) {
+        sync(root, true);
+        refreshUpdate(root);
+      } else if (target.matches("[data-yl-range]")) {
+        schedule(root, Number(target.value));
+      } else {
+        schedulePoints(root);
+      }
     } else if (target.matches("[data-yl-reward]")) {
-      var list = target.closest("[data-yl-rewards]");
-
-      refreshShort(list);
-      send(root, {
-        rewards: tickedBoxes(list).map(function (box) {
-          return Number(box.value);
-        }),
-      });
+      refreshShort(target.closest("[data-yl-rewards]"));
+      if (isDraft) {
+        refreshUpdate(root);
+      } else {
+        send(root, { rewards: tickedIds(root) });
+      }
     }
+  });
+
+  // Change opens the checkout list; Update sends the draft, or only collapses the card when nothing changed.
+  document.addEventListener("click", function (event) {
+    var target = event.target instanceof Element ? event.target : null;
+    var button =
+      target && target.closest("[data-yl-change], [data-yl-update]");
+    var root = button ? rootOf(button) : null;
+
+    if (!root) {
+      return;
+    }
+
+    if (button.matches("[data-yl-change]")) {
+      setExpanded(root, true);
+    } else if (isChanged(root)) {
+      // The answered card has no data-expanded: it opens collapsed while something is applied.
+      send(root, draftOf(root));
+    } else {
+      setExpanded(root, false);
+    }
+  });
+
+  markModes();
+  // The classic checkout's order-review refresh, replaceCard() and the blocks' redraw all bring a card unmarked.
+  new MutationObserver(markModes).observe(document.body, {
+    childList: true,
+    subtree: true,
   });
 })();

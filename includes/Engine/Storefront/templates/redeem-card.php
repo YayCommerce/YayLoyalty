@@ -3,6 +3,10 @@
  * The points card, in one of its shapes: a sign-in card for a guest (`guest`), or for a customer the header and
  * one list (`slider` or `hidden`): the Points discount row, which opens into the slider, then the rows
  * RedeemCard::ROWS_FILTER adds.
+ * A customer's card also carries the checkout summary ("✓ −$10 · 1,000 Points used"), Change and Update. The server
+ * draws one markup for every page, because the blocks' card is shared by Cart and Checkout: redeem.js sets
+ * `data-mode` from the page, and redeem.css shows those three only in checkout mode. `data-applied` marks a card
+ * with something applied, which checkout shows collapsed.
  * No input has a `name`, so nothing here rides on the cart or checkout form it may sit in; redeem.js posts the request.
  * Styled by assets/storefront/redeem.css alone: the Design tab's colours belong to the launcher.
  *
@@ -27,8 +31,10 @@ $yayloyalty_note      = '' !== ( $view['bound_by'] ?? '' ) ? RedemptionService::
 /* translators: 1: the store's points label, as "Points", 2: money amount. */
 $yayloyalty_off_template = sprintf( __( '%1$s = %2$s', 'yayloyalty' ), $yayloyalty_label, '%s' );
 /* translators: %s: the store's points label, as "Points". */
-$yayloyalty_aria = sprintf( __( '%s to spend', 'yayloyalty' ), $yayloyalty_label );
-$yayloyalty_icon = '<svg class="yayloyalty-redeem__icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C9.5 3 12 8 12 8s2.5-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg>';
+$yayloyalty_aria       = sprintf( __( '%s to spend', 'yayloyalty' ), $yayloyalty_label );
+$yayloyalty_is_applied = 'guest' !== $yayloyalty_state && $view['summary']['points'] > 0;
+$yayloyalty_list_id    = wp_unique_id( 'yayloyalty-redeem-' ) . '-list';
+$yayloyalty_icon       = '<svg class="yayloyalty-redeem__icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C9.5 3 12 8 12 8s2.5-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg>';
 ?>
 <div
     class="yayloyalty-redeem"
@@ -36,6 +42,7 @@ $yayloyalty_icon = '<svg class="yayloyalty-redeem__icon" width="20" height="20" 
     data-state="<?php echo esc_attr( $yayloyalty_state ); ?>"
     data-endpoint="<?php echo esc_url( $view['endpoint'] ); ?>"
     data-nonce="<?php echo esc_attr( $view['nonce'] ); ?>"
+    <?php echo $yayloyalty_is_applied ? 'data-applied' : ''; ?>
     <?php if ( $yayloyalty_is_slider ) : ?>
         data-rate="<?php echo esc_attr( (string) $view['rate'] ); ?>"
         data-decimals="<?php echo esc_attr( (string) $yayloyalty_money['decimals'] ); ?>"
@@ -57,9 +64,20 @@ $yayloyalty_icon = '<svg class="yayloyalty-redeem__icon" width="20" height="20" 
         <div class="yayloyalty-redeem__header">
             <?php echo $yayloyalty_icon; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- a fixed SVG literal. ?>
             <h3 class="yayloyalty-redeem__heading"><?php echo RedeemCard::heading( $view['heading_balance'], $view['worth'] ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- heading() escapes every value. ?></h3>
+            <?php if ( $yayloyalty_is_applied ) : ?>
+                <p class="yayloyalty-redeem__summary" data-yl-summary>
+                    <span class="yayloyalty-redeem__tick" aria-hidden="true">✓</span>
+                    <?php
+                    /* translators: 1: money amount, as "$10", 2: points amount with the store's label, as "1,000 Points". */
+                    echo esc_html( sprintf( __( '−%1$s · %2$s used', 'yayloyalty' ), LauncherCopy::money( $view['summary']['value'] ), SettingsHelper::points_text( $view['summary']['points'] ) ) );
+                    ?>
+                </p>
+                <button type="button" class="yayloyalty-redeem__change" data-yl-change aria-expanded="false" aria-controls="<?php echo esc_attr( $yayloyalty_list_id ); ?>"><?php esc_html_e( 'Change', 'yayloyalty' ); ?></button>
+            <?php endif; ?>
+            <button type="button" class="yayloyalty-redeem__update" data-yl-update aria-controls="<?php echo esc_attr( $yayloyalty_list_id ); ?>" <?php disabled( ! $yayloyalty_is_applied ); ?>><?php esc_html_e( 'Update', 'yayloyalty' ); ?></button>
         </div>
 
-        <div class="yayloyalty-redeem__list" data-yl-list id="<?php echo esc_attr( wp_unique_id( 'yayloyalty-redeem-' ) . '-list' ); ?>">
+        <div class="yayloyalty-redeem__list" data-yl-list id="<?php echo esc_attr( $yayloyalty_list_id ); ?>">
             <?php if ( $yayloyalty_is_slider ) : ?>
                 <?php
                 $yayloyalty_is_ticked = $view['requested'] > 0;
@@ -86,6 +104,7 @@ $yayloyalty_icon = '<svg class="yayloyalty-redeem__icon" width="20" height="20" 
                             type="checkbox"
                             class="yayloyalty-redeem__check"
                             data-yl-slider-toggle
+                            data-requested="<?php echo esc_attr( (string) $view['requested'] ); ?>"
                             <?php checked( $yayloyalty_is_ticked ); ?>
                             <?php disabled( $view['is_disabled'] ); ?>
                         >
