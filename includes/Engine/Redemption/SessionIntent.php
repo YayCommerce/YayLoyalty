@@ -5,7 +5,8 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * The only mutable state on the quote path, in the WooCommerce session: the points the customer asked to
- * spend on the slider and the reward ids they picked, each set on its own. Never a discount value — that is derived
+ * spend on the slider and the reward ids they picked, each set on its own, plus the names of picked rewards the store
+ * took away, for the card's notice. Never a discount value — that is derived
  * from the current cart on every recalculation — and never a Quote. Every method returns quietly when
  * WooCommerce has no session.
  */
@@ -16,6 +17,12 @@ final class SessionIntent {
 
     /** WC session key of the picked reward ids, unique, in the order they were picked. */
     public const REWARDS_KEY = 'yayloyalty_redeem_rewards';
+
+    /**
+     * WC session key of the names of picked rewards the store took away (paused, archived, ended or deleted),
+     * which the card reports until the shopper dismisses it; '' stands for a deleted reward, whose name is gone.
+     */
+    public const DROPPED_KEY = 'yayloyalty_redeem_dropped';
 
     /** Postcondition: the stored integer, 0 when nothing was asked or there is no session. Never negative. */
     public function get(): int {
@@ -101,13 +108,47 @@ final class SessionIntent {
         }
     }
 
-    /** Postcondition: get() returns 0 and rewards() []. Called by the commit. */
+    /**
+     * The names of the picked rewards the store took away, in the order they were dropped; '' for a deleted one.
+     *
+     * @return string[]
+     */
+    public function dropped(): array {
+        $session = $this->session();
+
+        return null === $session ? [] : array_values( array_filter( (array) $session->get( self::DROPPED_KEY, [] ), 'is_string' ) );
+    }
+
+    /** Postcondition: dropped() holds $name once, after the names already there. */
+    public function add_dropped( string $name ): void {
+        $session = $this->session();
+        $dropped = $this->dropped();
+
+        if ( null === $session || in_array( $name, $dropped, true ) ) {
+            return;
+        }
+
+        $dropped[] = $name;
+        $session->set( self::DROPPED_KEY, $dropped );
+    }
+
+    /** Postcondition: dropped() returns []. Called when the shopper dismisses the card's notice. */
+    public function clear_dropped(): void {
+        $session = $this->session();
+
+        if ( null !== $session ) {
+            $session->__unset( self::DROPPED_KEY );
+        }
+    }
+
+    /** Postcondition: get() returns 0, rewards() [] and dropped() []. Called by the commit. */
     public function clear(): void {
         $session = $this->session();
 
         if ( null !== $session ) {
             $session->__unset( self::KEY );
             $session->__unset( self::REWARDS_KEY );
+            $session->__unset( self::DROPPED_KEY );
         }
     }
 

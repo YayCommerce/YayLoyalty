@@ -64,10 +64,18 @@ final class RedeemCard {
      * The card's changes on pages without the blocks: POST `security` and `rewards`, comma-separated reward ids
      * (present and empty clears them), `points` (0 removes), or both. Postcondition: SessionIntent::apply() with
      * whichever is present, then one totals run, so the coupon provider puts the coupons on or takes them off,
-     * and the card's new HTML is answered. Never clamps and never touches a coupon.
+     * and the card's new HTML is answered. Never clamps and never touches a coupon. POST `dismiss` instead only
+     * forgets the dropped rewards the card's notice reports (SessionIntent::clear_dropped()) and answers no HTML.
      */
     public function on_apply(): void {
         check_ajax_referer( self::NONCE_ACTION, 'security' );
+
+        // The notice's ×, from every page the card shows on (blocks included): forgets the dropped rewards and
+        // leaves the shopper's choice, the totals and the card as they are, so an open checkout draft survives.
+        if ( isset( $_POST['dismiss'] ) ) {
+            $this->intent->clear_dropped();
+            wp_send_json_success();
+        }
 
         $cart = RedemptionService::cart();
 
@@ -186,6 +194,8 @@ final class RedeemCard {
             $rows    = $this->rows( $cart, $user_id, $balance );
 
             if ( 'hidden' === $view['state'] && [] === $rows ) {
+                $this->notice_dropped_elsewhere();
+
                 return '';
             }
 
@@ -200,6 +210,7 @@ final class RedeemCard {
                     'worth'           => $worth,
                     'rows'            => $rows,
                     'summary'         => $this->summary( $cart, $user_id, $quote ),
+                    'dropped'         => $this->intent->dropped(),
                 ] + self::chrome()
             );
         } catch ( \Throwable $e ) {
@@ -337,6 +348,34 @@ final class RedeemCard {
             'points' => $slider + array_sum( $rewards ),
             'count'  => ( $slider > 0 ? 1 : 0 ) + count( $rewards ),
         ];
+    }
+
+    /**
+     * The card's notice line for a picked reward the store took away; $name '' is a deleted reward, which has none.
+     */
+    public static function dropped_line( string $name ): string {
+        if ( '' === $name ) {
+            return __( 'A reward you picked is no longer available and was removed.', 'yayloyalty' );
+        }
+
+        /* translators: %s: the reward's name, as "$5 off". */
+        return sprintf( __( '%s is no longer available and was removed.', 'yayloyalty' ), $name );
+    }
+
+    /**
+     * With no card to show them in, the dropped rewards' lines go to WooCommerce's notices instead and are
+     * forgotten, so the shopper is told once either way.
+     */
+    private function notice_dropped_elsewhere(): void {
+        if ( ! function_exists( 'wc_add_notice' ) ) {
+            return;
+        }
+
+        foreach ( $this->intent->dropped() as $name ) {
+            wc_add_notice( self::dropped_line( $name ), 'notice' );
+        }
+
+        $this->intent->clear_dropped();
     }
 
     /** 0 for a customer with no row yet, null for a guest. */

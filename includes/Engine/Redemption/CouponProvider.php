@@ -328,7 +328,9 @@ final class CouponProvider {
 
     /**
      * One code per picked reward whose quote is allowed with a value: percent rewards, then fixed, each in the
-     * order picked. Drops from the session, with notice_removed(), each one denied for a reason in DROPPING_REASONS.
+     * order picked. Drops from the session each one denied for a reason in DROPPING_REASONS: one the store took
+     * away (`not_live`: paused, archived, ended or deleted) is recorded for the card's notice, which stays until
+     * dismissed; any other reason gets notice_removed().
      *
      * @return string[]
      */
@@ -348,7 +350,10 @@ final class CouponProvider {
             } elseif ( ! $quote->is_allowed() && in_array( $quote->get_reason(), self::DROPPING_REASONS, true ) ) {
                 $this->intent->remove_reward( $reward_id );
 
-                if ( null !== $row['reward'] ) {
+                if ( Result::REASON_NOT_LIVE === $quote->get_reason() ) {
+                    // A deleted reward has no row, so no name: the card words it generically.
+                    $this->intent->add_dropped( null === $row['reward'] ? '' : $row['reward']->get_name() );
+                } elseif ( null !== $row['reward'] ) {
                     $this->notice_removed( $row['reward'] );
                 }
             }

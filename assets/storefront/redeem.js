@@ -490,6 +490,37 @@
     }
   });
 
+  /**
+   * The amber notice's ×: the notice goes at once, and the server forgets the dropped rewards so it does not come
+   * back. Always through the wc-ajax endpoint, even on the blocks, and the card is left as it is, so an open
+   * checkout draft survives. A failed request only means the notice shows again on the next render.
+   */
+  document.addEventListener("click", function (event) {
+    var target = event.target instanceof Element ? event.target : null;
+    var button = target && target.closest("[data-yl-dismiss]");
+    var root = button ? rootOf(button) : null;
+
+    if (!root) {
+      return;
+    }
+
+    var alert = button.closest("[data-yl-alert]");
+    var body = new URLSearchParams();
+
+    if (alert) {
+      alert.remove();
+    }
+    body.append("dismiss", "1");
+    body.append("security", root.getAttribute("data-nonce") || "");
+    window
+      .fetch(root.getAttribute("data-endpoint"), {
+        method: "POST",
+        credentials: "same-origin",
+        body: body,
+      })
+      .catch(function () {});
+  });
+
   markModes();
   // The classic checkout's order-review refresh, replaceCard() and the blocks' redraw all bring a card unmarked.
   new MutationObserver(markModes).observe(document.body, {

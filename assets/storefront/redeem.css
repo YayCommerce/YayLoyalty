@@ -21,6 +21,9 @@
   --yayloyalty-redeem-track: #e4e4e7;
   --yayloyalty-redeem-check-border: #d4d4d8;
   --yayloyalty-redeem-success: #2e7d32;
+  --yayloyalty-redeem-alert-bg: #fffbeb;
+  --yayloyalty-redeem-alert-border: #fde68a;
+  --yayloyalty-redeem-alert-text: #92400e;
   --yayloyalty-redeem-field: #ffffff;
   --yayloyalty-redeem-badge: #000000;
   --yayloyalty-redeem-radius: 8px;
@@ -416,6 +419,57 @@
   color: var(--yayloyalty-redeem-text);
 }
 
+/* The amber notice: picked rewards the store took away, under the header, until its × is clicked. */
+
+.yayloyalty-redeem .yayloyalty-redeem__alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 12px 12px 0;
+  padding: 8px 8px 8px 12px;
+  border: 1px solid var(--yayloyalty-redeem-alert-border);
+  border-radius: var(--yayloyalty-redeem-radius);
+  background: var(--yayloyalty-redeem-alert-bg);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--yayloyalty-redeem-alert-text);
+}
+
+.yayloyalty-redeem .yayloyalty-redeem__alert-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.yayloyalty-redeem .yayloyalty-redeem__alert-text p {
+  color: inherit;
+}
+
+.yayloyalty-redeem .yayloyalty-redeem__dismiss {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  min-width: 0;
+  height: 20px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent none;
+  box-shadow: none;
+  font-size: 16px;
+  line-height: 1;
+  color: inherit;
+  cursor: pointer;
+}
+
+.yayloyalty-redeem .yayloyalty-redeem__dismiss:hover {
+  background: var(--yayloyalty-redeem-alert-border) none;
+  color: inherit;
+}
+
 /*
  * Checkout mode (data-mode, set by redeem.js), per the "checkout_applied" and "Points selected _ edit" frames:
  * a grey header with the black badge, "Points & rewards", "✓ N rewards selected" and Change while something is
@@ -500,6 +554,11 @@
   display: none;
 }
 
+/* With the list hidden, the notice is the card's last row. */
+.yayloyalty-redeem[data-mode="checkout"][data-applied]:not([data-expanded]) .yayloyalty-redeem__alert {
+  margin-bottom: 12px;
+}
+
 /*
  * Open: Update in Change's place. Both share one grid cell and the hidden one keeps its box, so the column
  * stays as wide as the wider label and the header does not shift when they swap.
@@ -566,7 +625,8 @@
     .yayloyalty-redeem__points,
     .yayloyalty-redeem__signin,
     .yayloyalty-redeem__change,
-    .yayloyalty-redeem__update
+    .yayloyalty-redeem__update,
+    .yayloyalty-redeem__dismiss
   ):focus-visible {
   outline: 2px solid var(--yayloyalty-redeem-accent);
   outline-offset: 2px;
