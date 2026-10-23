@@ -20,7 +20,7 @@ final class SessionIntent {
 
     /**
      * WC session key of the names of picked rewards the store took away (paused, archived, ended or deleted),
-     * which the card reports until the shopper dismisses it; '' stands for a deleted reward, whose name is gone.
+     * which the card reports once, at its next render; '' stands for a deleted reward, whose name is gone.
      */
     public const DROPPED_KEY = 'yayloyalty_redeem_dropped';
 
@@ -132,7 +132,7 @@ final class SessionIntent {
         $session->set( self::DROPPED_KEY, $dropped );
     }
 
-    /** Postcondition: dropped() returns []. Called when the shopper dismisses the card's notice. */
+    /** Postcondition: dropped() returns []. Called once the card has shown them. */
     public function clear_dropped(): void {
         $session = $this->session();
 

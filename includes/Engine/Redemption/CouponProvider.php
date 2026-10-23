@@ -329,8 +329,8 @@ final class CouponProvider {
     /**
      * One code per picked reward whose quote is allowed with a value: percent rewards, then fixed, each in the
      * order picked. Drops from the session each one denied for a reason in DROPPING_REASONS: one the store took
-     * away (`not_live`: paused, archived, ended or deleted) is recorded for the card's notice, which stays until
-     * dismissed; any other reason gets notice_removed().
+     * away (`not_live`: paused, archived, ended or deleted) is recorded for the card's notice, shown once at its
+     * next render; any other reason gets notice_removed().
      *
      * @return string[]
      */

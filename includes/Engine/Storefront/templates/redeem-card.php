@@ -12,7 +12,7 @@
  *
  * @var array $view RedeemCard::view() plus endpoint, nonce, account_url and money; a customer's view also
  *                  carries heading_balance, worth, rows, summary (points, count) and dropped (the names of
- *                  picked rewards the store took away, which the amber notice reports until its × is clicked).
+ *                  picked rewards the store took away, which the amber notice reports once, as WooCommerce's notices are).
  */
 
 use YayLoyalty\Engine\Redemption\CouponProvider;
@@ -82,12 +82,9 @@ $yayloyalty_icon       = '<svg class="yayloyalty-redeem__icon" width="20" height
 
         <?php if ( ! empty( $view['dropped'] ) ) : ?>
             <div class="yayloyalty-redeem__alert" data-yl-alert role="status">
-                <div class="yayloyalty-redeem__alert-text">
-                    <?php foreach ( $view['dropped'] as $yayloyalty_dropped ) : ?>
-                        <p><?php echo esc_html( RedeemCard::dropped_line( (string) $yayloyalty_dropped ) ); ?></p>
-                    <?php endforeach; ?>
-                </div>
-                <button type="button" class="yayloyalty-redeem__dismiss" data-yl-dismiss aria-label="<?php esc_attr_e( 'Dismiss', 'yayloyalty' ); ?>"><span aria-hidden="true">×</span></button>
+                <?php foreach ( $view['dropped'] as $yayloyalty_dropped ) : ?>
+                    <p><?php echo esc_html( RedeemCard::dropped_line( (string) $yayloyalty_dropped ) ); ?></p>
+                <?php endforeach; ?>
             </div>
         <?php endif; ?>
 

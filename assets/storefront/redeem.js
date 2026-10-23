@@ -33,8 +33,26 @@
   }
 
   /**
-   * Gives every card not yet marked its mode. The server prints one markup for every page (the blocks' card is
-   * shared by Cart and Checkout), so only the page can tell.
+   * The last amber notice this page showed. The server sends it once, as WooCommerce sends its notices, so a card
+   * the page draws again (the checkout's own refresh, a reply, the blocks' redraw) comes without it: it is put
+   * back until the page is left, as a WooCommerce notice at the top of the page stays through those refreshes.
+   */
+  var shownAlert = null;
+
+  function keepAlert(root) {
+    var alert = root.querySelector("[data-yl-alert]");
+    var list = root.querySelector("[data-yl-list]");
+
+    if (alert) {
+      shownAlert = alert.cloneNode(true);
+    } else if (shownAlert && list) {
+      list.parentNode.insertBefore(shownAlert.cloneNode(true), list);
+    }
+  }
+
+  /**
+   * Gives every card not yet marked its mode, and its notice back. The server prints one markup for every page
+   * (the blocks' card is shared by Cart and Checkout), so only the page can tell the mode.
    */
   function markModes() {
     document
@@ -44,6 +62,7 @@
           "data-mode",
           root.closest(CHECKOUT_SELECTOR) ? "checkout" : "cart",
         );
+        keepAlert(root);
       });
   }
 
@@ -488,37 +507,6 @@
     } else {
       setExpanded(root, false);
     }
-  });
-
-  /**
-   * The amber notice's ×: the notice goes at once, and the server forgets the dropped rewards so it does not come
-   * back. Always through the wc-ajax endpoint, even on the blocks, and the card is left as it is, so an open
-   * checkout draft survives. A failed request only means the notice shows again on the next render.
-   */
-  document.addEventListener("click", function (event) {
-    var target = event.target instanceof Element ? event.target : null;
-    var button = target && target.closest("[data-yl-dismiss]");
-    var root = button ? rootOf(button) : null;
-
-    if (!root) {
-      return;
-    }
-
-    var alert = button.closest("[data-yl-alert]");
-    var body = new URLSearchParams();
-
-    if (alert) {
-      alert.remove();
-    }
-    body.append("dismiss", "1");
-    body.append("security", root.getAttribute("data-nonce") || "");
-    window
-      .fetch(root.getAttribute("data-endpoint"), {
-        method: "POST",
-        credentials: "same-origin",
-        body: body,
-      })
-      .catch(function () {});
   });
 
   markModes();
