@@ -378,12 +378,8 @@ final class RedeemCard {
 
     /** With no card to show them in, the dropped rewards' lines go to WooCommerce's notices instead, once as well. */
     private function notice_dropped_elsewhere(): void {
-        if ( ! function_exists( 'wc_add_notice' ) ) {
-            return;
-        }
-
         foreach ( $this->dropped_once() as $name ) {
-            wc_add_notice( self::dropped_line( $name ), 'notice' );
+            CouponProvider::add_notice( self::dropped_line( $name ) );
         }
 
         // Told through WooCommerce now; a card rendered later in this request does not repeat it.

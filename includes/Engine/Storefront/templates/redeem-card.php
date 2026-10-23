@@ -11,8 +11,8 @@
  * Styled by assets/storefront/redeem.css alone: the Design tab's colours belong to the launcher.
  *
  * @var array $view RedeemCard::view() plus endpoint, nonce, account_url and money; a customer's view also
- *                  carries heading_balance, worth, rows, summary (points, count) and dropped (the names of
- *                  picked rewards the store took away, which the amber notice reports once, as WooCommerce's notices are).
+ *                  carries heading_balance, worth, rows, summary (points, count) and dropped (the names for
+ *                  the amber notice; '' for a deleted reward).
  */
 
 use YayLoyalty\Engine\Redemption\CouponProvider;
@@ -83,7 +83,7 @@ $yayloyalty_icon       = '<svg class="yayloyalty-redeem__icon" width="20" height
         <?php if ( ! empty( $view['dropped'] ) ) : ?>
             <div class="yayloyalty-redeem__alert" data-yl-alert role="status">
                 <?php foreach ( $view['dropped'] as $yayloyalty_dropped ) : ?>
-                    <p><?php echo esc_html( RedeemCard::dropped_line( (string) $yayloyalty_dropped ) ); ?></p>
+                    <p><?php echo esc_html( RedeemCard::dropped_line( $yayloyalty_dropped ) ); ?></p>
                 <?php endforeach; ?>
             </div>
         <?php endif; ?>

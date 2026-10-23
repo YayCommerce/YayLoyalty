@@ -419,7 +419,7 @@
   color: var(--yayloyalty-redeem-text);
 }
 
-/* The amber notice: picked rewards the store took away, under the header, shown once (redeem.js keeps it up). */
+/* The amber notice: picked rewards the store took away, under the header. */
 
 .yayloyalty-redeem .yayloyalty-redeem__alert {
   margin: 12px 12px 0;

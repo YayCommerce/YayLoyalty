@@ -136,9 +136,14 @@ final class CouponProvider {
 
     /** "{name} was removed: this order no longer qualifies.", for a picked reward or the points discount. */
     private static function notice_dropped( string $name ): void {
+        /* translators: %s: the reward's name, as "$5 off". */
+        self::add_notice( sprintf( __( '%s was removed: this order no longer qualifies.', 'yayloyalty' ), $name ) );
+    }
+
+    /** Shows $line in WooCommerce's notices, as a `notice`; quiet without WooCommerce. */
+    public static function add_notice( string $line ): void {
         if ( function_exists( 'wc_add_notice' ) ) {
-            /* translators: %s: the reward's name, as "$5 off". */
-            wc_add_notice( sprintf( __( '%s was removed: this order no longer qualifies.', 'yayloyalty' ), $name ), 'notice' );
+            wc_add_notice( $line, 'notice' );
         }
     }
 
@@ -328,9 +333,8 @@ final class CouponProvider {
 
     /**
      * One code per picked reward whose quote is allowed with a value: percent rewards, then fixed, each in the
-     * order picked. Drops from the session each one denied for a reason in DROPPING_REASONS: one the store took
-     * away (`not_live`: paused, archived, ended or deleted) is recorded for the card's notice, shown once at its
-     * next render; any other reason gets notice_removed().
+     * order picked. Drops from the session each one denied for a reason in DROPPING_REASONS: one denied `not_live`
+     * is recorded for the card's notice with SessionIntent::add_dropped(); any other reason gets notice_removed().
      *
      * @return string[]
      */
