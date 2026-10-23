@@ -35,7 +35,8 @@
   /**
    * The last amber notice this page showed. The server sends it once, as WooCommerce sends its notices, so a card
    * the page draws again (the checkout's own refresh, a reply, the blocks' redraw) comes without it: it is put
-   * back until the page is left, as a WooCommerce notice at the top of the page stays through those refreshes.
+   * back until the page is left, as a WooCommerce notice at the top of the page stays through those refreshes,
+   * or until the shopper acts on the card (send()), which counts as read.
    */
   var shownAlert = null;
 
@@ -189,6 +190,7 @@
 
   /**
    * Sends the points, the reward ids, or both, each on its own, and shows the card the server answers with.
+   * The shopper acting on the card has read the amber notice: it goes, and the answered card does not get it back.
    *
    * @param {Element} root
    * @param {{points?: number, rewards?: number[]}} payload
@@ -196,6 +198,13 @@
   function send(root, payload) {
     if (root.hasAttribute("data-busy")) {
       return;
+    }
+
+    var alert = root.querySelector("[data-yl-alert]");
+
+    shownAlert = null;
+    if (alert) {
+      alert.remove();
     }
 
     var unlock = lock(root);
