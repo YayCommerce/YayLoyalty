@@ -4,6 +4,7 @@ namespace YayLoyalty\Engine\Rewards;
 use YayLoyalty\Engine\Points\Context as EarnContext;
 use YayLoyalty\Models\Reward;
 use YayLoyalty\Repositories\CustomerReader;
+use YayLoyalty\Utils\CurrencyRate;
 use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
@@ -28,22 +29,25 @@ final class ContextFactory {
      * `balance` (0 for a guest or a missing row); cart_subtotal = the items'
      * total minus what every other applied coupon takes, computed here and
      * never read from the cart's stored totals, which are stale while
-     * WooCommerce is loading coupons; currency = the store's; at = Dates::now();
-     * the cart itself, for a handler that dry-runs a coupon on it.
+     * WooCommerce is loading coupons; currency = the one the cart is charged
+     * in, with its rate; at = Dates::now(); the cart itself, for a handler
+     * that dry-runs a coupon on it.
      */
     public function from_cart( \WC_Cart $cart, ?int $user_id, ?int $points_requested ): Context {
         $customer = null === $user_id ? null : $this->customers->find_by_user_id( $user_id );
+        $currency = CurrencyRate::current();
 
         return new Context(
             $user_id,
             null === $customer ? 0 : $customer->get_balance(),
             $points_requested,
             $this->cart_subtotal( $cart ),
-            get_woocommerce_currency(),
+            $currency,
             Dates::now(),
             // TODO(redemption): pass customer facts when the Pro conditions gate lands.
             null,
-            $cart
+            $cart,
+            CurrencyRate::rate( $currency )
         );
     }
 
@@ -55,20 +59,23 @@ final class ContextFactory {
      * into points by Clamp::points_for(), the inverse of the value the cart
      * quoted; cart_subtotal = the line items' subtotal minus every other
      * coupon line, on the basis prices were entered (tax included or not);
-     * at = Dates::now().
+     * at = Dates::now(); the rate saved on the order, else the live one.
      */
     public function from_order( \WC_Order $order, Reward $reward, int $balance ): Context {
         $user_id = (int) $order->get_customer_id();
         $ours    = $this->points_discount_of( $order );
+        $rate    = CurrencyRate::rate( $order->get_currency(), $order );
 
         return new Context(
             $user_id > 0 ? $user_id : null,
             $balance,
-            Clamp::points_for( $ours, $reward ),
+            Clamp::points_for( $ours, $reward, $rate ),
             max( 0.0, $this->items_subtotal( $order ) - ( $this->coupon_discounts_of( $order ) - $ours ) ),
             $order->get_currency(),
             Dates::now(),
-            null
+            null,
+            null,
+            $rate
         );
     }
 
@@ -96,7 +103,9 @@ final class ContextFactory {
             max( 0.0, $this->items_subtotal( $order ) - ( $this->coupon_discounts_of( $order ) - $loyalty ) ),
             $order->get_currency(),
             Dates::now(),
-            null
+            null,
+            null,
+            CurrencyRate::rate( $order->get_currency(), $order )
         );
     }
 

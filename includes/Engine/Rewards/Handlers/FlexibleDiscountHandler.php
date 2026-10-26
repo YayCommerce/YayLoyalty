@@ -24,10 +24,10 @@ final class FlexibleDiscountHandler implements RewardHandler {
      * Precondition: $ctx->get_points_requested() is the session intent (null
      * reads as 0). Postcondition: exactly Clamp::apply( $reward, requested,
      * $ctx->get_balance(), $ctx->get_cart_subtotal(), $ctx->get_currency(),
-     * wc_get_price_decimals() ).
+     * wc_get_price_decimals(), $ctx->get_currency_rate() ), so the discount is in the charged currency.
      */
     public function quote( Reward $reward, Context $ctx ): Result {
-        return Clamp::apply( $reward, (int) $ctx->get_points_requested(), $ctx->get_balance(), $ctx->get_cart_subtotal(), $ctx->get_currency(), wc_get_price_decimals() );
+        return Clamp::apply( $reward, (int) $ctx->get_points_requested(), $ctx->get_balance(), $ctx->get_cart_subtotal(), $ctx->get_currency(), wc_get_price_decimals(), $ctx->get_currency_rate() );
     }
 
     /** The slider's discount is the `yayloyalty-redeem` coupon CouponProvider builds from the quote, not a reward coupon. */

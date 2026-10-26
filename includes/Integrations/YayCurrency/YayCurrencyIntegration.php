@@ -1,6 +1,7 @@
 <?php
 namespace YayLoyalty\Integrations\YayCurrency;
 
+use YayLoyalty\Engine\Points\Context as EarnContext;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Utils\Log;
 use YayLoyalty\Utils\SingletonTrait;
@@ -9,13 +10,21 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Keeps a point's value the same in every currency a shopper picks in YayCurrency: answers
- * yayloyalty_currency_rate from YayCurrency's rates, saves the rate on each non-base order, and keeps
- * YayCurrency's conversion off yayloyalty/v1 REST requests. YayLoyalty boots before YayCurrency loads
- * its classes, so they are named only inside these callbacks, through YayCurrencyRates.
+ * yayloyalty_currency_rate from YayCurrency's rates, saves the rate on each non-base order, keeps
+ * YayCurrency from converting the loyalty coupons a second time, and keeps its conversion off
+ * yayloyalty/v1 REST requests. YayLoyalty boots before YayCurrency loads its classes, so they are
+ * named only inside these callbacks, through YayCurrencyRates.
  */
 class YayCurrencyIntegration {
 
     use SingletonTrait;
+
+    /** The WC_Coupon getters YayCurrency multiplies by its rate, keyed by their filter. */
+    private const COUPON_GETTERS = [
+        'woocommerce_coupon_get_amount'         => 'get_amount',
+        'woocommerce_coupon_get_minimum_amount' => 'get_minimum_amount',
+        'woocommerce_coupon_get_maximum_amount' => 'get_maximum_amount',
+    ];
 
     protected function __construct() {
         if ( ! self::is_active() ) {
@@ -26,6 +35,11 @@ class YayCurrencyIntegration {
         add_action( 'woocommerce_checkout_create_order', [ $this, 'save_order_rate' ], 20, 1 );
         add_action( 'woocommerce_store_api_checkout_update_order_meta', [ $this, 'save_order_rate' ], 20, 1 );
         add_filter( 'YayCurrency/ConvertPrice/NotPermitted', [ $this, 'skip_own_rest_requests' ], 10, 1 );
+
+        // After YayCurrency's own conversion at 10.
+        foreach ( array_keys( self::COUPON_GETTERS ) as $hook ) {
+            add_filter( $hook, [ $this, 'keep_loyalty_coupon_amount' ], 20, 2 );
+        }
     }
 
     /** YayCurrency's main file defines this before YayLoyalty boots. */
@@ -71,6 +85,24 @@ class YayCurrencyIntegration {
         }
 
         return $not_permitted;
+    }
+
+    /**
+     * The loyalty coupon's own value, already in the charged currency, in place of YayCurrency's conversion of it.
+     * Every other coupon keeps the incoming value, so YayCurrency still converts it.
+     *
+     * @param mixed      $value  The value after YayCurrency's filter.
+     * @param \WC_Coupon $coupon
+     * @return mixed
+     */
+    public function keep_loyalty_coupon_amount( $value, $coupon ) {
+        $getter = self::COUPON_GETTERS[ current_filter() ] ?? null;
+
+        if ( null === $getter || ! $coupon instanceof \WC_Coupon || ! EarnContext::is_loyalty_code( (string) $coupon->get_code() ) ) {
+            return $value;
+        }
+
+        return $coupon->$getter( 'edit' );
     }
 
     /** @param string|float|null $candidate */
