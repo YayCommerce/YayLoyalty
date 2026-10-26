@@ -8,11 +8,11 @@ export const POINTS_LABEL_MAX_LENGTH = 30;
 const pointsLabel = z.string().trim().min(1).max(POINTS_LABEL_MAX_LENGTH);
 
 /**
- * The General tab's one form: the free points naming, Pro's fraud limit (never dirty in Lite), and the
- * YayCurrency fee switch (never dirty while YayCurrency is inactive).
+ * The General tab's one form: the program switch, the free points naming, Pro's fraud limit (never dirty in
+ * Lite), and the YayCurrency fee switch (never dirty while YayCurrency is inactive).
  */
 export const generalSettingsFormSchema = settingsSchema
-  .pick({ max_points_per_day: true, currency_include_fee: true })
+  .pick({ enabled: true, max_points_per_day: true, currency_include_fee: true })
   .extend({
     points_label_singular: pointsLabel,
     points_label_plural: pointsLabel,
@@ -25,6 +25,7 @@ export type GeneralSettingsDirtyFields = Partial<Record<keyof GeneralSettingsFor
 
 export function generalSettingsDefaults(settings: Settings): GeneralSettingsFormValues {
   return {
+    enabled: settings.enabled,
     points_label_singular: settings.points_label_singular,
     points_label_plural: settings.points_label_plural,
     max_points_per_day: settings.max_points_per_day,

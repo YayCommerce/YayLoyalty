@@ -8,7 +8,7 @@ use YayLoyalty\Helpers\DesignHelper;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * What a merchant places on a page: the points card and "Ways to earn", as shortcodes and blocks.
+ * What a merchant places on a page: the points card, "Ways to earn" and "Ways to redeem", as shortcodes and blocks.
  * Both print the Rewards tab's own partials, so the theme styles them once.
  */
 final class Placements {
@@ -16,6 +16,8 @@ final class Placements {
     public const BALANCE_SHORTCODE = 'yayloyalty_balance';
 
     public const WAYS_TO_EARN_SHORTCODE = 'yayloyalty_ways_to_earn';
+
+    public const WAYS_TO_REDEEM_SHORTCODE = 'yayloyalty_ways_to_redeem';
 
     public const BLOCK_CATEGORY = 'yayloyalty';
 
@@ -25,6 +27,7 @@ final class Placements {
     public static function register(): void {
         add_shortcode( self::BALANCE_SHORTCODE, [ self::class, 'balance' ] );
         add_shortcode( self::WAYS_TO_EARN_SHORTCODE, [ self::class, 'ways_to_earn' ] );
+        add_shortcode( self::WAYS_TO_REDEEM_SHORTCODE, [ self::class, 'ways_to_redeem' ] );
         add_action( 'init', [ self::class, 'register_blocks' ] );
         add_filter( 'block_categories_all', [ self::class, 'add_block_category' ] );
     }
@@ -40,6 +43,7 @@ final class Placements {
 
         register_block_type( __DIR__ . '/blocks/points-balance', [ 'render_callback' => [ self::class, 'balance_block' ] ] );
         register_block_type( __DIR__ . '/blocks/ways-to-earn', [ 'render_callback' => [ self::class, 'ways_to_earn_block' ] ] );
+        register_block_type( __DIR__ . '/blocks/ways-to-redeem', [ 'render_callback' => [ self::class, 'ways_to_redeem_block' ] ] );
     }
 
     /**
@@ -80,7 +84,42 @@ final class Placements {
                 $user_id         = get_current_user_id();
                 $yayloyalty_earn = LauncherEarnRules::for_viewer( LauncherPayload::for_user( DesignHelper::get_design(), $user_id ), $user_id );
 
+                // An account outside the program gets nothing, not a card that blames the store.
+                if ( LauncherEarnRules::is_empty( $yayloyalty_earn ) ) {
+                    if ( Launcher::viewer_can_earn( $user_id ) ) {
+                        $yayloyalty_no_ways = 'earn';
+                        require __DIR__ . '/templates/no-ways-card.php';
+                    }
+
+                    return;
+                }
+
                 require __DIR__ . '/templates/ways-to-earn.php';
+            }
+        );
+    }
+
+    /**
+     * [yayloyalty_ways_to_redeem]: the points discount and the offers, as My Account lists them (the Design tab's
+     * reward-catalog switch hides offers in the launcher only). Nothing for a shopper checkout would refuse.
+     */
+    public static function ways_to_redeem(): string {
+        return self::render(
+            static function (): void {
+                $user_id            = get_current_user_id();
+                $yayloyalty_payload = LauncherPayload::for_user( DesignHelper::get_design(), $user_id );
+
+                // As in ways_to_earn(): an account outside the program gets nothing.
+                if ( LauncherPayload::redeem_is_empty( $yayloyalty_payload ) ) {
+                    if ( Launcher::viewer_can_earn( $user_id ) ) {
+                        $yayloyalty_no_ways = 'redeem';
+                        require __DIR__ . '/templates/no-ways-card.php';
+                    }
+
+                    return;
+                }
+
+                require __DIR__ . '/templates/ways-to-redeem.php';
             }
         );
     }
@@ -93,6 +132,11 @@ final class Placements {
     /** The "Ways to earn" block: [yayloyalty_ways_to_earn] in the block's wrapper. */
     public static function ways_to_earn_block(): string {
         return self::in_block_wrapper( self::ways_to_earn() );
+    }
+
+    /** The "Ways to redeem" block: [yayloyalty_ways_to_redeem] in the block's wrapper. */
+    public static function ways_to_redeem_block(): string {
+        return self::in_block_wrapper( self::ways_to_redeem() );
     }
 
     private static function in_block_wrapper( string $html ): string {

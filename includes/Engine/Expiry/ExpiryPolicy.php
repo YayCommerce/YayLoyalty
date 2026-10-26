@@ -27,7 +27,10 @@ final class ExpiryPolicy {
     /** Shortening the window moves stored dates to the new window, with no grace: a date already past expires on the next run. */
     public const ON_SHORTEN_APPLY = 'apply';
 
-    /** Turning expiry on, or shortening it while keeping dates, never sets a date sooner than this many days from now. */
+    /**
+     * Turning expiry on, or shortening it while keeping dates, never sets a date sooner than this many days from now,
+     * or than the window itself when it is shorter (grace_days()).
+     */
     public const GRACE_DAYS = 30;
 
     public static function inactivity_expires_at( string $base_utc, int $days ): string {
@@ -46,11 +49,6 @@ final class ExpiryPolicy {
     /** The later of the two. Same-format UTC strings compare in date order. */
     public static function floor_at( string $expires_at, string $floor ): string {
         return strcmp( $expires_at, $floor ) >= 0 ? $expires_at : $floor;
-    }
-
-    /** Now + GRACE_DAYS, the earliest date a settings change may give anyone. */
-    public static function grace_floor( string $now ): string {
-        return self::inactivity_expires_at( $now, self::GRACE_DAYS );
     }
 
     /** @var array<string, mixed> */
@@ -94,6 +92,20 @@ final class ExpiryPolicy {
     /** The stored reminder timing, unclamped, for validating a save. */
     public function stored_reminder_days(): int {
         return (int) $this->settings['reminder_days'];
+    }
+
+    /**
+     * The least time a newly set date gives anyone: GRACE_DAYS, or the window when that is shorter, so points
+     * an admin adds never outlast what the customer would have had for earning them. LocalizeHelper passes
+     * GRACE_DAYS to the admin, whose confirmation applies the same cap (expiry-settings.form.ts).
+     */
+    public function grace_days(): int {
+        return min( self::GRACE_DAYS, $this->window_days() );
+    }
+
+    /** Now + grace_days(), the earliest date a settings change, a lot backfill or an adjust may give anyone. */
+    public function grace_floor( string $now ): string {
+        return self::inactivity_expires_at( $now, $this->grace_days() );
     }
 
     /** The window the effective mode runs on, in days: a month counts as its shortest, 28 days. */
@@ -185,6 +197,6 @@ final class ExpiryPolicy {
 
         $base = $before->get_last_activity_at() ?? $before->get_joined_at();
 
-        return self::floor_at( self::inactivity_expires_at( $base, $this->inactivity_days() ), self::grace_floor( $now ) );
+        return self::floor_at( self::inactivity_expires_at( $base, $this->inactivity_days() ), $this->grace_floor( $now ) );
     }
 }

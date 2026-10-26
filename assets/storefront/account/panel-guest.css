@@ -1,0 +1,66 @@
+/*
+ * templates/panel-guest.php: "How it works" as plain rows (no box, no icon tile) and the join and sign-in buttons.
+ * The rows are rule-list-item.php; the primary button is points-card.css's.
+ * Imported by rewards-tokens.css, which holds the tokens.
+ */
+.yayloyalty-account .yayloyalty-account__steps .yayloyalty-account__list {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.yayloyalty-account .yayloyalty-account__steps .yayloyalty-account__item {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--yayloyalty-account-divider);
+}
+
+.yayloyalty-account .yayloyalty-account__steps .yayloyalty-account__item + .yayloyalty-account__item {
+  border-top: 0;
+}
+
+.yayloyalty-account .yayloyalty-account__steps .yayloyalty-account__item-icon {
+  width: 20px;
+  height: 20px;
+  background: transparent;
+}
+
+.yayloyalty-account .yayloyalty-account__steps .yayloyalty-account__item-name {
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.yayloyalty-account .yayloyalty-account__steps .yayloyalty-account__item-value {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--yayloyalty-account-muted);
+}
+
+.yayloyalty-account .yayloyalty-account__steps .yayloyalty-account__list .yayloyalty-account__item .yayloyalty-account__item-value--positive {
+  color: var(--yayloyalty-account-welcome);
+}
+
+.yayloyalty-account .yayloyalty-account__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.yayloyalty-account .yayloyalty-account__actions .yayloyalty-account__button {
+  justify-content: center;
+  margin-top: 0;
+  padding: 11px 14px;
+  font-size: 14px;
+}
+
+.yayloyalty-account .yayloyalty-account__button--secondary {
+  border: 1px solid var(--yayloyalty-account-border);
+  background: var(--yayloyalty-account-surface);
+  color: var(--yayloyalty-account-text);
+}
+
+.yayloyalty-account .yayloyalty-account__button--secondary:hover,
+.yayloyalty-account .yayloyalty-account__button--secondary:focus-visible {
+  background: var(--yayloyalty-account-subtle);
+  color: var(--yayloyalty-account-text);
+}

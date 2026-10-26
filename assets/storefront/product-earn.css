@@ -1,0 +1,93 @@
+/*
+ * The product-page earning line (ProductEarnMessage::markup() in includes/Engine/Storefront/ProductEarnMessage.php).
+ * Hand-written and shipped as-is: no build step, and nothing from the launcher's stylesheet or the Design tab.
+ *
+ * - The text keeps the theme's font and colour; the surface and border are tints of that colour,
+ *   so the card reads on light and dark themes alike. The rgba() lines are for browsers without color-mix().
+ * - Sizes are px: rem follows the theme's html font-size (62.5% is common).
+ * - The colours are variables on the root, so a theme or custom CSS can re-point them in one place.
+ */
+.yayloyalty-product-earn {
+  --yayloyalty-product-earn-surface: rgba(0, 0, 0, 0.015);
+  --yayloyalty-product-earn-surface: color-mix(in srgb, currentColor 1.5%, transparent);
+  --yayloyalty-product-earn-border: rgba(0, 0, 0, 0.1);
+  --yayloyalty-product-earn-border: color-mix(in srgb, currentColor 12%, transparent);
+  --yayloyalty-product-earn-icon: currentColor;
+  --yayloyalty-product-earn-muted: rgba(0, 0, 0, 0.6);
+  --yayloyalty-product-earn-muted: color-mix(in srgb, currentColor 65%, transparent);
+  --yayloyalty-product-earn-link: #3858e9;
+  --yayloyalty-product-earn-link-hover: #2f4ac4;
+  --yayloyalty-product-earn-radius: 8px;
+
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 100%;
+  margin: 16px 0 24px;
+  padding: 14px 16px;
+  border: 1px solid var(--yayloyalty-product-earn-border);
+  border-radius: var(--yayloyalty-product-earn-radius);
+  background: var(--yayloyalty-product-earn-surface);
+  font-size: 14px;
+  line-height: 1.45;
+  text-align: left;
+}
+
+.yayloyalty-product-earn[hidden] {
+  display: none;
+}
+
+.yayloyalty-product-earn .yayloyalty-product-earn__line,
+.yayloyalty-product-earn .yayloyalty-product-earn__guest {
+  margin: 0;
+  padding: 0;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.yayloyalty-product-earn .yayloyalty-product-earn__line {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.yayloyalty-product-earn .yayloyalty-product-earn__icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  /* One line's height, so the icon centres on the first line when the sentence wraps. */
+  height: 1.45em;
+  align-items: center;
+  color: var(--yayloyalty-product-earn-icon);
+  opacity: 0.7;
+}
+
+.yayloyalty-product-earn .yayloyalty-product-earn__icon svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+}
+
+.yayloyalty-product-earn .yayloyalty-product-earn__text strong {
+  font-weight: 600;
+}
+
+/* Lines up with the sentence, past the icon and its gap. */
+.yayloyalty-product-earn .yayloyalty-product-earn__guest {
+  padding-left: 26px;
+  color: var(--yayloyalty-product-earn-muted);
+}
+
+/* Their own colour: many themes colour links like body text and mark them only with the underline this removes. */
+.yayloyalty-product-earn .yayloyalty-product-earn__guest a {
+  color: var(--yayloyalty-product-earn-link);
+  font-weight: inherit;
+  text-decoration: none;
+}
+
+.yayloyalty-product-earn .yayloyalty-product-earn__guest a:hover,
+.yayloyalty-product-earn .yayloyalty-product-earn__guest a:focus-visible {
+  color: var(--yayloyalty-product-earn-link-hover);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

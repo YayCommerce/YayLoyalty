@@ -24,12 +24,11 @@ final class ShopperActivityRow {
      * Ledger rows as the launcher lists them: GET /me/activity's items, and the Design tab's sample rows.
      *
      * @param LedgerEntry[] $entries
-     * @return array<int, array{label: string, meta: string, delta: string}>
+     * @return array<int, array{label: string, meta: string, delta: string, tone: string}> `tone` as tone() returns it.
      */
     public static function items( array $entries ): array {
         $store = Text::store_name();
-        // 0 picks the plural label.
-        $label = SettingsHelper::points_label( 0 );
+        $label = SettingsHelper::points_label_plural();
         $items = [];
 
         foreach ( $entries as $entry ) {
@@ -37,23 +36,33 @@ final class ShopperActivityRow {
                 'label' => self::label( $entry, $store, $label ),
                 'meta'  => self::meta_line( $entry->get_created_at(), $entry->get_order_id() ),
                 'delta' => LauncherCopy::signed_points( $entry->get_points() ),
+                'tone'  => self::tone( $entry->get_type(), $entry->get_points() ),
             ];
         }
 
         return $items;
     }
 
+    /** A row's points badge colour, the same in the history table and the launcher: 'expire', 'plus' or 'minus'. */
+    public static function tone( string $type, int $points ): string {
+        if ( LedgerType::EXPIRE === $type ) {
+            return 'expire';
+        }
+
+        return $points > 0 ? 'plus' : 'minus';
+    }
+
     /**
      * Ledger rows for the My Account history and its CSV, unformatted: each caller formats for its medium.
      *
      * @param LedgerEntry[] $entries
-     * @return array<int, array{created_at: string, label: string, order: string, points: int, balance: int}>
-     *         `created_at` in UTC; `order` the order number, or '' when the row has none.
+     * @return array<int, array{created_at: string, type: string, label: string, order: string, order_url: string, points: int, balance: int}>
+     *         `created_at` in UTC; `order` the order number, or '' when the row has none; `order_url` its My Account
+     *         page, or '' when the order is gone.
      */
     public static function history_rows( array $entries ): array {
-        $store = Text::store_name();
-        // 0 picks the plural label.
-        $label  = SettingsHelper::points_label( 0 );
+        $store  = Text::store_name();
+        $label  = SettingsHelper::points_label_plural();
         $orders = [];
         $rows   = [];
 
@@ -62,13 +71,15 @@ final class ShopperActivityRow {
 
             if ( null !== $order_id && ! isset( $orders[ $order_id ] ) ) {
                 // An earn row and its refund share an order: load it once.
-                $orders[ $order_id ] = self::order_number( $order_id );
+                $orders[ $order_id ] = self::order_ref( $order_id );
             }
 
             $rows[] = [
                 'created_at' => $entry->get_created_at(),
+                'type'       => $entry->get_type(),
                 'label'      => self::label( $entry, $store, $label ),
-                'order'      => null === $order_id ? '' : $orders[ $order_id ],
+                'order'      => null === $order_id ? '' : $orders[ $order_id ]['number'],
+                'order_url'  => null === $order_id ? '' : $orders[ $order_id ]['url'],
                 'points'     => $entry->get_points(),
                 'balance'    => $entry->get_balance_after(),
             ];
@@ -152,13 +163,20 @@ final class ShopperActivityRow {
         }
 
         /* translators: 1: date, 2: order number. */
-        return sprintf( __( '%1$s · order #%2$s', 'yayloyalty' ), $date, self::order_number( $order_id ) );
+        return sprintf( __( '%1$s · order #%2$s', 'yayloyalty' ), $date, self::order_ref( $order_id )['number'] );
     }
 
-    /** The order's display number, or its id once the order is gone. */
-    private static function order_number( int $order_id ): string {
+    /**
+     * The order's display number and My Account link; once the order is gone, its id and no link.
+     *
+     * @return array{number: string, url: string}
+     */
+    private static function order_ref( int $order_id ): array {
         $order = function_exists( 'wc_get_order' ) ? wc_get_order( $order_id ) : null;
 
-        return $order ? (string) $order->get_order_number() : (string) $order_id;
+        return [
+            'number' => $order ? (string) $order->get_order_number() : (string) $order_id,
+            'url'    => $order ? $order->get_view_order_url() : '',
+        ];
     }
 }

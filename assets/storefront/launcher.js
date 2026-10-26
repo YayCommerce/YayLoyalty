@@ -1,8 +1,8 @@
 /**
- * Storefront launcher behaviour: open/close the panel, keep focus inside it, and load "Recent activity"
- * once, after the first open (the balance is already in the page; history is a second request so a
- * shopper checking their points never waits on it). Near the page bottom the button folds to its icon,
- * so it covers less of the footer.
+ * Storefront launcher behaviour: open/close the panel, keep focus inside it, let the shopper drag the
+ * button to another spot (kept for later pages), and load "Recent activity" once, after the first open
+ * (the balance is already in the page; history is a second request so a shopper checking their points
+ * never waits on it).
  *
  * Plain script, no build step. Markup and data come from includes/Engine/Storefront/templates/.
  * Class names here are scanned by the storefront Tailwind build, so they must stay literal.
@@ -11,8 +11,8 @@
   "use strict";
 
   var DRAG_CLOSE_PX = 80;
-  var COLLAPSE_WITHIN_PX = 160;
-  var SCROLL_DEADBAND_PX = 4;
+  // Below this a press on the button is a click, not a move.
+  var MOVE_THRESHOLD_PX = 6;
   var FOCUSABLE =
     'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -21,6 +21,7 @@
     var panel = root.querySelector(".yl-launcher-panel");
     var overlay = root.querySelector(".yl-launcher-overlay");
     var isActivityLoaded = false;
+    var isSeenSent = false;
     var closeTimer = null;
 
     function isOpen() {
@@ -41,6 +42,10 @@
           first.focus();
         }
       });
+      if (!isSeenSent) {
+        isSeenSent = true;
+        markSeen(root);
+      }
       if (!isActivityLoaded) {
         isActivityLoaded = true;
         // A failed load is retried on the next open rather than left broken for the page's lifetime.
@@ -82,7 +87,12 @@
       }
     }
 
+    var wasMoved = bindMove(root, trigger);
+
     trigger.addEventListener("click", function () {
+      if (wasMoved()) {
+        return;
+      }
       if (isOpen()) {
         close();
       } else {
@@ -106,57 +116,6 @@
     });
 
     bindDragToClose(panel, root.querySelector("[data-yl-handle]"), close);
-    if (trigger.hasAttribute("data-yl-collapsible")) {
-      bindCollapseOnScroll(trigger);
-    }
-  }
-
-  /**
-   * Folds the button to its icon while the shopper is within COLLAPSE_WITHIN_PX of the page bottom and
-   * not scrolling up; unfolds it on the first scroll up, and when the bottom moves away (a shop that
-   * loads more products). Either change needs SCROLL_DEADBAND_PX of travel, so resting on that line
-   * cannot flip the state back and forth. The CSS owns the sizes and the motion.
-   */
-  function bindCollapseOnScroll(trigger) {
-    var page = document.documentElement;
-    // No position yet, so the first pass reads as a scroll down: a page opened at its bottom starts folded.
-    var lastY = -Infinity;
-    var isFramePending = false;
-
-    function update() {
-      isFramePending = false;
-      var maxY = Math.max(0, page.scrollHeight - window.innerHeight);
-      // Clamped: the bounce back from an overscroll past the bottom is not the shopper scrolling up.
-      var y = Math.min(Math.max(window.scrollY, 0), maxY);
-      var delta = y - lastY;
-      // lastY is left alone here so a slow scroll still adds up to a direction.
-      if (Math.abs(delta) < SCROLL_DEADBAND_PX) {
-        return;
-      }
-      lastY = y;
-      var isNearBottom =
-        maxY - y <= COLLAPSE_WITHIN_PX &&
-        // A page this short is near its bottom from the first pixel; it would fold on any scroll.
-        maxY >= 2 * COLLAPSE_WITHIN_PX;
-      if (delta > 0 && isNearBottom) {
-        trigger.setAttribute("data-collapsed", "");
-      } else {
-        trigger.removeAttribute("data-collapsed");
-      }
-    }
-
-    update();
-
-    window.addEventListener(
-      "scroll",
-      function () {
-        if (!isFramePending) {
-          isFramePending = true;
-          window.requestAnimationFrame(update);
-        }
-      },
-      { passive: true },
-    );
   }
 
   /**
@@ -177,14 +136,25 @@
     return longestMs;
   }
 
-  /** The bottom sheet's handle: drag down past DRAG_CLOSE_PX to dismiss, otherwise snap back. */
+  /**
+   * The bottom sheet's grab bar and header: drag down past DRAG_CLOSE_PX to dismiss, otherwise snap back.
+   * Only while the bar is drawn (mobile), and never from the ✕, whose click the capture would swallow.
+   */
   function bindDragToClose(panel, handle, close) {
     if (!handle) {
       return;
     }
+    var bar = handle.querySelector(".yl-launcher-handle");
     var startY = null;
 
     handle.addEventListener("pointerdown", function (event) {
+      if (
+        !bar ||
+        !bar.getClientRects().length ||
+        event.target.closest("[data-yl-close]")
+      ) {
+        return;
+      }
       startY = event.clientY;
       handle.setPointerCapture(event.pointerId);
     });
@@ -215,6 +185,146 @@
     });
   }
 
+  /**
+   * The shopper can drag the button anywhere inside the launcher's offset; launcher-spot.js keeps the spot
+   * for later pages and opens the panel on the button's side.
+   * Returns a check the click handler asks, so the click that ends a drag does not open the panel.
+   */
+  function bindMove(root, trigger) {
+    var spot = window.yayloyaltyLauncherSpot;
+    var start = null;
+    var isMoving = false;
+    var wasMoved = false;
+
+    if (!spot) {
+      return function () {
+        return false;
+      };
+    }
+
+    trigger.addEventListener("pointerdown", function (event) {
+      if (event.button !== 0) {
+        return;
+      }
+      start = {
+        x: event.clientX,
+        y: event.clientY,
+        rect: trigger.getBoundingClientRect(),
+        area: moveArea(root, trigger),
+      };
+      isMoving = false;
+      wasMoved = false;
+    });
+    trigger.addEventListener("pointermove", function (event) {
+      if (start === null) {
+        return;
+      }
+      var dx = event.clientX - start.x;
+      var dy = event.clientY - start.y;
+      if (!isMoving) {
+        if (
+          Math.abs(dx) < MOVE_THRESHOLD_PX &&
+          Math.abs(dy) < MOVE_THRESHOLD_PX
+        ) {
+          return;
+        }
+        isMoving = true;
+        trigger.setPointerCapture(event.pointerId);
+        root.classList.add("yl-launcher-moving");
+      }
+      dx = clamp(
+        dx,
+        start.area.left - start.rect.left,
+        start.area.left + start.area.width - start.rect.left,
+      );
+      dy = clamp(
+        dy,
+        start.area.top - start.rect.top,
+        start.area.top + start.area.height - start.rect.top,
+      );
+      trigger.style.transform = "translate(" + dx + "px, " + dy + "px)";
+    });
+    function release() {
+      if (start === null) {
+        return;
+      }
+      var area = start.area;
+      start = null;
+      if (!isMoving) {
+        return;
+      }
+      isMoving = false;
+      wasMoved = true;
+      root.classList.remove("yl-launcher-moving");
+      var rect = trigger.getBoundingClientRect();
+      var position = {
+        x:
+          area.width > 0
+            ? clamp((rect.left - area.left) / area.width, 0, 1)
+            : 0,
+        y:
+          area.height > 0
+            ? clamp((rect.top - area.top) / area.height, 0, 1)
+            : 0,
+      };
+      trigger.style.transform = "";
+      spot.apply(root, position);
+      spot.save(position);
+    }
+    trigger.addEventListener("pointerup", release);
+    trigger.addEventListener("pointercancel", release);
+
+    return function () {
+      var moved = wasMoved;
+      wasMoved = false;
+      return moved;
+    };
+  }
+
+  /**
+   * Where the button's top-left corner may go: the viewport inset by --yl-offset, less the button and the
+   * pill under it. The same box the CSS spreads --yl-x and --yl-y across.
+   */
+  function moveArea(root, trigger) {
+    var offsetPx =
+      parseFloat(
+        window.getComputedStyle(root).getPropertyValue("--yl-offset"),
+      ) || 0;
+    var pillPx = parseFloat(
+      window.getComputedStyle(trigger).marginBottom || "0",
+    );
+    var viewport = document.documentElement;
+    return {
+      left: offsetPx,
+      top: offsetPx,
+      width: viewport.clientWidth - 2 * offsetPx - trigger.offsetWidth,
+      height:
+        viewport.clientHeight - 2 * offsetPx - trigger.offsetHeight - pillPx,
+    };
+  }
+
+  function clamp(value, min, max) {
+    return Math.max(min, Math.min(value, max));
+  }
+
+  /**
+   * Tells the server the panel was opened, so its "You earned 40 new points." is spent from the next page on
+   * (NewPointsNotice). Fire and forget: a failed call only leaves the notice up one page longer.
+   */
+  function markSeen(root) {
+    var url = root.getAttribute("data-seen-url");
+    if (!url) {
+      return;
+    }
+    window
+      .fetch(url, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "X-WP-Nonce": root.getAttribute("data-nonce") || "" },
+      })
+      .catch(function () {});
+  }
+
   function loadActivity(root, onFail) {
     var url = root.getAttribute("data-activity-url");
     var section = root.querySelector("[data-yl-activity]");
@@ -240,6 +350,8 @@
       .then(function (data) {
         var items = (data && data.items) || [];
         list.textContent = "";
+        // The empty state is its own box, so the bordered list steps aside for it.
+        list.hidden = !items.length;
         if (!items.length) {
           section.querySelector("[data-yl-activity-empty]").hidden = false;
           return;
@@ -248,12 +360,15 @@
           var row = rowTemplate.content.firstElementChild.cloneNode(true);
           row.querySelector("[data-yl-label]").textContent = item.label;
           row.querySelector("[data-yl-meta]").textContent = item.meta;
-          row.querySelector("[data-yl-delta]").textContent = item.delta;
+          var delta = row.querySelector("[data-yl-delta]");
+          delta.textContent = item.delta;
+          delta.classList.add("yayloyalty-account__badge--" + item.tone);
           list.appendChild(row);
         });
       })
       .catch(function () {
         list.textContent = "";
+        list.hidden = true;
         error.hidden = false;
         onFail();
       });

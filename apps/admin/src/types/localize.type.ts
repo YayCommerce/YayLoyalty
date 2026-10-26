@@ -25,7 +25,7 @@ export type Meta = {
     reviewed: boolean;
     /** False until the setup wizard is finished or exited. */
     setupCompleted: boolean;
-    /** ExpiryPolicy::GRACE_DAYS: a settings change never sets an expiry date sooner than this many days from now. */
+    /** ExpiryPolicy::GRACE_DAYS: a settings change never sets an expiry date sooner than this many days from now, or the window when shorter. */
     expiryGraceDays: number;
   };
   wcMeta: {

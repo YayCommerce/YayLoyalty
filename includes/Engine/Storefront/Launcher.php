@@ -22,6 +22,15 @@ final class Launcher {
     /** The built stylesheet, relative to the plugin root. */
     private const STYLE_PATH = 'assets/dist/storefront/launcher.css';
 
+    /** Places a button the shopper dragged; printed inline, relative to the plugin root. */
+    private const SPOT_SCRIPT_PATH = 'assets/storefront/launcher-spot.js';
+
+    /** The button's foreground on a brand colour too light for white. */
+    private const DARK_FOREGROUND = '#171719';
+
+    /** The button draws only its icon (the label is sr-only), so WCAG 1.4.11's 3:1 applies; use 4.5 if the label is ever drawn. */
+    private const MIN_ICON_CONTRAST = 3.0;
+
     /** @var array|null The templates' view, or null when nothing renders on this request. */
     private $view;
 
@@ -51,6 +60,8 @@ final class Launcher {
         }
 
         wp_enqueue_style( ScriptName::STOREFRONT_STYLE, YAYLOYALTY_PLUGIN_URL . self::STYLE_PATH, [], self::asset_version( self::STYLE_PATH ) );
+        // The panel prints the Rewards tab's partials (AccountRewards::register_style() registers it on init).
+        wp_enqueue_style( ScriptName::ACCOUNT_STYLE );
         wp_enqueue_script(
             ScriptName::STOREFRONT_SCRIPT,
             YAYLOYALTY_PLUGIN_URL . 'assets/storefront/launcher.js',
@@ -79,6 +90,10 @@ final class Launcher {
         }
 
         echo self::markup( $this->view ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- the templates escape every value.
+
+        // Inline and right after the markup, so a dragged button is placed before the first paint.
+        $spot_script = (string) file_get_contents( YAYLOYALTY_PLUGIN_DIR . self::SPOT_SCRIPT_PATH ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- a local plugin file.
+        wp_print_inline_script_tag( $spot_script, [ 'id' => 'yayloyalty-launcher-spot' ] );
     }
 
     /**
@@ -95,7 +110,12 @@ final class Launcher {
 
     /** The stylesheet's URL, versioned like the enqueue, for a page that links it itself (the Design tab's preview). */
     public static function style_url(): string {
-        return add_query_arg( 'ver', self::asset_version( self::STYLE_PATH ), YAYLOYALTY_PLUGIN_URL . self::STYLE_PATH );
+        return self::versioned_url( self::STYLE_PATH );
+    }
+
+    /** A plugin asset's URL with the ?ver= an enqueue would add, for a page that links it itself. */
+    public static function versioned_url( string $relative_path ): string {
+        return add_query_arg( 'ver', self::asset_version( $relative_path ), YAYLOYALTY_PLUGIN_URL . $relative_path );
     }
 
     private function should_render( array $design ): bool {
@@ -152,7 +172,10 @@ final class Launcher {
 
         if ( $is_live && null !== $payload['member'] ) {
             $payload['activity_url'] = rest_url( StorefrontActivityRestController::REST_NAMESPACE . StorefrontActivityRestController::ROUTE );
+            $payload['seen_url']     = rest_url( StorefrontActivityRestController::REST_NAMESPACE . StorefrontActivityRestController::SEEN_ROUTE );
             $payload['nonce']        = wp_create_nonce( 'wp_rest' );
+
+            $payload['member']['new_points'] = NewPointsNotice::points_since_seen( get_current_user_id() );
         }
 
         return $payload;
@@ -160,7 +183,7 @@ final class Launcher {
 
     /**
      * The kit's tokens re-pointed at the Design tab: brand colour → --primary (and its hover/ring),
-     * corner radius → --radius. Foreground flips to dark on a light brand colour so the label stays readable.
+     * corner radius → --radius. Foreground stays white while it reaches MIN_ICON_CONTRAST, else the higher-contrast of white and dark.
      */
     private static function theme_vars( array $launcher ): string {
         // get_design() has already coerced this to a valid hex (DesignCoercion), so it is safe in a style attribute.
@@ -169,13 +192,29 @@ final class Launcher {
         return sprintf(
             '--primary:%1$s;--primary-accent:color-mix(in srgb,%1$s 85%%,#000);--ring:%1$s;--primary-foreground:%2$s;--radius:%3$dpx;',
             $color,
-            self::is_light( $color ) ? '#171719' : '#ffffff',
+            self::foreground( $color ),
             (int) $launcher['corner_radius']
         );
     }
 
-    /** Relative luminance above the point where white text drops below 4.5:1. */
-    private static function is_light( string $hex ): bool {
+    private static function foreground( string $hex ): string {
+        $luminance = self::luminance( $hex );
+        $white     = self::contrast( $luminance, 1.0 );
+
+        if ( $white >= self::MIN_ICON_CONTRAST ) {
+            return '#ffffff';
+        }
+
+        return self::contrast( $luminance, self::luminance( self::DARK_FOREGROUND ) ) > $white ? self::DARK_FOREGROUND : '#ffffff';
+    }
+
+    /** WCAG contrast ratio of two relative luminances. */
+    private static function contrast( float $a, float $b ): float {
+        return ( max( $a, $b ) + 0.05 ) / ( min( $a, $b ) + 0.05 );
+    }
+
+    /** WCAG relative luminance of a #rgb or #rrggbb colour. */
+    private static function luminance( string $hex ): float {
         $hex = ltrim( $hex, '#' );
 
         if ( 3 === strlen( $hex ) ) {
@@ -188,8 +227,6 @@ final class Launcher {
             return $value <= 0.03928 ? $value / 12.92 : ( ( $value + 0.055 ) / 1.055 ) ** 2.4;
         };
 
-        $luminance = 0.2126 * $channel( substr( $hex, 0, 2 ) ) + 0.7152 * $channel( substr( $hex, 2, 2 ) ) + 0.0722 * $channel( substr( $hex, 4, 2 ) );
-
-        return $luminance > 0.179;
+        return 0.2126 * $channel( substr( $hex, 0, 2 ) ) + 0.7152 * $channel( substr( $hex, 2, 2 ) ) + 0.0722 * $channel( substr( $hex, 4, 2 ) );
     }
 }

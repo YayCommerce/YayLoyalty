@@ -30,8 +30,10 @@ final class ExpiryRemindersTest extends IntegrationTestCase {
 
         $this->require_woocommerce();
 
-        // The fixture switches every WooCommerce email off and fails every send; this test sends this one email.
+        // The fixture switches every WooCommerce email off and fails every send; this test sends this one email,
+        // which is off by default.
         remove_filter( 'woocommerce_email_enabled_' . PointsExpiringSoonEmail::ID, '__return_false' );
+        add_filter( 'woocommerce_email_enabled_' . PointsExpiringSoonEmail::ID, '__return_true' );
         remove_filter( 'pre_wp_mail', '__return_false' );
         add_filter( 'pre_wp_mail', [ $this, 'capture_mail' ], 10, 2 );
         add_filter( 'pre_option_' . SettingsHelper::OPTION_SETTINGS, [ $this, 'pinned_settings' ] );
@@ -41,6 +43,7 @@ final class ExpiryRemindersTest extends IntegrationTestCase {
         remove_filter( 'pre_wp_mail', [ $this, 'capture_mail' ], 10 );
         remove_filter( 'pre_option_' . SettingsHelper::OPTION_SETTINGS, [ $this, 'pinned_settings' ] );
         remove_filter( 'woocommerce_email_enabled_' . PointsExpiringSoonEmail::ID, '__return_false' );
+        remove_filter( 'woocommerce_email_enabled_' . PointsExpiringSoonEmail::ID, '__return_true' );
         remove_filter( 'yayloyalty_expiry_modes', [ $this, 'add_batch_mode' ] );
         delete_option( ExpiryRunner::OPTION_APPLIED );
 

@@ -1,0 +1,92 @@
+/*
+ * templates/recent-activity.php and activity-row.php: the launcher panel's "Recent activity", its
+ * "View all" link, the rows launcher.js fills and the empty state.
+ * Imported by rewards-tokens.css, which holds the tokens.
+ */
+.yayloyalty-account .yayloyalty-account__activity-all {
+  font-size: 12px;
+  color: var(--yayloyalty-account-accent);
+  text-decoration: none;
+}
+
+.yayloyalty-account .yayloyalty-account__activity-all:hover,
+.yayloyalty-account .yayloyalty-account__activity-all:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.yayloyalty-account .yayloyalty-account__activity-list,
+.yayloyalty-account .yayloyalty-account__activity-empty {
+  border: 1px solid var(--yayloyalty-account-border);
+  border-radius: var(--yayloyalty-account-radius);
+  background: var(--yayloyalty-account-surface);
+  color: var(--yayloyalty-account-text);
+}
+
+/* As rule-list-item.css: the side padding sits on the list, so the dividers between rows stop short of the border. */
+.yayloyalty-account .yayloyalty-account__activity-list {
+  overflow: hidden;
+  padding: 0 16px;
+  list-style: none;
+}
+
+.yayloyalty-account .yayloyalty-account__activity-list[hidden],
+.yayloyalty-account .yayloyalty-account__activity-empty[hidden] {
+  display: none;
+}
+
+.yayloyalty-account .yayloyalty-account__activity-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+}
+
+.yayloyalty-account .yayloyalty-account__activity-row + .yayloyalty-account__activity-row {
+  border-top: 1px solid var(--yayloyalty-account-divider);
+}
+
+.yayloyalty-account .yayloyalty-account__activity-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.yayloyalty-account .yayloyalty-account__activity-label {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.yayloyalty-account .yayloyalty-account__activity-meta {
+  font-size: 11px;
+  color: var(--yayloyalty-account-muted);
+}
+
+.yayloyalty-account .yayloyalty-account__activity-delta {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.yayloyalty-account .yayloyalty-account__activity-empty {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--yayloyalty-account-subtle);
+  font-size: 13px;
+  color: var(--yayloyalty-account-muted);
+}
+
+.yayloyalty-account .yayloyalty-account__activity-empty-icon {
+  flex-shrink: 0;
+}
+
+.yayloyalty-account .yayloyalty-account__activity-empty-icon svg {
+  width: 36px;
+  height: 35px;
+}

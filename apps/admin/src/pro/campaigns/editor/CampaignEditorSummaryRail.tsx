@@ -9,6 +9,9 @@ import { Segmented, SegmentedItem } from '@/components/ui/segmented';
 import { statusLabel } from '../campaign-labels';
 import { CampaignFormValues, useCampaignEditorContext } from './campaign-editor.form';
 
+// A draft or archived campaign selects neither; saving keeps its status until one is picked.
+const CAMPAIGN_STATUS_OPTIONS = ['active', 'paused'] as const;
+
 /**
  * The right rail: status and schedule in one card, then the actions. Both save buttons are
  * type="submit", so the resolver runs for a draft save too; data-intent says which was pressed.
@@ -73,9 +76,6 @@ export function CampaignEditorSummaryRail({
   );
 }
 
-/** CAMPAIGN_STATUSES minus archived: archiving is its own flow, and Campaign::set_status() throws for a built-in. */
-const EDITABLE_STATUSES = ['active', 'paused', 'draft'] as const;
-
 function CampaignEditorStatus() {
   const { control } = useFormContext<CampaignFormValues>();
 
@@ -89,7 +89,7 @@ function CampaignEditorStatus() {
           render={({ field }) => (
             // Re-clicking the active item yields an empty string; never write that back.
             <Segmented value={field.value} onValueChange={(value) => value && field.onChange(value)}>
-              {EDITABLE_STATUSES.map((status) => (
+              {CAMPAIGN_STATUS_OPTIONS.map((status) => (
                 <SegmentedItem key={status} value={status}>
                   {statusLabel(status)}
                 </SegmentedItem>

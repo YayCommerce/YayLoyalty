@@ -108,7 +108,6 @@ export function RewardTable() {
               <RewardTableSubtitle screen={screen} showArchived={showArchived} onViewChange={setView} />
             )}
             <div className="flex items-center gap-3">
-              <Button variant="outline">{__('Redemptions log', 'yayloyalty')}</Button>
               <Button onClick={() => navigate('/rewards/new')}>{__('Add reward', 'yayloyalty')}</Button>
             </div>
           </div>
@@ -318,7 +317,7 @@ function RewardRow({
               onCheckedChange={toggle}
             />
             <span className="text-muted-foreground text-xs">
-              {displayStatus === 'active' ? __('On', 'yayloyalty') : __('Paused', 'yayloyalty')}
+              {displayStatus === 'active' ? __('Active', 'yayloyalty') : __('Paused', 'yayloyalty')}
             </span>
           </div>
         ) : (

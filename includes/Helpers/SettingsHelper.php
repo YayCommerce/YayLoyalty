@@ -40,8 +40,8 @@ class SettingsHelper {
             'enabled'               => true,
             // Role slugs that never earn, read by Engine\Earning\ProgramGate.
             'excluded_roles'        => [],
-            'points_label_singular' => __( 'Point', 'yayloyalty' ),
-            'points_label_plural'   => __( 'Points', 'yayloyalty' ),
+            'points_label_singular' => __( 'point', 'yayloyalty' ),
+            'points_label_plural'   => __( 'points', 'yayloyalty' ),
             // null means no limit. Enforced by Pro's DailyEarningLimit.
             'max_points_per_day'    => null,
             // Whether YayCurrency's exchange fee is part of a currency's rate. Read by Integrations\YayCurrency\YayCurrencyIntegration.

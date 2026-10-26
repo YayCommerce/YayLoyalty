@@ -13,59 +13,74 @@
 }
 
 /*
- * Floating button: bottom right by default, clear of the footer. Its spacing and the label's width
- * read from variables, so each collapsed state below only flips them and the geometry has one owner.
+ * Floating button: a round gift icon, bottom right by default, clear of the footer. A member's balance
+ * sits in a pill across its bottom edge, and a dot on its corner says some of it expires soon.
+ * Both are out of flow, so the circle keeps its size whatever the number's length.
  */
 .yl-launcher-trigger {
-  --yl-trigger-gap: 10px;
-  --yl-trigger-pad: 18px;
-  --yl-label-cols: 1fr;
-  --yl-label-opacity: 1;
+  --yl-trigger-size: 64px;
   position: fixed;
   z-index: 99990;
 }
 
-/* Icon only, 44px square: set by launcher.js near the page bottom. */
-.yl-launcher-trigger[data-collapsed] {
-  --yl-trigger-gap: 0px;
-  --yl-trigger-pad: 12px;
-  --yl-label-cols: 0fr;
-  --yl-label-opacity: 0;
-}
-
-/* [data-position] lifts this to 0,3,0, above the scoped reset's `padding: 0` on buttons. */
+/* [data-position] lifts this to 0,3,0, above the scoped reset's `padding: 0` and sizes on buttons. */
 .yayloyalty-launcher[data-position] .yl-launcher-trigger {
-  gap: var(--yl-trigger-gap);
-  padding-inline: var(--yl-trigger-pad);
-  transition:
-    background-color 0.15s ease,
-    gap 0.25s ease,
-    padding 0.25s ease;
+  width: var(--yl-trigger-size);
+  height: var(--yl-trigger-size);
+  padding: 0;
+  transition: background-color 0.15s ease;
+  /* launcher.js moves the button on drag; without this a touch drag scrolls the page instead. */
+  touch-action: none;
 }
 
-/*
- * The label folds through a grid column (1fr to 0fr), which animates its natural width without
- * measuring it. It is clipped, never hidden, so it stays the button's accessible name.
- */
-.yl-launcher-label-wrap {
-  display: grid;
-  grid-template-columns: var(--yl-label-cols);
-  opacity: var(--yl-label-opacity);
-  transition:
-    grid-template-columns 0.25s ease,
-    opacity 0.2s ease;
+.yayloyalty-launcher.yl-launcher-moving .yl-launcher-trigger {
+  cursor: grabbing;
+  user-select: none;
 }
 
-.yl-launcher-label {
-  overflow: hidden;
+/* A member's button leaves room under it for the half of the pill that hangs below the circle. */
+.yayloyalty-launcher[data-position] .yl-launcher-trigger:has(.yl-launcher-balance) {
+  --yl-pill-room: 12px;
+  margin-bottom: var(--yl-pill-room);
 }
 
-/* Out of flow on the button's corner, so it holds still while the button resizes. The ring keeps a white badge visible on a white page. */
-.yl-launcher-badge {
+.yayloyalty-launcher[data-position] .yl-launcher-icon {
+  display: inline-flex;
+}
+
+.yayloyalty-launcher[data-position] .yl-launcher-icon > svg {
+  width: 28px;
+  height: 28px;
+}
+
+.yayloyalty-launcher[data-position] .yl-launcher-balance {
   position: absolute;
-  top: -8px;
-  right: -8px;
-  box-shadow: 0 0 0 2px var(--primary);
+  bottom: -12px;
+  left: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 9999px;
+  box-shadow: 0 2px 8px rgb(20 20 20 / 0.12);
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
+/* The white ring keeps the dot apart from the circle and visible on any page. */
+.yayloyalty-launcher[data-position] .yl-launcher-dot {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  background: #f4c542;
+  box-shadow: 0 0 0 3px #ffffff;
 }
 
 /* The open panel takes the button's place, so the button steps aside until it closes. */
@@ -85,6 +100,20 @@
   bottom: var(--yl-offset);
 }
 
+/*
+ * Where the shopper dragged the button (assets/storefront/launcher-spot.js): --yl-x and --yl-y run 0–1
+ * across the viewport inset by the offset, less the button and its pill, so 1/1 is the default corner.
+ * launcher.js's moveArea() measures the same box.
+ */
+.yayloyalty-launcher[data-spot] .yl-launcher-trigger {
+  top: calc(
+    var(--yl-offset) + (100% - 2 * var(--yl-offset) - var(--yl-trigger-size) - var(--yl-pill-room, 0px)) * var(--yl-y)
+  );
+  right: auto;
+  bottom: auto;
+  left: calc(var(--yl-offset) + (100% - 2 * var(--yl-offset) - var(--yl-trigger-size)) * var(--yl-x));
+}
+
 .yl-launcher-overlay {
   position: fixed;
   inset: 0;
@@ -96,9 +125,9 @@
 .yl-launcher-panel {
   position: fixed;
   z-index: 99992;
-  width: 360px;
+  width: 400px;
   max-height: min(700px, calc(100vh - 2 * var(--yl-offset)));
-  border-radius: var(--radius);
+  border-radius: 14px;
   overflow: hidden;
   opacity: 0;
   transform: translateY(var(--yl-closed-shift));
@@ -127,7 +156,7 @@
   display: none;
 }
 
-/* Mobile: the button is always collapsed when it has an icon; the panel becomes a bottom sheet. */
+/* Mobile: a smaller button, and the panel becomes a bottom sheet. */
 @media (max-width: 599px) {
   .yayloyalty-launcher[data-hide-mobile='1'] {
     display: none;
@@ -137,46 +166,8 @@
     --yayloyalty-launcher-offset: 16px;
   }
 
-  /*
-   * On mobile the launcher differs from the desktop panel: a round button, and a sheet with a light
-   * header (brand-coloured icon, outlined round ✕). [data-position] lifts these to 0,3,0 so they
-   * beat the 0,2,0 utilities on the same elements.
-   */
-  .yayloyalty-launcher[data-position] .yl-launcher-trigger {
-    border-radius: 9999px;
-    font-size: 13px;
-  }
-
-  /* Always collapsed: the values .yl-launcher-trigger[data-collapsed] owns, repeated because a media query cannot share its selector. */
-  .yl-launcher-trigger:has(svg) {
-    --yl-trigger-gap: 0px;
-    --yl-trigger-pad: 12px;
-    --yl-label-cols: 0fr;
-    --yl-label-opacity: 0;
-  }
-
-  .yayloyalty-launcher[data-position] .yl-launcher-header {
-    padding: 12px 16px;
-    background: var(--background);
-    color: var(--foreground);
-    border-bottom: 1px solid var(--border);
-  }
-
-  .yayloyalty-launcher[data-position] .yl-launcher-header h2 {
-    color: var(--foreground);
-    font-size: 15px;
-  }
-
-  .yayloyalty-launcher[data-position] .yl-launcher-header-icon {
-    color: var(--primary);
-  }
-
-  .yayloyalty-launcher[data-position] .yl-launcher-close {
-    width: 30px;
-    height: 30px;
-    border: 1px solid var(--border);
-    border-radius: 9999px;
-    color: var(--muted-foreground);
+  .yl-launcher-trigger {
+    --yl-trigger-size: 56px;
   }
 
   .yl-launcher-overlay {
@@ -210,6 +201,10 @@
     display: flex;
     justify-content: center;
     padding: 10px 0 0;
+  }
+
+  /* The bar and the header together are the drag-to-close area, so a thumb need not find the 4px bar. */
+  .yl-launcher-grip {
     touch-action: none;
     cursor: grab;
   }
@@ -221,7 +216,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .yl-launcher-trigger,
-  .yl-launcher-label-wrap,
   .yl-launcher-panel,
   .yl-launcher-overlay {
     transition: none !important;

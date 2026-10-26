@@ -29,6 +29,7 @@ import {
   GeneralSettingsFormValues,
 } from './general-settings.form';
 import { PointsNamingCard } from './PointsNamingCard';
+import { ProgramStatusCard } from './ProgramStatusCard';
 
 /** Lite's place for the fraud limits: the same card as an upsell, with no input. */
 function FraudLimitsUpsellCard() {
@@ -114,6 +115,7 @@ export default function GeneralSettingsPage() {
   return (
     <FormProvider {...form}>
       <form onSubmit={handleSave} className="flex flex-col gap-4">
+        <ProgramStatusCard />
         <PointsNamingCard />
         {IS_PRO_BUILD ? <FraudLimitsSection /> : <FraudLimitsUpsellCard />}
         {window.yayLoyaltyMeta.wcMeta.yaycurrency_active && <YayCurrencyCard />}

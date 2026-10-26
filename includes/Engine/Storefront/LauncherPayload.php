@@ -27,6 +27,9 @@ final class LauncherPayload {
     /** Extra rows for "Ways to redeem", after the points discount. */
     public const REDEEM_OFFERS_FILTER = 'yayloyalty_launcher_redeem_offers';
 
+    /** A member's points count as expiring soon, for the launcher's dot and the Rewards tab's notice, this many days ahead. */
+    public const EXPIRING_SOON_DAYS = 30;
+
     /** @var CampaignRepository */
     private $campaigns;
 
@@ -40,6 +43,11 @@ final class LauncherPayload {
         $this->campaigns = $campaigns;
         $this->rewards   = $rewards;
         $this->customers = $customers;
+    }
+
+    /** Whether "Ways to redeem" has nothing to print: no live points discount and no offers. */
+    public static function redeem_is_empty( array $payload ): bool {
+        return null === $payload['redeem'] && [] === $payload['offers'];
     }
 
     /**
@@ -63,6 +71,10 @@ final class LauncherPayload {
 
         $customer = $this->customers->find_by_user_id( $user_id );
         $payload  = $this->for_balance( $design, null === $customer ? 0 : $customer->get_balance(), EarningService::points_left_today( $user_id ) );
+
+        if ( null !== $customer && $customer->get_balance() > 0 ) {
+            $payload['member']['expires_at'] = self::expiring_soon( $customer->get_expires_at() );
+        }
 
         // A shopper checkout refuses (excluded role, opted out, program paused, coupons off) is promised no discount.
         if ( null !== RedemptionProgramGate::shopper_denial( $user_id ) ) {
@@ -88,10 +100,10 @@ final class LauncherPayload {
         $register = self::register_route();
         $engine   = $this->engine();
         $rules    = null === $engine ? LauncherEarnRules::none() : LauncherEarnRules::advertise( $engine, ContextFactory::for_advert( $now ), null !== $register );
+        $estimate = null !== $engine && null === $balance && null !== $rules['earn'][ CampaignTrigger::PURCHASE ] ? self::product_estimate() : null;
 
         return [
             'launcher'     => $design['launcher'],
-            'text'         => LauncherCopy::storefront_text( $design['storefront_text'] ),
             'hide_mobile'  => ! empty( $design['visibility']['hide_on_mobile'] ),
             'earn'         => $rules['earn'],
             'purchase_min' => $rules['purchase_min'],
@@ -99,10 +111,12 @@ final class LauncherPayload {
             'offers'       => self::redeem_offers( $now ),
             'member'       => null === $balance ? null : self::member( $balance, null === $redeem ? null : $reward ),
             'left_today'   => $left_today,
-            'estimate'     => null !== $engine && null === $balance && null !== $rules['earn'][ CampaignTrigger::PURCHASE ] ? self::product_estimate() : null,
+            'estimate'     => $estimate,
+            // What the estimate takes off an order, as checkout would grant it: null below the minimum.
+            'estimate_off' => null === $estimate || null === $redeem ? null : self::worth( $reward, $estimate ),
             'register'     => $register,
             'account_url'  => (string) wc_get_page_permalink( 'myaccount' ),
-            'rewards_url'  => AccountRewards::url(),
+            'history_url'  => AccountRewards::history_url(),
             'checkout_url' => (string) wc_get_checkout_url(),
         ];
     }
@@ -123,13 +137,26 @@ final class LauncherPayload {
 
     /**
      * @param Reward|null $reward The cart-discount reward when it is live; null hides the worth.
-     * @return array{balance: int, worth: ?float}
+     * @return array{balance: int, worth: ?float, expires_at: ?string} `expires_at` stays null here; build() sets it
+     *         for a live member whose points expire within EXPIRING_SOON_DAYS.
      */
     private static function member( int $balance, ?Reward $reward ): array {
         return [
-            'balance' => $balance,
-            'worth'   => null === $reward || $balance <= 0 ? null : self::worth( $reward, $balance ),
+            'balance'    => $balance,
+            'worth'      => null === $reward || $balance <= 0 ? null : self::worth( $reward, $balance ),
+            'expires_at' => null,
         ];
+    }
+
+    /** $expires_at (UTC) when it is still ahead and no more than EXPIRING_SOON_DAYS away, else null. */
+    private static function expiring_soon( ?string $expires_at ): ?string {
+        if ( null === $expires_at || ! Dates::is_valid( $expires_at ) ) {
+            return null;
+        }
+
+        $left = Dates::to_timestamp( $expires_at ) - Dates::to_timestamp( Dates::now() );
+
+        return $left > 0 && $left <= self::EXPIRING_SOON_DAYS * DAY_IN_SECONDS ? $expires_at : null;
     }
 
     /**
@@ -150,7 +177,8 @@ final class LauncherPayload {
      * unit of the shopper's currency, through LauncherCopy::converted_rate() when it was converted.
      *
      * @param Reward|null $reward The reward when it is live (RewardRepository::find_live_cart_discount()).
-     * @return array{points_per_unit: float, min_points: int, max_points: ?int, max_percent: ?float}|null
+     * @return array{points_per_unit: float, min_points: int, max_points: ?int, max_percent: ?float, unlock_points: int, unlock_off: ?float}|null
+     *         `unlock_points` the smallest balance the discount takes, and `unlock_off` what it takes off: the points card's "Earn N more".
      */
     private static function redeem_rule( ?Reward $reward ): ?array {
         $rate = RewardRepository::rate_of( $reward );
@@ -161,12 +189,17 @@ final class LauncherPayload {
 
         $config        = $reward->get_config();
         $currency_rate = CurrencyRate::rate( CurrencyRate::current() );
+        $step          = Clamp::step_of( $reward );
+        // Its minimum on the step, and never less than one unit of the shopper's currency's worth.
+        $unlock = max( (int) ( ceil( Clamp::min_of( $reward ) / $step ) * $step ), Clamp::points_for( 1.0, $reward, $currency_rate ) );
 
         return [
             'points_per_unit' => 1.0 === $currency_rate ? $rate : LauncherCopy::converted_rate( $rate / $currency_rate ),
             'min_points'      => Clamp::min_of( $reward ),
             'max_points'      => isset( $config['max_points_per_order'] ) ? (int) $config['max_points_per_order'] : null,
             'max_percent'     => isset( $config['max_percent_of_subtotal'] ) ? (float) $config['max_percent_of_subtotal'] : null,
+            'unlock_points'   => $unlock,
+            'unlock_off'      => self::worth( $reward, $unlock ),
         ];
     }
 

@@ -1,9 +1,16 @@
 /**
- * The points card's behaviour: the slider and the number field are one control, and the discount beside
- * them is previewed as either moves. The preview is arithmetic only; the server's answer replaces it.
- * Apply and Remove send the points (0 removes) and show the card the server answers with.
- * With a Rewards panel the card has tabs, switched here without a request, and Apply/Update sends the ticked
- * reward ids the same way. Ticking keeps the selection line and the unaffordable rows in step with the balance.
+ * The points card's behaviour: one checkbox list, in one of two modes the page decides (`data-mode`).
+ *
+ * - Cart mode applies as it changes. Ticking the Points discount row opens its slider and applies the most it
+ *   can take; unticking sends 0. A release, a changed field or Enter applies the points once, DEBOUNCE_MS after the
+ *   last of them. Ticking a reward row sends every ticked reward id.
+ * - Checkout mode (inside the classic checkout form or the Checkout block) holds every change as a draft: the
+ *   card opens collapsed to its summary while something is applied, Change opens the list, and Update sends the
+ *   points and the reward ids in one request, or just collapses when nothing changed.
+ *
+ * In both, the slider and the number field are one control, the discount beside them is previewed as either
+ * moves, and the unaffordable reward rows follow the ticks. The preview is arithmetic only; the server's answer
+ * replaces the card.
  *
  * Plain script, no build step. Markup and data come from includes/Engine/Storefront/templates/redeem-card.php.
  * Listeners are delegated from the document, because the classic checkout replaces the card's DOM on
@@ -12,8 +19,36 @@
 (function () {
   "use strict";
 
+  /** How long the slider waits after the last change before it applies. */
+  var DEBOUNCE_MS = 200;
+
+  /** Where the card holds a draft instead of applying at once: the classic checkout form and the Checkout block. */
+  var CHECKOUT_SELECTOR = "form.checkout, .wp-block-woocommerce-checkout";
+
+  /** Each card's pending slider request, so a release that fires both `change` and Enter sends once. */
+  var pending = new WeakMap();
+
   function rootOf(element) {
     return element.closest("[data-yl-redeem]");
+  }
+
+  /**
+   * Gives every card not yet marked its mode. The server prints one markup for every page (the blocks' card is
+   * shared by Cart and Checkout), so only the page can tell.
+   */
+  function markModes() {
+    document
+      .querySelectorAll("[data-yl-redeem]:not([data-mode])")
+      .forEach(function (root) {
+        root.setAttribute(
+          "data-mode",
+          root.closest(CHECKOUT_SELECTOR) ? "checkout" : "cart",
+        );
+      });
+  }
+
+  function isCheckout(root) {
+    return root.getAttribute("data-mode") === "checkout";
   }
 
   function numberAttr(element, name) {
@@ -34,6 +69,16 @@
     points -= points % step;
 
     return Math.max(min, points);
+  }
+
+  /** Fills the range's track up to its thumb: WebKit has no fill of its own, so redeem.css reads this variable. */
+  function paintRange(range) {
+    var min = numberAttr(range, "min");
+    var max = numberAttr(range, "max");
+    var fill =
+      max > min ? ((Number(range.value) - min) / (max - min)) * 100 : 100;
+
+    range.style.setProperty("--yayloyalty-redeem-fill", fill + "%");
   }
 
   /** Whole digits grouped in threes with the store's thousand separator, read from `data-thousand-sep`. */
@@ -124,10 +169,10 @@
   }
 
   /**
-   * Sends `{ points }` or `{ rewards }` and shows the card the server answers with.
+   * Sends the points, the reward ids, or both, each on its own, and shows the card the server answers with.
    *
    * @param {Element} root
-   * @param {{points: number}|{rewards: number[]}} payload
+   * @param {{points?: number, rewards?: number[]}} payload
    */
   function send(root, payload) {
     if (root.hasAttribute("data-busy")) {
@@ -148,10 +193,11 @@
     }
 
     var body = new URLSearchParams();
-    if (payload.rewards) {
+    if ("rewards" in payload) {
       // Present and empty takes every reward off.
       body.append("rewards", payload.rewards.join(","));
-    } else {
+    }
+    if ("points" in payload) {
       body.append("points", String(payload.points));
     }
     body.append("security", root.getAttribute("data-nonce") || "");
@@ -190,6 +236,7 @@
     var points = clamp(range, field.value);
 
     range.value = String(points);
+    paintRange(range);
     if (rewriteField) {
       field.value = String(points);
     }
@@ -198,30 +245,35 @@
     return points;
   }
 
-  function apply(root) {
+  /** Applies the points once, DEBOUNCE_MS after the last call for this card. */
+  function schedule(root, points) {
+    window.clearTimeout(pending.get(root));
+    pending.set(
+      root,
+      window.setTimeout(function () {
+        pending.delete(root);
+        // A card replaced meanwhile (a totals refresh) has nothing left to send for.
+        if (root.isConnected) {
+          send(root, { points: points });
+        }
+      }, DEBOUNCE_MS),
+    );
+  }
+
+  /** The typed points, clamped and written back, then applied once; nothing for a disabled field. */
+  function schedulePoints(root) {
     var field = root.querySelector("[data-yl-points]");
     var points = field && !field.disabled ? sync(root, true) : null;
 
     if (points !== null) {
-      send(root, { points: points });
+      schedule(root, points);
     }
   }
 
-  /** Points as SettingsHelper::points_text() prints them, from the template and labels the panel carries. */
-  function pointsText(panel, points) {
-    return (panel.getAttribute("data-points-template") || "%1$s %2$s")
-      .replace("%1$s", group(panel, String(points)))
-      .replace(
-        "%2$s",
-        panel.getAttribute(points === 1 ? "data-label-one" : "data-label-many") ||
-          "",
-      );
-  }
-
-  /** The panel's ticked reward boxes. */
-  function tickedBoxes(panel) {
+  /** The list's ticked reward boxes. */
+  function tickedBoxes(list) {
     return Array.prototype.filter.call(
-      panel.querySelectorAll("[data-yl-reward]"),
+      list.querySelectorAll("[data-yl-reward]"),
       function (box) {
         return box.checked;
       },
@@ -229,149 +281,100 @@
   }
 
   /**
-   * The Rewards panel after a tick: a row whose cost would take the selection past the balance is disabled with
-   * "Not enough …" until the selection drops, the line counts the selection, and Apply/Update is enabled only
-   * while the ticks differ from what is applied (the boxes' `checked` attribute).
+   * The reward rows after a tick: a row whose cost would take the ticked rewards past the balance is disabled
+   * until other ticks drop. Mirrors the reward rows' server-side `is_short`, the source of truth, over the list's
+   * `data-balance` and each row's `data-cost`; this file ships in Lite, so it names no Pro class.
    */
-  function refreshRewards(panel) {
-    if (panel.hasAttribute("data-locked")) {
-      return;
-    }
-
-    var boxes = Array.prototype.slice.call(
-      panel.querySelectorAll("[data-yl-reward]"),
-    );
-    var ticked = tickedBoxes(panel);
-    var sum = ticked.reduce(function (total, box) {
+  function refreshShort(list) {
+    var sum = tickedBoxes(list).reduce(function (total, box) {
       return total + numberAttr(box, "data-cost");
     }, 0);
-    var balance = numberAttr(panel, "data-balance");
-    var isChanged = boxes.some(function (box) {
-      return box.checked !== box.defaultChecked;
-    });
+    var balance = numberAttr(list, "data-balance");
 
-    boxes.forEach(function (box) {
-      if (box.checked || box.hasAttribute("data-denied")) {
-        return;
-      }
-
-      var isShort = sum + numberAttr(box, "data-cost") > balance;
-      var desc = box.parentNode.querySelector("[data-yl-desc]");
-
-      box.disabled = isShort;
-      if (desc) {
-        desc.textContent = isShort
-          ? panel.getAttribute("data-short-text") || ""
-          : desc.getAttribute("data-text") || "";
-      }
-    });
-
-    var line = panel.querySelector("[data-yl-selection]");
-
-    if (line) {
-      if (!isChanged) {
-        line.textContent = line.getAttribute("data-text") || "";
-      } else if (ticked.length === 0) {
-        line.textContent = panel.getAttribute("data-none-text") || "";
-      } else {
-        line.textContent = (panel.getAttribute("data-selection-template") || "")
-          .replace("%1$s", String(ticked.length))
-          .replace("%2$s", pointsText(panel, sum));
-      }
-    }
-
-    var button = panel.querySelector("[data-yl-apply-rewards]");
-
-    if (button) {
-      button.disabled = !isChanged;
-    }
-  }
-
-  function applyRewards(root, button) {
-    var panel = button.closest("[data-yl-rewards]");
-
-    if (!panel || panel.hasAttribute("data-locked")) {
-      return;
-    }
-
-    send(root, {
-      rewards: tickedBoxes(panel).map(function (box) {
-        return Number(box.value);
-      }),
-    });
-  }
-
-  /** Opens one tab of the card and hides the others' panels; no request. */
-  function selectTab(root, tab) {
-    root.querySelectorAll("[data-yl-tab]").forEach(function (each) {
-      var isOpen = each === tab;
-      var panel = root.querySelector(
-        "#" + CSS.escape(each.getAttribute("aria-controls") || ""),
-      );
-
-      each.setAttribute("aria-selected", isOpen ? "true" : "false");
-      each.tabIndex = isOpen ? 0 : -1;
-      if (panel) {
-        panel.hidden = !isOpen;
+    list.querySelectorAll("[data-yl-reward]").forEach(function (box) {
+      if (!box.checked && !box.hasAttribute("data-denied")) {
+        box.disabled = sum + numberAttr(box, "data-cost") > balance;
       }
     });
   }
 
-  document.addEventListener("click", function (event) {
-    var target = event.target instanceof Element ? event.target : null;
-    var button = target
-      ? target.closest(
-          "[data-yl-apply], [data-yl-remove], [data-yl-apply-rewards], [data-yl-tab]",
-        )
-      : null;
-    var root = button ? rootOf(button) : null;
+  /** The ids of the card's ticked rewards; none on a card without reward rows. */
+  function tickedIds(root) {
+    return tickedBoxes(root).map(function (box) {
+      return Number(box.value);
+    });
+  }
 
-    if (!root) {
-      return;
-    }
-    if (button.matches("[data-yl-tab]")) {
-      selectTab(root, button);
-    } else if (button.matches("[data-yl-apply-rewards]")) {
-      applyRewards(root, button);
-    } else if (button.matches("[data-yl-remove]")) {
-      send(root, { points: 0 });
-    } else {
-      apply(root);
-    }
-  });
+  /** The typed points as the slider takes them; null on a card without the field, or while it is disabled. */
+  function typedPoints(root) {
+    var range = root.querySelector("[data-yl-range]");
+    var field = root.querySelector("[data-yl-points]");
 
-  // The WAI-ARIA tabs pattern: the arrow keys, Home and End move to a tab and open it.
-  document.addEventListener("keydown", function (event) {
-    var target = event.target;
+    return range && field && !field.disabled ? clamp(range, field.value) : null;
+  }
 
-    if (!(target instanceof Element) || !target.matches("[data-yl-tab]")) {
-      return;
+  /**
+   * What Update sends. A ticked row whose field is disabled (the rewards leave it nothing) keeps the shopper's
+   * request, so an untouched row is not lowered to its minimum.
+   */
+  function draftOf(root) {
+    var toggle = root.querySelector("[data-yl-slider-toggle]");
+    var typed = typedPoints(root);
+    var points = 0;
+
+    if (toggle && toggle.checked) {
+      points = typed !== null ? typed : numberAttr(toggle, "data-requested");
     }
 
-    var tabs = Array.prototype.slice.call(
-      target.parentNode.querySelectorAll("[data-yl-tab]"),
+    return { points: points, rewards: tickedIds(root) };
+  }
+
+  /** Whether the draft differs from what the server drew: the markup's own checked and value attributes. */
+  function isChanged(root) {
+    var toggle = root.querySelector("[data-yl-slider-toggle]");
+    var typed = typedPoints(root);
+
+    if (toggle && toggle.checked !== toggle.defaultChecked) {
+      return true;
+    }
+    if (
+      toggle &&
+      toggle.checked &&
+      typed !== null &&
+      typed !== Number(root.querySelector("[data-yl-points]").defaultValue)
+    ) {
+      return true;
+    }
+
+    return Array.prototype.some.call(
+      root.querySelectorAll("[data-yl-reward]"),
+      function (box) {
+        return box.checked !== box.defaultChecked;
+      },
     );
-    var index = tabs.indexOf(target);
-    var next = null;
+  }
 
-    if (event.key === "ArrowRight") {
-      next = tabs[(index + 1) % tabs.length];
-    } else if (event.key === "ArrowLeft") {
-      next = tabs[(index - 1 + tabs.length) % tabs.length];
-    } else if (event.key === "Home") {
-      next = tabs[0];
-    } else if (event.key === "End") {
-      next = tabs[tabs.length - 1];
+  /** Update stays off while nothing is applied and nothing changed: there is nothing to send or collapse. */
+  function refreshUpdate(root) {
+    var update = root.querySelector("[data-yl-update]");
+
+    if (update) {
+      update.disabled = !root.hasAttribute("data-applied") && !isChanged(root);
     }
+  }
 
-    var root = next ? rootOf(target) : null;
+  function setExpanded(root, isExpanded) {
+    var change = root.querySelector("[data-yl-change]");
 
-    if (root) {
-      event.preventDefault();
-      selectTab(root, next);
-      next.focus();
+    if (isExpanded) {
+      root.setAttribute("data-expanded", "");
+    } else {
+      root.removeAttribute("data-expanded");
     }
-  });
+    if (change) {
+      change.setAttribute("aria-expanded", isExpanded ? "true" : "false");
+    }
+  }
 
   // The card can sit inside the checkout form: Enter applies the points and must never place the order.
   document.addEventListener("keydown", function (event) {
@@ -388,8 +391,14 @@
 
     var root = rootOf(target);
 
-    if (root) {
-      apply(root);
+    if (!root) {
+      return;
+    }
+    if (isCheckout(root)) {
+      sync(root, true);
+      refreshUpdate(root);
+    } else {
+      schedulePoints(root);
     }
   });
 
@@ -403,10 +412,16 @@
 
     if (target.matches("[data-yl-range]")) {
       root.querySelector("[data-yl-points]").value = target.value;
+      paintRange(target);
       showOff(root, Number(target.value));
     } else if (target.matches("[data-yl-points]")) {
       // The field keeps what was typed until it is left; the slider and the preview follow the clamped number.
       sync(root, false);
+    } else {
+      return;
+    }
+    if (isCheckout(root)) {
+      refreshUpdate(root);
     }
   });
 
@@ -417,10 +432,68 @@
     if (!root) {
       return;
     }
-    if (target.matches("[data-yl-points]")) {
-      sync(root, true);
+
+    var isDraft = isCheckout(root);
+
+    if (target.matches("[data-yl-slider-toggle]")) {
+      var body = root.querySelector("[data-yl-slider-body]");
+      var field = root.querySelector("[data-yl-points]");
+
+      if (body) {
+        body.hidden = !target.checked;
+      }
+      if (isDraft) {
+        if (target.checked) {
+          sync(root, true);
+        }
+        refreshUpdate(root);
+        return;
+      }
+      window.clearTimeout(pending.get(root));
+      send(root, { points: target.checked && field ? Number(field.max) : 0 });
+    } else if (target.matches("[data-yl-range], [data-yl-points]")) {
+      if (isDraft) {
+        sync(root, true);
+        refreshUpdate(root);
+      } else if (target.matches("[data-yl-range]")) {
+        schedule(root, Number(target.value));
+      } else {
+        schedulePoints(root);
+      }
     } else if (target.matches("[data-yl-reward]")) {
-      refreshRewards(target.closest("[data-yl-rewards]"));
+      refreshShort(target.closest("[data-yl-list]"));
+      if (isDraft) {
+        refreshUpdate(root);
+      } else {
+        send(root, { rewards: tickedIds(root) });
+      }
     }
+  });
+
+  // Change opens the checkout list; Update sends the draft, or only collapses the card when nothing changed.
+  document.addEventListener("click", function (event) {
+    var target = event.target instanceof Element ? event.target : null;
+    var button = target && target.closest("[data-yl-change], [data-yl-update]");
+    var root = button ? rootOf(button) : null;
+
+    if (!root) {
+      return;
+    }
+
+    if (button.matches("[data-yl-change]")) {
+      setExpanded(root, true);
+    } else if (isChanged(root)) {
+      // The answered card has no data-expanded: it opens collapsed while something is applied.
+      send(root, draftOf(root));
+    } else {
+      setExpanded(root, false);
+    }
+  });
+
+  markModes();
+  // The classic checkout's order-review refresh, replaceCard() and the blocks' redraw all bring a card unmarked.
+  new MutationObserver(markModes).observe(document.body, {
+    childList: true,
+    subtree: true,
   });
 })();

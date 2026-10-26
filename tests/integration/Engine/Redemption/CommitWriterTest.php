@@ -165,4 +165,73 @@ final class CommitWriterTest extends IntegrationTestCase {
         $this->assertSame( [ 3.0 ], array_map( 'floatval', array_column( $rows, 'value' ) ) );
         $this->assertSame( [ 9850, -500 ], $this->ledger_points( 7 ) );
     }
+
+    /**
+     * A and B as in order_with_a_and_b(), plus our slider's line of 5.00 (500 points), on an order of 100.00.
+     *
+     * @return array{0: \WC_Order, 1: array<string, Reward>}
+     */
+    private function order_with_a_b_and_points(): array {
+        list( , $rewards ) = $this->order_with_a_and_b();
+        list( $a, $b )     = array_keys( $rewards );
+        $lines             = [
+            $a                  => 5.0,
+            $b                  => 10.0,
+            'yayloyalty-redeem' => 5.0,
+        ];
+
+        return [ $this->order_with_reward_lines( 7, 100.0, $lines ), $rewards ];
+    }
+
+    public function test_a_stacked_order_writes_every_row_in_one_commit(): void {
+        $this->ledger_service()->earn( $this->earn_draft( 7, 100, 9850 ) );
+        list( $order, $rewards ) = $this->order_with_a_b_and_points();
+        list( $a, $b )           = array_values( $rewards );
+
+        $outcome = $this->commit_writer()->commit_all( $order, $rewards, $this->reward() );
+
+        $this->assertSame( Outcome::REDEEMED, $outcome->get_status() );
+        $this->assertSame( [ 9850, -500, -1500, -500 ], $this->ledger_points( 7 ) );
+        $this->assertSame( 7350, (int) $this->customer_row( 7 )['balance'] );
+        $rows = $this->redemption_rows( 7 );
+        $this->assertSame( [ 500, 1500, 500 ], array_map( 'intval', array_column( $rows, 'points' ) ) );
+        $this->assertSame( [ 5.0, 10.0, 5.0 ], array_map( 'floatval', array_column( $rows, 'value' ) ) );
+        $this->assertSame( 'yayloyalty-redeem', $rows[2]['coupon_code'] );
+        $keys = array_column( array_slice( $this->ledger_rows( 7 ), 1 ), 'idempotency_key' );
+        $this->assertSame(
+            [
+                sprintf( 'redeem:7:order:%d:reward_%d', $order->get_id(), $a->get_id() ),
+                sprintf( 'redeem:7:order:%d:reward_%d', $order->get_id(), $b->get_id() ),
+                sprintf( 'redeem:7:order:%d:flexible_discount', $order->get_id() ),
+            ],
+            $keys
+        );
+        $saved = wc_get_order( $order->get_id() );
+        $this->assertSame( 2500, (int) $saved->get_meta( CommitWriter::META_POINTS ) );
+        $this->assertSame( 20.0, (float) $saved->get_meta( CommitWriter::META_VALUE ) );
+    }
+
+    public function test_a_second_stacked_commit_writes_nothing(): void {
+        $this->ledger_service()->earn( $this->earn_draft( 7, 100, 9850 ) );
+        list( $order, $rewards ) = $this->order_with_a_b_and_points();
+
+        $this->commit_writer()->commit_all( $order, $rewards, $this->reward() );
+        $second = $this->commit_writer()->commit_all( $order, $rewards, $this->reward() );
+
+        $this->assertSame( Outcome::DUPLICATE, $second->get_status() );
+        $this->assertCount( 3, $this->redemption_rows( 7 ) );
+        $this->assertSame( 7350, (int) $this->customer_row( 7 )['balance'] );
+    }
+
+    public function test_a_stacked_order_above_the_balance_writes_nothing(): void {
+        $this->ledger_service()->earn( $this->earn_draft( 7, 100, 2200 ) );
+        list( $order, $rewards ) = $this->order_with_a_b_and_points();
+
+        $outcome = $this->commit_writer()->commit_all( $order, $rewards, $this->reward() );
+
+        $this->assertSame( Outcome::SKIPPED, $outcome->get_status() );
+        $this->assertSame( [ 2200 ], $this->ledger_points( 7 ) );
+        $this->assertCount( 0, $this->redemption_rows( 7 ) );
+        $this->assertSame( '', (string) wc_get_order( $order->get_id() )->get_meta( CommitWriter::META_POINTS ) );
+    }
 }

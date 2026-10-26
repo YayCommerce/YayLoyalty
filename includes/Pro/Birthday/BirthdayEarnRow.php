@@ -3,6 +3,7 @@ namespace YayLoyalty\Pro\Birthday;
 
 use YayLoyalty\Engine\Points\ContextFactory;
 use YayLoyalty\Engine\Points\PointsEngine;
+use YayLoyalty\Engine\Storefront\LauncherCopy;
 use YayLoyalty\Engine\Storefront\LauncherEarnRules;
 use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Helpers\SettingsHelper;
@@ -29,8 +30,8 @@ final class BirthdayEarnRow {
     }
 
     /**
-     * @param array<int, array{trigger: string, label: string, value: string, url?: string}> $rows
-     * @return array<int, array{trigger: string, label: string, value: string, url?: string}>
+     * @param array[] $rows Each row as the yayloyalty_launcher_earn_rows filter documents it (LauncherEarnRules::member_rows()).
+     * @return array[]
      */
     public function add_row( array $rows ): array {
         $points = self::advertised_points();
@@ -39,11 +40,17 @@ final class BirthdayEarnRow {
             return $rows;
         }
 
+        $missing = self::has_no_birthday( get_current_user_id() );
+
         $rows[] = [
-            'trigger' => CampaignTrigger::BIRTHDAY,
-            'label'   => __( 'Celebrate your birthday', 'yayloyalty' ),
-            'value'   => SettingsHelper::points_text( $points ),
-            'url'     => self::has_no_birthday( get_current_user_id() ) ? wc_customer_edit_account_url() : '',
+            'trigger'     => CampaignTrigger::BIRTHDAY,
+            'label'       => __( 'Celebrate your birthday', 'yayloyalty' ),
+            'value'       => LauncherCopy::points_gain( $points ),
+            'description' => $missing
+                ? __( 'Tell us your birthday to get a birthday bonus.', 'yayloyalty' )
+                /* translators: %s: points with the store's label, as "100 Points". */
+                : sprintf( __( 'You\'ll receive %s on your next birthday.', 'yayloyalty' ), SettingsHelper::points_text( $points ) ),
+            'url'         => $missing ? wc_customer_edit_account_url() : '',
         ];
 
         return $rows;

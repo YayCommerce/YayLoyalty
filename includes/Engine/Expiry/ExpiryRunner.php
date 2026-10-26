@@ -119,7 +119,7 @@ final class ExpiryRunner {
             return;
         }
 
-        $floor = ExpiryPolicy::grace_floor( $now );
+        $floor = $policy->grace_floor( $now );
 
         if ( ! $policy->is_enabled() ) {
             $customers->clear_expiry();

@@ -68,6 +68,14 @@ final class Context {
         return $copy;
     }
 
+    /** A copy at $cart_subtotal: what the points discount quotes against once the picked rewards take their share. */
+    public function with_cart_subtotal( float $cart_subtotal ): self {
+        $copy                = clone $this;
+        $copy->cart_subtotal = $cart_subtotal;
+
+        return $copy;
+    }
+
     public function get_user_id(): ?int {
         return $this->user_id;
     }

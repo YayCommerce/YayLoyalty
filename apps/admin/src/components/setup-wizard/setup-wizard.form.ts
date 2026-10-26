@@ -48,8 +48,8 @@ export function setupDefaults(): SetupForm {
   const earn = spendPairFromRate(DEFAULT_CAMPAIGN_CONFIG.purchase.points_per_unit as number);
 
   return {
-    pointsLabelSingular: __('Point', 'yayloyalty'),
-    pointsLabelPlural: __('Points', 'yayloyalty'),
+    pointsLabelSingular: __('point', 'yayloyalty'),
+    pointsLabelPlural: __('points', 'yayloyalty'),
     earnPoints: earn.points,
     earnSpend: earn.spend,
     signupEnabled: true,

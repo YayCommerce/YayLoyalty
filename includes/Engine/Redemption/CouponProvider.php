@@ -12,7 +12,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Materialises the discount as virtual coupons from the current quotes —
  * never a `shop_coupon` post on the 1.0 path: `yayloyalty-redeem` for the
- * slider, or one `yayloyalty-reward-{id}` per picked reward, never both.
+ * slider and one `yayloyalty-reward-{id}` per picked reward, together.
  * Applied after every real coupon, so each loyalty amount is quoted against
  * what is left; stacks with them (`individual_use` false); no free shipping.
  * The amounts are re-derived on every totals run, so a cart change is
@@ -226,13 +226,13 @@ final class CouponProvider {
     }
 
     /**
-     * Keeps the loyalty coupon lines in step with the intent: the slider's
-     * code while its quote applies points, or one code per picked reward
-     * whose quote is allowed with a value, never both. Every other loyalty
-     * code is taken off, so a guest never sees a zero-value line and the
-     * slider and rewards never meet. The loyalty codes go after the merchant
-     * codes in the order the totals list them: percent rewards, then fixed,
-     * each in the order picked. A picked reward that stopped qualifying
+     * Keeps the loyalty coupon lines in step with the intent: one code per
+     * picked reward whose quote is allowed with a value, and the slider's
+     * code while its quote applies points. Every other loyalty code is taken
+     * off, so a guest never sees a zero-value line. The loyalty codes go
+     * after the merchant codes in the order the totals list them: percent
+     * rewards, then fixed, each in the order picked, then the slider, which
+     * is quoted against what the rewards leave. A picked reward that stopped qualifying
      * (REASONS that drop) leaves the session with notice_removed(); one the
      * balance cannot cover stays picked, unapplied. Edits the applied-coupon
      * list directly: apply_coupon() and remove_coupon() add notices, and the
@@ -251,7 +251,10 @@ final class CouponProvider {
             return;
         }
 
-        $wanted   = $points > 0 ? $this->wanted_slider( $cart ) : $this->wanted_rewards( $cart );
+        $wanted   = array_merge(
+            [] === $reward_ids ? [] : $this->wanted_rewards( $cart ),
+            $points > 0 ? $this->wanted_slider( $cart ) : []
+        );
         $merchant = array_filter(
             $applied,
             static function ( $code ): bool {
@@ -281,14 +284,14 @@ final class CouponProvider {
     }
 
     /**
-     * The shopper removed a coupon, or WooCommerce removed it as invalid. The slider's clears the intent and a
-     * reward's leaves the picked rewards, or the next totals run would apply it again.
+     * The shopper removed a coupon, or WooCommerce removed it as invalid. The slider's clears its points and a
+     * reward's leaves the picked rewards, or the next totals run would apply it again; the other kind stays.
      *
      * @param mixed $code
      */
     public function on_removed( $code ): void {
         if ( self::CODE === $code ) {
-            $this->intent->clear();
+            $this->intent->set( 0 );
 
             return;
         }
@@ -316,7 +319,7 @@ final class CouponProvider {
         }
 
         if ( ! $this->service->ceiling( $cart, $user_id )->is_allowed() ) {
-            $this->intent->clear();
+            $this->intent->set( 0 );
             self::notice_dropped( self::display_label() );
         }
 
@@ -336,7 +339,7 @@ final class CouponProvider {
         foreach ( $this->service->quote_rewards( $cart, RedemptionService::shopper_id() ) as $reward_id => $row ) {
             $quote = $row['quote'];
 
-            if ( $quote->is_allowed() && $quote->get_value() > 0 ) {
+            if ( RedemptionService::applies( $quote ) ) {
                 if ( RewardType::PERCENT_COUPON === $row['reward']->get_type() ) {
                     $percent[] = self::reward_code( $reward_id );
                 } else {

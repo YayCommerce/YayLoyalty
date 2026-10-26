@@ -17,9 +17,10 @@ use YayLoyalty\Utils\Text;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The points card: the slider, plus any panel another build adds as a tab (Pro's rewards), in one template for
- * every place it shows. The shortcode and the action print it anywhere; the classic adapter prints it in the totals tables and the Store API adapter carries the same
- * markup to the Cart and Checkout blocks. It decides nothing: every number is RedemptionService's answer,
+ * The points card: one checkbox list, the Points discount row (which opens into the slider) then the rows
+ * ROWS_FILTER adds (Pro's rewards), in one template for every place it shows. The shortcode and the action
+ * print it anywhere; the classic adapter prints it in the totals tables and the Store API adapter carries the
+ * same markup to the Cart and Checkout blocks. It decides nothing: every number is RedemptionService's answer,
  * and its `wc-ajax` endpoint only sets SessionIntent. It has its own plain stylesheet and reads nothing from
  * the Design tab, which styles the launcher only.
  * The balance and a nonce are printed into the page, so the launcher's page-cache caveat applies here too.
@@ -29,13 +30,10 @@ final class RedeemCard {
     public const SHORTCODE = 'yayloyalty_redeem';
     public const ACTION    = 'yayloyalty_redeem_card';
 
-    /** Filters the panels drawn as tabs beside the slider: `( array $panels, array $context ): array`. */
-    public const PANELS_FILTER = 'yayloyalty_redeem_card_panels';
+    /** Filters the rows listed after the Points discount row: `( string[] $rows, array $context ): string[]`. */
+    public const ROWS_FILTER = 'yayloyalty_redeem_card_rows';
 
-    /** The slider's own tab key; an added panel cannot take it. */
-    public const SLIDER_PANEL = 'points';
-
-    /** The `wc-ajax` endpoint Apply and Remove post to on pages without the blocks, and the nonce action it checks. */
+    /** The `wc-ajax` endpoint the card's ticks and slider post to on pages without the blocks, and the nonce action it checks. */
     private const AJAX_ENDPOINT = 'yayloyalty_redeem';
     private const NONCE_ACTION  = 'yayloyalty-redeem';
 
@@ -63,10 +61,10 @@ final class RedeemCard {
     }
 
     /**
-     * The card's Apply and Remove on pages without the blocks: POST `security` and either `points` (0 removes)
-     * or `rewards`, comma-separated reward ids (present and empty clears them). Postcondition:
-     * SessionIntent::set_rewards() or set( points ), unclamped, then one totals run, so the coupon provider puts
-     * the coupons on or takes them off, and the card's new HTML is answered. Never clamps and never touches a coupon.
+     * The card's changes on pages without the blocks: POST `security` and `rewards`, comma-separated reward ids
+     * (present and empty clears them), `points` (0 removes), or both. Postcondition: SessionIntent::apply() with
+     * whichever is present, then one totals run, so the coupon provider puts the coupons on or takes them off,
+     * and the card's new HTML is answered. Never clamps and never touches a coupon.
      */
     public function on_apply(): void {
         check_ajax_referer( self::NONCE_ACTION, 'security' );
@@ -77,11 +75,10 @@ final class RedeemCard {
             wp_send_json_error();
         }
 
-        if ( isset( $_POST['rewards'] ) ) {
-            $this->intent->set_rewards( array_filter( array_map( 'absint', explode( ',', sanitize_text_field( wp_unslash( $_POST['rewards'] ) ) ) ) ) );
-        } else {
-            $this->intent->set( isset( $_POST['points'] ) ? absint( wp_unslash( $_POST['points'] ) ) : 0 );
-        }
+        $this->intent->apply(
+            isset( $_POST['rewards'] ) ? array_map( 'absint', explode( ',', sanitize_text_field( wp_unslash( $_POST['rewards'] ) ) ) ) : null,
+            isset( $_POST['points'] ) ? absint( wp_unslash( $_POST['points'] ) ) : null
+        );
 
         $cart->calculate_totals();
 
@@ -157,10 +154,10 @@ final class RedeemCard {
     }
 
     /**
-     * The card's HTML for the current shopper and cart, with its assets enqueued. A guest gets the sign-in line
-     * alone. A customer gets the slider's view and the panels PANELS_FILTER adds, as tabs when there are two or more.
-     * '' when nothing renders: no cart, an empty cart, neither a slider nor a panel to show (a customer the
-     * gates refuse, a missing reward), or a failure.
+     * The card's HTML for the current shopper and cart, with its assets enqueued. A guest gets the sign-in card
+     * alone. A customer gets the header, then the list: the Points discount row from view(), then the rows
+     * ROWS_FILTER adds. '' when nothing renders: no cart, an empty cart, neither a slider nor a row to show
+     * (a customer the gates refuse, a missing reward), or a failure.
      */
     public function markup(): string {
         $level = ob_get_level();
@@ -175,26 +172,36 @@ final class RedeemCard {
             $user_id = RedemptionService::shopper_id();
 
             if ( null === $user_id ) {
-                // A guest gets the sign-in line whatever the cart holds, so nothing is quoted and no panel is asked for.
+                // A guest gets the sign-in card whatever the cart holds, so nothing is quoted and no row is asked for.
                 $guest = Result::denied( ProgramGate::REASON_NO_CUSTOMER );
 
                 self::enqueue_assets();
 
-                return self::template( self::view( null, $guest, $guest ) + self::chrome() + self::tabs( [], false ) );
+                return self::template( self::view( null, $guest, $guest, 0 ) + self::chrome() );
             }
 
-            $balance    = (int) $this->balance_of( $user_id );
-            $slider     = $this->slider_view( $cart, $user_id, $balance );
-            $is_applied = null !== $slider && 'applied' === $slider['state'];
-            $panels     = $this->panels( $cart, $user_id, $balance, $is_applied );
+            $balance = (int) $this->balance_of( $user_id );
+            $quote   = $this->service->quote( $cart, $user_id );
+            $view    = self::view( $balance, $quote, $this->service->ceiling( $cart, $user_id ), $this->intent->get() );
+            $rows    = $this->rows( $cart, $user_id, $balance );
 
-            if ( null === $slider && [] === $panels ) {
+            if ( 'hidden' === $view['state'] && [] === $rows ) {
                 return '';
             }
 
             self::enqueue_assets();
 
-            return self::template( ( null === $slider ? [ 'state' => 'none' ] : $slider ) + [ 'heading_balance' => $balance ] + self::chrome() + self::tabs( $panels, $is_applied ) );
+            $reward = $this->service->live_flexible_reward();
+            $worth  = null === $reward || $balance <= 0 ? null : LauncherPayload::worth( $reward, $balance );
+
+            return self::template(
+                $view + [
+                    'heading_balance' => $balance,
+                    'worth'           => $worth,
+                    'rows'            => $rows,
+                    'summary'         => $this->summary( $cart, $user_id, $quote ),
+                ] + self::chrome()
+            );
         } catch ( \Throwable $e ) {
             // The cart outranks the card: a failure here hides it, never the page.
             Log::warning( 'RedeemCard', 'not rendered: ' . $e->getMessage() );
@@ -208,16 +215,18 @@ final class RedeemCard {
     }
 
     /**
-     * What the template prints, from the two quotes. Pure: no WordPress or WooCommerce call.
+     * What the template prints for the Points discount row, from the two quotes. Pure: no WordPress or
+     * WooCommerce call.
      *
-     * @param int|null $balance The shopper's balance; null for a guest.
-     * @param Result   $quote   RedemptionService::quote(): what the session's request gets.
-     * @param Result   $ceiling RedemptionService::ceiling(): what asking for everything gets.
-     * @return array{state: string} `guest` and `hidden` carry nothing else. `applied` adds points, value,
-     *                              remaining and bound_by. `form` adds balance, min, step, max,
-     *                              max_value, rate, is_disabled and bound_by.
+     * @param int|null $balance   The shopper's balance; null for a guest.
+     * @param Result   $quote     RedemptionService::quote(): what the session's request gets, net of the rewards.
+     * @param Result   $ceiling   RedemptionService::ceiling(): what asking for everything gets, net of the rewards.
+     * @param int      $requested SessionIntent::get(): the points the shopper asked for; 0 while the row is unticked.
+     * @return array{state: string} `guest` and `hidden` carry nothing else. `slider` adds requested, points and
+     *                              value (applied; 0 when the quote is refused), balance, min, step, max (the
+     *                              ceiling's points), max_value, rate, is_disabled and bound_by.
      */
-    public static function view( ?int $balance, Result $quote, Result $ceiling ): array {
+    public static function view( ?int $balance, Result $quote, Result $ceiling, int $requested ): array {
         if ( null === $balance ) {
             return [ 'state' => 'guest' ];
         }
@@ -231,140 +240,102 @@ final class RedeemCard {
         $is_lowered = $quote->is_allowed()
             && $quote->get_points_requested() > $quote->get_points()
             && in_array( $quote->get_bound_by(), self::EXPLAINED_BOUNDS, true );
-        $bound_by   = $is_lowered ? $quote->get_bound_by() : '';
-
-        if ( $quote->is_allowed() && $quote->get_points() > 0 ) {
-            return [
-                'state'     => 'applied',
-                'points'    => $quote->get_points(),
-                'value'     => $quote->get_value(),
-                'remaining' => $balance - $quote->get_points(),
-                'bound_by'  => $bound_by,
-            ];
-        }
 
         $step = Clamp::step_of( $reward );
         // The slider moves in steps from 0, so its left end is the first step at or above the reward's minimum.
-        $min  = max( $step, (int) ceil( Clamp::min_of( $reward ) / $step ) * $step );
-        $max  = $ceiling->get_points();
-        $rate = $ceiling->get_rate_snapshot();
+        $min = max( $step, (int) ceil( Clamp::min_of( $reward ) / $step ) * $step );
+        $max = $ceiling->get_points();
 
         return [
-            'state'       => 'form',
+            'state'       => 'slider',
+            'requested'   => $requested,
+            'points'      => $quote->is_allowed() ? $quote->get_points() : 0,
+            'value'       => $quote->is_allowed() ? $quote->get_value() : 0.0,
             'balance'     => $balance,
             'min'         => $min,
             'step'        => $step,
             'max'         => $max,
             'max_value'   => $ceiling->get_value(),
-            'rate'        => $rate,
-            'is_disabled' => $max < $min,
-            'bound_by'    => $bound_by,
+            'rate'        => $ceiling->get_rate_snapshot(),
+            // A ticked row stays tickable when the rewards leave it nothing, so it can be unticked; only an unticked one is shut.
+            'is_disabled' => $max < $min && $requested <= 0,
+            'bound_by'    => $is_lowered ? $quote->get_bound_by() : '',
         ];
     }
 
     /**
-     * The heading's inner HTML, escaped: "Your rewards", then the balance as "9,850 Points" for a customer.
-     * Never a money amount. A guest (null) gets the title alone.
+     * The heading's inner HTML, escaped: "Your rewards", then for a customer the checkout's title "Points &
+     * rewards" (redeem.css shows one of the two by mode), the balance as "9,850 Points" and, when $worth is
+     * non-null, "⇄ $98.50". The worth is the only money the heading prints, and only while `cart-discount` is
+     * live. A guest (null) gets "Your rewards" alone.
      */
-    public static function heading( ?int $balance ): string {
-        $html = '<span>' . esc_html__( 'Your rewards', 'yayloyalty' ) . '</span>';
+    public static function heading( ?int $balance, ?float $worth ): string {
+        $html = '<span class="yayloyalty-redeem__title">' . esc_html__( 'Your rewards', 'yayloyalty' ) . '</span>';
 
         if ( null !== $balance ) {
-            $html .= '<span class="yayloyalty-redeem__balance">' . esc_html( SettingsHelper::points_text( $balance ) ) . '</span>';
+            // Both titles are printed because the blocks' card is shared by Cart and Checkout.
+            $html .= '<span class="yayloyalty-redeem__title-checkout">' . esc_html(
+                /* translators: %s: the store's points label, as "Points". */
+                sprintf( __( '%s & rewards', 'yayloyalty' ), SettingsHelper::points_label_plural() )
+            ) . '</span>';
+
+            // points_text()'s format, with the number and the label wrapped apart so the label can sit smaller.
+            $html .= '<span class="yayloyalty-redeem__balance">' . sprintf(
+                /* translators: 1: number of points, 2: the store's points label, e.g. "Points". */
+                esc_html( _x( '%1$s %2$s', 'points amount', 'yayloyalty' ) ),
+                esc_html( SettingsHelper::format_number( $balance ) ),
+                '<span class="yayloyalty-redeem__unit">' . esc_html( SettingsHelper::points_label( $balance ) ) . '</span>'
+            ) . '</span>';
+
+            if ( null !== $worth ) {
+                $html .= '<span class="yayloyalty-redeem__worth"><span aria-hidden="true">⇄</span> ' . esc_html( LauncherCopy::money( $worth ) ) . '</span>';
+            }
         }
 
         return $html;
     }
 
     /**
-     * The slider's view for a customer: RedeemCard::view(), or state `exclusive` while picked rewards are on the
-     * cart, since the slider and rewards never apply together. Null when the slider cannot be offered at all.
-     */
-    private function slider_view( \WC_Cart $cart, int $user_id, int $balance ): ?array {
-        $ceiling = $this->service->ceiling( $cart, $user_id );
-
-        if ( ! $ceiling->is_allowed() ) {
-            return null;
-        }
-
-        $view = self::view( $balance, $this->service->quote( $cart, $user_id ), $ceiling );
-
-        if ( 'hidden' === $view['state'] ) {
-            return null;
-        }
-
-        return $this->has_applied_rewards( $cart ) ? [ 'state' => 'exclusive' ] : $view;
-    }
-
-    /** Whether rewards are picked and at least one of their coupons is on the cart. */
-    private function has_applied_rewards( \WC_Cart $cart ): bool {
-        return [] !== $this->intent->rewards() && [] !== CouponProvider::applied_reward_ids( $cart );
-    }
-
-    /**
-     * The panels other code adds beside the slider, in the order added; a malformed one is dropped.
+     * The rows other code lists after the Points discount row, in the order added; anything but a string is dropped.
      *
-     * @return array<string, array{label: string, html: string, is_active: bool}>
+     * @return string[]
      */
-    private function panels( \WC_Cart $cart, int $user_id, int $balance, bool $is_slider_applied ): array {
+    private function rows( \WC_Cart $cart, int $user_id, int $balance ): array {
         /**
-         * Panels the card shows as tabs beside the points slider, keyed by a slug; Pro adds `rewards`.
-         * Internal seam for Pro, not a public API. Each panel's `html` is printed as given, so it must be escaped.
+         * Rows the card lists after its Points discount row; Pro adds its rewards.
+         * Internal seam for Pro, not a public API. Each string is printed as given inside the card's list, so
+         * whoever adds it escapes it.
          *
-         * @param array<string, array{label: string, html: string, is_active: bool}> $panels
-         * @param array{service: RedemptionService, cart: \WC_Cart, user_id: int, balance: int, is_slider_applied: bool} $context
+         * @param string[] $rows
+         * @param array{service: RedemptionService, cart: \WC_Cart, user_id: int, balance: int} $context
          */
-        $panels = apply_filters(
-            self::PANELS_FILTER, // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name; the sniff cannot read it.
+        $rows = apply_filters(
+            self::ROWS_FILTER, // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name; the sniff cannot read it.
             [],
             [
-                'service'           => $this->service,
-                'cart'              => $cart,
-                'user_id'           => $user_id,
-                'balance'           => $balance,
-                'is_slider_applied' => $is_slider_applied,
+                'service' => $this->service,
+                'cart'    => $cart,
+                'user_id' => $user_id,
+                'balance' => $balance,
             ]
         );
-        $valid  = [];
 
-        foreach ( is_array( $panels ) ? $panels : [] as $key => $panel ) {
-            if ( self::SLIDER_PANEL !== $key && is_array( $panel ) && is_string( $panel['label'] ?? null ) && is_string( $panel['html'] ?? null ) ) {
-                $valid[ (string) $key ] = [
-                    'label'     => $panel['label'],
-                    'html'      => $panel['html'],
-                    'is_active' => ! empty( $panel['is_active'] ),
-                ];
-            }
-        }
-
-        return $valid;
+        return array_values( array_filter( is_array( $rows ) ? $rows : [], 'is_string' ) );
     }
 
     /**
-     * The tab bar's data: `panels` as given, and `active`, the key of the open one. The added panels come first,
-     * then the slider's (self::SLIDER_PANEL). The open tab is the first panel marked active, else the slider while
-     * its discount is applied, else the first tab. With no added panel there is no tab bar and `active` is ''.
+     * What the card has applied, for the checkout's summary line: `points` the slider's applied points plus each
+     * applied reward's cost, `count` how many are applied, the slider counting as one. Both 0 when nothing is.
      *
-     * @param array<string, array{label: string, html: string, is_active: bool}> $panels
-     * @return array{panels: array, active: string}
+     * @return array{points: int, count: int}
      */
-    private static function tabs( array $panels, bool $is_slider_applied ): array {
-        $active = '';
-
-        foreach ( $panels as $key => $panel ) {
-            if ( $panel['is_active'] ) {
-                $active = $key;
-                break;
-            }
-        }
-
-        if ( '' === $active ) {
-            $active = $is_slider_applied && [] !== $panels ? self::SLIDER_PANEL : (string) array_key_first( $panels );
-        }
+    private function summary( \WC_Cart $cart, int $user_id, Result $quote ): array {
+        $slider  = $quote->is_allowed() ? $quote->get_points() : 0;
+        $rewards = $this->service->applied_reward_costs( $cart, $user_id );
 
         return [
-            'panels' => $panels,
-            'active' => $active,
+            'points' => $slider + array_sum( $rewards ),
+            'count'  => ( $slider > 0 ? 1 : 0 ) + count( $rewards ),
         ];
     }
 
@@ -380,7 +351,7 @@ final class RedeemCard {
     }
 
     /**
-     * What the template prints besides the numbers: where Apply posts, and the store's money format for
+     * What the template prints besides the numbers: where the card posts, and the store's money format for
      * redeem.js, which previews the discount as the slider moves.
      */
     private static function chrome(): array {

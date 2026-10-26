@@ -1,36 +1,28 @@
 <?php
 namespace YayLoyalty\Pro\Storefront;
 
-use YayLoyalty\Engine\Redemption\CouponProvider;
 use YayLoyalty\Engine\Redemption\ProgramGate;
 use YayLoyalty\Engine\Redemption\RedemptionService;
-use YayLoyalty\Engine\Redemption\RewardCoupons;
-use YayLoyalty\Engine\Rewards\Clamp;
 use YayLoyalty\Engine\Rewards\Result;
-use YayLoyalty\Engine\Storefront\LauncherCopy;
 use YayLoyalty\Engine\Storefront\LauncherPayload;
 use YayLoyalty\Engine\Storefront\RedeemCard;
 use YayLoyalty\Enums\RewardType;
-use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Models\Reward;
 use YayLoyalty\Repositories\RewardRepository;
-use YayLoyalty\Utils\CurrencyRate;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The card's Rewards tab: one checkbox row per reward RedemptionService::reward_options() offers, the selection
- * line and one Apply/Update button. Draws only; redeem.js posts the ticked ids and the server answers a new card.
- * It also lists the same rewards, with the same one-line description, under "Ways to redeem" in the launcher and
- * My Account.
+ * The card's reward rows: one checkbox row per reward RedemptionService::reward_options() offers, listed after the
+ * Points discount row and ticked to apply: its name and cost only. Draws only; redeem.js posts the ticked ids and
+ * the server answers a new card. It also lists the same rewards, with a one-line description, under "Ways to
+ * redeem" in the launcher and My Account.
  */
 final class RewardsPanel {
 
-    public const KEY = 'rewards';
-
     /** Called once by YayLoyaltyPro::boot(). */
     public function register(): void {
-        add_filter( RedeemCard::PANELS_FILTER, [ $this, 'panel' ], 10, 2 );
+        add_filter( RedeemCard::ROWS_FILTER, [ $this, 'rows' ], 10, 2 );
         add_filter( LauncherPayload::REDEEM_OFFERS_FILTER, [ $this, 'redeem_offers' ], 10, 2 );
     }
 
@@ -51,19 +43,19 @@ final class RewardsPanel {
     }
 
     /**
-     * Adds `rewards` to the card's panels: active while rewards are applied. Unchanged when there is no option, or
-     * when every option is refused by a program gate.
+     * Appends one row's HTML per reward to the card's rows, each its own list item. Unchanged when there is no
+     * option, or when every option is refused by a program gate.
      *
-     * @param array<string, array> $panels
-     * @param array                $context RedeemCard::PANELS_FILTER's context.
-     * @return array<string, array>
+     * @param string[] $rows
+     * @param array    $context RedeemCard::ROWS_FILTER's context.
+     * @return string[]
      */
-    public function panel( array $panels, array $context ): array {
+    public function rows( array $rows, array $context ): array {
         $service = $context['service'] ?? null;
         $cart    = $context['cart'] ?? null;
 
         if ( ! $service instanceof RedemptionService || ! $cart instanceof \WC_Cart ) {
-            return $panels;
+            return $rows;
         }
 
         $user_id = (int) $context['user_id'];
@@ -71,27 +63,14 @@ final class RewardsPanel {
         $options = $service->reward_options( $cart, $user_id );
 
         if ( [] === $options || self::is_refused( $options ) ) {
-            return $panels;
+            return $rows;
         }
 
-        $applied = self::applied_points( $service->quote_rewards( $cart, $user_id ), $cart );
-        $spent   = array_sum( $applied );
+        foreach ( self::row_views( $options, $service->applied_reward_costs( $cart, $user_id ), $balance ) as $row ) {
+            $rows[] = self::template( $row );
+        }
 
-        $panels[ self::KEY ] = [
-            'label'     => __( 'Rewards', 'yayloyalty' ),
-            'html'      => self::template(
-                [
-                    'rows'              => self::rows( $options, $applied, $spent, $cart, $balance ),
-                    'is_applied'        => [] !== $applied,
-                    'spent'             => $spent,
-                    'balance'           => $balance,
-                    'is_slider_applied' => ! empty( $context['is_slider_applied'] ),
-                ]
-            ),
-            'is_active' => [] !== $applied,
-        ];
-
-        return $panels;
+        return $rows;
     }
 
     /** @param array<int, array{reward: Reward, quote: Result}> $options */
@@ -107,51 +86,27 @@ final class RewardsPanel {
     }
 
     /**
-     * The applied rewards' costs, keyed by reward id: picked ones whose coupon is on the cart, the same test
-     * RedeemCard uses for the slider's exclusivity notice.
-     *
-     * @param array<int, array{reward: ?Reward, quote: Result}> $picked RedemptionService::quote_rewards().
-     * @return array<int, int>
-     */
-    private static function applied_points( array $picked, \WC_Cart $cart ): array {
-        $on_cart = CouponProvider::applied_reward_ids( $cart );
-        $applied = [];
-
-        foreach ( $picked as $reward_id => $row ) {
-            if ( null !== $row['reward'] && in_array( (int) $reward_id, $on_cart, true ) ) {
-                $applied[ $reward_id ] = (int) $row['reward']->get_cost_points();
-            }
-        }
-
-        return $applied;
-    }
-
-    /**
-     * What each row prints. A row the server refuses is `denied`, with its reason as `text`. A row that is not
-     * applied and would take the applied rewards past the balance is `is_short`, re-enabled by redeem.js as the
-     * selection drops.
+     * What each row prints. A row the server refuses is `denied`. A row that is not applied and would take the
+     * applied rewards past the balance is `is_short`, re-enabled by redeem.js as other ticks drop.
      *
      * @param array<int, array{reward: Reward, quote: Result}> $options
-     * @param array<int, int>                                  $applied
-     * @param int                                              $spent   The applied rewards' summed cost.
-     * @return array<int, array{id: int, name: string, cost: int, text: string, here: string, is_applied: bool, is_denied: bool, is_short: bool}>
+     * @param array<int, int>                                  $applied RedemptionService::applied_reward_costs().
+     * @return array<int, array{id: int, name: string, cost: int, is_applied: bool, is_denied: bool, is_short: bool}>
      */
-    private static function rows( array $options, array $applied, int $spent, \WC_Cart $cart, int $balance ): array {
-        $rows = [];
+    private static function row_views( array $options, array $applied, int $balance ): array {
+        $rows  = [];
+        $spent = array_sum( $applied );
 
         foreach ( $options as $reward_id => $option ) {
             $reward     = $option['reward'];
-            $quote      = $option['quote'];
             $cost       = (int) $reward->get_cost_points();
             $is_applied = isset( $applied[ $reward_id ] );
-            $is_denied  = ! $quote->is_allowed();
+            $is_denied  = ! $option['quote']->is_allowed();
 
             $rows[] = [
                 'id'         => (int) $reward_id,
                 'name'       => $reward->get_name(),
                 'cost'       => $cost,
-                'text'       => $is_denied ? self::denial( $quote->get_reason(), $reward, $cart ) : LauncherCopy::coupon_reward_line( $reward ),
-                'here'       => $is_denied ? '' : self::value_here( $reward, $quote ),
                 'is_applied' => $is_applied,
                 'is_denied'  => $is_denied,
                 'is_short'   => ! $is_denied && ! $is_applied && $spent + $cost > $balance,
@@ -159,55 +114,6 @@ final class RewardsPanel {
         }
 
         return $rows;
-    }
-
-    /** A refused row's line in place of its description. */
-    private static function denial( string $reason, Reward $reward, \WC_Cart $cart ): string {
-        switch ( $reason ) {
-            case RewardCoupons::REASON_MIN_ORDER:
-                // min_order is in the base currency; the cart's subtotal is in the shopper's.
-                $missing = CurrencyRate::from_base( (float) ( $reward->get_config()['min_order'] ?? 0 ) ) - RewardCoupons::displayed_subtotal( $cart );
-
-                return sprintf( RedemptionService::message_for( $reason ), LauncherCopy::money( max( 0.0, round( $missing, wc_get_price_decimals() ) ) ) );
-
-            case Result::REASON_INSUFFICIENT_BALANCE:
-                return self::short_text();
-
-            case Result::REASON_CONDITIONS_NOT_MET:
-                return __( 'Not available for your account', 'yayloyalty' );
-        }
-
-        return RedemptionService::message_for( $reason );
-    }
-
-    /**
-     * "{value} off here" when this cart gets less than the reward's face value: its amount for a fixed reward, its
-     * percent of the same base, uncapped, for a percent one, which the quote falls short of only when the cap
-     * lowered it (bound_by `reward_max`). '' otherwise.
-     */
-    private static function value_here( Reward $reward, Result $quote ): string {
-        $decimals = wc_get_price_decimals();
-        $value    = round( $quote->get_value(), $decimals );
-
-        if ( RewardType::PERCENT_COUPON === $reward->get_type() ) {
-            $is_short = Clamp::BOUND_REWARD_MAX === $quote->get_bound_by();
-        } else {
-            // The quote is in the charged currency; the config's amount is in the base one.
-            $is_short = $value < round( CurrencyRate::from_base( (float) ( $reward->get_config()['amount'] ?? 0 ) ), $decimals );
-        }
-
-        if ( ! $is_short ) {
-            return '';
-        }
-
-        /* translators: %s: money amount, as "$3". */
-        return sprintf( __( '%s off here', 'yayloyalty' ), LauncherCopy::money( $value ) );
-    }
-
-    /** "Not enough Points", with the merchant's label: a row the balance cannot cover. */
-    public static function short_text(): string {
-        /* translators: %s: the store's points label, as "Points". */
-        return sprintf( __( 'Not enough %s', 'yayloyalty' ), SettingsHelper::points_label_plural() );
     }
 
     private static function template( array $view ): string { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter -- the included template reads $view.

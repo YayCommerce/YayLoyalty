@@ -1,0 +1,8 @@
+/*
+ * templates/new-points-notice.php: the launcher panel's "You earned 40 new points.", the expiry notice's
+ * frame (points-card.css) in green. Imported by rewards-tokens.css, which holds the tokens.
+ */
+.yayloyalty-account .yayloyalty-account__notice.yayloyalty-account__notice--new {
+  background: var(--yayloyalty-account-notice-positive-bg);
+  color: var(--yayloyalty-account-notice-positive);
+}
