@@ -67,6 +67,18 @@ final class PointsMath {
     }
 
     /**
+     * $value to $digits significant digits, for displaying a converted rate only, never for math:
+     * 0.00004 stays 0.00004, and 1.0989010989 becomes 1.099.
+     */
+    public static function round_significant( float $value, int $digits = 4 ): float {
+        if ( 0.0 === $value ) {
+            return 0.0;
+        }
+
+        return round( $value, $digits - 1 - (int) floor( log10( abs( $value ) ) ) );
+    }
+
+    /**
      * Points in store currency, rounded to that currency's own decimals, or null when no usable rate exists.
      * The caller passes the decimals (wc_get_price_decimals() at runtime), so this stays free of WordPress.
      * A fixed 2 would drop a digit from a 3-decimal currency (KWD) and round a 0-decimal one (VND) twice.

@@ -8,6 +8,7 @@ use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Models\Campaign;
 use YayLoyalty\Utils\Log;
+use YayLoyalty\Utils\PointsMath;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -26,8 +27,9 @@ final class LauncherEarnRules {
      * @param bool         $can_register Whether a shopper can create an account on this store. The signup
      *                                   campaign pays only a self-registration, so without one it isn't advertised.
      * @return array{earn: array{purchase: ?float, signup: ?int, review: ?int}, purchase_min: float}
-     *         Points per currency unit / per signup / per review (null when not advertised), and the
-     *         advertised purchase campaign's minimum order subtotal so the rate line can say it (0 for none).
+     *         Points per unit of the shopper's currency / per signup / per review (null when not advertised),
+     *         and the advertised purchase campaign's minimum order subtotal in the shopper's currency, so the
+     *         rate line can say it (0 for none). Both convert from base through $ctx's base rate.
      */
     public static function advertise( PointsEngine $engine, Context $ctx, bool $can_register ): array {
         $rules = self::none();
@@ -44,8 +46,12 @@ final class LauncherEarnRules {
             }
 
             if ( CampaignTrigger::PURCHASE === $trigger ) {
-                $rules['earn'][ $trigger ] = $advert['value'];
-                $rules['purchase_min']     = PurchaseHandler::min_subtotal( $advert['campaign']->get_config() );
+                $base_rate = $ctx->get_base_rate();
+                $min       = PurchaseHandler::min_subtotal( $advert['campaign']->get_config() );
+
+                // In the base currency both stay exact, as configured.
+                $rules['earn'][ $trigger ] = 1.0 === $base_rate ? $advert['value'] : PointsMath::round_significant( $advert['value'] * $base_rate );
+                $rules['purchase_min']     = 1.0 === $base_rate ? $min : round( $min / $base_rate, wc_get_price_decimals() );
             } else {
                 $rules['earn'][ $trigger ] = (int) $advert['value'];
             }
