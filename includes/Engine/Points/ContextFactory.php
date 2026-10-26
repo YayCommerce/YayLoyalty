@@ -3,6 +3,7 @@ namespace YayLoyalty\Engine\Points;
 
 use YayLoyalty\Enums\ReferenceType;
 use YayLoyalty\Repositories\LedgerRepository;
+use YayLoyalty\Utils\CurrencyRate;
 use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
@@ -306,13 +307,14 @@ final class ContextFactory {
 
     private static function base_rate( string $currency, ?\WC_Order $order ): float {
         /**
-         * Event currency → store base currency. 1.0 unless a multi-currency integration supplies one.
+         * Event currency → store base currency. Defaults to the inverse of CurrencyRate::rate(), which is
+         * 1.0 unless a multi-currency integration answers yayloyalty_currency_rate.
          *
          * @param float          $rate
          * @param string         $currency
          * @param \WC_Order|null $order
          */
-        $rate = (float) apply_filters( 'yayloyalty_context_base_rate', 1.0, $currency, $order );
+        $rate = (float) apply_filters( 'yayloyalty_context_base_rate', 1 / CurrencyRate::rate( $currency, $order ), $currency, $order );
 
         return $rate > 0 ? $rate : 1.0;
     }
