@@ -45,6 +45,8 @@ export type Meta = {
     currencies: Record<string, string>;
     /** WooCommerce → Settings → General → "Enable the use of coupon codes"; points redemption depends on it. */
     coupons_enabled: boolean;
+    /** YayCurrency is active; shows the General tab's YayCurrency card. Integration detection, never a Pro gate. */
+    yaycurrency_active: boolean;
   };
 };
 

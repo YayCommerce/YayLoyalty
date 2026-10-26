@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { FormProvider, useForm } from 'react-hook-form';
+import { Controller, FormProvider, useForm, useFormContext } from 'react-hook-form';
 import { toast } from 'sonner';
 import { __ } from '@wordpress/i18n';
 
@@ -10,9 +10,18 @@ import { useEditorSave } from '@/hooks/useEditorSave';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { UnsavedChangeDialog } from '@/components/ui/custom/unsaved-changed-dialog';
+import { Field, FieldContent, FieldDescription, FieldLabel } from '@/components/ui/field';
+import { Switch } from '@/components/ui/switch';
 import { ProGate } from '@/components/pro/ProGate';
 import { FraudLimitsSection } from '@/pro';
-import { FRAUD_LIMITS_TITLE, FRAUD_LIMITS_UPSELL } from './general-settings.copy';
+import {
+  FRAUD_LIMITS_TITLE,
+  FRAUD_LIMITS_UPSELL,
+  YAYCURRENCY_DESCRIPTION,
+  YAYCURRENCY_INCLUDE_FEE,
+  YAYCURRENCY_INCLUDE_FEE_HINT,
+  YAYCURRENCY_TITLE,
+} from './general-settings.copy';
 import {
   buildGeneralSettingsUpdate,
   generalSettingsDefaults,
@@ -31,6 +40,40 @@ function FraudLimitsUpsellCard() {
       </CardHeader>
       <CardContent>
         <ProGate />
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Shown in both builds while YayCurrency is active: whether its exchange fee is part of a point's rate. */
+function YayCurrencyCard() {
+  const { control } = useFormContext<GeneralSettingsFormValues>();
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{YAYCURRENCY_TITLE()}</CardTitle>
+        <CardDescription>{YAYCURRENCY_DESCRIPTION()}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Field orientation="horizontal">
+          <FieldContent>
+            <FieldLabel htmlFor="currency_include_fee">{YAYCURRENCY_INCLUDE_FEE()}</FieldLabel>
+            <FieldDescription>{YAYCURRENCY_INCLUDE_FEE_HINT()}</FieldDescription>
+          </FieldContent>
+          <Controller
+            control={control}
+            name="currency_include_fee"
+            render={({ field }) => (
+              <Switch
+                id="currency_include_fee"
+                className="w-11!"
+                checked={field.value}
+                onCheckedChange={field.onChange}
+              />
+            )}
+          />
+        </Field>
       </CardContent>
     </Card>
   );
@@ -73,6 +116,7 @@ export default function GeneralSettingsPage() {
       <form onSubmit={handleSave} className="flex flex-col gap-4">
         <PointsNamingCard />
         {IS_PRO_BUILD ? <FraudLimitsSection /> : <FraudLimitsUpsellCard />}
+        {window.yayLoyaltyMeta.wcMeta.yaycurrency_active && <YayCurrencyCard />}
 
         <div className="flex items-center justify-end gap-2">
           <Button type="submit" disabled={!form.formState.isDirty || saveMutation.isPending}>

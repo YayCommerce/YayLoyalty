@@ -57,7 +57,7 @@ class LocalizeHelper {
                 'expiryGraceDays' => ExpiryPolicy::GRACE_DAYS,
             ],
             'wcMeta'      => [
-                'currency_data'    => [
+                'currency_data'      => [
                     'currency'     => $currency,
                     'symbol'       => function_exists( 'get_woocommerce_currency_symbol' ) ? html_entity_decode( get_woocommerce_currency_symbol( $currency ) ) : '$',
                     'position'     => get_option( 'woocommerce_currency_pos', 'left' ),
@@ -67,11 +67,13 @@ class LocalizeHelper {
                 ],
                 // id => admin title and code => name, for the campaign condition pickers.
                 // CampaignConditionSet validates currencies against the same list.
-                'payment_gateways' => self::payment_gateways(),
-                'countries'        => self::decoded_names( function_exists( 'WC' ) && WC()->countries ? WC()->countries->get_countries() : [] ),
-                'currencies'       => self::decoded_names( function_exists( 'get_woocommerce_currencies' ) ? get_woocommerce_currencies() : [] ),
+                'payment_gateways'   => self::payment_gateways(),
+                'countries'          => self::decoded_names( function_exists( 'WC' ) && WC()->countries ? WC()->countries->get_countries() : [] ),
+                'currencies'         => self::decoded_names( function_exists( 'get_woocommerce_currencies' ) ? get_woocommerce_currencies() : [] ),
                 // True when WC isn't loaded, so the Rewards notice never raises a false alarm.
-                'coupons_enabled'  => function_exists( 'wc_coupons_enabled' ) ? wc_coupons_enabled() : true,
+                'coupons_enabled'    => function_exists( 'wc_coupons_enabled' ) ? wc_coupons_enabled() : true,
+                // Integration detection for the General tab's YayCurrency card, never a Pro gate.
+                'yaycurrency_active' => defined( 'YAY_CURRENCY_VERSION' ),
             ],
         ];
 
