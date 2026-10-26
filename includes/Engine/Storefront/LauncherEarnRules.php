@@ -8,7 +8,6 @@ use YayLoyalty\Enums\CampaignTrigger;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Models\Campaign;
 use YayLoyalty\Utils\Log;
-use YayLoyalty\Utils\PointsMath;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -50,7 +49,7 @@ final class LauncherEarnRules {
                 $min       = PurchaseHandler::min_subtotal( $advert['campaign']->get_config() );
 
                 // In the base currency both stay exact, as configured.
-                $rules['earn'][ $trigger ] = 1.0 === $base_rate ? $advert['value'] : PointsMath::round_significant( $advert['value'] * $base_rate );
+                $rules['earn'][ $trigger ] = 1.0 === $base_rate ? $advert['value'] : LauncherCopy::converted_rate( $advert['value'] * $base_rate );
                 $rules['purchase_min']     = 1.0 === $base_rate ? $min : round( $min / $base_rate, wc_get_price_decimals() );
             } else {
                 $rules['earn'][ $trigger ] = (int) $advert['value'];

@@ -14,6 +14,7 @@ use YayLoyalty\Enums\RewardType;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Models\Reward;
 use YayLoyalty\Repositories\RewardRepository;
+use YayLoyalty\Utils\CurrencyRate;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -164,7 +165,8 @@ final class RewardsPanel {
     private static function denial( string $reason, Reward $reward, \WC_Cart $cart ): string {
         switch ( $reason ) {
             case RewardCoupons::REASON_MIN_ORDER:
-                $missing = (float) ( $reward->get_config()['min_order'] ?? 0 ) - RewardCoupons::displayed_subtotal( $cart );
+                // min_order is in the base currency; the cart's subtotal is in the shopper's.
+                $missing = CurrencyRate::from_base( (float) ( $reward->get_config()['min_order'] ?? 0 ) ) - RewardCoupons::displayed_subtotal( $cart );
 
                 return sprintf( RedemptionService::message_for( $reason ), LauncherCopy::money( max( 0.0, round( $missing, wc_get_price_decimals() ) ) ) );
 

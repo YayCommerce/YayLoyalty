@@ -5,6 +5,8 @@ use YayLoyalty\Enums\RewardType;
 use YayLoyalty\Helpers\DesignSchema;
 use YayLoyalty\Helpers\SettingsHelper;
 use YayLoyalty\Models\Reward;
+use YayLoyalty\Utils\CurrencyRate;
+use YayLoyalty\Utils\PointsMath;
 use YayLoyalty\Utils\Text;
 
 defined( 'ABSPATH' ) || exit;
@@ -45,14 +47,17 @@ final class LauncherCopy {
         return SettingsHelper::format_number( $rate, strlen( $fixed ) - strpos( $fixed, '.' ) - 1 );
     }
 
-    /** A `fixed_coupon` / `percent_coupon` reward's one line: what it takes off, or the minimum it needs. */
+    /**
+     * A `fixed_coupon` / `percent_coupon` reward's one line: what it takes off, or the minimum it needs.
+     * The config's amounts are in the base currency, so each converts to the shopper's before money().
+     */
     public static function coupon_reward_line( Reward $reward ): string {
         $config = $reward->get_config();
 
         if ( RewardType::PERCENT_COUPON === $reward->get_type() ) {
             if ( isset( $config['max_discount'] ) ) {
                 /* translators: %s: money amount, as "$10". */
-                return sprintf( __( 'Up to %s off your order', 'yayloyalty' ), self::money( (float) $config['max_discount'] ) );
+                return sprintf( __( 'Up to %s off your order', 'yayloyalty' ), self::money( self::from_base( (float) $config['max_discount'] ) ) );
             }
 
             /* translators: %s: a percentage number, as "15". */
@@ -61,14 +66,14 @@ final class LauncherCopy {
 
         if ( isset( $config['min_order'] ) ) {
             /* translators: %s: money amount, as "$25". */
-            return sprintf( __( 'On orders over %s', 'yayloyalty' ), self::money( (float) $config['min_order'] ) );
+            return sprintf( __( 'On orders over %s', 'yayloyalty' ), self::money( self::from_base( (float) $config['min_order'] ) ) );
         }
 
         /* translators: %s: money amount, as "$5". */
-        return sprintf( __( '%s off your order', 'yayloyalty' ), self::money( (float) ( $config['amount'] ?? 0 ) ) );
+        return sprintf( __( '%s off your order', 'yayloyalty' ), self::money( self::from_base( (float) ( $config['amount'] ?? 0 ) ) ) );
     }
 
-    /** "$98.50", or "$1" for a whole amount. */
+    /** "$98.50", or "$1" for a whole amount. Formats an amount already in the current currency; never converts. */
     public static function money( float $amount ): string {
         $args = floor( $amount ) === $amount ? [ 'decimals' => 0 ] : [];
 
@@ -79,18 +84,22 @@ final class LauncherCopy {
      * The Design tab's `earn_rate_line` with its {points}, {points_label} and {amount} filled: "Earn 1 Point per $1 spent".
      * The field is optional; left blank, the rate still needs saying, so the Design default stands in.
      * A campaign minimum is appended, since an order under it earns nothing.
+     * A rate below 1 reads per point instead: "Earn 1 Point per 25,000 ₫ spent".
      */
     public static function earn_rate( string $template, float $points_per_unit, float $min_subtotal ): string {
         if ( '' === trim( $template ) ) {
             $template = DesignSchema::get_default_design()['storefront_text']['earn_rate_line'];
         }
 
+        $per_point = self::is_per_point( $points_per_unit );
+        $points    = $per_point ? 1.0 : $points_per_unit;
+
         $line = strtr(
             $template,
             [
-                '{points}'       => self::rate( $points_per_unit ),
-                '{points_label}' => self::rate_label( $points_per_unit ),
-                '{amount}'       => self::money( 1.0 ),
+                '{points}'       => self::rate( $points ),
+                '{points_label}' => self::rate_label( $points ),
+                '{amount}'       => self::money( $per_point ? self::amount_per_point( $points_per_unit ) : 1.0 ),
             ]
         );
 
@@ -154,10 +163,38 @@ final class LauncherCopy {
         return sprintf( __( 'You can earn %s more today.', 'yayloyalty' ), SettingsHelper::points_text( $left_today ) );
     }
 
-    /** "100 points = $1", with the merchant's label. */
+    /** "100 points = $1", with the merchant's label. A rate below 1 reads per point instead: "1 Point = 25,000 ₫". */
     public static function redeem_rate( float $points_per_unit ): string {
+        $per_point = self::is_per_point( $points_per_unit );
+        $points    = $per_point ? 1.0 : $points_per_unit;
+        $amount    = $per_point ? self::amount_per_point( $points_per_unit ) : 1.0;
+
         /* translators: 1: points per unit of currency, 2: the store's points label, 3: money amount. */
-        return sprintf( __( '%1$s %2$s = %3$s', 'yayloyalty' ), self::rate( $points_per_unit ), self::rate_label( $points_per_unit ), self::money( 1.0 ) );
+        return sprintf( __( '%1$s %2$s = %3$s', 'yayloyalty' ), self::rate( $points ), self::rate_label( $points ), self::money( $amount ) );
+    }
+
+    /**
+     * A points rate converted into the shopper's currency, for the payload. At 1 or more it is rounded to 4 significant
+     * digits; below 1 it stays exact, because earn_rate() and redeem_rate() print its inverse, which must land on the
+     * currency's own amount (1 / 0.00003636… is 27,500, but 1 / 0.00003636 is not).
+     */
+    public static function converted_rate( float $rate ): float {
+        return $rate >= 1 ? PointsMath::round_significant( $rate ) : $rate;
+    }
+
+    /** A base-currency amount in the shopper's currency, rounded once to its decimals so a whole amount prints whole. */
+    private static function from_base( float $amount ): float {
+        return round( CurrencyRate::from_base( $amount ), wc_get_price_decimals() );
+    }
+
+    /** A rate below 1 reads per point, converted or not: "0.00004 Points = 1 ₫" says less than "1 Point = 25,000 ₫". */
+    private static function is_per_point( float $points_per_unit ): bool {
+        return $points_per_unit > 0 && $points_per_unit < 1;
+    }
+
+    /** What one point is worth at $points_per_unit, rounded to the currency's decimals. */
+    private static function amount_per_point( float $points_per_unit ): float {
+        return round( 1 / $points_per_unit, wc_get_price_decimals() );
     }
 
     /**
