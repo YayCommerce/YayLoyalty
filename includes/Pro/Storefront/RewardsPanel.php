@@ -192,7 +192,8 @@ final class RewardsPanel {
         if ( RewardType::PERCENT_COUPON === $reward->get_type() ) {
             $is_short = Clamp::BOUND_REWARD_MAX === $quote->get_bound_by();
         } else {
-            $is_short = $value < round( (float) ( $reward->get_config()['amount'] ?? 0 ), $decimals );
+            // The quote is in the charged currency; the config's amount is in the base one.
+            $is_short = $value < round( CurrencyRate::from_base( (float) ( $reward->get_config()['amount'] ?? 0 ) ), $decimals );
         }
 
         if ( ! $is_short ) {

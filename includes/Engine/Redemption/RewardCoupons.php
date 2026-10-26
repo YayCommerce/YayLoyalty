@@ -120,6 +120,36 @@ final class RewardCoupons {
     }
 
     /**
+     * The props in the currency the cart is charged in. A reward's money config is in the base currency, so
+     * `amount` (for `fixed_cart` only; a percent stays a percent), `minimum_amount` and `max_discount` are
+     * multiplied by $rate when set, then floored to the currency's decimals, as Clamp floors a discount.
+     *
+     * @param array $props RewardHandler::coupon_props().
+     * @param float $rate  Units of the charged currency per 1 base unit (CurrencyRate::rate()).
+     * @return array
+     */
+    public static function in_currency( array $props, float $rate ): array {
+        if ( 1.0 === $rate || $rate <= 0 ) {
+            return $props;
+        }
+
+        $scale  = pow( 10, max( 0, wc_get_price_decimals() ) );
+        $fields = [ 'minimum_amount', 'max_discount' ];
+
+        if ( 'fixed_cart' === ( $props['discount_type'] ?? '' ) ) {
+            $fields[] = 'amount';
+        }
+
+        foreach ( $fields as $field ) {
+            if ( isset( $props[ $field ] ) ) {
+                $props[ $field ] = floor( round( (float) $props[ $field ] * $rate * $scale, 6 ) ) / $scale;
+            }
+        }
+
+        return $props;
+    }
+
+    /**
      * The `woocommerce_get_shop_coupon_data` array for the props: stacks with every other coupon, no free
      * shipping, no usage limit, no expiry.
      *

@@ -18,6 +18,7 @@ use YayLoyalty\Repositories\LedgerRepository;
 use YayLoyalty\Repositories\RedemptionRepository;
 use YayLoyalty\Repositories\RewardRepository;
 use YayLoyalty\Services\LedgerService;
+use YayLoyalty\Utils\CurrencyRate;
 use YayLoyalty\Utils\Dates;
 
 defined( 'ABSPATH' ) || exit;
@@ -521,8 +522,13 @@ final class RedemptionService {
         return $this->reward_cache[ $reward_id ];
     }
 
-    /** The coupon the reward's handler describes; null for the slider's type, or a type with no handler (Lite). */
+    /**
+     * The coupon the reward's handler describes, in the currency the request charges in; null for the slider's
+     * type, or a type with no handler (Lite).
+     */
     private function coupon_props_of( Reward $reward ): ?array {
-        return $this->registry->has( $reward->get_type() ) ? $this->registry->get( $reward->get_type() )->coupon_props( $reward ) : null;
+        $props = $this->registry->has( $reward->get_type() ) ? $this->registry->get( $reward->get_type() )->coupon_props( $reward ) : null;
+
+        return null === $props ? null : RewardCoupons::in_currency( $props, CurrencyRate::rate( CurrencyRate::current() ) );
     }
 }
