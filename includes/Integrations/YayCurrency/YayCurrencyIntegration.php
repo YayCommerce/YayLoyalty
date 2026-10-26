@@ -1,8 +1,10 @@
 <?php
 namespace YayLoyalty\Integrations\YayCurrency;
 
+use YayLoyalty\Controllers\BaseRestController;
 use YayLoyalty\Engine\Points\Context as EarnContext;
 use YayLoyalty\Helpers\SettingsHelper;
+use YayLoyalty\Utils\CurrencyRate;
 use YayLoyalty\Utils\Log;
 use YayLoyalty\Utils\SingletonTrait;
 
@@ -32,8 +34,8 @@ class YayCurrencyIntegration {
         }
 
         add_filter( 'yayloyalty_currency_rate', [ $this, 'rate' ], 10, 3 );
-        add_action( 'woocommerce_checkout_create_order', [ $this, 'save_order_rate' ], 20, 1 );
-        add_action( 'woocommerce_store_api_checkout_update_order_meta', [ $this, 'save_order_rate' ], 20, 1 );
+        add_action( 'woocommerce_checkout_create_order', [ OrderRateSnapshot::class, 'save' ], 20, 1 );
+        add_action( 'woocommerce_store_api_checkout_update_order_meta', [ OrderRateSnapshot::class, 'save' ], 20, 1 );
         add_filter( 'YayCurrency/ConvertPrice/NotPermitted', [ $this, 'skip_own_rest_requests' ], 10, 1 );
 
         // After YayCurrency's own conversion at 10.
@@ -50,9 +52,15 @@ class YayCurrencyIntegration {
     /** The order's saved rate, else YayCurrency's live one (after fee when the merchant includes it), else 1.0. */
     public function rate( float $rate, string $currency, ?\WC_Order $order ): float {
         $saved = null === $order ? null : OrderRateSnapshot::read( $order );
-        $live  = YayCurrencyRates::live_rate( $currency, (bool) SettingsHelper::get_settings()['currency_include_fee'] );
 
-        if ( self::unusable( $saved ) && self::unusable( $live ) ) {
+        // The saved rate wins, so the live one is looked up only without it.
+        if ( CurrencyRate::is_usable( $saved ) ) {
+            return (float) $saved;
+        }
+
+        $live = YayCurrencyRates::live_rate( $currency, (bool) SettingsHelper::get_settings()['currency_include_fee'] );
+
+        if ( ! CurrencyRate::is_usable( $live ) ) {
             Log::debug(
                 'YayCurrencyIntegration',
                 sprintf( 'No usable rate for %s on order %s; using 1.0.', $currency, null === $order ? 'none' : (string) $order->get_id() )
@@ -60,10 +68,6 @@ class YayCurrencyIntegration {
         }
 
         return CurrencyRateMath::resolve( $saved, $live );
-    }
-
-    public function save_order_rate( \WC_Order $order ): void {
-        OrderRateSnapshot::save( $order );
     }
 
     /**
@@ -80,7 +84,9 @@ class YayCurrencyIntegration {
         // Decoded first, so an encoded rest_route=%2Fyayloyalty%2Fv1%2F matches too.
         $uri = sanitize_text_field( rawurldecode( wp_unslash( $_SERVER['REQUEST_URI'] ) ) );
 
-        if ( str_contains( $uri, '/' . rest_get_url_prefix() . '/yayloyalty/v1/' ) || str_contains( $uri, 'rest_route=/yayloyalty/v1/' ) ) {
+        $namespace = '/' . BaseRestController::REST_NAMESPACE . '/';
+
+        if ( str_contains( $uri, '/' . rest_get_url_prefix() . $namespace ) || str_contains( $uri, 'rest_route=' . $namespace ) ) {
             return true;
         }
 
@@ -103,10 +109,5 @@ class YayCurrencyIntegration {
         }
 
         return $coupon->$getter( 'edit' );
-    }
-
-    /** @param string|float|null $candidate */
-    private static function unusable( $candidate ): bool {
-        return ! is_numeric( $candidate ) || (float) $candidate <= 0;
     }
 }

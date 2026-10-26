@@ -31,7 +31,16 @@ final class CurrencyRate {
          */
         $rate = apply_filters( 'yayloyalty_currency_rate', 1.0, $currency, $order );
 
-        return is_numeric( $rate ) && (float) $rate > 0 ? (float) $rate : 1.0;
+        return self::is_usable( $rate ) ? (float) $rate : 1.0;
+    }
+
+    /**
+     * Whether $rate can price anything: numeric and above 0. Pure, so the unit suite can call it.
+     *
+     * @param mixed $rate
+     */
+    public static function is_usable( $rate ): bool {
+        return is_numeric( $rate ) && (float) $rate > 0;
     }
 
     /** A base-currency amount in $currency, the current one by default. */

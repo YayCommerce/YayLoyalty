@@ -4,6 +4,7 @@ namespace YayLoyalty\Helpers;
 use YayLoyalty\Access\Capabilities;
 use YayLoyalty\Controllers\BaseRestController;
 use YayLoyalty\Engine\Expiry\ExpiryPolicy;
+use YayLoyalty\Integrations\YayCurrency\YayCurrencyIntegration;
 use YayLoyalty\Utils\Text;
 
 defined( 'ABSPATH' ) || exit;
@@ -73,7 +74,7 @@ class LocalizeHelper {
                 // True when WC isn't loaded, so the Rewards notice never raises a false alarm.
                 'coupons_enabled'    => function_exists( 'wc_coupons_enabled' ) ? wc_coupons_enabled() : true,
                 // Integration detection for the General tab's YayCurrency card, never a Pro gate.
-                'yaycurrency_active' => defined( 'YAY_CURRENCY_VERSION' ),
+                'yaycurrency_active' => YayCurrencyIntegration::is_active(),
             ],
         ];
 

@@ -3,6 +3,7 @@ namespace YayLoyalty\Engine\Redemption;
 
 use YayLoyalty\Engine\Points\Context as EarnContext;
 use YayLoyalty\Engine\Rewards\ContextFactory;
+use YayLoyalty\Utils\PointsMath;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -122,7 +123,8 @@ final class RewardCoupons {
     /**
      * The props in the currency the cart is charged in. A reward's money config is in the base currency, so
      * `amount` (for `fixed_cart` only; a percent stays a percent), `minimum_amount` and `max_discount` are
-     * multiplied by $rate when set, then floored to the currency's decimals, as Clamp floors a discount.
+     * multiplied by $rate when set, then floored to the currency's decimals, as Clamp floors a discount and
+     * LauncherCopy::from_base() shows them.
      *
      * @param array $props RewardHandler::coupon_props().
      * @param float $rate  Units of the charged currency per 1 base unit (CurrencyRate::rate()).
@@ -133,7 +135,6 @@ final class RewardCoupons {
             return $props;
         }
 
-        $scale  = pow( 10, max( 0, wc_get_price_decimals() ) );
         $fields = [ 'minimum_amount', 'max_discount' ];
 
         if ( 'fixed_cart' === ( $props['discount_type'] ?? '' ) ) {
@@ -142,7 +143,7 @@ final class RewardCoupons {
 
         foreach ( $fields as $field ) {
             if ( isset( $props[ $field ] ) ) {
-                $props[ $field ] = floor( round( (float) $props[ $field ] * $rate * $scale, 6 ) ) / $scale;
+                $props[ $field ] = PointsMath::floor_to_decimals( (float) $props[ $field ] * $rate, wc_get_price_decimals() );
             }
         }
 

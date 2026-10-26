@@ -1,6 +1,8 @@
 <?php
 namespace YayLoyalty\Integrations\YayCurrency;
 
+use YayLoyalty\Utils\CurrencyRate;
+
 defined( 'ABSPATH' ) || exit;
 
 /**
@@ -15,7 +17,7 @@ final class CurrencyRateMath {
      */
     public static function resolve( ?string $saved, ?float $live ): float {
         foreach ( [ $saved, $live ] as $candidate ) {
-            if ( is_numeric( $candidate ) && (float) $candidate > 0 ) {
+            if ( CurrencyRate::is_usable( $candidate ) ) {
                 return (float) $candidate;
             }
         }

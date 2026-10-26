@@ -314,7 +314,7 @@ final class ContextFactory {
          * @param string         $currency
          * @param \WC_Order|null $order
          */
-        $rate = (float) apply_filters( 'yayloyalty_context_base_rate', 1 / CurrencyRate::rate( $currency, $order ), $currency, $order );
+        $rate = (float) apply_filters( 'yayloyalty_context_base_rate', CurrencyRate::to_base( 1.0, $currency, $order ), $currency, $order );
 
         return $rate > 0 ? $rate : 1.0;
     }

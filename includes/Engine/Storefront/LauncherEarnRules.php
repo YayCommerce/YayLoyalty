@@ -49,8 +49,8 @@ final class LauncherEarnRules {
                 $min       = PurchaseHandler::min_subtotal( $advert['campaign']->get_config() );
 
                 // In the base currency both stay exact, as configured.
-                $rules['earn'][ $trigger ] = 1.0 === $base_rate ? $advert['value'] : LauncherCopy::converted_rate( $advert['value'] * $base_rate );
-                $rules['purchase_min']     = 1.0 === $base_rate ? $min : round( $min / $base_rate, wc_get_price_decimals() );
+                $rules['earn'][ $trigger ] = LauncherCopy::converted_rate( $advert['value'] * $base_rate, $base_rate );
+                $rules['purchase_min']     = round( $min / $base_rate, wc_get_price_decimals() );
             } else {
                 $rules['earn'][ $trigger ] = (int) $advert['value'];
             }

@@ -4,7 +4,8 @@ namespace YayLoyalty\Utils;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * The points arithmetic every layer shares. PHP is the source of truth, and apps/admin/src/lib/points-math/ copies it.
+ * The points arithmetic every layer shares. PHP is the source of truth; apps/admin/src/lib/points-math/ copies
+ * SNAP_DECIMALS, round_points(), pct_delta() and pct_of(), the parts the admin SPA previews.
  * A zero denominator yields null, never 0, and the SPA renders "—" for null.
  */
 final class PointsMath {
@@ -25,7 +26,7 @@ final class PointsMath {
      * Snaps first, so float error (0.57 × 100 = 56.999…) never crosses a whole number.
      */
     public static function round_points( float $raw, string $mode ): int {
-        $raw = round( $raw, self::SNAP_DECIMALS );
+        $raw = self::snap( $raw );
 
         switch ( $mode ) {
             case self::ROUND_UP:
@@ -38,6 +39,21 @@ final class PointsMath {
             default:
                 return (int) floor( $raw );
         }
+    }
+
+    /** $value with float error removed (0.57 × 100 = 56.999… becomes 57), before a comparison or a rounding. */
+    public static function snap( float $value ): float {
+        return round( $value, self::SNAP_DECIMALS );
+    }
+
+    /**
+     * Money floored to $decimals, so a discount never exceeds what pays for it. Snapped first, at the
+     * currency's scale, so 250000 × 0.00004 = 9.999… still floors to 10.
+     */
+    public static function floor_to_decimals( float $amount, int $decimals ): float {
+        $scale = pow( 10, max( 0, $decimals ) );
+
+        return floor( round( $amount * $scale, 6 ) ) / $scale;
     }
 
     /**

@@ -133,9 +133,7 @@ final class Clamp {
 
     /** What points buy, floored to the currency's smallest unit; snapped before flooring, as points_in() is. */
     private static function value_of( int $points, float $rate, int $decimals ): float {
-        $scale = pow( 10, max( 0, $decimals ) );
-
-        return floor( round( $points / $rate * $scale, 6 ) ) / $scale;
+        return PointsMath::floor_to_decimals( $points / $rate, $decimals );
     }
 
     /** Whole points a money amount is worth, rounded down. */
