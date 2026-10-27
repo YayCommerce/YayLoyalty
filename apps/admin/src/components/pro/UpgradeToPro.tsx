@@ -32,6 +32,15 @@ export function UpgradeToProBadge() {
   );
 }
 
+/** The yellow Upgrade button every upsell surface shares. */
+function UpgradeButton({ size }: { size?: 'sm' }) {
+  return (
+    <Button variant="warning" size={size} className="shrink-0 text-white" onClick={() => window.open(yayLoyaltyProUrl)}>
+      {__('Upgrade', 'yayloyalty')}
+    </Button>
+  );
+}
+
 export function UpgradeToProOverlay() {
   return (
     <Empty className="my-5">
@@ -51,31 +60,21 @@ export function UpgradeToProOverlay() {
         </EmptyTitle>
         <EmptyDescription>{__('Upgrade to PRO to unlock this feature now', 'yayloyalty')}</EmptyDescription>
         <EmptyContent>
-          <Button
-            variant="warning"
-            className="text-white"
-            onClick={() => {
-              window.open(yayLoyaltyProUrl);
-            }}
-          >
-            {__('Upgrade', 'yayloyalty')}
-          </Button>
+          <UpgradeButton />
         </EmptyContent>
       </EmptyHeader>
     </Empty>
   );
 }
 
-/** A Lite screen's closing strip: what Pro adds there, in that screen's words, plus an Upgrade link. */
+/** A Lite screen's closing strip: what Pro adds there, in that screen's words, plus the Upgrade button. */
 export function UpgradeToProBanner({ message }: { message: string }) {
   return (
-    <Alert variant="outline">
+    <Alert variant="warning" className="items-center [&>svg]:translate-y-0">
       <InfoIcon />
-      <AlertDescription className="flex-row items-center justify-between gap-3">
+      <AlertDescription className="text-foreground flex flex-row items-center justify-between gap-3">
         <span>{message}</span>
-        <Button variant="link" size="sm" className="h-auto shrink-0 p-0" onClick={() => window.open(yayLoyaltyProUrl)}>
-          {__('Upgrade', 'yayloyalty')}
-        </Button>
+        <UpgradeButton size="sm" />
       </AlertDescription>
     </Alert>
   );

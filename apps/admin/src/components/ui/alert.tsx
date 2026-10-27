@@ -11,6 +11,7 @@ const alertVariants = cva(
         default: 'bg-card',
         outline: 'bg-card border border-border',
         muted: 'bg-muted',
+        warning: 'bg-warning/10 border border-warning/40 [&>svg]:text-warning-accent',
       },
       destructive: {
         true: 'text-destructive bg-card [&>svg]:text-current *:data-[slot=alert-description]:text-destructive/90',
