@@ -8,6 +8,7 @@ import {
   ReviewConfig,
   SignupConfig,
 } from '@/lib/schema/campaign.schema';
+import { AMOUNT_INPUT_WIDTH } from '@/components/ui/custom/amount-inputs';
 import { Field, FieldContent, FieldDescription, FieldLabel } from '@/components/ui/field';
 import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
 import { Switch } from '@/components/ui/switch';
@@ -45,7 +46,7 @@ function RewardFieldsSignup() {
       <FieldContent>
         <NumberInputRoot
           size="small"
-          className="w-28"
+          className={AMOUNT_INPUT_WIDTH}
           min={0}
           value={config.points ?? 0}
           onValueChange={(points) =>
@@ -78,7 +79,7 @@ function RewardFieldsReview() {
         <FieldContent>
           <NumberInputRoot
             size="small"
-            className="w-28"
+            className={AMOUNT_INPUT_WIDTH}
             min={0}
             value={config.points ?? 0}
             onValueChange={(points) => patchConfig({ points })}
@@ -95,7 +96,7 @@ function RewardFieldsReview() {
         <FieldContent>
           <NumberInputRoot
             size="small"
-            className="w-28"
+            className={AMOUNT_INPUT_WIDTH}
             min={0}
             value={config.media_bonus_points ?? 0}
             onValueChange={(media_bonus_points) => patchConfig({ media_bonus_points })}
@@ -147,7 +148,7 @@ function RewardFieldsBirthday() {
         <FieldContent>
           <NumberInputRoot
             size="small"
-            className="w-28"
+            className={AMOUNT_INPUT_WIDTH}
             min={0}
             value={config.points ?? 0}
             onValueChange={(points) => patchConfig({ points })}

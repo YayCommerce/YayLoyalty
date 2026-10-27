@@ -12,6 +12,7 @@ import {
   useUpdateCampaignStatusMutation,
 } from '@/lib/queries/campaign.queries';
 import type { Campaign, PurchaseConfig, ReviewConfig, SignupConfig } from '@/lib/schema/campaign.schema';
+import { AMOUNT_INPUT_WIDTH } from '@/components/ui/custom/amount-inputs';
 import { BuiltInConfigCard } from '@/components/ui/custom/built-in-config-card';
 import { ConfigField } from '@/components/ui/custom/config-field';
 import { ErrorState } from '@/components/ui/custom/error-state';
@@ -20,7 +21,7 @@ import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { UpgradeToProBanner } from '@/components/pro/UpgradeToPro';
-import { BaseAmountSegmented, RoundingSegmented } from './PurchaseConfigControls';
+import { BaseAmountSegmented, PurchaseRateInput, RoundingSegmented } from './PurchaseConfigControls';
 
 /** Display order for the three built-ins; same as CampaignTable's group order. */
 const BUILTIN_TRIGGER_ORDER: Campaign['trigger'][] = ['purchase', 'signup', 'review'];
@@ -172,26 +173,10 @@ function PurchaseFields({
   return (
     <>
       <ConfigField label={__('Award', 'yayloyalty')}>
-        <div className="flex flex-wrap items-center gap-2">
-          <NumberInputRoot
-            size="small"
-            className="w-28"
-            min={1}
-            value={value.points_per_unit}
-            onValueChange={(points_per_unit) => onChange({ points_per_unit })}
-          >
-            <NumberInputInput />
-            <NumberInputUnit unit={_n('point', 'points', value.points_per_unit, 'yayloyalty')} />
-          </NumberInputRoot>
-          <span className="text-muted-foreground text-sm">
-            {sprintf(
-              /* translators: 1: one unit of the store currency, formatted; 2: the site's currency code, e.g. USD. */
-              __('per %1$s (%2$s) spent', 'yayloyalty'),
-              parseWPCurrency(1),
-              currency,
-            )}
-          </span>
-        </div>
+        <PurchaseRateInput
+          value={value.points_per_unit}
+          onValueChange={(points_per_unit) => onChange({ points_per_unit })}
+        />
       </ConfigField>
 
       <div className="bg-muted flex items-center gap-3 rounded-md border p-3.5">
@@ -230,7 +215,7 @@ function PurchaseFields({
       >
         <NumberInputRoot
           size="small"
-          className="w-32"
+          className={AMOUNT_INPUT_WIDTH}
           min={0}
           decimalScale={2}
           fixedDecimalScale
@@ -271,7 +256,7 @@ function SignupFields({
     >
       <NumberInputRoot
         size="small"
-        className="w-28"
+        className={AMOUNT_INPUT_WIDTH}
         min={0}
         value={value.points}
         onValueChange={(points) => onChange({ points })}
@@ -297,7 +282,7 @@ function ReviewFields({
       <ConfigField label={__('Award', 'yayloyalty')} description={__('Per approved product review.', 'yayloyalty')}>
         <NumberInputRoot
           size="small"
-          className="w-28"
+          className={AMOUNT_INPUT_WIDTH}
           min={0}
           value={value.points}
           onValueChange={(points) => onChange({ points })}

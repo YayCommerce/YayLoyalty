@@ -68,6 +68,8 @@ export const PANEL_SECTION_DESCRIPTION = () => __('The panel’s optional blocks
 export const PANEL_SHOW_REWARD_CATALOG_LABEL = () => __('Show reward catalog', 'yayloyalty');
 export const PANEL_SHOW_REWARD_CATALOG_DESCRIPTION = () =>
   __('Lists redeemable rewards inside the panel.', 'yayloyalty');
+export const PANEL_SECTION_UPSELL = () =>
+  __('Choose the panel’s optional blocks, such as the reward catalog. Available in YayLoyalty Pro.', 'yayloyalty');
 
 // Custom CSS section (Pro)
 
@@ -75,6 +77,8 @@ export const TYPOGRAPHY_SECTION_TITLE = () => __('Custom CSS', 'yayloyalty');
 export const TYPOGRAPHY_SECTION_DESCRIPTION = () => __('CSS applied to the rewards launcher.', 'yayloyalty');
 export const TYPOGRAPHY_CUSTOM_CSS_LABEL = () => __('Custom CSS', 'yayloyalty');
 export const TYPOGRAPHY_CUSTOM_CSS_DESCRIPTION = () => __('Saved, not yet applied to the storefront.', 'yayloyalty');
+export const TYPOGRAPHY_SECTION_UPSELL = () =>
+  __('Style the rewards launcher with your own CSS. Available in YayLoyalty Pro.', 'yayloyalty');
 
 // Preview
 

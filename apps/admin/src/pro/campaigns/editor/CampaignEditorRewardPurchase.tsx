@@ -1,14 +1,13 @@
 import { useState } from 'react';
-import { Calculator, ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useFormContext } from 'react-hook-form';
 import { __, sprintf } from '@wordpress/i18n';
 
-import { storeCurrency, storeCurrencySymbol } from '@/lib/helpers/format.helper';
+import { storeCurrency } from '@/lib/helpers/format.helper';
 import { pointsPerCurrencyLabel } from '@/lib/helpers/points.helper';
 import { ROUNDING } from '@/lib/points-math/points-math';
 import type { PurchaseConfig } from '@/lib/schema/campaign.schema';
-import { Button } from '@/components/ui/button';
-import { OptionalCountInput } from '@/components/ui/custom/amount-inputs';
+import { AMOUNT_INPUT_WIDTH, OptionalCountInput } from '@/components/ui/custom/amount-inputs';
 import { LookupMultiSelect } from '@/components/ui/custom/lookup-multi-select';
 import {
   Field,
@@ -22,10 +21,9 @@ import {
 import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
-import { BaseAmountSegmented, RoundingSegmented } from '@/pages/campaigns/PurchaseConfigControls';
+import { BaseAmountSegmented, PurchaseRateInput, RoundingSegmented } from '@/pages/campaigns/PurchaseConfigControls';
 import { CampaignFormValues } from './campaign-editor.form';
 import { purchaseAdvancedPhrases } from './campaign-reward.copy';
-import { PurchaseRateCalculatorDialog } from './PurchaseRateCalculatorDialog';
 
 type PatchPurchaseConfig = (patch: Partial<PurchaseConfig>) => void;
 
@@ -55,41 +53,19 @@ export function RewardFieldsPurchase() {
   );
 }
 
-/** Decimals the rate input keeps: enough for 1 pt per 1,000,000 of a 0-decimal currency. */
-const RATE_DECIMALS = 6;
-
-/** Points per 1 currency unit, typed directly or worked out in the calculator dialog. */
+/** Points per 1 currency unit, plus the spend pair it works out to. */
 function PurchaseRateField({ config, patchConfig }: PurchaseFieldsProps) {
-  const [calculatorOpen, setCalculatorOpen] = useState(false);
   const rate = config.points_per_unit ?? 0;
 
   return (
     <Field>
       <FieldLabel htmlFor="reward-purchase-points-per-unit">{__('Rate', 'yayloyalty')}</FieldLabel>
       <FieldContent>
-        <div className="flex flex-wrap items-center gap-2">
-          <NumberInputRoot
-            size="small"
-            className="w-44"
-            min={10 ** -RATE_DECIMALS}
-            decimalScale={RATE_DECIMALS}
-            value={rate}
-            onValueChange={(points_per_unit) => patchConfig({ points_per_unit })}
-          >
-            <NumberInputInput id="reward-purchase-points-per-unit" />
-            <NumberInputUnit
-              unit={sprintf(
-                /* translators: %s: the store currency symbol, e.g. "₫". */
-                __('pts / %s', 'yayloyalty'),
-                storeCurrencySymbol(),
-              )}
-            />
-          </NumberInputRoot>
-          <Button type="button" variant="link" size="sm" onClick={() => setCalculatorOpen(true)}>
-            <Calculator />
-            {__('Calculate from spend', 'yayloyalty')}
-          </Button>
-        </div>
+        <PurchaseRateInput
+          id="reward-purchase-points-per-unit"
+          value={rate}
+          onValueChange={(points_per_unit) => patchConfig({ points_per_unit })}
+        />
         {rate > 0 && (
           <FieldDescription>
             {sprintf(
@@ -100,16 +76,6 @@ function PurchaseRateField({ config, patchConfig }: PurchaseFieldsProps) {
           </FieldDescription>
         )}
       </FieldContent>
-
-      <PurchaseRateCalculatorDialog
-        open={calculatorOpen}
-        onOpenChange={setCalculatorOpen}
-        rate={rate || 1}
-        onApply={(points_per_unit) => {
-          patchConfig({ points_per_unit });
-          setCalculatorOpen(false);
-        }}
-      />
     </Field>
   );
 }
@@ -173,7 +139,7 @@ function PurchaseEligibilityFields({ config, patchConfig }: PurchaseFieldsProps)
         <FieldContent>
           <NumberInputRoot
             size="small"
-            className="w-32"
+            className={AMOUNT_INPUT_WIDTH}
             min={0}
             decimalScale={2}
             fixedDecimalScale
@@ -278,7 +244,7 @@ function PurchaseRoundingFields({ config, patchConfig }: PurchaseFieldsProps) {
         <FieldContent>
           <OptionalCountInput
             id="reward-purchase-max-points"
-            className="w-40"
+            className={AMOUNT_INPUT_WIDTH}
             value={config.max_points_per_order ?? null}
             unit={__('points', 'yayloyalty')}
             onValueChange={(max_points_per_order) => patchConfig({ max_points_per_order })}

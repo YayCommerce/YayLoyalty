@@ -9,12 +9,15 @@ import { useDesignQuery, useResetDesignMutation, useSaveDesignMutation } from '@
 import { designSchema } from '@/lib/schema/design.schema';
 import { useEditorSave } from '@/hooks/useEditorSave';
 import { Button, LoadingButton } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ConfirmDialog } from '@/components/ui/custom/confirm-dialog';
 import { UnsavedChangeDialog } from '@/components/ui/custom/unsaved-changed-dialog';
 import { ProGate } from '@/components/pro/ProGate';
 import { DesignPanelSection, DesignTypographySection } from '@/pro';
 import {
   CANCEL_LABEL,
+  PANEL_SECTION_TITLE,
+  PANEL_SECTION_UPSELL,
   RESET_CONFIRM_LABEL,
   RESET_ERROR_FALLBACK,
   RESET_WHOLE_TAB_BUTTON_LABEL,
@@ -24,11 +27,28 @@ import {
   SAVE_BUTTON_LABEL,
   SAVE_ERROR_FALLBACK,
   SAVE_SUCCESS_TOAST,
+  TYPOGRAPHY_SECTION_TITLE,
+  TYPOGRAPHY_SECTION_UPSELL,
 } from './design-settings.copy';
 import { DesignFormValues, designToFormValues } from './design-settings.form';
 import { DesignLauncherPreview } from './DesignLauncherPreview';
 import { DesignLauncherSection } from './DesignLauncherSection';
 import { DesignVisibilitySection } from './DesignVisibilitySection';
+
+/** Lite's place for a Pro design section: the same card as an upsell, with no input. */
+function DesignUpsellCard({ title, description }: { title: string; description: string }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <ProGate />
+      </CardContent>
+    </Card>
+  );
+}
 
 /**
  * The Design tab: form wiring, layout and save/reset/leave-guard state only.
@@ -90,10 +110,16 @@ export default function DesignSettingsPage() {
             <DesignLauncherSection />
             <DesignVisibilitySection />
 
-            {/* IS_PRO_BUILD inside ProGate: ProGate alone would still ship the Pro sections in Lite
-              (see pro/index.ts). */}
-            <ProGate>{IS_PRO_BUILD ? <DesignPanelSection /> : null}</ProGate>
-            <ProGate>{IS_PRO_BUILD ? <DesignTypographySection /> : null}</ProGate>
+            {IS_PRO_BUILD ? (
+              <DesignPanelSection />
+            ) : (
+              <DesignUpsellCard title={PANEL_SECTION_TITLE()} description={PANEL_SECTION_UPSELL()} />
+            )}
+            {IS_PRO_BUILD ? (
+              <DesignTypographySection />
+            ) : (
+              <DesignUpsellCard title={TYPOGRAPHY_SECTION_TITLE()} description={TYPOGRAPHY_SECTION_UPSELL()} />
+            )}
 
             <div className="flex items-center justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setResetOpen(true)}>

@@ -3,6 +3,7 @@ import { PlusIcon, XIcon } from 'lucide-react';
 import { useController, useFieldArray, useFormContext, useWatch } from 'react-hook-form';
 import { __, sprintf } from '@wordpress/i18n';
 
+import { storeCurrency } from '@/lib/helpers/format.helper';
 import { countryOptions, currencyOptions, paymentGatewayOptions, roleOptions } from '@/lib/helpers/meta-options.helper';
 import {
   CAMPAIGN_CONDITION_SCHEMA,
@@ -13,6 +14,7 @@ import {
 } from '@/lib/schema/campaign.schema';
 import { LookupEntity } from '@/lib/schema/lookup.schema';
 import { Button } from '@/components/ui/button';
+import { AMOUNT_INPUT_WIDTH } from '@/components/ui/custom/amount-inputs';
 import { LookupMultiSelect } from '@/components/ui/custom/lookup-multi-select';
 import { MultiSelectComboboxOption } from '@/components/ui/custom/multi-select-combobox';
 import { OptionListSelect } from '@/components/ui/custom/option-list-select';
@@ -28,7 +30,6 @@ import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { conditionTypeLabel } from '../campaign-labels';
 import { CampaignFormValues } from './campaign-editor.form';
-import { storeCurrency } from '@/lib/helpers/format.helper';
 
 /**
  * Conditions section: a useFieldArray over a flat, ANDed list with at most
@@ -318,7 +319,7 @@ function IntValueEditor({ index, operator }: { index: number; operator: string }
       <div className="flex items-center gap-2">
         <NumberInputRoot
           size="small"
-          className="w-24"
+          className={AMOUNT_INPUT_WIDTH}
           min={0}
           value={pair[0]}
           onValueChange={(low) => field.onChange([low, pair[1] ?? low])}
@@ -328,7 +329,7 @@ function IntValueEditor({ index, operator }: { index: number; operator: string }
         <span className="text-muted-foreground text-xs">{__('and', 'yayloyalty')}</span>
         <NumberInputRoot
           size="small"
-          className="w-24"
+          className={AMOUNT_INPUT_WIDTH}
           min={0}
           value={pair[1]}
           onValueChange={(high) => field.onChange([pair[0] ?? high, high])}
@@ -342,7 +343,7 @@ function IntValueEditor({ index, operator }: { index: number; operator: string }
   const scalar = typeof field.value === 'number' ? field.value : 0;
 
   return (
-    <NumberInputRoot size="small" className="w-28" min={0} value={scalar} onValueChange={field.onChange}>
+    <NumberInputRoot size="small" className={AMOUNT_INPUT_WIDTH} min={0} value={scalar} onValueChange={field.onChange}>
       <NumberInputInput />
     </NumberInputRoot>
   );
@@ -354,10 +355,7 @@ function MoneyValueEditor({ index, operator }: { index: number; operator: string
   const { control } = useFormContext<CampaignFormValues>();
   const { field } = useController({ control, name: `conditions.${index}.value` });
   const value = (field.value ?? {}) as { amount?: unknown; currency?: unknown };
-  const currency =
-    typeof value.currency === 'string' && value.currency
-      ? value.currency
-      : storeCurrency();
+  const currency = typeof value.currency === 'string' && value.currency ? value.currency : storeCurrency();
 
   if (operator === 'between') {
     const pair = Array.isArray(value.amount) ? (value.amount as number[]) : [0, 0];
@@ -366,7 +364,7 @@ function MoneyValueEditor({ index, operator }: { index: number; operator: string
       <div className="flex items-center gap-2">
         <NumberInputRoot
           size="small"
-          className="w-28"
+          className={AMOUNT_INPUT_WIDTH}
           min={0}
           decimalScale={2}
           value={pair[0]}
@@ -378,7 +376,7 @@ function MoneyValueEditor({ index, operator }: { index: number; operator: string
         <span className="text-muted-foreground text-xs">{__('and', 'yayloyalty')}</span>
         <NumberInputRoot
           size="small"
-          className="w-28"
+          className={AMOUNT_INPUT_WIDTH}
           min={0}
           decimalScale={2}
           value={pair[1]}
@@ -396,7 +394,7 @@ function MoneyValueEditor({ index, operator }: { index: number; operator: string
   return (
     <NumberInputRoot
       size="small"
-      className="w-28"
+      className={AMOUNT_INPUT_WIDTH}
       min={0}
       decimalScale={2}
       value={scalar}
@@ -463,10 +461,7 @@ function reshapeConditionValue(
 
   if (valueKind === 'money') {
     const object = (currentValue ?? {}) as { amount?: unknown; currency?: unknown };
-    const currency =
-      typeof object.currency === 'string' && object.currency
-        ? object.currency
-        : storeCurrency();
+    const currency = typeof object.currency === 'string' && object.currency ? object.currency : storeCurrency();
 
     if (willBeBetween) {
       const scalar = typeof object.amount === 'number' ? object.amount : 0;
