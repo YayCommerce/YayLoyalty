@@ -1,6 +1,7 @@
 import { __, _n, sprintf } from '@wordpress/i18n';
 
 import { parseWPCurrency, storeCurrency } from '@/lib/helpers/format.helper';
+import { formatPoints, spendPairFromRate } from '@/lib/helpers/points.helper';
 import type { RewardConfigOf } from '@/lib/schema/reward.schema';
 import { OptionalCountInput, PointsInput } from '@/components/ui/custom/amount-inputs';
 import { ConfigField } from '@/components/ui/custom/config-field';
@@ -8,6 +9,9 @@ import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 export type FlexibleDiscountConfig = RewardConfigOf<'flexible_discount'>;
+
+/** Decimals the rate input keeps: enough for 1 pt per 1,000,000 of a 0-decimal currency. */
+const RATE_DECIMALS = 6;
 
 /**
  * The built-in flexible discount's settings (1g), shared by Lite's inline
@@ -26,11 +30,17 @@ export function FlexibleDiscountFields({
     <>
       <ConfigField label={__('Conversion rate', 'yayloyalty')}>
         <div className="flex flex-wrap items-center gap-2">
-          <PointsInput
+          <NumberInputRoot
+            size="small"
+            className="w-32"
+            min={10 ** -RATE_DECIMALS}
+            decimalScale={RATE_DECIMALS}
             value={value.points_per_currency_unit}
-            min={1}
             onValueChange={(points_per_currency_unit) => onChange({ points_per_currency_unit })}
-          />
+          >
+            <NumberInputInput />
+            <NumberInputUnit unit={_n('point', 'points', value.points_per_currency_unit, 'yayloyalty')} />
+          </NumberInputRoot>
           <span className="text-muted-foreground text-sm">
             {sprintf(
               /* translators: 1: one unit of the store currency, formatted; 2: the site's currency code, e.g. USD. */
@@ -41,6 +51,12 @@ export function FlexibleDiscountFields({
           </span>
         </div>
       </ConfigField>
+
+      {value.points_per_currency_unit > 0 && (
+        <div className="bg-muted flex items-center gap-3 rounded-md border p-3.5">
+          <span className="text-sm font-semibold">{pointsWorth(value.points_per_currency_unit)}</span>
+        </div>
+      )}
 
       <ConfigField
         label={__('Minimum points per redemption', 'yayloyalty')}
@@ -116,4 +132,22 @@ export function FlexibleDiscountFields({
       </ConfigField>
     </>
   );
+}
+
+/** What points are worth at a rate, as a whole-points pair and 100 times it: "1 point = 1,000 ₫ off · 100 points = 100,000 ₫ off". */
+function pointsWorth(rate: number): string {
+  const pair = spendPairFromRate(rate);
+  // A rate with no whole pair reads as what 1 point buys, as the storefront shows it.
+  const { points, spend } = Number.isInteger(pair.points) ? pair : { points: 1, spend: 1 / rate };
+
+  return [1, 100]
+    .map((times) =>
+      sprintf(
+        /* translators: 1: a points amount, formatted; 2: the discount it buys, formatted in the store currency. */
+        _n('%1$s point = %2$s off', '%1$s points = %2$s off', points * times, 'yayloyalty'),
+        formatPoints(points * times),
+        parseWPCurrency(spend * times),
+      ),
+    )
+    .join(' · ');
 }
