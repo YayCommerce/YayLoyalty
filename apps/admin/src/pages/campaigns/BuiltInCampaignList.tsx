@@ -193,16 +193,11 @@ function PurchaseFields({
         <BaseAmountSegmented value={value.base} onValueChange={(base) => onChange({ base })} />
       </ConfigField>
 
-      <ConfigField
-        label={__('Include tax', 'yayloyalty')}
-        description={__('Adds each line’s tax to the amount counted.', 'yayloyalty')}
-      >
-        <Switch
-          size="sm"
-          aria-label={__('Include tax', 'yayloyalty')}
-          checked={value.include_tax}
-          onCheckedChange={(include_tax) => onChange({ include_tax })}
-        />
+      <ConfigField label={__('Tax', 'yayloyalty')}>
+        <label className="flex items-center gap-2 text-sm">
+          <Switch checked={value.include_tax} onCheckedChange={(include_tax) => onChange({ include_tax })} />
+          {__('Add each line’s tax to the amount counted', 'yayloyalty')}
+        </label>
       </ConfigField>
 
       <ConfigField label={__('Rounding', 'yayloyalty')}>
