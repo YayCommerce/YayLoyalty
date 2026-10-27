@@ -2,6 +2,7 @@
 namespace YayLoyalty\Pro\Emails;
 
 use YayLoyalty\Engine\Emails\LedgerEntryEmail;
+use YayLoyalty\Engine\Redemption\CouponProvider;
 use YayLoyalty\Enums\LedgerSource;
 use YayLoyalty\Enums\LedgerType;
 use YayLoyalty\Enums\ReferenceType;
@@ -30,17 +31,11 @@ class RewardClaimedEmail extends LedgerEntryEmail {
     /** A receipt for the customer's own action, so the weekly cap never holds it back. */
     protected $is_capped = false;
 
-    /** @var array|null The preview's sample lines; null outside the preview. */
-    private $preview_lines = null;
+    /** @var LedgerEntry|null The row $claim was read for. */
+    private $claim_entry = null;
 
-    /** @var string The preview's sample order number. */
-    private $preview_order_number = '';
-
-    /** @var LedgerEntry|null The row $lines were read for. */
-    private $lines_entry = null;
-
-    /** @var array<int, array{name: string, points: int, points_text: string, discount: string}> */
-    private $lines = [];
+    /** @var array{lines: array<int, array{name: string, points: int, points_text: string, discount: string}>, order: \WC_Order|null, order_number: string} */
+    private $claim = [];
 
     public function __construct() {
         $this->id          = self::ID;
@@ -77,86 +72,85 @@ class RewardClaimedEmail extends LedgerEntryEmail {
         return LedgerType::REDEEM === $entry->get_type()
             && ReferenceType::ORDER === $entry->get_reference_type()
             && null !== $entry->get_reference_id()
-            && [] !== $this->lines( $entry );
+            && [] !== $this->claim( $entry )['lines'];
     }
 
     /** @return array{points: string, points_label: string, balance: string, order_number: string} */
     protected function amounts( LedgerEntry $entry ): array {
-        $points = self::total_points( $this->lines( $entry ) );
-        $order  = $this->order( $entry );
-
-        if ( $order ) {
-            $order_number = (string) $order->get_order_number();
-        } else {
-            $order_number = null !== $this->preview_lines ? $this->preview_order_number : '';
-        }
+        $claim  = $this->claim( $entry );
+        $points = self::total_points( $claim['lines'] );
 
         return [
             'points'       => SettingsHelper::format_number( $points ),
             'points_label' => SettingsHelper::points_label( $points ),
             'balance'      => SettingsHelper::format_number( $entry->get_balance_after() ),
-            'order_number' => $order_number,
+            'order_number' => $claim['order_number'],
         ];
     }
 
     /** @return array<string, mixed> */
     protected function build_values( LedgerEntry $entry ): array {
-        $values    = $this->balance_values( $entry );
-        $order     = $this->order( $entry );
-        $order_url = $order ? $order->get_view_order_url() : '';
-        $lines     = $this->lines( $entry );
+        $claim     = $this->claim( $entry );
+        $order_url = $claim['order'] ? $claim['order']->get_view_order_url() : '';
 
-        return $values + [
-            'order'             => $order,
+        return $this->balance_values( $entry ) + [
+            'order'             => $claim['order'],
             'order_url'         => $order_url,
-            'claimed_text'      => self::claimed_text( self::total_points( $lines ), $values['order_number'], $order_url ),
-            'reward_lines'      => $lines,
-            'reward_lines_html' => self::lines_html( $lines ),
+            'claimed_text'      => self::claimed_text( self::total_points( $claim['lines'] ), $claim['order_number'], $order_url ),
+            'reward_lines'      => $claim['lines'],
+            'reward_lines_html' => self::lines_html( $claim['lines'] ),
         ];
-    }
-
-    /** Previews have no real order, so they show two made-up lines, greeting whoever is looking. Reads no database rows. */
-    public function prepare_preview(): void {
-        $currency = [ 'currency' => get_option( 'woocommerce_currency' ) ];
-
-        $this->preview_lines        = [
-            [
-                'name'        => __( 'Points discount', 'yayloyalty' ),
-                'points'      => 500,
-                'points_text' => SettingsHelper::points_text( 500 ),
-                'discount'    => wc_price( 5.00, $currency ),
-            ],
-            [
-                'name'        => __( 'Free gift reward', 'yayloyalty' ),
-                'points'      => 1000,
-                'points_text' => SettingsHelper::points_text( 1000 ),
-                'discount'    => wc_price( 10.00, $currency ),
-            ],
-        ];
-        $this->preview_order_number = '1234';
-
-        $this->prepare( new LedgerEntry( null, get_current_user_id(), -1500, 300, LedgerType::REDEEM, LedgerSource::ORDER, ReferenceType::ORDER, 0 ) );
     }
 
     /**
-     * One line per `applied` redemption row on the entry's order, oldest first. Read once per row: accepts(),
-     * amounts() and build_values() each ask.
-     *
-     * @return array<int, array{name: string, points: int, points_text: string, discount: string}>
+     * Previews have no real order, so they show two made-up lines and order number, greeting whoever is looking.
+     * The sample is seeded as the made-up row's claim, so the preview reads no database rows.
      */
-    private function lines( LedgerEntry $entry ): array {
-        if ( null !== $this->preview_lines ) {
-            return $this->preview_lines;
+    public function prepare_preview(): void {
+        $currency = [ 'currency' => get_option( 'woocommerce_currency' ) ];
+        $entry    = new LedgerEntry( null, get_current_user_id(), -1500, 300, LedgerType::REDEEM, LedgerSource::ORDER, ReferenceType::ORDER, 0 );
+
+        $this->claim_entry = $entry;
+        $this->claim       = [
+            'lines'        => [
+                [
+                    'name'        => CouponProvider::display_label(),
+                    'points'      => 500,
+                    'points_text' => SettingsHelper::points_text( 500 ),
+                    'discount'    => wc_price( 5.00, $currency ),
+                ],
+                [
+                    'name'        => __( 'Free gift reward', 'yayloyalty' ),
+                    'points'      => 1000,
+                    'points_text' => SettingsHelper::points_text( 1000 ),
+                    'discount'    => wc_price( 10.00, $currency ),
+                ],
+            ],
+            'order'        => null,
+            'order_number' => '1234',
+        ];
+
+        $this->prepare( $entry );
+    }
+
+    /**
+     * What the entry's order claimed: one line per `applied` redemption row, oldest first, and the order, null when
+     * it is gone. Read once per row: accepts(), amounts() and build_values() each ask.
+     *
+     * @return array{lines: array<int, array{name: string, points: int, points_text: string, discount: string}>, order: \WC_Order|null, order_number: string}
+     */
+    private function claim( LedgerEntry $entry ): array {
+        if ( $this->claim_entry === $entry ) {
+            return $this->claim;
         }
 
-        if ( $this->lines_entry === $entry ) {
-            return $this->lines;
-        }
+        $order_id = (int) $entry->get_reference_id();
+        $order    = wc_get_order( $order_id );
+        $order    = $order instanceof \WC_Order ? $order : null;
+        $rewards  = new RewardRepository();
+        $lines    = [];
 
-        $rewards = new RewardRepository();
-        $lines   = [];
-
-        foreach ( ( new RedemptionRepository() )->for_order( (int) $entry->get_reference_id() ) as $row ) {
+        foreach ( ( new RedemptionRepository() )->for_order( $order_id ) as $row ) {
             if ( Redemption::STATUS_APPLIED !== $row->get_status() ) {
                 continue;
             }
@@ -166,7 +160,7 @@ class RewardClaimedEmail extends LedgerEntryEmail {
             if ( ! $reward ) {
                 $name = __( 'Reward', 'yayloyalty' );
             } elseif ( RewardType::FLEXIBLE_DISCOUNT === $reward->get_type() ) {
-                $name = __( 'Points discount', 'yayloyalty' );
+                $name = CouponProvider::display_label();
             } else {
                 $name = $reward->get_name();
             }
@@ -180,21 +174,14 @@ class RewardClaimedEmail extends LedgerEntryEmail {
             ];
         }
 
-        $this->lines_entry = $entry;
-        $this->lines       = $lines;
+        $this->claim_entry = $entry;
+        $this->claim       = [
+            'lines'        => $lines,
+            'order'        => $order,
+            'order_number' => $order ? (string) $order->get_order_number() : '',
+        ];
 
-        return $lines;
-    }
-
-    /** The entry's order, or null when it is gone or while the preview runs. */
-    private function order( LedgerEntry $entry ): ?\WC_Order {
-        if ( null !== $this->preview_lines ) {
-            return null;
-        }
-
-        $order = wc_get_order( (int) $entry->get_reference_id() );
-
-        return $order instanceof \WC_Order ? $order : null;
+        return $this->claim;
     }
 
     /** @param array<int, array{points: int}> $lines */
@@ -211,15 +198,14 @@ class RewardClaimedEmail extends LedgerEntryEmail {
             return sprintf( esc_html__( 'You used %s on your order.', 'yayloyalty' ), $points_html );
         }
 
-        if ( '' === $order_url ) {
-            /* translators: 1: points with label, e.g. "500 Points", 2: order number, e.g. "#1234". */
-            return sprintf( esc_html__( 'You used %1$s on order %2$s.', 'yayloyalty' ), $points_html, esc_html( '#' . $order_number ) );
+        $order_html = esc_html( '#' . $order_number );
+
+        if ( '' !== $order_url ) {
+            $order_html = '<a href="' . esc_url( $order_url ) . '">' . $order_html . '</a>';
         }
 
-        $order_link = '<a href="' . esc_url( $order_url ) . '">' . esc_html( '#' . $order_number ) . '</a>';
-
-        /* translators: 1: points with label, e.g. "500 Points", 2: order number linked to the order, e.g. "#1234". */
-        return sprintf( esc_html__( 'You used %1$s on order %2$s.', 'yayloyalty' ), $points_html, $order_link );
+        /* translators: 1: points with label, e.g. "500 Points", 2: order number, linked to the order when it has a URL, e.g. "#1234". */
+        return sprintf( esc_html__( 'You used %1$s on order %2$s.', 'yayloyalty' ), $points_html, $order_html );
     }
 
     /**

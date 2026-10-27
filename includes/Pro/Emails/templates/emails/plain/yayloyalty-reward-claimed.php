@@ -45,7 +45,10 @@ if ( ! empty( $entry ) ) {
     echo esc_html( Text::plain( $claimed_text ) ) . "\n\n";
 
     foreach ( $reward_lines as $reward_line ) {
-        echo esc_html( '- ' . $reward_line['name'] . ': ' . $reward_line['points_text'] . ' (−' . Text::plain( $reward_line['discount'] ) . ')' ) . "\n";
+        /* translators: %s: discount amount, e.g. "$5.00". */
+        $reward_discount = sprintf( __( '−%s', 'yayloyalty' ), Text::plain( $reward_line['discount'] ) );
+
+        echo esc_html( '- ' . $reward_line['name'] . ': ' . $reward_line['points_text'] . ' (' . $reward_discount . ')' ) . "\n";
     }
 
     echo "\n" . esc_html( Text::plain( $balance_sentence ) ) . "\n\n";

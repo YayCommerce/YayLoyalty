@@ -23,7 +23,7 @@ class RewardClaimedShortcodes extends LoyaltyEmailShortcodes {
         'balance_points' => 'balance_text',
     ];
 
-    protected const HTML_KEYS = [ 'claimed_points', 'reward_lines', 'balance_value', 'balance_value_text' ];
+    protected const HTML_KEYS = [ 'claimed_points', 'reward_lines' ];
 
     public $available_email_ids = [ RewardClaimedEmail::ID ];
 
@@ -33,16 +33,11 @@ class RewardClaimedShortcodes extends LoyaltyEmailShortcodes {
 
     protected function descriptions(): array {
         return [
-            'claimed_points'     => __( 'Points Used Message', 'yayloyalty' ),
-            'reward_lines'       => __( 'Rewards Used', 'yayloyalty' ),
-            'points'             => __( 'Points Used', 'yayloyalty' ),
-            'points_label'       => __( 'Points Label', 'yayloyalty' ),
-            'balance'            => __( 'Balance', 'yayloyalty' ),
-            'balance_points'     => __( 'Balance With Label', 'yayloyalty' ),
-            'balance_value'      => __( 'Balance Value', 'yayloyalty' ),
-            'balance_value_text' => __( 'Balance Value Message', 'yayloyalty' ),
-            'order_number'       => __( 'Order Number', 'yayloyalty' ),
-            'order_url'          => __( 'Order URL', 'yayloyalty' ),
+            'claimed_points' => __( 'Points Used Message', 'yayloyalty' ),
+            'reward_lines'   => __( 'Rewards Used', 'yayloyalty' ),
+            'points'         => __( 'Points Used', 'yayloyalty' ),
+        ] + self::shared_descriptions( 'points_label', 'balance', 'balance_points', 'balance_value', 'balance_value_text', 'order_number' ) + [
+            'order_url' => __( 'Order URL', 'yayloyalty' ),
         ];
     }
 }

@@ -19,7 +19,7 @@ abstract class LoyaltyEmailShortcodes extends BaseShortcode {
         'customer_name' => 'greeting_name',
     ];
 
-    /** Values that are already escaped HTML. */
+    /** Values that are already escaped HTML, shared by every loyalty email. A subclass adds its own. */
     protected const HTML_KEYS = [ 'balance_value', 'balance_value_text' ];
 
     /** @var array<string, mixed>|null */
@@ -40,6 +40,30 @@ abstract class LoyaltyEmailShortcodes extends BaseShortcode {
     /** @return array<string, string> Every shortcode's editor description: the shared customer_name, then the email's own. */
     private function all_descriptions(): array {
         return [ 'customer_name' => __( 'Customer Name', 'yayloyalty' ) ] + $this->descriptions();
+    }
+
+    /**
+     * Editor labels for the shortcodes several loyalty emails share, in the order $keys gives, so each email
+     * places them in its own list.
+     *
+     * @return array<string, string>
+     */
+    protected static function shared_descriptions( string ...$keys ): array {
+        $labels = [
+            'points_label'       => __( 'Points Label', 'yayloyalty' ),
+            'balance'            => __( 'Balance', 'yayloyalty' ),
+            'balance_points'     => __( 'Balance With Label', 'yayloyalty' ),
+            'balance_value'      => __( 'Balance Value', 'yayloyalty' ),
+            'balance_value_text' => __( 'Balance Value Message', 'yayloyalty' ),
+            'order_number'       => __( 'Order Number', 'yayloyalty' ),
+        ];
+        $picked = [];
+
+        foreach ( $keys as $key ) {
+            $picked[ $key ] = $labels[ $key ];
+        }
+
+        return $picked;
     }
 
     /** A shortcode's name: 'customer_name' → 'yaymail_yayloyalty_customer_name'. */
@@ -86,7 +110,7 @@ abstract class LoyaltyEmailShortcodes extends BaseShortcode {
             return esc_url( $values[ $value_key ] );
         }
 
-        return in_array( $key, static::HTML_KEYS, true ) ? $values[ $value_key ] : esc_html( $values[ $value_key ] );
+        return in_array( $key, array_merge( static::HTML_KEYS, self::HTML_KEYS ), true ) ? $values[ $value_key ] : esc_html( $values[ $value_key ] );
     }
 
     /**

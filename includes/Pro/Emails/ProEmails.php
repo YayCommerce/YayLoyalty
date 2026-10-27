@@ -53,9 +53,9 @@ final class ProEmails {
      *                         the order as its reference.
      */
     public static function relay_redemption( Outcome $outcome ): void {
-        $entry = $outcome->get_entry();
+        $entry_id = Emails::entry_id( $outcome );
 
-        if ( ! $entry || null === $entry->get_id() ) {
+        if ( null === $entry_id ) {
             return;
         }
 
@@ -65,7 +65,7 @@ final class ProEmails {
          *
          * @param int $entry_id The order's last REDEEM ledger row.
          */
-        do_action( self::REWARD_CLAIMED_ACTION, $entry->get_id() ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name; the sniff cannot read it.
+        do_action( self::REWARD_CLAIMED_ACTION, $entry_id ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.DynamicHooknameFound -- the constant holds the prefixed name; the sniff cannot read it.
     }
 
     /**
