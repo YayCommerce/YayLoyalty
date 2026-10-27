@@ -23,7 +23,7 @@ class DesignSchema {
                 'scope'            => self::SCOPE_ALL_PAGES,
                 'include_page_ids' => [],
                 'hide_on_mobile'   => false,
-                'hide_for_roles'   => [ 'administrator', 'shop_manager' ],
+                'hide_for_roles'   => [],
                 'product_message'  => true,
                 'thankyou_message' => true,
             ],
