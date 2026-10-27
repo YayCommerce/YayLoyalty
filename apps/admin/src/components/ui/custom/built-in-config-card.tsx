@@ -4,7 +4,7 @@ import { __, sprintf } from '@wordpress/i18n';
 
 import { parseWPDate } from '@/lib/helpers/format.helper';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Button, LoadingButton } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 
@@ -78,9 +78,9 @@ export function BuiltInConfigCard({
 
           <div className="flex flex-wrap items-center gap-3 border-t pt-4">
             {/* Disabled without onSave, so a card with no save route never looks saved. */}
-            <Button size="sm" disabled={saving || !onSave} onClick={onSave}>
-              {saving ? __('Saving…', 'yayloyalty') : __('Save changes', 'yayloyalty')}
-            </Button>
+            <LoadingButton loading={!!saving} disabled={saving || !onSave} onClick={onSave}>
+              {__('Save changes', 'yayloyalty')}
+            </LoadingButton>
             <Button variant="link" size="sm" className="h-auto p-0" onClick={onCancel}>
               {__('Cancel', 'yayloyalty')}
             </Button>

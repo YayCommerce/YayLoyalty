@@ -8,7 +8,7 @@ import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { useDesignQuery, useResetDesignMutation, useSaveDesignMutation } from '@/lib/queries/design.queries';
 import { designSchema } from '@/lib/schema/design.schema';
 import { useEditorSave } from '@/hooks/useEditorSave';
-import { Button } from '@/components/ui/button';
+import { Button, LoadingButton } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/custom/confirm-dialog';
 import { UnsavedChangeDialog } from '@/components/ui/custom/unsaved-changed-dialog';
 import { ProGate } from '@/components/pro/ProGate';
@@ -99,9 +99,13 @@ export default function DesignSettingsPage() {
               <Button type="button" variant="outline" onClick={() => setResetOpen(true)}>
                 {RESET_WHOLE_TAB_BUTTON_LABEL()}
               </Button>
-              <Button type="submit" disabled={!form.formState.isDirty || saveMutation.isPending}>
+              <LoadingButton
+                type="submit"
+                loading={saveMutation.isPending}
+                disabled={!form.formState.isDirty || saveMutation.isPending}
+              >
                 {SAVE_BUTTON_LABEL()}
-              </Button>
+              </LoadingButton>
             </div>
           </div>
 

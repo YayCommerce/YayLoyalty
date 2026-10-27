@@ -7,7 +7,7 @@ import { toastApiError } from '@/lib/api/api';
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { useSaveSettingsMutation, useSettingsQuery } from '@/lib/queries/settings.queries';
 import { useEditorSave } from '@/hooks/useEditorSave';
-import { Button } from '@/components/ui/button';
+import { LoadingButton } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { UnsavedChangeDialog } from '@/components/ui/custom/unsaved-changed-dialog';
 import { Field, FieldContent, FieldDescription, FieldLabel } from '@/components/ui/field';
@@ -121,9 +121,13 @@ export default function GeneralSettingsPage() {
         {window.yayLoyaltyMeta.wcMeta.yaycurrency_active && <YayCurrencyCard />}
 
         <div className="flex items-center justify-end gap-2">
-          <Button type="submit" disabled={!form.formState.isDirty || saveMutation.isPending}>
+          <LoadingButton
+            type="submit"
+            loading={saveMutation.isPending}
+            disabled={!form.formState.isDirty || saveMutation.isPending}
+          >
             {__('Save changes', 'yayloyalty')}
-          </Button>
+          </LoadingButton>
         </div>
       </form>
 

@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import { __ } from '@wordpress/i18n';
 
-import { Button } from '@/components/ui/button';
+import type { EditorSaveIntent } from '@/hooks/useEditorSave';
+import { Button, LoadingButton } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScheduleFields } from '@/components/ui/custom/schedule-fields';
 import { Field, FieldContent, FieldLabel } from '@/components/ui/field';
@@ -34,6 +36,8 @@ export function CampaignEditorSummaryRail({
   const { campaign } = useCampaignEditorContext();
 
   const busy = mutation.isPending || formState.isSubmitting;
+  // Which save was pressed, so only that button spins. The leave dialog's save counts as Save.
+  const [pressed, setPressed] = useState<EditorSaveIntent>('save');
 
   return (
     <div className="flex w-full flex-col gap-4 lg:sticky lg:top-6 lg:w-85 lg:shrink-0">
@@ -48,12 +52,27 @@ export function CampaignEditorSummaryRail({
       </Card>
 
       <div className="flex flex-col gap-2">
-        <Button type="submit" disabled={busy}>
-          {mutation.isPending ? __('Saving…', 'yayloyalty') : __('Save campaign', 'yayloyalty')}
-        </Button>
-        <Button type="submit" variant="outline" data-intent="draft" disabled={busy} onClick={onDraftIntent}>
+        <LoadingButton
+          type="submit"
+          loading={busy && pressed === 'save'}
+          disabled={busy}
+          onClick={() => setPressed('save')}
+        >
+          {__('Save campaign', 'yayloyalty')}
+        </LoadingButton>
+        <LoadingButton
+          type="submit"
+          variant="outline"
+          data-intent="draft"
+          loading={busy && pressed === 'draft'}
+          disabled={busy}
+          onClick={() => {
+            setPressed('draft');
+            onDraftIntent();
+          }}
+        >
           {__('Save as draft', 'yayloyalty')}
-        </Button>
+        </LoadingButton>
         <div className="flex items-center justify-center gap-2">
           {/* type="button": archiving is the dialog's decision, never a form save. */}
           {onArchive && !campaign.is_builtin && campaign.status !== 'archived' && (

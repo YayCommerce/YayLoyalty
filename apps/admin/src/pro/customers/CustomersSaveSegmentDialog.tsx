@@ -3,7 +3,7 @@ import { useMutation } from '@tanstack/react-query';
 import { __ } from '@wordpress/i18n';
 
 import { toastApiError } from '@/lib/api/api';
-import { Button } from '@/components/ui/button';
+import { Button, LoadingButton } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -78,9 +78,13 @@ export function CustomersSaveSegmentDialog({
           <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={save.isPending}>
             {__('Cancel', 'yayloyalty')}
           </Button>
-          <Button onClick={() => save.mutate()} disabled={name.trim() === '' || save.isPending}>
-            {save.isPending ? __('Saving…', 'yayloyalty') : __('Save', 'yayloyalty')}
-          </Button>
+          <LoadingButton
+            loading={save.isPending}
+            onClick={() => save.mutate()}
+            disabled={name.trim() === '' || save.isPending}
+          >
+            {__('Save', 'yayloyalty')}
+          </LoadingButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

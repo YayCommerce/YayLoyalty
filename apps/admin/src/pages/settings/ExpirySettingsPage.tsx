@@ -8,7 +8,7 @@ import { toastApiError } from '@/lib/api/api';
 import { IS_PRO_BUILD } from '@/lib/is-pro-build';
 import { useSaveSettingsMutation, useSettingsQuery } from '@/lib/queries/settings.queries';
 import { useEditorSave } from '@/hooks/useEditorSave';
-import { Button } from '@/components/ui/button';
+import { LoadingButton } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ConfirmDialog } from '@/components/ui/custom/confirm-dialog';
 import { UnsavedChangeDialog } from '@/components/ui/custom/unsaved-changed-dialog';
@@ -149,9 +149,13 @@ export default function ExpirySettingsPage() {
         {!IS_PRO_BUILD && <ExpiryMoreInProCard />}
 
         <div className="flex items-center justify-end gap-2">
-          <Button type="submit" disabled={!form.formState.isDirty || saveMutation.isPending}>
+          <LoadingButton
+            type="submit"
+            loading={saveMutation.isPending}
+            disabled={!form.formState.isDirty || saveMutation.isPending}
+          >
             {__('Save changes', 'yayloyalty')}
-          </Button>
+          </LoadingButton>
         </div>
       </form>
 

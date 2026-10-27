@@ -1,12 +1,14 @@
+import { useState } from 'react';
 import { __ } from '@wordpress/i18n';
 
-import { Button } from '../button';
+import { Button, LoadingButton } from '../button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './dialog';
 
 interface UnsavedChangeDialogProps {
   open: boolean;
   onDiscard: () => void;
-  onSave: () => void;
+  /** The Save button shows a spinner until a returned promise settles. */
+  onSave: () => void | Promise<unknown>;
   onOpenChange: (open: boolean) => void;
   children?: React.ReactNode;
 }
@@ -22,8 +24,20 @@ export function UnsavedChangeDialog({
     </DialogDescription>
   ),
 }: UnsavedChangeDialogProps) {
+  const [isSaving, setIsSaving] = useState(false);
+
+  const save = async () => {
+    setIsSaving(true);
+
+    try {
+      await onSave();
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(next) => !isSaving && onOpenChange(next)}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{__('Unsaved Changes', 'yayloyalty')}</DialogTitle>
@@ -31,10 +45,12 @@ export function UnsavedChangeDialog({
         </DialogHeader>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onDiscard}>
+          <Button variant="outline" disabled={isSaving} onClick={onDiscard}>
             {__('Discard Changes', 'yayloyalty')}
           </Button>
-          <Button onClick={onSave}>{__('Save Changes', 'yayloyalty')}</Button>
+          <LoadingButton loading={isSaving} disabled={isSaving} onClick={save}>
+            {__('Save Changes', 'yayloyalty')}
+          </LoadingButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>
