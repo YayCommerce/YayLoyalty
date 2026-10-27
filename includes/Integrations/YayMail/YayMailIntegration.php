@@ -1,12 +1,14 @@
 <?php
 namespace YayLoyalty\Integrations\YayMail;
 
+use YayLoyalty\Engine\Emails\Emails;
 use YayLoyalty\Utils\SingletonTrait;
 
 defined( 'ABSPATH' ) || exit;
 
 /**
  * Lets merchants design the Points earned, Points expired and Points expiring soon emails in a licensed YayMail.
+ * The expiry emails only while expiry is on, as WooCommerce only knows them then.
  * The adapter classes extend YayMail's own, so they are first named inside
  * YayMail's register hooks: autoloading them earlier, or without YayMail, is a fatal.
  */
@@ -42,13 +44,19 @@ class YayMailIntegration {
     /** @param \YayMail\Emails\YayMailEmails $yaymail_emails */
     public function register_emails( $yaymail_emails ): void {
         $yaymail_emails->register( PointsEarnedYayMailEmail::get_instance() );
-        $yaymail_emails->register( PointsExpiredYayMailEmail::get_instance() );
-        $yaymail_emails->register( PointsExpiringSoonYayMailEmail::get_instance() );
+
+        if ( Emails::is_expiry_on() ) {
+            $yaymail_emails->register( PointsExpiredYayMailEmail::get_instance() );
+            $yaymail_emails->register( PointsExpiringSoonYayMailEmail::get_instance() );
+        }
     }
 
     public function register_shortcodes(): void {
         PointsEarnedShortcodes::get_instance();
-        PointsExpiredShortcodes::get_instance();
-        PointsExpiringSoonShortcodes::get_instance();
+
+        if ( Emails::is_expiry_on() ) {
+            PointsExpiredShortcodes::get_instance();
+            PointsExpiringSoonShortcodes::get_instance();
+        }
     }
 }

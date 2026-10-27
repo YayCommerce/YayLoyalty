@@ -20,7 +20,6 @@ final class ProEmails {
     public static function add_classes( array $classes ): array {
         return Emails::add(
             $classes,
-            new ExpiringFinalReminderEmail(),
             new RewardClaimedEmail(),
             new CouponIssuedEmail(),
             new BirthdayPointsEmail()

@@ -17,6 +17,7 @@ export type EmailsFormValues = z.infer<typeof emailsFormSchema>;
 /**
  * One registered loyalty email, as EmailsHelper::to_row() builds it. Plain types rather than Zod:
  * server-authored, nothing to validate. `edit_url` opens the email's own WooCommerce settings screen.
+ * A `manual` email is always on: it has no switch and is never posted.
  */
 export type EmailItem = {
   id: string;
@@ -24,6 +25,7 @@ export type EmailItem = {
   description: string;
   recipient: 'customer' | 'admin';
   enabled: boolean;
+  manual: boolean;
   edit_url: string;
 };
 export type EmailGroup = { group: string; group_label: string; items: EmailItem[] };
@@ -41,6 +43,7 @@ export function toEmailsFormValues(data: EmailsResponse): EmailsFormValues {
 
   for (const group of data.groups) {
     for (const item of group.items) {
+      if (item.manual) continue;
       emails[item.id] = item.enabled;
     }
   }

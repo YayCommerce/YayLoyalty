@@ -3,6 +3,7 @@ namespace YayLoyalty\Engine\Emails;
 
 use YayLoyalty\Engine\Earning\EarningService;
 use YayLoyalty\Engine\Earning\Outcome;
+use YayLoyalty\Engine\Expiry\ExpiryPolicy;
 use YayLoyalty\Models\LedgerEntry;
 use YayLoyalty\Utils\SingletonTrait;
 
@@ -137,7 +138,14 @@ class Emails {
      * @return array<string, \WC_Email>
      */
     public function add_classes( array $classes ): array {
-        return self::add( $classes, new PointsEarnedEmail(), new PointsAdjustedEmail(), new PointsExpiringSoonEmail(), new PointsExpiredEmail() );
+        $classes = self::add( $classes, new PointsEarnedEmail(), new PointsAdjustedEmail() );
+
+        return self::is_expiry_on() ? self::add( $classes, new PointsExpiringSoonEmail(), new PointsExpiredEmail() ) : $classes;
+    }
+
+    /** Whether points expiry is on. While it is off nothing sends the expiry emails, so they are not registered. */
+    public static function is_expiry_on(): bool {
+        return ExpiryPolicy::current()->is_enabled();
     }
 
     /**

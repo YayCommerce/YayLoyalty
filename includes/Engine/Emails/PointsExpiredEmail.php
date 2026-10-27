@@ -13,8 +13,6 @@ class PointsExpiredEmail extends LedgerEntryEmail {
 
     public const ID = 'yayloyalty_points_expired';
 
-    protected $is_enabled_by_default = false;
-
     public function __construct() {
         $this->id          = self::ID;
         $this->title       = __( 'Points expired', 'yayloyalty' );
