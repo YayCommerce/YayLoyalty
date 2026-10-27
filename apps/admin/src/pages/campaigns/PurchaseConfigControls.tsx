@@ -6,6 +6,7 @@ import { storeCurrencySymbol } from '@/lib/helpers/format.helper';
 import { ROUNDING, RoundingMode } from '@/lib/points-math/points-math';
 import type { PurchaseConfig } from '@/lib/schema/campaign.schema';
 import { Button } from '@/components/ui/button';
+import { AMOUNT_INPUT_WIDTH } from '@/components/ui/custom/amount-inputs';
 import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
 import { Segmented, SegmentedItem } from '@/components/ui/segmented';
 import { PurchaseRateCalculatorDialog } from './PurchaseRateCalculatorDialog';
@@ -31,7 +32,7 @@ export function PurchaseRateInput({
     <div className="flex flex-wrap items-center gap-2">
       <NumberInputRoot
         size="small"
-        className="w-44"
+        className={AMOUNT_INPUT_WIDTH}
         min={10 ** -RATE_DECIMALS}
         decimalScale={RATE_DECIMALS}
         value={value}

@@ -3,7 +3,7 @@ import { __, _n, sprintf } from '@wordpress/i18n';
 import { parseWPCurrency, storeCurrency } from '@/lib/helpers/format.helper';
 import { formatPoints, spendPairFromRate } from '@/lib/helpers/points.helper';
 import type { RewardConfigOf } from '@/lib/schema/reward.schema';
-import { OptionalCountInput, PointsInput } from '@/components/ui/custom/amount-inputs';
+import { AMOUNT_INPUT_WIDTH, OptionalCountInput, PointsInput } from '@/components/ui/custom/amount-inputs';
 import { ConfigField } from '@/components/ui/custom/config-field';
 import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -32,7 +32,7 @@ export function FlexibleDiscountFields({
         <div className="flex flex-wrap items-center gap-2">
           <NumberInputRoot
             size="small"
-            className="w-32"
+            className={AMOUNT_INPUT_WIDTH}
             min={10 ** -RATE_DECIMALS}
             decimalScale={RATE_DECIMALS}
             value={value.points_per_currency_unit}
@@ -72,7 +72,7 @@ export function FlexibleDiscountFields({
         <OptionalCountInput
           value={value.max_points_per_order}
           unit={_n('point', 'points', value.max_points_per_order ?? 0, 'yayloyalty')}
-          className="w-32"
+          className={AMOUNT_INPUT_WIDTH}
           onValueChange={(max_points_per_order) => onChange({ max_points_per_order })}
         />
       </ConfigField>

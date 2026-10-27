@@ -12,6 +12,7 @@ import {
   useUpdateCampaignStatusMutation,
 } from '@/lib/queries/campaign.queries';
 import type { Campaign, PurchaseConfig, ReviewConfig, SignupConfig } from '@/lib/schema/campaign.schema';
+import { AMOUNT_INPUT_WIDTH } from '@/components/ui/custom/amount-inputs';
 import { BuiltInConfigCard } from '@/components/ui/custom/built-in-config-card';
 import { ConfigField } from '@/components/ui/custom/config-field';
 import { ErrorState } from '@/components/ui/custom/error-state';
@@ -214,7 +215,7 @@ function PurchaseFields({
       >
         <NumberInputRoot
           size="small"
-          className="w-32"
+          className={AMOUNT_INPUT_WIDTH}
           min={0}
           decimalScale={2}
           fixedDecimalScale
@@ -255,7 +256,7 @@ function SignupFields({
     >
       <NumberInputRoot
         size="small"
-        className="w-28"
+        className={AMOUNT_INPUT_WIDTH}
         min={0}
         value={value.points}
         onValueChange={(points) => onChange({ points })}
@@ -281,7 +282,7 @@ function ReviewFields({
       <ConfigField label={__('Award', 'yayloyalty')} description={__('Per approved product review.', 'yayloyalty')}>
         <NumberInputRoot
           size="small"
-          className="w-28"
+          className={AMOUNT_INPUT_WIDTH}
           min={0}
           value={value.points}
           onValueChange={(points) => onChange({ points })}

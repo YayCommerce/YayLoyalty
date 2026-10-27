@@ -10,6 +10,7 @@ import {
 import { rateFromSpend, spendPairFromRate } from '@/lib/helpers/points.helper';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { AMOUNT_INPUT_WIDTH } from '@/components/ui/custom/amount-inputs';
 import {
   Dialog,
   DialogContent,
@@ -68,7 +69,7 @@ function CalculatorBody({
         <span>{__('Spend', 'yayloyalty')}</span>
         <NumberInputRoot
           size="small"
-          className="w-36"
+          className={AMOUNT_INPUT_WIDTH}
           min={10 ** -currencyDecimals()}
           decimalScale={currencyDecimals()}
           value={pair.spend}
@@ -80,7 +81,7 @@ function CalculatorBody({
         <span>{__('to receive', 'yayloyalty')}</span>
         <NumberInputRoot
           size="small"
-          className="w-28"
+          className={AMOUNT_INPUT_WIDTH}
           min={1}
           value={pair.points}
           onValueChange={(points) => setPair({ ...pair, points })}

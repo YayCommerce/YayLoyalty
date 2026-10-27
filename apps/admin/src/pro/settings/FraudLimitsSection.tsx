@@ -2,7 +2,7 @@ import { Controller, useFormContext } from 'react-hook-form';
 import { __ } from '@wordpress/i18n';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { OptionalCountInput } from '@/components/ui/custom/amount-inputs';
+import { AMOUNT_INPUT_WIDTH, OptionalCountInput } from '@/components/ui/custom/amount-inputs';
 import { Label } from '@/components/ui/label';
 import { FRAUD_LIMITS_DESCRIPTION, FRAUD_LIMITS_TITLE } from '@/pages/settings/general-settings.copy';
 import type { GeneralSettingsFormValues } from '@/pages/settings/general-settings.form';
@@ -30,7 +30,7 @@ export function FraudLimitsSection() {
           render={({ field }) => (
             <OptionalCountInput
               id={FIELD_ID}
-              className="w-40"
+              className={AMOUNT_INPUT_WIDTH}
               value={field.value}
               unit={__('points', 'yayloyalty')}
               onValueChange={field.onChange}

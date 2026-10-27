@@ -7,7 +7,7 @@ import { storeCurrency } from '@/lib/helpers/format.helper';
 import { pointsPerCurrencyLabel } from '@/lib/helpers/points.helper';
 import { ROUNDING } from '@/lib/points-math/points-math';
 import type { PurchaseConfig } from '@/lib/schema/campaign.schema';
-import { OptionalCountInput } from '@/components/ui/custom/amount-inputs';
+import { AMOUNT_INPUT_WIDTH, OptionalCountInput } from '@/components/ui/custom/amount-inputs';
 import { LookupMultiSelect } from '@/components/ui/custom/lookup-multi-select';
 import {
   Field,
@@ -139,7 +139,7 @@ function PurchaseEligibilityFields({ config, patchConfig }: PurchaseFieldsProps)
         <FieldContent>
           <NumberInputRoot
             size="small"
-            className="w-32"
+            className={AMOUNT_INPUT_WIDTH}
             min={0}
             decimalScale={2}
             fixedDecimalScale
@@ -244,7 +244,7 @@ function PurchaseRoundingFields({ config, patchConfig }: PurchaseFieldsProps) {
         <FieldContent>
           <OptionalCountInput
             id="reward-purchase-max-points"
-            className="w-40"
+            className={AMOUNT_INPUT_WIDTH}
             value={config.max_points_per_order ?? null}
             unit={__('points', 'yayloyalty')}
             onValueChange={(max_points_per_order) => patchConfig({ max_points_per_order })}

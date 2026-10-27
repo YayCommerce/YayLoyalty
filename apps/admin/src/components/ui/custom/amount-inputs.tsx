@@ -4,6 +4,9 @@ import { decimalsFor } from '@/lib/helpers/format.helper';
 import { cn } from '@/lib/utils';
 import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
 
+/** Fits a long points or money value, such as 10,000,000 ₫, beside its unit. */
+export const AMOUNT_INPUT_WIDTH = 'w-44';
+
 /** A whole number of points, with a "point(s)" unit. */
 export function PointsInput({
   value,
@@ -15,7 +18,7 @@ export function PointsInput({
   onValueChange: (value: number) => void;
 }) {
   return (
-    <NumberInputRoot size="small" className="w-32" min={min} value={value} onValueChange={onValueChange}>
+    <NumberInputRoot size="small" className={AMOUNT_INPUT_WIDTH} min={min} value={value} onValueChange={onValueChange}>
       <NumberInputInput />
       <NumberInputUnit unit={_n('point', 'points', value, 'yayloyalty')} />
     </NumberInputRoot>
@@ -35,7 +38,7 @@ export function MoneyInput({
   return (
     <NumberInputRoot
       size="small"
-      className="w-32"
+      className={AMOUNT_INPUT_WIDTH}
       min={0}
       decimalScale={decimalsFor(currency)}
       value={value}
@@ -65,7 +68,7 @@ export function OptionalMoneyInput({
   return (
     <NumberInputRoot
       size="small"
-      className="w-32"
+      className={AMOUNT_INPUT_WIDTH}
       nullable
       min={0.01}
       decimalScale={decimalsFor(currency)}
