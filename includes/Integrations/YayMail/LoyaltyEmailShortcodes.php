@@ -82,7 +82,7 @@ abstract class LoyaltyEmailShortcodes extends BaseShortcode {
             return '';
         }
 
-        if ( 'points_url' === $key ) {
+        if ( str_ends_with( $key, '_url' ) ) {
             return esc_url( $values[ $value_key ] );
         }
 
