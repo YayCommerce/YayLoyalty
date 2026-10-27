@@ -91,6 +91,8 @@ final class YayLoyaltyPro {
         add_filter( 'yayloyalty_localize_admin_data', [ self::class, 'add_segments' ] );
         add_filter( 'woocommerce_email_classes', [ ProEmails::class, 'add_classes' ] );
         add_filter( 'woocommerce_email_groups', [ ProEmails::class, 'add_groups' ] );
+        add_filter( 'woocommerce_email_actions', [ ProEmails::class, 'add_email_actions' ] );
+        add_action( 'yayloyalty_points_redeemed', [ ProEmails::class, 'relay_redemption' ] );
 
         $daily_limit = new DailyEarningLimit( new LedgerRepository() );
         add_filter( EarningService::AWARD_POINTS_FILTER, [ $daily_limit, 'clamp' ], 10, 3 );
