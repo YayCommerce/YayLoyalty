@@ -142,9 +142,7 @@ export function CampaignPerformanceEntries({
             // Inert: no export endpoint yet.
             <Button type="button" onClick={() => {}}>
               {sprintf(
-                /* translators: %s: total number of entries. */
-                __('Export all %s', 'yayloyalty'),
-                formatPoints(entriesTotal),
+                __('Export all', 'yayloyalty'),
               )}
             </Button>
           )}
