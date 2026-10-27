@@ -21,7 +21,6 @@ final class ProEmails {
         return Emails::add(
             $classes,
             new RewardClaimedEmail(),
-            new CouponIssuedEmail(),
             new BirthdayPointsEmail()
         );
     }
