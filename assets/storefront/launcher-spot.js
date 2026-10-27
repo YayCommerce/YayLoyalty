@@ -33,7 +33,7 @@
           return position;
         }
       } catch (error) {
-        // Storage blocked or the value is not ours: the Design tab's corner stands.
+        // Storage blocked or the value is not ours: the default bottom-right corner stands.
       }
       return null;
     },

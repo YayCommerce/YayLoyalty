@@ -1,17 +1,8 @@
 import { __ } from '@wordpress/i18n';
 
-import type { DesignLauncherPosition, DesignVisibilityScope } from '@/lib/schema/design.schema';
+import type { DesignVisibilityScope } from '@/lib/schema/design.schema';
 
 /** Enum-value → label mappers for the Design tab's closed-choice fields. */
-
-export function launcherPositionLabel(position: DesignLauncherPosition): string {
-  switch (position) {
-    case 'bottom_right':
-      return __('Bottom right', 'yayloyalty');
-    case 'bottom_left':
-      return __('Bottom left', 'yayloyalty');
-  }
-}
 
 export function visibilityScopeLabel(scope: DesignVisibilityScope): string {
   switch (scope) {

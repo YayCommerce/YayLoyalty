@@ -13,14 +13,14 @@ use YayLoyalty\Helpers\SettingsHelper;
 
 defined( 'ABSPATH' ) || exit;
 
-$yayloyalty_launcher = $view['launcher'];
-$yayloyalty_member   = $view['member'];
+$yayloyalty_member = $view['member'];
 // Drawn open when the page runs no script to open it (the Design tab's preview).
 $yayloyalty_is_open = ! empty( $view['is_open'] );
 ?>
 <div
     class="yayloyalty-launcher"
-    data-position="<?php echo esc_attr( $yayloyalty_launcher['position'] ); ?>"
+    <?php // Bottom right until the shopper drags it; launcher-spot.js then sets the side. ?>
+    data-position="bottom_right"
     data-hide-mobile="<?php echo $view['hide_mobile'] ? '1' : '0'; ?>"
     <?php if ( null !== $yayloyalty_member ) : ?>
         data-activity-url="<?php echo esc_url( $view['activity_url'] ?? '' ); ?>"

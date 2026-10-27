@@ -1,22 +1,19 @@
 import { Controller, useFormContext } from 'react-hook-form';
 
-import { designLauncherPositionSchema, type Design } from '@/lib/schema/design.schema';
+import type { Design } from '@/lib/schema/design.schema';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ColorPicker } from '@/components/ui/color-picker';
 import { Field, FieldContent, FieldDescription, FieldLabel } from '@/components/ui/field';
 import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
-import { Segmented, SegmentedItem } from '@/components/ui/segmented';
 import {
   LAUNCHER_BRAND_COLOR_LABEL,
   LAUNCHER_CORNER_RADIUS_DESCRIPTION,
   LAUNCHER_CORNER_RADIUS_LABEL,
-  LAUNCHER_POSITION_LABEL,
   LAUNCHER_SECTION_DESCRIPTION,
   LAUNCHER_SECTION_TITLE,
 } from './design-settings.copy';
-import { launcherPositionLabel } from './design-settings.option-labels';
 
-/** Position, brand colour and corner radius. */
+/** Brand colour and corner radius. */
 export function DesignLauncherSection() {
   const { control } = useFormContext<Design>();
 
@@ -27,25 +24,6 @@ export function DesignLauncherSection() {
         <CardDescription>{LAUNCHER_SECTION_DESCRIPTION()}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        <Field>
-          <FieldLabel>{LAUNCHER_POSITION_LABEL()}</FieldLabel>
-          <FieldContent>
-            <Controller
-              control={control}
-              name="launcher.position"
-              render={({ field }) => (
-                <Segmented value={field.value} onValueChange={(value) => value && field.onChange(value)}>
-                  {designLauncherPositionSchema.options.map((position) => (
-                    <SegmentedItem key={position} value={position}>
-                      {launcherPositionLabel(position)}
-                    </SegmentedItem>
-                  ))}
-                </Segmented>
-              )}
-            />
-          </FieldContent>
-        </Field>
-
         <Field>
           <FieldLabel>{LAUNCHER_BRAND_COLOR_LABEL()}</FieldLabel>
           <FieldContent>

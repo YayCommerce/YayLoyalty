@@ -103,7 +103,6 @@ final class LauncherPayload {
         $estimate = null !== $engine && null === $balance && null !== $rules['earn'][ CampaignTrigger::PURCHASE ] ? self::product_estimate() : null;
 
         return [
-            'launcher'     => $design['launcher'],
             'hide_mobile'  => ! empty( $design['visibility']['hide_on_mobile'] ),
             'earn'         => $rules['earn'],
             'purchase_min' => $rules['purchase_min'],

@@ -16,7 +16,6 @@ class DesignSchema {
     public static function get_default_design(): array {
         return [
             'launcher'   => [
-                'position'      => 'bottom_right',
                 'brand_color'   => '#3858e9',
                 'corner_radius' => 8,
             ],
@@ -50,10 +49,6 @@ class DesignSchema {
     public static function schema(): array {
         return [
             'launcher'   => [
-                'position'      => [
-                    'type'    => 'choice',
-                    'options' => [ 'bottom_right', 'bottom_left' ],
-                ],
                 'brand_color'   => [ 'type' => 'color' ],
                 'corner_radius' => [
                     'type' => 'int',

@@ -28,8 +28,7 @@ export const RESET_WHOLE_TAB_SUCCESS_TOAST = () => __('Design reset to defaults.
 
 export const LAUNCHER_SECTION_TITLE = () => __('Launcher', 'yayloyalty');
 export const LAUNCHER_SECTION_DESCRIPTION = () =>
-  __('How the floating rewards button looks and where it sits on the storefront.', 'yayloyalty');
-export const LAUNCHER_POSITION_LABEL = () => __('Position', 'yayloyalty');
+  __('How the floating rewards button looks on the storefront.', 'yayloyalty');
 export const LAUNCHER_BRAND_COLOR_LABEL = () => __('Brand colour', 'yayloyalty');
 export const LAUNCHER_CORNER_RADIUS_LABEL = () => __('Corner radius', 'yayloyalty');
 export const LAUNCHER_CORNER_RADIUS_DESCRIPTION = () => __('0 is square, 24 is fully rounded.', 'yayloyalty');

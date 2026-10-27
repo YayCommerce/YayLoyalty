@@ -4,9 +4,6 @@ import { z } from 'zod';
  * Mirrors DesignSchema, the source of truth.
  */
 
-export const designLauncherPositionSchema = z.enum(['bottom_right', 'bottom_left']);
-export type DesignLauncherPosition = z.infer<typeof designLauncherPositionSchema>;
-
 export const designVisibilityScopeSchema = z.enum(['all_pages', 'shop_and_product', 'custom_pages']);
 export type DesignVisibilityScope = z.infer<typeof designVisibilityScopeSchema>;
 
@@ -15,7 +12,6 @@ export type DesignPanelLayout = z.infer<typeof designPanelLayoutSchema>;
 
 export const designSchema = z.object({
   launcher: z.object({
-    position: designLauncherPositionSchema,
     brand_color: z.string(),
     corner_radius: z.number().int().min(0).max(24),
   }),
