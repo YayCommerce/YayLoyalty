@@ -1,25 +1,33 @@
-import { useState } from 'react';
+import { useMemo } from 'react';
 import { Controller, useWatch } from 'react-hook-form';
 import { __ } from '@wordpress/i18n';
 
+import type { DesignPreviewInput } from '@/lib/api/design.api';
+import { useDesignQuery } from '@/lib/queries/design.queries';
 import { cn } from '@/lib/utils';
 import { ColorPicker } from '@/components/ui/color-picker';
-import { Segmented, SegmentedItem } from '@/components/ui/segmented';
-import type { PreviewDevice } from '@/pages/settings/LauncherPreviewFrame';
-import { LauncherPreview } from './LauncherPreview';
+import { LauncherPreviewCard } from '@/pages/settings/LauncherPreviewCard';
 import { DEFAULT_BRAND_COLOR, type WizardStepProps } from './setup-wizard.form';
 import { WizardSection, WizardStepHeading } from './WizardStepParts';
 
 /** Swatches offered before the free picker, the default brand colour first. */
 const SWATCHES = [DEFAULT_BRAND_COLOR, '#2a2a2a', '#6a6a6a', '#c8c8c8'];
 
-/** Step 4 (artboard 1d): one brand colour, with the launcher drawn from the answers so far. */
+/**
+ * Step 4 (artboard 1d): one brand colour, with the launcher drawn by the server as in Settings → Design.
+ * Only the colour is unsaved here: labels and rates come from the stored settings until step 5 saves the answers.
+ */
 export function LauncherLookStep({ form }: WizardStepProps) {
-  const [device, setDevice] = useState<PreviewDevice>('desktop');
-  const [brandColor, pointsLabelPlural, earnPoints, earnSpend, worthPoints, worthAmount, minPoints] = useWatch({
-    control: form.control,
-    name: ['brandColor', 'pointsLabelPlural', 'earnPoints', 'earnSpend', 'worthPoints', 'worthAmount', 'minPoints'],
-  });
+  const brandColor = useWatch({ control: form.control, name: 'brandColor' });
+  const { data: design } = useDesignQuery();
+  const previewInput = useMemo<DesignPreviewInput>(
+    () => ({
+      launcher: { ...design.launcher, brand_color: brandColor },
+      visibility: { hide_on_mobile: design.visibility.hide_on_mobile },
+      panel: { show_reward_catalog: design.panel.show_reward_catalog },
+    }),
+    [design, brandColor],
+  );
 
   return (
     <>
@@ -65,22 +73,8 @@ export function LauncherLookStep({ form }: WizardStepProps) {
           </div>
         </div>
 
-        <div className="bg-background flex min-w-0 flex-1 flex-col gap-3 rounded-md border p-4">
-          <div className="flex items-center gap-2.5">
-            <div className="text-sm font-semibold">{__('On your storefront', 'yayloyalty')}</div>
-            <Segmented
-              className="ml-auto"
-              value={device}
-              onValueChange={(next) => next && setDevice(next as PreviewDevice)}
-            >
-              <SegmentedItem value="desktop">{__('Desktop', 'yayloyalty')}</SegmentedItem>
-              <SegmentedItem value="mobile">{__('Mobile', 'yayloyalty')}</SegmentedItem>
-            </Segmented>
-          </div>
-          <LauncherPreview
-            device={device}
-            values={{ brandColor, pointsLabelPlural, earnPoints, earnSpend, worthPoints, worthAmount, minPoints }}
-          />
+        <div className="flex min-w-0 flex-1 flex-col gap-2">
+          <LauncherPreviewCard input={previewInput} title={__('On your storefront', 'yayloyalty')} />
           <div className="text-muted-foreground text-xs">
             {__(
               'A simplified page, not your theme. Fonts and spacing will follow whatever your theme uses.',

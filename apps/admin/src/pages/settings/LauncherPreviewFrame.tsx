@@ -32,8 +32,10 @@ export function LauncherPreviewFrame({ html, title, device, viewportHeightPx }: 
   const { widthPx, maxScale } = VIEWPORT[device];
   const scale = containerWidthPx > 0 ? Math.min(maxScale, containerWidthPx / widthPx) : maxScale;
 
+  // contain-inline-size: the width comes from the parent alone, never from the frame inside it. Otherwise a grid or
+  // flex parent (the setup wizard's dialog) grows to the unscaled frame, which then measures that width and never shrinks.
   return (
-    <div ref={containerRef} className="w-full">
+    <div ref={containerRef} className="w-full contain-inline-size">
       <div
         className={cn('border-border overflow-hidden rounded-md border', device === 'mobile' && 'mx-auto')}
         style={{ width: widthPx * scale, height: viewportHeightPx * scale }}
