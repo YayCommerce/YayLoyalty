@@ -14,7 +14,7 @@ export function BuiltInConfigCard({
   subtitle,
   isOn,
   onToggle,
-  toggleDisabled,
+  toggleLoading,
   expanded,
   onToggleExpanded,
   onSave,
@@ -27,7 +27,8 @@ export function BuiltInConfigCard({
   subtitle: ReactNode;
   isOn: boolean;
   onToggle: (checked: boolean) => void;
-  toggleDisabled?: boolean;
+  /** Spins and locks the switch while its write is in flight. */
+  toggleLoading?: boolean;
   expanded: boolean;
   onToggleExpanded: () => void;
   onSave?: () => void;
@@ -63,7 +64,7 @@ export function BuiltInConfigCard({
 
         {/* Its own click target: toggling on/off isn't "open this card". */}
         <div className="flex items-center gap-2" onClick={(event) => event.stopPropagation()}>
-          <Switch checked={isOn} disabled={toggleDisabled} onCheckedChange={onToggle} />
+          <Switch checked={isOn} loading={toggleLoading} disabled={toggleLoading} onCheckedChange={onToggle} />
           <span className="text-sm">{isOn ? __('On', 'yayloyalty') : __('Off', 'yayloyalty')}</span>
         </div>
 

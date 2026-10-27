@@ -138,7 +138,7 @@ function BuiltInCampaignCard({
       subtitle={summarize(campaign.trigger, config)}
       isOn={isOn}
       onToggle={toggleOn}
-      toggleDisabled={statusMutation.isPending}
+      toggleLoading={statusMutation.isPending}
       expanded={expanded}
       onToggleExpanded={onToggleExpanded}
       onSave={saveConfig}

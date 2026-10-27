@@ -128,6 +128,7 @@ function BuiltInRewardCard({ reward }: { reward: Reward }) {
       subtitle={flexibleDiscountSubtitle()}
       isOn={isOn}
       onToggle={(checked) => setStatus(checked ? 'active' : 'paused')}
+      toggleLoading={mutation.isPending}
       expanded={expanded}
       onToggleExpanded={() => setExpanded((current) => !current)}
       onSave={save}
