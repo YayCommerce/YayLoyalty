@@ -38,7 +38,7 @@ export function UpgradeToProOverlay() {
       <EmptyHeader>
         <EmptyMedia variant="icon" className="size-15 bg-[#FFF5DB]">
           <img
-            src={`${window.yayLoyaltyMeta.loyaltyMeta.assetsUrl}/images/logo/favicon.svg`}
+            src={`${window.yayLoyaltyMeta.loyaltyMeta.assetsUrl}/images/logo/logo-yay.png`}
             alt="YayLoyalty"
             className="size-13"
           />

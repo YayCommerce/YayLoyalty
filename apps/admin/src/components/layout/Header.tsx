@@ -16,7 +16,7 @@ export default function Header() {
     >
       <div className="border-border flex h-full bg-[#FFF5DB] px-0.75 pt-0.75">
         <img
-          src={`${window.yayLoyaltyMeta.loyaltyMeta.assetsUrl}/images/logo/favicon.svg`}
+          src={`${window.yayLoyaltyMeta.loyaltyMeta.assetsUrl}/images/logo/logo-yay.png`}
           alt="YayLoyalty"
           className="size-12.5"
         />
