@@ -46,6 +46,9 @@ final class RedeemCard {
 
     private CustomerReader $customers;
 
+    /** @var string[]|null This request's dropped rewards, taken from the session at the first render; null before. */
+    private ?array $dropped = null;
+
     public function __construct( RedemptionService $service, SessionIntent $intent, CustomerReader $customers ) {
         $this->service   = $service;
         $this->intent    = $intent;
@@ -186,6 +189,8 @@ final class RedeemCard {
             $rows    = $this->rows( $cart, $user_id, $balance );
 
             if ( 'hidden' === $view['state'] && [] === $rows ) {
+                $this->notice_dropped_elsewhere();
+
                 return '';
             }
 
@@ -200,6 +205,7 @@ final class RedeemCard {
                     'worth'           => $worth,
                     'rows'            => $rows,
                     'summary'         => $this->summary( $cart, $user_id, $quote ),
+                    'dropped'         => $this->dropped_once(),
                 ] + self::chrome()
             );
         } catch ( \Throwable $e ) {
@@ -337,6 +343,47 @@ final class RedeemCard {
             'points' => $slider + array_sum( $rewards ),
             'count'  => ( $slider > 0 ? 1 : 0 ) + count( $rewards ),
         ];
+    }
+
+    /**
+     * The card's notice line for a picked reward the store took away; $name '' is a deleted reward, which has none.
+     */
+    public static function dropped_line( string $name ): string {
+        if ( '' === $name ) {
+            return __( 'A reward you picked is no longer available and was removed.', 'yayloyalty' );
+        }
+
+        /* translators: %s: the reward's name, as "$5 off". */
+        return sprintf( __( '%s is no longer available and was removed.', 'yayloyalty' ), $name );
+    }
+
+    /**
+     * The picked rewards the store took away, shown once, as WooCommerce shows its notices: the first render of a
+     * request takes them out of the session, and every render of that request reuses them, so the next page load
+     * has none. redeem.js keeps the notice on screen while the page refreshes the card.
+     *
+     * @return string[]
+     */
+    private function dropped_once(): array {
+        if ( null === $this->dropped ) {
+            $this->dropped = $this->intent->dropped();
+
+            if ( [] !== $this->dropped ) {
+                $this->intent->clear_dropped();
+            }
+        }
+
+        return $this->dropped;
+    }
+
+    /** With no card to show them in, the dropped rewards' lines go to WooCommerce's notices instead, once as well. */
+    private function notice_dropped_elsewhere(): void {
+        foreach ( $this->dropped_once() as $name ) {
+            CouponProvider::add_notice( self::dropped_line( $name ) );
+        }
+
+        // Told through WooCommerce now; a card rendered later in this request does not repeat it.
+        $this->dropped = [];
     }
 
     /** 0 for a customer with no row yet, null for a guest. */

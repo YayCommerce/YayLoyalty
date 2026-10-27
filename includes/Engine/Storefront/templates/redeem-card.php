@@ -11,7 +11,8 @@
  * Styled by assets/storefront/redeem.css alone: the Design tab's colours belong to the launcher.
  *
  * @var array $view RedeemCard::view() plus endpoint, nonce, account_url and money; a customer's view also
- *                  carries heading_balance, worth, rows and summary (points, count).
+ *                  carries heading_balance, worth, rows, summary (points, count) and dropped (the names for
+ *                  the amber notice; '' for a deleted reward).
  */
 
 use YayLoyalty\Engine\Redemption\CouponProvider;
@@ -78,6 +79,14 @@ $yayloyalty_icon       = '<svg class="yayloyalty-redeem__icon" width="20" height
             <?php endif; ?>
             <button type="button" class="yayloyalty-redeem__update" data-yl-update aria-controls="<?php echo esc_attr( $yayloyalty_list_id ); ?>" <?php disabled( ! $yayloyalty_is_applied ); ?>><?php esc_html_e( 'Update', 'yayloyalty' ); ?></button>
         </div>
+
+        <?php if ( ! empty( $view['dropped'] ) ) : ?>
+            <div class="yayloyalty-redeem__alert" data-yl-alert role="status">
+                <?php foreach ( $view['dropped'] as $yayloyalty_dropped ) : ?>
+                    <p><?php echo esc_html( RedeemCard::dropped_line( $yayloyalty_dropped ) ); ?></p>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
 
         <div class="yayloyalty-redeem__list" data-yl-list id="<?php echo esc_attr( $yayloyalty_list_id ); ?>" data-balance="<?php echo esc_attr( (string) $view['heading_balance'] ); ?>">
             <?php if ( $yayloyalty_is_slider ) : ?>

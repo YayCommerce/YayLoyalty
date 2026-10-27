@@ -3,22 +3,14 @@
  * Hand-written and shipped as-is: no build step, and nothing from the launcher's stylesheet or the Design tab.
  *
  * - The text keeps the theme's font and colour; the surface and border are tints of that colour,
- *   so the card reads on light and dark themes alike. The rgba() lines are for browsers without color-mix().
+ *   so the card reads on light and dark themes alike.
  * - Sizes are px: rem follows the theme's html font-size (62.5% is common).
- * - The colours are variables on the root, so a theme or custom CSS can re-point them in one place.
+ * - The colours are storefront-tokens.css's, shared with the other cards, so a theme or custom CSS can re-point
+ *   them in one place.
  */
-.yayloyalty-product-earn {
-  --yayloyalty-product-earn-surface: rgba(0, 0, 0, 0.015);
-  --yayloyalty-product-earn-surface: color-mix(in srgb, currentColor 1.5%, transparent);
-  --yayloyalty-product-earn-border: rgba(0, 0, 0, 0.1);
-  --yayloyalty-product-earn-border: color-mix(in srgb, currentColor 12%, transparent);
-  --yayloyalty-product-earn-icon: currentColor;
-  --yayloyalty-product-earn-muted: rgba(0, 0, 0, 0.6);
-  --yayloyalty-product-earn-muted: color-mix(in srgb, currentColor 65%, transparent);
-  --yayloyalty-product-earn-link: #3858e9;
-  --yayloyalty-product-earn-link-hover: #2f4ac4;
-  --yayloyalty-product-earn-radius: 8px;
+@import url("storefront-tokens.css");
 
+.yayloyalty-product-earn {
   box-sizing: border-box;
   display: flex;
   flex-direction: column;

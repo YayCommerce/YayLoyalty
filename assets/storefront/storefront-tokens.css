@@ -1,0 +1,102 @@
+/*
+ * Every colour, radius and shadow token of the storefront's hand-written cards, defined only here. Each card's
+ * stylesheet imports this file first: the Rewards tab (account/rewards-tokens.css), the order-received card
+ * (thankyou-points.css), the points card (redeem.css) and the product-page line (product-earn.css).
+ *
+ * - The shared values are set once, as --yayloyalty-*, on every card's root. Each card then names the ones it
+ *   uses with its own prefix, so a theme or custom CSS can re-point one card, or every card at once.
+ * - A card's token that only it uses keeps its value in its own block below.
+ * - Overrides for a context or a state stay with the rule they serve: the launcher panel's brand colour
+ *   (account/launcher.css) and the order-received card's earned state (thankyou-points.css).
+ */
+:is(.yayloyalty-account, .yayloyalty-thankyou-points, .yayloyalty-redeem, .yayloyalty-product-earn) {
+  --yayloyalty-text: #171719;
+  --yayloyalty-muted: #7b7c80;
+  --yayloyalty-border: #e4e4e7;
+  --yayloyalty-divider: #f0f0f2;
+  --yayloyalty-surface: #ffffff;
+  --yayloyalty-subtle: #fafafa;
+  --yayloyalty-fill: #f4f4f5;
+  --yayloyalty-accent: #3858e9;
+  --yayloyalty-accent-hover: #2f4ac4;
+  --yayloyalty-accent-text: #ffffff;
+  --yayloyalty-positive: #15803d;
+  --yayloyalty-positive-bg: #f2f7f3;
+  --yayloyalty-warning: #8a5a00;
+  --yayloyalty-warning-bg: #fdf6e8;
+  --yayloyalty-radius: 8px;
+}
+
+/* My Account → Rewards, its placements and the launcher panel. */
+.yayloyalty-account {
+  --yayloyalty-account-accent: var(--yayloyalty-accent);
+  --yayloyalty-account-accent-hover: var(--yayloyalty-accent-hover);
+  --yayloyalty-account-accent-text: var(--yayloyalty-accent-text);
+  --yayloyalty-account-text: var(--yayloyalty-text);
+  --yayloyalty-account-muted: var(--yayloyalty-muted);
+  --yayloyalty-account-border: var(--yayloyalty-border);
+  --yayloyalty-account-divider: var(--yayloyalty-divider);
+  --yayloyalty-account-surface: var(--yayloyalty-surface);
+  --yayloyalty-account-subtle: var(--yayloyalty-subtle);
+  --yayloyalty-account-icon-bg: var(--yayloyalty-fill);
+  --yayloyalty-account-icon: #a0a0a7;
+  --yayloyalty-account-welcome: #218455;
+  --yayloyalty-account-notice-positive: var(--yayloyalty-positive);
+  --yayloyalty-account-notice-positive-bg: var(--yayloyalty-positive-bg);
+  --yayloyalty-account-positive: var(--yayloyalty-positive);
+  --yayloyalty-account-positive-bg: #f0fdf4;
+  --yayloyalty-account-radius: var(--yayloyalty-radius);
+  --yayloyalty-account-radius-sm: 6px;
+  --yayloyalty-account-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
+}
+
+/* The order-received card. Its accent is the pending amber; the earned state turns it green. */
+.yayloyalty-thankyou-points {
+  --yayloyalty-thankyou-text: var(--yayloyalty-text);
+  --yayloyalty-thankyou-muted: var(--yayloyalty-muted);
+  --yayloyalty-thankyou-border: var(--yayloyalty-border);
+  --yayloyalty-thankyou-divider: var(--yayloyalty-divider);
+  --yayloyalty-thankyou-surface: var(--yayloyalty-surface);
+  --yayloyalty-thankyou-icon-bg: var(--yayloyalty-fill);
+  --yayloyalty-thankyou-positive: var(--yayloyalty-positive);
+  --yayloyalty-thankyou-positive-bg: var(--yayloyalty-positive-bg);
+  --yayloyalty-thankyou-accent: var(--yayloyalty-warning);
+  --yayloyalty-thankyou-accent-bg: var(--yayloyalty-warning-bg);
+}
+
+/* The points card on the cart and checkout. Its accent is its own, not the Rewards tab's. */
+.yayloyalty-redeem {
+  --yayloyalty-redeem-accent: #4353ff;
+  --yayloyalty-redeem-accent-hover: #3442d6;
+  --yayloyalty-redeem-accent-soft: #f0f1ff;
+  --yayloyalty-redeem-accent-text: var(--yayloyalty-accent-text);
+  --yayloyalty-redeem-text: var(--yayloyalty-text);
+  --yayloyalty-redeem-muted: var(--yayloyalty-muted);
+  --yayloyalty-redeem-border: var(--yayloyalty-border);
+  --yayloyalty-redeem-surface: var(--yayloyalty-subtle);
+  --yayloyalty-redeem-selected: var(--yayloyalty-subtle);
+  --yayloyalty-redeem-chip: var(--yayloyalty-fill);
+  --yayloyalty-redeem-track: var(--yayloyalty-border);
+  --yayloyalty-redeem-check-border: #d4d4d8;
+  --yayloyalty-redeem-success: #2e7d32;
+  --yayloyalty-redeem-field: var(--yayloyalty-surface);
+  --yayloyalty-redeem-badge: #000000;
+  --yayloyalty-redeem-radius: var(--yayloyalty-radius);
+}
+
+/*
+ * The product-page line. Its surface, border and muted text are tints of the theme's text colour, so it reads on
+ * light and dark themes alike; the rgba() lines are for browsers without color-mix().
+ */
+.yayloyalty-product-earn {
+  --yayloyalty-product-earn-surface: rgba(0, 0, 0, 0.015);
+  --yayloyalty-product-earn-surface: color-mix(in srgb, currentColor 1.5%, transparent);
+  --yayloyalty-product-earn-border: rgba(0, 0, 0, 0.1);
+  --yayloyalty-product-earn-border: color-mix(in srgb, currentColor 12%, transparent);
+  --yayloyalty-product-earn-icon: currentColor;
+  --yayloyalty-product-earn-muted: rgba(0, 0, 0, 0.6);
+  --yayloyalty-product-earn-muted: color-mix(in srgb, currentColor 65%, transparent);
+  --yayloyalty-product-earn-link: var(--yayloyalty-accent);
+  --yayloyalty-product-earn-link-hover: var(--yayloyalty-accent-hover);
+  --yayloyalty-product-earn-radius: var(--yayloyalty-radius);
+}

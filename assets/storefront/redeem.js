@@ -33,8 +33,27 @@
   }
 
   /**
-   * Gives every card not yet marked its mode. The server prints one markup for every page (the blocks' card is
-   * shared by Cart and Checkout), so only the page can tell.
+   * The last amber notice this page showed. The server sends it once, as WooCommerce sends its notices, so a card
+   * the page draws again (the checkout's own refresh, a reply, the blocks' redraw) comes without it: it is put
+   * back until the page is left, as a WooCommerce notice at the top of the page stays through those refreshes,
+   * or until the shopper acts on the card (send()), which counts as read.
+   */
+  var shownAlert = null;
+
+  function keepAlert(root) {
+    var alert = root.querySelector("[data-yl-alert]");
+    var list = root.querySelector("[data-yl-list]");
+
+    if (alert) {
+      shownAlert = alert.cloneNode(true);
+    } else if (shownAlert && list) {
+      list.parentNode.insertBefore(shownAlert.cloneNode(true), list);
+    }
+  }
+
+  /**
+   * Gives every card not yet marked its mode, and its notice back. The server prints one markup for every page
+   * (the blocks' card is shared by Cart and Checkout), so only the page can tell the mode.
    */
   function markModes() {
     document
@@ -44,6 +63,7 @@
           "data-mode",
           root.closest(CHECKOUT_SELECTOR) ? "checkout" : "cart",
         );
+        keepAlert(root);
       });
   }
 
@@ -170,6 +190,7 @@
 
   /**
    * Sends the points, the reward ids, or both, each on its own, and shows the card the server answers with.
+   * The shopper acting on the card has read the amber notice: it goes, and the answered card does not get it back.
    *
    * @param {Element} root
    * @param {{points?: number, rewards?: number[]}} payload
@@ -177,6 +198,13 @@
   function send(root, payload) {
     if (root.hasAttribute("data-busy")) {
       return;
+    }
+
+    var alert = root.querySelector("[data-yl-alert]");
+
+    shownAlert = null;
+    if (alert) {
+      alert.remove();
     }
 
     var unlock = lock(root);

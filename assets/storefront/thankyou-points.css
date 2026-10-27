@@ -2,29 +2,17 @@
  * The order-received page's "Rewards" card (ThankYouPoints, templates/thankyou-points.php).
  * Hand-written and shipped as-is: no build step, and nothing from the launcher's stylesheet or the Design tab.
  *
- * - The colours are the tokens below, the same values as the Rewards tab's (account/rewards-tokens.css), so a
- *   theme or custom CSS can re-point them in one place. The pending and earned states are fixed amber and green,
- *   so the card is a fixed white surface rather than tints of the theme's colour.
+ * - The colours are storefront-tokens.css's, shared with the Rewards tab, so a theme or custom CSS can re-point
+ *   them in one place. The pending and earned states are fixed amber and green, so the card is a fixed white
+ *   surface rather than tints of the theme's colour.
  * - Every rule is nested under the root, so it is at least 0,2,0 and a theme's plain `h2 {}` cannot beat it.
  * - Sizes are px: rem follows the theme's html font-size (62.5% is common).
  * - The reset is storefront-reset.css, shared with the Rewards tab.
  */
 @import url("storefront-reset.css");
+@import url("storefront-tokens.css");
 
 .yayloyalty-thankyou-points {
-  --yayloyalty-thankyou-text: #171719;
-  --yayloyalty-thankyou-muted: #7b7c80;
-  --yayloyalty-thankyou-border: #e4e4e7;
-  --yayloyalty-thankyou-divider: #f0f0f2;
-  --yayloyalty-thankyou-surface: #ffffff;
-  --yayloyalty-thankyou-icon-bg: #f4f4f5;
-  --yayloyalty-thankyou-positive: #15803d;
-  --yayloyalty-thankyou-positive-bg: #f2f7f3;
-  --yayloyalty-thankyou-warning: #8a5a00;
-  --yayloyalty-thankyou-warning-bg: #fdf6e8;
-  --yayloyalty-thankyou-accent: var(--yayloyalty-thankyou-warning);
-  --yayloyalty-thankyou-accent-bg: var(--yayloyalty-thankyou-warning-bg);
-
   /* The art and the stacked layout follow the card's width, not the window's: the order page's column can be narrow. */
   container-type: inline-size;
   position: relative;

@@ -156,8 +156,8 @@
 }
 
 .yayloyalty-account .yayloyalty-account__badge--expire {
-  background: var(--yayloyalty-account-warning-bg);
-  color: var(--yayloyalty-account-warning);
+  background: var(--yayloyalty-warning-bg);
+  color: var(--yayloyalty-warning);
 }
 
 .yayloyalty-account .yayloyalty-account__empty {
