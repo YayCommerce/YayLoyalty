@@ -9,7 +9,7 @@ const alertVariants = cva(
     variants: {
       variant: {
         default: 'bg-card',
-        outline: 'bg-transparent border border-border',
+        outline: 'bg-card border border-border',
         muted: 'bg-muted',
       },
       destructive: {
