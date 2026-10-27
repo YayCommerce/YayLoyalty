@@ -309,6 +309,10 @@ build_package() {
     cp -r "$PLUGIN_DIR/languages" "$temp_dir/"
     cp -r "$PLUGIN_DIR/vendor-prefixed" "$temp_dir/"
 
+    # The staged copy only: the repo keeps the dev default. validate-build.php checks the result.
+    print_step "Defaulting YAYLOYALTY_IS_DEVELOPMENT to false..."
+    sed_inplace "s/define( 'YAYLOYALTY_IS_DEVELOPMENT', true );/define( 'YAYLOYALTY_IS_DEVELOPMENT', false );/" "$temp_dir/$(basename "$MAIN_FILE")"
+
     # Only Composer's autoloader ships; no package is needed at runtime.
     mkdir -p "$temp_dir/vendor"
     cp "$PLUGIN_DIR/vendor/autoload.php" "$temp_dir/vendor/"

@@ -56,7 +56,7 @@ if ( ! defined( 'YAYLOYALTY_MENU_ORDER' ) ) {
     define( 'YAYLOYALTY_MENU_ORDER', 3 );
 }
 
-// A production site must define this `false`: packaged builds ship without RegisterDev.php.
+// `./scripts/run.sh release` rewrites this default to `false`: packaged builds ship without RegisterDev.php.
 if ( ! defined( 'YAYLOYALTY_IS_DEVELOPMENT' ) ) {
     define( 'YAYLOYALTY_IS_DEVELOPMENT', true );
 }

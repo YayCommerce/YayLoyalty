@@ -358,6 +358,15 @@ record(
     implode( ', ', array_slice( $dev_leftovers, 0, 5 ) )
 );
 
+// The zip has no RegisterDev.php, so a `true` default leaves the admin page blank.
+record(
+    'YAYLOYALTY_IS_DEVELOPMENT defaults to false',
+    1 === preg_match(
+        "/define\(\s*'YAYLOYALTY_IS_DEVELOPMENT',\s*false\s*\)/",
+        (string) @file_get_contents( $root . '/' . PLUGIN_SLUG . '.php' )
+    )
+);
+
 // Headless boot
 
 run_boot_check( $root, $build_type );
