@@ -13,9 +13,9 @@ import {
   resolveRewardDisplayStatus,
   Reward,
 } from '@/lib/schema/reward.schema';
-import { useEditorSave } from '@/hooks/useEditorSave';
+import { EditorSaveIntent, useEditorSave } from '@/hooks/useEditorSave';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Button, LoadingButton } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BackLink } from '@/components/ui/custom/back-link';
 import { ScheduleFields } from '@/components/ui/custom/schedule-fields';
@@ -294,6 +294,8 @@ function RewardEditorActions({
   onCancel: () => void;
 }) {
   const { canSaveDraft, showArchive } = rewardEditorActions(reward);
+  // Which save was pressed, so only that button spins. The leave dialog's save counts as Save.
+  const [pressed, setPressed] = useState<EditorSaveIntent>('save');
 
   return (
     <div className="flex w-full flex-col gap-4 lg:sticky lg:top-6 lg:w-85 lg:shrink-0">
@@ -308,13 +310,28 @@ function RewardEditorActions({
       </Card>
 
       <div className="flex flex-col gap-2">
-        <Button type="submit" disabled={busy}>
-          {busy ? __('Saving…', 'yayloyalty') : __('Save reward', 'yayloyalty')}
-        </Button>
+        <LoadingButton
+          type="submit"
+          loading={busy && pressed === 'save'}
+          disabled={busy}
+          onClick={() => setPressed('save')}
+        >
+          {__('Save reward', 'yayloyalty')}
+        </LoadingButton>
         {canSaveDraft && (
-          <Button type="submit" variant="outline" data-intent="draft" disabled={busy} onClick={onDraftIntent}>
+          <LoadingButton
+            type="submit"
+            variant="outline"
+            data-intent="draft"
+            loading={busy && pressed === 'draft'}
+            disabled={busy}
+            onClick={() => {
+              setPressed('draft');
+              onDraftIntent();
+            }}
+          >
             {__('Save as draft', 'yayloyalty')}
-          </Button>
+          </LoadingButton>
         )}
         <div className="flex items-center justify-center gap-2">
           {showArchive && onArchive && (

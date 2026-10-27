@@ -80,13 +80,13 @@ class EmailsHelper {
 
     /**
      * Writes WooCommerce's own option, the one its Emails screen edits. Ids that
-     * are not a registered loyalty email are ignored.
+     * are not a registered loyalty email, or are a manual (always on) one, are ignored.
      *
      * @param array<string, mixed> $enabled_by_id Email id => on/off.
      */
     private static function set_enabled( array $enabled_by_id ): void {
         foreach ( self::registered_emails() as $email ) {
-            if ( ! array_key_exists( $email->id, $enabled_by_id ) ) {
+            if ( $email->is_manual() || ! array_key_exists( $email->id, $enabled_by_id ) ) {
                 continue;
             }
 
@@ -113,7 +113,7 @@ class EmailsHelper {
         ];
     }
 
-    /** One row of the Emails table; `edit_url` opens this email's own WooCommerce settings screen. */
+    /** One row of the Emails table; `edit_url` opens this email's own WooCommerce settings screen. A `manual` email has no switch. */
     private static function to_row( LoyaltyEmail $email ): array {
         return [
             'id'          => $email->id,
@@ -121,6 +121,7 @@ class EmailsHelper {
             'description' => $email->get_description(),
             'recipient'   => $email->is_customer_email() ? 'customer' : 'admin',
             'enabled'     => $email->is_enabled(),
+            'manual'      => $email->is_manual(),
             'edit_url'    => self::settings_url( $email->id ),
         ];
     }

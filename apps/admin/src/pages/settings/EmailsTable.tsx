@@ -16,7 +16,7 @@ interface EmailsTableProps {
 
 /**
  * One grouped table for every email this build registered with WooCommerce. Each row's switch
- * edits WooCommerce's own on/off.
+ * edits WooCommerce's own on/off; a manual email shows "Always on" instead.
  */
 export function EmailsTable({ groups }: EmailsTableProps) {
   const { control } = useFormContext<EmailsFormValues>();
@@ -51,13 +51,20 @@ export function EmailsTable({ groups }: EmailsTableProps) {
                   </TableCell>
                   <TableCell className="capitalize">{item.recipient}</TableCell>
                   <TableCell>
-                    <Controller
-                      name={`emails.${item.id}`}
-                      control={control}
-                      render={({ field }) => (
-                        <Switch checked={field.value} onCheckedChange={field.onChange} aria-label={item.title} />
-                      )}
-                    />
+                    {item.manual ? (
+                      <YayLoyaltyToolTip
+                        trigger={<span className="text-muted-foreground text-sm">{__('Always on', 'yayloyalty')}</span>}
+                        content={__('Sent only when you tick Notify by email while adjusting points', 'yayloyalty')}
+                      />
+                    ) : (
+                      <Controller
+                        name={`emails.${item.id}`}
+                        control={control}
+                        render={({ field }) => (
+                          <Switch checked={field.value} onCheckedChange={field.onChange} aria-label={item.title} />
+                        )}
+                      />
+                    )}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center justify-end gap-2">

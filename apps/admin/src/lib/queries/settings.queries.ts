@@ -27,6 +27,8 @@ export function useSaveSettingsMutation() {
     mutationFn: (data: SettingsUpdate) => postSettings(data),
     onSuccess: (settings) => {
       queryClient.setQueryData(SETTINGS_QUERIES.main.queryKey, settings);
+      // Which emails are registered follows the expiry setting. A literal key: emails.queries imports this file.
+      void queryClient.invalidateQueries({ queryKey: ['emails'] });
     },
   });
 }

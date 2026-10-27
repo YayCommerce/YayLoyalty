@@ -9,7 +9,10 @@ use YayLoyalty\Utils\Text;
 
 defined( 'ABSPATH' ) || exit;
 
-/** The points-adjusted email, sent after a manual adjustment whose admin asked to notify the customer, within the weekly cap. */
+/**
+ * The points-adjusted email, sent after a manual adjustment whose admin asked to notify the customer, within the weekly cap.
+ * Manual in WooCommerce's sense: that per-adjustment choice is the only on/off, so it has no `enabled` setting.
+ */
 class PointsAdjustedEmail extends LedgerEntryEmail {
 
     public const ID = 'yayloyalty_points_adjusted';
@@ -17,8 +20,9 @@ class PointsAdjustedEmail extends LedgerEntryEmail {
     public function __construct() {
         $this->id          = self::ID;
         $this->title       = __( 'Points adjusted', 'yayloyalty' );
-        $this->description = __( 'Sent when a store manager adjusts a customer\'s points and asks to notify them.', 'yayloyalty' );
+        $this->description = __( 'Sent when a store manager adjusts a customer\'s points and ticks Notify by email.', 'yayloyalty' );
         $this->email_group = Emails::GROUP_POINTS;
+        $this->manual      = true;
 
         $this->placeholders = [
             '{points}'       => '',
@@ -29,6 +33,17 @@ class PointsAdjustedEmail extends LedgerEntryEmail {
         add_action( Emails::POINTS_ADJUSTED_ACTION . '_notification', [ $this, 'trigger' ] );
 
         parent::__construct();
+    }
+
+    public function init_form_fields() {
+        parent::init_form_fields();
+
+        unset( $this->form_fields['enabled'] );
+    }
+
+    /** Always on, ignoring an `enabled = no` saved before it became manual. Keeps WooCommerce's filter. */
+    public function is_enabled() {
+        return apply_filters( 'woocommerce_email_enabled_' . $this->id, true, $this->object, $this ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WooCommerce's own hook.
     }
 
     public function get_default_subject() {

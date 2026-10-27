@@ -15,8 +15,6 @@ class PointsExpiringSoonEmail extends LoyaltyEmail {
 
     public const ID = 'yayloyalty_points_expiring_soon';
 
-    protected $is_enabled_by_default = false;
-
     protected $is_capped = false;
 
     /** @var array<string, mixed> The template values of the reminder being sent or previewed; [] until one is prepared. */

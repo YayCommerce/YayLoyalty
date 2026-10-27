@@ -2,11 +2,13 @@ import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import { Link } from 'react-router';
 import { __ } from '@wordpress/i18n';
 
+import { POINTS_EXPIRING_SOON_EMAIL_ID } from '@/lib/schema/emails.schema';
 import { REMINDER_DAYS_MAX } from '@/lib/schema/settings.schema';
 import { Card, CardContent } from '@/components/ui/card';
 import { FieldError } from '@/components/ui/field';
 import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
 import { ExpirySettingsFormValues } from './expiry-settings.form';
+import { ExpiryEmailOffHint } from './ExpiryEmailOffHint';
 
 /** "Remind before expiry": how many days ahead the Points expiring soon email goes out, in both expiry modes. */
 export function ExpiryReminderRow() {
@@ -45,6 +47,13 @@ export function ExpiryReminderRow() {
                 </span>
               </div>
               <FieldError errors={[fieldState.error]} />
+              {isEnabled && (
+                <ExpiryEmailOffHint
+                  emailId={POINTS_EXPIRING_SOON_EMAIL_ID}
+                  message={__('The “Points expiring soon” email is off.', 'yayloyalty')}
+                  successMessage={__('Points expiring soon email turned on.', 'yayloyalty')}
+                />
+              )}
             </div>
           )}
         />
