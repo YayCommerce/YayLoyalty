@@ -12,6 +12,8 @@ export const settingsSchema = z.object({
   points_label_plural: z.string(),
   /** Most points one customer earns automatically per site day; null = no limit. Enforced in Pro. */
   max_points_per_day: z.number().int().min(1).nullable(),
+  /** Whether YayCurrency's exchange fee is part of a currency's rate. Read by YayCurrencyIntegration. */
+  currency_include_fee: z.boolean(),
   emails: z.object({
     /** Weekly per-customer cap on loyalty emails; null = no cap. */
     throttle_per_week: z.number().int().min(1).nullable(),

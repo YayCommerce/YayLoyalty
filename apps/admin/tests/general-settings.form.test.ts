@@ -7,9 +7,11 @@ import {
 } from '@/pages/settings/general-settings.form';
 
 const values: GeneralSettingsFormValues = {
+  enabled: true,
   points_label_singular: 'Star',
   points_label_plural: 'Stars',
   max_points_per_day: 5,
+  currency_include_fee: true,
 };
 
 describe('buildGeneralSettingsUpdate', () => {

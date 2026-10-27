@@ -35,7 +35,9 @@ final class PurchaseHandler implements TriggerHandler {
 
         $min = self::min_subtotal( $config );
 
-        if ( $min > 0 && $ctx->get_order_subtotal() * $ctx->get_base_rate() < $min ) {
+        // Snapped, so float error at an exact converted boundary ($10.00 at 0.00004 is 249999.99999999997 ₫)
+        // never fails the minimum.
+        if ( $min > 0 && PointsMath::snap( $ctx->get_order_subtotal() * $ctx->get_base_rate() ) < $min ) {
             return false;
         }
 

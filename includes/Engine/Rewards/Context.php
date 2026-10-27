@@ -35,6 +35,9 @@ final class Context {
     /** @var \WC_Cart|null The cart a coupon-describing handler dry-runs against; null at commit and for a catalog claim. */
     private $cart;
 
+    /** @var float Units of `currency` per 1 base unit (CurrencyRate's direction); 1.0 in the base currency. */
+    private $currency_rate;
+
     public function __construct(
         ?int $user_id,
         int $balance,
@@ -43,7 +46,8 @@ final class Context {
         string $currency,
         string $at,
         ?CustomerFacts $facts = null,
-        ?\WC_Cart $cart = null
+        ?\WC_Cart $cart = null,
+        float $currency_rate = 1.0
     ) {
         $this->user_id          = $user_id;
         $this->balance          = $balance;
@@ -53,6 +57,7 @@ final class Context {
         $this->at               = $at;
         $this->facts            = $facts;
         $this->cart             = $cart;
+        $this->currency_rate    = $currency_rate;
     }
 
     /** A copy at $balance: what a reward quotes against once earlier rewards in the selection are paid for. */
@@ -101,5 +106,9 @@ final class Context {
 
     public function get_cart(): ?\WC_Cart {
         return $this->cart;
+    }
+
+    public function get_currency_rate(): float {
+        return $this->currency_rate;
     }
 }

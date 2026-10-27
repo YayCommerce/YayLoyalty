@@ -165,6 +165,26 @@ final class ClampTest extends TestCase {
         $this->assertSame( 0, Clamp::points_for( 0.0, $this->reward() ) );
     }
 
+    public function test_a_currency_rate_prices_points_in_the_charged_currency(): void {
+        // 1 point = 25,000 in base; the shopper pays in a currency at 0.00004 per base unit, so 1 point = 1.00.
+        $reward = $this->unstepped_reward( [ 'points_per_currency_unit' => 0.00004 ] );
+
+        $result = Clamp::apply( $reward, 1, 10, null, 'USD', 2, 0.00004 );
+
+        $this->assertTrue( $result->is_allowed() );
+        $this->assertSame( 1, $result->get_points() );
+        $this->assertSame( 1.0, $result->get_value() );
+        $this->assertSame( 1.0, $result->get_rate_snapshot() );
+        $this->assertSame( 1, Clamp::points_for( 1.0, $reward, 0.00004 ) );
+    }
+
+    public function test_the_value_still_floors_to_the_currency_decimals(): void {
+        $result = Clamp::apply( $this->unstepped_reward( [ 'points_per_currency_unit' => 3 ] ), 2, 10, null, 'USD', 2 );
+
+        $this->assertSame( 2, $result->get_points() );
+        $this->assertSame( 0.66, $result->get_value() );
+    }
+
     public function test_a_reward_without_a_rate_is_denied(): void {
         $result = Clamp::apply( $this->reward( [ 'points_per_currency_unit' => 0 ] ), 500, 1000, null, 'USD', 2 );
 

@@ -13,6 +13,9 @@ defined( 'ABSPATH' ) || exit;
  * A ceiling outranks the minimum, so "your balance is too low" wins over "below the minimum".
  * Only points that buy whole smallest currency units apply, so the debit always equals the discount
  * times the rate; points_for() is the inverse the commit uses to turn an order's discount back into points.
+ * The reward's points_per_currency_unit is set in the base currency. $currency_rate (units of the charged
+ * currency per 1 base unit, CurrencyRate's direction) turns it into points per charged unit, so subtotals,
+ * values and the rate snapshot are all in the charged currency.
  */
 final class Clamp {
 
@@ -25,12 +28,15 @@ final class Clamp {
 
     /**
      * $cart_subtotal is in $currency and already net of every other coupon, or null for a claim with no cart.
+     * The result's value and rate snapshot are in $currency too.
      * Ceilings are checked in order (balance, reward max, cart) and the first that binds is reported.
      * The only denial is REASON_NO_RATE, for a reward with no usable `points_per_currency_unit`.
+     *
+     * @param float $currency_rate Units of $currency per 1 base unit; 1.0 in the base currency.
      */
-    public static function apply( Reward $reward, int $requested, int $balance, ?float $cart_subtotal, string $currency, int $decimals ): Result {
+    public static function apply( Reward $reward, int $requested, int $balance, ?float $cart_subtotal, string $currency, int $decimals, float $currency_rate = 1.0 ): Result {
         $config = $reward->get_config();
-        $rate   = (float) ( $config['points_per_currency_unit'] ?? 0 );
+        $rate   = self::effective_rate( $reward, $currency_rate );
 
         if ( $rate <= 0 ) {
             return Result::denied( Result::REASON_NO_RATE );
@@ -68,7 +74,7 @@ final class Clamp {
         // Down to the step, then to the points that buy whole smallest currency units.
         $stepped = $applied - ( $applied % $step );
         $value   = self::value_of( $stepped, $rate, $decimals );
-        $whole   = min( $stepped, self::points_for( $value, $reward ) );
+        $whole   = min( $stepped, self::points_for( $value, $reward, $currency_rate ) );
 
         if ( $whole !== $applied ) {
             $applied = $whole;
@@ -89,10 +95,14 @@ final class Clamp {
         return Result::allowed( $reward, max( 0, $requested ), $applied, $applied > 0 ? $value : 0.0, $currency, $rate, $bound_by );
     }
 
-    /** The points a money amount costs: the smallest multiple of the step that pays for it. 0 without a rate or an amount. */
-    public static function points_for( float $value, Reward $reward ): int {
-        $config = $reward->get_config();
-        $rate   = (float) ( $config['points_per_currency_unit'] ?? 0 );
+    /**
+     * The points a money amount costs: the smallest multiple of the step that pays for it. 0 without a rate or an amount.
+     *
+     * @param float $value         In the currency $currency_rate prices.
+     * @param float $currency_rate Units of that currency per 1 base unit; 1.0 in the base currency.
+     */
+    public static function points_for( float $value, Reward $reward, float $currency_rate = 1.0 ): int {
+        $rate = self::effective_rate( $reward, $currency_rate );
 
         if ( $rate <= 0 || $value <= 0 ) {
             return 0;
@@ -102,6 +112,13 @@ final class Clamp {
         $points = (int) ceil( round( $value * $rate, 6 ) );
 
         return (int) ( ceil( $points / $step ) * $step );
+    }
+
+    /** Points per unit of the charged currency: the base-currency rate over $currency_rate, which reads as 1.0 when it isn't above 0. */
+    private static function effective_rate( Reward $reward, float $currency_rate ): float {
+        $rate = (float) ( $reward->get_config()['points_per_currency_unit'] ?? 0 );
+
+        return $rate / ( $currency_rate > 0 ? $currency_rate : 1.0 );
     }
 
     /** The reward's step: points are spent in multiples of it. At least 1. */
@@ -116,9 +133,7 @@ final class Clamp {
 
     /** What points buy, floored to the currency's smallest unit; snapped before flooring, as points_in() is. */
     private static function value_of( int $points, float $rate, int $decimals ): float {
-        $scale = pow( 10, max( 0, $decimals ) );
-
-        return floor( round( $points / $rate * $scale, 6 ) ) / $scale;
+        return PointsMath::floor_to_decimals( $points / $rate, $decimals );
     }
 
     /** Whole points a money amount is worth, rounded down. */

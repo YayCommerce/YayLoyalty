@@ -1,6 +1,6 @@
 # YayCurrency Currency and Rounding Design
 
-**Status:** proposed
+**Status:** superseded by [2026-10-23-yaycurrency-integration-design.md](2026-10-23-yaycurrency-integration-design.md)
 **Related:** design file `YayLoyalty Settings.dc.html` → Settings: Advanced (Pro), "Currency and rounding" card, callout 3
 
 ## Goal

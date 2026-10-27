@@ -43,7 +43,8 @@ final class DiscountRewardHandler implements RewardHandler {
             return Result::allowed( $reward, $cost, $cost, 0.0, $ctx->get_currency(), 0.0 );
         }
 
-        $props = $this->coupon_props( $reward );
+        // The config is in the base currency; the cart is in the one it is charged in.
+        $props = RewardCoupons::in_currency( $this->coupon_props( $reward ), $ctx->get_currency_rate() );
         $probe = RewardCoupons::probe( (int) $reward->get_id(), $props, $cart );
 
         if ( '' !== $probe['reason'] ) {

@@ -11,6 +11,7 @@ use YayLoyalty\Models\Reward;
 use YayLoyalty\Repositories\CampaignRepository;
 use YayLoyalty\Repositories\CustomerRepository;
 use YayLoyalty\Repositories\RewardRepository;
+use YayLoyalty\Utils\CurrencyRate;
 use YayLoyalty\Utils\Dates;
 use YayLoyalty\Utils\Log;
 
@@ -161,17 +162,19 @@ final class LauncherPayload {
     /**
      * The money a balance buys at the reward's rate with no cart limit, as checkout would grant it: Clamp owns the
      * steps, minimum and per-order cap, so neither promises more than the discount pays. Null when it buys nothing.
-     * Shared by the launcher and the redeem card's header.
+     * In the shopper's currency, at the rate checkout would charge. Shared by the launcher and the redeem card's header.
      */
     public static function worth( Reward $reward, int $balance ): ?float {
-        $result = Clamp::apply( $reward, $balance, $balance, null, get_woocommerce_currency(), wc_get_price_decimals() );
+        $currency = CurrencyRate::current();
+        $result   = Clamp::apply( $reward, $balance, $balance, null, $currency, wc_get_price_decimals(), CurrencyRate::rate( $currency ) );
 
         return $result->is_allowed() && $result->get_points() > 0 ? $result->get_value() : null;
     }
 
     /**
      * The built-in cart-discount reward's rate and limits, for the guest panel's "spend them at checkout" step
-     * and the member panel's "Ways to redeem". A limit the merchant left off is null.
+     * and the member panel's "Ways to redeem". A limit the merchant left off is null. points_per_unit is per
+     * unit of the shopper's currency, through LauncherCopy::converted_rate().
      *
      * @param Reward|null $reward The reward when it is live (RewardRepository::find_live_cart_discount()).
      * @return array{points_per_unit: float, min_points: int, max_points: ?int, max_percent: ?float, unlock_points: int, unlock_off: ?float}|null
@@ -184,13 +187,14 @@ final class LauncherPayload {
             return null;
         }
 
-        $config = $reward->get_config();
-        $step   = Clamp::step_of( $reward );
-        // Its minimum on the step, and never less than one currency unit's worth.
-        $unlock = max( (int) ( ceil( Clamp::min_of( $reward ) / $step ) * $step ), Clamp::points_for( 1.0, $reward ) );
+        $config        = $reward->get_config();
+        $currency_rate = CurrencyRate::rate( CurrencyRate::current() );
+        $step          = Clamp::step_of( $reward );
+        // Its minimum on the step, and never less than one unit of the shopper's currency's worth.
+        $unlock = max( (int) ( ceil( Clamp::min_of( $reward ) / $step ) * $step ), Clamp::points_for( 1.0, $reward, $currency_rate ) );
 
         return [
-            'points_per_unit' => $rate,
+            'points_per_unit' => LauncherCopy::converted_rate( $rate / $currency_rate, $currency_rate ),
             'min_points'      => Clamp::min_of( $reward ),
             'max_points'      => isset( $config['max_points_per_order'] ) ? (int) $config['max_points_per_order'] : null,
             'max_percent'     => isset( $config['max_percent_of_subtotal'] ) ? (float) $config['max_percent_of_subtotal'] : null,

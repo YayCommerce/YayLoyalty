@@ -1,5 +1,5 @@
 /**
- * Mirrors YayLoyalty\Utils\PointsMath, the source of truth.
+ * Mirrors part of YayLoyalty\Utils\PointsMath, the source of truth: the constant and functions marked below.
  * A zero denominator yields null, never 0. Rounding follows PHP round(), so a preview shows what the engine awards.
  */
 

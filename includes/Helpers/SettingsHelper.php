@@ -44,6 +44,8 @@ class SettingsHelper {
             'points_label_plural'   => __( 'points', 'yayloyalty' ),
             // null means no limit. Enforced by Pro's DailyEarningLimit.
             'max_points_per_day'    => null,
+            // Whether YayCurrency's exchange fee is part of a currency's rate. Read by Integrations\YayCurrency\YayCurrencyIntegration.
+            'currency_include_fee'  => true,
             'emails'                => [
                 // Weekly per-customer cap on loyalty emails. null means no cap. Engine\Emails\EmailThrottle enforces it.
                 'throttle_per_week' => 3,
@@ -74,6 +76,7 @@ class SettingsHelper {
             'points_label_singular' => 'points_label',
             'points_label_plural'   => 'points_label',
             'max_points_per_day'    => 'limit',
+            'currency_include_fee'  => 'bool',
             'emails'                => [
                 'throttle_per_week' => 'limit',
             ],
