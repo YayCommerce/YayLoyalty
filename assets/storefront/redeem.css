@@ -5,29 +5,12 @@
  * - Every rule is nested under the root, so it is at least 0,2,0 and a theme's plain `button {}` or
  *   `input {}` rules cannot beat it. The resets below undo what themes commonly set on those elements.
  * - Sizes are px: rem follows the theme's html font-size (62.5% is common).
- * - The colours are variables on the root, so a theme or custom CSS can re-point them in one place.
+ * - The colours are storefront-tokens.css's, shared with the other cards, so a theme or custom CSS can re-point
+ *   them in one place.
  */
-.yayloyalty-redeem {
-  --yayloyalty-redeem-accent: #4353ff;
-  --yayloyalty-redeem-accent-hover: #3442d6;
-  --yayloyalty-redeem-accent-soft: #f0f1ff;
-  --yayloyalty-redeem-accent-text: #ffffff;
-  --yayloyalty-redeem-text: #171719;
-  --yayloyalty-redeem-muted: #7b7c80;
-  --yayloyalty-redeem-border: #e4e4e7;
-  --yayloyalty-redeem-surface: #fafafa;
-  --yayloyalty-redeem-selected: #fafafa;
-  --yayloyalty-redeem-chip: #f4f4f5;
-  --yayloyalty-redeem-track: #e4e4e7;
-  --yayloyalty-redeem-check-border: #d4d4d8;
-  --yayloyalty-redeem-success: #2e7d32;
-  --yayloyalty-redeem-alert-bg: #fffbeb;
-  --yayloyalty-redeem-alert-border: #fde68a;
-  --yayloyalty-redeem-alert-text: #92400e;
-  --yayloyalty-redeem-field: #ffffff;
-  --yayloyalty-redeem-badge: #000000;
-  --yayloyalty-redeem-radius: 8px;
+@import url("storefront-tokens.css");
 
+.yayloyalty-redeem {
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -419,17 +402,22 @@
   color: var(--yayloyalty-redeem-text);
 }
 
-/* The amber notice: picked rewards the store took away, under the header. */
+/*
+ * The amber notice: picked rewards the store took away, under the header. Same colours and left edge as the
+ * Rewards tab's notice (account/points-card.css).
+ */
 
 .yayloyalty-redeem .yayloyalty-redeem__alert {
   margin: 12px 12px 0;
   padding: 8px 12px;
-  border: 1px solid var(--yayloyalty-redeem-alert-border);
+  /* Left edge only: the radius curves it into the corners. */
+  border: 0;
+  border-left: 1.5px solid currentColor;
   border-radius: var(--yayloyalty-redeem-radius);
-  background: var(--yayloyalty-redeem-alert-bg);
+  background: var(--yayloyalty-warning-bg);
   font-size: 12px;
   line-height: 1.5;
-  color: var(--yayloyalty-redeem-alert-text);
+  color: var(--yayloyalty-warning);
 }
 
 .yayloyalty-redeem .yayloyalty-redeem__alert p {
