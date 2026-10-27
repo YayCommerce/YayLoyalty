@@ -197,15 +197,19 @@ final class CampaignConditionSet {
 
             if ( ! CampaignConditionType::is_valid( $type ) ) {
                 throw new \InvalidArgumentException(
-                    sprintf( 'YayLoyalty: unknown condition type "%s".', $type )
+                    esc_html(
+                        sprintf( 'YayLoyalty: unknown condition type "%s".', $type )
+                    )
                 );
             }
 
             if ( isset( $seen[ $type ] ) ) {
                 throw new \InvalidArgumentException(
-                    sprintf(
-                        'YayLoyalty: condition type "%s" appears more than once. Conditions are ANDed — use a single entry.',
-                        $type
+                    esc_html(
+                        sprintf(
+                            'YayLoyalty: condition type "%s" appears more than once. Conditions are ANDed — use a single entry.',
+                            $type
+                        )
                     )
                 );
             }
@@ -216,11 +220,13 @@ final class CampaignConditionSet {
 
             if ( ! in_array( $operator, $spec['operators'], true ) ) {
                 throw new \InvalidArgumentException(
-                    sprintf(
-                        'YayLoyalty: operator "%s" is not allowed for condition "%s". Allowed: %s.',
-                        $operator,
-                        $type,
-                        implode( ', ', $spec['operators'] )
+                    esc_html(
+                        sprintf(
+                            'YayLoyalty: operator "%s" is not allowed for condition "%s". Allowed: %s.',
+                            $operator,
+                            $type,
+                            implode( ', ', $spec['operators'] )
+                        )
                     )
                 );
             }
@@ -247,25 +253,25 @@ final class CampaignConditionSet {
 
                 foreach ( $value as $item ) {
                     if ( ! IsoCodes::is_currency( (string) $item ) ) {
-                        throw ConditionValueRules::bad( $type, sprintf( '"%s" is not an ISO 4217 currency code', (string) $item ) );
+                        throw ConditionValueRules::bad( esc_html( $type ), esc_html( sprintf( '"%s" is not an ISO 4217 currency code', (string) $item ) ) );
                     }
                 }
 
                 if ( isset( $spec['max'] ) && count( $value ) > (int) $spec['max'] ) {
-                    throw ConditionValueRules::bad( $type, sprintf( 'accepts at most %d currencies', (int) $spec['max'] ) );
+                    throw ConditionValueRules::bad( esc_html( $type ), esc_html( sprintf( 'accepts at most %d currencies', (int) $spec['max'] ) ) );
                 }
                 break;
 
             case 'country_list':
                 if ( ! is_array( $value ) ) {
-                    throw ConditionValueRules::bad( $type, 'expects { countries: [...], source: shipping|billing|any }' );
+                    throw ConditionValueRules::bad( esc_html( $type ), 'expects { countries: [...], source: shipping|billing|any }' );
                 }
 
                 ConditionValueRules::assert_non_empty_list( $type, $value['countries'] ?? null );
 
                 foreach ( $value['countries'] as $code ) {
                     if ( ! IsoCodes::is_country( (string) $code ) ) {
-                        throw ConditionValueRules::bad( $type, sprintf( '"%s" is not an ISO 3166-1 alpha-2 country code', (string) $code ) );
+                        throw ConditionValueRules::bad( esc_html( $type ), esc_html( sprintf( '"%s" is not an ISO 3166-1 alpha-2 country code', (string) $code ) ) );
                     }
                 }
 
@@ -273,10 +279,12 @@ final class CampaignConditionSet {
 
                 if ( ! isset( $value['source'] ) || ! in_array( $value['source'], $sources, true ) ) {
                     throw ConditionValueRules::bad(
-                        $type,
-                        sprintf(
-                            'requires a "source" of %s — no default, because the shipping address is absent on virtual and downloadable orders',
-                            implode( ' | ', $sources )
+                        esc_html( $type ),
+                        esc_html(
+                            sprintf(
+                                'requires a "source" of %s — no default, because the shipping address is absent on virtual and downloadable orders',
+                                implode( ' | ', $sources )
+                            )
                         )
                     );
                 }
@@ -288,12 +296,12 @@ final class CampaignConditionSet {
 
             case 'money':
                 if ( ! is_array( $value ) ) {
-                    throw ConditionValueRules::bad( $type, 'expects { amount, currency } — never a bare number' );
+                    throw ConditionValueRules::bad( esc_html( $type ), 'expects { amount, currency } — never a bare number' );
                 }
 
                 if ( ! isset( $value['currency'] ) || ! IsoCodes::is_currency( (string) $value['currency'] ) ) {
                     throw ConditionValueRules::bad(
-                        $type,
+                        esc_html( $type ),
                         'requires a "currency" that is an ISO 4217 code — only orders in that currency count toward the total, with no exchange-rate conversion'
                     );
                 }
@@ -303,7 +311,7 @@ final class CampaignConditionSet {
                 if ( CampaignConditionType::OP_BETWEEN === $operator ) {
                     ConditionValueRules::assert_between_pair( $type, $amount, false );
                 } elseif ( is_bool( $amount ) || ! is_numeric( $amount ) ) {
-                    throw ConditionValueRules::bad( $type, 'expects a numeric "amount"' );
+                    throw ConditionValueRules::bad( esc_html( $type ), 'expects a numeric "amount"' );
                 }
                 break;
         }

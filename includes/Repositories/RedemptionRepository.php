@@ -172,7 +172,7 @@ final class RedemptionRepository extends AbstractRepository {
         $bind        = [ Redemption::STATUS_ISSUED, Dates::now() ];
 
         // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- $in and $outstanding carry placeholders; every value is bound below.
-        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        $rows = $wpdb->get_results( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery
             $wpdb->prepare(
                 "SELECT reward_id,
                         COUNT(*) AS claimed,

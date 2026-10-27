@@ -49,20 +49,22 @@ final class ConditionValueRules {
 
         foreach ( $value as $item ) {
             if ( 'int' === $item_kind && ! self::is_int_like( $item ) ) {
-                throw self::bad( $type, 'expects a list of integer ids' );
+                throw self::bad( esc_html( $type ), 'expects a list of integer ids' );
             }
 
             if ( 'string' === $item_kind && ( ! is_string( $item ) || '' === $item ) ) {
-                throw self::bad( $type, 'expects a list of non-empty strings' );
+                throw self::bad( esc_html( $type ), 'expects a list of non-empty strings' );
             }
         }
 
         if ( null !== $max && count( $value ) > $max ) {
             throw new \InvalidArgumentException(
-                sprintf(
-                    'YayLoyalty: "%s" accepts at most %d ids. For a larger segment, use a user_role condition instead.',
-                    $type,
-                    $max
+                esc_html(
+                    sprintf(
+                        'YayLoyalty: "%s" accepts at most %d ids. For a larger segment, use a user_role condition instead.',
+                        $type,
+                        $max
+                    )
                 )
             );
         }
@@ -77,19 +79,19 @@ final class ConditionValueRules {
         }
 
         if ( ! self::is_int_like( $value ) ) {
-            throw self::bad( $type, 'expects an integer' );
+            throw self::bad( esc_html( $type ), 'expects an integer' );
         }
     }
 
     public static function assert_non_empty_list( string $type, $value ): void {
         if ( ! is_array( $value ) || [] === $value ) {
-            throw self::bad( $type, 'value must be a non-empty array' );
+            throw self::bad( esc_html( $type ), 'value must be a non-empty array' );
         }
     }
 
     public static function assert_between_pair( string $type, $value, bool $integers ): void {
         if ( ! is_array( $value ) || 2 !== count( $value ) || ! array_key_exists( 0, $value ) || ! array_key_exists( 1, $value ) ) {
-            throw self::bad( $type, '`between` takes a two-element [low, high] array' );
+            throw self::bad( esc_html( $type ), '`between` takes a two-element [low, high] array' );
         }
 
         $low  = $value[0];
@@ -100,11 +102,11 @@ final class ConditionValueRules {
             : ( ! is_bool( $low ) && is_numeric( $low ) && ! is_bool( $high ) && is_numeric( $high ) );
 
         if ( ! $ok ) {
-            throw self::bad( $type, '`between` bounds must be numeric' );
+            throw self::bad( esc_html( $type ), '`between` bounds must be numeric' );
         }
 
         if ( (float) $low > (float) $high ) {
-            throw self::bad( $type, '`between` needs low <= high' );
+            throw self::bad( esc_html( $type ), '`between` needs low <= high' );
         }
     }
 

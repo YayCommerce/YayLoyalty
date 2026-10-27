@@ -23,7 +23,7 @@ final class CustomerFactsReader {
                 'customer_id'  => $user_id,
                 'status'       => OrderStatus::paid(),
                 'date_created' => '<' . Dates::to_timestamp( $as_of ),
-                'exclude'      => $exclude_order_id ? [ $exclude_order_id ] : [],
+                'exclude'      => $exclude_order_id ? [ $exclude_order_id ] : [], // phpcs:ignore WordPressVIPMinimum.Performance.WPQueryParams.PostNotIn_exclude -- at most one order id, the one being scored.
                 'limit'        => -1,
                 'return'       => 'objects',
             ]

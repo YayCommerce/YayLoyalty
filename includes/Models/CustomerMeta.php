@@ -90,6 +90,7 @@ final class CustomerMeta extends AbstractModel {
     public function to_row(): array {
         return [
             'user_id'    => $this->user_id,
+            // phpcs:disable WordPress.DB.SlowDBQuery -- columns of the plugin's own customer_meta table, not a WP_Query meta lookup.
             'meta_key'   => $this->meta_key,
             'meta_value' => Json::encode(
                 [
@@ -100,6 +101,7 @@ final class CustomerMeta extends AbstractModel {
                 ],
                 self::SCHEMA_VERSION
             ),
+            // phpcs:enable WordPress.DB.SlowDBQuery
             'created_at' => $this->created_at,
         ];
     }

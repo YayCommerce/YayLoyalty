@@ -75,7 +75,7 @@ abstract class AbstractRepository {
         $result = $wpdb->insert( $this->table(), $data, $format ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
 
         if ( false === $result ) {
-            throw new QueryException( 'insert', $wpdb->last_error, $this->table() );
+            throw new QueryException( 'insert', esc_html( $wpdb->last_error ), esc_html( $this->table() ) );
         }
 
         // A natural key (customers.user_id) has no insert id.
@@ -103,7 +103,7 @@ abstract class AbstractRepository {
         );
 
         if ( false === $result ) {
-            throw new QueryException( 'update', $wpdb->last_error, $this->table() );
+            throw new QueryException( 'update', esc_html( $wpdb->last_error ), esc_html( $this->table() ) );
         }
 
         // 0 rows changed is not a failure.
@@ -117,7 +117,7 @@ abstract class AbstractRepository {
         $result = $wpdb->delete( $this->table(), [ $this->primary_key() => $id ], [ '%d' ] ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
 
         if ( false === $result ) {
-            throw new QueryException( 'delete', $wpdb->last_error, $this->table() );
+            throw new QueryException( 'delete', esc_html( $wpdb->last_error ), esc_html( $this->table() ) );
         }
 
         return $result > 0;
@@ -175,7 +175,7 @@ abstract class AbstractRepository {
         $in  = Sql::in_placeholders( $ids, '%d' );
 
         // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- $cases and $in carry placeholder lists; every value is bound below.
-        $result = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+        $result = $wpdb->query( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery
             $wpdb->prepare(
                 "UPDATE `{$table}` SET `{$column}` = CASE id " . implode( ' ', $cases ) . " END WHERE id IN ({$in})",
                 array_merge( $params, $ids )
@@ -184,7 +184,7 @@ abstract class AbstractRepository {
         // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
 
         if ( false === $result ) {
-            throw new QueryException( 'update', $wpdb->last_error, $this->table() );
+            throw new QueryException( 'update', esc_html( $wpdb->last_error ), esc_html( $this->table() ) );
         }
     }
 
@@ -220,9 +220,9 @@ abstract class AbstractRepository {
         $tie_break_sql = $orderby === $this->primary_key() ? '' : ', `' . $primary_key . '` DESC';
 
         // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared -- $table is our escaped slug, $orderby and $order are whitelisted, and the $where_sql fragments are already prepared.
-        $total = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM `' . $table . '`' . $where_sql ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+        $total = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM `' . $table . '`' . $where_sql ); // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
 
-        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+        $rows = $wpdb->get_results( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
                 'SELECT * FROM `' . $table . '`' . $where_sql
                 . ' ORDER BY `' . esc_sql( $orderby ) . '` ' . $order . $tie_break_sql

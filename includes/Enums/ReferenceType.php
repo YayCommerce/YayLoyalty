@@ -59,7 +59,7 @@ final class ReferenceType {
     /** @throws \InvalidArgumentException When $value is neither null nor known. */
     public static function assert( $value ): ?string {
         if ( ! self::is_valid( $value ) ) {
-            throw self::unknown_value( $value, 'null or one of' );
+            throw self::unknown_value( $value, 'null or one of' ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- unknown_value() escapes the message it builds.
         }
 
         return $value;

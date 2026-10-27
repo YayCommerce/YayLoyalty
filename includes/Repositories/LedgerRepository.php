@@ -335,7 +335,7 @@ class LedgerRepository extends AbstractRepository {
         $in  = Sql::in_placeholders( $ids, '%d' );
 
         // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- $in and $issued carry placeholder lists; every value is bound below.
-        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+        $rows = $wpdb->get_results( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
                 "SELECT campaign_id, COALESCE(SUM(CASE WHEN {$issued} THEN points ELSE 0 END), 0) AS points, COUNT(*) AS row_count
                  FROM `" . esc_sql( $this->table() ) . "`
@@ -376,7 +376,7 @@ class LedgerRepository extends AbstractRepository {
         );
 
         if ( '' !== $wpdb->last_error ) {
-            throw new QueryException( 'select', $wpdb->last_error, $this->table() . ' (count_for_campaign_locked)' );
+            throw new QueryException( 'select', esc_html( $wpdb->last_error ), esc_html( $this->table() . ' (count_for_campaign_locked)' ) );
         }
 
         return (int) $count;
@@ -433,7 +433,7 @@ class LedgerRepository extends AbstractRepository {
         $lock_sql = $is_locking ? ' LOCK IN SHARE MODE' : '';
 
         // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $where carries placeholders only; every value is bound here.
-        return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+        return (int) $wpdb->get_var( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare( 'SELECT COALESCE(SUM(points), 0) FROM `' . esc_sql( $this->table() ) . "` WHERE {$where}{$lock_sql}", $values )
         );
         // phpcs:enable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
@@ -453,7 +453,7 @@ class LedgerRepository extends AbstractRepository {
         $order_sql = $is_newest_first ? 'DESC' : 'ASC';
 
         // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $where carries placeholders only; every value is bound here.
-        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+        $rows = $wpdb->get_results( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare( 'SELECT * FROM `' . esc_sql( $this->table() ) . "` WHERE {$where} ORDER BY id {$order_sql}{$limit_sql}", $values ),
             ARRAY_A
         );

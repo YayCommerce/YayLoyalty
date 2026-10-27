@@ -303,6 +303,8 @@ build_package() {
     cp "$PLUGIN_DIR/index.php" "$temp_dir/"
     cp "$PLUGIN_DIR/YayLoyaltyPluginAdapter.php" "$temp_dir/"
     cp "$PLUGIN_DIR/readme.txt" "$temp_dir/"
+    # Shipped beside vendor/, which Plugin Check and WordPress.org review expect to come with its composer.json.
+    cp "$PLUGIN_DIR/composer.json" "$temp_dir/"
 
     cp -r "$PLUGIN_DIR/assets" "$temp_dir/"
     cp -r "$PLUGIN_DIR/includes" "$temp_dir/"

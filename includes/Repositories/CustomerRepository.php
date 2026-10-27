@@ -74,7 +74,7 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
         $result = $wpdb->query( $sql ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.NotPrepared -- a direct query on the plugin's own table; $sql is prepared above.
 
         if ( false === $result ) {
-            throw new QueryException( 'insert', $wpdb->last_error, $this->table() . ' (ensure_row)' );
+            throw new QueryException( 'insert', esc_html( $wpdb->last_error ), esc_html( $this->table() . ' (ensure_row)' ) );
         }
     }
 
@@ -109,8 +109,8 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
         if ( ! is_array( $row ) ) {
             throw new QueryException(
                 'select',
-                $wpdb->last_error,
-                sprintf( '%s: no row to lock for user %d — was ensure_row() called?', $this->table(), $user_id )
+                esc_html( $wpdb->last_error ),
+                esc_html( sprintf( '%s: no row to lock for user %d — was ensure_row() called?', $this->table(), $user_id ) )
             );
         }
 
@@ -164,10 +164,10 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
         );
         // phpcs:enable WordPress.DB.PreparedSQL.NotPrepared
 
-        $result = $wpdb->query( $sql ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.NotPrepared -- a direct query on the plugin's own table; $sql is prepared above.
+        $result = $wpdb->query( $sql ); // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.NotPrepared -- a direct query on the plugin's own table; $sql is prepared above.
 
         if ( false === $result ) {
-            throw new QueryException( 'update', $wpdb->last_error, $this->table() . ' (apply_delta)' );
+            throw new QueryException( 'update', esc_html( $wpdb->last_error ), esc_html( $this->table() . ' (apply_delta)' ) );
         }
     }
 
@@ -225,7 +225,7 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
         $match_sql = implode( ' OR ', $matches );
 
         // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $match_sql holds only placeholders, and $values binds them: the sniff cannot count through it.
-        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+        $rows = $wpdb->get_results( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
                 'SELECT user_id, birthday_month, birthday_day FROM `' . esc_sql( $this->table() ) . "` WHERE user_id > %d AND ( {$match_sql} ) ORDER BY user_id LIMIT %d",
                 $values
@@ -277,7 +277,7 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
         list( $due_sql, $due_values ) = self::reminder_due_sql( $now, $horizon );
 
         // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $due_sql holds only placeholders; its values are bound.
-        $ids = $wpdb->get_col( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+        $ids = $wpdb->get_col( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
                 'SELECT user_id FROM `' . esc_sql( $this->table() ) . "` WHERE {$due_sql} ORDER BY expires_at LIMIT %d",
                 array_merge( $due_values, [ $limit ] )
@@ -310,7 +310,7 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
         list( $due_sql, $due_values ) = self::reminder_due_sql( $now, $horizon );
 
         // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $due_sql holds only placeholders, and $due_values binds them: the sniff cannot count through it.
-        $result = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+        $result = $wpdb->query( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
                 'UPDATE `' . esc_sql( $this->table() ) . "` SET reminder_sent_at = %s, reminder_for = expires_at
                  WHERE user_id = %d AND balance = %d AND expires_at = %s AND {$due_sql}",
@@ -320,7 +320,7 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
         // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
 
         if ( false === $result ) {
-            throw new QueryException( 'update', $wpdb->last_error, $this->table() . ' (claim_reminder)' );
+            throw new QueryException( 'update', esc_html( $wpdb->last_error ), esc_html( $this->table() . ' (claim_reminder)' ) );
         }
 
         if ( 1 !== $result ) {
@@ -368,7 +368,7 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
         $result = $wpdb->query( 'UPDATE `' . esc_sql( $this->table() ) . '` SET expires_at = NULL WHERE expires_at IS NOT NULL' ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.NotPrepared -- no values; the table name is escaped.
 
         if ( false === $result ) {
-            throw new QueryException( 'update', $wpdb->last_error, $this->table() . ' (clear_expiry)' );
+            throw new QueryException( 'update', esc_html( $wpdb->last_error ), esc_html( $this->table() . ' (clear_expiry)' ) );
         }
     }
 
@@ -406,7 +406,7 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
         );
 
         if ( false === $result ) {
-            throw new QueryException( 'update', $wpdb->last_error, $this->table() . ' (restamp_inactivity_expiry)' );
+            throw new QueryException( 'update', esc_html( $wpdb->last_error ), esc_html( $this->table() . ' (restamp_inactivity_expiry)' ) );
         }
     }
 
@@ -427,7 +427,7 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
         );
 
         if ( false === $result ) {
-            throw new QueryException( 'update', $wpdb->last_error, $this->table() . ' (restamp_expiry_from_lots)' );
+            throw new QueryException( 'update', esc_html( $wpdb->last_error ), esc_html( $this->table() . ' (restamp_expiry_from_lots)' ) );
         }
     }
 
@@ -452,7 +452,7 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
         );
 
         if ( false === $result ) {
-            throw new QueryException( 'update', $wpdb->last_error, $this->table() . ' (apply_pending_delta)' );
+            throw new QueryException( 'update', esc_html( $wpdb->last_error ), esc_html( $this->table() . ' (apply_pending_delta)' ) );
         }
     }
 
@@ -477,7 +477,7 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
         $users     = esc_sql( $wpdb->users );
 
         // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared -- $where_sql fragments are already prepared (see where_fragments()); identifiers are escaped above; only LIMIT/OFFSET are bound here.
-        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+        $rows = $wpdb->get_results( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
                 'SELECT c.user_id, u.display_name AS name, u.user_email AS email,
                         c.balance, c.pending_points, c.lifetime_earned,
@@ -512,7 +512,7 @@ class CustomerRepository extends AbstractRepository implements CustomerReader {
         $users = esc_sql( $wpdb->users );
 
         // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared -- list_where_sql()'s fragments are already prepared; identifiers are escaped above.
-        return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+        return (int) $wpdb->get_var( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             'SELECT COUNT(*) FROM `' . $table . '` c LEFT JOIN `' . $users . '` u ON u.ID = c.user_id'
             . $this->list_where_sql( $criteria )
         );

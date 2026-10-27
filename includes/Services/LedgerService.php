@@ -421,7 +421,9 @@ final class LedgerService {
 
         if ( null === $existing ) {
             throw new \RuntimeException(
-                sprintf( 'YayLoyalty: idempotency key "%s" collided but matches no ledger row.', $key )
+                esc_html(
+                    sprintf( 'YayLoyalty: idempotency key "%s" collided but matches no ledger row.', $key )
+                )
             );
         }
 

@@ -50,10 +50,10 @@ final class IdempotencyKey {
 
         if ( LedgerType::EXPIRE === $type ) {
             if ( 1 !== preg_match( '/^\d{8}$/', $qualifier ) ) {
-                throw new \InvalidArgumentException( sprintf( 'YayLoyalty: an expire key needs a Ymd day, not "%s".', $qualifier ) );
+                throw new \InvalidArgumentException( esc_html( sprintf( 'YayLoyalty: an expire key needs a Ymd day, not "%s".', $qualifier ) ) );
             }
         } elseif ( $is_redeem ? ! self::is_redeem_qualifier( $qualifier ) : ! CampaignTrigger::is_known( $qualifier ) ) {
-            throw new \InvalidArgumentException( sprintf( 'YayLoyalty: unknown %s "%s".', $is_redeem ? 'reward type' : 'campaign trigger', $qualifier ) );
+            throw new \InvalidArgumentException( esc_html( sprintf( 'YayLoyalty: unknown %s "%s".', $is_redeem ? 'reward type' : 'campaign trigger', $qualifier ) ) );
         }
 
         $key = implode( self::SEPARATOR, [ $type, (string) $user_id, $reference_type, (string) $reference_id, $qualifier ] );
@@ -89,7 +89,7 @@ final class IdempotencyKey {
         $parts = explode( self::SEPARATOR, $key );
 
         if ( 5 !== count( $parts ) || '' === $parts[4] ) {
-            throw new \InvalidArgumentException( sprintf( 'YayLoyalty: "%s" is not an idempotency key.', $key ) );
+            throw new \InvalidArgumentException( esc_html( sprintf( 'YayLoyalty: "%s" is not an idempotency key.', $key ) ) );
         }
 
         return $parts[4];

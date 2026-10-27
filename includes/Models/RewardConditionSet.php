@@ -158,11 +158,11 @@ final class RewardConditionSet {
             $type = $condition->get_type();
 
             if ( ! RewardConditionType::is_valid( $type ) ) {
-                throw ConditionValueRules::bad( $type, 'is not a known condition type' );
+                throw ConditionValueRules::bad( esc_html( $type ), 'is not a known condition type' );
             }
 
             if ( isset( $seen[ $type ] ) ) {
-                throw ConditionValueRules::bad( $type, 'appears more than once. Conditions are ANDed — use a single entry' );
+                throw ConditionValueRules::bad( esc_html( $type ), 'appears more than once. Conditions are ANDed — use a single entry' );
             }
             $seen[ $type ] = true;
 
@@ -171,8 +171,8 @@ final class RewardConditionSet {
 
             if ( ! in_array( $operator, $spec['operators'], true ) ) {
                 throw ConditionValueRules::bad(
-                    $type,
-                    sprintf( 'does not allow operator "%s". Allowed: %s', $operator, implode( ', ', $spec['operators'] ) )
+                    esc_html( $type ),
+                    esc_html( sprintf( 'does not allow operator "%s". Allowed: %s', $operator, implode( ', ', $spec['operators'] ) ) )
                 );
             }
 

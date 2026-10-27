@@ -82,6 +82,7 @@ class YayCurrencyIntegration {
         }
 
         // Decoded first, so an encoded rest_route=%2Fyayloyalty%2Fv1%2F matches too.
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitize_text_field() runs after rawurldecode() on purpose: run first, it strips the %XX octets this match needs decoded.
         $uri = sanitize_text_field( rawurldecode( wp_unslash( $_SERVER['REQUEST_URI'] ) ) );
 
         $namespace = '/' . BaseRestController::REST_NAMESPACE . '/';

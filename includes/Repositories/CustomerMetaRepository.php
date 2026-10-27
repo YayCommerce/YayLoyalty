@@ -75,7 +75,7 @@ class CustomerMetaRepository extends AbstractRepository {
         global $wpdb;
 
         // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared -- Sql::in_placeholders() emits only a fixed-count %s list; values are bound via prepare() below.
-        return (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+        return (int) $wpdb->get_var( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
                 'SELECT COUNT(*) FROM `' . esc_sql( $this->table() ) . '`
                  WHERE user_id = %d AND meta_key IN (' . Sql::in_placeholders( ActivityEvent::ALL ) . ')',
@@ -155,7 +155,7 @@ class CustomerMetaRepository extends AbstractRepository {
         $where_sql = ' WHERE ' . implode( ' AND ', $where );
 
         // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared -- the fragments in $where are already prepared by paginate_activity().
-        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+        $rows = $wpdb->get_results( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             'SELECT * FROM `' . esc_sql( $this->table() ) . '`' . $where_sql . ' ORDER BY id DESC',
             ARRAY_A
         );

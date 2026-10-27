@@ -58,10 +58,12 @@ trait ConditionTypeMethods {
     public static function assert( $value ): string {
         if ( ! static::is_valid( $value ) ) {
             throw new \InvalidArgumentException(
-                sprintf(
-                    'YayLoyalty: unknown condition type "%s". Expected one of: %s.',
-                    is_scalar( $value ) ? (string) $value : gettype( $value ),
-                    implode( ', ', static::all() )
+                esc_html(
+                    sprintf(
+                        'YayLoyalty: unknown condition type "%s". Expected one of: %s.',
+                        is_scalar( $value ) ? (string) $value : gettype( $value ),
+                        implode( ', ', static::all() )
+                    )
                 )
             );
         }

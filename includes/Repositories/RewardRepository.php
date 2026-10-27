@@ -53,7 +53,7 @@ final class RewardRepository extends AbstractRepository {
         }
 
         // phpcs:disable WordPress.DB.PreparedSQL.NotPrepared -- Sql::in_placeholders() emits only a fixed-count %s list; values are bound via prepare() below.
-        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+        $rows = $wpdb->get_results( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
                 'SELECT * FROM `' . esc_sql( $this->table() ) . '` WHERE status = %s AND type IN (' . Sql::in_placeholders( $types ) . ') ORDER BY sort_order ASC, id ASC',
                 array_merge( [ Status::ACTIVE ], array_values( $types ) )

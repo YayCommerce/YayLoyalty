@@ -14,6 +14,6 @@ class I18n {
         }
         unload_textdomain( 'yayloyalty' );
         load_textdomain( 'yayloyalty', YAYLOYALTY_PLUGIN_DIR . '/languages/yayloyalty-' . $locale . '.mo' );
-        load_plugin_textdomain( 'yayloyalty', false, YAYLOYALTY_PLUGIN_DIR . '/languages/' );
+        load_plugin_textdomain( 'yayloyalty', false, YAYLOYALTY_PLUGIN_DIR . '/languages/' ); // phpcs:ignore PluginCheck.CodeAnalysis.DiscouragedFunctions.load_plugin_textdomainFound -- Pro ships outside WordPress.org, so the plugin loads its own translations.
     }
 }

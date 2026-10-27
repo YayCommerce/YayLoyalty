@@ -52,7 +52,7 @@ class LotRepository {
         );
 
         if ( false === $result ) {
-            throw new QueryException( 'insert', $wpdb->last_error, $this->table() );
+            throw new QueryException( 'insert', esc_html( $wpdb->last_error ), esc_html( $this->table() ) );
         }
 
         return (int) $wpdb->insert_id;
@@ -70,7 +70,7 @@ class LotRepository {
         $direction = 'DESC' === $order ? 'DESC' : 'ASC';
 
         // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $direction is one of two literals.
-        $rows = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+        $rows = $wpdb->get_results( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
                 'SELECT id, ledger_id, remaining, expires_at FROM `' . esc_sql( $this->table() ) . "`
                  WHERE user_id = %d AND status = %s ORDER BY created_at {$direction}, id {$direction}",
@@ -119,11 +119,11 @@ class LotRepository {
         );
 
         if ( false === $result ) {
-            throw new QueryException( 'update', $wpdb->last_error, $this->table() . ' (take)' );
+            throw new QueryException( 'update', esc_html( $wpdb->last_error ), esc_html( $this->table() . ' (take)' ) );
         }
 
         if ( 1 !== (int) $result ) {
-            throw new \RuntimeException( sprintf( 'YayLoyalty: lot %d cannot give %d points.', $lot_id, $points ) );
+            throw new \RuntimeException( esc_html( sprintf( 'YayLoyalty: lot %d cannot give %d points.', $lot_id, $points ) ) );
         }
 
         $result = $wpdb->insert( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
@@ -138,7 +138,7 @@ class LotRepository {
         );
 
         if ( false === $result ) {
-            throw new QueryException( 'insert', $wpdb->last_error, $this->allocations_table() );
+            throw new QueryException( 'insert', esc_html( $wpdb->last_error ), esc_html( $this->allocations_table() ) );
         }
     }
 
@@ -272,7 +272,7 @@ class LotRepository {
 
         // reminded_at first: MySQL assigns left to right, so it still compares the old expires_at.
         // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $new_date holds only placeholders, bound twice by $new_date_values: the sniff cannot count through it.
-        $result = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+        $result = $wpdb->query( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
                 'UPDATE `' . esc_sql( $this->table() ) . "`
                  SET reminded_at = IF( {$new_date} <=> expires_at, reminded_at, NULL ),
@@ -284,7 +284,7 @@ class LotRepository {
         // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
 
         if ( false === $result ) {
-            throw new QueryException( 'update', $wpdb->last_error, $this->table() . ' (restamp_open_expiry)' );
+            throw new QueryException( 'update', esc_html( $wpdb->last_error ), esc_html( $this->table() . ' (restamp_open_expiry)' ) );
         }
     }
 
@@ -299,7 +299,7 @@ class LotRepository {
         list( $due_sql, $due_values ) = self::reminder_due_sql( $now, $horizon );
 
         // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $due_sql holds only placeholders, and $due_values binds them: the sniff cannot count through it.
-        $ids = $wpdb->get_col( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+        $ids = $wpdb->get_col( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
                 'SELECT DISTINCT user_id FROM `' . esc_sql( $this->table() ) . "` WHERE {$due_sql} LIMIT %d",
                 array_merge( $due_values, [ $limit ] )
@@ -325,7 +325,7 @@ class LotRepository {
         $table                        = esc_sql( $this->table() );
 
         // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- $due_sql and $in hold only placeholders, bound by the arrays beside them: the sniff cannot count through them.
-        $lots = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+        $lots = $wpdb->get_results( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
                 "SELECT id, remaining, expires_at FROM `{$table}` WHERE user_id = %d AND {$due_sql}",
                 array_merge( [ $user_id ], $due_values )
@@ -339,7 +339,7 @@ class LotRepository {
 
         $ids    = array_map( 'intval', array_column( $lots, 'id' ) );
         $in     = Sql::in_placeholders( $ids, '%d' );
-        $result = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
+        $result = $wpdb->query( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery -- a direct query: the plugin's own table has no WordPress API.
             $wpdb->prepare(
                 "UPDATE `{$table}` SET reminded_at = %s WHERE reminded_at IS NULL AND id IN ({$in})",
                 array_merge( [ $now ], $ids )
@@ -348,7 +348,7 @@ class LotRepository {
         // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
 
         if ( false === $result ) {
-            throw new QueryException( 'update', $wpdb->last_error, $this->table() . ' (claim_reminder_lots)' );
+            throw new QueryException( 'update', esc_html( $wpdb->last_error ), esc_html( $this->table() . ' (claim_reminder_lots)' ) );
         }
 
         if ( count( $ids ) !== $result ) {

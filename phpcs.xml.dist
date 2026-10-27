@@ -51,15 +51,6 @@
         <exclude name="Universal.Arrays.DisallowShortArraySyntax"/>
 
         <!--
-            Reason: this sniff flags any throw whose message interpolates a
-            variable, assuming exception messages reach the browser. They never
-            do here: BaseRestController::error_internal() logs the message and
-            returns a generic string with a correlation id, so SQL, table names
-            and paths stay hidden.
-        -->
-        <exclude name="WordPress.Security.EscapeOutput.ExceptionNotEscaped"/>
-
-        <!--
             Reason: Squiz.Commenting is noisy on a codebase that documents
             behaviour rather than restating signatures. Docblocks are required
             by review where the signature is not self-explanatory, not by

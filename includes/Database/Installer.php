@@ -189,7 +189,7 @@ final class Installer {
 
         $table = Table::name( 'customer_meta' );
 
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a one-off data migration on our own table; there is nothing to cache.
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.SlowDBQuery -- a one-off data migration on our own table; there is nothing to cache, and meta_key is its own column, not wp_postmeta's.
         if ( false === $wpdb->update( $table, [ 'meta_key' => $new_key ], [ 'meta_key' => $old_key ], [ '%s' ], [ '%s' ] ) ) {
             Log::warning( 'Installer', sprintf( 'could not rename meta_key %s to %s on %s: %s', $old_key, $new_key, $table, $wpdb->last_error ) );
         }

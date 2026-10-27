@@ -38,7 +38,7 @@ final class PeriodWindow {
      */
     public static function for_range( int $range, \DateTimeImmutable $now_site ): self {
         if ( ! in_array( $range, self::RANGES, true ) ) {
-            throw new \InvalidArgumentException( sprintf( 'YayLoyalty: unsupported dashboard range %d. Expected one of: %s.', $range, implode( ', ', self::RANGES ) ) );
+            throw new \InvalidArgumentException( esc_html( sprintf( 'YayLoyalty: unsupported dashboard range %d. Expected one of: %s.', $range, implode( ', ', self::RANGES ) ) ) );
         }
 
         $today = $now_site->setTime( 0, 0, 0 );

@@ -25,7 +25,9 @@ final class Registry {
     public function get( string $trigger ): TriggerHandler {
         if ( ! $this->has( $trigger ) ) {
             throw new \InvalidArgumentException(
-                sprintf( 'YayLoyalty: no trigger handler registered for "%s".', $trigger )
+                esc_html(
+                    sprintf( 'YayLoyalty: no trigger handler registered for "%s".', $trigger )
+                )
             );
         }
 

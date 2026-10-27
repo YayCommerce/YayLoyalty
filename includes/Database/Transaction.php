@@ -162,12 +162,14 @@ final class Transaction {
         global $wpdb;
 
         $suppress = $wpdb->suppress_errors( true );
-        $result   = $wpdb->query( $sql ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.NotPrepared -- a transaction-control statement built from literals; no WordPress API issues one.
+        $result   = $wpdb->query( $sql ); // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.NotPrepared -- a transaction-control statement built from literals; no WordPress API issues one.
         $wpdb->suppress_errors( $suppress );
 
         if ( false === $result ) {
             throw new \RuntimeException(
-                sprintf( 'YayLoyalty: transaction statement failed (%s): %s', $sql, $wpdb->last_error )
+                esc_html(
+                    sprintf( 'YayLoyalty: transaction statement failed (%s): %s', $sql, $wpdb->last_error )
+                )
             );
         }
     }
@@ -186,11 +188,13 @@ final class Transaction {
 
         if ( $current !== self::$connection_id ) {
             throw new \RuntimeException(
-                sprintf(
-                    'YayLoyalty: database connection changed mid-transaction (was %d, now %d); cannot %s.',
-                    self::$connection_id,
-                    $current,
-                    $operation
+                esc_html(
+                    sprintf(
+                        'YayLoyalty: database connection changed mid-transaction (was %d, now %d); cannot %s.',
+                        self::$connection_id,
+                        $current,
+                        $operation
+                    )
                 )
             );
         }

@@ -21,7 +21,7 @@ trait StringEnumMethods {
     /** @throws \InvalidArgumentException When $value is not in all(). */
     public static function assert( $value ): string {
         if ( ! static::is_valid( $value ) ) {
-            throw static::unknown_value( $value );
+            throw static::unknown_value( $value ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- unknown_value() escapes the message it builds.
         }
 
         return $value;
@@ -34,13 +34,15 @@ trait StringEnumMethods {
 
     protected static function unknown_value( $value, string $expected = 'one of' ): \InvalidArgumentException {
         return new \InvalidArgumentException(
-            sprintf(
-                'YayLoyalty: unknown %s "%s". Expected %s: %s.%s',
-                static::noun(),
-                is_scalar( $value ) ? (string) $value : gettype( $value ),
-                $expected,
-                implode( ', ', static::all() ),
-                static::assert_note()
+            esc_html(
+                sprintf(
+                    'YayLoyalty: unknown %s "%s". Expected %s: %s.%s',
+                    static::noun(),
+                    is_scalar( $value ) ? (string) $value : gettype( $value ),
+                    $expected,
+                    implode( ', ', static::all() ),
+                    static::assert_note()
+                )
             )
         );
     }

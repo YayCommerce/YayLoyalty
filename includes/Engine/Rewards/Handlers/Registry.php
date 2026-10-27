@@ -23,7 +23,9 @@ final class Registry {
     public function get( string $type ): RewardHandler {
         if ( ! $this->has( $type ) ) {
             throw new \InvalidArgumentException(
-                sprintf( 'YayLoyalty: no reward handler registered for "%s".', $type )
+                esc_html(
+                    sprintf( 'YayLoyalty: no reward handler registered for "%s".', $type )
+                )
             );
         }
 

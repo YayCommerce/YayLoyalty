@@ -68,7 +68,7 @@ class CampaignRepository extends AbstractRepository {
     private function lock_row( int $id, string $lock ): bool {
         global $wpdb;
 
-        $found = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery -- a locking read must reach the database, never a cache.
+        $found = $wpdb->get_var( // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.DirectDatabaseQuery -- a locking read must reach the database, never a cache.
             $wpdb->prepare(
                 'SELECT id FROM `' . esc_sql( $this->table() ) . '` WHERE id = %d ' . $lock, // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- $lock is one of two literals above.
                 $id
@@ -76,7 +76,7 @@ class CampaignRepository extends AbstractRepository {
         );
 
         if ( '' !== $wpdb->last_error ) {
-            throw new QueryException( 'select', $wpdb->last_error, $this->table() . ' (lock)' );
+            throw new QueryException( 'select', esc_html( $wpdb->last_error ), esc_html( $this->table() . ' (lock)' ) );
         }
 
         return null !== $found;

@@ -66,7 +66,7 @@ abstract class BaseRestController {
                     $result = $callback( $request );
 
                     if ( is_wp_error( $result ) ) {
-                        throw new CallbackReturnedError( $result );
+                        throw new CallbackReturnedError( $result ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- carries a WP_Error object, not a message; exec() returns it as the response.
                     }
 
                     return $result;
