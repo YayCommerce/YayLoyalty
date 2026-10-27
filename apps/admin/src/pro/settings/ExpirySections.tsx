@@ -2,6 +2,7 @@ import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import { __ } from '@wordpress/i18n';
 
 import { useSettingsQuery } from '@/lib/queries/settings.queries';
+import { POINTS_EXPIRED_EMAIL_ID } from '@/lib/schema/emails.schema';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
@@ -9,6 +10,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Segmented, SegmentedItem } from '@/components/ui/segmented';
 import { Switch } from '@/components/ui/switch';
 import type { ExpirySettingsFormValues } from '@/pages/settings/expiry-settings.form';
+import { ExpiryEmailOffHint } from '@/pages/settings/ExpiryEmailOffHint';
 
 const MODES = [
   {
@@ -116,6 +118,15 @@ export function BatchExpirySection() {
             )}
           />
           <span>{__('after the day they were earned', 'yayloyalty')}</span>
+          {isEnabled && (
+            <div className="basis-full">
+              <ExpiryEmailOffHint
+                emailId={POINTS_EXPIRED_EMAIL_ID}
+                message={__('The “Points expired” email is off.', 'yayloyalty')}
+                successMessage={__('Points expired email turned on.', 'yayloyalty')}
+              />
+            </div>
+          )}
         </div>
         <div className="flex flex-col gap-2">
           <span className="text-sm font-medium">{__('Spend order', 'yayloyalty')}</span>

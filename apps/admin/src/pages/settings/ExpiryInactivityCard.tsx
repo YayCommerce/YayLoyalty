@@ -1,10 +1,12 @@
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import { __ } from '@wordpress/i18n';
 
+import { POINTS_EXPIRED_EMAIL_ID } from '@/lib/schema/emails.schema';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { NumberInputInput, NumberInputRoot, NumberInputUnit } from '@/components/ui/number-input';
 import { Switch } from '@/components/ui/switch';
 import { ExpirySettingsFormValues } from './expiry-settings.form';
+import { ExpiryEmailOffHint } from './ExpiryEmailOffHint';
 
 /**
  * Inactivity expiry: the window in days, disabled while off. Shows its own on/off switch unless
@@ -80,6 +82,15 @@ function InactivityDaysRow({ isEnabled }: { isEnabled: boolean }) {
       <span className="text-muted-foreground text-sm">
         {__('since the customer last earned or redeemed', 'yayloyalty')}
       </span>
+      {isEnabled && (
+        <div className="basis-full">
+          <ExpiryEmailOffHint
+            emailId={POINTS_EXPIRED_EMAIL_ID}
+            message={__('The “Points expired” email is off.', 'yayloyalty')}
+            successMessage={__('Points expired email turned on.', 'yayloyalty')}
+          />
+        </div>
+      )}
     </CardContent>
   );
 }

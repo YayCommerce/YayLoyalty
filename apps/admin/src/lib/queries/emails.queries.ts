@@ -2,7 +2,7 @@ import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/r
 
 import { getEmails, postEmails } from '@/lib/api/emails.api';
 import { SETTINGS_QUERIES } from '@/lib/queries/settings.queries';
-import type { EmailsFormValues } from '@/lib/schema/emails.schema';
+import type { EmailsUpdate } from '@/lib/schema/emails.schema';
 
 export const EMAILS_QUERIES = {
   main: queryOptions({
@@ -24,7 +24,7 @@ export function useSaveEmailsMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationKey: ['emails', 'save'],
-    mutationFn: (data: EmailsFormValues) => postEmails(data),
+    mutationFn: (data: EmailsUpdate) => postEmails(data),
     // A focus refetch started before the save would resolve after it and put the old state back.
     onMutate: () => queryClient.cancelQueries({ queryKey: EMAILS_QUERIES.main.queryKey }),
     onSuccess: (emails) => {
